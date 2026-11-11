@@ -35,6 +35,7 @@ Zurück zum [README](../../../README_DE.md)
 - **ungenutzte uses** abgeblendet (Regel `unused-uses`: auch in `--check`, `get_diagnostics` und der Baseline; `off`, `exclude`, `lsp-ignore` und die Option `keep` gelten auch fürs Abblenden)
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien; lokale Routinen wahlweise eine Stufe tiefer, in eigener Farbe mit gestrichelter Linie oder wie die äußere Routine, auf Wunsch schwach hinterlegt (`highlight.nestedRoutines`, `highlight.nestedRoutineBand`)
 
+<a id="window-atlasarchitecture"></a>
 ## Architekturübersicht
 
 Fenster *Atlas-Architektur*, *Ansicht › Atlas › Architektur*.
@@ -104,6 +105,7 @@ Einstellungen: `architecture.explainAssignment`
 
 Einstellungen: `architecture.grouping.keepPrevious`
 
+<a id="window-atlasquery"></a>
 ## Code-Abfragen (#1351)
 
 Fenster *Atlas-Abfrage*, *Ansicht › Atlas › Abfrage*.
@@ -113,6 +115,7 @@ Fenster *Atlas-Abfrage*, *Ansicht › Atlas › Abfrage*.
 - gespeicherte Abfragen in `atlas.json` laufen als Regel `query:<name>` im Editor, bei `--check` und in SARIF
 - dieselbe Sprache im MCP-Werkzeug `query_code` und mit `AtlasServer --query`
 
+<a id="window-atlashotspots"></a>
 ## Hotspots (#1354)
 
 Fenster *Atlas-Hotspots*, *Ansicht › Atlas › Hotspots*.
@@ -149,6 +152,7 @@ Einstellungen: `callHierarchy.diagram`
 
 ## Units und Abhängigkeiten
 
+<a id="window-atlasunitrelations"></a>
 ### Unit-Beziehungen (#593)
 
 Fenster *Unit-Beziehungen*, *Ansicht › Atlas › Unit-Beziehungen*.

@@ -64,9 +64,10 @@ At the bottom of each editor window (state colours tuned separately for light an
 - each element can be switched off
 - the Atlas field leaves the IDE status line while the bar shows the status
 
+<a id="window-atlassearchreplace"></a>
 ## Finding
 
-- **Outline** as a dockable window with filter
+- <a id="window-atlasoutline"></a>**Outline** as a dockable window with filter
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path
 - Project-wide **symbol search**
 - **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
@@ -85,6 +86,7 @@ Below the editor (Ctrl+F):
 
 ## Results, impact and data flow
 
+<a id="window-atlasresults"></a>
 ### Results window "Atlas Results"
 
 - For references (including forms), implementations, callers, calls and inheritance
@@ -136,6 +138,7 @@ From `atlas.json` (`tasks`):
 - matches (dcc, pwsh, msbuild, generic or your own regex) as findings in the problem list and the editor
 - optionally before every build (`warn` or `block`)
 
+<a id="window-atlasbookmarks"></a>
 ## Bookmarks and notes
 
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source

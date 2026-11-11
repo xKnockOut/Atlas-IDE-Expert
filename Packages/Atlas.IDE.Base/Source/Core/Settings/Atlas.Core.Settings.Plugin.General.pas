@@ -25,6 +25,10 @@ const
   /// (Test prüft Gleichheit).</summary>
   cMinNotificationEntries = 10;
   cMaxNotificationEntries = 1000;
+  /// <summary>Werte von help.source (#1886): GitHub-Doku des installierten Versionstags bzw. lokale HTML-Seiten.
+  /// </summary>
+  cHelpSourceOnline = 'online';
+  cHelpSourceLocal = 'local';
 
 type
   /// <summary>Plugin-Einstellungen: Server, Index, sicherer Modus, Architektur und Hotspots.</summary>
@@ -191,6 +195,10 @@ type
     SettingsSearch: Boolean;
     /// <summary>Präfix @ in der Befehlspalette listet Einstellungen (#1884, palette.settingsPrefix).</summary>
     PaletteSettingsPrefix: Boolean;
+    /// <summary>Modul Hilfe (#1886, help.enabled): F1 auf Befund, Einstellung und Atlas-Fenster.</summary>
+    HelpEnabled: Boolean;
+    /// <summary>Quelle der Hilfe (#1886, help.source): cHelpSourceOnline oder cHelpSourceLocal.</summary>
+    HelpSource: string;
     /// <summary>Vor jedem Import und vor „Alles zurücksetzen“ den aktuellen Stand als Datei sichern (#723,
     /// settings.backupBeforeImport; %APPDATA%\Atlas\Backups).</summary>
     SettingsBackupBeforeImport: Boolean;
@@ -336,6 +344,8 @@ begin
   Result.SettingsMarkModified := True;
   Result.SettingsSearch := True;
   Result.PaletteSettingsPrefix := True;
+  Result.HelpEnabled := True;
+  Result.HelpSource := cHelpSourceOnline;
   Result.SettingsBackupBeforeImport := True;
   Result.SettingsExportSecrets := 'omit';
 end;
@@ -380,6 +390,7 @@ begin
   UpdatesInstall := Choice(UpdatesInstall, ['ask', 'off', 'auto']);
   UpdatesChannel := Choice(UpdatesChannel, ['stable', 'prerelease']);
   UpdatesNewModules := Choice(UpdatesNewModules, ['ask', 'install', 'skip']);
+  HelpSource := Choice(HelpSource, [cHelpSourceOnline, cHelpSourceLocal]);
 end;
 
 procedure TAtlasPluginGeneralSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -407,6 +418,8 @@ begin
   AIo.Flag('SettingsMarkModified', SettingsMarkModified);
   AIo.Flag('SettingsSearch', SettingsSearch);
   AIo.Flag('PaletteSettingsPrefix', PaletteSettingsPrefix);
+  AIo.Flag('HelpEnabled', HelpEnabled);
+  AIo.Text('HelpSource', HelpSource);
   AIo.Flag('SettingsBackupBeforeImport', SettingsBackupBeforeImport);
   AIo.Text('SettingsExportSecrets', SettingsExportSecrets);
 end;
