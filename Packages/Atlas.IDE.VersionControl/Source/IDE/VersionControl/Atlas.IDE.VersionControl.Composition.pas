@@ -73,7 +73,6 @@ type
     procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
     function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
       out ANeverAsk: Boolean): Boolean;
-      out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
     function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
     function GitOptions: TAtlasVcsGitBranchOptions;
     procedure OfferOpen(const AProject, ARoot, AFolder: string);

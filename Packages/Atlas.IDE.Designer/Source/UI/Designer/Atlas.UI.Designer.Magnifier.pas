@@ -100,7 +100,7 @@ uses
 
 const
   // Fehlt in Delphis Winapi.Windows (überlagerte Fenster mit aufnehmen).
-  CAPTUREBLT = $40000000;
+  cCaptureBlt = $40000000;
   cDefaultWidth = 240;
   cDefaultHeight = 180;
   cBarHeight = 18;
@@ -218,7 +218,7 @@ begin
   mScreen := GetDC(0);
   try
     BitBlt(FBitmap.Canvas.Handle, 0, 0, ASource.Width, ASource.Height, mScreen, ASource.Left, ASource.Top,
-      SRCCOPY or CAPTUREBLT);
+      SRCCOPY or cCaptureBlt);
   finally
     ReleaseDC(0, mScreen);
   end;

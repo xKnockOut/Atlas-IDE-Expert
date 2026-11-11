@@ -124,6 +124,10 @@ const
   cHoverMs = 400;
   /// <summary>Deckkraft der Zeilenhistorie über dem Hintergrund.</summary>
   cBlameStrength = 0.55;
+  /// <summary>Abstand des Hinweises zum alten Text hinter dem Zeilenende, in Spalten.</summary>
+  cTipColumnGap = 3;
+  /// <summary>Abstand des Hinweises zur Markierung am Rand, in Pixeln.</summary>
+  cTipGap = 4;
 
 type
   TEvents = class(TNTACodeEditorNotifier)
@@ -529,7 +533,7 @@ var
   mSize: TSize;
 begin
   mCell := AContext.EditorState.GetCharacterPosPx(
-    TAtlasLineChangesPaint.EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + 3,
+    TAtlasLineChangesPaint.EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + cTipColumnGap,
     AContext.EditorLineNum);
   mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   mX := TAtlasLineTail.Start(Self, mKey, mCell.Left);
@@ -744,7 +748,7 @@ begin
   TAtlasIdeStyle.Apply(FTip, AScreen);
   FTip.ShowNote(TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeOldTitle),
     TAtlasLineChangesPaint.OldText(FData.Changes[AChange]), [TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeRevert)],
-    Point(AScreen.Right + 4, AScreen.Top));
+    Point(AScreen.Right + cTipGap, AScreen.Top));
 end;
 
 procedure TLineChangesState.ShowCommit;

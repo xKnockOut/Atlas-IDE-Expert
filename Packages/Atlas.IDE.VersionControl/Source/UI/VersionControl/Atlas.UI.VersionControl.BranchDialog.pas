@@ -296,6 +296,8 @@ const
   cBelowAll = 10000;
   cExternalRow = 26;
   cExternalRowsVisible = 5;
+  /// <summary>Höhe der Gruppe für die Externals ohne ihre Zeilen: Rahmen mit Titel und Kopfzeile.</summary>
+  cExternalsFrame = 44 + 20;
   cFolderWidth = 150;
   cChoiceWidth = 200;
 
@@ -1114,7 +1116,8 @@ begin
   FHint.StyleElements := FHint.StyleElements - [seFont];
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
-  FBox.Height := FBox.ScaleValue(44 + 20 + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) * cExternalRow);
+  FBox.Height := FBox.ScaleValue(cExternalsFrame + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) *
+    cExternalRow);
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
   mWidth := FDialog.Width - 4 * cGap - 20;
   AddHeader(mWidth);

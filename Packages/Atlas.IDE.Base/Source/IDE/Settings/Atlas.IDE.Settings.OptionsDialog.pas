@@ -61,6 +61,10 @@ type
   /// </summary>
   TAtlasTreeAccess = class(TCustomTreeView);
 
+const
+  /// <summary>Trenner der Knoten im Protokoll.</summary>
+  cPathSeparator = ' › ';
+
 { TAtlasOptionsSelector }
 
 constructor TAtlasOptionsSelector.Create(const APending: TFunc<Boolean>);
@@ -240,7 +244,8 @@ begin
   end;
   if mNode = nil then
   begin
-    TAtlasGuard.Log('Optionen: Knoten Atlas › ' + string.Join(' › ', APath) + ' nicht im Baum ' + mTree.ClassName); // german-ok Protokoll
+    TAtlasGuard.Log(Format('Optionen: Knoten Atlas › %s nicht im Baum %s', // german-ok Protokoll
+      [string.Join(cPathSeparator, APath), mTree.ClassName]));
     Exit;
   end;
   mNode.MakeVisible;

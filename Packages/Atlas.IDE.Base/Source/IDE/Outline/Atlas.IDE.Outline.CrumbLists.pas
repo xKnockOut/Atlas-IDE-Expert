@@ -76,6 +76,10 @@ const
   cCreateId = 'create:';
   /// <summary>Höchstlänge von Name und Parametern im Menü (#1784); länger mit „…“.</summary>
   cOverloadCaptionMax = 56;
+  /// <summary>Einrückung je Verschachtelungstiefe einer Region im Menü (#1764), in Zeichen.</summary>
+  cPlaceIndent = 4;
+  /// <summary>Abschnitt einer unlesbaren Kennung: keiner (-1 heißt „vor dem ersten Schlüsselwort“).</summary>
+  cNoSection = -2;
 
 type
   /// <summary>Knoten eines Menüs (Geschwister, Kinder oder Überladungen) mit dem vorgewählten Knoten; Overloads
@@ -327,7 +331,7 @@ begin
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mIndex);
     // Verschachtelte Regionen (#1764) eingerückt.
-    mCommand.Caption := StringOfChar(' ', 4 * APlaces[mIndex].Depth) + mText;
+    mCommand.Caption := StringOfChar(' ', cPlaceIndent * APlaces[mIndex].Depth) + mText;
     // Marke der Gliederung vor dem Abschnitt (#1768).
     if ACounts and (APlaces[mIndex].Mark <> '') then
     begin
@@ -401,7 +405,7 @@ begin
   if AId.StartsWith(cAppendId) then
   begin
     TAtlasIdeSectionEdit.Append(ASource.FileName, ASource.Nodes, ASource.Lines, ASource.Line, ASource.Character,
-      StrToIntDef(AId.Substring(Length(cAppendId)), -2));
+      StrToIntDef(AId.Substring(Length(cAppendId)), cNoSection));
   end
   else if AId.StartsWith(cCreateId) then
   begin

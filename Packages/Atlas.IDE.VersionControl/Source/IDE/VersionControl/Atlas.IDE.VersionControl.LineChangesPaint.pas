@@ -112,7 +112,7 @@ begin
   mOldBrush := SelectObject(ADC, mBrush);
   mOldPen := SelectObject(ADC, mPen);
   try
-    Polygon(ADC, mPoints, 3);
+    Polygon(ADC, mPoints, Length(mPoints));
   finally
     SelectObject(ADC, mOldPen);
     SelectObject(ADC, mOldBrush);
