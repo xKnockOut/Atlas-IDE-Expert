@@ -699,6 +699,13 @@ type
       write FEditorView.DesignerSuggestAnchorsKeepExisting;
     property DesignerSuggestAnchorsFillClasses: string read FEditorView.DesignerSuggestAnchorsFillClasses
       write FEditorView.DesignerSuggestAnchorsFillClasses;
+    property DesignerTextTable: Boolean read FEditorView.DesignerTextTable write FEditorView.DesignerTextTable;
+    property DesignerTextTableChecks: string read FEditorView.DesignerTextTableChecks
+      write FEditorView.DesignerTextTableChecks;
+    property DesignerTextTableSynonyms: string read FEditorView.DesignerTextTableSynonyms
+      write FEditorView.DesignerTextTableSynonyms;
+    property DesignerTextTableExcludeProperties: string read FEditorView.DesignerTextTableExcludeProperties
+      write FEditorView.DesignerTextTableExcludeProperties;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

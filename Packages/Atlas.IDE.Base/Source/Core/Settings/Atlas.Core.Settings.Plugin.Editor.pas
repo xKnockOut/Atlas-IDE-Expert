@@ -595,6 +595,14 @@ type
     DesignerSuggestAnchorsKeepExisting: Boolean;
     /// <summary>Füllende Klassen mit allen vier Anchors (#727, designer.suggestAnchors.fillClasses).</summary>
     DesignerSuggestAnchorsFillClasses: string;
+    /// <summary>Texte des Formulars als Tabelle (#728, designer.textTable).</summary>
+    DesignerTextTable: Boolean;
+    /// <summary>Aktive Hinweise der Texttabelle (#728, designer.textTable.checks).</summary>
+    DesignerTextTableChecks: string;
+    /// <summary>Eigene Synonymgruppen (#728, designer.textTable.synonyms).</summary>
+    DesignerTextTableSynonyms: string;
+    /// <summary>Nicht erfasste Eigenschaften (#728, designer.textTable.excludeProperties).</summary>
+    DesignerTextTableExcludeProperties: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1172,6 +1180,10 @@ begin
   DesignerSuggestAnchorsEdgeDistance := 16;
   DesignerSuggestAnchorsKeepExisting := True;
   DesignerSuggestAnchorsFillClasses := 'TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit';
+  DesignerTextTable := True;
+  DesignerTextTableChecks := 'accelerators, variants, truncated, whitespace';
+  DesignerTextTableSynonyms := '';
+  DesignerTextTableExcludeProperties := 'SQL, CommandText';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1213,6 +1225,10 @@ begin
   AIo.Number('DesignerSuggestAnchorsEdgeDistance', DesignerSuggestAnchorsEdgeDistance);
   AIo.Flag('DesignerSuggestAnchorsKeepExisting', DesignerSuggestAnchorsKeepExisting);
   AIo.Text('DesignerSuggestAnchorsFillClasses', DesignerSuggestAnchorsFillClasses);
+  AIo.Flag('DesignerTextTable', DesignerTextTable);
+  AIo.Text('DesignerTextTableChecks', DesignerTextTableChecks);
+  AIo.Text('DesignerTextTableSynonyms', DesignerTextTableSynonyms);
+  AIo.Text('DesignerTextTableExcludeProperties', DesignerTextTableExcludeProperties);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;

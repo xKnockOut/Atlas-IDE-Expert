@@ -50,6 +50,8 @@ type
     procedure PropertyPainterRoundTrip;
     [Test]
     procedure SuggestAnchorsRoundTrip;
+    [Test]
+    procedure TextTableRoundTrip;
   end;
 
 implementation
@@ -434,6 +436,33 @@ begin
     Assert.AreEqual(24, mSaved.DesignerSuggestAnchorsEdgeDistance);
     Assert.IsFalse(mSaved.DesignerSuggestAnchorsKeepExisting);
     Assert.AreEqual('TMemo', mSaved.DesignerSuggestAnchorsFillClasses);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.TextTableRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerTextTable').Checked, 'Vorgabe an');
+    Assert.AreEqual('accelerators, variants, truncated, whitespace', EditOf(mPage, 'DesignerTextTableChecks').Text);
+    Assert.AreEqual('', EditOf(mPage, 'DesignerTextTableSynonyms').Text);
+    Assert.AreEqual('SQL, CommandText', EditOf(mPage, 'DesignerTextTableExcludeProperties').Text);
+    CheckOf(mPage, 'DesignerTextTable').Checked := False;
+    EditOf(mPage, 'DesignerTextTableChecks').Text := 'labelColon';
+    EditOf(mPage, 'DesignerTextTableSynonyms').Text := 'Lieferant, Lieferer';
+    EditOf(mPage, 'DesignerTextTableExcludeProperties').Text := 'Hint';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerTextTable, 'abschaltbar');
+    Assert.AreEqual('labelColon', mSaved.DesignerTextTableChecks);
+    Assert.AreEqual('Lieferant, Lieferer', mSaved.DesignerTextTableSynonyms);
+    Assert.AreEqual('Hint', mSaved.DesignerTextTableExcludeProperties);
   finally
     mPage.Free;
   end;

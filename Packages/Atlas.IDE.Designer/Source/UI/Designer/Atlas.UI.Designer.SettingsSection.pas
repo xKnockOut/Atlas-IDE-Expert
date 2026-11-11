@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728).
 
 interface
 
@@ -17,7 +17,7 @@ type
   private
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
-    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726) und Anchors vorschlagen (#727).</summary>
+    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727) und Texte des Formulars (#728).</summary>
     procedure BuildToolRows;
   protected
     procedure BuildRows; override;
@@ -148,6 +148,11 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAnchorsKeep));
   Line('designer.suggestAnchors.fillClasses',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAnchorsFill));
+  Switch('designer.textTable', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTexts));
+  Line('designer.textTable.checks', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsChecks));
+  Line('designer.textTable.synonyms', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsSynonyms));
+  Line('designer.textTable.excludeProperties',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTextsExclude));
 end;
 
 end.

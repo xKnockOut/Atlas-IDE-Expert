@@ -5449,6 +5449,49 @@
       "x-node": "editor.designerBar",
       "x-issue": "#727"
     },
+    "DesignerTextTable": {
+      "description": "Befehl „Texte des Formulars …“ im Menü „Anordnen“ der Designer-Leiste: alle Texte des aktiven Formulars (Caption, Text, Hint, TextHint, Title, EditLabel, Zeilen von Items/Lines, Spaltentitel, Statusleisten-Felder) in einer Tabelle mit Hinweisen; Texte lassen sich dort ändern.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.textTable",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#728"
+    },
+    "DesignerTextTableChecks": {
+      "description": "Aktive Hinweise, durch Komma getrennt: accelerators (doppeltes Tastenkürzel im selben Container bzw. auf derselben Menüebene), variants (abweichende Schreibweise desselben Begriffs), truncated (Text breiter als der Platz), whitespace (Leerzeichen am Rand oder doppelt), labelColon (Label vor einem Eingabefeld ohne Doppelpunkt).",
+      "type": "string",
+      "default": "accelerators, variants, truncated, whitespace",
+      "x-key": "designer.textTable.checks",
+      "x-parent": "designer.textTable",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#728"
+    },
+    "DesignerTextTableSynonyms": {
+      "description": "Eigene Begriffe, die als abweichende Schreibweise desselben Begriffs gelten: Gruppen durch Semikolon, Begriffe durch Komma getrennt, z. B. „Lieferant, Lieferer; Kunde, Abnehmer“.",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.textTable.synonyms",
+      "x-parent": "designer.textTable",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#728"
+    },
+    "DesignerTextTableExcludeProperties": {
+      "description": "Eigenschaften, die nicht erfasst werden, durch Komma getrennt (Name ohne Index, z. B. SQL, CommandText, Columns).",
+      "type": "string",
+      "default": "SQL, CommandText",
+      "x-key": "designer.textTable.excludeProperties",
+      "x-parent": "designer.textTable",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#728"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

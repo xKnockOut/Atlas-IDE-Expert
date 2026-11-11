@@ -26,6 +26,8 @@
 //   TAtlasIdePropertyPainter).
 // - Anchors vorschlagen … und Anchors rückgängig (#727,
 //   designer.suggestAnchors, TAtlasIdeAnchors).
+// - Texte des Formulars … und Text rückgängig (#728, designer.textTable,
+//   TAtlasIdeFormTexts).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -42,7 +44,8 @@ uses
   Atlas.IDE.Designer.DefaultSizes,
   Atlas.IDE.Designer.Layers,
   Atlas.IDE.Designer.PropertyPainter,
-  Atlas.IDE.Designer.Anchors;
+  Atlas.IDE.Designer.Anchors,
+  Atlas.IDE.Designer.FormTexts;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -57,6 +60,7 @@ type
     FLayers: TAtlasIdeDesignerLayers;
     FPainter: TAtlasIdePropertyPainter;
     FAnchors: TAtlasIdeAnchors;
+    FTexts: TAtlasIdeFormTexts;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
     FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
@@ -71,6 +75,8 @@ type
     /// <summary>Befehl zum Menü-Tag ATag ausführen.</summary>
     procedure Run(ATag: Integer);
     procedure RunArrange(ATag: Integer);
+    /// <summary>Anchors (#727) und Texte des Formulars (#728).</summary>
+    procedure RunTools(ATag: Integer);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -112,6 +118,8 @@ const
   cFitUndo = 12;
   cAnchors = 13;
   cAnchorsUndo = 14;
+  cTexts = 15;
+  cTextsUndo = 16;
   /// <summary>Ab hier TAtlasNearCommand: cNearFirst + Ord(Befehl).</summary>
   cNearFirst = 20;
   /// <summary>Ab hier TAtlasSizesCommand: cSizesFirst + Ord(Befehl).</summary>
@@ -138,10 +146,12 @@ begin
   FLayers := TAtlasIdeDesignerLayers.Create(AOnMessage);
   FPainter := TAtlasIdePropertyPainter.Create(AOnMessage);
   FAnchors := TAtlasIdeAnchors.Create(AOnMessage);
+  FTexts := TAtlasIdeFormTexts.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FTexts.Free;
   FAnchors.Free;
   FPainter.Free;
   FLayers.Free;
@@ -159,7 +169,8 @@ begin
   Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
     ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
     ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
-    ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors;
+    ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
+    ASettings.DesignerTextTable;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -341,6 +352,12 @@ begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsUndoCmd), cAnchorsUndo,
       FAnchors.CanUndo);
   end;
+  if ASettings.DesignerTextTable then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsCmd), cTexts, True);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsUndoCmd), cTextsUndo,
+      FTexts.CanUndo);
+  end;
 end;
 
 procedure TAtlasIdeDesignerArrange.RunArrange(ATag: Integer);
@@ -370,10 +387,22 @@ begin
       FFit.Execute(TAtlasFitMode.Both, True);
     cFitUndo:
       FFit.Undo;
+  else
+    RunTools(ATag);
+  end;
+end;
+
+procedure TAtlasIdeDesignerArrange.RunTools(ATag: Integer);
+begin
+  case ATag of
     cAnchors:
       FAnchors.Execute;
     cAnchorsUndo:
       FAnchors.Undo;
+    cTexts:
+      FTexts.Execute;
+    cTextsUndo:
+      FTexts.Undo;
   end;
 end;
 

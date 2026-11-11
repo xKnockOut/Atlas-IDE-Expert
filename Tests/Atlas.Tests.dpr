@@ -1635,6 +1635,8 @@ uses
   Atlas.Core.Designer.PropertyPainter.Tests in 'IDE.Expert\Atlas.Core.Designer.PropertyPainter.Tests.pas',
   Atlas.Core.Designer.Anchors in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Anchors.pas',
   Atlas.Core.Designer.Anchors.Tests in 'IDE.Expert\Atlas.Core.Designer.Anchors.Tests.pas',
+  Atlas.Core.Designer.FormTexts in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormTexts.pas',
+  Atlas.Core.Designer.FormTexts.Tests in 'IDE.Expert\Atlas.Core.Designer.FormTexts.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',
