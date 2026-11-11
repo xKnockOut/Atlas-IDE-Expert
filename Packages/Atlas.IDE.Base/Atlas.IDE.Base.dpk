@@ -370,6 +370,8 @@ contains
   Atlas.Core.Diagnostics.MainThread in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.MainThread.pas',
   Atlas.Core.Diagnostics.Shutdown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas',
   Atlas.Core.Diagnostics.TimeLimit in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas',
+  Atlas.Core.Diagnostics.Deadline in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas',
+  Atlas.Core.Diagnostics.UserIdle in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas',
   Atlas.Core.Product.Version in 'Source\Core\Product\Atlas.Core.Product.Version.pas',
   Atlas.Core.Diagnostics.StartTimes in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas',
   Atlas.Core.Diagnostics.Hangs in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas',

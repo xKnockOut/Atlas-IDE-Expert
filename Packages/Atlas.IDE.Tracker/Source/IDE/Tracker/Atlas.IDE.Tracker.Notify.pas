@@ -156,7 +156,8 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Tracker.Notify,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Diagnostics.UserIdle;
 
 { TAtlasIdeIssueNotify }
 
@@ -189,31 +190,16 @@ end;
 
 class function TAtlasIdeIssueNotify.UserIsActive: Boolean;
 var
-  mInput: TLastInputInfo;
   mMinimized: Boolean;
-  mIdle: UInt64;
-  mNow: DWORD;
+  mIdle: Cardinal;
 begin
   mMinimized := IsIconic(Application.Handle);
   if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
   begin
     mMinimized := mMinimized or IsIconic(Application.MainForm.Handle);
   end;
-  mIdle := 0;
-  mInput.cbSize := SizeOf(mInput);
-  // Zähler in Millisekunden (32 Bit, läuft nach 49 Tagen über): über den Überlauf hinweg gerechnet.
-  if GetLastInputInfo(mInput) then
-  begin
-    mNow := GetTickCount;
-    if mNow >= mInput.dwTime then
-    begin
-      mIdle := mNow - mInput.dwTime;
-    end
-    else
-    begin
-      mIdle := UInt64(High(DWORD)) - mInput.dwTime + mNow + 1;
-    end;
-  end;
+  // Ohne Angabe von Windows gilt der Benutzer als aktiv (0 ms).
+  TAtlasUserIdle.IdleMs(mIdle);
   Result := TAtlasTrackerNotify.UserActive(mMinimized, mIdle);
 end;
 

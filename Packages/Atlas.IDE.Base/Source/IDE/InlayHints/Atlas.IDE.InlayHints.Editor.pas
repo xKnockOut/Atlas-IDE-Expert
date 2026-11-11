@@ -61,7 +61,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Editor.Elements;
+  Atlas.Core.Editor.Elements,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -147,8 +148,8 @@ type
     FFileName: string;
     FText: string;
     FVersion: Cardinal;
-    FChangedAt: Cardinal;
-    FRetryAt: Cardinal;
+    FChangedAt: UInt64;
+    FRetryAt: TAtlasDeadline;
     FShowing: Boolean;
     FHintFont: TFont;
     FFontKey: string;
@@ -378,7 +379,7 @@ begin
     FFileName := mSnapshot.FileName;
     FText := mSnapshot.Text;
     FVersion := mSnapshot.Version;
-    FChangedAt := GetTickCount;
+    FChangedAt := TAtlasTicks.Now;
   end;
 end;
 
@@ -405,8 +406,8 @@ begin
       mView := TopSourceView;
     end;
     // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
-    if (mView <> nil) and not SnapshotChanged(mView) and (GetTickCount - FChangedAt >= cQuietMs) and
-      (GetTickCount >= FRetryAt) then
+    if (mView <> nil) and not SnapshotChanged(mView) and (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
+      FRetryAt.Reached then
     begin
       Fetch(mView);
     end;
@@ -438,7 +439,7 @@ begin
   // Server indexiert: Er antwortet erst danach (#874). Später noch einmal.
   if mSession.Indexing(mPercent) then
   begin
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -464,7 +465,7 @@ procedure TAtlasEditorInlayHints.Fetched(AOk: Boolean; const AFileName, AText: s
 begin
   if not AOk then
   begin
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   // Der Speicher gilt je Datei und Textstand; eine Antwort für einen älteren Stand zeichnet nichts Falsches.

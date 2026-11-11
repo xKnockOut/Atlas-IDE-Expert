@@ -87,7 +87,7 @@ type
     FIndex: Integer;
     FFileName: string;
     FText: string;
-    FChangedAt: Cardinal;
+    FChangedAt: UInt64;
     /// <summary>Stand, zu dem FItems gehört.</summary>
     FScannedFile: string;
     FScannedText: string;
@@ -140,7 +140,8 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasIdeTestsLens.TEvents }
 
@@ -258,9 +259,9 @@ begin
     begin
       FFileName := mView.Buffer.FileName;
       FText := mText;
-      FChangedAt := GetTickCount;
+      FChangedAt := TAtlasTicks.Now;
     end
-    else if (GetTickCount - FChangedAt >= cQuietMs) and
+    else if (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
       (not SameText(FScannedFile, FFileName) or (FScannedText <> FText)) then
     begin
       Scan;
