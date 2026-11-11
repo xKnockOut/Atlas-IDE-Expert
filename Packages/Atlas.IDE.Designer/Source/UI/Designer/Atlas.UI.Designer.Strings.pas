@@ -56,7 +56,11 @@ type
     DesignerFitContainerCmd, DesignerFitContainerBoth, DesignerFitContainerWidth, DesignerFitContainerHeight,
     DesignerFitContainerSame, DesignerFitContainerUndoCmd, DesignerFitContainerDone, DesignerFitContainerOnlyClient,
     DesignerFitContainerNone, DesignerFitContainerUndone, SettingsDesignerFitContainer,
-    SettingsDesignerFitContainerPadding, SettingsDesignerFitContainerTopLeft);
+    SettingsDesignerFitContainerPadding, SettingsDesignerFitContainerTopLeft, DesignerNearCmd, DesignerNearShow,
+    DesignerNearFixAll, DesignerNearExcept, DesignerNearRemoveExcept, DesignerNearUndoCmd, DesignerNearFound,
+    DesignerNearNone, DesignerNearFixed, DesignerNearExcepted, DesignerNearRemoved, DesignerNearUndone,
+    DesignerNearSaveFailed, SettingsDesignerNearAlignment, SettingsDesignerNearTolerance,
+    SettingsDesignerNearBaseline, SettingsDesignerNearIgnore);
 
   TAtlasDesignerStrings = class
   public
@@ -252,7 +256,24 @@ const
      'Anpassen zurückgenommen.',
      'Befehl „An Inhalt anpassen“',
      'Innenrand rechts und unten (px)',
-     'Kinder nach links oben an den Innenrand rücken'),
+     'Kinder nach links oben an den Innenrand rücken',
+     'Fast bündige Kanten',
+     'Anzeigen',
+     'Alle angleichen',
+     'Auswahl als gewollt markieren',
+     'Ausnahmen der Auswahl entfernen',
+     'Angleichen rückgängig',
+     'Fast bündige Kanten: %d (%s)',
+     'Keine fast bündigen Kanten.',
+     'Angeglichen: %d Kanten.',
+     'Als gewollt markiert: %d Kanten.',
+     'Ausnahmen entfernt: %d.',
+     'Angleichen zurückgenommen.',
+     'Ausnahmen nicht gespeichert: %s',
+     'Befehle „Fast bündige Kanten“',
+     'Toleranz (px)',
+     'Textgrundlinien vergleichen',
+     'Klassen übergehen (durch Komma getrennt)'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -429,7 +450,24 @@ const
      'Fit to content undone.',
      '“Fit to content” command',
      'Inner margin right and bottom (px)',
-     'Move children to the inner margin at the top left'));
+     'Move children to the inner margin at the top left',
+     'Near-aligned edges',
+     'Show',
+     'Align all',
+     'Mark selection as intended',
+     'Remove exceptions of selection',
+     'Undo align edges',
+     'Near-aligned edges: %d (%s)',
+     'No near-aligned edges.',
+     'Aligned: %d edges.',
+     'Marked as intended: %d edges.',
+     'Exceptions removed: %d.',
+     'Edge alignment undone.',
+     'Exceptions not saved: %s',
+     '“Near-aligned edges” commands',
+     'Tolerance (px)',
+     'Compare text baselines',
+     'Skip classes (comma separated)'));
 
 { TAtlasDesignerStrings }
 

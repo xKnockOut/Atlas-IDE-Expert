@@ -1125,6 +1125,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.Components` | `Core/Designer/Atlas.Core.Designer.Components.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.DuplicateRow` | `Core/Designer/Atlas.Core.Designer.DuplicateRow.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitContainer` | `Core/Designer/Atlas.Core.Designer.FitContainer.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.NearAlign` | `Core/Designer/Atlas.Core.Designer.NearAlign.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
@@ -1139,6 +1140,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.Composition` | `IDE/Designer/Atlas.IDE.Designer.Composition.pas` | Anmeldung des Moduls `atlas.designer`, #1455 |
 | `Atlas.IDE.Designer.DuplicateRow` | `IDE/Designer/Atlas.IDE.Designer.DuplicateRow.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitContainer` | `IDE/Designer/Atlas.IDE.Designer.FitContainer.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.NearAlign` | `IDE/Designer/Atlas.IDE.Designer.NearAlign.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.InsertSpace` | `IDE/Designer/Atlas.IDE.Designer.InsertSpace.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Navigate` | `IDE/Designer/Atlas.IDE.Designer.Navigate.pas` | Ordner `IDE/Designer` |
