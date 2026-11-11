@@ -31,7 +31,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.ValueBox,
-  Atlas.UI.Tracker.CommentEditor;
+  Atlas.UI.Tracker.CommentEditor,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Ergebnis des Schreibens, im Hauptthread.</summary>
@@ -52,7 +53,7 @@ type
     Cancel: TButton;
   end;
 
-  TAtlasTrackerEndDialog = class(TForm)
+  TAtlasTrackerEndDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 520;
     cCommentHeight = 150;
@@ -118,7 +119,9 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 8;
@@ -128,16 +131,11 @@ const
 constructor TAtlasTrackerEndDialog.CreateDialog(AOwner: TComponent; const AKey: string;
   const AOptions: TAtlasTrackerSyncOptions; const AComment: string);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FKey := AKey;
   FOptions := AOptions;
   FChange := TAtlasTrackerWrite.Empty;
   Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndCaption, [AKey]);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
   OnCloseQuery := DialogCloseQuery;
@@ -390,7 +388,9 @@ begin
     Exit;
   end;
   // Kein neuer Versuch von selbst: Der Benutzer ändert und sendet erneut oder bricht ab.
-  FParts.Note.Font.Color := clRed;
+  FParts.Note.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FParts.Note.StyleElements := FParts.Note.StyleElements - [seFont];
   FParts.Note.Caption := ErrorText(FKey, AResult);
 end;
 

@@ -15,14 +15,15 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Tracker.TimeLog;
+  Atlas.Core.Tracker.TimeLog,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasTimeListAction = (Close, Book, Discard);
 {$SCOPEDENUMS OFF}
 
-  TAtlasTrackerTimeListDialog = class(TForm)
+  TAtlasTrackerTimeListDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 460;
     cListHeight = 200;
@@ -75,16 +76,11 @@ constructor TAtlasTrackerTimeListDialog.CreateDialog(AOwner: TComponent; const A
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FItems := Copy(AItems);
   FAction := TAtlasTimeListAction.Close;
   FChosen := -1;
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenCaption);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
 
   FEmpty := TLabel.Create(Self);
   FEmpty.Parent := Self;

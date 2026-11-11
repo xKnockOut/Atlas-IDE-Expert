@@ -107,43 +107,8 @@
   "Packages/Atlas.IDE.Search/Source/UI/UnitSearch/Atlas.UI.UnitSearch.Window.pas": {
     "create-new": 1
   },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.EndDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.ImageMarkup.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas": {
-    "create-new": 2,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas": {
-    "create-new": 1
-  },
   "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas": {
     "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.TimeList.pas": {
-    "create-new": 1,
-    "segoe-font": 1
   },
   "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas": {
     "create-new": 1,
