@@ -61,7 +61,6 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   DesignIntf,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.FontsDialog,
   Atlas.IDE.Designer.Access,

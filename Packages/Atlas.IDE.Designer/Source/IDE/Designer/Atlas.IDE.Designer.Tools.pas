@@ -20,6 +20,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.HandleTool,
+  Atlas.IDE.Designer.PropertyPainter,
   Atlas.IDE.Designer.GapHandles,
   Atlas.IDE.Designer.MultiResize,
   Atlas.IDE.Designer.SelectionBar,
@@ -35,8 +36,8 @@ type
     /// <summary>Werkzeug mit Griffen zum Knopf AId; nil ohne.</summary>
     function HandleToolOf(const AId: string): TAtlasIdeHandleTool;
   public
-    /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
-    constructor Create(const AOnMessage: TProc<string>);
+    /// <summary>AOnMessage: Zeile in der Meldungsansicht; APainter: Format-Pinsel für die Schnellleiste.</summary>
+    constructor Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
     destructor Destroy; override;
     /// <summary>Knöpfe nach den Einstellungen.</summary>
     function Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
@@ -57,12 +58,12 @@ implementation
 
 { TAtlasIdeDesignerTools }
 
-constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>);
+constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
 begin
   inherited Create;
   FGaps := TAtlasIdeGapHandles.Create(AOnMessage);
   FResize := TAtlasIdeMultiResize.Create(AOnMessage);
-  FBar := TAtlasIdeSelectionBar.Create(AOnMessage);
+  FBar := TAtlasIdeSelectionBar.Create(AOnMessage, APainter);
   FMagnifier := TAtlasIdeMagnifier.Create(AOnMessage);
 end;
 
