@@ -6293,9 +6293,9 @@
       "x-issue": "#735"
     },
     "DesignerSelectionBarItems": {
-      "description": "Knöpfe der Schnellleiste und ihre Reihenfolge, durch Komma getrennt: fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight und optional fitText (Breite nach Text). Unbekannte Namen werden übergangen.",
+      "description": "Knöpfe der Schnellleiste und ihre Reihenfolge, durch Komma getrennt: fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight, transfer (Eigenschaften übertragen mit dem Format-Pinsel, designer.propertyPainter) und optional fitText (Breite nach Text). Unbekannte Namen werden übergangen.",
       "type": "string",
-      "default": "fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight",
+      "default": "fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight, transfer",
       "x-key": "designer.selectionBar.items",
       "x-area": "editor",
       "x-page": "Editor",

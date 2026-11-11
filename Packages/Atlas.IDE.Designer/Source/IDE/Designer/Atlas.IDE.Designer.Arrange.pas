@@ -129,6 +129,8 @@ type
     procedure ApplyTheme;
     /// <summary>Tasten an- oder abmelden (Designer gezeigt).</summary>
     procedure UpdateKeys(AWanted: Boolean);
+    /// <summary>Format-Pinsel (#726), auch für den Knopf der Schnellleiste.</summary>
+    property Painter: TAtlasIdePropertyPainter read FPainter;
   end;
 
 implementation

@@ -31,7 +31,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.SelectionBar,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.PropertyPainter;
 
 type
   TAtlasIdeSelectionBar = class;
@@ -62,6 +63,7 @@ type
     cId = 'selectionBar';
   private
     FOnMessage: TProc<string>;
+    FPainter: TAtlasIdePropertyPainter;
     FActive: Boolean;
     FWindow: TAtlasSelectionBarWindow;
     FMenu: TPopupMenu;
@@ -83,6 +85,8 @@ type
     function Props(const APath, AType: string): TArray<TAtlasBarProp>;
     function StateOf(AItem: TAtlasBarItem; const AProps: TArray<TAtlasBarProp>): TAtlasBarState;
     function ButtonOf(AItem: TAtlasBarItem): TAtlasBarButton;
+    /// <summary>Format-Pinsel übertragen: grau, solange nichts aufgenommen ist.</summary>
+    function TransferButton: TAtlasBarButton;
     procedure ShowBar;
     /// <summary>Nach einer eigenen Änderung: Auswahl neu lesen und die Leiste gleich wieder zeigen.</summary>
     procedure Refresh;
@@ -101,8 +105,9 @@ type
     procedure Undo;
     procedure UpdateKeys;
   public
-    /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
-    constructor Create(const AOnMessage: TProc<string>);
+    /// <summary>AOnMessage: Zeile in der Meldungsansicht; APainter: Format-Pinsel des Menüs „Anordnen“ (#726)
+    /// für den Knopf transfer, gehört dem Aufrufer.</summary>
+    constructor Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
     destructor Destroy; override;
     class function Available(const ASettings: TAtlasPluginSettings): Boolean; static;
     /// <summary>Knopf der Designer-Leiste: gedrückt, solange die Schnellleiste erscheinen darf.</summary>
@@ -153,15 +158,16 @@ const
   /// <summary>Eigenschaft je Knopf (Pfad über RTTI).</summary>
   cPaths: array[TAtlasBarItem] of string = ('Font.Size', 'Font.Size', 'Font.Size', 'Font.Style', 'Font.Style',
     'Font.Color', 'Enabled', 'Visible', 'ParentFont', 'ParentColor', 'Anchors', 'Anchors', 'Anchors', 'Anchors',
-    'Width', 'Height', 'Alignment', 'Alignment', 'Alignment', 'Width');
+    'Width', 'Height', 'Alignment', 'Alignment', 'Alignment', '', 'Width');
   /// <summary>Verlangter Typ der Eigenschaft; leer = jeder (TCheckBox.Alignment ist kein TAlignment).</summary>
   cTypes: array[TAtlasBarItem] of string = ('', '', '', '', '', '', 'Boolean', 'Boolean', 'Boolean', 'Boolean',
-    'TAnchors', 'TAnchors', 'TAnchors', 'TAnchors', '', '', 'TAlignment', 'TAlignment', 'TAlignment', '');
+    'TAnchors', 'TAnchors', 'TAnchors', 'TAnchors', '', '', 'TAlignment', 'TAlignment', 'TAlignment', '', '');
   /// <summary>Element der Menge bzw. eingeschalteter Wert der Umschalter.</summary>
   cElements: array[TAtlasBarItem] of string = ('', '', '', 'fsBold', 'fsItalic', '', 'True', 'True', 'True', 'True',
-    'akLeft', 'akTop', 'akRight', 'akBottom', '', '', 'taLeftJustify', 'taCenter', 'taRightJustify', '');
+    'akLeft', 'akTop', 'akRight', 'akBottom', '', '', 'taLeftJustify', 'taCenter', 'taRightJustify', '',
+    '');
   cTexts: array[TAtlasBarItem] of string = ('A−', '–', 'A+', '', '', 'A', 'Enabled', 'Visible', 'ParentFont',
-    'ParentColor', 'L', 'T', 'R', 'B', 'W=', 'H=', '◧', '◫', '◨', 'Aa↔');
+    'ParentColor', 'L', 'T', 'R', 'B', 'W=', 'H=', '◧', '◫', '◨', '⇉', 'Aa↔');
   cHints: array[TAtlasBarItem] of TAtlasDesignerToolTextId = (TAtlasDesignerToolTextId.BarFontSmaller,
     TAtlasDesignerToolTextId.BarFontSize, TAtlasDesignerToolTextId.BarFontLarger, TAtlasDesignerToolTextId.BarBold,
     TAtlasDesignerToolTextId.BarItalic, TAtlasDesignerToolTextId.BarFontColor, TAtlasDesignerToolTextId.BarFlag,
@@ -169,7 +175,7 @@ const
     TAtlasDesignerToolTextId.BarAnchor, TAtlasDesignerToolTextId.BarAnchor, TAtlasDesignerToolTextId.BarAnchor,
     TAtlasDesignerToolTextId.BarAnchor, TAtlasDesignerToolTextId.BarSameWidth, TAtlasDesignerToolTextId.BarSameHeight,
     TAtlasDesignerToolTextId.BarAlignLeft, TAtlasDesignerToolTextId.BarAlignCenter,
-    TAtlasDesignerToolTextId.BarAlignRight, TAtlasDesignerToolTextId.BarFitText);
+    TAtlasDesignerToolTextId.BarAlignRight, TAtlasDesignerToolTextId.BarTransfer, TAtlasDesignerToolTextId.BarFitText);
 
 function ResolveProp(AObject: TObject; const APath: string; out ATarget: TObject; out AInfo: PPropInfo): Boolean;
 var
@@ -286,10 +292,11 @@ end;
 
 { TAtlasIdeSelectionBar }
 
-constructor TAtlasIdeSelectionBar.Create(const AOnMessage: TProc<string>);
+constructor TAtlasIdeSelectionBar.Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
 begin
   inherited Create;
   FOnMessage := AOnMessage;
+  FPainter := APainter;
   FActive := True;
   FMenu := TPopupMenu.Create(nil);
   FColorMenu := TPopupMenu.Create(nil);
@@ -479,12 +486,35 @@ begin
   end;
 end;
 
+function TAtlasIdeSelectionBar.TransferButton: TAtlasBarButton;
+begin
+  if not TAtlasIdeSettings.Current.DesignerPropertyPainter then
+  begin
+    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferOff));
+  end
+  else if Assigned(FPainter) and FPainter.CanApply then
+  begin
+    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.Off,
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransfer));
+  end
+  else
+  begin
+    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferNeeds));
+  end;
+end;
+
 function TAtlasIdeSelectionBar.ButtonOf(AItem: TAtlasBarItem): TAtlasBarButton;
 var
   mProps: TArray<TAtlasBarProp>;
   mValue: TAtlasBarValue;
   mArgument: string;
 begin
+  if AItem = TAtlasBarItem.Transfer then
+  begin
+    Exit(TransferButton);
+  end;
   mProps := Props(cPaths[AItem], cTypes[AItem]);
   mValue := TAtlasSelectionBar.Combine(mProps);
   case AItem of
@@ -675,6 +705,8 @@ begin
       ChangeTo(cPaths[AItem], cTypes[AItem], cElements[AItem], mLabel);
     TAtlasBarItem.FitText:
       TAtlasIdeFitText.Execute(FOnMessage);
+    TAtlasBarItem.Transfer:
+      FPainter.Execute(TAtlasPaintCommand.Apply);
   end;
   Refresh;
 end;

@@ -1546,7 +1546,7 @@ begin
   DesignerSelectionBarDelayMs := 400;
   DesignerSelectionBarItems := 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
     'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
-    'alignCenter, alignRight';
+    'alignCenter, alignRight, transfer';
   // Strg+Umschalt+Leer.
   DesignerSelectionBarKey := 24608;
   DesignerMagnifier := True;
