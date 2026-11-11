@@ -27,6 +27,9 @@ type
     /// <summary>Zeilen von AFileName: aus dem Editorpuffer, wenn die Datei offen ist, sonst von der Platte;
     /// False, wenn sie fehlt oder nicht lesbar ist.</summary>
     class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
+    /// <summary>Text von AFileName: offener Puffer (auch ungespeichert), sonst die Datei; False, wenn sie sich nicht
+    /// lesen lässt (ASource dann leer).</summary>
+    class function SourceText(const AFileName: string; out ASource: string): Boolean; static;
     /// <summary>Projektdatei des Projekts der Projektgruppe, das AFileName enthält; '' wenn keins.</summary>
     class function ProjectOfFile(const AFileName: string): string; static;
     /// <summary>Projekt der Projektgruppe mit der Projektdatei AProjectFile (.dproj); nil, wenn keins.</summary>
@@ -150,30 +153,37 @@ end;
 
 class function TAtlasIdeFiles.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
-  mBuffer: IOTAEditBuffer;
   mText: string;
 begin
   ALines := nil;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  Result := SourceText(AFileName, mText);
+  if Result then
+  begin
+    ALines := TTextLines.SplitLines(mText);
+  end;
+end;
+
+class function TAtlasIdeFiles.SourceText(const AFileName: string; out ASource: string): Boolean;
+var
+  mBuffer: IOTAEditBuffer;
+begin
+  Result := True;
+  mBuffer := BufferOf(AFileName);
   if mBuffer <> nil then
   begin
-    mText := TAtlasEditorBuffer.Text(mBuffer);
-  end
-  else
-  begin
-    if not FileExists(AFileName) then
+    ASource := TAtlasEditorBuffer.Text(mBuffer);
+    Exit;
+  end;
+  try
+    ASource := TAtlasTextFile.LoadText(AFileName);
+  except
+    // Fehlt, gesperrt, unlesbar oder binäres Formular: kein Text.
+    on Exception do
     begin
-      Exit(False);
-    end;
-    try
-      mText := TAtlasTextFile.Load(AFileName).Text;
-    except
-      on Exception do
-        Exit(False);
+      ASource := '';
+      Result := False;
     end;
   end;
-  ALines := TTextLines.SplitLines(mText);
-  Result := True;
 end;
 
 class function TAtlasIdeFiles.ProjectOfFile(const AFileName: string): string;

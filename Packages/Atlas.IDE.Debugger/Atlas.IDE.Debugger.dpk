@@ -56,6 +56,7 @@ contains
   Atlas.IDE.Debug.EventBreak in 'Source\IDE\Debug\Atlas.IDE.Debug.EventBreak.pas',
   Atlas.UI.Debug.Viewer in 'Source\UI\Debug\Atlas.UI.Debug.Viewer.pas',
   Atlas.UI.Debug.StepInto in 'Source\UI\Debug\Atlas.UI.Debug.StepInto.pas',
+  Atlas.UI.Debug.InlineValuePainter in 'Source\UI\Debug\Atlas.UI.Debug.InlineValuePainter.pas',
   Atlas.UI.Debug.EventBreak in 'Source\UI\Debug\Atlas.UI.Debug.EventBreak.pas',
   Atlas.Core.Debug.Exceptions in 'Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas',
   Atlas.Core.Debug.Note in 'Source\Core\Debug\Atlas.Core.Debug.Note.pas',
