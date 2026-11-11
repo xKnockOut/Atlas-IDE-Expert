@@ -12,19 +12,13 @@
 // - TAtlasDesignerGroups: Zeilen der Liste mit Gruppenköpfen nach
 //   Elternelement (Hierarchie), nach Klasse oder flach; Gruppen in der
 //   Reihenfolge ihres besten Treffers.
-// - TAtlasTabOrder: Tab-Reihenfolge im Designer. OutOfOrder markiert
-//   Steuerelemente, zu denen die Tab-Reihenfolge gegen die Lesereihenfolge
-//   (Zeile, dann links nach rechts) zurückspringt, je Elternelement.
-//   TAtlasTabClicks zählt beim Neuvergeben per Klick (experimentell) je
-//   Elternelement hoch.
 // - TAtlasDesignerAlign: Ausrichten der Auswahl (experimentell). Bezug ist die
 //   zuerst gewählte Komponente; Abstände verteilen hält die äußeren fest.
 
 interface
 
 uses
-  System.Types,
-  System.Generics.Collections;
+  System.Types;
 
 type
   /// <summary>Komponente des Formulars, wie Leiste und Suchfenster sie sehen.</summary>
@@ -93,37 +87,6 @@ type
       AGrouping: TAtlasDesignerGrouping; const ARootName: string): TArray<TAtlasDesignerRow>; static;
   end;
 
-  /// <summary>Fokussierbares Steuerelement für die Tab-Reihenfolge.</summary>
-  TAtlasTabStop = record
-    Name: string;
-    ParentName: string;
-    TabOrder: Integer;
-    Bounds: TRect;
-    class function Create(const AName, AParentName: string; ATabOrder: Integer;
-      const ABounds: TRect): TAtlasTabStop; static;
-  end;
-
-  TAtlasTabOrder = class
-  public
-    /// <summary>Lesereihenfolge: A vor B? Gleiche Zeile, wenn sich die Höhen zur Hälfte überdecken.</summary>
-    class function ReadsBefore(const A, B: TRect): Boolean; static;
-    /// <summary>Je Stop: springt die Tab-Reihenfolge seines Elternelements hierher zurück (gegen die
-    /// Lesereihenfolge)?</summary>
-    class function OutOfOrder(const AStops: TArray<TAtlasTabStop>): TArray<Boolean>; static;
-  end;
-
-  /// <summary>Neue Tab-Reihenfolge per Klick (experimentell): je Elternelement 0, 1, 2 …</summary>
-  TAtlasTabClicks = class
-  private
-    FNext: TDictionary<string, Integer>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    /// <summary>TabOrder für den nächsten Klick unter AParentName.</summary>
-    function Next(const AParentName: string): Integer;
-    procedure Reset;
-  end;
-
   TAtlasDesignerAlign = class
   public
     /// <summary>Neue Lage der Auswahl ARects (ARects[0] = Bezug); AParent = Client des gemeinsamen Elternelements.
@@ -139,7 +102,8 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  System.Generics.Collections;
 
 function Key(const AText: string): string;
 begin
@@ -434,106 +398,6 @@ begin
   finally
     mRows.Free;
   end;
-end;
-
-{ TAtlasTabStop }
-
-class function TAtlasTabStop.Create(const AName, AParentName: string; ATabOrder: Integer;
-  const ABounds: TRect): TAtlasTabStop;
-begin
-  Result.Name := AName;
-  Result.ParentName := AParentName;
-  Result.TabOrder := ATabOrder;
-  Result.Bounds := ABounds;
-end;
-
-{ TAtlasTabOrder }
-
-class function TAtlasTabOrder.ReadsBefore(const A, B: TRect): Boolean;
-var
-  mOverlap, mLower: Integer;
-begin
-  // Gleiche Zeile: Die Höhen überdecken sich mindestens zur Hälfte der kleineren.
-  mOverlap := Min(A.Bottom, B.Bottom) - Max(A.Top, B.Top);
-  mLower := Min(A.Height, B.Height);
-  if (mLower > 0) and (mOverlap * 2 >= mLower) then
-  begin
-    Result := A.Left < B.Left;
-  end
-  else
-  begin
-    Result := A.Top < B.Top;
-  end;
-end;
-
-class function TAtlasTabOrder.OutOfOrder(const AStops: TArray<TAtlasTabStop>): TArray<Boolean>;
-var
-  mOrder: TArray<Integer>;
-  mIndex, mPrevious: Integer;
-  mStops: TArray<TAtlasTabStop>;
-begin
-  SetLength(Result, Length(AStops));
-  mStops := AStops;
-  SetLength(mOrder, Length(AStops));
-  for mIndex := 0 to High(mOrder) do
-  begin
-    mOrder[mIndex] := mIndex;
-  end;
-  // Nach Elternelement, dann TabOrder; bei Gleichstand nach Lage in der Liste.
-  TArray.Sort<Integer>(mOrder, TComparer<Integer>.Construct(
-    function(const ALeft, ARight: Integer): Integer
-    begin
-      Result := CompareText(mStops[ALeft].ParentName, mStops[ARight].ParentName);
-      if Result = 0 then
-      begin
-        Result := mStops[ALeft].TabOrder - mStops[ARight].TabOrder;
-      end;
-      if Result = 0 then
-      begin
-        Result := ALeft - ARight;
-      end;
-    end));
-  for mIndex := 1 to High(mOrder) do
-  begin
-    mPrevious := mOrder[mIndex - 1];
-    if not SameText(mStops[mPrevious].ParentName, mStops[mOrder[mIndex]].ParentName) then
-    begin
-      Continue;
-    end;
-    // Rücksprung: Das nächste liegt in der Lesereihenfolge vor dem vorigen.
-    if TAtlasTabOrder.ReadsBefore(mStops[mOrder[mIndex]].Bounds, mStops[mPrevious].Bounds) then
-    begin
-      Result[mOrder[mIndex]] := True;
-    end;
-  end;
-end;
-
-{ TAtlasTabClicks }
-
-constructor TAtlasTabClicks.Create;
-begin
-  inherited Create;
-  FNext := TDictionary<string, Integer>.Create;
-end;
-
-destructor TAtlasTabClicks.Destroy;
-begin
-  FNext.Free;
-  inherited Destroy;
-end;
-
-function TAtlasTabClicks.Next(const AParentName: string): Integer;
-begin
-  if not FNext.TryGetValue(Key(AParentName), Result) then
-  begin
-    Result := 0;
-  end;
-  FNext.AddOrSetValue(Key(AParentName), Result + 1);
-end;
-
-procedure TAtlasTabClicks.Reset;
-begin
-  FNext.Clear;
 end;
 
 { TAtlasDesignerAlign }

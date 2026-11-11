@@ -621,6 +621,10 @@ type
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
+    property DesignerTabOrderOverlay: Boolean read FEditorView.DesignerTabOrderOverlay
+      write FEditorView.DesignerTabOrderOverlay;
+    property DesignerTabOrderPaths: Boolean read FEditorView.DesignerTabOrderPaths
+      write FEditorView.DesignerTabOrderPaths;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
     property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
       write FEditorView.DesignerSelectSimilar;

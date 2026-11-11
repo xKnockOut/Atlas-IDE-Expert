@@ -509,9 +509,14 @@ type
     /// <summary>Fenster „Komponenten suchen“: DesignerSearchWindow (groß mit Vorschau) oder DesignerSearchPopup
     /// (klein wie Strg+P), editor.designerBar.searchStyle.</summary>
     DesignerSearchStyle: string;
-    /// <summary>Tab-Reihenfolge per Klick auf die Nummern neu vergeben (experimentell,
+    /// <summary>Tab-Reihenfolge neu vergeben: Reihenfolge klicken, nach Lesereihenfolge sortieren (#603,
     /// editor.designerBar.tabOrderClick).</summary>
     DesignerTabOrderClick: Boolean;
+    /// <summary>Tab-Reihenfolge beim ersten Zeigen eines Formulars einblenden (#603, designer.tabOrderOverlay).
+    /// </summary>
+    DesignerTabOrderOverlay: Boolean;
+    /// <summary>Verschachtelte Tab-Reihenfolge als Pfad „2.1“ (#603, designer.tabOrderPaths).</summary>
+    DesignerTabOrderPaths: Boolean;
     /// <summary>Knopf „Ausrichten“ mit Menü (experimentell, editor.designerBar.align).</summary>
     DesignerAlign: Boolean;
     /// <summary>Menü „Gleiche auswählen“ in der Designer-Leiste (#738, designer.selectSimilar).</summary>
@@ -1123,7 +1128,9 @@ begin
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
   Result.DesignerSearchStyle := cDesignerSearchWindow;
-  Result.DesignerTabOrderClick := False;
+  Result.DesignerTabOrderClick := True;
+  Result.DesignerTabOrderOverlay := False;
+  Result.DesignerTabOrderPaths := False;
   Result.DesignerAlign := False;
   Result.DesignerSelectSimilar := True;
   Result.DesignerSelectDescendants := True;
@@ -1316,6 +1323,8 @@ begin
   AIo.Number('DesignerSearchKey', DesignerSearchKey);
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
+  AIo.Flag('DesignerTabOrderOverlay', DesignerTabOrderOverlay);
+  AIo.Flag('DesignerTabOrderPaths', DesignerTabOrderPaths);
   AIo.Flag('DesignerAlign', DesignerAlign);
   AIo.Flag('DesignerSelectSimilar', DesignerSelectSimilar);
   AIo.Flag('DesignerSelectDescendants', DesignerSelectDescendants);
