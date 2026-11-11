@@ -46,7 +46,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Learned suggestions:** after `X := TFoo.Create;` or `L.BeginUpdate;` and Enter Atlas suggests as grey ghost text what usually follows in your own project (`try … finally X.Free; end;`), without AI and without network; Tab accepts, Esc discards, team house rules in `atlas.json`
 
 ### [Understanding](docs/features/en/Understanding.md)
-- **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values; the expanded published members of large components scroll with the mouse wheel (`hover.membersMaxLines`, default 15 rows); parameters and return value of a routine are always listed one per line below the declaration like Help Insight, also without XMLDoc (`hover.signatureParams`)
+- **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values; the expanded published members of large components scroll with the mouse wheel (`hover.membersMaxLines`, default 15 rows); parameters and return value of a routine are always listed one per line below the declaration like Help Insight, also without XMLDoc (`hover.signatureParams`); over a uses entry it lists the unit's types grouped by kind and clickable, the ones used in the file first (`hints.unitContents`)
 - **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
 - **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state
@@ -55,14 +55,14 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Navigating](docs/features/en/Navigating.md)
 - **Go to** definition, implementation and counterpart; navigation history
-- **Breadcrumb bar, editor toolbar and Atlas status bar** above and below the editor; the breadcrumbs also show the visibility section (`private`, `public` …) and the block (`const`, `type`, `class var`) inside a class, with member counts, “New line at the end of …” and “Create section” in the section menu, a context menu on every part (copy name, with unit or signature, find references, rename, show the component in the designer), a counter for overloads (`Load (2/3)`) with a menu of all overloads and their parameters, the interface mark (`Save [ICustomer]`) on methods that implement an interface method, with a jump to its declaration, a metrics card when hovering methods and types (lines, complexity, nesting, parameters; yellow above the limit, Ctrl+I), the visibility mark (`−`, `#`, `+`, `◆`) of the method in its body, the declaration block of the unit (`type`, `const`, `var`, `resourcestring` …) the conditional branch (`{$IFDEF …}`) the region (`{$REGION}`) and, optionally, `try`/`except`/`finally` and the `case` branch in the body
+- **Breadcrumb bar, editor toolbar and Atlas status bar** above and below the editor; the breadcrumbs also show the visibility section (`private`, `public` …) and the block (`const`, `type`, `class var`) inside a class, with member counts, “New line at the end of …” and “Create section” in the section menu, a context menu on every part (copy name, with unit or signature, find references, rename, show the component in the designer), a counter for overloads (`Load (2/3)`) with a menu of all overloads and their parameters, the interface mark (`Save [ICustomer]`) on methods that implement an interface method, with a jump to its declaration, a metrics card when hovering methods and types (lines, complexity, nesting, parameters; yellow above the limit, Ctrl+I), the visibility mark (`−`, `#`, `+`, `◆`) of the method in its body, the declaration block of the unit (`type`, `const`, `var`, `resourcestring` …) the conditional branch (`{$IFDEF …}`) the region (`{$REGION}`) and, optionally, `try`/`except`/`finally` and the `case` branch in the body; the editor toolbar's “Go to uses clause” switches between the interface and implementation uses
 - **Quick open** (Ctrl+P), unit search (Ctrl+F12) and a search bar with replace across files
 - **Results window** for references, callers and implementations, plus impact and data flow
 - **Bookmarks, notes, minimap and sticky scroll**
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules
+- **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
 - **Profiles, confidence, baseline and suppressions** for legacy projects
@@ -82,6 +82,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Unsaved designer state** is seen by references, renames and checks
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
+- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard

@@ -15,6 +15,7 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.HoverTypes,
   Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Lsp.Hover.UnitContents,
   Atlas.Common.Rationale.Contract;
 
 type
@@ -81,6 +82,9 @@ type
     /// <summary>Zahl der schreibenden Stellen und ihre Zeilen (ab 0).</summary>
     ReassignedWrites: Integer;
     ReassignedLines: TArray<Integer>;
+    /// <summary>Inhalt der Unit beim Hover über einen Unit-Namen (#1921); InfoAt liefert alles
+    /// (THoverUnitMode.All), HandleHover wählt nach hints.unitContents aus.</summary>
+    UnitContents: THoverUnitContents;
     function Found: Boolean;
     function ToMarkdown: string;
     /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
@@ -159,7 +163,7 @@ begin
   begin
     AObject.AddPair('documentationText', StripMarkdown(AInfo.Documentation));
   end;
-  if Length(AInfo.Rationale) = 0 then
+  if (Length(AInfo.Rationale) = 0) and AInfo.UnitContents.IsEmpty then
   begin
     Exit;
   end;
@@ -170,6 +174,8 @@ begin
     AObject.AddPair('documentation', mDocumentation);
   end;
   TLspRationale.AddSections(TJSONArray(mDocumentation.GetValue('sections')), AInfo.Rationale, AInfo.AdrFiles);
+  // Inhalt der Unit (#1921) als eigene Abschnitte hinter den Begründungen.
+  AInfo.UnitContents.AddSections(TJSONArray(mDocumentation.GetValue('sections')));
 end;
 
 /// <summary>Fundort der Deklaration, wenn bekannt.</summary>
@@ -320,6 +326,10 @@ begin
   begin
     Result := Result + #10#10 + '[DocWiki](' + DocWikiUrl + ')';
   end;
+  if not UnitContents.IsEmpty then
+  begin
+    Result := Result + #10#10 + '---' + #10#10 + UnitContents.ToMarkdown;
+  end;
   if WinApi <> '' then
   begin
     Result := Result + #10#10 + WinApi;
@@ -372,6 +382,10 @@ begin
   if DocWikiUrl <> '' then
   begin
     Result := Result + #10#10 + 'DocWiki: ' + DocWikiUrl;
+  end;
+  if not UnitContents.IsEmpty then
+  begin
+    Result := Result + #10#10 + UnitContents.ToPlainText;
   end;
   if Members <> '' then
   begin

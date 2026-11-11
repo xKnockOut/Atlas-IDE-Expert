@@ -21,6 +21,9 @@
 //   eine Unit im interface-uses stehen muss, mit derselben großzügigen
 //   Namensprüfung wie MovableUnits. Leer heißt: Sie kann ins
 //   implementation-uses, z. B. um einen Unit-Zyklus aufzulösen.
+// - NamesUsed (#1921) sagt je Name, ob die Datei ihn außerhalb der uses-Listen
+//   nennt, mit derselben großzügigen Namensprüfung; der Hover über einem
+//   Unit-Namen zeigt damit die benutzten Typen der Unit zuerst.
 
 interface
 
@@ -104,6 +107,10 @@ type
     /// in Quelltextreihenfolge. Leer in Programmen und wenn die Unit im interface nicht gebraucht wird.</summary>
     class function InterfaceUsages(const ATokens: TArray<TPascalToken>; const AUnitName: string;
       const ANames: TArray<string>): TArray<TUsesInterfaceUsage>; static;
+    /// <summary>Je Name aus ANames, ob ein Bezeichner außerhalb der uses-Listen ihn nennt (#1921), ohne Rücksicht
+    /// auf Groß- und Kleinschreibung und auch als Teil von Unit.Name; gleiche Länge wie ANames.</summary>
+    class function NamesUsed(const ATokens: TArray<TPascalToken>; const ANames: TArray<string>): TArray<Boolean>;
+      static;
     /// <summary>interface-Units, die nur im implementation-Teil gebraucht werden.</summary>
     class function MovableUnits(const ATokens: TArray<TPascalToken>;
       const AInfo: TUsesUnitInfoFunc): TArray<string>; static;
@@ -773,6 +780,25 @@ begin
       begin
         Result := Result + [mName];
       end;
+    end;
+  finally
+    mIdentifiers.Free;
+  end;
+end;
+
+class function TUsesActions.NamesUsed(const ATokens: TArray<TPascalToken>;
+  const ANames: TArray<string>): TArray<Boolean>;
+var
+  mIdentifiers: TDictionary<string, Integer>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ANames));
+  mIdentifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
+  try
+    for mIndex := 0 to High(ANames) do
+    begin
+      Result[mIndex] := mIdentifiers.ContainsKey(LowerCase(ANames[mIndex]));
     end;
   finally
     mIdentifiers.Free;

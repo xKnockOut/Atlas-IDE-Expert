@@ -708,6 +708,8 @@ type
     SettingsHoverMembersMaxLines,
     // Parameter und Rückgabe immer offen im Hover (#1919).
     SettingsHoverSignatureParams,
+    // Marken folgen ihrer Zeile sofort (#1818).
+    SettingsTrackLines,
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
@@ -734,7 +736,9 @@ type
     // Kennzahlen-Karte an Methoden und Typen (#1787).
     SettingsBreadcrumbsMetrics, BreadcrumbsMetricsLines, BreadcrumbsMetricsCyclomatic, BreadcrumbsMetricsNesting,
     BreadcrumbsMetricsParameters, BreadcrumbsMetricsMembers, BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit,
-    BreadcrumbsMetricsMissing);
+    BreadcrumbsMetricsMissing,
+    // Wechsel zwischen den uses-Klauseln (#1760).
+    GotoUsesToward);
 
   TAtlasStrings = class
   private
@@ -2395,6 +2399,7 @@ const
      'Lokale Routinen im dunklen Thema',
      'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
      'Parameter und Rückgabe im Hover immer untereinander zeigen, auch ohne XMLDoc',
+     'Befunde folgen ihrer Zeile sofort beim Bearbeiten',
      'Module',
      'Packages von Atlas',
      'installiert',
@@ -2449,7 +2454,8 @@ const
      'Mitglieder',
      'Vererbungstiefe',
      '%s (Grenze %d)',
-     'Kennzahlen noch nicht verfügbar'),
+     'Kennzahlen noch nicht verfügbar',
+     'Zur uses-Klausel (%s)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4026,6 +4032,7 @@ const
      'Local routines in the dark theme',
      'Members in the hover: max. lines before scrolling (0 = screen)',
      'Always list parameters and return value in the hover, also without XMLDoc',
+     'Findings follow their line immediately while editing',
      'Modules',
      'Atlas packages',
      'installed',
@@ -4080,7 +4087,8 @@ const
      'Members',
      'Inheritance depth',
      '%s (limit %d)',
-     'Metrics not available yet'));
+     'Metrics not available yet',
+     'Go to uses clause (%s)'));
 
 { TAtlasStrings }
 

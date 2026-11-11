@@ -29,6 +29,10 @@ type
     procedure ReadsDiagnosticReports;
     [Test]
     procedure ProblemsMoveWithInsertedLinesAndTurnStaleWhereEdited;
+    /// <summary>#1818: Mit DropDeletedLines verschwinden Meldungen gelöschter Zeilen, statt blass auf die
+    /// Folgezeile zu rutschen; ohne bleibt es wie bisher.</summary>
+    [Test]
+    procedure DeletedLinesDropTheirProblems;
     [Test]
     procedure CompilerMessagesStayShiftedUntilReplaced;
     /// <summary>#1024: Bestätigt der Build einen Atlas-Befund (gleiche Zeile, Code aus data.compilerCodes),
@@ -181,6 +185,39 @@ begin
   Assert.AreEqual('C:\P\B.pas', Report.FileName);
   Assert.IsTrue(Report.Unchanged);
   Assert.AreEqual(0, Integer(Length(Report.Problems)));
+end;
+
+procedure TAtlasProblemsTests.DeletedLinesDropTheirProblems;
+var
+  Store: TAtlasProblemStore;
+  Problems: TArray<TAtlasProblem>;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.DropDeletedLines := True;
+    Store.Update('C:\P\A.pas', 'a'#10'b'#10'c'#10'd', True,
+      [Problem(0, 0, 'oben'), Problem(1, 0, 'weg'), Problem(3, 0, 'unten')], '1', False);
+    Store.Edit('C:\P\A.pas', 'a'#10'c'#10'd');
+    Problems := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(2, Integer(Length(Problems)), 'Meldung der gelöschten Zeile fehlt');
+    Assert.AreEqual('oben', Problems[0].Message);
+    Assert.AreEqual(2, Problems[1].StartLine);
+    Assert.AreEqual(0, Integer(Length(Store.OnLine('C:\P\A.pas', 1))), 'keine Marke auf der Folgezeile');
+    // Geänderte Zeile: bleibt blass wie bisher.
+    Store.Edit('C:\P\A.pas', 'A'#10'c'#10'd');
+    Problems := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(2, Integer(Length(Problems)));
+    Assert.IsTrue(Problems[0].Stale);
+    // Ausgeschaltet: blass auf der Folgezeile.
+    Store.DropDeletedLines := False;
+    Store.Update('C:\P\A.pas', 'a'#10'b'#10'c', True, [Problem(1, 0, 'bleibt')], '2', False);
+    Store.Edit('C:\P\A.pas', 'a'#10'c');
+    Problems := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(1, Integer(Length(Problems)));
+    Assert.IsTrue(Problems[0].Stale);
+  finally
+    Store.Free;
+  end;
 end;
 
 procedure TAtlasProblemsTests.ProblemsMoveWithInsertedLinesAndTurnStaleWhereEdited;

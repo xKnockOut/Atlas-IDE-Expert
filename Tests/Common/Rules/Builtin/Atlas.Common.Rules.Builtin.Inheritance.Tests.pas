@@ -33,6 +33,12 @@ type
     procedure OverloadWithOtherSignatureIsSilent;
     [Test]
     procedure VirtualInsteadOfOverrideReplacesDirective;
+    /// <summary>Die Meldung nennt den Vorfahren mit der virtuellen Methode, auch über Zwischenstufen.</summary>
+    [Test]
+    procedure VirtualInsteadOfOverrideNamesAncestor;
+    /// <summary>Destroy ist in TObject virtuell, auch wenn TObject nicht im Index steht.</summary>
+    [Test]
+    procedure VirtualInsteadOfOverrideDestroyNamesTObject;
     [Test]
     procedure NewVirtualMethodIsSilent;
     /// <summary>#1094: Tiefe Ausdrücke in Routinen sprengen den Stapel nicht mehr; die Regeln melden weiter.
@@ -301,10 +307,34 @@ begin
   Findings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create,
     ClassUnit('    procedure Lauf(A: Integer); virtual;'));
   Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden',
+    Findings[0].Message);
   Assert.AreEqual('override', Findings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual(9, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
   Assert.AreEqual(32, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
   TRuleAssert.Silent(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(A: Integer); virtual;'));
+end;
+
+procedure TInheritanceRulesTests.VirtualInsteadOfOverrideNamesAncestor;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create,
+    ClassUnit('    procedure Lauf(A: Integer); dynamic;', 'TMitte = class(TBasis)'#10'  end;'#10 +
+    '  TFoo = class(TMitte)'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('"Lauf" ist im Vorfahren TBasis schon virtuell; override statt dynamic verwenden',
+    Findings[0].Message);
+end;
+
+procedure TInheritanceRulesTests.VirtualInsteadOfOverrideDestroyNamesTObject;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create, ClassUnit('    destructor Destroy; virtual;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('"Destroy" ist im Vorfahren TObject schon virtuell; override statt virtual verwenden',
+    Findings[0].Message);
 end;
 
 procedure TInheritanceRulesTests.NewVirtualMethodIsSilent;
