@@ -197,7 +197,8 @@ end;
 
 function TAtlasResultsItemsPart.Open(const AData: TAtlasResultsNode): Boolean;
 begin
-  Result := (AData <> nil) and (AData.Kind = TAtlasResultsNodeKind.Item) and (AData.ItemId <> '') and
+  // TAtlasResultsNode ist ein Record (kein nil-Vergleich, E2015).
+  Result := (AData.Kind = TAtlasResultsNodeKind.Item) and (AData.ItemId <> '') and
     Assigned(FList.OnOpen);
   if Result then
   begin

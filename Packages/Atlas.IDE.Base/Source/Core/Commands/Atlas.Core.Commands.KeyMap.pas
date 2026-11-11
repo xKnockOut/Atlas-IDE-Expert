@@ -392,7 +392,10 @@ const
     'Atlas.CheckFile', // CheckFile
     'Atlas.SectionAppend', // SectionAppend
     '', // DesignerSelectionSetsSave
-    'Atlas.ShowInDesigner' // DesignerShowComponent
+    'Atlas.ShowInDesigner', // DesignerShowComponent
+    '', // DesignerInlineCaption
+    '', // DesignerSelectionBar
+    '' // DesignerMagnifier
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;

@@ -34,8 +34,8 @@ type
     class function AsObject(AValue: TJSONValue): TJSONObject; static;
     /// <summary>Der Wert AName in AObject; nil, wenn AObject nil ist oder den Namen nicht hat.</summary>
     class function Value(AObject: TJSONObject; const AName: string): TJSONValue; static;
-    /// <summary>Zeichenkette AName, sonst ''. Eine Zahl liefert ihren Text (TJSONNumber erbt von
-    /// TJSONString).</summary>
+    /// <summary>Zeichenkette AName, sonst ''. Eine Zahl liefert ihren Text (TJSONNumber erbt bis Delphi 12
+    /// von TJSONString, ab Delphi 13 nicht mehr; beide Fälle werden geprüft).</summary>
     class function Text(AObject: TJSONObject; const AName: string): string; static;
     /// <summary>Wie Text, aber nur echte Zeichenketten: Eine Zahl gibt ''.</summary>
     class function StrictText(AObject: TJSONObject; const AName: string): string; static;
@@ -156,7 +156,8 @@ var
 begin
   AValue := '';
   mValue := Value(AObject, AName);
-  Result := mValue is TJSONString;
+  // Zahl zählt als Text; ab Delphi 13 ist TJSONNumber kein TJSONString mehr.
+  Result := (mValue is TJSONString) or (mValue is TJSONNumber);
   if Result then
   begin
     AValue := mValue.Value;
@@ -166,7 +167,8 @@ end;
 class function TJsonRead.NumberText(AValue: TJSONValue; out AText: string): Boolean;
 begin
   AText := '';
-  Result := AValue is TJSONString;
+  // TJSONNumber erbt bis Delphi 12 (und unter FPC) von TJSONString, ab Delphi 13 direkt von TJSONValue.
+  Result := (AValue is TJSONString) or (AValue is TJSONNumber);
   if Result then
   begin
     AText := Trim(AValue.Value);

@@ -1113,7 +1113,7 @@ begin
   FHint.StyleElements := FHint.StyleElements - [seFont];
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
-  FBox.Height := FBox.ScaleValue(44 + 20 + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow);
+  FBox.Height := FBox.ScaleValue(44 + 20 + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) * cExternalRow);
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
   mWidth := FDialog.Width - 4 * cGap - 20;
   AddHeader(mWidth);

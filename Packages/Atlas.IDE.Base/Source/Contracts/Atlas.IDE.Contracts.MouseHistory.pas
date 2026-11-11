@@ -25,7 +25,7 @@ type
     class function Register(const AHandler: TAtlasMouseHistoryHandler): Integer; static;
     class procedure Unregister(AId: Integer); static;
     /// <summary>Hat ein angemeldetes Fenster die Taste übernommen?</summary>
-    class function Dispatch(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean; static;
+    class function Route(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean; static;
   end;
 
 implementation
@@ -40,8 +40,10 @@ begin
       Exit;
     end;
   end;
-  FHandlers := FHandlers + [AHandler];
-  Result := High(FHandlers);
+  // Nicht FHandlers + [AHandler]: Delphi ruft die Methodenreferenz im Array-Literal auf (E2035).
+  Result := Length(FHandlers);
+  SetLength(FHandlers, Result + 1);
+  FHandlers[Result] := AHandler;
 end;
 
 class procedure TAtlasMouseHistory.Unregister(AId: Integer);
@@ -52,7 +54,7 @@ begin
   end;
 end;
 
-class function TAtlasMouseHistory.Dispatch(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean;
+class function TAtlasMouseHistory.Route(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean;
 var
   mHandler: TAtlasMouseHistoryHandler;
 begin

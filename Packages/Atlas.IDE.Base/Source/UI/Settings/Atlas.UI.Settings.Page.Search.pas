@@ -80,6 +80,7 @@ implementation
 
 uses
   Winapi.Windows,
+  System.Actions,
   Vcl.Menus,
   Vcl.Forms,
   Atlas.UI.Strings,

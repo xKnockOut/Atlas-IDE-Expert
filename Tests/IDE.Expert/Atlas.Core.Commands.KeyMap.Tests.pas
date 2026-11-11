@@ -291,7 +291,8 @@ begin
     Count := 0;
     for Name in Store.Names.ToArray do
     begin
-      if Name.EndsWith('Key') then
+      // DesignerMeasureAltKey ist ein Schalter (Boolean), keine Taste; der Name endet nur zufällig auf Key.
+      if Name.EndsWith('Key') and not SameText(Name, 'DesignerMeasureAltKey') then
       begin
         Inc(Count);
         Keys.Add(Name, TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt or (Ord('A') + Count));

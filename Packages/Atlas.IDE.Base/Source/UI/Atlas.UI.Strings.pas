@@ -216,6 +216,10 @@ type
     DesignerSelectionSetsSaveCommand,
     // Im Designer zeigen (#511): Taste in der Übersicht.
     DesignerShowComponentCommand,
+    // Text im Designer bearbeiten (#748): Taste in der Übersicht.
+    DesignerInlineCaptionCommand,
+    // Auswahlleiste und Lupe im Designer: Tasten in der Übersicht.
+    DesignerSelectionBarCommand, DesignerMagnifierCommand,
     // Texte von Smart Paste und Editorleiste, deren Units schon an der Grenze der uses-Liste stehen.
     SmartPasteDone, SmartPasteFailed, SmartPasteImplementation, SmartPasteUsesTitle, CommandPaletteCommand,
     EditorToolbarFindings, EditorToolbarMore, EditorToolbarNoParts, EditorToolbarNoReturn, EditorToolbarNoSection,
@@ -735,6 +739,9 @@ const
      'Kennzahlen noch nicht verfügbar',
      'Designer: Auswahl speichern …',
      'Im Designer zeigen',
+     'Designer: Text bearbeiten',
+     'Designer: Auswahlleiste',
+     'Designer: Lupe',
      'Ergänzt: %s',
      'uses ergänzen fehlgeschlagen: %s',
      'Wegen Zirkelbezug im implementation-Teil: %s',
@@ -1203,6 +1210,9 @@ const
      'Metrics not available yet',
      'Designer: Save selection …',
      'Show in designer',
+     'Designer: Edit text',
+     'Designer: Selection bar',
+     'Designer: Magnifier',
      'Added: %s',
      'Adding uses failed: %s',
      'Because of a circular reference in the implementation section: %s',

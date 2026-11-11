@@ -15,6 +15,7 @@
 interface
 
 uses
+  Winapi.Windows, // vor Vcl.Graphics, sonst verdeckt es TBitmap
   System.SysUtils,
   System.Classes,
   Vcl.Graphics,
@@ -42,7 +43,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Types,
   System.TypInfo,
   Vcl.StdCtrls,

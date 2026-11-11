@@ -199,7 +199,7 @@ begin
   Assert.IsTrue(mTrail.Crumbs[4].Selected);
   Assert.IsTrue(mTrail.Crumbs[5].Many);
   Assert.AreEqual('', mTrail.Crumbs[5].CommonClass, 'Verbraucher verschiedener Klassen');
-  Assert.AreEqual(4, Length(mTrail.Crumbs[5].Members));
+  Assert.AreEqual(4, Integer(Length(mTrail.Crumbs[5].Members)));
 end;
 
 procedure TAtlasDataBindingsTests.TrailOfConnection;
@@ -209,7 +209,7 @@ begin
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', 'SQLConnection1');
   Assert.AreEqual('SQLConnection1', mTrail.Crumbs[0].Head.Caption);
   Assert.IsTrue(mTrail.Crumbs[0].Selected);
-  Assert.AreEqual(8, Length(mTrail.Crumbs), 'alle Nachfolger bis grdAuftraege');
+  Assert.AreEqual(8, Integer(Length(mTrail.Crumbs)), 'alle Nachfolger bis grdAuftraege');
 end;
 
 procedure TAtlasDataBindingsTests.DetailOverMasterSource;
@@ -262,7 +262,7 @@ var
 begin
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', 'btnOk');
   Assert.AreEqual(1, mTrail.Size);
-  Assert.AreEqual(1, Length(mTrail.Crumbs));
+  Assert.AreEqual(1, Integer(Length(mTrail.Crumbs)));
   Assert.IsTrue(mTrail.Crumbs[0].Selected);
 end;
 
@@ -272,7 +272,7 @@ var
 begin
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', '');
   Assert.AreEqual(0, mTrail.Size);
-  Assert.AreEqual(0, Length(mTrail.Crumbs));
+  Assert.AreEqual(0, Integer(Length(mTrail.Crumbs)));
   mTrail := TAtlasDataBindings.Trail(All, 'frmKunden', 'frmKunden');
   Assert.AreEqual(0, mTrail.Size);
 end;

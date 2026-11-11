@@ -336,6 +336,7 @@ var
   mChecked: TArray<Boolean>;
   mIndex: Integer;
   mAccepted: Boolean;
+  mSelect: TProc<string>;
 begin
   if not TAtlasIdeSettings.Current.DesignerSuggestAnchors or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     not (mRoot is TWinControl) or (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
@@ -350,7 +351,13 @@ begin
   end;
   ShowOutlines(TWinControl(mRoot), OutlinesOf(mPlans, TWinControl(mRoot)));
   try
-    mAccepted := TAtlasAnchorDialog.Execute(RowsOf(mPlans), SelectByName, mChecked);
+    // TProc<string> hat keinen const-Parameter, SelectByName schon: Delphi weist sie nicht direkt zu (E2010).
+    mSelect :=
+      procedure(AName: string)
+      begin
+        SelectByName(AName);
+      end;
+    mAccepted := TAtlasAnchorDialog.Execute(RowsOf(mPlans), mSelect, mChecked);
   finally
     HideOutlines;
   end;

@@ -59,7 +59,8 @@ type
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent);
+    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent,
+    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -351,7 +352,15 @@ begin
       ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets),
     // Im Designer zeigen (#511): Editorbefehl; Umschalt+F12 ist in der IDE „Formulare anzeigen“.
     Create(TAtlasKeyFunction.DesignerShowComponent, Word(ASettings.DesignerShowInDesignerKey), AShared,
-      ASettings.DesignerShowInDesigner)];
+      ASettings.DesignerShowInDesigner),
+    // Text im Designer bearbeiten (#748): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    Create(TAtlasKeyFunction.DesignerInlineCaption, Word(ASettings.DesignerInlineCaptionKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerInlineCaption),
+    // Auswahlleiste und Lupe im Designer: nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    Create(TAtlasKeyFunction.DesignerSelectionBar, Word(ASettings.DesignerSelectionBarKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerSelectionBar),
+    Create(TAtlasKeyFunction.DesignerMagnifier, Word(ASettings.DesignerMagnifierKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerMagnifier)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -588,6 +597,12 @@ begin
       ASettings.DesignerSelectionSetsSaveKey := AEntry.Key;
     TAtlasKeyFunction.DesignerShowComponent:
       ASettings.DesignerShowInDesignerKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerInlineCaption:
+      ASettings.DesignerInlineCaptionKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerSelectionBar:
+      ASettings.DesignerSelectionBarKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerMagnifier:
+      ASettings.DesignerMagnifierKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;

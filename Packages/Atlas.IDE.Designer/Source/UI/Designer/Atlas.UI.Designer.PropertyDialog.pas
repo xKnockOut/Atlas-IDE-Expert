@@ -39,7 +39,8 @@ type
     cMaxHistory = 10;
   private const
     /// <summary>Linker und rechter Rand einer Zeile.</summary>
-    cRowMargins = 2 * cGap;
+    // Voll qualifiziert: In der Klassendeklaration sieht Delphi geerbte Konstanten noch nicht (E2003).
+    cRowMargins = 2 * TAtlasDesignerDialog.cGap;
   private
     FQuery: TComboBox;
     FError: TLabel;

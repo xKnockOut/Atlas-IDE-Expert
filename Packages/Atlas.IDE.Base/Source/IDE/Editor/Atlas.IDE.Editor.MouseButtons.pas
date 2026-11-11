@@ -72,7 +72,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.NavHistory,
     procedure
     begin
-      mTaken := TAtlasMouseHistory.Dispatch(mWindow, mDirection) or
+      mTaken := TAtlasMouseHistory.Route(mWindow, mDirection) or
         TAtlasIdeNavHistory.Step(mDirection = TAtlasNavDirection.Forward);
     end);
   AHandled := mTaken;

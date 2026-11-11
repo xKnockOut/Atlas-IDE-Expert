@@ -170,7 +170,7 @@ var
 begin
   mResult := TAtlasExtractFrame.Run(cDfm, cUnit, 'TfrmKunden', Options(['pnlAdresse'], True));
   Assert.AreEqual('', mResult.Error);
-  Assert.AreEqual(3, Length(mResult.Moved));
+  Assert.AreEqual(3, Integer(Length(mResult.Moved)));
   Assert.IsTrue(Has(mResult.Moved, 'edtPlz'));
   Assert.IsFalse(Has(mResult.Moved, 'pnlAdresse'));
   // edtPlzChange nutzt nur edtPlz und wandert; FeldChange nutzt auch edtOrt und bleibt.
@@ -228,7 +228,7 @@ var
 begin
   mResult := TAtlasExtractFrame.Run(cDfm, cUnit, 'TfrmKunden', Options(['edtName', 'edtPlz'], False));
   Assert.AreEqual('', mResult.Error);
-  Assert.AreEqual(2, Length(mResult.Moved));
+  Assert.AreEqual(2, Integer(Length(mResult.Moved)));
   // Rechteck um beide: 60,8 bis 260,61.
   Assert.IsTrue(mResult.FrameDfm.Contains('  Width = 200' + #13#10 + '  Height = 53'));
   Assert.IsTrue(mResult.FrameDfm.Contains('  object edtName: TEdit' + #13#10 + '    Left = 0' + #13#10 +
@@ -253,8 +253,8 @@ begin
   mOptions := Options(['pnlAdresse'], True);
   mOptions.MoveHandlers := False;
   mResult := TAtlasExtractFrame.Run(cDfm, cUnit, 'TfrmKunden', mOptions);
-  Assert.AreEqual(0, Length(mResult.MovedHandlers));
-  Assert.AreEqual(2, Length(mResult.KeptHandlers));
+  Assert.AreEqual(0, Integer(Length(mResult.MovedHandlers)));
+  Assert.AreEqual(2, Integer(Length(mResult.KeptHandlers)));
   Assert.IsTrue(mResult.FormDfm.Contains('    inherited edtPlz: TEdit' + #13#10 +
     '      OnChange = edtPlzChange'));
   Assert.IsTrue(mResult.FormUnit.Contains('procedure TfrmKunden.edtPlzChange(Sender: TObject);'));

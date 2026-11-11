@@ -128,6 +128,9 @@ class constructor TAtlasOverdueThreads.Create;
 begin
   FLock := TCriticalSection.Create;
   FEntries := TList<TEntry>.Create;
+  // Platz für die üblichen wenigen Einträge gleich anlegen: Wüchse die Liste erst beim ersten Adopt, bliebe der
+  // Speicher bis zum Entladen belegt und der Leckmonitor der Tests zählte ihn dem ersten Test zu.
+  FEntries.Capacity := 4;
   AddModuleUnloadProc(AtlasOverdueModuleUnload);
 end;
 
