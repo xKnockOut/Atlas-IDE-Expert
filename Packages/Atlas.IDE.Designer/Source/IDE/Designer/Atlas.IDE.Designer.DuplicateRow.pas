@@ -51,6 +51,8 @@ type
     /// <summary>Kopien des letzten Laufs entfernen.</summary>
     procedure Undo;
     procedure ApplyTheme;
+    /// <summary>Gespeicherte Eigenschaften außer Name, Lage und TabOrder kopieren; Ereignisse nur mit AShare.</summary>
+    class procedure CopyProperties(ASource, ATarget: TComponent; AShare: Boolean); static;
   end;
 
 implementation
@@ -181,10 +183,11 @@ end;
 
 { Eigenschaften kopieren }
 
+// ControlCollection verweist auf die Kinder des Originals; die Kopie füllt sie selbst.
 function Skipped(const AName: string): Boolean;
 begin
   Result := SameText(AName, 'Name') or SameText(AName, 'Left') or SameText(AName, 'Top') or
-    SameText(AName, 'TabOrder');
+    SameText(AName, 'TabOrder') or SameText(AName, 'ControlCollection');
 end;
 
 procedure CopyProp(ASource, ATarget: TComponent; AProp: PPropInfo; AShare: Boolean);
@@ -525,6 +528,11 @@ begin
   begin
     FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
   end;
+end;
+
+class procedure TAtlasIdeDuplicateRow.CopyProperties(ASource, ATarget: TComponent; AShare: Boolean);
+begin
+  CopyProps(ASource, ATarget, AShare);
 end;
 
 class function TAtlasIdeDuplicateRow.Candidates(const ASelected: TArray<TComponent>): TArray<TControl>;

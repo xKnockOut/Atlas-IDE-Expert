@@ -1129,6 +1129,17 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.DuplicateRow` | `Core/Designer/Atlas.Core.Designer.DuplicateRow.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitContainer` | `Core/Designer/Atlas.Core.Designer.FitContainer.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.NearAlign` | `Core/Designer/Atlas.Core.Designer.NearAlign.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.DefaultSizes` | `Core/Designer/Atlas.Core.Designer.DefaultSizes.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Layers` | `Core/Designer/Atlas.Core.Designer.Layers.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.PropertyPainter` | `Core/Designer/Atlas.Core.Designer.PropertyPainter.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Anchors` | `Core/Designer/Atlas.Core.Designer.Anchors.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormTexts` | `Core/Designer/Atlas.Core.Designer.FormTexts.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.LabelPairs` | `Core/Designer/Atlas.Core.Designer.LabelPairs.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormGrid` | `Core/Designer/Atlas.Core.Designer.FormGrid.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Wrap` | `Core/Designer/Atlas.Core.Designer.Wrap.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FontsColors` | `Core/Designer/Atlas.Core.Designer.FontsColors.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Groups` | `Core/Designer/Atlas.Core.Designer.Groups.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.InlineCaption` | `Core/Designer/Atlas.Core.Designer.InlineCaption.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Gaps` | `Core/Designer/Atlas.Core.Designer.Gaps.pas` | Ordner `Core/Designer` |
@@ -1154,6 +1165,18 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.DuplicateRow` | `IDE/Designer/Atlas.IDE.Designer.DuplicateRow.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitContainer` | `IDE/Designer/Atlas.IDE.Designer.FitContainer.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.NearAlign` | `IDE/Designer/Atlas.IDE.Designer.NearAlign.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.DefaultSizes` | `IDE/Designer/Atlas.IDE.Designer.DefaultSizes.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Layers` | `IDE/Designer/Atlas.IDE.Designer.Layers.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.PropertyPainter` | `IDE/Designer/Atlas.IDE.Designer.PropertyPainter.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Anchors` | `IDE/Designer/Atlas.IDE.Designer.Anchors.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FormTextProps` | `IDE/Designer/Atlas.IDE.Designer.FormTextProps.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FormTexts` | `IDE/Designer/Atlas.IDE.Designer.FormTexts.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.LabelPairs` | `IDE/Designer/Atlas.IDE.Designer.LabelPairs.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FormGrid` | `IDE/Designer/Atlas.IDE.Designer.FormGrid.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Wrap` | `IDE/Designer/Atlas.IDE.Designer.Wrap.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FontsColors` | `IDE/Designer/Atlas.IDE.Designer.FontsColors.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Groups` | `IDE/Designer/Atlas.IDE.Designer.Groups.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.InlineCaption` | `IDE/Designer/Atlas.IDE.Designer.InlineCaption.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.GapHandles` | `IDE/Designer/Atlas.IDE.Designer.GapHandles.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.HandleTool` | `IDE/Designer/Atlas.IDE.Designer.HandleTool.pas` | Ordner `IDE/Designer`; gemeinsamer Teil der Werkzeuge mit Griffen |
@@ -1185,6 +1208,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Designer.SpaceDialog` | `UI/Designer/Atlas.UI.Designer.SpaceDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.PropertyDialog` | `UI/Designer/Atlas.UI.Designer.PropertyDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.PaintDialog` | `UI/Designer/Atlas.UI.Designer.PaintDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.AnchorDialog` | `UI/Designer/Atlas.UI.Designer.AnchorDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.TextsDialog` | `UI/Designer/Atlas.UI.Designer.TextsDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.FontsDialog` | `UI/Designer/Atlas.UI.Designer.FontsDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.CaptionEditor` | `UI/Designer/Atlas.UI.Designer.CaptionEditor.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.ViewStrings` | `UI/Designer/Atlas.UI.Designer.ViewStrings.pas` | Texte der eigenen Knöpfe der Designer-Leiste (#605 ff.), Sprache von Base |
