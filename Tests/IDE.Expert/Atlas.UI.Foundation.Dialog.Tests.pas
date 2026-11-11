@@ -150,7 +150,7 @@ begin
     mShort := mRow.AddButton('OK', TAtlasButtonKind.Default);
     mLong := mRow.AddButton('Später erinnern und Fenster schließen');
     mCancel := mRow.AddButton('Abbrechen', TAtlasButtonKind.Cancel);
-    Assert.AreEqual(mRow.ScaleValue(TAtlasButtonRow.cMinWidth), mShort.Width);
+    Assert.AreEqual(mRow.ScaleValue(TAtlasButtonRow.cButtonMinWidth), mShort.Width);
     Assert.IsTrue(mLong.Width > mShort.Width);
     Assert.IsTrue(mShort.Default);
     Assert.IsTrue(mCancel.Cancel);

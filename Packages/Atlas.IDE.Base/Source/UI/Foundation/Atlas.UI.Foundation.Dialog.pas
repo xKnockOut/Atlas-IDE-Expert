@@ -35,9 +35,9 @@ type
   TAtlasButtonRow = class(TFlowPanel)
   public const
     /// <summary>Mindestbreite und Rand rechts und links des Texts, logische Pixel.</summary>
-    cMinWidth = 75;
-    cTextPadding = 32;
-    cGap = 8;
+    cButtonMinWidth = 75;
+    cButtonPadding = 32;
+    cButtonGap = 8;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Knopf anfügen; Breite aus dem Text in der Schrift der Leiste.</summary>
@@ -64,9 +64,9 @@ type
   TAtlasDialog = class(TForm)
   public const
     /// <summary>Abstand am Rand und zwischen Zeilen, logische Pixel.</summary>
-    cGap = 8;
+    cRowGap = 8;
     /// <summary>Abstand einer Beschriftung vom oberen Rand ihrer Zeile, logische Pixel.</summary>
-    cLabelTop = 4;
+    cRowLabelTop = 4;
   private
     procedure HandleThemeChanged;
   protected
@@ -117,13 +117,13 @@ begin
   try
     // Font.Height ist schon in Gerätepixeln der Leiste.
     mBitmap.Canvas.Font.Assign(Font);
-    Result := mBitmap.Canvas.TextWidth(ACaption) + ScaleValue(cTextPadding);
+    Result := mBitmap.Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
   finally
     mBitmap.Free;
   end;
-  if Result < ScaleValue(cMinWidth) then
+  if Result < ScaleValue(cButtonMinWidth) then
   begin
-    Result := ScaleValue(cMinWidth);
+    Result := ScaleValue(cButtonMinWidth);
   end;
 end;
 
@@ -134,7 +134,7 @@ begin
   Result.Caption := ACaption;
   Result.Width := ButtonWidth(ACaption);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, ScaleValue(cGap), ScaleValue(cGap div 2));
+  Result.Margins.SetBounds(0, 0, ScaleValue(cButtonGap), ScaleValue(cButtonGap div 2));
   Result.Default := AKind = TAtlasButtonKind.Default;
   Result.Cancel := AKind = TAtlasButtonKind.Cancel;
   if Result.Cancel then
@@ -252,7 +252,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap div 2), ScaleValue(cGap), 0);
+  Result.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap div 2), ScaleValue(cRowGap), 0);
   Result.BevelOuter := bvNone;
   Result.Caption := '';
   Result.Top := mTop;
@@ -265,7 +265,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := 0;
-  Result.Top := ScaleValue(cLabelTop);
+  Result.Top := ScaleValue(cRowLabelTop);
 end;
 
 function TAtlasDialog.AddButtonRow: TAtlasButtonRow;
@@ -275,7 +275,7 @@ begin
   mTop := NextTop;
   Result := TAtlasButtonRow.Create(Self);
   Result.Parent := Self;
-  Result.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap));
+  Result.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap), ScaleValue(cRowGap), ScaleValue(cRowGap));
   Result.Top := mTop;
 end;
 
@@ -291,7 +291,7 @@ end;
 
 procedure TAtlasDialog.FitHeight;
 begin
-  ClientHeight := NextTop + ScaleValue(cGap);
+  ClientHeight := NextTop + ScaleValue(cRowGap);
 end;
 
 end.
