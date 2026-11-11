@@ -63,7 +63,7 @@ implementation
 const
   cFeaturesGerman = 'docs/features/de/';
   cFeaturesEnglish = 'docs/features/en/';
-  cWindows: array[0..18] of TAtlasHelpWindow = (
+  cWindows: array[0..19] of TAtlasHelpWindow = (
     (Id: 'AtlasProblems'; German: 'Code-Analyse'; English: 'Code-analysis'), // german-ok Dateiname
     (Id: 'AtlasResults'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
     (Id: 'AtlasOutline'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
@@ -82,6 +82,7 @@ const
     (Id: 'AtlasDebugExceptions'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasStepFilter'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasCompilerSwitches'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
+    (Id: 'AtlasNonVisualTray'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
     (Id: TAtlasHelpLinks.cOptionsWindow; German: 'Einstellungen'; English: 'Settings')); // german-ok Dateiname
 
 function Target(const APath, AAnchor: string): TAtlasHelpTarget;
