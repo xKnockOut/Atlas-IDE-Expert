@@ -156,7 +156,7 @@ var
   mProjects: TArray<string>;
   mProject: string;
 begin
-  mProjects := FContext.Projects;
+  mProjects := FContext.Selection.Projects;
   if AForce then
   begin
     FForced := Copy(mProjects);
@@ -333,7 +333,7 @@ begin
       begin
         Exit;
       end;
-      mTarget := FContext.TargetOf(FContext.CurrentProject);
+      mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (mProvider = nil) or (mTarget.Server = '') then
       begin
@@ -383,7 +383,7 @@ begin
   end;
   // Bei „Alle“ (#1928) für jedes Tracker-Projekt, sonst nur für das gezeigte.
   mChanged := False;
-  for mProject in FContext.Projects do
+  for mProject in FContext.Selection.Projects do
   begin
     mState := FContext.StateOf(mProject);
     if SameText(mState.Selected, AName) then
@@ -430,7 +430,7 @@ begin
       mProject: string;
       mAssign: TProc<string>;
     begin
-      mProject := FContext.CurrentProject;
+      mProject := FContext.Selection.CurrentProject;
       mAssign := FContext.Hooks.AssignProject;
       if not FContext.CanAssign or (mProject = '') or not Assigned(mAssign) then
       begin

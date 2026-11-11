@@ -70,7 +70,8 @@ implementation
 uses
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Core.Projects.Matching;
+  Atlas.Core.Projects.Matching,
+  Atlas.Core.Tracker.Projects;
 
 const
   cGitHubHost = 'github.com';
@@ -83,20 +84,14 @@ const
   cSectionPattern = '^\s*\[';
   cUrlPattern = '^\s*url\s*=\s*(.+?)\s*$';
   cOrigin = 'origin';
+  // Länge von „C:\“.
+  cDriveRootLength = 3;
   cProjectExtensions: array[0..1] of string = ('.dproj', '.groupproj');
-
-function WithoutTrailingDelimiter(const APath: string): string;
-begin
-  Result := Trim(APath);
-  while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
 
 function IsAbsolutePath(const APath: string): Boolean;
 begin
-  Result := (Length(APath) >= 3) and (APath[2] = ':') or StartsStr('\\', APath) or StartsStr('/', APath);
+  Result := (Length(APath) >= cDriveRootLength) and (APath[2] = ':') or StartsStr('\\', APath) or
+    StartsStr('/', APath);
 end;
 
 /// <summary>APath absolut zu ABase; ein absoluter Pfad bleibt, „.“ und „..“ werden aufgelöst. Ohne
@@ -132,7 +127,7 @@ begin
     end;
     mParts := mParts + [mPart];
   end;
-  Result := WithoutTrailingDelimiter(mPrefix + string.Join('\', mParts));
+  Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(mPrefix + string.Join('\', mParts));
 end;
 
 { TAtlasTrackerPathSuggestion }
@@ -140,7 +135,7 @@ end;
 class function TAtlasTrackerPathSuggestion.Create(const AFolder, AKind: string; AReason: TAtlasTrackerPathReason;
   const ADetail: string): TAtlasTrackerPathSuggestion;
 begin
-  Result.Folder := WithoutTrailingDelimiter(AFolder);
+  Result.Folder := TAtlasTrackerProjects.WithoutTrailingDelimiter(AFolder);
   Result.Kind := AKind;
   Result.Reason := AReason;
   Result.Detail := ADetail;

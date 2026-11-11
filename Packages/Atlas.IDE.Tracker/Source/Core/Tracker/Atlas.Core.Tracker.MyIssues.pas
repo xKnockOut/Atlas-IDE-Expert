@@ -389,7 +389,6 @@ uses
   System.Math,
   System.Generics.Collections,
   System.JSON,
-  System.Math,
   Atlas.Core.VersionControl.BranchNames,
   Atlas.Core.Tracker.Naming,
   Atlas.Text.Json;

@@ -272,7 +272,7 @@ begin
   begin
     FWatch.Enabled := True;
   end;
-  mProject := FContext.CurrentProject;
+  mProject := FContext.Selection.CurrentProject;
   mData := FContext.Actions.ViewOf(mProject);
   FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, FServices.Options.CommitPattern);
   try
@@ -358,7 +358,7 @@ begin
       begin
         Exit;
       end;
-      mData := FContext.Actions.ViewOf(FContext.CurrentProject);
+      mData := FContext.Actions.ViewOf(FContext.Selection.CurrentProject);
       if not mData.Active.Active or (Trim(mData.Active.Key) = '') then
       begin
         Exit;
@@ -366,7 +366,7 @@ begin
       // In der Vorschau an der Liste; ist sie aus, im Browser.
       if (FServices.Preview <> nil) and TAtlasIdeIssuePreview.Active then
       begin
-        FServices.Preview.ShowChecklist(FContext.TargetOf(FContext.CurrentProject), mData.Active.Key);
+        FServices.Preview.ShowChecklist(FContext.TargetOf(FContext.Selection.CurrentProject), mData.Active.Key);
       end
       else
       begin
@@ -515,7 +515,7 @@ begin
   mProject := '';
   if FContext.Started and TAtlasIdeIssuesTargets.Active then
   begin
-    mProject := FContext.CurrentProject;
+    mProject := FContext.Selection.CurrentProject;
   end;
   Result := TAtlasTrackerIssuesText.TitleText(FContext.ProjectName(mProject), (mProject <> '') and
     (Length(FServices.UnseenOf(FContext.TargetOf(mProject))) > 0));

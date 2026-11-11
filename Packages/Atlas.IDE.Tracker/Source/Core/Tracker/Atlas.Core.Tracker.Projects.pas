@@ -147,6 +147,8 @@ type
     /// <summary>Pfade aus AText, eine je Zeile bzw. getrennt durch „;“: getrimmt, ohne leere und ohne doppelte
     /// (NormalizedPath).</summary>
     class function SplitPaths(const AText: string): TArray<string>; static;
+    /// <summary>APath getrimmt und ohne Trenner am Ende (außer bei „C:\“ und „\\“).</summary>
+    class function WithoutTrailingDelimiter(const APath: string): string; static;
     /// <summary>Haupt-Arbeitskopie für AProjectFile (#1926): erster Pfad der geltenden persönlichen Zeile, sonst
     /// deren Ordner bzw. der Ordner von AProjectFile (bei einem Ordner dieser selbst).</summary>
     class function WorkingFolder(const AMappings: TArray<TAtlasTrackerProjectMapping>;
@@ -167,6 +169,14 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Text.Json;
+
+const
+  // Länge der kürzesten Wurzel mit Trenner („C:\“).
+  cRootLength = 3;
+  cKeyMatch = 'match';
+  cKeyConnection = 'connection';
+  cKeyProject = 'project';
+  cKeyPaths = 'paths';
 
 { TAtlasTrackerProjectMapping }
 
@@ -197,20 +207,10 @@ begin
   Result := Source = TAtlasTrackerConnectionSource.TeamFile;
 end;
 
-/// <summary>APath ohne Trenner am Ende (außer bei „C:\“ und „\\“).</summary>
-function WithoutTrailingDelimiter(const APath: string): string;
-begin
-  Result := Trim(APath);
-  while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
-
 /// <summary>Ordner von AFile; Trenner „\“ und „/“ (ExtractFileDir kennt unter Linux nur „/“).</summary>
 function FolderOfFile(const AFile: string): string;
 begin
-  Result := WithoutTrailingDelimiter(Copy(AFile, 1, LastDelimiter('\/', AFile) - 1));
+  Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(Copy(AFile, 1, LastDelimiter('\/', AFile) - 1));
 end;
 
 function TAtlasTrackerProjectMapping.MatchFolder: string;
@@ -221,7 +221,7 @@ begin
   end
   else
   begin
-    Result := WithoutTrailingDelimiter(Match);
+    Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(Match);
   end;
 end;
 
@@ -229,7 +229,7 @@ function TAtlasTrackerProjectMapping.MainFolder: string;
 begin
   if Length(Paths) > 0 then
   begin
-    Result := WithoutTrailingDelimiter(Paths[0]);
+    Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(Paths[0]);
   end
   else
   begin
@@ -249,7 +249,7 @@ begin
   SetLength(Result, Length(Paths));
   for mIndex := 0 to High(Paths) do
   begin
-    Result[mIndex] := WithoutTrailingDelimiter(Paths[mIndex]);
+    Result[mIndex] := TAtlasTrackerProjects.WithoutTrailingDelimiter(Paths[mIndex]);
   end;
 end;
 
@@ -301,18 +301,6 @@ end;
 
 { TAtlasTrackerProjects }
 
-function Quoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 /// <summary>Liste von Pfaden aus "paths"; Einträge, die keine Zeichenfolge sind, fallen weg.</summary>
 function PathsOf(AObject: TJSONObject): TArray<string>;
 var
@@ -321,7 +309,7 @@ var
   mTexts: TArray<string>;
 begin
   mTexts := nil;
-  mItems := TJsonRead.Items(AObject, 'paths');
+  mItems := TJsonRead.Items(AObject, cKeyPaths);
   if mItems <> nil then
   begin
     for mItem in mItems do
@@ -375,30 +363,38 @@ end;
 class function TAtlasTrackerProjects.ToJson(const AItems: TArray<TAtlasTrackerProjectMapping>): string;
 var
   mItem: TAtlasTrackerProjectMapping;
-  mParts, mPaths: TArray<string>;
-  mPath, mText: string;
+  mRoot, mPaths: TJSONArray;
+  mObject: TJSONObject;
+  mPath: string;
 begin
-  mParts := nil;
-  for mItem in AItems do
-  begin
-    if not mItem.ReadOnly then
+  mRoot := TJSONArray.Create;
+  try
+    for mItem in AItems do
     begin
-      mText := '{"match": ' + Quoted(mItem.Match) + ', "connection": ' + Quoted(mItem.Connection) +
-        ', "project": ' + Quoted(mItem.Project);
+      if mItem.ReadOnly then
+      begin
+        Continue;
+      end;
+      mObject := TJSONObject.Create;
+      mRoot.AddElement(mObject);
+      mObject.AddPair(cKeyMatch, mItem.Match);
+      mObject.AddPair(cKeyConnection, mItem.Connection);
+      mObject.AddPair(cKeyProject, mItem.Project);
       // "paths" nur, wenn gesetzt: Zeilen ohne Arbeitskopien bleiben wie vor #1926.
       if Length(mItem.Paths) > 0 then
       begin
-        mPaths := nil;
+        mPaths := TJSONArray.Create;
+        mObject.AddPair(cKeyPaths, mPaths);
         for mPath in mItem.Paths do
         begin
-          mPaths := mPaths + [Quoted(mPath)];
+          mPaths.Add(mPath);
         end;
-        mText := mText + ', "paths": [' + string.Join(', ', mPaths) + ']';
       end;
-      mParts := mParts + [mText + '}'];
     end;
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
   end;
-  Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
 class function TAtlasTrackerProjects.NormalizedPath(const APath: string): string;
@@ -495,6 +491,15 @@ begin
   Result := TAtlasProjectMatching.IndexOfMatch(mMatches, AMatch);
 end;
 
+class function TAtlasTrackerProjects.WithoutTrailingDelimiter(const APath: string): string;
+begin
+  Result := Trim(APath);
+  while (Length(Result) > cRootLength) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+end;
+
 class function TAtlasTrackerProjects.SplitPaths(const AText: string): TArray<string>;
 var
   mPart, mPath: string;
@@ -504,7 +509,7 @@ begin
   mSeen := nil;
   for mPart in AText.Replace(#13, #10).Split([#10, ';']) do
   begin
-    mPath := WithoutTrailingDelimiter(mPart);
+    mPath := TAtlasTrackerProjects.WithoutTrailingDelimiter(mPart);
     if (mPath = '') or (TAtlasProjectMatching.IndexOfMatch(mSeen, mPath) >= 0) then
     begin
       Continue;
@@ -533,7 +538,7 @@ begin
   end;
   if TAtlasProjectMatching.KindOf(AProjectFile) = TAtlasTrackerMatch.Folder then
   begin
-    Result := WithoutTrailingDelimiter(AProjectFile);
+    Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(AProjectFile);
   end
   else
   begin

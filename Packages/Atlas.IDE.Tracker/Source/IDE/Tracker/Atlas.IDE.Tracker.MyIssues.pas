@@ -102,7 +102,7 @@
 //   oder „Alle Tracker-Projekte“ (#1928): dann eine Gruppe je Tracker-Projekt
 //   mit höchstens issues.allProjects.perGroup Zeilen, eine Abfrage für alle
 //   (nur Abfragen, die jedes Projekt kennt); eine Zeile bedient ihr Projekt
-//   (Context.Focus).
+//   (Context.Selection.Focus).
 // Aufbau (#1455): TAtlasIdeIssues ist die Quelle der Kachel und hält die
 // Teile Kontext (Atlas.IDE.Tracker.IssuesContext), Dienste (IssuesServices),
 // Befehle (IssueCommands), Statusfeld und Titel (IssuesStatus), Abfrage
@@ -140,8 +140,6 @@ type
     FQuery: TAtlasIdeIssuesQuery;
     FStarter: TAtlasIdeIssueStart;
     FTitle: TAtlasIdeIssuesTitle;
-    /// <summary>Wahl des Tracker-Projekts (#1927) in die Ansicht.</summary>
-    procedure AddChoices(var AView: TAtlasIssuesView);
     /// <summary>„Alle Tracker-Projekte“ (#1928): Gruppen aus der Ansicht ABase des gezeigten Projekts.</summary>
     function AllView(const ABase: TAtlasIssuesView): TAtlasIssuesView;
     /// <summary>Bei „Alle“: das Projekt der Gruppe mit AIssue gilt für die folgende Aktion.</summary>
@@ -200,7 +198,6 @@ uses
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.Templates,
-  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
@@ -359,7 +356,7 @@ begin
   end;
   Result.Options := FServices.Options;
   Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
-  Result.VcsKind := FContext.VcsKindOf(AProject);
+  Result.VcsKind := FContext.Selection.VcsKindOf(AProject);
   // Filter der Sprint-Kachel (#1277): nur für das Projekt, in dem er gesetzt wurde.
   if (FContext.Filter.Caption <> '') and SameText(FContext.Filter.Project, AProject) then
   begin
@@ -367,29 +364,6 @@ begin
     Result.Items := FContext.Filter.Issues;
   end;
   Result.Unseen := FServices.UnseenOf(mTarget);
-end;
-
-procedure TAtlasIdeIssues.AddChoices(var AView: TAtlasIssuesView);
-var
-  mChoices: TArray<TAtlasTrackerChoice>;
-  mIndex: Integer;
-begin
-  AView.ProjectPicker := TAtlasIdeSettings.Current.IssuesProjectPicker;
-  AView.AllProjects := TAtlasIdeSettings.Current.IssuesAllProjects;
-  mChoices := FContext.Choices;
-  AView.ProjectChoices := mChoices;
-  AView.ProjectKey := FContext.ChosenKey;
-  AView.AutomaticName := FContext.ProjectName(FContext.AutomaticProject);
-  // Fest gewählt: Titel „Meine Issues · <Verbindung · Projekt>“.
-  mIndex := TAtlasTrackerProjects.IndexOfChoice(mChoices, AView.ProjectKey);
-  if mIndex >= 0 then
-  begin
-    AView.ProjectName := mChoices[mIndex].Caption;
-  end
-  else if AView.ProjectKey = TAtlasTrackerProjects.cAllKey then
-  begin
-    AView.ProjectName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAll);
-  end;
 end;
 
 /// <summary>Abfragen aus AQueries, die es (nach Name) auch in AOther gibt.</summary>
@@ -432,7 +406,7 @@ begin
     mSelected := ABase.Queries[ABase.QueryIndex].Name;
   end;
   mPerGroup := TAtlasIdeSettings.Current.IssuesAllProjectsPerGroup;
-  for mChoice in FContext.Choices do
+  for mChoice in FContext.Selection.Choices do
   begin
     mGroup := ViewOf(mChoice.Match);
     TAtlasMyIssues.AddGroup(Result, mChoice.Caption, mChoice.Match, mGroup, mPerGroup);
@@ -457,7 +431,7 @@ var
   mView: TAtlasIssuesView;
   mIndex, mGroup: Integer;
 begin
-  if not FContext.AllMode then
+  if not FContext.Selection.AllMode then
   begin
     Exit;
   end;
@@ -469,7 +443,7 @@ begin
     if SameText(mView.Items[mIndex].Key, AIssue.Key) and (mView.Items[mIndex].Title = AIssue.Title) and
       (mGroup >= 0) then
     begin
-      FContext.Focus(mView.Groups[mGroup].Project);
+      FContext.Selection.Focus(mView.Groups[mGroup].Project);
       Exit;
     end;
   end;
@@ -480,7 +454,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
-      FContext.Choose(AKey);
+      FContext.Selection.Choose(AKey);
       FQuery.Fetch(False);
     end);
 end;
@@ -499,12 +473,12 @@ begin
   begin
     Exit;
   end;
-  Result := ViewOf(FContext.CurrentProject);
-  if FContext.AllMode then
+  Result := ViewOf(FContext.Selection.CurrentProject);
+  if FContext.Selection.AllMode then
   begin
     Result := AllView(Result);
   end;
-  AddChoices(Result);
+  FContext.Selection.AddChoices(Result);
   // Anderes Projekt oder Punkt (#1271): Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
   if TAtlasTrackerIssuesText.TitleText(Result.ProjectName, Length(Result.Unseen) > 0) <> FTitle.Last then
   begin

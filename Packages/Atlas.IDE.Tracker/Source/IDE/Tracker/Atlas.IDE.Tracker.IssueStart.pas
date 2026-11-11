@@ -312,7 +312,7 @@ begin
   mKeep := FContext.Actions;
   mOwner := Self;
   mIssue := AIssue;
-  mProject := FContext.CurrentProject;
+  mProject := FContext.Selection.CurrentProject;
   mTarget := FContext.TargetOf(mProject);
   // Sperrt ein zweites „Beginnen“, solange die Prüfung läuft.
   FContext.StartProject := mProject;
@@ -368,7 +368,7 @@ begin
     Exit;
   end;
   mJob := Default(TAtlasIssueStartJob);
-  mJob.Project := FContext.CurrentProject;
+  mJob.Project := FContext.Selection.CurrentProject;
   mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Issue := AIssue;
   mJob.Facts := TAtlasVcsBranchFacts.Empty;
@@ -632,7 +632,7 @@ begin
   begin
     FContext.Welcome.Refresh(AJob.Project);
   end;
-  FContext.ForgetHead(AJob.Folder);
+  FContext.Selection.ForgetHead(AJob.Folder);
   FContext.Changed;
   // Nur der Push danach scheiterte (#1289): der lokale Branch bleibt, die Meldung nennt den Grund.
   if AJob.Outcome.PushFailed then
@@ -736,7 +736,7 @@ begin
       mCurrent: TAtlasActiveIssue;
       mProvider: IAtlasTrackerProvider;
     begin
-      mProject := FContext.CurrentProject;
+      mProject := FContext.Selection.CurrentProject;
       if not FContext.Started or (mProject = '') then
       begin
         Exit;

@@ -7,8 +7,9 @@
 //   [x] D:\SVN\Basis\Packages\trunk svn  svn:externals in D:\SVN\Kasse\trunk
 //   [ ] D:\Kunden\Kasse\Fremd\Lib   git  Projekt der Gruppe: Kasse.groupproj
 //                                      [Übernehmen] [Abbrechen]
-// Die Suche startet die IDE-Schicht im Hintergrund; ihr Ergebnis kommt über
-// Fill, solange der Dialog offen ist (IAtlasTrackerPathsAlive). Ohne Fund
+// Basis TAtlasDialog (Thema, Schrift, Knopfleiste). Die Suche startet die
+// IDE-Schicht im Hintergrund; ihr Ergebnis kommt über Fill, solange der
+// Dialog offen ist (IAtlasTrackerPathsAlive). Ohne Fund
 // steht dort „Nichts gefunden – Ordner selbst wählen …“; der Knopf schließt
 // mit Browse, „Ordner hinzufügen …“ übernimmt dann.
 
@@ -20,9 +21,9 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Tracker.PathSuggestions;
+  Atlas.Core.Tracker.PathSuggestions,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Lebt der Empfänger noch? Eine Arbeit im Hintergrund hält die Marke, nicht den Empfänger.</summary>
@@ -50,7 +51,7 @@ type
   TAtlasTrackerSuggestAnswer = (Cancel, Apply, Browse);
 {$SCOPEDENUMS OFF}
 
-  TAtlasTrackerSuggestDialog = class(TForm)
+  TAtlasTrackerSuggestDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 720;
     cListHeight = 220;
@@ -65,7 +66,6 @@ type
     FApply: TButton;
     FCancel: TButton;
     FItems: TArray<TAtlasTrackerPathSuggestion>;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddButtons;
     procedure AddColumn(const ACaption: string; AWidth: Integer);
   public
@@ -117,16 +117,12 @@ end;
 
 constructor TAtlasTrackerSuggestDialog.CreateDialog(AOwner: TComponent; const ATitle: string);
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SuggestTitle, [ATitle]);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SuggestTitle, [ATitle]),
+    cDialogWidth);
 
   FIntro := TLabel.Create(Self);
   FIntro.Parent := Self;
+  FIntro.Top := NextTop;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
   FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
@@ -135,11 +131,11 @@ begin
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
+  FList.Top := NextTop;
+  FList.Height := ScaleValue(cListHeight);
   FList.Align := alTop;
   FList.AlignWithMargins := True;
   FList.Margins.SetBounds(cGap, cGap, cGap, 0);
-  FList.Top := FIntro.Top + FIntro.Height + 1;
-  FList.Height := ScaleValue(cListHeight);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
@@ -150,10 +146,10 @@ begin
 
   FNote := TLabel.Create(Self);
   FNote.Parent := Self;
+  FNote.Top := NextTop;
   FNote.Align := alTop;
   FNote.AlignWithMargins := True;
   FNote.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  FNote.Top := FList.Top + FList.Height + 1;
   FNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestSearching);
 
   AddButtons;
@@ -168,40 +164,21 @@ begin
   mColumn.Width := ScaleValue(AWidth);
 end;
 
-function TAtlasTrackerSuggestDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, 0);
-end;
-
 procedure TAtlasTrackerSuggestDialog.AddButtons;
 var
-  mButtons: TFlowPanel;
+  mButtons: TAtlasButtonRow;
 begin
-  mButtons := TFlowPanel.Create(Self);
-  mButtons.Parent := Self;
-  mButtons.Align := alTop;
-  mButtons.AutoSize := True;
-  mButtons.BevelOuter := bvNone;
-  mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
-  mButtons.Top := FNote.Top + FNote.Height + 1;
-  Canvas.Font := Font;
-  FBrowse := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestNothing));
+  mButtons := AddButtonRow;
+  FBrowse := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestNothing));
   FBrowse.ModalResult := cBrowseResult;
   FBrowse.Visible := False;
-  FApply := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestApply));
-  FApply.Default := True;
+  FApply := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestApply),
+    TAtlasButtonKind.Default);
   FApply.ModalResult := mrOk;
   FApply.Enabled := False;
-  FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel));
-  FCancel.Cancel := True;
-  FCancel.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  FCancel := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel),
+    TAtlasButtonKind.Cancel);
+  FitHeight;
 end;
 
 class function TAtlasTrackerSuggestDialog.WhyText(const AItem: TAtlasTrackerPathSuggestion): string;

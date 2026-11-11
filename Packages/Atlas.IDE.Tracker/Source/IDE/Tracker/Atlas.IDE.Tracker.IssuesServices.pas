@@ -112,6 +112,9 @@ type
       IAtlasCiTransport;
     procedure Report(const AText: string);
     function Project: string;
+    /// <summary>Projekt der Sprint-Kachel: bei „Alle Tracker-Projekte“ (#1928) '', die Kachel kennt nur ein Board.
+    /// </summary>
+    function BoardProject: string;
     procedure Start(const AIssue: TAtlasTrackerIssue);
     function CanStart: Boolean;
     procedure Settings;
@@ -175,7 +178,16 @@ begin
   Result := '';
   if Keep <> nil then
   begin
-    Result := Context.CurrentProject;
+    Result := Context.Selection.CurrentProject;
+  end;
+end;
+
+function TAtlasIssuesLink.BoardProject: string;
+begin
+  Result := '';
+  if (Keep <> nil) and not Context.Selection.AllMode then
+  begin
+    Result := Context.Selection.CurrentProject;
   end;
 end;
 
@@ -601,12 +613,7 @@ begin
   Result.Project :=
     function: string
     begin
-      // Bei „Alle Tracker-Projekte“ (#1928) zeigt die Kachel nichts: Sie kennt nur ein Board.
-      Result := '';
-      if (mLink.Keep <> nil) and not mLink.Context.AllMode then
-      begin
-        Result := mLink.Project;
-      end;
+      Result := mLink.BoardProject;
     end;
   Result.Target :=
     function(AProject: string): TAtlasTrackerTarget
@@ -982,7 +989,7 @@ begin
     Exit;
   end;
   // Der Tracker des aktuellen Projekts, dann die persönlichen Verbindungen (je Server zählt die erste).
-  mTarget := FContext.TargetOf(FContext.CurrentProject);
+  mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
   if mTarget.Server <> '' then
   begin
     Result := Result + [mTarget];
@@ -1063,7 +1070,7 @@ begin
   begin
     Exit;
   end;
-  mData := FContext.Actions.ViewOf(FContext.CurrentProject);
+  mData := FContext.Actions.ViewOf(FContext.Selection.CurrentProject);
   for mIssue in mData.Items do
   begin
     Result := Result + [Trim(mIssue.Key + ' ' + mIssue.Title)];

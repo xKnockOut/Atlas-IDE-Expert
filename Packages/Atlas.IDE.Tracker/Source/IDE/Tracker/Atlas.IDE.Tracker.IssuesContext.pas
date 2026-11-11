@@ -115,39 +115,20 @@ type
     class procedure OpenPage(const AUrl: string); static;
   end;
 
-  TAtlasIdeIssuesContext = class
-  public const
-    /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite (Layouts bleiben).
-    /// </summary>
-    cTileId = 'atlas.issues';
-    /// <summary>So lange gilt der gelesene Tracker aus .atlas, bevor er neu gelesen wird.</summary>
-    cTargetCacheMs = 5000;
+  TAtlasIdeIssuesContext = class;
+
+  /// <summary>Welche Tracker-Projekte „Meine Issues“ zeigt (#1927, #1928) und der Branch in eigenen
+  /// Arbeitskopien (#1926); gehört dem Kontext.</summary>
+  TAtlasIdeIssuesSelection = class
   private
-    FWelcome: TAtlasTrackerWelcomeLink;
-    FMessage: TProc<string>;
-    FStarted: Boolean;
-    // Normierter Pfad → Abschnitt "issues" (nicht bei jedem Zeichnen die Datei lesen).
-    FStates: TDictionary<string, TAtlasIssuesState>;
-    FTargets: TDictionary<string, TAtlasIssuesCachedTarget>;
-    FHooks: TAtlasIdeIssuesHooks;
-    FNotice: TAtlasIssuesNotice;
-    FFilter: TAtlasIssuesFilter;
-    FStartProject: string;
-    FQueryProject: string;
-    FActions: IAtlasIdeIssuesActions;
+    FOwner: TAtlasIdeIssuesContext;
     // Branch in eigenen Arbeitskopien (#1926).
     FHeads: IAtlasTrackerWorkingHeads;
     // Bei „Alle Tracker-Projekte“ (#1928): Projekt der zuletzt bedienten Zeile.
     FFocus: string;
   public
-    /// <summary>AWelcome: Projekte der Willkommensseite und Meldungen an ihre Kacheln (gehört dem Aufrufer).
-    /// AMessage: Zeile in die Meldungsansicht.</summary>
-    constructor Create(AWelcome: TAtlasTrackerWelcomeLink; const AMessage: TProc<string>);
+    constructor Create(AOwner: TAtlasIdeIssuesContext);
     destructor Destroy; override;
-    /// <summary>Inhalt der Kachel geändert: der Willkommensseite melden.</summary>
-    procedure Changed;
-    /// <summary>Zeile in die Meldungsansicht.</summary>
-    procedure Report(const AText: string);
     /// <summary>Projekt des Bereichs: bei fest gewähltem Tracker-Projekt (#1927) dessen „Gilt für“, sonst
     /// AutomaticProject; '' ohne.</summary>
     function CurrentProject: string;
@@ -173,6 +154,43 @@ type
     function VcsKindOf(const AProject: string): TAtlasVcsKind;
     /// <summary>Branch in AFolder neu abfragen (nach „Beginnen“).</summary>
     procedure ForgetHead(const AFolder: string);
+    /// <summary>Kopf der eigenen Arbeitskopie von AProject (#1926); False ohne eigene oder noch nicht abgefragt.
+    /// </summary>
+    function OwnHeadOf(const AProject: string; out AHead: TAtlasTrackerWorkingHead): Boolean;
+    /// <summary>Wahl des Tracker-Projekts (#1927) in die Ansicht.</summary>
+    procedure AddChoices(var AView: TAtlasIssuesView);
+  end;
+
+  TAtlasIdeIssuesContext = class
+  public const
+    /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite (Layouts bleiben).
+    /// </summary>
+    cTileId = 'atlas.issues';
+    /// <summary>So lange gilt der gelesene Tracker aus .atlas, bevor er neu gelesen wird.</summary>
+    cTargetCacheMs = 5000;
+  private
+    FWelcome: TAtlasTrackerWelcomeLink;
+    FMessage: TProc<string>;
+    FStarted: Boolean;
+    // Normierter Pfad → Abschnitt "issues" (nicht bei jedem Zeichnen die Datei lesen).
+    FStates: TDictionary<string, TAtlasIssuesState>;
+    FTargets: TDictionary<string, TAtlasIssuesCachedTarget>;
+    FHooks: TAtlasIdeIssuesHooks;
+    FNotice: TAtlasIssuesNotice;
+    FFilter: TAtlasIssuesFilter;
+    FStartProject: string;
+    FQueryProject: string;
+    FActions: IAtlasIdeIssuesActions;
+    FSelection: TAtlasIdeIssuesSelection;
+  public
+    /// <summary>AWelcome: Projekte der Willkommensseite und Meldungen an ihre Kacheln (gehört dem Aufrufer).
+    /// AMessage: Zeile in die Meldungsansicht.</summary>
+    constructor Create(AWelcome: TAtlasTrackerWelcomeLink; const AMessage: TProc<string>);
+    destructor Destroy; override;
+    /// <summary>Inhalt der Kachel geändert: der Willkommensseite melden.</summary>
+    procedure Changed;
+    /// <summary>Zeile in die Meldungsansicht.</summary>
+    procedure Report(const AText: string);
     function ProjectName(const AProject: string): string;
     function TargetOf(const AProject: string): TAtlasTrackerTarget;
     /// <summary>Ziel und Verbindung für AProject (#1261), cTargetCacheMs zwischengespeichert.</summary>
@@ -210,6 +228,8 @@ type
     property QueryProject: string read FQueryProject write FQueryProject;
     /// <summary>Der Besitzer; Stop setzt nil (löst den Ring).</summary>
     property Actions: IAtlasIdeIssuesActions read FActions write FActions;
+    /// <summary>Gezeigte Tracker-Projekte und Branches eigener Arbeitskopien.</summary>
+    property Selection: TAtlasIdeIssuesSelection read FSelection;
   end;
 
 implementation
@@ -347,48 +367,6 @@ begin
   end;
 end;
 
-{ TAtlasIdeIssuesContext }
-
-constructor TAtlasIdeIssuesContext.Create(AWelcome: TAtlasTrackerWelcomeLink; const AMessage: TProc<string>);
-begin
-  inherited Create;
-  FWelcome := AWelcome;
-  FMessage := AMessage;
-  FStates := TDictionary<string, TAtlasIssuesState>.Create;
-  FTargets := TDictionary<string, TAtlasIssuesCachedTarget>.Create;
-  FHeads := TAtlasIdeTrackerWorkingCopies.CreateHeads(
-    procedure
-    begin
-      Changed;
-    end);
-end;
-
-destructor TAtlasIdeIssuesContext.Destroy;
-begin
-  // Eine laufende Abfrage hält den Zwischenspeicher, meldet aber nichts mehr.
-  FHeads.Stop;
-  FHeads := nil;
-  FTargets.Free;
-  FStates.Free;
-  inherited;
-end;
-
-procedure TAtlasIdeIssuesContext.Changed;
-begin
-  if FStarted and (FWelcome <> nil) then
-  begin
-    FWelcome.TileChanged(cTileId);
-  end;
-end;
-
-procedure TAtlasIdeIssuesContext.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 /// <summary>Aktives Projekt der IDE als Projektdatei; '' ohne bzw. wenn es nicht lesbar ist.</summary>
 function IdeProject: string;
 begin
@@ -407,7 +385,31 @@ begin
   end;
 end;
 
-function TAtlasIdeIssuesContext.Choices: TArray<TAtlasTrackerChoice>;
+{ TAtlasIdeIssuesSelection }
+
+constructor TAtlasIdeIssuesSelection.Create(AOwner: TAtlasIdeIssuesContext);
+var
+  mOwner: TAtlasIdeIssuesContext;
+begin
+  inherited Create;
+  FOwner := AOwner;
+  mOwner := AOwner;
+  FHeads := TAtlasIdeTrackerWorkingCopies.CreateHeads(
+    procedure
+    begin
+      mOwner.Changed;
+    end);
+end;
+
+destructor TAtlasIdeIssuesSelection.Destroy;
+begin
+  // Eine laufende Abfrage hält den Zwischenspeicher, meldet aber nichts mehr.
+  FHeads.Stop;
+  FHeads := nil;
+  inherited;
+end;
+
+function TAtlasIdeIssuesSelection.Choices: TArray<TAtlasTrackerChoice>;
 var
   mSettings: TAtlasPluginSettings;
 begin
@@ -424,7 +426,7 @@ begin
   end;
 end;
 
-function TAtlasIdeIssuesContext.ChosenKey: string;
+function TAtlasIdeIssuesSelection.ChosenKey: string;
 var
   mSettings: TAtlasPluginSettings;
 begin
@@ -448,7 +450,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssuesContext.Choose(const AKey: string);
+procedure TAtlasIdeIssuesSelection.Choose(const AKey: string);
 var
   mSettings: TAtlasPluginSettings;
 begin
@@ -459,16 +461,16 @@ begin
   end;
   mSettings.IssuesWelcomeProject := AKey;
   TAtlasIdeSettings.Update(mSettings);
-  ForgetTargets;
-  Changed;
+  FOwner.ForgetTargets;
+  FOwner.Changed;
 end;
 
-function TAtlasIdeIssuesContext.AllMode: Boolean;
+function TAtlasIdeIssuesSelection.AllMode: Boolean;
 begin
   Result := ChosenKey = TAtlasTrackerProjects.cAllKey;
 end;
 
-function TAtlasIdeIssuesContext.Projects: TArray<string>;
+function TAtlasIdeIssuesSelection.Projects: TArray<string>;
 var
   mChoice: TAtlasTrackerChoice;
 begin
@@ -487,19 +489,19 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssuesContext.Focus(const AProject: string);
+procedure TAtlasIdeIssuesSelection.Focus(const AProject: string);
 begin
   FFocus := AProject;
 end;
 
-function TAtlasIdeIssuesContext.CurrentProject: string;
+function TAtlasIdeIssuesSelection.CurrentProject: string;
 var
   mKey, mProject: string;
   mChoices: TArray<TAtlasTrackerChoice>;
   mIndex: Integer;
 begin
   Result := '';
-  if not FStarted then
+  if not FOwner.Started then
   begin
     Exit;
   end;
@@ -532,22 +534,22 @@ begin
   Result := AutomaticProject;
 end;
 
-function TAtlasIdeIssuesContext.AutomaticProject: string;
+function TAtlasIdeIssuesSelection.AutomaticProject: string;
 var
   mProjects: TArray<TAtlasWelcomeProject>;
   mProject: TAtlasWelcomeProject;
   mActive: string;
 begin
   Result := '';
-  if FStarted and (FWelcome <> nil) then
+  if FOwner.Started and (FOwner.Welcome <> nil) then
   begin
-    Result := FWelcome.Selected;
+    Result := FOwner.Welcome.Selected;
   end;
-  if not FStarted or (FWelcome = nil) or (Result <> '') then
+  if not FOwner.Started or (FOwner.Welcome = nil) or (Result <> '') then
   begin
     Exit;
   end;
-  mProjects := FWelcome.Projects;
+  mProjects := FOwner.Welcome.Projects;
   mActive := IdeProject;
   Result := mActive;
   for mProject in mProjects do
@@ -561,6 +563,98 @@ begin
   if (mActive = '') and (Length(mProjects) > 0) then
   begin
     Result := mProjects[0].Project;
+  end;
+end;
+
+function TAtlasIdeIssuesSelection.VcsKindOf(const AProject: string): TAtlasVcsKind;
+var
+  mHead: TAtlasTrackerWorkingHead;
+begin
+  Result := TAtlasVcsKind.None;
+  if (AProject <> '') and TAtlasIdeTrackerWorkingCopies.HasOwnFolders(AProject) then
+  begin
+    if OwnHeadOf(AProject, mHead) then
+    begin
+      Result := mHead.Kind;
+    end;
+    Exit;
+  end;
+  if FOwner.Welcome <> nil then
+  begin
+    Result := TAtlasMyIssues.VcsKindOf(FOwner.Welcome.VcsOf(AProject).Kind);
+  end;
+end;
+
+procedure TAtlasIdeIssuesSelection.ForgetHead(const AFolder: string);
+begin
+  if (FHeads <> nil) and (AFolder <> '') then
+  begin
+    FHeads.Forget(AFolder);
+  end;
+end;
+
+function TAtlasIdeIssuesSelection.OwnHeadOf(const AProject: string; out AHead: TAtlasTrackerWorkingHead):
+  Boolean;
+begin
+  Result := (FHeads <> nil) and FHeads.HeadOf(TAtlasIdeTrackerWorkingCopies.FolderOf(AProject), AHead);
+end;
+
+procedure TAtlasIdeIssuesSelection.AddChoices(var AView: TAtlasIssuesView);
+var
+  mChoices: TArray<TAtlasTrackerChoice>;
+  mIndex: Integer;
+begin
+  AView.ProjectPicker := TAtlasIdeSettings.Current.IssuesProjectPicker;
+  AView.AllProjects := TAtlasIdeSettings.Current.IssuesAllProjects;
+  mChoices := Choices;
+  AView.ProjectChoices := mChoices;
+  AView.ProjectKey := ChosenKey;
+  AView.AutomaticName := FOwner.ProjectName(AutomaticProject);
+  // Fest gewählt: Titel „Meine Issues · <Verbindung · Projekt>“.
+  mIndex := TAtlasTrackerProjects.IndexOfChoice(mChoices, AView.ProjectKey);
+  if mIndex >= 0 then
+  begin
+    AView.ProjectName := mChoices[mIndex].Caption;
+  end
+  else if AView.ProjectKey = TAtlasTrackerProjects.cAllKey then
+  begin
+    AView.ProjectName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAll);
+  end;
+end;
+
+{ TAtlasIdeIssuesContext }
+
+constructor TAtlasIdeIssuesContext.Create(AWelcome: TAtlasTrackerWelcomeLink; const AMessage: TProc<string>);
+begin
+  inherited Create;
+  FWelcome := AWelcome;
+  FMessage := AMessage;
+  FStates := TDictionary<string, TAtlasIssuesState>.Create;
+  FTargets := TDictionary<string, TAtlasIssuesCachedTarget>.Create;
+  FSelection := TAtlasIdeIssuesSelection.Create(Self);
+end;
+
+destructor TAtlasIdeIssuesContext.Destroy;
+begin
+  FSelection.Free;
+  FTargets.Free;
+  FStates.Free;
+  inherited;
+end;
+
+procedure TAtlasIdeIssuesContext.Changed;
+begin
+  if FStarted and (FWelcome <> nil) then
+  begin
+    FWelcome.TileChanged(cTileId);
+  end;
+end;
+
+procedure TAtlasIdeIssuesContext.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
   end;
 end;
 
@@ -679,7 +773,7 @@ begin
   // Eigene Arbeitskopien (#1926): Branch dort, im Hintergrund abgefragt.
   if (AProject <> '') and TAtlasIdeTrackerWorkingCopies.HasOwnFolders(AProject) then
   begin
-    if (FHeads <> nil) and FHeads.HeadOf(TAtlasIdeTrackerWorkingCopies.FolderOf(AProject), mHead) then
+    if FSelection.OwnHeadOf(AProject, mHead) then
     begin
       Result := mHead.Branch;
     end;
@@ -691,33 +785,6 @@ begin
   end;
 end;
 
-function TAtlasIdeIssuesContext.VcsKindOf(const AProject: string): TAtlasVcsKind;
-var
-  mHead: TAtlasTrackerWorkingHead;
-begin
-  Result := TAtlasVcsKind.None;
-  if (AProject <> '') and TAtlasIdeTrackerWorkingCopies.HasOwnFolders(AProject) then
-  begin
-    if (FHeads <> nil) and FHeads.HeadOf(TAtlasIdeTrackerWorkingCopies.FolderOf(AProject), mHead) then
-    begin
-      Result := mHead.Kind;
-    end;
-    Exit;
-  end;
-  if FWelcome <> nil then
-  begin
-    Result := TAtlasMyIssues.VcsKindOf(FWelcome.VcsOf(AProject).Kind);
-  end;
-end;
-
-procedure TAtlasIdeIssuesContext.ForgetHead(const AFolder: string);
-begin
-  if (FHeads <> nil) and (AFolder <> '') then
-  begin
-    FHeads.Forget(AFolder);
-  end;
-end;
-
 function TAtlasIdeIssuesContext.ActiveKey: string;
 var
   mProject: string;
@@ -725,7 +792,7 @@ var
   mCurrent: TAtlasActiveIssue;
 begin
   Result := '';
-  mProject := CurrentProject;
+  mProject := FSelection.CurrentProject;
   if mProject = '' then
   begin
     Exit;
@@ -746,7 +813,7 @@ begin
   mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
-    mProject := CurrentProject;
+    mProject := FSelection.CurrentProject;
   end;
   ATarget := TAtlasIdeIssuesTargets.Resolve(mProject).Target;
   Result := ProviderOf(ATarget.Provider);
@@ -758,7 +825,8 @@ end;
 
 function TAtlasIdeIssuesContext.CanStart: Boolean;
 begin
-  Result := FStarted and TAtlasIdeIssuesTargets.Active and (FStartProject = '') and (CurrentProject <> '');
+  Result := FStarted and TAtlasIdeIssuesTargets.Active and (FStartProject = '') and
+    (FSelection.CurrentProject <> '');
 end;
 
 function TAtlasIdeIssuesContext.CanEnterCredentials: Boolean;
