@@ -152,15 +152,12 @@ end;
 /// <summary>Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07),
 /// auch über Verlauf oder Taste nicht außerhalb.</summary>
 procedure HangTest;
-var
-  mActivity: IInterface;
 begin
   if not TAtlasIdeSettings.Current.DiagnosticMode then
   begin
     Exit;
   end;
-  mActivity := TAtlasActivity.Scope('Wächter-Test');
-  Sleep(1000);
+  TAtlasActivity.HangTest;
 end;
 
 /// <summary>Erzeugen-Menü (#719) und Einstellungen exportieren, importieren und zurücksetzen (#723).</summary>

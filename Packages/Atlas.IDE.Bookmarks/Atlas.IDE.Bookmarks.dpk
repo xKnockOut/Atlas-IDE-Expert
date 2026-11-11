@@ -50,6 +50,7 @@ contains
   Atlas.IDE.Notes.Service in 'Source\IDE\Notes\Atlas.IDE.Notes.Service.pas',
   Atlas.IDE.Notes.Gutter in 'Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas',
   Atlas.Core.Bookmarks.Store in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas',
+  Atlas.Core.Marks.Ids in 'Source\Core\Marks\Atlas.Core.Marks.Ids.pas',
   Atlas.Core.Bookmarks.SavedPlaces in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.SavedPlaces.pas',
   Atlas.Core.Bookmarks.Quick in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas',
   Atlas.UI.Bookmarks.Dialog in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas',

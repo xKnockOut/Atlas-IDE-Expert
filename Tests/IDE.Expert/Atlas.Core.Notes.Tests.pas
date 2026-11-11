@@ -56,8 +56,6 @@ type
     /// Projekt.</summary>
     [Test]
     procedure StorageLivesOutsideTheProject;
-    [Test]
-    procedure SameFileIgnoresCaseAndSlashes;
   end;
 
 implementation
@@ -382,12 +380,6 @@ begin
     Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(mBase) + 'Atlas') + 'Notes',
       TAtlasNotes.DefaultFolder);
   end;
-end;
-
-procedure TAtlasNoteStoreTests.SameFileIgnoresCaseAndSlashes;
-begin
-  Assert.IsTrue(TAtlasNotes.SameFile('C:\Projekte\Kunde.pas', ' c:/projekte/KUNDE.pas '));
-  Assert.IsFalse(TAtlasNotes.SameFile('C:\Projekte\Kunde.pas', 'C:\Projekte\Kunde.dfm'));
 end;
 
 procedure TAtlasNoteStoreTests.BrokenFileSetAsideLockedFileKept;

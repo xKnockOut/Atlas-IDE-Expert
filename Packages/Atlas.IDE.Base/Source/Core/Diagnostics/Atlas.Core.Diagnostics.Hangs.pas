@@ -23,6 +23,11 @@ uses
 
 type
   TAtlasActivity = class
+  public const
+    /// <summary>Name der Aktion des künstlichen Hängers im Protokoll.</summary>
+    cHangTestName = 'Watchdog test';
+    /// <summary>Dauer des künstlichen Hängers; über der Schwelle des Wächters.</summary>
+    cHangTestMs = 1000;
   private class var
     FLock: TCriticalSection;
     FNames: TArray<string>;
@@ -43,6 +48,9 @@ type
     class function Current: string; static;
     /// <summary>Current, sonst die innerste Funktion aus TAtlasGuard.Run; für den Einfrier-Wächter.</summary>
     class function Running: string; static;
+    /// <summary>Künstlicher Hänger für den Einfrier-Wächter (#501): blockiert den aufrufenden Thread AMs lang
+    /// unter cHangTestName. Aus der Befehlspalette und den Einstellungen, beide nur im Diagnosemodus.</summary>
+    class procedure HangTest(AMs: Cardinal = cHangTestMs); static;
   end;
 
   TAtlasModuleRange = record
@@ -221,6 +229,14 @@ begin
   begin
     Result := TAtlasGuard.CurrentFeatureName;
   end;
+end;
+
+class procedure TAtlasActivity.HangTest(AMs: Cardinal);
+var
+  mActivity: IInterface;
+begin
+  mActivity := Scope(cHangTestName);
+  Sleep(AMs);
 end;
 
 { TAtlasStackScan }

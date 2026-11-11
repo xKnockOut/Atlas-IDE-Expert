@@ -19,6 +19,9 @@ type
     procedure ActivityScopesNest;
     [Test]
     procedure ActivityTimesOutermostDuringStart;
+    /// <summary>Der künstliche Hänger läuft unter seinem Namen und meldet sich danach ab.</summary>
+    [Test]
+    procedure HangTestRunsAsNamedActivity;
     /// <summary>Ohne Aktion nennt der Wächter die innerste Funktion aus TAtlasGuard.Run; RunIde ist keine
     /// Funktion von Atlas; nach einer Exception ist der Stapel wieder leer.</summary>
     [Test]
@@ -136,6 +139,35 @@ begin
     Outer := TAtlasActivity.Scope('Symbolhinweis');
     Outer := nil;
     Assert.AreEqual(Int64(40), Times.Total);
+    Assert.AreEqual('', TAtlasActivity.Current);
+  finally
+    Times.Free;
+  end;
+end;
+
+procedure TAtlasHangTests.HangTestRunsAsNamedActivity;
+var
+  Times: TAtlasStartTimes;
+  Tick: Int64;
+  Parts: TArray<TAtlasStartPart>;
+begin
+  Tick := 0;
+  Times := TAtlasStartTimes.Create(
+    function: Int64
+    begin
+      Inc(Tick, 40);
+      Result := Tick;
+    end);
+  try
+    TAtlasActivity.TimeInto(Times);
+    try
+      TAtlasActivity.HangTest(1);
+    finally
+      TAtlasActivity.TimeInto(nil);
+    end;
+    Parts := Times.Slowest(10);
+    Assert.AreEqual(1, Integer(Length(Parts)));
+    Assert.AreEqual('Aktion ' + TAtlasActivity.cHangTestName, Parts[0].Name);
     Assert.AreEqual('', TAtlasActivity.Current);
   finally
     Times.Free;
