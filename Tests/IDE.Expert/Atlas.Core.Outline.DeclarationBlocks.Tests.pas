@@ -114,7 +114,8 @@ end;
 
 function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts = [TAtlasCrumbPart.DeclarationBlocks]): string;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, ALine, ACharacter, '', False, AParts));
+  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, AParts)));
 end;
 
 function CurrentKeyword(ALine: Integer): string;
@@ -184,7 +185,8 @@ procedure TAtlasDeclarationBlocksTests.PathShowsSectionAndBlock;
 var
   mCrumbs: TAtlasCrumbs;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 15, 4, 'uKunden', True, [TAtlasCrumbPart.DeclarationBlocks]);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(15, 4, 'uKunden', True, [TAtlasCrumbPart.DeclarationBlocks]));
   Assert.AreEqual('uKunden › interface › resourcestring › sKundeFehlt', Joined(mCrumbs));
   // Teil: Sprungziele interface und implementation.
   Assert.AreEqual('kw', mCrumbs[1].Badge.Code);

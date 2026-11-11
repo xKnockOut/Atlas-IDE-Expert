@@ -32,8 +32,6 @@ type
   end;
 
   TAtlasContainerWrap = class
-  public const
-    cDefaultPadding = 8;
   public
     class function Enclosing(const ABounds: TArray<TRect>): TRect; static;
     /// <summary>Lage des neuen Containers im Parent.</summary>

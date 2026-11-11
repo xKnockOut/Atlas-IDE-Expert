@@ -47,7 +47,6 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Files.Contract,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Designer.FormModel,

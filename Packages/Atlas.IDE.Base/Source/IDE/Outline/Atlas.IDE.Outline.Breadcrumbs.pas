@@ -196,7 +196,7 @@ type
     procedure OpenMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
-      ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean = False);
+      ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean);
     procedure OpenOverloads(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenInterfaces(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     function MarkInterfaces(const ACrumbs: TAtlasCrumbs): TAtlasCrumbs;
@@ -614,6 +614,7 @@ var
   mSnapshot: TAtlasOutlineSnapshot;
   mLine, mCharacter: Integer;
   mChanged: Boolean;
+  mRequest: TAtlasCrumbRequest;
 begin
   EnsureBars;
   mBar := ActiveBar;
@@ -637,8 +638,9 @@ begin
   FLine := mLine;
   FCharacter := mCharacter;
   mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
-  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
-    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts))));
+  mRequest := TAtlasCrumbRequest.Create(FLine, FCharacter, ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit,
+    FParts);
+  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FNodes, FLines, mRequest))));
 end;
 
 /// <summary>Erfüllte Interface-Methoden an die Methodenglieder (#1785); nur mit editor.breadcrumbsInterfaces.
@@ -705,7 +707,7 @@ begin
     OpenPlaces(ABar, mCrumb, APoint);
     Exit;
   end;
-  OpenList(ABar, mCrumb.Text, mCrumb.Siblings, mCrumb.Node, APoint);
+  OpenList(ABar, mCrumb.Text, mCrumb.Siblings, mCrumb.Node, APoint, False);
 end;
 
 /// <summary>Menü „Überladungen von …“ am Zähler des Glieds (#1784).</summary>
@@ -807,7 +809,7 @@ begin
     mCurrent := ABar.Crumbs[mNext].Node;
     Inc(mNext);
   end;
-  OpenList(ABar, mCrumb.Text + ' ›', mCrumb.Children, mCurrent, APoint);
+  OpenList(ABar, mCrumb.Text + ' ›', mCrumb.Children, mCurrent, APoint, False);
 end;
 
 procedure TBreadcrumbsState.OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string;

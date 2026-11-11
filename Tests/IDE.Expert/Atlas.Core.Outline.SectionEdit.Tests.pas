@@ -196,7 +196,8 @@ var
   mCrumbs: TAtlasCrumbs;
   mCrumb: TAtlasCrumb;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 5, 6, '', False, [TAtlasCrumbPart.Visibility]);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(5, 6, '', False, [TAtlasCrumbPart.Visibility]));
   mCrumb := mCrumbs[1];
   Assert.AreEqual('private', mCrumb.Text);
   Assert.AreEqual(3, Integer(Length(mCrumb.Places)));

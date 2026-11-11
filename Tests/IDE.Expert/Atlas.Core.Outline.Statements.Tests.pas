@@ -170,9 +170,10 @@ end;
 
 procedure TAtlasStatementsTests.PathShowsAtMostThree;
 begin
-  Assert.AreEqual('Laden › case Art of › akFirma › except', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 21, 10, '', False,
-    [TAtlasCrumbPart.Statements])));
-  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 21, 10, '', False)), 'ausgeschaltet');
+  Assert.AreEqual('Laden › case Art of › akFirma › except', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(21, 10, '', False, [TAtlasCrumbPart.Statements]))));
+  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(21, 10, '', False, []))), 'ausgeschaltet');
 end;
 
 initialization

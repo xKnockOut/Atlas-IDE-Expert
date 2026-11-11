@@ -350,7 +350,8 @@ begin
   end;
   FChecked := nil;
   FReported := nil;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Vorordnung wie die Rekursion, FChecked wächst in derselben Reihenfolge.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Vorordnung wie die Rekursion, FChecked wächst in derselben
+  // Reihenfolge.
   mBody.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

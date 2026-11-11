@@ -977,7 +977,8 @@ begin
     SetLength(FSubsystemNames, ASubsystems.Count);
     for mIndex := 0 to ASubsystems.Count - 1 do
     begin
-      FSubsystemNames[mIndex] := TJsonRead.StrictText(ObjectAt(ASubsystems, mIndex, cTexts[TSnapshotText.Subsystem].Text), 'name');
+      FSubsystemNames[mIndex] :=
+        TJsonRead.StrictText(ObjectAt(ASubsystems, mIndex, cTexts[TSnapshotText.Subsystem].Text), 'name');
     end;
   end;
 end;

@@ -99,13 +99,13 @@ var
   mFileName: string;
   mLine, mColumn: Integer;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) or not AArguments.TryGetValue<Integer>('column', mColumn) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line', 'column']));
   end;
   AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
-  Result := AContext.Edit.RenameSymbol(mFileName, mLine, mColumn, TMcpServer.RequiredString(AArguments, 'newName'),
+  Result := AContext.Edit.RenameSymbol(mFileName, mLine, mColumn, TMcpArgs.RequiredString(AArguments, 'newName'),
     DryRunOf(AArguments));
 end;
 
@@ -132,14 +132,14 @@ var
   mFileName: string;
   mLine: Integer;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line']));
   end;
   Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Create(BuiltinRules,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mLine,
-    TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
+    TMcpArgs.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
 end;
 
 procedure AddApplyCodeAction(const AContext: TMcpToolContext);
@@ -177,7 +177,7 @@ begin
       end;
     end;
   end;
-  mFile := TMcpServer.OptionalString(AArguments, 'file');
+  mFile := TMcpArgs.OptionalString(AArguments, 'file');
   if mFile <> '' then
   begin
     mFiles := TArray<string>.Create(AContext.Guard.Resolve(mFile));
@@ -192,7 +192,7 @@ begin
   end;
   Result := AContext.Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, mRules,
-    TMcpServer.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
+    TMcpArgs.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
 end;
 
 procedure AddFixFindings(const AContext: TMcpToolContext);
@@ -219,7 +219,7 @@ var
   mScope: TFormatScope;
   mStyle: TFormatStyle;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   mScope := TFormatScope.All;
   if AArguments.TryGetValue<Integer>('startLine', mStartLine) then
   begin

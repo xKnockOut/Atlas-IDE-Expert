@@ -160,7 +160,6 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces,
   System.StrUtils,
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.MethodWithoutSelf,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -1489,21 +1488,19 @@ end;
 class function TLspInlayHints.MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const ARange: TTextRange; const AReadText: THoverReadText): TArray<TInlayHint>;
 var
-  mReadText: TReferenceReadText;
   mPosition: TTextPosition;
   mHint: TInlayHint;
 begin
   Result := nil;
-  mReadText :=
-    function(const AName: string; out AText: string): Boolean
-    begin
-      AText := '';
-      Result := Assigned(AReadText) and AReadText(AName, AText);
-    end;
   AResolver.PinTree(ATree, AFileName);
   try
     for mPosition in TLspMethodWithoutSelf.Markers(ATree, ATreeText, ARange,
-      TLspMethodWithoutSelf.Lookup(AResolver, ATree, AFileName, mReadText)) do
+      TLspMethodWithoutSelf.Lookup(AResolver, ATree, AFileName,
+      function(const AName: string; out AText: string): Boolean
+      begin
+        AText := '';
+        Result := Assigned(AReadText) and AReadText(AName, AText);
+      end)) do
     begin
       mHint := Default(TInlayHint);
       mHint.Position := mPosition;

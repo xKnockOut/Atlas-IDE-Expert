@@ -20,7 +20,7 @@
 //   auf Übersicht und Einstellungen; was #494 beim Belegen schon gemeldet hat,
 //   nicht noch einmal. Nach Package-Änderungen prüft es erneut, einmal für alle Module.
 // - Gemeinsame Quelle für die Einrichtung (#625, SetupKeys), die Taste eines
-//   Atlas-Befehls in der Befehlspalette (#502, AtlasShortCut) und spätere
+//   Atlas-Befehls in der Befehlspalette (#502, AtlasShortCuts) und spätere
 //   Einstiege (#600 Tastenkürzel-Tipps, #766 Knopf auf der Willkommensseite:
 //   ShowWindow mit Suchtext).
 // - Spalte „Selten per Tastatur“ (#600): Collect übernimmt je Zeile die Zählung
@@ -75,11 +75,9 @@ type
     /// <summary>Jede Atlas-Taste mit fremder Belegung für die Einrichtung (#625); Vorrang zählt nur, wenn Atlas
     /// die Taste auch wirklich hat.</summary>
     class function SetupKeys: TArray<TAtlasSetupKey>; static;
-    /// <summary>Taste eines Atlas-Befehls der Palette als Text, wenn Atlas sie belegt; sonst ''.</summary>
-    class function AtlasShortCut(const ACommandId: string): string; static;
-    /// <summary>Wie AtlasShortCut für viele Befehle: Belegungen und Konflikte einmal auswerten, dann nur
-    /// nachschlagen. Die ganze Palette fragte sonst je Befehl alle Einstellungen und Aktionen der IDE ab
-    /// (Willkommensseite: 60 s Start, 06.11.2026).</summary>
+    /// <summary>Taste eines Atlas-Befehls der Palette als Text, wenn Atlas sie belegt, sonst '': Belegungen und
+    /// Konflikte einmal auswerten, dann nur nachschlagen. Die ganze Palette fragte sonst je Befehl alle
+    /// Einstellungen und Aktionen der IDE ab (Willkommensseite: 60 s Start, 06.11.2026).</summary>
     class function AtlasShortCuts: TFunc<string, string>; static;
     /// <summary>Ziel des HTML-Exports.</summary>
     class function ExportFile: string; static;
@@ -887,15 +885,6 @@ begin
       mCurrent.Priority := mEntry.Priority and mItems[mIndex].Wins;
     end;
     Result := Result + [TAtlasSetupKey.Create(mCurrent, mText, mOwner)];
-  end;
-end;
-
-class function TAtlasIdeKeyMap.AtlasShortCut(const ACommandId: string): string;
-begin
-  Result := '';
-  if ACommandId <> '' then
-  begin
-    Result := AtlasShortCuts()(ACommandId);
   end;
 end;
 

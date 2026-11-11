@@ -135,7 +135,8 @@ begin
     SameText(ANode.Name, AName);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (tiefe Bäume sprengen den Stapel nicht).
+/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (tiefe Bäume sprengen den
+/// Stapel nicht).
 /// </summary>
 function IsQualifiedName(ANode: TSyntaxNode): Boolean;
 var
@@ -219,7 +220,8 @@ begin
   end;
 end;
 
-/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
+/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (tiefe Bäume sprengen den Stapel
+/// nicht).</summary>
 function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mPending: TStack<TSyntaxNode>;

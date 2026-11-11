@@ -185,7 +185,8 @@ begin
 end;
 
 type
-  /// <summary>Zugriff auf Items, das TCustomTreeView geschützt hält (Baum des Optionsdialogs ist eine eigene Ableitung).
+  /// <summary>Zugriff auf Items, das TCustomTreeView geschützt hält (Baum des Optionsdialogs ist eine eigene
+  /// Ableitung).
   /// </summary>
   TAtlasTreeAccess = class(TCustomTreeView);
 

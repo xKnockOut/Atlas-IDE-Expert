@@ -135,17 +135,27 @@ type
   TAtlasCrumbs = TArray<TAtlasCrumb>;
   TAtlasCrumbParts = set of TAtlasCrumbPart;
 
+  /// <summary>Was TAtlasBreadcrumbs.Path zeigt: Stelle am Caret (0-basiert); UnitName steht vorn, wenn ShowUnit;
+  /// Parts nennt die zusätzlichen Glieder hinter dem Typ (Sichtbarkeitsabschnitt, Unterblock) und die
+  /// Sichtbarkeitsmarke an Methodenrümpfen.</summary>
+  TAtlasCrumbRequest = record
+    Line: Integer;
+    Character: Integer;
+    UnitName: string;
+    ShowUnit: Boolean;
+    Parts: TAtlasCrumbParts;
+    class function Create(ALine, ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
+      AParts: TAtlasCrumbParts): TAtlasCrumbRequest; static;
+  end;
+
   TAtlasBreadcrumbs = class
   public
     /// <summary>Abschnitt der Zeile ALine (0-basiert): Schlüsselwörter am Zeilenanfang (Spalte 1), uses bis zum
     /// abschließenden Semikolon; Kommentare und Strings zählen nicht.</summary>
     class function SectionAt(const ALines: TArray<string>; ALine: Integer): TAtlasCodeSection; static;
-    /// <summary>Pfad am Caret (0-basiert). AUnitName steht vorn, wenn AShowUnit; AParts nennt die
-    /// zusätzlichen Glieder hinter dem Typ (Sichtbarkeitsabschnitt, Unterblock) und die Sichtbarkeitsmarke an
-    /// Methodenrümpfen.</summary>
-    class function Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-      ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
-      AParts: TAtlasCrumbParts = []): TAtlasCrumbs; static;
+    /// <summary>Pfad am Caret nach ARequest.</summary>
+    class function Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+      const ARequest: TAtlasCrumbRequest): TAtlasCrumbs; static;
     /// <summary>Badge eines Knotens; Routinen nach dem ersten Wort ihrer Kopfzeile (procedure/function).</summary>
     class function BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       ANode: Integer): TAtlasBadge; static;
@@ -869,69 +879,95 @@ begin
   end;
 end;
 
-/// <summary>Pfad ohne die Bedingungszweige (siehe TAtlasBreadcrumbs.Path).</summary>
-function OutlinePath(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
-var
-  mInner, mItem, mType: Integer;
-  mName: string;
-  mPlace: TAtlasVisibilityPlace;
-  mBlock: TAtlasMemberBlockPlace;
-  mRegion, mDeclaration: TAtlasCrumbs;
+class function TAtlasCrumbRequest.Create(ALine, ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
+  AParts: TAtlasCrumbParts): TAtlasCrumbRequest;
+begin
+  Result.Line := ALine;
+  Result.Character := ACharacter;
+  Result.UnitName := AUnitName;
+  Result.ShowUnit := AShowUnit;
+  Result.Parts := AParts;
+end;
+
+/// <summary>Glied der Unit vorn, wenn ARequest.ShowUnit und ein Name da ist.</summary>
+function UnitCrumbs(const ANodes: TAtlasOutlineNodes; const ARequest: TAtlasCrumbRequest): TAtlasCrumbs;
 begin
   Result := nil;
-  mRegion := nil;
-  if TAtlasCrumbPart.Regions in AParts then
+  if ARequest.ShowUnit and (ARequest.UnitName <> '') then
   begin
-    mRegion := RegionCrumbs(ALines, ALine, ACharacter);
-  end;
-  if AShowUnit and (AUnitName <> '') then
-  begin
-    Result := [TextCrumb(AUnitName, MakeBadge(TAtlasBadgeKind.Unit_, 'un'))];
+    Result := [TextCrumb(ARequest.UnitName, MakeBadge(TAtlasBadgeKind.Unit_, 'un'))];
     Result[0].Siblings := TAtlasBreadcrumbs.UnitMembers(ANodes);
     Result[0].Children := Result[0].Siblings;
   end;
-  mName := SectionCrumbName(TAtlasBreadcrumbs.SectionAt(ALines, ALine));
+end;
+
+/// <summary>Glieder vom Knoten AInner nach außen; am Typ die Glieder seines Abschnitts und Unterblocks.</summary>
+function ChainCrumbs(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AInner: Integer;
+  const ARequest: TAtlasCrumbRequest): TAtlasCrumbs;
+var
+  mItem, mType: Integer;
+  mPlace: TAtlasVisibilityPlace;
+  mBlock: TAtlasMemberBlockPlace;
+begin
+  Result := nil;
+  mPlace := Default(TAtlasVisibilityPlace);
+  mBlock := Default(TAtlasMemberBlockPlace);
+  mBlock.Current := -1;
+  mType := -1;
+  if ARequest.Parts * [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks] <> [] then
+  begin
+    mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ARequest.Line, ARequest.Character);
+    mType := mPlace.TypeNode;
+  end;
+  if (TAtlasCrumbPart.MemberBlocks in ARequest.Parts) and (mType >= 0) then
+  begin
+    mBlock := TAtlasMemberBlockFinder.At(ANodes, ALines, ARequest.Line, ARequest.Character);
+  end;
+  for mItem in Chain(ANodes, AInner) do
+  begin
+    Result := Result + CrumbsOf(ANodes, ALines, mItem, TAtlasCrumbPart.VisibilityMark in ARequest.Parts);
+    if mItem = mType then
+    begin
+      Result := Result + TypePartCrumbs(ANodes, mPlace, mBlock, ARequest.Parts);
+    end;
+  end;
+end;
+
+/// <summary>Pfad ohne die Bedingungszweige (siehe TAtlasBreadcrumbs.Path).</summary>
+function OutlinePath(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ARequest: TAtlasCrumbRequest): TAtlasCrumbs;
+var
+  mInner: Integer;
+  mName: string;
+  mRegion, mDeclaration: TAtlasCrumbs;
+begin
+  mRegion := nil;
+  if TAtlasCrumbPart.Regions in ARequest.Parts then
+  begin
+    mRegion := RegionCrumbs(ALines, ARequest.Line, ARequest.Character);
+  end;
+  Result := UnitCrumbs(ANodes, ARequest);
+  mName := SectionCrumbName(TAtlasBreadcrumbs.SectionAt(ALines, ARequest.Line));
   if mName <> '' then
   begin
     Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))] + mRegion;
     Exit;
   end;
   mDeclaration := nil;
-  if TAtlasCrumbPart.DeclarationBlocks in AParts then
+  if TAtlasCrumbPart.DeclarationBlocks in ARequest.Parts then
   begin
-    mDeclaration := DeclarationCrumbs(ANodes, TAtlasDeclarationBlockFinder.At(ANodes, ALines, ALine), mRegion);
+    mDeclaration := DeclarationCrumbs(ANodes, TAtlasDeclarationBlockFinder.At(ANodes, ALines, ARequest.Line),
+      mRegion);
   end;
   if mDeclaration = nil then
   begin
     mDeclaration := mRegion;
   end;
   Result := Result + mDeclaration;
-  mInner := InnerNode(ANodes, ALine, ACharacter);
-  if mInner < 0 then
+  mInner := InnerNode(ANodes, ARequest.Line, ARequest.Character);
+  if mInner >= 0 then
   begin
-    Exit;
-  end;
-  mPlace := Default(TAtlasVisibilityPlace);
-  mBlock := Default(TAtlasMemberBlockPlace);
-  mBlock.Current := -1;
-  mType := -1;
-  if AParts * [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks] <> [] then
-  begin
-    mPlace := TAtlasVisibilitySectionFinder.At(ANodes, ALines, ALine, ACharacter);
-    mType := mPlace.TypeNode;
-  end;
-  if (TAtlasCrumbPart.MemberBlocks in AParts) and (mType >= 0) then
-  begin
-    mBlock := TAtlasMemberBlockFinder.At(ANodes, ALines, ALine, ACharacter);
-  end;
-  for mItem in Chain(ANodes, mInner) do
-  begin
-    Result := Result + CrumbsOf(ANodes, ALines, mItem, TAtlasCrumbPart.VisibilityMark in AParts);
-    if mItem = mType then
-    begin
-      Result := Result + TypePartCrumbs(ANodes, mPlace, mBlock, AParts);
-    end;
+    Result := Result + ChainCrumbs(ANodes, ALines, mInner, ARequest);
   end;
 end;
 
@@ -953,21 +989,21 @@ begin
   end;
 end;
 
-class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
-  ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean; AParts: TAtlasCrumbParts): TAtlasCrumbs;
+class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ARequest: TAtlasCrumbRequest): TAtlasCrumbs;
 begin
-  Result := OutlinePath(ANodes, ALines, ALine, ACharacter, AUnitName, AShowUnit, AParts);
-  if TAtlasCrumbPart.Overloads in AParts then
+  Result := OutlinePath(ANodes, ALines, ARequest);
+  if TAtlasCrumbPart.Overloads in ARequest.Parts then
   begin
     MarkOverloads(ANodes, Result);
   end;
-  if TAtlasCrumbPart.Statements in AParts then
+  if TAtlasCrumbPart.Statements in ARequest.Parts then
   begin
-    Result := Result + StatementCrumbs(ANodes, ALines, ALine, ACharacter);
+    Result := Result + StatementCrumbs(ANodes, ALines, ARequest.Line, ARequest.Character);
   end;
-  if TAtlasCrumbPart.Conditionals in AParts then
+  if TAtlasCrumbPart.Conditionals in ARequest.Parts then
   begin
-    Result := Result + ConditionalCrumbs(ALines, ALine, ACharacter);
+    Result := Result + ConditionalCrumbs(ALines, ARequest.Line, ARequest.Character);
   end;
 end;
 

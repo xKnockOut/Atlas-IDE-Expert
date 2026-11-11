@@ -269,6 +269,31 @@ begin
   Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
 end;
 
+/// <summary>Zählt den Bezeichner an AIndex im Teil APart (siehe CollectIdentifiers).</summary>
+procedure AddIdentifier(AResult: TDictionary<string, Integer>; const ATokens: TArray<TPascalToken>; AIndex,
+  APart: Integer; const AResolution: TUsesResolution);
+var
+  mKey: string;
+begin
+  if AResolution.Active and AResolution.IsSettled(ATokens[AIndex].Offset) then
+  begin
+    Exit;
+  end;
+  mKey := LowerCase(Bare(ATokens[AIndex].Text));
+  if AResolution.Active and TUsesActions.DotPrecedes(ATokens, AIndex) then
+  begin
+    AddUsage(AResult, cMemberKey + mKey, APart);
+  end
+  else
+  begin
+    AddUsage(AResult, mKey, APart);
+  end;
+  if DotFollows(ATokens, AIndex) then
+  begin
+    AddUsage(AResult, cQualifierKey + mKey, APart);
+  end;
+end;
+
 /// <summary>Bezeichner außerhalb der uses-Listen mit Bitmaske des Teils (interface/implementation). Steht ein
 /// Punkt dahinter (Qualifizierer wie SysUtils.Format), zählt er zusätzlich unter "." + Name. Mit AResolution.Active
 /// fallen aufgelöste Bezeichner weg, und Mitglieder (Punkt davor) zählen unter ">" + Name (#1925).</summary>
@@ -276,7 +301,6 @@ function CollectIdentifiers(const ATokens: TArray<TPascalToken>; const AClauses:
   const AResolution: TUsesResolution): TDictionary<string, Integer>; overload;
 var
   mIndex, mClauseIndex, mPart: Integer;
-  mKey: string;
 begin
   Result := TDictionary<string, Integer>.Create;
   mPart := FirstPart(ATokens);
@@ -294,22 +318,9 @@ begin
     begin
       mPart := cInImplementationPart;
     end
-    else if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-      not (AResolution.Active and AResolution.IsSettled(ATokens[mIndex].Offset)) then
+    else if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      mKey := LowerCase(Bare(ATokens[mIndex].Text));
-      if AResolution.Active and TUsesActions.DotPrecedes(ATokens, mIndex) then
-      begin
-        AddUsage(Result, cMemberKey + mKey, mPart);
-      end
-      else
-      begin
-        AddUsage(Result, mKey, mPart);
-      end;
-      if DotFollows(ATokens, mIndex) then
-      begin
-        AddUsage(Result, cQualifierKey + mKey, mPart);
-      end;
+      AddIdentifier(Result, ATokens, mIndex, mPart, AResolution);
     end;
     Inc(mIndex);
   end;

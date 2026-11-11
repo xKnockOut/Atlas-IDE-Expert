@@ -639,7 +639,8 @@ type
     DesignerFitContainerAlignTopLeft: Boolean;
     /// <summary>Fast bündige Kanten (#746, designer.nearAlignment).</summary>
     DesignerNearAlignment: Boolean;
-    /// <summary>Höchster Versatz in Pixeln, der als fast bündig gilt (#746, designer.nearAlignment.tolerance).</summary>
+    /// <summary>Höchster Versatz in Pixeln, der als fast bündig gilt (#746,
+    /// designer.nearAlignment.tolerance).</summary>
     DesignerNearAlignmentTolerance: Integer;
     /// <summary>Auch Textgrundlinien vergleichen (#746, designer.nearAlignment.baseline).</summary>
     DesignerNearAlignmentBaseline: Boolean;

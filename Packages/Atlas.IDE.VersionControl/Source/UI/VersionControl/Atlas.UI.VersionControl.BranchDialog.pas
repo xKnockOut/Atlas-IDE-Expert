@@ -450,7 +450,8 @@ function ExternalCaption(const AExternal: TAtlasVcsSvnExternal; AAction: TAtlasV
 begin
   case AAction of
     TAtlasVcsExternalAction.Pin:
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalPin, [TAtlasVcsBranchPlan.ExternalRevision(AExternal)]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalPin,
+        [TAtlasVcsBranchPlan.ExternalRevision(AExternal)]);
     TAtlasVcsExternalAction.Branch:
       Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalBranch);
   else
@@ -1143,7 +1144,8 @@ begin
   mHeader.Align := alTop;
   mHeader.Height := mHeader.ScaleValue(20);
   mHeader.BevelOuter := bvNone;
-  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
+  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth,
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
   mLabel.Font.Color := clGrayText;
   mLabel := CellLabel(FDialog, mHeader, cGap + cFolderWidth + cGap, 200,
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsSource));

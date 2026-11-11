@@ -38,10 +38,10 @@ type
     procedure FilesChanged(const AChanges: TArray<TAtlasFileChange>);
     /// <summary>ATimeoutMs 0 = Zeitlimit der Sitzung. Aufrufe im Hauptthread geben ein kurzes Zeitlimit mit: Die IDE
     /// steht, bis die Antwort kommt.</summary>
-    function Hover(const AFileName, AText: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal = 0): string;
+    function Hover(const AFileName, AText: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): string;
     /// <summary>Hover an einem Fundort ohne Abgleich: Der Server liest nicht geöffnete Dateien selbst (#588).</summary>
     function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer;
-      ATimeoutMs: Cardinal = 0): TAtlasHoverData;
+      ATimeoutMs: Cardinal): TAtlasHoverData;
     /// <summary>Verwendungen des Symbols am Fundort ohne die Deklaration (textDocument/references).</summary>
     function References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     /// <summary>Implementierungen des Symbols (textDocument/implementation, #400).</summary>

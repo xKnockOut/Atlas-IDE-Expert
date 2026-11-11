@@ -388,7 +388,7 @@ end;
 
 procedure TAtlasIdeMultiResize.Up;
 begin
-  CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeDone, [FCount]));
+  CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeDone, [FCount]), False);
   FLabel := '';
   Tick;
 end;

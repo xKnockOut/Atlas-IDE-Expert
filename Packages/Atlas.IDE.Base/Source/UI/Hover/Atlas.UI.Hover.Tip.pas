@@ -12,8 +12,8 @@
 //     Signatur, Rückgabe, Ausnahmen, Hinweise, Beispiel mit Code, Listen,
 //     Tabellen. Zugeklappt nur die Beschreibung mit „Mehr anzeigen ▾“ (Einstellung
 //     hints.xmlDocExpand); mit hover.signatureParams (#1919) stehen PARAMETER und
-//     RÜCKGABE aus der Deklaration auch zugeklappt und ohne XMLDoc da. Der Klick klappt auf, das Fenster wächst nach unten
-//     (ohne Platz dort nach oben), „Weniger anzeigen ▴“ klappt wieder zu. Ist sie höher als der Platz auf dem
+//     RÜCKGABE aus der Deklaration auch zugeklappt und ohne XMLDoc da. Der Klick klappt auf, das Fenster wächst nach
+//     unten (ohne Platz dort nach oben), „Weniger anzeigen ▴“ klappt wieder zu. Ist sie höher als der Platz auf dem
 //     Bildschirm bzw. als hints.xmlDocMaxLines, scrollt nur sie mit dem
 //     Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (cref)
 //     zeigen den Typ im Tooltip, mit Strg zur Deklaration; Links öffnen den

@@ -253,7 +253,8 @@ var
   mPending: TStack<TSyntaxNode>;
   mPendingInClass: TStack<Boolean>;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in der Klasse AClassName liegt.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in der Klasse AClassName
+  // liegt.
   Result := nil;
   mPending := TStack<TSyntaxNode>.Create;
   mPendingInClass := TStack<Boolean>.Create;

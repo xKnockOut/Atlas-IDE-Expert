@@ -32,7 +32,6 @@ type
 
   TAtlasGaps = class
   public const
-    cAnchorCenter = 'center';
     cAnchorFirst = 'first';
     cAnchorLast = 'last';
     /// <summary>Höchster Abstand in Pixeln, ab dem ein Wert an einen Rastwert springt.</summary>

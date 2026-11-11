@@ -253,7 +253,7 @@ begin
   end;
   for mIndex in ChildrenOf(AItems, AItems[AContainer].Name, True, AContainer) do
   begin
-    if (Result < 0) or ReadsBefore(AItems[mIndex].Bounds, AItems[Result].Bounds) then
+    if (Result < 0) or ReadsBefore(AItems[mIndex].Bounds, AItems[Result].Bounds, False) then
     begin
       Result := mIndex;
     end;
@@ -316,11 +316,11 @@ begin
   for mIndex in ChildrenOf(AItems, AItems[mHome].ParentName, True, mHome) do
   begin
     if not AItems[mIndex].Container or
-      (ReadsBefore(AItems[mIndex].Bounds, AItems[mHome].Bounds) = AForward) then
+      (ReadsBefore(AItems[mIndex].Bounds, AItems[mHome].Bounds, False) = AForward) then
     begin
       Continue;
     end;
-    if (Result < 0) or (ReadsBefore(AItems[mIndex].Bounds, AItems[Result].Bounds) = AForward) then
+    if (Result < 0) or (ReadsBefore(AItems[mIndex].Bounds, AItems[Result].Bounds, False) = AForward) then
     begin
       Result := mIndex;
     end;

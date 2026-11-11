@@ -125,7 +125,6 @@ function TAtlasScalePreviewWindow.AddChoice(const ACaption: string; const AItems
   AIndex: Integer): TComboBox;
 var
   mLabel: TLabel;
-  mItem: string;
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := FBar;
@@ -135,10 +134,7 @@ begin
   Result.Parent := FBar;
   Result.Style := csDropDownList;
   Result.AlignWithMargins := True;
-  for mItem in AItems do
-  begin
-    Result.Items.Add(mItem);
-  end;
+  Result.Items.AddStrings(AItems);
   Result.ItemIndex := AIndex;
   Result.OnChange := ChoiceChanged;
 end;

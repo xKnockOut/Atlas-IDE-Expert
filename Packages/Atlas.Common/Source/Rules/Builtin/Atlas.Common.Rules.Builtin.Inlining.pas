@@ -538,8 +538,12 @@ var
   mTokens: TArray<TPascalToken>;
 begin
   // Liste[0]: Steht der Name der Property davor (Liste.Items[0]), meldet ihn schon CheckToken.
-  if (ANode.ChildCount < 2) or not FResolver.NodeType(FContext.Tree, FContext.RelativePath, ANode, mSymbol, mType,
-    mFound) or (mSymbol.SymbolKind <> TIndexSymbolKind.Property_) or not mSymbol.IsDefault or
+  if (ANode.ChildCount < 2) or
+    not FResolver.NodeType(FContext.Tree, FContext.RelativePath, ANode, mSymbol, mType, mFound) then
+  begin
+    Exit;
+  end;
+  if (mSymbol.SymbolKind <> TIndexSymbolKind.Property_) or not mSymbol.IsDefault or
     (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(ANode[0].Name, mSymbol.Name) then
   begin
     Exit;

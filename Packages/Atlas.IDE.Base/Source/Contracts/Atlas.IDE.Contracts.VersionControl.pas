@@ -39,8 +39,6 @@ type
     procedure Reload;
     /// <summary>Arbeitskopie zu AFolder; ATimeoutMs 0 = Zeitlimit der Einstellung.</summary>
     function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-    function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-    function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
     function MainBranchOf(const AProjectFile, AGroupFile: string): string;
     function Projects: TArray<TAtlasVcsProjectMapping>;
     /// <summary>AWork im Hintergrund, ADone danach im Hauptthread; False, wenn nichts gestartet wurde.</summary>
@@ -104,9 +102,6 @@ type
     class procedure Reload; static;
     class function ForFolder(const AFolder: string): IAtlasVersionControl; overload; static;
     class function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
-    class function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution; static;
-    class function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
-      static;
     class function MainBranchOf(const AProjectFile, AGroupFile: string): string; static;
     class function Projects: TArray<TAtlasVcsProjectMapping>; static;
     class function Run(const AWork, ADone: TProc): Boolean; static;
@@ -128,8 +123,6 @@ type
     function TimeoutMs: Cardinal;
     procedure Reload;
     function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-    function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-    function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
     function MainBranchOf(const AProjectFile, AGroupFile: string): string;
     function Projects: TArray<TAtlasVcsProjectMapping>;
     function Run(const AWork, ADone: TProc): Boolean;
@@ -272,16 +265,6 @@ begin
   Result := Service.ForFolder(AFolder, ATimeoutMs);
 end;
 
-class function TAtlasIdeVcs.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-begin
-  Result := Service.ForFolderResolution(AFolder);
-end;
-
-class function TAtlasIdeVcs.ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
-begin
-  Result := Service.ForProjectResolution(AProjectFile, AGroupFile);
-end;
-
 class function TAtlasIdeVcs.MainBranchOf(const AProjectFile, AGroupFile: string): string;
 begin
   Result := Service.MainBranchOf(AProjectFile, AGroupFile);
@@ -354,18 +337,6 @@ end;
 function TAtlasNullVcsService.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
 begin
   Result := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
-end;
-
-function TAtlasNullVcsService.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-begin
-  Result := Default(TAtlasVcsProjectResolution);
-  Result.Provider := TAtlasVcsProvider.Off;
-end;
-
-function TAtlasNullVcsService.ForProjectResolution(const AProjectFile, AGroupFile: string):
-  TAtlasVcsProjectResolution;
-begin
-  Result := ForFolderResolution('');
 end;
 
 function TAtlasNullVcsService.MainBranchOf(const AProjectFile, AGroupFile: string): string;

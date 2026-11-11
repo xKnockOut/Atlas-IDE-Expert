@@ -117,7 +117,7 @@ function LastCrumb(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts): TAtlas
 var
   mCrumbs: TAtlasCrumbs;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, ALine, ACharacter, 'Kunden', True, AParts);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, TAtlasCrumbRequest.Create(ALine, ACharacter, 'Kunden', True, AParts));
   Result := mCrumbs[High(mCrumbs)];
 end;
 

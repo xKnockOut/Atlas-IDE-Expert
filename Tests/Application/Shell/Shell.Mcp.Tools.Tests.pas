@@ -210,7 +210,7 @@ end;
 
 function EchoTool(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Root + ':' + TMcpServer.OptionalString(AArguments, 'name');
+  Result := AContext.Root + ':' + TMcpArgs.OptionalString(AArguments, 'name');
 end;
 
 procedure TMcpToolsTests.ContextToolPassesContextAndArguments;

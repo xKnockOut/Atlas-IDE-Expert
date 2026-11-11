@@ -50,11 +50,9 @@ type
 
   TAtlasSelectionBar = class
   public const
-    cModeAuto = 'auto';
     cModeShortcut = 'shortcut';
     cMinFontSize = 1;
     cMaxFontSize = 1638;
-    cMaxDelay = 5000;
   public
     /// <summary>Schlüssel des Knopfs in designer.selectionBar.items.</summary>
     class function KeyOf(AItem: TAtlasBarItem): string; static;

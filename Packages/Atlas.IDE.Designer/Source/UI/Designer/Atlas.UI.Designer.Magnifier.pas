@@ -90,6 +90,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Designer.Magnifier;
+
 const
   cDefaultWidth = 240;
   cDefaultHeight = 180;
@@ -116,7 +119,7 @@ begin
   FColors := AColors;
   FBitmap := TBitmap.Create;
   FBitmap.PixelFormat := pf24bit;
-  FZoom := 4;
+  FZoom := TAtlasMagnifier.cDefaultZoom;
   BorderStyle := bsSizeToolWin;
   Position := poDesigned;
   DoubleBuffered := True;
@@ -256,7 +259,7 @@ begin
   SetStretchBltMode(Canvas.Handle, COLORONCOLOR);
   StretchBlt(Canvas.Handle, AView.Left, AView.Top, FBitmap.Width * FZoom, FBitmap.Height * FZoom,
     FBitmap.Canvas.Handle, 0, 0, FBitmap.Width, FBitmap.Height, SRCCOPY);
-  if not FGrid or (FZoom < 4) then
+  if not FGrid or (FZoom < TAtlasMagnifier.cGridZoom) then
   begin
     Exit;
   end;

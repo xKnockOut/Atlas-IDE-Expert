@@ -166,7 +166,7 @@ var
   Crumbs: TAtlasCrumbs;
 begin
   List := Nodes;
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 24, 4, 'uKundeForm', True);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(24, 4, 'uKundeForm', True, []));
   Assert.AreEqual('uKundeForm › TfrmKunde › btnSpeichernClick › Pruefe', Joined(Crumbs));
   Assert.IsTrue(Crumbs[0].Badge.Kind = TAtlasBadgeKind.Unit_);
   // Unit-Glied: alle Elemente der Unit-Ebene als Menü und als Kinder.
@@ -175,21 +175,26 @@ begin
   // Das Glied der Methode ist die Deklaration im Typ.
   Assert.AreEqual(8, List[Crumbs[2].Node].StartLine);
   // Ohne Unit-Namen (Vorgabe).
-  Assert.AreEqual('TfrmKunde › btnSpeichernClick', Joined(TAtlasBreadcrumbs.Path(List, Lines, 28, 2, 'uKundeForm',
-    False)));
+  Assert.AreEqual('TfrmKunde › btnSpeichernClick', Joined(TAtlasBreadcrumbs.Path(List, Lines,
+    TAtlasCrumbRequest.Create(28, 2, 'uKundeForm', False, []))));
 end;
 
 procedure TAtlasBreadcrumbsTests.PathInInterfaceEndsAtMember;
 begin
-  Assert.AreEqual('TfrmKunde › SpeichereAdresse', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 10, 8, '', False)));
-  Assert.AreEqual('TfrmKunde › btnSpeichern', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 7, 6, '', False)));
-  Assert.AreEqual('Limit', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 20, 7, '', False)));
+  Assert.AreEqual('TfrmKunde › SpeichereAdresse', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(10, 8, '', False, []))));
+  Assert.AreEqual('TfrmKunde › btnSpeichern', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(7, 6, '', False, []))));
+  Assert.AreEqual('Limit', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(20, 7, '', False, []))));
 end;
 
 procedure TAtlasBreadcrumbsTests.PathThroughNestedTypes;
 begin
-  Assert.AreEqual('TfrmKunde › TInner › Tief', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 16, 12, '', False)));
-  Assert.AreEqual('TfrmKunde › TInner › Tief', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 33, 40, '', False)),
+  Assert.AreEqual('TfrmKunde › TInner › Tief', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(16, 12, '', False, []))));
+  Assert.AreEqual('TfrmKunde › TInner › Tief', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(33, 40, '', False, []))),
     'Rumpf der Methode des verschachtelten Typs');
 end;
 
@@ -204,8 +209,10 @@ begin
   Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 5) = TAtlasCodeSection.InterfacePart);
   Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 30) = TAtlasCodeSection.ImplementationPart);
   Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 36) = TAtlasCodeSection.Initialization_);
-  Assert.AreEqual('U › uses', Joined(TAtlasBreadcrumbs.Path(Nodes, Text, 3, 4, 'U', True)));
-  Assert.AreEqual('initialization', Joined(TAtlasBreadcrumbs.Path(Nodes, Text, 36, 2, 'U', False)));
+  Assert.AreEqual('U › uses', Joined(TAtlasBreadcrumbs.Path(Nodes, Text,
+    TAtlasCrumbRequest.Create(3, 4, 'U', True, []))));
+  Assert.AreEqual('initialization', Joined(TAtlasBreadcrumbs.Path(Nodes, Text,
+    TAtlasCrumbRequest.Create(36, 2, 'U', False, []))));
 end;
 
 procedure TAtlasBreadcrumbsTests.SiblingsOfMethodAreMethodsOfTheType;
@@ -214,7 +221,7 @@ var
   Crumbs: TAtlasCrumbs;
 begin
   List := Nodes;
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 24, 4, '', False);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(24, 4, '', False, []));
   Assert.AreEqual('btnSpeichernClick,SpeichereAdresse,SpaltenBreite,Display', NamesOf(List, Crumbs[1].Siblings));
   Assert.AreEqual(0, Crumbs[1].Current);
   // Lokale Prozeduren desselben Rumpfs.
@@ -223,7 +230,7 @@ begin
   // Typen der Unit.
   Assert.AreEqual('TfrmKunde,TAndere', NamesOf(List, Crumbs[0].Siblings));
   // Feld: alle Mitglieder des Typs.
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 7, 6, '', False);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(7, 6, '', False, []));
   Assert.AreEqual('btnSpeichern,btnSpeichernClick,SpeichereAdresse,SpaltenBreite,Display,TInner',
     NamesOf(List, Crumbs[1].Siblings));
 end;
@@ -234,10 +241,10 @@ var
   Crumbs: TAtlasCrumbs;
 begin
   List := Nodes;
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 34, 20, '', False);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(34, 20, '', False, []));
   Assert.AreEqual('Hilfe', Joined(Crumbs));
   Assert.AreEqual('Hilfe', NamesOf(List, Crumbs[0].Siblings));
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 20, 7, '', False);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(20, 7, '', False, []));
   Assert.AreEqual('Limit', NamesOf(List, Crumbs[0].Siblings));
 end;
 
@@ -247,7 +254,7 @@ var
   Crumbs: TAtlasCrumbs;
 begin
   List := Nodes;
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 24, 4, '', False);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(24, 4, '', False, []));
   // „sp“ an einer Wortgrenze; Display enthält „sp“ nur mitten im Wort.
   Assert.AreEqual('btnSpeichernClick,SpeichereAdresse,SpaltenBreite',
     NamesOf(List, TAtlasBreadcrumbs.Filter(List, Crumbs[1].Siblings, 'sp')));
@@ -295,7 +302,7 @@ begin
   // Rümpfe der Methoden zählen nicht doppelt, Routinen ohne Deklaration (Hilfe) schon.
   Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(List, TAtlasBreadcrumbs.UnitMembers(List)));
   // Auch in uses und initialization hat das Unit-Glied sein Menü.
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 3, 4, 'U', True);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(3, 4, 'U', True, []));
   Assert.AreEqual('U › uses', Joined(Crumbs));
   Assert.AreEqual(4, Integer(Length(Crumbs[0].Siblings)));
   Assert.AreEqual(0, Integer(Length(Crumbs[1].Children)), 'uses ohne Kinder');
@@ -308,7 +315,7 @@ var
   Crumbs: TAtlasCrumbs;
 begin
   List := Nodes;
-  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 24, 4, '', False);
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(24, 4, '', False, []));
   Assert.AreEqual('TfrmKunde › btnSpeichernClick › Pruefe', Joined(Crumbs));
   // Typ: alle Mitglieder in Quelltextreihenfolge.
   Assert.AreEqual('btnSpeichern,btnSpeichernClick,SpeichereAdresse,SpaltenBreite,Display,TInner',

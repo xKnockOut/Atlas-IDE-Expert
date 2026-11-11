@@ -330,8 +330,8 @@ begin
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesUpdateAll), UpdateClick);
   FUpdateOnlyButton := AddButton(cCheckWidth + cButtonWidth + 3 * cGap, cButtonWidth,
     TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateOnly, [AName]), UpdateClick);
-  mClose := AddButton(Width - (cCloseWidth + cGap), cCloseWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose),
-    nil);
+  mClose := AddButton(Width - (cCloseWidth + cGap), cCloseWidth,
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose), nil);
   mClose.Anchors := [akTop, akRight];
   mClose.Cancel := True;
   mClose.ModalResult := mrCancel;

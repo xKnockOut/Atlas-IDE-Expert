@@ -55,8 +55,6 @@ type
   end;
 
   TAtlasDuplicateRow = class
-  public const
-    cListSeparators = ',;';
   public
     /// <summary>Einträge der Liste, getrimmt, leere fallen weg.</summary>
     class function ParseList(const AText: string): TArray<string>; static;

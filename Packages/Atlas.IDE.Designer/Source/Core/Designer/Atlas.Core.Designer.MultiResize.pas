@@ -36,13 +36,13 @@ type
     /// <summary>Elternelement; Nachbarn nur in derselben Gruppe.</summary>
     Group: Integer;
     class function Create(const ABounds: TRect; AMinWidth, AMinHeight: Integer; AFixed: Boolean;
-      AGroup: Integer = 0): TAtlasResizeItem; static;
+      AGroup: Integer): TAtlasResizeItem; static;
   end;
 
   TAtlasResizeNeighbour = record
     Bounds: TRect;
     Group: Integer;
-    class function Create(const ABounds: TRect; AGroup: Integer = 0): TAtlasResizeNeighbour; static;
+    class function Create(const ABounds: TRect; AGroup: Integer): TAtlasResizeNeighbour; static;
   end;
 
   TAtlasResizeResult = record
@@ -55,7 +55,6 @@ type
   TAtlasMultiResize = class
   public const
     cMinSize = 8;
-    cModeDelta = 'delta';
     cModeAlign = 'align';
   public
     /// <summary>AItems[ADragged] wird an AEdge um ADelta gezogen (Bildschirmpixel = Pixel im Formular).</summary>

@@ -758,8 +758,8 @@ begin
     DrawHotPart(InterfaceRect(AIndex));
   end;
   mPart := Rect(mLeft_, 0, mArea.Right - Scale(2), ClientHeight);
-  DrawText(Canvas.Handle, PChar(CrumbCaption(mCrumb)), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
-    DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(CrumbCaption(mCrumb)), -1, mPart,
+    DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Font := Font;
 end;
 

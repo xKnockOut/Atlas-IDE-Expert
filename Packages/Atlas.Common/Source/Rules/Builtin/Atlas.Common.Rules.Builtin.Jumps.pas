@@ -268,7 +268,8 @@ var
 
   // AHasLoop: eine Schleife umschließt die Stelle in derselben Routine; AFinallySinceLoop: zwischen ihr und der
   // Stelle liegt ein finally; AInFinally: irgendein finally der Routine umschließt die Stelle.
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel trägt den Zustand je Knoten mit, wie zuvor die
+  // Parameter der Rekursion.
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TJumpVisit>;

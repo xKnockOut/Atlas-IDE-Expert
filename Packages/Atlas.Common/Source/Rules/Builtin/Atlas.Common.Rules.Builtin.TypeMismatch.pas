@@ -165,9 +165,7 @@ type
     FLocal: TUnitIndex;
     FValues: TDictionary<TSyntaxNode, TValueType>;
     FDepth: Integer;
-    function Tree: TSyntaxTree;
     function NodeText(ANode: TSyntaxNode): string;
-    function DeclarationAt(const APosition: TTextPosition): TSyntaxNode;
     function DeclaredText(const ASymbol: TResolvedSymbol): string;
     function IsIntrinsic(ACallee: TSyntaxNode): Boolean;
     function BuiltinCast(ACallee: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
@@ -701,11 +699,6 @@ begin
   Result := Result and not ContainsText(ACandidate.Signature, 'overload');
 end;
 
-function TTypeMismatchCheck.Tree: TSyntaxTree;
-begin
-  Result := FContext.Tree;
-end;
-
 function TTypeMismatchCheck.NodeText(ANode: TSyntaxNode): string;
 begin
   Result := FScope.Text(ANode);
@@ -715,7 +708,8 @@ begin
   end;
 end;
 
-function TTypeMismatchCheck.DeclarationAt(const APosition: TTextPosition): TSyntaxNode;
+/// <summary>Innerste Deklaration in ATree, die APosition enthält; nil ohne.</summary>
+function DeclarationAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
   mPending: TStack<TSyntaxNode>;
   mNode: TSyntaxNode;
@@ -730,10 +724,11 @@ var
 
 begin
   Result := nil;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht); nur in Knoten absteigen, die die Stelle enthalten. Der innerste gewinnt.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); nur in Knoten absteigen, die die Stelle enthalten. Der innerste
+  // gewinnt.
   mPending := TStack<TSyntaxNode>.Create;
   try
-    mPending.Push(Tree.Root);
+    mPending.Push(ATree.Root);
     while mPending.Count > 0 do
     begin
       mNode := mPending.Pop;
@@ -766,7 +761,7 @@ begin
   begin
     Exit;
   end;
-  mDecl := DeclarationAt(ASymbol.SelectionRange.StartPos);
+  mDecl := DeclarationAt(FContext.Tree, ASymbol.SelectionRange.StartPos);
   if mDecl = nil then
   begin
     Exit;
@@ -789,7 +784,7 @@ begin
   AType := Default(TResolvedSymbol);
   Result := (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.Identifier) and
     TResolverText.IsBuiltinTypeName(ACallee.Name) and
-    (Length(FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee)) = 0);
+    (Length(FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ACallee)) = 0);
   if Result then
   begin
     AType := BuiltinSymbol(ACallee.Name);
@@ -805,14 +800,14 @@ begin
   begin
     Exit;
   end;
-  mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee);
+  mCandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ACallee);
   Result := (Length(mCandidates) = 0) or mCandidates[0].Builtin or SameText(mCandidates[0].UnitName, 'System');
 end;
 
 function TTypeMismatchCheck.HiddenMember(ANode: TSyntaxNode; const ASymbol: TResolvedSymbol): Boolean;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Identifier) and FScope.Resolver.MayBeHiddenMember(Tree, FScope.FileName, ANode,
-    ASymbol);
+  Result := (ANode.Kind = TSyntaxKind.Identifier) and
+    FScope.Resolver.MayBeHiddenMember(FContext.Tree, FScope.FileName, ANode, ASymbol);
 end;
 
 function TTypeMismatchCheck.SameResultType(ACallee: TSyntaxNode): Boolean;
@@ -821,7 +816,7 @@ var
   mCandidate: TResolvedSymbol;
 begin
   // Überladungen mit verschiedenen Ergebnistypen: Welche gilt, entscheiden die Argumente.
-  mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee);
+  mCandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ACallee);
   for mCandidate in mCandidates do
   begin
     if not TTypeIdentity.Same(mCandidate.TypeName, mCandidates[0].TypeName) then
@@ -1086,7 +1081,8 @@ begin
     mCallee := ANode[0];
   end;
   Result := Default(TValueType);
-  if not Resolvable(mCallee) or not FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, mSymbol, mType, mFound) or
+  if not Resolvable(mCallee) or
+    not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ANode, mSymbol, mType, mFound) or
     (mSymbol.Kind = TResolvedKind.UnitName) then
   begin
     Exit;
@@ -1239,7 +1235,7 @@ begin
   begin
     Exit;
   end;
-  if not FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, ASymbol, AType, mFound) or
+  if not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ANode, ASymbol, AType, mFound) or
     (ASymbol.Kind = TResolvedKind.UnitName) or ASymbol.IsType then
   begin
     Exit;
@@ -1287,7 +1283,7 @@ begin
   begin
     Exit;
   end;
-  ACandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, ANode);
+  ACandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ANode);
   if Length(ACandidates) = 0 then
   begin
     Exit;
@@ -1607,7 +1603,7 @@ begin
   begin
     Exit;
   end;
-  if not FScope.Resolver.NodeType(Tree, FScope.FileName, mArgument, mSymbol, mType, mFound) or not mFound or
+  if not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mArgument, mSymbol, mType, mFound) or not mFound or
     not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) or
     not FScope.DeclarationSure(mSymbol, mArgument) or HiddenMember(mArgument, mSymbol) then
   begin
@@ -1616,7 +1612,7 @@ begin
   // const-Parameter meldet invalid-var-argument (wie E2197).
   if mSymbol.IsParameter and (mSymbol.Kind = TResolvedKind.Local) then
   begin
-    mDecl := DeclarationAt(mSymbol.SelectionRange.StartPos);
+    mDecl := DeclarationAt(FContext.Tree, mSymbol.SelectionRange.StartPos);
     if (mDecl = nil) or (mDecl.Kind <> TSyntaxKind.Parameter) or
       (mDecl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]) then
     begin
@@ -1656,7 +1652,7 @@ var
       CheckIntrinsic(ANode, mCallee.Name);
       Exit;
     end;
-    mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, mCallee);
+    mCandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, mCallee);
     if (Length(mCandidates) > 0) and mCandidates[0].IsType then
     begin
       CheckCast(ANode, mCandidates[0]);
@@ -1743,8 +1739,8 @@ var
 
   function Indexable: Boolean;
   begin
-    Result := (ANode.ChildCount >= 2) and FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, mSymbol, mType,
-      mFound);
+    Result := (ANode.ChildCount >= 2) and
+      FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ANode, mSymbol, mType, mFound);
     Result := Result and (mSymbol.SymbolKind = TIndexSymbolKind.Property_) and (mSymbol.MaxArgs <> 0);
     Result := Result and (Length(mSymbol.ParamTypes) >= ANode.ChildCount - 1) and (Length(mSymbol.Overloads) = 0);
     Result := Result and FScope.DeclarationSure(mSymbol, ANode) and FScope.Resolver.DeclaringUnit(mSymbol, mUnit);
@@ -1800,7 +1796,8 @@ begin
     // X is Integer: rechts muss eine Klasse stehen.
     mRightNode := Unwrapped(ANode[1]);
     if (mRightNode.Kind = TSyntaxKind.Identifier) and not BuiltinCast(mRightNode, mSymbol) and
-      not (FScope.Resolver.NodeType(Tree, FScope.FileName, mRightNode, mSymbol, mType, mFound) and mSymbol.IsType) then
+      not (FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mRightNode, mSymbol, mType, mFound) and
+      mSymbol.IsType) then
     begin
       Exit;
     end;
@@ -1849,7 +1846,7 @@ begin
   // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
-    mPending.Push(Tree.Root);
+    mPending.Push(FContext.Tree.Root);
     while mPending.Count > 0 do
     begin
       mNode := mPending.Pop;

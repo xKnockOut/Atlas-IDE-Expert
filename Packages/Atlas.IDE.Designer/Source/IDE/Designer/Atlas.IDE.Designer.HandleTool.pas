@@ -53,7 +53,7 @@ type
     procedure BeginStep;
     /// <summary>Schritt beenden: mit Änderung als Stand für „rückgängig“ (Designer geändert, ADone in die
     /// Meldungen), ohne verwerfen. ARestore: Stand vor dem Schritt wiederherstellen.</summary>
-    procedure CommitStep(const ADone: string; ARestore: Boolean = False);
+    procedure CommitStep(const ADone: string; ARestore: Boolean);
     function InStep: Boolean;
     property Overlay: TAtlasDesignerHandles read FOverlay;
     property Changed: Boolean read FChanged write FChanged;
