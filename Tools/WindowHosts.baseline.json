@@ -117,10 +117,6 @@
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.TextsDialog.pas": {
     "create-new": 1
   },
-  "Packages/Atlas.IDE.Rules/Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Rules/Source/UI/Rules/Atlas.UI.Rules.Editor.pas": {
     "cl-red": 1
   },
