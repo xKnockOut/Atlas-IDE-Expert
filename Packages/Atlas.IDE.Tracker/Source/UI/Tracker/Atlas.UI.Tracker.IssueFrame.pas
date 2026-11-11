@@ -810,7 +810,8 @@ begin
   begin
     mKey := AddLabel(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistStatusLine, [mDetails.Key,
       AFrame.FContent.ProgressText]), False);
-    mKey.Hint := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress, [AProgress.Done, AProgress.Total]);
+    mKey.Hint := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress,
+      [AProgress.Done, AProgress.Total]);
     mKey.ShowHint := True;
   end
   else

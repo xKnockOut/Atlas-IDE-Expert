@@ -352,7 +352,8 @@ begin
   end;
 end;
 
-function TypeNameOf(const AProperties: TArray<TAtlasPaintProperty>; const APath: string; out ATypeName: string): Boolean;
+function TypeNameOf(const AProperties: TArray<TAtlasPaintProperty>; const APath: string;
+  out ATypeName: string): Boolean;
 var
   mProperty: TAtlasPaintProperty;
 begin
@@ -368,7 +369,8 @@ begin
 end;
 
 class function TAtlasPropertyPainter.Match(const ASource: TArray<TAtlasPaintProperty>;
-  const AChosen: TArray<string>; const ATarget: TArray<TAtlasPaintProperty>; out ASkipped: TArray<string>): TArray<string>;
+  const AChosen: TArray<string>; const ATarget: TArray<TAtlasPaintProperty>;
+  out ASkipped: TArray<string>): TArray<string>;
 var
   mPath, mSourceType, mTargetType: string;
 begin

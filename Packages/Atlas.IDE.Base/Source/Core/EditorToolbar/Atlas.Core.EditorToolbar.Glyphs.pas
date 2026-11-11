@@ -97,6 +97,13 @@ begin
   Result.Filled := AFilled;
 end;
 
+/// <summary>Kreisumriss (nicht gefüllt); nur Zahlen als Argumente, damit die Glyphen reine Punktdaten bleiben.
+/// </summary>
+function Ring(ACX, ACY, AR: Single): TAtlasGlyphShape;
+begin
+  Result := Circle(ACX, ACY, AR, False);
+end;
+
 /// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
 /// 8Z"): vier kubische Bögen, je acht Strecken.</summary>
 function EyeOutline: TAtlasGlyphShape;
@@ -366,11 +373,11 @@ begin
         Outline([P(9, 8.5), P(14.5, 8.5), P(14.5, 14.5), P(9, 14.5)])];
     TAtlasToolbarIcon.Magnifier:
       // Lupe: Glas mit Pixelkreuz, Griff nach rechts unten.
-      Result := [Circle(6.5, 6.5, 4.5, False), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
+      Result := [Ring(6.5, 6.5, 4.5), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
         Stroke([P(9.75, 9.75), P(14, 14)])];
     TAtlasToolbarIcon.PropertySearch:
       // Gleichheitszeichen (Eigenschaft = Wert) mit Lupe.
-      Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Circle(10.5, 10, 2.5, False),
+      Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Ring(10.5, 10, 2.5),
         Stroke([P(12.3, 11.8), P(14.5, 14)])];
   else
     Result := ToolButtonShapes(AIcon);

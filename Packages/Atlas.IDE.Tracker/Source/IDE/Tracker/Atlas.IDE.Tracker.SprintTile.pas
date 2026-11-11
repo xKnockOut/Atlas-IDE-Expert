@@ -738,11 +738,13 @@ begin
   end;
   if ADone then
   begin
-    FHooks.Filter(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilterDone, [mTile.Sprint.Name]), mTile.Sprint.MineDone);
+    FHooks.Filter(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilterDone, [mTile.Sprint.Name]),
+      mTile.Sprint.MineDone);
   end
   else
   begin
-    FHooks.Filter(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilterOpen, [mTile.Sprint.Name]), mTile.Sprint.MineOpen);
+    FHooks.Filter(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilterOpen, [mTile.Sprint.Name]),
+      mTile.Sprint.MineOpen);
   end;
 end;
 

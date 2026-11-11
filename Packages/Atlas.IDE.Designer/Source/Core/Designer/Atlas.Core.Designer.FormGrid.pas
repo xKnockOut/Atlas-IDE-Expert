@@ -32,7 +32,8 @@ type
     IsLabel: Boolean;
     /// <summary>Feld eines Labels aus FocusControl; leer: nach Lage.</summary>
     Partner: string;
-    /// <summary>Grundlinie unter der Oberkante: beim Label der Ascent, beim Feld die Textzeile; -1 mehrzeilig.</summary>
+    /// <summary>Grundlinie unter der Oberkante: beim Label der Ascent, beim Feld die Textzeile;
+    /// -1 mehrzeilig.</summary>
     Baseline: Integer;
     class function Create(const AName: string; const ABounds: TRect; AIsLabel: Boolean; const APartner: string;
       ABaseline: Integer): TAtlasGridItem; static;
@@ -67,7 +68,8 @@ type
     class function Partners(const AItems: TArray<TAtlasGridItem>): TArray<Integer>; static;
     /// <summary>Einträge in alter Lesereihenfolge.</summary>
     class function Entries(const AItems: TArray<TAtlasGridItem>): TArray<TAtlasGridEntry>; static;
-    class function Arrange(const AItems: TArray<TAtlasGridItem>; const AOptions: TAtlasGridOptions): TAtlasGridResult; static;
+    class function Arrange(const AItems: TArray<TAtlasGridItem>;
+      const AOptions: TAtlasGridOptions): TAtlasGridResult; static;
   end;
 
 implementation

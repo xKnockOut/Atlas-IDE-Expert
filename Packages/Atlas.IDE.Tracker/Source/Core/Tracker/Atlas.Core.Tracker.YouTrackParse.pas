@@ -260,7 +260,7 @@ begin
   begin
     if mTag is TJSONObject then
     begin
-      mText := TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mTag), 'name'), 60);
+      mText := TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mTag), 'name'), TAtlasTrackerTextLimits.cName);
       if mText <> '' then
       begin
         Result := Result + [mText];
@@ -289,7 +289,7 @@ var
   mUrl: string;
 begin
   AAttachment := Default(TAtlasTrackerAttachment);
-  AAttachment.Name := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AObject, 'name'), 200);
+  AAttachment.Name := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AObject, 'name'), TAtlasTrackerTextLimits.cTitle);
   AAttachment.MimeType := TJsonRead.Text(AObject, 'mimeType');
   AAttachment.Size := AttachmentSizeOf(AObject);
   mUrl := TJsonRead.Text(AObject, 'url');
@@ -351,8 +351,8 @@ function LinkOf(AIssue: TJSONObject; const ARelation: string; AKind: TAtlasTrack
 begin
   Result := Default(TAtlasTrackerLink);
   Result.Key := Trim(TJsonRead.Text(AIssue, 'idReadable'));
-  Result.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AIssue, 'summary'), 200);
-  Result.Relation := TAtlasYouTrackJson.Shorten(ARelation, 60);
+  Result.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AIssue, 'summary'), TAtlasTrackerTextLimits.cTitle);
+  Result.Relation := TAtlasYouTrackJson.Shorten(ARelation, TAtlasTrackerTextLimits.cName);
   Result.Kind := AKind;
   Result.StateKnown := AIssue.Values['resolved'] <> nil;
   Result.Resolved := AIssue.Values['resolved'] is TJSONNumber;
@@ -418,7 +418,8 @@ begin
   Result.Created := TAtlasYouTrackJson.TimeOf(AObject, 'created');
   if AObject.Values['author'] is TJSONObject then
   begin
-    Result.Author := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.ValueText(AObject.Values['author']), 80);
+    Result.Author := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.ValueText(AObject.Values['author']),
+      TAtlasTrackerTextLimits.cPerson);
   end;
 end;
 
@@ -453,7 +454,7 @@ begin
   mDetails := TAtlasTrackerDetails.Empty;
   mDetails.Key := Trim(TJsonRead.Text(ARoot, 'idReadable'));
   mDetails.Number := Max(0, TJsonRead.Int(ARoot, 'numberInProject'));
-  mDetails.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(ARoot, 'summary'), 500);
+  mDetails.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(ARoot, 'summary'), TAtlasTrackerTextLimits.cDetailsTitle);
   mDetails.Description := TAtlasYouTrackJson.Limited(TJsonRead.Text(ARoot, 'description'));
   mDetails.Created := TAtlasYouTrackJson.TimeOf(ARoot, 'created');
   mDetails.Updated := TAtlasYouTrackJson.TimeOf(ARoot, 'updated');
@@ -677,7 +678,7 @@ begin
       if mLogin <> '' then
       begin
         AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin,
-          TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mItem), 'fullName'), 80))];
+          TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mItem), 'fullName'), TAtlasTrackerTextLimits.cPerson))];
       end;
     end;
   finally
@@ -1027,7 +1028,8 @@ begin
   begin
     mAuthor := TJSONObject(AObject.Values['author']);
     AChange.Author := Trim(TJsonRead.Text(mAuthor, 'login'));
-    AChange.AuthorName := TAtlasYouTrackJson.Shorten(TJsonRead.Text(mAuthor, 'fullName'), 80);
+    AChange.AuthorName := TAtlasYouTrackJson.Shorten(TJsonRead.Text(mAuthor, 'fullName'),
+      TAtlasTrackerTextLimits.cPerson);
   end;
   if AChange.Kind <> TAtlasTrackerChangeKind.Comment then
   begin

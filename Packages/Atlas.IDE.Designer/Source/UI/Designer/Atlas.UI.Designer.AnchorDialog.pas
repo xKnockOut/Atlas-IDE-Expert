@@ -17,7 +17,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Vcl.ComCtrls;
+  Vcl.ComCtrls,
+  Atlas.UI.Designer.Dialog;
 
 type
   TAtlasAnchorRow = record
@@ -28,7 +29,7 @@ type
     Offered: Boolean;
   end;
 
-  TAtlasAnchorDialog = class(TForm)
+  TAtlasAnchorDialog = class(TAtlasDesignerDialog)
   public const
     cDialogWidth = 480;
     cListHeight = 320;
@@ -55,7 +56,6 @@ uses
   Atlas.UI.Designer.Strings;
 
 const
-  cGap = 10;
   cNameWidth = 140;
   cAnchorsWidth = 80;
 
@@ -71,12 +71,7 @@ begin
   inherited CreateNew(AOwner);
   FRows := ARows;
   FOnSelect := AOnSelect;
-  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsTitle);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  InitDialog(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsTitle), cDialogWidth, bsDialog);
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alTop;
@@ -96,13 +91,18 @@ begin
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsReason);
   mColumn.AutoSize := True;
-  for mRow in ARows do
-  begin
-    mItem := FList.Items.Add;
-    mItem.Caption := mRow.Name;
-    mItem.SubItems.Add(mRow.Anchors);
-    mItem.SubItems.Add(mRow.Reason);
-    mItem.Checked := mRow.Offered;
+  FList.Items.BeginUpdate;
+  try
+    for mRow in ARows do
+    begin
+      mItem := FList.Items.Add;
+      mItem.Caption := mRow.Name;
+      mItem.SubItems.Add(mRow.Anchors);
+      mItem.SubItems.Add(mRow.Reason);
+      mItem.Checked := mRow.Offered;
+    end;
+  finally
+    FList.Items.EndUpdate;
   end;
   FList.OnClick := ListClick;
   FList.OnItemChecked := ListItemChecked;

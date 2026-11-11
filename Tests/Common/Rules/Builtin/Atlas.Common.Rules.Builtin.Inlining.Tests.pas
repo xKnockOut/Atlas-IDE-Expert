@@ -31,6 +31,8 @@ type
     [Test]
     procedure PropertyGetterAndForIn;
     [Test]
+    procedure IndexedAndSetProperties;
+    [Test]
     procedure QuickFixAddsUnit;
     [Test]
     procedure StrictPrivateMember;
@@ -127,6 +129,8 @@ const
     '    constructor Create(AAnzahl: Integer);'#10 +
     '    function MoveNext: Boolean;'#10 +
     '  end;'#10 +
+    '  TStil = (Fett, Kursiv);'#10 +
+    '  TStile = set of TStil;'#10 +
     '  TJsonFeld = class'#10 +
     '  private'#10 +
     '    FWerte: TListe<Integer>;'#10 +
@@ -140,6 +144,11 @@ const
     '    function Nochmal: Integer;'#10 +
     '    function GetEnumerator: TJsonEnum; inline;'#10 +
     '    property Zahl: Integer read GetZahl;'#10 +
+    '    function GetWert(I: Integer): Integer; inline;'#10 +
+    '    function GetStil: TStile; inline;'#10 +
+    '    procedure SetStil(const AWert: TStile);'#10 +
+    '    property Werte[I: Integer]: Integer read GetWert; default;'#10 +
+    '    property Stil: TStile read GetStil write SetStil;'#10 +
     '  end;'#10 +
     'function Doppelt(A: Integer): Integer; inline;'#10 +
     'implementation'#10 +
@@ -177,6 +186,19 @@ const
     'function TJsonFeld.GetEnumerator: TJsonEnum;'#10 +
     'begin'#10 +
     '  Result := TJsonEnum.Create(FWerte.Count);'#10 +
+    'end;'#10 +
+    'function TJsonFeld.GetWert(I: Integer): Integer;'#10 +
+    'begin'#10 +
+    '  Result := FWerte.Count + I;'#10 +
+    'end;'#10 +
+    'function TJsonFeld.GetStil: TStile;'#10 +
+    'begin'#10 +
+    '  Result := [];'#10 +
+    '  if FWerte.Count > 0 then'#10 +
+    '    Include(Result, Fett);'#10 +
+    'end;'#10 +
+    'procedure TJsonFeld.SetStil(const AWert: TStile);'#10 +
+    'begin'#10 +
     'end;'#10 +
     'function Doppelt(A: Integer): Integer;'#10 +
     'begin'#10 +
@@ -287,6 +309,19 @@ begin
   Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.GetZahl wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|9:11 Inline-Funktion TJsonFeld.GetEnumerator wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|', Messages(Findings(Haupt('Werk.Json', '  X := F.Zahl;'#10'  for X in F do;'#10))));
+end;
+
+procedure TInliningRulesTests.IndexedAndSetProperties;
+begin
+  // Getter hinter einer Index-Property, auch als default, nach as und über eine Mengen-Property (#1345).
+  Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.GetWert wird nicht eingebettet: Werk.Listen fehlt in uses ' +
+    '(wie H2443).|9:8 Inline-Funktion TJsonFeld.GetWert wird nicht eingebettet: Werk.Listen fehlt in uses ' +
+    '(wie H2443).|10:33 Inline-Funktion TJsonFeld.GetWert wird nicht eingebettet: Werk.Listen fehlt in uses ' +
+    '(wie H2443).|11:14 Inline-Funktion TJsonFeld.GetStil wird nicht eingebettet: Werk.Listen fehlt in uses ' +
+    '(wie H2443).|', Messages(Findings(Haupt('Werk.Json', '  X := F.Werte[0];'#10'  X := F[1];'#10 +
+    '  X := (TObject(F) as TJsonFeld).Werte[2];'#10'  F.Stil := F.Stil + [Fett];'#10))));
+  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json, Werk.Listen', '  X := F.Werte[0] + F[1];'#10 +
+    '  F.Stil := F.Stil + [Fett];'#10))));
 end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;
@@ -576,7 +611,8 @@ begin
   // Lokale Namen, Result, eigene Typen und Mitglieder ohne weiteren Zugriff fehlen; Normal und Nochmal sind
   // nicht inline. Eingebaute Typen (Integer) löst erst die Regel auf.
   Assert.AreEqual('TJsonFeld.GetZahl=:TListe<Integer>|TJsonFeld.Anzahl=:Integer,:TListe<Integer>|' +
-    'TJsonFeld.Geheim=!FGeheim|TJsonFeld.GetEnumerator=:TListe<Integer>|Doppelt=Mal2|', Refs);
+    'TJsonFeld.Geheim=!FGeheim|TJsonFeld.GetEnumerator=:TListe<Integer>|' +
+    'TJsonFeld.GetWert=:TListe<Integer>|TJsonFeld.GetStil=:TListe<Integer>,Include,Fett|Doppelt=Mal2|', Refs);
   // Ohne Verweise bleibt die inline-Routine erkennbar (#1381); Mal2 ist nicht inline.
   UnitIndex := TIndexExtractor.ExtractText(UnitMathe, 'C:\P\Werk.Mathe.pas', nil);
   Refs := '';

@@ -63,6 +63,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Rules.Builtin.Statements.Loops,

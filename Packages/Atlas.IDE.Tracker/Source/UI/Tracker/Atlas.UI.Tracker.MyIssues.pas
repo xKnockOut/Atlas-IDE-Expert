@@ -895,7 +895,8 @@ begin
   FPullRects[AIndex] := TRect.Empty;
   if SameText(mItem.Key, FOwner.View.Active.Key) then
   begin
-    PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesActive), Color(clHighlight), True, mChip);
+    PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesActive), Color(clHighlight), True,
+      mChip);
   end;
   for mField in TAtlasMyIssues.Fields(mItem) do
   begin
@@ -1132,9 +1133,12 @@ begin
   FMenu.OnPopup := MenuPopup;
   FPreviewItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesPreview), PreviewClick);
   FBrowseItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowse), BrowseClick);
-  FBrowsePullItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowsePullRequest), BrowsePullClick);
-  FStartBranchItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartBranch), StartBranchClick);
-  FStartRememberItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartRemember), StartRememberClick);
+  FBrowsePullItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowsePullRequest),
+    BrowsePullClick);
+  FStartBranchItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartBranch),
+    StartBranchClick);
+  FStartRememberItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartRemember),
+    StartRememberClick);
   mLine := TMenuItem.Create(AOwner);
   mLine.Caption := cMenuLine;
   FMenu.Items.Add(mLine);

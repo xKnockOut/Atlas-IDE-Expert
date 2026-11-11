@@ -2,8 +2,9 @@
 
 // Oberflächentexte der Update-Installation (#1519) auf Deutsch und Englisch:
 // Optionsseite, Angebot, Auswahl der Module, Stand, Ergebnis und Fehlercodes
-// von AtlasUpdate.exe sowie die Meldung einer gescheiterten Update-Prüfung. Die Sprache bestimmt TAtlasStrings.Language; die
-// Texte der Update-Prüfung (#495) bleiben in Atlas.UI.Strings.
+// von AtlasUpdate.exe sowie die Meldung einer gescheiterten Update-Prüfung.
+// Die Sprache bestimmt TAtlasStrings.Language; die Texte der Update-Prüfung
+// (#495) bleiben in Atlas.UI.Strings.
 
 interface
 
