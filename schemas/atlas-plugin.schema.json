@@ -5729,6 +5729,38 @@
       "x-node": "editor.designerBar",
       "x-issue": "#733"
     },
+    "DesignerFontsColors": {
+      "description": "Befehl „Schriften und Farben …“ im Menü „Anordnen“ der Designer-Leiste: listet alle Schriften und Farben des Formulars mit Häufigkeit, hebt Ausreißer hervor, wählt per Klick die betroffenen Komponenten und ersetzt eine Schrift oder Farbe in einem Schritt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fontsColors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#741"
+    },
+    "DesignerFontsColorsRestoreParent": {
+      "description": "Beim Ersetzen wieder ParentFont bzw. ParentColor setzen, wenn der neue Wert dem des Parents gleicht, statt ihn zu kopieren.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fontsColors.restoreParent",
+      "x-parent": "designer.fontsColors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#741"
+    },
+    "DesignerFontsColorsIgnoreColors": {
+      "description": "Farben, die in der Liste fehlen, durch Komma getrennt.",
+      "type": "string",
+      "default": "clWindow, clBtnFace, clWindowText, clDefault",
+      "x-key": "designer.fontsColors.ignoreColors",
+      "x-parent": "designer.fontsColors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#741"
+    },
     "DesignerGapHandles": {
       "description": "Abstandsgriffe bei Mehrfachauswahl: Bilden mindestens zwei markierte Steuerelemente im selben Elternelement eine Reihe oder Spalte, steht zwischen je zwei Nachbarn eine Pille mit dem Abstand in Pixeln (abweichende gedämpft). Ziehen setzt alle Abstände auf denselben Wert, Doppelklick fragt ihn ab, Pfeiltasten bei gehaltener Pille ändern um 1 px; nur Left bzw. Top ändern sich. Ragt ein Steuerelement danach aus dem Elternelement, gilt die Änderung erst nach Rückfrage. Knopf in der Designer-Leiste: Symbol blendet die Griffe ein und aus, das Menü am Pfeil setzt Abstände und macht den letzten Schritt rückgängig.",
       "type": "boolean",

@@ -36,6 +36,8 @@
 // - Einpacken in (Untermenü der Containerklassen, Vorgabe fett), Container
 //   auflösen und Einpacken rückgängig (#733, designer.wrapInContainer,
 //   TAtlasIdeWrap).
+// - Schriften und Farben … und Schriften rückgängig (#741,
+//   designer.fontsColors, TAtlasIdeFontsColors).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -56,7 +58,8 @@ uses
   Atlas.IDE.Designer.FormTexts,
   Atlas.IDE.Designer.LabelPairs,
   Atlas.IDE.Designer.FormGrid,
-  Atlas.IDE.Designer.Wrap;
+  Atlas.IDE.Designer.Wrap,
+  Atlas.IDE.Designer.FontsColors;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -75,6 +78,7 @@ type
     FPairs: TAtlasIdeLabelPairs;
     FGrid: TAtlasIdeFormGrid;
     FWrap: TAtlasIdeWrap;
+    FFonts: TAtlasIdeFontsColors;
     /// <summary>Containerklassen im zuletzt gezeigten Menü.</summary>
     FWrapClasses: TArray<string>;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
@@ -89,6 +93,8 @@ type
     procedure AddWrapItems(const ASettings: TAtlasPluginSettings);
     /// <summary>Einpacken (#733): 0 auflösen, 1 rückgängig, ab 2 Klasse aus FWrapClasses.</summary>
     procedure RunWrap(ACommand: Integer);
+    /// <summary>Schriften und Farben öffnen (AOpen) oder zurücknehmen.</summary>
+    procedure RunFonts(AOpen: Boolean);
     /// <summary>Untermenüs ab „Fast bündige Kanten“ (#746 ff.).</summary>
     procedure AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
     procedure ItemClick(Sender: TObject);
@@ -156,6 +162,8 @@ const
   cWrapUnwrap = 0;
   cWrapUndo = 1;
   cWrapClasses = 2;
+  /// <summary>Schriften und Farben: cFontsFirst öffnet, cFontsFirst + 1 nimmt zurück.</summary>
+  cFontsFirst = 90;
   /// <summary>Ab hier Einträge des Stapels: cStackFirst + Index in FStackNames.</summary>
   cStackFirst = 100;
 
@@ -178,10 +186,12 @@ begin
   FPairs := TAtlasIdeLabelPairs.Create(AOnMessage);
   FGrid := TAtlasIdeFormGrid.Create(AOnMessage);
   FWrap := TAtlasIdeWrap.Create(AOnMessage);
+  FFonts := TAtlasIdeFontsColors.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FFonts.Free;
   FWrap.Free;
   FGrid.Free;
   FPairs.Free;
@@ -205,7 +215,7 @@ begin
     ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
     ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
     ASettings.DesignerTextTable or ASettings.DesignerLabelPairs or
-    ASettings.DesignerArrangeForm or ASettings.DesignerWrapInContainer;
+    ASettings.DesignerArrangeForm or ASettings.DesignerWrapInContainer or ASettings.DesignerFontsColors;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -390,6 +400,10 @@ begin
   mSub := AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapMenu), 0,
     TAtlasIdeWrap.CanWrap);
   FWrapClasses := TAtlasIdeWrap.ClassNames;
+  if Length(FWrapClasses) > cFontsFirst - cWrapFirst - cWrapClasses then
+  begin
+    SetLength(FWrapClasses, cFontsFirst - cWrapFirst - cWrapClasses);
+  end;
   for mIndex := 0 to High(FWrapClasses) do
   begin
     AddItem(mSub, FWrapClasses[mIndex], cWrapFirst + cWrapClasses + mIndex, True).Default :=
@@ -399,6 +413,18 @@ begin
     cWrapFirst + cWrapUnwrap, TAtlasIdeWrap.CanUnwrap);
   AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapUndoCmd), cWrapFirst + cWrapUndo,
     FWrap.CanUndo);
+end;
+
+procedure TAtlasIdeDesignerArrange.RunFonts(AOpen: Boolean);
+begin
+  if AOpen then
+  begin
+    FFonts.Execute;
+  end
+  else
+  begin
+    FFonts.Undo;
+  end;
 end;
 
 procedure TAtlasIdeDesignerArrange.RunWrap(ACommand: Integer);
@@ -455,6 +481,12 @@ begin
   if ASettings.DesignerWrapInContainer then
   begin
     AddWrapItems(ASettings);
+  end;
+  if ASettings.DesignerFontsColors then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFontsCmd), cFontsFirst, True);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFontsUndoCmd), cFontsFirst + 1,
+      FFonts.CanUndo);
   end;
   if ASettings.DesignerTextTable then
   begin
@@ -522,6 +554,10 @@ begin
     begin
       TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
     end;
+  end
+  else if ATag >= cFontsFirst then
+  begin
+    RunFonts(ATag = cFontsFirst);
   end
   else if ATag >= cWrapFirst then
   begin

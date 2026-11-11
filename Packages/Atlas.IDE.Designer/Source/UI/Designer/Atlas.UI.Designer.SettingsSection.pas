@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Werkzeuge mit eigenem Knopf (#734 ff.).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Werkzeuge mit eigenem Knopf (#734 ff.).
 
 interface
 
@@ -19,7 +19,7 @@ type
     procedure BuildArrangeRows;
     /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728) und Label und Feld (#729).</summary>
     procedure BuildToolRows;
-    /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731) und Einpacken (#733).</summary>
+    /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731), Einpacken (#733) und Schriften und Farben (#741).</summary>
     procedure BuildPairRows;
     /// <summary>Zeilen der Werkzeuge mit eigenem Knopf in der Designer-Leiste (#734 ff.).</summary>
     procedure BuildButtonRows;
@@ -199,6 +199,11 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerWrapDefault));
   Line('designer.wrapInContainer.classes',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerWrapClasses));
+  Switch('designer.fontsColors', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFonts));
+  Switch('designer.fontsColors.restoreParent',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFontsRestore));
+  Line('designer.fontsColors.ignoreColors',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFontsIgnore));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildButtonRows;

@@ -652,6 +652,12 @@ type
     DesignerWrapInContainerDefaultClass: string;
     /// <summary>Eigene Containerklassen, Komma-Liste (#733, designer.wrapInContainer.classes).</summary>
     DesignerWrapInContainerClasses: string;
+    /// <summary>Schriften und Farben vereinheitlichen (#741, designer.fontsColors).</summary>
+    DesignerFontsColors: Boolean;
+    /// <summary>Beim Ersetzen wieder ParentFont/ParentColor setzen (#741, designer.fontsColors.restoreParent).</summary>
+    DesignerFontsColorsRestoreParent: Boolean;
+    /// <summary>Nicht aufgeführte Farben, Komma-Liste (#741, designer.fontsColors.ignoreColors).</summary>
+    DesignerFontsColorsIgnoreColors: string;
     /// <summary>Abstandsgriffe bei Mehrfachauswahl (#734, designer.gapHandles).</summary>
     DesignerGapHandles: Boolean;
     /// <summary>Rastwerte beim Ziehen, durch Komma getrennt (#734, designer.gapHandles.snapValues).</summary>
@@ -700,7 +706,7 @@ type
     class function Defaults: TAtlasPluginEditorViewSettings; static;
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
-    /// <summary>Formularraster (#731) und Einpacken (#733).</summary>
+    /// <summary>Formularraster (#731), Einpacken (#733), Schriften und Farben (#741).</summary>
     procedure SetFormToolDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
     procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1274,6 +1280,9 @@ begin
   DesignerWrapInContainerPadding := 8;
   DesignerWrapInContainerDefaultClass := 'TPanel';
   DesignerWrapInContainerClasses := '';
+  DesignerFontsColors := True;
+  DesignerFontsColorsRestoreParent := True;
+  DesignerFontsColorsIgnoreColors := 'clWindow, clBtnFace, clWindowText, clDefault';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1341,6 +1350,9 @@ begin
   AIo.Number('DesignerWrapInContainerPadding', DesignerWrapInContainerPadding);
   AIo.Text('DesignerWrapInContainerDefaultClass', DesignerWrapInContainerDefaultClass);
   AIo.Text('DesignerWrapInContainerClasses', DesignerWrapInContainerClasses);
+  AIo.Flag('DesignerFontsColors', DesignerFontsColors);
+  AIo.Flag('DesignerFontsColorsRestoreParent', DesignerFontsColorsRestoreParent);
+  AIo.Text('DesignerFontsColorsIgnoreColors', DesignerFontsColorsIgnoreColors);
 end;
 
 procedure TAtlasPluginEditorViewSettings.SetToolDefaults;

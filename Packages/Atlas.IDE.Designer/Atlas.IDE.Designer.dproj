@@ -106,6 +106,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.LabelPairs.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormGrid.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Wrap.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FontsColors.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Gaps.pas"/>
@@ -130,6 +131,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.LabelPairs.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FormGrid.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Wrap.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FontsColors.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Arrange.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>
@@ -150,6 +152,7 @@
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.PaintDialog.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.AnchorDialog.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.TextsDialog.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.FontsDialog.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.ToolStrings.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>

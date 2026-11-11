@@ -751,6 +751,11 @@ type
       write FEditorView.DesignerWrapInContainerDefaultClass;
     property DesignerWrapInContainerClasses: string read FEditorView.DesignerWrapInContainerClasses
       write FEditorView.DesignerWrapInContainerClasses;
+    property DesignerFontsColors: Boolean read FEditorView.DesignerFontsColors write FEditorView.DesignerFontsColors;
+    property DesignerFontsColorsRestoreParent: Boolean read FEditorView.DesignerFontsColorsRestoreParent
+      write FEditorView.DesignerFontsColorsRestoreParent;
+    property DesignerFontsColorsIgnoreColors: string read FEditorView.DesignerFontsColorsIgnoreColors
+      write FEditorView.DesignerFontsColorsIgnoreColors;
     property DesignerGapHandles: Boolean read FEditorView.DesignerGapHandles write FEditorView.DesignerGapHandles;
     property DesignerGapHandlesSnapValues: string read FEditorView.DesignerGapHandlesSnapValues
       write FEditorView.DesignerGapHandlesSnapValues;

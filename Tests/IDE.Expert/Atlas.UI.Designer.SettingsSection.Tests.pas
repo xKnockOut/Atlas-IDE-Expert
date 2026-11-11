@@ -59,6 +59,8 @@ type
     [Test]
     procedure WrapRoundTrip;
     [Test]
+    procedure FontsColorsRoundTrip;
+    [Test]
     procedure GapHandlesRoundTrip;
   end;
 
@@ -585,6 +587,29 @@ begin
     Assert.IsFalse(mSaved.DesignerGapHandles, 'abschaltbar');
     Assert.AreEqual('6, 10', mSaved.DesignerGapHandlesSnapValues);
     Assert.AreEqual(TAtlasPluginSettings.cGapAnchorLast, mSaved.DesignerGapHandlesAnchor);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.FontsColorsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFontsColors').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFontsColorsRestoreParent').Checked);
+    CheckOf(mPage, 'DesignerFontsColors').Checked := False;
+    CheckOf(mPage, 'DesignerFontsColorsRestoreParent').Checked := False;
+    EditOf(mPage, 'DesignerFontsColorsIgnoreColors').Text := 'clWindow';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerFontsColors, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerFontsColorsRestoreParent);
+    Assert.AreEqual('clWindow', mSaved.DesignerFontsColorsIgnoreColors);
   finally
     mPage.Free;
   end;
