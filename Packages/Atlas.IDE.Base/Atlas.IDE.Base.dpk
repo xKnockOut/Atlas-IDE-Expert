@@ -137,6 +137,7 @@ contains
   Atlas.IDE.Foundation.GutterColumns in 'Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas',
   Atlas.IDE.Foundation.EditorRefresh in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas',
   Atlas.IDE.Foundation.Files in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas',
+  Atlas.IDE.Foundation.EditorFiles in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas',
   Atlas.IDE.Foundation.Navigation in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas',
   Atlas.IDE.Editor.WorkspaceEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas',
   Atlas.IDE.Projects.Context in 'Source\IDE\Projects\Atlas.IDE.Projects.Context.pas',
