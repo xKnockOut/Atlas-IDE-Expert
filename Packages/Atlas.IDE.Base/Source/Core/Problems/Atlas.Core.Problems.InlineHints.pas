@@ -61,8 +61,8 @@ type
     /// anderen Ende; False ohne Befund. Ein Befund genau an der Stelle zählt nicht.</summary>
     class function Next(const AProblems: TArray<TAtlasProblem>; ALine, ACharacter: Integer; AForward: Boolean;
       out ATarget: TAtlasProblem): Boolean; static;
-    /// <summary>Ist die Tipp-Pause seit ATypedAt (Millisekunden, GetTickCount) um? 0 = nie getippt.</summary>
-    class function PauseOver(ATypedAt, ANow: Cardinal): Boolean; static;
+    /// <summary>Ist die Tipp-Pause seit ATypedAt (Millisekunden, TAtlasTicks.Now) um? 0 = nie getippt.</summary>
+    class function PauseOver(ATypedAt, ANow: UInt64): Boolean; static;
   end;
 
 implementation
@@ -251,10 +251,9 @@ begin
   end;
 end;
 
-class function TAtlasInlineDiagnostics.PauseOver(ATypedAt, ANow: Cardinal): Boolean;
+class function TAtlasInlineDiagnostics.PauseOver(ATypedAt, ANow: UInt64): Boolean;
 begin
-  // Cardinal-Arithmetik übersteht den Überlauf von GetTickCount.
-  Result := (ATypedAt = 0) or (Cardinal(ANow - ATypedAt) >= cPauseMs);
+  Result := (ATypedAt = 0) or ((ANow >= ATypedAt) and (ANow - ATypedAt >= cPauseMs));
 end;
 
 end.

@@ -157,6 +157,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.ExitWatch` | `Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.ThreadList` | `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.TimeLimit` | `Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.Deadline` | `Core/Diagnostics/Atlas.Core.Diagnostics.Deadline.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.UserIdle` | `Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Timing` | `Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
@@ -784,6 +786,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Assistants.BuildInbox` | `Core/Assistants/Atlas.Core.Assistants.BuildInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |

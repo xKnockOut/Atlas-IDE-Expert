@@ -38,7 +38,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Editor.Reassigned,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -75,8 +76,8 @@ type
     // Stand des Editors: Datei, Pufferstand und Zeitpunkt der letzten Änderung.
     FFileName: string;
     FVersion: Cardinal;
-    FChangedAt: Cardinal;
-    FRetryAt: Cardinal;
+    FChangedAt: UInt64;
+    FRetryAt: TAtlasDeadline;
     FAskedKey: string;
     FAskedRange: TAtlasReassignedRange;
     // Stand der Antwort: Datei, Pufferstand, Zeilen und Stellen.
@@ -296,9 +297,9 @@ end;
 /// <summary>Steht der Text aus ASnapshot seit der Tipp-Pause still und ist keine Wartezeit offen?</summary>
 function TAtlasIdeReassigned.Settled(const ASnapshot: TAtlasEditorSnapshot): Boolean;
 var
-  mMoment: Cardinal;
+  mMoment: UInt64;
 begin
-  mMoment := GetTickCount;
+  mMoment := TAtlasTicks.Now;
   Result := (ASnapshot.Version = FVersion) and SameText(ASnapshot.FileName, FFileName);
   if not Result then
   begin
@@ -308,7 +309,7 @@ begin
     FChangedAt := mMoment;
     Exit;
   end;
-  Result := (mMoment - FChangedAt >= cQuietMs) and (mMoment >= FRetryAt);
+  Result := (mMoment - FChangedAt >= cQuietMs) and FRetryAt.Reached;
 end;
 
 procedure TAtlasIdeReassigned.Update;
@@ -414,7 +415,7 @@ begin
   begin
     // Server läuft (noch) nicht: beim nächsten Takt nach der Wartezeit noch einmal.
     FAskedKey := '';
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -440,7 +441,7 @@ begin
   if AFailed then
   begin
     FAskedKey := '';
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   if not ASet.Valid then

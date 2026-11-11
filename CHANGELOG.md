@@ -66,6 +66,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
 
 ### Behoben
+- Editorleiste bremste die IDE (#1958): Für die Tooltips der Knöpfe wertete die Leiste in jedem Takt je Knopf alle Tastenbelegungen samt ActionList der IDE neu aus (im Diagnosemodus 64 % der Atlas-Zeit im Hauptthread). Die Tasten kommen jetzt einmal mit der Befehlsliste, und die Belegungen der IDE werden in einem Lauf gelesen.
 - Update-Prüfung: Eine gescheiterte Abfrage (Proxy, Zeitüberschreitung, HTTP-Fehler) zeigte in der Zeile „Version“ grün „aktuell“, obwohl Atlas gar nicht wusste, ob es eine neuere Version gibt. Jetzt steht dort gelb „Prüfung fehlgeschlagen“ mit der Fehlerart, und die Meldungsansicht nennt sie einmal. Nach einem Fehlschlag (etwa HTTP 504) prüft Atlas beim nächsten Start der IDE erneut, frühestens nach einer Stunde, statt einen Tag zu warten.
 
 ## [2.0.1] - 2026-11-08
