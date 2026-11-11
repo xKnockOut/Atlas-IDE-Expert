@@ -31,7 +31,6 @@ implementation
 uses
   Atlas.Core.Commands.Usage,
   Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Contracts.Tests,
   System.Types,
   Atlas.Core.Diagnostics.Guard,
@@ -270,7 +269,7 @@ begin
   mListener := TAtlasWelcomeListener.Create(CurrentPage) as IAtlasTaskListener;
   GRegistrations := [AScope.Provide(IAtlasTaskListener, mListener), AScope.Provide(IAtlasTestsListener, mListener),
     AScope.Provide(IAtlasCommandUsageListener, mListener),
-    AScope.Provide(IAtlasIssueWork, TAtlasWelcomeIssueWork.Create(CurrentPage) as IAtlasIssueWork)];
+    TAtlasWelcomeIssueWork.Provide(AScope, CurrentPage)];
 end;
 
 { TAtlasIdeWelcomeStartup }

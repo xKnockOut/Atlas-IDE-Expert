@@ -10,6 +10,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Modules.Contract,
   Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Welcome.ContinueIssues,
   Atlas.IDE.Welcome.Commands;
@@ -23,6 +24,9 @@ type
   public
     /// <summary>ACurrent: die laufende Seite, nil ohne.</summary>
     constructor Create(const ACurrent: TFunc<TAtlasIdeWelcome>);
+    /// <summary>Über AScope als IAtlasIssueWork bereitstellen.</summary>
+    class function Provide(const AScope: IAtlasModuleScope;
+      const ACurrent: TFunc<TAtlasIdeWelcome>): IAtlasRegistration; static;
     function Enabled: Boolean;
     procedure SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
     function HasState(const AProject, AKey: string): Boolean;
@@ -39,6 +43,12 @@ constructor TAtlasWelcomeIssueWork.Create(const ACurrent: TFunc<TAtlasIdeWelcome
 begin
   inherited Create;
   FCurrent := ACurrent;
+end;
+
+class function TAtlasWelcomeIssueWork.Provide(const AScope: IAtlasModuleScope;
+  const ACurrent: TFunc<TAtlasIdeWelcome>): IAtlasRegistration;
+begin
+  Result := AScope.Provide(IAtlasIssueWork, TAtlasWelcomeIssueWork.Create(ACurrent) as IAtlasIssueWork);
 end;
 
 function TAtlasWelcomeIssueWork.Issues: TAtlasIdeContinueIssues;

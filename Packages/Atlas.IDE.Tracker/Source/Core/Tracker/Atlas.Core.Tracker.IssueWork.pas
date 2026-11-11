@@ -41,6 +41,8 @@ type
   TAtlasTrackerIssueStates = class
   public const
     cGitHub = 'github';
+    /// <summary>Zustand eines geschlossenen GitHub-Issues ("closed", "closed (not planned)").</summary>
+    cGitHubClosed = 'closed';
   public
     /// <summary>Gilt AState als erledigt? GitHub: beginnt mit "closed"; sonst Zustand in AEndStates oder einer der
     /// üblichen englischen Namen (Fixed, Done, Closed, Resolved, Verified …), ohne Groß-/Kleinschreibung.</summary>
@@ -81,7 +83,7 @@ begin
   end;
   if SameText(Trim(AProvider), cGitHub) then
   begin
-    Exit(SameText(Copy(mState, 1, 6), 'closed'));
+    Exit(mState.ToLower.StartsWith(cGitHubClosed));
   end;
   for mName in AEndStates do
   begin

@@ -68,7 +68,6 @@ uses
   Atlas.Core.Tracker.IssueWork,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Tracker.IssueLookups,
-  Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Workflow;
 
 function IssueOf(const AActive: TAtlasActiveIssue; const ABranch: string): TAtlasIssueWorkIssue;

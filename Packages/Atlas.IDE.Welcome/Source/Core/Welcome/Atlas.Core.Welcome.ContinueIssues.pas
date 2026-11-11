@@ -104,8 +104,8 @@ type
     /// <summary>Kennungen in der Reihenfolge der Einträge.</summary>
     class function Keys(const AEntries: TAtlasIssueWorkEntries): TArray<string>; static;
     /// <summary>Kennungen aus AKeys, deren Zustand in AStates Resolved ist (gleiche Reihenfolge).</summary>
-    class function ResolvedKeys(const AKeys: TArray<string>; const AStates: TArray<TAtlasIssueStateKind>): TArray<string>;
-      static;
+    class function ResolvedKeys(const AKeys: TArray<string>;
+      const AStates: TArray<TAtlasIssueStateKind>): TArray<string>; static;
     /// <summary>Zeilen des Reiters „Issues“ zu AProjects (jedes Projekt einmal): nur mit Reitern, ohne behobene
     /// Issues (AStatus nil: alle unbekannt), neueste zuerst, höchstens ACount (auf MinCount..MaxCount begrenzt).
     /// </summary>

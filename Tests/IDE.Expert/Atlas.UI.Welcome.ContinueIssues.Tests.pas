@@ -210,7 +210,7 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     mFrame := TAtlasWelcomeContinueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.Width := 600;
+    mFrame.Width := mFrame.ScaleValue(600);
     mFrame.Source := mRecent;
     mFrame.IssuesSource := mIssues;
     Assert.AreEqual(2, Integer(mFrame.Tabs.Tabs.Count), 'ohne welcomePage.continue.issues bzw. Tracker kein Reiter');
@@ -254,7 +254,7 @@ begin
   try
     mFrame := TAtlasWelcomeContinueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.Width := 600;
+    mFrame.Width := mFrame.ScaleValue(600);
     mFrame.IssuesSource := mIssues;
     mFrame.Page := TAtlasWelcomeContinueFrame.cPageIssues;
     mView := mFrame.Issues;

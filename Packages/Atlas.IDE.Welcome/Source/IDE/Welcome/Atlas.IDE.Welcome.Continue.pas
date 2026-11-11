@@ -141,9 +141,8 @@ type
     FHeads: THeads;
     FIncoming: TIncomingState;
     FNotice: string;
-    // Reiter „Issues“ (#2052); FIssuesRef hält es am Leben.
-    FIssues: TAtlasIdeContinueIssues;
-    FIssuesRef: IInterface;
+    // Reiter „Issues“ (#2052); die Referenz hält es am Leben, auch solange Frames es noch kennen.
+    FIssues: IInterface;
     procedure Changed;
     function Enabled: Boolean;
     function Recording: Boolean;
@@ -170,7 +169,7 @@ type
     /// <summary>Palettenbefehl Atlas.Continue: obersten Arbeitsstand fortsetzen.</summary>
     procedure ResumeLatest;
     /// <summary>Arbeitsstand je Issue (#2052); bis zur Freigabe vorhanden.</summary>
-    property Issues: TAtlasIdeContinueIssues read FIssues;
+    function Issues: TAtlasIdeContinueIssues;
     { IAtlasContinueSource }
     function Entries: TAtlasContinueEntries;
     function Incoming: TAtlasContinueIncoming;
@@ -639,14 +638,17 @@ begin
   FHeads.Fresh := TDictionary<string, UInt64>.Create;
   FHeads.Querying := TDictionary<string, UInt64>.Create;
   FIssues := TAtlasIdeContinueIssues.Create(AMessage, FChanges, Changed);
-  FIssuesRef := FIssues as IInterface;
+end;
+
+function TAtlasIdeContinue.Issues: TAtlasIdeContinueIssues;
+begin
+  Result := FIssues as TAtlasIdeContinueIssues;
 end;
 
 destructor TAtlasIdeContinue.Destroy;
 begin
   Stop;
   FIssues := nil;
-  FIssuesRef := nil;
   FHeads.Querying.Free;
   FHeads.Fresh.Free;
   FHeads.States.Free;
@@ -672,7 +674,7 @@ begin
       // Schnellaktionen (#764): dieselbe Quelle für jeden Frame.
       Frame.QuickActions := Hooks.QuickActions;
       // Reiter „Issues“ (#2052).
-      Frame.IssuesSource := FIssues;
+      Frame.IssuesSource := Issues;
       Result := Frame;
     end);
   TAtlasWelcomeSections.Default.Add(Section);
@@ -720,7 +722,7 @@ begin
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
   FStopped := True;
-  FIssues.Stop;
+  Issues.Stop;
   Hooks.OnServerAccess := nil;
   if FNotifiers.Ide <> nil then
   begin
@@ -902,7 +904,7 @@ begin
       TAtlasWelcomeContinue.Write(ASummary, mState);
     end);
   // Derselbe Stand unter dem aktiven Issue (#2052), solange die Änderungen dieser Sitzung noch da sind.
-  FIssues.ProjectWritten(ATarget, ASnapshot);
+  Issues.ProjectWritten(ATarget, ASnapshot);
   FBatch.LastWrite := GetTickCount64;
   FBatch.At := 0;
   FBatch.Snapshot := Default(TAtlasContinueSnapshot);

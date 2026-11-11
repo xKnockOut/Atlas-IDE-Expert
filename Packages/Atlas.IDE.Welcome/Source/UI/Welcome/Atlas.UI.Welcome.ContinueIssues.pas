@@ -67,6 +67,10 @@ type
     cIndent = 8;
     cButtonHeight = 22;
     cButtonPadding = 10;
+    /// <summary>Rundung der Schaltfläche „Fortsetzen“.</summary>
+    cButtonRadius = 6;
+    /// <summary>Einzug der zweiten und dritten Zeile (unter dem Titel).</summary>
+    cDetailIndent = 32;
   private
     FFrame: TAtlasWelcomeSectionFrame;
     FSource: IAtlasContinueIssuesSource;
@@ -282,12 +286,14 @@ procedure TIssuesPainter.PaintButton(ARow: Integer);
 var
   mButton: TRect;
   mText: string;
+  mRadius: Integer;
 begin
   mButton := View.FButtonRects[ARow];
   PlainFont;
   Canvas.Pen.Color := Colors.Line;
   Canvas.Brush.Style := bsClear;
-  Canvas.RoundRect(mButton.Left, mButton.Top, mButton.Right, mButton.Bottom, Scaled(6), Scaled(6));
+  mRadius := Scaled(TAtlasContinueIssuesView.cButtonRadius);
+  Canvas.RoundRect(mButton.Left, mButton.Top, mButton.Right, mButton.Bottom, mRadius, mRadius);
   Canvas.Font.Color := Colors.Text;
   mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume);
   Canvas.TextOut(mButton.Left + (mButton.Width - Canvas.TextWidth(mText)) div 2,
@@ -315,7 +321,7 @@ begin
     PaintLine(Rect(mLeft, mTop + Scaled(2), mLimit, mTop + Scaled(2) + mLine), Colors.Text, mRow.Entry.Title);
   end;
   // Zweite und dritte Zeile eingerückt wie im Entwurf, bis vor „Fortsetzen“.
-  mLeft := 4 * Scaled(TAtlasContinueIssuesView.cIndent);
+  mLeft := Scaled(TAtlasContinueIssuesView.cDetailIndent);
   PaintLine(Rect(mLeft, mTop + Scaled(2) + mLine, mLimit, mTop + Scaled(2) + 2 * mLine), Colors.Muted,
     TAtlasContinueIssueTexts.DetailText(mRow, Stamp));
   mColor := Colors.Muted;
@@ -323,7 +329,7 @@ begin
   begin
     mColor := Colors.Warning;
   end;
-  PaintLine(Rect(mLeft, mTop + Scaled(2) + 2 * mLine, mLimit, mTop + Scaled(2) + 3 * mLine), mColor,
+  PaintLine(Rect(mLeft, mTop + Scaled(2) + 2 * mLine, mLimit, mTop + Scaled(2) + 2 * mLine + mLine), mColor,
     TAtlasContinueIssueTexts.BranchText(mRow));
   PaintButton(ARow);
 end;
@@ -337,7 +343,8 @@ begin
   if Length(View.FRows) = 0 then
   begin
     Canvas.Font.Color := Colors.Muted;
-    Canvas.TextOut(Scaled(TAtlasContinueIssuesView.cIndent), View.RowTop(0) + Scaled(4),
+    Canvas.TextOut(Scaled(TAtlasContinueIssuesView.cIndent),
+      View.RowTop(0) + Scaled(TAtlasContinueIssuesView.cIndent) div 2,
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeIssuesEmpty));
   end;
   View.LayoutButtons;
