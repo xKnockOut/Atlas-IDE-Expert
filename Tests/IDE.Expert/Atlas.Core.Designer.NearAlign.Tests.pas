@@ -113,20 +113,20 @@ begin
   mItems := Column(90, 90, 90);
   mItems[2].Bounds.Right := 289;
   mFindings := TAtlasNearAlign.Find(mItems, 3, True, nil);
-  Assert.AreEqual(1, Length(mFindings));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.IsTrue(FindingOf(mFindings, 2, TAtlasEdge.Right, mFinding));
   Assert.AreEqual(290, mFinding.Target);
 end;
 
 procedure TAtlasNearAlignTests.OutsideTolerance;
 begin
-  Assert.AreEqual(0, Length(TAtlasNearAlign.Find(Column(90, 94, 90), 3, True, nil)));
-  Assert.AreEqual(2, Length(TAtlasNearAlign.Find(Column(90, 94, 90), 4, True, nil)));
+  Assert.AreEqual(0, Integer(Length(TAtlasNearAlign.Find(Column(90, 94, 90), 3, True, nil))));
+  Assert.AreEqual(2, Integer(Length(TAtlasNearAlign.Find(Column(90, 94, 90), 4, True, nil))));
 end;
 
 procedure TAtlasNearAlignTests.ExactIsNotReported;
 begin
-  Assert.AreEqual(0, Length(TAtlasNearAlign.Find(Column(90, 90, 90), 3, True, nil)));
+  Assert.AreEqual(0, Integer(Length(TAtlasNearAlign.Find(Column(90, 90, 90), 3, True, nil))));
 end;
 
 procedure TAtlasNearAlignTests.TieTakesOlder;
@@ -143,8 +143,8 @@ end;
 
 procedure TAtlasNearAlignTests.FarApartIgnored;
 begin
-  Assert.AreEqual(0, Length(TAtlasNearAlign.Find([Item('a', 90, 10, 100, 21), Item('b', 92, 400, 98, 21)], 3,
-    True, nil)));
+  Assert.AreEqual(0, Integer(Length(TAtlasNearAlign.Find([Item('a', 90, 10, 100, 21), Item('b', 92, 400, 98, 21)], 3,
+    True, nil))));
 end;
 
 procedure TAtlasNearAlignTests.TopAndBottomInRow;
@@ -159,7 +159,7 @@ begin
   Assert.AreEqual(-1, mFinding.Offset);
   Assert.IsTrue(FindingOf(mFindings, 1, TAtlasEdge.Bottom, mFinding));
   Assert.AreEqual(125, mFinding.Target);
-  Assert.AreEqual(2, Length(mFindings));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
 end;
 
 procedure TAtlasNearAlignTests.BaselineOnlyWhenOn;
@@ -170,7 +170,7 @@ begin
   // Label und Edit nebeneinander: Ober- und Unterkanten weit auseinander, Grundlinie 1 daneben.
   mItems := [TAtlasAlignItem.Create('lblName', Bounds(10, 15, 40, 11), 25, False),
     TAtlasAlignItem.Create('edtName', Bounds(60, 10, 100, 21), 26, False)];
-  Assert.AreEqual(0, Length(TAtlasNearAlign.Find(mItems, 3, False, nil)));
+  Assert.AreEqual(0, Integer(Length(TAtlasNearAlign.Find(mItems, 3, False, nil))));
   Assert.IsTrue(FindingOf(TAtlasNearAlign.Find(mItems, 3, True, nil), 1, TAtlasEdge.Baseline, mFinding));
   Assert.AreEqual(25, mFinding.Target);
 end;
@@ -180,9 +180,9 @@ var
   mItems: TArray<TAtlasAlignItem>;
 begin
   mItems := Column(90, 92, 90);
-  Assert.AreEqual(0, Length(TAtlasNearAlign.Find(mItems, 3, True, ['EDTFAX.left', 'edtFax.right'])));
+  Assert.AreEqual(0, Integer(Length(TAtlasNearAlign.Find(mItems, 3, True, ['EDTFAX.left', 'edtFax.right']))));
   mItems[1].Skip := True;
-  Assert.AreEqual(0, Length(TAtlasNearAlign.Find(mItems, 3, True, nil)));
+  Assert.AreEqual(0, Integer(Length(TAtlasNearAlign.Find(mItems, 3, True, nil))));
   Assert.AreEqual('edtFax.left', TAtlasNearAlign.KeyOf('edtFax', TAtlasEdge.Left));
 end;
 
@@ -223,13 +223,13 @@ begin
   try
     mExceptions.Add('Form1.dfm', ['edtFax.left', 'edtFax.left', 'btnOk.top']);
     Assert.IsTrue(mExceptions.Changed);
-    Assert.AreEqual(2, Length(mExceptions.Keys('FORM1.DFM')));
+    Assert.AreEqual(2, Integer(Length(mExceptions.Keys('FORM1.DFM'))));
     Assert.IsTrue(mLoaded.LoadJson(mExceptions.ToJson));
-    Assert.AreEqual(2, Length(mLoaded.Keys('form1.dfm')));
+    Assert.AreEqual(2, Integer(Length(mLoaded.Keys('form1.dfm'))));
     Assert.AreEqual('btnOk.top', mLoaded.Keys('Form1.dfm')[1]);
     Assert.IsFalse(mLoaded.Changed);
     Assert.IsFalse(mLoaded.LoadJson('kein json'));
-    Assert.AreEqual(0, Length(mLoaded.Keys('Form1.dfm')));
+    Assert.AreEqual(0, Integer(Length(mLoaded.Keys('Form1.dfm'))));
   finally
     mLoaded.Free;
     mExceptions.Free;
@@ -246,7 +246,7 @@ begin
     mExceptions.Changed := False;
     Assert.AreEqual(2, mExceptions.RemoveNames('Form1.dfm', ['edtFax']));
     Assert.IsTrue(mExceptions.Changed);
-    Assert.AreEqual(2, Length(mExceptions.Keys('Form1.dfm')));
+    Assert.AreEqual(2, Integer(Length(mExceptions.Keys('Form1.dfm'))));
     Assert.AreEqual(0, mExceptions.RemoveNames('Form2.dfm', ['edtFax']));
   finally
     mExceptions.Free;

@@ -77,7 +77,7 @@ begin
   Assert.AreEqual(230, mResult.Bounds[0].Bottom, 'Memo mit akTop+akBottom 30 länger');
   Assert.AreEqual(8, mResult.Bounds[0].Top);
   Assert.AreEqual(50, mResult.Bounds[1].Top, 'Label bleibt');
-  Assert.AreEqual(1, Length(mResult.Untouched));
+  Assert.AreEqual(1, Integer(Length(mResult.Untouched)));
   Assert.AreEqual(1, mResult.Untouched[0], 'und wird genannt');
   Assert.AreEqual(0, mResult.Grow, 'ohne growParent');
 end;

@@ -67,7 +67,8 @@ const
     ' rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay sil' +
     'ent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (even' +
     't handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation a' +
-    'nd the declaration and splits parameter groups when needed. References as method pointers in other units are not visible to the rule; the compiler reports them after the fix.",',
+    'nd the declaration and splits parameter groups when needed. With the project files (IDE, MCP) a use as a value in units that use this unit counts too, such as an assignment to a TFunc<string, …> whose' +
+    ' parameter has no const; without them (command line without project) the compiler reports such references after the fix.",',
     '      "bad": "function Formatieren(Text: string; Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",',
     '      "good": "function Formatieren(const Text: string; const Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",',
     '      "options": [',

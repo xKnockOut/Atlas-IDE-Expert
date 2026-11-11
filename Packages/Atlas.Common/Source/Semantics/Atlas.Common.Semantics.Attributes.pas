@@ -53,7 +53,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -196,11 +197,6 @@ end;
 const
   /// <summary>Tiefe für Ketten wie [A] [B] [C] am Zeilenanfang.</summary>
   cMaxChainedBrackets = 16;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

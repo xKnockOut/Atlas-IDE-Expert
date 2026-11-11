@@ -54,6 +54,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived;
 
 function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
@@ -168,7 +169,7 @@ begin
   begin
     Exit(True);
   end;
-  mUse := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
+  mUse := TokenFrom(FTokens, ANode.StartOffset);
   Result := TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, mUse),
     TConditionalBranches.PathAt(FPaths, TokenAtPosition(ASymbol.Range.StartPos)));
 end;

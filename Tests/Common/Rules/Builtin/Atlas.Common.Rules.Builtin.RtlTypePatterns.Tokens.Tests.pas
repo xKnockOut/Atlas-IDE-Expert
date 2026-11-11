@@ -32,6 +32,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens;
 
 { TRtlTypePatternTokensTests }
@@ -42,8 +43,8 @@ var
 begin
   // F ( A [ 1 ] , ( B ) )
   mTokens := TPascalLexer.Tokenize('F(A[1], (B))');
-  Assert.AreEqual(5, Closing(mTokens, 3));
-  Assert.AreEqual(10, Closing(mTokens, 1));
+  Assert.AreEqual(5, MatchingParen(mTokens, 3));
+  Assert.AreEqual(10, MatchingParen(mTokens, 1));
 end;
 
 procedure TRtlTypePatternTokensTests.ClosingWithoutMatchIsMinusOne;
@@ -51,7 +52,7 @@ var
   mTokens: TTokens;
 begin
   mTokens := TPascalLexer.Tokenize('F(A');
-  Assert.AreEqual(-1, Closing(mTokens, 1));
+  Assert.AreEqual(-1, MatchingParen(mTokens, 1));
 end;
 
 procedure TRtlTypePatternTokensTests.ArgumentCountCountsTopLevelCommas;
@@ -59,9 +60,9 @@ var
   mTokens: TTokens;
 begin
   mTokens := TPascalLexer.Tokenize('F(A, G(B, C), D[1, 2])');
-  Assert.AreEqual(3, ArgumentCount(mTokens, 1, Closing(mTokens, 1)));
+  Assert.AreEqual(3, ArgumentCount(mTokens, 1, MatchingParen(mTokens, 1)));
   mTokens := TPascalLexer.Tokenize('F( { leer } )');
-  Assert.AreEqual(0, ArgumentCount(mTokens, 1, Closing(mTokens, 1)));
+  Assert.AreEqual(0, ArgumentCount(mTokens, 1, MatchingParen(mTokens, 1)));
 end;
 
 procedure TRtlTypePatternTokensTests.PlainIdentifierIsNoChainOrCall;
