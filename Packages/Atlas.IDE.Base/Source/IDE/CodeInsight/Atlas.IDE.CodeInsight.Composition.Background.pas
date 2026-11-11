@@ -23,6 +23,10 @@ function UnitRenameStarted: Boolean;
 procedure StartRuleChecksNotice;
 procedure StopRuleChecksNotice;
 function RuleChecksNoticeStarted: Boolean;
+/// <summary>Einmaliger Hinweis ohne Kommandozeilen-Compiler (#1822).</summary>
+procedure StartEditionNotice;
+procedure StopEditionNotice;
+function EditionNoticeStarted: Boolean;
 /// <summary>Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).</summary>
 procedure StartDirtyExport;
 procedure StopDirtyExport;
@@ -42,6 +46,8 @@ uses
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.RuleChecksNotice,
+  Atlas.IDE.Settings.Options,
+  Atlas.IDE.Diagnostics.Edition,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Build;
@@ -57,6 +63,7 @@ var
   Forms: TAtlasIdeForms;
   UnitRename: TAtlasIdeUnitRename;
   RuleChecksNotice: TAtlasIdeRuleChecksNotice;
+  EditionNotice: TAtlasIdeEditionNotice;
   DirtyExport: TAtlasDirtyExport;
 
 /// <summary>Hänger (#501) ins Protokoll und ab cHangHintMs als Zeile ins Meldungsfenster, nie als Dialog und ohne
@@ -203,6 +210,25 @@ end;
 function RuleChecksNoticeStarted: Boolean;
 begin
   Result := RuleChecksNotice <> nil;
+end;
+
+procedure StartEditionNotice;
+begin
+  EditionNotice := TAtlasIdeEditionNotice.Create(
+    procedure
+    begin
+      TAtlasOptionsRegistration.ShowSetting('DiagnosticsEditionCheck');
+    end);
+end;
+
+procedure StopEditionNotice;
+begin
+  FreeAndNil(EditionNotice);
+end;
+
+function EditionNoticeStarted: Boolean;
+begin
+  Result := EditionNotice <> nil;
 end;
 
 procedure StartDirtyExport;

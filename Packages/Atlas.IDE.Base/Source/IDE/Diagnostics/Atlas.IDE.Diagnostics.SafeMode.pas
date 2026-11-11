@@ -108,7 +108,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Diagnostics.Edition;
 
 const
   // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).
@@ -346,9 +347,9 @@ begin
   FMarker.Features := EnabledFeatures;
   FStarted := True;
   WriteMarker;
-  TAtlasGuard.Log(Format('Atlas gestartet (%s), Stufe %s, Grund %s%s', [TAtlasPluginVersion.cVersion,
+  TAtlasGuard.Log(Format('Atlas gestartet (%s), Stufe %s, Grund %s%s%s', [TAtlasPluginVersion.cVersion,
     GetEnumName(TypeInfo(TAtlasSafeLevel), Ord(FLevel)),
-    GetEnumName(TypeInfo(TAtlasSafeReason), Ord(FDecision.Reason)), NoBookNote(FBook)]));
+    GetEnumName(TypeInfo(TAtlasSafeReason), Ord(FDecision.Reason)), NoBookNote(FBook), TAtlasIdeEdition.LogNote]));
   if FLevel = TAtlasSafeLevel.Normal then
   begin
     Exit;

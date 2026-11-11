@@ -1019,6 +1019,9 @@ type
     property PaletteSettingsPrefix: Boolean read FGeneral.PaletteSettingsPrefix write FGeneral.PaletteSettingsPrefix;
     property HelpEnabled: Boolean read FGeneral.HelpEnabled write FGeneral.HelpEnabled;
     property HelpSource: string read FGeneral.HelpSource write FGeneral.HelpSource;
+    property DiagnosticsEditionCheck: Boolean read FGeneral.DiagnosticsEditionCheck
+      write FGeneral.DiagnosticsEditionCheck;
+    property EditionNoticeShown: Boolean read FGeneral.EditionNoticeShown write FGeneral.EditionNoticeShown;
     property SettingsBackupBeforeImport: Boolean read FGeneral.SettingsBackupBeforeImport
       write FGeneral.SettingsBackupBeforeImport;
     property SettingsExportSecrets: string read FGeneral.SettingsExportSecrets write FGeneral.SettingsExportSecrets;
