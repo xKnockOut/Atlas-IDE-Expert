@@ -3,9 +3,6 @@
   "findings": [
     {"path": "Source/Core/Rules/Atlas.Core.Rules.Table.pas", "rule": "magic-number", "fingerprint": "e97d99c7", "count": 1, "routine": "NumberListJson", "context": "6a6784bb"},
     {"path": "Source/Core/Rules/Atlas.Core.Rules.Table.pas", "rule": "string-if-chain", "fingerprint": "2863d8ee", "count": 1, "routine": "TAtlasRuleTable.OptionJson", "context": "33fb62da"},
-    {"path": "Source/IDE/Rules/Atlas.IDE.Rules.Maintenance.pas", "rule": "hardcoded-string", "fingerprint": "7a055654", "count": 1, "routine": "TAtlasIdeRulesMaintenance.Suppressions", "context": "57eb4187"},
-    {"path": "Source/IDE/Rules/Atlas.IDE.Rules.Maintenance.pas", "rule": "hardcoded-string", "fingerprint": "b00e1aea", "count": 1, "routine": "TAtlasIdeRulesMaintenance.Suppressions", "context": "0aea2e4a"},
-    {"path": "Source/IDE/Rules/Atlas.IDE.Rules.Maintenance.pas", "rule": "hardcoded-string", "fingerprint": "10a3ef97", "count": 2, "routine": "TAtlasIdeRulesMaintenance.UpdateBaseline", "context": "ddf48b7f"},
     {"path": "Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas", "rule": "magic-number", "fingerprint": "487497fa", "count": 1, "routine": "TAtlasBulkFixDialog.CreateButtons", "context": "1da5bf17"},
     {"path": "Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas", "rule": "magic-number", "fingerprint": "64ccb8e8", "count": 1, "routine": "TAtlasBulkFixDialog.CreateButtons", "context": "718ea0b0"},
     {"path": "Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas", "rule": "magic-number", "fingerprint": "77b92e20", "count": 1, "routine": "TAtlasBulkFixDialog.CreateButtons", "context": "1e6669bc"},
