@@ -4407,6 +4407,19 @@
       "x-captionEn": "Navigation history",
       "x-issue": "#504"
     },
+    "MouseNavButtons": {
+      "description": "Zurück- und Vor-Taste der Maus (Daumentasten) blättern im Code-Editor, im Formular-Designer und in den übrigen IDE-Fenstern wie Alt+← und Alt+→ durch den Navigationsverlauf. In Atlas-Fenstern mit eigenem Verlauf (Issue-Vorschau) blättern sie zuerst dort. Am Anfang bzw. Ende des Verlaufs geschieht nichts.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "navigation.mouseButtons",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "navHistory.enabled",
+      "x-node": "",
+      "x-caption": "Maustasten Zurück/Vor",
+      "x-captionEn": "Mouse back/forward buttons",
+      "x-issue": "#1889"
+    },
     "NavBackKey": {
       "description": "Tastenkürzel „Zurück“ im Navigationsverlauf (0 = keins). Ersetzt mit Vorrang das Zurück der IDE, dessen Sprünge der Verlauf mitführt.",
       "type": "integer",

@@ -1305,6 +1305,8 @@ uses
   Atlas.Core.Outline.Interfaces.Tests in 'IDE.Expert\Atlas.Core.Outline.Interfaces.Tests.pas',
   Atlas.Core.Editor.CrumbCard in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CrumbCard.pas',
   Atlas.Core.Editor.CrumbCard.Tests in 'IDE.Expert\Atlas.Core.Editor.CrumbCard.Tests.pas',
+  Atlas.Core.Editor.MouseButtons in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MouseButtons.pas',
+  Atlas.Core.Editor.MouseButtons.Tests in 'IDE.Expert\Atlas.Core.Editor.MouseButtons.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',

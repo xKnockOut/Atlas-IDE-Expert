@@ -54,7 +54,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Hotspots, call diagram, unit relations** and the path between two symbols
 
 ### [Navigating](docs/features/en/Navigating.md)
-- **Go to** definition, implementation and counterpart; navigation history
+- **Go to** definition, implementation and counterpart; navigation history (also with the mouse back/forward buttons)
 - **Breadcrumb bar, editor toolbar and Atlas status bar** above and below the editor; the breadcrumbs also show the visibility section (`private`, `public` …) and the block (`const`, `type`, `class var`) inside a class, with member counts, “New line at the end of …” and “Create section” in the section menu, a context menu on every part (copy name, with unit or signature, find references, rename, show the component in the designer), a counter for overloads (`Load (2/3)`) with a menu of all overloads and their parameters, the interface mark (`Save [ICustomer]`) on methods that implement an interface method, with a jump to its declaration, a metrics card when hovering methods and types (lines, complexity, nesting, parameters; yellow above the limit, Ctrl+I), the visibility mark (`−`, `#`, `+`, `◆`) of the method in its body, the declaration block of the unit (`type`, `const`, `var`, `resourcestring` …) the conditional branch (`{$IFDEF …}`) the region (`{$REGION}`) and, optionally, `try`/`except`/`finally` and the `case` branch in the body; the editor toolbar's “Go to uses clause” switches between the interface and implementation uses
 - **Quick open** (Ctrl+P), unit search (Ctrl+F12) and a search bar with replace across files
 - **Results window** for references, callers and implementations, plus impact and data flow
