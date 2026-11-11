@@ -351,7 +351,7 @@ procedure TAtlasVisibilitySectionsTests.PathWithoutSettingIsUnchanged;
 var
   mCrumbs: TAtlasCrumbs;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 7, 6, '', False);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 7, 6, '', False, []);
   Assert.AreEqual('TKunde › FName', Joined(mCrumbs));
   Assert.IsFalse(TAtlasBreadcrumbs.HasMenu(Default(TAtlasCrumb)));
 end;
