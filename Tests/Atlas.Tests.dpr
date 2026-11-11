@@ -1615,6 +1615,8 @@ uses
   Atlas.Core.Designer.InsertSpace.Tests in 'IDE.Expert\Atlas.Core.Designer.InsertSpace.Tests.pas',
   Atlas.Core.Designer.FitContainer in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitContainer.pas',
   Atlas.Core.Designer.FitContainer.Tests in 'IDE.Expert\Atlas.Core.Designer.FitContainer.Tests.pas',
+  Atlas.Core.Designer.NearAlign in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.NearAlign.pas',
+  Atlas.Core.Designer.NearAlign.Tests in 'IDE.Expert\Atlas.Core.Designer.NearAlign.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

@@ -5177,6 +5177,51 @@
       "x-node": "editor.designerBar",
       "x-issue": "#742"
     },
+    "DesignerNearAlignment": {
+      "description": "Befehle unter „Fast bündige Kanten“ im Menü „Anordnen“ der Designer-Leiste: zeigt Kanten und Textgrundlinien, die wenige Pixel neben der Flucht ihrer Nachbarn liegen, gleicht sie an und merkt Ausnahmen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
+    "DesignerNearAlignmentTolerance": {
+      "description": "Höchster Versatz in Pixeln, der als fast bündig gilt; 0 Pixel ist bündig, mehr als die Toleranz gilt als gewollt.",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 10,
+      "x-key": "designer.nearAlignment.tolerance",
+      "x-parent": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
+    "DesignerNearAlignmentBaseline": {
+      "description": "Auch die Textgrundlinien von Beschriftungen, Eingabefeldern und Knöpfen vergleichen (aus der Schrift genähert).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nearAlignment.baseline",
+      "x-parent": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
+    "DesignerNearAlignmentIgnoreClasses": {
+      "description": "Klassen, die nie verglichen werden, durch Komma getrennt (zum Beispiel TBevel,TShape); Steuerelemente mit Align werden immer übergangen.",
+      "type": "string",
+      "default": "TBevel,TShape",
+      "x-key": "designer.nearAlignment.ignoreClasses",
+      "x-parent": "designer.nearAlignment",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#746"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

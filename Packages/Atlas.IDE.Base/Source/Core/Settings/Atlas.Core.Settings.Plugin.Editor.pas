@@ -82,6 +82,7 @@ const
   cButtonBarRightTop = 'rightTop';
   cButtonBarRightBottom = 'rightBottom';
   cMaxButtonBarSpace = 100;
+  cMaxNearTolerance = 10;
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -558,6 +559,14 @@ type
     DesignerFitContainerPadding: Integer;
     /// <summary>Kinder nach links oben rücken (#742, designer.fitContainer.alignTopLeft).</summary>
     DesignerFitContainerAlignTopLeft: Boolean;
+    /// <summary>Fast bündige Kanten (#746, designer.nearAlignment).</summary>
+    DesignerNearAlignment: Boolean;
+    /// <summary>Höchster Versatz in Pixeln, der als fast bündig gilt (#746, designer.nearAlignment.tolerance).</summary>
+    DesignerNearAlignmentTolerance: Integer;
+    /// <summary>Auch Textgrundlinien vergleichen (#746, designer.nearAlignment.baseline).</summary>
+    DesignerNearAlignmentBaseline: Boolean;
+    /// <summary>Klassen, die nicht verglichen werden (#746, designer.nearAlignment.ignoreClasses).</summary>
+    DesignerNearAlignmentIgnoreClasses: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1117,6 +1126,10 @@ begin
   DesignerFitContainer := True;
   DesignerFitContainerPadding := 8;
   DesignerFitContainerAlignTopLeft := False;
+  DesignerNearAlignment := True;
+  DesignerNearAlignmentTolerance := 3;
+  DesignerNearAlignmentBaseline := True;
+  DesignerNearAlignmentIgnoreClasses := 'TBevel,TShape';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1140,6 +1153,10 @@ begin
   AIo.Flag('DesignerFitContainer', DesignerFitContainer);
   AIo.Number('DesignerFitContainerPadding', DesignerFitContainerPadding);
   AIo.Flag('DesignerFitContainerAlignTopLeft', DesignerFitContainerAlignTopLeft);
+  AIo.Flag('DesignerNearAlignment', DesignerNearAlignment);
+  AIo.Number('DesignerNearAlignmentTolerance', DesignerNearAlignmentTolerance);
+  AIo.Flag('DesignerNearAlignmentBaseline', DesignerNearAlignmentBaseline);
+  AIo.Text('DesignerNearAlignmentIgnoreClasses', DesignerNearAlignmentIgnoreClasses);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1167,6 +1184,7 @@ begin
   DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
   DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
   DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
+  DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);

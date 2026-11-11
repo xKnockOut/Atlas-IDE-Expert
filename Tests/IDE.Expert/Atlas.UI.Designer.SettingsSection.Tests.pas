@@ -40,6 +40,8 @@ type
     procedure InsertSpaceRoundTrip;
     [Test]
     procedure FitContainerRoundTrip;
+    [Test]
+    procedure NearAlignmentRoundTrip;
   end;
 
 implementation
@@ -295,6 +297,33 @@ begin
     Assert.IsFalse(mSaved.DesignerFitContainer, 'abschaltbar');
     Assert.AreEqual(12, mSaved.DesignerFitContainerPadding);
     Assert.IsTrue(mSaved.DesignerFitContainerAlignTopLeft);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.NearAlignmentRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerNearAlignment').Checked, 'Vorgabe an');
+    Assert.AreEqual('3', EditOf(mPage, 'DesignerNearAlignmentTolerance').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerNearAlignmentBaseline').Checked);
+    Assert.AreEqual('TBevel,TShape', EditOf(mPage, 'DesignerNearAlignmentIgnoreClasses').Text);
+    CheckOf(mPage, 'DesignerNearAlignment').Checked := False;
+    EditOf(mPage, 'DesignerNearAlignmentTolerance').Text := '5';
+    CheckOf(mPage, 'DesignerNearAlignmentBaseline').Checked := False;
+    EditOf(mPage, 'DesignerNearAlignmentIgnoreClasses').Text := 'TImage';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerNearAlignment, 'abschaltbar');
+    Assert.AreEqual(5, mSaved.DesignerNearAlignmentTolerance);
+    Assert.IsFalse(mSaved.DesignerNearAlignmentBaseline);
+    Assert.AreEqual('TImage', mSaved.DesignerNearAlignmentIgnoreClasses);
   finally
     mPage.Free;
   end;

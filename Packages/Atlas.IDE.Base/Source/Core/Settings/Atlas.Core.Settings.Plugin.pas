@@ -662,6 +662,14 @@ type
       write FEditorView.DesignerFitContainerPadding;
     property DesignerFitContainerAlignTopLeft: Boolean read FEditorView.DesignerFitContainerAlignTopLeft
       write FEditorView.DesignerFitContainerAlignTopLeft;
+    property DesignerNearAlignment: Boolean read FEditorView.DesignerNearAlignment
+      write FEditorView.DesignerNearAlignment;
+    property DesignerNearAlignmentTolerance: Integer read FEditorView.DesignerNearAlignmentTolerance
+      write FEditorView.DesignerNearAlignmentTolerance;
+    property DesignerNearAlignmentBaseline: Boolean read FEditorView.DesignerNearAlignmentBaseline
+      write FEditorView.DesignerNearAlignmentBaseline;
+    property DesignerNearAlignmentIgnoreClasses: string read FEditorView.DesignerNearAlignmentIgnoreClasses
+      write FEditorView.DesignerNearAlignmentIgnoreClasses;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
