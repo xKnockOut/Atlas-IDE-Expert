@@ -291,6 +291,11 @@ begin
       // Linke Kante mit zwei bündigen Balken.
       Result := [Stroke([P(2, 2), P(2, 14)]), Outline([P(5, 4), P(13, 4), P(13, 7), P(5, 7)]),
         Outline([P(5, 9), P(10, 9), P(10, 12), P(5, 12)])];
+    TAtlasToolbarIcon.SelectSimilar:
+      // Drei gleiche Kästchen, das erste gewählt (gefüllt).
+      Result := [Shape([P(1.5, 6), P(5, 6), P(5, 9.5), P(1.5, 9.5)], True, True),
+        Outline([P(6.25, 6), P(9.75, 6), P(9.75, 9.5), P(6.25, 9.5)]),
+        Outline([P(11, 6), P(14.5, 6), P(14.5, 9.5), P(11, 9.5)])];
   else
     Result := nil;
   end;

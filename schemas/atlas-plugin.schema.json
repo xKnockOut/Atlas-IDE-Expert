@@ -4833,6 +4833,92 @@
       "x-experimental": true,
       "x-issue": "#1442"
     },
+    "DesignerSelectSimilar": {
+      "description": "Knopf „Gleiche auswählen“ in der Designer-Leiste: Menü, das alle Komponenten auswählt, die der zuerst gewählten in einer Hinsicht gleichen: gleiche Klasse, Klasse samt Nachfahren, gleiches Elternelement, Kinder bzw. alle Nachkommen eines Containers, gleicher gespeicherter Eigenschaftswert, gleicher Ereignis-Handler, Auswahl umkehren. Jeder Eintrag nennt die Trefferzahl; mit Umschalt ergänzt das Ergebnis die Auswahl. Ändert nur die Auswahl, nicht die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectSimilar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectDescendants": {
+      "description": "Im Menü „Gleiche auswählen“ den Eintrag „Gleiche Klasse und Nachfahren“ zeigen: bei einer Komponente ihre Klasse samt abgeleiteter Klassen, bei mehreren ab der nächsten gemeinsamen Basisklasse.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectSimilar.includeDescendants",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectSimilar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectScope": {
+      "description": "Bereich für „Gleiche auswählen“: das ganze Formular bzw. der Frame (form) oder nur das Elternelement der zuerst gewählten Komponente (parent). Kinder eines Containers liegen immer in ihm.",
+      "type": "string",
+      "enum": [
+        "form",
+        "parent"
+      ],
+      "default": "form",
+      "x-key": "designer.selectSimilar.scope",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectSimilar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectionSets": {
+      "description": "Auswahlsätze im Designer: die aktuelle Auswahl unter einem Namen je Formular speichern und per Klick oder Taste wiederherstellen. Die Sätze stehen im Menü „Gleiche auswählen“ der Designer-Leiste (Klick stellt her, Umschalt+Klick fügt hinzu, Strg+Klick entfernt) und überstehen Umbenennen und Löschen von Komponenten. Die .dfm bleibt unverändert. Aus = kein Menü, keine Tasten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectionSets",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSelectionSetsShortcuts": {
+      "description": "Die ersten neun Auswahlsätze mit Strg+Umschalt+1…9 wiederherstellen, solange der Formular-Designer den Fokus hat; die Reihenfolge der Liste bestimmt die Ziffer. Aus = nur über das Menü.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectionSets.shortcuts",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionSets",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSelectionSetsStorage": {
+      "description": "Ablage der Auswahlsätze: lokal für diesen Rechner in %LOCALAPPDATA%\\Atlas\\designer-selection-sets.json (local) oder gemeinsam im Team in .atlas-selection-sets.json im Ordner des Formulars, für die Versionsverwaltung (shared).",
+      "type": "string",
+      "enum": [
+        "local",
+        "shared"
+      ],
+      "default": "local",
+      "x-key": "designer.selectionSets.storage",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionSets",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
+    "DesignerSelectionSetsSaveKey": {
+      "description": "Taste für „Auswahl speichern …“; wirkt nur, solange der Formular-Designer den Fokus hat, und ersetzt dort „Alles speichern“ der IDE. 0 = keine Taste (nur das Menü). Vorgabe Strg+Umschalt+S.",
+      "type": "integer",
+      "default": 24659,
+      "x-key": "designer.selectionSets.saveKey",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.selectionSets",
+      "x-node": "editor.designerBar",
+      "x-issue": "#739"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
