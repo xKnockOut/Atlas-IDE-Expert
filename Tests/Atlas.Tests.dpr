@@ -1607,6 +1607,8 @@ uses
   Atlas.Core.Designer.ButtonBar.Tests in 'IDE.Expert\Atlas.Core.Designer.ButtonBar.Tests.pas',
   Atlas.Core.Designer.DuplicateRow in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas',
   Atlas.Core.Designer.DuplicateRow.Tests in 'IDE.Expert\Atlas.Core.Designer.DuplicateRow.Tests.pas',
+  Atlas.Core.Designer.InsertSpace in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.InsertSpace.pas',
+  Atlas.Core.Designer.InsertSpace.Tests in 'IDE.Expert\Atlas.Core.Designer.InsertSpace.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

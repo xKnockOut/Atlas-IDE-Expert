@@ -49,7 +49,10 @@ type
     DesignerDuplicateShare, DesignerDuplicateDataField, DesignerDuplicatePush, DesignerDuplicateOk,
     DesignerDuplicateCancel, DesignerDuplicatePreview, DesignerDuplicateBad, DesignerDuplicateNoSelection,
     DesignerDuplicateDone, DesignerDuplicateUndone, SettingsDesignerDuplicateRow, SettingsDesignerDuplicateShare,
-    SettingsDesignerDuplicateGap);
+    SettingsDesignerDuplicateGap, DesignerSpaceInsertCmd, DesignerSpaceRemoveCmd, DesignerSpaceUndoCmd,
+    DesignerSpaceInsertTitle, DesignerSpaceRemoveTitle, DesignerSpaceRows, DesignerSpaceColumns, DesignerSpaceAmount,
+    DesignerSpaceSnap, DesignerSpaceOk, DesignerSpaceNoSelection, DesignerSpaceDone, DesignerSpaceNothing,
+    DesignerSpaceUntouched, DesignerSpaceUndone, SettingsDesignerInsertSpace, SettingsDesignerInsertSpaceGrow);
 
   TAtlasDesignerStrings = class
   public
@@ -215,7 +218,24 @@ const
      '%d Kopien entfernt.',
      'Befehl „In Reihe duplizieren …“',
      'Ereignis-Handler der Kopien teilen (Vorgabe)',
-     'Abstand ohne erkannten Nachbarn (px)'),
+     'Abstand ohne erkannten Nachbarn (px)',
+     'Platz einfügen …',
+     'Platz entfernen …',
+     'Platz rückgängig',
+     'Platz einfügen',
+     'Platz entfernen',
+     'Zeilen: an der Oberkante der Auswahl',
+     'Spalten: an der linken Kante der Auswahl',
+     'Betrag (px):',
+     'Am Raster des Designers einrasten',
+     'OK',
+     'Keine markierten Steuerelemente: Die Linie liegt an der Kante der Auswahl.',
+     'Platz geändert um %d px in %s.',
+     'Kein Platz zu entfernen: Das nächste Steuerelement liegt direkt an der Linie.',
+     'Nicht verlängert (ohne beide Anker): %s',
+     'Platz zurückgenommen.',
+     'Befehle „Platz einfügen …“ und „Platz entfernen …“',
+     'Parent und Formular mitwachsen und mitschrumpfen lassen'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -362,7 +382,24 @@ const
      '%d copies removed.',
      '“Duplicate in row …” command',
      'Share event handlers of the copies (default)',
-     'Gap without a detected neighbour (px)'));
+     'Gap without a detected neighbour (px)',
+     'Insert space …',
+     'Remove space …',
+     'Undo space',
+     'Insert Space',
+     'Remove Space',
+     'Rows: at the top edge of the selection',
+     'Columns: at the left edge of the selection',
+     'Amount (px):',
+     'Snap to the designer grid',
+     'OK',
+     'No selected controls: the line lies at the edge of the selection.',
+     'Space changed by %d px in %s.',
+     'No space to remove: the next control touches the line.',
+     'Not stretched (without both anchors): %s',
+     'Space change undone.',
+     '“Insert space …” and “Remove space …” commands',
+     'Let parent and form grow and shrink along'));
 
 { TAtlasDesignerStrings }
 

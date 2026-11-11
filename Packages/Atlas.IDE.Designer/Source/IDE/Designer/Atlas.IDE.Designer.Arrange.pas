@@ -7,6 +7,8 @@
 // - Knopfleiste anordnen (#732, designer.buttonBar, TAtlasIdeButtonBar).
 // - In Reihe duplizieren … und dessen Rückgängig (#736, designer.duplicateRow,
 //   TAtlasIdeDuplicateRow).
+// - Platz einfügen …, Platz entfernen … und dessen Rückgängig (#740,
+//   designer.insertSpace, TAtlasIdeInsertSpace).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -16,7 +18,8 @@ uses
   System.Types,
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Designer.DuplicateRow;
+  Atlas.IDE.Designer.DuplicateRow,
+  Atlas.IDE.Designer.InsertSpace;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -24,6 +27,7 @@ type
     FMenu: TPopupMenu;
     FOnMessage: TProc<string>;
     FDuplicate: TAtlasIdeDuplicateRow;
+    FSpace: TAtlasIdeInsertSpace;
     procedure AddItem(const ACaption: string; ATag: Integer; AEnabled: Boolean);
     procedure ItemClick(Sender: TObject);
   public
@@ -54,6 +58,9 @@ const
   cButtonBar = 2;
   cDuplicate = 3;
   cDuplicateUndo = 4;
+  cSpaceInsert = 5;
+  cSpaceRemove = 6;
+  cSpaceUndo = 7;
 
 { TAtlasIdeDesignerArrange }
 
@@ -63,10 +70,12 @@ begin
   FOnMessage := AOnMessage;
   FMenu := TPopupMenu.Create(nil);
   FDuplicate := TAtlasIdeDuplicateRow.Create(AOnMessage);
+  FSpace := TAtlasIdeInsertSpace.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FSpace.Free;
   FDuplicate.Free;
   FMenu.Free;
   inherited Destroy;
@@ -74,7 +83,8 @@ end;
 
 class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow;
+  Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
+    ASettings.DesignerInsertSpace;
 end;
 
 procedure TAtlasIdeDesignerArrange.AddItem(const ACaption: string; ATag: Integer; AEnabled: Boolean);
@@ -120,6 +130,14 @@ begin
     AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateUndoCmd), cDuplicateUndo,
       FDuplicate.CanUndo);
   end;
+  if mSettings.DesignerInsertSpace then
+  begin
+    AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertCmd), cSpaceInsert,
+      Length(TAtlasIdeInsertSpace.Candidates(mSelected)) > 0);
+    AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRemoveCmd), cSpaceRemove,
+      Length(TAtlasIdeInsertSpace.Candidates(mSelected)) > 0);
+    AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceUndoCmd), cSpaceUndo, FSpace.CanUndo);
+  end;
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -128,10 +146,12 @@ var
   mTag: Integer;
   mOnMessage: TProc<string>;
   mDuplicate: TAtlasIdeDuplicateRow;
+  mSpace: TAtlasIdeInsertSpace;
 begin
   mTag := TMenuItem(Sender).Tag;
   mOnMessage := FOnMessage;
   mDuplicate := FDuplicate;
+  mSpace := FSpace;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
@@ -144,6 +164,12 @@ begin
           mDuplicate.Execute;
         cDuplicateUndo:
           mDuplicate.Undo;
+        cSpaceInsert:
+          mSpace.Execute(False);
+        cSpaceRemove:
+          mSpace.Execute(True);
+        cSpaceUndo:
+          mSpace.Undo;
       end;
     end);
 end;

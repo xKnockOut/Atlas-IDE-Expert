@@ -651,6 +651,10 @@ type
       write FEditorView.DesignerDuplicateRowShareEvents;
     property DesignerDuplicateRowDefaultGap: Integer read FEditorView.DesignerDuplicateRowDefaultGap
       write FEditorView.DesignerDuplicateRowDefaultGap;
+    property DesignerInsertSpace: Boolean read FEditorView.DesignerInsertSpace
+      write FEditorView.DesignerInsertSpace;
+    property DesignerInsertSpaceGrowParent: Boolean read FEditorView.DesignerInsertSpaceGrowParent
+      write FEditorView.DesignerInsertSpaceGrowParent;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

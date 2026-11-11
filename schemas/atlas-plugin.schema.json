@@ -5110,6 +5110,27 @@
       "x-node": "editor.designerBar",
       "x-issue": "#736"
     },
+    "DesignerInsertSpace": {
+      "description": "Befehle „Platz einfügen …“ und „Platz entfernen …“ im Menü „Anordnen“ der Designer-Leiste: verschieben alle Steuerelemente ab der Ober- bzw. linken Kante der Auswahl um einen Betrag; wer die Linie schneidet, wird mit beiden Ankern länger.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.insertSpace",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#740"
+    },
+    "DesignerInsertSpaceGrowParent": {
+      "description": "Parent und Formular wachsen mit, wenn der Inhalt sonst nicht mehr hineinpasst, und schrumpfen beim Entfernen entsprechend; das setzt sich bis zum Formular fort.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.insertSpace.growParent",
+      "x-parent": "designer.insertSpace",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#740"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

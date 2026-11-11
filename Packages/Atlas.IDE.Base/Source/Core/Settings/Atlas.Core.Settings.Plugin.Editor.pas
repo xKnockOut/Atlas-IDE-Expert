@@ -548,6 +548,10 @@ type
     DesignerDuplicateRowShareEvents: Boolean;
     /// <summary>Abstand ohne erkannten Nachbarn (#736, designer.duplicateRow.defaultGap).</summary>
     DesignerDuplicateRowDefaultGap: Integer;
+    /// <summary>Befehle „Platz einfügen/entfernen“ (#740, designer.insertSpace).</summary>
+    DesignerInsertSpace: Boolean;
+    /// <summary>Parent und Formular mitwachsen lassen (#740, designer.insertSpace.growParent).</summary>
+    DesignerInsertSpaceGrowParent: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1074,6 +1078,8 @@ begin
   Result.DesignerDuplicateRow := True;
   Result.DesignerDuplicateRowShareEvents := True;
   Result.DesignerDuplicateRowDefaultGap := 8;
+  Result.DesignerInsertSpace := True;
+  Result.DesignerInsertSpaceGrowParent := True;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1158,6 +1164,8 @@ begin
   AIo.Flag('DesignerDuplicateRow', DesignerDuplicateRow);
   AIo.Flag('DesignerDuplicateRowShareEvents', DesignerDuplicateRowShareEvents);
   AIo.Number('DesignerDuplicateRowDefaultGap', DesignerDuplicateRowDefaultGap);
+  AIo.Flag('DesignerInsertSpace', DesignerInsertSpace);
+  AIo.Flag('DesignerInsertSpaceGrowParent', DesignerInsertSpaceGrowParent);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

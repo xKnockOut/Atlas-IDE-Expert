@@ -94,6 +94,9 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerDuplicateShare));
   Number('designer.duplicateRow.defaultGap',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerDuplicateGap));
+  Switch('designer.insertSpace', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerInsertSpace));
+  Switch('designer.insertSpace.growParent',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerInsertSpaceGrow));
 end;
 
 end.

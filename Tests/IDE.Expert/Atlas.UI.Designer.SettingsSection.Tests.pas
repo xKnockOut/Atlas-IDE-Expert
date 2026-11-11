@@ -36,6 +36,8 @@ type
     procedure ButtonBarRoundTrip;
     [Test]
     procedure DuplicateRowRoundTrip;
+    [Test]
+    procedure InsertSpaceRoundTrip;
   end;
 
 implementation
@@ -246,6 +248,27 @@ begin
     Assert.IsFalse(mSaved.DesignerDuplicateRow, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerDuplicateRowShareEvents);
     Assert.AreEqual(12, mSaved.DesignerDuplicateRowDefaultGap);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.InsertSpaceRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInsertSpace').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInsertSpaceGrowParent').Checked);
+    CheckOf(mPage, 'DesignerInsertSpace').Checked := False;
+    CheckOf(mPage, 'DesignerInsertSpaceGrowParent').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerInsertSpace, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerInsertSpaceGrowParent);
   finally
     mPage.Free;
   end;
