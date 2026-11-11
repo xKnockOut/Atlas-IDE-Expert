@@ -417,6 +417,7 @@ type
     property SlashCommands: Boolean read FCodeActions.SlashCommands write FCodeActions.SlashCommands;
     property GenerateMenu: Boolean read FCodeActions.GenerateMenu write FCodeActions.GenerateMenu;
     property ProjectContextMenu: Boolean read FCodeActions.ProjectContextMenu write FCodeActions.ProjectContextMenu;
+    property GalleryWizards: Boolean read FCodeActions.GalleryWizards write FCodeActions.GalleryWizards;
     property GenerateMenuKey: Integer read FEditingKeys.GenerateMenuKey write FEditingKeys.GenerateMenuKey;
     property GenerateMenuGroups: string read FCodeActions.GenerateMenuGroups write FCodeActions.GenerateMenuGroups;
     property GenerateMenuHidden: string read FCodeActions.GenerateMenuHidden write FCodeActions.GenerateMenuHidden;
