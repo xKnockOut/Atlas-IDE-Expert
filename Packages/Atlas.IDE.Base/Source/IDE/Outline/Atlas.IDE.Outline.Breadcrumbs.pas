@@ -166,7 +166,9 @@ type
     FNodes: TAtlasOutlineNodes;
     FInterfaces: TAtlasInterfaceMethods;
     FWithInterfaces: Boolean;
-    FLines: TArray<string>;
+    /// <summary>Für den Pfad ausgewerteter Text mit seinen Zeilen, je Stand der Gliederung einmal (Remember).
+    /// </summary>
+    FText: TAtlasCrumbText;
     FLine: Integer;
     FCharacter: Integer;
     FShowUnit: Boolean;
@@ -544,6 +546,7 @@ function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: 
 var
   mShowUnit, mWithInterfaces: Boolean;
   mParts: TAtlasCrumbParts;
+  mLines: TArray<string>;
 begin
   mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
   mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
@@ -551,9 +554,14 @@ begin
   Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FStatus) or
     not SameText(ASnapshot.FileName, FFileName) or (ASnapshot.Stamp <> FStamp) or (mShowUnit <> FShowUnit) or
     (mParts <> FParts) or (mWithInterfaces <> FWithInterfaces);
-  if Result and (ASnapshot.Stamp <> FStamp) then
+  if (ASnapshot.Stamp <> FStamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FNodes)) then
   begin
-    FLines := TTextLines.SplitLines(ASnapshot.Text);
+    mLines := FText.Lines;
+    if ASnapshot.Stamp <> FStamp then
+    begin
+      mLines := TTextLines.SplitLines(ASnapshot.Text);
+    end;
+    FText := TAtlasBreadcrumbs.Prepare(ASnapshot.Nodes, mLines);
   end;
   FShown := True;
   FActiveBar := ABar;
@@ -637,7 +645,7 @@ begin
   FLine := mLine;
   FCharacter := mCharacter;
   mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
-  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
+  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FText, FLine, FCharacter,
     ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts))));
 end;
 
@@ -828,7 +836,7 @@ begin
   // Kopien: Das Menü lebt länger als der aktuelle Stand.
   mItems := AItems;
   mNodes := FNodes;
-  mLines := FLines;
+  mLines := FText.Lines;
   mFileName := FFileName;
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, CommandsOf(mNodes, mLines, mItems, ACurrent,
     AOverloads), nil, TAtlasIdeStyle.Colors);
@@ -996,7 +1004,7 @@ begin
   mCurrent := ACrumb.Current;
   mFileName := FFileName;
   mNodes := FNodes;
-  mLines := FLines;
+  mLines := FText.Lines;
   mLine := FLine;
   mCharacter := FCharacter;
   mCounts := TAtlasIdeSettings.Current.BreadcrumbsSectionCounts;
@@ -1089,7 +1097,8 @@ begin
   begin
     Exit;
   end;
-  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FLines, ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
+  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FText.Lines, ABar.Crumbs, AIndex,
+    TAtlasIdeBreadcrumbs.FMenuHooks);
 end;
 
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
@@ -1145,7 +1154,8 @@ begin
     FCard := TAtlasCrumbCardTip.Create(nil);
   end;
   FCard.Colors := TAtlasIdeStyle.Colors;
-  FCard.ShowCard(TAtlasCrumbCards.Build(FNodes, FLines, ABar.Crumbs[AIndex].Node, mHasMetrics, mMetrics), APoint);
+  FCard.ShowCard(TAtlasCrumbCards.Build(FNodes, FText.Lines, ABar.Crumbs[AIndex].Node, mHasMetrics, mMetrics),
+    APoint);
 end;
 
 procedure TBreadcrumbsState.HideCard;
