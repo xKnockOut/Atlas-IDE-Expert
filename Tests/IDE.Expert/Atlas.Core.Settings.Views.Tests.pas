@@ -416,6 +416,7 @@ begin
   Assert.IsTrue(Settings.BreadcrumbsOverloads, 'Überladungen');
   Assert.IsTrue(Settings.BreadcrumbsInterfaces, 'Interface-Marke');
   Assert.IsTrue(Settings.BreadcrumbsMetrics, 'Kennzahlen-Karte');
+  Assert.IsTrue(Settings.MouseNavButtons, 'Maustasten');
   Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
@@ -436,6 +437,7 @@ begin
   Settings.BreadcrumbsOverloads := False;
   Settings.BreadcrumbsInterfaces := False;
   Settings.BreadcrumbsMetrics := False;
+  Settings.MouseNavButtons := False;
   Settings.BreadcrumbsIdeColors := False;
   Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
@@ -460,6 +462,7 @@ begin
   Assert.IsFalse(Loaded.BreadcrumbsOverloads);
   Assert.IsFalse(Loaded.BreadcrumbsInterfaces);
   Assert.IsFalse(Loaded.BreadcrumbsMetrics);
+  Assert.IsFalse(Loaded.MouseNavButtons);
   Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
   Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);

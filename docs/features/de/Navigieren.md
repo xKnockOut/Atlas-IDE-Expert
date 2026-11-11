@@ -15,7 +15,7 @@ Zurück zum [README](../../../README_DE.md)
 - **Gehe zu** auch Implementierung und Typdefinition
 - **Sprung zum Gegenstück** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - projektweite **Symbolsuche**
-- **Navigationsverlauf** über Dateien hinweg
+- **Navigationsverlauf** über Dateien hinweg; die Zurück- und Vor-Taste der Maus blättern darin wie Alt+←/Alt+→, im Code-Editor und im Formular-Designer. Über der Issue-Vorschau blättern sie in deren Verlauf (`navigation.mouseButtons`)
 
 ## Leisten
 
