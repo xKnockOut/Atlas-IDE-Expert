@@ -291,6 +291,7 @@ type
     property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams
       write FEditorInsight.HoverSignatureParams;
     property InlineDiagnostics: string read FEditorTyping.InlineDiagnostics write FEditorTyping.InlineDiagnostics;
+    property TrackLines: Boolean read FEditorTyping.TrackLines write FEditorTyping.TrackLines;
     property ProblemsStatusCounter: Boolean read FEditorInsight.ProblemsStatusCounter
       write FEditorInsight.ProblemsStatusCounter;
     property NextProblemKey: Integer read FNavigationKeys.NextProblemKey write FNavigationKeys.NextProblemKey;
@@ -616,6 +617,10 @@ type
       write FEditorView.DesignerSelectionSetsStorage;
     property DesignerSelectionSetsSaveKey: Integer read FEditorView.DesignerSelectionSetsSaveKey
       write FEditorView.DesignerSelectionSetsSaveKey;
+    property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
+      write FEditorView.DesignerSpatialNavigation;
+    property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
+      write FEditorView.DesignerSpatialCrossContainers;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

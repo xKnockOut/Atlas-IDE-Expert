@@ -41,6 +41,9 @@ type
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
+    /// <summary>#1818: editor.trackLines mit Vorgabe an.</summary>
+    [Test]
+    procedure TrackLinesRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -613,6 +616,22 @@ begin
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.HoverSignatureParams);
+end;
+
+procedure TAtlasPluginSettingsTests.TrackLinesRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.TrackLines);
+  Store := TMemoryStore.Create;
+  Settings.TrackLines := False;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('TrackLines', 1));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.TrackLines);
 end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
 var
