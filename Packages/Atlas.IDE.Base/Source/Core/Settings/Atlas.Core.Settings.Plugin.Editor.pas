@@ -581,6 +581,12 @@ type
     DesignerZOrderShortcuts: Boolean;
     /// <summary>Container-Vorfahren im Stapel (#749, designer.zOrder.includeParents).</summary>
     DesignerZOrderIncludeParents: Boolean;
+    /// <summary>Format-Pinsel (#726, designer.propertyPainter).</summary>
+    DesignerPropertyPainter: Boolean;
+    /// <summary>Vorausgewählte Gruppen (#726, designer.propertyPainter.defaultGroups).</summary>
+    DesignerPropertyPainterDefaultGroups: string;
+    /// <summary>Häkchen je Quellklasse merken (#726, designer.propertyPainter.rememberPerClass).</summary>
+    DesignerPropertyPainterRememberPerClass: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1151,6 +1157,9 @@ begin
   DesignerZOrder := True;
   DesignerZOrderShortcuts := True;
   DesignerZOrderIncludeParents := False;
+  DesignerPropertyPainter := True;
+  DesignerPropertyPainterDefaultGroups := 'font, colors, size, layout';
+  DesignerPropertyPainterRememberPerClass := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1185,6 +1194,9 @@ begin
   AIo.Flag('DesignerZOrder', DesignerZOrder);
   AIo.Flag('DesignerZOrderShortcuts', DesignerZOrderShortcuts);
   AIo.Flag('DesignerZOrderIncludeParents', DesignerZOrderIncludeParents);
+  AIo.Flag('DesignerPropertyPainter', DesignerPropertyPainter);
+  AIo.Text('DesignerPropertyPainterDefaultGroups', DesignerPropertyPainterDefaultGroups);
+  AIo.Flag('DesignerPropertyPainterRememberPerClass', DesignerPropertyPainterRememberPerClass);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;

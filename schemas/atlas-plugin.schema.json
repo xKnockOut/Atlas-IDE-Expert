@@ -5372,6 +5372,38 @@
       "x-node": "editor.designerBar",
       "x-issue": "#749"
     },
+    "DesignerPropertyPainter": {
+      "description": "Format-Pinsel: Untermenü „Eigenschaften übertragen“ im Menü „Anordnen“ der Designer-Leiste und Strg+Umschalt+C (aufnehmen) bzw. Strg+Umschalt+V (auf die Auswahl übertragen) im Designer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.propertyPainter",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#726"
+    },
+    "DesignerPropertyPainterDefaultGroups": {
+      "description": "Vorausgewählte Gruppen für Klassen ohne gemerkte Auswahl, durch Komma getrennt: font, colors, size, position, layout, text, behavior, events, other.",
+      "type": "string",
+      "default": "font, colors, size, layout",
+      "x-key": "designer.propertyPainter.defaultGroups",
+      "x-parent": "designer.propertyPainter",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#726"
+    },
+    "DesignerPropertyPainterRememberPerClass": {
+      "description": "Die Häkchen je Quellklasse merken (property-painter.json neben der globalen Einstellungsdatei); aus = immer die Gruppen aus defaultGroups.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.propertyPainter.rememberPerClass",
+      "x-parent": "designer.propertyPainter",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#726"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

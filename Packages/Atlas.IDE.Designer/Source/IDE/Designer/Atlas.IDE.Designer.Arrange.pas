@@ -21,6 +21,9 @@
 // - Ebene (Untermenü: eine Ebene nach vorn/hinten, ganz nach vorn/hinten,
 //   Stapel unter dem markierten Steuerelement zum Auswählen) und Ebene
 //   rückgängig (#749, designer.zOrder, TAtlasIdeDesignerLayers).
+// - Eigenschaften übertragen (Untermenü: aufnehmen …, auf Auswahl
+//   übertragen) und Übertragen rückgängig (#726, designer.propertyPainter,
+//   TAtlasIdePropertyPainter).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -35,7 +38,8 @@ uses
   Atlas.IDE.Designer.FitContainer,
   Atlas.IDE.Designer.NearAlign,
   Atlas.IDE.Designer.DefaultSizes,
-  Atlas.IDE.Designer.Layers;
+  Atlas.IDE.Designer.Layers,
+  Atlas.IDE.Designer.PropertyPainter;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -48,6 +52,7 @@ type
     FNear: TAtlasIdeNearAlign;
     FSizes: TAtlasIdeDefaultSizes;
     FLayers: TAtlasIdeDesignerLayers;
+    FPainter: TAtlasIdePropertyPainter;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
     FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
@@ -55,6 +60,9 @@ type
     procedure AddNearItems(ASelection: Boolean);
     procedure AddSizeItems(const ASettings: TAtlasPluginSettings);
     procedure AddLayerItems;
+    procedure AddPaintItems;
+    /// <summary>Untermenüs ab „Fast bündige Kanten“ (#746 ff.).</summary>
+    procedure AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
     procedure ItemClick(Sender: TObject);
     /// <summary>Befehl zum Menü-Tag ATag ausführen.</summary>
     procedure Run(ATag: Integer);
@@ -104,6 +112,8 @@ const
   cSizesFirst = 30;
   /// <summary>Ab hier TAtlasLayersCommand: cLayersFirst + Ord(Befehl).</summary>
   cLayersFirst = 40;
+  /// <summary>Ab hier TAtlasPaintCommand: cPaintFirst + Ord(Befehl).</summary>
+  cPaintFirst = 50;
   /// <summary>Ab hier Einträge des Stapels: cStackFirst + Index in FStackNames.</summary>
   cStackFirst = 100;
 
@@ -120,10 +130,12 @@ begin
   FNear := TAtlasIdeNearAlign.Create(AOnMessage);
   FSizes := TAtlasIdeDefaultSizes.Create(AOnMessage);
   FLayers := TAtlasIdeDesignerLayers.Create(AOnMessage);
+  FPainter := TAtlasIdePropertyPainter.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FPainter.Free;
   FLayers.Free;
   FSizes.Free;
   FNear.Free;
@@ -138,7 +150,8 @@ class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginS
 begin
   Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
     ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
-    ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder;
+    ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
+    ASettings.DesignerPropertyPainter;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -234,6 +247,19 @@ begin
     cLayersFirst + Ord(TAtlasLayersCommand.Undo), FLayers.CanUndo);
 end;
 
+procedure TAtlasIdeDesignerArrange.AddPaintItems;
+var
+  mSub: TMenuItem;
+begin
+  mSub := AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintCmd), 0, True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintPickUp),
+    cPaintFirst + Ord(TAtlasPaintCommand.PickUp), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintApply),
+    cPaintFirst + Ord(TAtlasPaintCommand.Apply), FPainter.CanApply);
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintUndoCmd),
+    cPaintFirst + Ord(TAtlasPaintCommand.Undo), FPainter.CanUndo);
+end;
+
 procedure TAtlasIdeDesignerArrange.Popup(const APoint: TPoint);
 var
   mEditor: IOTAFormEditor;
@@ -279,19 +305,28 @@ begin
     AddFitItems(Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 0,
       Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 1);
   end;
-  if mSettings.DesignerNearAlignment then
+  AddFormItems(mSettings, Length(mSelected) > 0);
+  FMenu.Popup(APoint.X, APoint.Y);
+end;
+
+procedure TAtlasIdeDesignerArrange.AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
+begin
+  if ASettings.DesignerNearAlignment then
   begin
-    AddNearItems(Length(mSelected) > 0);
+    AddNearItems(ASelection);
   end;
-  if mSettings.DesignerDefaultSizes then
+  if ASettings.DesignerDefaultSizes then
   begin
-    AddSizeItems(mSettings);
+    AddSizeItems(ASettings);
   end;
-  if mSettings.DesignerZOrder then
+  if ASettings.DesignerZOrder then
   begin
     AddLayerItems;
   end;
-  FMenu.Popup(APoint.X, APoint.Y);
+  if ASettings.DesignerPropertyPainter then
+  begin
+    AddPaintItems;
+  end;
 end;
 
 procedure TAtlasIdeDesignerArrange.RunArrange(ATag: Integer);
@@ -333,6 +368,10 @@ begin
       TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
     end;
   end
+  else if ATag >= cPaintFirst then
+  begin
+    FPainter.Execute(TAtlasPaintCommand(ATag - cPaintFirst));
+  end
   else if ATag >= cLayersFirst then
   begin
     FLayers.Execute(TAtlasLayersCommand(ATag - cLayersFirst));
@@ -368,6 +407,7 @@ end;
 procedure TAtlasIdeDesignerArrange.UpdateKeys(AWanted: Boolean);
 begin
   FLayers.UpdateKeys(AWanted);
+  FPainter.UpdateKeys(AWanted);
 end;
 
 procedure TAtlasIdeDesignerArrange.ApplyTheme;

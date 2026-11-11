@@ -46,6 +46,8 @@ type
     procedure DefaultSizesRoundTrip;
     [Test]
     procedure ZOrderRoundTrip;
+    [Test]
+    procedure PropertyPainterRoundTrip;
   end;
 
 implementation
@@ -379,6 +381,30 @@ begin
     Assert.IsFalse(mSaved.DesignerZOrder, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerZOrderShortcuts);
     Assert.IsTrue(mSaved.DesignerZOrderIncludeParents);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.PropertyPainterRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerPropertyPainter').Checked, 'Vorgabe an');
+    Assert.AreEqual('font, colors, size, layout', EditOf(mPage, 'DesignerPropertyPainterDefaultGroups').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerPropertyPainterRememberPerClass').Checked);
+    CheckOf(mPage, 'DesignerPropertyPainter').Checked := False;
+    EditOf(mPage, 'DesignerPropertyPainterDefaultGroups').Text := 'font';
+    CheckOf(mPage, 'DesignerPropertyPainterRememberPerClass').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerPropertyPainter, 'abschaltbar');
+    Assert.AreEqual('font', mSaved.DesignerPropertyPainterDefaultGroups);
+    Assert.IsFalse(mSaved.DesignerPropertyPainterRememberPerClass);
   finally
     mPage.Free;
   end;

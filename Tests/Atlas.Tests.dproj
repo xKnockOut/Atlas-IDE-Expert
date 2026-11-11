@@ -2016,6 +2016,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.DefaultSizes.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Layers.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Layers.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.PropertyPainter.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.PropertyPainter.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>

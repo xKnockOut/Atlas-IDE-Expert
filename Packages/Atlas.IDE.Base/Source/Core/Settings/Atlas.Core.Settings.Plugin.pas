@@ -683,6 +683,12 @@ type
       write FEditorView.DesignerZOrderShortcuts;
     property DesignerZOrderIncludeParents: Boolean read FEditorView.DesignerZOrderIncludeParents
       write FEditorView.DesignerZOrderIncludeParents;
+    property DesignerPropertyPainter: Boolean read FEditorView.DesignerPropertyPainter
+      write FEditorView.DesignerPropertyPainter;
+    property DesignerPropertyPainterDefaultGroups: string read FEditorView.DesignerPropertyPainterDefaultGroups
+      write FEditorView.DesignerPropertyPainterDefaultGroups;
+    property DesignerPropertyPainterRememberPerClass: Boolean read FEditorView.DesignerPropertyPainterRememberPerClass
+      write FEditorView.DesignerPropertyPainterRememberPerClass;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
