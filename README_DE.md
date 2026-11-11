@@ -249,6 +249,14 @@ Tests\Tests.bat benchmark    :: nur die Benchmarks (Kategorie Benchmark)
 Tests\Tests.bat alle         :: beides
 ```
 
+Ohne Delphi laufen die plattformunabhängigen Tests (Atlas.Text, Atlas.Common, Kern des Plugins) unter Linux mit Free Pascal; das tut auch jeder Pull Request (`linux-server.yml`):
+
+```bash
+Tools/Linux/Test-Fpc.sh      # Testunits aus Tools/Linux/FpcTests.txt
+```
+
+Die Liste enthält nur Testunits, die unter FPC vollständig grün sind. Eine neue Testunit ohne Windows- und VCL-Bezug gehört dazu. Ohne Delphi-Runner meldet `server.yml` den Delphi-Lauf als neutral; Pull Requests nach `main` oder `release/*` scheitern dann.
+
 Prüfskripte (laufen auch als GitHub Action):
 
 ```powershell
