@@ -728,7 +728,11 @@ type
     SettingsBreadcrumbsOverloads, BreadcrumbsOverloadsHint, BreadcrumbsOverloadsPrompt,
     // Interface-Marke an Methoden (#1785).
     SettingsBreadcrumbsInterfaces, BreadcrumbsInterfacesHint, BreadcrumbsInterfacesKey, BreadcrumbsInterfacesPrompt,
-    BreadcrumbsInterfacesPath);
+    BreadcrumbsInterfacesPath,
+    // Kennzahlen-Karte an Methoden und Typen (#1787).
+    SettingsBreadcrumbsMetrics, BreadcrumbsMetricsLines, BreadcrumbsMetricsCyclomatic, BreadcrumbsMetricsNesting,
+    BreadcrumbsMetricsParameters, BreadcrumbsMetricsMembers, BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit,
+    BreadcrumbsMetricsMissing);
 
   TAtlasStrings = class
   private
@@ -2433,7 +2437,16 @@ const
      'Erfüllt %s (%s, Z. %d)',
      'Klick oder Alt+↓ öffnet die Liste',
      'Erfüllt',
-     '%s, Z. %d'),
+     '%s, Z. %d',
+     'Kennzahlen-Karte beim Überfahren von Methoden und Typen (Strg+I)',
+     'Zeilen',
+     'Zyklomatische Komplexität',
+     'Verschachtelungstiefe',
+     'Parameter',
+     'Mitglieder',
+     'Vererbungstiefe',
+     '%s (Grenze %d)',
+     'Kennzahlen noch nicht verfügbar'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4054,7 +4067,16 @@ const
      'Implements %s (%s, line %d)',
      'Click or Alt+↓ opens the list',
      'Implements',
-     '%s, line %d'));
+     '%s, line %d',
+     'Metrics card when hovering methods and types (Ctrl+I)',
+     'Lines',
+     'Cyclomatic complexity',
+     'Nesting depth',
+     'Parameters',
+     'Members',
+     'Inheritance depth',
+     '%s (limit %d)',
+     'Metrics not available yet'));
 
 { TAtlasStrings }
 

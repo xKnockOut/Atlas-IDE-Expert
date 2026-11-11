@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Editor.MetricsSource;
 
 // Code-Metriken des oberen Editors (#66) für alle Leser: die Atlas-Statusleiste
-// von Base (#1155) und die Code Lens mit Code-Metriken im Modul Analyse
+// von Base (#1155), die Kennzahlen-Karte der Brotkrumen (#1787) und die Code Lens mit Code-Metriken im Modul Analyse
 // (Atlas.IDE.Analysis.MetricsLens, #1756). Eine Anfrage je Stand, nicht eine
 // je Leser.
 // - Abruf: Ein Zeitgeber prüft den oberen Editor. Nach einer Tipp-Pause fragt
