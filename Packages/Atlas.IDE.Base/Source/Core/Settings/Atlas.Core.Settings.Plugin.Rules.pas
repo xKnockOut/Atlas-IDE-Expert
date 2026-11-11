@@ -43,6 +43,9 @@ type
     ProblemsCompilerMerge: string;
     /// <summary>Compilercode (E2035 …) in Meldung, Spalte „Compiler“ und Hover zeigen (#1024).</summary>
     ProblemsShowCompilerCode: Boolean;
+    /// <summary>Fehler der IDE (Error Insight) nach jeder Prüfung abfragen und im Fenster „Atlas-Prüfung“ neben die
+    /// Atlas-Befunde stellen (#1819, problems.ideErrors); Vorgabe aus.</summary>
+    ProblemsIdeErrors: Boolean;
     /// <summary>Wann die offene Datei geprüft wird (problems.update): 'live' (beim Tippen, Vorgabe), 'save' (beim
     /// Speichern), 'manual' (nur auf Anforderung). Ersetzt ProblemsLive (#909).</summary>
     ProblemsUpdate: string;
@@ -92,6 +95,7 @@ begin
   Result.ProblemsWindowShowCleanActive := True;
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
+  Result.ProblemsIdeErrors := False;
   Result.ProblemsUpdate := TAtlasProblemsUpdateSetting.Name(TAtlasProblemsUpdate.Live);
   Result.ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.cDefaultDelayMs;
   Result.FixBulk := True;
@@ -125,6 +129,7 @@ begin
   AIo.Flag('ProblemsWindowShowCleanActive', ProblemsWindowShowCleanActive);
   AIo.Text('ProblemsCompilerMerge', ProblemsCompilerMerge);
   AIo.Flag('ProblemsShowCompilerCode', ProblemsShowCompilerCode);
+  AIo.Flag('ProblemsIdeErrors', ProblemsIdeErrors);
   // Vor problems.update: problems.live (#909) übernehmen, an = live, aus = beim Speichern.
   if not AIo.Writing and (AIo.Store.ReadString('ProblemsUpdate', '') = '') then
   begin

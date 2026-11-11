@@ -1679,6 +1679,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.ProblemsUpdate.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Findings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.IdeErrors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.ScopeProjects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>

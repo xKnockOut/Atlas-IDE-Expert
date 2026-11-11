@@ -316,6 +316,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.ScopeProjects` | `Core/Problems/Atlas.Core.Problems.ScopeProjects.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.FindingsCache` | `Core/Problems/Atlas.Core.Problems.FindingsCache.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.IdeErrors` | `Core/Problems/Atlas.Core.Problems.IdeErrors.pas` | Ordner `Core/Problems`: Fehler der IDE umrechnen und mit den Atlas-Befunden abgleichen, #1819 |
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Refresh` | `Core/Problems/Atlas.Core.Problems.Refresh.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
@@ -632,6 +633,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Problems.MessageList` | `IDE/Problems/Atlas.IDE.Problems.MessageList.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Painter` | `IDE/Problems/Atlas.IDE.Problems.Painter.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.RuleActions` | `IDE/Problems/Atlas.IDE.Problems.RuleActions.pas` | Ordner `IDE/Problems`: fragt das Modul Prüfregeln nach `IAtlasRuleActions` (#1755) |
+| `Atlas.IDE.Problems.IdeErrors` | `IDE/Problems/Atlas.IDE.Problems.IdeErrors.pas` | Ordner `IDE/Problems`: fragt das Modul Prüfregeln nach `IAtlasIdeErrors` (#1819) |
 | `Atlas.IDE.Problems.Files` | `IDE/Problems/Atlas.IDE.Problems.Files.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Service` | `IDE/Problems/Atlas.IDE.Problems.Service.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Window` | `IDE/Problems/Atlas.IDE.Problems.Window.pas` | Ordner `IDE/Problems` |
@@ -1346,6 +1348,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
 | `Atlas.IDE.Rules.Composition` | `IDE/Rules/Atlas.IDE.Rules.Composition.pas` | Anmeldung des Moduls `atlas.rules`, #1455 |
 | `Atlas.IDE.Rules.FindingActions` | `IDE/Rules/Atlas.IDE.Rules.FindingActions.pas` | Ordner `IDE/Rules`: Regel-Aktionen am Befund (`IAtlasRuleActions`), #1755 |
+| `Atlas.IDE.Rules.IdeErrors` | `IDE/Rules/Atlas.IDE.Rules.IdeErrors.pas` | Ordner `IDE/Rules`: Error Insight der IDE lesen (`IAtlasIdeErrors`), #1819 |
 | `Atlas.IDE.Rules.Maintenance` | `IDE/Rules/Atlas.IDE.Rules.Maintenance.pas` | Ordner `IDE/Rules`: Baseline und Unterdrückungen des aktiven Projekts, #1755 |
 | `Atlas.IDE.Rules.Settings` | `IDE/Rules/Atlas.IDE.Rules.Settings.pas` | Ordner `IDE/Rules`: Abschnitt „Prüfregeln“ mit seinen Hooks, #1755 |
 | `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |

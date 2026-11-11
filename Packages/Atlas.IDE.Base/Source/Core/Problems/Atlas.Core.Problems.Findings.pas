@@ -30,6 +30,9 @@
 //   Befunde (problems.window.showCleanActive). Trennzeilen sind weder Gruppen
 //   noch Befunde: nicht klappbar, nicht wählbar, nicht in Visible, Step,
 //   SelectAt und beim Kopieren. .pas und .dfm/.fmx einer Unit zählen als eine.
+// - Fehler der IDE (#1819, problems.ideErrors): Die Befunde kommen aus
+//   WithIde des Speichers, abgeglichen mit Error Insight. Spalte „Quelle“
+//   (Atlas, Atlas + IDE, IDE) und Filter Origin (alle, nur Atlas, nur IDE).
 // - IAtlasBulkFixer: Vertrag der Sammelkorrektur (#1352) für das Modul
 //   Prüfregeln (#1455).
 
@@ -39,6 +42,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.IdeErrors,
   Atlas.Core.Problems.Store;
 
 type
@@ -46,7 +50,9 @@ type
   /// <summary>Spalte „Art“: Error (auch Bug), Warnung, Info (information und hint).</summary>
   TAtlasFindingKind = (Error, Warning, Info);
   TAtlasFindingCategory = (Bug, Vulnerability, CodeSmell, SecurityHotspot, Compiler, Other);
-  TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule, Compiler);
+  TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule, Compiler, Source);
+  /// <summary>Filter „Quelle“ (#1819): Atlas und IDE (alle), nur Atlas, nur IDE.</summary>
+  TAtlasFindingOrigin = (All, AtlasOnly, IdeOnly);
   TAtlasFindingScope = (CurrentFile, Project, Group);
   TAtlasFindingGrouping = (None, ByFile, ByRule, ByCategory);
   /// <summary>Stufe einer Datei (#1108): Datei des oberen Editors, in der IDE geöffnet, nicht geöffnet.</summary>
@@ -76,6 +82,9 @@ type
     /// <summary>Spalte „Compiler“ (#1024): "E2035", "E2034, E2035" oder "E2035 · Atlas + dcc" bei einem vom
     /// Build bestätigten Befund; '' ohne Code.</summary>
     function CompilerText: string;
+    /// <summary>Spalte „Quelle“ (#1819): "Atlas", "Atlas + IDE", "IDE" bzw. die Quelle (dcc, DUnitX, Aufgabe).
+    /// </summary>
+    function SourceText: string;
     /// <summary>Meldung; ohne AShowCompilerCode (problems.showCompilerCode aus) ohne „(wie E2035)“.</summary>
     function MessageText(AShowCompilerCode: Boolean): string;
   end;
@@ -129,6 +138,8 @@ type
     Text: string;
     /// <summary>Compilermeldungen zeigen (problems.window.compiler).</summary>
     Compiler: Boolean;
+    /// <summary>Filter „Quelle“ (#1819); nur Atlas bzw. nur IDE ohne Compiler, Tests und Aufgaben.</summary>
+    Origin: TAtlasFindingOrigin;
     /// <summary>Bereich „aktuelle Datei“.</summary>
     CurrentFile: string;
     /// <summary>Bereich „Projekt“ bzw. „Projektgruppe“: Dateien des Bereichs; nil = alle Dateien des
@@ -177,7 +188,7 @@ type
     /// <summary>Zeilentext in der Spalte „Zeile“; länger mit „…“, der Tooltip zeigt die ganze Zeile.</summary>
     cLineMax = 80;
     cColumnNames: array[TAtlasFindingColumn] of string = ('icon', 'kind', 'category', 'message', 'line',
-      'location', 'rule', 'compiler');
+      'location', 'rule', 'compiler', 'source');
     /// <summary>Marke eines vom Compiler bestätigten Befunds (#1024).</summary>
     cConfirmedMark = TAtlasProblem.cConfirmedSource;
     cScopeNames: array[TAtlasFindingScope] of string = ('file', 'project', 'group');
@@ -408,6 +419,11 @@ begin
   end;
 end;
 
+function TAtlasFinding.SourceText: string;
+begin
+  Result := TAtlasIdeErrors.OriginText(Problem);
+end;
+
 function TAtlasFinding.MessageText(AShowCompilerCode: Boolean): string;
 begin
   Result := Problem.Message;
@@ -490,6 +506,15 @@ begin
     Result := Result and ((Files = nil) or InFiles(Files, AFinding.FileName));
   end;
   Result := Result and ((Text = '') or ContainsNeedle(AFinding, Text.ToLower));
+  // Quelle (#1819): „Atlas und IDE“ lässt alle durch.
+  if Origin = TAtlasFindingOrigin.AtlasOnly then
+  begin
+    Result := Result and (TAtlasIdeErrors.OriginOf(AFinding.Problem) = TAtlasProblemOrigin.Atlas);
+  end
+  else if Origin = TAtlasFindingOrigin.IdeOnly then
+  begin
+    Result := Result and (TAtlasIdeErrors.OriginOf(AFinding.Problem) = TAtlasProblemOrigin.Ide);
+  end;
 end;
 
 function TAtlasFindingFilter.Matches(const AFinding: TAtlasFinding): Boolean;
@@ -628,7 +653,7 @@ var
   mProblem: TAtlasProblem;
   mDisk: TDiskLines;
 begin
-  mProblems := AStore.ForFile(AFileName);
+  mProblems := AStore.WithIde(AFileName);
   Result := nil;
   if mProblems = nil then
   begin
@@ -724,7 +749,8 @@ end;
 
 class function TAtlasFindings.IsMandatory(AColumn: TAtlasFindingColumn): Boolean;
 begin
-  Result := not (AColumn in [TAtlasFindingColumn.Message, TAtlasFindingColumn.Rule, TAtlasFindingColumn.Compiler]);
+  Result := not (AColumn in [TAtlasFindingColumn.Message, TAtlasFindingColumn.Rule, TAtlasFindingColumn.Compiler,
+    TAtlasFindingColumn.Source]);
 end;
 
 /// <summary>Teil einer Spaltenliste („-rule:120“): Name, Breite (0 ohne) und ob ausgeblendet.</summary>
@@ -1194,6 +1220,8 @@ begin
       Result := CompareText(A.Problem.Code, B.Problem.Code);
     TAtlasFindingColumn.Compiler:
       Result := CompareText(A.CompilerText, B.CompilerText);
+    TAtlasFindingColumn.Source:
+      Result := CompareText(A.SourceText, B.SourceText);
   else
     // Symbol und Art.
     Result := Ord(A.Kind) - Ord(B.Kind);
