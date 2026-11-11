@@ -27,6 +27,9 @@ type
     procedure ManualChecksOnlyFirstUnmodifiedView;
     [Test]
     procedure RequestIsTakenOnce;
+    /// <summary>#1817: angeforderte Dateien einmal, ohne Doppelte, unabhängig von Clear.</summary>
+    [Test]
+    procedure FilesAreTakenOnce;
   end;
 
 implementation
@@ -125,6 +128,22 @@ begin
   finally
     TAtlasProblemsCheckRequest.Clear;
   end;
+end;
+
+procedure TAtlasProblemsRefreshTests.FilesAreTakenOnce;
+var
+  Files: TArray<string>;
+begin
+  TAtlasProblemsCheckRequest.TakeFiles;
+  TAtlasProblemsCheckRequest.RequestFiles(['C:\P\A.pas', 'C:\P\B.pas']);
+  TAtlasProblemsCheckRequest.RequestFiles(['c:\p\a.pas', '', 'C:\P\C.pas']);
+  TAtlasProblemsCheckRequest.Clear;
+  Assert.IsFalse(TAtlasProblemsCheckRequest.Pending, 'keine Prüfung der offenen Datei');
+  Files := TAtlasProblemsCheckRequest.TakeFiles;
+  Assert.AreEqual(3, Integer(Length(Files)));
+  Assert.AreEqual('C:\P\A.pas', Files[0]);
+  Assert.AreEqual('C:\P\C.pas', Files[2]);
+  Assert.AreEqual(0, Integer(Length(TAtlasProblemsCheckRequest.TakeFiles)), 'nur einmal');
 end;
 
 initialization

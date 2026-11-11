@@ -9,8 +9,10 @@
 // Base an und stellt über dessen Scope bereit:
 // - die Teile Architecture, UnitRelations, Hotspots, SymbolPath und
 //   MetricsLens der Feature-Tabelle,
-// - Befehle (Palette), Einträge im Atlas-Menü, unter Ansicht › Atlas und
-//   „Weg von hier nach …“ im Kontextmenü des Editors,
+// - Befehle (Palette), Einträge im Atlas-Menü, unter Ansicht › Atlas,
+//   „Weg von hier nach …“ im Kontextmenü des Editors sowie „Unit-Beziehungen“
+//   und „Abhängige Units (n)“ im Kontextmenü der Projektverwaltung (#1817; nur
+//   für genau eine Unit, n aus dem gemerkten Stand),
 // - Hörer für Einstellungen und Thema.
 // Das Feld „interface-Änderung“ im Atlas-Statusfeld setzt das Modul über
 // TAtlasIdeHost und nimmt es beim Stoppen zurück. Befehle an den Server
@@ -66,6 +68,7 @@ uses
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Commands.ProjectSelection,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Impact,
@@ -367,6 +370,56 @@ begin
   TAtlasIdeSymbolPath.ShowDialog;
 end;
 
+{ Projektverwaltung (#1817) }
+
+/// <summary>Im Kontextmenü der Projektverwaltung mit genau einer Unit; AFileName erst beim Ausführen gesetzt.
+/// </summary>
+function ProjectUnit(out AFileName: string): Boolean;
+begin
+  Result := TAtlasProjectContext.Active and UnitRelationsVisible and
+    TAtlasProjectContext.Current.SingleUnit(AFileName);
+end;
+
+function ProjectUnitVisible: Boolean;
+var
+  mFileName: string;
+begin
+  Result := ProjectUnit(mFileName);
+end;
+
+procedure ShowProjectUnitRelations;
+var
+  mFileName: string;
+begin
+  if ProjectUnit(mFileName) and (mFileName <> '') then
+  begin
+    TAtlasIdeUnitRelations.ShowFor(mFileName);
+  end;
+end;
+
+procedure ShowProjectDependents;
+var
+  mFileName: string;
+begin
+  if ProjectUnit(mFileName) and (mFileName <> '') then
+  begin
+    TAtlasIdeUnitRelations.ShowDependents(mFileName);
+  end;
+end;
+
+/// <summary>„Abhängige Units (n)“, sobald die Zahl bekannt ist (Auswahl mit Dateinamen, Antwort gemerkt).</summary>
+function DependentsCaption: string;
+var
+  mFileName: string;
+  mCount: Integer;
+begin
+  if ProjectUnit(mFileName) and TAtlasIdeUnitRelations.CachedDependents(mFileName, mCount) then
+  begin
+    Exit(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ProjectDependentsCount, [mCount]));
+  end;
+  Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ProjectDependents);
+end;
+
 { TAtlasAnalysisModule }
 
 function TAtlasAnalysisModule.Info: TAtlasModuleInfo;
@@ -419,7 +472,14 @@ begin
       Guarded(TAtlasFeature.SymbolPath, ShowSymbolPath),
       SymbolPathVisible),
     Command('Atlas.SymbolPathFromHere', TAtlasAnalysisTextId.SymbolPathFromHere,
-      Guarded(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible)];
+      Guarded(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible),
+    // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
+    Command('Atlas.ProjectUnitRelations', TAtlasAnalysisTextId.ProjectUnitRelations,
+      Guarded(TAtlasFeature.UnitRelations, ShowProjectUnitRelations), ProjectUnitVisible),
+    Command('Atlas.ProjectDependents', TAtlasAnalysisTextId.ProjectDependents,
+      Guarded(TAtlasFeature.UnitRelations, ShowProjectDependents), ProjectUnitVisible)];
+  // Text mit der Zahl der Verwender, sobald sie bekannt ist.
+  Result[High(Result)].Caption := DependentsCaption;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -446,7 +506,10 @@ begin
     ViewEntry('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureViewMenu),
     ViewEntry('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsViewMenu),
     ViewEntry('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsViewMenu),
-    MenuEntry('Atlas.SymbolPathFromHere', TAtlasMenuPlace.EditorContext)];
+    MenuEntry('Atlas.SymbolPathFromHere', TAtlasMenuPlace.EditorContext),
+    MenuEntry('-', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.ProjectUnitRelations', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.ProjectDependents', TAtlasMenuPlace.ProjectContext)];
 end;
 
 procedure TAtlasAnalysisModule.ApplySettings;

@@ -251,6 +251,8 @@ begin
     StopSignatureKey);
   Features.Add('KeysWatched', TAtlasSafeLevel.Safe, KeysWatched, WatchKeys, UnwatchKeys);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe, MainMenuStarted, StartMainMenu, StopMainMenu);
+  // Untermenü Atlas in der Projektverwaltung (#1817); commands.projectContextMenu prüft es bei jedem Rechtsklick.
+  Features.Add('ProjectMenu', TAtlasSafeLevel.Safe, ProjectMenuStarted, StartProjectMenu, StopProjectMenu);
   Features.Add('DirtyExport', TAtlasSafeLevel.Normal, DirtyExportStarted, StartDirtyExport, StopDirtyExport);
   Features.Add('Reloader', TAtlasSafeLevel.Normal, ReloaderStarted, StartReloader, StopReloader);
 end;
