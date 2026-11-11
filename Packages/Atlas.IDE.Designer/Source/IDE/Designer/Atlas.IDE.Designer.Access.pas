@@ -3,8 +3,9 @@
 // Zugriff des Moduls Designer auf den Formular-Designer der IDE (#1442,
 // #738): aktiver Designer und sein Formular, Auswahl lesen und setzen, Lage
 // und Elternelement von Steuerelementen, Eigenschaften als Text und der
-// Formulartext samt Handlernamen (TAtlasFormText). Gemeinsam für Leiste,
-// Suche, Auswahl- und Anordnen-Befehle. Nur im Hauptthread.
+// Formulartext samt Handlernamen (TAtlasFormText), sichtbarer Client für
+// Fenster über dem Designer. Gemeinsam für Leiste, Suche, Auswahl- und
+// Anordnen-Befehle und die Griffe. Nur im Hauptthread.
 
 interface
 
@@ -32,6 +33,11 @@ type
       const AComponents: TArray<TComponent>); static;
     /// <summary>Lage von AControl im Client von ARoot; leer, wenn ARoot kein Vorfahr ist.</summary>
     class function BoundsInRoot(AControl: TControl; ARoot: TWinControl): TRect; static;
+    /// <summary>Client von AControl auf dem Bildschirm, um AMargin erweitert und auf das Fenster des Designers
+    /// beschnitten (AVisible), dazu der Versatz vom Client von AControl in den von AVisible (AOrigin). False, wenn
+    /// nichts sichtbar ist. Für Fenster über dem Designer (#734, #737).</summary>
+    class function ClientArea(AControl: TWinControl; AMargin: Integer; out AOrigin: TPoint;
+      out AVisible: TRect): Boolean; static;
     /// <summary>Name des Elternelements; '' direkt auf dem Formular.</summary>
     class function ParentNameOf(AControl: TControl; ARoot: TComponent): string; static;
     /// <summary>Wert der Eigenschaft als Text; False ohne sie oder ohne Wert.</summary>
@@ -157,6 +163,42 @@ begin
     mTopLeft := mParent.ClientToParent(mTopLeft, ARoot);
   end;
   Result := Rect(mTopLeft.X, mTopLeft.Y, mTopLeft.X + AControl.Width, mTopLeft.Y + AControl.Height);
+end;
+
+class function TAtlasDesignerAccess.ClientArea(AControl: TWinControl; AMargin: Integer; out AOrigin: TPoint;
+  out AVisible: TRect): Boolean;
+var
+  mScreen, mHostRect: TRect;
+  mTop: TWinControl;
+  mHost: HWND;
+begin
+  AOrigin := Point(0, 0);
+  AVisible := TRect.Empty;
+  if not AControl.HandleAllocated or not IsWindowVisible(AControl.Handle) then
+  begin
+    Exit(False);
+  end;
+  mScreen.TopLeft := AControl.ClientToScreen(Point(0, 0));
+  mScreen.Right := mScreen.Left + AControl.ClientWidth;
+  mScreen.Bottom := mScreen.Top + AControl.ClientHeight;
+  AVisible := Rect(mScreen.Left - AMargin, mScreen.Top - AMargin, mScreen.Right + AMargin, mScreen.Bottom + AMargin);
+  // Das Formular im Designer liegt in einem Fenster der IDE, das es abschneiden oder rollen kann.
+  mTop := AControl;
+  while mTop.Parent <> nil do
+  begin
+    mTop := mTop.Parent;
+  end;
+  mHost := 0;
+  if mTop.HandleAllocated then
+  begin
+    mHost := GetParent(mTop.Handle);
+  end;
+  if (mHost <> 0) and GetWindowRect(mHost, mHostRect) then
+  begin
+    AVisible.Intersect(mHostRect);
+  end;
+  Result := not AVisible.IsEmpty;
+  AOrigin := Point(mScreen.Left - AVisible.Left, mScreen.Top - AVisible.Top);
 end;
 
 class function TAtlasDesignerAccess.ParentNameOf(AControl: TControl; ARoot: TComponent): string;

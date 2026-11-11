@@ -81,7 +81,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Unsaved designer state** is seen by references, renames and checks
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
-- **Designer tools** in the designer bar: tab order badges with click-to-renumber and sort by reading order, select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges)
+- **Designer tools** in the designer bar: tab order badges with click-to-renumber and sort by reading order, select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges), gap handles for a row or column
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard

@@ -862,6 +862,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Analysis.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Strings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.ToolStrings.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.ToolStrings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Help.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.Strings.Tests.pas"/>
@@ -2045,6 +2047,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.SelectionSets.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Gaps.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Gaps.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>

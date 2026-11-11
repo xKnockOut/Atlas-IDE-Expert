@@ -42,6 +42,8 @@ type
     procedure FitContainerRoundTrip;
     [Test]
     procedure NearAlignmentRoundTrip;
+    [Test]
+    procedure GapHandlesRoundTrip;
   end;
 
 implementation
@@ -330,6 +332,30 @@ begin
     Assert.AreEqual(5, mSaved.DesignerNearAlignmentTolerance);
     Assert.IsFalse(mSaved.DesignerNearAlignmentBaseline);
     Assert.AreEqual('TImage', mSaved.DesignerNearAlignmentIgnoreClasses);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.GapHandlesRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerGapHandles').Checked, 'Vorgabe an');
+    Assert.AreEqual('4, 8, 12, 16', EditOf(mPage, 'DesignerGapHandlesSnapValues').Text);
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerGapHandlesAnchor').Choice, 'Mitte');
+    CheckOf(mPage, 'DesignerGapHandles').Checked := False;
+    EditOf(mPage, 'DesignerGapHandlesSnapValues').Text := '6, 10';
+    ChoiceOf(mPage, 'DesignerGapHandlesAnchor').Choice := 2;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerGapHandles, 'abschaltbar');
+    Assert.AreEqual('6, 10', mSaved.DesignerGapHandlesSnapValues);
+    Assert.AreEqual(TAtlasPluginSettings.cGapAnchorLast, mSaved.DesignerGapHandlesAnchor);
   finally
     mPage.Free;
   end;
