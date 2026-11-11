@@ -3,7 +3,7 @@
 // Werkzeuge mit eigenem Fenster oder Menü: Hauptmenü Atlas (#227), Einrichtung mit Prüfliste (#625),
 // Diagnosemodus (#479), Tastenkürzel-Übersicht (#520), gemeinsame Zählung je Befehl (#600, #757),
 // Tastenkürzel-Tipps (#600), Update-Prüfung (#495), Änderungsprotokoll über mehrere Dateien (#721) und
-// „Symbol umbenennen…“ (#397).
+// „Symbol umbenennen…“ (#397); Untermenü Atlas in der Projektverwaltung (#1817).
 
 interface
 
@@ -36,6 +36,11 @@ procedure RenameSymbol;
 procedure StartMainMenu;
 procedure StopMainMenu;
 function MainMenuStarted: Boolean;
+/// <summary>Untermenü Atlas im Kontextmenü der Projektverwaltung (#1817); „Mit Atlas prüfen“ geht an das Fenster
+/// „Atlas-Prüfung“.</summary>
+procedure StartProjectMenu;
+procedure StopProjectMenu;
+function ProjectMenuStarted: Boolean;
 /// <summary>Einrichtung mit Prüfliste (#625); Zustand des Servers über den Manager und das Statusfeld.</summary>
 procedure StartSetup;
 procedure StopSetup;
@@ -76,9 +81,15 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Commands.ProjectMenu,
+  Atlas.IDE.Problems.Service,
   Atlas.IDE.CodeInsight.Composition.Adapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status;
+
+const
+  /// <summary>Zeitlimit eines Serverbefehls aus dem Menü ohne Antwortverarbeitung.</summary>
+  cServerCommandTimeoutMs = 30000;
 
 var
   MainMenuInstance: TAtlasMainMenu;
@@ -183,6 +194,35 @@ begin
   Result := MainMenuInstance <> nil;
 end;
 
+procedure CheckProjectFiles(AFiles: TArray<string>);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Problems,
+    procedure
+    begin
+      TAtlasIdeProblems.CheckFiles(AFiles);
+    end);
+end;
+
+function ProjectCheckVisible: Boolean;
+begin
+  Result := TAtlasIdeProblems.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Problems);
+end;
+
+procedure StartProjectMenu;
+begin
+  TAtlasIdeProjectMenu.Install(CheckProjectFiles, ProjectCheckVisible);
+end;
+
+procedure StopProjectMenu;
+begin
+  TAtlasIdeProjectMenu.Uninstall;
+end;
+
+function ProjectMenuStarted: Boolean;
+begin
+  Result := TAtlasIdeProjectMenu.Installed;
+end;
+
 /// <summary>Server starten bzw. neu starten aus der Prüfliste; False ohne Manager.</summary>
 function StartServer(ARestart: Boolean): Boolean;
 begin
@@ -210,7 +250,7 @@ begin
   Result := (Manager <> nil) and (Manager.ActiveSession <> nil);
   if Result then
   begin
-    Manager.ExecuteServerCommandAsync(ACommand, 30000, nil);
+    Manager.ExecuteServerCommandAsync(ACommand, cServerCommandTimeoutMs, nil);
   end;
 end;
 
