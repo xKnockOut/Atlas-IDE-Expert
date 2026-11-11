@@ -48,7 +48,7 @@ const
     (De: 'Ergebnis der IDE nicht lesbar.'; En: 'Result of the IDE not readable.'));
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
-/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (Bericht M5, N3).</summary>
+/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (N3).</summary>
 function ReadPluginFile(const AFileName: string): string;
 var
   mFileFormat: TFileFormat;

@@ -72,7 +72,7 @@ type
     procedure CancelledStopsBeforeNextRule;
     [Test]
     procedure SlowRuleNamedInDiagnostics;
-    /// <summary>Alle Regeln eines Laufs teilen einen Ableitungscache (Review P-03).</summary>
+    /// <summary>Alle Regeln eines Laufs teilen einen Ableitungscache.</summary>
     [Test]
     procedure RunSharesDerivedCacheBetweenRules;
     [Test]
@@ -89,7 +89,7 @@ type
     /// <summary>#1094: Ein abgefangener Stapelüberlauf stellt die Schutzseite wieder her.</summary>
     [Test]
     procedure OverflowInRuleRestoresStackGuard;
-    /// <summary>#1094, Bericht M1: Zu tiefe Syntaxbäume prüfen die Regeln nicht; das Diagnoselog nennt die Unit,
+    /// <summary>#1094: Zu tiefe Syntaxbäume prüfen die Regeln nicht; das Diagnoselog nennt die Unit,
     /// und die Unit bekommt den Hinweis unit-too-deep an der tiefsten Stelle.</summary>
     [Test]
     procedure TooDeepTreeSkipsRules;

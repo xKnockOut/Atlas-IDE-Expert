@@ -157,7 +157,7 @@ var
   mField: string;
 begin
   mField := AField;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -268,7 +268,7 @@ var
   mValues: TStack<Boolean>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Iterativ (Bericht M1): Nachordnung mit Wertestapel; else-if-Ketten sind tiefe Bäume.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; else-if-Ketten sind tiefe Bäume.
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   mValues := TStack<Boolean>.Create;
   try
@@ -459,7 +459,7 @@ var
   mRaiser: string;
 begin
   mRaiser := '';
-  // Iterativ (Bericht M1): Skip lässt den Teilbaum aus, Found liefert den ersten Treffer.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Skip lässt den Teilbaum aus, Found liefert den ersten Treffer.
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

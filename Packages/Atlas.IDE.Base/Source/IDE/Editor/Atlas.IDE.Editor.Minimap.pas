@@ -360,7 +360,7 @@ begin
         Lines := nil;
         Runs := nil;
       end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Minimap,
         procedure
         begin

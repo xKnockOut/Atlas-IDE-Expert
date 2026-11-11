@@ -321,7 +321,7 @@ begin
 end;
 
 /// <summary>Erster Knoten einer der Arten AKinds, der in Zeile ALine beginnt; nil sonst. Search statt
-/// Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.</summary>
+/// Rekursion; unter ANode nur Knoten, die ALine überdecken.</summary>
 function NodeAt(ANode: TSyntaxNode; ALine: Integer; const AKinds: TSyntaxKinds): TSyntaxNode; overload;
 var
   mRoot: TSyntaxNode;

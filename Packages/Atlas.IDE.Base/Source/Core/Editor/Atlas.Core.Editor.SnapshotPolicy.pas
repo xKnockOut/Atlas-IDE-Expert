@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Editor.SnapshotPolicy;
 
-// Wann der gemeinsame Pufferstand neu gelesen werden muss (P-04), ohne VCL und
+// Wann der gemeinsame Pufferstand neu gelesen werden muss, ohne VCL und
 // Open Tools API: unbekannt, als veraltet markiert (Änderungsereignis),
 // andere Zeilenzahl, anderer Änderungsstatus oder das Sicherheitsnetz für
 // Änderungen ohne Ereignis abgelaufen (auch bei Überlauf des Tick-Zählers).

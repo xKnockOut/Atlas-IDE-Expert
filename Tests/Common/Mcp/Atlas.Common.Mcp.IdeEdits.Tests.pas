@@ -26,7 +26,7 @@ type
     procedure WritesItselfWhenTheFileIsNoLongerOpen;
     [Test]
     procedure FailsWhenTakenButNeverAnswered;
-    /// <summary>Code-Review P-16: nicht zu eng (Last), nicht zu weit (Antwortzeit).</summary>
+    /// <summary>Nicht zu eng (Last), nicht zu weit (Antwortzeit).</summary>
     [Test]
     procedure PollIntervalStaysWithinBounds;
   end;

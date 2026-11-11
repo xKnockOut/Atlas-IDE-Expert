@@ -522,7 +522,7 @@ begin
       Exit;
     end;
     mProblems := FStore.OnLine(Context.FileName, mSource);
-    // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme (P-10).
+    // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme.
     if (Length(mProblems) > 0) and TAtlasIdeSettings.ProblemMarksOn and
       LineToPaint(Context, mSource, mText, mTabWidth, mBusy) then
     begin

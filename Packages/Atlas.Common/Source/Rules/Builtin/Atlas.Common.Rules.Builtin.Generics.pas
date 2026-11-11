@@ -754,7 +754,7 @@ var
       end;
     end;
 
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     procedure Visit(ARoot: TSyntaxNode);
     var
       mPending: TStack<TSyntaxNode>;
@@ -799,7 +799,7 @@ var
   var
     mTypes: TDictionary<string, TSyntaxNode>;
 
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     procedure CollectTypes(ARoot: TSyntaxNode);
     var
       mPending: TStack<TSyntaxNode>;
@@ -894,7 +894,7 @@ var
       end;
     end;
 
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     procedure Visit(ARoot: TSyntaxNode);
     var
       mPending: TStack<TSyntaxNode>;
@@ -1463,7 +1463,7 @@ var
     CheckArgumentTypes(ACall[0], mArguments);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

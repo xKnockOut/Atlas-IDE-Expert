@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Hover.Texts;
 
-// Texte des Hover-Tooltips (P-09): Das Fenster (Atlas.UI.Hover.Tip) füllt sie
+// Texte des Hover-Tooltips: Das Fenster (Atlas.UI.Hover.Tip) füllt sie
 // aus Atlas.UI.Strings, der Satz (Atlas.Core.Hover.Layout) liest sie nur.
 
 interface

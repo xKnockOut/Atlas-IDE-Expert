@@ -78,7 +78,7 @@ var
 begin
   mKind := AKind;
   mList := AList;
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
@@ -95,7 +95,7 @@ var
   mKind: TSyntaxKind;
 begin
   mKind := AKind;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   Result := ANode.Search(
     function(AChild: TSyntaxNode): TSyntaxSearchStep
     begin

@@ -105,7 +105,7 @@ type
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -275,7 +275,7 @@ var
 begin
   mKinds := AKinds;
   mList := AList;
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin

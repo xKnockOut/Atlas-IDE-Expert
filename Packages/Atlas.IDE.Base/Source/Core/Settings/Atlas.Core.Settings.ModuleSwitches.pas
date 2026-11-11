@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Settings.ModuleSwitches;
 
 // Modul-Schalter (#1454), ohne VCL und ohne Open Tools API. Ein Modul ist eine
-// Gruppe von Funktionen, die ab 2.0 ein eigenes Package wird (ADR 0017):
+// Gruppe von Funktionen, die ab 2.0 ein eigenes Package wird:
 // Debugger, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Lesezeichen,
 // Designer, Prüfregeln, Suche, Willkommensseite. Sein Schalter ist eine
 // boolesche Plugin-Einstellung mit "x-module": "<Kennung>" im Plugin-Katalog;

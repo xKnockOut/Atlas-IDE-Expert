@@ -60,7 +60,7 @@ type
     FDocLeft: Integer;
     FDocTop: Integer;
     FMaxHeight: Integer;
-    // Je Details einmal (P-15): Doku und eingefärbte Deklaration; Umbruch nur bei anderer Breite oder Schrift.
+    // Je Details einmal: Doku und eingefärbte Deklaration; Umbruch nur bei anderer Breite oder Schrift.
     FDocData: TAtlasDoc;
     FDecl: TAtlasStyledText;
     FDeclLines: TArray<TPoint>;

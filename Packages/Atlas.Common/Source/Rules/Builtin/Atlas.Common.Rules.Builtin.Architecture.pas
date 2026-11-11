@@ -1,9 +1,9 @@
 ﻿unit Atlas.Common.Rules.Builtin.Architecture;
 
-// Architekturregeln (#183, Code-Review A-12):
+// Architekturregeln (#183):
 //   forbidden-uses                 uses-Eintrag verletzt eine Schichtregel aus atlas.json
-//   architecture-role-import       uses-Eintrag verletzt die Rollenmatrix (Konzept 8.1/8.3)
-//   architecture-contract-content  Contract-Unit deklariert im interface eine Klasse (Konzept 7.1)
+//   architecture-role-import       uses-Eintrag verletzt die Rollenmatrix
+//   architecture-contract-content  Contract-Unit deklariert im interface eine Klasse
 //
 // Konfiguration als Option der Regel:
 //   "rules": { "forbidden-uses": { "severity": "error", "layers": [
@@ -18,7 +18,7 @@
 //     "prefixes": ["Atlas.Common", "Atlas.Windows"],
 //     "hostRoles": ["Foundation", "Core", "Shell", "Adapters", "Platform"],
 //     "allow": ["Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree"] } }
-// Units heißen Ausgabeartefakt.Feature.Rolle.Sache (Konzept 6.3); "prefixes"
+// Units heißen Ausgabeartefakt.Feature.Rolle.Sache; "prefixes"
 // nennt die Ausgabeartefakte, ohne sie melden die Regeln nichts. Units ohne
 // Präfix, deren erstes Segment in "hostRoles" steht, gehören zum Host der
 // Anwendung; alle anderen (RTL, VCL, Drittanbieter) prüft die Regel nicht.
@@ -56,7 +56,7 @@ type
   end;
 
   {$SCOPEDENUMS ON}
-  /// <summary>Rolle einer Unit nach Konzept 6.3; Host = Unit der Anwendung ohne Präfix, None = extern.</summary>
+  /// <summary>Rolle einer Unit nach Ausgabeartefakt.Feature.Rolle.Sache; Host = Unit der Anwendung ohne Präfix, None = extern.</summary>
   TArchitectureRole = (None, Contract, Internals, Providers, Adapters, Root, Composition, Hosting, Host);
   {$SCOPEDENUMS OFF}
   TArchitectureRoles = set of TArchitectureRole;
@@ -74,7 +74,7 @@ type
     function SameFeature(const AOther: TArchitectureUnit): Boolean;
   end;
 
-  /// <summary>Importmatrix des Rollenkonzepts (Konzept 8.1/8.3, docs/Architektur.md "Importregeln").</summary>
+  /// <summary>Importmatrix des Rollenkonzepts (docs/Architektur.md "Importregeln").</summary>
   TArchitectureMatrix = class
   private
     class function LongestPrefix(const AUnitName: string; const APrefixes: TArray<string>): string; static;
@@ -149,14 +149,14 @@ const
      En: 'uses entry violates a layer rule from atlas.json'),
     (De: '%s darf %s nicht verwenden (Schicht "%s")'; En: '%s must not use %s (layer "%s")'),
     (De: '%s %s aus %s'; En: '%s %s from %s'),
-    (De: 'uses-Eintrag verletzt die Rollenmatrix (Konzept 8.1/8.3)';
-     En: 'uses entry violates the role matrix (concept 8.1/8.3)'),
+    (De: 'uses-Eintrag verletzt die Rollenmatrix';
+     En: 'uses entry violates the role matrix'),
     (De: '%s darf %s nicht importieren (%s)'; En: '%s must not import %s (%s)'),
     (De: 'Contract-Unit deklariert eine Klasse'; En: 'Contract unit declares a class'),
     (De: '%s ist eine Klasse in einer Contract-Unit; Contract enthält nur Records, Interfaces, Aufzählungen und ' +
-      'Ausnahmen (Konzept 7.1)';
+      'Ausnahmen';
      En: '%s is a class in a contract unit; a contract contains only records, interfaces, enumerations and ' +
-      'exceptions (concept 7.1)'),
+      'exceptions'),
     (De: 'fremde'; En: 'foreign'),
     (De: 'eigene'; En: 'own'));
 
@@ -167,7 +167,7 @@ const
     ('', 'Contract', 'Internals', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting', 'Host');
   cFeatureRoles = [TArchitectureRole.Contract, TArchitectureRole.Internals, TArchitectureRole.Providers,
     TArchitectureRole.Adapters, TArchitectureRole.Composition, TArchitectureRole.Hosting];
-  // Konzept 8.3: eigenes Feature, Rolle der Quelle -> erlaubte Rollen des Ziels.
+  // Eigenes Feature, Rolle der Quelle -> erlaubte Rollen des Ziels.
   // Muss $OwnAllowed in Tools/Check-PackageDependencies.ps1 entsprechen.
   cOwnAllowed: array[TArchitectureRole] of TArchitectureRoles = (
     [],
@@ -647,7 +647,7 @@ begin
     Exit;
   end;
   mReport := AReport;
-  // Iterativ (Bericht M1): Konstanten im interface können lange Ausdrücke enthalten.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Konstanten im interface können lange Ausdrücke enthalten.
   mInterfaceNode.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin

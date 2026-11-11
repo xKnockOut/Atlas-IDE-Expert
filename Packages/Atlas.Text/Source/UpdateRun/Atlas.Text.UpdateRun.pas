@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.UpdateRun;
 
 // Ablauf eines Updates (#1519) zwischen Plugin und AtlasUpdate.exe, gemeinsam
-// für beide (ADR 0012):
+// für beide:
 // - Aufruf: AtlasUpdate.exe <Befehl> --name Wert …; Befehle prepare (laden,
 //   prüfen, bei Bedarf bauen), apply (nach dem Schließen der IDE tauschen)
 //   und install (Erstinstallation aus dem entpackten Paket).

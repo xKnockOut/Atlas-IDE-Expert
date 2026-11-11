@@ -417,7 +417,7 @@ var
   end;
 
   /// <summary>Kopf einer Routine dieser Datei, die der Resolver ohne Index-Eintrag liefert (verschachtelte
-  /// Routinen): der Knoten, der an ARange beginnt. Iterativ (Bericht M1).</summary>
+  /// Routinen): der Knoten, der an ARange beginnt. Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
   function LocalHeader(ARoot: TSyntaxNode; const ARange: TTextRange): string;
   var
     mPending: TStack<TSyntaxNode>;
@@ -640,7 +640,7 @@ var
     AReport.Add(mRange, mMessage, TRuleConfidence.High, [SignatureFix(ANode, ACallee)]);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1347,7 +1347,7 @@ var
       [SignatureFix(ANode, ACallee)]);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

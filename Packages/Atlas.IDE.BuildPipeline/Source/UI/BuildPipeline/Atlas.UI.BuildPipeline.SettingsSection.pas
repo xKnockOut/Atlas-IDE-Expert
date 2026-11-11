@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.BuildPipeline.SettingsSection;
 
-// Abschnitte des Moduls Build-Pipeline im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil „Compiler“
+// Abschnitte des Moduls Build-Pipeline im Optionsdialog (#1456; vorher im Teil „Compiler“
 // und in Atlas.UI.Settings.Page.Release von Base).
 // - „Compiler“: Modulschalter, Build für KI-Assistenten (MCP) (#261), Schranke für Hinweise und Warnungen (#530) und
 //   Prüfung vor dem Compile (#529). Warnungen als Fehler bindet die Seite; der Abschnitt bringt sie beim Speichern

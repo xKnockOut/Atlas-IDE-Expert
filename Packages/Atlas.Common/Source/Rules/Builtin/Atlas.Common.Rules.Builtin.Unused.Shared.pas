@@ -174,7 +174,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -253,7 +253,7 @@ procedure CollectInlineVars(ANode: TSyntaxNode; var AVars: TArray<TSyntaxNode>);
 var
   mVars: TArray<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
   mVars := AVars;
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
@@ -289,7 +289,7 @@ var
   mDecl: TSyntaxNode;
 begin
   mTypeName := ATypeName;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mDecl := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin

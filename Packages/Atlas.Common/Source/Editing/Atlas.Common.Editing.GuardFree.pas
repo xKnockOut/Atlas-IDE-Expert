@@ -140,7 +140,7 @@ var
   mPending: TStack<TSyntaxPostOrderEntry>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1). Die innerste Routine gewinnt: Ein Knoten wird erst geprüft,
+  // Eigener Stapel statt Rekursion. Die innerste Routine gewinnt: Ein Knoten wird erst geprüft,
   // wenn unter seinen Kindern keine passende Routine liegt; dann gilt die letzte passende unter ihnen.
   Result := nil;
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
@@ -240,7 +240,7 @@ begin
   mLine := ALine;
   mFound := '';
   mAny := False;
-  // Walk statt Rekursion (Bericht M1); die letzte Deklaration vor ALine gilt. Die Kinder stehen in
+  // Walk statt Rekursion; die letzte Deklaration vor ALine gilt. Die Kinder stehen in
   // Quelltextreihenfolge, ein Knoten hinter ALine schließt also auch seine übrigen Geschwister aus.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean

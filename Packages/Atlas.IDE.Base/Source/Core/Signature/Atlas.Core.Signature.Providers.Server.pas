@@ -6,7 +6,7 @@
 // kommt per TAtlasMainThread.Queue im Hauptthread an, aber nur für die jüngste
 // Anfrage. Vor dem Freigeben der Sitzung Shutdown aufrufen (wartet auf
 // laufende Anfragen). Die Sitzungsfunktion darf keinen Server starten
-// (Code-Review A-01, K-03).
+//.
 // Abgleich ohne Zeitlimit-Arbeiter: Sync legt die Nachricht nur in die
 // Schreibwarteschlange (TLspServerProcess schreibt in einem eigenen Thread)
 // und wartet nie auf den Server. Früher lief Sync mit 200 ms Zeitlimit, und

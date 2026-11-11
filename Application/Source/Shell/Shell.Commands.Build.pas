@@ -1,7 +1,7 @@
 ﻿unit Shell.Commands.Build;
 
 // Host-Rolle Shell: Fachlogik der Befehle atlas.selectBuild (#46, #615) und
-// "Formulare in Text umwandeln" ohne Bezug auf TServerComposition (S-02). Die
+// "Formulare in Text umwandeln" ohne Bezug auf TServerComposition. Die
 // Komposition reicht Projekte und Dateien herein; hier stehen Auswertung der
 // Argumente, Auswahl der Formulardateien und der Aufbau der Antwort.
 // Ohne Windows-Units, damit die Tests auch ohne Windows laufen.

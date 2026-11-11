@@ -15,11 +15,11 @@
 //   Editor kennt keinen eingeschobenen Text; so bleiben Datei, Undo und
 //   Cursor unberührt. Gezeichnet wird nur, wenn die Zeile im Editor der im
 //   Speicher entspricht.
-// - Zeichnen ohne Objektkopien (P-10): reines GDI zwischen SaveDC und
+// - Zeichnen ohne Objektkopien: reines GDI zwischen SaveDC und
 //   RestoreDC wie im Problem-Zeichner; Schrift, Stift und Pinsel sind Felder
 //   und werden nur bei geänderter Editorschrift bzw. geändertem Hintergrund
 //   neu gebaut. Die Einstellung wird erst geprüft, wenn die Zeile Hinweise hat.
-// - Pufferstand (P-04): über TAtlasEditorSnapshots, gelesen nur nach einer
+// - Pufferstand: über TAtlasEditorSnapshots, gelesen nur nach einer
 //   Änderung; bei inaktiver IDE wird der Puffer nicht geprüft.
 // - Blockende-Beschriftungen (#620, Einstellung BlockEndLabels): Die
 //   Endmarkierungen des Servers (inlayHints.endMarkers, „// if …“) stehen
@@ -398,7 +398,7 @@ begin
       Exit;
     end;
     SyncMinLines;
-    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet (P-04).
+    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet.
     mView := nil;
     if Application.Active then
     begin
@@ -739,7 +739,7 @@ begin
     Exit;
   end;
   try
-    // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine (P-10).
+    // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine.
     if StoredHints(FStore, Context.FileName, Context.LogicalLineNum - 1, mHints) and
       KeepShown(mHints, Context.FileName, False) and LineMatches(FStore, Context, mHints) and
       KeepShown(mHints, Context.FileName, True) then

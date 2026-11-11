@@ -15,7 +15,7 @@ uses
 type
   TResolverPlace = class
   private type
-    /// <summary>Mit PinTree vorab ausgewerteter Baum (Code-Review P-01/P-02).</summary>
+    /// <summary>Mit PinTree vorab ausgewerteter Baum.</summary>
     TPin = record
       Tree: TSyntaxTree;
       FileName: string;
@@ -201,7 +201,7 @@ begin
   FCurrentPin := -1;
   FInImplementation := True;
   Inc(FMoveCount);
-  // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
+  // Helfer- und Vorfahren-Cache bleiben: Ihre Schlüssel enthalten Unit und Abschnitt.
 end;
 
 procedure TResolverPlace.PinTree(ATree: TSyntaxTree; const AFileName: string);
@@ -210,7 +210,7 @@ var
   mCall: TPinCall;
   mPinIndex: Integer;
 begin
-  // Verschachtelt (Code-Review P-01/P-02): Handle pinnt, Collect pinnt denselben Baum erneut, Find pinnt
+  // Verschachtelt: Handle pinnt, Collect pinnt denselben Baum erneut, Find pinnt
   // Fremdbäume. Derselbe Baum zählt nur hoch und wird nicht erneut ausgewertet.
   mCall.Tree := ATree;
   mCall.FileName := AFileName;

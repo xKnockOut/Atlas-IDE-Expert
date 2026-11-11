@@ -135,7 +135,7 @@ begin
     ManagerRef := ManagerInstance;
     // „Protokoll öffnen“ an den Einträgen des Servers in der Benachrichtigungszentrale (#601).
     ManagerInstance.OnOpenLog := OpenLog;
-    // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an (Bericht H5).
+    // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an.
     ManagerInstance.OnBugReport := CreateBugReport;
     // Absturzfälle des Servers (#1355): „Issue anlegen“ in der Meldung.
     ManagerInstance.OnCrashIssue := CreateCrashIssue;

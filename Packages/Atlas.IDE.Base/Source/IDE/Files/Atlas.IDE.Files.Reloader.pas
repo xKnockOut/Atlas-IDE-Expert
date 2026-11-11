@@ -17,7 +17,7 @@
 // Unterschied erscheinen nur bei „einblenden“; „Vergleichen“ schreibt den
 // Unterschied auf Abruf dorthin und zeigt das Fenster.
 // Die Platte liest TAtlasTextFile wie beim Speichern (Kodierung mit der
-// Vorgabe aus atlas.json, Lesen teilt Löschen, Bericht M5): Ein gleichzeitiges
+// Vorgabe aus atlas.json, Lesen teilt Löschen): Ein gleichzeitiges
 // atomares Ersetzen scheitert nicht an diesem Vergleich.
 
 interface
@@ -321,7 +321,7 @@ begin
   end;
   mStates := SaveViews(mEditor);
   mModule.Refresh(True);
-  // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen (P-04).
+  // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen.
   TAtlasEditorSnapshots.Invalidate(AFileName);
   RestoreViews(SourceEditorOf(mModule), mStates);
   Result := True;

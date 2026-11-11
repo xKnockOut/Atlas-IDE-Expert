@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Tracker.Strings;
 
 // Oberflächentexte des Moduls Tracker (Issues, Board, Zeiterfassung, Anhängen, CI-Anmeldung) auf Deutsch
-// und Englisch (ADR 0017, #1455). Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest
+// und Englisch (#1455). Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest
 // sie neu, ein Sprachwechsel braucht daher keine eigene Meldung. Texte, die auch Base, die Willkommensseite
 // oder der Optionsdialog nutzen, bleiben in `Atlas.UI.Strings`.
 

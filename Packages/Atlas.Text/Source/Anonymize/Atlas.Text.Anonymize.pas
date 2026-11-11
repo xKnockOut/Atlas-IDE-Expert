@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.Anonymize;
 
 // Anonymisierung für Fehlerberichte (#108), gemeinsam für Server und Plugin
-// (ADR 0012), damit beide Teile eines Berichts dieselben Regeln haben:
+//, damit beide Teile eines Berichts dieselben Regeln haben:
 // - Gekennzeichnete Werte (Atlas.Text.LogMarks, #1478): Name zu <name>, Text
 //   zu <text>, Pfad wie unten bzw. ohne erkennbaren Ort zu <datei> mit Endung.
 // - Pfade unter einem Arbeitsbereich werden zu <ws>/<datei> mit der Endung

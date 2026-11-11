@@ -91,7 +91,7 @@ type
     function HandleIncoming(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleOutgoing(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -298,7 +298,7 @@ var
   mEntry: TSyntaxPostOrderEntry;
   mIndex: Integer;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1): Der Weg zur Position kann durch tiefe Ausdrücke führen.
+  // Eigener Stapel statt Rekursion: Der Weg zur Position kann durch tiefe Ausdrücke führen.
   // Wie früher zuerst die Kinder eines Knotens, dann der Knoten selbst; Geschwister in ihrer Reihenfolge.
   Result := nil;
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
@@ -418,7 +418,7 @@ begin
   end;
   mItem := AItem;
   mRoot := ANode;
-  // Search statt Rekursion (Bericht M1); ANode selbst zählt wie früher nicht.
+  // Search statt Rekursion; ANode selbst zählt wie früher nicht.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -728,7 +728,7 @@ var
   mLocations: TArray<TSymbolLocation>;
   mIndex, mCount: Integer;
 begin
-  // Einmal anlegen statt je Nachfahr anhängen (Code-Review P-08): bei TObject bzw. TComponent viele Hundert.
+  // Einmal anlegen statt je Nachfahr anhängen: bei TObject bzw. TComponent viele Hundert.
   mLocations := AIndex.Descendants(AItem.Name);
   SetLength(Result, Length(mLocations));
   mCount := 0;

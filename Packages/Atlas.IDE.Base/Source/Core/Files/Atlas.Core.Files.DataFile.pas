@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Files.DataFile;
 
-// Datendateien des Plugins (Bericht N3): Favoriten, Verläufe, Lernstände, Projektübersicht, Lesezeichen,
+// Datendateien des Plugins: Favoriten, Verläufe, Lernstände, Projektübersicht, Lesezeichen,
 // Notizen und die übrigen JSON-Ablagen.
 //
 // Ursache kaputter Dateien war das Schreiben: TFile.WriteAllText kürzt die Datei und schreibt sie neu, die

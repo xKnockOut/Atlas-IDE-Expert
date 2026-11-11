@@ -1,7 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SettingsSection;
 
-// Abschnitt „Issue-Tracker“ des Moduls Tracker im Optionsdialog (#1455, ADR
-// 0017 Entscheidung 3; vorher Teil von Atlas.UI.Settings.Page). Die Seite von
+// Abschnitt „Issue-Tracker“ des Moduls Tracker im Optionsdialog (#1455; vorher Teil von Atlas.UI.Settings.Page). Die Seite von
 // Base baut ihn über IAtlasSettingsSectionHost in den Bereich „issues“. Der
 // Abschnitt fügt nur die Teile zusammen:
 // - TAtlasTrackerSettingsTables (Core): Zeilen der Tabellen und ihre Regeln.

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Welcome.Page;
 
 // Atlas-Bereiche auf der Willkommensseite der IDE (#753) über
-// ToolsAPI.WelcomePage (RAD Studio 12 und 13, ADR 0011): Jeder Bereich ist ein
+// ToolsAPI.WelcomePage (RAD Studio 12 und 13): Jeder Bereich ist ein
 // Inhalts-Plugin (INTAWelcomePagePlugin + INTAWelcomePageContentPluginCreator).
 // Die IDE bekommt einen Rahmen mit Titelzeile
 // (WelcomePagePluginService.CreateCaptionFrame), in den der Atlas-Frame als

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Editor.SnapshotPolicy.Tests;
 
-// Tests für die Entscheidung, wann der gemeinsame Pufferstand neu gelesen wird (P-04).
+// Tests für die Entscheidung, wann der gemeinsame Pufferstand neu gelesen wird.
 
 interface
 

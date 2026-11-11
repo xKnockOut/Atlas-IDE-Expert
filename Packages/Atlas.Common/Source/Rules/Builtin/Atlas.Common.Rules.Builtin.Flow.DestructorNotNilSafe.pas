@@ -228,7 +228,7 @@ end;
 /// <summary>Assigned(X), X &lt;&gt; nil, X = nil unter ARoot sammeln: danach gilt X als geprüft.</summary>
 procedure TDestructorCheck.CollectChecks(ARoot: TSyntaxNode);
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -350,7 +350,7 @@ begin
   end;
   FChecked := nil;
   FReported := nil;
-  // Iterativ (Bericht M1): Vorordnung wie die Rekursion, FChecked wächst in derselben Reihenfolge.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Vorordnung wie die Rekursion, FChecked wächst in derselben Reihenfolge.
   mBody.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

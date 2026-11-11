@@ -34,7 +34,7 @@ type
     property FuseList: TListBox read FFuseList;
     property FuseEnableSelected: TButton read FFuseEnableSelected;
     property FuseEnableAll: TButton read FFuseEnableAll;
-    /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar (Code-Review S-07).</summary>
+    /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar.</summary>
     property HangTestRow: TWinControl read FHangTestRow;
   end;
 
@@ -60,7 +60,7 @@ begin
   // Blockierschutz für Datenquellen (#493).
   BindText('ProviderTimeLimitMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit)));
   mPanel := AddPanel(32);
-  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen (S-07).
+  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen.
   FHangTestRow := mPanel;
   FHangTestRow.Visible := False;
   FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.OnClick := DiagnosticModeClick;

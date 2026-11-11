@@ -441,7 +441,7 @@ begin
   Assert.AreEqual('um 14:32', TAtlasStatusLines.ServerDetail(mInfo, Today(15, 0)));
   Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(mInfo)));
   Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerSummary(mInfo));
-  // Ursache aus dem Exit-Code (Bericht H5).
+  // Ursache aus dem Exit-Code.
   mInfo.Error := 'Stapelüberlauf (0xC00000FD)';
   Assert.AreEqual('Server: abgestürzt um 14:32 (Stapelüberlauf (0xC00000FD))',
     TAtlasStatusLines.ServerText(mInfo, Today(15, 0)));

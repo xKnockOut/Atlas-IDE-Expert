@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul KI-Assistenten (#1888, ADR 0017): nimmt Aufträge von MCP-Clients in der laufenden IDE an
+// Modul KI-Assistenten (#1888): nimmt Aufträge von MCP-Clients in der laufenden IDE an
 // (Builds über build_project, Änderungen an offenen Dateien). Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Assistants.Composition über die Registry von Atlas.IDE.Base an; gebaut wird über den Vertrag
 // IAtlasBuildRequests des Moduls Build-Pipeline. Requiret nur das Kern-Package (Regel 9).

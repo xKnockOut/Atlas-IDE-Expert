@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Foundation.Host;
 
-// Dienste von Base für die Module (#1455, ADR 0017): Serversitzung (laufend
+// Dienste von Base für die Module (#1455): Serversitzung (laufend
 // bzw. bei Bedarf gestartet), Befehle im Hintergrund an den Server,
 // Meldungsansicht „Atlas“, Warnungen, Bericht und Diagnoselog, Felder im
 // Atlas-Statusfeld und Compile-Ereignisse; für Bereiche wie die

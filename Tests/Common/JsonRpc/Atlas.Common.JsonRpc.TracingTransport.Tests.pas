@@ -13,7 +13,7 @@ type
     procedure RecordsIncomingAndOutgoingMessages;
     [Test]
     procedure PassesClosedInputThroughWithoutTrace;
-    /// <summary>Code-Review S-07: nach dem ersten Schreibfehler kein weiterer Versuch.</summary>
+    /// <summary>Nach dem ersten Schreibfehler kein weiterer Versuch.</summary>
     [Test]
     procedure StopsTracingAfterWriteFailure;
     [Test]

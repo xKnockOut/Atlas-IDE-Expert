@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Welcome.Composition;
 
-// Modul Willkommensseite (#1455, ADR 0017): einzige Unit, die die
+// Modul Willkommensseite (#1455): einzige Unit, die die
 // Willkommensseite (#753) erzeugt. Sie meldet in ihrer Initialisierung das
 // Modul „atlas.welcome“ (Modulschalter welcome) bei der Registry von Base an
 // und stellt über dessen Scope bereit:

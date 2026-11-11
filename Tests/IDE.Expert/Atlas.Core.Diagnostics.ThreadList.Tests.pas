@@ -32,7 +32,7 @@ uses
 
 type
   /// <summary>Setzt beim Freigeben AFreed: zeigt, wann ein Thread, der sich selbst freigibt, seine anonyme
-  /// Methode losgelassen hat (Bericht N2: abwarten statt eine feste Zeit schlafen).</summary>
+  /// Methode losgelassen hat (abwarten statt eine feste Zeit schlafen).</summary>
   TFreedSignal = class(TInterfacedObject)
   private
     FFreed: TEvent;

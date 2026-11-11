@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition;
 
-// Kompositionswurzel von Atlas.IDE.Base (ADR 0006, 0017): Anmelden beim Laden des Packages und Abbau in seiner
+// Kompositionswurzel von Atlas.IDE.Base (0017): Anmelden beim Laden des Packages und Abbau in seiner
 // Finalisierung. Die Teile liegen in Atlas.IDE.CodeInsight.Composition.<Teil>; diese Unit legt nur die Reihenfolge
 // fest, in der sie starten und rückwärts abgebaut werden.
 
@@ -79,7 +79,7 @@ begin
   end;
 end;
 
-/// <summary>Nach der freien Nachrichtenschleife: Ladezeit (#722) und Startanteile (Bericht N4), Prüfliste beim
+/// <summary>Nach der freien Nachrichtenschleife: Ladezeit (#722) und Startanteile, Prüfliste beim
 /// ersten Start (#625) und eigene Tasten, sobald die übrigen Packages ihre angemeldet haben (#520).</summary>
 procedure AfterStart;
 begin
@@ -115,12 +115,12 @@ procedure Register;
 begin
   Unregistered := False;
   WatchIdeExit;
-  // Startanteile (Bericht N4): ab dem Laden jedes Teil, nach der Anmeldung die Atlas-Aktionen.
+  // Startanteile: ab dem Laden jedes Teil, nach der Anmeldung die Atlas-Aktionen.
   EndStartTimes;
   StartStartTimes;
   // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
   TAtlasShutdown.Reset;
-  // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister, Code-Review A-02).
+  // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister).
   TAtlasMainThread.Start;
   // Vor den Modulen: Sie fragen Sitzung und Protokoll über TAtlasIdeHost (#1455).
   InstallHost;
@@ -138,7 +138,7 @@ end;
 procedure StopFoundation(var ATeardown: TAtlasTeardown);
 begin
   // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
-  // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
+  // in nicht mehr geladenem Code. Queue im Hauptthread läuft weiter sofort.
   ATeardown.Step('MainThread', TAtlasMainThread.Stop);
   ATeardown.Step('Experimental', TAtlasIdeExperimental.Stop);
   TAtlasGuard.OnWarning := nil;
@@ -151,7 +151,7 @@ begin
   ATeardown.Step('SafeMode', StopSafeMode);
 end;
 
-/// <summary>Regel 5 (ADR 0017): zuerst alle Module stoppen und abmelden, dann den Host; bis zu ihrem Stopp dürfen
+/// <summary>Regel 5: zuerst alle Module stoppen und abmelden, dann den Host; bis zu ihrem Stopp dürfen
 /// sie Sitzung und Protokoll von Base fragen.</summary>
 procedure StopModules(var ATeardown: TAtlasTeardown);
 var
@@ -172,7 +172,7 @@ begin
   ATeardown.Step('Host', UninstallHost);
 end;
 
-/// <summary>Rückwärts zur Startreihenfolge (Code-Review S-03): die Teile der Feature-Tabelle, dann was immer läuft.
+/// <summary>Rückwärts zur Startreihenfolge: die Teile der Feature-Tabelle, dann was immer läuft.
 /// Alles vor dem Statusfeld: Diagnosemodus, Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in
 /// dessen Registry (#479, #625, #754); die Benachrichtigungen halten Aktionen mit Code des Plugins (#601).</summary>
 procedure StopParts(var ATeardown: TAtlasTeardown);

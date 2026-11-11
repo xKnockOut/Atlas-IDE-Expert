@@ -10,7 +10,7 @@
 // Der Wächter arbeitet im Hauptthread nur die Antwort auf die Messnachricht.
 // Gemessen wird erst, wenn die Nachrichtenschleife nach dem Laden frei ist;
 // das Laden der übrigen Packages beim Start ist kein Hänger (die Startzeit
-// samt Anteilen von Atlas meldet die Composition, Bericht N4). Ebenso das
+// samt Anteilen von Atlas meldet die Composition). Ebenso das
 // Beenden: ohne sichtbares Hauptfenster oder nach Application.Terminate wird
 // nichts gemeldet.
 

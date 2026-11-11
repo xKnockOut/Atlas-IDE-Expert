@@ -64,7 +64,7 @@ type
   end;
 
   /// <summary>Beobachtet Ordner und meldet an TAtlasWatchedChanges; die Freigabe hält die Threads an. Die
-  /// Umsetzung (TAtlasFolderWatcher) setzt die Kompositionswurzel ein (A-09).</summary>
+  /// Umsetzung (TAtlasFolderWatcher) setzt die Kompositionswurzel ein.</summary>
   IAtlasFolderWatcher = interface
     ['{967E5852-0525-40F5-815C-047BF4E416F1}']
     /// <summary>Beobachtet genau diese Ordner; neue starten, weggefallene enden.</summary>

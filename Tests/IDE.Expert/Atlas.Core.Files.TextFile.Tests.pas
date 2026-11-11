@@ -2,7 +2,7 @@
 
 // Tests für das Ändern von Quelltexten auf der Platte in ihrer Kodierung (#397),
 // Vorgabe-Codepage und binäre Formulare (#121), atomares Ersetzen und Lesen
-// ohne Sperre (Bericht M5).
+// ohne Sperre.
 
 interface
 

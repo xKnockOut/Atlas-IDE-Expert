@@ -33,7 +33,7 @@ uses
 type
   /// <summary>Wert einer Umgebungsvariablen (APPDATA, LOCALAPPDATA, USERPROFILE, USERNAME); '' = unbekannt. Wie
   /// TAtlasPathVariable (#759), hier eigen: Atlas.Core.Settings darf nicht von Atlas.Core.Projects abhängen
-  /// (Feature-Zyklus, A-09).</summary>
+  /// (Feature-Zyklus).</summary>
   TAtlasSettingsEnvironment = reference to function(const AName: string): string;
 
   /// <summary>Persönliche Einstellungen: Plugin und Text von settings.json.</summary>

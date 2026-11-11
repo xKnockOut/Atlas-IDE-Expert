@@ -394,7 +394,7 @@ var
     mIndex: Integer;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1): Vorordnung, die Namen kommen in derselben Reihenfolge dazu.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Vorordnung, die Namen kommen in derselben Reihenfolge dazu.
     mPending := TStack<TSyntaxNode>.Create;
     try
       for mIndex := ABody.ChildCount - 1 downto 0 do
@@ -582,7 +582,7 @@ var
     mPending: TStack<TSyntaxNode>;
   begin
     Result := nil;
-    // Iterativ (Bericht M1); Vorordnung, die Klauseln bleiben in Textreihenfolge.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung, die Klauseln bleiben in Textreihenfolge.
     mPending := TStack<TSyntaxNode>.Create;
     try
       for mInner := ARoot.ChildCount - 1 downto 0 do
@@ -773,7 +773,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

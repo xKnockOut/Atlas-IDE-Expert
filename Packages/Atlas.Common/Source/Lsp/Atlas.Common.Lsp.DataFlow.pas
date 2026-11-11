@@ -65,7 +65,7 @@ type
     function Answer(ATree: TSyntaxTree; const AUri: string; AParams: TJSONObject;
       const ACancellation: IJsonRpcCancellationToken): TDataFlowResult;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt wie bei den übrigen Anfragen (Code-Review A-03).</summary>
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt wie bei den übrigen Anfragen.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
   public

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.Completion;
 
-// Einstellungen des IDE-Plugins, Bereich Vervollständigung (completion.*) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Vervollständigung (completion.*) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 
@@ -19,7 +19,7 @@ const
   /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
   cMaxOpenDelay = 2000;
   /// <summary>Wie TAtlasListModes.cModeNames bzw. ScopeNames (#497); Settings darf Completion nicht einbinden
-  /// (A-09), der Test prüft Gleichheit.</summary>
+  ///, der Test prüft Gleichheit.</summary>
   cCompletionListModeNames: array[0..2] of string = ('filter', 'all', 'rest');
   cCompletionListScopeNames: array[0..1] of string = ('members', 'everywhere');
 

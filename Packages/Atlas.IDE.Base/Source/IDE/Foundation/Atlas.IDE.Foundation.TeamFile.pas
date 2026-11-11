@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Foundation.TeamFile;
 
 // Projektdatei .atlas des aktiven Projekts (#486) für alle Teile des Plugins.
-// Foundation (A-09): nur Open Tools API, VCL-Zeitgeber und Atlas.Core; Lesen
+// Foundation: nur Open Tools API, VCL-Zeitgeber und Atlas.Core; Lesen
 // und Prüfen in Atlas.Core.Settings.TeamFile.
 // - Current: gelesener Stand für das aktive Projekt; ohne Projekt, ohne Datei,
 //   mit ausgeschalteter Einstellung TeamFile oder vor Start leer (Empty). Eine

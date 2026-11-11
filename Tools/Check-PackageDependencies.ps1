@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     - Atlas.Text    : nur RTL, ohne andere Atlas-Artefakte; gemeinsamer Code
-        für Server und Plugin (ADR 0012)
+        für Server und Plugin
     - Atlas.Common  : frei von Windows und VCL (nur plattformunabhängige RTL,
         Atlas.Text)
     - Atlas.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Atlas.Common)
@@ -14,7 +14,7 @@
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi und eigene Atlas.Core.VersionControl.*-Units
 
-    Atlas.Text im Plugin (ADR 0012): Das Plugin requiret Atlas.Text nicht,
+    Atlas.Text im Plugin: Das Plugin requiret Atlas.Text nicht,
     sondern übersetzt dessen Units selbst mit (contains … in
     '..\Atlas.Text\Source\…'). Geprüft wird, dass
       - das Plugin außer eigenen Units (Source\…) nur Atlas.Text-Units enthält,
@@ -22,31 +22,31 @@
       - Atlas.Tests.dpr und AtlasServer.dpr keine Atlas.Text-Quellen einbinden
         (sie linken die DCUs aus Dcu\Atlas.Text; zwei Fassungen vermeiden).
 
-    Kopien-Sperre (D-03): Außerhalb von Packages/Atlas.Text darf im
+    Kopien-Sperre: Außerhalb von Packages/Atlas.Text darf im
     implementation-Teil keine Routine wie LineBreakOf, SplitLines, IndentOf,
     IsWordChar, IsIdentChar, IsUtf8, PercentDecode usw. neu entstehen. Erlaubt
     sind nur die Fassaden und Sonderfälle in $AllowedLocal, jeweils mit Grund.
 
-    Rollenmatrix (Konzept 8.1/8.3, Code-Review A-12): Jede Unit wird nach
+    Rollenmatrix: Jede Unit wird nach
     Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
     Importregeln aus docs/Architektur.md einhalten. Contract-Units deklarieren
-    im interface keine Klassen außer Ausnahmen (Konzept 7.1). Genehmigte
+    im interface keine Klassen außer Ausnahmen. Genehmigte
     Ausnahmen stehen als "allow" der Regeln architecture-role-import und
     architecture-contract-content in atlas.json (eine Liste für Skript und
     Linter). Die Matrix muss TArchitectureMatrix in
     Atlas.Common.Rules.Builtin.Architecture entsprechen; beide prüfen die
     Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
 
-    Featurerichtung Rules/Editing (Code-Review A-11): Rules darf Editing
+    Featurerichtung Rules/Editing: Rules darf Editing
     verwenden (Korrekturen nutzen Editing-Helfer), Editing aber nicht Rules.
     Gemeinsame Wertetypen wie TTextEdit liegen in Documents.Contract.
 
-    Plugin-Struktur (Code-Review A-09): Atlas.IDE.Foundation.* verwendet aus
+    Plugin-Struktur: Atlas.IDE.Foundation.* verwendet aus
     der IDE-Schicht nur Atlas.IDE.Foundation.*; die Features von Atlas.Core
     und Atlas.IDE bilden keinen Zyklus (ohne Foundation, Kompositionswurzel
     und Verweise auf *.Contract).
 
-    Modulgrenzen (#1455, ADR 0017): Welche Unit des Plugins in welches
+    Modulgrenzen (#1455): Welche Unit des Plugins in welches
     Package gehört, steht als Daten in docs/adr/0017-unit-zuordnung.md
     (Ordnertabelle, Einzelzeilen je Package). Jede Unit braucht dort eine
     Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
@@ -99,7 +99,7 @@ $LegacyWindowsUnits = @(
     'WinInet', 'IniFiles'
 )
 
-# Plugin-Packages (#1456, ADR 0017): Base ist Atlas.IDE.Base; jedes weitere
+# Plugin-Packages (#1456): Base ist Atlas.IDE.Base; jedes weitere
 # Packages/Atlas.IDE.* ist ein Modul mit eigenen Quellen unter Source. Die Verträge zwischen Modulen liegen in Base.
 $PluginBaseFolder = 'Atlas.IDE.Base'
 $PluginFolders = @($PluginBaseFolder)
@@ -109,14 +109,14 @@ foreach ($dir in @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -
 
 $Packages = @(
     @{
-        # ADR 0012: wird auch als Quelltext ins Plugin übersetzt, darum nur RTL.
+        # Wird auch als Quelltext ins Plugin übersetzt, darum nur RTL.
         Name             = 'Atlas.Text'
         Path             = 'Packages/Atlas.Text'
         AllowedRequires  = @('rtl')
         ForbiddenPrefix  = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows',
                              'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.')
         ForbiddenUnits   = $LegacyVclUnits + $LegacyWindowsUnits
-        Reason           = 'nur RTL; wird auch ins Plugin übersetzt (ADR 0012)'
+        Reason           = 'nur RTL; wird auch ins Plugin übersetzt'
     },
     @{
         Name             = 'Atlas.Common'
@@ -135,7 +135,7 @@ $Packages = @(
         Reason           = 'frei von VCL'
     },
     @{
-        # ADR 0012: eigenständig, damit die IDE nur ein BPL laden muss; Atlas.Text kommt als Quelltext
+        # Eigenständig, damit die IDE nur ein BPL laden muss; Atlas.Text kommt als Quelltext
         # hinein (contains), nicht über requires. vclwinx (TImageCollection,
         # TVirtualImageList für das Atlas-Symbol, #751) gehört zur IDE und ist immer geladen.
         Name             = $PluginBaseFolder
@@ -146,7 +146,7 @@ $Packages = @(
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
     }
 )
-# Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (ADR 0017, Regel 9).
+# Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
     $requires = @('rtl', 'vcl', 'vclwinx', 'designide', $PluginBaseFolder)
     $Packages += @{
@@ -202,7 +202,7 @@ function Get-ClauseEntries([string] $Text, [string] $Keyword) {
     return $result
 }
 
-# Kopien-Sperre (D-03, ADR 0012): Namen, die nur Atlas.Text definieren soll.
+# Kopien-Sperre: Namen, die nur Atlas.Text definieren soll.
 $CopyLockNames = @('LineBreakOf', 'LineBreakIn', 'DetectLineBreak', 'SplitLines', 'StripCr', 'IndentOf', 'IsWordChar',
     'IsIdentChar', 'IsIdentStart', 'DecodeEntities', 'PercentDecode', 'PercentEncode', 'IsUtf8', 'CheckUtf8', 'HasPrefix')
 
@@ -251,7 +251,7 @@ function Remove-PascalCommentsOnly([string] $Text) {
     })
 }
 
-# Rollenmatrix (Konzept 8.1/8.3). Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
+# Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
 $RolePrefixes = @('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
@@ -274,7 +274,7 @@ $ForeignAllowed = @{
 }
 
 function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
-    # Einordnung nach Konzept 6.3; $null für externe Units (RTL, VCL, Setup, Tests).
+    # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests).
     $best = ''
     foreach ($prefix in $Prefixes) {
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
@@ -405,7 +405,7 @@ foreach ($package in $Packages) {
     }
 }
 
-# Atlas.Text im Plugin (ADR 0012)
+# Atlas.Text im Plugin
 $textDpk = Join-Path $Root 'Packages/Atlas.Text/Atlas.Text.dpk'
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
@@ -415,7 +415,7 @@ if ((Test-Path $textDpk) -and (Test-Path $pluginDpk)) {
     foreach ($entry in $pluginEntries) {
         $path = $entry.Path -replace '/', '\'
         if ($path -ne '' -and -not $path.StartsWith('Source\') -and -not $path.StartsWith('..\Atlas.Text\Source\')) {
-            $violations += "${pluginDpkName}: contains $($entry.Name) in '$($entry.Path)' – das Plugin bindet fremde Units nur aus Atlas.Text ein (ADR 0012)"
+            $violations += "${pluginDpkName}: contains $($entry.Name) in '$($entry.Path)' – das Plugin bindet fremde Units nur aus Atlas.Text ein"
         }
         if ($path.StartsWith('..\Atlas.Text\') -and -not $entry.Name.StartsWith('Atlas.Text.')) {
             $violations += "${pluginDpkName}: contains $($entry.Name) – unter Atlas.Text nur Atlas.Text.*-Units"
@@ -448,12 +448,12 @@ foreach ($program in @('Tests/Atlas.Tests.dpr', 'Application/AtlasServer.dpr')) 
     if (-not (Test-Path $programPath)) { continue }
     foreach ($entry in Get-UsesInEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($programPath)))) {
         if (($entry.Path -replace '/', '\') -match '(?i)Atlas\.Text\\Source\\') {
-            $violations += "${program}: $($entry.Name) in '$($entry.Path)' – Atlas.Text kommt als DCU aus Dcu\Atlas.Text, nicht als Quelltext (ADR 0012)"
+            $violations += "${program}: $($entry.Name) in '$($entry.Path)' – Atlas.Text kommt als DCU aus Dcu\Atlas.Text, nicht als Quelltext"
         }
     }
 }
 
-# Rollenmatrix und Contract-Inhalt (Code-Review A-12)
+# Rollenmatrix und Contract-Inhalt
 foreach ($dir in @('Packages', 'Application')) {
     $path = Join-Path $Root $dir
     if (-not (Test-Path $path)) { continue }
@@ -478,12 +478,12 @@ foreach ($dir in @('Packages', 'Application')) {
             if ($ancestor -ieq 'Exception' -or $ancestor -cmatch '^E[A-Z]' -or $ancestor -match '\.E[A-Z]\w*$') { continue }
             if ($ContractContentAllow | Where-Object { "$ownUnit.$typeName" -like $_ }) { continue }
             $line = ($head.Substring(0, $match.Index + $match.Value.Length - $match.Value.TrimStart().Length) -split "`n").Count
-            $violations += "${relative}:${line}: $typeName ist eine Klasse in einer Contract-Unit (Konzept 7.1)"
+            $violations += "${relative}:${line}: $typeName ist eine Klasse in einer Contract-Unit"
         }
     }
 }
 
-# Featurerichtung (A-11): keine Unit unter Source/Editing importiert Atlas.Common.Rules.*
+# Featurerichtung: keine Unit unter Source/Editing importiert Atlas.Common.Rules.*
 $editingDir = Join-Path $Root 'Packages/Atlas.Common/Source/Editing'
 if (Test-Path $editingDir) {
     foreach ($file in Get-ChildItem -Path $editingDir -Recurse -File -Include '*.pas') {
@@ -491,13 +491,13 @@ if (Test-Path $editingDir) {
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
             if ($unit.Name.StartsWith('Atlas.Common.Rules.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Editing darf Rules nicht verwenden (A-11); gemeinsame Typen nach Documents.Contract oder Pascal verschieben"
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Editing darf Rules nicht verwenden; gemeinsame Typen nach Documents.Contract oder Pascal verschieben"
             }
         }
     }
 }
 
-# Grundbausteine und Feature-Zyklen des Plugins (Code-Review A-09)
+# Grundbausteine und Feature-Zyklen des Plugins
 # - Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind die Basis aller
 #   IDE-Features und verwenden selbst kein anderes Atlas.IDE.*.
 # - Die Features von Atlas.Core und Atlas.IDE bilden keinen Zyklus (Tarjan über die uses aller Units).
@@ -522,7 +522,7 @@ if (Test-Path $PluginSource) {
         if ($ownUnit -match '^(?i)Atlas\.IDE\.Foundation\.') {
             foreach ($unit in $entries) {
                 if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.Foundation\.') {
-                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet nur Atlas.IDE.Foundation.* aus der IDE-Schicht (A-09)"
+                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet nur Atlas.IDE.Foundation.* aus der IDE-Schicht"
                 }
             }
             continue
@@ -585,11 +585,11 @@ if (Test-Path $PluginSource) {
                 if ($members -contains $to) { $examples += $featureEdges[$from][$to] }
             }
         }
-        $violations += "Feature-Zyklus (A-09): $($members -join ', ') – $($examples -join '; ')"
+        $violations += "Feature-Zyklus: $($members -join ', ') – $($examples -join '; ')"
     }
 }
 
-# Modulgrenzen (#1455, ADR 0017): Die Zuordnung der Units zu Packages steht als Daten in
+# Modulgrenzen (#1455): Die Zuordnung der Units zu Packages steht als Daten in
 # docs/adr/0017-unit-zuordnung.md (Ordnertabelle, Einzelzeilen je Package, Ausnahmen und bekannte Verstöße).
 # Verboten: Base -> Modul, Modul -> anderes Modul. Erlaubt: Modul -> Base (auch die Verträge zwischen
 # Modulen unter Source/Contracts von Base) und alles innerhalb eines Packages.
@@ -755,7 +755,7 @@ elseif (Test-Path $PluginSource) {
                 $KnownReport += "${relative}:$($unit.Line): uses $($unit.Name) – $reason"
                 continue
             }
-            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Modulgrenze (ADR 0017): $reason"
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Modulgrenze: $reason"
         }
     }
     foreach ($entry in @($map.Allowed) + @($map.Known)) {
@@ -765,7 +765,7 @@ elseif (Test-Path $PluginSource) {
     }
 }
 
-# Kopien-Sperre (D-03)
+# Kopien-Sperre
 $lockPattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($CopyLockNames -join '|') + '))\b'
 foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
     $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
@@ -778,7 +778,7 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
         $key = "${ownUnit}:$($match.Groups[1].Value)"
         if (-not $AllowedLocal.ContainsKey($key)) {
             $line = ($text.Substring(0, $implementation.Index + $match.Index) -split "`n").Count
-            $violations += "${relative}:${line}: $($match.Groups[1].Value) – gibt es in Atlas.Text (Kopien-Sperre, ADR 0012); dort verwenden oder in `$AllowedLocal begründen"
+            $violations += "${relative}:${line}: $($match.Groups[1].Value) – gibt es in Atlas.Text (Kopien-Sperre); dort verwenden oder in `$AllowedLocal begründen"
         }
     }
 }

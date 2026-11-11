@@ -37,7 +37,7 @@
 //   nie Quelltext aus dem Editor. Den Stack-Trace liefert Exception.StackTrace
 //   (falls ein Anbieter installiert ist), sonst der Haken StackOf
 //   (Atlas.IDE.Diagnostics.StackCapture: Mitschnitt beim Auslösen).
-// - Schreibfehler des Protokolls (Bericht M4): Früher verschluckte Add jeden
+// - Schreibfehler des Protokolls: Früher verschluckte Add jeden
 //   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen (das
 //   erklärt Lücken wie die ab dem 21.10. 21:29, belegt ist es nicht). Jetzt sperrt ein
 //   benannter Mutex je Ordner Rotieren und Schreiben über alle IDE-Prozesse

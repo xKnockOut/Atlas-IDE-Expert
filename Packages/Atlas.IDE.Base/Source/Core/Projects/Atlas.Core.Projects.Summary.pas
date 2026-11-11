@@ -386,7 +386,7 @@ type
     /// die vorhandene Datei ein höheres Format hat oder gerade nicht lesbar ist.</summary>
     class function Save(const AFolder: string; const ASummary: TAtlasProjectSummary): Boolean; static;
     /// <summary>Lesen, AChange anwenden, schreiben. Eine unbrauchbare Datei liegt danach als .defekt daneben
-    /// (Bericht N3); eine gesperrte bleibt unverändert (False).</summary>
+    ///; eine gesperrte bleibt unverändert (False).</summary>
     class function Update(const AFolder, AProject: string; const AChange: TAtlasProjectSummaryChange): Boolean; static;
     /// <summary>Ordner "projects" unter %LOCALAPPDATA%\Atlas (Willkommensseite und Tests lesen dieselben Dateien).
     /// </summary>
@@ -1347,7 +1347,7 @@ begin
   end;
 end;
 
-/// <summary>Liest die Übersicht aus AFileName über TAtlasDataFile (Bericht N3). AParsed: gelesen; sonst ist
+/// <summary>Liest die Übersicht aus AFileName über TAtlasDataFile. AParsed: gelesen; sonst ist
 /// ASummary leer mit Project = AProject. Ergebnis Kept: vorhanden, aber nicht gelesen; nicht überschreiben.
 /// </summary>
 function ReadSummary(const AFileName, AProject: string; out ASummary: TAtlasProjectSummary;

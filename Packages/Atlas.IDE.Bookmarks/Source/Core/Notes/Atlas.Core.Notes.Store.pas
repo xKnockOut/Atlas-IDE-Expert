@@ -31,7 +31,7 @@
 // erhalten; "format" steigt nur bei einer inkompatiblen Änderung, eine Datei
 // mit höherem Format wird weder gelesen noch überschrieben. Ein leeres
 // Notizbuch löscht seine Datei.
-// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt
+// Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
 // (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich das Notizbuch
 // (KeptFile), und Save überschreibt sie nicht.
@@ -81,7 +81,7 @@ type
     /// <summary>Gelesener Text der Datei; ToJson behält daraus unbekannte Felder.</summary>
     Raw: string;
     /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
-    /// Notizen verloren (Bericht N3). '' sonst.</summary>
+    /// Notizen verloren. '' sonst.</summary>
     KeptFile: string;
     class function Create(const AProject: string): TAtlasNoteBook; static;
     function Count: Integer;

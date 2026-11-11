@@ -114,7 +114,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1): neben jedem Knoten liegt der Name der umschließenden Routine auf dem Stapel.
+// Iterativ (tiefe Bäume sprengen den Stapel nicht): neben jedem Knoten liegt der Name der umschließenden Routine auf dem Stapel.
 procedure Collect(ARoot: TSyntaxNode; var ARoutines, ASections: TArray<TFindingScope>);
 var
   mPending: TStack<TSyntaxNode>;
