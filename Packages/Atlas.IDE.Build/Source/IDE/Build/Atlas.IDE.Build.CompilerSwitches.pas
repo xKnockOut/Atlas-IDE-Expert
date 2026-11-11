@@ -363,7 +363,7 @@ begin
       mKnown: Boolean;
     begin
       mKnown := TAtlasIdeCompilerSwitches.Fetch(ASession, AFileName, ALine, ACharacter, mAnswer);
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Build,
         procedure
         begin

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Parts;
 
-// Zentrale Stelle der Einstellungen in Base (#1455, ADR 0017 Entscheidung 3):
+// Zentrale Stelle der Einstellungen in Base (#1455):
 // Module melden ihren Teil an (Schlüssel mit Vorgaben, Schema-Teil, Seite,
 // Umbenennungen); Base hält eine Ablage für alle.
 // - AtlasSettingsParts besteht ab der Unit-Initialisierung (Regel 1); bis

@@ -52,7 +52,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `smartIndent` | global (settings.json) | object | – |  | Einrückung beim Tippen (#1827): Nach Enter rechnet Atlas mit derselben Blocklogik wie format.reindent aus, wo die Schreibmarke stehen soll. Atlas setzt kein end; ein, das macht der Blockabschluss der IDE; geändert werden nur Leerraum und beim String das Hochkomma und +. Breite einer Ebene und Tabulatoren nach format bzw. .editorconfig. |
-| `suggestions` | Projekt (atlas.json) | object | – | z. B. `{"patterns":[{"after":"Log.Enter","insert":"try   $| finally   Log.Leave; end;"}]}` | Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams. |
+| `suggestions` | Projekt (atlas.json) | object | – | z. B. `{"patterns":[{"after":"Log.Enter","insert":["try","  $|","finally","  Log.Leave;","end;"]}]}` | Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams. |
 | `classCompletion` | global (settings.json) | object | – |  | Klassenvervollständigung (#1834): Kommentar über dem Abschnitt einer Klasse im implementation-Teil, Reihenfolge und Inhalt neuer Methodenrümpfe aus der Aktion „Fehlende Methodenrümpfe anlegen“, /impl und dem Ordnen der Methoden (editor.methodPlacement im Plugin). |
 | `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
 | `navigation` | global (settings.json) | object | – |  | Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_path) und Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Tests (Plugin-Befehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact). |
@@ -457,7 +457,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json",
   "project": "App.dproj",
   "config": "Debug",
   "platform": "Win64",

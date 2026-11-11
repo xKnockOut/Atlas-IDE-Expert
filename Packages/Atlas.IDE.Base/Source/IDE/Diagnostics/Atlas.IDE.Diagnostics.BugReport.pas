@@ -4,7 +4,7 @@
 // das Fenster des abgesicherten Starts: holt den Bericht des laufenden
 // Servers (atlas.server.bugReport; ein gestoppter Server wird dafür nicht
 // gestartet), ergänzt Plugin- und IDE-Version, Einstellungen, atlas.log und
-// das Ende von server-stderr.log (Bericht H5),
+// das Ende von server-stderr.log,
 // zeigt die Vorschau und schreibt nach Bestätigung eine Markdown-Datei.
 // Die Meldungsansicht nennt Datei und Adresse für ein neues Issue.
 // Der Bericht des Servers kommt im Hintergrund (#874); bis dahin bleibt die IDE
@@ -59,7 +59,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Crashes,
   Atlas.UI.Diagnostics.ExportDialog,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings;
 
 class function TAtlasIdeBugReport.ProjectRoots: TArray<string>;
@@ -146,7 +146,7 @@ begin
   end
   else
   begin
-    mInput.ServerMissing := TAtlasStrings.Text(TAtlasTextId.BugReportNoServer);
+    mInput.ServerMissing := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportNoServer);
   end;
   Result := TAtlasBugReport.Build(mInput);
 end;
@@ -169,7 +169,7 @@ begin
     Exit;
   end;
   FBusy := True;
-  mMessage(TAtlasStrings.Text(TAtlasTextId.BugReportCollecting));
+  mMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportCollecting));
   try
     AServer(TAtlasBugReport.cServerCommand, TAtlasBugReport.ServerArguments(mInput),
       procedure(AAnswer: TJSONValue)
@@ -195,22 +195,23 @@ begin
   mReport := ReportText(AInput, AAnswer);
   if AInput.Anonymize then
   begin
-    mNote := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized);
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportAnonymized);
   end
   else
   begin
-    mNote := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportPlain);
   end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
-    TAtlasStrings.Text(TAtlasTextId.BugReportTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.BugReportHint, [mNote, TAtlasBugReport.cIssuesUrl]), mReport,
-    TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md'), mTarget,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportTitle),
+    TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.BugReportHint, [mNote, TAtlasBugReport.cIssuesUrl]), mReport,
+    TAtlasBugReport.DefaultFileName(Now), TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportFilter), 'md'),
+    mTarget,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;
   end;
   TFile.WriteAllText(mTarget, mReport, TEncoding.UTF8);
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.BugReportDone, [mTarget, TAtlasBugReport.cIssuesUrl]));
+  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.BugReportDone, [mTarget, TAtlasBugReport.cIssuesUrl]));
 end;
 
 end.

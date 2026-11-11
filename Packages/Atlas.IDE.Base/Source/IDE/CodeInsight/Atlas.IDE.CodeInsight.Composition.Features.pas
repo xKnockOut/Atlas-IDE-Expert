@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Features;
 
-// Teile des Plugins in Startreihenfolge (Code-Review S-03) in einer TAtlasFeatureTable: je Teil die Stufe des
+// Teile des Plugins in Startreihenfolge in einer TAtlasFeatureTable: je Teil die Stufe des
 // abgesicherten Starts (#722) bzw. die Einstellung, unter der es läuft, Start und Stop; danach die angemeldeten
 // Module (#1455). RegisterFeatures startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und
 // noch fehlt; StopFeatures baut rückwärts ab.
@@ -10,11 +10,11 @@ interface
 /// <summary>Gewünschte, noch fehlende Teile starten (beim Laden und nach jeder Einstellungsänderung); zuvor die
 /// laufenden Teile ausgeschalteter Module stoppen (#1454).</summary>
 procedure RegisterFeatures;
-/// <summary>Startanteile beenden (Bericht N4): Danach zählen weder Aktionen noch Teile mit.</summary>
+/// <summary>Startanteile beenden: Danach zählen weder Aktionen noch Teile mit.</summary>
 procedure EndStartTimes;
 /// <summary>Nachrichtenschleife frei nach ALoadMs: Ladezeit in die Startmarke (#722), Startanteile ins Protokoll
 /// und bei einem langsamen Start (safeMode.startupTimeoutMs) eine Zeile im Meldungsfenster (abschaltbar mit
-/// robustness.hangHint). Bericht N4: Ein langsamer Start zählt nicht mehr wie ein Absturz und schaltet beim
+/// robustness.hangHint). Ein langsamer Start zählt nicht wie ein Absturz und schaltet beim
 /// nächsten Start nichts ab; er nennt, was Atlas daran hatte, damit sich die Ursache beheben lässt.</summary>
 procedure ReportStartup(ALoadMs: Int64);
 /// <summary>Angemeldete Module melden keine Änderung mehr (vor ihrem Stopp, Regel 5).</summary>
@@ -28,7 +28,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.FeatureTable,
@@ -58,9 +58,9 @@ uses
   Atlas.IDE.CodeInsight.Composition.Startup;
 
 var
-  // Teile des Plugins in Startreihenfolge (Code-Review S-03); gefüllt beim ersten RegisterFeatures.
+  // Teile des Plugins in Startreihenfolge; gefüllt beim ersten RegisterFeatures.
   Features: TAtlasFeatureTable;
-  // Angemeldete Module als Teile der Feature-Tabelle (#1455, ADR 0017 Regeln 1, 2); lebt mit Features.
+  // Angemeldete Module als Teile der Feature-Tabelle (#1455, Modulregeln 1, 2); lebt mit Features.
   ModuleHosting: TAtlasModuleHosting;
 
 /// <summary>Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
@@ -275,7 +275,7 @@ begin
   Features.Add('Reloader', TAtlasSafeLevel.Normal, ReloaderStarted, StartReloader, StopReloader);
 end;
 
-/// <summary>Teile des Plugins in Startreihenfolge (Code-Review S-03); StopAll baut sie rückwärts ab.
+/// <summary>Teile des Plugins in Startreihenfolge; StopAll baut sie rückwärts ab.
 /// Normal = nur im normalen Start, Safe = auch abgesichert, Minimal = immer (#722).</summary>
 procedure AddFeatures;
 begin
@@ -309,7 +309,7 @@ begin
   begin
     TAtlasGuard.Log('Modul ausgeschaltet, Teil nicht sauber gestoppt: ' + mFailure);
   end;
-  // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
+  // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen.
   Features.Times := StartTimes;
   Features.StartWanted(Level);
   if MainMenu <> nil then
@@ -348,7 +348,8 @@ begin
   begin
     mParts := ': ' + mParts;
   end;
-  MessageLine(TAtlasStrings.Fmt(TAtlasTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total, mParts]));
+  MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total,
+    mParts]));
 end;
 
 procedure ReportStartup(ALoadMs: Int64);

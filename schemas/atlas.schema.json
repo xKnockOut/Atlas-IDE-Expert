@@ -180,8 +180,8 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Nur architecture-role-import und architecture-contract-content (Code-Review A-12): Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sache), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts.",
-                "x-description-en": "Only architecture-role-import and architecture-contract-content (code review A-12): prefixes of the output artifacts according to the role concept (Artifact.Feature.Role.Thing), e.g. \"Atlas.Common\". Without them the rules report nothing."
+                "description": "Nur architecture-role-import und architecture-contract-content: Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sache), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts.",
+                "x-description-en": "Only architecture-role-import and architecture-contract-content: prefixes of the output artifacts according to the role concept (Artifact.Feature.Role.Thing), e.g. \"Atlas.Common\". Without them the rules report nothing."
               },
               "hostRoles": {
                 "type": "array",

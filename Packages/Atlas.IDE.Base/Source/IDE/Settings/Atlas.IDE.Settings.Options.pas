@@ -36,7 +36,7 @@ type
   /// oder bei Fehler. Den Wert gibt der Aufrufer von ADone frei.</summary>
   TAtlasServerCommand = reference to procedure(ACommand: string; ADone: TProc<TJSONValue>);
 
-  /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (A-09: die Seiten
+  /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (die Seiten
   /// importieren Befehlszählung, Tipps, Code Insight-Manager und Vervollständigung nicht). Nicht gesetzte Haken
   /// bleiben ohne Wirkung bzw. liefern ''.</summary>
   TAtlasOptionsHooks = record
@@ -103,6 +103,7 @@ uses
   Atlas.UI.Settings.Page.Index,
   Atlas.UI.Settings.Page.Sections,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings;
 
@@ -659,7 +660,7 @@ var
 begin
   if ASetting = '' then
   begin
-    SelectOptionsNode([TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode)]);
+    SelectOptionsNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode)]);
     Exit;
   end;
   mName := 'Base';
@@ -668,7 +669,7 @@ begin
     mName := TAtlasModuleNodes.NameOfSwitch(ASwitch);
   end;
   PendingReveal := ASetting;
-  if not SelectOptionsNode([TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), mName]) then
+  if not SelectOptionsNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), mName]) then
   begin
     PendingReveal := '';
     Exit;

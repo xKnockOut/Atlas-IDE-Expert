@@ -96,6 +96,7 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
 { TAtlasResultsHierarchyPart }
@@ -105,7 +106,7 @@ begin
   inherited Create(AView);
   // Umschalter Liste/Diagramm (#1122), nur bei Aufrufhierarchien.
   FControls.Toggle := TAtlasResultsControls.Check(AView.Host, AView.Header, alRight, 90,
-    TAtlasStrings.Text(TAtlasTextId.CallDiagramToggle), ToggleClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramToggle), ToggleClick);
   FControls.Toggle.Visible := False;
   CreateBar;
   CreateDiagram;
@@ -119,19 +120,19 @@ begin
   mOwner := View.Host;
   FControls.Bar := TAtlasResultsControls.Bar(mOwner, View, 26);
   FControls.Outgoing := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 160,
-    TAtlasStrings.Text(TAtlasTextId.CallDiagramOutgoing), DirectionClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramOutgoing), DirectionClick);
   FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 150,
-    TAtlasStrings.Text(TAtlasTextId.CallDiagramIncoming), DirectionClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramIncoming), DirectionClick);
   TAtlasResultsControls.Follow(FControls.Incoming, FControls.Outgoing);
   FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alLeft, 140,
-    TAtlasStrings.Text(TAtlasTextId.CallDiagramProjectOnly), nil);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramProjectOnly), nil);
   TAtlasResultsControls.Follow(FControls.ProjectOnly, FControls.Incoming);
   FControls.ProjectOnly.Checked := True;
   FControls.ProjectOnly.OnClick := ProjectOnlyClick;
   FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alRight, 150,
-    TAtlasStrings.Text(TAtlasTextId.CallDiagramSaveHtml), SaveClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveHtml), SaveClick);
   FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alRight, 90,
-    TAtlasStrings.Text(TAtlasTextId.CallDiagramFit), FitClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramFit), FitClick);
 end;
 
 procedure TAtlasResultsHierarchyPart.CreateDiagram;
@@ -140,7 +141,7 @@ begin
   FControls.Diagram.Parent := View.Host;
   FControls.Diagram.Align := alClient;
   FControls.Diagram.Visible := False;
-  FControls.Diagram.Hint := TAtlasStrings.Text(TAtlasTextId.CallDiagramHint);
+  FControls.Diagram.Hint := TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramHint);
   FControls.Diagram.OnLoad := Load;
   FControls.Diagram.OnOpen :=
     procedure(const AItem: TAtlasHierarchyItem)
@@ -380,7 +381,7 @@ var
 begin
   mDialog := TSaveDialog.Create(View.Host);
   try
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.CallDiagramSaveFilter);
+    mDialog.Filter := TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveFilter);
     mDialog.DefaultExt := 'html';
     mDialog.FileName := TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand) + '.html';
     mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
@@ -389,7 +390,8 @@ begin
       Exit;
     end;
     TFile.WriteAllText(mDialog.FileName, DiagramHtml, TEncoding.UTF8);
-    View.Title.Caption := FTitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.CallDiagramSaved, [mDialog.FileName]);
+    View.Title.Caption := FTitle + ' · ' + TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramSaved,
+      [mDialog.FileName]);
   finally
     mDialog.Free;
   end;

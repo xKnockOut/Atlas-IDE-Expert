@@ -8,11 +8,11 @@
 // Zeichen nach "_", "." oder Ziffern. So findet "TBB" TBButton und "GTH"
 // GetTypeHierarchy. Groß- und Kleinschreibung spielt keine Rolle.
 //
-// Wortanfänge bestimmt TTextFuzzy aus Atlas.Text (ADR 0012). Die
+// Wortanfänge bestimmt TTextFuzzy aus Atlas.Text. Die
 // Vervollständigung nutzt CompletionScore: Teilfolgen gelten dort nur mit
 // Wortgrenzen (TTextFuzzy.MatchesBoundedSubsequence), wie im Plugin, das die
 // Liste beim Weitertippen selbst filtert. Sonst verschwänden Einträge, die der
-// Server geliefert hat, beim nächsten Zeichen (D-05). Die Symbolsuche (Score)
+// Server geliefert hat, beim nächsten Zeichen. Die Symbolsuche (Score)
 // bleibt großzügiger.
 
 interface

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.Jsonc;
 
 // JSON mit Kommentaren (atlas.json, settings.json), gemeinsam für Server und
-// Plugin (ADR 0012): Leerraum und Kommentare überspringen, Kommentare
+// Plugin: Leerraum und Kommentare überspringen, Kommentare
 // entfernen. Zeilenkommentare (//) enden an #10 oder #13, Blockkommentare
 // (/* */) an "*/". Ein offener Blockkommentar läuft bis zum Textende; ob das
 // ein Fehler ist, entscheidet der Aufrufer (Server: Meldung, Plugin: tolerant).

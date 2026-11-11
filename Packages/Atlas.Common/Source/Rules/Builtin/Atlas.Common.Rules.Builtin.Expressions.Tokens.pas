@@ -1,7 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Expressions.Tokens;
 
-// Hilfen der Ausdrucksregeln (Atlas.Common.Rules.Builtin.Expressions) über der Tokenliste: Code-Token ohne
-// Kommentare und Direktiven, Operandenende, einfacher Bezeichner, Lage im Routinenrumpf, Länge eines Literals
+// Hilfen der Ausdrucksregeln (Atlas.Common.Rules.Builtin.Expressions) über der Tokenliste: Operandenende, einfacher Bezeichner, Lage im Routinenrumpf, Länge eines Literals
 // und die Form "not X op Y" für operator-precedence.
 
 interface
@@ -22,12 +21,6 @@ type
     Last: Integer;
   end;
 
-/// <summary>Kommentar oder Direktive?</summary>
-function IsTrivia(const AToken: TPascalToken): Boolean;
-/// <summary>Erstes Code-Token ab AIndex; hinter dem Ende, wenn keines.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-/// <summary>Letztes Code-Token vor AIndex; -1, wenn keines.</summary>
-function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Quelltext der Token AFirst..ALast wie geschrieben.</summary>
 function SourceText(const AText: string; const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
 /// <summary>Bereich der Token AFirst..ALast.</summary>
@@ -54,30 +47,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
+  System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor;
 
 function SourceText(const AText: string; const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
 begin
@@ -187,7 +158,7 @@ begin
   begin
     Exit;
   end;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     for mIndex := ATree.Root.ChildCount - 1 downto 0 do

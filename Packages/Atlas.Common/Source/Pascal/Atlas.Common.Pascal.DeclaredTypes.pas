@@ -33,7 +33,7 @@ type
     FInlineVars: TList<TSyntaxNode>;
     function TypeText(ANode: TSyntaxNode): string;
     procedure AddNames(AScope: TScope; ANode: TSyntaxNode);
-    /// <summary>Sammelt die Deklarationen aus dem Baum; iterativ mit eigenem Rahmenstapel (Bericht M1).</summary>
+    /// <summary>Sammelt die Deklarationen aus dem Baum; iterativ mit eigenem Rahmenstapel.</summary>
     procedure Walk(ARoot: TSyntaxNode);
     /// <summary>Legt ANode als Rahmen auf den Stapel von Walk.</summary>
     procedure Enter(AFrames: TList<TFrame>; ANode: TSyntaxNode; const AOwnerClass: string);
@@ -268,7 +268,7 @@ var
   mFrame: TFrame;
   mTop: Integer;
 begin
-  // Früher rekursiv je Kind; lange Ausdrucksketten sprengten so den Stapel (Bericht M1). Der Rahmenstapel geht
+  // Früher rekursiv je Kind; lange Ausdrucksketten sprengten so den Stapel. Der Rahmenstapel geht
   // die Kinder in derselben Reihenfolge durch wie die Rekursion: Routinen stehen in FRoutines in
   // Quelltextreihenfolge, wie RoutineAt es braucht.
   mFrames := TList<TFrame>.Create;

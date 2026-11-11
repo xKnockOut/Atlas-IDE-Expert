@@ -36,7 +36,8 @@ uses
   Vcl.ComCtrls,
   Vcl.Graphics,
   Atlas.Core.Tracker.Attach,
-  Atlas.UI.Tracker.Capture;
+  Atlas.UI.Tracker.Capture,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Was der Dialog anbieten kann; die IDE-Schicht füllt es.</summary>
@@ -103,7 +104,7 @@ type
     FormPng: TBytes;
   end;
 
-  TAtlasAttachDialog = class(TForm)
+  TAtlasAttachDialog = class(TAtlasDialog)
   public const
     cGap = 8;
     cDialogWidth = 680;
@@ -202,7 +203,7 @@ end;
 constructor TAtlasAttachDialog.CreateFor(AOwner: TComponent; const AInput: TAtlasAttachDialogInput;
   ATemp: TAtlasAttachTemp);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FInput := AInput;
   FTemp := ATemp;
   FPicker := TAtlasWindowPicker.Create;
@@ -216,7 +217,7 @@ begin
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
-  ClientWidth := cDialogWidth;
+  ClientWidth := ScaleValue(cDialogWidth);
   BuildControls;
 end;
 
@@ -311,7 +312,7 @@ procedure AddScreenshotRows(ADialog: TAtlasAttachDialog; AGroup: TWinControl; va
 begin
   ADialog.FParts.Screenshot := AddCheck(ADialog, AGroup, ARow,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachScreenshot));
-  ADialog.FParts.Screenshot.Width := 250;
+  ADialog.FParts.Screenshot.Width := ADialog.FParts.Screenshot.ScaleValue(250);
   ADialog.FParts.WindowBox := TComboBox.Create(ADialog);
   ADialog.FParts.WindowBox.Parent := AGroup;
   ADialog.FParts.WindowBox.Style := csDropDownList;
@@ -340,7 +341,7 @@ begin
     mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoForm);
   end;
   ADialog.FParts.FormCheck := AddCheck(ADialog, AGroup, ARow, mCaption);
-  ADialog.FParts.FormCheck.Width := 520;
+  ADialog.FParts.FormCheck.Width := ADialog.FParts.FormCheck.ScaleValue(520);
   ADialog.FParts.FormCheck.Enabled := ADialog.FImages.Form <> nil;
   ADialog.FParts.FormMarkup := AddButton(ADialog, AGroup, Bounds(544, ARow - 3, 110, 25),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkup), ADialog.MarkupClick);
@@ -351,7 +352,7 @@ end;
 procedure AddLogRows(ADialog: TAtlasAttachDialog; AGroup: TWinControl; var ARow: Integer);
 begin
   ADialog.FParts.Log := AddCheck(ADialog, AGroup, ARow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLog));
-  ADialog.FParts.Log.Width := 90;
+  ADialog.FParts.Log.Width := ADialog.FParts.Log.ScaleValue(90);
   ADialog.FParts.LogBox := TComboBox.Create(ADialog);
   ADialog.FParts.LogBox.Parent := AGroup;
   ADialog.FParts.LogBox.Style := csDropDown;
@@ -390,7 +391,7 @@ begin
     mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNote);
   end;
   ADialog.FParts.DebugNote := AddCheck(ADialog, AGroup, ARow, mCaption);
-  ADialog.FParts.DebugNote.Width := 600;
+  ADialog.FParts.DebugNote.Width := ADialog.FParts.DebugNote.ScaleValue(600);
   ADialog.FParts.DebugNote.Enabled := ADialog.FInput.DebugNote <> '';
   Inc(ARow, 26);
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachExceptionsNone);
@@ -399,12 +400,12 @@ begin
     mCaption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachExceptions, [ADialog.FInput.ExceptionCount]);
   end;
   ADialog.FParts.Exceptions := AddCheck(ADialog, AGroup, ARow, mCaption);
-  ADialog.FParts.Exceptions.Width := 600;
+  ADialog.FParts.Exceptions.Width := ADialog.FParts.Exceptions.ScaleValue(600);
   ADialog.FParts.Exceptions.Enabled := (ADialog.FInput.ExceptionCount > 0) and (ADialog.FInput.ExceptionsText <> '');
   Inc(ARow, 26);
   ADialog.FParts.Extra := AddCheck(ADialog, AGroup, ARow,
     TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachCrashCase, [Length(ADialog.FInput.Extra)]));
-  ADialog.FParts.Extra.Width := 600;
+  ADialog.FParts.Extra.Width := ADialog.FParts.Extra.ScaleValue(600);
   ADialog.FParts.Extra.Enabled := Length(ADialog.FInput.Extra) > 0;
   ADialog.FParts.Extra.Checked := ADialog.FParts.Extra.Enabled;
 end;
@@ -465,10 +466,10 @@ begin
   ADialog.FParts.List.ShowColumnHeaders := True;
   mColumn := ADialog.FParts.List.Columns.Add;
   mColumn.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName);
-  mColumn.Width := 480;
+  mColumn.Width := ADialog.FParts.List.ScaleValue(480);
   mColumn := ADialog.FParts.List.Columns.Add;
   mColumn.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnSize);
-  mColumn.Width := 120;
+  mColumn.Width := ADialog.FParts.List.ScaleValue(120);
   mColumn.Alignment := taRightJustify;
   ADialog.FParts.List.OnDblClick := ADialog.ListDblClick;
   Inc(ATop, 110 + TAtlasAttachDialog.cGap);
@@ -508,7 +509,7 @@ begin
   AddCommentRows(Self, mTop);
   AddFileList(Self, mTop);
   AddButtons(Self, mTop);
-  ClientHeight := mTop + 44;
+  ClientHeight := mTop + ScaleValue(44);
   // Fenster des Programms; das Hauptfenster zuerst. In die Liste erst mit Fenster (CreateWnd).
   if FInput.ProcessId <> 0 then
   begin

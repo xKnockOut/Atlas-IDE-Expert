@@ -16,6 +16,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard;
 
@@ -74,6 +75,12 @@ type
   public
     /// <summary>Wer belegt AShortCut außer Atlas? '' wenn frei.</summary>
     class function Owner(AShortCut: Word): string; static;
+    /// <summary>Besitzer aller Tasten der IDE-Aktionen (nicht Atlas) in einem einzigen Lauf über die ActionList
+    /// nach AOwners; die erste Aktion je Taste gewinnt wie bei Owner. Für viele Abfragen hintereinander: Owner
+    /// läuft je Aufruf über die ganze ActionList.</summary>
+    class procedure CollectOwners(AOwners: TDictionary<Word, string>); static;
+    /// <summary>Wie Owner, aber aus den mit CollectOwners gesammelten Besitzern.</summary>
+    class function OwnerIn(AOwners: TDictionary<Word, string>; AShortCut: Word): string; static;
     /// <summary>Soll Atlas AShortCut für AWhat belegen? Meldet einen Konflikt einmal je Taste und Besitzer.</summary>
     class function Decide(AShortCut: Word; APriority: Boolean; const AWhat: string): Boolean; static;
     /// <summary>ABinding (neu) anmelden bzw. abmelden; AIndex -1 = nicht angemeldet.</summary>
@@ -83,7 +90,6 @@ type
     class function ForeignCompletions: TArray<string>; static;
     /// <summary>Hinweis, wenn eine andere Erweiterung eine eigene Vervollständigung mitbringt.</summary>
     class procedure ReportForeignCompletion; static;
-    class procedure AddMessage(const AText: string); static;
     /// <summary>Zu AShortCut ist in dieser Sitzung schon ein Konflikt gemeldet (#494, #520).</summary>
     class function Reported(AShortCut: Word): Boolean; static;
     class procedure MarkReported(AShortCut: Word); static;
@@ -102,7 +108,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyStroke,
-  Atlas.UI.Strings;
+  Atlas.UI.Foundation.Strings,
+  Atlas.IDE.Foundation.Host;
 
 { TAtlasIdeKeyBinding.TBinding }
 
@@ -317,6 +324,59 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeKeys.CollectOwners(AOwners: TDictionary<Word, string>);
+var
+  mServices: INTAServices;
+  mIndex, mSecondary: Integer;
+  mAction: TCustomAction;
+  mCaption: string;
+
+  procedure Note(AShortCut: Word);
+  begin
+    if (AShortCut <> 0) and not AOwners.ContainsKey(AShortCut) then
+    begin
+      AOwners.Add(AShortCut, mCaption);
+    end;
+  end;
+
+begin
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
+  begin
+    if not (mServices.ActionList.Actions[mIndex] is TCustomAction) then
+    begin
+      Continue;
+    end;
+    mAction := TCustomAction(mServices.ActionList.Actions[mIndex]);
+    if SameText(mAction.Category, 'Atlas') then
+    begin
+      Continue;
+    end;
+    mCaption := StripHotkey(mAction.Caption);
+    Note(mAction.ShortCut);
+    for mSecondary := 0 to mAction.SecondaryShortCuts.Count - 1 do
+    begin
+      Note(mAction.SecondaryShortCuts.ShortCuts[mSecondary]);
+    end;
+  end;
+end;
+
+class function TAtlasIdeKeys.OwnerIn(AOwners: TDictionary<Word, string>; AShortCut: Word): string;
+begin
+  Result := '';
+  if AShortCut = 0 then
+  begin
+    Exit;
+  end;
+  if not AOwners.TryGetValue(AShortCut, Result) then
+  begin
+    Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
+  end;
+end;
+
 class function TAtlasIdeKeys.Decide(AShortCut: Word; APriority: Boolean; const AWhat: string): Boolean;
 var
   mHolder, mKey, mSeen: string;
@@ -336,7 +396,8 @@ begin
     end;
   end;
   FReported := FReported + [mKey];
-  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyConflict, [ShortCutToText(AShortCut), mHolder, AWhat]));
+  TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.KeyConflict,
+    [ShortCutToText(AShortCut), mHolder, AWhat]));
   MarkReported(AShortCut);
 end;
 
@@ -384,23 +445,6 @@ begin
   AIndex := -1;
 end;
 
-class procedure TAtlasIdeKeys.AddMessage(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
-begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    Exit;
-  end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
-  end;
-  mMessages.AddTitleMessage(AText, mGroup);
-end;
-
 class function TAtlasIdeKeys.ForeignCompletions: TArray<string>;
 var
   mModules: array[0..1023] of HMODULE;
@@ -445,7 +489,7 @@ begin
       Continue;
     end;
     FForeignReported := FForeignReported + [mExtension];
-    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ForeignCompletion, [mExtension]));
+    TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.ForeignCompletion, [mExtension]));
   end;
 end;
 

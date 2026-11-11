@@ -54,7 +54,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `inlayHints` | global (settings.json) | object | – |  | Inlay hints in the editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code lens in the editor. |
 | `smartIndent` | global (settings.json) | object | – |  | Indentation while typing (#1827): after Enter Atlas computes where the cursor belongs, with the same block logic as format.reindent. Atlas never inserts end; (the IDE's block completion does that); only whitespace changes, and for a string the quote and +. Width of one level and tabs follow format or .editorconfig. |
-| `suggestions` | project (atlas.json) | object | – | e.g. `{"patterns":[{"after":"Log.Enter","insert":"try   $| finally   Log.Leave; end;"}]}` | Learned suggestions (#1890): after a trigger such as X := TFoo.Create; or L.BeginUpdate; the plugin suggests as grey ghost text what usually follows in the project (try … finally X.Free; end;). The switches and thresholds live in the plugin settings (suggestions.*). This holds the team's house rules. |
+| `suggestions` | project (atlas.json) | object | – | e.g. `{"patterns":[{"after":"Log.Enter","insert":["try","  $|","finally","  Log.Leave;","end;"]}]}` | Learned suggestions (#1890): after a trigger such as X := TFoo.Create; or L.BeginUpdate; the plugin suggests as grey ghost text what usually follows in the project (try … finally X.Free; end;). The switches and thresholds live in the plugin settings (suggestions.*). This holds the team's house rules. |
 | `classCompletion` | global (settings.json) | object | – |  | Class completion (#1834): comment above a class section in the implementation part, order and content of new method bodies from the action "Create missing method bodies", /impl and method ordering (editor.methodPlacement in the plugin). |
 | `references` | global (settings.json) | object | – |  | Accuracy of usages, call hierarchy and rename: besides the certain (uniquely resolved) places, inferred ones appear with a reason, for example calls via an interface or in an inactive {$IFDEF} branch. Rename only changes certain places and lists the inferred ones. |
 | `navigation` | global (settings.json) | object | – |  | Navigation through the code: path between two symbols or units via calls, fields, interfaces, inheritance and uses (plugin command "Path between symbols…", MCP tool find_path) and impact analysis: what is affected if I change a symbol? Callers, references, overrides, interface implementations and form bindings by level, plus the affected tests (plugin command "Show impact", MCP tool get_impact). |
@@ -459,7 +459,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json",
   "project": "App.dproj",
   "config": "Debug",
   "platform": "Win64",

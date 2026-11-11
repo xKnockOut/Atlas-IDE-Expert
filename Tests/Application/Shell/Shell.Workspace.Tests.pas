@@ -1,6 +1,6 @@
 ﻿unit Shell.Workspace.Tests;
 
-// Reload nur im Thread der Nachrichtenschleife (Code-Review A-03); Bereitschaft für
+// Reload nur im Thread der Nachrichtenschleife; Bereitschaft für
 // Prüfungen ohne Projekt (#1220).
 
 interface
@@ -14,7 +14,7 @@ type
   public
     [Test]
     procedure ReloadOutsideLoopThreadRaises;
-    /// <summary>Einheitliche Wahl des Arbeitsbereichs (S-02): Treffer, sonst der einzige, sonst keiner.</summary>
+    /// <summary>Einheitliche Wahl des Arbeitsbereichs: Treffer, sonst der einzige, sonst keiner.</summary>
     [Test]
     procedure ChooseFallsBackToSingleWorkspace;
     /// <summary>Unit in mehreren Projekten (#1112): Gleiche Art bleibt, verschiedene Arten ergeben Unknown,

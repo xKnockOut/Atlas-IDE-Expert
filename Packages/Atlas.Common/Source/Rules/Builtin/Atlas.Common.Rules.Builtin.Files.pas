@@ -167,7 +167,7 @@ begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-// Iterativ (Bericht M1): erst die Punktkette hinab, dann die Namen von innen nach außen anhängen.
+// Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Punktkette hinab, dann die Namen von innen nach außen anhängen.
 function DottedText(ANode: TSyntaxNode): string;
 var
   mChain: TStack<TSyntaxNode>;

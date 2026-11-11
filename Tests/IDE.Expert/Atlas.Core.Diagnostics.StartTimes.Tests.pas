@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.StartTimes.Tests;
 
-// Startanteile (Bericht N4): Teile addieren, messen auch bei Ausnahmen, die
+// Startanteile: Teile addieren, messen auch bei Ausnahmen, die
 // längsten nennen, langsamen Start erkennen und die Protokollzeile.
 
 interface

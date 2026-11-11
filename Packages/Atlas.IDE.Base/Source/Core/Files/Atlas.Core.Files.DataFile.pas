@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Files.DataFile;
 
-// Datendateien des Plugins (Bericht N3): Favoriten, Verläufe, Lernstände, Projektübersicht, Lesezeichen,
+// Datendateien des Plugins: Favoriten, Verläufe, Lernstände, Projektübersicht, Lesezeichen,
 // Notizen und die übrigen JSON-Ablagen.
 //
 // Ursache kaputter Dateien war das Schreiben: TFile.WriteAllText kürzt die Datei und schreibt sie neu, die
@@ -11,15 +11,14 @@
 //
 // Ist der Inhalt trotzdem unbrauchbar (von Hand bearbeitet, von einer älteren Fassung halb geschrieben), legt
 // Load die Datei als "<Name>.defekt" daneben und schreibt eine Zeile ins Plugin-Protokoll, nur mit der Art der
-// Ablage, ohne Pfad. Die Ablage beginnt neu, die alten Daten bleiben zum Nachsehen erhalten. Früher begann sie
-// still leer und überschrieb die Datei beim nächsten Speichern.
+// Ablage, ohne Pfad. Die Ablage beginnt neu, die alten Daten bleiben zum Nachsehen erhalten, statt beim nächsten
+// Speichern still überschrieben zu werden.
 //
 // Lässt sich eine vorhandene Datei nicht lesen (gesperrt, Lesefehler), meldet Load Kept: Die Ablage arbeitet
 // ohne ihren Inhalt und darf die Datei nicht überschreiben, sonst gingen deren Daten verloren. Das steht einmal
 // je Art und Sitzung im Protokoll.
 //
-// Geschrieben wird UTF-8 ohne BOM, wie bei JSON üblich; gelesen wird mit und ohne BOM (frühere Fassungen
-// schrieben eines).
+// Geschrieben wird UTF-8 ohne BOM, wie bei JSON üblich; gelesen wird mit und ohne BOM.
 
 interface
 

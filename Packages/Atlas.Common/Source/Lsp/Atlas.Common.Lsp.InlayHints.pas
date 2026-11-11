@@ -105,7 +105,7 @@ type
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -167,6 +167,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Editing.InterfaceStubs,
@@ -220,11 +221,6 @@ begin
   Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
 end;
 
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
 function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
@@ -275,7 +271,7 @@ var
 begin
   mKinds := AKinds;
   mList := AList;
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin

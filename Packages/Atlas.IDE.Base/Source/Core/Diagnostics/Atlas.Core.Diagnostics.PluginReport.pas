@@ -81,7 +81,7 @@ const
      '### Langsame Aufrufe, neueste zuerst (höchstens %d)',
      'Keiner.',
      '### Server-Anfragen (ms)',
-     'Anfrage | Anzahl | Mittel | Maximum | Hauptthread gewartet | Zeitüberschreitung | abgebrochen | Fehler',
+     'Anfrage | Anzahl | Mittel | Maximum | im Hauptthread | Hauptthread Ø | Zeitüberschreitung | abgebrochen | Fehler',
      '### Quellen im Hintergrund (ms)',
      'Quelle | Aufrufe | Mittel | Maximum | zu langsam',
      '### Hänger (Einfrier-Wächter), neueste zuerst',
@@ -94,7 +94,7 @@ const
      '### Slow calls, newest first (at most %d)',
      'None.',
      '### Server requests (ms)',
-     'Request | count | mean | maximum | main thread waited | timeout | cancelled | errors',
+     'Request | count | mean | maximum | on main thread | main thread mean | timeout | cancelled | errors',
      '### Background sources (ms)',
      'Source | calls | mean | maximum | too slow',
      '### Hangs (freeze watchdog), newest first',
@@ -110,6 +110,9 @@ end;
 
 const
   cNoValue = '–';
+  /// <summary>Zeile der Tabelle „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
+  /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
+  cRequestRow = '%s | %d | %s | %s | %d | %s | %d | %d | %d';
 
 function Invariant: TFormatSettings;
 begin
@@ -303,12 +306,12 @@ begin
   ALines.Add(UiText(TPluginReportText.ServerRequestsMs));
   ALines.Add('');
   ALines.Add(UiText(TPluginReportText.RequestCountMeanMaximumMain));
-  ALines.Add('--- | --- | --- | --- | --- | --- | --- | ---');
+  ALines.Add('--- | --- | --- | --- | --- | --- | --- | --- | ---');
   for mRequest in TAtlasPluginRows.Requests(ASnapshot) do
   begin
-    ALines.Add(Format('%s | %d | %s | %s | %s | %d | %d | %d', [mRequest.Method, mRequest.Stat.Calls,
-      TAtlasPluginRows.Ms(mRequest.Stat.MeanMs), TAtlasPluginRows.Ms(mRequest.Stat.MaxMs),
-      TAtlasPluginRows.Ms(mRequest.WaitedMs), mRequest.TimedOut, mRequest.Cancelled, mRequest.Failed]));
+    ALines.Add(Format(cRequestRow, [mRequest.Method, mRequest.Stat.Calls,
+      TAtlasPluginRows.Ms(mRequest.Stat.MeanMs), TAtlasPluginRows.Ms(mRequest.Stat.MaxMs), mRequest.WaitedCalls,
+      TAtlasPluginRows.Ms(mRequest.WaitedMeanMs), mRequest.TimedOut, mRequest.Cancelled, mRequest.Failed]));
   end;
   ALines.Add('');
 end;

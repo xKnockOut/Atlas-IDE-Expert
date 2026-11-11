@@ -17,6 +17,7 @@ function CommandsStarted: Boolean;
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Core.Editor.Metrics,
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Editor.MouseButtons,
@@ -80,10 +81,10 @@ begin
       ExecutePaletteCommand(AId);
     end;
   mHooks.ShowPalette := ShowPalette;
-  mHooks.ShortCutOf :=
-    function(AId: string): string
+  mHooks.ShortCuts :=
+    function: TFunc<string, string>
     begin
-      Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+      Result := TAtlasIdeKeyMap.AtlasShortCuts();
     end;
   mHooks.FindingsOf := FindingsOf;
   mHooks.CanGoBack := CanGoBack;

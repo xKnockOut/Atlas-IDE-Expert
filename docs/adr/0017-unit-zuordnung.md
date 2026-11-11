@@ -1,9 +1,9 @@
-﻿# ADR 0017: Zuordnung der Units zu Packages
+﻿﻿# ADR 0017: Zuordnung der Units zu Packages
 
 - Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
-- Bezug: ADR 0017, Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
+- Bezug: #1455, #1456; Regeln für Laden, Entladen und Versionen in [docs/Architektur.md](../Architektur.md) („Module und Verträge des Plugins“)
 
-Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Dokument). Die Analyse enthielt nur Summen je Package, keine Liste je Unit. Die Liste hier ist aus dem Quellbaum erzeugt, nach diesen Regeln:
+Die Liste ist aus dem Quellbaum erzeugt, nach diesen Regeln:
 
 | Ordner (unter `Core/`, `IDE/`, `UI/`) | Package |
 |---|---|
@@ -32,15 +32,15 @@ Ausnahmen:
 - Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
 - Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
 - Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
-- Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
+- Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). Compilermeldungen und Prüfen nach dem Speichern bleiben ausdrücklich im Kern, weil sie auch ohne das Modul gebraucht werden.
 - `Atlas.IDE.Rules` (#1455, festgeschrieben; seit #1755 alles Regelspezifische): Ordner `Core/IDE/UI/Rules`, dazu Sammelkorrektur (`Core/UI.Problems.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Das Modul hat Regeltabelle und Regel-Editor, den Abschnitt „Prüfregeln“ mit Baseline und Unterdrückungen, den Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`) und die Regel-Aktionen am Befund (`IAtlasRuleActions`: einstellen, unterdrücken, abschalten). Im Kern bleibt die Anzeige der Befunde: Fenster „Atlas-Prüfung“ mit Erklären (`Core.Problems.Explanation`), Inline-Hinweise, Übersichtsleiste, Prüfen beim Speichern, der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`), Stand und Format der Baseline-Datei und die Verträge. Ohne Modul fehlen die Regel-Einträge im Menü, und der Dialog zeigt „rules“ als JSON-Text.
-- `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
+- `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen.
 
 Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Base/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
 
 ## Grenzen zwischen Base, Modulen und Verträgen
 
-Regeln (ADR 0017, Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Base/Source`:
+Regeln (Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Base/Source`:
 
 - Base verwendet kein Modul.
 - Ein Modul verwendet kein anderes Modul; Querbezüge laufen über die Verträge zwischen Modulen, die in Base unter `Source/Contracts` liegen (`Atlas.IDE.Contracts.*`; kein eigenes Package).
@@ -89,10 +89,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Unit | Datei | Begründung |
 |---|---|---|
-| `Atlas.Core.Build.CheckOnSave` | `Core/Build/Atlas.Core.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.CheckOnSave` | `Core/Build/Atlas.Core.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
-| `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.Core.Build.Requests` | `Core/Build/Atlas.Core.Build.Requests.pas` | Daten der Builds auf Auftrag für Läufer, Eingang der KI-Assistenten und Vertrag (#1888) |
 | `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
 | `Atlas.Core.Build.Pipeline` | `Core/Build/Atlas.Core.Build.Pipeline.pas` | Was Base der Build-Pipeline gibt (Compilermeldungen, Bewertung) über die Registry, #1455 |
@@ -157,6 +157,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.ExitWatch` | `Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.ThreadList` | `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.TimeLimit` | `Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.Deadline` | `Core/Diagnostics/Atlas.Core.Diagnostics.Deadline.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.UserIdle` | `Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.UnloadSafety` | `Core/Diagnostics/Atlas.Core.Diagnostics.UnloadSafety.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.WorkerSlot` | `Core/Diagnostics/Atlas.Core.Diagnostics.WorkerSlot.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Timing` | `Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
@@ -408,6 +412,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Style.Color` | `Core/Style/Atlas.Core.Style.Color.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Palette` | `Core/Style/Atlas.Core.Style.Palette.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Scaling` | `Core/Style/Atlas.Core.Style.Scaling.pas` | Ordner `Core/Style` |
+| `Atlas.Core.Style.Listeners` | `Core/Style/Atlas.Core.Style.Listeners.pas` | Abonnenten des Themenwechsels (#2061) |
 | `Atlas.Core.Style.Signal` | `Core/Style/Atlas.Core.Style.Signal.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Symbol` | `Core/Style/Atlas.Core.Style.Symbol.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Syntax` | `Core/Style/Atlas.Core.Style.Syntax.pas` | Ordner `Core/Style` |
@@ -440,10 +445,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.VersionControl.Worker` | `Core/VersionControl/Atlas.Core.VersionControl.Worker.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.WorkingCopies` | `Core/VersionControl/Atlas.Core.VersionControl.WorkingCopies.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.Versions.Project` | `Core/Versions/Atlas.Core.Versions.Project.pas` | Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455 |
-| `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
 | `Atlas.IDE.Build.LastMessages` | `IDE/Build/Atlas.IDE.Build.LastMessages.pas` | Compilermeldungen des letzten Builds; Modul Prüfregeln liest sie, auch ohne Build-Pipeline, #1455 |
-| `Atlas.IDE.Build.MessageView` | `IDE/Build/Atlas.IDE.Build.MessageView.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.IDE.Build.MessageView` | `IDE/Build/Atlas.IDE.Build.MessageView.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
 | `Atlas.IDE.Build.Notifier` | `IDE/Build/Atlas.IDE.Build.Notifier.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455 |
 | `Atlas.IDE.CodeInsight.Composition` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas` | Ordner `IDE/CodeInsight` |
@@ -591,6 +596,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.DockWindow` | `IDE/Foundation/Atlas.IDE.Foundation.DockWindow.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorBarHost` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBarHost.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorBuffer` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBuffer.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.EditorFiles` | `IDE/Foundation/Atlas.IDE.Foundation.EditorFiles.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorRefresh` | `IDE/Foundation/Atlas.IDE.Foundation.EditorRefresh.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorSnapshot` | `IDE/Foundation/Atlas.IDE.Foundation.EditorSnapshot.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorStyle` | `IDE/Foundation/Atlas.IDE.Foundation.EditorStyle.pas` | Ordner `IDE/Foundation` |
@@ -663,15 +669,18 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Undo.Target` | `IDE/Undo/Atlas.IDE.Undo.Target.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Updates.Check` | `IDE/Updates/Atlas.IDE.Updates.Check.pas` | Ordner `IDE/Updates` |
 | `Atlas.IDE.Updates.Install` | `IDE/Updates/Atlas.IDE.Updates.Install.pas` | Ordner `IDE/Updates` |
+| `Atlas.UI.CodeInsight.Strings` | `UI/CodeInsight/Atlas.UI.CodeInsight.Strings.pas` | Ordner `UI/CodeInsight` |
 | `Atlas.UI.Commands.KeyMap` | `UI/Commands/Atlas.UI.Commands.KeyMap.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.Palette` | `UI/Commands/Atlas.UI.Commands.Palette.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.ShortcutTip` | `UI/Commands/Atlas.UI.Commands.ShortcutTip.pas` | Ordner `UI/Commands` |
+| `Atlas.UI.Commands.Strings` | `UI/Commands/Atlas.UI.Commands.Strings.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Completion.Details` | `UI/Completion/Atlas.UI.Completion.Details.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.Popup` | `UI/Completion/Atlas.UI.Completion.Popup.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupState` | `UI/Completion/Atlas.UI.Completion.PopupState.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupLayout` | `UI/Completion/Atlas.UI.Completion.PopupLayout.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupPainter` | `UI/Completion/Atlas.UI.Completion.PopupPainter.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.PopupTexts` | `UI/Completion/Atlas.UI.Completion.PopupTexts.pas` | Ordner `UI/Completion` |
+| `Atlas.UI.Completion.Strings` | `UI/Completion/Atlas.UI.Completion.Strings.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Diagnostics.ExportDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ExportDialog.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.Grid` | `UI/Diagnostics/Atlas.UI.Diagnostics.Grid.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.MainThreadPage` | `UI/Diagnostics/Atlas.UI.Diagnostics.MainThreadPage.pas` | Ordner `UI/Diagnostics` |
@@ -696,10 +705,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Editor.OverviewRuler` | `UI/Editor/Atlas.UI.Editor.OverviewRuler.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.Peek` | `UI/Editor/Atlas.UI.Editor.Peek.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.SmartPaste` | `UI/Editor/Atlas.UI.Editor.SmartPaste.pas` | Ordner `UI/Editor` |
+| `Atlas.UI.Editor.Strings` | `UI/Editor/Atlas.UI.Editor.Strings.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.Unwrap` | `UI/Editor/Atlas.UI.Editor.Unwrap.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.EditorToolbar.Bar` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Bar.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.EditorToolbar.Customize` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Customize.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.EditorToolbar.Glyphs` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Glyphs.pas` | Ordner `UI/EditorToolbar` |
+| `Atlas.UI.EditorToolbar.Strings` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Strings.pas` | Ordner `UI/EditorToolbar` |
+| `Atlas.UI.Foundation.Strings` | `UI/Foundation/Atlas.UI.Foundation.Strings.pas` | Ordner `UI/Foundation` |
 | `Atlas.UI.Generate.Window` | `UI/Generate/Atlas.UI.Generate.Window.pas` | Ordner `UI/Generate` |
 | `Atlas.UI.Generate.Choice` | `UI/Generate/Atlas.UI.Generate.Choice.pas` | Ordner `UI/Generate`: Auswahldialog der Assistenten, #1821 |
 | `Atlas.UI.Hover.Tip` | `UI/Hover/Atlas.UI.Hover.Tip.pas` | Ordner `UI/Hover` |
@@ -708,6 +720,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Outline.Breadcrumbs` | `UI/Outline/Atlas.UI.Outline.Breadcrumbs.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Outline.Frame` | `UI/Outline/Atlas.UI.Outline.Frame.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Outline.NavigationToolbar` | `UI/Outline/Atlas.UI.Outline.NavigationToolbar.pas` | Ordner `UI/Outline` |
+| `Atlas.UI.Foundation.WndProcHook` | `UI/Foundation/Atlas.UI.Foundation.WndProcHook.pas` | Fensterprozedur mit Kettenprüfung für Dockfenster und Statusleiste (#1976) |
+| `Atlas.UI.Foundation.Theme` | `UI/Foundation/Atlas.UI.Foundation.Theme.pas` | Themendienst der Atlas-Fenster (#2061) |
+| `Atlas.UI.Foundation.Dialog` | `UI/Foundation/Atlas.UI.Foundation.Dialog.pas` | Basis der im Code gebauten Dialoge, Knopfleiste, Hinweiszeile (#2062) |
+| `Atlas.UI.Foundation.ListView` | `UI/Foundation/Atlas.UI.Foundation.ListView.pas` | Liste mit Spaltenbreiten in logischen Pixeln (#2063) |
+| `Atlas.UI.Generate.Strings` | `UI/Generate/Atlas.UI.Generate.Strings.pas` | Ordner `UI/Generate` |
+| `Atlas.UI.Hover.Strings` | `UI/Hover/Atlas.UI.Hover.Strings.pas` | Ordner `UI/Hover` |
+| `Atlas.UI.Notifications.Strings` | `UI/Notifications/Atlas.UI.Notifications.Strings.pas` | Ordner `UI/Notifications` |
+| `Atlas.UI.Outline.Strings` | `UI/Outline/Atlas.UI.Outline.Strings.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Popup.Accessibility` | `UI/Popup/Atlas.UI.Popup.Accessibility.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Draw` | `UI/Popup/Atlas.UI.Popup.Draw.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Styled` | `UI/Popup/Atlas.UI.Popup.Styled.pas` | Ordner `UI/Popup` |
@@ -719,6 +739,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.ScopeBox` | `UI/Problems/Atlas.UI.Problems.ScopeBox.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.KindIcon` | `UI/Problems/Atlas.UI.Problems.KindIcon.pas` | Ordner `UI/Problems` |
+| `Atlas.UI.Problems.Strings` | `UI/Problems/Atlas.UI.Problems.Strings.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Results.CallDiagram` | `UI/Results/Atlas.UI.Results.CallDiagram.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.Changes` | `UI/Results/Atlas.UI.Results.Changes.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.DataFlow` | `UI/Results/Atlas.UI.Results.DataFlow.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
@@ -729,6 +750,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Results.Issues` | `UI/Results/Atlas.UI.Results.Issues.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.Items` | `UI/Results/Atlas.UI.Results.Items.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.RenamePreview` | `UI/Results/Atlas.UI.Results.RenamePreview.pas` | Ordner `UI/Results` |
+| `Atlas.UI.Results.Strings` | `UI/Results/Atlas.UI.Results.Strings.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.SymbolPath` | `UI/Results/Atlas.UI.Results.SymbolPath.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.Texts` | `UI/Results/Atlas.UI.Results.Texts.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.View` | `UI/Results/Atlas.UI.Results.View.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
@@ -765,18 +787,24 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Settings.Page.Search` | `UI/Settings/Atlas.UI.Settings.Page.Search.pas` | Ordner `UI/Settings`; Suchfeld über dem Baum der Optionsseite (#1884) |
 | `Atlas.UI.Settings.ServerPage` | `UI/Settings/Atlas.UI.Settings.ServerPage.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.SnippetsPage` | `UI/Settings/Atlas.UI.Settings.SnippetsPage.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Strings` | `UI/Settings/Atlas.UI.Settings.Strings.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Transfer` | `UI/Settings/Atlas.UI.Settings.Transfer.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Setup.Strings` | `UI/Setup/Atlas.UI.Setup.Strings.pas` | Ordner `UI/Setup` |
 | `Atlas.UI.Setup.Window` | `UI/Setup/Atlas.UI.Setup.Window.pas` | Ordner `UI/Setup` |
 | `Atlas.UI.Signature.Hint` | `UI/Signature/Atlas.UI.Signature.Hint.pas` | Ordner `UI/Signature` |
 | `Atlas.UI.Status.ServerFrame` | `UI/Status/Atlas.UI.Status.ServerFrame.pas` | Ordner `UI/Status` |
+| `Atlas.UI.Status.Strings` | `UI/Status/Atlas.UI.Status.Strings.pas` | Ordner `UI/Status` |
 | `Atlas.UI.Status.Window` | `UI/Status/Atlas.UI.Status.Window.pas` | Ordner `UI/Status` |
 | `Atlas.UI.StatusBar.Bar` | `UI/StatusBar/Atlas.UI.StatusBar.Bar.pas` | Ordner `UI/StatusBar` |
+| `Atlas.UI.StatusBar.Strings` | `UI/StatusBar/Atlas.UI.StatusBar.Strings.pas` | Ordner `UI/StatusBar` |
 | `Atlas.UI.Strings` | `UI/Atlas.UI.Strings.pas` | Ordner `UI` |
 | `Atlas.UI.Style.Canvas` | `UI/Style/Atlas.UI.Style.Canvas.pas` | Zeichenfläche ohne Flackern für Bereiche und Kacheln, bis #1455 `TAtlasWelcomeCanvas` |
 | `Atlas.UI.Style.Symbol` | `UI/Style/Atlas.UI.Style.Symbol.pas` | Ordner `UI/Style` |
 | `Atlas.UI.SymbolPath.Chain` | `UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
+| `Atlas.UI.SymbolPath.Strings` | `UI/SymbolPath/Atlas.UI.SymbolPath.Strings.pas` | Texte der Kette eines Wegs (`UI.SymbolPath.Chain`) im Ergebnisfenster von Base; Suche und Dialog im Modul Analyse haben eigene Texte |
 | `Atlas.UI.Undo.DiffView` | `UI/Undo/Atlas.UI.Undo.DiffView.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Undo.Messages` | `UI/Undo/Atlas.UI.Undo.Messages.pas` | Ordner `UI/Undo` |
+| `Atlas.UI.Undo.Strings` | `UI/Undo/Atlas.UI.Undo.Strings.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Updates.Consent` | `UI/Updates/Atlas.UI.Updates.Consent.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Offer` | `UI/Updates/Atlas.UI.Updates.Offer.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Updates.Selection` | `UI/Updates/Atlas.UI.Updates.Selection.pas` | Ordner `UI/Updates` |
@@ -789,9 +817,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Assistants.BuildInbox` | `Core/Assistants/Atlas.Core.Assistants.BuildInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.InboxPace` | `Core/Assistants/Atlas.Core.Assistants.InboxPace.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.Strings` | `UI/Assistants/Atlas.UI.Assistants.Strings.pas` | Ordner `UI/Assistants` |
 
@@ -882,6 +913,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
@@ -1135,15 +1167,40 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.DuplicateRow` | `Core/Designer/Atlas.Core.Designer.DuplicateRow.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitContainer` | `Core/Designer/Atlas.Core.Designer.FitContainer.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.NearAlign` | `Core/Designer/Atlas.Core.Designer.NearAlign.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.DefaultSizes` | `Core/Designer/Atlas.Core.Designer.DefaultSizes.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Layers` | `Core/Designer/Atlas.Core.Designer.Layers.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.PropertyPainter` | `Core/Designer/Atlas.Core.Designer.PropertyPainter.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Anchors` | `Core/Designer/Atlas.Core.Designer.Anchors.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormTexts` | `Core/Designer/Atlas.Core.Designer.FormTexts.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.LabelPairs` | `Core/Designer/Atlas.Core.Designer.LabelPairs.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormGrid` | `Core/Designer/Atlas.Core.Designer.FormGrid.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Wrap` | `Core/Designer/Atlas.Core.Designer.Wrap.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FontsColors` | `Core/Designer/Atlas.Core.Designer.FontsColors.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Groups` | `Core/Designer/Atlas.Core.Designer.Groups.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.InlineCaption` | `Core/Designer/Atlas.Core.Designer.InlineCaption.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Gaps` | `Core/Designer/Atlas.Core.Designer.Gaps.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.MultiResize` | `Core/Designer/Atlas.Core.Designer.MultiResize.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionBar` | `Core/Designer/Atlas.Core.Designer.SelectionBar.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Magnifier` | `Core/Designer/Atlas.Core.Designer.Magnifier.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Neighbours` | `Core/Designer/Atlas.Core.Designer.Neighbours.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Measure` | `Core/Designer/Atlas.Core.Designer.Measure.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Layout` | `Core/Designer/Atlas.Core.Designer.Layout.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Scale` | `Core/Designer/Atlas.Core.Designer.Scale.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.TabOrder` | `Core/Designer/Atlas.Core.Designer.TabOrder.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.NameSuggest` | `Core/Designer/Atlas.Core.Designer.NameSuggest.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.CodeLink` | `Core/Designer/Atlas.Core.Designer.CodeLink.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Structure` | `Core/Designer/Atlas.Core.Designer.Structure.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.DataBindings` | `Core/Designer/Atlas.Core.Designer.DataBindings.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.ExtractFrame` | `Core/Designer/Atlas.Core.Designer.ExtractFrame.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormUnit` | `Core/Designer/Atlas.Core.Designer.FormUnit.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.EventMap` | `Core/Designer/Atlas.Core.Designer.EventMap.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Usages` | `Core/Designer/Atlas.Core.Designer.Usages.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
@@ -1153,19 +1210,49 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.DuplicateRow` | `IDE/Designer/Atlas.IDE.Designer.DuplicateRow.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitContainer` | `IDE/Designer/Atlas.IDE.Designer.FitContainer.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.NearAlign` | `IDE/Designer/Atlas.IDE.Designer.NearAlign.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.DefaultSizes` | `IDE/Designer/Atlas.IDE.Designer.DefaultSizes.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Layers` | `IDE/Designer/Atlas.IDE.Designer.Layers.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.PropertyPainter` | `IDE/Designer/Atlas.IDE.Designer.PropertyPainter.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Anchors` | `IDE/Designer/Atlas.IDE.Designer.Anchors.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FormTextProps` | `IDE/Designer/Atlas.IDE.Designer.FormTextProps.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FormTexts` | `IDE/Designer/Atlas.IDE.Designer.FormTexts.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.LabelPairs` | `IDE/Designer/Atlas.IDE.Designer.LabelPairs.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FormGrid` | `IDE/Designer/Atlas.IDE.Designer.FormGrid.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Wrap` | `IDE/Designer/Atlas.IDE.Designer.Wrap.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.FontsColors` | `IDE/Designer/Atlas.IDE.Designer.FontsColors.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Groups` | `IDE/Designer/Atlas.IDE.Designer.Groups.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.InlineCaption` | `IDE/Designer/Atlas.IDE.Designer.InlineCaption.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.GapHandles` | `IDE/Designer/Atlas.IDE.Designer.GapHandles.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.HandleTool` | `IDE/Designer/Atlas.IDE.Designer.HandleTool.pas` | Ordner `IDE/Designer`; gemeinsamer Teil der Werkzeuge mit Griffen |
 | `Atlas.IDE.Designer.InsertSpace` | `IDE/Designer/Atlas.IDE.Designer.InsertSpace.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.MultiResize` | `IDE/Designer/Atlas.IDE.Designer.MultiResize.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.SelectionBar` | `IDE/Designer/Atlas.IDE.Designer.SelectionBar.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Magnifier` | `IDE/Designer/Atlas.IDE.Designer.Magnifier.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Navigate` | `IDE/Designer/Atlas.IDE.Designer.Navigate.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.SearchItems` | `IDE/Designer/Atlas.IDE.Designer.SearchItems.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Select` | `IDE/Designer/Atlas.IDE.Designer.Select.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.SelectionSets` | `IDE/Designer/Atlas.IDE.Designer.SelectionSets.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Snapshot` | `IDE/Designer/Atlas.IDE.Designer.Snapshot.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Measure` | `IDE/Designer/Atlas.IDE.Designer.Measure.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Views` | `IDE/Designer/Atlas.IDE.Designer.Views.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Model` | `IDE/Designer/Atlas.IDE.Designer.Model.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ResizePreview` | `IDE/Designer/Atlas.IDE.Designer.ResizePreview.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Preview` | `IDE/Designer/Atlas.IDE.Designer.Preview.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ScalePreview` | `IDE/Designer/Atlas.IDE.Designer.ScalePreview.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.TabOrder` | `IDE/Designer/Atlas.IDE.Designer.TabOrder.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Tools` | `IDE/Designer/Atlas.IDE.Designer.Tools.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.NameSuggest` | `IDE/Designer/Atlas.IDE.Designer.NameSuggest.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ShowComponent` | `IDE/Designer/Atlas.IDE.Designer.ShowComponent.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.PropertySearch` | `IDE/Designer/Atlas.IDE.Designer.PropertySearch.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Structure` | `IDE/Designer/Atlas.IDE.Designer.Structure.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.PaletteImages` | `IDE/Designer/Atlas.IDE.Designer.PaletteImages.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.DataBindings` | `IDE/Designer/Atlas.IDE.Designer.DataBindings.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ExtractFrame` | `IDE/Designer/Atlas.IDE.Designer.ExtractFrame.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.EventMap` | `IDE/Designer/Atlas.IDE.Designer.EventMap.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Usages` | `IDE/Designer/Atlas.IDE.Designer.Usages.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Dialog` | `UI/Designer/Atlas.UI.Designer.Dialog.pas` | Ordner `UI/Designer`; Gerüst der Dialoge des Designers |
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Handles` | `UI/Designer/Atlas.UI.Designer.Handles.pas` | Ordner `UI/Designer` |
@@ -1173,10 +1260,26 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Designer.SpaceDialog` | `UI/Designer/Atlas.UI.Designer.SpaceDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.PropertyDialog` | `UI/Designer/Atlas.UI.Designer.PropertyDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.PaintDialog` | `UI/Designer/Atlas.UI.Designer.PaintDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.AnchorDialog` | `UI/Designer/Atlas.UI.Designer.AnchorDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.TextsDialog` | `UI/Designer/Atlas.UI.Designer.TextsDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.FontsDialog` | `UI/Designer/Atlas.UI.Designer.FontsDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.CaptionEditor` | `UI/Designer/Atlas.UI.Designer.CaptionEditor.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.ViewStrings` | `UI/Designer/Atlas.UI.Designer.ViewStrings.pas` | Texte der eigenen Knöpfe der Designer-Leiste (#605 ff.), Sprache von Base |
+| `Atlas.UI.Designer.MeasureOverlay` | `UI/Designer/Atlas.UI.Designer.MeasureOverlay.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.FormPreview` | `UI/Designer/Atlas.UI.Designer.FormPreview.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.ScalePreview` | `UI/Designer/Atlas.UI.Designer.ScalePreview.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.ToolStrings` | `UI/Designer/Atlas.UI.Designer.ToolStrings.pas` | Texte der Werkzeuge mit eigenem Knopf in der Designer-Leiste, Sprache von Base |
 | `Atlas.UI.Designer.SelectionBar` | `UI/Designer/Atlas.UI.Designer.SelectionBar.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Magnifier` | `UI/Designer/Atlas.UI.Designer.Magnifier.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.NameDialog` | `UI/Designer/Atlas.UI.Designer.NameDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.StructureFrame` | `UI/Designer/Atlas.UI.Designer.StructureFrame.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.BindingBar` | `UI/Designer/Atlas.UI.Designer.BindingBar.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.ExtractDialog` | `UI/Designer/Atlas.UI.Designer.ExtractDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.EventFrame` | `UI/Designer/Atlas.UI.Designer.EventFrame.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Help
 

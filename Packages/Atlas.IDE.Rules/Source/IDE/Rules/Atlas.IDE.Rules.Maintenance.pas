@@ -38,7 +38,15 @@ uses
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.IDE.Foundation.Files;
+
+const
+  /// <summary>Kommandozeile von AtlasServer: Projekt, dann die Optionen.</summary>
+  cCheckArgs = '--check "%s" %s';
+  cUpdateBaselineArgs = '--update-baseline';
+  /// <summary>Optionen der Auswertung der Unterdrückungen; Platzhalter ist die Ausgabedatei.</summary>
+  cSuppressionArgs = '--suppression-stats --format json --output "%s"';
 
 /// <summary>Zeilen der Auswertung in AFileName; ohne Unterdrückung eine Zeile, die das sagt.</summary>
 function SuppressionRows(const AFileName: string): TArray<string>;
@@ -103,11 +111,11 @@ class function TAtlasIdeRulesMaintenance.UpdateBaseline: string;
 var
   mOutput: string;
 begin
-  if TAtlasProjectSettings.ActiveProject = '' then
+  if TAtlasIdeFiles.ActiveProjectFile = '' then
   begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
   end;
-  Result := TAtlasIdeServerActions.RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
+  Result := TAtlasIdeServerActions.RunTool(Format(cCheckArgs, [TAtlasIdeFiles.ActiveProjectFile, cUpdateBaselineArgs]),
     TAtlasServerTool.cCheckTimeoutMs, mOutput);
   if Result = '' then
   begin
@@ -131,16 +139,15 @@ class function TAtlasIdeRulesMaintenance.Suppressions: TArray<string>;
 var
   mOutputFile, mOutput, mError: string;
 begin
-  if TAtlasProjectSettings.ActiveProject = '' then
+  if TAtlasIdeFiles.ActiveProjectFile = '' then
   begin
     Result := [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject)];
     Exit;
   end;
   mOutputFile := TPath.GetTempFileName;
   try
-    mError := TAtlasIdeServerActions.RunTool('--check "' + TAtlasProjectSettings.ActiveProject +
-      '" --suppression-stats --format json --output "' + mOutputFile + '"', TAtlasServerTool.cCheckTimeoutMs,
-      mOutput);
+    mError := TAtlasIdeServerActions.RunTool(Format(cCheckArgs, [TAtlasIdeFiles.ActiveProjectFile,
+      Format(cSuppressionArgs, [mOutputFile])]), TAtlasServerTool.cCheckTimeoutMs, mOutput);
     if mError <> '' then
     begin
       Result := [mError];

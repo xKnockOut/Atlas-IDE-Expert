@@ -85,6 +85,8 @@ type
     procedure LargerCaretIsZoom;
     [Test]
     procedure ClampsAndIgnoresInvalidValues;
+    [Test]
+    procedure ToDeviceScalesLogicalPixels;
   end;
 
   [TestFixture]
@@ -446,6 +448,19 @@ begin
   Assert.AreEqual(1.0, TAtlasScaling.ZoomFromCaret(15, 0), 0.001);
   Assert.AreEqual(TAtlasScaling.cMaxZoom, TAtlasScaling.ZoomFromCaret(500, 10), 0.001);
   Assert.AreEqual(TAtlasScaling.cMinZoom, TAtlasScaling.ZoomFromCaret(2, 15), 0.001);
+end;
+
+procedure TAtlasScalingTests.ToDeviceScalesLogicalPixels;
+begin
+  // #2063: Spaltenbreiten in 96 dpi; 150 % und 125 % kaufmännisch gerundet.
+  Assert.AreEqual(150, TAtlasScaling.ToDevice(100, 144));
+  Assert.AreEqual(125, TAtlasScaling.ToDevice(100, 120));
+  Assert.AreEqual(13, TAtlasScaling.ToDevice(10, 120));
+  Assert.AreEqual(100, TAtlasScaling.ToDevice(100, 96));
+  // Ohne Pixeldichte unverändert, Sonderbreiten (LVSCW_AUTOSIZE = -1) nie skaliert.
+  Assert.AreEqual(100, TAtlasScaling.ToDevice(100, 0));
+  Assert.AreEqual(-1, TAtlasScaling.ToDevice(-1, 144));
+  Assert.AreEqual(0, TAtlasScaling.ToDevice(0, 144));
 end;
 
 { TAtlasSyntaxTests }

@@ -66,7 +66,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.Controls,
-  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
 const
@@ -82,14 +82,14 @@ begin
   // Tiefe und Testlauf, rechts in der Titelzeile. Die Liste der Tiefen füllt Show: Ein Kombinationsfeld braucht
   // dafür ein Fenster.
   FParts.RunTests := TAtlasResultsControls.Button(AView.Host, AView.Header, alRight, 170,
-    TAtlasStrings.Text(TAtlasTextId.ImpactRunTests), RunTestsClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactRunTests), RunTestsClick);
   FParts.RunTests.Visible := False;
   FParts.Depth := TComboBox.Create(AView.Host);
   FParts.Depth.Parent := AView.Header;
   FParts.Depth.Align := alRight;
   FParts.Depth.AlignWithMargins := True;
   FParts.Depth.Style := csDropDownList;
-  FParts.Depth.Width := 44;
+  FParts.Depth.Width := FParts.Depth.ScaleValue(44);
   FParts.Depth.Visible := False;
   FParts.Depth.OnChange := DepthChange;
   FParts.DepthLabel := TLabel.Create(AView.Host);
@@ -97,7 +97,7 @@ begin
   FParts.DepthLabel.Align := alRight;
   FParts.DepthLabel.AlignWithMargins := True;
   FParts.DepthLabel.Layout := tlCenter;
-  FParts.DepthLabel.Caption := TAtlasStrings.Text(TAtlasTextId.ImpactDepth);
+  FParts.DepthLabel.Caption := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactDepth);
   FParts.DepthLabel.Visible := False;
 end;
 
@@ -150,7 +150,8 @@ var
   mSection: TTreeNode;
   mIndex: Integer;
 begin
-  mSection := View.AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactDirect), [FImpact.LevelCount(1)]),
+  mSection := View.AddNode(nil, Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactDirect),
+    [FImpact.LevelCount(1)]),
     TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
   AddForms(mSection, FImpact.SymbolForms);
   for mIndex := 0 to High(FImpact.Places) do
@@ -168,7 +169,8 @@ var
   mSection: TTreeNode;
   mIndex: Integer;
 begin
-  mSection := View.AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactIndirect), [FImpact.CountFrom(2)]),
+  mSection := View.AddNode(nil, Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactIndirect),
+    [FImpact.CountFrom(2)]),
     TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
   for mIndex in FImpact.Children(-1) do
   begin
@@ -187,11 +189,12 @@ var
 begin
   if Length(FImpact.Tests) = 0 then
   begin
-    View.AddNode(nil, TAtlasStrings.Text(TAtlasTextId.ImpactNoTests),
+    View.AddNode(nil, TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactNoTests),
       TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
     Exit;
   end;
-  mSection := View.AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactTests), [Length(FImpact.Tests)]),
+  mSection := View.AddNode(nil, Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactTests),
+    [Length(FImpact.Tests)]),
     TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
   for mTest in FImpact.Tests do
   begin

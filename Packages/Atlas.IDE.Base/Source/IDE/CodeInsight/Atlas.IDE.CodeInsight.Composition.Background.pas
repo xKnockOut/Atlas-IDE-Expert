@@ -37,7 +37,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Watchdog,
@@ -99,7 +99,7 @@ begin
   begin
     mActivity := ' (' + mHang.Activity + ')';
   end;
-  MessageLine(TAtlasStrings.Fmt(TAtlasTextId.HangHint, [mHang.DurationMs, mActivity]));
+  MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.HangHint, [mHang.DurationMs, mActivity]));
 end;
 
 procedure StartWatchdog;

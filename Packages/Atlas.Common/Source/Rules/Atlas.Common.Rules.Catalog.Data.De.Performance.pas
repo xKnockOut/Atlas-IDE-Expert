@@ -45,8 +45,8 @@ const
     'riable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited' +
     ' ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-' +
     'Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Ko' +
-    'rrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Verweise als Methodenzeiger in anderen Units sieht die Regel nicht; die meldet nach der Korrektur d' +
-    'er Compiler.",',
+    'rrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Mit den Projektdateien (IDE, MCP) zählt auch die Verwendung als Wert in Units, die diese Unit einbi' +
+    'nden, etwa die Zuweisung an ein TFunc<string, …>, dessen Parameter kein const hat; ohne sie (Kommandozeile ohne Projekt) meldet solche Verweise nach der Korrektur der Compiler.",',
     '      "options": [',
     '        {',
     '          "name": "minRecordSize",',

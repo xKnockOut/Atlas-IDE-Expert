@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Prüft, dass das IDE-Plugin nur über TAtlasMainThread in den Hauptthread einreiht (Code-Review A-02).
+    Prüft, dass das IDE-Plugin nur über TAtlasMainThread in den Hauptthread einreiht.
 
 .DESCRIPTION
     TThread.Queue(nil, …) und TThread.ForceQueue(nil, …) gehören keinem Thread:

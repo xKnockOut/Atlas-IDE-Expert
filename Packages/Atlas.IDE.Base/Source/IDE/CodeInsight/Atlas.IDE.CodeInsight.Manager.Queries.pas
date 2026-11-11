@@ -45,6 +45,7 @@ uses
   Atlas.Text.DebugDisplay,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Completion.Word,
+  Atlas.Core.Lsp.IdeMembers,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Hover.DebugValue;
@@ -261,7 +262,9 @@ begin
   end;
   mCharacter := TLspSession.ColumnToIndex(mLines[mCursor.Line - 1], mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  if ASession.Definition(AView.Buffer.FileName, mText, mCursor.Line - 1, mCharacter, mLocation) then
+  // Ersatz-Units des Servers (atlas-ide:…) gibt es nicht als Datei: kein Sprungziel für Strg+Klick.
+  if ASession.Definition(AView.Buffer.FileName, mText, mCursor.Line - 1, mCharacter, mLocation) and
+    not TAtlasIdeMembers.IsIdePath(mLocation.FileName) then
   begin
     AFileName := mLocation.FileName;
     ALineNum := mLocation.Line + 1;

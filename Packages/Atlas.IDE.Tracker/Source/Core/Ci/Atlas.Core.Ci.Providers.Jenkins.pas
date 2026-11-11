@@ -57,7 +57,8 @@ uses
   System.Classes,
   System.DateUtils,
   System.Diagnostics,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 const
   cBuildTree = 'tree=number,result,timestamp,duration';
@@ -170,32 +171,6 @@ begin
   end;
 end;
 
-function NumberOf(AObject: TJSONObject; const AName: string; out AValue: Int64): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AValue := 0;
-  mValue := AObject.Values[AName];
-  Result := mValue is TJSONNumber;
-  // Über den Text: Zeitstempel in ms passen nicht in 32 Bit, Zähler können als 12.0 kommen.
-  if Result and not TryStrToInt64(TJSONNumber(mValue).Value, AValue) then
-  begin
-    AValue := Trunc(TJSONNumber(mValue).AsDouble);
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 /// <summary>Erste nicht leere Zeile, gekürzt.</summary>
 function FirstLine(const AText: string): string;
 var
@@ -233,18 +208,18 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if not NumberOf(mRoot, 'number', mNumber) or (mNumber <= 0) or (mNumber > MaxInt) then
+    if not TJsonRead.TryInt64(mRoot, 'number', mNumber) or (mNumber <= 0) or (mNumber > MaxInt) then
     begin
       Exit;
     end;
     ABuild.Number := Integer(mNumber);
-    ABuild.Outcome := OutcomeOfResult(TextOf(mRoot, 'result'));
+    ABuild.Outcome := OutcomeOfResult(TJsonRead.Text(mRoot, 'result'));
     // Millisekunden seit 1970 in UTC.
-    if NumberOf(mRoot, 'timestamp', mStamp) and (mStamp > 0) then
+    if TJsonRead.TryInt64(mRoot, 'timestamp', mStamp) and (mStamp > 0) then
     begin
       ABuild.StartedUtc := IncMilliSecond(UnixToDateTime(mStamp div 1000), mStamp mod 1000);
     end;
-    if NumberOf(mRoot, 'duration', mDuration) and (mDuration > 0) then
+    if TJsonRead.TryInt64(mRoot, 'duration', mDuration) and (mDuration > 0) then
     begin
       ABuild.DurationMs := mDuration;
     end;
@@ -259,15 +234,15 @@ procedure ReadCounts(AReport: TJSONObject; var ABuild: TAtlasCiBuild);
 var
   mCount: Int64;
 begin
-  if NumberOf(AReport, 'passCount', mCount) then
+  if TJsonRead.TryInt64(AReport, 'passCount', mCount) then
   begin
     Inc(ABuild.Passed, Integer(mCount));
   end;
-  if NumberOf(AReport, 'failCount', mCount) then
+  if TJsonRead.TryInt64(AReport, 'failCount', mCount) then
   begin
     Inc(ABuild.Failed, Integer(mCount));
   end;
-  if NumberOf(AReport, 'skipCount', mCount) then
+  if TJsonRead.TryInt64(AReport, 'skipCount', mCount) then
   begin
     Inc(ABuild.Skipped, Integer(mCount));
   end;
@@ -284,19 +259,19 @@ begin
   begin
     Exit;
   end;
-  mStatus := TextOf(TJSONObject(AItem), 'status');
+  mStatus := TJsonRead.Text(TJSONObject(AItem), 'status');
   if not (SameText(mStatus, 'FAILED') or SameText(mStatus, 'REGRESSION')) then
   begin
     Exit;
   end;
-  mClassName := Trim(TextOf(TJSONObject(AItem), 'className'));
-  mCaseName := Trim(TextOf(TJSONObject(AItem), 'name'));
+  mClassName := Trim(TJsonRead.Text(TJSONObject(AItem), 'className'));
+  mCaseName := Trim(TJsonRead.Text(TJSONObject(AItem), 'name'));
   AFailure.Test := mCaseName;
   if mClassName <> '' then
   begin
     AFailure.Test := mClassName + '.' + mCaseName;
   end;
-  AFailure.Message := FirstLine(TextOf(TJSONObject(AItem), 'errorDetails'));
+  AFailure.Message := FirstLine(TJsonRead.Text(TJSONObject(AItem), 'errorDetails'));
   Result := AFailure.Test <> '';
 end;
 

@@ -33,9 +33,11 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Text.Json;
 
 const
   cApplyCommand = 'atlas.server.moveClass';
@@ -65,24 +67,24 @@ begin
     TAtlasTextId.MoveClassFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mNewFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      mNewFile := TJsonRead.Text(AReply, 'file');
     end, AMessage, mReply) then
   begin
     Exit;
   end;
   if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.MoveClassNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveClassNothing));
     Exit;
   end;
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.MoveClassPreviewHint, [mName, mReply.Edit.EditCount,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveClassPreviewHint, [mName, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.MoveClassWarning);
   if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), mHint,
-    TAtlasStrings.Text(TAtlasTextId.MoveClassApply), mReply.Edit) and
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveClassApply), mReply.Edit) and
     TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), AMessage,
     mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassDone, [mName, mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveClassDone, [mName, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.MoveClassWarning, AMessage);
     if mNewFile <> '' then
     begin

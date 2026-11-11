@@ -4,8 +4,9 @@
 // #738): aktiver Designer und sein Formular, Auswahl lesen und setzen, Lage
 // und Elternelement von Steuerelementen, Eigenschaften als Text und der
 // Formulartext samt Handlernamen (TAtlasFormText), sichtbarer Client für
-// Fenster über dem Designer. Gemeinsam für Leiste, Suche, Auswahl- und
-// Anordnen-Befehle und die Griffe. Nur im Hauptthread.
+// Fenster über dem Designer, Units des Projekts bzw. der Projektgruppe.
+// Gemeinsam für Leiste, Suche, Auswahl- und Anordnen-Befehle und die Griffe.
+// Nur im Hauptthread.
 
 interface
 
@@ -22,6 +23,11 @@ type
     cDefaultGrid = 8;
   public
     class function DesignerOf(const AEditor: IOTAFormEditor): IDesigner; static;
+    /// <summary>Formular-Editor des Moduls zur Datei AFileName (Unit oder Formular); nil ohne Formular.</summary>
+    class function FormEditorOf(const AFileName: string): IOTAFormEditor; static;
+    /// <summary>Units (.pas) des aktiven Projekts, mit AWholeGroup aller Projekte der Gruppe; AFormsOnly nur die
+    /// mit Formular (#524, #750).</summary>
+    class function ProjectUnits(AWholeGroup, AFormsOnly: Boolean): TArray<string>; static;
     /// <summary>Zeigt das aktive Editorfenster einen Formular-Designer?</summary>
     class function Shown: Boolean; static;
     /// <summary>Hat der Formular-Designer den Fokus (ein Steuerelement im Entwurf oder das Formular selbst)?</summary>
@@ -71,6 +77,76 @@ begin
   if Supports(AEditor, INTAFormEditor, mNative) then
   begin
     Result := mNative.FormDesigner;
+  end;
+end;
+
+class function TAtlasDesignerAccess.FormEditorOf(const AFileName: string): IOTAFormEditor;
+var
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if (AFileName = '') or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mModule := mModules.FindModule(AFileName);
+  if mModule = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mModule.ModuleFileCount - 1 do
+  begin
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTAFormEditor, Result) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := nil;
+end;
+
+/// <summary>Units (.pas) von AProject, mit AFormsOnly nur die mit Formular.</summary>
+function UnitsOf(const AProject: IOTAProject; AFormsOnly: Boolean): TArray<string>;
+var
+  mIndex: Integer;
+  mInfo: IOTAModuleInfo;
+begin
+  Result := nil;
+  if AProject = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AProject.GetModuleCount - 1 do
+  begin
+    mInfo := AProject.GetModule(mIndex);
+    if (mInfo <> nil) and ((mInfo.FormName <> '') or not AFormsOnly) and
+      SameText(ExtractFileExt(mInfo.FileName), '.pas') then
+    begin
+      Result := Result + [mInfo.FileName];
+    end;
+  end;
+end;
+
+class function TAtlasDesignerAccess.ProjectUnits(AWholeGroup, AFormsOnly: Boolean): TArray<string>;
+var
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  mGroup := mServices.MainProjectGroup;
+  if not AWholeGroup or (mGroup = nil) then
+  begin
+    Exit(UnitsOf(mServices.GetActiveProject, AFormsOnly));
+  end;
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
+  begin
+    Result := Result + UnitsOf(mGroup.Projects[mIndex], AFormsOnly);
   end;
 end;
 

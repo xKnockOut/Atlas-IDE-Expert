@@ -12,12 +12,8 @@ uses
 type
   TAtlasGitHubJson = class
   public
-    /// <summary>Text des Felds AName; '' ohne Feld oder bei anderem Typ.</summary>
-    class function TextOf(AObject: TJSONObject; const AName: string): string; static;
     /// <summary>Positive ganze Zahl des Felds AName; 0 ohne, bei anderem Typ oder außerhalb von Integer.</summary>
     class function IntOf(AObject: TJSONObject; const AName: string): Integer; static;
-    /// <summary>True nur bei einem Feld AName mit true.</summary>
-    class function FlagOf(AObject: TJSONObject; const AName: string): Boolean; static;
     /// <summary>Eine Zeile (Umbrüche als Leerzeichen), höchstens AMax Zeichen mit „…“.</summary>
     class function Shorten(const AText: string; AMax: Integer): string; static;
     /// <summary>Logins aus "assignees" mit ", ", ersatzweise "assignee"; '' ohne.</summary>
@@ -35,40 +31,13 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.Tracker.Contract;
-
-class function TAtlasGitHubJson.TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
+  System.Math,
+  Atlas.Core.Tracker.Contract,
+  Atlas.Text.Json;
 
 class function TAtlasGitHubJson.IntOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-  mNumber: Int64;
 begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mNumber) and (mNumber > 0) and
-    (mNumber <= MaxInt) then
-  begin
-    Result := Integer(mNumber);
-  end;
-end;
-
-class function TAtlasGitHubJson.FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.Values[AName];
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
+  Result := Max(0, TJsonRead.Int(AObject, AName));
 end;
 
 class function TAtlasGitHubJson.Shorten(const AText: string; AMax: Integer): string;
@@ -95,7 +64,7 @@ begin
       mText := '';
       if mEntry is TJSONObject then
       begin
-        mText := Shorten(TextOf(TJSONObject(mEntry), 'login'), 60);
+        mText := Shorten(TJsonRead.Text(TJSONObject(mEntry), 'login'), TAtlasTrackerTextLimits.cName);
       end;
       if mText = '' then
       begin
@@ -111,7 +80,7 @@ begin
   mItem := AObject.Values['assignee'];
   if (Result = '') and (mItem is TJSONObject) then
   begin
-    Result := Shorten(TextOf(TJSONObject(mItem), 'login'), 60);
+    Result := Shorten(TJsonRead.Text(TJSONObject(mItem), 'login'), TAtlasTrackerTextLimits.cName);
   end;
 end;
 
@@ -121,7 +90,7 @@ var
   mText: string;
 begin
   Result := 0;
-  mText := TextOf(AObject, AName);
+  mText := TJsonRead.Text(AObject, AName);
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
   begin
     Result := 0;
@@ -133,7 +102,7 @@ begin
   Result := '';
   if AValue is TJSONObject then
   begin
-    Result := Shorten(TextOf(TJSONObject(AValue), 'login'), 60);
+    Result := Shorten(TJsonRead.Text(TJSONObject(AValue), 'login'), TAtlasTrackerTextLimits.cName);
   end;
 end;
 

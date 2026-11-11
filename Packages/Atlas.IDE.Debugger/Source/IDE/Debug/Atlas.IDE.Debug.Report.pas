@@ -3,8 +3,7 @@
 // Bericht über die laufende Debug-Sitzung für andere Module (#1455): stellt
 // IAtlasDebugReportSource bereit (Prozess, gestartetes Projekt, Debug-Notiz
 // #582, Exception-Verlauf #517). Der Tracker („An Issue anhängen …“, #1276)
-// fragt den Vertrag über die Registry und kennt den Debugger nicht; Notiz
-// und Verlauf lagen bis #1455 in Atlas.IDE.Tracker.Attach.
+// fragt den Vertrag über die Registry und kennt den Debugger nicht.
 
 interface
 

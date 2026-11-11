@@ -11,6 +11,7 @@ interface
 uses
   System.Generics.Collections,
   System.JSON,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
@@ -52,7 +53,7 @@ type
     FServices: TShellEditorCommandServices;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function RunExitPoints(const AArguments: TJSONArray): TJSONValue;
-    function RunReassigned(const AArguments: TJSONArray): TJSONValue;
+    function RunReassigned(const AArguments: TJSONArray; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function RunExpressionType(const AArguments: TJSONArray): TJSONValue;
     function RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
     function RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
@@ -79,7 +80,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
@@ -105,8 +105,9 @@ begin
   // Alle Markierungen lesen nur Dokumente und Index wie Hover und Hervorhebung: nebenläufig.
   // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
   ACommands.RegisterConcurrent(TLspExitPoints.cCommand, RunExitPoints);
-  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
-  ACommands.RegisterConcurrent(TLspReassigned.cCommand, RunReassigned);
+  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712); rechnet bis zur ganzen Datei und bricht
+  // deshalb beim Zeitlimit des Plugins ab, statt weiterzulaufen.
+  ACommands.RegisterConcurrentCancellable(TLspReassigned.cCommand, RunReassigned);
   // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
   ACommands.RegisterConcurrent(TLspExpressionType.cCommand, RunExpressionType);
   // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
@@ -135,10 +136,11 @@ begin
     TExitPointsReaders.Create(ReadText, FServices.HighlightSettingsFor), AArguments);
 end;
 
-function TShellEditorCommands.RunReassigned(const AArguments: TJSONArray): TJSONValue;
+function TShellEditorCommands.RunReassigned(const AArguments: TJSONArray;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := TLspReassigned.Execute(FServices.Documents, FServices.Index, FServices.EnsureUnit, FServices.Namespaces(),
-    AArguments);
+    AArguments, ACancellation);
 end;
 
 function TShellEditorCommands.RunExpressionType(const AArguments: TJSONArray): TJSONValue;

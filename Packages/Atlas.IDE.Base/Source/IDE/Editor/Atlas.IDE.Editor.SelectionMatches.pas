@@ -107,7 +107,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -346,19 +346,19 @@ function TAtlasIdeSelectionMatches.CountText: string;
 begin
   if FVisibleOnly then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SelectionMatchesVisible, [FMatches.Count]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SelectionMatchesVisible, [FMatches.Count]);
   end
   else if FMatches.Truncated then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SelectionMatchesMore, [FMatches.Count]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SelectionMatchesMore, [FMatches.Count]);
   end
   else if FMatches.Count = 1 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SelectionMatchesOne);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.SelectionMatchesOne);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SelectionMatchesCount, [FMatches.Count]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SelectionMatchesCount, [FMatches.Count]);
   end;
 end;
 

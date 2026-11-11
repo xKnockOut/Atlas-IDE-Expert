@@ -66,19 +66,8 @@ implementation
 uses
   System.SysUtils,
   System.Diagnostics,
-  Atlas.Core.Tracker.YouTrackApi;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Text.Json;
 
 /// <summary>Nur Buchstaben, Ziffern, '-' und '_', nicht leer (Kennung "ATL-123", Feld-ID "82-11").</summary>
 function ValidPart(const AText: string): Boolean;
@@ -114,21 +103,21 @@ var
 begin
   Result := Default(TAtlasBoardWorkflow);
   mEvents := AField.Values['possibleEvents'];
-  if not SameText(TextOf(AField, '$type'), cStateMachineType) or not (mEvents is TJSONArray) then
+  if not SameText(TJsonRead.Text(AField, '$type'), cStateMachineType) or not (mEvents is TJSONArray) then
   begin
     Exit;
   end;
   Result.StateMachine := True;
-  Result.FieldId := TextOf(AField, 'id');
+  Result.FieldId := TJsonRead.Text(AField, 'id');
   for mItem in TJSONArray(mEvents) do
   begin
     if mItem is TJSONObject then
     begin
-      mId := TextOf(TJSONObject(mItem), 'id');
+      mId := TJsonRead.Text(TJSONObject(mItem), 'id');
       if mId <> '' then
       begin
         Result.Transitions := Result.Transitions +
-          [TAtlasBoardTransition.Create(mId, TextOf(TJSONObject(mItem), 'presentation'))];
+          [TAtlasBoardTransition.Create(mId, TJsonRead.Text(TJSONObject(mItem), 'presentation'))];
       end;
     end;
   end;
@@ -146,7 +135,7 @@ begin
   end;
   for mItem in TJSONArray(mFields) do
   begin
-    if (mItem is TJSONObject) and SameText(Trim(TextOf(TJSONObject(mItem), 'name')), AField) then
+    if (mItem is TJSONObject) and SameText(Trim(TJsonRead.Text(TJSONObject(mItem), 'name')), AField) then
     begin
       Exit(Parse(TJSONObject(mItem)));
     end;

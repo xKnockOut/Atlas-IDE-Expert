@@ -3,6 +3,9 @@
 // Komponenten des Formulars für das Fenster „Komponenten suchen“ (#1442):
 // Name, Klasse, Art, Elternelement, Lage, Caption/Text, gesetzte Eigenschaften
 // für die Vorschau und belegte Ereignisse mit den Handlernamen des Designers.
+// Eingebettete Frames bringen ihre eigenen Komponenten mit (#539); geerbte
+// gehören ohnehin dem Formular. RootItem liefert das Formular selbst für
+// „Im Designer zeigen“ (#511).
 // Nur im Hauptthread.
 
 interface
@@ -16,6 +19,10 @@ type
   TAtlasDesignerSearchItems = class
   public
     class function ItemsOf(ARoot: TComponent; const ADesigner: IDesigner): TArray<TAtlasDesignerItem>; static;
+    /// <summary>Das Formular selbst als Eintrag, samt seiner belegten Ereignisse (#511).</summary>
+    class function RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem; static;
+    /// <summary>Belegte Ereignisse von AComponent als „OnClick = Button1Click“ (#750).</summary>
+    class function Events(AComponent: TComponent; const ADesigner: IDesigner): TArray<string>; static;
   end;
 
 implementation
@@ -113,18 +120,49 @@ begin
   end;
 end;
 
-class function TAtlasDesignerSearchItems.ItemsOf(ARoot: TComponent;
-  const ADesigner: IDesigner): TArray<TAtlasDesignerItem>;
+/// <summary>Benannte Komponenten von AOwner nach AItems, bei eingebetteten Frames auch deren eigene.</summary>
+procedure AddItems(AOwner, ARoot: TComponent; const ADesigner: IDesigner; var AItems: TArray<TAtlasDesignerItem>);
 var
   mIndex: Integer;
+  mChild: TComponent;
+begin
+  for mIndex := 0 to AOwner.ComponentCount - 1 do
+  begin
+    mChild := AOwner.Components[mIndex];
+    if mChild.Name = '' then
+    begin
+      Continue;
+    end;
+    AItems := AItems + [ItemOf(mChild, ARoot, ADesigner)];
+    if csInline in mChild.ComponentState then
+    begin
+      AddItems(mChild, ARoot, ADesigner, AItems);
+    end;
+  end;
+end;
+
+class function TAtlasDesignerSearchItems.ItemsOf(ARoot: TComponent;
+  const ADesigner: IDesigner): TArray<TAtlasDesignerItem>;
 begin
   Result := nil;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  AddItems(ARoot, ARoot, ADesigner, Result);
+end;
+
+class function TAtlasDesignerSearchItems.Events(AComponent: TComponent; const ADesigner: IDesigner): TArray<string>;
+begin
+  Result := nil;
+  if ADesigner <> nil then
   begin
-    if ARoot.Components[mIndex].Name <> '' then
-    begin
-      Result := Result + [ItemOf(ARoot.Components[mIndex], ARoot, ADesigner)];
-    end;
+    Result := EventsOf(AComponent, ADesigner);
+  end;
+end;
+
+class function TAtlasDesignerSearchItems.RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem;
+begin
+  Result := TAtlasDesignerItem.Create(ARoot.Name, ARoot.ClassName, False);
+  if ADesigner <> nil then
+  begin
+    Result.Events := EventsOf(ARoot, ADesigner);
   end;
 end;
 

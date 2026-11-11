@@ -112,6 +112,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -401,7 +402,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasStrings.Fmt(TAtlasTextId.ExpressionTypeFailed, [E.Message]));
+      Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExpressionTypeFailed, [E.Message]));
     end;
   end;
 end;

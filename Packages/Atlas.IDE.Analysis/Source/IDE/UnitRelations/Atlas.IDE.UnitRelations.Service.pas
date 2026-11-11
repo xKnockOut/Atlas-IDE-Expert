@@ -81,7 +81,6 @@ implementation
 uses
   System.Classes,
   System.Math,
-  Winapi.Windows,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
@@ -101,13 +100,16 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.UnitRelations.Window;
+  Atlas.IDE.UnitRelations.Window,
+  Atlas.Core.Diagnostics.Deadline;
 
 const
   cTickMs = 250;
   /// <summary>Nachfragen, solange das Fenster offen ist; die Anfrage dauert auf dem Server Millisekunden.</summary>
   cRefreshMs = 2000;
   cTimeoutMs = 15000;
+  /// <summary>Nach einer Änderung aus dem Fenster so bald wieder nachfragen (statt nach RefreshMs).</summary>
+  cAfterChangeMs = 500;
   /// <summary>Kosten nachfragen, solange die Einfügemarke im interface steht (#554).</summary>
   cCostRefreshMs = 5000;
 
@@ -124,7 +126,7 @@ type
     FKnown: Boolean;
     FRequest: Integer;
     FPending: Boolean;
-    FAsked: Cardinal;
+    FAsked: UInt64;
     FInInterface: Boolean;
     FSections: TAtlasUnitSections;
     FSectionsFile: string;
@@ -161,7 +163,7 @@ type
     FAllLevels: Boolean;
     FRequest: Integer;
     FPending: Boolean;
-    FAsked: Cardinal;
+    FAsked: UInt64;
     FLastJson: string;
     FShownMessage: Boolean;
     /// <summary>Kosten einer interface-Änderung (#554).</summary>
@@ -289,7 +291,7 @@ begin
         Exit;
       end;
       FPending := False;
-      FAsked := GetTickCount;
+      FAsked := TAtlasTicks.Now;
       if (AAnswer <> nil) and TAtlasInterfaceCostModel.Parse(AAnswer.ToJSON, mCost) then
       begin
         FCost := mCost;
@@ -303,7 +305,7 @@ procedure TInterfaceCostState.Request;
 begin
   Inc(FRequest);
   FPending := True;
-  FAsked := GetTickCount;
+  FAsked := TAtlasTicks.Now;
   if not FRun(TAtlasInterfaceCostModel.cCommand, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FFile)),
     cTimeoutMs, AnswerHandler(FRequest)) then
   begin
@@ -336,7 +338,7 @@ begin
     FCost := Default(TAtlasInterfaceCost);
     FKnown := False;
     FPending := False;
-    FAsked := GetTickCount - cCostRefreshMs;
+    FAsked := TAtlasTicks.Now - cCostRefreshMs;
   end;
 end;
 
@@ -357,7 +359,7 @@ begin
   end;
   Locate(mView);
   // Gefragt wird nur, solange die Marke im interface steht; im implementation-Teil braucht niemand den Wert.
-  if FInInterface and not FPending and (GetTickCount - FAsked >= cCostRefreshMs) then
+  if FInInterface and not FPending and (TAtlasTicks.Since(FAsked) >= cCostRefreshMs) then
   begin
     Request;
   end;
@@ -560,7 +562,7 @@ begin
   mFileName := FFileName;
   mAllLevels := FAllLevels;
   FPending := True;
-  FAsked := GetTickCount;
+  FAsked := TAtlasTicks.Now;
   if not FRun(TAtlasUnitRelationsCommands.cCommand,
     TAtlasUnitRelationsCommands.Arguments(TLspSession.PathToUri(mFileName), mAllLevels), cTimeoutMs,
     AnswerHandler(mNumber, mFileName, mAllLevels)) then
@@ -593,7 +595,7 @@ var
 begin
   FPending := False;
   // Gezählt wird ab der Antwort: Ein langsamer Server bekommt nicht gleich die nächste Anfrage.
-  FAsked := GetTickCount;
+  FAsked := TAtlasTicks.Now;
   mCurrent := TAtlasIdeUnitRelationsWindow.ExistingFrame;
   if mCurrent = nil then
   begin
@@ -651,7 +653,7 @@ begin
     Request;
     Exit;
   end;
-  if not FPending and (GetTickCount - FAsked >= cRefreshMs) then
+  if not FPending and (TAtlasTicks.Since(FAsked) >= cRefreshMs) then
   begin
     Request;
   end;
@@ -722,7 +724,7 @@ begin
           [Outcome.Error]);
       end;
       // Bald neu fragen: Der Server sieht den geänderten Text mit dem nächsten Abgleich des Puffers.
-      FAsked := GetTickCount - cRefreshMs + 500;
+      FAsked := TAtlasTicks.Now - (cRefreshMs - cAfterChangeMs);
     end) then
   begin
     mFrame.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNoServer);

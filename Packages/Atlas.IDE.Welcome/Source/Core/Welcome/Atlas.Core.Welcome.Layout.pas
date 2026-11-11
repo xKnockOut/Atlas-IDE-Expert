@@ -179,7 +179,8 @@ implementation
 uses
   System.Math,
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 function Clamp(AValue, AMin, AMax: Integer): Integer;
 begin
@@ -636,18 +637,6 @@ begin
   end;
 end;
 
-function BooleanField(AItem: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
-var
-  mField: TJSONValue;
-begin
-  Result := ADefault;
-  mField := AItem.GetValue(AName);
-  if mField is TJSONBool then
-  begin
-    Result := TJSONBool(mField).AsBoolean;
-  end;
-end;
-
 /// <summary>Plätze aus „slots“ in ALayout; doppelte Kennung: der erste Platz gilt. False bei ungültigem
 /// Eintrag.</summary>
 function SlotsFromJson(AList: TJSONArray; var ALayout: TAtlasWelcomeLayout): Boolean;
@@ -676,7 +665,7 @@ begin
       ALayout.Slots := ALayout.Slots + [TAtlasWelcomeSlot.Create(mId,
         IntegerField(mItem, 'column', 0, 0, TAtlasWelcomeLayout.cMaxColumns - 1),
         IntegerField(mItem, 'width', 1, TAtlasWelcomeLayout.cMinWidth, TAtlasWelcomeLayout.cMaxWidth),
-        BooleanField(mItem, 'visible', True))];
+        TJsonRead.FlagOr(mItem, 'visible', True))];
     end;
   end;
   Result := True;

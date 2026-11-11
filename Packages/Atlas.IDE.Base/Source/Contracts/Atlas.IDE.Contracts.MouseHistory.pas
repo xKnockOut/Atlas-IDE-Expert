@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.MouseHistory;
 
-// Vertrag zwischen Modulen (#1889, ADR 0017 Regeln 4 und 6): Atlas-Fenster mit
+// Vertrag zwischen Modulen (#1889, Modulregeln 4 und 6): Atlas-Fenster mit
 // eigenem Verlauf (etwa die Issue-Vorschau) melden sich hier an, damit die
 // Zurück-/Vor-Taste der Maus in ihnen deren Verlauf blättert statt im Code.
 // Base fragt die Angemeldeten der Reihe nach mit dem Fenster unter der Maus;
@@ -25,7 +25,7 @@ type
     class function Register(const AHandler: TAtlasMouseHistoryHandler): Integer; static;
     class procedure Unregister(AId: Integer); static;
     /// <summary>Hat ein angemeldetes Fenster die Taste übernommen?</summary>
-    class function Dispatch(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean; static;
+    class function Route(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean; static;
   end;
 
 implementation
@@ -40,8 +40,10 @@ begin
       Exit;
     end;
   end;
-  FHandlers := FHandlers + [AHandler];
-  Result := High(FHandlers);
+  // Nicht FHandlers + [AHandler]: Delphi ruft die Methodenreferenz im Array-Literal auf (E2035).
+  Result := Length(FHandlers);
+  SetLength(FHandlers, Result + 1);
+  FHandlers[Result] := AHandler;
 end;
 
 class procedure TAtlasMouseHistory.Unregister(AId: Integer);
@@ -52,7 +54,7 @@ begin
   end;
 end;
 
-class function TAtlasMouseHistory.Dispatch(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean;
+class function TAtlasMouseHistory.Route(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean;
 var
   mHandler: TAtlasMouseHistoryHandler;
 begin

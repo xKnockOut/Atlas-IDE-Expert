@@ -68,7 +68,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -99,7 +100,7 @@ const
 {$SCOPEDENUMS OFF}
 
 type
-  /// <summary>Eintrag des eigenen Stapels von TJumpOutsideAllowedScopeRule.Check (Bericht M1): Knoten samt
+  /// <summary>Eintrag des eigenen Stapels von TJumpOutsideAllowedScopeRule.Check: Knoten samt
   /// Zustand der umschließenden Sprunggrenze.</summary>
   TJumpVisit = record
     Node: TSyntaxNode;
@@ -267,7 +268,7 @@ var
 
   // AHasLoop: eine Schleife umschließt die Stelle in derselben Routine; AFinallySinceLoop: zwischen ihr und der
   // Stelle liegt ein finally; AInFinally: irgendein finally der Routine umschließt die Stelle.
-  // Iterativ (Bericht M1): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TJumpVisit>;
@@ -341,30 +342,9 @@ var
   mTokens: TArray<TPascalToken>;
   mPaths: TArray<string>;
 
-  function TokenAt(AOffset: Integer): Integer;
-  var
-    mLow, mHigh, mMiddle: Integer;
-  begin
-    mLow := 0;
-    mHigh := Length(mTokens);
-    while mLow < mHigh do
-    begin
-      mMiddle := (mLow + mHigh) div 2;
-      if mTokens[mMiddle].Offset < AOffset then
-      begin
-        mLow := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
-    end;
-    Result := mLow;
-  end;
-
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(mPaths, TokenAt(ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ANode.StartOffset));
   end;
 
   // try-Anweisungen und ihre Teile von der Routine bis zu ANode, als Kette von Knoten.
@@ -428,7 +408,7 @@ var
   var
     mToken: Integer;
   begin
-    mToken := TokenAt(ASection.StartOffset) + 1;
+    mToken := TokenFrom(mTokens, ASection.StartOffset) + 1;
     while (mToken <= High(mTokens)) and (mTokens[mToken].Offset < ASection.EndOffset) and
       not mTokens[mToken].IsSymbol(';') do
     begin
@@ -517,7 +497,7 @@ var
   end;
 
   /// <summary>Gesetzte Marken und goto-Anweisungen unter ARoot; False, wenn ein asm-Block vorkommt (dessen
-  /// Marken sieht der Baum nicht). Iterativ (Bericht M1).</summary>
+  /// Marken sieht der Baum nicht). Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
   function Collect(ARoot: TSyntaxNode; ASets: TLabelSets; AGotos: TList<TSyntaxNode>): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
@@ -727,7 +707,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

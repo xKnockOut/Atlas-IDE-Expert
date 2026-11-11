@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Versionsverwaltung (#1891, ADR 0017): Git und SVN über die Kommandozeile, Dienst der IDE,
+// Modul Versionsverwaltung (#1891): Git und SVN über die Kommandozeile, Dienst der IDE,
 // Dialoge „Branch anlegen“ und „Arbeitskopien“. Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.VersionControl.Composition über die Registry von Atlas.IDE.Base an und setzt dort den Zugang
 // TAtlasIdeVcs (Vertrag Atlas.IDE.Contracts.VersionControl). Requiret nur das Kern-Package (Regel 9).

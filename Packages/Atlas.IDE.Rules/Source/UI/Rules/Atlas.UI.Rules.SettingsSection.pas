@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Rules.SettingsSection;
 
-// Abschnitte des Moduls Prüfregeln im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher in den Teilen
+// Abschnitte des Moduls Prüfregeln im Optionsdialog (#1456; vorher in den Teilen
 // „Prüfregeln“ und „Editor“ von Base). Fenster „Atlas-Prüfung“, Prüfen beim Speichern und deren Einstellungen
 // bleiben in Base.
 // - „Prüfregeln“: Modulschalter, Sammelkorrektur im Kontextmenü des Fensters (#1352), der Weg zu den Regeln (sie

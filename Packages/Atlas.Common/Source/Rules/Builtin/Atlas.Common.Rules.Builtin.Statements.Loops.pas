@@ -52,6 +52,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Localization.Texts;
@@ -219,7 +220,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -303,7 +304,7 @@ var
     mOpen: Integer;
   begin
     mOpen := NextCode(mTokens, AHeader.HighFirst + 1);
-    ABase.Close := Closing(mTokens, mOpen, AHeader.HighLast + 1);
+    ABase.Close := MatchingParen(mTokens, mOpen, AHeader.HighLast + 1);
     Result := ABase.Close > mOpen + 1;
     if Result then
     begin
@@ -457,7 +458,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -673,7 +674,7 @@ var
     mClose := -1;
     if mTokens[mOpen].IsSymbol('(') then
     begin
-      mClose := Closing(mTokens, mOpen, ALast + 1);
+      mClose := MatchingParen(mTokens, mOpen, ALast + 1);
     end;
     Result := (mClose = ALast) and (mClose > mOpen + 1);
     AArgFirst := NextCode(mTokens, mOpen + 1);
@@ -840,7 +841,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

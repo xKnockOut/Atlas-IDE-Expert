@@ -68,7 +68,7 @@ implementation
 uses
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
 { TAtlasResultsFlowPart }
@@ -79,9 +79,9 @@ begin
   // Filter; nur sichtbar, solange ein Datenfluss gezeigt wird.
   FParts.Bar := TAtlasResultsControls.Bar(AView.Host, AView, 24);
   FParts.OnlyProject := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alLeft, 150,
-    TAtlasStrings.Text(TAtlasTextId.DataFlowOnlyProject), FilterClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOnlyProject), FilterClick);
   FParts.ExcludeTests := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alLeft, 150,
-    TAtlasStrings.Text(TAtlasTextId.DataFlowExcludeTests), FilterClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowExcludeTests), FilterClick);
   TAtlasResultsControls.Follow(FParts.ExcludeTests, FParts.OnlyProject);
 end;
 

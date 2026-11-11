@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Welcome.Page;
 
 // Atlas-Bereiche auf der Willkommensseite der IDE (#753) über
-// ToolsAPI.WelcomePage (RAD Studio 12 und 13, ADR 0011): Jeder Bereich ist ein
+// ToolsAPI.WelcomePage (RAD Studio 12 und 13): Jeder Bereich ist ein
 // Inhalts-Plugin (INTAWelcomePagePlugin + INTAWelcomePageContentPluginCreator).
 // Die IDE bekommt einen Rahmen mit Titelzeile
 // (WelcomePagePluginService.CreateCaptionFrame), in den der Atlas-Frame als
@@ -17,8 +17,7 @@
 // beim Entladen). Den Rahmen gibt die IDE mit ihrer
 // Seite frei; ein Wächter (FreeNotification) vergisst ihn dann, damit
 // DestroyView ihn nicht ein zweites Mal freigibt.
-// #1114 hatte die Plugins entfernt; seit #761 (Nachtrag) sind sie wieder da,
-// abschaltbar mit welcomePage.ideWelcomePage. RemoveAll gibt vor dem Abmelden
+// Die Plugins sind abschaltbar mit welcomePage.ideWelcomePage (#761). RemoveAll gibt vor dem Abmelden
 // die Atlas-Inhalte in den Rahmen der IDE frei: Kein Objekt einer Atlas-Klasse
 // soll in einem Fenster der IDE stehen bleiben, das die IDE erst nach dem
 // Entladen von Atlas abbaut (vgl. #1233, Spalten der Zeilenleiste).

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.CompletionCollector.Tests;
 
-// Sammler der Vervollständigung (Code-Review S-01, Block H Schritt 3): kein geteilter Zustand zwischen
+// Sammler der Vervollständigung: kein geteilter Zustand zwischen
 // Einträgen, Strafpunkte legen die Gruppen fest, Staffelung und Unvollständigkeit; Typkonvertierung (#490).
 
 interface

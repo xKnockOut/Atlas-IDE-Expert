@@ -111,7 +111,8 @@ implementation
 uses
   System.IOUtils,
   System.Generics.Defaults,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -150,38 +151,6 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-function IntegerOf(const AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function BooleanOf(const AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 { TAtlasCrashCase }
 
 class function TAtlasCrashCase.Empty: TAtlasCrashCase;
@@ -203,17 +172,17 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AParams);
-  ACase.Summary := StringOf(mObject, 'summary');
-  ACase.Folder := StringOf(mObject, 'folder');
-  ACase.Method := StringOf(mObject, 'method');
-  ACase.Kind := StringOf(mObject, 'kind');
-  ACase.FileName := StringOf(mObject, 'file');
-  ACase.Uri := StringOf(mObject, 'uri');
-  ACase.Line := IntegerOf(mObject, 'line', -1);
-  ACase.ExceptionClass := StringOf(mObject, 'exception');
-  ACase.ExceptionMessage := StringOf(mObject, 'message');
-  ACase.Version := StringOf(mObject, 'version');
-  ACase.Skipping := BooleanOf(mObject, 'skipping');
+  ACase.Summary := TJsonRead.StrictText(mObject, 'summary');
+  ACase.Folder := TJsonRead.StrictText(mObject, 'folder');
+  ACase.Method := TJsonRead.StrictText(mObject, 'method');
+  ACase.Kind := TJsonRead.StrictText(mObject, 'kind');
+  ACase.FileName := TJsonRead.StrictText(mObject, 'file');
+  ACase.Uri := TJsonRead.StrictText(mObject, 'uri');
+  ACase.Line := TJsonRead.IntOr(mObject, 'line', -1);
+  ACase.ExceptionClass := TJsonRead.StrictText(mObject, 'exception');
+  ACase.ExceptionMessage := TJsonRead.StrictText(mObject, 'message');
+  ACase.Version := TJsonRead.StrictText(mObject, 'version');
+  ACase.Skipping := TJsonRead.Flag(mObject, 'skipping');
   Result := (ACase.Summary <> '') and (ACase.Folder <> '');
 end;
 
@@ -228,13 +197,13 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AParams);
-  ASkip.Active := BooleanOf(mObject, 'active');
-  ASkip.Method := StringOf(mObject, 'method');
-  ASkip.Uri := StringOf(mObject, 'uri');
-  ASkip.FileName := StringOf(mObject, 'file');
-  ASkip.Crashes := IntegerOf(mObject, 'crashes', 0);
-  ASkip.ExceptionClass := StringOf(mObject, 'exception');
-  ASkip.Folder := StringOf(mObject, 'folder');
+  ASkip.Active := TJsonRead.Flag(mObject, 'active');
+  ASkip.Method := TJsonRead.StrictText(mObject, 'method');
+  ASkip.Uri := TJsonRead.StrictText(mObject, 'uri');
+  ASkip.FileName := TJsonRead.StrictText(mObject, 'file');
+  ASkip.Crashes := TJsonRead.IntOr(mObject, 'crashes', 0);
+  ASkip.ExceptionClass := TJsonRead.StrictText(mObject, 'exception');
+  ASkip.Folder := TJsonRead.StrictText(mObject, 'folder');
   Result := (ASkip.Method <> '') and (ASkip.Uri <> '');
 end;
 
@@ -302,19 +271,19 @@ begin
     end;
     mObject := TJSONObject(mRoot);
     ACase.Folder := AFolder;
-    ACase.Method := StringOf(mObject, 'method');
-    ACase.Kind := StringOf(mObject, 'kind');
-    ACase.FileName := StringOf(mObject, 'file');
-    ACase.Uri := StringOf(mObject, 'uri');
-    ACase.Line := IntegerOf(mObject, 'line', -1);
-    ACase.Version := StringOf(mObject, 'atlasVersion');
+    ACase.Method := TJsonRead.StrictText(mObject, 'method');
+    ACase.Kind := TJsonRead.StrictText(mObject, 'kind');
+    ACase.FileName := TJsonRead.StrictText(mObject, 'file');
+    ACase.Uri := TJsonRead.StrictText(mObject, 'uri');
+    ACase.Line := TJsonRead.IntOr(mObject, 'line', -1);
+    ACase.Version := TJsonRead.StrictText(mObject, 'atlasVersion');
     mValue := mObject.GetValue('exception');
     if mValue is TJSONObject then
     begin
-      ACase.ExceptionClass := StringOf(TJSONObject(mValue), 'class');
-      ACase.ExceptionMessage := StringOf(TJSONObject(mValue), 'message');
+      ACase.ExceptionClass := TJsonRead.StrictText(TJSONObject(mValue), 'class');
+      ACase.ExceptionMessage := TJsonRead.StrictText(TJSONObject(mValue), 'message');
     end;
-    ACase.Summary := SummaryOf(ACase, IntegerOf(mObject, 'timeoutMs', 0));
+    ACase.Summary := SummaryOf(ACase, TJsonRead.IntOr(mObject, 'timeoutMs', 0));
     Result := ACase.Method <> '';
   finally
     mRoot.Free;

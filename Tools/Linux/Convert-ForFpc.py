@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Bereitet den Quelltext von AtlasServer für Free Pascal (trunk, Linux) auf.
 
-Aufruf: Convert-ForFpc.py <Repo> <Zielordner>
+Aufruf: Convert-ForFpc.py <Repo> <Zielordner> [--root <Programm>] [--tests]
+
+  --root <Programm>  anderes Programm als Wurzel statt Application/AtlasServer.dpr (Test-Fpc.sh)
+  --tests            Units unter Tests/ mitnehmen und DUnitX-Attribute ([Test], [TestCase] …) entfernen;
+                     DUnitX.TestFramework kommt dann aus Tools/Linux/Compat/DUnitX
 
 Kopiert das Programm Application/AtlasServer.dpr und die Hülle aller Units, die es
 über uses erreicht, flach in den Zielordner und passt sie an FPC im Modus delphi an.
@@ -33,10 +37,20 @@ import re
 import sys
 
 REPO, OUT = sys.argv[1], sys.argv[2]
-ROOT = os.path.join(REPO, 'Application', 'AtlasServer.dpr')
+OPTIONS = sys.argv[3:]
+WITH_TESTS = '--tests' in OPTIONS
+if '--root' in OPTIONS:
+    ROOT = os.path.abspath(OPTIONS[OPTIONS.index('--root') + 1])
+else:
+    ROOT = os.path.join(REPO, 'Application', 'AtlasServer.dpr')
 
-# Ordner, deren Units der Server nie braucht (Tests, Installer, Referenzprojekt, Werkzeuge, Bauausgabe).
-SKIP_DIRS = ('/.git', '/Tests', '/Setup', '/Tools/', '/Editors', '/docs', '/Output/')
+# Ordner unter der Wurzel des Repositorys, deren Units der Server nie braucht (Tests, Installer, Werkzeuge,
+# Bauausgabe). Nur am Anfang des Pfads: Feature-Ordner wie Source/UI/Setup gehören dazu.
+SKIP_DIRS = ('/.git/', '/Setup/', '/Tools/', '/Editors/', '/docs/', '/Output/') + (() if WITH_TESTS else ('/Tests/',))
+
+# DUnitX-Attribute stehen in Testunits allein auf einer Zeile; der Ersatz in Compat/DUnitX kennt sie nicht.
+TEST_ATTRIBUTE = re.compile(r"^[ \t]*\[(TestFixture|Setup|TearDown|SetupFixture|TearDownFixture|Test|TestCase|Category|Ignore|"
+                            r"IgnoreMemoryLeaks|MaxTime|RepeatTest|AutoNameTestCase|WillRaise)\b[^\n]*\][ \t]*$", re.M)
 
 MAP = {
     'system.sysutils': 'SysUtils', 'system.classes': 'Classes', 'system.math': 'Math',
@@ -60,7 +74,7 @@ def index_units():
     found = {}
     for d, _, files in os.walk(REPO):
         rel = d[len(REPO):].replace('\\', '/') + '/'
-        if any(s in rel for s in SKIP_DIRS) or 'Referenzprojekt' in rel:
+        if rel.startswith(SKIP_DIRS) or 'Referenzprojekt' in rel:
             continue
         for f in files:
             if f.lower().endswith('.pas'):
@@ -394,6 +408,8 @@ def convert(txt, is_program):
         txt = sub_code(re.compile(r"(?<![\w.])(TProc|TFunc|TPredicate)\b"), lambda m: 'DelphiCompat.' + m.group(1), txt)
     txt = alias_nested(txt)
     txt = wrap_generic_calls(txt)
+    if WITH_TESTS:
+        txt = TEST_ATTRIBUTE.sub('', txt)
     return HEAD + txt
 
 
@@ -439,7 +455,8 @@ def main():
             text = f.read()
         with open(os.path.join(OUT, os.path.basename(units[u])), 'w', encoding='ascii', newline='\n') as f:
             f.write(convert(text, False))
-    with open(os.path.join(OUT, 'AtlasServer.pas'), 'w', encoding='ascii', newline='\n') as f:
+    program_name = 'AtlasServer.pas' if '--root' not in OPTIONS else os.path.splitext(os.path.basename(ROOT))[0] + '.pas'
+    with open(os.path.join(OUT, program_name), 'w', encoding='ascii', newline='\n') as f:
         f.write(convert(drop_program_units(program, dropped), True))
     with open(os.path.join(OUT, 'units.json'), 'w') as f:
         json.dump([os.path.relpath(units[u], REPO) for u in order], f, indent=1)

@@ -48,6 +48,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Package,
   Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.ReportDialog;
 
 const
@@ -165,7 +166,8 @@ begin
       Assert.AreEqual(TAtlasDiagnosticPackage.cInfoFileName, Dialog.List.Items[0].Caption);
       Assert.AreEqual(TAtlasReportDialog.SizeText(Dialog.Files[0].Size), Dialog.List.Items[0].SubItems[0]);
       Assert.IsTrue(Dialog.ZipButton.Enabled);
-      Assert.AreNotEqual(TAtlasStrings.Text(TAtlasTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
+      Assert.AreNotEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportEmpty),
+        Dialog.SummaryLabel.Caption);
       // Ohne Logs: nur Info und Einstellungen.
       Dialog.Check(TAtlasPackagePart.Logs).Checked := False;
       Dialog.Reload;
@@ -183,7 +185,7 @@ begin
       Dialog.Reload;
       Assert.AreEqual(0, Integer(Dialog.List.Items.Count));
       Assert.IsFalse(Dialog.ZipButton.Enabled);
-      Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
+      Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
       Assert.IsFalse(Dialog.CreateZip, 'leeres Paket wird nicht angelegt');
     finally
       Dialog.Free;
@@ -207,7 +209,7 @@ begin
       Log.Actions);
     try
       Assert.IsFalse(Dialog.Check(TAtlasPackagePart.LastData).Enabled, 'ohne Diagnosedaten ausgegraut');
-      Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ReportPartLastDataMissing),
+      Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportPartLastDataMissing),
         Dialog.Check(TAtlasPackagePart.LastData).Caption);
       Dialog.Check(TAtlasPackagePart.LastData).Checked := True;
       Dialog.Reload;
@@ -312,7 +314,8 @@ begin
       Assert.AreEqual(Dialog.IssueText, Log.Copied[0]);
       Assert.AreEqual(1, Integer(Length(Log.Opened)));
       Assert.AreEqual('https://example.org/issues/new', Log.Opened[0]);
-      Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ReportIssueDone), Dialog.StatusLabel.Caption);
+      Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportIssueDone),
+        Dialog.StatusLabel.Caption);
     finally
       Dialog.Free;
     end;

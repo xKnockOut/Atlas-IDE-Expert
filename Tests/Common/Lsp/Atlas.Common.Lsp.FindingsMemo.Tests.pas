@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.FindingsMemo.Tests;
 
 // Treffer der Prüfregeln je Datei und Text (2.0-stable): Die Diagnose legt ab, die Code-Aktion liest am selben Text
-// und rechnet die Regeln nicht noch einmal.
+// und rechnet die Regeln nicht noch einmal; ohne abgelegte Treffer rechnet sie nur für source.fixAll selbst.
 
 interface
 
@@ -29,8 +29,21 @@ type
     procedure DiagnosticsFillMemo;
     [Test]
     procedure CodeActionReadsMemo;
+    /// <summary>Ohne abgelegte Treffer und ohne laufenden Lauf: kein eigener Lauf, keine Aktionen der Regeln.
+    /// </summary>
     [Test]
-    procedure CodeActionFillsMemo;
+    procedure CodeActionWithoutMemoRunsNoRules;
+    /// <summary>source.fixAll rechnet selbst und legt ab.</summary>
+    [Test]
+    procedure FixAllFillsMemo;
+    [Test]
+    procedure AwaitGivesStoredFindings;
+    [Test]
+    procedure AwaitWithoutRunGivesNothing;
+    [Test]
+    procedure AwaitWaitsForRunningRun;
+    [Test]
+    procedure AwaitEndsWhenCancelled;
     /// <summary>#1761: Ein zweiter Aufrufer am selben Text wartet auf den laufenden Lauf, statt selbst zu rechnen.
     /// </summary>
     [Test]
@@ -93,7 +106,7 @@ begin
 end;
 
 /// <summary>Titel aller Code-Aktionen in Zeile ALine von cText, mit "|" getrennt.</summary>
-function ActionTitles(const AMemo: IRuleFindingsMemo; ALine: Integer): string;
+function ActionTitles(const AMemo: IRuleFindingsMemo; ALine: Integer; const AOnly: string = ''): string;
 var
   mStore: IDocumentStore;
   mActions: TLspCodeActions;
@@ -119,7 +132,7 @@ begin
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/codeAction",' +
       '"params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"range":{"start":{"line":' +
       IntToStr(ALine) + ',"character":0},"end":{"line":' + IntToStr(ALine) +
-      ',"character":0}},"context":{"diagnostics":[]}}}') as TJSONObject;
+      ',"character":0}},"context":{"diagnostics":[]' + AOnly + '}}}') as TJSONObject;
     try
       mResponse := mDispatcher.DispatchMessage(mRequest);
     finally
@@ -252,14 +265,47 @@ begin
   Assert.Contains(ActionTitles(mMemo, 2), 'Korrektur aus dem Memo');
 end;
 
-procedure TRuleFindingsMemoTests.CodeActionFillsMemo;
+procedure TRuleFindingsMemoTests.CodeActionWithoutMemoRunsNoRules;
 var
   mMemo: IRuleFindingsMemo;
   mFound: TArray<TRuleFinding>;
 begin
   mMemo := TRuleFindingsMemo.Create;
   ActionTitles(mMemo, 2);
-  Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'die Code-Aktion legt ihren Lauf ab');
+  Assert.IsFalse(mMemo.TryGet(cFileName, cText, mFound), 'die Code-Aktion rechnet keinen eigenen Lauf');
+end;
+
+procedure TRuleFindingsMemoTests.FixAllFillsMemo;
+var
+  mMemo: IRuleFindingsMemo;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  ActionTitles(mMemo, 2, ',"only":["source.fixAll"]');
+  Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'source.fixAll legt seinen Lauf ab');
+end;
+
+procedure TRuleFindingsMemoTests.AwaitGivesStoredFindings;
+var
+  mMemo: IRuleFindingsMemo;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mMemo.Put(cFileName, cText, [Finding('regel-a', 1, 'Korrektur')]);
+  Assert.IsTrue(mMemo.Await(cFileName, cText, nil, mFound));
+  Assert.AreEqual('regel-a', mFound[0].RuleId);
+  Assert.IsFalse(mMemo.Await(cFileName, cText + ' ', nil, mFound), 'anderer Text');
+  mFound := nil;
+end;
+
+procedure TRuleFindingsMemoTests.AwaitWithoutRunGivesNothing;
+var
+  mMemo: IRuleFindingsMemo;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  Assert.IsFalse(mMemo.Await(cFileName, cText, nil, mFound));
+  Assert.AreEqual(0, Integer(Length(mFound)));
 end;
 
 /// <summary>Lauf, der auf AGo wartet und dann einen Treffer der Regel ARuleId liefert.</summary>
@@ -369,6 +415,74 @@ begin
   Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'der laufende Lauf legt ab');
   Assert.AreEqual('erster-lauf', mFound[0].RuleId);
   mFound := nil;
+end;
+
+procedure TRuleFindingsMemoTests.AwaitWaitsForRunningRun;
+var
+  mMemo: IRuleFindingsMemo;
+  mStarted, mGo: TEvent;
+  mThread: TThread;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mStarted := TEvent.Create(nil, True, False, '');
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
+    try
+      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
+      TThread.CreateAnonymousThread(
+        procedure
+        begin
+          Sleep(100);
+          mGo.SetEvent;
+        end).Start;
+      Assert.IsTrue(mMemo.Await(cFileName, cText, nil, mFound));
+      Assert.AreEqual('erster-lauf', mFound[0].RuleId);
+      mThread.WaitFor;
+    finally
+      mThread.Free;
+    end;
+  finally
+    mGo.Free;
+    mStarted.Free;
+  end;
+  mFound := nil;
+end;
+
+procedure TRuleFindingsMemoTests.AwaitEndsWhenCancelled;
+var
+  mMemo: IRuleFindingsMemo;
+  mStarted, mGo: TEvent;
+  mThread: TThread;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mStarted := TEvent.Create(nil, True, False, '');
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
+    try
+      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
+      Assert.WillRaise(
+        procedure
+        var
+          mFound: TArray<TRuleFinding>;
+        begin
+          mMemo.Await(cFileName, cText,
+            function: Boolean
+            begin
+              Result := True;
+            end, mFound);
+        end, ERuleCheckCancelled);
+      mGo.SetEvent;
+      mThread.WaitFor;
+    finally
+      mThread.Free;
+    end;
+  finally
+    mGo.Free;
+    mStarted.Free;
+  end;
 end;
 
 procedure TRuleFindingsMemoTests.ObtainAfterFailedRunComputes;

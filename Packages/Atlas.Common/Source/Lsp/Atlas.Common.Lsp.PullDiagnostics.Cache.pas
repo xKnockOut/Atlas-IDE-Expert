@@ -4,7 +4,8 @@
 // letzte Ergebnis-Id mit den Befunden kompakt als JSON-Text. Fragt der Client
 // dieselbe Datei im selben Stand erneut an, wird nicht neu geprüft. Fragen
 // mehrere Anfragen dieselbe Datei im selben Stand an, rechnet nur die erste;
-// die übrigen warten auf ihr Ergebnis. Threadsicher.
+// die übrigen warten auf ihr Ergebnis (TMonitor.Wait auf der Sperre, das Ende
+// der Berechnung weckt sofort). Threadsicher.
 
 interface
 
@@ -22,14 +23,15 @@ type
   public const
     /// <summary>Höchstzahl gespeicherter Dateibefunde, danach wird der Speicher geleert.</summary>
     cMaxCachedReports = 500;
-    /// <summary>Takt, in dem eine Anfrage auf die gleiche Berechnung einer anderen wartet.</summary>
-    cRunningPollMs = 20;
+    /// <summary>Takt, in dem eine Anfrage beim Warten auf die gleiche Berechnung einer anderen ihren Abbruch prüft;
+    /// das Ende der Berechnung weckt sofort.</summary>
+    cCancelSliceMs = 100;
   private
     // Uri -> Befunde bzw. Ergebnis-Id. Unter FLock.
     FReports: TDictionary<string, TBytes>;
     FIds: TDictionary<string, string>;
     FLock: TObject;
-    // Laufende Berechnungen: Uri + #0 + Ergebnis-Id. Unter FLock.
+    // Laufende Berechnungen: Uri + #0 + Ergebnis-Id. Unter FLock; Release weckt Wartende mit PulseAll.
     FRunning: TDictionary<string, Boolean>;
     /// <summary>True: Der Aufrufer rechnet AKey jetzt selbst. False mit ACached: Befunde aus dem
     /// Speicher (gehören dem Aufrufer). False ohne: Eine andere Anfrage rechnet gerade.</summary>
@@ -116,6 +118,7 @@ begin
   TMonitor.Enter(FLock);
   try
     FRunning.Remove(AKey);
+    TMonitor.PulseAll(FLock);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -126,25 +129,35 @@ function TPullReportCache.Get(const AUri, AResultId: string; const ACompute: TPu
 var
   mKey: string;
   mCached: TJSONArray;
+  mClaimed: Boolean;
 begin
   if AResultId = '' then
   begin
     Exit(ACompute());
   end;
   mKey := AUri + #0 + AResultId;
-  while not Claim(AUri, AResultId, mKey, mCached) do
-  begin
+  repeat
+    TMonitor.Enter(FLock);
+    try
+      mClaimed := Claim(AUri, AResultId, mKey, mCached);
+      if not mClaimed and (mCached = nil) then
+      begin
+        // Dieselbe Datei im selben Stand rechnet schon eine andere Anfrage: auf ihr Ergebnis warten. Claim und Wait
+        // unter derselben Sperre, damit das Wecken von Release nicht verloren geht.
+        TMonitor.Wait(FLock, cCancelSliceMs);
+      end;
+    finally
+      TMonitor.Exit(FLock);
+    end;
     if mCached <> nil then
     begin
       Exit(mCached);
     end;
-    // Dieselbe Datei im selben Stand rechnet schon eine andere Anfrage: auf ihr Ergebnis warten.
-    if ACancellation <> nil then
+    if not mClaimed and (ACancellation <> nil) then
     begin
       ACancellation.ThrowIfCancellationRequested;
     end;
-    Sleep(cRunningPollMs);
-  end;
+  until mClaimed;
   try
     Result := ACompute();
     Store(AUri, AResultId, Result);

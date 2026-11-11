@@ -18,10 +18,11 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasBoardMoveDialog = class(TForm)
+  TAtlasBoardMoveDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 460;
     cCommentHeight = 110;
@@ -64,13 +65,7 @@ constructor TAtlasBoardMoveDialog.CreateDialog(AOwner: TComponent; const AKey, A
 var
   mLabel: TLabel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveTitle);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveTitle), cDialogWidth);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
 
@@ -142,7 +137,7 @@ begin
   FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 procedure TAtlasBoardMoveDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

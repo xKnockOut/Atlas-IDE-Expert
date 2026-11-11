@@ -32,7 +32,8 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsCommandsPart }
 
@@ -46,49 +47,55 @@ begin
   BindKey('ImplementationKey', AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations)));
   BindKey('TypeDefinitionKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition)));
   // Deklaration ⇄ Implementierung (#775); aus: Klassennavigation der IDE.
-  BindCheck('MethodToggle', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggle)));
-  BindKey('MethodToggleUpKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp)));
+  BindCheck('MethodToggle', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodToggle)));
+  BindKey('MethodToggleUpKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodToggleUp)));
   BindKey('MethodToggleDownKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown)));
   // Sprung zum Gegenstück (#635); aus: beide Tasten bleiben frei.
-  BindCheck('JumpToMatch', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsJumpToMatch)));
+  BindCheck('JumpToMatch', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsJumpToMatch)));
   BindKey('JumpToMatchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand)));
   BindKey('JumpToMatchSelectKey', AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand)));
   // Zeilen verschieben und duplizieren (#634); aus: die Tasten bleiben der IDE.
-  BindCheck('MoveLines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMoveLines)));
+  BindCheck('MoveLines', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMoveLines)));
   BindKey('MoveLinesUpKey', AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand)));
   BindKey('MoveLinesDownKey', AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand)));
   BindKey('DuplicateLinesUpKey', AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand)));
   BindKey('DuplicateLinesDownKey', AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand)));
   // Blockkommentar umschalten (#703).
-  BindCheck('ToggleBlockComment', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockComment)));
+  BindCheck('ToggleBlockComment',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsToggleBlockComment)));
   BindKey('ToggleBlockCommentKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand)));
-  FToggleBlockCommentStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentStyle),
-    [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentBraces),
-    TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentParens)]);
-  FToggleBlockCommentFallback := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentFallback),
-    [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLineComments),
-    TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefuse)]);
-  BindCheck('ToggleBlockCommentOwnLines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentOwnLines)));
-  FToggleBlockCommentScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentScope),
-    [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentStatement),
-    TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLine)]);
+  FToggleBlockCommentStyle := AddChoice(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsToggleBlockCommentStyle),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ToggleBlockCommentBraces),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ToggleBlockCommentParens)]);
+  FToggleBlockCommentFallback := AddChoice(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsToggleBlockCommentFallback),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ToggleBlockCommentLineComments),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ToggleBlockCommentRefuse)]);
+  BindCheck('ToggleBlockCommentOwnLines',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsToggleBlockCommentOwnLines)));
+  FToggleBlockCommentScope := AddChoice(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsToggleBlockCommentScope),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ToggleBlockCommentStatement),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ToggleBlockCommentLine)]);
   // Neue Zeile ober- oder unterhalb (#700).
-  BindCheck('NewLineAround', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAround)));
+  BindCheck('NewLineAround', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNewLineAround)));
   BindKey('NewLineBelowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand)));
   BindKey('NewLineAboveKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand)));
-  BindCheck('NewLineAroundStatementAware', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAroundStatementAware)));
+  BindCheck('NewLineAroundStatementAware',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNewLineAroundStatementAware)));
   // Umschließung entfernen (#657).
-  BindCheck('Unwrap', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnwrap)));
+  BindCheck('Unwrap', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUnwrap)));
   BindKey('UnwrapKey', AddKey(TAtlasStrings.Text(TAtlasTextId.UnwrapCommand)));
   // Sicher löschen (#716).
-  BindCheck('SafeDelete', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeDelete)));
+  BindCheck('SafeDelete', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeDelete)));
   BindKey('SafeDeleteKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand)));
   BindKey('TestUnitKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit)));
   // Abschnittssprünge der Editorleiste (#1101), auch ohne die Leiste.
   BindKey('GotoInterfaceKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand)));
   BindKey('GotoImplementationKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GotoImplementationCommand)));
   // Navigationsverlauf über Dateien (#504).
-  BindCheck('NavHistory', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory)));
+  BindCheck('NavHistory', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNavHistory)));
   BindKey('NavBackKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NavBackCommand)));
   BindKey('NavForwardKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NavForwardCommand)));
   BindKey('LastEditKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand)));
@@ -97,25 +104,31 @@ end;
 procedure TAtlasSettingsCommandsPart.Build2;
 begin
   // Definition und Referenzen einblenden (#505).
-  BindCheck('Peek', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeek)));
-  BindText('PeekHeightLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPeekHeight)));
-  BindCheck('PeekShowImplementation', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation)));
+  BindCheck('Peek', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPeek)));
+  BindText('PeekHeightLines', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPeekHeight)));
+  BindCheck('PeekShowImplementation',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPeekImplementation)));
   BindKey('PeekDefinitionKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand)));
   BindKey('PeekReferencesKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand)));
   // Treffersicherheit der Verwendungen (#1119).
-  BindCheck('ReferencesInferred', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesInferred)));
-  BindCheck('ReferencesTextMatches', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesTextMatches)));
+  BindCheck('ReferencesInferred',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReferencesInferred)));
+  BindCheck('ReferencesTextMatches',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReferencesTextMatches)));
   // Auswirkungsanalyse (#1120).
-  BindCheck('Impact', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImpact)));
-  BindText('ImpactDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsImpactDepth)));
+  BindCheck('Impact', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImpact)));
+  BindText('ImpactDepth', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImpactDepth)));
   // Datenfluss im Ergebnisfenster (#690).
-  BindCheck('DataFlow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlow)));
-  BindText('DataFlowMaxDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowMaxDepth)));
-  BindCheck('DataFlowExcludeTests', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowExcludeTests)));
-  BindCheck('Outline', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline)));
-  BindCheck('OutlineAlphabetical', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical)));
-  BindCheck('OutlineFollowCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor)));
-  BindCheck('OutlineConditions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions)));
+  BindCheck('DataFlow', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDataFlow)));
+  BindText('DataFlowMaxDepth', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDataFlowMaxDepth)));
+  BindCheck('DataFlowExcludeTests',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDataFlowExcludeTests)));
+  BindCheck('Outline', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOutline)));
+  BindCheck('OutlineAlphabetical',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOutlineAlphabetical)));
+  BindCheck('OutlineFollowCursor',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOutlineFollowCursor)));
+  BindCheck('OutlineConditions', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOutlineConditions)));
   // „Element ausblenden …“ am gezeichneten Element (#628).
   BindKey('HideElementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand)));
   // Nächster/vorheriger Befund (#509).
@@ -129,21 +142,27 @@ begin
   BindKey('CreateIssueKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand)));
   BindKey('UndoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu)));
   BindKey('RedoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu)));
-  BindCheck('EditorKeysPriority', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority)));
-  BindCheck('SlashCommands', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands)));
+  BindCheck('EditorKeysPriority',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorKeysPriority)));
+  BindCheck('SlashCommands', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSlashCommands)));
   // Einstellungen mit @ in der Befehlspalette (#1884).
-  BindCheck('PaletteSettingsPrefix', AddCheck(TAtlasStrings.Text(TAtlasTextId.PaletteSettingsPrefix)));
+  BindCheck('PaletteSettingsPrefix', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.PaletteSettingsPrefix)));
   // Erzeugen-Menü (#719): Schnellbefehle, Vorlagen und Code-Aktionen an der Cursorstelle.
-  BindCheck('GenerateMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu)));
+  BindCheck('GenerateMenu', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGenerateMenu)));
   BindKey('GenerateMenuKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand)));
-  BindText('GenerateMenuGroups', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuGroups)));
-  BindText('GenerateMenuHidden', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuHidden)));
-  BindCheck('GenerateMenuRecentFirst', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuRecentFirst)));
-  BindCheck('GenerateMenuShowCommandNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames)));
+  BindText('GenerateMenuGroups',
+    AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGenerateMenuGroups)));
+  BindText('GenerateMenuHidden',
+    AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGenerateMenuHidden)));
+  BindCheck('GenerateMenuRecentFirst',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGenerateMenuRecentFirst)));
+  BindCheck('GenerateMenuShowCommandNames',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGenerateMenuShowCommandNames)));
   // Untermenü Atlas in der Projektverwaltung (#1817).
-  BindCheck('ProjectContextMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProjectContextMenu)));
+  BindCheck('ProjectContextMenu',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProjectContextMenu)));
   // Assistenten in Datei › Neu › Weitere (#1821).
-  BindCheck('GalleryWizards', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGalleryWizards)));
+  BindCheck('GalleryWizards', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGalleryWizards)));
   // Liste der Benachrichtigungen (#601).
   BindKey('NotificationsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand)));
 end;

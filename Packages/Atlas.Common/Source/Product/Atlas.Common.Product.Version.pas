@@ -2,7 +2,7 @@
 
 // Platform-Feature "Product", Root: Name und Version des Servers.
 // Wird u. a. für "serverInfo" in der Antwort auf "initialize" verwendet.
-// Die Version steht nur in Atlas.Text.Product.Version (ADR 0012).
+// Die Version steht nur in Atlas.Text.Product.Version.
 
 interface
 

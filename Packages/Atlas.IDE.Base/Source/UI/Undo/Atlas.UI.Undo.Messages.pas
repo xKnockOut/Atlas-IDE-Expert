@@ -34,7 +34,8 @@ implementation
 uses
   System.DateUtils,
   Atlas.Core.Undo.Journal,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Undo.Strings;
 
 /// <summary>Kopfzeile des Berichts für ein abgebrochenes oder ausgeführtes Zurücknehmen bzw. Wiederherstellen
 /// mit ACount Problemen.</summary>
@@ -65,7 +66,7 @@ const
 begin
   if AReport.Disabled then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UndoDisabled);
+    Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoDisabled);
   end
   else if AReport.NotFound then
   begin
@@ -82,13 +83,13 @@ function ProblemLine(const AProblem: TAtlasUndoProblem): string;
 begin
   case AProblem.Kind of
     TAtlasUndoProblemKind.ChangedSince:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictChanged, [AProblem.FileName]);
+      Result := TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictChanged, [AProblem.FileName]);
     TAtlasUndoProblemKind.Exists:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictExists, [AProblem.FileName]);
+      Result := TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictExists, [AProblem.FileName]);
     TAtlasUndoProblemKind.Missing:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictMissing, [AProblem.FileName]);
+      Result := TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictMissing, [AProblem.FileName]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UndoFailed, [AProblem.FileName, AProblem.Message]);
+    Result := TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoFailed, [AProblem.FileName, AProblem.Message]);
   end;
 end;
 
@@ -115,11 +116,11 @@ class function TAtlasUndoMessages.StateText(AState: TAtlasChangeSetState): strin
 begin
   case AState of
     TAtlasChangeSetState.PartlyUndone:
-      Result := TAtlasStrings.Text(TAtlasTextId.UndoStatePartly);
+      Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStatePartly);
     TAtlasChangeSetState.Undone:
-      Result := TAtlasStrings.Text(TAtlasTextId.UndoStateUndone);
+      Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.UndoStateApplied);
+    Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateApplied);
   end;
 end;
 
@@ -135,7 +136,7 @@ begin
   begin
     mTime := FormatDateTime('dd.mm. hh":"nn', ASet.Time);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.UndoSetCaption, [ASet.Action, Length(ASet.Files), mTime,
+  Result := TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoSetCaption, [ASet.Action, Length(ASet.Files), mTime,
     StateText(ASet.State)]);
 end;
 
@@ -148,15 +149,15 @@ begin
   end;
   case AChange.Kind of
     TAtlasFileChangeKind.Created:
-      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindCreated);
+      Result := Result + ' · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindCreated);
     TAtlasFileChangeKind.Deleted:
-      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindDeleted);
+      Result := Result + ' · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindDeleted);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
   if AChange.Undone then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoStateUndone);
+    Result := Result + ' · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone);
   end;
 end;
 
@@ -175,7 +176,7 @@ begin
     mLines := TAtlasUndoJournal.Diff(mChange);
     if Length(mLines) = 0 then
     begin
-      mLines := [TAtlasStrings.Text(TAtlasTextId.UndoNoDiff)];
+      mLines := [TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoNoDiff)];
     end;
     if AFileName = '' then
     begin

@@ -199,7 +199,11 @@ begin
   end;
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(mTarget, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(mTarget, True);
+      end);
   end;
 end;
 
@@ -670,7 +674,11 @@ var
 begin
   if FileExists(AFile) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(AFile, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AFile, True);
+      end);
   end;
 end;
 

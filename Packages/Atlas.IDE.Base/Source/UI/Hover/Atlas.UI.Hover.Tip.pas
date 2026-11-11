@@ -33,7 +33,7 @@
 // Zugriff“ die Ursache mit Korrekturen als Verweise (#840, OnDebugFix).
 // Ohne Fokus wie alle Atlas-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
-// Satz (P-09): Positionen, Klickflächen und Bausteine rechnet
+// Satz: Positionen, Klickflächen und Bausteine rechnet
 // Atlas.Core.Hover.Layout ohne VCL einmal je Inhalt, Breite und Doku-Höhe;
 // Paint zeichnet nur die Bausteine und färbt den Hot-Zustand.
 
@@ -69,7 +69,7 @@ type
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
     AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 
-  /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen (P-09).</summary>
+  /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
   TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
     cMaxWidth = 460;
@@ -100,7 +100,7 @@ type
     function PreferredWidth: Integer;
   protected
     FView: TAtlasHoverView;
-    /// <summary>Satz des Inhalts (P-09); FLayoutKey: Breite, Doku, Schrift, Farben, für die er gilt.</summary>
+    /// <summary>Satz des Inhalts; FLayoutKey: Breite, Doku, Schrift, Farben, für die er gilt.</summary>
     FLayout: TAtlasHoverLayout;
     FLayoutKey: string;
     FHot: Integer;
@@ -199,6 +199,7 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings,
+  Atlas.UI.Hover.Strings,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Popup.Accessibility;
 
@@ -228,66 +229,66 @@ end;
 /// <summary>Kopfzeile, Navigation und Aktionsleiste.</summary>
 procedure SetActionTexts(var ATexts: TAtlasHoverTexts);
 begin
-  ATexts.Pinned := TAtlasStrings.Text(TAtlasTextId.HoverPinned);
-  ATexts.Inheritance := TAtlasStrings.Text(TAtlasTextId.HoverInheritance);
-  ATexts.TargetType := TAtlasStrings.Text(TAtlasTextId.HoverTargetType);
-  ATexts.Navigate := TAtlasStrings.Text(TAtlasTextId.HoverGoTo);
-  ATexts.Usages := TAtlasStrings.Text(TAtlasTextId.HoverUsages);
-  ATexts.UsagesCount := TAtlasStrings.Text(TAtlasTextId.HoverUsagesCount);
-  ATexts.Copy := TAtlasStrings.Text(TAtlasTextId.HoverCopy);
-  ATexts.CopySelection := TAtlasStrings.Text(TAtlasTextId.HoverCopySelection);
-  ATexts.Help := TAtlasStrings.Text(TAtlasTextId.HoverHelp);
-  ATexts.KeyUsages := TAtlasStrings.Text(TAtlasTextId.HoverKeyUsages);
-  ATexts.KeyCopy := TAtlasStrings.Text(TAtlasTextId.HoverKeyCopy);
-  ATexts.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
-  ATexts.DebugExplaining := TAtlasStrings.Text(TAtlasTextId.HoverDebugExplaining);
-  ATexts.DebugChecked := TAtlasStrings.Text(TAtlasTextId.HoverDebugChecked);
-  ATexts.ReassignedOne := TAtlasStrings.Text(TAtlasTextId.ReassignedOne);
-  ATexts.ReassignedCount := TAtlasStrings.Text(TAtlasTextId.ReassignedCount);
+  ATexts.Pinned := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverPinned);
+  ATexts.Inheritance := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverInheritance);
+  ATexts.TargetType := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverTargetType);
+  ATexts.Navigate := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverGoTo);
+  ATexts.Usages := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverUsages);
+  ATexts.UsagesCount := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverUsagesCount);
+  ATexts.Copy := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverCopy);
+  ATexts.CopySelection := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverCopySelection);
+  ATexts.Help := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverHelp);
+  ATexts.KeyUsages := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverKeyUsages);
+  ATexts.KeyCopy := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverKeyCopy);
+  ATexts.DebugPending := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverDebugPending);
+  ATexts.DebugExplaining := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverDebugExplaining);
+  ATexts.DebugChecked := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverDebugChecked);
+  ATexts.ReassignedOne := TAtlasHoverStrings.Text(TAtlasHoverTextId.ReassignedOne);
+  ATexts.ReassignedCount := TAtlasHoverStrings.Text(TAtlasHoverTextId.ReassignedCount);
 end;
 
 /// <summary>Probleme, uses-Hinweise und Befund-Hover (#621, #909, #1024).</summary>
 procedure SetProblemTexts(var ATexts: TAtlasHoverTexts);
 begin
-  ATexts.SourceAtlas := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceAtlas);
+  ATexts.SourceAtlas := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsSourceAtlas);
   ATexts.Confirmed := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmed);
   ATexts.ConfirmedCode := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmedCode);
-  ATexts.SourceCompiler := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceCompiler);
-  ATexts.SourceInactive := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceInactive);
-  ATexts.SourceUses := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceUses);
-  ATexts.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
-  ATexts.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
-  ATexts.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
-  ATexts.ShowGraph := TAtlasStrings.Text(TAtlasTextId.HoverShowGraph);
+  ATexts.SourceCompiler := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsSourceCompiler);
+  ATexts.SourceInactive := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsSourceInactive);
+  ATexts.SourceUses := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsSourceUses);
+  ATexts.UsesRemove := TAtlasHoverStrings.Text(TAtlasHoverTextId.UsesRemove);
+  ATexts.UsesRemoveAll := TAtlasHoverStrings.Text(TAtlasHoverTextId.UsesRemoveAll);
+  ATexts.UsesMove := TAtlasHoverStrings.Text(TAtlasHoverTextId.UsesMove);
+  ATexts.ShowGraph := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverShowGraph);
   ATexts.KindError := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
   ATexts.KindWarning := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
   ATexts.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
   ATexts.Suppress := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress);
   ATexts.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
-  ATexts.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
+  ATexts.Stale := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsStale);
 end;
 
 /// <summary>published-Mitglieder (#110).</summary>
 procedure SetPublishedTexts(var ATexts: TAtlasHoverTexts);
 begin
-  ATexts.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
-  ATexts.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
-  ATexts.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
-  ATexts.PublishedProperties := TAtlasStrings.Text(TAtlasTextId.PublishedProperties);
-  ATexts.PublishedEvents := TAtlasStrings.Text(TAtlasTextId.PublishedEvents);
-  ATexts.PublishedName := TAtlasStrings.Text(TAtlasTextId.PublishedName);
-  ATexts.PublishedType := TAtlasStrings.Text(TAtlasTextId.PublishedType);
-  ATexts.PublishedDefault := TAtlasStrings.Text(TAtlasTextId.PublishedDefault);
-  ATexts.PublishedDeclared := TAtlasStrings.Text(TAtlasTextId.PublishedDeclared);
-  ATexts.PublishedImplicit := TAtlasStrings.Text(TAtlasTextId.PublishedImplicit);
-  ATexts.PublishedMoreProperties := TAtlasStrings.Text(TAtlasTextId.PublishedMoreProperties);
-  ATexts.PublishedMoreEvents := TAtlasStrings.Text(TAtlasTextId.PublishedMoreEvents);
-  ATexts.PublishedEventsNote := TAtlasStrings.Text(TAtlasTextId.PublishedEventsNote);
-  ATexts.PublishedArrayProperty := TAtlasStrings.Text(TAtlasTextId.PublishedArrayProperty);
-  ATexts.PublishedDefaultProperty := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultProperty);
-  ATexts.PublishedDefaultPropertyNote := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultPropertyNote);
-  ATexts.PublishedCopyList := TAtlasStrings.Text(TAtlasTextId.PublishedCopyList);
-  ATexts.PublishedVclNote := TAtlasStrings.Text(TAtlasTextId.PublishedVclNote);
+  ATexts.PublishedSummary := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedSummary);
+  ATexts.PublishedInherited := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedInherited);
+  ATexts.PublishedOnlyDefaults := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedOnlyDefaults);
+  ATexts.PublishedProperties := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedProperties);
+  ATexts.PublishedEvents := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedEvents);
+  ATexts.PublishedName := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedName);
+  ATexts.PublishedType := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedType);
+  ATexts.PublishedDefault := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedDefault);
+  ATexts.PublishedDeclared := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedDeclared);
+  ATexts.PublishedImplicit := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedImplicit);
+  ATexts.PublishedMoreProperties := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedMoreProperties);
+  ATexts.PublishedMoreEvents := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedMoreEvents);
+  ATexts.PublishedEventsNote := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedEventsNote);
+  ATexts.PublishedArrayProperty := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedArrayProperty);
+  ATexts.PublishedDefaultProperty := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedDefaultProperty);
+  ATexts.PublishedDefaultPropertyNote := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedDefaultPropertyNote);
+  ATexts.PublishedCopyList := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedCopyList);
+  ATexts.PublishedVclNote := TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedVclNote);
 end;
 
 /// <summary>Texte des Satzes in der Sprache der Oberfläche.</summary>
@@ -790,7 +791,7 @@ begin
   end;
   ShowAt(mBounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
-  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
+  SetAccessible(cUiaToolTipControlType, TAtlasHoverStrings.Text(TAtlasHoverTextId.AccessHover));
   mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
   // Wert im Debugger (#891) zuerst.
   if AView.DebugValue.PlainText <> '' then

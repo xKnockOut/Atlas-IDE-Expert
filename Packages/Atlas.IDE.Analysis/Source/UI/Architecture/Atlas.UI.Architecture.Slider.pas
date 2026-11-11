@@ -89,8 +89,8 @@ begin
   inherited Create(AOwner);
   ControlStyle := ControlStyle + [csDoubleClicks, csOpaque];
   TabStop := True;
-  Width := 140;
-  Height := 22;
+  Width := ScaleValue(140);
+  Height := ScaleValue(22);
   FPosition := TAtlasArchResolution.PositionOf(1);
   FCommitted := FPosition;
 end;

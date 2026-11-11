@@ -36,11 +36,13 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.ClassExtraction,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
   Atlas.IDE.Editor.ClassExtraction,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Text.Json;
 
 const
   cPrepareCommand = 'atlas.server.extractSuperclass.prepare';
@@ -55,7 +57,7 @@ var
   mReply: TAtlasServerEditReply;
   mTargetFile, mHint, mApply: string;
   mMoved, mTargetLine: Integer;
-  mOutcome: TAtlasWorkspaceEditResult;
+  mDone: TAtlasWorkspaceEditResult;
 begin
   if ASession = nil then
   begin
@@ -66,7 +68,7 @@ begin
     cTimeoutMs, TAtlasTextId.ExtractSuperFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperTitle, [AModel.Source.SourceClass]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExtractSuperTitle, [AModel.Source.SourceClass]);
     end, AMessage, mChoice) then
   begin
     Exit;
@@ -78,31 +80,31 @@ begin
     cTimeoutMs, TAtlasTextId.ExtractSuperFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      mTargetFile := TJsonRead.Text(AReply, 'file');
       if mTargetFile <> '' then
       begin
         mTargetFile := TLspSession.UriToPath(mTargetFile);
       end;
-      mMoved := TAtlasIdeServerEdit.NumberOf(AReply, 'moved');
-      mTargetLine := TAtlasIdeServerEdit.NumberOf(AReply, 'line');
+      mMoved := TJsonRead.Int(AReply, 'moved');
+      mTargetLine := TJsonRead.Int(AReply, 'line');
     end, AMessage, mReply) then
   begin
     Exit;
   end;
   if mReply.Edit.IsEmpty or (mMoved = 0) then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.ExtractSuperNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractSuperNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, aufgeteilte Konstruktoren) im Hinweis.
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperPreviewHint, [mChoice.Name, mReply.Edit.EditCount,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExtractSuperPreviewHint, [mChoice.Name, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  mApply := TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply);
+  mApply := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractIntfApply);
   if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mDone) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperDone, [mChoice.Name, mOutcome.Edits, mOutcome.Files]));
-    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExtractSuperDone, [mChoice.Name, mDone.Edits, mDone.Files]));
+    TAtlasIdeServerEdit.ReportAfter(mReply, mDone, TAtlasTextId.ExtractIntfWarning, AMessage);
     if mTargetFile <> '' then
     begin
       TAtlasIdeNavigation.GoToLocation(mTargetFile, mTargetLine, 0);

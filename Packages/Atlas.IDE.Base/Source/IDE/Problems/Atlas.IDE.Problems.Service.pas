@@ -113,6 +113,7 @@ uses
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain,
   Atlas.Core.Modules.Registry,
@@ -370,13 +371,14 @@ begin
   mCounts := AFrame.View.Counts;
   if not AFrame.View.TiersActive then
   begin
-    Exit(TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusCount, [mCounts.Total, mCounts.Files]));
+    Exit(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsStatusCount, [mCounts.Total, mCounts.Files]));
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusTiers, [mCounts.Total, mCounts.OpenUnits,
+  Result := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsStatusTiers, [mCounts.Total, mCounts.OpenUnits,
     mCounts.OpenFindings, mCounts.ClosedUnits, mCounts.ClosedFindings]);
   if mCounts.HiddenUnits > 0 then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusHidden, [mCounts.HiddenUnits]);
+    Result := Result + ' · ' + TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsStatusHidden,
+      [mCounts.HiddenUnits]);
   end;
 end;
 
@@ -390,7 +392,7 @@ begin
   mCheck := TAtlasProblemsController.LastCheck;
   if mCheck.FileName <> '' then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusLast,
+    Result := Result + ' · ' + TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsStatusLast,
       [FormatDateTime('hh":"nn":"ss', mCheck.At), ExtractFileName(mCheck.FileName), Integer(mCheck.DurationMs)]);
   end;
   if (AStore <> nil) and (Length(AProject) > 0) then
@@ -401,7 +403,8 @@ begin
   // Projektweite Regeln (#1102) prüfen erst mit vollständigem Index; bis dahin fehlen ihre Befunde.
   if (State <> nil) and Assigned(State.Hooks.Indexing) and State.Hooks.Indexing(mPercent) then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusWaiting, [Max(mPercent, 0)]);
+    Result := Result + ' · ' + TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsStatusWaiting, [Max(mPercent,
+      0)]);
   end;
 end;
 
@@ -461,7 +464,7 @@ begin
   end
   else
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsExplainUnknown, [ARule]));
+    Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainUnknown, [ARule]));
   end;
 end;
 

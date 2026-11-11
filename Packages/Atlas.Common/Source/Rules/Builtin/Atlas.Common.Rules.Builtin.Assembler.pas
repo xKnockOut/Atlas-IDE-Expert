@@ -609,7 +609,7 @@ var
   mPending: TStack<TSyntaxNode>;
 begin
   FPaths := TConditionalBranches.Paths(FTokens);
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(FTree.Root);

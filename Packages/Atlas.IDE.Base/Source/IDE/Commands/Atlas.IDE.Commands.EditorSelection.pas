@@ -48,6 +48,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Selection,
@@ -61,6 +62,7 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.Text.Defines,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Build.Target,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
@@ -101,14 +103,30 @@ begin
   end;
 end;
 
-/// <summary>Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter.</summary>
+/// <summary>Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter. Ohne Position oder
+/// Suchoptionen (Ansicht im Abbau) bleibt der Suchtext, wie er ist.</summary>
 procedure TakeSearchText(const AView: IOTAEditView; const ANeedle: string);
+var
+  mPosition: IOTAEditPosition;
+  mOptions: IOTASearchOptions;
 begin
+  mPosition := AView.Position;
+  if mPosition = nil then
+  begin
+    Exit;
+  end;
+  mOptions := mPosition.SearchOptions;
+  if mOptions = nil then
+  begin
+    Exit;
+  end;
   try
-    AView.Position.SearchOptions.SearchText := ANeedle;
+    mOptions.SearchText := ANeedle;
   except
-    on Exception do
-      ;
+    // Der Suchtext ist Zugabe: Die Markierung des Treffers geht trotzdem weiter. Ins Protokoll, damit ein
+    // Fehler der IDE an dieser Stelle sichtbar wird statt still zu verschwinden.
+    on E: Exception do
+      TAtlasGuard.Log('Suchtext der IDE setzen: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
   end;
 end;
 
@@ -233,7 +251,7 @@ class procedure TAtlasEditorSelectionCommands.ToggleMethod;
 begin
   if not TryToggleMethod then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorMethodToggleNone));
   end;
 end;
 
@@ -280,7 +298,7 @@ begin
   end;
   if not TAtlasInlineDiagnostics.Next(mProblems, mCaret.Row, mCaret.Character, AForward, mTarget) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ProblemNoneInFile));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemNoneInFile));
     Exit;
   end;
   MoveCaret(mCaret, TLspTextPosition.Create(mTarget.StartLine, mTarget.StartCharacter));

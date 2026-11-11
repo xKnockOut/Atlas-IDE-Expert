@@ -58,7 +58,7 @@ type
     FPreviousProject: string;
     FXmlFile: string;
     FBreakpoint: IOTABreakpoint;
-    FStartedAt: Cardinal;
+    FStartedAt: UInt64;
     procedure Tick(Sender: TObject);
     procedure TickStarting(const AServices: IOTADebuggerServices);
     procedure TickRunning(const AServices: IOTADebuggerServices);
@@ -77,7 +77,6 @@ type
     class function Debugger: IOTADebuggerServices; static;
     class function Debugging: Boolean; static;
     class function ProjectOf(const AFileName: string): IOTAProject; static;
-    class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
     /// <summary>Datei und Test am Cursor der oberen Editoransicht; False mit Meldung.</summary>
     function AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection): Boolean;
   public
@@ -119,7 +118,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Core.Diagnostics.Deadline;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -196,34 +196,6 @@ begin
   begin
     Supports(mServices.FindModule(AFileName), IOTAProject, Result);
   end;
-end;
-
-class function TAtlasIdeTestDebugger.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-  mText: string;
-begin
-  ALines := nil;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    mText := TAtlasEditorBuffer.Text(mBuffer);
-  end
-  else
-  begin
-    if not FileExists(AFileName) then
-    begin
-      Exit(False);
-    end;
-    try
-      mText := TAtlasTextFile.Load(AFileName).Text;
-    except
-      on Exception do
-        Exit(False);
-    end;
-  end;
-  ALines := TTextLines.SplitLines(mText);
-  Result := True;
 end;
 
 function TAtlasIdeTestDebugger.Busy: Boolean;
@@ -372,7 +344,7 @@ begin
     end;
     mUnitName := Copy(mName, 1, mIndex - 1);
     mFileName := TAtlasIdeTests.UnitFileOf(mProject.FileName, mUnitName);
-    if (mFileName = '') or not ReadLines(mFileName, mLines) then
+    if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
     end;
@@ -414,7 +386,7 @@ begin
     end;
     mUnitName := Copy(mName, 1, mIndex - 1);
     mFileName := TAtlasIdeTests.UnitFileOf(AProject, mUnitName);
-    if (mFileName = '') or not ReadLines(mFileName, mLines) then
+    if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
     end;
@@ -544,7 +516,7 @@ begin
   Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugStarted, [ProjectName(FTarget.Project), FSelection.Caption,
     FTarget.Configuration, FTarget.Platform]));
   FPhase := TPhase.Starting;
-  FStartedAt := GetTickCount;
+  FStartedAt := TAtlasTicks.Now;
   if not TAtlasIdeStartOptions.RunTemporary(FTarget.Project,
     function(AExisting: string): string
     begin
@@ -659,7 +631,7 @@ begin
   begin
     Finish(True);
   end
-  else if GetTickCount - FStartedAt > TAtlasTestDebug.cStartTimeoutMs then
+  else if TAtlasTicks.Since(FStartedAt) > TAtlasTestDebug.cStartTimeoutMs then
   begin
     Finish(False);
   end;

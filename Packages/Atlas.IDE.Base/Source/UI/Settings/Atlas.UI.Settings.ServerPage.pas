@@ -22,7 +22,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Vcl.Dialogs,
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 type
   /// <summary>Was die IDE-Schicht für die Seite liefert; nicht gesetzte Haken lassen ihren Knopf aus.</summary>
@@ -65,6 +65,10 @@ type
 
 implementation
 
+const
+  // Linker Rand des Knopfs für die Projekteinstellungen.
+  cEditProjectLeft = 230;
+
 {$R *.dfm}
 
 { TAtlasServerPage }
@@ -75,22 +79,26 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasServerPage';
-  Width := 480;
-  Height := 520;
+  Width := ScaleValue(480);
+  Height := ScaleValue(520);
   FNextTop := 100;
-  AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalTitle));
+  AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalTitle));
   mPanel := AddPanel(32);
-  FEditGlobal := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalEdit), 0, EditGlobalClick);
-  FEditProject := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageProjectEdit), 230, EditProjectClick);
+  FEditGlobal := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalEdit), 0,
+    EditGlobalClick);
+  FEditProject := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageProjectEdit),
+    cEditProjectLeft,
+    EditProjectClick);
 
-  AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheTitle));
+  AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheTitle));
   mPanel := AddPanel(32);
-  FCacheClear := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.ServerPageCacheClear), 0, CacheClearClick);
+  FCacheClear := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheClear), 0,
+    CacheClearClick);
   mPanel := AddPanel(20);
   FCacheInfo := TLabel.Create(Self);
   FCacheInfo.Parent := mPanel;
   FCacheInfo.Left := 0;
-  FCacheInfo.Top := 2;
+  FCacheInfo.Top := FCacheInfo.ScaleValue(2);
   FCacheInfo.Font.Color := clGrayText;
   Reload;
 end;
@@ -119,7 +127,7 @@ begin
   Result.Caption := ACaption;
   Result.Font.Style := [fsBold];
   Result.Left := 0;
-  Result.Top := 4;
+  Result.Top := Result.ScaleValue(4);
 end;
 
 function TAtlasServerPage.AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer;
@@ -129,8 +137,8 @@ begin
   Result.Parent := APanel;
   Result.Caption := ACaption;
   Result.Left := ALeft;
-  Result.Top := 3;
-  Result.Width := 220;
+  Result.Top := Result.ScaleValue(3);
+  Result.Width := Result.ScaleValue(220);
   Result.OnClick := AClick;
 end;
 
@@ -171,7 +179,8 @@ end;
 
 procedure TAtlasServerPage.CacheClearClick(Sender: TObject);
 begin
-  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheConfirm)) then
+  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheConfirm))
+    then
   begin
     FCacheInfo.Caption := FHooks.ClearCache();
   end;

@@ -262,11 +262,11 @@ type
     function HasSymbol(const AName: string; const AMatch: TSymbolMatch): Boolean;
     /// <summary>Direkte Nachfahren eines Typs (Klassen, Interfaces, Helfer).</summary>
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
-    /// <summary>Alle Units. Das Ergebnis ist ein geteilter Schnappschuss (Code-Review P-13): nur lesen, nicht
+    /// <summary>Alle Units. Das Ergebnis ist ein geteilter Schnappschuss: nur lesen, nicht
     /// verändern.</summary>
     function Units: TArray<TUnitIndex>;
     /// <summary>Nur die Units mit Deklarationen aus nicht geltenden Zweigen (#476); meist wenige, für die
-    /// Vervollständigung (Code-Review P-13).</summary>
+    /// Vervollständigung.</summary>
     function UnavailableUnits: TArray<TUnitIndex>;
     function UnitCount: Integer;
     function SymbolCount: Integer;
@@ -307,7 +307,7 @@ type
     /// <summary>Schreibt den binären Inhalt so, dass ein Leser nie einen halben Stand sieht. False mit AError
     /// (Grund ohne Pfad, für das anonyme Log), wenn es nicht ging.</summary>
     function WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean;
-    /// <summary>Ein Schreiber je Datei über alle Prozesse (Bericht N1): sperrt AFileName, ohne zu warten; nil,
+    /// <summary>Ein Schreiber je Datei über alle Prozesse: sperrt AFileName, ohne zu warten; nil,
     /// wenn ein anderer sie hält. Freigeben des Ergebnisses hebt die Sperre auf.</summary>
     function TryLockWrite(const AFileName: string): IInterface;
   end;
@@ -335,7 +335,7 @@ type
 
   /// <summary>Lädt AUnitName bei Bedarf in den Index nach (Namensauflösung, #178); True, wenn sie danach
   /// vorliegt. Steht hier statt in Atlas.Common.Semantics.NameResolver, damit Contracts sie ohne fremdes
-  /// Root nutzen können (Code-Review A-10).</summary>
+  /// Root nutzen können.</summary>
   TEnsureUnitFunc = reference to function(const AUnitName: string): Boolean;
 
   /// <summary>Stufen des Aufbaus (#648): Projektdateien samt über uses erreichbarer Units, dann alle Units
@@ -509,7 +509,7 @@ begin
   begin
     Exit;
   end;
-  // Ohne Tabelle linear; das Ergebnis wächst in Stufen statt je Treffer um eins (Code-Review P-08).
+  // Ohne Tabelle linear; das Ergebnis wächst in Stufen statt je Treffer um eins.
   Result := nil;
   mCount := 0;
   for mPosition := 0 to High(Symbols) do

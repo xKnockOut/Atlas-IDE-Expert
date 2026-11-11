@@ -8,7 +8,9 @@
 // - Mit updates.check höchstens einmal täglich, in einem Hintergrund-Thread
 //   (TAtlasHttpVersionSource); das Ergebnis kommt im Hauptthread an.
 //   Eine neuere Version meldet eine Zeile in der Meldungsansicht mit
-//   Versionsnummer und Link zu den Änderungen; sonst bleibt es still.
+//   Versionsnummer und Link zu den Änderungen. Scheitert die Abfrage, zeigt
+//   die Zeile „Version“ das statt „aktuell“, und die Meldungsansicht nennt
+//   die Fehlerart einmal, solange sie sich nicht ändert; sonst bleibt es still.
 // - Ins Plugin-Protokoll nur Ergebnis und Fehlerart, keine Adresse.
 // - Aus: kein Fenster, keine Abfrage, kein Thread.
 // - Zeile atlas.version im Atlas-Statusfeld (#591) und damit in der
@@ -123,7 +125,8 @@ uses
   Atlas.Text.UpdateRun,
   ToolsAPI,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 { TAtlasIdeUpdates }
 
@@ -164,7 +167,7 @@ procedure TAtlasIdeUpdates.LoadState;
 var
   mText: string;
 begin
-  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt (Bericht N3): Die Datei hält nur
+  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt: Die Datei hält nur
   // Zeitpunkt und Ergebnis der letzten Abfrage und ob schon gefragt wurde.
   FState := Default(TAtlasUpdateState);
   if TAtlasDataFile.TryRead(FStateFile, mText) then
@@ -183,7 +186,7 @@ end;
 procedure TAtlasIdeUpdates.SaveState;
 begin
   try
-    // Atomar: Ein Abbruch hinterlässt keine halbe Datei (Bericht N3).
+    // Atomar: Ein Abbruch hinterlässt keine halbe Datei.
     TAtlasDataFile.Write(FStateFile, FState.ToJson);
   except
     on E: Exception do
@@ -327,7 +330,7 @@ var
   mQuery: TAtlasUpdateQuery;
 begin
   if (FSource = nil) or (FThread <> nil) or TAtlasShutdown.Signalled or
-    not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsDue(FState.LastCheck, Now) then
+    not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsStateDue(FState, Now) then
   begin
     Exit;
   end;
@@ -395,6 +398,8 @@ begin
 end;
 
 procedure TAtlasIdeUpdates.Finished(const AResult: TAtlasUpdateResult; const AState: TAtlasUpdateState);
+var
+  mPreviousError: string;
 begin
   if FThread <> nil then
   begin
@@ -402,7 +407,8 @@ begin
     FreeAndNil(FThread);
   end;
   FState.LastCheck := AState.LastCheck;
-  // Gefundene Version merken bzw. nach „aktuell“ vergessen (#754).
+  mPreviousError := FState.LastError;
+  // Gefundene Version merken bzw. nach „aktuell“ vergessen (#754), Fehlerart merken bzw. vergessen.
   TAtlasUpdates.Remember(FState, AResult);
   SaveState;
   UpdateLine;
@@ -420,7 +426,15 @@ begin
     TAtlasUpdateOutcome.Current:
       Log('Update-Prüfung: aktuell');
     TAtlasUpdateOutcome.Failed:
-      Log('Update-Prüfung fehlgeschlagen: ' + AResult.Error);
+      begin
+        Log('Update-Prüfung fehlgeschlagen: ' + AResult.Error);
+        // Einmal je Fehlerart, nicht jeden Tag dieselbe Zeile (z. B. hinter einem Proxy, der GitHub sperrt).
+        if (FState.LastError <> mPreviousError) and Assigned(FOnMessage) then
+        begin
+          FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesCheckFailedMessage, [FState.LastError,
+            TAtlasUpdates.cReleasesUrl]));
+        end;
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -464,8 +478,8 @@ begin
     end
     else
     begin
-      // Hängt der Thread noch, wird er nicht freigegeben, sondern bleibt sich selbst überlassen.
-      FThread.FreeOnTerminate := True;
+      // Hängt der Thread noch, gibt TAtlasOverdueThreads ihn nach seinem Ende frei.
+      TAtlasOverdueThreads.Adopt(FThread, HInstance);
       FThread := nil;
     end;
   end;
@@ -499,6 +513,7 @@ begin
   mInfo.Available := mRelease.Version;
   mInfo.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
   mInfo.Checked := FState.LastCheck > 0;
+  mInfo.Failure := FState.LastError;
   if mReady and FInstaller.TryStage(mRelease.Version, mStage) then
   begin
     mInfo.Install := TAtlasUpdateTexts.StageText(mStage);

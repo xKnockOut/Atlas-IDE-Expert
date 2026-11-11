@@ -84,6 +84,7 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
@@ -97,29 +98,29 @@ var
   mTitle: TLabel;
 begin
   AddSheet(TAtlasTextId.SettingsTabGeneral);
-  BindCheck('Enabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled)));
+  BindCheck('Enabled', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEnabled)));
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
   mPanel := AddPanel(20);
   mTitle := TLabel.Create(FPage);
   mTitle.Parent := mPanel;
-  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsServerPath);
+  mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsServerPath);
   mTitle.Left := 0;
-  mTitle.Top := 3;
+  mTitle.Top := mTitle.ScaleValue(3);
   // Pfad in eigener Zeile: Die Beschriftung ist lang, das Feld braucht die Breite.
   mPanel := AddPanel(26);
   FServerPath := TEdit.Create(FPage);
   FServerPath.Parent := mPanel;
   FServerPath.Left := 0;
   FServerPath.Top := 1;
-  FServerPath.Width := 430;
+  FServerPath.Width := FServerPath.ScaleValue(430);
   FServerPath.Anchors := [akLeft, akTop, akRight];
   FServerPath.OnChange := ServerPathChange;
   FServerBrowse := TButton.Create(FPage);
   FServerBrowse.Parent := mPanel;
   FServerBrowse.Caption := '…';
-  FServerBrowse.Left := 436;
+  FServerBrowse.Left := FServerBrowse.ScaleValue(436);
   FServerBrowse.Top := 0;
-  FServerBrowse.Width := 30;
+  FServerBrowse.Width := FServerBrowse.ScaleValue(30);
   FServerBrowse.Anchors := [akTop, akRight];
   FServerBrowse.OnClick := ServerBrowseClick;
   mPanel := AddPanel(18);
@@ -134,45 +135,50 @@ begin
   FServerVersion.Left := 0;
   FServerVersion.Top := 0;
   FServerVersion.Font.Color := clGrayText;
-  BindCheck('ReloadExternal', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload)));
+  BindCheck('ReloadExternal', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReload)));
   // Änderungen des Servers an nicht geöffneten Dateien (#397).
-  BindCheck('OpenForEdits', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOpenForEdits)));
+  BindCheck('OpenForEdits', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOpenForEdits)));
   // Atlas-Statusfeld (#591).
-  BindCheck('StatusField', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField)));
-  BindCheck('StatusFieldSummary', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary)));
-  FStatusToggles := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsStatusToggles),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesBoth),
-    TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesRight),
-    TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesDouble)]);
+  BindCheck('StatusField', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusField)));
+  BindCheck('StatusFieldSummary', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusSummary)));
+  FStatusToggles := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusToggles),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusTogglesBoth),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusTogglesRight),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusTogglesDouble)]);
 end;
 
 procedure TAtlasSettingsGeneralPart.Build2;
 begin
-  FIndexProgress := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgress),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressField),
-    TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressMenu),
-    TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressOff)]);
-  FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
+  FIndexProgress := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexProgress),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexProgressField),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexProgressMenu),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexProgressOff)]);
+  FStatusHidden := AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
-  FStatusHidden.Width := 180;
+  FStatusHidden.Width := FStatusHidden.ScaleValue(180);
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
-  FDiagnosticMode := BindCheck('DiagnosticMode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode)));
+  FDiagnosticMode := BindCheck('DiagnosticMode',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDiagnosticMode)));
   // Diagnose-Fenster: Zeiten des Plugins (Reiter Hauptthread, Server, Hintergrund, Hänger).
-  BindCheck('DiagnosticPluginTimings', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticPluginTimings)));
-  BindText('DiagnosticSlowMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticSlowMs)));
+  BindCheck('DiagnosticPluginTimings',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDiagnosticPluginTimings)));
+  BindText('DiagnosticSlowMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDiagnosticSlowMs)));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
-  BindCheck('DiagnosticsProcesses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses)));
+  BindCheck('DiagnosticsProcesses',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDiagnosticsProcesses)));
   // Fenster „Atlas-Server“ (#1356).
-  BindCheck('ServerStatusWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsServerStatusWindow)));
+  BindCheck('ServerStatusWindow',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsServerStatusWindow)));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
-  BindCheck('SetupChecklist', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist)));
+  BindCheck('SetupChecklist', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSetupChecklist)));
   // Hauptschalter der experimentellen Funktionen (#834).
-  FExperimentalEnabled := BindCheck('ExperimentalEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalEnabled)));
+  FExperimentalEnabled := BindCheck('ExperimentalEnabled',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalEnabled)));
   // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
-  BindCheck('ShortcutTips', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips)));
-  FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas),
-      TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
+  BindCheck('ShortcutTips', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShortcutTips)));
+  FShortcutTipsScope := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShortcutTipsScope),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShortcutTipsAtlas),
+      TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShortcutTipsAll)]);
 end;
 
 procedure TAtlasSettingsGeneralPart.BindMarks;
@@ -260,11 +266,11 @@ begin
   end
   else if FileExists(mPath) then
   begin
-    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerFound, [mPath]);
+    FServerStatus.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerFound, [mPath]);
   end
   else
   begin
-    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerMissing, [mPath]);
+    FServerStatus.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerMissing, [mPath]);
   end;
   // Version des Servers (#227): aus der Datei bzw. vom laufenden Server.
   mVersion := '';
@@ -273,11 +279,11 @@ begin
     mVersion := FOnServerVersion(mPath);
     if mVersion = '' then
     begin
-      mVersion := TAtlasStrings.Text(TAtlasTextId.SettingsServerVersionUnknown);
+      mVersion := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsServerVersionUnknown);
     end
     else
     begin
-      mVersion := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerVersion, [mVersion]);
+      mVersion := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerVersion, [mVersion]);
     end;
   end;
   FServerVersion.Caption := mVersion;
@@ -319,8 +325,8 @@ end;
 procedure TAtlasSettingsNotificationsPart.Build;
 begin
   // Benachrichtigungszentrale (#601); Taste auf dem Reiter Befehle.
-  BindCheck('Notifications', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotifications)));
-  FNotificationsMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsMax));
+  BindCheck('Notifications', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotifications)));
+  FNotificationsMax := AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotificationsMax));
   AddNotificationSources;
 end;
 
@@ -353,9 +359,9 @@ begin
   mPanel := AddPanel(26);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := mPanel;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsSources);
+  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotificationsSources);
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   mNames := nil;
   for mSource in TAtlasNotificationSources.Known do
   begin
@@ -365,16 +371,16 @@ begin
   FNotificationSource.Parent := mPanel;
   FNotificationSource.Left := cFieldLeft;
   FNotificationSource.Top := 1;
-  FNotificationSource.Width := 180;
+  FNotificationSource.Width := FNotificationSource.ScaleValue(180);
   FNotificationSource.SetChoices(mNames);
   FNotificationSource.Choice := 0;
   FNotificationSource.OnChange := NotificationSourceChange;
   // Reihenfolge wie TAtlasNotificationMode: einblenden und sammeln, nur sammeln, aus.
   FNotificationMode := TAtlasChoiceBox.Create(FPage);
   FNotificationMode.Parent := mPanel;
-  FNotificationMode.Left := cFieldLeft + 186;
+  FNotificationMode.Left := cFieldLeft + FNotificationMode.ScaleValue(186);
   FNotificationMode.Top := 1;
-  FNotificationMode.Width := 170;
+  FNotificationMode.Width := FNotificationMode.ScaleValue(170);
   FNotificationMode.SetChoices([TAtlasStrings.Text(TAtlasTextId.NotificationsModeShow),
     TAtlasStrings.Text(TAtlasTextId.NotificationsModeCollect), TAtlasStrings.Text(TAtlasTextId.NotificationsModeOff)]);
   FNotificationMode.Choice := 0;

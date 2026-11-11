@@ -1,13 +1,12 @@
 ﻿unit Atlas.Text.LogMarks;
 
 // Kennzeichnung schutzwürdiger Werte in Protokollzeilen (#1478), gemeinsam
-// für Server und Plugin (ADR 0012).
+// für Server und Plugin.
 //
 // Wer eine Protokollzeile baut, weiß, welcher Teil ein Name, ein Pfad oder
-// fremder Text ist; die Senke weiß es nicht mehr. Früher riet der
-// Anonymisierer nachträglich aus dem fertigen Text (Pfadmuster, Text in
-// Anführungszeichen, bekannte Namen), und alles, was er nicht erkannte,
-// stand im Klartext im Log: Typ- und Routinennamen, Meldungen von
+// fremder Text ist; die Senke weiß es nicht mehr. Raten aus dem fertigen
+// Text (Pfadmuster, Text in Anführungszeichen, bekannte Namen) lässt alles
+// im Klartext, was es nicht erkennt: Typ- und Routinennamen, Meldungen von
 // Exceptions, Compilertexte. Deshalb kennzeichnet die Stelle, an der die
 // Zeile entsteht, solche Werte:
 // - Name: Projekt-, Unit-, Typ-, Routinen-, Formular-, Benutzer- oder

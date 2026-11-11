@@ -1007,8 +1007,9 @@ begin
   Assert.IsFalse(After.Plugin.WelcomePage);
   Assert.IsFalse(After.Plugin.VcsEnabled);
   Assert.IsFalse(After.Plugin.AssistantsEnabled);
+  Assert.IsFalse(After.Plugin.HelpEnabled);
   Assert.IsTrue(After.Plugin.DebugInlineValues, 'Einzelschalter auf Vorgabe, nur das Modul ist aus');
-  Assert.AreEqual(13, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
+  Assert.AreEqual(14, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
 end;
 
 initialization

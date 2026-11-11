@@ -80,7 +80,8 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Common.Diagnostics.CrashCase;
+  Atlas.Common.Diagnostics.CrashCase,
+  Atlas.Text.Json;
 
 { TCrashSkipEntry }
 
@@ -345,18 +346,6 @@ begin
   end;
 end;
 
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
 procedure TCrashSkips.Load(const AJson: string);
 var
   mRoot, mValue: TJSONValue;
@@ -381,11 +370,11 @@ begin
         end;
         mItem := TJSONObject(TJSONArray(mRoot).Items[mIndex]);
         mEntry := Default(TCrashSkipEntry);
-        mEntry.Method := StringOf(mItem, 'method');
-        mEntry.Uri := StringOf(mItem, 'uri');
-        mEntry.Checksum := StringOf(mItem, 'checksum');
-        mEntry.CaseFolder := StringOf(mItem, 'case');
-        mEntry.ExceptionClass := StringOf(mItem, 'exception');
+        mEntry.Method := TJsonRead.Text(mItem, 'method');
+        mEntry.Uri := TJsonRead.Text(mItem, 'uri');
+        mEntry.Checksum := TJsonRead.Text(mItem, 'checksum');
+        mEntry.CaseFolder := TJsonRead.Text(mItem, 'case');
+        mEntry.ExceptionClass := TJsonRead.Text(mItem, 'exception');
         mValue := mItem.GetValue('crashes');
         if mValue is TJSONNumber then
         begin

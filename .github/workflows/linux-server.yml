@@ -1,6 +1,6 @@
 name: AtlasServer für Linux
 
-# Baut AtlasServer mit Free Pascal trunk für Linux (ADR 0013) und stellt ihn für Claude-Code-Sitzungen in der
+# Baut AtlasServer mit Free Pascal trunk für Linux und stellt ihn für Claude-Code-Sitzungen in der
 # Cloud bereit. Dort startet Claude Code den MCP-Server des Atlas-Plugins beim Start der Sitzung; ein Bau in
 # der Sitzung (FPC etwa 10 Minuten, Server etwa 2 Minuten) kommt dafür zu spät.
 #
@@ -10,6 +10,10 @@ name: AtlasServer für Linux
 #     nur noch etwa 2 Minuten bauen
 # Tools/Linux/Build-AtlasServer.sh lädt beides und nimmt das Programm nur, wenn der Fingerabdruck passt.
 # Auf Branches und in Pull Requests baut der Job nur (Prüfung, dass der Linux-Bau nicht bricht).
+#
+# Außerdem laufen in jedem Pull Request die plattformunabhängigen DUnitX-Tests unter FPC
+# (Tools/Linux/Test-Fpc.sh, Liste Tools/Linux/FpcTests.txt). Ohne Delphi-Runner ist das die einzige
+# Testausführung in der CI; deshalb hat pull_request keinen Pfadfilter.
 
 on:
   push:
@@ -17,14 +21,10 @@ on:
     paths:
       - 'Application/**'
       - 'Packages/**'
+      - 'Tests/**'
       - 'Tools/Linux/**'
       - '.github/workflows/linux-server.yml'
   pull_request:
-    paths:
-      - 'Application/**'
-      - 'Packages/**'
-      - 'Tools/Linux/**'
-      - '.github/workflows/linux-server.yml'
   workflow_dispatch:
 
 permissions:
@@ -56,6 +56,9 @@ jobs:
       - name: AtlasServer bauen
         run: Tools/Linux/Build-AtlasServer.sh --no-download --package "$RUNNER_TEMP/cloud-linux"
 
+      - name: Tests unter Free Pascal
+        run: Tools/Linux/Test-Fpc.sh
+
       - name: Startprobe (MCP initialize und tools/list)
         run: |
           printf '%s\n' \
@@ -64,6 +67,10 @@ jobs:
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
             timeout 60 Output/Linux64/Bin/AtlasServer --mcp > "$RUNNER_TEMP/mcp.out" || true
           grep -q '"get_diagnostics"' "$RUNNER_TEMP/mcp.out" || { cat "$RUNNER_TEMP/mcp.out"; exit 1; }
+
+      - name: Selbstprüfung je Plugin-Package (Code-Review A-101)
+        # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab.
+        run: Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
 
       - name: Regex zählt Zeichen (#1751)
         # Hinter „für“ steht im anonymen Log der Arbeitsbereich als name#1. Zählt TMatch.Index UTF-8-Bytes statt
@@ -96,6 +103,6 @@ jobs:
         run: |
           if ! gh release view cloud-linux >/dev/null 2>&1; then
             gh release create cloud-linux --prerelease --title "AtlasServer für Claude-Code-Cloud (Linux)" \
-              --notes "Wird bei jedem Push auf main ersetzt (linux-server.yml). Kein ausgeliefertes Produkt; nur für Tools/Linux/Build-AtlasServer.sh in Cloud-Sitzungen (ADR 0013)."
+              --notes "Wird bei jedem Push auf main ersetzt (linux-server.yml). Kein ausgeliefertes Produkt; nur für Tools/Linux/Build-AtlasServer.sh in Cloud-Sitzungen."
           fi
           gh release upload cloud-linux "$RUNNER_TEMP"/cloud-linux/* --clobber

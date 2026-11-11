@@ -14,10 +14,11 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasBookmarkDialog = class(TForm)
+  TAtlasBookmarkDialog = class(TAtlasDialog)
   private
     FPrompt: TLabel;
     FEdit: TEdit;
@@ -54,14 +55,8 @@ constructor TAtlasBookmarkDialog.CreateDialog(AOwner: TComponent; const ATitle, 
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := ATitle;
-  BorderStyle := bsDialog;
+  inherited CreateDialog(AOwner, ATitle, cDialogWidth);
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
 
   FPrompt := TLabel.Create(Self);
   FPrompt.Parent := Self;

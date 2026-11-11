@@ -51,6 +51,13 @@ type
     /// <summary>Blöcke der Unit und der Block in Zeile ALine (0-basiert).</summary>
     class function At(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       ALine: Integer): TAtlasDeclarationBlockPlace; static;
+    /// <summary>Blöcke und Teile der Unit ohne Stelle (Current -1): liest den ganzen Text, darum je Stand
+    /// einmal und dann Locate je Caret-Stelle.</summary>
+    class function Prepare(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>): TAtlasDeclarationBlockPlace;
+      static;
+    /// <summary>APlace mit dem Block in Zeile ALine (0-basiert) als Current.</summary>
+    class function Locate(const APlace: TAtlasDeclarationBlockPlace; ALine: Integer): TAtlasDeclarationBlockPlace;
+      static;
     /// <summary>Elemente der Unit-Ebene im Block ABlock von APlace in Quelltextreihenfolge.</summary>
     class function MembersOf(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasDeclarationBlockPlace;
       ABlock: Integer): TArray<Integer>; static;
@@ -180,10 +187,23 @@ end;
 
 class function TAtlasDeclarationBlockFinder.At(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   ALine: Integer): TAtlasDeclarationBlockPlace;
+begin
+  Result := Locate(Prepare(ANodes, ALines), ALine);
+end;
+
+class function TAtlasDeclarationBlockFinder.Prepare(const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>): TAtlasDeclarationBlockPlace;
+begin
+  Result.Blocks := Collect(ANodes, ALines, Result.Sections);
+  Result.Current := -1;
+end;
+
+class function TAtlasDeclarationBlockFinder.Locate(const APlace: TAtlasDeclarationBlockPlace;
+  ALine: Integer): TAtlasDeclarationBlockPlace;
 var
   mIndex: Integer;
 begin
-  Result.Blocks := Collect(ANodes, ALines, Result.Sections);
+  Result := APlace;
   Result.Current := -1;
   for mIndex := 0 to High(Result.Blocks) do
   begin

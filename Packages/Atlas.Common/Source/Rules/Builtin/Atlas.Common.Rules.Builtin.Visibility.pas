@@ -637,7 +637,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TInaccessibleMemberCheck.Visit(ARoot: TSyntaxNode);
 var
   mPending: TVisibilityPending;

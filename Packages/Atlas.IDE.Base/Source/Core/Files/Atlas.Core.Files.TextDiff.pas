@@ -4,7 +4,7 @@
 // gleicher Anfang und gleiches Ende fallen weg; bei gleicher Zeilenzahl nur die
 // geänderten Zeilen, sonst der geänderte Block. Zeilen mit Nummer im alten
 // Text, "- " alt, "+ " neu. Zerlegen (CRLF, LF, CR) und Vergleichen kommen aus
-// Atlas.Text (ADR 0012); eine zusätzliche letzte Zeilenschaltung zählt als
+// Atlas.Text; eine zusätzliche letzte Zeilenschaltung zählt als
 // Unterschied.
 
 interface

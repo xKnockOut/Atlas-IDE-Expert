@@ -87,7 +87,7 @@ uses
   System.Generics.Collections,
   System.Math,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings;
 
@@ -297,8 +297,8 @@ var
   mCalls: TArray<TAtlasRecursionCall>;
 begin
   mCalls := CallsAt(AFileName, ALine);
-  TAtlasRecursionMarks.TipText(mCalls, TAtlasStrings.Text(TAtlasTextId.RecursionTipDirect),
-    TAtlasStrings.Text(TAtlasTextId.RecursionTipChain), ATitle, AText);
+  TAtlasRecursionMarks.TipText(mCalls, TAtlasEditorStrings.Text(TAtlasEditorTextId.RecursionTipDirect),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.RecursionTipChain), ATitle, AText);
   Result := Length(mCalls) > 0;
 end;
 

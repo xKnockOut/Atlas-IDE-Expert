@@ -110,7 +110,7 @@ begin
   Settings.TasksBeforeBuild := 'immer';
   Settings.Normalize;
   Assert.AreEqual('off', Settings.TasksBeforeBuild);
-  // Die Einstellungen kennen die Projektaufgaben nicht (A-09): dieselben Werte wie dort.
+  // Die Einstellungen kennen die Projektaufgaben nicht: dieselben Werte wie dort.
   for Mode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
   begin
     Settings.TasksBeforeBuild := UpperCase(TAtlasTasks.cBeforeBuildNames[Mode]);

@@ -12,7 +12,7 @@
 //   dazu eine gelbe Zeile „Abgesichert gestartet“ im Atlas-Statusfeld (#591),
 //   die den Hinweis wieder öffnet.
 // - Loaded: Ladezeit in die Marke (für „Details“ nach einem Absturz). Ein
-//   langsamer Start ist kein Absturz (Bericht N4); was Atlas daran hatte,
+//   langsamer Start ist kein Absturz; was Atlas daran hatte,
 //   meldet die Composition mit den Startanteilen.
 // - RecordFailure: Fehler je Feature (#493) in die Marke.
 // - Stop (sauberes Entladen): Marke löschen, Absturzzähler zurücksetzen.
@@ -107,7 +107,7 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Edition;
 
@@ -441,8 +441,8 @@ begin
     end;
   FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder, mAction);
   FLineRef := FLine;
-  FLine.Update(TAtlasStrings.Text(TAtlasTextId.SafeStatusLine), TAtlasStatusState.Yellow,
-    TAtlasStrings.Text(TAtlasTextId.SafeStatusSummary));
+  FLine.Update(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeStatusLine), TAtlasStatusState.Yellow,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeStatusSummary));
   FRegistry.Add(FLineRef);
 end;
 
@@ -477,26 +477,27 @@ begin
   // Die Composition meldet über OnChanged der Einstellungen alles Weitere an.
   TAtlasIdeSettings.SetSession(Default(TAtlasToggleSession));
   UpdateFeatures;
-  Warn(TAtlasStrings.Text(TAtlasTextId.SafeLeft));
+  Warn(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeLeft));
 end;
 
 function NoticeText(AKind: TAtlasSafeNoticeKind; AReason: TAtlasSafeReason): string;
 begin
   if AKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.SafeAskText));
+    Exit(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskText));
   end;
   case AReason of
     TAtlasSafeReason.StartupKey:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SafeMinimalText, [TAtlasStrings.Text(TAtlasTextId.SafeReasonKey)]);
+      Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeMinimalText,
+        [TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeReasonKey)]);
     TAtlasSafeReason.Forced:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SafeMinimalText,
-        [TAtlasStrings.Text(TAtlasTextId.SafeReasonForced)]);
+      Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeMinimalText,
+        [TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeReasonForced)]);
     TAtlasSafeReason.RepeatedCrash:
-      Result := TAtlasStrings.Text(TAtlasTextId.SafeRepeatedText) + sLineBreak + sLineBreak +
-        TAtlasStrings.Text(TAtlasTextId.SafeActiveText);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeRepeatedText) + sLineBreak + sLineBreak +
+        TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeActiveText);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SafeActiveText);
+    Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeActiveText);
   end;
 end;
 
@@ -524,7 +525,7 @@ begin
   end;
   if Length(mNames) > 0 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SafeSuggest, [string.Join(', ', mNames)]);
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeSuggest, [string.Join(', ', mNames)]);
   end;
 end;
 
@@ -534,7 +535,7 @@ begin
   try
     if TAtlasIdeSettings.History.Count > 0 then
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SafeRestore,
+      Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeRestore,
         [DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings)]);
     end;
   except
@@ -554,7 +555,7 @@ begin
   mAt := DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings);
   TAtlasIdeSettings.Restore(0);
   UpdateFeatures;
-  Warn(TAtlasStrings.Fmt(TAtlasTextId.SafeRestored, [mAt]));
+  Warn(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeRestored, [mAt]));
 end;
 
 function ReadLog(const AFileName: string): TArray<string>;
@@ -582,7 +583,7 @@ begin
   begin
     if ADecision.Crashed then
     begin
-      Result := Result + [TAtlasStrings.Text(TAtlasTextId.SafeNoDetails)];
+      Result := Result + [TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeNoDetails)];
     end;
     Exit;
   end;
@@ -596,7 +597,7 @@ begin
   mLog := ReadLog(TPath.Combine(mFolder, 'atlas.1.log')) + ReadLog(TAtlasGuard.RotatingLog.FileName);
   mLines := TAtlasSafeMode.LogLinesBetween(mLog, TTimeZone.Local.ToLocalTime(ACrashed.StartedAt), AStartedLocal,
     TAtlasIdeSafeMode.cMaxLogLines);
-  Result := Result + ['', TAtlasStrings.Text(TAtlasTextId.SafeLogTitle)];
+  Result := Result + ['', TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeLogTitle)];
   // Anonym (#647): Pfade und Namen fallen weg.
   for mLine in mLines do
   begin

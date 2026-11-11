@@ -43,6 +43,14 @@ type
     /// für sich.</summary>
     [Test]
     procedure ModalDialogIsNotOwnTime;
+    /// <summary>Menü, Kontextmenü und Verschieben beginnen und beenden eine eigene Nachrichtenschleife; ein
+    /// offenes Kontextmenü zählt nicht als Zeit des Aufrufs, der es öffnete.</summary>
+    [Test]
+    procedure MessageLoopsCountLikeModalDialogs;
+    /// <summary>TAtlasGuard.RunIde: Projektladen der IDE ist keine Zeit der Willkommensseite; ein Notifier von
+    /// Atlas darin zählt für sich; eine Exception darin erreicht das äußere Run.</summary>
+    [Test]
+    procedure IdeWorkIsNotAtlasTime;
     [Test]
     procedure OtherThreadsAreNotMeasured;
     [Test]
@@ -221,6 +229,92 @@ begin
   Assert.AreEqual(0.0, mSnapshot.Busy[5], 0.001);
 end;
 
+procedure TAtlasPluginTimingsTests.MessageLoopsCountLikeModalDialogs;
+var
+  mOuter: Integer;
+  mSnapshot: TAtlasPluginSnapshot;
+begin
+  Assert.AreEqual(1, TAtlasMessageLoop.Change($0211), 'WM_ENTERMENULOOP');
+  Assert.AreEqual(-1, TAtlasMessageLoop.Change($0212), 'WM_EXITMENULOOP');
+  Assert.AreEqual(1, TAtlasMessageLoop.Change($0231), 'WM_ENTERSIZEMOVE');
+  Assert.AreEqual(-1, TAtlasMessageLoop.Change($0232), 'WM_EXITSIZEMOVE');
+  Assert.AreEqual(0, TAtlasMessageLoop.Change($000F), 'WM_PAINT');
+  Assert.AreEqual(0, TAtlasMessageLoop.Change($0111), 'WM_COMMAND');
+  // Designer-Leiste: Klick öffnet ein Kontextmenü, das 5,9 s offen steht.
+  mOuter := FRecorder.Enter;
+  FClockUs := 2000;
+  FRecorder.ModalBegin;
+  FClockUs := 5902000;
+  FRecorder.ModalEnd;
+  FClockUs := 5903000;
+  FRecorder.Leave(TAtlasFeature.DesignerBar, mOuter);
+  FClockUs := 7000000;
+  mSnapshot := FRecorder.Snapshot;
+  Assert.AreEqual(1, Integer(Length(mSnapshot.Features)));
+  Assert.AreEqual(3.0, mSnapshot.Features[0].Stat.TotalMs, 0.001, 'nur die eigene Zeit ohne das Menü');
+  Assert.AreEqual(0, mSnapshot.Features[0].Stat.SlowCalls);
+  Assert.AreEqual(0.3, mSnapshot.Busy[0], 0.001, 'Belegung ohne das Menü');
+  // Ende ohne Beginn (Messung lief beim Öffnen noch nicht) ändert nichts.
+  FRecorder.ModalEnd;
+  Assert.AreEqual(3.0, FRecorder.Snapshot.Features[0].Stat.TotalMs, 0.001);
+end;
+
+procedure TAtlasPluginTimingsTests.IdeWorkIsNotAtlasTime;
+var
+  mSelf: TAtlasPluginTimingsTests;
+  mSnapshot: TAtlasPluginSnapshot;
+  mTiming: TAtlasFeatureTiming;
+  mOk: Boolean;
+begin
+  mSelf := Self;
+  TAtlasGuard.Timing := FRecorder;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      mSelf.FClockUs := mSelf.FClockUs + 4000;
+      TAtlasGuard.RunIde(
+        procedure
+        begin
+          mSelf.FClockUs := mSelf.FClockUs + 6000000;
+          TAtlasGuard.Run(TAtlasFeature.Outline,
+            procedure
+            begin
+              mSelf.FClockUs := mSelf.FClockUs + 20000;
+            end);
+          mSelf.FClockUs := mSelf.FClockUs + 7880000;
+        end);
+      mSelf.FClockUs := mSelf.FClockUs + 1000;
+    end);
+  mOk := TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      TAtlasGuard.RunIde(
+        procedure
+        begin
+          raise EAbort.Create('Test');
+        end);
+    end);
+  TAtlasGuard.Timing := nil;
+  Assert.IsFalse(mOk, 'die Exception erreicht das äußere Run');
+  FClockUs := 20000000;
+  mSnapshot := FRecorder.Snapshot;
+  Assert.AreEqual(2, Integer(Length(mSnapshot.Features)));
+  for mTiming in mSnapshot.Features do
+  begin
+    if mTiming.Feature = TAtlasFeature.Outline then
+    begin
+      Assert.AreEqual(20.0, mTiming.Stat.TotalMs, 0.001, 'Notifier im Projektladen');
+    end
+    else
+    begin
+      Assert.AreEqual(Ord(TAtlasFeature.WelcomePage), Ord(mTiming.Feature));
+      Assert.AreEqual(5.0, mTiming.Stat.TotalMs, 0.001, 'ohne das Projektladen der IDE');
+    end;
+  end;
+  Assert.AreEqual(0.5, mSnapshot.Busy[0], 0.001);
+  Assert.AreEqual(0.0, mSnapshot.Busy[3], 0.001, 'Projektladen ist keine Belegung durch Atlas');
+end;
+
 procedure TAtlasPluginTimingsTests.BusySplitsAtSecondBoundary;
 var
   mToken: Integer;
@@ -337,6 +431,8 @@ begin
   Assert.AreEqual(1, Integer(Length(mRequests)));
   Assert.AreEqual(4, mRequests[0].Stat.Calls);
   Assert.AreEqual(32.0, mRequests[0].WaitedMs, 0.001, 'nur die Anfragen aus dem Hauptthread');
+  Assert.AreEqual(2, mRequests[0].WaitedCalls);
+  Assert.AreEqual(16.0, mRequests[0].WaitedMeanMs, 0.001, 'Mittel je wartender Anfrage, nicht die Summe');
   Assert.AreEqual(30.0, mRequests[0].Stat.MaxMs, 0.001);
   Assert.AreEqual(1, mRequests[0].TimedOut);
   Assert.AreEqual(1, mRequests[0].Cancelled);

@@ -173,7 +173,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Outline.Strings;
 
 {$R *.dfm}
 
@@ -220,7 +221,7 @@ begin
   BuildBar;
   BuildMenus;
   BuildList;
-  FMessageText := TAtlasStrings.Text(TAtlasTextId.OutlineEmpty);
+  FMessageText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineEmpty);
   UpdateButtons;
   UpdateMessage;
 end;
@@ -239,17 +240,17 @@ begin
   FSortButton := NewButton;
   FSortButton.OnClick := SortClick;
   FKindButton := NewButton;
-  FKindButton.Caption := TAtlasStrings.Text(TAtlasTextId.OutlineKindButton) + ' ▾';
+  FKindButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineKindButton) + ' ▾';
   FKindButton.OnClick := KindClick;
   FVisibilityButton := NewButton;
-  FVisibilityButton.Caption := TAtlasStrings.Text(TAtlasTextId.OutlineVisibilityButton) + ' ▾';
+  FVisibilityButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineVisibilityButton) + ' ▾';
   FVisibilityButton.OnClick := VisibilityClick;
 
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTop;
   FSearch.Align := alClient;
   FSearch.AlignWithMargins := True;
-  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.OutlineSearchHint);
+  FSearch.TextHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSearchHint);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
   FSearch.OnKeyPress := SearchKeyPress;
@@ -261,7 +262,8 @@ var
   mIndex: Integer;
 begin
   FVisibilityMenu := TPopupMenu.Create(Self);
-  AddMenuItem(FVisibilityMenu, TAtlasStrings.Text(TAtlasTextId.OutlineShowAll), cTagAll, VisibilityItemClick);
+  AddMenuItem(FVisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll,
+    VisibilityItemClick);
   FVisibilityMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cVisibilityTexts) do
   begin
@@ -270,7 +272,7 @@ begin
   end;
 
   FKindMenu := TPopupMenu.Create(Self);
-  AddMenuItem(FKindMenu, TAtlasStrings.Text(TAtlasTextId.OutlineShowAll), cTagAll, KindItemClick);
+  AddMenuItem(FKindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll, KindItemClick);
   FKindMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cKindTexts) do
   begin
@@ -279,11 +281,14 @@ begin
 
   FListMenu := TPopupMenu.Create(Self);
   FListMenu.OnPopup := ListMenuPopup;
-  AddMenuItem(FListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineGoToDeclaration), 0, DeclarationClick).Default :=
+  AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToDeclaration), 0,
+    DeclarationClick).Default :=
     True;
-  AddMenuItem(FListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineGoToImplementation), 1, ImplementationClick);
+  AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation), 1,
+    ImplementationClick);
   FListMenu.Items.Add(NewLine);
-  FFollowItem := AddMenuItem(FListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineFollowCursor), 2, FollowClick);
+  FFollowItem := AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor), 2,
+    FollowClick);
   FFollowItem.Checked := FFollowCursor;
 end;
 
@@ -384,7 +389,7 @@ begin
   mSelected := SelectedPath;
   FRows := nil;
   FNodes := ANodes;
-  FMessageText := TAtlasStrings.Text(TAtlasTextId.OutlineNoMatch);
+  FMessageText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoMatch);
   Refill(mSelected);
 end;
 
@@ -464,11 +469,11 @@ var
 begin
   if FAlphabetical then
   begin
-    FSortButton.Caption := TAtlasStrings.Text(TAtlasTextId.OutlineSortAlphabetical);
+    FSortButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSortAlphabetical);
   end
   else
   begin
-    FSortButton.Caption := TAtlasStrings.Text(TAtlasTextId.OutlineSortSource);
+    FSortButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSortSource);
   end;
   for mItem in FVisibilityMenu.Items do
   begin
@@ -714,7 +719,7 @@ begin
   end;
   if mNode.Unimplemented then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.OutlineUnimplemented);
+    Result := Result + ' · ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented);
   end;
   if FShowConditions and (mNode.Condition <> '') then
   begin
@@ -838,7 +843,8 @@ begin
   PutText(mCanvas, X, Rect, ExtraText(mNode), mColors.Muted, []);
   if mNode.Unimplemented then
   begin
-    PutText(mCanvas, X, Rect, '  ' + TAtlasStrings.Text(TAtlasTextId.OutlineUnimplemented), mColors.Warn, [fsItalic]);
+    PutText(mCanvas, X, Rect, '  ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented), mColors.Warn,
+      [fsItalic]);
   end;
   // Aktiver Zweig der bedingten Kompilierung (#845), wie die Marke im Mockup.
   if FShowConditions and (mNode.Condition <> '') then

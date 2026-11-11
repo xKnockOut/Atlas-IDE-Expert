@@ -15,11 +15,11 @@
 //   Editor kennt keinen eingeschobenen Text; so bleiben Datei, Undo und
 //   Cursor unberührt. Gezeichnet wird nur, wenn die Zeile im Editor der im
 //   Speicher entspricht.
-// - Zeichnen ohne Objektkopien (P-10): reines GDI zwischen SaveDC und
+// - Zeichnen ohne Objektkopien: reines GDI zwischen SaveDC und
 //   RestoreDC wie im Problem-Zeichner; Schrift, Stift und Pinsel sind Felder
 //   und werden nur bei geänderter Editorschrift bzw. geändertem Hintergrund
 //   neu gebaut. Die Einstellung wird erst geprüft, wenn die Zeile Hinweise hat.
-// - Pufferstand (P-04): über TAtlasEditorSnapshots, gelesen nur nach einer
+// - Pufferstand: über TAtlasEditorSnapshots, gelesen nur nach einer
 //   Änderung; bei inaktiver IDE wird der Puffer nicht geprüft.
 // - Blockende-Beschriftungen (#620, Einstellung BlockEndLabels): Die
 //   Endmarkierungen des Servers (inlayHints.endMarkers, „// if …“) stehen
@@ -61,7 +61,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Editor.Elements;
+  Atlas.Core.Editor.Elements,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -147,8 +148,8 @@ type
     FFileName: string;
     FText: string;
     FVersion: Cardinal;
-    FChangedAt: Cardinal;
-    FRetryAt: Cardinal;
+    FChangedAt: UInt64;
+    FRetryAt: TAtlasDeadline;
     FShowing: Boolean;
     FHintFont: TFont;
     FFontKey: string;
@@ -378,7 +379,7 @@ begin
     FFileName := mSnapshot.FileName;
     FText := mSnapshot.Text;
     FVersion := mSnapshot.Version;
-    FChangedAt := GetTickCount;
+    FChangedAt := TAtlasTicks.Now;
   end;
 end;
 
@@ -398,15 +399,15 @@ begin
       Exit;
     end;
     SyncMinLines;
-    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet (P-04).
+    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet.
     mView := nil;
     if Application.Active then
     begin
       mView := TopSourceView;
     end;
     // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
-    if (mView <> nil) and not SnapshotChanged(mView) and (GetTickCount - FChangedAt >= cQuietMs) and
-      (GetTickCount >= FRetryAt) then
+    if (mView <> nil) and not SnapshotChanged(mView) and (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
+      FRetryAt.Reached then
     begin
       Fetch(mView);
     end;
@@ -438,7 +439,7 @@ begin
   // Server indexiert: Er antwortet erst danach (#874). Später noch einmal.
   if mSession.Indexing(mPercent) then
   begin
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -464,7 +465,7 @@ procedure TAtlasEditorInlayHints.Fetched(AOk: Boolean; const AFileName, AText: s
 begin
   if not AOk then
   begin
-    FRetryAt := GetTickCount + cRetryMs;
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
     Exit;
   end;
   // Der Speicher gilt je Datei und Textstand; eine Antwort für einen älteren Stand zeichnet nichts Falsches.
@@ -739,7 +740,7 @@ begin
     Exit;
   end;
   try
-    // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine (P-10).
+    // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine.
     if StoredHints(FStore, Context.FileName, Context.LogicalLineNum - 1, mHints) and
       KeepShown(mHints, Context.FileName, False) and LineMatches(FStore, Context, mHints) and
       KeepShown(mHints, Context.FileName, True) then

@@ -48,6 +48,7 @@ uses
   Winapi.Windows,
   Vcl.Controls,
   Atlas.UI.Strings,
+  Atlas.UI.SymbolPath.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.Core.SymbolPath.Model,
   Atlas.Core.SymbolPath.Model.Tests,
@@ -95,7 +96,7 @@ begin
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls) + ' · uKundenForm.pas:21', mLines[3]);
   // Erschlossene Kante mit Kennzeichen.
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy) + ' [' +
-    TAtlasStrings.Text(TAtlasTextId.SymbolPathInferred) + '] · uKundenRepo.pas:8', mLines[5]);
+    TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathInferred) + '] · uKundenRepo.pas:8', mLines[5]);
   // Die Kette wächst mit ihrem Inhalt; Zeilen liegen untereinander.
   Assert.IsTrue(mChain.RowRect(6).Bottom <= mChain.Height);
   Assert.IsTrue(mChain.RowRect(1).Top >= mChain.RowRect(0).Bottom);
@@ -144,25 +145,27 @@ var
   mAnswer: TAtlasSymbolPathAnswer;
 begin
   mAnswer := Sample;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFound, [3, 42, 7]),
+  Assert.AreEqual(TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFound, [3, 42, 7]),
     TAtlasSymbolPathChain.StatusText(mAnswer));
   mAnswer.Routes := mAnswer.Routes + [mAnswer.Routes[0]];
   mAnswer.MoreRoutes := True;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFoundMany, [3, 2, 42, 7]) +
-    TAtlasStrings.Text(TAtlasTextId.SymbolPathMoreRoutes), TAtlasSymbolPathChain.StatusText(mAnswer));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFoundMany, [3, 2, 42, 7]) +
+    TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathMoreRoutes),
+    TAtlasSymbolPathChain.StatusText(mAnswer));
   mAnswer.Status := TAtlasSymbolPathStatus.NoPath;
   mAnswer.Routes := nil;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNoPath, [8, 42]), TAtlasSymbolPathChain.StatusText(mAnswer));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNoPath, [8, 42]),
+    TAtlasSymbolPathChain.StatusText(mAnswer));
   mAnswer.Status := TAtlasSymbolPathStatus.Aborted;
   mAnswer.AbortReason := 'Zeitlimit';
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathAborted, [3, 42, 'Zeitlimit']),
+  Assert.AreEqual(TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAborted, [3, 42, 'Zeitlimit']),
     TAtlasSymbolPathChain.StatusText(mAnswer));
   mAnswer.Status := TAtlasSymbolPathStatus.Ambiguous;
   mAnswer.Subject := 'Laden';
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathAmbiguous, ['Laden']),
+  Assert.AreEqual(TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAmbiguous, ['Laden']),
     TAtlasSymbolPathChain.StatusText(mAnswer));
   mAnswer.Status := TAtlasSymbolPathStatus.NotFound;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNotFound, ['Laden']),
+  Assert.AreEqual(TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNotFound, ['Laden']),
     TAtlasSymbolPathChain.StatusText(mAnswer));
 end;
 

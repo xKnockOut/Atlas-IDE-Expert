@@ -53,6 +53,8 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_RangeChecking>true</DCC_RangeChecking>
+        <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
         <DCC_DebugDCUs>false</DCC_DebugDCUs>
         <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
@@ -592,6 +594,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.WarningCodes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EventAssignments.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TokenCursor.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>
@@ -734,6 +737,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.RawMemory.pas"/>

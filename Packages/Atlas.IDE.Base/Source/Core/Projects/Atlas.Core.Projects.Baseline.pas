@@ -28,7 +28,7 @@
 //   {"format": 1, "file": "C:\\Projekte\\Kasse\\atlas-baseline.json",
 //    "previous": "none|valid|invalid",
 //    "setAside": "C:\\Projekte\\Kasse\\atlas-baseline.json.defekt" (nur nach
-//    "invalid": die unbrauchbare bisherige Datei, Bericht N3),
+//    "invalid": die unbrauchbare bisherige Datei),
 //    "skipped": 0, "total": 120, "files": 40,
 //    "added": 3, "removed": 5, "unchanged": 117, "completed": 0,
 //    "orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}
@@ -73,7 +73,7 @@ type
     /// <summary>"none", "valid" oder "invalid": bisherige Datei.</summary>
     Previous: string;
     /// <summary>Voller Pfad, unter dem der Server eine unbrauchbare bisherige Baseline beiseitegelegt hat
-    /// (Bericht N3); '' sonst.</summary>
+    ///; '' sonst.</summary>
     SetAside: string;
     Skipped: Integer;
     Total: Integer;
@@ -129,7 +129,8 @@ implementation
 uses
   System.IOUtils,
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 /// <summary>Ordner von AFileName, normiert (Großbuchstaben, „\“, ohne Trenner am Ende); '' ohne Ordner.</summary>
 function FolderKey(const AFileName: string): string;
@@ -168,38 +169,6 @@ begin
     Result := Result + '\';
   end;
   Result := Result + AName;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
 end;
 
 function ParseObject(const AText: string): TJSONObject;
@@ -325,8 +294,8 @@ begin
   APath := '';
   if AItem is TJSONObject then
   begin
-    ACount := NumberOf(TJSONObject(AItem), 'count', 1);
-    APath := TextOf(TJSONObject(AItem), 'path');
+    ACount := TJsonRead.IntOr(TJSONObject(AItem), 'count', 1);
+    APath := TJsonRead.Text(TJSONObject(AItem), 'path');
   end;
 end;
 
@@ -449,15 +418,15 @@ begin
       mPath := '';
       if mItem is TJSONObject then
       begin
-        mPath := TextOf(TJSONObject(mItem), 'path');
+        mPath := TJsonRead.Text(TJSONObject(mItem), 'path');
       end;
       if mPath <> '' then
       begin
-        AddOrphan(AUpdate.Orphans, mPath, NumberOf(TJSONObject(mItem), 'count', 1));
+        AddOrphan(AUpdate.Orphans, mPath, TJsonRead.IntOr(TJSONObject(mItem), 'count', 1));
       end;
     end;
   end;
-  AUpdate.OrphanCount := NumberOf(mOrphaned, 'count', 0);
+  AUpdate.OrphanCount := TJsonRead.IntOr(mOrphaned, 'count', 0);
 end;
 
 class function TAtlasProjectBaselines.FromServer(const AJson: string; out AUpdate: TAtlasBaselineUpdate): Boolean;
@@ -468,21 +437,21 @@ begin
   AUpdate.Orphans := nil;
   mRoot := ParseObject(AJson);
   try
-    Result := (mRoot <> nil) and (mRoot.GetValue('total') is TJSONNumber) and (TextOf(mRoot, 'file') <> '');
+    Result := (mRoot <> nil) and (mRoot.GetValue('total') is TJSONNumber) and (TJsonRead.Text(mRoot, 'file') <> '');
     if not Result then
     begin
       Exit;
     end;
-    AUpdate.FileName := TextOf(mRoot, 'file');
-    AUpdate.Previous := TextOf(mRoot, 'previous');
-    AUpdate.SetAside := TextOf(mRoot, 'setAside');
-    AUpdate.Skipped := NumberOf(mRoot, 'skipped', 0);
-    AUpdate.Total := NumberOf(mRoot, 'total', 0);
-    AUpdate.Files := NumberOf(mRoot, 'files', 0);
-    AUpdate.Added := NumberOf(mRoot, 'added', 0);
-    AUpdate.Removed := NumberOf(mRoot, 'removed', 0);
-    AUpdate.Unchanged := NumberOf(mRoot, 'unchanged', 0);
-    AUpdate.Completed := NumberOf(mRoot, 'completed', 0);
+    AUpdate.FileName := TJsonRead.Text(mRoot, 'file');
+    AUpdate.Previous := TJsonRead.Text(mRoot, 'previous');
+    AUpdate.SetAside := TJsonRead.Text(mRoot, 'setAside');
+    AUpdate.Skipped := TJsonRead.IntOr(mRoot, 'skipped', 0);
+    AUpdate.Total := TJsonRead.IntOr(mRoot, 'total', 0);
+    AUpdate.Files := TJsonRead.IntOr(mRoot, 'files', 0);
+    AUpdate.Added := TJsonRead.IntOr(mRoot, 'added', 0);
+    AUpdate.Removed := TJsonRead.IntOr(mRoot, 'removed', 0);
+    AUpdate.Unchanged := TJsonRead.IntOr(mRoot, 'unchanged', 0);
+    AUpdate.Completed := TJsonRead.IntOr(mRoot, 'completed', 0);
     ReadServerOrphans(mRoot, AUpdate);
   finally
     mRoot.Free;

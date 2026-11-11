@@ -8,7 +8,7 @@
 //
 // Alle öffentlichen Methoden laufen im Hauptthread. Einträge aus anderen
 // Threads stellt die Senke über TAtlasMainThread.Queue in den Hauptthread
-// (beim Entladen verworfen, Code-Review A-02); was nach
+// (beim Entladen verworfen); was nach
 // Close, einem neuen Start oder dem Freigeben ankommt, wird verworfen.
 //
 // Gekürzte Listen (#431, LSP isIncomplete): Beim Weitertippen filtert Requery
@@ -549,7 +549,7 @@ begin
   mFlagRef := FFlagRef;
   mGeneration := FGeneration;
   mItems := AItems;
-  // Im Hauptthread läuft Queue sofort, sonst beim nächsten CheckSynchronize; beim Entladen verworfen (A-02).
+  // Im Hauptthread läuft Queue sofort, sonst beim nächsten CheckSynchronize; beim Entladen verworfen.
   TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin

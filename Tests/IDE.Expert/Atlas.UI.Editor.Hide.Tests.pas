@@ -59,6 +59,7 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Editor.Hide,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
@@ -254,7 +255,7 @@ begin
     Window.Colors := TAtlasColors.Light;
     Window.SetScaling(96, 1, 'Segoe UI', 9);
     Window.OnUndo := Counter.UndoClick;
-    Window.ShowNotice(TAtlasStrings.Text(TAtlasTextId.HideNotice),
+    Window.ShowNotice(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice),
       'Einstellung „Blockende-Beschriftungen“ ausgeschaltet.', True, Point(200, 200));
     try
       Assert.IsTrue(Window.IsShown);
@@ -266,7 +267,7 @@ begin
       Assert.AreEqual(1, Integer(Counter.Count));
       Assert.IsFalse(Window.IsShown, 'Klick blendet aus');
       // Ohne Rückgängig (etwa ein abgelehnter Bereich): kein Link, Klick ohne Wirkung.
-      Window.ShowNotice('', TAtlasStrings.Text(TAtlasTextId.HideRefusedAlready), False, Point(200, 200));
+      Window.ShowNotice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready), False, Point(200, 200));
       Assert.IsTrue(Window.UndoRect.IsEmpty);
       Window.ClickUndo;
       Assert.AreEqual(1, Integer(Counter.Count));

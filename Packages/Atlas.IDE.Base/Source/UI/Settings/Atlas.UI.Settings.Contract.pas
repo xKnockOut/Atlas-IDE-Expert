@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Contract;
 
-// Abschnitte der Module im Optionsdialog (#1455, ADR 0017 Entscheidung 3):
+// Abschnitte der Module im Optionsdialog (#1455):
 // Ein Modul meldet einen IAtlasSettingsSectionProvider über seinen Scope an
 // (GScope.Provide); jede Optionsseite holt sich daraus ihren eigenen Abschnitt
 // (IAtlasSettingsSection), so dass zwei Seiten nie dieselben Steuerelemente

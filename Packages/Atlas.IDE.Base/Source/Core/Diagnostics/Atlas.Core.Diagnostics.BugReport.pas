@@ -1,15 +1,15 @@
 ﻿unit Atlas.Core.Diagnostics.BugReport;
 
 // Fehlerbericht des Plugins (#108): Teil des Plugins (Atlas-, IDE-Version,
-// Plattform, Einstellungen, Auszug aus atlas.log, Ende von server-stderr.log,
-// Bericht H5) und dahinter der Bericht des
+// Plattform, Einstellungen, Auszug aus atlas.log, Ende von server-stderr.log)
+// und dahinter der Bericht des
 // Servers (atlas.server.bugReport mit Version, wirksamer Konfiguration,
 // Protokoll und den letzten Anfragen). Quelltext steht nie darin.
 // Anonymisiert (Einstellung diagnostics.bugReport.anonymize, Vorgabe an)
 // werden Pfade unter einem Projektordner zu <ws>\…, alle anderen absoluten
 // Pfade zu <pfad>, Benutzer- und Rechnername zu <benutzer> und im Protokoll
 // Text in Anführungszeichen zu <wert>. Die Regeln stehen einmal in
-// Atlas.Text.Anonymize und gelten für Server und Plugin gleich (ADR 0012).
+// Atlas.Text.Anonymize und gelten für Server und Plugin gleich.
 // Von den Einstellungen bleiben dann nur feste Werte, Zahlen und Schalter
 // (#1478). Ohne Anonymisierung vermerkt der Kopf die ausdrückliche Wahl, und
 // schreibt atlas.log Klarnamen (diagnostics.log.names), sagt es der Abschnitt.
@@ -29,7 +29,7 @@ type
     /// <summary>Wirksame experimentelle Schalter (#834), nur Schlüssel; leer = keine.</summary>
     Experimental: TArray<string>;
     PluginLog: TArray<string>;
-    /// <summary>Letzte Zeilen aus server-stderr.log (Bericht H5); leer = Abschnitt entfällt.</summary>
+    /// <summary>Letzte Zeilen aus server-stderr.log; leer = Abschnitt entfällt.</summary>
     ServerErrorOutput: TArray<string>;
     /// <summary>Text des Servers; '' wenn er nicht läuft oder nicht antwortet.</summary>
     ServerReport: string;
@@ -258,7 +258,7 @@ begin
     AppendSettings(mBuilder, AInput);
     AppendLines(mBuilder, Format(UiText(TBugReportText.PluginLogLastLines), [Length(AInput.PluginLog),
       PluginLogNote(AInput)]), AInput.PluginLog, AInput);
-    // Was die Laufzeit des Servers vor einem Absturz noch ausgab (Bericht H5); anonymisiert wie das Protokoll.
+    // Was die Laufzeit des Servers vor einem Absturz noch ausgab; anonymisiert wie das Protokoll.
     if Length(AInput.ServerErrorOutput) > 0 then
     begin
       AppendLines(mBuilder, Format(UiText(TBugReportText.ServerErrorOutputStderrLast),

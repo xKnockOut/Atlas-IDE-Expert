@@ -40,7 +40,7 @@ type
   TAtlasHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Zeilen-, Chip- und Fußzeilenhöhe (P-15): einmal gemessen, neu nach Schrift- oder Dichtewechsel.
+  /// <summary>Zeilen-, Chip- und Fußzeilenhöhe: einmal gemessen, neu nach Schrift- oder Dichtewechsel.
   /// </summary>
   TAtlasPopupMetrics = record
     RowHeight: Integer;
@@ -178,7 +178,7 @@ implementation
 uses
   System.Math,
   Atlas.UI.Popup.Accessibility,
-  Atlas.UI.Strings;
+  Atlas.UI.Completion.Strings;
 
 const
   /// <summary>Verweilen auf einer gekürzten Zeile, bis der volle Text erscheint (#420).</summary>
@@ -189,7 +189,7 @@ const
 constructor TAtlasCompletionPopupState.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
+  SetAccessible(cUiaListControlType, TAtlasCompletionStrings.Text(TAtlasCompletionTextId.AccessCompletion));
   FVisibleRows := cDefaultVisibleRows;
   FSelected := -1;
   FRestFrom := -1;
@@ -199,6 +199,7 @@ begin
   FTipTimer := TTimer.Create(Self);
   FTipTimer.Enabled := False;
   FTipTimer.Interval := cTipDelayMs;
+  // lsp-ignore: control-fixed-bounds -- Record in logischen Pixeln, skaliert beim Zeichnen
   FPanel.Width := cDefaultPanelWidth;
   FOptions.SelectionMarker := True;
   FOptions.ShowVariantBranch := True;

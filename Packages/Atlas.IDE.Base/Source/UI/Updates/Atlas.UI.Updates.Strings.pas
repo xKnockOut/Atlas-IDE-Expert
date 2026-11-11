@@ -2,8 +2,9 @@
 
 // Oberflächentexte der Update-Installation (#1519) auf Deutsch und Englisch:
 // Optionsseite, Angebot, Auswahl der Module, Stand, Ergebnis und Fehlercodes
-// von AtlasUpdate.exe. Die Sprache bestimmt TAtlasStrings.Language; die
-// Texte der Update-Prüfung (#495) bleiben in Atlas.UI.Strings.
+// von AtlasUpdate.exe sowie die Meldung einer gescheiterten Update-Prüfung.
+// Die Sprache bestimmt TAtlasStrings.Language; die Texte der Update-Prüfung
+// (#495) bleiben in Atlas.UI.Strings.
 
 interface
 
@@ -18,14 +19,14 @@ type
     UpdatesOfferChanges, UpdatesOfferLater, UpdatesReadyText, UpdatesReadyModules, UpdatesReadyDiscard,
     UpdatesStagePreparing, UpdatesStageBuilding, UpdatesStageReady, UpdatesStageChoose, UpdatesStageFailed,
     UpdatesPreparedMessage, UpdatesChooseMessage, UpdatesPrepareFailedMessage, UpdatesBlockedMessage,
-    UpdatesBlockedGetIt, UpdatesBlockedNoUpdater, UpdatesBlockedFolder, UpdatesSelectionTitle,
-    UpdatesSelectionText, UpdatesSelectionNew, UpdatesSelectionRequired, UpdatesSelectionApply,
-    UpdatesSelectionCancel, UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved,
-    UpdatesOutcomeRolledBack, UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest,
-    UpdatesErrorVersion, UpdatesErrorNoPackage, UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash,
-    UpdatesErrorArchive, UpdatesErrorUnsigned, UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked,
-    UpdatesErrorCopy, UpdatesErrorRegistry, UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection,
-    UpdatesErrorUnexpected, UpdatesErrorStart);
+    UpdatesBlockedGetIt, UpdatesBlockedNoUpdater, UpdatesBlockedFolder, UpdatesSelectionTitle, UpdatesSelectionText,
+    UpdatesSelectionNew, UpdatesSelectionRequired, UpdatesSelectionApply, UpdatesSelectionCancel,
+    UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved, UpdatesOutcomeRolledBack,
+    UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest, UpdatesErrorVersion, UpdatesErrorNoPackage,
+    UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash, UpdatesErrorArchive, UpdatesErrorUnsigned,
+    UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
+    UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection, UpdatesErrorUnexpected, UpdatesErrorStart,
+    UpdatesCheckFailedMessage);
 
   TAtlasUpdatesStrings = class
   public
@@ -109,7 +110,9 @@ const
      'installieren',
      'Modulauswahl ungültig',
      'unerwarteter Fehler',
-     'AtlasUpdate.exe nicht gestartet'),
+     'AtlasUpdate.exe nicht gestartet',
+     'Atlas-Update-Prüfung fehlgeschlagen (%s). Ob es eine neuere Version gibt, ist unbekannt; Atlas versucht ' +
+     'es beim nächsten Start der IDE wieder, frühestens in einer Stunde. Releases: %s'),
     ( 'Install updates:',
      'offer',
      'prepare without asking',
@@ -174,7 +177,9 @@ const
      'the Atlas folder is not writable; better install Atlas below AppData\Local\Programs\Atlas',
      'module selection invalid',
      'unexpected error',
-     'AtlasUpdate.exe not started'));
+     'AtlasUpdate.exe not started',
+     'Atlas update check failed (%s). Whether a newer version exists is unknown; Atlas tries again at the ' +
+     'next IDE start, after one hour at the earliest. Releases: %s'));
 
 { TAtlasUpdatesStrings }
 

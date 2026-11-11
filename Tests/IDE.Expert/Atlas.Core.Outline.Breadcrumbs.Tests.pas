@@ -22,6 +22,10 @@ type
     [Test]
     procedure SectionsFromText;
     [Test]
+    procedure SectionTableMatchesSectionAt;
+    [Test]
+    procedure PreparedTextGivesTheSamePath;
+    [Test]
     procedure SiblingsOfMethodAreMethodsOfTheType;
     [Test]
     procedure SiblingsOnUnitLevel;
@@ -93,19 +97,55 @@ const
     '  Hilfe;'#13#10 +                                                // 36
     'end.';                                                           // 37
 
+  /// <summary>Regionen, Bedingungszweige und Abschnitte für den Vergleich mit dem vorbereiteten Text.</summary>
+  DirectiveCode =
+    'unit uRegionen;'#13#10 +
+    'interface'#13#10 +
+    'uses'#13#10 +
+    '  System.SysUtils;'#13#10 +
+    '{$REGION ''Typen''}'#13#10 +
+    'type'#13#10 +
+    '  TKunde = class'#13#10 +
+    '  private'#13#10 +
+    '    FName: string;'#13#10 +
+    '  public'#13#10 +
+    '    procedure Speichere;'#13#10 +
+    '  end;'#13#10 +
+    '{$ENDREGION}'#13#10 +
+    'const Grenze = 3;'#13#10 +
+    'var Zaehler: Integer;'#13#10 +
+    'implementation'#13#10 +
+    'uses System.Classes;'#13#10 +
+    '{$REGION ''Rümpfe''}'#13#10 +
+    'procedure TKunde.Speichere;'#13#10 +
+    'begin'#13#10 +
+    '{$IFDEF DEBUG}'#13#10 +
+    '  if FName = '''' then'#13#10 +
+    '  begin'#13#10 +
+    '    Exit;'#13#10 +
+    '  end;'#13#10 +
+    '{$ELSE}'#13#10 +
+    '  Inc(Zaehler);'#13#10 +
+    '{$ENDIF}'#13#10 +
+    'end;'#13#10 +
+    '{$ENDREGION}'#13#10 +
+    'initialization'#13#10 +
+    '  Zaehler := 0;'#13#10 +
+    'end.';
+
 function Lines: TArray<string>;
 begin
   Result := Code.Split([#13#10]);
 end;
 
-function Nodes: TAtlasOutlineNodes;
+function NodesOf(const AText: string): TAtlasOutlineNodes;
 var
   Tree: TSyntaxTree;
   Symbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(Code);
+  Tree := TPascalParser.Parse(AText);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, Code);
+    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, AText);
   finally
     Tree.Free;
   end;
@@ -114,6 +154,11 @@ begin
   finally
     Symbols.Free;
   end;
+end;
+
+function Nodes: TAtlasOutlineNodes;
+begin
+  Result := NodesOf(Code);
 end;
 
 function Joined(const ACrumbs: TAtlasCrumbs): string;
@@ -206,6 +251,61 @@ begin
   Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 36) = TAtlasCodeSection.Initialization_);
   Assert.AreEqual('U › uses', Joined(TAtlasBreadcrumbs.Path(Nodes, Text, 3, 4, 'U', True)));
   Assert.AreEqual('initialization', Joined(TAtlasBreadcrumbs.Path(Nodes, Text, 36, 2, 'U', False)));
+end;
+
+procedure TAtlasBreadcrumbsTests.SectionTableMatchesSectionAt;
+var
+  Text: TArray<string>;
+  Table: TArray<TAtlasCodeSection>;
+  Line: Integer;
+begin
+  Text := DirectiveCode.Split([#13#10]);
+  Table := TAtlasBreadcrumbs.SectionTable(Text);
+  Assert.AreEqual(Length(Text), Length(Table));
+  for Line := 0 to High(Text) do
+  begin
+    Assert.IsTrue(Table[Line] = TAtlasBreadcrumbs.SectionAt(Text, Line), 'Zeile ' + IntToStr(Line));
+  end;
+  Text := Lines;
+  Table := TAtlasBreadcrumbs.SectionTable(Text);
+  for Line := 0 to High(Text) do
+  begin
+    Assert.IsTrue(Table[Line] = TAtlasBreadcrumbs.SectionAt(Text, Line), 'Zeile ' + IntToStr(Line));
+  end;
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.SectionTable(nil))));
+end;
+
+procedure TAtlasBreadcrumbsTests.PreparedTextGivesTheSamePath;
+const
+  cAll = [Low(TAtlasCrumbPart)..High(TAtlasCrumbPart)];
+var
+  Source: string;
+  Text: TArray<string>;
+  List: TAtlasOutlineNodes;
+  Prepared: TAtlasCrumbText;
+  Line, Character: Integer;
+  Expected, Actual: TAtlasCrumbs;
+begin
+  // Der einmal ausgewertete Text gibt an jeder Stelle denselben Pfad wie der Weg über den ganzen Text.
+  for Source in [Code, DirectiveCode] do
+  begin
+    Text := Source.Split([#13#10]);
+    List := NodesOf(Source);
+    Prepared := TAtlasBreadcrumbs.Prepare(List, Text);
+    for Line := 0 to Length(Text) do
+    begin
+      for Character in [0, 4, 12] do
+      begin
+        Expected := TAtlasBreadcrumbs.Path(List, Text, Line, Character, 'U', True, cAll);
+        Actual := TAtlasBreadcrumbs.Path(Prepared, Line, Character, 'U', True, cAll);
+        Assert.AreEqual(Joined(Expected), Joined(Actual), Format('Zeile %d, Spalte %d', [Line, Character]));
+      end;
+    end;
+  end;
+  Text := DirectiveCode.Split([#13#10]);
+  Assert.AreEqual('U › Rümpfe › TKunde › Speichere › {$IFDEF DEBUG}',
+    Joined(TAtlasBreadcrumbs.Path(TAtlasBreadcrumbs.Prepare(NodesOf(DirectiveCode), Text), 23, 4, 'U', True,
+    [TAtlasCrumbPart.Regions, TAtlasCrumbPart.Conditionals])));
 end;
 
 procedure TAtlasBreadcrumbsTests.SiblingsOfMethodAreMethodsOfTheType;

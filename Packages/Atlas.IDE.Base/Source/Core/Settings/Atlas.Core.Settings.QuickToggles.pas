@@ -110,7 +110,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.PluginSchemaData;
+  Atlas.Core.Settings.PluginSchemaData,
+  Atlas.Text.Json;
 
 function BoolJson(AValue: Boolean): string;
 begin
@@ -145,14 +146,6 @@ begin
   end;
 end;
 
-function IsTrue(ASchema: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := ASchema.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 type
   TVisit = reference to procedure(const APath, APage, AScope: string; ASchema: TJSONObject);
 
@@ -167,7 +160,7 @@ end;
 function IsQuickToggle(AValue: TJSONValue): Boolean;
 begin
   Result := (AValue is TJSONObject) and IsBoolean(TJSONObject(AValue)) and
-    IsTrue(TJSONObject(AValue), 'x-quickToggle');
+    TJsonRead.Flag(TJSONObject(AValue), 'x-quickToggle');
 end;
 
 /// <summary>Schnellschalter unter den Gliedern des Objekts AName: Pfad "objekt.glied", x-scope des Glieds oder
@@ -240,9 +233,9 @@ begin
   Result.Page := APage;
   Result.Caption := CaptionOf(ASchema, AEnglish);
   Result.ProjectPath := AProjectPath;
-  Result.Drawing := IsTrue(ASchema, 'x-drawing');
+  Result.Drawing := TJsonRead.Flag(ASchema, 'x-drawing');
   Result.Feature := ASchema.GetValue<string>('x-feature', '');
-  Result.Experimental := IsTrue(ASchema, 'x-experimental');
+  Result.Experimental := TJsonRead.Flag(ASchema, 'x-experimental');
 end;
 
 /// <summary>Projekteinstellung mit Plugin-Einstellung (x-plugin): Ziel „Projekt“ beim Schalter der
@@ -270,7 +263,7 @@ begin
     if SameText(AList[mIndex].Key, mKey) then
     begin
       AList[mIndex].ProjectPath := mProjectPath;
-      AList[mIndex].Experimental := AList[mIndex].Experimental or IsTrue(ASchema, 'x-experimental');
+      AList[mIndex].Experimental := AList[mIndex].Experimental or TJsonRead.Flag(ASchema, 'x-experimental');
       Exit;
     end;
   end;

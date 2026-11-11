@@ -17,7 +17,7 @@ type
   [TestFixture]
   TPascalParserRobustnessTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen (Bericht N2, statt [IgnoreMemoryLeaks]): Thread mit
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen (statt [IgnoreMemoryLeaks]): Thread mit
     /// eigenem Stapel, alle Regeln, Dateien suchen und mit Kodierungserkennung lesen. Was die RTL dabei beim
     /// ersten Mal anlegt, bleibt bis Programmende.</summary>
     [SetupFixture]
@@ -578,7 +578,7 @@ var
   Total: TStopwatch;
 begin
   Root := CorpusRoot;
-  // Ohne Assert.Pass: Es hinterließ hier 192 Byte, die der Leckmonitor dem Test anrechnet (Bericht N2).
+  // Ohne Assert.Pass: Es hinterließ hier 192 Byte, die der Leckmonitor dem Test anrechnet.
   if (Root = '') or not TDirectory.Exists(Root) then
   begin
     System.Writeln('  Übersprungen: kein Korpus (ATLAS_CORPUS oder BDS setzen)');

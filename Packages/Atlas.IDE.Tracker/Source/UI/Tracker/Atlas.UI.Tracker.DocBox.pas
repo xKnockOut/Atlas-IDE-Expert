@@ -83,7 +83,7 @@ begin
   FColors := TAtlasColors.Light;
   TabStop := True;
   DoubleBuffered := True;
-  Height := 16;
+  Height := ScaleValue(16);
 end;
 
 destructor TAtlasIssueDocBox.Destroy;

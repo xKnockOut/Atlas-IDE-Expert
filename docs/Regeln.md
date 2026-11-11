@@ -12,11 +12,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 90 |
+| [Compiler vorab](#gruppe-compiler) | 91 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
-| [Komponenten](#gruppe-components) | 8 |
+| [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 54 |
@@ -236,6 +236,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Warnung |
 | [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
 | [`generic-inference-failed`](#generic-inference-failed) | Typargumente lassen sich nicht ableiten | Bug | Fehler |
+| [`dunitx-areequal-length`](#dunitx-areequal-length) | Assert.AreEqual mit Ganzzahl und NativeInt | Bug | Fehler |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -306,6 +307,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`component-missing-free-notification`](#component-missing-free-notification) | Komponentenreferenz ohne FreeNotification | Bug | Warnung |
 | [`component-setter-without-invalidate`](#component-setter-without-invalidate) | Setter ohne Invalidate | Code Smell | Hinweis |
 | [`component-fixed-pixels`](#component-fixed-pixels) | Feste Pixelwerte | Code Smell | Warnung |
+| [`control-fixed-bounds`](#control-fixed-bounds) | Feste Größe oder Lage von Steuerelementen | Code Smell | Warnung |
 | [`component-hardcoded-color`](#component-hardcoded-color) | Feste Farbe in Paint | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 
@@ -1511,6 +1513,25 @@ Richtig:
 Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));
 ```
 
+<a id="control-fixed-bounds"></a>
+### control-fixed-bounds
+
+**Feste Größe oder Lage von Steuerelementen** · Code Smell · Warnung · Gruppe Komponenten
+
+Code in einer VCL-Unit setzt Width, Height, Left, Top, ClientWidth oder ClientHeight auf einen festen Pixelwert (eine Zahl oder eine Konstante der Unit wie cRowHeight = 24). Im Code angelegte Steuerelemente skaliert die VCL nicht mit; Dialoge und Spalten bleiben über 96 dpi zu klein. Werte über ScaleValue, MulDiv oder eine Methode der Klasse, die selbst skaliert, 0, 1 und -1, Faktoren von Multiplikationen und Divisionen, Werte ab 10000 (Reihenfolge für Align), Pen.Width, Font.Height sowie Zuweisungen in Paint oder Resize einer Komponente (component-fixed-pixels) werden nicht gemeldet. Die Korrektur skaliert mit ScaleValue des Steuerelements selbst (bei Margins, Padding und Constraints des Steuerelements, zu dem sie gehören): Das stimmt, ob es schon eingehängt ist oder beim Einhängen mitskaliert wird.
+
+Mit Treffer:
+
+```pascal
+mEdit.Width := 240;
+```
+
+Richtig:
+
+```pascal
+mEdit.Width := ScaleValue(240);
+```
+
 <a id="component-hardcoded-color"></a>
 ### component-hardcoded-color
 
@@ -2534,7 +2555,7 @@ for I := 0 to Liste.Count - 1 do
 
 **Verwalteter Parameter ohne const** · Code Smell · Hinweis · Gruppe Performance
 
-Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Referenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufvariable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Korrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Verweise als Methodenzeiger in anderen Units sieht die Regel nicht; die meldet nach der Korrektur der Compiler.
+Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Referenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufvariable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Korrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Mit den Projektdateien (IDE, MCP) zählt auch die Verwendung als Wert in Units, die diese Unit einbinden, etwa die Zuweisung an ein TFunc<string, …>, dessen Parameter kein const hat; ohne sie (Kommandozeile ohne Projekt) meldet solche Verweise nach der Korrektur der Compiler.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -5440,7 +5461,7 @@ procedure Laden(Strom: TStream); overload;
 
 **Bezeichner doppelt deklariert** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld und eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties. Unter demselben Namen überladene default-Array-Properties prüft default-property-invalid (#1380).
+Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld und eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg, zwei Werte derselben Aufzählung (ohne Korrektur). Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties. Unter demselben Namen überladene default-Array-Properties prüft default-property-invalid (#1380).
 
 Entspricht der Compilermeldung `E2004`.
 
@@ -7259,7 +7280,7 @@ end;
 
 **Inline-Funktion wird nicht eingebettet** · Code Smell · Hinweis · Gruppe Compiler vorab
 
-Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Collections bei TJSONObject.Count), die aufrufende Routine ist selbst inline und die Unit der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457; nur, wenn der Rumpf auf mehr als eingebaute Typen, Intrinsics und System verweist). Geprüft werden Aufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst (unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm; ein Alias einer Deklaration aus System wie tkRecord in System.TypInfo braucht dessen Unit nicht). Zugriffe auf private- oder strict private-Mitglieder meldet sie nicht: Delphi 13 bettet solche Aufrufe ein. Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen.
+Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Collections bei TJSONObject.Count), die aufrufende Routine ist selbst inline und die Unit der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457; nur, wenn der Rumpf auf mehr als eingebaute Typen, Intrinsics und System verweist). Geprüft werden Aufrufe, Properties mit inline-Getter bzw. -Setter (auch die default-Property hinter Liste[0]) und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst (unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm; ein Alias einer Deklaration aus System wie tkRecord in System.TypInfo braucht dessen Unit nicht). Zugriffe auf private- oder strict private-Mitglieder meldet sie nicht: Delphi 13 bettet solche Aufrufe ein. Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen.
 
 Entspricht der Compilermeldung `H2443`, `H2445`, `H2456`, `H2457`.
 
@@ -8228,7 +8249,7 @@ if Liste.Count > 0 then
 
 **Inkompatible Typen** · Bug · Fehler · Gruppe Compiler vorab
 
-Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := 'abc', ein Klassenparameter mit Standardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + ['a'] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - Char, Double div 2, not 'a' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer Gleitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozeduralen Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler.
+Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := 'abc', ein Klassenparameter mit Standardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + ['a'] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - Char, Double div 2, not 'a' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer Gleitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozeduralen Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler.
 
 Entspricht der Compilermeldung `E2010`, `E2008`, `E2009`, `E2015`, `E2033`, `E2089`.
 
@@ -8464,6 +8485,31 @@ Richtig:
 ```pascal
 Zahl := TFabrik.Neu<Integer>;
 TFabrik.Paar<string>('1', 'a');
+```
+
+<a id="dunitx-areequal-length"></a>
+### dunitx-areequal-length
+
+**Assert.AreEqual mit Ganzzahl und NativeInt** · Bug · Fehler · Gruppe Compiler vorab
+
+Assert.AreEqual bzw. Assert.AreNotEqual mit einer Ganzzahl auf der einen und einem NativeInt auf der anderen Seite: Length, High oder Low eines dynamischen Arrays (ab Delphi 12 NativeInt) oder ein Ausdruck, dessen Typ sicher NativeInt bzw. NativeUInt ist (TList<T>.Count mit der RTL im Index). Keine der Überladungen Integer, Int64, Double … passt eindeutig, Delphi fällt auf AreEqual<T> zurück und kann T nicht ableiten (wie E2532). Free Pascal übersetzt den Aufruf, deshalb fällt der Fehler erst beim Bau mit Delphi auf. Strings (Length liefert Integer), statische Arrays, Ausdrücke unbekannten Typs, Aufrufe mit Typargument und eine bekannte Delphi-Version vor 12 bleiben still. Korrektur (sicher, auch für die ganze Datei): Integer(...) um die NativeInt-Seite.
+
+Entspricht der Compilermeldung `E2532`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix dunitx-areequal-length`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+Assert.AreEqual(5, Length(mObjects));
+```
+
+Richtig:
+
+```pascal
+Assert.AreEqual(5, Integer(Length(mObjects)));
 ```
 
 <a id="unresolved-type"></a>

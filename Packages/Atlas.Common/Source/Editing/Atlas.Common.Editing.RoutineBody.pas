@@ -101,6 +101,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 const
@@ -109,11 +110,6 @@ const
     TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
     TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
     TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 { TMemberEntry }
 
@@ -485,7 +481,7 @@ begin
     Exit;
   end;
   mName := AName;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   mFound := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -713,7 +709,7 @@ class function TRoutineBody.IsVariableChain(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  // Schleife statt Rekursion (Bericht M1).
+  // Schleife statt Rekursion.
   mNode := ANode;
   while mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess] do
   begin

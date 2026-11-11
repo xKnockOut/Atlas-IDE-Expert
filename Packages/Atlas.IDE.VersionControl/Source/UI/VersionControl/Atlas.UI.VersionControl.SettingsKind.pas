@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsKind;
 
-// Bereich „Versionsverwaltung“ (#1285, seit #1905 im Modul): Art (vcs.provider) und Links auf die Seiten, die die
+// Bereich „Versionsverwaltung“ (#1285): Art (vcs.provider) und Links auf die Seiten, die die
 // Anzeige steuern (Editor, Willkommensseite, Issue-Tracker); ein Link erscheint nur, wenn es die Einstellung im
 // Dialog gibt (Host.Shows).
 
@@ -58,7 +58,7 @@ begin
   FVcsProvider := AddChoice('vcs.provider', TAtlasVcsTextId.SettingsVcsProvider,
     [TAtlasVcsTextId.SettingsVcsProviderAuto, TAtlasVcsTextId.SettingsVcsProviderGit, TAtlasVcsTextId.SettingsVcsProviderSvn,
     TAtlasVcsTextId.SettingsVcsProviderOff], TArray<string>.Create('auto', 'git', 'svn', 'off'));
-  FVcsProvider.Width := 220;
+  FVcsProvider.Width := FVcsProvider.ScaleValue(220);
 end;
 
 procedure TAtlasSettingsVcsPart.Build2;
@@ -80,8 +80,8 @@ begin
   Result.Parent := AParent;
   Result.Caption := TAtlasVcsStrings.Text(ACaption);
   Result.Left := ALeft;
-  Result.Top := 3;
-  Result.Width := 150;
+  Result.Top := Result.ScaleValue(3);
+  Result.Width := Result.ScaleValue(150);
   Result.OnClick := VcsLinkClick;
 end;
 
