@@ -55,7 +55,6 @@ uses
   ToolsAPI,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Crashes,

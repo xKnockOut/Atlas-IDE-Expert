@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  cProfile0: array[0..70] of string = (
+  cProfile0: array[0..71] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -84,11 +84,12 @@ const
     '    "vcs.enabled": true,',
     '    "assistants.enabled": true,',
     '    "designer.enabled": true,',
+    '    "help.enabled": true,',
     '    "ruleChecks.enabled": true,',
     '    "search.enabled": true',
     '  }',
     '}');
-  cProfile1: array[0..60] of string = (
+  cProfile1: array[0..61] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -146,6 +147,7 @@ const
     '    "vcs.enabled": true,',
     '    "assistants.enabled": true,',
     '    "designer.enabled": true,',
+    '    "help.enabled": true,',
     '    "ruleChecks.enabled": true,',
     '    "search.enabled": true',
     '  }',
@@ -162,7 +164,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  cProfile3: array[0..60] of string = (
+  cProfile3: array[0..61] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -220,19 +222,20 @@ const
     '    "vcs.enabled": false,',
     '    "assistants.enabled": false,',
     '    "designer.enabled": false,',
+    '    "help.enabled": false,',
     '    "ruleChecks.enabled": false,',
     '    "search.enabled": false',
     '  }',
     '}');
-  cProfile4: array[0..24] of string = (
+  cProfile4: array[0..25] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
     '  "schemaVersion": 1,',
     '  "name": "Nur Code Insight",',
     '  "nameEn": "Code Insight only",',
-    '  "description": "Alle Module aus (Debugger, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Lesezeichen, Designer, Prüfregeln, Suche, Willkommensseite, #1454); der Kern mit Vervollständigung, Hover, ' +
-      'Diagnosen und Editor wie „Atlas-Standard“ (Ersetzen). Projekt- und Teamwerte bleiben unberührt.",',
+    '  "description": "Alle Module aus (Debugger, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Lesezeichen, Designer, Hilfe, Prüfregeln, Suche, Willkommensseite, #1454); der Kern mit Vervollständigung, ' +
+      'Hover, Diagnosen und Editor wie „Atlas-Standard“ (Ersetzen). Projekt- und Teamwerte bleiben unberührt.",',
     '  "descriptionEn": "All modules off (debugger, issue tracker, analysis, tests, build tools, bookmarks, designer, rule checks, search, welcome page, #1454); the core with completion, hover, diagnostics' +
       ' and editor as in “Atlas default” (replace). Project and team values stay untouched.",',
     '  "mode": "replace",',
@@ -247,6 +250,7 @@ const
     '    "vcs.enabled": false,',
     '    "assistants.enabled": false,',
     '    "designer.enabled": false,',
+    '    "help.enabled": false,',
     '    "ruleChecks.enabled": false,',
     '    "search.enabled": false,',
     '    "welcomePage.enabled": false',

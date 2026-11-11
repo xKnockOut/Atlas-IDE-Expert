@@ -100,7 +100,6 @@ implementation
 uses
   System.StrUtils,
   System.JSON,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,

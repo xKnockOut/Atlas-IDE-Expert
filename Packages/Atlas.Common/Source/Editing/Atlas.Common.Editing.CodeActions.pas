@@ -719,7 +719,11 @@ type
     FLineBreak: string;
     FMovable: TArray<string>;
     FActions: TArray<TCodeAction>;
+    FResolution: TUsesResolution;
+    FResolved: Boolean;
     procedure Add(const AAction: TCodeAction);
+    /// <summary>Nutzung der uses-Einträge aus der Namensauflösung (#1925), einmal je Aktionsliste.</summary>
+    function Resolution: TUsesResolution;
     procedure AddRemoveEntry(const AEntry: TUsesEntry; const AUnused: TArray<TTextRange>);
     procedure AddMoveEntry(const AEntry: TUsesEntry);
     /// <summary>Gibt der Aktion für alle verschiebbaren Units die Kennung UsesMoveTag.</summary>
@@ -773,11 +777,21 @@ begin
   end;
 end;
 
+function TUsesActionList.Resolution: TUsesResolution;
+begin
+  if not FResolved then
+  begin
+    FResolution := FContext.Resolution(FText, FContext.Inactive);
+    FResolved := True;
+  end;
+  Result := FResolution;
+end;
+
 procedure TUsesActionList.AddMoveAll;
 var
   mEdits: TArray<TTextEdit>;
 begin
-  FMovable := TUsesActions.MovableUnits(FTokens, FContext.Info);
+  FMovable := TUsesActions.MovableUnits(FTokens, FContext.Info, Resolution);
   if TUsesActions.MoveUnits(FTokens, FText, FMovable, FLineBreak, mEdits) then
   begin
     Add(NewAction(MoveTitle(FMovable), cRewriteKind, mEdits, ''));
@@ -789,7 +803,7 @@ var
   mUnits: TArray<string>;
   mEdits: TArray<TTextEdit>;
 begin
-  mUnits := TUsesActions.UnusedUnits(FTokens, FContext.Info, FContext.Keep);
+  mUnits := TUsesActions.UnusedUnits(FTokens, FContext.Info, FContext.Keep, Resolution);
   if TUsesActions.RemoveUnits(FTokens, FText, mUnits, FLineBreak, mEdits) then
   begin
     Add(NewAction(cTexts[TEditingCodeActionsText.RemoveUnusedUses].Fmt([string.Join(', ', mUnits)]), cRemoveUnusedKind,
@@ -850,7 +864,7 @@ var
   mEntry: TUsesEntry;
   mUnused: TArray<TTextRange>;
 begin
-  mEntries := TUsesActions.Entries(FTokens, FContext.Inactive, FContext.Info, FContext.Keep);
+  mEntries := TUsesActions.Entries(FTokens, FContext.Inactive, FContext.Info, FContext.Keep, Resolution);
   mUnused := UnusedRanges(mEntries);
   for mEntry in mEntries do
   begin

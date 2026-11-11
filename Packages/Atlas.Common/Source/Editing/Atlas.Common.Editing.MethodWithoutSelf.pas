@@ -158,8 +158,7 @@ uses
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesActions,
-  Atlas.Common.Editing.MethodWithoutSelf.Texts,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Editing.MethodWithoutSelf.Texts;
 
 class function TMethodWithoutSelf.ClassMethodTitle: string;
 begin

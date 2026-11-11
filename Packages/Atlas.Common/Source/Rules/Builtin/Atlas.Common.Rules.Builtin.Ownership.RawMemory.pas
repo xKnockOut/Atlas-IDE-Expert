@@ -37,13 +37,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
   Atlas.Common.Localization.Texts;

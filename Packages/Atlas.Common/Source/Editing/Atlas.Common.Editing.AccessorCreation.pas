@@ -68,7 +68,6 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.InterfaceStubs,

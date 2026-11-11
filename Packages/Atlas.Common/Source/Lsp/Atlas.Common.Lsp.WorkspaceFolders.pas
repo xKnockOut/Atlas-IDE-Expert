@@ -21,7 +21,6 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher;
 
 type

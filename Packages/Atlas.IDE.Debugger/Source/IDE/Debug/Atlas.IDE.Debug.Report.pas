@@ -31,7 +31,6 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Text.Lines,
-  Atlas.Core.Files.Contract,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,

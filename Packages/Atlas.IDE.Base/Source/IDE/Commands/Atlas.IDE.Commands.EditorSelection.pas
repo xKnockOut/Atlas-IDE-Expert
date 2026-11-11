@@ -62,7 +62,6 @@ uses
   Atlas.Text.Defines,
   Atlas.UI.Strings,
   Atlas.IDE.Build.Target,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.SafeDelete;

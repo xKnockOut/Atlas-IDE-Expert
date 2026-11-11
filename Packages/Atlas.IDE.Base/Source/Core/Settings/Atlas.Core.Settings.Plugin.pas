@@ -141,6 +141,8 @@ type
     cMultiCursorModifierAlt = Atlas.Core.Settings.Plugin.Editor.cMultiCursorModifierAlt;
     cMultiCursorModifierCtrl = Atlas.Core.Settings.Plugin.Editor.cMultiCursorModifierCtrl;
     cDesignerSearchWindow = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchWindow;
+    cHelpSourceOnline = Atlas.Core.Settings.Plugin.General.cHelpSourceOnline;
+    cHelpSourceLocal = Atlas.Core.Settings.Plugin.General.cHelpSourceLocal;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
     cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
@@ -1015,6 +1017,8 @@ type
     property SettingsMarkModified: Boolean read FGeneral.SettingsMarkModified write FGeneral.SettingsMarkModified;
     property SettingsSearch: Boolean read FGeneral.SettingsSearch write FGeneral.SettingsSearch;
     property PaletteSettingsPrefix: Boolean read FGeneral.PaletteSettingsPrefix write FGeneral.PaletteSettingsPrefix;
+    property HelpEnabled: Boolean read FGeneral.HelpEnabled write FGeneral.HelpEnabled;
+    property HelpSource: string read FGeneral.HelpSource write FGeneral.HelpSource;
     property SettingsBackupBeforeImport: Boolean read FGeneral.SettingsBackupBeforeImport
       write FGeneral.SettingsBackupBeforeImport;
     property SettingsExportSecrets: string read FGeneral.SettingsExportSecrets write FGeneral.SettingsExportSecrets;

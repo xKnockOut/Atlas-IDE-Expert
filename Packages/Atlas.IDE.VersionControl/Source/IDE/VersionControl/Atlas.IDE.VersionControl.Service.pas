@@ -143,7 +143,6 @@ uses
   Winapi.Windows,
   Vcl.ExtCtrls,
   Atlas.Core.Projects.Matching,
-  Atlas.Core.VersionControl.ServerAccess,
   Atlas.Core.Settings.TeamFile,
   Atlas.IDE.Foundation.TeamFile;
 

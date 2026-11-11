@@ -13,6 +13,7 @@ Marks move along while typing.
 
 ## Findings window, hover and options page
 
+<a id="window-atlasproblems"></a>
 ### Window "Atlas Findings"
 
 - Live findings of the file, the current project or the project group

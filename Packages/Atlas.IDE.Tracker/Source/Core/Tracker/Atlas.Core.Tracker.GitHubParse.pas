@@ -131,7 +131,6 @@ uses
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Naming,
-  Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubJson;
 
