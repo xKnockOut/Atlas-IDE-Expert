@@ -8,7 +8,9 @@
 // kommen aus dem Designer (Klassenkette über RTTI, Elternelement), Werte und
 // Handler aus dem Formulartext (nur gespeicherte, also keine Vorgaben). Die
 // Treffer merkt sich das Menü als Namen: Beim Klick sucht Atlas die
-// Komponenten neu, mit Umschalt ergänzt das Ergebnis die Auswahl.
+// Komponenten neu, mit Umschalt ergänzt das Ergebnis die Auswahl. Darunter
+// die Auswahlsätze des Formulars (#739, TAtlasIdeSelectionSets); sie stehen
+// auch ohne Auswahl und ohne designer.selectSimilar im Menü.
 // Nur im Hauptthread.
 
 interface
@@ -18,7 +20,9 @@ uses
   System.Classes,
   System.Types,
   Vcl.Menus,
-  Atlas.Core.Designer.Similar;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Designer.Similar,
+  Atlas.IDE.Designer.SelectionSets;
 
 type
   TAtlasIdeDesignerSelect = class
@@ -27,11 +31,16 @@ type
     /// <summary>Treffer je Menüeintrag (Tag) als Komponentennamen.</summary>
     FHits: TArray<TArray<string>>;
     FOnMessage: TProc<string>;
+    FSets: TAtlasIdeSelectionSets;
     procedure Add(AParent: TMenuItem; const ACaption: string; const AItems: TArray<TAtlasSimilarItem>;
       const AQuery: TAtlasSimilarQuery);
     procedure AddValues(const AItems: TArray<TAtlasSimilarItem>; AReference: Integer; AScope: TAtlasSimilarScope);
     procedure AddHandlers(const AItems: TArray<TAtlasSimilarItem>; AReference: Integer;
       AScope: TAtlasSimilarScope);
+    procedure AddSimilar(const AItems: TArray<TAtlasSimilarItem>; AReference: Integer;
+      const ASettings: TAtlasPluginSettings);
+    procedure AddNote;
+    procedure Say(const AText: string);
     procedure ItemClick(Sender: TObject);
     procedure Apply(const ANames: TArray<string>; AExtend: Boolean);
   public
@@ -40,6 +49,8 @@ type
     destructor Destroy; override;
     /// <summary>Menü für das Formular im aktiven Designer an APoint (Bildschirm).</summary>
     procedure Popup(const APoint: TPoint);
+    /// <summary>Tasten der Auswahlsätze an- oder abmelden (Designer gezeigt).</summary>
+    procedure UpdateKeys(AWanted: Boolean);
     /// <summary>Komponenten des Formulars mit Klassenkette, Elternelement, Werten, Handlern und Auswahl.</summary>
     class function ItemsOf(ARoot: TComponent; const AText: string;
       const ASelected: TArray<TComponent>): TArray<TAtlasSimilarItem>; static;
@@ -53,7 +64,6 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.FormModel,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
@@ -133,10 +143,12 @@ begin
   inherited Create;
   FOnMessage := AOnMessage;
   FMenu := TPopupMenu.Create(nil);
+  FSets := TAtlasIdeSelectionSets.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerSelect.Destroy;
 begin
+  FSets.Free;
   FMenu.Free;
   inherited Destroy;
 end;
@@ -246,62 +258,96 @@ begin
   end;
 end;
 
+/// <summary>Einträge „Gleiche auswählen“ zum Bezug AReference.</summary>
+procedure TAtlasIdeDesignerSelect.AddSimilar(const AItems: TArray<TAtlasSimilarItem>; AReference: Integer;
+  const ASettings: TAtlasPluginSettings);
+var
+  mScope: TAtlasSimilarScope;
+begin
+  mScope := ScopeOf(ASettings);
+  Add(FMenu.Items, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectSameClass,
+    [AItems[AReference].Classes[0]]), AItems, TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameClass, AReference,
+    mScope));
+  if ASettings.DesignerSelectDescendants then
+  begin
+    Add(FMenu.Items, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectDescendants,
+      [TAtlasSimilar.CommonBase(AItems, AReference)]), AItems,
+      TAtlasSimilarQuery.Create(TAtlasSimilarKind.ClassAndDescendants, AReference, mScope));
+  end;
+  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectSameParent), AItems,
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameParent, AReference, mScope));
+  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectChildren), AItems,
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Children, AReference, mScope));
+  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectAllChildren), AItems,
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.AllChildren, AReference, mScope));
+  FMenu.Items.Add(NewLine);
+  AddValues(AItems, AReference, mScope);
+  AddHandlers(AItems, AReference, mScope);
+  FMenu.Items.Add(NewLine);
+  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectInvert), AItems,
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Invert, AReference, mScope));
+end;
+
+procedure TAtlasIdeDesignerSelect.AddNote;
+var
+  mNote: TMenuItem;
+begin
+  FMenu.Items.Add(NewLine);
+  mNote := TMenuItem.Create(FMenu);
+  mNote.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectExtendHint);
+  mNote.Enabled := False;
+  FMenu.Items.Add(mNote);
+end;
+
 procedure TAtlasIdeDesignerSelect.Popup(const APoint: TPoint);
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mItems: TArray<TAtlasSimilarItem>;
   mReference: Integer;
-  mScope: TAtlasSimilarScope;
   mSettings: TAtlasPluginSettings;
-  mNote: TMenuItem;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  if not mSettings.DesignerSelectSimilar or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  if not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit;
   end;
-  mItems := ItemsOf(mRoot, TAtlasDesignerAccess.FormText(mRoot, TAtlasDesignerAccess.DesignerOf(mEditor)),
-    TAtlasDesignerAccess.Selection(mEditor, mRoot));
-  mReference := TAtlasSimilar.Reference(mItems);
-  if mReference < 0 then
+  mReference := -1;
+  if mSettings.DesignerSelectSimilar then
   begin
-    if Assigned(FOnMessage) then
-    begin
-      FOnMessage(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNoSelection));
-    end;
+    mItems := ItemsOf(mRoot, TAtlasDesignerAccess.FormText(mRoot, TAtlasDesignerAccess.DesignerOf(mEditor)),
+      TAtlasDesignerAccess.Selection(mEditor, mRoot));
+    mReference := TAtlasSimilar.Reference(mItems);
+  end;
+  if (mReference < 0) and not mSettings.DesignerSelectionSets then
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNoSelection));
     Exit;
   end;
-  mScope := ScopeOf(mSettings);
   FMenu.Items.Clear;
   FHits := nil;
-  Add(FMenu.Items, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectSameClass,
-    [mItems[mReference].Classes[0]]), mItems, TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameClass, mReference,
-    mScope));
-  if mSettings.DesignerSelectDescendants then
+  if mReference >= 0 then
   begin
-    Add(FMenu.Items, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectDescendants,
-      [TAtlasSimilar.CommonBase(mItems, mReference)]), mItems,
-      TAtlasSimilarQuery.Create(TAtlasSimilarKind.ClassAndDescendants, mReference, mScope));
+    AddSimilar(mItems, mReference, mSettings);
+    FMenu.Items.Add(NewLine);
   end;
-  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectSameParent), mItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameParent, mReference, mScope));
-  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectChildren), mItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Children, mReference, mScope));
-  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectAllChildren), mItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.AllChildren, mReference, mScope));
-  FMenu.Items.Add(NewLine);
-  AddValues(mItems, mReference, mScope);
-  AddHandlers(mItems, mReference, mScope);
-  FMenu.Items.Add(NewLine);
-  Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectInvert), mItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Invert, mReference, mScope));
-  FMenu.Items.Add(NewLine);
-  mNote := TMenuItem.Create(FMenu);
-  mNote.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectExtendHint);
-  mNote.Enabled := False;
-  FMenu.Items.Add(mNote);
+  // Auswahlsätze (#739) gehen auch ohne Auswahl: wiederherstellen.
+  FSets.FillMenu(FMenu.Items);
+  AddNote;
   FMenu.Popup(APoint.X, APoint.Y);
+end;
+
+procedure TAtlasIdeDesignerSelect.UpdateKeys(AWanted: Boolean);
+begin
+  FSets.UpdateKeys(AWanted);
+end;
+
+procedure TAtlasIdeDesignerSelect.Say(const AText: string);
+begin
+  if Assigned(FOnMessage) then
+  begin
+    FOnMessage(AText);
+  end;
 end;
 
 procedure TAtlasIdeDesignerSelect.ItemClick(Sender: TObject);
@@ -359,10 +405,7 @@ begin
     Exit;
   end;
   TAtlasDesignerAccess.Select(mDesigner, mRoot, mWanted);
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectDone, [Length(mWanted)]));
-  end;
+  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectDone, [Length(mWanted)]));
 end;
 
 end.

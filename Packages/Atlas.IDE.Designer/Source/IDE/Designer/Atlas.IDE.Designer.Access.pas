@@ -21,6 +21,8 @@ type
     class function DesignerOf(const AEditor: IOTAFormEditor): IDesigner; static;
     /// <summary>Zeigt das aktive Editorfenster einen Formular-Designer?</summary>
     class function Shown: Boolean; static;
+    /// <summary>Hat der Formular-Designer den Fokus (ein Steuerelement im Entwurf oder das Formular selbst)?</summary>
+    class function Focused: Boolean; static;
     /// <summary>Formular im Designer des aktiven Editorfensters.</summary>
     class function Current(out AEditor: IOTAFormEditor; out ARoot: TComponent): Boolean; static;
     /// <summary>Ausgewählte Komponenten des Formulars ARoot ohne das Formular selbst.</summary>
@@ -43,6 +45,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.TypInfo,
   System.Variants,
@@ -63,6 +66,22 @@ end;
 class function TAtlasDesignerAccess.Shown: Boolean;
 begin
   Result := TAtlasIdeDesignerView.CurrentFormEditor <> nil;
+end;
+
+class function TAtlasDesignerAccess.Focused: Boolean;
+var
+  mControl: TControl;
+begin
+  mControl := FindControl(GetFocus);
+  while mControl <> nil do
+  begin
+    if csDesigning in mControl.ComponentState then
+    begin
+      Exit(True);
+    end;
+    mControl := mControl.Parent;
+  end;
+  Result := False;
 end;
 
 class function TAtlasDesignerAccess.Current(out AEditor: IOTAFormEditor; out ARoot: TComponent): Boolean;

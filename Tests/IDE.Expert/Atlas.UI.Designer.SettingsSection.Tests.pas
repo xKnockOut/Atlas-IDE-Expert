@@ -26,6 +26,8 @@ type
     procedure DesignerBarRoundTrip;
     [Test]
     procedure SelectSimilarRoundTrip;
+    [Test]
+    procedure SelectionSetsRoundTrip;
   end;
 
 implementation
@@ -109,6 +111,36 @@ begin
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'DesignerSelectSimilar').Checked);
     Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSelectScope').Choice);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.SelectionSetsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectionSets').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectionSetsShortcuts').Checked);
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice, 'lokal');
+    CheckOf(mPage, 'DesignerSelectionSets').Checked := False;
+    CheckOf(mPage, 'DesignerSelectionSetsShortcuts').Checked := False;
+    ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice := 1;
+    EditOf(mPage, 'DesignerSelectionSetsSaveKey').Text := '';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerSelectionSets, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerSelectionSetsShortcuts);
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerSetsShared, mSaved.DesignerSelectionSetsStorage);
+    Assert.AreEqual(0, mSaved.DesignerSelectionSetsSaveKey, 'leer = keine Taste');
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerSelectionSets').Checked);
+    Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice);
   finally
     mPage.Free;
   end;

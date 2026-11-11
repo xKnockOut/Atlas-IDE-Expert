@@ -144,6 +144,8 @@ type
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
     cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
+    cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
+    cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -604,6 +606,14 @@ type
     property DesignerSelectDescendants: Boolean read FEditorView.DesignerSelectDescendants
       write FEditorView.DesignerSelectDescendants;
     property DesignerSelectScope: string read FEditorView.DesignerSelectScope write FEditorView.DesignerSelectScope;
+    property DesignerSelectionSets: Boolean read FEditorView.DesignerSelectionSets
+      write FEditorView.DesignerSelectionSets;
+    property DesignerSelectionSetsShortcuts: Boolean read FEditorView.DesignerSelectionSetsShortcuts
+      write FEditorView.DesignerSelectionSetsShortcuts;
+    property DesignerSelectionSetsStorage: string read FEditorView.DesignerSelectionSetsStorage
+      write FEditorView.DesignerSelectionSetsStorage;
+    property DesignerSelectionSetsSaveKey: Integer read FEditorView.DesignerSelectionSetsSaveKey
+      write FEditorView.DesignerSelectionSetsSaveKey;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

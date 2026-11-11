@@ -95,8 +95,10 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Access.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Select.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SearchItems.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>

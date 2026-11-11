@@ -67,6 +67,9 @@ const
   /// <summary>Werte von designer.selectSimilar.scope (#738).</summary>
   cDesignerScopeForm = 'form';
   cDesignerScopeParent = 'parent';
+  /// <summary>Werte von designer.selectionSets.storage (#739).</summary>
+  cDesignerSetsLocal = 'local';
+  cDesignerSetsShared = 'shared';
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -490,6 +493,14 @@ type
     /// <summary>Bereich: cDesignerScopeForm oder cDesignerScopeParent (#738, designer.selectSimilar.scope).
     /// </summary>
     DesignerSelectScope: string;
+    /// <summary>Auswahlsätze im Designer (#739, designer.selectionSets).</summary>
+    DesignerSelectionSets: Boolean;
+    /// <summary>Strg+Umschalt+1…9 für die ersten neun Sätze (#739, designer.selectionSets.shortcuts).</summary>
+    DesignerSelectionSetsShortcuts: Boolean;
+    /// <summary>Ablage: cDesignerSetsLocal oder cDesignerSetsShared (#739, designer.selectionSets.storage).</summary>
+    DesignerSelectionSetsStorage: string;
+    /// <summary>Taste „Auswahl speichern …“ als TShortCut, 0 = keine (#739, designer.selectionSets.saveKey).</summary>
+    DesignerSelectionSetsSaveKey: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -993,6 +1004,11 @@ begin
   Result.DesignerSelectSimilar := True;
   Result.DesignerSelectDescendants := True;
   Result.DesignerSelectScope := cDesignerScopeForm;
+  Result.DesignerSelectionSets := True;
+  Result.DesignerSelectionSetsShortcuts := True;
+  Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
+  // Strg+Umschalt+S.
+  Result.DesignerSelectionSetsSaveKey := 24659;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1029,6 +1045,8 @@ begin
   DesignerSearchKey := EnsureRange(DesignerSearchKey, 0, $FFFF);
   DesignerSearchStyle := Choice(DesignerSearchStyle, [cDesignerSearchWindow, cDesignerSearchPopup]);
   DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
+  DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
+  DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1048,6 +1066,10 @@ begin
   AIo.Flag('DesignerSelectSimilar', DesignerSelectSimilar);
   AIo.Flag('DesignerSelectDescendants', DesignerSelectDescendants);
   AIo.Text('DesignerSelectScope', DesignerSelectScope);
+  AIo.Flag('DesignerSelectionSets', DesignerSelectionSets);
+  AIo.Flag('DesignerSelectionSetsShortcuts', DesignerSelectionSetsShortcuts);
+  AIo.Text('DesignerSelectionSetsStorage', DesignerSelectionSetsStorage);
+  AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

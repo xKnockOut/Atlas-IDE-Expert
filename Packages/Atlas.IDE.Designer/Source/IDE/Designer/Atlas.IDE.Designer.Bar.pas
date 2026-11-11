@@ -24,7 +24,8 @@
 // - Ausrichten (experimentell, editor.designerBar.align): Menü am Pfeil,
 //   Klick auf das Symbol wiederholt den letzten Befehl (TAtlasDesignerAlign).
 // - Gleiche auswählen (#738, designer.selectSimilar): Menü mit Trefferzahlen
-//   (TAtlasIdeDesignerSelect); Pfeil und Symbol öffnen es.
+//   (TAtlasIdeDesignerSelect); Pfeil und Symbol öffnen es. Darin die
+//   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten.
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -151,23 +152,6 @@ type
 function State: TDesignerBarState;
 begin
   Result := TDesignerBarState(TAtlasIdeDesignerBar.FState);
-end;
-
-/// <summary>Hat der Formular-Designer den Fokus (ein Steuerelement im Entwurf oder das Formular selbst)?</summary>
-function DesignerFocused: Boolean;
-var
-  mControl: TControl;
-begin
-  mControl := FindControl(GetFocus);
-  while mControl <> nil do
-  begin
-    if csDesigning in mControl.ComponentState then
-    begin
-      Exit(True);
-    end;
-    mControl := mControl.Parent;
-  end;
-  Result := False;
 end;
 
 /// <summary>Zeile im Protokoll und in der Meldungsansicht.</summary>
@@ -452,7 +436,7 @@ var
   mKey: Integer;
 begin
   mKey := TAtlasIdeSettings.Current.DesignerSearchKey;
-  Result := (mKey <> 0) and (ShortCut(AKey, AShift) = TShortCut(mKey)) and DesignerFocused;
+  Result := (mKey <> 0) and (ShortCut(AKey, AShift) = TShortCut(mKey)) and TAtlasDesignerAccess.Focused;
 end;
 
 procedure TSearchKeyClient.HandleKey(AKey: Word; AShift: TShiftState);
@@ -701,7 +685,7 @@ var
   mButton: TAtlasDesignerButton;
 begin
   Result := nil;
-  if ASettings.DesignerSelectSimilar then
+  if ASettings.DesignerSelectSimilar or ASettings.DesignerSelectionSets then
   begin
     mButton := TAtlasDesignerButton.Create(cIdSelect, TAtlasToolbarIcon.SelectSimilar,
       TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectHint));
@@ -752,6 +736,7 @@ begin
   begin
     TAtlasKeyHook.Remove(FKeyClient);
   end;
+  FSelect.UpdateKeys(FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and TAtlasDesignerAccess.Shown);
 end;
 
 procedure TDesignerBarState.Tick(Sender: TObject);
