@@ -34,6 +34,12 @@ type
     procedure FitToTextRoundTrip;
     [Test]
     procedure ButtonBarRoundTrip;
+    [Test]
+    procedure DuplicateRowRoundTrip;
+    [Test]
+    procedure InsertSpaceRoundTrip;
+    [Test]
+    procedure FitContainerRoundTrip;
   end;
 
 implementation
@@ -220,6 +226,75 @@ begin
     Assert.AreEqual(TAtlasPluginSettings.cButtonBarRightTop, mSaved.DesignerButtonBarPosition);
     Assert.IsFalse(mSaved.DesignerButtonBarSetModalResult);
     Assert.AreEqual('ok=Weiter', mSaved.DesignerButtonBarRoles);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.DuplicateRowRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerDuplicateRow').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerDuplicateRowShareEvents').Checked);
+    Assert.AreEqual('8', EditOf(mPage, 'DesignerDuplicateRowDefaultGap').Text);
+    CheckOf(mPage, 'DesignerDuplicateRow').Checked := False;
+    CheckOf(mPage, 'DesignerDuplicateRowShareEvents').Checked := False;
+    EditOf(mPage, 'DesignerDuplicateRowDefaultGap').Text := '12';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerDuplicateRow, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerDuplicateRowShareEvents);
+    Assert.AreEqual(12, mSaved.DesignerDuplicateRowDefaultGap);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.InsertSpaceRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInsertSpace').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInsertSpaceGrowParent').Checked);
+    CheckOf(mPage, 'DesignerInsertSpace').Checked := False;
+    CheckOf(mPage, 'DesignerInsertSpaceGrowParent').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerInsertSpace, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerInsertSpaceGrowParent);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.FitContainerRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFitContainer').Checked, 'Vorgabe an');
+    Assert.AreEqual('8', EditOf(mPage, 'DesignerFitContainerPadding').Text);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerFitContainerAlignTopLeft').Checked);
+    CheckOf(mPage, 'DesignerFitContainer').Checked := False;
+    EditOf(mPage, 'DesignerFitContainerPadding').Text := '12';
+    CheckOf(mPage, 'DesignerFitContainerAlignTopLeft').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerFitContainer, 'abschaltbar');
+    Assert.AreEqual(12, mSaved.DesignerFitContainerPadding);
+    Assert.IsTrue(mSaved.DesignerFitContainerAlignTopLeft);
   finally
     mPage.Free;
   end;
