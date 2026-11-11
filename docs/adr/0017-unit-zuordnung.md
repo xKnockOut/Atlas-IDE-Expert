@@ -1106,8 +1106,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Designer.Components` | `Core/Designer/Atlas.Core.Designer.Components.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
+| `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Composition` | `IDE/Designer/Atlas.IDE.Designer.Composition.pas` | Anmeldung des Moduls `atlas.designer`, #1455 |
+| `Atlas.IDE.Designer.SearchItems` | `IDE/Designer/Atlas.IDE.Designer.SearchItems.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Select` | `IDE/Designer/Atlas.IDE.Designer.Select.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.SelectionSets` | `IDE/Designer/Atlas.IDE.Designer.SelectionSets.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |

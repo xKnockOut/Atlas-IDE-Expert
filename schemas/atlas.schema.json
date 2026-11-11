@@ -2954,6 +2954,14 @@
           "x-description-en": "Hover over a component class (#110): published properties and events including inherited ones in tables with type, default (default, implicit, nodefault, stored) and declaring class, filters for inherited and only with default, the default property of an array property and \"Copy list\" with Ctrl+C. Off: only declaration, documentation and inheritance.",
           "x-issue": "#110"
         },
+        "unitContents": {
+          "type": "string",
+          "enum": ["off", "types", "usedFirst", "all"],
+          "default": "usedFirst",
+          "description": "Hover über einem Unit-Namen, etwa einem uses-Eintrag (#1921): \"types\" listet die Typen aus dem interface-Teil der Unit nach Art gruppiert (Klassen, Interfaces, Records, Aufzählungen, Sonstige) als anklickbare Namen, \"usedFirst\" stellt die Typen voran, die die aktuelle Datei benutzt, \"all\" nennt zusätzlich Routinen, Konstanten und Variablen, \"off\" zeigt nur Kopfzeile, Dateipfad und DocWiki-Link.",
+          "x-description-en": "Hover over a unit name, for example a uses entry (#1921): \"types\" lists the types from the interface section of the unit grouped by kind (classes, interfaces, records, enumerations, other) as clickable names, \"usedFirst\" puts the types the current file uses first, \"all\" also lists routines, constants and variables, \"off\" shows only the header, file path and DocWiki link.",
+          "x-issue": "#1921"
+        },
         "rationale": {
           "type": "boolean",
           "default": true,

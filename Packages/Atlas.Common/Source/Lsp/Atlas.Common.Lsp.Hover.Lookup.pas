@@ -10,7 +10,8 @@
 // (TPublishedMembers). Auf einem Attribut (#119) zusätzlich die Konstruktoren
 // der Attributklasse, bei Argumenten die mit passender Parameterzahl.
 // Zahlenliterale zeigen ihre Schreibweisen, Bezeichner von System ohne
-// Quelltext die eingebaute Beschreibung (#880), Unit-Namen den Dateinamen.
+// Quelltext die eingebaute Beschreibung (#880), Unit-Namen den Dateinamen
+// und den Inhalt der Unit (#1921, TLspHoverUnitContents).
 
 interface
 
@@ -53,6 +54,7 @@ uses
   Atlas.Common.Lsp.HoverValues,
   Atlas.Common.Lsp.HoverTypes,
   Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Lsp.Hover.UnitContents,
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Diagnostics.RequestScope,
@@ -434,6 +436,8 @@ begin
     FInfo.Declaration := 'unit ' + mUnit.UnitName + ';';
     FInfo.DocWikiUrl := TDocWiki.Url(FDelphiVersion, mUnit.UnitName, '', '');
     FInfo.Rationale := TRationale.DecodeAll(mUnit.Rationale);
+    FInfo.UnitContents := TLspHoverUnitContents.Select(TLspHoverUnitContents.Collect(mUnit, FTree.Tokens),
+      THoverUnitMode.All);
   end;
   FInfo.Documentation := '`' + FTarget.FileName + '`';
 end;
