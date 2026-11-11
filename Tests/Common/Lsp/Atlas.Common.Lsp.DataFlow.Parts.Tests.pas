@@ -184,7 +184,7 @@ begin
   Assert.AreEqual('Type', TDataFlowSyntax.CleanName('&Type'));
   Assert.AreEqual('A + B', TDataFlowSyntax.SingleLine('  A +'#13#10#9'  B  '));
   mLong := StringOfChar('x', 200);
-  Assert.AreEqual(120, Length(TDataFlowSyntax.SingleLine(mLong)));
+  Assert.AreEqual(120, Integer(Length(TDataFlowSyntax.SingleLine(mLong))));
   Assert.IsTrue(TDataFlowSyntax.IsFormFile('C:\P\Haupt.DFM'));
   Assert.IsTrue(TDataFlowSyntax.IsFormFile('Haupt.fmx'));
   Assert.IsFalse(TDataFlowSyntax.IsFormFile('Haupt.pas'));

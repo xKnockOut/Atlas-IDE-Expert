@@ -68,7 +68,7 @@ var
   mObjects: TArray<TAtlasFormObject>;
 begin
   mObjects := TAtlasFormModel.Parse(cForm);
-  Assert.AreEqual(5, Length(mObjects));
+  Assert.AreEqual(5, Integer(Length(mObjects)));
   Assert.AreEqual('Form1', mObjects[0].Name);
   Assert.AreEqual('TForm1', mObjects[0].TypeName);
   Assert.AreEqual(0, mObjects[0].Depth);
@@ -88,9 +88,9 @@ var
   mValue: string;
 begin
   mObjects := TAtlasFormModel.Parse(cForm);
-  Assert.AreEqual(2, Length(mObjects[0].Values));
+  Assert.AreEqual(2, Integer(Length(mObjects[0].Values)));
   Assert.AreEqual('Font.Name = ''Tahoma''', mObjects[0].Values[1].Text);
-  Assert.AreEqual(1, Length(mObjects[0].Events));
+  Assert.AreEqual(1, Integer(Length(mObjects[0].Events)));
   Assert.AreEqual('OnCreate', mObjects[0].Events[0].Path);
   Assert.AreEqual('FormCreate', mObjects[0].Events[0].Value);
   Assert.IsTrue(mObjects[1].ValueOf('left', mValue));
@@ -105,7 +105,7 @@ var
   mObjects: TArray<TAtlasFormObject>;
 begin
   mObjects := TAtlasFormModel.Parse(cForm);
-  Assert.AreEqual(1, Length(mObjects[3].Values), 'nur TabOrder');
+  Assert.AreEqual(1, Integer(Length(mObjects[3].Values)), 'nur TabOrder');
   Assert.AreEqual('TabOrder', mObjects[3].Values[0].Path);
 end;
 
@@ -115,7 +115,7 @@ var
   mText: string;
 begin
   mObjects := TAtlasFormModel.Parse(cForm);
-  Assert.AreEqual(1, Length(mObjects[4].Values));
+  Assert.AreEqual(1, Integer(Length(mObjects[4].Values)));
   Assert.AreEqual('Hint', mObjects[4].Values[0].Path);
   Assert.IsTrue(TAtlasFormModel.StringValue(mObjects[4].Values[0].Value, mText));
   Assert.AreEqual('erste Zeilezweite', mText);
