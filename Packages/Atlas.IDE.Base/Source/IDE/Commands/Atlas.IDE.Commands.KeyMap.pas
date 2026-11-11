@@ -164,7 +164,9 @@ const
     // Neue Zeile am Ende des Abschnitts (#1768): Editorbefehl.
     3,
     // Auswahl speichern (#739): keine Bindung, wirkt nur im Designer (Modul Designer).
-    0);
+    0,
+    // Im Designer zeigen (#511): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

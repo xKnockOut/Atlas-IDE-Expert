@@ -749,7 +749,9 @@ type
     // Auswahlsätze im Designer: Taste in der Übersicht (#739).
     DesignerSelectionSetsSaveCommand,
     // Zurück-/Vor-Taste der Maus (#1889).
-    SettingsMouseNavButtons);
+    SettingsMouseNavButtons,
+    // Im Designer zeigen (#511): Taste in der Übersicht.
+    DesignerShowComponentCommand);
 
   TAtlasStrings = class
   private
@@ -2480,7 +2482,8 @@ const
      'Kennzahlen noch nicht verfügbar',
      'Zur uses-Klausel (%s)',
      'Designer: Auswahl speichern …',
-     'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf'),
+     'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf',
+     'Im Designer zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4127,7 +4130,8 @@ const
      'Metrics not available yet',
      'Go to uses clause (%s)',
      'Designer: Save selection …',
-     'Mouse back/forward buttons step through the navigation history'));
+     'Mouse back/forward buttons step through the navigation history',
+     'Show in designer'));
 
 { TAtlasStrings }
 

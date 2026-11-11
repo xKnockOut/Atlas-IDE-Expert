@@ -132,6 +132,7 @@
   "Packages/Atlas.IDE.Debugger/Source/IDE/Debug/Atlas.IDE.Debug.Exceptions.pas": 1,
   "Packages/Atlas.IDE.Debugger/Source/IDE/Debug/Atlas.IDE.Debug.Session.pas": 2,
   "Packages/Atlas.IDE.Debugger/Source/IDE/Debug/Atlas.IDE.Debug.Trace.pas": 1,
+  "Packages/Atlas.IDE.Designer/Source/Core/Designer/Atlas.Core.Designer.PropertySearch.pas": 4,
   "Packages/Atlas.IDE.Designer/Source/IDE/Designer/Atlas.IDE.Designer.Bar.pas": 1,
   "Packages/Atlas.IDE.Designer/Source/IDE/Designer/Atlas.IDE.Designer.Composition.pas": 2,
   "Packages/Atlas.IDE.Rules/Source/IDE/Rules/Atlas.IDE.Rules.Composition.pas": 3,
