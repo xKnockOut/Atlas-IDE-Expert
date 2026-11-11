@@ -42,6 +42,8 @@ type
       const AEdits: TArray<TLspTextEdit>); static;
     /// <summary>Antwort von atlas.server.testUnit: Gegenstück öffnen bzw. anlegen und öffnen.</summary>
     class procedure TestUnitAnswered(const AInfo: TAtlasTestUnitInfo; const AEdit: TLspWorkspaceEdit); static;
+    /// <summary>atlas.server.testUnit für AFileName an der Zeile ALine (0-basiert) im Hintergrund fragen.</summary>
+    class procedure RequestTestUnit(const AFileName: string; ALine: Integer); static;
     /// <summary>///-Gerüst: Platzhalter-Modus bzw. Cursor in die Zusammenfassung.</summary>
     class procedure PlaceDocComment(const AView: IOTAEditView; const ABefore: string;
       const AEdit: TLspTextEdit); static;
@@ -52,6 +54,9 @@ type
     class function QualifiedNameHere(out AName: string): Boolean; static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
     class procedure SwitchTestUnit; static;
+    /// <summary>Testunit zu AFileName anlegen und ins Testprojekt eintragen bzw. öffnen, wenn es sie schon gibt;
+    /// Gerüst zur ersten Klasse der Unit (Assistent der Objektgalerie, #1821).</summary>
+    class procedure TestUnitFor(const AFileName: string); static;
     /// <summary>Obere Datei formatieren (#43): mit Auswahl nur deren Zeilen. Ausgeschaltet oder ohne Änderung eine
     /// Zeile in der Meldungsansicht.</summary>
     class procedure FormatCode; static;
@@ -263,20 +268,33 @@ end;
 class procedure TAtlasEditorServerCommands.SwitchTestUnit;
 var
   mView: IOTAEditView;
-  mFileName, mArguments: string;
+  mFileName: string;
   mLines: TArray<string>;
   mSelection: TLspRange;
+begin
+  if Current(mView, mFileName, mLines, mSelection) then
+  begin
+    RequestTestUnit(mFileName, mSelection.StartPos.Line);
+  end;
+end;
+
+class procedure TAtlasEditorServerCommands.TestUnitFor(const AFileName: string);
+begin
+  // Zeile 0: keine Klasse an der Zeile, der Server nimmt die erste Klasse der Unit.
+  RequestTestUnit(AFileName, 0);
+end;
+
+class procedure TAtlasEditorServerCommands.RequestTestUnit(const AFileName: string; ALine: Integer);
+var
+  mArguments: string;
   mRunning: TLspSession;
   mInfo: TAtlasTestUnitInfo;
   mEdit: TLspWorkspaceEdit;
 begin
-  if not Current(mView, mFileName, mLines, mSelection) then
-  begin
-    Exit;
-  end;
   mRunning := Session;
   if mRunning = nil then
   begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
   if FTestUnitRequest = nil then
@@ -288,7 +306,7 @@ begin
   begin
     Exit;
   end;
-  mArguments := TestUnitArguments(mFileName, mSelection.StartPos.Line);
+  mArguments := TestUnitArguments(AFileName, ALine);
   mInfo := Default(TAtlasTestUnitInfo);
   mEdit := Default(TLspWorkspaceEdit);
   FTestUnitRequest.Start(

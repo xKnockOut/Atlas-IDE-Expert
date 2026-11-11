@@ -3786,6 +3786,18 @@
       "x-captionEn": "Atlas submenu in the Project Manager context menu",
       "x-issue": "#1817"
     },
+    "GalleryWizards": {
+      "type": "boolean",
+      "default": true,
+      "description": "Kategorie Atlas in Datei › Neu › Weitere (Objektgalerie) mit den Assistenten der geladenen Module: DUnitX-Testunit zu einer Unit (Modul Tests), Unit nach Architekturrolle (Modul Analyse), eigene Prüfregel (Modul Prüfregeln). Aus = keine Atlas-Kategorie.",
+      "x-key": "generate.galleryWizards",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Atlas-Assistenten unter Datei › Neu › Weitere",
+      "x-captionEn": "Atlas wizards in File › New › Other",
+      "x-issue": "#1821"
+    },
     "Snippets": {
       "type": "boolean",
       "default": true,

@@ -31,7 +31,9 @@ type
     ServerPageBaselineDeleteConfirm, ServerPageBaselineNone, ServerPageBaselineUpdate, ServerPageSuppressionRow,
     ServerPageSuppressionsNone, ServerPageSuppressionsRefresh, ServerPageSuppressionsTitle, RulesProjectButton,
     RulesGlobalButton,
-    ServerPageBaselineTitle);
+    ServerPageBaselineTitle,
+    // Assistent „Eigene Prüfregel“ der Objektgalerie (#1821).
+    RulesGalleryCustomRule, RulesGalleryCustomRuleHint, RulesGalleryNoProject, RulesGalleryAdded, RulesGalleryFailed);
 
   TAtlasRulesStrings = class
   public
@@ -150,7 +152,13 @@ const
      'Unterdrückungen (lsp-ignore) je Regel',
      'Projekt-Prüfregeln bearbeiten …',
      'Globale Prüfregeln bearbeiten …',
-     'Baseline (atlas-baseline.json des aktiven Projekts)'),
+     'Baseline (atlas-baseline.json des aktiven Projekts)',
+     'Eigene Prüfregel …',
+     'Legt in der Projektdatei atlas.json eine neue Schichtregel an (Prüfregel forbidden-uses: welche Units ' +
+     'welche anderen nicht verwenden dürfen) und öffnet den Regel-Editor dazu.',
+     'Eigene Prüfregel: Kein Projekt geöffnet.',
+     'Eigene Prüfregel: neue Schicht „%s“ in forbidden-uses von %s; verbotene Units unter „deny“ eintragen.',
+     'Eigene Prüfregel: %s nicht geschrieben.'),
     ('Update project baseline',
      'Update baseline: no active project.',
      'Update baseline: the Atlas server wrote no baseline (project not loaded yet, server not ready or ' +
@@ -253,7 +261,13 @@ const
      'Suppressions (lsp-ignore) per rule',
      'Edit project rules …',
      'Edit global rules …',
-     'Baseline (atlas-baseline.json of the active project)'));
+     'Baseline (atlas-baseline.json of the active project)',
+     'Custom rule…',
+     'Creates a new layer rule in the project file atlas.json (rule forbidden-uses: which units must not use ' +
+     'which others) and opens the rule editor for it.',
+     'Custom rule: No project open.',
+     'Custom rule: new layer “%s” in forbidden-uses of %s; enter the forbidden units under “deny”.',
+     'Custom rule: %s not written.'));
 
 { TAtlasRulesStrings }
 
