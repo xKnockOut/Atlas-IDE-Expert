@@ -309,6 +309,8 @@ var
   mIndex, mChild: Integer;
   mAll: Boolean;
 begin
+  // Result kann das Feld des Aufrufers enthalten: erst leeren (Überschriften bleiben False).
+  Result := nil;
   SetLength(Result, Length(ARows));
   for mIndex := 0 to High(ARows) do
   begin
