@@ -27,6 +27,7 @@ Zurück zum [README](../../../README_DE.md)
 - Rechtsklick, Menütaste oder Umschalt+F10 auf ein Glied öffnet ein Kontextmenü: „Namen kopieren“ (`TKunde.Laden`), „Mit Unit kopieren“ (`uKunden.TKunde.Laden`), bei Routinen „Mit Signatur kopieren“ (Kopf mit Parametern), „Pfad der Leiste kopieren“, „Verwendungen suchen“ (Ergebnisfenster), „Umbenennen …“ (wie „Symbol umbenennen“) und für Komponentenfelder und Ereignisbehandler „Komponente im Designer zeigen“; am Unit-Glied „Unit-Namen kopieren“ und „Dateipfad kopieren“. Abschaltbar mit `editor.breadcrumbsContextMenu`.
 - Hat eine Routine Überladungen im selben Typ bzw. in derselben Unit, trägt ihr Glied einen Zähler in Quelltextreihenfolge, etwa „Laden (2/3)“. Klick auf den Zähler (oder Umschalt+↓ mit Fokus) öffnet „Überladungen von Laden“ mit allen Überladungen samt Parametern und Zeile; Enter springt zur Implementierung, Umschalt+Enter zur Deklaration. Im Geschwistermenü stehen Überladungen ebenfalls mit Parametern, lange Listen gekürzt mit „…“; der Hinweis über der Zeile zeigt die volle Liste. Abschaltbar mit `editor.breadcrumbsOverloads`.
 - Erfüllt eine Methode Interface-Methoden, trägt ihr Glied ganz rechts die Marke `[IKunde]`, bei mehreren `[IKunde +1]`. Der Hinweis nennt je Interface-Methode Unit und Zeile („Erfüllt IKunde.Speichern (KundenApi.pas, Z. 31)“); Klick auf die Marke (oder Alt+↓ mit Fokus) öffnet „Erfüllt“, Enter springt zur Deklaration im Interface, auch in anderen Units. Zuordnungen (`procedure IKunde.Speichern = Sichern;`) und vererbte Interfaces zählen mit, Interfaces einer Vorfahrklasse nur bei `override`. Die Angaben kommen mit der Gliederung nach einer Tipppause, nie bei Caret-Bewegung. Abschaltbar mit `editor.breadcrumbsInterfaces`.
+- Liegt die Maus die Tooltip-Verzögerung lang auf einem Methoden- oder Typglied, zeigt eine Karte Kopfzeile und Kennzahlen: bei Methoden Zeilen, zyklomatische Komplexität, Verschachtelungstiefe und Parameter, bei Typen Zeilen, Mitglieder und Vererbungstiefe. Werte über der Grenze aus `atlas.json` stehen gelb mit der Grenze („86 (Grenze 60)“); Strg+I mit Fokus zeigt dieselbe Karte. Fehlen die Metriken noch, steht nur die Kopfzeile und „Kennzahlen noch nicht verfügbar“ (`editor.breadcrumbsMetrics`).
 - dahinter der Unterblock am Cursor (`const`, `type`, `class var`); sein Menü springt zu den Unterblöcken des Abschnitts, ein ausdrückliches `var` beendet ihn (`editor.breadcrumbsMemberBlocks`)
 - im Rumpf einer Methode die Sichtbarkeitsmarke der Deklaration vor dem Methodenglied (`−` private, `#` protected, `+` public, `◆` published); der Hinweis nennt die genaue Sichtbarkeit und die Zeile der Deklaration, etwa „strict private · deklariert in Zeile 42“ (`editor.breadcrumbsVisibilityMark`)
 - auf Unit-Ebene Teil und Deklarationsblock am Cursor (`type`, `const`, `var`, `resourcestring`, `threadvar`, `label`, `exports`), etwa `uKunden › interface › resourcestring › sKundeFehlt`; das Menü des Blocks listet alle Blöcke der Unit mit Teil und Zeile, lokale Blöcke in Routinen zählen nicht (`editor.breadcrumbsDeclarationBlocks`)
@@ -38,6 +39,7 @@ Zurück zum [README](../../../README_DE.md)
 ### Editorleiste
 
 - mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen, Navigationsverlauf und beliebige Palettenbefehle
+- „Zur uses-Klausel“ wechselt aus einer uses-Klausel zur anderen (interface ↔ implementation); fehlt sie, springt der Knopf zum Schlüsselwort `implementation` bzw. `interface`, ein weiterer Klick führt zurück. Der Tooltip nennt das Ziel, der Rücksprung führt zur Zeile vor dem ersten Klick
 - Überlaufmenü, frei belegbar, auch rechts in der Brotkrumenzeile
 
 ### Designer-Leiste
@@ -48,6 +50,7 @@ Zurück zum [README](../../../README_DE.md)
 - Nichtvisuelle über Strg+H der IDE ein- und ausblenden
 - Elternelement auswählen
 - Tab-Reihenfolge als Marken auf den Steuerelementen
+- Gleiche auswählen: gleiche Klasse (auch mit Nachfahren), gleiches Elternelement, Kinder, gleicher Eigenschaftswert oder Handler, Auswahl umkehren; mit Trefferzahl, Umschalt ergänzt die Auswahl
 - experimentell: Tab-Reihenfolge per Klick neu vergeben und Ausrichten
 
 ### Atlas-Statusleiste

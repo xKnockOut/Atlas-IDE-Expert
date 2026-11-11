@@ -497,9 +497,11 @@ begin
     AData.Documentation := AAtlas.GetValue('documentation').Value;
   end;
   AData.Doc := TAtlasDoc.FromJson(AAtlas.GetValue('documentation'));
-  // Nur Begründungen (#1123) strukturiert: die Doku als Klartext davor, sonst fiele sie weg.
+  // Nur Begründungen (#1123) bzw. der Inhalt einer Unit (#1921) strukturiert: die Doku als Klartext davor, sonst
+  // fiele sie weg (beim Unit-Namen der Dateipfad).
   if (AData.Documentation <> '') and not AData.Doc.IsEmpty and
-    (Length(AData.Doc.Sections) = Length(AData.Doc.SectionsOf(TAtlasDocSectionKind.Rationale))) then
+    (Length(AData.Doc.Sections) = Length(AData.Doc.SectionsOf(TAtlasDocSectionKind.Rationale)) +
+    Length(AData.Doc.SectionsOf(TAtlasDocSectionKind.UnitContents))) then
   begin
     AData.Doc.Sections := TAtlasDoc.FromText(AData.Documentation).Sections + AData.Doc.Sections;
   end;

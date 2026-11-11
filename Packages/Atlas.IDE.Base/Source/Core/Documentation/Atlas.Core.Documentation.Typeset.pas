@@ -4,7 +4,11 @@
 // TAtlasDocLayout (Atlas.Core.Documentation.Layout, dort Typen und Abfragen). TLayoutBuilder setzt Läufe mit
 // Umbruch, Codeblöcken, Listen und Spalten; TDocSections ordnet die Abschnitte in fester Reihenfolge (PARAMETER,
 // TYPPARAMETER, RÜCKGABE, WERT, AUSNAHMEN, HINWEISE, BEISPIEL, SIEHE AUCH, BEGRÜNDUNG) und setzt den Schalter
-// „Mehr/Weniger anzeigen“.
+// „Mehr/Weniger anzeigen“. Der Inhalt einer Unit (#1921) steht zuletzt und immer offen: je Überschrift des
+// Servers die Gruppen als Zeilen mit Gruppenname und Namen.
+//
+// Mit offener Signatur (#1919, hover.signatureParams) stehen PARAMETER und RÜCKGABE aus der Deklaration auch
+// zugeklappt und ohne XMLDoc unter der Beschreibung, wie bei Help Insight; der Schalter verbirgt dann nur den Rest.
 
 interface
 
@@ -22,17 +26,26 @@ type
     Doc: TAtlasDoc;
     Signature: TAtlasDocSignature;
     Expanded: Boolean;
+    /// <summary>Parameter und Rückgabe der Signatur immer offen, auch ohne XMLDoc (#1919).</summary>
+    OpenSignature: Boolean;
     class function Create(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature;
       AExpanded: Boolean): TAtlasDocContent; static;
+    /// <summary>Offene Signatur mit Parametern oder Rückgabe: Diese Abschnitte stehen auch zugeklappt da.</summary>
+    function SignatureShown: Boolean;
   end;
 
   TAtlasDocTypeset = class
   public
     /// <summary>Weitere Abschnitte außer der Beschreibung: Nur dann gibt es den Schalter.</summary>
-    class function IsCollapsible(const ADoc: TAtlasDoc): Boolean; static;
+    class function IsCollapsible(const ADoc: TAtlasDoc): Boolean; overload; static;
+    /// <summary>Wie oben; bei offener Signatur zählen Parameter und Rückgabe nicht als verborgen.</summary>
+    class function IsCollapsible(const AContent: TAtlasDocContent): Boolean; overload; static;
     /// <summary>Verborgenes im zugeklappten Zustand: Text und Farbe je Teil.</summary>
     class function HiddenParts(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature;
-      const ALabels: TAtlasDocLabels; out AColors: TArray<TAtlasDocColor>): TArray<string>; static;
+      const ALabels: TAtlasDocLabels; out AColors: TArray<TAtlasDocColor>): TArray<string>; overload; static;
+    /// <summary>Wie oben; bei offener Signatur ohne Parameter und Rückgabe, die schon dastehen.</summary>
+    class function HiddenParts(const AContent: TAtlasDocContent; const ALabels: TAtlasDocLabels;
+      out AColors: TArray<TAtlasDocColor>): TArray<string>; overload; static;
     /// <summary>Aufgeklappt, ohne Signatur.</summary>
     class function Build(const ADoc: TAtlasDoc; AWidth: Integer; const AMetrics: TAtlasDocMetrics;
       const AMeasure: TAtlasDocMeasure; const ALabels: TAtlasDocLabels): TAtlasDocLayout; overload; static;
@@ -145,6 +158,7 @@ type
     FNameWidth: Integer;
     FTypeWidth: Integer;
     FThreeColumns: Boolean;
+    FOpenSignature: Boolean;
     function Width(const AText: string; const AFace: TAtlasDocFace; APercent: Integer): Integer;
     /// <summary>Breite der Namensspalte über die ersten ACount Abschnitte, mindestens 1.</summary>
     function NameColumn(const ASections: TArray<TAtlasDocSection>; ACount: Integer; const AFace: TAtlasDocFace;
@@ -167,7 +181,11 @@ type
     procedure Summary;
     /// <summary>Alle Abschnitte außer Beschreibung und Begründung (nur aufgeklappt).</summary>
     procedure Details(AGap: Integer);
+    /// <summary>Offene Signatur zugeklappt (#1919): PARAMETER und RÜCKGABE.</summary>
+    procedure SignatureSections;
     procedure Rationale(AExpanded: Boolean);
+    /// <summary>Inhalt der Unit (#1921), auch zugeklappt.</summary>
+    procedure UnitContents;
     procedure Toggle(AExpanded: Boolean; AGap: Integer);
   end;
 
@@ -920,7 +938,11 @@ begin
   NewLine;
 end;
 
-class function TAtlasDocTypeset.IsCollapsible(const ADoc: TAtlasDoc): Boolean;
+type
+  TSectionKinds = set of TAtlasDocSectionKind;
+
+/// <summary>Verbirgt der Schalter etwas? Abschnitte der Arten AShown stehen auch zugeklappt da.</summary>
+function HasHidden(const ADoc: TAtlasDoc; const AShown: TSectionKinds): Boolean;
 var
   mSection: TAtlasDocSection;
   mRationale: Integer;
@@ -933,12 +955,31 @@ begin
     begin
       Inc(mRationale);
     end
-    else if mSection.Kind <> TAtlasDocSectionKind.Summary then
+    else if not (mSection.Kind in AShown) then
     begin
       Exit(True);
     end;
   end;
   Result := mRationale > TAtlasDocLayout.cMaxRationale;
+end;
+
+class function TAtlasDocTypeset.IsCollapsible(const ADoc: TAtlasDoc): Boolean;
+begin
+  // Der Inhalt einer Unit (#1921) steht immer da.
+  Result := HasHidden(ADoc, [TAtlasDocSectionKind.Summary, TAtlasDocSectionKind.UnitContents]);
+end;
+
+class function TAtlasDocTypeset.IsCollapsible(const AContent: TAtlasDocContent): Boolean;
+begin
+  if AContent.SignatureShown then
+  begin
+    Result := HasHidden(AContent.Doc, [TAtlasDocSectionKind.Summary, TAtlasDocSectionKind.Param,
+      TAtlasDocSectionKind.Returns, TAtlasDocSectionKind.UnitContents]);
+  end
+  else
+  begin
+    Result := IsCollapsible(AContent.Doc);
+  end;
 end;
 
 function SectionsOf(const ADoc: TAtlasDoc; AKind: TAtlasDocSectionKind): TArray<TAtlasDocSection>;
@@ -997,8 +1038,9 @@ begin
   Result := ADoc.Has(TAtlasDocSectionKind.Value) or ((ASignature.ResultType <> '') and ASignature.IsProperty);
 end;
 
-class function TAtlasDocTypeset.HiddenParts(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature;
-  const ALabels: TAtlasDocLabels; out AColors: TArray<TAtlasDocColor>): TArray<string>;
+/// <summary>Verborgenes im zugeklappten Zustand; AOpen: Parameter und Rückgabe stehen schon da (#1919).</summary>
+function CollectHiddenParts(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature;
+  const ALabels: TAtlasDocLabels; AOpen: Boolean; out AColors: TArray<TAtlasDocColor>): TArray<string>;
 var
   mCount: Integer;
   mParts: TArray<string>;
@@ -1025,7 +1067,11 @@ var
 begin
   mParts := nil;
   mColors := nil;
-  mCount := ParamCount(ADoc, ASignature);
+  mCount := 0;
+  if not AOpen then
+  begin
+    mCount := ParamCount(ADoc, ASignature);
+  end;
   if mCount > 0 then
   begin
     Add(Counted(mCount, ALabels.CountParam, ALabels.CountParams), TAtlasDocColor.Muted);
@@ -1035,7 +1081,7 @@ begin
   begin
     Add(Counted(mCount, ALabels.CountTypeParam, ALabels.CountTypeParams), TAtlasDocColor.Muted);
   end;
-  if HasReturns(ADoc, ASignature) then
+  if not AOpen and HasReturns(ADoc, ASignature) then
   begin
     Add(ALabels.ItemReturns, TAtlasDocColor.Muted);
   end;
@@ -1069,6 +1115,18 @@ begin
   Result := mParts;
 end;
 
+class function TAtlasDocTypeset.HiddenParts(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature;
+  const ALabels: TAtlasDocLabels; out AColors: TArray<TAtlasDocColor>): TArray<string>;
+begin
+  Result := CollectHiddenParts(ADoc, ASignature, ALabels, False, AColors);
+end;
+
+class function TAtlasDocTypeset.HiddenParts(const AContent: TAtlasDocContent; const ALabels: TAtlasDocLabels;
+  out AColors: TArray<TAtlasDocColor>): TArray<string>;
+begin
+  Result := CollectHiddenParts(AContent.Doc, AContent.Signature, ALabels, AContent.SignatureShown, AColors);
+end;
+
 function SectionIndex(const ASections: TArray<TAtlasDocSection>; const AName: string): Integer;
 var
   mIndex: Integer;
@@ -1092,6 +1150,7 @@ begin
   FBuilder := ABuilder;
   FDoc := AContent.Doc;
   FSignature := AContent.Signature;
+  FOpenSignature := AContent.SignatureShown;
   FLabels := ALabels;
   FWidth := AWidth;
   FMeasure := AMeasure;
@@ -1189,6 +1248,11 @@ var
 begin
   mUndocumented := [TAtlasDocRun.Create(TAtlasDocRunKind.Text, FLabels.Undocumented)];
   mUndocumented[0].Italic := True;
+  // Offene Signatur ohne einen dokumentierten Parameter: Textspalte leer statt lauter „nicht dokumentiert“.
+  if FOpenSignature and (Length(ASections) = 0) then
+  begin
+    mUndocumented := nil;
+  end;
   for mParam in FSignature.Params do
   begin
     mFound := SectionIndex(ASections, mParam.Name);
@@ -1362,6 +1426,23 @@ begin
   SeeAlso(AGap);
 end;
 
+procedure TDocSections.SignatureSections;
+var
+  mReturnType: string;
+begin
+  Params;
+  if HasReturns(FDoc, FSignature) then
+  begin
+    mReturnType := '';
+    if not FSignature.IsProperty then
+    begin
+      mReturnType := FSignature.ResultType;
+    end;
+    FBuilder.Heading(FLabels.Returns);
+    TypeAndText(mReturnType, TAtlasDocSectionKind.Returns);
+  end;
+end;
+
 procedure TDocSections.Rationale(AExpanded: Boolean);
 var
   mSections: TArray<TAtlasDocSection>;
@@ -1380,6 +1461,27 @@ begin
     mShown := Min(mShown, TAtlasDocLayout.cMaxRationale);
   end;
   NamedRows(mSections, mShown);
+end;
+
+procedure TDocSections.UnitContents;
+var
+  mSections: TArray<TAtlasDocSection>;
+  mFirst, mLast: Integer;
+begin
+  // Gruppen unter derselben Überschrift folgen aufeinander; je Überschrift eine Tabelle.
+  mSections := SectionsOf(FDoc, TAtlasDocSectionKind.UnitContents);
+  mFirst := 0;
+  while mFirst <= High(mSections) do
+  begin
+    mLast := mFirst;
+    while (mLast < High(mSections)) and (mSections[mLast + 1].Heading = mSections[mFirst].Heading) do
+    begin
+      Inc(mLast);
+    end;
+    FBuilder.Heading(mSections[mFirst].Heading);
+    NamedRows(Copy(mSections, mFirst, mLast - mFirst + 1), MaxInt);
+    mFirst := mLast + 1;
+  end;
 end;
 
 procedure TDocSections.Toggle(AExpanded: Boolean; AGap: Integer);
@@ -1401,7 +1503,7 @@ begin
     Exit;
   end;
   FBuilder.AddWhole(FLabels.More, FUI, TAtlasDocColor.Accent, FBuilder.AddLink(mToggle));
-  mParts := TAtlasDocTypeset.HiddenParts(FDoc, FSignature, FLabels, mColors);
+  mParts := CollectHiddenParts(FDoc, FSignature, FLabels, FOpenSignature, mColors);
   if Length(mParts) > 0 then
   begin
     FBuilder.AddSpan('   ', FUI, TAtlasDocColor.Muted, False, -1);
@@ -1425,6 +1527,13 @@ begin
   Result.Doc := ADoc;
   Result.Signature := ASignature;
   Result.Expanded := AExpanded;
+  Result.OpenSignature := False;
+end;
+
+function TAtlasDocContent.SignatureShown: Boolean;
+begin
+  Result := OpenSignature and Signature.Known and ((Length(Signature.Params) > 0) or
+    ((Signature.ResultType <> '') and not Signature.IsProperty));
 end;
 
 /// <summary>Klartext einer Zeile anhängen und die Anfänge der Stücke darin merken; ein Sprung in eine andere
@@ -1499,11 +1608,11 @@ var
   mSections: TDocSections;
 begin
   Result := Default(TAtlasDocLayout);
-  if AContent.Doc.IsEmpty then
+  if AContent.Doc.IsEmpty and not AContent.SignatureShown then
   begin
     Exit;
   end;
-  Result.Collapsible := IsCollapsible(AContent.Doc);
+  Result.Collapsible := IsCollapsible(AContent);
   Result.Expanded := AContent.Expanded or not Result.Collapsible;
   mBuilder := TLayoutBuilder.Create(AWidth, AMetrics, AMeasure);
   mSections := TDocSections.Create(mBuilder, AContent, ALabels, AWidth, AMeasure);
@@ -1512,8 +1621,13 @@ begin
     if Result.Expanded and Result.Collapsible then
     begin
       mSections.Details(AMetrics.SectionGap);
+    end
+    else if AContent.SignatureShown then
+    begin
+      mSections.SignatureSections;
     end;
     mSections.Rationale(Result.Expanded);
+    mSections.UnitContents;
     if Result.Collapsible then
     begin
       mSections.Toggle(Result.Expanded, AMetrics.SectionGap);

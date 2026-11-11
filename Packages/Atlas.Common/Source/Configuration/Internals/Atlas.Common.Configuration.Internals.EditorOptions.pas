@@ -31,7 +31,7 @@ type
     RationaleMarkersMustNotContainAn, AllowedAreAutoMultilineAnd, AllowedAreSLineBreak1310, MaxLineLengthMustBeAWhole,
     MemberOrderMustBeAList, ExitKeywordsMustBeAList, AllowedAreFuzzyAndPrefix, AllowedArePrivateProtectedAnd,
     AllowedAreAsAndCast, AllowedArePrivateAndProtected, AllowedArePrefixAndUses, AllowedAreOffHelperAnd,
-    AllowedAreFreeAndFreeAndNil, ExpectedIsAUnitName, UnknownEntryInMemberOrder);
+    AllowedAreFreeAndFreeAndNil, ExpectedIsAUnitName, UnknownEntryInMemberOrder, UnitContentsMustBeOffTypes);
 
 const
   cTexts: array[TEditorOptionsText] of TAtlasText = (
@@ -62,7 +62,9 @@ const
     (De: 'Erlaubt sind "off", "helper" und "function"'; En: 'Allowed are "off", "helper" and "function"'),
     (De: 'Erlaubt sind "free" und "freeAndNil"'; En: 'Allowed are "free" and "freeAndNil"'),
     (De: 'Erwartet wird ein Unit-Name wie "App.Texte" oder ""'; En: 'Expected is a unit name like "App.Texts" or ""'),
-    (De: 'Unbekannter Eintrag "%s" in "memberOrder.%s"'; En: 'Unknown entry "%s" in "memberOrder.%s"'));
+    (De: 'Unbekannter Eintrag "%s" in "memberOrder.%s"'; En: 'Unknown entry "%s" in "memberOrder.%s"'),
+    (De: '"unitContents" muss "off", "types", "usedFirst" oder "all" sein';
+     En: '"unitContents" must be "off", "types", "usedFirst" or "all"'));
 
 {$SCOPEDENUMS OFF}
 
@@ -224,6 +226,22 @@ begin
     ASettings.Hints.XmlDocMaxLines);
 end;
 
+/// <summary>Inhalt der Unit im Hover über Unit-Namen (#1921).</summary>
+procedure ReadUnitContents(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+const
+  cNames: array[0..3] of string = (THintSettings.cUnitContentsOff, THintSettings.cUnitContentsTypes,
+    THintSettings.cUnitContentsUsedFirst, THintSettings.cUnitContentsAll);
+var
+  mIndex: Integer;
+begin
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.UnitContentsMustBeOffTypes].Text,
+    mIndex) then
+  begin
+    ASettings.Hints.UnitContents := cNames[mIndex];
+  end;
+end;
+
 /// <summary>Begründungen (#1123): eigene Marken ersetzen die Vorgabe.</summary>
 procedure ReadRationaleMarkers(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
@@ -266,8 +284,9 @@ begin
 end;
 
 const
-  cHintMembers: array[0..2] of TMemberOption = ((Key: 'xmlDocMaxLines'; Read: ReadXmlDocMaxLines),
-    (Key: 'rationaleMarkers'; Read: ReadRationaleMarkers), (Key: 'adrFolder'; Read: ReadAdrFolder));
+  cHintMembers: array[0..3] of TMemberOption = ((Key: 'xmlDocMaxLines'; Read: ReadXmlDocMaxLines),
+    (Key: 'rationaleMarkers'; Read: ReadRationaleMarkers), (Key: 'adrFolder'; Read: ReadAdrFolder),
+    (Key: 'unitContents'; Read: ReadUnitContents));
 
 procedure ReadHints(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 var

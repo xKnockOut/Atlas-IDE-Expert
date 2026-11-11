@@ -37,6 +37,8 @@ type
     [Test]
     procedure UsesTargetFollowsCurrentSection;
     [Test]
+    procedure UsesTargetTogglesBetweenClauses;
+    [Test]
     procedure StopsAtEndDot;
     [Test]
     procedure ScansWholeTextWithCrLf;
@@ -262,6 +264,40 @@ begin
   Assert.IsTrue(Sections.Target(TAtlasSectionTarget.InterfacePart, 4, 2, Mark));
   CheckMark(Mark, 1, 0, 'interface');
   Assert.IsFalse(Sections.Target(TAtlasSectionTarget.Initialization_, 4, 2, Mark), 'ohne initialization');
+end;
+
+procedure TAtlasSectionScannerTests.UsesTargetTogglesBetweenClauses;
+var
+  Sections: TAtlasUnitSections;
+  Mark: TAtlasSectionMark;
+  ToImplementation: Boolean;
+begin
+  Sections := Scan(UnitCode);
+  // In der interface-uses: zur implementation-uses und zurück.
+  Assert.IsTrue(Sections.UsesToggle(4, 10, ToImplementation));
+  Assert.IsTrue(ToImplementation);
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 4, 10, Mark));
+  CheckMark(Mark, 13, 0, 'zur implementation-uses');
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, Mark.Line, Mark.Character, Mark));
+  CheckMark(Mark, 4, 0, 'zurück zur interface-uses');
+  Assert.IsFalse(Sections.UsesToggle(16, 4, ToImplementation), 'außerhalb einer Klausel');
+  // Ohne implementation-uses: zum Schlüsselwort implementation, von dort zurück.
+  Sections := Scan('unit U;'#10'interface'#10'uses A;'#10'implementation'#10'procedure X; begin end;'#10'end.');
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 2, 0, Mark));
+  CheckMark(Mark, 3, 0, 'implementation');
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, Mark.Line, Mark.Character, Mark));
+  CheckMark(Mark, 2, 0, 'zurück zur interface-uses');
+  // Ohne interface-uses: zum Schlüsselwort interface, von dort zurück.
+  Sections := Scan('unit U;'#10'interface'#10'implementation'#10'uses B;'#10'end.');
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 3, 2, Mark));
+  CheckMark(Mark, 1, 0, 'interface');
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, Mark.Line, Mark.Character, Mark));
+  CheckMark(Mark, 3, 0, 'zurück zur implementation-uses');
+  // Programme: unverändert die Klausel nach dem Kopf.
+  Sections := Scan('program P;'#10'uses A;'#10'begin'#10'end.');
+  Assert.IsFalse(Sections.UsesToggle(1, 2, ToImplementation));
+  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 1, 2, Mark));
+  CheckMark(Mark, 1, 0, 'uses des Programms');
 end;
 
 procedure TAtlasSectionScannerTests.StopsAtEndDot;

@@ -142,6 +142,10 @@ type
     cMultiCursorModifierCtrl = Atlas.Core.Settings.Plugin.Editor.cMultiCursorModifierCtrl;
     cDesignerSearchWindow = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchWindow;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
+    cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
+    cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
+    cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
+    cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -282,6 +286,8 @@ type
       write FEditorInsight.HoverProblemActions;
     property HoverMembersMaxLines: Integer read FEditorInsight.HoverMembersMaxLines
       write FEditorInsight.HoverMembersMaxLines;
+    property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams
+      write FEditorInsight.HoverSignatureParams;
     property InlineDiagnostics: string read FEditorTyping.InlineDiagnostics write FEditorTyping.InlineDiagnostics;
     property ProblemsStatusCounter: Boolean read FEditorInsight.ProblemsStatusCounter
       write FEditorInsight.ProblemsStatusCounter;
@@ -574,6 +580,8 @@ type
       write FStickyScroll.BreadcrumbsOverloads;
     property BreadcrumbsInterfaces: Boolean read FStickyScroll.BreadcrumbsInterfaces
       write FStickyScroll.BreadcrumbsInterfaces;
+    property BreadcrumbsMetrics: Boolean read FStickyScroll.BreadcrumbsMetrics
+      write FStickyScroll.BreadcrumbsMetrics;
     property BreadcrumbsIdeColors: Boolean read FStickyScroll.BreadcrumbsIdeColors
       write FStickyScroll.BreadcrumbsIdeColors;
     property BreadcrumbsHideIdeToolbar: Boolean read FStickyScroll.BreadcrumbsHideIdeToolbar
@@ -593,6 +601,19 @@ type
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
+    property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
+      write FEditorView.DesignerSelectSimilar;
+    property DesignerSelectDescendants: Boolean read FEditorView.DesignerSelectDescendants
+      write FEditorView.DesignerSelectDescendants;
+    property DesignerSelectScope: string read FEditorView.DesignerSelectScope write FEditorView.DesignerSelectScope;
+    property DesignerSelectionSets: Boolean read FEditorView.DesignerSelectionSets
+      write FEditorView.DesignerSelectionSets;
+    property DesignerSelectionSetsShortcuts: Boolean read FEditorView.DesignerSelectionSetsShortcuts
+      write FEditorView.DesignerSelectionSetsShortcuts;
+    property DesignerSelectionSetsStorage: string read FEditorView.DesignerSelectionSetsStorage
+      write FEditorView.DesignerSelectionSetsStorage;
+    property DesignerSelectionSetsSaveKey: Integer read FEditorView.DesignerSelectionSetsSaveKey
+      write FEditorView.DesignerSelectionSetsSaveKey;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

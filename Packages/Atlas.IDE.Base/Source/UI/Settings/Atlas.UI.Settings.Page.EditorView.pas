@@ -82,6 +82,8 @@ begin
   BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
   // Rollbereich der published-Mitglieder (#1841).
   BindText('HoverMembersMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHoverMembersMaxLines)));
+  // Parameter und Rückgabe immer offen (#1919).
+  BindCheck('HoverSignatureParams', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverSignatureParams)));
   // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
   // settings.json (hints.*, #227).
   FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),
@@ -150,6 +152,7 @@ begin
   // Überladungen mit Zähler und Parametern (#1784).
   BindCheck('BreadcrumbsOverloads', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsOverloads)));
   BindCheck('BreadcrumbsInterfaces', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsInterfaces)));
+  BindCheck('BreadcrumbsMetrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsMetrics)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),

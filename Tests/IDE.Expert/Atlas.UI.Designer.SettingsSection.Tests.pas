@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Designer.SettingsSection.Tests;
 
-// Abschnitt des Moduls Designer (#1456): Designer-Leiste mit Suche, Tab-Reihenfolge und Ausrichten; Laden und
-// Speichern über die Seite.
+// Abschnitt des Moduls Designer (#1456): Designer-Leiste mit Suche, Tab-Reihenfolge, Ausrichten und Gleiche
+// auswählen (#738); Laden und Speichern über die Seite.
 
 interface
 
@@ -24,6 +24,10 @@ type
     procedure TearDown;
     [Test]
     procedure DesignerBarRoundTrip;
+    [Test]
+    procedure SelectSimilarRoundTrip;
+    [Test]
+    procedure SelectionSetsRoundTrip;
   end;
 
 implementation
@@ -79,6 +83,64 @@ begin
     Assert.IsFalse(CheckOf(mPage, 'EditorDesignerBar').Checked);
     Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSearchStyle').Choice);
     Assert.AreEqual('', EditOf(mPage, 'DesignerSearchKey').Text);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.SelectSimilarRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectSimilar').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectDescendants').Checked);
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerSelectScope').Choice, 'ganzes Formular');
+    CheckOf(mPage, 'DesignerSelectSimilar').Checked := False;
+    CheckOf(mPage, 'DesignerSelectDescendants').Checked := False;
+    ChoiceOf(mPage, 'DesignerSelectScope').Choice := 1;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerSelectSimilar, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerSelectDescendants);
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerScopeParent, mSaved.DesignerSelectScope);
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerSelectSimilar').Checked);
+    Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSelectScope').Choice);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.SelectionSetsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectionSets').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectionSetsShortcuts').Checked);
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice, 'lokal');
+    CheckOf(mPage, 'DesignerSelectionSets').Checked := False;
+    CheckOf(mPage, 'DesignerSelectionSetsShortcuts').Checked := False;
+    ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice := 1;
+    EditOf(mPage, 'DesignerSelectionSetsSaveKey').Text := '';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerSelectionSets, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerSelectionSetsShortcuts);
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerSetsShared, mSaved.DesignerSelectionSetsStorage);
+    Assert.AreEqual(0, mSaved.DesignerSelectionSetsSaveKey, 'leer = keine Taste');
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerSelectionSets').Checked);
+    Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice);
   finally
     mPage.Free;
   end;

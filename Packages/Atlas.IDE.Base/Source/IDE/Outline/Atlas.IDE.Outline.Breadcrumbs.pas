@@ -46,6 +46,11 @@
 //   (atlas.server.interfaceMethods), nie bei Caret-Bewegung. Klick auf die
 //   Marke öffnet „Erfüllt“ mit Unit und Zeile; Enter springt zur Deklaration
 //   im Interface, auch in anderen Units.
+// - Kennzahlen-Karte (editor.breadcrumbsMetrics, #1787): Methoden- und
+//   Typglieder zeigen nach der Tooltip-Verzögerung bzw. mit Strg+I die Karte
+//   aus TAtlasCrumbCards. Die Metriken kommen über TAtlasCrumbCardHooks aus
+//   dem Abruf von Base (dieselben wie Metrik-Linse und Statusleiste); die
+//   Leiste meldet dort nur Bedarf an und fragt nichts selbst.
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
 //   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
@@ -68,17 +73,32 @@
 interface
 
 uses
+  System.SysUtils,
+  Atlas.Core.Editor.Metrics,
   Atlas.IDE.Outline.CrumbMenu;
 
 type
+  /// <summary>Letzte Metriken der Datei AFileName; False ohne.</summary>
+  TAtlasCrumbMetricsFunc = reference to function(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean;
+
+  /// <summary>Metriken für die Kennzahlen-Karte (#1787), aus der Komposition.</summary>
+  TAtlasCrumbCardHooks = record
+    Metrics: TAtlasCrumbMetricsFunc;
+    /// <summary>Bedarf an den Metriken an- oder abmelden.</summary>
+    WantMetrics: TProc<Boolean>;
+  end;
+
   TAtlasIdeBreadcrumbs = class
   private class var
     FState: TObject;
     FMenuHooks: TAtlasCrumbMenuHooks;
+    FCardHooks: TAtlasCrumbCardHooks;
+    FWantsMetrics: Boolean;
+    class procedure WantMetrics; static;
   public
     /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren). AMenuHooks bedienen das
-    /// Kontextmenü (#1786).</summary>
-    class procedure Install(const AMenuHooks: TAtlasCrumbMenuHooks); static;
+    /// Kontextmenü (#1786), ACardHooks die Kennzahlen-Karte (#1787).</summary>
+    class procedure Install(const AMenuHooks: TAtlasCrumbMenuHooks; const ACardHooks: TAtlasCrumbCardHooks); static;
     class procedure Uninstall; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
@@ -92,7 +112,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.SysUtils,
   System.Classes,
   System.Types,
   System.Generics.Collections,
@@ -112,7 +131,9 @@ uses
   Atlas.Core.Outline.SectionEdit,
   Atlas.Core.Outline.Overloads,
   Atlas.Core.Outline.Interfaces,
+  Atlas.Core.Editor.CrumbCard,
   Atlas.UI.Strings,
+  Atlas.UI.Popup.CrumbCard,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.Outline.NavigationToolbar,
@@ -161,6 +182,11 @@ type
     FDisabled: Boolean;
     /// <summary>Zuletzt protokollierte Ursache am Fenster der Leiste ('' = keine).</summary>
     FProblem: string;
+    /// <summary>Kennzahlen-Karte (#1787); erst beim ersten Zeigen angelegt.</summary>
+    FCard: TAtlasCrumbCardTip;
+    function HasCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer): Boolean;
+    procedure ShowCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
+    procedure HideCard;
     procedure Tick(Sender: TObject);
     procedure Probe;
     procedure ShowDisabled;
@@ -226,6 +252,7 @@ end;
 destructor TBreadcrumbsState.Destroy;
 begin
   FTimer.Free;
+  FCard.Free;
   // Navigationsleisten der IDE wieder zeigen: Option zurück, wenn Atlas sie ausgeschaltet hatte, bzw. zurückhängen.
   TAtlasIdeNavigationOption.Apply(False);
   TAtlasIdeCrumbMenu.Release;
@@ -250,6 +277,7 @@ begin
   FFileName := '';
   FStamp := 0;
   FShown := False;
+  HideCard;
   FLine := -1;
   FCharacter := -1;
   // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
@@ -397,6 +425,28 @@ begin
     procedure
     begin
       Leave(mBar);
+    end;
+  mBar.HasCard :=
+    function(AIndex: Integer): Boolean
+    begin
+      Result := HasCard(mBar, AIndex);
+    end;
+  mBar.OnShowCard :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+        procedure
+        begin
+          ShowCard(mBar, AIndex, At);
+        end);
+    end;
+  mBar.OnHideCard :=
+    procedure
+    begin
+      HideCard;
     end;
   mBar.OnDisabled :=
     procedure(ASender: TObject)
@@ -1071,6 +1121,41 @@ begin
   TAtlasEditorBarHost.FocusEditor(ABar);
 end;
 
+function TBreadcrumbsState.HasCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer): Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.BreadcrumbsMetrics and (ABar = FActiveBar) and (AIndex >= 0) and
+    (AIndex <= High(ABar.Crumbs)) and TAtlasCrumbCards.HasCard(FNodes, ABar.Crumbs[AIndex].Node);
+end;
+
+/// <summary>Karte aus den Metriken der Datei; ohne Metriken nur die Kopfzeile (#1787).</summary>
+procedure TBreadcrumbsState.ShowCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
+var
+  mMetrics: TAtlasFileMetrics;
+  mHasMetrics: Boolean;
+begin
+  if not HasCard(ABar, AIndex) then
+  begin
+    Exit;
+  end;
+  mMetrics := Default(TAtlasFileMetrics);
+  mHasMetrics := Assigned(TAtlasIdeBreadcrumbs.FCardHooks.Metrics) and
+    TAtlasIdeBreadcrumbs.FCardHooks.Metrics(FFileName, mMetrics);
+  if FCard = nil then
+  begin
+    FCard := TAtlasCrumbCardTip.Create(nil);
+  end;
+  FCard.Colors := TAtlasIdeStyle.Colors;
+  FCard.ShowCard(TAtlasCrumbCards.Build(FNodes, FLines, ABar.Crumbs[AIndex].Node, mHasMetrics, mMetrics), APoint);
+end;
+
+procedure TBreadcrumbsState.HideCard;
+begin
+  if (FCard <> nil) and FCard.IsShown then
+  begin
+    FCard.HidePopup;
+  end;
+end;
+
 procedure TBreadcrumbsState.Tick(Sender: TObject);
 begin
   if not TAtlasIdeSettings.Current.Breadcrumbs then
@@ -1271,10 +1356,27 @@ begin
   Result := TAtlasIdeSettings.Current.Breadcrumbs;
 end;
 
-class procedure TAtlasIdeBreadcrumbs.Install(const AMenuHooks: TAtlasCrumbMenuHooks);
+/// <summary>Bedarf an den Metriken nur mit Leiste und Karte (#1787); meldet nur Änderungen.</summary>
+class procedure TAtlasIdeBreadcrumbs.WantMetrics;
+var
+  mWants: Boolean;
+begin
+  mWants := (FState <> nil) and TAtlasIdeSettings.Current.BreadcrumbsMetrics;
+  if (mWants = FWantsMetrics) or not Assigned(FCardHooks.WantMetrics) then
+  begin
+    Exit;
+  end;
+  FWantsMetrics := mWants;
+  FCardHooks.WantMetrics(mWants);
+end;
+
+class procedure TAtlasIdeBreadcrumbs.Install(const AMenuHooks: TAtlasCrumbMenuHooks;
+  const ACardHooks: TAtlasCrumbCardHooks);
 begin
   FreeAndNil(FState);
   FMenuHooks := AMenuHooks;
+  FCardHooks := ACardHooks;
+  FWantsMetrics := False;
   // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
   if Enabled then
   begin
@@ -1285,12 +1387,15 @@ begin
     // Hatte Atlas die Navigationsleiste ausgeblendet und die IDE endete ohne Entladen: wieder zeigen.
     TAtlasIdeNavigationOption.Apply(False);
   end;
+  WantMetrics;
 end;
 
 class procedure TAtlasIdeBreadcrumbs.Uninstall;
 begin
   FreeAndNil(FState);
+  WantMetrics;
   FMenuHooks := Default(TAtlasCrumbMenuHooks);
+  FCardHooks := Default(TAtlasCrumbCardHooks);
 end;
 
 class procedure TAtlasIdeBreadcrumbs.ApplySettings;
@@ -1299,6 +1404,7 @@ begin
   if not Enabled then
   begin
     FreeAndNil(FState);
+    WantMetrics;
     Exit;
   end;
   if FState = nil then
@@ -1309,6 +1415,7 @@ begin
   begin
     TBreadcrumbsState(FState).Reset;
   end;
+  WantMetrics;
 end;
 
 class procedure TAtlasIdeBreadcrumbs.ThemeChanged;

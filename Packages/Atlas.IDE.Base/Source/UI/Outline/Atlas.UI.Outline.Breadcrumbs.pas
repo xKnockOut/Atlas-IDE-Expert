@@ -46,6 +46,10 @@
 //   InterfacePart + i) bzw. Alt+↓ mit Fokus meldet OnOpenInterfaces; der
 //   Hinweis nennt je Interface-Methode Unit und Zeile (InterfaceHint), darunter
 //   InterfaceKeyHint.
+// - Kennzahlen-Karte (#1787): Liegt die Maus die Tooltip-Verzögerung lang auf
+//   einem Glied, für das HasCard gilt, meldet die Leiste OnShowCard statt des
+//   Hinweises; Strg+I mit Fokus zeigt sie für das gewählte Glied. Verlassen,
+//   Klick, Taste und Fokusverlust melden OnHideCard.
 
 interface
 
@@ -58,6 +62,7 @@ uses
   System.UITypes,
   Vcl.Controls,
   Vcl.Graphics,
+  Vcl.ExtCtrls,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Breadcrumbs,
@@ -155,6 +160,14 @@ type
     FOnJump: TAtlasCrumbJumpEvent;
     FOnContextMenu: TAtlasCrumbMenuEvent;
     FOnLeave: TProc;
+    FHasCard: TFunc<Integer, Boolean>;
+    FOnShowCard: TAtlasCrumbMenuEvent;
+    FOnHideCard: TProc;
+    FCardTimer: TTimer;
+    /// <summary>Glied, dessen Karte nach der Verzögerung erscheint; -1 ohne.</summary>
+    FCardCrumb: Integer;
+    function CardAt(APart: Integer): Boolean;
+    procedure CardTimer(Sender: TObject);
     procedure DrawCrumb(AIndex: Integer);
     /// <summary>Fläche des Zählers der Überladungen im Glied (Client); leer ohne Zähler.</summary>
     function CounterRect(AIndex: Integer): TRect;
@@ -191,6 +204,7 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure DoEnter; override;
     procedure DoExit; override;
+    procedure HotChanged; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Fokus und Auswahl aufs letzte Glied (Tastenkürzel).</summary>
@@ -206,6 +220,10 @@ type
     procedure OpenInterfaces(AIndex: Integer);
     /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
     procedure Jump(AIndex: Integer; ADeclaration: Boolean);
+    /// <summary>Kennzahlen-Karte des Glieds zeigen (OnShowCard), wenn es eine hat (#1787).</summary>
+    procedure ShowCard(AIndex: Integer);
+    /// <summary>Karte schließen und die Verzögerung abbrechen.</summary>
+    procedure HideCard;
     /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
     property CrumbHint: string read FCrumbHint write FCrumbHint;
     property SeparatorHint: string read FSeparatorHint write FSeparatorHint;
@@ -226,6 +244,11 @@ type
     /// <summary>Rechtsklick-Menü am Glied (#1786); APoint ist die Stelle am Bildschirm.</summary>
     property OnContextMenu: TAtlasCrumbMenuEvent read FOnContextMenu write FOnContextMenu;
     property OnLeave: TProc read FOnLeave write FOnLeave;
+    /// <summary>Hat das Glied eine Kennzahlen-Karte (#1787)? Ohne Ereignis keine Karte, nur der Hinweis.</summary>
+    property HasCard: TFunc<Integer, Boolean> read FHasCard write FHasCard;
+    /// <summary>Karte zum Glied zeigen; APoint ist die linke untere Ecke des Glieds am Bildschirm.</summary>
+    property OnShowCard: TAtlasCrumbMenuEvent read FOnShowCard write FOnShowCard;
+    property OnHideCard: TProc read FOnHideCard write FOnHideCard;
   end;
 
 implementation
@@ -333,6 +356,10 @@ begin
   // csAcceptsControls: Kinder rechts (Editorleiste, #1101), mit WS_CLIPCHILDREN übermalt Paint sie nicht.
   ControlStyle := ControlStyle + [csAcceptsControls];
   FSelected := -1;
+  FCardCrumb := -1;
+  FCardTimer := TTimer.Create(Self);
+  FCardTimer.Enabled := False;
+  FCardTimer.OnTimer := CardTimer;
 end;
 
 procedure TAtlasBreadcrumbLayout.ChangeScale(M, D: Integer; isDpiChange: Boolean);
@@ -915,6 +942,11 @@ begin
   begin
     Exit(InterfaceHintOf(InterfaceOf(APart)));
   end;
+  // Die Kennzahlen-Karte ersetzt den Hinweis des Glieds (#1787).
+  if CardAt(APart) then
+  begin
+    Exit('');
+  end;
   Result := '';
   if Clickable(APart) then
   begin
@@ -947,6 +979,7 @@ var
 begin
   // Erst beim Loslassen (Vorfahr): Beim Drücken holt die IDE den Fokus zurück in den Editor, das Menü ginge sofort
   // wieder zu.
+  HideCard;
   if APart >= cSeparatorPart then
   begin
     OpenChildren(APart - cSeparatorPart);
@@ -1091,6 +1124,14 @@ end;
 procedure TAtlasBreadcrumbBar.KeyDown(var Key: Word; Shift: TShiftState);
 begin
   inherited KeyDown(Key, Shift);
+  // Strg+I: Kennzahlen-Karte des gewählten Glieds (#1787); jede andere Taste schließt sie.
+  if (Key = Ord('I')) and (Shift * [ssCtrl, ssShift, ssAlt] = [ssCtrl]) then
+  begin
+    ShowCard(FSelected);
+    Key := 0;
+    Exit;
+  end;
+  HideCard;
   case Key of
     VK_LEFT:
       MoveSelection(-1);
@@ -1335,7 +1376,63 @@ end;
 procedure TAtlasBreadcrumbBar.DoExit;
 begin
   inherited DoExit;
+  HideCard;
   Invalidate;
+end;
+
+function TAtlasBreadcrumbBar.CardAt(APart: Integer): Boolean;
+begin
+  Result := (APart >= 0) and (APart <= High(FCrumbs)) and Assigned(FHasCard) and Assigned(FOnShowCard) and
+    FHasCard(APart);
+end;
+
+procedure TAtlasBreadcrumbBar.HotChanged;
+begin
+  inherited HotChanged;
+  HideCard;
+  if CardAt(Hot) then
+  begin
+    FCardCrumb := Hot;
+    FCardTimer.Interval := Max(1, Application.HintPause);
+    FCardTimer.Enabled := True;
+  end;
+end;
+
+procedure TAtlasBreadcrumbBar.CardTimer(Sender: TObject);
+begin
+  FCardTimer.Enabled := False;
+  if (FCardCrumb >= 0) and (FCardCrumb = Hot) then
+  begin
+    ShowCard(FCardCrumb);
+  end;
+end;
+
+procedure TAtlasBreadcrumbBar.ShowCard(AIndex: Integer);
+var
+  mArea: TRect;
+begin
+  FCardTimer.Enabled := False;
+  if not CardAt(AIndex) or not Assigned(FOnShowCard) then
+  begin
+    Exit;
+  end;
+  mArea := CrumbRect(AIndex);
+  if mArea.IsEmpty then
+  begin
+    Exit;
+  end;
+  Application.CancelHint;
+  FOnShowCard(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+end;
+
+procedure TAtlasBreadcrumbBar.HideCard;
+begin
+  FCardTimer.Enabled := False;
+  FCardCrumb := -1;
+  if Assigned(FOnHideCard) then
+  begin
+    FOnHideCard();
+  end;
 end;
 
 end.

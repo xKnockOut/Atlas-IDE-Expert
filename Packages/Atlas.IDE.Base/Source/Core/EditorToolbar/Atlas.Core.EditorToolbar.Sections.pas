@@ -17,7 +17,10 @@
 // - end. beendet die Suche.
 // SectionAt nennt den Abschnitt an einer Stelle für die Hervorhebung der
 // Knöpfe; Target das Sprungziel, bei uses die Klausel des aktuellen
-// Abschnitts (ohne eigene die des interface).
+// Abschnitts (ohne eigene die des interface). Steht der Cursor schon in einer
+// uses-Klausel einer Unit, wechselt Target zur anderen (#1760); fehlt sie, ist
+// das Ziel das Schlüsselwort implementation bzw. interface, und von dort führt
+// der nächste Sprung zurück zur vorhandenen Klausel.
 
 interface
 
@@ -59,12 +62,19 @@ type
     HeaderUses: TAtlasUsesMark;
     InterfaceUses: TAtlasUsesMark;
     ImplementationUses: TAtlasUsesMark;
+  private
+    /// <summary>Ziel des Wechsels: die andere Klausel, ohne sie das Schlüsselwort ihres Teils.</summary>
+    function OtherUses(AToImplementation: Boolean): TAtlasSectionMark;
+  public
     /// <summary>Hat die Datei interface- und implementation-Teil (nur Units)?</summary>
     function HasParts: Boolean;
     /// <summary>Abschnitt an der Stelle (0-basiert) für die Hervorhebung.</summary>
     function SectionAt(ALine, ACharacter: Integer): TAtlasCodeSection;
     /// <summary>Sprungziel von der Stelle ALine/ACharacter aus; False, wenn die Datei es nicht hat.</summary>
     function Target(ATarget: TAtlasSectionTarget; ALine, ACharacter: Integer; out AMark: TAtlasSectionMark): Boolean;
+    /// <summary>Wechselt „Zur uses-Klausel“ an der Stelle zur anderen Klausel (#1760)? AToImplementation: Ziel
+    /// liegt im implementation-Teil.</summary>
+    function UsesToggle(ALine, ACharacter: Integer; out AToImplementation: Boolean): Boolean;
   end;
 
   TAtlasSectionScanner = class
@@ -138,8 +148,59 @@ begin
   end;
 end;
 
+/// <summary>Steht ALine/ACharacter genau auf der Marke?</summary>
+function OnMark(const AMark: TAtlasSectionMark; ALine, ACharacter: Integer): Boolean;
+begin
+  Result := AMark.Found and (AMark.Line = ALine) and (AMark.Character = ACharacter);
+end;
+
+function TAtlasUnitSections.UsesToggle(ALine, ACharacter: Integer; out AToImplementation: Boolean): Boolean;
+begin
+  AToImplementation := False;
+  Result := False;
+  if (Kind <> TAtlasSourceKind.Unit_) or not HasParts then
+  begin
+    Exit;
+  end;
+  // Auf dem Schlüsselwort eines Teils ohne eigene Klausel gilt der Cursor als „in dessen Klausel“: Dorthin führt
+  // der Sprung, wenn die andere Klausel fehlt.
+  if InterfaceUses.Contains(ALine, ACharacter) or
+    (not InterfaceUses.Start.Found and OnMark(InterfacePart, ALine, ACharacter)) then
+  begin
+    AToImplementation := True;
+    Result := ImplementationUses.Start.Found or InterfaceUses.Start.Found;
+  end
+  else if ImplementationUses.Contains(ALine, ACharacter) or
+    (not ImplementationUses.Start.Found and OnMark(ImplementationPart, ALine, ACharacter)) then
+  begin
+    Result := InterfaceUses.Start.Found or ImplementationUses.Start.Found;
+  end;
+end;
+
+function TAtlasUnitSections.OtherUses(AToImplementation: Boolean): TAtlasSectionMark;
+begin
+  if AToImplementation then
+  begin
+    Result := ImplementationUses.Start;
+    if not Result.Found then
+    begin
+      Result := ImplementationPart;
+    end;
+  end
+  else
+  begin
+    Result := InterfaceUses.Start;
+    if not Result.Found then
+    begin
+      Result := InterfacePart;
+    end;
+  end;
+end;
+
 function TAtlasUnitSections.Target(ATarget: TAtlasSectionTarget; ALine, ACharacter: Integer;
   out AMark: TAtlasSectionMark): Boolean;
+var
+  mToImplementation: Boolean;
 begin
   AMark := Default(TAtlasSectionMark);
   case ATarget of
@@ -153,6 +214,10 @@ begin
       if Kind <> TAtlasSourceKind.Unit_ then
       begin
         AMark := HeaderUses.Start;
+      end
+      else if UsesToggle(ALine, ACharacter, mToImplementation) then
+      begin
+        AMark := OtherUses(mToImplementation);
       end
       else if ImplementationPart.Before(ALine, ACharacter) and ImplementationUses.Start.Found then
       begin

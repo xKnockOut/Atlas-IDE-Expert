@@ -178,7 +178,7 @@ Window *Atlas Hotspots*, *View › Atlas › Hotspots*, `hotspots.enabled`.
 Window *Unit relations*, *View › Atlas › Unit relations*; switched with `architecture.enabled`.
 
 - Follows the editor and shows:
-  - what the unit uses (intf/impl, RTL/VCL dimmed in a collapsed group)
+  - what the unit uses (in the groups “Interface” and “Implementation”, RTL/VCL dimmed in a collapsed group)
   - who uses it
   - interface cycles in red with the path in the tooltip
   - "N units to recompile" after an interface change

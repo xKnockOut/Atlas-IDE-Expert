@@ -6,7 +6,8 @@
 //   component-create-without-override   constructor Create(AOwner: TComponent)
 //                                       ohne override in TComponent-Nachfahren
 //   hides-virtual                       Methode verdeckt eine virtuelle des Vorfahren
-//   virtual-instead-of-override         virtual statt override bei gleicher Signatur
+//   virtual-instead-of-override         virtual statt override bei gleicher Signatur; die Meldung nennt den
+//                                       Vorfahren mit der virtuellen Methode (Destroy ohne Index: TObject)
 //   shadowed-name                       Parameter oder lokale Variable heißt wie ein Feld, eine
 //                                       Property (auch geerbt) oder eine globale Variable der Unit (#934)
 //   override-target-missing             override ohne passende virtuelle Methode im Vorfahren (E2137),
@@ -164,8 +165,8 @@ const
     (De: '"%s" verdeckt die virtuelle Methode %s.%s; override oder reintroduce angeben';
      En: '"%s" hides the virtual method %s.%s; specify override or reintroduce'),
     (De: 'virtual im Nachfahren statt override'; En: 'virtual in the descendant instead of override'),
-    (De: '"%s" ist im Vorfahren schon virtuell; override statt %s verwenden';
-     En: '"%s" is already virtual in the ancestor; use override instead of %s'),
+    (De: '"%s" ist im Vorfahren %s schon virtuell; override statt %s verwenden';
+     En: '"%s" is already virtual in the ancestor %s; use override instead of %s'),
     (De: '%s durch override ersetzen'; En: 'Replace %s with override'));
 
 {$SCOPEDENUMS OFF}
@@ -362,7 +363,7 @@ var
   mMethod: TMethodDecl;
   mFound: TInherited;
   mToken: TPascalToken;
-  mMessage: string;
+  mMessage, mAncestor: string;
 begin
   if not Prepare(AContext, mAncestry, mMethods) then
   begin
@@ -375,17 +376,22 @@ begin
       begin
         Continue;
       end;
-      // TObject.Destroy ist immer virtuell, auch wenn TObject nicht im Index steht.
-      if not IsDestroy(mMethod) then
+      mFound := mAncestry.InheritedVirtual(mMethod);
+      if mFound.Found and mFound.SameSignature then
       begin
-        mFound := mAncestry.InheritedVirtual(mMethod);
-        if not mFound.Found or not mFound.SameSignature then
-        begin
-          Continue;
-        end;
+        mAncestor := mFound.TypeName;
+      end
+      else if IsDestroy(mMethod) then
+      begin
+        // TObject.Destroy ist immer virtuell, auch wenn TObject nicht im Index steht.
+        mAncestor := 'TObject';
+      end
+      else
+      begin
+        Continue;
       end;
       mMessage := cTexts[TInheritanceText.Virtual].Fmt(
-        [mMethod.Symbol.Name, IfThen(mMethod.Has('virtual'), 'virtual', 'dynamic')]);
+        [mMethod.Symbol.Name, mAncestor, IfThen(mMethod.Has('virtual'), 'virtual', 'dynamic')]);
       if VirtualToken(AContext, mMethod, mToken) then
       begin
         AReport.Add(mMethod.Symbol.SelectionRange, mMessage,

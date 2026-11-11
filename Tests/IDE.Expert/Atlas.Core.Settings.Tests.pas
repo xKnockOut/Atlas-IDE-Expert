@@ -38,6 +38,9 @@ type
     /// <summary>#1841: hover.membersMaxLines mit Vorgabe 15 und Grenzen 0..100.</summary>
     [Test]
     procedure HoverMembersMaxLinesRoundTrip;
+    /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
+    [Test]
+    procedure HoverSignatureParamsRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -587,6 +590,22 @@ begin
   Store.WriteInteger('HoverMembersMaxLines', -1);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.HoverMembersMaxLines);
+end;
+
+procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.HoverSignatureParams);
+  Store := TMemoryStore.Create;
+  Settings.HoverSignatureParams := False;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('HoverSignatureParams', 1));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.HoverSignatureParams);
 end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
 var

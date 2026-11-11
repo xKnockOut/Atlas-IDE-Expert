@@ -154,7 +154,7 @@ Einstellungen: `callHierarchy.diagram`
 Fenster *Unit-Beziehungen*, *Ansicht › Atlas › Unit-Beziehungen*.
 
 - folgt dem Editor und zeigt:
-  - was die Unit verwendet (intf/impl, RTL/VCL abgeblendet in einer eingeklappten Gruppe)
+  - was die Unit verwendet (in den Gruppen „Interface“ und „Implementation“, RTL/VCL abgeblendet in einer eingeklappten Gruppe)
   - und wer sie verwendet
 - interface-Zyklen rot mit dem Rundweg im Tooltip
 - „N Units neu übersetzen“ nach einer Änderung im interface, direkt oder alle Ebenen, Filter

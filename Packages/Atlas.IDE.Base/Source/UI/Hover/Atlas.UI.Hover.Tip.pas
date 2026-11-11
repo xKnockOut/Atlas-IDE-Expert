@@ -11,7 +11,8 @@
 //     Abschnitte unter Überschriften, Parameter dreispaltig in der Reihenfolge der
 //     Signatur, Rückgabe, Ausnahmen, Hinweise, Beispiel mit Code, Listen,
 //     Tabellen. Zugeklappt nur die Beschreibung mit „Mehr anzeigen ▾“ (Einstellung
-//     hints.xmlDocExpand); der Klick klappt auf, das Fenster wächst nach unten
+//     hints.xmlDocExpand); mit hover.signatureParams (#1919) stehen PARAMETER und
+//     RÜCKGABE aus der Deklaration auch zugeklappt und ohne XMLDoc da. Der Klick klappt auf, das Fenster wächst nach unten
 //     (ohne Platz dort nach oben), „Weniger anzeigen ▴“ klappt wieder zu. Ist sie höher als der Platz auf dem
 //     Bildschirm bzw. als hints.xmlDocMaxLines, scrollt nur sie mit dem
 //     Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (cref)
@@ -77,6 +78,7 @@ type
     FDeclaration: TAtlasStyledText;
     FProblemActions: Boolean;
     FHideCompilerCode: Boolean;
+    FSignatureParams: Boolean;
     /// <summary>Über dem Wort gezeigt: Beim Auf- und Zuklappen bleibt der untere Rand.</summary>
     FAbove: Boolean;
     /// <summary>Rollbereich der published-Mitglieder: Zeilen aus hover.membersMaxLines, Grenze aus dem Platz auf
@@ -133,6 +135,8 @@ type
     /// <summary>hover.membersMaxLines: Zeilen der Mitgliedertabellen ohne Scrollen, 0 = bis zur Bildschirmhöhe.
     /// </summary>
     property MembersMaxLines: Integer read FMembers.MaxLines write FMembers.MaxLines;
+    /// <summary>hover.signatureParams (#1919): Parameter und Rückgabe immer offen, auch ohne XMLDoc.</summary>
+    property SignatureParams: Boolean read FSignatureParams write FSignatureParams;
   end;
 
   /// <summary>Tooltip mit Maus, Tastatur im Befund-Hover und Ereignissen.</summary>
@@ -430,6 +434,7 @@ end;
 procedure TAtlasHoverTipView.PrepareDoc(AWidth: Integer);
 var
   mDoc: TAtlasDoc;
+  mContent: TAtlasDocContent;
 begin
   // Fremde Server liefern nur Klartext: als Beschreibung setzen, ohne Kürzen.
   mDoc := FView.Data.Doc;
@@ -437,15 +442,18 @@ begin
   begin
     mDoc := TAtlasDoc.FromText(FView.Data.Documentation);
   end;
-  if mDoc.IsEmpty then
+  mContent := TAtlasDocContent.Create(mDoc, TAtlasDocSignature.Parse(FView.Data.Declaration),
+    TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip));
+  mContent.OpenSignature := FSignatureParams;
+  // Ohne Doku nur mit offener Signatur (#1919): Parameter und Rückgabe aus der Deklaration.
+  if mDoc.IsEmpty and not mContent.SignatureShown then
   begin
     FDoc.Clear;
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, TAtlasDocContent.Create(mDoc, TAtlasDocSignature.Parse(FView.Data.Declaration),
-    TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip)), AWidth - Scale(22),
-    TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
+  FDoc.Build(Canvas, mContent, AWidth - Scale(22), TAtlasDocFonts.Create(Font, UIFont, PPI),
+    TAtlasStrings.DocLabels);
 end;
 
 procedure TAtlasHoverTipView.ToggleDoc;

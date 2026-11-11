@@ -79,6 +79,16 @@ type
     procedure RationaleBeyondThreeBehindToggle;
     [Test]
     procedure IssueLinksNeedTracker;
+    /// <summary>#1919: Offene Signatur zeigt Parameter und Rückgabe auch ohne XMLDoc.</summary>
+    [Test]
+    procedure OpenSignatureWithoutDoc;
+    /// <summary>#1919: Offene Signatur zugeklappt: Parameter und Rückgabe offen, der Rest hinter dem Schalter.
+    /// </summary>
+    [Test]
+    procedure OpenSignatureCollapsedHidesRest;
+    /// <summary>#1921: Inhalt einer Unit je Überschrift als Tabelle, immer offen, Namen als Verweise.</summary>
+    [Test]
+    procedure UnitContentsBelowPath;
   end;
 
 implementation
@@ -167,6 +177,73 @@ function TAtlasDocumentationTests.LayoutWith(const AJson: string; AWidth: Intege
 begin
   Result := TAtlasDocTypeset.Build(TAtlasDocContent.Create(DocOf(AJson), TAtlasDocSignature.Parse(ADeclaration),
     AExpanded), AWidth, Metrics, Measure, TAtlasDocLabels.German);
+end;
+
+function OpenContent(const AJson, ADeclaration: string; AExpanded: Boolean): TAtlasDocContent;
+begin
+  Result := TAtlasDocContent.Create(DocOf(AJson), TAtlasDocSignature.Parse(ADeclaration), AExpanded);
+  Result.OpenSignature := True;
+end;
+
+function OpenLayout(const AJson, ADeclaration: string; AExpanded: Boolean): TAtlasDocLayout;
+begin
+  Result := TAtlasDocTypeset.Build(OpenContent(AJson, ADeclaration, AExpanded), 600, Metrics, Measure,
+    TAtlasDocLabels.German);
+end;
+
+procedure TAtlasDocumentationTests.OpenSignatureWithoutDoc;
+const
+  Split = 'function TStringHelper.Split(const Separators: array of Char; Count: Integer): TArray<string>;';
+var
+  Result_: TAtlasDocLayout;
+begin
+  // Ohne XMLDoc: Tabelle ohne Textspalte, Rückgabetyp, kein Schalter.
+  Result_ := OpenLayout('{"sections":[]}', Split, False);
+  Assert.AreEqual('PARAMETER|Separatorsconst array of Char|CountInteger|RÜCKGABE|TArray<string>|', Texts(Result_));
+  Assert.IsFalse(Result_.Collapsible);
+  Assert.AreEqual(0, Integer(Length(Result_.Links)));
+  Assert.AreEqual(2, Integer(Length(Result_.Lines[1].Spans)));
+  // Ohne den Schalter bleibt die Doku leer wie bisher.
+  Assert.IsTrue(LayoutWith('{"sections":[]}', 600, Split, False).IsEmpty);
+  // Nichts zu zeigen: Prozedur ohne Parameter, Property ohne Index, unbekannte Deklaration.
+  Assert.IsTrue(OpenLayout('{"sections":[]}', 'procedure TX.Run;', False).IsEmpty);
+  Assert.IsTrue(OpenLayout('{"sections":[]}', 'property Count: Integer read FCount;', False).IsEmpty);
+  Assert.IsTrue(OpenLayout('{"sections":[]}', 'var Count: Integer', False).IsEmpty);
+  // Funktion ohne Parameter: nur RÜCKGABE.
+  Assert.AreEqual('RÜCKGABE|Integer|', Texts(OpenLayout('{"sections":[]}', 'function TX.Count: Integer;', False)));
+end;
+
+procedure TAtlasDocumentationTests.OpenSignatureCollapsedHidesRest;
+const
+  Json = '{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Liest."}]},' +
+    '{"kind":"param","name":"A","runs":[{"kind":"text","text":"Name"}]},' +
+    '{"kind":"exception","name":"EFehler","runs":[{"kind":"text","text":"x"}]},' +
+    '{"kind":"remarks","runs":[{"kind":"text","text":"Hinweis"}]}]}';
+  Declaration = 'function TX.Lies(const A: string; B: Integer): Boolean;';
+var
+  Result_: TAtlasDocLayout;
+  Colors: TArray<TAtlasDocColor>;
+  Parts: TArray<string>;
+begin
+  Result_ := OpenLayout(Json, Declaration, False);
+  Assert.IsTrue(Result_.Collapsible);
+  Assert.IsFalse(Result_.Expanded);
+  // Ein Parameter beschrieben: der andere „nicht dokumentiert“.
+  Assert.AreEqual('Liest.|PARAMETER|Aconst stringName|BIntegernicht dokumentiert|RÜCKGABE|Boolean|' +
+    'Mehr anzeigen ▾   1 Ausnahme · Hinweis|', Texts(Result_));
+  Parts := TAtlasDocTypeset.HiddenParts(OpenContent(Json, Declaration, False), TAtlasDocLabels.German, Colors);
+  Assert.AreEqual(2, Integer(Length(Parts)));
+  Assert.AreEqual('1 Ausnahme', Parts[0]);
+  // Aufgeklappt in der gewohnten Reihenfolge.
+  Assert.AreEqual('Liest.|PARAMETER|Aconst stringName|BIntegernicht dokumentiert|RÜCKGABE|Boolean|AUSNAHMEN|' +
+    'EFehlerx|HINWEISE|Hinweis|Weniger anzeigen ▴|', Texts(OpenLayout(Json, Declaration, True)));
+  // Nur Beschreibung und Parameter: nichts mehr verborgen, kein Schalter.
+  Result_ := OpenLayout('{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Liest."}]},' +
+    '{"kind":"param","name":"A","runs":[{"kind":"text","text":"Name"}]}]}', Declaration, False);
+  Assert.IsFalse(Result_.Collapsible);
+  Assert.IsFalse(TAtlasDocTypeset.IsCollapsible(OpenContent(Summary('x'), Declaration, False)));
+  Assert.AreEqual('Liest.|PARAMETER|Aconst stringName|BIntegernicht dokumentiert|RÜCKGABE|Boolean|',
+    Texts(Result_));
 end;
 
 
@@ -769,6 +846,29 @@ begin
   Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), True), 600, Metrics,
     Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYA|WHYB|NOTEC|HACKD|HACKE|Weniger anzeigen ▴|', Texts(Result_));
+end;
+
+function UnitGroup(const AHeading, AName, AType: string): string;
+begin
+  Result := '{"kind":"unitContents","heading":"' + AHeading + '","name":"' + AName + '","runs":[' +
+    '{"kind":"ref","text":"' + AType + '","target":"' + AType + '","file":"C:\\P\\Werk.pas","line":3}]}';
+end;
+
+procedure TAtlasDocumentationTests.UnitContentsBelowPath;
+var
+  Doc: TAtlasDoc;
+  Result_: TAtlasDocLayout;
+begin
+  Doc := DocOf('{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Werk.pas"}]},' +
+    UnitGroup('BENUTZT (1)', 'Klassen', 'TKunde') + ',' + UnitGroup('WEITERE (2)', 'Klassen', 'TAuftrag') + ',' +
+    UnitGroup('WEITERE (2)', 'Records', 'TPunkt') + ']}');
+  Assert.AreEqual(3, Integer(Length(Doc.SectionsOf(TAtlasDocSectionKind.UnitContents))));
+  Assert.AreEqual('WEITERE (2)', Doc.Sections[2].Heading);
+  Assert.IsFalse(TAtlasDocTypeset.IsCollapsible(Doc));
+  Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), False), 600, Metrics,
+    Measure, TAtlasDocLabels.German);
+  Assert.AreEqual('Werk.pas|BENUTZT (1)|KlassenTKunde|WEITERE (2)|KlassenTAuftrag|RecordsTPunkt|', Texts(Result_));
+  Assert.AreEqual(3, Integer(Length(Result_.Links)));
 end;
 
 procedure TAtlasDocumentationTests.IssueLinksNeedTracker;

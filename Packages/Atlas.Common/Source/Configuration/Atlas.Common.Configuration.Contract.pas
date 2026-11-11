@@ -156,6 +156,10 @@ type
     cExpandCollapsed = 'collapsed';
     cExpandLast = 'last';
     cExpandExpanded = 'expanded';
+    cUnitContentsOff = 'off';
+    cUnitContentsTypes = 'types';
+    cUnitContentsUsedFirst = 'usedFirst';
+    cUnitContentsAll = 'all';
   public
     /// <summary>XMLDoc beim Öffnen (#770): ExpandCollapsed nur Summary mit „Mehr anzeigen“, ExpandLast wie
     /// zuletzt in der Sitzung, ExpandExpanded alle Abschnitte. Ersetzt xmlDocFull aus #654.</summary>
@@ -164,6 +168,10 @@ type
     XmlDocMaxLines: Integer;
     /// <summary>Hover über Komponentenklassen (#110): published-Properties und Ereignisse samt geerbter.</summary>
     PublishedMembers: Boolean;
+    /// <summary>Hover über Unit-Namen (#1921): Inhalt der Unit; cUnitContentsOff nichts, cUnitContentsTypes die
+    /// Typen, cUnitContentsUsedFirst die Typen mit den in der Datei benutzten zuerst, cUnitContentsAll dazu
+    /// Routinen, Konstanten und Variablen.</summary>
+    UnitContents: string;
     /// <summary>Begründungen (// WHY: …, #1123) im Hover und in get_declaration.</summary>
     Rationale: Boolean;
     /// <summary>Marken der Begründungen; nil = Vorgabe (TRationale.DefaultMarkers).</summary>
@@ -1216,6 +1224,7 @@ begin
   Result.XmlDocExpand := cExpandLast;
   Result.XmlDocMaxLines := 0;
   Result.PublishedMembers := True;
+  Result.UnitContents := cUnitContentsUsedFirst;
   Result.Rationale := True;
   Result.RationaleMarkers := nil;
   Result.AdrFolder := '';
