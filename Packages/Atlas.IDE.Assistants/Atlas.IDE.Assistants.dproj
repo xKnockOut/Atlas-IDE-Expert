@@ -95,10 +95,12 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.BuildInbox.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.Strings.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.SettingsSection.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.BuildInbox.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.FolderSignal.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

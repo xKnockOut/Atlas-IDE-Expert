@@ -1071,6 +1071,8 @@ uses
   Atlas.Core.Forms.Tests in 'IDE.Expert\Atlas.Core.Forms.Tests.pas',
   Atlas.Core.Assistants.EditInbox in '..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas',
   Atlas.Core.Assistants.EditInbox.Tests in 'IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas',
+  Atlas.Core.Assistants.InboxPace in '..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas',
+  Atlas.Core.Assistants.InboxPace.Tests in 'IDE.Expert\Atlas.Core.Assistants.InboxPace.Tests.pas',
   Atlas.Core.Status.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Contract.pas',
   Atlas.Core.Status.Registry in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas',
   Atlas.Core.Files.Format in '..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas',

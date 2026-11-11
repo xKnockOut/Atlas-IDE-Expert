@@ -1192,6 +1192,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.InboxPace.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas"/>

@@ -1,8 +1,9 @@
 ﻿unit Atlas.IDE.Assistants.EditInbox;
 
 // Eingang für schreibende MCP-Werkzeuge (#397, Protokoll in
-// Atlas.Core.Assistants.EditInbox): Alle 100 ms übernimmt das Plugin wartende
-// Aufträge, ändert den Puffer der offenen Datei als einen Rückgängig-Schritt
+// Atlas.Core.Assistants.EditInbox): Das Plugin übernimmt wartende Aufträge,
+// sobald der Ordner sich ändert (Signal alle 100 ms abgefragt, aufgelistet nur
+// nach einem Signal oder alle zwei Sekunden, #1984), ändert den Puffer der offenen Datei als einen Rückgängig-Schritt
 // (nur der geänderte Bereich, TLspTextChanges) und speichert sie, wenn sie
 // vorher ungespeichert unverändert war. So erscheint die Änderung sofort im
 // Editor, und die Platte stimmt für den MCP-Server wieder. Abgelehnt wird,
@@ -14,7 +15,9 @@ interface
 
 uses
   System.SysUtils,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Core.Assistants.InboxPace,
+  Atlas.IDE.Assistants.FolderSignal;
 
 type
   TAtlasEditInboxProc = reference to procedure(const AMessage: string);
@@ -23,6 +26,8 @@ type
   private
     FFolder: string;
     FTimer: TTimer;
+    FSignal: TAtlasFolderSignal;
+    FPace: TAtlasInboxPace;
     FOnMessage: TAtlasEditInboxProc;
     procedure Tick(Sender: TObject);
     procedure Process(const ARequestFile: string);
@@ -57,6 +62,8 @@ begin
   FFolder := TAtlasEditInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
   Clean;
+  FSignal := TAtlasFolderSignal.Create(FFolder);
+  FPace := Default(TAtlasInboxPace);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 100;
   FTimer.OnTimer := Tick;
@@ -66,6 +73,8 @@ end;
 destructor TAtlasIdeEditInbox.Destroy;
 begin
   FTimer.Free;
+  // Erst die Beobachtung schließen: Sie hält den Ordner offen.
+  FSignal.Free;
   Clean;
   inherited Destroy;
 end;
@@ -88,10 +97,12 @@ procedure TAtlasIdeEditInbox.Tick(Sender: TObject);
 var
   mRequestFile: string;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Files) then
+  if TAtlasGuard.Disabled(TAtlasFeature.Files) or not FPace.Due(FSignal.Changed, GetTickCount64) then
   begin
     Exit;
   end;
+  FSignal.Reopen;
+  FPace.Listed(GetTickCount64, False);
   try
     for mRequestFile in TAtlasEditInbox.Pending(FFolder) do
     begin
