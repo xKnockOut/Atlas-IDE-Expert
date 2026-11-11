@@ -1429,6 +1429,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Interfaces.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CrumbCard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CrumbCard.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MouseButtons.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MouseButtons.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>

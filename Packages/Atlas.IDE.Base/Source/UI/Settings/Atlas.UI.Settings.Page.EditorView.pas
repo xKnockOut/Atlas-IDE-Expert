@@ -153,6 +153,7 @@ begin
   BindCheck('BreadcrumbsOverloads', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsOverloads)));
   BindCheck('BreadcrumbsInterfaces', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsInterfaces)));
   BindCheck('BreadcrumbsMetrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsMetrics)));
+  BindCheck('MouseNavButtons', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMouseNavButtons)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
