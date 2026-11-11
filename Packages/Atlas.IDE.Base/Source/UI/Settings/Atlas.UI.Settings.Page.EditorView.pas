@@ -82,6 +82,8 @@ begin
   BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
   // Rollbereich der published-Mitglieder (#1841).
   BindText('HoverMembersMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHoverMembersMaxLines)));
+  // Parameter und Rückgabe immer offen (#1919).
+  BindCheck('HoverSignatureParams', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverSignatureParams)));
   // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
   // settings.json (hints.*, #227).
   FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),

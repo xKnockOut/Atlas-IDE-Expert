@@ -2859,6 +2859,16 @@
       "x-parent": "editor.hoverTooltip",
       "x-issue": "#1841"
     },
+    "HoverSignatureParams": {
+      "type": "boolean",
+      "default": true,
+      "description": "PARAMETER (Name, Typ, Text aus der XMLDoc) und RÜCKGABE einer Routine stehen im Hover immer untereinander unter der Deklaration, auch ohne XMLDoc und im zugeklappten Zustand, wie bei Help Insight. Aus: nur mit XMLDoc und nach „Mehr anzeigen“.",
+      "x-key": "hover.signatureParams",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "editor.hoverTooltip",
+      "x-issue": "#1919"
+    },
     "InlineDiagnostics": {
       "type": "string",
       "enum": [

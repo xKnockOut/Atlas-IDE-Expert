@@ -178,6 +178,9 @@ type
     /// <summary>Zeilen der published-Mitglieder im Hover ohne Scrollen (#1841, hover.membersMaxLines);
     /// 0 = bis zur Bildschirmhöhe.</summary>
     HoverMembersMaxLines: Integer;
+    /// <summary>Parameter und Rückgabe im Hover immer offen, auch ohne XMLDoc (#1919, hover.signatureParams).
+    /// </summary>
+    HoverSignatureParams: Boolean;
     /// <summary>Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste (#509); Klick öffnet die Liste.</summary>
     ProblemsStatusCounter: Boolean;
     /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
@@ -668,6 +671,7 @@ begin
   Result.Problems := True;
   Result.HoverProblemActions := True;
   Result.HoverMembersMaxLines := 15;
+  Result.HoverSignatureParams := True;
   Result.ProblemsStatusCounter := True;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
@@ -731,6 +735,7 @@ begin
   AIo.Flag('Problems', Problems);
   AIo.Flag('HoverProblemActions', HoverProblemActions);
   AIo.Number('HoverMembersMaxLines', HoverMembersMaxLines);
+  AIo.Flag('HoverSignatureParams', HoverSignatureParams);
   AIo.Flag('ProblemsStatusCounter', ProblemsStatusCounter);
   AIo.Flag('CodeLensTestUnit', CodeLensTestUnit);
   AIo.Flag('CodeLensMetrics', CodeLensMetrics);

@@ -282,6 +282,8 @@ type
       write FEditorInsight.HoverProblemActions;
     property HoverMembersMaxLines: Integer read FEditorInsight.HoverMembersMaxLines
       write FEditorInsight.HoverMembersMaxLines;
+    property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams
+      write FEditorInsight.HoverSignatureParams;
     property InlineDiagnostics: string read FEditorTyping.InlineDiagnostics write FEditorTyping.InlineDiagnostics;
     property ProblemsStatusCounter: Boolean read FEditorInsight.ProblemsStatusCounter
       write FEditorInsight.ProblemsStatusCounter;
