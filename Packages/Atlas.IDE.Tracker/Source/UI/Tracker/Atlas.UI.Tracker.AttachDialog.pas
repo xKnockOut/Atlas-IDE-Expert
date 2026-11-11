@@ -36,7 +36,8 @@ uses
   Vcl.ComCtrls,
   Vcl.Graphics,
   Atlas.Core.Tracker.Attach,
-  Atlas.UI.Tracker.Capture;
+  Atlas.UI.Tracker.Capture,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Was der Dialog anbieten kann; die IDE-Schicht füllt es.</summary>
@@ -103,7 +104,7 @@ type
     FormPng: TBytes;
   end;
 
-  TAtlasAttachDialog = class(TForm)
+  TAtlasAttachDialog = class(TAtlasDialog)
   public const
     cGap = 8;
     cDialogWidth = 680;
@@ -202,7 +203,7 @@ end;
 constructor TAtlasAttachDialog.CreateFor(AOwner: TComponent; const AInput: TAtlasAttachDialogInput;
   ATemp: TAtlasAttachTemp);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FInput := AInput;
   FTemp := ATemp;
   FPicker := TAtlasWindowPicker.Create;
