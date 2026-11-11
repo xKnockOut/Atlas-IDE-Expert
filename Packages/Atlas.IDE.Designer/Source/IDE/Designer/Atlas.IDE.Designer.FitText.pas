@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.Types,
   System.TypInfo,
   Vcl.Graphics,

@@ -33,6 +33,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.Types,
   Vcl.Controls,
   Vcl.Forms,
