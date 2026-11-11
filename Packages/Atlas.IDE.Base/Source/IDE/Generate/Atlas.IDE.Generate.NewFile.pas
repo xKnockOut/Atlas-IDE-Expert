@@ -10,6 +10,8 @@
 // Formular legt die IDE die .dfm aus der Basisklasse an.
 // Ohne Server und ohne offenen Editor nutzbar; braucht ein offenes Projekt.
 // Ausgeblendete Einträge (keys.generateMenu.hidden) gelten wie im Menü.
+// CreateUnit legt eine Unit mit festem Namen und fertigem Text an (Assistenten
+// der Objektgalerie, #1821).
 
 interface
 
@@ -30,6 +32,9 @@ type
     /// </summary>
     class function CreateFile(AKind: TAtlasNewFileKind; const ATemplate: TAtlasSnippet;
       out AError: string): Boolean; static;
+    /// <summary>Unit AFileName (voller Pfad) mit dem Text AText im aktiven Projekt anlegen und öffnen; False mit
+    /// AError ohne Projekt, wenn die Datei schon besteht oder die IDE sie nicht anlegt.</summary>
+    class function CreateUnit(const AFileName, AText: string; out AError: string): Boolean; static;
   end;
 
 implementation
@@ -62,8 +67,12 @@ type
     FKind: TAtlasNewFileKind;
     FBody: string;
     FOwner: IOTAModule;
+    /// <summary>Fester Dateiname (CreateUnit); FBody ist dann der fertige Text. '' = die IDE vergibt den Namen.
+    /// </summary>
+    FFileName: string;
   public
     constructor Create(AKind: TAtlasNewFileKind; const ABody: string; const AOwner: IOTAModule);
+    constructor CreateNamed(const AFileName, AText: string; const AOwner: IOTAModule);
     { IOTACreator }
     function GetCreatorType: string;
     function GetExisting: Boolean;
@@ -113,6 +122,12 @@ begin
   FOwner := AOwner;
 end;
 
+constructor TAtlasFileCreator.CreateNamed(const AFileName, AText: string; const AOwner: IOTAModule);
+begin
+  Create(TAtlasNewFileKind.UnitFile, AText, AOwner);
+  FFileName := AFileName;
+end;
+
 function TAtlasFileCreator.GetCreatorType: string;
 begin
   if FKind = TAtlasNewFileKind.FormFile then
@@ -142,7 +157,7 @@ end;
 
 function TAtlasFileCreator.GetUnnamed: Boolean;
 begin
-  Result := True;
+  Result := FFileName = '';
 end;
 
 function TAtlasFileCreator.GetAncestorName: string;
@@ -152,8 +167,8 @@ end;
 
 function TAtlasFileCreator.GetImplFileName: string;
 begin
-  // Leer: Die IDE vergibt den nächsten freien Namen (Unit2.pas …).
-  Result := '';
+  // Ohne festen Namen leer: Die IDE vergibt den nächsten freien Namen (Unit2.pas …).
+  Result := FFileName;
 end;
 
 function TAtlasFileCreator.GetIntfFileName: string;
@@ -189,6 +204,10 @@ end;
 
 function TAtlasFileCreator.NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
 begin
+  if FFileName <> '' then
+  begin
+    Exit(TAtlasSourceFile.Create(FBody));
+  end;
   Result := TAtlasSourceFile.Create(TAtlasFileTemplates.Render(FBody, ModuleIdent, FormIdent, AncestorIdent,
     sLineBreak));
 end;
@@ -229,6 +248,39 @@ begin
     begin
       // Meldung der IDE nur in die Meldungsansicht; ins Protokoll nur die Klasse (anonym).
       TAtlasGuard.Log('Neu mit Atlas: Datei nicht angelegt (' + E.ClassName + ')');
+      AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [E.Message]);
+    end;
+  end;
+end;
+
+class function TAtlasIdeNewFile.CreateUnit(const AFileName, AText: string; out AError: string): Boolean;
+var
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
+begin
+  Result := False;
+  AError := '';
+  mProject := GetActiveProject;
+  if (mProject = nil) or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    AError := TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNewNoProject);
+    Exit;
+  end;
+  if FileExists(AFileName) or (mModules.FindModule(AFileName) <> nil) then
+  begin
+    AError := TAtlasStrings.Fmt(TAtlasTextId.GalleryFileExists, [AFileName]);
+    Exit;
+  end;
+  try
+    Result := mModules.CreateModule(TAtlasFileCreator.CreateNamed(AFileName, AText, mProject)) <> nil;
+    if not Result then
+    begin
+      AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [ExtractFileName(AFileName)]);
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Gallery: unit not created (' + E.ClassName + ')');
       AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [E.Message]);
     end;
   end;

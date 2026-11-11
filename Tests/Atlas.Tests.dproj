@@ -1235,6 +1235,14 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.MenuSlots.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ProjectSelection.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ProjectSelection.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Generate\Atlas.Core.Generate.Gallery.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Generate.Gallery.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Generate\Atlas.Core.Generate.Choice.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Generate.Choice.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.RoleUnit.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.RoleUnit.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Rules\Atlas.Core.Rules.CustomLayer.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Rules.CustomLayer.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>

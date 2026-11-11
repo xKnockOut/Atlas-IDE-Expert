@@ -10,7 +10,10 @@
 //   Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
 //   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
 //   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
-//   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht),
+//   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
+//   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
+//   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
+//   angelegt wie „Zur Testunit wechseln“ von Base),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
@@ -83,6 +86,9 @@ uses
   Atlas.Core.Commands.ProjectSelection,
   Atlas.Text.DUnitX,
   Atlas.IDE.Problems.Files,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Commands.Editor,
+  Atlas.UI.Generate.Choice,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager.Paths,
@@ -328,6 +334,47 @@ begin
   GTests.RunTests(mTestUnits[0], mNames);
 end;
 
+function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasTestsTextId): TAtlasModuleCommand;
+begin
+  Result := ACommand;
+  Result.Description := TAtlasTestsStrings.Text(ADescription);
+end;
+
+/// <summary>Assistent „DUnitX-Testunit zu Unit …“ (#1821): Unit wählen, dann wie „Zur Testunit wechseln“.
+/// </summary>
+procedure NewTestUnitFor;
+var
+  mKey, mActive: string;
+  mUnits, mNames: TArray<string>;
+  mUnit: string;
+  mIndex: Integer;
+  mView: IOTAEditView;
+begin
+  mUnits := TAtlasTestUnitMatch.Units(TAtlasIdeProblemFiles.GroupFiles(mKey));
+  if Length(mUnits) = 0 then
+  begin
+    TAtlasIdeHost.Message(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsGalleryNoUnits));
+    Exit;
+  end;
+  mNames := nil;
+  for mUnit in mUnits do
+  begin
+    mNames := mNames + [TAtlasTestUnitMatch.UnitNameOf(mUnit)];
+  end;
+  mActive := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) then
+  begin
+    mActive := mView.Buffer.FileName;
+  end;
+  mIndex := TAtlasTestUnitMatch.IndexOf(mUnits, mActive);
+  if TAtlasChoiceDialog.Execute(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsGalleryTestUnit),
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsGalleryChooseUnit), mNames, mIndex) then
+  begin
+    TAtlasIdeEditorCommands.TestUnitFor(mUnits[mIndex]);
+  end;
+end;
+
 { TAtlasTestsModule }
 
 function TAtlasTestsModule.Info: TAtlasModuleInfo;
@@ -371,7 +418,10 @@ begin
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
     // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
     Command('Atlas.ProjectRunUnitTests', TAtlasTestsTextId.TestsProjectRunUnit,
-      Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible)];
+      Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
+    // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
+    Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
+      Guarded(TAtlasFeature.Generate, NewTestUnitFor), nil), TAtlasTestsTextId.TestsGalleryTestUnitHint)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -396,7 +446,8 @@ begin
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
-    MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext)];
+    MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.NewTestUnitFor', TAtlasMenuPlace.Gallery)];
 end;
 
 procedure TAtlasTestsModule.ApplySettings;

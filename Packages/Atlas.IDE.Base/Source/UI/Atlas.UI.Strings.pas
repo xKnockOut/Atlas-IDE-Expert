@@ -712,6 +712,8 @@ type
     SettingsTrackLines,
     // Kontextmenü der Projektverwaltung (#1817).
     SettingsProjectContextMenu, ProjectMenuCheck,
+    // Assistenten in der Objektgalerie (#1821).
+    SettingsGalleryWizards, GalleryFileExists, GalleryChoiceSearch, GalleryChoiceOk, GalleryChoiceCancel,
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
@@ -2406,6 +2408,11 @@ const
      'Befunde folgen ihrer Zeile sofort beim Bearbeiten',
      'Untermenü Atlas im Kontextmenü der Projektverwaltung',
      'Mit Atlas prüfen',
+     'Atlas-Assistenten unter Datei › Neu › Weitere',
+     'Die Datei %s gibt es schon.',
+     'Suchen',
+     'OK',
+     'Abbrechen',
      'Module',
      'Packages von Atlas',
      'installiert',
@@ -4042,6 +4049,11 @@ const
      'Findings follow their line immediately while editing',
      'Atlas submenu in the Project Manager context menu',
      'Check with Atlas',
+     'Atlas wizards in File › New › Other',
+     'The file %s already exists.',
+     'Search',
+     'OK',
+     'Cancel',
      'Modules',
      'Atlas packages',
      'installed',

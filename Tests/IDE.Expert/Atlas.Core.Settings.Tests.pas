@@ -47,6 +47,9 @@ type
     /// <summary>#1817: commands.projectContextMenu mit Vorgabe an.</summary>
     [Test]
     procedure ProjectContextMenuRoundTrip;
+    /// <summary>#1821: generate.galleryWizards mit Vorgabe an.</summary>
+    [Test]
+    procedure GalleryWizardsRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -643,6 +646,22 @@ begin
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.ProjectContextMenu);
+end;
+
+procedure TAtlasPluginSettingsTests.GalleryWizardsRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.GalleryWizards);
+  Store := TMemoryStore.Create;
+  Settings.GalleryWizards := False;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('GalleryWizards', 1));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.GalleryWizards);
 end;
 
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;

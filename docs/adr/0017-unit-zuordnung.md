@@ -230,6 +230,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Forms.Text` | `Core/Forms/Atlas.Core.Forms.Text.pas` | Ordner `Core/Forms` |
 | `Atlas.Core.Generate.Contract` | `Core/Generate/Atlas.Core.Generate.Contract.pas` | Ordner `Core/Generate` |
 | `Atlas.Core.Generate.FileTemplates` | `Core/Generate/Atlas.Core.Generate.FileTemplates.pas` | Ordner `Core/Generate` |
+| `Atlas.Core.Generate.Gallery` | `Core/Generate/Atlas.Core.Generate.Gallery.pas` | Ordner `Core/Generate`: Assistenten der Objektgalerie, #1821 |
+| `Atlas.Core.Generate.Choice` | `Core/Generate/Atlas.Core.Generate.Choice.pas` | Ordner `Core/Generate`: Auswahl mit Suchfeld, #1821 |
 | `Atlas.Core.Generate.Menu` | `Core/Generate/Atlas.Core.Generate.Menu.pas` | Ordner `Core/Generate` |
 | `Atlas.Core.Generate.Protocol` | `Core/Generate/Atlas.Core.Generate.Protocol.pas` | Ordner `Core/Generate` |
 | `Atlas.Core.Hover.Contract` | `Core/Hover/Atlas.Core.Hover.Contract.pas` | Ordner `Core/Hover` |
@@ -595,6 +597,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.TeamFile` | `IDE/Foundation/Atlas.IDE.Foundation.TeamFile.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Generate.Commands` | `IDE/Generate/Atlas.IDE.Generate.Commands.pas` | Ordner `IDE/Generate` |
 | `Atlas.IDE.Generate.NewFile` | `IDE/Generate/Atlas.IDE.Generate.NewFile.pas` | Ordner `IDE/Generate` |
+| `Atlas.IDE.Generate.Gallery` | `IDE/Generate/Atlas.IDE.Generate.Gallery.pas` | Ordner `IDE/Generate`: Kategorie Atlas in Datei › Neu › Weitere, #1821 |
 | `Atlas.IDE.Hover.DebugValue` | `IDE/Hover/Atlas.IDE.Hover.DebugValue.pas` | Ordner `IDE/Hover` |
 | `Atlas.IDE.Hover.Editor` | `IDE/Hover/Atlas.IDE.Hover.Editor.pas` | Ordner `IDE/Hover` |
 | `Atlas.IDE.Hover.EditorContent` | `IDE/Hover/Atlas.IDE.Hover.EditorContent.pas` | Ordner `IDE/Hover` |
@@ -679,6 +682,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.EditorToolbar.Customize` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Customize.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.EditorToolbar.Glyphs` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Glyphs.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.Generate.Window` | `UI/Generate/Atlas.UI.Generate.Window.pas` | Ordner `UI/Generate` |
+| `Atlas.UI.Generate.Choice` | `UI/Generate/Atlas.UI.Generate.Choice.pas` | Ordner `UI/Generate`: Auswahldialog der Assistenten, #1821 |
 | `Atlas.UI.Hover.Tip` | `UI/Hover/Atlas.UI.Hover.Tip.pas` | Ordner `UI/Hover` |
 | `Atlas.UI.Notifications.Notice` | `UI/Notifications/Atlas.UI.Notifications.Notice.pas` | Ordner `UI/Notifications` |
 | `Atlas.UI.Notifications.Window` | `UI/Notifications/Atlas.UI.Notifications.Window.pas` | Ordner `UI/Notifications` |
@@ -1074,6 +1078,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Analysis.MetricsLens` | `Core/Analysis/Atlas.Core.Analysis.MetricsLens.pas` | Ordner `Core/Analysis`; Beschriftung der Metrik-Lens (#66, #1756) |
 | `Atlas.Core.Architecture.Model` | `Core/Architecture/Atlas.Core.Architecture.Model.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Architecture.Commands` | `Core/Architecture/Atlas.Core.Architecture.Commands.pas` | Ordner `Core/Architecture` |
+| `Atlas.Core.Architecture.RoleUnit` | `Core/Architecture/Atlas.Core.Architecture.RoleUnit.pas` | Ordner `Core/Architecture`: Unit nach Architekturrolle, #1821 |
 | `Atlas.Core.Architecture.MapState` | `Core/Architecture/Atlas.Core.Architecture.MapState.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Architecture.View` | `Core/Architecture/Atlas.Core.Architecture.View.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Hotspots.Model` | `Core/Hotspots/Atlas.Core.Hotspots.Model.pas` | Ordner `Core/Hotspots` |
@@ -1082,6 +1087,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Analysis.Composition` | `IDE/Analysis/Atlas.IDE.Analysis.Composition.pas` | Anmeldung des Moduls `atlas.analysis`, #1455 |
 | `Atlas.IDE.Analysis.MetricsLens` | `IDE/Analysis/Atlas.IDE.Analysis.MetricsLens.pas` | Ordner `IDE/Analysis`; Code Lens mit Code-Metriken (#66), bis #1756 in Base |
 | `Atlas.IDE.Architecture.Service` | `IDE/Architecture/Atlas.IDE.Architecture.Service.pas` | Ordner `IDE/Architecture` |
+| `Atlas.IDE.Architecture.RoleUnit` | `IDE/Architecture/Atlas.IDE.Architecture.RoleUnit.pas` | Ordner `IDE/Architecture`: Unit nach Architekturrolle, #1821 |
 | `Atlas.IDE.Architecture.Window` | `IDE/Architecture/Atlas.IDE.Architecture.Window.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Hotspots.Service` | `IDE/Hotspots/Atlas.IDE.Hotspots.Service.pas` | Ordner `IDE/Hotspots` |
 | `Atlas.IDE.Hotspots.Window` | `IDE/Hotspots/Atlas.IDE.Hotspots.Window.pas` | Ordner `IDE/Hotspots` |
@@ -1091,6 +1097,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Analysis.SettingsSection` | `UI/Analysis/Atlas.UI.Analysis.SettingsSection.pas` | Ordner `UI/Analysis`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Analysis.Strings` | `UI/Analysis/Atlas.UI.Analysis.Strings.pas` | Texte des Moduls (Analyse), Sprache von Base, #1455 |
 | `Atlas.UI.Architecture.Assignment` | `UI/Architecture/Atlas.UI.Architecture.Assignment.pas` | Ordner `UI/Architecture` |
+| `Atlas.UI.Architecture.RoleUnitDialog` | `UI/Architecture/Atlas.UI.Architecture.RoleUnitDialog.pas` | Ordner `UI/Architecture`: Dialog Unit nach Architekturrolle, #1821 |
 | `Atlas.UI.Architecture.Frame` | `UI/Architecture/Atlas.UI.Architecture.Frame.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Map` | `UI/Architecture/Atlas.UI.Architecture.Map.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Slider` | `UI/Architecture/Atlas.UI.Architecture.Slider.pas` | Ordner `UI/Architecture` |
@@ -1171,6 +1178,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Problems.BulkFix` | `Core/Problems/Atlas.Core.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
 | `Atlas.Core.Rules.Table` | `Core/Rules/Atlas.Core.Rules.Table.pas` | Ordner `Core/Rules`: Regeltabelle für Regel-Editor und „Regel abschalten“, #1755 |
+| `Atlas.Core.Rules.CustomLayer` | `Core/Rules/Atlas.Core.Rules.CustomLayer.pas` | Ordner `Core/Rules`: Eigene Prüfregel als Schicht von forbidden-uses, #1821 |
 | `Atlas.IDE.Editor.DfmPropertyRules` | `IDE/Editor/Atlas.IDE.Editor.DfmPropertyRules.pas` | Eigenschaftsregeln anwenden (#309), Schalter dfmRules.apply unter ruleChecks, #1455 |
 | `Atlas.IDE.Rules.Baseline` | `IDE/Rules/Atlas.IDE.Rules.Baseline.pas` | Ordner `IDE/Rules`: Baseline aktualisieren, Compilermeldungen in die Baseline, #1455 |
 | `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
