@@ -4931,6 +4931,28 @@
       "x-node": "editor.designerBar",
       "x-issue": "#739"
     },
+    "DesignerSpatialNavigation": {
+      "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.spatialNavigation",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#745"
+    },
+    "DesignerSpatialCrossContainers": {
+      "description": "Gibt es im Elternelement in der Richtung kein Steuerelement mehr, sucht Alt+Pfeil an seinem Rand in den benachbarten Containern weiter (vom letzten Feld eines Panels zum nächsten im Panel daneben). Aus = Alt+Pfeil bleibt im Elternelement.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.spatialNavigation.crossContainers",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.spatialNavigation",
+      "x-node": "editor.designerBar",
+      "x-issue": "#745"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

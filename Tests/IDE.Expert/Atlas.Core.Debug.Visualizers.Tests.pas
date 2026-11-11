@@ -291,7 +291,7 @@ begin
   mOptions_.MaxLength := 20;
   mText := TAtlasVisualizers.Replacement(TAtlasVisualizerKind.Lists, 'Zahlen', 'TList<System.Integer>', '',
     mOptions_, Context);
-  Assert.AreEqual(20, Length(mText));
+  Assert.AreEqual(20, Integer(Length(mText)));
   Assert.IsTrue(mText.EndsWith('…'));
   // Ausdrücke mit Index oder Dereferenzierung werden geklammert.
   FAsked.Clear;

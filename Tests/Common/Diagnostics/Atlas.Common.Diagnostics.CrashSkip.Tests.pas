@@ -62,7 +62,7 @@ procedure TCrashSkipTests.ChecksumIsStableAndDiffers;
 begin
   Assert.AreEqual(TCrashSkips.Checksum('unit A;'), TCrashSkips.Checksum('unit A;'));
   Assert.AreNotEqual(TCrashSkips.Checksum('unit A;'), TCrashSkips.Checksum('unit B;'));
-  Assert.AreEqual(16, Length(TCrashSkips.Checksum('')));
+  Assert.AreEqual(16, Integer(Length(TCrashSkips.Checksum(''))));
   // FNV-1a-Startwert für leeren Text.
   Assert.AreEqual('CBF29CE484222325', UpperCase(TCrashSkips.Checksum('')));
 end;

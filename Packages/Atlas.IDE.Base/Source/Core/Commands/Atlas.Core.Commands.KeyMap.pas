@@ -390,7 +390,8 @@ const
     'Atlas.CreateIssue', // CreateIssue
     '', // DesignerSearch
     'Atlas.CheckFile', // CheckFile
-    'Atlas.SectionAppend' // SectionAppend
+    'Atlas.SectionAppend', // SectionAppend
+    '' // DesignerSelectionSetsSave
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;

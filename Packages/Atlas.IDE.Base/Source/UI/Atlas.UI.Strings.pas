@@ -740,7 +740,9 @@ type
     BreadcrumbsMetricsParameters, BreadcrumbsMetricsMembers, BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit,
     BreadcrumbsMetricsMissing,
     // Wechsel zwischen den uses-Klauseln (#1760).
-    GotoUsesToward);
+    GotoUsesToward,
+    // Auswahlsätze im Designer: Taste in der Übersicht (#739).
+    DesignerSelectionSetsSaveCommand);
 
   TAtlasStrings = class
   private
@@ -2459,7 +2461,8 @@ const
      'Vererbungstiefe',
      '%s (Grenze %d)',
      'Kennzahlen noch nicht verfügbar',
-     'Zur uses-Klausel (%s)'),
+     'Zur uses-Klausel (%s)',
+     'Designer: Auswahl speichern …'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4094,7 +4097,8 @@ const
      'Inheritance depth',
      '%s (limit %d)',
      'Metrics not available yet',
-     'Go to uses clause (%s)'));
+     'Go to uses clause (%s)',
+     'Designer: Save selection …'));
 
 { TAtlasStrings }
 
