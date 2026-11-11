@@ -90,7 +90,14 @@ type
     /// </summary>
     class function StillAt(const AView: IOTAEditView; const AAsked: TAsked; ACompareLine: Boolean): Boolean;
       static;
+    /// <summary>Darf in AView nach Enter gefragt werden (Quelltext, schreibbar, Atlas tippt nicht gerade)?
+    /// </summary>
+    class function CanAsk(const AView: IOTAEditView): Boolean; static;
+    class function ContextOf(const AView: IOTAEditView; const AAsked: TAsked): TAtlasGhostContext; static;
     class procedure Ask; static;
+    /// <summary>Fragt die Anbieter nacheinander im Hintergrund; der erste Vorschlag gewinnt.</summary>
+    class procedure Start(const AAsked: TAsked; const AWorks: TArray<TAtlasGhostWork>;
+      const AProviders: TArray<IAtlasGhostProvider>); static;
     class procedure Answered(const AAsked: TAsked; const AProvider: IAtlasGhostProvider;
       const AProposal: TAtlasGhostProposal); static;
     class procedure ShowGhost; static;
@@ -345,8 +352,7 @@ class function TAtlasIdeGhostSuggestions.Run(const AView: IOTAEditView): Boolean
 begin
   Result := False;
   Dismiss;
-  if (AView = nil) or (AView.Buffer = nil) or AView.Buffer.IsReadOnly or (FTimer = nil) or
-    not TAtlasSmartIndent.IsSource(AView.Buffer.FileName) or (Assigned(FBusy) and FBusy()) then
+  if (FTimer = nil) or not CanAsk(AView) then
   begin
     Exit;
   end;
@@ -361,6 +367,26 @@ begin
   FTimer.Enabled := True;
 end;
 
+class function TAtlasIdeGhostSuggestions.CanAsk(const AView: IOTAEditView): Boolean;
+begin
+  Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly and
+    TAtlasSmartIndent.IsSource(AView.Buffer.FileName);
+  if Result and Assigned(FBusy) then
+  begin
+    Result := not FBusy();
+  end;
+end;
+
+class function TAtlasIdeGhostSuggestions.ContextOf(const AView: IOTAEditView; const AAsked: TAsked):
+  TAtlasGhostContext;
+begin
+  Result.FileName := AAsked.FileName;
+  Result.Line := AAsked.Line;
+  Result.Text := TAtlasEditorBuffer.Text(AView.Buffer);
+  Result.TabSize := TAtlasEditorBuffer.BlockIndent(AView.Buffer);
+  Result.InsertSpaces := True;
+end;
+
 class procedure TAtlasIdeGhostSuggestions.Ask;
 var
   mView: IOTAEditView;
@@ -370,41 +396,51 @@ var
   mWork: TAtlasGhostWork;
   mWorks: TArray<TAtlasGhostWork>;
   mProviders: TArray<IAtlasGhostProvider>;
-  mFound: IAtlasGhostProvider;
-  mProposal: TAtlasGhostProposal;
 begin
   mAsked := FPending;
   FPending := Default(TAsked);
   mView := TAtlasEditorBuffer.ActiveView;
-  if (FRequest = nil) or FRequest.Busy or not StillAt(mView, mAsked, False) or (Assigned(FBusy) and FBusy()) then
+  if (FRequest = nil) or FRequest.Busy or not CanAsk(mView) or not StillAt(mView, mAsked, False) then
   begin
     Exit;
   end;
   // Stand beim Fragen: Die Einrückung beim Tippen kann die Zeile nach Enter noch geändert haben.
   mAsked := AskedOf(mView, mAsked.Line);
-  mContext.FileName := mAsked.FileName;
-  mContext.Line := mAsked.Line;
-  mContext.Text := TAtlasEditorBuffer.Text(mView.Buffer);
-  mContext.TabSize := TAtlasEditorBuffer.BlockIndent(mView.Buffer);
-  mContext.InsertSpaces := True;
+  mContext := ContextOf(mView, mAsked);
   mWorks := nil;
   mProviders := nil;
   for mProvider in TAtlasGhostProviders.List do
   begin
-    if mProvider.Enabled then
+    if not mProvider.Enabled then
     begin
-      mWork := mProvider.Prepare(mContext);
-      if Assigned(mWork) then
-      begin
-        mWorks := mWorks + [mWork];
-        mProviders := mProviders + [mProvider];
-      end;
+      Continue;
+    end;
+    mWork := mProvider.Prepare(mContext);
+    if Assigned(mWork) then
+    begin
+      mWorks := mWorks + [mWork];
+      mProviders := mProviders + [mProvider];
     end;
   end;
-  if mWorks = nil then
+  if mWorks <> nil then
   begin
-    Exit;
+    Start(mAsked, mWorks, mProviders);
   end;
+end;
+
+class procedure TAtlasIdeGhostSuggestions.Start(const AAsked: TAsked; const AWorks: TArray<TAtlasGhostWork>;
+  const AProviders: TArray<IAtlasGhostProvider>);
+var
+  mAsked: TAsked;
+  mWorks: TArray<TAtlasGhostWork>;
+  mProviders: TArray<IAtlasGhostProvider>;
+  mFound: IAtlasGhostProvider;
+  mProposal: TAtlasGhostProposal;
+begin
+  // Kopien: Anonyme Methoden fangen keine const-Parameter ein.
+  mAsked := AAsked;
+  mWorks := AWorks;
+  mProviders := AProviders;
   mFound := nil;
   mProposal := Default(TAtlasGhostProposal);
   FRequest.Start(

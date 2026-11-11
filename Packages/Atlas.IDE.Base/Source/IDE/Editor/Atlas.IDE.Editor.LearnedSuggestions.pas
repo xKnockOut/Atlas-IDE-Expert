@@ -98,6 +98,7 @@ function TLearnedProvider.Prepare(const AContext: TAtlasGhostContext): TAtlasGho
 var
   mSession: TLspSession;
   mArguments: string;
+  mRequest: TAtlasLearnedRequest;
   mLine: Integer;
   mSettings: TAtlasPluginSettings;
 begin
@@ -111,9 +112,14 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(AContext.FileName, AContext.Text);
-  mArguments := TAtlasLearnedSuggestions.SuggestArguments(TLspUris.FromPath(AContext.FileName), AContext.Line,
-    AContext.TabSize, AContext.InsertSpaces, mSettings.SuggestionsMinCount, mSettings.SuggestionsMinShare,
-    TAtlasIdeLearnedSuggestions.Usage.AdjustList(mSettings.SuggestionsLearnFromUsage));
+  mRequest.Uri := TLspUris.FromPath(AContext.FileName);
+  mRequest.Line := AContext.Line;
+  mRequest.TabSize := AContext.TabSize;
+  mRequest.InsertSpaces := AContext.InsertSpaces;
+  mRequest.MinCount := mSettings.SuggestionsMinCount;
+  mRequest.MinShare := mSettings.SuggestionsMinShare;
+  mRequest.Adjust := TAtlasIdeLearnedSuggestions.Usage.AdjustList(mSettings.SuggestionsLearnFromUsage);
+  mArguments := TAtlasLearnedSuggestions.SuggestArguments(mRequest);
   mLine := AContext.Line;
   Result :=
     function(out AProposal: TAtlasGhostProposal): Boolean

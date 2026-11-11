@@ -514,11 +514,13 @@ begin
   begin
     Exit;
   end;
-  case ANext.Kind of
-    TSyntaxKind.TryStatement:
-      Result := TryFollow(ATree, ANext, ATrigger);
-    TSyntaxKind.WhileStatement:
-      Result := WhileFollow(ATree, ANext, ATrigger);
+  if ANext.Kind = TSyntaxKind.TryStatement then
+  begin
+    Result := TryFollow(ATree, ANext, ATrigger);
+  end
+  else if ANext.Kind = TSyntaxKind.WhileStatement then
+  begin
+    Result := WhileFollow(ATree, ANext, ATrigger);
   end;
 end;
 

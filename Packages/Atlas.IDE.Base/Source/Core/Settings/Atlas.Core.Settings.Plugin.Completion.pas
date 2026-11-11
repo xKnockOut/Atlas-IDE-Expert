@@ -25,6 +25,9 @@ const
   cMaxSuggestionShare = 100;
   cMinSuggestionCount = 2;
   cMaxSuggestionCount = 100;
+  cDefaultSuggestionDelay = 300;
+  cDefaultSuggestionShare = 70;
+  cDefaultSuggestionCount = 5;
   /// <summary>Wie TAtlasListModes.cModeNames bzw. ScopeNames (#497); Settings darf Completion nicht einbinden
   /// (A-09), der Test prüft Gleichheit.</summary>
   cCompletionListModeNames: array[0..2] of string = ('filter', 'all', 'rest');
@@ -128,9 +131,9 @@ begin
   Result.CompletionListScope := cCompletionListScopeNames[0];
   Result.Preview := False;
   Result.SuggestionsLearned := True;
-  Result.SuggestionsDelayMs := 300;
-  Result.SuggestionsMinShare := 70;
-  Result.SuggestionsMinCount := 5;
+  Result.SuggestionsDelayMs := cDefaultSuggestionDelay;
+  Result.SuggestionsMinShare := cDefaultSuggestionShare;
+  Result.SuggestionsMinCount := cDefaultSuggestionCount;
   Result.SuggestionsLearnFromUsage := True;
 end;
 

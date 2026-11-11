@@ -56,6 +56,18 @@ type
     By: Integer;
   end;
 
+  /// <summary>Anfrage an suggestNext.</summary>
+  TAtlasLearnedRequest = record
+    Uri: string;
+    /// <summary>Die neue, leere Zeile (0-basiert).</summary>
+    Line: Integer;
+    TabSize: Integer;
+    InsertSpaces: Boolean;
+    MinCount: Integer;
+    MinShare: Integer;
+    Adjust: TArray<TAtlasLearnedAdjust>;
+  end;
+
   /// <summary>Schattentext eines Blocks, der Stück für Stück geschrieben werden kann.</summary>
   TAtlasGhostText = record
   private
@@ -89,8 +101,7 @@ type
     cHintEvidence = 3;
   public
     /// <summary>Argumente für suggestNext als JSON-Text.</summary>
-    class function SuggestArguments(const AUri: string; ALine, ATabSize: Integer; AInsertSpaces: Boolean;
-      AMinCount, AMinShare: Integer; const AAdjust: TArray<TAtlasLearnedAdjust>): string; static;
+    class function SuggestArguments(const ARequest: TAtlasLearnedRequest): string; static;
     /// <summary>Argumente für learnedPatterns als JSON-Text.</summary>
     class function ListArguments(const AUri: string): string; static;
     /// <summary>Antwort von suggestNext für die Zeile ALine; False bei null oder ungültiger Antwort.</summary>
@@ -217,8 +228,7 @@ end;
 
 { TAtlasLearnedSuggestions }
 
-class function TAtlasLearnedSuggestions.SuggestArguments(const AUri: string; ALine, ATabSize: Integer;
-  AInsertSpaces: Boolean; AMinCount, AMinShare: Integer; const AAdjust: TArray<TAtlasLearnedAdjust>): string;
+class function TAtlasLearnedSuggestions.SuggestArguments(const ARequest: TAtlasLearnedRequest): string;
 var
   mValues: TJSONArray;
   mEditor, mOptions, mAdjust: TJSONObject;
@@ -226,17 +236,17 @@ var
 begin
   mValues := TJSONArray.Create;
   try
-    mValues.Add(AUri);
-    mValues.Add(ALine);
+    mValues.Add(ARequest.Uri);
+    mValues.Add(ARequest.Line);
     mEditor := TJSONObject.Create;
-    mEditor.AddPair('tabSize', TJSONNumber.Create(ATabSize));
-    mEditor.AddPair('insertSpaces', TJSONBool.Create(AInsertSpaces));
+    mEditor.AddPair('tabSize', TJSONNumber.Create(ARequest.TabSize));
+    mEditor.AddPair('insertSpaces', TJSONBool.Create(ARequest.InsertSpaces));
     mValues.AddElement(mEditor);
     mOptions := TJSONObject.Create;
-    mOptions.AddPair('minCount', TJSONNumber.Create(AMinCount));
-    mOptions.AddPair('minShare', TJSONNumber.Create(AMinShare));
+    mOptions.AddPair('minCount', TJSONNumber.Create(ARequest.MinCount));
+    mOptions.AddPair('minShare', TJSONNumber.Create(ARequest.MinShare));
     mAdjust := TJSONObject.Create;
-    for mItem in AAdjust do
+    for mItem in ARequest.Adjust do
     begin
       mAdjust.AddPair(mItem.Id, TJSONNumber.Create(mItem.By));
     end;

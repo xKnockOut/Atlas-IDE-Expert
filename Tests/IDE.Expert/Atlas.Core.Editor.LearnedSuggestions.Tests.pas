@@ -72,12 +72,20 @@ end;
 procedure TAtlasLearnedSuggestionsTests.BuildsArguments;
 var
   mAdjust: TAtlasLearnedAdjust;
+  mRequest: TAtlasLearnedRequest;
 begin
   mAdjust.Id := 'a => b';
   mAdjust.By := -20;
+  mRequest.Uri := 'file:///C:/P/U.pas';
+  mRequest.Line := 7;
+  mRequest.TabSize := 2;
+  mRequest.InsertSpaces := True;
+  mRequest.MinCount := 5;
+  mRequest.MinShare := 70;
+  mRequest.Adjust := [mAdjust];
   Assert.AreEqual('["file:///C:/P/U.pas",7,{"tabSize":2,"insertSpaces":true},' +
     '{"minCount":5,"minShare":70,"adjust":{"a => b":-20}}]',
-    TAtlasLearnedSuggestions.SuggestArguments('file:///C:/P/U.pas', 7, 2, True, 5, 70, [mAdjust]));
+    TAtlasLearnedSuggestions.SuggestArguments(mRequest));
   Assert.AreEqual('["file:///C:/P/U.pas"]', TAtlasLearnedSuggestions.ListArguments('file:///C:/P/U.pas'));
 end;
 

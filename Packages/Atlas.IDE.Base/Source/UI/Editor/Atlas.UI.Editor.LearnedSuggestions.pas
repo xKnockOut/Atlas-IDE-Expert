@@ -97,6 +97,21 @@ begin
   Result := TAtlasLearnedTexts.Text(AId);
 end;
 
+const
+  /// <summary>Maße in Pixeln bei 96 dpi.</summary>
+  cWindowWidth = 860;
+  cWindowHeight = 460;
+  cButtonWidth = 110;
+  cButtonTop = 9;
+  cButtonBarHeight = 44;
+  cGap = 10;
+  cWidthTrigger = 190;
+  cWidthFollow = 260;
+  cWidthShare = 60;
+  cWidthCount = 70;
+  cWidthOrigin = 80;
+  cWidthUsed = 180;
+
 type
   /// <summary>Fenster der Liste mit seinen Ereignissen.</summary>
   TListWindow = class(TForm)
@@ -110,6 +125,10 @@ type
     FFilling: Boolean;
     procedure Fill(AItem: TListItem; const ARow: TAtlasLearnedListItem);
     procedure Build;
+    procedure BuildIntro;
+    procedure BuildButtons;
+    procedure BuildList;
+    procedure FillList;
     procedure AddColumn(const ACaption: string; AWidth: Integer);
     function AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer): TButton;
     procedure ItemChecked(Sender: TObject; Item: TListItem);
@@ -133,8 +152,8 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Width := ScaleValue(110);
-  Result.Top := ScaleValue(9);
+  Result.Width := ScaleValue(cButtonWidth);
+  Result.Top := ScaleValue(cButtonTop);
   Result.Left := ScaleValue(ALeft);
 end;
 
@@ -158,19 +177,32 @@ begin
 end;
 
 procedure TListWindow.Build;
-var
-  mIntro: TLabel;
-  mButtons: TPanel;
-  mClose: TButton;
-  mIndex: Integer;
-  mItem: TListItem;
 begin
   Caption := T(TAtlasLearnedText.Title);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Width := ScaleValue(860);
-  Height := ScaleValue(460);
+  Width := ScaleValue(cWindowWidth);
+  Height := ScaleValue(cWindowHeight);
+  BuildIntro;
+  BuildButtons;
+  BuildList;
+  FillList;
+  FList.OnItemChecked := ItemChecked;
+  FList.OnSelectItem := ItemSelected;
+  FList.OnDblClick := GoToClick;
+  if FList.Items.Count > 0 then
+  begin
+    FList.Items[0].Selected := True;
+    ActiveControl := FList;
+  end;
+  UpdateButtons;
+end;
+
+procedure TListWindow.BuildIntro;
+var
+  mIntro: TLabel;
+begin
   mIntro := TLabel.Create(Self);
   mIntro.Parent := Self;
   mIntro.Align := alTop;
@@ -181,21 +213,32 @@ begin
   begin
     mIntro.Caption := mIntro.Caption + sLineBreak + sLineBreak + T(TAtlasLearnedText.Empty);
   end;
+end;
+
+procedure TListWindow.BuildButtons;
+var
+  mButtons: TPanel;
+  mClose: TButton;
+begin
   mButtons := TPanel.Create(Self);
   mButtons.Parent := Self;
   mButtons.Align := alBottom;
-  mButtons.Height := ScaleValue(44);
+  mButtons.Height := ScaleValue(cButtonBarHeight);
   mButtons.BevelOuter := bvNone;
-  FForget := AddButton(mButtons, T(TAtlasLearnedText.Forget), 10);
+  FForget := AddButton(mButtons, T(TAtlasLearnedText.Forget), cGap);
   FForget.OnClick := ForgetClick;
-  FGoTo := AddButton(mButtons, T(TAtlasLearnedText.GoToExample), 128);
+  FGoTo := AddButton(mButtons, T(TAtlasLearnedText.GoToExample), cGap + cButtonWidth + cGap);
   FGoTo.OnClick := GoToClick;
   mClose := AddButton(mButtons, T(TAtlasLearnedText.Close), 0);
-  mClose.Left := mButtons.ClientWidth - mClose.Width - ScaleValue(10);
+  mClose.Left := mButtons.ClientWidth - mClose.Width - ScaleValue(cGap);
   mClose.Anchors := [akTop, akRight];
   mClose.ModalResult := mrOk;
   mClose.Cancel := True;
   mClose.Default := True;
+end;
+
+procedure TListWindow.BuildList;
+begin
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
@@ -204,13 +247,21 @@ begin
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
-  AddColumn(T(TAtlasLearnedText.ColumnTrigger), 190);
-  AddColumn(T(TAtlasLearnedText.ColumnFollow), 260);
-  AddColumn(T(TAtlasLearnedText.ColumnShare), 60);
-  AddColumn(T(TAtlasLearnedText.ColumnCount), 70);
-  AddColumn(T(TAtlasLearnedText.ColumnOrigin), 80);
-  AddColumn(T(TAtlasLearnedText.ColumnUsed), 180);
+  AddColumn(T(TAtlasLearnedText.ColumnTrigger), cWidthTrigger);
+  AddColumn(T(TAtlasLearnedText.ColumnFollow), cWidthFollow);
+  AddColumn(T(TAtlasLearnedText.ColumnShare), cWidthShare);
+  AddColumn(T(TAtlasLearnedText.ColumnCount), cWidthCount);
+  AddColumn(T(TAtlasLearnedText.ColumnOrigin), cWidthOrigin);
+  AddColumn(T(TAtlasLearnedText.ColumnUsed), cWidthUsed);
+end;
+
+procedure TListWindow.FillList;
+var
+  mIndex: Integer;
+  mItem: TListItem;
+begin
   FFilling := True;
+  FList.Items.BeginUpdate;
   try
     for mIndex := 0 to High(FItems) do
     begin
@@ -219,17 +270,9 @@ begin
       Fill(mItem, FItems[mIndex]);
     end;
   finally
+    FList.Items.EndUpdate;
     FFilling := False;
   end;
-  FList.OnItemChecked := ItemChecked;
-  FList.OnSelectItem := ItemSelected;
-  FList.OnDblClick := GoToClick;
-  if FList.Items.Count > 0 then
-  begin
-    FList.Items[0].Selected := True;
-    ActiveControl := FList;
-  end;
-  UpdateButtons;
 end;
 
 procedure TListWindow.UpdateButtons;
