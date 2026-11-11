@@ -22,6 +22,9 @@ type
     class function DiskEncoding(const AFileName: string): TAtlasTextFileContent; static;
     /// <summary>Puffer der IDE zu einer Datei, auch wenn sie nicht vorn liegt; nil, wenn sie nicht offen ist.</summary>
     class function BufferOf(const AFileName: string): IOTAEditBuffer; static;
+    /// <summary>Text von AFileName: offener Puffer (auch ungespeichert), sonst die Datei; False, wenn sie sich nicht
+    /// lesen lässt (ASource dann leer).</summary>
+    class function SourceText(const AFileName: string; out ASource: string): Boolean; static;
     /// <summary>Projektdatei des Projekts der Projektgruppe, das AFileName enthält; '' wenn keins.</summary>
     class function ProjectOfFile(const AFileName: string): string; static;
     /// <summary>Projekt der Projektgruppe mit der Projektdatei AProjectFile (.dproj); nil, wenn keins.</summary>
@@ -43,7 +46,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.EncodingDefault;
+  Atlas.Core.Files.EncodingDefault,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 class function TAtlasIdeFiles.ProjectModule(const AFileName: string): IOTAModule;
 var
@@ -122,6 +126,29 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+class function TAtlasIdeFiles.SourceText(const AFileName: string; out ASource: string): Boolean;
+var
+  mBuffer: IOTAEditBuffer;
+begin
+  Result := True;
+  mBuffer := BufferOf(AFileName);
+  if mBuffer <> nil then
+  begin
+    ASource := TAtlasEditorBuffer.Text(mBuffer);
+    Exit;
+  end;
+  try
+    ASource := TAtlasTextFile.LoadText(AFileName);
+  except
+    // Fehlt, gesperrt, unlesbar oder binäres Formular: kein Text.
+    on Exception do
+    begin
+      ASource := '';
+      Result := False;
+    end;
+  end;
 end;
 
 class function TAtlasIdeFiles.ProjectOfFile(const AFileName: string): string;
