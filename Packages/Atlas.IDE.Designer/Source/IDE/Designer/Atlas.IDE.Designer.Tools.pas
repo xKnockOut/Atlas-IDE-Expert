@@ -7,6 +7,8 @@
 // Designer folgen.
 // - Abstandsgriffe (#734, designer.gapHandles, TAtlasIdeGapHandles).
 // - Gemeinsame Größengriffe (#737, designer.multiResize, TAtlasIdeMultiResize).
+// - Schnellleiste über einer Mehrfachauswahl (#735, designer.selectionBar,
+//   TAtlasIdeSelectionBar).
 // Nur im Hauptthread.
 
 interface
@@ -18,13 +20,15 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.HandleTool,
   Atlas.IDE.Designer.GapHandles,
-  Atlas.IDE.Designer.MultiResize;
+  Atlas.IDE.Designer.MultiResize,
+  Atlas.IDE.Designer.SelectionBar;
 
 type
   TAtlasIdeDesignerTools = class
   private
     FGaps: TAtlasIdeGapHandles;
     FResize: TAtlasIdeMultiResize;
+    FBar: TAtlasIdeSelectionBar;
     /// <summary>Werkzeug mit Griffen zum Knopf AId; nil ohne.</summary>
     function HandleToolOf(const AId: string): TAtlasIdeHandleTool;
   public
@@ -55,10 +59,12 @@ begin
   inherited Create;
   FGaps := TAtlasIdeGapHandles.Create(AOnMessage);
   FResize := TAtlasIdeMultiResize.Create(AOnMessage);
+  FBar := TAtlasIdeSelectionBar.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerTools.Destroy;
 begin
+  FBar.Free;
   FResize.Free;
   FGaps.Free;
   inherited Destroy;
@@ -74,6 +80,10 @@ begin
   if TAtlasIdeMultiResize.Available(ASettings) then
   begin
     Result := Result + [FResize.Button];
+  end;
+  if TAtlasIdeSelectionBar.Available(ASettings) then
+  begin
+    Result := Result + [FBar.Button];
   end;
 end;
 
@@ -94,6 +104,11 @@ function TAtlasIdeDesignerTools.Toggle(const AId: string): Boolean;
 var
   mTool: TAtlasIdeHandleTool;
 begin
+  if SameText(AId, TAtlasIdeSelectionBar.cId) then
+  begin
+    FBar.Toggle;
+    Exit(True);
+  end;
   mTool := HandleToolOf(AId);
   Result := mTool <> nil;
   if Result then
@@ -104,7 +119,7 @@ end;
 
 function TAtlasIdeDesignerTools.HasMenu(const AId: string): Boolean;
 begin
-  Result := HandleToolOf(AId) <> nil;
+  Result := (HandleToolOf(AId) <> nil) or SameText(AId, TAtlasIdeSelectionBar.cId);
 end;
 
 procedure TAtlasIdeDesignerTools.Popup(const AId: string; const APoint: TPoint);
@@ -115,6 +130,10 @@ begin
   if mTool <> nil then
   begin
     mTool.Popup(APoint);
+  end
+  else if SameText(AId, TAtlasIdeSelectionBar.cId) then
+  begin
+    FBar.Popup(APoint);
   end;
 end;
 
@@ -122,18 +141,21 @@ procedure TAtlasIdeDesignerTools.Tick;
 begin
   FGaps.Tick;
   FResize.Tick;
+  FBar.Tick;
 end;
 
 procedure TAtlasIdeDesignerTools.Hide;
 begin
   FGaps.Hide;
   FResize.Hide;
+  FBar.Hide;
 end;
 
 procedure TAtlasIdeDesignerTools.ApplyTheme;
 begin
   FGaps.ApplyTheme;
   FResize.ApplyTheme;
+  FBar.ApplyTheme;
 end;
 
 end.

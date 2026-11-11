@@ -313,6 +313,13 @@ begin
         Shape([P(8, 3.5), P(10, 3.5), P(10, 5.5), P(8, 5.5)], True, True),
         Shape([P(8, 10.5), P(10, 10.5), P(10, 12.5), P(8, 12.5)], True, True), Stroke([P(11.5, 8), P(14.5, 8)]),
         Stroke([P(13, 6.5), P(14.5, 8), P(13, 9.5)])];
+    TAtlasToolbarIcon.SelectionBar:
+      // Leiste mit drei Knöpfen über zwei markierten Kästchen.
+      Result := [Outline([P(1.5, 1.5), P(14.5, 1.5), P(14.5, 5.5), P(1.5, 5.5)]),
+        Shape([P(3, 2.75), P(5, 2.75), P(5, 4.25), P(3, 4.25)], True, True),
+        Shape([P(7, 2.75), P(9, 2.75), P(9, 4.25), P(7, 4.25)], True, True),
+        Outline([P(1.5, 8.5), P(7, 8.5), P(7, 14.5), P(1.5, 14.5)]),
+        Outline([P(9, 8.5), P(14.5, 8.5), P(14.5, 14.5), P(9, 14.5)])];
   else
     Result := nil;
   end;
