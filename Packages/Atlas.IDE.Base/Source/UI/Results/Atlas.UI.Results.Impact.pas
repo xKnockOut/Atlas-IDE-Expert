@@ -89,7 +89,7 @@ begin
   FParts.Depth.Align := alRight;
   FParts.Depth.AlignWithMargins := True;
   FParts.Depth.Style := csDropDownList;
-  FParts.Depth.Width := 44;
+  FParts.Depth.Width := FParts.Depth.ScaleValue(44);
   FParts.Depth.Visible := False;
   FParts.Depth.OnChange := DepthChange;
   FParts.DepthLabel := TLabel.Create(AView.Host);

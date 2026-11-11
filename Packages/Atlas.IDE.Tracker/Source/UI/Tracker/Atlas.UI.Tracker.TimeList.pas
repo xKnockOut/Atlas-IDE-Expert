@@ -120,7 +120,7 @@ begin
   FClose := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenClose));
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
   UpdateButtons;
 end;
 

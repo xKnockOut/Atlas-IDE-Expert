@@ -179,7 +179,7 @@ begin
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
   FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
-  FTitle.Top := 200;
+  FTitle.Top := FTitle.ScaleValue(200);
   FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
   FTitleLabel.FocusControl := FTitle;
@@ -190,7 +190,7 @@ begin
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
   FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
-  FDescription.Top := 400;
+  FDescription.Top := FDescription.ScaleValue(400);
   FDescription.Height := ScaleValue(140);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;
@@ -300,7 +300,7 @@ begin
   FBlocks.Align := alTop;
   FBlocks.AlignWithMargins := True;
   FBlocks.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  FBlocks.Top := 100;
+  FBlocks.Top := FBlocks.ScaleValue(100);
   FBlocks.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkBlocks, [AKey]);
 
   FOtherLabel := TLabel.Create(Self);
@@ -308,7 +308,7 @@ begin
   FOtherLabel.Align := alTop;
   FOtherLabel.AlignWithMargins := True;
   FOtherLabel.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
-  FOtherLabel.Top := 200;
+  FOtherLabel.Top := FOtherLabel.ScaleValue(200);
   FOtherLabel.ShowAccelChar := False;
   FOtherLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkKey,
     [TAtlasIssuePreview.KeyExample(AProvider)]);
@@ -318,7 +318,7 @@ begin
   FOther.Align := alTop;
   FOther.AlignWithMargins := True;
   FOther.Margins.SetBounds(cGap, 0, cGap, 0);
-  FOther.Top := 300;
+  FOther.Top := FOther.ScaleValue(300);
   FOther.OnChange := OtherChange;
   FOtherLabel.FocusControl := FOther;
 

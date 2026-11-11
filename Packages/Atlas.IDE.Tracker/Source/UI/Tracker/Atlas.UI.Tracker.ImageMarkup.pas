@@ -196,8 +196,8 @@ begin
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   KeyPreview := True;
-  Width := 1000;
-  Height := 720;
+  Width := ScaleValue(1000);
+  Height := ScaleValue(720);
 
   AddToolBar;
   AddBottomButtons;
@@ -228,7 +228,7 @@ begin
   mTop := TPanel.Create(Self);
   mTop.Parent := Self;
   mTop.Align := alTop;
-  mTop.Height := 40;
+  mTop.Height := mTop.ScaleValue(40);
   mTop.BevelOuter := bvNone;
   mLeft := cGap;
   for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
@@ -257,7 +257,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;

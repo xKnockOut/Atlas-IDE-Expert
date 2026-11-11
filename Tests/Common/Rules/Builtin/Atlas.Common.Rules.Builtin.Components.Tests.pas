@@ -53,6 +53,10 @@ type
     procedure ScaledAndTrivialPixelsAreSilent;
     [Test]
     procedure HexColorReportsSystemColorSilent;
+    [Test]
+    procedure FixedBoundsReportWithFix;
+    [Test]
+    procedure FixedBoundsSilentCases;
     /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell.</summary>
     [Test]
     procedure AllComponentRulesShareModelInOneRun;
@@ -449,6 +453,64 @@ begin
     '  X := Width div 2;'#10'  Canvas.Font.Size := 10;'#10'  Canvas.Brush.Color := $00FF8000;'#10 +
     // Eigene Skalierhelfer (#647).
     '  Canvas.FillRect(Rect(Scale(3), 0, ScaleDpi(16), Self.Scale(16)));'));
+end;
+
+/// <summary>Formular mit Build (Rumpf ABody) und Resize, das Width fest setzt; AUses: uses der Unit.</summary>
+function BoundsUnit(const AUses, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'uses'#10'  ' + AUses + ';'#10'type'#10'  TFoo = class(TForm)'#10 +
+    '    procedure Build;'#10'  protected'#10'    procedure Resize; override;'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.Build;'#10'var'#10'  mEdit: TEdit;'#10'begin'#10 + ABody + #10'end;'#10 +
+    'procedure TFoo.Resize;'#10'begin'#10'  inherited;'#10'  Width := 300;'#10'end;'#10'end.';
+end;
+
+procedure TComponentRulesTests.FixedBoundsReportWithFix;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Resize meldet component-fixed-pixels, nicht control-fixed-bounds. Skaliert wird über das Ziel selbst (bei
+  // Margins über das Steuerelement davor), ohne Objekt über Self.
+  Source := BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.Width := 240;'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := 7;');
+  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.Width := mEdit.ScaleValue(240);'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := 7;'),
+    ApplyFix(Source, Findings[0].Fixes[0]));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.Width := 240;'#10'  Left := mEdit.Left + ScaleValue(8);'#10'  mEdit.Margins.Top := 7;'),
+    ApplyFix(Source, Findings[1].Fixes[0]));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.Width := 240;'#10'  Left := mEdit.Left + 8;'#10'  mEdit.Margins.Top := mEdit.ScaleValue(7);'),
+    ApplyFix(Source, Findings[2].Fixes[0]));
+  // Ein Aufruf als Ziel liefe doppelt: Self skaliert. Min und Max reichen den Pixelwert durch.
+  Source := BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(80, Width);');
+  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(ScaleValue(80), Width);'),
+    ApplyFix(Source, Findings[0].Fixes[0]));
+  // Konstanten mit Pixelwert wie Zahlen; cOrder liegt über der Grenze für Align und bleibt still.
+  Source := StringReplace(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  mEdit.Height := cRow;'#10'  mEdit.Top := cOrder;'),
+    'implementation'#10, 'implementation'#10'const'#10'  cRow = 24;'#10'  cOrder = 20000;'#10, []);
+  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(StringReplace(Source, 'mEdit.Height := cRow;', 'mEdit.Height := mEdit.ScaleValue(cRow);', []),
+    ApplyFix(Source, Findings[0].Fixes[0]));
+end;
+
+procedure TComponentRulesTests.FixedBoundsSilentCases;
+begin
+  TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.Width := ScaleValue(240);'#10'  mEdit.Top := 0;'#10'  mEdit.Left := 1;'#10 +
+    '  Canvas.Pen.Width := 2;'#10'  mEdit.Height := MulDiv(20, CurrentPPI, 96);'#10'  mEdit.Width := Width div 2;' +
+    #10'  mEdit.Font.Size := 12;'#10'  mEdit.Font.Height := 14;'#10 +
+    // Reihenfolge für Align, kein Pixelwert; Zeilenzahl mal Höhe; Argument eines eigenen Helfers.
+    '  mEdit.Top := 30000;'#10'  mEdit.Height := (Length(Caption) + 2) * ScaleValue(20);'#10 +
+    '  mEdit.Top := AddRow(30);'));
+  // Ohne VCL keine Steuerelemente.
+  TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('System.Types', '  mEdit.Width := 240;'));
 end;
 
 procedure TComponentRulesTests.HexColorReportsSystemColorSilent;

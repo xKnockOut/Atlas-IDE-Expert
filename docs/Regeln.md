@@ -16,7 +16,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
-| [Komponenten](#gruppe-components) | 8 |
+| [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 54 |
@@ -307,6 +307,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`component-missing-free-notification`](#component-missing-free-notification) | Komponentenreferenz ohne FreeNotification | Bug | Warnung |
 | [`component-setter-without-invalidate`](#component-setter-without-invalidate) | Setter ohne Invalidate | Code Smell | Hinweis |
 | [`component-fixed-pixels`](#component-fixed-pixels) | Feste Pixelwerte | Code Smell | Warnung |
+| [`control-fixed-bounds`](#control-fixed-bounds) | Feste Größe oder Lage von Steuerelementen | Code Smell | Warnung |
 | [`component-hardcoded-color`](#component-hardcoded-color) | Feste Farbe in Paint | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 
@@ -1510,6 +1511,25 @@ Richtig:
 
 ```pascal
 Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));
+```
+
+<a id="control-fixed-bounds"></a>
+### control-fixed-bounds
+
+**Feste Größe oder Lage von Steuerelementen** · Code Smell · Warnung · Gruppe Komponenten
+
+Code in einer VCL-Unit setzt Width, Height, Left, Top, ClientWidth oder ClientHeight auf einen festen Pixelwert (eine Zahl oder eine Konstante der Unit wie cRowHeight = 24). Im Code angelegte Steuerelemente skaliert die VCL nicht mit; Dialoge und Spalten bleiben über 96 dpi zu klein. Werte über ScaleValue, MulDiv oder eine Methode der Klasse, die selbst skaliert, 0, 1 und -1, Faktoren von Multiplikationen und Divisionen, Werte ab 10000 (Reihenfolge für Align), Pen.Width, Font.Height sowie Zuweisungen in Paint oder Resize einer Komponente (component-fixed-pixels) werden nicht gemeldet. Die Korrektur skaliert mit ScaleValue des Steuerelements selbst (bei Margins, Padding und Constraints des Steuerelements, zu dem sie gehören): Das stimmt, ob es schon eingehängt ist oder beim Einhängen mitskaliert wird.
+
+Mit Treffer:
+
+```pascal
+mEdit.Width := 240;
+```
+
+Richtig:
+
+```pascal
+mEdit.Width := ScaleValue(240);
 ```
 
 <a id="component-hardcoded-color"></a>

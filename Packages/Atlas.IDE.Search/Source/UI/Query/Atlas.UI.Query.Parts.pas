@@ -191,7 +191,7 @@ begin
   FSaved.Align := alLeft;
   FSaved.AlignWithMargins := True;
   FSaved.Style := csDropDownList;
-  FSaved.Width := 220;
+  FSaved.Width := FSaved.ScaleValue(220);
   FSaved.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySavedHint);
   FSaved.ShowHint := True;
 

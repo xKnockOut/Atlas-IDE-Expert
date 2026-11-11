@@ -321,7 +321,7 @@ begin
   FDialog := ADialog;
   Parent := ADialog;
   Align := alBottom;
-  Height := 44;
+  Height := ScaleValue(44);
   BevelOuter := bvNone;
   FCheckButton := AddButton(cGap, cCheckWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesCheckServer),
     CheckClick);
@@ -394,8 +394,8 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Width := 860;
-  Height := 380;
+  Width := ScaleValue(860);
+  Height := ScaleValue(380);
   Constraints.MinWidth := 560;
   Constraints.MinHeight := 240;
   // Unten zuerst: die Knöpfe bleiben beim Verkleinern sichtbar.
@@ -445,7 +445,7 @@ begin
   begin
     mColumn := FView.Columns.Add;
     mColumn.Caption := TAtlasVcsStrings.Text(mCaptions[mIndex]);
-    mColumn.Width := mWidths[mIndex];
+    mColumn.Width := FView.ScaleValue(mWidths[mIndex]);
   end;
 end;
 

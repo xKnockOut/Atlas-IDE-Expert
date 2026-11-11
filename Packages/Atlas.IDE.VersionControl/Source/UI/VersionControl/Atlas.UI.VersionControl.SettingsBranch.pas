@@ -72,11 +72,11 @@ begin
   FVcsBranchSvnSource := AddChoice('vcs.branch.svn.source', TAtlasVcsTextId.SettingsVcsBranchSvnSource,
     [TAtlasVcsTextId.SettingsVcsBranchSvnSourceHead, TAtlasVcsTextId.SettingsVcsBranchSvnSourceWorkingCopy],
     TArray<string>.Create('head', 'workingCopy'));
-  FVcsBranchSvnSource.Width := 260;
+  FVcsBranchSvnSource.Width := FVcsBranchSvnSource.ScaleValue(260);
   FVcsBranchSvnAfter := AddChoice('vcs.branch.svn.after', TAtlasVcsTextId.SettingsVcsBranchSvnAfter,
     [TAtlasVcsTextId.VcsBranchAfterSwitch, TAtlasVcsTextId.VcsBranchAfterCheckout, TAtlasVcsTextId.VcsBranchAfterNone],
     TArray<string>.Create('switch', 'checkout', 'none'));
-  FVcsBranchSvnAfter.Width := 260;
+  FVcsBranchSvnAfter.Width := FVcsBranchSvnAfter.ScaleValue(260);
   Host.AddText('vcs.branch.svn.checkoutFolder', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnFolder));
   Host.AddText('vcs.branch.svn.message', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessage));
   AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessageHint)).Font.Color := clGrayText;
@@ -94,17 +94,17 @@ begin
   FVcsExternalsOnBranch := AddChoice('vcs.externals.onBranch', TAtlasVcsTextId.SettingsVcsExternalsOnBranch,
     [TAtlasVcsTextId.SettingsVcsExternalsOnBranchPin, TAtlasVcsTextId.SettingsVcsExternalsOnBranchKeep,
     TAtlasVcsTextId.SettingsVcsExternalsOnBranchAsk], TArray<string>.Create('pin', 'keep', 'ask'));
-  FVcsExternalsOnBranch.Width := 260;
+  FVcsExternalsOnBranch.Width := FVcsExternalsOnBranch.ScaleValue(260);
   FVcsExternalsSuggest := AddChoice('vcs.externals.suggestBranch', TAtlasVcsTextId.SettingsVcsExternalsSuggest,
     [TAtlasVcsTextId.SettingsVcsExternalsSuggestModified, TAtlasVcsTextId.SettingsVcsExternalsSuggestNever,
     TAtlasVcsTextId.SettingsVcsExternalsSuggestAlways], TArray<string>.Create('modified', 'never', 'always'));
-  FVcsExternalsSuggest.Width := 260;
+  FVcsExternalsSuggest.Width := FVcsExternalsSuggest.ScaleValue(260);
   mPanel := AddPanel(20, [cRulesKey]);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := mPanel;
   mCaption.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsExternalsRules);
   mCaption.Left := 0;
-  mCaption.Top := 3;
+  mCaption.Top := mCaption.ScaleValue(3);
   mPanel := AddPanel(84, [cRulesKey]);
   FVcsExternalsRules := TMemo.Create(FPage);
   FVcsExternalsRules.Parent := mPanel;
@@ -122,7 +122,7 @@ begin
   FVcsExternalsUpdate := AddChoice('vcs.externals.update', TAtlasVcsTextId.SettingsVcsExternalsUpdate,
     [TAtlasVcsTextId.SettingsVcsExternalsUpdateWith, TAtlasVcsTextId.SettingsVcsExternalsUpdateWithout,
     TAtlasVcsTextId.SettingsVcsExternalsUpdateAsk], TArray<string>.Create('with', 'without', 'ask'));
-  FVcsExternalsUpdate.Width := 260;
+  FVcsExternalsUpdate.Width := FVcsExternalsUpdate.ScaleValue(260);
 end;
 
 procedure TAtlasSettingsVcsBranchPart.AddVcsGitSection;
@@ -132,15 +132,15 @@ begin
   FVcsBranchGitBase := AddChoice('vcs.branch.git.base', TAtlasVcsTextId.SettingsVcsBranchGitBase,
     [TAtlasVcsTextId.SettingsVcsBranchGitBaseRemote, TAtlasVcsTextId.SettingsVcsBranchGitBaseLocal,
     TAtlasVcsTextId.SettingsVcsBranchGitBaseCurrent], TArray<string>.Create('remote', 'local', 'current'));
-  FVcsBranchGitBase.Width := 320;
+  FVcsBranchGitBase.Width := FVcsBranchGitBase.ScaleValue(320);
   FVcsBranchGitPush := AddChoice('vcs.branch.git.push', TAtlasVcsTextId.SettingsVcsBranchGitPush,
     [TAtlasVcsTextId.SettingsVcsBranchGitPushLater, TAtlasVcsTextId.SettingsVcsBranchGitPushNow],
     TArray<string>.Create('later', 'now'));
-  FVcsBranchGitPush.Width := 320;
+  FVcsBranchGitPush.Width := FVcsBranchGitPush.ScaleValue(320);
   FVcsBranchGitUncommitted := AddChoice('vcs.branch.git.uncommitted', TAtlasVcsTextId.SettingsVcsBranchGitUncommitted,
     [TAtlasVcsTextId.SettingsVcsBranchGitCarry, TAtlasVcsTextId.SettingsVcsBranchGitStash,
     TAtlasVcsTextId.SettingsVcsBranchGitAsk], TArray<string>.Create('carry', 'stash', 'ask'));
-  FVcsBranchGitUncommitted.Width := 320;
+  FVcsBranchGitUncommitted.Width := FVcsBranchGitUncommitted.ScaleValue(320);
   Host.AddSwitch('vcs.branch.git.worktree', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitWorktree));
   Host.AddText('vcs.branch.git.worktreeFolder', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitWorktreeFolder));
   AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitHint)).Font.Color := clGrayText;

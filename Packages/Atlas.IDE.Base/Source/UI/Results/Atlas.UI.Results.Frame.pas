@@ -130,7 +130,7 @@ begin
   Result.Align := alTop;
   Result.BevelOuter := bvNone;
   Result.ParentBackground := True;
-  Result.Height := 22;
+  Result.Height := Result.ScaleValue(22);
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Result;
   FSymbol.LogicalSize := TAtlasSymbol.cMenuSize;
