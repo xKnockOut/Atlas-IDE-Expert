@@ -5222,6 +5222,49 @@
       "x-node": "editor.designerBar",
       "x-issue": "#746"
     },
+    "DesignerDefaultSizes": {
+      "description": "Standardgrößen je Komponentenklasse aus designer.defaultSizes.table: Untermenü „Standardgröße“ im Menü „Anordnen“ der Designer-Leiste und, wenn eingeschaltet, beim Ablegen neuer Komponenten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.defaultSizes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#747"
+    },
+    "DesignerDefaultSizesTable": {
+      "description": "Standardgröße je Klasse als „Klasse=Breite,Höhe“, durch Semikolon getrennt (zum Beispiel TButton=88,25; TCustomEdit=,23; TCheckBox=text,). Ein leerer Wert bleibt unverändert, text als Breite heißt Breite nach Text. Ein Eintrag gilt auch für Nachfahren ohne eigenen Eintrag. Werte in Pixeln der Designgröße des Formulars.",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.defaultSizes.table",
+      "x-parent": "designer.defaultSizes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#747"
+    },
+    "DesignerDefaultSizesApplyOnInsert": {
+      "description": "Neu aus der Palette abgelegte Komponenten bekommen sofort die Standardgröße; wer beim Ablegen einen Rahmen aufzieht, behält dessen Größe.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.defaultSizes.applyOnInsert",
+      "x-parent": "designer.defaultSizes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#747"
+    },
+    "DesignerDefaultSizesMarkDeviations": {
+      "description": "Befehl „Abweichungen anzeigen“: rahmt einige Sekunden alle Komponenten ein, deren Größe von der Standardgröße abweicht, mit Soll und Ist.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.defaultSizes.markDeviations",
+      "x-parent": "designer.defaultSizes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#747"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

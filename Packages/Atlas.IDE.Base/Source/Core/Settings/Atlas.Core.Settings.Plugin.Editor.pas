@@ -567,6 +567,14 @@ type
     DesignerNearAlignmentBaseline: Boolean;
     /// <summary>Klassen, die nicht verglichen werden (#746, designer.nearAlignment.ignoreClasses).</summary>
     DesignerNearAlignmentIgnoreClasses: string;
+    /// <summary>Standardgrößen je Klasse (#747, designer.defaultSizes).</summary>
+    DesignerDefaultSizes: Boolean;
+    /// <summary>Tabelle „Klasse=Breite,Höhe; …“ (#747, designer.defaultSizes.table).</summary>
+    DesignerDefaultSizesTable: string;
+    /// <summary>Beim Ablegen neuer Komponenten anwenden (#747, designer.defaultSizes.applyOnInsert).</summary>
+    DesignerDefaultSizesApplyOnInsert: Boolean;
+    /// <summary>Befehl „Abweichungen anzeigen“ (#747, designer.defaultSizes.markDeviations).</summary>
+    DesignerDefaultSizesMarkDeviations: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1130,6 +1138,10 @@ begin
   DesignerNearAlignmentTolerance := 3;
   DesignerNearAlignmentBaseline := True;
   DesignerNearAlignmentIgnoreClasses := 'TBevel,TShape';
+  DesignerDefaultSizes := True;
+  DesignerDefaultSizesTable := '';
+  DesignerDefaultSizesApplyOnInsert := True;
+  DesignerDefaultSizesMarkDeviations := False;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1157,6 +1169,10 @@ begin
   AIo.Number('DesignerNearAlignmentTolerance', DesignerNearAlignmentTolerance);
   AIo.Flag('DesignerNearAlignmentBaseline', DesignerNearAlignmentBaseline);
   AIo.Text('DesignerNearAlignmentIgnoreClasses', DesignerNearAlignmentIgnoreClasses);
+  AIo.Flag('DesignerDefaultSizes', DesignerDefaultSizes);
+  AIo.Text('DesignerDefaultSizesTable', DesignerDefaultSizesTable);
+  AIo.Flag('DesignerDefaultSizesApplyOnInsert', DesignerDefaultSizesApplyOnInsert);
+  AIo.Flag('DesignerDefaultSizesMarkDeviations', DesignerDefaultSizesMarkDeviations);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;

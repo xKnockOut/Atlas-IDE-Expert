@@ -60,7 +60,11 @@ type
     DesignerNearFixAll, DesignerNearExcept, DesignerNearRemoveExcept, DesignerNearUndoCmd, DesignerNearFound,
     DesignerNearNone, DesignerNearFixed, DesignerNearExcepted, DesignerNearRemoved, DesignerNearUndone,
     DesignerNearSaveFailed, SettingsDesignerNearAlignment, SettingsDesignerNearTolerance,
-    SettingsDesignerNearBaseline, SettingsDesignerNearIgnore);
+    SettingsDesignerNearBaseline, SettingsDesignerNearIgnore, DesignerSizesCmd, DesignerSizesApply,
+    DesignerSizesLearn, DesignerSizesShow, DesignerSizesUndoCmd, DesignerSizesDone, DesignerSizesNone,
+    DesignerSizesNoTable, DesignerSizesSkipped, DesignerSizesUndone, DesignerSizesLearned, DesignerSizesDeviations,
+    DesignerSizesNoDeviations, DesignerSizesTarget, DesignerSizesInserted, SettingsDesignerDefaultSizes,
+    SettingsDesignerSizesTable, SettingsDesignerSizesOnInsert, SettingsDesignerSizesMark);
 
   TAtlasDesignerStrings = class
   public
@@ -273,7 +277,26 @@ const
      'Befehle „Fast bündige Kanten“',
      'Toleranz (px)',
      'Textgrundlinien vergleichen',
-     'Klassen übergehen (durch Komma getrennt)'),
+     'Klassen übergehen (durch Komma getrennt)',
+     'Standardgröße',
+     'Standardgröße setzen',
+     'Tabelle aus Formular übernehmen',
+     'Abweichungen anzeigen',
+     'Standardgröße rückgängig',
+     'Standardgröße gesetzt: %d Komponenten.',
+     'Keine Komponente mit Eintrag in der Tabelle.',
+     'Die Tabelle der Standardgrößen ist leer (designer.defaultSizes.table).',
+     'Übergangen (AutoSize): %s',
+     'Standardgröße zurückgenommen.',
+     'Standardgrößen übernommen: %s',
+     'Abweichungen von der Standardgröße: %d',
+     'Keine Abweichungen von der Standardgröße.',
+     'Soll %s × %s',
+     '%s: Standardgröße %d × %d',
+     'Standardgrößen je Klasse',
+     'Tabelle (Klasse=Breite,Höhe; …)',
+     'Beim Ablegen neuer Komponenten anwenden',
+     'Befehl „Abweichungen anzeigen“'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -467,7 +490,26 @@ const
      '“Near-aligned edges” commands',
      'Tolerance (px)',
      'Compare text baselines',
-     'Skip classes (comma separated)'));
+     'Skip classes (comma separated)',
+     'Default size',
+     'Set default size',
+     'Take table from form',
+     'Show deviations',
+     'Undo default size',
+     'Default size set: %d components.',
+     'No component with an entry in the table.',
+     'The table of default sizes is empty (designer.defaultSizes.table).',
+     'Skipped (AutoSize): %s',
+     'Default size undone.',
+     'Default sizes taken: %s',
+     'Deviations from the default size: %d',
+     'No deviations from the default size.',
+     'Target %s × %s',
+     '%s: default size %d × %d',
+     'Default sizes per class',
+     'Table (class=width,height; …)',
+     'Apply when dropping new components',
+     '“Show deviations” command'));
 
 { TAtlasDesignerStrings }
 

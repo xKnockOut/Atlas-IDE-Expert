@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747).
 
 interface
 
@@ -118,6 +118,12 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearBaseline));
   Line('designer.nearAlignment.ignoreClasses',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearIgnore));
+  Switch('designer.defaultSizes', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerDefaultSizes));
+  Line('designer.defaultSizes.table', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesTable));
+  Switch('designer.defaultSizes.applyOnInsert',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesOnInsert));
+  Switch('designer.defaultSizes.markDeviations',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesMark));
 end;
 
 end.

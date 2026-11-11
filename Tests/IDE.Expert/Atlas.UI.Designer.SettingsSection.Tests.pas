@@ -42,6 +42,8 @@ type
     procedure FitContainerRoundTrip;
     [Test]
     procedure NearAlignmentRoundTrip;
+    [Test]
+    procedure DefaultSizesRoundTrip;
   end;
 
 implementation
@@ -324,6 +326,33 @@ begin
     Assert.AreEqual(5, mSaved.DesignerNearAlignmentTolerance);
     Assert.IsFalse(mSaved.DesignerNearAlignmentBaseline);
     Assert.AreEqual('TImage', mSaved.DesignerNearAlignmentIgnoreClasses);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.DefaultSizesRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerDefaultSizes').Checked, 'Vorgabe an');
+    Assert.AreEqual('', EditOf(mPage, 'DesignerDefaultSizesTable').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerDefaultSizesApplyOnInsert').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerDefaultSizesMarkDeviations').Checked);
+    CheckOf(mPage, 'DesignerDefaultSizes').Checked := False;
+    EditOf(mPage, 'DesignerDefaultSizesTable').Text := 'TButton=88,25';
+    CheckOf(mPage, 'DesignerDefaultSizesApplyOnInsert').Checked := False;
+    CheckOf(mPage, 'DesignerDefaultSizesMarkDeviations').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerDefaultSizes, 'abschaltbar');
+    Assert.AreEqual('TButton=88,25', mSaved.DesignerDefaultSizesTable);
+    Assert.IsFalse(mSaved.DesignerDefaultSizesApplyOnInsert);
+    Assert.IsTrue(mSaved.DesignerDefaultSizesMarkDeviations);
   finally
     mPage.Free;
   end;

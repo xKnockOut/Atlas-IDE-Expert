@@ -670,6 +670,14 @@ type
       write FEditorView.DesignerNearAlignmentBaseline;
     property DesignerNearAlignmentIgnoreClasses: string read FEditorView.DesignerNearAlignmentIgnoreClasses
       write FEditorView.DesignerNearAlignmentIgnoreClasses;
+    property DesignerDefaultSizes: Boolean read FEditorView.DesignerDefaultSizes
+      write FEditorView.DesignerDefaultSizes;
+    property DesignerDefaultSizesTable: string read FEditorView.DesignerDefaultSizesTable
+      write FEditorView.DesignerDefaultSizesTable;
+    property DesignerDefaultSizesApplyOnInsert: Boolean read FEditorView.DesignerDefaultSizesApplyOnInsert
+      write FEditorView.DesignerDefaultSizesApplyOnInsert;
+    property DesignerDefaultSizesMarkDeviations: Boolean read FEditorView.DesignerDefaultSizesMarkDeviations
+      write FEditorView.DesignerDefaultSizesMarkDeviations;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

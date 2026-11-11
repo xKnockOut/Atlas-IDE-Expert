@@ -15,6 +15,9 @@
 // - Fast bündige Kanten (Untermenü: anzeigen, alle angleichen, Auswahl als
 //   gewollt markieren, deren Ausnahmen entfernen) und Angleichen rückgängig
 //   (#746, designer.nearAlignment, TAtlasIdeNearAlign).
+// - Standardgröße (Untermenü: setzen, Tabelle aus Formular übernehmen,
+//   Abweichungen anzeigen) und Standardgröße rückgängig (#747,
+//   designer.defaultSizes, TAtlasIdeDefaultSizes).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -27,7 +30,8 @@ uses
   Atlas.IDE.Designer.DuplicateRow,
   Atlas.IDE.Designer.InsertSpace,
   Atlas.IDE.Designer.FitContainer,
-  Atlas.IDE.Designer.NearAlign;
+  Atlas.IDE.Designer.NearAlign,
+  Atlas.IDE.Designer.DefaultSizes;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -38,9 +42,11 @@ type
     FSpace: TAtlasIdeInsertSpace;
     FFit: TAtlasIdeFitContainer;
     FNear: TAtlasIdeNearAlign;
+    FSizes: TAtlasIdeDefaultSizes;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
     procedure AddFitItems(AEnabled, AMany: Boolean);
     procedure AddNearItems(ASelection: Boolean);
+    procedure AddSizeItems(const ASettings: TAtlasPluginSettings);
     procedure ItemClick(Sender: TObject);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
@@ -81,6 +87,8 @@ const
   cFitUndo = 12;
   /// <summary>Ab hier TAtlasNearCommand: cNearFirst + Ord(Befehl).</summary>
   cNearFirst = 20;
+  /// <summary>Ab hier TAtlasSizesCommand: cSizesFirst + Ord(Befehl).</summary>
+  cSizesFirst = 30;
 
 { TAtlasIdeDesignerArrange }
 
@@ -93,10 +101,12 @@ begin
   FSpace := TAtlasIdeInsertSpace.Create(AOnMessage);
   FFit := TAtlasIdeFitContainer.Create(AOnMessage);
   FNear := TAtlasIdeNearAlign.Create(AOnMessage);
+  FSizes := TAtlasIdeDefaultSizes.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FSizes.Free;
   FNear.Free;
   FFit.Free;
   FSpace.Free;
@@ -108,7 +118,8 @@ end;
 class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
-    ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment;
+    ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
+    ASettings.DesignerDefaultSizes;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -153,6 +164,24 @@ begin
     cNearFirst + Ord(TAtlasNearCommand.RemoveSelection), ASelection);
   AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearUndoCmd),
     cNearFirst + Ord(TAtlasNearCommand.Undo), FNear.CanUndo);
+end;
+
+procedure TAtlasIdeDesignerArrange.AddSizeItems(const ASettings: TAtlasPluginSettings);
+var
+  mSub: TMenuItem;
+begin
+  mSub := AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesCmd), 0, True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesApply),
+    cSizesFirst + Ord(TAtlasSizesCommand.Apply), Trim(ASettings.DesignerDefaultSizesTable) <> '');
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesLearn),
+    cSizesFirst + Ord(TAtlasSizesCommand.Learn), True);
+  if ASettings.DesignerDefaultSizesMarkDeviations then
+  begin
+    AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesShow),
+      cSizesFirst + Ord(TAtlasSizesCommand.Show), Trim(ASettings.DesignerDefaultSizesTable) <> '');
+  end;
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesUndoCmd),
+    cSizesFirst + Ord(TAtlasSizesCommand.Undo), FSizes.CanUndo);
 end;
 
 procedure TAtlasIdeDesignerArrange.Popup(const APoint: TPoint);
@@ -204,6 +233,10 @@ begin
   begin
     AddNearItems(Length(mSelected) > 0);
   end;
+  if mSettings.DesignerDefaultSizes then
+  begin
+    AddSizeItems(mSettings);
+  end;
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -215,6 +248,7 @@ var
   mSpace: TAtlasIdeInsertSpace;
   mFit: TAtlasIdeFitContainer;
   mNear: TAtlasIdeNearAlign;
+  mSizes: TAtlasIdeDefaultSizes;
 begin
   mTag := TMenuItem(Sender).Tag;
   mOnMessage := FOnMessage;
@@ -222,9 +256,15 @@ begin
   mSpace := FSpace;
   mFit := FFit;
   mNear := FNear;
+  mSizes := FSizes;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
+      if mTag >= cSizesFirst then
+      begin
+        mSizes.Execute(TAtlasSizesCommand(mTag - cSizesFirst));
+        Exit;
+      end;
       if mTag >= cNearFirst then
       begin
         mNear.Execute(TAtlasNearCommand(mTag - cNearFirst));
@@ -263,6 +303,7 @@ procedure TAtlasIdeDesignerArrange.ApplyTheme;
 begin
   FDuplicate.ApplyTheme;
   FNear.ApplyTheme;
+  FSizes.ApplyTheme;
 end;
 
 end.
