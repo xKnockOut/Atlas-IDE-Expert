@@ -31,6 +31,8 @@ type
     [Test]
     procedure ScalePreviewRoundTrip;
     [Test]
+    procedure NameSuggestRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -214,6 +216,36 @@ begin
     Assert.AreEqual('100, 150', mSaved.DesignerScalePreviewLevels);
     Assert.AreEqual('1280x720', mSaved.DesignerScalePreviewScreens);
     Assert.AreEqual(50, mSaved.DesignerLongTextFactor);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.NameSuggestRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerNameSuggest').Checked, 'Vorgabe an');
+    Assert.AreEqual('caption, label, handler, dataField', EditOf(mPage, 'DesignerNameSuggestSources').Text);
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerNameSuggestUmlauts').Choice, 'ersetzen');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerNameSuggestRenameHandlers').Checked);
+    Assert.AreEqual('', EditOf(mPage, 'DesignerNameSuggestPrefixes').Text);
+    CheckOf(mPage, 'DesignerNameSuggest').Checked := False;
+    EditOf(mPage, 'DesignerNameSuggestSources').Text := 'label, caption';
+    ChoiceOf(mPage, 'DesignerNameSuggestUmlauts').Choice := 1;
+    CheckOf(mPage, 'DesignerNameSuggestRenameHandlers').Checked := False;
+    EditOf(mPage, 'DesignerNameSuggestPrefixes').Text := 'TButton=cmd';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerNameSuggest, 'abschaltbar');
+    Assert.AreEqual('label, caption', mSaved.DesignerNameSuggestSources);
+    Assert.AreEqual('remove', mSaved.DesignerNameSuggestUmlauts);
+    Assert.IsFalse(mSaved.DesignerNameSuggestRenameHandlers);
+    Assert.AreEqual('TButton=cmd', mSaved.DesignerNameSuggestPrefixes);
   finally
     mPage.Free;
   end;
