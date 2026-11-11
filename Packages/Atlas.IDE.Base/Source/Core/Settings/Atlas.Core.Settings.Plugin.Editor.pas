@@ -587,6 +587,14 @@ type
     DesignerPropertyPainterDefaultGroups: string;
     /// <summary>Häkchen je Quellklasse merken (#726, designer.propertyPainter.rememberPerClass).</summary>
     DesignerPropertyPainterRememberPerClass: Boolean;
+    /// <summary>Anchors vorschlagen (#727, designer.suggestAnchors).</summary>
+    DesignerSuggestAnchors: Boolean;
+    /// <summary>Abstand, bis zu dem eine Komponente am Rand liegt (#727, designer.suggestAnchors.edgeDistance).</summary>
+    DesignerSuggestAnchorsEdgeDistance: Integer;
+    /// <summary>Gesetzte Anchors nicht überschreiben (#727, designer.suggestAnchors.keepExisting).</summary>
+    DesignerSuggestAnchorsKeepExisting: Boolean;
+    /// <summary>Füllende Klassen mit allen vier Anchors (#727, designer.suggestAnchors.fillClasses).</summary>
+    DesignerSuggestAnchorsFillClasses: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1160,6 +1168,10 @@ begin
   DesignerPropertyPainter := True;
   DesignerPropertyPainterDefaultGroups := 'font, colors, size, layout';
   DesignerPropertyPainterRememberPerClass := True;
+  DesignerSuggestAnchors := True;
+  DesignerSuggestAnchorsEdgeDistance := 16;
+  DesignerSuggestAnchorsKeepExisting := True;
+  DesignerSuggestAnchorsFillClasses := 'TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1197,6 +1209,10 @@ begin
   AIo.Flag('DesignerPropertyPainter', DesignerPropertyPainter);
   AIo.Text('DesignerPropertyPainterDefaultGroups', DesignerPropertyPainterDefaultGroups);
   AIo.Flag('DesignerPropertyPainterRememberPerClass', DesignerPropertyPainterRememberPerClass);
+  AIo.Flag('DesignerSuggestAnchors', DesignerSuggestAnchors);
+  AIo.Number('DesignerSuggestAnchorsEdgeDistance', DesignerSuggestAnchorsEdgeDistance);
+  AIo.Flag('DesignerSuggestAnchorsKeepExisting', DesignerSuggestAnchorsKeepExisting);
+  AIo.Text('DesignerSuggestAnchorsFillClasses', DesignerSuggestAnchorsFillClasses);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1224,6 +1240,7 @@ begin
   DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
   DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
   DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
+  DesignerSuggestAnchorsEdgeDistance := EnsureRange(DesignerSuggestAnchorsEdgeDistance, 0, cMaxButtonBarSpace);
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
 end;
 

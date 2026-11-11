@@ -24,6 +24,8 @@
 // - Eigenschaften übertragen (Untermenü: aufnehmen …, auf Auswahl
 //   übertragen) und Übertragen rückgängig (#726, designer.propertyPainter,
 //   TAtlasIdePropertyPainter).
+// - Anchors vorschlagen … und Anchors rückgängig (#727,
+//   designer.suggestAnchors, TAtlasIdeAnchors).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -39,7 +41,8 @@ uses
   Atlas.IDE.Designer.NearAlign,
   Atlas.IDE.Designer.DefaultSizes,
   Atlas.IDE.Designer.Layers,
-  Atlas.IDE.Designer.PropertyPainter;
+  Atlas.IDE.Designer.PropertyPainter,
+  Atlas.IDE.Designer.Anchors;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -53,6 +56,7 @@ type
     FSizes: TAtlasIdeDefaultSizes;
     FLayers: TAtlasIdeDesignerLayers;
     FPainter: TAtlasIdePropertyPainter;
+    FAnchors: TAtlasIdeAnchors;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
     FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
@@ -106,6 +110,8 @@ const
   cFitHeight = 10;
   cFitSame = 11;
   cFitUndo = 12;
+  cAnchors = 13;
+  cAnchorsUndo = 14;
   /// <summary>Ab hier TAtlasNearCommand: cNearFirst + Ord(Befehl).</summary>
   cNearFirst = 20;
   /// <summary>Ab hier TAtlasSizesCommand: cSizesFirst + Ord(Befehl).</summary>
@@ -131,10 +137,12 @@ begin
   FSizes := TAtlasIdeDefaultSizes.Create(AOnMessage);
   FLayers := TAtlasIdeDesignerLayers.Create(AOnMessage);
   FPainter := TAtlasIdePropertyPainter.Create(AOnMessage);
+  FAnchors := TAtlasIdeAnchors.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FAnchors.Free;
   FPainter.Free;
   FLayers.Free;
   FSizes.Free;
@@ -151,7 +159,7 @@ begin
   Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
     ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
     ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
-    ASettings.DesignerPropertyPainter;
+    ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -327,6 +335,12 @@ begin
   begin
     AddPaintItems;
   end;
+  if ASettings.DesignerSuggestAnchors then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsCmd), cAnchors, True);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsUndoCmd), cAnchorsUndo,
+      FAnchors.CanUndo);
+  end;
 end;
 
 procedure TAtlasIdeDesignerArrange.RunArrange(ATag: Integer);
@@ -356,6 +370,10 @@ begin
       FFit.Execute(TAtlasFitMode.Both, True);
     cFitUndo:
       FFit.Undo;
+    cAnchors:
+      FAnchors.Execute;
+    cAnchorsUndo:
+      FAnchors.Undo;
   end;
 end;
 
@@ -415,6 +433,7 @@ begin
   FDuplicate.ApplyTheme;
   FNear.ApplyTheme;
   FSizes.ApplyTheme;
+  FAnchors.ApplyTheme;
 end;
 
 end.

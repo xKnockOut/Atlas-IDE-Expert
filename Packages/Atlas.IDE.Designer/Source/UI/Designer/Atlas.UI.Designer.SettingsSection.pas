@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727).
 
 interface
 
@@ -17,6 +17,8 @@ type
   private
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
+    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726) und Anchors vorschlagen (#727).</summary>
+    procedure BuildToolRows;
   protected
     procedure BuildRows; override;
   public
@@ -75,6 +77,7 @@ begin
   Switch('designer.spatialNavigation.crossContainers',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialCross));
   BuildArrangeRows;
+  BuildToolRows;
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;
@@ -124,6 +127,10 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesOnInsert));
   Switch('designer.defaultSizes.markDeviations',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesMark));
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildToolRows;
+begin
   Switch('designer.zOrder', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerZOrder));
   Switch('designer.zOrder.shortcuts',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerZOrderShortcuts));
@@ -134,6 +141,13 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPainterGroups));
   Switch('designer.propertyPainter.rememberPerClass',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPainterRemember));
+  Switch('designer.suggestAnchors', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAnchors));
+  Number('designer.suggestAnchors.edgeDistance',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAnchorsEdge));
+  Switch('designer.suggestAnchors.keepExisting',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAnchorsKeep));
+  Line('designer.suggestAnchors.fillClasses',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAnchorsFill));
 end;
 
 end.

@@ -48,6 +48,8 @@ type
     procedure ZOrderRoundTrip;
     [Test]
     procedure PropertyPainterRoundTrip;
+    [Test]
+    procedure SuggestAnchorsRoundTrip;
   end;
 
 implementation
@@ -405,6 +407,33 @@ begin
     Assert.IsFalse(mSaved.DesignerPropertyPainter, 'abschaltbar');
     Assert.AreEqual('font', mSaved.DesignerPropertyPainterDefaultGroups);
     Assert.IsFalse(mSaved.DesignerPropertyPainterRememberPerClass);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.SuggestAnchorsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSuggestAnchors').Checked, 'Vorgabe an');
+    Assert.AreEqual('16', EditOf(mPage, 'DesignerSuggestAnchorsEdgeDistance').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSuggestAnchorsKeepExisting').Checked);
+    Assert.AreEqual('TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit', EditOf(mPage, 'DesignerSuggestAnchorsFillClasses').Text);
+    CheckOf(mPage, 'DesignerSuggestAnchors').Checked := False;
+    EditOf(mPage, 'DesignerSuggestAnchorsEdgeDistance').Text := '24';
+    CheckOf(mPage, 'DesignerSuggestAnchorsKeepExisting').Checked := False;
+    EditOf(mPage, 'DesignerSuggestAnchorsFillClasses').Text := 'TMemo';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerSuggestAnchors, 'abschaltbar');
+    Assert.AreEqual(24, mSaved.DesignerSuggestAnchorsEdgeDistance);
+    Assert.IsFalse(mSaved.DesignerSuggestAnchorsKeepExisting);
+    Assert.AreEqual('TMemo', mSaved.DesignerSuggestAnchorsFillClasses);
   finally
     mPage.Free;
   end;

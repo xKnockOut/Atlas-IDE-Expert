@@ -1629,6 +1629,8 @@ uses
   Atlas.Core.Designer.Layers.Tests in 'IDE.Expert\Atlas.Core.Designer.Layers.Tests.pas',
   Atlas.Core.Designer.PropertyPainter in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.PropertyPainter.pas',
   Atlas.Core.Designer.PropertyPainter.Tests in 'IDE.Expert\Atlas.Core.Designer.PropertyPainter.Tests.pas',
+  Atlas.Core.Designer.Anchors in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Anchors.pas',
+  Atlas.Core.Designer.Anchors.Tests in 'IDE.Expert\Atlas.Core.Designer.Anchors.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

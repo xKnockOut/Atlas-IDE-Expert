@@ -5404,6 +5404,51 @@
       "x-node": "editor.designerBar",
       "x-issue": "#726"
     },
+    "DesignerSuggestAnchors": {
+      "description": "Befehl „Anchors vorschlagen …“ im Menü „Anordnen“ der Designer-Leiste: schlägt für die Auswahl, ohne Auswahl für das ganze Formular, Anchors aus der Lage am Rand vor und übernimmt die angehakten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.suggestAnchors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#727"
+    },
+    "DesignerSuggestAnchorsEdgeDistance": {
+      "description": "Abstand zum Rand des Parents in Pixeln, bis zu dem eine Komponente als „am Rand“ gilt; auch die größte Lücke zwischen Nachbarn einer Reihe.",
+      "type": "integer",
+      "default": 16,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.suggestAnchors.edgeDistance",
+      "x-parent": "designer.suggestAnchors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#727"
+    },
+    "DesignerSuggestAnchorsKeepExisting": {
+      "description": "Bereits gesetzte, von links/oben abweichende Anchors nicht überschreiben, sondern als „vorhanden“ zeigen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.suggestAnchors.keepExisting",
+      "x-parent": "designer.suggestAnchors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#727"
+    },
+    "DesignerSuggestAnchorsFillClasses": {
+      "description": "Klassen, die als füllend alle vier Anchors bekommen, durch Komma getrennt; Nachfahren zählen mit.",
+      "type": "string",
+      "default": "TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit",
+      "x-key": "designer.suggestAnchors.fillClasses",
+      "x-parent": "designer.suggestAnchors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#727"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

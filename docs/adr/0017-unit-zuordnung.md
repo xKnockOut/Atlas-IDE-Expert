@@ -1119,6 +1119,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.DefaultSizes` | `Core/Designer/Atlas.Core.Designer.DefaultSizes.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Layers` | `Core/Designer/Atlas.Core.Designer.Layers.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.PropertyPainter` | `Core/Designer/Atlas.Core.Designer.PropertyPainter.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Anchors` | `Core/Designer/Atlas.Core.Designer.Anchors.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
@@ -1137,6 +1138,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.DefaultSizes` | `IDE/Designer/Atlas.IDE.Designer.DefaultSizes.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Layers` | `IDE/Designer/Atlas.IDE.Designer.Layers.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.PropertyPainter` | `IDE/Designer/Atlas.IDE.Designer.PropertyPainter.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Anchors` | `IDE/Designer/Atlas.IDE.Designer.Anchors.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.InsertSpace` | `IDE/Designer/Atlas.IDE.Designer.InsertSpace.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Navigate` | `IDE/Designer/Atlas.IDE.Designer.Navigate.pas` | Ordner `IDE/Designer` |
@@ -1152,6 +1154,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Designer.SpaceDialog` | `UI/Designer/Atlas.UI.Designer.SpaceDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.PaintDialog` | `UI/Designer/Atlas.UI.Designer.PaintDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.AnchorDialog` | `UI/Designer/Atlas.UI.Designer.AnchorDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
 

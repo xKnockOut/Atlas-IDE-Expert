@@ -691,6 +691,14 @@ type
       write FEditorView.DesignerPropertyPainterDefaultGroups;
     property DesignerPropertyPainterRememberPerClass: Boolean read FEditorView.DesignerPropertyPainterRememberPerClass
       write FEditorView.DesignerPropertyPainterRememberPerClass;
+    property DesignerSuggestAnchors: Boolean read FEditorView.DesignerSuggestAnchors
+      write FEditorView.DesignerSuggestAnchors;
+    property DesignerSuggestAnchorsEdgeDistance: Integer read FEditorView.DesignerSuggestAnchorsEdgeDistance
+      write FEditorView.DesignerSuggestAnchorsEdgeDistance;
+    property DesignerSuggestAnchorsKeepExisting: Boolean read FEditorView.DesignerSuggestAnchorsKeepExisting
+      write FEditorView.DesignerSuggestAnchorsKeepExisting;
+    property DesignerSuggestAnchorsFillClasses: string read FEditorView.DesignerSuggestAnchorsFillClasses
+      write FEditorView.DesignerSuggestAnchorsFillClasses;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
