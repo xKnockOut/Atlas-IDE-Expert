@@ -97,6 +97,12 @@
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
 // kommen über Hooks aus der Komposition (Context.Hooks).
+// - Tracker-Projekt (#1927): Die Klappliste wählt statt „Automatisch“ ein
+//   Tracker-Projekt aus issues.projects (SelectProject, issues.welcomeProject)
+//   oder „Alle Tracker-Projekte“ (#1928): dann eine Gruppe je Tracker-Projekt
+//   mit höchstens issues.allProjects.perGroup Zeilen, eine Abfrage für alle
+//   (nur Abfragen, die jedes Projekt kennt); eine Zeile bedient ihr Projekt
+//   (Context.Selection.Focus).
 // Aufbau (#1455): TAtlasIdeIssues ist die Quelle der Kachel und hält die
 // Teile Kontext (Atlas.IDE.Tracker.IssuesContext), Dienste (IssuesServices),
 // Befehle (IssueCommands), Statusfeld und Titel (IssuesStatus), Abfrage
@@ -134,6 +140,10 @@ type
     FQuery: TAtlasIdeIssuesQuery;
     FStarter: TAtlasIdeIssueStart;
     FTitle: TAtlasIdeIssuesTitle;
+    /// <summary>„Alle Tracker-Projekte“ (#1928): Gruppen aus der Ansicht ABase des gezeigten Projekts.</summary>
+    function AllView(const ABase: TAtlasIssuesView): TAtlasIssuesView;
+    /// <summary>Bei „Alle“: das Projekt der Gruppe mit AIssue gilt für die folgende Aktion.</summary>
+    procedure FocusIssue(const AIssue: TAtlasTrackerIssue);
   public
     /// <summary>AWelcome: Projekte der Willkommensseite und Meldungen an ihre Kacheln (gehört dem Aufrufer, lebt
     /// bis nach Stop). AMessage: Zeile in die Meldungsansicht.</summary>
@@ -169,6 +179,8 @@ type
     procedure SelectQuery(const AName: string);
     procedure EditQueries;
     procedure ClearFilter;
+    procedure SelectProject(const AKey: string);
+    procedure EditProjects;
     /// <summary>Projekt, Tracker, Zustand und Hooks der Komposition.</summary>
     property Context: TAtlasIdeIssuesContext read FContext;
     /// <summary>Vorschau, Board, Sprint, Zeiterfassung, Palettensuche, Meldungen, Anhängen.</summary>
@@ -182,6 +194,9 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.Templates,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -341,10 +356,7 @@ begin
   end;
   Result.Options := FServices.Options;
   Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
-  if FContext.Welcome <> nil then
-  begin
-    Result.VcsKind := TAtlasMyIssues.VcsKindOf(FContext.Welcome.VcsOf(AProject).Kind);
-  end;
+  Result.VcsKind := FContext.Selection.VcsKindOf(AProject);
   // Filter der Sprint-Kachel (#1277): nur für das Projekt, in dem er gesetzt wurde.
   if (FContext.Filter.Caption <> '') and SameText(FContext.Filter.Project, AProject) then
   begin
@@ -352,6 +364,105 @@ begin
     Result.Items := FContext.Filter.Issues;
   end;
   Result.Unseen := FServices.UnseenOf(mTarget);
+end;
+
+/// <summary>Abfragen aus AQueries, die es (nach Name) auch in AOther gibt.</summary>
+function CommonQueries(const AQueries, AOther: TArray<TAtlasTrackerQuery>): TArray<TAtlasTrackerQuery>;
+var
+  mQuery, mOther: TAtlasTrackerQuery;
+begin
+  Result := nil;
+  for mQuery in AQueries do
+  begin
+    for mOther in AOther do
+    begin
+      if SameText(mQuery.Name, mOther.Name) then
+      begin
+        Result := Result + [mQuery];
+        Break;
+      end;
+    end;
+  end;
+end;
+
+function TAtlasIdeIssues.AllView(const ABase: TAtlasIssuesView): TAtlasIssuesView;
+var
+  mChoice: TAtlasTrackerChoice;
+  mGroup: TAtlasIssuesView;
+  mPerGroup, mIndex: Integer;
+  mSelected: string;
+begin
+  Result := ABase;
+  Result.Items := nil;
+  Result.Unseen := nil;
+  Result.Groups := nil;
+  // Der Filter der Sprint-Kachel gilt nur für ein Board.
+  Result.Filter := '';
+  Result.Querying := False;
+  Result.Status := TAtlasIssuesStatus.NotConfigured;
+  mSelected := '';
+  if (ABase.QueryIndex >= 0) and (ABase.QueryIndex <= High(ABase.Queries)) then
+  begin
+    mSelected := ABase.Queries[ABase.QueryIndex].Name;
+  end;
+  mPerGroup := TAtlasIdeSettings.Current.IssuesAllProjectsPerGroup;
+  for mChoice in FContext.Selection.Choices do
+  begin
+    mGroup := ViewOf(mChoice.Match);
+    TAtlasMyIssues.AddGroup(Result, mChoice.Caption, mChoice.Match, mGroup, mPerGroup);
+    Result.Querying := Result.Querying or mGroup.Querying;
+    Result.Status := TAtlasIssuesStatus.Ready;
+    // Eine Abfrage für alle: nur Abfragen, die jedes Tracker-Projekt kennt.
+    Result.Queries := CommonQueries(Result.Queries, mGroup.Queries);
+  end;
+  Result.QueryCounts := nil;
+  Result.QueryIndex := -1;
+  for mIndex := 0 to High(Result.Queries) do
+  begin
+    if SameText(Result.Queries[mIndex].Name, mSelected) then
+    begin
+      Result.QueryIndex := mIndex;
+    end;
+  end;
+end;
+
+procedure TAtlasIdeIssues.FocusIssue(const AIssue: TAtlasTrackerIssue);
+var
+  mView: TAtlasIssuesView;
+  mIndex, mGroup: Integer;
+begin
+  if not FContext.Selection.AllMode then
+  begin
+    Exit;
+  end;
+  mView := View;
+  for mIndex := 0 to High(mView.Items) do
+  begin
+    mGroup := TAtlasMyIssues.GroupOf(mView, mIndex);
+    // Kennung und Titel: „#12“ kann es in zwei Repositorys geben.
+    if SameText(mView.Items[mIndex].Key, AIssue.Key) and (mView.Items[mIndex].Title = AIssue.Title) and
+      (mGroup >= 0) then
+    begin
+      FContext.Selection.Focus(mView.Groups[mGroup].Project);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TAtlasIdeIssues.SelectProject(const AKey: string);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
+    procedure
+    begin
+      FContext.Selection.Choose(AKey);
+      FQuery.Fetch(False);
+    end);
+end;
+
+procedure TAtlasIdeIssues.EditProjects;
+begin
+  // Dieselbe Seite Issue-Tracker wie „Abfragen bearbeiten …“; danach gelten Zeilen und Wahl neu.
+  FQuery.EditQueries;
 end;
 
 function TAtlasIdeIssues.View: TAtlasIssuesView;
@@ -362,7 +473,12 @@ begin
   begin
     Exit;
   end;
-  Result := ViewOf(FContext.CurrentProject);
+  Result := ViewOf(FContext.Selection.CurrentProject);
+  if FContext.Selection.AllMode then
+  begin
+    Result := AllView(Result);
+  end;
+  FContext.Selection.AddChoices(Result);
   // Anderes Projekt oder Punkt (#1271): Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
   if TAtlasTrackerIssuesText.TitleText(Result.ProjectName, Length(Result.Unseen) > 0) <> FTitle.Last then
   begin
@@ -382,21 +498,26 @@ end;
 
 procedure TAtlasIdeIssues.Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
 begin
+  // Bei „Alle“ nimmt „Beginnen“ das Tracker-Projekt der Zeile und dessen Arbeitskopie (#1928).
+  FocusIssue(AIssue);
   FStarter.Start(AIssue, AMode);
 end;
 
 procedure TAtlasIdeIssues.Browse(const AIssue: TAtlasTrackerIssue);
 begin
+  FocusIssue(AIssue);
   FCommands.Browse(AIssue);
 end;
 
 procedure TAtlasIdeIssues.Preview(const AIssue: TAtlasTrackerIssue);
 begin
+  FocusIssue(AIssue);
   FCommands.Preview(AIssue);
 end;
 
 procedure TAtlasIdeIssues.BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
 begin
+  FocusIssue(AIssue);
   FCommands.BrowsePullRequest(AIssue);
 end;
 

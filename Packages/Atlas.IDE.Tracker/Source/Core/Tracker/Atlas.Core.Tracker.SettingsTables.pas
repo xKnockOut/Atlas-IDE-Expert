@@ -126,6 +126,8 @@ type
     function SetMatch(const AMatch: string): Boolean;
     function SetConnection(AChoice: Integer): Boolean;
     procedure SetProject(const AProject: string);
+    /// <summary>Arbeitskopien der gewählten Zeile (#1926); nur persönliche Zeilen.</summary>
+    procedure SetPaths(const APaths: TArray<string>);
     /// <summary>Zeile für AMatch wählen bzw. anlegen (mit der ersten Verbindung); False bei leerem Pfad.</summary>
     function Add(const AMatch: string): Boolean;
     procedure Remove;
@@ -667,6 +669,14 @@ begin
   if Editable then
   begin
     FItems[FSelected].Project := AProject;
+  end;
+end;
+
+procedure TAtlasTrackerProjectTable.SetPaths(const APaths: TArray<string>);
+begin
+  if Editable then
+  begin
+    FItems[FSelected].Paths := Copy(APaths);
   end;
 end;
 

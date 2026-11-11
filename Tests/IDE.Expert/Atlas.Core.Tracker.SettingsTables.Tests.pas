@@ -29,6 +29,9 @@ type
     procedure ProjectsSourceNoteAndAdd;
     [Test]
     procedure ProjectsMatchAndRename;
+    /// <summary>Arbeitskopien (#1926) der gewählten Zeile setzen; sie gehen mit ToJson mit.</summary>
+    [Test]
+    procedure ProjectsPaths;
     [Test]
     procedure QueriesChoicesNamesAndAdd;
     [Test]
@@ -326,6 +329,30 @@ begin
   finally
     mTable.Free;
   end;
+end;
+
+procedure TAtlasTrackerSettingsTablesTests.ProjectsPaths;
+var
+  mTable: TAtlasTrackerProjectTable;
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+begin
+  mTable := TAtlasTrackerProjectTable.Create;
+  try
+    mTable.SetChoices(TArray<string>.Create('Firma'));
+    mTable.Add('C:\Kasse\Kasse.groupproj');
+    Assert.IsTrue(mTable.SetConnection(0));
+    mTable.SetProject('KASSE');
+    mTable.SetPaths(TArray<string>.Create('D:\SVN\Kasse\trunk', 'D:\SVN\Basis\trunk'));
+    Assert.AreEqual(2, Integer(Length(mTable.SelectedRow.Paths)));
+    mRows := TAtlasTrackerProjects.Read(mTable.ToJson);
+    Assert.AreEqual(1, Integer(Length(mRows)));
+    Assert.AreEqual('D:\SVN\Kasse\trunk', mRows[0].MainFolder);
+    mTable.SetPaths(nil);
+    Assert.AreEqual('C:\Kasse', TAtlasTrackerProjects.Read(mTable.ToJson)[0].MainFolder);
+  finally
+    mTable.Free;
+  end;
+  mRows := nil;
 end;
 
 procedure TAtlasTrackerSettingsTablesTests.QueriesChoicesNamesAndAdd;

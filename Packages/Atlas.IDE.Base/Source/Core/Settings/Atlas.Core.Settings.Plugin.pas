@@ -1126,6 +1126,12 @@ type
     property IssuesProjects: string read FIssues.IssuesProjects write FIssues.IssuesProjects;
     property IssuesQueries: string read FIssues.IssuesQueries write FIssues.IssuesQueries;
     property IssuesQueryPicker: Boolean read FIssues.IssuesQueryPicker write FIssues.IssuesQueryPicker;
+    property IssuesProjectPicker: Boolean read FIssues.IssuesProjectPicker write FIssues.IssuesProjectPicker;
+    property IssuesWelcomeProject: string read FIssues.IssuesWelcomeProject write FIssues.IssuesWelcomeProject;
+    property IssuesAllProjects: Boolean read FIssues.IssuesAllProjects write FIssues.IssuesAllProjects;
+    property IssuesAllProjectsPerGroup: Integer read FIssues.IssuesAllProjectsPerGroup
+      write FIssues.IssuesAllProjectsPerGroup;
+    property IssuesSuggestPaths: Boolean read FIssues.IssuesSuggestPaths write FIssues.IssuesSuggestPaths;
     property IssuesCreate: Boolean read FIssueWork.IssuesCreate write FIssueWork.IssuesCreate;
     property IssuesCreateIncludeCode: Boolean read FIssueWork.IssuesCreateIncludeCode
       write FIssueWork.IssuesCreateIncludeCode;
