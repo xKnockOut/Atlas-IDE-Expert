@@ -47,6 +47,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ### Geändert
 - Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
 
+### Behoben
+- Editorleiste bremste die IDE (#1958): Für die Tooltips der Knöpfe wertete die Leiste in jedem Takt je Knopf alle Tastenbelegungen samt ActionList der IDE neu aus (im Diagnosemodus 64 % der Atlas-Zeit im Hauptthread). Die Tasten kommen jetzt einmal mit der Befehlsliste, und die Belegungen der IDE werden in einem Lauf gelesen.
+
 ## [2.0.1] - 2026-11-08
 
 ### Neu
