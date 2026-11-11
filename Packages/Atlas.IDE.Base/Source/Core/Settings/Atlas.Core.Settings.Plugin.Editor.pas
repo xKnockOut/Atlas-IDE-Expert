@@ -51,6 +51,8 @@ const
   /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
   cDefaultSearchHistory = 20;
   cMaxSearchHistory = 100;
+  /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (scShift + VK_F12).</summary>
+  cDefaultShowInDesignerKey = $2000 + $7B;
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
   cBeginEndAlways = 'always';
   cBeginEndMultiLine = 'multiLine';
@@ -534,6 +536,10 @@ type
     DesignerSelectionSetsStorage: string;
     /// <summary>Taste „Auswahl speichern …“ als TShortCut, 0 = keine (#739, designer.selectionSets.saveKey).</summary>
     DesignerSelectionSetsSaveKey: Integer;
+    /// <summary>Befehl „Im Designer zeigen“ im Code-Editor (#511, designer.showInDesigner).</summary>
+    DesignerShowInDesigner: Boolean;
+    /// <summary>Taste für „Im Designer zeigen“ als TShortCut, 0 = keine (#511, designer.showInDesigner.key).</summary>
+    DesignerShowInDesignerKey: Integer;
     /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
     DesignerSpatialNavigation: Boolean;
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
@@ -1140,6 +1146,9 @@ begin
   Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
   // Strg+Umschalt+S.
   Result.DesignerSelectionSetsSaveKey := 24659;
+  Result.DesignerShowInDesigner := True;
+  // Umschalt+F12 (in der IDE „Formulare anzeigen“).
+  Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetArrangeDefaults;
@@ -1280,6 +1289,7 @@ begin
   DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
   DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
+  DesignerShowInDesignerKey := EnsureRange(DesignerShowInDesignerKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
@@ -1333,6 +1343,8 @@ begin
   AIo.Flag('DesignerSelectionSetsShortcuts', DesignerSelectionSetsShortcuts);
   AIo.Text('DesignerSelectionSetsStorage', DesignerSelectionSetsStorage);
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
+  AIo.Flag('DesignerShowInDesigner', DesignerShowInDesigner);
+  AIo.Number('DesignerShowInDesignerKey', DesignerShowInDesignerKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeArrange(AIo);

@@ -5052,6 +5052,28 @@
       "x-node": "editor.designerBar",
       "x-issue": "#739"
     },
+    "DesignerShowInDesigner": {
+      "description": "Befehl „Im Designer zeigen“ im Code-Editor (Kontextmenü, Atlas-Menü, Taste): steht der Cursor auf einem Formularfeld (btnOk, Self.btnOk.Caption, frmMain.btnOk) oder in bzw. auf einem Handler, der im Formular zugewiesen ist, wechselt Atlas auf das Register „Design“, aktiviert die Registerseiten auf dem Weg und wählt die Komponente aus; der Objektinspektor zeigt sie. Ist ein Handler mehreren Komponenten zugewiesen, bietet ein Menü sie zur Wahl an. Aus = kein Befehl, keine Taste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.showInDesigner",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#511"
+    },
+    "DesignerShowInDesignerKey": {
+      "description": "Taste für „Im Designer zeigen“ im Code-Editor. Vorgabe Umschalt+F12 (in der IDE „Formulare anzeigen“); ohne Vorrang für Atlas-Tasten (keys.editorPriority) behält die IDE sie, der Befehl bleibt im Kontextmenü. 0 = keine Taste.",
+      "type": "integer",
+      "default": 8315,
+      "x-key": "designer.showInDesigner.key",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.showInDesigner",
+      "x-node": "editor.designerBar",
+      "x-issue": "#511"
+    },
     "DesignerSpatialNavigation": {
       "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
       "type": "boolean",

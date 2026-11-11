@@ -64,7 +64,8 @@ type
     DesignerTabSort, DesignerTabUndo, DesignerTabJump, DesignerTabGap, DesignerTabDuplicate, DesignerTabNoStop,
     DesignerTabClickStarted, DesignerTabClickDone, DesignerTabClickCanceled, DesignerTabSorted,
     DesignerTabSortedNone, DesignerTabUndone, DesignerTabModeHint, SettingsDesignerTabOrderOverlay,
-    SettingsDesignerTabOrderPaths);
+    SettingsDesignerTabOrderPaths, DesignerShowCommand, DesignerShowNoForm, DesignerShowNothing,
+    SettingsDesignerShowInDesigner, SettingsDesignerShowKey);
 
   TAtlasDesignerStrings = class
   public
@@ -294,7 +295,12 @@ const
      'Tab-Reihenfolge rückgängig gemacht.',
      'Reihenfolge klicken: Enter oder Klick übernimmt, Esc bricht ab',
      'Tab-Reihenfolge beim Öffnen eines Formulars einblenden',
-     'Verschachtelte Tab-Reihenfolge als Pfad (2.1)'),
+     'Verschachtelte Tab-Reihenfolge als Pfad (2.1)',
+     'Im Designer zeigen',
+     'Zu dieser Unit gehört kein Formular.',
+     'Unter dem Cursor steht keine Komponente und kein zugewiesener Handler des Formulars.',
+     '„Im Designer zeigen“ im Code-Editor (Feld oder Handler unter dem Cursor)',
+     'Taste für „Im Designer zeigen“'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -505,7 +511,12 @@ const
      'Tab order undone.',
      'Click the order: Enter or click keeps it, Esc cancels',
      'Show the tab order when a form opens',
-     'Nested tab order as a path (2.1)'));
+     'Nested tab order as a path (2.1)',
+     'Show in designer',
+     'This unit has no form.',
+     'No component and no assigned handler of the form under the cursor.',
+     '“Show in designer” in the code editor (field or handler under the cursor)',
+     'Key for “Show in designer”'));
 
 { TAtlasDesignerStrings }
 

@@ -1643,6 +1643,8 @@ uses
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.TabOrder in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas',
   Atlas.Core.Designer.TabOrder.Tests in 'IDE.Expert\Atlas.Core.Designer.TabOrder.Tests.pas',
+  Atlas.Core.Designer.CodeLink in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas',
+  Atlas.Core.Designer.CodeLink.Tests in 'IDE.Expert\Atlas.Core.Designer.CodeLink.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',
   Atlas.Core.Designer.FitText.Tests in 'IDE.Expert\Atlas.Core.Designer.FitText.Tests.pas',
   Atlas.Core.Help.Links in '..\Packages\Atlas.IDE.Help\Source\Core\Help\Atlas.Core.Help.Links.pas',

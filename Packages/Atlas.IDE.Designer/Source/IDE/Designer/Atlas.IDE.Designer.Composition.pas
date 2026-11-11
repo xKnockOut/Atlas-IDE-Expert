@@ -5,7 +5,8 @@
 // Initialisierung das Modul „atlas.designer“ (Modulschalter designer, #1454)
 // bei der Registry von Base an und stellt über dessen Scope den Teil
 // DesignerBar der Feature-Tabelle und Hörer für Einstellungen und Thema
-// bereit. Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
+// bereit, dazu Befehl, Menüeinträge und Taste „Im Designer zeigen“ (#511,
+// designer.showInDesigner). Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
 // Base. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -16,10 +17,12 @@ uses
   Atlas.Core.Modules.Contract;
 
 type
-  TAtlasDesignerModule = class(TInterfacedObject, IAtlasModule, IAtlasAppliesSettings, IAtlasFollowsTheme)
+  TAtlasDesignerModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
+    IAtlasKeySource, IAtlasAppliesSettings, IAtlasFollowsTheme)
   public const
     cModuleId = 'atlas.designer';
     cSwitch = 'designer';
+    cShowCommandId = 'Atlas.ShowInDesigner';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -28,6 +31,9 @@ type
     procedure Start;
     procedure Stop;
     function IsActive: Boolean;
+    function Commands: TArray<TAtlasModuleCommand>;
+    function MenuEntries: TArray<TAtlasMenuEntry>;
+    function Keys: TArray<TAtlasModuleKey>;
     procedure ApplySettings;
     procedure ThemeChanged;
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
@@ -47,6 +53,8 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Designer.Strings,
+  Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.Bar;
 
 var
@@ -79,6 +87,22 @@ begin
   Result := GBarStarted;
 end;
 
+/// <summary>„Im Designer zeigen“ (#511), abgesichert.</summary>
+procedure ShowInDesigner;
+begin
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar, TAtlasIdeShowComponent.Run);
+end;
+
+function ShowInDesignerVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DesignerShowInDesigner;
+end;
+
+function ShowInDesignerKey: Integer;
+begin
+  Result := TAtlasIdeSettings.Current.DesignerShowInDesignerKey;
+end;
+
 { TAtlasDesignerModule }
 
 function TAtlasDesignerModule.Info: TAtlasModuleInfo;
@@ -96,16 +120,68 @@ end;
 procedure TAtlasDesignerModule.Start;
 begin
   FActive := True;
+  TAtlasIdeShowComponent.Install(ShowMessage);
 end;
 
 procedure TAtlasDesignerModule.Stop;
 begin
   FActive := False;
+  TAtlasIdeShowComponent.Uninstall;
 end;
 
 function TAtlasDesignerModule.IsActive: Boolean;
 begin
   Result := FActive;
+end;
+
+function Command(const AId, ACaption: string; const ARun: TProc; const AVisible: TFunc<Boolean>;
+  const AKey: TFunc<Integer>): TAtlasModuleCommand;
+begin
+  Result := Default(TAtlasModuleCommand);
+  Result.Id := AId;
+  Result.Caption := ACaption;
+  Result.Run := ARun;
+  Result.Visible := AVisible;
+  Result.Key := AKey;
+end;
+
+function TAtlasDesignerModule.Commands: TArray<TAtlasModuleCommand>;
+begin
+  // Im Designer zeigen (#511): nur sichtbar mit designer.showInDesigner.
+  Result := [Command(cShowCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerShowCommand),
+    ShowInDesigner, ShowInDesignerVisible, ShowInDesignerKey)];
+end;
+
+function MenuEntry(APlace: TAtlasMenuPlace): TAtlasMenuEntry;
+begin
+  Result := Default(TAtlasMenuEntry);
+  Result.CommandId := TAtlasDesignerModule.cShowCommandId;
+  Result.Place := APlace;
+end;
+
+function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
+begin
+  Result := [MenuEntry(TAtlasMenuPlace.EditorContext), MenuEntry(TAtlasMenuPlace.AtlasMenu)];
+end;
+
+function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;
+var
+  mKey: TAtlasModuleKey;
+begin
+  Result := nil;
+  // Gewöhnlicher Editorbefehl: Umschalt+F12 ist in der IDE „Formulare anzeigen“; ohne keys.editorPriority behält
+  // die IDE die Taste.
+  if not TAtlasIdeSettings.Current.DesignerShowInDesigner then
+  begin
+    Exit;
+  end;
+  mKey := Default(TAtlasModuleKey);
+  mKey.Id := cShowCommandId;
+  mKey.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerShowCommand);
+  mKey.Key := TAtlasIdeSettings.Current.DesignerShowInDesignerKey;
+  mKey.Priority := TAtlasKeyPriority.Shared;
+  mKey.Run := ShowInDesigner;
+  Result := [mKey];
 end;
 
 procedure TAtlasDesignerModule.ApplySettings;
@@ -164,6 +240,9 @@ begin
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);
   end;
+  GScope.Provide(IAtlasCommandSource, mRef);
+  GScope.Provide(IAtlasMenuSource, mRef);
+  GScope.Provide(IAtlasKeySource, mRef);
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
   ProvideSettingsSections;

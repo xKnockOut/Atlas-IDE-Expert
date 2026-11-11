@@ -59,7 +59,7 @@ type
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave);
+    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -348,7 +348,10 @@ begin
       ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend),
     // Auswahl speichern (#739): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang (wie DesignerSearch).
     Create(TAtlasKeyFunction.DesignerSelectionSetsSave, Word(ASettings.DesignerSelectionSetsSaveKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets)];
+      ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets),
+    // Im Designer zeigen (#511): Editorbefehl; Umschalt+F12 ist in der IDE „Formulare anzeigen“.
+    Create(TAtlasKeyFunction.DesignerShowComponent, Word(ASettings.DesignerShowInDesignerKey), AShared,
+      ASettings.DesignerShowInDesigner)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -583,6 +586,8 @@ begin
       ASettings.SectionAppendKey := AEntry.Key;
     TAtlasKeyFunction.DesignerSelectionSetsSave:
       ASettings.DesignerSelectionSetsSaveKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerShowComponent:
+      ASettings.DesignerShowInDesignerKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;
