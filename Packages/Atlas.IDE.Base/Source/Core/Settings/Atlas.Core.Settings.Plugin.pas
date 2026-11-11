@@ -301,6 +301,7 @@ type
     property ProblemsCompilerMerge: string read FRules.ProblemsCompilerMerge write FRules.ProblemsCompilerMerge;
     property ProblemsShowCompilerCode: Boolean read FRules.ProblemsShowCompilerCode
       write FRules.ProblemsShowCompilerCode;
+    property ProblemsIdeErrors: Boolean read FRules.ProblemsIdeErrors write FRules.ProblemsIdeErrors;
     property ProblemsWindowKey: Integer read FNavigationKeys.ProblemsWindowKey write FNavigationKeys.ProblemsWindowKey;
     property CheckFileKey: Integer read FNavigationKeys.CheckFileKey write FNavigationKeys.CheckFileKey;
     property CreateIssueKey: Integer read FEditingKeys.CreateIssueKey write FEditingKeys.CreateIssueKey;

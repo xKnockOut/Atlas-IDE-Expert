@@ -100,6 +100,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Shell.Platform;
 
@@ -107,6 +108,8 @@ destructor TShellParts.Destroy;
 var
   mUnfinished: Boolean;
 begin
+  // Vor allem anderen: Der Takt der Statusdatei fragt sonst Teile ab, die gleich freigegeben werden (#1901).
+  TServerActivity.Shared.SetDetails(nil);
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   if IdeArea <> nil then

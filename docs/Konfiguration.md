@@ -279,6 +279,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 |---|---|---|---|---|---|
 | `server.crashCases` | global (settings.json) | boolean | `true` |  | Absturzfälle sichern und im Plugin melden (Fall öffnen, Issue anlegen). AtlasServer --replay <anfrage.json> stellt einen Fall nach. |
 | `server.crashSkip` | global (settings.json) | boolean | `true` |  | Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, bis sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an. |
+| `server.statusFile` | global (settings.json) | boolean | `true` |  | Jeder Server (IDE, MCP, Kommandozeile) schreibt alle 5 s seinen Zustand nach %LOCALAPPDATA%\Atlas\Status\server-<pid>.json (Art, Ziel, Version, Speicher, laufende Anfrage, Fortschritt, Zeitüberschreitungen, Fehler) und löscht die Datei beim Beenden. AtlasMonitor und das MCP-Werkzeug get_server_status lesen sie. Nur lokal, kein Netzzugriff. |
 
 ## diagnostics
 

@@ -281,6 +281,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 |---|---|---|---|---|---|
 | `server.crashCases` | global (settings.json) | boolean | `true` |  | Save crash cases and report them in the plugin (open case, create issue). AtlasServer --replay <request.json> reproduces a case. |
 | `server.crashSkip` | global (settings.json) | boolean | `true` |  | Safety net, in addition to the fix: the server answers a request that crashed twice on the same unchanged file with "Skipped after crash" until the file changes or "Try again" is chosen. Status bar and check window show this. |
+| `server.statusFile` | global (settings.json) | boolean | `true` |  | Every server (IDE, MCP, command line) writes its state every 5 s to %LOCALAPPDATA%\Atlas\Status\server-<pid>.json (kind, target, version, memory, running request, progress, timeouts, errors) and deletes the file on exit. AtlasMonitor and the MCP tool get_server_status read it. Local only, no network access. |
 
 ## diagnostics
 
