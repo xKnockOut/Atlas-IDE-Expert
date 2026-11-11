@@ -117,7 +117,8 @@ type
     WelcomeArrangeResetHint, WelcomeArrangeSettings, WelcomeArrangeShowHint, WelcomeQuickBuild, WelcomeQuickConsole,
     WelcomeQuickFolder, WelcomeQuickReasonNotOpened, WelcomeQuickReasonTasksOff, WelcomeQuickReasonTestsOff,
     WelcomeQuickRun, WelcomeQuickTasks, WelcomeQuickTests, WelcomeTrendsDuration, WelcomeTrendsMethodLength,
-    WelcomeTrendsRuleHits, WelcomeTrendsTodos, WelcomeTrendsWarnings);
+    WelcomeTrendsRuleHits, WelcomeTrendsTodos, WelcomeTrendsWarnings,
+    BaselineUpdateModuleOff);
 
   TAtlasWelcomeStrings = class
   public
@@ -578,7 +579,8 @@ const
      'Mittl. Methodenlänge',
      'Regeltreffer seit Baseline',
      'Offene TODOs',
-     'Warnungen + Hinweise'),
+     'Warnungen + Hinweise',
+     'Baseline aktualisieren: Das Modul Prüfregeln ist ausgeschaltet (Einstellungen, Seite Prüfregeln).'),
     ('Good night',
      'Good morning',
      'Good afternoon',
@@ -1023,7 +1025,8 @@ const
      'Avg. method length',
      'Rule hits since baseline',
      'Open TODOs',
-     'Warnings + hints'));
+     'Warnings + hints',
+     'Update baseline: the rule checks module is switched off (Settings, page Rule checks).'));
 
 { TAtlasWelcomeStrings }
 

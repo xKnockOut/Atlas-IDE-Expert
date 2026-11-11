@@ -195,7 +195,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -258,7 +258,7 @@ begin
       Result.Connection := mResolution.Connection.Name;
     end;
     Result.Queries := TAtlasTrackerQueries.Available(TAtlasTrackerQueries.Read(mSettings.IssuesQueries),
-      Result.Target, Result.Connection, mConnections, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryDefault));
+      Result.Target, Result.Connection, mConnections, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault));
   except
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do

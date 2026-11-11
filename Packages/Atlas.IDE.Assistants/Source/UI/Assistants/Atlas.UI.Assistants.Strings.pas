@@ -10,7 +10,8 @@ interface
 type
   TAtlasAssistantsTextId = (
     BuildStarted, BuildFinished, BuildRefused, RequestUnreadable, RequestNoProject, RequestUnknownMode,
-    NoBuildPipeline, SettingsEdit, SettingsMcpBuild);
+    NoBuildPipeline, SettingsEdit, SettingsMcpBuild,
+    McpEditApplied, UndoActionMcp);
 
   TAtlasAssistantsStrings = class
   public
@@ -35,7 +36,9 @@ const
      'Unbekannte Art "%s"; erlaubt sind make, build und check',
      'Das Modul Build-Pipeline ist nicht geladen oder abgeschaltet',
      'KI-Assistenten dürfen in offene Dateien schreiben (über den Editorpuffer)',
-     'Builds für KI-Assistenten (MCP) über diese IDE erlauben (build_project)'),
+     'Builds für KI-Assistenten (MCP) über diese IDE erlauben (build_project)',
+     'Atlas: MCP-Änderung in %s übernommen (Strg+Z macht sie rückgängig).',
+     'Änderung über MCP'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -44,7 +47,9 @@ const
      'Unknown mode "%s"; allowed are make, build and check',
      'The build pipeline module is not loaded or switched off',
      'AI assistants may write to open files (through the editor buffer)',
-     'Allow builds for AI assistants (MCP) in this IDE (build_project)'));
+     'Allow builds for AI assistants (MCP) in this IDE (build_project)',
+     'Atlas: MCP change applied to %s (Ctrl+Z undoes it).',
+     'Change through MCP'));
 
 class function TAtlasAssistantsStrings.Text(AId: TAtlasAssistantsTextId): string;
 begin

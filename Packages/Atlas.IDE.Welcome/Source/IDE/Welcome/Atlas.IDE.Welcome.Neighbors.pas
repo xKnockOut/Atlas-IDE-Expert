@@ -261,7 +261,7 @@ class function TAtlasWelcomeNeighbors.StartBaseline(const AProject: string;
 var
   mSource: IAtlasBaselineSource;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.BaselineUpdateModuleOff);
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.BaselineUpdateModuleOff);
   if Baseline(mSource) then
   begin
     Result := mSource.StartUpdate(AProject, SetupBaselineDone(ADone));

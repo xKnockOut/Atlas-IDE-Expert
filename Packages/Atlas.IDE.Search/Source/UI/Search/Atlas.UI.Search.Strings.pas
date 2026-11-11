@@ -49,7 +49,9 @@ type
     SettingsUnitSearchAddUses, SettingsUnitSearchKey, SettingsSearchTitle, SettingsSearchReplace,
     SettingsSearchMessages, SettingsUnitSearchReplaceUseUnit, SettingsUnitSearchReplaceForms,
     SettingsSearchReplaceBar, SettingsSearchRegex, SettingsSearchHistory, SettingsSearchMultiFile,
-    SettingsSearchFromFirst, SettingsQuery);
+    SettingsSearchFromFirst, SettingsQuery,
+    UnitSearchGroupProject, UnitSearchGroupFolder, UnitSearchGroupNone, UnitSearchOriginActive,
+    UnitSearchOriginGroup, UnitSearchOriginSearchPath, UnitSearchOriginLibrary);
 
   TAtlasSearchStrings = class
   public
@@ -266,7 +268,14 @@ const
      'Länge des Such- und Ersetzen-Verlaufs (0 = aus)',
      'Bereiche „Offene Dateien“, „Projekt“ und „Projektgruppe“',
      'Beim Tippen zum ersten Treffer springen (sonst zum nächsten ab dem Cursor)',
-     'Code-Abfragen (Fenster „Atlas-Abfrage“, MCP query_code, AtlasServer --query)'),
+     'Code-Abfragen (Fenster „Atlas-Abfrage“, MCP query_code, AtlasServer --query)',
+     'Projekt',
+     'Ordner',
+     'Flach',
+     'Aktives Projekt',
+     'Projektgruppe',
+     'Suchpfad',
+     'Bibliothek'),
     ('IDE dialog Search units',
      'Search unit …  p:project  t:form  -t:test',
      'Unit',
@@ -467,7 +476,14 @@ const
      'Length of the search and replace history (0 = off)',
      'Scopes “Open files”, “Project” and “Project group”',
      'Jump to the first match while typing (otherwise the next one after the cursor)',
-     'Code queries (window “Atlas Query”, MCP query_code, AtlasServer --query)'));
+     'Code queries (window “Atlas Query”, MCP query_code, AtlasServer --query)',
+     'Project',
+     'Folder',
+     'Flat',
+     'Active project',
+     'Project group',
+     'Search path',
+     'Library'));
 
 { TAtlasSearchStrings }
 
