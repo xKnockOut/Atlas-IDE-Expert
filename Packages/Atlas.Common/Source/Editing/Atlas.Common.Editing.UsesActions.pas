@@ -94,6 +94,10 @@ type
 
   TUsesActions = class
   public
+    /// <summary>Beginnt der Quelltext mit program, library oder package? Dessen uses zählt die Units des
+    /// Projekts auf (in-Pfade, Testunits, Formulare): Ein Eintrag dort ist Mitgliedschaft, nicht Abhängigkeit,
+    /// und damit nie ungenutzt.</summary>
+    class function ListsProjectUnits(const ATokens: TArray<TPascalToken>): Boolean; static;
     /// <summary>Auffällige Einträge der uses-Listen in Quelltextreihenfolge (#621). Token in AInactive
     /// (inaktive Zweige) zählen nicht: weder ihre Einträge noch ihre Bezeichner. Unbekannte Units entfallen,
     /// ebenso benutzte, die richtig stehen.</summary>
@@ -234,6 +238,23 @@ begin
     mMask := 0;
   end;
   AMap.AddOrSetValue(AKey, mMask or APart);
+end;
+
+class function TUsesActions.ListsProjectUnits(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  Result := False;
+  for mToken in ATokens do
+  begin
+    if mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Continue;
+    end;
+    Result := mToken.IsKeyword('program') or mToken.IsKeyword('library') or
+      ((mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'package'));
+    Exit;
+  end;
 end;
 
 class function TUsesActions.DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
@@ -459,7 +480,7 @@ var
   mEntry: TUsesEntry;
 begin
   Result := nil;
-  if not Assigned(AInfo) then
+  if not Assigned(AInfo) or ListsProjectUnits(ATokens) then
   begin
     Exit;
   end;
@@ -851,6 +872,10 @@ var
   mName: string;
 begin
   Result := nil;
+  if ListsProjectUnits(ATokens) then
+  begin
+    Exit;
+  end;
   mClauses := TUsesClauses.Clauses(ATokens);
   mIdentifiers := CollectIdentifiers(ATokens, mClauses, AResolution);
   try
