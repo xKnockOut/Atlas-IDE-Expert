@@ -626,6 +626,7 @@ type
     property EditorDesignerBar: Boolean read FEditorView.EditorDesignerBar write FEditorView.EditorDesignerBar;
     property DesignerSearchKey: Integer read FEditorView.DesignerSearchKey write FEditorView.DesignerSearchKey;
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
+    property DesignerFuzzySearch: Boolean read FEditorView.DesignerFuzzySearch write FEditorView.DesignerFuzzySearch;
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
     property DesignerTabOrderOverlay: Boolean read FEditorView.DesignerTabOrderOverlay

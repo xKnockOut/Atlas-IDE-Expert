@@ -23,6 +23,8 @@ type
     [Test]
     procedure EmptyPatternListsKind;
     [Test]
+    procedure FuzzyFindsLettersInOrder;
+    [Test]
     procedure StepStopsAtEdges;
   end;
 
@@ -150,6 +152,37 @@ begin
   Assert.AreEqual(4, mHits[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasDesignerSearch.Find(nil, 'ok', [TAtlasDesignerField.Name],
     TAtlasDesignerKind.All))));
+end;
+
+procedure TAtlasDesignerSearchTests.FuzzyFindsLettersInOrder;
+var
+  mItems: TArray<TAtlasDesignerItem>;
+  mHits: TArray<Integer>;
+begin
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Prefix), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'btnspei', True)),
+    'btnspei findet btnSpeichern');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Fuzzy), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'bspei', True)));
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Fuzzy), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'b sp', True)),
+    'Leerzeichen zählen nicht');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'bspei')),
+    'ohne AFuzzy scharf');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'speib', True)),
+    'Reihenfolge zählt');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'x', True)));
+  mItems := Items + [Item('btnSpeichern', 'TButton', True, '', 'pnlButtons')];
+  mHits := TAtlasDesignerSearch.Find(mItems, 'bspei', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, True);
+  Assert.AreEqual(1, Integer(Length(mHits)));
+  Assert.AreEqual(7, mHits[0]);
+  mHits := TAtlasDesignerSearch.Find(mItems, 'ok', [TAtlasDesignerField.Name, TAtlasDesignerField.Caption],
+    TAtlasDesignerKind.All, True);
+  // Dieselben sechs wie ohne AFuzzy: qryKunden und btnSpeichern haben kein „o“.
+  Assert.AreEqual(6, Integer(Length(mHits)), 'unscharf kommt nichts vor die scharfen');
+  mHits := TAtlasDesignerSearch.Find(mItems, 'lhw', [TAtlasDesignerField.Name, TAtlasDesignerField.Caption,
+    TAtlasDesignerField.ClassName], TAtlasDesignerKind.All, True);
+  Assert.AreEqual(1, Integer(Length(mHits)), 'lblHinweis unscharf im Namen');
+  Assert.AreEqual(6, mHits[0]);
+  mHits := TAtlasDesignerSearch.Find(mItems, 'tbtn', [TAtlasDesignerField.ClassName], TAtlasDesignerKind.All, True);
+  Assert.AreEqual(0, Integer(Length(mHits)), 'Klasse nie unscharf');
 end;
 
 procedure TAtlasDesignerSearchTests.StepStopsAtEdges;

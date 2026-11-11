@@ -4921,6 +4921,17 @@
       "x-node": "editor.designerBar",
       "x-issue": "#1442"
     },
+    "DesignerFuzzySearch": {
+      "description": "Fenster „Komponenten suchen“ unscharf: findet auch Komponenten, deren Name oder Caption die Zeichen des Suchworts nur in ihrer Reihenfolge enthält („bspei“ findet btnSpeichern). Solche Treffer stehen nach allen genauen. Die Klasse wird nie unscharf durchsucht. Aus = nur zusammenhängende Treffer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fuzzySearch",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#539"
+    },
     "DesignerTabOrderClick": {
       "description": "Befehle im Menü am Pfeil des Knopfs „Tab-Reihenfolge“, die die Reihenfolge neu vergeben: „Reihenfolge klicken“ (Klicks auf die Marken setzen je Elternelement 0, 1, 2 …, nicht geklickte rücken dahinter; Enter oder ein Klick auf das Symbol übernimmt, Esc stellt den alten Stand her), „Nach Lesereihenfolge sortieren“ und „Tab-Reihenfolge rückgängig“ (auch Strg+Z, solange die Marken zu sehen sind). Ändert die .dfm. Aus = die Marken sind nur Anzeige.",
       "type": "boolean",

@@ -523,6 +523,9 @@ type
     /// <summary>Fenster „Komponenten suchen“: DesignerSearchWindow (groß mit Vorschau) oder DesignerSearchPopup
     /// (klein wie Strg+P), editor.designerBar.searchStyle.</summary>
     DesignerSearchStyle: string;
+    /// <summary>„Komponenten suchen“ auch unscharf: Zeichen in ihrer Reihenfolge (#539, designer.fuzzySearch).
+    /// </summary>
+    DesignerFuzzySearch: Boolean;
     /// <summary>Tab-Reihenfolge neu vergeben: Reihenfolge klicken, nach Lesereihenfolge sortieren (#603,
     /// editor.designerBar.tabOrderClick).</summary>
     DesignerTabOrderClick: Boolean;
@@ -1268,6 +1271,7 @@ begin
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
   Result.DesignerSearchStyle := cDesignerSearchWindow;
+  Result.DesignerFuzzySearch := True;
   Result.DesignerTabOrderClick := True;
   Result.DesignerTabOrderOverlay := False;
   Result.DesignerTabOrderPaths := False;
@@ -1586,6 +1590,7 @@ begin
   AIo.Flag('EditorDesignerBar', EditorDesignerBar);
   AIo.Number('DesignerSearchKey', DesignerSearchKey);
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);
+  AIo.Flag('DesignerFuzzySearch', DesignerFuzzySearch);
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
   AIo.Flag('DesignerTabOrderOverlay', DesignerTabOrderOverlay);
   AIo.Flag('DesignerTabOrderPaths', DesignerTabOrderPaths);

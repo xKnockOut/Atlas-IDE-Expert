@@ -118,7 +118,8 @@ type
     SettingsDesignerShowKey, PropertySearchCommand, PropertySearchHint, PropertySearchTitle,
     PropertySearchCondition, PropertySearchExamples, PropertySearchScopeForm, PropertySearchScopeProject,
     PropertySearchScopeGroup, PropertySearchRun, PropertySearchInvalid, PropertySearchResults,
-    PropertySearchInherited, PropertySearchNoForms, PropertySearchSkipped, SettingsDesignerPropertySearch);
+    PropertySearchInherited, PropertySearchNoForms, PropertySearchSkipped, SettingsDesignerPropertySearch,
+    DesignerSearchAdd, SettingsDesignerFuzzySearch);
 
   TAtlasDesignerStrings = class
   public
@@ -177,8 +178,9 @@ const
      'Zum Ereignis',
      'Name kopieren',
      '%d von %d',
-     '↑↓ wählen · Enter auswählen · Strg+Enter zum Ereignis · Strg+C Name kopieren · F4 Vorschau · Esc schließen',
-     '↑↓ wählen · Enter auswählen · Esc schließen',
+     '↑↓ wählen · Enter auswählen · Strg+Enter zur Auswahl · Umschalt+Enter zum Ereignis · ' +
+       'Strg+C Name kopieren · F4 Vorschau · Esc schließen',
+     '↑↓ wählen · Enter auswählen · Strg+Enter zur Auswahl · Esc schließen',
      'Lage',
      'Eigenschaften',
      'Ereignisse',
@@ -585,7 +587,9 @@ const
      'geerbt',
      'Kein Formular im gewählten Bereich.',
      '%d Formulare übersprungen (binär gespeichert oder nicht lesbar).',
-     '„Eigenschaften suchen“ in Formular, Projekt oder Projektgruppe'),
+     '„Eigenschaften suchen“ in Formular, Projekt oder Projektgruppe',
+     'Zur Auswahl hinzufügen',
+     '„Komponenten suchen“ auch unscharf (Zeichen in ihrer Reihenfolge)'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -625,8 +629,9 @@ const
      'Go to event',
      'Copy name',
      '%d of %d',
-     '↑↓ move · Enter select · Ctrl+Enter go to event · Ctrl+C copy name · F4 preview · Esc close',
-     '↑↓ move · Enter select · Esc close',
+     '↑↓ move · Enter select · Ctrl+Enter add to selection · Shift+Enter go to event · ' +
+       'Ctrl+C copy name · F4 preview · Esc close',
+     '↑↓ move · Enter select · Ctrl+Enter add to selection · Esc close',
      'Position',
      'Properties',
      'Events',
@@ -1033,7 +1038,9 @@ const
      'inherited',
      'No form in the chosen scope.',
      '%d forms skipped (stored as binary or not readable).',
-     '“Search properties” in form, project or project group'));
+     '“Search properties” in form, project or project group',
+     'Add to selection',
+     '“Search components” also fuzzy (characters in order)'));
 
 { TAtlasDesignerStrings }
 

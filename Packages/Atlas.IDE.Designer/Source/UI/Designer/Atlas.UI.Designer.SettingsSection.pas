@@ -64,6 +64,7 @@ begin
     [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchWindow),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchPopup)],
     [TAtlasPluginSettings.cDesignerSearchWindow, TAtlasPluginSettings.cDesignerSearchPopup]);
+  Switch('designer.fuzzySearch', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFuzzySearch));
   Switch('editor.designerBar.tabOrderClick', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderClick));
   Switch('designer.tabOrderOverlay',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderOverlay));

@@ -802,6 +802,8 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'DesignerShowInDesigner').Checked, 'Vorgabe an');
     Assert.IsTrue(CheckOf(mPage, 'DesignerPropertySearch').Checked, 'Eigenschaftssuche (#524): Vorgabe an');
     CheckOf(mPage, 'DesignerPropertySearch').Checked := False;
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFuzzySearch').Checked, 'unscharfe Suche (#539): Vorgabe an');
+    CheckOf(mPage, 'DesignerFuzzySearch').Checked := False;
     Assert.AreEqual(8315, TAtlasPluginSettings.Defaults.DesignerShowInDesignerKey, 'Umschalt+F12');
     CheckOf(mPage, 'DesignerShowInDesigner').Checked := False;
     EditOf(mPage, 'DesignerShowInDesignerKey').Text := '';
@@ -809,6 +811,7 @@ begin
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.DesignerShowInDesigner, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerPropertySearch, 'Eigenschaftssuche abschaltbar');
+    Assert.IsFalse(mSaved.DesignerFuzzySearch, 'unscharfe Suche abschaltbar');
     Assert.AreEqual(0, mSaved.DesignerShowInDesignerKey, 'leer = keine Taste');
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'DesignerShowInDesigner').Checked);
