@@ -15,10 +15,15 @@ type
     cMaxZoom = 4.0;
     /// <summary>Bis zu dieser Abweichung nach oben gilt der Zoom als 100 % (Zeilenabstand).</summary>
     cTolerance = 0.25;
+    /// <summary>Bezugsdichte der logischen Pixel.</summary>
+    cBasePPI = 96;
   public
     /// <summary>Zoomfaktor aus der Caret-Höhe und der Texthöhe der Editorschrift bei 100 % (beide in
     /// Gerätepixeln); 1 ohne brauchbare Werte.</summary>
     class function ZoomFromCaret(ACaretHeight, ATextHeight: Integer): Double; static;
+    /// <summary>Wert in logischen Pixeln (96 dpi) für APPI in Gerätepixeln, kaufmännisch gerundet (#2063);
+    /// APPI ≤ 0 gilt als 96 dpi, negative Werte (Sonderbreiten von Listenspalten) bleiben unverändert.</summary>
+    class function ToDevice(AValue96, APPI: Integer): Integer; static;
   end;
 
 implementation
@@ -27,6 +32,15 @@ uses
   System.Math;
 
 { TAtlasScaling }
+
+class function TAtlasScaling.ToDevice(AValue96, APPI: Integer): Integer;
+begin
+  if (AValue96 < 0) or (APPI <= 0) or (APPI = cBasePPI) then
+  begin
+    Exit(AValue96);
+  end;
+  Result := (AValue96 * APPI + cBasePPI div 2) div cBasePPI;
+end;
 
 class function TAtlasScaling.ZoomFromCaret(ACaretHeight, ATextHeight: Integer): Double;
 begin

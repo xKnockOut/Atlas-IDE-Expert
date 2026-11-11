@@ -95,6 +95,8 @@ implementation
 
 uses
   Vcl.Graphics,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings;
 
 const
@@ -110,7 +112,6 @@ const
   cLinkFormat = '%s %s: %s';
   cItemFormat = '%s: %s';
   cUnusedFormat = '%s – %s';
-  cFindingColor = clRed;
   cLinkColor = clGrayText;
 
 { Hilfen }
@@ -470,7 +471,7 @@ begin
   end;
   if FNodes[mIndex].Finding <> TAtlasStructureFinding.None then
   begin
-    Sender.Canvas.Font.Color := cFindingColor;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   end
   else if FNodes[mIndex].Kind = TAtlasStructureNodeKind.Link then
   begin

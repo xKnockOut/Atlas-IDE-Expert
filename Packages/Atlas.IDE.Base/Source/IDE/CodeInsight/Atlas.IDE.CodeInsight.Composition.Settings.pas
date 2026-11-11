@@ -157,6 +157,7 @@ end;
 procedure InstallSettings;
 begin
   TAtlasIdeSymbol.OnThemeChanged := ThemeChanged;
+  InstallUiTheme;
   TAtlasIdeSettings.OnChanged := SettingsChanged;
   TAtlasProjectSettings.Command := ProjectSettingsCommand;
   RegisterOptions;
@@ -165,6 +166,7 @@ end;
 procedure DetachSettings;
 begin
   TAtlasIdeSettings.OnChanged := nil;
+  UninstallUiTheme;
 end;
 
 procedure UnregisterOptions;
