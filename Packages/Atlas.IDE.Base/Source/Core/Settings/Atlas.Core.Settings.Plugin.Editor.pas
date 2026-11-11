@@ -594,6 +594,18 @@ type
     DesignerScalePreviewScreens: string;
     /// <summary>Verlängerung bei „Lange Texte“ in Prozent (#607, designer.longTextFactor).</summary>
     DesignerLongTextFactor: Integer;
+    /// <summary>Knopf „Sprechende Namen“ (#608, designer.nameSuggest).</summary>
+    DesignerNameSuggest: Boolean;
+    /// <summary>Quellen und Reihenfolge „caption, label, handler, dataField“ (#608, designer.nameSuggestSources).
+    /// </summary>
+    DesignerNameSuggestSources: string;
+    /// <summary>Umlaute „replace“ oder „remove“ (#608, designer.nameSuggestUmlauts).</summary>
+    DesignerNameSuggestUmlauts: string;
+    /// <summary>Handler mit Standardnamen mit umbenennen (#608, designer.nameSuggestRenameHandlers).</summary>
+    DesignerNameSuggestRenameHandlers: Boolean;
+    /// <summary>Eigene Präfixe „TKlasse=präfix“ vor der eingebauten Tabelle (#608, designer.nameSuggestPrefixes).
+    /// </summary>
+    DesignerNameSuggestPrefixes: string;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1671,6 +1683,11 @@ begin
   DesignerScalePreviewLevels := '100, 125, 150, 175, 200';
   DesignerScalePreviewScreens := '1366x768, 1920x1080';
   DesignerLongTextFactor := cLongTextFactor;
+  DesignerNameSuggest := True;
+  DesignerNameSuggestSources := 'caption, label, handler, dataField';
+  DesignerNameSuggestUmlauts := 'replace';
+  DesignerNameSuggestRenameHandlers := True;
+  DesignerNameSuggestPrefixes := '';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1684,6 +1701,11 @@ begin
   AIo.Text('DesignerScalePreviewLevels', DesignerScalePreviewLevels);
   AIo.Text('DesignerScalePreviewScreens', DesignerScalePreviewScreens);
   AIo.Number('DesignerLongTextFactor', DesignerLongTextFactor);
+  AIo.Flag('DesignerNameSuggest', DesignerNameSuggest);
+  AIo.Text('DesignerNameSuggestSources', DesignerNameSuggestSources);
+  AIo.Text('DesignerNameSuggestUmlauts', DesignerNameSuggestUmlauts);
+  AIo.Flag('DesignerNameSuggestRenameHandlers', DesignerNameSuggestRenameHandlers);
+  AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
 end;
 
 end.

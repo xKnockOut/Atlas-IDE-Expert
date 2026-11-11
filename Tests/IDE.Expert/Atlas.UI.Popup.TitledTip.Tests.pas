@@ -1,7 +1,6 @@
 ﻿unit Atlas.UI.Popup.TitledTip.Tests;
 
-// Tests für den Tooltip mit Titel und Text (#545, #623, #1281; bis #1455 in
-// Atlas.UI.Notes.Tests).
+// Tests für den Tooltip mit Titel und Text (#545, #623, #1281).
 
 interface
 

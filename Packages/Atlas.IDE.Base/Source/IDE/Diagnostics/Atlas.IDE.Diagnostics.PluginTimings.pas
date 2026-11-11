@@ -13,10 +13,15 @@
 //   bei ausgeschalteter Messung.
 // - Modale Dialoge (Application.OnModalBegin/OnModalEnd) meldet die Instanz
 //   dem Rekorder: Ihre Zeit zählt nicht als Belegung des Hauptthreads.
+// - Ebenso Menüs und Kontextmenüs (TrackPopupMenu) sowie Verschieben und
+//   Größe ändern von Fenstern: Ein Hook (WH_CALLWNDPROC) des Hauptthreads
+//   sieht WM_ENTERMENULOOP/WM_EXITMENULOOP und WM_ENTERSIZEMOVE/
+//   WM_EXITSIZEMOVE. Er ist nur installiert, solange gemessen wird.
 
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   Vcl.AppEvnts,
   Atlas.UI.Diagnostics.PluginFrame;
@@ -28,6 +33,8 @@ type
     FEvents: TApplicationEvents;
     procedure ModalBegin(Sender: TObject);
     procedure ModalEnd(Sender: TObject);
+    /// <summary>Hook für die eigenen Nachrichtenschleifen nur bei laufender Messung (AOn).</summary>
+    class procedure HookLoops(AOn: Boolean); static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -59,6 +66,35 @@ const
   // Protokollzeile (nicht übersetzt, wie das übrige Protokoll).
   cLogTimingsOn = 'Diagnosemodus: Plugin-Zeiten werden gemessen';
 
+var
+  LoopHook: HHOOK = 0;
+
+/// <summary>Menü, Kontextmenü, Verschieben: Beginn und Ende der Schleife an den Rekorder.</summary>
+function LoopProc(ACode: Integer; AWParam: WPARAM; ALParam: LPARAM): LRESULT; stdcall;
+var
+  mChange: Integer;
+begin
+  try
+    if (ACode = HC_ACTION) and TAtlasPluginTimings.Enabled then
+    begin
+      mChange := TAtlasMessageLoop.Change(PCWPStruct(ALParam).message);
+      if mChange > 0 then
+      begin
+        TAtlasPluginTimings.Shared.ModalBegin;
+      end
+      else if mChange < 0 then
+      begin
+        TAtlasPluginTimings.Shared.ModalEnd;
+      end;
+    end;
+  except
+    // Keine Exception an die IDE (#493).
+    on E: Exception do
+      TAtlasGuard.Log('Diagnosemodus, Nachrichtenschleifen: ' + TAtlasGuard.ErrorText(E));
+  end;
+  Result := CallNextHookEx(LoopHook, ACode, AWParam, ALParam);
+end;
+
 procedure Fill(AFrame: TAtlasDiagnosticsFrame);
 begin
   AFrame.SetSnapshot(TAtlasPluginTimings.Shared.Snapshot, TAtlasTimeLimit.BusyCount);
@@ -77,6 +113,7 @@ end;
 
 destructor TAtlasIdePluginTimings.Destroy;
 begin
+  HookLoops(False);
   FEvents.Free;
   inherited;
 end;
@@ -97,6 +134,20 @@ begin
   end;
 end;
 
+class procedure TAtlasIdePluginTimings.HookLoops(AOn: Boolean);
+begin
+  if AOn and (LoopHook = 0) then
+  begin
+    // Nur der Hauptthread: Dort laufen die Aufrufe, die der Rekorder misst.
+    LoopHook := SetWindowsHookEx(WH_CALLWNDPROC, @LoopProc, 0, MainThreadID);
+  end
+  else if not AOn and (LoopHook <> 0) then
+  begin
+    UnhookWindowsHookEx(LoopHook);
+    LoopHook := 0;
+  end;
+end;
+
 procedure TAtlasIdePluginTimings.Apply(AModeOn: Boolean; AFrame: TAtlasDiagnosticsFrame);
 var
   mSettings: TAtlasPluginSettings;
@@ -111,6 +162,7 @@ begin
   end;
   TAtlasPluginTimings.Shared.ThresholdMs := mSettings.DiagnosticSlowMs;
   TAtlasPluginTimings.Enabled := mWanted;
+  HookLoops(mWanted);
   if AFrame <> nil then
   begin
     AFrame.SetPluginTimings(mWanted);
@@ -183,5 +235,13 @@ begin
     Result := TAtlasPluginReport.Build(TAtlasPluginTimings.Shared.Snapshot);
   end;
 end;
+
+initialization
+
+finalization
+  if LoopHook <> 0 then
+  begin
+    UnhookWindowsHookEx(LoopHook);
+  end;
 
 end.

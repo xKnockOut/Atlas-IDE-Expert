@@ -125,6 +125,14 @@ begin
   Line('designer.scalePreviewLevels', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleLevels));
   Line('designer.scalePreviewScreens', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleScreens));
   Number('designer.longTextFactor', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsLongTextFactor));
+  Switch('designer.nameSuggest', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSuggest));
+  Line('designer.nameSuggestSources', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSources));
+  Choice('designer.nameSuggestUmlauts', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameUmlauts),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameReplace),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameRemove)], ['replace', 'remove']);
+  Switch('designer.nameSuggestRenameHandlers',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameHandlers));
+  Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

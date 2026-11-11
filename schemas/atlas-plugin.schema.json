@@ -5266,6 +5266,64 @@
       "x-node": "editor.designerBar",
       "x-issue": "#607"
     },
+    "DesignerNameSuggest": {
+      "description": "Knopf „Sprechende Namen“ in der Designer-Leiste: listet die Komponenten des Formulars mit Standardnamen (Button1, Edit3) und schlägt Namen aus Präfix und Caption, zugeordnetem Label, sprechendem Handler oder DataField vor. „Übernehmen“ benennt die markierten im Designer um (Feld, Handler mit Standardnamen, Verwendungen in der Unit des Formulars); „Letzte Umbenennung rückgängig“ nimmt den Lauf zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nameSuggest",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#608"
+    },
+    "DesignerNameSuggestSources": {
+      "description": "Quellen der Namensvorschläge in ihrer Reihenfolge, durch Komma getrennt: caption (Caption/Text), label (Label mit FocusControl oder links bzw. darüber), handler (sprechender Handler wie DoExport), dataField (DataField, KUNDE_NAME wird KundeName).",
+      "type": "string",
+      "default": "caption, label, handler, dataField",
+      "x-key": "designer.nameSuggestSources",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.nameSuggest",
+      "x-node": "editor.designerBar",
+      "x-issue": "#608"
+    },
+    "DesignerNameSuggestUmlauts": {
+      "description": "Umlaute im Vorschlag: ersetzen (replace, ä wird ae, ß wird ss) oder entfernen (remove).",
+      "type": "string",
+      "enum": [
+        "replace",
+        "remove"
+      ],
+      "default": "replace",
+      "x-key": "designer.nameSuggestUmlauts",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.nameSuggest",
+      "x-node": "editor.designerBar",
+      "x-issue": "#608"
+    },
+    "DesignerNameSuggestRenameHandlers": {
+      "description": "Handler mit Standardnamen mit umbenennen (Button1Click wird btnSpeichernClick); Handler mit eigenem Namen bleiben.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nameSuggestRenameHandlers",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.nameSuggest",
+      "x-node": "editor.designerBar",
+      "x-issue": "#608"
+    },
+    "DesignerNameSuggestPrefixes": {
+      "description": "Eigene Präfixe vor der eingebauten Tabelle, „TKlasse=präfix“ durch Komma getrennt (etwa „TButton=cmd, TMyGrid=grd“); gilt auch für Vorfahren der Klasse.",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.nameSuggestPrefixes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.nameSuggest",
+      "x-node": "editor.designerBar",
+      "x-issue": "#608"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",

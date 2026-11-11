@@ -20,6 +20,8 @@ type
     [Test]
     procedure BuildsArguments;
     [Test]
+    procedure RangeAroundVisibleLines;
+    [Test]
     procedure SegmentsPerStyle;
     [Test]
     procedure TargetNamesAndColor;
@@ -107,10 +109,37 @@ begin
 end;
 
 procedure TAtlasReassignedTests.BuildsArguments;
+var
+  Range: TAtlasReassignedRange;
 begin
   Assert.AreEqual('["file:///a.pas",{"targets":["locals","fields"]}]',
     TAtlasReassigned.Arguments('file:///a.pas', [TAtlasReassignedTarget.Fields, TAtlasReassignedTarget.Locals]));
   Assert.AreEqual('["u",{"targets":[]}]', TAtlasReassigned.Arguments('u', []));
+  Range.First := 10;
+  Range.Last := 70;
+  Assert.AreEqual('["u",{"targets":["locals"],"range":{"start":10,"end":70}}]',
+    TAtlasReassigned.Arguments('u', [TAtlasReassignedTarget.Locals], Range));
+  Assert.AreEqual('["u",{"targets":["locals"]}]',
+    TAtlasReassigned.Arguments('u', [TAtlasReassignedTarget.Locals], TAtlasReassignedRange.Whole));
+end;
+
+procedure TAtlasReassignedTests.RangeAroundVisibleLines;
+var
+  Range: TAtlasReassignedRange;
+begin
+  // 30 sichtbare Zeilen ab 100: je 30 Zeilen Rand.
+  Range := TAtlasReassignedRange.Around(100, 129);
+  Assert.AreEqual(70, Range.First);
+  Assert.AreEqual(159, Range.Last);
+  Assert.IsTrue(Range.Contains(100, 129));
+  Assert.IsTrue(Range.Contains(70, 99));
+  Assert.IsFalse(Range.Contains(60, 89));
+  Assert.IsFalse(Range.Contains(140, 169));
+  // Am Anfang der Datei kein Rand unter null.
+  Range := TAtlasReassignedRange.Around(0, 39);
+  Assert.AreEqual(0, Range.First);
+  Assert.AreEqual(79, Range.Last);
+  Assert.IsTrue(TAtlasReassignedRange.Whole.Contains(5000, 6000));
 end;
 
 procedure TAtlasReassignedTests.SegmentsPerStyle;

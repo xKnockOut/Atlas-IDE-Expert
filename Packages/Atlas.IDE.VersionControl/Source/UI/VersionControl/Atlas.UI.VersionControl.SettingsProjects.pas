@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsProjects;
 
-// Versionsverwaltung: Tabellen „Projekte“ (#1286, vcs.projects) und „Server“ (#1287), seit #1905 im Modul. Die
+// Versionsverwaltung: Tabellen „Projekte“ (#1286, vcs.projects) und „Server“ (#1287). Die
 // Zeilen liest und schreibt der Teil selbst (eigene Zeilen mit dem Schlüssel vcs.projects).
 
 interface

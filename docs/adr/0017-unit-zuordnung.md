@@ -702,6 +702,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Outline.Breadcrumbs` | `UI/Outline/Atlas.UI.Outline.Breadcrumbs.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Outline.Frame` | `UI/Outline/Atlas.UI.Outline.Frame.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Outline.NavigationToolbar` | `UI/Outline/Atlas.UI.Outline.NavigationToolbar.pas` | Ordner `UI/Outline` |
+| `Atlas.UI.Foundation.WndProcHook` | `UI/Foundation/Atlas.UI.Foundation.WndProcHook.pas` | Fensterprozedur mit Kettenprüfung für Dockfenster und Statusleiste (#1976) |
 | `Atlas.UI.Popup.Accessibility` | `UI/Popup/Atlas.UI.Popup.Accessibility.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Draw` | `UI/Popup/Atlas.UI.Popup.Draw.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Styled` | `UI/Popup/Atlas.UI.Popup.Styled.pas` | Ordner `UI/Popup` |
@@ -1154,6 +1155,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.Layout` | `Core/Designer/Atlas.Core.Designer.Layout.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Scale` | `Core/Designer/Atlas.Core.Designer.Scale.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.TabOrder` | `Core/Designer/Atlas.Core.Designer.TabOrder.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.NameSuggest` | `Core/Designer/Atlas.Core.Designer.NameSuggest.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.CodeLink` | `Core/Designer/Atlas.Core.Designer.CodeLink.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Usages` | `Core/Designer/Atlas.Core.Designer.Usages.pas` | Ordner `Core/Designer` |
@@ -1198,6 +1200,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.ScalePreview` | `IDE/Designer/Atlas.IDE.Designer.ScalePreview.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.TabOrder` | `IDE/Designer/Atlas.IDE.Designer.TabOrder.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Tools` | `IDE/Designer/Atlas.IDE.Designer.Tools.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.NameSuggest` | `IDE/Designer/Atlas.IDE.Designer.NameSuggest.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.ShowComponent` | `IDE/Designer/Atlas.IDE.Designer.ShowComponent.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.PropertySearch` | `IDE/Designer/Atlas.IDE.Designer.PropertySearch.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Usages` | `IDE/Designer/Atlas.IDE.Designer.Usages.pas` | Ordner `IDE/Designer` |
@@ -1224,6 +1227,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.ToolStrings` | `UI/Designer/Atlas.UI.Designer.ToolStrings.pas` | Texte der Werkzeuge mit eigenem Knopf in der Designer-Leiste, Sprache von Base |
 | `Atlas.UI.Designer.SelectionBar` | `UI/Designer/Atlas.UI.Designer.SelectionBar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Magnifier` | `UI/Designer/Atlas.UI.Designer.Magnifier.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.NameDialog` | `UI/Designer/Atlas.UI.Designer.NameDialog.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Help
 
