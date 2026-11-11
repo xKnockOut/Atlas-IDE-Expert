@@ -120,7 +120,8 @@ uses
   Atlas.IDE.Commands.Usage,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Foundation.Host;
 
 const
   cKeyIdPrefix = 'Atlas.Key.';
@@ -924,27 +925,36 @@ var
   mIds, mKeys: TArray<string>;
   mKnown: Boolean;
   mIndex: Integer;
+  mOwners: TDictionary<Word, string>;
 begin
   mIds := nil;
   mKeys := nil;
-  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
-  for mEntry in AtlasEntries do
-  begin
-    mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
-    if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+  // Besitzer aller IDE-Tasten in einem Lauf über die ActionList, nicht je Eintrag (Einträge × Aktionen).
+  mOwners := TDictionary<Word, string>.Create;
+  try
+    TAtlasIdeKeys.CollectOwners(mOwners);
+    // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
+    for mEntry in AtlasEntries do
     begin
-      Continue;
+      mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
+      if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+      begin
+        Continue;
+      end;
+      mKnown := False;
+      for mIndex := 0 to High(mIds) do
+      begin
+        mKnown := mKnown or SameText(mIds[mIndex], mId);
+      end;
+      if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.OwnerIn(mOwners, mEntry.Key),
+        mEntry.Priority) then
+      begin
+        mIds := mIds + [mId];
+        mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
+      end;
     end;
-    mKnown := False;
-    for mIndex := 0 to High(mIds) do
-    begin
-      mKnown := mKnown or SameText(mIds[mIndex], mId);
-    end;
-    if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority) then
-    begin
-      mIds := mIds + [mId];
-      mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
-    end;
+  finally
+    mOwners.Free;
   end;
   Result := ShortCutLookup(mIds, mKeys);
 end;
@@ -1037,7 +1047,7 @@ begin
     TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
   except
     on E: Exception do
-      TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapExportFailed, [E.ClassName]));
+      TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyMapExportFailed, [E.ClassName]));
   end;
 end;
 
@@ -1141,7 +1151,7 @@ begin
     begin
       mWinner := TAtlasStrings.Text(TAtlasTextId.KeyMapNobody);
     end;
-    TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
+    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
       [mItems[mIndex].KeyText, mItems[mIndex].Command, mItems[mPartner].Holder, mWinner]));
     TAtlasIdeKeys.MarkReported(mItems[mIndex].ShortCut);
   end;

@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Designer (#1456, ADR 0017): Leiste, Komponentensuche und Reiterhinweise im Formular-Designer.
+// Modul Designer (#1456): Leiste, Komponentensuche und Reiterhinweise im Formular-Designer.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Designer.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package
@@ -86,6 +86,7 @@ contains
   Atlas.UI.Designer.Outlines in 'Source\UI\Designer\Atlas.UI.Designer.Outlines.pas',
   Atlas.UI.Designer.DuplicateDialog in 'Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas',
   Atlas.UI.Designer.SpaceDialog in 'Source\UI\Designer\Atlas.UI.Designer.SpaceDialog.pas',
+  Atlas.UI.Designer.Dialog in 'Source\UI\Designer\Atlas.UI.Designer.Dialog.pas',
   Atlas.UI.Designer.PropertyDialog in 'Source\UI\Designer\Atlas.UI.Designer.PropertyDialog.pas',
   Atlas.UI.Designer.PaintDialog in 'Source\UI\Designer\Atlas.UI.Designer.PaintDialog.pas',
   Atlas.UI.Designer.AnchorDialog in 'Source\UI\Designer\Atlas.UI.Designer.AnchorDialog.pas',

@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Welcome.Tiles;
 
-// Kacheln anderer Module auf der Willkommensseite (#1455, ADR 0017 Regel 2,
+// Kacheln anderer Module auf der Willkommensseite (#1455, Modulregel 2,
 // 3 und 4; Vertrag Atlas.IDE.Contracts.WelcomeTiles): TAtlasIdeWelcomeTiles
 // beobachtet die Registry auf IAtlasWelcomeTile und meldet jede Kachel als
 // Bereich (TAtlasWelcomeSections) mit Fabrik (TAtlasWelcomeViews) an. Die

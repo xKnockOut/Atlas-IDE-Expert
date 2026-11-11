@@ -21,7 +21,7 @@ type
     procedure ListsAndReadsResources;
     [Test]
     procedure AppliesEditsFromBackToFront;
-    /// <summary>Zeichen hinter dem Zeilenende bleiben in ihrer Zeile; CR allein ist ein Zeilenende (D-04).</summary>
+    /// <summary>Zeichen hinter dem Zeilenende bleiben in ihrer Zeile; CR allein ist ein Zeilenende.</summary>
     [Test]
     procedure ClampsCharacterToLineEnd;
     [Test]

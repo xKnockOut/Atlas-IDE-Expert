@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Analysis.Composition;
 
-// Modul Analyse (#1455, ADR 0017): einzige Unit, die die Fenster
+// Modul Analyse (#1455): einzige Unit, die die Fenster
 // „Atlas-Architektur“ (#1118, teuerste Units #554), „Unit-Beziehungen“ (#593,
 // Kosten einer interface-Änderung #554), „Atlas-Hotspots“ (#1354) und den Weg
 // zwischen Symbolen (#1117) und die Code Lens mit Code-Metriken (#66, #1756)

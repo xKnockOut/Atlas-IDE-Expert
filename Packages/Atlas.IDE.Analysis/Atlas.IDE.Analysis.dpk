@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Analyse (#1456, ADR 0017): Hotspots, Architektur, Unit-Beziehungen, Symbolpfad und Code Lens mit
+// Modul Analyse (#1456): Hotspots, Architektur, Unit-Beziehungen, Symbolpfad und Code Lens mit
 // Code-Metriken (#1756).
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Analysis.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen

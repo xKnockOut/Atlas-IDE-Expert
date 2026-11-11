@@ -35,7 +35,7 @@
 // die anderen Arten aus debug.visualizers.types bereiten die Visualisierer
 // (#835) den Wert auf, sobald der Server den Typ gemeldet hat; das gilt auch
 // unter Win64, wo die Visualisierer der IDE nicht laufen. Den Ersatztext gibt
-// OnVisualize (die Debug-Schicht setzt es, der Tooltip kennt sie nicht, A-09).
+// OnVisualize (die Debug-Schicht setzt es, der Tooltip kennt sie nicht).
 // debug.hoverValues (DebugHoverValues). Scheitert die Auswertung mit „kein
 // Zugriff“, erklärt OnExplain die Ursache (#840; die Debug-Schicht setzt es,
 // der Tooltip kennt sie nicht), Klicks auf ihre Korrekturen gehen an
@@ -148,7 +148,7 @@ type
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc); overload;
     destructor Destroy; override;
     procedure Hide; override;
-    /// <summary>Laufende Anfragen abwarten, bevor die Sitzung wegfällt (Neustart, Abschalten; Code-Review A-07).
+    /// <summary>Laufende Anfragen abwarten, bevor die Sitzung wegfällt (Neustart, Abschalten).
     /// Ihre Ergebnisse zeigt der Tooltip nicht mehr. Nur im Hauptthread.</summary>
     procedure Shutdown;
   end;
@@ -592,7 +592,7 @@ begin
               mOwner.ShowData(mData);
             end);
         end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen, übersteht aber ReapWorkers (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen, übersteht aber ReapWorkers.
       TAtlasMainThread.Queue(TAtlasFeature.Hover, mShow);
     end);
   mWorker.FreeOnTerminate := False;

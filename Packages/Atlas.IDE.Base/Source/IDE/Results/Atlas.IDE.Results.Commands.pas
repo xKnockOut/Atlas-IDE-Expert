@@ -90,7 +90,8 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Host;
 
 const
   // Beim Tippen: lieber leer als die IDE aufhalten.
@@ -181,23 +182,6 @@ begin
     end;
     mCommand.ShortCut := TAtlasResults.SymbolBadge(ASymbols[mIndex].Kind);
     Result := Result + [mCommand];
-  end;
-end;
-
-/// <summary>Fläche, über der die Symbolsuche erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
   end;
 end;
 
@@ -641,7 +625,7 @@ begin
         Open(mSymbols[Index].FileName, mSymbols[Index].Line, mSymbols[Index].Character);
       end;
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 class procedure TAtlasIdeResults.ShowWindow;

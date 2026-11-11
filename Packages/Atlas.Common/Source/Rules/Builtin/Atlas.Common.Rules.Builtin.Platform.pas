@@ -69,6 +69,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
@@ -134,7 +135,7 @@ begin
     SameText(ANode.Name, AName);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (Bericht M1).
+/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (tiefe Bäume sprengen den Stapel nicht).
 /// </summary>
 function IsQualifiedName(ANode: TSyntaxNode): Boolean;
 var
@@ -148,35 +149,13 @@ begin
   Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
-/// <summary>Index des ersten Tokens ab AOffset (binäre Suche); Length(ATokens), wenn keiner folgt.</summary>
-function TokenAt(const ATokens: TTokens; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
-
 /// <summary>Pfad der bedingten Übersetzung am Anfang von ANode; '' ohne Bedingungen.</summary>
 function PathOf(const APaths: TArray<string>; const ATokens: TTokens; ANode: TSyntaxNode): string;
 begin
-  Result := TConditionalBranches.PathAt(APaths, TokenAt(ATokens, ANode.StartOffset));
+  Result := TConditionalBranches.PathAt(APaths, TokenFrom(ATokens, ANode.StartOffset));
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure CollectNodes(ARoot: TSyntaxNode; AOwnRoutineOnly: Boolean; AList: TList<TSyntaxNode>);
 var
   mPending: TStack<TSyntaxNode>;
@@ -240,7 +219,7 @@ begin
   end;
 end;
 
-/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (Bericht M1).</summary>
+/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
 function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mPending: TStack<TSyntaxNode>;
@@ -378,7 +357,7 @@ var
       MatchText(ACallee[0].Name, cDialogServices);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1049,7 +1028,7 @@ var
   mItem: Integer;
 begin
   Result := nil;
-  for mItem := TokenAt(FTokens, FRoutine.StartOffset) to High(FTokens) do
+  for mItem := TokenFrom(FTokens, FRoutine.StartOffset) to High(FTokens) do
   begin
     if FTokens[mItem].Offset >= FRoutine.EndOffset then
     begin

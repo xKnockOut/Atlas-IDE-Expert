@@ -60,11 +60,11 @@ type
     procedure ServerLogHidesPathsAndNames;
     [Test]
     procedure ServerLogKeepsLibraryUnitsAndNumbers;
-    /// <summary>Code-Review P-11: Die einmal übersetzten Muster liefern über viele Zeilen dieselben Marken;
+    /// <summary>Die einmal übersetzten Muster liefern über viele Zeilen dieselben Marken;
     /// 2000 Zeilen bleiben deutlich unter einer Millisekunde je Zeile.</summary>
     [Test]
     procedure AnonymizeManyLinesSameLabels;
-    /// <summary>Code-Review P-11: Die geteilten TRegEx-Instanzen laufen nur unter der Sperre; parallele
+    /// <summary>Die geteilten TRegEx-Instanzen laufen nur unter der Sperre; parallele
     /// Aufrufe liefern dieselben Marken ohne Ausnahme.</summary>
     [Test]
     procedure AnonymizeConcurrent;

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Contract;
 
-// Einstellungsteile der Module (#1455, ADR 0017 Entscheidung 3): Die
+// Einstellungsteile der Module (#1455): Die
 // Einstellungen bleiben zentral in Base (eine Ablage, ein Optionsdialog,
 // Export, Import, Zurücksetzen); jedes Modul meldet seinen Teil an: Schlüssel
 // mit Vorgaben, Schema-Teil, Seite im Dialog und Umbenennungen. Werte fremder

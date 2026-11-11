@@ -1,7 +1,7 @@
 ﻿<#
 .SYNOPSIS
     Prüft die Modulgrenzen in Check-PackageDependencies.ps1 mit absichtlichen
-    Verstößen (#1455, ADR 0017).
+    Verstößen (#1455).
 
 .DESCRIPTION
     Legt eine Kopie von Packages, Application, atlas.json, Tests-Programm und
@@ -150,6 +150,13 @@ try {
     Test-Fails 'Abweichung von der Ordnertabelle ohne Begründung' 'die Ordnertabelle sagt Atlas.IDE.Base' {
         Add-Unit 'Core/Projects' 'Atlas.Core.Projects.Probe' @()
         Add-TableRow '## Atlas.IDE.Tracker' '| `Atlas.Core.Projects.Probe` | `Core/Projects/Atlas.Core.Projects.Probe.pas` | Ordner `Core/Projects` |'
+    }
+
+    Test-Fails 'JSON-Lesehelfer als lokale Kopie' 'TextOf – JSON-Lesehelfer gibt es als TJsonRead' {
+        Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Probe' @()
+        Set-CopyText "$Source/Core/Projects/Atlas.Core.Projects.Probe.pas" ("unit Atlas.Core.Projects.Probe;`r`n`r`ninterface`r`n`r`n" +
+            "implementation`r`n`r`nuses`r`n  System.JSON;`r`n`r`n" +
+            "function TextOf(AObject: TJSONObject; const AName: string): string;`r`nbegin`r`n  Result := '';`r`nend;`r`n`r`nend.`r`n")
     }
 
     Test-Fails 'Behobener bekannter Verstoß bleibt stehen' 'Atlas.Core.Projects.VersionControl -> Atlas.IDE.Tracker kommt nicht mehr vor' {

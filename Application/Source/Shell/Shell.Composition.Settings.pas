@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.Settings;
 
-// Internals-Rolle Shell: wirksame Einstellungen je Datei (S-02). Die Ebenen globale Datei und Editor stehen
+// Internals-Rolle Shell: wirksame Einstellungen je Datei. Die Ebenen globale Datei und Editor stehen
 // hier; ohne Arbeitsbereich gelten sie allein (FLooseSettings), sonst die Einstellungen des Arbeitsbereichs.
 // Liest unter der Sperre des Registers der Arbeitsbereiche, weil Anfrage-Threads fragen.
 

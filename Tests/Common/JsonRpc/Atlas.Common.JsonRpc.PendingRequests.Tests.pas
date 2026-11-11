@@ -33,7 +33,7 @@ type
     procedure ChangeOfOtherDocumentKeepsRequest;
     [Test]
     procedure ChangeWithoutRegisteredMethodKeepsRequest;
-    /// <summary>Code-Review A-06: genau eine Antwort je Anfrage (Worker oder Watchdog).</summary>
+    /// <summary>Genau eine Antwort je Anfrage (Worker oder Watchdog).</summary>
     [Test]
     procedure ExpireClaimsAnswerOnce;
     [Test]

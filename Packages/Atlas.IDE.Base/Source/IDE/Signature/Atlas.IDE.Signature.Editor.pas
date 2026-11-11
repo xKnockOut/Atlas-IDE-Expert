@@ -615,7 +615,7 @@ begin
         on E: Exception do
         begin
           Log('Parameter-Hint: ' + E.Message);
-          // Server weg oder Zeitlimit ist erwartbar; anderes zählt die Sicherung (Code-Review S-05).
+          // Server weg oder Zeitlimit ist erwartbar; anderes zählt die Sicherung.
           if not (E is ELspClientError) then
           begin
             TAtlasGuard.Report(TAtlasFeature.Signature, E);

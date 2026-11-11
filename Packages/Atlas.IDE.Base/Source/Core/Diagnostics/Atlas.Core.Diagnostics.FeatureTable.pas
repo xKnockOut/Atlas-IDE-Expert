@@ -1,13 +1,13 @@
 ﻿unit Atlas.Core.Diagnostics.FeatureTable;
 
-// Teile des Plugins in Startreihenfolge (Code-Review S-03): je Teil eine
+// Teile des Plugins in Startreihenfolge: je Teil eine
 // Bedingung (Stufe des abgesicherten Starts #722 und Einstellungen), eine
 // Abfrage „läuft“ sowie Start und Stop.
 //   - StartWanted startet in Reihenfolge jedes gewünschte, nicht laufende
 //     Teil; mehrfach aufrufbar (Schnellschalter, „Normal weiterarbeiten“)
 //   - StopAll stoppt rückwärts jedes laufende Teil
 //   - Times: Beim Start misst StartWanted jedes Teil für die Startanteile
-//     (Bericht N4); danach nil
+//    ; danach nil
 //   - Module (#1454): Join ordnet Teile einem Modul zu (Debugger, Tests …).
 //     Ist das Modul laut ModuleOn aus, startet StartWanted seine Teile nicht,
 //     und StopOffModules stoppt rückwärts die laufenden (ohne Neustart).
@@ -76,8 +76,8 @@ type
     function ModuleOf(const AName: string): string;
     /// <summary>Namen in Startreihenfolge.</summary>
     function Names: TArray<string>;
-    /// <summary>Gesetzt: StartWanted addiert die Dauer jedes Starts unter dem Namen des Teils (Startanteile,
-    /// Bericht N4). Gehört dem Aufrufer; vor dessen Freigabe auf nil setzen.</summary>
+    /// <summary>Gesetzt: StartWanted addiert die Dauer jedes Starts unter dem Namen des Teils
+    /// (Startanteile). Gehört dem Aufrufer; vor dessen Freigabe auf nil setzen.</summary>
     property Times: TAtlasStartTimes read FTimes write FTimes;
     /// <summary>Zustand der Modul-Schalter; nil = alle Module an.</summary>
     property ModuleOn: TAtlasModuleIsOn read FModuleOn write FModuleOn;

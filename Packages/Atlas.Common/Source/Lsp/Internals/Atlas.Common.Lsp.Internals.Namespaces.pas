@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Internals.Namespaces;
 
-// Namespaces der LSP-Features (Code-Review A-03): Die Komposition ersetzt sie
+// Namespaces der LSP-Features: Die Komposition ersetzt sie
 // beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads. Die Zuweisung
 // eines dynamischen Arrays ist nicht atomar (Referenzzähler); deshalb lesen und
 // schreiben alle Features unter einer kurzen gemeinsamen Sperre.

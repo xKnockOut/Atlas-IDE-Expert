@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Projects.Recording;
 
 // Stand eines Projekts in seine Zusammenfassung schreiben (#528, #571, #97): Ergebnis eines Compiles, Stand der
-// Versionsverwaltung, Regeltreffer im Projektordner. Im Kern (#1455, ADR 0017): Die Zusammenfassungen schreibt
+// Versionsverwaltung, Regeltreffer im Projektordner. Im Kern (#1455): Die Zusammenfassungen schreibt
 // Base auch ohne die Willkommensseite; Willkommensseite, Projektverlauf und die Module lesen sie.
 // - Versionsverwaltung: Head und Änderungen mit je VcsCallTimeoutMs; geänderte Dateien zählen nur im
 //   Projektordner (eine Arbeitskopie kann mehrere Projekte enthalten). Eine Abfrage, die nicht binnen

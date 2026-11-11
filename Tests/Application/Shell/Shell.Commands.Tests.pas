@@ -1,7 +1,7 @@
 ﻿unit Shell.Commands.Tests;
 
 // Fachlogik der Befehle atlas.selectBuild, Formulare umwandeln und Index löschen
-// außerhalb von TServerComposition (Code-Review S-02).
+// außerhalb von TServerComposition.
 
 interface
 

@@ -36,7 +36,7 @@ results in a tool error with a reason. Writing happens only in the working folde
 - With `--restricted` (#186) only read-only tools are available.
 - Like the LSP server, the MCP server also reads the global file `%APPDATA%\Atlas\settings.json`
   (that is where `mcp.disabledTools` normally lives, as do index and hint settings). With
-  `"mcp": { "globalSettings": false }` in `atlas.json` only the project file applies (D-08).
+  `"mcp": { "globalSettings": false }` in `atlas.json` only the project file applies.
 - Writing tools have `dryRun` with default `true`: they then only return the diff.
   With `dryRun: false` they write atomically: if a file has changed since it was read
   or has unsaved changes in the IDE (the IDE plugin reports this in

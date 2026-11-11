@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Foundation.EditorSnapshot;
 
-// Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints (P-04):
+// Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints:
 // Beide Zeitgeber fragten bisher je Takt den ganzen Puffer ab und verglichen
 // den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
@@ -30,6 +30,10 @@ type
     class procedure Invalidate(const AFileName: string); overload; static;
     /// <summary>Markiert alle Dateien als veraltet.</summary>
     class procedure Invalidate; overload; static;
+    /// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert, ein
+    /// Rückgängig-Schritt, und markiert die Datei als veraltet (eigener Schreibvorgang).</summary>
+    class procedure ReplaceText(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
+      const AInsert: string); static;
     /// <summary>Meldet den Beobachter der Editorereignisse an.</summary>
     class procedure Install; static;
     /// <summary>Meldet ab und gibt die gemerkten Stände frei.</summary>
@@ -39,13 +43,13 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
   DockForm,
   Atlas.Core.Editor.SnapshotPolicy,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   TEntry = record
@@ -147,7 +151,7 @@ var
   mEntry: TEntry;
   mLines: Integer;
   mModified: Boolean;
-  mStamp: Cardinal;
+  mStamp: UInt64;
 begin
   mBuffer := AView.Buffer;
   Result.FileName := mBuffer.FileName;
@@ -158,7 +162,7 @@ begin
   end;
   mLines := mBuffer.GetLinesInBuffer;
   mModified := mBuffer.GetModified;
-  mStamp := GetTickCount;
+  mStamp := TAtlasTicks.Now;
   if TAtlasSnapshotPolicy.MustRead(mEntry.State, mLines, mModified, mStamp) then
   begin
     mText := TAtlasEditorBuffer.Text(mBuffer);
@@ -213,6 +217,22 @@ begin
     mEntry.State.Dirty := True;
     Entries[mKey] := mEntry;
   end;
+end;
+
+class procedure TAtlasEditorSnapshots.ReplaceText(const ABuffer: IOTAEditBuffer; const AText: string; AStart,
+  AOldLength: Integer; const AInsert: string);
+var
+  mWriter: IOTAEditWriter;
+begin
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
+  if AInsert <> '' then
+  begin
+    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
+  mWriter := nil;
+  Invalidate(ABuffer.FileName);
 end;
 
 class procedure TAtlasEditorSnapshots.Install;

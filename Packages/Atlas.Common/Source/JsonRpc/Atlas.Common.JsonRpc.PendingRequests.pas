@@ -33,7 +33,7 @@ type
     /// laufen.</summary>
     function OnlyExpired: Boolean;
     /// <summary>Beansprucht die einzige Antwort auf die Anfrage: True genau beim ersten Aufruf (Worker oder
-    /// Watchdog, Code-Review A-06). Threadsicher.</summary>
+    /// Watchdog). Threadsicher.</summary>
     function TryAnswer: Boolean;
   end;
 
@@ -86,7 +86,7 @@ type
     procedure Cancel(const AId: TJSONValue);
     /// <summary>Bricht alle offenen Anfragen ab, z. B. beim Beenden der Verbindung.</summary>
     procedure CancelAll;
-    /// <summary>Zeitlimit abgelaufen (A-06): bricht über AToken ab und beansprucht die Antwort. True: Der
+    /// <summary>Zeitlimit abgelaufen: bricht über AToken ab und beansprucht die Antwort. True: Der
     /// Aufrufer sendet die Fehlerantwort; die spätere Antwort des Handlers wird verworfen. False, wenn der
     /// Handler schon geantwortet hat oder AToken fremd ist.</summary>
     function Expire(const AToken: IJsonRpcCancellationToken): Boolean;

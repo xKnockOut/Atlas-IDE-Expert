@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Designer.Composition;
 
-// Modul Designer (#1455, ADR 0017): einzige Unit, die die Designer-Leiste
+// Modul Designer (#1455): einzige Unit, die die Designer-Leiste
 // (#1442) über dem Formular-Designer erzeugt. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.designer“ (Modulschalter designer, #1454)
 // bei der Registry von Base an und stellt über dessen Scope den Teil
@@ -185,7 +185,8 @@ end;
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [MenuEntry(cShowCommandId, TAtlasMenuPlace.EditorContext),
-    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu), MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu),
+    MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu)];
 end;
 
 function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;

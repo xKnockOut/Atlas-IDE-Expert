@@ -141,7 +141,8 @@ begin
 end;
 
 /// <summary>Vorschläge für alle Kinder von AParent, die ARoot gehören.</summary>
-function PlanParent(AParent: TWinControl; ARoot: TComponent; const ASettings: TAtlasPluginSettings): TArray<TAnchorPlan>;
+function PlanParent(AParent: TWinControl; ARoot: TComponent;
+  const ASettings: TAtlasPluginSettings): TArray<TAnchorPlan>;
 var
   mControls: TArray<TControl>;
   mItems: TArray<TAtlasAnchorItem>;
@@ -149,9 +150,11 @@ var
   mIndex: Integer;
   mControl: TControl;
   mPlan: TAnchorPlan;
+  mFillClasses: TArray<string>;
 begin
   mControls := nil;
   mItems := nil;
+  mFillClasses := ASettings.DesignerSuggestAnchorsFillClasses.Split([',', ';']);
   for mIndex := 0 to AParent.ControlCount - 1 do
   begin
     mControl := AParent.Controls[mIndex];
@@ -161,8 +164,7 @@ begin
     end;
     mControls := mControls + [mControl];
     mItems := mItems + [TAtlasAnchorItem.Create(mControl.Name, mControl.BoundsRect, mControl.Align <> alNone,
-      IsFill(mControl, ASettings.DesignerSuggestAnchorsFillClasses.Split([',', ';'])), TAtlasIdeAnchors.ToSet(mControl.Anchors),
-      FocusOf(mControl))];
+      IsFill(mControl, mFillClasses), TAtlasIdeAnchors.ToSet(mControl.Anchors), FocusOf(mControl))];
   end;
   mSuggestions := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(AParent.ClientWidth, AParent.ClientHeight),
     ASettings.DesignerSuggestAnchorsEdgeDistance, ASettings.DesignerSuggestAnchorsKeepExisting);

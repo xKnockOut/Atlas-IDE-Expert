@@ -34,14 +34,15 @@ type
     /// <summary>Threads, die noch laufen (beendete zählen bis zum nächsten Start bzw. StopAll mit).</summary>
     function Count: Integer;
     /// <summary>Bis zu AMs auf alle warten und sie freigeben; True, wenn alle beendet waren. Wer dann noch
-    /// läuft, gibt sich bei seiner Rückkehr selbst frei (letzter Ausweg, der Aufrufer protokolliert).</summary>
+    /// läuft, geht an TAtlasOverdueThreads.</summary>
     function StopAll(AMs: Cardinal): Boolean;
   end;
 
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 { TAtlasThreadList }
 
@@ -135,8 +136,9 @@ begin
     end
     else
     begin
-      // Wie TAtlasTimeLimit.StopAll: Liest der Thread FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck.
-      mThread.FreeOnTerminate := True;
+      // Gibt der Thread nach seinem Ende frei; läuft er beim Entladen noch, bleibt Base im Speicher,
+      // damit sein Code nicht ins Leere läuft.
+      TAtlasOverdueThreads.Adopt(mThread, HInstance);
     end;
   end;
 end;

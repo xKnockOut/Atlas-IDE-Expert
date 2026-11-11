@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul KI-Assistenten (#1888, ADR 0017): nimmt Aufträge von MCP-Clients in der laufenden IDE an
+// Modul KI-Assistenten (#1888): nimmt Aufträge von MCP-Clients in der laufenden IDE an
 // (Builds über build_project, Änderungen an offenen Dateien). Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Assistants.Composition über die Registry von Atlas.IDE.Base an; gebaut wird über den Vertrag
 // IAtlasBuildRequests des Moduls Build-Pipeline. Requiret nur das Kern-Package (Regel 9).
@@ -44,9 +44,12 @@ requires
 contains
   Atlas.Core.Assistants.BuildInbox in 'Source\Core\Assistants\Atlas.Core.Assistants.BuildInbox.pas',
   Atlas.Core.Assistants.EditInbox in 'Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas',
+  Atlas.Core.Assistants.InboxPace in 'Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas',
+  Atlas.Core.Assistants.EditPlan in 'Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas',
   Atlas.UI.Assistants.Strings in 'Source\UI\Assistants\Atlas.UI.Assistants.Strings.pas',
   Atlas.UI.Assistants.SettingsSection in 'Source\UI\Assistants\Atlas.UI.Assistants.SettingsSection.pas',
   Atlas.IDE.Assistants.BuildInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.BuildInbox.pas',
+  Atlas.IDE.Assistants.FolderSignal in 'Source\IDE\Assistants\Atlas.IDE.Assistants.FolderSignal.pas',
   Atlas.IDE.Assistants.EditInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas',
   Atlas.IDE.Assistants.Composition in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas';
 

@@ -113,7 +113,7 @@ type
     constructor Create(const APath: string; const ARoutines: TArray<TRoutineMetrics>);
   end;
 
-  // Record statt Klasse: ein Contract enthält nur Werttypen und Interfaces (Konzept 7.1, Code-Review A-12).
+  // Record statt Klasse: ein Contract enthält nur Werttypen und Interfaces.
   TMetrics = record
   public
     /// <summary>Kennung in JSON und Bericht: length, nesting, cyclomatic, cognitive, parameters, operands, locals,

@@ -25,7 +25,7 @@
 //   Symbolen und Position in die Einstellungen.
 // - Alles, was anderen Features gehört (Palette, Befunde, Verlauf,
 //   Meldungsansicht), kommt über THooks von der Composition; so entsteht kein
-//   Feature-Zyklus (A-09).
+//   Feature-Zyklus.
 // - Eigene Sicherung TAtlasFeature.EditorToolbar: Löst sie aus, verschwinden
 //   die Leisten, bis „Abgeschaltete Funktionen einschalten“.
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
@@ -53,8 +53,9 @@ type
       Execute: TProc<string>;
       /// <summary>Befehlspalette öffnen.</summary>
       ShowPalette: TProc;
-      /// <summary>Taste eines Befehls als Text ('' ohne).</summary>
-      ShortCutOf: TFunc<string, string>;
+      /// <summary>Nachschlagen „Taste eines Befehls als Text ('' ohne)“; die Belegungen sind beim Aufruf einmal
+      /// ausgewertet. Die Leiste holt es nur mit der Befehlsliste, nicht je Knopf und Takt.</summary>
+      ShortCuts: TFunc<TFunc<string, string>>;
       /// <summary>Zahl der Befunde in der Datei.</summary>
       FindingsOf: TFunc<string, Integer>;
       CanGoBack: TFunc<Boolean>;
@@ -134,6 +135,8 @@ type
     FHost: TAtlasEditorBarHost;
     FPoints: TAtlasReturnPoints;
     FCommands: TArray<TAtlasCommand>;
+    /// <summary>Tasten der Befehle, gelesen mit FCommands (Reset, SlowRefresh).</summary>
+    FShortCuts: TFunc<string, string>;
     FSlow: Integer;
     /// <summary>Takte seit dem letzten Lauf ohne aktiven Editor.</summary>
     FIdle: Integer;
@@ -161,6 +164,7 @@ type
     procedure SlowRefresh;
     function CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
     procedure ForgetClosedFiles;
+    procedure ReadCommands;
     procedure Later(const AAction: TProc);
   public
     constructor Create;
@@ -242,16 +246,17 @@ begin
   end;
 end;
 
-/// <summary>Tooltip: Name und, falls belegt, die Taste.</summary>
+/// <summary>Tooltip: Name und, falls belegt, die Taste aus dem mit der Befehlsliste gelesenen Nachschlagen (nie je
+/// Knopf und Takt alle Belegungen auswerten: das läuft über die ganze ActionList der IDE).</summary>
 function KeyHint(const AId, ACaption: string): string;
 var
   mKey: string;
 begin
   Result := ACaption;
   mKey := '';
-  if Assigned(TAtlasIdeEditorToolbar.FHooks.ShortCutOf) then
+  if (State <> nil) and Assigned(State.FShortCuts) then
   begin
-    mKey := TAtlasIdeEditorToolbar.FHooks.ShortCutOf(AId);
+    mKey := State.FShortCuts(AId);
   end;
   if mKey <> '' then
   begin
@@ -352,13 +357,21 @@ begin
       TAtlasEditorToolbar(ABar).Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
     end);
   ApplyTheme;
+  ReadCommands;
+end;
+
+/// <summary>Befehlsliste und Tasten neu lesen: nach geänderten Einstellungen und im langsamen Takt.</summary>
+procedure TToolbarState.ReadCommands;
+begin
+  FCommands := nil;
   if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
   begin
     FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
-  end
-  else
+  end;
+  FShortCuts := nil;
+  if Assigned(TAtlasIdeEditorToolbar.FHooks.ShortCuts) then
   begin
-    FCommands := nil;
+    FShortCuts := TAtlasIdeEditorToolbar.FHooks.ShortCuts();
   end;
 end;
 
@@ -739,10 +752,7 @@ begin
     Exit;
   end;
   FSlow := 0;
-  if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
-  begin
-    FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
-  end;
+  ReadCommands;
   ForgetClosedFiles;
 end;
 

@@ -269,7 +269,7 @@ begin
   end;
   SyncCaches;
   // Die Sichtbarkeit des implementation-Teils gehört zum Schlüssel: Der Cache überdauert ResolveTypeFrom
-  // (Code-Review P-17), dort ist Current eine andere Unit.
+  //, dort ist Current eine andere Unit.
   mWithImplementation := FPlace.IsCurrentFile(mFromUnit.FileName);
   mKey := UpperCase(mFromUnit.FileName + '|' + AType.QualifiedName + '|' + mName) + '|' +
     BoolToStr(mWithImplementation, True);
@@ -376,7 +376,7 @@ begin
   end;
   if FClassState = 3 then
   begin
-    // Sicherheitsnetz (Code-Review F-02), zusätzlich zur Ursachenbehebung in MethodClasses: Führt das Ermitteln
+    // Sicherheitsnetz, zusätzlich zur Ursachenbehebung in MethodClasses: Führt das Ermitteln
     // der Klasse wieder hierher, gilt „keine Klasse“ statt einer Rekursion bis zum Stapelüberlauf. Im
     // Diagnoselog als „resolve classRecursion“ sichtbar, damit ein neuer Weg dorthin auffällt.
     TRequestDiagnostics.ResolveFailed('classRecursion');
@@ -416,7 +416,7 @@ var
 begin
   SyncCaches;
   // Welche Helfer sichtbar sind, hängt an der Unit und am Abschnitt (uses von interface bzw.
-  // implementation); der Cache überdauert ResolveTypeFrom und Abschnittswechsel (Code-Review P-17).
+  // implementation); der Cache überdauert ResolveTypeFrom und Abschnittswechsel.
   mKey := UpperCase(AType.UnitName + '.' + AType.QualifiedName + '|' + FPlace.Current.FileName + '|' +
     FPlace.Current.UnitName) + '|' + BoolToStr(FPlace.InImplementation, True);
   if FHelpers.TryGetValue(mKey, AHelper) then
@@ -438,7 +438,7 @@ begin
     for mUsed in mUnits do
     begin
       mFound := False;
-      // Nur die vorab ermittelten Helfer-Typen der Unit prüfen statt aller Symbole (Code-Review P-17).
+      // Nur die vorab ermittelten Helfer-Typen der Unit prüfen statt aller Symbole.
       for mPosition in FUnits.HelperPositions(mUsed) do
       begin
         if TResolverText.HelperTargets(mUsed.Symbols[mPosition].Ancestors[High(mUsed.Symbols[mPosition].Ancestors)],
@@ -559,7 +559,7 @@ begin
   begin
     // Der Pfad im Kopf benennt den deklarierenden Typ, unabhängig von seiner Sichtbarkeit (strict private
     // verschachtelte Typen werden genauso implementiert). FindMember prüfte die Sichtbarkeit über
-    // CurrentClass, das hierher zurückführte (Code-Review F-02).
+    // CurrentClass, das hierher zurückführte.
     if not NestedType(mCurrent, mParts[mIndex], mInner) then
     begin
       Exit(nil);

@@ -48,7 +48,7 @@
 // wenn die Projektprüfung oder --check einen angehängt hat: Summe je Regel
 // über den Prüflauf für das Fenster „Atlas-Server“ und --timings.
 //
-// Robustheit (#1094, Bericht M1): Die Regeln und ihre Dienste gehen iterativ
+// Robustheit (#1094): Die Regeln und ihre Dienste gehen iterativ
 // durch den Baum (TSyntaxNode.Walk/Search oder eigener Stapel), auch lange
 // Ketten wie 1 - 1 - … - 1 sprengen den Stapel nicht. MaxTreeDepth bleibt als
 // Netz für unbekannte rekursive Wege: Ist der Baum tiefer, laufen die Regeln
@@ -71,7 +71,7 @@ uses
 const
   cUnusedSuppressionRuleId = 'unused-suppression';
   cUnknownRuleIdRuleId = 'unknown-rule-id';
-  /// <summary>Hinweis, dass die Regeln eine Unit wegen MaxTreeDepth übersprungen haben (Bericht M1).</summary>
+  /// <summary>Hinweis, dass die Regeln eine Unit wegen MaxTreeDepth übersprungen haben.</summary>
   cUnitTooDeepRuleId = 'unit-too-deep';
 
 type
@@ -79,7 +79,7 @@ type
   public const
     /// <summary>Ab dieser Dauer nennt das Diagnoselog die Regel.</summary>
     cSlowRuleMs = 100;
-    /// <summary>Netz (#1094, Bericht M1): Tiefere Syntaxbäume prüfen die Regeln nicht, die Unit bekommt den
+    /// <summary>Netz (#1094): Tiefere Syntaxbäume prüfen die Regeln nicht, die Unit bekommt den
     /// Hinweis unit-too-deep. Alle Regeln laufen iterativ; TBuiltinRulesTests prüft sie mit Ketten von 5000
     /// Gliedern in 128 KB Stapel. Die Grenze fängt nur unbekannte rekursive Wege ab; so tiefe Bäume entstehen erst aus
     /// Ketten mit 100000 Gliedern.</summary>
@@ -250,7 +250,7 @@ type
   end;
 
 /// <summary>Hinweis unit-too-deep an der tiefsten Stelle einer Unit, deren Baum tiefer als MaxTreeDepth ist
-/// (Bericht M1); leer, wenn der Hinweis abgeschaltet ist.</summary>
+///; leer, wenn der Hinweis abgeschaltet ist.</summary>
 function TooDeepFindings(ATree: TSyntaxTree; const ASettings: TServerSettings): TArray<TRuleFinding>;
 var
   mFinding: TRuleFinding;
@@ -719,7 +719,7 @@ begin
   FRanIds := TList<string>.Create;
   FDeferred := TList<TDeferredRule>.Create;
   FUncertain := TList<TUncertainRule>.Create;
-  // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
+  // Ein Ableitungscache für alle Regeln des Laufs; ein vom Aufrufer
   // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
   FShared := AContext;
   // Neue Namen der Korrekturen nach der Namensregel (#1111), einmal für alle Regeln.

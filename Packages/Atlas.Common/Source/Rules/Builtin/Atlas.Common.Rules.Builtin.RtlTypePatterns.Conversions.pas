@@ -99,6 +99,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
@@ -294,7 +295,7 @@ begin
   begin
     Exit;
   end;
-  AClose := Closing(ATokens, mOpen);
+  AClose := MatchingParen(ATokens, mOpen);
   if AClose < 0 then
   begin
     Exit;
@@ -492,7 +493,7 @@ var
   var
     mNode: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1): durch Klammern und Hüllen wie Trim(…) hindurch.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch Klammern und Hüllen wie Trim(…) hindurch.
     mNode := WithoutParentheses(ANode);
     while IsTransparentCall(mNode) do
     begin
@@ -578,7 +579,7 @@ var
     mIndex: Integer;
     mSource: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -1112,7 +1113,7 @@ var
     mMembers: TArray<string>;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1): am Empfänger entlang nach innen, die Namen dann von innen nach außen.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): am Empfänger entlang nach innen, die Namen dann von innen nach außen.
     ANames := nil;
     mMembers := nil;
     mNode := ANode;
@@ -1270,7 +1271,7 @@ var
     mNode: TSyntaxNode;
     mChild: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);

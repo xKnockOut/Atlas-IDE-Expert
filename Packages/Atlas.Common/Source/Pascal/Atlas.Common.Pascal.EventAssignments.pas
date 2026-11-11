@@ -24,28 +24,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
-
-/// <summary>Nächstes Token ab AIndex, das kein Kommentar und keine Direktive ist; Length(ATokens) ohne.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-/// <summary>Vorheriges Token vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
-function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 /// <summary>Index hinter der schließenden Klammer zur "(" an AIndex; Length(ATokens) ohne.</summary>
 function AfterParens(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;

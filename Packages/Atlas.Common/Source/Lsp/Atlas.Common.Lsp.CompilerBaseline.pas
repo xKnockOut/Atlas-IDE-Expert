@@ -290,7 +290,7 @@ var
   mIndex, mSkipped: Integer;
 begin
   mOld := Load(ASource.Root, mPrevious);
-  // Eine unbrauchbare Datei nicht still ersetzen: Sie enthält womöglich Regeltreffer (Bericht N3).
+  // Eine unbrauchbare Datei nicht still ersetzen: Sie enthält womöglich Regeltreffer.
   if mPrevious = 'invalid' then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,

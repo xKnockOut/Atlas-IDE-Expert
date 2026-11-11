@@ -28,9 +28,19 @@
 //                     - Routine an einen prozeduralen Typ mit anderer
 //                       Parameterliste bzw. Methode an einen Typ ohne of object
 //                       und umgekehrt (wie E2009); von Überladungen passt keine
-//                       (wie E2010).
-//                     Keine Korrektur: Welche Seite falsch ist, weiß nur der
-//                     Entwickler.
+//                       (wie E2010). Auch als Argument eines Parameters von
+//                       prozeduralem Typ.
+//                     - Routine an eine Methodenreferenz (reference to, auch
+//                       generisch wie TFunc<string, TArray<string>>) mit anderer
+//                       Zahl, Art (const, var, out) oder anderen Typen der
+//                       Parameter (#1897, wie E2010), als Zuweisung und als
+//                       Argument.
+//                     - Parameterlose Funktion, deren Ergebnis genau den
+//                       prozeduralen Typ des Ziels hat, ohne () zugewiesen oder
+//                       übergeben (#1899, wie E2010): Delphi nimmt dann die
+//                       Funktion selbst. Korrektur: () ergänzen.
+//                     Sonst keine Korrektur: Welche Seite falsch ist, weiß nur
+//                     der Entwickler.
 
 interface
 
@@ -56,6 +66,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
+  System.RegularExpressions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
@@ -74,7 +85,7 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TTypeMismatchText = (Incompatible, MethodVsProc, ProcVsMethod, ParamList, IncStep, PtrArg, InvalidCast,
-    VarParamTypes, IsNeedsClass, OperatorBinary, OperatorUnary, Title);
+    VarParamTypes, IsNeedsClass, OperatorBinary, OperatorUnary, ReferenceParams, NotCalled, AddParens, Title);
 
 const
   cTexts: array[TTypeMismatchText] of TAtlasText = (
@@ -103,6 +114,15 @@ const
      En: 'The operator %s is not applicable to %s and %s (like E2015).'),
     (De: 'Der Operator %s ist auf %s nicht anwendbar (wie E2015).';
      En: 'The operator %s is not applicable to %s (like E2015).'),
+    (De: 'Inkompatible Typen: ''%s'' und ''Procedure''; die Parameter von %s passen nicht zur Methodenreferenz ' +
+      '(Zahl, const/var/out oder Typ, wie E2010).';
+     En: 'Incompatible types: ''%s'' and ''Procedure''; the parameters of %s do not fit the method reference ' +
+      '(count, const/var/out or type, like E2010).'),
+    (De: 'Inkompatible Typen: ''%s'' und ''Procedure''; %s liefert %s, ohne () steht der Name aber für die ' +
+      'Funktion selbst (wie E2010).';
+     En: 'Incompatible types: ''%s'' and ''Procedure''; %s returns %s, but without () the name stands for the ' +
+      'function itself (like E2010).'),
+    (De: '() ergänzen'; En: 'Add ()'),
     (De: 'Inkompatible Typen'; En: 'Incompatible types'));
 
 {$SCOPEDENUMS OFF}
@@ -163,10 +183,13 @@ type
     function TargetValue(ANode: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): TValueType;
     function IsProcedure(ANode: TSyntaxNode): Boolean;
     function ProceduralText(const ASymbol, AType: TResolvedSymbol): string;
+    function ProceduralTarget(const ASymbol, AType: TResolvedSymbol; out AShape: TProcShape;
+      out AName: string): Boolean;
+    function NotCalled(ASource: TSyntaxNode; const ATargetName: string): Boolean;
     function RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
     procedure Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
     procedure CheckAssignment(ANode: TSyntaxNode);
-    procedure CheckProcedural(ANode: TSyntaxNode; const ATarget: TProcShape);
+    procedure CheckProcedural(ASource: TSyntaxNode; const ATarget: TProcShape; const ATargetName: string);
     procedure CheckDefault(ANode: TSyntaxNode);
     procedure CheckCall(ANode: TSyntaxNode);
     procedure CheckIntrinsic(ANode: TSyntaxNode; const AName: string);
@@ -302,17 +325,32 @@ begin
   end;
 end;
 
-/// <summary>Ergebnistyp hinter dem Doppelpunkt lesen, wenn AText damit beginnt.</summary>
+/// <summary>Ergebnistyp hinter dem Doppelpunkt lesen, wenn AText damit beginnt; Leerraum in und vor spitzen
+/// Klammern gehört dazu ("TProc &lt;string&gt;" aus dem Index, "TFunc&lt;string, Integer&gt;").</summary>
 procedure ReadResult(var AText: string; var AShape: TProcShape);
 var
-  mPosition: Integer;
+  mPosition, mDepth: Integer;
 begin
   if not StartsStr(':', AText) then
   begin
     Exit;
   end;
   AText := TrimLeft(Copy(AText, 2, MaxInt));
-  mPosition := StopAt(AText, [';', ' ']);
+  mPosition := 1;
+  mDepth := 0;
+  while (mPosition <= Length(AText)) and (AText[mPosition] <> ';') and ((AText[mPosition] <> ' ') or (mDepth > 0) or
+    StartsStr('<', TrimLeft(Copy(AText, mPosition, MaxInt)))) do
+  begin
+    if AText[mPosition] = '<' then
+    begin
+      Inc(mDepth);
+    end
+    else if AText[mPosition] = '>' then
+    begin
+      Dec(mDepth);
+    end;
+    Inc(mPosition);
+  end;
   AShape.ResultType := Copy(AText, 1, mPosition - 1);
   AText := TrimLeft(Copy(AText, mPosition, MaxInt));
 end;
@@ -411,6 +449,68 @@ begin
   Result.Builtin := True;
 end;
 
+/// <summary>AText mit den gebundenen Typparametern ABindings ("T=string") eingesetzt, je ganzes Wort.</summary>
+function BoundText(const AText: string; const ABindings: TArray<string>): string;
+var
+  mIndex, mStart: Integer;
+  mWord, mBinding: string;
+begin
+  Result := '';
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    if not CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) then
+    begin
+      Result := Result + AText[mIndex];
+      Inc(mIndex);
+      Continue;
+    end;
+    mStart := mIndex;
+    while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_', '0'..'9', '.']) do
+    begin
+      Inc(mIndex);
+    end;
+    mWord := Copy(AText, mStart, mIndex - mStart);
+    for mBinding in ABindings do
+    begin
+      if SameText(Copy(mBinding, 1, Pos('=', mBinding) - 1), mWord) then
+      begin
+        mWord := Copy(mBinding, Pos('=', mBinding) + 1, MaxInt);
+        Break;
+      end;
+    end;
+    Result := Result + mWord;
+  end;
+end;
+
+/// <summary>Name des Typs wie bei dcc: TFunc&lt;string,TArray&lt;string&gt;&gt; mit den gebundenen Typargumenten.
+/// </summary>
+function BoundName(const AType: TResolvedSymbol): string;
+var
+  mBinding: string;
+  mArguments: TArray<string>;
+begin
+  Result := AType.Name;
+  mArguments := nil;
+  for mBinding in AType.Bindings do
+  begin
+    // Ohne Unit-Qualifizierer wie bei dcc: System.TArray<string> → TArray<string>.
+    mArguments := mArguments + [TRegEx.Replace(StringReplace(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt), ' ', '',
+      [rfReplaceAll]), '\b[A-Za-z_][A-Za-z0-9_]*\.', '')];
+  end;
+  if mArguments <> nil then
+  begin
+    Result := Result + '<' + string.Join(',', mArguments) + '>';
+  end;
+end;
+
+/// <summary>Gleicher Typ als Text, Leerraum zwischen Typargumenten nicht mitgezählt.</summary>
+function SameTypeText(const ALeft, ARight: string): Boolean;
+begin
+  Result := TTypeIdentity.Same(StringReplace(ALeft, ' ', '', [rfReplaceAll]),
+    StringReplace(ARight, ' ', '', [rfReplaceAll]));
+end;
+
 { TTypeMismatchCheck }
 
 constructor TTypeMismatchCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -469,7 +569,8 @@ begin
     Exit(TProcMatch.Unsure);
   end;
   mIsMethod := (ACandidate.SymbolKind = TIndexSymbolKind.Method) and not MatchText('static', ACandidate.Directives);
-  if mIsMethod <> ATarget.OfObject then
+  // Eine Methodenreferenz nimmt Methoden und freie Routinen.
+  if (mIsMethod <> ATarget.OfObject) and not ATarget.Reference then
   begin
     Exit(TProcMatch.MethodKind);
   end;
@@ -629,7 +730,7 @@ var
 
 begin
   Result := nil;
-  // Iterativ (Bericht M1); nur in Knoten absteigen, die die Stelle enthalten. Der innerste gewinnt.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); nur in Knoten absteigen, die die Stelle enthalten. Der innerste gewinnt.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(Tree.Root);
@@ -1250,6 +1351,60 @@ begin
   end;
 end;
 
+function TTypeMismatchCheck.ProceduralTarget(const ASymbol, AType: TResolvedSymbol; out AShape: TProcShape;
+  out AName: string): Boolean;
+var
+  mText: string;
+  mIndex: Integer;
+begin
+  AName := '';
+  mText := ProceduralText(ASymbol, AType);
+  Result := (mText <> '') and ParseShape(mText, False, AShape);
+  if not Result then
+  begin
+    Exit;
+  end;
+  // TFunc<string, TArray<string>>: Typparameter des generischen Typs einsetzen.
+  for mIndex := 0 to High(AShape.Params) do
+  begin
+    AShape.Params[mIndex].TypeName := BoundText(AShape.Params[mIndex].TypeName, AType.Bindings);
+  end;
+  AShape.ResultType := BoundText(AShape.ResultType, AType.Bindings);
+  AName := mText;
+  if AType.Name <> '' then
+  begin
+    AName := BoundName(AType);
+  end;
+end;
+
+function TTypeMismatchCheck.NotCalled(ASource: TSyntaxNode; const ATargetName: string): Boolean;
+var
+  mCandidates: TArray<TResolvedSymbol>;
+  mCandidate: TResolvedSymbol;
+  mShape: TProcShape;
+  mFix: TRuleFix;
+begin
+  Result := RoutineCandidates(ASource, mCandidates);
+  if not Result then
+  begin
+    Exit;
+  end;
+  // Jede Kandidatin ist eine Funktion ohne Pflichtparameter mit genau dem Typ des Ziels als Ergebnis (#1899).
+  for mCandidate in mCandidates do
+  begin
+    if not ParseShape(mCandidate.Signature, True, mShape) or not mShape.IsFunction or
+      ((Length(mShape.Params) > 0) and (mShape.Params[0].DefaultValue = '')) or
+      not SameTypeText(mShape.ResultType, ATargetName) then
+    begin
+      Exit(False);
+    end;
+  end;
+  mFix := TRuleFix.Create(cTexts[TTypeMismatchText.AddParens].Text,
+    [TTextEdit.Create(TTextRange.Create(ASource.EndPos, ASource.EndPos), '()')]);
+  FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.NotCalled].Fmt(
+    [ATargetName, NodeText(ASource), ATargetName]), TRuleConfidence.High, [mFix]);
+end;
+
 procedure TTypeMismatchCheck.Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
 begin
   FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TTypeMismatchText.Incompatible].Fmt([ATarget,
@@ -1291,43 +1446,45 @@ begin
   begin
     Exit;
   end;
-  mProcedural := ProceduralText(mSymbol, mType);
-  if mProcedural <> '' then
+  if ProceduralTarget(mSymbol, mType, mShape, mProcedural) then
   begin
-    if ParseShape(mProcedural, False, mShape) then
-    begin
-      CheckProcedural(ANode, mShape);
-    end;
+    CheckProcedural(Unwrapped(ANode[1]), mShape, mProcedural);
   end
-  else if mTarget.Known then
+  else if (ProceduralText(mSymbol, mType) = '') and mTarget.Known then
   begin
     CheckValue(Unwrapped(ANode[1]));
   end;
 end;
 
-procedure TTypeMismatchCheck.CheckProcedural(ANode: TSyntaxNode; const ATarget: TProcShape);
+procedure TTypeMismatchCheck.CheckProcedural(ASource: TSyntaxNode; const ATarget: TProcShape;
+  const ATargetName: string);
 var
-  mSource: TSyntaxNode;
   mCandidates: TArray<TResolvedSymbol>;
   mVerdict: TProcVerdict;
 
   procedure ReportSingle;
   begin
+    if ATarget.Reference and (mVerdict.First in [TProcMatch.Parameters, TProcMatch.ParameterType]) then
+    begin
+      FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos),
+        cTexts[TTypeMismatchText.ReferenceParams].Fmt([ATargetName, NodeText(ASource)]), TRuleConfidence.High);
+      Exit;
+    end;
     case mVerdict.First of
       TProcMatch.MethodKind:
         if ATarget.OfObject then
         begin
-          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), cTexts[TTypeMismatchText.MethodVsProc].Fmt(
-            [NodeText(mSource)]), TRuleConfidence.High);
+          FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.MethodVsProc].Fmt(
+            [NodeText(ASource)]), TRuleConfidence.High);
         end
         else
         begin
-          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), cTexts[TTypeMismatchText.ProcVsMethod].Fmt(
-            [NodeText(mSource)]), TRuleConfidence.High);
+          FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.ProcVsMethod].Fmt(
+            [NodeText(ASource)]), TRuleConfidence.High);
         end;
       TProcMatch.Parameters, TProcMatch.ParameterType:
-        FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos),
-          cTexts[TTypeMismatchText.ParamList].Fmt([NodeText(mSource)]),
+        FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos),
+          cTexts[TTypeMismatchText.ParamList].Fmt([NodeText(ASource)]),
           TRuleConfidence.High);
     else
       // Yes und Unsure sind oben ausgeschieden.
@@ -1335,12 +1492,11 @@ var
   end;
 
 begin
-  if ATarget.Reference then
+  if (ASource.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and NotCalled(ASource, ATargetName) then
   begin
     Exit;
   end;
-  mSource := Unwrapped(ANode[1]);
-  if not RoutineCandidates(mSource, mCandidates) or not AllCandidatesFail(ATarget, mCandidates, mVerdict) then
+  if not RoutineCandidates(ASource, mCandidates) or not AllCandidatesFail(ATarget, mCandidates, mVerdict) then
   begin
     Exit;
   end;
@@ -1351,7 +1507,7 @@ begin
   else if mVerdict.HasType then
   begin
     // Von den Überladungen passt keine: dcc nennt die Typen der ersten mit gleich vielen Parametern.
-    Mismatch(mSource, mVerdict.Formal, mVerdict.Actual);
+    Mismatch(ASource, mVerdict.Formal, mVerdict.Actual);
   end;
 end;
 
@@ -1513,12 +1669,28 @@ var
     end;
   end;
 
+  // Parameter von prozeduralem Typ (TProc<string>, TNotifyEvent): wie eine Zuweisung an ihn.
+  function ProceduralArgument(AArgument: TSyntaxNode; const AParam: TSignatureParameter): Boolean;
+  var
+    mType: TResolvedSymbol;
+    mTarget: TProcShape;
+    mName: string;
+  begin
+    Result := FScope.Resolver.ResolveTypeTextFrom(mUnit, AParam.TypeName, mType) and
+      ProceduralTarget(Default(TResolvedSymbol), mType, mTarget, mName);
+    if Result and not MatchText(NormalizedModifier(AParam.Modifier), ['var', 'out']) then
+    begin
+      CheckProcedural(Unwrapped(AArgument), mTarget, mName);
+    end;
+  end;
+
   procedure CheckArgument(AArgument: TSyntaxNode; const AParam: TSignatureParameter);
   var
     mFormal, mActual: TValueType;
     mModifier: string;
   begin
-    if (AParam.TypeName = '') or StartsText('array', Trim(AParam.TypeName)) then
+    if (AParam.TypeName = '') or StartsText('array', Trim(AParam.TypeName)) or
+      ProceduralArgument(AArgument, AParam) then
     begin
       Exit;
     end;
@@ -1674,7 +1846,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(Tree.Root);

@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Debug.Composition.Values;
 
-// Modul Debugger (#1455, ADR 0017), Teil der Komposition: die Teile der
+// Modul Debugger (#1455), Teil der Komposition: die Teile der
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
 // Debugger-Dialogen und Fenster „Auswerten“. Sie fragen den Server nur, wenn
@@ -75,7 +75,7 @@ begin
 end;
 
 /// <summary>„kein Zugriff auf Wert“ erklären (#840): Erklärung und Korrekturen im Hover; der Tooltip kennt die
-/// Debug-Schicht nicht (A-09).</summary>
+/// Debug-Schicht nicht.</summary>
 procedure StartDebugUnavailable;
 begin
   TAtlasIdeDebugUnavailable.Start(

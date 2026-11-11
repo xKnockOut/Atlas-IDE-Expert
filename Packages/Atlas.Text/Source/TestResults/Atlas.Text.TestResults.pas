@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.TestResults;
 
 // Ergebnisse eines DUnitX-Laufs lesen, gemeinsam für Server und Plugin
-// (ADR 0012, #69): die XML-Berichte der DUnitX-Logger.
+// (#69): die XML-Berichte der DUnitX-Logger.
 // - NUnit 2 (TDUnitXXMLNUnitFileLogger, Vorgabe der Vorlage von RAD Studio):
 //   <test-results> mit verschachtelten <test-suite type="Namespace|TestFixture|…">
 //   und <test-case name="Unit.Fixture.Methode" result="Success|Failure|Error|

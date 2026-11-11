@@ -39,7 +39,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Notifications.Notice,
-  Atlas.IDE.Tracker.IssueContext;
+  Atlas.IDE.Tracker.IssueContext,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Alle Tracker, die abgefragt werden sollen (auch doppelte; gezählt wird je Verbindung).</summary>
@@ -88,7 +89,7 @@ type
     FFolder: string;
     FStarted: Boolean;
     FTimer: TTimer;
-    FThread: TThread;
+    FWorker: TAtlasWorkerSlot;
     FFile: TAtlasTrackerNotifyFile;
     FLoaded: Boolean;
     FSchedules: TDictionary<string, TAtlasTrackerNotifySchedule>;
@@ -106,7 +107,6 @@ type
     function SyncEnabled: Boolean;
     procedure SaveFile;
     function ScheduleOf(const AId: string): TAtlasTrackerNotifySchedule;
-    procedure ReleaseThread(AWait: Boolean);
     function Jobs(AOnDemand: Boolean): TArray<TJob>;
     class function Worker(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify; const AJobs: TArray<TJob>;
       const ATransport: TAtlasIssuePreviewTransportHook): TProc; static;
@@ -156,7 +156,8 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Tracker.Notify,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Diagnostics.UserIdle;
 
 { TAtlasIdeIssueNotify }
 
@@ -167,12 +168,13 @@ begin
   FFolder := AFolder;
   FFile := TAtlasTrackerNotifyFile.Empty;
   FSchedules := TDictionary<string, TAtlasTrackerNotifySchedule>.Create;
+  FWorker := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeIssueNotify.Destroy;
 begin
   Stop;
-  ReleaseThread(True);
+  FWorker.Free;
   FSchedules.Free;
   inherited;
 end;
@@ -189,31 +191,16 @@ end;
 
 class function TAtlasIdeIssueNotify.UserIsActive: Boolean;
 var
-  mInput: TLastInputInfo;
   mMinimized: Boolean;
-  mIdle: UInt64;
-  mNow: DWORD;
+  mIdle: Cardinal;
 begin
   mMinimized := IsIconic(Application.Handle);
   if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
   begin
     mMinimized := mMinimized or IsIconic(Application.MainForm.Handle);
   end;
-  mIdle := 0;
-  mInput.cbSize := SizeOf(mInput);
-  // Zähler in Millisekunden (32 Bit, läuft nach 49 Tagen über): über den Überlauf hinweg gerechnet.
-  if GetLastInputInfo(mInput) then
-  begin
-    mNow := GetTickCount;
-    if mNow >= mInput.dwTime then
-    begin
-      mIdle := mNow - mInput.dwTime;
-    end
-    else
-    begin
-      mIdle := UInt64(High(DWORD)) - mInput.dwTime + mNow + 1;
-    end;
-  end;
+  // Ohne Angabe von Windows gilt der Benutzer als aktiv (0 ms).
+  TAtlasUserIdle.IdleMs(mIdle);
   Result := TAtlasTrackerNotify.UserActive(mMinimized, mIdle);
 end;
 
@@ -241,31 +228,11 @@ begin
   FreeAndNil(FToast);
   FToastOpen := nil;
   // Die Abfrage endet mit der Zeitgrenze des Transports; kurz warten, dann sich selbst überlassen.
-  ReleaseThread(True);
+  FWorker.Stop(TAtlasShutdown.cStopMs);
   // Die Hooks halten „Meine Issues“: Stop löst den Ring.
   FHooks := Default(TAtlasIssueNotifyHooks);
 end;
 
-procedure TAtlasIdeIssueNotify.ReleaseThread(AWait: Boolean);
-begin
-  if FThread = nil then
-  begin
-    Exit;
-  end;
-  if AWait and not FThread.Finished then
-  begin
-    TAtlasShutdown.WaitForThreads([FThread]);
-  end;
-  if FThread.Finished then
-  begin
-    FreeAndNil(FThread);
-  end
-  else if AWait then
-  begin
-    FThread.FreeOnTerminate := True;
-    FThread := nil;
-  end;
-end;
 
 procedure TAtlasIdeIssueNotify.EnsureLoaded;
 begin
@@ -443,8 +410,8 @@ begin
     Exit;
   end;
   // Eine Abfrage zur Zeit; was fällig bleibt, kommt mit dem nächsten Takt.
-  ReleaseThread(False);
-  if FThread <> nil then
+  FWorker.Prune;
+  if FWorker.Busy then
   begin
     Exit;
   end;
@@ -453,9 +420,7 @@ begin
   begin
     Exit;
   end;
-  FThread := TThread.CreateAnonymousThread(Worker(Self, Self, mJobs, FHooks.Transport));
-  FThread.FreeOnTerminate := False;
-  FThread.Start;
+  FWorker.Start(TThread.CreateAnonymousThread(Worker(Self, Self, mJobs, FHooks.Transport)));
 end;
 
 /// <summary>Eine Verbindung abfragen. Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Netz

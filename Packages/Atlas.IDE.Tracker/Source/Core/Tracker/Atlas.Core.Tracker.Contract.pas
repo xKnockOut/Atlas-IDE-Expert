@@ -111,6 +111,23 @@ type
     Watched);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Höchstlängen der Texte, die die Parser aus Tracker-Antworten übernehmen (Zeichen).</summary>
+  TAtlasTrackerTextLimits = record
+  public const
+    /// <summary>Login, Schlagwort, Beziehung.</summary>
+    cName = 60;
+    /// <summary>Vollständiger Name einer Person.</summary>
+    cPerson = 80;
+    /// <summary>Titel in Listen und Verweisen, Name eines Anhangs.</summary>
+    cTitle = 200;
+    /// <summary>Fehlermeldung des Servers.</summary>
+    cMessage = 300;
+    /// <summary>Titel in der Detailansicht.</summary>
+    cDetailsTitle = 500;
+    /// <summary>Beschreibung eines Pull Requests.</summary>
+    cBody = 4000;
+  end;
+
   /// <summary>Offener Pull Request zu einem Issue (GitHub).</summary>
   TAtlasTrackerPullRequest = record
     /// <summary>0 = kein Pull Request.</summary>

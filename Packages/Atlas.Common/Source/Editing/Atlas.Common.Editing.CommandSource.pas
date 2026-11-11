@@ -247,7 +247,7 @@ var
   mPending: TStack<TSyntaxPostOrderEntry>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1): Die innerste Routine gewinnt, also wird ein Knoten erst nach
+  // Eigener Stapel statt Rekursion: Die innerste Routine gewinnt, also wird ein Knoten erst nach
   // seinen Kindern geprüft; unter ANode nur Knoten, die ALine überdecken.
   Result := nil;
   mPending := TStack<TSyntaxPostOrderEntry>.Create;

@@ -68,7 +68,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Problems.Controller,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.IDE.Foundation.Host;
 
 {$SCOPEDENUMS ON}
 
@@ -119,8 +120,6 @@ end;
 class procedure TAtlasServerHandlers.ServerMessage(AType: Integer; const AMessage: string;
   const ALogActions: TArray<TAtlasNotificationAction>);
 var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
   mSeverity: TAtlasNotificationSeverity;
 begin
   mSeverity := TAtlasNotificationSeverity.Warning;
@@ -128,18 +127,13 @@ begin
   begin
     mSeverity := TAtlasNotificationSeverity.Error;
   end;
-  if (TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
     TAtlasStrings.Text(TAtlasTextId.NotificationsServerMessage), AMessage, ALogActions) <>
-    TAtlasNotificationMode.Show) or not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+    TAtlasNotificationMode.Show then
   begin
     Exit;
   end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
-  end;
-  mMessages.AddTitleMessage('Atlas: ' + AMessage, mGroup);
+  TAtlasIdeHost.Message('Atlas: ' + AMessage);
 end;
 
 /// <summary>Ursache des Neustarts und erneut geöffnete Dateien als Text des Eintrags.</summary>

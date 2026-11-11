@@ -163,7 +163,7 @@ type
       Names: TAtlasIdeTaskNames;
     end;
 
-    /// <summary>Verlauf in tasks.json; Kept = gesperrt gelesen, nicht überschreiben (Bericht N3).</summary>
+    /// <summary>Verlauf in tasks.json; Kept = gesperrt gelesen, nicht überschreiben.</summary>
     THistory = record
       Data: TAtlasTaskHistory;
       Kept: Boolean;
@@ -260,7 +260,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Edition,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Tasks.Pickers;
+  Atlas.IDE.Tasks.Pickers,
+  Atlas.IDE.Foundation.Files;
 
 const
   cRefreshMs = 2000;
@@ -341,7 +342,7 @@ end;
 
 procedure SaveHistory(const AHistory: TAtlasIdeTasks.THistory);
 begin
-  // Gesperrt gelesene Datei nicht mit dem Stand dieser Sitzung überschreiben (Bericht N3).
+  // Gesperrt gelesene Datei nicht mit dem Stand dieser Sitzung überschreiben.
   if AHistory.Kept then
   begin
     Exit;
@@ -622,7 +623,7 @@ var
   mIssues: TArray<string>;
   mTask: TAtlasTaskDefinition;
 begin
-  mProject := TAtlasIdeTaskProjects.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   mSignature := TAtlasIdeTaskProjects.SignatureOf(mProject);
   if not AForce and (mSignature = FLoaded.Signature) then
   begin
@@ -1008,7 +1009,7 @@ begin
       mKey := AnsiLowerCase(AFileName);
       if not ACache.TryGetValue(mKey, mLines) then
       begin
-        if not TAtlasIdeTaskProjects.ReadLines(AFileName, mLines) then
+        if not TAtlasIdeFiles.ReadLines(AFileName, mLines) then
         begin
           mLines := nil;
         end;

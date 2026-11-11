@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.ProtocolWiring;
 
-// Verdrahtung von Protokoll und Dokumenten (S-02): Teilwurzel Protokoll mit Verteiler, Watchdog und
+// Verdrahtung von Protokoll und Dokumenten: Teilwurzel Protokoll mit Verteiler, Watchdog und
 // Lebenszyklus; Dokumentspeicher, Synchronisation, Absturzfälle, Compilerläufe und die Teilwurzel Diagnosen.
 // Closures fragen die Teile erst beim Aufruf, weil Kern, Index und Sitzung später entstehen.
 

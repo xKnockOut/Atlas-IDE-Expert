@@ -61,7 +61,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Strings;
 
 class function TAtlasIssueTip.AgeText(ATime, ANow: TDateTime): string;
 var
@@ -88,17 +88,17 @@ class function TAtlasIssueTip.ErrorText(AError: TAtlasCiFetchError; const AKey: 
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
       Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   end;
 end;
 

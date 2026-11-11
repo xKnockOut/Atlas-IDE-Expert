@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Debugger (#1456, ADR 0017): Exception-Verlauf und -Leiste, Werte im Editor, nur eigener Code,
+// Modul Debugger (#1456): Exception-Verlauf und -Leiste, Werte im Editor, nur eigener Code,
 // Visualisierer, eigene Wertdarstellungen und Auswerten. Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Debug.Composition über die Registry von Atlas.IDE.Base an und lässt sich ohne Neustart
 // der IDE laden und entladen (Regeln 1 bis 4). Requiret nur das Kern-Package
@@ -56,6 +56,7 @@ contains
   Atlas.IDE.Debug.EventBreak in 'Source\IDE\Debug\Atlas.IDE.Debug.EventBreak.pas',
   Atlas.UI.Debug.Viewer in 'Source\UI\Debug\Atlas.UI.Debug.Viewer.pas',
   Atlas.UI.Debug.StepInto in 'Source\UI\Debug\Atlas.UI.Debug.StepInto.pas',
+  Atlas.UI.Debug.InlineValuePainter in 'Source\UI\Debug\Atlas.UI.Debug.InlineValuePainter.pas',
   Atlas.UI.Debug.EventBreak in 'Source\UI\Debug\Atlas.UI.Debug.EventBreak.pas',
   Atlas.Core.Debug.Exceptions in 'Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas',
   Atlas.Core.Debug.Note in 'Source\Core\Debug\Atlas.Core.Debug.Note.pas',

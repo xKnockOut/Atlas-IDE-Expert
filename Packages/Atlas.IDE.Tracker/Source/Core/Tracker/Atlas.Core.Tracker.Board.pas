@@ -297,7 +297,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.IssueCache;
+  Atlas.Core.Tracker.IssueCache,
+  Atlas.Text.Json;
 
 class function TAtlasBoardRequest.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const ABoardId, ASprintId: string; ATimeoutMs: Integer): TAtlasBoardRequest;
@@ -888,38 +889,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function IntOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if (mValue is TJSONNumber) and not TryStrToInt(TJSONNumber(mValue).Value, Result) then
-  begin
-    Result := 0;
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.Values[AName];
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mValue, mItem: TJSONValue;
@@ -948,11 +917,11 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AValue);
-  Result.Id := TextOf(mObject, 'id');
-  Result.Name := TextOf(mObject, 'name');
-  Result.Start := TAtlasTrackerBoard.TimeValue(TextOf(mObject, 'start'));
-  Result.Finish := TAtlasTrackerBoard.TimeValue(TextOf(mObject, 'finish'));
-  Result.Archived := FlagOf(mObject, 'archived');
+  Result.Id := TJsonRead.Text(mObject, 'id');
+  Result.Name := TJsonRead.Text(mObject, 'name');
+  Result.Start := TAtlasTrackerBoard.TimeValue(TJsonRead.Text(mObject, 'start'));
+  Result.Finish := TAtlasTrackerBoard.TimeValue(TJsonRead.Text(mObject, 'finish'));
+  Result.Archived := TJsonRead.Flag(mObject, 'archived');
 end;
 
 function BoardsOf(AValue: TJSONValue): TArray<TAtlasBoardRef>;
@@ -966,8 +935,8 @@ begin
     begin
       if mItem is TJSONObject then
       begin
-        Result := Result + [TAtlasBoardRef.Create(TextOf(TJSONObject(mItem), 'id'),
-          TextOf(TJSONObject(mItem), 'name'))];
+        Result := Result + [TAtlasBoardRef.Create(TJsonRead.Text(TJSONObject(mItem), 'id'),
+          TJsonRead.Text(TJSONObject(mItem), 'name'))];
       end;
     end;
   end;
@@ -986,8 +955,8 @@ begin
       if mItem is TJSONObject then
       begin
         mObject := TJSONObject(mItem);
-        Result := Result + [TAtlasBoardColumn.Create(TextOf(mObject, 'name'), TextsOf(mObject, 'values'),
-          TextOf(mObject, 'optionId'), FlagOf(mObject, 'resolved'))];
+        Result := Result + [TAtlasBoardColumn.Create(TJsonRead.Text(mObject, 'name'), TextsOf(mObject, 'values'),
+          TJsonRead.Text(mObject, 'optionId'), TJsonRead.Flag(mObject, 'resolved'))];
       end;
     end;
   end;
@@ -1010,19 +979,19 @@ end;
 function CardOf(AObject: TJSONObject): TAtlasBoardCard;
 begin
   Result := Default(TAtlasBoardCard);
-  Result.Key := TextOf(AObject, 'key');
-  Result.Number := IntOf(AObject, 'number');
-  Result.Title := TextOf(AObject, 'title');
-  Result.State := TextOf(AObject, 'state');
-  Result.Assignee := TextOf(AObject, 'assignee');
+  Result.Key := TJsonRead.Text(AObject, 'key');
+  Result.Number := TJsonRead.Int(AObject, 'number');
+  Result.Title := TJsonRead.Text(AObject, 'title');
+  Result.State := TJsonRead.Text(AObject, 'state');
+  Result.Assignee := TJsonRead.Text(AObject, 'assignee');
   Result.Logins := TextsOf(AObject, 'logins');
-  Result.Priority := TextOf(AObject, 'priority');
-  Result.PriorityColor := TextOf(AObject, 'priorityColor');
-  Result.Checklist := TAtlasChecklistProgress.Create(IntOf(AObject, 'done'), IntOf(AObject, 'total'));
-  Result.Locked := FlagOf(AObject, 'locked');
-  Result.ItemId := TextOf(AObject, 'itemId');
-  Result.Page := TextOf(AObject, 'page');
-  Result.ResolvedAt := TAtlasTrackerBoard.TimeValue(TextOf(AObject, 'resolvedAt'));
+  Result.Priority := TJsonRead.Text(AObject, 'priority');
+  Result.PriorityColor := TJsonRead.Text(AObject, 'priorityColor');
+  Result.Checklist := TAtlasChecklistProgress.Create(TJsonRead.Int(AObject, 'done'), TJsonRead.Int(AObject, 'total'));
+  Result.Locked := TJsonRead.Flag(AObject, 'locked');
+  Result.ItemId := TJsonRead.Text(AObject, 'itemId');
+  Result.Page := TJsonRead.Text(AObject, 'page');
+  Result.ResolvedAt := TAtlasTrackerBoard.TimeValue(TJsonRead.Text(AObject, 'resolvedAt'));
   Result.HasPoints := AObject.Values['points'] is TJSONNumber;
   if Result.HasPoints then
   begin
@@ -1068,19 +1037,19 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if IntOf(mRoot, 'version') <> TAtlasBoardSnapshot.cVersion then
+    if TJsonRead.Int(mRoot, 'version') <> TAtlasBoardSnapshot.cVersion then
     begin
       Exit;
     end;
-    ASnapshot.Kind := KindOf(TextOf(mRoot, 'kind'));
-    ASnapshot.Fetched := TimeValue(TextOf(mRoot, 'fetched'));
-    ASnapshot.Me := TextOf(mRoot, 'me');
-    ASnapshot.PointsField := TextOf(mRoot, 'pointsField');
-    ASnapshot.Page := TextOf(mRoot, 'page');
-    ASnapshot.Board := TAtlasBoardRef.Create(TextOf(mRoot, 'boardId'), TextOf(mRoot, 'boardName'));
-    ASnapshot.Field := TextOf(mRoot, 'field');
-    ASnapshot.ProjectId := TextOf(mRoot, 'projectId');
-    ASnapshot.FieldId := TextOf(mRoot, 'fieldId');
+    ASnapshot.Kind := KindOf(TJsonRead.Text(mRoot, 'kind'));
+    ASnapshot.Fetched := TimeValue(TJsonRead.Text(mRoot, 'fetched'));
+    ASnapshot.Me := TJsonRead.Text(mRoot, 'me');
+    ASnapshot.PointsField := TJsonRead.Text(mRoot, 'pointsField');
+    ASnapshot.Page := TJsonRead.Text(mRoot, 'page');
+    ASnapshot.Board := TAtlasBoardRef.Create(TJsonRead.Text(mRoot, 'boardId'), TJsonRead.Text(mRoot, 'boardName'));
+    ASnapshot.Field := TJsonRead.Text(mRoot, 'field');
+    ASnapshot.ProjectId := TJsonRead.Text(mRoot, 'projectId');
+    ASnapshot.FieldId := TJsonRead.Text(mRoot, 'fieldId');
     ASnapshot.Boards := BoardsOf(mRoot.Values['boards']);
     ASnapshot.Columns := ColumnsOf(mRoot.Values['columns']);
     ASnapshot.Sprints := SprintsOf(mRoot.Values['sprints']);

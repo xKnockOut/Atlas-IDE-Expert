@@ -52,7 +52,7 @@ type
     TPhase = (Idle, Pausing, Watching);
     TWatchState = record
       Phase: TPhase;
-      PauseStarted: Cardinal;
+      PauseStarted: UInt64;
       SeenRunning: Boolean;
       StartFile: string;
       StartLine: Integer;
@@ -131,9 +131,10 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.IDE.Foundation.Files;
 
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';
@@ -204,14 +205,14 @@ type
   /// <summary>Stand nach Pause: noch warten, hält, oder PauseWaitMs ohne Halt vorbei.</summary>
   TPauseOutcome = (Waiting, Stopped, TimedOut);
 
-function PauseOutcome(const AProcess: IOTAProcess; AStarted: Cardinal): TPauseOutcome;
+function PauseOutcome(const AProcess: IOTAProcess; AStarted: UInt64): TPauseOutcome;
 begin
   Result := TPauseOutcome.Waiting;
   if TAtlasIdeBreakpoints.IsStopped(AProcess) then
   begin
     Result := TPauseOutcome.Stopped;
   end
-  else if GetTickCount - AStarted >= TAtlasIdeEventBreak.cPauseWaitMs then
+  else if TAtlasTicks.Since(AStarted) >= TAtlasIdeEventBreak.cPauseWaitMs then
   begin
     Result := TPauseOutcome.TimedOut;
   end;
@@ -377,7 +378,7 @@ begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   try
     mAnswer := mSession.RunCommand(TAtlasEventBreak.cCommand,
       TAtlasEventBreak.Arguments(TLspSession.PathToUri(mProject)),
@@ -481,7 +482,7 @@ begin
   begin
     // Programm läuft: kurz anhalten, im Takt auf den Halt warten, dann Formulare lesen.
     FWatch.Phase := TPhase.Pausing;
-    FWatch.PauseStarted := GetTickCount;
+    FWatch.PauseStarted := TAtlasTicks.Now;
     FTimer.Enabled := True;
     try
       AProcess.Pause;

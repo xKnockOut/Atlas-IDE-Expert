@@ -4,6 +4,7 @@
 // (:=, var-/out-Argument, Inc/Dec, Include/Exclude, Read/ReadLn), mögliche
 // Änderungen, Inline-Variablen, Schleifenzähler, Parametermodifizierer,
 // Felder, jede Kombination der Ziele und der Kandidat "Konstante".
+// Ausschnitt (nur Routinen im Zeilenbereich, Felder nur auf Wunsch) und Abbruch.
 
 interface
 
@@ -51,6 +52,12 @@ type
     procedure OccurrencesInTextOrder;
     [Test]
     procedure TargetNamesAndSymbolAt;
+    [Test]
+    procedure ScopeKeepsRoutinesInRange;
+    [Test]
+    procedure ScopeCountsFieldsInWholeFile;
+    [Test]
+    procedure ScopeCancellationRaises;
   end;
 
 implementation
@@ -58,6 +65,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser;
@@ -65,6 +73,69 @@ uses
 const
   LB = #13#10;
   WriteCodes: array[TReassignedWrite] of string = ('', 'w', 'l', 'm');
+
+  ScopeSource =
+    'unit U;' + LB +
+    'interface' + LB +
+    'type' + LB +
+    '  TBox = class' + LB +
+    '    FA, FB: Integer;' + LB +
+    '    procedure One;' + LB +
+    '    procedure Two;' + LB +
+    '  end;' + LB +
+    'implementation' + LB +
+    'procedure TBox.One;' + LB +                      // 9
+    'var' + LB +
+    '  X: Integer;' + LB +
+    'begin' + LB +
+    '  X := 1;' + LB +
+    '  X := 2;' + LB +
+    '  FA := X;' + LB +
+    'end;' + LB +                                     // 16
+    'procedure TBox.Two;' + LB +                      // 17
+    'var' + LB +
+    '  Y, FB: Integer;' + LB +
+    'begin' + LB +
+    '  Y := 1;' + LB +
+    '  Y := 2;' + LB +
+    '  FB := Y;' + LB +
+    '  FA := Y;' + LB +
+    'end;' + LB +                                     // 25
+    'end.';
+
+type
+  /// <summary>Abbruch, der immer gilt.</summary>
+  TAlwaysCancelled = class(TInterfacedObject, IPascalCancellation)
+  public
+    function IsCancelled: Boolean;
+  end;
+
+function TAlwaysCancelled.IsCancelled: Boolean;
+begin
+  Result := True;
+end;
+
+/// <summary>Namen aus ASource im Ausschnitt AScope als "Name=Art:sicher", sortiert.</summary>
+function ScopeNames(const ASource: string; const AScope: TReassignedScope): string;
+var
+  Tree: TSyntaxTree;
+  Symbol: TReassignedSymbol;
+  Items: TList<string>;
+begin
+  Items := TList<string>.Create;
+  Tree := TPascalParser.Parse(ASource);
+  try
+    for Symbol in TReassigned.Analyze(ASource, Tree, nil, AScope) do
+    begin
+      Items.Add(Format('%s=%s:%d', [Symbol.Name, TReassigned.cKindNames[Symbol.Kind], Symbol.Writes]));
+    end;
+    Items.Sort;
+    Result := string.Join(' ', Items.ToArray);
+  finally
+    Tree.Free;
+    Items.Free;
+  end;
+end;
 
 function Wrap(const ABody: string): string;
 begin
@@ -545,6 +616,51 @@ begin
     Symbols := nil;
     Tree.Free;
   end;
+end;
+
+procedure TReassignedTests.ScopeKeepsRoutinesInRange;
+var
+  Scope: TReassignedScope;
+begin
+  Scope := TReassignedScope.Whole;
+  Assert.AreEqual('FA=field:2 FB=field:0 FB=local:1 X=local:2 Y=local:2', ScopeNames(ScopeSource, Scope));
+  // Nur Two reicht in den Bereich; ohne Ziel Fields keine Felder.
+  Scope.Targets := [TReassignedTarget.Locals];
+  Scope.FirstLine := 21;
+  Scope.LastLine := 22;
+  Assert.AreEqual('FB=local:1 Y=local:2', ScopeNames(ScopeSource, Scope));
+  // Der Kopf von One genügt.
+  Scope.FirstLine := 9;
+  Scope.LastLine := 9;
+  Assert.AreEqual('X=local:2', ScopeNames(ScopeSource, Scope));
+end;
+
+procedure TReassignedTests.ScopeCountsFieldsInWholeFile;
+var
+  Scope: TReassignedScope;
+begin
+  Scope := TReassignedScope.Whole;
+  Scope.FirstLine := 21;
+  Scope.LastLine := 24;
+  // FA wird in One und Two geschrieben; das lokale FB in Two verdeckt das Feld, auch wenn One außen liegt.
+  Assert.AreEqual('FA=field:2 FB=field:0 FB=local:1 Y=local:2', ScopeNames(ScopeSource, Scope));
+  Scope.FirstLine := 13;
+  Scope.LastLine := 13;
+  Assert.AreEqual('FA=field:2 FB=field:0 X=local:2', ScopeNames(ScopeSource, Scope));
+end;
+
+procedure TReassignedTests.ScopeCancellationRaises;
+var
+  Scope: TReassignedScope;
+begin
+  Scope := TReassignedScope.Whole;
+  Scope.Cancellation := TAlwaysCancelled.Create;
+  Assert.WillRaise(
+    procedure
+    begin
+      ScopeNames(ScopeSource, Scope);
+    end,
+    EReassignedCancelled);
 end;
 
 initialization

@@ -124,7 +124,8 @@ uses
   System.JSON,
   System.SyncObjs,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Catalog.Data;
+  Atlas.Common.Rules.Catalog.Data,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -204,21 +205,6 @@ begin
   end;
 end;
 
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 /// <summary>Spalten "columns" einer Option der Art "object-list" (#1133).</summary>
 function ColumnsOf(AItem: TJSONObject; const AId, AName: string): TArray<TRuleOptionColumn>;
 var
@@ -233,11 +219,11 @@ begin
   end;
   for mItem in TJSONArray(mValue) do
   begin
-    if not (mItem is TJSONObject) or (StringOf(TJSONObject(mItem), 'name') = '') then
+    if not (mItem is TJSONObject) or (TJsonRead.Text(TJSONObject(mItem), 'name') = '') then
     begin
       raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.ColumnNoName].Text, [AName, AId]);
     end;
-    mColumn.Name := StringOf(TJSONObject(mItem), 'name');
+    mColumn.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
     mList := TJSONObject(mItem).GetValue('list');
     mColumn.List := (mList is TJSONBool) and TJSONBool(mList).AsBoolean;
     Result := Result + [mColumn];
@@ -270,9 +256,9 @@ begin
   end;
   mObject := TJSONObject(AItem);
   Result := Default(TRuleOption);
-  Result.Name := StringOf(mObject, 'name');
-  Result.Kind := StringOf(mObject, 'type');
-  Result.Description := StringOf(mObject, 'description');
+  Result.Name := TJsonRead.Text(mObject, 'name');
+  Result.Kind := TJsonRead.Text(mObject, 'type');
+  Result.Description := TJsonRead.Text(mObject, 'description');
   if Result.Name = '' then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.OptionNoName].Text, [AId]);
@@ -397,16 +383,16 @@ end;
 /// <summary>Kategorie, Schweregrad und Gruppe (ohne "group" die der Kategorie) eines Eintrags.</summary>
 procedure ClassifyEntry(AItem: TJSONObject; var AEntry: TRuleCatalogEntry);
 begin
-  if not TRuleCatalog.TryParseCategory(StringOf(AItem, 'category'), AEntry.Category) then
+  if not TRuleCatalog.TryParseCategory(TJsonRead.Text(AItem, 'category'), AEntry.Category) then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCategory].Text, [AEntry.Id]);
   end;
-  if not TryParseSeverity(StringOf(AItem, 'severity'), AEntry.DefaultSeverity) then
+  if not TryParseSeverity(TJsonRead.Text(AItem, 'severity'), AEntry.DefaultSeverity) then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadSeverity].Text, [AEntry.Id]);
   end;
   AEntry.Group := TRuleCatalog.GroupOfCategory(AEntry.Category);
-  if (AItem.GetValue('group') <> nil) and not TRuleCatalog.TryParseGroup(StringOf(AItem, 'group'), AEntry.Group) then
+  if (AItem.GetValue('group') <> nil) and not TRuleCatalog.TryParseGroup(TJsonRead.Text(AItem, 'group'), AEntry.Group) then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadGroup].Text, [AEntry.Id]);
   end;
@@ -417,7 +403,7 @@ procedure ReadLevelAndSafeFix(AItem: TJSONObject; var AEntry: TRuleCatalogEntry)
 var
   mSafeFix: TJSONValue;
 begin
-  AEntry.Level := StringOf(AItem, 'level');
+  AEntry.Level := TJsonRead.Text(AItem, 'level');
   if (AEntry.Level <> '') and (AEntry.Level <> 'A') and (AEntry.Level <> 'B') and (AEntry.Level <> 'T') then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadLevel].Text, [AEntry.Id, AEntry.Level]);
@@ -441,15 +427,15 @@ begin
   end;
   mObject := TJSONObject(AItem);
   Result := Default(TRuleCatalogEntry);
-  Result.Id := StringOf(mObject, 'id');
+  Result.Id := TJsonRead.Text(mObject, 'id');
   if Result.Id = '' then
   begin
     raise ERuleCatalog.Create(cTexts[TCatalogText.EntryNoId].Text);
   end;
-  Result.Name := StringOf(mObject, 'name');
-  Result.Description := StringOf(mObject, 'description');
-  Result.Bad := StringOf(mObject, 'bad');
-  Result.Good := StringOf(mObject, 'good');
+  Result.Name := TJsonRead.Text(mObject, 'name');
+  Result.Description := TJsonRead.Text(mObject, 'description');
+  Result.Bad := TJsonRead.Text(mObject, 'bad');
+  Result.Good := TJsonRead.Text(mObject, 'good');
   ClassifyEntry(mObject, Result);
   Result.Options := OptionsOf(mObject, Result.Id);
   Result.CompilerCodes := CompilerCodesOf(mObject, Result.Id);
@@ -485,10 +471,10 @@ begin
   begin
     if mOption is TJSONObject then
     begin
-      mText := StringOf(TJSONObject(mOption), 'description');
+      mText := TJsonRead.Text(TJSONObject(mOption), 'description');
       if mText <> '' then
       begin
-        SetOptionDescription(ATarget, StringOf(TJSONObject(mOption), 'name'), mText);
+        SetOptionDescription(ATarget, TJsonRead.Text(TJSONObject(mOption), 'name'), mText);
       end;
     end;
   end;
@@ -499,12 +485,12 @@ procedure TranslateEntry(AItem: TJSONObject; var AEntry: TRuleCatalogEntry);
 var
   mText: string;
 begin
-  mText := StringOf(AItem, 'name');
+  mText := TJsonRead.Text(AItem, 'name');
   if mText <> '' then
   begin
     AEntry.Name := mText;
   end;
-  mText := StringOf(AItem, 'description');
+  mText := TJsonRead.Text(AItem, 'description');
   if mText <> '' then
   begin
     AEntry.Description := mText;
@@ -575,7 +561,7 @@ begin
       // Übersetzungen unbekannter Regeln und Einträge, die keine Objekte sind, sind harmlos und werden übergangen.
       if mItem is TJSONObject then
       begin
-        mIndex := IndexOf(StringOf(TJSONObject(mItem), 'id'));
+        mIndex := IndexOf(TJsonRead.Text(TJSONObject(mItem), 'id'));
         if mIndex >= 0 then
         begin
           mEntry := FEntries[mIndex];

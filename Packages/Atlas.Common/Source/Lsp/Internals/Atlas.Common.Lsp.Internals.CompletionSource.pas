@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Internals.CompletionSource;
 
-// Gemeinsame Helfer der Vervollständigung über den Index der eigenen Unit (Code-Review D-09): innerster
+// Gemeinsame Helfer der Vervollständigung über den Index der eigenen Unit: innerster
 // Typ um eine Zeile (vorher doppelt in EnclosingType und InterfaceItems) und die Vorfahrenkette eines
 // Typs (mit benannter Höchsttiefe statt der Zahl 32).
 

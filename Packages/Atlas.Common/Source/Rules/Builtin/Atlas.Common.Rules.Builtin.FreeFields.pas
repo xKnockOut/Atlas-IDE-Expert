@@ -335,7 +335,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TInitUses.Visit(ARoot: TSyntaxNode);
 var
   mPending: TStack<TSyntaxNode>;
@@ -615,7 +615,7 @@ begin
 end;
 
 /// <summary>Zuweisungen Variable := TKlasse.Create… in ANode (ohne anonyme Methoden); AClassDecl nil für
-/// initialization, sonst die Klasse des class constructor. Iterativ (Bericht M1).</summary>
+/// initialization, sonst die Klasse des class constructor. Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
 procedure FindCreations(const AContext: TRuleContext; ANode, AClassDecl: TSyntaxNode;
   const AVariables: TArray<TInitVariable>; var ACreations: TArray<TInitCreation>);
 var

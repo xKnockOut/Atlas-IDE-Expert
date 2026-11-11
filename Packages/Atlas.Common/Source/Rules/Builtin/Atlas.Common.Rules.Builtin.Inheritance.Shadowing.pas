@@ -201,7 +201,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -253,7 +253,7 @@ var
   mPending: TStack<TSyntaxNode>;
   mPendingInClass: TStack<Boolean>;
 begin
-  // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in der Klasse AClassName liegt.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in der Klasse AClassName liegt.
   Result := nil;
   mPending := TStack<TSyntaxNode>.Create;
   mPendingInClass := TStack<Boolean>.Create;
@@ -774,7 +774,7 @@ begin
   mCandidate.Routine := ARoutine;
   mCandidate.ClassName := AClassName;
   mCandidate.ParamIndex := -1;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ARoot);
@@ -824,7 +824,7 @@ begin
     end
     else if mChild.Kind = TSyntaxKind.RoutineDecl then
     begin
-      // Die Rekursion bleibt (Bericht M1): sie geht nur über verschachtelte Routinendeklarationen.
+      // Die Rekursion bleibt: sie geht nur über verschachtelte Routinendeklarationen.
       CheckRoutine(mChild, mClassName);
     end;
   end;
@@ -836,7 +836,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(FContext.Tree.Root);

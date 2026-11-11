@@ -86,7 +86,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.CiLogin;
 
 { TAtlasTrackerAccess }
@@ -122,11 +122,11 @@ procedure TAtlasTrackerAccess.SavedOrFailed(AOk: Boolean);
 begin
   if AOk then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginSaved));
   end
   else
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginFailed));
   end;
 end;
 
@@ -175,12 +175,13 @@ begin
   // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
   if not ATarget.Secure then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginInsecure));
     Exit;
   end;
   mToken := '';
-  if (FParts.Credentials = nil) or not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle,
-    [AProvider.Caption, ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), mToken) then
+  if (FParts.Credentials = nil) or not TAtlasCiLoginPrompt.AskToken(
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerLoginTitle, [AProvider.Caption, ATarget.Server]),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginToken), mToken) then
   begin
     Exit;
   end;
@@ -204,11 +205,11 @@ begin
   Result := FParts.Credentials.Delete(ATarget.CredentialTarget);
   if Result then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginRemoved));
   end
   else
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginFailed));
   end;
 end;
 
@@ -291,11 +292,11 @@ begin
   Result := FParts.Credentials.Delete(AJob.CredentialTarget);
   if Result then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.CiLoginRemoved));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginRemoved));
   end
   else
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginFailed));
   end;
 end;
 
@@ -320,7 +321,7 @@ begin
   end;
   if (mUser = '') or (mToken = '') then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.CiLoginIncomplete));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginIncomplete));
     Exit;
   end;
   Result := FParts.Credentials.Write(AJob.CredentialTarget, mUser, mToken, '');
@@ -328,11 +329,11 @@ begin
   // Anonym: weder Server noch Benutzer.
   if Result then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.CiLoginSaved));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginSaved));
   end
   else
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginFailed));
   end;
 end;
 
