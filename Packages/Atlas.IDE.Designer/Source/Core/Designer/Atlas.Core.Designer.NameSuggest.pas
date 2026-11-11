@@ -112,6 +112,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Character,
+  Atlas.Text.Chars,
   Atlas.Core.Designer.FitText;
 
 type
@@ -489,11 +490,6 @@ begin
   end;
 end;
 
-function IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := IsAsciiLetterOrDigit(AChar) or (AChar = '_');
-end;
-
 /// <summary>Von AIndex (auf dem öffnenden Zeichen) bis hinter ACloser; zählt die Zeilen weiter.</summary>
 procedure SkipComment(const AText, ACloser: string; var AIndex, ALine, ALineStart: Integer);
 begin
@@ -567,10 +563,10 @@ begin
       Inc(mIndex);
       SkipComment(AText, '*)', mIndex, mLine, mLineStart);
     end
-    else if IsIdentChar(mChar) then
+    else if TTextChars.IsAsciiIdentChar(mChar) then
     begin
-      if ((mIndex = 1) or not IsIdentChar(AText[mIndex - 1])) and SameText(Copy(AText, mIndex, mLength), AName) and
-        ((mIndex + mLength > Length(AText)) or not IsIdentChar(AText[mIndex + mLength])) then
+      if ((mIndex = 1) or not TTextChars.IsAsciiIdentChar(AText[mIndex - 1])) and SameText(Copy(AText, mIndex, mLength), AName) and
+        ((mIndex + mLength > Length(AText)) or not TTextChars.IsAsciiIdentChar(AText[mIndex + mLength])) then
       begin
         mPlace.Line := mLine;
         mPlace.Character := mIndex - mLineStart;
@@ -579,7 +575,7 @@ begin
       end
       else
       begin
-        while (mIndex <= Length(AText)) and IsIdentChar(AText[mIndex]) do
+        while (mIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[mIndex]) do
         begin
           Inc(mIndex);
         end;
