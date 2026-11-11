@@ -82,6 +82,8 @@ type
     Paths: TAtlasSetupRun;
     PathsStarted: UInt64;
     PathsError: string;
+    /// <summary>Hinweis zur Edition der IDE (#1822), etwa ohne Kommandozeilen-Compiler; '' ohne.</summary>
+    Edition: string;
     class function Empty: TAtlasSetupCard; static;
     function StepDone(AStep: TAtlasSetupStep): Boolean;
     /// <summary>Bereich zeigen (Karte oder Knöpfe).</summary>

@@ -146,6 +146,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.PluginReport` | `Core/Diagnostics/Atlas.Core.Diagnostics.PluginReport.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.PluginTimings` | `Core/Diagnostics/Atlas.Core.Diagnostics.PluginTimings.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Processes` | `Core/Diagnostics/Atlas.Core.Diagnostics.Processes.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.Edition` | `Core/Diagnostics/Atlas.Core.Diagnostics.Edition.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.SafeMode` | `Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.ServerPackage` | `Core/Diagnostics/Atlas.Core.Diagnostics.ServerPackage.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Shutdown` | `Core/Diagnostics/Atlas.Core.Diagnostics.Shutdown.pas` | Ordner `Core/Diagnostics` |
@@ -502,6 +503,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Diagnostics.BugReport` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.BugReport.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.Export` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Export.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.PluginTimings` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.PluginTimings.pas` | Ordner `IDE/Diagnostics` |
+| `Atlas.IDE.Diagnostics.Edition` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Edition.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.SafeMode` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.SafeMode.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.ServerPackage` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.ServerPackage.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.StackCapture` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.StackCapture.pas` | Ordner `IDE/Diagnostics` |
@@ -665,6 +667,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Diagnostics.PluginRows` | `UI/Diagnostics/Atlas.UI.Diagnostics.PluginRows.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.ProcessesDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ProcessesDialog.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.ReportDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ReportDialog.pas` | Ordner `UI/Diagnostics` |
+| `Atlas.UI.Diagnostics.Strings` | `UI/Diagnostics/Atlas.UI.Diagnostics.Strings.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.SafeModeNotice` | `UI/Diagnostics/Atlas.UI.Diagnostics.SafeModeNotice.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.TimingFrame` | `UI/Diagnostics/Atlas.UI.Diagnostics.TimingFrame.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Documentation.View` | `UI/Documentation/Atlas.UI.Documentation.View.pas` | Ordner `UI/Documentation` |

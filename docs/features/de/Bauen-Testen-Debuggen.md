@@ -12,6 +12,16 @@ Zurück zum [README](../../../README_DE.md)
 
 Einstellungen: `build.zeroHints`, `build.warningsAsErrors`
 
+### Ohne Kommandozeilen-Compiler (Starter, Community)
+
+- Beim Start sieht Atlas im Ordner der Installation nach, ob `dcc32.exe` oder `dcc64.exe` da sind (#1822); RAD Studio Starter und je nach Version Community haben keinen Kommandozeilen-Compiler
+- das Ergebnis steht in der Startzeile von `atlas.log` („command-line compiler: …“)
+- fehlt er, kommt einmal ein Hinweis mit Knopf *Einstellungen*; die Karte „Projekt für Atlas einrichten“ der Willkommensseite nennt es ebenfalls
+- Builds für KI-Assistenten (`build_project`) laufen ohnehin über den Compiler der IDE und gehen weiter
+- Projektaufgaben, die `dcc32`, `dcc64`, ein anderes `dcc…` oder `msbuild` aufrufen, starten dann nicht, sondern nennen den Grund; Aufgaben, die den Compiler über ein Skript aufrufen, erkennt Atlas nicht
+
+Einstellung: `diagnostics.editionCheck` (aus = Verhalten wie vorher)
+
 ### Compilerwarnung gezielt abschalten
 
 - Code-Aktion auf einer Warnung oder einem Hinweis des letzten Builds setzt `{$WARN SYMBOL_DEPRECATED OFF}` … `ON` (bzw. `{$HINTS OFF}`) um die Zeile, die Routine oder die Unit

@@ -6269,6 +6269,34 @@
       "x-captionEn": "Help source",
       "x-issue": "#1886"
     },
+    "DiagnosticsEditionCheck": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beim Start nachsehen, ob die IDE einen Kommandozeilen-Compiler hat (dcc32/dcc64 im Ordner bin der Installation; fehlt bei RAD Studio Starter und Community). Ohne ihn: Zeile im Protokoll, einmaliger Hinweis, Projektaufgaben mit dcc oder MSBuild melden den Grund statt zu scheitern; Builds für KI-Assistenten laufen ohnehin über die IDE. Aus = Verhalten wie vorher.",
+      "x-key": "diagnostics.editionCheck",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-caption": "Kommandozeilen-Compiler prüfen",
+      "x-captionEn": "Check for a command-line compiler",
+      "x-keywords": [
+        "Edition",
+        "Starter",
+        "Community",
+        "dcc32",
+        "dcc64",
+        "MSBuild"
+      ],
+      "x-issue": "#1822"
+    },
+    "EditionNoticeShown": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "ui.editionNoticeShown",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-state": true,
+      "x-issue": "#1822"
+    },
     "SettingsBackupBeforeImport": {
       "type": "boolean",
       "default": true,
