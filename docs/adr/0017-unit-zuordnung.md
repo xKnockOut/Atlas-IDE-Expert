@@ -175,6 +175,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.Hide` | `Core/Editor/Atlas.Core.Editor.Hide.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineAnchor` | `Core/Editor/Atlas.Core.Editor.LineAnchor.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineChanges` | `Core/Editor/Atlas.Core.Editor.LineChanges.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.LineTracking` | `Core/Editor/Atlas.Core.Editor.LineTracking.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineMove` | `Core/Editor/Atlas.Core.Editor.LineMove.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineTail` | `Core/Editor/Atlas.Core.Editor.LineTail.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LinkedEditing` | `Core/Editor/Atlas.Core.Editor.LinkedEditing.pas` | Ordner `Core/Editor` |
@@ -581,6 +582,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Serverbefehle, Meldungen, Warnungen, Log, Statusfeld), #1455 |
 | `Atlas.IDE.Foundation.KeyHook` | `IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.LineTracker` | `IDE/Foundation/Atlas.IDE.Foundation.LineTracker.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Keys` | `IDE/Foundation/Atlas.IDE.Foundation.Keys.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ResultsWindow` | `IDE/Foundation/Atlas.IDE.Foundation.ResultsWindow.pas` | Ordner `IDE/Foundation` |

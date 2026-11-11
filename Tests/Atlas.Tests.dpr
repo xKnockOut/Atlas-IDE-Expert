@@ -973,6 +973,8 @@ uses
   Atlas.Core.Tests.ProjectChoice.Tests in 'IDE.Expert\Atlas.Core.Tests.ProjectChoice.Tests.pas',
   Atlas.Core.Editor.LineAnchor in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas',
   Atlas.Core.Editor.LineAnchor.Tests in 'IDE.Expert\Atlas.Core.Editor.LineAnchor.Tests.pas',
+  Atlas.Core.Editor.LineTracking in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTracking.pas',
+  Atlas.Core.Editor.LineTracking.Tests in 'IDE.Expert\Atlas.Core.Editor.LineTracking.Tests.pas',
   Atlas.Core.Notes.Store in '..\Packages\Atlas.IDE.Bookmarks\Source\Core\Notes\Atlas.Core.Notes.Store.pas',
   Atlas.Core.Notes.Tests in 'IDE.Expert\Atlas.Core.Notes.Tests.pas',
   Atlas.UI.Popup.TitledTip in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.TitledTip.pas',
