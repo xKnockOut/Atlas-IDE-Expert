@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Designer.ToolStrings;
 
 // Oberflächentexte der Designer-Werkzeuge mit eigenem Knopf in der
-// Designer-Leiste (Abstandsgriffe #734) auf Deutsch und Englisch. Die
+// Designer-Leiste (Abstandsgriffe #734, gemeinsame Größengriffe #737) auf Deutsch und Englisch. Die
 // Sprache bestimmt Base (`TAtlasStrings.Language`) wie bei
 // `Atlas.UI.Designer.Strings`.
 
@@ -16,7 +16,8 @@ type
   TAtlasDesignerToolTextId = (
     GapHint, GapShow, GapSetCmd, GapUndo, GapUndone, GapSetTitle, GapSetPrompt, GapInvalid, GapOutsideConfirm,
     GapDone, GapNeeds, SettingsGapHandles, SettingsGapSnap, SettingsGapAnchor, SettingsGapCenter, SettingsGapFirst,
-    SettingsGapLast);
+    SettingsGapLast, ResizeHint, ResizeShow, ResizeUndo, ResizeUndone, ResizeLabel, ResizeLabelBoth, ResizeDone,
+    SettingsResize, SettingsResizeMode, SettingsResizeDelta, SettingsResizeAlign, SettingsResizeLeftTop);
 
 {$SCOPEDENUMS OFF}
 
@@ -51,7 +52,19 @@ const
      'Fester Punkt ohne Zusatztaste',
      'Mitte der Gruppe',
      'Erste Komponente',
-     'Letzte Komponente'),
+     'Letzte Komponente',
+     'Gemeinsame Größengriffe bei Mehrfachauswahl ein- oder ausblenden',
+     'Gemeinsame Größengriffe zeigen',
+     'Größen rückgängig',
+     'Größen zurückgesetzt.',
+     '%d → %d px (%d×)',
+     '%d×%d → %d×%d px (%d×)',
+     'Größe von %d Steuerelementen geändert.',
+     'Gemeinsame Größengriffe bei Mehrfachauswahl',
+     'Ziehen ändert',
+     'Alle um denselben Betrag',
+     'Alle auf dieselbe Kante',
+     'Eigene Griffe auch an linker und oberer Kante'),
     ('Show or hide gap handles for a multiple selection in a row or column',
      'Show gap handles',
      'Set gaps …',
@@ -68,7 +81,19 @@ const
      'Fixed point without modifier key',
      'Centre of the group',
      'First component',
-     'Last component'));
+     'Last component',
+     'Show or hide shared resize handles for a multiple selection',
+     'Show shared resize handles',
+     'Undo sizes',
+     'Sizes restored.',
+     '%d → %d px (%d×)',
+     '%d×%d → %d×%d px (%d×)',
+     'Resized %d controls.',
+     'Shared resize handles for a multiple selection',
+     'Dragging changes',
+     'All by the same amount',
+     'All to the same edge',
+     'Own handles on the left and top edges too'));
 
 { TAtlasDesignerToolStrings }
 

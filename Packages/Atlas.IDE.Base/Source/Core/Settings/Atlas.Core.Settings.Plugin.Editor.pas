@@ -80,6 +80,9 @@ const
   cGapAnchorCenter = 'center';
   cGapAnchorFirst = 'first';
   cGapAnchorLast = 'last';
+  /// <summary>Werte von designer.multiResize.mode (#737).</summary>
+  cResizeModeDelta = 'delta';
+  cResizeModeAlign = 'align';
   /// <summary>Werte von designer.buttonBar.position (#732).</summary>
   cButtonBarBottomRight = 'bottomRight';
   cButtonBarBottomLeft = 'bottomLeft';
@@ -578,6 +581,12 @@ type
     /// <summary>Fester Punkt: cGapAnchorCenter, cGapAnchorFirst oder cGapAnchorLast (#734,
     /// designer.gapHandles.anchor).</summary>
     DesignerGapHandlesAnchor: string;
+    /// <summary>Gemeinsame Größengriffe bei Mehrfachauswahl (#737, designer.multiResize).</summary>
+    DesignerMultiResize: Boolean;
+    /// <summary>cResizeModeDelta oder cResizeModeAlign (#737, designer.multiResize.mode).</summary>
+    DesignerMultiResizeMode: string;
+    /// <summary>Eigene Griffe auch links und oben (#737, designer.multiResize.leftTopHandles).</summary>
+    DesignerMultiResizeLeftTopHandles: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1180,6 +1189,9 @@ begin
   DesignerGapHandles := True;
   DesignerGapHandlesSnapValues := '4, 8, 12, 16';
   DesignerGapHandlesAnchor := cGapAnchorCenter;
+  DesignerMultiResize := True;
+  DesignerMultiResizeMode := cResizeModeDelta;
+  DesignerMultiResizeLeftTopHandles := False;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
@@ -1187,6 +1199,9 @@ begin
   AIo.Flag('DesignerGapHandles', DesignerGapHandles);
   AIo.Text('DesignerGapHandlesSnapValues', DesignerGapHandlesSnapValues);
   AIo.Text('DesignerGapHandlesAnchor', DesignerGapHandlesAnchor);
+  AIo.Flag('DesignerMultiResize', DesignerMultiResize);
+  AIo.Text('DesignerMultiResizeMode', DesignerMultiResizeMode);
+  AIo.Flag('DesignerMultiResizeLeftTopHandles', DesignerMultiResizeLeftTopHandles);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1216,6 +1231,7 @@ begin
   DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
   DesignerGapHandlesAnchor := Choice(DesignerGapHandlesAnchor, [cGapAnchorCenter, cGapAnchorFirst, cGapAnchorLast]);
+  DesignerMultiResizeMode := Choice(DesignerMultiResizeMode, [cResizeModeDelta, cResizeModeAlign]);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
