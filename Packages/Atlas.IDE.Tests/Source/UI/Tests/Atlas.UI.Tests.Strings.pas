@@ -24,7 +24,9 @@ type
     SettingsCodeLensTests, SettingsTestRun, SettingsTestsBuildFirst, SettingsTestsAfterBuild, SettingsTestDebug,
     SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit,
     TestsHookPurpose, TestsHookRemoval, TestsHookExitCodes, TestsHookNoTerminal, TestsHookAskRun,
-    TestsHookAskCommit, TestsEditorMenuGroup);
+    TestsHookAskCommit, TestsEditorMenuGroup,
+    // Kontextmenü der Projektverwaltung (#1817).
+    TestsProjectRunUnit, TestsProjectNoTestUnit);
 
   TAtlasTestsStrings = class
   public
@@ -106,7 +108,9 @@ const
      'Ohne Terminal (Commit aus der IDE) bleibt es bei der Liste.',
      'Atlas: Betroffene Tests jetzt ausführen (Test-EXE ohne neuen Build)? [j/N] ',
      'Atlas: Tests fehlgeschlagen. Trotzdem committen? [j/N] ',
-     'Tests'),
+     'Tests',
+     'Tests dieser Unit ausführen',
+     'Tests: Keine Testunit mit DUnitX-Tests zu %s gefunden.'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -172,7 +176,9 @@ const
      'Without a terminal (commit from the IDE) only the list is shown.',
      'Atlas: Run the affected tests now (test EXE without a new build)? [y/N] ',
      'Atlas: Tests failed. Commit anyway? [y/N] ',
-     'Tests'));
+     'Tests',
+     'Run tests for this unit',
+     'Tests: No test unit with DUnitX tests found for %s.'));
 
 { TAtlasTestsStrings }
 
