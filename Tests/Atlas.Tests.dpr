@@ -1608,6 +1608,8 @@ uses
   Atlas.Core.Designer.FormModel in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormModel.pas',
   Atlas.Core.Designer.FormModel.Tests in 'IDE.Expert\Atlas.Core.Designer.FormModel.Tests.pas',
   Atlas.Core.Designer.Similar in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Similar.pas',
+  Atlas.Core.Designer.Neighbours in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Neighbours.pas',
+  Atlas.Core.Designer.Neighbours.Tests in 'IDE.Expert\Atlas.Core.Designer.Neighbours.Tests.pas',
   Atlas.Core.Designer.SelectionSets in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas',
   Atlas.Core.Designer.SelectionSets.Tests in 'IDE.Expert\Atlas.Core.Designer.SelectionSets.Tests.pas',
   Atlas.Core.Designer.Similar.Tests in 'IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas',

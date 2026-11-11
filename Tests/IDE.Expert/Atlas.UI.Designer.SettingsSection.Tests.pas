@@ -28,6 +28,8 @@ type
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
+    [Test]
+    procedure SpatialNavigationRoundTrip;
   end;
 
 implementation
@@ -141,6 +143,29 @@ begin
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'DesignerSelectionSets').Checked);
     Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSelectionSetsStorage').Choice);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.SpatialNavigationRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSpatialNavigation').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSpatialCrossContainers').Checked);
+    CheckOf(mPage, 'DesignerSpatialNavigation').Checked := False;
+    CheckOf(mPage, 'DesignerSpatialCrossContainers').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerSpatialNavigation, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerSpatialCrossContainers);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerSpatialNavigation').Checked);
   finally
     mPage.Free;
   end;
