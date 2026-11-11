@@ -472,6 +472,12 @@ procedure TAtlasWorkingCopiesDialog.Fill;
 var
   mIndex: Integer;
 begin
+  // CreateWnd kann schon im Konstruktor der Basis laufen (TAtlasDialog, BorderStyle erzeugt das Fenster neu),
+  // bevor es die Liste gibt.
+  if FView = nil then
+  begin
+    Exit;
+  end;
   // Die Liste braucht ein Fenster; hat der Dialog schon eines, auch die Liste anlegen.
   if not FView.HandleAllocated then
   begin
