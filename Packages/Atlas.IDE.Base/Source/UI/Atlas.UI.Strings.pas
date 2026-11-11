@@ -734,7 +734,9 @@ type
     // Kennzahlen-Karte an Methoden und Typen (#1787).
     SettingsBreadcrumbsMetrics, BreadcrumbsMetricsLines, BreadcrumbsMetricsCyclomatic, BreadcrumbsMetricsNesting,
     BreadcrumbsMetricsParameters, BreadcrumbsMetricsMembers, BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit,
-    BreadcrumbsMetricsMissing);
+    BreadcrumbsMetricsMissing,
+    // Wechsel zwischen den uses-Klauseln (#1760).
+    GotoUsesToward);
 
   TAtlasStrings = class
   private
@@ -2449,7 +2451,8 @@ const
      'Mitglieder',
      'Vererbungstiefe',
      '%s (Grenze %d)',
-     'Kennzahlen noch nicht verfügbar'),
+     'Kennzahlen noch nicht verfügbar',
+     'Zur uses-Klausel (%s)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4080,7 +4083,8 @@ const
      'Members',
      'Inheritance depth',
      '%s (limit %d)',
-     'Metrics not available yet'));
+     'Metrics not available yet',
+     'Go to uses clause (%s)'));
 
 { TAtlasStrings }
 
