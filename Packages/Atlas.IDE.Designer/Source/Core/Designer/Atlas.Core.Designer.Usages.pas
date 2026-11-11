@@ -141,10 +141,14 @@ begin
   end;
 end;
 
+const
+  cEventPrefix = 'On';
+
 /// <summary>„OnClick“, „OnChange“: Name eines Ereignisses.</summary>
 function IsEventName(const AName: string): Boolean;
 begin
-  Result := (Length(AName) > 2) and StartsText('On', AName) and (AName[3] >= 'A') and (AName[3] <= 'Z');
+  Result := (Length(AName) > Length(cEventPrefix)) and StartsText(cEventPrefix, AName) and
+    CharInSet(AName[Length(cEventPrefix) + 1], ['A'..'Z']);
 end;
 
 class function TAtlasDesignerUsages.KindAt(const ALine: string; ACharacter: Integer): TAtlasUsageKind;
