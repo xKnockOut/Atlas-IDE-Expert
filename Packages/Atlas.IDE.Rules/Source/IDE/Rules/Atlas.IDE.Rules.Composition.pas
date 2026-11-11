@@ -17,7 +17,10 @@
 // - die Abschnitte „Prüfregeln“ (mit Wegen zu den Regeln, Baseline und
 //   Unterdrückungen) und „Editor“ im Optionsdialog,
 // - das Aktualisieren der Baseline (IAtlasBaselineSource) für die
-//   Einrichtung der Willkommensseite (#759).
+//   Einrichtung der Willkommensseite (#759),
+// - den Assistenten „Eigene Prüfregel“ in Datei › Neu › Weitere (#1821):
+//   neue Schicht in forbidden-uses der Projektdatei
+//   (Atlas.Core.Rules.CustomLayer), danach der Regel-Editor bei der Regel.
 // Prüfen selbst, Fenster „Atlas-Prüfung“ mit Erklären, Inline-Hinweise,
 // Übersichtsleiste, der Hinweis bei abgeschaltetem Modul (#1454) sowie Stand
 // und Format der Baseline-Datei bleiben in Base: Sie zeigen auch
@@ -34,7 +37,8 @@ uses
   Atlas.IDE.Contracts.Rules;
 
 type
-  TAtlasRulesModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasBaselineSource)
+  TAtlasRulesModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
+    IAtlasBaselineSource)
   public const
     cModuleId = 'atlas.rules';
     cSwitch = 'ruleChecks';
@@ -46,6 +50,7 @@ type
     procedure Stop;
     function IsActive: Boolean;
     function Commands: TArray<TAtlasModuleCommand>;
+    function MenuEntries: TArray<TAtlasMenuEntry>;
     function StartUpdate(const AProject: string; const ADone: TAtlasBaselineUpdateDone): string;
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
@@ -56,16 +61,21 @@ type
 implementation
 
 uses
+  System.JSON,
+  ToolsAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Rules.CustomLayer,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.ProjectDialog,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Settings.Project,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.IDE.Rules.Baseline,
   Atlas.IDE.Rules.BulkFix,
@@ -134,6 +144,65 @@ begin
   TAtlasIdeRulesBaseline.AddCompilerMessages;
 end;
 
+{ Eigene Prüfregel (#1821) }
+
+/// <summary>Wert von "rules" der Projektdatei als JSON-Text; '' ohne.</summary>
+function ProjectRulesJson: string;
+var
+  mRoot: TJSONObject;
+  mRules: TJSONValue;
+begin
+  Result := '';
+  mRoot := TAtlasProjectSettings.ReadProject;
+  try
+    if mRoot <> nil then
+    begin
+      mRules := mRoot.GetValue('rules');
+      if mRules <> nil then
+      begin
+        Result := mRules.ToJSON;
+      end;
+    end;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+/// <summary>Unitname der Datei im Editor; '' ohne.</summary>
+function ActiveUnitName: string;
+var
+  mView: IOTAEditView;
+begin
+  Result := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
+  begin
+    Result := ChangeFileExt(ExtractFileName(mView.Buffer.FileName), '');
+  end;
+end;
+
+/// <summary>Neue Schicht in forbidden-uses der Projektdatei, dann den Regel-Editor bei der Regel öffnen.</summary>
+procedure NewCustomRule;
+var
+  mFile, mFrom, mPath, mJson: string;
+begin
+  mFile := TAtlasProjectSettings.SettingsFile;
+  if mFile = '' then
+  begin
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGalleryNoProject));
+    Exit;
+  end;
+  mFrom := TAtlasCustomLayer.LayerFrom(ActiveUnitName);
+  TAtlasCustomLayer.NewLayer(ProjectRulesJson, mFrom, mPath, mJson);
+  if not TAtlasProjectSettings.WriteValue(mPath, mJson) then
+  begin
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesGalleryFailed, [ExtractFileName(mFile)]));
+    Exit;
+  end;
+  TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesGalleryAdded, [mFrom, ExtractFileName(mFile)]));
+  TAtlasProjectSettings.ShowRule(TAtlasCustomLayer.cRuleId);
+end;
+
 { Befehle }
 
 function Command(const AId: string; ACaption: TAtlasRulesTextId; const ARun: TProc;
@@ -188,7 +257,17 @@ begin
     Command('Atlas.ApplyDfmRulesProject', TAtlasRulesTextId.DfmRulesProjectCommand, ApplyDfmRulesProject,
       DfmPropertyRulesVisible),
     Command('Atlas.ApplyDfmRulesGroup', TAtlasRulesTextId.DfmRulesGroupCommand, ApplyDfmRulesGroup,
-      DfmPropertyRulesVisible)];
+      DfmPropertyRulesVisible),
+    // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
+    Command('Atlas.NewCustomRule', TAtlasRulesTextId.RulesGalleryCustomRule, NewCustomRule, nil)];
+  Result[High(Result)].Description := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGalleryCustomRuleHint);
+end;
+
+function TAtlasRulesModule.MenuEntries: TArray<TAtlasMenuEntry>;
+begin
+  Result := [Default(TAtlasMenuEntry)];
+  Result[0].CommandId := 'Atlas.NewCustomRule';
+  Result[0].Place := TAtlasMenuPlace.Gallery;
 end;
 
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
@@ -228,6 +307,7 @@ begin
   GScope := mRegistry.RegisterModule(mModule);
   TAtlasIdeRulesBaseline.Install(GScope);
   GScope.Provide(IAtlasCommandSource, mRef);
+  GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasBaselineSource, mRef);
   GScope.Provide(IAtlasBulkFixer, TAtlasIdeRulesBulkFix.Create(GScope) as IAtlasBulkFixer);
   GScope.Provide(IAtlasRuleActions, TAtlasIdeRuleActions.Create as IAtlasRuleActions);
