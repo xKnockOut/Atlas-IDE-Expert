@@ -197,7 +197,7 @@ var
   mRoot: TComponent;
   mSettings: TAtlasPluginSettings;
   mExceptions: TAtlasNearExceptions;
-  mBitmap: TBitmap;
+  mBitmap: Vcl.Graphics.TBitmap;
   mParents: TArray<TWinControl>;
   mParent: TWinControl;
   mGroup: TNearGroup;
@@ -222,7 +222,7 @@ begin
     end;
   end;
   mExceptions := LoadExceptions(AScan.FormFile);
-  mBitmap := TBitmap.Create;
+  mBitmap := Vcl.Graphics.TBitmap.Create;
   try
     for mParent in mParents do
     begin

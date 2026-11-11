@@ -102,7 +102,7 @@ begin
   begin
     FScale.Levels := [cPercent];
   end;
-  FMeasure := TBitmap.Create;
+  FMeasure := Vcl.Graphics.TBitmap.Create;
   inherited CreatePreview(AOwner, AData.Form, AColors);
   Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleTitle, [AData.Form.FormName]);
   FList := TListBox.Create(Self);

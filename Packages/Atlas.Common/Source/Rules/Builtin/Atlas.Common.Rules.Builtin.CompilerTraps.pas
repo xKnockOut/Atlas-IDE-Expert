@@ -8,7 +8,8 @@
 //                              gilt nicht (wie E2018). Korrektur: string(...) darum.
 //   uses-order-hides-type      Winapi.Windows steht in uses hinter Vcl.Graphics bzw. FMX.Graphics, und die Unit
 //                              nennt TBitmap: Gemeint ist dann der Record aus Winapi.Windows (wie E2003 bei
-//                              TBitmap.Create). interface- und implementation-uses zählen zusammen. Korrektur nur,
+//                              TBitmap.Create). interface- und implementation-uses zählen zusammen, gezählt wird
+//                              TBitmap aber nur hinter dem Windows-Eintrag. Korrektur nur,
 //                              wenn beide in derselben Liste stehen: Winapi.Windows davor stellen.
 //   interface-uses-missing     Ein Name im interface-Teil kommt aus einer Unit, die nur im uses des
 //                              implementation-Teils steht (wie E2003). Gemeldet wird nur, was die Namensauflösung
@@ -138,21 +139,6 @@ begin
   Result := Copy(AName, mDot + 1, MaxInt);
 end;
 
-/// <summary>Index des Eintrags in ANames, der einer der Units AUnits entspricht; -1 ohne.</summary>
-function IndexOfUnit(const ANames: TArray<string>; const AUnits: array of string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ANames) do
-  begin
-    if MatchText(ANames[mIndex], AUnits) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Steht vor dem Token AIndex (ohne Kommentare) ein Punkt?</summary>
 function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
@@ -258,14 +244,11 @@ begin
 end;
 
 procedure TExitArrayLiteralRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mLineBreak: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Exit') then
   begin
     Exit;
   end;
-  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -377,15 +360,20 @@ begin
   Result := TRuleDescriptor.Create(cUsesOrderHidesTypeRuleId, TRuleSeverity.Error, cTexts[TTrapText.OrderTitle].Text);
 end;
 
-/// <summary>Nennt die Datei TBitmap außerhalb der uses-Listen und nicht nach einem Punkt?</summary>
-function NamesBitmap(const ATokens: TArray<TPascalToken>; const AClauses: TArray<TUsesClauseInfo>): Boolean;
+/// <summary>Nennt die Datei TBitmap hinter AAfter (dem Windows-Eintrag), außerhalb der uses-Listen und nicht nach
+/// einem Punkt? Davor gilt der Eintrag noch nicht: Das uses des implementation-Teils wirkt nicht auf den interface-
+/// Teil.</summary>
+function NamesBitmap(const ATokens: TArray<TPascalToken>; const AClauses: TArray<TUsesClauseInfo>;
+  const AAfter: TTextPosition): Boolean;
 var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(ATokens) do
   begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, 'TBitmap') and
-      not AfterDot(ATokens, mIndex) and not TUsesClauses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) then
+      ((ATokens[mIndex].StartPos.Line > AAfter.Line) or ((ATokens[mIndex].StartPos.Line = AAfter.Line) and
+      (ATokens[mIndex].StartPos.Character >= AAfter.Character))) and not AfterDot(ATokens, mIndex) and
+      not TUsesClauses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) then
     begin
       Exit(True);
     end;
@@ -433,7 +421,8 @@ begin
       mGraphics := mBefore;
     end;
   end;
-  if (mWindows < 0) or (mGraphics < 0) or (mWindows < mGraphics) or not NamesBitmap(mTokens, mClauses) then
+  if (mWindows < 0) or (mGraphics < 0) or (mWindows < mGraphics) or
+    not NamesBitmap(mTokens, mClauses, mUses[mWindows].Range.EndPos) then
   begin
     Exit;
   end;

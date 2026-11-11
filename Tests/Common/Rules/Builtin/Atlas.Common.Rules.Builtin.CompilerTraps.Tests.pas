@@ -134,6 +134,10 @@ begin
     'begin'#10'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  // TBitmap nur im interface-Teil: Das implementation-uses wirkt dort nicht (MinimapLayers).
+  TRuleAssert.Silent(TUsesOrderHidesTypeRule.Create, 'unit U;'#10'interface'#10'uses'#10'  Vcl.Graphics;'#10 +
+    'type'#10'  TBild = class'#10'    FBild: TBitmap;'#10'  end;'#10'implementation'#10'uses'#10 +
+    '  Winapi.Windows;'#10'end.');
   // Ohne TBitmap oder nur qualifiziert.
   TRuleAssert.Silent(TUsesOrderHidesTypeRule.Create, 'unit U;'#10'interface'#10'uses'#10 +
     '  Vcl.Graphics, Winapi.Windows;'#10'implementation'#10'procedure Lauf(B: Vcl.Graphics.TBitmap; C: TCanvas);' +
