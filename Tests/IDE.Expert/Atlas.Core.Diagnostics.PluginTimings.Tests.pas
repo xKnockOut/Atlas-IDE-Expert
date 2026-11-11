@@ -431,6 +431,8 @@ begin
   Assert.AreEqual(1, Integer(Length(mRequests)));
   Assert.AreEqual(4, mRequests[0].Stat.Calls);
   Assert.AreEqual(32.0, mRequests[0].WaitedMs, 0.001, 'nur die Anfragen aus dem Hauptthread');
+  Assert.AreEqual(2, mRequests[0].WaitedCalls);
+  Assert.AreEqual(16.0, mRequests[0].WaitedMeanMs, 0.001, 'Mittel je wartender Anfrage, nicht die Summe');
   Assert.AreEqual(30.0, mRequests[0].Stat.MaxMs, 0.001);
   Assert.AreEqual(1, mRequests[0].TimedOut);
   Assert.AreEqual(1, mRequests[0].Cancelled);

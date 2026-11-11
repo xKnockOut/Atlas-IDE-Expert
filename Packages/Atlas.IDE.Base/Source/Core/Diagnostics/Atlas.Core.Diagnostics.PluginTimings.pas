@@ -28,7 +28,9 @@
 // - Belegung: Wie viel jeder Sekunde der äußerste Atlas-Aufruf den Hauptthread
 //   hielt, für die letzten 60 Sekunden (TAtlasBusyMeter).
 // - Server: Dauer, Zeitüberschreitung und Abbruch je Anfrage (TLspClient) und
-//   die Zeit, die dabei der Hauptthread wartete.
+//   die Zeit, die dabei der Hauptthread wartete: Anzahl und Mittel je
+//   wartender Anfrage (#1990; vorher stand die Summe neben Mittel und
+//   Maximum und las sich wie eine Wartezeit je Anfrage).
 // - Hintergrund: Dauer je Quelle (Vervollständigung u. a.) und wie oft sie zu
 //   langsam war (TAtlasGuard.ReportProviderSlow).
 // - Hänger: die Meldungen des Einfrier-Wächters (#501) dieser Sitzung.
@@ -80,9 +82,13 @@ type
     Stat: TAtlasCallStat;
     /// <summary>So lange stand der Hauptthread insgesamt auf Antworten dieser Anfrage.</summary>
     WaitedMs: Double;
+    /// <summary>So oft wartete der Hauptthread auf diese Anfrage.</summary>
+    WaitedCalls: Integer;
     TimedOut: Integer;
     Cancelled: Integer;
     Failed: Integer;
+    /// <summary>Mittlere Wartezeit des Hauptthreads je wartender Anfrage; 0 ohne.</summary>
+    function WaitedMeanMs: Double;
   end;
 
   TAtlasSourceTiming = record
@@ -332,6 +338,17 @@ begin
   if Calls > 0 then
   begin
     Result := TotalMs / Calls;
+  end;
+end;
+
+{ TAtlasRequestTiming }
+
+function TAtlasRequestTiming.WaitedMeanMs: Double;
+begin
+  Result := 0;
+  if WaitedCalls > 0 then
+  begin
+    Result := WaitedMs / WaitedCalls;
   end;
 end;
 
@@ -768,6 +785,7 @@ begin
     if AMainThread then
     begin
       mRequest.WaitedMs := mRequest.WaitedMs + AMs;
+      Inc(mRequest.WaitedCalls);
     end;
     if AOutcome = TAtlasRequestOutcome.TimedOut then
     begin
