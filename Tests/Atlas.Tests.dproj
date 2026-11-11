@@ -2051,8 +2051,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Gaps.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.MultiResize.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.SelectionBar.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Magnifier.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>

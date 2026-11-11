@@ -47,6 +47,8 @@ type
     [Test]
     procedure ToJsonCarriesSectionsRunsAndLocations;
     [Test]
+    procedure ToJsonOmitsLocationsInIdeUnits;
+    [Test]
     procedure HintsJsonPassesSettings;
     [Test]
     procedure ReaderPrefersOwnText;
@@ -310,6 +312,33 @@ begin
   Assert.AreEqual('ELaufFehler', Targets[1].Name);
   Assert.AreEqual(0, Integer(Length(TLspDocumentation.Targets(nil, MainUnit, '', Doc))));
   Targets := nil;
+end;
+
+procedure TLspDocumentationTests.ToJsonOmitsLocationsInIdeUnits;
+var
+  Doc: TXmlDoc;
+  Target: TDocTarget;
+  Json: TJSONObject;
+  Text: string;
+begin
+  Doc := TXmlDoc.Parse('<summary>Wie <see cref="TForm"/></summary><exception cref="EFormFehler">x</exception>');
+  Target := Default(TDocTarget);
+  Target.Cref := 'TForm';
+  Target.Name := 'TForm';
+  Target.UnitName := 'Vcl.Forms';
+  Target.FileName := 'atlas-ide:Vcl.Forms.pas';
+  Target.Line := 3;
+  Target.Character := 2;
+  Json := TLspDocumentation.ToJson(Doc, [Target]);
+  try
+    Text := Json.ToJSON;
+    // Name und Unit bleiben, ein Fundort (und damit ein Sprungziel) fehlt.
+    Assert.Contains(Text, '"target":"TForm","name":"TForm","unit":"Vcl.Forms"');
+    Assert.IsFalse(Pos('atlas-ide:', Text) > 0, Text);
+    Assert.IsFalse(Pos('"file"', Text) > 0, Text);
+  finally
+    Json.Free;
+  end;
 end;
 
 procedure TLspDocumentationTests.ToJsonCarriesSectionsRunsAndLocations;

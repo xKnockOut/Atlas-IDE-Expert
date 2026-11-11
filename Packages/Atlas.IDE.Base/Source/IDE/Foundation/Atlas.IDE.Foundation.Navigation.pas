@@ -3,6 +3,8 @@
 // Zu einer Stelle springen (#400, #588): Datei öffnen, Editor zeigen, Cursor setzen. Foundation des Plugins
 // (A-09): bis dahin TAtlasEditorHover.GoToLocation; Ergebnisfenster, Umbenennen, Vervollständigung, Befehle
 // und Unit-Suche importierten dafür den Hover. Nur im Hauptthread.
+// Ersatz-Units des Servers (atlas-ide:…, nur aus der RTTI der Packages) gibt es nicht als Datei: kein Sprung
+// dorthin, die IDE legte sonst einen leeren Reiter unter diesem Namen an.
 
 interface
 
@@ -27,7 +29,8 @@ implementation
 
 uses
   System.SysUtils,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Lsp.IdeMembers;
 
 /// <summary>Modul von AFileName; öffnet die Datei nur, wenn sie noch nicht offen ist. OpenFile öffnete sie sonst
 /// jedes Mal neu (Doppelklick in „Atlas-Prüfung“), bei Formular-Units samt Designer. nil, wenn das scheitert.
@@ -38,7 +41,7 @@ var
   mModules: IOTAModuleServices;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  if TAtlasIdeMembers.IsIdePath(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
@@ -106,7 +109,7 @@ var
   mEditor: IOTASourceEditor;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  if TAtlasIdeMembers.IsIdePath(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;

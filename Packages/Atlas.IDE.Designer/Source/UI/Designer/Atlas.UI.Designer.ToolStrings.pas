@@ -2,7 +2,7 @@
 
 // Oberflächentexte der Designer-Werkzeuge mit eigenem Knopf in der
 // Designer-Leiste (Abstandsgriffe #734, gemeinsame Größengriffe #737,
-// Schnellleiste #735) auf Deutsch und Englisch. Die Sprache bestimmt Base (`TAtlasStrings.Language`) wie bei
+// Schnellleiste #735, Lupe #743) auf Deutsch und Englisch. Die Sprache bestimmt Base (`TAtlasStrings.Language`) wie bei
 // `Atlas.UI.Designer.Strings`.
 
 interface
@@ -22,7 +22,9 @@ type
     BarBoldShort, BarItalic, BarItalicShort, BarFontColor, BarColorMore, BarSizeTitle, BarSizePrompt, BarSizeInvalid,
     BarFlag, BarAnchor, BarSameWidth, BarSameHeight, BarAlignLeft, BarAlignCenter, BarAlignRight, BarFitText,
     SettingsBar, SettingsBarMode, SettingsBarAuto, SettingsBarShortcut, SettingsBarDelay, SettingsBarItems,
-    SettingsBarKey);
+    SettingsBarKey, MagHint, MagTitle, MagShow, MagFreeze, MagZoom, MagGrid, MagEdges, MagCopyColor, MagCopyPos,
+    MagHeader, MagHeaderParent, MagFrozen, MagSystem, MagCopied, MagOutside, SettingsMag, SettingsMagZoom,
+    SettingsMagGrid, SettingsMagEdges, SettingsMagKey);
 
 {$SCOPEDENUMS OFF}
 
@@ -102,7 +104,27 @@ const
      'Nur auf Tastendruck',
      'Verzögerung bis zum Einblenden (ms)',
      'Knöpfe und Reihenfolge (durch Komma getrennt)',
-     'Taste zum Einblenden'),
+     'Taste zum Einblenden',
+     'Lupe ein- oder ausblenden',
+     'Lupe',
+     'Lupe zeigen',
+     'Ausschnitt einfrieren',
+     '%d×',
+     'Pixelraster',
+     'Kanten der Auswahl und Nachbarn',
+     'Farbwert kopieren',
+     'Koordinaten kopieren',
+     '%d×   X %d, Y %d',
+     '   ·   %d, %d in %s',
+     '   ·   fest',
+     '%s (Systemfarbe)',
+     'Lupe: „%s“ kopiert.',
+     'außerhalb des Formulars',
+     'Lupe für den Designer',
+     'Vergrößerung beim Öffnen (2, 4 oder 8)',
+     'Pixelraster ab 4×',
+     'Kanten der Auswahl und Nachbarn einzeichnen',
+     'Taste für Lupe und Einfrieren'),
     ('Show or hide gap handles for a multiple selection in a row or column',
      'Show gap handles',
      'Set gaps …',
@@ -164,7 +186,27 @@ const
      'Only on key press',
      'Delay before it appears (ms)',
      'Buttons and order (comma separated)',
-     'Key to show it'));
+     'Key to show it',
+     'Show or hide the magnifier',
+     'Magnifier',
+     'Show magnifier',
+     'Freeze view',
+     '%d×',
+     'Pixel grid',
+     'Edges of the selection and its neighbours',
+     'Copy colour value',
+     'Copy coordinates',
+     '%d×   X %d, Y %d',
+     '   ·   %d, %d in %s',
+     '   ·   frozen',
+     '%s (system colour)',
+     'Magnifier: copied “%s”.',
+     'outside the form',
+     'Magnifier for the designer',
+     'Zoom when opened (2, 4 or 8)',
+     'Pixel grid from 4×',
+     'Draw edges of the selection and its neighbours',
+     'Key for magnifier and freeze'));
 
 { TAtlasDesignerToolStrings }
 
