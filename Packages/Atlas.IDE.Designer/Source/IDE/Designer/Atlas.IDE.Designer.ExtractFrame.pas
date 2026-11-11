@@ -339,6 +339,48 @@ begin
   end;
 end;
 
+/// <summary>Dateien schreiben, Module neu laden und die Frame-Unit ins Projekt eintragen; nach dem Dialog,
+/// wenn die IDE wieder frei ist.</summary>
+procedure WriteLater(const ASource: TExtractSource; const AInput: TAtlasExtractInput;
+  const AResult: TAtlasExtractResult; const AOnMessage: TProc<string>);
+var
+  mSource: TExtractSource;
+  mInput: TAtlasExtractInput;
+  mResult: TAtlasExtractResult;
+begin
+  mSource := ASource;
+  mInput := AInput;
+  mResult := AResult;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.DesignerBar,
+    procedure
+    var
+      mProject: IOTAProject;
+    begin
+      try
+        SaveText(FrameFileOf(mInput), mResult.FrameUnit);
+        SaveText(ChangeFileExt(FrameFileOf(mInput), '.dfm'), mResult.FrameDfm);
+        CloseModule(mSource.FormFile);
+        SaveText(mSource.FormFile, mResult.FormUnit);
+        SaveText(mSource.FormDfm, mResult.FormDfm);
+      except
+        on E: EAtlasTextFileError do
+        begin
+          AOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfFailed, [E.Message]));
+          Exit;
+        end;
+      end;
+      mProject := ProjectOf(mSource.Project);
+      if mProject <> nil then
+      begin
+        mProject.AddFile(FrameFileOf(mInput), True);
+      end;
+      OpenForm(FrameFileOf(mInput));
+      OpenForm(mSource.FormFile);
+      AOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfDone, [mInput.FrameClass,
+        mInput.FrameUnit, Length(mResult.Moved), Length(mResult.MovedHandlers)]));
+    end);
+end;
+
 procedure TAtlasIdeExtractFrame.Run;
 var
   mEditor: IOTAFormEditor;
@@ -348,7 +390,6 @@ var
   mResult: TAtlasExtractResult;
   mPreview: TAtlasExtractPreview;
   mCanUndo: Boolean;
-  mOnMessage: TProc<string>;
 begin
   if not TAtlasDesignerAccess.Current(mEditor, mRoot) or not SourceOf(mEditor, mRoot, mSource) then
   begin
@@ -388,35 +429,7 @@ begin
         FLast.OldDfm := mSource.OldDfm;
         FLast.FrameFile := FrameFileOf(mInput);
         FLast.Project := mSource.Project;
-        mOnMessage := FOnMessage;
-        TAtlasMainThread.ForceQueue(TAtlasFeature.DesignerBar,
-          procedure
-          var
-            mProject: IOTAProject;
-          begin
-            try
-              SaveText(FrameFileOf(mInput), mResult.FrameUnit);
-              SaveText(ChangeFileExt(FrameFileOf(mInput), '.dfm'), mResult.FrameDfm);
-              CloseModule(mSource.FormFile);
-              SaveText(mSource.FormFile, mResult.FormUnit);
-              SaveText(mSource.FormDfm, mResult.FormDfm);
-            except
-              on E: EAtlasTextFileError do
-              begin
-                mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfFailed, [E.Message]));
-                Exit;
-              end;
-            end;
-            mProject := ProjectOf(mSource.Project);
-            if mProject <> nil then
-            begin
-              mProject.AddFile(FrameFileOf(mInput), True);
-            end;
-            OpenForm(FrameFileOf(mInput));
-            OpenForm(mSource.FormFile);
-            mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfDone, [mInput.FrameClass,
-              mInput.FrameUnit, Length(mResult.Moved), Length(mResult.MovedHandlers)]));
-          end);
+        WriteLater(mSource, mInput, mResult, FOnMessage);
       end;
     TAtlasExtractDialogResult.Undo:
       Undo;

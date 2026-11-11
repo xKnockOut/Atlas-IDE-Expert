@@ -65,6 +65,10 @@ type
     function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
     function AddEdit(AGrid: TGridPanel; const ACaption, AText: string): TEdit;
     function AddMemo(const ACaption, AText: string): TMemo;
+    function AddCheck(AParent: TWinControl; const ACaption: string; AChecked: Boolean): TCheckBox;
+    procedure BuildGrid(const AInput: TAtlasExtractInput);
+    procedure BuildOptions(const AInput: TAtlasExtractInput);
+    procedure BuildButtons(ACanUndo: Boolean);
     procedure InputChanged(Sender: TObject);
     procedure Refresh;
   public
@@ -91,19 +95,115 @@ const
   cUndoWidth = 240;
   cRowHeight = 30;
   cLabelWidth = 130;
+  cGridColumns = 4;
+  cGridRows = 2;
+  /// <summary>Halbe Restbreite bzw. -höhe im Raster (Prozent).</summary>
+  cHalf = 50;
   cCodeFont = 'Consolas';
 
 { TAtlasExtractDialog }
 
-constructor TAtlasExtractDialog.CreateDialog(AOwner: TComponent; const AFormName: string;
-  const AInput: TAtlasExtractInput; ACanUndo: Boolean; const AOnPreview: TFunc<TAtlasExtractInput,
-  TAtlasExtractPreview>);
+procedure TAtlasExtractDialog.BuildGrid(const AInput: TAtlasExtractInput);
 var
-  mBottom, mOptions: TPanel;
   mGrid: TGridPanel;
   mColumn: TColumnItem;
   mIndex: Integer;
+begin
+  mGrid := TGridPanel.Create(Self);
+  mGrid.Parent := Self;
+  mGrid.Align := alTop;
+  mGrid.BevelOuter := bvNone;
+  mGrid.Height := MulDiv(cGridRows * cRowHeight, CurrentPPI, cBasePpi);
+  mGrid.ColumnCollection.BeginUpdate;
+  try
+    mGrid.ColumnCollection.Clear;
+    // Abwechselnd Beschriftung (fest) und Eingabe (halbe Restbreite).
+    for mIndex := 0 to cGridColumns - 1 do
+    begin
+      mColumn := mGrid.ColumnCollection.Add;
+      if Odd(mIndex) then
+      begin
+        mColumn.Value := cHalf;
+      end
+      else
+      begin
+        mColumn.SizeStyle := ssAbsolute;
+        mColumn.Value := MulDiv(cLabelWidth, CurrentPPI, cBasePpi);
+      end;
+    end;
+  finally
+    mGrid.ColumnCollection.EndUpdate;
+  end;
+  mGrid.RowCollection.Clear;
+  for mIndex := 0 to cGridRows - 1 do
+  begin
+    mGrid.RowCollection.Add.Value := cHalf;
+  end;
+  FFrameClass := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfFrameClass),
+    AInput.FrameClass);
+  FFrameUnit := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfUnit), AInput.FrameUnit);
+  FFolder := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfFolder), AInput.Folder);
+  FInstance := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfInstance),
+    AInput.InstanceName);
+end;
+
+function TAtlasExtractDialog.AddCheck(AParent: TWinControl; const ACaption: string; AChecked: Boolean): TCheckBox;
+begin
+  Result := TCheckBox.Create(Self);
+  Result.Parent := AParent;
+  Result.Align := alLeft;
+  Result.AlignWithMargins := True;
+  Result.Caption := ACaption;
+  Result.Width := Canvas.TextWidth(ACaption) + MulDiv(cRowHeight, CurrentPPI, cBasePpi);
+  Result.Checked := AChecked;
+  Result.OnClick := InputChanged;
+end;
+
+procedure TAtlasExtractDialog.BuildOptions(const AInput: TAtlasExtractInput);
+var
+  mOptions: TPanel;
+begin
+  mOptions := TPanel.Create(Self);
+  mOptions.Parent := Self;
+  mOptions.Align := alTop;
+  mOptions.Top := ClientHeight;
+  mOptions.BevelOuter := bvNone;
+  mOptions.Height := MulDiv(cRowHeight, CurrentPPI, cBasePpi);
+  FContainer := AddCheck(mOptions, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfContainer),
+    AInput.ContainerAsFrame);
+  FContainer.Enabled := AInput.CanContainer;
+  FMoveHandlers := AddCheck(mOptions, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfMoveHandlers),
+    AInput.MoveHandlers);
+  FError := TLabel.Create(Self);
+  FError.Parent := mOptions;
+  FError.Align := alClient;
+  FError.AlignWithMargins := True;
+  FError.Layout := tlCenter;
+  FError.Font.Color := clRed;
+end;
+
+procedure TAtlasExtractDialog.BuildButtons(ACanUndo: Boolean);
+var
+  mBottom: TPanel;
   mUndo: TButton;
+begin
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.BevelOuter := bvNone;
+  mBottom.AutoSize := True;
+  mUndo := AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfUndo), mrRetry, alLeft);
+  mUndo.Width := MulDiv(cUndoWidth, CurrentPPI, cBasePpi);
+  mUndo.Enabled := ACanUndo;
+  AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameCancel), mrCancel,
+    alRight).Cancel := True;
+  FApply := AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameApply), mrOk, alRight);
+  FApply.Default := True;
+end;
+
+constructor TAtlasExtractDialog.CreateDialog(AOwner: TComponent; const AFormName: string;
+  const AInput: TAtlasExtractInput; ACanUndo: Boolean; const AOnPreview: TFunc<TAtlasExtractInput,
+  TAtlasExtractPreview>);
 begin
   inherited CreateNew(AOwner);
   FInput := AInput;
@@ -115,83 +215,9 @@ begin
   Height := MulDiv(cHeight, CurrentPPI, cBasePpi);
   FUpdating := True;
   try
-    mGrid := TGridPanel.Create(Self);
-    mGrid.Parent := Self;
-    mGrid.Align := alTop;
-    mGrid.BevelOuter := bvNone;
-    mGrid.Height := MulDiv(2 * cRowHeight, CurrentPPI, cBasePpi);
-    mGrid.ColumnCollection.BeginUpdate;
-    try
-      mGrid.ColumnCollection.Clear;
-      // Abwechselnd Beschriftung (fest) und Eingabe (halbe Restbreite).
-      for mIndex := 0 to 3 do
-      begin
-        mColumn := mGrid.ColumnCollection.Add;
-        if Odd(mIndex) then
-        begin
-          mColumn.Value := 50;
-        end
-        else
-        begin
-          mColumn.SizeStyle := ssAbsolute;
-          mColumn.Value := MulDiv(cLabelWidth, CurrentPPI, cBasePpi);
-        end;
-      end;
-    finally
-      mGrid.ColumnCollection.EndUpdate;
-    end;
-    mGrid.RowCollection.Clear;
-    for mIndex := 0 to 1 do
-    begin
-      mGrid.RowCollection.Add.Value := 50;
-    end;
-    FFrameClass := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfFrameClass),
-      AInput.FrameClass);
-    FFrameUnit := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfUnit), AInput.FrameUnit);
-    FFolder := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfFolder), AInput.Folder);
-    FInstance := AddEdit(mGrid, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfInstance),
-      AInput.InstanceName);
-    mOptions := TPanel.Create(Self);
-    mOptions.Parent := Self;
-    mOptions.Align := alTop;
-    mOptions.Top := mGrid.Height;
-    mOptions.BevelOuter := bvNone;
-    mOptions.Height := MulDiv(cRowHeight, CurrentPPI, cBasePpi);
-    FContainer := TCheckBox.Create(Self);
-    FContainer.Parent := mOptions;
-    FContainer.Align := alLeft;
-    FContainer.AlignWithMargins := True;
-    FContainer.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfContainer);
-    FContainer.Width := Canvas.TextWidth(FContainer.Caption) + MulDiv(cRowHeight, CurrentPPI, cBasePpi);
-    FContainer.Checked := AInput.ContainerAsFrame;
-    FContainer.Enabled := AInput.CanContainer;
-    FContainer.OnClick := InputChanged;
-    FMoveHandlers := TCheckBox.Create(Self);
-    FMoveHandlers.Parent := mOptions;
-    FMoveHandlers.Align := alLeft;
-    FMoveHandlers.AlignWithMargins := True;
-    FMoveHandlers.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfMoveHandlers);
-    FMoveHandlers.Width := Canvas.TextWidth(FMoveHandlers.Caption) + MulDiv(cRowHeight, CurrentPPI, cBasePpi);
-    FMoveHandlers.Checked := AInput.MoveHandlers;
-    FMoveHandlers.OnClick := InputChanged;
-    FError := TLabel.Create(Self);
-    FError.Parent := mOptions;
-    FError.Align := alClient;
-    FError.AlignWithMargins := True;
-    FError.Layout := tlCenter;
-    FError.Font.Color := clRed;
-    mBottom := TPanel.Create(Self);
-    mBottom.Parent := Self;
-    mBottom.Align := alBottom;
-    mBottom.BevelOuter := bvNone;
-    mBottom.AutoSize := True;
-    mUndo := AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfUndo), mrRetry, alLeft);
-    mUndo.Width := MulDiv(cUndoWidth, CurrentPPI, cBasePpi);
-    mUndo.Enabled := ACanUndo;
-    AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameCancel), mrCancel,
-      alRight).Cancel := True;
-    FApply := AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameApply), mrOk, alRight);
-    FApply.Default := True;
+    BuildGrid(AInput);
+    BuildOptions(AInput);
+    BuildButtons(ACanUndo);
     FPages := TPageControl.Create(Self);
     FPages.Parent := Self;
     FPages.Align := alClient;

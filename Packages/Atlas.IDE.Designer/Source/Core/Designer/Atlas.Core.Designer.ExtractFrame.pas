@@ -106,6 +106,15 @@ type
 const
   cFrameIndent = 2;
   cCrLf = #13#10;
+  cAssign = ' = ';
+  /// <summary>Unbekannter Parent (vor der ersten Komponente); -1 ist das Formular selbst.</summary>
+  cNoParent = -2;
+  cPropLine = '%s%s = %s';
+  cObjectHead = '%sobject %s: %s';
+  cInlineHead = '%sinline %s: %s';
+  cInheritedHead = '%sinherited %s: %s';
+  cClassHead = '  %s = class(TFrame)';
+  cUnitHead = 'unit %s;';
 
 function HeaderOf(const ALine: string; out AName, AClassName: string): Boolean;
 var
@@ -129,13 +138,67 @@ begin
   end;
 end;
 
+/// <summary>Eigene Eigenschaften des obersten Knotens enden vor ALine (erstes Kind bzw. „end“).</summary>
+procedure EndProps(var ADfm: TDfm; const AStack: TArray<Integer>; ALine: Integer);
+var
+  mTop: Integer;
+begin
+  if Length(AStack) = 0 then
+  begin
+    Exit;
+  end;
+  mTop := AStack[High(AStack)];
+  if ADfm.Nodes[mTop].PropsLast < 0 then
+  begin
+    ADfm.Nodes[mTop].PropsLast := ALine - 1;
+  end;
+end;
+
+procedure OpenNode(var ADfm: TDfm; var AStack: TArray<Integer>; ALine: Integer; const AName, AClassName: string);
+var
+  mNode: TNode;
+begin
+  EndProps(ADfm, AStack, ALine);
+  mNode := Default(TNode);
+  mNode.Name := AName;
+  mNode.ClassName := AClassName;
+  mNode.Indent := TAtlasFormUnit.SpacesOf(ADfm.Lines[ALine]);
+  mNode.First := ALine;
+  mNode.Last := -1;
+  mNode.PropsLast := -1;
+  mNode.Parent := -1;
+  if Length(AStack) > 0 then
+  begin
+    mNode.Parent := AStack[High(AStack)];
+  end;
+  ADfm.Nodes := ADfm.Nodes + [mNode];
+  AStack := AStack + [High(ADfm.Nodes)];
+end;
+
+/// <summary>Schließt den obersten Knoten, wenn ALine sein „end“ ist.</summary>
+procedure CloseNode(var ADfm: TDfm; var AStack: TArray<Integer>; ALine: Integer);
+var
+  mTop: Integer;
+begin
+  if (Length(AStack) = 0) or (ADfm.Lines[ALine].Trim <> 'end') then
+  begin
+    Exit;
+  end;
+  mTop := AStack[High(AStack)];
+  if TAtlasFormUnit.SpacesOf(ADfm.Lines[ALine]) <> ADfm.Nodes[mTop].Indent then
+  begin
+    Exit;
+  end;
+  ADfm.Nodes[mTop].Last := ALine;
+  EndProps(ADfm, AStack, ALine);
+  SetLength(AStack, Length(AStack) - 1);
+end;
+
 function ParseDfm(const AText: string): TDfm;
 var
   mStack: TArray<Integer>;
   mIndex: Integer;
-  mNode: TNode;
   mName, mClass: string;
-  mTop: Integer;
 begin
   Result.Lines := AText.Replace(cCrLf, #10).Split([#10]);
   Result.Nodes := nil;
@@ -144,39 +207,11 @@ begin
   begin
     if HeaderOf(Result.Lines[mIndex], mName, mClass) then
     begin
-      if Length(mStack) > 0 then
-      begin
-        mTop := mStack[High(mStack)];
-        if Result.Nodes[mTop].PropsLast < 0 then
-        begin
-          Result.Nodes[mTop].PropsLast := mIndex - 1;
-        end;
-      end;
-      mNode := Default(TNode);
-      mNode.Name := mName;
-      mNode.ClassName := mClass;
-      mNode.Indent := TAtlasFormUnit.SpacesOf(Result.Lines[mIndex]);
-      mNode.First := mIndex;
-      mNode.Last := -1;
-      mNode.PropsLast := -1;
-      mNode.Parent := -1;
-      if Length(mStack) > 0 then
-      begin
-        mNode.Parent := mStack[High(mStack)];
-      end;
-      Result.Nodes := Result.Nodes + [mNode];
-      mStack := mStack + [High(Result.Nodes)];
+      OpenNode(Result, mStack, mIndex, mName, mClass);
     end
-    else if (Length(mStack) > 0) and (Result.Lines[mIndex].Trim = 'end') and
-      (TAtlasFormUnit.SpacesOf(Result.Lines[mIndex]) = Result.Nodes[mStack[High(mStack)]].Indent) then
+    else
     begin
-      mTop := mStack[High(mStack)];
-      Result.Nodes[mTop].Last := mIndex;
-      if Result.Nodes[mTop].PropsLast < 0 then
-      begin
-        Result.Nodes[mTop].PropsLast := mIndex - 1;
-      end;
-      SetLength(mStack, Length(mStack) - 1);
+      CloseNode(Result, mStack, mIndex);
     end;
   end;
 end;
@@ -216,9 +251,10 @@ begin
   for mIndex := Nodes[ANode].First + 1 to Nodes[ANode].PropsLast do
   begin
     mLine := Lines[mIndex];
-    if (TAtlasFormUnit.SpacesOf(mLine) = Nodes[ANode].Indent + cFrameIndent) and StartsText(AProp + ' = ', mLine.Trim) then
+    if (TAtlasFormUnit.SpacesOf(mLine) = Nodes[ANode].Indent + cFrameIndent) and
+      StartsText(AProp + cAssign, mLine.Trim) then
     begin
-      AValue := Copy(mLine.Trim, Length(AProp) + 4, MaxInt);
+      AValue := Copy(mLine.Trim, Length(AProp + cAssign) + 1, MaxInt);
       Exit(True);
     end;
   end;
@@ -259,10 +295,10 @@ var
 begin
   Result := '';
   mText := ALine.Trim;
-  mEq := Pos(' = ', mText);
-  if StartsText('On', mText) and (mEq > 0) and IsValidIdent(Copy(mText, mEq + 3, MaxInt)) then
+  mEq := Pos(cAssign, mText);
+  if StartsText('On', mText) and (mEq > 0) and IsValidIdent(Copy(mText, mEq + Length(cAssign), MaxInt)) then
   begin
-    Result := Copy(mText, mEq + 3, MaxInt);
+    Result := Copy(mText, mEq + Length(cAssign), MaxInt);
   end;
 end;
 
@@ -279,61 +315,79 @@ type
     Anchors: string;
   end;
 
-function SplitOf(const ADfm: TDfm; const AOptions: TAtlasExtractOptions; out ASplit: TSplit): string;
+function BoundsOf(const ADfm: TDfm; ANode: Integer): TRect;
+begin
+  Result := Bounds(IntValue(ADfm, ANode, 'Left'), IntValue(ADfm, ANode, 'Top'), IntValue(ADfm, ANode, 'Width'),
+    IntValue(ADfm, ANode, 'Height'));
+end;
+
+function ChildrenOf(const ADfm: TDfm; ANode: Integer): TArray<Integer>;
+var
+  mChild: Integer;
+begin
+  Result := nil;
+  for mChild := 0 to High(ADfm.Nodes) do
+  begin
+    if ADfm.Nodes[mChild].Parent = ANode then
+    begin
+      Result := Result + [mChild];
+    end;
+  end;
+end;
+
+/// <summary>Markierte Knoten mit gemeinsamem Rechteck; '' oder der Fehler.</summary>
+function SelectedOf(const ADfm: TDfm; const ANames: TArray<string>; var ASplit: TSplit): string;
 var
   mName: string;
-  mNode, mParent, mChild: Integer;
-  mRect: TRect;
+  mNode, mParent: Integer;
 begin
   Result := '';
-  ASplit := Default(TSplit);
-  if Length(AOptions.Names) = 0 then
-  begin
-    Exit(TAtlasExtractNote.cErrNothing);
-  end;
-  mParent := -2;
-  for mName in AOptions.Names do
+  mParent := cNoParent;
+  for mName in ANames do
   begin
     mNode := ADfm.IndexOf(mName);
     if mNode <= 0 then
     begin
       Exit(TAtlasExtractNote.cErrNotFound + '|' + mName);
     end;
-    if (mParent <> -2) and (ADfm.Nodes[mNode].Parent <> mParent) then
+    if (mParent <> cNoParent) and (ADfm.Nodes[mNode].Parent <> mParent) then
     begin
       Exit(TAtlasExtractNote.cErrParents);
     end;
     mParent := ADfm.Nodes[mNode].Parent;
     ASplit.Removed := ASplit.Removed + [mNode];
-    mRect := Bounds(IntValue(ADfm, mNode, 'Left'), IntValue(ADfm, mNode, 'Top'), IntValue(ADfm, mNode, 'Width'),
-      IntValue(ADfm, mNode, 'Height'));
     if Length(ASplit.Removed) = 1 then
     begin
-      ASplit.Bounds := mRect;
+      ASplit.Bounds := BoundsOf(ADfm, mNode);
     end
     else
     begin
-      ASplit.Bounds.Union(mRect);
+      ASplit.Bounds.Union(BoundsOf(ADfm, mNode));
     end;
   end;
+end;
+
+function SplitOf(const ADfm: TDfm; const AOptions: TAtlasExtractOptions; out ASplit: TSplit): string;
+begin
+  ASplit := Default(TSplit);
+  if Length(AOptions.Names) = 0 then
+  begin
+    Exit(TAtlasExtractNote.cErrNothing);
+  end;
+  Result := SelectedOf(ADfm, AOptions.Names, ASplit);
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  ASplit.Roots := ASplit.Removed;
   if Length(ASplit.Removed) = 1 then
   begin
     ADfm.Value(ASplit.Removed[0], 'Align', ASplit.Align);
     ADfm.Value(ASplit.Removed[0], 'Anchors', ASplit.Anchors);
-  end;
-  if AOptions.ContainerAsFrame and (Length(ASplit.Removed) = 1) then
-  begin
-    for mChild := 0 to High(ADfm.Nodes) do
+    if AOptions.ContainerAsFrame then
     begin
-      if ADfm.Nodes[mChild].Parent = ASplit.Removed[0] then
-      begin
-        ASplit.Roots := ASplit.Roots + [mChild];
-      end;
+      ASplit.Roots := ChildrenOf(ADfm, ASplit.Removed[0]);
     end;
-  end
-  else
-  begin
-    ASplit.Roots := ASplit.Removed;
   end;
 end;
 
@@ -501,8 +555,8 @@ begin
     mUses[High(mUses)] := mUses[High(mUses)].TrimRight.TrimRight([';']) + ',';
     mUses := mUses + ['  Vcl.Forms;'];
   end;
-  mLines := ['unit ' + AOptions.FrameUnit + ';', '', 'interface', '', 'uses'] + mUses +
-    ['', 'type', '  ' + AOptions.FrameClass + ' = class(TFrame)'];
+  mLines := [Format(cUnitHead, [AOptions.FrameUnit]), '', 'interface', '', 'uses'] + mUses +
+    ['', 'type', Format(cClassHead, [AOptions.FrameClass])];
   for mLine in AFields + ADecls do
   begin
     mLines := mLines + ['    ' + mLine.Trim];
@@ -531,8 +585,8 @@ begin
   Result := StartsText(AProp + ' = ', mText);
   if Result then
   begin
-    AResult := StringOfChar(' ', TAtlasFormUnit.SpacesOf(ALine)) + AProp + ' = ' +
-      IntToStr(StrToIntDef(Copy(mText, Length(AProp) + 4, MaxInt), 0) - ADelta);
+    AResult := Format(cPropLine, [StringOfChar(' ', TAtlasFormUnit.SpacesOf(ALine)), AProp,
+      IntToStr(StrToIntDef(Copy(mText, Length(AProp + cAssign) + 1, MaxInt), 0) - ADelta)]);
   end;
 end;
 
@@ -551,8 +605,10 @@ begin
     mDx := 0;
     mDy := 0;
   end;
-  mLines := ['object ' + AOptions.InstanceName + ': ' + AOptions.FrameClass, '  Left = 0', '  Top = 0',
-    '  Width = ' + IntToStr(ASplit.Bounds.Width), '  Height = ' + IntToStr(ASplit.Bounds.Height), '  TabOrder = 0'];
+  mLines := [Format(cObjectHead, ['', AOptions.InstanceName, AOptions.FrameClass]),
+    Format(cPropLine, ['  ', 'Left', '0']), Format(cPropLine, ['  ', 'Top', '0']),
+    Format(cPropLine, ['  ', 'Width', IntToStr(ASplit.Bounds.Width)]),
+    Format(cPropLine, ['  ', 'Height', IntToStr(ASplit.Bounds.Height)]), Format(cPropLine, ['  ', 'TabOrder', '0'])];
   for mRoot in ASplit.Roots do
   begin
     for mIndex := ADfm.Nodes[mRoot].First to ADfm.Nodes[mRoot].Last do
@@ -604,8 +660,8 @@ begin
   end;
   if (Length(mOwn) > 0) or (Length(mInner) > 0) then
   begin
-    Result := [StringOfChar(' ', AIndent) + 'inherited ' + ADfm.Nodes[ANode].Name + ': ' +
-      ADfm.Nodes[ANode].ClassName] + mOwn + mInner + [StringOfChar(' ', AIndent) + 'end'];
+    Result := [Format(cInheritedHead, [StringOfChar(' ', AIndent), ADfm.Nodes[ANode].Name,
+      ADfm.Nodes[ANode].ClassName])] + mOwn + mInner + [StringOfChar(' ', AIndent) + 'end'];
   end;
 end;
 
@@ -619,16 +675,18 @@ begin
   mFirst := ADfm.Nodes[ASplit.Removed[0]].First;
   mIndent := ADfm.Nodes[ASplit.Removed[0]].Indent;
   mPad := StringOfChar(' ', mIndent + cFrameIndent);
-  mInline := [StringOfChar(' ', mIndent) + 'inline ' + AOptions.InstanceName + ': ' + AOptions.FrameClass,
-    mPad + 'Left = ' + IntToStr(ASplit.Bounds.Left), mPad + 'Top = ' + IntToStr(ASplit.Bounds.Top),
-    mPad + 'Width = ' + IntToStr(ASplit.Bounds.Width), mPad + 'Height = ' + IntToStr(ASplit.Bounds.Height)];
+  mInline := [Format(cInlineHead, [StringOfChar(' ', mIndent), AOptions.InstanceName, AOptions.FrameClass]),
+    Format(cPropLine, [mPad, 'Left', IntToStr(ASplit.Bounds.Left)]),
+    Format(cPropLine, [mPad, 'Top', IntToStr(ASplit.Bounds.Top)]),
+    Format(cPropLine, [mPad, 'Width', IntToStr(ASplit.Bounds.Width)]),
+    Format(cPropLine, [mPad, 'Height', IntToStr(ASplit.Bounds.Height)])];
   if ASplit.Align <> '' then
   begin
-    mInline := mInline + [mPad + 'Align = ' + ASplit.Align];
+    mInline := mInline + [Format(cPropLine, [mPad, 'Align', ASplit.Align])];
   end;
   if ASplit.Anchors <> '' then
   begin
-    mInline := mInline + [mPad + 'Anchors = ' + ASplit.Anchors];
+    mInline := mInline + [Format(cPropLine, [mPad, 'Anchors', ASplit.Anchors])];
   end;
   for mRoot in ASplit.Roots do
   begin
@@ -652,16 +710,21 @@ end;
 
 { Handler }
 
-procedure SortHandlers(const ADfm: TDfm; const ASplit: TSplit; const AUnit: TAtlasFormUnit;
-  const AOptions: TAtlasExtractOptions; out AMoved, AKept: TArray<string>; var ANotes: TArray<string>);
+type
+  THandlerSplit = record
+    Moved: TArray<string>;
+    Kept: TArray<string>;
+    Notes: TArray<string>;
+  end;
+
+/// <summary>Handler der Ereignisse in den Knoten des Frames (AInside) und außerhalb (AOutside).</summary>
+procedure HandlersOf(const ADfm: TDfm; const ASplit: TSplit; out AInside, AOutside: TArray<string>);
 var
   mIndex: Integer;
   mHandler: string;
-  mInside, mOutside: TArray<string>;
-  mCode: string;
 begin
-  mInside := nil;
-  mOutside := nil;
+  AInside := nil;
+  AOutside := nil;
   for mIndex := 0 to High(ADfm.Lines) do
   begin
     mHandler := EventHandler(ADfm.Lines[mIndex]);
@@ -671,31 +734,39 @@ begin
     end;
     if InRoots(ADfm, ASplit, mIndex) then
     begin
-      if not Contains(mInside, mHandler) then
+      if not Contains(AInside, mHandler) then
       begin
-        mInside := mInside + [mHandler];
+        AInside := AInside + [mHandler];
       end;
     end
-    else if not Contains(mOutside, mHandler) then
+    else if not Contains(AOutside, mHandler) then
     begin
-      mOutside := mOutside + [mHandler];
+      AOutside := AOutside + [mHandler];
     end;
   end;
+end;
+
+function SortHandlers(const ADfm: TDfm; const ASplit: TSplit; const AUnit: TAtlasFormUnit;
+  AMoveHandlers: Boolean): THandlerSplit;
+var
+  mHandler, mCode: string;
+  mInside, mOutside: TArray<string>;
+begin
+  Result := Default(THandlerSplit);
+  HandlersOf(ADfm, ASplit, mInside, mOutside);
   mCode := string.Join(cCrLf, Copy(AUnit.Lines, AUnit.ImplementationLine, MaxInt));
-  AMoved := nil;
-  AKept := nil;
   for mHandler in mInside do
   begin
     // Aufrufe im Code: der Kopf „procedure TForm.X(“ selbst zählt einmal.
-    if AOptions.MoveHandlers and not Contains(mOutside, mHandler) and
+    if AMoveHandlers and not Contains(mOutside, mHandler) and
       (Length(TAtlasNameSuggest.Places(mCode, mHandler)) <= 1) then
     begin
-      AMoved := AMoved + [mHandler];
+      Result.Moved := Result.Moved + [mHandler];
     end
     else
     begin
-      AKept := AKept + [mHandler];
-      ANotes := ANotes + [TAtlasExtractNote.cKept + '|' + mHandler];
+      Result.Kept := Result.Kept + [mHandler];
+      Result.Notes := Result.Notes + [TAtlasExtractNote.cKept + '|' + mHandler];
     end;
   end;
 end;
@@ -739,60 +810,118 @@ begin
   end;
 end;
 
-function UnitParts(const AUnit: TAtlasFormUnit; const AFormClass: string; const AMoved, AHandlers: TArray<string>;
-  out AFields, ADecls, ABodies: TArray<string>): TAtlasFormUnit;
+type
+  TUnitParts = record
+    FormUnit: TAtlasFormUnit;
+    Fields: TArray<string>;
+    Decls: TArray<string>;
+    Bodies: TArray<string>;
+  end;
+
+/// <summary>Rümpfe der Handler AHandlers aus AUnit nehmen; Klassenname im Kopf als „%s.“.</summary>
+function TakeBodies(var AUnit: TAtlasFormUnit; const AFormClass: string;
+  const AHandlers: TArray<string>): TArray<string>;
 var
-  mFirst, mLast, mIndex, mInsert, mBodyFirst, mBodyLast: Integer;
-  mIsMethod: Boolean;
-  mName, mHandler: string;
+  mHandler: string;
+  mBodyFirst, mBodyLast: Integer;
   mLines: TArray<string>;
 begin
-  AFields := nil;
-  ADecls := nil;
-  ABodies := nil;
-  Result := AUnit;
-  // Rümpfe zuerst (hinten), damit die Zeilen der Klasse gleich bleiben.
+  Result := nil;
   for mHandler in AHandlers do
   begin
-    if Result.FindBody(AFormClass, mHandler, mBodyFirst, mBodyLast) then
+    if not AUnit.FindBody(AFormClass, mHandler, mBodyFirst, mBodyLast) then
     begin
-      mLines := Copy(Result.Lines, mBodyFirst, mBodyLast - mBodyFirst + 1);
-      mLines[0] := mLines[0].Replace(AFormClass + '.', '%s.');
-      ABodies := ABodies + mLines + [''];
-      Delete(Result.Lines, mBodyFirst, mBodyLast - mBodyFirst + 1);
-      // Doppelte Leerzeile zusammenziehen.
-      if (mBodyFirst < Length(Result.Lines)) and (mBodyFirst > 0) and (Result.Lines[mBodyFirst].Trim = '') and
-        (Result.Lines[mBodyFirst - 1].Trim = '') then
-      begin
-        Delete(Result.Lines, mBodyFirst, 1);
-      end;
+      Continue;
+    end;
+    mLines := Copy(AUnit.Lines, mBodyFirst, mBodyLast - mBodyFirst + 1);
+    mLines[0] := mLines[0].Replace(AFormClass + '.', '%s.');
+    Result := Result + mLines + [''];
+    Delete(AUnit.Lines, mBodyFirst, mBodyLast - mBodyFirst + 1);
+    // Doppelte Leerzeile zusammenziehen.
+    if (mBodyFirst < Length(AUnit.Lines)) and (mBodyFirst > 0) and (AUnit.Lines[mBodyFirst].Trim = '') and
+      (AUnit.Lines[mBodyFirst - 1].Trim = '') then
+    begin
+      Delete(AUnit.Lines, mBodyFirst, 1);
     end;
   end;
-  if not Result.FindClass(AFormClass, mFirst, mLast) then
+end;
+
+function UnitParts(const AUnit: TAtlasFormUnit; const AFormClass: string;
+  const AMoved, AHandlers: TArray<string>): TUnitParts;
+var
+  mFirst, mLast, mIndex, mInsert: Integer;
+  mIsMethod: Boolean;
+  mName: string;
+begin
+  Result := Default(TUnitParts);
+  Result.FormUnit := AUnit;
+  // Rümpfe zuerst (hinten), damit die Zeilen der Klasse gleich bleiben.
+  Result.Bodies := TakeBodies(Result.FormUnit, AFormClass, AHandlers);
+  if not Result.FormUnit.FindClass(AFormClass, mFirst, mLast) then
   begin
     Exit;
   end;
-  mInsert := -1;
+  mInsert := mFirst + 1;
   for mIndex := mLast - 1 downto mFirst + 1 do
   begin
-    mName := TAtlasFormUnit.MemberName(Result.Lines[mIndex], mIsMethod);
+    mName := TAtlasFormUnit.MemberName(Result.FormUnit.Lines[mIndex], mIsMethod);
     if (mName <> '') and not mIsMethod and Contains(AMoved, mName) then
     begin
-      AFields := [Result.Lines[mIndex]] + AFields;
-      Delete(Result.Lines, mIndex, 1);
+      Result.Fields := [Result.FormUnit.Lines[mIndex]] + Result.Fields;
+      Delete(Result.FormUnit.Lines, mIndex, 1);
       mInsert := mIndex;
     end
     else if (mName <> '') and mIsMethod and Contains(AHandlers, mName) then
     begin
-      ADecls := [Result.Lines[mIndex]] + ADecls;
-      Delete(Result.Lines, mIndex, 1);
+      Result.Decls := [Result.FormUnit.Lines[mIndex]] + Result.Decls;
+      Delete(Result.FormUnit.Lines, mIndex, 1);
     end;
   end;
-  if mInsert < 0 then
+  Insert('%s', Result.FormUnit.Lines, mInsert);
+end;
+
+/// <summary>Namen der Knoten, die im Formular bleiben (nicht verschoben, nicht im entfernten Knoten).</summary>
+function RemainingNames(const ADfm: TDfm; const ASplit: TSplit; const AMoved: TArray<string>): TArray<string>;
+var
+  mNode: Integer;
+begin
+  Result := nil;
+  for mNode := 1 to High(ADfm.Nodes) do
   begin
-    mInsert := mFirst + 1;
+    if not Contains(AMoved, ADfm.Nodes[mNode].Name) and not ADfm.IsInside(mNode, ASplit.Removed[0]) then
+    begin
+      Result := Result + [ADfm.Nodes[mNode].Name];
+    end;
   end;
-  Insert('%s', Result.Lines, mInsert);
+end;
+
+/// <summary>Platzhalter „%s“ in der Klasse durch das Feld des Frames ersetzen.</summary>
+procedure PlaceInstance(var AUnit: TAtlasFormUnit; const AOptions: TAtlasExtractOptions);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AUnit.Lines) do
+  begin
+    if AUnit.Lines[mIndex] = '%s' then
+    begin
+      AUnit.Lines[mIndex] := '    ' + AOptions.InstanceName + ': ' + AOptions.FrameClass + ';';
+    end;
+  end;
+end;
+
+function WithoutNames(const AFields, ANames: TArray<string>): TArray<string>;
+var
+  mField: string;
+  mIsMethod: Boolean;
+begin
+  Result := nil;
+  for mField in AFields do
+  begin
+    if not Contains(ANames, TAtlasFormUnit.MemberName(mField, mIsMethod)) then
+    begin
+      Result := Result + [mField];
+    end;
+  end;
 end;
 
 class function TAtlasExtractFrame.Run(const AFormDfm, AFormUnit, AFormClass: string;
@@ -800,12 +929,11 @@ class function TAtlasExtractFrame.Run(const AFormDfm, AFormUnit, AFormClass: str
 var
   mDfm: TDfm;
   mSplit: TSplit;
-  mUnit: TAtlasFormUnit;
-  mFields, mDecls, mBodies, mRemaining, mUsed, mContainer: TArray<string>;
+  mHandlers: THandlerSplit;
+  mParts: TUnitParts;
+  mContainer: TArray<string>;
   mIndex: Integer;
-  mIsMethod: Boolean;
-  mName, mBody, mField: string;
-  mNode: Integer;
+  mName: string;
 begin
   Result := Default(TAtlasExtractResult);
   Result.Error := CheckNames(AOptions);
@@ -819,60 +947,38 @@ begin
     Exit;
   end;
   Result.Moved := MovedNames(mDfm, mSplit);
-  mUnit := TAtlasFormUnit.Create(AFormUnit);
-  SortHandlers(mDfm, mSplit, mUnit, AOptions, Result.MovedHandlers, Result.KeptHandlers, Result.Notes);
-  if AOptions.ContainerAsFrame then
-  begin
-    Result.Notes := Result.Notes + [TAtlasExtractNote.cContainerProps + '|' + mDfm.Nodes[mSplit.Removed[0]].Name];
-  end;
-  Result.FrameDfm := FrameDfmText(mDfm, mSplit, AOptions, Result.KeptHandlers);
-  Result.FormDfm := FormDfmText(mDfm, mSplit, AOptions, Result.KeptHandlers);
+  mHandlers := SortHandlers(mDfm, mSplit, TAtlasFormUnit.Create(AFormUnit), AOptions.MoveHandlers);
+  Result.MovedHandlers := mHandlers.Moved;
+  Result.KeptHandlers := mHandlers.Kept;
+  Result.Notes := mHandlers.Notes;
   // Container selbst entfällt im Formular samt Feld, gehört aber nicht in den Frame.
   mContainer := nil;
   if AOptions.ContainerAsFrame then
   begin
     mContainer := [mDfm.Nodes[mSplit.Removed[0]].Name];
+    Result.Notes := Result.Notes + [TAtlasExtractNote.cContainerProps + '|' + mContainer[0]];
   end;
-  mUnit := UnitParts(mUnit, AFormClass, Result.Moved + mContainer, Result.MovedHandlers, mFields, mDecls, mBodies);
-  for mIndex := 0 to High(mUnit.Lines) do
-  begin
-    if mUnit.Lines[mIndex] = '%s' then
-    begin
-      mUnit.Lines[mIndex] := '    ' + AOptions.InstanceName + ': ' + AOptions.FrameClass + ';';
-    end;
-  end;
-  for mIndex := High(mFields) downto 0 do
-  begin
-    if Contains(mContainer, TAtlasFormUnit.MemberName(mFields[mIndex], mIsMethod)) then
-    begin
-      Delete(mFields, mIndex, 1);
-    end;
-  end;
+  Result.FrameDfm := FrameDfmText(mDfm, mSplit, AOptions, Result.KeptHandlers);
+  Result.FormDfm := FormDfmText(mDfm, mSplit, AOptions, Result.KeptHandlers);
+  mParts := UnitParts(TAtlasFormUnit.Create(AFormUnit), AFormClass, Result.Moved + mContainer,
+    Result.MovedHandlers);
+  PlaceInstance(mParts.FormUnit, AOptions);
   for mName in Result.Moved do
   begin
-    Prefix(mUnit, mUnit.ImplementationLine, mName, AOptions.InstanceName);
+    Prefix(mParts.FormUnit, mParts.FormUnit.ImplementationLine, mName, AOptions.InstanceName);
   end;
   // Probleme: mitwandernde Handler, die Felder des Formulars nutzen.
-  mRemaining := nil;
-  for mNode := 1 to High(mDfm.Nodes) do
+  for mName in UsedFields(string.Join(cCrLf, mParts.Bodies), RemainingNames(mDfm, mSplit, Result.Moved)) do
   begin
-    if not Contains(Result.Moved, mDfm.Nodes[mNode].Name) and not mDfm.IsInside(mNode, mSplit.Removed[0]) then
-    begin
-      mRemaining := mRemaining + [mDfm.Nodes[mNode].Name];
-    end;
+    Result.Notes := Result.Notes + [TAtlasExtractNote.cFormField + '|' + mName];
   end;
-  mBody := string.Join(cCrLf, mBodies);
-  mUsed := UsedFields(mBody, mRemaining);
-  for mField in mUsed do
+  for mIndex := 0 to High(mParts.Bodies) do
   begin
-    Result.Notes := Result.Notes + [TAtlasExtractNote.cFormField + '|' + mField];
+    mParts.Bodies[mIndex] := mParts.Bodies[mIndex].Replace('%s.', AOptions.FrameClass + '.');
   end;
-  for mIndex := 0 to High(mBodies) do
-  begin
-    mBodies[mIndex] := mBodies[mIndex].Replace('%s.', AOptions.FrameClass + '.');
-  end;
-  Result.FrameUnit := FrameUnitText(AOptions, UsesLines(mUnit), mFields, mDecls, mBodies);
-  Result.FormUnit := AddToUses(mUnit, AOptions.FrameUnit).Text;
+  Result.FrameUnit := FrameUnitText(AOptions, UsesLines(mParts.FormUnit), WithoutNames(mParts.Fields, mContainer),
+    mParts.Decls, mParts.Bodies);
+  Result.FormUnit := AddToUses(mParts.FormUnit, AOptions.FrameUnit).Text;
 end;
 
 end.
