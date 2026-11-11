@@ -18,6 +18,13 @@ const
   cMaxPanelWidth = 600;
   /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
   cMaxOpenDelay = 2000;
+  /// <summary>Grenzen der gelernten Vorschläge (#1890): Pause in ms, Anteil in %, Mindestzahl.</summary>
+  cMinSuggestionDelay = 100;
+  cMaxSuggestionDelay = 2000;
+  cMinSuggestionShare = 50;
+  cMaxSuggestionShare = 100;
+  cMinSuggestionCount = 2;
+  cMaxSuggestionCount = 100;
   /// <summary>Wie TAtlasListModes.cModeNames bzw. ScopeNames (#497); Settings darf Completion nicht einbinden
   /// (A-09), der Test prüft Gleichheit.</summary>
   cCompletionListModeNames: array[0..2] of string = ('filter', 'all', 'rest');
@@ -71,6 +78,17 @@ type
     CompletionListScope: string;
     /// <summary>Vorschau des gewählten Eintrags im Editor (#434).</summary>
     Preview: Boolean;
+    /// <summary>Gelernte Vorschläge als Schattentext nach einem Auslöser (#1890, suggestions.learned).</summary>
+    SuggestionsLearned: Boolean;
+    /// <summary>Tipp-Pause bis zum Vorschlag in ms (suggestions.delayMs).</summary>
+    SuggestionsDelayMs: Integer;
+    /// <summary>Mindestanteil der Folge an allen Folgen des Auslösers in % (suggestions.minShare).</summary>
+    SuggestionsMinShare: Integer;
+    /// <summary>Mindestzahl der Stellen im Projekt (suggestions.minCount).</summary>
+    SuggestionsMinCount: Integer;
+    /// <summary>Annehmen und Verwerfen je Muster zählen und die Reihenfolge danach richten
+    /// (suggestions.learnFromUsage).</summary>
+    SuggestionsLearnFromUsage: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginCompletionSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -109,6 +127,11 @@ begin
   Result.CompletionListMode := cCompletionListModeNames[0];
   Result.CompletionListScope := cCompletionListScopeNames[0];
   Result.Preview := False;
+  Result.SuggestionsLearned := True;
+  Result.SuggestionsDelayMs := 300;
+  Result.SuggestionsMinShare := 70;
+  Result.SuggestionsMinCount := 5;
+  Result.SuggestionsLearnFromUsage := True;
 end;
 
 procedure TAtlasPluginCompletionSettings.Normalize;
@@ -122,6 +145,9 @@ begin
   CompletionListMode := Choice(CompletionListMode, cCompletionListModeNames);
   CompletionListScope := Choice(CompletionListScope, cCompletionListScopeNames);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, cMaxOpenDelay);
+  SuggestionsDelayMs := EnsureRange(SuggestionsDelayMs, cMinSuggestionDelay, cMaxSuggestionDelay);
+  SuggestionsMinShare := EnsureRange(SuggestionsMinShare, cMinSuggestionShare, cMaxSuggestionShare);
+  SuggestionsMinCount := EnsureRange(SuggestionsMinCount, cMinSuggestionCount, cMaxSuggestionCount);
 end;
 
 procedure TAtlasPluginCompletionSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -147,6 +173,11 @@ begin
   AIo.Text('CompletionListMode', CompletionListMode);
   AIo.Text('CompletionListScope', CompletionListScope);
   AIo.Flag('Preview', Preview);
+  AIo.Flag('SuggestionsLearned', SuggestionsLearned);
+  AIo.Number('SuggestionsDelayMs', SuggestionsDelayMs);
+  AIo.Number('SuggestionsMinShare', SuggestionsMinShare);
+  AIo.Number('SuggestionsMinCount', SuggestionsMinCount);
+  AIo.Flag('SuggestionsLearnFromUsage', SuggestionsLearnFromUsage);
 end;
 
 end.

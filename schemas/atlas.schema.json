@@ -2816,6 +2816,60 @@
       "x-control": "Kontrollkästchen, Auswahl",
       "x-issue": "#1827, #1828, #1829, #1831"
     },
+    "suggestions": {
+      "type": "object",
+      "description": "Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams.",
+      "x-description-en": "Learned suggestions (#1890): after a trigger such as X := TFoo.Create; or L.BeginUpdate; the plugin suggests as grey ghost text what usually follows in the project (try … finally X.Free; end;). The switches and thresholds live in the plugin settings (suggestions.*). This holds the team's house rules.",
+      "additionalProperties": false,
+      "properties": {
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["after", "insert"],
+            "properties": {
+              "after": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Auslöser: die Anweisung ohne Semikolon, mit $S für das Objekt und $A für das erste Argument (\"Log.Enter\", \"$S := TQuery.Create\", \"EnterCriticalSection($A)\") oder nur der Name des Aufrufs.",
+                "x-description-en": "Trigger: the statement without semicolon, with $S for the object and $A for the first argument (\"Log.Enter\", \"$S := TQuery.Create\", \"EnterCriticalSection($A)\") or just the name of the call."
+              },
+              "insert": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                },
+                "description": "Eingefügte Zeilen; zwei Leerzeichen am Anfang sind eine Ebene, $| ist die Zeile der Schreibmarke, $S und $A wie im Auslöser.",
+                "x-description-en": "Inserted lines; two leading spaces are one level, $| is the line of the cursor, $S and $A as in the trigger."
+              }
+            }
+          },
+          "default": [],
+          "description": "Eigene Muster des Teams; sie gehen den gelernten vor und brauchen keine Mindestzahl.",
+          "x-description-en": "The team's own patterns; they take precedence over learned ones and need no minimum count.",
+          "x-scope": "project",
+          "x-page": "Vervollständigung",
+          "x-control": "JSON in atlas.json (Liste der Muster)",
+          "x-issue": "#1890"
+        }
+      },
+      "x-scope": "project",
+      "x-page": "Vervollständigung",
+      "x-control": "JSON in atlas.json (Liste der Muster)",
+      "x-issue": "#1890",
+      "examples": [
+        {
+          "patterns": [
+            {
+              "after": "Log.Enter",
+              "insert": ["try", "  $|", "finally", "  Log.Leave;", "end;"]
+            }
+          ]
+        }
+      ]
+    },
     "classCompletion": {
       "type": "object",
       "description": "Klassenvervollständigung (#1834): Kommentar über dem Abschnitt einer Klasse im implementation-Teil, Reihenfolge und Inhalt neuer Methodenrümpfe aus der Aktion „Fehlende Methodenrümpfe anlegen“, /impl und dem Ordnen der Methoden (editor.methodPlacement im Plugin).",

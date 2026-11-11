@@ -52,6 +52,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `smartIndent` | global (settings.json) | object | – |  | Einrückung beim Tippen (#1827): Nach Enter rechnet Atlas mit derselben Blocklogik wie format.reindent aus, wo die Schreibmarke stehen soll. Atlas setzt kein end; ein, das macht der Blockabschluss der IDE; geändert werden nur Leerraum und beim String das Hochkomma und +. Breite einer Ebene und Tabulatoren nach format bzw. .editorconfig. |
+| `suggestions` | Projekt (atlas.json) | object | – | z. B. `{"patterns":[{"after":"Log.Enter","insert":"try   $| finally   Log.Leave; end;"}]}` | Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams. |
 | `classCompletion` | global (settings.json) | object | – |  | Klassenvervollständigung (#1834): Kommentar über dem Abschnitt einer Klasse im implementation-Teil, Reihenfolge und Inhalt neuer Methodenrümpfe aus der Aktion „Fehlende Methodenrümpfe anlegen“, /impl und dem Ordnen der Methoden (editor.methodPlacement im Plugin). |
 | `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
 | `navigation` | global (settings.json) | object | – |  | Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_path) und Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Tests (Plugin-Befehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact). |
@@ -326,6 +327,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `smartIndent.outdentClosers` | global (settings.json) | boolean | `true` |  | Beginnt die Zeile vor Enter mit end, until, finally, except oder else, rückt Atlas sie auf die Spalte ihres Gegenstücks (begin, repeat, try, if). |
 | `smartIndent.splitStrings` | global (settings.json) | boolean | `true` |  | Enter in einem String schließt ihn mit ' + und öffnet ihn in der neuen Zeile wieder, statt einen offenen String (E2052) zu hinterlassen. Nicht in mehrzeiligen Strings ('''). |
 | `smartIndent.splitStringsIndent` | global (settings.json) | string | `"indent"` | `"indent"`, `"align"` | Fortsetzungszeile eines getrennten Strings: indent = eine Ebene tiefer als die Anweisung; align = unter dem ersten Argument der offenen Klammer, ohne Klammer unter dem ersten Wert hinter :=. |
+
+## suggestions
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `suggestions.patterns` | Projekt (atlas.json) | array<object> | `` |  | Eigene Muster des Teams; sie gehen den gelernten vor und brauchen keine Mindestzahl. |
 
 ## classCompletion
 

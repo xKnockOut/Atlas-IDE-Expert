@@ -193,6 +193,12 @@ type
       write FCompletion.CompletionVariantBranch;
     property CompletionListMode: string read FCompletion.CompletionListMode write FCompletion.CompletionListMode;
     property CompletionListScope: string read FCompletion.CompletionListScope write FCompletion.CompletionListScope;
+    property SuggestionsLearned: Boolean read FCompletion.SuggestionsLearned write FCompletion.SuggestionsLearned;
+    property SuggestionsDelayMs: Integer read FCompletion.SuggestionsDelayMs write FCompletion.SuggestionsDelayMs;
+    property SuggestionsMinShare: Integer read FCompletion.SuggestionsMinShare write FCompletion.SuggestionsMinShare;
+    property SuggestionsMinCount: Integer read FCompletion.SuggestionsMinCount write FCompletion.SuggestionsMinCount;
+    property SuggestionsLearnFromUsage: Boolean read FCompletion.SuggestionsLearnFromUsage
+      write FCompletion.SuggestionsLearnFromUsage;
     property Preview: Boolean read FCompletion.Preview write FCompletion.Preview;
     property HoverTooltip: Boolean read FEditorTyping.HoverTooltip write FEditorTyping.HoverTooltip;
     property HangThresholdMs: Integer read FGeneralServer.HangThresholdMs write FGeneralServer.HangThresholdMs;

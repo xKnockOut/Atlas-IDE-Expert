@@ -71,7 +71,8 @@ type
     SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
     GoToDefinition, EditorToolbar, QuickBookmarks, StatusBar, Architecture, UnitRelations, SymbolPath, Tasks, Debugger,
     ExitPoints, Reassigned, ExpressionType, MethodPlacement, IssueLinks,
-    BlameIssues, Query, Hotspots, DesignerBar, Tracker, WelcomeUpdates, RegionFolds, SmartIndent);
+    BlameIssues, Query, Hotspots, DesignerBar, Tracker, WelcomeUpdates, RegionFolds, SmartIndent,
+    LearnedSuggestions);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -789,7 +790,8 @@ const
       'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
       'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
       'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste', 'Tracker',
-      'Willkommensseite: Aktualisieren', 'Regionen falten', 'Einrückung beim Tippen'),
+      'Willkommensseite: Aktualisieren', 'Regionen falten', 'Einrückung beim Tippen',
+      'Gelernte Vorschläge'),
     ('Completion', 'Parameter hint', 'Tooltip', 'Bracket pairs',
       'Problems', 'Reload', 'Command palette', 'Check on save', 'Watchdog', 'Server', 'Settings', 'Menu',
       'Files', 'Inlay hints', 'Results window', 'Editor commands', 'Forms', 'Compile events', 'Status field',
@@ -803,7 +805,8 @@ const
       'Path between symbols', 'Project tasks', 'Debugging',
       'Exit points', 'Reassigned variables', 'Type of expression', 'Method order',
       'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar', 'Tracker',
-      'Welcome page: updates', 'Region folding', 'Indent while typing'));
+      'Welcome page: updates', 'Region folding', 'Indent while typing',
+      'Learned suggestions'));
 begin
   Result := cNames[TAtlasTextLanguage.Current, AFeature];
 end;

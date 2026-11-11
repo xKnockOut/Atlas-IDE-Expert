@@ -88,6 +88,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SmartIndent,
+  Atlas.Common.Editing.LearnedSuggestions,
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Shell.Composition.DfmPropertyRules;
@@ -257,6 +258,11 @@ begin
     function(const AUri: string): TMethodOrderOptions
     begin
       Result := mCore.FileOptions.MethodOrderFor(AUri);
+    end;
+  Result.LearnedOptionsFor :=
+    function(const AUri: string; const AEditorOptions: TJSONValue): TLearnedOptions
+    begin
+      Result := mCore.FileOptions.LearnedOptionsFor(AUri, AEditorOptions);
     end;
 end;
 

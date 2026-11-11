@@ -43,6 +43,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Formatter** (Ctrl+Shift+Alt+L), also without the IDE
 - **Class completion:** `{ TCustomer }` above the bodies (or a separator line, doc sentence, region), constructors and destructor first, then get/set pairs; new bodies prefilled with `inherited` and `Result := FName`
 - **Indentation while typing:** after Enter the caret lands where the block structure puts it, `end`, `until`, `finally` and `else` move to their counterpart, and a string is split with `' +` when you break the line
+- **Learned suggestions:** after `X := TFoo.Create;` or `L.BeginUpdate;` and Enter Atlas suggests as grey ghost text what usually follows in your own project (`try … finally X.Free; end;`), without AI and without network; Tab accepts, Esc discards, team house rules in `atlas.json`
 
 ### [Understanding](docs/features/en/Understanding.md)
 - **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values; the expanded published members of large components scroll with the mouse wheel (`hover.membersMaxLines`, default 15 rows); parameters and return value of a routine are always listed one per line below the declaration like Help Insight, also without XMLDoc (`hover.signatureParams`)

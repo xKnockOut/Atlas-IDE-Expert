@@ -124,6 +124,22 @@ type
     class function Default: TClassCompletionSettings; static;
   end;
 
+  /// <summary>Eigenes Muster für die gelernten Vorschläge ("suggestions.patterns", #1890), etwa eine Hausregel
+  /// für das Logging.</summary>
+  TSuggestionPattern = record
+    /// <summary>Auslöser: "$S.Enter" (Methode an beliebigem Subjekt), "Log.Enter" (genau dieser Aufruf),
+    /// "$S := $T.Create" oder "EnterCriticalSection($A)".</summary>
+    After: string;
+    /// <summary>Folgende Zeilen; je zwei Leerzeichen am Anfang eine Ebene, "$|" für die Schreibmarke, $S und $A für
+    /// Subjekt und Argument des Auslösers.</summary>
+    Insert: TArray<string>;
+  end;
+
+  /// <summary>Gelernte Vorschläge ("suggestions", #1890); die Schalter liegen im Plugin.</summary>
+  TSuggestionSettings = record
+    Patterns: TArray<TSuggestionPattern>;
+  end;
+
   /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
   TReferenceSettings = record
     /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
@@ -676,6 +692,7 @@ type
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
     SmartIndent: TSmartIndentSettings;
+    Suggestions: TSuggestionSettings;
     ClassCompletion: TClassCompletionSettings;
     References: TReferenceSettings;
     Navigation: TNavigationSettings;
@@ -1406,6 +1423,7 @@ begin
   ASettings.InlayHints := TInlayHintSettings.Default;
   ASettings.CodeLens := TCodeLensSettings.Default;
   ASettings.SmartIndent := TSmartIndentSettings.Default;
+  ASettings.Suggestions := Default(TSuggestionSettings);
   ASettings.ClassCompletion := TClassCompletionSettings.Default;
   ASettings.References := TReferenceSettings.Default;
   ASettings.Navigation := TNavigationSettings.Default;

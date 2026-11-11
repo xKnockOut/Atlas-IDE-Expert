@@ -100,6 +100,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
+  Atlas.IDE.Editor.GhostSuggestions,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
@@ -171,6 +172,12 @@ begin
     begin
       TAtlasIdePatternContinuation.Dismiss;
     end);
+  // Gelernte Vorschläge (#1890) ebenso.
+  TAtlasGuard.Run(TAtlasFeature.LearnedSuggestions,
+    procedure
+    begin
+      TAtlasIdeGhostSuggestions.Dismiss;
+    end);
   TAtlasGuard.Run(TAtlasFeature.MultiCursor,
     procedure
     begin
@@ -231,6 +238,11 @@ begin
     begin
       TAtlasIdePatternContinuation.EditorModified;
       TAtlasEnterWatch.EditorModified(mView);
+    end);
+  TAtlasGuard.Run(TAtlasFeature.LearnedSuggestions,
+    procedure
+    begin
+      TAtlasIdeGhostSuggestions.EditorModified;
     end);
   // Mehrfachmarken (#589): fremde Änderungen an allen Marken nachziehen.
   TAtlasGuard.Run(TAtlasFeature.MultiCursor,

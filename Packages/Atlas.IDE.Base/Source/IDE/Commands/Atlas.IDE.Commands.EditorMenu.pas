@@ -56,6 +56,8 @@ uses
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
   Atlas.UI.Editor.RegionFolds,
+  Atlas.IDE.Editor.LearnedSuggestions,
+  Atlas.UI.Editor.LearnedSuggestions,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Commands.EditorActions,
   Atlas.Core.Localization.Language;
@@ -82,6 +84,12 @@ end;
 function RegionFoldsVisible: Boolean;
 begin
   Result := TAtlasIdeRegionFolds.Enabled;
+end;
+
+/// <summary>„Gelernte Vorschläge anzeigen …“ (#1890) sichtbar mit suggestions.learned.</summary>
+function LearnedSuggestionsVisible: Boolean;
+begin
+  Result := TAtlasIdeLearnedSuggestions.Enabled;
 end;
 
 const
@@ -224,6 +232,12 @@ begin
     begin
       TAtlasIdeRegionFolds.ExpandAll;
     end, RegionFoldsVisible);
+  AMenu.AddWhen(TAtlasFeature.LearnedSuggestions, 'Atlas.LearnedSuggestions',
+    TAtlasLearnedTexts.Text(TAtlasLearnedText.Command), nil,
+    procedure
+    begin
+      TAtlasIdeLearnedSuggestions.ShowPatterns;
+    end, LearnedSuggestionsVisible);
 end;
 
 class procedure TAtlasEditorMenu.AddSections(AMenu: TAtlasIdeContextMenu);
