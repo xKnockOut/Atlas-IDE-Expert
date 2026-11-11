@@ -16,11 +16,11 @@ type
     Palette, More, Gear,
     // Designer-Leiste (#1442).
     ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls,
-    // Gleiche auswählen (#738), Anordnen (#730 ff.), Abstandsgriffe (#734), gemeinsame Größengriffe (#737).
-    SelectSimilar, Arrange, GapHandles, MultiResize,
     // Eigene Knöpfe der Designer-Ansichten (#605 bis #612).
-    MeasureDistances, ResizePreview, ScalePreview, NameSuggest, NonVisualTray, DataBindings, ExtractFrame,
-    EventMap);
+    MeasureDistances, ResizePreview, ScalePreview, NameSuggest, NonVisualTray, DataBindings, ExtractFrame, EventMap,
+    // Gleiche auswählen (#738), Anordnen (#730 ff.), Abstandsgriffe (#734), gemeinsame Größengriffe (#737),
+    // Schnellleiste (#735).
+    SelectSimilar, Arrange, GapHandles, MultiResize, SelectionBar);
 {$SCOPEDENUMS OFF}
 
   TAtlasToolbarIcons = class
