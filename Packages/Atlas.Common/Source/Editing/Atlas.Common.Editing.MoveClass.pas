@@ -509,7 +509,7 @@ var
   mNames: TDictionary<string, Boolean>;
 begin
   mNames := ANames;
-  // Walk statt Rekursion (Bericht M1). Laufvariablen „for var I“ stehen als InlineVar im for.
+  // Walk statt Rekursion. Laufvariablen „for var I“ stehen als InlineVar im for.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     var
@@ -560,7 +560,7 @@ procedure CollectNeeds(ANode: TSyntaxNode; var ANeeds: TArray<TNeed>);
 var
   mNeeds: TList<TNeed>;
 begin
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   mNeeds := TList<TNeed>.Create;
   try
     ANode.Walk(

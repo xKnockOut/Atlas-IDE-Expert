@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Startup;
 
 // Abgesicherter Start nach einem Absturz (#722) mit Stufe und Startmarke, Startanteile bis zur freien
-// Nachrichtenschleife (Bericht N4) und die Sprache der IDE (#446).
+// Nachrichtenschleife und die Sprache der IDE (#446).
 
 interface
 
@@ -51,7 +51,7 @@ var
   // Abgesicherter Start nach einem Absturz (#722).
   SafeModeInstance: TAtlasIdeSafeMode;
   LoadedAtStamp: Int64;
-  // Startanteile von Atlas bis zur freien Nachrichtenschleife (Bericht N4); danach nil.
+  // Startanteile von Atlas bis zur freien Nachrichtenschleife; danach nil.
   StartTimesInstance: TAtlasStartTimes;
 
 function SafeMode: TAtlasIdeSafeMode;

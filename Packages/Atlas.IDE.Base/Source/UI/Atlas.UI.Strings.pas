@@ -698,7 +698,7 @@ type
     /// bestätigt“.</summary>
     class function CompilerConfirmed(const ACode: string; AShowCode: Boolean): string; static;
     /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
-    /// Detailpanel (D-07).</summary>
+    /// Detailpanel.</summary>
     class function DocLabels: TAtlasDocLabels; static;
     /// <summary>Zeile der Platzhalter im Parameter-Hint (#451); '' ohne.</summary>
     class function SignatureFormatLine(const ALine: TAtlasFormatLine): string; static;

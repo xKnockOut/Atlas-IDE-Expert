@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Help.Composition;
 
-// Modul Hilfe (#1886, ADR 0017): einzige Unit, die F1 zu Atlas-Elementen beantwortet. Sie meldet in ihrer
+// Modul Hilfe (#1886): einzige Unit, die F1 zu Atlas-Elementen beantwortet. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.help“ (Modulschalter help) bei der Registry von Base an und stellt über dessen
 // Scope bereit:
 // - IAtlasHelpProvider (Atlas.IDE.Contracts.Help): Base fragt ihn bei F1 in Atlas-Fenstern und auf der

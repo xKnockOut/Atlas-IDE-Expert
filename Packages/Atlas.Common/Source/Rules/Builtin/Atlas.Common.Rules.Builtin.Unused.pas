@@ -137,7 +137,7 @@ var
   mKind: TSyntaxKind;
 begin
   mKind := AKind;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -155,7 +155,7 @@ var
   mNames: TNameSet;
 begin
   mNames := ASet;
-  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Der Lauf geht auch durch lange Ausdrucksketten.
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
@@ -625,7 +625,7 @@ end;
 /// <summary>Alle Namen unter ARoot, die als Wert verwendet werden, klein geschrieben in ANames.</summary>
 procedure CollectValueNames(ARoot: TSyntaxNode; ANames: TNameSet);
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoot.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -765,7 +765,7 @@ var
 begin
   mRoot := ANode;
   mName := AName;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -847,7 +847,7 @@ var
   mTarget: string;
   mWrites, mReads: TList<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1). Nur Locals dieser Routine gehen in die anonyme Methode.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht). Nur Locals dieser Routine gehen in die anonyme Methode.
   mTarget := ATarget;
   mWrites := AWrites;
   mReads := AReads;
@@ -903,7 +903,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FPatterns := IgnorePatterns(AContext.Options);
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   FCache := TRuleDerived.Open(AContext);
   FWrites := TList<TSyntaxNode>.Create;
   FReads := TList<TSyntaxNode>.Create;

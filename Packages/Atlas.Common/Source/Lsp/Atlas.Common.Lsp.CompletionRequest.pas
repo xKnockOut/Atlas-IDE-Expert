@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.CompletionRequest;
 
-// Anfrage der Vervollständigung (Code-Review S-01, Konzept 4.2 Schritt 4): alles, was die Fälle von
+// Anfrage der Vervollständigung: alles, was die Fälle von
 // textDocument/completion je Anfrage brauchen, in einem Objekt statt in neun Parametern. Einmal
 // berechnete Werte (Zeilen, Zeilenende, Index der eigenen Unit) bleiben im Objekt. Dazu die Typen der
 // Vervollständigung (Kontext, Eintrag, Liste), die Atlas.Common.Lsp.Completion unter ihrem Namen
@@ -248,7 +248,7 @@ type
 
   TCompletionReadText = TDocReadText;
 
-  /// <summary>Alles, was die Fälle der Vervollständigung je Anfrage brauchen (Code-Review S-01, 4.2 Schritt 4).
+  /// <summary>Alles, was die Fälle der Vervollständigung je Anfrage brauchen (4.2 Schritt 4).
   /// Der Aufrufer besitzt das Objekt (try … finally Free); Baum, Resolver und Index gehören ihm nicht.
   /// Einmal berechnete Werte (Zeilen, Index der eigenen Unit) bleiben im Objekt.</summary>
   TCompletionRequest = class
@@ -311,7 +311,7 @@ type
 
 /// <summary>Zeilen von AText ohne Zeilenende (getrennt an LF, ein CR davor fällt weg).</summary>
 function TextLines(const AText: string): TArray<string>;
-/// <summary>Zeilen von AFileName, je Datei einmal gelesen (Code-Review P-07); AText für die eigene Datei
+/// <summary>Zeilen von AFileName, je Datei einmal gelesen; AText für die eigene Datei
 /// AOwnFile. False, wenn die Datei nicht lesbar ist (auch das merkt sich ACache).</summary>
 function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;
   const AReadText: TCompletionReadText; out ALines: TArray<string>): Boolean;

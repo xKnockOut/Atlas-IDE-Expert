@@ -167,7 +167,7 @@ procedure TAtlasIdeUpdates.LoadState;
 var
   mText: string;
 begin
-  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt (Bericht N3): Die Datei hält nur
+  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt: Die Datei hält nur
   // Zeitpunkt und Ergebnis der letzten Abfrage und ob schon gefragt wurde.
   FState := Default(TAtlasUpdateState);
   if TAtlasDataFile.TryRead(FStateFile, mText) then
@@ -186,7 +186,7 @@ end;
 procedure TAtlasIdeUpdates.SaveState;
 begin
   try
-    // Atomar: Ein Abbruch hinterlässt keine halbe Datei (Bericht N3).
+    // Atomar: Ein Abbruch hinterlässt keine halbe Datei.
     TAtlasDataFile.Write(FStateFile, FState.ToJson);
   except
     on E: Exception do

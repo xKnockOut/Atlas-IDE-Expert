@@ -27,7 +27,7 @@
 // Nicht zu verwechseln mit %APPDATA%\Atlas\usage.json (lernende Gewichtung
 // der Vervollständigung, #418, Roaming); die bleibt unberührt.
 //
-// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt (früher
+// Lesen und Schreiben über TAtlasDataFile: atomar ersetzt (früher
 // Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als .defekt
 // daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
 // UTF-8 ohne BOM; Zeiten in Ortszeit als "2026-10-15T09:30:00". Schlüssel

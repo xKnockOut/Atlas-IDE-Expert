@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.CodeInsight.Manager.Session;
 
-// Sitzung des Code Insight-Managers, zweite Stufe der Klassenkette: Server starten und stoppen (A-01), Neustart
+// Sitzung des Code Insight-Managers, zweite Stufe der Klassenkette: Server starten und stoppen, Neustart
 // nach Absturz (#393), Projektgruppe (#648): Die Sitzung meldet dem Server alle Projekte der Gruppe, das aktive
 // zuerst; Änderungen der Gruppe prüft sie höchstens alle zwei Sekunden. Änderungen außerhalb der IDE (#395): Die
 // Ordner der Projekte (Git-Arbeitsverzeichnis, sonst Projektordner) werden beobachtet; gesammelte Änderungen gehen
@@ -38,7 +38,7 @@ type
     FCommandIdle: TEvent;
     FServerCommandsIdle: TEvent;
     /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft
-    /// (A-01).</summary>
+    ///.</summary>
     function EnsureSession: Boolean;
     /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
     function StartSession: Boolean;
@@ -88,7 +88,7 @@ type
     /// Abstürzen auf (AllowStart).</summary>
     function RestartServer: Boolean;
     /// <summary>Start von Hand („Server starten“): Nach zwei gleichen Abstürzen startet Atlas den Server wieder
-    /// (Bericht H5).</summary>
+    ///.</summary>
     procedure AllowStart;
     /// <summary>Neustarts des Servers in dieser Sitzung (Starts nach dem ersten; Fenster „Atlas-Server“, #1356).
     /// </summary>
@@ -169,7 +169,7 @@ end;
 
 procedure TAtlasCodeInsightSession.StopSession;
 begin
-  // Nur im Hauptthread (A-01); verschachtelt (CheckSynchronize beim Warten) nichts tun.
+  // Nur im Hauptthread; verschachtelt (CheckSynchronize beim Warten) nichts tun.
   if not TAtlasMainThread.IsMain or FStopping then
   begin
     Exit;
@@ -203,7 +203,7 @@ begin
   end;
   // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
   FQueryIdle.WaitFor(5000);
-  // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken (A-01, A-13).
+  // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken.
   if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.cStopMs) then
   begin
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
@@ -249,7 +249,7 @@ function TAtlasCodeInsightSession.EnsureSession: Boolean;
 var
   mMain: Boolean;
 begin
-  // Start und Stopp gehören dem Hauptthread (A-01): Zeitlimit-Arbeiter, Lese-Thread und Hintergrund-Threads
+  // Start und Stopp gehören dem Hauptthread: Zeitlimit-Arbeiter, Lese-Thread und Hintergrund-Threads
   // bekommen nur, was schon läuft. Abgebaut, aber von der IDE noch gehalten (#886): im Hauptthread keinen Server
   // mehr. Verschachtelt aus StopSession oder StartSession (Warten auf Threads arbeitet eingereihte Aufrufe ab):
   // weder neu starten noch die gleich freigegebene Sitzung herausgeben.
@@ -265,7 +265,7 @@ begin
     FlushFileChanges;
     Exit(True);
   end;
-  // Zweimal gleich abgestürzt (Bericht H5): kein stiller Neustart; „Server neu starten“ hebt das auf.
+  // Zweimal gleich abgestürzt: kein stiller Neustart; „Server neu starten“ hebt das auf.
   Result := False;
   if not FCrashes.Held then
   begin
@@ -462,7 +462,7 @@ begin
     procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
     begin
       // Lese-Thread: Open Tools API nur im Hauptthread. Atlas gehört der Eintrag: beim Entladen verworfen
-      // (Code-Review A-02); ohne Antwort gibt die Sitzung die Id frei (S-07).
+      //; ohne Antwort gibt die Sitzung die Id frei.
       TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
         procedure
         var
@@ -479,7 +479,7 @@ begin
             begin
               mManager.Diagnose(AMessage);
             end, mReason);
-          // Genau eine Antwort, auch nach einer Ausnahme (S-05).
+          // Genau eine Antwort, auch nach einer Ausnahme.
           AReply(mApplied, mReason);
         end);
     end;

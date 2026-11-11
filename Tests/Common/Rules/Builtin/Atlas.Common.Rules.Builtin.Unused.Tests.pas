@@ -22,7 +22,7 @@ type
     procedure FixRemovesEmptyVarSection;
     [Test]
     procedure FixRemovesNameFromList;
-    /// <summary>Bereiche der Korrektur über die Zeilentabelle des Ableitungscaches (Review D-04).</summary>
+    /// <summary>Bereiche der Korrektur über die Zeilentabelle des Ableitungscaches.</summary>
     [Test]
     procedure RemoveVariableFixInCrLfFile;
     [Test]

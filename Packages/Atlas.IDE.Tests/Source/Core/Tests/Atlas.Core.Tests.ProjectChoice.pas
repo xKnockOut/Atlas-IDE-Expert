@@ -11,7 +11,7 @@
 //     {"format": 1, "choices": [{"candidates": "c:\\a.dproj|c:\\b.dproj",
 //       "project": "C:\\b.dproj"}]}
 //   Neueste Wahl zuerst, höchstens cMaxEntries; ein höheres Format bleibt
-//   unangetastet. Lesen und Schreiben über TAtlasDataFile (Bericht N3):
+//   unangetastet. Lesen und Schreiben über TAtlasDataFile:
 //   atomar ersetzt (früher Löschen und Umbenennen), eine unbrauchbare Datei
 //   liegt danach als .defekt daneben, eine gesperrte wird nicht überschrieben.
 

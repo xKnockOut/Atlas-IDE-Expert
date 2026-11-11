@@ -209,7 +209,7 @@ begin
     ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
     Exit;
   end;
-  // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben (Bericht N3).
+  // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben.
   if TAtlasDataFile.Writable(TAtlasTestProjectChoices.Load(ChoiceFile, mStored)) then
   begin
     TAtlasTestProjectChoices.Remember(mStored, AFiles, mProject.FileName);

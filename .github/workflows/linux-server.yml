@@ -1,6 +1,6 @@
 name: AtlasServer für Linux
 
-# Baut AtlasServer mit Free Pascal trunk für Linux (ADR 0013) und stellt ihn für Claude-Code-Sitzungen in der
+# Baut AtlasServer mit Free Pascal trunk für Linux und stellt ihn für Claude-Code-Sitzungen in der
 # Cloud bereit. Dort startet Claude Code den MCP-Server des Atlas-Plugins beim Start der Sitzung; ein Bau in
 # der Sitzung (FPC etwa 10 Minuten, Server etwa 2 Minuten) kommt dafür zu spät.
 #
@@ -99,6 +99,6 @@ jobs:
         run: |
           if ! gh release view cloud-linux >/dev/null 2>&1; then
             gh release create cloud-linux --prerelease --title "AtlasServer für Claude-Code-Cloud (Linux)" \
-              --notes "Wird bei jedem Push auf main ersetzt (linux-server.yml). Kein ausgeliefertes Produkt; nur für Tools/Linux/Build-AtlasServer.sh in Cloud-Sitzungen (ADR 0013)."
+              --notes "Wird bei jedem Push auf main ersetzt (linux-server.yml). Kein ausgeliefertes Produkt; nur für Tools/Linux/Build-AtlasServer.sh in Cloud-Sitzungen."
           fi
           gh release upload cloud-linux "$RUNNER_TEMP"/cloud-linux/* --clobber

@@ -164,7 +164,7 @@ begin
   inherited Create;
   FHistory := TAtlasCommandHistory.Create;
   // Fehlt, unbrauchbar oder gesperrt: leer anfangen; TAtlasDataFile legt Unbrauchbares beiseite und
-  // protokolliert, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  // protokolliert, eine gesperrte Datei schreibt SaveToFile nicht.
   FHistory.LoadFromFile(HistoryFile);
   FAtlasCommands := TList<TPair<TAtlasCommand, TProc>>.Create;
   FVisible := TDictionary<string, TFunc<Boolean>>.Create;

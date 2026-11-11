@@ -13,7 +13,7 @@
 //   %LOCALAPPDATA%\Atlas\startprofiles\<schlüssel>.json (Schlüssel wie die
 //   Projekt-Zusammenfassung #592, TAtlasProjectSummaries.KeyOf). Pfade dürfen
 //   absolut sein; relative gelten ab dem Ordner der .dproj. Lesen und
-//   Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt (früher Löschen
+//   Schreiben über TAtlasDataFile: atomar ersetzt (früher Löschen
 //   und Umbenennen), eine unbrauchbare Datei (etwa nach einem Tippfehler beim
 //   Bearbeiten von Hand) liegt danach als .defekt daneben und steht im
 //   Protokoll, eine beim Lesen gesperrte wird nicht überschrieben.
@@ -94,7 +94,7 @@ type
     TemporaryBefore: TAtlasStartOptions;
     TemporaryWritten: string;
     /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
-    /// Profile verloren (Bericht N3). '' sonst.</summary>
+    /// Profile verloren. '' sonst.</summary>
     KeptFile: string;
     /// <summary>Index des persönlichen Profils AName (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOf(const AName: string): Integer;

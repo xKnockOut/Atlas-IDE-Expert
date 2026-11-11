@@ -38,7 +38,7 @@ type
     procedure AnonymousMethodLocalsHideFields;
     [Test]
     procedure CandidatesInAnonymousMethodHideFields;
-    /// <summary>Code-Review F-02: Methoden verschachtelter Typen in strict-Abschnitten ohne Endlosrekursion.</summary>
+    /// <summary>Methoden verschachtelter Typen in strict-Abschnitten ohne Endlosrekursion.</summary>
     [Test]
     procedure ResolvesStrictMembersInNestedTypeMethods;
     [Test]
@@ -63,24 +63,24 @@ type
     procedure GivesUpOnExpressions;
     [Test]
     procedure FallsBackToSystem;
-    /// <summary>Code-Review P-01/P-02: PinTree desselben Baums verschachtelt; erst das letzte UnpinTree löst.</summary>
+    /// <summary>PinTree desselben Baums verschachtelt; erst das letzte UnpinTree löst.</summary>
     [Test]
     procedure PinTreeNestedSameTreeKeepsPin;
-    /// <summary>Code-Review P-01: Ein Fremdbaum über dem eigenen; nach seinem UnpinTree gilt der eigene weiter.</summary>
+    /// <summary>Ein Fremdbaum über dem eigenen; nach seinem UnpinTree gilt der eigene weiter.</summary>
     [Test]
     procedure PinTreeNestedOtherTreeRestoresOuter;
     [Test]
     procedure ExtractedUnitEqualsExtract;
     [Test]
     procedure UnpinTreeWithoutPinIsNoop;
-    /// <summary>Code-Review P-17: ResolveTypeFrom leert den Helfer-Cache nicht mehr.</summary>
+    /// <summary>ResolveTypeFrom leert den Helfer-Cache nicht mehr.</summary>
     [Test]
     procedure ResolveTypeFromKeepsHelperCache;
-    /// <summary>Code-Review P-17: Helfer nur aus implementation-uses sind im interface-Teil nicht sichtbar,
+    /// <summary>Helfer nur aus implementation-uses sind im interface-Teil nicht sichtbar,
     /// auch wenn derselbe Resolver sie vorher im implementation-Teil gefunden hat.</summary>
     [Test]
     procedure HelperVisibilityDependsOnSection;
-    /// <summary>Code-Review P-05/P-17: DeclaredMember über die Namenstabelle, auch geerbt; Vorfahren-Cache
+    /// <summary>DeclaredMember über die Namenstabelle, auch geerbt; Vorfahren-Cache
     /// über ResolveTypeFrom hinweg.</summary>
     [Test]
     procedure DeclaredMemberFindsInherited;

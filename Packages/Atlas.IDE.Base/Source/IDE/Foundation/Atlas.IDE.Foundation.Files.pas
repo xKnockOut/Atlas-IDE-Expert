@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Foundation.Files;
 
 // Dateien aus Sicht der IDE (#397, #121, #721): offener Puffer, geladenes Projekt, Kodierung auf der Platte.
-// Foundation des Plugins (A-09): importiert kein Atlas.IDE-Feature, nur Open Tools API und Atlas.Core.
+// Foundation des Plugins: importiert kein Atlas.IDE-Feature, nur Open Tools API und Atlas.Core.
 // Bis S-03b Teil von TAtlasIdeWorkspaceEdit. Nur im Hauptthread.
 
 interface

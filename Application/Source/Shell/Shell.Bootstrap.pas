@@ -1,7 +1,7 @@
 ﻿unit Shell.Bootstrap;
 
 // Host-Rolle Shell: gemeinsamer Aufbau für LSP-Server, MCP-Modus und Linter
-// (Code-Review D-08). Bisher hatte jeder Modus eigene Kopien:
+//. Bisher hatte jeder Modus eigene Kopien:
 // - Dateien lesen wie der Server (Kodierung erkennen),
 // - Projekte einer Projektgruppe im Ordner,
 // - globale Einstellungen aus %APPDATA%\Atlas\settings.json,

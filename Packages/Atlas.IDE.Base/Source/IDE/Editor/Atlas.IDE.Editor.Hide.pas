@@ -399,7 +399,7 @@ begin
     mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
   end;
   mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
+  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 

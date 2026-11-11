@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Popup.Draw;
 
-// Gemeinsame Zeichenbausteine der Popups (D-07): Farbumwandlung, Maße der
+// Gemeinsame Zeichenbausteine der Popups: Farbumwandlung, Maße der
 // Chips und Tags (einheitlich Innenabstand 12, Radius 4 in logischen Pixeln),
 // Daumen der Scrollleisten (Muted über Fläche, AtlasMixThumb) und Trennlinie.
 // Bisher hatte jedes Fenster eigene Kopien mit leicht abweichenden Werten.

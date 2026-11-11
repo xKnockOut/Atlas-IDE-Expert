@@ -78,7 +78,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -241,7 +241,7 @@ var
   mEdits: TArray<TRuleEdit>;
 begin
   mEdits := nil;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   FContext.Tree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     var
@@ -324,7 +324,7 @@ procedure TOutParamCheck.CheckName(ABlock: TSyntaxNode);
 var
   mRead: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mRead := ABlock.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

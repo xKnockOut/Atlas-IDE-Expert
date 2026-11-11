@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.Lines;
 
 // Zeilen und Positionen in Texten mit CRLF, LF oder CR (gemeinsam für Server
-// und Plugin, ADR 0012).
+// und Plugin).
 // Zeilenmodell wie LSP und TTextDocument: n Zeilenumbrüche ergeben n + 1
 // Zeilen; ein Text, der mit einem Umbruch endet, hat eine leere letzte Zeile;
 // CRLF zählt als ein Umbruch. Positionen sind 0-basiert, Zeichen in

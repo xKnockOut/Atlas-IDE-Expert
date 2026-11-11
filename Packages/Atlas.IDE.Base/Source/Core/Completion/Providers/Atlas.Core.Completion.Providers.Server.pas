@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Completion.Providers.Server;
 
 // Standardquelle der Vervollständigung (#408): der Atlas-Server über die
-// LSP-Sitzung des Plugins (ADR 0006). Prepare gleicht im aufrufenden Thread
+// LSP-Sitzung des Plugins. Prepare gleicht im aufrufenden Thread
 // (Zeitlimit-Arbeiter, #493) den Editortext ab (Sync ist threadsicher), Fetch
 // fragt textDocument/completion im Hintergrund an
 // und übersetzt die LSP-Einträge. Details für das Detailpanel (#405, #424)
@@ -897,7 +897,7 @@ begin
       finally
         Response.Free;
       end;
-      // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).
+      // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung.
       TAtlasMainThread.Queue(TAtlasFeature.Completion,
         procedure
         begin

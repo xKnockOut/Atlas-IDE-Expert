@@ -240,7 +240,7 @@ var
 begin
   mList := AList;
   mVersion := AVersion;
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin

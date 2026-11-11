@@ -599,7 +599,7 @@ begin
   mSearch.Mode := AMode;
   mSearch.State := TAtlasUnitSearchState.Create;
   // Fehlt, unbrauchbar oder gesperrt: Vorgaben; TAtlasDataFile legt Unbrauchbares beiseite und protokolliert
-  // ohne Pfad, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  // ohne Pfad, eine gesperrte Datei schreibt SaveToFile nicht.
   mSearch.State.LoadFromFile(TAtlasIdeUnitSearch.StateFile);
   mSearch.Target := ATargetFile;
   mSearch.Window := TAtlasUnitSearchWindow.CreateSearch(Application, mOptions, mSearch.State,

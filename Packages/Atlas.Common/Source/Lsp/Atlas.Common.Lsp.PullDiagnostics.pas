@@ -15,7 +15,7 @@
 // die Anfrage liefert ihre gespeicherten Befunde samt Fortschritt
 // ("atlas": {"run": …}). Gibt es nichts Neues, wartet die Anfrage bis WaitMs
 // auf eine Änderung (Long-Polling); mit RequestTimeout endet das Warten sicher
-// vor dem Zeitlimit des Watchdogs (Code-Review P-14). Die erste Anfrage
+// vor dem Zeitlimit des Watchdogs. Die erste Anfrage
 // startet die Projektprüfung; ohne Projektprüfung im Client ruht sie.
 //
 // Changed (Einstellungen, Index, „neu prüfen“) hebt die Generation der
@@ -76,7 +76,7 @@ type
     class function ClientSupportsRefresh(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>Eintrag diagnosticProvider für die Server-Capabilities.</summary>
     class function Capability: TJSONObject; static;
-    /// <summary>Antwort sicher vor dem Zeitlimit des Watchdogs (P-14): 2 s Reserve, bei kurzen Limits die
+    /// <summary>Antwort sicher vor dem Zeitlimit des Watchdogs: 2 s Reserve, bei kurzen Limits die
     /// Hälfte. ATimeoutMs = 0 (kein Limit): High(Cardinal).</summary>
     class function TimeLimitMs(ATimeoutMs: Cardinal): Cardinal; static;
     /// <summary>Wartezeit des Long-Pollings: AWaitMs, höchstens TimeLimitMs(ATimeoutMs).</summary>
@@ -950,7 +950,7 @@ var
   mNow: TWorkspaceCheckRun;
   mAtlas: TJSONObject;
 begin
-  // Zeitrahmen der Anfrage: Antwort vor dem Zeitlimit des Watchdogs (P-14).
+  // Zeitrahmen der Anfrage: Antwort vor dem Zeitlimit des Watchdogs.
   mClock := TStopwatch.StartNew;
   mPollMs := FWaitMs;
   if TimeLimit(FRequestTimeout) < mPollMs then

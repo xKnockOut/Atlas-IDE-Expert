@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.JsonRpc.Connection.Tests;
 
 // Nachrichtenschleife über Streams im Speicher. Kein Test lässt einen Thread
-// zurück (Bericht N2): Run wartet auf seinen Lese-Thread, und nebenläufige
+// zurück: Run wartet auf seinen Lese-Thread, und nebenläufige
 // Anfragen laufen in eigenen Threads (TJoinedWorkers), auf die der Test vor
 // dem Ende wartet. Der Thread-Pool der RTL behielte seine Worker über den
 // Test hinaus; ihn prüft der Dauerlauf in Atlas.Tests.LeakMonitor.Tests.
@@ -35,20 +35,20 @@ type
     procedure PostedMessageRunsBeforeRemainingInput;
     [Test]
     procedure PostWithoutLoopFreesMessage;
-    /// <summary>Code-Review A-03: Arbeit aus fremden Threads läuft im Thread von Run.</summary>
+    /// <summary>Arbeit aus fremden Threads läuft im Thread von Run.</summary>
     [Test]
     procedure QueuedWorkRunsInLoopBeforeRemainingInput;
     [Test]
     procedure QueueWithoutLoopReturnsFalse;
     [Test]
     procedure QueuedWorkErrorIsReported;
-    /// <summary>Code-Review A-06: Der Watchdog beantwortet eine hängende nebenläufige Anfrage, die späte
+    /// <summary>Der Watchdog beantwortet eine hängende nebenläufige Anfrage, die späte
     /// Antwort des Handlers wird verworfen.</summary>
     [Test]
     procedure WatchdogAnswersHangingRequestOnce;
     [Test]
     procedure RunReportsUnfinishedWork;
-    /// <summary>Bericht N2: Nach Run hält kein Thread der Verbindung mehr etwas von ihr; der Transport ist mit
+    /// <summary>Nach Run hält kein Thread der Verbindung mehr etwas von ihr; der Transport ist mit
     /// der Verbindung frei.</summary>
     [Test]
     procedure RunReleasesReaderBeforeReturning;

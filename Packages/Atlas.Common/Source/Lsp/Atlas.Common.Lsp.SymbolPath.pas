@@ -322,7 +322,7 @@ begin
         end;
       end;
     end;
-    // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage (A-06).
+    // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage.
     Result := Request(mParams, TJsonRpcCurrentRequest.Token);
   finally
     mParams.Free;

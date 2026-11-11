@@ -122,7 +122,7 @@ begin
   begin
     Session.StopWatchingParent;
   end;
-  // Code-Review A-06: Liefen beim Ende noch Handler, die ihr Abbruchsignal nicht prüfen, nutzen sie
+  // Liefen beim Ende noch Handler, die ihr Abbruchsignal nicht prüfen, nutzen sie
   // Features und Ordner weiter.
   mUnfinished := (Connection <> nil) and Connection.UnfinishedWork;
   FreeAndNil(Connection);
@@ -130,7 +130,7 @@ begin
   begin
     Protocol.Dispatcher.Watchdog := nil;
   end;
-  // Compiler und Index-Threads anhalten, solange Diagnoselog und Syntaxprüfung noch leben (Code-Review A-05):
+  // Compiler und Index-Threads anhalten, solange Diagnoselog und Syntaxprüfung noch leben:
   // Ein abgebrochener Aufbau meldet sich über OnIndexEvent im Diagnoselog, ein Compilerlauf über die
   // Syntaxprüfung.
   if Compile <> nil then

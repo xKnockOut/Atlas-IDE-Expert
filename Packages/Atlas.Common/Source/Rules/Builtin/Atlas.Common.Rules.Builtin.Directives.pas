@@ -1615,7 +1615,7 @@ var
     begin
       Exit;
     end;
-    // Iterativ (Bericht M1); Typen stehen nicht in Anweisungen.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Typen stehen nicht in Anweisungen.
     mDecls := nil;
     mPending := [AContext.Tree.Root];
     while mPending <> nil do

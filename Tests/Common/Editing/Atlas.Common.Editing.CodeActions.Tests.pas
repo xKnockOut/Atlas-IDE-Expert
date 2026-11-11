@@ -46,7 +46,7 @@ type
     procedure SuppressLineInsertsCommentAbove;
     [Test]
     procedure SuppressLineExtendsExistingComment;
-    /// <summary>Zeilen auch bei CR allein getrennt (TTextLines.SplitLines, D-03).</summary>
+    /// <summary>Zeilen auch bei CR allein getrennt (TTextLines.SplitLines).</summary>
     [Test]
     procedure SuppressLineInCrOnlyText;
     [Test]

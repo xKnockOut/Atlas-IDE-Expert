@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.WorkerSlot.Tests;
 
-// Arbeiter-Threads über ihrer Zeitgrenze (Code-Review T-101): Der Slot gibt
+// Arbeiter-Threads über ihrer Zeitgrenze: Der Slot gibt
 // beendete frei, übergibt überfällige an TAtlasOverdueThreads, und diese
 // kennzeichnen ihr Package als unsicher, wenn es beim Entladen noch Code von
 // ihnen ausführt.

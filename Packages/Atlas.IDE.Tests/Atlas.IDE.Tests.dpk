@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Tests (#1456, ADR 0017): Testläufe, betroffene Tests, Test-Linsen und Test am Cursor debuggen.
+// Modul Tests (#1456): Testläufe, betroffene Tests, Test-Linsen und Test am Cursor debuggen.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Tests.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package

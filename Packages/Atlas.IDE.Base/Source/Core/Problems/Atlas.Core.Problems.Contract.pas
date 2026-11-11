@@ -10,7 +10,7 @@ uses
   Atlas.Core.Lsp.Contract;
 
 type
-  /// <summary>Seit A-09 im Lsp-Feature (die Protokollschicht liegt unten); Alias für bestehende Nutzer.</summary>
+  /// <summary>Liegt im Lsp-Feature (die Protokollschicht liegt unten); Alias für bestehende Nutzer.</summary>
   TAtlasProblemSeverity = Atlas.Core.Lsp.Contract.TAtlasProblemSeverity;
   TAtlasProblem = Atlas.Core.Lsp.Contract.TAtlasProblem;
   TAtlasProblemRelated = Atlas.Core.Lsp.Contract.TAtlasProblemRelated;

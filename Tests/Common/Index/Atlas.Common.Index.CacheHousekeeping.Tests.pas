@@ -81,7 +81,7 @@ type
     procedure ConcurrentWritersLeaveReadableCache;
     [Test]
     procedure FailedReplaceLeavesNoRemains;
-    /// <summary>Ein Schreiber je Cache (Bericht N1): TryLockWrite ist exklusiv und nutzt die Sperrdatei, die
+    /// <summary>Ein Schreiber je Cache: TryLockWrite ist exklusiv und nutzt die Sperrdatei, die
     /// auch Aufräumen und Leeren beachten.</summary>
     [Test]
     procedure DiskWriteLockIsExclusive;
@@ -345,7 +345,7 @@ begin
   Target := TPath.Combine(ARoot, 'index-00000001.json');
   Disk.WriteText(Target, 'x');
   // Die RTL legt bei der ersten gescheiterten Sperre (EFCreateError) Daten an, die bis Programmende bleiben:
-  // hier statt [IgnoreMemoryLeaks] an SecondLockFails (Bericht N2).
+  // hier statt [IgnoreMemoryLeaks] an SecondLockFails.
   CacheLock := TIndexCacheDirectory.TryLock(Target);
   try
     TIndexCacheDirectory.TryLock(Target).Free;
@@ -686,7 +686,7 @@ begin
   Lock := TFileStream.Create(Cache, fmOpenRead or fmShareExclusive);
   try
     Assert.IsFalse(FileSystem.WriteText(Cache, '{"version":2}'));
-    // Der Grund kommt mit, ohne Pfad (anonymes Log, Bericht N1).
+    // Der Grund kommt mit, ohne Pfad (anonymes Log).
     Assert.IsFalse(FileSystem.WriteBytes(Cache, TEncoding.UTF8.GetBytes('{"version":2}'), Error));
     Assert.AreNotEqual('', Error);
     Assert.IsFalse(Error.Contains(FRoot), Error);

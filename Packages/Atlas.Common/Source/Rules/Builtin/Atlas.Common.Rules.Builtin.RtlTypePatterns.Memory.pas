@@ -571,7 +571,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -697,7 +697,7 @@ var
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   end;
 
-  // Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (Bericht M1): die Verkettung ist eine
+  // Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (tiefe Bäume sprengen den Stapel nicht): die Verkettung ist eine
   // Oder-Verknüpfung, die Reihenfolge bleibt links vor rechts.
   function IsStringValue(ANode: TSyntaxNode): Boolean;
   var
@@ -719,7 +719,7 @@ var
     end;
   end;
 
-  // Nur Literale: der Compiler legt den String als Konstante ab. Iterativ (Bericht M1): Und-Verknüpfung über
+  // Nur Literale: der Compiler legt den String als Konstante ab. Iterativ (tiefe Bäume sprengen den Stapel nicht): Und-Verknüpfung über
   // Klammern und zweistellige Ausdrücke.
   function IsConstant(ANode: TSyntaxNode): Boolean;
   var
@@ -769,7 +769,7 @@ var
   var
     mNode: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1): durch String-Umwandlungen und Klammern hindurch.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch String-Umwandlungen und Klammern hindurch.
     mNode := ANode;
     while True do
     begin
@@ -799,7 +799,7 @@ var
   var
     mValue: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1): durch die Umwandlungen hindurch.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch die Umwandlungen hindurch.
     Result := nil;
     mValue := AValue;
     while (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount = 2) do
@@ -900,7 +900,7 @@ var
     mNode, mRoutine, mParent: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); parallele Stapel führen ARoutine und AParent je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ARoutine und AParent je Knoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mRoutineStack := TStack<TSyntaxNode>.Create;
     mParents := TStack<TSyntaxNode>.Create;
@@ -1051,7 +1051,7 @@ var
     mPending: TStack<TSyntaxNode>;
     mNode: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1): die Glieder der Verkettung von links nach rechts.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): die Glieder der Verkettung von links nach rechts.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -1137,7 +1137,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung zählt).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung zählt).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -1299,7 +1299,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);

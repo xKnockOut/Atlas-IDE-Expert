@@ -3,7 +3,7 @@
 // Internals-Rolle Shell: Compilerläufe des Servers (#40, #261). Wählt den Weg zum Compiler (dcc oder keiner),
 // baut im eigenen Thread, merkt einen Auftrag während eines Laufs vor und veröffentlicht die Meldungen.
 // Ohne nutzbaren Compiler stehen Grund und Ausweg einmal je Grund und Sitzung als Meldung im Editor und dauerhaft
-// im Status (#28). Beenden (A-05) bricht den Prozess ab, statt auf ihn zu warten.
+// im Status (#28). Beenden bricht den Prozess ab, statt auf ihn zu warten.
 
 interface
 
@@ -76,7 +76,7 @@ type
     /// <summary>Startet einen Lauf für AFileName (leer: das gewählte Projekt). AManual: auf den Befehl; sonst nach
     /// dem Speichern. False, wenn kein nutzbarer Compiler da ist; AChoice sagt warum.</summary>
     function Start(const AFileName: string; AManual: Boolean; out AChoice: TCompilerBackendChoice): Boolean;
-    /// <summary>Beenden (A-05): keinen Lauf mehr starten, den Prozess abbrechen.</summary>
+    /// <summary>Beenden: keinen Lauf mehr starten, den Prozess abbrechen.</summary>
     procedure Stop;
     /// <summary>Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40), der Status prüft
     /// den Weg neu (#261).</summary>
@@ -129,7 +129,7 @@ end;
 
 destructor TShellCompileHost.Destroy;
 begin
-  // Stop ruft der Server, solange Diagnoselog und Syntaxprüfung noch leben (A-05).
+  // Stop ruft der Server, solange Diagnoselog und Syntaxprüfung noch leben.
   FServices.Progress.Free;
   FServices.Editions.Free;
   FLock.Free;
@@ -251,7 +251,7 @@ begin
     Result := Choose(AFileName, AJob, AChoice);
   except
     on ECompilerCancelled do
-      Exit(False); // Beenden läuft (A-05).
+      Exit(False); // Beenden läuft.
   end;
   if not Result then
   begin
@@ -274,7 +274,7 @@ function TShellCompileHost.Enqueue(var AJob: TShellCompileJob): Boolean;
 begin
   System.TMonitor.Enter(FLock);
   try
-    // Beenden läuft schon (A-05): keinen neuen Thread mehr starten.
+    // Beenden läuft schon: keinen neuen Thread mehr starten.
     Result := not FStopping and not FCompiling;
     if FCompiling and not FStopping then
     begin
@@ -381,7 +381,7 @@ begin
         mDone := not NextJob(mJob);
       until mDone;
     except
-      // Sonst läge die Ausnahme ungelesen in FatalException und FCompiling bliebe True (Code-Review S-06).
+      // Sonst läge die Ausnahme ungelesen in FatalException und FCompiling bliebe True.
       on E: Exception do
         FServices.Logger.Error(Format('Compilerlauf abgebrochen: %s: %s', [E.ClassName, TLogMarks.Text(E.Message)]));
     end;
@@ -402,11 +402,11 @@ end;
 procedure TShellCompileHost.CompileOnce(const AJob: TShellCompileJob);
 begin
   try
-    // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
+    // Im try: Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
     CompileWithDcc(AJob);
   except
     on ECompilerCancelled do
-      ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
+      ; // Beenden: nichts mehr melden, der Transport ist schon zu.
     on E: Exception do
     begin
       Unavailable(TCompilerBackendChoice.Unavailable(E.Message, ''), False);

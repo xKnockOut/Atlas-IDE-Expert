@@ -130,7 +130,7 @@ type
     class function Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>; static;
     /// <summary>"Implementierung an die Deklaration angleichen" und "Deklaration an die Implementierung
     /// angleichen" (#100) für APair. Liefert Code-Aktionen statt TRuleFix, damit Editing ohne Rules
-    /// auskommt (A-11); die Regel signature-mismatch macht daraus Korrekturen.</summary>
+    /// auskommt; die Regel signature-mismatch macht daraus Korrekturen.</summary>
     class function PairFixes(ATree: TSyntaxTree; const AText: string; const APair: TSignaturePair;
       out AFixes: TArray<TCodeAction>): Boolean; static;
     /// <summary>Fügt den Rumpf ABody (ohne Zeilenumbruch am Ende) für einen Typ dieser Datei ein: hinter die

@@ -1,7 +1,7 @@
 ﻿<#
 .SYNOPSIS
     Prüft die Modulgrenzen in Check-PackageDependencies.ps1 mit absichtlichen
-    Verstößen (#1455, ADR 0017).
+    Verstößen (#1455).
 
 .DESCRIPTION
     Legt eine Kopie von Packages, Application, atlas.json, Tests-Programm und

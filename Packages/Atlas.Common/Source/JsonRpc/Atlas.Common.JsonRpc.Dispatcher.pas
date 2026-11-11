@@ -264,7 +264,7 @@ begin
   ObserveStarted(ARun.Observer, ARun.Method);
   try
     ARun.Token.ThrowIfCancellationRequested;
-    // Tiefe Aufrufe ohne Token-Parameter (EnsureUnit) fragen das Signal über TJsonRpcCurrentRequest (A-06).
+    // Tiefe Aufrufe ohne Token-Parameter (EnsureUnit) fragen das Signal über TJsonRpcCurrentRequest.
     mPrevious := TJsonRpcCurrentRequest.Enter(ARun.Token);
     try
       mValue := AHandler(ARun.Params, ARun.Token);
@@ -319,7 +319,7 @@ begin
   mRun := ARun;
   mRun.QueueMs := ARun.QueueMs + AQueuedMs;
   mTicket := 0;
-  // Beim Ablauf antwortet der Watchdog selbst mit RequestCancelled (Code-Review A-06).
+  // Beim Ablauf antwortet der Watchdog selbst mit RequestCancelled.
   if AWatchdog <> nil then
   begin
     mTicket := AWatchdog.Watch(mRun.Id, mRun.Method, mRun.Token, AResponder);
@@ -336,7 +336,7 @@ begin
     mRun.Id.Free;
   end;
   // Hat der Watchdog schon mit RequestCancelled geantwortet, wird die späte Antwort verworfen:
-  // genau eine Antwort je Anfrage (A-06).
+  // genau eine Antwort je Anfrage.
   if APending.TryAnswer(mRun.Token) then
   begin
     AResponder(mResponse);

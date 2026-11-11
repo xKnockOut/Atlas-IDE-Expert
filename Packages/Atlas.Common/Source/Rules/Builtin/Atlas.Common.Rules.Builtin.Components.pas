@@ -275,7 +275,7 @@ var
   mFound: TSyntaxNode;
 begin
   mField := AField;
-  // Iterativ (Bericht M1); out-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); out-Parameter lassen sich nicht in der anonymen Methode verwenden.
   mFound := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     var
@@ -650,7 +650,7 @@ var
 begin
   mList := AList;
   mHelpers := AHelpers;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
@@ -747,7 +747,7 @@ var
   mList: TList<TSyntaxNode>;
 begin
   mList := AList;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin

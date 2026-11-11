@@ -332,7 +332,7 @@ begin
   begin
     Exit;
   end;
-  // Über den Index statt for-in: keine Kopie des Symbol-Records je geprüftem Symbol (Code-Review P-05).
+  // Über den Index statt for-in: keine Kopie des Symbol-Records je geprüftem Symbol.
   for mPosition := 0 to High(mUnit.Symbols) do
   begin
     if SameText(mUnit.Symbols[mPosition].Container, AHelper.QualifiedName) and
@@ -427,7 +427,7 @@ procedure TResolverCandidates.CollectUnit(const AUnit: TUnitIndex; AOnlyInterfac
 var
   mPosition: Integer;
 begin
-  // Über den Index statt for-in: keine Kopie des Symbol-Records je übersprungenem Symbol (Code-Review P-05).
+  // Über den Index statt for-in: keine Kopie des Symbol-Records je übersprungenem Symbol.
   for mPosition := 0 to High(AUnit.Symbols) do
   begin
     if AOnlyInterface and not AUnit.Symbols[mPosition].InInterface then
@@ -489,7 +489,7 @@ var
   mChild: TSyntaxNode;
   mOffset: Integer;
 begin
-  // Wie LookupInlineVars: nur bis zum Cursor, nicht in verschachtelte Routinen; iterativ (Bericht M1).
+  // Wie LookupInlineVars: nur bis zum Cursor, nicht in verschachtelte Routinen; iterativ.
   mOffset := FParts.Place.Offset;
   mPending := TStack<TSyntaxNode>.Create;
   try

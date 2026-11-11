@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Modules.Registry.Tests;
 
-// Modul-Registry von Base (#1455, ADR 0017 Regeln 1–5, 8, 9): Anmelden,
+// Modul-Registry von Base (#1455, Modulregeln 1–5, 8, 9): Anmelden,
 // Abmelden rückwärts über den Scope, Objekte nach GUID, Änderungsmeldung,
 // Liste bekannter Module samt Ablage.
 

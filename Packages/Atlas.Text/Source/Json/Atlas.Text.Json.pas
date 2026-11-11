@@ -1,6 +1,6 @@
 ﻿unit Atlas.Text.Json;
 
-// JSON-Strings von Hand schreiben (gemeinsam für Server und Plugin, ADR 0012):
+// JSON-Strings von Hand schreiben (gemeinsam für Server und Plugin):
 // Anführungszeichen, Backslash und Steuerzeichen wie RFC 8259 maskieren, alle
 // übrigen Zeichen unverändert (auch Umlaute, anders als TJSONValue.ToJSON).
 // Ausgaben, die den Text selbst zusammensetzen (Linter-Befunde, Baseline,

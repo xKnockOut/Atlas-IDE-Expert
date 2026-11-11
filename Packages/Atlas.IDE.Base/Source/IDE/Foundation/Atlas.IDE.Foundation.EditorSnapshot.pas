@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Foundation.EditorSnapshot;
 
-// Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints (P-04):
+// Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints:
 // Beide Zeitgeber fragten bisher je Takt den ganzen Puffer ab und verglichen
 // den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
