@@ -85,7 +85,7 @@ uses
   System.Math,
   Vcl.Controls,
   Atlas.Core.Designer.Layout,
-  Atlas.UI.Designer.ToolStrings;
+  Atlas.UI.Designer.ViewStrings;
 
 const
   cPercent = 100;
@@ -104,7 +104,7 @@ begin
   end;
   FMeasure := TBitmap.Create;
   inherited CreatePreview(AOwner, AData.Form, AColors);
-  Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleTitle, [AData.Form.FormName]);
+  Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleTitle, [AData.Form.FormName]);
   FList := TListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alBottom;
@@ -159,17 +159,17 @@ begin
       mStart := mIndex;
     end;
   end;
-  FLevelBox := AddChoice(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleLevel), mItems,
+  FLevelBox := AddChoice(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleLevel), mItems,
     Max(mStart, 0));
-  mItems := [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleNoLimit)];
+  mItems := [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleNoLimit)];
   for mIndex := 0 to High(FScale.Screens) do
   begin
     mItems := mItems + [Format('%d × %d', [FScale.Screens[mIndex].cx, FScale.Screens[mIndex].cy])];
   end;
-  FScreenBox := AddChoice(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleScreen), mItems, 0);
-  FTextBox := AddChoice(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleTexts),
-    [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleOriginal),
-    TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleLong, [FScale.LongFactor])], 0);
+  FScreenBox := AddChoice(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleScreen), mItems, 0);
+  FTextBox := AddChoice(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleTexts),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleOriginal),
+    TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleLong, [FScale.LongFactor])], 0);
 end;
 
 function TAtlasScalePreviewWindow.Percent: Integer;
@@ -276,18 +276,18 @@ begin
   FPaint.SetBounds(0, 0, mWidth + 2 * Origin.X, mHeight + 2 * Origin.Y);
   if Length(FFindings) = 0 then
   begin
-    FStatus.Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleNone, [Percent]) + ' · ' +
-      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleKeys);
+    FStatus.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleNone, [Percent]) + ' · ' +
+      TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleKeys);
   end
   else
   begin
-    FStatus.Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleCount, [Length(FFindings),
+    FStatus.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleCount, [Length(FFindings),
       Percent]);
   end;
   if not FScale.Scaled then
   begin
     FStatus.Caption := FStatus.Caption + ' · ' +
-      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleNotScaled);
+      TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleNotScaled);
   end;
   FillList;
   FPaint.Invalidate;
@@ -352,7 +352,7 @@ begin
   FPaint.Canvas.Pen.Style := psSolid;
   FPaint.Canvas.Font.Color := TColor(FColors.Error);
   FPaint.Canvas.TextOut(mRect.Left + S(cDashGap), mRect.Bottom - FPaint.Canvas.TextHeight('0') - S(cDashGap),
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleUsable));
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleUsable));
 end;
 
 end.

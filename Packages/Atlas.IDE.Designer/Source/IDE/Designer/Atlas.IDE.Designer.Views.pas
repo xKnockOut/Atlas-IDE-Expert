@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Designer.Tools;
+﻿unit Atlas.IDE.Designer.Views;
 
 // Eigene Knöpfe der Designer-Leiste für die größeren Designer-Funktionen
 // (#605 ff.), an einer Stelle für TAtlasIdeDesignerCommands; jede Funktion
@@ -23,7 +23,7 @@ uses
   Atlas.IDE.Designer.ScalePreview;
 
 type
-  TAtlasIdeDesignerTools = class
+  TAtlasIdeDesignerViews = class
   private
     FMeasure: TAtlasIdeDesignerMeasure;
     FResize: TAtlasIdeResizePreview;
@@ -41,9 +41,9 @@ type
 
 implementation
 
-{ TAtlasIdeDesignerTools }
+{ TAtlasIdeDesignerViews }
 
-constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>);
+constructor TAtlasIdeDesignerViews.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create;
   FMeasure := TAtlasIdeDesignerMeasure.Create;
@@ -51,7 +51,7 @@ begin
   FScale := TAtlasIdeScalePreview.Create(AOnMessage);
 end;
 
-destructor TAtlasIdeDesignerTools.Destroy;
+destructor TAtlasIdeDesignerViews.Destroy;
 begin
   FScale.Free;
   FResize.Free;
@@ -59,7 +59,7 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeDesignerTools.Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
+function TAtlasIdeDesignerViews.Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
 var
   mAll: TArray<TAtlasDesignerButton>;
   mButton: TAtlasDesignerButton;
@@ -75,7 +75,7 @@ begin
   end;
 end;
 
-function TAtlasIdeDesignerTools.Run(const AId: string): Boolean;
+function TAtlasIdeDesignerViews.Run(const AId: string): Boolean;
 begin
   Result := True;
   if SameText(AId, TAtlasIdeDesignerMeasure.cId) then
@@ -96,7 +96,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDesignerTools.ApplyTheme;
+procedure TAtlasIdeDesignerViews.ApplyTheme;
 begin
   FMeasure.ApplyTheme;
   FResize.ApplyTheme;

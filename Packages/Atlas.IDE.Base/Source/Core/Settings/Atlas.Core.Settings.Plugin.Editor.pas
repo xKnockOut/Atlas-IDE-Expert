@@ -627,9 +627,9 @@ type
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginEditorViewSettings; static;
     /// <summary>Vorgaben der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
-    procedure SetToolDefaults;
+    procedure SetViewDefaults;
     /// <summary>Einstellungen der eigenen Knöpfe der Designer-Leiste lesen bzw. schreiben.</summary>
-    procedure ExchangeTools(const AIo: TAtlasSettingsExchange);
+    procedure ExchangeViews(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
@@ -1109,7 +1109,7 @@ begin
   Result.DesignerSelectionSetsSaveKey := 24659;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
-  Result.SetToolDefaults;
+  Result.SetViewDefaults;
   Result.SetArrangeDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
@@ -1237,7 +1237,7 @@ begin
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
-  ExchangeTools(AIo);
+  ExchangeViews(AIo);
   ExchangeArrange(AIo);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
@@ -1263,7 +1263,7 @@ const
   /// <summary>Vorgabe für designer.longTextFactor in Prozent.</summary>
   cLongTextFactor = 30;
 
-procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
+procedure TAtlasPluginEditorViewSettings.SetViewDefaults;
 begin
   DesignerMeasureDistances := True;
   DesignerMeasureAltKey := True;
@@ -1276,7 +1276,7 @@ begin
   DesignerLongTextFactor := cLongTextFactor;
 end;
 
-procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
+procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('DesignerMeasureDistances', DesignerMeasureDistances);
   AIo.Flag('DesignerMeasureAltKey', DesignerMeasureAltKey);

@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Designer.ToolStrings;
+﻿unit Atlas.UI.Designer.ViewStrings;
 
 // Oberflächentexte der eigenen Knöpfe der Designer-Leiste (#605 ff.: Abstände
 // messen, Probegröße, Vorschau in Skalierungen, sprechende Namen, Leiste der
@@ -16,7 +16,7 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasDesignerToolTextId = (
+  TAtlasDesignerViewTextId = (
     MeasureHint, MeasureAbove, MeasureBelow, MeasureLeftOf, MeasureRightOf, MeasureSameWidth, MeasureSameHeight,
     SettingsMeasureDistances, SettingsMeasureAltKey, ResizeHint, ResizeTitle, ResizeSize, ResizeMinimum, ResizeDesign,
     ResizeNoMinimum, ResizeNone, ResizeCount, ResizeKeys, LayoutTooSmall, LayoutOutRight, LayoutOutBottom,
@@ -28,14 +28,14 @@ type
 
 {$SCOPEDENUMS OFF}
 
-  TAtlasDesignerToolStrings = class
+  TAtlasDesignerViewStrings = class
   public
     /// <summary>Text in der Sprache der Oberfläche.</summary>
-    class function Text(AId: TAtlasDesignerToolTextId): string; static;
+    class function Text(AId: TAtlasDesignerViewTextId): string; static;
     /// <summary>Text in ALanguage, unabhängig von der Sprache der Oberfläche.</summary>
-    class function TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerToolTextId): string; static;
+    class function TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerViewTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
-    class function Fmt(AId: TAtlasDesignerToolTextId; const AArgs: array of const): string; static;
+    class function Fmt(AId: TAtlasDesignerViewTextId; const AArgs: array of const): string; static;
   end;
 
 implementation
@@ -45,7 +45,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  cTexts: array[TAtlasLanguage, TAtlasDesignerToolTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasDesignerViewTextId] of string = (
     ('Abstände messen: Maßlinien beim Ziehen, mit Alt zur Komponente unter der Maus',
      'wie oben',
      'wie unten',
@@ -149,19 +149,19 @@ const
      'Offered screen sizes (width x height, comma separated)',
      'Lengthening of texts with “Long texts” in percent'));
 
-{ TAtlasDesignerToolStrings }
+{ TAtlasDesignerViewStrings }
 
-class function TAtlasDesignerToolStrings.Text(AId: TAtlasDesignerToolTextId): string;
+class function TAtlasDesignerViewStrings.Text(AId: TAtlasDesignerViewTextId): string;
 begin
   Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
-class function TAtlasDesignerToolStrings.TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerToolTextId): string;
+class function TAtlasDesignerViewStrings.TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerViewTextId): string;
 begin
   Result := cTexts[ALanguage, AId];
 end;
 
-class function TAtlasDesignerToolStrings.Fmt(AId: TAtlasDesignerToolTextId; const AArgs: array of const): string;
+class function TAtlasDesignerViewStrings.Fmt(AId: TAtlasDesignerViewTextId; const AArgs: array of const): string;
 begin
   Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;

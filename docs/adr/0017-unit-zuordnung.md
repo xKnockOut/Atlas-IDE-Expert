@@ -1155,7 +1155,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.SelectionSets` | `IDE/Designer/Atlas.IDE.Designer.SelectionSets.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Snapshot` | `IDE/Designer/Atlas.IDE.Designer.Snapshot.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Measure` | `IDE/Designer/Atlas.IDE.Designer.Measure.pas` | Ordner `IDE/Designer` |
-| `Atlas.IDE.Designer.Tools` | `IDE/Designer/Atlas.IDE.Designer.Tools.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Views` | `IDE/Designer/Atlas.IDE.Designer.Views.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Model` | `IDE/Designer/Atlas.IDE.Designer.Model.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.ResizePreview` | `IDE/Designer/Atlas.IDE.Designer.ResizePreview.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Preview` | `IDE/Designer/Atlas.IDE.Designer.Preview.pas` | Ordner `IDE/Designer` |
@@ -1169,7 +1169,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.SpaceDialog` | `UI/Designer/Atlas.UI.Designer.SpaceDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
-| `Atlas.UI.Designer.ToolStrings` | `UI/Designer/Atlas.UI.Designer.ToolStrings.pas` | Texte der eigenen Knöpfe der Designer-Leiste (#605 ff.), Sprache von Base |
+| `Atlas.UI.Designer.ViewStrings` | `UI/Designer/Atlas.UI.Designer.ViewStrings.pas` | Texte der eigenen Knöpfe der Designer-Leiste (#605 ff.), Sprache von Base |
 | `Atlas.UI.Designer.MeasureOverlay` | `UI/Designer/Atlas.UI.Designer.MeasureOverlay.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.FormPreview` | `UI/Designer/Atlas.UI.Designer.FormPreview.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.ScalePreview` | `UI/Designer/Atlas.UI.Designer.ScalePreview.pas` | Ordner `UI/Designer` |

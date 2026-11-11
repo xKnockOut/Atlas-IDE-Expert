@@ -53,7 +53,7 @@ uses
   Atlas.Core.Designer.Layout,
   Atlas.Core.Designer.Scale,
   Atlas.UI.Designer.ScalePreview,
-  Atlas.UI.Designer.ToolStrings,
+  Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,
   Atlas.IDE.Designer.Model,
@@ -193,7 +193,7 @@ end;
 
 function TAtlasIdeScalePreview.HintText: string;
 begin
-  Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ScaleHint);
+  Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleHint);
 end;
 
 function TAtlasIdeScalePreview.Enabled(const ASettings: TAtlasPluginSettings): Boolean;

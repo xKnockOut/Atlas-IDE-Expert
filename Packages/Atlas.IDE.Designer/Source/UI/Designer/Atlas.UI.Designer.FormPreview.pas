@@ -112,7 +112,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Designer.ToolStrings;
+  Atlas.UI.Designer.ViewStrings;
 
 const
   cMargin = 16;
@@ -152,7 +152,7 @@ begin
   inherited CreateNew(AOwner);
   FData := AData;
   FColors := AColors;
-  Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeTitle, [AData.FormName]);
+  Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeTitle, [AData.FormName]);
   BorderStyle := bsSizeToolWin;
   Position := poMainFormCenter;
   KeyPreview := True;
@@ -228,7 +228,7 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := FBar;
-  mLabel.Caption := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeSize);
+  mLabel.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeSize);
   mLabel.AlignWithMargins := True;
   FWidthEdit := TEdit.Create(Self);
   FWidthEdit.Parent := FBar;
@@ -242,14 +242,14 @@ begin
   FHeightEdit.NumbersOnly := True;
   FHeightEdit.AlignWithMargins := True;
   FHeightEdit.OnChange := SizeEdited;
-  mButton := AddButton(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeMinimum), cTagMinimum);
+  mButton := AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeMinimum), cTagMinimum);
   mButton.Enabled := (FData.MinClient.cx > 0) or (FData.MinClient.cy > 0);
   if not mButton.Enabled then
   begin
-    mButton.Hint := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeNoMinimum);
+    mButton.Hint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeNoMinimum);
     mButton.ShowHint := True;
   end;
-  AddButton(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeDesign), cTagDesign);
+  AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeDesign), cTagDesign);
   for mIndex := 0 to High(FData.Quick) do
   begin
     AddButton(Format('%d × %d', [FData.Quick[mIndex].cx, FData.Quick[mIndex].cy]), mIndex);
@@ -320,12 +320,12 @@ begin
   FPaint.SetBounds(0, 0, Px(FProbe.cx) + 2 * S(cMargin), Px(FProbe.cy) + 2 * S(cMargin));
   if Length(FFindings) = 0 then
   begin
-    FStatus.Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeNone, [FProbe.cx, FProbe.cy]) +
-      ' · ' + TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeKeys);
+    FStatus.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeNone, [FProbe.cx, FProbe.cy]) +
+      ' · ' + TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeKeys);
   end
   else
   begin
-    FStatus.Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeCount, [Length(FFindings),
+    FStatus.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeCount, [Length(FFindings),
       FProbe.cx, FProbe.cy]);
   end;
   FPaint.Invalidate;
@@ -390,33 +390,33 @@ class function TAtlasFormPreviewWindow.FindingText(const AFinding: TAtlasLayoutF
 begin
   case AFinding.Problem of
     TAtlasLayoutProblem.TooSmall:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutTooSmall, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutTooSmall, [AFinding.Amount]);
     TAtlasLayoutProblem.OutRight:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutOutRight, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutRight, [AFinding.Amount]);
     TAtlasLayoutProblem.OutBottom:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutOutBottom, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutBottom, [AFinding.Amount]);
     TAtlasLayoutProblem.OutLeft:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutOutLeft, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutLeft, [AFinding.Amount]);
     TAtlasLayoutProblem.OutTop:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutOutTop, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutTop, [AFinding.Amount]);
     TAtlasLayoutProblem.Overlap:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutOverlap, [AFinding.Other]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOverlap, [AFinding.Other]);
     TAtlasLayoutProblem.TwoClient:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutTwoClient, [AFinding.Other]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutTwoClient, [AFinding.Other]);
     TAtlasLayoutProblem.Clipped:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleClipped, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleClipped, [AFinding.Amount]);
     TAtlasLayoutProblem.ScreenWidth:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleScreenWidth, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleScreenWidth, [AFinding.Amount]);
     TAtlasLayoutProblem.ScreenHeight:
-      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleScreenHeight, [AFinding.Amount]);
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleScreenHeight, [AFinding.Amount]);
   else
-    Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.LayoutAnchorsAlign);
+    Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.LayoutAnchorsAlign);
   end;
   // Wer herausragt, ohne mitzuwachsen: Anchors nennen.
   if (AFinding.Problem in [TAtlasLayoutProblem.OutRight, TAtlasLayoutProblem.OutBottom]) and
     (ANode.Align = TAtlasLayoutAlign.None) then
   begin
-    Result := Result + ', ' + TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutAnchored,
+    Result := Result + ', ' + TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutAnchored,
       [AnchorText(ANode.Anchors)]);
   end;
 end;

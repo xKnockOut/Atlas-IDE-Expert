@@ -32,7 +32,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Designer.ToolStrings,
+  Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasIdeResizePreview }
@@ -49,7 +49,7 @@ end;
 
 function TAtlasIdeResizePreview.HintText: string;
 begin
-  Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeHint);
+  Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeHint);
 end;
 
 function TAtlasIdeResizePreview.Enabled(const ASettings: TAtlasPluginSettings): Boolean;

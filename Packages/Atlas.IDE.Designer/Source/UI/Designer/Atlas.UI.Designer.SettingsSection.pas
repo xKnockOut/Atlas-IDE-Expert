@@ -18,7 +18,7 @@ type
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
     /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
-    procedure BuildToolRows;
+    procedure BuildViewRows;
   protected
     procedure BuildRows; override;
   public
@@ -31,7 +31,7 @@ implementation
 uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
-  Atlas.UI.Designer.ToolStrings;
+  Atlas.UI.Designer.ViewStrings;
 
 { TAtlasDesignerSettingsSection }
 
@@ -77,23 +77,23 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialCross));
-  BuildToolRows;
+  BuildViewRows;
   BuildArrangeRows;
 end;
 
-procedure TAtlasDesignerSettingsSection.BuildToolRows;
+procedure TAtlasDesignerSettingsSection.BuildViewRows;
 begin
   Switch('designer.measureDistances',
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMeasureDistances));
-  Switch('designer.measureAltKey', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMeasureAltKey));
-  Switch('designer.resizePreview', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizePreview));
-  Line('designer.resizePreviewSizes', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeSizes));
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureDistances));
+  Switch('designer.measureAltKey', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureAltKey));
+  Switch('designer.resizePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizePreview));
+  Line('designer.resizePreviewSizes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeSizes));
   Switch('designer.resizePreviewShowAnchors',
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeAnchors));
-  Switch('designer.scalePreview', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsScalePreview));
-  Line('designer.scalePreviewLevels', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsScaleLevels));
-  Line('designer.scalePreviewScreens', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsScaleScreens));
-  Number('designer.longTextFactor', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsLongTextFactor));
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeAnchors));
+  Switch('designer.scalePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScalePreview));
+  Line('designer.scalePreviewLevels', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleLevels));
+  Line('designer.scalePreviewScreens', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleScreens));
+  Number('designer.longTextFactor', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsLongTextFactor));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

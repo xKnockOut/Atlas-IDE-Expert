@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Designer.ToolStrings.Tests;
+﻿unit Atlas.UI.Designer.ViewStrings.Tests;
 
 // Texte der eigenen Knöpfe der Designer-Leiste (#605 ff.): jede Id in beiden Sprachen, gleiche Platzhalter.
 
@@ -10,7 +10,7 @@ uses
 type
   [TestFixture]
   [Category('Atlas.IDE.Designer')]
-  TAtlasDesignerToolStringsTests = class
+  TAtlasDesignerViewStringsTests = class
   public
     [Test]
     procedure EveryTextExistsInBothLanguages;
@@ -23,11 +23,11 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests,
-  Atlas.UI.Designer.ToolStrings;
+  Atlas.UI.Designer.ViewStrings;
 
-procedure TAtlasDesignerToolStringsTests.EveryTextExistsInBothLanguages;
+procedure TAtlasDesignerViewStringsTests.EveryTextExistsInBothLanguages;
 var
-  mId: TAtlasDesignerToolTextId;
+  mId: TAtlasDesignerViewTextId;
   mGerman: string;
   mSaved: TAtlasLanguage;
   mCount: Integer;
@@ -35,23 +35,23 @@ begin
   mSaved := TAtlasStrings.Language;
   mCount := 0;
   try
-    for mId := Low(TAtlasDesignerToolTextId) to High(TAtlasDesignerToolTextId) do
+    for mId := Low(TAtlasDesignerViewTextId) to High(TAtlasDesignerViewTextId) do
     begin
       TAtlasStrings.Language := TAtlasLanguage.German;
-      mGerman := TAtlasDesignerToolStrings.Text(mId);
+      mGerman := TAtlasDesignerViewStrings.Text(mId);
       TAtlasStrings.Language := TAtlasLanguage.English;
-      AssertTextPair(mGerman, TAtlasDesignerToolStrings.Text(mId), Ord(mId));
+      AssertTextPair(mGerman, TAtlasDesignerViewStrings.Text(mId), Ord(mId));
       Inc(mCount);
     end;
   finally
     TAtlasStrings.Language := mSaved;
   end;
-  Assert.AreEqual(Ord(High(TAtlasDesignerToolTextId)) + 1, mCount, 'alle Ids geprüft');
+  Assert.AreEqual(Ord(High(TAtlasDesignerViewTextId)) + 1, mCount, 'alle Ids geprüft');
 end;
 
-procedure TAtlasDesignerToolStringsTests.FollowsLanguageOfBase;
+procedure TAtlasDesignerViewStringsTests.FollowsLanguageOfBase;
 var
-  mId: TAtlasDesignerToolTextId;
+  mId: TAtlasDesignerViewTextId;
   mGerman: string;
   mDiffers: Integer;
   mSaved: TAtlasLanguage;
@@ -60,12 +60,12 @@ begin
   mSaved := TAtlasStrings.Language;
   mDiffers := 0;
   try
-    for mId := Low(TAtlasDesignerToolTextId) to High(TAtlasDesignerToolTextId) do
+    for mId := Low(TAtlasDesignerViewTextId) to High(TAtlasDesignerViewTextId) do
     begin
       TAtlasStrings.Language := TAtlasLanguage.German;
-      mGerman := TAtlasDesignerToolStrings.Text(mId);
+      mGerman := TAtlasDesignerViewStrings.Text(mId);
       TAtlasStrings.Language := TAtlasLanguage.English;
-      if mGerman <> TAtlasDesignerToolStrings.Text(mId) then
+      if mGerman <> TAtlasDesignerViewStrings.Text(mId) then
       begin
         Inc(mDiffers);
       end;
@@ -77,6 +77,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TAtlasDesignerToolStringsTests);
+  TDUnitX.RegisterTestFixture(TAtlasDesignerViewStringsTests);
 
 end.

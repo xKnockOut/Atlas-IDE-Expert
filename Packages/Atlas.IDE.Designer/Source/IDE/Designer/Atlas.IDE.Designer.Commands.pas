@@ -9,7 +9,7 @@
 //   TAtlasIdeDesignerNavigate), angemeldet nur, solange ein Designer gezeigt
 //   wird.
 // - Eigene Knöpfe der größeren Designer-Funktionen (#605 ff.,
-//   TAtlasIdeDesignerTools); Klicks ohne Menü über Run.
+//   TAtlasIdeDesignerViews); Klicks ohne Menü über Run.
 // Nur im Hauptthread.
 
 interface
@@ -22,7 +22,7 @@ uses
   Atlas.IDE.Designer.Select,
   Atlas.IDE.Designer.Arrange,
   Atlas.IDE.Designer.Navigate,
-  Atlas.IDE.Designer.Tools;
+  Atlas.IDE.Designer.Views;
 
 type
   TAtlasIdeDesignerCommands = class
@@ -33,7 +33,7 @@ type
     FSelect: TAtlasIdeDesignerSelect;
     FArrange: TAtlasIdeDesignerArrange;
     FNavigate: TAtlasIdeDesignerNavigate;
-    FTools: TAtlasIdeDesignerTools;
+    FViews: TAtlasIdeDesignerViews;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -65,12 +65,12 @@ begin
   FSelect := TAtlasIdeDesignerSelect.Create(AOnMessage);
   FArrange := TAtlasIdeDesignerArrange.Create(AOnMessage);
   FNavigate := TAtlasIdeDesignerNavigate.Create;
-  FTools := TAtlasIdeDesignerTools.Create(AOnMessage);
+  FViews := TAtlasIdeDesignerViews.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerCommands.Destroy;
 begin
-  FTools.Free;
+  FViews.Free;
   FNavigate.Free;
   FArrange.Free;
   FSelect.Free;
@@ -96,7 +96,7 @@ begin
     mButton.Menu := True;
     Result := Result + [mButton];
   end;
-  Result := Result + FTools.Buttons(ASettings);
+  Result := Result + FViews.Buttons(ASettings);
 end;
 
 function TAtlasIdeDesignerCommands.Handles(const AId: string): Boolean;
@@ -118,7 +118,7 @@ end;
 
 function TAtlasIdeDesignerCommands.Run(const AId: string): Boolean;
 begin
-  Result := FTools.Run(AId);
+  Result := FViews.Run(AId);
 end;
 
 procedure TAtlasIdeDesignerCommands.UpdateKeys(AWanted: Boolean);
@@ -131,7 +131,7 @@ procedure TAtlasIdeDesignerCommands.ApplyTheme;
 begin
   FNavigate.ApplyTheme;
   FArrange.ApplyTheme;
-  FTools.ApplyTheme;
+  FViews.ApplyTheme;
 end;
 
 end.

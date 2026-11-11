@@ -68,7 +68,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Designer.Measure,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.UI.Designer.ToolStrings,
+  Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Foundation.EditorStyle,
@@ -173,10 +173,10 @@ end;
 
 function PlaceTexts: TArray<string>;
 begin
-  Result := ['', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MeasureAbove),
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MeasureBelow),
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MeasureLeftOf),
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MeasureRightOf)];
+  Result := ['', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureAbove),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureBelow),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureLeftOf),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureRightOf)];
 end;
 
 function MarksOf(const ALines: TArray<TAtlasMeasureLine>;
@@ -209,12 +209,12 @@ begin
   mText := Format('%d × %d', [mSize.Width, mSize.Height]);
   if mSize.SameWidth <> '' then
   begin
-    mText := mText + ' · ' + TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MeasureSameWidth,
+    mText := mText + ' · ' + TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.MeasureSameWidth,
       [mSize.SameWidth]);
   end;
   if mSize.SameHeight <> '' then
   begin
-    mText := mText + ' · ' + TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MeasureSameHeight,
+    mText := mText + ' · ' + TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.MeasureSameHeight,
       [mSize.SameHeight]);
   end;
   Result := TAtlasMeasureMark.Badge(AScale.ToScreen(Point((ASubject.Left + ASubject.Right) div 2,
@@ -302,7 +302,7 @@ begin
     Exit(Default(TAtlasDesignerButton));
   end;
   Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.MeasureDistances,
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MeasureHint));
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureHint));
   Result.Pressed := FActive;
 end;
 

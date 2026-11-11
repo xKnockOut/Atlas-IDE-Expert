@@ -55,7 +55,7 @@ uses
   System.Classes,
   ToolsAPI,
   Atlas.Core.Designer.Layout,
-  Atlas.UI.Designer.ToolStrings,
+  Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Foundation.DockWindow,
@@ -148,7 +148,7 @@ begin
   CloseWindow;
   if not TAtlasDesignerAccess.Current(mEditor, mRoot) or not (mRoot is TWinControl) then
   begin
-    FOnMessage(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ToolNoForm));
+    FOnMessage(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ToolNoForm));
     Exit;
   end;
   FWindow := CreateWindow(TWinControl(mRoot));
