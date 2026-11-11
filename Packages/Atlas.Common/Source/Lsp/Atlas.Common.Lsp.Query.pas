@@ -84,7 +84,8 @@ uses
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Query.Output,
   System.Generics.Collections,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -101,22 +102,6 @@ const
     (De: 'Katalog ist kein gültiges JSON'; En: 'Catalog is not valid JSON'));
 
 {$SCOPEDENUMS OFF}
-
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(mValue.Value);
-  end;
-end;
 
 function PathOf(const AText: string): string;
 begin
@@ -210,7 +195,7 @@ var
   mFields: TJSONArray;
   mValue: TJSONValue;
 begin
-  mQuery := StringOf(AParams, 'query');
+  mQuery := TJsonRead.TrimmedText(AParams, 'query');
   if mQuery = '' then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.QueryMissing].Text);
@@ -267,12 +252,12 @@ var
   mResult: TQueryResult;
   mAnswer: TJSONObject;
 begin
-  mFormatText := StringOf(AParams, 'format');
+  mFormatText := TJsonRead.TrimmedText(AParams, 'format');
   if not TQueryOutput.TryParseFormat(mFormatText, TQueryOutputFormat.Json, mFormat) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.FormatIsJsonMarkdownCsv].Text);
   end;
-  if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(AParams, 'uri')), mSettings, mRoot)) then
+  if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(TJsonRead.TrimmedText(AParams, 'uri')), mSettings, mRoot)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.NoProjectLoaded].Text);
   end;
@@ -308,7 +293,7 @@ var
   mAnswer: TJSONObject;
   mValue: TJSONValue;
 begin
-  if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
+  if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(TJsonRead.TrimmedText(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
   begin
     mSettings := TServerSettings.Default;
   end;

@@ -91,7 +91,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -740,21 +741,6 @@ begin
   end;
 end;
 
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 function EntriesOf(AObject: TJSONObject; const AName: string): TArray<TAtlasDocEntry>;
 var
   mValue, mItem: TJSONValue;
@@ -770,8 +756,8 @@ begin
   begin
     if mItem is TJSONObject then
     begin
-      mEntry.Name := StringOf(TJSONObject(mItem), 'name');
-      mEntry.Text := StringOf(TJSONObject(mItem), 'text');
+      mEntry.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
+      mEntry.Text := TJsonRead.Text(TJSONObject(mItem), 'text');
       Result := Result + [mEntry];
     end;
   end;
@@ -795,16 +781,16 @@ begin
   end;
   if mAtlas is TJSONObject then
   begin
-    Result.Declaration := StringOf(TJSONObject(mAtlas), 'declaration');
-    Result.UnitName := StringOf(TJSONObject(mAtlas), 'unit');
-    Result.Container := StringOf(TJSONObject(mAtlas), 'container');
+    Result.Declaration := TJsonRead.Text(TJSONObject(mAtlas), 'declaration');
+    Result.UnitName := TJsonRead.Text(TJSONObject(mAtlas), 'unit');
+    Result.Container := TJsonRead.Text(TJSONObject(mAtlas), 'container');
     Result.IsHelper := TJSONObject(mAtlas).GetValue('helper') is TJSONTrue;
-    Result.Visibility := StringOf(TJSONObject(mAtlas), 'visibility');
+    Result.Visibility := TJsonRead.Text(TJSONObject(mAtlas), 'visibility');
     Result.IsDeprecated := TJSONObject(mAtlas).GetValue('deprecated') <> nil;
-    Result.DeprecatedText := StringOf(TJSONObject(mAtlas), 'deprecated');
-    Result.Summary := StringOf(TJSONObject(mAtlas), 'summary');
-    Result.Returns := StringOf(TJSONObject(mAtlas), 'returns');
-    Result.Remarks := StringOf(TJSONObject(mAtlas), 'remarks');
+    Result.DeprecatedText := TJsonRead.Text(TJSONObject(mAtlas), 'deprecated');
+    Result.Summary := TJsonRead.Text(TJSONObject(mAtlas), 'summary');
+    Result.Returns := TJsonRead.Text(TJSONObject(mAtlas), 'returns');
+    Result.Remarks := TJsonRead.Text(TJSONObject(mAtlas), 'remarks');
     Result.Params := EntriesOf(TJSONObject(mAtlas), 'params');
     Result.Exceptions := EntriesOf(TJSONObject(mAtlas), 'exceptions');
     Result.Doc := TAtlasDoc.FromJson(TJSONObject(mAtlas).GetValue('documentation'));
@@ -824,7 +810,7 @@ begin
     Exit;
   end;
   // Andere Server: detail als Deklaration, documentation als Beschreibung.
-  Result.Declaration := StringOf(TJSONObject(AResponse), 'detail');
+  Result.Declaration := TJsonRead.Text(TJSONObject(AResponse), 'detail');
   mDocumentation := TJSONObject(AResponse).GetValue('documentation');
   if mDocumentation is TJSONString then
   begin
@@ -832,7 +818,7 @@ begin
   end
   else if mDocumentation is TJSONObject then
   begin
-    Result.Summary := StringOf(TJSONObject(mDocumentation), 'value');
+    Result.Summary := TJsonRead.Text(TJSONObject(mDocumentation), 'value');
   end;
 end;
 

@@ -51,17 +51,11 @@ type
     /// <summary>AArgumentsJson (ein JSON-Array) mit AValue als letztem Element; AValue gehört danach dieser Routine.
     /// False, wenn AArgumentsJson kein Array ist.</summary>
     class function Appended(const AArgumentsJson: string; AValue: TJSONValue; out AResult: string): Boolean; static;
-    /// <summary>AValue als Objekt, sonst nil.</summary>
-    class function AsObject(AValue: TJSONValue): TJSONObject; static;
     /// <summary>Schickt die offenen Puffer und führt ACommand aus; ARead (darf nil sein) liest weitere Werte. False,
     /// wenn der Server scheitert: Dann steht ACommand.Failed mit dessen Fehler in AMessage.</summary>
     class function Fetch(ASession: TLspSession; const ACommand: TAtlasServerEditCommand;
       const ARead: TAtlasServerEditRead; const AMessage: TProc<string>; out AReply: TAtlasServerEditReply): Boolean;
       static;
-    /// <summary>Zahl AName aus AReply, sonst 0.</summary>
-    class function NumberOf(const AReply: TJSONObject; const AName: string): Integer; static;
-    /// <summary>Text AName aus AReply, sonst ''.</summary>
-    class function TextOf(const AReply: TJSONObject; const AName: string): string; static;
     /// <summary>Je Warnung von AReply eine Zeile AWarning (%s), jede mit Zeilenumbruch davor.</summary>
     class function WarningLines(const AReply: TAtlasServerEditReply; AWarning: TAtlasTextId): string; static;
     /// <summary>Vorschau wie beim Umbenennen; True, wenn der Benutzer mit AApply übernimmt.</summary>
@@ -219,33 +213,6 @@ begin
   finally
     AValue.Free;
     mArguments.Free;
-  end;
-end;
-
-class function TAtlasIdeServerEdit.AsObject(AValue: TJSONValue): TJSONObject;
-begin
-  Result := nil;
-  if AValue is TJSONObject then
-  begin
-    Result := TJSONObject(AValue);
-  end;
-end;
-
-class function TAtlasIdeServerEdit.NumberOf(const AReply: TJSONObject; const AName: string): Integer;
-begin
-  Result := 0;
-  if (AReply <> nil) and (AReply.GetValue(AName) is TJSONNumber) then
-  begin
-    Result := TJSONNumber(AReply.GetValue(AName)).AsInt;
-  end;
-end;
-
-class function TAtlasIdeServerEdit.TextOf(const AReply: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if (AReply <> nil) and (AReply.GetValue(AName) is TJSONString) then
-  begin
-    Result := AReply.GetValue(AName).Value;
   end;
 end;
 

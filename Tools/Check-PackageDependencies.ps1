@@ -26,6 +26,10 @@
     implementation-Teil keine Routine wie LineBreakOf, SplitLines, IndentOf,
     IsWordChar, IsIdentChar, IsUtf8, PercentDecode usw. neu entstehen. Erlaubt
     sind nur die Fassaden und Sonderfälle in $AllowedLocal, jeweils mit Grund.
+    Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
+    NumberOf, IntOf, FlagOf, ObjectOf, ArrayOf usw. mit einem TJSONObject und
+    einem Namen als Parametern gibt es nur als TJsonRead in Atlas.Text.Json;
+    Ausnahmen mit eigenem Verhalten stehen in $AllowedJsonLocal.
 
     Rollenmatrix (Konzept 8.1/8.3, Code-Review A-12): Jede Unit wird nach
     Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
@@ -221,6 +225,20 @@ $AllowedLocal = @{
     'Atlas.Core.Undo.LinePatch:TAtlasLinePatch.SplitLines'             = 'öffentliche Weiterleitung an TTextLines.SplitKeepingBreaks'
     'Atlas.Core.Completion.Snippets:TAtlasSnippets.IndentOf'           = 'öffentliche Weiterleitung an TTextLines.IndentOf'
     'Atlas.Core.Editor.MultiCursor:TAtlasMultiCursor.LineBreakOf'      = 'öffentliche Weiterleitung an TTextLines.LineBreakOf'
+}
+
+# Kopien-Sperre für JSON-Lesehelfer (#1969): Namen mit (TJSONObject/TJSONValue; const …: string) als Parametern.
+$JsonLockNames = @('TextOf', 'TextIn', 'StringOf', 'NumberOf', 'NumberIn', 'IntOf', 'IntegerOf', 'Int64Of', 'FloatOf',
+    'FlagOf', 'FlagIn', 'BoolOf', 'BooleanOf', 'ObjectOf', 'ObjectIn', 'ArrayOf')
+
+# Erlaubte lokale JSON-Lesehelfer ("Unit:Routine") mit eigenem Verhalten. Die Liste soll nur schrumpfen.
+$AllowedJsonLocal = @{
+    'Atlas.Common.Architecture.Snapshot:TSnapshotReader.ArrayOf' = 'falscher Typ ist ein Fehler im Stand (EArchitectureSnapshot), keine Vorgabe'
+    'Atlas.Common.Architecture.Snapshot:ArrayOf'                 = 'Deklaration von TSnapshotReader.ArrayOf (Klasse im implementation-Teil)'
+    'Atlas.Core.Tracker.Internals.GitHubJson:TAtlasGitHubJson.IntOf' = 'nur positive Zahlen (Issue-Nummern); leitet an TJsonRead.Int weiter'
+    'Atlas.Core.Query.Model:StringOf'                             = 'jeder einfache Wert als Text, auch true/false und Zahlen'
+    'Atlas.Core.Editor.ClassExtraction:StringOf'                  = 'jeder Wert außer null als Text'
+    'Atlas.Common.Lsp.Hotspots:IntegerOf'                         = 'prüft Parameter: falscher Typ ist ein Fehler, fehlender Wert die Vorgabe'
 }
 
 function Get-ContainsEntries([string] $Text) {
@@ -779,6 +797,29 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
         if (-not $AllowedLocal.ContainsKey($key)) {
             $line = ($text.Substring(0, $implementation.Index + $match.Index) -split "`n").Count
             $violations += "${relative}:${line}: $($match.Groups[1].Value) – gibt es in Atlas.Text (Kopien-Sperre, ADR 0012); dort verwenden oder in `$AllowedLocal begründen"
+        }
+    }
+}
+
+# Kopien-Sperre für JSON-Lesehelfer (#1969)
+$jsonLockPattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($JsonLockNames -join '|') +
+    '))\s*\(\s*(?:const\s+)?\w+\s*:\s*TJSON(?:Object|Value)\s*;\s*const\s+\w+\s*:\s*string\b'
+foreach ($folder in @('Packages', 'Application')) {
+    $folderPath = Join-Path $Root $folder
+    if (-not (Test-Path $folderPath)) { continue }
+    foreach ($file in Get-ChildItem -Path $folderPath -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        if ($relative.StartsWith('Packages/Atlas.Text/')) { continue }
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+        if (-not $implementation.Success) { continue }
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        foreach ($match in [regex]::Matches($text.Substring($implementation.Index), $jsonLockPattern)) {
+            $key = "${ownUnit}:$($match.Groups[1].Value)"
+            if (-not $AllowedJsonLocal.ContainsKey($key)) {
+                $line = ($text.Substring(0, $implementation.Index + $match.Index) -split "`n").Count
+                $violations += "${relative}:${line}: $($match.Groups[1].Value) – JSON-Lesehelfer gibt es als TJsonRead in Atlas.Text.Json (Kopien-Sperre, #1969); dort verwenden oder in `$AllowedJsonLocal begründen"
+            }
         }
     }
 }

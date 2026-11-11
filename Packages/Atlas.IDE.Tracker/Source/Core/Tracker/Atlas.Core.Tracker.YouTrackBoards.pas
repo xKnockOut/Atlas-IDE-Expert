@@ -84,7 +84,8 @@ uses
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Internals.YouTrackJson,
   Atlas.Core.Tracker.YouTrackApi,
-  Atlas.Core.Tracker.YouTrackParse;
+  Atlas.Core.Tracker.YouTrackParse,
+  Atlas.Text.Json;
 
 class function TAtlasYouTrackBoards.AgilesUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
@@ -135,7 +136,7 @@ begin
   end;
   for mItem in TJSONArray(ABoard.Values['projects']) do
   begin
-    if (mItem is TJSONObject) and SameText(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'shortName'), AProject) then
+    if (mItem is TJSONObject) and SameText(TJsonRead.Text(TJSONObject(mItem), 'shortName'), AProject) then
     begin
       Exit(True);
     end;
@@ -148,7 +149,7 @@ begin
   Result := '';
   if AObject.Values[AName] is TJSONObject then
   begin
-    Result := TAtlasYouTrackJson.TextOf(TJSONObject(AObject.Values[AName]), AField);
+    Result := TJsonRead.Text(TJSONObject(AObject.Values[AName]), AField);
   end;
 end;
 
@@ -167,7 +168,7 @@ begin
   begin
     if mValue is TJSONObject then
     begin
-      mName := TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'name');
+      mName := TJsonRead.Text(TJSONObject(mValue), 'name');
       if mName <> '' then
       begin
         Result := Result + [mName];
@@ -184,12 +185,12 @@ var
   mName: string;
 begin
   mValues := ColumnValues(AColumn);
-  mName := TAtlasYouTrackJson.TextOf(AColumn, 'presentation');
+  mName := TJsonRead.Text(AColumn, 'presentation');
   if (mName = '') and (Length(mValues) > 0) then
   begin
     mName := mValues[0];
   end;
-  Result := TAtlasBoardColumn.Create(mName, mValues, '', TAtlasYouTrackJson.BoolOf(AColumn, 'isResolved'));
+  Result := TAtlasBoardColumn.Create(mName, mValues, '', TJsonRead.Flag(AColumn, 'isResolved'));
 end;
 
 /// <summary>Spalten und Feld eines Boards aus columnSettings.</summary>
@@ -223,7 +224,7 @@ end;
 function ValidBoard(AItem: TJSONValue): TJSONObject;
 begin
   Result := nil;
-  if (AItem is TJSONObject) and TAtlasYouTrackJson.ValidId(TAtlasYouTrackJson.TextOf(TJSONObject(AItem), 'id')) then
+  if (AItem is TJSONObject) and TAtlasYouTrackJson.ValidId(TJsonRead.Text(TJSONObject(AItem), 'id')) then
   begin
     Result := TJSONObject(AItem);
   end;
@@ -252,9 +253,9 @@ begin
     begin
       Continue;
     end;
-    ASnapshot.Boards := ASnapshot.Boards + [TAtlasBoardRef.Create(TAtlasYouTrackJson.TextOf(mBoard, 'id'),
-      TAtlasYouTrackJson.TextOf(mBoard, 'name'))];
-    if (ABoardId <> '') and SameText(TAtlasYouTrackJson.TextOf(mBoard, 'id'), ABoardId) then
+    ASnapshot.Boards := ASnapshot.Boards + [TAtlasBoardRef.Create(TJsonRead.Text(mBoard, 'id'),
+      TJsonRead.Text(mBoard, 'name'))];
+    if (ABoardId <> '') and SameText(TJsonRead.Text(mBoard, 'id'), ABoardId) then
     begin
       mChosen := mBoard;
     end;
@@ -295,8 +296,8 @@ begin
       Exit;
     end;
     ASnapshot.Kind := TAtlasBoardKind.Agile;
-    ASnapshot.Board := TAtlasBoardRef.Create(TAtlasYouTrackJson.TextOf(mChosen, 'id'),
-      TAtlasYouTrackJson.TextOf(mChosen, 'name'));
+    ASnapshot.Board := TAtlasBoardRef.Create(TJsonRead.Text(mChosen, 'id'),
+      TJsonRead.Text(mChosen, 'name'));
     ReadColumns(mChosen, ASnapshot);
     ASnapshot.PointsField := NestedText(mChosen, 'estimationField', 'name');
     ACurrentSprint := NestedText(mChosen, 'currentSprint', 'id');
@@ -308,11 +309,11 @@ end;
 function SprintOf(AObject: TJSONObject): TAtlasBoardSprint;
 begin
   Result := Default(TAtlasBoardSprint);
-  Result.Id := TAtlasYouTrackJson.TextOf(AObject, 'id');
-  Result.Name := TAtlasYouTrackJson.TextOf(AObject, 'name');
+  Result.Id := TJsonRead.Text(AObject, 'id');
+  Result.Name := TJsonRead.Text(AObject, 'name');
   Result.Start := TAtlasYouTrackJson.TimeOf(AObject, 'start');
   Result.Finish := TAtlasYouTrackJson.TimeOf(AObject, 'finish');
-  Result.Archived := TAtlasYouTrackJson.BoolOf(AObject, 'archived');
+  Result.Archived := TJsonRead.Flag(AObject, 'archived');
 end;
 
 class function TAtlasYouTrackBoards.ParseSprints(const AJson: string;
@@ -374,7 +375,7 @@ var
 begin
   if TAtlasYouTrackJson.IsOneOf(AName, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) then
   begin
-    mLogin := TAtlasYouTrackJson.TextOf(AValue, 'login');
+    mLogin := TJsonRead.Text(AValue, 'login');
     if mLogin <> '' then
     begin
       ACard.Logins := ACard.Logins + [mLogin];
@@ -382,7 +383,7 @@ begin
   end
   else if TAtlasYouTrackJson.IsOneOf(AName, ['Priority', 'Priorität']) and (AValue.Values['color'] is TJSONObject) then
   begin
-    ACard.PriorityColor := TAtlasYouTrackJson.TextOf(TJSONObject(AValue.Values['color']), 'background');
+    ACard.PriorityColor := TJsonRead.Text(TJSONObject(AValue.Values['color']), 'background');
   end;
 end;
 
@@ -392,11 +393,11 @@ var
   mName: string;
   mValue: TJSONValue;
 begin
-  mName := Trim(TAtlasYouTrackJson.TextOf(AField, 'name'));
+  mName := Trim(TJsonRead.Text(AField, 'name'));
   mValue := AField.Values['value'];
   if (AStateField <> '') and SameText(mName, AStateField) and (mValue is TJSONObject) then
   begin
-    ACard.State := TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'name');
+    ACard.State := TJsonRead.Text(TJSONObject(mValue), 'name');
   end
   else if (APoints <> '') and SameText(mName, APoints) then
   begin
@@ -598,7 +599,7 @@ begin
   try
     if mValue is TJSONObject then
     begin
-      Result := TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'login');
+      Result := TJsonRead.Text(TJSONObject(mValue), 'login');
     end;
   finally
     mValue.Free;

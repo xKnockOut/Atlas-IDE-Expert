@@ -99,7 +99,8 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Summary.Json,
-  Atlas.Core.Projects.Summary.Sections;
+  Atlas.Core.Projects.Summary.Sections,
+  Atlas.Text.Json;
 
 const
   Project = 'C:\Projekte\Demo.dproj';
@@ -935,9 +936,9 @@ end;
 
 procedure TAtlasProjectSummaryTests.FieldHelpersAndSectionsWithoutObject;
 begin
-  Assert.AreEqual('', TextOf(nil, 'project'));
-  Assert.AreEqual(7, NumberOf(nil, 'errors', 7));
-  Assert.IsFalse(FlagOf(nil, 'hidden'));
+  Assert.AreEqual('', TJsonRead.Text(nil, 'project'));
+  Assert.AreEqual(7, TJsonRead.IntOr(nil, 'errors', 7));
+  Assert.IsFalse(TJsonRead.Flag(nil, 'hidden'));
   Assert.AreEqual('2026-10-15T09:30:05Z', SummaryTimeText(SummaryTimeOf('2026-10-15 09:30:05')));
   Assert.IsTrue(SummaryTimeOf('2026-10-15X09:30:05Z') = 0, 'Trenner');
   Assert.IsFalse(TAtlasSummarySections.SetupOf(nil).Known);

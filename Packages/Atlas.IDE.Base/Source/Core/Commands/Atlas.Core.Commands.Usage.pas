@@ -195,7 +195,9 @@ implementation
 uses
   System.JSON,
   System.Generics.Defaults,
-  Atlas.Core.Files.DataFile;
+  System.Math,
+  Atlas.Core.Files.DataFile,
+  Atlas.Text.Json;
 
 { TAtlasCommandUsageEntry }
 
@@ -234,50 +236,6 @@ begin
 end;
 
 { JSON-Helfer }
-
-function NumberOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else if mValue is TJSONString then
-  begin
-    Result := StrToIntDef(TJSONString(mValue).Value, 0);
-  end;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := SameText(mValue.Value, 'true');
-  end;
-end;
 
 /// <summary>Text einer vorhandenen Datei, ohne das atomare Ersetzen durch eine zweite IDE zu blockieren;
 /// EInOutError, wenn sie nicht lesbar ist.</summary>
@@ -328,7 +286,7 @@ begin
   end;
   mRoot := ParseObject(ReadText(AFileName));
   try
-    Result := (mRoot <> nil) and (NumberOf(mRoot, 'format') > TAtlasCommandUsage.cFormatVersion);
+    Result := (mRoot <> nil) and (Max(0, TJsonRead.Int(mRoot, 'format')) > TAtlasCommandUsage.cFormatVersion);
   finally
     mRoot.Free;
   end;
@@ -518,11 +476,11 @@ begin
     mItem := TJSONObject(mPair.JsonValue);
     mEntry := TAtlasCommandUsageEntry.Create(Trim(mPair.JsonString.Value));
     // Zähler nur aus älteren Fassungen von #600; heute stehen sie in usage.json.
-    mEntry.Mouse := NumberOf(mItem, 'mouse');
-    mEntry.Keyboard := NumberOf(mItem, 'keyboard');
-    mEntry.LastUsed := TAtlasCommandUsage.TimeOf(TextOf(mItem, 'lastUsed'));
-    mEntry.LastTip := TAtlasCommandUsage.TimeOf(TextOf(mItem, 'lastTip'));
-    mEntry.Never := FlagOf(mItem, 'never');
+    mEntry.Mouse := Max(0, TJsonRead.Int(mItem, 'mouse'));
+    mEntry.Keyboard := Max(0, TJsonRead.Int(mItem, 'keyboard'));
+    mEntry.LastUsed := TAtlasCommandUsage.TimeOf(TJsonRead.Text(mItem, 'lastUsed'));
+    mEntry.LastTip := TAtlasCommandUsage.TimeOf(TJsonRead.Text(mItem, 'lastTip'));
+    mEntry.Never := TJsonRead.Flag(mItem, 'never');
     AEntries.AddOrSetValue(KeyOf(mEntry.Id), mEntry);
   end;
 end;
@@ -539,7 +497,7 @@ begin
     begin
       Exit;
     end;
-    if NumberOf(mRoot, 'format') > cFormatVersion then
+    if Max(0, TJsonRead.Int(mRoot, 'format')) > cFormatVersion then
     begin
       // Eine neuere Fassung hat geschrieben: nichts lesen, nichts überschreiben.
       FWritable := False;
@@ -630,7 +588,7 @@ begin
     begin
       Exit;
     end;
-    if NumberOf(mRoot, 'format') > cFormatVersion then
+    if Max(0, TJsonRead.Int(mRoot, 'format')) > cFormatVersion then
     begin
       // Neuere Fassung: Zähler nicht lesen und usage.json nicht überschreiben.
       FCountsWritable := False;
@@ -653,9 +611,9 @@ begin
         begin
           mEntry := TAtlasCommandUsageEntry.Create(Trim(mPair.JsonString.Value));
         end;
-        mEntry.Mouse := NumberOf(mItem, 'mouse');
-        mEntry.Keyboard := NumberOf(mItem, 'keyboard');
-        mEntry.LastUsed := TimeOf(TextOf(mItem, 'lastUsed'));
+        mEntry.Mouse := Max(0, TJsonRead.Int(mItem, 'mouse'));
+        mEntry.Keyboard := Max(0, TJsonRead.Int(mItem, 'keyboard'));
+        mEntry.LastUsed := TimeOf(TJsonRead.Text(mItem, 'lastUsed'));
         FEntries.AddOrSetValue(KeyOf(mEntry.Id), mEntry);
       end;
     end;

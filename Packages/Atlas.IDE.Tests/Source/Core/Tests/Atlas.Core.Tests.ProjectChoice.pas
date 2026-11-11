@@ -65,7 +65,8 @@ implementation
 
 uses
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Json;
 
 function Quote(const AText: string): string;
 var
@@ -76,18 +77,6 @@ begin
     Result := mValue.ToJSON;
   finally
     mValue.Free;
-  end;
-end;
-
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
   end;
 end;
 
@@ -179,8 +168,8 @@ begin
     begin
       if TJSONArray(mValue).Items[mIndex] is TJSONObject then
       begin
-        mChoice.Key := StringOf(TJSONObject(TJSONArray(mValue).Items[mIndex]), 'candidates');
-        mChoice.Project := StringOf(TJSONObject(TJSONArray(mValue).Items[mIndex]), 'project');
+        mChoice.Key := TJsonRead.Text(TJSONObject(TJSONArray(mValue).Items[mIndex]), 'candidates');
+        mChoice.Project := TJsonRead.Text(TJSONObject(TJSONArray(mValue).Items[mIndex]), 'project');
         if (mChoice.Key <> '') and (mChoice.Project <> '') and (Length(Result) < cMaxEntries) then
         begin
           Result := Result + [mChoice];

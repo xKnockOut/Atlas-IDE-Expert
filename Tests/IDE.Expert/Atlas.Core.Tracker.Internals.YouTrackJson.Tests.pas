@@ -32,7 +32,8 @@ uses
   System.SysUtils,
   System.DateUtils,
   System.JSON,
-  Atlas.Core.Tracker.Internals.YouTrackJson;
+  Atlas.Core.Tracker.Internals.YouTrackJson,
+  Atlas.Text.Json;
 
 function Parsed(const AJson: string): TJSONValue;
 begin
@@ -45,10 +46,10 @@ var
 begin
   mObject := Parsed('{"summary":"Kasse","number":7,"resolved":true,"text":"true","alt":"Ersatz"}') as TJSONObject;
   try
-    Assert.AreEqual('Kasse', TAtlasYouTrackJson.TextOf(mObject, 'summary'));
-    Assert.IsTrue(TAtlasYouTrackJson.BoolOf(mObject, 'resolved'));
-    Assert.IsFalse(TAtlasYouTrackJson.BoolOf(mObject, 'text'), 'Text "true" ist kein Schalter');
-    Assert.IsFalse(TAtlasYouTrackJson.BoolOf(mObject, 'fehlt'));
+    Assert.AreEqual('Kasse', TJsonRead.Text(mObject, 'summary'));
+    Assert.IsTrue(TJsonRead.Flag(mObject, 'resolved'));
+    Assert.IsFalse(TJsonRead.Flag(mObject, 'text'), 'Text "true" ist kein Schalter');
+    Assert.IsFalse(TJsonRead.Flag(mObject, 'fehlt'));
     Assert.AreEqual('Kasse', TAtlasYouTrackJson.FirstText(mObject, 'summary', 'alt'));
     Assert.AreEqual('Ersatz', TAtlasYouTrackJson.FirstText(mObject, 'fehlt', 'alt'));
     Assert.IsTrue(TAtlasYouTrackJson.IsOneOf('state', ['Priority', 'State']), 'ohne Groß-/Kleinschreibung');

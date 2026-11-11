@@ -112,19 +112,9 @@ implementation
 
 uses
   System.JSON,
-  System.Generics.Defaults;
-
-function Text(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
+  System.Generics.Defaults,
+  System.Math,
+  Atlas.Text.Json;
 
 { TAtlasWhatsNewItem }
 
@@ -146,26 +136,6 @@ begin
   end;
 end;
 
-function Number(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else if mValue is TJSONString then
-  begin
-    Result := StrToIntDef(TJSONString(mValue).Value, 0);
-  end;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
 function Flag(AObject: TJSONObject; const AName: string): Boolean;
 var
   mValue: TJSONValue;
@@ -179,15 +149,15 @@ end;
 function ItemFrom(AObject: TJSONObject): TAtlasWhatsNewItem;
 begin
   Result := Default(TAtlasWhatsNewItem);
-  Result.Title := Text(AObject, 'title');
-  Result.Text := Text(AObject, 'text');
-  Result.TitleEn := Text(AObject, 'titleEn');
-  Result.TextEn := Text(AObject, 'textEn');
-  Result.Setting := Text(AObject, 'setting');
-  Result.Key := Text(AObject, 'key');
-  Result.Command := Text(AObject, 'command');
-  Result.Sample := Text(AObject, 'sample');
-  Result.Line := Number(AObject, 'line');
+  Result.Title := TJsonRead.TrimmedText(AObject, 'title');
+  Result.Text := TJsonRead.TrimmedText(AObject, 'text');
+  Result.TitleEn := TJsonRead.TrimmedText(AObject, 'titleEn');
+  Result.TextEn := TJsonRead.TrimmedText(AObject, 'textEn');
+  Result.Setting := TJsonRead.TrimmedText(AObject, 'setting');
+  Result.Key := TJsonRead.TrimmedText(AObject, 'key');
+  Result.Command := TJsonRead.TrimmedText(AObject, 'command');
+  Result.Sample := TJsonRead.TrimmedText(AObject, 'sample');
+  Result.Line := Max(0, TJsonRead.Int(AObject, 'line'));
   Result.Experimental := Flag(AObject, 'experimental');
 end;
 
@@ -204,7 +174,7 @@ begin
   begin
     Exit;
   end;
-  AVersion.Version := Text(TJSONObject(AValue), 'version');
+  AVersion.Version := TJsonRead.TrimmedText(TJSONObject(AValue), 'version');
   mItems := TJSONObject(AValue).GetValue('items');
   if (AVersion.Version = '') or not (mItems is TJSONArray) then
   begin

@@ -406,7 +406,8 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Core.Projects.Summary.Json,
+  Atlas.Text.Json;
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
@@ -557,11 +558,11 @@ begin
   begin
     Exit;
   end;
-  Result.FileName := TextOf(AObject, 'file');
-  Result.Line := NumberOf(AObject, 'line', 0);
-  Result.Column := NumberOf(AObject, 'column', 0);
-  Result.Code := TextOf(AObject, 'code');
-  Result.Text := TextOf(AObject, 'text');
+  Result.FileName := TJsonRead.Text(AObject, 'file');
+  Result.Line := TJsonRead.IntOr(AObject, 'line', 0);
+  Result.Column := TJsonRead.IntOr(AObject, 'column', 0);
+  Result.Code := TJsonRead.Text(AObject, 'code');
+  Result.Text := TJsonRead.Text(AObject, 'text');
 end;
 
 function LocationJson(const ALocation: TAtlasProjectLocation): TJSONObject;
@@ -637,13 +638,13 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.Files := NumberOf(ASection, 'files', 0);
-  Result.Methods := NumberOf(ASection, 'methods', 0);
-  Result.OverLimits := NumberOf(ASection, 'overLimits', 0);
-  Result.AverageTenths := MetricNumbersOf(ObjectOf(ASection, 'average'), True);
-  Result.Maximum := MetricNumbersOf(ObjectOf(ASection, 'maximum'), False);
-  Result.Exceeded := MetricNumbersOf(ObjectOf(ASection, 'exceeded'), False);
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Files := TJsonRead.IntOr(ASection, 'files', 0);
+  Result.Methods := TJsonRead.IntOr(ASection, 'methods', 0);
+  Result.OverLimits := TJsonRead.IntOr(ASection, 'overLimits', 0);
+  Result.AverageTenths := MetricNumbersOf(TJsonRead.Obj(ASection, 'average'), True);
+  Result.Maximum := MetricNumbersOf(TJsonRead.Obj(ASection, 'maximum'), False);
+  Result.Exceeded := MetricNumbersOf(TJsonRead.Obj(ASection, 'exceeded'), False);
 end;
 
 { TAtlasProjectMetrics }
@@ -672,10 +673,10 @@ begin
     begin
       Exit;
     end;
-    mSection := ObjectOf(TJSONObject(mValue), 'summary');
+    mSection := TJsonRead.Obj(TJSONObject(mValue), 'summary');
     if mSection = nil then
     begin
-      mSection := ObjectOf(TJSONObject(mValue), 'metrics');
+      mSection := TJsonRead.Obj(TJSONObject(mValue), 'metrics');
     end;
     if mSection = nil then
     begin
@@ -706,11 +707,11 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.Files := NumberOf(ASection, 'files', 0);
-  Result.Open := NumberOf(ASection, 'open', 0);
-  Result.Done := NumberOf(ASection, 'done', 0);
-  mKeywords := ObjectOf(ASection, 'keywords');
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Files := TJsonRead.IntOr(ASection, 'files', 0);
+  Result.Open := TJsonRead.IntOr(ASection, 'open', 0);
+  Result.Done := TJsonRead.IntOr(ASection, 'done', 0);
+  mKeywords := TJsonRead.Obj(ASection, 'keywords');
   if mKeywords = nil then
   begin
     Exit;
@@ -768,10 +769,10 @@ begin
     begin
       Exit;
     end;
-    mSection := ObjectOf(TJSONObject(mValue), 'summary');
+    mSection := TJsonRead.Obj(TJSONObject(mValue), 'summary');
     if mSection = nil then
     begin
-      mSection := ObjectOf(TJSONObject(mValue), 'todos');
+      mSection := TJsonRead.Obj(TJSONObject(mValue), 'todos');
     end;
     if mSection = nil then
     begin
@@ -795,9 +796,9 @@ var
   mSeries: TAtlasTrendSeries;
   mValue: TJSONValue;
 begin
-  Result := TAtlasTrendPoint.Create(SummaryTimeOf(TextOf(AItem, 'at')), NumberOf(AItem, 'build', 0));
-  Result.Branch := TextOf(AItem, 'branch');
-  Result.Commit := TextOf(AItem, 'commit');
+  Result := TAtlasTrendPoint.Create(SummaryTimeOf(TJsonRead.Text(AItem, 'at')), TJsonRead.IntOr(AItem, 'build', 0));
+  Result.Branch := TJsonRead.Text(AItem, 'branch');
+  Result.Commit := TJsonRead.Text(AItem, 'commit');
   for mSeries := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
   begin
     mValue := AItem.GetValue(TAtlasProjectSummaries.cTrendKeys[mSeries]);
@@ -824,7 +825,7 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.Builds := NumberOf(ASection, 'builds', 0);
+  Result.Builds := TJsonRead.IntOr(ASection, 'builds', 0);
   mHighest := 0;
   mPoints := ASection.GetValue('points');
   if mPoints is TJSONArray then
@@ -873,7 +874,7 @@ begin
   for mIndex := 0 to TJSONArray(mPoints).Count - 1 do
   begin
     mItem := TJSONArray(mPoints).Items[mIndex];
-    if (mItem is TJSONObject) and (NumberOf(TJSONObject(mItem), 'build', 0) = ABuild) then
+    if (mItem is TJSONObject) and (TJsonRead.IntOr(TJSONObject(mItem), 'build', 0) = ABuild) then
     begin
       Exit(TJSONObject(mItem));
     end;
@@ -935,13 +936,13 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.Kind := LowerCase(TextOf(ASection, 'kind'));
-  Result.Branch := TextOf(ASection, 'branch');
-  Result.Revision := TextOf(ASection, 'revision');
-  Result.Changed := NumberOf(ASection, 'changed', -1);
-  Result.Ahead := NumberOf(ASection, 'ahead', -1);
-  Result.Behind := NumberOf(ASection, 'behind', -1);
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Kind := LowerCase(TJsonRead.Text(ASection, 'kind'));
+  Result.Branch := TJsonRead.Text(ASection, 'branch');
+  Result.Revision := TJsonRead.Text(ASection, 'revision');
+  Result.Changed := TJsonRead.IntOr(ASection, 'changed', -1);
+  Result.Ahead := TJsonRead.IntOr(ASection, 'ahead', -1);
+  Result.Behind := TJsonRead.IntOr(ASection, 'behind', -1);
 end;
 
 /// <summary>Abschnitt "build"; Empty ohne Abschnitt.</summary>
@@ -953,16 +954,16 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.Kind := TextOf(ASection, 'kind');
-  Result.Configuration := TextOf(ASection, 'configuration');
-  Result.Platform := TextOf(ASection, 'platform');
-  Result.Succeeded := FlagOf(ASection, 'succeeded');
-  Result.Errors := NumberOf(ASection, 'errors', 0);
-  Result.Warnings := NumberOf(ASection, 'warnings', 0);
-  Result.Hints := NumberOf(ASection, 'hints', 0);
-  Result.DurationMs := NumberOf(ASection, 'durationMs', 0);
-  Result.First := LocationOf(ObjectOf(ASection, 'first'));
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Kind := TJsonRead.Text(ASection, 'kind');
+  Result.Configuration := TJsonRead.Text(ASection, 'configuration');
+  Result.Platform := TJsonRead.Text(ASection, 'platform');
+  Result.Succeeded := TJsonRead.Flag(ASection, 'succeeded');
+  Result.Errors := TJsonRead.IntOr(ASection, 'errors', 0);
+  Result.Warnings := TJsonRead.IntOr(ASection, 'warnings', 0);
+  Result.Hints := TJsonRead.IntOr(ASection, 'hints', 0);
+  Result.DurationMs := TJsonRead.IntOr(ASection, 'durationMs', 0);
+  Result.First := LocationOf(TJsonRead.Obj(ASection, 'first'));
 end;
 
 /// <summary>Abschnitt "check"; Empty ohne Abschnitt.</summary>
@@ -974,9 +975,9 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.Errors := NumberOf(ASection, 'errors', 0);
-  Result.First := LocationOf(ObjectOf(ASection, 'first'));
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Errors := TJsonRead.IntOr(ASection, 'errors', 0);
+  Result.First := LocationOf(TJsonRead.Obj(ASection, 'first'));
 end;
 
 /// <summary>Abschnitt "rules"; Empty ohne Abschnitt.</summary>
@@ -988,8 +989,8 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.NewHits := NumberOf(ASection, 'newHits', 0);
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.NewHits := TJsonRead.IntOr(ASection, 'newHits', 0);
 end;
 
 /// <summary>Abschnitt "baseline"; Empty ohne Abschnitt.</summary>
@@ -1001,15 +1002,15 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
-  Result.Exists := FlagOf(ASection, 'exists');
-  Result.Valid := FlagOf(ASection, 'valid');
-  Result.Entries := NumberOf(ASection, 'entries', 0);
-  Result.Hits := NumberOf(ASection, 'hits', 0);
-  Result.Orphaned := NumberOf(ASection, 'orphaned', 0);
-  Result.Updated := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'updated'));
-  Result.Added := NumberOf(ASection, 'added', 0);
-  Result.Removed := NumberOf(ASection, 'removed', 0);
+  Result.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Exists := TJsonRead.Flag(ASection, 'exists');
+  Result.Valid := TJsonRead.Flag(ASection, 'valid');
+  Result.Entries := TJsonRead.IntOr(ASection, 'entries', 0);
+  Result.Hits := TJsonRead.IntOr(ASection, 'hits', 0);
+  Result.Orphaned := TJsonRead.IntOr(ASection, 'orphaned', 0);
+  Result.Updated := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'updated'));
+  Result.Added := TJsonRead.IntOr(ASection, 'added', 0);
+  Result.Removed := TJsonRead.IntOr(ASection, 'removed', 0);
 end;
 
 function VcsJson(const AVcs: TAtlasProjectVcs; AOriginal: TJSONObject): TJSONObject;
@@ -1128,51 +1129,51 @@ procedure AddSections(ARoot, AOriginal: TJSONObject; const ASummary: TAtlasProje
 begin
   if ASummary.Vcs.Known then
   begin
-    ARoot.AddPair('vcs', VcsJson(ASummary.Vcs, ObjectOf(AOriginal, 'vcs')));
+    ARoot.AddPair('vcs', VcsJson(ASummary.Vcs, TJsonRead.Obj(AOriginal, 'vcs')));
   end;
   if ASummary.Build.Known then
   begin
-    ARoot.AddPair('build', BuildJson(ASummary.Build, ObjectOf(AOriginal, 'build')));
+    ARoot.AddPair('build', BuildJson(ASummary.Build, TJsonRead.Obj(AOriginal, 'build')));
   end;
   if ASummary.Check.Known then
   begin
-    ARoot.AddPair('check', CheckJson(ASummary.Check, ObjectOf(AOriginal, 'check')));
+    ARoot.AddPair('check', CheckJson(ASummary.Check, TJsonRead.Obj(AOriginal, 'check')));
   end;
   if ASummary.Rules.Known then
   begin
-    ARoot.AddPair('rules', RulesJson(ASummary.Rules, ObjectOf(AOriginal, 'rules')));
+    ARoot.AddPair('rules', RulesJson(ASummary.Rules, TJsonRead.Obj(AOriginal, 'rules')));
   end;
   if ASummary.Metrics.Known then
   begin
-    ARoot.AddPair('metrics', MetricsJson(ASummary.Metrics, ObjectOf(AOriginal, 'metrics')));
+    ARoot.AddPair('metrics', MetricsJson(ASummary.Metrics, TJsonRead.Obj(AOriginal, 'metrics')));
   end;
   if ASummary.Todos.Known then
   begin
-    ARoot.AddPair('todos', TodosJson(ASummary.Todos, ObjectOf(AOriginal, 'todos')));
+    ARoot.AddPair('todos', TodosJson(ASummary.Todos, TJsonRead.Obj(AOriginal, 'todos')));
   end;
   if ASummary.Baseline.Known then
   begin
-    ARoot.AddPair('baseline', BaselineJson(ASummary.Baseline, ObjectOf(AOriginal, 'baseline')));
+    ARoot.AddPair('baseline', BaselineJson(ASummary.Baseline, TJsonRead.Obj(AOriginal, 'baseline')));
   end;
   if ASummary.Trends.Known then
   begin
-    ARoot.AddPair('trends', TrendsJson(ASummary.Trends, ObjectOf(AOriginal, 'trends')));
+    ARoot.AddPair('trends', TrendsJson(ASummary.Trends, TJsonRead.Obj(AOriginal, 'trends')));
   end;
   if ASummary.Setup.Known then
   begin
-    ARoot.AddPair('setup', TAtlasSummarySections.SetupJson(ASummary.Setup, ObjectOf(AOriginal, 'setup')));
+    ARoot.AddPair('setup', TAtlasSummarySections.SetupJson(ASummary.Setup, TJsonRead.Obj(AOriginal, 'setup')));
   end;
   if ASummary.Tests.Known then
   begin
-    ARoot.AddPair('tests', TAtlasSummarySections.TestsJson(ASummary.Tests, ObjectOf(AOriginal, 'tests')));
+    ARoot.AddPair('tests', TAtlasSummarySections.TestsJson(ASummary.Tests, TJsonRead.Obj(AOriginal, 'tests')));
   end;
   if ASummary.Release.Known then
   begin
-    ARoot.AddPair('release', TAtlasSummarySections.ReleaseJson(ASummary.Release, ObjectOf(AOriginal, 'release')));
+    ARoot.AddPair('release', TAtlasSummarySections.ReleaseJson(ASummary.Release, TJsonRead.Obj(AOriginal, 'release')));
   end;
   if ASummary.Ci.Known then
   begin
-    ARoot.AddPair('ci', TAtlasSummarySections.CiJson(ASummary.Ci, ObjectOf(AOriginal, 'ci')));
+    ARoot.AddPair('ci', TAtlasSummarySections.CiJson(ASummary.Ci, TJsonRead.Obj(AOriginal, 'ci')));
   end;
 end;
 
@@ -1256,7 +1257,7 @@ begin
   try
     if mValue is TJSONObject then
     begin
-      Result := NumberOf(TJSONObject(mValue), 'format', 0);
+      Result := TJsonRead.IntOr(TJSONObject(mValue), 'format', 0);
     end;
   finally
     mValue.Free;
@@ -1283,27 +1284,27 @@ begin
     end;
     mRoot := TJSONObject(mValue);
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
-    if NumberOf(mRoot, 'format', 1) > cFormat then
+    if TJsonRead.IntOr(mRoot, 'format', 1) > cFormat then
     begin
       Exit;
     end;
     ASummary.Raw := AJson;
-    ASummary.Project := TextOf(mRoot, 'project');
-    ASummary.LastOpened := TimeOf(TextOf(mRoot, 'lastOpened'));
-    ASummary.LastClosed := TimeOf(TextOf(mRoot, 'lastClosed'));
-    ASummary.Hidden := FlagOf(mRoot, 'hidden');
-    ASummary.Vcs := VcsOf(ObjectOf(mRoot, 'vcs'));
-    ASummary.Build := BuildOf(ObjectOf(mRoot, 'build'));
-    ASummary.Check := CheckOf(ObjectOf(mRoot, 'check'));
-    ASummary.Rules := RulesOf(ObjectOf(mRoot, 'rules'));
-    ASummary.Metrics := MetricsOf(ObjectOf(mRoot, 'metrics'));
-    ASummary.Todos := TodosOf(ObjectOf(mRoot, 'todos'));
-    ASummary.Baseline := BaselineOf(ObjectOf(mRoot, 'baseline'));
-    ASummary.Trends := TrendsOf(ObjectOf(mRoot, 'trends'));
-    ASummary.Setup := TAtlasSummarySections.SetupOf(ObjectOf(mRoot, 'setup'));
-    ASummary.Tests := TAtlasSummarySections.TestsOf(ObjectOf(mRoot, 'tests'));
-    ASummary.Release := TAtlasSummarySections.ReleaseOf(ObjectOf(mRoot, 'release'));
-    ASummary.Ci := TAtlasSummarySections.CiOf(ObjectOf(mRoot, 'ci'));
+    ASummary.Project := TJsonRead.Text(mRoot, 'project');
+    ASummary.LastOpened := TimeOf(TJsonRead.Text(mRoot, 'lastOpened'));
+    ASummary.LastClosed := TimeOf(TJsonRead.Text(mRoot, 'lastClosed'));
+    ASummary.Hidden := TJsonRead.Flag(mRoot, 'hidden');
+    ASummary.Vcs := VcsOf(TJsonRead.Obj(mRoot, 'vcs'));
+    ASummary.Build := BuildOf(TJsonRead.Obj(mRoot, 'build'));
+    ASummary.Check := CheckOf(TJsonRead.Obj(mRoot, 'check'));
+    ASummary.Rules := RulesOf(TJsonRead.Obj(mRoot, 'rules'));
+    ASummary.Metrics := MetricsOf(TJsonRead.Obj(mRoot, 'metrics'));
+    ASummary.Todos := TodosOf(TJsonRead.Obj(mRoot, 'todos'));
+    ASummary.Baseline := BaselineOf(TJsonRead.Obj(mRoot, 'baseline'));
+    ASummary.Trends := TrendsOf(TJsonRead.Obj(mRoot, 'trends'));
+    ASummary.Setup := TAtlasSummarySections.SetupOf(TJsonRead.Obj(mRoot, 'setup'));
+    ASummary.Tests := TAtlasSummarySections.TestsOf(TJsonRead.Obj(mRoot, 'tests'));
+    ASummary.Release := TAtlasSummarySections.ReleaseOf(TJsonRead.Obj(mRoot, 'release'));
+    ASummary.Ci := TAtlasSummarySections.CiOf(TJsonRead.Obj(mRoot, 'ci'));
     Result := True;
   finally
     mValue.Free;

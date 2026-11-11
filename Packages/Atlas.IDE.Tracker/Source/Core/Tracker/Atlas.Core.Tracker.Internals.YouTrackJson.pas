@@ -13,7 +13,6 @@ uses
 type
   TAtlasYouTrackJson = class
   public
-    class function TextOf(AObject: TJSONObject; const AName: string): string; static;
     class function Shorten(const AText: string; AMax: Integer): string; static;
     /// <summary>Name eines Werts: "name", sonst "presentation"; bei einer Liste die Namen mit ", ".</summary>
     class function ValueText(AValue: TJSONValue): string; static;
@@ -21,7 +20,6 @@ type
     class function ValidKey(const AKey: string): Boolean; static;
     /// <summary>Millisekunden seit 1970 (YouTrack) als UTC; 0 ohne.</summary>
     class function TimeOf(AObject: TJSONObject; const AName: string): TDateTime; static;
-    class function BoolOf(AObject: TJSONObject; const AName: string): Boolean; static;
     class function Limited(const AText: string): string; static;
     class function FirstText(AObject: TJSONObject; const AName, AFallback: string): string; static;
     class function ValidId(const AId: string): Boolean; static;
@@ -34,19 +32,8 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.Tracker.Contract;
-
-class function TAtlasYouTrackJson.TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Text.Json;
 
 class function TAtlasYouTrackJson.Shorten(const AText: string; AMax: Integer): string;
 begin
@@ -66,7 +53,7 @@ begin
   Result := '';
   for mName in TArray<string>.Create('name', 'presentation', 'fullName', 'login') do
   begin
-    Result := TAtlasYouTrackJson.TextOf(AObject, mName);
+    Result := TJsonRead.Text(AObject, mName);
     if Result <> '' then
     begin
       Exit;
@@ -153,14 +140,6 @@ begin
   end;
 end;
 
-class function TAtlasYouTrackJson.BoolOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.Values[AName];
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 class function TAtlasYouTrackJson.Limited(const AText: string): string;
 begin
   Result := Copy(AText, 1, TAtlasTrackerDetails.cMaxText);
@@ -168,10 +147,10 @@ end;
 
 class function TAtlasYouTrackJson.FirstText(AObject: TJSONObject; const AName, AFallback: string): string;
 begin
-  Result := TextOf(AObject, AName);
+  Result := TJsonRead.Text(AObject, AName);
   if Result = '' then
   begin
-    Result := TextOf(AObject, AFallback);
+    Result := TJsonRead.Text(AObject, AFallback);
   end;
 end;
 

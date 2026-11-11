@@ -132,7 +132,8 @@ uses
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.Internals.GitHubJson;
+  Atlas.Core.Tracker.Internals.GitHubJson,
+  Atlas.Text.Json;
 
 /// <summary>Name eines Labels (Objekt mit "name" oder Text), gekürzt; '' ohne.</summary>
 function LabelNameOf(AValue: TJSONValue): string;
@@ -140,7 +141,7 @@ begin
   Result := '';
   if AValue is TJSONObject then
   begin
-    Result := Trim(TAtlasGitHubJson.TextOf(TJSONObject(AValue), 'name'));
+    Result := Trim(TJsonRead.Text(TJSONObject(AValue), 'name'));
   end
   else if AValue is TJSONString then
   begin
@@ -197,8 +198,8 @@ begin
     Exit;
   end;
   AIssue.Key := '#' + IntToStr(AIssue.Number);
-  AIssue.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mItem, 'title'), TAtlasTrackerIssue.cMaxTitle);
-  AIssue.State := TAtlasGitHubJson.TextOf(mItem, 'state');
+  AIssue.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(mItem, 'title'), TAtlasTrackerIssue.cMaxTitle);
+  AIssue.State := TJsonRead.Text(mItem, 'state');
   AIssue.Assignee := TAtlasGitHubJson.AssigneesOf(mItem);
   AIssue.Labels := IssueLabelsOf(mItem.Values['labels'], TAtlasTrackerIssue.cMaxLabels);
 end;
@@ -244,7 +245,7 @@ var
   mText: string;
 begin
   Result := 0;
-  mText := TAtlasGitHubJson.TextOf(AObject, 'updated_at');
+  mText := TJsonRead.Text(AObject, 'updated_at');
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
   begin
     Result := 0;
@@ -277,18 +278,18 @@ begin
       begin
         Continue;
       end;
-      mPull.Draft := TAtlasGitHubJson.FlagOf(TJSONObject(mItem), 'draft');
-      mPull.State := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'state'));
-      mPull.Merged := TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'merged_at') <> '';
+      mPull.Draft := TJsonRead.Flag(TJSONObject(mItem), 'draft');
+      mPull.State := LowerCase(TJsonRead.Text(TJSONObject(mItem), 'state'));
+      mPull.Merged := TJsonRead.Text(TJSONObject(mItem), 'merged_at') <> '';
       mPull.Updated := UpdatedOf(TJSONObject(mItem));
-      mPull.Title := TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'title');
+      mPull.Title := TJsonRead.Text(TJSONObject(mItem), 'title');
       // Nur der Anfang: „closes #N“ steht fast immer oben, und lange Beschreibungen kosten nur Speicher.
-      mPull.Body := Copy(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'body'), 1, 4000);
+      mPull.Body := Copy(TJsonRead.Text(TJSONObject(mItem), 'body'), 1, 4000);
       mHead := TJSONObject(mItem).Values['head'];
       if mHead is TJSONObject then
       begin
-        mPull.Branch := TAtlasGitHubJson.TextOf(TJSONObject(mHead), 'ref');
-        mPull.Sha := TAtlasGitHubJson.TextOf(TJSONObject(mHead), 'sha');
+        mPull.Branch := TJsonRead.Text(TJSONObject(mHead), 'ref');
+        mPull.Sha := TJsonRead.Text(TJSONObject(mHead), 'sha');
       end;
       APulls := APulls + [mPull];
     end;
@@ -431,8 +432,8 @@ begin
         Continue;
       end;
       mAny := True;
-      mStatus := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mRun), 'status'));
-      mConclusion := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mRun), 'conclusion'));
+      mStatus := LowerCase(TJsonRead.Text(TJSONObject(mRun), 'status'));
+      mConclusion := LowerCase(TJsonRead.Text(TJSONObject(mRun), 'conclusion'));
       if mStatus <> 'completed' then
       begin
         mRunning := True;
@@ -480,7 +481,7 @@ begin
     begin
       Exit;
     end;
-    mState := LowerCase(TAtlasGitHubJson.TextOf(TJSONObject(mValue), 'state'));
+    mState := LowerCase(TJsonRead.Text(TJSONObject(mValue), 'state'));
     if mState = 'success' then
     begin
       AChecks := TAtlasTrackerChecks.Success;
@@ -503,8 +504,8 @@ function DetailsStateOf(ARoot: TJSONObject): string;
 var
   mReason: string;
 begin
-  Result := TAtlasGitHubJson.TextOf(ARoot, 'state');
-  mReason := TAtlasGitHubJson.TextOf(ARoot, 'state_reason');
+  Result := TJsonRead.Text(ARoot, 'state');
+  mReason := TJsonRead.Text(ARoot, 'state_reason');
   if (Result = 'closed') and (mReason <> '') and (mReason <> 'completed') then
   begin
     Result := Result + ' (' + StringReplace(mReason, '_', ' ', [rfReplaceAll]) + ')';
@@ -517,7 +518,7 @@ begin
   Result := '';
   if ARoot.Values[AObject] is TJSONObject then
   begin
-    Result := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(TJSONObject(ARoot.Values[AObject]), AField), AMax);
+    Result := TAtlasGitHubJson.Shorten(TJsonRead.Text(TJSONObject(ARoot.Values[AObject]), AField), AMax);
   end;
 end;
 
@@ -525,8 +526,8 @@ end;
 procedure ReadDetails(ARoot: TJSONObject; var ADetails: TAtlasTrackerDetails);
 begin
   ADetails.Key := '#' + IntToStr(ADetails.Number);
-  ADetails.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(ARoot, 'title'), 500);
-  ADetails.Description := TAtlasGitHubJson.Limited(TAtlasGitHubJson.TextOf(ARoot, 'body'));
+  ADetails.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(ARoot, 'title'), 500);
+  ADetails.Description := TAtlasGitHubJson.Limited(TJsonRead.Text(ARoot, 'body'));
   ADetails.State := DetailsStateOf(ARoot);
   ADetails.Created := TAtlasGitHubJson.TimeOf(ARoot, 'created_at');
   ADetails.Updated := TAtlasGitHubJson.TimeOf(ARoot, 'updated_at');
@@ -586,7 +587,7 @@ begin
       mComment := Default(TAtlasTrackerComment);
       mComment.Author := TAtlasGitHubJson.LoginOf(TJSONObject(mItem).Values['user']);
       mComment.Created := TAtlasGitHubJson.TimeOf(TJSONObject(mItem), 'created_at');
-      mComment.Text := TAtlasGitHubJson.Limited(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'body'));
+      mComment.Text := TAtlasGitHubJson.Limited(TJsonRead.Text(TJSONObject(mItem), 'body'));
       AComments := AComments + [mComment];
     end;
   finally
@@ -614,12 +615,12 @@ begin
   begin
     ALink.Key := ARepository + ALink.Key;
   end;
-  ALink.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(AIssue, 'title'), 200);
-  ALink.State := TAtlasGitHubJson.TextOf(AIssue, 'state');
+  ALink.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(AIssue, 'title'), 200);
+  ALink.State := TJsonRead.Text(AIssue, 'state');
   ALink.StateKnown := ALink.State <> '';
   ALink.Resolved := SameText(ALink.State, 'closed');
   // Nur Web-Seiten über https; was nicht im Fenster öffnet, geht in den Browser.
-  mPage := TAtlasGitHubJson.TextOf(AIssue, 'html_url');
+  mPage := TJsonRead.Text(AIssue, 'html_url');
   if StartsText('https://', mPage) then
   begin
     ALink.Page := mPage;
@@ -632,7 +633,7 @@ var
   mSource: TJSONValue;
 begin
   Result := nil;
-  if not (AItem is TJSONObject) or (TAtlasGitHubJson.TextOf(TJSONObject(AItem), 'event') <> 'cross-referenced') then
+  if not (AItem is TJSONObject) or (TJsonRead.Text(TJSONObject(AItem), 'event') <> 'cross-referenced') then
   begin
     Exit;
   end;
@@ -779,7 +780,7 @@ begin
     begin
       if mItem is TJSONObject then
       begin
-        mText := Trim(TAtlasGitHubJson.TextOf(TJSONObject(mItem), AField));
+        mText := Trim(TJsonRead.Text(TJSONObject(mItem), AField));
         if mText <> '' then
         begin
           Result := Result + [mText];
@@ -851,7 +852,7 @@ begin
     Result := (mValue is TJSONObject) and (TAtlasGitHubJson.IntOf(TJSONObject(mValue), 'number') > 0);
     if Result then
     begin
-      AText := TAtlasGitHubJson.TextOf(TJSONObject(mValue), 'body');
+      AText := TJsonRead.Text(TJSONObject(mValue), 'body');
     end;
   finally
     mValue.Free;
@@ -906,7 +907,7 @@ var
   mAt: Integer;
 begin
   Result := '';
-  mUrl := TAtlasGitHubJson.TextOf(AIssue, 'repository_url');
+  mUrl := TJsonRead.Text(AIssue, 'repository_url');
   mAt := Pos('/repos/', mUrl);
   if mAt > 0 then
   begin
@@ -1057,18 +1058,18 @@ begin
       end;
       mSubject := TJSONObject(mObject.Values['subject']);
       // Nur Issues; Pull Requests, Releases und Diskussionen nicht.
-      if not SameText(TAtlasGitHubJson.TextOf(mSubject, 'type'), 'Issue') then
+      if not SameText(TJsonRead.Text(mSubject, 'type'), 'Issue') then
       begin
         Continue;
       end;
       mThread := Default(TAtlasGitHubThread);
-      if not IssueOfApiUrl(TAtlasGitHubJson.TextOf(mSubject, 'url'), mThread.Repository, mThread.Number) then
+      if not IssueOfApiUrl(TJsonRead.Text(mSubject, 'url'), mThread.Repository, mThread.Number) then
       begin
         Continue;
       end;
-      mThread.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mSubject, 'title'),
+      mThread.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(mSubject, 'title'),
         TAtlasTrackerIssue.cMaxTitle);
-      mThread.Reason := LowerCase(TAtlasGitHubJson.TextOf(mObject, 'reason'));
+      mThread.Reason := LowerCase(TJsonRead.Text(mObject, 'reason'));
       mThread.Updated := TAtlasGitHubJson.TimeOf(mObject, 'updated_at');
       if mThread.Updated > ASince then
       begin
@@ -1141,7 +1142,7 @@ function EventChangeOf(AEvent: TJSONObject; const AThread: TAtlasGitHubThread; c
 var
   mEvent, mActor: string;
 begin
-  mEvent := LowerCase(TAtlasGitHubJson.TextOf(AEvent, 'event'));
+  mEvent := LowerCase(TJsonRead.Text(AEvent, 'event'));
   mActor := TAtlasGitHubJson.LoginOf(AEvent.Values['actor']);
   Result := True;
   if mEvent = 'assigned' then
