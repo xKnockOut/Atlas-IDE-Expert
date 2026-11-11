@@ -67,7 +67,9 @@ type
     // Code Lens mit Code-Metriken (#66, #1756).
     SettingsCodeLensMetrics, MetricsLensLines, MetricsLensDepth, MetricsLensCyclomatic, MetricsLensCognitive,
     MetricsLensParameters, MetricsLensLimit, MetricsLensMembers, MetricsLensUses, MetricsLensOperands,
-    MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast);
+    MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast,
+    // Kontextmenü der Projektverwaltung (#1817).
+    ProjectUnitRelations, ProjectDependents, ProjectDependentsCount, DependentsTitle, DependentsNoServer);
 
   TAtlasAnalysisStrings = class
   public
@@ -329,7 +331,12 @@ const
      '%d lokale',
      '%d Ausstiege',
      'Vererbungstiefe %d',
-     'Vererbungstiefe mindestens %d'),
+     'Vererbungstiefe mindestens %d',
+     'Unit-Beziehungen',
+     'Abhängige Units',
+     'Abhängige Units (%d)',
+     'Units, die %s verwenden (%d)',
+     'Abhängige Units: Atlas-Server läuft nicht'),
     ('Atlas Architecture',
      'Architecture overview',
      'Architecture',
@@ -574,7 +581,12 @@ const
      '%d locals',
      '%d exits',
      'inheritance depth %d',
-     'inheritance depth at least %d'));
+     'inheritance depth at least %d',
+     'Unit relations',
+     'Dependent units',
+     'Dependent units (%d)',
+     'Units using %s (%d)',
+     'Dependent units: Atlas server is not running'));
 
 { TAtlasAnalysisStrings }
 
