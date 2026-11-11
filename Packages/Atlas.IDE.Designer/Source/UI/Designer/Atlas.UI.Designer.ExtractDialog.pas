@@ -20,7 +20,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasExtractInput = record
@@ -48,7 +49,7 @@ type
   TAtlasExtractDialogResult = (Cancel, Apply, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasExtractDialog = class(TForm)
+  TAtlasExtractDialog = class(TAtlasDialog)
   private
     FInput: TAtlasExtractInput;
     FOnPreview: TFunc<TAtlasExtractInput, TAtlasExtractPreview>;
@@ -86,7 +87,9 @@ implementation
 uses
   System.UITypes,
   Vcl.Graphics,
-  Atlas.UI.Designer.ViewStrings;
+  Atlas.UI.Designer.ViewStrings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cBasePpi = 96;
@@ -179,7 +182,9 @@ begin
   FError.Align := alClient;
   FError.AlignWithMargins := True;
   FError.Layout := tlCenter;
-  FError.Font.Color := clRed;
+  FError.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FError.StyleElements := FError.StyleElements - [seFont];
 end;
 
 procedure TAtlasExtractDialog.BuildButtons(ACanUndo: Boolean);
@@ -205,12 +210,11 @@ constructor TAtlasExtractDialog.CreateDialog(AOwner: TComponent; const AFormName
   const AInput: TAtlasExtractInput; ACanUndo: Boolean; const AOnPreview: TFunc<TAtlasExtractInput,
   TAtlasExtractPreview>);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FInput := AInput;
   FOnPreview := AOnPreview;
   Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfTitle, [AFormName]);
   BorderStyle := bsSizeToolWin;
-  Position := poMainFormCenter;
   Width := MulDiv(cWidth, CurrentPPI, cBasePpi);
   Height := MulDiv(cHeight, CurrentPPI, cBasePpi);
   FUpdating := True;

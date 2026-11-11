@@ -55,15 +55,6 @@
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.CaptionEditor.pas": {
     "create-new": 1
   },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.ExtractDialog.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Flash.pas": {
     "create-new": 1
   },
@@ -85,9 +76,6 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.NameDialog.pas": {
-    "create-new": 1
-  },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Outlines.pas": {
     "create-new": 1,
     "segoe-font": 1
@@ -103,10 +91,6 @@
     "create-new": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.SelectionBar.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.SpaceDialog.pas": {
     "create-new": 1,
     "segoe-font": 1
   },
