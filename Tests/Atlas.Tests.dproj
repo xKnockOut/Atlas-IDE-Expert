@@ -2039,6 +2039,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FormTexts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.LabelPairs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.LabelPairs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormGrid.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FormGrid.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>

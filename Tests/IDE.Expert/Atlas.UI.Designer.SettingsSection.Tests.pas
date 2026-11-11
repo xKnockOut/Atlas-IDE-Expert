@@ -54,6 +54,8 @@ type
     procedure TextTableRoundTrip;
     [Test]
     procedure LabelPairsRoundTrip;
+    [Test]
+    procedure ArrangeFormRoundTrip;
   end;
 
 implementation
@@ -497,6 +499,38 @@ begin
     Assert.AreEqual(24, mSaved.DesignerLabelPairsPairDistance);
     Assert.AreEqual('PLZ', mSaved.DesignerLabelPairsAbbreviations);
     Assert.AreEqual(TAtlasPluginSettings.cLabelLeft, mSaved.DesignerLabelPairsNewLabelPosition);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ArrangeFormRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerArrangeForm').Checked, 'Vorgabe an');
+    Assert.AreEqual('8', EditOf(mPage, 'DesignerArrangeFormRowGap').Text);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerArrangeFormEqualFieldWidth').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerArrangeFormSetTabOrder').Checked);
+    CheckOf(mPage, 'DesignerArrangeForm').Checked := False;
+    EditOf(mPage, 'DesignerArrangeFormRowGap').Text := '12';
+    EditOf(mPage, 'DesignerArrangeFormLabelGap').Text := '6';
+    CheckOf(mPage, 'DesignerArrangeFormEqualFieldWidth').Checked := True;
+    CheckOf(mPage, 'DesignerArrangeFormTwoPerRow').Checked := True;
+    CheckOf(mPage, 'DesignerArrangeFormSetTabOrder').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerArrangeForm, 'abschaltbar');
+    Assert.AreEqual(12, mSaved.DesignerArrangeFormRowGap);
+    Assert.AreEqual(6, mSaved.DesignerArrangeFormLabelGap);
+    Assert.IsTrue(mSaved.DesignerArrangeFormEqualFieldWidth);
+    Assert.IsTrue(mSaved.DesignerArrangeFormTwoPerRow);
+    Assert.IsFalse(mSaved.DesignerArrangeFormSetTabOrder);
+    Assert.AreEqual(TAtlasPluginSettings.cGridLabelLeft, mSaved.DesignerArrangeFormLabelAlign);
   finally
     mPage.Free;
   end;

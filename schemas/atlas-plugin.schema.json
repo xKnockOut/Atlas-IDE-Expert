@@ -5586,6 +5586,91 @@
       "x-node": "editor.designerBar",
       "x-issue": "#729"
     },
+    "DesignerArrangeForm": {
+      "description": "Befehl „Als Formularraster anordnen …“ im Menü „Anordnen“ der Designer-Leiste: ordnet die markierten Label-Feld-Paare zeilenweise in eine Labelspalte und eine Feldspalte, mit Vorschau als Umriss.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
+    "DesignerArrangeFormRowGap": {
+      "description": "Abstand zwischen den Zeilen in Pixeln.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.arrangeForm.rowGap",
+      "x-parent": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
+    "DesignerArrangeFormLabelGap": {
+      "description": "Abstand zwischen Labelspalte und Feld sowie zwischen Feldern einer Zeile in Pixeln.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.arrangeForm.labelGap",
+      "x-parent": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
+    "DesignerArrangeFormLabelAlign": {
+      "description": "Lage der Labels: linksbündig (left) oder rechtsbündig (right) in ihrer Spalte oder über dem Feld (above).",
+      "type": "string",
+      "enum": [
+        "left",
+        "right",
+        "above"
+      ],
+      "default": "left",
+      "x-key": "designer.arrangeForm.labelAlign",
+      "x-parent": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
+    "DesignerArrangeFormEqualFieldWidth": {
+      "description": "Einzelne Felder einer Zeile so breit machen wie das breiteste; Zeilen mit mehreren Feldern bleiben.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.arrangeForm.equalFieldWidth",
+      "x-parent": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
+    "DesignerArrangeFormTwoPerRow": {
+      "description": "Zwei Paare je Zeile: das Raster wird zweispaltig, die Reihenfolge läuft zeilenweise.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.arrangeForm.twoPerRow",
+      "x-parent": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
+    "DesignerArrangeFormSetTabOrder": {
+      "description": "TabOrder der Felder nach dem Anordnen in der neuen Lesereihenfolge setzen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.arrangeForm.setTabOrder",
+      "x-parent": "designer.arrangeForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#731"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

@@ -88,7 +88,10 @@ type
     DesignerPairsAccelerator, DesignerPairsSaveFailed, SettingsDesignerPairs, SettingsDesignerPairsBaseline,
     SettingsDesignerPairsFocus, SettingsDesignerPairsMove, SettingsDesignerPairsDistance,
     SettingsDesignerPairsPosition, SettingsDesignerPairsLeft, SettingsDesignerPairsAbove,
-    SettingsDesignerPairsAbbreviations);
+    SettingsDesignerPairsAbbreviations, DesignerGridCmd, DesignerGridUndoCmd, DesignerGridNeedTwo,
+    DesignerGridConfirm, DesignerGridDone, DesignerGridUndone, SettingsDesignerGrid, SettingsDesignerGridRowGap,
+    SettingsDesignerGridLabelGap, SettingsDesignerGridAlign, SettingsDesignerGridLeft, SettingsDesignerGridRight,
+    SettingsDesignerGridEqual, SettingsDesignerGridTwo, SettingsDesignerGridTabOrder);
 
   TAtlasDesignerStrings = class
   public
@@ -425,7 +428,22 @@ const
      'Lage neuer Labels',
      'links',
      'darüber',
-     'Abkürzungen'),
+     'Abkürzungen',
+     'Als Formularraster anordnen …',
+     'Raster rückgängig',
+     'Zum Anordnen mindestens zwei Steuerelemente markieren.',
+     '%d Steuerelemente wie im Umriss anordnen?',
+     '%d Steuerelemente als Raster angeordnet.',
+     'Raster zurückgesetzt.',
+     'Als Formularraster anordnen',
+     'Zeilenabstand (Pixel)',
+     'Abstand Label – Feld (Pixel)',
+     'Lage der Labels',
+     'linksbündig',
+     'rechtsbündig',
+     'Einzelne Felder gleich breit',
+     'Zwei Paare je Zeile',
+     'TabOrder danach setzen'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -743,7 +761,22 @@ const
      'Position of new labels',
      'left',
      'above',
-     'Abbreviations'));
+     'Abbreviations',
+     'Arrange as form grid …',
+     'Undo grid',
+     'Select at least two controls to arrange.',
+     'Arrange %d controls as outlined?',
+     '%d controls arranged as a grid.',
+     'Grid undone.',
+     'Arrange as form grid',
+     'Row gap (pixels)',
+     'Gap label – field (pixels)',
+     'Label position',
+     'left aligned',
+     'right aligned',
+     'Single fields equally wide',
+     'Two pairs per row',
+     'Set tab order afterwards'));
 
 { TAtlasDesignerStrings }
 

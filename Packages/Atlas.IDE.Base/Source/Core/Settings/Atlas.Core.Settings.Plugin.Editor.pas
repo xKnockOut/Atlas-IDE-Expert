@@ -84,6 +84,10 @@ const
   /// <summary>Werte von designer.labelPairs.newLabelPosition (#729).</summary>
   cLabelLeft = 'left';
   cLabelAbove = 'above';
+  /// <summary>Werte von designer.arrangeForm.labelAlign (#731).</summary>
+  cGridLabelLeft = 'left';
+  cGridLabelRight = 'right';
+  cGridLabelAbove = 'above';
   cMaxButtonBarSpace = 100;
   cMaxNearTolerance = 10;
 
@@ -620,6 +624,20 @@ type
     DesignerLabelPairsNewLabelPosition: string;
     /// <summary>Abkürzungen in eigener Schreibweise (#729, designer.labelPairs.abbreviations).</summary>
     DesignerLabelPairsAbbreviations: string;
+    /// <summary>Als Formularraster anordnen (#731, designer.arrangeForm).</summary>
+    DesignerArrangeForm: Boolean;
+    /// <summary>Abstand zwischen den Zeilen (#731, designer.arrangeForm.rowGap).</summary>
+    DesignerArrangeFormRowGap: Integer;
+    /// <summary>Abstand zwischen Label und Feld (#731, designer.arrangeForm.labelGap).</summary>
+    DesignerArrangeFormLabelGap: Integer;
+    /// <summary>Lage der Labels: cGridLabelLeft … (#731, designer.arrangeForm.labelAlign).</summary>
+    DesignerArrangeFormLabelAlign: string;
+    /// <summary>Einzelne Felder gleich breit (#731, designer.arrangeForm.equalFieldWidth).</summary>
+    DesignerArrangeFormEqualFieldWidth: Boolean;
+    /// <summary>Zwei Paare je Zeile (#731, designer.arrangeForm.twoPerRow).</summary>
+    DesignerArrangeFormTwoPerRow: Boolean;
+    /// <summary>TabOrder nach dem Anordnen setzen (#731, designer.arrangeForm.setTabOrder).</summary>
+    DesignerArrangeFormSetTabOrder: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1208,6 +1226,13 @@ begin
   DesignerLabelPairsPairDistance := 16;
   DesignerLabelPairsNewLabelPosition := cLabelLeft;
   DesignerLabelPairsAbbreviations := 'PLZ, IBAN, BIC, USt, ID';
+  DesignerArrangeForm := True;
+  DesignerArrangeFormRowGap := 8;
+  DesignerArrangeFormLabelGap := 8;
+  DesignerArrangeFormLabelAlign := cGridLabelLeft;
+  DesignerArrangeFormEqualFieldWidth := False;
+  DesignerArrangeFormTwoPerRow := False;
+  DesignerArrangeFormSetTabOrder := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1260,6 +1285,13 @@ begin
   AIo.Number('DesignerLabelPairsPairDistance', DesignerLabelPairsPairDistance);
   AIo.Text('DesignerLabelPairsNewLabelPosition', DesignerLabelPairsNewLabelPosition);
   AIo.Text('DesignerLabelPairsAbbreviations', DesignerLabelPairsAbbreviations);
+  AIo.Flag('DesignerArrangeForm', DesignerArrangeForm);
+  AIo.Number('DesignerArrangeFormRowGap', DesignerArrangeFormRowGap);
+  AIo.Number('DesignerArrangeFormLabelGap', DesignerArrangeFormLabelGap);
+  AIo.Text('DesignerArrangeFormLabelAlign', DesignerArrangeFormLabelAlign);
+  AIo.Flag('DesignerArrangeFormEqualFieldWidth', DesignerArrangeFormEqualFieldWidth);
+  AIo.Flag('DesignerArrangeFormTwoPerRow', DesignerArrangeFormTwoPerRow);
+  AIo.Flag('DesignerArrangeFormSetTabOrder', DesignerArrangeFormSetTabOrder);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1290,6 +1322,10 @@ begin
   DesignerSuggestAnchorsEdgeDistance := EnsureRange(DesignerSuggestAnchorsEdgeDistance, 0, cMaxButtonBarSpace);
   DesignerLabelPairsPairDistance := EnsureRange(DesignerLabelPairsPairDistance, 0, cMaxButtonBarSpace);
   DesignerLabelPairsNewLabelPosition := Choice(DesignerLabelPairsNewLabelPosition, [cLabelLeft, cLabelAbove]);
+  DesignerArrangeFormRowGap := EnsureRange(DesignerArrangeFormRowGap, 0, cMaxButtonBarSpace);
+  DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
+  DesignerArrangeFormLabelAlign := Choice(DesignerArrangeFormLabelAlign, [cGridLabelLeft, cGridLabelRight,
+    cGridLabelAbove]);
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
 end;
 

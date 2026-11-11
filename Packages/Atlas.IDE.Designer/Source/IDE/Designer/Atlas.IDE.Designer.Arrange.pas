@@ -31,6 +31,8 @@
 // - Label und Feld (Untermenü: Labels an Feldern ausrichten, Label erzeugen,
 //   Paar lösen, Paar verbinden) und Label rückgängig (#729,
 //   designer.labelPairs, TAtlasIdeLabelPairs).
+// - Als Formularraster anordnen … und Raster rückgängig (#731,
+//   designer.arrangeForm, TAtlasIdeFormGrid).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -49,7 +51,8 @@ uses
   Atlas.IDE.Designer.PropertyPainter,
   Atlas.IDE.Designer.Anchors,
   Atlas.IDE.Designer.FormTexts,
-  Atlas.IDE.Designer.LabelPairs;
+  Atlas.IDE.Designer.LabelPairs,
+  Atlas.IDE.Designer.FormGrid;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -66,6 +69,7 @@ type
     FAnchors: TAtlasIdeAnchors;
     FTexts: TAtlasIdeFormTexts;
     FPairs: TAtlasIdeLabelPairs;
+    FGrid: TAtlasIdeFormGrid;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
     FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
@@ -81,7 +85,7 @@ type
     /// <summary>Befehl zum Menü-Tag ATag ausführen.</summary>
     procedure Run(ATag: Integer);
     procedure RunArrange(ATag: Integer);
-    /// <summary>Anchors (#727) und Texte des Formulars (#728).</summary>
+    /// <summary>Anchors (#727), Texte des Formulars (#728) und Formularraster (#731).</summary>
     procedure RunTools(ATag: Integer);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
@@ -126,6 +130,8 @@ const
   cAnchorsUndo = 14;
   cTexts = 15;
   cTextsUndo = 16;
+  cGrid = 17;
+  cGridUndo = 18;
   /// <summary>Ab hier TAtlasNearCommand: cNearFirst + Ord(Befehl).</summary>
   cNearFirst = 20;
   /// <summary>Ab hier TAtlasSizesCommand: cSizesFirst + Ord(Befehl).</summary>
@@ -155,10 +161,12 @@ begin
   FAnchors := TAtlasIdeAnchors.Create(AOnMessage);
   FTexts := TAtlasIdeFormTexts.Create(AOnMessage);
   FPairs := TAtlasIdeLabelPairs.Create(AOnMessage);
+  FGrid := TAtlasIdeFormGrid.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FGrid.Free;
   FPairs.Free;
   FTexts.Free;
   FAnchors.Free;
@@ -179,7 +187,8 @@ begin
     ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
     ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
     ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
-    ASettings.DesignerTextTable or ASettings.DesignerLabelPairs;
+    ASettings.DesignerTextTable or ASettings.DesignerLabelPairs or
+    ASettings.DesignerArrangeForm;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -384,6 +393,13 @@ begin
   begin
     AddPairItems;
   end;
+  if ASettings.DesignerArrangeForm then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGridCmd), cGrid,
+      TAtlasIdeFormGrid.CanArrange);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGridUndoCmd), cGridUndo,
+      FGrid.CanUndo);
+  end;
   if ASettings.DesignerTextTable then
   begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsCmd), cTexts, True);
@@ -435,6 +451,10 @@ begin
       FTexts.Execute;
     cTextsUndo:
       FTexts.Undo;
+    cGrid:
+      FGrid.Execute;
+    cGridUndo:
+      FGrid.Undo;
   end;
 end;
 
@@ -499,6 +519,7 @@ begin
   FNear.ApplyTheme;
   FSizes.ApplyTheme;
   FAnchors.ApplyTheme;
+  FGrid.ApplyTheme;
 end;
 
 end.

@@ -1647,6 +1647,8 @@ uses
   Atlas.Core.Designer.FormTexts.Tests in 'IDE.Expert\Atlas.Core.Designer.FormTexts.Tests.pas',
   Atlas.Core.Designer.LabelPairs in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.LabelPairs.pas',
   Atlas.Core.Designer.LabelPairs.Tests in 'IDE.Expert\Atlas.Core.Designer.LabelPairs.Tests.pas',
+  Atlas.Core.Designer.FormGrid in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormGrid.pas',
+  Atlas.Core.Designer.FormGrid.Tests in 'IDE.Expert\Atlas.Core.Designer.FormGrid.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731).
 
 interface
 
@@ -19,7 +19,7 @@ type
     procedure BuildArrangeRows;
     /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728) und Label und Feld (#729).</summary>
     procedure BuildToolRows;
-    /// <summary>Zeilen von Label und Feld (#729).</summary>
+    /// <summary>Zeilen von Label und Feld (#729) und Formularraster (#731).</summary>
     procedure BuildPairRows;
   protected
     procedure BuildRows; override;
@@ -175,6 +175,19 @@ begin
     [TAtlasPluginSettings.cLabelLeft, TAtlasPluginSettings.cLabelAbove]);
   Line('designer.labelPairs.abbreviations',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsAbbreviations));
+  Switch('designer.arrangeForm', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGrid));
+  Number('designer.arrangeForm.rowGap', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridRowGap));
+  Number('designer.arrangeForm.labelGap', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridLabelGap));
+  Choice('designer.arrangeForm.labelAlign', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridAlign),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridLeft),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridRight),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPairsAbove)],
+    [TAtlasPluginSettings.cGridLabelLeft, TAtlasPluginSettings.cGridLabelRight, TAtlasPluginSettings.cGridLabelAbove]);
+  Switch('designer.arrangeForm.equalFieldWidth',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridEqual));
+  Switch('designer.arrangeForm.twoPerRow', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridTwo));
+  Switch('designer.arrangeForm.setTabOrder',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGridTabOrder));
 end;
 
 end.
