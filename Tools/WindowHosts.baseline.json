@@ -116,15 +116,7 @@
   "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.SettingsProjects.pas": {
     "cl-red": 1
   },
-  "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.Push.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.Search.pas": {
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.SetupPreview.pas": {
-    "create-new": 1,
     "segoe-font": 1
   }
 }
