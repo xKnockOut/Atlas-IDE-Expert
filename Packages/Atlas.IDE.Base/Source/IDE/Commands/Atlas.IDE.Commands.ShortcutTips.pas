@@ -141,6 +141,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Popup.Window,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorBarHost,
@@ -513,7 +514,7 @@ begin
   Result := nil;
   if TAtlasIdeSettings.Current.KeyOverview then
   begin
-    Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.ShortcutTipAllKeys),
+    Result := [TAtlasNotificationCenter.Action(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipAllKeys),
       procedure
       begin
         if TAtlasIdeKeyMap.Instance <> nil then
@@ -522,7 +523,7 @@ begin
         end;
       end)];
   end;
-  Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.ShortcutTipNever),
+  Result := Result + [TAtlasNotificationCenter.Action(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipNever),
     procedure
     begin
       // Die Tipps können inzwischen beendet sein: nur über die laufende Instanz.
@@ -544,8 +545,8 @@ var
 begin
   // Benachrichtigungszentrale (#601): „nur sammeln“ zeigt kein Fenster, „aus“ unterdrückt den Tipp ganz.
   mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cShortcutTips,
-    TAtlasNotificationSeverity.Info, TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipTitle, [AKeyText]),
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipText, [ACaption, AKeyText]), TipActions(AId));
+    TAtlasNotificationSeverity.Info, TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.NotificationsTipTitle, [AKeyText]),
+    TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.NotificationsTipText, [ACaption, AKeyText]), TipActions(AId));
   if mMode = TAtlasNotificationMode.Off then
   begin
     Exit;

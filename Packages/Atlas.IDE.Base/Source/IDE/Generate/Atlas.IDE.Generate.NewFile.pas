@@ -46,6 +46,7 @@ uses
   Atlas.Core.Generate.Menu,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
@@ -241,14 +242,14 @@ begin
     Result := mModules.CreateModule(TAtlasFileCreator.Create(AKind, ATemplate.Body, mProject)) <> nil;
     if not Result then
     begin
-      AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [ATemplate.Prefix]);
+      AError := TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.WelcomeSetupNewFailed, [ATemplate.Prefix]);
     end;
   except
     on E: Exception do
     begin
       // Meldung der IDE nur in die Meldungsansicht; ins Protokoll nur die Klasse (anonym).
       TAtlasGuard.Log('Neu mit Atlas: Datei nicht angelegt (' + E.ClassName + ')');
-      AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [E.Message]);
+      AError := TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.WelcomeSetupNewFailed, [E.Message]);
     end;
   end;
 end;
@@ -268,20 +269,20 @@ begin
   end;
   if FileExists(AFileName) or (mModules.FindModule(AFileName) <> nil) then
   begin
-    AError := TAtlasStrings.Fmt(TAtlasTextId.GalleryFileExists, [AFileName]);
+    AError := TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GalleryFileExists, [AFileName]);
     Exit;
   end;
   try
     Result := mModules.CreateModule(TAtlasFileCreator.CreateNamed(AFileName, AText, mProject)) <> nil;
     if not Result then
     begin
-      AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [ExtractFileName(AFileName)]);
+      AError := TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.WelcomeSetupNewFailed, [ExtractFileName(AFileName)]);
     end;
   except
     on E: Exception do
     begin
       TAtlasGuard.Log('Gallery: unit not created (' + E.ClassName + ')');
-      AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [E.Message]);
+      AError := TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.WelcomeSetupNewFailed, [E.Message]);
     end;
   end;
 end;
@@ -299,7 +300,7 @@ begin
       TAtlasIdeSettings.Update(mNext);
       if Assigned(ASay) then
       begin
-        ASay(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
+        ASay(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateHiddenSaved, [AEntry.Caption]));
       end;
     end;
 end;

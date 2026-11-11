@@ -8,7 +8,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Status.Strings;
 
 type
   [TestFixture]
@@ -97,15 +98,15 @@ begin
     mFrame := TAtlasServerFrame.Create(mHost);
     mFrame.Parent := mHost;
     mFrame.SetSnapshot(Sample, False, 0);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ServerWindowNoServer), mFrame.Header.Caption);
+    Assert.AreEqual(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowNoServer), mFrame.Header.Caption);
     Assert.IsFalse(mFrame.Buttons.RebuildButton.Enabled, 'ohne Server kein Neuaufbau');
     Assert.AreEqual(0, mFrame.Tables.Units.Items.Count, 'ohne Server leer');
     mFrame.SetSnapshot(Default(TAtlasServerSnapshot), True, 0);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ServerWindowWaiting), mFrame.Header.Caption);
+    Assert.AreEqual(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowWaiting), mFrame.Header.Caption);
     mSnapshot := Sample;
     mSnapshot.Known := False;
     mFrame.SetSnapshot(mSnapshot, True, 0);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ServerWindowOldServer), mFrame.Header.Caption);
+    Assert.AreEqual(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowOldServer), mFrame.Header.Caption);
     mFrame.SetSnapshot(Sample, True, 2);
     Assert.IsTrue(string(mFrame.Header.Caption).Contains('4711'), mFrame.Header.Caption);
     Assert.IsTrue(string(mFrame.Header.Caption).Contains('1 h 05 min'), mFrame.Header.Caption);

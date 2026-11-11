@@ -59,7 +59,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.UI.Popup.Window,
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 const
   cModule = 'ruleChecks';
@@ -197,9 +197,9 @@ var
   mTitle, mText, mCaption: string;
   mArea: TRect;
 begin
-  mTitle := TAtlasStrings.Text(TAtlasTextId.RuleChecksNoticeTitle);
-  mText := TAtlasStrings.Fmt(TAtlasTextId.RuleChecksNoticeText, [ExtractFileName(AProjectFile)]);
-  mCaption := TAtlasStrings.Text(TAtlasTextId.RuleChecksTurnOn);
+  mTitle := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.RuleChecksNoticeTitle);
+  mText := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.RuleChecksNoticeText, [ExtractFileName(AProjectFile)]);
+  mCaption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.RuleChecksTurnOn);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cRuleChecks, TAtlasNotificationSeverity.Info,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, TurnOn)]) <> TAtlasNotificationMode.Show then
   begin

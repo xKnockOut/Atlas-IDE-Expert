@@ -56,7 +56,7 @@ uses
   DockForm,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -418,11 +418,11 @@ function KindText(AKind: TAtlasNavKind): string;
 begin
   case AKind of
     TAtlasNavKind.Back:
-      Result := TAtlasStrings.Text(TAtlasTextId.NavKindBack);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindBack);
     TAtlasNavKind.Ahead:
-      Result := TAtlasStrings.Text(TAtlasTextId.NavKindAhead);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindAhead);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.NavKindEdit);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindEdit);
   end;
 end;
 
@@ -447,7 +447,7 @@ begin
   if Length(Result) = 0 then
   begin
     mCommand := Default(TAtlasCommand);
-    mCommand.Caption := TAtlasStrings.Text(TAtlasTextId.NavEmpty);
+    mCommand.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavEmpty);
     Result := [mCommand];
   end;
 end;
@@ -463,7 +463,7 @@ begin
   end;
   mEntries := State.History.Entries;
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, ListCommands(mEntries), nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := TAtlasStrings.Text(TAtlasTextId.NavListPrompt);
+  mWindow.Prompt := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavListPrompt);
   mWindow.KeepOrder := True;
   mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)

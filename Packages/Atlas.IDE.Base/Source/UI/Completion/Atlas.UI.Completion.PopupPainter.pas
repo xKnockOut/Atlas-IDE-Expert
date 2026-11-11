@@ -86,6 +86,7 @@ uses
   Atlas.Core.Diagnostics.Timing,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings,
+  Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.PopupTexts,
   Atlas.UI.Completion.Details;
 
@@ -264,11 +265,11 @@ begin
   DrawSyntax;
   if FEmpty.Prefix <> '' then
   begin
-    DrawLine(0, TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FEmpty.Prefix]), Colors.Text);
+    DrawLine(0, TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.NoMatchesFor, [FEmpty.Prefix]), Colors.Text);
   end
   else
   begin
-    DrawLine(0, TAtlasStrings.Text(TAtlasTextId.NoSuggestions), Colors.Text);
+    DrawLine(0, TAtlasCompletionStrings.Text(TAtlasCompletionTextId.NoSuggestions), Colors.Text);
   end;
   // Unvollständiger Code (#457): statt des Tipps zur Rücktaste der Fehler.
   if (FSyntax.Trust <> TAtlasSyntaxTrust.Sure) and (FSyntax.Message <> '') then
@@ -277,10 +278,11 @@ begin
   end
   else if FEmpty.Prefix <> '' then
   begin
-    DrawLine(1, TAtlasStrings.Text(TAtlasTextId.BackspaceWidens), Colors.Muted);
+    DrawLine(1, TAtlasCompletionStrings.Text(TAtlasCompletionTextId.BackspaceWidens), Colors.Muted);
   end;
   Canvas.Brush.Style := bsSolid;
-  DrawFooter(TAtlasStrings.Text(TAtlasTextId.EscCloses), TAtlasStrings.Fmt(TAtlasTextId.CountOf, [0, FEmpty.Total]));
+  DrawFooter(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.EscCloses),
+    TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [0, FEmpty.Total]));
 end;
 
 procedure TAtlasCompletionPopupPainter.DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem;

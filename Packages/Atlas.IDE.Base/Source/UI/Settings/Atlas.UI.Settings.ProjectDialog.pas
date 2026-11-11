@@ -216,7 +216,12 @@ uses
   System.Math,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.PageNames,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
+
+const
+  // Breite der Knöpfe OK und Abbrechen.
+  cDialogButtonWidth = 90;
 
 const
   cGap = 8;
@@ -244,7 +249,7 @@ function DialogTitle(AGlobal: Boolean): string;
 begin
   if AGlobal then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsGlobalTitle);
   end
   else
   begin
@@ -256,11 +261,11 @@ function OpenFileCaption(AGlobal: Boolean): string;
 begin
   if AGlobal then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.GlobalSettingsOpenFile);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.GlobalSettingsOpenFile);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsOpenFile);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsOpenFile);
   end;
 end;
 
@@ -342,11 +347,12 @@ begin
   mFileLabel.Parent := mBottom;
   mFileLabel.Left := 170;
   mFileLabel.Top := 14;
-  mFileLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsFile, [AFileName]);
+  mFileLabel.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsFile, [AFileName]);
   mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), cGap, 150);
   mButton.OnClick := OpenClick;
-  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsOk), mBottom.Width - 2 * (90 + cGap),
-    90);
+  mButton := NewButton(mBottom, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsOk),
+    mBottom.Width - 2 * (cDialogButtonWidth + cGap),
+    cDialogButtonWidth);
   mButton.Anchors := [akTop, akRight];
   mButton.Default := True;
   mButton.OnClick := OkClick;
@@ -389,7 +395,7 @@ begin
   end;
   if not FServerChecks then
   begin
-    mLines := mLines + [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsSyntaxOnly)];
+    mLines := mLines + [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsSyntaxOnly)];
   end;
   FHint.Caption := string.Join(sLineBreak, mLines);
   FHint.Visible := Length(mLines) > 0;
@@ -636,7 +642,8 @@ begin
   mName.Caption := Field.Path;
   if Field.Experimental then
   begin
-    mName.Caption := mName.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+    mName.Caption := mName.Caption + '  [' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalTag) +
+      ']';
   end;
   Inc(Top, 20);
 end;
@@ -661,11 +668,11 @@ begin
   end;
   if Field.Restart then
   begin
-    Note(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRestart), True);
+    Note(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsRestart), True);
   end;
   if (Field.Path = 'project') and (Dialog.FProjectHint <> '') then
   begin
-    Note(TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsActiveProject, [Dialog.FProjectHint]), True);
+    Note(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsActiveProject, [Dialog.FProjectHint]), True);
   end;
 end;
 
@@ -674,7 +681,7 @@ var
   mMemo: TMemo;
 begin
   // JSON-Text für alles, was mehr als ein einfacher Wert ist.
-  Note(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsJsonHint), True);
+  Note(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsJsonHint), True);
   mMemo := TMemo.Create(Box);
   mMemo.Parent := Box;
   mMemo.Height := 120;
@@ -857,7 +864,7 @@ begin
   mReset := TButton.Create(Box);
   mReset.Parent := Box;
   mReset.SetBounds(mState.Left + 150 + cGap, mState.Top - 4, 140, 24);
-  mReset.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsResetDefault);
+  mReset.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsResetDefault);
   mReset.Tag := Index;
   mReset.OnClick := Dialog.ResetClick;
   Dialog.FResets[Index] := mReset;
@@ -963,26 +970,26 @@ begin
   end;
   case FModel.Origin(AIndex) of
     TAtlasSettingOrigin.Project:
-      mText := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFromProject);
+      mText := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsFromProject);
     TAtlasSettingOrigin.Global:
       if FModel.Global then
       begin
-        mText := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFromGlobal);
+        mText := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsFromGlobal);
       end
       else
       begin
-        mText := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsInherited,
+        mText := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsInherited,
           [Copy(TAtlasSettingsSchema.Display(FModel.Inherited_(AIndex)), 1, 60)]);
       end;
   else
     if FModel.Fields[AIndex].DefaultJson <> '' then
     begin
-      mText := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsDefault,
+      mText := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsDefault,
         [Copy(TAtlasSettingsSchema.Display(FModel.Fields[AIndex].DefaultJson), 1, 60)]);
     end
     else
     begin
-      mText := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsDefaultNone);
+      mText := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsDefaultNone);
     end;
   end;
   FStates[AIndex].Caption := mText;
@@ -1195,7 +1202,7 @@ begin
   mIndex := TButton(Sender).Tag;
   mDialog := TSaveDialog.Create(nil);
   try
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFileFilter);
+    mDialog.Filter := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsFileFilter);
     mDialog.Options := mDialog.Options - [ofOverwritePrompt];
     if FRaw[mIndex] <> '' then
     begin
@@ -1236,11 +1243,12 @@ begin
   if (FModel.Fields[AIndex].Kind = TAtlasSettingKind.Integer_) and FModel.Typed(AIndex) and (FRaw[AIndex] <> '') and
     not TryStrToInt(FRaw[AIndex], mNumber) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBadNumber, [FModel.Fields[AIndex].Path, FRaw[AIndex]]);
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsBadNumber, [FModel.Fields[AIndex].Path,
+      FRaw[AIndex]]);
   end
   else if not FRawValid[AIndex] then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsJsonInvalid, [FModel.Fields[AIndex].Path]);
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsJsonInvalid, [FModel.Fields[AIndex].Path]);
   end;
 end;
 
@@ -1281,11 +1289,13 @@ begin
   mLines := string.Join(sLineBreak, TAtlasSettingsValidation.Lines(mIssues));
   if HasError(mIssues) then
   begin
-    MessageBox(Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCheckErrors) + sLineBreak + sLineBreak +
+    MessageBox(Handle,
+      PChar(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsCheckErrors) + sLineBreak + sLineBreak +
       mLines), PChar(Caption), MB_ICONWARNING or MB_OK);
     Exit(False);
   end;
-  Result := MessageBox(Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCheckWarnings) + sLineBreak +
+  Result := MessageBox(Handle,
+    PChar(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsCheckWarnings) + sLineBreak +
     sLineBreak + mLines), PChar(Caption), MB_ICONQUESTION or MB_YESNO) = IDYES;
 end;
 

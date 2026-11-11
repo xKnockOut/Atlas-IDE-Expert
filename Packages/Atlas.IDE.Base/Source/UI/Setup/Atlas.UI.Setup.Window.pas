@@ -129,7 +129,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Setup.Strings;
 
 const
   /// <summary>Hauptzeile je Befund; Varianten (Einheiten, gewonnene Tasten) wählt ResultTextId.</summary>
@@ -203,20 +204,20 @@ begin
   Result := '';
   case AResult.Finding of
     TAtlasSetupFinding.ServerReady:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupServerVersion, [Arg(AResult, 0)]);
+      Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupServerVersion, [Arg(AResult, 0)]);
     TAtlasSetupFinding.ServerFailed:
       Result := Arg(AResult, 0);
     TAtlasSetupFinding.DelphiReady:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupDelphiPlatform, [Arg(AResult, 1)]);
+      Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupDelphiPlatform, [Arg(AResult, 1)]);
     TAtlasSetupFinding.IndexBuilding:
       if Arg(AResult, 2) <> '' then
       begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexPercent, [Arg(AResult, 2)]);
+        Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupIndexPercent, [Arg(AResult, 2)]);
       end;
     TAtlasSetupFinding.LibraryReady:
       begin
         mBytes := StrToInt64Def(Arg(AResult, 0), 0);
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupLibrarySize,
+        Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupLibrarySize,
           [FormatFloat('0.0', mBytes / (1024 * 1024), FormatSettings)]);
       end;
   else
@@ -228,11 +229,11 @@ class function TAtlasSetupTexts.ProjectText(const AProject: TAtlasSetupProject):
 begin
   case AProject.State of
     TAtlasSetupProjectState.Done:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupProjectDone, [AProject.Name]);
+      Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectDone, [AProject.Name]);
     TAtlasSetupProjectState.Building:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupProjectBuilding, [AProject.Name]);
+      Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectBuilding, [AProject.Name]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SetupProjectMissing, [AProject.Name]);
+    Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectMissing, [AProject.Name]);
   end;
 end;
 
@@ -252,23 +253,23 @@ class function TAtlasSetupTexts.FixCaption(AFix: TAtlasSetupFix): string;
 begin
   case AFix of
     TAtlasSetupFix.Explain:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixExplain);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixExplain);
     TAtlasSetupFix.ChooseServerPath:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixChoosePath);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixChoosePath);
     TAtlasSetupFix.StartServer:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixStart);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixStart);
     TAtlasSetupFix.RestartServer:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixRestart);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixRestart);
     TAtlasSetupFix.RebuildIndex:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixRebuild);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixRebuild);
     TAtlasSetupFix.BuildLibraryCache:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixBuildLibrary);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixBuildLibrary);
     TAtlasSetupFix.DisableErrorInsight:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixDisableErrorInsight);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixDisableErrorInsight);
     TAtlasSetupFix.EnableErrorInsight:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixEnableErrorInsight);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixEnableErrorInsight);
     TAtlasSetupFix.OpenKeyConflicts:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupFixKeys);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupFixKeys);
   else
     Result := '';
   end;
@@ -278,21 +279,21 @@ class function TAtlasSetupTexts.WhyText(const AResult: TAtlasSetupResult): strin
 begin
   case AResult.Finding of
     TAtlasSetupFinding.ServerStarting:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyServerStarting);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyServerStarting);
     TAtlasSetupFinding.ServerVersionUnknown:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyServerVersion);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyServerVersion);
     TAtlasSetupFinding.DelphiNoProject:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyDelphiNoProject);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyDelphiNoProject);
     TAtlasSetupFinding.DelphiUnknown:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyDelphiUnknown);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyDelphiUnknown);
     TAtlasSetupFinding.IndexBuilding:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyIndexBuilding);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyIndexBuilding);
     TAtlasSetupFinding.IndexNoProjects:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyIndexNoProjects);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyIndexNoProjects);
     TAtlasSetupFinding.LibraryPending:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyLibraryPending);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyLibraryPending);
     TAtlasSetupFinding.ErrorInsightRestart:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupWhyErrorInsightRestart);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyErrorInsightRestart);
   else
     Result := ResultText(AResult);
   end;
@@ -303,7 +304,7 @@ var
   mDone, mTotal: Integer;
 begin
   TAtlasSetupChecklist.Progress(AResults, mDone, mTotal);
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SetupProgress, [mDone, mTotal]);
+  Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProgress, [mDone, mTotal]);
 end;
 
 class function TAtlasSetupTexts.ReportLines(const AResults: TArray<TAtlasSetupResult>):
@@ -498,7 +499,7 @@ begin
   mPart := Rect(Window.ScaleValue(12), 0, Window.ClientWidth - Window.ScaleValue(12), Metrics.HeaderHeight);
   Window.Canvas.Font.Style := [fsBold];
   Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
-  mText := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  mText := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
   DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Window.Canvas.Font.Style := [];
   Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
@@ -582,7 +583,7 @@ begin
   Window.Canvas.Pen.Color := ToColor(Window.FColors.Line);
   Window.Canvas.MoveTo(0, mTop);
   Window.Canvas.LineTo(Window.ClientWidth, mTop);
-  mText := TAtlasStrings.Fmt(TAtlasTextId.SetupTryIt, [mKey]);
+  mText := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupTryIt, [mKey]);
   mKeyAt := Pos(mKey, mText);
   mBefore := mText;
   mAfter := '';
@@ -611,7 +612,7 @@ constructor TAtlasSetupWindow.CreateSetup(AOwner: TComponent; const AColors: TAt
 begin
   inherited CreateNew(AOwner);
   FColors := AColors;
-  Caption := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  Caption := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
   BorderStyle := bsSingle;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -621,13 +622,13 @@ begin
   Font.Name := 'Segoe UI';
   Font.Size := 9;
   OnClose := FormClose;
-  FCopyButton := NewButton(TAtlasStrings.Text(TAtlasTextId.SetupCopy));
-  FRecheckButton := NewButton(TAtlasStrings.Text(TAtlasTextId.SetupRecheck));
-  FCloseButton := NewButton(TAtlasStrings.Text(TAtlasTextId.SetupClose));
+  FCopyButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopy));
+  FRecheckButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupRecheck));
+  FCloseButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupClose));
   FCloseButton.Cancel := True;
   FShowAtStart := TCheckBox.Create(Self);
   FShowAtStart.Parent := Self;
-  FShowAtStart.Caption := TAtlasStrings.Text(TAtlasTextId.SetupShowAtStart);
+  FShowAtStart.Caption := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupShowAtStart);
   FShowAtStart.Checked := True;
   FShowAtStart.OnClick := ShowAtStartClick;
   FTryKey := 'Strg+Leertaste';

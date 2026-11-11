@@ -93,6 +93,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
@@ -261,9 +262,9 @@ function TAtlasEditorTestUnitLens.Caption: string;
 begin
   case FInfo.Lens of
     TAtlasTestUnitLens.ToTest:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensTest, [FInfo.Counterpart]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.TestUnitLensTest, [FInfo.Counterpart]);
     TAtlasTestUnitLens.ToUnit:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensUnit, [FInfo.Counterpart]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.TestUnitLensUnit, [FInfo.Counterpart]);
     TAtlasTestUnitLens.CreateTest:
       Result := TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [FInfo.Counterpart]);
   else

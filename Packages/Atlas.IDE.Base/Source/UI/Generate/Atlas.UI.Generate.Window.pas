@@ -136,6 +136,7 @@ implementation
 uses
   System.Math,
   Atlas.UI.Strings,
+  Atlas.UI.Generate.Strings,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Completion.Presentation;
@@ -245,13 +246,13 @@ class function TAtlasGenerateTexts.GroupCaption(AGroup: TAtlasGenerateGroup): st
 begin
   case AGroup of
     TAtlasGenerateGroup.Recent:
-      Result := TAtlasStrings.Text(TAtlasTextId.GenerateGroupRecent);
+      Result := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateGroupRecent);
     TAtlasGenerateGroup.Surround:
-      Result := TAtlasStrings.Text(TAtlasTextId.GenerateGroupSurround);
+      Result := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateGroupSurround);
     TAtlasGenerateGroup.Templates:
-      Result := TAtlasStrings.Text(TAtlasTextId.GenerateGroupTemplates);
+      Result := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateGroupTemplates);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.GenerateGroupGenerate);
+    Result := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateGroupGenerate);
   end;
 end;
 
@@ -529,7 +530,8 @@ begin
   if mIndex > High(mStep.Order) then
   begin
     // Eigene Eingabe.
-    DrawLabel(TAtlasStrings.Fmt(TAtlasTextId.GenerateFreeText, [Trim(mStep.Text)]), mBounds, Window.FColors.Text,
+    DrawLabel(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateFreeText, [Trim(mStep.Text)]), mBounds,
+      Window.FColors.Text,
       DT_END_ELLIPSIS);
     Canvas.Brush.Style := bsSolid;
     Exit;
@@ -563,7 +565,7 @@ begin
   end
   else
   begin
-    DrawLabel(TAtlasStrings.Text(TAtlasTextId.GenerateTitle), Result, Window.FColors.Text, 0);
+    DrawLabel(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateTitle), Result, Window.FColors.Text, 0);
   end;
   Canvas.Font.Style := [];
   if Window.FStep.Active and Window.FOptions.ShowCommandNames then
@@ -593,12 +595,12 @@ begin
   end
   else if Window.FStep.Entry.Example <> '' then
   begin
-    DrawLabel(TAtlasStrings.Fmt(TAtlasTextId.GenerateExample, [Window.FStep.Entry.Example]), mInput,
+    DrawLabel(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateExample, [Window.FStep.Entry.Example]), mInput,
       Window.FColors.Muted, DT_END_ELLIPSIS);
   end
   else
   begin
-    DrawLabel(TAtlasStrings.Text(TAtlasTextId.GenerateArgumentPrompt), mInput, Window.FColors.Muted,
+    DrawLabel(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateArgumentPrompt), mInput, Window.FColors.Muted,
       DT_END_ELLIPSIS);
   end;
 end;
@@ -611,15 +613,15 @@ begin
   Canvas.Brush.Style := bsClear;
   if Window.FStep.Active then
   begin
-    mReason := TAtlasStrings.Text(TAtlasTextId.GenerateNoChoices);
+    mReason := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateNoChoices);
   end
   else if (Window.FPattern <> '') and (Length(Window.FEntries) > 0) then
   begin
-    mReason := TAtlasStrings.Text(TAtlasTextId.GenerateNoMatch);
+    mReason := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateNoMatch);
   end
   else
   begin
-    mReason := TAtlasStrings.Text(TAtlasTextId.GenerateEmpty);
+    mReason := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateEmpty);
   end;
   DrawLabel(mReason, Rect(Px(12), Metrics.ListTop, Window.ClientWidth - Px(12),
     Metrics.ListTop + Metrics.RowHeight), Window.FColors.Muted, 0);
@@ -640,19 +642,19 @@ begin
   Canvas.Font.Size := Window.Font.Size - 1;
   if Window.FStep.Active and Window.FStep.Entry.Multi then
   begin
-    mHint := TAtlasStrings.Text(TAtlasTextId.GenerateStepMultiHint);
+    mHint := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateStepMultiHint);
   end
   else if Window.FStep.Active then
   begin
-    mHint := TAtlasStrings.Text(TAtlasTextId.GenerateStepHint);
+    mHint := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateStepHint);
   end
   else if Window.FPattern <> '' then
   begin
-    mHint := TAtlasStrings.Fmt(TAtlasTextId.GenerateFilter, [Window.FPattern]);
+    mHint := TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateFilter, [Window.FPattern]);
   end
   else
   begin
-    mHint := TAtlasStrings.Text(TAtlasTextId.GenerateHint);
+    mHint := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateHint);
   end;
   DrawLabel(mHint, mFooter, Window.FColors.Muted, DT_END_ELLIPSIS);
   Canvas.Font.Size := Window.Font.Size;

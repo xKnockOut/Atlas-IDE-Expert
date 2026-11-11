@@ -93,7 +93,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -110,7 +110,7 @@ constructor TAtlasShortcutTipWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.ShortcutTips;
-  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessShortcutTip));
+  SetAccessible(cUiaToolTipControlType, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.AccessShortcutTip));
   FHot := TAtlasShortcutTipLink.None;
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
@@ -120,7 +120,7 @@ end;
 
 function TAtlasShortcutTipWindow.SpokenText: string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipSpoken, [FView.KeyText, FView.Command]);
+  Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.ShortcutTipSpoken, [FView.KeyText, FView.Command]);
 end;
 
 procedure TAtlasShortcutTipWindow.PutText(const AText: string; AColor: TColor);
@@ -204,7 +204,7 @@ var
   mWidth: Integer;
   mArea: TRect;
 begin
-  mCommand := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipCommand, [FView.Command]);
+  mCommand := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.ShortcutTipCommand, [FView.Command]);
   mWidth := Min(Canvas.TextWidth(mCommand), Scale(cMaxCommandWidth));
   if FDraw then
   begin
@@ -236,7 +236,7 @@ begin
   FX := Scale(cPad);
   FY := Scale(cPad);
   Canvas.Font.Style := [fsBold];
-  PutText(TAtlasStrings.Text(TAtlasTextId.ShortcutTipLabel), ToColor(Colors.Text));
+  PutText(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipLabel), ToColor(Colors.Text));
   Canvas.Font.Style := [];
   Inc(FX, Scale(cKeyGap * 2));
   PutKeys;
@@ -246,11 +246,11 @@ begin
   // Zweite Zeile: Links.
   FX := Scale(cPad);
   FY := FY + FRowHeight + Scale(cRowGap);
-  PutLink(TAtlasShortcutTipLink.Never, TAtlasStrings.Text(TAtlasTextId.ShortcutTipNever));
+  PutLink(TAtlasShortcutTipLink.Never, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipNever));
   if FView.ShowAllKeys then
   begin
     PutText('  ·  ', ToColor(Colors.Muted));
-    PutLink(TAtlasShortcutTipLink.AllKeys, TAtlasStrings.Text(TAtlasTextId.ShortcutTipAllKeys));
+    PutLink(TAtlasShortcutTipLink.AllKeys, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipAllKeys));
   end;
   Result.cx := Max(mLineWidth, FX) + Scale(cPad);
   Result.cy := FY + FTextHeight + Scale(cPad);

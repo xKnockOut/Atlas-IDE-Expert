@@ -114,7 +114,8 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 const
   cGap = 8;
@@ -128,7 +129,7 @@ constructor TAtlasSafeModeNotice.CreateNotice(AOwner: TComponent; AKind: TAtlasS
 begin
   inherited CreateNew(AOwner);
   FKind := AKind;
-  Caption := TAtlasStrings.Text(TAtlasTextId.SafeTitle);
+  Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeTitle);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
@@ -178,18 +179,23 @@ begin
   FParts.Buttons := mButtons;
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    FParts.PrimaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskSafe), PrimaryClick);
-    FParts.SecondaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskNormal), SecondaryClick);
+    FParts.PrimaryButton := AddButton(mButtons, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskSafe),
+      PrimaryClick);
+    FParts.SecondaryButton := AddButton(mButtons, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskNormal),
+      SecondaryClick);
   end
   else
   begin
-    FParts.PrimaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeContinueNormal), PrimaryClick);
-    FParts.SecondaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeOpenToggles),
+    FParts.PrimaryButton := AddButton(mButtons,
+      TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeContinueNormal), PrimaryClick);
+    FParts.SecondaryButton := AddButton(mButtons,
+      TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeOpenToggles),
       SecondaryClick);
   end;
   FParts.RestoreButton := AddButton(mButtons, ARestore, RestoreClick);
   FParts.RestoreButton.Visible := (FKind = TAtlasSafeNoticeKind.Safe) and (ARestore <> '');
-  FParts.DetailsButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeDetails), DetailsClick);
+  FParts.DetailsButton := AddButton(mButtons, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeDetails),
+    DetailsClick);
   FParts.DetailsButton.Visible := AHasDetails;
 end;
 
@@ -228,7 +234,7 @@ begin
   FParts.ExportButton.Align := alBottom;
   FParts.ExportButton.AlignWithMargins := True;
   FParts.ExportButton.Margins.SetBounds(cGap, cGap, cGap, cGap);
-  FParts.BugButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.SafeBugReport), BugClick);
+  FParts.BugButton := AddButton(mPanel, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeBugReport), BugClick);
   FParts.BugButton.Align := alBottom;
   FParts.BugButton.AlignWithMargins := True;
   FParts.BugButton.Margins.SetBounds(cGap, 0, cGap, 0);

@@ -28,7 +28,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsBuildPart }
 
@@ -37,15 +38,17 @@ begin
   // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
-  BindCheck('Problems', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems)));
-  BindCheck('ProblemsStatusCounter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter)));
+  BindCheck('Problems', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblems)));
+  BindCheck('ProblemsStatusCounter',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsStatusCounter)));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
-  FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveNone), TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCheck),
-    TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCompile)]);
-  BindText('CheckOnSaveDelayMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay)));
-  BindText('CheckOnSaveMaxMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax)));
-  BindCheck('ShowInterfaceCost', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShowInterfaceCost)));
+  FAfterSave := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckOnSave),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveNone),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveCheck),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveCompile)]);
+  BindText('CheckOnSaveDelayMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckDelay)));
+  BindText('CheckOnSaveMaxMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckMax)));
+  BindCheck('ShowInterfaceCost', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShowInterfaceCost)));
 end;
 
 procedure TAtlasSettingsBuildPart.BindMarks;

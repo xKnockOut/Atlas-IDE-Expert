@@ -48,7 +48,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Commands.MenuSlots,
   Atlas.Core.Commands.ProjectSelection,
-  Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -225,7 +225,7 @@ var
 begin
   mItem := Default(TProjectEntry);
   mItem.Id := cCheckId;
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectMenuCheck);
+  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectMenuCheck);
   mItem.Visible := Assigned(GCheck) and Assigned(GCheckVisible) and GCheckVisible() and
     TAtlasProjectContext.Current.HasUnits;
   Result := [mItem];

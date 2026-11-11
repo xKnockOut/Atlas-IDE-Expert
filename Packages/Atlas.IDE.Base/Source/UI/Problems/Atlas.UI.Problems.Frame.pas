@@ -320,6 +320,7 @@ uses
   Atlas.Core.Style.Signal,
   Atlas.Core.Problems.Colors,
   Atlas.UI.Strings,
+  Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.KindIcon;
 
 {$R *.dfm}
@@ -344,24 +345,26 @@ procedure TAtlasProblemsFrameMenu.BuildMenu;
 begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
-  FOpenItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuOpen), OpenClick);
+  FOpenItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuOpen), OpenClick);
   FOpenItem.Default := True;
-  FFixItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuFixNone), FixClick);
+  FFixItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuFixNone), FixClick);
   FFixItem.ShortCut := ShortCut(VK_RETURN, [ssAlt]);
-  FFixAllItem := AddMenuItem(nil, TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, ['…']), FixAllClick);
+  FFixAllItem := AddMenuItem(nil, TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuFixAll, ['…']),
+    FixAllClick);
   FFixAllItem.Visible := False;
   FSuppressItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress), SuppressClick);
   FMenu.Items.Add(NewLine);
   FConfigureItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure), ConfigureClick);
-  FDisableItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuDisable), DisableClick);
-  FExplainItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuExplain), ExplainClick);
-  FIssueItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuCreateIssue), IssueClick);
+  FDisableItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuDisable), DisableClick);
+  FExplainItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuExplain), ExplainClick);
+  FIssueItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCreateIssue), IssueClick);
   FIssueItem.Visible := False;
   FMenu.Items.Add(NewLine);
-  FCopyItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuCopy), CopyClick);
+  FCopyItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCopy), CopyClick);
   FCopyItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
-  FColumnsItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuColumns), nil);
-  FResetSortItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuResetSort), ResetSortClick);
+  FColumnsItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuColumns), nil);
+  FResetSortItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuResetSort),
+    ResetSortClick);
 end;
 
 procedure TAtlasProblemsFrame.BuildBar;
@@ -401,7 +404,7 @@ begin
     FKinds[mKind] := mButton;
     Inc(mLeft, mButton.Width + MulDiv(2, CurrentPPI, 96));
   end;
-  FCategoryTexts := [TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryAll),
+  FCategoryTexts := [TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryAll),
     CategoryText(TAtlasFindingCategory.Bug), CategoryText(TAtlasFindingCategory.Vulnerability),
     CategoryText(TAtlasFindingCategory.CodeSmell), CategoryText(TAtlasFindingCategory.SecurityHotspot),
     CategoryText(TAtlasFindingCategory.Compiler), CategoryText(TAtlasFindingCategory.Other)];
@@ -428,8 +431,8 @@ begin
   FOpenFirst.Flat := True;
   FOpenFirst.GroupIndex := Ord(High(TAtlasFindingKind)) + 2;
   FOpenFirst.AllowAllUp := True;
-  FOpenFirst.Caption := cPinMark + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirst);
-  FOpenFirst.Hint := TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirstHint);
+  FOpenFirst.Caption := cPinMark + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOpenFirst);
+  FOpenFirst.Hint := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOpenFirstHint);
   FOpenFirst.ShowHint := True;
   FOpenFirst.OnClick := OpenFirstClick;
   FFilter := TEdit.Create(Self);
@@ -437,7 +440,7 @@ begin
   FFilter.Top := MulDiv(3, CurrentPPI, 96);
   FFilter.Left := FOpenFirst.Left + FOpenFirst.Width + MulDiv(4, CurrentPPI, 96);
   FFilter.Width := MulDiv(200, CurrentPPI, 96);
-  FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.ProblemsFilterHint);
+  FFilter.TextHint := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsFilterHint);
   FFilter.OnChange := ControlsChanged;
   FFilter.OnKeyDown := FilterKeyDown;
   FLive := TLabel.Create(Self);
@@ -446,7 +449,7 @@ begin
   FLive.AlignWithMargins := True;
   FLive.Layout := tlCenter;
   FLive.ShowAccelChar := False;
-  FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+  FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsLive);
 end;
 
 procedure TAtlasProblemsFrame.BuildList;
@@ -498,7 +501,7 @@ begin
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
   FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsEmpty);
+  FEmpty.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsEmpty);
   FEmpty.Visible := False;
 
   FNewTimer := TTimer.Create(Self);
@@ -655,19 +658,19 @@ function TAtlasProblemsFrameList.ColumnCaption(AColumn: TAtlasFindingColumn): st
 begin
   case AColumn of
     TAtlasFindingColumn.Kind:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnKind);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnKind);
     TAtlasFindingColumn.Category:
       Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCategory);
     TAtlasFindingColumn.Message:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnMessage);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnMessage);
     TAtlasFindingColumn.Line:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnLine);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnLine);
     TAtlasFindingColumn.Location:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnLocation);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnLocation);
     TAtlasFindingColumn.Rule:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnRule);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnRule);
     TAtlasFindingColumn.Compiler:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCompiler);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnCompiler);
   else
     Result := '';
   end;
@@ -689,17 +692,17 @@ class function TAtlasProblemsFrameParts.CategoryText(ACategory: TAtlasFindingCat
 begin
   case ACategory of
     TAtlasFindingCategory.Bug:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryBug);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryBug);
     TAtlasFindingCategory.Vulnerability:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryVulnerability);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryVulnerability);
     TAtlasFindingCategory.CodeSmell:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryCodeSmell);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCodeSmell);
     TAtlasFindingCategory.SecurityHotspot:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryHotspot);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryHotspot);
     TAtlasFindingCategory.Compiler:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryCompiler);
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCompiler);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryOther);
+    Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryOther);
   end;
 end;
 
@@ -1077,7 +1080,7 @@ begin
   mCounts := FView.Counts;
   for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
-    FKinds[mKind].Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsKindCount, [KindText(mKind),
+    FKinds[mKind].Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsKindCount, [KindText(mKind),
       mCounts.OfKind(mKind)]);
   end;
 end;
@@ -1142,11 +1145,11 @@ procedure TAtlasProblemsFrame.SetUpdate(AMode: TAtlasProblemsUpdate);
 begin
   case AMode of
     TAtlasProblemsUpdate.Save:
-      FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsOnSave);
+      FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOnSave);
     TAtlasProblemsUpdate.Manual:
-      FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsManual);
+      FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsManual);
   else
-    FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+    FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsLive);
   end;
   if AMode = TAtlasProblemsUpdate.Live then
   begin
@@ -1219,11 +1222,11 @@ begin
   Result := Result + ARow.Caption + ' (' + IntToStr(ARow.Count) + ')';
   if ARow.Pinned then
   begin
-    Result := Result + ' ' + #$00B7 + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsTagActive);
+    Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagActive);
   end
   else if ARow.Dimmed then
   begin
-    Result := Result + ' ' + #$00B7 + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsTagClosed);
+    Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagClosed);
   end;
 end;
 
@@ -1282,21 +1285,22 @@ begin
   begin
     if ARow.Checking then
     begin
-      Result := cPinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCheckingActive, [ARow.Caption]);
+      Result := cPinMark + ' ' + TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsCheckingActive, [ARow.Caption]);
     end
     else
     begin
-      Result := cPinMark + ' ' + cCheckMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCleanActive, [ARow.Caption]);
+      Result := cPinMark + ' ' + cCheckMark + ' ' + TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsCleanActive,
+        [ARow.Caption]);
     end;
     Exit;
   end;
   case ARow.Tier of
     TAtlasFindingTier.Active:
-      Result := cPinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionActive, [ARow.Caption]);
+      Result := cPinMark + ' ' + TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsSectionActive, [ARow.Caption]);
     TAtlasFindingTier.Open:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionOpen, [ARow.Units, ARow.Count]);
+      Result := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsSectionOpen, [ARow.Units, ARow.Count]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionClosed, [ARow.Units, ARow.Count]);
+    Result := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsSectionClosed, [ARow.Units, ARow.Count]);
   end;
 end;
 
@@ -1761,11 +1765,11 @@ begin
   FOpenItem.Enabled := mHas;
   if mHas and (mFinding.Problem.FixTitle <> '') then
   begin
-    FFixItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFix, [mFinding.Problem.FixTitle]);
+    FFixItem.Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuFix, [mFinding.Problem.FixTitle]);
   end
   else
   begin
-    FFixItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuFixNone);
+    FFixItem.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuFixNone);
   end;
   FFixItem.Enabled := mHas and (mFinding.Problem.FixTitle <> '');
   // Sammelkorrektur (#1352): je Regel; welche Treffer sicher sind, entscheidet der Server.
@@ -1773,11 +1777,11 @@ begin
   FFixAllItem.Enabled := mRule;
   if mRule then
   begin
-    FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, [mFinding.Rule]);
+    FFixAllItem.Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuFixAll, [mFinding.Rule]);
   end
   else
   begin
-    FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, ['…']);
+    FFixAllItem.Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuFixAll, ['…']);
   end;
   // Regel-Aktionen liefert das Modul Prüfregeln (#1755); Syntaxfehler (#1022) lassen sich nicht per Kommentar
   // unterdrücken.
@@ -1789,11 +1793,11 @@ begin
   FIssueItem.Enabled := mCount > 0;
   if mCount > 1 then
   begin
-    FIssueItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuCreateIssueMany, [mCount]);
+    FIssueItem.Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuCreateIssueMany, [mCount]);
   end
   else
   begin
-    FIssueItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuCreateIssue);
+    FIssueItem.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCreateIssue);
   end;
   FCopyItem.Enabled := Length(SelectedRows) > 0;
   FResetSortItem.Enabled := FView.SortCustom;

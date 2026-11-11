@@ -81,7 +81,8 @@ uses
   Winapi.Windows,
   System.UITypes,
   Vcl.Graphics,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 constructor TAtlasSettingsOverview.Create(AOwner: TComponent);
 var
@@ -93,7 +94,7 @@ begin
   FGroups := TAtlasSettingsGroups.Create(FCatalog);
   mTop := 12;
   mLabel := TLabel.Create(Self);
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
+  mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTitle);
   mLabel.Font.Style := [fsBold];
   AddRow(mTop, mLabel, 24);
   FPackages := TLabel.Create(Self);
@@ -102,10 +103,10 @@ begin
   FPackages.OnClick := PackagesClick;
   AddRow(mTop, FPackages, 30);
   FSearchCaption := TLabel.Create(Self);
-  FSearchCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasSearch);
+  FSearchCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasSearch);
   AddRow(mTop, FSearchCaption, 20);
   FSearch := TEdit.Create(Self);
-  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsSearchPrompt);
+  FSearch.TextHint := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSearchPrompt);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
   AddRow(mTop, FSearch, 30);
@@ -139,7 +140,8 @@ end;
 
 procedure TAtlasSettingsOverview.Load(AInstalled, AKnown, ASwitchedOn: Integer);
 begin
-  FPackages.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasPackages, [AInstalled, AKnown, ASwitchedOn]);
+  FPackages.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsAtlasPackages, [AInstalled, AKnown,
+    ASwitchedOn]);
 end;
 
 function TAtlasSettingsOverview.PackagesText: string;
@@ -207,7 +209,7 @@ begin
     mLabel.Left := 0;
     mLabel.Top := 0;
     mLabel.Font.Style := [fsItalic];
-    mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsAtlasNoHits);
+    mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasNoHits);
   end;
 end;
 
@@ -215,8 +217,9 @@ function TAtlasSettingsOverview.HitText(const AHit: TAtlasSettingHit): string;
 var
   mState: string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsAtlasHit,
-    [AHit.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), ModuleName(AHit.Module), AHit.Path]);
+  Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsAtlasHit,
+    [AHit.Caption, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), ModuleName(AHit.Module),
+    AHit.Path]);
   mState := TAtlasSettingsSearch.StateText(AHit);
   if mState <> '' then
   begin

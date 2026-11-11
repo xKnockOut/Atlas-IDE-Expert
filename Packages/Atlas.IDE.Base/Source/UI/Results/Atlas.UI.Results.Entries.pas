@@ -49,7 +49,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.Controls,
-  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
 { TAtlasResultsEntriesPart }
@@ -59,7 +59,7 @@ begin
   inherited Create(AView);
   // Filter „Nur sichere“ (#1119), rechts in der Titelzeile.
   FOnlySure := TAtlasResultsControls.Check(AView.Host, AView.Header, alRight, 110,
-    TAtlasStrings.Text(TAtlasTextId.ResultsOnlySure), OnlySureClick);
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.ResultsOnlySure), OnlySureClick);
   FOnlySure.Visible := False;
 end;
 

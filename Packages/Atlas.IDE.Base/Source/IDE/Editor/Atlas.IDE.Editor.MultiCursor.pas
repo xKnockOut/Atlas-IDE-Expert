@@ -139,7 +139,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -624,8 +624,8 @@ begin
   FWasModified := FState.View.Buffer.IsModified;
   if Assigned(FStatus) then
   begin
-    FStatus(TAtlasStrings.Fmt(TAtlasTextId.MultiCursorStatus, [FState.Count]),
-      TAtlasStrings.Text(TAtlasTextId.MultiCursorStatusHint));
+    FStatus(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MultiCursorStatus, [FState.Count]),
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.MultiCursorStatusHint));
   end;
   // Nach jedem Schritt sichtbar, dann wieder im Takt.
   FBlink := True;

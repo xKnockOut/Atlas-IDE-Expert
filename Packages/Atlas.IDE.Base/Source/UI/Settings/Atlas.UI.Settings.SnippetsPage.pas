@@ -20,7 +20,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.SnippetCatalog,
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 type
   TAtlasSnippetsPage = class(TFrame)
@@ -64,6 +64,17 @@ type
 
 implementation
 
+const
+  // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.
+  cNewLeft = 4;
+  cNarrowButtonWidth = 90;
+  cCopyLeft = 100;
+  cCopyWidth = 150;
+  cDeleteLeft = 256;
+  cPrefixTop = 4;
+  cNameTop = 32;
+  cDescriptionTop = 60;
+
 {$R *.dfm}
 
 { TAtlasSnippetsPage }
@@ -100,9 +111,12 @@ begin
   mButtons.BevelOuter := bvNone;
   mButtons.Height := 34;
   mButtons.ParentBackground := True;
-  FNew := NewButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SnippetsNew), 4, 90, NewClick);
-  FCopy := NewButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SnippetsCopy), 100, 150, CopyClick);
-  FDelete := NewButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SnippetsDelete), 256, 90, DeleteClick);
+  FNew := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsNew), cNewLeft,
+    cNarrowButtonWidth, NewClick);
+  FCopy := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsCopy), cCopyLeft, cCopyWidth,
+    CopyClick);
+  FDelete := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsDelete), cDeleteLeft,
+    cNarrowButtonWidth, DeleteClick);
 end;
 
 procedure TAtlasSnippetsPage.CreateList;
@@ -119,10 +133,10 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   mColumn := FList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix);
+  mColumn.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefix);
   mColumn.Width := 90;
   mColumn := FList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsName);
+  mColumn.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsName);
   mColumn.Width := 130;
   FList.OnSelectItem := ListSelect;
 end;
@@ -137,13 +151,14 @@ begin
   mEditor.Align := alClient;
   mEditor.BevelOuter := bvNone;
   mEditor.ParentBackground := True;
-  FPrefix := AddField(mEditor, TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix), 4);
-  FName := AddField(mEditor, TAtlasStrings.Text(TAtlasTextId.SnippetsName), 32);
-  FDescription := AddField(mEditor, TAtlasStrings.Text(TAtlasTextId.SnippetsDescription), 60);
+  FPrefix := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefix), cPrefixTop);
+  FName := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsName), cNameTop);
+  FDescription := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsDescription),
+    cDescriptionTop);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := mEditor;
   mCaption.SetBounds(4, 92, 300, 15);
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsBody);
+  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsBody);
   FBody := TMemo.Create(Self);
   FBody.Parent := mEditor;
   FBody.SetBounds(4, 110, mEditor.Width - 8, 200);
@@ -159,7 +174,7 @@ begin
   FReadOnlyHint.AlignWithMargins := True;
   FReadOnlyHint.WordWrap := True;
   FReadOnlyHint.Font.Color := clGrayText;
-  FReadOnlyHint.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsReadOnly);
+  FReadOnlyHint.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsReadOnly);
 end;
 
 destructor TAtlasSnippetsPage.Destroy;
@@ -194,11 +209,11 @@ function OriginText(AOrigin: TAtlasSnippetOrigin): string;
 begin
   case AOrigin of
     TAtlasSnippetOrigin.User:
-      Result := TAtlasStrings.Text(TAtlasTextId.SnippetsOriginUser);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsOriginUser);
     TAtlasSnippetOrigin.Ide:
-      Result := TAtlasStrings.Text(TAtlasTextId.SnippetsOriginIde);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsOriginIde);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SnippetsOriginBuiltIn);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsOriginBuiltIn);
   end;
 end;
 
@@ -224,7 +239,7 @@ begin
         mDetail := OriginText(mEntry.Snippet.Origin);
         if FCatalog.Replaced(mIndex) then
         begin
-          mDetail := mDetail + ', ' + TAtlasStrings.Text(TAtlasTextId.SnippetsReplaced);
+          mDetail := mDetail + ', ' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsReplaced);
         end;
         mItem.SubItems.Add(mEntry.Snippet.Name + ' (' + mDetail + ')');
       end;
@@ -372,15 +387,15 @@ begin
   end;
   case mProblems[0].Kind of
     TAtlasSnippetProblemKind.PrefixMissing:
-      mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixMissing);
+      mReason := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefixMissing);
     TAtlasSnippetProblemKind.PrefixInvalid:
-      mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixInvalid);
+      mReason := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefixInvalid);
     TAtlasSnippetProblemKind.PrefixTwice:
-      mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixTwice);
+      mReason := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefixTwice);
   else
-    mReason := TAtlasStrings.Text(TAtlasTextId.SnippetsBodyMissing);
+    mReason := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsBodyMissing);
   end;
-  Result := Format(TAtlasStrings.Text(TAtlasTextId.SnippetsInvalid),
+  Result := Format(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsInvalid),
     [FCatalog.Entry(mProblems[0].Index).Snippet.Prefix, mReason]);
   FillList(mProblems[0].Index);
 end;

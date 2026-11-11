@@ -30,7 +30,7 @@ uses
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.EditorToolbar.ReturnPoint,
-  Atlas.UI.Strings,
+  Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -122,7 +122,7 @@ begin
   end;
   if Length(mRoutines) = 0 then
   begin
-    ASay(TAtlasStrings.Text(TAtlasTextId.FindMethodNoOutline));
+    ASay(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.FindMethodNoOutline));
     Exit;
   end;
   // Kopien: Das Popup lebt länger als der aktuelle Stand.
@@ -133,7 +133,8 @@ begin
   end;
   mCommands := RoutineCommands(mSnapshot.Nodes, mRoutines);
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := Format(TAtlasStrings.Text(TAtlasTextId.FindMethodPrompt), [ExtractFileName(mSnapshot.FileName)]);
+  mWindow.Prompt := Format(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.FindMethodPrompt),
+    [ExtractFileName(mSnapshot.FileName)]);
   // Ohne Eingabe in Quelltextreihenfolge, die Methode am Caret vorgewählt.
   mWindow.KeepOrder := True;
   for mCommand in mCommands do
