@@ -1,12 +1,12 @@
 ﻿unit Atlas.IDE.Assistants.BuildInbox;
 
-// Eingang für Builds von KI-Assistenten (#261, Protokoll in
-// Atlas.Core.Assistants.BuildInbox): Sobald der Ordner sich ändert (Signal alle 250 ms
-// abgefragt, aufgelistet nur nach einem Signal, bei liegen gebliebenen Aufträgen oder alle
-// zwei Sekunden, #1984), übernimmt das Plugin einen wartenden Auftrag des MCP-Werkzeugs build_project, baut über den Vertrag IAtlasBuildRequests
-// des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen.
-// Fehlt das Modul, lehnt der Eingang mit Grund ab. Ist das Projekt nicht offen, öffnet der Eingang es zuvor
-// (mit „group“ die ganze Projektgruppe, sonst zur aktuellen Gruppe hinzu, #1904): So baut auch eine frisch gestartete Bau-IDE (Tools/Build-Ide.ps1).
+// Eingang für Builds von KI-Assistenten (#261, Protokoll in Atlas.Core.Assistants.BuildInbox): Sobald der Ordner sich
+// ändert (Signal alle 250 ms abgefragt, aufgelistet nur nach einem Signal, bei liegen gebliebenen Aufträgen oder alle
+// zwei Sekunden, #1984), übernimmt das Plugin einen wartenden Auftrag des MCP-Werkzeugs build_project, baut über den
+// Vertrag IAtlasBuildRequests des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen. Fehlt
+// das Modul, lehnt der Eingang mit Grund ab. Ist das Projekt nicht offen, öffnet der Eingang es zuvor (mit „group“ die
+// ganze Projektgruppe, sonst zur aktuellen Gruppe hinzu, #1904): So baut auch eine frisch gestartete Bau-IDE
+// (Tools/Build-Ide.ps1).
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
