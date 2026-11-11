@@ -32,7 +32,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.Core.Diagnostics.Processes;
+  Atlas.Core.Diagnostics.Processes,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasProcessesActions = record
@@ -50,7 +51,7 @@ type
     Alive: Boolean;
   end;
 
-  TAtlasProcessesDialog = class(TForm)
+  TAtlasProcessesDialog = class(TAtlasDialog)
   public const
     cGap = 8;
     cLabelWidth = 90;
@@ -219,14 +220,13 @@ end;
 
 constructor TAtlasProcessesDialog.CreateDialog(AOwner: TComponent; const AActions: TAtlasProcessesActions);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FActions := AActions;
   FAlive := TAtlasProcessesAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
   Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone);
   BorderStyle := bsSizeable;
-  Position := poMainFormCenter;
   Width := ScaleValue(760);
   Height := ScaleValue(680);
   Constraints.MinWidth := 520;

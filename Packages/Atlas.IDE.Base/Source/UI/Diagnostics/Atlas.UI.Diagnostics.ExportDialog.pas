@@ -16,7 +16,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Dialogs,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Vorbereitung vor dem Zeigen, etwa das Thema der IDE (die UI-Schicht kennt es nicht).</summary>
@@ -36,7 +37,7 @@ type
     class function Diagnostic(const AHint, APreview: string): TAtlasExportDialogTexts; static;
   end;
 
-  TAtlasDiagnosticExportDialog = class(TForm)
+  TAtlasDiagnosticExportDialog = class(TAtlasDialog)
   private
     FHint: TLabel;
     FFileName: string;
@@ -102,13 +103,12 @@ var
   mHint: TLabel;
   mMemo: TMemo;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FDefaultName := ATexts.DefaultName;
   FFilter := ATexts.Filter;
   FDefaultExt := ATexts.DefaultExt;
   Caption := ATexts.Title;
   BorderStyle := bsSizeable;
-  Position := poMainFormCenter;
   Width := ScaleValue(900);
   Height := ScaleValue(600);
 

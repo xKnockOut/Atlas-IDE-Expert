@@ -15,13 +15,14 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Problems.Explanation;
+  Atlas.Core.Problems.Explanation,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Katalogtext einer Regel (Atlas.Core.Problems.Explanation).</summary>
   TAtlasRuleExplanation = Atlas.Core.Problems.Explanation.TAtlasRuleExplanation;
 
-  TAtlasRuleExplainDialog = class(TForm)
+  TAtlasRuleExplainDialog = class(TAtlasDialog)
   private
     FTitle: TLabel;
     FMark: TLabel;
@@ -60,15 +61,11 @@ var
   mBottom: TPanel;
   mHeading: TLabel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainTitle, [AExplanation.Id]);
+  inherited CreateDialog(AOwner,
+    TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainTitle, [AExplanation.Id]), cDialogWidth);
   BorderStyle := bsSizeToolWin;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
   KeyPreview := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   ClientHeight := ScaleValue(420);
 
   mBottom := TPanel.Create(Self);

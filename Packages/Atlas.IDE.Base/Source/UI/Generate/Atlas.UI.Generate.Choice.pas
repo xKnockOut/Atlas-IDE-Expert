@@ -13,10 +13,11 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.Forms,
-  Vcl.StdCtrls;
+  Vcl.StdCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasChoiceDialog = class(TForm)
+  TAtlasChoiceDialog = class(TAtlasDialog)
   private
     FItems: TArray<string>;
     FMatches: TArray<Integer>;
@@ -64,11 +65,9 @@ constructor TAtlasChoiceDialog.CreateDialog(AOwner: TComponent; const ACaption, 
 var
   mGap, mY: Integer;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FItems := AItems;
   Caption := ACaption;
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
   mGap := Scaled(Self, cGap);
   ClientWidth := Scaled(Self, cWidth) + 2 * mGap;
   mY := mGap;
