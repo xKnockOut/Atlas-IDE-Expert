@@ -103,6 +103,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  // Übliche Zahl gleichzeitig überfälliger Threads.
+  cOverdueCapacity = 4;
   cTexts: array[TAtlasLanguage, TWorkerSlotText] of string = (
     ('%d Arbeiter-Thread(s) über ihrer Zeitgrenze'),
     ('%d worker thread(s) past their time limit'));
@@ -130,7 +132,7 @@ begin
   FEntries := TList<TEntry>.Create;
   // Platz für die üblichen wenigen Einträge gleich anlegen: Wüchse die Liste erst beim ersten Adopt, bliebe der
   // Speicher bis zum Entladen belegt und der Leckmonitor der Tests zählte ihn dem ersten Test zu.
-  FEntries.Capacity := 4;
+  FEntries.Capacity := cOverdueCapacity;
   AddModuleUnloadProc(AtlasOverdueModuleUnload);
 end;
 
