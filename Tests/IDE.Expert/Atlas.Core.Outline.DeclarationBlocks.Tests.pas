@@ -123,6 +123,9 @@ var
   mPlace: TAtlasDeclarationBlockPlace;
 begin
   mPlace := TAtlasDeclarationBlockFinder.At(Nodes, Lines, ALine);
+  // Einmal vorbereitete Blöcke geben dieselbe Stelle.
+  Assert.AreEqual(mPlace.Current,
+    TAtlasDeclarationBlockFinder.Locate(TAtlasDeclarationBlockFinder.Prepare(Nodes, Lines), ALine).Current);
   if mPlace.Current < 0 then
   begin
     Exit('-');

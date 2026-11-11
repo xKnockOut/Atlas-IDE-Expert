@@ -158,6 +158,8 @@ type
     FHost: TAtlasEditorBarHost;
     /// <summary>Datei, Gliederung, Zeilen und Caret des gezeigten Pfads.</summary>
     FSource: TAtlasCrumbSource;
+    /// <summary>Für den Pfad ausgewerteter Text, je Stand der Gliederung einmal (Remember).</summary>
+    FText: TAtlasCrumbText;
     FKey: TBreadcrumbsKey;
     FInterfaces: TAtlasInterfaceMethods;
     FShown: Boolean;
@@ -491,6 +493,7 @@ function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: 
 var
   mShowUnit, mWithInterfaces: Boolean;
   mParts: TAtlasCrumbParts;
+  mLines: TArray<string>;
 begin
   mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
   mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
@@ -498,9 +501,15 @@ begin
   Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FKey.Status) or
     not SameText(ASnapshot.FileName, FSource.FileName) or (ASnapshot.Stamp <> FKey.Stamp) or
     (mShowUnit <> FKey.ShowUnit) or (mParts <> FKey.Parts) or (mWithInterfaces <> FKey.WithInterfaces);
-  if Result and (ASnapshot.Stamp <> FKey.Stamp) then
+  if (ASnapshot.Stamp <> FKey.Stamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FSource.Nodes)) then
   begin
-    FSource.Lines := TTextLines.SplitLines(ASnapshot.Text);
+    mLines := FSource.Lines;
+    if ASnapshot.Stamp <> FKey.Stamp then
+    begin
+      mLines := TTextLines.SplitLines(ASnapshot.Text);
+    end;
+    FText := TAtlasBreadcrumbs.Prepare(ASnapshot.Nodes, mLines);
+    FSource.Lines := mLines;
   end;
   FShown := True;
   FActiveBar := ABar;
@@ -593,7 +602,7 @@ begin
   begin
     mInterfaces := FInterfaces;
   end;
-  mBar.SetCrumbs(TAtlasIdeCrumbLists.Prepared(TAtlasBreadcrumbs.Path(FSource.Nodes, FSource.Lines, mRequest),
+  mBar.SetCrumbs(TAtlasIdeCrumbLists.Prepared(TAtlasBreadcrumbs.Path(FText, mRequest),
     mInterfaces, FSource.Nodes));
 end;
 

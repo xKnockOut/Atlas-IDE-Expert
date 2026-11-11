@@ -378,6 +378,11 @@ begin
       // Gleichheitszeichen (Eigenschaft = Wert) mit Lupe.
       Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Ring(10.5, 10, 2.5),
         Stroke([P(12.3, 11.8), P(14.5, 14)])];
+    TAtlasToolbarIcon.Usages:
+      // Kästchen (Komponente), Pfeil nach rechts auf drei Codezeilen.
+      Result := [Outline([P(1.5, 5.5), P(5.5, 5.5), P(5.5, 10.5), P(1.5, 10.5)]), Stroke([P(6.5, 8), P(8.5, 8)]),
+        Stroke([P(7.5, 7), P(8.5, 8), P(7.5, 9)]), Stroke([P(10, 4), P(14.5, 4)]), Stroke([P(10, 8), P(14.5, 8)]),
+        Stroke([P(10, 12), P(14.5, 12)])];
   else
     Result := ToolButtonShapes(AIcon);
   end;

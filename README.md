@@ -78,12 +78,14 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
-- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components, data binding of the selection as a breadcrumb bar below the designer, extract the selection to a frame
+- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components, data binding of the selection as a breadcrumb bar below the designer, extract the selection to a frame, event map
 - **Unsaved designer state** is seen by references, renames and checks
 - **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
 - **Show in designer** (Shift+F12): from a field or handler in the code to the component in the designer
+- **Search components** in the designer fuzzily (`bspei` finds `btnSpeichern`), frames included; Enter reveals hidden tab pages, Ctrl+Enter adds to the selection
+- **Usages in code** from the designer (Shift+Alt+F7): real accesses to the selected component per unit and method, classified as reads, writes, passes or event, plus a counter in the status field
 - **Search properties** in the form, project or project group (`Font.Name = 'Tahoma'`, `Visible = False`, `Class = TDBGrid`), inherited values marked
 - **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges, default sizes per class, layers step by step, format painter, suggest anchors, all form texts as a table, label and field as a pair, arrange as a form grid, wrap in a container and dissolve it, unify fonts and colors, groups without a container), edit captions in place with F2 or a slow double click, gap handles for a row or column, shared resize handles, quick bar for a multiple selection, magnifier
 

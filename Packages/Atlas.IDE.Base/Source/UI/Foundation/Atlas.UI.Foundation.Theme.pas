@@ -36,6 +36,7 @@ type
     class var FOnFailure: TProc<string>;
     class function Listeners: TAtlasThemeListeners; static;
   public
+    class constructor Create;
     class destructor Destroy;
     /// <summary>Quelle der Farben und Anwenden des IDE-Themas setzen (IDE-Schicht von Base, beim Start).
     /// AOnFailure bekommt Fehler von Abonnenten für das Protokoll; nil = verwerfen.</summary>
@@ -66,6 +67,13 @@ type
 implementation
 
 { TAtlasUiTheme }
+
+class constructor TAtlasUiTheme.Create;
+begin
+  // Gleich anlegen statt beim ersten Abonnenten: Sonst bliebe die Liste ab dem ersten Atlas-Fenster bis zum
+  // Entladen belegt, und der Leckmonitor der Tests rechnete sie diesem Fenster zu.
+  FListeners := TAtlasThemeListeners.Create;
+end;
 
 class destructor TAtlasUiTheme.Destroy;
 begin

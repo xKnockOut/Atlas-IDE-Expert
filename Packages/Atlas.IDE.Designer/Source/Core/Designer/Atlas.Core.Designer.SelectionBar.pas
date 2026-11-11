@@ -22,7 +22,7 @@ type
 {$SCOPEDENUMS ON}
   TAtlasBarItem = (FontSmaller, FontSize, FontLarger, Bold, Italic, FontColor, Enabled, Visible, ParentFont,
     ParentColor, AnchorLeft, AnchorTop, AnchorRight, AnchorBottom, SameWidth, SameHeight, AlignLeft, AlignCenter,
-    AlignRight, FitText);
+    AlignRight, Transfer, FitText);
   /// <summary>None: keine markierte Komponente hat die Eigenschaft.</summary>
   TAtlasBarState = (None, Off, On, Mixed);
 {$SCOPEDENUMS OFF}
@@ -94,8 +94,9 @@ uses
 const
   cItemKeys: array[TAtlasBarItem] of string = ('fontSmaller', 'fontSize', 'fontLarger', 'bold', 'italic',
     'fontColor', 'enabled', 'visible', 'parentFont', 'parentColor', 'anchorLeft', 'anchorTop', 'anchorRight',
-    'anchorBottom', 'sameWidth', 'sameHeight', 'alignLeft', 'alignCenter', 'alignRight', 'fitText');
-  cItemGroups: array[TAtlasBarItem] of Integer = (0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 4);
+    'anchorBottom', 'sameWidth', 'sameHeight', 'alignLeft', 'alignCenter', 'alignRight', 'transfer',
+    'fitText');
+  cItemGroups: array[TAtlasBarItem] of Integer = (0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 4, 4);
 
 { TAtlasBarProp }
 
@@ -146,7 +147,7 @@ var
   mItem: TAtlasBarItem;
 begin
   Result := '';
-  for mItem := Low(TAtlasBarItem) to TAtlasBarItem.AlignRight do
+  for mItem := Low(TAtlasBarItem) to TAtlasBarItem.Transfer do
   begin
     if Result <> '' then
     begin

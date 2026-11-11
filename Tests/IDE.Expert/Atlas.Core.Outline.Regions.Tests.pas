@@ -32,6 +32,7 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
+  Atlas.Core.Outline.Directives,
   Atlas.Core.Outline.Regions;
 
 const
@@ -125,6 +126,9 @@ begin
   Assert.AreEqual(2, TAtlasRegionFinder.At(Lines, 15, 2).Current, 'innerste');
   Assert.AreEqual(-1, TAtlasRegionFinder.At(Lines, 9, 2).Current, 'außerhalb');
   Assert.AreEqual(-1, TAtlasRegionFinder.At(Lines, 1, 0).Current, 'vor der ersten');
+  // Einmal gelesene Direktiven geben dieselbe Stelle.
+  Assert.AreEqual(2, TAtlasRegionFinder.At(TAtlasDirectiveScanner.Scan(Lines), Length(Lines), 15, 2).Current);
+  Assert.AreEqual(-1, TAtlasRegionFinder.At(TAtlasDirectiveScanner.Scan(Lines), Length(Lines), 9, 2).Current);
 end;
 
 procedure TAtlasRegionsTests.PathShowsRegionBehindUnitAndSection;

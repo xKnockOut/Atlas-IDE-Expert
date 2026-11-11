@@ -403,16 +403,25 @@ var
   mPrevious: Pointer;
 begin
   // Die Treffer der Diagnose am selben Text wiederverwenden (2.0-stable): Die Glühbirne fragt bei jeder
-  // Cursorbewegung, und ein eigener Lauf aller Regeln stand hinter dem Prüflauf an. Läuft die Diagnose
-  // gerade, wartet die Glühbirne höchstens RuleWaitMs auf sie, statt daneben noch einmal zu rechnen (#1761);
-  // danach zeigt sie die übrigen Aktionen ohne die der Regeln, statt ins Zeitlimit zu laufen. Rechnet sie selbst,
-  // läuft der Lauf über das Zeitlimit hinaus zu Ende und legt ab; auch tiefe Aufrufe (EnsureUnit) brechen dann nicht
-  // ab.
+  // Cursorbewegung. Läuft die Diagnose gerade, wartet die Glühbirne höchstens RuleWaitMs auf sie (#1761); danach
+  // zeigt sie die übrigen Aktionen ohne die der Regeln, statt ins Zeitlimit zu laufen. Einen eigenen Lauf aller
+  // Regeln startet sie nicht (#2008): Er dauerte in großen Units Sekunden (27.000 Zeilen rund 9 s), und die Diagnose
+  // prüft nach jeder Änderung ohnehin und legt ab. Nur source.fixAll, ausdrücklich angefragt (Speichern), rechnet
+  // selbst; der Lauf läuft dann über das Zeitlimit hinaus zu Ende und legt ab, auch tiefe Aufrufe (EnsureUnit)
+  // brechen nicht ab.
   mPastTimeout := TJsonRpcPastTimeout.Create(FCancellation);
   mPrevious := TJsonRpcCurrentRequest.Enter(mPastTimeout);
   try
     try
-      Result := TLspSyntaxDiagnostics.SharedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation));
+      if FWantsFixAll then
+      begin
+        Result := TLspSyntaxDiagnostics.SharedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation));
+      end
+      else if not TLspSyntaxDiagnostics.CachedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation),
+        Result) then
+      begin
+        Result := nil;
+      end;
     except
       on ERuleCheckCancelled do
       begin

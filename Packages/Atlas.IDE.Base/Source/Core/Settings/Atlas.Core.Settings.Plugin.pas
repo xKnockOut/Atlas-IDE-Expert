@@ -145,6 +145,9 @@ type
     cHelpSourceLocal = Atlas.Core.Settings.Plugin.General.cHelpSourceLocal;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
     cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
+    cDesignerUsagesUnit = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesUnit;
+    cDesignerUsagesProject = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesProject;
+    cDesignerUsagesGroup = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesGroup;
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
@@ -626,6 +629,7 @@ type
     property EditorDesignerBar: Boolean read FEditorView.EditorDesignerBar write FEditorView.EditorDesignerBar;
     property DesignerSearchKey: Integer read FEditorView.DesignerSearchKey write FEditorView.DesignerSearchKey;
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
+    property DesignerFuzzySearch: Boolean read FEditorView.DesignerFuzzySearch write FEditorView.DesignerFuzzySearch;
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
     property DesignerTabOrderOverlay: Boolean read FEditorView.DesignerTabOrderOverlay
@@ -652,6 +656,11 @@ type
       write FEditorView.DesignerShowInDesignerKey;
     property DesignerPropertySearch: Boolean read FEditorView.DesignerPropertySearch
       write FEditorView.DesignerPropertySearch;
+    property DesignerUsages: Boolean read FEditorView.DesignerUsages write FEditorView.DesignerUsages;
+    property DesignerUsagesStatusCount: Boolean read FEditorView.DesignerUsagesStatusCount
+      write FEditorView.DesignerUsagesStatusCount;
+    property DesignerUsagesScope: string read FEditorView.DesignerUsagesScope write FEditorView.DesignerUsagesScope;
+    property DesignerUsagesKey: Integer read FEditorView.DesignerUsagesKey write FEditorView.DesignerUsagesKey;
     property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
@@ -690,6 +699,7 @@ type
       write FEditorView.DesignerDataBindings;
     property DesignerExtractFrame: Boolean read FEditorView.DesignerExtractFrame
       write FEditorView.DesignerExtractFrame;
+    property DesignerEventMap: Boolean read FEditorView.DesignerEventMap write FEditorView.DesignerEventMap;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;

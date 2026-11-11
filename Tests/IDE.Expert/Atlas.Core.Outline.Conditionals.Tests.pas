@@ -168,6 +168,10 @@ begin
   Assert.AreEqual('{$ENDIF}', mBranches[0].Parts[2].Text);
   Assert.AreEqual(17, mBranches[0].Parts[2].Line);
   Assert.AreEqual(2, mBranches[0].Parts[2].Character);
+  // Einmal gelesene Direktiven geben dieselben Zweige.
+  mBranches := TAtlasConditionalFinder.At(TAtlasDirectiveScanner.Scan(Lines), 16, 2);
+  Assert.AreEqual(1, Integer(Length(mBranches)));
+  Assert.AreEqual(1, mBranches[0].Current);
 end;
 
 procedure TAtlasConditionalsTests.PathEndsWithBranches;

@@ -18,6 +18,8 @@
 //   Brotkrumenleiste mit dem Datenkonstrukt der Auswahl unter dem Designer.
 // - In Frame auslagern (#611, designer.extractFrame, TAtlasIdeExtractFrame):
 //   Dialog mit Vorschau je Datei.
+// - Ereignis-Karte (#612, designer.eventMap, TAtlasIdeEventMap): andockbares
+//   Fenster mit allen Ereignissen des Formulars.
 // Nur im Hauptthread.
 
 interface
@@ -31,6 +33,7 @@ uses
   Atlas.IDE.Designer.Structure,
   Atlas.IDE.Designer.DataBindings,
   Atlas.IDE.Designer.ExtractFrame,
+  Atlas.IDE.Designer.EventMap,
   Atlas.IDE.Designer.ResizePreview,
   Atlas.IDE.Designer.ScalePreview;
 
@@ -44,6 +47,7 @@ type
     FStructure: TAtlasIdeStructure;
     FBindings: TAtlasIdeDataBindings;
     FExtract: TAtlasIdeExtractFrame;
+    FEvents: TAtlasIdeEventMap;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -69,10 +73,12 @@ begin
   FStructure := TAtlasIdeStructure.Create(AOnMessage);
   FBindings := TAtlasIdeDataBindings.Create;
   FExtract := TAtlasIdeExtractFrame.Create(AOnMessage);
+  FEvents := TAtlasIdeEventMap.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerViews.Destroy;
 begin
+  FEvents.Free;
   FExtract.Free;
   FBindings.Free;
   FStructure.Free;
@@ -91,7 +97,7 @@ begin
   Result := nil;
   mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings),
     FNames.Button(ASettings), FStructure.Button(ASettings), FBindings.Button(ASettings),
-    FExtract.Button(ASettings)];
+    FExtract.Button(ASettings), FEvents.Button(ASettings)];
   for mButton in mAll do
   begin
     if mButton.Id <> '' then
@@ -132,6 +138,10 @@ begin
   begin
     FExtract.Run;
   end
+  else if SameText(AId, TAtlasIdeEventMap.cId) then
+  begin
+    FEvents.Toggle;
+  end
   else
   begin
     Result := False;
@@ -145,6 +155,7 @@ begin
   FScale.ApplyTheme;
   FStructure.ApplyTheme;
   FBindings.ApplyTheme;
+  FEvents.ApplyTheme;
 end;
 
 end.

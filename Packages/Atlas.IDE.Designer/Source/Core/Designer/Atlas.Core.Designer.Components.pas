@@ -6,7 +6,10 @@
 //   Name, Caption/Text und Klasse (wählbar). Reihenfolge: gleicher Name,
 //   Name beginnt mit dem Suchwort, Wortanfang im Namen (nach „_“ oder vor
 //   einem Großbuchstaben, „OK“ in „btnOK“), irgendwo im Namen; danach Treffer
-//   nur in Caption/Text, dann nur in der Klasse. Bei Gleichstand nach Namen,
+//   nur in Caption/Text, dann nur in der Klasse. Unscharf (#539,
+//   designer.fuzzySearch): stehen die Zeichen des Suchworts nur in ihrer
+//   Reihenfolge in Name oder Caption („bspei“ in „btnSpeichern“), kommt der
+//   Treffer nach allen anderen. Bei Gleichstand nach Namen,
 //   dann nach Lage im Formular. Ohne Suchwort: alle Komponenten der Art nach
 //   Namen. Art: alle, Steuerelemente, nichtvisuelle, Container.
 // - TAtlasDesignerGroups: Zeilen der Liste mit Gruppenköpfen nach
@@ -44,7 +47,7 @@ type
 
 {$SCOPEDENUMS ON}
   /// <summary>Wie gut ein Text zum Suchwort passt; None = gar nicht.</summary>
-  TAtlasDesignerMatch = (Exact, Prefix, WordStart, Contains, None);
+  TAtlasDesignerMatch = (Exact, Prefix, WordStart, Contains, Fuzzy, None);
   /// <summary>Worin gesucht wird.</summary>
   TAtlasDesignerField = (Name, Caption, ClassName);
   /// <summary>Welche Komponenten die Liste zeigt.</summary>
@@ -58,13 +61,15 @@ type
 
   TAtlasDesignerSearch = class
   public
-    /// <summary>Wie gut passt AText zu APattern (ohne Groß-/Kleinschreibung)? Leeres Suchwort: None.</summary>
-    class function MatchOf(const AText, APattern: string): TAtlasDesignerMatch; static;
+    /// <summary>Wie gut passt AText zu APattern (ohne Groß-/Kleinschreibung)? Leeres Suchwort: None. Fuzzy nur
+    /// mit AFuzzy und ab zwei Zeichen.</summary>
+    class function MatchOf(const AText, APattern: string; AFuzzy: Boolean = False): TAtlasDesignerMatch; static;
     /// <summary>Gehört AItem zur Art AKind?</summary>
     class function OfKind(const AItem: TAtlasDesignerItem; AKind: TAtlasDesignerKind): Boolean; static;
-    /// <summary>Indizes der Treffer in AItems, beste zuerst. Ohne Suchwort alle der Art nach Namen.</summary>
+    /// <summary>Indizes der Treffer in AItems, beste zuerst. Ohne Suchwort alle der Art nach Namen. AFuzzy
+    /// nimmt unscharfe Treffer in Name und Caption dazu.</summary>
     class function Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
-      AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>; static;
+      AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind; AFuzzy: Boolean = False): TArray<Integer>; static;
     /// <summary>Nächster Index von AIndex aus um ADelta, am Rand stehen bleiben; -1 ohne Zeilen.</summary>
     class function Step(AIndex, ACount, ADelta: Integer): Integer; static;
   end;
@@ -165,7 +170,36 @@ begin
   end;
 end;
 
-class function TAtlasDesignerSearch.MatchOf(const AText, APattern: string): TAtlasDesignerMatch;
+const
+  /// <summary>Kürzestes Suchwort für unscharfe Treffer; ein Zeichen fände fast alles.</summary>
+  cMinFuzzy = 2;
+
+/// <summary>Stehen alle Zeichen von APattern (ohne Leerzeichen) in dieser Reihenfolge in AKey?</summary>
+function InOrder(const AKey, APattern: string): Boolean;
+var
+  mText, mChar: Integer;
+begin
+  mText := 1;
+  for mChar := 1 to Length(APattern) do
+  begin
+    if APattern[mChar] = ' ' then
+    begin
+      Continue;
+    end;
+    while (mText <= Length(AKey)) and (AKey[mText] <> APattern[mChar]) do
+    begin
+      Inc(mText);
+    end;
+    if mText > Length(AKey) then
+    begin
+      Exit(False);
+    end;
+    Inc(mText);
+  end;
+  Result := True;
+end;
+
+class function TAtlasDesignerSearch.MatchOf(const AText, APattern: string; AFuzzy: Boolean): TAtlasDesignerMatch;
 var
   mText, mPattern: string;
   mPos: Integer;
@@ -189,6 +223,10 @@ begin
   else if mPos > 1 then
   begin
     Result := LaterMatch(AText, mText, mPattern, mPos);
+  end
+  else if AFuzzy and (Length(mPattern) >= cMinFuzzy) and InOrder(mText, mPattern) then
+  begin
+    Result := TAtlasDesignerMatch.Fuzzy;
   end;
 end;
 
@@ -206,41 +244,54 @@ begin
   end;
 end;
 
-/// <summary>Rang eines Treffers: 0–3 im Namen, 4–7 nur in Caption/Text, 8–11 nur in der Klasse; -1 kein Treffer.
-/// </summary>
-function RankOf(const AItem: TAtlasDesignerItem; const APattern: string; AFields: TAtlasDesignerFields): Integer;
+function FieldText(const AItem: TAtlasDesignerItem; AField: TAtlasDesignerField): string;
+begin
+  case AField of
+    TAtlasDesignerField.Caption:
+      Result := AItem.Caption;
+    TAtlasDesignerField.ClassName:
+      Result := AItem.TypeName;
+  else
+    Result := AItem.Name;
+  end;
+end;
+
+/// <summary>Rang eines Treffers: 0–3 im Namen, 4–7 nur in Caption/Text, 8–11 nur in der Klasse, danach unscharf
+/// 12 im Namen, 13 in Caption/Text (nie in der Klasse); -1 kein Treffer.</summary>
+function RankOf(const AItem: TAtlasDesignerItem; const APattern: string; AFields: TAtlasDesignerFields;
+  AFuzzy: Boolean): Integer;
+const
+  cPerField = Ord(TAtlasDesignerMatch.Fuzzy);
+  cFuzzyBase = cPerField * (Ord(High(TAtlasDesignerField)) + 1);
 var
+  mField: TAtlasDesignerField;
   mMatch: TAtlasDesignerMatch;
 begin
   Result := -1;
-  if TAtlasDesignerField.Name in AFields then
+  for mField := Low(TAtlasDesignerField) to High(TAtlasDesignerField) do
   begin
-    mMatch := TAtlasDesignerSearch.MatchOf(AItem.Name, APattern);
-    if mMatch <> TAtlasDesignerMatch.None then
+    if not (mField in AFields) then
     begin
-      Exit(Ord(mMatch));
+      Continue;
     end;
-  end;
-  if TAtlasDesignerField.Caption in AFields then
-  begin
-    mMatch := TAtlasDesignerSearch.MatchOf(AItem.Caption, APattern);
-    if mMatch <> TAtlasDesignerMatch.None then
+    mMatch := TAtlasDesignerSearch.MatchOf(FieldText(AItem, mField), APattern,
+      AFuzzy and (mField <> TAtlasDesignerField.ClassName));
+    if mMatch = TAtlasDesignerMatch.Fuzzy then
     begin
-      Exit(4 + Ord(mMatch));
-    end;
-  end;
-  if TAtlasDesignerField.ClassName in AFields then
-  begin
-    mMatch := TAtlasDesignerSearch.MatchOf(AItem.TypeName, APattern);
-    if mMatch <> TAtlasDesignerMatch.None then
+      if Result < 0 then
+      begin
+        Result := cFuzzyBase + Ord(mField);
+      end;
+    end
+    else if mMatch <> TAtlasDesignerMatch.None then
     begin
-      Exit(8 + Ord(mMatch));
+      Exit(cPerField * Ord(mField) + Ord(mMatch));
     end;
   end;
 end;
 
 class function TAtlasDesignerSearch.Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
-  AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>;
+  AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind; AFuzzy: Boolean): TArray<Integer>;
 var
   mHits: TList<Integer>;
   mRanks: TArray<Integer>;
@@ -266,7 +317,7 @@ begin
       end
       else
       begin
-        mRanks[mIndex] := RankOf(AItems[mIndex], APattern, AFields);
+        mRanks[mIndex] := RankOf(AItems[mIndex], APattern, AFields, AFuzzy);
       end;
       if mRanks[mIndex] >= 0 then
       begin

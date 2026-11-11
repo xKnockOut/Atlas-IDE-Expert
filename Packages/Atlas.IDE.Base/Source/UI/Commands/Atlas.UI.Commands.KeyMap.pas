@@ -219,7 +219,8 @@ const
     TAtlasTextId.DesignerShowComponentCommand, // DesignerShowComponent
     TAtlasTextId.DesignerInlineCaptionCommand, // DesignerInlineCaption
     TAtlasTextId.DesignerSelectionBarCommand, // DesignerSelectionBar
-    TAtlasTextId.DesignerMagnifierCommand); // DesignerMagnifier
+    TAtlasTextId.DesignerMagnifierCommand, // DesignerMagnifier
+    TAtlasTextId.DesignerUsagesCommand); // DesignerUsages
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
