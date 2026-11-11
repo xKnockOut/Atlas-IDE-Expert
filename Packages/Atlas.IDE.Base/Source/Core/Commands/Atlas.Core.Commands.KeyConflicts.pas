@@ -59,7 +59,7 @@ type
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch, CheckFile, SectionAppend);
+    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -345,7 +345,10 @@ begin
     Create(TAtlasKeyFunction.CheckFile, Word(ASettings.CheckFileKey), AShared, ASettings.Problems),
     // Neue Zeile am Ende des Abschnitts (#1768): frei belegbar, ohne Vorgabe.
     Create(TAtlasKeyFunction.SectionAppend, Word(ASettings.SectionAppendKey), AShared,
-      ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend)];
+      ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend),
+    // Auswahl speichern (#739): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang (wie DesignerSearch).
+    Create(TAtlasKeyFunction.DesignerSelectionSetsSave, Word(ASettings.DesignerSelectionSetsSaveKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -578,6 +581,8 @@ begin
       ASettings.CheckFileKey := AEntry.Key;
     TAtlasKeyFunction.SectionAppend:
       ASettings.SectionAppendKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerSelectionSetsSave:
+      ASettings.DesignerSelectionSetsSaveKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;

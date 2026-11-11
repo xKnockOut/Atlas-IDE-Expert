@@ -32,7 +32,8 @@ type
     DesignerSetsRename, DesignerSetsUp, DesignerSetsDown, DesignerSetsDelete, DesignerSetsSave, DesignerSetsEmpty,
     DesignerSetsDefaultName, DesignerSetsSaveTitle, DesignerSetsSavePrompt, DesignerSetsSaved,
     SettingsDesignerSelectionSets, SettingsDesignerSelectionSetsShortcuts, SettingsDesignerSelectionSetsStorage,
-    SettingsDesignerSetsLocal, SettingsDesignerSetsShared, SettingsDesignerSelectionSetsSaveKey, DesignerSetsKind);
+    SettingsDesignerSetsLocal, SettingsDesignerSetsShared, SettingsDesignerSelectionSetsSaveKey, DesignerSetsKind,
+    SettingsDesignerSpatialNavigation, SettingsDesignerSpatialCross);
 
   TAtlasDesignerStrings = class
   public
@@ -144,7 +145,9 @@ const
      'Lokal auf diesem Rechner',
      'Gemeinsam neben dem Formular (Versionsverwaltung)',
      'Taste „Auswahl speichern …“',
-     'Auswahlsätze'),
+     'Auswahlsätze',
+     'Räumliche Navigation mit Alt+Pfeil',
+     'Am Rand in benachbarte Container weiter'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -240,7 +243,9 @@ const
      'Local on this computer',
      'Shared next to the form (version control)',
      'Key for “Save selection …”',
-     'Selection sets'));
+     'Selection sets',
+     'Spatial navigation with Alt+Arrow',
+     'Continue into neighbouring containers at the edge'));
 
 { TAtlasDesignerStrings }
 

@@ -99,6 +99,8 @@ type
     /// <summary>Fehlertext am Zeilenende (#509): 'off', 'errors' (Vorgabe), 'errorsAndWarnings', 'all'; nur mit
     /// Problems.</summary>
     InlineDiagnostics: string;
+    /// <summary>Marken folgen ihrer Zeile sofort bei Bearbeitungen (#1818, editor.trackLines).</summary>
+    TrackLines: Boolean;
     /// <summary>Änderungsmarken in der Rinne (#507, editor.gitGutter).</summary>
     GitGutter: Boolean;
     /// <summary>Zeilenhistorie am Ende der Cursorzeile (#507, editor.gitBlame).</summary>
@@ -501,6 +503,11 @@ type
     DesignerSelectionSetsStorage: string;
     /// <summary>Taste „Auswahl speichern …“ als TShortCut, 0 = keine (#739, designer.selectionSets.saveKey).</summary>
     DesignerSelectionSetsSaveKey: Integer;
+    /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
+    DesignerSpatialNavigation: Boolean;
+    /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
+    /// </summary>
+    DesignerSpatialCrossContainers: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -607,6 +614,7 @@ begin
   Result.RecursionMarkers := True;
   Result.RecursionMarkersDepth := 4;
   Result.InlineDiagnostics := 'errors';
+  Result.TrackLines := True;
   Result.GitGutter := True;
   Result.GitBlame := False;
   Result.MethodPlacement := 'grouped';
@@ -656,6 +664,7 @@ begin
   AIo.Flag('RecursionMarkers', RecursionMarkers);
   AIo.Number('RecursionMarkersDepth', RecursionMarkersDepth);
   AIo.Text('InlineDiagnostics', InlineDiagnostics);
+  AIo.Flag('TrackLines', TrackLines);
   AIo.Flag('GitGutter', GitGutter);
   AIo.Flag('GitBlame', GitBlame);
   AIo.Text('MethodPlacement', MethodPlacement);
@@ -1009,6 +1018,8 @@ begin
   Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
   // Strg+Umschalt+S.
   Result.DesignerSelectionSetsSaveKey := 24659;
+  Result.DesignerSpatialNavigation := True;
+  Result.DesignerSpatialCrossContainers := True;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1070,6 +1081,8 @@ begin
   AIo.Flag('DesignerSelectionSetsShortcuts', DesignerSelectionSetsShortcuts);
   AIo.Text('DesignerSelectionSetsStorage', DesignerSelectionSetsStorage);
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
+  AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
+  AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

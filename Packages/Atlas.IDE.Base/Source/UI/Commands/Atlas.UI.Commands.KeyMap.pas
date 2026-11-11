@@ -213,7 +213,8 @@ const
     TAtlasTextId.CreateIssueCommand, // CreateIssue
     TAtlasTextId.DesignerBarSearchHint, // DesignerSearch
     TAtlasTextId.ProblemsCheckFileCommand, // CheckFile
-    TAtlasTextId.SectionAppendCommand); // SectionAppend
+    TAtlasTextId.SectionAppendCommand, // SectionAppend
+    TAtlasTextId.DesignerSelectionSetsSaveCommand); // DesignerSelectionSetsSave
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
