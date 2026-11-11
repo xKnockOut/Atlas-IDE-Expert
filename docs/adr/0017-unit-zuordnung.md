@@ -1194,6 +1194,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.ExtractFrame` | `Core/Designer/Atlas.Core.Designer.ExtractFrame.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormUnit` | `Core/Designer/Atlas.Core.Designer.FormUnit.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.EventMap` | `Core/Designer/Atlas.Core.Designer.EventMap.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Usages` | `Core/Designer/Atlas.Core.Designer.Usages.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
@@ -1243,6 +1244,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.DataBindings` | `IDE/Designer/Atlas.IDE.Designer.DataBindings.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.ExtractFrame` | `IDE/Designer/Atlas.IDE.Designer.ExtractFrame.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.EventMap` | `IDE/Designer/Atlas.IDE.Designer.EventMap.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Usages` | `IDE/Designer/Atlas.IDE.Designer.Usages.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Dialog` | `UI/Designer/Atlas.UI.Designer.Dialog.pas` | Ordner `UI/Designer`; Gerüst der Dialoge des Designers |
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |

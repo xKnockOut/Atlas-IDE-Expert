@@ -66,6 +66,7 @@ begin
     [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchWindow),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchPopup)],
     [TAtlasPluginSettings.cDesignerSearchWindow, TAtlasPluginSettings.cDesignerSearchPopup]);
+  Switch('designer.fuzzySearch', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFuzzySearch));
   Switch('editor.designerBar.tabOrderClick', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderClick));
   Switch('designer.tabOrderOverlay',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderOverlay));
@@ -93,6 +94,16 @@ begin
   Key('designer.showInDesigner.key', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerShowKey));
   Switch('designer.propertySearch',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPropertySearch));
+  Switch('designer.usages', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsages));
+  Switch('designer.usages.statusCount',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesStatusCount));
+  Choice('designer.usages.scope', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesScope),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesUnit),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesProject),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesGroup)],
+    [TAtlasPluginSettings.cDesignerUsagesUnit, TAtlasPluginSettings.cDesignerUsagesProject,
+    TAtlasPluginSettings.cDesignerUsagesGroup]);
+  Key('designer.usages.key', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesKey));
   Switch('designer.spatialNavigation',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',
