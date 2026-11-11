@@ -21,6 +21,8 @@ type
     class function ItemsOf(ARoot: TComponent; const ADesigner: IDesigner): TArray<TAtlasDesignerItem>; static;
     /// <summary>Das Formular selbst als Eintrag, samt seiner belegten Ereignisse (#511).</summary>
     class function RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem; static;
+    /// <summary>Belegte Ereignisse von AComponent als „OnClick = Button1Click“ (#750).</summary>
+    class function Events(AComponent: TComponent; const ADesigner: IDesigner): TArray<string>; static;
   end;
 
 implementation
@@ -144,6 +146,15 @@ class function TAtlasDesignerSearchItems.ItemsOf(ARoot: TComponent;
 begin
   Result := nil;
   AddItems(ARoot, ARoot, ADesigner, Result);
+end;
+
+class function TAtlasDesignerSearchItems.Events(AComponent: TComponent; const ADesigner: IDesigner): TArray<string>;
+begin
+  Result := nil;
+  if ADesigner <> nil then
+  begin
+    Result := EventsOf(AComponent, ADesigner);
+  end;
 end;
 
 class function TAtlasDesignerSearchItems.RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem;

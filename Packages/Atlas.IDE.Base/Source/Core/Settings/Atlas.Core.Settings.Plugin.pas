@@ -145,6 +145,9 @@ type
     cHelpSourceLocal = Atlas.Core.Settings.Plugin.General.cHelpSourceLocal;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
     cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
+    cDesignerUsagesUnit = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesUnit;
+    cDesignerUsagesProject = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesProject;
+    cDesignerUsagesGroup = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesGroup;
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
@@ -653,6 +656,11 @@ type
       write FEditorView.DesignerShowInDesignerKey;
     property DesignerPropertySearch: Boolean read FEditorView.DesignerPropertySearch
       write FEditorView.DesignerPropertySearch;
+    property DesignerUsages: Boolean read FEditorView.DesignerUsages write FEditorView.DesignerUsages;
+    property DesignerUsagesStatusCount: Boolean read FEditorView.DesignerUsagesStatusCount
+      write FEditorView.DesignerUsagesStatusCount;
+    property DesignerUsagesScope: string read FEditorView.DesignerUsagesScope write FEditorView.DesignerUsagesScope;
+    property DesignerUsagesKey: Integer read FEditorView.DesignerUsagesKey write FEditorView.DesignerUsagesKey;
     property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers

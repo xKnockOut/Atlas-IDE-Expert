@@ -5096,6 +5096,56 @@
       "x-node": "editor.designerBar",
       "x-issue": "#524"
     },
+    "DesignerUsages": {
+      "description": "Knopf „Verwendungen im Code“ in der Designer-Leiste, Befehl im Atlas-Menü und Taste im Designer: zeigt für die markierten Komponenten alle echten Zugriffe im Code aus der Referenzsuche (keine Kommentare, Strings oder gleichnamigen Bezeichner), je Unit und Methode mit Art des Zugriffs (liest, schreibt, übergibt, Ereignis) und die Handler aus der DFM. Doppelklick springt zur Stelle.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.usages",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
+    "DesignerUsagesStatusCount": {
+      "description": "Zähler „edtRabatt · 3 Verwendungen“ für die markierte Komponente im Atlas-Statusfeld, im Hintergrund nach einem Auswahlwechsel berechnet; „keine Verwendung, keine Ereignisse“ heißt rein optisch. Klick öffnet die Liste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.usages.statusCount",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.usages",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
+    "DesignerUsagesScope": {
+      "description": "Suchbereich für „Verwendungen im Code“: nur die Unit des Formulars (unit), das aktive Projekt (project) oder die ganze Projektgruppe (projectGroup).",
+      "type": "string",
+      "enum": [
+        "unit",
+        "project",
+        "projectGroup"
+      ],
+      "default": "project",
+      "x-key": "designer.usages.scope",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.usages",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
+    "DesignerUsagesKey": {
+      "description": "Taste für „Verwendungen im Code“, solange der Designer den Fokus hat, als TShortCut (Vorgabe Umschalt+Alt+F7); 0 = keine.",
+      "type": "integer",
+      "default": 41078,
+      "x-key": "designer.usages.key",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.usages",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
     "DesignerSpatialNavigation": {
       "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
       "type": "boolean",

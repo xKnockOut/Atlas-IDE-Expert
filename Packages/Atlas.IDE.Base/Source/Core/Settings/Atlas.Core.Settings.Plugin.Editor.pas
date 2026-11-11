@@ -53,6 +53,12 @@ const
   cMaxSearchHistory = 100;
   /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (scShift + VK_F12).</summary>
   cDefaultShowInDesignerKey = $2000 + $7B;
+  /// <summary>Vorgabe für designer.usages.key (#750): Umschalt+Alt+F7 (scShift + scAlt + VK_F7).</summary>
+  cDefaultUsagesKey = $2000 + $8000 + $76;
+  /// <summary>Werte von designer.usages.scope (#750).</summary>
+  cDesignerUsagesUnit = 'unit';
+  cDesignerUsagesProject = 'project';
+  cDesignerUsagesGroup = 'projectGroup';
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
   cBeginEndAlways = 'always';
   cBeginEndMultiLine = 'multiLine';
@@ -557,6 +563,14 @@ type
     DesignerShowInDesignerKey: Integer;
     /// <summary>Eigenschaften in Formularen suchen (#524, designer.propertySearch).</summary>
     DesignerPropertySearch: Boolean;
+    /// <summary>„Verwendungen im Code“ aus dem Designer (#750, designer.usages).</summary>
+    DesignerUsages: Boolean;
+    /// <summary>Zähler der Verwendungen im Atlas-Statusfeld (#750, designer.usages.statusCount).</summary>
+    DesignerUsagesStatusCount: Boolean;
+    /// <summary>Suchbereich: cDesignerUsagesUnit, …Project, …Group (#750, designer.usages.scope).</summary>
+    DesignerUsagesScope: string;
+    /// <summary>Taste im Designer als TShortCut, 0 = keine (#750, designer.usages.key).</summary>
+    DesignerUsagesKey: Integer;
     /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
     DesignerSpatialNavigation: Boolean;
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
@@ -1288,6 +1302,10 @@ begin
   // Umschalt+F12 (in der IDE „Formulare anzeigen“).
   Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
   Result.DesignerPropertySearch := True;
+  Result.DesignerUsages := True;
+  Result.DesignerUsagesStatusCount := True;
+  Result.DesignerUsagesScope := cDesignerUsagesProject;
+  Result.DesignerUsagesKey := cDefaultUsagesKey;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetViewDefaults;
@@ -1536,6 +1554,9 @@ begin
   DesignerInlineCaptionKey := EnsureRange(DesignerInlineCaptionKey, 0, $FFFF);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
   DesignerShowInDesignerKey := EnsureRange(DesignerShowInDesignerKey, 0, $FFFF);
+  DesignerUsagesScope := Choice(DesignerUsagesScope, [cDesignerUsagesProject, cDesignerUsagesUnit,
+    cDesignerUsagesGroup]);
+  DesignerUsagesKey := EnsureRange(DesignerUsagesKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
@@ -1605,6 +1626,10 @@ begin
   AIo.Flag('DesignerShowInDesigner', DesignerShowInDesigner);
   AIo.Number('DesignerShowInDesignerKey', DesignerShowInDesignerKey);
   AIo.Flag('DesignerPropertySearch', DesignerPropertySearch);
+  AIo.Flag('DesignerUsages', DesignerUsages);
+  AIo.Flag('DesignerUsagesStatusCount', DesignerUsagesStatusCount);
+  AIo.Text('DesignerUsagesScope', DesignerUsagesScope);
+  AIo.Number('DesignerUsagesKey', DesignerUsagesKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeViews(AIo);

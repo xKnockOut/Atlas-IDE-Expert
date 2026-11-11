@@ -7,7 +7,8 @@
 // DesignerBar der Feature-Tabelle und Hörer für Einstellungen und Thema
 // bereit, dazu Befehl, Menüeinträge und Taste „Im Designer zeigen“ (#511,
 // designer.showInDesigner) und „Eigenschaften suchen …“ im Atlas-Menü (#524,
-// designer.propertySearch). Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
+// designer.propertySearch) sowie „Verwendungen im Code“ im Atlas-Menü (#750,
+// designer.usages). Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
 // Base. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -25,6 +26,7 @@ type
     cSwitch = 'designer';
     cShowCommandId = 'Atlas.ShowInDesigner';
     cPropertySearchCommandId = 'Atlas.PropertySearch';
+    cUsagesCommandId = 'Atlas.DesignerUsages';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -58,6 +60,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.PropertySearch,
+  Atlas.IDE.Designer.Usages,
   Atlas.IDE.Designer.Bar;
 
 var
@@ -116,6 +119,22 @@ begin
   Result := TAtlasIdePropertySearch.Available(TAtlasIdeSettings.Current);
 end;
 
+/// <summary>„Verwendungen im Code“ (#750), abgesichert.</summary>
+procedure ShowUsages;
+begin
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar, TAtlasIdeDesignerUsages.Run);
+end;
+
+function UsagesVisible: Boolean;
+begin
+  Result := TAtlasIdeDesignerUsages.Available(TAtlasIdeSettings.Current);
+end;
+
+function ModuleScope: IAtlasModuleScope;
+begin
+  Result := GScope;
+end;
+
 function ShowInDesignerKey: Integer;
 begin
   Result := TAtlasIdeSettings.Current.DesignerShowInDesignerKey;
@@ -140,6 +159,7 @@ begin
   FActive := True;
   TAtlasIdeShowComponent.Install(ShowMessage);
   TAtlasIdePropertySearch.Install(ShowMessage);
+  TAtlasIdeDesignerUsages.Install(ModuleScope, ShowMessage);
 end;
 
 procedure TAtlasDesignerModule.Stop;
@@ -147,6 +167,7 @@ begin
   FActive := False;
   TAtlasIdeShowComponent.Uninstall;
   TAtlasIdePropertySearch.Uninstall;
+  TAtlasIdeDesignerUsages.Uninstall;
 end;
 
 function TAtlasDesignerModule.IsActive: Boolean;
@@ -172,7 +193,10 @@ begin
     ShowInDesigner, ShowInDesignerVisible, ShowInDesignerKey),
     // Eigenschaften suchen (#524): ohne eigene Taste.
     Command(cPropertySearchCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchCommand),
-    SearchProperties, SearchPropertiesVisible, nil)];
+    SearchProperties, SearchPropertiesVisible, nil),
+    // Verwendungen im Code (#750): die Taste gilt nur im Designer (designer.usages.key), nicht im Code-Editor.
+    Command(cUsagesCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesCommand), ShowUsages,
+    UsagesVisible, nil)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -185,7 +209,8 @@ end;
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [MenuEntry(cShowCommandId, TAtlasMenuPlace.EditorContext),
-    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu), MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu), MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu),
+    MenuEntry(cUsagesCommandId, TAtlasMenuPlace.AtlasMenu)];
 end;
 
 function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;

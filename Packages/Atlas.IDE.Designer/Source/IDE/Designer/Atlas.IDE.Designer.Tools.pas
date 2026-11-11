@@ -12,6 +12,8 @@
 // - Lupe (#743, designer.magnifier, TAtlasIdeMagnifier).
 // - Eigenschaften suchen (#524, designer.propertySearch,
 //   TAtlasIdePropertySearch): Knopf ohne Menü, öffnet den Dialog.
+// - Verwendungen im Code (#750, designer.usages, TAtlasIdeDesignerUsages):
+//   Knopf ohne Menü; der Takt führt Taste und Zähler im Statusfeld nach.
 // Nur im Hauptthread.
 
 interface
@@ -26,7 +28,8 @@ uses
   Atlas.IDE.Designer.MultiResize,
   Atlas.IDE.Designer.SelectionBar,
   Atlas.IDE.Designer.Magnifier,
-  Atlas.IDE.Designer.PropertySearch;
+  Atlas.IDE.Designer.PropertySearch,
+  Atlas.IDE.Designer.Usages;
 
 type
   TAtlasIdeDesignerTools = class
@@ -101,6 +104,10 @@ begin
   begin
     Result := Result + [TAtlasIdePropertySearch.Button];
   end;
+  if TAtlasIdeDesignerUsages.Available(ASettings) then
+  begin
+    Result := Result + [TAtlasIdeDesignerUsages.Button];
+  end;
 end;
 
 function TAtlasIdeDesignerTools.HandleToolOf(const AId: string): TAtlasIdeHandleTool;
@@ -140,6 +147,11 @@ begin
   begin
     TAtlasIdePropertySearch.Run(True);
     Result := True;
+  end
+  else if SameText(AId, TAtlasIdeDesignerUsages.cId) then
+  begin
+    TAtlasIdeDesignerUsages.Run;
+    Result := True;
   end;
 end;
 
@@ -174,6 +186,7 @@ begin
   FResize.Tick;
   FBar.Tick;
   FMagnifier.Tick;
+  TAtlasIdeDesignerUsages.Tick;
 end;
 
 procedure TAtlasIdeDesignerTools.Hide;
@@ -182,6 +195,7 @@ begin
   FResize.Hide;
   FBar.Hide;
   FMagnifier.Hide;
+  TAtlasIdeDesignerUsages.Hide;
 end;
 
 procedure TAtlasIdeDesignerTools.ApplyTheme;
