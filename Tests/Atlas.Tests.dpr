@@ -68,6 +68,7 @@ uses
   Atlas.Common.Diagnostics.CrashSkip.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CrashSkip.Tests.pas',
   Atlas.Common.Diagnostics.CrashReserve.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CrashReserve.Tests.pas',
   Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests in 'Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas',
+  Atlas.WinBase.Process.Tests in 'WinBase\Atlas.WinBase.Process.Tests.pas',
   Atlas.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas',
   Atlas.Common.Documents.Uris.Tests in 'Common\Documents\Atlas.Common.Documents.Uris.Tests.pas',
   Atlas.Common.Documents.ChangeTracker.Tests in 'Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas',

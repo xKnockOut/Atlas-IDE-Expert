@@ -14,27 +14,30 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 | Projekt | Art (Konzept 6.2) | Darf verwenden | Darf nicht verwenden |
 |---|---|---|---|
 | `Atlas.Text` | Platform-Package, zusätzlich als Quelltext im Plugin (ADR 0012) | nur RTL (`System.*`) | Windows, VCL, FMX, alle anderen Atlas-Artefakte |
+| `Atlas.WinBase` | Platform-Package, zusätzlich als Quelltext im Plugin; Gegenstück zu `Atlas.Text` für Code mit Windows-API, den Server und Plugin gleich brauchen (Prozessstart mit Handle-Liste) | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Text` | VCL, FMX, `Atlas.Common`, `Atlas.Windows`, alles aus dem Plugin |
 | `Atlas.Common` | Platform-Package, derzeit zugleich Fachcode-Package des Servers (siehe [Ausnahme](#ausnahme-atlascommon-als-fachcode-package-des-servers)) | plattformunabhängige RTL (`System.*`), `Atlas.Text` | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Atlas.Windows` |
-| `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common` | VCL, FMX |
+| `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common`, `Atlas.WinBase` | VCL, FMX |
 | `Atlas.Linux` | Platform-Package nur als Quelltext für den Linux-Bau des Servers mit Free Pascal (ADR 0013, #1109); kein `.dpk` | RTL, FPC-Units für Linux (`BaseUnix`, `Process`, `Pipes`), `Atlas.Common` | Windows, VCL, FMX, `Atlas.Windows` |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows, unter Linux `Atlas.Linux` statt `Atlas.Windows` (nur in `Shell.Platform`, ADR 0013); die Versionsverwaltung des Plugins (`Atlas.Core.VersionControl.*`, #571) als Quelltext | VCL (Konsolenanwendung) |
 | `AtlasUpdate` | Anwendung (Host) für Installation und Updates (#1519, ADR 0018); Shell in `Application/Source/Shell/Shell.Update*.pas`, Logik in `Atlas.Common.Updates.*`, Adapter in `Atlas.Windows.Updates.Adapters.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows | VCL (Konsolenanwendung) |
-| `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64, ADR 0006, ADR 0008) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, ADR 0012) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss, ADR 0012) |
+| `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64, ADR 0006, ADR 0008) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*` und `Atlas.WinBase.*` als Quelltext (`contains … in '..\Atlas.Text\…'` bzw. `'..\Atlas.WinBase\…'`, ADR 0012) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss, ADR 0012) |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
 
 ```text
 AtlasServer ──► Atlas.Windows ──► Atlas.Common ──► Atlas.Text ──► RTL
-     │                                 ▲
+     │               │                 ▲               ▲
+     │               └──► Atlas.WinBase ───────────────┘
      └─────────────────────────────────┘
-Atlas.IDE.Base ··► Atlas.Text (Quelltext, kein requires)
+Atlas.IDE.Base ··► Atlas.Text, Atlas.WinBase (Quelltext, kein requires)
 ```
 
-Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text (ADR 0012) prüft es zusätzlich:
+Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text und Atlas.WinBase (ADR 0012) prüft es zusätzlich:
 
-- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` (sonst W1033) und außer eigenen Units nur solche aus `..\Atlas.Text\Source`.
-- `Atlas.Tests.dpr` und `AtlasServer.dpr` binden Atlas.Text nicht als Quelltext ein; sie linken die DCUs aus `Dcu/Atlas.Text`.
+- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` und `Atlas.WinBase.dpk` (sonst W1033) und außer eigenen Units nur solche aus `..\Atlas.Text\Source` und `..\Atlas.WinBase\Source`.
+- `Atlas.Tests.dpr` und `AtlasServer.dpr` binden beide nicht als Quelltext ein; sie linken die DCUs aus `Dcu/Atlas.Text` bzw. `Dcu/Atlas.WinBase`.
+- **Prozessstart:** Kindprozesse startet nur `TAtlasProcessLauncher` (`Atlas.WinBase.Process`). Er vererbt über `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` genau die Standard-Handles des Kindes; Pipes und Dateien legen die Aufrufer nicht vererbbar an. `forbidden-symbol` in `atlas.json` sperrt `CreateProcess` außerhalb dieser Unit.
 - **Kopien-Sperre:** Außerhalb von `Packages/Atlas.Text` entsteht keine neue Routine wie `LineBreakOf`, `SplitLines`, `IndentOf`, `IsWordChar`, `IsIdentChar`, `IsUtf8`, `PercentDecode` oder `DecodeEntities`. Ausnahmen (Fassaden mit eigenem Typ, öffentliche Weiterleitungen, SQL-Bezeichner, Block Rules) stehen mit Grund in `$AllowedLocal`; die Liste soll nur schrumpfen.
 
 ### Ausnahme: Atlas.Common als Fachcode-Package des Servers
@@ -68,11 +71,14 @@ Featurerichtung zwischen den Fach-Features (A-11):
 ## Verzeichnisstruktur
 
 ```text
-Atlas.groupproj          Projektgruppe (Build-Reihenfolge: Text, Common, Windows, Anwendung, IDE-Plugin, Tests)
+Atlas.groupproj          Projektgruppe (Build-Reihenfolge: Text, WinBase, Common, Windows, Anwendung, IDE-Plugin, Tests)
 Packages/
   Atlas.Text/
     Atlas.Text.dpk/.dproj
     Source/<Feature>/              Zeilen, Zeichen, Kodierung, URIs, Diff, Fuzzy (auch Editierabstand und Tippfehlersuche), JSONC, Entities, Version, Defines (ADR 0012)
+  Atlas.WinBase/
+    Atlas.WinBase.dpk/.dproj
+    Source/<Feature>/              Windows-Code für Server und Plugin: Prozessstart mit Handle-Liste
   Atlas.Common/
     Atlas.Common.dpk/.dproj
     Source/<Feature>/              ein Ordner je Platform-Feature, darin optional Rollenordner

@@ -43,9 +43,10 @@ type
     FStderrFile: string;
     FStderrStart: Int64;
     procedure Write(const ABytes: TBytes);
-    /// <summary>Öffnet server-stderr.log zum Anhängen (vererbbar) und schreibt die Kopfzeile; sonst NUL.</summary>
-    function OpenStderr(ASecurity: PSecurityAttributes): THandle;
-    procedure CreatePipes(ASecurity: PSecurityAttributes; var AInputRead, AOutputWrite: THandle);
+    /// <summary>Öffnet server-stderr.log zum Anhängen und schreibt die Kopfzeile; sonst NUL. Nicht vererbbar: Das
+    /// macht erst TAtlasProcessLauncher für den Start.</summary>
+    function OpenStderr: THandle;
+    procedure CreatePipes(var AInputRead, AOutputWrite: THandle);
     procedure StopWriter(AWriterMs, ACancelMs: Cardinal);
     procedure StopProcess(AProcessMs: Cardinal);
     /// <summary>Zeilen, die seit dem Start dieses Servers in server-stderr.log kamen (bei mehreren IDEs auch die
@@ -67,6 +68,7 @@ implementation
 
 uses
   System.IOUtils,
+  Atlas.WinBase.Process,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Lsp.Crashes;
@@ -237,23 +239,12 @@ end;
 
 { TLspServerProcess }
 
-/// <summary>Startet AExeName mit den Kindenden der Pipes und ohne Fenster; löst bei einem Fehler
-/// EOSError aus.</summary>
+/// <summary>Startet AExeName mit den Kindenden der Pipes und ohne Fenster; nur diese erbt der Server (R-101).
+/// Löst bei einem Fehler EOSError aus.</summary>
 function LaunchProcess(const AExeName, AArguments: string; AInput, AOutput, AError: THandle): TProcessInformation;
-var
-  mStartup: TStartupInfo;
-  mCommandLine: string;
 begin
-  mStartup := Default(TStartupInfo);
-  mStartup.cb := SizeOf(mStartup);
-  mStartup.dwFlags := STARTF_USESTDHANDLES;
-  mStartup.hStdInput := AInput;
-  mStartup.hStdOutput := AOutput;
-  mStartup.hStdError := AError;
-  mCommandLine := '"' + AExeName + '" ' + AArguments;
-  UniqueString(mCommandLine);
-  if not CreateProcess(nil, PChar(mCommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
-    PChar(ExtractFileDir(AExeName)), mStartup, Result) then
+  if not TAtlasProcessLauncher.Launch(TAtlasProcessLaunch.Create('', '"' + AExeName + '" ' + AArguments,
+    ExtractFileDir(AExeName), AInput, AOutput, AError), Result) then
   begin
     RaiseLastOSError;
   end;
@@ -270,23 +261,19 @@ end;
 
 constructor TLspServerProcess.Create(const AExeName, AArguments: string);
 var
-  mSecurity: TSecurityAttributes;
   mInputRead, mOutputWrite, mErrorHandle: THandle;
   mInfo: TProcessInformation;
 begin
   inherited Create;
   FWriterLock := TObject.Create;
-  mSecurity := Default(TSecurityAttributes);
-  mSecurity.nLength := SizeOf(mSecurity);
-  mSecurity.bInheritHandle := True;
   mInputRead := 0;
   mOutputWrite := 0;
   mErrorHandle := INVALID_HANDLE_VALUE;
   // Die Enden des Kindprozesses schließt das finally auf jedem Weg, auch wenn die zweite Pipe oder CreateProcess
   // scheitert (Code-Review S-07); die eigenen Enden (FInputWrite, FOutputRead) schließt Destroy.
   try
-    CreatePipes(@mSecurity, mInputRead, mOutputWrite);
-    mErrorHandle := OpenStderr(@mSecurity);
+    CreatePipes(mInputRead, mOutputWrite);
+    mErrorHandle := OpenStderr;
     mInfo := LaunchProcess(AExeName, AArguments, mInputRead, mOutputWrite, mErrorHandle);
   finally
     CloseIfOpen(mInputRead);
@@ -303,23 +290,21 @@ begin
   FReader := TReaderThread.Create(FOutputRead, FClient, Self);
 end;
 
-procedure TLspServerProcess.CreatePipes(ASecurity: PSecurityAttributes; var AInputRead, AOutputWrite: THandle);
+procedure TLspServerProcess.CreatePipes(var AInputRead, AOutputWrite: THandle);
 begin
+  // Alle Enden nicht vererbbar; die Kindenden vererbt TAtlasProcessLauncher gezielt (R-101).
   // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
-  if not CreatePipe(AInputRead, FInputWrite, ASecurity, 1 shl 20) then
+  if not CreatePipe(AInputRead, FInputWrite, nil, 1 shl 20) then
   begin
     RaiseLastOSError;
   end;
-  if not CreatePipe(FOutputRead, AOutputWrite, ASecurity, 0) then
+  if not CreatePipe(FOutputRead, AOutputWrite, nil, 0) then
   begin
     RaiseLastOSError;
   end;
-  // Die eigenen Enden dürfen nicht vererbt werden, sonst endet der Server nie.
-  SetHandleInformation(FInputWrite, HANDLE_FLAG_INHERIT, 0);
-  SetHandleInformation(FOutputRead, HANDLE_FLAG_INHERIT, 0);
 end;
 
-function TLspServerProcess.OpenStderr(ASecurity: PSecurityAttributes): THandle;
+function TLspServerProcess.OpenStderr: THandle;
 var
   mFolder, mOld: string;
   mHeader: TBytes;
@@ -339,7 +324,7 @@ begin
       MoveFileEx(PChar(FStderrFile), PChar(mOld), MOVEFILE_REPLACE_EXISTING);
     end;
     Result := CreateFile(PChar(FStderrFile), cAppendData, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
-      ASecurity, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+      nil, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if Result = INVALID_HANDLE_VALUE then
     begin
       RaiseLastOSError;
@@ -357,7 +342,7 @@ begin
       end;
       TAtlasGuard.Log('stderr des Servers bleibt bei NUL: ' + TAtlasGuard.MessageText(E.Message));
       FStderrFile := '';
-      Result := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, ASecurity, OPEN_EXISTING, 0, 0);
+      Result := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
     end;
   end;
 end;

@@ -70,6 +70,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="Atlas.WinBase.dcp"/>
         <DCCReference Include="Atlas.Common.dcp"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.DebugOutput.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.Adapters.DebugOutputSink.pas"/>

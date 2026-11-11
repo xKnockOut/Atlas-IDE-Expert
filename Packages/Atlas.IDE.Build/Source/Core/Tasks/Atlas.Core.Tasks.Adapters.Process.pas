@@ -37,6 +37,7 @@ implementation
 uses
   Winapi.Windows,
   System.Classes,
+  Atlas.WinBase.Process,
   Atlas.Core.Tasks.Matchers,
   Atlas.Core.Tasks.Commands;
 
@@ -76,7 +77,6 @@ const
   /// jeder Fassung von Winapi.Windows gleich typisiert).</summary>
   cJobKillOnClose = $00002000;
   cJobExtendedLimitClass = 9;
-  cCreateUnicodeEnvironment = $00000400;
 
 function CreateJob(AAttributes: Pointer; AName: PWideChar): THandle; stdcall;
   external kernel32 name 'CreateJobObjectW';
@@ -119,7 +119,7 @@ begin
 end;
 
 type
-  /// <summary>Was CreateProcess braucht; CommandLine ist beschreibbar (UniqueString).</summary>
+  /// <summary>Programm, Befehlszeile und Umgebungsblock für TAtlasProcessLauncher.</summary>
   TLaunch = record
     ProgramPath: string;
     CommandLine: string;
@@ -171,7 +171,6 @@ begin
       ALaunch.ProgramPath := 'cmd.exe';
     end;
   end;
-  UniqueString(ALaunch.CommandLine);
   ALaunch.Environment := string.Join(#0, TAtlasTaskCommands.MergeEnvironment(CurrentEnvironment, ATask.EnvNames,
     ATask.EnvValues)) + #0#0;
   Result := True;
@@ -186,21 +185,17 @@ end;
 /// <summary>Pipe für stdout/stderr, NUL als stdin und Job mit „beim Schließen beenden“.</summary>
 function OpenHandles(var AHandles: THandles; var AResult: TAtlasTaskProcessResult): Boolean;
 var
-  mSecurity: TSecurityAttributes;
   mLimits: TJobExtendedLimits;
 begin
-  mSecurity.nLength := SizeOf(mSecurity);
-  mSecurity.lpSecurityDescriptor := nil;
-  mSecurity.bInheritHandle := True;
-  Result := CreatePipe(AHandles.OutRead, AHandles.OutWrite, @mSecurity, 0);
+  // Nicht vererbbar: Schreibende und NUL erbt der Prozess gezielt über TAtlasProcessLauncher (R-101).
+  Result := CreatePipe(AHandles.OutRead, AHandles.OutWrite, nil, 0);
   if not Result then
   begin
     AResult.Error := SysErrorMessage(GetLastError);
     Exit;
   end;
-  SetHandleInformation(AHandles.OutRead, HANDLE_FLAG_INHERIT, 0);
-  AHandles.NullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity,
-    OPEN_EXISTING, 0, 0);
+  AHandles.NullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0,
+    0);
   AHandles.Job := CreateJob(nil, nil);
   if AHandles.Job <> 0 then
   begin
@@ -211,31 +206,24 @@ begin
 end;
 
 /// <summary>Prozess unsichtbar starten, in den Job legen und laufen lassen.</summary>
-function StartProcess(var ALaunch: TLaunch; const ACwd: string; var AHandles: THandles;
+function StartProcess(const ALaunch: TLaunch; const ACwd: string; var AHandles: THandles;
   var AResult: TAtlasTaskProcessResult): Boolean;
 var
-  mStartup: TStartupInfo;
-  mWorkingDir: PChar;
+  mLaunch: TAtlasProcessLaunch;
+  mInput: THandle;
 begin
-  FillChar(mStartup, SizeOf(mStartup), 0);
-  mStartup.cb := SizeOf(mStartup);
-  mStartup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-  mStartup.wShowWindow := SW_HIDE;
+  mInput := 0;
   if AHandles.NullInput <> INVALID_HANDLE_VALUE then
   begin
-    mStartup.hStdInput := AHandles.NullInput;
+    mInput := AHandles.NullInput;
   end;
-  mStartup.hStdOutput := AHandles.OutWrite;
-  mStartup.hStdError := AHandles.OutWrite;
-  mWorkingDir := nil;
-  if ACwd <> '' then
-  begin
-    mWorkingDir := PChar(ACwd);
-  end;
+  mLaunch := TAtlasProcessLaunch.Create(ALaunch.ProgramPath, ALaunch.CommandLine, ACwd, mInput, AHandles.OutWrite,
+    AHandles.OutWrite);
+  mLaunch.Hidden := True;
+  mLaunch.Environment := ALaunch.Environment;
   // Angehalten starten, damit der Prozess im Job ist, bevor er Kinder startet.
-  Result := CreateProcess(PChar(ALaunch.ProgramPath), PChar(ALaunch.CommandLine), nil, nil, True,
-    CREATE_NO_WINDOW or CREATE_SUSPENDED or cCreateUnicodeEnvironment, PChar(ALaunch.Environment), mWorkingDir,
-    mStartup, AHandles.Process);
+  mLaunch.Flags := CREATE_NO_WINDOW or CREATE_SUSPENDED;
+  Result := TAtlasProcessLauncher.Launch(mLaunch, AHandles.Process);
   if not Result then
   begin
     AResult.Error := SysErrorMessage(GetLastError);

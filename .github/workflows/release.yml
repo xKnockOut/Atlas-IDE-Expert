@@ -77,7 +77,8 @@ jobs:
           $plugin = @($first | ForEach-Object { "Packages\$_\$_.dproj" }) + @(Get-ChildItem 'Packages' -Directory -Filter 'Atlas.IDE.*' |
             Where-Object { $_.Name -notin $first -and (Test-Path "$($_.FullName)\$($_.Name).dproj") } |
             Sort-Object Name | ForEach-Object { "Packages\$($_.Name)\$($_.Name).dproj" })
-          foreach ($project in @('Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.Common\Atlas.Common.dproj',
+          foreach ($project in @('Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.WinBase\Atlas.WinBase.dproj',
+            'Packages\Atlas.Common\Atlas.Common.dproj',
             'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj',
             'Application\AtlasUpdate.dproj') + $plugin) {
             $r = pwsh -File $env:ATLAS_DELPHI_BUILD -Project "$env:GITHUB_WORKSPACE\$project" -Platform Win64 -Configuration Release -Mode build -Json | Out-String | ConvertFrom-Json

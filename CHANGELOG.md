@@ -65,6 +65,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Behoben
 - Update-Prüfung: Eine gescheiterte Abfrage (Proxy, Zeitüberschreitung, HTTP-Fehler) zeigte in der Zeile „Version“ grün „aktuell“, obwohl Atlas gar nicht wusste, ob es eine neuere Version gibt. Jetzt steht dort gelb „Prüfung fehlgeschlagen“ mit der Fehlerart, und die Meldungsansicht nennt sie einmal. Nach einem Fehlschlag (etwa HTTP 504) prüft Atlas beim nächsten Start der IDE erneut, frühestens nach einer Stunde, statt einen Tag zu warten.
+- Git, SVN, Projektaufgaben, Serverstart und Compilerlauf des Servers hängen nicht mehr selten bis zur Zeitgrenze (#1964): Ein Kindprozess erbt nur noch seine eigenen Standard-Handles. Bisher konnte ein gleichzeitig gestarteter Prozess, etwa AtlasServer, das Schreib-Ende einer fremden Pipe mit erben, und deren Leser sah sein Ende erst mit dem Ende dieses Prozesses. Alle Prozessstarts laufen jetzt über einen gemeinsamen Starter im neuen Package `Atlas.WinBase`, das Server und Plugin gleich verwenden.
 
 ## [2.0.1] - 2026-11-08
 

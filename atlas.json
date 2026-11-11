@@ -61,7 +61,9 @@
         {"name": "System.Classes.TThread.Queue", "message": "Einreihen ohne Besitzer überlebt das Entladen, TAtlasMainThread.Queue verwenden",
           "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]},
         {"name": "System.Classes.TThread.ForceQueue", "message": "Einreihen ohne Besitzer überlebt das Entladen, TAtlasMainThread.ForceQueue verwenden",
-          "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]}
+          "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]},
+        {"name": "Winapi.Windows.CreateProcess", "message": "Kindprozesse über TAtlasProcessLauncher.Launch starten: vererbt nur die Standard-Handles (Handle-Liste)",
+          "units": ["!Atlas.WinBase.Process"]}
       ]
     }
   }

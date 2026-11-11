@@ -45,7 +45,8 @@ type
 implementation
 
 uses
-  Winapi.Windows;
+  Winapi.Windows,
+  Atlas.WinBase.Process;
 
 const
   /// <summary>Exit-Code eines über Cancel beendeten Prozesses.</summary>
@@ -219,30 +220,17 @@ begin
   end;
 end;
 
-/// <summary>Startet den Prozess unsichtbar, ohne Eingabe, stdout und stderr in AWritePipe.</summary>
+/// <summary>Startet den Prozess unsichtbar, ohne Eingabe, stdout und stderr in AWritePipe; nur dieses Handle erbt
+/// er (R-101).</summary>
 procedure StartProcess(const ARequest: TCompilerRequest; AWritePipe: THandle;
   out AProcessInfo: TProcessInformation);
 var
-  mStartupInfo: TStartupInfo;
-  mCommandLine: string;
-  mWorkingDir: PChar;
+  mLaunch: TAtlasProcessLaunch;
 begin
-  FillChar(mStartupInfo, SizeOf(mStartupInfo), 0);
-  mStartupInfo.cb := SizeOf(mStartupInfo);
-  mStartupInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-  mStartupInfo.wShowWindow := SW_HIDE;
-  mStartupInfo.hStdInput := 0;
-  mStartupInfo.hStdOutput := AWritePipe;
-  mStartupInfo.hStdError := AWritePipe;
-  mCommandLine := CommandLineOf(ARequest);
-  UniqueString(mCommandLine);
-  mWorkingDir := nil;
-  if ARequest.WorkingDir <> '' then
-  begin
-    mWorkingDir := PChar(ARequest.WorkingDir);
-  end;
-  if not CreateProcess(PChar(ARequest.Executable), PChar(mCommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
-    mWorkingDir, mStartupInfo, AProcessInfo) then
+  mLaunch := TAtlasProcessLaunch.Create(ARequest.Executable, CommandLineOf(ARequest), ARequest.WorkingDir, 0,
+    AWritePipe, AWritePipe);
+  mLaunch.Hidden := True;
+  if not TAtlasProcessLauncher.Launch(mLaunch, AProcessInfo) then
   begin
     raise ECompilerError.CreateFmt('%s lässt sich nicht starten: %s',
       [ARequest.Executable, SysErrorMessage(GetLastError)]);
@@ -283,7 +271,6 @@ end;
 
 function TProcessRunner.Run(const ARequest: TCompilerRequest; const AOnLine: TCompilerLineEvent): Integer;
 var
-  mSecurity: TSecurityAttributes;
   mReadPipe, mWritePipe: THandle;
   mProcessInfo: TProcessInformation;
 begin
@@ -291,16 +278,12 @@ begin
   begin
     RaiseCancelled(ARequest);
   end;
-  mSecurity.nLength := SizeOf(mSecurity);
-  mSecurity.lpSecurityDescriptor := nil;
-  mSecurity.bInheritHandle := True;
-  if not CreatePipe(mReadPipe, mWritePipe, @mSecurity, 0) then
+  // Nicht vererbbar: Das Schreibende vererbt TAtlasProcessLauncher gezielt an den Compiler (R-101).
+  if not CreatePipe(mReadPipe, mWritePipe, nil, 0) then
   begin
     RaiseLastOSError;
   end;
   try
-    // Nur das Schreibende erbt der Kindprozess.
-    SetHandleInformation(mReadPipe, HANDLE_FLAG_INHERIT, 0);
     StartProcess(ARequest, mWritePipe, mProcessInfo);
     // Eigenes Schreibende schließen, damit ReadFile beim Prozessende False liefert.
     CloseHandle(mWritePipe);

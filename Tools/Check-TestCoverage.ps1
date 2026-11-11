@@ -3,7 +3,7 @@
     Prüft, dass jede Unit mit Logik eigene DUnitX-Tests hat und jede Testunit läuft (#415).
 
 .DESCRIPTION
-    1. Jede Unit unter Packages/Atlas.Text, Packages/Atlas.Common/Source,
+    1. Jede Unit unter Packages/Atlas.Text, Packages/Atlas.WinBase, Packages/Atlas.Common/Source,
        Packages/Atlas.Windows/Source, Packages/Atlas.IDE.*/Source/Core und
        Application/Source muss in einer Datei unter Tests/ vorkommen (in uses
        oder als Name ihrer Testunit "<Unit>.Tests"). Ausnahmen stehen unten mit
@@ -44,6 +44,7 @@ $ErrorActionPreference = 'Stop'
 
 $SourceDirs = @(
     'Packages/Atlas.Text',
+    'Packages/Atlas.WinBase',
     'Packages/Atlas.Common/Source',
     'Packages/Atlas.Windows/Source',
     'Application/Source'

@@ -39,8 +39,9 @@
 // BPLs beider IDE-Versionen nebeneinander liegen können.
 // Bewusst ohne Atlas.Common/Atlas.Windows: ein einzelnes Package, das die IDE
 // ohne weitere BPLs laden kann (ADR 0012). Gemeinsamen Textcode mit dem Server
-// (Atlas.Text) übersetzt das Plugin als Quelltext mit; die Liste unten muss
-// alle Units von Atlas.Text.dpk enthalten (Tools\Check-PackageDependencies.ps1).
+// (Atlas.Text) und den gemeinsamen Windows-Code (Atlas.WinBase) übersetzt das
+// Plugin als Quelltext mit; die Liste unten muss alle Units von Atlas.Text.dpk
+// und Atlas.WinBase.dpk enthalten (Tools\Check-PackageDependencies.ps1).
 
 requires
   rtl,
@@ -754,6 +755,7 @@ contains
   Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',
   Atlas.Text.Updates in '..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas',
   Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas',
+  Atlas.WinBase.Process in '..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas',
   Atlas.UI.Settings.Overview in 'Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
   Atlas.UI.Settings.Page.Search in 'Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas',
   Atlas.UI.Settings.Section in 'Source\UI\Settings\Atlas.UI.Settings.Section.pas';
