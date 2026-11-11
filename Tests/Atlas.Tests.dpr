@@ -2144,6 +2144,8 @@ uses
   Atlas.Core.Designer.ExtractFrame in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ExtractFrame.pas',
   Atlas.Core.Designer.ExtractFrame.Tests in 'IDE.Expert\Atlas.Core.Designer.ExtractFrame.Tests.pas',
   Atlas.Core.Designer.FormUnit in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormUnit.pas',
+  Atlas.Core.Designer.EventMap in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.EventMap.pas',
+  Atlas.Core.Designer.EventMap.Tests in 'IDE.Expert\Atlas.Core.Designer.EventMap.Tests.pas',
   Atlas.UI.Help.SettingsSection in '..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas',
   Atlas.UI.Help.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas',
   Atlas.UI.Rules.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas',
