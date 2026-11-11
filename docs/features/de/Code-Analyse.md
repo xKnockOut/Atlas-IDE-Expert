@@ -9,6 +9,7 @@ Der Server prüft jede Unit beim Tippen.
 
 ## Oberfläche
 
+<a id="window-atlasproblems"></a>
 ### Fenster „Atlas-Prüfung“
 
 - Befunde der Datei, des aktuellen Projekts oder der Projektgruppe live

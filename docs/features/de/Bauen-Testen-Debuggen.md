@@ -50,6 +50,7 @@ Einstellungen: `refactoring.missingUnit`
   - auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist
   - danach steht das Projekt wieder wie vorher
 
+<a id="window-atlascompilerswitches"></a>
 ### Compiler-Schalter an der Cursorposition
 
 - Ein andockbares Fenster zeigt die wirksamen Schalter `R`, `Q`, `O`, `C`, `I`, `A`, `HINTS`, `WARNINGS`, abgeschaltete Warnungen und aktive Symbole an der Cursorposition.
@@ -116,6 +117,7 @@ Aufruf: Menü Start und Befehlspalette. „Welcher Code läuft, wenn ich hier kl
 
 Einstellungen: `debug.breakOnNextEvent`
 
+<a id="window-atlasstepfilter"></a>
 #### Schrittfilter
 
 - F7 hält nicht mehr:
@@ -191,6 +193,7 @@ Einstellungen: `debug.explainUnavailable`
 
 Einstellungen: `debug.completionInDialogs`
 
+<a id="window-atlasevaluate"></a>
 #### Fenster „Auswerten“
 
 - Andockbares Fenster „Atlas: Auswerten“ mit mehreren Ausdrücken, die bei jedem Halt neu ausgewertet werden.
@@ -212,6 +215,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
 ### Exceptions
 
+<a id="window-atlasdebugexceptions"></a>
 #### Exception-Verlauf
 
 - andockbares Fenster „Atlas: Exceptions“ mit jeder Exception der Debug-Sitzung (Uhrzeit, Klasse, Meldung aus dem Dialog der IDE, Anzahl gleicher Exceptions am gleichen Ort, Ort, Thread)

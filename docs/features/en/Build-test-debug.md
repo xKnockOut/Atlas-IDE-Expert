@@ -66,6 +66,7 @@ Settings: `build.gate`
 - Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
 - Afterwards the project is back as it was
 
+<a id="window-atlascompilerswitches"></a>
 ### Compiler switches at the cursor
 
 - A dockable window lists the effective `R`, `Q`, `O`, `C`, `I`, `A`, `HINTS`, `WARNINGS`, disabled warnings and active symbols at the cursor position
@@ -191,6 +192,7 @@ Settings: `debug.explainUnavailable`
 
 Settings: `debug.completionInDialogs`
 
+<a id="window-atlasevaluate"></a>
 ### Evaluate window
 
 - A dockable window "Atlas: Evaluate" with several expressions that are evaluated again at every stop
@@ -238,6 +240,7 @@ Run menu and command palette. "Which code runs when I click here?"
 
 Settings: `debug.breakOnNextEvent`
 
+<a id="window-atlasstepfilter"></a>
 ### Step filters
 
 - F7 no longer stops in:
@@ -253,6 +256,7 @@ Settings: `debug.stepFilters`
 
 ## Debug: exceptions
 
+<a id="window-atlasdebugexceptions"></a>
 ### Exception history
 
 - Dockable window “Atlas: Exceptions” with every exception of the debug session:

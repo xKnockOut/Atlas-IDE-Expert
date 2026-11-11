@@ -198,7 +198,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | Welcome page (`welcome`) | `welcomePage.enabled`, `welcomePage.projectSetup`, `welcomePage.tests.ci.login`, `welcomePage.quickActions`, `welcomePage.ideWelcomePage`, `welcomePage.layout`, `welcomePage.openOnStart`, `welcomePage.openWhenNoProject`, `welcomePage.header`, `welcomePage.greeting`, `welcomePage.search`, `welcomePage.search.symbols`, `welcomePage.whatsNew`, `welcomePage.projectStatus`, `welcomePage.maxProjects`, `welcomePage.refreshVcs`, `welcomePage.unsaved`, `welcomePage.unsaved.minAgeHours`, `welcomePage.unsaved.warnHours`, `welcomePage.unsaved.alertHours`, `welcomePage.unsaved.hideWhenClean`, `welcomePage.statusTile`, `welcomePage.statusTile.onlyProblems`, `welcomePage.discover`, `tips.usageTracking`, `welcomePage.help`, `welcomePage.help.reportUrl`, `welcomePage.help.reportFolder`, `welcomePage.newFromTemplate`, `welcomePage.continue`, `welcomePage.continue.count`, `welcomePage.continue.incoming`, `welcomePage.continue.fetch`, `welcomePage.saved`, `welcomePage.trends`, `welcomePage.trends.points`, `welcomePage.trends.series`, `welcomePage.tests`, `welcomePage.tests.maxFailures`, `welcomePage.tests.ci`, `welcomePage.tests.ci.provider`, `welcomePage.tests.ci.intervalMinutes`, `welcomePage.tests.ci.notify`, `welcomePage.quickActions.items`, `welcomePage.quickActions.console`, `welcomePage.issues`, `welcomePage.sprint`, `welcomePage.customLayout`, `welcomePage.columns`, `welcomePage.layouts`, `welcomePage.activeLayout` |
 | Issue tracker (`issues`) | `issues.enabled`, `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode`, `issues.preview`, `issues.preview.comments`, `issues.codeLinks`, `issues.blameLinks`, `issues.blameLinks.maxRevisions`, `issues.syncState`, `issues.stateField`, `issues.assigneeField`, `issues.startState`, `issues.assignOnStart`, `issues.startComment`, `issues.endStates`, `issues.endComment`, `issues.timeTracking`, `issues.idleMinutes`, `issues.timeRounding`, `issues.preview.checklists`, `issues.checklistStatus`, `issues.preview.links`, `issues.warnBlocked`, `issues.board`, `issues.board.confirmMove`, `issues.board.onlyMine`, `issues.sprint.burndown`, `issues.sprint.compare`, `issues.paletteSearch`, `issues.commentEditor`, `issues.commentSnippets`, `issues.preview.development`, `issues.notify`, `issues.notify.intervalMinutes`, `issues.notify.scope`, `issues.attach`, `issues.attach.logFiles`, `issues.attach.maxImageWidth` |
 | Version control (`vcs`) | `vcs.enabled`, `vcs.provider`, `vcs.git.path`, `vcs.svn.path`, `vcs.timeoutSeconds`, `vcs.projects`, `vcs.branch.confirm`, `vcs.branch.svn.location`, `vcs.branch.svn.source`, `vcs.branch.svn.after`, `vcs.branch.svn.checkoutFolder`, `vcs.branch.svn.message`, `vcs.externals.onBranch`, `vcs.externals.suggestBranch`, `vcs.externals.rules`, `vcs.externals.show`, `vcs.externals.update`, `vcs.branch.git.base`, `vcs.branch.git.push`, `vcs.branch.git.uncommitted`, `vcs.branch.git.worktree`, `vcs.branch.git.worktreeFolder`, `vcs.git`, `vcs.svn` |
-| General (`general`) | `diagnosticMode.enabled`, `diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`, `diagnostics.processes`, `server.statusWindow`, `analysis.enabled`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `palette.settingsPrefix`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `updates.install`, `updates.channel`, `updates.newModules`, `diagnostics.bugReport.anonymize`, `diagnostics.log.names`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.search`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
+| General (`general`) | `diagnosticMode.enabled`, `diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`, `diagnostics.processes`, `server.statusWindow`, `analysis.enabled`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `palette.settingsPrefix`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `updates.install`, `updates.channel`, `updates.newModules`, `diagnostics.bugReport.anonymize`, `diagnostics.log.names`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.search`, `help.enabled`, `help.source`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
 | not exported (state, this machine only) | `ui.architectureWindowPlaced`, `ui.hotspotsWindowPlaced`, `ui.unitRelationsWindowPlaced`, `completion.listWidth`, `completion.panelWidth`, `server.path`, `ui.setupChecklistSeen`, `editor.minimap.noticeShown`, `welcomePage.whatsNewSeen`, `delphiVersion` |
 
 ## Experimental features
@@ -226,819 +226,821 @@ Risky or immature features come as **experimental** (#834): they have their own 
 ### General
 
 - **Main node**
-  - `completion.enabled`
-    - `teamFile.enabled`
-  - `diagnosticMode.enabled`
-    - `diagnosticMode.pluginTimings`
-    - `diagnosticMode.slowThresholdMs`
-  - `diagnostics.processes`
-  - `server.statusWindow`
-  - `analysis.enabled`
-  - `experimental.enabled`
-  - `editor.reloadExternal`
-  - `editor.openForEdits`
-  - `server.path`
-  - `ui.setupChecklist`
-  - `settings.markModified`
-  - `settings.search`
+  - <a id="setting-completion.enabled"></a>`completion.enabled`
+    - <a id="setting-teamFile.enabled"></a>`teamFile.enabled`
+  - <a id="setting-diagnosticMode.enabled"></a>`diagnosticMode.enabled`
+    - <a id="setting-diagnosticMode.pluginTimings"></a>`diagnosticMode.pluginTimings`
+    - <a id="setting-diagnosticMode.slowThresholdMs"></a>`diagnosticMode.slowThresholdMs`
+  - <a id="setting-diagnostics.processes"></a>`diagnostics.processes`
+  - <a id="setting-server.statusWindow"></a>`server.statusWindow`
+  - <a id="setting-analysis.enabled"></a>`analysis.enabled`
+  - <a id="setting-experimental.enabled"></a>`experimental.enabled`
+  - <a id="setting-editor.reloadExternal"></a>`editor.reloadExternal`
+  - <a id="setting-editor.openForEdits"></a>`editor.openForEdits`
+  - <a id="setting-server.path"></a>`server.path`
+  - <a id="setting-ui.setupChecklist"></a>`ui.setupChecklist`
+  - <a id="setting-settings.markModified"></a>`settings.markModified`
+  - <a id="setting-settings.search"></a>`settings.search`
+  - <a id="setting-help.enabled"></a>`help.enabled`
+    - <a id="setting-help.source"></a>`help.source`
 
 - **Status field** (`general.statusField`)
-  - `statusField.enabled`
-    - `statusField.showSummary`
-    - `statusField.hidden`
-    - `statusField.openToggles`
-    - `statusField.indexProgress`
+  - <a id="setting-statusField.enabled"></a>`statusField.enabled`
+    - <a id="setting-statusField.showSummary"></a>`statusField.showSummary`
+    - <a id="setting-statusField.hidden"></a>`statusField.hidden`
+    - <a id="setting-statusField.openToggles"></a>`statusField.openToggles`
+    - <a id="setting-statusField.indexProgress"></a>`statusField.indexProgress`
 
 - **Shortcut tips** (`general.shortcutTips`)
-  - `shortcutTips.enabled`
-    - `shortcutTips.scope`
+  - <a id="setting-shortcutTips.enabled"></a>`shortcutTips.enabled`
+    - <a id="setting-shortcutTips.scope"></a>`shortcutTips.scope`
 
 - **Notifications** (`general.notifications`)
-  - `notifications.enabled`
-    - `notifications.sources`
-    - `notifications.maxEntries`
+  - <a id="setting-notifications.enabled"></a>`notifications.enabled`
+    - <a id="setting-notifications.sources"></a>`notifications.sources`
+    - <a id="setting-notifications.maxEntries"></a>`notifications.maxEntries`
 
 - **Transfer settings** (`general.transfer`)
-  - `settings.exportImport`
-    - `settings.backupBeforeImport`
-    - `settings.exportSecrets`
+  - <a id="setting-settings.exportImport"></a>`settings.exportImport`
+    - <a id="setting-settings.backupBeforeImport"></a>`settings.backupBeforeImport`
+    - <a id="setting-settings.exportSecrets"></a>`settings.exportSecrets`
 
 - **Architecture** (`general.architecture`)
-  - `architecture.enabled` – depends on `analysis.enabled`
-    - `architecture.scope`
-    - `architecture.includeLibraryUnits`
-    - `architecture.centralUnits`
+  - <a id="setting-architecture.enabled"></a>`architecture.enabled` – depends on `analysis.enabled`
+    - <a id="setting-architecture.scope"></a>`architecture.scope`
+    - <a id="setting-architecture.includeLibraryUnits"></a>`architecture.includeLibraryUnits`
+    - <a id="setting-architecture.centralUnits"></a>`architecture.centralUnits`
 
 - **Code queries** (`general.query`)
-  - `query.enabled` – depends on `search.enabled`
+  - <a id="setting-query.enabled"></a>`query.enabled` – depends on `search.enabled`
 
 - **Hotspots** (`general.hotspots`)
-  - `hotspots.enabled` – depends on `analysis.enabled`
-    - `hotspots.months`
-    - `hotspots.coupling.minCommits`
+  - <a id="setting-hotspots.enabled"></a>`hotspots.enabled` – depends on `analysis.enabled`
+    - <a id="setting-hotspots.months"></a>`hotspots.months`
+    - <a id="setting-hotspots.coupling.minCommits"></a>`hotspots.coupling.minCommits`
 
 ### Editor
 
 - **Main node**
-  - `highlight.inactiveDim` – depends on `completion.enabled`
-  - `editor.dimUnusedUses` – depends on `completion.enabled`
-  - `editor.recursionMarkers`
-    - `editor.recursionMarkers.depth`
-  - `inlayHints.parameterNames`
-  - `inlayHints.inferredTypes`
-  - `inlayHints.includeDefines`
-  - `inlayHints.controlChars`
-  - `inlayHints.methodKind`
-  - `editor.blockEndLabels`
-    - `editor.blockEndLabels.minLines`
-  - `bookmarks.enabled`
-  - `editor.inlineDiagnostics`
-  - `editor.continuePattern` – depends on `completion.enabled`
-    - `editor.continuePattern.minLines`
-  - `editor.linkedEditing` (experimental) – depends on `completion.enabled`
-  - `editor.smartPaste` (experimental) – depends on `completion.enabled`
-  - `hints.xmlDocExpand`
-  - `hints.xmlDocMaxLines`
-  - `callHierarchy.diagram`
-  - `editor.breadcrumbsIdeColors`
-  - `editor.breadcrumbsHideIdeToolbar`
-  - `designer.enabled`
-  - `editor.methodPlacement`
-  - `editor.regionFolds`
+  - <a id="setting-highlight.inactiveDim"></a>`highlight.inactiveDim` – depends on `completion.enabled`
+  - <a id="setting-editor.dimUnusedUses"></a>`editor.dimUnusedUses` – depends on `completion.enabled`
+  - <a id="setting-editor.recursionMarkers"></a>`editor.recursionMarkers`
+    - <a id="setting-editor.recursionMarkers.depth"></a>`editor.recursionMarkers.depth`
+  - <a id="setting-inlayHints.parameterNames"></a>`inlayHints.parameterNames`
+  - <a id="setting-inlayHints.inferredTypes"></a>`inlayHints.inferredTypes`
+  - <a id="setting-inlayHints.includeDefines"></a>`inlayHints.includeDefines`
+  - <a id="setting-inlayHints.controlChars"></a>`inlayHints.controlChars`
+  - <a id="setting-inlayHints.methodKind"></a>`inlayHints.methodKind`
+  - <a id="setting-editor.blockEndLabels"></a>`editor.blockEndLabels`
+    - <a id="setting-editor.blockEndLabels.minLines"></a>`editor.blockEndLabels.minLines`
+  - <a id="setting-bookmarks.enabled"></a>`bookmarks.enabled`
+  - <a id="setting-editor.inlineDiagnostics"></a>`editor.inlineDiagnostics`
+  - <a id="setting-editor.continuePattern"></a>`editor.continuePattern` – depends on `completion.enabled`
+    - <a id="setting-editor.continuePattern.minLines"></a>`editor.continuePattern.minLines`
+  - <a id="setting-editor.linkedEditing"></a>`editor.linkedEditing` (experimental) – depends on `completion.enabled`
+  - <a id="setting-editor.smartPaste"></a>`editor.smartPaste` (experimental) – depends on `completion.enabled`
+  - <a id="setting-hints.xmlDocExpand"></a>`hints.xmlDocExpand`
+  - <a id="setting-hints.xmlDocMaxLines"></a>`hints.xmlDocMaxLines`
+  - <a id="setting-callHierarchy.diagram"></a>`callHierarchy.diagram`
+  - <a id="setting-editor.breadcrumbsIdeColors"></a>`editor.breadcrumbsIdeColors`
+  - <a id="setting-editor.breadcrumbsHideIdeToolbar"></a>`editor.breadcrumbsHideIdeToolbar`
+  - <a id="setting-designer.enabled"></a>`designer.enabled`
+  - <a id="setting-editor.methodPlacement"></a>`editor.methodPlacement`
+  - <a id="setting-editor.regionFolds"></a>`editor.regionFolds`
 
 - **Pair colouring** (`editor.pairs`)
-  - `highlight.pairColors` – depends on `completion.enabled`
-    - `highlight.pairGuides`
-    - `highlight.pairOwners`
-    - `highlight.nestedRoutines`
-    - `highlight.nestedRoutineBand`
-    - `highlight.pairGuideWidth`
-    - `highlight.pairGuideOpacity`
+  - <a id="setting-highlight.pairColors"></a>`highlight.pairColors` – depends on `completion.enabled`
+    - <a id="setting-highlight.pairGuides"></a>`highlight.pairGuides`
+    - <a id="setting-highlight.pairOwners"></a>`highlight.pairOwners`
+    - <a id="setting-highlight.nestedRoutines"></a>`highlight.nestedRoutines`
+    - <a id="setting-highlight.nestedRoutineBand"></a>`highlight.nestedRoutineBand`
+    - <a id="setting-highlight.pairGuideWidth"></a>`highlight.pairGuideWidth`
+    - <a id="setting-highlight.pairGuideOpacity"></a>`highlight.pairGuideOpacity`
 
 - **Breadcrumb bar** (`editor.breadcrumbs`)
-  - `editor.breadcrumbs`
-    - `editor.breadcrumbsShowUnit`
-    - `editor.breadcrumbsVisibility`
-    - `editor.breadcrumbsMemberBlocks`
-    - `editor.breadcrumbsVisibilityMark`
-    - `editor.breadcrumbsDeclarationBlocks`
-    - `editor.breadcrumbsConditionals`
-    - `editor.breadcrumbsRegions`
-    - `editor.breadcrumbsStatements`
-    - `editor.breadcrumbsSectionCounts`
-    - `editor.breadcrumbsSectionAppend`
-    - `editor.breadcrumbsSectionCreate`
-    - `editor.breadcrumbsContextMenu`
-    - `editor.breadcrumbsOverloads`
-    - `editor.breadcrumbsInterfaces`
-    - `editor.breadcrumbsMetrics`
-    - `keys.breadcrumbs`
-    - `keys.sectionAppend`
+  - <a id="setting-editor.breadcrumbs"></a>`editor.breadcrumbs`
+    - <a id="setting-editor.breadcrumbsShowUnit"></a>`editor.breadcrumbsShowUnit`
+    - <a id="setting-editor.breadcrumbsVisibility"></a>`editor.breadcrumbsVisibility`
+    - <a id="setting-editor.breadcrumbsMemberBlocks"></a>`editor.breadcrumbsMemberBlocks`
+    - <a id="setting-editor.breadcrumbsVisibilityMark"></a>`editor.breadcrumbsVisibilityMark`
+    - <a id="setting-editor.breadcrumbsDeclarationBlocks"></a>`editor.breadcrumbsDeclarationBlocks`
+    - <a id="setting-editor.breadcrumbsConditionals"></a>`editor.breadcrumbsConditionals`
+    - <a id="setting-editor.breadcrumbsRegions"></a>`editor.breadcrumbsRegions`
+    - <a id="setting-editor.breadcrumbsStatements"></a>`editor.breadcrumbsStatements`
+    - <a id="setting-editor.breadcrumbsSectionCounts"></a>`editor.breadcrumbsSectionCounts`
+    - <a id="setting-editor.breadcrumbsSectionAppend"></a>`editor.breadcrumbsSectionAppend`
+    - <a id="setting-editor.breadcrumbsSectionCreate"></a>`editor.breadcrumbsSectionCreate`
+    - <a id="setting-editor.breadcrumbsContextMenu"></a>`editor.breadcrumbsContextMenu`
+    - <a id="setting-editor.breadcrumbsOverloads"></a>`editor.breadcrumbsOverloads`
+    - <a id="setting-editor.breadcrumbsInterfaces"></a>`editor.breadcrumbsInterfaces`
+    - <a id="setting-editor.breadcrumbsMetrics"></a>`editor.breadcrumbsMetrics`
+    - <a id="setting-keys.breadcrumbs"></a>`keys.breadcrumbs`
+    - <a id="setting-keys.sectionAppend"></a>`keys.sectionAppend`
 
 - **Editor toolbar** (`editor.toolbar`)
-  - `editor.toolbar`
-    - `editor.toolbar.position`
-    - `editor.toolbar.items`
-    - `editor.toolbar.returnButton`
-    - `editor.toolbar.labels`
+  - <a id="setting-editor.toolbar"></a>`editor.toolbar`
+    - <a id="setting-editor.toolbar.position"></a>`editor.toolbar.position`
+    - <a id="setting-editor.toolbar.items"></a>`editor.toolbar.items`
+    - <a id="setting-editor.toolbar.returnButton"></a>`editor.toolbar.returnButton`
+    - <a id="setting-editor.toolbar.labels"></a>`editor.toolbar.labels`
 
 - **Atlas status bar** (`editor.statusBar`)
-  - `editor.statusBar`
-    - `editor.statusBar.items`
+  - <a id="setting-editor.statusBar"></a>`editor.statusBar`
+    - <a id="setting-editor.statusBar.items"></a>`editor.statusBar.items`
 
 - **Designer bar** (`editor.designerBar`)
-  - `editor.designerBar` – depends on `designer.enabled`
-    - `editor.designerBar.searchKey`
-    - `editor.designerBar.searchStyle`
-    - `editor.designerBar.tabOrderClick` (experimental)
-    - `editor.designerBar.align` (experimental)
-    - `designer.selectSimilar`
-      - `designer.selectSimilar.includeDescendants`
-      - `designer.selectSimilar.scope`
-    - `designer.selectionSets`
-      - `designer.selectionSets.shortcuts`
-      - `designer.selectionSets.storage`
-      - `designer.selectionSets.saveKey`
+  - <a id="setting-editor.designerBar"></a>`editor.designerBar` – depends on `designer.enabled`
+    - <a id="setting-editor.designerBar.searchKey"></a>`editor.designerBar.searchKey`
+    - <a id="setting-editor.designerBar.searchStyle"></a>`editor.designerBar.searchStyle`
+    - <a id="setting-editor.designerBar.tabOrderClick"></a>`editor.designerBar.tabOrderClick` (experimental)
+    - <a id="setting-editor.designerBar.align"></a>`editor.designerBar.align` (experimental)
+    - <a id="setting-designer.selectSimilar"></a>`designer.selectSimilar`
+      - <a id="setting-designer.selectSimilar.includeDescendants"></a>`designer.selectSimilar.includeDescendants`
+      - <a id="setting-designer.selectSimilar.scope"></a>`designer.selectSimilar.scope`
+    - <a id="setting-designer.selectionSets"></a>`designer.selectionSets`
+      - <a id="setting-designer.selectionSets.shortcuts"></a>`designer.selectionSets.shortcuts`
+      - <a id="setting-designer.selectionSets.storage"></a>`designer.selectionSets.storage`
+      - <a id="setting-designer.selectionSets.saveKey"></a>`designer.selectionSets.saveKey`
 
 - **Sticky scroll** (`editor.stickyScroll`)
-  - `editor.stickyScroll` – depends on `completion.enabled`
-    - `editor.stickyScrollMaxLines`
-    - `editor.stickyScrollTypes`
-    - `editor.stickyScrollRoutines`
-    - `editor.stickyScrollBlocks`
-    - `editor.stickyScrollLoops`
-    - `editor.stickyScrollTry`
-    - `editor.stickyScrollCase`
-    - `editor.stickyScrollWith`
-    - `editor.stickyScrollBlockMinLines`
+  - <a id="setting-editor.stickyScroll"></a>`editor.stickyScroll` – depends on `completion.enabled`
+    - <a id="setting-editor.stickyScrollMaxLines"></a>`editor.stickyScrollMaxLines`
+    - <a id="setting-editor.stickyScrollTypes"></a>`editor.stickyScrollTypes`
+    - <a id="setting-editor.stickyScrollRoutines"></a>`editor.stickyScrollRoutines`
+    - <a id="setting-editor.stickyScrollBlocks"></a>`editor.stickyScrollBlocks`
+    - <a id="setting-editor.stickyScrollLoops"></a>`editor.stickyScrollLoops`
+    - <a id="setting-editor.stickyScrollTry"></a>`editor.stickyScrollTry`
+    - <a id="setting-editor.stickyScrollCase"></a>`editor.stickyScrollCase`
+    - <a id="setting-editor.stickyScrollWith"></a>`editor.stickyScrollWith`
+    - <a id="setting-editor.stickyScrollBlockMinLines"></a>`editor.stickyScrollBlockMinLines`
 
 - **Minimap** (`editor.minimap`)
-  - `editor.minimap` (experimental)
-    - `editor.minimap.render`
-    - `editor.minimap.width`
-    - `editor.minimap.scale`
-    - `editor.minimap.maxColumn`
-    - `editor.minimap.side`
-    - `editor.minimap.showSlider`
-    - `editor.minimap.sectionHeaders`
-    - `editor.minimap.highlightMethod`
-    - `editor.minimap.markers`
-    - `editor.minimap.clickJumps`
+  - <a id="setting-editor.minimap"></a>`editor.minimap` (experimental)
+    - <a id="setting-editor.minimap.render"></a>`editor.minimap.render`
+    - <a id="setting-editor.minimap.width"></a>`editor.minimap.width`
+    - <a id="setting-editor.minimap.scale"></a>`editor.minimap.scale`
+    - <a id="setting-editor.minimap.maxColumn"></a>`editor.minimap.maxColumn`
+    - <a id="setting-editor.minimap.side"></a>`editor.minimap.side`
+    - <a id="setting-editor.minimap.showSlider"></a>`editor.minimap.showSlider`
+    - <a id="setting-editor.minimap.sectionHeaders"></a>`editor.minimap.sectionHeaders`
+    - <a id="setting-editor.minimap.highlightMethod"></a>`editor.minimap.highlightMethod`
+    - <a id="setting-editor.minimap.markers"></a>`editor.minimap.markers`
+    - <a id="setting-editor.minimap.clickJumps"></a>`editor.minimap.clickJumps`
 
 - **Change markers** (`editor.gitGutter`)
-  - `editor.gitGutter`
-    - `keys.nextChange`
-    - `keys.previousChange`
-  - `editor.gitBlame`
+  - <a id="setting-editor.gitGutter"></a>`editor.gitGutter`
+    - <a id="setting-keys.nextChange"></a>`keys.nextChange`
+    - <a id="setting-keys.previousChange"></a>`keys.previousChange`
+  - <a id="setting-editor.gitBlame"></a>`editor.gitBlame`
 
 - **Atlas column** (`editor.gutterColumn`)
-  - `editor.gutterColumn`
-    - `editor.gutterColumn.problems`
-    - `editor.gutterColumn.codeActions`
-    - `editor.gutterColumn.overrides`
+  - <a id="setting-editor.gutterColumn"></a>`editor.gutterColumn`
+    - <a id="setting-editor.gutterColumn.problems"></a>`editor.gutterColumn.problems`
+    - <a id="setting-editor.gutterColumn.codeActions"></a>`editor.gutterColumn.codeActions`
+    - <a id="setting-editor.gutterColumn.overrides"></a>`editor.gutterColumn.overrides`
 
 - **Selection matches** (`editor.selectionMatches`)
-  - `highlight.selectionMatches`
-    - `highlight.selectionMatches.minLength`
-    - `highlight.selectionMatches.caseSensitive`
-    - `highlight.selectionMatches.wholeWord`
-    - `highlight.selectionMatches.navigateF3`
-    - `highlight.selectionMatches.maxMatches`
+  - <a id="setting-highlight.selectionMatches"></a>`highlight.selectionMatches`
+    - <a id="setting-highlight.selectionMatches.minLength"></a>`highlight.selectionMatches.minLength`
+    - <a id="setting-highlight.selectionMatches.caseSensitive"></a>`highlight.selectionMatches.caseSensitive`
+    - <a id="setting-highlight.selectionMatches.wholeWord"></a>`highlight.selectionMatches.wholeWord`
+    - <a id="setting-highlight.selectionMatches.navigateF3"></a>`highlight.selectionMatches.navigateF3`
+    - <a id="setting-highlight.selectionMatches.maxMatches"></a>`highlight.selectionMatches.maxMatches`
 
 - **Exit points** (`editor.exitPoints`)
-  - `editor.exitPoints`
-    - `editor.exitPoints.exceptions`
-    - `editor.exitPoints.loops`
-    - `editor.exitPoints.badge`
+  - <a id="setting-editor.exitPoints"></a>`editor.exitPoints`
+    - <a id="setting-editor.exitPoints.exceptions"></a>`editor.exitPoints.exceptions`
+    - <a id="setting-editor.exitPoints.loops"></a>`editor.exitPoints.loops`
+    - <a id="setting-editor.exitPoints.badge"></a>`editor.exitPoints.badge`
 
 - **Reassigned variables** (`highlight.reassigned`)
-  - `highlight.reassigned`
-    - `highlight.reassigned.targets`
-    - `highlight.reassigned.style`
-    - `highlight.reassigned.color`
+  - <a id="setting-highlight.reassigned"></a>`highlight.reassigned`
+    - <a id="setting-highlight.reassigned.targets"></a>`highlight.reassigned.targets`
+    - <a id="setting-highlight.reassigned.style"></a>`highlight.reassigned.style`
+    - <a id="setting-highlight.reassigned.color"></a>`highlight.reassigned.color`
 
 - **Expression type** (`hints.expressionType`)
-  - `hints.expressionType`
-    - `hints.expressionType.conversions`
-    - `hints.expressionType.constValue`
-    - `keys.expressionType`
+  - <a id="setting-hints.expressionType"></a>`hints.expressionType`
+    - <a id="setting-hints.expressionType.conversions"></a>`hints.expressionType.conversions`
+    - <a id="setting-hints.expressionType.constValue"></a>`hints.expressionType.constValue`
+    - <a id="setting-keys.expressionType"></a>`keys.expressionType`
 
 - **Overview ruler** (`editor.overviewRuler`)
-  - `editor.overviewRuler`
-    - `editor.overviewRulerKinds`
+  - <a id="setting-editor.overviewRuler"></a>`editor.overviewRuler`
+    - <a id="setting-editor.overviewRulerKinds"></a>`editor.overviewRulerKinds`
 
 - **Continue comments** (`editor.continueComments`)
-  - `editor.continueComments` – depends on `completion.enabled`
-    - `editor.continueComments.lineComments`
-    - `editor.continueComments.lists`
-    - `editor.continueComments.blockPrefix`
+  - <a id="setting-editor.continueComments"></a>`editor.continueComments` – depends on `completion.enabled`
+    - <a id="setting-editor.continueComments.lineComments"></a>`editor.continueComments.lineComments`
+    - <a id="setting-editor.continueComments.lists"></a>`editor.continueComments.lists`
+    - <a id="setting-editor.continueComments.blockPrefix"></a>`editor.continueComments.blockPrefix`
 
 - **Wrap selection** (`editor.wrapSelection`)
-  - `editor.wrapSelection`
-    - `editor.wrapSelection.chars`
+  - <a id="setting-editor.wrapSelection"></a>`editor.wrapSelection`
+    - <a id="setting-editor.wrapSelection.chars"></a>`editor.wrapSelection.chars`
 
 - **Complete statement** (`editor.completeStatement`)
-  - `editor.completeStatement`
-    - `keys.completeStatement`
-    - `editor.completeStatement.beginEnd`
-    - `editor.completeStatement.tryKind`
-    - `editor.completeStatement.methodBody`
+  - <a id="setting-editor.completeStatement"></a>`editor.completeStatement`
+    - <a id="setting-keys.completeStatement"></a>`keys.completeStatement`
+    - <a id="setting-editor.completeStatement.beginEnd"></a>`editor.completeStatement.beginEnd`
+    - <a id="setting-editor.completeStatement.tryKind"></a>`editor.completeStatement.tryKind`
+    - <a id="setting-editor.completeStatement.methodBody"></a>`editor.completeStatement.methodBody`
 
 - **Format** (`editor.format`)
-  - `editor.format`
-    - `keys.format`
+  - <a id="setting-editor.format"></a>`editor.format`
+    - <a id="setting-keys.format"></a>`keys.format`
 
 - **Multiple carets** (`editor.multiCursor`)
-  - `editor.multiCursor` (experimental) – depends on `completion.enabled`
-    - `editor.multiCursorModifier`
-    - `keys.multiCursor.next`
-    - `keys.multiCursor.skip`
-    - `keys.multiCursor.lineEnds`
-    - `keys.multiCursor.above`
-    - `keys.multiCursor.below`
+  - <a id="setting-editor.multiCursor"></a>`editor.multiCursor` (experimental) – depends on `completion.enabled`
+    - <a id="setting-editor.multiCursorModifier"></a>`editor.multiCursorModifier`
+    - <a id="setting-keys.multiCursor.next"></a>`keys.multiCursor.next`
+    - <a id="setting-keys.multiCursor.skip"></a>`keys.multiCursor.skip`
+    - <a id="setting-keys.multiCursor.lineEnds"></a>`keys.multiCursor.lineEnds`
+    - <a id="setting-keys.multiCursor.above"></a>`keys.multiCursor.above`
+    - <a id="setting-keys.multiCursor.below"></a>`keys.multiCursor.below`
 
 - **Notes and bookmarks** (`editor.notes`)
-  - `notes.enabled` – depends on `bookmarks.enabled`
-  - `bookmarks.named` – depends on `bookmarks.enabled`
-    - `bookmarks.shared`
+  - <a id="setting-notes.enabled"></a>`notes.enabled` – depends on `bookmarks.enabled`
+  - <a id="setting-bookmarks.named"></a>`bookmarks.named` – depends on `bookmarks.enabled`
+    - <a id="setting-bookmarks.shared"></a>`bookmarks.shared`
 
 - **Quick bookmarks** (`editor.quickBookmarks`)
-  - `bookmarks.quick` – depends on `bookmarks.enabled`
-    - `bookmarks.quick.gutter`
-      - `bookmarks.quick.gutterClick`
-    - `bookmarks.quick.numberedKeys`
-    - `bookmarks.quick.key`
-    - `bookmarks.quick.chordWait`
-    - `bookmarks.quick.scope`
-    - `bookmarks.quick.importIde`
+  - <a id="setting-bookmarks.quick"></a>`bookmarks.quick` – depends on `bookmarks.enabled`
+    - <a id="setting-bookmarks.quick.gutter"></a>`bookmarks.quick.gutter`
+      - <a id="setting-bookmarks.quick.gutterClick"></a>`bookmarks.quick.gutterClick`
+    - <a id="setting-bookmarks.quick.numberedKeys"></a>`bookmarks.quick.numberedKeys`
+    - <a id="setting-bookmarks.quick.key"></a>`bookmarks.quick.key`
+    - <a id="setting-bookmarks.quick.chordWait"></a>`bookmarks.quick.chordWait`
+    - <a id="setting-bookmarks.quick.scope"></a>`bookmarks.quick.scope`
+    - <a id="setting-bookmarks.quick.importIde"></a>`bookmarks.quick.importIde`
 
 - **Code lens and metrics** (`editor.codeLens`)
-  - `codeLens.metrics` – depends on `analysis.enabled`
-  - `metrics` – depends on `completion.enabled`
-  - `codeLens.tests` – depends on `tests.run`
-  - `todos.list`
-  - `baseline.update` – depends on `ruleChecks.enabled`
-  - `metrics.report`
-  - `dfmRules.apply` – depends on `ruleChecks.enabled`
-  - `codeLens.testUnit` – depends on `completion.enabled`
+  - <a id="setting-codeLens.metrics"></a>`codeLens.metrics` – depends on `analysis.enabled`
+  - <a id="setting-metrics"></a>`metrics` – depends on `completion.enabled`
+  - <a id="setting-codeLens.tests"></a>`codeLens.tests` – depends on `tests.run`
+  - <a id="setting-todos.list"></a>`todos.list`
+  - <a id="setting-baseline.update"></a>`baseline.update` – depends on `ruleChecks.enabled`
+  - <a id="setting-metrics.report"></a>`metrics.report`
+  - <a id="setting-dfmRules.apply"></a>`dfmRules.apply` – depends on `ruleChecks.enabled`
+  - <a id="setting-codeLens.testUnit"></a>`codeLens.testUnit` – depends on `completion.enabled`
 
 ### Compiler
 
 - **Main node**
-  - `buildTools.enabled`
-    - `build.compilerSwitches`
-      - `build.showSwitchesInStatusBar`
-  - `buildPipeline.enabled`
-    - `build.zeroHints`
-    - `build.summary`
-    - `build.warningsAsErrors`
-    - `build.gate`
-    - `build.gateTimeoutMs`
-  - `tests.enabled`
-  - `build.showInterfaceCost`
+  - <a id="setting-buildTools.enabled"></a>`buildTools.enabled`
+    - <a id="setting-build.compilerSwitches"></a>`build.compilerSwitches`
+      - <a id="setting-build.showSwitchesInStatusBar"></a>`build.showSwitchesInStatusBar`
+  - <a id="setting-buildPipeline.enabled"></a>`buildPipeline.enabled`
+    - <a id="setting-build.zeroHints"></a>`build.zeroHints`
+    - <a id="setting-build.summary"></a>`build.summary`
+    - <a id="setting-build.warningsAsErrors"></a>`build.warningsAsErrors`
+    - <a id="setting-build.gate"></a>`build.gate`
+    - <a id="setting-build.gateTimeoutMs"></a>`build.gateTimeoutMs`
+  - <a id="setting-tests.enabled"></a>`tests.enabled`
+  - <a id="setting-build.showInterfaceCost"></a>`build.showInterfaceCost`
 
 - **Problems** (`compiler.problems`)
-  - `problems.enabled` – depends on `completion.enabled`
-    - `problems.statusCounter`
+  - <a id="setting-problems.enabled"></a>`problems.enabled` – depends on `completion.enabled`
+    - <a id="setting-problems.statusCounter"></a>`problems.statusCounter`
 
 - **After saving** (`compiler.afterSave`)
-  - `build.checkOnSave`
-    - `build.checkOnSaveDelayMs`
-    - `build.checkOnSaveMaxMs`
-  - `compiler.onSave`
+  - <a id="setting-build.checkOnSave"></a>`build.checkOnSave`
+    - <a id="setting-build.checkOnSaveDelayMs"></a>`build.checkOnSaveDelayMs`
+    - <a id="setting-build.checkOnSaveMaxMs"></a>`build.checkOnSaveMaxMs`
+  - <a id="setting-compiler.onSave"></a>`compiler.onSave`
 
 - **Tests** (`compiler.tests`)
-  - `tests.run` – depends on `tests.enabled`
-    - `tests.afterBuild`
-    - `tests.affected`
-      - `tests.affectedDepth`
-      - `tests.affectedBeforeCommit`
-    - `tests.buildFirst`
+  - <a id="setting-tests.run"></a>`tests.run` – depends on `tests.enabled`
+    - <a id="setting-tests.afterBuild"></a>`tests.afterBuild`
+    - <a id="setting-tests.affected"></a>`tests.affected`
+      - <a id="setting-tests.affectedDepth"></a>`tests.affectedDepth`
+      - <a id="setting-tests.affectedBeforeCommit"></a>`tests.affectedBeforeCommit`
+    - <a id="setting-tests.buildFirst"></a>`tests.buildFirst`
 
 - **Start profiles** (`compiler.startProfiles`)
-  - `startProfiles.enabled` – depends on `buildTools.enabled`
-    - `startProfiles.statusField`
+  - <a id="setting-startProfiles.enabled"></a>`startProfiles.enabled` – depends on `buildTools.enabled`
+    - <a id="setting-startProfiles.statusField"></a>`startProfiles.statusField`
 
 - **Build on open** (`compiler.openBuild`)
-  - `build.onOpen` – depends on `buildTools.enabled`
-    - `build.onOpenKind`
-    - `build.onOpenScope`
-    - `build.onOpenDelayMs`
-    - `build.onOpenExclude`
-    - `build.onOpenConfig`
-    - `build.onOpenPlatform`
+  - <a id="setting-build.onOpen"></a>`build.onOpen` – depends on `buildTools.enabled`
+    - <a id="setting-build.onOpenKind"></a>`build.onOpenKind`
+    - <a id="setting-build.onOpenScope"></a>`build.onOpenScope`
+    - <a id="setting-build.onOpenDelayMs"></a>`build.onOpenDelayMs`
+    - <a id="setting-build.onOpenExclude"></a>`build.onOpenExclude`
+    - <a id="setting-build.onOpenConfig"></a>`build.onOpenConfig`
+    - <a id="setting-build.onOpenPlatform"></a>`build.onOpenPlatform`
 
 - **Project tasks** (`compiler.tasks`)
-  - `taskRunner.enabled` – depends on `buildTools.enabled`
-    - `taskRunner.problemsFromOutput`
-    - `taskRunner.beforeBuild`
-    - `taskRunner.saveBeforeRun`
-    - `taskRunner.runChecksParallel`
-    - `taskRunner.onlyFindings`
+  - <a id="setting-taskRunner.enabled"></a>`taskRunner.enabled` – depends on `buildTools.enabled`
+    - <a id="setting-taskRunner.problemsFromOutput"></a>`taskRunner.problemsFromOutput`
+    - <a id="setting-taskRunner.beforeBuild"></a>`taskRunner.beforeBuild`
+    - <a id="setting-taskRunner.saveBeforeRun"></a>`taskRunner.saveBeforeRun`
+    - <a id="setting-taskRunner.runChecksParallel"></a>`taskRunner.runChecksParallel`
+    - <a id="setting-taskRunner.onlyFindings"></a>`taskRunner.onlyFindings`
 
 ### Commands
 
 - **Main node**
-  - `bookmarks.key` – depends on `bookmarks.named`
-  - `keys.nextBookmark` – depends on `bookmarks.quick`
-  - `keys.previousBookmark` – depends on `bookmarks.quick`
-  - `keys.hideElement`
-  - `keys.nextProblem`
-  - `keys.previousProblem`
-  - `keys.searchReplace`
-  - `keys.search`
-  - `keys.searchNext`
-  - `keys.searchPrevious`
-  - `keys.searchInMethod`
-  - `keys.createIssue`
-  - `keys.problemsWindow`
-  - `keys.checkFile`
-  - `keys.gotoInterface`
-  - `keys.gotoImplementation`
-  - `keys.codeActions`
-  - `keys.expandSelection`
-  - `keys.shrinkSelection`
-  - `keys.implementations`
-  - `keys.typeDefinition`
-  - `keys.testUnit`
-  - `keys.editorPriority`
-  - `slashCommands.enabled` – depends on `completion.enabled`
-  - `palette.settingsPrefix`
-  - `keys.undoChange`
-  - `keys.redoChange`
-  - `notifications.key` – depends on `notifications.enabled`
+  - <a id="setting-bookmarks.key"></a>`bookmarks.key` – depends on `bookmarks.named`
+  - <a id="setting-keys.nextBookmark"></a>`keys.nextBookmark` – depends on `bookmarks.quick`
+  - <a id="setting-keys.previousBookmark"></a>`keys.previousBookmark` – depends on `bookmarks.quick`
+  - <a id="setting-keys.hideElement"></a>`keys.hideElement`
+  - <a id="setting-keys.nextProblem"></a>`keys.nextProblem`
+  - <a id="setting-keys.previousProblem"></a>`keys.previousProblem`
+  - <a id="setting-keys.searchReplace"></a>`keys.searchReplace`
+  - <a id="setting-keys.search"></a>`keys.search`
+  - <a id="setting-keys.searchNext"></a>`keys.searchNext`
+  - <a id="setting-keys.searchPrevious"></a>`keys.searchPrevious`
+  - <a id="setting-keys.searchInMethod"></a>`keys.searchInMethod`
+  - <a id="setting-keys.createIssue"></a>`keys.createIssue`
+  - <a id="setting-keys.problemsWindow"></a>`keys.problemsWindow`
+  - <a id="setting-keys.checkFile"></a>`keys.checkFile`
+  - <a id="setting-keys.gotoInterface"></a>`keys.gotoInterface`
+  - <a id="setting-keys.gotoImplementation"></a>`keys.gotoImplementation`
+  - <a id="setting-keys.codeActions"></a>`keys.codeActions`
+  - <a id="setting-keys.expandSelection"></a>`keys.expandSelection`
+  - <a id="setting-keys.shrinkSelection"></a>`keys.shrinkSelection`
+  - <a id="setting-keys.implementations"></a>`keys.implementations`
+  - <a id="setting-keys.typeDefinition"></a>`keys.typeDefinition`
+  - <a id="setting-keys.testUnit"></a>`keys.testUnit`
+  - <a id="setting-keys.editorPriority"></a>`keys.editorPriority`
+  - <a id="setting-slashCommands.enabled"></a>`slashCommands.enabled` – depends on `completion.enabled`
+  - <a id="setting-palette.settingsPrefix"></a>`palette.settingsPrefix`
+  - <a id="setting-keys.undoChange"></a>`keys.undoChange`
+  - <a id="setting-keys.redoChange"></a>`keys.redoChange`
+  - <a id="setting-notifications.key"></a>`notifications.key` – depends on `notifications.enabled`
 
 - **Declaration ⇄ implementation** (`commands.methodToggle`)
-  - `codeActions.methodToggle`
-    - `keys.methodToggleUp`
-    - `keys.methodToggleDown`
+  - <a id="setting-codeActions.methodToggle"></a>`codeActions.methodToggle`
+    - <a id="setting-keys.methodToggleUp"></a>`keys.methodToggleUp`
+    - <a id="setting-keys.methodToggleDown"></a>`keys.methodToggleDown`
 
 - **Jump to match** (`commands.jumpToMatch`)
-  - `keys.jumpToMatch`
-    - `keys.jumpToMatchShortcut`
-    - `keys.jumpToMatchSelect`
+  - <a id="setting-keys.jumpToMatch"></a>`keys.jumpToMatch`
+    - <a id="setting-keys.jumpToMatchShortcut"></a>`keys.jumpToMatchShortcut`
+    - <a id="setting-keys.jumpToMatchSelect"></a>`keys.jumpToMatchSelect`
 
 - **Toggle block comment** (`commands.toggleBlockComment`)
-  - `keys.toggleBlockComment`
-    - `keys.toggleBlockComment.key`
-    - `keys.toggleBlockComment.style`
-    - `keys.toggleBlockComment.fallback`
-    - `keys.toggleBlockComment.ownLines`
-    - `keys.toggleBlockComment.withoutSelection`
+  - <a id="setting-keys.toggleBlockComment"></a>`keys.toggleBlockComment`
+    - <a id="setting-keys.toggleBlockComment.key"></a>`keys.toggleBlockComment.key`
+    - <a id="setting-keys.toggleBlockComment.style"></a>`keys.toggleBlockComment.style`
+    - <a id="setting-keys.toggleBlockComment.fallback"></a>`keys.toggleBlockComment.fallback`
+    - <a id="setting-keys.toggleBlockComment.ownLines"></a>`keys.toggleBlockComment.ownLines`
+    - <a id="setting-keys.toggleBlockComment.withoutSelection"></a>`keys.toggleBlockComment.withoutSelection`
 
 - **New line above/below** (`commands.newLineAround`)
-  - `keys.newLineAround`
-    - `keys.newLineAround.belowKey`
-    - `keys.newLineAround.aboveKey`
-    - `keys.newLineAround.statementAware`
+  - <a id="setting-keys.newLineAround"></a>`keys.newLineAround`
+    - <a id="setting-keys.newLineAround.belowKey"></a>`keys.newLineAround.belowKey`
+    - <a id="setting-keys.newLineAround.aboveKey"></a>`keys.newLineAround.aboveKey`
+    - <a id="setting-keys.newLineAround.statementAware"></a>`keys.newLineAround.statementAware`
 
 - **Remove surrounding construct** (`commands.unwrap`)
-  - `keys.unwrap`
-    - `keys.unwrap.key`
+  - <a id="setting-keys.unwrap"></a>`keys.unwrap`
+    - <a id="setting-keys.unwrap.key"></a>`keys.unwrap.key`
 
 - **Safe delete** (`commands.safeDelete`)
-  - `keys.safeDelete`
-    - `keys.safeDelete.key`
+  - <a id="setting-keys.safeDelete"></a>`keys.safeDelete`
+    - <a id="setting-keys.safeDelete.key"></a>`keys.safeDelete.key`
 
 - **Move lines** (`commands.moveLines`)
-  - `keys.moveLines`
-    - `keys.moveLinesUp`
-    - `keys.moveLinesDown`
-    - `keys.duplicateLinesUp`
-    - `keys.duplicateLinesDown`
+  - <a id="setting-keys.moveLines"></a>`keys.moveLines`
+    - <a id="setting-keys.moveLinesUp"></a>`keys.moveLinesUp`
+    - <a id="setting-keys.moveLinesDown"></a>`keys.moveLinesDown`
+    - <a id="setting-keys.duplicateLinesUp"></a>`keys.duplicateLinesUp`
+    - <a id="setting-keys.duplicateLinesDown"></a>`keys.duplicateLinesDown`
 
 - **Navigation history** (`commands.navHistory`)
-  - `navHistory.enabled`
-    - `keys.navBack`
-    - `keys.navForward`
-    - `keys.lastEdit`
+  - <a id="setting-navHistory.enabled"></a>`navHistory.enabled`
+    - <a id="setting-keys.navBack"></a>`keys.navBack`
+    - <a id="setting-keys.navForward"></a>`keys.navForward`
+    - <a id="setting-keys.lastEdit"></a>`keys.lastEdit`
 
 - **Peek** (`commands.peek`)
-  - `peek.enabled`
-    - `peek.heightLines`
-    - `peek.showImplementation`
-    - `keys.peekDefinition`
-    - `keys.peekReferences`
+  - <a id="setting-peek.enabled"></a>`peek.enabled`
+    - <a id="setting-peek.heightLines"></a>`peek.heightLines`
+    - <a id="setting-peek.showImplementation"></a>`peek.showImplementation`
+    - <a id="setting-keys.peekDefinition"></a>`keys.peekDefinition`
+    - <a id="setting-keys.peekReferences"></a>`keys.peekReferences`
 
 - **Usages** (`commands.references`)
-  - `references.inferred`
-    - `references.textMatches`
+  - <a id="setting-references.inferred"></a>`references.inferred`
+    - <a id="setting-references.textMatches"></a>`references.textMatches`
 
 - **Impact** (`commands.impact`)
-  - `navigation.impact`
-    - `navigation.impactDepth`
+  - <a id="setting-navigation.impact"></a>`navigation.impact`
+    - <a id="setting-navigation.impactDepth"></a>`navigation.impactDepth`
 
 - **Data flow** (`commands.dataFlow`)
-  - `navigation.dataFlow`
-    - `navigation.dataFlow.maxDepth`
-    - `navigation.dataFlow.excludeTests`
+  - <a id="setting-navigation.dataFlow"></a>`navigation.dataFlow`
+    - <a id="setting-navigation.dataFlow.maxDepth"></a>`navigation.dataFlow.maxDepth`
+    - <a id="setting-navigation.dataFlow.excludeTests"></a>`navigation.dataFlow.excludeTests`
 
 - **Outline** (`commands.outline`)
-  - `outline.enabled`
-    - `outline.alphabetical`
-    - `outline.followCursor`
-    - `outline.conditions`
+  - <a id="setting-outline.enabled"></a>`outline.enabled`
+    - <a id="setting-outline.alphabetical"></a>`outline.alphabetical`
+    - <a id="setting-outline.followCursor"></a>`outline.followCursor`
+    - <a id="setting-outline.conditions"></a>`outline.conditions`
 
 - **Symbol path** (`commands.symbolPath`)
-  - `navigation.symbolPath` – depends on `analysis.enabled`
+  - <a id="setting-navigation.symbolPath"></a>`navigation.symbolPath` – depends on `analysis.enabled`
 
 - **Generate menu** (`commands.generateMenu`)
-  - `keys.generateMenu`
-    - `keys.generateMenu.key`
-    - `keys.generateMenu.groups`
-    - `keys.generateMenu.hidden`
-    - `keys.generateMenu.recentFirst`
-    - `keys.generateMenu.showCommandNames`
+  - <a id="setting-keys.generateMenu"></a>`keys.generateMenu`
+    - <a id="setting-keys.generateMenu.key"></a>`keys.generateMenu.key`
+    - <a id="setting-keys.generateMenu.groups"></a>`keys.generateMenu.groups`
+    - <a id="setting-keys.generateMenu.hidden"></a>`keys.generateMenu.hidden`
+    - <a id="setting-keys.generateMenu.recentFirst"></a>`keys.generateMenu.recentFirst`
+    - <a id="setting-keys.generateMenu.showCommandNames"></a>`keys.generateMenu.showCommandNames`
 
 ### Hints
 
 - **Main node**
-  - `editor.hoverTooltip` – depends on `completion.enabled`
-    - `hover.problemActions`
-    - `hover.membersMaxLines`
-    - `hover.signatureParams`
+  - <a id="setting-editor.hoverTooltip"></a>`editor.hoverTooltip` – depends on `completion.enabled`
+    - <a id="setting-hover.problemActions"></a>`hover.problemActions`
+    - <a id="setting-hover.membersMaxLines"></a>`hover.membersMaxLines`
+    - <a id="setting-hover.signatureParams"></a>`hover.signatureParams`
 
 ### Completion
 
 - **Main node**
-  - `completion.filterChips` – depends on `completion.enabled`
-  - `completion.preview` – depends on `completion.enabled`
-  - `completion.groupInherited` – depends on `completion.enabled`
-  - `completion.variantBranch` – depends on `completion.enabled`
-  - `completion.listMode` – depends on `completion.enabled`
-  - `completion.listMode.scope` – depends on `completion.enabled`
-  - `completion.learning` – depends on `completion.enabled`
-  - `completion.favorites` – depends on `completion.enabled`
-  - `completion.visibleRows` – depends on `completion.enabled`
-  - `completion.panelCollapsed` – depends on `completion.enabled`
-  - `completion.selectionMarker` – depends on `completion.enabled`
-  - `completion.openDelayMs` – depends on `completion.enabled`
+  - <a id="setting-completion.filterChips"></a>`completion.filterChips` – depends on `completion.enabled`
+  - <a id="setting-completion.preview"></a>`completion.preview` – depends on `completion.enabled`
+  - <a id="setting-completion.groupInherited"></a>`completion.groupInherited` – depends on `completion.enabled`
+  - <a id="setting-completion.variantBranch"></a>`completion.variantBranch` – depends on `completion.enabled`
+  - <a id="setting-completion.listMode"></a>`completion.listMode` – depends on `completion.enabled`
+  - <a id="setting-completion.listMode.scope"></a>`completion.listMode.scope` – depends on `completion.enabled`
+  - <a id="setting-completion.learning"></a>`completion.learning` – depends on `completion.enabled`
+  - <a id="setting-completion.favorites"></a>`completion.favorites` – depends on `completion.enabled`
+  - <a id="setting-completion.visibleRows"></a>`completion.visibleRows` – depends on `completion.enabled`
+  - <a id="setting-completion.panelCollapsed"></a>`completion.panelCollapsed` – depends on `completion.enabled`
+  - <a id="setting-completion.selectionMarker"></a>`completion.selectionMarker` – depends on `completion.enabled`
+  - <a id="setting-completion.openDelayMs"></a>`completion.openDelayMs` – depends on `completion.enabled`
 
 ### KI-Assistenten
 
 - **Main node**
-  - `assistants.enabled`
-    - `assistants.edit`
-    - `compiler.mcpBuild`
+  - <a id="setting-assistants.enabled"></a>`assistants.enabled`
+    - <a id="setting-assistants.edit"></a>`assistants.edit`
+    - <a id="setting-compiler.mcpBuild"></a>`compiler.mcpBuild`
 
 ### Debugging
 
 - **Main node**
-  - `tests.debug` – depends on `tests.enabled`
-    - `debug.testBreakAtStart`
-  - `debug.enabled`
-    - `debug.hoverValues`
-    - `debug.explainUnavailable`
-    - `debug.completionInDialogs`
-    - `debug.evaluateWindow`
-      - `debug.evaluateWindow.replaceCtrlF7`
-    - `debug.explainAccessViolation`
-      - `debug.explainAccessViolation.allowCalls`
-    - `debug.exceptionHistory`
-      - `debug.exceptionBanner`
-        - `debug.exceptionBanner.ignoreAtLocation`
-    - `debug.justMyCode`
-      - `debug.ownCodeFolders`
-    - `debug.inlineValues`
-      - `debug.inlineValuesPerLine`
-    - `debug.visualizers`
-      - `debug.visualizers.types`
-      - `debug.visualizers.nameFields`
-      - `debug.visualizers.maxLength`
-      - `debug.visualizers.timeoutMs`
-      - `debug.visualizers.maxImagePixels`
-      - `debug.visualizers.evaluation`
-    - `debug.displayRules`
-      - `debug.displayRules.allowCalls`
-    - `debug.stepIntoTarget`
-      - `debug.stepIntoTarget.key`
-    - `debug.stepFilters`
-      - `debug.stepFilters.kinds`
-      - `debug.stepFilters.patterns`
-    - `debug.breakOnNextEvent`
-      - `debug.breakOnNextEvent.excluded`
+  - <a id="setting-tests.debug"></a>`tests.debug` – depends on `tests.enabled`
+    - <a id="setting-debug.testBreakAtStart"></a>`debug.testBreakAtStart`
+  - <a id="setting-debug.enabled"></a>`debug.enabled`
+    - <a id="setting-debug.hoverValues"></a>`debug.hoverValues`
+    - <a id="setting-debug.explainUnavailable"></a>`debug.explainUnavailable`
+    - <a id="setting-debug.completionInDialogs"></a>`debug.completionInDialogs`
+    - <a id="setting-debug.evaluateWindow"></a>`debug.evaluateWindow`
+      - <a id="setting-debug.evaluateWindow.replaceCtrlF7"></a>`debug.evaluateWindow.replaceCtrlF7`
+    - <a id="setting-debug.explainAccessViolation"></a>`debug.explainAccessViolation`
+      - <a id="setting-debug.explainAccessViolation.allowCalls"></a>`debug.explainAccessViolation.allowCalls`
+    - <a id="setting-debug.exceptionHistory"></a>`debug.exceptionHistory`
+      - <a id="setting-debug.exceptionBanner"></a>`debug.exceptionBanner`
+        - <a id="setting-debug.exceptionBanner.ignoreAtLocation"></a>`debug.exceptionBanner.ignoreAtLocation`
+    - <a id="setting-debug.justMyCode"></a>`debug.justMyCode`
+      - <a id="setting-debug.ownCodeFolders"></a>`debug.ownCodeFolders`
+    - <a id="setting-debug.inlineValues"></a>`debug.inlineValues`
+      - <a id="setting-debug.inlineValuesPerLine"></a>`debug.inlineValuesPerLine`
+    - <a id="setting-debug.visualizers"></a>`debug.visualizers`
+      - <a id="setting-debug.visualizers.types"></a>`debug.visualizers.types`
+      - <a id="setting-debug.visualizers.nameFields"></a>`debug.visualizers.nameFields`
+      - <a id="setting-debug.visualizers.maxLength"></a>`debug.visualizers.maxLength`
+      - <a id="setting-debug.visualizers.timeoutMs"></a>`debug.visualizers.timeoutMs`
+      - <a id="setting-debug.visualizers.maxImagePixels"></a>`debug.visualizers.maxImagePixels`
+      - <a id="setting-debug.visualizers.evaluation"></a>`debug.visualizers.evaluation`
+    - <a id="setting-debug.displayRules"></a>`debug.displayRules`
+      - <a id="setting-debug.displayRules.allowCalls"></a>`debug.displayRules.allowCalls`
+    - <a id="setting-debug.stepIntoTarget"></a>`debug.stepIntoTarget`
+      - <a id="setting-debug.stepIntoTarget.key"></a>`debug.stepIntoTarget.key`
+    - <a id="setting-debug.stepFilters"></a>`debug.stepFilters`
+      - <a id="setting-debug.stepFilters.kinds"></a>`debug.stepFilters.kinds`
+      - <a id="setting-debug.stepFilters.patterns"></a>`debug.stepFilters.patterns`
+    - <a id="setting-debug.breakOnNextEvent"></a>`debug.breakOnNextEvent`
+      - <a id="setting-debug.breakOnNextEvent.excluded"></a>`debug.breakOnNextEvent.excluded`
 
 ### Release build
 
 - **Main node**
-  - `build.releaseGuard` – depends on `buildPipeline.enabled`
-    - `build.releaseConfigs`
-    - `build.releaseChecks`
+  - <a id="setting-build.releaseGuard"></a>`build.releaseGuard` – depends on `buildPipeline.enabled`
+    - <a id="setting-build.releaseConfigs"></a>`build.releaseConfigs`
+    - <a id="setting-build.releaseChecks"></a>`build.releaseChecks`
 
 ### Welcome page
 
 - **Main node**
-  - `welcomePage.enabled`
-    - `welcomePage.ideWelcomePage`
-    - `welcomePage.layout`
-    - `welcomePage.openOnStart`
-    - `welcomePage.openWhenNoProject`
-    - `welcomePage.whatsNew`
-  - `welcomePage.tests.ci` – depends on `issues.enabled`
-    - `welcomePage.tests.ci.login`
-    - `welcomePage.tests.ci.provider`
-    - `welcomePage.tests.ci.intervalMinutes`
-    - `welcomePage.tests.ci.notify`
+  - <a id="setting-welcomePage.enabled"></a>`welcomePage.enabled`
+    - <a id="setting-welcomePage.ideWelcomePage"></a>`welcomePage.ideWelcomePage`
+    - <a id="setting-welcomePage.layout"></a>`welcomePage.layout`
+    - <a id="setting-welcomePage.openOnStart"></a>`welcomePage.openOnStart`
+    - <a id="setting-welcomePage.openWhenNoProject"></a>`welcomePage.openWhenNoProject`
+    - <a id="setting-welcomePage.whatsNew"></a>`welcomePage.whatsNew`
+  - <a id="setting-welcomePage.tests.ci"></a>`welcomePage.tests.ci` – depends on `issues.enabled`
+    - <a id="setting-welcomePage.tests.ci.login"></a>`welcomePage.tests.ci.login`
+    - <a id="setting-welcomePage.tests.ci.provider"></a>`welcomePage.tests.ci.provider`
+    - <a id="setting-welcomePage.tests.ci.intervalMinutes"></a>`welcomePage.tests.ci.intervalMinutes`
+    - <a id="setting-welcomePage.tests.ci.notify"></a>`welcomePage.tests.ci.notify`
 
 - **Header** (`welcome.header`)
-  - `welcomePage.header` – depends on `welcomePage.enabled`
-  - `welcomePage.greeting` – depends on `welcomePage.enabled`
+  - <a id="setting-welcomePage.header"></a>`welcomePage.header` – depends on `welcomePage.enabled`
+  - <a id="setting-welcomePage.greeting"></a>`welcomePage.greeting` – depends on `welcomePage.enabled`
 
 - **Search** (`welcome.search`)
-  - `welcomePage.search` – depends on `welcomePage.enabled`
-    - `welcomePage.search.symbols`
-    - `welcomePage.search.key`
+  - <a id="setting-welcomePage.search"></a>`welcomePage.search` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.search.symbols"></a>`welcomePage.search.symbols`
+    - <a id="setting-welcomePage.search.key"></a>`welcomePage.search.key`
 
 - **Continue** (`welcome.continue`)
-  - `welcomePage.continue` – depends on `welcomePage.enabled`
-    - `welcomePage.continue.count`
-    - `welcomePage.continue.incoming`
-    - `welcomePage.continue.fetch`
-  - `welcomePage.saved` – depends on `welcomePage.enabled`
+  - <a id="setting-welcomePage.continue"></a>`welcomePage.continue` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.continue.count"></a>`welcomePage.continue.count`
+    - <a id="setting-welcomePage.continue.incoming"></a>`welcomePage.continue.incoming`
+    - <a id="setting-welcomePage.continue.fetch"></a>`welcomePage.continue.fetch`
+  - <a id="setting-welcomePage.saved"></a>`welcomePage.saved` – depends on `welcomePage.enabled`
 
 - **Projects** (`welcome.projects`)
-  - `welcomePage.projectStatus` – depends on `welcomePage.enabled`
-    - `welcomePage.maxProjects`
-    - `welcomePage.refreshVcs`
+  - <a id="setting-welcomePage.projectStatus"></a>`welcomePage.projectStatus` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.maxProjects"></a>`welcomePage.maxProjects`
+    - <a id="setting-welcomePage.refreshVcs"></a>`welcomePage.refreshVcs`
 
 - **Project trends** (`welcome.trends`)
-  - `welcomePage.trends` – depends on `welcomePage.enabled`
-    - `welcomePage.trends.points`
-    - `welcomePage.trends.series`
+  - <a id="setting-welcomePage.trends"></a>`welcomePage.trends` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.trends.points"></a>`welcomePage.trends.points`
+    - <a id="setting-welcomePage.trends.series"></a>`welcomePage.trends.series`
 
 - **Test results** (`welcome.tests`)
-  - `welcomePage.tests` – depends on `welcomePage.enabled`
-    - `welcomePage.tests.maxFailures`
+  - <a id="setting-welcomePage.tests"></a>`welcomePage.tests` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.tests.maxFailures"></a>`welcomePage.tests.maxFailures`
 
 - **My issues** (`welcome.issues`)
-  - `welcomePage.issues` – depends on `issues.enabled`
+  - <a id="setting-welcomePage.issues"></a>`welcomePage.issues` – depends on `issues.enabled`
 
 - **Sprint** (`welcome.sprint`)
-  - `welcomePage.sprint` – depends on `issues.enabled`
+  - <a id="setting-welcomePage.sprint"></a>`welcomePage.sprint` – depends on `issues.enabled`
 
 - **Quick actions** (`welcome.quickActions`)
-  - `welcomePage.quickActions` – depends on `welcomePage.enabled`
-    - `welcomePage.quickActions.items`
-    - `welcomePage.quickActions.console`
-    - `welcomePage.quickActions.buildKey`
-    - `welcomePage.quickActions.testKey`
+  - <a id="setting-welcomePage.quickActions"></a>`welcomePage.quickActions` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.quickActions.items"></a>`welcomePage.quickActions.items`
+    - <a id="setting-welcomePage.quickActions.console"></a>`welcomePage.quickActions.console`
+    - <a id="setting-welcomePage.quickActions.buildKey"></a>`welcomePage.quickActions.buildKey`
+    - <a id="setting-welcomePage.quickActions.testKey"></a>`welcomePage.quickActions.testKey`
 
 - **Unsaved** (`welcome.unsaved`)
-  - `welcomePage.unsaved` – depends on `welcomePage.enabled`
-    - `welcomePage.unsaved.minAgeHours`
-    - `welcomePage.unsaved.warnHours`
-    - `welcomePage.unsaved.alertHours`
-    - `welcomePage.unsaved.hideWhenClean`
+  - <a id="setting-welcomePage.unsaved"></a>`welcomePage.unsaved` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.unsaved.minAgeHours"></a>`welcomePage.unsaved.minAgeHours`
+    - <a id="setting-welcomePage.unsaved.warnHours"></a>`welcomePage.unsaved.warnHours`
+    - <a id="setting-welcomePage.unsaved.alertHours"></a>`welcomePage.unsaved.alertHours`
+    - <a id="setting-welcomePage.unsaved.hideWhenClean"></a>`welcomePage.unsaved.hideWhenClean`
 
 - **Status tile** (`welcome.statusTile`)
-  - `welcomePage.statusTile` – depends on `welcomePage.enabled`
-    - `welcomePage.statusTile.onlyProblems`
+  - <a id="setting-welcomePage.statusTile"></a>`welcomePage.statusTile` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.statusTile.onlyProblems"></a>`welcomePage.statusTile.onlyProblems`
 
 - **Discover Atlas** (`welcome.discover`)
-  - `welcomePage.discover` – depends on `welcomePage.enabled`
-    - `tips.usageTracking`
+  - <a id="setting-welcomePage.discover"></a>`welcomePage.discover` – depends on `welcomePage.enabled`
+    - <a id="setting-tips.usageTracking"></a>`tips.usageTracking`
 
 - **Help and feedback** (`welcome.help`)
-  - `welcomePage.help` – depends on `welcomePage.enabled`
-    - `welcomePage.help.reportUrl`
-    - `welcomePage.help.reportFolder`
+  - <a id="setting-welcomePage.help"></a>`welcomePage.help` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.help.reportUrl"></a>`welcomePage.help.reportUrl`
+    - <a id="setting-welcomePage.help.reportFolder"></a>`welcomePage.help.reportFolder`
 
 - **Project setup** (`welcome.projectSetup`)
-  - `welcomePage.projectSetup` – depends on `welcomePage.enabled`
-  - `welcomePage.newFromTemplate` – depends on `welcomePage.enabled`
+  - <a id="setting-welcomePage.projectSetup"></a>`welcomePage.projectSetup` – depends on `welcomePage.enabled`
+  - <a id="setting-welcomePage.newFromTemplate"></a>`welcomePage.newFromTemplate` – depends on `welcomePage.enabled`
 
 - **Custom layout** (`welcome.customLayout`)
-  - `welcomePage.customLayout` – depends on `welcomePage.enabled`
-    - `welcomePage.columns`
-    - `welcomePage.layouts`
-    - `welcomePage.activeLayout`
+  - <a id="setting-welcomePage.customLayout"></a>`welcomePage.customLayout` – depends on `welcomePage.enabled`
+    - <a id="setting-welcomePage.columns"></a>`welcomePage.columns`
+    - <a id="setting-welcomePage.layouts"></a>`welcomePage.layouts`
+    - <a id="setting-welcomePage.activeLayout"></a>`welcomePage.activeLayout`
 
 ### Paste
 
 - **Main node**
-  - `completion.autoParentheses` – depends on `completion.enabled`
-  - `completion.fixCase` – depends on `completion.enabled`
-  - `completion.commitCharacters` – depends on `completion.enabled`
-  - `completion.autoUses` – depends on `completion.enabled`
-  - `completion.parameterHints` – depends on `completion.enabled`
-    - `completion.formatPlaceholders`
-  - `snippets.enabled`
-    - `snippets.importIdeTemplates`
+  - <a id="setting-completion.autoParentheses"></a>`completion.autoParentheses` – depends on `completion.enabled`
+  - <a id="setting-completion.fixCase"></a>`completion.fixCase` – depends on `completion.enabled`
+  - <a id="setting-completion.commitCharacters"></a>`completion.commitCharacters` – depends on `completion.enabled`
+  - <a id="setting-completion.autoUses"></a>`completion.autoUses` – depends on `completion.enabled`
+  - <a id="setting-completion.parameterHints"></a>`completion.parameterHints` – depends on `completion.enabled`
+    - <a id="setting-completion.formatPlaceholders"></a>`completion.formatPlaceholders`
+  - <a id="setting-snippets.enabled"></a>`snippets.enabled`
+    - <a id="setting-snippets.importIdeTemplates"></a>`snippets.importIdeTemplates`
 
 ### Key conflicts
 
 - **Main node**
-  - `keys.palette`
-  - `keys.check`
-  - `keys.palettePriority`
-  - `keys.checkPriority`
-  - `keys.completion`
-  - `keys.signature`
-  - `keys.completionPriority`
-  - `keys.signaturePriority`
-  - `bookmarks.quick.keyPriority`
-  - `bookmarks.quick.setKey`
-  - `bookmarks.quick.setKeyPriority`
-  - `bookmarks.quick.jumpKey`
-  - `bookmarks.quick.jumpKeyPriority`
-  - `keys.quickToggles`
-  - `keys.quickTogglesPriority`
-  - `keys.diagnosticMode`
-  - `keys.diagnosticModePriority`
-  - `keys.overview`
-  - `keys.startupCheck`
+  - <a id="setting-keys.palette"></a>`keys.palette`
+  - <a id="setting-keys.check"></a>`keys.check`
+  - <a id="setting-keys.palettePriority"></a>`keys.palettePriority`
+  - <a id="setting-keys.checkPriority"></a>`keys.checkPriority`
+  - <a id="setting-keys.completion"></a>`keys.completion`
+  - <a id="setting-keys.signature"></a>`keys.signature`
+  - <a id="setting-keys.completionPriority"></a>`keys.completionPriority`
+  - <a id="setting-keys.signaturePriority"></a>`keys.signaturePriority`
+  - <a id="setting-bookmarks.quick.keyPriority"></a>`bookmarks.quick.keyPriority`
+  - <a id="setting-bookmarks.quick.setKey"></a>`bookmarks.quick.setKey`
+  - <a id="setting-bookmarks.quick.setKeyPriority"></a>`bookmarks.quick.setKeyPriority`
+  - <a id="setting-bookmarks.quick.jumpKey"></a>`bookmarks.quick.jumpKey`
+  - <a id="setting-bookmarks.quick.jumpKeyPriority"></a>`bookmarks.quick.jumpKeyPriority`
+  - <a id="setting-keys.quickToggles"></a>`keys.quickToggles`
+  - <a id="setting-keys.quickTogglesPriority"></a>`keys.quickTogglesPriority`
+  - <a id="setting-keys.diagnosticMode"></a>`keys.diagnosticMode`
+  - <a id="setting-keys.diagnosticModePriority"></a>`keys.diagnosticModePriority`
+  - <a id="setting-keys.overview"></a>`keys.overview`
+  - <a id="setting-keys.startupCheck"></a>`keys.startupCheck`
 
 ### Robustness
 
 - **Main node**
-  - `robustness.hangThresholdMs`
-  - `robustness.providerTimeLimitMs`
-  - `robustness.hangHint`
+  - <a id="setting-robustness.hangThresholdMs"></a>`robustness.hangThresholdMs`
+  - <a id="setting-robustness.providerTimeLimitMs"></a>`robustness.providerTimeLimitMs`
+  - <a id="setting-robustness.hangHint"></a>`robustness.hangHint`
 
 ### Search units
 
 - **Main node**
-  - `search.enabled`
-    - `search.replaceIdeSearch`
-    - `search.fromFirstHit`
-    - `search.resultsInMessages`
-    - `search.replace`
-    - `search.regex`
-    - `search.history`
-    - `search.multiFile`
-    - `unitSearch.enabled`
-      - `unitSearch.replaceIdeDialog`
-      - `unitSearch.replaceUseUnitDialog`
-      - `unitSearch.replaceFormsDialog`
-      - `unitSearch.rememberCollapsed`
-      - `unitSearch.filters`
-      - `unitSearch.filterSyntax`
-      - `unitSearch.formCaptions`
-      - `unitSearch.preview`
-        - `unitSearch.preview.form`
-        - `unitSearch.preview.usedBy`
-        - `unitSearch.preview.autoCollapse`
-      - `unitSearch.multiSelect`
-      - `unitSearch.actions`
-        - `unitSearch.actions.addUses`
-      - `unitSearch.pathStyle`
-      - `unitSearch.groupBy`
-      - `unitSearch.defaultScope`
-      - `unitSearch.key`
+  - <a id="setting-search.enabled"></a>`search.enabled`
+    - <a id="setting-search.replaceIdeSearch"></a>`search.replaceIdeSearch`
+    - <a id="setting-search.fromFirstHit"></a>`search.fromFirstHit`
+    - <a id="setting-search.resultsInMessages"></a>`search.resultsInMessages`
+    - <a id="setting-search.replace"></a>`search.replace`
+    - <a id="setting-search.regex"></a>`search.regex`
+    - <a id="setting-search.history"></a>`search.history`
+    - <a id="setting-search.multiFile"></a>`search.multiFile`
+    - <a id="setting-unitSearch.enabled"></a>`unitSearch.enabled`
+      - <a id="setting-unitSearch.replaceIdeDialog"></a>`unitSearch.replaceIdeDialog`
+      - <a id="setting-unitSearch.replaceUseUnitDialog"></a>`unitSearch.replaceUseUnitDialog`
+      - <a id="setting-unitSearch.replaceFormsDialog"></a>`unitSearch.replaceFormsDialog`
+      - <a id="setting-unitSearch.rememberCollapsed"></a>`unitSearch.rememberCollapsed`
+      - <a id="setting-unitSearch.filters"></a>`unitSearch.filters`
+      - <a id="setting-unitSearch.filterSyntax"></a>`unitSearch.filterSyntax`
+      - <a id="setting-unitSearch.formCaptions"></a>`unitSearch.formCaptions`
+      - <a id="setting-unitSearch.preview"></a>`unitSearch.preview`
+        - <a id="setting-unitSearch.preview.form"></a>`unitSearch.preview.form`
+        - <a id="setting-unitSearch.preview.usedBy"></a>`unitSearch.preview.usedBy`
+        - <a id="setting-unitSearch.preview.autoCollapse"></a>`unitSearch.preview.autoCollapse`
+      - <a id="setting-unitSearch.multiSelect"></a>`unitSearch.multiSelect`
+      - <a id="setting-unitSearch.actions"></a>`unitSearch.actions`
+        - <a id="setting-unitSearch.actions.addUses"></a>`unitSearch.actions.addUses`
+      - <a id="setting-unitSearch.pathStyle"></a>`unitSearch.pathStyle`
+      - <a id="setting-unitSearch.groupBy"></a>`unitSearch.groupBy`
+      - <a id="setting-unitSearch.defaultScope"></a>`unitSearch.defaultScope`
+      - <a id="setting-unitSearch.key"></a>`unitSearch.key`
 
 - **Quick open** (`unitSearch.quickOpen`)
-  - `quickOpen.enabled`
-    - `quickOpen.librarySources`
-    - `keys.quickOpen`
+  - <a id="setting-quickOpen.enabled"></a>`quickOpen.enabled`
+    - <a id="setting-quickOpen.librarySources"></a>`quickOpen.librarySources`
+    - <a id="setting-keys.quickOpen"></a>`keys.quickOpen`
 
 ### Colors
 
 - **Main node**
-  - `highlight.pairColorsLight` – depends on `highlight.pairColors`
-  - `highlight.pairColorsDark` – depends on `highlight.pairColors`
-  - `highlight.nestedRoutineColorLight` – depends on `highlight.pairColors`
-  - `highlight.nestedRoutineColorDark` – depends on `highlight.pairColors`
+  - <a id="setting-highlight.pairColorsLight"></a>`highlight.pairColorsLight` – depends on `highlight.pairColors`
+  - <a id="setting-highlight.pairColorsDark"></a>`highlight.pairColorsDark` – depends on `highlight.pairColors`
+  - <a id="setting-highlight.nestedRoutineColorLight"></a>`highlight.nestedRoutineColorLight` – depends on `highlight.pairColors`
+  - <a id="setting-highlight.nestedRoutineColorDark"></a>`highlight.nestedRoutineColorDark` – depends on `highlight.pairColors`
 
 ### Check rules
 
 - **Main node**
-  - `ruleChecks.enabled`
+  - <a id="setting-ruleChecks.enabled"></a>`ruleChecks.enabled`
 
 - **Findings window** (`rules.window`)
-  - `problems.window` – depends on `problems.enabled`
-    - `problems.window.scope`
-    - `problems.window.scopeProjects`
-      - `problems.window.scopeProject`
-    - `problems.window.groupBy`
-    - `problems.window.columns`
-    - `problems.window.compiler`
-    - `problems.window.followCursor`
-    - `problems.window.openFirst`
-      - `problems.window.closedUnits`
-      - `problems.window.showCleanActive`
-  - `problems.update` – depends on `problems.enabled`
-  - `problems.liveDelayMs` – depends on `problems.enabled`
-  - `fix.bulk` – depends on `ruleChecks.enabled`
-  - `problems.list` – depends on `problems.enabled`
+  - <a id="setting-problems.window"></a>`problems.window` – depends on `problems.enabled`
+    - <a id="setting-problems.window.scope"></a>`problems.window.scope`
+    - <a id="setting-problems.window.scopeProjects"></a>`problems.window.scopeProjects`
+      - <a id="setting-problems.window.scopeProject"></a>`problems.window.scopeProject`
+    - <a id="setting-problems.window.groupBy"></a>`problems.window.groupBy`
+    - <a id="setting-problems.window.columns"></a>`problems.window.columns`
+    - <a id="setting-problems.window.compiler"></a>`problems.window.compiler`
+    - <a id="setting-problems.window.followCursor"></a>`problems.window.followCursor`
+    - <a id="setting-problems.window.openFirst"></a>`problems.window.openFirst`
+      - <a id="setting-problems.window.closedUnits"></a>`problems.window.closedUnits`
+      - <a id="setting-problems.window.showCleanActive"></a>`problems.window.showCleanActive`
+  - <a id="setting-problems.update"></a>`problems.update` – depends on `problems.enabled`
+  - <a id="setting-problems.liveDelayMs"></a>`problems.liveDelayMs` – depends on `problems.enabled`
+  - <a id="setting-fix.bulk"></a>`fix.bulk` – depends on `ruleChecks.enabled`
+  - <a id="setting-problems.list"></a>`problems.list` – depends on `problems.enabled`
 
 - **Compiler ahead** (`rules.group.compiler`)
-  - `problems.compilerMerge` – depends on `problems.enabled`
-  - `problems.showCompilerCode` – depends on `problems.enabled`
+  - <a id="setting-problems.compilerMerge"></a>`problems.compilerMerge` – depends on `problems.enabled`
+  - <a id="setting-problems.showCompilerCode"></a>`problems.showCompilerCode` – depends on `problems.enabled`
 
 ### Index
 
 - **Main node**
-  - `index.projectGroup`
-  - `index.searchPaths`
-  - `index.libraryPaths`
-  - `index.usages`
-  - `memoryBudgetMb`
+  - <a id="setting-index.projectGroup"></a>`index.projectGroup`
+  - <a id="setting-index.searchPaths"></a>`index.searchPaths`
+  - <a id="setting-index.libraryPaths"></a>`index.libraryPaths`
+  - <a id="setting-index.usages"></a>`index.usages`
+  - <a id="setting-memoryBudgetMb"></a>`memoryBudgetMb`
 
 ### Startup and updates
 
 - **Main node**
-  - `safeMode.askAfterCrash`
-  - `safeMode.autoAfterRepeatedCrash`
-  - `safeMode.startupKey`
-  - `safeMode.startupTimeoutMs`
-  - `safeMode.keepSettingsHistory`
-  - `updates.check`
-  - `updates.install`
-  - `updates.channel`
-  - `updates.newModules`
-  - `diagnostics.bugReport.anonymize`
-  - `diagnostics.log.names`
+  - <a id="setting-safeMode.askAfterCrash"></a>`safeMode.askAfterCrash`
+  - <a id="setting-safeMode.autoAfterRepeatedCrash"></a>`safeMode.autoAfterRepeatedCrash`
+  - <a id="setting-safeMode.startupKey"></a>`safeMode.startupKey`
+  - <a id="setting-safeMode.startupTimeoutMs"></a>`safeMode.startupTimeoutMs`
+  - <a id="setting-safeMode.keepSettingsHistory"></a>`safeMode.keepSettingsHistory`
+  - <a id="setting-updates.check"></a>`updates.check`
+  - <a id="setting-updates.install"></a>`updates.install`
+  - <a id="setting-updates.channel"></a>`updates.channel`
+  - <a id="setting-updates.newModules"></a>`updates.newModules`
+  - <a id="setting-diagnostics.bugReport.anonymize"></a>`diagnostics.bugReport.anonymize`
+  - <a id="setting-diagnostics.log.names"></a>`diagnostics.log.names`
 
 ### Undo
 
 - **Main node**
-  - `undo.multiFile`
-    - `undo.multiFile.depth`
-    - `undo.multiFile.persist`
-    - `undo.multiFile.maxSizeMb`
-    - `undo.multiFile.onConflict`
-    - `undo.multiFile.newFiles`
+  - <a id="setting-undo.multiFile"></a>`undo.multiFile`
+    - <a id="setting-undo.multiFile.depth"></a>`undo.multiFile.depth`
+    - <a id="setting-undo.multiFile.persist"></a>`undo.multiFile.persist`
+    - <a id="setting-undo.multiFile.maxSizeMb"></a>`undo.multiFile.maxSizeMb`
+    - <a id="setting-undo.multiFile.onConflict"></a>`undo.multiFile.onConflict`
+    - <a id="setting-undo.multiFile.newFiles"></a>`undo.multiFile.newFiles`
 
 ### Issue tracker
 
 - **Main node**
-  - `issues.enabled`
-    - `issues.tracker`
-    - `issues.login`
-    - `issues.connections`
-    - `issues.projects`
-    - `issues.queries`
-    - `issues.queryPicker`
-    - `issues.create`
-      - `issues.create.includeCode`
-    - `issues.preview`
-      - `issues.preview.comments`
-      - `issues.preview.checklists`
-      - `issues.preview.links`
-      - `issues.preview.development`
-    - `issues.codeLinks`
-    - `issues.blameLinks`
-      - `issues.blameLinks.maxRevisions`
-    - `issues.syncState`
-    - `issues.stateField`
-    - `issues.assigneeField`
-    - `issues.startState`
-    - `issues.assignOnStart`
-    - `issues.startComment`
-    - `issues.endStates`
-    - `issues.endComment`
-    - `issues.timeTracking`
-      - `issues.idleMinutes`
-      - `issues.timeRounding`
-    - `issues.checklistStatus`
-    - `issues.warnBlocked`
-    - `issues.board`
-      - `issues.board.confirmMove`
-      - `issues.board.onlyMine`
-    - `issues.sprint.burndown`
-    - `issues.sprint.compare`
-    - `issues.paletteSearch`
-    - `issues.commentEditor`
-    - `issues.commentSnippets`
-    - `issues.notify`
-      - `issues.notify.intervalMinutes`
-      - `issues.notify.scope`
-    - `issues.attach`
-      - `issues.attach.logFiles`
-      - `issues.attach.maxImageWidth`
+  - <a id="setting-issues.enabled"></a>`issues.enabled`
+    - <a id="setting-issues.tracker"></a>`issues.tracker`
+    - <a id="setting-issues.login"></a>`issues.login`
+    - <a id="setting-issues.connections"></a>`issues.connections`
+    - <a id="setting-issues.projects"></a>`issues.projects`
+    - <a id="setting-issues.queries"></a>`issues.queries`
+    - <a id="setting-issues.queryPicker"></a>`issues.queryPicker`
+    - <a id="setting-issues.create"></a>`issues.create`
+      - <a id="setting-issues.create.includeCode"></a>`issues.create.includeCode`
+    - <a id="setting-issues.preview"></a>`issues.preview`
+      - <a id="setting-issues.preview.comments"></a>`issues.preview.comments`
+      - <a id="setting-issues.preview.checklists"></a>`issues.preview.checklists`
+      - <a id="setting-issues.preview.links"></a>`issues.preview.links`
+      - <a id="setting-issues.preview.development"></a>`issues.preview.development`
+    - <a id="setting-issues.codeLinks"></a>`issues.codeLinks`
+    - <a id="setting-issues.blameLinks"></a>`issues.blameLinks`
+      - <a id="setting-issues.blameLinks.maxRevisions"></a>`issues.blameLinks.maxRevisions`
+    - <a id="setting-issues.syncState"></a>`issues.syncState`
+    - <a id="setting-issues.stateField"></a>`issues.stateField`
+    - <a id="setting-issues.assigneeField"></a>`issues.assigneeField`
+    - <a id="setting-issues.startState"></a>`issues.startState`
+    - <a id="setting-issues.assignOnStart"></a>`issues.assignOnStart`
+    - <a id="setting-issues.startComment"></a>`issues.startComment`
+    - <a id="setting-issues.endStates"></a>`issues.endStates`
+    - <a id="setting-issues.endComment"></a>`issues.endComment`
+    - <a id="setting-issues.timeTracking"></a>`issues.timeTracking`
+      - <a id="setting-issues.idleMinutes"></a>`issues.idleMinutes`
+      - <a id="setting-issues.timeRounding"></a>`issues.timeRounding`
+    - <a id="setting-issues.checklistStatus"></a>`issues.checklistStatus`
+    - <a id="setting-issues.warnBlocked"></a>`issues.warnBlocked`
+    - <a id="setting-issues.board"></a>`issues.board`
+      - <a id="setting-issues.board.confirmMove"></a>`issues.board.confirmMove`
+      - <a id="setting-issues.board.onlyMine"></a>`issues.board.onlyMine`
+    - <a id="setting-issues.sprint.burndown"></a>`issues.sprint.burndown`
+    - <a id="setting-issues.sprint.compare"></a>`issues.sprint.compare`
+    - <a id="setting-issues.paletteSearch"></a>`issues.paletteSearch`
+    - <a id="setting-issues.commentEditor"></a>`issues.commentEditor`
+    - <a id="setting-issues.commentSnippets"></a>`issues.commentSnippets`
+    - <a id="setting-issues.notify"></a>`issues.notify`
+      - <a id="setting-issues.notify.intervalMinutes"></a>`issues.notify.intervalMinutes`
+      - <a id="setting-issues.notify.scope"></a>`issues.notify.scope`
+    - <a id="setting-issues.attach"></a>`issues.attach`
+      - <a id="setting-issues.attach.logFiles"></a>`issues.attach.logFiles`
+      - <a id="setting-issues.attach.maxImageWidth"></a>`issues.attach.maxImageWidth`
 
 - **Version control** (`issues.vcs`)
-  - `issues.start` – depends on `issues.enabled`
-  - `issues.branchPattern` – depends on `issues.enabled`
-  - `issues.branchBase` – depends on `issues.enabled`
-  - `issues.commitPattern` – depends on `issues.enabled`
+  - <a id="setting-issues.start"></a>`issues.start` – depends on `issues.enabled`
+  - <a id="setting-issues.branchPattern"></a>`issues.branchPattern` – depends on `issues.enabled`
+  - <a id="setting-issues.branchBase"></a>`issues.branchBase` – depends on `issues.enabled`
+  - <a id="setting-issues.commitPattern"></a>`issues.commitPattern` – depends on `issues.enabled`
 
 ### Version control
 
 - **Main node**
-  - `vcs.enabled`
-    - `vcs.provider`
-    - `vcs.git.path`
-    - `vcs.svn.path`
-    - `vcs.timeoutSeconds`
-    - `vcs.projects`
+  - <a id="setting-vcs.enabled"></a>`vcs.enabled`
+    - <a id="setting-vcs.provider"></a>`vcs.provider`
+    - <a id="setting-vcs.git.path"></a>`vcs.git.path`
+    - <a id="setting-vcs.svn.path"></a>`vcs.svn.path`
+    - <a id="setting-vcs.timeoutSeconds"></a>`vcs.timeoutSeconds`
+    - <a id="setting-vcs.projects"></a>`vcs.projects`
 
 - **Branches** (`vcs.branches`)
-  - `vcs.branch.confirm` – depends on `vcs.enabled`
-  - `vcs.branch.svn.location` – depends on `vcs.enabled`
-  - `vcs.branch.svn.source` – depends on `vcs.enabled`
-  - `vcs.branch.svn.after` – depends on `vcs.enabled`
-  - `vcs.branch.svn.checkoutFolder` – depends on `vcs.enabled`
-  - `vcs.branch.svn.message` – depends on `vcs.enabled`
-  - `vcs.branch.git.base` – depends on `vcs.enabled`
-  - `vcs.branch.git.push` – depends on `vcs.enabled`
-  - `vcs.branch.git.uncommitted` – depends on `vcs.enabled`
-  - `vcs.branch.git.worktree` – depends on `vcs.enabled`
-  - `vcs.branch.git.worktreeFolder` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.confirm"></a>`vcs.branch.confirm` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.svn.location"></a>`vcs.branch.svn.location` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.svn.source"></a>`vcs.branch.svn.source` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.svn.after"></a>`vcs.branch.svn.after` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.svn.checkoutFolder"></a>`vcs.branch.svn.checkoutFolder` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.svn.message"></a>`vcs.branch.svn.message` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.git.base"></a>`vcs.branch.git.base` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.git.push"></a>`vcs.branch.git.push` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.git.uncommitted"></a>`vcs.branch.git.uncommitted` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.git.worktree"></a>`vcs.branch.git.worktree` – depends on `vcs.enabled`
+  - <a id="setting-vcs.branch.git.worktreeFolder"></a>`vcs.branch.git.worktreeFolder` – depends on `vcs.enabled`
 
 - **Externals** (`vcs.externals`)
-  - `vcs.externals.onBranch` – depends on `vcs.enabled`
-  - `vcs.externals.suggestBranch` – depends on `vcs.enabled`
-  - `vcs.externals.rules` – depends on `vcs.enabled`
-  - `vcs.externals.show` – depends on `vcs.enabled`
-  - `vcs.externals.update` – depends on `vcs.enabled`
+  - <a id="setting-vcs.externals.onBranch"></a>`vcs.externals.onBranch` – depends on `vcs.enabled`
+  - <a id="setting-vcs.externals.suggestBranch"></a>`vcs.externals.suggestBranch` – depends on `vcs.enabled`
+  - <a id="setting-vcs.externals.rules"></a>`vcs.externals.rules` – depends on `vcs.enabled`
+  - <a id="setting-vcs.externals.show"></a>`vcs.externals.show` – depends on `vcs.enabled`
+  - <a id="setting-vcs.externals.update"></a>`vcs.externals.update` – depends on `vcs.enabled`

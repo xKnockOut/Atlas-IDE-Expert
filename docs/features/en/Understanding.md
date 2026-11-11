@@ -46,6 +46,7 @@ In Atlas style instead of Help Insight:
 - Units in the project folder, from DCCReference and from the project search paths always are
 - `float-equality` stays silent in equality comparers (`Equals…`, `class operator Equal`), where the exact comparison is intended
 
+<a id="window-atlasarchitecture"></a>
 ## Architecture overview
 
 Window *Atlas Architecture*, *View › Atlas › Architecture*.
@@ -125,6 +126,7 @@ Setting `architecture.grouping.keepPrevious`
 - The status line says “Subsystems matched to the state of …”
 - *Subsystems ▾ › Rename subsystems* starts over once
 
+<a id="window-atlasquery"></a>
 ## Code queries (#1351)
 
 Window *Atlas Query*, *View › Atlas › Query*.
@@ -136,6 +138,7 @@ Window *Atlas Query*, *View › Atlas › Query*.
 - Saved queries in `atlas.json` run as rule `query:<name>` in the editor, in `--check` and in SARIF
 - The same language in the MCP tool `query_code` and with `AtlasServer --query`
 
+<a id="window-atlashotspots"></a>
 ## Hotspots (#1354)
 
 Window *Atlas Hotspots*, *View › Atlas › Hotspots*, `hotspots.enabled`.
@@ -173,6 +176,7 @@ Window *Atlas Hotspots*, *View › Atlas › Hotspots*, `hotspots.enabled`.
 
 ## Units and dependencies
 
+<a id="window-atlasunitrelations"></a>
 ### Unit relations (#593)
 
 Window *Unit relations*, *View › Atlas › Unit relations*; switched with `architecture.enabled`.

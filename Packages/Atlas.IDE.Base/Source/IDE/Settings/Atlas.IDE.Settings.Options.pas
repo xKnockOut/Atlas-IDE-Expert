@@ -468,6 +468,7 @@ begin
   TAtlasPageOptions.ConnectFavorites(FPage, Hooks.ToolbarCommands);
   ConnectIndex;
   TAtlasPageOptions.ConnectTransfer(FPage);
+  TAtlasPageOptions.ConnectHelp(FPage);
   // Suchfeld über dem Baum (#1884): nur installierte Packages; Treffer anderer Knoten im offenen Dialog öffnen.
   FPage.Search.OnInstalled := ModuleInstalled;
   FPage.Search.OnModuleName := ModuleNameOf;
