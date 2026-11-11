@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Outline.NavigationOption;
 
 // Navigationsleiste der IDE über ihre eigene Option aus- und wieder
-// einblenden (Bericht M3, editor.breadcrumbsHideIdeToolbar): „Navigations-
+// einblenden (editor.breadcrumbsHideIdeToolbar): „Navigations-
 // symbolleiste anzeigen“ steht in den Umgebungsoptionen der IDE
 // (IOTAEnvironmentOptions); den Namen sucht TAtlasNavigationOption.Find.
 // - Apply(True) schaltet die Option aus, wenn sie an ist, und merkt unter

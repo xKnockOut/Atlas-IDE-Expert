@@ -8,10 +8,10 @@
 //   dieses Feature ab (Run tut dann nichts mehr), mit einer Warnung über
 //   OnWarning und OnTripped (Eintrag in der Benachrichtigungszentrale).
 //   Wieder einschalten über Reset (Menü Atlas).
-// - Ein Feature je sichtbarer Funktion: Früher teilten sich rund 40 Units die
-//   Sicherung „Editorbefehle“, und ein Zeichenfehler der Minimap schaltete
-//   Gliederung, Brotkrumen, Sticky Scroll und den Rest mit ab. EditorCommands
-//   gilt nur noch für ausdrücklich aufgerufene Editorbefehle.
+// - Ein Feature je sichtbarer Funktion: Eine gemeinsame Sicherung für viele
+//   Units würde bei einem Zeichenfehler der Minimap auch Gliederung,
+//   Brotkrumen und Sticky Scroll abschalten. EditorCommands gilt nur für
+//   ausdrücklich aufgerufene Editorbefehle.
 // - Derselbe Fehler (Klasse und Stelle) eines Features innerhalb von RepeatMs
 //   nach dem zuletzt gezählten zählt nicht erneut und steht nicht einzeln im
 //   Protokoll: Ein Zeichendurchlauf meldet einen Fehler sonst für jede Zeile
@@ -21,7 +21,7 @@
 //   einzelnen Datenquelle, etwa der Vervollständigung vom Server; nach 3
 //   Fehlern in 5 Minuten fällt nur diese Quelle aus, die übrigen laufen weiter.
 // - Langsame Quelle: Eine Zeitüberschreitung ist kein Fehler und zählt nicht
-//   zur Sicherung (früher schaltete ein beschäftigter Rechner so Quellen ab).
+//   zur Sicherung (sonst schaltete ein beschäftigter Rechner Quellen ab).
 //   ReportProviderSlow schreibt je Quelle höchstens eine Zeile je
 //   SlowLogSeconds mit der Zahl der übergangenen Meldungen.
 // - Zeitmessung (Diagnose-Fenster, Reiter „Hauptthread“): Ist Timing gesetzt,
@@ -29,6 +29,16 @@
 //   Quelle. Ohne Diagnosemodus ist Timing nil, und Run prüft nur dieses Feld.
 //   Timing ist eine abstrakte Klasse, damit diese Unit den Rekorder
 //   (Atlas.Core.Diagnostics.PluginTimings) nicht kennen muss.
+// - RunIde: Arbeit der IDE innerhalb eines Atlas-Aufrufs (Projekt öffnen).
+//   Ihre Zeit zählt wie ein modaler Dialog nicht als Zeit von Atlas; vorher
+//   stand das Projektladen als 13,9 s der Willkommensseite da (#1987).
+//   Exceptions laufen unverändert zum äußeren Run.
+// - Laufende Funktion für den Einfrier-Wächter (#1988): Run legt das Feature
+//   im Hauptthread auf einen kleinen Stapel fester Größe (ohne Sperre und
+//   ohne Speicher), RunIde einen Eintrag „IDE“. CurrentFeatureName liest ihn
+//   aus dem Wächter-Thread; vorher nannte ein Hänger nur Aktionen mit
+//   TAtlasActivity.Scope, und die meisten Einstiegspunkte (Zeichnen, Timer,
+//   Notifier) liefen als „ohne Atlas“.
 // - Disable schaltet ein Feature wie die Sicherung ab, auf Wunsch aus dem
 //   Diagnose-Fenster; wieder an wie nach der Sicherung (Menü Atlas).
 // - TAtlasRotatingLog: Protokoll unter %LOCALAPPDATA%\Atlas\Logs, höchstens
@@ -37,10 +47,9 @@
 //   nie Quelltext aus dem Editor. Den Stack-Trace liefert Exception.StackTrace
 //   (falls ein Anbieter installiert ist), sonst der Haken StackOf
 //   (Atlas.IDE.Diagnostics.StackCapture: Mitschnitt beim Auslösen).
-// - Schreibfehler des Protokolls (Bericht M4): Früher verschluckte Add jeden
-//   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen (das
-//   erklärt Lücken wie die ab dem 21.10. 21:29, belegt ist es nicht). Jetzt sperrt ein
-//   benannter Mutex je Ordner Rotieren und Schreiben über alle IDE-Prozesse
+// - Schreibfehler des Protokolls: Ein Fehler beim Rotieren darf das Anhängen
+//   nicht verhindern, und kein Fehler darf still verschwinden. Ein
+//   benannter Mutex je Ordner sperrt Rotieren und Schreiben über alle IDE-Prozesse
 //   (die IDE des Benutzers und eine Bau-IDE teilen den Ordner;
 //   ohne Sperre öffneten zwei Schreiber dieselbe Datei exklusiv). Scheitert
 //   das Rotieren, wird trotzdem angehängt und der Grund einmal vermerkt.
@@ -202,6 +211,11 @@ type
     function Enter: Integer; virtual; abstract;
     /// <summary>Ende des Aufrufs, der mit Enter begann (auch nach einem Fehler).</summary>
     procedure Leave(AFeature: TAtlasFeature; AToken: Integer); virtual; abstract;
+    /// <summary>Zeit, die nicht Atlas gehört, beginnt im laufenden Aufruf: Arbeit der IDE (RunIde), ein modaler
+    /// Dialog oder eine eigene Nachrichtenschleife; ohne Wirkung, wenn nicht überschrieben.</summary>
+    procedure ModalBegin; virtual;
+    /// <summary>Die mit ModalBegin begonnene Zeit ist zu Ende (auch nach einem Fehler).</summary>
+    procedure ModalEnd; virtual;
     /// <summary>Die Quelle AName war zu langsam (Zeitlimit oder vorige Anfrage läuft noch).</summary>
     procedure ProviderSlow(const AName: string); virtual; abstract;
   end;
@@ -215,11 +229,7 @@ type
     FStackOf: TAtlasGuardStackFunc;
     FOnTripped: TAtlasGuardTripped;
     FTiming: TAtlasGuardTiming;
-    class procedure Warn(const AText: string); static;
     class function ErrorLine(const AWhere: string; AE: Exception): string; static;
-    /// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
-    /// </summary>
-    class function FailureKey(AE: Exception): string; static;
   public
     /// <summary>Höchstlänge einer Fehlermeldung im Protokoll; mehr könnte Quelltext enthalten.</summary>
     const cMaxMessageLength = 300;
@@ -227,6 +237,13 @@ type
     class destructor Destroy;
     /// <summary>Führt AProc geschützt aus; False bei Fehler oder abgeschaltetem Feature.</summary>
     class function Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean; static;
+    /// <summary>AProc ist Arbeit der IDE (etwa IOTAActionServices.OpenProject): Ihre Zeit zählt im
+    /// Diagnosemodus nicht als Zeit von Atlas. Fängt keine Exception; dafür sorgt das äußere Run.</summary>
+    class procedure RunIde(const AProc: TProc); static;
+    /// <summary>Name der innersten Funktion, die im Hauptthread über Run läuft; '' ohne oder während
+    /// RunIde. Aus jedem Thread, ohne Sperre (der Einfrier-Wächter fragt, während der Hauptthread steht).
+    /// </summary>
+    class function CurrentFeatureName: string; static;
     /// <summary>Fehler aus einem eigenen except-Block melden (zählt wie in Run).</summary>
     class procedure Report(AFeature: TAtlasFeature; AE: Exception); static;
     /// <summary>Feature durch die Sicherung abgeschaltet?</summary>
@@ -279,6 +296,7 @@ type
 implementation
 
 uses
+  System.Classes,
   System.IOUtils,
   System.DateUtils,
   Atlas.Text.LogMarks,
@@ -891,18 +909,21 @@ begin
   end;
 end;
 
-class procedure TAtlasGuard.Warn(const AText: string);
+/// <summary>AText ins Protokoll und an TAtlasGuard.OnWarning (Meldungsansicht).</summary>
+procedure Warn(const AText: string);
 begin
-  Log(AText);
-  if Assigned(FOnWarning) then
+  TAtlasGuard.Log(AText);
+  if Assigned(TAtlasGuard.FOnWarning) then
     try
-      FOnWarning(TLogMarks.Plain(AText));
+      TAtlasGuard.FOnWarning(TLogMarks.Plain(AText));
     except
       // Auch die Warnung darf nicht in die IDE durchschlagen.
     end;
 end;
 
-class function TAtlasGuard.FailureKey(AE: Exception): string;
+/// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
+/// </summary>
+function FailureKey(AE: Exception): string;
 begin
   // ExceptAddr gehört zur gerade behandelten Ausnahme; Report läuft in deren except-Block.
   if ExceptAddr <> nil then
@@ -1055,6 +1076,67 @@ begin
   end;
 end;
 
+type
+  /// <summary>Was im Hauptthread gerade über TAtlasGuard.Run bzw. RunIde läuft, innerstes oben. Nur der
+  /// Hauptthread schreibt; der Einfrier-Wächter liest ohne Sperre (ganze Zahlen, Index begrenzt).</summary>
+  TRunningStack = class
+  public const
+    cMax = 32;
+    /// <summary>Eintrag von RunIde: Arbeit der IDE, keine Funktion von Atlas.</summary>
+    cIde = -1;
+  private class var
+    FEntries: array[0..cMax - 1] of Integer;
+    FDepth: Integer;
+  public
+    /// <summary>Im Hauptthread AEntry (Ord eines Features oder cIde) auflegen; Ergebnis für Leave, -1 in anderen
+    /// Threads.</summary>
+    class function Enter(AEntry: Integer): Integer; static;
+    class procedure Leave(ADepth: Integer); static;
+    /// <summary>Innerster Eintrag; False, wenn nichts läuft.</summary>
+    class function Top(out AEntry: Integer): Boolean; static;
+  end;
+
+class function TRunningStack.Enter(AEntry: Integer): Integer;
+begin
+  Result := -1;
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+  begin
+    Exit;
+  end;
+  Result := FDepth;
+  // Erst der Eintrag, dann die Tiefe: Der Wächter liest nie einen alten Eintrag unter der neuen Tiefe.
+  if Result < cMax then
+  begin
+    FEntries[Result] := AEntry;
+  end;
+  FDepth := Result + 1;
+end;
+
+class procedure TRunningStack.Leave(ADepth: Integer);
+begin
+  if ADepth >= 0 then
+  begin
+    FDepth := ADepth;
+  end;
+end;
+
+class function TRunningStack.Top(out AEntry: Integer): Boolean;
+var
+  mDepth: Integer;
+begin
+  AEntry := 0;
+  mDepth := FDepth;
+  if mDepth > cMax then
+  begin
+    mDepth := cMax;
+  end;
+  Result := mDepth > 0;
+  if Result then
+  begin
+    AEntry := FEntries[mDepth - 1];
+  end;
+end;
+
 function RunGuarded(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
 begin
   try
@@ -1071,27 +1153,79 @@ begin
   end;
 end;
 
+class function TAtlasGuard.CurrentFeatureName: string;
+var
+  mEntry: Integer;
+begin
+  Result := '';
+  if TRunningStack.Top(mEntry) and (mEntry >= Ord(Low(TAtlasFeature))) and (mEntry <= Ord(High(TAtlasFeature))) then
+  begin
+    Result := FeatureName(TAtlasFeature(mEntry));
+  end;
+end;
+
 class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
 var
   mTiming: TAtlasGuardTiming;
-  mToken: Integer;
+  mToken, mDepth: Integer;
 begin
   if Disabled(AFeature) then
   begin
     Exit(False);
   end;
-  // Einmal lesen: Schaltet der Diagnosemodus mitten im Aufruf um, endet der Aufruf beim selben Rekorder.
-  mTiming := FTiming;
-  if mTiming = nil then
-  begin
-    Exit(RunGuarded(AFeature, AProc));
-  end;
-  mToken := mTiming.Enter;
+  mDepth := TRunningStack.Enter(Ord(AFeature));
   try
-    Result := RunGuarded(AFeature, AProc);
+    // Einmal lesen: Schaltet der Diagnosemodus mitten im Aufruf um, endet der Aufruf beim selben Rekorder.
+    mTiming := FTiming;
+    if mTiming = nil then
+    begin
+      Exit(RunGuarded(AFeature, AProc));
+    end;
+    mToken := mTiming.Enter;
+    try
+      Result := RunGuarded(AFeature, AProc);
+    finally
+      mTiming.Leave(AFeature, mToken);
+    end;
   finally
-    mTiming.Leave(AFeature, mToken);
+    TRunningStack.Leave(mDepth);
   end;
+end;
+
+class procedure TAtlasGuard.RunIde(const AProc: TProc);
+var
+  mTiming: TAtlasGuardTiming;
+  mDepth: Integer;
+begin
+  mDepth := TRunningStack.Enter(TRunningStack.cIde);
+  try
+    mTiming := FTiming;
+    if mTiming = nil then
+    begin
+      AProc();
+      Exit;
+    end;
+    mTiming.ModalBegin;
+    try
+      AProc();
+    finally
+      mTiming.ModalEnd;
+    end;
+  finally
+    TRunningStack.Leave(mDepth);
+  end;
+end;
+
+{ TAtlasGuardTiming }
+
+procedure TAtlasGuardTiming.ModalBegin;
+begin
+  // Ohne Rekorder nichts zu tun.
+end;
+
+procedure TAtlasGuardTiming.ModalEnd;
+begin
+  // Ohne Rekorder nichts zu tun.
 end;
 
 class function TAtlasGuard.Disabled(AFeature: TAtlasFeature): Boolean;

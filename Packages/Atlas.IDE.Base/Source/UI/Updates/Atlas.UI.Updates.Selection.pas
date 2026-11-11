@@ -12,10 +12,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.CheckLst,
-  Atlas.Text.UpdateRun;
+  Atlas.Text.UpdateRun,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasUpdateSelectionDialog = class(TForm)
+  TAtlasUpdateSelectionDialog = class(TAtlasDialog)
   private
     FText: TLabel;
     FList: TCheckListBox;
@@ -56,14 +57,9 @@ const
 constructor TAtlasUpdateSelectionDialog.CreateSelection(AOwner: TComponent; const AVersion: string;
   const ACandidates: TArray<TUpdateCandidate>);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cWidth);
   FCandidates := ACandidates;
   Caption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionTitle, [AVersion]);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cWidth);
   FText := TLabel.Create(Self);
   FText.Parent := Self;
   FText.WordWrap := True;

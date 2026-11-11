@@ -105,7 +105,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 { TAtlasVcsProjectMapping }
 
@@ -171,19 +172,6 @@ begin
     Result := mValue.ToJSON;
   finally
     mValue.Free;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  // TJSONNumber erbt von TJSONString: Zahlen zählen nicht als Text.
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
-  begin
-    Result := TJSONString(mValue).Value;
   end;
 end;
 
@@ -278,8 +266,8 @@ begin
       begin
         Continue;
       end;
-      mMapping := TAtlasVcsProjectMapping.Create(TextOf(TJSONObject(mItem), 'match'),
-        TextOf(TJSONObject(mItem), 'provider'), TextOf(TJSONObject(mItem), 'mainBranch'));
+      mMapping := TAtlasVcsProjectMapping.Create(TJsonRead.StrictText(TJSONObject(mItem), 'match'),
+        TJsonRead.StrictText(TJSONObject(mItem), 'provider'), TJsonRead.StrictText(TJSONObject(mItem), 'mainBranch'));
       if (mMapping.Match = '') or (IndexOfMatch(Result, mMapping.Match) >= 0) then
       begin
         Continue;

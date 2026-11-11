@@ -1,6 +1,6 @@
 ﻿unit Shell.SlashHost.Tests;
 
-// Schnellbefehle laden nur in der Nachrichtenschleife neu (Code-Review A-03); WriteFiles ohne Editor
+// Schnellbefehle laden nur in der Nachrichtenschleife neu; WriteFiles ohne Editor
 // schreibt auf die Platte (#297).
 
 interface

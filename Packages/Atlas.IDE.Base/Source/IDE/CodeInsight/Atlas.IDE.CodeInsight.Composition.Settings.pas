@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Settings;
 
-// Einstellungen und Thema: Optionsseiten (#227) mit ihren Haken (A-09), Prüfung und Regelkatalog des
+// Einstellungen und Thema: Optionsseiten (#227) mit ihren Haken, Prüfung und Regelkatalog des
 // Einstellungsdialogs, geänderte Einstellungen an alle Teile und Module (#1455) und das Thema der IDE (#751).
 
 interface
@@ -121,7 +121,7 @@ begin
   RequestStatusRefresh;
 end;
 
-/// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
+/// <summary>Optionsseiten (#227) mit ihren Haken: Die Seiten importieren die Features nicht, die sie
 /// bedienen.</summary>
 procedure RegisterOptions;
 var
@@ -157,6 +157,7 @@ end;
 procedure InstallSettings;
 begin
   TAtlasIdeSymbol.OnThemeChanged := ThemeChanged;
+  InstallUiTheme;
   TAtlasIdeSettings.OnChanged := SettingsChanged;
   TAtlasProjectSettings.Command := ProjectSettingsCommand;
   RegisterOptions;
@@ -165,6 +166,7 @@ end;
 procedure DetachSettings;
 begin
   TAtlasIdeSettings.OnChanged := nil;
+  UninstallUiTheme;
 end;
 
 procedure UnregisterOptions;

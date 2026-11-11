@@ -74,7 +74,7 @@ var
   mPath: string;
 begin
   mPath := APath;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -130,7 +130,7 @@ var
   mFound: TArray<TSyntaxNode>;
 begin
   mFound := nil;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -183,7 +183,7 @@ var
 begin
   mPath := APath;
   mLocal := ALocal;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -237,7 +237,7 @@ var
   mNames: TArray<string>;
 begin
   mNames := nil;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoutine.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

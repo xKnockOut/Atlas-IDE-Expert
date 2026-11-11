@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsProjects;
 
-// Versionsverwaltung: Tabellen „Projekte“ (#1286, vcs.projects) und „Server“ (#1287), seit #1905 im Modul. Die
+// Versionsverwaltung: Tabellen „Projekte“ (#1286, vcs.projects) und „Server“ (#1287). Die
 // Zeilen liest und schreibt der Teil selbst (eigene Zeilen mit dem Schlüssel vcs.projects).
 
 interface
@@ -311,7 +311,7 @@ begin
   mPanel := AddPanel(18);
   FVcsProjectNote := TLabel.Create(FPage);
   FVcsProjectNote.Parent := mPanel;
-  FVcsProjectNote.Left := 90;
+  FVcsProjectNote.Left := FVcsProjectNote.ScaleValue(90);
   FVcsProjectNote.Top := 1;
   FVcsProjectNote.Font.Color := clRed;
   Attach(mPanel, FVcsProjectList);

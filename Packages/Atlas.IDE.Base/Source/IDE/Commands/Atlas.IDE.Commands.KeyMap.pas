@@ -112,6 +112,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Keys,
@@ -120,7 +121,8 @@ uses
   Atlas.IDE.Commands.Usage,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Foundation.Host;
 
 const
   cKeyIdPrefix = 'Atlas.Key.';
@@ -164,6 +166,14 @@ const
     // Neue Zeile am Ende des Abschnitts (#1768): Editorbefehl.
     3,
     // Auswahl speichern (#739): keine Bindung, wirkt nur im Designer (Modul Designer).
+    0,
+    // Im Designer zeigen (#511): Editorbefehl.
+    3,
+    // Text im Designer bearbeiten (#748): keine Bindung, wirkt nur im Designer (Modul Designer).
+    0,
+    // Auswahlleiste und Lupe im Designer: keine Bindung, wirken nur im Designer (Modul Designer).
+    0, 0,
+    // Verwendungen im Code (#750): keine Bindung, wirkt nur im Designer (Modul Designer).
     0);
 
 type
@@ -636,7 +646,7 @@ var
   mItem: TAtlasKeyItem;
 begin
   mItem := TAtlasKeyItem.Create(AKey, ShortCutToText(TShortCut(AKey)),
-    TAtlasStrings.Text(TAtlasTextId.KeyMapEditorBinding), TAtlasKeyProvenance.Create(AOrigin, AName,
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapEditorBinding), TAtlasKeyProvenance.Create(AOrigin, AName,
     TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(AKey), AOrder));
   mItem.Effective := True;
   AItems.Add(mItem);
@@ -922,27 +932,36 @@ var
   mIds, mKeys: TArray<string>;
   mKnown: Boolean;
   mIndex: Integer;
+  mOwners: TDictionary<Word, string>;
 begin
   mIds := nil;
   mKeys := nil;
-  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
-  for mEntry in AtlasEntries do
-  begin
-    mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
-    if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+  // Besitzer aller IDE-Tasten in einem Lauf über die ActionList, nicht je Eintrag (Einträge × Aktionen).
+  mOwners := TDictionary<Word, string>.Create;
+  try
+    TAtlasIdeKeys.CollectOwners(mOwners);
+    // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
+    for mEntry in AtlasEntries do
     begin
-      Continue;
+      mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
+      if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+      begin
+        Continue;
+      end;
+      mKnown := False;
+      for mIndex := 0 to High(mIds) do
+      begin
+        mKnown := mKnown or SameText(mIds[mIndex], mId);
+      end;
+      if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.OwnerIn(mOwners, mEntry.Key),
+        mEntry.Priority) then
+      begin
+        mIds := mIds + [mId];
+        mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
+      end;
     end;
-    mKnown := False;
-    for mIndex := 0 to High(mIds) do
-    begin
-      mKnown := mKnown or SameText(mIds[mIndex], mId);
-    end;
-    if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority) then
-    begin
-      mIds := mIds + [mId];
-      mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
-    end;
+  finally
+    mOwners.Free;
   end;
   Result := ShortCutLookup(mIds, mKeys);
 end;
@@ -1035,7 +1054,7 @@ begin
     TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
   except
     on E: Exception do
-      TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapExportFailed, [E.ClassName]));
+      TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapExportFailed, [E.ClassName]));
   end;
 end;
 
@@ -1137,9 +1156,9 @@ begin
     end
     else
     begin
-      mWinner := TAtlasStrings.Text(TAtlasTextId.KeyMapNobody);
+      mWinner := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNobody);
     end;
-    TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
+    TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapStartConflict,
       [mItems[mIndex].KeyText, mItems[mIndex].Command, mItems[mPartner].Holder, mWinner]));
     TAtlasIdeKeys.MarkReported(mItems[mIndex].ShortCut);
   end;

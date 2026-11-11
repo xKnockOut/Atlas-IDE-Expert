@@ -233,7 +233,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := 0;
-  Result.Top := cLabelTop;
+  Result.Top := Result.ScaleValue(cLabelTop);
 end;
 
 function TAtlasTrackerSettingsRows.AddLabelled(const ACaption: string; AControl: TWinControl;
@@ -242,7 +242,7 @@ begin
   Result := AddPanel(cRowHeight);
   AddLabel(Result, ACaption + ':');
   AControl.Parent := Result;
-  AControl.Left := cFieldLeft;
+  AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
   AControl.Width := AWidth;
   if AWidth >= cWideWidth then
@@ -257,9 +257,9 @@ begin
   Result := AddPanel(AHeight);
   AddLabel(Result, ACaption + ':');
   AControl.Parent := Result;
-  AControl.Left := cFieldLeft;
+  AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
-  AControl.Width := cWideWidth;
+  AControl.Width := AControl.ScaleValue(cWideWidth);
   AControl.Height := AHeight - cControlTop - cControlTop;
   AControl.Anchors := [akLeft, akTop, akRight];
 end;
@@ -271,7 +271,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := ALeft;
-  Result.Top := cButtonTop;
+  Result.Top := Result.ScaleValue(cButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;
@@ -304,7 +304,7 @@ begin
   mPanel := AddPanel(cNoteRow);
   Result := TLabel.Create(FOwner);
   Result.Parent := mPanel;
-  Result.Left := cFieldLeft;
+  Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := cControlTop;
   Result.Font.Color := clRed;
   Attach(mPanel, AAnchor);
@@ -335,7 +335,7 @@ begin
   Result.Parent := mPanel;
   Result.Left := ALeft;
   Result.Top := cControlTop;
-  Result.Width := cFieldWidth;
+  Result.Width := Result.ScaleValue(cFieldWidth);
 end;
 
 function TAtlasTrackerSettingsRows.NewEdit(AChange: TNotifyEvent): TEdit;

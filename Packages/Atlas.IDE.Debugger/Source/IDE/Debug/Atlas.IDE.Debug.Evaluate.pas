@@ -119,7 +119,7 @@ type
     TEvaluation = class(TRun)
     private
       FList: TAtlasEvalList;
-      FWaitAt: Cardinal;
+      FWaitAt: UInt64;
       procedure Done(const AValue: TAtlasDebugValue);
       function EvaluateOne(ANode: TAtlasEvalNode; const APlace: TPlace; ASideEffects: Boolean): TSliceStep;
     public
@@ -217,7 +217,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Unavailable,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
@@ -226,7 +225,8 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.Core.Diagnostics.Deadline;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
 function Frame: TAtlasDebugEvaluateFrame;
@@ -312,29 +312,6 @@ function Intercepts: Boolean;
 begin
   Result := (TAtlasIdeDebugEvaluate.FInstance <> nil) and TAtlasIdeDebugEvaluate.Enabled and
     TAtlasIdeSettings.Current.DebugEvaluateReplaceCtrlF7;
-end;
-
-/// <summary>Text von AFileName: Editorpuffer, sonst die Datei; False, wenn sie sich nicht lesen lässt.</summary>
-function LoadSource(const AFileName: string; out ASource: string): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-begin
-  Result := True;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    ASource := TAtlasEditorBuffer.Text(mBuffer);
-    Exit;
-  end;
-  try
-    ASource := TAtlasTextFile.LoadText(AFileName);
-  except
-    on Exception do
-    begin
-      ASource := '';
-      Result := False;
-    end;
-  end;
 end;
 
 /// <summary>Felder von AExpression aus dem Atlas-Index; nil, wenn der Server langsam oder weg ist.</summary>
@@ -610,7 +587,7 @@ end;
 
 function TAtlasIdeDebugEvaluate.TEvaluation.Overdue: Boolean;
 begin
-  Result := Waiting and (TThread.GetTickCount - FWaitAt >= cDeferredTimeoutMs);
+  Result := Waiting and (TAtlasTicks.Since(FWaitAt) >= cDeferredTimeoutMs);
 end;
 
 procedure TAtlasIdeDebugEvaluate.TEvaluation.Expire;
@@ -660,7 +637,7 @@ begin
     TAtlasDebugValueState.Pending:
       begin
         FKey := ANode.Key;
-        FWaitAt := TThread.GetTickCount;
+        FWaitAt := TAtlasTicks.Now;
         Result := TSliceStep.Wait;
       end;
     TAtlasDebugValueState.None:
@@ -674,15 +651,15 @@ end;
 function TAtlasIdeDebugEvaluate.TEvaluation.Slice(const APlace: TPlace; ASideEffects: Boolean;
   out AChanged: Boolean): TSliceStep;
 var
-  mStartedAt: Cardinal;
+  mStartedAt: UInt64;
   mNode: TAtlasEvalNode;
 begin
   AChanged := False;
   Result := TSliceStep.Next;
-  mStartedAt := TThread.GetTickCount;
+  mStartedAt := TAtlasTicks.Now;
   for mNode in FList.Pending do
   begin
-    if TThread.GetTickCount - mStartedAt >= cSliceMs then
+    if TAtlasTicks.Since(mStartedAt) >= cSliceMs then
     begin
       Exit;
     end;
@@ -1246,7 +1223,7 @@ begin
   end;
   // Ohne Server, ohne Quelltext am Halt bzw. ohne lesbare Datei: Teile des Ergebnis-Strings.
   if (mSession = nil) or (FPlace.FileName = '') or (mNode.Expression = '') or
-    not LoadSource(FPlace.FileName, mSource) then
+    not TAtlasIdeFiles.SourceText(FPlace.FileName, mSource) then
   begin
     AcceptFields(FProgress.Request, AKey, nil);
     Exit;

@@ -106,7 +106,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings;
+  Atlas.UI.Results.Strings;
 
 const
   /// <summary>Bildpunkte, ab denen ein Mausdruck als Ziehen gilt.</summary>
@@ -217,11 +217,11 @@ begin
   end;
   if AEdge.Implementations = 1 then
   begin
-    mCaption := TAtlasStrings.Text(TAtlasTextId.CallDiagramImplementation);
+    mCaption := TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramImplementation);
   end
   else
   begin
-    mCaption := TAtlasStrings.Fmt(TAtlasTextId.CallDiagramImplementations, [AEdge.Implementations]);
+    mCaption := TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramImplementations, [AEdge.Implementations]);
   end;
   Canvas.Brush.Style := bsClear;
   Canvas.TextOut(ATip.X - Canvas.TextWidth(mCaption) - Px(8 * Scale), ATip.Y - Canvas.TextHeight(mCaption) - 1,
@@ -282,7 +282,7 @@ begin
   Canvas.Font.Color := ToColor(Colors.Accent);
   Canvas.Font.Style := [];
   BoxText(Rect(ARect.Left + Pad, ARect.Top, ARect.Right - Pad, ARect.Bottom),
-    TAtlasStrings.Fmt(TAtlasTextId.CallDiagramMore, [ABox.Hidden]));
+    TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramMore, [ABox.Hidden]));
 end;
 
 procedure TCallPainter.DrawNodeTexts(const ABox: TAtlasCallBox; const ARect: TRect);
@@ -556,11 +556,11 @@ var
 begin
   if (ABox < 0) or (ABox > High(FLayout.Boxes)) then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.CallDiagramHint));
+    Exit(TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramHint));
   end;
   if FLayout.Boxes[ABox].Kind = TAtlasCallBoxKind.More then
   begin
-    Exit(TAtlasStrings.Fmt(TAtlasTextId.CallDiagramMore, [FLayout.Boxes[ABox].Hidden]));
+    Exit(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramMore, [FLayout.Boxes[ABox].Hidden]));
   end;
   mNode := FDiagram[FLayout.Boxes[ABox].Node];
   Result := TAtlasCallDiagram.Title(mNode.Item);

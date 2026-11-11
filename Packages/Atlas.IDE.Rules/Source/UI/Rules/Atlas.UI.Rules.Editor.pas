@@ -441,7 +441,7 @@ begin
   mCaption.Parent := ALine;
   mCaption.Align := alLeft;
   mCaption.AutoSize := False;
-  mCaption.Width := 160;
+  mCaption.Width := mCaption.ScaleValue(160);
   mCaption.Layout := tlCenter;
   mCaption.ShowAccelChar := False;
   mCaption.Caption := AOption.Name + ':';
@@ -482,7 +482,7 @@ begin
   Result.ScrollBars := ssHorizontal;
   Result.WordWrap := False;
   Result.Font.Name := 'Consolas';
-  Result.Height := cMinMemoHeight;
+  Result.Height := Result.ScaleValue(cMinMemoHeight);
   Stack(AParent, Result);
 end;
 
@@ -507,7 +507,8 @@ begin
     AMemo.ScrollBars := mBars;
   end;
   // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
-  AMemo.Height := Max(cMinMemoHeight, mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
+  AMemo.Height := Max(AMemo.ScaleValue(cMinMemoHeight),
+    mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + AMemo.ScaleValue(8));
 end;
 
 procedure TAtlasRulesLayout.Stack(AParent: TWinControl; AControl: TControl);
@@ -572,7 +573,7 @@ const
 begin
   inherited Create(AOwner);
   FTopBar := TAtlasRulesBox.Create(Self);
-  FTopBar.Height := 26;
+  FTopBar.Height := FTopBar.ScaleValue(26);
   Stack(Self, FTopBar);
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTopBar;
@@ -583,14 +584,14 @@ begin
   FGroupChoice.Align := alRight;
   FGroupChoice.AlignWithMargins := True;
   FGroupChoice.Margins.SetBounds(cGap, 0, 0, 0);
-  FGroupChoice.Width := 200;
+  FGroupChoice.Width := FGroupChoice.ScaleValue(200);
   FGroupChoice.Style := csDropDownList;
   FMaster := TCheckBox.Create(Self);
-  FMaster.Height := 20;
+  FMaster.Height := FMaster.ScaleValue(20);
   FMaster.Visible := False;
   Stack(Self, FMaster);
   FTypeLevel := TCheckBox.Create(Self);
-  FTypeLevel.Height := 20;
+  FTypeLevel.Height := FTypeLevel.ScaleValue(20);
   FTypeLevel.Visible := False;
   FTypeLevel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesTypeLevel);
   FTypeLevel.AlignWithMargins := True;
@@ -605,12 +606,12 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.Checkboxes := True;
-  FList.Height := cListHeight;
+  FList.Height := FList.ScaleValue(cListHeight);
   for mIndex := 0 to High(cColumns) do
   begin
     mColumn := FList.Columns.Add;
     mColumn.Caption := TAtlasRulesStrings.Text(cColumns[mIndex]);
-    mColumn.Width := cWidths[mIndex];
+    mColumn.Width := FList.ScaleValue(cWidths[mIndex]);
   end;
   Stack(Self, FList);
 end;
@@ -703,19 +704,19 @@ begin
   FDescription := AddLabel(FDetails, '');
   FDescription.WordWrap := True;
   FSeverityRow := TAtlasRulesBox.Create(Self);
-  FSeverityRow.Height := 24;
+  FSeverityRow.Height := FSeverityRow.ScaleValue(24);
   Stack(FDetails, FSeverityRow);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := FSeverityRow;
   mCaption.Align := alLeft;
   mCaption.Layout := tlCenter;
-  mCaption.Width := 160;
+  mCaption.Width := mCaption.ScaleValue(160);
   mCaption.AutoSize := False;
   mCaption.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverity);
   FSeverity := TComboBox.Create(Self);
   FSeverity.Parent := FSeverityRow;
   FSeverity.Align := alLeft;
-  FSeverity.Width := 200;
+  FSeverity.Width := FSeverity.ScaleValue(200);
   FSeverity.Style := csDropDownList;
   FExcludeLabel := AddLabel(FDetails, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesExclude));
   FExclude := TEdit.Create(Self);
@@ -831,7 +832,7 @@ begin
     mLine.Parent := FOptionsBox;
     mLine.Align := alTop;
     mLine.AlignWithMargins := True;
-    mLine.Height := 24;
+    mLine.Height := mLine.ScaleValue(24);
     mLine.Top := mIndex * 30;
     if SameText(mOption.Kind, 'boolean') then
     begin
@@ -839,7 +840,7 @@ begin
     end
     else if SameText(mOption.Kind, 'object-list') and (mOption.Columns <> nil) then
     begin
-      mLine.Height := 150;
+      mLine.Height := mLine.ScaleValue(150);
       mControl := BuildTable(mLine, mOption, mIndex);
     end
     else

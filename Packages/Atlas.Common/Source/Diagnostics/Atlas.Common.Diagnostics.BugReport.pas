@@ -8,7 +8,7 @@
 // <ws>/…, alle anderen absoluten Pfade und Datei-URIs zu <pfad>, Benutzer- und
 // Rechnername zu <benutzer>; im Protokoll zusätzlich Text in Anführungszeichen
 // (Bezeichner, Werte) zu <wert>. Die Regeln stehen in Atlas.Text.Anonymize
-// und gelten gleich im Plugin (ADR 0012). Seit #1478 bleiben in der
+// und gelten gleich im Plugin. Seit #1478 bleiben in der
 // Konfiguration nur Schlüssel, Zahlen, Wahrheitswerte und Schlüsselwörter
 // (TTextAnonymizer.AnonymizeJsonValues); gekennzeichnete Werte im Protokoll
 // werden ersetzt, ohne Anonymisierung nur von ihren Kennzeichen befreit. Ohne

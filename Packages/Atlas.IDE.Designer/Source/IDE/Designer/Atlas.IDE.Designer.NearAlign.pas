@@ -18,9 +18,11 @@
 interface
 
 uses
+  Winapi.Windows, // vor Vcl.Graphics, sonst verdeckt es TBitmap
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
+  Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.UI.Designer.Outlines,
   Atlas.IDE.Designer.Snapshot;
@@ -53,15 +55,15 @@ type
     procedure Execute(ACommand: TAtlasNearCommand);
     function CanUndo: Boolean;
     procedure ApplyTheme;
+    /// <summary>Grundlinie von AControl im Parent aus der Schrift genähert; -1 ohne einzeiligen Text.</summary>
+    class function Baseline(AControl: TControl; ACanvas: TCanvas): Integer; static;
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
   System.Types,
   System.IOUtils,
-  Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.Forms,
   ToolsAPI,
@@ -514,6 +516,11 @@ begin
   finally
     mExceptions.Free;
   end;
+end;
+
+class function TAtlasIdeNearAlign.Baseline(AControl: TControl; ACanvas: TCanvas): Integer;
+begin
+  Result := BaselineOf(AControl, ACanvas);
 end;
 
 procedure TAtlasIdeNearAlign.Execute(ACommand: TAtlasNearCommand);

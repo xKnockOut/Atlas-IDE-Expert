@@ -187,7 +187,7 @@ var
     mIndex, mLoops: Integer;
     mHandler, mIsAllowed: Boolean;
   begin
-    // Iterativ (Bericht M1); parallele Stapel führen ALoops, AHandler und AAllowed je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ALoops, AHandler und AAllowed je Knoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mLoopStack := TStack<Integer>.Create;
     mHandlers := TStack<Boolean>.Create;
@@ -500,7 +500,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -667,7 +667,7 @@ var
     mNode, mRoutine, mLoop: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); parallele Stapel führen ARoutine und ALoop je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ARoutine und ALoop je Knoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mRoutineStack := TStack<TSyntaxNode>.Create;
     mLoopStack := TStack<TSyntaxNode>.Create;

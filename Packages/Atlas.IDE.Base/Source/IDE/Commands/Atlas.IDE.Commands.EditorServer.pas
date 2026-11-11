@@ -78,6 +78,7 @@ uses
   Atlas.Core.Editor.FormatLog,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
@@ -195,7 +196,7 @@ begin
     Exit;
   end;
   Clipboard.AsText := mName;
-  Say(TAtlasStrings.Fmt(TAtlasTextId.EditorCopied, [mName]));
+  Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorCopied, [mName]));
 end;
 
 /// <summary>Protokoll vor dem Formatieren (anonym): Block der IDE und gesendeter Bereich.</summary>
@@ -226,7 +227,7 @@ var
 begin
   if not TAtlasIdeSettings.Current.FormatCode then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeOff));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.FormatCodeOff));
     Exit;
   end;
   if not Current(mView, mFileName, mLines, mSelection) then
@@ -255,10 +256,10 @@ begin
   TAtlasGuard.Log(TAtlasFormatLog.Answer(mEdits, mSelection));
   if Length(mEdits) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeNothing));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.FormatCodeNothing));
     Exit;
   end;
-  mError := ApplyFileEdits(mFileName, mEdits, TAtlasStrings.Text(TAtlasTextId.UndoActionFormat));
+  mError := ApplyFileEdits(mFileName, mEdits, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.UndoActionFormat));
   if mError <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mError]));
@@ -347,7 +348,7 @@ begin
   end
   else if not AInfo.CanCreate or AEdit.IsEmpty then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestUnitNone, [AInfo.Reason]));
+    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.TestUnitNone, [AInfo.Reason]));
   end
   else
   begin
@@ -513,7 +514,7 @@ begin
   begin
     Exit;
   end;
-  mError := ApplyFileEdits(AFileName, AEdits, TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
+  mError := ApplyFileEdits(AFileName, AEdits, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.UndoActionSlash));
   if mError <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mError]));

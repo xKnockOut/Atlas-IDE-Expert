@@ -31,7 +31,7 @@
 // Bereich Issue-Tracker (#1280): nur der Modulschalter; Tracker, Abfrage, Start-Optionen, Muster und Zugang
 // (issues.*) baut das Modul Tracker als Abschnitt (#1455). Auf der Willkommensseite bleibt nur die Sektion an/aus
 // mit dem Sprung „Tracker-Einstellungen …“.
-// Abschnitte der Module (#1455, ADR 0017 Entscheidung 3): Jeder IAtlasSettingsSectionProvider der Registry liefert
+// Abschnitte der Module (#1455): Jeder IAtlasSettingsSectionProvider der Registry liefert
 // der Seite einen eigenen Abschnitt, den sie in den Reiter seines Bereichs baut (Bausteine über
 // IAtlasSettingsSectionHost). Geht ein Modul, schließt die Seite seinen Abschnitt; seine Werte bleiben erhalten.
 // Suchfeld über dem Baum (#1884, settings.search): Treffer dieses Knotens zeigt die Seite selbst (Reveal), Treffer
@@ -129,7 +129,7 @@ uses
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.Core.Style.Symbol;
 
 { TAtlasSettingsPage }
@@ -138,12 +138,12 @@ constructor TAtlasSettingsPage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
-  Width := 480;
+  Width := ScaleValue(480);
   // Die Reiter tragen den Inhalt; scrollt die Seite selbst, springt sie beim Reiterwechsel zum Fokus.
   AutoScroll := False;
   // Mit Reitern reicht die Höhe des längsten Reiters; höher, und die IDE scrollt ihren Bereich beim
   // Reiterwechsel zum Fokus (die Seite „springt“).
-  Height := 440;
+  Height := ScaleValue(440);
   // Kopf mit Symbol (#751) und Titel.
   AddHeader;
   AddExperimentalBanner;
@@ -185,17 +185,17 @@ begin
   mPanel := TAtlasSettingsRow.Create(Self);
   mPanel.Parent := Self;
   mPanel.Align := alTop;
-  mPanel.Height := 40;
+  mPanel.Height := mPanel.ScaleValue(40);
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := mPanel;
   FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
-  FSymbol.Left := 4;
-  FSymbol.Top := 4;
+  FSymbol.Left := FSymbol.ScaleValue(4);
+  FSymbol.Top := FSymbol.ScaleValue(4);
   mTitle := TLabel.Create(Self);
   mTitle.Parent := mPanel;
-  mTitle.Left := 44;
-  mTitle.Top := 12;
-  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
+  mTitle.Left := mTitle.ScaleValue(44);
+  mTitle.Top := mTitle.ScaleValue(12);
+  mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTitle);
   mTitle.Font.Style := [fsBold];
   FTitle := mTitle;
 end;
@@ -209,21 +209,21 @@ begin
   FExperimentalBanner.Parent := Self;
   FExperimentalBanner.Align := alTop;
   FExperimentalBanner.AlignWithMargins := True;
-  FExperimentalBanner.Top := 50;
-  FExperimentalBanner.Height := 28;
+  FExperimentalBanner.Top := FExperimentalBanner.ScaleValue(50);
+  FExperimentalBanner.Height := FExperimentalBanner.ScaleValue(28);
   FExperimentalBanner.Visible := False;
   mButton := TButton.Create(Self);
   mButton.Parent := FExperimentalBanner;
   mButton.Align := alRight;
-  mButton.Width := 90;
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
+  mButton.Width := mButton.ScaleValue(90);
+  mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalAllow);
   mButton.OnClick := ExperimentalAllowClick;
   mText := TLabel.Create(Self);
   mText.Parent := FExperimentalBanner;
   mText.Align := alClient;
   mText.Layout := tlCenter;
   mText.WordWrap := True;
-  mText.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalOff);
+  mText.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalOff);
 end;
 
 procedure TAtlasSettingsPage.AddFilterRow;
@@ -234,21 +234,21 @@ begin
   FFilterRow.Parent := Self;
   FFilterRow.Align := alBottom;
   FFilterRow.AlignWithMargins := True;
-  FFilterRow.Height := 26;
+  FFilterRow.Height := FFilterRow.ScaleValue(26);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := FFilterRow;
   mCaption.Left := 0;
-  mCaption.Top := 5;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFilter);
+  mCaption.Top := mCaption.ScaleValue(5);
+  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilter);
   // Reihenfolge wie TAtlasSettingsFilter.
   FFilter := TAtlasChoiceBox.Create(Self);
   FFilter.Parent := FFilterRow;
-  FFilter.Left := 60;
+  FFilter.Left := FFilter.ScaleValue(60);
   FFilter.Top := 1;
-  FFilter.Width := 180;
-  FFilter.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsFilterAll),
-    TAtlasStrings.Text(TAtlasTextId.SettingsFilterModified),
-    TAtlasStrings.Text(TAtlasTextId.SettingsFilterExperimental)]);
+  FFilter.Width := FFilter.ScaleValue(180);
+  FFilter.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilterAll),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilterModified),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFilterExperimental)]);
   FFilter.Choice := 0;
   FFilter.OnChange := FilterChange;
   FMarks.MarkExperimental(TAtlasExperimental.PluginNames(Catalog));

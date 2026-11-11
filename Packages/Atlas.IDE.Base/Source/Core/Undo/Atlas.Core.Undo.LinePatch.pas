@@ -13,7 +13,7 @@
 // und eine fehlende letzte Zeilenschaltung erhalten bleiben. Verglichen wird
 // nach gleichem Anfang und Ende mit der längsten gemeinsamen Teilfolge; ist der
 // Rest zu groß dafür, gilt er als ein Block. Zerlegen und Vergleichen kommen
-// aus Atlas.Text (ADR 0012).
+// aus Atlas.Text.
 
 interface
 

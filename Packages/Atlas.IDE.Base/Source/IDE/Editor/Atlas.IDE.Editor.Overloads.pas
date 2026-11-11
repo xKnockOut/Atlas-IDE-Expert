@@ -43,6 +43,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.ServerPlaceholders,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit;
@@ -106,18 +107,19 @@ begin
     end;
     if mReply.Edit.IsEmpty then
     begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.OverloadNothing));
+      AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.OverloadNothing));
       Exit;
     end;
-    if not TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.OverloadTitle), AMessage,
+    if not TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(TAtlasEditorTextId.OverloadTitle),
+      AMessage,
       mOutcome) then
     begin
       Exit;
     end;
-    AMessage(TAtlasStrings.Text(TAtlasTextId.OverloadDone));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.OverloadDone));
     for mWarning in mReply.Warnings do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.OverloadNote, [mWarning]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.OverloadNote, [mWarning]));
     end;
     StartPlaceholders(mView, mBefore, mReply.Edit, mPlaceholders, APlaceholders);
   finally

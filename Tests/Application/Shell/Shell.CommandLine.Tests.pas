@@ -54,7 +54,7 @@ type
     procedure ReadsAffectedTestsArguments;
     [Test]
     procedure ReadsFailOnAndSourceRoot;
-    /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
+    /// <summary>Alle Text- und Schalterparameter der Tabelle, auch mit Großbuchstaben.</summary>
     [Test]
     procedure ReadsTableOptions;
     /// <summary>#1355: --replay nennt anfrage.json eines Absturzfalls.</summary>

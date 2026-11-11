@@ -34,12 +34,14 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.ChangeSignature,
   Atlas.UI.Editor.ChangeSignature,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.ServerEdit;
+  Atlas.IDE.Editor.ServerEdit,
+  Atlas.Text.Json;
 
 const
   cPrepareCommand = 'atlas.server.changeSignature.prepare';
@@ -59,7 +61,7 @@ begin
   try
     mAnswer := ASession.RunCommand(cPrepareCommand, AArgumentsJson, cTimeoutMs);
     try
-      AModel := TAtlasSignatureModel.Create(TAtlasIdeServerEdit.AsObject(mAnswer));
+      AModel := TAtlasSignatureModel.Create(TJsonRead.AsObject(mAnswer));
     finally
       mAnswer.Free;
     end;
@@ -89,7 +91,7 @@ begin
     Result := TAtlasChangeSignatureDialog.Execute(mModel);
     if Result and not mModel.Changed then
     begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.SigNothing));
+      AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.SigNothing));
       Result := False;
     end;
     // Argumente der Aktion um die neue Liste ergänzen.
@@ -119,22 +121,24 @@ begin
   end;
   if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.SigNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.SigNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400); Warnungen (Methodenzeiger, schreibgeschützte Aufrufer) im Hinweis.
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.SigPreviewHint, [mReply.Edit.EditCount, Length(mReply.Edit.Files)]) +
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigPreviewHint, [mReply.Edit.EditCount,
+    Length(mReply.Edit.Files)]) +
     TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.SigWarning);
-  if not TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle), mHint,
-    TAtlasStrings.Text(TAtlasTextId.SigPreviewApply), mReply.Edit) then
+  if not TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(TAtlasEditorTextId.SigPreviewTitle), mHint,
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.SigPreviewApply), mReply.Edit) then
   begin
     Exit;
   end;
   // Warnungen auch dann, wenn das Übernehmen scheitert.
-  if TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle), AMessage,
+  if TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigPreviewTitle),
+    AMessage,
     mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigDone, [mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigDone, [mOutcome.Edits, mOutcome.Files]));
   end;
   TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.SigWarning, AMessage);
 end;

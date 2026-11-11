@@ -24,7 +24,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.UI.Tracker.ValueBox;
+  Atlas.UI.Tracker.ValueBox,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -66,7 +67,7 @@ type
     Discard: TButton;
   end;
 
-  TAtlasTrackerTimeDialog = class(TForm)
+  TAtlasTrackerTimeDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 480;
     cTextHeight = 90;
@@ -127,7 +128,9 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 8;
@@ -153,16 +156,11 @@ var
   mRow: TPanel;
   mMinutes: Integer;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FRequest := ARequest;
   FDecision := TAtlasTimeDecision.Later;
   FItem := TAtlasTrackerWorkItem.Create(0, ARequest.Date, '', '');
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookCaption);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   OnCloseQuery := DialogCloseQuery;
   mMinutes := TAtlasTimeRounding.Minutes(ARequest.Seconds, ARequest.Rounding);
 
@@ -269,7 +267,7 @@ begin
   FParts.Later.Cancel := True;
   FParts.Discard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
   FParts.Discard.OnClick := DiscardClick;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasTrackerTimeDialog.AddRow(AHeight: Integer): TPanel;
@@ -325,12 +323,15 @@ end;
 
 procedure TAtlasTrackerTimeDialog.ShowNote(const AText: string; AError: Boolean);
 begin
+  // Mit seFont übergeht der Stil Font.Color: Fehler zeichnen ihre Farbe selbst.
   if AError then
   begin
-    FParts.Note.Font.Color := clRed;
+    FParts.Note.StyleElements := FParts.Note.StyleElements - [seFont];
+    FParts.Note.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   end
   else
   begin
+    FParts.Note.StyleElements := FParts.Note.StyleElements + [seFont];
     FParts.Note.Font.Color := clWindowText;
   end;
   FParts.Note.Caption := AText;

@@ -68,7 +68,7 @@ begin
   begin
     Exit;
   end;
-  // Iterativ (Bericht M1); auch lokale Typen in Routinen zählen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); auch lokale Typen in Routinen zählen.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ARoot);

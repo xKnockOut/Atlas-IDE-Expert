@@ -57,7 +57,7 @@ type
       const ARange: TTextRange; AWithRange: Boolean;
       const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -90,6 +90,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.LibraryUnits,
@@ -243,7 +244,6 @@ type
     FUnitNames: TDictionary<string, Boolean>;
     FList: TList<TSemanticToken>;
     procedure AddUnitNames(const AIndex: ISymbolIndex);
-    function PreviousCode(AIndex: Integer): Integer;
     function AddDeclaration(var AItem: TSemanticToken; AIndex: Integer): Boolean;
     function ChainAt(AIndex: Integer; out APrevious: Integer): TArray<string>;
     procedure AddUnitPart(var AItem: TSemanticToken; const ANames: TArray<string>);
@@ -308,15 +308,6 @@ begin
   end;
 end;
 
-function TSemanticCollect.PreviousCode(AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and (FTokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function TSemanticCollect.AddDeclaration(var AItem: TSemanticToken; AIndex: Integer): Boolean;
 var
   mSymbol: TIndexSymbol;
@@ -346,13 +337,13 @@ begin
   // Kette A.B.C bis zu diesem Bezeichner, wie Resolve sie bildet.
   Result := TArray<string>.Create(CleanName(FTokens[AIndex].Text));
   mFirst := AIndex;
-  APrevious := PreviousCode(mFirst);
-  while (APrevious >= 1) and FTokens[APrevious].IsSymbol('.') and (PreviousCode(APrevious) >= 0) and
-    (FTokens[PreviousCode(APrevious)].Kind = TPascalTokenKind.Identifier) do
+  APrevious := PreviousCode(FTokens, mFirst);
+  while (APrevious >= 1) and FTokens[APrevious].IsSymbol('.') and (PreviousCode(FTokens, APrevious) >= 0) and
+    (FTokens[PreviousCode(FTokens, APrevious)].Kind = TPascalTokenKind.Identifier) do
   begin
-    mFirst := PreviousCode(APrevious);
+    mFirst := PreviousCode(FTokens, APrevious);
     Result := TArray<string>.Create(CleanName(FTokens[mFirst].Text)) + Result;
-    APrevious := PreviousCode(mFirst);
+    APrevious := PreviousCode(FTokens, mFirst);
   end;
 end;
 

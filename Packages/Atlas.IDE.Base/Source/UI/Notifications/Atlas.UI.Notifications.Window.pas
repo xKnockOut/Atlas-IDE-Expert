@@ -166,7 +166,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Notifications.Strings;
 
 const
   // Tag der Menüeinträge: gelesen bzw. Verhalten (ModeTag + Ord).
@@ -218,35 +219,35 @@ class function TAtlasNotificationTexts.SourceCaption(const ASource: string): str
 begin
   if SameText(ASource, TAtlasNotificationSources.cBuild) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuild);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceBuild);
   end
   else if SameText(ASource, TAtlasNotificationSources.cCheck) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceCheck);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceCheck);
   end
   else if SameText(ASource, TAtlasNotificationSources.cReload) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceReload);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceReload);
   end
   else if SameText(ASource, TAtlasNotificationSources.cServer) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceServer);
   end
   else if SameText(ASource, TAtlasNotificationSources.cShortcutTips) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceShortcutTips);
   end
   else if SameText(ASource, TAtlasNotificationSources.cBuildServer) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceBuildServer);
   end
   else if SameText(ASource, TAtlasNotificationSources.cOpenBuild) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceOpenBuild);
   end
   else if SameText(ASource, TAtlasNotificationSources.cHidden) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceHidden);
   end
   else if SameText(ASource, TAtlasNotificationSources.cUnitRename) then
   begin
@@ -262,11 +263,11 @@ begin
   end
   else if SameText(ASource, TAtlasNotificationSources.cIssues) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceIssues);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceIssues);
   end
   else if SameText(ASource, TAtlasNotificationSources.cRuleChecks) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks);
+    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceRuleChecks);
   end
   else
   begin
@@ -622,7 +623,7 @@ begin
     begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(Colors.Muted);
-      mText := TAtlasStrings.Text(TAtlasTextId.NotificationsEmpty);
+      mText := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsEmpty);
       mPart := mList;
       DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
     end;
@@ -663,7 +664,7 @@ begin
   if mUnread > 0 then
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
-    mText := TAtlasStrings.Fmt(TAtlasTextId.NotificationsUnread, [mUnread]);
+    mText := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsUnread, [mUnread]);
     DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
       DT_END_ELLIPSIS);
   end;
@@ -717,11 +718,11 @@ begin
   FParts.FilterBox.OnChange := FilterChange;
   FParts.AllReadButton := TButton.Create(Self);
   FParts.AllReadButton.Parent := Self;
-  FParts.AllReadButton.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsAllRead);
+  FParts.AllReadButton.Caption := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsAllRead);
   FParts.AllReadButton.OnClick := AllReadClick;
   FParts.ClearButton := TButton.Create(Self);
   FParts.ClearButton.Parent := Self;
-  FParts.ClearButton.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsClear);
+  FParts.ClearButton.Caption := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsClear);
   FParts.ClearButton.OnClick := ClearClick;
   FParts.Menu := TPopupMenu.Create(Self);
   Reload;
@@ -803,7 +804,7 @@ begin
     FParts.FilterBox.Items.BeginUpdate;
     try
       FParts.FilterBox.Items.Clear;
-      FParts.FilterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll));
+      FParts.FilterBox.Items.Add(TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsFilterAll));
       for mSource in mSources do
       begin
         FParts.FilterBox.Items.Add(TAtlasNotificationTexts.SourceCaption(mSource));
@@ -995,14 +996,14 @@ begin
   FState.MenuRow := ARow;
   mSource := FRows.Items[ARow].Source;
   mItem := TMenuItem.Create(FParts.Menu);
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsMarkRead);
+  mItem.Caption := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsMarkRead);
   mItem.Tag := cMarkReadTag;
   mItem.Enabled := not FRows.Items[ARow].Read;
   mItem.OnClick := MenuClick;
   FParts.Menu.Items.Add(mItem);
   FParts.Menu.Items.Add(NewLine);
   mItem := TMenuItem.Create(FParts.Menu);
-  mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.NotificationsModeMenu,
+  mItem.Caption := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsModeMenu,
     [TAtlasNotificationTexts.SourceCaption(mSource)]);
   mItem.Enabled := False;
   FParts.Menu.Items.Add(mItem);

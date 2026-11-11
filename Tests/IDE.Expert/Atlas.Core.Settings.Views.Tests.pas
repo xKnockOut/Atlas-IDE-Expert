@@ -416,6 +416,7 @@ begin
   Assert.IsTrue(Settings.BreadcrumbsOverloads, 'Überladungen');
   Assert.IsTrue(Settings.BreadcrumbsInterfaces, 'Interface-Marke');
   Assert.IsTrue(Settings.BreadcrumbsMetrics, 'Kennzahlen-Karte');
+  Assert.IsTrue(Settings.MouseNavButtons, 'Maustasten');
   Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
   Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
@@ -436,6 +437,7 @@ begin
   Settings.BreadcrumbsOverloads := False;
   Settings.BreadcrumbsInterfaces := False;
   Settings.BreadcrumbsMetrics := False;
+  Settings.MouseNavButtons := False;
   Settings.BreadcrumbsIdeColors := False;
   Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
@@ -460,6 +462,7 @@ begin
   Assert.IsFalse(Loaded.BreadcrumbsOverloads);
   Assert.IsFalse(Loaded.BreadcrumbsInterfaces);
   Assert.IsFalse(Loaded.BreadcrumbsMetrics);
+  Assert.IsFalse(Loaded.MouseNavButtons);
   Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
   Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);
@@ -825,12 +828,16 @@ begin
   Assert.IsTrue(Settings.EditorDesignerBar);
   Assert.AreEqual(32988, Settings.DesignerSearchKey, 'Alt+^');
   Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, Settings.DesignerSearchStyle, 'großes Fenster');
-  Assert.IsFalse(Settings.DesignerTabOrderClick, 'experimentell: aus');
+  Assert.IsTrue(Settings.DesignerTabOrderClick, 'Neuvergeben an (#603)');
+  Assert.IsFalse(Settings.DesignerTabOrderOverlay, 'Marken nur auf Knopfdruck');
+  Assert.IsFalse(Settings.DesignerTabOrderPaths);
   Assert.IsFalse(Settings.DesignerAlign, 'experimentell: aus');
   Settings.EditorDesignerBar := False;
   Settings.DesignerSearchKey := 0;
   Settings.DesignerSearchStyle := TAtlasPluginSettings.cDesignerSearchPopup;
-  Settings.DesignerTabOrderClick := True;
+  Settings.DesignerTabOrderClick := False;
+  Settings.DesignerTabOrderOverlay := True;
+  Settings.DesignerTabOrderPaths := True;
   Settings.DesignerAlign := True;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -839,7 +846,9 @@ begin
   Assert.IsFalse(Loaded.EditorDesignerBar);
   Assert.AreEqual(0, Loaded.DesignerSearchKey, 'keine Taste');
   Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchPopup, Loaded.DesignerSearchStyle);
-  Assert.IsTrue(Loaded.DesignerTabOrderClick);
+  Assert.IsFalse(Loaded.DesignerTabOrderClick);
+  Assert.IsTrue(Loaded.DesignerTabOrderOverlay);
+  Assert.IsTrue(Loaded.DesignerTabOrderPaths);
   Assert.IsTrue(Loaded.DesignerAlign);
   Store.WriteString('DesignerSearchStyle', 'riesig');
   Loaded.Load(Store);

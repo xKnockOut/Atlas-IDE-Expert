@@ -27,7 +27,7 @@
 // - Für „Test debuggen“ (#585, Atlas.IDE.Tests.Debug): Projektwahl, Ziel,
 //   Build vorab, Sperre während der Sitzung (Debugging) und das Ergebnis aus
 //   dem XML-Bericht des Laufs im Debugger (ReportRun).
-// Haken statt Imports (A-09): Build, Probleme und Willkommensseite sind andere
+// Haken statt Imports: Build, Probleme und Willkommensseite sind andere
 // Features; die Composition verbindet sie.
 
 interface
@@ -63,7 +63,7 @@ type
     public
       Alive: Boolean;
     end;
-    /// <summary>Haken zu Build, Problemen und Willkommensseite (A-09); die Composition setzt sie.</summary>
+    /// <summary>Haken zu Build, Problemen und Willkommensseite; die Composition setzt sie.</summary>
     THooks = record
       OnBuild: TAtlasTestsBuildFunc;
       OnProblems: TAtlasTestsProblemsProc;
@@ -155,7 +155,8 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.IDE.Foundation.Files;
 
 const
   cMessageGroup = 'Atlas';
@@ -165,7 +166,7 @@ const
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 begin
-  Result := TAtlasIdeTestProjects.ReadLines(AFileName, ALines);
+  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
 end;
 
 function ProjectByFile(const AFileName: string): IOTAProject;

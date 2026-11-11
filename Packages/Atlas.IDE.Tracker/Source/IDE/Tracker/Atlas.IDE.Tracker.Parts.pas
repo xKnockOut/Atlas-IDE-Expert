@@ -585,7 +585,7 @@ begin
   mCreate.Key := CreateIssueKey;
   Result := [
     // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
-    Command('Atlas.TrackerLogin', TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand),
+    Command('Atlas.TrackerLogin', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginCommand),
       EnterCredentials, TrackerLoginVisible),
     mCreate,
     // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
@@ -603,7 +603,7 @@ begin
     Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
       AttachVisible),
     // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit ci.login und der Kachel.
-    Command('Atlas.CiLogin', TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible)];
+    Command('Atlas.CiLogin', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible)];
 end;
 
 class procedure TAtlasTrackerParts.ApplySettings;

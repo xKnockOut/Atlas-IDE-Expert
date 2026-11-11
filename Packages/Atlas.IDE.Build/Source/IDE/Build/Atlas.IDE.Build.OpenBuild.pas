@@ -132,7 +132,8 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.CheckOnSave,
-  Atlas.UI.Build.Strings;
+  Atlas.UI.Build.Strings,
+  Atlas.Core.Diagnostics.UserIdle;
 
 { TAtlasIdeOpenBuild.TIdeNotifier }
 
@@ -324,24 +325,14 @@ end;
 
 class function TAtlasIdeOpenBuild.IdleMs: Int64;
 var
-  mInfo: TLastInputInfo;
-  mTicks: Cardinal;
+  mIdle: Cardinal;
 begin
   // Zeit seit der letzten Eingabe in Windows; ohne Angabe gilt die IDE als ruhig.
-  mInfo.cbSize := SizeOf(mInfo);
-  if not GetLastInputInfo(mInfo) then
+  if not TAtlasUserIdle.IdleMs(mIdle) then
   begin
     Exit(High(Integer));
   end;
-  mTicks := GetTickCount;
-  if mTicks >= mInfo.dwTime then
-  begin
-    Result := mTicks - mInfo.dwTime;
-  end
-  else
-  begin
-    Result := 0;
-  end;
+  Result := mIdle;
 end;
 
 class function TAtlasIdeOpenBuild.Debugging: Boolean;

@@ -120,8 +120,12 @@ uses
   Atlas.Core.Completion.Width,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Documentation.Layout,
-  Atlas.UI.Strings,
+  Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.PopupTexts;
+
+const
+  // Rand neben dem Text „keine Treffer für …“ in der Breite des Fensters.
+  cNoMatchesPadding = 32;
 
 type
   /// <summary>Linksklick ins Popup (MouseDown): Die Teile, die ihn abnehmen, kommen in fester Reihenfolge dran;
@@ -426,10 +430,10 @@ begin
     begin
       mKind := mKind + ', ';
     end;
-    mKind := mKind + TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
+    mKind := mKind + TAtlasCompletionStrings.Text(TAtlasCompletionTextId.AccessFavorite);
   end;
   Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], mKind,
-    TAtlasStrings.Text(TAtlasTextId.AccessPosition), FSelected + 1, Length(FOrder)));
+    TAtlasCompletionStrings.Text(TAtlasCompletionTextId.AccessPosition), FSelected + 1, Length(FOrder)));
 end;
 
 procedure TAtlasCompletionPopup.ShowNotice(const AText: string);
@@ -480,7 +484,8 @@ begin
   end;
   Canvas.Font := UIFont;
   FSessionWidth := Max(FSessionWidth, Max(Scale(cMinWidth),
-    Canvas.TextWidth(TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [APrefix])) + Scale(32)));
+    Canvas.TextWidth(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.NoMatchesFor, [APrefix])) +
+    Scale(cNoMatchesPadding)));
   Canvas.Font := Font;
   Relayout;
 end;
@@ -555,7 +560,7 @@ begin
   end;
   if FItems[FOrder[APosition]].Favorite then
   begin
-    mStatus := TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
+    mStatus := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.AccessFavorite);
     if Result <> '' then
     begin
       Result := mStatus + ', ' + Result;

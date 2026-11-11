@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerTypes: array[0..294] of string = (
+  cCatalogLinesEnCompilerTypes: array[0..309] of string = (
     '{',
     '      "id": "assign-to-property-member",',
     '      "name": "Assignment to a field of a property record",',
@@ -247,9 +247,11 @@ const
     't 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + [''a''] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, no' +
     't ''a'' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point va' +
     'lue (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice v' +
-    'ersa (like E2009); of overloaded routines none fits the procedural type (like E2010). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last on' +
-    'e counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded' +
-    ' routines and with blocks stay silent. No quick fix: only the developer knows which side is wrong.",',
+    'ersa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose paramete' +
+    'rs differ in count, const/var/out or type, assigned or passed as an argument (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed witho' +
+    'ut () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when bot' +
+    'h sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay s' +
+    'ilent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",',
     '      "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := ''drei'';",',
     '      "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",',
     '      "compilerCodes": [',
@@ -329,6 +331,24 @@ const
     '        "E2532"',
     '      ],',
     '      "level": "T"',
+    '    },',
+    '{',
+    '      "id": "dunitx-areequal-length",',
+    '      "name": "Assert.AreEqual with integer and NativeInt",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "Assert.AreEqual or Assert.AreNotEqual with an integer on one side and a NativeInt on the other: Length, High or Low of a dynamic array (NativeInt since Delphi 12) or an expressio' +
+    'n whose type is certainly NativeInt or NativeUInt (TList<T>.Count with the RTL in the index). None of the overloads Integer, Int64, Double … fits unambiguously, so Delphi falls back to AreEqual<T> and' +
+    ' cannot infer T (like E2532). Free Pascal compiles the call, so the error only shows when building with Delphi. Strings (Length returns Integer), static arrays, expressions of unknown type, calls with' +
+    ' a type argument and a known Delphi version before 12 stay silent. Quick fix (safe, also for the whole file): wrap the NativeInt side in Integer(...).",',
+    '      "bad": "Assert.AreEqual(5, Length(mObjects));",',
+    '      "good": "Assert.AreEqual(5, Integer(Length(mObjects)));",',
+    '      "compilerCodes": [',
+    '        "E2532"',
+    '      ],',
+    '      "level": "T",',
+    '      "safeFix": true',
     '    },',
     '{',
     '      "id": "argument-count-mismatch",',

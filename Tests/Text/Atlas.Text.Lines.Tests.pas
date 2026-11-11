@@ -26,7 +26,7 @@ type
     procedure SplitLinesReturnsLineBreak;
     [Test]
     procedure SplitKeepingBreaksKeepsEnds;
-    /// <summary>Charakterisierung der RTL (D-03): TStringHelper.Split verwirft ein leeres letztes Element
+    /// <summary>Charakterisierung der RTL: TStringHelper.Split verwirft ein leeres letztes Element
     /// und liefert für '' ein leeres Array. SplitLines tut beides nicht.</summary>
     [Test]
     procedure SplitHelperDropsTrailingEmpty;

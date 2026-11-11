@@ -36,6 +36,10 @@
 //   Mausereignis zum Namen im Kopf.
 // - Die oberste Zeile ist View.TopRow; zugeklappte Bereiche darunter zählt
 //   der Kopf wie offene.
+// - Thema (Hell/Dunkel): Die IDE schreibt beim Wechsel das Farbschema des
+//   Editors neu. ThemeChanged liest es beim nächsten Takt neu, vergisst den
+//   abgetasteten Hintergrund und zeichnet den Kopf neu; sonst bliebe er in den
+//   Farben des alten Themas, bis sich der Stand der Gliederung ändert.
 // editor.stickyScroll aus: nichts wird gezeichnet, kein Klick abgefangen.
 // Nur im Hauptthread.
 
@@ -51,6 +55,8 @@ type
     class procedure Uninstall; static;
     /// <summary>Einstellung geändert: Editor neu zeichnen.</summary>
     class procedure ApplySettings; static;
+    /// <summary>IDE-Thema gewechselt: Farbschema und Hintergrund neu bestimmen, Editor neu zeichnen.</summary>
+    class procedure ThemeChanged; static;
     class function Enabled: Boolean; static;
     /// <summary>Zeilen, die der Kopf oben im Editor zu AFileName verdeckt; 0 ohne Kopf. Die Blocklinien des
     /// Editors bleiben dort weg, der Kopf zeichnet sie selbst.</summary>
@@ -242,6 +248,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure ApplySettings;
+    procedure ThemeChanged;
   end;
 
 procedure InvalidateEditor;
@@ -349,6 +356,20 @@ begin
     Clear;
   end;
   if mWas or FOn then
+  begin
+    InvalidateEditor;
+  end;
+end;
+
+procedure TStickyState.ThemeChanged;
+begin
+  // Farbschema (Hintergrund, Syntaxfarben) beim nächsten Takt neu lesen: Die IDE schreibt es mit dem Wechsel.
+  FStamp := 0;
+  FRowsTop := -1;
+  // Der abgetastete Hintergrund ist der des alten Themas; bis zum nächsten Abtasten die eigene Zeile nehmen.
+  FBackKnown := False;
+  FSchemeBackKnown := False;
+  if FOn then
   begin
     InvalidateEditor;
   end;
@@ -1309,6 +1330,14 @@ begin
   if FState <> nil then
   begin
     TStickyState(FState).ApplySettings;
+  end;
+end;
+
+class procedure TAtlasIdeStickyScroll.ThemeChanged;
+begin
+  if FState <> nil then
+  begin
+    TStickyState(FState).ThemeChanged;
   end;
 end;
 

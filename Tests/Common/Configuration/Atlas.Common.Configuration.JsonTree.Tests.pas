@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Configuration.JsonTree.Tests;
 
 // Kommentare in atlas.json: Der Server überspringt sie mit TJsoncScanner aus
-// Atlas.Text, wie das Plugin (ADR 0012); ein offener Blockkommentar ist hier
+// Atlas.Text, wie das Plugin; ein offener Blockkommentar ist hier
 // ein Fehler an der Stelle des "/*".
 
 interface

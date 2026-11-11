@@ -45,7 +45,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan;
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasBranchDialog = class;
@@ -227,7 +228,7 @@ type
     property ServerHint: TLabel read FServerHint;
   end;
 
-  TAtlasBranchDialog = class(TForm)
+  TAtlasBranchDialog = class(TAtlasDialog)
   private
     FFacts: TAtlasVcsBranchFacts;
     FInfoLabel: TLabel;
@@ -284,7 +285,9 @@ uses
   System.Math,
   Atlas.Core.VersionControl.BranchNames,
   Atlas.UI.Strings,
-  Atlas.UI.VersionControl.Strings;
+  Atlas.UI.VersionControl.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 8;
@@ -359,7 +362,9 @@ end;
 function ErrorLabel(AOwner: TComponent; AParent: TWinControl; ATop: Integer): TLabel;
 begin
   Result := NoteLabel(AOwner, AParent, ATop, 2);
-  Result.Font.Color := clRed;
+  Result.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  Result.StyleElements := Result.StyleElements - [seFont];
 end;
 
 /// <summary>Zelle der Externals-Tabelle; zu lange Pfade mit „…“ und vollständig als Hinweis.</summary>
@@ -684,7 +689,7 @@ begin
   FBox.AlignWithMargins := True;
   FBox.Margins.SetBounds(cGap, 4, cGap, 4);
   FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
-  FBox.Height := 120;
+  FBox.Height := FBox.ScaleValue(120);
   FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
   // Einträge der Auswahllisten erst mit Fenster (FillChoices).
   AddFetchAndPush;
@@ -693,7 +698,7 @@ begin
   FError := ErrorLabel(FDialog, FBox, 0);
   if FBox.Visible then
   begin
-    FDialog.Height := FDialog.Height + 176;
+    FDialog.Height := FDialog.Height + FDialog.ScaleValue(176);
     FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + 176;
   end;
 end;
@@ -1096,17 +1101,19 @@ begin
   // Nicht gelesen (propget gescheitert): Hinweis wie vor #1291, die Externals gehen unverändert mit.
   if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
   begin
-    FBox.Height := 56;
+    FBox.Height := FBox.ScaleValue(56);
     FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
     FHint.Align := alClient;
     FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
     Exit;
   end;
   FBox.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalsCount, [Length(mFacts.SvnExternals)]);
-  FHint.Font.Color := clRed;
+  FHint.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FHint.StyleElements := FHint.StyleElements - [seFont];
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
-  FBox.Height := 44 + 20 + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow;
+  FBox.Height := FBox.ScaleValue(44 + 20 + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) * cExternalRow);
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
   mWidth := FDialog.Width - 4 * cGap - 20;
   AddHeader(mWidth);
@@ -1115,7 +1122,7 @@ begin
   mScroll.Width := mWidth;
   mScroll.Align := alClient;
   mScroll.BorderStyle := bsNone;
-  mScroll.VertScrollBar.Increment := cExternalRow;
+  mScroll.VertScrollBar.Increment := mScroll.ScaleValue(cExternalRow);
   FDefaults := TAtlasVcsBranchPlan.DefaultActions(mFacts, FDialog.FSvn.Options);
   SetLength(FBoxes, Length(mFacts.SvnExternals));
   SetLength(FChoices, Length(mFacts.SvnExternals));
@@ -1134,7 +1141,7 @@ begin
   mHeader.Parent := FBox;
   mHeader.Width := AWidth;
   mHeader.Align := alTop;
-  mHeader.Height := 20;
+  mHeader.Height := mHeader.ScaleValue(20);
   mHeader.BevelOuter := bvNone;
   mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
   mLabel.Font.Color := clGrayText;
@@ -1157,9 +1164,9 @@ begin
   mRow := TPanel.Create(FDialog);
   mRow.Parent := AParent;
   mRow.Width := AWidth;
-  mRow.Height := cExternalRow;
+  mRow.Height := mRow.ScaleValue(cExternalRow);
   mRow.BevelOuter := bvNone;
-  mRow.Top := AIndex * cExternalRow;
+  mRow.Top := mRow.ScaleValue(AIndex * cExternalRow);
   mRow.Align := alTop;
   CellLabel(FDialog, mRow, cGap, cFolderWidth, mExternal.Path);
   mLabel := CellLabel(FDialog, mRow, cGap + cFolderWidth + cGap, mRow.Width - cFolderWidth - cChoiceWidth - 4 * cGap,
@@ -1311,7 +1318,7 @@ end;
 constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
   const ASetup: TAtlasBranchDialogSetup);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FFacts := AFacts;
   FFilling := True;
   FNames := TAtlasBranchNamePart.Create(Self);
@@ -1358,8 +1365,8 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Width := 720;
-  Height := 520;
+  Width := ScaleValue(720);
+  Height := ScaleValue(520);
   Constraints.MinWidth := 520;
   Constraints.MinHeight := 420;
 end;
@@ -1372,7 +1379,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   FNeverAsk := TCheckBox.Create(Self);
   FNeverAsk.Parent := mBottom;

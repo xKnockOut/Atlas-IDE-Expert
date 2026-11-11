@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.CodeInsight.Manager.Crashes;
 
-// Abstürze des Servers im Code Insight-Manager, vierte Stufe der Klassenkette. Ende des Servers (Bericht H5): Endet
+// Abstürze des Servers im Code Insight-Manager, vierte Stufe der Klassenkette. Ende des Servers: Endet
 // er von selbst, steht in atlas.log, womit (Exit-Code, etwa Stapelüberlauf), nach welcher Laufzeit, bei welcher
 // Anfrage und wie viel er auf stderr schrieb; das Statusfeld nennt die Ursache. Den ersten Absturz startet die
 // nächste Anfrage wie bisher neu. Endet er zweimal mit demselben Code innerhalb von zehn Minuten, startet Atlas ihn
@@ -25,10 +25,10 @@ type
   /// <summary>Ende und Abstürze des Servers, Absturzfälle und übersprungene Anfragen.</summary>
   TAtlasCodeInsightCrashes = class(TAtlasCodeInsightCommands)
   protected
-    /// <summary>Der Server endete von selbst (Lese-Thread, Bericht H5): Ursache, Laufzeit und letzte Anfrage
+    /// <summary>Der Server endete von selbst (Lese-Thread): Ursache, Laufzeit und letzte Anfrage
     /// ins Protokoll, Ursache ins Statusfeld; nach zwei gleichen Abstürzen anhalten (ServerHeld).</summary>
     procedure ServerEnded(const AInfo: TLspCloseInfo); override;
-    /// <summary>Hauptthread: Statusfeld und Benachrichtigung mit Neustart und Fehlerbericht (Bericht H5).</summary>
+    /// <summary>Hauptthread: Statusfeld und Benachrichtigung mit Neustart und Fehlerbericht.</summary>
     procedure ServerHeld(ACode: Cardinal);
     /// <summary>Hauptthread nach ServerEnded: anhalten oder die Ursache ins Statusfeld.</summary>
     procedure ServerEndedMain(ACode: Cardinal; AContinues: Boolean);
@@ -50,6 +50,7 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Status.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -121,7 +122,7 @@ begin
     Exit;
   end;
   mCause := TAtlasServerExits.Describe(ACode);
-  SetPhase(TAtlasServerPhase.Stopped, TAtlasStrings.Fmt(TAtlasTextId.ServerHeldPhase, [mCause]));
+  SetPhase(TAtlasServerPhase.Stopped, TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ServerHeldPhase, [mCause]));
   mManager := Self;
   mActions := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.StatusRestartServer),
     procedure
@@ -138,8 +139,9 @@ begin
   end;
   mActions := mActions + LogActions;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Error,
-    TAtlasStrings.Text(TAtlasTextId.ServerHeldTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.ServerHeldText, [mCause, TAtlasServerCrashes.cWindowMinutes]), mActions);
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.ServerHeldTitle),
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ServerHeldText, [mCause, TAtlasServerCrashes.cWindowMinutes]),
+    mActions);
 end;
 
 procedure TAtlasCodeInsightCrashes.AcceptNotifications(ASession: TLspSession);
@@ -216,8 +218,8 @@ procedure TAtlasCodeInsightCrashes.CrashCaseSaved(const ACase: TAtlasCrashCase);
 begin
   Diagnose('Absturzfall gesichert: ' + ACase.Summary);
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning,
-    TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.CrashCaseText, [TAtlasCrashCases.SummaryText(ACase)]),
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle),
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashCaseText, [TAtlasCrashCases.SummaryText(ACase)]),
     TAtlasServerHandlers.CrashActions(ACase, FOnCrashIssue));
 end;
 
@@ -260,14 +262,17 @@ begin
   if ASkip.Active then
   begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning,
-      TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipText,
+      TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashSkipTitle),
+      TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashSkipText,
       [ASkip.Method, mName, ASkip.Crashes, ASkip.ExceptionClass]),
-      [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashRetry), RetryAction(ASkip.Uri))]);
+      [TAtlasNotificationCenter.Action(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashRetry),
+      RetryAction(ASkip.Uri))]);
   end
   else
   begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Info,
-      TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipEnded,
+      TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashSkipTitle),
+      TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashSkipEnded,
       [ASkip.Method, mName]), LogActions);
   end;
   ServerChanged;

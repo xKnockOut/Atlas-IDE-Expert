@@ -37,7 +37,7 @@ uses
   System.JSON,
   System.IOUtils,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Pipeline,
@@ -185,7 +185,7 @@ var
 begin
   if not TAtlasMetricsReportFile.MarkdownFrom(AAnswer, mText) then
   begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportFailed));
+    GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportFailed));
     Exit;
   end;
   ForceDirectories(ExtractFileDir(AFileName));
@@ -230,25 +230,25 @@ begin
   mProject := GetActiveProject;
   if (mProject = nil) or (mProject.FileName = '') then
   begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportNoProject));
+    GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportNoProject));
     Exit;
   end;
   mFileName := TAtlasMetricsReportFile.FileName(
     TAtlasMetricsReportFile.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')), mProject.FileName);
   if Manager.ActiveSession = nil then
   begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportFailed));
+    GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportFailed));
     Exit;
   end;
   if Manager.RunCommandAsync(cMetricsCommand, MetricsArguments(mProject.FileName, 'markdown'), 120000,
     MetricsReportDone(mFileName)) then
   begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportRunning));
+    GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportRunning));
   end
   else
   begin
     // Ein Befehl im Hintergrund läuft schon (etwa die Metriken nach einem Build): später noch einmal.
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
+    GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportBusy));
   end;
 end;
 

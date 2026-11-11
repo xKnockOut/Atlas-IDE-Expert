@@ -94,6 +94,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Foundation.Settings,
@@ -174,12 +175,12 @@ end;
 class function TAtlasIdeMethodPlacement.Texts: TAtlasMethodPlacementTexts;
 begin
   Result := Default(TAtlasMethodPlacementTexts);
-  Result.Up := TAtlasStrings.Text(TAtlasTextId.MethodOrderUp);
-  Result.Down := TAtlasStrings.Text(TAtlasTextId.MethodOrderDown);
-  Result.Stays := TAtlasStrings.Text(TAtlasTextId.MethodOrderStays);
-  Result.Region := TAtlasStrings.Text(TAtlasTextId.MethodOrderRegion);
-  Result.Conditional := TAtlasStrings.Text(TAtlasTextId.MethodOrderConditional);
-  Result.SharedLine := TAtlasStrings.Text(TAtlasTextId.MethodOrderSharedLine);
+  Result.Up := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderUp);
+  Result.Down := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderDown);
+  Result.Stays := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderStays);
+  Result.Region := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderRegion);
+  Result.Conditional := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderConditional);
+  Result.SharedLine := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderSharedLine);
 end;
 
 class procedure TAtlasIdeMethodPlacement.Run;
@@ -190,7 +191,7 @@ begin
   end;
   if not Enabled then
   begin
-    FInstance.Report(TAtlasStrings.Text(TAtlasTextId.MethodOrderOff));
+    FInstance.Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderOff));
     Exit;
   end;
   FInstance.Arrange;
@@ -426,13 +427,13 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasStrings.Fmt(TAtlasTextId.MethodOrderFailed, [E.Message]));
+      Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderFailed, [E.Message]));
       Exit;
     end;
   end;
   if (mReply.Edits = nil) or (mReply.Moved = 0) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.MethodOrderNothing));
+    Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderNothing));
     Exit;
   end;
   mOpen :=
@@ -440,9 +441,10 @@ begin
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end;
-  if TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.MethodOrderHint, [mReply.Moved, Length(mReply.Moves) - mReply.Moved]),
-    TAtlasStrings.Text(TAtlasTextId.MethodOrderApply), TAtlasResults.Group(PreviewOf(mFileName, mReply, Texts)),
+  if TAtlasRenamePreview.Execute(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderTitle),
+    TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderHint, [mReply.Moved, Length(mReply.Moves) - mReply.Moved]),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderApply), TAtlasResults.Group(PreviewOf(mFileName, mReply,
+    Texts)),
     mOpen) then
   begin
     ApplyArranged(mFileName, mReply);
@@ -462,7 +464,8 @@ begin
   mEdit.Files := [mFiles];
   FWriting := True;
   try
-    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, FPolicy(), TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle));
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, FPolicy(),
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderTitle));
   finally
     FWriting := False;
   end;
@@ -473,7 +476,7 @@ begin
   end
   else
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.MethodOrderDone, [AReply.Moved]));
+    Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderDone, [AReply.Moved]));
   end;
 end;
 

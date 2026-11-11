@@ -15,8 +15,10 @@
 interface
 
 uses
+  Winapi.Windows, // vor Vcl.Graphics, sonst verdeckt es TBitmap
   System.SysUtils,
   System.Classes,
+  Vcl.Graphics,
   Vcl.Controls;
 
 type
@@ -24,6 +26,11 @@ type
   public
     /// <summary>Breite des längsten Texts von AControl in seiner Schrift; -1 ohne Text.</summary>
     class function TextWidth(AControl: TControl; const ASources: string): Integer; static;
+    /// <summary>Anteil des Steuerelements neben dem Text (Kästchen, Pfeil, Glyph) bei 96 dpi; auch für die
+    /// Vorschau in anderen Skalierungen (#607).</summary>
+    class function ExtraWidth(AControl: TControl): Integer; static;
+    /// <summary>Veröffentlichte Schrift von AControl; nil ohne Font.</summary>
+    class function FontOfControl(AControl: TControl): TFont; static;
     /// <summary>Steuerelemente mit Text unter ASelected (Geschwister der ersten).</summary>
     class function Candidates(const ASelected: TArray<TComponent>): TArray<TControl>; static;
     /// <summary>Gemeinsame Breite der Steuerelemente nach Text, Innenabstand und Mindestbreite (in Pixeln der
@@ -36,10 +43,8 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Types,
   System.TypInfo,
-  Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.Buttons,
   Vcl.Forms,
@@ -185,6 +190,16 @@ begin
   begin
     Result := mGlyph.Width div mCount + Abs(mSpacing);
   end;
+end;
+
+class function TAtlasIdeFitText.ExtraWidth(AControl: TControl): Integer;
+begin
+  Result := ExtraOf(AControl);
+end;
+
+class function TAtlasIdeFitText.FontOfControl(AControl: TControl): TFont;
+begin
+  Result := FontOf(AControl);
 end;
 
 /// <summary>Breite bleibt: AutoSize an oder Align, das die Breite vorgibt.</summary>

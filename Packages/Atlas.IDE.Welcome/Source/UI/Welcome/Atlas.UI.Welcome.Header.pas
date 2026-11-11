@@ -99,22 +99,22 @@ uses
 constructor TAtlasWelcomeHeaderFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Height := cHeaderHeight;
+  Height := ScaleValue(cHeaderHeight);
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Self;
   FSymbol.LogicalSize := cSymbolSize;
-  FSymbol.Left := 8;
+  FSymbol.Left := FSymbol.ScaleValue(8);
   FSymbol.Top := (cHeaderHeight - cSymbolSize) div 2;
   FGreeting := TLabel.Create(Self);
   FGreeting.Parent := Self;
-  FGreeting.Left := cSymbolSize + 20;
-  FGreeting.Top := 10;
+  FGreeting.Left := FGreeting.ScaleValue(cSymbolSize) + FGreeting.ScaleValue(20);
+  FGreeting.Top := FGreeting.ScaleValue(10);
   FGreeting.Font.Size := 14;
   FGreeting.Font.Style := [fsBold];
   FInfo := TLabel.Create(Self);
   FInfo.Parent := Self;
   FInfo.Left := FGreeting.Left;
-  FInfo.Top := 38;
+  FInfo.Top := FInfo.ScaleValue(38);
   FInfo.Font.Color := clGrayText;
   FSearchHost := TPanel.Create(Self);
   FSearchHost.Parent := Self;

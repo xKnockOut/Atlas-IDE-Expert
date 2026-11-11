@@ -1,11 +1,12 @@
 ﻿unit Atlas.IDE.Assistants.BuildInbox;
 
-// Eingang für Builds von KI-Assistenten (#261, Protokoll in
-// Atlas.Core.Assistants.BuildInbox): Alle 250 ms übernimmt das Plugin einen wartenden
-// Auftrag des MCP-Werkzeugs build_project, baut über den Vertrag IAtlasBuildRequests
-// des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen.
-// Fehlt das Modul, lehnt der Eingang mit Grund ab. Ist das Projekt nicht offen, öffnet der Eingang es zuvor
-// (mit „group“ die ganze Projektgruppe, sonst zur aktuellen Gruppe hinzu, #1904): So baut auch eine frisch gestartete Bau-IDE (Tools/Build-Ide.ps1).
+// Eingang für Builds von KI-Assistenten (#261, Protokoll in Atlas.Core.Assistants.BuildInbox): Sobald der Ordner sich
+// ändert (Signal alle 250 ms abgefragt, aufgelistet nur nach einem Signal, bei liegen gebliebenen Aufträgen oder alle
+// zwei Sekunden, #1984), übernimmt das Plugin einen wartenden Auftrag des MCP-Werkzeugs build_project, baut über den
+// Vertrag IAtlasBuildRequests des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen. Fehlt
+// das Modul, lehnt der Eingang mit Grund ab. Ist das Projekt nicht offen, öffnet der Eingang es zuvor (mit „group“ die
+// ganze Projektgruppe, sonst zur aktuellen Gruppe hinzu, #1904): So baut auch eine frisch gestartete Bau-IDE
+// (Tools/Build-Ide.ps1).
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
@@ -17,7 +18,9 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   Atlas.Core.Build.Requests,
-  Atlas.IDE.Contracts.BuildRequests;
+  Atlas.Core.Assistants.InboxPace,
+  Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Assistants.FolderSignal;
 
 type
   TAtlasBuildInboxProc = reference to procedure(const AMessage: string);
@@ -26,6 +29,8 @@ type
   private
     FFolder: string;
     FTimer: TTimer;
+    FSignal: TAtlasFolderSignal;
+    FPace: TAtlasInboxPace;
     FRequests: TFunc<IAtlasBuildRequests>;
     FOnMessage: TAtlasBuildInboxProc;
     procedure Tick(Sender: TObject);
@@ -70,6 +75,8 @@ begin
     Clean;
     GCleaned := True;
   end;
+  FSignal := TAtlasFolderSignal.Create(FFolder);
+  FPace := Default(TAtlasInboxPace);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -80,6 +87,7 @@ destructor TAtlasIdeBuildInbox.Destroy;
 begin
   // Ordner nicht leeren: Ein laufender Build antwortet noch hinein, ein wartender Auftrag gilt beim nächsten Start.
   FTimer.Free;
+  FSignal.Free;
   inherited Destroy;
 end;
 
@@ -107,8 +115,16 @@ begin
   begin
     Exit;
   end;
+  // Erst nach der Prüfung auf „belegt“ abfragen: Ein Signal während eines Builds bleibt so stehen.
+  if not FPace.Due(FSignal.Changed, GetTickCount64) then
+  begin
+    Exit;
+  end;
+  FSignal.Reopen;
   try
     mPending := TAtlasBuildInbox.Pending(FFolder);
+    // Nur einer je Takt: Liegen mehr, listet der nächste Takt wieder.
+    FPace.Listed(GetTickCount64, Length(mPending) > 1);
     if Length(mPending) > 0 then
     begin
       Process(mPending[0]);
@@ -145,11 +161,19 @@ begin
   end;
   if (AGroup <> '') and FileExists(AGroup) then
   begin
-    mActions.OpenProject(AGroup, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AGroup, True);
+      end);
   end
   else if FileExists(AProject) then
   begin
-    mActions.OpenProject(AProject, False);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, False);
+      end);
   end;
 end;
 

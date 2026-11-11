@@ -450,7 +450,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json",
   "project": "App.dproj",
   "config": "Debug",
   "platform": "Win64",

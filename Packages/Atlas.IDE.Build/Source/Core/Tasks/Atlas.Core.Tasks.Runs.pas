@@ -152,7 +152,8 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Text.Encoding;
+  Atlas.Text.Encoding,
+  Atlas.Text.Json;
 
 { TAtlasTaskLines }
 
@@ -565,17 +566,6 @@ begin
   end;
 end;
 
-function IntOf(AObject: TJSONObject; const AName: string): Int64;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if not (mValue is TJSONNumber) or not TryStrToInt64(mValue.ToString, Result) then
-  begin
-    Result := 0;
-  end;
-end;
-
 function DateOf(AObject: TJSONObject; const AName: string): TDateTime;
 var
   mValue: TJSONValue;
@@ -628,11 +618,11 @@ begin
   Result := Default(TAtlasTaskLastRun);
   Result.Name := AName;
   Result.Outcome := ReadOutcome(AObject.GetValue('outcome'));
-  Result.ExitCode := Integer(IntOf(AObject, 'exitCode'));
-  Result.Counts.Errors := Integer(IntOf(AObject, 'errors'));
-  Result.Counts.Warnings := Integer(IntOf(AObject, 'warnings'));
-  Result.Counts.Infos := Integer(IntOf(AObject, 'infos'));
-  Result.DurationMs := IntOf(AObject, 'durationMs');
+  Result.ExitCode := Integer(TJsonRead.Int64Or(AObject, 'exitCode', 0));
+  Result.Counts.Errors := Integer(TJsonRead.Int64Or(AObject, 'errors', 0));
+  Result.Counts.Warnings := Integer(TJsonRead.Int64Or(AObject, 'warnings', 0));
+  Result.Counts.Infos := Integer(TJsonRead.Int64Or(AObject, 'infos', 0));
+  Result.DurationMs := TJsonRead.Int64Or(AObject, 'durationMs', 0);
   Result.FinishedAt := DateOf(AObject, 'finished');
 end;
 

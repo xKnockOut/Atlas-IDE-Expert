@@ -2,7 +2,8 @@
 
 // Listen mit Kennungen im Ergebnisfenster (#1455), zuerst die persönlichen Notizen (#545): je Gruppe (etwa Datei)
 // „Zeile: Titel“, verwaiste Notizen in einer Gruppe am Ende; Doppelklick oder Enter springt, das Kontextmenü
-// bearbeitet oder löscht den Eintrag (Entf löscht ebenfalls).
+// bearbeitet oder löscht den Eintrag (Entf löscht ebenfalls). Mit OnOpen führt Doppelklick bzw. Enter eine eigene
+// Aktion aus, etwa die Komponente im Designer wählen (#524).
 
 interface
 
@@ -42,6 +43,9 @@ type
     DeleteCaption: string;
     OnEdit: TAtlasResultsItemAction;
     OnDelete: TAtlasResultsItemAction;
+    /// <summary>Doppelklick bzw. Enter auf einem Eintrag statt des Sprungs zu FileName und Line (etwa eine
+    /// Komponente im Designer wählen, #524); nil = Sprung.</summary>
+    OnOpen: TAtlasResultsItemAction;
   end;
 
   TAtlasResultsItemsPart = class(TAtlasResultsPart)
@@ -56,6 +60,7 @@ type
     procedure Reset; override;
     procedure Popup; override;
     function KeyDown(AKey: Word): Boolean; override;
+    function Open(const AData: TAtlasResultsNode): Boolean; override;
   public
     constructor Create(AView: TAtlasResultsView);
     /// <summary>Liste mit Kennungen eines Moduls: je Gruppe ein Knoten, alles aufgeklappt.</summary>
@@ -141,6 +146,7 @@ begin
   end;
   FList.OnEdit := nil;
   FList.OnDelete := nil;
+  FList.OnOpen := nil;
 end;
 
 function TAtlasResultsItemsPart.SelectedId: string;
@@ -186,6 +192,17 @@ begin
   if Result then
   begin
     DeleteSelected;
+  end;
+end;
+
+function TAtlasResultsItemsPart.Open(const AData: TAtlasResultsNode): Boolean;
+begin
+  // TAtlasResultsNode ist ein Record (kein nil-Vergleich, E2015).
+  Result := (AData.Kind = TAtlasResultsNodeKind.Item) and (AData.ItemId <> '') and
+    Assigned(FList.OnOpen);
+  if Result then
+  begin
+    FList.OnOpen(AData.ItemId);
   end;
 end;
 

@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Bookmarks.Composition;
 
-// Modul Lesezeichen (#1455, ADR 0017): einzige Unit, die persönliche
+// Modul Lesezeichen (#1455): einzige Unit, die persönliche
 // Notizen (#545), benannte (#622) und schnelle Lesezeichen (#1104) sowie
 // die TODO-Liste des Projekts (#68) erzeugt. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.bookmarks“ (Modulschalter bookmarks,

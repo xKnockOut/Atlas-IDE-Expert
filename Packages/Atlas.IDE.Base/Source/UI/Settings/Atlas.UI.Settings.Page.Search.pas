@@ -80,9 +80,11 @@ implementation
 
 uses
   Winapi.Windows,
+  System.Actions,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsSearchBox }
 
@@ -96,8 +98,8 @@ begin
   FEdit.Parent := AParent;
   FEdit.Align := alTop;
   FEdit.AlignWithMargins := True;
-  FEdit.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsSearchPrompt);
-  FEdit.Hint := TAtlasStrings.Text(TAtlasTextId.SettingsSearchHint);
+  FEdit.TextHint := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSearchPrompt);
+  FEdit.Hint := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSearchHint);
   FEdit.ShowHint := True;
   FEdit.OnChange := EditChange;
   FEdit.OnKeyDown := EditKeyDown;
@@ -175,7 +177,8 @@ begin
   Result := AHit.Caption + '  –  ' + AHit.Path;
   if not SameText(AHit.Module, FOwnModule) then
   begin
-    Result := Result + '  (' + TAtlasStrings.Fmt(TAtlasTextId.SettingsSearchOtherNode, [ModuleName(AHit.Module)]) +
+    Result := Result + '  (' + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsSearchOtherNode,
+      [ModuleName(AHit.Module)]) +
       ')';
   end;
   mState := TAtlasSettingsSearch.StateText(AHit);
@@ -226,7 +229,7 @@ begin
     end;
     if (Length(FHits) = 0) and (Trim(AText) <> '') then
     begin
-      FList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsAtlasNoHits));
+      FList.Items.Add(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasNoHits));
     end;
   finally
     FList.Items.EndUpdate;

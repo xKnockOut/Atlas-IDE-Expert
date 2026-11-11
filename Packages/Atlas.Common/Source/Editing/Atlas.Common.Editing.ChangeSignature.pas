@@ -153,6 +153,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -193,11 +194,6 @@ function IsWord(const AToken: TPascalToken; const AWords: array of string): Bool
 begin
   Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
     (IndexText(AToken.Text, AWords) >= 0);
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -1185,7 +1181,7 @@ var
 begin
   mRoot := ANode;
   mOffset := AOffset;
-  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die AOffset enthalten.
+  // Search statt Rekursion; unter ANode nur Knoten, die AOffset enthalten.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin

@@ -52,7 +52,7 @@ var
   mTeam: TAtlasTeamSettings;
 begin
   Result := TAtlasVcsProjectContext.Empty;
-  Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
+  Result.ProjectFile := TAtlasIdeFiles.ActiveProjectFile;
   if Result.ProjectFile = '' then
   begin
     Exit;
@@ -127,7 +127,7 @@ begin
       mProject, mGroup: string;
     begin
       // Aktive .dproj in der geöffneten .groupproj; Art und Hauptbranch nach vcs.projects und .atlas (#1286).
-      mProject := TAtlasIdeTeamFile.ActiveProject;
+      mProject := TAtlasIdeFiles.ActiveProjectFile;
       mGroup := '';
       if mProject <> '' then
       begin

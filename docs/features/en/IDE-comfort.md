@@ -303,7 +303,7 @@ With the diagnostic mode on, *Atlas diagnostics* shows what in Atlas is slow rig
 | Tab | Content |
 |---|---|
 | *Main thread* | how busy Atlas kept the IDE over the last 60 s, own time per feature (calls, total, mean, max, calls above the threshold, share) and the last 200 slow calls with the Atlas action that ran; context menu *Show only X*, *Switch off until restart*, *Copy row* |
-| *Server* | each request with count, mean, max, how long the main thread waited, timeouts, cancellations and errors |
+| *Server* | each request with count, mean, max, how often the main thread waited and for how long on average, timeouts, cancellations and errors |
 | *Background* | working time of every completion source in the worker thread and how often it was too slow |
 | *Hangs* | the freeze watchdog's reports of the session and whether Atlas was involved |
 | *Completion* | the previous window |

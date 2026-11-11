@@ -172,7 +172,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -418,9 +418,9 @@ function TAtlasIdeLinkedEditing.TRun.ProblemText: string;
 begin
   case Problem of
     TAtlasLinkedProblem.Reserved:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.LinkedEditingReserved, [PrimaryName]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingReserved, [PrimaryName]);
     TAtlasLinkedProblem.Visible:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.LinkedEditingVisible, [Detail]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingVisible, [Detail]);
   else
     Result := '';
   end;
@@ -431,7 +431,7 @@ begin
   Result := ProblemText;
   if Result = '' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.LinkedEditingCount, [Length(Ranges)]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingCount, [Length(Ranges)]);
   end;
 end;
 
@@ -845,7 +845,7 @@ begin
     mHint := '';
     if FRun.ProblemText <> '' then
     begin
-      mHint := TAtlasStrings.Text(TAtlasTextId.LinkedEditingRestoreHint);
+      mHint := TAtlasEditorStrings.Text(TAtlasEditorTextId.LinkedEditingRestoreHint);
     end;
     FStatus(FRun.Caption, mHint);
   end;
@@ -1037,7 +1037,7 @@ begin
     begin
       Exit;
     end;
-    FQuery.Reap(False);
+    FQuery.Prune;
     if FRun.Active then
     begin
       if not FWriting then

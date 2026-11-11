@@ -6,7 +6,7 @@
 // (TAtlasWelcomeNeighbors), hört auf Projektaufgaben, Testläufe und die
 // Befehlsnutzung und zeigt Kacheln anderer Module (TAtlasIdeWelcomeTiles).
 // Alle Anmeldungen laufen über den Scope des Moduls und werden beim Stoppen
-// rückwärts gelöst (Regel 4). „Testergebnisse“ ist seit #1455 eine Kachel des
+// rückwärts gelöst (Regel 4). „Testergebnisse“ ist eine Kachel des
 // Moduls Tracker.
 
 interface

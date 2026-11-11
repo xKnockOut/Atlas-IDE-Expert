@@ -418,7 +418,7 @@ var
   mTeam: TAtlasTeamSettings;
 begin
   ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  AProject := TAtlasIdeTeamFile.ActiveProject;
+  AProject := TAtlasIdeFiles.ActiveProjectFile;
   Result := False;
   if AProject <> '' then
   begin

@@ -97,6 +97,13 @@ begin
   Result.Filled := AFilled;
 end;
 
+/// <summary>Kreisumriss (nicht gefüllt); nur Zahlen als Argumente, damit die Glyphen reine Punktdaten bleiben.
+/// </summary>
+function Ring(ACX, ACY, AR: Single): TAtlasGlyphShape;
+begin
+  Result := Circle(ACX, ACY, AR, False);
+end;
+
 /// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
 /// 8Z"): vier kubische Bögen, je acht Strecken.</summary>
 function EyeOutline: TAtlasGlyphShape;
@@ -266,6 +273,49 @@ begin
   end;
 end;
 
+/// <summary>Formen der eigenen Knöpfe der Designer-Leiste (#605 bis #612); nil für andere.</summary>
+function ToolButtonShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
+begin
+  case AIcon of
+    TAtlasToolbarIcon.MeasureDistances:
+      // Maßlinie mit Pfeilen zwischen zwei Kanten.
+      Result := [Stroke([P(1.5, 4), P(1.5, 12)]), Stroke([P(14.5, 4), P(14.5, 12)]), Stroke([P(2, 8), P(14, 8)]),
+        Stroke([P(4.5, 5.5), P(2, 8), P(4.5, 10.5)]), Stroke([P(11.5, 5.5), P(14, 8), P(11.5, 10.5)])];
+    TAtlasToolbarIcon.ResizePreview:
+      // Fenster mit Ziehgriff nach rechts unten.
+      Result := [Outline([P(1.5, 1.5), P(10, 1.5), P(10, 10), P(1.5, 10)]), Stroke([P(8, 8), P(14.5, 14.5)]),
+        Stroke([P(10.5, 14.5), P(14.5, 14.5), P(14.5, 10.5)])];
+    TAtlasToolbarIcon.ScalePreview:
+      // Kleines und großes Fenster übereinander.
+      Result := [Outline([P(1.5, 8), P(7, 8), P(7, 13.5), P(1.5, 13.5)]),
+        Outline([P(5, 1.5), P(14.5, 1.5), P(14.5, 11), P(9, 11)]), Stroke([P(5, 1.5), P(5, 6)])];
+    TAtlasToolbarIcon.NameSuggest:
+      // Namensschild.
+      Result := [Outline([P(1.5, 4), P(10, 4), P(14.5, 8), P(10, 12), P(1.5, 12)]),
+        Shape([P(9, 7), P(11, 7), P(11, 9), P(9, 9)], True, True)];
+    TAtlasToolbarIcon.Structure:
+      // Baum: Wurzel oben links, zwei Zweige mit je einem Eintrag.
+      Result := [Shape([P(1.5, 1.5), P(5, 1.5), P(5, 4.5), P(1.5, 4.5)], True, True),
+        Stroke([P(3.25, 4.5), P(3.25, 12.5), P(7, 12.5)]), Stroke([P(3.25, 8), P(7, 8)]),
+        Outline([P(7, 6.5), P(14.5, 6.5), P(14.5, 9.5), P(7, 9.5)]),
+        Outline([P(7, 11), P(14.5, 11), P(14.5, 14), P(7, 14)])];
+    TAtlasToolbarIcon.DataBindings:
+      // Drei verbundene Knoten: Steuerelement, DataSource, DataSet.
+      Result := [Outline([P(1.5, 1.5), P(6, 1.5), P(6, 6), P(1.5, 6)]),
+        Outline([P(10, 10), P(14.5, 10), P(14.5, 14.5), P(10, 14.5)]), Stroke([P(6, 6), P(10, 10)]),
+        Shape([P(11, 2), P(14, 2), P(14, 5), P(11, 5)], True, True), Stroke([P(6, 3.5), P(11, 3.5)])];
+    TAtlasToolbarIcon.ExtractFrame:
+      // Rahmen, aus dem ein Teil herausgezogen wird.
+      Result := [Outline([P(1.5, 1.5), P(10.5, 1.5), P(10.5, 10.5), P(1.5, 10.5)]),
+        Shape([P(7, 7), P(14.5, 7), P(14.5, 14.5), P(7, 14.5)], True, True)];
+    TAtlasToolbarIcon.EventMap:
+      // Blitz.
+      Result := [Outline([P(9.5, 1.5), P(3.5, 9), P(7.5, 9), P(6.5, 14.5), P(12.5, 6.5), P(8.5, 6.5)])];
+  else
+    Result := nil;
+  end;
+end;
+
 /// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16
 /// 16); nil für andere.</summary>
 function DesignerShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
@@ -301,8 +351,40 @@ begin
       Result := [Stroke([P(2, 3), P(14, 3)]), Stroke([P(4, 1.5), P(2, 3), P(4, 4.5)]),
         Stroke([P(12, 1.5), P(14, 3), P(12, 4.5)]), Outline([P(2, 6.5), P(14, 6.5), P(14, 9.5), P(2, 9.5)]),
         Outline([P(2, 11.5), P(14, 11.5), P(14, 14.5), P(2, 14.5)])];
+    TAtlasToolbarIcon.GapHandles:
+      // Zwei Kästchen, dazwischen ein Doppelpfeil für den Abstand.
+      Result := [Outline([P(1.5, 4), P(4.5, 4), P(4.5, 12), P(1.5, 12)]),
+        Outline([P(11.5, 4), P(14.5, 4), P(14.5, 12), P(11.5, 12)]), Stroke([P(6, 8), P(10, 8)]),
+        Stroke([P(7.5, 6.5), P(6, 8), P(7.5, 9.5)]), Stroke([P(8.5, 6.5), P(10, 8), P(8.5, 9.5)])];
+    TAtlasToolbarIcon.MultiResize:
+      // Zwei Kästchen untereinander mit gefülltem Griff rechts, daneben ein Pfeil nach rechts.
+      Result := [Outline([P(1.5, 2.5), P(9, 2.5), P(9, 6.5), P(1.5, 6.5)]),
+        Outline([P(1.5, 9.5), P(9, 9.5), P(9, 13.5), P(1.5, 13.5)]),
+        Shape([P(8, 3.5), P(10, 3.5), P(10, 5.5), P(8, 5.5)], True, True),
+        Shape([P(8, 10.5), P(10, 10.5), P(10, 12.5), P(8, 12.5)], True, True), Stroke([P(11.5, 8), P(14.5, 8)]),
+        Stroke([P(13, 6.5), P(14.5, 8), P(13, 9.5)])];
+    TAtlasToolbarIcon.SelectionBar:
+      // Leiste mit drei Knöpfen über zwei markierten Kästchen.
+      Result := [Outline([P(1.5, 1.5), P(14.5, 1.5), P(14.5, 5.5), P(1.5, 5.5)]),
+        Shape([P(3, 2.75), P(5, 2.75), P(5, 4.25), P(3, 4.25)], True, True),
+        Shape([P(7, 2.75), P(9, 2.75), P(9, 4.25), P(7, 4.25)], True, True),
+        Outline([P(1.5, 8.5), P(7, 8.5), P(7, 14.5), P(1.5, 14.5)]),
+        Outline([P(9, 8.5), P(14.5, 8.5), P(14.5, 14.5), P(9, 14.5)])];
+    TAtlasToolbarIcon.Magnifier:
+      // Lupe: Glas mit Pixelkreuz, Griff nach rechts unten.
+      Result := [Ring(6.5, 6.5, 4.5), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
+        Stroke([P(9.75, 9.75), P(14, 14)])];
+    TAtlasToolbarIcon.PropertySearch:
+      // Gleichheitszeichen (Eigenschaft = Wert) mit Lupe.
+      Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Ring(10.5, 10, 2.5),
+        Stroke([P(12.3, 11.8), P(14.5, 14)])];
+    TAtlasToolbarIcon.Usages:
+      // Kästchen (Komponente), Pfeil nach rechts auf drei Codezeilen.
+      Result := [Outline([P(1.5, 5.5), P(5.5, 5.5), P(5.5, 10.5), P(1.5, 10.5)]), Stroke([P(6.5, 8), P(8.5, 8)]),
+        Stroke([P(7.5, 7), P(8.5, 8), P(7.5, 9)]), Stroke([P(10, 4), P(14.5, 4)]), Stroke([P(10, 8), P(14.5, 8)]),
+        Stroke([P(10, 12), P(14.5, 12)])];
   else
-    Result := nil;
+    Result := ToolButtonShapes(AIcon);
   end;
 end;
 

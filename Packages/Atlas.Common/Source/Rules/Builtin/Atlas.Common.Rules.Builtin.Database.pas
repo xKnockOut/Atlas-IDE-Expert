@@ -77,6 +77,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.SqlText,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
@@ -898,11 +899,6 @@ begin
   begin
     Result := Result or AToken.IsSymbol(mSymbol);
   end;
-end;
-
-function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
-begin
-  Result := (AToken.Kind = TPascalTokenKind.Keyword) and MatchText(AToken.Text, AWords);
 end;
 
 /// <summary>Beginnt ATokens[AIndex] ein neues Segment: eine Routine (keine anonyme Methode) oder einen

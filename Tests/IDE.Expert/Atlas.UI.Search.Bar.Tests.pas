@@ -5,7 +5,8 @@
 // (Teile setzen und Suche lesen auch ohne, Delphi 12),
 // Tasten Enter/Umschalt+Enter/F3/Esc und Meldung jeder Änderung. Dazu (#893)
 // Teile nach den Einstellungen, Ersetzen-Zeile mit Tasten, Fehler- und
-// Vorschauzeile und Verlauf mit Pfeil hoch/runter.
+// Vorschauzeile und Verlauf mit Pfeil hoch/runter, ohne Vervollständigung beim
+// Tippen.
 
 interface
 
@@ -55,6 +56,10 @@ type
     /// <summary>#1243: Bearbeitungstasten bleiben im Suchfeld, Enter/F3/Esc nicht.</summary>
     [Test]
     procedure EditingKeysStayInTheField;
+    /// <summary>Gesucht wird, was getippt ist: Die Vervollständigung aus dem Verlauf ändert den Text ohne OnChange,
+    /// die Suche liefe sonst mit dem alten Text und spränge zu dessen Treffern.</summary>
+    [Test]
+    procedure TypedTextIsNotCompletedFromTheHistory;
   end;
 
 implementation
@@ -504,6 +509,21 @@ begin
     mHost.Free;
     mSearch.Free;
     mReplace.Free;
+  end;
+end;
+
+procedure TAtlasSearchBarTests.TypedTextIsNotCompletedFromTheHistory;
+var
+  mHost: TForm;
+  mBar: TAtlasSearchBar;
+begin
+  mHost := NewHost;
+  try
+    mBar := NewBar(mHost);
+    Assert.IsFalse(mBar.Parts.TextEdit.AutoComplete, 'Suchfeld');
+    Assert.IsFalse(mBar.Parts.ReplaceEdit.AutoComplete, 'Ersetzen-Feld');
+  finally
+    mHost.Free;
   end;
 end;
 

@@ -4,7 +4,7 @@
 // - „Module“ selbst zeigt alle bekannten Module mit Version und ob sie installiert sind.
 // - Darunter „Base“ und je angemeldetem Modul ein Knoten (Caption „Atlas.Module.<Name>“: Der zweite Punkt
 //   hängt ihn unter „Module“), alphabetisch. Die Seiten baut der Aufrufer (AFactory).
-// - Kommt oder geht ein Modul, meldet die Liste alle Modulknoten ab und sortiert neu an (ADR 0017 Regel 2);
+// - Kommt oder geht ein Modul, meldet die Liste alle Modulknoten ab und sortiert neu an (Modulregel 2);
 //   Delphi ordnet die Knoten in der Reihenfolge der Anmeldung. Base kennt keine Modulnamen (Regel 9): Namen
 //   und Ids kommen aus der Registry.
 
@@ -54,7 +54,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Settings.Strings;
 
 type
   TAtlasModuleListOptions = class(TInterfacedObject, INTAAddInOptions)
@@ -176,24 +176,24 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := 12;
-  mLabel.Top := 12;
+  mLabel.Left := mLabel.ScaleValue(12);
+  mLabel.Top := mLabel.ScaleValue(12);
   mLabel.Font.Style := [fsBold];
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsModulesTitle);
+  mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesTitle);
   mTop := 40;
   for mModule in AModules do
   begin
     if mModule.Installed then
     begin
-      mState := TAtlasStrings.Text(TAtlasTextId.SettingsModuleInstalled);
+      mState := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModuleInstalled);
     end
     else
     begin
-      mState := TAtlasStrings.Text(TAtlasTextId.SettingsModuleMissing);
+      mState := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModuleMissing);
     end;
     mLabel := TLabel.Create(Self);
     mLabel.Parent := Self;
-    mLabel.Left := 12;
+    mLabel.Left := mLabel.ScaleValue(12);
     mLabel.Top := mTop;
     mLabel.ShowAccelChar := False;
     mLabel.Caption := Format('%s  %s  (%s)', [mModule.Info.Name, mModule.Info.Version, mState]);
@@ -201,10 +201,10 @@ begin
   end;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := 12;
-  mLabel.Top := mTop + 12;
+  mLabel.Left := mLabel.ScaleValue(12);
+  mLabel.Top := mTop + mLabel.ScaleValue(12);
   mLabel.Font.Style := [fsItalic];
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsModulesHint);
+  mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesHint);
 end;
 
 { TAtlasModuleListOptions }
@@ -216,7 +216,7 @@ end;
 
 function TAtlasModuleListOptions.GetCaption: string;
 begin
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode);
+  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode);
 end;
 
 function TAtlasModuleListOptions.GetFrameClass: TCustomFrameClass;
@@ -269,7 +269,7 @@ end;
 class function TAtlasModuleNodes.CaptionOf(const AName: string): string;
 begin
   // Zwei Punkte: Atlas › Module › <Name>.
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode) + '.' + AName;
+  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode) + '.' + AName;
 end;
 
 class function TAtlasModuleNodes.NodeOfSwitch(const ASwitch: string): INTAAddInOptions;

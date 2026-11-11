@@ -60,7 +60,7 @@ type
     FDocLeft: Integer;
     FDocTop: Integer;
     FMaxHeight: Integer;
-    // Je Details einmal (P-15): Doku und eingefärbte Deklaration; Umbruch nur bei anderer Breite oder Schrift.
+    // Je Details einmal: Doku und eingefärbte Deklaration; Umbruch nur bei anderer Breite oder Schrift.
     FDocData: TAtlasDoc;
     FDecl: TAtlasStyledText;
     FDeclLines: TArray<TPoint>;
@@ -102,7 +102,8 @@ uses
   Atlas.UI.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Completion.Strings;
 
 { TAtlasDetailView }
 
@@ -323,7 +324,7 @@ begin
   begin
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := ToColor(Colors.Muted);
-    Canvas.TextOut(Left, Y, TAtlasStrings.Text(TAtlasTextId.Overload));
+    Canvas.TextOut(Left, Y, TAtlasCompletionStrings.Text(TAtlasCompletionTextId.Overload));
     Canvas.Font.Color := ToColor(Colors.Text);
     DrawText(Canvas.Handle, PChar(mText), -1, mCount, DT_SINGLELINE or DT_NOPREFIX);
     Canvas.Font.Style := [fsBold];
@@ -449,7 +450,7 @@ begin
   if Length(View.FDetails.UnitTypes) > 0 then
   begin
     Separator;
-    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.UsesTypesHeading)), Colors.Muted, [fsBold]);
+    Block(UpperCase(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesTypesHeading)), Colors.Muted, [fsBold]);
     mText := string.Join(' · ', View.FDetails.UnitTypes);
     if View.FDetails.UnitTypeCount > Length(View.FDetails.UnitTypes) then
     begin
@@ -463,16 +464,17 @@ begin
   end;
   if View.FDetails.UsesElsewhere = 'interface' then
   begin
-    Block(TAtlasStrings.Text(TAtlasTextId.UsesInInterface), Colors.Muted, [fsItalic]);
+    Block(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInInterface), Colors.Muted, [fsItalic]);
   end
   else if View.FDetails.UsesElsewhere = 'implementation' then
   begin
-    Block(TAtlasStrings.Text(TAtlasTextId.UsesInImplementation), Colors.Muted, [fsItalic]);
+    Block(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInImplementation), Colors.Muted, [fsItalic]);
   end;
   // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
   if View.FDetails.AddsUnit <> '' then
   begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [View.FDetails.AddsUnit]), Colors.Accent, []);
+    Block(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.HelperAddsUnit, [View.FDetails.AddsUnit]), Colors.Accent,
+      []);
   end;
 end;
 
@@ -486,17 +488,17 @@ begin
     Exit;
   end;
   Separator;
-  Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.SameNameDeclaredIn)), Colors.Muted, [fsBold]);
+  Block(UpperCase(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameDeclaredIn)), Colors.Muted, [fsBold]);
   for mIndex := 0 to High(View.FDetails.SameNameUnits) do
   begin
     mText := View.FDetails.SameNameUnits[mIndex];
     if mIndex = 0 then
     begin
-      mText := mText + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleActive);
+      mText := mText + ' · ' + TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameRoleActive);
     end
     else if SameText(mText, View.FDetails.SameNameThis) then
     begin
-      mText := mText + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleThis);
+      mText := mText + ' · ' + TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameRoleThis);
     end;
     if SameText(View.FDetails.SameNameUnits[mIndex], View.FDetails.SameNameThis) then
     begin
@@ -509,7 +511,8 @@ begin
   end;
   for mText in View.FDetails.SameNameHidden do
   begin
-    Block(mText + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleHidden), Colors.Muted, [fsItalic]);
+    Block(mText + ' · ' + TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameRoleHidden), Colors.Muted,
+      [fsItalic]);
   end;
   SameNameInsert;
 end;
@@ -518,23 +521,26 @@ procedure TDetailRender.SameNameInsert;
 var
   mLead: string;
 begin
-  mLead := TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ';
+  mLead := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameNotActive) + ' · ';
   if View.FDetails.SameNameInsert = 'prefix' then
   begin
-    Block(mLead + TAtlasStrings.Text(TAtlasTextId.SameNameInsertPrefix), Colors.Muted, []);
+    Block(mLead + TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameInsertPrefix), Colors.Muted, []);
   end
   else if View.FDetails.SameNameInsert = 'prefixAdd' then
   begin
-    Block(mLead + TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertPrefixAdd, [View.FDetails.SameNameThis]), Colors.Warn,
+    Block(mLead + TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameInsertPrefixAdd,
+      [View.FDetails.SameNameThis]), Colors.Warn,
       []);
   end
   else if View.FDetails.SameNameInsert = 'move' then
   begin
-    Block(mLead + TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertMove, [View.FDetails.SameNameThis]), Colors.Warn, []);
+    Block(mLead + TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameInsertMove, [View.FDetails.SameNameThis]),
+      Colors.Warn, []);
   end
   else if View.FDetails.SameNameInsert = 'add' then
   begin
-    Block(mLead + TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertAdd, [View.FDetails.SameNameThis]), Colors.Warn, []);
+    Block(mLead + TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameInsertAdd, [View.FDetails.SameNameThis]),
+      Colors.Warn, []);
   end;
 end;
 
@@ -545,17 +551,19 @@ begin
   // with-Objekt (#481): Zusammen mit „Verdeckt: …“ nennt das Panel beide Bedeutungen.
   if View.FDetails.WithOrigin <> '' then
   begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.WithMemberOrigin, [View.FDetails.WithOrigin]), Colors.Accent, []);
+    Block(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.WithMemberOrigin, [View.FDetails.WithOrigin]),
+      Colors.Accent, []);
   end;
   // Verdeckte Deklarationen weiter außen (#488).
   for mText in View.FDetails.Hides do
   begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [mText]), Colors.Muted, [fsItalic]);
+    Block(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.HidesDeclaration, [mText]), Colors.Muted, [fsItalic]);
   end;
   // Gleitkomma für eine Ganzzahl (#490): keine Umwandlung vorgeschlagen, nur der Hinweis.
   if View.FDetails.LossyFrom <> '' then
   begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.CompletionLossyHint, [View.FDetails.LossyFrom, View.FDetails.LossyTo]),
+    Block(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CompletionLossyHint, [View.FDetails.LossyFrom,
+      View.FDetails.LossyTo]),
       Colors.Warn, []);
   end;
 end;
@@ -592,11 +600,12 @@ begin
   Block(View.FDetails.Availability, Colors.Warn, []);
   if View.FDetails.IsDeprecated and (View.FDetails.DeprecatedText <> '') then
   begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.DeprecatedWith, [View.FDetails.DeprecatedText]), Colors.Warn, []);
+    Block(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.DeprecatedWith, [View.FDetails.DeprecatedText]),
+      Colors.Warn, []);
   end
   else if View.FDetails.IsDeprecated then
   begin
-    Block(TAtlasStrings.Text(TAtlasTextId.DeprecatedPlain), Colors.Warn, []);
+    Block(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.DeprecatedPlain), Colors.Warn, []);
   end;
   if View.FDocData.IsEmpty then
   begin
@@ -662,7 +671,7 @@ begin
   end;
   if FDetails.IsEmpty then
   begin
-    mRender.Block(TAtlasStrings.Text(TAtlasTextId.NoDetails), ASurface.Colors.Muted, []);
+    mRender.Block(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.NoDetails), ASurface.Colors.Muted, []);
   end
   else
   begin

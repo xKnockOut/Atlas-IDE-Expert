@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Welcome.Composition;
 
-// Modul Willkommensseite (#1455, ADR 0017): einzige Unit, die die
+// Modul Willkommensseite (#1455): einzige Unit, die die
 // Willkommensseite (#753) erzeugt. Sie meldet in ihrer Initialisierung das
 // Modul „atlas.welcome“ (Modulschalter welcome) bei der Registry von Base an
 // und stellt über dessen Scope bereit:
@@ -10,7 +10,7 @@
 // - die Befehle der Seite (Palette und Atlas-Menü): Atlas-Start, Layout
 //   anwenden und zurücksetzen, Seite anpassen (#767), „Neu in Atlas“ (#756),
 //   Projekt einrichten (#759) und Weiterarbeiten (#755); der Zugang zum
-//   Build-Server (#763) gehört seit #1455 mit der Kachel „Testergebnisse“
+//   Build-Server (#763) gehört mit der Kachel „Testergebnisse“
 //   zum Modul Tracker,
 // - die Einträge im Atlas-Menü und unter Ansicht › Atlas,
 // - Einstellungen und Thema an die laufende Seite,

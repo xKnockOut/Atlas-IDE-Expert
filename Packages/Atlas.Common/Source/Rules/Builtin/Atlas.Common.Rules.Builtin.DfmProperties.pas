@@ -142,7 +142,7 @@ type
     FContext: TRuleContext;
     FUnit: TUnitIndex;
     FLines: TDictionary<string, TArray<string>>;
-    // Je Prüfung einmal kompiliert (Review P-11). TRegEx hält Zustand und ist nicht
+    // Je Prüfung einmal kompiliert. TRegEx hält Zustand und ist nicht
     // threadsicher; Regeln laufen parallel, daher keine globale Instanz.
     FPropertyType: TRegEx;
     FDefault: TRegEx;
@@ -904,7 +904,7 @@ begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
-  // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Den Index der Datei teilt der Lauf mit den anderen Regeln.
   FUnit := TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext);
   FModel := TFormModel.Create(AContext.FormText);
   FChecker := TPropertyChecker.Create(AContext, FUnit);

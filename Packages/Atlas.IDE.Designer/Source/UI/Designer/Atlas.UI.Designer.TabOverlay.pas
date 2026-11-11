@@ -1,9 +1,12 @@
 ﻿unit Atlas.UI.Designer.TabOverlay;
 
-// Tab-Reihenfolge im Designer (#1442): durchsichtiges Fenster über dem
-// Formular, das an jedem fokussierbaren Steuerelement oben links seine
-// TabOrder als kleine Marke zeigt. Marken, zu denen die Reihenfolge gegen die
-// Lesereihenfolge zurückspringt, stehen in Warnfarbe.
+// Tab-Reihenfolge im Designer (#1442, #603): durchsichtiges Fenster über dem
+// Formular, das an jedem Steuerelement mit TabOrder oben rechts eine kleine
+// runde Marke zeigt (Zahl oder Pfad „2.1“). Auffällige Marken (Rücksprung,
+// Lücke, Doppelte) stehen in Fehlerfarbe, Steuerelemente ohne TabStop grau
+// mit „–“, im Modus „Reihenfolge klicken“ schon vergebene in Grün. Steht die
+// Maus auf einer Marke, nennt ein Hinweis den Grund (UpdateHint, vom Takt
+// der Leiste aufgerufen, weil das Fenster ohne Klicken keine Maus sieht).
 // - Das Fenster gehört dem Hauptfenster der IDE (liegt damit über dem
 //   Designer), nimmt nie den Fokus und erscheint nicht in der Taskleiste.
 // - Durchsichtig über eine Schlüsselfarbe: Klicks daneben gehen an den
@@ -26,15 +29,23 @@ uses
   Atlas.Core.Style.Palette;
 
 type
+{$SCOPEDENUMS ON}
+  /// <summary>Normal = Akzentfarbe, Warn = auffällig, Muted = ohne TabStop, Picked = schon geklickt.</summary>
+  TAtlasTabBadgeStyle = (Normal, Warn, Muted, Picked);
+{$SCOPEDENUMS OFF}
+
   TAtlasTabBadge = record
     Name: string;
-    Number: Integer;
-    /// <summary>Sprung gegen die Lesereihenfolge.</summary>
-    Warn: Boolean;
-    /// <summary>Oben links des Steuerelements im Client des Fensters.</summary>
+    /// <summary>Text der Marke: TabOrder, Pfad oder „–“.</summary>
+    Text: string;
+    Style: TAtlasTabBadgeStyle;
+    /// <summary>Hinweis, wenn die Maus auf der Marke steht; '' ohne.</summary>
+    Hint: string;
+    /// <summary>Oben rechts des Steuerelements im Client des Fensters.</summary>
     Anchor: TPoint;
-    class function Create(const AName: string; ANumber: Integer; AWarn: Boolean;
+    class function Create(const AName, AText: string; AStyle: TAtlasTabBadgeStyle;
       const AAnchor: TPoint): TAtlasTabBadge; static;
+    function SameAs(const AOther: TAtlasTabBadge): Boolean;
   end;
 
   TAtlasTabOrderOverlay = class(TForm)
@@ -46,6 +57,8 @@ type
     FClickable: Boolean;
     FOwnerWindow: HWND;
     FShown: Boolean;
+    FHintWindow: THintWindow;
+    FHintIndex: Integer;
     FOnBadgeClick: TProc<string>;
     function S(AValue: Integer): Integer;
     procedure ApplyExStyle;
@@ -57,6 +70,7 @@ type
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateOverlay(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
+    destructor Destroy; override;
     procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Marken setzen; gleiche zeichnen nicht neu.</summary>
     procedure SetBadges(const ABadges: TArray<TAtlasTabBadge>);
@@ -67,6 +81,8 @@ type
     /// <summary>Über AScreen zeigen, ohne den Fokus zu nehmen.</summary>
     procedure ShowAt(const AScreen: TRect);
     procedure HideOverlay;
+    /// <summary>Hinweis zur Marke unter ACursor (Bildschirm) zeigen, sonst ausblenden.</summary>
+    procedure UpdateHint(const ACursor: TPoint);
     property Badges: TArray<TAtlasTabBadge> read FBadges;
     property Shown: Boolean read FShown;
     /// <summary>Klicks auf die Marken annehmen (Tab-Reihenfolge per Klick, experimentell).</summary>
@@ -81,13 +97,20 @@ uses
 
 { TAtlasTabBadge }
 
-class function TAtlasTabBadge.Create(const AName: string; ANumber: Integer; AWarn: Boolean;
+class function TAtlasTabBadge.Create(const AName, AText: string; AStyle: TAtlasTabBadgeStyle;
   const AAnchor: TPoint): TAtlasTabBadge;
 begin
   Result.Name := AName;
-  Result.Number := ANumber;
-  Result.Warn := AWarn;
+  Result.Text := AText;
+  Result.Style := AStyle;
+  Result.Hint := '';
   Result.Anchor := AAnchor;
+end;
+
+function TAtlasTabBadge.SameAs(const AOther: TAtlasTabBadge): Boolean;
+begin
+  Result := (Name = AOther.Name) and (Text = AOther.Text) and (Style = AOther.Style) and (Hint = AOther.Hint) and
+    (Anchor = AOther.Anchor);
 end;
 
 { TAtlasTabOrderOverlay }
@@ -106,6 +129,13 @@ begin
   Font.Name := 'Segoe UI';
   Font.Size := 8;
   Font.Style := [fsBold];
+  FHintIndex := -1;
+end;
+
+destructor TAtlasTabOrderOverlay.Destroy;
+begin
+  FHintWindow.Free;
+  inherited Destroy;
 end;
 
 procedure TAtlasTabOrderOverlay.CreateParams(var Params: TCreateParams);
@@ -166,8 +196,7 @@ begin
   begin
     for mIndex := 0 to High(ABadges) do
     begin
-      if (ABadges[mIndex].Name <> FBadges[mIndex].Name) or (ABadges[mIndex].Number <> FBadges[mIndex].Number) or
-        (ABadges[mIndex].Warn <> FBadges[mIndex].Warn) or (ABadges[mIndex].Anchor <> FBadges[mIndex].Anchor) then
+      if not ABadges[mIndex].SameAs(FBadges[mIndex]) then
       begin
         mSame := False;
         Break;
@@ -188,9 +217,9 @@ var
   mAnchor: TPoint;
 begin
   mAnchor := FBadges[AIndex].Anchor;
-  // Breite nach Stellen statt Textmaß: braucht kein Fenster.
-  mWidth := S(8) + S(7) * Length(IntToStr(FBadges[AIndex].Number));
-  Result := Rect(mAnchor.X + S(2), mAnchor.Y + S(2), mAnchor.X + S(2) + Max(S(16), mWidth), mAnchor.Y + S(18));
+  // Breite nach Zeichen statt Textmaß: braucht kein Fenster. Rund bis zwei Zeichen, länger als Pille.
+  mWidth := Max(S(16), S(4) + S(6) * Length(FBadges[AIndex].Text));
+  Result := Rect(mAnchor.X - S(2) - mWidth, mAnchor.Y + S(2), mAnchor.X - S(2), mAnchor.Y + S(18));
 end;
 
 function TAtlasTabOrderOverlay.BadgeAt(AX, AY: Integer): Integer;
@@ -221,21 +250,23 @@ begin
   for mIndex := 0 to High(FBadges) do
   begin
     mRect := BadgeRect(mIndex);
-    if FBadges[mIndex].Warn then
-    begin
-      mBack := TColor(FColors.Warn);
-    end
+    case FBadges[mIndex].Style of
+      TAtlasTabBadgeStyle.Warn:
+        mBack := TColor(FColors.Error);
+      TAtlasTabBadgeStyle.Muted:
+        mBack := TColor(FColors.Muted);
+      TAtlasTabBadgeStyle.Picked:
+        mBack := TColor(FColors.Add);
     else
-    begin
       mBack := TColor(FColors.Accent);
     end;
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := mBack;
     Canvas.Pen.Color := mBack;
-    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, S(6), S(6));
+    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := TColor(FColors.Surface);
-    mText := IntToStr(FBadges[mIndex].Number);
+    mText := FBadges[mIndex].Text;
     DrawText(Canvas.Handle, PChar(mText), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   end;
   Canvas.Brush.Style := bsSolid;
@@ -273,11 +304,50 @@ end;
 
 procedure TAtlasTabOrderOverlay.HideOverlay;
 begin
+  UpdateHint(Point(-MaxInt div 2, -MaxInt div 2));
   if FShown and HandleAllocated then
   begin
     ShowWindow(Handle, SW_HIDE);
   end;
   FShown := False;
+end;
+
+procedure TAtlasTabOrderOverlay.UpdateHint(const ACursor: TPoint);
+var
+  mIndex: Integer;
+  mClient: TPoint;
+  mRect: TRect;
+begin
+  mIndex := -1;
+  if FShown and HandleAllocated then
+  begin
+    mClient := ScreenToClient(ACursor);
+    mIndex := BadgeAt(mClient.X, mClient.Y);
+  end;
+  if (mIndex >= 0) and (FBadges[mIndex].Hint = '') then
+  begin
+    mIndex := -1;
+  end;
+  if mIndex = FHintIndex then
+  begin
+    Exit;
+  end;
+  FHintIndex := mIndex;
+  if mIndex < 0 then
+  begin
+    if (FHintWindow <> nil) and FHintWindow.HandleAllocated then
+    begin
+      FHintWindow.ReleaseHandle;
+    end;
+    Exit;
+  end;
+  if FHintWindow = nil then
+  begin
+    FHintWindow := THintWindow.Create(nil);
+  end;
+  mRect := FHintWindow.CalcHintRect(S(400), FBadges[mIndex].Hint, nil);
+  mRect.Offset(ACursor.X, ACursor.Y + S(20));
+  FHintWindow.ActivateHint(mRect, FBadges[mIndex].Hint);
 end;
 
 end.

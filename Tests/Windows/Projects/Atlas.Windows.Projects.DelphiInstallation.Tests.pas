@@ -13,7 +13,7 @@ type
   TDelphiInstallationTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen: Die RTL legt beim ersten Registry-Zugriff Daten an,
-    /// die bis Programmende bleiben (Bericht N2, statt [IgnoreMemoryLeaks]).</summary>
+    /// die bis Programmende bleiben (statt [IgnoreMemoryLeaks]).</summary>
     [SetupFixture]
     procedure WarmUpFirstUse;
     [Test]

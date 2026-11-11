@@ -17,8 +17,10 @@ function CommandsStarted: Boolean;
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Core.Editor.Metrics,
   Atlas.IDE.Editor.NavHistory,
+  Atlas.IDE.Editor.MouseButtons,
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
@@ -79,10 +81,10 @@ begin
       ExecutePaletteCommand(AId);
     end;
   mHooks.ShowPalette := ShowPalette;
-  mHooks.ShortCutOf :=
-    function(AId: string): string
+  mHooks.ShortCuts :=
+    function: TFunc<string, string>
     begin
-      Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+      Result := TAtlasIdeKeyMap.AtlasShortCuts();
     end;
   mHooks.FindingsOf := FindingsOf;
   mHooks.CanGoBack := CanGoBack;
@@ -187,6 +189,8 @@ procedure InstallBars;
 begin
   // Navigationsverlauf (#504): Sprünge und Bearbeitungsstellen der Sitzung.
   TAtlasIdeNavHistory.Install;
+  // Zurück-/Vor-Taste der Maus durch denselben Verlauf (#1889).
+  TAtlasIdeMouseButtons.Install;
   // Definition und Referenzen einblenden (#505).
   TAtlasIdePeek.Install;
   // Gemeinsamer Stand der Gliederung, Gliederungsfenster (#537) und Brotkrumenleiste (#590).
@@ -231,6 +235,7 @@ begin
   UninstallEditing;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
+  TAtlasIdeMouseButtons.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   UninstallNavigation;
   CommandsInstalled := False;

@@ -2,7 +2,7 @@
 
 // Texte der Einstellungen undo.multiFile.onConflict und undo.multiFile.newFiles
 // (#721) und ihre Aufzählungswerte. Steht im Root des Features Undo, weil ein
-// Contract nur Typen und Interfaces enthält (Code-Review A-10, Konzept 7.1).
+// Contract nur Typen und Interfaces enthält.
 
 interface
 

@@ -638,7 +638,7 @@ begin
   begin
     FDirtyRoots.Add(mRoot);
   end;
-  // Der Designer schreibt Felder und Methoden ohne Editorereignis in die Unit (P-04).
+  // Der Designer schreibt Felder und Methoden ohne Editorereignis in die Unit.
   TAtlasEditorSnapshots.Invalidate;
   // Erst nach einer Pause senden: Beim Ziehen kommt eine Meldung je Mausbewegung.
   FDirty := True;

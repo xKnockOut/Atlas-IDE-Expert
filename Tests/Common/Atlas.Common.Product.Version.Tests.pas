@@ -13,7 +13,7 @@ type
     procedure NameIsAtlas;
     [Test]
     procedure VersionHasMajorMinorPatch;
-    /// <summary>Server, Plugin und Installer lesen dieselbe Angabe (ADR 0012).</summary>
+    /// <summary>Server, Plugin und Installer lesen dieselbe Angabe.</summary>
     [Test]
     procedure ServerAndPluginShareVersion;
   end;

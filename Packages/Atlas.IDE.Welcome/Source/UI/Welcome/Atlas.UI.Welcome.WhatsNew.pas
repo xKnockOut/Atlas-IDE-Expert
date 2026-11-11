@@ -555,7 +555,7 @@ var
       ARow.Text.AutoSize := False;
       ARow.Text.AutoSize := True;
       ARow.Text.Left := mLeft;
-      ARow.Text.Top := mBottom + 2;
+      ARow.Text.Top := mBottom + ARow.Text.ScaleValue(2);
       mBottom := ARow.Text.Top + ARow.Text.Height;
     end;
     mTop := mBottom + mGap;

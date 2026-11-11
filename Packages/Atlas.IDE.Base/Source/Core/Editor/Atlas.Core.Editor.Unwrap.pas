@@ -70,7 +70,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Json;
 
 function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
 var
@@ -127,15 +128,6 @@ begin
   end;
 end;
 
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AName) is TJSONString then
-  begin
-    Result := AObject.GetValue(AName).Value;
-  end;
-end;
-
 { TAtlasUnwrapEntry }
 
 function TAtlasUnwrapEntry.Available: Boolean;
@@ -170,9 +162,9 @@ var
   mRange: TLspRange;
 begin
   Result := Default(TAtlasUnwrapEntry);
-  Result.Kind := StringOf(ACandidate, 'kind');
-  Result.Note := StringOf(ACandidate, 'note');
-  Result.NoteText := StringOf(ACandidate, 'noteText');
+  Result.Kind := TJsonRead.Text(ACandidate, 'kind');
+  Result.Note := TJsonRead.Text(ACandidate, 'note');
+  Result.NoteText := TJsonRead.Text(ACandidate, 'noteText');
   if ReadRange(ACandidate.GetValue('range'), mRange) then
   begin
     Result.Line := mRange.StartPos.Line;
@@ -185,7 +177,7 @@ var
   mBranch: Integer;
 begin
   Result := AEntry;
-  Result.VariantKind := StringOf(AChoice, 'kind');
+  Result.VariantKind := TJsonRead.Text(AChoice, 'kind');
   Result.Branch := 0;
   if AChoice.TryGetValue<Integer>('branch', mBranch) then
   begin

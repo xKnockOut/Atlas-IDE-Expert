@@ -5,7 +5,7 @@
 // Daten, die die IDE-Schicht sammelt.
 // - Server: nicht gestartet (neutral), wird gestartet (gelb), läuft seit
 //   Uhrzeit (grün; gelb ab SlowMs mittlerer Antwortzeit), von Atlas beendet
-//   (neutral), abgestürzt mit Zeitpunkt und Ursache (Exit-Code, Bericht H5)
+//   (neutral), abgestürzt mit Zeitpunkt und Ursache (Exit-Code)
 //   oder Start fehlgeschlagen (rot).
 //   Antwortzeit über die letzten 50 Anfragen (#28).
 // - Index: wird aufgebaut (gelb, mit Prozent) oder Anzahl Units (grün) mit
@@ -38,7 +38,7 @@ type
     AverageMs: Double;
     Samples: Integer;
     /// <summary>Grund bei Failed (ohne Pfade); bei einem abgestürzten Server die Ursache, etwa
-    /// „Stapelüberlauf (0xC00000FD)“ (Bericht H5).</summary>
+    /// „Stapelüberlauf (0xC00000FD)“.</summary>
     Error: string;
     /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt
     /// (#754).</summary>
@@ -77,6 +77,9 @@ type
     /// <summary>Stand der Installation des Updates (#1519), z. B. „wird beim Beenden installiert“; '' = keine.
     /// </summary>
     Install: string;
+    /// <summary>Fehlerart der letzten Abfrage, z. B. „HTTP 407“; '' = sie ist gelungen oder es gab noch keine.
+    /// </summary>
+    Failure: string;
   end;
 
   TAtlasFileInfo = record
@@ -134,7 +137,8 @@ type
     /// ist nur gesetzt, wenn die Update-Prüfung sie als neuer gemeldet hat).</summary>
     class function UpdateAvailable(const AInfo: TAtlasVersionInfo): Boolean; static;
     class function VersionText(const AInfo: TAtlasVersionInfo): string; static;
-    /// <summary>Gelb mit Update, grün nach einer Prüfung ohne Update, sonst neutral.</summary>
+    /// <summary>Gelb mit Update oder nach einer gescheiterten Abfrage, grün nach einer Prüfung ohne Update, sonst
+    /// neutral.</summary>
     class function VersionState(const AInfo: TAtlasVersionInfo): TAtlasStatusState; static;
     class function VersionSummary(const AInfo: TAtlasVersionInfo): string; static;
     class function VersionBrief(const AInfo: TAtlasVersionInfo): string; static;
@@ -161,7 +165,8 @@ type
     ServerRunningSlowly, ServerRunning3, ServerStopped2, ServerStartFailed2, ServerNotStarted2, Since2, AtText2,
     IndexUnitsAsOfServer, IndexServerNotRunning, IndexBuilding, UnitsSoFar, IndexUnits, FullyIndexed, IndexUnknown,
     IndexBuilding2, IndexUnknown2, AsOf, ServerNotRunning, Indexed, Ready, UpdateCheckOff, UpToDate, NotCheckedYet,
-    Installed, UpdateCheckOff2, UpToDate2, NotCheckedYet2, FileNoneActive, FileNotSavedYet, FileText, OnSave);
+    Installed, UpdateCheckOff2, UpToDate2, NotCheckedYet2, FileNoneActive, FileNotSavedYet, FileText, OnSave,
+    CheckFailed, CheckFailed2);
 {$SCOPEDENUMS OFF}
 
 const
@@ -215,7 +220,9 @@ const
      'Datei: keine aktiv',
      'Datei %s: noch nicht gespeichert',
      'Datei %s: %s',
-     ' → %s beim Speichern'),
+     ' → %s beim Speichern',
+     ' (Prüfung fehlgeschlagen)',
+     'Prüfung fehlgeschlagen: %s'),
     ('1 request skipped after a crash',
      '%d requests skipped after a crash',
      'Server: running',
@@ -265,7 +272,9 @@ const
      'File: none active',
      'File %s: not saved yet',
      'File %s: %s',
-     ' → %s on save'));
+     ' → %s on save',
+     ' (check failed)',
+     'check failed: %s'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TLinesText): string;
@@ -692,6 +701,11 @@ begin
   begin
     Result := Result + UiText(TLinesText.UpdateCheckOff);
   end
+  else if AInfo.Failure <> '' then
+  begin
+    // Ohne Antwort ist unbekannt, ob es eine neuere Version gibt: nie „aktuell“.
+    Result := Result + UiText(TLinesText.CheckFailed);
+  end
   else if AInfo.Checked then
   begin
     Result := Result + UiText(TLinesText.UpToDate);
@@ -704,7 +718,7 @@ end;
 
 class function TAtlasStatusLines.VersionState(const AInfo: TAtlasVersionInfo): TAtlasStatusState;
 begin
-  if UpdateAvailable(AInfo) then
+  if UpdateAvailable(AInfo) or (AInfo.CheckEnabled and (AInfo.Failure <> '')) then
   begin
     Result := TAtlasStatusState.Yellow;
   end
@@ -755,6 +769,10 @@ begin
   else if not AInfo.CheckEnabled then
   begin
     Result := UiText(TLinesText.UpdateCheckOff2);
+  end
+  else if AInfo.Failure <> '' then
+  begin
+    Result := Format(UiText(TLinesText.CheckFailed2), [AInfo.Failure]);
   end
   else if AInfo.Checked then
   begin

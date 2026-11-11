@@ -260,7 +260,6 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Architecture.Assignment,
-  Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings;
 
 {$R *.dfm}
@@ -431,12 +430,12 @@ begin
   AFrame.FParts.Scope := TComboBox.Create(AFrame);
   PlaceLeft(AFrame.FParts.Scope, AFrame.FParts.Top, AFrame.FParts.Compare);
   AFrame.FParts.Scope.Style := csDropDownList;
-  AFrame.FParts.Scope.Width := 130;
+  AFrame.FParts.Scope.Width := AFrame.FParts.Scope.ScaleValue(130);
   AFrame.FParts.Scope.OnChange := mEvents.ScopeChange;
   AFrame.FParts.LibraryUnits := TCheckBox.Create(AFrame);
   PlaceLeft(AFrame.FParts.LibraryUnits, AFrame.FParts.Top, AFrame.FParts.Scope);
   AFrame.FParts.LibraryUnits.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLibrary);
-  AFrame.FParts.LibraryUnits.Width := 120;
+  AFrame.FParts.LibraryUnits.Width := AFrame.FParts.LibraryUnits.ScaleValue(120);
   AFrame.FParts.LibraryUnits.OnClick := mEvents.LibraryClick;
 end;
 
@@ -451,7 +450,7 @@ begin
   mCaption.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionCaption);
   mSlider := TAtlasResolutionSlider.Create(AFrame);
   PlaceLeft(mSlider, AFrame.FParts.Top, mCaption);
-  mSlider.Width := 140;
+  mSlider.Width := mSlider.ScaleValue(140);
   mSlider.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionHint);
   mSlider.ShowHint := True;
   mSlider.OnTracking := ResolutionTracking(AFrame);
@@ -671,8 +670,8 @@ begin
     mScope.Items.BeginUpdate;
     try
       mScope.Items.Clear;
-      mScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup));
-      mScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject));
+      mScope.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureScopeGroup));
+      mScope.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureScopeProject));
     finally
       mScope.Items.EndUpdate;
     end;

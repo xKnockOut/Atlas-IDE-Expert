@@ -48,13 +48,10 @@ implementation
 
 uses
   System.Math,
-  System.TypInfo,
-  System.Variants,
   Vcl.Forms,
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Designer.InsertSpace,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.SpaceDialog,
   Atlas.IDE.Designer.Access,
@@ -225,39 +222,6 @@ begin
   end;
 end;
 
-/// <summary>Raster des Designers aus den Umgebungsoptionen; cDefaultGrid, wenn die IDE keins nennt.</summary>
-function GridOf(AAxis: TAtlasSpaceAxis): Integer;
-var
-  mServices: IOTAServices;
-  mOptions: IOTAEnvironmentOptions;
-  mName: string;
-  mOption: TOTAOptionName;
-begin
-  Result := cDefaultGrid;
-  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Exit;
-  end;
-  mOptions := mServices.GetEnvironmentOptions;
-  if mOptions = nil then
-  begin
-    Exit;
-  end;
-  mName := 'GridSizeY';
-  if AAxis = TAtlasSpaceAxis.Columns then
-  begin
-    mName := 'GridSizeX';
-  end;
-  for mOption in mOptions.GetOptionNames do
-  begin
-    if SameText(mOption.Name, mName) and (mOption.Kind in [tkInteger, tkInt64]) then
-    begin
-      Result := StrToIntDef(VarToStr(mOptions.Values[mName]), cDefaultGrid);
-      Exit;
-    end;
-  end;
-end;
-
 /// <summary>Kante der Auswahl entlang der Achse.</summary>
 function LineOf(const AControls: TArray<TControl>; AAxis: TAtlasSpaceAxis): Integer;
 var
@@ -352,7 +316,7 @@ begin
   mAmount := mOptions.Amount;
   if mOptions.Snap then
   begin
-    mAmount := Max(TAtlasInsertSpace.Snap(mAmount, GridOf(mOptions.Axis)), 1);
+    mAmount := Max(TAtlasInsertSpace.Snap(mAmount, TAtlasDesignerAccess.GridSize(mOptions.Axis = TAtlasSpaceAxis.Rows)), 1);
   end;
   if ARemove then
   begin

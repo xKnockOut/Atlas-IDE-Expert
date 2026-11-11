@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Derived;
 
-// Ableitungscache einer Prüfung (Review P-03): Index der Datei, Routinen,
+// Ableitungscache einer Prüfung: Index der Datei, Routinen,
 // Signaturen, Kontrollflussgraphen, Code-Token und Zeilentabelle werden je
 // Lauf einmal berechnet und von allen Regeln geteilt. Die Engine legt den
 // Cache an; ruft jemand Check direkt auf, liefert Open einen eigenen, der mit

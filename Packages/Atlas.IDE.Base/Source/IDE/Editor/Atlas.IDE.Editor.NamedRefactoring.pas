@@ -61,7 +61,8 @@ implementation
 uses
   System.JSON,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.ServerEdit;
+  Atlas.IDE.Editor.ServerEdit,
+  Atlas.Text.Json;
 
 const
   // Verweise, Überschreibungen und Formulare im Projekt suchen dauert; wie beim Umbenennen.
@@ -111,10 +112,10 @@ begin
     TAtlasServerEditCommand.Create(AApplyCommand, AApplyArguments, cTimeoutMs, ATexts.Failed),
     procedure(const AReply: TJSONObject)
     begin
-      mPlaces := TAtlasIdeServerEdit.NumberOf(AReply, 'places');
-      mFiles := TAtlasIdeServerEdit.NumberOf(AReply, 'files');
+      mPlaces := TJsonRead.Int(AReply, 'places');
+      mFiles := TJsonRead.Int(AReply, 'files');
       // Erklärung des Servers, z. B. die Form der Umwandlung (#680).
-      mExplanation := TAtlasIdeServerEdit.TextOf(AReply, 'preview');
+      mExplanation := TJsonRead.Text(AReply, 'preview');
     end, AMessage, mReply) then
   begin
     Exit;

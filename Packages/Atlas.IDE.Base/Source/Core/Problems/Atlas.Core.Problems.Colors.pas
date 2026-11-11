@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Problems.Colors;
 
-// Farbe eines Problems (D-07): eine Stelle für Wellenlinie im Editor und
+// Farbe eines Problems: eine Stelle für Wellenlinie im Editor und
 // Problemzeile im Hover-Tooltip. Fehler, Warnung, Info nach Schweregrad,
 // Hinweise gedämpft; blasse Probleme (Text seither geändert) mit AtlasMixFaded
 // über der Fläche gemischt. Eigene Unit, damit Contract frei von Style bleibt.

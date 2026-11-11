@@ -38,6 +38,9 @@ type
     procedure TypeDefinitionFollowsDeclaredTypes;
     [Test]
     procedure WritesLocations;
+    /// <summary>Ersatz-Units der IDE (atlas-ide:…) gibt es nicht als Datei: kein Sprungziel.</summary>
+    [Test]
+    procedure SkipsIdeUnits;
     /// <summary>Überladungen: Deklaration und Implementierung derselben Variante (gleiche Parametertypen); vorher
     /// galt immer die erste Überladung (Hover auf der zweiten zeigte die erste).</summary>
     [Test]
@@ -333,6 +336,34 @@ begin
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), Uri);
     Assert.AreEqual(4, Line);
     Assert.AreEqual(10, Character);
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspDefinitionTests.SkipsIdeUnits;
+var
+  Real, Ide: TDefinitionTarget;
+  Json: TJSONArray;
+  Uri: string;
+begin
+  Real.FileName := 'C:\P\Werkzeug.pas';
+  Real.Range := TTextRange.Create(TTextPosition.Create(4, 0), TTextPosition.Create(6, 4));
+  Real.SelectionRange := Real.Range;
+  Ide := Real;
+  Ide.FileName := 'atlas-ide:Vcl.Forms.pas';
+  Json := TLspDefinition.ToJson([Ide]);
+  try
+    // Ersatz-Unit der IDE allein: kein Sprungziel.
+    Assert.AreEqual(0, Integer(Json.Count));
+  finally
+    Json.Free;
+  end;
+  Json := TLspDefinition.ToJson([Ide, Real]);
+  try
+    Assert.AreEqual(1, Integer(Json.Count));
+    Uri := Json.Items[0].GetValue<string>('uri');
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), Uri);
   finally
     Json.Free;
   end;

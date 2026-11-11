@@ -27,7 +27,7 @@ type
     cDefaultMs = 200;
     cMinMs = 50;
     cMaxMs = 5000;
-    /// <summary>Nachwarten auf hängende Arbeiter beim Beenden (Code-Review A-13).</summary>
+    /// <summary>Nachwarten auf hängende Arbeiter beim Beenden.</summary>
     cHangGraceMs = 2000;
   private type
     TWorker = class(TThread)
@@ -77,7 +77,7 @@ type
     /// <summary>Arbeiter, die gerade einen Aufruf ausführen (auch aufgegebene).</summary>
     class function BusyCount: Integer; static;
     /// <summary>Bis zu AMs warten, bis kein Arbeiter mehr einen Aufruf ausführt (auch aufgegebene); True, wenn
-    /// alle frei sind. Vor dem Freigeben einer Sitzung, die aufgegebene Aufrufe noch nutzen könnten (A-01).</summary>
+    /// alle frei sind. Vor dem Freigeben einer Sitzung, die aufgegebene Aufrufe noch nutzen könnten.</summary>
     class function WaitIdle(AMs: Cardinal): Boolean; static;
     /// <summary>Zeitlimit für Aufrufe aus dem Hauptthread, MinMs bis MaxMs.</summary>
     class property LimitMs: Integer read FLimitMs write SetLimitMs;
@@ -407,7 +407,7 @@ begin
         Inc(mHung);
       end;
     end;
-    // Ein Aufruf steckt in nicht abbrechbarem Code (A-13). Kehrt er erst nach dem Entladen zurück, läuft er in
+    // Ein Aufruf steckt in nicht abbrechbarem Code. Kehrt er erst nach dem Entladen zurück, läuft er in
     // nicht mehr geladenem Code: protokollieren und noch etwas warten.
     TAtlasGuard.Log(Format('Zeitlimit: %d Arbeiter beim Beenden noch beschäftigt, warte bis %d ms nach',
       [mHung, cHangGraceMs]));

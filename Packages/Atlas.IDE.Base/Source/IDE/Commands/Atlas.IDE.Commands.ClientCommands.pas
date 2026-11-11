@@ -44,7 +44,7 @@ uses
   ToolsAPI,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.ChangeSignature,
@@ -157,7 +157,7 @@ begin
     if (mList <> nil) and (mList.Items[0] is TJSONString) then
     begin
       Clipboard.AsText := mList.Items[0].Value;
-      AHost.Say(TAtlasStrings.Text(TAtlasTextId.EditorTextCopied));
+      AHost.Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorTextCopied));
     end;
   finally
     mValue.Free;

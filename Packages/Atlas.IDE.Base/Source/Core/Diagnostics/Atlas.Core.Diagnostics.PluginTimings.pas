@@ -16,10 +16,21 @@
 //   Nachrichten, sie hängt nicht. Diese Zeit zählt nicht als eigene Zeit des
 //   Aufrufs, der den Dialog öffnete, und nicht zur Belegung (Diagnose vom
 //   06.11.2026: Tracker 34 s, Willkommensseite 11,8 s ohne Hänger).
+//   Ebenso Arbeit der IDE in einem Atlas-Aufruf (TAtlasGuard.RunIde, etwa
+//   das Laden eines Projekts, #1987): Sie gehört nicht Atlas; Aufrufe von
+//   Atlas darin (Notifier) zählen für sich.
+// - Eigene Nachrichtenschleifen von Windows: Ein Kontextmenü (TrackPopupMenu,
+//   TPopupMenu.Popup) und Verschieben oder Größe ändern eines Fensters
+//   blockieren den Aufruf ebenso, ohne dass die IDE hängt; die IDE meldet sie
+//   wie einen modalen Dialog (TAtlasMessageLoop.Change ordnet die Nachrichten
+//   zu). Vorher zählte die Zeit eines offenen Menüs als Atlas-Zeit (#1986:
+//   Designer-Leiste 5,9 s).
 // - Belegung: Wie viel jeder Sekunde der äußerste Atlas-Aufruf den Hauptthread
 //   hielt, für die letzten 60 Sekunden (TAtlasBusyMeter).
 // - Server: Dauer, Zeitüberschreitung und Abbruch je Anfrage (TLspClient) und
-//   die Zeit, die dabei der Hauptthread wartete.
+//   die Zeit, die dabei der Hauptthread wartete: Anzahl und Mittel je
+//   wartender Anfrage (#1990; vorher stand die Summe neben Mittel und
+//   Maximum und las sich wie eine Wartezeit je Anfrage).
 // - Hintergrund: Dauer je Quelle (Vervollständigung u. a.) und wie oft sie zu
 //   langsam war (TAtlasGuard.ReportProviderSlow).
 // - Hänger: die Meldungen des Einfrier-Wächters (#501) dieser Sitzung.
@@ -71,9 +82,13 @@ type
     Stat: TAtlasCallStat;
     /// <summary>So lange stand der Hauptthread insgesamt auf Antworten dieser Anfrage.</summary>
     WaitedMs: Double;
+    /// <summary>So oft wartete der Hauptthread auf diese Anfrage.</summary>
+    WaitedCalls: Integer;
     TimedOut: Integer;
     Cancelled: Integer;
     Failed: Integer;
+    /// <summary>Mittlere Wartezeit des Hauptthreads je wartender Anfrage; 0 ohne.</summary>
+    function WaitedMeanMs: Double;
   end;
 
   TAtlasSourceTiming = record
@@ -179,6 +194,18 @@ type
     procedure Reset;
   end;
 
+  /// <summary>Nachrichten, mit denen Windows eine eigene Nachrichtenschleife beginnt oder beendet.</summary>
+  TAtlasMessageLoop = record
+  public const
+    cEnterMenuLoop = $0211;
+    cExitMenuLoop = $0212;
+    cEnterSizeMove = $0231;
+    cExitSizeMove = $0232;
+  public
+    /// <summary>1: Menü (auch Kontextmenü) oder Verschieben/Größe ändern beginnt, -1: endet, 0: sonst.</summary>
+    class function Change(AMessage: Cardinal): Integer; static;
+  end;
+
   /// <summary>Rekorder der Plugin-Zeiten; eine gemeinsame Instanz über TAtlasPluginTimings.Shared.</summary>
   TAtlasPluginRecorder = class(TAtlasGuardTiming)
   public const
@@ -233,10 +260,11 @@ type
     /// <summary>Quelle AName hat AMs gearbeitet (aus jedem Thread).</summary>
     procedure SourceDone(const AName: string; AMs: Double);
     procedure HangDone(const AHang: TAtlasHangEntry);
-    /// <summary>Ein modaler Dialog öffnet sich (Application.OnModalBegin); nur im Hauptthread.</summary>
-    procedure ModalBegin;
-    /// <summary>Der modale Dialog ist zu (Application.OnModalEnd); nur im Hauptthread.</summary>
-    procedure ModalEnd;
+    /// <summary>Ein modaler Dialog, eine eigene Nachrichtenschleife (Menü, Verschieben; Application.OnModalBegin,
+    /// TAtlasMessageLoop) oder Arbeit der IDE (TAtlasGuard.RunIde) beginnt; nur im Hauptthread.</summary>
+    procedure ModalBegin; override;
+    /// <summary>Der modale Dialog, die Nachrichtenschleife bzw. die Arbeit der IDE ist zu Ende.</summary>
+    procedure ModalEnd; override;
     /// <summary>Alle Werte verwerfen; „Messung seit“ beginnt neu.</summary>
     procedure Reset;
     function Snapshot: TAtlasPluginSnapshot;
@@ -307,6 +335,17 @@ begin
   if Calls > 0 then
   begin
     Result := TotalMs / Calls;
+  end;
+end;
+
+{ TAtlasRequestTiming }
+
+function TAtlasRequestTiming.WaitedMeanMs: Double;
+begin
+  Result := 0;
+  if WaitedCalls > 0 then
+  begin
+    Result := WaitedMs / WaitedCalls;
   end;
 end;
 
@@ -498,6 +537,20 @@ end;
 procedure TAtlasModalWatch.Reset;
 begin
   FDepth := 0;
+end;
+
+{ TAtlasMessageLoop }
+
+class function TAtlasMessageLoop.Change(AMessage: Cardinal): Integer;
+begin
+  case AMessage of
+    cEnterMenuLoop, cEnterSizeMove:
+      Result := 1;
+    cExitMenuLoop, cExitSizeMove:
+      Result := -1;
+  else
+    Result := 0;
+  end;
 end;
 
 { TAtlasPluginRecorder }
@@ -719,6 +772,7 @@ begin
     if AMainThread then
     begin
       mRequest.WaitedMs := mRequest.WaitedMs + AMs;
+      Inc(mRequest.WaitedCalls);
     end;
     if AOutcome = TAtlasRequestOutcome.TimedOut then
     begin

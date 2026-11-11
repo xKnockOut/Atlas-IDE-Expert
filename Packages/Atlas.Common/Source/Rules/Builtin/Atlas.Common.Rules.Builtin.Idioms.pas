@@ -91,6 +91,7 @@ procedure RegisterIdiomRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
@@ -159,29 +160,7 @@ begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
 end;
 
-/// <summary>Index des ersten Tokens ab AOffset (binäre Suche); Length(ATokens), wenn keiner folgt.</summary>
-function TokenAt(const ATokens: TTokens; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
-
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
   mPending: TStack<TSyntaxNode>;
@@ -379,7 +358,7 @@ var
     begin
       mScope := AContext.Tree.Root;
     end;
-    mIndex := TokenAt(mTokens, mScope.StartOffset);
+    mIndex := TokenFrom(mTokens, mScope.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mScope.EndOffset) do
     begin
       if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and not SameText(mTokens[mIndex].Text, AName) and
@@ -433,7 +412,7 @@ var
   var
     mIndex: Integer;
   begin
-    mIndex := TokenAt(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
@@ -458,7 +437,7 @@ var
   begin
     ARead := '';
     AWrite := '';
-    mIndex := TokenAt(mTokens, AProperty.StartOffset);
+    mIndex := TokenFrom(mTokens, AProperty.StartOffset);
     while (mIndex < High(mTokens)) and (mTokens[mIndex].Offset < AProperty.EndOffset) do
     begin
       if MatchText(mTokens[mIndex].Text, ['read', 'write']) and (mTokens[mIndex + 1].Kind = TPascalTokenKind.Identifier) then
@@ -897,7 +876,7 @@ begin
   Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (Bericht M1).</summary>
+/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
 function IsSubject(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
@@ -984,7 +963,7 @@ var
   end;
 
   // Vergleiche in ACondition: S = 'x', 'x' = S, SameText(S, 'x'), mit or verknüpft und geklammert.
-  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt. Iterativ (Bericht M1): die Vergleiche der
+  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt. Iterativ (tiefe Bäume sprengen den Stapel nicht): die Vergleiche der
   // or-Kette von links nach rechts; der erste, der nicht passt, beendet die Suche.
   function Comparisons(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
     var ASensitive: Integer): Boolean;
@@ -1040,7 +1019,7 @@ var
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(mPaths, TokenAt(mTokens, ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ANode.StartOffset));
   end;
 
   function LineOf(ALine: Integer): string;
@@ -1095,7 +1074,7 @@ var
     mIndex: Integer;
   begin
     Result := True;
-    mIndex := TokenAt(mTokens, AHead.StartOffset);
+    mIndex := TokenFrom(mTokens, AHead.StartOffset);
     while Result and (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AHead.EndOffset) do
     begin
       Result := (mTokens[mIndex].Kind <> TPascalTokenKind.Directive) and
@@ -1348,7 +1327,7 @@ var
   mIndex: Integer;
 begin
   Result := False;
-  mIndex := TokenAt(ATokens, ANode.StartOffset);
+  mIndex := TokenFrom(ATokens, ANode.StartOffset);
   while not Result and (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
   begin
     Result := ATokens[mIndex].Kind = TPascalTokenKind.Directive;

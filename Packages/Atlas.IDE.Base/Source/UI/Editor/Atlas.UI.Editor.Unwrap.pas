@@ -90,6 +90,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -135,7 +136,7 @@ var
 begin
   if (AEntry.Kind = 'ifThen') and (AEntry.VariantCount > 1) then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.UnwrapIfElse));
+    Exit(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapIfElse));
   end;
   for mItem in cKindTexts do
   begin
@@ -167,11 +168,11 @@ function VariantSuffix(const AEntry: TAtlasUnwrapEntry): string;
 begin
   if AEntry.VariantKind = 'keepFinally' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepFinally);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapKeepFinally);
   end
   else if AEntry.VariantKind = 'dropFinally' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapDropFinally);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapDropFinally);
   end
   else if AEntry.Kind = 'ifThen' then
   begin
@@ -187,7 +188,7 @@ begin
   end;
   if (Result = '') and (AEntry.VariantKind = 'branch') then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnwrapKeepBranch, [AEntry.Branch + 1]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapKeepBranch, [AEntry.Branch + 1]);
   end;
 end;
 
@@ -207,15 +208,15 @@ class function TAtlasUnwrapWindow.EntryNote(const AEntry: TAtlasUnwrapEntry): st
 begin
   if AEntry.Note = 'multipleRaise' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnwrapRaiseNote, [AEntry.NoteText]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapRaiseNote, [AEntry.NoteText]);
   end
   else if AEntry.Note = 'loopVariable' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnwrapLoopNote, [AEntry.NoteText]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapLoopNote, [AEntry.NoteText]);
   end
   else if AEntry.Note = 'withUnresolved' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnwrapWithNote, [AEntry.NoteText]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapWithNote, [AEntry.NoteText]);
   end
   else
   begin
@@ -273,7 +274,7 @@ begin
   end;
   Put(ADraw, mX, AY, mText, mColor);
   Inc(mX, Canvas.TextWidth(mText));
-  mLine := cSeparator + TAtlasStrings.Fmt(TAtlasTextId.UnwrapLine, [mEntry.Line + 1]);
+  mLine := cSeparator + TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapLine, [mEntry.Line + 1]);
   Put(ADraw, mX, AY, mLine, Colors.Muted);
   Inc(mX, Canvas.TextWidth(mLine));
   AWidth := Max(AWidth, mX);
@@ -314,8 +315,8 @@ var
   mColor: TAtlasColor;
 begin
   mX := Scale(cPad);
-  mAccept := TAtlasStrings.Text(TAtlasTextId.UnwrapAccept);
-  mCancel := TAtlasStrings.Text(TAtlasTextId.UnwrapCancel);
+  mAccept := TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapAccept);
+  mCancel := TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapCancel);
   FAcceptRect := Rect(mX, AY, mX + Canvas.TextWidth(mAccept), AY + ATextHeight);
   mColor := Colors.Muted;
   if FRow >= 0 then

@@ -35,11 +35,13 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.ClassExtraction,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
   Atlas.IDE.Editor.ClassExtraction,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Text.Json;
 
 const
   cPrepareCommand = 'atlas.server.extractInterface.prepare';
@@ -52,7 +54,7 @@ class procedure TAtlasIdeExtractInterface.Execute(ASession: TLspSession; const A
 var
   mChoice: TAtlasClassExtractionChoice;
   mReply: TAtlasServerEditReply;
-  mTargetFile, mHint: string;
+  mTargetFile, mHint, mApply: string;
   mMethods: Integer;
   mOutcome: TAtlasWorkspaceEditResult;
 begin
@@ -65,7 +67,7 @@ begin
     cTimeoutMs, TAtlasTextId.ExtractIntfFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfTitle, [AModel.Source.SourceClass]);
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExtractIntfTitle, [AModel.Source.SourceClass]);
     end, AMessage, mChoice) then
   begin
     Exit;
@@ -76,30 +78,30 @@ begin
     cTimeoutMs, TAtlasTextId.ExtractIntfFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      mTargetFile := TJsonRead.Text(AReply, 'file');
       if mTargetFile <> '' then
       begin
         mTargetFile := TLspSession.UriToPath(mTargetFile);
       end;
-      mMethods := TAtlasIdeServerEdit.NumberOf(AReply, 'methods');
+      mMethods := TJsonRead.Int(AReply, 'methods');
     end, AMessage, mReply) then
   begin
     Exit;
   end;
   if mReply.Edit.IsEmpty or (mMethods = 0) then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.ExtractIntfNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractIntfNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400); Hinweise (Basisklasse, Zugriffsmethoden, Sichtbarkeit) im Hinweis.
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfPreviewHint, [mChoice.Name, mReply.Edit.EditCount,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExtractIntfPreviewHint, [mChoice.Name, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply),
-    mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), AMessage,
-      mOutcome) then
+  mApply := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractIntfApply);
+  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfDone, [mChoice.Name, mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExtractIntfDone,
+      [mChoice.Name, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);
     if mTargetFile <> '' then
     begin

@@ -9,6 +9,8 @@
 //                               Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen
 //                               (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still.
 //                               Korrekturen: Assert.Pass als Platzhalter oder Sprung zur Methode.
+//   dunitx-areequal-length      Assert.AreEqual mit Ganzzahl und Length eines dynamischen Arrays bzw. NativeInt
+//                               (#1937, wie E2532), in Atlas.Common.Rules.Builtin.Testing.AreEqual.
 
 interface
 
@@ -45,6 +47,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.Testing.AreEqual,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -144,7 +147,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TAssertSearch.CollectRoutines(ARoot: TSyntaxNode);
 var
   mPending: TStack<TSyntaxNode>;
@@ -533,7 +536,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -600,6 +603,7 @@ end;
 procedure RegisterTestingRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDUnitXTestWithoutAssertRule.Create);
+  ARegistry.Register(TDUnitXAreEqualLengthRule.Create);
 end;
 
 initialization

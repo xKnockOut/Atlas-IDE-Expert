@@ -15,6 +15,8 @@ type
     [Test]
     procedure WantedUnitsReadsNamesAndSkipsOthers;
     [Test]
+    procedure IsIdePathMatchesOnlyServerPrefix;
+    [Test]
     procedure JsonGroupsTypesByUnit;
     [Test]
     procedure JsonWritesMembersAndParams;
@@ -33,6 +35,15 @@ begin
   Result.UnitName := AUnit;
   Result.Name := AName;
   Result.Kind := AKind;
+end;
+
+procedure TAtlasIdeMembersTests.IsIdePathMatchesOnlyServerPrefix;
+begin
+  Assert.IsTrue(TAtlasIdeMembers.IsIdePath('atlas-ide:Vcl.Forms.pas'));
+  Assert.IsTrue(TAtlasIdeMembers.IsIdePath('ATLAS-IDE:Vcl.Forms.pas'));
+  Assert.IsFalse(TAtlasIdeMembers.IsIdePath('C:\P\atlas-ide:Vcl.Forms.pas'));
+  Assert.IsFalse(TAtlasIdeMembers.IsIdePath('C:\P\Vcl.Forms.pas'));
+  Assert.IsFalse(TAtlasIdeMembers.IsIdePath(''));
 end;
 
 procedure TAtlasIdeMembersTests.WantedUnitsReadsNamesAndSkipsOthers;

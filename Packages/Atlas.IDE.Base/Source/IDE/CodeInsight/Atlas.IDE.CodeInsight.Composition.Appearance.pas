@@ -7,6 +7,11 @@ interface
 
 /// <summary>Thema der IDE gewechselt: Bilder, Farben und Fenster aller Teile und Module nachziehen.</summary>
 procedure ThemeChanged;
+/// <summary>Themendienst der Atlas-Fenster (#2061) an das IDE-Thema binden: Farben aus TAtlasIdeStyle, Anwenden
+/// über TAtlasIdeDockWindow.ApplyIdeTheme, Fehler der Abonnenten ins Protokoll.</summary>
+procedure InstallUiTheme;
+/// <summary>Themendienst beim Entladen wieder lösen.</summary>
+procedure UninstallUiTheme;
 /// <summary>Geänderte Einstellungen an Fenster und Leisten: Prüfung (#909), Gliederung (#537), Aufrufdiagramm
 /// (#1122), Server (#1356), Kontextmenü (#1117), Brotkrumen (#590), Editorleiste (#1101), Statusleiste (#1155),
 /// mitlaufender Kopf (#506), Änderungen (#507), Übersichtsleiste (#519) und Minimap (#873).</summary>
@@ -15,7 +20,12 @@ procedure ApplyWindowSettings;
 implementation
 
 uses
+  Vcl.Controls,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Foundation.Theme,
+  Atlas.IDE.Foundation.DockWindow,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.ResultsWindow,
@@ -64,6 +74,28 @@ begin
   end;
 end;
 
+procedure InstallUiTheme;
+begin
+  TAtlasUiTheme.Install(
+    function: TAtlasColors
+    begin
+      Result := TAtlasIdeStyle.Colors;
+    end,
+    procedure(AControl: TWinControl)
+    begin
+      TAtlasIdeDockWindow.ApplyIdeTheme(AControl);
+    end,
+    procedure(AFailure: string)
+    begin
+      TAtlasGuard.Log('Thema im Atlas-Fenster nicht übernommen: ' + AFailure); // german-ok: Protokollzeile
+    end);
+end;
+
+procedure UninstallUiTheme;
+begin
+  TAtlasUiTheme.Uninstall;
+end;
+
 procedure ThemeChanged;
 begin
   if MainMenu <> nil then
@@ -77,10 +109,13 @@ begin
   TAtlasIdeProblems.ThemeChanged;
   TAtlasIdeOutline.ThemeChanged;
   TAtlasIdeBreadcrumbs.ThemeChanged;
+  TAtlasIdeStickyScroll.ThemeChanged;
   TAtlasIdeEditorToolbar.ThemeChanged;
   TAtlasIdeStatusBar.ThemeChanged;
   TAtlasIdeOverviewRuler.ThemeChanged;
   TAtlasIdeMinimap.ThemeChanged;
+  // Dialoge und Steuerelemente auf TAtlasDialog/TAtlasUiTheme (#2061), auch die der Module.
+  TAtlasUiTheme.Changed;
   // Fenster der Module (#1455).
   ModulesThemeChanged;
 end;

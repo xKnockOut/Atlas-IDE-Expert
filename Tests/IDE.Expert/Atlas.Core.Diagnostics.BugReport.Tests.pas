@@ -2,7 +2,7 @@
 
 // Fehlerbericht des Plugins (#108): Aufbau mit und ohne Server,
 // Argumente für den Server, Anonymisierung ohne Projektpfad, Auszug aus
-// atlas.log, Fehlerausgabe des Servers (Bericht H5).
+// atlas.log, Fehlerausgabe des Servers.
 
 interface
 

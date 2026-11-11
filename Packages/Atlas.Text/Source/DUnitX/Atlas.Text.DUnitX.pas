@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.DUnitX;
 
 // DUnitX-Tests im Quelltext erkennen, gemeinsam für Server und Plugin
-// (ADR 0012, #69, #154, #585): Attribute nach dem Namen ([TestFixture],
+// (#69, #154, #585): Attribute nach dem Namen ([TestFixture],
 // [DUnitX.Attributes.TestFixture], [TestFixtureAttribute], [Test],
 // [TestCase('Name', '1,2')], [Ignore('Grund')], [Category('Langsam')],
 // [Setup] …), Fixtures und Testmethoden einer Unit mit ihren Zeilen und die

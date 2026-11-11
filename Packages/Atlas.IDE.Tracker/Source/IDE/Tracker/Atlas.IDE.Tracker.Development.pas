@@ -21,7 +21,6 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
@@ -29,7 +28,8 @@ uses
   Atlas.Core.Tracker.Preview,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.DevelopmentView,
-  Atlas.UI.Tracker.IssueFrame;
+  Atlas.UI.Tracker.IssueFrame,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   TAtlasIssueDevelopmentProviderHook = reference to function(const ATarget: TAtlasTrackerTarget):
@@ -67,16 +67,14 @@ type
     FShown: Boolean;
     FForce: Boolean;
     FGeneration: Integer;
-    FThread: TThread;
     FCancel: IAtlasCiCancel;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     function View: TAtlasIssueDevelopmentView;
     function ProjectFile: string;
     procedure Load(AForce: Boolean);
     procedure Loaded(AGeneration: Integer; ANoProject: Boolean; const ADevelopment: TAtlasIssueDevelopment);
     procedure Show(const ADevelopment: TAtlasIssueDevelopment);
     procedure Notice(const AText: string);
-    procedure ReleaseThreads(AWait: Boolean);
     procedure ShowDiff(const AEntry: TAtlasVcsLogEntry);
     procedure DiffLoaded(const AEntry: TAtlasVcsLogEntry; AOutcome: TAtlasVcsOutcome;
       const AFiles: TArray<TAtlasIssueFileDiff>);
@@ -127,7 +125,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -141,12 +139,11 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCache := TAtlasIssueDevelopmentCache.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeIssueDevelopment.Destroy;
 begin
-  ReleaseThreads(True);
   FWorkers.Free;
   FCache.Free;
   inherited;
@@ -229,53 +226,8 @@ begin
   FStarted := False;
   Inc(FGeneration);
   Cancel;
-  ReleaseThreads(True);
+  FWorkers.Release(True);
   FHooks := Default(TAtlasIssueDevelopmentHooks);
-end;
-
-procedure TAtlasIdeIssueDevelopment.ReleaseThreads(AWait: Boolean);
-var
-  mIndex: Integer;
-  mThread: TThread;
-  mWait: TArray<TThread>;
-begin
-  if (FThread <> nil) and FThread.Finished then
-  begin
-    FWorkers.Add(FThread);
-    FThread := nil;
-  end;
-  if AWait and (FThread <> nil) then
-  begin
-    FWorkers.Add(FThread);
-    FThread := nil;
-  end;
-  if AWait then
-  begin
-    mWait := nil;
-    for mIndex := 0 to FWorkers.Count - 1 do
-    begin
-      mWait := mWait + [FWorkers[mIndex]];
-    end;
-    if Length(mWait) > 0 then
-    begin
-      TAtlasShutdown.WaitForThreads(mWait);
-    end;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    mThread := FWorkers[mIndex];
-    if mThread.Finished then
-    begin
-      mThread.Free;
-      FWorkers.Delete(mIndex);
-    end
-    else if AWait then
-    begin
-      // Läuft noch (Zeitgrenze): räumt sich selbst auf.
-      mThread.FreeOnTerminate := True;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 function TAtlasIdeIssueDevelopment.View: TAtlasIssueDevelopmentView;
@@ -466,15 +418,15 @@ begin
   end;
   case ADevelopment.TrackerError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server, TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -615,7 +567,7 @@ begin
   end;
   // Eine Suche zur Zeit: die laufende verfällt (Generation), der Tracker bricht ab.
   Cancel;
-  ReleaseThreads(False);
+  FWorkers.Release(False);
   Inc(FGeneration);
   FShown := True;
   mJob := Default(TLoadJob);
@@ -640,15 +592,8 @@ begin
   begin
     FCancel := nil;
   end;
-  // Ohne Ergebnis aus dem Thread weiter: Der Vorgänger kann noch laufen und verfällt.
-  if FThread <> nil then
-  begin
-    FWorkers.Add(FThread);
-    FThread := nil;
-  end;
-  FThread := TThread.CreateAnonymousThread(LoadWorker(Self, Self, mJob));
-  FThread.FreeOnTerminate := False;
-  FThread.Start;
+  // Ohne Ergebnis aus dem Thread weiter: Der Vorgänger kann noch laufen und verfällt (Generation).
+  FWorkers.Start(TThread.CreateAnonymousThread(LoadWorker(Self, Self, mJob)));
 end;
 
 procedure TAtlasIdeIssueDevelopment.Loaded(AGeneration: Integer; ANoProject: Boolean;
@@ -657,7 +602,7 @@ var
   mDevelopment: TAtlasIssueDevelopment;
   mView: TAtlasIssueDevelopmentView;
 begin
-  ReleaseThreads(False);
+  FWorkers.Release(False);
   if not FStarted or (AGeneration <> FGeneration) then
   begin
     Exit;

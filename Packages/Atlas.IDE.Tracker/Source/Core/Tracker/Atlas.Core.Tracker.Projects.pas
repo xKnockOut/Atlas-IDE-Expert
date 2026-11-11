@@ -165,7 +165,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 { TAtlasTrackerProjectMapping }
 
@@ -315,14 +316,15 @@ end;
 /// <summary>Liste von Pfaden aus "paths"; Einträge, die keine Zeichenfolge sind, fallen weg.</summary>
 function PathsOf(AObject: TJSONObject): TArray<string>;
 var
-  mValue, mItem: TJSONValue;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
   mTexts: TArray<string>;
 begin
   mTexts := nil;
-  mValue := AObject.GetValue('paths');
-  if mValue is TJSONArray then
+  mItems := TJsonRead.Items(AObject, 'paths');
+  if mItems <> nil then
   begin
-    for mItem in TJSONArray(mValue) do
+    for mItem in mItems do
     begin
       if mItem is TJSONString then
       begin
@@ -331,18 +333,6 @@ begin
     end;
   end;
   Result := TAtlasTrackerProjects.SplitPaths(string.Join(';', mTexts));
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
 end;
 
 class function TAtlasTrackerProjects.Read(const AJson: string): TArray<TAtlasTrackerProjectMapping>;
@@ -368,8 +358,8 @@ begin
       begin
         Continue;
       end;
-      mMapping := TAtlasTrackerProjectMapping.Create(TextOf(TJSONObject(mItem), 'match'),
-        TextOf(TJSONObject(mItem), 'connection'), TextOf(TJSONObject(mItem), 'project'));
+      mMapping := TAtlasTrackerProjectMapping.Create(TJsonRead.Text(TJSONObject(mItem), 'match'),
+        TJsonRead.Text(TJSONObject(mItem), 'connection'), TJsonRead.Text(TJSONObject(mItem), 'project'));
       mMapping.Paths := PathsOf(TJSONObject(mItem));
       if (mMapping.Match = '') or (mMapping.Connection = '') or (IndexOfMatch(Result, mMapping.Match) >= 0) then
       begin

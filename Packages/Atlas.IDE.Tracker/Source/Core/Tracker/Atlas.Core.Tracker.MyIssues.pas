@@ -389,8 +389,10 @@ uses
   System.Math,
   System.Generics.Collections,
   System.JSON,
+  System.Math,
   Atlas.Core.VersionControl.BranchNames,
-  Atlas.Core.Tracker.Naming;
+  Atlas.Core.Tracker.Naming,
+  Atlas.Text.Json;
 
 const
   cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');
@@ -1088,71 +1090,6 @@ end;
 
 { JSON }
 
-function TextIn(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberIn(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
-function FlagIn(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
-
 function ParseObject(const AJson: string): TJSONValue;
 begin
   Result := nil;
@@ -1295,19 +1232,19 @@ end;
 function ItemOf(AEntry: TJSONObject; out AItem: TAtlasTrackerIssue): Boolean;
 begin
   AItem := TAtlasTrackerIssue.Empty;
-  AItem.Key := TextIn(AEntry, 'key');
+  AItem.Key := TJsonRead.Text(AEntry, 'key');
   Result := AItem.Key <> '';
   if Result then
   begin
-    AItem.Number := NumberIn(AEntry, 'number');
-    AItem.Title := TextIn(AEntry, 'title');
+    AItem.Number := Max(0, TJsonRead.Int(AEntry, 'number'));
+    AItem.Title := TJsonRead.Text(AEntry, 'title');
     AItem.Labels := LabelsOf(AEntry);
-    AItem.State := TextIn(AEntry, 'state');
-    AItem.Priority := TextIn(AEntry, 'priority');
-    AItem.Sprint := TextIn(AEntry, 'sprint');
-    AItem.PullRequest.Number := NumberIn(AEntry, 'pr');
-    AItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TextIn(AEntry, 'checks'));
-    AItem.PullRequest.Draft := FlagIn(AEntry, 'draft');
+    AItem.State := TJsonRead.Text(AEntry, 'state');
+    AItem.Priority := TJsonRead.Text(AEntry, 'priority');
+    AItem.Sprint := TJsonRead.Text(AEntry, 'sprint');
+    AItem.PullRequest.Number := Max(0, TJsonRead.Int(AEntry, 'pr'));
+    AItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TJsonRead.Text(AEntry, 'checks'));
+    AItem.PullRequest.Draft := TJsonRead.Flag(AEntry, 'draft');
   end;
 end;
 
@@ -1334,14 +1271,14 @@ procedure ActiveOf(ASection: TJSONObject; var AState: TAtlasIssuesState);
 var
   mActive: TJSONObject;
 begin
-  mActive := ObjectIn(ASection, 'active');
-  if (mActive <> nil) and (TextIn(mActive, 'key') <> '') then
+  mActive := TJsonRead.Obj(ASection, 'active');
+  if (mActive <> nil) and (TJsonRead.Text(mActive, 'key') <> '') then
   begin
-    AState.Active.Key := TextIn(mActive, 'key');
-    AState.Active.Title := TextIn(mActive, 'title');
-    AState.Active.Mode := TAtlasMyIssues.StartOf(TextIn(mActive, 'mode'));
-    AState.Active.Branch := TextIn(mActive, 'branch');
-    AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TextIn(mActive, 'started'));
+    AState.Active.Key := TJsonRead.Text(mActive, 'key');
+    AState.Active.Title := TJsonRead.Text(mActive, 'title');
+    AState.Active.Mode := TAtlasMyIssues.StartOf(TJsonRead.Text(mActive, 'mode'));
+    AState.Active.Branch := TJsonRead.Text(mActive, 'branch');
+    AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mActive, 'started'));
   end;
 end;
 
@@ -1350,7 +1287,7 @@ var
   mCounts: TJSONObject;
   mIndex: Integer;
 begin
-  mCounts := ObjectIn(ASection, 'counts');
+  mCounts := TJsonRead.Obj(ASection, 'counts');
   if mCounts <> nil then
   begin
     for mIndex := 0 to mCounts.Count - 1 do
@@ -1369,19 +1306,19 @@ begin
   Result := ASection <> nil;
   if Result then
   begin
-    AState.Provider := TextIn(ASection, 'provider');
-    AState.Server := TextIn(ASection, 'server');
-    AState.Project := TextIn(ASection, 'project');
-    AState.Query := TextIn(ASection, 'query');
-    AState.Attempt := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'attempt'));
-    AState.Error := TAtlasCiBuild.ErrorOf(TextIn(ASection, 'error'));
-    AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
+    AState.Provider := TJsonRead.Text(ASection, 'provider');
+    AState.Server := TJsonRead.Text(ASection, 'server');
+    AState.Project := TJsonRead.Text(ASection, 'project');
+    AState.Query := TJsonRead.Text(ASection, 'query');
+    AState.Attempt := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'attempt'));
+    AState.Error := TAtlasCiBuild.ErrorOf(TJsonRead.Text(ASection, 'error'));
+    AState.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
     ItemsOf(ASection, AState);
     ActiveOf(ASection, AState);
-    AState.EndedBranch := TextIn(ASection, 'endedBranch');
-    AState.Hook := TextIn(ASection, 'hook');
-    AState.GitDir := TextIn(ASection, 'gitDir');
-    AState.Selected := TextIn(ASection, 'selected');
+    AState.EndedBranch := TJsonRead.Text(ASection, 'endedBranch');
+    AState.Hook := TJsonRead.Text(ASection, 'hook');
+    AState.GitDir := TJsonRead.Text(ASection, 'gitDir');
+    AState.Selected := TJsonRead.Text(ASection, 'selected');
     CountsOf(ASection, AState);
   end;
 end;
@@ -1418,7 +1355,7 @@ begin
   AState := TAtlasIssuesState.Empty;
   mValue := ParseObject(ASummary.Raw);
   try
-    Result := (mValue is TJSONObject) and StateOf(ObjectIn(TJSONObject(mValue), cSectionName), AState);
+    Result := (mValue is TJSONObject) and StateOf(TJsonRead.Obj(TJSONObject(mValue), cSectionName), AState);
   finally
     mValue.Free;
   end;

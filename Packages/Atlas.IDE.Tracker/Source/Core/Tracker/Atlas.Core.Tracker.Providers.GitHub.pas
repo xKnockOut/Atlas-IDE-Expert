@@ -174,7 +174,8 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Internals.GitHubJson,
-  Atlas.Core.Tracker.GitHubBoards;
+  Atlas.Core.Tracker.GitHubBoards,
+  Atlas.Text.Json;
 
 function TAtlasGitHubTracker.Name: string;
 begin
@@ -563,7 +564,7 @@ begin
   try
     if mValue is TJSONObject then
     begin
-      AMe := Trim(TAtlasGitHubJson.TextOf(TJSONObject(mValue), 'login'));
+      AMe := Trim(TJsonRead.Text(TJSONObject(mValue), 'login'));
     end;
   finally
     mValue.Free;

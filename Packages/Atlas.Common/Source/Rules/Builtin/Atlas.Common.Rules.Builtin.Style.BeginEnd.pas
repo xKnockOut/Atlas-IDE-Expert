@@ -30,6 +30,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.Formatter.Layout,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Style.Tokens,
@@ -92,7 +93,6 @@ type
     FAllowSingleLineExit: Boolean;
     FAllowSameLine: Boolean;
     FSites: TArray<TBodySite>;
-    function TokenAtOffset(AOffset: Integer): Integer;
     function LastTokenOf(ANode: TSyntaxNode): Integer;
     function Checked(const AName: string): Boolean;
     function StartsLine(AToken: Integer): Boolean;
@@ -177,30 +177,9 @@ begin
   end;
 end;
 
-function TBeginEndSites.TokenAtOffset(AOffset: Integer): Integer;
-var
-  mUpper, mMiddle: Integer;
-begin
-  // Erstes Token ab AOffset (die Tokens sind nach Offset sortiert).
-  Result := 0;
-  mUpper := Length(FTokens);
-  while Result < mUpper do
-  begin
-    mMiddle := (Result + mUpper) div 2;
-    if FTokens[mMiddle].Offset < AOffset then
-    begin
-      Result := mMiddle + 1;
-    end
-    else
-    begin
-      mUpper := mMiddle;
-    end;
-  end;
-end;
-
 function TBeginEndSites.LastTokenOf(ANode: TSyntaxNode): Integer;
 begin
-  Result := PreviousCode(FTokens, TokenAtOffset(ANode.EndOffset));
+  Result := PreviousCode(FTokens, TokenFrom(FTokens, ANode.EndOffset));
 end;
 
 function TBeginEndSites.Checked(const AName: string): Boolean;
@@ -267,7 +246,7 @@ begin
   mSite.Lead := ALead;
   mSite.Anchor := AAnchor;
   mSite.Routine := ARoutine;
-  mSite.First := TokenAtOffset(ABody.StartOffset);
+  mSite.First := TokenFrom(FTokens, ABody.StartOffset);
   mSite.Last := LastTokenOf(ABody);
   if (mSite.First > High(FTokens)) or (mSite.Last < mSite.First) or
     (FTokens[mSite.First].Offset <> ABody.StartOffset) then
@@ -326,7 +305,7 @@ begin
   begin
     Exit;
   end;
-  mKeyword := TokenAtOffset(ANode.StartOffset);
+  mKeyword := TokenFrom(FTokens, ANode.StartOffset);
   if mKeyword > High(FTokens) then
   begin
     Exit;
@@ -374,7 +353,7 @@ begin
   begin
     Exit;
   end;
-  mElseToken := PreviousCode(FTokens, TokenAtOffset(mLast.StartOffset));
+  mElseToken := PreviousCode(FTokens, TokenFrom(FTokens, mLast.StartOffset));
   if (mElseToken < 0) or not FTokens[mElseToken].IsKeyword('else') then
   begin
     Exit;
@@ -397,7 +376,7 @@ var
 begin
   // Rumpf hinter do (Schleifen, with) bzw. hinter : (case-Zweig).
   mLast := ANode[ANode.ChildCount - 1];
-  mLead := PreviousCode(FTokens, TokenAtOffset(mLast.StartOffset));
+  mLead := PreviousCode(FTokens, TokenFrom(FTokens, mLast.StartOffset));
   if mLead < 0 then
   begin
     Exit;

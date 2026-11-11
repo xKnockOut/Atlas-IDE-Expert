@@ -19,6 +19,8 @@ type
     [Test]
     procedure InstalledTemplatesMatchBuiltIn;
     [Test]
+    procedure SchemaUrlNamesThisRepository;
+    [Test]
     procedure TemplateIdsRoundTrip;
     [Test]
     procedure FindsTemplateFolderBesideOrAbovePlugin;
@@ -133,6 +135,25 @@ begin
     Text := StringReplace(Text, #13#10, #10, [rfReplaceAll]);
     Assert.AreEqual(TAtlasProjectSetups.BuiltIn(Template), Text, TAtlasProjectSetups.TemplateFile(Template));
   end;
+end;
+
+procedure TAtlasProjectSetupTests.SchemaUrlNamesThisRepository;
+const
+  cExpected = 'https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json';
+var
+  Folder, Text: string;
+begin
+  // Die frühere Adresse unter xKnockOut/Atlas liefert 404: Editoren fanden das Schema nicht (#1971).
+  Assert.AreEqual(cExpected, TAtlasProjectSetups.cSchemaUrl);
+  Folder := RepoTemplates;
+  if Folder = '' then
+  begin
+    Exit;
+  end;
+  // Die eigene Konfiguration des Plugins nennt dieselbe Adresse wie die Vorlagen.
+  Text := TFile.ReadAllText(TPath.Combine(ExtractFileDir(ExtractFileDir(Folder)),
+    TPath.Combine('Packages', TPath.Combine('Atlas.IDE.Base', 'atlas.json'))), TEncoding.UTF8);
+  Assert.Contains(Text, '"$schema": "' + TAtlasProjectSetups.cSchemaUrl + '"');
 end;
 
 procedure TAtlasProjectSetupTests.TemplateIdsRoundTrip;

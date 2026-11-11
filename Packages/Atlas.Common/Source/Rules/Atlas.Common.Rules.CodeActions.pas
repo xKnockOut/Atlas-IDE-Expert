@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Rules.CodeActions;
 
 // Brücke von Regeltreffern zu Code-Aktionen (#42, #182): Korrekturen der Treffer,
-// "Regel unterdrücken" und "Alle sicheren Korrekturen anwenden". Lag bis A-11 in
-// Editing.CodeActions; dort bleiben TCodeAction und die Aktionen ohne Regelbezug,
+// "Regel unterdrücken" und "Alle sicheren Korrekturen anwenden". In
+// Editing.CodeActions bleiben TCodeAction und die Aktionen ohne Regelbezug,
 // damit Editing nicht von Rules abhängt (Rules -> Editing ist erlaubt).
 
 interface

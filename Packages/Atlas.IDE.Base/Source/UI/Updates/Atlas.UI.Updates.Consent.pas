@@ -17,10 +17,11 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Style.Symbol,
-  Atlas.UI.Style.Symbol;
+  Atlas.UI.Style.Symbol,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasUpdateConsent = class(TForm)
+  TAtlasUpdateConsent = class(TAtlasDialog)
   private
     FText: TLabel;
     FSymbol: TAtlasSymbolImage;
@@ -63,22 +64,18 @@ constructor TAtlasUpdateConsent.CreateConsent(AOwner: TComponent);
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle);
+  inherited CreateDialog(AOwner, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), cConsentWidth);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cConsentWidth);
   OnClose := FormClose;
 
   // Atlas-Symbol (#751) links neben dem Text.
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Self;
   FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
-  FSymbol.Left := cGap;
-  FSymbol.Top := cGap;
+  FSymbol.Left := FSymbol.ScaleValue(cGap);
+  FSymbol.Top := FSymbol.ScaleValue(cGap);
   FText := TLabel.Create(Self);
   FText.Parent := Self;
   FText.Align := alTop;
@@ -97,10 +94,10 @@ begin
   mButtons.Top := FText.Top + FText.Height + 1;
   FYes := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
   FNo := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
   if ClientHeight < FSymbol.Top + FSymbol.Height + cGap then
   begin
-    ClientHeight := FSymbol.Top + FSymbol.Height + cGap;
+    ClientHeight := FSymbol.Top + FSymbol.Height + ScaleValue(cGap);
   end;
 end;
 
@@ -119,8 +116,8 @@ end;
 
 procedure TAtlasUpdateConsent.ShowIn(const AArea: TRect);
 begin
-  Left := AArea.Right - Width - cGap;
-  Top := AArea.Bottom - Height - cGap;
+  Left := AArea.Right - Width - ScaleValue(cGap);
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
   // Nicht modal: Die IDE arbeitet weiter, während die Frage offen ist.
   Show;
 end;

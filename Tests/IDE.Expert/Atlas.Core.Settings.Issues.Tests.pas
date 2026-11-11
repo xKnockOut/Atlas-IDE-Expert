@@ -362,7 +362,7 @@ begin
   Assert.IsTrue(ASettings.IssuesAttach, 'Anhängen (#1276) an');
   Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
   Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
-  // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
+  // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.cIssuesStartBranch);
   Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Remember),
@@ -632,7 +632,7 @@ begin
   Assert.AreEqual('wt.exe', Settings.WelcomePageQuickActionsConsole);
   Assert.AreEqual($4042, Settings.WelcomePageQuickActionsBuildKey, 'Strg+B');
   Assert.AreEqual($4054, Settings.WelcomePageQuickActionsTestKey, 'Strg+T');
-  // Die Einstellungen kennen die Willkommensseite nicht (A-09): dieselben Vorgaben und Namen wie dort.
+  // Die Einstellungen kennen die Willkommensseite nicht: dieselben Vorgaben und Namen wie dort.
   Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultItems, Settings.WelcomePageQuickActionsItems);
   Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, Settings.WelcomePageQuickActionsConsole);
   Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultBuildKey, Settings.WelcomePageQuickActionsBuildKey);

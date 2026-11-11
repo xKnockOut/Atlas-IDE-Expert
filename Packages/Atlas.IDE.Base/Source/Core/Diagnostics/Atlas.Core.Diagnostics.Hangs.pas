@@ -4,10 +4,15 @@
 // - TAtlasActivity: Atlas-Arbeit im Hauptthread meldet sich mit Scope an; der
 //   Wächter liest den Namen aus seinem Thread (threadsicher, ohne zu warten).
 //   Während des Starts zählt TimeInto die Dauer jeder äußersten Aktion zu den
-//   Startanteilen (Bericht N4).
+//   Startanteilen. Running ergänzt die laufende Funktion
+//   aus TAtlasGuard.Run, wenn keine Aktion angemeldet ist (#1988).
 // - TAtlasHangMonitor: Schwelle, Statistik je Sitzung und Bericht.
 // - TAtlasStackScan: ordnet Adressen eines rohen Stapelabzugs Modulen zu
 //   (Modul+Offset), ohne Symbole; der Bericht zeigt so, ob Atlas beteiligt ist.
+//   Angezeigt werden die obersten 24 Rahmen; ob Atlas beteiligt ist, sucht
+//   FirstIn über den ganzen Abzug (#1989). Vorher zählte ein Hänger ohne
+//   Atlas-Rahmen unter den obersten 24 als „ohne Atlas“, etwa wenn Atlas eine
+//   lange Arbeit der IDE aufrief und deren Stapel tiefer war.
 
 interface
 
@@ -30,12 +35,14 @@ type
     class destructor Destroy;
     /// <summary>Meldet AName an, bis das Ergebnis freigegeben wird (Ende der Routine).</summary>
     class function Scope(const AName: string): IInterface; static;
-    /// <summary>Ab jetzt die Dauer jeder äußersten Aktion als „Aktion Name“ zu ATimes addieren (Startanteile,
-    /// Bericht N4); nil beendet das. ATimes gehört dem Aufrufer und darf nach TimeInto(nil) freigegeben werden.
+    /// <summary>Ab jetzt die Dauer jeder äußersten Aktion als „Aktion Name“ zu ATimes addieren
+    /// (Startanteile); nil beendet das. ATimes gehört dem Aufrufer und darf nach TimeInto(nil) freigegeben werden.
     /// </summary>
     class procedure TimeInto(ATimes: TAtlasStartTimes); static;
     /// <summary>Innerste laufende Aktion; '' ohne oder wenn gerade gesperrt.</summary>
     class function Current: string; static;
+    /// <summary>Current, sonst die innerste Funktion aus TAtlasGuard.Run; für den Einfrier-Wächter.</summary>
+    class function Running: string; static;
   end;
 
   TAtlasModuleRange = record
@@ -53,6 +60,10 @@ type
     /// <summary>Wie oben mit AMax = 24.</summary>
     class function Frames(const AAddresses: TArray<UInt64>;
       const AModules: TArray<TAtlasModuleRange>): TArray<string>; overload; static;
+    /// <summary>Erste Adresse (von oben) in einem Modul, dessen Name mit APrefix beginnt, als "Modul+Offset";
+    /// '' ohne. Durchsucht alle Adressen.</summary>
+    class function FirstIn(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
+      const APrefix: string): string; static;
   end;
 
   TAtlasHang = record
@@ -61,6 +72,9 @@ type
     Activity: string;
     Window: string;
     Frames: TArray<string>;
+    /// <summary>Oberster Rahmen aus einem Atlas-Modul im ganzen Abzug, auch unterhalb von Frames; '' ohne.
+    /// </summary>
+    AtlasFrame: string;
     /// <summary>Code-Insight-Kompilierungen bisher (#527).</summary>
     CodeInsightCount: Integer;
     CodeInsightMs: Int64;
@@ -90,6 +104,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginTimings;
 
 type
@@ -199,6 +214,15 @@ begin
   end;
 end;
 
+class function TAtlasActivity.Running: string;
+begin
+  Result := Current;
+  if Result = '' then
+  begin
+    Result := TAtlasGuard.CurrentFeatureName;
+  end;
+end;
+
 { TAtlasStackScan }
 
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>;
@@ -236,7 +260,54 @@ begin
   end;
 end;
 
+class function TAtlasStackScan.FirstIn(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
+  const APrefix: string): string;
+var
+  mCandidates: TArray<TAtlasModuleRange>;
+  mModule: TAtlasModuleRange;
+  mAddress: UInt64;
+begin
+  Result := '';
+  // Erst die wenigen passenden Module: Der Abzug hat bis zu 64K Adressen, die IDE Hunderte Module.
+  mCandidates := nil;
+  for mModule in AModules do
+  begin
+    if mModule.Name.StartsWith(APrefix, True) then
+    begin
+      mCandidates := mCandidates + [mModule];
+    end;
+  end;
+  if mCandidates = nil then
+  begin
+    Exit;
+  end;
+  for mAddress in AAddresses do
+  begin
+    for mModule in mCandidates do
+    begin
+      if (mAddress >= mModule.Base) and (mAddress < mModule.Base + mModule.Size) then
+      begin
+        Exit(Format('%s+%x', [mModule.Name, mAddress - mModule.Base]));
+      end;
+    end;
+  end;
+end;
+
 { TAtlasHangMonitor }
+
+function Shown(const AFrames: TArray<string>; const AFrame: string): Boolean;
+var
+  mFrame: string;
+begin
+  Result := False;
+  for mFrame in AFrames do
+  begin
+    if mFrame = AFrame then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
 
 constructor TAtlasHangMonitor.Create;
 begin
@@ -253,7 +324,7 @@ class function TAtlasHangMonitor.InvolvesAtlas(const AHang: TAtlasHang): Boolean
 var
   mFrame: string;
 begin
-  Result := AHang.Activity <> '';
+  Result := (AHang.Activity <> '') or (AHang.AtlasFrame <> '');
   for mFrame in AHang.Frames do
   begin
     if mFrame.StartsWith('Atlas', True) then
@@ -306,6 +377,10 @@ begin
     for mFrame in AHang.Frames do
     begin
       mLines.Append(sLineBreak).Append('    ').Append(mFrame);
+    end;
+    if (AHang.AtlasFrame <> '') and not Shown(AHang.Frames, AHang.AtlasFrame) then
+    begin
+      mLines.Append(sLineBreak).Append('    … ').Append(AHang.AtlasFrame);
     end;
     mLines.Append(sLineBreak).Append('    ').Append(Summary);
     Result := mLines.ToString;

@@ -26,7 +26,7 @@ uses
   Atlas.UI.Style.Canvas;
 
 type
-  /// <summary>Zeichenfläche der Bereiche ohne Flackern; seit #1455 in Base (Atlas.UI.Style.Canvas).</summary>
+  /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.UI.Style.Canvas).</summary>
   TAtlasWelcomeCanvas = TAtlasStyledCanvas;
 
   TAtlasWelcomeFrame = class(TFrame)
@@ -151,11 +151,11 @@ begin
   FTitleBar.Align := alTop;
   FTitleBar.BevelOuter := bvNone;
   FTitleBar.ParentBackground := True;
-  FTitleBar.Height := cTitleHeight;
+  FTitleBar.Height := FTitleBar.ScaleValue(cTitleHeight);
   FTitle := TLabel.Create(Self);
   FTitle.Parent := FTitleBar;
-  FTitle.Left := 2;
-  FTitle.Top := 4;
+  FTitle.Left := FTitle.ScaleValue(2);
+  FTitle.Top := FTitle.ScaleValue(4);
   FTitle.Font.Style := [fsBold];
   FBody := TPanel.Create(Self);
   FBody.Parent := Self;

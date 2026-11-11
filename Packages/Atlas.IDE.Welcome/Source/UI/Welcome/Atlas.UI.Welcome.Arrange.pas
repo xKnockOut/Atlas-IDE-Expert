@@ -251,7 +251,7 @@ begin
   FHot := -1;
   FPressed := -1;
   ShowHint := True;
-  Height := cPartHeight + 8;
+  Height := ScaleValue(cPartHeight) + ScaleValue(8);
 end;
 
 procedure TAtlasArrangeStrip.SetParts(const AParts: TArray<TAtlasArrangePart>);
@@ -516,7 +516,7 @@ begin
   inherited Create(AOwner);
   TabStop := True;
   ParentColor := True;
-  Width := cGripWidth;
+  Width := ScaleValue(cGripWidth);
   Cursor := crSizeAll;
   ShowHint := True;
   Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeGrip);

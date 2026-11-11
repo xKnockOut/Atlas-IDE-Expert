@@ -268,7 +268,7 @@ function TSelfCalls.InExpression(ANode: TSyntaxNode): Boolean;
 var
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -291,7 +291,7 @@ var
   mIndex: Integer;
   mName: string;
 begin
-  // Iterativ (Bericht M1); Loops führt ALoop je Knoten mit.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); Loops führt ALoop je Knoten mit.
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   mLoops := TStack<Boolean>.Create;
@@ -469,7 +469,7 @@ begin
   end;
 end;
 
-// Lange else-if-Ketten und with-Rümpfe laufen iterativ über Node (Bericht M1); Ausdrücke prüfen die iterativen
+// Lange else-if-Ketten und with-Rümpfe laufen iterativ über Node; Ausdrücke prüfen die iterativen
 // InExpression und Leaves. Rekursiv bleibt nur der Abstieg in then-Zweige, Blöcke und case-Zweige: diese
 // Schachtelung baut der Parser selbst rekursiv auf (ParseStatement), sie ist durch dessen größere Rahmen begrenzt.
 function TSelfCalls.Always(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
@@ -546,7 +546,7 @@ var
   mIndex: Integer;
   mNode, mNext: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1): je Ebene in das erste Kind, das APosition enthält.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): je Ebene in das erste Kind, das APosition enthält.
   Result := nil;
   mNode := ARoot;
   while mNode <> nil do
@@ -653,7 +653,7 @@ var
   mPending: TStack<TSyntaxNode>;
   mNode: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (Vorordnung).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion (Vorordnung).
   FBodies := nil;
   mPending := TStack<TSyntaxNode>.Create;
   try

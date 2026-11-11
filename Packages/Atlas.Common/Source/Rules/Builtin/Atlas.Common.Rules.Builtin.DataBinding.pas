@@ -157,7 +157,7 @@ begin
   inherited;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 function TBindingModel.FindAnchor(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mPending: TStack<TSyntaxNode>;

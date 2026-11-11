@@ -42,8 +42,6 @@ type
     class function SettingsFile: string; static;
     /// <summary>%APPDATA%\Atlas\settings.json; '' ohne APPDATA.</summary>
     class function GlobalFile: string; static;
-    /// <summary>.dproj des aktiven Projekts; '' ohne.</summary>
-    class function ActiveProject: string; static;
     /// <summary>Dialog für atlas.json des aktiven Projekts zeigen und Änderungen schreiben.</summary>
     class procedure Execute; static;
     /// <summary>Dialog für die globale Datei zeigen und Änderungen schreiben.</summary>
@@ -87,9 +85,11 @@ uses
   Atlas.Core.Build.Target,
   Atlas.IDE.Build.Target,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ProjectDialog,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Foundation.Files;
 
 /// <summary>Dialogklasse mit Regel-Editor eines laufenden Moduls (Prüfregeln, #1755); sonst die von Base.
 /// </summary>
@@ -133,29 +133,12 @@ end;
 
 { TAtlasProjectSettings }
 
-class function TAtlasProjectSettings.ActiveProject: string;
-var
-  mModules: IOTAModuleServices;
-  mProject: IOTAProject;
-begin
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  mProject := mModules.GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
-end;
-
 class function TAtlasProjectSettings.SettingsFile: string;
 var
   mProject: string;
 begin
   Result := '';
-  mProject := ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject <> '' then
   begin
     Result := TPath.Combine(ExtractFileDir(mProject), TAtlasSettingsFiles.cProjectName);
@@ -337,7 +320,7 @@ begin
   FRuleId := ARuleId;
   if AGlobal then
   begin
-    FTitle := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
+    FTitle := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsGlobalTitle);
     FCheckScope := ',"global"';
   end
   else
@@ -486,7 +469,7 @@ begin
   // Die IDE sendet ihre Auswahl laufend an den Server (selectBuild, #46, #615).
   if TAtlasIdeBuildTarget.Read(mTarget) then
   begin
-    ADialog.BuildHint := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBuildOverride,
+    ADialog.BuildHint := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsBuildOverride,
       [mTarget.Config, mTarget.Platform]);
   end;
 end;
@@ -548,7 +531,7 @@ begin
   begin
     Exit;
   end;
-  FProject := TAtlasProjectSettings.ActiveProject;
+  FProject := TAtlasIdeFiles.ActiveProjectFile;
   FDprojText := '';
   if SameText(ExtractFileExt(FProject), '.dproj') and TFile.Exists(FProject) then
   begin

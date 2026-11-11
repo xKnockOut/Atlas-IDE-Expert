@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Tracker.TestResults;
 
-// Kachel „Testergebnisse“ des Moduls Tracker (#763, Mockup #ws11; seit #1455
-// Kachel über Atlas.IDE.Contracts.WelcomeTiles), ohne Open Tools API. Selbst
+// Kachel „Testergebnisse“ des Moduls Tracker (#763, Mockup #ws11; Kachel
+// über Atlas.IDE.Contracts.WelcomeTiles), ohne Open Tools API. Selbst
 // gezeichnet:
 //   ● Atlas.Tests  [2 fehlgeschlagen]  412 ok · 3 übersprungen · 18,4 s · 19:41
 //     ● Jenkins #482 · 2 fehlgeschlagen · vor 40 Min. · main   lokal grün, Server rot
@@ -272,7 +272,6 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
 const
@@ -478,22 +477,22 @@ begin
       end;
     TAtlasCiFetchError.Timeout:
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiTimeout);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiTimeout);
       end;
     TAtlasCiFetchError.Server, TAtlasCiFetchError.Invalid:
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiServerError);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiServerError);
       end;
     TAtlasCiFetchError.UnknownProvider:
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiUnknownProvider);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiUnknownProvider);
       end;
     TAtlasCiFetchError.None:
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotQueried);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiNotQueried);
       end;
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiUnreachable);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiUnreachable);
   end;
 end;
 
@@ -540,7 +539,7 @@ begin
   Result := '';
   if ARow.CiStale and (ARow.Ci.At > 0) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsStale,
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeTestsStale,
       [FormatDateTime(cDateTimeFormat, TTimeZone.Local.ToLocalTime(ARow.Ci.At), FormatSettings)]);
   end
   else if ARow.CiQuerying and ARow.Ci.HasBuild then
@@ -1139,7 +1138,7 @@ begin
   FMenu := TPopupMenu.Create(AOwner);
   FMenu.OnPopup := MenuPopup;
   FQueryItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsQueryNow), QueryClick);
-  FCredentialsItem := AddItem(TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), CredentialsClick);
+  FCredentialsItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginCommand), CredentialsClick);
   FOpenItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsOpenProject), OpenClick);
 end;
 

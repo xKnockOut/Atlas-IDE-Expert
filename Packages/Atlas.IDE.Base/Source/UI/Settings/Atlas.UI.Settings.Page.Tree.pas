@@ -93,7 +93,7 @@ uses
   Vcl.Forms,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Page.Host,
@@ -134,7 +134,7 @@ begin
   mPanel := TPanel.Create(Self);
   mPanel.Parent := Self;
   mPanel.Align := alLeft;
-  mPanel.Width := 176;
+  mPanel.Width := mPanel.ScaleValue(176);
   mPanel.BevelOuter := bvNone;
   mPanel.ParentBackground := True;
   FSearch := TAtlasSettingsSearchBox.Create(Self, mPanel, Catalog,
@@ -602,7 +602,7 @@ begin
   Result := '';
   case ALock.Reason of
     lrExperimental:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsLockedExperimental);
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsLockedExperimental);
     lrMasterOff:
       begin
         mCaption := FMarks.TextOfName(ALock.Master);
@@ -628,7 +628,7 @@ begin
             mWhere := Catalog.Entries[mEntry].Page;
           end;
         end;
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [mCaption, mWhere]);
+        Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsLockedMaster, [mCaption, mWhere]);
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.

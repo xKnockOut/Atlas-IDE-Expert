@@ -59,6 +59,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Editor.Rename,
@@ -139,7 +140,7 @@ var
 begin
   if not Enabled then
   begin
-    TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.ImpactOff));
+    TAtlasIdeResults.Say(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactOff));
     Exit;
   end;
   if not TAtlasIdeResults.AtCursor(mFileName, mLine, mCharacter, mName) then
@@ -191,7 +192,7 @@ begin
   mFileName := FFileName;
   mLine := FLine;
   mCharacter := FCharacter;
-  TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ImpactRunning, [FName, ADepth]), nil);
+  TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactRunning, [FName, ADepth]), nil);
   Reap(False);
   mWorker := TThread.CreateAnonymousThread(
     procedure
@@ -227,17 +228,17 @@ begin
   end;
   if AError <> '' then
   begin
-    TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [AError]), nil);
-    TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [AError]));
+    TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]), nil);
+    TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]));
     Exit;
   end;
   if not AImpact.Found then
   begin
-    TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Text(TAtlasTextId.ImpactNothing), nil);
-    TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.ImpactNothing));
+    TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactNothing), nil);
+    TAtlasIdeResults.Say(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowImpact(TAtlasStrings.Fmt(TAtlasTextId.ImpactTitle,
+  TAtlasIdeResultsWindow.ShowImpact(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactTitle,
     [AImpact.Symbol.Name, AImpact.Depth, Length(AImpact.Places)]), AImpact);
 end;
 

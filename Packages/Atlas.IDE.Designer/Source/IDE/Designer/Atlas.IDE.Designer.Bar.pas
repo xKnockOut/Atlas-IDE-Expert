@@ -11,16 +11,17 @@
 //   (editor.designerBar.searchStyle). Taste editor.designerBar.searchKey
 //   (Vorgabe Alt+^) nur, solange der Designer den Fokus hat: Tastaturbindungen
 //   der IDE wirken nur im Code-Editor, darum über TAtlasKeyHook, angemeldet nur
-//   solange ein Designer gezeigt wird.
+//   solange ein Designer gezeigt wird. Die Liste enthält auch die
+//   Komponenten eingebetteter Frames; Enter zeigt die Wahl über
+//   TAtlasIdeShowComponent (verdeckte Registerseiten werden aktiv),
+//   Strg+Enter fügt sie der Auswahl hinzu (#539).
 // - Nichtvisuelle: führt die Aktion der IDE hinter Strg+H aus und zeigt ihren
 //   Zustand (gedrückt = ausgeblendet). Atlas blendet nichts selbst aus.
 // - Elternelement auswählen: Parent der ersten Auswahl, auf dem Formular das
 //   Formular selbst.
-// - Tab-Reihenfolge: Marken mit der TabOrder über jedem fokussierbaren
-//   Steuerelement (TAtlasTabOrderOverlay), Sprünge gegen die
-//   Lesereihenfolge in Warnfarbe (TAtlasTabOrder). Experimentell
-//   (editor.designerBar.tabOrderClick): Klick auf eine Marke vergibt die
-//   Reihenfolge je Elternelement neu ab 0 (TAtlasTabClicks).
+// - Tab-Reihenfolge (#603): Marken mit der TabOrder über den
+//   Steuerelementen, Menü mit „Reihenfolge klicken“, „Nach Lesereihenfolge
+//   sortieren“ und Rückgängig (TAtlasIdeDesignerTabOrder).
 // - Ausrichten (experimentell, editor.designerBar.align): Menü am Pfeil,
 //   Klick auf das Symbol wiederholt den letzten Befehl (TAtlasDesignerAlign).
 // - Gleiche auswählen (#738, designer.selectSimilar): Menü mit Trefferzahlen
@@ -28,6 +29,8 @@
 //   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten; dazu die
 //   räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation)
 //   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands.
+// - Werkzeuge mit eigenem Knopf (#734 ff.), ebenfalls über
+//   TAtlasIdeDesignerCommands: Symbol schaltet, Pfeil öffnet das Menü.
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -55,7 +58,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Classes,
   System.Types,
   System.Actions,
@@ -76,10 +78,11 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Search,
-  Atlas.UI.Designer.TabOverlay,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Commands,
   Atlas.IDE.Designer.SearchItems,
+  Atlas.IDE.Designer.ShowComponent,
+  Atlas.IDE.Designer.TabOrder,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.KeyHook,
@@ -91,7 +94,6 @@ const
   cIdSearch = 'search';
   cIdNonVisual = 'nonVisual';
   cIdParent = 'parent';
-  cIdTabOrder = 'tabOrder';
   cIdAlign = 'align';
   /// <summary>Aktion der IDE hinter Strg+H im Designer.</summary>
   cNonVisualAction = 'ToggleNonVisualComponentVisibilityCommand';
@@ -112,10 +114,7 @@ type
     FSearch: TAtlasComponentSearchWindow;
     /// <summary>Wahl im Suchfenster bis zum Ende der Sitzung: Kind, Fields, Grouping, Preview, Bounds.</summary>
     FSearchChoice: TAtlasComponentSearchOptions;
-    FOverlay: TAtlasTabOrderOverlay;
-    FTabOrder: Boolean;
-    FTabFile: string;
-    FTabClicks: TAtlasTabClicks;
+    FTabOrder: TAtlasIdeDesignerTabOrder;
     FAlignMenu: TPopupMenu;
     FCommands: TAtlasIdeDesignerCommands;
     FLastAlign: TAtlasAlignKind;
@@ -132,11 +131,6 @@ type
     procedure ShowMenu(const AId: string; const APoint: TPoint);
     function FindNonVisualAction: TContainedAction;
     procedure ToggleNonVisual;
-    procedure ToggleTabOrder;
-    procedure UpdateOverlay;
-    procedure EnsureOverlay;
-    procedure HideOverlay;
-    procedure TabBadgeClicked(const AName: string);
     procedure AlignMenuClick(Sender: TObject);
     function SearchOptions(const AEditor: IOTAFormEditor; ARoot: TComponent): TAtlasComponentSearchOptions;
     procedure WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
@@ -290,83 +284,6 @@ begin
   mDesigner.Modified;
 end;
 
-/// <summary>Formular des Designers für die Marken der Tab-Reihenfolge: aktiv, mit sichtbarem Fenster.</summary>
-function OverlayForm(out AEditor: IOTAFormEditor; out AForm: TWinControl): Boolean;
-var
-  mRoot: TComponent;
-begin
-  AForm := nil;
-  Result := Application.Active and TAtlasDesignerAccess.Current(AEditor, mRoot) and (mRoot is TWinControl);
-  if Result then
-  begin
-    AForm := TWinControl(mRoot);
-    Result := AForm.HandleAllocated and IsWindowVisible(AForm.Handle);
-  end;
-end;
-
-/// <summary>Fokussierbare Steuerelemente und Behälter des Formulars mit Namen.</summary>
-function TabStopsOf(AForm: TWinControl): TArray<TAtlasTabStop>;
-var
-  mIndex: Integer;
-  mComponent: TComponent;
-  mControl: TWinControl;
-begin
-  Result := nil;
-  for mIndex := 0 to AForm.ComponentCount - 1 do
-  begin
-    mComponent := AForm.Components[mIndex];
-    if not (mComponent is TWinControl) or (mComponent.Name = '') then
-    begin
-      Continue;
-    end;
-    mControl := TWinControl(mComponent);
-    if (mControl.Parent = nil) or not (mControl.TabStop or (csAcceptsControls in mControl.ControlStyle)) then
-    begin
-      Continue;
-    end;
-    Result := Result + [TAtlasTabStop.Create(mControl.Name, TAtlasDesignerAccess.ParentNameOf(mControl, AForm),
-      mControl.TabOrder, TAtlasDesignerAccess.BoundsInRoot(mControl, AForm))];
-  end;
-end;
-
-/// <summary>Client des Formulars auf dem Bildschirm (AScreen) und der sichtbare Teil davon (AVisible): Der
-/// Designer kann es abschneiden oder scrollen. False, wenn nichts sichtbar ist.</summary>
-function VisibleArea(AForm: TWinControl; out AScreen, AVisible: TRect): Boolean;
-var
-  mOrigin: TPoint;
-  mHost: HWND;
-begin
-  mOrigin := AForm.ClientToScreen(Point(0, 0));
-  AScreen := Rect(mOrigin.X, mOrigin.Y, mOrigin.X + AForm.ClientWidth, mOrigin.Y + AForm.ClientHeight);
-  mHost := GetParent(AForm.Handle);
-  AVisible := AScreen;
-  if (mHost <> 0) and GetWindowRect(mHost, AVisible) then
-  begin
-    AVisible.Intersect(AScreen);
-  end
-  else
-  begin
-    AVisible := AScreen;
-  end;
-  Result := not AVisible.IsEmpty;
-end;
-
-/// <summary>Marken im Fenster AVisible; ein Sprung gegen die Lesereihenfolge in Warnfarbe.</summary>
-function BadgesOf(const AStops: TArray<TAtlasTabStop>; const AScreen, AVisible: TRect): TArray<TAtlasTabBadge>;
-var
-  mOut: TArray<Boolean>;
-  mIndex: Integer;
-begin
-  mOut := TAtlasTabOrder.OutOfOrder(AStops);
-  Result := nil;
-  for mIndex := 0 to High(AStops) do
-  begin
-    Result := Result + [TAtlasTabBadge.Create(AStops[mIndex].Name, AStops[mIndex].TabOrder, mOut[mIndex],
-      Point(AStops[mIndex].Bounds.Left + AScreen.Left - AVisible.Left,
-      AStops[mIndex].Bounds.Top + AScreen.Top - AVisible.Top))];
-  end;
-end;
-
 /// <summary>Methode zum Ereignis OnClick, sonst zum ersten belegten Ereignis; '' ohne.</summary>
 function EventMethod(const AEvents: TArray<string>): string;
 var
@@ -393,6 +310,22 @@ begin
   end;
 end;
 
+/// <summary>Auswahl ohne das Formular selbst und ohne AComponent, dahinter AComponent (#539).</summary>
+function SelectionPlus(const AEditor: IOTAFormEditor; ARoot, AComponent: TComponent): TArray<TComponent>;
+var
+  mItem: TComponent;
+begin
+  Result := nil;
+  for mItem in TAtlasDesignerAccess.Selection(AEditor, ARoot) do
+  begin
+    if (mItem <> ARoot) and (mItem <> AComponent) then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+  Result := Result + [AComponent];
+end;
+
 procedure SearchAction(AAction: TAtlasComponentSearchAction; const AItem: TAtlasDesignerItem);
 var
   mEditor: IOTAFormEditor;
@@ -404,7 +337,8 @@ begin
   begin
     Exit;
   end;
-  mComponent := mRoot.FindComponent(AItem.Name);
+  // Auch in eingebetteten Frames (#539).
+  mComponent := TAtlasIdeShowComponent.FindComponent(mRoot, AItem.Name);
   mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
   // Umbenannt oder gelöscht, seit das Fenster offen ist.
   if (mComponent = nil) or (mDesigner = nil) then
@@ -413,7 +347,16 @@ begin
   end;
   if AAction = TAtlasComponentSearchAction.Select then
   begin
-    mDesigner.SelectComponent(mComponent);
+    TAtlasIdeShowComponent.Show(mEditor, mComponent);
+  end
+  else if AAction = TAtlasComponentSearchAction.Add then
+  begin
+    // Ohne den Designer nach vorn zu holen: Das Suchfenster bleibt offen und behält den Fokus.
+    if TAtlasIdeShowComponent.Reveal(mComponent) then
+    begin
+      mDesigner.Modified;
+    end;
+    TAtlasDesignerAccess.Select(mDesigner, mRoot, SelectionPlus(mEditor, mRoot, mComponent));
   end
   else if AAction = TAtlasComponentSearchAction.Event then
   begin
@@ -458,7 +401,6 @@ end;
 constructor TDesignerBarState.Create;
 begin
   inherited Create;
-  FTabClicks := TAtlasTabClicks.Create;
   FActionIndex := -1;
   FSearchChoice := Default(TAtlasComponentSearchOptions);
   FSearchChoice.Kind := TAtlasDesignerKind.All;
@@ -482,6 +424,11 @@ begin
     begin
       Say(AText);
     end);
+  FTabOrder := TAtlasIdeDesignerTabOrder.Create(
+    procedure(AText: string)
+    begin
+      Say(AText);
+    end);
   FKeyClient := TSearchKeyClient.Create(cKeyPriority);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
@@ -495,11 +442,10 @@ begin
   TAtlasKeyHook.Remove(FKeyClient);
   FKeyClient.Free;
   CloseSearch;
-  FOverlay.Free;
+  FTabOrder.Free;
   FAlignMenu.Free;
   FCommands.Free;
   FHost.Free;
-  FTabClicks.Free;
   inherited Destroy;
 end;
 
@@ -508,7 +454,7 @@ begin
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
     FHost.Clear;
-    HideOverlay;
+    FTabOrder.Hide;
     CloseSearch;
   end;
   UpdateKeyClient;
@@ -525,10 +471,7 @@ begin
     begin
       TAtlasDesignerBar(ABar).ApplyColors(mColors);
     end);
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  FTabOrder.ApplyTheme;
   FCommands.ApplyTheme;
 end;
 
@@ -642,17 +585,7 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarParentHint));
   mButton.GapBefore := True;
   Result := Result + [mButton];
-  if mSettings.DesignerTabOrderClick then
-  begin
-    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderClickHint);
-  end
-  else
-  begin
-    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint);
-  end;
-  mButton := TAtlasDesignerButton.Create(cIdTabOrder, TAtlasToolbarIcon.TabOrder, mHint);
-  mButton.Pressed := FTabOrder;
-  Result := Result + [mButton] + ToolButtons(mSettings);
+  Result := Result + [FTabOrder.Button(mSettings)] + ToolButtons(mSettings);
 end;
 
 function TDesignerBarState.NonVisualButton: TAtlasDesignerButton;
@@ -731,7 +664,9 @@ begin
   begin
     TAtlasKeyHook.Remove(FKeyClient);
   end;
-  FCommands.UpdateKeys(FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and TAtlasDesignerAccess.Shown);
+  mWanted := FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and TAtlasDesignerAccess.Shown;
+  FCommands.UpdateKeys(mWanted);
+  FTabOrder.UpdateKeys(mWanted);
 end;
 
 procedure TDesignerBarState.Tick(Sender: TObject);
@@ -740,13 +675,15 @@ begin
   if not FHost.Guard then
   begin
     TAtlasKeyHook.Remove(FKeyClient);
-    HideOverlay;
+    FTabOrder.Hide;
+    FCommands.Hide;
     Exit;
   end;
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
     TAtlasKeyHook.Remove(FKeyClient);
-    HideOverlay;
+    FTabOrder.Hide;
+    FCommands.Hide;
     if FHost.Count > 0 then
     begin
       FHost.Clear;
@@ -759,12 +696,18 @@ begin
       FHost.Ensure;
       UpdateKeyClient;
       UpdateBars;
-      UpdateOverlay;
+      FTabOrder.Update;
+      FCommands.Tick;
     end);
 end;
 
 procedure TDesignerBarState.Command(const AId: string);
 begin
+  if FCommands.Execute(AId) then
+  begin
+    UpdateBars;
+    Exit;
+  end;
   if SameText(AId, cIdSearch) then
   begin
     OpenSearch;
@@ -777,9 +720,9 @@ begin
   begin
     SelectParent;
   end
-  else if SameText(AId, cIdTabOrder) then
+  else if SameText(AId, TAtlasIdeDesignerTabOrder.cId) then
   begin
-    ToggleTabOrder;
+    FTabOrder.Toggle;
   end
   else if SameText(AId, cIdAlign) then
   begin
@@ -796,9 +739,14 @@ var
   mItem: TMenuItem;
   mCount: Integer;
 begin
-  if FCommands.Handles(AId) then
+  if FCommands.HasMenu(AId) then
   begin
     FCommands.Popup(AId, APoint);
+    Exit;
+  end;
+  if SameText(AId, TAtlasIdeDesignerTabOrder.cId) then
+  begin
+    FTabOrder.Popup(APoint);
     Exit;
   end;
   if not SameText(AId, cIdAlign) or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
@@ -860,108 +808,6 @@ begin
   mAction.Execute;
 end;
 
-procedure TDesignerBarState.ToggleTabOrder;
-begin
-  FTabOrder := not FTabOrder;
-  FTabClicks.Reset;
-  if FTabOrder then
-  begin
-    UpdateOverlay;
-  end
-  else
-  begin
-    HideOverlay;
-  end;
-end;
-
-procedure TDesignerBarState.HideOverlay;
-begin
-  if FOverlay <> nil then
-  begin
-    FOverlay.HideOverlay;
-  end;
-end;
-
-procedure TDesignerBarState.UpdateOverlay;
-var
-  mEditor: IOTAFormEditor;
-  mForm: TWinControl;
-  mScreen, mVisible: TRect;
-  mStops: TArray<TAtlasTabStop>;
-begin
-  if not FTabOrder or not OverlayForm(mEditor, mForm) then
-  begin
-    HideOverlay;
-    Exit;
-  end;
-  // Anderes Formular: Klicks zählen wieder ab 0.
-  if not SameText(mEditor.FileName, FTabFile) then
-  begin
-    FTabFile := mEditor.FileName;
-    FTabClicks.Reset;
-  end;
-  mStops := TabStopsOf(mForm);
-  if not VisibleArea(mForm, mScreen, mVisible) then
-  begin
-    HideOverlay;
-    Exit;
-  end;
-  EnsureOverlay;
-  FOverlay.Clickable := TAtlasIdeSettings.Current.DesignerTabOrderClick;
-  FOverlay.SetBadges(BadgesOf(mStops, mScreen, mVisible));
-  if not FOverlay.Shown or (FOverlay.BoundsRect <> mVisible) then
-  begin
-    FOverlay.ShowAt(mVisible);
-  end;
-end;
-
-procedure TDesignerBarState.EnsureOverlay;
-begin
-  if FOverlay <> nil then
-  begin
-    Exit;
-  end;
-  FOverlay := TAtlasTabOrderOverlay.CreateOverlay(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  FOverlay.OnBadgeClick :=
-    procedure(AName: string)
-    var
-      mName: string;
-    begin
-      mName := AName;
-      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-        procedure
-        begin
-          TabBadgeClicked(mName);
-        end);
-    end;
-end;
-
-procedure TDesignerBarState.TabBadgeClicked(const AName: string);
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
-  mDesigner: IDesigner;
-  mOrder: Integer;
-begin
-  if not TAtlasIdeSettings.Current.DesignerTabOrderClick or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  mComponent := mRoot.FindComponent(AName);
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
-  if not (mComponent is TWinControl) or (mDesigner = nil) then
-  begin
-    Exit;
-  end;
-  mOrder := FTabClicks.Next(TAtlasDesignerAccess.ParentNameOf(TWinControl(mComponent), mRoot));
-  // Der Setter der VCL schiebt die übrigen Geschwister weiter: Der Zähler je Elternelement genügt.
-  TWinControl(mComponent).TabOrder := mOrder;
-  mDesigner.Modified;
-  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerBarTabOrderSet,
-    [AName, TWinControl(mComponent).TabOrder]));
-  UpdateOverlay;
-end;
-
 /// <summary>Optionen des Suchfensters: Formular, gemerkte Wahl und die erste Auswahl im Designer.</summary>
 function TDesignerBarState.SearchOptions(const AEditor: IOTAFormEditor;
   ARoot: TComponent): TAtlasComponentSearchOptions;
@@ -971,6 +817,7 @@ begin
   Result := FSearchChoice;
   Result.Compact := SameText(TAtlasIdeSettings.Current.DesignerSearchStyle,
     TAtlasPluginSettings.cDesignerSearchPopup);
+  Result.Fuzzy := TAtlasIdeSettings.Current.DesignerFuzzySearch;
   Result.FormName := ARoot.Name;
   Result.FormBounds := TRect.Empty;
   if ARoot is TWinControl then

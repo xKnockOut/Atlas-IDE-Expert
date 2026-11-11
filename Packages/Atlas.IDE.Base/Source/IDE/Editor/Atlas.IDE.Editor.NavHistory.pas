@@ -34,6 +34,8 @@ type
     class procedure GoBack; static;
     /// <summary>Vor zur nächsten Stelle.</summary>
     class procedure GoForward; static;
+    /// <summary>Wie GoBack bzw. GoForward; True, wenn ein Sprung lief (Maustasten, #1889).</summary>
+    class function Step(AForward: Boolean): Boolean; static;
     /// <summary>Letzte Bearbeitungsstelle; jeder weitere Aufruf eine davor.</summary>
     class procedure GoLastEdit; static;
     /// <summary>Verlauf als Liste wie die Befehlspalette.</summary>
@@ -54,12 +56,13 @@ uses
   DockForm,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Host;
 
 const
   cTickMs = 150;
@@ -361,30 +364,34 @@ begin
 end;
 
 class procedure TAtlasIdeNavHistory.GoBack;
-var
-  mHere, mTarget: TAtlasNavPlace;
 begin
-  if (State = nil) or not Enabled then
-  begin
-    Exit;
-  end;
-  Current(mHere);
-  if State.History.StepBack(mHere, mTarget) then
-  begin
-    GoTo_(mTarget);
-  end;
+  Step(False);
 end;
 
 class procedure TAtlasIdeNavHistory.GoForward;
+begin
+  Step(True);
+end;
+
+class function TAtlasIdeNavHistory.Step(AForward: Boolean): Boolean;
 var
   mHere, mTarget: TAtlasNavPlace;
 begin
+  Result := False;
   if (State = nil) or not Enabled then
   begin
     Exit;
   end;
   Current(mHere);
-  if State.History.StepForward(mHere, mTarget) then
+  if AForward then
+  begin
+    Result := State.History.StepForward(mHere, mTarget);
+  end
+  else
+  begin
+    Result := State.History.StepBack(mHere, mTarget);
+  end;
+  if Result then
   begin
     GoTo_(mTarget);
   end;
@@ -411,11 +418,11 @@ function KindText(AKind: TAtlasNavKind): string;
 begin
   case AKind of
     TAtlasNavKind.Back:
-      Result := TAtlasStrings.Text(TAtlasTextId.NavKindBack);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindBack);
     TAtlasNavKind.Ahead:
-      Result := TAtlasStrings.Text(TAtlasTextId.NavKindAhead);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindAhead);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.NavKindEdit);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindEdit);
   end;
 end;
 
@@ -440,25 +447,8 @@ begin
   if Length(Result) = 0 then
   begin
     mCommand := Default(TAtlasCommand);
-    mCommand.Caption := TAtlasStrings.Text(TAtlasTextId.NavEmpty);
+    mCommand.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavEmpty);
     Result := [mCommand];
-  end;
-end;
-
-/// <summary>Fläche, über der die Palette erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
   end;
 end;
 
@@ -473,7 +463,7 @@ begin
   end;
   mEntries := State.History.Entries;
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, ListCommands(mEntries), nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := TAtlasStrings.Text(TAtlasTextId.NavListPrompt);
+  mWindow.Prompt := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavListPrompt);
   mWindow.KeepOrder := True;
   mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)
@@ -492,7 +482,7 @@ begin
         GoTo_(mTarget);
       end;
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 end.

@@ -7,7 +7,7 @@
 // Ohne Anmeldung (vor dem Start, nach dem Abmelden) liefern Files und Shell
 // leere Umsetzungen: Nichts wird gelesen, geschrieben oder geöffnet, damit
 // nach dem Abmelden nichts mehr Platte oder Shell im Namen des Moduls
-// erreicht (ADR 0017, Regel 3). Zugriff aus Hintergrund-Threads ist erlaubt;
+// erreicht (Regel 3). Zugriff aus Hintergrund-Threads ist erlaubt;
 // Files und Shell geben einen eigenen Verweis zurück.
 
 interface

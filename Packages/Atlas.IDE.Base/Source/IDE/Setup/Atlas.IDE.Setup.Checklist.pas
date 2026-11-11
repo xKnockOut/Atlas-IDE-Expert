@@ -49,7 +49,7 @@ type
     StartServer: TFunc<Boolean, Boolean>;
     /// <summary>Befehl an den Server im Hintergrund abschicken (#874); False ohne Server.</summary>
     ServerCommand: TFunc<string, Boolean>;
-    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken; A-09: statt Import des
+    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken: statt Import des
     /// Code Insight-Managers).</summary>
     ServerPath: TFunc<string>;
   end;
@@ -125,6 +125,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
+  Atlas.UI.Setup.Strings,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.EditorStyle,
@@ -256,7 +257,7 @@ begin
   APath := '';
   mDialog := TOpenDialog.Create(nil);
   try
-    mDialog.Title := TAtlasStrings.Text(TAtlasTextId.SetupChooseTitle);
+    mDialog.Title := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupChooseTitle);
     mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
     mDialog.Options := mDialog.Options + [ofFileMustExist];
     if Assigned(FHooks.ServerPath) then
@@ -425,13 +426,14 @@ begin
   FController.Progress(mDone, mTotal);
   if FController.Complete then
   begin
-    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusComplete, [mDone, mTotal]), TAtlasStatusState.Green);
+    FLine.Update(TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupStatusComplete, [mDone, mTotal]),
+      TAtlasStatusState.Green);
   end
   else
   begin
     // Gelb, solange unvollständig (#754); die roten Punkte meldet schon die Zeile des Servers.
-    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusLine, [mDone, mTotal]), TAtlasStatusState.Yellow,
-      TAtlasStrings.Fmt(TAtlasTextId.SetupStatusSummary, [mDone, mTotal]));
+    FLine.Update(TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupStatusLine, [mDone, mTotal]), TAtlasStatusState.Yellow,
+      TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupStatusSummary, [mDone, mTotal]));
   end;
 end;
 
@@ -577,7 +579,7 @@ var
 begin
   mResults_ := FController.Results;
   mInput := Default(TAtlasSetupReportInput);
-  mInput.Title := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  mInput.Title := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
   mInput.Summary := TAtlasSetupTexts.ProgressText(mResults_);
   mInput.AtlasVersion := TAtlasPluginVersion.cVersion;
   mInput.IdeVersion := TAtlasUpdates.IdeVersion;
@@ -598,7 +600,7 @@ begin
   Clipboard.AsText := Report;
   if FWindow <> nil then
   begin
-    FWindow.ShowNote(TAtlasStrings.Text(TAtlasTextId.SetupCopied));
+    FWindow.ShowNote(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopied));
   end;
 end;
 
