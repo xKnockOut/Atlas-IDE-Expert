@@ -7,7 +7,10 @@
 // der Registry von Base an und stellt über dessen Scope bereit:
 // - den Teil Tests der Feature-Tabelle,
 // - Befehle (Palette), den Eintrag „Betroffene Tests ausführen“ im
-//   Atlas-Menü und „Test ausführen“/„Test debuggen“ im Kontextmenü,
+//   Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
+//   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
+//   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
+//   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
@@ -76,6 +79,10 @@ uses
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,
+  Atlas.Core.Tests.UnitMatch,
+  Atlas.Core.Commands.ProjectSelection,
+  Atlas.Text.DUnitX,
+  Atlas.IDE.Problems.Files,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager.Paths,
@@ -270,6 +277,57 @@ begin
   end;
 end;
 
+{ Projektverwaltung (#1817) }
+
+function ProjectUnitTestsVisible: Boolean;
+begin
+  Result := TAtlasProjectContext.Active and TestsVisible and TAtlasProjectContext.Current.HasUnits;
+end;
+
+/// <summary>Testunits (mit Fixtures) der Units AUnits unter AFiles und die vollen Namen ihrer Fixtures.</summary>
+function FindUnitTests(const AUnits, AFiles: TArray<string>; out ANames: TArray<string>): TArray<string>;
+var
+  mUnit, mCandidate: string;
+  mNames: TArray<string>;
+begin
+  Result := nil;
+  ANames := nil;
+  for mUnit in AUnits do
+  begin
+    for mCandidate in TAtlasTestUnitMatch.Candidates(mUnit, AFiles) do
+    begin
+      mNames := TAtlasTestUnitMatch.Names(TDUnitXSource.Scan(TAtlasIdeProblemFiles.DiskLines(mCandidate)));
+      if Length(mNames) > 0 then
+      begin
+        Result := Result + [mCandidate];
+        ANames := ANames + mNames;
+      end;
+    end;
+  end;
+end;
+
+procedure RunProjectUnitTests;
+var
+  mSelection: TAtlasProjectSelection;
+  mKey: string;
+  mTestUnits, mNames: TArray<string>;
+begin
+  mSelection := TAtlasProjectContext.Current;
+  if (GTests = nil) or not mSelection.HasUnits then
+  begin
+    Exit;
+  end;
+  mTestUnits := FindUnitTests(mSelection.Units, TAtlasIdeProblemFiles.GroupFiles(mKey), mNames);
+  if Length(mTestUnits) = 0 then
+  begin
+    TAtlasIdeHost.Message(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsProjectNoTestUnit,
+      [ExtractFileName(mSelection.Units[0])]));
+    Exit;
+  end;
+  // Das Testprojekt bestimmt die erste Testunit; die Namen gelten für alle gefundenen.
+  GTests.RunTests(mTestUnits[0], mNames);
+end;
+
 { TAtlasTestsModule }
 
 function TAtlasTestsModule.Info: TAtlasModuleInfo;
@@ -310,7 +368,10 @@ begin
     Command('Atlas.RunFailedTests', TAtlasTestsTextId.TestsRunFailedCommand, RunFailed, TestsVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
-    Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible)];
+    Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
+    // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
+    Command('Atlas.ProjectRunUnitTests', TAtlasTestsTextId.TestsProjectRunUnit,
+      Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -333,7 +394,9 @@ begin
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
-    ContextEntry('Atlas.DebugTest')];
+    ContextEntry('Atlas.DebugTest'),
+    MenuEntry('-', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext)];
 end;
 
 procedure TAtlasTestsModule.ApplySettings;
