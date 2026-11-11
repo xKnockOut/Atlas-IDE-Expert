@@ -251,9 +251,6 @@ type
     function Enter: Integer; override;
     procedure Leave(AFeature: TAtlasFeature; AToken: Integer); override;
     procedure ProviderSlow(const AName: string); override;
-    /// <summary>TAtlasGuard.RunIde: wie ModalBegin bzw. ModalEnd.</summary>
-    procedure IdeBegin; override;
-    procedure IdeEnd; override;
     /// <summary>Eine Aktion (TAtlasActivity) begann bei AStarted (Stamp) und endet jetzt; nur im Hauptthread.
     /// </summary>
     procedure ActivityDone(const AName: string; AStarted: Int64);
@@ -263,11 +260,11 @@ type
     /// <summary>Quelle AName hat AMs gearbeitet (aus jedem Thread).</summary>
     procedure SourceDone(const AName: string; AMs: Double);
     procedure HangDone(const AHang: TAtlasHangEntry);
-    /// <summary>Ein modaler Dialog oder eine eigene Nachrichtenschleife (Menü, Verschieben) beginnt
-    /// (Application.OnModalBegin, TAtlasMessageLoop); nur im Hauptthread.</summary>
-    procedure ModalBegin;
-    /// <summary>Der modale Dialog bzw. die Nachrichtenschleife ist zu Ende; nur im Hauptthread.</summary>
-    procedure ModalEnd;
+    /// <summary>Ein modaler Dialog, eine eigene Nachrichtenschleife (Menü, Verschieben; Application.OnModalBegin,
+    /// TAtlasMessageLoop) oder Arbeit der IDE (TAtlasGuard.RunIde) beginnt; nur im Hauptthread.</summary>
+    procedure ModalBegin; override;
+    /// <summary>Der modale Dialog, die Nachrichtenschleife bzw. die Arbeit der IDE ist zu Ende.</summary>
+    procedure ModalEnd; override;
     /// <summary>Alle Werte verwerfen; „Messung seit“ beginnt neu.</summary>
     procedure Reset;
     function Snapshot: TAtlasPluginSnapshot;
@@ -699,16 +696,6 @@ begin
   begin
     FModal.Closed(FStack, FClock());
   end;
-end;
-
-procedure TAtlasPluginRecorder.IdeBegin;
-begin
-  ModalBegin;
-end;
-
-procedure TAtlasPluginRecorder.IdeEnd;
-begin
-  ModalEnd;
 end;
 
 procedure TAtlasPluginRecorder.ActivityDone(const AName: string; AStarted: Int64);

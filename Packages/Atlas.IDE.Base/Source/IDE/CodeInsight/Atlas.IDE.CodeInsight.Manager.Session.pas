@@ -136,6 +136,11 @@ const
     ('Server not found: %s (the built-in Code Insight stays active)',
      'Server not found: %s',
      'AtlasServer.exe not found'));
+  /// <summary>Höchstens so oft die Projektgruppe, die Projektkontexte bzw. den Pfad des Servers neu lesen.
+  /// </summary>
+  cProjectsCheckMs = 2000;
+  cContextsCheckMs = 1000;
+  cServerCheckMs = 5000;
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TSessionText): string;
@@ -515,7 +520,7 @@ var
   mProjects: TArray<string>;
 begin
   // Open Tools API nur im Hauptthread.
-  if (GetCurrentThreadId <> MainThreadID) or (TAtlasTicks.Since(FProjectsChecked) < 2000) then
+  if (GetCurrentThreadId <> MainThreadID) or (TAtlasTicks.Since(FProjectsChecked) < cProjectsCheckMs) then
   begin
     Exit;
   end;
@@ -539,7 +544,7 @@ var
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or
-    ((FContextsChecked <> 0) and (TAtlasTicks.Since(FContextsChecked) < 1000)) then
+    ((FContextsChecked <> 0) and (TAtlasTicks.Since(FContextsChecked) < cContextsCheckMs)) then
   begin
     Exit;
   end;
@@ -686,7 +691,7 @@ function TAtlasCodeInsightSession.ServerAvailable: Boolean;
 var
   mArguments, mPath: string;
 begin
-  if (FServerChecked = 0) or (TAtlasTicks.Since(FServerChecked) > 5000) then
+  if (FServerChecked = 0) or (TAtlasTicks.Since(FServerChecked) > cServerCheckMs) then
   begin
     FServerChecked := TAtlasTicks.Now;
     mPath := TAtlasCodeInsightPaths.ServerPath(mArguments);

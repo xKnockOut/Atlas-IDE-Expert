@@ -657,7 +657,8 @@ type
     DesignerPropertyPainterRememberPerClass: Boolean;
     /// <summary>Anchors vorschlagen (#727, designer.suggestAnchors).</summary>
     DesignerSuggestAnchors: Boolean;
-    /// <summary>Abstand, bis zu dem eine Komponente am Rand liegt (#727, designer.suggestAnchors.edgeDistance).</summary>
+    /// <summary>Abstand, bis zu dem eine Komponente am Rand liegt (#727,
+    /// designer.suggestAnchors.edgeDistance).</summary>
     DesignerSuggestAnchorsEdgeDistance: Integer;
     /// <summary>Gesetzte Anchors nicht überschreiben (#727, designer.suggestAnchors.keepExisting).</summary>
     DesignerSuggestAnchorsKeepExisting: Boolean;
@@ -709,13 +710,15 @@ type
     DesignerWrapInContainerClasses: string;
     /// <summary>Schriften und Farben vereinheitlichen (#741, designer.fontsColors).</summary>
     DesignerFontsColors: Boolean;
-    /// <summary>Beim Ersetzen wieder ParentFont/ParentColor setzen (#741, designer.fontsColors.restoreParent).</summary>
+    /// <summary>Beim Ersetzen wieder ParentFont/ParentColor setzen (#741,
+    /// designer.fontsColors.restoreParent).</summary>
     DesignerFontsColorsRestoreParent: Boolean;
     /// <summary>Nicht aufgeführte Farben, Komma-Liste (#741, designer.fontsColors.ignoreColors).</summary>
     DesignerFontsColorsIgnoreColors: string;
     /// <summary>Gruppen ohne Container (#744, designer.groups).</summary>
     DesignerGroups: Boolean;
-    /// <summary>Einzelnes Mitglied: cDesignerGroupsAltClick oder ...DoubleClick (#744, designer.groups.memberClick).</summary>
+    /// <summary>Einzelnes Mitglied: cDesignerGroupsAltClick oder ...DoubleClick (#744,
+    /// designer.groups.memberClick).</summary>
     DesignerGroupsMemberClick: string;
     /// <summary>Ablage: cDesignerSetsLocal oder cDesignerSetsShared (#744, designer.groups.storage).</summary>
     DesignerGroupsStorage: string;
@@ -817,6 +820,8 @@ type
     procedure SetToolDefaults;
     /// <summary>Einstellungen der Werkzeuge mit eigenem Knopf lesen bzw. schreiben.</summary>
     procedure ExchangeTools(const AIo: TAtlasSettingsExchange);
+    /// <summary>Abstände und Ränder der Designer-Werkzeuge in ihre Grenzen bringen.</summary>
+    procedure NormalizeSpacing;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
@@ -831,6 +836,21 @@ uses
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Settings.StatusBarItems,
   Atlas.Core.Settings.ToolbarItems;
+
+const
+  /// <summary>Vorgabe von designer.selectionSets.saveKey: Strg+Umschalt+S (scShift + scCtrl + Ord('S')).</summary>
+  cDefaultSelectionSetsSaveKey = $2000 + $4000 + Ord('S');
+  /// <summary>Vorgabeabstand der Designer-Werkzeuge in Pixel (Zeilen, Beschriftungen, Innenrand).</summary>
+  cDefaultDesignerGap = 8;
+  /// <summary>Vorgabe für „nahe am Rand“ bzw. „nahe am Feld“ in Pixel (Anchors, Label und Feld).</summary>
+  cDefaultDesignerNear = 16;
+  cDefaultPainterGroups = 'font, colors, size, layout';
+  cDefaultAnchorFillClasses = 'TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit';
+  cDefaultTextChecks = 'accelerators, variants, truncated, whitespace';
+  cDefaultTextExcludeProperties = 'SQL, CommandText';
+  cDefaultLabelAbbreviations = 'PLZ, IBAN, BIC, USt, ID';
+  cDefaultIgnoreColors = 'clWindow, clBtnFace, clWindowText, clDefault';
+  cDefaultNameSources = 'caption, label, handler, dataField';
 
 /// <summary>XmlDocExpand lesen; fehlt der Wert, gilt XmlDocFull von vor #770, sonst ADefault.</summary>
 function ReadXmlDocExpand(const AStore: IAtlasSettingsStore; const ADefault: string): string;
@@ -1291,7 +1311,7 @@ begin
   Result.DesignerSelectionSetsShortcuts := True;
   Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
   // Strg+Umschalt+S.
-  Result.DesignerSelectionSetsSaveKey := 24659;
+  Result.DesignerSelectionSetsSaveKey := cDefaultSelectionSetsSaveKey;
   Result.DesignerShowInDesigner := True;
   // Umschalt+F12 (in der IDE „Formulare anzeigen“).
   Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
@@ -1356,41 +1376,41 @@ begin
   DesignerZOrderShortcuts := True;
   DesignerZOrderIncludeParents := False;
   DesignerPropertyPainter := True;
-  DesignerPropertyPainterDefaultGroups := 'font, colors, size, layout';
+  DesignerPropertyPainterDefaultGroups := cDefaultPainterGroups;
   DesignerPropertyPainterRememberPerClass := True;
   DesignerSuggestAnchors := True;
-  DesignerSuggestAnchorsEdgeDistance := 16;
+  DesignerSuggestAnchorsEdgeDistance := cDefaultDesignerNear;
   DesignerSuggestAnchorsKeepExisting := True;
-  DesignerSuggestAnchorsFillClasses := 'TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit';
+  DesignerSuggestAnchorsFillClasses := cDefaultAnchorFillClasses;
   DesignerTextTable := True;
-  DesignerTextTableChecks := 'accelerators, variants, truncated, whitespace';
+  DesignerTextTableChecks := cDefaultTextChecks;
   DesignerTextTableSynonyms := '';
-  DesignerTextTableExcludeProperties := 'SQL, CommandText';
+  DesignerTextTableExcludeProperties := cDefaultTextExcludeProperties;
   DesignerLabelPairs := True;
   DesignerLabelPairsBaseline := True;
   DesignerLabelPairsFocusControl := True;
   DesignerLabelPairsMoveTogether := True;
-  DesignerLabelPairsPairDistance := 16;
+  DesignerLabelPairsPairDistance := cDefaultDesignerNear;
   DesignerLabelPairsNewLabelPosition := cLabelLeft;
-  DesignerLabelPairsAbbreviations := 'PLZ, IBAN, BIC, USt, ID';
+  DesignerLabelPairsAbbreviations := cDefaultLabelAbbreviations;
 end;
 
 procedure TAtlasPluginEditorViewSettings.SetFormToolDefaults;
 begin
   DesignerArrangeForm := True;
-  DesignerArrangeFormRowGap := 8;
-  DesignerArrangeFormLabelGap := 8;
+  DesignerArrangeFormRowGap := cDefaultDesignerGap;
+  DesignerArrangeFormLabelGap := cDefaultDesignerGap;
   DesignerArrangeFormLabelAlign := cGridLabelLeft;
   DesignerArrangeFormEqualFieldWidth := False;
   DesignerArrangeFormTwoPerRow := False;
   DesignerArrangeFormSetTabOrder := True;
   DesignerWrapInContainer := True;
-  DesignerWrapInContainerPadding := 8;
+  DesignerWrapInContainerPadding := cDefaultDesignerGap;
   DesignerWrapInContainerDefaultClass := 'TPanel';
   DesignerWrapInContainerClasses := '';
   DesignerFontsColors := True;
   DesignerFontsColorsRestoreParent := True;
-  DesignerFontsColorsIgnoreColors := 'clWindow, clBtnFace, clWindowText, clDefault';
+  DesignerFontsColorsIgnoreColors := cDefaultIgnoreColors;
   DesignerGroups := True;
   DesignerGroupsMemberClick := cDesignerGroupsAltClick;
   DesignerGroupsStorage := cDesignerSetsLocal;
@@ -1523,6 +1543,19 @@ begin
   AIo.Number('DesignerMagnifierKey', DesignerMagnifierKey);
 end;
 
+procedure TAtlasPluginEditorViewSettings.NormalizeSpacing;
+begin
+  DesignerButtonBarGap := EnsureRange(DesignerButtonBarGap, 0, cMaxButtonBarSpace);
+  DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
+  DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
+  DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
+  DesignerSuggestAnchorsEdgeDistance := EnsureRange(DesignerSuggestAnchorsEdgeDistance, 0, cMaxButtonBarSpace);
+  DesignerLabelPairsPairDistance := EnsureRange(DesignerLabelPairsPairDistance, 0, cMaxButtonBarSpace);
+  DesignerArrangeFormRowGap := EnsureRange(DesignerArrangeFormRowGap, 0, cMaxButtonBarSpace);
+  DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
+  DesignerWrapInContainerPadding := EnsureRange(DesignerWrapInContainerPadding, 0, cMaxButtonBarSpace);
+end;
+
 procedure TAtlasPluginEditorViewSettings.Normalize;
 begin
   MinimapRender := Choice(MinimapRender, ['characters', 'blocks']);
@@ -1548,18 +1581,10 @@ begin
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
     cButtonBarRightTop, cButtonBarRightBottom]);
-  DesignerButtonBarGap := EnsureRange(DesignerButtonBarGap, 0, cMaxButtonBarSpace);
-  DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
-  DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
-  DesignerFitContainerPadding := EnsureRange(DesignerFitContainerPadding, 0, cMaxButtonBarSpace);
-  DesignerSuggestAnchorsEdgeDistance := EnsureRange(DesignerSuggestAnchorsEdgeDistance, 0, cMaxButtonBarSpace);
-  DesignerLabelPairsPairDistance := EnsureRange(DesignerLabelPairsPairDistance, 0, cMaxButtonBarSpace);
+  NormalizeSpacing;
   DesignerLabelPairsNewLabelPosition := Choice(DesignerLabelPairsNewLabelPosition, [cLabelLeft, cLabelAbove]);
-  DesignerArrangeFormRowGap := EnsureRange(DesignerArrangeFormRowGap, 0, cMaxButtonBarSpace);
-  DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
   DesignerArrangeFormLabelAlign := Choice(DesignerArrangeFormLabelAlign, [cGridLabelLeft, cGridLabelRight,
     cGridLabelAbove]);
-  DesignerWrapInContainerPadding := EnsureRange(DesignerWrapInContainerPadding, 0, cMaxButtonBarSpace);
   if Trim(DesignerWrapInContainerDefaultClass) = '' then
   begin
     DesignerWrapInContainerDefaultClass := 'TPanel';
@@ -1654,7 +1679,7 @@ begin
   DesignerScalePreviewScreens := '1366x768, 1920x1080';
   DesignerLongTextFactor := cLongTextFactor;
   DesignerNameSuggest := True;
-  DesignerNameSuggestSources := 'caption, label, handler, dataField';
+  DesignerNameSuggestSources := cDefaultNameSources;
   DesignerNameSuggestUmlauts := 'replace';
   DesignerNameSuggestRenameHandlers := True;
   DesignerNameSuggestPrefixes := '';
