@@ -1657,6 +1657,8 @@ uses
   Atlas.Core.Designer.Wrap.Tests in 'IDE.Expert\Atlas.Core.Designer.Wrap.Tests.pas',
   Atlas.Core.Designer.FontsColors in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FontsColors.pas',
   Atlas.Core.Designer.FontsColors.Tests in 'IDE.Expert\Atlas.Core.Designer.FontsColors.Tests.pas',
+  Atlas.Core.Designer.Groups in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Groups.pas',
+  Atlas.Core.Designer.Groups.Tests in 'IDE.Expert\Atlas.Core.Designer.Groups.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

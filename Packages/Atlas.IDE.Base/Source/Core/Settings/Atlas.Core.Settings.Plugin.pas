@@ -148,6 +148,8 @@ type
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
+    cDesignerGroupsAltClick = Atlas.Core.Settings.Plugin.Editor.cDesignerGroupsAltClick;
+    cDesignerGroupsDoubleClick = Atlas.Core.Settings.Plugin.Editor.cDesignerGroupsDoubleClick;
     cFitSourceCaption = Atlas.Core.Settings.Plugin.Editor.cFitSourceCaption;
     cGapAnchorCenter = Atlas.Core.Settings.Plugin.Editor.cGapAnchorCenter;
     cGapAnchorFirst = Atlas.Core.Settings.Plugin.Editor.cGapAnchorFirst;
@@ -760,6 +762,11 @@ type
       write FEditorView.DesignerFontsColorsRestoreParent;
     property DesignerFontsColorsIgnoreColors: string read FEditorView.DesignerFontsColorsIgnoreColors
       write FEditorView.DesignerFontsColorsIgnoreColors;
+    property DesignerGroups: Boolean read FEditorView.DesignerGroups write FEditorView.DesignerGroups;
+    property DesignerGroupsMemberClick: string read FEditorView.DesignerGroupsMemberClick
+      write FEditorView.DesignerGroupsMemberClick;
+    property DesignerGroupsStorage: string read FEditorView.DesignerGroupsStorage
+      write FEditorView.DesignerGroupsStorage;
     property DesignerGapHandles: Boolean read FEditorView.DesignerGapHandles write FEditorView.DesignerGapHandles;
     property DesignerGapHandlesSnapValues: string read FEditorView.DesignerGapHandlesSnapValues
       write FEditorView.DesignerGapHandlesSnapValues;

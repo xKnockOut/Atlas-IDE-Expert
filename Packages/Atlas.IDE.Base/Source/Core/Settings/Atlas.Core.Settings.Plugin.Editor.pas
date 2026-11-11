@@ -70,6 +70,9 @@ const
   /// <summary>Werte von designer.selectionSets.storage (#739).</summary>
   cDesignerSetsLocal = 'local';
   cDesignerSetsShared = 'shared';
+  /// <summary>Werte von designer.groups.memberClick (#744).</summary>
+  cDesignerGroupsAltClick = 'altClick';
+  cDesignerGroupsDoubleClick = 'doubleClick';
   /// <summary>Quellen von designer.fitToText.sources (#730).</summary>
   cFitSourceCaption = 'caption';
   cFitSourceText = 'text';
@@ -665,6 +668,12 @@ type
     DesignerFontsColorsRestoreParent: Boolean;
     /// <summary>Nicht aufgeführte Farben, Komma-Liste (#741, designer.fontsColors.ignoreColors).</summary>
     DesignerFontsColorsIgnoreColors: string;
+    /// <summary>Gruppen ohne Container (#744, designer.groups).</summary>
+    DesignerGroups: Boolean;
+    /// <summary>Einzelnes Mitglied: cDesignerGroupsAltClick oder ...DoubleClick (#744, designer.groups.memberClick).</summary>
+    DesignerGroupsMemberClick: string;
+    /// <summary>Ablage: cDesignerSetsLocal oder cDesignerSetsShared (#744, designer.groups.storage).</summary>
+    DesignerGroupsStorage: string;
     /// <summary>Abstandsgriffe bei Mehrfachauswahl (#734, designer.gapHandles).</summary>
     DesignerGapHandles: Boolean;
     /// <summary>Rastwerte beim Ziehen, durch Komma getrennt (#734, designer.gapHandles.snapValues).</summary>
@@ -729,7 +738,7 @@ type
     class function Defaults: TAtlasPluginEditorViewSettings; static;
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
-    /// <summary>Formularraster (#731), Einpacken (#733), Schriften und Farben (#741).</summary>
+    /// <summary>Formularraster (#731), Einpacken (#733), Schriften und Farben (#741), Gruppen (#744).</summary>
     procedure SetFormToolDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
     procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1306,6 +1315,9 @@ begin
   DesignerFontsColors := True;
   DesignerFontsColorsRestoreParent := True;
   DesignerFontsColorsIgnoreColors := 'clWindow, clBtnFace, clWindowText, clDefault';
+  DesignerGroups := True;
+  DesignerGroupsMemberClick := cDesignerGroupsAltClick;
+  DesignerGroupsStorage := cDesignerSetsLocal;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1376,6 +1388,9 @@ begin
   AIo.Flag('DesignerFontsColors', DesignerFontsColors);
   AIo.Flag('DesignerFontsColorsRestoreParent', DesignerFontsColorsRestoreParent);
   AIo.Text('DesignerFontsColorsIgnoreColors', DesignerFontsColorsIgnoreColors);
+  AIo.Flag('DesignerGroups', DesignerGroups);
+  AIo.Text('DesignerGroupsMemberClick', DesignerGroupsMemberClick);
+  AIo.Text('DesignerGroupsStorage', DesignerGroupsStorage);
 end;
 
 procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
@@ -1427,6 +1442,8 @@ begin
   DesignerSearchStyle := Choice(DesignerSearchStyle, [cDesignerSearchWindow, cDesignerSearchPopup]);
   DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
   DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
+  DesignerGroupsStorage := Choice(DesignerGroupsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
+  DesignerGroupsMemberClick := Choice(DesignerGroupsMemberClick, [cDesignerGroupsAltClick, cDesignerGroupsDoubleClick]);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);

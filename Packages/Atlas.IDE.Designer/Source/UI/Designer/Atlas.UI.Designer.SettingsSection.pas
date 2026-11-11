@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Werkzeuge mit eigenem Knopf (#734 ff.).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744), Werkzeuge mit eigenem Knopf (#734 ff.).
 
 interface
 
@@ -204,6 +204,15 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFontsRestore));
   Line('designer.fontsColors.ignoreColors',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFontsIgnore));
+  Switch('designer.groups', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGroups));
+  Choice('designer.groups.memberClick', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGroupsClick),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGroupsAlt),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGroupsDouble)],
+    [TAtlasPluginSettings.cDesignerGroupsAltClick, TAtlasPluginSettings.cDesignerGroupsDoubleClick]);
+  Choice('designer.groups.storage', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerGroupsStorage),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSetsLocal),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSetsShared)],
+    [TAtlasPluginSettings.cDesignerSetsLocal, TAtlasPluginSettings.cDesignerSetsShared]);
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildButtonRows;

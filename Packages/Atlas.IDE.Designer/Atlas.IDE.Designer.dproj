@@ -107,6 +107,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormGrid.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Wrap.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FontsColors.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Groups.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Gaps.pas"/>
@@ -134,6 +135,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FormGrid.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Wrap.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FontsColors.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Groups.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Arrange.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>

@@ -5761,6 +5761,46 @@
       "x-node": "editor.designerBar",
       "x-issue": "#741"
     },
+    "DesignerGroups": {
+      "description": "Gruppen ohne Container: „Anordnen › Gruppieren“ (Strg+G) fasst markierte Steuerelemente mit gleichem Parent unter einem Namen zusammen, ohne die DFM zu ändern. Ein Klick auf ein Mitglied wählt die ganze Gruppe, ein gestrichelter Rahmen zeigt sie; „Gruppe auflösen“ (Strg+Umschalt+G) und „Gruppen rückgängig“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.groups",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#744"
+    },
+    "DesignerGroupsMemberClick": {
+      "description": "Wie ein einzelnes Mitglied gewählt wird: mit Alt+Klick (altClick) oder zusätzlich mit einem zweiten Klick auf das Mitglied (doubleClick).",
+      "type": "string",
+      "enum": [
+        "altClick",
+        "doubleClick"
+      ],
+      "default": "altClick",
+      "x-key": "designer.groups.memberClick",
+      "x-parent": "designer.groups",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#744"
+    },
+    "DesignerGroupsStorage": {
+      "description": "Ablage der Gruppen: lokal für diesen Rechner in %LOCALAPPDATA%\\Atlas\\designer-groups.json (local) oder gemeinsam im Team in .atlas-groups.json im Ordner des Formulars (shared).",
+      "type": "string",
+      "enum": [
+        "local",
+        "shared"
+      ],
+      "default": "local",
+      "x-key": "designer.groups.storage",
+      "x-parent": "designer.groups",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#744"
+    },
     "DesignerGapHandles": {
       "description": "Abstandsgriffe bei Mehrfachauswahl: Bilden mindestens zwei markierte Steuerelemente im selben Elternelement eine Reihe oder Spalte, steht zwischen je zwei Nachbarn eine Pille mit dem Abstand in Pixeln (abweichende gedämpft). Ziehen setzt alle Abstände auf denselben Wert, Doppelklick fragt ihn ab, Pfeiltasten bei gehaltener Pille ändern um 1 px; nur Left bzw. Top ändern sich. Ragt ein Steuerelement danach aus dem Elternelement, gilt die Änderung erst nach Rückfrage. Knopf in der Designer-Leiste: Symbol blendet die Griffe ein und aus, das Menü am Pfeil setzt Abstände und macht den letzten Schritt rückgängig.",
       "type": "boolean",

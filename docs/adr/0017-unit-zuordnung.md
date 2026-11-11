@@ -1138,6 +1138,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.FormGrid` | `Core/Designer/Atlas.Core.Designer.FormGrid.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Wrap` | `Core/Designer/Atlas.Core.Designer.Wrap.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FontsColors` | `Core/Designer/Atlas.Core.Designer.FontsColors.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Groups` | `Core/Designer/Atlas.Core.Designer.Groups.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Gaps` | `Core/Designer/Atlas.Core.Designer.Gaps.pas` | Ordner `Core/Designer` |
@@ -1166,6 +1167,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.FormGrid` | `IDE/Designer/Atlas.IDE.Designer.FormGrid.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Wrap` | `IDE/Designer/Atlas.IDE.Designer.Wrap.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FontsColors` | `IDE/Designer/Atlas.IDE.Designer.FontsColors.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Groups` | `IDE/Designer/Atlas.IDE.Designer.Groups.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.GapHandles` | `IDE/Designer/Atlas.IDE.Designer.GapHandles.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.HandleTool` | `IDE/Designer/Atlas.IDE.Designer.HandleTool.pas` | Ordner `IDE/Designer`; gemeinsamer Teil der Werkzeuge mit Griffen |

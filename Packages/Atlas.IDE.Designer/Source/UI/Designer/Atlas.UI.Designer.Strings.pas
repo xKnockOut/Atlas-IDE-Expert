@@ -103,7 +103,11 @@ type
     DesignerFontsTarget, DesignerFontsOther, DesignerFontsPartName, DesignerFontsPartSize, DesignerFontsPartStyle,
     DesignerFontsOnlySelected, DesignerFontsStyles, DesignerFontsPreview, DesignerFontsFromParent,
     DesignerFontsNothing, DesignerFontsDone, DesignerFontsUndone, SettingsDesignerFonts, SettingsDesignerFontsRestore,
-    SettingsDesignerFontsIgnore);
+    SettingsDesignerFontsIgnore, DesignerGroupsCmd, DesignerGroupsUngroupCmd, DesignerGroupsUndoCmd,
+    DesignerGroupsKind, DesignerGroupsNeedTwo, DesignerGroupsTitle, DesignerGroupsPrompt, DesignerGroupsMade,
+    DesignerGroupsNone, DesignerGroupsUngrouped, DesignerGroupsUndone, SettingsDesignerGroups,
+    SettingsDesignerGroupsClick, SettingsDesignerGroupsAlt, SettingsDesignerGroupsDouble,
+    SettingsDesignerGroupsStorage);
 
   TAtlasDesignerStrings = class
   public
@@ -507,7 +511,23 @@ const
      'Schriften und Farben zurückgesetzt.',
      'Schriften und Farben vereinheitlichen',
      'Beim Ersetzen wieder ParentFont bzw. ParentColor setzen',
-     'Nicht aufgeführte Farben'),
+     'Nicht aufgeführte Farben',
+     'Gruppieren (Strg+G)',
+     'Gruppe auflösen (Strg+Umschalt+G)',
+     'Gruppen rückgängig',
+     'Designer-Gruppen',
+     'Zum Gruppieren mindestens zwei Steuerelemente mit demselben Parent markieren.',
+     'Gruppieren',
+     'Name der Gruppe:',
+     'Gruppe „%s“ mit %d Steuerelementen angelegt.',
+     'Keines der markierten Steuerelemente gehört zu einer Gruppe.',
+     'Gruppe aufgelöst.',
+     'Gruppen zurückgesetzt.',
+     'Gruppen ohne Container',
+     'Einzelnes Mitglied wählen',
+     'Alt+Klick',
+     'Alt+Klick oder zweiter Klick',
+     'Ablage der Gruppen'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -892,7 +912,23 @@ const
      'Fonts and colors restored.',
      'Unify fonts and colors',
      'Set ParentFont or ParentColor again when replacing',
-     'Colors not listed'));
+     'Colors not listed',
+     'Group (Ctrl+G)',
+     'Ungroup (Ctrl+Shift+G)',
+     'Undo groups',
+     'designer groups',
+     'To group, select at least two controls with the same parent.',
+     'Group',
+     'Group name:',
+     'Group “%s” created with %d controls.',
+     'None of the selected controls belongs to a group.',
+     'Group dissolved.',
+     'Groups restored.',
+     'Groups without a container',
+     'Select a single member',
+     'Alt+click',
+     'Alt+click or second click',
+     'Group storage'));
 
 { TAtlasDesignerStrings }
 

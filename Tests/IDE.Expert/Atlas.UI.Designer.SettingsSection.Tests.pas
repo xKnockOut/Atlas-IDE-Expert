@@ -61,6 +61,8 @@ type
     [Test]
     procedure FontsColorsRoundTrip;
     [Test]
+    procedure GroupsRoundTrip;
+    [Test]
     procedure GapHandlesRoundTrip;
     [Test]
     procedure MultiResizeRoundTrip;
@@ -667,6 +669,28 @@ begin
     Assert.AreEqual(TAtlasPluginSettings.cSelectionBarShortcut, mSaved.DesignerSelectionBarMode);
     Assert.AreEqual(250, mSaved.DesignerSelectionBarDelayMs);
     Assert.AreEqual('bold, italic', mSaved.DesignerSelectionBarItems);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.GroupsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerGroups').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerGroups').Checked := False;
+    ComboOf(mPage, 'DesignerGroupsMemberClick').ItemIndex := 1;
+    ComboOf(mPage, 'DesignerGroupsStorage').ItemIndex := 1;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerGroups, 'abschaltbar');
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerGroupsDoubleClick, mSaved.DesignerGroupsMemberClick);
+    Assert.AreEqual(TAtlasPluginSettings.cDesignerSetsShared, mSaved.DesignerGroupsStorage);
   finally
     mPage.Free;
   end;
