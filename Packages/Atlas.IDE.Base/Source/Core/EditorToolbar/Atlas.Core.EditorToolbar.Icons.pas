@@ -16,8 +16,9 @@ type
     Palette, More, Gear,
     // Designer-Leiste (#1442).
     ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls,
-    // Gleiche auswählen (#738), Anordnen (#730 ff.), Abstandsgriffe (#734).
-    SelectSimilar, Arrange, GapHandles);
+    // Gleiche auswählen (#738), Anordnen (#730 ff.), Abstandsgriffe (#734), gemeinsame Größengriffe (#737),
+    // Schnellleiste (#735).
+    SelectSimilar, Arrange, GapHandles, MultiResize, SelectionBar);
 {$SCOPEDENUMS OFF}
 
   TAtlasToolbarIcons = class

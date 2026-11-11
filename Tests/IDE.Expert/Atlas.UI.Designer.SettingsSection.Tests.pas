@@ -62,6 +62,10 @@ type
     procedure FontsColorsRoundTrip;
     [Test]
     procedure GapHandlesRoundTrip;
+    [Test]
+    procedure MultiResizeRoundTrip;
+    [Test]
+    procedure SelectionBarRoundTrip;
   end;
 
 implementation
@@ -70,6 +74,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
+  Atlas.Core.Designer.SelectionBar,
   Atlas.UI.Designer.SettingsSection;
 
 procedure TDesignerSettingsSectionTests.WarmUp;
@@ -610,6 +615,58 @@ begin
     Assert.IsFalse(mSaved.DesignerFontsColors, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerFontsColorsRestoreParent);
     Assert.AreEqual('clWindow', mSaved.DesignerFontsColorsIgnoreColors);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.MultiResizeRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMultiResize').Checked, 'Vorgabe an');
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerMultiResizeMode').Choice, 'delta');
+    Assert.IsFalse(CheckOf(mPage, 'DesignerMultiResizeLeftTopHandles').Checked);
+    CheckOf(mPage, 'DesignerMultiResize').Checked := False;
+    ChoiceOf(mPage, 'DesignerMultiResizeMode').Choice := 1;
+    CheckOf(mPage, 'DesignerMultiResizeLeftTopHandles').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerMultiResize, 'abschaltbar');
+    Assert.AreEqual(TAtlasPluginSettings.cResizeModeAlign, mSaved.DesignerMultiResizeMode);
+    Assert.IsTrue(mSaved.DesignerMultiResizeLeftTopHandles);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.SelectionBarRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  // Vorgabe der Knöpfe in Base und Kern gleich: alle außer den optionalen.
+  Assert.AreEqual(TAtlasSelectionBar.DefaultItems, TAtlasPluginSettings.Defaults.DesignerSelectionBarItems);
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerSelectionBar').Checked, 'Vorgabe an');
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerSelectionBarMode').Choice, 'auto');
+    Assert.AreEqual('400', EditOf(mPage, 'DesignerSelectionBarDelayMs').Text);
+    CheckOf(mPage, 'DesignerSelectionBar').Checked := False;
+    ChoiceOf(mPage, 'DesignerSelectionBarMode').Choice := 1;
+    EditOf(mPage, 'DesignerSelectionBarDelayMs').Text := '250';
+    EditOf(mPage, 'DesignerSelectionBarItems').Text := 'bold, italic';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerSelectionBar, 'abschaltbar');
+    Assert.AreEqual(TAtlasPluginSettings.cSelectionBarShortcut, mSaved.DesignerSelectionBarMode);
+    Assert.AreEqual(250, mSaved.DesignerSelectionBarDelayMs);
+    Assert.AreEqual('bold, italic', mSaved.DesignerSelectionBarItems);
   finally
     mPage.Free;
   end;

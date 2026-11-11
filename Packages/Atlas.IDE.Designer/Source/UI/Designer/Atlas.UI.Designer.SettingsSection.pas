@@ -215,6 +215,21 @@ begin
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapFirst),
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapLast)],
     [TAtlasPluginSettings.cGapAnchorCenter, TAtlasPluginSettings.cGapAnchorFirst, TAtlasPluginSettings.cGapAnchorLast]);
+  Switch('designer.multiResize', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResize));
+  Choice('designer.multiResize.mode', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeMode),
+    [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeDelta),
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeAlign)],
+    [TAtlasPluginSettings.cResizeModeDelta, TAtlasPluginSettings.cResizeModeAlign]);
+  Switch('designer.multiResize.leftTopHandles',
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeLeftTop));
+  Switch('designer.selectionBar', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBar));
+  Choice('designer.selectionBar.mode', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarMode),
+    [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarAuto),
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarShortcut)],
+    [TAtlasPluginSettings.cSelectionBarAuto, TAtlasPluginSettings.cSelectionBarShortcut]);
+  Number('designer.selectionBar.delayMs', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarDelay));
+  Line('designer.selectionBar.items', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarItems));
+  Key('designer.selectionBar.key', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarKey));
 end;
 
 end.

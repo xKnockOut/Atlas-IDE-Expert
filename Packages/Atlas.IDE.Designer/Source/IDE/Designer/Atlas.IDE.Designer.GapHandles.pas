@@ -15,7 +15,7 @@
 // - Ragt danach ein Control aus dem Elternelement, ist es rot umrandet und
 //   die Änderung gilt erst nach Rückfrage.
 // - Jeder Zug bzw. jede Eingabe ist ein Schritt für „Abstände rückgängig“
-//   (TAtlasDesignerSnapshot).
+//   (TAtlasIdeHandleTool).
 // Knopf der Designer-Leiste: Klick auf das Symbol blendet die Griffe ein und
 // aus, der Pfeil öffnet das Menü. Nur im Hauptthread.
 
@@ -26,12 +26,11 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Vcl.Menus,
   Atlas.Core.Designer.Gaps,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Handles,
-  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.HandleTool,
   Atlas.IDE.Foundation.KeyHook;
 
 type
@@ -46,17 +45,11 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
-  TAtlasIdeGapHandles = class
+  TAtlasIdeGapHandles = class(TAtlasIdeHandleTool)
   public const
     cId = 'gapHandles';
   private
-    FOnMessage: TProc<string>;
-    FActive: Boolean;
-    FMenu: TPopupMenu;
-    FOverlay: TAtlasDesignerHandles;
     FKeys: TAtlasGapKeys;
-    FUndo: TAtlasDesignerSnapshot;
-    FStep: TAtlasDesignerSnapshot;
     FParent: TWinControl;
     FControls: TArray<TControl>;
     FStart: TArray<TRect>;
@@ -65,39 +58,35 @@ type
     FDelta: Integer;
     FKeyOffset: Integer;
     FShift: TShiftState;
-    FChanged: Boolean;
     function FindGroup: Boolean;
     function AnchorFor(AShift: TShiftState): TAtlasGapAnchor;
     function GapNow: Integer;
     procedure ShowGroup(const ARects: TArray<TRect>; ABad: Boolean);
     function Pills(const ARects: TArray<TRect>; const AOrigin: TPoint): TArray<TAtlasHandle>;
-    procedure EnsureOverlay;
-    procedure BeginStep;
-    function Place(AGap: Integer; AAnchor: TAtlasGapAnchor): Boolean;
+    procedure Place(AGap: Integer; AAnchor: TAtlasGapAnchor);
     procedure FinishStep;
-    procedure Down(AIndex: Integer; AShift: TShiftState);
-    procedure Drag(const ADelta: TPoint; AShift: TShiftState);
     procedure Ask(AIndex: Integer; AShift: TShiftState);
-    procedure MenuClick(Sender: TObject);
-    procedure Say(const AText: string);
+  protected
+    procedure Down(AIndex: Integer; AShift: TShiftState); override;
+    procedure Drag(const ADelta: TPoint; AShift: TShiftState); override;
+    procedure Up; override;
+    procedure DoubleClick(AIndex: Integer; AShift: TShiftState); override;
+    function Commands: TArray<string>; override;
+    function CommandEnabled(AIndex: Integer): Boolean; override;
+    procedure Command(AIndex: Integer); override;
+    function ShowCaption: string; override;
+    function UndoCaption: string; override;
+    function UndoneText: string; override;
   public
-    /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
     class function Available(const ASettings: TAtlasPluginSettings): Boolean; static;
     /// <summary>Knopf der Designer-Leiste: gedrückt, solange die Griffe gezeigt werden.</summary>
     function Button: TAtlasDesignerButton;
-    /// <summary>Klick auf das Symbol: Griffe ein- oder ausblenden.</summary>
-    procedure Toggle;
-    /// <summary>Menü am Pfeil an APoint (Bildschirm).</summary>
-    procedure Popup(const APoint: TPoint);
-    /// <summary>Takt der Leiste: Griffe der Auswahl folgen.</summary>
-    procedure Tick;
-    procedure Hide;
-    procedure ApplyTheme;
+    procedure Tick; override;
+    procedure Hide; override;
     /// <summary>Pfeiltaste bei gehaltener Pille: Abstand um ADelta ändern.</summary>
     procedure Nudge(ADelta: Integer);
-    function Dragging: Boolean;
     property Layout: TAtlasGapLayout read FLayout;
   end;
 
@@ -114,14 +103,10 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
 const
   cKeyPriority = 40;
-  cTagShow = 1;
-  cTagSet = 2;
-  cTagUndo = 3;
   cPillWidth = 28;
   cPillHeight = 16;
 
@@ -166,23 +151,15 @@ end;
 
 constructor TAtlasIdeGapHandles.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
-  FActive := True;
-  FMenu := TPopupMenu.Create(nil);
+  inherited Create(AOnMessage);
   FKeys := TAtlasGapKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
-  FUndo := TAtlasDesignerSnapshot.Create;
 end;
 
 destructor TAtlasIdeGapHandles.Destroy;
 begin
   TAtlasKeyHook.Remove(FKeys);
   FKeys.Free;
-  FOverlay.Free;
-  FStep.Free;
-  FUndo.Free;
-  FMenu.Free;
   inherited Destroy;
 end;
 
@@ -191,38 +168,42 @@ begin
   Result := ASettings.DesignerGapHandles;
 end;
 
-procedure TAtlasIdeGapHandles.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
 function TAtlasIdeGapHandles.Button: TAtlasDesignerButton;
 begin
   Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.GapHandles,
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapHint));
-  Result.Pressed := FActive;
+  Result.Pressed := Active;
   Result.Menu := True;
 end;
 
-procedure TAtlasIdeGapHandles.Toggle;
+function TAtlasIdeGapHandles.ShowCaption: string;
 begin
-  FActive := not FActive;
-  if FActive then
-  begin
-    Tick;
-  end
-  else
-  begin
-    Hide;
-  end;
+  Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapShow);
 end;
 
-function TAtlasIdeGapHandles.Dragging: Boolean;
+function TAtlasIdeGapHandles.UndoCaption: string;
 begin
-  Result := (FOverlay <> nil) and FOverlay.Dragging;
+  Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapUndo);
+end;
+
+function TAtlasIdeGapHandles.UndoneText: string;
+begin
+  Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapUndone);
+end;
+
+function TAtlasIdeGapHandles.Commands: TArray<string>;
+begin
+  Result := [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapSetCmd)];
+end;
+
+function TAtlasIdeGapHandles.CommandEnabled(AIndex: Integer): Boolean;
+begin
+  Result := FindGroup;
+end;
+
+procedure TAtlasIdeGapHandles.Command(AIndex: Integer);
+begin
+  Ask(0, []);
 end;
 
 /// <summary>Markierte Steuerelemente im selben Elternelement als Reihe oder Spalte (Felder FParent, FControls,
@@ -252,7 +233,7 @@ begin
     FStart := FStart + [TControl(mComponent).BoundsRect];
   end;
   FLayout := TAtlasGaps.Detect(FStart);
-  Result := (FLayout.Axis <> TAtlasGapAxis.None) and FParent.HandleAllocated and IsWindowVisible(FParent.Handle);
+  Result := FLayout.Axis <> TAtlasGapAxis.None;
 end;
 
 function TAtlasIdeGapHandles.AnchorFor(AShift: TShiftState): TAtlasGapAnchor;
@@ -269,52 +250,6 @@ begin
   begin
     Result := TAtlasGaps.AnchorOf(TAtlasIdeSettings.Current.DesignerGapHandlesAnchor);
   end;
-end;
-
-procedure TAtlasIdeGapHandles.EnsureOverlay;
-var
-  mOwner: TAtlasIdeGapHandles;
-begin
-  if FOverlay <> nil then
-  begin
-    Exit;
-  end;
-  mOwner := Self;
-  FOverlay := TAtlasDesignerHandles.CreateHandles(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  FOverlay.OnDown :=
-    procedure(AIndex: Integer; AShift: TShiftState)
-    begin
-      mOwner.Down(AIndex, AShift);
-    end;
-  FOverlay.OnDrag :=
-    procedure(ADelta: TPoint; AShift: TShiftState)
-    begin
-      mOwner.Drag(ADelta, AShift);
-    end;
-  FOverlay.OnUp :=
-    procedure(AShift: TShiftState)
-    begin
-      TAtlasKeyHook.Remove(mOwner.FKeys);
-      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-        procedure
-        begin
-          mOwner.FinishStep;
-        end);
-    end;
-  FOverlay.OnDoubleClick :=
-    procedure(AIndex: Integer; AShift: TShiftState)
-    var
-      mIndex: Integer;
-      mShift: TShiftState;
-    begin
-      mIndex := AIndex;
-      mShift := AShift;
-      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-        procedure
-        begin
-          mOwner.Ask(mIndex, mShift);
-        end);
-    end;
 end;
 
 /// <summary>Pillen zwischen je zwei Nachbarn; AOrigin rechnet vom Client des Parents in den des Fensters.</summary>
@@ -351,9 +286,9 @@ begin
         (mFirst.Bottom + mNext.Top) div 2);
     end;
     mCenter := Point(mCenter.X + AOrigin.X, mCenter.Y + AOrigin.Y);
-    Result := Result + [TAtlasHandle.Create(Rect(mCenter.X - FOverlay.S(cPillWidth) div 2,
-      mCenter.Y - FOverlay.S(cPillHeight) div 2, mCenter.X + FOverlay.S(cPillWidth) div 2,
-      mCenter.Y + FOverlay.S(cPillHeight) div 2), TAtlasHandleKind.Pill, IntToStr(mGaps[mIndex]), mCursor, mIndex)];
+    Result := Result + [TAtlasHandle.Create(Rect(mCenter.X - Overlay.S(cPillWidth) div 2,
+      mCenter.Y - Overlay.S(cPillHeight) div 2, mCenter.X + Overlay.S(cPillWidth) div 2,
+      mCenter.Y + Overlay.S(cPillHeight) div 2), TAtlasHandleKind.Pill, IntToStr(mGaps[mIndex]), mCursor, mIndex)];
   end;
   mMuted := TAtlasGaps.Deviating(mGaps);
   for mIndex := 0 to High(Result) do
@@ -391,8 +326,8 @@ begin
       end;
     end;
   end;
-  FOverlay.SetContent(Pills(ARects, mOrigin), mFrames, '', Point(0, 0));
-  FOverlay.ShowAt(mVisible);
+  Overlay.SetContent(Pills(ARects, mOrigin), mFrames, '', Point(0, 0));
+  Overlay.ShowAt(mVisible);
 end;
 
 procedure TAtlasIdeGapHandles.Tick;
@@ -401,7 +336,7 @@ begin
   begin
     Exit;
   end;
-  if not TAtlasIdeSettings.Current.DesignerGapHandles or not FActive or not FindGroup then
+  if not TAtlasIdeSettings.Current.DesignerGapHandles or not Active or not FindGroup then
   begin
     Hide;
     Exit;
@@ -412,54 +347,25 @@ end;
 procedure TAtlasIdeGapHandles.Hide;
 begin
   TAtlasKeyHook.Remove(FKeys);
-  if FOverlay <> nil then
-  begin
-    FOverlay.HideHandles;
-  end;
+  inherited Hide;
 end;
 
-procedure TAtlasIdeGapHandles.ApplyTheme;
-begin
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-end;
-
-/// <summary>Stand vor dem Schritt merken; zählt erst, wenn sich etwas ändert (FinishStep).</summary>
-procedure TAtlasIdeGapHandles.BeginStep;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  FreeAndNil(FStep);
-  if TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    FStep := TAtlasDesignerSnapshot.Create;
-    FStep.Take(mEditor.FileName, mRoot);
-  end;
-  FDelta := 0;
-  FKeyOffset := 0;
-  FChanged := False;
-end;
-
-/// <summary>Alle Abstände auf AGap; True, wenn sich eine Lage geändert hat.</summary>
-function TAtlasIdeGapHandles.Place(AGap: Integer; AAnchor: TAtlasGapAnchor): Boolean;
+/// <summary>Alle Abstände auf AGap, ausgehend von der Lage zu Beginn des Schritts.</summary>
+procedure TAtlasIdeGapHandles.Place(AGap: Integer; AAnchor: TAtlasGapAnchor);
 var
   mNew: TArray<TRect>;
   mIndex: Integer;
 begin
   mNew := TAtlasGaps.Respace(FStart, FLayout, AGap, AAnchor);
-  Result := False;
+  Changed := False;
   for mIndex := 0 to High(FControls) do
   begin
     if FControls[mIndex].BoundsRect <> mNew[mIndex] then
     begin
       FControls[mIndex].BoundsRect := mNew[mIndex];
     end;
-    Result := Result or (mNew[mIndex] <> FStart[mIndex]);
+    Changed := Changed or (mNew[mIndex] <> FStart[mIndex]);
   end;
-  FChanged := Result;
   ShowGroup(mNew, True);
 end;
 
@@ -477,18 +383,20 @@ procedure TAtlasIdeGapHandles.Down(AIndex: Integer; AShift: TShiftState);
 begin
   if not FindGroup or (AIndex < 0) or (AIndex >= Length(FLayout.Gaps)) then
   begin
-    FOverlay.CancelDrag;
+    Overlay.CancelDrag;
     Exit;
   end;
   BeginStep;
   FStartGap := FLayout.Gaps[AIndex];
+  FDelta := 0;
+  FKeyOffset := 0;
   FShift := AShift;
   TAtlasKeyHook.Add(FKeys);
 end;
 
 procedure TAtlasIdeGapHandles.Drag(const ADelta: TPoint; AShift: TShiftState);
 begin
-  if FStep = nil then
+  if not InStep then
   begin
     Exit;
   end;
@@ -501,9 +409,15 @@ begin
   Place(GapNow, AnchorFor(FShift));
 end;
 
+procedure TAtlasIdeGapHandles.Up;
+begin
+  TAtlasKeyHook.Remove(FKeys);
+  FinishStep;
+end;
+
 procedure TAtlasIdeGapHandles.Nudge(ADelta: Integer);
 begin
-  if (FStep = nil) or not Dragging then
+  if not InStep or not Dragging then
   begin
     Exit;
   end;
@@ -516,12 +430,9 @@ end;
 /// <summary>Ende eines Zugs: übernehmen (nach Rückfrage, wenn etwas herausragt) oder zurücksetzen.</summary>
 procedure TAtlasIdeGapHandles.FinishStep;
 var
-  mOutside: Boolean;
-  mFlag: Boolean;
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
+  mOutside, mFlag: Boolean;
 begin
-  if FStep = nil then
+  if not InStep then
   begin
     Exit;
   end;
@@ -531,27 +442,15 @@ begin
   begin
     mOutside := mOutside or mFlag;
   end;
-  if mOutside and (MessageDlg(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapOutsideConfirm),
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
-  begin
-    FStep.Restore;
-    FreeAndNil(FStep);
-    Tick;
-    Exit;
-  end;
-  if FChanged then
-  begin
-    FUndo.Free;
-    FUndo := FStep;
-    FStep := nil;
-    if TAtlasDesignerAccess.Current(mEditor, mRoot) and (TAtlasDesignerAccess.DesignerOf(mEditor) <> nil) then
-    begin
-      TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
-    end;
-    Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.GapDone, [Length(FLayout.Gaps), GapNow]));
-  end;
-  FreeAndNil(FStep);
+  CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.GapDone, [Length(FLayout.Gaps), GapNow]),
+    Changed and mOutside and (MessageDlg(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapOutsideConfirm),
+    mtConfirmation, [mbYes, mbNo], 0) <> mrYes));
   Tick;
+end;
+
+procedure TAtlasIdeGapHandles.DoubleClick(AIndex: Integer; AShift: TShiftState);
+begin
+  Ask(AIndex, AShift);
 end;
 
 procedure TAtlasIdeGapHandles.Ask(AIndex: Integer; AShift: TShiftState);
@@ -577,59 +476,13 @@ begin
   end;
   BeginStep;
   FStartGap := mGap;
+  FDelta := 0;
+  FKeyOffset := 0;
   // Eingabe gilt genau, ohne Einrasten.
   FShift := (AShift * [ssShift, ssCtrl]) + [ssAlt];
+  EnsureOverlay;
   Place(mGap, AnchorFor(FShift));
   FinishStep;
-end;
-
-procedure TAtlasIdeGapHandles.Popup(const APoint: TPoint);
-var
-  mItem: TMenuItem;
-  mGroup: Boolean;
-  mTag: Integer;
-  mCaptions: array[cTagShow..cTagUndo] of string;
-begin
-  mGroup := FindGroup;
-  mCaptions[cTagShow] := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapShow);
-  mCaptions[cTagSet] := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapSetCmd);
-  mCaptions[cTagUndo] := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapUndo);
-  FMenu.Items.Clear;
-  for mTag := cTagShow to cTagUndo do
-  begin
-    mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := mCaptions[mTag];
-    mItem.Tag := mTag;
-    mItem.OnClick := MenuClick;
-    FMenu.Items.Add(mItem);
-  end;
-  FMenu.Items[0].Checked := FActive;
-  FMenu.Items[1].Enabled := mGroup;
-  FMenu.Items[2].Enabled := FUndo.CanRestore;
-  FMenu.Popup(APoint.X, APoint.Y);
-end;
-
-procedure TAtlasIdeGapHandles.MenuClick(Sender: TObject);
-var
-  mTag: Integer;
-begin
-  mTag := TMenuItem(Sender).Tag;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      case mTag of
-        cTagShow:
-          Toggle;
-        cTagSet:
-          Ask(0, []);
-        cTagUndo:
-          if FUndo.Restore then
-          begin
-            Say(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapUndone));
-            Tick;
-          end;
-      end;
-    end);
 end;
 
 end.

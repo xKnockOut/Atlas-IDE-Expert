@@ -80,6 +80,13 @@ const
   cGapAnchorCenter = 'center';
   cGapAnchorFirst = 'first';
   cGapAnchorLast = 'last';
+  /// <summary>Werte von designer.multiResize.mode (#737).</summary>
+  cResizeModeDelta = 'delta';
+  cResizeModeAlign = 'align';
+  /// <summary>Werte von designer.selectionBar.mode (#735).</summary>
+  cSelectionBarAuto = 'auto';
+  cSelectionBarShortcut = 'shortcut';
+  cMaxSelectionBarDelay = 5000;
   /// <summary>Werte von designer.buttonBar.position (#732).</summary>
   cButtonBarBottomRight = 'bottomRight';
   cButtonBarBottomLeft = 'bottomLeft';
@@ -665,6 +672,22 @@ type
     /// <summary>Fester Punkt: cGapAnchorCenter, cGapAnchorFirst oder cGapAnchorLast (#734,
     /// designer.gapHandles.anchor).</summary>
     DesignerGapHandlesAnchor: string;
+    /// <summary>Gemeinsame Größengriffe bei Mehrfachauswahl (#737, designer.multiResize).</summary>
+    DesignerMultiResize: Boolean;
+    /// <summary>cResizeModeDelta oder cResizeModeAlign (#737, designer.multiResize.mode).</summary>
+    DesignerMultiResizeMode: string;
+    /// <summary>Eigene Griffe auch links und oben (#737, designer.multiResize.leftTopHandles).</summary>
+    DesignerMultiResizeLeftTopHandles: Boolean;
+    /// <summary>Schnellleiste über einer Mehrfachauswahl (#735, designer.selectionBar).</summary>
+    DesignerSelectionBar: Boolean;
+    /// <summary>cSelectionBarAuto oder cSelectionBarShortcut (#735, designer.selectionBar.mode).</summary>
+    DesignerSelectionBarMode: string;
+    /// <summary>Verzögerung bis zum Einblenden in ms (#735, designer.selectionBar.delayMs).</summary>
+    DesignerSelectionBarDelayMs: Integer;
+    /// <summary>Knöpfe und Reihenfolge (#735, designer.selectionBar.items).</summary>
+    DesignerSelectionBarItems: string;
+    /// <summary>Taste zum Einblenden im Modus shortcut (#735, designer.selectionBar.key).</summary>
+    DesignerSelectionBarKey: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1360,6 +1383,17 @@ begin
   DesignerGapHandles := True;
   DesignerGapHandlesSnapValues := '4, 8, 12, 16';
   DesignerGapHandlesAnchor := cGapAnchorCenter;
+  DesignerMultiResize := True;
+  DesignerMultiResizeMode := cResizeModeDelta;
+  DesignerMultiResizeLeftTopHandles := False;
+  DesignerSelectionBar := True;
+  DesignerSelectionBarMode := cSelectionBarAuto;
+  DesignerSelectionBarDelayMs := 400;
+  DesignerSelectionBarItems := 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
+    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
+    'alignCenter, alignRight';
+  // Strg+Umschalt+Leer.
+  DesignerSelectionBarKey := 24608;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
@@ -1367,6 +1401,14 @@ begin
   AIo.Flag('DesignerGapHandles', DesignerGapHandles);
   AIo.Text('DesignerGapHandlesSnapValues', DesignerGapHandlesSnapValues);
   AIo.Text('DesignerGapHandlesAnchor', DesignerGapHandlesAnchor);
+  AIo.Flag('DesignerMultiResize', DesignerMultiResize);
+  AIo.Text('DesignerMultiResizeMode', DesignerMultiResizeMode);
+  AIo.Flag('DesignerMultiResizeLeftTopHandles', DesignerMultiResizeLeftTopHandles);
+  AIo.Flag('DesignerSelectionBar', DesignerSelectionBar);
+  AIo.Text('DesignerSelectionBarMode', DesignerSelectionBarMode);
+  AIo.Number('DesignerSelectionBarDelayMs', DesignerSelectionBarDelayMs);
+  AIo.Text('DesignerSelectionBarItems', DesignerSelectionBarItems);
+  AIo.Number('DesignerSelectionBarKey', DesignerSelectionBarKey);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1408,6 +1450,10 @@ begin
   end;
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
   DesignerGapHandlesAnchor := Choice(DesignerGapHandlesAnchor, [cGapAnchorCenter, cGapAnchorFirst, cGapAnchorLast]);
+  DesignerMultiResizeMode := Choice(DesignerMultiResizeMode, [cResizeModeDelta, cResizeModeAlign]);
+  DesignerSelectionBarMode := Choice(DesignerSelectionBarMode, [cSelectionBarAuto, cSelectionBarShortcut]);
+  DesignerSelectionBarDelayMs := EnsureRange(DesignerSelectionBarDelayMs, 0, cMaxSelectionBarDelay);
+  DesignerSelectionBarKey := EnsureRange(DesignerSelectionBarKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
