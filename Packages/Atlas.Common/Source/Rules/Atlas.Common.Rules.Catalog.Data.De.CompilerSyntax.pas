@@ -78,10 +78,10 @@ const
     '      "id": "duplicate-declaration",',
     '      "name": "Bezeichner doppelt deklariert",',
     '      "description": "Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld un' +
-    'd eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface ' +
-    'und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$' +
-    'IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Metho' +
-    'den und Properties. Unter demselben Namen überladene default-Array-Properties prüft default-property-invalid (#1380).",',
+    'd eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg, zwei Werte derselben Aufzählung (ohne Korrektur). Ebenso eine Unit doppel' +
+    't in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und D' +
+    'eklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses d' +
+    'en doppelten Eintrag); keine bei Parametern, Methoden und Properties. Unter demselben Namen überladene default-Array-Properties prüft default-property-invalid (#1380).",',
     '      "options": [',
     '        {',
     '          "name": "checkUses",',
