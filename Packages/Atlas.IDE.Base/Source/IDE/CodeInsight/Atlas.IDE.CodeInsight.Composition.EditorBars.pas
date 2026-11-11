@@ -19,6 +19,7 @@ implementation
 uses
   Atlas.Core.Editor.Metrics,
   Atlas.IDE.Editor.NavHistory,
+  Atlas.IDE.Editor.MouseButtons,
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
@@ -187,6 +188,8 @@ procedure InstallBars;
 begin
   // Navigationsverlauf (#504): Sprünge und Bearbeitungsstellen der Sitzung.
   TAtlasIdeNavHistory.Install;
+  // Zurück-/Vor-Taste der Maus durch denselben Verlauf (#1889).
+  TAtlasIdeMouseButtons.Install;
   // Definition und Referenzen einblenden (#505).
   TAtlasIdePeek.Install;
   // Gemeinsamer Stand der Gliederung, Gliederungsfenster (#537) und Brotkrumenleiste (#590).
@@ -231,6 +234,7 @@ begin
   UninstallEditing;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
+  TAtlasIdeMouseButtons.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   UninstallNavigation;
   CommandsInstalled := False;
