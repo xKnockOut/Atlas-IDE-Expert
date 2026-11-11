@@ -11,6 +11,9 @@
 // - Werkzeuge mit eigenem Knopf (#734 ff., TAtlasIdeDesignerTools): Symbol
 //   schaltet ein und aus, Pfeil öffnet das Menü; sie folgen dem Takt der
 //   Leiste (Tick).
+// - Designer-Ansichten mit eigenem Knopf ohne Menü (#605 ff.,
+//   TAtlasIdeDesignerViews): Abstände messen, Größe ausprobieren, Skalierung
+//   und Texte; ein Klick schaltet bzw. öffnet.
 // Nur im Hauptthread.
 
 interface
@@ -23,7 +26,8 @@ uses
   Atlas.IDE.Designer.Select,
   Atlas.IDE.Designer.Arrange,
   Atlas.IDE.Designer.Navigate,
-  Atlas.IDE.Designer.Tools;
+  Atlas.IDE.Designer.Tools,
+  Atlas.IDE.Designer.Views;
 
 type
   TAtlasIdeDesignerCommands = class
@@ -35,6 +39,7 @@ type
     FArrange: TAtlasIdeDesignerArrange;
     FNavigate: TAtlasIdeDesignerNavigate;
     FTools: TAtlasIdeDesignerTools;
+    FViews: TAtlasIdeDesignerViews;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -73,10 +78,12 @@ begin
   FArrange := TAtlasIdeDesignerArrange.Create(AOnMessage);
   FNavigate := TAtlasIdeDesignerNavigate.Create;
   FTools := TAtlasIdeDesignerTools.Create(AOnMessage);
+  FViews := TAtlasIdeDesignerViews.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerCommands.Destroy;
 begin
+  FViews.Free;
   FTools.Free;
   FNavigate.Free;
   FArrange.Free;
@@ -103,7 +110,7 @@ begin
     mButton.Menu := True;
     Result := Result + [mButton];
   end;
-  Result := Result + FTools.Buttons(ASettings);
+  Result := Result + FTools.Buttons(ASettings) + FViews.Buttons(ASettings);
 end;
 
 function TAtlasIdeDesignerCommands.Handles(const AId: string): Boolean;
@@ -118,7 +125,7 @@ end;
 
 function TAtlasIdeDesignerCommands.Execute(const AId: string): Boolean;
 begin
-  Result := FTools.Toggle(AId);
+  Result := FTools.Toggle(AId) or FViews.Run(AId);
 end;
 
 procedure TAtlasIdeDesignerCommands.Tick;
@@ -159,6 +166,7 @@ begin
   FNavigate.ApplyTheme;
   FArrange.ApplyTheme;
   FTools.ApplyTheme;
+  FViews.ApplyTheme;
 end;
 
 end.

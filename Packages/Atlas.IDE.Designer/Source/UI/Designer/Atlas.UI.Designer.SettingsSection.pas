@@ -2,8 +2,10 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
-// Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744), Beschriftung (#748), Werkzeuge mit eigenem Knopf (#734 ff.).
+// Gleiche auswählen (#738), Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen
+// (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und
+// Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744),
+// Beschriftung (#748), Werkzeuge mit eigenem Knopf (#734 ff.), Designer-Ansichten mit eigenem Knopf (#605 ff.).
 
 interface
 
@@ -18,6 +20,8 @@ type
   private
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
+    /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
+    procedure BuildViewRows;
     /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728) und Label und Feld (#729).</summary>
     procedure BuildToolRows;
     /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731), Einpacken (#733) und Schriften und Farben (#741).</summary>
@@ -36,7 +40,8 @@ implementation
 uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
-  Atlas.UI.Designer.ToolStrings;
+  Atlas.UI.Designer.ToolStrings,
+  Atlas.UI.Designer.ViewStrings;
 
 { TAtlasDesignerSettingsSection }
 
@@ -85,9 +90,25 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialCross));
+  BuildViewRows;
   BuildArrangeRows;
   BuildToolRows;
   BuildButtonRows;
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildViewRows;
+begin
+  Switch('designer.measureDistances',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureDistances));
+  Switch('designer.measureAltKey', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureAltKey));
+  Switch('designer.resizePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizePreview));
+  Line('designer.resizePreviewSizes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeSizes));
+  Switch('designer.resizePreviewShowAnchors',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeAnchors));
+  Switch('designer.scalePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScalePreview));
+  Line('designer.scalePreviewLevels', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleLevels));
+  Line('designer.scalePreviewScreens', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleScreens));
+  Number('designer.longTextFactor', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsLongTextFactor));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

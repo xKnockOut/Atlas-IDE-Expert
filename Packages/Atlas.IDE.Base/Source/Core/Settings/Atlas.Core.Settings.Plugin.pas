@@ -650,7 +650,25 @@ type
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
       write FEditorView.DesignerSpatialCrossContainers;
-    property DesignerFitToText: Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
+    property DesignerMeasureDistances: Boolean read FEditorView.DesignerMeasureDistances
+      write FEditorView.DesignerMeasureDistances;
+    property DesignerMeasureAltKey: Boolean read FEditorView.DesignerMeasureAltKey
+      write FEditorView.DesignerMeasureAltKey;
+    property DesignerResizePreview: Boolean read FEditorView.DesignerResizePreview
+      write FEditorView.DesignerResizePreview;
+    property DesignerResizePreviewSizes: string read FEditorView.DesignerResizePreviewSizes
+      write FEditorView.DesignerResizePreviewSizes;
+    property DesignerResizePreviewShowAnchors: Boolean read FEditorView.DesignerResizePreviewShowAnchors
+      write FEditorView.DesignerResizePreviewShowAnchors;
+    property DesignerScalePreview: Boolean read FEditorView.DesignerScalePreview
+      write FEditorView.DesignerScalePreview;
+    property DesignerScalePreviewLevels: string read FEditorView.DesignerScalePreviewLevels
+      write FEditorView.DesignerScalePreviewLevels;
+    property DesignerScalePreviewScreens: string read FEditorView.DesignerScalePreviewScreens
+      write FEditorView.DesignerScalePreviewScreens;
+    property DesignerLongTextFactor: Integer read FEditorView.DesignerLongTextFactor
+      write FEditorView.DesignerLongTextFactor;
+    property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;
     property DesignerFitToTextPadding: Integer read FEditorView.DesignerFitToTextPadding

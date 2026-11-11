@@ -551,6 +551,24 @@ type
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
     /// </summary>
     DesignerSpatialCrossContainers: Boolean;
+    /// <summary>Maßlinien beim Verschieben und bei Größenänderung (#605, designer.measureDistances).</summary>
+    DesignerMeasureDistances: Boolean;
+    /// <summary>Maße mit Alt zur Komponente unter der Maus (#605, designer.measureAltKey).</summary>
+    DesignerMeasureAltKey: Boolean;
+    /// <summary>Knopf „Größe ausprobieren“ (#606, designer.resizePreview).</summary>
+    DesignerResizePreview: Boolean;
+    /// <summary>Schnellwerte „1366x768, 1920x1080“ (#606, designer.resizePreviewSizes).</summary>
+    DesignerResizePreviewSizes: string;
+    /// <summary>Nadeln für Anchors, Flächen für Align (#606, designer.resizePreviewShowAnchors).</summary>
+    DesignerResizePreviewShowAnchors: Boolean;
+    /// <summary>Knopf „Skalierung und Texte“ (#607, designer.scalePreview).</summary>
+    DesignerScalePreview: Boolean;
+    /// <summary>Angebotene Skalierungen „100, 125, 150, 175, 200“ (#607, designer.scalePreviewLevels).</summary>
+    DesignerScalePreviewLevels: string;
+    /// <summary>Angebotene Bildschirme „1366x768, 1920x1080“ (#607, designer.scalePreviewScreens).</summary>
+    DesignerScalePreviewScreens: string;
+    /// <summary>Verlängerung bei „Lange Texte“ in Prozent (#607, designer.longTextFactor).</summary>
+    DesignerLongTextFactor: Integer;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -763,6 +781,10 @@ type
     OverviewRulerKinds: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginEditorViewSettings; static;
+    /// <summary>Vorgaben der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
+    procedure SetViewDefaults;
+    /// <summary>Einstellungen der eigenen Knöpfe der Designer-Leiste lesen bzw. schreiben.</summary>
+    procedure ExchangeViews(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
     /// <summary>Raster (#731), Einpacken (#733), Schriften (#741), Gruppen (#744), Beschriftung (#748).</summary>
@@ -1252,6 +1274,7 @@ begin
   Result.DesignerSelectionSetsSaveKey := 24659;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
+  Result.SetViewDefaults;
   Result.SetArrangeDefaults;
   Result.SetFormToolDefaults;
   Result.SetToolDefaults;
@@ -1563,6 +1586,7 @@ begin
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
+  ExchangeViews(AIo);
   ExchangeArrange(AIo);
   ExchangeFormTools(AIo);
   ExchangeTools(AIo);
@@ -1584,6 +1608,36 @@ begin
   AIo.Flag('GutterColumnOverrides', GutterColumnOverrides);
   AIo.Flag('OverviewRuler', OverviewRuler);
   AIo.Text('OverviewRulerKinds', OverviewRulerKinds);
+end;
+
+const
+  /// <summary>Vorgabe für designer.longTextFactor in Prozent.</summary>
+  cLongTextFactor = 30;
+
+procedure TAtlasPluginEditorViewSettings.SetViewDefaults;
+begin
+  DesignerMeasureDistances := True;
+  DesignerMeasureAltKey := True;
+  DesignerResizePreview := True;
+  DesignerResizePreviewSizes := '1366x768, 1920x1080';
+  DesignerResizePreviewShowAnchors := True;
+  DesignerScalePreview := True;
+  DesignerScalePreviewLevels := '100, 125, 150, 175, 200';
+  DesignerScalePreviewScreens := '1366x768, 1920x1080';
+  DesignerLongTextFactor := cLongTextFactor;
+end;
+
+procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DesignerMeasureDistances', DesignerMeasureDistances);
+  AIo.Flag('DesignerMeasureAltKey', DesignerMeasureAltKey);
+  AIo.Flag('DesignerResizePreview', DesignerResizePreview);
+  AIo.Text('DesignerResizePreviewSizes', DesignerResizePreviewSizes);
+  AIo.Flag('DesignerResizePreviewShowAnchors', DesignerResizePreviewShowAnchors);
+  AIo.Flag('DesignerScalePreview', DesignerScalePreview);
+  AIo.Text('DesignerScalePreviewLevels', DesignerScalePreviewLevels);
+  AIo.Text('DesignerScalePreviewScreens', DesignerScalePreviewScreens);
+  AIo.Number('DesignerLongTextFactor', DesignerLongTextFactor);
 end;
 
 end.
