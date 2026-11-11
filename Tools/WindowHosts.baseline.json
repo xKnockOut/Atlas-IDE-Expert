@@ -110,18 +110,11 @@
   "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas": {
     "cl-red": 1
   },
-  "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas": {
-    "create-new": 1,
-    "cl-red": 2
-  },
   "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.SettingsBranch.pas": {
     "cl-red": 1
   },
   "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.SettingsProjects.pas": {
     "cl-red": 1
-  },
-  "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.WorkingCopies.pas": {
-    "create-new": 1
   },
   "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.Push.pas": {
     "create-new": 1,

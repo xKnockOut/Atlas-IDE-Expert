@@ -45,7 +45,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan;
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasBranchDialog = class;
@@ -227,7 +228,7 @@ type
     property ServerHint: TLabel read FServerHint;
   end;
 
-  TAtlasBranchDialog = class(TForm)
+  TAtlasBranchDialog = class(TAtlasDialog)
   private
     FFacts: TAtlasVcsBranchFacts;
     FInfoLabel: TLabel;
@@ -284,7 +285,9 @@ uses
   System.Math,
   Atlas.Core.VersionControl.BranchNames,
   Atlas.UI.Strings,
-  Atlas.UI.VersionControl.Strings;
+  Atlas.UI.VersionControl.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 8;
@@ -359,7 +362,9 @@ end;
 function ErrorLabel(AOwner: TComponent; AParent: TWinControl; ATop: Integer): TLabel;
 begin
   Result := NoteLabel(AOwner, AParent, ATop, 2);
-  Result.Font.Color := clRed;
+  Result.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  Result.StyleElements := Result.StyleElements - [seFont];
 end;
 
 /// <summary>Zelle der Externals-Tabelle; zu lange Pfade mit „…“ und vollständig als Hinweis.</summary>
@@ -1103,7 +1108,9 @@ begin
     Exit;
   end;
   FBox.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalsCount, [Length(mFacts.SvnExternals)]);
-  FHint.Font.Color := clRed;
+  FHint.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FHint.StyleElements := FHint.StyleElements - [seFont];
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
   FBox.Height := FBox.ScaleValue(44 + 20 + Min(Length(mFacts.SvnExternals), cExternalRowsVisible) * cExternalRow);
@@ -1311,7 +1318,7 @@ end;
 constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
   const ASetup: TAtlasBranchDialogSetup);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FFacts := AFacts;
   FFilling := True;
   FNames := TAtlasBranchNamePart.Create(Self);
