@@ -28,6 +28,9 @@
 // dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
 // steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
 // Checking meldet eine laufende Anfrage für die Atlas-Statusleiste (#1155).
+// Angeforderte Dateien (#1817, „Mit Atlas prüfen“ in der Projektverwaltung)
+// gleicht der nächste Takt mit dem Text aus Editor bzw. Platte ab und holt sie,
+// auch ohne offenen Editor.
 // Projektprüfung (#1247): Der Server prüft als begrenzten Lauf; seinen Stand
 // (erledigt/gesamt, Pause, Ende) liefert jede Antwort auf workspace/diagnostic,
 // ProjectRun gibt ihn an die Statusleiste. Beginn und Ende des Debuggens gehen
@@ -131,6 +134,18 @@ type
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
     cWorkspaceTimeoutMs = 15000;
     cWorkspaceRetryMs = 15000;
+    /// <summary>Höchste Wartezeit des Holthreads auf neue Aufträge; danach sieht er nach, ob er enden soll.</summary>
+    cDocumentWakeMs = 1000;
+    /// <summary>Antwortet der Server schneller ohne Neues, wartet der Projektthread so lange vor der nächsten Frage.
+    /// </summary>
+    cWorkspaceQuietMs = 1000;
+    cTickMs = 250;
+    /// <summary>Abstand der Suche nach in der IDE geschlossenen, noch abgeglichenen Dateien.</summary>
+    cClosedCheckMs = 5000;
+    /// <summary>Nach gescheitertem Serverstart so lange warten.</summary>
+    cStartRetryMs = 30000;
+    /// <summary>Meldungsliste erst so lange nach der letzten Änderung des Speichers neu aufbauen.</summary>
+    cListDelayMs = 800;
   protected
     FSession: TAtlasProblemsSessionFunc;
     FLog: TAtlasProblemsLogProc;
@@ -219,6 +234,9 @@ type
     procedure PullIfDue(ASession: TLspSession; const AView: IOTAEditView; const AFileName, AText: string);
     /// <summary>Alle anderen abgeglichenen Dateien: Ihre Compilermeldungen können neu sein.</summary>
     function OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TAtlasProblemsSync.TPull>;
+    /// <summary>Angeforderte Dateien (#1817, TAtlasProblemsCheckRequest.RequestFiles) mit dem Text aus Editor bzw.
+    /// Platte abgleichen und holen.</summary>
+    procedure PullRequestedFiles;
   public
     constructor Create(const ASession: TAtlasProblemsSessionFunc; const ALog: TAtlasProblemsLogProc);
     destructor Destroy; override;
@@ -250,6 +268,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings;
@@ -376,7 +395,7 @@ var
 begin
   while not Terminated do
   begin
-    FWake.WaitFor(1000);
+    FWake.WaitFor(cDocumentWakeMs);
     System.TMonitor.Enter(FLock);
     try
       mJobs := FJobs;
@@ -502,9 +521,9 @@ begin
         Deliver(mChanged, mRun);
       end;
       // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
-      if (Length(mChanged) = 0) and (GetTickCount - mStarted < 1000) then
+      if (Length(mChanged) = 0) and (GetTickCount - mStarted < cWorkspaceQuietMs) then
       begin
-        FStop.WaitFor(1000);
+        FStop.WaitFor(cWorkspaceQuietMs);
       end;
     except
       on E: Exception do
@@ -569,7 +588,7 @@ begin
   FPainter := TAtlasProblemsPainter.Create(FStore);
   FList := TAtlasProblemsList.Create;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -891,6 +910,81 @@ begin
   FDocuments.Add(mPulls);
 end;
 
+/// <summary>Text von AFileName: aus dem Puffer, wenn die Datei in der IDE offen ist, sonst von der Platte. False,
+/// wenn sie sich nicht lesen lässt.</summary>
+function RequestedText(const AFileName: string; out AText: string): Boolean;
+var
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mBuffer: IOTAEditBuffer;
+  mIndex: Integer;
+begin
+  AText := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    mModule := mModules.FindModule(AFileName);
+  end;
+  if mModule <> nil then
+  begin
+    for mIndex := 0 to mModule.ModuleFileCount - 1 do
+    begin
+      if Supports(mModule.ModuleFileEditors[mIndex], IOTAEditBuffer, mBuffer) and
+        SameText(mBuffer.FileName, AFileName) then
+      begin
+        AText := TAtlasEditorBuffer.Text(mBuffer);
+        Exit(True);
+      end;
+    end;
+  end;
+  try
+    AText := TAtlasTextFile.LoadText(AFileName);
+    Result := True;
+  except
+    // Fehlt oder gesperrt: Die Datei bleibt ungeprüft, die übrigen nicht.
+    on EStreamError do
+      Result := False;
+  end;
+end;
+
+procedure TAtlasProblemsController.PullRequestedFiles;
+var
+  mFiles: TArray<string>;
+  mSession: TLspSession;
+  mFile, mText: string;
+  mPull: TPull;
+  mPulls: TArray<TPull>;
+begin
+  mFiles := TAtlasProblemsCheckRequest.TakeFiles;
+  if Length(mFiles) = 0 then
+  begin
+    Exit;
+  end;
+  mSession := FSession(True);
+  if mSession = nil then
+  begin
+    FLog('Problems: requested check dropped, no server');
+    Exit;
+  end;
+  EnsureWorkers(mSession);
+  mPulls := nil;
+  for mFile in mFiles do
+  begin
+    if not IsSource(mFile) or not RequestedText(mFile, mText) then
+    begin
+      Continue;
+    end;
+    // Ungeöffnete Dateien schließt CloseUnopened später wieder; ihre Befunde liefert dann workspace/diagnostic.
+    mSession.Sync(mFile, mText);
+    FPulled.AddOrSetValue(TAtlasProblemStore.Key(mFile), mText);
+    mPull := Default(TPull);
+    mPull.FileName := mFile;
+    mPull.Text := mText;
+    mPull.ReplaceCompiler := not FStore.Contains(mFile);
+    mPulls := mPulls + [mPull];
+  end;
+  FDocuments.Add(mPulls);
+end;
+
 function TAtlasProblemsController.PullDue(const AKey, AText: string; AModified: Boolean): Boolean;
 var
   mState: TAtlasProblemsRefreshState;
@@ -918,7 +1012,7 @@ begin
   FBuildTarget.Tick(ASession, GetTickCount);
   SyncPrevious(ASession, AFileName);
   PullIfDue(ASession, AView, AFileName, AText);
-  if GetTickCount - FClosedCheckAt >= 5000 then
+  if GetTickCount - FClosedCheckAt >= cClosedCheckMs then
   begin
     FClosedCheckAt := GetTickCount;
     CloseUnopened(ASession);
@@ -943,6 +1037,7 @@ begin
       Exit;
     end;
     CheckProjectsRemoved;
+    PullRequestedFiles;
     mView := TopSourceView;
     if mView <> nil then
     begin
@@ -950,7 +1045,7 @@ begin
       mSession := FSession(GetTickCount >= FRetryAt);
       if mSession = nil then
       begin
-        FRetryAt := GetTickCount + 30000;
+        FRetryAt := GetTickCount + cStartRetryMs;
       end
       else
       begin
@@ -1033,7 +1128,7 @@ begin
   begin
     FPaintedVersion := FStore.Version;
     TAtlasProblemsPainter.Invalidate;
-    FListDue := GetTickCount + 800;
+    FListDue := GetTickCount + cListDelayMs;
   end;
   mShow := ProblemsActive and TAtlasIdeSettings.Current.ProblemsMessageList;
   if (mShow <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then

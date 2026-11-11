@@ -44,6 +44,9 @@ type
     /// <summary>#1818: editor.trackLines mit Vorgabe an.</summary>
     [Test]
     procedure TrackLinesRoundTrip;
+    /// <summary>#1817: commands.projectContextMenu mit Vorgabe an.</summary>
+    [Test]
+    procedure ProjectContextMenuRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -626,6 +629,22 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.TrackLines);
 end;
+procedure TAtlasPluginSettingsTests.ProjectContextMenuRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ProjectContextMenu);
+  Store := TMemoryStore.Create;
+  Settings.ProjectContextMenu := False;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('ProjectContextMenu', 1));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ProjectContextMenu);
+end;
+
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
 var
   Store: IAtlasSettingsStore;

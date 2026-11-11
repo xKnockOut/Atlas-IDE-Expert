@@ -404,6 +404,7 @@ type
     property EditorKeysPriority: Boolean read FKeyPriorities.EditorKeysPriority write FKeyPriorities.EditorKeysPriority;
     property SlashCommands: Boolean read FCodeActions.SlashCommands write FCodeActions.SlashCommands;
     property GenerateMenu: Boolean read FCodeActions.GenerateMenu write FCodeActions.GenerateMenu;
+    property ProjectContextMenu: Boolean read FCodeActions.ProjectContextMenu write FCodeActions.ProjectContextMenu;
     property GenerateMenuKey: Integer read FEditingKeys.GenerateMenuKey write FEditingKeys.GenerateMenuKey;
     property GenerateMenuGroups: string read FCodeActions.GenerateMenuGroups write FCodeActions.GenerateMenuGroups;
     property GenerateMenuHidden: string read FCodeActions.GenerateMenuHidden write FCodeActions.GenerateMenuHidden;

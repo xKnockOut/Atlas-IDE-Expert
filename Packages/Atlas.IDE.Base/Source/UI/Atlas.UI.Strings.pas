@@ -710,6 +710,8 @@ type
     SettingsHoverSignatureParams,
     // Marken folgen ihrer Zeile sofort (#1818).
     SettingsTrackLines,
+    // Kontextmenü der Projektverwaltung (#1817).
+    SettingsProjectContextMenu, ProjectMenuCheck,
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
@@ -2400,6 +2402,8 @@ const
      'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
      'Parameter und Rückgabe im Hover immer untereinander zeigen, auch ohne XMLDoc',
      'Befunde folgen ihrer Zeile sofort beim Bearbeiten',
+     'Untermenü Atlas im Kontextmenü der Projektverwaltung',
+     'Mit Atlas prüfen',
      'Module',
      'Packages von Atlas',
      'installiert',
@@ -4033,6 +4037,8 @@ const
      'Members in the hover: max. lines before scrolling (0 = screen)',
      'Always list parameters and return value in the hover, also without XMLDoc',
      'Findings follow their line immediately while editing',
+     'Atlas submenu in the Project Manager context menu',
+     'Check with Atlas',
      'Modules',
      'Atlas packages',
      'installed',
