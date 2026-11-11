@@ -33,6 +33,8 @@ type
   /// <summary>Ein „Beginnen“ vom Prüfen der Arbeitskopie bis zum Ergebnis.</summary>
   TAtlasIssueStartJob = record
     Project: string;
+    /// <summary>Haupt-Arbeitskopie (#1926): erster Pfad aus issues.projects, sonst Ordner des Projekts.</summary>
+    Folder: string;
     Issue: TAtlasTrackerIssue;
     Plan: TAtlasIssueStartPlan;
     /// <summary>Lokale Änderungen der Arbeitskopie.</summary>
@@ -112,7 +114,8 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.Workflow;
+  Atlas.IDE.Tracker.Workflow,
+  Atlas.IDE.Tracker.WorkingCopies;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung bei „Beginnen“.</summary>
@@ -132,7 +135,7 @@ var
   mBranching: IAtlasVcsBranching;
   mExists: Boolean;
 begin
-  mVcs := TAtlasIdeVcs.ForFolder(ExtractFileDir(Project), TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
+  mVcs := TAtlasIdeVcs.ForFolder(Folder, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
   mKind := TAtlasVcsKind.None;
   if mVcs <> nil then
   begin
@@ -162,7 +165,7 @@ var
   mVcs: IAtlasVersionControl;
   mBranching: IAtlasVcsBranching;
 begin
-  mDir := ExtractFileDir(Project);
+  mDir := Folder;
   if UseRequest then
   begin
     Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), Plan,
@@ -309,7 +312,7 @@ begin
   mKeep := FContext.Actions;
   mOwner := Self;
   mIssue := AIssue;
-  mProject := FContext.CurrentProject;
+  mProject := FContext.Selection.CurrentProject;
   mTarget := FContext.TargetOf(mProject);
   // Sperrt ein zweites „Beginnen“, solange die Prüfung läuft.
   FContext.StartProject := mProject;
@@ -365,7 +368,8 @@ begin
     Exit;
   end;
   mJob := Default(TAtlasIssueStartJob);
-  mJob.Project := FContext.CurrentProject;
+  mJob.Project := FContext.Selection.CurrentProject;
+  mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Issue := AIssue;
   mJob.Facts := TAtlasVcsBranchFacts.Empty;
   FContext.StartProject := mJob.Project;
@@ -477,7 +481,7 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasIdeVcs.Dialogs.AskBranch(ExtractFileDir(AJob.Project), AJob.Facts, AJob.Plan.Branch,
+  Result := TAtlasIdeVcs.Dialogs.AskBranch(AJob.Folder, AJob.Facts, AJob.Plan.Branch,
     AJob.Plan.Message, AJob.Issue.Key, AJob.Plan.Svn, True, AJob.Request, mNeverAsk);
   if not Result then
   begin
@@ -628,6 +632,7 @@ begin
   begin
     FContext.Welcome.Refresh(AJob.Project);
   end;
+  FContext.Selection.ForgetHead(AJob.Folder);
   FContext.Changed;
   // Nur der Push danach scheiterte (#1289): der lokale Branch bleibt, die Meldung nennt den Grund.
   if AJob.Outcome.PushFailed then
@@ -641,8 +646,13 @@ procedure TAtlasIdeIssueStart.OpenAfter(const AJob: TAtlasIssueStartJob);
 var
   mOpen: string;
 begin
-  // Danach das Projekt öffnen (ein offenes bleibt offen); im worktree nur nach Rückfrage das dortige.
-  if (FContext.Welcome <> nil) and (AJob.Outcome.Folder = '') then
+  // Danach das Projekt öffnen (ein offenes bleibt offen); im worktree nur nach Rückfrage das dortige. Ein Ordner
+  // als gewähltes Tracker-Projekt (#1927) lässt sich nicht öffnen.
+  if not TAtlasIdeFiles.IsProjectFile(AJob.Project) then
+  begin
+    // Nichts zu öffnen.
+  end
+  else if (FContext.Welcome <> nil) and (AJob.Outcome.Folder = '') then
   begin
     FContext.Welcome.Open(AJob.Project);
   end
@@ -726,7 +736,7 @@ begin
       mCurrent: TAtlasActiveIssue;
       mProvider: IAtlasTrackerProvider;
     begin
-      mProject := FContext.CurrentProject;
+      mProject := FContext.Selection.CurrentProject;
       if not FContext.Started or (mProject = '') then
       begin
         Exit;
@@ -767,7 +777,8 @@ begin
   // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits).
   if FServices.Time <> nil then
   begin
-    FServices.Time.Ended(FServices.TimeIssueOf(AProject, AKey), ExtractFileDir(AProject), ABranch,
+    FServices.Time.Ended(FServices.TimeIssueOf(AProject, AKey), TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
+      ABranch,
       TAtlasIdeSettings.Current.IssuesBranchBase);
   end;
   FContext.Notice := TAtlasIssuesNotice.Create(AProject,
@@ -798,7 +809,8 @@ begin
   begin
     mPullRequest := AProvider.PullRequestPage(ATarget, mIssue.PullRequest.Number);
   end;
-  FServices.Sync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch, ExtractFileDir(AProject),
+  FServices.Sync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch,
+    TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
     TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest),
     procedure(AChange: TAtlasTrackerWrite)
     begin

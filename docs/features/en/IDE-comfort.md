@@ -37,6 +37,10 @@ Back to the [README](../../../README.md)
   - the token only in the Windows credential store
 - "Check" detects a German YouTrack interface and the default query follows it.
 - Personal assignment of Delphi projects, project groups or folders to a connection and tracker project (`issues.projects`, the `.atlas` wins)
+- Working copies per tracker project (`issues.projects[].paths`, column "Working copies"): "Start" creates the branch in the first one and then opens the project; "Check" shows kind and branch per folder
+- "Suggest…" finds working copies where Atlas has already been: the row's working copy, svn:externals or submodules, the projects of the group and, for GitHub, recently opened projects whose origin matches, worktrees included (`issues.suggestPaths`)
+- Picker "Project: … ▾" in "My issues": "Automatic" (follows the Delphi project) or a fixed tracker project, independent of the open folder (`issues.projectPicker`, remembered in `issues.welcomeProject`)
+- "All tracker projects": one group per tracker project with hit count, at most `issues.allProjects.perGroup` rows, one query for all, a note only on the group without access (`issues.allProjects`)
   - with "No tracker for this project – assign …" in "My issues"
 
 ### Queries
