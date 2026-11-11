@@ -406,6 +406,8 @@ type
     BreadcrumbsOverloads: Boolean;
     /// <summary>Interface-Marke an Methodengliedern (#1785, editor.breadcrumbsInterfaces).</summary>
     BreadcrumbsInterfaces: Boolean;
+    /// <summary>Kennzahlen-Karte an Methoden- und Typgliedern (#1787, editor.breadcrumbsMetrics).</summary>
+    BreadcrumbsMetrics: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -903,6 +905,7 @@ begin
   Result.BreadcrumbsContextMenu := True;
   Result.BreadcrumbsOverloads := True;
   Result.BreadcrumbsInterfaces := True;
+  Result.BreadcrumbsMetrics := True;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -940,6 +943,7 @@ begin
   AIo.Flag('BreadcrumbsContextMenu', BreadcrumbsContextMenu);
   AIo.Flag('BreadcrumbsOverloads', BreadcrumbsOverloads);
   AIo.Flag('BreadcrumbsInterfaces', BreadcrumbsInterfaces);
+  AIo.Flag('BreadcrumbsMetrics', BreadcrumbsMetrics);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);

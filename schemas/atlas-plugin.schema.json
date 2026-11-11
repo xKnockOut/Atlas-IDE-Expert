@@ -4627,6 +4627,16 @@
       "x-parent": "editor.breadcrumbs",
       "x-issue": "#1785"
     },
+    "BreadcrumbsMetrics": {
+      "description": "Überfährt die Maus ein Methoden- oder Typglied, zeigt nach der Tooltip-Verzögerung eine Karte mit Kopfzeile und Kennzahlen: bei Methoden Zeilen, zyklomatische Komplexität, Verschachtelungstiefe und Parameter, bei Typen Zeilen, Mitglieder und Vererbungstiefe. Werte über der Grenze aus atlas.json stehen gelb mit der Grenze, etwa „86 (Grenze 60)“. Strg+I mit Fokus auf der Leiste zeigt dieselbe Karte. Quelle sind dieselben Metriken wie die Metrik-Linse; fehlen sie, steht nur die Kopfzeile und „Kennzahlen noch nicht verfügbar“. Aus: nur der bisherige Hinweis.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsMetrics",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
+      "x-issue": "#1787"
+    },
     "BreadcrumbsIdeColors": {
       "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
       "type": "boolean",
