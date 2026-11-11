@@ -116,6 +116,7 @@ end;
 procedure TAtlasIdeDesignerCommands.ApplyTheme;
 begin
   FNavigate.ApplyTheme;
+  FArrange.ApplyTheme;
 end;
 
 end.
