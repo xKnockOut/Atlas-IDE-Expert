@@ -302,6 +302,13 @@ begin
   end;
 end;
 
+const
+  /// <summary>Punkte der Hinweislinie: Länge und Abstand in Pixeln.</summary>
+  cDotLength = 2;
+  cDotStep = 4;
+  /// <summary>Mindestbreite einer Markierung in Pixeln.</summary>
+  cMinMarkWidth = 4;
+
 /// <summary>Gepunktete Linie (Hinweis).</summary>
 procedure DrawDots(ADC: HDC; ALeft, ARight, AY: Integer);
 var
@@ -311,8 +318,8 @@ begin
   while mX < ARight do
   begin
     MoveToEx(ADC, mX, AY, nil);
-    LineTo(ADC, mX + 2, AY);
-    Inc(mX, 4);
+    LineTo(ADC, mX + cDotLength, AY);
+    Inc(mX, cDotStep);
   end;
 end;
 
@@ -436,7 +443,7 @@ begin
       mFirst := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mFrom, ATabWidth), AContext.EditorLineNum);
       mLast := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mTill, ATabWidth), AContext.EditorLineNum);
       mLeft := mFirst.Left;
-      mRight := Max(mLast.Left, mLeft + Max(4, mFirst.Width));
+      mRight := Max(mLast.Left, mLeft + Max(cMinMarkWidth, mFirst.Width));
       DrawMark(mDC, TColor(ProblemColor(mColors, mProblem)), mProblem, mLeft, mRight, ARect);
       TAtlasIdeElements.Painted(HideTargetOf(AContext.FileName, mProblem, mLine, AText),
         TRect.Create(mLeft, ARect.Top, mRight, ARect.Bottom), AContext.EditView.TopRow, ARect.Height);

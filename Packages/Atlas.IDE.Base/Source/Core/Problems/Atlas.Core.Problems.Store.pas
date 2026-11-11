@@ -101,7 +101,7 @@ type
     function Find(const AFileName: string): TEntry;
     function Ensure(const AFileName: string): TEntry;
     /// <summary>Neuer Stand für AEntry (Stamp).</summary>
-    procedure Touch(AEntry: TEntry);
+    class procedure Touch(AEntry: TEntry); static;
     /// <summary>Positionen auf ANewText bringen; ADropDeleted: Meldungen in rein gelöschten Zeilen entfernen.
     /// </summary>
     class procedure Shift(AEntry: TEntry; const ANewText: string; ADropDeleted: Boolean); static;
@@ -327,7 +327,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemEntries.Touch(AEntry: TEntry);
+class procedure TAtlasProblemEntries.Touch(AEntry: TEntry);
 begin
   Inc(FLastStamp);
   AEntry.FStamp := FLastStamp;
