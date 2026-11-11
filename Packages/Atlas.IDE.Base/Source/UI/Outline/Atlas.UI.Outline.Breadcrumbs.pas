@@ -585,6 +585,8 @@ end;
 
 function TAtlasBreadcrumbLayout.Shown(AIndex: Integer): Boolean;
 begin
+  // Erst anordnen wie CrumbRect: Nach neuer Breite oder neuen Gliedern gälte sonst die alte Auswahl.
+  Layout;
   Result := (AIndex >= FFirstShown) and (AIndex <= High(FCrumbs)) and
     ((AIndex > High(FDropped)) or not FDropped[AIndex]);
 end;
