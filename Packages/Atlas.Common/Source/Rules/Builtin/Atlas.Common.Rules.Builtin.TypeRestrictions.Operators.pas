@@ -57,7 +57,6 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
-  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

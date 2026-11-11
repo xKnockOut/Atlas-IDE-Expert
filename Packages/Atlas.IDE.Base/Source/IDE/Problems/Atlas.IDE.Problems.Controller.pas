@@ -250,7 +250,6 @@ uses
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings;
 

@@ -80,8 +80,7 @@ uses
   Atlas.Core.Settings.StoreValues,
   Atlas.Core.Settings.PageNames,
   Atlas.Core.Modules.Registry,
-  Atlas.UI.Strings,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.UI.Strings;
 
 const
   cSectionKeyMissing = 'Einstellung %s ist keine Plugin-Einstellung';

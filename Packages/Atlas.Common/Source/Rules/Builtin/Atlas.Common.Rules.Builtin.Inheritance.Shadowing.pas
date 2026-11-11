@@ -32,7 +32,6 @@ uses
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Localization.Texts;

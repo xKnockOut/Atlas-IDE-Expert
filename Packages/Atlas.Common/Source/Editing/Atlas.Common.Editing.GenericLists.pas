@@ -97,7 +97,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.GenericLists.Kinds,

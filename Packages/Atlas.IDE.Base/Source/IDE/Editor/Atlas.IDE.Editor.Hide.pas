@@ -29,7 +29,6 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Settings.HiddenPlaces,
   Atlas.UI.Editor.Hide;

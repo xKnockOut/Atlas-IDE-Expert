@@ -41,7 +41,6 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WatchedFiles,
-  Atlas.Common.Lsp.IdeTypes,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,

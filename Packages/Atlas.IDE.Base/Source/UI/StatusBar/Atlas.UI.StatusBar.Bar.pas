@@ -45,7 +45,6 @@ uses
   Vcl.Menus,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
   Atlas.Core.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
