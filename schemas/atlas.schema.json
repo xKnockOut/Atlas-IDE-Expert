@@ -3647,6 +3647,14 @@
                 "examples": ["KASSE", "owner/repo"],
                 "description": "Tracker-Projekt: YouTrack-Projekt-ID, bei GitHub owner/repo.",
                 "x-description-en": "Tracker project: YouTrack project id, for GitHub owner/repo."
+              },
+              "paths": {
+                "type": "array",
+                "default": [],
+                "items": { "type": "string", "minLength": 1 },
+                "examples": [["D:\\SVN\\Kasse\\trunk", "D:\\SVN\\Basis\\Packages\\trunk"]],
+                "description": "Arbeitskopien des Tracker-Projekts in Git bzw. SVN (#1926); die erste ist die Haupt-Arbeitskopie („Beginnen“ legt dort den Branch an, Branch und Reiter „Entwicklung“ lesen dort), weitere gehen mit vcs.externals.branch beim Branch mit. Leer = Ordner aus match.",
+                "x-description-en": "Working copies of the tracker project in Git or SVN (#1926); the first is the main working copy (“Start” creates the branch there, branch and the “Development” tab read there), further ones follow the branch with vcs.externals.branch. Empty = folder from match."
               }
             }
           }

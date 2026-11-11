@@ -18,6 +18,10 @@ Zurück zum [README](../../../README_DE.md)
 - alle Tracker-Einstellungen unter `issues.*` auf der eigenen Seite *Tools › Optionen › Atlas › Issue-Tracker* (frühere `welcomePage.issues.*`-Werte übernimmt Atlas beim ersten Start)
 - mehrere Tracker-Verbindungen nebeneinander (`issues.connections`) mit Token-Zustand und „Prüfen“, das Token nur im Anmeldespeicher von Windows
 - persönliche Zuordnung von Delphi-Projekten, Projektgruppen oder Ordnern zu Verbindung und Tracker-Projekt (`issues.projects`, die `.atlas` gewinnt), mit „Kein Tracker für dieses Projekt – zuordnen …“ in „Meine Issues“
+- Arbeitskopien je Tracker-Projekt (`issues.projects[].paths`, Spalte „Arbeitskopien“): „Beginnen“ legt den Branch in der ersten an und öffnet danach das Projekt; „Prüfen“ zeigt Art und Branch je Ordner
+- „Vorschlagen …“ findet Arbeitskopien dort, wo Atlas schon war: Arbeitskopie der Zeile, svn:externals bzw. Submodule, Projekte der Gruppe und bei GitHub die zuletzt geöffneten Projekte mit passendem origin, auch Worktrees (`issues.suggestPaths`)
+- Klappliste „Projekt: … ▾“ in „Meine Issues“: „Automatisch“ (nach dem Delphi-Projekt) oder ein festes Tracker-Projekt, unabhängig vom geöffneten Ordner (`issues.projectPicker`, gemerkt in `issues.welcomeProject`)
+- „Alle Tracker-Projekte“: eine Gruppe je Tracker-Projekt mit Trefferzahl, höchstens `issues.allProjects.perGroup` Zeilen, eine Abfrage für alle, Hinweis nur bei der Gruppe ohne Zugang (`issues.allProjects`)
 
 ### Abfragen
 

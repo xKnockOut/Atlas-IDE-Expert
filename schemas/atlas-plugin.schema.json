@@ -6209,6 +6209,59 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1262"
     },
+    "IssuesProjectPicker": {
+      "type": "boolean",
+      "default": true,
+      "description": "Klappliste „Tracker-Projekt“ vor der Abfrage im Kopf von „Meine Issues“ (#1927): „Automatisch“ (nach dem Delphi-Projekt wie bisher) oder ein Tracker-Projekt aus der Tabelle Projekte, unabhängig vom Ordner; aus = keine Klappliste, das Tracker-Projekt folgt dem Delphi-Projekt.",
+      "x-key": "issues.projectPicker",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1927"
+    },
+    "IssuesWelcomeProject": {
+      "type": "string",
+      "default": "",
+      "examples": ["KASSE@YouTrack", "*"],
+      "description": "In „Meine Issues“ gewähltes Tracker-Projekt (#1927), von der Klappliste geschrieben: leer = automatisch nach dem Delphi-Projekt, \"<projekt>@<verbindung>\" = fest, \"*\" = alle Tracker-Projekte (#1928). Gibt es die Zeile nicht mehr, gilt automatisch.",
+      "x-key": "issues.welcomeProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste in „Meine Issues“",
+      "x-issue": "#1927"
+    },
+    "IssuesAllProjects": {
+      "type": "boolean",
+      "default": true,
+      "description": "Eintrag „Alle Tracker-Projekte“ in der Klappliste „Tracker-Projekt“ (#1928): eine Gruppe je Tracker-Projekt mit Trefferzahl; aus = kein Eintrag.",
+      "x-key": "issues.allProjects",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1928"
+    },
+    "IssuesAllProjectsPerGroup": {
+      "type": "integer",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 20,
+      "description": "Zeilen je Gruppe in „Alle Tracker-Projekte“ (#1928); der Rest steht hinter „+ N weitere“.",
+      "x-key": "issues.allProjects.perGroup",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Zahl (1–20)",
+      "x-issue": "#1928"
+    },
+    "IssuesSuggestPaths": {
+      "type": "boolean",
+      "default": true,
+      "description": "Knopf „Vorschlagen …“ bei den Arbeitskopien eines Tracker-Projekts (#1929): Funde aus der Projektdatei, deren Externals bzw. Submodulen, der .groupproj und bei GitHub den zuletzt geöffneten Projekten mit passendem origin; aus = kein Knopf.",
+      "x-key": "issues.suggestPaths",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1929"
+    },
     "IssuesCreate": {
       "type": "boolean",
       "default": true,

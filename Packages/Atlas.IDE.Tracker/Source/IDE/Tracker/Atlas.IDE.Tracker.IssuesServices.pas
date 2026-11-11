@@ -96,7 +96,8 @@ uses
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Connections,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Tracker.WorkingCopies;
 
 type
   /// <summary>Was die Hooks der Dienste einfangen: den Besitzer (hält ihn bis Stop), Kontext und Dienste.
@@ -369,7 +370,8 @@ begin
   Result.Folder :=
     function: string
     begin
-      Result := ExtractFileDir(mLink.Project);
+      // Haupt-Arbeitskopie (#1926), sonst der Ordner des Projekts.
+      Result := TAtlasIdeTrackerWorkingCopies.FolderOf(mLink.Project);
     end;
 end;
 
@@ -599,7 +601,12 @@ begin
   Result.Project :=
     function: string
     begin
-      Result := mLink.Project;
+      // Bei „Alle Tracker-Projekte“ (#1928) zeigt die Kachel nichts: Sie kennt nur ein Board.
+      Result := '';
+      if (mLink.Keep <> nil) and not mLink.Context.AllMode then
+      begin
+        Result := mLink.Project;
+      end;
     end;
   Result.Target :=
     function(AProject: string): TAtlasTrackerTarget

@@ -32,6 +32,10 @@
 //                "gitDir": "C:\\…\\.git"}
 //   Unbekannte Felder im Abschnitt gehen beim Schreiben verloren; die übrige
 //   Datei bleibt unverändert (Format 1). Nie Zugangsdaten.
+// - Tracker-Projekt wählen (#1927) und „Alle Tracker-Projekte“ (#1928): Die
+//   IDE legt die Wahl in die Ansicht (ProjectChoices, ProjectKey); bei „Alle“
+//   hängt AddGroup je Tracker-Projekt höchstens PerGroup Zeilen an Items und
+//   merkt Kopf, Trefferzahl und Zustand der Gruppe in Groups.
 
 interface
 
@@ -202,6 +206,24 @@ type
     function Succeeded: Boolean;
   end;
 
+  /// <summary>Kopf einer Gruppe bei „Alle Tracker-Projekte“ (#1928).</summary>
+  TAtlasIssuesGroup = record
+    /// <summary>„Verbindung · Tracker-Projekt“.</summary>
+    Caption: string;
+    /// <summary>Projekt (Pfad aus „Gilt für“), für „Beginnen“ der Zeilen dieser Gruppe.</summary>
+    Project: string;
+    /// <summary>Index der ersten Zeile in Items; bei einer leeren Gruppe der der nächsten.</summary>
+    First: Integer;
+    /// <summary>Gezeigte und gefundene Zeilen.</summary>
+    Shown: Integer;
+    Total: Integer;
+    Status: TAtlasIssuesStatus;
+    Error: TAtlasCiFetchError;
+    Querying: Boolean;
+    /// <summary>Weitere, nicht gezeigte Zeilen („+ N weitere“).</summary>
+    function More: Integer;
+  end;
+
   TAtlasIssuesView = record
     Status: TAtlasIssuesStatus;
     Error: TAtlasCiFetchError;
@@ -243,6 +265,17 @@ type
     Filter: string;
     /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
     Unseen: TArray<string>;
+    /// <summary>Klappliste „Tracker-Projekt“ (#1927, issues.projectPicker), ihre Einträge und die Wahl ('' =
+    /// automatisch, "*" = alle, sonst „projekt@verbindung“).</summary>
+    ProjectPicker: Boolean;
+    ProjectChoices: TArray<TAtlasTrackerChoice>;
+    ProjectKey: string;
+    /// <summary>Eintrag „Alle Tracker-Projekte“ anbieten (issues.allProjects).</summary>
+    AllProjects: Boolean;
+    /// <summary>Name des Delphi-Projekts, nach dem „Automatisch“ wählt; '' ohne.</summary>
+    AutomaticName: string;
+    /// <summary>Gruppen bei „Alle“ (#1928); leer sonst.</summary>
+    Groups: TArray<TAtlasIssuesGroup>;
     /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
     function OpenCount: Integer;
     /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
@@ -303,6 +336,12 @@ type
       ABranch: string): TAtlasActiveIssue; static;
     class function View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
       const ABranch: string): TAtlasIssuesView; static;
+    /// <summary>„Alle Tracker-Projekte“ (#1928): höchstens APerGroup Zeilen aus AGroup an AView.Items hängen und
+    /// den Kopf (ACaption, AProject) an AView.Groups.</summary>
+    class procedure AddGroup(var AView: TAtlasIssuesView; const ACaption, AProject: string;
+      const AGroup: TAtlasIssuesView; APerGroup: Integer); static;
+    /// <summary>Gruppe der Zeile AIndex; -1 ohne Gruppen.</summary>
+    class function GroupOf(const AView: TAtlasIssuesView; AIndex: Integer): Integer; static;
     /// <summary>Je Abfrage aus AQueries die Trefferzahl der letzten Abfrage (-1 = noch keine), für die Klappliste
     /// (#1262).</summary>
     class function QueryCounts(const AState: TAtlasIssuesState;
@@ -347,6 +386,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.VersionControl.BranchNames,
@@ -606,6 +646,13 @@ begin
   end;
 end;
 
+{ TAtlasIssuesGroup }
+
+function TAtlasIssuesGroup.More: Integer;
+begin
+  Result := Total - Shown;
+end;
+
 { TAtlasIssuesView }
 
 function TAtlasIssuesView.OpenCount: Integer;
@@ -806,6 +853,43 @@ begin
   if AState.Find(mKey, mIssue) then
   begin
     Result.Title := mIssue.Title;
+  end;
+end;
+
+class procedure TAtlasMyIssues.AddGroup(var AView: TAtlasIssuesView; const ACaption, AProject: string;
+  const AGroup: TAtlasIssuesView; APerGroup: Integer);
+var
+  mGroup: TAtlasIssuesGroup;
+  mIndex: Integer;
+begin
+  mGroup := Default(TAtlasIssuesGroup);
+  mGroup.Caption := ACaption;
+  mGroup.Project := AProject;
+  mGroup.First := Length(AView.Items);
+  mGroup.Total := Length(AGroup.Items);
+  mGroup.Shown := Min(mGroup.Total, Max(1, APerGroup));
+  mGroup.Status := AGroup.Status;
+  mGroup.Error := AGroup.Error;
+  mGroup.Querying := AGroup.Querying;
+  for mIndex := 0 to mGroup.Shown - 1 do
+  begin
+    AView.Items := AView.Items + [AGroup.Items[mIndex]];
+  end;
+  AView.Unseen := AView.Unseen + AGroup.Unseen;
+  AView.Groups := AView.Groups + [mGroup];
+end;
+
+class function TAtlasMyIssues.GroupOf(const AView: TAtlasIssuesView; AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AView.Groups) do
+  begin
+    if AView.Groups[mIndex].First <= AIndex then
+    begin
+      Result := mIndex;
+    end;
   end;
 end;
 

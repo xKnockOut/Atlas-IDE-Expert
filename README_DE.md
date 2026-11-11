@@ -90,7 +90,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten
-- **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE
+- **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE; „Meine Issues“ zeigt auf Wunsch ein festes oder alle Tracker-Projekte, mit Arbeitskopien je Tracker-Projekt
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
 - **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Module) und rechtsbündigen Tastenkürzeln
 - **Robustheit:** Fehler erreichen nie die IDE, sicherer Start, nachspielbare Absturzfälle

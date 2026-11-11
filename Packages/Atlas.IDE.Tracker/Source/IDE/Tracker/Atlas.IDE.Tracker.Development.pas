@@ -132,7 +132,8 @@ uses
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Tracker.WorkingCopies;
 
 { TAtlasIdeIssueDevelopment }
 
@@ -496,6 +497,8 @@ type
   TLoadJob = record
     Generation: Integer;
     Project: string;
+    /// <summary>Haupt-Arbeitskopie (#1926), im Hauptthread bestimmt.</summary>
+    Folder: string;
     Request: TAtlasIssueDevelopmentRequest;
     Target: TAtlasTrackerTarget;
     Provider: IAtlasTrackerProvider;
@@ -508,7 +511,7 @@ begin
   try
     if AJob.Project <> '' then
     begin
-      TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(ExtractFileDir(AJob.Project),
+      TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(AJob.Folder,
         TAtlasIdeIssueDevelopment.cVcsTimeoutMs), AJob.Request, AResult);
     end;
   except
@@ -619,6 +622,7 @@ begin
   mJob := Default(TLoadJob);
   mJob.Generation := FGeneration;
   mJob.Project := ProjectFile;
+  mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Target := FTarget;
   mJob.Request := TAtlasIssueDevelopmentRequest.Create(FTarget.Provider, FTarget.Project, FKey,
     Bases(TAtlasIdeSettings.Current.IssuesBranchBase), GroupProjects);
@@ -735,7 +739,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if not FStarted or (mFolder = '') then
   begin
     Exit;
@@ -802,7 +806,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if not FStarted or (mFolder = '') then
   begin
     Exit;
@@ -869,7 +873,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if not FStarted or (mFolder = '') or ABranch.Current then
   begin
     Exit;
@@ -914,7 +918,7 @@ begin
   begin
     Exit;
   end;
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if mFolder = '' then
   begin
     Exit;

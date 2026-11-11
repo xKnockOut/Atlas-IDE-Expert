@@ -42,6 +42,14 @@ type
   /// TrackerValuesDone.</summary>
   TAtlasTrackerValuesEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
     const AStateField: string);
+  /// <summary>„Prüfen“ der Arbeitskopien (#1926): je Ordner Art und Branch im Hintergrund; ADone bekommt je Ordner
+  /// eine Zeile (Hauptthread).</summary>
+  TAtlasTrackerPathsCheckEvent = reference to procedure(const AFolders: TArray<string>;
+    const ADone: TProc<TArray<string>>);
+  /// <summary>„Vorschlagen …“ (#1929): Dialog mit Funden für AMapping; True und die angehakten Ordner in APaths bei
+  /// „Übernehmen“, True mit leerem APaths nach „Ordner selbst wählen …“.</summary>
+  TAtlasTrackerPathsSuggestEvent = reference to function(const AMapping: TAtlasTrackerProjectMapping;
+    out APaths: TArray<string>): Boolean;
   /// <summary>Eine Tabelle hat sich geändert; die folgenden bauen neu auf.</summary>
   TAtlasTrackerTableChanged = procedure of object;
 
@@ -58,6 +66,8 @@ type
     FOnQueryEdit: TAtlasTrackerQueryEditEvent;
     FOnContext: TFunc<TAtlasTrackerProjectContext>;
     FOnBrowse: TAtlasTrackerBrowseEvent;
+    FOnCheckPaths: TAtlasTrackerPathsCheckEvent;
+    FOnSuggestPaths: TAtlasTrackerPathsSuggestEvent;
   public
     /// <summary>Zustand je Server (ohne Netz); nil = „fehlt“.</summary>
     property OnState: TAtlasTrackerStateEvent read FOnState write FOnState;
@@ -79,6 +89,10 @@ type
     property OnContext: TFunc<TAtlasTrackerProjectContext> read FOnContext write FOnContext;
     /// <summary>„Hinzufügen …“ (#1261); nil = Datei- bzw. Ordnerauswahl von Windows.</summary>
     property OnBrowse: TAtlasTrackerBrowseEvent read FOnBrowse write FOnBrowse;
+    /// <summary>„Prüfen“ der Arbeitskopien (#1926); nil = Knopf gesperrt.</summary>
+    property OnCheckPaths: TAtlasTrackerPathsCheckEvent read FOnCheckPaths write FOnCheckPaths;
+    /// <summary>„Vorschlagen …“ (#1929); nil = kein Knopf (auch mit issues.suggestPaths aus).</summary>
+    property OnSuggestPaths: TAtlasTrackerPathsSuggestEvent read FOnSuggestPaths write FOnSuggestPaths;
   end;
 
   /// <summary>Zeilen des Abschnitts über den Host der Seite.</summary>

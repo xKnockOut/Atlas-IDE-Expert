@@ -24,7 +24,10 @@
 // (3) ▾“ mit den passenden Abfragen samt Trefferzahl der letzten Abfrage und
 // „Abfragen bearbeiten …“ (issues.queryPicker aus: keine Klappliste). Unter
 // der Fußzeile eine Zeile mit Verbindung, Tracker-Projekt und der gesendeten
-// Abfrage.
+// Abfrage. Links in derselben Zeile die Klappliste „Projekt: … ▾“ (#1927,
+// TAtlasTrackerProjectPicker). Bei „Alle Tracker-Projekte“ (#1928) steht vor
+// jeder Gruppe eine Kopfzeile „YouTrack · KASSE (7)“ mit „+ N weitere“ bzw.
+// dem Hinweis der Gruppe (kein Zugang, Fehler, keine Issues).
 // Daten und Aktionen kommen über IAtlasIssuesSource aus der IDE-Schicht;
 // Aktionen gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -45,6 +48,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Style.Canvas,
+  Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.TileView;
 
 type
@@ -75,6 +79,11 @@ type
     procedure EditQueries;
     /// <summary>Filter der Sprint-Kachel aufheben (#1277): wieder alle meine Issues.</summary>
     procedure ClearFilter;
+    /// <summary>Tracker-Projekt wählen (#1927): '' = automatisch, "*" = alle (#1928), sonst
+    /// „projekt@verbindung“.</summary>
+    procedure SelectProject(const AKey: string);
+    /// <summary>„Tracker-Projekte bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
+    procedure EditProjects;
   end;
 
 {$SCOPEDENUMS ON}
@@ -116,6 +125,11 @@ type
     /// <summary>Klappliste sichtbar: eingeschaltet und Tracker mit Abfragen.</summary>
     class function ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean; static;
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
+    /// <summary>Kopf einer Gruppe bei „Alle“ (#1928): „YouTrack · KASSE (7)“.</summary>
+    class function GroupCaption(const AGroup: TAtlasIssuesGroup): string; static;
+    /// <summary>Rechts im Kopf: „+ N weitere“, wird abgefragt, kein Zugang, Fehler bzw. keine Issues; '' sonst.
+    /// </summary>
+    class function GroupNote(const AGroup: TAtlasIssuesGroup): string; static;
     /// <summary>„PR #760 · CI grün“, „PR #760 (Entwurf)“; '' ohne Pull Request.</summary>
     class function PullRequestText(const APull: TAtlasTrackerPullRequest): string; static;
     class function ChecksColor(AChecks: TAtlasTrackerChecks): TColor; static;
@@ -166,6 +180,10 @@ type
     procedure PaintFilter(ACanvas: TCanvas);
     procedure PaintSource(ACanvas: TCanvas);
     procedure PaintFooter(ACanvas: TCanvas);
+    /// <summary>Kopfzeilen der Gruppen bei „Alle“ (#1928).</summary>
+    procedure PaintGroups(ACanvas: TCanvas);
+    /// <summary>Kopfzeilen über Zeile AIndex und davor (Gruppen mit First höchstens AIndex).</summary>
+    function GroupsAbove(AIndex: Integer): Integer;
     function HitRow(AIndex: Integer; const APoint: TPoint): TAtlasIssuesHit;
   public
     constructor Create(AOwner: TAtlasTrackerIssuesView);
@@ -229,11 +247,13 @@ type
     FBar: TPanel;
     FLabel: TLabel;
     FMenu: TPopupMenu;
+    FProjects: TAtlasTrackerProjectPicker;
     procedure LabelClick(Sender: TObject);
     procedure ItemClick(Sender: TObject);
     procedure EditClick(Sender: TObject);
   public
     constructor Create(AOwner: TAtlasTrackerIssuesView);
+    destructor Destroy; override;
     /// <summary>Sichtbarkeit und Beschriftung nach dem Stand der Ansicht.</summary>
     procedure Update;
     /// <summary>Klappliste füllen (auch für Tests): passende Abfragen, die gewählte mit Haken, dann
@@ -242,6 +262,8 @@ type
     property Bar: TPanel read FBar;
     property QueryLabel: TLabel read FLabel;
     property QueryMenu: TPopupMenu read FMenu;
+    /// <summary>Klappliste „Tracker-Projekt“ (#1927) links in derselben Zeile.</summary>
+    property Projects: TAtlasTrackerProjectPicker read FProjects;
   end;
 
   /// <summary>Aktion der Quelle, nach dem eigenen Ereignis ausgeführt.</summary>
@@ -322,7 +344,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings;
 
 const
   cSeparator = ' · ';
@@ -334,6 +357,7 @@ const
   cHintKeyFormat = '%d:%d';
   /// <summary>Ränder der Klappliste (links, oben, rechts).</summary>
   cQueryMargin = 4;
+  cGroupTextOffset = 3;
   cQueryMarginRight = 6;
   // Dieselben Töne wie „Testergebnisse“ und „Projekte“: lesbar im hellen und im dunklen Thema.
   cGreenColor = TColor($0043A02E);
@@ -421,6 +445,42 @@ begin
   end;
 end;
 
+class function TAtlasTrackerIssuesText.GroupCaption(const AGroup: TAtlasIssuesGroup): string;
+begin
+  Result := Format(cQueryCaptionCount, [AGroup.Caption, AGroup.Total], TFormatSettings.Invariant);
+end;
+
+class function TAtlasTrackerIssuesText.GroupNote(const AGroup: TAtlasIssuesGroup): string;
+begin
+  Result := '';
+  if AGroup.Querying then
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupQuerying);
+  end
+  else if (AGroup.Status = TAtlasIssuesStatus.NotConfigured) or ((AGroup.Status in [TAtlasIssuesStatus.Failed,
+    TAtlasIssuesStatus.Stale]) and (AGroup.Error in [TAtlasCiFetchError.NoCredentials,
+    TAtlasCiFetchError.Unauthorized])) then
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupNoAccess);
+  end
+  else if AGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale] then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesGroupFailed, [ErrorText(AGroup.Error)]);
+  end
+  else if AGroup.Status = TAtlasIssuesStatus.Waiting then
+  begin
+    Result := ErrorText(TAtlasCiFetchError.None);
+  end
+  else if AGroup.Total = 0 then
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupEmpty);
+  end
+  else if AGroup.More > 0 then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesGroupMore, [AGroup.More]);
+  end;
+end;
+
 class function TAtlasTrackerIssuesText.StatusText(const AView: TAtlasIssuesView): string;
 var
   mParts: TArray<string>;
@@ -448,7 +508,7 @@ begin
     begin
       mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
     end
-    else if Length(AView.Items) = 0 then
+    else if (Length(AView.Items) = 0) and (Length(AView.Groups) = 0) then
     begin
       mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEmpty)];
     end;
@@ -757,11 +817,25 @@ begin
   end;
 end;
 
+function TAtlasTrackerIssuesPainter.GroupsAbove(AIndex: Integer): Integer;
+var
+  mGroup: TAtlasIssuesGroup;
+begin
+  Result := 0;
+  for mGroup in FOwner.View.Groups do
+  begin
+    if mGroup.First <= AIndex then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 function TAtlasTrackerIssuesPainter.RowTop(AIndex: Integer): Integer;
 var
   mIndex: Integer;
 begin
-  Result := ListTop;
+  Result := ListTop + GroupsAbove(AIndex) * Scaled(TAtlasTrackerIssuesView.cStatusHeight);
   for mIndex := 0 to AIndex - 1 do
   begin
     Inc(Result, RowHeight(mIndex));
@@ -980,6 +1054,45 @@ begin
   ACanvas.Font.Assign(FOwner.Font);
 end;
 
+procedure TAtlasTrackerIssuesPainter.PaintGroups(ACanvas: TCanvas);
+var
+  mIndex, mTop, mHeight, mRow: Integer;
+  mGroup: TAtlasIssuesGroup;
+  mArea: TRect;
+  mNote: string;
+begin
+  mHeight := Scaled(TAtlasTrackerIssuesView.cStatusHeight);
+  for mIndex := 0 to High(FOwner.View.Groups) do
+  begin
+    mGroup := FOwner.View.Groups[mIndex];
+    // Über der ersten Zeile der Gruppe, unter den Köpfen davor.
+    mTop := ListTop + mIndex * mHeight;
+    for mRow := 0 to mGroup.First - 1 do
+    begin
+      Inc(mTop, RowHeight(mRow));
+    end;
+    mArea := TextArea(mTop, mHeight);
+    ACanvas.Font.Assign(FOwner.Font);
+    ACanvas.Font.Size := FOwner.Font.Size - 1;
+    ACanvas.Font.Style := [fsBold];
+    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.TextRect(mArea, mArea.Left, mTop + Scaled(cGroupTextOffset),
+      TAtlasTrackerIssuesText.GroupCaption(mGroup));
+    mNote := TAtlasTrackerIssuesText.GroupNote(mGroup);
+    ACanvas.Font.Style := [];
+    if mNote <> '' then
+    begin
+      if mGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale, TAtlasIssuesStatus.NotConfigured] then
+      begin
+        ACanvas.Font.Color := cYellowColor;
+      end;
+      ACanvas.TextOut(Max(mArea.Left, mArea.Right - ACanvas.TextWidth(mNote)), mTop + Scaled(cGroupTextOffset),
+        mNote);
+    end;
+  end;
+  ACanvas.Font.Assign(FOwner.Font);
+end;
+
 procedure TAtlasTrackerIssuesPainter.PaintFilter(ACanvas: TCanvas);
 var
   mText: string;
@@ -1066,6 +1179,7 @@ begin
     begin
       PaintRow(ACanvas, mIndex);
     end;
+    PaintGroups(ACanvas);
     PaintSource(ACanvas);
     PaintFooter(ACanvas);
   end;
@@ -1108,14 +1222,14 @@ begin
   end
   else
   begin
-    mTop := ListTop;
     for mIndex := 0 to High(FOwner.View.Items) do
     begin
+      // RowTop zählt die Köpfe der Gruppen (#1928) mit.
+      mTop := RowTop(mIndex);
       if (Result.Kind = TAtlasIssuesHitKind.None) and (AY >= mTop) and (AY < mTop + RowHeight(mIndex)) then
       begin
         Result := HitRow(mIndex, mPoint);
       end;
-      Inc(mTop, RowHeight(mIndex));
     end;
   end;
 end;
@@ -1284,6 +1398,30 @@ begin
   FLabel.Font.Color := clHotLight;
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
+  FProjects := TAtlasTrackerProjectPicker.Create(AOwner, FBar,
+    procedure(AKey: string)
+    begin
+      FOwner.Send(
+        procedure(const ASource: IAtlasIssuesSource)
+        begin
+          ASource.SelectProject(AKey);
+        end);
+    end,
+    procedure
+    begin
+      FOwner.Send(
+        procedure(const ASource: IAtlasIssuesSource)
+        begin
+          ASource.EditProjects;
+        end);
+    end);
+end;
+
+destructor TAtlasTrackerIssuesQueries.Destroy;
+begin
+  // Beschriftung und Menü gehören der Ansicht (Owner).
+  FProjects.Free;
+  inherited Destroy;
 end;
 
 procedure TAtlasTrackerIssuesQueries.Update;
@@ -1293,7 +1431,8 @@ var
 begin
   mView := FOwner.View;
   FLabel.Visible := TAtlasTrackerIssuesText.ShowsQueryPicker(mView);
-  FBar.Visible := FLabel.Visible;
+  FProjects.Update(mView, FOwner.HasWindow);
+  FBar.Visible := FLabel.Visible or FProjects.Visible;
   // Die Beschriftung misst ihren Text: erst mit Fenster (CreateWnd holt UpdateContent nach).
   if FLabel.Visible and FOwner.HasWindow then
   begin
