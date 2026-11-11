@@ -20,7 +20,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Vorschläge zu einem Teil eines Namens; leer = keine.</summary>
@@ -33,7 +34,7 @@ type
     All: Boolean;
   end;
 
-  TAtlasSymbolPathDialog = class(TForm)
+  TAtlasSymbolPathDialog = class(TAtlasDialog)
   private
     FFrom: TEdit;
     FTo: TEdit;
@@ -88,7 +89,9 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Pause nach dem letzten Tastendruck, bevor Vorschläge geholt werden.</summary>
@@ -177,7 +180,9 @@ begin
   ADialog.FMessage.Parent := ADialog;
   ADialog.FMessage.Left := ALayout.Gap;
   ADialog.FMessage.Top := AY;
-  ADialog.FMessage.Font.Color := clRed;
+  ADialog.FMessage.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  ADialog.FMessage.StyleElements := ADialog.FMessage.StyleElements - [seFont];
   ADialog.FMessage.ShowAccelChar := False;
   Inc(AY, ADialog.FMessage.Height + ALayout.Spacing);
   ADialog.FCancel := TButton.Create(ADialog);
@@ -218,11 +223,9 @@ var
   mLayout: TDialogLayout;
   mY: Integer;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FSuggest := ASuggest;
   Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCaption);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
   mLayout := LayoutOf(Self);
   ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
   mY := mLayout.Gap;
