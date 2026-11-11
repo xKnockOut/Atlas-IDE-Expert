@@ -41,7 +41,7 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.UI.Assistants.Strings,
   Atlas.Core.Assistants.EditInbox,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
@@ -174,7 +174,7 @@ begin
   end;
   mWasModified := mBuffer.IsModified;
   mOutcome := TAtlasIdeWorkspaceEdit.Apply(EditOf(mRequest), TAtlasUnopenedPolicy.WriteToDisk,
-    TAtlasStrings.Text(TAtlasTextId.UndoActionMcp));
+    TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.UndoActionMcp));
   if mOutcome.Error <> '' then
   begin
     TAtlasEditInbox.Answer(FFolder, mRequest, False, False, mOutcome.Error);
@@ -188,7 +188,7 @@ begin
   TAtlasEditInbox.Answer(FFolder, mRequest, True, False, '');
   if Assigned(FOnMessage) then
   begin
-    FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpEditApplied, [ExtractFileName(mRequest.FileName)]));
+    FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied, [ExtractFileName(mRequest.FileName)]));
   end;
 end;
 

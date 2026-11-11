@@ -37,7 +37,6 @@ const
 implementation
 
 uses
-  Atlas.UI.Strings,
   Atlas.UI.Search.Strings;
 
 { TAtlasSearchUnitSearchSection }
@@ -72,16 +71,16 @@ begin
     TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchPathCompact),
     TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchPathAbsolute)], ['relative', 'compact', 'absolute']);
   Choice('unitSearch.groupBy', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchGroupBy),
-    [TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupProject),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupFolder),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupNone)], ['project', 'folder', 'none']);
+    [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGroupProject),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGroupFolder),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGroupNone)], ['project', 'folder', 'none']);
   Switch('unitSearch.rememberCollapsed', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchRememberCollapsed));
   Switch('unitSearch.filters', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchFilters));
   Choice('unitSearch.defaultScope', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchDefaultScope),
-    [TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginGroup),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginActive),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)], ['group', 'project', 'searchPath', 'library']);
+    [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginGroup),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginActive),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginSearchPath),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOriginLibrary)], ['group', 'project', 'searchPath', 'library']);
   Switch('unitSearch.filterSyntax', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchFilterSyntax));
   Switch('unitSearch.formCaptions', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchFormCaptions));
   Switch('unitSearch.preview', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsUnitSearchPreview));

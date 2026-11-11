@@ -309,7 +309,6 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Links,
-  Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
 {$R *.dfm}
@@ -420,7 +419,7 @@ begin
     TIssueTool.CopyKey);
   AFrame.FParts.Attach := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachPreviewButton),
     TIssueTool.Attach);
-  AFrame.FParts.Attach.Hint := TAtlasStrings.Text(TAtlasTextId.AttachStatusHint);
+  AFrame.FParts.Attach.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachStatusHint);
   AFrame.FParts.Attach.Visible := False;
   AddMenu(AFrame);
   AFrame.FParts.Refresh := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRefresh),
@@ -809,9 +808,9 @@ begin
   AFrame.FContent.ProgressText := AProgress.Text;
   if AFrame.FContent.ProgressText <> '' then
   begin
-    mKey := AddLabel(AFrame, TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistStatusLine, [mDetails.Key,
+    mKey := AddLabel(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistStatusLine, [mDetails.Key,
       AFrame.FContent.ProgressText]), False);
-    mKey.Hint := TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistProgress, [AProgress.Done, AProgress.Total]);
+    mKey.Hint := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress, [AProgress.Done, AProgress.Total]);
     mKey.ShowHint := True;
   end
   else

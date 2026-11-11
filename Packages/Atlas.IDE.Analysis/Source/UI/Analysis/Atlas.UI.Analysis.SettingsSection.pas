@@ -35,7 +35,6 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings;
 
 { TAtlasAnalysisSettingsSection }
@@ -56,8 +55,8 @@ begin
   // Architekturübersicht (#1118); Reihenfolge wie die Werte von architecture.scope (projectGroup, project).
   Switch('architecture.enabled', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsArchitecture));
   Choice('architecture.scope', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsArchitectureScope),
-    [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup),
-    TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)], ['projectGroup', 'project']);
+    [TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureScopeGroup),
+    TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureScopeProject)], ['projectGroup', 'project']);
   Switch('architecture.includeLibraryUnits', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsArchitectureLibrary));
   Number('architecture.centralUnits', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsArchitectureCentral));
   // Hotspots (#1354).

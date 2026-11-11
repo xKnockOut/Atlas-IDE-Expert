@@ -115,7 +115,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeIssueSearch }
@@ -574,7 +574,7 @@ begin
     TAtlasCiFetchError.NotConfigured:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
       if AQuery.Kind = TAtlasIssueSearchKind.Key then
       begin
@@ -587,9 +587,9 @@ begin
     TAtlasCiFetchError.Timeout:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesTimeout);
     TAtlasCiFetchError.Network:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   end;
 end;
 

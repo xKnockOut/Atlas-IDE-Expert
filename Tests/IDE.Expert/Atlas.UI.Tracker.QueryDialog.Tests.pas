@@ -37,7 +37,7 @@ uses
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Settings.Page,
   Atlas.UI.Tracker.QueryDialog;
 
@@ -112,7 +112,7 @@ begin
     begin
       Assert.AreEqual('de', mTemplate.Language);
     end;
-    Assert.AreEqual('YouTrack · ' + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryDefault) + ' (' +
+    Assert.AreEqual('YouTrack · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault) + ' (' +
       TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')',
       TAtlasTrackerQueryDialog.TemplateCaption(mDialog.Templates[0]));
     mDialog.ApplyTemplate(0);

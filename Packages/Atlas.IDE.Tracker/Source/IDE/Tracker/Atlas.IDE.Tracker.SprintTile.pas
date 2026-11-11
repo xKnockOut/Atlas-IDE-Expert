@@ -186,7 +186,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.Board;
 
@@ -738,11 +738,11 @@ begin
   end;
   if ADone then
   begin
-    FHooks.Filter(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilterDone, [mTile.Sprint.Name]), mTile.Sprint.MineDone);
+    FHooks.Filter(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilterDone, [mTile.Sprint.Name]), mTile.Sprint.MineDone);
   end
   else
   begin
-    FHooks.Filter(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilterOpen, [mTile.Sprint.Name]), mTile.Sprint.MineOpen);
+    FHooks.Filter(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilterOpen, [mTile.Sprint.Name]), mTile.Sprint.MineOpen);
   end;
 end;
 
