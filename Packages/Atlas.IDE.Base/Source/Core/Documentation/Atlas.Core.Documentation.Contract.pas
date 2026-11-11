@@ -6,7 +6,9 @@
 // (Text, Code, Verweis mit Fundort, Link, Absatz, Codeblock, Listenpunkt,
 // Tabellenzelle). Dazu Begründungen (#1123) als Abschnitte rationale, je
 // Eintrag einer mit der Marke als Name; ein Link "issue:312" darin zeigt auf ein
-// Issue im Tracker (TAtlasDocIssueUrl). Dazu die Anzeige-Einstellungen "xmlDoc" (zu- oder aufgeklappt
+// Issue im Tracker (TAtlasDocIssueUrl). Über einem Unit-Namen (#1921) kommt der Inhalt der Unit als Abschnitte
+// unitContents, je Gruppe einer mit Überschrift (heading), Gruppenname (name) und den Namen als Verweisen.
+// Dazu die Anzeige-Einstellungen "xmlDoc" (zu- oder aufgeklappt
 // beim Öffnen, Zeilengrenze), die der Server je Projekt meldet, und die
 // Parameter der Signatur (#770) aus der Deklaration (Name, Art, Typ;
 // Ergebnistyp), damit die Doku jeden Parameter in der Reihenfolge der Signatur
@@ -25,7 +27,8 @@ type
   /// codeblock, bullet, cell).</summary>
   TAtlasDocRunKind = (Text, Code, Ref, Link, ParamRef, Keyword, LineBreak, Paragraph, CodeBlock, Bullet, Cell);
 
-  TAtlasDocSectionKind = (Summary, Param, TypeParam, Returns, Value, Exception, Remarks, Example, SeeAlso, Rationale);
+  TAtlasDocSectionKind = (Summary, Param, TypeParam, Returns, Value, Exception, Remarks, Example, SeeAlso, Rationale,
+    UnitContents);
 
   /// <summary>Adresse des Issues AKey ("312") im Tracker des aktuellen Projekts; '' ohne Tracker.</summary>
   TAtlasDocIssueUrl = reference to function(const AKey: string): string;
@@ -72,8 +75,12 @@ type
 
   TAtlasDocSection = record
     Kind: TAtlasDocSectionKind;
-    /// <summary>Param, TypeParam: Name; Exception: Klasse; Rationale: Marke (WHY).</summary>
+    /// <summary>Param, TypeParam: Name; Exception: Klasse; Rationale: Marke (WHY); UnitContents: Gruppe (Klassen).
+    /// </summary>
     Name: string;
+    /// <summary>UnitContents: Überschrift, unter der die Gruppe steht ("IN DIESER DATEI BENUTZT (2)"); sonst ''.
+    /// </summary>
+    Heading: string;
     /// <summary>Exception: Fundort der Klasse, wenn bekannt.</summary>
     NameRef: TAtlasDocTarget;
     Runs: TAtlasDocRuns;
@@ -150,7 +157,7 @@ const
   cRunKindNames: array[TAtlasDocRunKind] of string = ('text', 'code', 'ref', 'link', 'paramref', 'keyword', 'br',
     'para', 'codeblock', 'bullet', 'cell');
   cSectionKindNames: array[TAtlasDocSectionKind] of string = ('summary', 'param', 'typeparam', 'returns', 'value',
-    'exception', 'remarks', 'example', 'seealso', 'rationale');
+    'exception', 'remarks', 'example', 'seealso', 'rationale', 'unitContents');
 
 { TAtlasDocTarget }
 
@@ -337,6 +344,7 @@ begin
   Result := Default(TAtlasDocSection);
   Result.Kind := AKind;
   Result.Name := AItem.GetValue<string>('name', '');
+  Result.Heading := AItem.GetValue<string>('heading', '');
   mRef := AItem.GetValue('ref');
   if mRef is TJSONObject then
   begin
