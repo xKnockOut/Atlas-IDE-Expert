@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Designer.SettingsSection.Tests;
 
 // Abschnitt des Moduls Designer (#1456): Designer-Leiste mit Suche, Tab-Reihenfolge, Ausrichten und Gleiche
-// auswählen (#738); Laden und Speichern über die Seite.
+// auswählen (#738), Im Designer zeigen (#511), Eigenschaften suchen (#524); Laden und Speichern über die Seite.
 
 interface
 
@@ -34,6 +34,8 @@ type
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
+    [Test]
+    procedure ShowInDesignerRoundTrip;
     [Test]
     procedure SpatialNavigationRoundTrip;
     [Test]
@@ -784,6 +786,32 @@ begin
     Assert.AreEqual(8, mSaved.DesignerMagnifierZoom);
     Assert.IsFalse(mSaved.DesignerMagnifierGrid);
     Assert.IsTrue(mSaved.DesignerMagnifierEdges);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ShowInDesignerRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerShowInDesigner').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerPropertySearch').Checked, 'Eigenschaftssuche (#524): Vorgabe an');
+    CheckOf(mPage, 'DesignerPropertySearch').Checked := False;
+    Assert.AreEqual(8315, TAtlasPluginSettings.Defaults.DesignerShowInDesignerKey, 'Umschalt+F12');
+    CheckOf(mPage, 'DesignerShowInDesigner').Checked := False;
+    EditOf(mPage, 'DesignerShowInDesignerKey').Text := '';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerShowInDesigner, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerPropertySearch, 'Eigenschaftssuche abschaltbar');
+    Assert.AreEqual(0, mSaved.DesignerShowInDesignerKey, 'leer = keine Taste');
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerShowInDesigner').Checked);
   finally
     mPage.Free;
   end;

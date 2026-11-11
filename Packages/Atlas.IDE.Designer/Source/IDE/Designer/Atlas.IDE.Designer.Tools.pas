@@ -10,6 +10,8 @@
 // - Schnellleiste über einer Mehrfachauswahl (#735, designer.selectionBar,
 //   TAtlasIdeSelectionBar).
 // - Lupe (#743, designer.magnifier, TAtlasIdeMagnifier).
+// - Eigenschaften suchen (#524, designer.propertySearch,
+//   TAtlasIdePropertySearch): Knopf ohne Menü, öffnet den Dialog.
 // Nur im Hauptthread.
 
 interface
@@ -24,7 +26,8 @@ uses
   Atlas.IDE.Designer.GapHandles,
   Atlas.IDE.Designer.MultiResize,
   Atlas.IDE.Designer.SelectionBar,
-  Atlas.IDE.Designer.Magnifier;
+  Atlas.IDE.Designer.Magnifier,
+  Atlas.IDE.Designer.PropertySearch;
 
 type
   TAtlasIdeDesignerTools = class
@@ -95,6 +98,10 @@ begin
   begin
     Result := Result + [FMagnifier.Button];
   end;
+  if TAtlasIdePropertySearch.Available(ASettings) then
+  begin
+    Result := Result + [TAtlasIdePropertySearch.Button];
+  end;
 end;
 
 function TAtlasIdeDesignerTools.HandleToolOf(const AId: string): TAtlasIdeHandleTool;
@@ -129,6 +136,11 @@ begin
   if Result then
   begin
     mTool.Toggle;
+  end
+  else if SameText(AId, TAtlasIdePropertySearch.cId) then
+  begin
+    TAtlasIdePropertySearch.Run(True);
+    Result := True;
   end;
 end;
 
