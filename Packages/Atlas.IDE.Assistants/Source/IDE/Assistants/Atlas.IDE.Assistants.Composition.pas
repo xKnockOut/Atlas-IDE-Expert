@@ -52,6 +52,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
@@ -112,7 +113,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(MessageLine);
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, MessageLine);
 end;
 
 procedure StopEdits;
