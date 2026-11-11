@@ -33,6 +33,7 @@ Back to the [README](../../../README.md)
 
 - Icons:
   - jump to the interface or implementation section (and back with "↩ 214")
+  - “Go to uses clause” switches from one uses clause to the other (interface ↔ implementation); without the other clause it jumps to the `implementation` or `interface` keyword, and the next click returns. The tooltip names the target, and the return jump goes to the line before the first click
   - find method
   - navigation history
   - any palette command
