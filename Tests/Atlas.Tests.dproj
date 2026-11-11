@@ -808,6 +808,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Popup.Accessibility.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Window.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.WndProcHook.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.WndProcHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Draw.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.ShortcutTip.Tests.pas"/>
