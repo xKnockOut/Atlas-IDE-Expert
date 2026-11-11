@@ -122,6 +122,11 @@ begin
   Switch('designer.nameSuggestRenameHandlers',
     TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameHandlers));
   Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
+  Switch('designer.nonVisualTray', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNonVisualTray));
+  Choice('designer.nonVisualTrayPosition', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNvPosition),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNvBottom),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNvRight)], ['bottom', 'right']);
+  Switch('designer.nonVisualTrayHideOnForm', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNvHide));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

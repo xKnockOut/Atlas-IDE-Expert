@@ -1158,6 +1158,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.NameSuggest` | `Core/Designer/Atlas.Core.Designer.NameSuggest.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.CodeLink` | `Core/Designer/Atlas.Core.Designer.CodeLink.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.NonVisual` | `Core/Designer/Atlas.Core.Designer.NonVisual.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
@@ -1202,6 +1203,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.NameSuggest` | `IDE/Designer/Atlas.IDE.Designer.NameSuggest.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.ShowComponent` | `IDE/Designer/Atlas.IDE.Designer.ShowComponent.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.PropertySearch` | `IDE/Designer/Atlas.IDE.Designer.PropertySearch.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.NonVisualTray` | `IDE/Designer/Atlas.IDE.Designer.NonVisualTray.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
@@ -1226,6 +1228,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.SelectionBar` | `UI/Designer/Atlas.UI.Designer.SelectionBar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Magnifier` | `UI/Designer/Atlas.UI.Designer.Magnifier.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.NameDialog` | `UI/Designer/Atlas.UI.Designer.NameDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.NonVisualFrame` | `UI/Designer/Atlas.UI.Designer.NonVisualFrame.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Help
 

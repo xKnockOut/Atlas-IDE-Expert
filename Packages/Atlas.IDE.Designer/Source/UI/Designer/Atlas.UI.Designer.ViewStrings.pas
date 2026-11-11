@@ -28,7 +28,10 @@ type
     NameColProposal, NameColNote, NameEdit, NameApply, NameCancel, NameUndo, NameSourceCaption, NameSourceLabel,
     NameSourceHandler, NameSourceDataField, NameNoSource, NameCollision, NameInvalid, NameNone, NameDone, NameUndone,
     NameFailed, NameCodeFailed, NameAction, SettingsNameSuggest, SettingsNameSources, SettingsNameUmlauts,
-    SettingsNameReplace, SettingsNameRemove, SettingsNameHandlers, SettingsNamePrefixes);
+    SettingsNameReplace, SettingsNameRemove, SettingsNameHandlers, SettingsNamePrefixes, NvHint, NvCaption, NvFilter,
+    NvGroupData, NvGroupActions, NvGroupDialogs, NvGroupImages, NvGroupOther, NvColName, NvColClass, NvCreated,
+    NvCreateFailed, NvHideMissing, SettingsNonVisualTray, SettingsNvPosition, SettingsNvBottom, SettingsNvRight,
+    SettingsNvHide);
 
 {$SCOPEDENUMS OFF}
 
@@ -131,7 +134,25 @@ const
      'ersetzen (ä → ae)',
      'entfernen',
      'Handler mit Standardnamen mit umbenennen',
-     'Eigene Präfixe (TKlasse=präfix, durch Komma getrennt)'),
+     'Eigene Präfixe (TKlasse=präfix, durch Komma getrennt)',
+     'Nichtvisuelle Komponenten in einer Leiste',
+     'Nichtvisuelle Komponenten',
+     'Filter nach Namen',
+     'Daten',
+     'Aktionen und Menüs',
+     'Dialoge',
+     'Bilder',
+     'Sonstiges',
+     'Name',
+     'Klasse',
+     '%s angelegt.',
+     '%s konnte nicht angelegt werden: %s',
+     'Befehl der IDE zum Ausblenden nichtvisueller Komponenten nicht gefunden; die Symbole bleiben auf dem Formular.',
+     'Knopf „Nichtvisuelle Komponenten“ (Leiste für nichtvisuelle Komponenten)',
+     'Lage der Leiste beim ersten Öffnen',
+     'unter dem Designer',
+     'rechts neben dem Designer',
+     'Symbole auf dem Formular ausblenden, solange die Leiste offen ist'),
     ('Measure distances: guide lines while dragging, with Alt to the component under the mouse',
      'as above',
      'as below',
@@ -213,7 +234,25 @@ const
      'replace with ae, oe, ue, ss',
      'remove',
      'Rename handlers with default names too',
-     'Own prefixes (TClass=prefix, comma separated)'));
+     'Own prefixes (TClass=prefix, comma separated)',
+     'Non-visual components in a tray',
+     'Non-visual components',
+     'Filter by name',
+     'Data',
+     'Actions and menus',
+     'Dialogs',
+     'Images',
+     'Other',
+     'Name',
+     'Class',
+     '%s created.',
+     '%s could not be created: %s',
+     'IDE command to hide non-visual components not found; the icons stay on the form.',
+     '“Non-visual components” button (tray for non-visual components)',
+     'Tray position when first opened',
+     'below the designer',
+     'right of the designer',
+     'Hide icons on the form while the tray is open'));
 
 { TAtlasDesignerViewStrings }
 

@@ -33,6 +33,8 @@ type
     [Test]
     procedure NameSuggestRoundTrip;
     [Test]
+    procedure NonVisualTrayRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -246,6 +248,30 @@ begin
     Assert.AreEqual('remove', mSaved.DesignerNameSuggestUmlauts);
     Assert.IsFalse(mSaved.DesignerNameSuggestRenameHandlers);
     Assert.AreEqual('TButton=cmd', mSaved.DesignerNameSuggestPrefixes);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.NonVisualTrayRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerNonVisualTray').Checked, 'Vorgabe aus');
+    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerNonVisualTrayPosition').Choice, 'unten');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerNonVisualTrayHideOnForm').Checked);
+    CheckOf(mPage, 'DesignerNonVisualTray').Checked := True;
+    ChoiceOf(mPage, 'DesignerNonVisualTrayPosition').Choice := 1;
+    CheckOf(mPage, 'DesignerNonVisualTrayHideOnForm').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.DesignerNonVisualTray);
+    Assert.AreEqual('right', mSaved.DesignerNonVisualTrayPosition);
+    Assert.IsFalse(mSaved.DesignerNonVisualTrayHideOnForm);
   finally
     mPage.Free;
   end;

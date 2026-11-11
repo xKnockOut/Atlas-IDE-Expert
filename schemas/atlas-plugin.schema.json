@@ -5263,6 +5263,42 @@
       "x-node": "editor.designerBar",
       "x-issue": "#608"
     },
+    "DesignerNonVisualTray": {
+      "description": "Knopf „Nichtvisuelle Komponenten“ in der Designer-Leiste: öffnet eine andockbare Leiste mit allen nichtvisuellen Komponenten des Formulars, gruppiert nach Daten, Aktionen und Menüs, Dialogen, Bildern und Sonstigem, mit Filter nach Namen. Klick wählt die Komponente im Designer, Doppelklick öffnet ihren Editor, Rechtsklick die Befehle ihres Komponenten-Editors; eine Komponente aus der Palette landet per Ziehen oder Klick an einer freien Stelle am unteren Rand des Formulars. Left/Top in der DFM bleiben unverändert.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.nonVisualTray",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
+    "DesignerNonVisualTrayPosition": {
+      "description": "Lage der Leiste beim ersten Öffnen: unter dem Designer (bottom) oder rechts daneben (right). Danach lässt sie sich wie jedes Fenster der IDE andocken; die IDE merkt sich die Lage im Desktop.",
+      "type": "string",
+      "enum": [
+        "bottom",
+        "right"
+      ],
+      "default": "bottom",
+      "x-key": "designer.nonVisualTrayPosition",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.nonVisualTray",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
+    "DesignerNonVisualTrayHideOnForm": {
+      "description": "Symbole der nichtvisuellen Komponenten auf der Formularfläche ausblenden, solange die Leiste offen ist (über den Befehl „Nichtvisuelle Komponenten ausblenden“ der IDE; beim Schließen gilt wieder der vorherige Zustand).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.nonVisualTrayHideOnForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.nonVisualTray",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",

@@ -2086,6 +2086,8 @@ uses
   Atlas.Core.Designer.Scale.Tests in 'IDE.Expert\Atlas.Core.Designer.Scale.Tests.pas',
   Atlas.Core.Designer.NameSuggest in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.NameSuggest.pas',
   Atlas.Core.Designer.NameSuggest.Tests in 'IDE.Expert\Atlas.Core.Designer.NameSuggest.Tests.pas',
+  Atlas.Core.Designer.NonVisual in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.NonVisual.pas',
+  Atlas.Core.Designer.NonVisual.Tests in 'IDE.Expert\Atlas.Core.Designer.NonVisual.Tests.pas',
   Atlas.UI.Help.SettingsSection in '..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas',
   Atlas.UI.Help.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas',
   Atlas.UI.Rules.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas',

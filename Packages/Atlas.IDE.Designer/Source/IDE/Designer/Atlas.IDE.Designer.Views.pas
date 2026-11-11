@@ -12,6 +12,8 @@
 //   Fenster mit Skalierung, Bildschirm und langen Texten.
 // - Sprechende Namen (#608, designer.nameSuggest, TAtlasIdeNameSuggest):
 //   Dialog mit Vorschlägen für Standardnamen.
+// - Nichtvisuelle Komponenten (#609, designer.nonVisualTray,
+//   TAtlasIdeNonVisualTray): andockbare Leiste.
 // Nur im Hauptthread.
 
 interface
@@ -22,6 +24,7 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.Measure,
   Atlas.IDE.Designer.NameSuggest,
+  Atlas.IDE.Designer.NonVisualTray,
   Atlas.IDE.Designer.ResizePreview,
   Atlas.IDE.Designer.ScalePreview;
 
@@ -32,6 +35,7 @@ type
     FResize: TAtlasIdeResizePreview;
     FScale: TAtlasIdeScalePreview;
     FNames: TAtlasIdeNameSuggest;
+    FTray: TAtlasIdeNonVisualTray;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -54,10 +58,12 @@ begin
   FResize := TAtlasIdeResizePreview.Create(AOnMessage);
   FScale := TAtlasIdeScalePreview.Create(AOnMessage);
   FNames := TAtlasIdeNameSuggest.Create(AOnMessage);
+  FTray := TAtlasIdeNonVisualTray.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerViews.Destroy;
 begin
+  FTray.Free;
   FNames.Free;
   FScale.Free;
   FResize.Free;
@@ -72,7 +78,7 @@ var
 begin
   Result := nil;
   mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings),
-    FNames.Button(ASettings)];
+    FNames.Button(ASettings), FTray.Button(ASettings)];
   for mButton in mAll do
   begin
     if mButton.Id <> '' then
@@ -101,6 +107,10 @@ begin
   begin
     FNames.Run;
   end
+  else if SameText(AId, TAtlasIdeNonVisualTray.cId) then
+  begin
+    FTray.Toggle;
+  end
   else
   begin
     Result := False;
@@ -112,6 +122,7 @@ begin
   FMeasure.ApplyTheme;
   FResize.ApplyTheme;
   FScale.ApplyTheme;
+  FTray.ApplyTheme;
 end;
 
 end.
