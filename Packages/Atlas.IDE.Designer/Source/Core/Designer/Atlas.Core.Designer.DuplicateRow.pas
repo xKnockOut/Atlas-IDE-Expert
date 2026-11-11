@@ -62,7 +62,8 @@ type
     class function CopyCount(const AList: TArray<string>; ACount: Integer): Integer; static;
     /// <summary>Umriss aller Rechtecke.</summary>
     class function UnionOf(const ARects: TArray<TRect>): TRect; static;
-    /// <summary>Kleinster Abstand zu einem Nachbarn in Richtung ADirection (davor oder dahinter); -1 = keiner.</summary>
+    /// <summary>Kleinster Abstand zu einem Nachbarn in Richtung ADirection (davor oder dahinter); -1 =
+    /// keiner.</summary>
     class function DetectGap(const AGroup: TRect; const AOthers: TArray<TRect>;
       ADirection: TAtlasDuplicateDirection): Integer; static;
     /// <summary>Verschiebung der Kopie AIndex (ab 0) gegenüber dem Original.</summary>

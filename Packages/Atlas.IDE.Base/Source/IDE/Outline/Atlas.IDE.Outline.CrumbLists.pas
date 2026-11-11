@@ -77,6 +77,23 @@ const
   /// <summary>Höchstlänge von Name und Parametern im Menü (#1784); länger mit „…“.</summary>
   cOverloadCaptionMax = 56;
 
+type
+  /// <summary>Knoten eines Menüs (Geschwister, Kinder oder Überladungen) mit dem vorgewählten Knoten; Overloads
+  /// zeigt statt des Pfads nur die Zeile.</summary>
+  TCrumbListItems = record
+    Items: TArray<Integer>;
+    Current: Integer;
+    Overloads: Boolean;
+  end;
+
+/// <summary>Knoten AItems mit Vorwahl ACurrent als ein Wert.</summary>
+function ListItems(const AItems: TArray<Integer>; ACurrent: Integer; AOverloads: Boolean): TCrumbListItems;
+begin
+  Result.Items := AItems;
+  Result.Current := ACurrent;
+  Result.Overloads := AOverloads;
+end;
+
 /// <summary>Text eines Sprungziels; Regionen ohne Namen als „Region (Z. n)“ (#1764).</summary>
 function PlaceText(const APlace: TAtlasCrumbPlace): string;
 begin
@@ -130,38 +147,42 @@ begin
   end;
 end;
 
-/// <summary>Menü der Knoten AItems (Geschwister, Kinder oder Überladungen); vorgewählt ist ACurrent.</summary>
+/// <summary>Menü der Knoten AList; vorgewählt ist AList.Current.</summary>
 procedure OpenList(const ASource: TAtlasCrumbSource; ABar: TAtlasBreadcrumbBar; const APrompt: string;
-  const AItems: TArray<Integer>; ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean);
+  const AList: TCrumbListItems; const APoint: TPoint);
 var
   mItems: TArray<Integer>;
+  mCurrent: Integer;
+  mOverloads: Boolean;
   mNodes: TAtlasOutlineNodes;
   mLines: TArray<string>;
   mFileName: string;
   mWindow: TAtlasPaletteWindow;
 begin
-  if (Length(AItems) = 0) or (ASource.FileName = '') then
+  if (Length(AList.Items) = 0) or (ASource.FileName = '') then
   begin
-    TAtlasGuard.Log(Format('Brotkrumen: kein Menü (Einträge %d, Datei %s)', [Length(AItems),
+    TAtlasGuard.Log(Format('Brotkrumen: kein Menü (Einträge %d, Datei %s)', [Length(AList.Items),
       BoolToStr(ASource.FileName <> '', True)]));
     Exit;
   end;
   // Kopien: Das Menü lebt länger als der aktuelle Stand.
-  mItems := AItems;
+  mItems := AList.Items;
+  mCurrent := AList.Current;
+  mOverloads := AList.Overloads;
   mNodes := ASource.Nodes;
   mLines := ASource.Lines;
   mFileName := ASource.FileName;
-  mWindow := NewPalette(CommandsOf(mNodes, mLines, mItems, ACurrent, AOverloads), APrompt);
+  mWindow := NewPalette(CommandsOf(mNodes, mLines, mItems, mCurrent, mOverloads), APrompt);
   mWindow.RowHints := True;
-  if ACurrent >= 0 then
+  if mCurrent >= 0 then
   begin
-    mWindow.InitialId := IntToStr(ACurrent);
+    mWindow.InitialId := IntToStr(mCurrent);
   end;
   mWindow.OnQuery :=
     function(APattern: string): TArray<TAtlasCommand>
     begin
-      Result := CommandsOf(mNodes, mLines, TAtlasBreadcrumbs.Filter(mNodes, mItems, APattern), ACurrent,
-        AOverloads);
+      Result := CommandsOf(mNodes, mLines, TAtlasBreadcrumbs.Filter(mNodes, mItems, APattern), mCurrent,
+        mOverloads);
     end;
   mWindow.OnExecuteShift :=
     procedure(ACommand: TAtlasCommand; AShifted: Boolean)
@@ -258,7 +279,7 @@ begin
     mCurrent := ABar.Crumbs[mNext].Node;
     Inc(mNext);
   end;
-  OpenList(ASource, ABar, mCrumb.Text + ' ›', mCrumb.Children, mCurrent, APoint, False);
+  OpenList(ASource, ABar, mCrumb.Text + ' ›', ListItems(mCrumb.Children, mCurrent, False), APoint);
 end;
 
 /// <summary>Gedimmte Zeile eines Sprungziels: bei Sichtbarkeitsabschnitten mit Mitgliederzahl (#1768,
@@ -460,13 +481,13 @@ begin
       end
       else
       begin
-        OpenList(ASource, ABar, mCrumb.Text, mCrumb.Siblings, mCrumb.Node, APoint, False);
+        OpenList(ASource, ABar, mCrumb.Text, ListItems(mCrumb.Siblings, mCrumb.Node, False), APoint);
       end;
     TAtlasCrumbList.Children:
       OpenChildren(ASource, ABar, AIndex, APoint);
     TAtlasCrumbList.Overloads:
       OpenList(ASource, ABar, Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsPrompt),
-        [mCrumb.Text]), mCrumb.Overloads, mCrumb.Node, APoint, True);
+        [mCrumb.Text]), ListItems(mCrumb.Overloads, mCrumb.Node, True), APoint);
     TAtlasCrumbList.Interfaces:
       OpenInterfaces(ABar, AIndex, APoint);
   end;

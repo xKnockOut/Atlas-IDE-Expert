@@ -357,6 +357,33 @@ begin
     end);
 end;
 
+/// <summary>Kennzahlen-Karte (#1787) an den Gliedern von ABar in ASetup eintragen.</summary>
+procedure AddCardEvents(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; var ASetup: TAtlasCrumbBarSetup);
+begin
+  ASetup.HasCard :=
+    function(AIndex: Integer): Boolean
+    begin
+      Result := AState.HasCard(ABar, AIndex);
+    end;
+  ASetup.OnShowCard :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+        procedure
+        begin
+          AState.ShowCard(ABar, AIndex, At);
+        end);
+    end;
+  ASetup.OnHideCard :=
+    procedure
+    begin
+      AState.HideCard;
+    end;
+end;
+
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
 function TBreadcrumbsState.CreateBar: TAtlasBreadcrumbBar;
 var
@@ -392,28 +419,7 @@ begin
     begin
       Leave(mBar);
     end;
-  mSetup.HasCard :=
-    function(AIndex: Integer): Boolean
-    begin
-      Result := HasCard(mBar, AIndex);
-    end;
-  mSetup.OnShowCard :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
-        procedure
-        begin
-          ShowCard(mBar, AIndex, At);
-        end);
-    end;
-  mSetup.OnHideCard :=
-    procedure
-    begin
-      HideCard;
-    end;
+  AddCardEvents(Self, mBar, mSetup);
   mBar.Setup := mSetup;
   mBar.OnDisabled :=
     procedure(ASender: TObject)
