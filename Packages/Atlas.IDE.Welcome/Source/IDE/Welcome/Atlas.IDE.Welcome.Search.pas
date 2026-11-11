@@ -442,7 +442,11 @@ begin
       end;
       case AHit.Group of
         TAtlasWelcomeSearchGroup.Projects:
-          Actions.OpenProject(AHit.Target, True);
+          TAtlasGuard.RunIde(
+            procedure
+            begin
+              Actions.OpenProject(AHit.Target, True);
+            end);
         TAtlasWelcomeSearchGroup.Commands:
           if Assigned(FRun) then
           begin
@@ -452,7 +456,11 @@ begin
         begin
           if (AHit.Project <> '') and FileExists(AHit.Project) and not ProjectOpen(AHit.Project) then
           begin
-            Actions.OpenProject(AHit.Project, True);
+            TAtlasGuard.RunIde(
+              procedure
+              begin
+                Actions.OpenProject(AHit.Project, True);
+              end);
           end;
           if AHit.Line >= 0 then
           begin

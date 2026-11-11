@@ -51,6 +51,7 @@ implementation
 uses
   Winapi.Windows,
   ToolsAPI,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Modules.Contract,
@@ -138,7 +139,11 @@ begin
   end
   else if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(AProject, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, True);
+      end);
     Result := ProjectIsOpen(AProject);
   end;
 end;
