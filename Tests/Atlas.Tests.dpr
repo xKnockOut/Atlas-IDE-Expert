@@ -116,6 +116,7 @@ uses
   Atlas.Common.Pascal.WarningCodes.Tests in 'Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas',
   Atlas.Common.Pascal.PureRoutines.Tests in 'Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas',
   Atlas.Common.Pascal.EventAssignments.Tests in 'Common\Pascal\Atlas.Common.Pascal.EventAssignments.Tests.pas',
+  Atlas.Common.Pascal.TokenCursor.Tests in 'Common\Pascal\Atlas.Common.Pascal.TokenCursor.Tests.pas',
   Atlas.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas',
   Atlas.Common.Semantics.NameResolver.Parts.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas',
   Atlas.Common.Semantics.Attributes.Tests in 'Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas',
