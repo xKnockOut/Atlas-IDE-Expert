@@ -155,7 +155,8 @@ begin
   Assert.IsTrue(TAtlasInlineDiagnostics.PauseOver(0, 50), 'nie getippt');
   Assert.IsFalse(TAtlasInlineDiagnostics.PauseOver(1000, 1999));
   Assert.IsTrue(TAtlasInlineDiagnostics.PauseOver(1000, 2000));
-  Assert.IsFalse(TAtlasInlineDiagnostics.PauseOver($FFFFFF00, 100), 'Überlauf von GetTickCount');
+  Assert.IsFalse(TAtlasInlineDiagnostics.PauseOver($FFFFFF00, $100000064), 'über die 32-Bit-Grenze hinweg');
+  Assert.IsTrue(TAtlasInlineDiagnostics.PauseOver($FFFFFF00, $100000400), 'über die 32-Bit-Grenze hinweg');
 end;
 
 procedure TAtlasInlineDiagnosticsTests.LineTailPlacesPaintersSideBySide;

@@ -22,6 +22,8 @@ type
     cDefaultGrid = 8;
   public
     class function DesignerOf(const AEditor: IOTAFormEditor): IDesigner; static;
+    /// <summary>Formular-Editor des Moduls zur Datei AFileName (Unit oder Formular); nil ohne Formular.</summary>
+    class function FormEditorOf(const AFileName: string): IOTAFormEditor; static;
     /// <summary>Zeigt das aktive Editorfenster einen Formular-Designer?</summary>
     class function Shown: Boolean; static;
     /// <summary>Hat der Formular-Designer den Fokus (ein Steuerelement im Entwurf oder das Formular selbst)?</summary>
@@ -72,6 +74,32 @@ begin
   begin
     Result := mNative.FormDesigner;
   end;
+end;
+
+class function TAtlasDesignerAccess.FormEditorOf(const AFileName: string): IOTAFormEditor;
+var
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if (AFileName = '') or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mModule := mModules.FindModule(AFileName);
+  if mModule = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mModule.ModuleFileCount - 1 do
+  begin
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTAFormEditor, Result) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := nil;
 end;
 
 class function TAtlasDesignerAccess.Shown: Boolean;

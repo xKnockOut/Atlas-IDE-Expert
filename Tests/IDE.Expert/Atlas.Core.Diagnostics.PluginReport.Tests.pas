@@ -64,6 +64,11 @@ begin
   Result := Default(TAtlasRequestTiming);
   Result.Method := AMethod;
   Result.WaitedMs := AWaitedMs;
+  if AWaitedMs > 0 then
+  begin
+    // Zwei Wartezeiten: Der Bericht zeigt das Mittel je wartender Anfrage, nicht die Summe.
+    Result.WaitedCalls := 2;
+  end;
   Result.Stat.Calls := 1;
   Result.Stat.TotalMs := ATotalMs;
 end;
@@ -168,7 +173,7 @@ begin
   Assert.Contains(mText, TAtlasGuard.FeatureName(TAtlasFeature.Minimap) + ' | 2 | 30.0 | 15.0 | 30.0 | 0 | 60');
   Assert.Contains(mText, '### Langsame Aufrufe');
   Assert.Contains(mText, '### Server-Anfragen');
-  Assert.Contains(mText, 'c | 1 | 1.0 | 0.0 | 5.0 | 0 | 0 | 0');
+  Assert.Contains(mText, 'c | 1 | 1.0 | 0.0 | 2 | 2.5 | 0 | 0 | 0');
   Assert.Contains(mText, '### Quellen im Hintergrund');
   Assert.Contains(mText, 'Server | 1 | 3.0 | 0.0 | 0');
   Assert.Contains(mText, ': 1200 ms, Speichern, Atlas beteiligt: True');

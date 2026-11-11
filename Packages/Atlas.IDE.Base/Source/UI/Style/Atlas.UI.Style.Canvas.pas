@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Style.Canvas;
 
 // Zeichenfläche ohne Flackern für selbst gezeichnete Bereiche und Kacheln
-// (#753, seit #1455 in Base, damit Module wie der Tracker sie ohne die
+// (#753, in Base, damit Module wie der Tracker sie ohne die
 // Willkommensseite nutzen). Eine TPaintBox auf Panels mit ParentBackground
 // lässt Windows vor jedem Neuzeichnen den Hintergrund der Eltern holen; beim
 // Hovern blitzt das. Hier kommen Hintergrund und Inhalt zusammen in einen

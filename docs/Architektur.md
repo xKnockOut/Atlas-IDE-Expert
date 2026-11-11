@@ -174,6 +174,12 @@ Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für
 | `Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.Core.*` | `Atlas.IDE.CodeInsight.Composition.Adapters` ist der Teil der Kompositionswurzel des Plugins, der dort die Rolle eines Host übernimmt: Er allein erzeugt die Providers, Adapters und Compositions der Core-Features (Serverprozess, Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Ziel und Sicherung des Änderungsprotokolls, Prozessläufer der Versionsverwaltung, Update-Quelle) und reicht sie über Schnittstellen und Fabriken an die übrigen Teile der Wurzel und an die Features weiter (Code-Review A-09). Alle übrigen `Atlas.IDE.*`-Units halten die Rollenmatrix ohne Ausnahme ein. |
 | `Atlas.Common.Dfm.Contract.TDfm*` (Contract-Inhalt) | `TDfmObject` und `TDfmDocument` sind reine Datenklassen eines Baums (Besitz der Kinder, kein Verhalten); Verschieben änderte rund 20 Units ohne Abhängigkeitsgewinn. |
 
+## Kommentare
+
+Unit-Köpfe und Kommentare beschreiben den heutigen Entwurf und seinen Grund, nicht seine Geschichte. Ein Grund lässt sich fast immer ohne „früher“ sagen: „sonst …“, „damit …“, „statt …“. Wann und warum etwas umgebaut wurde, steht im Issue und in der Git-Historie; die Issue-Nummer im Kommentar genügt als Verweis. Umzüge zwischen Units oder Packages („seit #… im Modul“, „bis #… in …“) gehören nicht in den Kommentar.
+
+Verweise zeigen nur auf Quellen, die im Repository liegen oder öffentlich sind (Issues, Dateien, Dokumentation). Steht eine Entscheidung woanders, gehört ihr Grund in einem Halbsatz an die Stelle.
+
 ## Tests
 
 - Unit-Tests mit DUnitX je Unit in `Tests/<Ausgabeartefakt>/<Feature>/`.

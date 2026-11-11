@@ -244,7 +244,7 @@ Im Diagnosemodus zeigt „Atlas-Diagnose“, was in Atlas gerade langsam ist:
 | Reiter | Inhalt |
 |---|---|
 | *Hauptthread* | wie sehr Atlas die IDE in den letzten 60 s belegt hat, eigene Zeit je Funktion (Aufrufe, Summe, Mittel, Maximum, Aufrufe ab der Schwelle, Anteil) und die letzten 200 langsamen Aufrufe mit der laufenden Atlas-Aktion; Kontextmenü *Nur X zeigen*, *bis zum Neustart ausschalten*, *Zeile kopieren* |
-| *Server* | jede Anfrage mit Anzahl, Mittel, Maximum, Wartezeit des Hauptthreads, Zeitüberschreitungen, Abbrüchen und Fehlern |
+| *Server* | jede Anfrage mit Anzahl, Mittel, Maximum, wie oft der Hauptthread wartete und wie lange im Mittel, Zeitüberschreitungen, Abbrüchen und Fehlern |
 | *Hintergrund* | Arbeitszeit jeder Quelle der Vervollständigung im Arbeitsthread und wie oft sie zu langsam war |
 | *Hänger* | die Meldungen des Einfrier-Wächters der Sitzung und ob Atlas beteiligt war |
 | *Vervollständigung* | das bisherige Fenster |
