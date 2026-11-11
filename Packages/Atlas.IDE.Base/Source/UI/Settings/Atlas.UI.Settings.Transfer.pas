@@ -246,7 +246,7 @@ begin
   mPanel.BevelOuter := bvNone;
   mPanel.AlignWithMargins := True;
   mPanel.Margins.SetBounds(cGap, 4, cGap, 0);
-  mPanel.Top := 2000;
+  mPanel.Top := mPanel.ScaleValue(2000);
   for mArea in ACatalog.Areas do
   begin
     mBox := TCheckBox.Create(AOwner);

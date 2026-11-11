@@ -154,7 +154,7 @@
     {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "012ca49b", "count": 1, "routine": "CreateBottomLabels", "context": "d2d8d878"},
     {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "2b4e621c", "count": 1, "routine": "CreateBottomLabels", "context": "f90ae7e4"},
     {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "5a87e065", "count": 1, "routine": "CreateBottomLabels", "context": "f850de28"},
-    {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "6fdffcdf", "count": 1, "routine": "CreatePatternBar", "context": "72adef6b"},
+    {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "6abe823f", "count": 1, "routine": "CreatePatternBar", "context": "34760d17"},
     {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "3b12b7f6", "count": 1, "routine": "CreatePatternList", "context": "a53a9bc5"},
     {"path": "Source/UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas", "rule": "magic-number", "fingerprint": "ba7fbc47", "count": 1, "routine": "CreatePatternList", "context": "90fb8831"},
     {"path": "Source/UI/Debug/Atlas.UI.Debug.Viewer.pas", "rule": "magic-number", "fingerprint": "c4891654", "count": 1, "routine": "TAtlasDebugViewer.CreateViewer", "context": "66e8f0c6"},

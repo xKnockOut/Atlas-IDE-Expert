@@ -325,8 +325,8 @@ begin
   Caption := DialogTitle(FModel.Global);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
-  Width := 960;
-  Height := 660;
+  Width := ScaleValue(960);
+  Height := ScaleValue(660);
   FServerChecks := True;
   CreateButtons(AFileName);
   CreateHint;
@@ -341,12 +341,12 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   mFileLabel := TLabel.Create(Self);
   mFileLabel.Parent := mBottom;
-  mFileLabel.Left := 170;
-  mFileLabel.Top := 14;
+  mFileLabel.Left := mFileLabel.ScaleValue(170);
+  mFileLabel.Top := mFileLabel.ScaleValue(14);
   mFileLabel.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsFile, [AFileName]);
   mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), cGap, 150);
   mButton.OnClick := OpenClick;
@@ -460,7 +460,7 @@ begin
   FPageTree := TTreeView.Create(Self);
   FPageTree.Parent := Self;
   FPageTree.Align := alLeft;
-  FPageTree.Width := 190;
+  FPageTree.Width := FPageTree.ScaleValue(190);
   FPageTree.ReadOnly := True;
   FPageTree.HideSelection := False;
   FPageTree.ShowLines := False;
@@ -684,7 +684,7 @@ begin
   Note(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsJsonHint), True);
   mMemo := TMemo.Create(Box);
   mMemo.Parent := Box;
-  mMemo.Height := 120;
+  mMemo.Height := mMemo.ScaleValue(120);
   mMemo.ScrollBars := ssBoth;
   mMemo.WordWrap := False;
   mMemo.Font.Name := 'Consolas';
@@ -816,7 +816,7 @@ var
 begin
   mMemo := TMemo.Create(Box);
   mMemo.Parent := Box;
-  mMemo.Height := 72;
+  mMemo.Height := mMemo.ScaleValue(72);
   mMemo.ScrollBars := ssVertical;
   AddJsonStrings(mMemo.Lines, Dialog.FModel.Effective(Index));
   mMemo.OnChange := Dialog.MemoChange;

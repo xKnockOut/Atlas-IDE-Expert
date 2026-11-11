@@ -109,8 +109,8 @@ begin
   Caption := ATexts.Title;
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
-  Width := 900;
-  Height := 600;
+  Width := ScaleValue(900);
+  Height := ScaleValue(600);
 
   mHint := TLabel.Create(Self);
   mHint.Parent := Self;
@@ -128,7 +128,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;

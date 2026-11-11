@@ -104,7 +104,7 @@ begin
   FCancel.Default := True;
   FCancel.Cancel := True;
   ActiveControl := FCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasPushDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;

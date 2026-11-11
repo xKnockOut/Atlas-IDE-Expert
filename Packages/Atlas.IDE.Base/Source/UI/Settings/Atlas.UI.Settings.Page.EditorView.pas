@@ -183,8 +183,8 @@ begin
   FEditorToolbarCustomize.Parent := mPanel;
   FEditorToolbarCustomize.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarCustomize);
   FEditorToolbarCustomize.Left := 0;
-  FEditorToolbarCustomize.Top := 3;
-  FEditorToolbarCustomize.Width := 180;
+  FEditorToolbarCustomize.Top := FEditorToolbarCustomize.ScaleValue(3);
+  FEditorToolbarCustomize.Width := FEditorToolbarCustomize.ScaleValue(180);
   FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
   Attach(mPanel, FEditorToolbarItems);
   BindCheck('EditorToolbarReturnButton',

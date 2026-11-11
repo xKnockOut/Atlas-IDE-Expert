@@ -240,7 +240,7 @@ begin
   FParts.Cancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
   FParts.Cancel.ModalResult := mrCancel;
   FParts.Cancel.Cancel := True;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasTrackerEndDialog.AddRow(AHeight: Integer): TPanel;

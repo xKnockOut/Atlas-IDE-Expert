@@ -70,15 +70,15 @@ begin
   mTitle.Parent := mPanel;
   mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsHint);
   mTitle.Left := 0;
-  mTitle.Top := 3;
+  mTitle.Top := mTitle.ScaleValue(3);
   mTitle.Font.Color := clGrayText;
   mPanel := AddPanel(32);
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
   mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset);
   mButton.Left := 0;
-  mButton.Top := 3;
-  mButton.Width := 150;
+  mButton.Top := mButton.ScaleValue(3);
+  mButton.Width := mButton.ScaleValue(150);
   mButton.OnClick := ResetColorsClick;
   Attach(mPanel, FLightSwatches[0]);
 end;
@@ -102,7 +102,7 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   for mIndex := 0 to High(ASwatches) do
   begin
     ASwatches[mIndex] := TShape.Create(FPage);

@@ -199,6 +199,7 @@ begin
   FTipTimer := TTimer.Create(Self);
   FTipTimer.Enabled := False;
   FTipTimer.Interval := cTipDelayMs;
+  // lsp-ignore: control-fixed-bounds -- Record in logischen Pixeln, skaliert beim Zeichnen
   FPanel.Width := cDefaultPanelWidth;
   FOptions.SelectionMarker := True;
   FOptions.ShowVariantBranch := True;

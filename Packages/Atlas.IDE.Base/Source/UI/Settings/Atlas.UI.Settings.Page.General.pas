@@ -105,22 +105,22 @@ begin
   mTitle.Parent := mPanel;
   mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsServerPath);
   mTitle.Left := 0;
-  mTitle.Top := 3;
+  mTitle.Top := mTitle.ScaleValue(3);
   // Pfad in eigener Zeile: Die Beschriftung ist lang, das Feld braucht die Breite.
   mPanel := AddPanel(26);
   FServerPath := TEdit.Create(FPage);
   FServerPath.Parent := mPanel;
   FServerPath.Left := 0;
   FServerPath.Top := 1;
-  FServerPath.Width := 430;
+  FServerPath.Width := FServerPath.ScaleValue(430);
   FServerPath.Anchors := [akLeft, akTop, akRight];
   FServerPath.OnChange := ServerPathChange;
   FServerBrowse := TButton.Create(FPage);
   FServerBrowse.Parent := mPanel;
   FServerBrowse.Caption := '…';
-  FServerBrowse.Left := 436;
+  FServerBrowse.Left := FServerBrowse.ScaleValue(436);
   FServerBrowse.Top := 0;
-  FServerBrowse.Width := 30;
+  FServerBrowse.Width := FServerBrowse.ScaleValue(30);
   FServerBrowse.Anchors := [akTop, akRight];
   FServerBrowse.OnClick := ServerBrowseClick;
   mPanel := AddPanel(18);
@@ -155,7 +155,7 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexProgressOff)]);
   FStatusHidden := AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
-  FStatusHidden.Width := 180;
+  FStatusHidden.Width := FStatusHidden.ScaleValue(180);
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
   FDiagnosticMode := BindCheck('DiagnosticMode',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDiagnosticMode)));
@@ -361,7 +361,7 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotificationsSources);
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   mNames := nil;
   for mSource in TAtlasNotificationSources.Known do
   begin
@@ -371,16 +371,16 @@ begin
   FNotificationSource.Parent := mPanel;
   FNotificationSource.Left := cFieldLeft;
   FNotificationSource.Top := 1;
-  FNotificationSource.Width := 180;
+  FNotificationSource.Width := FNotificationSource.ScaleValue(180);
   FNotificationSource.SetChoices(mNames);
   FNotificationSource.Choice := 0;
   FNotificationSource.OnChange := NotificationSourceChange;
   // Reihenfolge wie TAtlasNotificationMode: einblenden und sammeln, nur sammeln, aus.
   FNotificationMode := TAtlasChoiceBox.Create(FPage);
   FNotificationMode.Parent := mPanel;
-  FNotificationMode.Left := cFieldLeft + 186;
+  FNotificationMode.Left := cFieldLeft + FNotificationMode.ScaleValue(186);
   FNotificationMode.Top := 1;
-  FNotificationMode.Width := 170;
+  FNotificationMode.Width := FNotificationMode.ScaleValue(170);
   FNotificationMode.SetChoices([TAtlasStrings.Text(TAtlasTextId.NotificationsModeShow),
     TAtlasStrings.Text(TAtlasTextId.NotificationsModeCollect), TAtlasStrings.Text(TAtlasTextId.NotificationsModeOff)]);
   FNotificationMode.Choice := 0;

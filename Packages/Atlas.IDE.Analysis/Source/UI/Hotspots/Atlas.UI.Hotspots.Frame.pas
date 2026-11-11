@@ -544,7 +544,7 @@ begin
   AFrame.FParts.Refresh.Align := alLeft;
   AFrame.FParts.Refresh.AlignWithMargins := True;
   AFrame.FParts.Refresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsRefresh);
-  AFrame.FParts.Refresh.Width := 110;
+  AFrame.FParts.Refresh.Width := AFrame.FParts.Refresh.ScaleValue(110);
   AFrame.FParts.Refresh.OnClick := AEvents.RefreshClick;
   AFrame.FParts.Save := TButton.Create(AFrame);
   AFrame.FParts.Save.Parent := mTop;
@@ -552,7 +552,7 @@ begin
   AFrame.FParts.Save.AlignWithMargins := True;
   AFrame.FParts.Save.Left := AFrame.FParts.Refresh.Left + AFrame.FParts.Refresh.Width + 1;
   AFrame.FParts.Save.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveReport);
-  AFrame.FParts.Save.Width := 130;
+  AFrame.FParts.Save.Width := AFrame.FParts.Save.ScaleValue(130);
   AFrame.FParts.Save.OnClick := AEvents.SaveClick;
   AFrame.FParts.Level := TComboBox.Create(AFrame);
   AFrame.FParts.Level.Parent := mTop;
@@ -560,7 +560,7 @@ begin
   AFrame.FParts.Level.AlignWithMargins := True;
   AFrame.FParts.Level.Left := AFrame.FParts.Save.Left + AFrame.FParts.Save.Width + 1;
   AFrame.FParts.Level.Style := csDropDownList;
-  AFrame.FParts.Level.Width := 110;
+  AFrame.FParts.Level.Width := AFrame.FParts.Level.ScaleValue(110);
   AFrame.FParts.Level.OnChange := AEvents.LevelChange;
   AFrame.FParts.Filter := TEdit.Create(AFrame);
   AFrame.FParts.Filter.Parent := mTop;

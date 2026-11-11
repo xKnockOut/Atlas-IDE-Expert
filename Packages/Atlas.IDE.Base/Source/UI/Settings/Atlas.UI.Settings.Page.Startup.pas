@@ -104,12 +104,12 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKey);
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   FSafeKey := TAtlasChoiceBox.Create(FPage);
   FSafeKey.Parent := mPanel;
   FSafeKey.Left := cFieldLeft;
   FSafeKey.Top := 1;
-  FSafeKey.Width := 120;
+  FSafeKey.Width := FSafeKey.ScaleValue(120);
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
   FSafeKey.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyShift),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyCtrl),
@@ -157,7 +157,7 @@ begin
   FVersion.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
     TAtlasUpdates.IdeVersion]);
   FVersion.Left := 0;
-  FVersion.Top := 2;
+  FVersion.Top := FVersion.ScaleValue(2);
   BindCheck('UpdatesCheck', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUpdatesCheck)));
   // Update installieren (#1519): anbieten, ohne Frage vorbereiten oder nur melden; Kanal und neue Module.
   FUpdatesInstall := AddChoice(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstall),
