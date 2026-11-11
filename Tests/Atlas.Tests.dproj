@@ -2007,8 +2007,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.ButtonBar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FitText.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FormModel.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
