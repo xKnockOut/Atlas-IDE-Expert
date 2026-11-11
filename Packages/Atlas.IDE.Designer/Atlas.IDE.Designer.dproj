@@ -93,6 +93,7 @@
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
@@ -101,6 +102,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Access.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FitText.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ButtonBar.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Arrange.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>

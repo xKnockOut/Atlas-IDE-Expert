@@ -44,6 +44,7 @@ requires
 
 contains
   Atlas.UI.Designer.Strings in 'Source\UI\Designer\Atlas.UI.Designer.Strings.pas',
+  Atlas.Core.Designer.ButtonBar in 'Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas',
   Atlas.Core.Designer.Components in 'Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.FitText in 'Source\Core\Designer\Atlas.Core.Designer.FitText.pas',
   Atlas.Core.Designer.FormModel in 'Source\Core\Designer\Atlas.Core.Designer.FormModel.pas',
@@ -56,6 +57,7 @@ contains
   Atlas.UI.Designer.TabOverlay in 'Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas',
   Atlas.IDE.Designer.Access in 'Source\IDE\Designer\Atlas.IDE.Designer.Access.pas',
   Atlas.IDE.Designer.FitText in 'Source\IDE\Designer\Atlas.IDE.Designer.FitText.pas',
+  Atlas.IDE.Designer.ButtonBar in 'Source\IDE\Designer\Atlas.IDE.Designer.ButtonBar.pas',
   Atlas.IDE.Designer.Arrange in 'Source\IDE\Designer\Atlas.IDE.Designer.Arrange.pas',
   Atlas.IDE.Designer.Navigate in 'Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas',
   Atlas.IDE.Designer.SelectionSets in 'Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas',

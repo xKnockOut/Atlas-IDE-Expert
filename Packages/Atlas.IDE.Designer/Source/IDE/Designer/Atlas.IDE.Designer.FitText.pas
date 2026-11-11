@@ -26,6 +26,9 @@ type
     class function TextWidth(AControl: TControl; const ASources: string): Integer; static;
     /// <summary>Steuerelemente mit Text unter ASelected (Geschwister der ersten).</summary>
     class function Candidates(const ASelected: TArray<TComponent>): TArray<TControl>; static;
+    /// <summary>Gemeinsame Breite der Steuerelemente nach Text, Innenabstand und Mindestbreite (in Pixeln der
+    /// Designgröße von ARoot); auch für die Knopfleiste (#732).</summary>
+    class function CommonWidth(const AControls: TArray<TControl>; ARoot: TComponent): Integer; static;
     /// <summary>Befehl ausführen; Meldungen über AOnMessage.</summary>
     class procedure Execute(const AOnMessage: TProc<string>); static;
   end;
@@ -249,6 +252,18 @@ begin
   end;
 end;
 
+class function TAtlasIdeFitText.CommonWidth(const AControls: TArray<TControl>; ARoot: TComponent): Integer;
+var
+  mFixed: TArray<string>;
+  mPpi: Integer;
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  mPpi := PpiOf(ARoot);
+  Result := TAtlasFitText.Width(ItemsOf(AControls, mPpi, mFixed), MulDiv(mSettings.DesignerFitToTextPadding, mPpi,
+    cDefaultPpi), MulDiv(mSettings.DesignerFitToTextMinWidth, mPpi, cDefaultPpi));
+end;
+
 class procedure TAtlasIdeFitText.Execute(const AOnMessage: TProc<string>);
 var
   mEditor: IOTAFormEditor;
@@ -258,11 +273,9 @@ var
   mItems: TArray<TAtlasFitItem>;
   mNew: TArray<TRect>;
   mFixed: TArray<string>;
-  mSettings: TAtlasPluginSettings;
-  mWidth, mPpi, mIndex: Integer;
+  mWidth, mIndex: Integer;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  if not mSettings.DesignerFitToText or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  if not TAtlasIdeSettings.Current.DesignerFitToText or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit;
   end;
@@ -273,10 +286,8 @@ begin
     AOnMessage(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitNoText));
     Exit;
   end;
-  mPpi := PpiOf(mRoot);
-  mItems := ItemsOf(mControls, mPpi, mFixed);
-  mWidth := TAtlasFitText.Width(mItems, MulDiv(mSettings.DesignerFitToTextPadding, mPpi, cDefaultPpi),
-    MulDiv(mSettings.DesignerFitToTextMinWidth, mPpi, cDefaultPpi));
+  mItems := ItemsOf(mControls, PpiOf(mRoot), mFixed);
+  mWidth := CommonWidth(mControls, mRoot);
   mNew := TAtlasFitText.Apply(mItems, mWidth, mControls[0].Parent.ClientWidth);
   for mIndex := 0 to High(mControls) do
   begin

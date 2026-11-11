@@ -1101,6 +1101,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Unit | Datei | Begründung |
 |---|---|---|
+| `Atlas.Core.Designer.ButtonBar` | `Core/Designer/Atlas.Core.Designer.ButtonBar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Components` | `Core/Designer/Atlas.Core.Designer.Components.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
@@ -1110,6 +1111,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.ButtonBar` | `IDE/Designer/Atlas.IDE.Designer.ButtonBar.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Commands` | `IDE/Designer/Atlas.IDE.Designer.Commands.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Composition` | `IDE/Designer/Atlas.IDE.Designer.Composition.pas` | Anmeldung des Moduls `atlas.designer`, #1455 |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |

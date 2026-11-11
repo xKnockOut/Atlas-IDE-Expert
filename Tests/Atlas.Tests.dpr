@@ -1603,6 +1603,8 @@ uses
   Atlas.UI.Problems.KindIcon in '..\Packages\Atlas.IDE.Base\Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas',
   Atlas.UI.StatusBar.Bar in '..\Packages\Atlas.IDE.Base\Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas',
   Atlas.UI.StatusBar.Bar.Tests in 'IDE.Expert\Atlas.UI.StatusBar.Bar.Tests.pas',
+  Atlas.Core.Designer.ButtonBar in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas',
+  Atlas.Core.Designer.ButtonBar.Tests in 'IDE.Expert\Atlas.Core.Designer.ButtonBar.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

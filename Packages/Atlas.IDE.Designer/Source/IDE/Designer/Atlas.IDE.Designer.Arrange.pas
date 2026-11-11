@@ -4,6 +4,7 @@
 // Befehlen, die Größe und Lage der markierten Steuerelemente ändern. Jeder
 // Befehl hat eine eigene Einstellung; ist keiner an, fehlt der Knopf.
 // - Breite nach Text (#730, designer.fitToText, TAtlasIdeFitText).
+// - Knopfleiste anordnen (#732, designer.buttonBar, TAtlasIdeButtonBar).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -40,10 +41,12 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,
+  Atlas.IDE.Designer.ButtonBar,
   Atlas.IDE.Foundation.Settings;
 
 const
   cFitToText = 1;
+  cButtonBar = 2;
 
 { TAtlasIdeDesignerArrange }
 
@@ -62,7 +65,7 @@ end;
 
 class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.DesignerFitToText;
+  Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar;
 end;
 
 procedure TAtlasIdeDesignerArrange.AddItem(const ACaption: string; ATag: Integer; AEnabled: Boolean);
@@ -96,6 +99,11 @@ begin
     AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitToText), cFitToText,
       Length(TAtlasIdeFitText.Candidates(mSelected)) > 0);
   end;
+  if mSettings.DesignerButtonBar then
+  begin
+    AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerButtonBarCmd), cButtonBar,
+      Length(TAtlasIdeButtonBar.Candidates(mSelected)) > 0);
+  end;
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -109,9 +117,11 @@ begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
-      if mTag = cFitToText then
-      begin
-        TAtlasIdeFitText.Execute(mOnMessage);
+      case mTag of
+        cFitToText:
+          TAtlasIdeFitText.Execute(mOnMessage);
+        cButtonBar:
+          TAtlasIdeButtonBar.Execute(mOnMessage);
       end;
     end);
 end;

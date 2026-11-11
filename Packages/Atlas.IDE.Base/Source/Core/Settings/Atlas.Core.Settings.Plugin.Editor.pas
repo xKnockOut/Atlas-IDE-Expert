@@ -76,6 +76,12 @@ const
   cFitSourceItems = 'items';
   cMaxFitMinWidth = 2000;
   cMaxFitPadding = 200;
+  /// <summary>Werte von designer.buttonBar.position (#732).</summary>
+  cButtonBarBottomRight = 'bottomRight';
+  cButtonBarBottomLeft = 'bottomLeft';
+  cButtonBarRightTop = 'rightTop';
+  cButtonBarRightBottom = 'rightBottom';
+  cMaxButtonBarSpace = 100;
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -522,6 +528,20 @@ type
     DesignerFitToTextPadding: Integer;
     /// <summary>Textquellen caption, text, items durch Komma (#730, designer.fitToText.sources).</summary>
     DesignerFitToTextSources: string;
+    /// <summary>Befehl „Knopfleiste anordnen“ (#732, designer.buttonBar).</summary>
+    DesignerButtonBar: Boolean;
+    /// <summary>Reihenfolge der Rollen (#732, designer.buttonBar.order).</summary>
+    DesignerButtonBarOrder: string;
+    /// <summary>Lage: cButtonBarBottomRight … (#732, designer.buttonBar.position).</summary>
+    DesignerButtonBarPosition: string;
+    /// <summary>Abstand zwischen den Knöpfen (#732, designer.buttonBar.gap).</summary>
+    DesignerButtonBarGap: Integer;
+    /// <summary>Abstand zum Rand (#732, designer.buttonBar.margin).</summary>
+    DesignerButtonBarMargin: Integer;
+    /// <summary>Default, Cancel und ModalResult setzen (#732, designer.buttonBar.setModalResult).</summary>
+    DesignerButtonBarSetModalResult: Boolean;
+    /// <summary>Eigene Begriffe „ok=Weiter|Los; cancel=Zurück“ (#732, designer.buttonBar.roles).</summary>
+    DesignerButtonBarRoles: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1038,6 +1058,13 @@ begin
   Result.DesignerFitToTextMinWidth := 75;
   Result.DesignerFitToTextPadding := 16;
   Result.DesignerFitToTextSources := cFitSourceCaption;
+  Result.DesignerButtonBar := True;
+  Result.DesignerButtonBarOrder := 'ok,cancel,apply,help';
+  Result.DesignerButtonBarPosition := cButtonBarBottomRight;
+  Result.DesignerButtonBarGap := 8;
+  Result.DesignerButtonBarMargin := 8;
+  Result.DesignerButtonBarSetModalResult := True;
+  Result.DesignerButtonBarRoles := '';
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1078,6 +1105,10 @@ begin
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
+  DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
+    cButtonBarRightTop, cButtonBarRightBottom]);
+  DesignerButtonBarGap := EnsureRange(DesignerButtonBarGap, 0, cMaxButtonBarSpace);
+  DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1107,6 +1138,13 @@ begin
   AIo.Number('DesignerFitToTextMinWidth', DesignerFitToTextMinWidth);
   AIo.Number('DesignerFitToTextPadding', DesignerFitToTextPadding);
   AIo.Text('DesignerFitToTextSources', DesignerFitToTextSources);
+  AIo.Flag('DesignerButtonBar', DesignerButtonBar);
+  AIo.Text('DesignerButtonBarOrder', DesignerButtonBarOrder);
+  AIo.Text('DesignerButtonBarPosition', DesignerButtonBarPosition);
+  AIo.Number('DesignerButtonBarGap', DesignerButtonBarGap);
+  AIo.Number('DesignerButtonBarMargin', DesignerButtonBarMargin);
+  AIo.Flag('DesignerButtonBarSetModalResult', DesignerButtonBarSetModalResult);
+  AIo.Text('DesignerButtonBarRoles', DesignerButtonBarRoles);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

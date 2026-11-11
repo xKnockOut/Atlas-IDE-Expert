@@ -74,6 +74,21 @@ begin
   Number('designer.fitToText.minWidth', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitMinWidth));
   Number('designer.fitToText.padding', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitPadding));
   Line('designer.fitToText.sources', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitSources));
+  Switch('designer.buttonBar', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBar));
+  Line('designer.buttonBar.order', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarOrder));
+  Choice('designer.buttonBar.position',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarPosition),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerBarBottomRight),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerBarBottomLeft),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerBarRightTop),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerBarRightBottom)],
+    [TAtlasPluginSettings.cButtonBarBottomRight, TAtlasPluginSettings.cButtonBarBottomLeft,
+    TAtlasPluginSettings.cButtonBarRightTop, TAtlasPluginSettings.cButtonBarRightBottom]);
+  Number('designer.buttonBar.gap', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarGap));
+  Number('designer.buttonBar.margin', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarMargin));
+  Switch('designer.buttonBar.setModalResult',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarModal));
+  Line('designer.buttonBar.roles', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarRoles));
 end;
 
 end.

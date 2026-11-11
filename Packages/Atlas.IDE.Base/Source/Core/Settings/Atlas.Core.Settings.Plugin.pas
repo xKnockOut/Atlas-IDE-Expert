@@ -149,6 +149,10 @@ type
     cFitSourceCaption = Atlas.Core.Settings.Plugin.Editor.cFitSourceCaption;
     cFitSourceText = Atlas.Core.Settings.Plugin.Editor.cFitSourceText;
     cFitSourceItems = Atlas.Core.Settings.Plugin.Editor.cFitSourceItems;
+    cButtonBarBottomRight = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomRight;
+    cButtonBarBottomLeft = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomLeft;
+    cButtonBarRightTop = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightTop;
+    cButtonBarRightBottom = Atlas.Core.Settings.Plugin.Editor.cButtonBarRightBottom;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -629,6 +633,18 @@ type
       write FEditorView.DesignerFitToTextPadding;
     property DesignerFitToTextSources: string read FEditorView.DesignerFitToTextSources
       write FEditorView.DesignerFitToTextSources;
+    property DesignerButtonBar: Boolean read FEditorView.DesignerButtonBar write FEditorView.DesignerButtonBar;
+    property DesignerButtonBarOrder: string read FEditorView.DesignerButtonBarOrder
+      write FEditorView.DesignerButtonBarOrder;
+    property DesignerButtonBarPosition: string read FEditorView.DesignerButtonBarPosition
+      write FEditorView.DesignerButtonBarPosition;
+    property DesignerButtonBarGap: Integer read FEditorView.DesignerButtonBarGap write FEditorView.DesignerButtonBarGap;
+    property DesignerButtonBarMargin: Integer read FEditorView.DesignerButtonBarMargin
+      write FEditorView.DesignerButtonBarMargin;
+    property DesignerButtonBarSetModalResult: Boolean read FEditorView.DesignerButtonBarSetModalResult
+      write FEditorView.DesignerButtonBarSetModalResult;
+    property DesignerButtonBarRoles: string read FEditorView.DesignerButtonBarRoles
+      write FEditorView.DesignerButtonBarRoles;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

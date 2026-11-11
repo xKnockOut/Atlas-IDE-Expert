@@ -4989,6 +4989,93 @@
       "x-node": "editor.designerBar",
       "x-issue": "#730"
     },
+    "DesignerButtonBar": {
+      "description": "Befehl „Knopfleiste anordnen“ im Menü „Anordnen“ der Designer-Leiste: ordnet die markierten Knöpfe nach ihrer Rolle (ok, cancel, apply, help aus Caption, Name oder ModalResult) als Knopfleiste nach Windows-Richtlinie an, gleich breit (Breite nach Text) und gleich hoch, verankert am Rand, mit fortlaufender TabOrder. Ändert die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.buttonBar",
+      "x-parent": "editor.designerBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarOrder": {
+      "description": "Reihenfolge der Rollen in der Knopfleiste, durch Komma getrennt (ok, cancel, apply, help); Knöpfe ohne Rolle stehen vor help.",
+      "type": "string",
+      "default": "ok,cancel,apply,help",
+      "x-key": "designer.buttonBar.order",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarPosition": {
+      "description": "Lage der Knopfleiste: unten rechts (bottomRight), unten links (bottomLeft), rechts oben senkrecht (rightTop) oder rechts unten senkrecht (rightBottom).",
+      "type": "string",
+      "enum": [
+        "bottomRight",
+        "bottomLeft",
+        "rightTop",
+        "rightBottom"
+      ],
+      "default": "bottomRight",
+      "x-key": "designer.buttonBar.position",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarGap": {
+      "description": "Abstand zwischen den Knöpfen in Pixeln (bei 96 dpi).",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.buttonBar.gap",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarMargin": {
+      "description": "Abstand der Knopfleiste zum Rand des Elternelements in Pixeln (bei 96 dpi), innerhalb seines Padding.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.buttonBar.margin",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarSetModalResult": {
+      "description": "Beim Anordnen Default (ok-Knopf), Cancel (cancel-Knopf) und ModalResult (mrOk, mrCancel) setzen. Hat schon ein anderer Knopf Default bzw. Cancel oder setzt der OnClick-Handler ModalResult selbst bzw. ruft Close auf, bleibt es und ein Hinweis erscheint.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.buttonBar.setModalResult",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
+    "DesignerButtonBarRoles": {
+      "description": "Eigene Begriffe für die Rollen, vor den eingebauten: „ok=Weiter|Los; cancel=Zurück“ (Beschriftung ohne & oder Komponentenname, Groß- und Kleinschreibung egal).",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.buttonBar.roles",
+      "x-parent": "designer.buttonBar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#732"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
