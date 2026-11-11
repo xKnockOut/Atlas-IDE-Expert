@@ -145,7 +145,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary.Sections;
 
 type

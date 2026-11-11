@@ -12,14 +12,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
-  Atlas.Core.Hover.Contract,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
-  Atlas.Core.Lsp.AccessChains,
-  Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
-  Atlas.Core.InlayHints.Store,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits;
 
 type

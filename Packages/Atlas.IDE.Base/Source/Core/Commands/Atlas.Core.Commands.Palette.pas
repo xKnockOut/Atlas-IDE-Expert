@@ -42,8 +42,9 @@ type
 
 {$SCOPEDENUMS ON}
   /// <summary>Wie ein Eintrag einer Zusatzgruppe ausgeführt wird: Enter (Open), Strg+Enter (Start),
-  /// Umschalt+Enter (Browse), Strg+C (Copy, die Palette bleibt offen).</summary>
-  TAtlasPaletteAction = (Open, Start, Browse, Copy);
+  /// Umschalt+Enter (Browse), Strg+C (Copy, die Palette bleibt offen), Alt+Enter (Toggle: Schnellschalter einer
+  /// Einstellung umschalten, #1884).</summary>
+  TAtlasPaletteAction = (Open, Start, Browse, Copy, Toggle);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Gruppe einer Zusatzquelle unter den Befehlen (#1270).</summary>
@@ -86,7 +87,9 @@ type
     /// zurück); AFrom, wenn es keine wählbare Zeile gibt.</summary>
     function Step(AFrom, ADelta: Integer): Integer;
     /// <summary>Enter auf einem Eintrag: Strg = Start, sonst Umschalt = Browse, sonst Open.</summary>
-    class function ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction; static;
+    class function ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction; overload; static;
+    /// <summary>Wie oben; Alt+Enter = Toggle (#1884), vor Strg und Umschalt.</summary>
+    class function ActionOf(ACtrl, AShift, AAlt: Boolean): TAtlasPaletteAction; overload; static;
   end;
 
   /// <summary>Zusatzquelle der Palette (#1270), z. B. Issues im Tracker. Alle Aufrufe im Hauptthread.</summary>
@@ -306,6 +309,15 @@ begin
   begin
     Result := mRow;
   end;
+end;
+
+class function TAtlasPaletteRows.ActionOf(ACtrl, AShift, AAlt: Boolean): TAtlasPaletteAction;
+begin
+  if AAlt then
+  begin
+    Exit(TAtlasPaletteAction.Toggle);
+  end;
+  Result := ActionOf(ACtrl, AShift);
 end;
 
 class function TAtlasPaletteRows.ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction;

@@ -37,7 +37,6 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Builtin,
   Shell.Platform,
-  Shell.Bootstrap,
   Shell.Mcp.Context,
   Atlas.Common.Localization.Texts;
 

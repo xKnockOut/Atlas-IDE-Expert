@@ -12,6 +12,16 @@ Back to the [README](../../../README.md)
 
 Settings: `build.zeroHints`, `build.warningsAsErrors`
 
+### Without a command-line compiler (Starter, Community)
+
+- At startup Atlas looks for `dcc32.exe` or `dcc64.exe` in the installation folder (#1822); RAD Studio Starter and, depending on the version, Community have no command-line compiler
+- the result is in the startup line of `atlas.log` ("command-line compiler: …")
+- if it is missing, a notice with a *Settings* button appears once; the "Set up project for Atlas" card on the welcome page says so too
+- builds for AI assistants (`build_project`) run through the IDE's compiler anyway and keep working
+- project tasks that call `dcc32`, `dcc64`, another `dcc…` or `msbuild` do not start but give the reason; tasks that call the compiler through a script are not recognized
+
+Setting: `diagnostics.editionCheck` (off = behaves as before)
+
 ### Disable a compiler warning in place
 
 - A code action on a warning or hint of the last build:
@@ -66,6 +76,7 @@ Settings: `build.gate`
 - Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
 - Afterwards the project is back as it was
 
+<a id="window-atlascompilerswitches"></a>
 ### Compiler switches at the cursor
 
 - A dockable window lists the effective `R`, `Q`, `O`, `C`, `I`, `A`, `HINTS`, `WARNINGS`, disabled warnings and active symbols at the cursor position
@@ -191,6 +202,7 @@ Settings: `debug.explainUnavailable`
 
 Settings: `debug.completionInDialogs`
 
+<a id="window-atlasevaluate"></a>
 ### Evaluate window
 
 - A dockable window "Atlas: Evaluate" with several expressions that are evaluated again at every stop
@@ -238,6 +250,7 @@ Run menu and command palette. "Which code runs when I click here?"
 
 Settings: `debug.breakOnNextEvent`
 
+<a id="window-atlasstepfilter"></a>
 ### Step filters
 
 - F7 no longer stops in:
@@ -253,6 +266,7 @@ Settings: `debug.stepFilters`
 
 ## Debug: exceptions
 
+<a id="window-atlasdebugexceptions"></a>
 ### Exception history
 
 - Dockable window “Atlas: Exceptions” with every exception of the debug session:

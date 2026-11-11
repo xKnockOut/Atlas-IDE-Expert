@@ -220,9 +220,13 @@
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Protocol.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.FileTemplates.pas"/>
+        <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Gallery.pas"/>
+        <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Choice.pas"/>
         <DCCReference Include="Source\UI\Generate\Atlas.UI.Generate.Window.pas"/>
+        <DCCReference Include="Source\UI\Generate\Atlas.UI.Generate.Choice.pas"/>
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.Commands.pas"/>
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas"/>
+        <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.Gallery.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ClassExtraction.pas"/>
@@ -344,6 +348,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Host.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StartOptions.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
+        <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PaletteSearch.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PageOptions.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
@@ -520,6 +525,8 @@
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Experimental.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.RuleChecksNotice.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.NodeScope.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Search.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.SettingsPalette.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Renames.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QueryMigration.pas"/>
@@ -545,6 +552,7 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.GhostSuggestions.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Help.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.KnownPackages.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
@@ -559,6 +567,9 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Edition.pas"/>
+        <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.Strings.pas"/>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Edition.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Timing.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.PluginTimings.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.PluginReport.pas"/>
@@ -683,6 +694,7 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Files.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Service.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.RuleActions.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Explanation.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.MessageView.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.LastMessages.pas"/>
@@ -697,6 +709,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.IdleGate.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
+        <DCCReference Include="Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
@@ -834,6 +847,7 @@
             <Form>AtlasSettingsOverview</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

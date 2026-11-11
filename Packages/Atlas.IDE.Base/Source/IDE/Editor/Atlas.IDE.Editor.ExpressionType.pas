@@ -107,7 +107,6 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,

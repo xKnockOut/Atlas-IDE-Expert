@@ -50,6 +50,9 @@ type
     /// <summary>#1817: commands.projectContextMenu mit Vorgabe an.</summary>
     [Test]
     procedure ProjectContextMenuRoundTrip;
+    /// <summary>#1821: generate.galleryWizards mit Vorgabe an.</summary>
+    [Test]
+    procedure GalleryWizardsRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -214,6 +217,11 @@ begin
   Assert.AreEqual('ask', ASettings.UpdatesInstall);
   Assert.AreEqual('stable', ASettings.UpdatesChannel);
   Assert.AreEqual('ask', ASettings.UpdatesNewModules);
+  // Modul Hilfe (#1886).
+  Assert.IsTrue(ASettings.HelpEnabled, 'F1-Hilfe an');
+  Assert.AreEqual(TAtlasPluginSettings.cHelpSourceOnline, ASettings.HelpSource);
+  Assert.IsTrue(ASettings.DiagnosticsEditionCheck);
+  Assert.IsFalse(ASettings.EditionNoticeShown);
   Assert.IsTrue(ASettings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
   Assert.IsFalse(ASettings.LogNames, 'atlas.log anonym (#1478)');
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
@@ -345,6 +353,10 @@ begin
   ASettings.UpdatesInstall := 'auto';
   ASettings.UpdatesChannel := 'prerelease';
   ASettings.UpdatesNewModules := 'skip';
+  ASettings.HelpEnabled := False;
+  ASettings.HelpSource := TAtlasPluginSettings.cHelpSourceLocal;
+  ASettings.DiagnosticsEditionCheck := False;
+  ASettings.EditionNoticeShown := True;
   ASettings.BugReportAnonymize := False;
   ASettings.LogNames := True;
   ASettings.ProblemsMessageList := True;
@@ -471,6 +483,10 @@ begin
   Assert.AreEqual('auto', ALoaded.UpdatesInstall);
   Assert.AreEqual('prerelease', ALoaded.UpdatesChannel);
   Assert.AreEqual('skip', ALoaded.UpdatesNewModules);
+  Assert.IsFalse(ALoaded.HelpEnabled);
+  Assert.AreEqual(TAtlasPluginSettings.cHelpSourceLocal, ALoaded.HelpSource);
+  Assert.IsFalse(ALoaded.DiagnosticsEditionCheck);
+  Assert.IsTrue(ALoaded.EditionNoticeShown);
   Assert.IsFalse(ALoaded.BugReportAnonymize);
   Assert.IsTrue(ALoaded.LogNames);
 end;
@@ -683,6 +699,22 @@ begin
   Assert.IsFalse(Loaded.ProjectContextMenu);
 end;
 
+procedure TAtlasPluginSettingsTests.GalleryWizardsRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.GalleryWizards);
+  Store := TMemoryStore.Create;
+  Settings.GalleryWizards := False;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('GalleryWizards', 1));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.GalleryWizards);
+end;
+
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
 var
   Store: IAtlasSettingsStore;
@@ -795,7 +827,9 @@ begin
   mSettings.UpdatesInstall := 'immer';
   mSettings.UpdatesChannel := 'nightly';
   mSettings.UpdatesNewModules := 'alle';
+  mSettings.HelpSource := 'Offline';
   mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cHelpSourceOnline, mSettings.HelpSource, 'unbekannte Quelle: online');
   Assert.AreEqual('ask', mSettings.UpdatesInstall);
   Assert.AreEqual('stable', mSettings.UpdatesChannel);
   Assert.AreEqual('ask', mSettings.UpdatesNewModules);

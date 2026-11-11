@@ -79,7 +79,6 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
   Atlas.Common.Localization.Texts;

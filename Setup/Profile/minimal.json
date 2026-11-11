@@ -55,6 +55,7 @@
     "vcs.enabled": false,
     "assistants.enabled": false,
     "designer.enabled": false,
+    "help.enabled": false,
     "ruleChecks.enabled": false,
     "search.enabled": false
   }

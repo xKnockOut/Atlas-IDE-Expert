@@ -131,6 +131,8 @@ begin
   BindKey('RedoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu)));
   BindCheck('EditorKeysPriority', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority)));
   BindCheck('SlashCommands', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands)));
+  // Einstellungen mit @ in der Befehlspalette (#1884).
+  BindCheck('PaletteSettingsPrefix', AddCheck(TAtlasStrings.Text(TAtlasTextId.PaletteSettingsPrefix)));
   // Erzeugen-Menü (#719): Schnellbefehle, Vorlagen und Code-Aktionen an der Cursorstelle.
   BindCheck('GenerateMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu)));
   BindKey('GenerateMenuKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand)));
@@ -140,6 +142,8 @@ begin
   BindCheck('GenerateMenuShowCommandNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames)));
   // Untermenü Atlas in der Projektverwaltung (#1817).
   BindCheck('ProjectContextMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProjectContextMenu)));
+  // Assistenten in Datei › Neu › Weitere (#1821).
+  BindCheck('GalleryWizards', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGalleryWizards)));
   // Liste der Benachrichtigungen (#601).
   BindKey('NotificationsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand)));
 end;

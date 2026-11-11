@@ -61,7 +61,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hotspots.Model,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Hotspots.Frame,
   Atlas.IDE.Foundation.EditorBuffer,

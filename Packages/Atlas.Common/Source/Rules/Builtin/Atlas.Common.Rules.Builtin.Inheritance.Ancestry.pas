@@ -189,10 +189,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Options,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

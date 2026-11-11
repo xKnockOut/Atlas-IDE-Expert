@@ -2,12 +2,14 @@
 
 // Haken der Optionsseite „Atlas“ zu anderen Teilen der IDE-Schicht: Version des Servers (#227), angeheftete Favoriten
 // (#458), Befehle für „Leiste anpassen …“ (#1101), Projektdatei .atlas (#486),
-// Export, Import und „Alles zurücksetzen“ (#723). Ohne Zustand; die Seite hält die Methodenreferenzen.
+// Export, Import und „Alles zurücksetzen“ (#723), F1 zur Einstellung unter dem Fokus (#1886). Ohne Zustand; die Seite
+// hält die Methodenreferenzen.
 
 interface
 
 uses
   System.SysUtils,
+  Vcl.Controls,
   Atlas.UI.EditorToolbar.Customize,
   Atlas.UI.Settings.Page;
 
@@ -23,12 +25,20 @@ type
       const AToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>); static;
     /// <summary>Projektdatei .atlas (#486), Export, Import und „Alles zurücksetzen“ (#723).</summary>
     class procedure ConnectTransfer(APage: TAtlasSettingsPage); static;
+    /// <summary>F1 (#1886): Hilfe zur Einstellung unter dem Fokus, sonst zur Optionsseite.</summary>
+    class procedure ConnectHelp(APage: TAtlasSettingsPage); static;
+    /// <summary>Schlüssel (x-key) der Einstellung an AControl oder einem seiner Eltern in APage; '' ohne.</summary>
+    class function SettingKeyAt(APage: TAtlasSettingsPage; AControl: TControl): string; static;
   end;
 
 implementation
 
 uses
+  Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Settings.Catalog,
+  Atlas.IDE.Contracts.Help,
+  Atlas.IDE.ElementHelp.Keys,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Completion.Favorites,
@@ -112,6 +122,48 @@ begin
     begin
       Result := TAtlasIdeSettingsTransfer.ResetAll(ACurrent, AResult);
     end;
+end;
+
+class function TAtlasPageOptions.SettingKeyAt(APage: TAtlasSettingsPage; AControl: TControl): string;
+var
+  mControl: TControl;
+  mName: string;
+  mIndex: Integer;
+begin
+  Result := '';
+  mControl := AControl;
+  while (Result = '') and (mControl <> nil) and (mControl <> APage) do
+  begin
+    for mName in APage.Marks.NamesOf(mControl) do
+    begin
+      mIndex := APage.Catalog.IndexOfName(mName);
+      if (Result = '') and (mIndex >= 0) then
+      begin
+        Result := APage.Catalog.Entries[mIndex].Key;
+      end;
+    end;
+    mControl := mControl.Parent;
+  end;
+end;
+
+class procedure TAtlasPageOptions.ConnectHelp(APage: TAtlasSettingsPage);
+begin
+  TAtlasIdeHelp.AddKey(APage,
+    function(out ATopic: TAtlasHelpTopic): Boolean
+    var
+      mKey: string;
+    begin
+      mKey := SettingKeyAt(APage, Screen.ActiveControl);
+      if mKey <> '' then
+      begin
+        ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Setting, mKey);
+      end
+      else
+      begin
+        ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Window, TAtlasIdeHelp.cOptionsWindow);
+      end;
+      Result := True;
+    end);
 end;
 
 end.

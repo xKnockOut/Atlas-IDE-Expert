@@ -1,0 +1,50 @@
+﻿package Atlas.IDE.Help;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Help'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Hilfe (#1886, ADR 0017): F1 auf Atlas-Befunden, Einstellungen und Atlas-Fenstern öffnet die passende Stelle
+// der Atlas-Doku. Meldet sich in der Unit-Initialisierung von Atlas.IDE.Help.Composition über die Registry des
+// Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen (Regeln 1 bis 4).
+// Requiret nur das Kern-Package (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.Core.Help.Links in 'Source\Core\Help\Atlas.Core.Help.Links.pas',
+  Atlas.UI.Help.Strings in 'Source\UI\Help\Atlas.UI.Help.Strings.pas',
+  Atlas.UI.Help.SettingsSection in 'Source\UI\Help\Atlas.UI.Help.SettingsSection.pas',
+  Atlas.IDE.Help.Pages in 'Source\IDE\Help\Atlas.IDE.Help.Pages.pas',
+  Atlas.IDE.Help.Composition in 'Source\IDE\Help\Atlas.IDE.Help.Composition.pas';
+
+end.

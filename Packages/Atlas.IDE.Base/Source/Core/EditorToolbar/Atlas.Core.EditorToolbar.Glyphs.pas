@@ -296,6 +296,11 @@ begin
       Result := [Shape([P(1.5, 6), P(5, 6), P(5, 9.5), P(1.5, 9.5)], True, True),
         Outline([P(6.25, 6), P(9.75, 6), P(9.75, 9.5), P(6.25, 9.5)]),
         Outline([P(11, 6), P(14.5, 6), P(14.5, 9.5), P(11, 9.5)])];
+    TAtlasToolbarIcon.Arrange:
+      // Zwei gleich breite Kästchen untereinander, darüber ein Doppelpfeil für die Breite.
+      Result := [Stroke([P(2, 3), P(14, 3)]), Stroke([P(4, 1.5), P(2, 3), P(4, 4.5)]),
+        Stroke([P(12, 1.5), P(14, 3), P(12, 4.5)]), Outline([P(2, 6.5), P(14, 6.5), P(14, 9.5), P(2, 9.5)]),
+        Outline([P(2, 11.5), P(14, 11.5), P(14, 14.5), P(2, 14.5)])];
   else
     Result := nil;
   end;

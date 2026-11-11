@@ -45,6 +45,7 @@ uses
   Atlas.IDE.Diagnostics.KnownPackages,
   Atlas.IDE.Editor.ExitPoints,
   Atlas.IDE.Editor.Reassigned,
+  Atlas.IDE.Generate.Gallery,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Build,
@@ -105,6 +106,8 @@ begin
   // Hinweis „Prüfregeln sind aus“ (#1454): je atlas.json mit Regeln einmal, solange das Modul aus ist.
   Features.Add('RuleChecksNotice', TAtlasSafeLevel.Normal, RuleChecksNoticeStarted, StartRuleChecksNotice,
     StopRuleChecksNotice);
+  // Hinweis „kein Kommandozeilen-Compiler“ (#1822): einmal überhaupt, auch abgesichert (liest nur Dateien).
+  Features.Add('EditionNotice', TAtlasSafeLevel.Safe, EditionNoticeStarted, StartEditionNotice, StopEditionNotice);
   // Module unter „Known Packages“ (Meldung vom 05.11.2026): auch abgesichert, liest nur die Registry; meldet
   // fehlende Module und protokolliert Änderungen der Liste.
   Features.Add('KnownPackages', TAtlasSafeLevel.Safe, KnownPackagesStarted, StartKnownPackages, StopKnownPackages);
@@ -240,6 +243,21 @@ begin
   Result := TAtlasIdeSettings.ModuleOn(AModule);
 end;
 
+procedure StartGallery;
+begin
+  TAtlasIdeGallery.Install;
+end;
+
+procedure StopGallery;
+begin
+  TAtlasIdeGallery.Uninstall;
+end;
+
+function GalleryStarted: Boolean;
+begin
+  Result := TAtlasIdeGallery.Installed;
+end;
+
 /// <summary>Tasten, Paketbeobachtung, Hauptmenü und die Dateiwege der MCP-Werkzeuge und des Neuladens.</summary>
 procedure AddShellFeatures;
 begin
@@ -251,6 +269,8 @@ begin
   Features.Add('MainMenu', TAtlasSafeLevel.Safe, MainMenuStarted, StartMainMenu, StopMainMenu);
   // Untermenü Atlas in der Projektverwaltung (#1817); commands.projectContextMenu prüft es bei jedem Rechtsklick.
   Features.Add('ProjectMenu', TAtlasSafeLevel.Safe, ProjectMenuStarted, StartProjectMenu, StopProjectMenu);
+  // Kategorie Atlas in Datei › Neu › Weitere (#1821); generate.galleryWizards prüft TAtlasIdeGallery.Refresh.
+  Features.Add('Gallery', TAtlasSafeLevel.Safe, GalleryStarted, StartGallery, StopGallery);
   Features.Add('DirtyExport', TAtlasSafeLevel.Normal, DirtyExportStarted, StartDirtyExport, StopDirtyExport);
   Features.Add('Reloader', TAtlasSafeLevel.Normal, ReloaderStarted, StartReloader, StopReloader);
 end;

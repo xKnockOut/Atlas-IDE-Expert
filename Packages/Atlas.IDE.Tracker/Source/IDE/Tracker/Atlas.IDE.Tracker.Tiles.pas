@@ -71,7 +71,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.IDE.Tracker.SprintTile,
-  Atlas.IDE.Tracker.IssuesServices,
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.SprintTile,
   Atlas.UI.Tracker.TestResults;

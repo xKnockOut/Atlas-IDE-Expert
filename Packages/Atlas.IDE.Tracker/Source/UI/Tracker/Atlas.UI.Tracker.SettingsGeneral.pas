@@ -11,7 +11,6 @@ interface
 
 uses
   Vcl.StdCtrls,
-  Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.SettingsRows;

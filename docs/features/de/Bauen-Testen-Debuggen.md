@@ -12,6 +12,16 @@ Zurück zum [README](../../../README_DE.md)
 
 Einstellungen: `build.zeroHints`, `build.warningsAsErrors`
 
+### Ohne Kommandozeilen-Compiler (Starter, Community)
+
+- Beim Start sieht Atlas im Ordner der Installation nach, ob `dcc32.exe` oder `dcc64.exe` da sind (#1822); RAD Studio Starter und je nach Version Community haben keinen Kommandozeilen-Compiler
+- das Ergebnis steht in der Startzeile von `atlas.log` („command-line compiler: …“)
+- fehlt er, kommt einmal ein Hinweis mit Knopf *Einstellungen*; die Karte „Projekt für Atlas einrichten“ der Willkommensseite nennt es ebenfalls
+- Builds für KI-Assistenten (`build_project`) laufen ohnehin über den Compiler der IDE und gehen weiter
+- Projektaufgaben, die `dcc32`, `dcc64`, ein anderes `dcc…` oder `msbuild` aufrufen, starten dann nicht, sondern nennen den Grund; Aufgaben, die den Compiler über ein Skript aufrufen, erkennt Atlas nicht
+
+Einstellung: `diagnostics.editionCheck` (aus = Verhalten wie vorher)
+
 ### Compilerwarnung gezielt abschalten
 
 - Code-Aktion auf einer Warnung oder einem Hinweis des letzten Builds setzt `{$WARN SYMBOL_DEPRECATED OFF}` … `ON` (bzw. `{$HINTS OFF}`) um die Zeile, die Routine oder die Unit
@@ -50,6 +60,7 @@ Einstellungen: `refactoring.missingUnit`
   - auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist
   - danach steht das Projekt wieder wie vorher
 
+<a id="window-atlascompilerswitches"></a>
 ### Compiler-Schalter an der Cursorposition
 
 - Ein andockbares Fenster zeigt die wirksamen Schalter `R`, `Q`, `O`, `C`, `I`, `A`, `HINTS`, `WARNINGS`, abgeschaltete Warnungen und aktive Symbole an der Cursorposition.
@@ -116,6 +127,7 @@ Aufruf: Menü Start und Befehlspalette. „Welcher Code läuft, wenn ich hier kl
 
 Einstellungen: `debug.breakOnNextEvent`
 
+<a id="window-atlasstepfilter"></a>
 #### Schrittfilter
 
 - F7 hält nicht mehr:
@@ -191,6 +203,7 @@ Einstellungen: `debug.explainUnavailable`
 
 Einstellungen: `debug.completionInDialogs`
 
+<a id="window-atlasevaluate"></a>
 #### Fenster „Auswerten“
 
 - Andockbares Fenster „Atlas: Auswerten“ mit mehreren Ausdrücken, die bei jedem Halt neu ausgewertet werden.
@@ -212,6 +225,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
 ### Exceptions
 
+<a id="window-atlasdebugexceptions"></a>
 #### Exception-Verlauf
 
 - andockbares Fenster „Atlas: Exceptions“ mit jeder Exception der Debug-Sitzung (Uhrzeit, Klasse, Meldung aus dem Dialog der IDE, Anzahl gleicher Exceptions am gleichen Ort, Ort, Thread)

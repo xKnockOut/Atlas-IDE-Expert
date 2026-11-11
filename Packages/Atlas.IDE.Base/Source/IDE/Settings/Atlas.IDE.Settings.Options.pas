@@ -167,6 +167,22 @@ var
   /// <summary>Vorgabe zu PendingReveal für den Abschnitt eines Moduls (#1455); '' ohne.</summary>
   PendingArgument: string;
 
+/// <summary>Im offenen Dialog zum Knoten der Einstellung springen (Übersicht und Suchfeld der Knoten, #1903, #1884).
+/// </summary>
+procedure OpenFromOverview(ASetting, ASwitch: string); forward;
+
+/// <summary>Ist das Package mit dem Modulschalter ASwitch installiert (hat es einen Knoten)? '' = Base.</summary>
+function ModuleInstalled(const ASwitch: string): Boolean;
+begin
+  Result := (ASwitch = '') or (TAtlasModuleNodes.NodeOfSwitch(ASwitch) <> nil);
+end;
+
+/// <summary>Name des Packages zum Modulschalter ASwitch.</summary>
+function ModuleNameOf(ASwitch: string): string;
+begin
+  Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
+end;
+
 type
   /// <summary>Zugriff auf Items, das TCustomTreeView geschützt hält (Baum des Optionsdialogs ist eine eigene Ableitung).
   /// </summary>
@@ -452,6 +468,11 @@ begin
   TAtlasPageOptions.ConnectFavorites(FPage, Hooks.ToolbarCommands);
   ConnectIndex;
   TAtlasPageOptions.ConnectTransfer(FPage);
+  TAtlasPageOptions.ConnectHelp(FPage);
+  // Suchfeld über dem Baum (#1884): nur installierte Packages; Treffer anderer Knoten im offenen Dialog öffnen.
+  FPage.Search.OnInstalled := ModuleInstalled;
+  FPage.Search.OnModuleName := ModuleNameOf;
+  FPage.OnOpenSetting := OpenFromOverview;
   // Knoten je Package (#1903): nur, was diesem Knoten gehört.
   FPage.SetTitle(FTitle);
   FPage.ApplyScope(FScope);
@@ -634,6 +655,7 @@ end;
 procedure OpenFromOverview(ASetting, ASwitch: string);
 var
   mName: string;
+  mNode: INTAAddInOptions;
 begin
   if ASetting = '' then
   begin
@@ -648,6 +670,15 @@ begin
   PendingReveal := ASetting;
   if not SelectOptionsNode([TAtlasStrings.Text(TAtlasTextId.SettingsModulesNode), mName]) then
   begin
+    PendingReveal := '';
+    Exit;
+  end;
+  // Schon einmal gezeigter Knoten (#1884): Die IDE legt seine Seite nicht neu an, also selbst zeigen.
+  mNode := TAtlasModuleNodes.NodeOfSwitch(ASwitch);
+  if (mNode <> nil) and ((mNode as TObject) is TAtlasAddInOptions) and
+    (TAtlasAddInOptions(mNode as TObject).FPage <> nil) then
+  begin
+    TAtlasAddInOptions(mNode as TObject).FPage.Reveal(ASetting);
     PendingReveal := '';
   end;
 end;
@@ -693,6 +724,14 @@ begin
     // Klick auf einen Treffer bzw. die Zeile der Packages (#1903): im offenen Dialog zum Knoten springen; die Seite
     // dort zeigt die Einstellung beim Anlegen (PendingReveal).
     FPage.OnOpen := OpenFromOverview;
+    // Suche (#1884): nur installierte Packages, Zustand nach den gespeicherten Werten, abschaltbar.
+    FPage.OnInstalled := ModuleInstalled;
+    FPage.OnSettings :=
+      function: TAtlasPluginSettings
+      begin
+        Result := TAtlasIdeSettings.Stored;
+      end;
+    FPage.SetSearchAvailable(mSettings.SettingsSearch);
     FPage.Load(mInstalled, Length(mKnown), mOn);
   except
     on E: Exception do

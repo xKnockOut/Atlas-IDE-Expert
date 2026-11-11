@@ -75,17 +75,18 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Rename** project-wide including forms, **change signature**, **safe delete**
 - **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions
 - **Class actions:** implement interface, extract interface or superclass, generate properties
-- **uses:** add missing units, sort, remove unused ones
+- **uses:** add missing units, sort, remove unused ones; a unit counts as used only when a name really resolves to it, as dcc decides (members of its classes and names shadowed later do not count; enum values, helpers, attributes and inline bodies do)
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
 - **Unsaved designer state** is seen by references, renames and checks
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
-- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control
+- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges)
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
+- **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
 - **DUnitX tests** from the editor, including **only the tests affected** by a change
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained
@@ -95,12 +96,15 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
 - **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts
+- **Atlas wizards in *File › New › Other***: *DUnitX test unit for unit…*, *Unit by architecture role…* and *Custom rule…* in the gallery category *Atlas* (`generate.galleryWizards`)
 - **Project Manager submenu *Atlas***: *Check with Atlas* for units, folders and projects (multi-selection too, without opening the units), *Unit relations*, *Dependent units (n)* and *Run tests for this unit* (`commands.projectContextMenu`)
 - **Robustness:** errors never reach the IDE, safe start, crash cases you can replay
 
 ### [Settings](docs/features/en/Settings.md)
 - **Options page as a tree**, every feature with its own switch
+- **Search settings** above the tree (Ctrl+F) and with `@` in the command palette, also by key, synonym or with a typo; Alt+Enter flips quick toggles directly
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
+- **F1 help** for Atlas: F1 on a finding (editor or "Atlas Findings"), on a setting or in an Atlas window opens the matching documentation page, online or from the local docs (`help.enabled`, `help.source`)
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
 - **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions; without `language` in settings.json the server follows the language the IDE actually shows (its loaded resource files, then `Locales` in the registry, then Windows), and `atlas.log` names the detected language and its source
@@ -193,6 +197,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, branch when starting an issue, working copies, project state, line history | `vcs.enabled` |
 | `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients | `assistants.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
+| `Atlas.IDE.Help` | F1 help: rule, setting and window pages of the documentation | `help.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
 
 `TAtlasMainThread` tracks queued main thread entries per module: when a module unregisters or its package is unloaded, its waiting entries are dropped instead of running later in unloaded code.

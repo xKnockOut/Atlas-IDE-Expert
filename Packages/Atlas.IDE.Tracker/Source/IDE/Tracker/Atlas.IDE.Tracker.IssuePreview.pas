@@ -160,7 +160,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.EditorStyle,

@@ -31,6 +31,7 @@ uses
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.EditorToolbar.Service,
+  Atlas.IDE.Generate.Gallery,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.CodeInsight.Composition.Session,
@@ -85,6 +86,8 @@ begin
   TAtlasIdeExperimental.ApplySettings;
   // Einstellungen der Module (#1455), z. B. debug.* des Debuggers.
   ModulesApplySettings;
+  // Assistenten der Objektgalerie (#1821): generate.galleryWizards und Modulschalter.
+  TAtlasIdeGallery.Refresh;
   // tips.usageTracking (#757).
   if CommandUsage <> nil then
   begin

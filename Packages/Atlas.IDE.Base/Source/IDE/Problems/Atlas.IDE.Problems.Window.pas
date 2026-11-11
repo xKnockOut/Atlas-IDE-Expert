@@ -7,6 +7,7 @@
 // Desktops meldet OnSave, damit die Spalten in problems.window.columns
 // landen. OnFrame meldet einen neuen Frame, damit TAtlasIdeProblems ihn
 // verdrahtet und füllt.
+// F1 (#1886): mit gewähltem Atlas-Befund die Seite seiner Regel, sonst die Seite des Fensters.
 
 interface
 
@@ -51,7 +52,11 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
+  Atlas.Core.Lsp.Contract,
+  Atlas.Core.Problems.Findings,
+  Atlas.IDE.Contracts.Help,
   Atlas.IDE.Foundation.Symbol,
+  Atlas.IDE.ElementHelp.Keys,
   Atlas.IDE.Foundation.DockWindow;
 
 type
@@ -170,11 +175,32 @@ begin
   Result := False;
 end;
 
+/// <summary>Regel des ersten markierten Atlas-Befunds (#1886); Compilermeldungen haben keine Regelseite.</summary>
+function SelectedRule(out ATopic: TAtlasHelpTopic): Boolean;
+var
+  mFinding: TAtlasFinding;
+begin
+  Result := False;
+  if not (Host.Frame is TAtlasProblemsFrame) then
+  begin
+    Exit;
+  end;
+  for mFinding in TAtlasProblemsFrame(Host.Frame).SelectedFindings do
+  begin
+    if (mFinding.Problem.Source <> TAtlasProblem.cCompilerSource) and (mFinding.Rule <> '') then
+    begin
+      ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Rule, mFinding.Rule);
+      Exit(True);
+    end;
+  end;
+end;
+
 procedure EnsureHost;
 begin
   if Host = nil then
   begin
     Host := TAtlasIdeDockWindow.Create(TProblemsDock.Create, True);
+    TAtlasIdeHelp.SetWindowTopic('AtlasProblems', SelectedRule);
   end;
 end;
 

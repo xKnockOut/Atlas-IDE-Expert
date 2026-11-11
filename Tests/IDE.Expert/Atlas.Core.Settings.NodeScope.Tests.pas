@@ -22,8 +22,6 @@ type
     [Test]
     procedure ModuleOfFollowsMasterSwitch;
     [Test]
-    procedure SearchFindsCaptionAndKey;
-    [Test]
     procedure MergeKeepsChangesOfOtherNode;
     [Test]
     procedure MergeWritesNothingWithoutChange;
@@ -106,34 +104,6 @@ begin
           mCatalog[mIndex].Name);
       end;
     end;
-  finally
-    mGroups.Free;
-    mCatalog.Free;
-  end;
-end;
-
-procedure TAtlasSettingsNodeScopeTests.SearchFindsCaptionAndKey;
-var
-  mCatalog: TAtlasSettingsCatalog;
-  mGroups: TAtlasSettingsGroups;
-  mHits: TArray<TAtlasSettingHit>;
-  mIndex: Integer;
-  mFound: Boolean;
-begin
-  mCatalog := TAtlasSettingsCatalog.CreateDefault;
-  mGroups := TAtlasSettingsGroups.Create(mCatalog);
-  try
-    Assert.AreEqual(0, Integer(Length(TAtlasSettingsSearch.Find(mCatalog, mGroups, '  ', False, 10))));
-    mIndex := mCatalog.IndexOfName('Enabled');
-    Assert.IsTrue(mIndex >= 0);
-    mHits := TAtlasSettingsSearch.Find(mCatalog, mGroups, mCatalog[mIndex].Key, False, 1000);
-    mFound := False;
-    for mIndex := 0 to High(mHits) do
-    begin
-      mFound := mFound or ((mHits[mIndex].Name = 'Enabled') and (mHits[mIndex].Module = ''));
-    end;
-    Assert.IsTrue(mFound, 'Schlüssel von Enabled');
-    Assert.AreEqual(2, Integer(Length(TAtlasSettingsSearch.Find(mCatalog, mGroups, 'e', False, 2))));
   finally
     mGroups.Free;
     mCatalog.Free;

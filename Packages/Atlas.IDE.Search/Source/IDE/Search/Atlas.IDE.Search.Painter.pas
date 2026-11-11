@@ -52,7 +52,6 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Text.Lines,
   Atlas.IDE.Foundation.EditorBuffer,
