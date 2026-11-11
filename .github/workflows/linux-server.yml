@@ -68,6 +68,10 @@ jobs:
             timeout 60 Output/Linux64/Bin/AtlasServer --mcp > "$RUNNER_TEMP/mcp.out" || true
           grep -q '"get_diagnostics"' "$RUNNER_TEMP/mcp.out" || { cat "$RUNNER_TEMP/mcp.out"; exit 1; }
 
+      - name: Selbstprüfung je Plugin-Package (Code-Review A-101)
+        # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab.
+        run: Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
+
       - name: Regex zählt Zeichen (#1751)
         # Hinter „für“ steht im anonymen Log der Arbeitsbereich als name#1. Zählt TMatch.Index UTF-8-Bytes statt
         # Zeichen, setzt der Anonymisierer die Zeile falsch zusammen („fürrnname1: DDelphi“).

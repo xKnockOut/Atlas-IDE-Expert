@@ -16,6 +16,26 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
+      - name: atlas.json der Plugin-Packages aus Packages/atlas.plugin.json (Code-Review A-101)
+        shell: pwsh
+        run: ./Tools/Update-PackageConfigs.ps1 -Check
+      - name: Baselines ohne tote Einträge, keine Regel wächst (Code-Review A-101)
+        shell: pwsh
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if ($env:BASE_REF) {
+            git fetch --no-tags --depth=1 origin "+refs/heads/$($env:BASE_REF):refs/remotes/origin/$($env:BASE_REF)"
+            $ref = "origin/$($env:BASE_REF)"
+          } elseif ($env:BEFORE -and $env:BEFORE -notmatch '^0+$') {
+            git fetch --no-tags --depth=1 origin $env:BEFORE
+            $ref = $env:BEFORE
+          } else {
+            Write-Host 'Kein Vergleichsstand (erster Push des Branches); nur tote Einträge prüfen.'
+            $ref = 'HEAD'
+          }
+          ./Tools/Check-Baselines.ps1 -BaseRef $ref
       - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
         shell: pwsh
         run: ./Tools/Test-PackageDependencies.ps1
