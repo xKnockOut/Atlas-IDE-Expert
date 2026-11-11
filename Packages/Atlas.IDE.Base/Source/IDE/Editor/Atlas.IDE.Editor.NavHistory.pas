@@ -34,6 +34,8 @@ type
     class procedure GoBack; static;
     /// <summary>Vor zur nächsten Stelle.</summary>
     class procedure GoForward; static;
+    /// <summary>Wie GoBack bzw. GoForward; True, wenn ein Sprung lief (Maustasten, #1889).</summary>
+    class function Step(AForward: Boolean): Boolean; static;
     /// <summary>Letzte Bearbeitungsstelle; jeder weitere Aufruf eine davor.</summary>
     class procedure GoLastEdit; static;
     /// <summary>Verlauf als Liste wie die Befehlspalette.</summary>
@@ -361,30 +363,34 @@ begin
 end;
 
 class procedure TAtlasIdeNavHistory.GoBack;
-var
-  mHere, mTarget: TAtlasNavPlace;
 begin
-  if (State = nil) or not Enabled then
-  begin
-    Exit;
-  end;
-  Current(mHere);
-  if State.History.StepBack(mHere, mTarget) then
-  begin
-    GoTo_(mTarget);
-  end;
+  Step(False);
 end;
 
 class procedure TAtlasIdeNavHistory.GoForward;
+begin
+  Step(True);
+end;
+
+class function TAtlasIdeNavHistory.Step(AForward: Boolean): Boolean;
 var
   mHere, mTarget: TAtlasNavPlace;
 begin
+  Result := False;
   if (State = nil) or not Enabled then
   begin
     Exit;
   end;
   Current(mHere);
-  if State.History.StepForward(mHere, mTarget) then
+  if AForward then
+  begin
+    Result := State.History.StepForward(mHere, mTarget);
+  end
+  else
+  begin
+    Result := State.History.StepBack(mHere, mTarget);
+  end;
+  if Result then
   begin
     GoTo_(mTarget);
   end;

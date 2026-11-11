@@ -304,6 +304,8 @@ type
     /// <summary>Navigationsverlauf über Dateien (#504, navHistory.enabled): Sprünge und Bearbeitungsstellen
     /// merken, Zurück/Vor, letzte Bearbeitungsstelle, Liste.</summary>
     NavHistory: Boolean;
+    /// <summary>Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf (#1889, navigation.mouseButtons).</summary>
+    MouseNavButtons: Boolean;
     /// <summary>Definition und Referenzen einblenden (#505, peek.enabled).</summary>
     Peek: Boolean;
     /// <summary>Höhe des Peek-Fensters in Editorzeilen (#505, peek.heightLines), MinPeekLines bis
@@ -898,6 +900,7 @@ begin
   Result.QuickOpen := True;
   Result.QuickOpenLibrary := False;
   Result.NavHistory := True;
+  Result.MouseNavButtons := True;
   Result.Peek := True;
   Result.PeekHeightLines := 15;
   Result.PeekShowImplementation := True;
@@ -937,6 +940,7 @@ begin
   AIo.Flag('QuickOpen', QuickOpen);
   AIo.Flag('QuickOpenLibrary', QuickOpenLibrary);
   AIo.Flag('NavHistory', NavHistory);
+  AIo.Flag('MouseNavButtons', MouseNavButtons);
   AIo.Flag('Peek', Peek);
   AIo.Number('PeekHeightLines', PeekHeightLines);
   AIo.Flag('PeekShowImplementation', PeekShowImplementation);
