@@ -340,7 +340,8 @@ begin
       Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
-      Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil), TAtlasTestsTextId.TestsGalleryTestUnitHint)];
+      Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
+      TAtlasTestsTextId.TestsGalleryTestUnitHint)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;

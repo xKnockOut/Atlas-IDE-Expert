@@ -393,7 +393,8 @@ begin
     mName := TAtlasModuleNodes.NameOfSwitch(ASwitch);
   end;
   PendingReveal := ASetting;
-  if not TAtlasIdeOptionsDialog.SelectNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), mName]) then
+  if not TAtlasIdeOptionsDialog.SelectNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode),
+    mName]) then
   begin
     PendingReveal := '';
     Exit;

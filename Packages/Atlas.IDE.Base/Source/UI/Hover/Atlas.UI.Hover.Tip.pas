@@ -618,8 +618,8 @@ function TAtlasHoverTipView.LayoutKey(AWidth: Integer): string;
 begin
   Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
     Ord(FDoc.HasSelection), Ord(FOptions.ProblemActions), Ord(FOptions.HideCompilerCode), PPI, Font.Height,
-    UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembers.MaxLines, FMembers.Limit,
-    FMembers.Scroll]);
+    UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembers.MaxLines,
+    FMembers.Limit, FMembers.Scroll]);
 end;
 
 procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);

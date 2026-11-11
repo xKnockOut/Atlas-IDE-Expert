@@ -273,7 +273,8 @@ end;
 
 procedure TLspSessionBase.AttachClientHandlers;
 begin
-  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FEvents.OnShowMessage, FEvents.OnAtlasNotification);
+  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FEvents.OnShowMessage,
+    FEvents.OnAtlasNotification);
   if Assigned(FEvents.OnApplyEdit) then
   begin
     FClient.OnServerRequest := ApplyEditRequestHandler(FEvents.OnApplyEdit, FClient);
