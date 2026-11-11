@@ -1135,6 +1135,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.MultiResize` | `Core/Designer/Atlas.Core.Designer.MultiResize.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionBar` | `Core/Designer/Atlas.Core.Designer.SelectionBar.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Magnifier` | `Core/Designer/Atlas.Core.Designer.Magnifier.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Neighbours` | `Core/Designer/Atlas.Core.Designer.Neighbours.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
@@ -1156,6 +1157,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.InsertSpace` | `IDE/Designer/Atlas.IDE.Designer.InsertSpace.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.MultiResize` | `IDE/Designer/Atlas.IDE.Designer.MultiResize.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.SelectionBar` | `IDE/Designer/Atlas.IDE.Designer.SelectionBar.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Magnifier` | `IDE/Designer/Atlas.IDE.Designer.Magnifier.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Navigate` | `IDE/Designer/Atlas.IDE.Designer.Navigate.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.SearchItems` | `IDE/Designer/Atlas.IDE.Designer.SearchItems.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Select` | `IDE/Designer/Atlas.IDE.Designer.Select.pas` | Ordner `IDE/Designer` |
@@ -1184,6 +1186,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.ScalePreview` | `UI/Designer/Atlas.UI.Designer.ScalePreview.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.ToolStrings` | `UI/Designer/Atlas.UI.Designer.ToolStrings.pas` | Texte der Werkzeuge mit eigenem Knopf in der Designer-Leiste, Sprache von Base |
 | `Atlas.UI.Designer.SelectionBar` | `UI/Designer/Atlas.UI.Designer.SelectionBar.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Magnifier` | `UI/Designer/Atlas.UI.Designer.Magnifier.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Help
 

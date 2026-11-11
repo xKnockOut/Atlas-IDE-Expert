@@ -19,8 +19,8 @@ type
     // Eigene Knöpfe der Designer-Ansichten (#605 bis #612).
     MeasureDistances, ResizePreview, ScalePreview, NameSuggest, NonVisualTray, DataBindings, ExtractFrame, EventMap,
     // Gleiche auswählen (#738), Anordnen (#730 ff.), Abstandsgriffe (#734), gemeinsame Größengriffe (#737),
-    // Schnellleiste (#735).
-    SelectSimilar, Arrange, GapHandles, MultiResize, SelectionBar);
+    // Schnellleiste (#735), Lupe (#743).
+    SelectSimilar, Arrange, GapHandles, MultiResize, SelectionBar, Magnifier);
 {$SCOPEDENUMS OFF}
 
   TAtlasToolbarIcons = class

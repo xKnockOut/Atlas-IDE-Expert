@@ -168,6 +168,11 @@ begin
   Number('designer.selectionBar.delayMs', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarDelay));
   Line('designer.selectionBar.items', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarItems));
   Key('designer.selectionBar.key', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarKey));
+  Switch('designer.magnifier', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMag));
+  Number('designer.magnifier.zoom', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagZoom));
+  Switch('designer.magnifier.grid', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagGrid));
+  Switch('designer.magnifier.edges', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagEdges));
+  Key('designer.magnifier.key', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagKey));
 end;
 
 end.

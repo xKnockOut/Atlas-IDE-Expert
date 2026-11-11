@@ -25,6 +25,12 @@ type
     [Test]
     procedure DesignerBarRoundTrip;
     [Test]
+    procedure MeasureRoundTrip;
+    [Test]
+    procedure ResizePreviewRoundTrip;
+    [Test]
+    procedure ScalePreviewRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -49,11 +55,7 @@ type
     [Test]
     procedure SelectionBarRoundTrip;
     [Test]
-    procedure MeasureRoundTrip;
-    [Test]
-    procedure ResizePreviewRoundTrip;
-    [Test]
-    procedure ScalePreviewRoundTrip;
+    procedure MagnifierRoundTrip;
   end;
 
 implementation
@@ -110,6 +112,78 @@ begin
     Assert.IsFalse(CheckOf(mPage, 'EditorDesignerBar').Checked);
     Assert.AreEqual(1, ChoiceOf(mPage, 'DesignerSearchStyle').Choice);
     Assert.AreEqual('', EditOf(mPage, 'DesignerSearchKey').Text);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.MeasureRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMeasureDistances').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMeasureAltKey').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerMeasureDistances').Checked := False;
+    CheckOf(mPage, 'DesignerMeasureAltKey').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerMeasureDistances, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerMeasureAltKey, 'abschaltbar');
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ResizePreviewRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerResizePreview').Checked, 'Vorgabe an');
+    Assert.AreEqual('1366x768, 1920x1080', EditOf(mPage, 'DesignerResizePreviewSizes').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerResizePreviewShowAnchors').Checked);
+    CheckOf(mPage, 'DesignerResizePreview').Checked := False;
+    EditOf(mPage, 'DesignerResizePreviewSizes').Text := '800x600';
+    CheckOf(mPage, 'DesignerResizePreviewShowAnchors').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerResizePreview, 'abschaltbar');
+    Assert.AreEqual('800x600', mSaved.DesignerResizePreviewSizes);
+    Assert.IsFalse(mSaved.DesignerResizePreviewShowAnchors);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ScalePreviewRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerScalePreview').Checked, 'Vorgabe an');
+    Assert.AreEqual('100, 125, 150, 175, 200', EditOf(mPage, 'DesignerScalePreviewLevels').Text);
+    Assert.AreEqual('1366x768, 1920x1080', EditOf(mPage, 'DesignerScalePreviewScreens').Text);
+    Assert.AreEqual('30', EditOf(mPage, 'DesignerLongTextFactor').Text);
+    CheckOf(mPage, 'DesignerScalePreview').Checked := False;
+    EditOf(mPage, 'DesignerScalePreviewLevels').Text := '100, 150';
+    EditOf(mPage, 'DesignerScalePreviewScreens').Text := '1280x720';
+    EditOf(mPage, 'DesignerLongTextFactor').Text := '50';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerScalePreview, 'abschaltbar');
+    Assert.AreEqual('100, 150', mSaved.DesignerScalePreviewLevels);
+    Assert.AreEqual('1280x720', mSaved.DesignerScalePreviewScreens);
+    Assert.AreEqual(50, mSaved.DesignerLongTextFactor);
   finally
     mPage.Free;
   end;
@@ -418,7 +492,7 @@ begin
   end;
 end;
 
-procedure TDesignerSettingsSectionTests.MeasureRoundTrip;
+procedure TDesignerSettingsSectionTests.MagnifierRoundTrip;
 var
   mPage: TAtlasSettingsPage;
   mSaved: TAtlasPluginSettings;
@@ -426,65 +500,20 @@ begin
   mPage := TAtlasSettingsPage.Create(nil);
   try
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerMeasureDistances').Checked, 'Vorgabe an');
-    Assert.IsTrue(CheckOf(mPage, 'DesignerMeasureAltKey').Checked, 'Vorgabe an');
-    CheckOf(mPage, 'DesignerMeasureDistances').Checked := False;
-    CheckOf(mPage, 'DesignerMeasureAltKey').Checked := False;
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMagnifier').Checked, 'Vorgabe an');
+    Assert.AreEqual('4', EditOf(mPage, 'DesignerMagnifierZoom').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMagnifierGrid').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerMagnifierEdges').Checked);
+    CheckOf(mPage, 'DesignerMagnifier').Checked := False;
+    EditOf(mPage, 'DesignerMagnifierZoom').Text := '8';
+    CheckOf(mPage, 'DesignerMagnifierGrid').Checked := False;
+    CheckOf(mPage, 'DesignerMagnifierEdges').Checked := True;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerMeasureDistances, 'abschaltbar');
-    Assert.IsFalse(mSaved.DesignerMeasureAltKey, 'abschaltbar');
-  finally
-    mPage.Free;
-  end;
-end;
-
-procedure TDesignerSettingsSectionTests.ResizePreviewRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerResizePreview').Checked, 'Vorgabe an');
-    Assert.AreEqual('1366x768, 1920x1080', EditOf(mPage, 'DesignerResizePreviewSizes').Text);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerResizePreviewShowAnchors').Checked);
-    CheckOf(mPage, 'DesignerResizePreview').Checked := False;
-    EditOf(mPage, 'DesignerResizePreviewSizes').Text := '800x600';
-    CheckOf(mPage, 'DesignerResizePreviewShowAnchors').Checked := False;
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerResizePreview, 'abschaltbar');
-    Assert.AreEqual('800x600', mSaved.DesignerResizePreviewSizes);
-    Assert.IsFalse(mSaved.DesignerResizePreviewShowAnchors);
-  finally
-    mPage.Free;
-  end;
-end;
-
-procedure TDesignerSettingsSectionTests.ScalePreviewRoundTrip;
-var
-  mPage: TAtlasSettingsPage;
-  mSaved: TAtlasPluginSettings;
-begin
-  mPage := TAtlasSettingsPage.Create(nil);
-  try
-    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(mPage, 'DesignerScalePreview').Checked, 'Vorgabe an');
-    Assert.AreEqual('100, 125, 150, 175, 200', EditOf(mPage, 'DesignerScalePreviewLevels').Text);
-    Assert.AreEqual('1366x768, 1920x1080', EditOf(mPage, 'DesignerScalePreviewScreens').Text);
-    Assert.AreEqual('30', EditOf(mPage, 'DesignerLongTextFactor').Text);
-    CheckOf(mPage, 'DesignerScalePreview').Checked := False;
-    EditOf(mPage, 'DesignerScalePreviewLevels').Text := '100, 150';
-    EditOf(mPage, 'DesignerScalePreviewScreens').Text := '1280x720';
-    EditOf(mPage, 'DesignerLongTextFactor').Text := '50';
-    mSaved := TAtlasPluginSettings.Defaults;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.DesignerScalePreview, 'abschaltbar');
-    Assert.AreEqual('100, 150', mSaved.DesignerScalePreviewLevels);
-    Assert.AreEqual('1280x720', mSaved.DesignerScalePreviewScreens);
-    Assert.AreEqual(50, mSaved.DesignerLongTextFactor);
+    Assert.IsFalse(mSaved.DesignerMagnifier, 'abschaltbar');
+    Assert.AreEqual(8, mSaved.DesignerMagnifierZoom);
+    Assert.IsFalse(mSaved.DesignerMagnifierGrid);
+    Assert.IsTrue(mSaved.DesignerMagnifierEdges);
   finally
     mPage.Free;
   end;

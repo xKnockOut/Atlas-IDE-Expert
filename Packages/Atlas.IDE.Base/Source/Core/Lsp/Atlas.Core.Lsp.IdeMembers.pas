@@ -61,7 +61,13 @@ type
   public const
     cWantedMethod = 'atlas/ideMembersWanted';
     cMethod = 'atlas/ideMembers';
+    /// <summary>Anfang der Pfade, unter denen der Server die Ersatz-Units führt ("atlas-ide:Vcl.Forms.pas").
+    /// </summary>
+    cPathPrefix = 'atlas-ide:';
   public
+    /// <summary>Pfad einer Ersatz-Unit des Servers? Die gibt es nicht als Datei, also auch nicht als
+    /// Sprungziel.</summary>
+    class function IsIdePath(const AFileName: string): Boolean; static;
     /// <summary>Units aus den Parametern von atlas/ideMembersWanted ({"units": ["A", "B"]}); leer bei anderem
     /// Aufbau.</summary>
     class function WantedUnits(const AParams: TJSONValue): TArray<string>; static;
@@ -82,6 +88,11 @@ begin
 end;
 
 { TAtlasIdeMembers }
+
+class function TAtlasIdeMembers.IsIdePath(const AFileName: string): Boolean;
+begin
+  Result := AFileName.StartsWith(cPathPrefix, True);
+end;
 
 class function TAtlasIdeMembers.WantedUnits(const AParams: TJSONValue): TArray<string>;
 var

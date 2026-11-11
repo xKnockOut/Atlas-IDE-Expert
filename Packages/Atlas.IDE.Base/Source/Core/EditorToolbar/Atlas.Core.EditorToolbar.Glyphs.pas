@@ -364,6 +364,10 @@ begin
         Shape([P(7, 2.75), P(9, 2.75), P(9, 4.25), P(7, 4.25)], True, True),
         Outline([P(1.5, 8.5), P(7, 8.5), P(7, 14.5), P(1.5, 14.5)]),
         Outline([P(9, 8.5), P(14.5, 8.5), P(14.5, 14.5), P(9, 14.5)])];
+    TAtlasToolbarIcon.Magnifier:
+      // Lupe: Glas mit Pixelkreuz, Griff nach rechts unten.
+      Result := [Circle(6.5, 6.5, 4.5, False), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
+        Stroke([P(9.75, 9.75), P(14, 14)])];
   else
     Result := ToolButtonShapes(AIcon);
   end;

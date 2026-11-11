@@ -78,11 +78,11 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
+- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts
 - **Unsaved designer state** is seen by references, renames and checks
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
-- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges), gap handles for a row or column, shared resize handles, quick bar for a multiple selection
-- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts
+- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges), gap handles for a row or column, shared resize handles, quick bar for a multiple selection, magnifier
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
