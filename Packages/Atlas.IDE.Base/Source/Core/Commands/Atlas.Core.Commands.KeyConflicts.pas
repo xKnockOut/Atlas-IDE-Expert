@@ -92,6 +92,10 @@ type
     /// der Editorbefehle.</summary>
     class function MoreFromSettings(const ASettings: TAtlasPluginSettings;
       AShared: Boolean): TArray<TAtlasKeyEntry>; static;
+    /// <summary>Dritter Teil von AllFromSettings ab „Komponenten suchen“ (Designer, Datei prüfen); AShared wie
+    /// bei MoreFromSettings.</summary>
+    class function RestFromSettings(const ASettings: TAtlasPluginSettings;
+      AShared: Boolean): TArray<TAtlasKeyEntry>; static;
     /// <summary>Tasten und Vorrang zurück in die Einstellungen; Disabled und die feste Taste Strg+F12 nicht (dafür
     /// gibt es eigene Schalter).</summary>
     class procedure ToSettings(const AEntries: TArray<TAtlasKeyEntry>; var ASettings: TAtlasPluginSettings); static;
@@ -338,7 +342,14 @@ begin
     Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), AShared, ASettings.SafeDelete),
     // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
     Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), AShared,
-      ASettings.WelcomePage and ASettings.IssuesCreate),
+      ASettings.WelcomePage and ASettings.IssuesCreate)];
+  Result := Result + RestFromSettings(ASettings, AShared);
+end;
+
+class function TAtlasKeyEntry.RestFromSettings(const ASettings: TAtlasPluginSettings;
+  AShared: Boolean): TArray<TAtlasKeyEntry>;
+begin
+  Result := [
     // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
     // Willkommensseite).
     Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar),

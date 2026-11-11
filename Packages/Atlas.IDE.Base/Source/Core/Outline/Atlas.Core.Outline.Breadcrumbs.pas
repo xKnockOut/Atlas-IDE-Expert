@@ -167,7 +167,7 @@ type
     /// Methodenrümpfen.</summary>
     class function Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
       ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
-      AParts: TAtlasCrumbParts = []): TAtlasCrumbs; overload; static;
+      AParts: TAtlasCrumbParts): TAtlasCrumbs; overload; static;
     /// <summary>Badge eines Knotens; Routinen nach dem ersten Wort ihrer Kopfzeile (procedure/function).</summary>
     class function BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       ANode: Integer): TAtlasBadge; static;
