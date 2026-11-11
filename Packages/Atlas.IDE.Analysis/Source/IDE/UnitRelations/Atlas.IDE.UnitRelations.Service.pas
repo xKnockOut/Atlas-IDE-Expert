@@ -108,6 +108,8 @@ const
   /// <summary>Nachfragen, solange das Fenster offen ist; die Anfrage dauert auf dem Server Millisekunden.</summary>
   cRefreshMs = 2000;
   cTimeoutMs = 15000;
+  /// <summary>Nach einer Änderung aus dem Fenster so bald wieder nachfragen (statt nach RefreshMs).</summary>
+  cAfterChangeMs = 500;
   /// <summary>Kosten nachfragen, solange die Einfügemarke im interface steht (#554).</summary>
   cCostRefreshMs = 5000;
 
@@ -722,7 +724,7 @@ begin
           [Outcome.Error]);
       end;
       // Bald neu fragen: Der Server sieht den geänderten Text mit dem nächsten Abgleich des Puffers.
-      FAsked := TAtlasTicks.Now - cRefreshMs + 500;
+      FAsked := TAtlasTicks.Now - (cRefreshMs - cAfterChangeMs);
     end) then
   begin
     mFrame.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNoServer);
