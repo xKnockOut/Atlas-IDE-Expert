@@ -174,6 +174,9 @@ begin
 end;
 
 class function TJsonRead.TryInt64(AObject: TJSONObject; const AName: string; out AValue: Int64): Boolean;
+const
+  // Etwas unter High(Int64): als Double gerundet läge High(Int64) schon außerhalb, Trunc liefe über.
+  cInt64Range = 9.2e18;
 var
   mValue: TJSONValue;
   mText: string;
@@ -190,7 +193,7 @@ begin
   if not Result and (mValue is TJSONNumber) then
   begin
     mDouble := TJSONNumber(mValue).AsDouble;
-    Result := (mDouble >= -9.2e18) and (mDouble <= 9.2e18);
+    Result := (mDouble >= -cInt64Range) and (mDouble <= cInt64Range);
     if Result then
     begin
       AValue := Trunc(mDouble);

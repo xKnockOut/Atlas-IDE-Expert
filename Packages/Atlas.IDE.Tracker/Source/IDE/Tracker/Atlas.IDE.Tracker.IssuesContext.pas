@@ -258,7 +258,8 @@ begin
       Result.Connection := mResolution.Connection.Name;
     end;
     Result.Queries := TAtlasTrackerQueries.Available(TAtlasTrackerQueries.Read(mSettings.IssuesQueries),
-      Result.Target, Result.Connection, mConnections, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault));
+      Result.Target, Result.Connection, mConnections,
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault));
   except
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do

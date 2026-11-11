@@ -275,7 +275,8 @@ begin
   Result := Copy(Trim(AError), 1, cMaxErrorLength);
   for mIndex := 1 to Length(Result) do
   begin
-    if Ord(Result[mIndex]) < 32 then
+    // Steuerzeichen (vor dem Leerzeichen) brächen die Zeile.
+    if Result[mIndex] < ' ' then
     begin
       Result[mIndex] := ' ';
     end;

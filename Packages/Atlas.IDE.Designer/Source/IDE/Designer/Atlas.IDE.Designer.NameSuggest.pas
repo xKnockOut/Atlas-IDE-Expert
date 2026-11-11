@@ -362,6 +362,51 @@ begin
   end;
 end;
 
+/// <summary>Zeilen mit Haken und gültigem, geändertem Namen.</summary>
+function ChosenPairs(const ARows: TArray<TAtlasNameRow>): TArray<TAtlasNamePair>;
+var
+  mRow: TAtlasNameRow;
+  mPair: TAtlasNamePair;
+begin
+  Result := nil;
+  for mRow in ARows do
+  begin
+    if mRow.Checked and IsValidIdent(mRow.NewName) and not SameText(mRow.NewName, mRow.OldName) then
+    begin
+      mPair.OldName := mRow.OldName;
+      mPair.NewName := mRow.NewName;
+      Result := Result + [mPair];
+    end;
+  end;
+end;
+
+/// <summary>Gewählte Zeilen umbenennen; gelungene Paare für „Rückgängig“ in ALast und ALastForm.</summary>
+procedure ApplyRows(const AEditor: IOTAFormEditor; ARoot: TComponent; const ARows: TArray<TAtlasNameRow>;
+  const AOnMessage: TProc<string>; var ALast: TArray<TAtlasNamePair>; var ALastForm: string);
+var
+  mDone: TArray<TAtlasNamePair>;
+  mCount: TRenameCount;
+begin
+  mDone := RenameAll(AEditor, ARoot, ChosenPairs(ARows), AOnMessage, mCount);
+  if Length(mDone) > 0 then
+  begin
+    ALast := mDone;
+    ALastForm := ARoot.Name;
+  end;
+  AOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.NameDone, [mCount.Components, mCount.Handlers,
+    mCount.Places]));
+end;
+
+/// <summary>Letzte Umbenennung ALast zurück.</summary>
+procedure UndoLast(const AEditor: IOTAFormEditor; ARoot: TComponent; const ALast: TArray<TAtlasNamePair>;
+  const AOnMessage: TProc<string>);
+var
+  mCount: TRenameCount;
+begin
+  RenameAll(AEditor, ARoot, Reversed(ALast), AOnMessage, mCount);
+  AOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.NameUndone, [mCount.Components]));
+end;
+
 { TAtlasIdeNameSuggest }
 
 constructor TAtlasIdeNameSuggest.Create(const AOnMessage: TProc<string>);
@@ -385,11 +430,7 @@ var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mRows: TArray<TAtlasNameRow>;
-  mRow: TAtlasNameRow;
-  mPairs, mDone: TArray<TAtlasNamePair>;
-  mPair: TAtlasNamePair;
   mCanUndo: Boolean;
-  mCount: TRenameCount;
   mDesigner: IDesigner;
 begin
   mDesigner := nil;
@@ -415,31 +456,11 @@ begin
       TAtlasIdeDockWindow.ApplyIdeTheme(AForm);
     end) of
     TAtlasNameDialogResult.Apply:
-      begin
-        mPairs := nil;
-        for mRow in mRows do
-        begin
-          if mRow.Checked and IsValidIdent(mRow.NewName) and not SameText(mRow.NewName, mRow.OldName) then
-          begin
-            mPair.OldName := mRow.OldName;
-            mPair.NewName := mRow.NewName;
-            mPairs := mPairs + [mPair];
-          end;
-        end;
-        mDone := RenameAll(mEditor, mRoot, mPairs, FOnMessage, mCount);
-        if Length(mDone) > 0 then
-        begin
-          FLast := mDone;
-          FLastForm := mRoot.Name;
-        end;
-        FOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.NameDone, [mCount.Components,
-          mCount.Handlers, mCount.Places]));
-      end;
+      ApplyRows(mEditor, mRoot, mRows, FOnMessage, FLast, FLastForm);
     TAtlasNameDialogResult.Undo:
       begin
-        RenameAll(mEditor, mRoot, Reversed(FLast), FOnMessage, mCount);
+        UndoLast(mEditor, mRoot, FLast, FOnMessage);
         FLast := nil;
-        FOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.NameUndone, [mCount.Components]));
       end;
   end;
 end;

@@ -42,6 +42,9 @@ type
     FList: TListView;
     FEdit: TEdit;
     FUpdating: Boolean;
+    procedure AddBottom(ACanUndo: Boolean);
+    procedure AddEditBar;
+    procedure AddList;
     function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
     procedure Fill;
     procedure ShowRow(AIndex: Integer);
@@ -70,16 +73,22 @@ const
   cHeight = 420;
   cColumnWidths: array[0..4] of Integer = (130, 110, 100, 170, 200);
   cEditWidth = 240;
+  cComponentColumn = 0;
+  cClassColumn = 1;
+  cSourceColumn = 2;
+  cProposalColumn = 3;
+  cNoteColumn = 4;
+
+/// <summary>Index in TListItem.SubItems zur Spalte AColumn (die erste Spalte ist Caption).</summary>
+function SubItemOf(AColumn: Integer): Integer;
+begin
+  Result := AColumn - 1;
+end;
 
 { TAtlasNameDialog }
 
 constructor TAtlasNameDialog.CreateDialog(AOwner: TComponent; const AFormName: string;
   const ARows: TArray<TAtlasNameRow>; ACanUndo: Boolean);
-var
-  mBottom, mEditBar: TPanel;
-  mLabel: TLabel;
-  mIndex: Integer;
-  mUndo: TButton;
 begin
   inherited CreateNew(AOwner);
   FRows := Copy(ARows);
@@ -88,6 +97,25 @@ begin
   Position := poMainFormCenter;
   Width := MulDiv(cWidth, CurrentPPI, cBasePpi);
   Height := MulDiv(cHeight, CurrentPPI, cBasePpi);
+  AddBottom(ACanUndo);
+  AddEditBar;
+  AddList;
+  Fill;
+  FList.OnSelectItem := ListSelect;
+  FList.OnItemChecked := ListChecked;
+  if FList.Items.Count > 0 then
+  begin
+    FList.Items[0].Selected := True;
+    ShowRow(0);
+  end;
+end;
+
+/// <summary>Knöpfe unten: Rückgängig links, Übernehmen und Abbrechen rechts.</summary>
+procedure TAtlasNameDialog.AddBottom(ACanUndo: Boolean);
+var
+  mBottom: TPanel;
+  mUndo: TButton;
+begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
@@ -100,6 +128,14 @@ begin
     alRight).Cancel := True;
   AddButton(mBottom, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameApply), mrOk, alRight).Default :=
     True;
+end;
+
+/// <summary>Feld für den Vorschlag der markierten Zeile.</summary>
+procedure TAtlasNameDialog.AddEditBar;
+var
+  mEditBar: TPanel;
+  mLabel: TLabel;
+begin
   mEditBar := TPanel.Create(Self);
   mEditBar.Parent := Self;
   mEditBar.Align := alBottom;
@@ -117,6 +153,12 @@ begin
   FEdit.AlignWithMargins := True;
   FEdit.Width := MulDiv(cEditWidth, CurrentPPI, cBasePpi);
   FEdit.OnChange := EditChanged;
+end;
+
+procedure TAtlasNameDialog.AddList;
+var
+  mIndex: Integer;
+begin
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
@@ -130,19 +172,11 @@ begin
   begin
     FList.Columns.Add.Width := MulDiv(cColumnWidths[mIndex], CurrentPPI, cBasePpi);
   end;
-  FList.Columns[0].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColComponent);
-  FList.Columns[1].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColClass);
-  FList.Columns[2].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColSource);
-  FList.Columns[3].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColProposal);
-  FList.Columns[4].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColNote);
-  Fill;
-  FList.OnSelectItem := ListSelect;
-  FList.OnItemChecked := ListChecked;
-  if FList.Items.Count > 0 then
-  begin
-    FList.Items[0].Selected := True;
-    ShowRow(0);
-  end;
+  FList.Columns[cComponentColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColComponent);
+  FList.Columns[cClassColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColClass);
+  FList.Columns[cSourceColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColSource);
+  FList.Columns[cProposalColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColProposal);
+  FList.Columns[cNoteColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColNote);
 end;
 
 function TAtlasNameDialog.AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult;
@@ -249,8 +283,8 @@ begin
   end;
   FUpdating := True;
   try
-    mItem.SubItems[2] := FRows[mRow].NewName;
-    mItem.SubItems[3] := FRows[mRow].Note;
+    mItem.SubItems[SubItemOf(cProposalColumn)] := FRows[mRow].NewName;
+    mItem.SubItems[SubItemOf(cNoteColumn)] := FRows[mRow].Note;
     mItem.Checked := FRows[mRow].Checked;
   finally
     FUpdating := False;

@@ -50,7 +50,8 @@ type
   public
     /// <summary>„accelerators, variants, truncated, whitespace, labelColon“; Unbekanntes wird übergangen.</summary>
     class function ParseChecks(const AText: string): TAtlasTextChecks; static;
-    /// <summary>Gruppen durch „;“, Begriffe durch „,“ getrennt; Gruppen mit weniger als zwei Begriffen entfallen.</summary>
+    /// <summary>Gruppen durch „;“, Begriffe durch „,“ getrennt; Gruppen mit weniger als zwei Begriffen
+    /// entfallen.</summary>
     class function ParseSynonyms(const AText: string): TArray<TArray<string>>; static;
     /// <summary>Steht der erste Teil des Pfads (ohne Index) in AExcluded (durch Komma getrennt)?</summary>
     class function Excluded(const APath, AExcluded: string): Boolean; static;
@@ -59,8 +60,10 @@ type
     /// <summary>Kopie von AEntries mit den Hinweisen der eingeschalteten Prüfungen.</summary>
     class function Check(const AEntries: TArray<TAtlasTextEntry>; AChecks: TAtlasTextChecks;
       const ASynonyms: TArray<TArray<string>>): TArray<TAtlasTextEntry>; static;
-    /// <summary>Freitext in Komponente, Klasse, Eigenschaft oder Text; mit AOnlyFindings nur Einträge mit Hinweis.</summary>
-    class function Matches(const AEntry: TAtlasTextEntry; const AFilter: string; AOnlyFindings: Boolean): Boolean; static;
+    /// <summary>Freitext in Komponente, Klasse, Eigenschaft oder Text; mit AOnlyFindings nur Einträge mit
+    /// Hinweis.</summary>
+    class function Matches(const AEntry: TAtlasTextEntry; const AFilter: string;
+      AOnlyFindings: Boolean): Boolean; static;
   end;
 
 implementation
@@ -233,19 +236,20 @@ end;
 function WordsOf(const AText: string; const ASynonyms: TArray<TArray<string>>): TArray<TWordRef>;
 var
   mText, mWord: string;
-  mIndex: Integer;
+  mIndex, mStart: Integer;
   mRef: TWordRef;
 begin
   Result := nil;
   mText := StringReplace(AText, '&', '', [rfReplaceAll]) + ' ';
-  mWord := '';
+  mStart := 1;
   for mIndex := 1 to Length(mText) do
   begin
     if mText[mIndex].IsLetterOrDigit or (mText[mIndex] = '-') then
     begin
-      mWord := mWord + mText[mIndex];
       Continue;
     end;
+    mWord := Copy(mText, mStart, mIndex - mStart);
+    mStart := mIndex + 1;
     while StartsStr('-', mWord) do
     begin
       Delete(mWord, 1, 1);
@@ -260,7 +264,6 @@ begin
       mRef.Spelling := mWord;
       Result := Result + [mRef];
     end;
-    mWord := '';
   end;
 end;
 

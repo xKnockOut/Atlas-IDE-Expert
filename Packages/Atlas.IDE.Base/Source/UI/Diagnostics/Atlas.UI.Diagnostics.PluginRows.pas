@@ -45,6 +45,16 @@ uses
 
 const
   cNoValue = '–';
+  /// <summary>Spalten des Reiters „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
+  /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
+  cRequestColumnIds: array[0..8] of TAtlasTextId = (TAtlasTextId.DiagColRequest, TAtlasTextId.DiagColCount,
+    TAtlasTextId.DiagColMean, TAtlasTextId.DiagColMax, TAtlasTextId.DiagColWaitedCount, TAtlasTextId.DiagColWaited,
+    TAtlasTextId.DiagColTimedOut, TAtlasTextId.DiagColCancelled, TAtlasTextId.DiagColFailed);
+  /// <summary>Breiten dazu (vor dem Skalieren); 0: Rest der Breite.</summary>
+  cRequestColumnWidths: array[0..8] of Integer = (0, 64, 72, 72, 110, 130, 120, 90, 60);
+  cWaitedMeanColumn = 5;
+  cTimedOutColumn = 6;
+  cFailedColumn = 8;
 
 function Cells(const AValues: array of string): TArray<string>;
 var
@@ -126,12 +136,15 @@ begin
 end;
 
 class function TAtlasPluginGridRows.RequestColumns: TArray<TAtlasGridColumn>;
+var
+  mIndex: Integer;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasTextId.DiagColRequest, 0, False),
-    Column(TAtlasTextId.DiagColCount, 64, True), Column(TAtlasTextId.DiagColMean, 72, True),
-    Column(TAtlasTextId.DiagColMax, 72, True), Column(TAtlasTextId.DiagColWaitedCount, 110, True),
-    Column(TAtlasTextId.DiagColWaited, 130, True), Column(TAtlasTextId.DiagColTimedOut, 120, True), Column(TAtlasTextId.DiagColCancelled, 90, True),
-    Column(TAtlasTextId.DiagColFailed, 60, True));
+  SetLength(Result, Length(cRequestColumnIds));
+  for mIndex := 0 to High(cRequestColumnIds) do
+  begin
+    // Die Anfrage links, alle Zahlen rechtsbündig.
+    Result[mIndex] := Column(cRequestColumnIds[mIndex], cRequestColumnWidths[mIndex], mIndex > 0);
+  end;
 end;
 
 class function TAtlasPluginGridRows.SourceColumns: TArray<TAtlasGridColumn>;
@@ -200,11 +213,11 @@ begin
       TAtlasPluginRows.Ms(mRequest.Stat.MeanMs), TAtlasPluginRows.Ms(mRequest.Stat.MaxMs),
       IntToStr(mRequest.WaitedCalls), TAtlasPluginRows.Ms(mRequest.WaitedMeanMs), IntToStr(mRequest.TimedOut),
       IntToStr(mRequest.Cancelled), IntToStr(mRequest.Failed)]);
-    Result[mIndex].Marks := Plain(9);
+    Result[mIndex].Marks := Plain(Length(cRequestColumnIds));
     // Mittel je wartender Anfrage gegen die Schwelle; die Summe stand früher hier und war fast immer rot.
-    Result[mIndex].Marks[5] := Mark(mRequest.WaitedMeanMs, AThresholdMs);
-    Result[mIndex].Marks[6] := WarnIf(mRequest.TimedOut > 0, TAtlasGridMark.Warn);
-    Result[mIndex].Marks[8] := WarnIf(mRequest.Failed > 0, TAtlasGridMark.Bad);
+    Result[mIndex].Marks[cWaitedMeanColumn] := Mark(mRequest.WaitedMeanMs, AThresholdMs);
+    Result[mIndex].Marks[cTimedOutColumn] := WarnIf(mRequest.TimedOut > 0, TAtlasGridMark.Warn);
+    Result[mIndex].Marks[cFailedColumn] := WarnIf(mRequest.Failed > 0, TAtlasGridMark.Bad);
     Result[mIndex].Bar := -1;
   end;
 end;

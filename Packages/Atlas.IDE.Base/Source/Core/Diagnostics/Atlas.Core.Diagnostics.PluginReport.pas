@@ -110,6 +110,9 @@ end;
 
 const
   cNoValue = '–';
+  /// <summary>Zeile der Tabelle „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
+  /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
+  cRequestRow = '%s | %d | %s | %s | %d | %s | %d | %d | %d';
 
 function Invariant: TFormatSettings;
 begin
@@ -306,7 +309,7 @@ begin
   ALines.Add('--- | --- | --- | --- | --- | --- | --- | --- | ---');
   for mRequest in TAtlasPluginRows.Requests(ASnapshot) do
   begin
-    ALines.Add(Format('%s | %d | %s | %s | %d | %s | %d | %d | %d', [mRequest.Method, mRequest.Stat.Calls,
+    ALines.Add(Format(cRequestRow, [mRequest.Method, mRequest.Stat.Calls,
       TAtlasPluginRows.Ms(mRequest.Stat.MeanMs), TAtlasPluginRows.Ms(mRequest.Stat.MaxMs), mRequest.WaitedCalls,
       TAtlasPluginRows.Ms(mRequest.WaitedMeanMs), mRequest.TimedOut, mRequest.Cancelled, mRequest.Failed]));
   end;

@@ -128,10 +128,9 @@ begin
   begin
     mSeverity := TAtlasNotificationSeverity.Error;
   end;
-  if (TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
-    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.NotificationsServerMessage), AMessage,
-    ALogActions) <>
-    TAtlasNotificationMode.Show) then
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, mSeverity,
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.NotificationsServerMessage), AMessage, ALogActions) <>
+    TAtlasNotificationMode.Show then
   begin
     Exit;
   end;
