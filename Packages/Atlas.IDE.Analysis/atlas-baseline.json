@@ -34,7 +34,6 @@
     {"path": "Source/Core/Hotspots/Atlas.Core.Hotspots.Model.pas", "rule": "magic-number", "fingerprint": "77d7ea7f", "count": 1, "routine": "TAtlasHotspotChart.ScoreColor", "context": "c5bd7b81"},
     {"path": "Source/Core/Hotspots/Atlas.Core.Hotspots.Model.pas", "rule": "magic-number", "fingerprint": "623b7127", "count": 1, "routine": "TAtlasHotspotCommit.ShortRevision", "context": "9c457be5"},
     {"path": "Source/IDE/Analysis/Atlas.IDE.Analysis.MetricsLens.pas", "rule": "magic-number", "fingerprint": "24835d84", "count": 2, "routine": "TAtlasAnalysisMetricsLens.PaintPill", "context": "ed06d60a"},
-    {"path": "Source/IDE/UnitRelations/Atlas.IDE.UnitRelations.Service.pas", "rule": "magic-number", "fingerprint": "cb066289", "count": 1, "routine": "TUnitRelationsState.Change", "context": "4b0da2af"},
     {"path": "Source/UI/Architecture/Atlas.UI.Architecture.Assignment.pas", "rule": "magic-number", "fingerprint": "36951beb", "count": 1, "routine": "Columns", "context": "5406fc35"},
     {"path": "Source/UI/Architecture/Atlas.UI.Architecture.Assignment.pas", "rule": "magic-number", "fingerprint": "a077bb11", "count": 1, "routine": "Columns", "context": "fa912e4b"},
     {"path": "Source/UI/Architecture/Atlas.UI.Architecture.Assignment.pas", "rule": "magic-number", "fingerprint": "1ee498d2", "count": 1, "routine": "DrawRow", "context": "e9d3d7c0"},
