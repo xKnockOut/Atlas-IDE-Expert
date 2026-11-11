@@ -103,9 +103,16 @@ procedure TAtlasIdeVcsAccessTests.WithoutModuleDialogsAskNothing;
 var
   mRequest: TAtlasVcsBranchRequest;
   mNeverAsk, mStash: Boolean;
+  mAsk: TAtlasVcsBranchAsk;
 begin
-  Assert.IsFalse(TAtlasIdeVcs.Dialogs.AskBranch('C:\Projekt', TAtlasVcsBranchFacts.Empty, 'feature/1', '', '1',
-    TAtlasVcsSvnBranchOptions.Default, True, mRequest, mNeverAsk));
+  mAsk.Folder := 'C:\Projekt';
+  mAsk.Facts := TAtlasVcsBranchFacts.Empty;
+  mAsk.Name := 'feature/1';
+  mAsk.Message := '';
+  mAsk.Key := '1';
+  mAsk.Svn := TAtlasVcsSvnBranchOptions.Default;
+  mAsk.OfferNeverAsk := True;
+  Assert.IsFalse(TAtlasIdeVcs.Dialogs.AskBranch(mAsk, mRequest, mNeverAsk));
   Assert.IsFalse(mNeverAsk);
   Assert.IsFalse(TAtlasIdeVcs.Dialogs.AskUncommitted(3, 'feature/1', mStash));
   Assert.AreEqual('', TAtlasIdeVcs.Dialogs.WorktreeProject('A.dproj', 'C:\', 'C:\B'));

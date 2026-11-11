@@ -71,8 +71,8 @@ type
   public
     procedure CreateBranchFor(const AProject: string; const ADone: TProc);
     procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
-    function AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
-      AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
+    function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+      out ANeverAsk: Boolean): Boolean;
       out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
     function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
     function GitOptions: TAtlasVcsGitBranchOptions;
@@ -293,12 +293,11 @@ begin
   TAtlasIdeWorkingCopies.ShowFor(AProject, ADone);
 end;
 
-function TAtlasVcsDialogsAdapter.AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName,
-  AMessage, AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-  out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+function TAtlasVcsDialogsAdapter.AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+  out ANeverAsk: Boolean): Boolean;
 begin
-  Result := TAtlasIdeBranching.Ask(AFolder, AFacts, TAtlasIdeBranching.Setup(AName, AMessage, AKey, ASvn,
-    AOfferNeverAsk), ARequest, ANeverAsk);
+  Result := TAtlasIdeBranching.Ask(AAsk.Folder, AAsk.Facts, TAtlasIdeBranching.Setup(AAsk.Name, AAsk.Message,
+    AAsk.Key, AAsk.Svn, AAsk.OfferNeverAsk), ARequest, ANeverAsk);
 end;
 
 function TAtlasVcsDialogsAdapter.SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;

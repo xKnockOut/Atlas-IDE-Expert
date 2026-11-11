@@ -159,36 +159,40 @@ class function TAtlasRoleUnit.Check(const AInput: TAtlasRoleUnitInput): TAtlasRo
 var
   mInput: TAtlasRoleUnitInput;
 begin
+  // Die erste Verletzung in Eingabereihenfolge zählt.
   mInput := Trimmed(AInput);
   if mInput.Prefix = '' then
   begin
-    Exit(TAtlasRoleUnitProblem.NoPrefix);
-  end;
-  if not IsDottedName(mInput.Prefix) then
+    Result := TAtlasRoleUnitProblem.NoPrefix;
+  end
+  else if not IsDottedName(mInput.Prefix) then
   begin
-    Exit(TAtlasRoleUnitProblem.BadPrefix);
-  end;
-  if mInput.Feature = '' then
+    Result := TAtlasRoleUnitProblem.BadPrefix;
+  end
+  else if mInput.Feature = '' then
   begin
-    Exit(TAtlasRoleUnitProblem.NoFeature);
-  end;
-  if not IsValidIdent(mInput.Feature) then
+    Result := TAtlasRoleUnitProblem.NoFeature;
+  end
+  else if not IsValidIdent(mInput.Feature) then
   begin
-    Exit(TAtlasRoleUnitProblem.BadFeature);
-  end;
-  if IsReserved(mInput.Feature) then
+    Result := TAtlasRoleUnitProblem.BadFeature;
+  end
+  else if IsReserved(mInput.Feature) then
   begin
-    Exit(TAtlasRoleUnitProblem.ReservedFeature);
-  end;
-  if (mInput.Thing <> '') and not IsDottedName(mInput.Thing) then
+    Result := TAtlasRoleUnitProblem.ReservedFeature;
+  end
+  else if (mInput.Thing <> '') and not IsDottedName(mInput.Thing) then
   begin
-    Exit(TAtlasRoleUnitProblem.BadThing);
-  end;
-  if HasReservedPart(mInput.Thing) then
+    Result := TAtlasRoleUnitProblem.BadThing;
+  end
+  else if HasReservedPart(mInput.Thing) then
   begin
-    Exit(TAtlasRoleUnitProblem.ReservedThing);
+    Result := TAtlasRoleUnitProblem.ReservedThing;
+  end
+  else
+  begin
+    Result := TAtlasRoleUnitProblem.None;
   end;
-  Result := TAtlasRoleUnitProblem.None;
 end;
 
 class procedure TAtlasRoleUnit.Imports(ARole: TAtlasArchitectureRole;

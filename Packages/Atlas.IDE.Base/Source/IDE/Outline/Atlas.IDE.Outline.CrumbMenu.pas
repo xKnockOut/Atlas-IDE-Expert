@@ -42,14 +42,22 @@ type
     CurrentText: TFunc<string, string>;
   end;
 
+  /// <summary>Datei der Brotkrumen mit Gliederung und Zeilen.</summary>
+  TAtlasCrumbMenuFile = record
+    FileName: string;
+    Nodes: TAtlasOutlineNodes;
+    Lines: TArray<string>;
+    class function Create(const AFileName: string; const ANodes: TAtlasOutlineNodes;
+      const ALines: TArray<string>): TAtlasCrumbMenuFile; static;
+  end;
+
   TAtlasIdeCrumbMenu = class
   private class var
     FState: TObject;
   public
     /// <summary>Menü für Glied AIndex aus ACrumbs an der Bildschirmstelle APoint.</summary>
-    class procedure Show(const APoint: TPoint; const AFileName: string; const ANodes: TAtlasOutlineNodes;
-      const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
-      const AHooks: TAtlasCrumbMenuHooks); static;
+    class procedure Show(const APoint: TPoint; const AFile: TAtlasCrumbMenuFile; const ACrumbs: TAtlasCrumbs;
+      AIndex: Integer; const AHooks: TAtlasCrumbMenuHooks); static;
     /// <summary>Gibt das zuletzt gezeigte Menü frei.</summary>
     class procedure Release; static;
   end;
@@ -95,8 +103,8 @@ type
     function Declaration: Integer;
     procedure ShowComponent;
   public
-    constructor Create(const AFileName: string; const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-      const ACrumbs: TAtlasCrumbs; AIndex: Integer; const AHooks: TAtlasCrumbMenuHooks);
+    constructor Create(const AFile: TAtlasCrumbMenuFile; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
+      const AHooks: TAtlasCrumbMenuHooks);
     destructor Destroy; override;
     procedure Popup(const APoint: TPoint);
   end;
@@ -149,13 +157,21 @@ end;
 
 { TCrumbMenuState }
 
-constructor TCrumbMenuState.Create(const AFileName: string; const ANodes: TAtlasOutlineNodes;
-  const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer; const AHooks: TAtlasCrumbMenuHooks);
+class function TAtlasCrumbMenuFile.Create(const AFileName: string; const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>): TAtlasCrumbMenuFile;
+begin
+  Result.FileName := AFileName;
+  Result.Nodes := ANodes;
+  Result.Lines := ALines;
+end;
+
+constructor TCrumbMenuState.Create(const AFile: TAtlasCrumbMenuFile; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
+  const AHooks: TAtlasCrumbMenuHooks);
 begin
   inherited Create;
-  FFileName := AFileName;
-  FNodes := ANodes;
-  FLines := ALines;
+  FFileName := AFile.FileName;
+  FNodes := AFile.Nodes;
+  FLines := AFile.Lines;
   FCrumbs := ACrumbs;
   FIndex := AIndex;
   FHooks := AHooks;
@@ -294,16 +310,15 @@ end;
 
 { TAtlasIdeCrumbMenu }
 
-class procedure TAtlasIdeCrumbMenu.Show(const APoint: TPoint; const AFileName: string;
-  const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
-  const AHooks: TAtlasCrumbMenuHooks);
+class procedure TAtlasIdeCrumbMenu.Show(const APoint: TPoint; const AFile: TAtlasCrumbMenuFile;
+  const ACrumbs: TAtlasCrumbs; AIndex: Integer; const AHooks: TAtlasCrumbMenuHooks);
 begin
   Release;
   if (AIndex < 0) or (AIndex > High(ACrumbs)) then
   begin
     Exit;
   end;
-  FState := TCrumbMenuState.Create(AFileName, ANodes, ALines, ACrumbs, AIndex, AHooks);
+  FState := TCrumbMenuState.Create(AFile, ACrumbs, AIndex, AHooks);
   TCrumbMenuState(FState).Popup(APoint);
 end;
 

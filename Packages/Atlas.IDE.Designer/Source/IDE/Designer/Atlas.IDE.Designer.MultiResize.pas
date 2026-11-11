@@ -204,13 +204,43 @@ begin
   end;
 end;
 
+/// <summary>Mitte des Griffs an der Kante AEdge von ARect; Ecke unten rechts.</summary>
+function HandlePoint(const ARect: TRect; AEdge: TAtlasResizeEdge): TPoint;
+begin
+  case AEdge of
+    TAtlasResizeEdge.Right:
+      Result := Point(ARect.Right, (ARect.Top + ARect.Bottom) div 2);
+    TAtlasResizeEdge.Bottom:
+      Result := Point((ARect.Left + ARect.Right) div 2, ARect.Bottom);
+    TAtlasResizeEdge.Left:
+      Result := Point(ARect.Left, (ARect.Top + ARect.Bottom) div 2);
+    TAtlasResizeEdge.Top:
+      Result := Point((ARect.Left + ARect.Right) div 2, ARect.Top);
+  else
+    Result := ARect.BottomRight;
+  end;
+end;
+
+/// <summary>Mauszeiger über dem Griff an AEdge.</summary>
+function HandleCursor(AEdge: TAtlasResizeEdge): TCursor;
+begin
+  Result := crSizeNWSE;
+  if TAtlasMultiResize.Horizontal(AEdge) and not TAtlasMultiResize.Vertical(AEdge) then
+  begin
+    Result := crSizeWE;
+  end
+  else if TAtlasMultiResize.Vertical(AEdge) and not TAtlasMultiResize.Horizontal(AEdge) then
+  begin
+    Result := crSizeNS;
+  end;
+end;
+
 function TAtlasIdeMultiResize.HandlesOf(const AOrigin: TPoint): TArray<TAtlasHandle>;
 var
   mIndex, mHalf: Integer;
   mRect: TRect;
   mEdge: TAtlasResizeEdge;
   mAt: TPoint;
-  mCursor: TCursor;
 begin
   Result := nil;
   mHalf := Overlay.S(cHandleSize) div 2;
@@ -229,29 +259,9 @@ begin
       begin
         Continue;
       end;
-      case mEdge of
-        TAtlasResizeEdge.Right:
-          mAt := Point(mRect.Right, (mRect.Top + mRect.Bottom) div 2);
-        TAtlasResizeEdge.Bottom:
-          mAt := Point((mRect.Left + mRect.Right) div 2, mRect.Bottom);
-        TAtlasResizeEdge.Left:
-          mAt := Point(mRect.Left, (mRect.Top + mRect.Bottom) div 2);
-        TAtlasResizeEdge.Top:
-          mAt := Point((mRect.Left + mRect.Right) div 2, mRect.Top);
-      else
-        mAt := mRect.BottomRight;
-      end;
-      mCursor := crSizeNWSE;
-      if TAtlasMultiResize.Horizontal(mEdge) and not TAtlasMultiResize.Vertical(mEdge) then
-      begin
-        mCursor := crSizeWE;
-      end
-      else if TAtlasMultiResize.Vertical(mEdge) and not TAtlasMultiResize.Horizontal(mEdge) then
-      begin
-        mCursor := crSizeNS;
-      end;
+      mAt := HandlePoint(mRect, mEdge);
       Result := Result + [TAtlasHandle.Create(Rect(mAt.X - mHalf, mAt.Y - mHalf, mAt.X + mHalf + 1, mAt.Y + mHalf + 1),
-        TAtlasHandleKind.Square, '', mCursor, mIndex * cEdgeSlots + Ord(mEdge))];
+        TAtlasHandleKind.Square, '', HandleCursor(mEdge), mIndex * cEdgeSlots + Ord(mEdge))];
     end;
   end;
 end;
@@ -350,20 +360,25 @@ end;
 procedure TAtlasIdeMultiResize.Drag(const ADelta: TPoint; AShift: TShiftState);
 var
   mResult: TAtlasResizeResult;
-  mGrid, mIndex: Integer;
+  mDrag: TAtlasResizeDrag;
+  mIndex: Integer;
   mAt: TRect;
 begin
   if not InStep then
   begin
     Exit;
   end;
-  mGrid := 0;
+  mDrag.Dragged := FDragged;
+  mDrag.Edge := FEdge;
+  mDrag.Delta := ADelta;
+  mDrag.Mode := TAtlasMultiResize.ModeOf(TAtlasIdeSettings.Current.DesignerMultiResizeMode);
+  mDrag.Grid := 0;
   if not (ssAlt in AShift) then
   begin
-    mGrid := TAtlasDesignerAccess.GridSize(not TAtlasMultiResize.Horizontal(FEdge));
+    mDrag.Grid := TAtlasDesignerAccess.GridSize(not TAtlasMultiResize.Horizontal(FEdge));
   end;
-  mResult := TAtlasMultiResize.Apply(FItems, FNeighbourItems, FDragged, FEdge, ADelta,
-    TAtlasMultiResize.ModeOf(TAtlasIdeSettings.Current.DesignerMultiResizeMode), mGrid, ssShift in AShift);
+  mDrag.Follow := ssShift in AShift;
+  mResult := TAtlasMultiResize.Apply(FItems, FNeighbourItems, mDrag);
   for mIndex := 0 to High(FControls) do
   begin
     if FControls[mIndex].BoundsRect <> mResult.Items[mIndex] then

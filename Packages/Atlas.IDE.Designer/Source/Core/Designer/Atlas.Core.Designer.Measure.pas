@@ -228,10 +228,30 @@ end;
 
 /// <summary>Gibt es unter den Geschwistern ein Paar auf derselben Achse wie ASide mit Abstand ADistance? Liefert
 /// die Lage des nächstgelegenen solchen Paars, sonst None.</summary>
+/// <summary>Hat ASiblings[AIndex] auf der Seite ASide den Abstand ADistance: zum nächsten Geschwister, ohne
+/// Geschwister auf der Seite AWanted zur Innenkante AInner?</summary>
+function KeepsDistance(const ASiblings: TArray<TAtlasMeasureItem>; AIndex: Integer; ASide, AWanted: TAtlasMeasureSide;
+  const AInner: TRect; ADistance: Integer): Boolean;
+var
+  mOther: Integer;
+  mBounds: TRect;
+begin
+  mBounds := ASiblings[AIndex].Bounds;
+  mOther := Nearest(mBounds, ASiblings, ASide, AIndex);
+  if mOther >= 0 then
+  begin
+    Result := Gap(mBounds, ASiblings[mOther].Bounds, ASide) = ADistance;
+  end
+  else
+  begin
+    Result := (ASide = AWanted) and (EdgeGap(mBounds, AInner, ASide) = ADistance);
+  end;
+end;
+
 function SamePlace(const ASubject: TRect; const ASiblings: TArray<TAtlasMeasureItem>; const AInner: TRect;
   ASide: TAtlasMeasureSide; ADistance: Integer): TAtlasMeasurePlace;
 var
-  mIndex, mOther, mBest, mDistance: Integer;
+  mIndex, mBest, mDistance: Integer;
   mSide: TAtlasMeasureSide;
   mBounds: TRect;
 begin
@@ -247,9 +267,7 @@ begin
       begin
         Continue;
       end;
-      mOther := Nearest(mBounds, ASiblings, mSide, mIndex);
-      if (mOther >= 0) and (Gap(mBounds, ASiblings[mOther].Bounds, mSide) = ADistance) or
-        (mOther < 0) and (mSide = ASide) and (EdgeGap(mBounds, AInner, mSide) = ADistance) then
+      if KeepsDistance(ASiblings, mIndex, mSide, ASide, AInner, ADistance) then
       begin
         mDistance := Abs(mBounds.Left - ASubject.Left) + Abs(mBounds.Top - ASubject.Top);
         if mDistance < mBest then

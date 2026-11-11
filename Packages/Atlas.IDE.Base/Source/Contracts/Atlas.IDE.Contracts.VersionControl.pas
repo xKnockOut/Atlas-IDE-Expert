@@ -26,6 +26,19 @@ uses
   Atlas.Core.Projects.VersionControl;
 
 type
+  /// <summary>Frage „Branch anlegen“ beim Beginnen eines Issues (#765, #1288): Ordner des Projekts, Lage der
+  /// Arbeitskopie, vorgeschlagener Name, Commit-Nachricht und Kennung des Issues, SVN-Vorgaben;
+  /// OfferNeverAsk zeigt „Nicht mehr fragen“.</summary>
+  TAtlasVcsBranchAsk = record
+    Folder: string;
+    Facts: TAtlasVcsBranchFacts;
+    Name: string;
+    Message: string;
+    Key: string;
+    Svn: TAtlasVcsSvnBranchOptions;
+    OfferNeverAsk: Boolean;
+  end;
+
   /// <summary>Versionsverwaltung der IDE. ForFolder und Run in jedem Thread, alles andere im Hauptthread.</summary>
   IAtlasVcsService = interface
     ['{8E0B6C4D-5A21-4F3E-9C7B-2D61A4E9B305}']
@@ -59,9 +72,8 @@ type
     /// <summary>Dialog „Arbeitskopien“ für AProject; ADone nach Änderungen.</summary>
     procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
     /// <summary>Dialog „Branch anlegen“ beim Beginnen eines Issues (#765, #1288).</summary>
-    function AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
-      AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-      out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+    function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+      out ANeverAsk: Boolean): Boolean;
     function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
     function GitOptions: TAtlasVcsGitBranchOptions;
     procedure OfferOpen(const AProject, ARoot, AFolder: string);
@@ -139,9 +151,8 @@ type
   public
     procedure CreateBranchFor(const AProject: string; const ADone: TProc);
     procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
-    function AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
-      AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-      out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+    function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+      out ANeverAsk: Boolean): Boolean;
     function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
     function GitOptions: TAtlasVcsGitBranchOptions;
     procedure OfferOpen(const AProject, ARoot, AFolder: string);
@@ -398,9 +409,8 @@ begin
   // Ohne Modul kein Dialog.
 end;
 
-function TAtlasNullVcsDialogs.AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName,
-  AMessage, AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-  out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+function TAtlasNullVcsDialogs.AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+  out ANeverAsk: Boolean): Boolean;
 begin
   ARequest := Default(TAtlasVcsBranchRequest);
   ANeverAsk := False;

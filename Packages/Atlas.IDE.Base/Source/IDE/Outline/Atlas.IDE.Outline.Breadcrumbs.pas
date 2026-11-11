@@ -1094,7 +1094,8 @@ begin
   begin
     Exit;
   end;
-  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FLines, ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
+  TAtlasIdeCrumbMenu.Show(APoint, TAtlasCrumbMenuFile.Create(FFileName, FNodes, FLines), ABar.Crumbs, AIndex,
+    TAtlasIdeBreadcrumbs.FMenuHooks);
 end;
 
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes

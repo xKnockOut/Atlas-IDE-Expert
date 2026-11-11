@@ -49,6 +49,17 @@ type
 
 implementation
 
+function Drag(ADragged: Integer; AEdge: TAtlasResizeEdge; const ADelta: TPoint; AMode: TAtlasResizeMode;
+  AGrid: Integer; AFollow: Boolean): TAtlasResizeDrag;
+begin
+  Result.Dragged := ADragged;
+  Result.Edge := AEdge;
+  Result.Delta := ADelta;
+  Result.Mode := AMode;
+  Result.Grid := AGrid;
+  Result.Follow := AFollow;
+end;
+
 procedure TAtlasMultiResizeTests.Setup;
 begin
   // Drei Edits untereinander, 180 px breit.
@@ -65,7 +76,7 @@ end;
 function TAtlasMultiResizeTests.Run(ADragged: Integer; AEdge: TAtlasResizeEdge; ADX, ADY: Integer;
   AMode: TAtlasResizeMode; AGrid: Integer): TAtlasResizeResult;
 begin
-  Result := TAtlasMultiResize.Apply(FColumn, nil, ADragged, AEdge, Point(ADX, ADY), AMode, AGrid, False);
+  Result := TAtlasMultiResize.Apply(FColumn, nil, Drag(ADragged, AEdge, Point(ADX, ADY), AMode, AGrid, False));
 end;
 
 procedure TAtlasMultiResizeTests.RightEdgeDeltaWidensAll;
@@ -164,13 +175,13 @@ var
 begin
   // Knopf rechts neben dem mittleren Edit mit 8 px Abstand; einer weit unten bleibt.
   mResult := TAtlasMultiResize.Apply(FColumn, [TAtlasResizeNeighbour.Create(Rect(198, 38, 273, 63), 0),
-    TAtlasResizeNeighbour.Create(Rect(198, 200, 273, 225), 0)], 0, TAtlasResizeEdge.Right, Point(40, 0),
-    TAtlasResizeMode.Delta, 0, True);
+    TAtlasResizeNeighbour.Create(Rect(198, 200, 273, 225), 0)], Drag(0, TAtlasResizeEdge.Right, Point(40, 0),
+    TAtlasResizeMode.Delta, 0, True));
   Assert.AreEqual(238, mResult.Neighbours[0].Left);
   Assert.AreEqual(8, mResult.Neighbours[0].Left - mResult.Items[1].Right, 'Abstand bleibt');
   Assert.AreEqual(198, mResult.Neighbours[1].Left);
-  mResult := TAtlasMultiResize.Apply(FColumn, [TAtlasResizeNeighbour.Create(Rect(198, 38, 273, 63), 0)], 0,
-    TAtlasResizeEdge.Right, Point(40, 0), TAtlasResizeMode.Delta, 0, False);
+  mResult := TAtlasMultiResize.Apply(FColumn, [TAtlasResizeNeighbour.Create(Rect(198, 38, 273, 63), 0)],
+    Drag(0, TAtlasResizeEdge.Right, Point(40, 0), TAtlasResizeMode.Delta, 0, False));
   Assert.AreEqual(198, mResult.Neighbours[0].Left, 'ohne Umschalt');
 end;
 
@@ -178,8 +189,8 @@ procedure TAtlasMultiResizeTests.NeighbourOtherGroupStays;
 var
   mResult: TAtlasResizeResult;
 begin
-  mResult := TAtlasMultiResize.Apply(FColumn, [TAtlasResizeNeighbour.Create(Rect(198, 38, 273, 63), 1)], 0,
-    TAtlasResizeEdge.Right, Point(40, 0), TAtlasResizeMode.Delta, 0, True);
+  mResult := TAtlasMultiResize.Apply(FColumn, [TAtlasResizeNeighbour.Create(Rect(198, 38, 273, 63), 1)],
+    Drag(0, TAtlasResizeEdge.Right, Point(40, 0), TAtlasResizeMode.Delta, 0, True));
   Assert.AreEqual(198, mResult.Neighbours[0].Left);
 end;
 
