@@ -348,6 +348,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Host.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StartOptions.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
+        <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PaletteSearch.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PageOptions.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
@@ -522,6 +523,8 @@
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Experimental.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.RuleChecksNotice.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.NodeScope.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Search.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.SettingsPalette.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Renames.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QueryMigration.pas"/>
@@ -832,6 +835,7 @@
             <Form>AtlasSettingsOverview</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

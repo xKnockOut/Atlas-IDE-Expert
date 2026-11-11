@@ -100,6 +100,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Settings](docs/features/en/Settings.md)
 - **Options page as a tree**, every feature with its own switch
+- **Search settings** above the tree (Ctrl+F) and with `@` in the command palette, also by key, synonym or with a typo; Alt+Enter flips quick toggles directly
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
