@@ -100,8 +100,24 @@ uses
   Atlas.UI.Designer.SettingsSection;
 
 procedure TDesignerSettingsSectionTests.WarmUp;
+var
+  mRegistrations: TArray<IAtlasRegistration>;
+  mPage: TAtlasSettingsPage;
 begin
   WarmUpSettingsPage;
+  // Auch der Designer-Abschnitt hat Speicher erster Benutzung (Steuerelemente, Tastenliste), der sonst dem ersten
+  // Test zugerechnet wird.
+  mRegistrations := ProvideSections([TAtlasDesignerSettingsSection]);
+  try
+    mPage := TAtlasSettingsPage.Create(nil);
+    try
+      mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    finally
+      mPage.Free;
+    end;
+  finally
+    RevokeAll(mRegistrations);
+  end;
 end;
 
 procedure TDesignerSettingsSectionTests.Setup;

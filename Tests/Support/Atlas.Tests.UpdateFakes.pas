@@ -597,6 +597,8 @@ begin
   inherited Destroy;
 end;
 
+// FNV-1a läuft gewollt über (#1980: Tests prüfen Überläufe).
+{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 class function TFakeTrust.HashOf(const AText: string): string;
 var
   mHash: Cardinal;
@@ -614,6 +616,7 @@ begin
     Result := Result + LowerCase(IntToHex(mHash xor Cardinal(mIndex), 8));
   end;
 end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 function TFakeTrust.Sha256(const AFileName: string): string;
 begin

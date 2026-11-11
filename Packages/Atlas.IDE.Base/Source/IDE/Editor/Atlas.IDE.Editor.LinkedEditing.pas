@@ -1037,7 +1037,7 @@ begin
     begin
       Exit;
     end;
-    FQuery.Reap(False);
+    FQuery.Prune;
     if FRun.Active then
     begin
       if not FWriting then

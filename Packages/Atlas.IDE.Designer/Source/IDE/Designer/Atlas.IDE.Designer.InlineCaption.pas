@@ -138,6 +138,10 @@ const
   /// <summary>Punkt außerhalb jedes Grids: erste Spalte.</summary>
   cNoPoint: TPoint = (X: -30000; Y: -30000);
 
+type
+  /// <summary>Zugriff auf das geschützte TControl.Font (Delphi: E2362, FPC nimmt es an).</summary>
+  TControlAccess = class(TControl);
+
 function IsTextProp(AObject: TObject; const AName: string): Boolean;
 begin
   Result := IsPublishedProp(AObject, AName) and (PropType(AObject, AName) in [tkString, tkLString, tkWString,
@@ -194,8 +198,8 @@ begin
   begin
     mLeft := mLeft + mWidths[mStart] + mLine;
   end;
-  Result := Rect(mLeft, 0, mLeft + mWidths[AIndex], Abs(AGrid.Font.Height) + MulDiv(cBandExtra, AGrid.CurrentPPI,
-    96));
+  Result := Rect(mLeft, 0, mLeft + mWidths[AIndex],
+    Abs(TControlAccess(AGrid).Font.Height) + MulDiv(cBandExtra, AGrid.CurrentPPI, 96));
 end;
 
 function PathAt(AComponent: TComponent; const AScreen: TPoint): string;
@@ -246,7 +250,7 @@ var
   mBand, mIndex: Integer;
 begin
   Result := ScreenRect(AHolder);
-  mBand := Abs(AHolder.Font.Height) + MulDiv(cBandExtra, AHolder.CurrentPPI, 96);
+  mBand := Abs(TControlAccess(AHolder).Font.Height) + MulDiv(cBandExtra, AHolder.CurrentPPI, 96);
   if Pos('Columns[', APath) = 1 then
   begin
     Result := GridTitle(AHolder, APoint, mIndex);
@@ -284,7 +288,7 @@ function FontOf(AHolder: TControl; const APath: string): TFont;
 var
   mObject: TObject;
 begin
-  Result := AHolder.Font;
+  Result := TControlAccess(AHolder).Font;
   if Pos('Columns[', APath) = 1 then
   begin
     mObject := ObjectOf(AHolder, 'TitleFont');

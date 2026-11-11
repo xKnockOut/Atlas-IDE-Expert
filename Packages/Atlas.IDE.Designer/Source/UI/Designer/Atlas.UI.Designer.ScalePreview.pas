@@ -64,7 +64,7 @@ type
   protected
     function Px(AValue: Integer): Integer; override;
     function NodeText(AIndex: Integer): string; override;
-    function CanResize: Boolean; override;
+    function GripResizes: Boolean; override;
     procedure BuildBar; override;
     procedure Recalculate; override;
     procedure PaintOver; override;
@@ -102,7 +102,7 @@ begin
   begin
     FScale.Levels := [cPercent];
   end;
-  FMeasure := TBitmap.Create;
+  FMeasure := Vcl.Graphics.TBitmap.Create; // Winapi.Windows verdeckt TBitmap
   inherited CreatePreview(AOwner, AData.Form, AColors);
   Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleTitle, [AData.Form.FormName]);
   FList := TListBox.Create(Self);
@@ -240,7 +240,7 @@ begin
   end;
 end;
 
-function TAtlasScalePreviewWindow.CanResize: Boolean;
+function TAtlasScalePreviewWindow.GripResizes: Boolean;
 begin
   Result := False;
 end;

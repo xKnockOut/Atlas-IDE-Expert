@@ -18,6 +18,8 @@ type
     FForm: TForm;
     FList: TAtlasListView;
   public
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -41,6 +43,19 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Style.Scaling;
 
+procedure TAtlasListViewTests.WarmUpFirstUse;
+begin
+  // Erste Benutzung (Liste mit Fenster, DPI-Wechsel) nicht dem ersten Test anrechnen.
+  SetUp;
+  try
+    FList.AddColumn('Name', 100);
+    FForm.ScaleForPPI(FForm.CurrentPPI * 3 div 2);
+    FForm.ScaleForPPI(FForm.CurrentPPI * 2 div 3);
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TAtlasListViewTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);
@@ -62,8 +77,10 @@ procedure TAtlasListViewTests.ColumnWidthIsLogical;
 var
   mColumn: TListColumn;
 begin
+  // Windows richtet die erste Spalte immer links aus: Ausrichtung an der zweiten prüfen.
+  FList.AddColumn('Erste', 50);
   mColumn := FList.AddColumn('Name', 120, taRightJustify);
-  Assert.AreEqual(TAtlasScaling.ToDevice(120, FList.CurrentPPI), mColumn.Width);
+  Assert.AreEqual(TAtlasScaling.ToDevice(120, FList.CurrentPPI), Integer(mColumn.Width));
   Assert.AreEqual('Name', string(mColumn.Caption));
   Assert.IsTrue(mColumn.Alignment = taRightJustify);
 end;
@@ -76,16 +93,16 @@ begin
   mBefore := FList.Columns[0].Width;
   mPPI := FForm.CurrentPPI;
   FForm.ScaleForPPI(mPPI * 3 div 2);
-  Assert.AreEqual((mBefore * 3 + 1) div 2, FList.Columns[0].Width);
+  Assert.AreEqual((mBefore * 3 + 1) div 2, Integer(FList.Columns[0].Width));
   // Zurück: wieder die alte Breite.
   FForm.ScaleForPPI(mPPI);
-  Assert.AreEqual(mBefore, FList.Columns[0].Width);
+  Assert.AreEqual(mBefore, Integer(FList.Columns[0].Width));
 end;
 
 procedure TAtlasListViewTests.AutoSizeWidthsStay;
 begin
   FList.AddColumn('Rest', -2);
-  Assert.AreEqual(-2, FList.Columns[0].Width);
+  Assert.AreEqual(-2, Integer(FList.Columns[0].Width));
 end;
 
 procedure TAtlasListViewTests.ReportViewWithoutOwnColors;

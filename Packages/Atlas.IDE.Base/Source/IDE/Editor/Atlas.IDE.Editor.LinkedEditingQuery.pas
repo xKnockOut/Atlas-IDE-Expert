@@ -61,6 +61,8 @@ type
     /// <summary>Antwort übernehmen, wenn sie zur jüngsten Anfrage gehört.</summary>
     procedure Accept(ARequest: Integer; const AFileName, AText: string; const ARanges: TAtlasLinkedRanges;
       const AConflicts: TAtlasLinkedConflicts);
+    /// <summary>Beendete Arbeiter freigeben (je Takt, auch ohne neue Anfrage).</summary>
+    procedure Prune;
     /// <summary>Letzte Antwort verwerfen.</summary>
     procedure Drop;
     /// <summary>Text geändert: Antwort verwerfen, beim nächsten Ruhen neu fragen.</summary>
@@ -228,6 +230,11 @@ begin
   FCandidate.Text := AText;
   FCandidate.Ranges := ARanges;
   FCandidate.Conflicts := AConflicts;
+end;
+
+procedure TAtlasIdeLinkedEditingQuery.Prune;
+begin
+  FWorkers.Prune;
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Drop;

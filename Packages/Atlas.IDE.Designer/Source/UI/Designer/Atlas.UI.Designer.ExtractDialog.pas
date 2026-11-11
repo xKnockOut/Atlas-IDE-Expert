@@ -85,6 +85,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.UITypes,
   Vcl.Graphics,
   Atlas.UI.Designer.ViewStrings,

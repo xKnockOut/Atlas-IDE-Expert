@@ -14,6 +14,8 @@ type
   [TestFixture]
   TAtlasDialogTests = class
   public
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -57,6 +59,19 @@ type
 procedure TProbeDialog.ThemeChanged;
 begin
   Inc(ThemeCount);
+end;
+
+procedure TAtlasDialogTests.WarmUpFirstUse;
+var
+  mDialog: TAtlasDialog;
+begin
+  // Erste Benutzung (VCL-Formular, Liste der Abonnenten des Themendienstes) nicht dem ersten Test anrechnen.
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Aufwärmen', 300);
+  try
+    mDialog.HandleNeeded;
+  finally
+    mDialog.Free;
+  end;
 end;
 
 procedure TAtlasDialogTests.TearDown;
@@ -128,11 +143,14 @@ begin
     mFirst := mDialog.AddRow(22);
     mLabel := mDialog.AddLabel(mFirst, 'Dauer');
     mSecond := mDialog.AddRow(26);
+    // Ohne Fenster ordnet die VCL alTop-Zeilen nicht an.
+    mDialog.HandleNeeded;
     Assert.AreEqual(mDialog.ScaleValue(22), mFirst.Height);
-    Assert.IsTrue(mSecond.Top > mFirst.Top);
-    Assert.IsTrue(mLabel.Parent = mFirst);
+    Assert.IsTrue(mSecond.Top > mFirst.Top, Format('Top %d/%d', [mFirst.Top, mSecond.Top]));
+    Assert.IsTrue(mLabel.Parent = mFirst, 'Parent');
     mDialog.FitHeight;
-    Assert.IsTrue(mDialog.ClientHeight >= mSecond.Top + mSecond.Height);
+    Assert.IsTrue(mDialog.ClientHeight >= mSecond.Top + mSecond.Height,
+      Format('ClientHeight %d, Ende %d', [mDialog.ClientHeight, mSecond.Top + mSecond.Height]));
   finally
     mDialog.Free;
   end;

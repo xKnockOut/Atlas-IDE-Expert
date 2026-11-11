@@ -62,7 +62,7 @@ type
     procedure PaintLines(const AView: TRect);
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
     procedure WMMouseWheel(var Message: TWMMouseWheel); message WM_MOUSEWHEEL;
-    procedure DoClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
@@ -99,6 +99,8 @@ uses
   Atlas.Core.Designer.Magnifier;
 
 const
+  // Fehlt in Delphis Winapi.Windows (überlagerte Fenster mit aufnehmen).
+  CAPTUREBLT = $40000000;
   cDefaultWidth = 240;
   cDefaultHeight = 180;
   cBarHeight = 18;
@@ -134,7 +136,7 @@ begin
   ClientHeight := S(cDefaultHeight) + 2 * BarHeight;
   Constraints.MinWidth := S(120);
   Constraints.MinHeight := S(100);
-  OnClose := DoClose;
+  OnClose := FormClose;
 end;
 
 destructor TAtlasMagnifierWindow.Destroy;
@@ -168,7 +170,7 @@ begin
   Message.Result := 1;
 end;
 
-procedure TAtlasMagnifierWindow.DoClose(Sender: TObject; var Action: TCloseAction);
+procedure TAtlasMagnifierWindow.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   // Gezeigt wird ohne Visible (kein Aktivieren): selbst ausblenden.
   Action := caNone;

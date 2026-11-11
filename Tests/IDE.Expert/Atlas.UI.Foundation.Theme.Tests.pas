@@ -16,6 +16,8 @@ type
   private
     FLog: string;
   public
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -36,12 +38,30 @@ implementation
 
 uses
   System.SysUtils,
+  System.UITypes,
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
+
+procedure TAtlasUiThemeTests.WarmUpFirstUse;
+var
+  mForm: TForm;
+begin
+  // Erste Benutzung (VCL-Formular, Liste der Abonnenten) nicht dem ersten Test anrechnen.
+  TAtlasUiTheme.Subscribed(nil);
+  TAtlasUiTheme.Uninstall;
+  TAtlasUiTheme.Colors;
+  TAtlasUiTheme.Apply(nil);
+  mForm := TForm.CreateNew(nil);
+  try
+    TAtlasUiTheme.Apply(mForm);
+  finally
+    mForm.Free;
+  end;
+end;
 
 procedure TAtlasUiThemeTests.TearDown;
 begin
@@ -60,7 +80,8 @@ begin
   try
     TAtlasUiTheme.Apply(mForm);
     TAtlasUiTheme.Apply(nil);
-    Assert.Pass;
+    // Nicht Assert.Pass: Die Ausnahme dahinter zählt der Leckmonitor als Leck.
+    Assert.AreEqual(Integer(TAtlasColors.Light.Surface), Integer(TAtlasUiTheme.Colors.Surface), 'unverändert');
   finally
     mForm.Free;
   end;

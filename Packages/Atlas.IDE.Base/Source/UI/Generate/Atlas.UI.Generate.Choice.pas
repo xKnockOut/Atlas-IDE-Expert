@@ -55,7 +55,8 @@ const
   /// <summary>Abstand zwischen den Knöpfen.</summary>
   cButtonGap = 8;
 
-function Scaled(ADialog: TForm; AValue: Integer): Integer;
+// Nicht "Scaled": In Methoden des Formulars verdeckt TCustomForm.Scaled (Boolean) den Namen (E2066/E2010).
+function ScaledPx(ADialog: TForm; AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, ADialog.CurrentPPI, 96);
 end;
@@ -68,25 +69,25 @@ begin
   inherited CreateDialog(AOwner, '', 0);
   FItems := AItems;
   Caption := ACaption;
-  mGap := Scaled(Self, cGap);
-  ClientWidth := Scaled(Self, cWidth) + 2 * mGap;
+  mGap := ScaledPx(Self, cGap);
+  ClientWidth := ScaledPx(Self, cWidth) + 2 * mGap;
   mY := mGap;
   FPrompt := TLabel.Create(Self);
   FPrompt.Parent := Self;
-  FPrompt.SetBounds(mGap, mY, Scaled(Self, cWidth), FPrompt.Height);
+  FPrompt.SetBounds(mGap, mY, ScaledPx(Self, cWidth), FPrompt.Height);
   FPrompt.Caption := APrompt;
-  Inc(mY, FPrompt.Height + Scaled(Self, cLineGap));
+  Inc(mY, FPrompt.Height + ScaledPx(Self, cLineGap));
   FSearch := TEdit.Create(Self);
   FSearch.Parent := Self;
-  FSearch.SetBounds(mGap, mY, Scaled(Self, cWidth), FSearch.Height);
+  FSearch.SetBounds(mGap, mY, ScaledPx(Self, cWidth), FSearch.Height);
   FSearch.TextHint := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GalleryChoiceSearch);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
   FPrompt.FocusControl := FSearch;
-  Inc(mY, FSearch.Height + Scaled(Self, cLineGap));
+  Inc(mY, FSearch.Height + ScaledPx(Self, cLineGap));
   FList := TListBox.Create(Self);
   FList.Parent := Self;
-  FList.SetBounds(mGap, mY, Scaled(Self, cWidth), Scaled(Self, cListHeight));
+  FList.SetBounds(mGap, mY, ScaledPx(Self, cWidth), ScaledPx(Self, cListHeight));
   FList.OnDblClick := ListDblClick;
   Inc(mY, FList.Height + mGap);
   FCancel := TButton.Create(Self);
@@ -102,7 +103,7 @@ begin
   FOk.Default := True;
   FOk.ModalResult := mrOk;
   FOk.Top := mY;
-  FOk.Left := FCancel.Left - Scaled(Self, cButtonGap) - FOk.Width;
+  FOk.Left := FCancel.Left - ScaledPx(Self, cButtonGap) - FOk.Width;
   ClientHeight := mY + FOk.Height + mGap;
   ActiveControl := FSearch;
 end;

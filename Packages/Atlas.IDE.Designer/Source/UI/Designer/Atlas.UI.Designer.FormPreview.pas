@@ -101,7 +101,7 @@ type
     /// <summary>Beschriftung eines Knotens im Abbild; hier der Name.</summary>
     function NodeText(AIndex: Integer): string; virtual;
     /// <summary>Ziehgriff und Größenfelder aktiv?</summary>
-    function CanResize: Boolean; virtual;
+    function GripResizes: Boolean; virtual;
     function Describe(AIndex: Integer): string; virtual;
     procedure BuildBar; virtual;
     procedure Recalculate; virtual;
@@ -211,7 +211,7 @@ begin
   Result := FData.Nodes[AIndex].Name;
 end;
 
-function TAtlasFormPreviewWindow.CanResize: Boolean;
+function TAtlasFormPreviewWindow.GripResizes: Boolean;
 begin
   Result := True;
 end;
@@ -554,7 +554,7 @@ begin
     end;
   end;
   PaintOver;
-  if not CanResize then
+  if not GripResizes then
   begin
     Exit;
   end;
@@ -570,7 +570,7 @@ end;
 procedure TAtlasFormPreviewWindow.PreviewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 begin
-  FDrag.Dragging := CanResize and (Button = mbLeft) and GripRect.Contains(Point(X, Y));
+  FDrag.Dragging := GripResizes and (Button = mbLeft) and GripRect.Contains(Point(X, Y));
 end;
 
 procedure TAtlasFormPreviewWindow.PreviewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -583,7 +583,7 @@ begin
     SetProbe(TSize.Create(MulDiv(X - Origin.X, cBasePpi, CurrentPPI), MulDiv(Y - Origin.Y, cBasePpi, CurrentPPI)));
     Exit;
   end;
-  if CanResize and GripRect.Contains(Point(X, Y)) then
+  if GripResizes and GripRect.Contains(Point(X, Y)) then
   begin
     FParts.Paint.Cursor := crSizeNWSE;
   end
