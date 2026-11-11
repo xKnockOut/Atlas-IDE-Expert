@@ -626,21 +626,23 @@ var
   Columns: TArray<TAtlasFindingColumnState>;
 begin
   Columns := TAtlasFindings.ParseColumns('');
-  Assert.AreEqual(8, Integer(Length(Columns)));
-  Assert.AreEqual('icon,kind,category,message,line,location,rule,compiler', TAtlasFindings.FormatColumns(Columns));
+  Assert.AreEqual(9, Integer(Length(Columns)));
+  Assert.AreEqual('icon,kind,category,message,line,location,rule,compiler,source',
+    TAtlasFindings.FormatColumns(Columns));
   Columns := TAtlasFindings.ParseColumns('rule:120, -message, -kind, unbekannt, location:80, rule');
   Assert.IsTrue(Columns[0].Column = TAtlasFindingColumn.Rule);
   Assert.AreEqual(120, Columns[0].Width);
   Assert.IsFalse(Columns[1].Visible);
   // Art ist Pflicht: bleibt sichtbar.
   Assert.IsTrue(Columns[2].Visible);
-  Assert.AreEqual('rule:120,-message,kind,location:80,icon,category,line,compiler',
+  Assert.AreEqual('rule:120,-message,kind,location:80,icon,category,line,compiler,source',
     TAtlasFindings.FormatColumns(Columns));
   Assert.IsTrue(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Location));
   Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Message));
   Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Compiler), 'Spalte Compiler abwählbar (#1024)');
-  Assert.AreEqual('-compiler,icon,kind,category,message,line,location,rule',
+  Assert.AreEqual('-compiler,icon,kind,category,message,line,location,rule,source',
     TAtlasFindings.FormatColumns(TAtlasFindings.ParseColumns('-compiler')));
+  Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Source), 'Spalte Quelle abwählbar (#1819)');
 end;
 
 procedure TAtlasFindingsTests.ScopeAndGroupingNames;

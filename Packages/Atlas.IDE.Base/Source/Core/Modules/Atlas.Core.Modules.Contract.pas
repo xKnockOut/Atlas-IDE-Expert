@@ -27,7 +27,8 @@ const
   /// 4 (#1906): IAtlasBuildRequests.Forget.
   /// 5 (#1817): TAtlasMenuPlace.ProjectContext.
   /// 6 (#1821): TAtlasMenuPlace.Gallery.
-  cAtlasCoreContractVersion = 6;
+  /// 7 (#1819): IAtlasIdeErrors und TAtlasIdeError (Atlas.IDE.Contracts.Rules), TAtlasProblem.IdeConfirmed.
+  cAtlasCoreContractVersion = 7;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
