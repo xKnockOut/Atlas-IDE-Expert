@@ -277,6 +277,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.VersionControl` | `Contracts/Atlas.IDE.Contracts.VersionControl.pas` | Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891) |
 | `Atlas.IDE.Contracts.LineChanges` | `Contracts/Atlas.IDE.Contracts.LineChanges.pas` | Vertrag Änderungsmarken und Zeilenhistorie (#1905) |
+| `Atlas.IDE.Contracts.IssueWork` | `Contracts/Atlas.IDE.Contracts.IssueWork.pas` | Vertrag Arbeitsstand je Issue zwischen Willkommensseite und Tracker (#2052) |
 | `Atlas.IDE.Contracts.MouseHistory` | `Contracts/Atlas.IDE.Contracts.MouseHistory.pas` | Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455 |
@@ -952,6 +953,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Notify` | `Core/Tracker/Atlas.Core.Tracker.Notify.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.PaletteSearch` | `Core/Tracker/Atlas.Core.Tracker.PaletteSearch.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Preview` | `Core/Tracker/Atlas.Core.Tracker.Preview.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.IssueWork` | `Core/Tracker/Atlas.Core.Tracker.IssueWork.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Projects` | `Core/Tracker/Atlas.Core.Tracker.Projects.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.GitHubBoards` | `Core/Tracker/Atlas.Core.Tracker.GitHubBoards.pas` | Ordner `Core/Tracker` |
@@ -1002,6 +1004,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssueStart` | `IDE/Tracker/Atlas.IDE.Tracker.IssueStart.pas` | Ordner `IDE/Tracker`, „Beginnen“ und „Beenden“, #1455 |
+| `Atlas.IDE.Tracker.IssueWork` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWork.pas` | Ordner `IDE/Tracker`, Arbeitsstand je Issue über den Vertrag, #2052 |
 | `Atlas.IDE.Tracker.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssue.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.NewIssuePlace` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssuePlace.pas` | Ordner `IDE/Tracker`, Editorseite von „Issue anlegen“, #1455 |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
@@ -1056,6 +1059,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Welcome.Backup` | `Core/Welcome/Atlas.Core.Welcome.Backup.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Continue` | `Core/Welcome/Atlas.Core.Welcome.Continue.pas` | Ordner `Core/Welcome` |
+| `Atlas.Core.Welcome.ContinueIssues` | `Core/Welcome/Atlas.Core.Welcome.ContinueIssues.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Discover` | `Core/Welcome/Atlas.Core.Welcome.Discover.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.AccountName` | `Core/Welcome/Atlas.Core.Welcome.AccountName.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Greeting` | `Core/Welcome/Atlas.Core.Welcome.Greeting.pas` | Ordner `Core/Welcome` |
@@ -1083,6 +1087,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Welcome.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Editor` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Editor.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Saved` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Saved.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.ContinueIssues` | `IDE/Welcome/Atlas.IDE.Welcome.ContinueIssues.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.IssueWork` | `IDE/Welcome/Atlas.IDE.Welcome.IssueWork.pas` | Arbeitsstand je Issue für den Tracker über den Vertrag, #2052 |
 | `Atlas.IDE.Welcome.Discover` | `IDE/Welcome/Atlas.IDE.Welcome.Discover.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Help.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Layouts.pas` | Ordner `IDE/Welcome` |
@@ -1108,6 +1114,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Welcome.Arrange` | `UI/Welcome/Atlas.UI.Welcome.Arrange.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Board` | `UI/Welcome/Atlas.UI.Welcome.Board.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Continue` | `UI/Welcome/Atlas.UI.Welcome.Continue.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.ContinueIssues` | `UI/Welcome/Atlas.UI.Welcome.ContinueIssues.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Discover` | `UI/Welcome/Atlas.UI.Welcome.Discover.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Frame` | `UI/Welcome/Atlas.UI.Welcome.Frame.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Header` | `UI/Welcome/Atlas.UI.Welcome.Header.pas` | Ordner `UI/Welcome` |

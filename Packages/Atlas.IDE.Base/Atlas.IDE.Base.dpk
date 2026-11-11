@@ -512,6 +512,7 @@ contains
   Atlas.IDE.Contracts.BuildPipeline in 'Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas',
   Atlas.IDE.Contracts.WelcomeTiles in 'Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas',
   Atlas.IDE.Contracts.LineChanges in 'Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas',
+  Atlas.IDE.Contracts.IssueWork in 'Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas',
   Atlas.IDE.Contracts.MouseHistory in 'Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas',
   Atlas.IDE.Contracts.VersionControl in 'Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas',
   Atlas.Core.Build.Requests in 'Source\Core\Build\Atlas.Core.Build.Requests.pas',

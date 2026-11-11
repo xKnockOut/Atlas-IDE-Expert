@@ -114,6 +114,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Tracker.IssueWork,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.WorkingCopies;
 
@@ -367,6 +368,8 @@ begin
   begin
     Exit;
   end;
+  // Arbeitsstand je Issue (#2052): den des bisher aktiven Issues sichern, bevor der Branch wechselt.
+  TAtlasTrackerIssueWorkLink.BeforeStart(FContext, FContext.Selection.CurrentProject, AIssue.Key);
   mJob := Default(TAtlasIssueStartJob);
   mJob.Project := FContext.Selection.CurrentProject;
   mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
@@ -691,6 +694,11 @@ begin
   FStatus.Update;
   Track(AJob);
   OpenAfter(AJob);
+  // Arbeitsstand je Issue (#2052): gemerkte Reiter anbieten; im neuen worktree gelten die alten Pfade nicht.
+  if AJob.Outcome.Folder = '' then
+  begin
+    TAtlasTrackerIssueWorkLink.AfterStart(AJob.Project, AJob.Issue.Key);
+  end;
 end;
 
 procedure TAtlasIdeIssueStart.AskHook(var AState: TAtlasIssuesState; const AHooks: string);
@@ -749,6 +757,8 @@ begin
       begin
         Exit;
       end;
+      // Arbeitsstand je Issue (#2052) vor dem Beenden sichern.
+      TAtlasTrackerIssueWorkLink.BeforeEnd(mProject, mBranch, mCurrent);
       // Tracker nachführen (#1266): Dialog statt Rückfrage; ohne issues.syncState wie bisher.
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (FServices.Sync <> nil) and FServices.Sync.Enabled(mProvider, mTarget) then

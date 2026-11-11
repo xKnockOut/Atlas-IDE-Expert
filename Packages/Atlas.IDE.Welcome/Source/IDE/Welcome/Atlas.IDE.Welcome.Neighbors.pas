@@ -9,13 +9,15 @@
 // Kompositionswurzel diese Verbindungen. Die Einrichtung (#759) bekommt hier
 // die Baseline und „Neu mit Atlas“ (Dateivorlagen von Base). Notizen und
 // Lesezeichen für den Reiter „Gemerkt“ (#755) kommen vom Modul Lesezeichen
-// (#1456).
+// (#1456), aktives Issue und Zustand der Issues für den Reiter „Issues“
+// (#2052) vom Tracker.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.SavedPlaces.Contract,
+  Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.Setup;
 
@@ -35,6 +37,8 @@ type
     /// <summary>Lesezeichen über das Modul Lesezeichen öffnen (#622); False, wenn es fehlt oder das gerade nicht
     /// kann: dann öffnet die Seite Datei und Zeile selbst.</summary>
     class function OpenBookmark(const AProject, AId: string): Boolean; static;
+    /// <summary>Aktives Issue und Zustände vom Tracker (#2052); False ohne das Modul.</summary>
+    class function IssueWorkSource(out ASource: IAtlasIssueWorkSource): Boolean; static;
   end;
 
 implementation
@@ -305,6 +309,21 @@ var
   mSource: IAtlasSavedPlacesSource;
 begin
   Result := SavedSource(mSource) and mSource.OpenBookmark(AProject, AId);
+end;
+
+class function TAtlasWelcomeNeighbors.IssueWorkSource(out ASource: IAtlasIssueWorkSource): Boolean;
+var
+  mItem: IInterface;
+begin
+  ASource := nil;
+  Result := False;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasIssueWorkSource) do
+  begin
+    if not Result then
+    begin
+      Result := Supports(mItem, IAtlasIssueWorkSource, ASource);
+    end;
+  end;
 end;
 
 end.

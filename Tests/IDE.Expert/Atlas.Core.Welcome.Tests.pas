@@ -1105,6 +1105,9 @@ begin
   Assert.AreEqual(5, mSettings.WelcomePageContinueCount);
   Assert.IsTrue(mSettings.WelcomePageContinueIncoming);
   Assert.IsFalse(mSettings.WelcomePageContinueFetch, 'kein Netzzugriff ohne Zustimmung');
+  // #2052: Reiter „Issues“ an mit 10 Arbeitsständen.
+  Assert.IsTrue(mSettings.WelcomePageContinueIssues);
+  Assert.AreEqual(10, mSettings.WelcomePageContinueIssuesCount);
   Assert.IsTrue(mSettings.WelcomePageSaved);
   // #767: frei anordnen an, zwei Spalten, Vorgabe-Layout „Standard“ (leer gespeichert).
   Assert.IsTrue(mSettings.WelcomePageCustomLayout);
@@ -1202,6 +1205,8 @@ begin
   Result.WelcomePageContinueCount := 7;
   Result.WelcomePageContinueIncoming := False;
   Result.WelcomePageContinueFetch := True;
+  Result.WelcomePageContinueIssues := False;
+  Result.WelcomePageContinueIssuesCount := 25;
   Result.WelcomePageSaved := False;
   Result.WelcomePageProjectStatus := False;
   Result.WelcomePageMaxProjects := 12;
@@ -1251,6 +1256,8 @@ begin
   Assert.AreEqual(7, AStore.ReadInteger('WelcomePageContinueCount', 0));
   Assert.AreEqual(0, AStore.ReadInteger('WelcomePageContinueIncoming', 1));
   Assert.AreEqual(1, AStore.ReadInteger('WelcomePageContinueFetch', 0));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageContinueIssues', 1), 'Registry-Name (#2052)');
+  Assert.AreEqual(25, AStore.ReadInteger('WelcomePageContinueIssuesCount', 0));
   Assert.AreEqual(0, AStore.ReadInteger('WelcomePageSaved', 1));
   Assert.AreEqual(0, AStore.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
   Assert.AreEqual(12, AStore.ReadInteger('WelcomePageMaxProjects', 0));
@@ -1278,6 +1285,8 @@ begin
   Assert.AreEqual(7, ALoaded.WelcomePageContinueCount);
   Assert.IsFalse(ALoaded.WelcomePageContinueIncoming);
   Assert.IsTrue(ALoaded.WelcomePageContinueFetch);
+  Assert.IsFalse(ALoaded.WelcomePageContinueIssues);
+  Assert.AreEqual(25, ALoaded.WelcomePageContinueIssuesCount);
   Assert.IsFalse(ALoaded.WelcomePageSaved);
   Assert.IsFalse(ALoaded.WelcomePageCustomLayout);
   Assert.AreEqual(3, ALoaded.WelcomePageColumns);

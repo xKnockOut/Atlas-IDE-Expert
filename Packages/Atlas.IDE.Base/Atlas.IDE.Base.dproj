@@ -576,6 +576,7 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>

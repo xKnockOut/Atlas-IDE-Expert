@@ -113,6 +113,8 @@ type
     cMaxSearchHistory = Atlas.Core.Settings.Plugin.Editor.cMaxSearchHistory;
     cMinContinueCount = Atlas.Core.Settings.Plugin.Welcome.cMinContinueCount;
     cMaxContinueCount = Atlas.Core.Settings.Plugin.Welcome.cMaxContinueCount;
+    cMinContinueIssuesCount = Atlas.Core.Settings.Plugin.Welcome.cMinContinueIssuesCount;
+    cMaxContinueIssuesCount = Atlas.Core.Settings.Plugin.Welcome.cMaxContinueIssuesCount;
     cMinTrendPoints = Atlas.Core.Settings.Plugin.Welcome.cMinTrendPoints;
     cMaxTrendPoints = Atlas.Core.Settings.Plugin.Welcome.cMaxTrendPoints;
     cMinTestFailures = Atlas.Core.Settings.Plugin.Welcome.cMinTestFailures;
@@ -1081,6 +1083,10 @@ type
       write FWelcomeTiles.WelcomePageContinueIncoming;
     property WelcomePageContinueFetch: Boolean read FWelcomeTiles.WelcomePageContinueFetch
       write FWelcomeTiles.WelcomePageContinueFetch;
+    property WelcomePageContinueIssues: Boolean read FWelcomeTiles.WelcomePageContinueIssues
+      write FWelcomeTiles.WelcomePageContinueIssues;
+    property WelcomePageContinueIssuesCount: Integer read FWelcomeTiles.WelcomePageContinueIssuesCount
+      write FWelcomeTiles.WelcomePageContinueIssuesCount;
     property WelcomePageSaved: Boolean read FWelcomeTiles.WelcomePageSaved write FWelcomeTiles.WelcomePageSaved;
     property WelcomePageTrends: Boolean read FWelcomeTiles.WelcomePageTrends write FWelcomeTiles.WelcomePageTrends;
     property WelcomePageTrendsPoints: Integer read FWelcomeTiles.WelcomePageTrendsPoints

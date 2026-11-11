@@ -7366,6 +7366,24 @@
       "x-area": "welcome",
       "x-page": "Willkommensseite"
     },
+    "WelcomePageContinueIssues": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.continue.issues",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
+    "WelcomePageContinueIssuesCount": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 30,
+      "x-key": "welcomePage.continue.issues.count",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
     "WelcomePageSaved": {
       "type": "boolean",
       "default": true,
