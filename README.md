@@ -63,7 +63,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **315 check rules** while you type: 205 bugs, 100 code smells, 10 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
-- **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
+- **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Experimental style rules with few false alarms:** `hardcoded-string` skips log, check and comparison calls, date masks and markup; `magic-number` skips the DPI base 96, full bit masks, time units and point lists; `naming-prefix` keeps the parameter names of event handlers assigned in code; `public-field` skips helper classes under `private type`
 - **Types from installed packages:** the IDE tells Atlas the types of its packages (even without .pas). "Type is not declared" stays silent for them, the quick fix suggests their unit, completion offers them with a `uses` entry
@@ -151,6 +151,7 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 - **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.en.md)
 - **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](docs/features/en/Command-line.md#linter-mode)
+- **AtlasMonitor (Windows):** standalone window with an icon in the notification area for all running Atlas servers (IDE, MCP, command line): state dot (idle, working, not responding), details, stop a server, open its log, clear the index cache, start with Windows (#1901). Every server writes `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` every 5 s (`server.statusFile`). Settings in `%APPDATA%\Atlas\monitor.json`. Checks without the IDE follow in #1900.
 - **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([Building on Linux](#building-on-linux))
 
 More: [docs/en/Installation.md](docs/en/Installation.md).
@@ -180,6 +181,7 @@ Every English page links its German original and vice versa.
 | `Packages/Atlas.Linux` | Linux counterparts of the server's Windows adapters, source only, for the Free Pascal build |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout, MCP with `--mcp`, linter with `--check`) |
 | `Application/AtlasUpdate` | Installer and updater (#1519): `install`, `prepare`, `apply` |
+| `Application/AtlasMonitor` | Window and notification area icon for all running Atlas servers (#1901), VCL |
 | `Packages/Atlas.IDE.*` | The IDE plugin: a core package and module packages (below) |
 | `Tests/Atlas.Tests` | DUnitX tests |
 
@@ -220,7 +222,7 @@ How a module registers, which contracts it uses and the rules for loading and un
 
 ## Building
 
-Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → AtlasUpdate → `Atlas.IDE.Base` → module packages → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The plugin packages are set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE.
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → AtlasUpdate → AtlasMonitor → `Atlas.IDE.Base` → module packages → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The plugin packages are set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE.
 
 On the command line (RAD Studio command prompt or after `rsvars.bat`):
 

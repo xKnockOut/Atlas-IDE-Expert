@@ -135,7 +135,9 @@ type
     SettingsBreadcrumbsDeclarationBlocks, SettingsBreadcrumbsConditionals, SettingsBreadcrumbsRegions,
     SettingsBreadcrumbsStatements, SettingsBreadcrumbsSectionCounts, SettingsBreadcrumbsSectionAppend,
     SettingsBreadcrumbsSectionCreate, SettingsBreadcrumbsContextMenu, SettingsBreadcrumbsOverloads,
-    SettingsBreadcrumbsInterfaces, SettingsBreadcrumbsMetrics, SettingsMouseNavButtons);
+    SettingsBreadcrumbsInterfaces, SettingsBreadcrumbsMetrics, SettingsMouseNavButtons,
+    // Fehler der IDE neben den Atlas-Befunden (#1819).
+    SettingsProblemsIdeErrors);
 
   TAtlasSettingsStrings = class
   public
@@ -681,7 +683,8 @@ const
      'Überladungen mit Zähler (2/3) und Parametern zeigen',
      'Interface-Marke [IKunde] an Methoden zeigen',
      'Kennzahlen-Karte beim Überfahren von Methoden und Typen (Strg+I)',
-     'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf'),
+     'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf',
+     'Fehler der IDE (Error Insight) neben die Atlas-Befunde stellen'),
     ('Completion, parameter hint and tooltip by Atlas',
      'Code Insight by Atlas (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:',
@@ -1210,7 +1213,8 @@ const
      'Show overloads with counter (2/3) and parameters',
      'Show interface mark [IKunde] on methods',
      'Metrics card when hovering methods and types (Ctrl+I)',
-     'Mouse back/forward buttons step through the navigation history'));
+     'Mouse back/forward buttons step through the navigation history',
+     'Show IDE errors (Error Insight) next to the Atlas findings'));
 
 { TAtlasSettingsStrings }
 

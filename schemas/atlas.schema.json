@@ -2593,13 +2593,19 @@
           "default": true,
           "description": "Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, bis sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an.",
           "x-description-en": "Safety net, in addition to the fix: the server answers a request that crashed twice on the same unchanged file with \"Skipped after crash\" until the file changes or \"Try again\" is chosen. Status bar and check window show this."
+        },
+        "statusFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Jeder Server (IDE, MCP, Kommandozeile) schreibt alle 5 s seinen Zustand nach %LOCALAPPDATA%\\Atlas\\Status\\server-<pid>.json (Art, Ziel, Version, Speicher, laufende Anfrage, Fortschritt, Zeitüberschreitungen, Fehler) und löscht die Datei beim Beenden. AtlasMonitor und das MCP-Werkzeug get_server_status lesen sie. Nur lokal, kein Netzzugriff.",
+          "x-description-en": "Every server (IDE, MCP, command line) writes its state every 5 s to %LOCALAPPDATA%\\Atlas\\Status\\server-<pid>.json (kind, target, version, memory, running request, progress, timeouts, errors) and deletes the file on exit. AtlasMonitor and the MCP tool get_server_status read it. Local only, no network access."
         }
       },
       "x-scope": "global",
       "x-area": "general",
       "x-page": "Robustheit",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#1355"
+      "x-issue": "#1355, #1901"
     },
     "diagnostics": {
       "type": "object",

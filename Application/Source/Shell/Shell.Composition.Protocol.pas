@@ -67,6 +67,7 @@ implementation
 
 uses
   Atlas.Common.JsonRpc.Watchdog,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Product.Version,
   Shell.Platform,
   Atlas.Text.LogMarks;
@@ -126,6 +127,7 @@ end;
 
 procedure TShellProtocol.RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
 begin
+  TServerActivity.Shared.CountTimeout;
   // Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
   if AAnswered then
   begin

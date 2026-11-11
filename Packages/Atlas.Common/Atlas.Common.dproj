@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{9B47206F-D86A-4DB3-B051-00A4CA336E9F}</ProjectGuid>
         <MainSource>Atlas.Common.dpk</MainSource>
@@ -786,6 +786,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusFile.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ServerActivity.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusHeartbeat.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompactJson.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TextDocumentSync.pas"/>
@@ -826,6 +828,9 @@
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Prepare.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.FileSwap.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Apply.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Servers.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Settings.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Texts.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

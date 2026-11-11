@@ -535,6 +535,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Findings.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
@@ -720,6 +721,7 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Files.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Service.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.RuleActions.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.IdeErrors.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Explanation.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.MessageView.pas"/>

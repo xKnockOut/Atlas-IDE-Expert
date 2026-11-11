@@ -806,6 +806,10 @@ begin
   Settings := Parse('{"server": {"crashSkip": 1, "gibts": true}}', Issues);
   Assert.IsTrue(Settings.ServerCrashSkip);
   Assert.AreEqual(2, Integer(Length(Issues)), 'kein Wahrheitswert und unbekannter Schlüssel');
+  // Statusdatei je Server (#1901)
+  Assert.IsTrue(Parse('{}', Issues).ServerStatusFile);
+  Assert.IsFalse(Parse('{"server": {"statusFile": false}}', Issues).ServerStatusFile);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Diagnoselog (#647)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.DiagnosticsLog);
