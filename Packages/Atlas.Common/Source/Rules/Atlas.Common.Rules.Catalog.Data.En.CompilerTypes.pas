@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerTypes: array[0..309] of string = (
+  cCatalogLinesEnCompilerTypes: array[0..324] of string = (
     '{',
     '      "id": "assign-to-property-member",',
     '      "name": "Assignment to a field of a property record",',
@@ -248,10 +248,11 @@ const
     't ''a'' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point va' +
     'lue (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice v' +
     'ersa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose paramete' +
-    'rs differ in count, const/var/out or type, assigned or passed as an argument (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed witho' +
-    'ut () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when bot' +
-    'h sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay s' +
-    'ilent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",',
+    'rs differ in count, const/var/out or type, assigned or passed as an argument, and likewise an anonymous method such as procedure(const S: string) for TProc<string> (like E2010); a parameterless functi' +
+    'on whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and' +
+    ' of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implic' +
+    'it), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which' +
+    ' side is wrong.",',
     '      "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := ''drei'';",',
     '      "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",',
     '      "compilerCodes": [',
@@ -346,6 +347,23 @@ const
     '      "good": "Assert.AreEqual(5, Integer(Length(mObjects)));",',
     '      "compilerCodes": [',
     '        "E2532"',
+    '      ],',
+    '      "level": "T",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "caption-string-helper",',
+    '      "name": "String helper on TCaption",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A method of TStringHelper (StartsWith, Contains, Trim, ToUpper, Length …) is called on an expression of type TCaption, such as Caption or the Text of a control. TCaption is decla' +
+    'red as type string, a distinct type, and the string helper does not apply to it (like E2018). Free Pascal accepts the call. Reported only when the type of the expression is certainly TCaption. Quick f' +
+    'ix (safe): wrap the expression in string(...).",',
+    '      "bad": "if Button1.Caption.StartsWith(''&'') then",',
+    '      "good": "if string(Button1.Caption).StartsWith(''&'') then",',
+    '      "compilerCodes": [',
+    '        "E2018"',
     '      ],',
     '      "level": "T",',
     '      "safeFix": true',
