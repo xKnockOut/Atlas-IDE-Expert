@@ -5263,6 +5263,27 @@
       "x-node": "editor.designerBar",
       "x-issue": "#608"
     },
+    "DesignerStructure": {
+      "description": "Knopf „Atlas-Struktur“ in der Designer-Leiste: öffnet ein andockbares Fenster mit den Steuerelementen des Formulars als Baum wie im Fenster „Struktur“ und den nichtvisuellen Komponenten gruppiert nach Klasse (umschaltbar nach Art), mit Symbolen der Palette und Filter nach Name oder Klasse. Unter jeder nichtvisuellen Komponente lassen sich ihre Verknüpfungen aufklappen: → worauf sie verweist, ← wer sie verwendet; leere Pflichtverweise und unbenutzte Menüs, Bildlisten und DataSources sind markiert. Klick wählt die Komponente bzw. das Ziel der Verknüpfung, Doppelklick öffnet ihren Editor, Rechtsklick die Befehle ihres Komponenten-Editors; eine nichtvisuelle Komponente aus der Palette landet per Ziehen an einer freien Stelle am unteren Rand des Formulars. Left/Top in der DFM bleiben unverändert.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.structure",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
+    "DesignerStructureHideOnForm": {
+      "description": "Symbole der nichtvisuellen Komponenten auf der Formularfläche ausblenden, solange das Fenster „Atlas-Struktur“ offen ist (über den Befehl „Nichtvisuelle Komponenten ausblenden“ der IDE; beim Schließen gilt wieder der vorherige Zustand).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.structureHideOnForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.structure",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
       "type": "boolean",

@@ -228,8 +228,8 @@ begin
   BorderIcons := [biSystemMenu, biMaximize];
   Position := poMainFormCenter;
   KeyPreview := True;
-  Width := 900;
-  Height := 560;
+  Width := ScaleValue(900);
+  Height := ScaleValue(560);
   Constraints.MinWidth := 560;
   Constraints.MinHeight := 320;
   Font.Name := 'Segoe UI';
@@ -247,7 +247,7 @@ begin
   FTop := TPanel.Create(Self);
   FTop.Parent := Self;
   FTop.Align := alTop;
-  FTop.Height := 40;
+  FTop.Height := FTop.ScaleValue(40);
   FTop.BevelOuter := bvNone;
   FTop.ParentBackground := False;
   FSearch := TEdit.Create(Self);
@@ -267,7 +267,7 @@ begin
   FSummary.Align := alRight;
   FSummary.AlignWithMargins := True;
   FSummary.Margins.SetBounds(8, 0, 12, 0);
-  FSummary.Width := 300;
+  FSummary.Width := FSummary.ScaleValue(300);
   FSummary.Alignment := taRightJustify;
   FSummary.Layout := tlCenter;
 end;
@@ -277,7 +277,7 @@ begin
   FBottom := TPanel.Create(Self);
   FBottom.Parent := Self;
   FBottom.Align := alBottom;
-  FBottom.Height := 44;
+  FBottom.Height := FBottom.ScaleValue(44);
   FBottom.BevelOuter := bvNone;
   FBottom.ParentBackground := False;
   FExportButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapExport), ExportClick);
@@ -290,7 +290,7 @@ begin
   FCloseButton.Align := alRight;
   FCloseButton.AlignWithMargins := True;
   FCloseButton.Margins.SetBounds(8, 9, 12, 9);
-  FCloseButton.Width := 100;
+  FCloseButton.Width := FCloseButton.ScaleValue(100);
   FCloseButton.Cancel := True;
 end;
 
@@ -319,7 +319,7 @@ begin
   begin
     mColumn := FList.Columns.Add;
     mColumn.Caption := mHeader;
-    mColumn.Width := mWidths[mIndex];
+    mColumn.Width := FList.ScaleValue(mWidths[mIndex]);
     Inc(mIndex);
   end;
 end;

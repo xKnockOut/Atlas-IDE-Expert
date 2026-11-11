@@ -224,9 +224,9 @@ var
 begin
   mHeader := AddLabel(AFrame, alTop, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterPatternsHeader));
   mHeader.Font.Style := [fsBold];
-  mHeader.Top := ATop + 100;
+  mHeader.Top := ATop + mHeader.ScaleValue(100);
   mBar := AddBar(AFrame, AFrame);
-  mBar.Top := ATop + 200;
+  mBar.Top := ATop + mBar.ScaleValue(200);
   AFrame.FControls.Remove := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterRemove),
     AFrame.RemoveClick);
   AFrame.FControls.Add := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterAdd),

@@ -211,7 +211,7 @@ begin
   FCancel := AddButton(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 procedure TAtlasDuplicateDialog.Load(const AOptions: TAtlasDuplicateOptions);

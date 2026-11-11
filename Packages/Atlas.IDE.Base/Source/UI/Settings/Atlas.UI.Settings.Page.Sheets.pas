@@ -103,9 +103,9 @@ begin
   mCaption.Parent := Result;
   mCaption.Caption := TAtlasStrings.Text(AId) + ':';
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   AControl.Parent := Result;
-  AControl.Left := 90;
+  AControl.Left := AControl.ScaleValue(90);
   AControl.Top := 1;
   AControl.Width := AWidth;
 end;
@@ -117,7 +117,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := TAtlasStrings.Text(AId);
   Result.Left := ALeft;
-  Result.Top := cRowButtonTop;
+  Result.Top := Result.ScaleValue(cRowButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;
@@ -141,14 +141,14 @@ begin
   mHeading.Parent := mPanel;
   mHeading.Caption := ACaption;
   mHeading.Left := 0;
-  mHeading.Top := 3;
+  mHeading.Top := mHeading.ScaleValue(3);
   // Eigene Zeile für das Feld: Adressen und Pfade brauchen die Breite.
   mPanel := AddPanel(26);
   Result := TEdit.Create(Self);
   Result.Parent := mPanel;
   Result.Left := 0;
   Result.Top := 1;
-  Result.Width := 466;
+  Result.Width := Result.ScaleValue(466);
   Result.Anchors := [akLeft, akTop, akRight];
 end;
 
@@ -182,7 +182,7 @@ begin
   mCaption.Caption := ACaption;
   mCaption.Font.Style := [fsBold];
   mCaption.Left := 0;
-  mCaption.Top := 4;
+  mCaption.Top := mCaption.ScaleValue(4);
 end;
 
 function TAtlasSettingsPageSheets.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
@@ -195,12 +195,12 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   Result := TAtlasChoiceBox.Create(Self);
   Result.Parent := mPanel;
-  Result.Left := cFieldLeft;
+  Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := 1;
-  Result.Width := 180;
+  Result.Width := Result.ScaleValue(180);
   Result.SetChoices(AItems);
 end;
 
@@ -238,13 +238,13 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := StringReplace(ACaption, '…', '', []);
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
   Result := TEdit.Create(Self);
   Result.Parent := mPanel;
-  Result.Left := cFieldLeft;
+  Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := 1;
-  Result.Width := 140;
+  Result.Width := Result.ScaleValue(140);
 end;
 
 function TAtlasSettingsPageSheets.AddNumber(const ACaption: string): TEdit;
@@ -257,12 +257,12 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   Result := TEdit.Create(Self);
   Result.Parent := mPanel;
-  Result.Left := cFieldLeft;
+  Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := 1;
-  Result.Width := 60;
+  Result.Width := Result.ScaleValue(60);
   Result.NumbersOnly := True;
 end;
 

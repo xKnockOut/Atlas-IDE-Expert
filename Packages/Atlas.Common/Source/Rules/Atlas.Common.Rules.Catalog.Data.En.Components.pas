@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnComponents: array[0..79] of string = (
+  cCatalogLinesEnComponents: array[0..89] of string = (
     '{',
     '      "id": "component-create-without-override",',
     '      "name": "Component constructor without override",',
@@ -73,6 +73,19 @@ const
     'leValue, MulDiv or a Scale... routine), 0, 1 and -1, and factors of multiplications and divisions are not reported.",',
     '      "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",',
     '      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"',
+    '    },',
+    '{',
+    '      "id": "control-fixed-bounds",',
+    '      "name": "Fixed control bounds",',
+    '      "category": "code-smell",',
+    '      "severity": "warning",',
+    '      "group": "components",',
+    '      "description": "Code in a VCL unit sets Width, Height, Left, Top, ClientWidth or ClientHeight to a fixed pixel value (a number or a constant of the unit such as cRowHeight = 24). Controls create' +
+    'd in code are not scaled by the VCL, so dialogs and columns stay too small above 96 dpi. Values passed through ScaleValue, MulDiv or a method of the class that scales itself, 0, 1 and -1, factors of m' +
+    'ultiplications and divisions, values from 10000 on (order for Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales' +
+    ' with ScaleValue of the control itself (for Margins, Padding and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.",',
+    '      "bad": "mEdit.Width := 240;",',
+    '      "good": "mEdit.Width := ScaleValue(240);"',
     '    },',
     '{',
     '      "id": "component-hardcoded-color",',

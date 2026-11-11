@@ -1,10 +1,10 @@
-﻿# Atlas IDE Expert
+# Atlas IDE Expert
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 314 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and eleven module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 315 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and eleven module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -61,7 +61,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **314 check rules** while you type: 205 bugs, 99 code smells, 10 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
+- **315 check rules** while you type: 205 bugs, 100 code smells, 10 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
 - **Profiles, confidence, baseline and suppressions** for legacy projects
@@ -78,7 +78,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
-- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names
+- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components
 - **Unsaved designer state** is seen by references, renames and checks
 - **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files

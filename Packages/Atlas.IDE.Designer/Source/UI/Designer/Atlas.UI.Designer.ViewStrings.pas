@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Designer.ViewStrings;
 
 // Oberflächentexte der eigenen Knöpfe der Designer-Leiste (#605 ff.: Abstände
-// messen, Probegröße, Vorschau in Skalierungen, sprechende Namen, Leiste der
-// nichtvisuellen Komponenten, Datenbindungen, In Frame auslagern,
+// messen, Probegröße, Vorschau in Skalierungen, sprechende Namen, Atlas-Struktur,
+// Datenbindungen, In Frame auslagern,
 // Ereignis-Karte) auf Deutsch und Englisch. Eigene Tabelle neben
 // Atlas.UI.Designer.Strings, damit die Befehle im Menü „Anordnen“ und diese
 // Funktionen sich nicht in die Quere kommen. Die Sprache bestimmt Base
@@ -28,7 +28,10 @@ type
     NameColProposal, NameColNote, NameEdit, NameApply, NameCancel, NameUndo, NameSourceCaption, NameSourceLabel,
     NameSourceHandler, NameSourceDataField, NameNoSource, NameCollision, NameInvalid, NameNone, NameDone, NameUndone,
     NameFailed, NameCodeFailed, NameAction, SettingsNameSuggest, SettingsNameSources, SettingsNameUmlauts,
-    SettingsNameReplace, SettingsNameRemove, SettingsNameHandlers, SettingsNamePrefixes);
+    SettingsNameReplace, SettingsNameRemove, SettingsNameHandlers, SettingsNamePrefixes, StHint, StCaption, StFilter,
+    StGroupData, StGroupActions, StGroupDialogs, StGroupImages, StGroupOther, StControls, StNonVisual, StExpandAll,
+    StCollapseAll, StByClass, StByKind, StShowImages, StEmpty, StUnused, StStatus, StCreated, StCreateFailed,
+    StHideMissing, SettingsStructure, SettingsStHide);
 
 {$SCOPEDENUMS OFF}
 
@@ -131,7 +134,30 @@ const
      'ersetzen (ä → ae)',
      'entfernen',
      'Handler mit Standardnamen mit umbenennen',
-     'Eigene Präfixe (TKlasse=präfix, durch Komma getrennt)'),
+     'Eigene Präfixe (TKlasse=präfix, durch Komma getrennt)',
+     'Atlas-Struktur: Komponenten als Baum, nichtvisuelle nach Klasse gruppiert, mit Verknüpfungen',
+     'Atlas-Struktur',
+     'Filter nach Name oder Klasse',
+     'Daten',
+     'Aktionen und Menüs',
+     'Dialoge',
+     'Bilder',
+     'Sonstiges',
+     'Steuerelemente',
+     'Nichtvisuelle Komponenten',
+     'Alle aufklappen',
+     'Alle zuklappen',
+     'Nach Klasse',
+     'Nach Art',
+     'Bilder',
+     '(leer)',
+     'unbenutzt',
+     'Klick: wählen · Doppelklick: Editor · Rechtsklick: Befehle',
+     '%s angelegt.',
+     '%s konnte nicht angelegt werden: %s',
+     'Befehl der IDE zum Ausblenden nichtvisueller Komponenten nicht gefunden; die Symbole bleiben auf dem Formular.',
+     'Knopf „Atlas-Struktur“ (andockbares Fenster mit Komponenten und Verknüpfungen)',
+     'Symbole nichtvisueller Komponenten auf dem Formular ausblenden, solange das Fenster offen ist'),
     ('Measure distances: guide lines while dragging, with Alt to the component under the mouse',
      'as above',
      'as below',
@@ -213,7 +239,30 @@ const
      'replace with ae, oe, ue, ss',
      'remove',
      'Rename handlers with default names too',
-     'Own prefixes (TClass=prefix, comma separated)'));
+     'Own prefixes (TClass=prefix, comma separated)',
+     'Atlas structure: components as a tree, non-visual ones grouped by class, with links',
+     'Atlas Structure',
+     'Filter by name or class',
+     'Data',
+     'Actions and menus',
+     'Dialogs',
+     'Images',
+     'Other',
+     'Controls',
+     'Non-visual components',
+     'Expand all',
+     'Collapse all',
+     'By class',
+     'By kind',
+     'Images',
+     '(empty)',
+     'unused',
+     'Click: select · Double-click: editor · Right-click: commands',
+     '%s created.',
+     '%s could not be created: %s',
+     'IDE command to hide non-visual components not found; the icons stay on the form.',
+     '“Atlas Structure” button (dockable window with components and links)',
+     'Hide icons of non-visual components on the form while the window is open'));
 
 { TAtlasDesignerViewStrings }
 

@@ -79,8 +79,8 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasServerPage';
-  Width := 480;
-  Height := 520;
+  Width := ScaleValue(480);
+  Height := ScaleValue(520);
   FNextTop := 100;
   AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalTitle));
   mPanel := AddPanel(32);
@@ -98,7 +98,7 @@ begin
   FCacheInfo := TLabel.Create(Self);
   FCacheInfo.Parent := mPanel;
   FCacheInfo.Left := 0;
-  FCacheInfo.Top := 2;
+  FCacheInfo.Top := FCacheInfo.ScaleValue(2);
   FCacheInfo.Font.Color := clGrayText;
   Reload;
 end;
@@ -127,7 +127,7 @@ begin
   Result.Caption := ACaption;
   Result.Font.Style := [fsBold];
   Result.Left := 0;
-  Result.Top := 4;
+  Result.Top := Result.ScaleValue(4);
 end;
 
 function TAtlasServerPage.AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer;
@@ -137,8 +137,8 @@ begin
   Result.Parent := APanel;
   Result.Caption := ACaption;
   Result.Left := ALeft;
-  Result.Top := 3;
-  Result.Width := 220;
+  Result.Top := Result.ScaleValue(3);
+  Result.Width := Result.ScaleValue(220);
   Result.OnClick := AClick;
 end;
 

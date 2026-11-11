@@ -93,8 +93,8 @@ constructor TAtlasSnippetsPage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Name := 'AtlasSnippetsPage';
-  Width := 560;
-  Height := 420;
+  Width := ScaleValue(560);
+  Height := ScaleValue(420);
   CreateButtons;
   CreateList;
   CreateEditor;
@@ -109,7 +109,7 @@ begin
   mButtons.Parent := Self;
   mButtons.Align := alBottom;
   mButtons.BevelOuter := bvNone;
-  mButtons.Height := 34;
+  mButtons.Height := mButtons.ScaleValue(34);
   mButtons.ParentBackground := True;
   FNew := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsNew), cNewLeft,
     cNarrowButtonWidth, NewClick);
@@ -127,17 +127,17 @@ begin
   FList.Parent := Self;
   FList.Align := alLeft;
   FList.AlignWithMargins := True;
-  FList.Width := 230;
+  FList.Width := FList.ScaleValue(230);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefix);
-  mColumn.Width := 90;
+  mColumn.Width := FList.ScaleValue(90);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsName);
-  mColumn.Width := 130;
+  mColumn.Width := FList.ScaleValue(130);
   FList.OnSelectItem := ListSelect;
 end;
 

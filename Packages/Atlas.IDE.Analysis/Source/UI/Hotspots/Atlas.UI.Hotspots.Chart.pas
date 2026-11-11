@@ -93,8 +93,8 @@ begin
   ShowHint := True;
   FSelected := -1;
   FHover := -1;
-  Width := 400;
-  Height := 220;
+  Width := ScaleValue(400);
+  Height := ScaleValue(220);
 end;
 
 function TAtlasHotspotChartView.Scale: Double;

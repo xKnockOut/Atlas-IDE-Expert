@@ -107,7 +107,7 @@ begin
   FReplace.Parent := FBar;
   FReplace.Align := alRight;
   FReplace.AlignWithMargins := True;
-  FReplace.Width := cReplaceWidth;
+  FReplace.Width := FReplace.ScaleValue(cReplaceWidth);
   FReplace.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceSelectedButton);
   FReplace.OnClick := ReplaceClick;
   // Höhe aus dem Knopf: ChangeScale skaliert beide gleich.
@@ -135,16 +135,16 @@ begin
   FList.OnKeyDown := ListKeyDown;
   mColumn := FList.Columns.Add;
   mColumn.Caption := '';
-  mColumn.Width := cCheckWidth;
+  mColumn.Width := FList.ScaleValue(cCheckWidth);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPlace);
-  mColumn.Width := 220;
+  mColumn.Width := FList.ScaleValue(220);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnText);
-  mColumn.Width := 360;
+  mColumn.Width := FList.ScaleValue(360);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPreview);
-  mColumn.Width := 300;
+  mColumn.Width := FList.ScaleValue(300);
   UpdateTitle;
 end;
 

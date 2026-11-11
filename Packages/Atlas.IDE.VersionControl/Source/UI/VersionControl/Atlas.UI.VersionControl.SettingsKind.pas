@@ -58,7 +58,7 @@ begin
   FVcsProvider := AddChoice('vcs.provider', TAtlasVcsTextId.SettingsVcsProvider,
     [TAtlasVcsTextId.SettingsVcsProviderAuto, TAtlasVcsTextId.SettingsVcsProviderGit, TAtlasVcsTextId.SettingsVcsProviderSvn,
     TAtlasVcsTextId.SettingsVcsProviderOff], TArray<string>.Create('auto', 'git', 'svn', 'off'));
-  FVcsProvider.Width := 220;
+  FVcsProvider.Width := FVcsProvider.ScaleValue(220);
 end;
 
 procedure TAtlasSettingsVcsPart.Build2;
@@ -80,8 +80,8 @@ begin
   Result.Parent := AParent;
   Result.Caption := TAtlasVcsStrings.Text(ACaption);
   Result.Left := ALeft;
-  Result.Top := 3;
-  Result.Width := 150;
+  Result.Top := Result.ScaleValue(3);
+  Result.Width := Result.ScaleValue(150);
   Result.OnClick := VcsLinkClick;
 end;
 

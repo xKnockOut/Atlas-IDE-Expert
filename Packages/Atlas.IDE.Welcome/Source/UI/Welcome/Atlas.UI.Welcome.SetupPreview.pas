@@ -102,7 +102,7 @@ begin
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   ActiveControl := FCreate;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasSetupPreviewDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;

@@ -613,7 +613,7 @@ begin
     mCenter + mRadius + 1);
   mCanvas.Brush.Style := bsClear;
   mPart := ARect;
-  mPart.Left := mLeft + 4 * mRadius + 2;
+  mPart.Left := mLeft + 4 * mRadius + MulDiv(2, mPPI, 96);
   // Plakette der Benachrichtigungen (#601) ganz rechts, der Text endet davor.
   if ABadge.Count > 0 then
   begin

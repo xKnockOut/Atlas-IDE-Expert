@@ -114,9 +114,9 @@ begin
   FHits.BevelOuter := bvNone;
   FHits.ParentBackground := True;
   FHits.Parent := Self;
-  FHits.Left := 12;
+  FHits.Left := FHits.ScaleValue(12);
   FHits.Top := mTop;
-  FHits.Width := Width - 24;
+  FHits.Width := Width - FHits.ScaleValue(24);
   FHits.Height := cMaxHits * 20;
   FHits.Anchors := [akLeft, akTop, akRight];
 end;
@@ -131,9 +131,9 @@ end;
 procedure TAtlasSettingsOverview.AddRow(var ATop: Integer; AControl: TControl; AHeight: Integer);
 begin
   AControl.Parent := Self;
-  AControl.Left := 12;
+  AControl.Left := AControl.ScaleValue(12);
   AControl.Top := ATop;
-  AControl.Width := Width - 24;
+  AControl.Width := Width - AControl.ScaleValue(24);
   AControl.Anchors := [akLeft, akTop, akRight];
   Inc(ATop, AHeight);
 end;
