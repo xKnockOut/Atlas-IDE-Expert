@@ -326,6 +326,11 @@ begin
   Assert.AreEqual('', ASettings.IssuesTracker, 'aus der .atlas');
   Assert.AreEqual('[]', ASettings.IssuesQueries, 'je Anbieter „Mir zugewiesen“ (#1262)');
   Assert.IsTrue(ASettings.IssuesQueryPicker);
+  Assert.IsTrue(ASettings.IssuesProjectPicker, 'Klappliste „Tracker-Projekt“ (#1927) an');
+  Assert.AreEqual('', ASettings.IssuesWelcomeProject, 'automatisch');
+  Assert.IsTrue(ASettings.IssuesAllProjects, '„Alle Tracker-Projekte“ (#1928) an');
+  Assert.AreEqual(5, ASettings.IssuesAllProjectsPerGroup);
+  Assert.IsTrue(ASettings.IssuesSuggestPaths, '„Vorschlagen …“ (#1929) an');
   Assert.IsTrue(ASettings.IssuesCreate, '„Issue anlegen …“ an (#1268)');
   Assert.IsTrue(ASettings.IssuesCreateIncludeCode, 'Codeausschnitt vorgeschlagen (#1268)');
   Assert.AreEqual(0, ASettings.CreateIssueKey, 'frei belegbar, ohne Vorgabe');
@@ -403,6 +408,15 @@ begin
   ASettings.Normalize;
   Assert.AreEqual(1440, ASettings.IssuesNotifyIntervalMinutes, 'höchstens ein Tag');
   Assert.AreEqual('assignedOrCreated', ASettings.IssuesNotifyScope);
+  // #1927, #1928: Wahl getrimmt, Zeilen je Gruppe 1–20.
+  ASettings.IssuesWelcomeProject := ' KASSE@Firma ';
+  ASettings.IssuesAllProjectsPerGroup := 0;
+  ASettings.Normalize;
+  Assert.AreEqual('KASSE@Firma', ASettings.IssuesWelcomeProject);
+  Assert.AreEqual(1, ASettings.IssuesAllProjectsPerGroup, 'mindestens 1');
+  ASettings.IssuesAllProjectsPerGroup := 99;
+  ASettings.Normalize;
+  Assert.AreEqual(20, ASettings.IssuesAllProjectsPerGroup, 'höchstens 20');
 end;
 /// <summary>Meine Issues: alle Werte von der Vorgabe abweichend setzen.</summary>
 procedure SetIssuesOptions(var ASettings: TAtlasPluginSettings);
@@ -412,6 +426,11 @@ begin
   ASettings.IssuesTracker := 'github';
   ASettings.IssuesQueries := '[{"name": "Bugs", "query": "label:bug"}]';
   ASettings.IssuesQueryPicker := False;
+  ASettings.IssuesProjectPicker := False;
+  ASettings.IssuesWelcomeProject := '*';
+  ASettings.IssuesAllProjects := False;
+  ASettings.IssuesAllProjectsPerGroup := 8;
+  ASettings.IssuesSuggestPaths := False;
   ASettings.IssuesCreate := False;
   ASettings.IssuesCreateIncludeCode := False;
   ASettings.CreateIssueKey := $4049;
@@ -451,6 +470,11 @@ begin
   Assert.AreEqual('github', ALoaded.IssuesTracker);
   Assert.AreEqual('[{"name": "Bugs", "query": "label:bug"}]', ALoaded.IssuesQueries);
   Assert.IsFalse(ALoaded.IssuesQueryPicker);
+  Assert.IsFalse(ALoaded.IssuesProjectPicker);
+  Assert.AreEqual('*', ALoaded.IssuesWelcomeProject);
+  Assert.IsFalse(ALoaded.IssuesAllProjects);
+  Assert.AreEqual(8, ALoaded.IssuesAllProjectsPerGroup);
+  Assert.IsFalse(ALoaded.IssuesSuggestPaths);
   Assert.IsFalse(ALoaded.IssuesCreate);
   Assert.IsFalse(ALoaded.IssuesCreateIncludeCode);
   Assert.AreEqual($4049, ALoaded.CreateIssueKey, 'Strg+I');

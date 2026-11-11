@@ -21,6 +21,14 @@
 //   Verbindung es nicht (mehr) gibt, zählt nicht; die nächste passende gilt.
 // - Covered: Eine persönliche Zeile, die für das Projekt gälte, das schon
 //   eine .atlas mit tracker hat, ist „von .atlas überdeckt“.
+// - Arbeitskopien (#1926): Eine Zeile kann unter "paths" die Ordner nennen, in
+//   denen das Projekt in Git bzw. SVN liegt; der erste ist die
+//   Haupt-Arbeitskopie („Beginnen“, Branch, Entwicklung). Ohne "paths" gilt
+//   der Ordner der .dproj/.groupproj bzw. der Ordner aus „Gilt für“.
+// - Wahl in „Meine Issues“ (#1927): Choices listet je Paar aus Verbindung und
+//   Tracker-Projekt die erste Zeile; ChoiceKey „projekt@verbindung“ merkt
+//   die Wahl (issues.welcomeProject). Als „Projekt“ gilt dann der Pfad aus
+//   „Gilt für“ der Zeile; Resolve nimmt für genau diesen Pfad genau diese Zeile.
 // Ohne Netz, ohne Dateizugriff.
 
 interface
@@ -43,6 +51,9 @@ type
     Connection: string;
     /// <summary>YouTrack-Projekt-ID ("KASSE"), GitHub "owner/repo".</summary>
     Project: string;
+    /// <summary>Arbeitskopien (#1926), wie eingegeben; die erste ist die Haupt-Arbeitskopie. Leer = Ordner aus
+    /// „Gilt für“.</summary>
+    Paths: TArray<string>;
     Source: TAtlasTrackerConnectionSource;
     class function Create(const AMatch, AConnection, AProject: string): TAtlasTrackerProjectMapping; static;
     /// <summary>Zeile aus dem Abschnitt tracker der .atlas des Projekts AProjectFile (schreibgeschützt).</summary>
@@ -51,6 +62,27 @@ type
     /// <summary>Project bei .dproj, Group bei .groupproj, sonst Folder; None ohne Pfad.</summary>
     function Kind: TAtlasTrackerMatch;
     function ReadOnly: Boolean;
+    /// <summary>Ordner aus „Gilt für“: bei .dproj und .groupproj deren Ordner, sonst der Pfad selbst (wie
+    /// eingegeben, ohne „\“ am Ende).</summary>
+    function MatchFolder: string;
+    /// <summary>Haupt-Arbeitskopie: erster Eintrag aus Paths, sonst MatchFolder.</summary>
+    function MainFolder: string;
+    /// <summary>Alle Arbeitskopien: Paths, sonst nur MatchFolder.</summary>
+    function Folders: TArray<string>;
+  end;
+
+  /// <summary>Ein Eintrag der Klappliste „Tracker-Projekt“ (#1927).</summary>
+  TAtlasTrackerChoice = record
+    /// <summary>„projekt@verbindung“.</summary>
+    Key: string;
+    Connection: string;
+    Project: string;
+    /// <summary>„Gilt für“ der ersten Zeile mit diesem Paar; dient als Projekt für Zustand und Auflösung.</summary>
+    Match: string;
+    /// <summary>Index dieser Zeile in den persönlichen Zeilen.</summary>
+    Index: Integer;
+    /// <summary>„Verbindung · Projekt“ (ohne Projekt nur die Verbindung).</summary>
+    function Caption: string;
   end;
 
   /// <summary>Welche Zeile bzw. welcher Tracker für ein Projekt gilt.</summary>
@@ -78,6 +110,9 @@ type
   end;
 
   TAtlasTrackerProjects = class
+  public const
+    /// <summary>issues.welcomeProject für „Alle Tracker-Projekte“ (#1928).</summary>
+    cAllKey = '*';
   public
     /// <summary>Persönliche Zeilen aus dem JSON-Text der Liste; Zeilen ohne „Gilt für“ oder Verbindung entfallen,
     /// ebenso eine zweite Zeile für denselben Pfad (der Server meldet sie in settings.json).</summary>
@@ -109,6 +144,23 @@ type
     /// <summary>Index der Zeile für denselben Pfad (NormalizedPath); -1 ohne.</summary>
     class function IndexOfMatch(const AItems: TArray<TAtlasTrackerProjectMapping>; const AMatch: string): Integer;
       static;
+    /// <summary>Pfade aus AText, eine je Zeile bzw. getrennt durch „;“: getrimmt, ohne leere und ohne doppelte
+    /// (NormalizedPath).</summary>
+    class function SplitPaths(const AText: string): TArray<string>; static;
+    /// <summary>APath getrimmt und ohne Trenner am Ende (außer bei „C:\“ und „\\“).</summary>
+    class function WithoutTrailingDelimiter(const APath: string): string; static;
+    /// <summary>Haupt-Arbeitskopie für AProjectFile (#1926): erster Pfad der geltenden persönlichen Zeile, sonst
+    /// deren Ordner bzw. der Ordner von AProjectFile (bei einem Ordner dieser selbst).</summary>
+    class function WorkingFolder(const AMappings: TArray<TAtlasTrackerProjectMapping>;
+      const AConnections: TArray<TAtlasTrackerConnection>; const AProjectFile, AGroupFile: string): string; static;
+    /// <summary>Einträge der Klappliste „Tracker-Projekt“ (#1927): je Paar aus Verbindung und Tracker-Projekt die
+    /// erste persönliche Zeile, deren Verbindung es gibt, in der Reihenfolge der Zeilen.</summary>
+    class function Choices(const AMappings: TArray<TAtlasTrackerProjectMapping>;
+      const AConnections: TArray<TAtlasTrackerConnection>): TArray<TAtlasTrackerChoice>; static;
+    /// <summary>„projekt@verbindung“; '' ohne Verbindung.</summary>
+    class function ChoiceKey(const AProject, AConnection: string): string; static;
+    /// <summary>Index des Eintrags mit AKey (ohne Groß-/Kleinschreibung); -1 ohne bzw. bei leerem Schlüssel.</summary>
+    class function IndexOfChoice(const AChoices: TArray<TAtlasTrackerChoice>; const AKey: string): Integer; static;
   end;
 
 implementation
@@ -118,6 +170,14 @@ uses
   System.JSON,
   Atlas.Text.Json;
 
+const
+  // Länge der kürzesten Wurzel mit Trenner („C:\“).
+  cRootLength = 3;
+  cKeyMatch = 'match';
+  cKeyConnection = 'connection';
+  cKeyProject = 'project';
+  cKeyPaths = 'paths';
+
 { TAtlasTrackerProjectMapping }
 
 class function TAtlasTrackerProjectMapping.Create(const AMatch, AConnection,
@@ -126,6 +186,7 @@ begin
   Result.Match := Trim(AMatch);
   Result.Connection := Trim(AConnection);
   Result.Project := Trim(AProject);
+  Result.Paths := nil;
   Result.Source := TAtlasTrackerConnectionSource.Personal;
 end;
 
@@ -144,6 +205,63 @@ end;
 function TAtlasTrackerProjectMapping.ReadOnly: Boolean;
 begin
   Result := Source = TAtlasTrackerConnectionSource.TeamFile;
+end;
+
+/// <summary>Ordner von AFile; Trenner „\“ und „/“ (ExtractFileDir kennt unter Linux nur „/“).</summary>
+function FolderOfFile(const AFile: string): string;
+begin
+  Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(Copy(AFile, 1, LastDelimiter('\/', AFile) - 1));
+end;
+
+function TAtlasTrackerProjectMapping.MatchFolder: string;
+begin
+  if Kind in [TAtlasTrackerMatch.Project, TAtlasTrackerMatch.Group] then
+  begin
+    Result := FolderOfFile(Match);
+  end
+  else
+  begin
+    Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(Match);
+  end;
+end;
+
+function TAtlasTrackerProjectMapping.MainFolder: string;
+begin
+  if Length(Paths) > 0 then
+  begin
+    Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(Paths[0]);
+  end
+  else
+  begin
+    Result := MatchFolder;
+  end;
+end;
+
+function TAtlasTrackerProjectMapping.Folders: TArray<string>;
+var
+  mIndex: Integer;
+begin
+  if Length(Paths) = 0 then
+  begin
+    Result := [MatchFolder];
+    Exit;
+  end;
+  SetLength(Result, Length(Paths));
+  for mIndex := 0 to High(Paths) do
+  begin
+    Result[mIndex] := TAtlasTrackerProjects.WithoutTrailingDelimiter(Paths[mIndex]);
+  end;
+end;
+
+{ TAtlasTrackerChoice }
+
+function TAtlasTrackerChoice.Caption: string;
+begin
+  Result := Connection;
+  if Project <> '' then
+  begin
+    Result := Result + ' ' + #$00B7 + ' ' + Project;
+  end;
 end;
 
 { TAtlasTrackerProjectContext }
@@ -183,16 +301,26 @@ end;
 
 { TAtlasTrackerProjects }
 
-function Quoted(const AText: string): string;
+/// <summary>Liste von Pfaden aus "paths"; Einträge, die keine Zeichenfolge sind, fallen weg.</summary>
+function PathsOf(AObject: TJSONObject): TArray<string>;
 var
-  mValue: TJSONString;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mTexts: TArray<string>;
 begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
+  mTexts := nil;
+  mItems := TJsonRead.Items(AObject, cKeyPaths);
+  if mItems <> nil then
+  begin
+    for mItem in mItems do
+    begin
+      if mItem is TJSONString then
+      begin
+        mTexts := mTexts + [TJSONString(mItem).Value];
+      end;
+    end;
   end;
+  Result := TAtlasTrackerProjects.SplitPaths(string.Join(';', mTexts));
 end;
 
 class function TAtlasTrackerProjects.Read(const AJson: string): TArray<TAtlasTrackerProjectMapping>;
@@ -220,6 +348,7 @@ begin
       end;
       mMapping := TAtlasTrackerProjectMapping.Create(TJsonRead.Text(TJSONObject(mItem), 'match'),
         TJsonRead.Text(TJSONObject(mItem), 'connection'), TJsonRead.Text(TJSONObject(mItem), 'project'));
+      mMapping.Paths := PathsOf(TJSONObject(mItem));
       if (mMapping.Match = '') or (mMapping.Connection = '') or (IndexOfMatch(Result, mMapping.Match) >= 0) then
       begin
         Continue;
@@ -234,18 +363,38 @@ end;
 class function TAtlasTrackerProjects.ToJson(const AItems: TArray<TAtlasTrackerProjectMapping>): string;
 var
   mItem: TAtlasTrackerProjectMapping;
-  mParts: TArray<string>;
+  mRoot, mPaths: TJSONArray;
+  mObject: TJSONObject;
+  mPath: string;
 begin
-  mParts := nil;
-  for mItem in AItems do
-  begin
-    if not mItem.ReadOnly then
+  mRoot := TJSONArray.Create;
+  try
+    for mItem in AItems do
     begin
-      mParts := mParts + ['{"match": ' + Quoted(mItem.Match) + ', "connection": ' + Quoted(mItem.Connection) +
-        ', "project": ' + Quoted(mItem.Project) + '}'];
+      if mItem.ReadOnly then
+      begin
+        Continue;
+      end;
+      mObject := TJSONObject.Create;
+      mRoot.AddElement(mObject);
+      mObject.AddPair(cKeyMatch, mItem.Match);
+      mObject.AddPair(cKeyConnection, mItem.Connection);
+      mObject.AddPair(cKeyProject, mItem.Project);
+      // "paths" nur, wenn gesetzt: Zeilen ohne Arbeitskopien bleiben wie vor #1926.
+      if Length(mItem.Paths) > 0 then
+      begin
+        mPaths := TJSONArray.Create;
+        mObject.AddPair(cKeyPaths, mPaths);
+        for mPath in mItem.Paths do
+        begin
+          mPaths.Add(mPath);
+        end;
+      end;
     end;
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
   end;
-  Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
 class function TAtlasTrackerProjects.NormalizedPath(const APath: string): string;
@@ -293,13 +442,24 @@ begin
     Result.Project := ATeam.Project;
     Exit;
   end;
-  // 2.–4. Persönliche Zuordnung.
-  mIndex := Find(AMappings, AConnections, AProjectFile, AGroupFile);
+  // Gewähltes Tracker-Projekt (#1927): Das „Projekt“ ist genau der Pfad einer Zeile, auch .groupproj und Ordner.
+  mIndex := IndexOfMatch(AMappings, AProjectFile);
+  if (mIndex < 0) or AMappings[mIndex].ReadOnly or
+    (TAtlasTrackerConnections.IndexOfName(AConnections, AMappings[mIndex].Connection) < 0) then
+  begin
+    // 2.–4. Persönliche Zuordnung.
+    mIndex := Find(AMappings, AConnections, AProjectFile, AGroupFile);
+  end;
   if mIndex < 0 then
   begin
     Exit;
   end;
   Result.Match := Matches(AMappings[mIndex], AProjectFile, AGroupFile);
+  if Result.Match = TAtlasTrackerMatch.None then
+  begin
+    // Gleicher Pfad wie „Gilt für“ (.groupproj oder Ordner als gewähltes Tracker-Projekt).
+    Result.Match := AMappings[mIndex].Kind;
+  end;
   Result.Index := mIndex;
   Result.Connection := AConnections[TAtlasTrackerConnections.IndexOfName(AConnections, AMappings[mIndex].Connection)];
   Result.Project := AMappings[mIndex].Project;
@@ -329,6 +489,116 @@ begin
     mMatches[mIndex] := AItems[mIndex].Match;
   end;
   Result := TAtlasProjectMatching.IndexOfMatch(mMatches, AMatch);
+end;
+
+class function TAtlasTrackerProjects.WithoutTrailingDelimiter(const APath: string): string;
+begin
+  Result := Trim(APath);
+  while (Length(Result) > cRootLength) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+end;
+
+class function TAtlasTrackerProjects.SplitPaths(const AText: string): TArray<string>;
+var
+  mPart, mPath: string;
+  mSeen: TArray<string>;
+begin
+  Result := nil;
+  mSeen := nil;
+  for mPart in AText.Replace(#13, #10).Split([#10, ';']) do
+  begin
+    mPath := TAtlasTrackerProjects.WithoutTrailingDelimiter(mPart);
+    if (mPath = '') or (TAtlasProjectMatching.IndexOfMatch(mSeen, mPath) >= 0) then
+    begin
+      Continue;
+    end;
+    mSeen := mSeen + [mPath];
+    Result := Result + [mPath];
+  end;
+end;
+
+class function TAtlasTrackerProjects.WorkingFolder(const AMappings: TArray<TAtlasTrackerProjectMapping>;
+  const AConnections: TArray<TAtlasTrackerConnection>; const AProjectFile, AGroupFile: string): string;
+var
+  mResolution: TAtlasTrackerResolution;
+begin
+  Result := '';
+  if Trim(AProjectFile) = '' then
+  begin
+    Exit;
+  end;
+  // Ohne .atlas: Die .atlas kennt keine Arbeitskopien, ihr Projekt liegt in seinem Ordner.
+  mResolution := Resolve(TAtlasTrackerTarget.Create('', '', '', ''), AMappings, AConnections, AProjectFile,
+    AGroupFile);
+  if mResolution.Found and (mResolution.Index >= 0) and (Length(AMappings[mResolution.Index].Paths) > 0) then
+  begin
+    Exit(AMappings[mResolution.Index].MainFolder);
+  end;
+  if TAtlasProjectMatching.KindOf(AProjectFile) = TAtlasTrackerMatch.Folder then
+  begin
+    Result := TAtlasTrackerProjects.WithoutTrailingDelimiter(AProjectFile);
+  end
+  else
+  begin
+    Result := FolderOfFile(AProjectFile);
+  end;
+end;
+
+class function TAtlasTrackerProjects.ChoiceKey(const AProject, AConnection: string): string;
+begin
+  Result := '';
+  if Trim(AConnection) <> '' then
+  begin
+    Result := Trim(AProject) + '@' + Trim(AConnection);
+  end;
+end;
+
+class function TAtlasTrackerProjects.Choices(const AMappings: TArray<TAtlasTrackerProjectMapping>;
+  const AConnections: TArray<TAtlasTrackerConnection>): TArray<TAtlasTrackerChoice>;
+var
+  mIndex: Integer;
+  mChoice: TAtlasTrackerChoice;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AMappings) do
+  begin
+    if AMappings[mIndex].ReadOnly or
+      (TAtlasTrackerConnections.IndexOfName(AConnections, AMappings[mIndex].Connection) < 0) then
+    begin
+      Continue;
+    end;
+    mChoice.Key := ChoiceKey(AMappings[mIndex].Project, AMappings[mIndex].Connection);
+    if IndexOfChoice(Result, mChoice.Key) >= 0 then
+    begin
+      Continue;
+    end;
+    mChoice.Connection := AMappings[mIndex].Connection;
+    mChoice.Project := AMappings[mIndex].Project;
+    mChoice.Match := AMappings[mIndex].Match;
+    mChoice.Index := mIndex;
+    Result := Result + [mChoice];
+  end;
+end;
+
+class function TAtlasTrackerProjects.IndexOfChoice(const AChoices: TArray<TAtlasTrackerChoice>;
+  const AKey: string): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if Trim(AKey) = '' then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(AChoices) do
+  begin
+    if SameText(AChoices[mIndex].Key, Trim(AKey)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
 end;
 
 end.
