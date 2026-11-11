@@ -142,6 +142,8 @@ type
     cMultiCursorModifierCtrl = Atlas.Core.Settings.Plugin.Editor.cMultiCursorModifierCtrl;
     cDesignerSearchWindow = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchWindow;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
+    cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
+    cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cMinNotificationEntries = Atlas.Core.Settings.Plugin.General.cMinNotificationEntries;
     cMaxNotificationEntries = Atlas.Core.Settings.Plugin.General.cMaxNotificationEntries;
     cDefaultTrendSeries = Atlas.Core.Settings.Plugin.Welcome.cDefaultTrendSeries;
@@ -597,6 +599,11 @@ type
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
+    property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
+      write FEditorView.DesignerSelectSimilar;
+    property DesignerSelectDescendants: Boolean read FEditorView.DesignerSelectDescendants
+      write FEditorView.DesignerSelectDescendants;
+    property DesignerSelectScope: string read FEditorView.DesignerSelectScope write FEditorView.DesignerSelectScope;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

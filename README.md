@@ -81,6 +81,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Unsaved designer state** is seen by references, renames and checks
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
+- **Designer tools** in the designer bar: select similar components (class, parent, property value, handler)
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard

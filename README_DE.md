@@ -81,6 +81,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Ungespeicherter Stand des Designers** zählt für Referenzen, Umbenennen und Prüfungen
 - **Prüfungen zwischen Formular und Code** und Property-Regeln für Formulardateien
 - **Binäre Formulare** in Textformulare umwandeln
+- **Designer-Werkzeuge** in der Designer-Leiste: gleiche Komponenten auswählen (Klasse, Elternelement, Eigenschaftswert, Handler)
 
 ### [Bauen, Testen, Debuggen](docs/features/de/Bauen-Testen-Debuggen.md)
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build

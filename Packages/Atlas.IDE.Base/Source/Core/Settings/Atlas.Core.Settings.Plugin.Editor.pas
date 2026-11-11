@@ -64,6 +64,9 @@ const
   /// <summary>Werte von editor.designerBar.searchStyle (#1442).</summary>
   cDesignerSearchWindow = 'window';
   cDesignerSearchPopup = 'popup';
+  /// <summary>Werte von designer.selectSimilar.scope (#738).</summary>
+  cDesignerScopeForm = 'form';
+  cDesignerScopeParent = 'parent';
 
 type
   /// <summary>Plugin-Einstellungen: Verhalten beim Tippen und Bearbeiten im Editor.</summary>
@@ -480,6 +483,13 @@ type
     DesignerTabOrderClick: Boolean;
     /// <summary>Knopf „Ausrichten“ mit Menü (experimentell, editor.designerBar.align).</summary>
     DesignerAlign: Boolean;
+    /// <summary>Menü „Gleiche auswählen“ in der Designer-Leiste (#738, designer.selectSimilar).</summary>
+    DesignerSelectSimilar: Boolean;
+    /// <summary>Eintrag „Gleiche Klasse und Nachfahren“ (#738, designer.selectSimilar.includeDescendants).</summary>
+    DesignerSelectDescendants: Boolean;
+    /// <summary>Bereich: cDesignerScopeForm oder cDesignerScopeParent (#738, designer.selectSimilar.scope).
+    /// </summary>
+    DesignerSelectScope: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -980,6 +990,9 @@ begin
   Result.DesignerSearchStyle := cDesignerSearchWindow;
   Result.DesignerTabOrderClick := False;
   Result.DesignerAlign := False;
+  Result.DesignerSelectSimilar := True;
+  Result.DesignerSelectDescendants := True;
+  Result.DesignerSelectScope := cDesignerScopeForm;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1015,6 +1028,7 @@ begin
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   DesignerSearchKey := EnsureRange(DesignerSearchKey, 0, $FFFF);
   DesignerSearchStyle := Choice(DesignerSearchStyle, [cDesignerSearchWindow, cDesignerSearchPopup]);
+  DesignerSelectScope := Choice(DesignerSelectScope, [cDesignerScopeForm, cDesignerScopeParent]);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1031,6 +1045,9 @@ begin
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
   AIo.Flag('DesignerAlign', DesignerAlign);
+  AIo.Flag('DesignerSelectSimilar', DesignerSelectSimilar);
+  AIo.Flag('DesignerSelectDescendants', DesignerSelectDescendants);
+  AIo.Text('DesignerSelectScope', DesignerSelectScope);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

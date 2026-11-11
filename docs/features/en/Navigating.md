@@ -47,6 +47,7 @@ Above the form designer instead of breadcrumbs and editor toolbar:
 - show and hide non-visual components via the IDE's Ctrl+H
 - select parent
 - tab order as badges on the controls
+- select similar: same class (also with descendants), same parent, children, same property value or handler, invert selection; with hit counts, Shift adds to the selection
 - experimental: renumber the tab order by clicking and align controls
 
 ### Atlas status bar

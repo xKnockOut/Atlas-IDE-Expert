@@ -4821,6 +4821,43 @@
       "x-experimental": true,
       "x-issue": "#1442"
     },
+    "DesignerSelectSimilar": {
+      "description": "Knopf „Gleiche auswählen“ in der Designer-Leiste: Menü, das alle Komponenten auswählt, die der zuerst gewählten in einer Hinsicht gleichen: gleiche Klasse, Klasse samt Nachfahren, gleiches Elternelement, Kinder bzw. alle Nachkommen eines Containers, gleicher gespeicherter Eigenschaftswert, gleicher Ereignis-Handler, Auswahl umkehren. Jeder Eintrag nennt die Trefferzahl; mit Umschalt ergänzt das Ergebnis die Auswahl. Ändert nur die Auswahl, nicht die .dfm.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectSimilar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectDescendants": {
+      "description": "Im Menü „Gleiche auswählen“ den Eintrag „Gleiche Klasse und Nachfahren“ zeigen: bei einer Komponente ihre Klasse samt abgeleiteter Klassen, bei mehreren ab der nächsten gemeinsamen Basisklasse.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.selectSimilar.includeDescendants",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectSimilar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
+    "DesignerSelectScope": {
+      "description": "Bereich für „Gleiche auswählen“: das ganze Formular bzw. der Frame (form) oder nur das Elternelement der zuerst gewählten Komponente (parent). Kinder eines Containers liegen immer in ihm.",
+      "type": "string",
+      "enum": [
+        "form",
+        "parent"
+      ],
+      "default": "form",
+      "x-key": "designer.selectSimilar.scope",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.selectSimilar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#738"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
