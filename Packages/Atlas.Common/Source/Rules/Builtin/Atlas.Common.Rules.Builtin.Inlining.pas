@@ -70,13 +70,13 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineCallees,
   Atlas.Common.Semantics.UnresolvedNames,
-  Atlas.Common.Rules.Builtin.Declarations.Shared,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -545,12 +545,12 @@ begin
     Exit;
   end;
   mTokens := FContext.Tree.Tokens;
-  mOpen := TokenAtOffset(mTokens, ANode[0].EndOffset);
+  mOpen := TokenFrom(mTokens, ANode[0].EndOffset);
   while (mOpen <= High(mTokens)) and (mTokens[mOpen].Offset < ANode.EndOffset) and not mTokens[mOpen].IsSymbol('[') do
   begin
     Inc(mOpen);
   end;
-  mClose := TokenAtOffset(mTokens, ANode.EndOffset - 1);
+  mClose := TokenFrom(mTokens, ANode.EndOffset - 1);
   if (mOpen > High(mTokens)) or not mTokens[mOpen].IsSymbol('[') or (mClose < mOpen) or
     not FCallees.CalleeAt(mSymbol, mTokens, mClose, mCallee) then
   begin

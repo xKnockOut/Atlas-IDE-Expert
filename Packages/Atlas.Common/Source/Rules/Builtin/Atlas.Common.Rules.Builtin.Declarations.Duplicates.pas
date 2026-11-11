@@ -753,7 +753,7 @@ var
       begin
         Continue;
       end;
-      mToken := TokenAtOffset(mTokens, AEnum[mIndex].StartOffset);
+      mToken := TokenFrom(mTokens, AEnum[mIndex].StartOffset);
       mBefore := mToken - 1;
       while (mBefore >= 0) and (mTokens[mBefore].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
       begin
