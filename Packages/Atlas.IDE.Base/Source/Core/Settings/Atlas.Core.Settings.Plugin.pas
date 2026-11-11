@@ -701,6 +701,15 @@ type
       write FEditorView.DesignerSelectionBarItems;
     property DesignerSelectionBarKey: Integer read FEditorView.DesignerSelectionBarKey
       write FEditorView.DesignerSelectionBarKey;
+    property DesignerMagnifier: Boolean read FEditorView.DesignerMagnifier write FEditorView.DesignerMagnifier;
+    property DesignerMagnifierZoom: Integer read FEditorView.DesignerMagnifierZoom
+      write FEditorView.DesignerMagnifierZoom;
+    property DesignerMagnifierGrid: Boolean read FEditorView.DesignerMagnifierGrid
+      write FEditorView.DesignerMagnifierGrid;
+    property DesignerMagnifierEdges: Boolean read FEditorView.DesignerMagnifierEdges
+      write FEditorView.DesignerMagnifierEdges;
+    property DesignerMagnifierKey: Integer read FEditorView.DesignerMagnifierKey
+      write FEditorView.DesignerMagnifierKey;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
