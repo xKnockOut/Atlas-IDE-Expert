@@ -18,6 +18,8 @@ uses
 
 type
   TAtlasDesignerAccess = class
+  public const
+    cDefaultGrid = 8;
   public
     class function DesignerOf(const AEditor: IOTAFormEditor): IDesigner; static;
     /// <summary>Zeigt das aktive Editorfenster einen Formular-Designer?</summary>
@@ -38,6 +40,9 @@ type
     /// nichts sichtbar ist. Für Fenster über dem Designer (#734, #737).</summary>
     class function ClientArea(AControl: TWinControl; AMargin: Integer; out AOrigin: TPoint;
       out AVisible: TRect): Boolean; static;
+    /// <summary>Raster des Designers aus den Umgebungsoptionen (GridSizeX bzw. bei AVertical GridSizeY);
+    /// cDefaultGrid, wenn die IDE keins nennt.</summary>
+    class function GridSize(AVertical: Boolean): Integer; static;
     /// <summary>Name des Elternelements; '' direkt auf dem Formular.</summary>
     class function ParentNameOf(AControl: TControl; ARoot: TComponent): string; static;
     /// <summary>Wert der Eigenschaft als Text; False ohne sie oder ohne Wert.</summary>
@@ -199,6 +204,38 @@ begin
   end;
   Result := not AVisible.IsEmpty;
   AOrigin := Point(mScreen.Left - AVisible.Left, mScreen.Top - AVisible.Top);
+end;
+
+class function TAtlasDesignerAccess.GridSize(AVertical: Boolean): Integer;
+var
+  mServices: IOTAServices;
+  mOptions: IOTAEnvironmentOptions;
+  mName: string;
+  mOption: TOTAOptionName;
+begin
+  Result := cDefaultGrid;
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Exit;
+  end;
+  mOptions := mServices.GetEnvironmentOptions;
+  if mOptions = nil then
+  begin
+    Exit;
+  end;
+  mName := 'GridSizeX';
+  if AVertical then
+  begin
+    mName := 'GridSizeY';
+  end;
+  for mOption in mOptions.GetOptionNames do
+  begin
+    if SameText(mOption.Name, mName) and (mOption.Kind in [tkInteger, tkInt64]) then
+    begin
+      Result := StrToIntDef(VarToStr(mOptions.Values[mName]), cDefaultGrid);
+      Exit;
+    end;
+  end;
 end;
 
 class function TAtlasDesignerAccess.ParentNameOf(AControl: TControl; ARoot: TComponent): string;

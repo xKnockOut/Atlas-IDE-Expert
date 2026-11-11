@@ -152,6 +152,8 @@ type
     cGapAnchorCenter = Atlas.Core.Settings.Plugin.Editor.cGapAnchorCenter;
     cGapAnchorFirst = Atlas.Core.Settings.Plugin.Editor.cGapAnchorFirst;
     cGapAnchorLast = Atlas.Core.Settings.Plugin.Editor.cGapAnchorLast;
+    cResizeModeDelta = Atlas.Core.Settings.Plugin.Editor.cResizeModeDelta;
+    cResizeModeAlign = Atlas.Core.Settings.Plugin.Editor.cResizeModeAlign;
     cFitSourceText = Atlas.Core.Settings.Plugin.Editor.cFitSourceText;
     cFitSourceItems = Atlas.Core.Settings.Plugin.Editor.cFitSourceItems;
     cButtonBarBottomRight = Atlas.Core.Settings.Plugin.Editor.cButtonBarBottomRight;
@@ -683,6 +685,11 @@ type
       write FEditorView.DesignerGapHandlesSnapValues;
     property DesignerGapHandlesAnchor: string read FEditorView.DesignerGapHandlesAnchor
       write FEditorView.DesignerGapHandlesAnchor;
+    property DesignerMultiResize: Boolean read FEditorView.DesignerMultiResize write FEditorView.DesignerMultiResize;
+    property DesignerMultiResizeMode: string read FEditorView.DesignerMultiResizeMode
+      write FEditorView.DesignerMultiResizeMode;
+    property DesignerMultiResizeLeftTopHandles: Boolean read FEditorView.DesignerMultiResizeLeftTopHandles
+      write FEditorView.DesignerMultiResizeLeftTopHandles;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
