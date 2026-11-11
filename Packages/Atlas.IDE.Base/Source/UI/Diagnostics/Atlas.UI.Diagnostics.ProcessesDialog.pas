@@ -123,6 +123,10 @@ type
 
 implementation
 
+const
+  // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.
+  cFootButtonWidth = 110;
+
 function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(AOwner);
@@ -275,11 +279,11 @@ begin
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesRefresh), cGap,
     RefreshClick);
   FParts.CopyButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesCopy),
-    2 * cGap + 110,
+    2 * cGap + cFootButtonWidth,
     CopyClick);
   FParts.CopyButton.Enabled := False;
   mClose := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesClose),
-    mFoot.Width - 110 - cGap, nil);
+    mFoot.Width - cFootButtonWidth - cGap, nil);
   mClose.Anchors := [akTop, akRight];
   mClose.Cancel := True;
   mClose.ModalResult := mrCancel;

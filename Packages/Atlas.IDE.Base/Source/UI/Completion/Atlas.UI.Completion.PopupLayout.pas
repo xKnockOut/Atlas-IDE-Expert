@@ -89,6 +89,12 @@ uses
   Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.Details;
 
+const
+  // Breiteste Zählung „999 von 9999“ für die Breite der Fußzeile und ihr Rand.
+  cWidestShown = 999;
+  cWidestTotal = 9999;
+  cFooterPadding = 18;
+
 { TAtlasCompletionPopupLayout }
 
 function TAtlasCompletionPopupLayout.Collapsed: Boolean;
@@ -392,7 +398,8 @@ begin
   end;
   Canvas.Font := UIFont;
   mWidest := Max(mWidest, Canvas.TextWidth(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys) + '    ' +
-    TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountFits, [999, 9999])) + Scale(18));
+    TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountFits, [cWidestShown, cWidestTotal])) +
+    Scale(cFooterPadding));
   Canvas.Font := Font;
   Result := TAtlasPopupWidth.Fit(mWidest, Scale(cMinWidth), Scale(cMaxWidth));
 end;

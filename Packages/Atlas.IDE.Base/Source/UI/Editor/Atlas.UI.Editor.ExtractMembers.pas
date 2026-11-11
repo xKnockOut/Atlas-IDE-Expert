@@ -87,6 +87,13 @@ uses
   Atlas.UI.Editor.Strings;
 
 const
+  // Breiten der Spalten Mitglied, Art, Sichtbarkeit und Grund in der Liste.
+  cMemberWidth = 260;
+  cKindWidth = 70;
+  cVisibilityWidth = 90;
+  cReasonWidth = 140;
+
+const
   cGap = 8;
   cDialogWidth = 680;
   cDialogHeight = 480;
@@ -425,10 +432,10 @@ begin
   FList.OnItemChecked := ListChecked;
   FList.OnSelectItem := ListSelect;
   FList.OnCustomDrawItem := ListCustomDraw;
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColMember), 260);
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColKind), 70);
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColVisibility), 90);
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColReason), 140);
+  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColMember), cMemberWidth);
+  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColKind), cKindWidth);
+  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColVisibility), cVisibilityWidth);
+  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColReason), cReasonWidth);
 end;
 
 function TAtlasExtractMembersDialog.AddButton(AParent: TWinControl; const ACaption: string;

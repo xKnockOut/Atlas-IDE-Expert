@@ -78,6 +78,14 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings;
 
+const
+  // Spalten der Zeitentabelle: Schritt, letzte, Mittel, Maximum, Budget.
+  cColumnStep = 0;
+  cColumnLast = 1;
+  cColumnMean = 2;
+  cColumnMax = 3;
+  cColumnBudget = 4;
+
 {$R *.dfm}
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -300,12 +308,13 @@ var
   mTexts: TCellTexts;
   mColumn: Integer;
 begin
-  mTexts[0] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnStep);
-  mTexts[1] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnLast);
-  mTexts[2] := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticColumnMean, [Length(FQueries)]);
-  mTexts[3] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnMax);
-  mTexts[4] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnBudget);
-  for mColumn := 0 to 4 do
+  mTexts[cColumnStep] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnStep);
+  mTexts[cColumnLast] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnLast);
+  mTexts[cColumnMean] := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticColumnMean,
+    [Length(FQueries)]);
+  mTexts[cColumnMax] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnMax);
+  mTexts[cColumnBudget] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnBudget);
+  for mColumn := cColumnStep to cColumnBudget do
   begin
     DrawCell(CellRect(ABounds, ABounds.Top, mColumn), mTexts[mColumn], False, mColumn > 0, True);
   end;

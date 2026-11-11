@@ -130,6 +130,18 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings;
 
+const
+  // Vorläufige Lage der Überschriften; die Ausrichtung ordnet sie danach in dieser Reihenfolge an.
+  cPartsTop = 300;
+  cPreviewTop = 500;
+  // Breiten der Knöpfe in der Fußleiste.
+  cViewButtonWidth = 110;
+  cFolderButtonWidth = 110;
+  cZipButtonWidth = 130;
+  cIssueButtonWidth = 160;
+  cBytesPerKb = 1024;
+  cBytesPerMb = cBytesPerKb * cBytesPerKb;
+
 /// <summary>Eingebautes Fenster für den Inhalt einer Datei.</summary>
 procedure ShowTextWindow(const AName, AText: string);
 var
@@ -223,7 +235,7 @@ begin
   Height := 660;
   CreateHead;
   CreateChecks;
-  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportPreview)).Top := 500;
+  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportPreview)).Top := cPreviewTop;
   CreateFoot;
   CreateList;
   ShowFolder;
@@ -247,7 +259,7 @@ begin
   FParts.Description.Height := 72;
   FParts.Description.ScrollBars := ssVertical;
   FParts.Description.Top := 200;
-  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportParts)).Top := 300;
+  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportParts)).Top := cPartsTop;
 end;
 
 procedure TAtlasReportDialog.CreateChecks;
@@ -302,18 +314,19 @@ begin
   mFoot.BevelOuter := bvNone;
   mFoot.ShowCaption := False;
   FParts.Summary := NewFootLabel(Self, mFoot);
-  FParts.ViewButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportView), 110,
+  FParts.ViewButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportView),
+    cViewButtonWidth,
     ViewClick);
   FParts.FolderLabel := NewFootLabel(Self, mFoot);
   FParts.FolderLabel.EllipsisPosition := epPathEllipsis;
   FParts.FolderButton := NewButton(Self, mFoot,
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportFolderChange), 110,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportFolderChange), cFolderButtonWidth,
     FolderClick);
   FParts.Status := NewFootLabel(Self, mFoot);
   FParts.ZipButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportCreateZip),
-    130, ZipClick);
+    cZipButtonWidth, ZipClick);
   FParts.IssueButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportOpenIssue),
-    160, IssueClick);
+    cIssueButtonWidth, IssueClick);
   FParts.CloseButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose), 100,
     nil);
   FParts.CloseButton.Cancel := True;
@@ -376,13 +389,13 @@ begin
   end
   else if ABytes < 1024 * 1024 then
   begin
-    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024,
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / cBytesPerKb,
       FormatSettings)]);
   end
   else
   begin
     Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeMb, [FormatFloat('0.0',
-      ABytes / (1024 * 1024), FormatSettings)]);
+      ABytes / cBytesPerMb, FormatSettings)]);
   end;
 end;
 

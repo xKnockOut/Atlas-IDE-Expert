@@ -123,6 +123,10 @@ uses
   Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.PopupTexts;
 
+const
+  // Rand neben dem Text „keine Treffer für …“ in der Breite des Fensters.
+  cNoMatchesPadding = 32;
+
 type
   /// <summary>Linksklick ins Popup (MouseDown): Die Teile, die ihn abnehmen, kommen in fester Reihenfolge dran;
   /// nimmt ihn keiner ab, wählt er die Zeile.</summary>
@@ -480,7 +484,8 @@ begin
   end;
   Canvas.Font := UIFont;
   FSessionWidth := Max(FSessionWidth, Max(Scale(cMinWidth),
-    Canvas.TextWidth(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.NoMatchesFor, [APrefix])) + Scale(32)));
+    Canvas.TextWidth(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.NoMatchesFor, [APrefix])) +
+    Scale(cNoMatchesPadding)));
   Canvas.Font := Font;
   Relayout;
 end;

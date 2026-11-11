@@ -159,6 +159,17 @@ uses
   System.Math,
   Atlas.UI.Status.Strings;
 
+const
+  // Breiten der Spalten Regel, ms und Aufrufe; Lage und Breite der Knöpfe der Leiste.
+  cRuleWidth = 260;
+  cNumberWidth = 80;
+  cRefreshLeft = 4;
+  cRefreshWidth = 110;
+  cRebuildLeft = 120;
+  cRebuildWidth = 140;
+  cPackageLeft = 266;
+  cPackageWidth = 170;
+
 {$R *.dfm}
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -358,7 +369,8 @@ begin
   FRequests.OnData := RequestsData;
   FRules := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnRule),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMs),
-    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnCalls)], [260, 80, 80]);
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnCalls)],
+    [cRuleWidth, cNumberWidth, cNumberWidth]);
   FRules.Align := alTop;
   FRules.OnData := RulesData;
   FRules.OnDblClick := RulesDblClick;
@@ -508,9 +520,9 @@ begin
   BevelOuter := bvNone;
   ParentBackground := True;
   Height := 36;
-  FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), 4, 110);
-  FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), 120, 140);
-  FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), 266, 170);
+  FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshLeft, cRefreshWidth);
+  FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildLeft, cRebuildWidth);
+  FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageLeft, cPackageWidth);
   FNote := TLabel.Create(Self);
   FNote.Parent := Self;
   FNote.Left := 444;

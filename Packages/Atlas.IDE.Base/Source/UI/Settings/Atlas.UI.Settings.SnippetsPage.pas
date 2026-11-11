@@ -64,6 +64,17 @@ type
 
 implementation
 
+const
+  // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.
+  cNewLeft = 4;
+  cNarrowButtonWidth = 90;
+  cCopyLeft = 100;
+  cCopyWidth = 150;
+  cDeleteLeft = 256;
+  cPrefixTop = 4;
+  cNameTop = 32;
+  cDescriptionTop = 60;
+
 {$R *.dfm}
 
 { TAtlasSnippetsPage }
@@ -100,9 +111,12 @@ begin
   mButtons.BevelOuter := bvNone;
   mButtons.Height := 34;
   mButtons.ParentBackground := True;
-  FNew := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsNew), 4, 90, NewClick);
-  FCopy := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsCopy), 100, 150, CopyClick);
-  FDelete := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsDelete), 256, 90, DeleteClick);
+  FNew := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsNew), cNewLeft,
+    cNarrowButtonWidth, NewClick);
+  FCopy := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsCopy), cCopyLeft, cCopyWidth,
+    CopyClick);
+  FDelete := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsDelete), cDeleteLeft,
+    cNarrowButtonWidth, DeleteClick);
 end;
 
 procedure TAtlasSnippetsPage.CreateList;
@@ -137,9 +151,10 @@ begin
   mEditor.Align := alClient;
   mEditor.BevelOuter := bvNone;
   mEditor.ParentBackground := True;
-  FPrefix := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefix), 4);
-  FName := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsName), 32);
-  FDescription := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsDescription), 60);
+  FPrefix := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefix), cPrefixTop);
+  FName := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsName), cNameTop);
+  FDescription := AddField(mEditor, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsDescription),
+    cDescriptionTop);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := mEditor;
   mCaption.SetBounds(4, 92, 300, 15);

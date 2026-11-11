@@ -78,6 +78,13 @@ uses
   Atlas.UI.Editor.Strings;
 
 const
+  // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.
+  cSigNameWidth = 130;
+  cSigTypeWidth = 140;
+  cSigModifierWidth = 80;
+  cSigValueWidth = 140;
+
+const
   cGap = 8;
   cDialogWidth = 640;
   cDialogHeight = 520;
@@ -204,10 +211,10 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnSelectItem := ListSelect;
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), ScaleValue(130));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), ScaleValue(140));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), ScaleValue(80));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), ScaleValue(140));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), ScaleValue(cSigNameWidth));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), ScaleValue(cSigTypeWidth));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), ScaleValue(cSigModifierWidth));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), ScaleValue(cSigValueWidth));
   ActiveControl := FList;
 end;
 

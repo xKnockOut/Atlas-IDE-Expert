@@ -156,6 +156,11 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
+const
+  // Anfang des Titels im Kopf und Rand der Knöpfe „Alles an/aus“.
+  cTitlePrefix = 'Atlas · ';
+  cAllButtonPadding = 24;
+
 var
   /// <summary>Eingeklappte Seiten, für die IDE-Sitzung.</summary>
   GCollapsed: TArray<string>;
@@ -483,7 +488,7 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Text);
-  Text('Atlas · ' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle), mPart, 0);
+  Text(cTitlePrefix + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle), mPart, 0);
   Canvas.Font.Style := [];
   if Window.FAllOff then
   begin
@@ -771,7 +776,8 @@ begin
   end;
   mWidth := Min(mWidth, ScaleValue(720));
   mButtonWidth := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff)),
-    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn))) + ScaleValue(24);
+    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn))) +
+    ScaleValue(cAllButtonPadding);
   ClientWidth := Max(mWidth, mButtonWidth + ScaleValue(20));
   // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
   FScroll.Visible := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 -

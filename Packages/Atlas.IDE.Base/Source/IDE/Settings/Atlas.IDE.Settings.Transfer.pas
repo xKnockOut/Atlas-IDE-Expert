@@ -219,7 +219,8 @@ var
   mOptions: TAtlasExportOptions;
   mDialog: TSaveDialog;
   mExport_: TAtlasExportResult;
-  mMessage, mKeys: string;
+  mMessage: string;
+  mKeys: TArray<string>;
   mOmission: TAtlasExportOmission;
 begin
   mOptions := TAtlasExportOptions.Create(nil, smOmit);
@@ -255,13 +256,13 @@ begin
     mMessage := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsExportDone, [mExport_.Count, mDialog.FileName]);
     if Length(mExport_.Omitted) > 0 then
     begin
-      mKeys := '';
+      mKeys := nil;
       for mOmission in mExport_.Omitted do
       begin
-        mKeys := mKeys + ', ' + mOmission.Key;
+        mKeys := mKeys + [mOmission.Key];
       end;
       mMessage := mMessage + sLineBreak + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsExportOmitted,
-        [Copy(mKeys, 3, MaxInt)]);
+        [string.Join(', ', mKeys)]);
     end;
     if Length(mExport_.Placeholders) > 0 then
     begin

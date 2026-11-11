@@ -116,6 +116,20 @@ uses
   Atlas.UI.Settings.Strings;
 
 const
+  // Breiten der Dialoge Export, Import und Profil.
+  cExportWidth = 460;
+  cImportWidth = 760;
+  cProfileWidth = 420;
+  // Vorläufige Lage; die Ausrichtung ordnet die Teile danach in dieser Reihenfolge an.
+  cAreasTop = 1000;
+  cSecretsTop = 3000;
+  cModeTop = 1000;
+  // Breiten der Spalten Schlüssel, aktueller Wert, neuer Wert und Hinweis in der Importliste.
+  cKeyWidth = 220;
+  cValueWidth = 110;
+  cNoteWidth = 180;
+
+const
   cGap = 8;
 
 function NewButton(AOwner: TForm; AParent: TWinControl; const ACaption: string): TButton;
@@ -301,13 +315,13 @@ var
   mTitle: TLabel;
 begin
   inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportTitle), 460);
+  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportTitle), cExportWidth);
   NewDialogButtons(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSave), FSave, FCancel);
   NewInfoLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportInfo));
-  mTitle := NewTopLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportAreas), 1000);
+  mTitle := NewTopLabel(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportAreas), cAreasTop);
   mTitle.Font.Style := [fsBold];
   FAreas := NewAreaBoxes(Self, ACatalog, nil, True, AreaClick, FAreaIds);
-  FSecrets := NewChoice(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecrets), 3000,
+  FSecrets := NewChoice(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecrets), cSecretsTop,
     [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecretsOmit),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecretsPlaceholder)]);
   FSecrets.ItemIndex := Ord(ASecrets);
@@ -385,7 +399,7 @@ begin
   FPreview := APreview;
   FOnPreview := AOnPreview;
   SetupForm(Self, TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportTitle, [ExtractFileName(AFileName)]),
-    760);
+    cImportWidth);
   mButtons := NewDialogButtons(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportApply), FApply,
     FCancel);
   FCount := TLabel.Create(Self);
@@ -394,7 +408,7 @@ begin
   FCount.Margins.SetBounds(cGap, 4, 0, 0);
   FInfo := NewInfoLabel(Self, ImportInfo(APreview));
   FInfo.Visible := FInfo.Caption <> '';
-  FMode := NewChoice(Self, '', 1000, [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportMerge),
+  FMode := NewChoice(Self, '', cModeTop, [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportMerge),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportReplace)]);
   FMode.ItemIndex := Ord(APreview.Mode);
   FMode.OnClick := Recalculate;
@@ -410,11 +424,11 @@ begin
   FList.RowSelect := True;
   FList.OnClick := ListChanged;
   FList.OnKeyUp := ListKeyUp;
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), ScaleValue(220));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), ScaleValue(cKeyWidth));
   AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), ScaleValue(100));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), ScaleValue(110));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), ScaleValue(110));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), ScaleValue(180));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), ScaleValue(cValueWidth));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), ScaleValue(cValueWidth));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), ScaleValue(cNoteWidth));
 
   ClientHeight := ScaleValue(520);
 end;
@@ -648,7 +662,7 @@ var
   mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileTitle), 420);
+  SetupForm(Self, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileTitle), cProfileWidth);
   FDescriptions := ADescriptions;
   mButtons := NewButtons(Self);
   FLoad := NewButton(Self, mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportButton));

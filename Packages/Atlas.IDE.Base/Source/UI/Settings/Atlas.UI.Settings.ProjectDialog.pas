@@ -220,6 +220,10 @@ uses
   Atlas.UI.Settings.Strings;
 
 const
+  // Breite der Knöpfe OK und Abbrechen.
+  cDialogButtonWidth = 90;
+
+const
   cGap = 8;
   cControlWidth = 320;
   cRulesPath = 'rules';
@@ -347,8 +351,8 @@ begin
   mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), cGap, 150);
   mButton.OnClick := OpenClick;
   mButton := NewButton(mBottom, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsOk),
-    mBottom.Width - 2 * (90 + cGap),
-    90);
+    mBottom.Width - 2 * (cDialogButtonWidth + cGap),
+    cDialogButtonWidth);
   mButton.Anchors := [akTop, akRight];
   mButton.Default := True;
   mButton.OnClick := OkClick;

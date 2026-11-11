@@ -33,6 +33,10 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.Files;
 
+const
+  // Exit-Code des Servers bei einem Fehler des Werkzeugs und sein Text in der Meldung.
+  cToolErrorExitText = 'Exit-Code 3';
+
 function ServerExe: string;
 begin
   Result := '';
@@ -61,7 +65,7 @@ begin
   end
   else if mResult.ExitCode = 3 then
   begin
-    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, ['Exit-Code 3']);
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [cToolErrorExitText]);
   end;
   AOutput := mResult.Output;
 end;

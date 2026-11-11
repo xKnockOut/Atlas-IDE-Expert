@@ -50,6 +50,10 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
+const
+  // Höhe des Hinweises zur Teamdatei.
+  cTeamFileHintHeight = 36;
+
 /// <summary>Fehler einer ungültigen Projektdatei; mit Zeile und Spalte, wenn bekannt: Dort steht er im JSON.
 /// </summary>
 function TeamInvalidText(const ATeam: TAtlasTeamSettings): string;
@@ -155,7 +159,8 @@ begin
   // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
   FTeamFile := BindCheck('TeamFile', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFile)));
   FTeamFile.OnClick := TeamFileClick;
-  Attach(AddWrappedLabel(36, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileHint)).Parent, FTeamFile);
+  Attach(AddWrappedLabel(cTeamFileHintHeight,
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileHint)).Parent, FTeamFile);
   mPanel := AddPanel(32);
   FTeamFileOpen := TButton.Create(FPage);
   FTeamFileOpen.Parent := mPanel;

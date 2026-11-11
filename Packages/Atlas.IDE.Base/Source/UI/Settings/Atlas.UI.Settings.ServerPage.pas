@@ -65,6 +65,10 @@ type
 
 implementation
 
+const
+  // Linker Rand des Knopfs für die Projekteinstellungen.
+  cEditProjectLeft = 230;
+
 {$R *.dfm}
 
 { TAtlasServerPage }
@@ -82,7 +86,8 @@ begin
   mPanel := AddPanel(32);
   FEditGlobal := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalEdit), 0,
     EditGlobalClick);
-  FEditProject := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageProjectEdit), 230,
+  FEditProject := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageProjectEdit),
+    cEditProjectLeft,
     EditProjectClick);
 
   AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheTitle));
