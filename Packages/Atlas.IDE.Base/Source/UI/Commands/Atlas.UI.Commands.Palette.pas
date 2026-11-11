@@ -20,6 +20,7 @@
 // entprellt selbst), OnGroupExecute bekommt Enter, Strg+Enter,
 // Umschalt+Enter und Strg+C auf einem Eintrag der Gruppe, OnClosed das
 // Schließen (einmal, auch beim Freigeben).
+// Alt+Enter auf einem Eintrag der Gruppe meldet TAtlasPaletteAction.Toggle (Einstellungen mit @, #1884).
 // Mit RowHints zeigt ein Befehl mit Description diese als Hinweis über
 // seiner Zeile (volle Signatur gekürzter Überladungen, #1784).
 
@@ -77,6 +78,8 @@ type
     FInitialId: string;
     FShiftExecuted: Boolean;
     FCtrlExecuted: Boolean;
+    /// <summary>Alt+Enter (#1884): Schnellschalter einer Einstellung umschalten.</summary>
+    FAltExecuted: Boolean;
     FOnExecuteShift: TProc<TAtlasCommand, Boolean>;
     FOnPattern: TProc<string>;
     FOnGroupExecute: TProc<TAtlasCommand, TAtlasPaletteAction>;
@@ -536,7 +539,7 @@ begin
       mCommand := FCommands[FOrder[mIndex]];
     TAtlasPaletteRowKind.Item:
       begin
-        ExecuteItem(FGroup.Items[mIndex], TAtlasPaletteRows.ActionOf(FCtrlExecuted, FShiftExecuted));
+        ExecuteItem(FGroup.Items[mIndex], TAtlasPaletteRows.ActionOf(FCtrlExecuted, FShiftExecuted, FAltExecuted));
         Exit;
       end;
   else
@@ -592,6 +595,7 @@ begin
       begin
         FShiftExecuted := ssShift in Shift;
         FCtrlExecuted := ssCtrl in Shift;
+        FAltExecuted := ssAlt in Shift;
         Execute;
       end;
     VK_UP:
@@ -655,6 +659,7 @@ begin
     Select(FTop + mRow);
     FShiftExecuted := False;
     FCtrlExecuted := False;
+    FAltExecuted := False;
     Execute;
   end;
 end;

@@ -131,6 +131,8 @@ begin
   BindKey('RedoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu)));
   BindCheck('EditorKeysPriority', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority)));
   BindCheck('SlashCommands', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands)));
+  // Einstellungen mit @ in der Befehlspalette (#1884).
+  BindCheck('PaletteSettingsPrefix', AddCheck(TAtlasStrings.Text(TAtlasTextId.PaletteSettingsPrefix)));
   // Erzeugen-Menü (#719): Schnellbefehle, Vorlagen und Code-Aktionen an der Cursorstelle.
   BindCheck('GenerateMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu)));
   BindKey('GenerateMenuKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand)));

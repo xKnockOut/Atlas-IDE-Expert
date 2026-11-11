@@ -715,6 +715,9 @@ type
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
+    // Suche über die Einstellungen (#1884).
+    SettingsSearchEnabled, SettingsSearchPrompt, SettingsSearchOtherNode, SettingsSearchHint,
+    PaletteSettingsPrefix,
     SettingsBreadcrumbsVisibility, SettingsBreadcrumbsMemberBlocks,
     // Sichtbarkeitsmarke am Methodenglied (#1765).
     SettingsBreadcrumbsVisibilityMark, BreadcrumbsMarkHint,
@@ -2415,6 +2418,11 @@ const
      'Packages: %d von %d installiert, %d eingeschaltet',
      '%s  –  %s › %s › %s',
      'Keine Einstellung gefunden.',
+     'Suchfeld über den Einstellungen (Strg+F)',
+     'Einstellung suchen …',
+     'in %s',
+     'Enter springt zum ersten Treffer, Pfeil runter in die Liste.',
+     'Einstellungen mit @ in der Befehlspalette suchen (Alt+Enter schaltet um)',
      'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen',
      'Unterblock in Typen (const, type, class var) als Glied zeigen',
      'Sichtbarkeitsmarke (−, #, +, ◆) am Methodenglied im implementation-Teil zeigen',
@@ -4051,6 +4059,11 @@ const
      'Packages: %d of %d installed, %d switched on',
      '%s  –  %s › %s › %s',
      'No setting found.',
+     'Search box above the settings (Ctrl+F)',
+     'Search settings …',
+     'in %s',
+     'Enter jumps to the first hit, arrow down moves into the list.',
+     'Search settings with @ in the command palette (Alt+Enter toggles)',
      'Show the visibility section (private, public …) as a part',
      'Show the block inside a type (const, type, class var) as a part',
      'Show the visibility mark (−, #, +, ◆) on the method part in the implementation section',

@@ -4,6 +4,8 @@ Back to the [README](../../../README.md)
 
 - *Tools › Options › Third Party › Atlas* as a tree: areas at the top, every feature with its own master switch that also disables its sub-options; next to it the pages *Snippets*, *Key conflicts* and *Server*
 - Every visible feature can be switched off on its own; experimental features are marked
+- **Search settings** (#1884, `settings.search`): a search field sits above the tree of every node and on the overview "Atlas" (Ctrl+F or Ctrl+E). It searches caption, description, key (`hover.signatureParams`, also parts such as "signature"), area and sub-item, and synonyms (`x-keywords` in the schema, e.g. "tooltip" for hover, "lint" for rule checks); German terms also match in the English IDE. One typo per word is allowed ("minimpa"). Each row shows the path and state: modified, experimental, locked with reason, module off, can be set per project; hits in other nodes carry "in <package>". Enter opens the first hit, Down moves into the list, Esc clears the field. Settings of modules that are not installed do not appear.
+- **Settings in the command palette** (#1884, `palette.settingsPrefix`): `@` before the query shows only settings with path, key and state. Enter opens *Tools › Options* at the setting, Alt+Enter flips a quick toggle directly.
 - **Module switches** for whole areas (`debug.enabled` … `search.enabled`, `ruleChecks.enabled`, `welcomePage.enabled`):
   - debugging, issue tracker, analysis, tests, build tools, build pipeline, bookmarks, designer, rule checks, search and welcome page
   - a module that is off turns off its features and commands without a restart; stored values stay
