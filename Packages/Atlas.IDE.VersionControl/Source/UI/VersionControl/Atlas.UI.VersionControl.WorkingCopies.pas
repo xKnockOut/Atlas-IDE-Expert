@@ -404,6 +404,8 @@ begin
   FMenu := TAtlasWorkingCopiesMenu.CreateFor(Self);
   AddView;
   UpdateButtons;
+  // Hat der Dialog sein Fenster schon (TAtlasDialog legt es im Konstruktor an), kommt kein CreateWnd mehr.
+  Fill;
 end;
 
 procedure TAtlasWorkingCopiesDialog.AddHint;
