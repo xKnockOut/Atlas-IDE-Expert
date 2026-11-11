@@ -5322,6 +5322,44 @@
       "x-node": "editor.designerBar",
       "x-issue": "#746"
     },
+    "DesignerGapHandles": {
+      "description": "Abstandsgriffe bei Mehrfachauswahl: Bilden mindestens zwei markierte Steuerelemente im selben Elternelement eine Reihe oder Spalte, steht zwischen je zwei Nachbarn eine Pille mit dem Abstand in Pixeln (abweichende gedämpft). Ziehen setzt alle Abstände auf denselben Wert, Doppelklick fragt ihn ab, Pfeiltasten bei gehaltener Pille ändern um 1 px; nur Left bzw. Top ändern sich. Ragt ein Steuerelement danach aus dem Elternelement, gilt die Änderung erst nach Rückfrage. Knopf in der Designer-Leiste: Symbol blendet die Griffe ein und aus, das Menü am Pfeil setzt Abstände und macht den letzten Schritt rückgängig.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.gapHandles",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#734"
+    },
+    "DesignerGapHandlesSnapValues": {
+      "description": "Werte in Pixeln, an denen der Abstand beim Ziehen einrastet (bis 3 px daneben), durch Komma getrennt; leer = kein Einrasten. Mit Alt beim Ziehen rastet nichts ein.",
+      "type": "string",
+      "default": "4, 8, 12, 16",
+      "x-key": "designer.gapHandles.snapValues",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.gapHandles",
+      "x-node": "editor.designerBar",
+      "x-issue": "#734"
+    },
+    "DesignerGapHandlesAnchor": {
+      "description": "Fester Punkt beim Ändern der Abstände ohne Zusatztaste: Mitte der Gruppe (center), erste (first) oder letzte Komponente (last). Mit Umschalt bleibt die erste, mit Strg die letzte stehen.",
+      "type": "string",
+      "enum": [
+        "center",
+        "first",
+        "last"
+      ],
+      "default": "center",
+      "x-key": "designer.gapHandles.anchor",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.gapHandles",
+      "x-node": "editor.designerBar",
+      "x-issue": "#734"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

@@ -8,6 +8,9 @@
 // - Tasten im Designer: Auswahlsätze und räumliche Navigation (#745,
 //   TAtlasIdeDesignerNavigate), angemeldet nur, solange ein Designer gezeigt
 //   wird.
+// - Werkzeuge mit eigenem Knopf (#734 ff., TAtlasIdeDesignerTools): Symbol
+//   schaltet ein und aus, Pfeil öffnet das Menü; sie folgen dem Takt der
+//   Leiste (Tick).
 // Nur im Hauptthread.
 
 interface
@@ -19,7 +22,8 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.Select,
   Atlas.IDE.Designer.Arrange,
-  Atlas.IDE.Designer.Navigate;
+  Atlas.IDE.Designer.Navigate,
+  Atlas.IDE.Designer.Tools;
 
 type
   TAtlasIdeDesignerCommands = class
@@ -30,6 +34,7 @@ type
     FSelect: TAtlasIdeDesignerSelect;
     FArrange: TAtlasIdeDesignerArrange;
     FNavigate: TAtlasIdeDesignerNavigate;
+    FTools: TAtlasIdeDesignerTools;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -38,6 +43,14 @@ type
     function Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
     /// <summary>Gehört der Knopf AId hierher (Klick auf das Symbol öffnet das Menü)?</summary>
     function Handles(const AId: string): Boolean;
+    /// <summary>Hat der Knopf AId ein Menü von hier (Pfeil)?</summary>
+    function HasMenu(const AId: string): Boolean;
+    /// <summary>Klick auf das Symbol eines Werkzeugs; False, wenn der Knopf nicht hierher gehört.</summary>
+    function Execute(const AId: string): Boolean;
+    /// <summary>Takt der Leiste, solange sie gezeigt wird.</summary>
+    procedure Tick;
+    /// <summary>Fenster der Werkzeuge ausblenden (Leiste aus).</summary>
+    procedure Hide;
     /// <summary>Menü des Knopfs AId an APoint (Bildschirm).</summary>
     procedure Popup(const AId: string; const APoint: TPoint);
     /// <summary>Tasten an- oder abmelden (Designer gezeigt).</summary>
@@ -59,10 +72,12 @@ begin
   FSelect := TAtlasIdeDesignerSelect.Create(AOnMessage);
   FArrange := TAtlasIdeDesignerArrange.Create(AOnMessage);
   FNavigate := TAtlasIdeDesignerNavigate.Create;
+  FTools := TAtlasIdeDesignerTools.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerCommands.Destroy;
 begin
+  FTools.Free;
   FNavigate.Free;
   FArrange.Free;
   FSelect.Free;
@@ -88,6 +103,7 @@ begin
     mButton.Menu := True;
     Result := Result + [mButton];
   end;
+  Result := Result + FTools.Buttons(ASettings);
 end;
 
 function TAtlasIdeDesignerCommands.Handles(const AId: string): Boolean;
@@ -95,9 +111,33 @@ begin
   Result := SameText(AId, cIdSelect) or SameText(AId, cIdArrange);
 end;
 
+function TAtlasIdeDesignerCommands.HasMenu(const AId: string): Boolean;
+begin
+  Result := Handles(AId) or FTools.HasMenu(AId);
+end;
+
+function TAtlasIdeDesignerCommands.Execute(const AId: string): Boolean;
+begin
+  Result := FTools.Toggle(AId);
+end;
+
+procedure TAtlasIdeDesignerCommands.Tick;
+begin
+  FTools.Tick;
+end;
+
+procedure TAtlasIdeDesignerCommands.Hide;
+begin
+  FTools.Hide;
+end;
+
 procedure TAtlasIdeDesignerCommands.Popup(const AId: string; const APoint: TPoint);
 begin
-  if SameText(AId, cIdSelect) then
+  if FTools.HasMenu(AId) then
+  begin
+    FTools.Popup(AId, APoint);
+  end
+  else if SameText(AId, cIdSelect) then
   begin
     FSelect.Popup(APoint);
   end
@@ -117,6 +157,7 @@ procedure TAtlasIdeDesignerCommands.ApplyTheme;
 begin
   FNavigate.ApplyTheme;
   FArrange.ApplyTheme;
+  FTools.ApplyTheme;
 end;
 
 end.
