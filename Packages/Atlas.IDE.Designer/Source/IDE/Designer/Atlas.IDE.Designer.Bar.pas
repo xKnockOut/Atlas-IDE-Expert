@@ -27,8 +27,9 @@
 //   (TAtlasIdeDesignerSelect); Pfeil und Symbol öffnen es. Darin die
 //   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten; dazu die
 //   räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation)
-//   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands,
-//   ebenso die eigenen Knöpfe der größeren Designer-Funktionen (#605 ff.).
+//   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands.
+// - Werkzeuge mit eigenem Knopf (#734 ff.), ebenfalls über
+//   TAtlasIdeDesignerCommands: Symbol schaltet, Pfeil öffnet das Menü.
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -742,12 +743,14 @@ begin
   begin
     TAtlasKeyHook.Remove(FKeyClient);
     HideOverlay;
+    FCommands.Hide;
     Exit;
   end;
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
     TAtlasKeyHook.Remove(FKeyClient);
     HideOverlay;
+    FCommands.Hide;
     if FHost.Count > 0 then
     begin
       FHost.Clear;
@@ -761,11 +764,17 @@ begin
       UpdateKeyClient;
       UpdateBars;
       UpdateOverlay;
+      FCommands.Tick;
     end);
 end;
 
 procedure TDesignerBarState.Command(const AId: string);
 begin
+  if FCommands.Execute(AId) then
+  begin
+    UpdateBars;
+    Exit;
+  end;
   if SameText(AId, cIdSearch) then
   begin
     OpenSearch;
@@ -785,10 +794,6 @@ begin
   else if SameText(AId, cIdAlign) then
   begin
     AlignSelection(FLastAlign);
-  end
-  else
-  begin
-    FCommands.Run(AId);
   end;
   UpdateBars;
 end;
@@ -801,7 +806,7 @@ var
   mItem: TMenuItem;
   mCount: Integer;
 begin
-  if FCommands.Handles(AId) then
+  if FCommands.HasMenu(AId) then
   begin
     FCommands.Popup(AId, APoint);
     Exit;

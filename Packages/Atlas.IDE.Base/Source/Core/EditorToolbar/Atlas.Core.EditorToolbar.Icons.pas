@@ -16,9 +16,9 @@ type
     Palette, More, Gear,
     // Designer-Leiste (#1442).
     ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls,
-    // Gleiche auswählen (#738), Anordnen (#730 ff.).
-    SelectSimilar, Arrange,
-    // Eigene Knöpfe der Designer-Leiste (#605 bis #612).
+    // Gleiche auswählen (#738), Anordnen (#730 ff.), Abstandsgriffe (#734), gemeinsame Größengriffe (#737).
+    SelectSimilar, Arrange, GapHandles, MultiResize,
+    // Eigene Knöpfe der Designer-Ansichten (#605 bis #612).
     MeasureDistances, ResizePreview, ScalePreview, NameSuggest, NonVisualTray, DataBindings, ExtractFrame,
     EventMap);
 {$SCOPEDENUMS OFF}

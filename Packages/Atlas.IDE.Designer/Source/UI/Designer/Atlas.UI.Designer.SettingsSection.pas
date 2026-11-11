@@ -2,7 +2,8 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), eigene Knöpfe der Leiste (#605 ff.).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Werkzeuge mit eigenem Knopf (#734 ff.),
+// Designer-Ansichten mit eigenem Knopf (#605 ff.).
 
 interface
 
@@ -19,6 +20,8 @@ type
     procedure BuildArrangeRows;
     /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
     procedure BuildViewRows;
+    /// <summary>Zeilen der Werkzeuge mit eigenem Knopf in der Designer-Leiste (#734 ff.).</summary>
+    procedure BuildToolRows;
   protected
     procedure BuildRows; override;
   public
@@ -31,6 +34,7 @@ implementation
 uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
+  Atlas.UI.Designer.ToolStrings,
   Atlas.UI.Designer.ViewStrings;
 
 { TAtlasDesignerSettingsSection }
@@ -79,6 +83,7 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialCross));
   BuildViewRows;
   BuildArrangeRows;
+  BuildToolRows;
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildViewRows;
@@ -137,6 +142,24 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearBaseline));
   Line('designer.nearAlignment.ignoreClasses',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearIgnore));
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildToolRows;
+begin
+  Switch('designer.gapHandles', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapHandles));
+  Line('designer.gapHandles.snapValues', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapSnap));
+  Choice('designer.gapHandles.anchor', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapAnchor),
+    [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapCenter),
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapFirst),
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsGapLast)],
+    [TAtlasPluginSettings.cGapAnchorCenter, TAtlasPluginSettings.cGapAnchorFirst, TAtlasPluginSettings.cGapAnchorLast]);
+  Switch('designer.multiResize', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResize));
+  Choice('designer.multiResize.mode', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeMode),
+    [TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeDelta),
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeAlign)],
+    [TAtlasPluginSettings.cResizeModeDelta, TAtlasPluginSettings.cResizeModeAlign]);
+  Switch('designer.multiResize.leftTopHandles',
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeLeftTop));
 end;
 
 end.

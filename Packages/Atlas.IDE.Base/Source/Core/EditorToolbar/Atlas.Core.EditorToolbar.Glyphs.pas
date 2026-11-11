@@ -345,6 +345,18 @@ begin
       Result := [Stroke([P(2, 3), P(14, 3)]), Stroke([P(4, 1.5), P(2, 3), P(4, 4.5)]),
         Stroke([P(12, 1.5), P(14, 3), P(12, 4.5)]), Outline([P(2, 6.5), P(14, 6.5), P(14, 9.5), P(2, 9.5)]),
         Outline([P(2, 11.5), P(14, 11.5), P(14, 14.5), P(2, 14.5)])];
+    TAtlasToolbarIcon.GapHandles:
+      // Zwei Kästchen, dazwischen ein Doppelpfeil für den Abstand.
+      Result := [Outline([P(1.5, 4), P(4.5, 4), P(4.5, 12), P(1.5, 12)]),
+        Outline([P(11.5, 4), P(14.5, 4), P(14.5, 12), P(11.5, 12)]), Stroke([P(6, 8), P(10, 8)]),
+        Stroke([P(7.5, 6.5), P(6, 8), P(7.5, 9.5)]), Stroke([P(8.5, 6.5), P(10, 8), P(8.5, 9.5)])];
+    TAtlasToolbarIcon.MultiResize:
+      // Zwei Kästchen untereinander mit gefülltem Griff rechts, daneben ein Pfeil nach rechts.
+      Result := [Outline([P(1.5, 2.5), P(9, 2.5), P(9, 6.5), P(1.5, 6.5)]),
+        Outline([P(1.5, 9.5), P(9, 9.5), P(9, 13.5), P(1.5, 13.5)]),
+        Shape([P(8, 3.5), P(10, 3.5), P(10, 5.5), P(8, 5.5)], True, True),
+        Shape([P(8, 10.5), P(10, 10.5), P(10, 12.5), P(8, 12.5)], True, True), Stroke([P(11.5, 8), P(14.5, 8)]),
+        Stroke([P(13, 6.5), P(14.5, 8), P(13, 9.5)])];
   else
     Result := ToolButtonShapes(AIcon);
   end;
