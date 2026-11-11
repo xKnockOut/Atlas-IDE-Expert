@@ -89,18 +89,6 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Bookmarks/Source/UI/Bookmarks/Atlas.UI.Bookmarks.Dialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Bookmarks/Source/UI/Notes/Atlas.UI.Notes.Dialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Bookmarks/Source/UI/Todos/Atlas.UI.Todos.Dialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.Visualizers.pas": {
     "cl-red": 1
   },
@@ -127,6 +115,10 @@
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas": {
     "create-new": 1,
     "segoe-font": 1,
+    "cl-red": 1
+  },
+  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.ExtractDialog.pas": {
+    "create-new": 1,
     "cl-red": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Flash.pas": {

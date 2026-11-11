@@ -15,10 +15,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Projects.Todos;
+  Atlas.Core.Projects.Todos,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasTodoFilterDialog = class(TForm)
+  TAtlasTodoFilterDialog = class(TAtlasDialog)
   private
     FCategory: TComboBox;
     FOwner: TComboBox;
@@ -68,14 +69,8 @@ constructor TAtlasTodoFilterDialog.CreateDialog(AOwner: TComponent; const AChoic
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterTitle);
-  BorderStyle := bsDialog;
+  inherited CreateDialog(AOwner, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterTitle), cDialogWidth);
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   FNextTop := ScaleValue(cGap);
 
   FCategory := AddCombo(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCategory), AChoices.Categories,
