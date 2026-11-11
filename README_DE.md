@@ -99,6 +99,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Einstellungen](docs/features/de/Einstellungen.md)
 - **Optionsseite als Baum**, jede Funktion mit eigenem Schalter
+- **Einstellungen suchen** über dem Baum (Strg+F) und mit `@` in der Befehlspalette, auch nach Schlüssel, Synonym oder mit Tippfehler; Alt+Enter schaltet Schnellschalter direkt um
 - **Modulschalter** für ganze Bereiche wie Debuggen, Tests oder Issue-Tracker; jedes Modul bringt seine Einstellungen selbst mit, ohne installiertes Modul fehlen sie
 - **Exportieren, Importieren, Profile und Zurücksetzen**
 - **Werte fürs Team** in `.atlas` und `atlas.json`

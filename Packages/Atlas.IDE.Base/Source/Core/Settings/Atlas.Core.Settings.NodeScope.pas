@@ -9,6 +9,7 @@
 // - TAtlasSettingsMerge: Jeder Knoten hat seinen eigenen Stand. Beim Speichern
 //   gehen nur die Werte, die der Knoten geändert hat, in den gespeicherten Stand;
 //   so überschreibt ein zweiter Knoten die Änderungen des ersten nicht.
+// Die Suche über die Einstellungen steht in Atlas.Core.Settings.Search (#1884).
 // Ohne VCL und ohne Registry.
 
 interface
@@ -35,23 +36,6 @@ type
     /// darüber, der einen hat; '' = Base.</summary>
     class function ModuleOf(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
       const AName: string): string; static;
-  end;
-
-  /// <summary>Treffer der Suche auf der Übersicht „Atlas“: Einstellung mit Beschriftung, Modulschalter ('' =
-  /// Base) und Bereich.</summary>
-  TAtlasSettingHit = record
-    Name: string;
-    Caption: string;
-    Module: string;
-    AreaCaption: string;
-  end;
-
-  TAtlasSettingsSearch = class
-  public
-    /// <summary>Plugin-Einstellungen (ohne Zustände), deren Beschriftung oder Schlüssel AText enthält, in
-    /// Katalogreihenfolge; höchstens AMax. Leerer Text: keine Treffer.</summary>
-    class function Find(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups; const AText: string;
-      AEnglish: Boolean; AMax: Integer): TArray<TAtlasSettingHit>; static;
   end;
 
   TAtlasSettingsMerge = class
@@ -135,49 +119,6 @@ begin
     end;
   end;
   Result := '';
-end;
-
-{ TAtlasSettingsSearch }
-
-class function TAtlasSettingsSearch.Find(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
-  const AText: string; AEnglish: Boolean; AMax: Integer): TArray<TAtlasSettingHit>;
-var
-  mIndex: Integer;
-  mEntry: TAtlasCatalogEntry;
-  mHit: TAtlasSettingHit;
-  mText: string;
-begin
-  Result := nil;
-  mText := Trim(AText).ToLower;
-  if mText = '' then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to ACatalog.Count - 1 do
-  begin
-    if Length(Result) >= AMax then
-    begin
-      Break;
-    end;
-    mEntry := ACatalog[mIndex];
-    if (mEntry.Source <> asPlugin) or mEntry.State then
-    begin
-      Continue;
-    end;
-    mHit.Caption := mEntry.Caption;
-    if AEnglish and (mEntry.CaptionEn <> '') then
-    begin
-      mHit.Caption := mEntry.CaptionEn;
-    end;
-    if (Pos(mText, mHit.Caption.ToLower) = 0) and (Pos(mText, mEntry.Key.ToLower) = 0) then
-    begin
-      Continue;
-    end;
-    mHit.Name := mEntry.Name;
-    mHit.Module := TAtlasSettingsNodeScope.ModuleOf(ACatalog, AGroups, mEntry.Name);
-    mHit.AreaCaption := ACatalog.AreaCaption(mEntry.Area, AEnglish);
-    Result := Result + [mHit];
-  end;
 end;
 
 { TAtlasSettingsMerge }
