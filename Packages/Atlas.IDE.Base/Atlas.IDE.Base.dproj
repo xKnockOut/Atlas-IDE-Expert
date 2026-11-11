@@ -180,6 +180,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas"/>
         <DCCReference Include="Source\IDE\Projects\Atlas.IDE.Projects.Context.pas"/>
