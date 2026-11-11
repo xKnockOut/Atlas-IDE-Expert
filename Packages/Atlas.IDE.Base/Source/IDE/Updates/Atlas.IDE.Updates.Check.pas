@@ -125,7 +125,8 @@ uses
   Atlas.Text.UpdateRun,
   ToolsAPI,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 { TAtlasIdeUpdates }
 
@@ -477,8 +478,8 @@ begin
     end
     else
     begin
-      // Hängt der Thread noch, wird er nicht freigegeben, sondern bleibt sich selbst überlassen.
-      FThread.FreeOnTerminate := True;
+      // Hängt der Thread noch, gibt TAtlasOverdueThreads ihn nach seinem Ende frei.
+      TAtlasOverdueThreads.Adopt(FThread, HInstance);
       FThread := nil;
     end;
   end;
