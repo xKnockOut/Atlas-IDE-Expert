@@ -474,6 +474,9 @@ type
     DisableWarningReason: Boolean;
     /// <summary>Code-Aktionen „Methode extrahieren“, „Variable einführen“ und „Konstante extrahieren“ (#50).</summary>
     Extract: Boolean;
+    /// <summary>Zu „Methode extrahieren“ eine zweite Aktion, die auch gleiche Stellen der Unit ersetzt (#2054).
+    /// </summary>
+    ExtractMethodDuplicates: Boolean;
     /// <summary>Code-Aktion „case vervollständigen“ (#50).</summary>
     CompleteCase: Boolean;
     /// <summary>Code-Aktion „with auflösen“ (#50).</summary>
@@ -1289,6 +1292,7 @@ begin
   ASettings.DisableWarning := True;
   ASettings.DisableWarningReason := True;
   ASettings.Extract := True;
+  ASettings.ExtractMethodDuplicates := True;
   ASettings.CompleteCase := True;
   ASettings.ResolveWith := True;
   ASettings.InlineCode := False;

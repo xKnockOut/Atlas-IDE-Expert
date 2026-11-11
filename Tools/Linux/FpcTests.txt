@@ -71,6 +71,7 @@ Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Editing.DocComments.Tests
 Atlas.Common.Editing.EnumTables.Tests
 Atlas.Common.Editing.ExpressionText.Tests
+Atlas.Common.Editing.Extract.Duplicates.Tests
 Atlas.Common.Editing.Extract.Shared.Tests
 Atlas.Common.Editing.Extract.Tests
 Atlas.Common.Editing.ExtractInterface.Tests
@@ -169,6 +170,7 @@ Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
+Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests

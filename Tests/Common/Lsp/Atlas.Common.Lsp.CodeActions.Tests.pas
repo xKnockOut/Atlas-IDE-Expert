@@ -45,6 +45,9 @@ type
     /// <summary>#663: Vorschau als data.preview, Hinweis statt Aktion als disabled.reason.</summary>
     [Test]
     procedure ActionJsonCarriesPreviewAndDisabled;
+    /// <summary>#2054: abwählbare Teile als data.choices, je Edit die nötigen Teile in data.editChoices.</summary>
+    [Test]
+    procedure ActionJsonCarriesChoices;
   end;
 
 implementation
@@ -230,6 +233,35 @@ begin
     Assert.IsNull(Json.GetValue('data'));
   finally
     Json.Free;
+  end;
+end;
+
+procedure TLspCodeActionsTests.ActionJsonCarriesChoices;
+var
+  mAction: TCodeAction;
+  mJson: TJSONObject;
+  mChoices, mEditChoices: TJSONArray;
+begin
+  mAction := Default(TCodeAction);
+  mAction.Title := 'Methode extrahieren und gleiche Stelle ersetzen';
+  mAction.Kind := 'refactor.extract';
+  mAction.Edits := [TTextEdit.Create(TTextRange.Create(1, 0, 1, 5), 'A;'),
+    TTextEdit.Create(TTextRange.Create(3, 2, 4, 0), 'B;')];
+  mAction.Choices := [TCodeActionChoice.Create('Zeile 4 in TFoo.Bar', TTextRange.Create(3, 2, 4, 0))];
+  SetLength(mAction.EditChoices, 2);
+  mAction.EditChoices[1] := [0];
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), mAction);
+  try
+    mChoices := mJson.GetValue<TJSONArray>('data.choices');
+    Assert.AreEqual(1, mChoices.Count);
+    Assert.AreEqual('Zeile 4 in TFoo.Bar', mChoices.Items[0].GetValue<string>('title'));
+    Assert.AreEqual(3, mChoices.Items[0].GetValue<Integer>('range.start.line'));
+    mEditChoices := mJson.GetValue<TJSONArray>('data.editChoices');
+    Assert.AreEqual(2, mEditChoices.Count);
+    Assert.AreEqual(0, TJSONArray(mEditChoices.Items[0]).Count);
+    Assert.AreEqual('[0]', mEditChoices.Items[1].ToJSON);
+  finally
+    mJson.Free;
   end;
 end;
 

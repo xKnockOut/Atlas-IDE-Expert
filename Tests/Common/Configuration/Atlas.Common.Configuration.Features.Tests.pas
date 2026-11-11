@@ -767,6 +767,14 @@ begin
   Settings := Parse('{"refactoring": {"safeDeleteCascade": "manchmal"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
+  // #2054: Methode extrahieren mit gleichen Stellen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.ExtractMethodDuplicates);
+  Settings := Parse('{"refactoring": {"extractMethodDuplicates": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Refactoring.ExtractMethodDuplicates);
+  Parse('{"refactoring": {"extractMethodDuplicates": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 /// <summary>Einstellungen ab „Speicherbudget (#185)“.</summary>
 procedure ReadsBudgetAndTimeLimits;
