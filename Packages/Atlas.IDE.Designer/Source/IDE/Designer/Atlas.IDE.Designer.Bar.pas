@@ -25,7 +25,8 @@
 //   Klick auf das Symbol wiederholt den letzten Befehl (TAtlasDesignerAlign).
 // - Gleiche auswählen (#738, designer.selectSimilar): Menü mit Trefferzahlen
 //   (TAtlasIdeDesignerSelect); Pfeil und Symbol öffnen es. Darin die
-//   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten.
+//   Auswahlsätze (#739, designer.selectionSets) samt ihren Tasten; dazu die
+//   räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -528,6 +529,7 @@ begin
   begin
     FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
   end;
+  FSelect.ApplyTheme;
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>

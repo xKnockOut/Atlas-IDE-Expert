@@ -10,7 +10,9 @@
 // Treffer merkt sich das Menü als Namen: Beim Klick sucht Atlas die
 // Komponenten neu, mit Umschalt ergänzt das Ergebnis die Auswahl. Darunter
 // die Auswahlsätze des Formulars (#739, TAtlasIdeSelectionSets); sie stehen
-// auch ohne Auswahl und ohne designer.selectSimilar im Menü.
+// auch ohne Auswahl und ohne designer.selectSimilar im Menü. Die Einheit
+// besitzt auch die räumliche Navigation mit Alt+Pfeil (#745,
+// TAtlasIdeDesignerNavigate): Beide wählen per Taste im Designer aus.
 // Nur im Hauptthread.
 
 interface
@@ -22,7 +24,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.Similar,
-  Atlas.IDE.Designer.SelectionSets;
+  Atlas.IDE.Designer.SelectionSets,
+  Atlas.IDE.Designer.Navigate;
 
 type
   TAtlasIdeDesignerSelect = class
@@ -32,6 +35,7 @@ type
     FHits: TArray<TArray<string>>;
     FOnMessage: TProc<string>;
     FSets: TAtlasIdeSelectionSets;
+    FNavigate: TAtlasIdeDesignerNavigate;
     procedure Add(AParent: TMenuItem; const ACaption: string; const AItems: TArray<TAtlasSimilarItem>;
       const AQuery: TAtlasSimilarQuery);
     procedure AddValues(const AItems: TArray<TAtlasSimilarItem>; AReference: Integer; AScope: TAtlasSimilarScope);
@@ -49,8 +53,10 @@ type
     destructor Destroy; override;
     /// <summary>Menü für das Formular im aktiven Designer an APoint (Bildschirm).</summary>
     procedure Popup(const APoint: TPoint);
-    /// <summary>Tasten der Auswahlsätze an- oder abmelden (Designer gezeigt).</summary>
+    /// <summary>Tasten der Auswahlsätze und der räumlichen Navigation an- oder abmelden (Designer gezeigt).
+    /// </summary>
     procedure UpdateKeys(AWanted: Boolean);
+    procedure ApplyTheme;
     /// <summary>Komponenten des Formulars mit Klassenkette, Elternelement, Werten, Handlern und Auswahl.</summary>
     class function ItemsOf(ARoot: TComponent; const AText: string;
       const ASelected: TArray<TComponent>): TArray<TAtlasSimilarItem>; static;
@@ -144,10 +150,12 @@ begin
   FOnMessage := AOnMessage;
   FMenu := TPopupMenu.Create(nil);
   FSets := TAtlasIdeSelectionSets.Create(AOnMessage);
+  FNavigate := TAtlasIdeDesignerNavigate.Create;
 end;
 
 destructor TAtlasIdeDesignerSelect.Destroy;
 begin
+  FNavigate.Free;
   FSets.Free;
   FMenu.Free;
   inherited Destroy;
@@ -340,6 +348,12 @@ end;
 procedure TAtlasIdeDesignerSelect.UpdateKeys(AWanted: Boolean);
 begin
   FSets.UpdateKeys(AWanted);
+  FNavigate.UpdateKeys(AWanted);
+end;
+
+procedure TAtlasIdeDesignerSelect.ApplyTheme;
+begin
+  FNavigate.ApplyTheme;
 end;
 
 procedure TAtlasIdeDesignerSelect.Say(const AText: string);
