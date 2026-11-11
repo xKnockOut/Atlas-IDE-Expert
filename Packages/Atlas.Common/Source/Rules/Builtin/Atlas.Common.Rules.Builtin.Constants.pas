@@ -119,7 +119,6 @@ procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
-  Atlas.Common.Index.NameFacts,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Rules.Derived,
@@ -135,8 +134,6 @@ uses
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Rules.Options,
-  Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Rules.Builtin.Constants.Conversions,
   Atlas.Common.Rules.Builtin.Constants.TypedConstants,

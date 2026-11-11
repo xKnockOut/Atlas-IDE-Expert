@@ -21,7 +21,6 @@ interface
 uses
   System.SysUtils,
   System.RegularExpressions,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Search.Matching;
 

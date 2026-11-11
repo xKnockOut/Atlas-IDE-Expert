@@ -96,7 +96,6 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.Store,
   Atlas.Core.StatusBar.Content,
   Atlas.UI.Strings,
   Atlas.UI.StatusBar.Bar,

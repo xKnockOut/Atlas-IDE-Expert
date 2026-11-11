@@ -214,6 +214,7 @@ procedure TLspUnitRelations.EntriesOf(const AFileName, AText: string; out AUnuse
 var
   mContext: TUsesContext;
   mEntry: TUsesEntry;
+  mInactive: TArray<TTextRange>;
 begin
   AUnused := nil;
   AOnlyImplementation := nil;
@@ -222,9 +223,10 @@ begin
   begin
     Exit;
   end;
-  // Dieselbe Analyse wie die abgeblendeten uses im Editor (#621).
-  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), TLspInactiveRegions.Ranges(AText,
-    DefinesOf(AFileName)), mContext.Info, mContext.Keep) do
+  // Dieselbe Analyse wie die abgeblendeten uses im Editor (#621), mit Namensauflösung (#1925).
+  mInactive := TLspInactiveRegions.Ranges(AText, DefinesOf(AFileName));
+  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), mInactive, mContext.Info, mContext.Keep,
+    mContext.Resolution(AText, mInactive)) do
   begin
     if mEntry.State = TUsesEntryState.Unused then
     begin
@@ -488,6 +490,7 @@ var
   mEdit: TTextEdit;
   mAnswer: TJSONObject;
   mFound: Boolean;
+  mInactive: TArray<TTextRange>;
 begin
   mFileName := FileOf(AArguments, 0);
   if (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONString) then
@@ -503,8 +506,9 @@ begin
       mUnitName]));
   end;
   mFound := False;
-  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(mText), TLspInactiveRegions.Ranges(mText,
-    DefinesOf(mFileName)), mContext.Info, mContext.Keep) do
+  mInactive := TLspInactiveRegions.Ranges(mText, DefinesOf(mFileName));
+  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(mText), mInactive, mContext.Info, mContext.Keep,
+    mContext.Resolution(mText, mInactive)) do
   begin
     if (mEntry.State = TUsesEntryState.Unused) and SameText(mEntry.Name, mUnitName) then
     begin

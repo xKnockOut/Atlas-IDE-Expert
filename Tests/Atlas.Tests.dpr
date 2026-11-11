@@ -576,6 +576,7 @@ uses
   Atlas.Common.Editing.TestUnits.Tests in 'Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas',
   Atlas.Common.Editing.ErrorCommands.Tests in 'Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas',
   Atlas.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas',
+  Atlas.Common.Semantics.UsesUsage.Tests in 'Common\Semantics\Atlas.Common.Semantics.UsesUsage.Tests.pas',
   Atlas.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.Tests.pas',
   Atlas.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Tests.pas',
   Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests.pas',

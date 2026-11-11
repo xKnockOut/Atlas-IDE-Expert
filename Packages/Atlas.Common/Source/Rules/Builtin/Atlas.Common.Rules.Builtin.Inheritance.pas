@@ -137,12 +137,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

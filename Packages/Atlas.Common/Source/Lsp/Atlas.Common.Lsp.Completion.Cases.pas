@@ -78,7 +78,6 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.DocComments,

@@ -4,7 +4,8 @@
 // sicherer Korrektur, benutzte Units, initialization, usesKeep und Option
 // keep, inaktive Zweige, Schweigen in Programmen, im Editor (Live) und ohne
 // Index, lsp-ignore dort nicht als unnötig gemeldet, und die Sammelkorrektur
-// mit zwei Einträgen derselben Liste.
+// mit zwei Einträgen derselben Liste. Mit Namensauflösung (#1925): Ein
+// gleichnamiges Mitglied einer Klasse hält deren Unit nicht.
 
 interface
 
@@ -39,6 +40,8 @@ type
     procedure BulkFixRemovesAllUnusedEntries;
     [Test]
     procedure FormReferenceKeepsUnit;
+    [Test]
+    procedure MemberNameDoesNotKeepUnit;
   end;
 
 implementation
@@ -219,6 +222,24 @@ begin
   mContext.FormText := StringReplace(cFormText, 'HauptForm.', 'Query2.', []);
   Assert.AreEqual('Aus Haupt wird nichts verwendet;', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create,
     mContext, '')));
+end;
+
+procedure TUnusedUsesTests.MemberNameDoesNotKeepUnit;
+const
+  cListe = 'unit Liste;'#13#10'interface'#13#10'type'#13#10'  TListe = class'#13#10'    function Count: Integer;'#13#10 +
+    '  end;'#13#10'implementation'#13#10'function TListe.Count: Integer;'#13#10'begin'#13#10'  Result := 0;'#13#10 +
+    'end;'#13#10'end.'#13#10;
+  cBericht = 'unit Bericht;'#13#10'interface'#13#10'uses'#13#10'  Liste, Andere;'#13#10'implementation'#13#10 +
+    'procedure X;'#13#10'var'#13#10'  Count: Integer;'#13#10'begin'#13#10'  Count := 1;'#13#10'  Mach;'#13#10 +
+    'end;'#13#10'end.'#13#10;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Count ist eine lokale Variable, TListe.Count ist nicht gemeint: Liste wird gemeldet (#1925).
+  mIndex := Index;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cListe, 'Liste.pas', nil, nil, True));
+  Assert.AreEqual('Aus Liste wird nichts verwendet;', Names(Check(cBericht, TServerSettings.Default, mIndex,
+    'Bericht.pas')));
 end;
 
 procedure TUnusedUsesTests.InactiveBranchIsIgnored;

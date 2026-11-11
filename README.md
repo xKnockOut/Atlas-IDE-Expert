@@ -74,7 +74,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Rename** project-wide including forms, **change signature**, **safe delete**
 - **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions
 - **Class actions:** implement interface, extract interface or superclass, generate properties
-- **uses:** add missing units, sort, remove unused ones
+- **uses:** add missing units, sort, remove unused ones; a unit counts as used only when a name really resolves to it, as dcc decides (members of its classes and names shadowed later do not count; enum values, helpers, attributes and inline bodies do)
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)

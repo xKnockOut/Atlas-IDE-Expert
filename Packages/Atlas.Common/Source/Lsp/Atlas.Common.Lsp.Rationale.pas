@@ -79,7 +79,6 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Rationale.References,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Builtin.Todos,

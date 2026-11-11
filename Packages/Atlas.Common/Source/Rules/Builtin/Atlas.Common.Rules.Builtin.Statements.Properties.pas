@@ -78,7 +78,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CodeActions,

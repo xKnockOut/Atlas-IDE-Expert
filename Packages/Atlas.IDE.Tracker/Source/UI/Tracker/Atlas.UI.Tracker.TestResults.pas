@@ -272,7 +272,6 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Projects.Summary,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
