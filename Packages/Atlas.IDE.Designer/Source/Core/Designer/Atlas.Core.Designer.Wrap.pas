@@ -300,6 +300,8 @@ const
   cClasses: array[0..6] of string = ('TPanel', 'TGroupBox', 'TFlowPanel', 'TGridPanel', 'TScrollBox', 'TPageControl',
     'TTabSheet');
   cPrefixes: array[0..6] of string = ('pnl', 'gbx', 'fpn', 'gpn', 'sbx', 'pgc', 'tsh');
+  /// <summary>Andere Klassen: die ersten Buchstaben des Namens ohne „T“, so lang wie die bekannten Präfixe.</summary>
+  cPrefixLength = 3;
 var
   mIndex: Integer;
 begin
@@ -315,7 +317,7 @@ begin
   begin
     Result := Copy(Result, 2, MaxInt);
   end;
-  Result := LowerCase(Copy(Result, 1, 3));
+  Result := LowerCase(Copy(Result, 1, cPrefixLength));
 end;
 
 end.

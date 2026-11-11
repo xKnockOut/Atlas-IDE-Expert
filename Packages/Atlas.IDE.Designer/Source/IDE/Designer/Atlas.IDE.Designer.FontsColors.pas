@@ -315,13 +315,15 @@ begin
       var
         mName: string;
         mSelected: TArray<TComponent>;
+        mFound: TComponent;
       begin
         mSelected := nil;
         for mName in ANames do
         begin
-          if (mRoot.FindComponent(mName) <> nil) then
+          mFound := mRoot.FindComponent(mName);
+          if mFound <> nil then
           begin
-            mSelected := mSelected + [mRoot.FindComponent(mName)];
+            mSelected := mSelected + [mFound];
           end;
         end;
         TAtlasDesignerAccess.Select(mDesigner, mRoot, mSelected);

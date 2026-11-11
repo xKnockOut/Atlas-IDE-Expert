@@ -92,26 +92,31 @@ end;
 
 /// <summary>AText an „ und “ bzw. „ and “ außerhalb von Hochkommas teilen.</summary>
 function SplitAnd(const AText: string): TArray<string>;
+const
+  cGermanAnd = ' und ';
+  cEnglishAnd = ' and ';
 var
   mRest: string;
-  mPos, mGerman, mEnglish: Integer;
+  mPos, mGerman, mEnglish, mLength: Integer;
 begin
   Result := nil;
   mRest := AText;
   repeat
-    mGerman := WordPos(mRest, ' und ');
-    mEnglish := WordPos(mRest, ' and ');
+    mGerman := WordPos(mRest, cGermanAnd);
+    mEnglish := WordPos(mRest, cEnglishAnd);
     mPos := mGerman;
+    mLength := Length(cGermanAnd);
     if (mPos = 0) or ((mEnglish > 0) and (mEnglish < mPos)) then
     begin
       mPos := mEnglish;
+      mLength := Length(cEnglishAnd);
     end;
     if mPos = 0 then
     begin
       Break;
     end;
     Result := Result + [Trim(Copy(mRest, 1, mPos - 1))];
-    mRest := Copy(mRest, mPos + 5, MaxInt);
+    mRest := Copy(mRest, mPos + mLength, MaxInt);
   until False;
   Result := Result + [Trim(mRest)];
 end;

@@ -37,7 +37,8 @@ type
     cTextIndent = 3;
   public
     /// <summary>Feld zu einem Label in ALabel; Field -1 ohne.</summary>
-    class function FindField(const ALabel: TRect; const AFields: TArray<TRect>; ADistance: Integer): TAtlasPairMatch; static;
+    class function FindField(const ALabel: TRect; const AFields: TArray<TRect>;
+      ADistance: Integer): TAtlasPairMatch; static;
     /// <summary>Top des Labels, damit seine Grundlinie (ALabelAscent unter Top) auf AFieldBaseline liegt.</summary>
     class function BaselineTop(AFieldBaseline, ALabelAscent: Integer): Integer; static;
     /// <summary>Lage eines neuen Labels der Größe ASize links oder über dem Feld, AGap Abstand.</summary>
@@ -49,7 +50,8 @@ type
     class function CaptionFor(const AFieldName, AAbbreviations: string): string; static;
     /// <summary>Name für ein neues Label: lbl + Feldname ohne Präfix.</summary>
     class function NameFor(const AFieldName: string): string; static;
-    /// <summary>Caption mit „&amp;“ vor dem ersten freien Buchstaben; leer, wenn schon eins da ist oder keiner frei.</summary>
+    /// <summary>Caption mit „&amp;“ vor dem ersten freien Buchstaben; leer, wenn schon eins da ist oder keiner
+    /// frei.</summary>
     class function FreeAccelerator(const ACaption, AUsed: string): string; static;
   end;
 
@@ -144,27 +146,25 @@ end;
 /// <summary>Wörter an Großbuchstaben nach Kleinbuchstaben oder Ziffern getrennt.</summary>
 function WordsOf(const AText: string): TArray<string>;
 var
-  mIndex: Integer;
-  mWord: string;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  mWord := '';
+  mStart := 1;
   for mIndex := 1 to Length(AText) do
   begin
     if AText[mIndex] = '_' then
     begin
-      Result := Result + [mWord];
-      mWord := '';
-      Continue;
-    end;
-    if (mWord <> '') and AText[mIndex].IsUpper and not mWord[Length(mWord)].IsUpper then
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
+    end
+    else if (mIndex > mStart) and AText[mIndex].IsUpper and not AText[mIndex - 1].IsUpper then
     begin
-      Result := Result + [mWord];
-      mWord := '';
+      // Neues Wort ab einem Großbuchstaben nach einem kleinen (CamelCase).
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex;
     end;
-    mWord := mWord + AText[mIndex];
   end;
-  Result := Result + [mWord];
+  Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
 function Abbreviated(const AWord, AAbbreviations: string): string;
