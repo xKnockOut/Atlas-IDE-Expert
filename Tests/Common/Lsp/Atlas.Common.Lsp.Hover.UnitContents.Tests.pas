@@ -46,6 +46,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,

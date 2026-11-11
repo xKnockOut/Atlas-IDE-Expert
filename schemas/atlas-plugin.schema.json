@@ -2883,6 +2883,18 @@
       "x-page": "Editor",
       "x-issue": "#509"
     },
+    "TrackLines": {
+      "type": "boolean",
+      "default": true,
+      "description": "Befunde (Wellenlinie, Randmarke, Fehlertext am Zeilenende) folgen ihrer Zeile sofort bei jeder Bearbeitung, die die IDE kennt (Tippen, Einfügen, Rückgängig, Blockoperationen), auch bevor der Server antwortet. Wird die Zeile gelöscht, verschwindet die Marke bis zur nächsten Antwort. Aus: Marken wandern erst nach der Tipp-Pause mit, Meldungen gelöschter Zeilen werden blass.",
+      "x-key": "editor.trackLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Befunde folgen ihrer Zeile sofort beim Bearbeiten",
+      "x-captionEn": "Findings follow their line immediately while editing",
+      "x-issue": "#1818"
+    },
     "CheckOnSaveDelayMs": {
       "type": "integer",
       "default": 2000,
