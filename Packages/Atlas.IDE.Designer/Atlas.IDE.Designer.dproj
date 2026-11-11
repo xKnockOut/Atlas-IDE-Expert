@@ -105,6 +105,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Measure.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Layout.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Access.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FitText.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ButtonBar.pas"/>
@@ -123,6 +124,8 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Measure.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Tools.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Model.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ResizePreview.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Flash.pas"/>
@@ -134,6 +137,7 @@
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.ToolStrings.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.MeasureOverlay.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.FormPreview.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

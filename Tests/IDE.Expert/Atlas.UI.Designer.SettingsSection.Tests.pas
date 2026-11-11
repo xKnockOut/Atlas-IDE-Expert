@@ -44,6 +44,8 @@ type
     procedure NearAlignmentRoundTrip;
     [Test]
     procedure MeasureRoundTrip;
+    [Test]
+    procedure ResizePreviewRoundTrip;
   end;
 
 implementation
@@ -347,6 +349,30 @@ begin
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.DesignerMeasureDistances, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerMeasureAltKey, 'abschaltbar');
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ResizePreviewRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerResizePreview').Checked, 'Vorgabe an');
+    Assert.AreEqual('1366x768, 1920x1080', EditOf(mPage, 'DesignerResizePreviewSizes').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerResizePreviewShowAnchors').Checked);
+    CheckOf(mPage, 'DesignerResizePreview').Checked := False;
+    EditOf(mPage, 'DesignerResizePreviewSizes').Text := '800x600';
+    CheckOf(mPage, 'DesignerResizePreviewShowAnchors').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerResizePreview, 'abschaltbar');
+    Assert.AreEqual('800x600', mSaved.DesignerResizePreviewSizes);
+    Assert.IsFalse(mSaved.DesignerResizePreviewShowAnchors);
   finally
     mPage.Free;
   end;

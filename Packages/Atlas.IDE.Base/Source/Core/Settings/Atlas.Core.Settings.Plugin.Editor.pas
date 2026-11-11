@@ -525,6 +525,12 @@ type
     DesignerMeasureDistances: Boolean;
     /// <summary>Maße mit Alt zur Komponente unter der Maus (#605, designer.measureAltKey).</summary>
     DesignerMeasureAltKey: Boolean;
+    /// <summary>Knopf „Größe ausprobieren“ (#606, designer.resizePreview).</summary>
+    DesignerResizePreview: Boolean;
+    /// <summary>Schnellwerte „1366x768, 1920x1080“ (#606, designer.resizePreviewSizes).</summary>
+    DesignerResizePreviewSizes: string;
+    /// <summary>Nadeln für Anchors, Flächen für Align (#606, designer.resizePreviewShowAnchors).</summary>
+    DesignerResizePreviewShowAnchors: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1245,12 +1251,18 @@ procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
 begin
   DesignerMeasureDistances := True;
   DesignerMeasureAltKey := True;
+  DesignerResizePreview := True;
+  DesignerResizePreviewSizes := '1366x768, 1920x1080';
+  DesignerResizePreviewShowAnchors := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('DesignerMeasureDistances', DesignerMeasureDistances);
   AIo.Flag('DesignerMeasureAltKey', DesignerMeasureAltKey);
+  AIo.Flag('DesignerResizePreview', DesignerResizePreview);
+  AIo.Text('DesignerResizePreviewSizes', DesignerResizePreviewSizes);
+  AIo.Flag('DesignerResizePreviewShowAnchors', DesignerResizePreviewShowAnchors);
 end;
 
 end.

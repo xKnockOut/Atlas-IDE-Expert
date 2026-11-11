@@ -12,7 +12,7 @@
 //   Mehrfachauswahl ihr umschließendes Rechteck) zur Komponente unter der
 //   Maus, ohne etwas zu verändern.
 // - Werte in Pixeln der DFM: Lagen werden mit PixelsPerInch des Formulars zu
-//   seiner aktuellen DPI (CurrentPPI) zurückgerechnet.
+//   seiner aktuellen DPI (CurrentPPI) zurückgerechnet (TAtlasDesignScale).
 // - Der Knopf schaltet die Anzeige für die Sitzung aus und wieder an.
 // Zeichnen: TAtlasMeasureOverlay. Nur im Hauptthread.
 
@@ -70,45 +70,9 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.Model,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
-
-type
-  /// <summary>Umrechnung zwischen Bildschirmpixeln des Designers und Pixeln der DFM.</summary>
-  TDesignScale = record
-    Design: Integer;
-    Current: Integer;
-    class function ForRoot(ARoot: TWinControl): TDesignScale; static;
-    function ToDesign(const ARect: TRect): TRect;
-    function ToScreen(const APoint: TPoint): TPoint;
-  end;
-
-class function TDesignScale.ForRoot(ARoot: TWinControl): TDesignScale;
-begin
-  Result.Design := 96;
-  Result.Current := 96;
-  if ARoot is TCustomForm then
-  begin
-    Result.Design := TCustomForm(ARoot).PixelsPerInch;
-    Result.Current := ARoot.CurrentPPI;
-  end;
-  if (Result.Design <= 0) or (Result.Current <= 0) then
-  begin
-    Result.Design := 96;
-    Result.Current := 96;
-  end;
-end;
-
-function TDesignScale.ToDesign(const ARect: TRect): TRect;
-begin
-  Result := Rect(MulDiv(ARect.Left, Design, Current), MulDiv(ARect.Top, Design, Current),
-    MulDiv(ARect.Right, Design, Current), MulDiv(ARect.Bottom, Design, Current));
-end;
-
-function TDesignScale.ToScreen(const APoint: TPoint): TPoint;
-begin
-  Result := Point(MulDiv(APoint.X, Current, Design), MulDiv(APoint.Y, Current, Design));
-end;
 
 /// <summary>Steuerelemente der Auswahl mit demselben Parent wie das erste.</summary>
 function SelectedControls(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TControl>;
@@ -173,7 +137,7 @@ end;
 
 /// <summary>Geschwister der Auswahl im Client von ARoot, ohne die Auswahl selbst.</summary>
 function SiblingsOf(const AControls: TArray<TControl>; ARoot: TWinControl;
-  const AScale: TDesignScale): TArray<TAtlasMeasureItem>;
+  const AScale: TAtlasDesignScale): TArray<TAtlasMeasureItem>;
 var
   mParent: TWinControl;
   mIndex, mSkip: Integer;
@@ -200,7 +164,7 @@ begin
 end;
 
 /// <summary>Innenrand des Parents der Auswahl in Pixeln der DFM.</summary>
-function InnerOf(AParent, ARoot: TWinControl; const AScale: TDesignScale): TRect;
+function InnerOf(AParent, ARoot: TWinControl; const AScale: TAtlasDesignScale): TRect;
 begin
   // Padding ist wie die Lagen in Bildschirmpixeln skaliert: erst abziehen, dann umrechnen.
   Result := AScale.ToDesign(TAtlasMeasure.Inner(ClientInRoot(AParent, ARoot), AParent.Padding.Left,
@@ -215,7 +179,8 @@ begin
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MeasureRightOf)];
 end;
 
-function MarksOf(const ALines: TArray<TAtlasMeasureLine>; const AScale: TDesignScale): TArray<TAtlasMeasureMark>;
+function MarksOf(const ALines: TArray<TAtlasMeasureLine>;
+  const AScale: TAtlasDesignScale): TArray<TAtlasMeasureMark>;
 var
   mLine: TAtlasMeasureLine;
   mTexts: TArray<string>;
@@ -235,7 +200,7 @@ end;
 
 /// <summary>Marke „B × H“ unter dem Bezug, mit gleicher Breite bzw. Höhe eines Nachbarn.</summary>
 function SizeMark(const ASubject: TRect; const ASiblings: TArray<TAtlasMeasureItem>;
-  const AScale: TDesignScale): TAtlasMeasureMark;
+  const AScale: TAtlasDesignScale): TAtlasMeasureMark;
 var
   mSize: TAtlasMeasureSize;
   mText: string;
@@ -403,7 +368,7 @@ end;
 function TAtlasIdeDesignerMeasure.DragMarks(ARoot: TWinControl; const AControls: TArray<TControl>;
   ALeftDown: Boolean; out AMarks: TArray<TAtlasMeasureMark>): Boolean;
 var
-  mScale: TDesignScale;
+  mScale: TAtlasDesignScale;
   mNow: TRect;
   mSiblings: TArray<TAtlasMeasureItem>;
   mSubject: TRect;
@@ -422,7 +387,7 @@ begin
   begin
     Exit(False);
   end;
-  mScale := TDesignScale.ForRoot(ARoot);
+  mScale := TAtlasDesignScale.ForRoot(ARoot);
   mSubject := mScale.ToDesign(mNow);
   mSiblings := SiblingsOf(AControls, ARoot, mScale);
   AMarks := MarksOf(TAtlasMeasure.Lines(mSubject, mSiblings, InnerOf(AControls[0].Parent, ARoot, mScale)),
@@ -437,7 +402,7 @@ end;
 function TAtlasIdeDesignerMeasure.AltMarks(ARoot: TWinControl;
   const AControls: TArray<TControl>): TArray<TAtlasMeasureMark>;
 var
-  mScale: TDesignScale;
+  mScale: TAtlasDesignScale;
   mTarget: TControl;
   mTargetRect: TRect;
   mIndex: Integer;
@@ -455,7 +420,7 @@ begin
       Exit;
     end;
   end;
-  mScale := TDesignScale.ForRoot(ARoot);
+  mScale := TAtlasDesignScale.ForRoot(ARoot);
   if mTarget = ARoot then
   begin
     mTargetRect := Rect(0, 0, ARoot.ClientWidth, ARoot.ClientHeight);

@@ -65,7 +65,7 @@ begin
   FSelect := TAtlasIdeDesignerSelect.Create(AOnMessage);
   FArrange := TAtlasIdeDesignerArrange.Create(AOnMessage);
   FNavigate := TAtlasIdeDesignerNavigate.Create;
-  FTools := TAtlasIdeDesignerTools.Create;
+  FTools := TAtlasIdeDesignerTools.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerCommands.Destroy;

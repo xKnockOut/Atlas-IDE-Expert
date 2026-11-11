@@ -86,6 +86,10 @@ begin
   Switch('designer.measureDistances',
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMeasureDistances));
   Switch('designer.measureAltKey', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMeasureAltKey));
+  Switch('designer.resizePreview', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizePreview));
+  Line('designer.resizePreviewSizes', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeSizes));
+  Switch('designer.resizePreviewShowAnchors',
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeAnchors));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

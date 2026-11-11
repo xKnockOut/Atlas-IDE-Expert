@@ -2037,6 +2037,8 @@ uses
   Atlas.Core.Designer.Measure.Tests in 'IDE.Expert\Atlas.Core.Designer.Measure.Tests.pas',
   Atlas.UI.Designer.ToolStrings in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.ToolStrings.pas',
   Atlas.UI.Designer.ToolStrings.Tests in 'IDE.Expert\Atlas.UI.Designer.ToolStrings.Tests.pas',
+  Atlas.Core.Designer.Layout in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Layout.pas',
+  Atlas.Core.Designer.Layout.Tests in 'IDE.Expert\Atlas.Core.Designer.Layout.Tests.pas',
   Atlas.UI.Help.SettingsSection in '..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas',
   Atlas.UI.Help.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas',
   Atlas.UI.Rules.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas',

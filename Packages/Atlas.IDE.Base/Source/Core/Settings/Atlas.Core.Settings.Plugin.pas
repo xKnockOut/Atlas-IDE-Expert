@@ -634,6 +634,12 @@ type
       write FEditorView.DesignerMeasureDistances;
     property DesignerMeasureAltKey: Boolean read FEditorView.DesignerMeasureAltKey
       write FEditorView.DesignerMeasureAltKey;
+    property DesignerResizePreview: Boolean read FEditorView.DesignerResizePreview
+      write FEditorView.DesignerResizePreview;
+    property DesignerResizePreviewSizes: string read FEditorView.DesignerResizePreviewSizes
+      write FEditorView.DesignerResizePreviewSizes;
+    property DesignerResizePreviewShowAnchors: Boolean read FEditorView.DesignerResizePreviewShowAnchors
+      write FEditorView.DesignerResizePreviewShowAnchors;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;
