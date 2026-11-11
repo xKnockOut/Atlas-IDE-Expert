@@ -642,6 +642,14 @@ type
       write FEditorView.DesignerResizePreviewSizes;
     property DesignerResizePreviewShowAnchors: Boolean read FEditorView.DesignerResizePreviewShowAnchors
       write FEditorView.DesignerResizePreviewShowAnchors;
+    property DesignerScalePreview: Boolean read FEditorView.DesignerScalePreview
+      write FEditorView.DesignerScalePreview;
+    property DesignerScalePreviewLevels: string read FEditorView.DesignerScalePreviewLevels
+      write FEditorView.DesignerScalePreviewLevels;
+    property DesignerScalePreviewScreens: string read FEditorView.DesignerScalePreviewScreens
+      write FEditorView.DesignerScalePreviewScreens;
+    property DesignerLongTextFactor: Integer read FEditorView.DesignerLongTextFactor
+      write FEditorView.DesignerLongTextFactor;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;

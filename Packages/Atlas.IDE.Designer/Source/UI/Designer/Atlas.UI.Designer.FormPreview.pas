@@ -49,33 +49,19 @@ type
   public const
     cMinProbe = 40;
   private
-    FData: TAtlasFormPreviewData;
-    FColors: TAtlasColors;
-    FProbe: TSize;
-    FBounds: TArray<TRect>;
-    FFindings: TArray<TAtlasLayoutFinding>;
-    FBar: TFlowPanel;
     FWidthEdit: TEdit;
     FHeightEdit: TEdit;
     FBox: TScrollBox;
-    FPaint: TPaintBox;
-    FStatus: TLabel;
     FDragging: Boolean;
     FUpdating: Boolean;
     FOnClosed: TProc;
-    function S(AValue: Integer): Integer;
-    function Origin: TPoint;
     function FormRect: TRect;
     function GripRect: TRect;
-    function NodeRect(AIndex: Integer): TRect;
     function NodeAt(const APoint: TPoint): Integer;
     function HasFinding(AIndex: Integer): Boolean;
-    function Describe(AIndex: Integer): string;
-    procedure BuildBar;
     function AddButton(const ACaption: string; ATag: Integer): TButton;
     procedure QuickClick(Sender: TObject);
     procedure SizeEdited(Sender: TObject);
-    procedure Recalculate;
     procedure PaintPreview(Sender: TObject);
     procedure PaintNode(AIndex: Integer);
     procedure PaintAnchors(AIndex: Integer; const ARect: TRect);
@@ -84,6 +70,32 @@ type
     procedure PreviewMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FormKey(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormClosed(Sender: TObject; var Action: TCloseAction);
+  protected
+    FData: TAtlasFormPreviewData;
+    FColors: TAtlasColors;
+    /// <summary>Client des Abbilds in Pixeln der Knoten.</summary>
+    FProbe: TSize;
+    FBounds: TArray<TRect>;
+    FFindings: TArray<TAtlasLayoutFinding>;
+    FBar: TFlowPanel;
+    FStatus: TLabel;
+    FPaint: TPaintBox;
+    /// <summary>AValue bei 96 dpi in Pixeln des Fensters (Leiste, Ränder).</summary>
+    function S(AValue: Integer): Integer;
+    function Origin: TPoint;
+    function NodeRect(AIndex: Integer): TRect;
+    /// <summary>Pixel der Knoten in Pixeln des Fensters; hier Pixel der DFM, auf die DPI des Fensters skaliert.
+    /// </summary>
+    function Px(AValue: Integer): Integer; virtual;
+    /// <summary>Beschriftung eines Knotens im Abbild; hier der Name.</summary>
+    function NodeText(AIndex: Integer): string; virtual;
+    /// <summary>Ziehgriff und Größenfelder aktiv?</summary>
+    function CanResize: Boolean; virtual;
+    function Describe(AIndex: Integer): string; virtual;
+    procedure BuildBar; virtual;
+    procedure Recalculate; virtual;
+    /// <summary>Nach den Knoten zeichnen (Grenzen, Markierungen).</summary>
+    procedure PaintOver; virtual;
   public
     constructor CreatePreview(AOwner: TComponent; const AData: TAtlasFormPreviewData; const AColors: TAtlasColors);
     /// <summary>Probegröße setzen (Client, Pixel der DFM); Constraints des Formulars gelten.</summary>
@@ -109,6 +121,7 @@ const
   cTagMinimum = -1;
   cTagDesign = -2;
   cEditWidth = 56;
+  cBasePpi = 96;
   cAlignNames: array[TAtlasLayoutAlign] of string = ('', 'alTop', 'alBottom', 'alLeft', 'alRight', 'alClient',
     'alCustom');
   cAnchorNames: array[TAtlasLayoutAnchor] of string = ('akLeft', 'akTop', 'akRight', 'akBottom');
@@ -147,6 +160,11 @@ begin
   OnClose := FormClosed;
   Width := S(900);
   Height := S(640);
+  FBar := TFlowPanel.Create(Self);
+  FBar.Parent := Self;
+  FBar.Align := alTop;
+  FBar.AutoSize := True;
+  FBar.BevelOuter := bvNone;
   BuildBar;
   FStatus := TLabel.Create(Self);
   FStatus.Parent := Self;
@@ -169,7 +187,27 @@ end;
 
 function TAtlasFormPreviewWindow.S(AValue: Integer): Integer;
 begin
-  Result := MulDiv(AValue, CurrentPPI, 96);
+  Result := MulDiv(AValue, CurrentPPI, cBasePpi);
+end;
+
+function TAtlasFormPreviewWindow.Px(AValue: Integer): Integer;
+begin
+  Result := S(AValue);
+end;
+
+function TAtlasFormPreviewWindow.NodeText(AIndex: Integer): string;
+begin
+  Result := FData.Nodes[AIndex].Name;
+end;
+
+function TAtlasFormPreviewWindow.CanResize: Boolean;
+begin
+  Result := True;
+end;
+
+procedure TAtlasFormPreviewWindow.PaintOver;
+begin
+  // Abbild der Probegröße: nichts weiter.
 end;
 
 function TAtlasFormPreviewWindow.AddButton(const ACaption: string; ATag: Integer): TButton;
@@ -188,11 +226,6 @@ var
   mIndex: Integer;
   mButton: TButton;
 begin
-  FBar := TFlowPanel.Create(Self);
-  FBar.Parent := Self;
-  FBar.Align := alTop;
-  FBar.AutoSize := True;
-  FBar.BevelOuter := bvNone;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := FBar;
   mLabel.Caption := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeSize);
@@ -259,6 +292,11 @@ procedure TAtlasFormPreviewWindow.SetProbe(const ASize: TSize);
 begin
   FProbe := TAtlasFormLayout.Constrain(TSize.Create(Max(ASize.cx, cMinProbe), Max(ASize.cy, cMinProbe)),
     FData.MinClient.cx, FData.MinClient.cy, FData.MaxClient.cx, FData.MaxClient.cy);
+  if FWidthEdit = nil then
+  begin
+    Recalculate;
+    Exit;
+  end;
   FUpdating := True;
   try
     if FWidthEdit.Text <> IntToStr(FProbe.cx) then
@@ -279,7 +317,7 @@ procedure TAtlasFormPreviewWindow.Recalculate;
 begin
   FBounds := TAtlasFormLayout.Arrange(FData.Nodes, FData.Design, FProbe);
   FFindings := TAtlasFormLayout.Problems(FData.Nodes, FBounds, FProbe);
-  FPaint.SetBounds(0, 0, S(FProbe.cx) + 2 * S(cMargin), S(FProbe.cy) + 2 * S(cMargin));
+  FPaint.SetBounds(0, 0, Px(FProbe.cx) + 2 * S(cMargin), Px(FProbe.cy) + 2 * S(cMargin));
   if Length(FFindings) = 0 then
   begin
     FStatus.Caption := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeNone, [FProbe.cx, FProbe.cy]) +
@@ -300,7 +338,7 @@ end;
 
 function TAtlasFormPreviewWindow.FormRect: TRect;
 begin
-  Result := Bounds(Origin.X, Origin.Y, S(FProbe.cx), S(FProbe.cy));
+  Result := Bounds(Origin.X, Origin.Y, Px(FProbe.cx), Px(FProbe.cy));
 end;
 
 function TAtlasFormPreviewWindow.GripRect: TRect;
@@ -314,8 +352,8 @@ var
   mRect: TRect;
 begin
   mRect := TAtlasFormLayout.InForm(FData.Nodes, FBounds, AIndex);
-  Result := Rect(Origin.X + S(mRect.Left), Origin.Y + S(mRect.Top), Origin.X + S(mRect.Right),
-    Origin.Y + S(mRect.Bottom));
+  Result := Rect(Origin.X + Px(mRect.Left), Origin.Y + Px(mRect.Top), Origin.X + Px(mRect.Right),
+    Origin.Y + Px(mRect.Bottom));
 end;
 
 function TAtlasFormPreviewWindow.NodeAt(const APoint: TPoint): Integer;
@@ -365,6 +403,12 @@ begin
       Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutOverlap, [AFinding.Other]);
     TAtlasLayoutProblem.TwoClient:
       Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.LayoutTwoClient, [AFinding.Other]);
+    TAtlasLayoutProblem.Clipped:
+      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleClipped, [AFinding.Amount]);
+    TAtlasLayoutProblem.ScreenWidth:
+      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleScreenWidth, [AFinding.Amount]);
+    TAtlasLayoutProblem.ScreenHeight:
+      Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ScaleScreenHeight, [AFinding.Amount]);
   else
     Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.LayoutAnchorsAlign);
   end;
@@ -458,7 +502,7 @@ begin
     FPaint.Canvas.Pen.Color := TColor(FColors.Error);
   end;
   FPaint.Canvas.Rectangle(mRect);
-  mText := mNode.Name;
+  mText := NodeText(AIndex);
   if FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None) then
   begin
     mText := mText + ' (' + cAlignNames[mNode.Align] + ')';
@@ -497,6 +541,11 @@ begin
       PaintNode(mIndex);
     end;
   end;
+  PaintOver;
+  if not CanResize then
+  begin
+    Exit;
+  end;
   // Ziehgriff rechts unten: Dreieck in der Akzentfarbe.
   mGrip := GripRect;
   FPaint.Canvas.Brush.Style := bsSolid;
@@ -509,7 +558,7 @@ end;
 procedure TAtlasFormPreviewWindow.PreviewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 begin
-  FDragging := (Button = mbLeft) and GripRect.Contains(Point(X, Y));
+  FDragging := CanResize and (Button = mbLeft) and GripRect.Contains(Point(X, Y));
 end;
 
 procedure TAtlasFormPreviewWindow.PreviewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -519,10 +568,10 @@ var
 begin
   if FDragging then
   begin
-    SetProbe(TSize.Create(MulDiv(X - Origin.X, 96, CurrentPPI), MulDiv(Y - Origin.Y, 96, CurrentPPI)));
+    SetProbe(TSize.Create(MulDiv(X - Origin.X, cBasePpi, CurrentPPI), MulDiv(Y - Origin.Y, cBasePpi, CurrentPPI)));
     Exit;
   end;
-  if GripRect.Contains(Point(X, Y)) then
+  if CanResize and GripRect.Contains(Point(X, Y)) then
   begin
     FPaint.Cursor := crSizeNWSE;
   end

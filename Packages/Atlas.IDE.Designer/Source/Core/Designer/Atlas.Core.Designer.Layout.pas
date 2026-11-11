@@ -27,7 +27,9 @@ type
 {$SCOPEDENUMS ON}
   TAtlasLayoutAlign = (None, Top, Bottom, Left, Right, Client, Custom);
   TAtlasLayoutAnchor = (Left, Top, Right, Bottom);
-  TAtlasLayoutProblem = (TooSmall, OutRight, OutBottom, OutLeft, OutTop, Overlap, TwoClient, AnchorsWithAlign);
+  // Clipped, ScreenWidth und ScreenHeight setzt erst die Vorschau in anderen Skalierungen (#607).
+  TAtlasLayoutProblem = (TooSmall, OutRight, OutBottom, OutLeft, OutTop, Overlap, TwoClient, AnchorsWithAlign, Clipped,
+    ScreenWidth, ScreenHeight);
 {$SCOPEDENUMS OFF}
   TAtlasLayoutAnchors = set of TAtlasLayoutAnchor;
 
@@ -59,6 +61,7 @@ type
   end;
 
   TAtlasLayoutFinding = record
+    /// <summary>Index des Knotens; -1 = das Formular selbst (Bildschirmgröße).</summary>
     Node: Integer;
     Problem: TAtlasLayoutProblem;
     /// <summary>Pixel, um die es herausragt.</summary>

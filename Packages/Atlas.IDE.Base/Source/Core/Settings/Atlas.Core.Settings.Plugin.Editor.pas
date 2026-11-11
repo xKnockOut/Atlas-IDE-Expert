@@ -533,6 +533,14 @@ type
     DesignerResizePreviewSizes: string;
     /// <summary>Nadeln für Anchors, Flächen für Align (#606, designer.resizePreviewShowAnchors).</summary>
     DesignerResizePreviewShowAnchors: Boolean;
+    /// <summary>Knopf „Skalierung und Texte“ (#607, designer.scalePreview).</summary>
+    DesignerScalePreview: Boolean;
+    /// <summary>Angebotene Skalierungen „100, 125, 150, 175, 200“ (#607, designer.scalePreviewLevels).</summary>
+    DesignerScalePreviewLevels: string;
+    /// <summary>Angebotene Bildschirme „1366x768, 1920x1080“ (#607, designer.scalePreviewScreens).</summary>
+    DesignerScalePreviewScreens: string;
+    /// <summary>Verlängerung bei „Lange Texte“ in Prozent (#607, designer.longTextFactor).</summary>
+    DesignerLongTextFactor: Integer;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1251,6 +1259,10 @@ begin
   AIo.Text('OverviewRulerKinds', OverviewRulerKinds);
 end;
 
+const
+  /// <summary>Vorgabe für designer.longTextFactor in Prozent.</summary>
+  cLongTextFactor = 30;
+
 procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
 begin
   DesignerMeasureDistances := True;
@@ -1258,6 +1270,10 @@ begin
   DesignerResizePreview := True;
   DesignerResizePreviewSizes := '1366x768, 1920x1080';
   DesignerResizePreviewShowAnchors := True;
+  DesignerScalePreview := True;
+  DesignerScalePreviewLevels := '100, 125, 150, 175, 200';
+  DesignerScalePreviewScreens := '1366x768, 1920x1080';
+  DesignerLongTextFactor := cLongTextFactor;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
@@ -1267,6 +1283,10 @@ begin
   AIo.Flag('DesignerResizePreview', DesignerResizePreview);
   AIo.Text('DesignerResizePreviewSizes', DesignerResizePreviewSizes);
   AIo.Flag('DesignerResizePreviewShowAnchors', DesignerResizePreviewShowAnchors);
+  AIo.Flag('DesignerScalePreview', DesignerScalePreview);
+  AIo.Text('DesignerScalePreviewLevels', DesignerScalePreviewLevels);
+  AIo.Text('DesignerScalePreviewScreens', DesignerScalePreviewScreens);
+  AIo.Number('DesignerLongTextFactor', DesignerLongTextFactor);
 end;
 
 end.

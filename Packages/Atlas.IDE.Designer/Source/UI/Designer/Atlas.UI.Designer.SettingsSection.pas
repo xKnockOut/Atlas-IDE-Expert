@@ -90,6 +90,10 @@ begin
   Line('designer.resizePreviewSizes', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeSizes));
   Switch('designer.resizePreviewShowAnchors',
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsResizeAnchors));
+  Switch('designer.scalePreview', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsScalePreview));
+  Line('designer.scalePreviewLevels', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsScaleLevels));
+  Line('designer.scalePreviewScreens', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsScaleScreens));
+  Number('designer.longTextFactor', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsLongTextFactor));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

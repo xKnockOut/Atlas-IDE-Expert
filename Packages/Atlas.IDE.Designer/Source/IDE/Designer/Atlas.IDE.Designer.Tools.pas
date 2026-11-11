@@ -8,6 +8,8 @@
 //   designer.measureAltKey, TAtlasIdeDesignerMeasure): Schalter.
 // - Größe ausprobieren (#606, designer.resizePreview, TAtlasIdeResizePreview):
 //   Fenster mit der Probegröße.
+// - Skalierung und Texte (#607, designer.scalePreview, TAtlasIdeScalePreview):
+//   Fenster mit Skalierung, Bildschirm und langen Texten.
 // Nur im Hauptthread.
 
 interface
@@ -17,13 +19,15 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.Measure,
-  Atlas.IDE.Designer.ResizePreview;
+  Atlas.IDE.Designer.ResizePreview,
+  Atlas.IDE.Designer.ScalePreview;
 
 type
   TAtlasIdeDesignerTools = class
   private
     FMeasure: TAtlasIdeDesignerMeasure;
     FResize: TAtlasIdeResizePreview;
+    FScale: TAtlasIdeScalePreview;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -44,10 +48,12 @@ begin
   inherited Create;
   FMeasure := TAtlasIdeDesignerMeasure.Create;
   FResize := TAtlasIdeResizePreview.Create(AOnMessage);
+  FScale := TAtlasIdeScalePreview.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerTools.Destroy;
 begin
+  FScale.Free;
   FResize.Free;
   FMeasure.Free;
   inherited Destroy;
@@ -59,7 +65,7 @@ var
   mButton: TAtlasDesignerButton;
 begin
   Result := nil;
-  mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings)];
+  mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings)];
   for mButton in mAll do
   begin
     if mButton.Id <> '' then
@@ -80,6 +86,10 @@ begin
   begin
     FResize.Toggle;
   end
+  else if SameText(AId, TAtlasIdeScalePreview.cId) then
+  begin
+    FScale.Toggle;
+  end
   else
   begin
     Result := False;
@@ -90,6 +100,7 @@ procedure TAtlasIdeDesignerTools.ApplyTheme;
 begin
   FMeasure.ApplyTheme;
   FResize.ApplyTheme;
+  FScale.ApplyTheme;
 end;
 
 end.
