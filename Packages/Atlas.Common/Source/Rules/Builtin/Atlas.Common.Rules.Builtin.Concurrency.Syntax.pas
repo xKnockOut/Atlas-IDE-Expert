@@ -76,13 +76,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.StrUtils,
-  Atlas.Text.Lines,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Derived;
 
 function InList(const AItems: array of string; const AText: string): Boolean;

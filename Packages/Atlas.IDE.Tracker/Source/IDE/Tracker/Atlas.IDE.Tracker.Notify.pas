@@ -152,7 +152,6 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Popup.Window,
   Atlas.UI.Tracker.Notify,

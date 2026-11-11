@@ -62,9 +62,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Options,
-  Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Localization.Texts;
 

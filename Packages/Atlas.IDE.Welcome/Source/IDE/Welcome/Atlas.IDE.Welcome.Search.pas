@@ -76,7 +76,6 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Session,
   Atlas.UI.Welcome.Strings,

@@ -85,6 +85,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.FormFiles,
+  Atlas.Common.Semantics.UsesUsage,
   Shell.Bootstrap,
   Shell.Platform;
 
@@ -106,37 +107,6 @@ begin
         mAction.Command := TLspFormFiles.cConvertCommand;
         mAction.CommandArguments := [AUri];
         Result := [mAction];
-      end;
-    end;
-end;
-
-/// <summary>Was der Index über eine Unit für die uses-Analyse weiß; lädt sie bei Bedarf über AEnsureUnit.
-/// AModules: Module, auf die die Formulardatei der Unit verweist (UsedByForm).</summary>
-function UsesInfoFunc(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
-  const AModules: TArray<string>): TUsesUnitInfoFunc;
-begin
-  Result :=
-    function(const AUnitName: string): TUsesUnitInfo
-    var
-      mUnit: TUnitIndex;
-      mSymbol: TIndexSymbol;
-    begin
-      Result := Default(TUsesUnitInfo);
-      AEnsureUnit(AUnitName);
-      if not AIndex.FindUnit(AUnitName, mUnit) then
-      begin
-        Exit;
-      end;
-      Result.Known := True;
-      Result.HasInitialization := mUnit.HasInitialization;
-      for mSymbol in mUnit.Symbols do
-      begin
-        if mSymbol.InInterface then
-        begin
-          Result.Names := Result.Names + [mSymbol.Name];
-          Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, AModules) and
-            (mSymbol.Kind = TIndexSymbolKind.Variable));
-        end;
       end;
     end;
 end;
@@ -249,12 +219,19 @@ end;
 function TShellCodeActions.UsesContextOf(const AUri: string; out AContext: TUsesContext): Boolean;
 var
   mWorkspace: TShellCodeActionWorkspace;
+  mSource: TUsesUsageSource;
 begin
   AContext := Default(TUsesContext);
   mWorkspace := FServices.WorkspaceOf(AUri);
   AContext.Keep := mWorkspace.UsesKeep;
   AContext.Namespaces := mWorkspace.Namespaces;
-  AContext.Info := UsesInfoFunc(FServices.Index, FServices.EnsureUnit, FormModulesOf(AUri));
+  AContext.Info := TUsesUsage.UnitInfo(FServices.Index, FServices.EnsureUnit, FormModulesOf(AUri));
+  // Namensauflösung für ungenutzte uses (#1925): dieselbe Analyse wie die Regel unused-uses.
+  mSource := Default(TUsesUsageSource);
+  mSource.Index := FServices.Index;
+  mSource.EnsureUnit := FServices.EnsureUnit;
+  mSource.Namespaces := mWorkspace.Namespaces;
+  AContext.Resolve := TUsesUsage.ResolveFunc(mSource, TDocumentUris.ToPath(AUri), AContext.Info);
   AContext.Declaring := DeclaringFunc(FServices.Index);
   Result := True;
 end;

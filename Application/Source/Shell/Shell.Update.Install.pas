@@ -34,7 +34,6 @@ uses
   Atlas.Common.Updates.Ides,
   Atlas.Common.Updates.Prepare,
   Atlas.Common.Updates.Apply,
-  Atlas.Common.Updates.Selection,
   Shell.Update.System;
 
 type

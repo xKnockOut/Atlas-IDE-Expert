@@ -205,7 +205,6 @@ uses
   Atlas.IDE.Commands.MenuActions,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Lsp.Progress;
 

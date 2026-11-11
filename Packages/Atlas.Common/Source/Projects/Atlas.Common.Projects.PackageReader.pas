@@ -11,7 +11,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract;
 
 type

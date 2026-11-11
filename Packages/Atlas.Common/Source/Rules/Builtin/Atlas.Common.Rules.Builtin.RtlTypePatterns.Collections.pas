@@ -55,12 +55,8 @@ uses
   Atlas.Common.Pascal.FormatStrings,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
   Atlas.Common.Localization.Texts;

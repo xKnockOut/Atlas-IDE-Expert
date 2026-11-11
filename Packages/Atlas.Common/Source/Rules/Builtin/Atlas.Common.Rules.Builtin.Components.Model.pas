@@ -151,8 +151,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
-  Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines;
 
 function IsIn(const AText: string; const AWords: array of string): Boolean;

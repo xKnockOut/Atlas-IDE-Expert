@@ -57,7 +57,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Components.Model,

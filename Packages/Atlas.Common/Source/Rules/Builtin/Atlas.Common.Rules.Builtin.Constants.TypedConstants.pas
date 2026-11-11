@@ -26,7 +26,6 @@ type
 implementation
 
 uses
-  Atlas.Common.Index.NameFacts,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Rules.Derived,
@@ -36,14 +35,10 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.DirectiveNames,
-  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.OrdinalConstants,
-  Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Localization.Texts;

@@ -46,7 +46,8 @@
 //                       außerhalb der Gruppe (Option projectKinds).
 //   unused-uses         uses-Eintrag, aus dessen Unit nichts verwendet wird
 //                       (#1352), mit derselben Analyse wie die Hinweise im
-//                       Editor (#621, TUsesActions.Entries): Units, die der
+//                       Editor (#621, TUsesActions.Entries) samt
+//                       Namensauflösung (#1925, TUsesUsage): Units, die der
 //                       Index nicht kennt, mit initialization/finalization
 //                       oder aus usesKeep und der Option keep (#1135)
 //                       bleiben; inaktive Zweige zählen
@@ -130,6 +131,7 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Semantics.UsesUsage,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
@@ -1214,39 +1216,6 @@ end;
 
 { TUnusedUsesRule }
 
-/// <summary>Auskunft über eine Unit im uses für TUsesActions.Entries aus dem Index; AEnsure lädt sie vorher
-/// nach, wenn gesetzt.</summary>
-function UsesUnitInfo(const AIndex: ISymbolIndex; const AEnsure: TEnsureUnitFunc;
-  const AModules: TArray<string>): TUsesUnitInfoFunc;
-begin
-  Result :=
-    function(const AUnitName: string): TUsesUnitInfo
-    var
-      mUnit: TUnitIndex;
-      mSymbol: TIndexSymbol;
-    begin
-      Result := Default(TUsesUnitInfo);
-      if Assigned(AEnsure) then
-      begin
-        AEnsure(AUnitName);
-      end;
-      if AIndex.FindUnit(AUnitName, mUnit) then
-      begin
-        Result.Known := True;
-        Result.HasInitialization := mUnit.HasInitialization;
-        for mSymbol in mUnit.Symbols do
-        begin
-          if mSymbol.InInterface then
-          begin
-            Result.Names := Result.Names + [mSymbol.Name];
-            Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, AModules) and
-              (mSymbol.Kind = TIndexSymbolKind.Variable));
-          end;
-        end;
-      end;
-    end;
-end;
-
 function TUnusedUsesRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cUnusedUsesRuleId, TRuleSeverity.Hint, cTexts[TDeadCodeText.UsesTitle].Text);
@@ -1273,6 +1242,8 @@ var
   mEntry: TUsesEntry;
   mEdit: TTextEdit;
   mFixes: TArray<TRuleFix>;
+  mInfo: TUsesUnitInfoFunc;
+  mSource: TUsesUsageSource;
 begin
   // Auch bei einem Aufruf ohne Prüflauf (der Lauf fragt Applies vorher).
   if not Applies(AContext) then
@@ -1280,9 +1251,16 @@ begin
     Exit;
   end;
   // Module, auf die die Formulardatei verweist: Ihr uses-Eintrag ist gebraucht (dfm-reference-unit-missing).
-  for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges,
-    UsesUnitInfo(AContext.Index, AContext.EnsureUnit, TFormModel.ForeignModulesOf(AContext.FormText)),
-    Keep(AContext.Options, AContext.UsesKeep)) do
+  mInfo := TUsesUsage.UnitInfo(AContext.Index, AContext.EnsureUnit, TFormModel.ForeignModulesOf(AContext.FormText));
+  mSource := Default(TUsesUsageSource);
+  mSource.Index := AContext.Index;
+  mSource.EnsureUnit := AContext.EnsureUnit;
+  mSource.TreeUnits := AContext.TreeUnits;
+  mSource.NameFacts := AContext.NameFacts;
+  mSource.Namespaces := AContext.Namespaces;
+  for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges, mInfo,
+    Keep(AContext.Options, AContext.UsesKeep), TUsesUsage.Resolve(mSource, AContext.Tree, AContext.RelativePath,
+    AContext.InactiveRanges, mInfo)) do
   begin
     if mEntry.State <> TUsesEntryState.Unused then
     begin

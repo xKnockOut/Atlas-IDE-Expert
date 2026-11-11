@@ -75,7 +75,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.NameResolver.Symbols,
-  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,

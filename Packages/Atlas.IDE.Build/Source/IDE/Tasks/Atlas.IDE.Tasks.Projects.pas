@@ -70,7 +70,6 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Projects.Contract,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Tasks.Runs,
   Atlas.Text.Lines,

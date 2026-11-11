@@ -86,9 +86,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Editing.RoutineBody;
 
 function BareTypeName(const AName: string): string;
 var

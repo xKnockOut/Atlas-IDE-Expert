@@ -117,7 +117,6 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.SyncObjs,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.Lines,

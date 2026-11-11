@@ -817,10 +817,11 @@ begin
   begin
     Exit;
   end;
-  mBefore := TUsesActions.UnusedUnits(FTree.Tokens, mUses_.Info, mUses_.Keep);
+  // Mit Namensauflösung wie "ungenutzte uses" (#1925).
+  mBefore := TUsesActions.UnusedUnits(FTree.Tokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(FText, nil));
   mCheck := TSyntaxTreeCache.Parse(ANewText);
   try
-    mAfter := TUsesActions.UnusedUnits(mCheck.Tokens, mUses_.Info, mUses_.Keep);
+    mAfter := TUsesActions.UnusedUnits(mCheck.Tokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(ANewText, nil));
   finally
     mCheck.Free;
   end;
