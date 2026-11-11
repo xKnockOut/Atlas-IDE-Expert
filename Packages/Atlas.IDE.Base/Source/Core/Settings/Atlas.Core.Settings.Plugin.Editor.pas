@@ -542,6 +542,12 @@ type
     DesignerButtonBarSetModalResult: Boolean;
     /// <summary>Eigene Begriffe „ok=Weiter|Los; cancel=Zurück“ (#732, designer.buttonBar.roles).</summary>
     DesignerButtonBarRoles: string;
+    /// <summary>Befehl „In Reihe duplizieren“ (#736, designer.duplicateRow).</summary>
+    DesignerDuplicateRow: Boolean;
+    /// <summary>Ereignis-Handler der Kopien teilen (#736, designer.duplicateRow.shareEvents).</summary>
+    DesignerDuplicateRowShareEvents: Boolean;
+    /// <summary>Abstand ohne erkannten Nachbarn (#736, designer.duplicateRow.defaultGap).</summary>
+    DesignerDuplicateRowDefaultGap: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1065,6 +1071,9 @@ begin
   Result.DesignerButtonBarMargin := 8;
   Result.DesignerButtonBarSetModalResult := True;
   Result.DesignerButtonBarRoles := '';
+  Result.DesignerDuplicateRow := True;
+  Result.DesignerDuplicateRowShareEvents := True;
+  Result.DesignerDuplicateRowDefaultGap := 8;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1109,6 +1118,7 @@ begin
     cButtonBarRightTop, cButtonBarRightBottom]);
   DesignerButtonBarGap := EnsureRange(DesignerButtonBarGap, 0, cMaxButtonBarSpace);
   DesignerButtonBarMargin := EnsureRange(DesignerButtonBarMargin, 0, cMaxButtonBarSpace);
+  DesignerDuplicateRowDefaultGap := EnsureRange(DesignerDuplicateRowDefaultGap, 0, cMaxButtonBarSpace);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1145,6 +1155,9 @@ begin
   AIo.Number('DesignerButtonBarMargin', DesignerButtonBarMargin);
   AIo.Flag('DesignerButtonBarSetModalResult', DesignerButtonBarSetModalResult);
   AIo.Text('DesignerButtonBarRoles', DesignerButtonBarRoles);
+  AIo.Flag('DesignerDuplicateRow', DesignerDuplicateRow);
+  AIo.Flag('DesignerDuplicateRowShareEvents', DesignerDuplicateRowShareEvents);
+  AIo.Number('DesignerDuplicateRowDefaultGap', DesignerDuplicateRowDefaultGap);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

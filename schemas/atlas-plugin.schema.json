@@ -5076,6 +5076,40 @@
       "x-node": "editor.designerBar",
       "x-issue": "#732"
     },
+    "DesignerDuplicateRow": {
+      "description": "Befehl „In Reihe duplizieren …“ im Menü „Anordnen“ der Designer-Leiste: kopiert die markierten Steuerelemente mehrmals nach unten oder rechts, mit Namen und Beschriftungen aus einer Liste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerDuplicateRowShareEvents": {
+      "description": "Vorgabe im Dialog: Die Kopien bekommen dieselben Ereignis-Handler wie das Original; aus = Kopien ohne Handler.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.duplicateRow.shareEvents",
+      "x-parent": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
+    "DesignerDuplicateRowDefaultGap": {
+      "description": "Abstand zwischen den Kopien in Pixeln (bei 96 dpi), wenn die Auswahl keinen Nachbarn hat, an dem sich ein Abstand ablesen lässt.",
+      "type": "integer",
+      "default": 8,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "designer.duplicateRow.defaultGap",
+      "x-parent": "designer.duplicateRow",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#736"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

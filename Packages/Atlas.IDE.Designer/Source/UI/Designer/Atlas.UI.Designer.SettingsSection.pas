@@ -89,6 +89,11 @@ begin
   Switch('designer.buttonBar.setModalResult',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarModal));
   Line('designer.buttonBar.roles', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerButtonBarRoles));
+  Switch('designer.duplicateRow', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerDuplicateRow));
+  Switch('designer.duplicateRow.shareEvents',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerDuplicateShare));
+  Number('designer.duplicateRow.defaultGap',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerDuplicateGap));
 end;
 
 end.

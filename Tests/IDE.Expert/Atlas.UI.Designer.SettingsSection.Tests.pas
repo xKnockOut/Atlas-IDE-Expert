@@ -34,6 +34,8 @@ type
     procedure FitToTextRoundTrip;
     [Test]
     procedure ButtonBarRoundTrip;
+    [Test]
+    procedure DuplicateRowRoundTrip;
   end;
 
 implementation
@@ -220,6 +222,30 @@ begin
     Assert.AreEqual(TAtlasPluginSettings.cButtonBarRightTop, mSaved.DesignerButtonBarPosition);
     Assert.IsFalse(mSaved.DesignerButtonBarSetModalResult);
     Assert.AreEqual('ok=Weiter', mSaved.DesignerButtonBarRoles);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.DuplicateRowRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerDuplicateRow').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerDuplicateRowShareEvents').Checked);
+    Assert.AreEqual('8', EditOf(mPage, 'DesignerDuplicateRowDefaultGap').Text);
+    CheckOf(mPage, 'DesignerDuplicateRow').Checked := False;
+    CheckOf(mPage, 'DesignerDuplicateRowShareEvents').Checked := False;
+    EditOf(mPage, 'DesignerDuplicateRowDefaultGap').Text := '12';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerDuplicateRow, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerDuplicateRowShareEvents);
+    Assert.AreEqual(12, mSaved.DesignerDuplicateRowDefaultGap);
   finally
     mPage.Free;
   end;

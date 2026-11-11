@@ -645,6 +645,12 @@ type
       write FEditorView.DesignerButtonBarSetModalResult;
     property DesignerButtonBarRoles: string read FEditorView.DesignerButtonBarRoles
       write FEditorView.DesignerButtonBarRoles;
+    property DesignerDuplicateRow: Boolean read FEditorView.DesignerDuplicateRow
+      write FEditorView.DesignerDuplicateRow;
+    property DesignerDuplicateRowShareEvents: Boolean read FEditorView.DesignerDuplicateRowShareEvents
+      write FEditorView.DesignerDuplicateRowShareEvents;
+    property DesignerDuplicateRowDefaultGap: Integer read FEditorView.DesignerDuplicateRowDefaultGap
+      write FEditorView.DesignerDuplicateRowDefaultGap;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

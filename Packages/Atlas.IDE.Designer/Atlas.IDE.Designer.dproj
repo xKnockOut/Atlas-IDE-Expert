@@ -95,6 +95,7 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Neighbours.pas"/>
@@ -103,6 +104,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Access.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FitText.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ButtonBar.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.DuplicateRow.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Arrange.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>
@@ -112,7 +114,9 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Flash.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Outlines.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>
