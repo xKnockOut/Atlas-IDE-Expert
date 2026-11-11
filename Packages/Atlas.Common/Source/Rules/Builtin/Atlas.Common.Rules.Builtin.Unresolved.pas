@@ -1305,7 +1305,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TUnresolvedAttributeCheck.Visit(ARoot: TSyntaxNode);
 var
   mPending: TStack<TSyntaxNode>;
@@ -1571,7 +1571,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TUnresolvedTypeCheck.Collect(ARoot: TSyntaxNode);
 var
   mPending: TStack<TSyntaxNode>;
@@ -1664,7 +1664,7 @@ begin
     mUnits, FLineBreak));
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TUnresolvedTypeCheck.Visit(ARoot: TSyntaxNode);
 var
   mPending: TStack<TSyntaxNode>;

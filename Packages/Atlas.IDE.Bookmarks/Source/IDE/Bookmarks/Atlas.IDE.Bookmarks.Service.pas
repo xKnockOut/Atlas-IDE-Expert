@@ -158,7 +158,8 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Bookmarks.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Host;
 
 const
   /// <summary>So lange steht ein Hinweis der schnellen Lesezeichen im Statusfeld.</summary>
@@ -172,23 +173,6 @@ end;
 function NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-function ActiveProject: string;
-var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
-begin
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mProject := mServices.GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
 end;
 
 function Enabled(AReport: Boolean): Boolean;
@@ -469,7 +453,7 @@ begin
   Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
   if Result = '' then
   begin
-    Result := ActiveProject;
+    Result := TAtlasIdeFiles.ActiveProjectFile;
   end;
   if (Result <> '') and (FState.ProjectOf <> nil) then
   begin
@@ -490,7 +474,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := ActiveProject;
+    Result := TAtlasIdeFiles.ActiveProjectFile;
   end;
 end;
 
@@ -679,23 +663,6 @@ begin
   end;
 end;
 
-/// <summary>Fläche, über der die Palette erscheint: aktives Fenster, sonst Hauptfenster, sonst Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
-end;
-
 /// <summary>Palette über die Lesezeichen von AProject; Auswahl springt hin.</summary>
 procedure ShowPalette(const AProject: string; const AList: TAtlasBookmarkList);
 var
@@ -717,7 +684,7 @@ begin
           TAtlasIdeBookmarks.OpenBookmark(mProject, mId);
         end);
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 class procedure TAtlasIdeBookmarks.GoToBookmark;

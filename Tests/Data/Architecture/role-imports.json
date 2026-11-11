@@ -1,5 +1,5 @@
 {
-  "description": "Fallliste der Rollenmatrix (Konzept 8.1/8.3, docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest.",
+  "description": "Fallliste der Rollenmatrix (docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest.",
   "prefixes": [
     "Atlas.Text",
     "Atlas.Common",

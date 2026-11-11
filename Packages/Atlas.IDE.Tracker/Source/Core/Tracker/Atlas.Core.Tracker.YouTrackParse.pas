@@ -66,24 +66,11 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.StrUtils,
+  System.Math,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Internals.YouTrackJson,
-  Atlas.Core.Tracker.YouTrackApi;
-
-/// <summary>Ganze Zahl über 0 bis MaxInt; sonst 0.</summary>
-function PositiveIntOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-  mNumber: Int64;
-begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mNumber) and (mNumber > 0) and
-    (mNumber <= MaxInt) then
-  begin
-    Result := Integer(mNumber);
-  end;
-end;
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Text.Json;
 
 /// <summary>Setzt ASlot auf AText, wenn er noch leer ist (der erste Wert gilt).</summary>
 procedure SetFirst(var ASlot: string; const AText: string);
@@ -111,7 +98,7 @@ begin
       mText := TAtlasYouTrackJson.ValueText(TJSONObject(mField).Values['value']);
       if mText <> '' then
       begin
-        AProc(Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mField), 'name')), mText);
+        AProc(Trim(TJsonRead.Text(TJSONObject(mField), 'name')), mText);
       end;
     end;
   end;
@@ -145,9 +132,9 @@ var
   mIssue: TAtlasTrackerIssue;
 begin
   mIssue := TAtlasTrackerIssue.Empty;
-  mIssue.Key := Trim(TAtlasYouTrackJson.TextOf(AItem, 'idReadable'));
-  mIssue.Number := PositiveIntOf(AItem, 'numberInProject');
-  mIssue.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(AItem, 'summary'), TAtlasTrackerIssue.cMaxTitle);
+  mIssue.Key := Trim(TJsonRead.Text(AItem, 'idReadable'));
+  mIssue.Number := Max(0, TJsonRead.Int(AItem, 'numberInProject'));
+  mIssue.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AItem, 'summary'), TAtlasTrackerIssue.cMaxTitle);
   ForEachField(AItem.Values['customFields'],
     procedure(AName, AText: string)
     begin
@@ -197,13 +184,13 @@ function TypeKind(AType: TJSONObject; const ADirection: string): TAtlasTrackerLi
 var
   mAggregation: Boolean;
 begin
-  mAggregation := TAtlasYouTrackJson.BoolOf(AType, 'aggregation');
-  Result := TAtlasTrackerLinks.YouTrackKind(TAtlasYouTrackJson.TextOf(AType, 'name'), TAtlasYouTrackJson.TextOf(AType, 'sourceToTarget'),
-    TAtlasYouTrackJson.TextOf(AType, 'targetToSource'), ADirection, mAggregation);
+  mAggregation := TJsonRead.Flag(AType, 'aggregation');
+  Result := TAtlasTrackerLinks.YouTrackKind(TJsonRead.Text(AType, 'name'), TJsonRead.Text(AType, 'sourceToTarget'),
+    TJsonRead.Text(AType, 'targetToSource'), ADirection, mAggregation);
   if Result = TAtlasTrackerLinkKind.Other then
   begin
-    Result := TAtlasTrackerLinks.YouTrackKind(TAtlasYouTrackJson.TextOf(AType, 'localizedName'),
-      TAtlasYouTrackJson.TextOf(AType, 'localizedSourceToTarget'), TAtlasYouTrackJson.TextOf(AType, 'localizedTargetToSource'), ADirection, mAggregation);
+    Result := TAtlasTrackerLinks.YouTrackKind(TJsonRead.Text(AType, 'localizedName'),
+      TJsonRead.Text(AType, 'localizedSourceToTarget'), TJsonRead.Text(AType, 'localizedTargetToSource'), ADirection, mAggregation);
   end;
 end;
 
@@ -220,7 +207,7 @@ begin
   end;
   for mField in TJSONArray(mFields) do
   begin
-    if (mField is TJSONObject) and TAtlasYouTrackJson.IsOneOf(TAtlasYouTrackJson.TextOf(TJSONObject(mField), 'name'),
+    if (mField is TJSONObject) and TAtlasYouTrackJson.IsOneOf(TJsonRead.Text(TJSONObject(mField), 'name'),
       ['State', 'Status', 'Zustand']) then
     begin
       Result := TAtlasYouTrackJson.ValueText(TJSONObject(mField).Values['value']);
@@ -273,7 +260,7 @@ begin
   begin
     if mTag is TJSONObject then
     begin
-      mText := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mTag), 'name'), 60);
+      mText := TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mTag), 'name'), 60);
       if mText <> '' then
       begin
         Result := Result + [mText];
@@ -302,10 +289,10 @@ var
   mUrl: string;
 begin
   AAttachment := Default(TAtlasTrackerAttachment);
-  AAttachment.Name := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(AObject, 'name'), 200);
-  AAttachment.MimeType := TAtlasYouTrackJson.TextOf(AObject, 'mimeType');
+  AAttachment.Name := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AObject, 'name'), 200);
+  AAttachment.MimeType := TJsonRead.Text(AObject, 'mimeType');
   AAttachment.Size := AttachmentSizeOf(AObject);
-  mUrl := TAtlasYouTrackJson.TextOf(AObject, 'url');
+  mUrl := TJsonRead.Text(AObject, 'url');
   if StartsStr('/', mUrl) and (AServer <> '') then
   begin
     mUrl := AServer + mUrl;
@@ -332,7 +319,7 @@ begin
     begin
       Break;
     end;
-    if (mItem is TJSONObject) and not TAtlasYouTrackJson.BoolOf(TJSONObject(mItem), 'removed') and
+    if (mItem is TJSONObject) and not TJsonRead.Flag(TJSONObject(mItem), 'removed') and
       AttachmentOf(TJSONObject(mItem), AServer, mAttachment) then
     begin
       Result := Result + [mAttachment];
@@ -363,8 +350,8 @@ end;
 function LinkOf(AIssue: TJSONObject; const ARelation: string; AKind: TAtlasTrackerLinkKind): TAtlasTrackerLink;
 begin
   Result := Default(TAtlasTrackerLink);
-  Result.Key := Trim(TAtlasYouTrackJson.TextOf(AIssue, 'idReadable'));
-  Result.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(AIssue, 'summary'), 200);
+  Result.Key := Trim(TJsonRead.Text(AIssue, 'idReadable'));
+  Result.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(AIssue, 'summary'), 200);
   Result.Relation := TAtlasYouTrackJson.Shorten(ARelation, 60);
   Result.Kind := AKind;
   Result.StateKnown := AIssue.Values['resolved'] <> nil;
@@ -385,7 +372,7 @@ begin
   begin
     Exit;
   end;
-  mDirection := UpperCase(TAtlasYouTrackJson.TextOf(AGroup, 'direction'));
+  mDirection := UpperCase(TJsonRead.Text(AGroup, 'direction'));
   mRelation := '';
   mKind := TAtlasTrackerLinkKind.Other;
   if AGroup.Values['linkType'] is TJSONObject then
@@ -427,7 +414,7 @@ end;
 function CommentOf(AObject: TJSONObject): TAtlasTrackerComment;
 begin
   Result := Default(TAtlasTrackerComment);
-  Result.Text := TAtlasYouTrackJson.Limited(TAtlasYouTrackJson.TextOf(AObject, 'text'));
+  Result.Text := TAtlasYouTrackJson.Limited(TJsonRead.Text(AObject, 'text'));
   Result.Created := TAtlasYouTrackJson.TimeOf(AObject, 'created');
   if AObject.Values['author'] is TJSONObject then
   begin
@@ -447,7 +434,7 @@ begin
   end;
   for mItem in TJSONArray(AItems) do
   begin
-    if (mItem is TJSONObject) and not TAtlasYouTrackJson.BoolOf(TJSONObject(mItem), 'deleted') then
+    if (mItem is TJSONObject) and not TJsonRead.Flag(TJSONObject(mItem), 'deleted') then
     begin
       Result := Result + [CommentOf(TJSONObject(mItem))];
     end;
@@ -464,10 +451,10 @@ var
   mDetails: TAtlasTrackerDetails;
 begin
   mDetails := TAtlasTrackerDetails.Empty;
-  mDetails.Key := Trim(TAtlasYouTrackJson.TextOf(ARoot, 'idReadable'));
-  mDetails.Number := PositiveIntOf(ARoot, 'numberInProject');
-  mDetails.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(ARoot, 'summary'), 500);
-  mDetails.Description := TAtlasYouTrackJson.Limited(TAtlasYouTrackJson.TextOf(ARoot, 'description'));
+  mDetails.Key := Trim(TJsonRead.Text(ARoot, 'idReadable'));
+  mDetails.Number := Max(0, TJsonRead.Int(ARoot, 'numberInProject'));
+  mDetails.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(ARoot, 'summary'), 500);
+  mDetails.Description := TAtlasYouTrackJson.Limited(TJsonRead.Text(ARoot, 'description'));
   mDetails.Created := TAtlasYouTrackJson.TimeOf(ARoot, 'created');
   mDetails.Updated := TAtlasYouTrackJson.TimeOf(ARoot, 'updated');
   ForEachField(ARoot.Values['customFields'],
@@ -494,7 +481,7 @@ begin
   ADetails := TAtlasTrackerDetails.Empty;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := (mValue is TJSONObject) and (Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'idReadable')) <> '');
+    Result := (mValue is TJSONObject) and (Trim(TJsonRead.Text(TJSONObject(mValue), 'idReadable')) <> '');
     if Result then
     begin
       ADetails := DetailsOf(TJSONObject(mValue), ATarget.Server, AComments);
@@ -512,7 +499,7 @@ begin
   mType := AField.Values['fieldType'];
   if mType is TJSONObject then
   begin
-    Result := LowerCase(TAtlasYouTrackJson.TextOf(TJSONObject(mType), 'id'));
+    Result := LowerCase(TJsonRead.Text(TJSONObject(mType), 'id'));
   end;
 end;
 
@@ -557,9 +544,9 @@ begin
   end;
   for mItem in TJSONArray(TJSONObject(ABundle).Values['values']) do
   begin
-    if (mItem is TJSONObject) and not TAtlasYouTrackJson.BoolOf(TJSONObject(mItem), 'archived') then
+    if (mItem is TJSONObject) and not TJsonRead.Flag(TJSONObject(mItem), 'archived') then
     begin
-      AddValue(AValues, TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'name'));
+      AddValue(AValues, TJsonRead.Text(TJSONObject(mItem), 'name'));
     end;
   end;
 end;
@@ -576,7 +563,7 @@ begin
   begin
     Exit;
   end;
-  mName := TAtlasYouTrackJson.TextOf(TJSONObject(mField), 'name');
+  mName := TJsonRead.Text(TJSONObject(mField), 'name');
   if AKind <> TAtlasTrackerValueKind.States then
   begin
     AddValue(AValues, mName);
@@ -598,11 +585,11 @@ begin
   begin
     if (AKind <> TAtlasTrackerValueKind.States) and KindMatches(FieldTypeOf(AEntry), AKind) then
     begin
-      AddValue(AValues, TAtlasYouTrackJson.TextOf(AEntry, 'name'));
+      AddValue(AValues, TJsonRead.Text(AEntry, 'name'));
     end;
     Exit;
   end;
-  if (AProject <> '') and not SameText(TAtlasYouTrackJson.TextOf(AEntry, 'shortName'), AProject) then
+  if (AProject <> '') and not SameText(TJsonRead.Text(AEntry, 'shortName'), AProject) then
   begin
     Exit;
   end;
@@ -655,9 +642,9 @@ begin
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
-      if (mItem is TJSONObject) and not TAtlasYouTrackJson.BoolOf(TJSONObject(mItem), 'banned') then
+      if (mItem is TJSONObject) and not TJsonRead.Flag(TJSONObject(mItem), 'banned') then
       begin
-        AddValue(AValues, TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'login'));
+        AddValue(AValues, TJsonRead.Text(TJSONObject(mItem), 'login'));
       end;
     end;
   finally
@@ -682,15 +669,15 @@ begin
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
-      if not (mItem is TJSONObject) or TAtlasYouTrackJson.BoolOf(TJSONObject(mItem), 'banned') then
+      if not (mItem is TJSONObject) or TJsonRead.Flag(TJSONObject(mItem), 'banned') then
       begin
         Continue;
       end;
-      mLogin := Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'login'));
+      mLogin := Trim(TJsonRead.Text(TJSONObject(mItem), 'login'));
       if mLogin <> '' then
       begin
         AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin,
-          TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'fullName'), 80))];
+          TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mItem), 'fullName'), 80))];
       end;
     end;
   finally
@@ -722,7 +709,7 @@ begin
       begin
         Exit;
       end;
-      ASettings.Enabled := TAtlasYouTrackJson.BoolOf(TJSONObject(mValue), 'enabled');
+      ASettings.Enabled := TJsonRead.Flag(TJSONObject(mValue), 'enabled');
       mTypes := TJSONObject(mValue).Values['workItemTypes'];
     end;
     if (mTypes <> nil) and not (mTypes is TJSONArray) then
@@ -736,7 +723,7 @@ begin
       begin
         if mItem is TJSONObject then
         begin
-          AddValue(ASettings.WorkTypes, TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'name'));
+          AddValue(ASettings.WorkTypes, TJsonRead.Text(TJSONObject(mItem), 'name'));
         end;
       end;
     end;
@@ -752,10 +739,10 @@ begin
   AText := '';
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := (mValue is TJSONObject) and (TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'idReadable') <> '');
+    Result := (mValue is TJSONObject) and (TJsonRead.Text(TJSONObject(mValue), 'idReadable') <> '');
     if Result then
     begin
-      AText := TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'description');
+      AText := TJsonRead.Text(TJSONObject(mValue), 'description');
     end;
   finally
     mValue.Free;
@@ -774,8 +761,8 @@ var
 begin
   AId := '';
   Result := False;
-  if (TAtlasYouTrackJson.TextOf(AType, 'id') = '') or
-    (AKnownOnly and not TAtlasYouTrackJson.IsOneOf(TAtlasYouTrackJson.TextOf(AType, 'name'), cKnownLinkTypes)) then
+  if (TJsonRead.Text(AType, 'id') = '') or
+    (AKnownOnly and not TAtlasYouTrackJson.IsOneOf(TJsonRead.Text(AType, 'name'), cKnownLinkTypes)) then
   begin
     Exit;
   end;
@@ -783,7 +770,7 @@ begin
   begin
     if TypeKind(AType, cDirections[mSide]) = AKind then
     begin
-      AId := TAtlasYouTrackJson.TextOf(AType, 'id') + cSuffixes[mSide];
+      AId := TJsonRead.Text(AType, 'id') + cSuffixes[mSide];
       Exit(True);
     end;
   end;
@@ -831,7 +818,7 @@ begin
   try
     if (mValue is TJSONObject) and (TJSONObject(mValue).Values['project'] is TJSONObject) then
     begin
-      AId := TAtlasYouTrackJson.TextOf(TJSONObject(TJSONObject(mValue).Values['project']), 'id');
+      AId := TJsonRead.Text(TJSONObject(TJSONObject(mValue).Values['project']), 'id');
     end;
   finally
     mValue.Free;
@@ -848,7 +835,7 @@ begin
   try
     if mValue is TJSONObject then
     begin
-      Result := Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mValue), 'idReadable'));
+      Result := Trim(TJsonRead.Text(TJSONObject(mValue), 'idReadable'));
     end;
   finally
     mValue.Free;
@@ -878,8 +865,8 @@ var
   mUser: TJSONValue;
 begin
   AChange := Default(TAtlasTrackerVcsChange);
-  AChange.Version := Trim(TAtlasYouTrackJson.TextOf(AItem, 'version'));
-  AChange.Text := TAtlasYouTrackJson.Shorten(FirstLine(TAtlasYouTrackJson.TextOf(AItem, 'text')),
+  AChange.Version := Trim(TJsonRead.Text(AItem, 'version'));
+  AChange.Text := TAtlasYouTrackJson.Shorten(FirstLine(TJsonRead.Text(AItem, 'text')),
     TAtlasTrackerIssue.cMaxTitle);
   AChange.Date := TAtlasYouTrackJson.TimeOf(AItem, 'date');
   mUser := AItem.Values['user'];
@@ -967,9 +954,9 @@ begin
       begin
         Continue;
       end;
-      mIssue := TAtlasTrackerChange.Create(Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'idReadable')),
+      mIssue := TAtlasTrackerChange.Create(Trim(TJsonRead.Text(TJSONObject(mItem), 'idReadable')),
         TAtlasTrackerChangeKind.Other, '', TAtlasYouTrackJson.TimeOf(TJSONObject(mItem), 'updated'));
-      mIssue.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'summary'),
+      mIssue.Title := TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(mItem), 'summary'),
         TAtlasTrackerIssue.cMaxTitle);
       if TAtlasYouTrackJson.ValidKey(mIssue.Key) and (mIssue.Time > ASince) then
       begin
@@ -989,12 +976,12 @@ begin
   mCategory := '';
   if AObject.Values['category'] is TJSONObject then
   begin
-    mCategory := TAtlasYouTrackJson.TextOf(TJSONObject(AObject.Values['category']), 'id');
+    mCategory := TJsonRead.Text(TJSONObject(AObject.Values['category']), 'id');
   end;
   mField := '';
   if AObject.Values['field'] is TJSONObject then
   begin
-    mField := Trim(TAtlasYouTrackJson.TextOf(TJSONObject(AObject.Values['field']), 'name'));
+    mField := Trim(TJsonRead.Text(TJSONObject(AObject.Values['field']), 'name'));
   end;
   AKind := TAtlasTrackerChangeKind.Other;
   if SameText(mCategory, 'CommentsCategory') then
@@ -1024,7 +1011,7 @@ begin
   end;
   for mEntry in AAdded do
   begin
-    if (mEntry is TJSONObject) and SameText(TAtlasYouTrackJson.TextOf(TJSONObject(mEntry), 'login'), AMe) then
+    if (mEntry is TJSONObject) and SameText(TJsonRead.Text(TJSONObject(mEntry), 'login'), AMe) then
     begin
       Exit(True);
     end;
@@ -1039,8 +1026,8 @@ begin
   if AObject.Values['author'] is TJSONObject then
   begin
     mAuthor := TJSONObject(AObject.Values['author']);
-    AChange.Author := Trim(TAtlasYouTrackJson.TextOf(mAuthor, 'login'));
-    AChange.AuthorName := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(mAuthor, 'fullName'), 80);
+    AChange.Author := Trim(TJsonRead.Text(mAuthor, 'login'));
+    AChange.AuthorName := TAtlasYouTrackJson.Shorten(TJsonRead.Text(mAuthor, 'fullName'), 80);
   end;
   if AChange.Kind <> TAtlasTrackerChangeKind.Comment then
   begin

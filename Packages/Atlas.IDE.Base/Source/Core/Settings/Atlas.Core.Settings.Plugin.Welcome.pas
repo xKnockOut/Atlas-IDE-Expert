@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.Welcome;
 
-// Einstellungen des IDE-Plugins, Bereich Willkommensseite (welcomePage.*) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Willkommensseite (welcomePage.*) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 
@@ -47,7 +47,7 @@ const
   // Bekannte CI-Anbieter für welcomePage.tests.ci.provider (#763).
   cCiProviders: array[0..0] of string = ('jenkins');
   /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.cNames (Test prüft Gleichheit; die
-  /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
+  /// Einstellungen kennen die Willkommensseite nicht).</summary>
   cQuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
   cQuickActionsDefaultConsole = 'wt.exe';
 

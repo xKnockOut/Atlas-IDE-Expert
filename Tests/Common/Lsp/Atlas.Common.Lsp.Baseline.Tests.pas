@@ -29,7 +29,7 @@ type
     procedure RefusesWithoutProjectFiles;
     [Test]
     procedure RefusesWithoutWorkspace;
-    /// <summary>Bericht N3: Eine unbrauchbare bisherige Baseline wird nicht still ersetzt, sondern als .defekt
+    /// <summary>Eine unbrauchbare bisherige Baseline wird nicht still ersetzt, sondern als .defekt
     /// beiseitegelegt und in "setAside" genannt.</summary>
     [Test]
     procedure InvalidPreviousBaselineIsSetAside;

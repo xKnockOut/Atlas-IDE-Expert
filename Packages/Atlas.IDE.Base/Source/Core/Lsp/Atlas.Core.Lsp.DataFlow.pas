@@ -89,6 +89,7 @@ implementation
 
 uses
   System.Generics.Collections,
+  Atlas.Text.Json,
   Atlas.Text.Uris;
 
 function UriToPath(const AUri: string): string;
@@ -150,18 +151,6 @@ begin
   Result.Character := ACharacter;
 end;
 
-/// <summary>Array AName von AItem, nil ohne.</summary>
-function ArrayOf(AItem: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AItem.TryGetValue<TJSONValue>(AName, mValue) and (mValue is TJSONArray) then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
-
 /// <summary>Liest einen Knoten; False, wenn er keinen Fundort hat.</summary>
 function ReadNode(AItem: TJSONObject; out ANode: TAtlasDataFlowNode): Boolean;
 var
@@ -175,7 +164,7 @@ begin
   ANode.Literal := AItem.GetValue<Boolean>('literal', False);
   ANode.Unsafe := AItem.GetValue<Boolean>('unsafe', False);
   ANode.UnsafeReason := AItem.GetValue<string>('unsafeReason', '');
-  mList := ArrayOf(AItem, 'places');
+  mList := TJsonRead.Items(AItem, 'places');
   if mList <> nil then
   begin
     for mEntry in mList do
@@ -183,7 +172,7 @@ begin
       ANode.Places := ANode.Places + [ReadPlace(mEntry)];
     end;
   end;
-  mList := ArrayOf(AItem, 'sources');
+  mList := TJsonRead.Items(AItem, 'sources');
   if mList <> nil then
   begin
     for mEntry in mList do

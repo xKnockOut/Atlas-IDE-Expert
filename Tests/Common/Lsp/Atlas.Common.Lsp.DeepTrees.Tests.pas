@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.DeepTrees.Tests;
 
 // Läufer außerhalb der Prüfregeln (LSP, Editing) auf sehr tiefen Syntaxbäumen
-// (Bericht M1): Sie laufen ohne Rekursion und kommen mit wenig Stapel aus. Die
+//: Sie laufen ohne Rekursion und kommen mit wenig Stapel aus. Die
 // Kette 1 - 1 - … - 1 baut der Parser linkslastig, der Baum ist so tief wie
 // die Kette lang.
 

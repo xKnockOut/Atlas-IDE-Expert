@@ -68,7 +68,7 @@ type
     /// <summary>Nummer des eigenen Prozesses.</summary>
     class function CurrentProcessId: Cardinal; static;
     /// <summary>Schutz, den nur eine Plattform braucht: unter Windows die Schutzseite nach einem
-    /// Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE (Bericht M5). Linux ersetzt geöffnete Dateien
+    /// Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE. Linux ersetzt geöffnete Dateien
     /// ohnehin und meldet einen Stapelüberlauf als Signal; dort tut Install nichts.</summary>
     class procedure InstallGuards; static;
     /// <summary>Senke für Debug-Ausgaben an den Debugger (Windows: OutputDebugString); nil unter Linux, wo
@@ -134,7 +134,7 @@ begin
 {$IFDEF MSWINDOWS}
   // Ohne neue Schutzseite beendet Windows den Prozess beim nächsten Überlauf (#1094).
   TWindowsStackGuard.Install;
-  // Lesen teilt auch Löschen, damit Plugin und zweiter Server Dateien atomar ersetzen können (Bericht M5).
+  // Lesen teilt auch Löschen, damit Plugin und zweiter Server Dateien atomar ersetzen können.
   TWindowsSharedRead.Install;
 {$ENDIF}
 end;

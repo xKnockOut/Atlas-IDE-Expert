@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.WelcomeTiles;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 4 und 6): Kacheln anderer
+// Vertrag zwischen Modulen (#1455, Modulregeln 4 und 6): Kacheln anderer
 // Module auf der Willkommensseite. Ein Modul (Tracker: „Meine Issues“,
 // Sprint) stellt je Kachel ein IAtlasWelcomeTile über seinen Scope bereit; die
 // Willkommensseite hört auf die Registry, zeigt die Kachel mit Titelzeile,

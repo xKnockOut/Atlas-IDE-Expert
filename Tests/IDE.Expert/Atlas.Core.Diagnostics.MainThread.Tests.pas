@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.MainThread.Tests;
 
-// Einreihen in den Hauptthread über TAtlasMainThread (Code-Review A-02):
+// Einreihen in den Hauptthread über TAtlasMainThread:
 // Einträge überleben das Freigeben des einreihenden Arbeiters, nicht aber
 // Stop (Entladen); Ausnahmen zählen für das angegebene Feature. Einträge eines
 // abgemeldeten oder entladenen Moduls verfallen, die anderer Module nicht.
@@ -28,7 +28,7 @@ type
     [Test]
     procedure EntryOfFreedWorkerStillRuns;
     [Test]
-    // Ausnahme mit Grund (Bericht N2): Stop gibt den Besitzer-Thread frei, Start legt einen neuen an, der wie
+    // Ausnahme mit Grund: Stop gibt den Besitzer-Thread frei, Start legt einen neuen an, der wie
     // im Plugin bis zum Entladen weiterläuft. Seine Startdaten (BeginThread) gibt erst der neue Thread frei,
     // sobald er läuft, unter Last nach der Messung. Darauf zu warten hieße, Start im Plugin aufzuhalten.
     [IgnoreMemoryLeaks]

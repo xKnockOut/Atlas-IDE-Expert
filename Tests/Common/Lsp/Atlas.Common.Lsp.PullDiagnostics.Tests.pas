@@ -45,7 +45,7 @@ type
     /// <summary>Zwei gleichzeitige Anfragen für denselben Stand prüfen nur einmal.</summary>
     [Test]
     procedure ParallelRequestsForSameStateComputeOnce;
-    /// <summary>Code-Review P-14: Long-Polling endet vor dem Zeitlimit des Watchdogs.</summary>
+    /// <summary>Long-Polling endet vor dem Zeitlimit des Watchdogs.</summary>
     [Test]
     procedure LongPollFollowsRequestTimeout;
     [Test]

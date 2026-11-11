@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Build.Pipeline;
 
 // Verträge und Beiträge der Build-Pipeline, soweit Base sie braucht (#1455,
-// ADR 0017 Regel 6): Base reicht dem Modul atlas.buildpipeline die
+// Modulregel 6): Base reicht dem Modul atlas.buildpipeline die
 // gelesenen Compilermeldungen jedes Builds (#528) und den Auftrag, einen
 // Build des Benutzers zu bewerten (#530); die Folgen meldet das Modul über
 // IAtlasBuildVerdictListener (Atlas.Core.Build.Verdict, Announce). Übernimmt

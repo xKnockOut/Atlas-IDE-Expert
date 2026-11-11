@@ -43,7 +43,7 @@ type
     procedure SqlFromVariableIsMedium;
     [Test]
     procedure ParameterizedOrConstantSqlIsSilent;
-    /// <summary>Alle Sicherheitsregeln in einem Lauf teilen die Code-Token (Review P-03, P-08).</summary>
+    /// <summary>Alle Sicherheitsregeln in einem Lauf teilen die Code-Token.</summary>
     [Test]
     procedure SecurityRulesFindSameWithSharedTokens;
   end;

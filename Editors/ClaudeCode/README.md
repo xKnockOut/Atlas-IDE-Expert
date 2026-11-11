@@ -30,7 +30,7 @@ Die Version von Plugin und Marketplace-Eintrag setzt `Tools/Set-Version.ps1` mit
 
 ### In Cloud-Sitzungen (Linux)
 
-In Claude-Code-Sitzungen in der Cloud legt `Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin` den Server als `/usr/local/bin/AtlasServer` samt Verweis `AtlasServer.exe` ab; das Plugin findet ihn dort (ADR 0013). Das Skript lädt das fertige Programm aus dem Vorab-Release `cloud-linux` (baut der Workflow `linux-server.yml` bei jedem Push auf main), solange der Quelltext dazu passt, und baut sonst mit dem fertigen FPC aus demselben Release (etwa 2 Minuten).
+In Claude-Code-Sitzungen in der Cloud legt `Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin` den Server als `/usr/local/bin/AtlasServer` samt Verweis `AtlasServer.exe` ab; das Plugin findet ihn dort. Das Skript lädt das fertige Programm aus dem Vorab-Release `cloud-linux` (baut der Workflow `linux-server.yml` bei jedem Push auf main), solange der Quelltext dazu passt, und baut sonst mit dem fertigen FPC aus demselben Release (etwa 2 Minuten).
 
 Claude Code startet den MCP-Server beim Start der Sitzung und versucht es danach nicht erneut. Der Server muss deshalb schon vorher da sein. Dafür im **Setup-Skript der Cloud-Umgebung** (Projekteinstellungen › Umgebung › Zahnrad) eintragen:
 

@@ -491,7 +491,7 @@ begin
         // Server langsam oder weg: keine Werte.
         Refs := nil;
       end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
         procedure
         begin

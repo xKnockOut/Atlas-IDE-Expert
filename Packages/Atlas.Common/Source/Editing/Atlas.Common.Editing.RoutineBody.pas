@@ -485,7 +485,7 @@ begin
     Exit;
   end;
   mName := AName;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   mFound := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -713,7 +713,7 @@ class function TRoutineBody.IsVariableChain(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  // Schleife statt Rekursion (Bericht M1).
+  // Schleife statt Rekursion.
   mNode := ANode;
   while mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess] do
   begin

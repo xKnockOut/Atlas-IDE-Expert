@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Foundation.Navigation;
 
 // Zu einer Stelle springen (#400, #588): Datei öffnen, Editor zeigen, Cursor setzen. Foundation des Plugins
-// (A-09): bis dahin TAtlasEditorHover.GoToLocation; Ergebnisfenster, Umbenennen, Vervollständigung, Befehle
+//: bis dahin TAtlasEditorHover.GoToLocation; Ergebnisfenster, Umbenennen, Vervollständigung, Befehle
 // und Unit-Suche importierten dafür den Hover. Nur im Hauptthread.
 // Ersatz-Units des Servers (atlas-ide:…, nur aus der RTTI der Packages) gibt es nicht als Datei: kein Sprung
 // dorthin, die IDE legte sonst einen leeren Reiter unter diesem Namen an.

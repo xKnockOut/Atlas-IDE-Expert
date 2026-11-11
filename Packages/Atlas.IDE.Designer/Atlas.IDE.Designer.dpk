@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Designer (#1456, ADR 0017): Leiste, Komponentensuche und Reiterhinweise im Formular-Designer.
+// Modul Designer (#1456): Leiste, Komponentensuche und Reiterhinweise im Formular-Designer.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Designer.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package

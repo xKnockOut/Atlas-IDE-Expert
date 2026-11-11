@@ -341,7 +341,7 @@ procedure TAtlasGenerateMenuTests.ContractListsMatchOptions;
 var
   Group: TAtlasGenerateGroup;
 begin
-  // Die Einstellungen normalisieren über den Contract (A-09), das Menü leitet nur weiter.
+  // Die Einstellungen normalisieren über den Contract, das Menü leitet nur weiter.
   Assert.AreEqual('templates,generate', TAtlasGenerateLists.NormalizeGroups(' Templates; quatsch, generate '));
   Assert.AreEqual(TAtlasGenerateOptions.NormalizeGroups('surround'), TAtlasGenerateLists.NormalizeGroups('surround'));
   Assert.AreEqual('/json, tryf', TAtlasGenerateLists.NormalizeHidden('/json, , /json,tryf'));

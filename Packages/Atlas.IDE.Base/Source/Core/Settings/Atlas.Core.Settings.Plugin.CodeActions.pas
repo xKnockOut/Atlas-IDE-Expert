@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.CodeActions;
 
-// Einstellungen des IDE-Plugins, Bereich Code-Aktionen (codeActions.*) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Code-Aktionen (codeActions.*) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 

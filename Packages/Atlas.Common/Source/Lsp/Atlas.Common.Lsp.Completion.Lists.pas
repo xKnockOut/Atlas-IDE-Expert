@@ -417,7 +417,7 @@ begin
     mExpected := TCompletionContexts.ExpectedType(FRequest.Resolver, FRequest.Tree, FRequest.FileName,
       FRequest.Position);
   end;
-  // Viele Auflösungen auf demselben Baum: einmal auswerten (Code-Review P-02). Hat Handle den Baum schon
+  // Viele Auflösungen auf demselben Baum: einmal auswerten. Hat Handle den Baum schon
   // gepinnt, zählt das nur hoch.
   if FRequest.Tree <> nil then
   begin

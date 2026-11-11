@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Parts.Tests;
 
-// Einstellungsteile der Module in Base (#1455, ADR 0017 Entscheidung 3):
+// Einstellungsteile der Module in Base (#1455):
 // Vorgaben, Lesen und Schreiben, Werte fremder und fehlender Module,
 // Umbenennungen, Ablagewechsel, Vergessen eines Moduls, Änderungsmeldung und
 // Lösen über den Scope eines Moduls.

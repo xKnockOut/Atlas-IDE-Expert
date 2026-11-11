@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Style.Wrap;
 
-// Umbruch an Leerzeichen über kumulierte Breiten (P-09): Die Breite eines
+// Umbruch an Leerzeichen über kumulierte Breiten: Die Breite eines
 // Bereichs ist die Differenz zweier Präfixsummen; gemessen wird der Text nur
 // einmal, nicht je Umbruchkandidat ab Zeilenanfang neu. Ohne VCL; die
 // Präfixsummen liefert der Aufrufer (z. B. TAtlasStyledText.PrefixWidths).

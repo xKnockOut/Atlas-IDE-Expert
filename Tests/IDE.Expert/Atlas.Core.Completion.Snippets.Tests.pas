@@ -65,7 +65,7 @@ type
     procedure ReadsDelphi12Folder;
     [Test]
     procedure ConvertsPointsAndMarkers;
-    /// <summary>Numerische Entities wie im Server (Atlas.Text.Entities, D-03).</summary>
+    /// <summary>Numerische Entities wie im Server (Atlas.Text.Entities).</summary>
     [Test]
     procedure DecodesNumericEntities;
     [Test]

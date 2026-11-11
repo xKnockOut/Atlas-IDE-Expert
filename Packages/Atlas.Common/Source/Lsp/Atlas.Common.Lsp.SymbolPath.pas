@@ -68,7 +68,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -86,22 +87,6 @@ const
     (De: 'Kein Projekt geladen'; En: 'No project loaded'));
 
 {$SCOPEDENUMS OFF}
-
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(mValue.Value);
-  end;
-end;
 
 /// <summary>Pfad aus einer file-URI oder unverändert, wenn AText schon ein Pfad ist.</summary>
 function PathOf(const AText: string): string;
@@ -218,8 +203,8 @@ var
   mValue: TJSONValue;
 begin
   Result := TSymbolPathRequest.Default;
-  Result.From := StringOf(AParams, 'from');
-  Result.To_ := StringOf(AParams, 'to');
+  Result.From := TJsonRead.TrimmedText(AParams, 'from');
+  Result.To_ := TJsonRead.TrimmedText(AParams, 'to');
   if (Result.From = '') or (Result.To_ = '') then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
@@ -274,7 +259,7 @@ begin
   begin
     mParams := nil;
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(mParams, 'uri')), mSettings, mNamespaces)) then
+  if not (Assigned(FSourceFor) and FSourceFor(PathOf(TJsonRead.TrimmedText(mParams, 'uri')), mSettings, mNamespaces)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.NoProjectLoaded].Text);
   end;
@@ -337,7 +322,7 @@ begin
         end;
       end;
     end;
-    // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage (A-06).
+    // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage.
     Result := Request(mParams, TJsonRpcCurrentRequest.Token);
   finally
     mParams.Free;

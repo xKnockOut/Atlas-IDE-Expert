@@ -49,7 +49,7 @@ type
     StartServer: TFunc<Boolean, Boolean>;
     /// <summary>Befehl an den Server im Hintergrund abschicken (#874); False ohne Server.</summary>
     ServerCommand: TFunc<string, Boolean>;
-    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken; A-09: statt Import des
+    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken: statt Import des
     /// Code Insight-Managers).</summary>
     ServerPath: TFunc<string>;
   end;

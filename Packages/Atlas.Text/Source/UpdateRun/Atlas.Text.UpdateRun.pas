@@ -1,7 +1,7 @@
 ﻿unit Atlas.Text.UpdateRun;
 
 // Ablauf eines Updates (#1519) zwischen Plugin und AtlasUpdate.exe, gemeinsam
-// für beide (ADR 0012):
+// für beide:
 // - Aufruf: AtlasUpdate.exe <Befehl> --name Wert …; Befehle prepare (laden,
 //   prüfen, bei Bedarf bauen), apply (nach dem Schließen der IDE tauschen)
 //   und install (Erstinstallation aus dem entpackten Paket).
@@ -290,30 +290,6 @@ end;
 
 { JSON-Hilfen }
 
-function TextOf(const AObject: TJSONObject; const AName: string): string;
-begin
-  if not AObject.TryGetValue<string>(AName, Result) then
-  begin
-    Result := '';
-  end;
-end;
-
-function FlagOf(const AObject: TJSONObject; const AName: string): Boolean;
-begin
-  if not AObject.TryGetValue<Boolean>(AName, Result) then
-  begin
-    Result := False;
-  end;
-end;
-
-function NumberOf(const AObject: TJSONObject; const AName: string): Integer;
-begin
-  if not AObject.TryGetValue<Integer>(AName, Result) then
-  begin
-    Result := 0;
-  end;
-end;
-
 function NamesOf(const AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mNode, mItem: TJSONValue;
@@ -461,12 +437,12 @@ begin
         Continue;
       end;
       mCandidate := Default(TUpdateCandidate);
-      mCandidate.Name := TextOf(TJSONObject(mItem), 'name');
-      mCandidate.Installed := FlagOf(TJSONObject(mItem), 'installed');
-      mCandidate.IsNew := FlagOf(TJSONObject(mItem), 'new');
-      mCandidate.Declined := FlagOf(TJSONObject(mItem), 'declined');
-      mCandidate.Required := FlagOf(TJSONObject(mItem), 'required');
-      mCandidate.Selected := FlagOf(TJSONObject(mItem), 'selected');
+      mCandidate.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
+      mCandidate.Installed := TJsonRead.Flag(TJSONObject(mItem), 'installed');
+      mCandidate.IsNew := TJsonRead.Flag(TJSONObject(mItem), 'new');
+      mCandidate.Declined := TJsonRead.Flag(TJSONObject(mItem), 'declined');
+      mCandidate.Required := TJsonRead.Flag(TJSONObject(mItem), 'required');
+      mCandidate.Selected := TJsonRead.Flag(TJSONObject(mItem), 'selected');
       if mCandidate.Name <> '' then
       begin
         mList.Add(mCandidate);
@@ -491,15 +467,15 @@ begin
     Exit;
   end;
   try
-    Result.Phase := TUpdateNames.ParsePhase(TextOf(mRoot, 'phase'));
-    Result.Progress := NumberOf(mRoot, 'progress');
-    Result.Version := TextOf(mRoot, 'version');
-    Result.Previous := TextOf(mRoot, 'previous');
-    Result.Error := TextOf(mRoot, 'error');
-    Result.Detail := TextOf(mRoot, 'detail');
-    Result.FromSource := FlagOf(mRoot, 'fromSource');
-    Result.AskSelection := FlagOf(mRoot, 'askSelection');
-    Result.Updater := TextOf(mRoot, 'updater');
+    Result.Phase := TUpdateNames.ParsePhase(TJsonRead.Text(mRoot, 'phase'));
+    Result.Progress := TJsonRead.Int(mRoot, 'progress');
+    Result.Version := TJsonRead.Text(mRoot, 'version');
+    Result.Previous := TJsonRead.Text(mRoot, 'previous');
+    Result.Error := TJsonRead.Text(mRoot, 'error');
+    Result.Detail := TJsonRead.Text(mRoot, 'detail');
+    Result.FromSource := TJsonRead.Flag(mRoot, 'fromSource');
+    Result.AskSelection := TJsonRead.Flag(mRoot, 'askSelection');
+    Result.Updater := TJsonRead.Text(mRoot, 'updater');
     Result.Candidates := CandidatesOf(mRoot);
   finally
     mRoot.Free;
@@ -549,12 +525,12 @@ begin
     Exit;
   end;
   try
-    Result.Kind := TUpdateNames.ParseOutcome(TextOf(mRoot, 'outcome'));
-    Result.Version := TextOf(mRoot, 'version');
-    Result.Previous := TextOf(mRoot, 'previous');
-    Result.Reason := TextOf(mRoot, 'reason');
-    Result.Detail := TextOf(mRoot, 'detail');
-    Result.LogFile := TextOf(mRoot, 'log');
+    Result.Kind := TUpdateNames.ParseOutcome(TJsonRead.Text(mRoot, 'outcome'));
+    Result.Version := TJsonRead.Text(mRoot, 'version');
+    Result.Previous := TJsonRead.Text(mRoot, 'previous');
+    Result.Reason := TJsonRead.Text(mRoot, 'reason');
+    Result.Detail := TJsonRead.Text(mRoot, 'detail');
+    Result.LogFile := TJsonRead.Text(mRoot, 'log');
     Result.Added := NamesOf(mRoot, 'added');
     Result.Removed := NamesOf(mRoot, 'removed');
   finally

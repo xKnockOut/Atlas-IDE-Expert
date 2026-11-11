@@ -158,7 +158,7 @@ type
     FRetired: TObjectList<TThread>;
     // Letzter gesehener bzw. zuletzt geholter Editortext je Datei (Schlüssel klein).
     FTexts: TDictionary<string, string>;
-    // Version des Pufferstands je Datei (P-04): Vergleich statt des ganzen Textes.
+    // Version des Pufferstands je Datei: Vergleich statt des ganzen Textes.
     FVersions: TDictionary<string, Cardinal>;
     FPulled: TDictionary<string, string>;
     FRefreshSeen: Integer;
@@ -798,7 +798,7 @@ begin
 end;
 
 /// <summary>Oberer Editor mit einer Quelldatei; nil ohne. Ohne Fokus ändert sich der Puffer nur über Neuladen, das
-/// den Stand ohnehin als veraltet markiert: dann weder Puffer lesen noch abgleichen (P-04).</summary>
+/// den Stand ohnehin als veraltet markiert: dann weder Puffer lesen noch abgleichen.</summary>
 function TopSourceView: IOTAEditView;
 var
   mEditors: IOTAEditorServices;
@@ -822,7 +822,7 @@ var
 begin
   mFileName := AView.Buffer.FileName;
   mKey := TAtlasProblemStore.Key(mFileName);
-  // Gemeinsamer Pufferstand (P-04): gelesen nur nach einer Änderung.
+  // Gemeinsamer Pufferstand: gelesen nur nach einer Änderung.
   mSnapshot := TAtlasEditorSnapshots.Get(AView);
   Result := mSnapshot.Text;
   // Markierungen wandern mit, bevor neue Diagnosen da sind.

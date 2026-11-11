@@ -1096,7 +1096,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     var

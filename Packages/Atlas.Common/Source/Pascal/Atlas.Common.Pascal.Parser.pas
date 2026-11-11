@@ -31,7 +31,7 @@
 // deshalb A + Ausgeglichen(x1 … xn) mit Tiefe log2(n). Reihenfolge der
 // Operanden und Bereiche der Knoten bleiben; kürzere Ketten und - * / div mod
 // usw. bleiben linkslastig wie bisher.
-// Seit Bericht M1 ist das Ausgleichen nur noch ein Netz: Prüfregeln, LSP und
+// Das Ausgleichen ist nur ein Netz: Prüfregeln, LSP und
 // Editing laufen iterativ (TSyntaxNode.Walk, Search oder eigener Stapel) und
 // vertragen auch linkslastige Ketten aus - und *. Rekursiv bleiben Läufer über
 // Deklarationen und Typen, deren Tiefe MaxNesting begrenzt, und das Ausgeben

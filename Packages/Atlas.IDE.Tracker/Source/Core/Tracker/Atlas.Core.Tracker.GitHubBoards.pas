@@ -84,7 +84,8 @@ uses
   System.StrUtils,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.Internals.GitHubJson;
+  Atlas.Core.Tracker.Internals.GitHubJson,
+  Atlas.Text.Json;
 
 /// <summary>ISO 8601 ("2026-10-28T09:12:00Z") als UTC; 0 ohne.</summary>
 function TimeOfText(const AText: string): TDateTime;
@@ -207,9 +208,9 @@ begin
       end;
       if AMessage = '' then
       begin
-        AMessage := Copy(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'message'), 1, 300);
+        AMessage := Copy(TJsonRead.Text(TJSONObject(mItem), 'message'), 1, 300);
       end;
-      mType := UpperCase(TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'type'));
+      mType := UpperCase(TJsonRead.Text(TJSONObject(mItem), 'type'));
       if (mType = 'INSUFFICIENT_SCOPES') or (mType = 'FORBIDDEN') then
       begin
         Exit(TAtlasCiFetchError.Unauthorized);
@@ -246,7 +247,7 @@ begin
     mViewer := ObjectAt(mValue, ['data', 'viewer']);
     if mViewer <> nil then
     begin
-      ASnapshot.Me := TAtlasGitHubJson.TextOf(mViewer, 'login');
+      ASnapshot.Me := TJsonRead.Text(mViewer, 'login');
     end;
     mOpen := nil;
     mClosed := nil;
@@ -260,13 +261,13 @@ begin
           Continue;
         end;
         mProject := TJSONObject(mItem);
-        mRef := TAtlasBoardRef.Create(TAtlasGitHubJson.TextOf(mProject, 'id'), TAtlasGitHubJson.TextOf(mProject,
+        mRef := TAtlasBoardRef.Create(TJsonRead.Text(mProject, 'id'), TJsonRead.Text(mProject,
           'title'));
         if mRef.Id = '' then
         begin
           Continue;
         end;
-        if TAtlasGitHubJson.FlagOf(mProject, 'closed') then
+        if TJsonRead.Flag(mProject, 'closed') then
         begin
           mClosed := mClosed + [mRef];
         end
@@ -288,10 +289,10 @@ var
   mStart: TDateTime;
 begin
   Result := Default(TAtlasBoardSprint);
-  Result.Id := TAtlasGitHubJson.TextOf(AObject, 'id');
-  Result.Name := TAtlasGitHubJson.TextOf(AObject, 'title');
+  Result.Id := TJsonRead.Text(AObject, 'id');
+  Result.Name := TJsonRead.Text(AObject, 'title');
   // startDate "2026-10-27" (Tag, UTC), duration in Tagen.
-  if TryISO8601ToDate(TAtlasGitHubJson.TextOf(AObject, 'startDate'), mStart, True) then
+  if TryISO8601ToDate(TJsonRead.Text(AObject, 'startDate'), mStart, True) then
   begin
     Result.Start := mStart;
     if TAtlasGitHubJson.IntOf(AObject, 'duration') > 0 then
@@ -363,11 +364,11 @@ begin
     begin
       Continue;
     end;
-    mName := TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'name');
+    mName := TJsonRead.Text(TJSONObject(mOption), 'name');
     if mName <> '' then
     begin
       Result := Result + [TAtlasBoardColumn.Create(mName, TArray<string>.Create(mName),
-        TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'id'), TAtlasGitHubApi.ClosesIssue(mName))];
+        TJsonRead.Text(TJSONObject(mOption), 'id'), TAtlasGitHubApi.ClosesIssue(mName))];
     end;
   end;
 end;
@@ -406,12 +407,12 @@ procedure ScanField(AField: TJSONObject; var ASnapshot: TAtlasBoardSnapshot; var
 var
   mName: string;
 begin
-  mName := TAtlasGitHubJson.TextOf(AField, 'name');
+  mName := TJsonRead.Text(AField, 'name');
   if AField.Values['options'] is TJSONArray then
   begin
     ScanOptionField(AField, mName, AScan);
   end
-  else if (ASnapshot.PointsField = '') and SameText(TAtlasGitHubJson.TextOf(AField, 'dataType'), 'NUMBER') and
+  else if (ASnapshot.PointsField = '') and SameText(TJsonRead.Text(AField, 'dataType'), 'NUMBER') and
     IsPointsName(mName) then
   begin
     ASnapshot.PointsField := mName;
@@ -453,8 +454,8 @@ begin
   end;
   if mScan.Chosen <> nil then
   begin
-    ASnapshot.Field := TAtlasGitHubJson.TextOf(mScan.Chosen, 'name');
-    ASnapshot.FieldId := TAtlasGitHubJson.TextOf(mScan.Chosen, 'id');
+    ASnapshot.Field := TJsonRead.Text(mScan.Chosen, 'name');
+    ASnapshot.FieldId := TJsonRead.Text(mScan.Chosen, 'id');
     ASnapshot.Columns := OptionColumnsOf(mScan.Chosen);
   end;
 end;
@@ -468,7 +469,7 @@ begin
   mRepository := '';
   if AIssue.Values['repository'] is TJSONObject then
   begin
-    mRepository := TAtlasGitHubJson.TextOf(TJSONObject(AIssue.Values['repository']), 'nameWithOwner');
+    mRepository := TJsonRead.Text(TJSONObject(AIssue.Values['repository']), 'nameWithOwner');
   end;
   if (mRepository <> '') and not SameText(mRepository, AProject) then
   begin
@@ -492,17 +493,17 @@ begin
   end;
   for mItem in TJSONArray(AValue) do
   begin
-    if not (mItem is TJSONObject) or (TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'login') = '') then
+    if not (mItem is TJSONObject) or (TJsonRead.Text(TJSONObject(mItem), 'login') = '') then
     begin
       Continue;
     end;
-    ACard.Logins := ACard.Logins + [TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'login')];
+    ACard.Logins := ACard.Logins + [TJsonRead.Text(TJSONObject(mItem), 'login')];
     if ACard.Assignee = '' then
     begin
-      mName := TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'name');
+      mName := TJsonRead.Text(TJSONObject(mItem), 'name');
       if mName = '' then
       begin
-        mName := TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'login');
+        mName := TJsonRead.Text(TJSONObject(mItem), 'login');
       end;
       ACard.Assignee := mName;
     end;
@@ -543,7 +544,7 @@ begin
   mField := ObjectAt(AValue, ['field']);
   if mField <> nil then
   begin
-    Result := TAtlasGitHubJson.TextOf(mField, 'name');
+    Result := TJsonRead.Text(mField, 'name');
   end;
 end;
 
@@ -558,7 +559,7 @@ begin
   begin
     if SameText(mName, AScan.Iteration) then
     begin
-      AIteration := TAtlasGitHubJson.TextOf(AValue, 'iterationId');
+      AIteration := TJsonRead.Text(AValue, 'iterationId');
     end;
   end
   else if AValue.Values['number'] is TJSONNumber then
@@ -571,11 +572,11 @@ begin
   end
   else if SameText(mName, ASnapshot.Field) then
   begin
-    ACard.State := TAtlasGitHubJson.TextOf(AValue, 'name');
+    ACard.State := TJsonRead.Text(AValue, 'name');
   end
   else if (AScan.Priority <> '') and SameText(mName, AScan.Priority) then
   begin
-    ACard.Priority := TAtlasGitHubJson.TextOf(AValue, 'name');
+    ACard.Priority := TJsonRead.Text(AValue, 'name');
   end;
 end;
 
@@ -596,13 +597,13 @@ begin
   begin
     Exit;
   end;
-  ACard.ItemId := TAtlasGitHubJson.TextOf(AEntry, 'id');
+  ACard.ItemId := TJsonRead.Text(AEntry, 'id');
   ACard.Number := TAtlasGitHubJson.IntOf(mIssue, 'number');
   ACard.Key := KeyOf(mIssue, AProject);
-  ACard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
-  ACard.Page := TAtlasGitHubJson.TextOf(mIssue, 'url');
-  ACard.Checklist := TAtlasTrackerChecklist.Progress(TAtlasGitHubJson.TextOf(mIssue, 'body'));
-  ACard.ResolvedAt := TimeOfText(TAtlasGitHubJson.TextOf(mIssue, 'closedAt'));
+  ACard.Title := Copy(TJsonRead.Text(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
+  ACard.Page := TJsonRead.Text(mIssue, 'url');
+  ACard.Checklist := TAtlasTrackerChecklist.Progress(TJsonRead.Text(mIssue, 'body'));
+  ACard.ResolvedAt := TimeOfText(TJsonRead.Text(mIssue, 'closedAt'));
   ReadAssignees(mIssue.Values['assignees'], ACard);
   mIteration := '';
   mValues := NodesOf(AEntry, 'fieldValues');
@@ -654,15 +655,15 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     mProject := ObjectAt(mValue, ['data', 'node']);
-    Result := (mProject <> nil) and (TAtlasGitHubJson.TextOf(mProject, 'id') <> '');
+    Result := (mProject <> nil) and (TJsonRead.Text(mProject, 'id') <> '');
     if not Result then
     begin
       Exit;
     end;
     ASnapshot.Kind := TAtlasBoardKind.Project;
-    ASnapshot.ProjectId := TAtlasGitHubJson.TextOf(mProject, 'id');
-    ASnapshot.Board := TAtlasBoardRef.Create(ASnapshot.ProjectId, TAtlasGitHubJson.TextOf(mProject, 'title'));
-    ASnapshot.Page := TAtlasGitHubJson.TextOf(mProject, 'url');
+    ASnapshot.ProjectId := TJsonRead.Text(mProject, 'id');
+    ASnapshot.Board := TAtlasBoardRef.Create(ASnapshot.ProjectId, TJsonRead.Text(mProject, 'title'));
+    ASnapshot.Page := TJsonRead.Text(mProject, 'url');
     mScan := ReadFields(mProject, ASnapshot);
     // Sprint: gewählt, sonst der aktuelle.
     ASnapshot.Sprint := ChosenSprint(ASnapshot, ASprintId, ANow);
@@ -701,11 +702,11 @@ begin
       mCard := Default(TAtlasBoardCard);
       mCard.Number := TAtlasGitHubJson.IntOf(mIssue, 'number');
       mCard.Key := '#' + IntToStr(mCard.Number);
-      mCard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
-      mCard.State := LowerCase(TAtlasGitHubJson.TextOf(mIssue, 'state'));
-      mCard.Page := TAtlasGitHubJson.TextOf(mIssue, 'html_url');
-      mCard.Checklist := TAtlasTrackerChecklist.Progress(TAtlasGitHubJson.TextOf(mIssue, 'body'));
-      mCard.ResolvedAt := TimeOfText(TAtlasGitHubJson.TextOf(mIssue, 'closed_at'));
+      mCard.Title := Copy(TJsonRead.Text(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
+      mCard.State := LowerCase(TJsonRead.Text(mIssue, 'state'));
+      mCard.Page := TJsonRead.Text(mIssue, 'html_url');
+      mCard.Checklist := TAtlasTrackerChecklist.Progress(TJsonRead.Text(mIssue, 'body'));
+      mCard.ResolvedAt := TimeOfText(TJsonRead.Text(mIssue, 'closed_at'));
       ReadAssignees(mIssue.Values['assignees'], mCard);
       if ASnapshot.CardIndex(mCard.Key) < 0 then
       begin
@@ -789,7 +790,7 @@ begin
     try
       if mValue is TJSONObject then
       begin
-        ASnapshot.Me := TAtlasGitHubJson.TextOf(TJSONObject(mValue), 'login');
+        ASnapshot.Me := TJsonRead.Text(TJSONObject(mValue), 'login');
       end;
     finally
       mValue.Free;

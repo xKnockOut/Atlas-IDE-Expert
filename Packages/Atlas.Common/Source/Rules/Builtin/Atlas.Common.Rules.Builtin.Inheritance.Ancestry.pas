@@ -81,7 +81,7 @@ type
     function Reachable(const ALocation: TSymbolLocation): Boolean;
     function MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
   public
-    /// <summary>ALocal ist der Index der geprüften Datei (TRuleDerived.UnitIndex, Review P-03).</summary>
+    /// <summary>ALocal ist der Index der geprüften Datei (TRuleDerived.UnitIndex).</summary>
     constructor Create(const AIndex: ISymbolIndex; const ALocal: TUnitIndex);
     destructor Destroy; override;
     /// <summary>Name des direkten Vorfahren; TObject ohne Angabe; '' wenn der Typ unbekannt ist.</summary>
@@ -1246,7 +1246,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1311,7 +1311,7 @@ begin
   begin
     Exit(False);
   end;
-  // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Den Index der Datei teilt der Lauf mit den anderen Regeln.
   mCache := TRuleDerived.Open(AContext);
   AAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(mCache, AContext));
   for mMethod in ClassMethods(AContext, AAncestry) do

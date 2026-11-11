@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Internals.FormCache;
 
-// Auszüge aus Formulardateien für die Vervollständigung (Code-Review P-06): Komponentennamen (#455) und
+// Auszüge aus Formulardateien für die Vervollständigung: Komponentennamen (#455) und
 // Ereigniszuweisungen (#480). Vorher las und zerlegte jede Anfrage in einer Formular-Unit die .dfm neu,
 // auch außerhalb der Methoden der Formularklasse. Der Zwischenspeicher hält je Formulardatei einen
 // unveränderlichen Auszug (nur Records mit Strings, kein Objektbaum) zusammen mit dem Stand, aus dem er

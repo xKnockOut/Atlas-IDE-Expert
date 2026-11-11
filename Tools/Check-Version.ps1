@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Quellen: TAtlasVersion.cVersion in Atlas.Text.Product.Version.pas (Server, IDE-Plugin und
-    Installer, ADR 0012), plugin.json des Claude-Code-Plugins und marketplace.json. Mit -Expected (z. B. aus dem
+    Installer), plugin.json des Claude-Code-Plugins und marketplace.json. Mit -Expected (z. B. aus dem
     Release-Tag) muss auch diese übereinstimmen. CHANGELOG.md braucht einen
     Abschnitt "## [<Version>]". Atlas.Common.Product.Version.pas und
     Atlas.Core.Product.Version.pas dürfen keine eigene Versionszeichenkette tragen.

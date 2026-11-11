@@ -2,7 +2,7 @@
 
 // Contract des Plugin-Features Files: Inhalt einer Textdatei samt Kodierung
 // (#121). Andere Features (z. B. Undo) beschreiben damit Dateiinhalte, ohne
-// das Root Atlas.Core.Files.TextFile zu importieren (Code-Review A-10).
+// das Root Atlas.Core.Files.TextFile zu importieren.
 
 interface
 

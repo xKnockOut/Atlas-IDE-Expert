@@ -2,7 +2,7 @@
 
 // Zuordnung von Dateien zu Units des Index (#500): die Unit einer Datei oder
 // eine Unit, die sie per $I einbindet. Steht im Root des Features Index, weil
-// ein Contract nur Typen und Interfaces enthält (Code-Review A-10).
+// ein Contract nur Typen und Interfaces enthält.
 
 interface
 

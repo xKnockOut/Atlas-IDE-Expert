@@ -116,104 +116,8 @@ uses
   System.Math,
   System.DateUtils,
   System.Generics.Collections,
-  System.Generics.Defaults;
-
-function IntOf(AObject: TJSONObject; const AName: string; ADefault: Int64): Int64;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt64;
-  end;
-end;
-
-function FloatOf(AObject: TJSONObject; const AName: string): Double;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsDouble;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  // TJSONNumber leitet von TJSONString ab; Zahlen sind hier kein Text.
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := TJSONBool(mValue).AsBoolean;
-  end;
-end;
-
-function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
-
-function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
+  System.Generics.Defaults,
+  Atlas.Text.Json;
 
 function StateOf(const AText: string): TAtlasServerState;
 begin
@@ -240,7 +144,7 @@ begin
   Result := -1;
   if (AObject <> nil) and (AObject.GetValue(AName) is TJSONNumber) then
   begin
-    Result := EnsureRange(Integer(IntOf(AObject, AName, -1)), 0, 100);
+    Result := EnsureRange(Integer(TJsonRead.Int64Or(AObject, AName, -1)), 0, 100);
   end;
 end;
 
@@ -256,15 +160,15 @@ begin
   begin
     Exit;
   end;
-  ASnapshot.CheckSerial := Integer(IntOf(ARun, 'serial', 0));
-  ASnapshot.CheckActive := BoolOf(ARun, 'active');
-  if TryISO8601ToDate(TextOf(ARun, 'started'), mStarted, False) then
+  ASnapshot.CheckSerial := Integer(TJsonRead.Int64Or(ARun, 'serial', 0));
+  ASnapshot.CheckActive := TJsonRead.Flag(ARun, 'active');
+  if TryISO8601ToDate(TJsonRead.StrictText(ARun, 'started'), mStarted, False) then
   begin
     ASnapshot.CheckStarted := mStarted;
   end;
-  ASnapshot.CheckDurationMs := IntOf(ARun, 'durationMs', 0);
-  ASnapshot.CheckUnits := Integer(IntOf(ARun, 'units', 0));
-  mItems := ArrayOf(ARun, 'slowUnits');
+  ASnapshot.CheckDurationMs := TJsonRead.Int64Or(ARun, 'durationMs', 0);
+  ASnapshot.CheckUnits := Integer(TJsonRead.Int64Or(ARun, 'units', 0));
+  mItems := TJsonRead.Items(ARun, 'slowUnits');
   if mItems <> nil then
   begin
     for mItem in mItems do
@@ -272,14 +176,14 @@ begin
       if mItem is TJSONObject then
       begin
         mUnit := Default(TAtlasServerSlowUnit);
-        mUnit.Name := TextOf(TJSONObject(mItem), 'name');
-        mUnit.FileName := TextOf(TJSONObject(mItem), 'file');
-        mUnit.Ms := FloatOf(TJSONObject(mItem), 'ms');
+        mUnit.Name := TJsonRead.StrictText(TJSONObject(mItem), 'name');
+        mUnit.FileName := TJsonRead.StrictText(TJSONObject(mItem), 'file');
+        mUnit.Ms := TJsonRead.Float(TJSONObject(mItem), 'ms');
         ASnapshot.SlowUnits := ASnapshot.SlowUnits + [mUnit];
       end;
     end;
   end;
-  mItems := ArrayOf(ARun, 'slowRules');
+  mItems := TJsonRead.Items(ARun, 'slowRules');
   if mItems <> nil then
   begin
     for mItem in mItems do
@@ -287,9 +191,9 @@ begin
       if mItem is TJSONObject then
       begin
         mRule := Default(TAtlasServerSlowRule);
-        mRule.Id := TextOf(TJSONObject(mItem), 'id');
-        mRule.Ms := FloatOf(TJSONObject(mItem), 'ms');
-        mRule.Calls := Integer(IntOf(TJSONObject(mItem), 'calls', 0));
+        mRule.Id := TJsonRead.StrictText(TJSONObject(mItem), 'id');
+        mRule.Ms := TJsonRead.Float(TJSONObject(mItem), 'ms');
+        mRule.Calls := Integer(TJsonRead.Int64Or(TJSONObject(mItem), 'calls', 0));
         ASnapshot.SlowRules := ASnapshot.SlowRules + [mRule];
       end;
     end;
@@ -326,11 +230,11 @@ begin
     if mItem is TJSONObject then
     begin
       mRequest := Default(TAtlasServerRequest);
-      mRequest.Method := TextOf(TJSONObject(mItem), 'method');
-      mRequest.Count := Integer(IntOf(TJSONObject(mItem), 'count', 0));
-      mRequest.AverageMs := FloatOf(TJSONObject(mItem), 'averageMs');
-      mRequest.MaxMs := FloatOf(TJSONObject(mItem), 'maxMs');
-      mRequest.Failed := Integer(IntOf(TJSONObject(mItem), 'failed', 0));
+      mRequest.Method := TJsonRead.StrictText(TJSONObject(mItem), 'method');
+      mRequest.Count := Integer(TJsonRead.Int64Or(TJSONObject(mItem), 'count', 0));
+      mRequest.AverageMs := TJsonRead.Float(TJSONObject(mItem), 'averageMs');
+      mRequest.MaxMs := TJsonRead.Float(TJSONObject(mItem), 'maxMs');
+      mRequest.Failed := Integer(TJsonRead.Int64Or(TJSONObject(mItem), 'failed', 0));
       mAll := mAll + [mRequest];
     end;
   end;
@@ -350,10 +254,10 @@ begin
   begin
     Exit;
   end;
-  ASnapshot.ProcessId := Cardinal(IntOf(AProcess, 'pid', 0));
-  ASnapshot.Version := TextOf(AProcess, 'version');
-  ASnapshot.UptimeMs := IntOf(AProcess, 'uptimeMs', 0);
-  ASnapshot.State := StateOf(TextOf(AProcess, 'state'));
+  ASnapshot.ProcessId := Cardinal(TJsonRead.Int64Or(AProcess, 'pid', 0));
+  ASnapshot.Version := TJsonRead.StrictText(AProcess, 'version');
+  ASnapshot.UptimeMs := TJsonRead.Int64Or(AProcess, 'uptimeMs', 0);
+  ASnapshot.State := StateOf(TJsonRead.StrictText(AProcess, 'state'));
 end;
 
 /// <summary>Schlüssel memory; Gesamtwert und Budget überschreiben die alten Schlüssel nur, wenn vorhanden.</summary>
@@ -363,16 +267,16 @@ begin
   begin
     Exit;
   end;
-  ASnapshot.Memory[TAtlasServerMemoryPart.Symbols] := IntOf(AMemory, 'symbols', 0);
-  ASnapshot.Memory[TAtlasServerMemoryPart.Usages] := IntOf(AMemory, 'usages', 0);
-  ASnapshot.Memory[TAtlasServerMemoryPart.LibraryUnits] := IntOf(AMemory, 'libraryUnits', 0);
-  ASnapshot.Memory[TAtlasServerMemoryPart.TreeCache] := IntOf(AMemory, 'treeCache', 0);
-  ASnapshot.Memory[TAtlasServerMemoryPart.Packages] := IntOf(AMemory, 'packages', 0);
-  ASnapshot.Memory[TAtlasServerMemoryPart.Documents] := IntOf(AMemory, 'documents', 0);
-  ASnapshot.Memory[TAtlasServerMemoryPart.Rest] := IntOf(AMemory, 'rest', 0);
-  ASnapshot.MemoryTotal := IntOf(AMemory, 'total', ASnapshot.MemoryTotal);
-  ASnapshot.MemoryBudget := IntOf(AMemory, 'budget', ASnapshot.MemoryBudget);
-  ASnapshot.OverBudget := BoolOf(AMemory, 'overBudget');
+  ASnapshot.Memory[TAtlasServerMemoryPart.Symbols] := TJsonRead.Int64Or(AMemory, 'symbols', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Usages] := TJsonRead.Int64Or(AMemory, 'usages', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.LibraryUnits] := TJsonRead.Int64Or(AMemory, 'libraryUnits', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.TreeCache] := TJsonRead.Int64Or(AMemory, 'treeCache', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Packages] := TJsonRead.Int64Or(AMemory, 'packages', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Documents] := TJsonRead.Int64Or(AMemory, 'documents', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Rest] := TJsonRead.Int64Or(AMemory, 'rest', 0);
+  ASnapshot.MemoryTotal := TJsonRead.Int64Or(AMemory, 'total', ASnapshot.MemoryTotal);
+  ASnapshot.MemoryBudget := TJsonRead.Int64Or(AMemory, 'budget', ASnapshot.MemoryBudget);
+  ASnapshot.OverBudget := TJsonRead.Flag(AMemory, 'overBudget');
 end;
 
 /// <summary>Schlüssel queue: wartende und laufende Aufträge.</summary>
@@ -382,11 +286,11 @@ begin
   begin
     Exit;
   end;
-  ASnapshot.IndexWaiting := Integer(IntOf(AQueue, 'indexWaiting', 0));
-  ASnapshot.IndexRunning := Integer(IntOf(AQueue, 'indexRunning', 0));
-  ASnapshot.CheckWaiting := Integer(IntOf(AQueue, 'checkWaiting', 0));
-  ASnapshot.CheckRunning := Integer(IntOf(AQueue, 'checkRunning', 0));
-  ASnapshot.OldestWaitMs := IntOf(AQueue, 'oldestWaitMs', 0);
+  ASnapshot.IndexWaiting := Integer(TJsonRead.Int64Or(AQueue, 'indexWaiting', 0));
+  ASnapshot.IndexRunning := Integer(TJsonRead.Int64Or(AQueue, 'indexRunning', 0));
+  ASnapshot.CheckWaiting := Integer(TJsonRead.Int64Or(AQueue, 'checkWaiting', 0));
+  ASnapshot.CheckRunning := Integer(TJsonRead.Int64Or(AQueue, 'checkRunning', 0));
+  ASnapshot.OldestWaitMs := TJsonRead.Int64Or(AQueue, 'oldestWaitMs', 0);
 end;
 
 { TAtlasServerSnapshot }
@@ -417,15 +321,15 @@ begin
     end;
     mRoot := TJSONObject(mValue);
     Result.Valid := True;
-    Result.Units := Integer(IntOf(mRoot, 'units', -1));
-    Result.MemoryTotal := IntOf(mRoot, 'memoryBytes', 0);
-    Result.MemoryBudget := IntOf(mRoot, 'budgetBytes', 0);
-    ReadRequests(Result, ArrayOf(mRoot, 'requests'));
-    ReadProcess(Result, ObjectOf(mRoot, 'process'));
-    ReadMemory(Result, ObjectOf(mRoot, 'memory'));
-    ReadCheckRun(Result, ObjectOf(mRoot, 'checkRun'));
-    ReadQueue(Result, ObjectOf(mRoot, 'queue'));
-    mHits := ObjectOf(mRoot, 'cacheHits');
+    Result.Units := Integer(TJsonRead.Int64Or(mRoot, 'units', -1));
+    Result.MemoryTotal := TJsonRead.Int64Or(mRoot, 'memoryBytes', 0);
+    Result.MemoryBudget := TJsonRead.Int64Or(mRoot, 'budgetBytes', 0);
+    ReadRequests(Result, TJsonRead.Items(mRoot, 'requests'));
+    ReadProcess(Result, TJsonRead.Obj(mRoot, 'process'));
+    ReadMemory(Result, TJsonRead.Obj(mRoot, 'memory'));
+    ReadCheckRun(Result, TJsonRead.Obj(mRoot, 'checkRun'));
+    ReadQueue(Result, TJsonRead.Obj(mRoot, 'queue'));
+    mHits := TJsonRead.Obj(mRoot, 'cacheHits');
     Result.IndexHitPercent := PercentOf(mHits, 'index');
     Result.TreeHitPercent := PercentOf(mHits, 'trees');
   finally

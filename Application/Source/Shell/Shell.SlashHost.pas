@@ -9,7 +9,7 @@
 // bleibt die Datei unverändert und der Editor zeigt den Grund.
 //
 // Schnellbefehle laufen in einem Worker-Thread (onTypeFormatting). Neu geladen
-// wird nur im Thread der Nachrichtenschleife (Code-Review A-03): WriteProject
+// wird nur im Thread der Nachrichtenschleife: WriteProject
 // und SelectBuild stellen das über RunInLoop dorthin.
 //
 // WriteFiles (/unit, #297) legt mehrere Dateien in einem WorkspaceEdit an
@@ -115,7 +115,7 @@ type
     /// Zuweisung keine Prüfregeln.</summary>
     property FindingsOf: TSlashFindingsFunc read FSources.FindingsOf write FSources.FindingsOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
-    /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
+    /// laufen nur dort; ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
   end;
 
@@ -429,7 +429,7 @@ begin
       Workspace: TShellWorkspace;
       Error: string;
     begin
-      // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife (A-03).
+      // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife.
       Workspace := mWorkspaceOf(mUri);
       if (Workspace <> nil) and not Workspace.SelectBuild(mConfig, mPlatformName, Error) then
       begin

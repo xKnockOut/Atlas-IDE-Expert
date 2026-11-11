@@ -141,6 +141,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
 var
   mLine, mCharacter: Integer;
@@ -158,15 +161,6 @@ begin
   ARange := Default(TLspRange);
   Result := (AValue is TJSONObject) and ReadPosition(TJSONObject(AValue).GetValue('start'), ARange.StartPos) and
     ReadPosition(TJSONObject(AValue).GetValue('end'), ARange.EndPos);
-end;
-
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AName) is TJSONString then
-  begin
-    Result := AObject.GetValue(AName).Value;
-  end;
 end;
 
 function PositionJson(const APosition: TLspTextPosition): TJSONObject;
@@ -212,7 +206,7 @@ begin
   if AAnswer.GetValue('location') is TJSONObject then
   begin
     mLocation := TJSONObject(AAnswer.GetValue('location'));
-    AInfo.FileName := StringOf(mLocation, 'file');
+    AInfo.FileName := TJsonRead.Text(mLocation, 'file');
     if mLocation.TryGetValue<Integer>('line', mNumber) then
     begin
       AInfo.Line := mNumber;
@@ -227,10 +221,10 @@ end;
 function ReadConversion(const AItem: TJSONObject): TAtlasExpressionConversion;
 begin
   Result := Default(TAtlasExpressionConversion);
-  Result.Expression := StringOf(AItem, 'expression');
-  Result.FromType := StringOf(AItem, 'from');
-  Result.ToType := StringOf(AItem, 'to');
-  Result.Convert := StringOf(AItem, 'kind') = 'convert';
+  Result.Expression := TJsonRead.Text(AItem, 'expression');
+  Result.FromType := TJsonRead.Text(AItem, 'from');
+  Result.ToType := TJsonRead.Text(AItem, 'to');
+  Result.Convert := TJsonRead.Text(AItem, 'kind') = 'convert';
 end;
 
 function ReadConversions(const AValue: TJSONValue): TArray<TAtlasExpressionConversion>;
@@ -263,8 +257,8 @@ begin
   if AAnswer.GetValue('error') is TJSONObject then
   begin
     mError := TJSONObject(AAnswer.GetValue('error'));
-    AInfo.Error := StringOf(mError, 'kind');
-    AInfo.ErrorDetail := StringOf(mError, 'detail');
+    AInfo.Error := TJsonRead.Text(mError, 'kind');
+    AInfo.ErrorDetail := TJsonRead.Text(mError, 'detail');
   end;
 end;
 
@@ -391,10 +385,10 @@ begin
   begin
     mAnswer := TJSONObject(AAnswer);
     ReadRange(mAnswer.GetValue('range'), AInfo.Range);
-    AInfo.Expression := StringOf(mAnswer, 'expression');
-    AInfo.TypeName := StringOf(mAnswer, 'type');
-    AInfo.BaseName := StringOf(mAnswer, 'base');
-    AInfo.Overload := StringOf(mAnswer, 'overload');
+    AInfo.Expression := TJsonRead.Text(mAnswer, 'expression');
+    AInfo.TypeName := TJsonRead.Text(mAnswer, 'type');
+    AInfo.BaseName := TJsonRead.Text(mAnswer, 'base');
+    AInfo.Overload := TJsonRead.Text(mAnswer, 'overload');
     ReadLocation(mAnswer, AInfo);
     AInfo.Conversions := ReadConversions(mAnswer.GetValue('conversions'));
     ReadValueAndError(mAnswer, AInfo);

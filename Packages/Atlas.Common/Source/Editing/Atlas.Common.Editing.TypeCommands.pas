@@ -498,7 +498,7 @@ begin
     Exit(False);
   end;
   mTypeName := ATypeName;
-  // Search statt Rekursion (Bericht M1); in einen gleichnamigen Typ ohne Element geht die Suche nicht hinein.
+  // Search statt Rekursion; in einen gleichnamigen Typ ohne Element geht die Suche nicht hinein.
   mFound := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -876,7 +876,7 @@ var
   mFound: TList<TTextRange>;
 begin
   mPrefix := AClassName + '.';
-  // Walk statt Rekursion (Bericht M1); in die gefundenen Methoden geht der Lauf nicht hinein.
+  // Walk statt Rekursion; in die gefundenen Methoden geht der Lauf nicht hinein.
   mFound := TList<TTextRange>.Create;
   try
     ASource.Tree.Root.Walk(

@@ -29,7 +29,7 @@
 #
 # Warum vorgefertigt: Claude Code startet den MCP-Server des Plugins beim Start der Sitzung und versucht es
 # danach nicht erneut. Ein Bau von 12 Minuten in der Sitzung kommt dafür zu spät, und ein Setup-Skript der
-# Cloud-Umgebung wird nur zwischengespeichert, wenn es in etwa 5 Minuten fertig ist (ADR 0013).
+# Cloud-Umgebung wird nur zwischengespeichert, wenn es in etwa 5 Minuten fertig ist.
 #
 # Zwei Aufrufe gleichzeitig (Setup-Skript und SessionStart-Hook) warten aufeinander (flock).
 #

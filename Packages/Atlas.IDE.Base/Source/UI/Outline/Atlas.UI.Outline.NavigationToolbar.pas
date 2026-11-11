@@ -5,7 +5,7 @@
 // suchen“. Die Open Tools API bietet keinen Zugang zu ihren Listen; füllen
 // kann Atlas sie nicht. Die Brotkrumenleiste (#590) ersetzt sie (Menü am
 // Unit-Glied, „›“ hinter Typen).
-// Netz, nicht der Regelweg (Bericht M3): Ausgeblendet wird über die Option
+// Netz, nicht der Regelweg: Ausgeblendet wird über die Option
 // „Navigationssymbolleiste anzeigen“ der IDE (TAtlasIdeNavigationOption).
 // Umhängen greift in das Editorfenster der IDE ein und läuft nur, wenn die
 // IDE diese Option nicht hat oder ablehnt.

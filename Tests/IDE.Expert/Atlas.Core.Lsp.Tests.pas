@@ -25,7 +25,7 @@ type
     /// ohne Abbruch kommt die Antwort.</summary>
     [Test]
     procedure CancellableRequestSendsCancel;
-    /// <summary>Ende der Verbindung mit letzter und offenen Anfragen und den Angaben des Transports (Bericht H5).
+    /// <summary>Ende der Verbindung mit letzter und offenen Anfragen und den Angaben des Transports.
     /// </summary>
     [Test]
     procedure CloseInfoNamesLastAndOpenRequests;
@@ -33,7 +33,7 @@ type
     procedure ForwardsServerMessagesToHandler;
     [Test]
     procedure RoutesPartialResultsToRequest;
-    /// <summary>Obergrenzen der Rahmung (Code-Review D-10).</summary>
+    /// <summary>Obergrenzen der Rahmung.</summary>
     [Test]
     procedure RejectsOversizedContentLength;
     [Test]
@@ -83,7 +83,7 @@ type
     procedure SendsProjectContextsInInitializeAndOnChange;
     [Test]
     procedure AcceptsApplyEditAndRepliesLater;
-    /// <summary>Antwortet niemand, gibt die Sitzung die Id frei (Code-Review S-07).</summary>
+    /// <summary>Antwortet niemand, gibt die Sitzung die Id frei.</summary>
     [Test]
     procedure FreesApplyEditIdWithoutReply;
     [Test]

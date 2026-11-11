@@ -1,6 +1,6 @@
 ﻿unit Atlas.Text.Diff;
 
-// Zeilenvergleich (gemeinsam für Server und Plugin, ADR 0012): gleicher Anfang
+// Zeilenvergleich (gemeinsam für Server und Plugin): gleicher Anfang
 // und gleiches Ende, geänderte Blöcke über die längste gemeinsame Teilfolge
 // und eine lesbare Ausgabe „Zeile n:“ bzw. „ab Zeile n:“ mit "- " alt und
 // "+ " neu. Wer die Zeilen wie trennt, entscheidet der Aufrufer

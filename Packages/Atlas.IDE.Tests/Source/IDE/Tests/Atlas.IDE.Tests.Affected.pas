@@ -11,7 +11,7 @@
 // tests.affectedBeforeCommit: Atlas legt für das Repository des Testprojekts
 // den Git-Hook pre-commit an (Atlas.Core.Tests.AffectedHook) bzw. entfernt ihn,
 // wenn die Einstellung aus ist. git läuft dabei im Arbeiter-Thread.
-// Haken statt Imports (A-09): Testläufer und Serverpfad kommen über Install.
+// Haken statt Imports: Testläufer und Serverpfad kommen über Install.
 
 interface
 

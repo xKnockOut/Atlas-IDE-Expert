@@ -23,7 +23,7 @@
 //   nicht nach Neuladen fragt. Die Wahl gilt bis zum Ende der Sitzung.
 //   Gelesen wird mit TAtlasTextFile.ReadAllBytes, das Löschen teilt: Ersetzt
 //   Atlas die Datei gerade (Umbenennen, Ausblenden), scheitert das nicht an
-//   dieser Zeile (Bericht M5).
+//   dieser Zeile.
 
 interface
 
@@ -546,7 +546,7 @@ begin
   if not TAtlasFileFormats.Satisfies(mBytes, mTarget) then
   begin
     mStamp := TFile.GetLastWriteTime(AFileName);
-    // Atomar (Bericht N3): An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
+    // Atomar: An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
     TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(mBytes, mTarget));
     // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
     TFile.SetLastWriteTime(AFileName, mStamp);

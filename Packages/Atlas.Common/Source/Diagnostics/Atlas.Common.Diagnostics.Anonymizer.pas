@@ -72,7 +72,7 @@ type
     FNames: TDictionary<string, Integer>;
     FValues: TDictionary<string, Integer>;
     FIdentity: TArray<string>;
-    // Muster einmal übersetzt (Code-Review P-11): vorher je Logzeile vier und je Wert zwei neu. TRegEx ist
+    // Muster einmal übersetzt: vorher je Logzeile vier und je Wert zwei neu. TRegEx ist
     // nicht threadsicher; alle Zugriffe laufen unter FLock (Anonymize).
     FQuoted, FPath, FBackslash, FWord, FNumber, FMethod, FExtension, FDrive: TRegEx;
     function LooksLikePath(const AText: string): Boolean;
@@ -369,7 +369,7 @@ var
   mLast: Integer;
   mBuilder: TStringBuilder;
 begin
-  // TStringBuilder statt Result := Result + … (Code-Review P-11): lange Zeilen mit vielen Treffern.
+  // TStringBuilder statt Result := Result + …: lange Zeilen mit vielen Treffern.
   mBuilder := TStringBuilder.Create(Length(AText));
   try
     mLast := 1;

@@ -11,7 +11,7 @@
 // Mit AKeepOrder (Code-Aktionen, #399) bleibt ohne Eingabe die Reihenfolge der
 // Liste, bei Gleichstand ebenso.
 // Der Verlauf (palette.json) wird über TAtlasDataFile gelesen und atomar
-// geschrieben (Bericht N3): Eine unbrauchbare Datei liegt danach als .defekt
+// geschrieben: Eine unbrauchbare Datei liegt danach als .defekt
 // daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
 // Zusatzquelle (#1270, Issues in der Palette): IAtlasPaletteSource erfährt
 // jede Eingabe und zeigt ihre Treffer als eigene Gruppe unter den Befehlen
@@ -114,7 +114,7 @@ type
   end;
 
   /// <summary>Atlas-Befehle anmelden (Palette, #520); ohne VCL und Open Tools API. Features melden ihre Befehle
-  /// darüber an, statt die Palette der IDE-Schicht zu importieren (A-09). Ohne Referenzzählung: Die Palette
+  /// darüber an, statt die Palette der IDE-Schicht zu importieren. Ohne Referenzzählung: Die Palette
   /// gehört der Composition; Empfänger speichern die Schnittstelle nicht.</summary>
   IAtlasCommandRegistry = interface
     ['{57AA1265-60F8-4655-BC7B-1AE31AC48481}']

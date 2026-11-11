@@ -508,7 +508,7 @@ var
 begin
   mBest := nil;
   mOffset := ATokens[AIndex].Offset;
-  // Iterativ (Bericht M1); die letzte passende Routine in Baumreihenfolge ist die innerste.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); die letzte passende Routine in Baumreihenfolge ist die innerste.
   if ATree.Root <> nil then
   begin
     ATree.Root.Walk(
@@ -687,7 +687,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -737,7 +737,7 @@ var
     mPending: TStack<TSyntaxNode>;
     mPendingActive: TStack<Boolean>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     mPendingActive := TStack<Boolean>.Create;
     try
@@ -777,7 +777,7 @@ var
     mNode, mBody: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1011,7 +1011,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1230,7 +1230,7 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
     mPending, mPendingScope: TStack<TSyntaxNode>;
     mPendingFlags: TStack<Integer>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     mPendingScope := TStack<TSyntaxNode>.Create;
     mPendingFlags := TStack<Integer>.Create;

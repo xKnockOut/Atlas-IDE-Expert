@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.BuildPipeline;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 6): Das Modul
+// Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul
 // Build-Pipeline (atlas.buildpipeline) stellt über seinen Scope ein
 // IAtlasBuildJobs bereit, Builds auf Auftrag (#261). Die Module Tests (vor
 // den Tests bauen), Build-Werkzeuge (Neubau nach den Projektaufgaben) und die

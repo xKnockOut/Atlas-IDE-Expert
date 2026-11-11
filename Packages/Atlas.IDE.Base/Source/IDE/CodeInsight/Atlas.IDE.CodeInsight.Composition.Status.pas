@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Status;
 
 // Atlas-Statusfeld mit seinen Zeilen (#591), Fenster „Atlas-Server“ (#1356), Fehlerzähler (#509),
-// Benachrichtigungszentrale (#601) mit Plakette und Einträgen der Sicherung (#493, Bericht M4) und die
+// Benachrichtigungszentrale (#601) mit Plakette und Einträgen der Sicherung (#493) und die
 // Schnellschalter (#604) am Feld. Immer angemeldet, auch im abgesicherten Start (#722).
 
 interface
@@ -47,7 +47,7 @@ procedure ShowServerWindow;
 /// „Protokoll öffnen“ (atlas.log mit Stacktrace): Der Fehler soll auffallen und behoben werden, statt still eine
 /// Funktion zu kosten. Aus jedem Thread; die Aktionen laufen im Hauptthread.</summary>
 procedure GuardTripped(AFeature: TAtlasFeature; const AMessage: string);
-/// <summary>Atlas-Protokoll gestört (Bericht M4), aus dem Thread des Schreibers: über OutputDebugString (DebugView
+/// <summary>Atlas-Protokoll gestört, aus dem Thread des Schreibers: über OutputDebugString (DebugView
 /// zeigt es, auch wenn atlas.log nichts mehr annimmt) und als Benachrichtigung; '' = schreibt wieder.</summary>
 procedure LogError(const AMessage: string);
 

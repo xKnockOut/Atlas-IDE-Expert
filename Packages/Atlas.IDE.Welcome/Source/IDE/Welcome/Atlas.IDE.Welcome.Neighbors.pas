@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Welcome.Neighbors;
 
-// Andere Module für die Willkommensseite (#1455, ADR 0017 Regel 6): Builds
+// Andere Module für die Willkommensseite (#1455, Modulregel 6): Builds
 // auf Auftrag (Build-Pipeline), Testprojekte (Tests), Startprofile und
 // Projektaufgaben (Build-Werkzeuge) und die Baseline (Prüfregeln) erreicht
 // die Seite nur über deren Verträge in Base (Atlas.IDE.Contracts.*) und fragt bei
@@ -261,7 +261,7 @@ class function TAtlasWelcomeNeighbors.StartBaseline(const AProject: string;
 var
   mSource: IAtlasBaselineSource;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.BaselineUpdateModuleOff);
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.BaselineUpdateModuleOff);
   if Baseline(mSource) then
   begin
     Result := mSource.StartUpdate(AProject, SetupBaselineDone(ADone));

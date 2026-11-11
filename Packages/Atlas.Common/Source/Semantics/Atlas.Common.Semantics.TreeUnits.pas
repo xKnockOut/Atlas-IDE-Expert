@@ -155,7 +155,7 @@ begin
   if (AIndex <> nil) and (AFileName <> '') and AIndex.FindFile(AFileName, mIndexed) then
   begin
     // Eigenes Array (Copy): Result.Symbols teilt es sonst mit AExtracted. Einmal vergrößern statt je
-    // Symbol anhängen (Code-Review P-08).
+    // Symbol anhängen.
     mCount := Length(AExtracted.Symbols);
     Result.Symbols := Copy(AExtracted.Symbols);
     SetLength(Result.Symbols, mCount + Length(mIndexed.Symbols));

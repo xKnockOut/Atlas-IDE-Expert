@@ -315,8 +315,8 @@ begin
     Assert.IsTrue(mFrame.Parts.Refresh.Enabled, 'Abbrechen');
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel), mFrame.Parts.Refresh.Caption);
     mFrame.SetFlag(TAtlasIssueFlag.Loading, False);
-    mFrame.ShowError(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken), TAtlasIssueFix.EnterToken);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken), mFrame.StatusText);
+    mFrame.ShowError(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken), TAtlasIssueFix.EnterToken);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken), mFrame.StatusText);
     Assert.IsTrue(mFrame.Parts.Fix.Visible);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixToken), mFrame.Parts.Fix.Caption);
     mFrame.Parts.Fix.Click;
@@ -375,7 +375,7 @@ begin
     mFrame.ShowDetails(mDetails, cNow, '', False);
     Assert.AreEqual('2/3', mFrame.Content.ProgressText);
     Assert.AreEqual('ATL-123 · 2/3', mFrame.Content.KeyLabel.Caption);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistProgress, [2, 3]), mFrame.Content.KeyLabel.Hint);
+    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress, [2, 3]), mFrame.Content.KeyLabel.Hint);
     Assert.IsNotNull(mFrame.Content.TaskBox);
     Assert.IsTrue(mFrame.Content.TaskBox.HasTasks);
     Assert.IsFalse(mFrame.Content.TaskBox.TasksLocked);

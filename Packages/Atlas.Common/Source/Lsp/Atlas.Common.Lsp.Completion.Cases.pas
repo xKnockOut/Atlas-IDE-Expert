@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Completion.Cases;
 
-// Die Fälle von textDocument/completion in fester Reihenfolge (Code-Review S-01): ohne Syntaxbaum
+// Die Fälle von textDocument/completion in fester Reihenfolge: ohne Syntaxbaum
 // (Schnellbefehle, Direktiven, Feldnamen in Strings, Wertdarstellungen) und mit Baum und Resolver (Angebote
 // oben in der Liste, exklusive Listen, die allgemeine Liste, Code-Vorlagen, Deklarieren). Aus
 // Atlas.Common.Lsp.Completion herausgelöst.
@@ -17,11 +17,11 @@ uses
   Atlas.Common.Lsp.Completion.Hooks;
 
 type
-  /// <summary>Ergebnis eines Falls der Vervollständigung (Code-Review S-01): weiter mit dem nächsten Fall oder
+  /// <summary>Ergebnis eines Falls der Vervollständigung: weiter mit dem nächsten Fall oder
   /// fertig mit TCompletionAnswer.Exclusive.</summary>
   TCompletionOutcome = (Next, Answered);
 
-  /// <summary>Antwort im Aufbau (Code-Review S-01, 4.2 Schritt 5): Hinweise oben, vorab bestimmte Einträge
+  /// <summary>Antwort im Aufbau (4.2 Schritt 5): Hinweise oben, vorab bestimmte Einträge
   /// (Aufzählungswerte, Komponenten; bei Staffelung schon gesendet), die allgemeine Liste und der Schluss
   /// (Code-Vorlagen, Deklarieren). Ein exklusiver Fall antwortet mit Exclusive allein.</summary>
   TCompletionAnswer = class
@@ -127,7 +127,7 @@ var
   mItem: TCompletionItem;
   mCount: Integer;
 begin
-  // Einmal anlegen statt je Eintrag anhängen (Code-Review P-08), wie WithoutNames.
+  // Einmal anlegen statt je Eintrag anhängen, wie WithoutNames.
   Result := nil;
   SetLength(Result, Length(AItems));
   mCount := 0;

@@ -12,7 +12,7 @@
 // begrenzt, bis sie fertig ist oder die Sperre freigibt, und lädt dann ihren
 // Stand, statt alles selbst noch einmal zu lesen.
 //
-// Ein Schreiber je Cache (Bericht N1): Den Projekt-Cache schreibt nur, wer
+// Ein Schreiber je Cache: Den Projekt-Cache schreibt nur, wer
 // seine Sperre hält (sonst ReadOnlyCache). Den gemeinsamen Bibliotheks-Cache
 // teilen alle Projekte und Prozesse; wer ihm Units hinzufügt, sperrt ihn mit
 // TryLockWrite, liest unter der Sperre den aktuellen Stand neu und ergänzt
@@ -210,7 +210,7 @@ type
     function UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
     property Index: ISymbolIndex read FIndex;
     property OnCacheRejected: TIndexCacheRejectedEvent read FCacheEvents.Rejected write FCacheEvents.Rejected;
-    /// <summary>Cache nicht geschrieben; AReason ohne Pfad (Bericht N1). Im Index-Thread.</summary>
+    /// <summary>Cache nicht geschrieben; AReason ohne Pfad. Im Index-Thread.</summary>
     property OnCacheNotWritten: TIndexCacheRejectedEvent read FCacheEvents.NotWritten write FCacheEvents.NotWritten;
     /// <summary>Nach jedem geschriebenen Cache; im Index-Thread.</summary>
     property OnCacheWritten: TIndexCacheWrittenEvent read FCacheEvents.Written write FCacheEvents.Written;
@@ -874,7 +874,7 @@ begin
   begin
     Exit;
   end;
-  // Ein Schreiber zur Zeit (Bericht N1). Unter der Sperre den aktuellen Stand lesen: Ein anderes Projekt
+  // Ein Schreiber zur Zeit. Unter der Sperre den aktuellen Stand lesen: Ein anderes Projekt
   // oder ein anderer Prozess kann seit dem Start Units ergänzt haben, die sonst verloren gingen.
   mLock := LockForWrite(AFileName);
   if mLock = nil then
@@ -942,7 +942,7 @@ begin
   end;
   // Immer nur ein Dienst des Prozesses serialisiert (Rückmeldung 22.10.2026): Die Projekte einer Gruppe
   // enden fast gleichzeitig, jede Serialisierung belegt kurzzeitig ein Vielfaches der Datei. Gegen andere
-  // Prozesse schützt die Schreibsperre der Datei (Bericht N1).
+  // Prozesse schützt die Schreibsperre der Datei.
   TSharedCacheWrites.Enter;
   try
     if FRequest.LibraryCacheFile <> '' then
@@ -1009,7 +1009,7 @@ begin
     end;
     Result.UseCache(ACaches.Load);
   except
-    // Noch nicht veröffentlicht: sonst bliebe der Builder als Leck zurück (Code-Review A-04).
+    // Noch nicht veröffentlicht: sonst bliebe der Builder als Leck zurück.
     Result.Free;
     raise;
   end;
@@ -1076,7 +1076,7 @@ begin
   try
     FOnError(AError);
   except
-    // Sonst läge die Ausnahme ungelesen in TThread.FatalException (Code-Review A-04).
+    // Sonst läge die Ausnahme ungelesen in TThread.FatalException.
   end;
 end;
 

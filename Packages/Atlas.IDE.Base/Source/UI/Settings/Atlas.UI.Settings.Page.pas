@@ -31,7 +31,7 @@
 // Bereich Issue-Tracker (#1280): nur der Modulschalter; Tracker, Abfrage, Start-Optionen, Muster und Zugang
 // (issues.*) baut das Modul Tracker als Abschnitt (#1455). Auf der Willkommensseite bleibt nur die Sektion an/aus
 // mit dem Sprung „Tracker-Einstellungen …“.
-// Abschnitte der Module (#1455, ADR 0017 Entscheidung 3): Jeder IAtlasSettingsSectionProvider der Registry liefert
+// Abschnitte der Module (#1455): Jeder IAtlasSettingsSectionProvider der Registry liefert
 // der Seite einen eigenen Abschnitt, den sie in den Reiter seines Bereichs baut (Bausteine über
 // IAtlasSettingsSectionHost). Geht ein Modul, schließt die Seite seinen Abschnitt; seine Werte bleiben erhalten.
 // Suchfeld über dem Baum (#1884, settings.search): Treffer dieses Knotens zeigt die Seite selbst (Reveal), Treffer

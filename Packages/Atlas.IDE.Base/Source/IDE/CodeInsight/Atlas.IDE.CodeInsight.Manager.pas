@@ -1,15 +1,15 @@
 ﻿unit Atlas.IDE.CodeInsight.Manager;
 
-// Code Insight-Manager für Delphi in RAD Studio (ADR 0006). Die IDE ruft ihn direkt auf; er fragt Atlas über eine
+// Code Insight-Manager für Delphi in RAD Studio. Die IDE ruft ihn direkt auf; er fragt Atlas über eine
 // eigene LSP-Sitzung. Umgesetzt: Symbolhinweis (Hover, GetHintText), Browse (Strg+Klick, GotoDefinition), Help
 // Insight (leer, solange der Atlas-Tooltip an ist) und Vervollständigung im eigenen Popup (#410): Strg+Leer und "."
 // lösen sie aus, InvokeCodeCompletion öffnet das Popup und meldet der IDE False, damit sie keine eigene Liste zeigt
 // (#407). Parameterhilfe ebenso im eigenen Hint (#436): "(", "," und Strg+Umschalt+Leer, InvokeParameterCodeInsight
 // meldet False.
 // Oberste Stufe der Klassenkette State (Zustand, Protokoll) → Session (Start, Stopp, Projekte) → Commands (Befehle
-// im Hintergrund) → Crashes (Abstürze, Bericht H5, #1355) → Manager (Open Tools API). Serverprozess,
+// im Hintergrund) → Crashes (Abstürze, #1355) → Manager (Open Tools API). Serverprozess,
 // Ordnerbeobachter und die Quellen von Vervollständigung und Parameter-Hint aus dem Kern setzt die
-// Kompositionswurzel ein (TAtlasCodeInsightAdapters, A-09).
+// Kompositionswurzel ein (TAtlasCodeInsightAdapters).
 
 interface
 
@@ -121,7 +121,7 @@ const
   cManagerName = 'Atlas IDE Expert';
   cManagerId = 'Atlas.CodeInsight';
 
-/// <summary>Fehler eines Einstiegspunkts an die Sicherung (#493, Code-Review S-05); ein beendeter Server oder sein
+/// <summary>Fehler eines Einstiegspunkts an die Sicherung (#493); ein beendeter Server oder sein
 /// Zeitlimit (ELspClientError) ist erwartbar und zählt nicht.</summary>
 procedure ReportFailure(AFeature: TAtlasFeature; AE: Exception);
 begin
@@ -136,7 +136,7 @@ end;
 constructor TAtlasCodeInsightManager.Create(const AAdapters: TAtlasCodeInsightAdapters);
 begin
   inherited Create(AAdapters);
-  // Gemeinsamer Pufferstand für Probleme und Inlay-Hints (P-04).
+  // Gemeinsamer Pufferstand für Probleme und Inlay-Hints.
   TAtlasEditorSnapshots.Install;
   FEditors := TAtlasCodeInsightEditors.Create(EditorHooks);
 end;
@@ -249,7 +249,7 @@ var
 begin
   mActivity := TAtlasActivity.Scope('Symbolhinweis');
   Result := '';
-  // Durch die Sicherung abgeschaltet (#493, Code-Review S-05); eigener Tooltip (#442): die IDE zeigt keinen
+  // Durch die Sicherung abgeschaltet (#493); eigener Tooltip (#442): die IDE zeigt keinen
   // zweiten.
   if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
   begin
@@ -297,7 +297,7 @@ begin
   AFileName := '';
   ALineNum := 0;
   Result := True;
-  // Durch die Sicherung abgeschaltet (#493, Code-Review S-05); AFileName = '' bricht still ab.
+  // Durch die Sicherung abgeschaltet (#493); AFileName = '' bricht still ab.
   if TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
   begin
     Exit;
@@ -502,7 +502,7 @@ begin
   Result := False;
   Diagnose(Format('InvokeCodeCompletion(%d, %d Zeichen)', [Ord(HowInvoked), Length(Str)]));
   try
-    // Start nur hier im Hauptthread (A-01); die Quellen bekommen danach die laufende Sitzung.
+    // Start nur hier im Hauptthread; die Quellen bekommen danach die laufende Sitzung.
     // Ohne Server liefern die übrigen Quellen trotzdem.
     EnsureSession;
     Completion.Invoke(TAtlasCodeInsightQueries.CurrentEditView, HowInvoked <> itManual);
@@ -530,7 +530,7 @@ begin
   mActivity := TAtlasActivity.Scope('Parameterhilfe');
   Diagnose(Format('InvokeParameterCodeInsight(%d)', [Ord(HowInvoked)]));
   try
-    // Start nur hier im Hauptthread (A-01).
+    // Start nur hier im Hauptthread.
     EnsureSession;
     FEditors.Signature.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
   except
@@ -550,7 +550,7 @@ begin
   end;
   Diagnose('Vervollständigung über eigene Taste');
   try
-    // Start nur hier im Hauptthread (A-01).
+    // Start nur hier im Hauptthread.
     EnsureSession;
     Completion.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
   except
@@ -570,7 +570,7 @@ begin
   end;
   Diagnose('Parameterhilfe über eigene Taste');
   try
-    // Start nur hier im Hauptthread (A-01).
+    // Start nur hier im Hauptthread.
     EnsureSession;
     FEditors.Signature.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
   except

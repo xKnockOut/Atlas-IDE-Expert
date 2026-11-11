@@ -34,23 +34,8 @@ uses
   Atlas.UI.Build.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Tasks.Texts,
-  Atlas.IDE.Foundation.EditorStyle;
-
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
-end;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Wahl an APick weitergeben, solange der Läufer lebt (unter dem Schutz des Features).</summary>
 function PickHandler(const AAlive: TFunc<Boolean>; const APick: TProc<string>): TProc<TAtlasCommand>;
@@ -82,7 +67,7 @@ begin
   mWindow.KeepOrder := True;
   mWindow.Prompt := APrompt;
   mWindow.OnExecute := PickHandler(AAlive, APick);
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 function RunPick(const ARun: TAtlasTaskRunByName): TProc<string>;

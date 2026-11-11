@@ -55,24 +55,6 @@ type
   TEditOf = reference to function(const APlace: TAtlasVisibilityPlace; AIndentWidth: Integer;
     out AEdit: TAtlasSectionEdit): Boolean;
 
-/// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein
-/// Rückgängig-Schritt.</summary>
-procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
-  const AInsert: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
-  if AInsert <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
 function SameLines(const A, B: TArray<string>): Boolean;
 var
   mIndex: Integer;
@@ -123,7 +105,7 @@ begin
   mNewLines := mEdit.Applied(mLines);
   if TAtlasLineMover.Difference(mText, string.Join(mLineBreak, mNewLines), mStart, mOldLength, mInsert) then
   begin
-    WriteBuffer(mBuffer, mText, mStart, mOldLength, mInsert);
+    TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart, mOldLength, mInsert);
   end;
   mCursor.Line := mEdit.CaretLine + 1;
   mCursor.Col := TLspSession.IndexToColumn(mNewLines[mEdit.CaretLine], mEdit.CaretCharacter,

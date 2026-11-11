@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Files.DataFile.Tests;
 
-// Datendateien des Plugins (Bericht N3): Lesen mit und ohne BOM, unbrauchbarer Inhalt wird als .defekt
+// Datendateien des Plugins: Lesen mit und ohne BOM, unbrauchbarer Inhalt wird als .defekt
 // beiseitegelegt und protokolliert (ohne Pfad), eine gesperrte oder nicht lesbare Datei bleibt unverändert,
 // Schreiben ersetzt atomar und legt den Ordner an.
 

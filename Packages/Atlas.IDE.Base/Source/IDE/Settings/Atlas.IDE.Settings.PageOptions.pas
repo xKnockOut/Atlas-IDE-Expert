@@ -50,7 +50,8 @@ uses
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.EditorView,
   Atlas.UI.Settings.Page.TeamFile,
-  Atlas.UI.Settings.Page.Transfer;
+  Atlas.UI.Settings.Page.Transfer,
+  Atlas.IDE.Foundation.Files;
 
 class procedure TAtlasPageOptions.ConnectServerVersion(APage: TAtlasSettingsPage);
 begin
@@ -95,7 +96,7 @@ begin
   APage.Part<TAtlasSettingsTeamFilePart>.OnTeamFile :=
     function: TAtlasTeamSettings
     begin
-      Result := TAtlasIdeTeamFile.Read(TAtlasIdeTeamFile.ActiveProject);
+      Result := TAtlasIdeTeamFile.Read(TAtlasIdeFiles.ActiveProjectFile);
     end;
   APage.Part<TAtlasSettingsTeamFilePart>.OnOpenTeamFile :=
     procedure

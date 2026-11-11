@@ -40,7 +40,6 @@ type
     class procedure Say(const AText: string); static;
     class function NowUtc: TDateTime; static;
     class function ResolveProject(const AFileName: string): string; static;
-    class function ActiveProject: string; static;
     class function Book(const AProject: string): TAtlasNoteBook; static;
     class procedure Put(const ABook: TAtlasNoteBook); static;
     class function Store(const ABook: TAtlasNoteBook): Boolean; static;
@@ -158,29 +157,12 @@ begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
-class function TAtlasIdeNotes.ActiveProject: string;
-var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
-begin
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mProject := mServices.GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
-end;
-
 class function TAtlasIdeNotes.ResolveProject(const AFileName: string): string;
 begin
   Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
   if Result = '' then
   begin
-    Result := ActiveProject;
+    Result := TAtlasIdeFiles.ActiveProjectFile;
   end;
   if (Result <> '') and (FProjectOf <> nil) then
   begin
@@ -427,7 +409,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := TAtlasIdeNotes.ActiveProject;
+    Result := TAtlasIdeFiles.ActiveProjectFile;
   end;
 end;
 

@@ -14,7 +14,7 @@
 // optionaler Canonicalizer auf (unter Windows aus Atlas.Windows).
 //
 // Die Umwandlung selbst steht in Atlas.Text.Uris und gilt gleich im Plugin
-// (ADR 0012); hier bleiben Key und SameFile.
+//; hier bleiben Key und SameFile.
 
 interface
 
