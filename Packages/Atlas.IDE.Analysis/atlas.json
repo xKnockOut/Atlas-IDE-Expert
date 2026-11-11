@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json",
   "profile": "strict",
   "minConfidence": "low",
   "testProfile": "standard",
@@ -116,6 +116,17 @@
             "Atlas.UI.*",
             "Atlas.IDE.*"
           ]
+        },
+        {
+          "name": "Winapi.Windows.GetTickCount",
+          "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden",
+          "units": [
+            "!Atlas.Core.Diagnostics.UserIdle"
+          ]
+        },
+        {
+          "name": "System.Classes.TThread.GetTickCount",
+          "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden"
         }
       ]
     }

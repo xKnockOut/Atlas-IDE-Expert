@@ -5,9 +5,6 @@
     {"path": "Source/Core/Assistants/Atlas.Core.Assistants.EditInbox.pas", "rule": "hardcoded-string", "fingerprint": "ed978707", "count": 1, "routine": "TAtlasEditInbox.Take", "context": "f86b9a6a"},
     {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "line-length", "fingerprint": "e83cc401", "count": 1, "routine": "unit", "context": "a3dd1da8"},
     {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeBuildInbox.Create", "context": "9df66e02"},
-    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "metric-cognitive-complexity", "fingerprint": "3615e938", "count": 1, "routine": "TAtlasIdeBuildInbox.Process", "context": "7dacd8a3"},
-    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas", "rule": "hardcoded-string", "fingerprint": "58e75c84", "count": 1, "routine": "TAtlasIdeEditInbox.Process", "context": "c7523423"},
-    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas", "rule": "hardcoded-string", "fingerprint": "a8548e75", "count": 1, "routine": "TAtlasIdeEditInbox.Process", "context": "be3e5f6a"},
-    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas", "rule": "hardcoded-string", "fingerprint": "fbd852ae", "count": 1, "routine": "TAtlasIdeEditInbox.Process", "context": "c36f0aff"}
+    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "metric-cognitive-complexity", "fingerprint": "3615e938", "count": 1, "routine": "TAtlasIdeBuildInbox.Process", "context": "7dacd8a3"}
   ]
 }
