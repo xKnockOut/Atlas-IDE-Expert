@@ -78,7 +78,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
-- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names
+- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components
 - **Unsaved designer state** is seen by references, renames and checks
 - **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files

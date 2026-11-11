@@ -126,6 +126,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Layout.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Scale.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.NameSuggest.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Structure.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Access.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.FitText.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ButtonBar.pas"/>
@@ -170,6 +171,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Preview.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ScalePreview.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.NameSuggest.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Structure.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Flash.pas"/>
@@ -195,6 +197,7 @@
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.FormPreview.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.ScalePreview.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.NameDialog.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.StructureFrame.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
