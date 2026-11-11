@@ -74,6 +74,8 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Prüfregel `inline-not-expanded` prüft auch die default-Property hinter `Liste[0]` ohne ihren Namen (#1345, H2443).
 - Prüfregel `managed-param-without-const` schweigt, wenn eine andere Unit die Routine als Wert benutzt, etwa einer `TFunc<string, …>` zuweist (#1898); das ergänzte `const` brach dort den Bau.
 - Neu zugewiesene Variablen in großen Units (#1996): Atlas fragt den Server nur nach dem sichtbaren Teil mit einer Bildschirmhöhe Rand und fragt beim Blättern neu; der Server rechnet nur die Routinen, die hineinreichen. Läuft eine Anfrage ins Zeitlimit, bricht der Server die Rechnung ab, statt sie im Hintergrund weiterzuführen und Hover, Glühbirne und Vervollständigung auszubremsen.
+- Glühbirne ohne eigenen Regellauf (#2008): Die Korrekturen der Prüfregeln kommen aus den Befunden der Diagnose am selben Text; läuft die Diagnose gerade, wartet die Glühbirne höchstens 1,5 s auf sie. Einen eigenen Lauf aller Regeln, der in großen Units Sekunden dauerte, startet sie nicht mehr; bis die Diagnose fertig ist, zeigt sie die übrigen Aktionen. Nur „Alles korrigieren“ beim Speichern (`source.fixAll`) rechnet weiter selbst.
+- Schnellere Antworten der Pull-Diagnosen (#2005): Wartet eine Anfrage auf eine laufende Prüfung derselben Datei, weckt deren Ende sie sofort, statt dass sie alle 20 ms nachsieht; das gilt auch für die Glühbirne, die auf die Befunde der Diagnose wartet.
 - Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
 
 ### Behoben
