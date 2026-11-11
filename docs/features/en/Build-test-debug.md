@@ -12,6 +12,16 @@ Back to the [README](../../../README.md)
 
 Settings: `build.zeroHints`, `build.warningsAsErrors`
 
+### Without a command-line compiler (Starter, Community)
+
+- At startup Atlas looks for `dcc32.exe` or `dcc64.exe` in the installation folder (#1822); RAD Studio Starter and, depending on the version, Community have no command-line compiler
+- the result is in the startup line of `atlas.log` ("command-line compiler: …")
+- if it is missing, a notice with a *Settings* button appears once; the "Set up project for Atlas" card on the welcome page says so too
+- builds for AI assistants (`build_project`) run through the IDE's compiler anyway and keep working
+- project tasks that call `dcc32`, `dcc64`, another `dcc…` or `msbuild` do not start but give the reason; tasks that call the compiler through a script are not recognized
+
+Setting: `diagnostics.editionCheck` (off = behaves as before)
+
 ### Disable a compiler warning in place
 
 - A code action on a warning or hint of the last build:

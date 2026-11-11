@@ -246,6 +246,7 @@ implementation
 
 uses
   Atlas.Core.Status.Contract,
+  Atlas.Core.Diagnostics.Edition,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
@@ -257,6 +258,7 @@ uses
   Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Diagnostics.Edition,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tasks.Pickers;
 
@@ -764,6 +766,19 @@ begin
   Result := True;
 end;
 
+/// <summary>Braucht ATask einen Kommandozeilen-Compiler, den diese Edition nicht hat (#1822)? AReason nennt den
+/// Grund. Aufgaben, die dcc über ein Skript starten, erkennt das nicht.</summary>
+function NeedsMissingCompiler(const ATask: TAtlasTaskDefinition; out AReason: string): Boolean;
+begin
+  AReason := '';
+  Result := TAtlasEdition.NeedsCommandLine(ATask.Command) and TAtlasIdeEdition.CommandLineMissing;
+  if Result then
+  begin
+    AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksNeedsCommandLine,
+      [ATask.Name, ExtractFileName(ATask.Command)]);
+  end;
+end;
+
 procedure SaveBeforeRun;
 begin
   if TAtlasIdeSettings.Current.TasksSaveBeforeRun then
@@ -797,6 +812,10 @@ begin
   if mIndex < 0 then
   begin
     AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone);
+    Exit;
+  end;
+  if NeedsMissingCompiler(mTasks[mIndex], AReason) then
+  begin
     Exit;
   end;
   SaveBeforeRun;
@@ -874,6 +893,7 @@ var
   mTask: TAtlasTaskDefinition;
   mMode: TAtlasTaskBeforeBuild;
   mParallel: Boolean;
+  mReason: string;
 begin
   mParallel := TAtlasIdeSettings.Current.TasksRunChecksParallel;
   while Length(ABatch.FWaiting) > 0 do
@@ -882,6 +902,11 @@ begin
     mMode := ABatch.FWaitingModes[0];
     Delete(ABatch.FWaiting, 0, 1);
     Delete(ABatch.FWaitingModes, 0, 1);
+    if NeedsMissingCompiler(mTask, mReason) then
+    begin
+      TAtlasIdeTaskProjects.Say(mReason, not ABatch.FPreBuild);
+      Continue;
+    end;
     if Start(ABatch.FProject, mTask, ABatch.FId, mMode, not ABatch.FPreBuild) then
     begin
       Inc(ABatch.FRunning);
