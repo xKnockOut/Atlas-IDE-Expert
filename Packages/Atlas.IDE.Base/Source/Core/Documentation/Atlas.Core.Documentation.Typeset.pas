@@ -4,7 +4,8 @@
 // TAtlasDocLayout (Atlas.Core.Documentation.Layout, dort Typen und Abfragen). TLayoutBuilder setzt Läufe mit
 // Umbruch, Codeblöcken, Listen und Spalten; TDocSections ordnet die Abschnitte in fester Reihenfolge (PARAMETER,
 // TYPPARAMETER, RÜCKGABE, WERT, AUSNAHMEN, HINWEISE, BEISPIEL, SIEHE AUCH, BEGRÜNDUNG) und setzt den Schalter
-// „Mehr/Weniger anzeigen“.
+// „Mehr/Weniger anzeigen“. Der Inhalt einer Unit (#1921) steht zuletzt und immer offen: je Überschrift des
+// Servers die Gruppen als Zeilen mit Gruppenname und Namen.
 //
 // Mit offener Signatur (#1919, hover.signatureParams) stehen PARAMETER und RÜCKGABE aus der Deklaration auch
 // zugeklappt und ohne XMLDoc unter der Beschreibung, wie bei Help Insight; der Schalter verbirgt dann nur den Rest.
@@ -183,6 +184,8 @@ type
     /// <summary>Offene Signatur zugeklappt (#1919): PARAMETER und RÜCKGABE.</summary>
     procedure SignatureSections;
     procedure Rationale(AExpanded: Boolean);
+    /// <summary>Inhalt der Unit (#1921), auch zugeklappt.</summary>
+    procedure UnitContents;
     procedure Toggle(AExpanded: Boolean; AGap: Integer);
   end;
 
@@ -962,7 +965,8 @@ end;
 
 class function TAtlasDocTypeset.IsCollapsible(const ADoc: TAtlasDoc): Boolean;
 begin
-  Result := HasHidden(ADoc, [TAtlasDocSectionKind.Summary]);
+  // Der Inhalt einer Unit (#1921) steht immer da.
+  Result := HasHidden(ADoc, [TAtlasDocSectionKind.Summary, TAtlasDocSectionKind.UnitContents]);
 end;
 
 class function TAtlasDocTypeset.IsCollapsible(const AContent: TAtlasDocContent): Boolean;
@@ -970,7 +974,7 @@ begin
   if AContent.SignatureShown then
   begin
     Result := HasHidden(AContent.Doc, [TAtlasDocSectionKind.Summary, TAtlasDocSectionKind.Param,
-      TAtlasDocSectionKind.Returns]);
+      TAtlasDocSectionKind.Returns, TAtlasDocSectionKind.UnitContents]);
   end
   else
   begin
@@ -1459,6 +1463,27 @@ begin
   NamedRows(mSections, mShown);
 end;
 
+procedure TDocSections.UnitContents;
+var
+  mSections: TArray<TAtlasDocSection>;
+  mFirst, mLast: Integer;
+begin
+  // Gruppen unter derselben Überschrift folgen aufeinander; je Überschrift eine Tabelle.
+  mSections := SectionsOf(FDoc, TAtlasDocSectionKind.UnitContents);
+  mFirst := 0;
+  while mFirst <= High(mSections) do
+  begin
+    mLast := mFirst;
+    while (mLast < High(mSections)) and (mSections[mLast + 1].Heading = mSections[mFirst].Heading) do
+    begin
+      Inc(mLast);
+    end;
+    FBuilder.Heading(mSections[mFirst].Heading);
+    NamedRows(Copy(mSections, mFirst, mLast - mFirst + 1), MaxInt);
+    mFirst := mLast + 1;
+  end;
+end;
+
 procedure TDocSections.Toggle(AExpanded: Boolean; AGap: Integer);
 var
   mToggle: TAtlasDocLink;
@@ -1602,6 +1627,7 @@ begin
       mSections.SignatureSections;
     end;
     mSections.Rationale(Result.Expanded);
+    mSections.UnitContents;
     if Result.Collapsible then
     begin
       mSections.Toggle(Result.Expanded, AMetrics.SectionGap);
