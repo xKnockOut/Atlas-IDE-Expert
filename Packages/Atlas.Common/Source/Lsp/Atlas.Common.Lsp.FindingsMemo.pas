@@ -11,6 +11,8 @@
 // - Obtain: Je Datei und Text rechnet nur ein Lauf (#1761). Diagnose und Glühbirne warten auf einen laufenden
 //   Lauf am selben Text, statt die Regeln daneben noch einmal zu rechnen; bei großen Units liefen sonst je
 //   Cursorbewegung weitere volle Läufe parallel (Speicher, CPU, Zeitlimit).
+//   Wartende schlafen auf der Sperre (TMonitor.Wait); das Ende eines Laufs weckt
+//   sie sofort (PulseAll), den Abbruch prüfen sie im Takt WaitSliceMs.
 // - Höchstens MaxEntries Dateien; der am längsten nicht benutzte Eintrag fällt heraus.
 // - Threadsicher; Treffer gehen als Kopie hinein und heraus.
 
@@ -42,8 +44,9 @@ type
   TRuleFindingsMemo = class(TInterfacedObject, IRuleFindingsMemo)
   public const
     cMaxEntries = 32;
-    /// <summary>Takt, in dem Obtain auf einen laufenden Lauf wartet.</summary>
-    cWaitSliceMs = 20;
+    /// <summary>Takt, in dem Obtain beim Warten auf einen laufenden Lauf den Abbruch prüft; das Ende des Laufs weckt
+    /// sofort.</summary>
+    cWaitSliceMs = 100;
   private type
     TEntry = record
       Text: string;
@@ -54,7 +57,8 @@ type
     FLock: TObject;
     FEntries: TDictionary<string, TEntry>;
     FClock: Int64;
-    /// <summary>Laufende Läufe: Schlüssel der Datei -> Text. Unter FLock.</summary>
+    /// <summary>Laufende Läufe: Schlüssel der Datei -> Text. Unter FLock; Release weckt Wartende mit PulseAll.
+    /// </summary>
     FRunning: TDictionary<string, string>;
     /// <summary>Den am längsten nicht benutzten Eintrag entfernen; nur unter FLock.</summary>
     procedure DropOldest;
@@ -187,6 +191,8 @@ begin
     begin
       FRunning.Remove(AKey);
     end;
+    // Wartende auf denselben Text finden jetzt die Treffer (oder rechnen selbst, wenn der Lauf scheiterte).
+    System.TMonitor.PulseAll(FLock);
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -196,21 +202,32 @@ function TRuleFindingsMemo.Obtain(const AFileName, AText: string; const ARun: TR
   const ACancelled: TRuleCancelled): TArray<TRuleFinding>;
 var
   mKey: string;
-  mCached: Boolean;
+  mCached, mClaimed: Boolean;
 begin
   mKey := AnsiUpperCase(AFileName);
-  while not Claim(mKey, AText, Result, mCached) do
-  begin
+  repeat
+    System.TMonitor.Enter(FLock);
+    try
+      mClaimed := Claim(mKey, AText, Result, mCached);
+      if not mClaimed and not mCached then
+      begin
+        // Gibt die Sperre frei, bis Release weckt oder der Takt für die Abbruchprüfung abläuft. Claim und Wait
+        // stehen unter derselben Sperre: Ein Release dazwischen geht nicht verloren.
+        System.TMonitor.Wait(FLock, cWaitSliceMs);
+      end;
+    finally
+      System.TMonitor.Exit(FLock);
+    end;
     if mCached then
     begin
       Exit;
     end;
-    if Assigned(ACancelled) and ACancelled() then
+    // Abbruch außerhalb der Sperre fragen: ACancelled darf andere Sperren nehmen (Dokumentspeicher).
+    if not mClaimed and Assigned(ACancelled) and ACancelled() then
     begin
       raise ERuleCheckCancelled.Create(AFileName);
     end;
-    Sleep(cWaitSliceMs);
-  end;
+  until mClaimed;
   try
     Result := ARun();
     Put(AFileName, AText, Result);

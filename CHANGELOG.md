@@ -59,6 +59,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Sichtbarkeitsabschnitt in der Brotkrumenleiste (#1759): Im Deklarationsteil einer Klasse, eines Records, Objekts oder Helfers steht hinter dem Typ der Abschnitt am Cursor, etwa `TKunde › strict private › FName`, auch auf Leerzeilen und Kommentaren zwischen den Mitgliedern. Ein Klick listet alle Abschnitte des Typs und springt zum Schlüsselwort, „›“ dahinter die Mitglieder des Abschnitts. Vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv (`published` bei Klassen von TPersistent oder unter `{$M+}`, sonst `public`). Bei verschachtelten Typen zählt der innerste; Interfaces haben kein Abschnittsglied. Abschaltbar mit `editor.breadcrumbsVisibility`.
 
 ### Geändert
+- Schnellere Antworten der Pull-Diagnosen (#2005): Wartet eine Anfrage auf eine laufende Prüfung derselben Datei, weckt deren Ende sie sofort, statt dass sie alle 20 ms nachsieht; das gilt auch für die Glühbirne, die auf die Befunde der Diagnose wartet.
 - Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
 
 ## [2.0.1] - 2026-11-08
