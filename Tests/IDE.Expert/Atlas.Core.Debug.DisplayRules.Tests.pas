@@ -259,8 +259,8 @@ begin
   Assert.AreEqual('{?Name}', TAtlasDisplayRender.Render(Rule('{Name}'), 'Kunde', Options(False), nil));
   mShort := Options(False);
   mShort.MaxLength := 20;
-  Assert.AreEqual(20, Length(TAtlasDisplayRender.Render(Rule('{Name}, {Ort}, {Name}, {Ort}'), 'Kunde', mShort,
-    Eval())));
+  Assert.AreEqual(20, Integer(Length(TAtlasDisplayRender.Render(Rule('{Name}, {Ort}, {Name}, {Ort}'), 'Kunde', mShort,
+    Eval()))));
 end;
 
 procedure TAtlasDisplayRulesTests.RenderWithCallsAllowed;

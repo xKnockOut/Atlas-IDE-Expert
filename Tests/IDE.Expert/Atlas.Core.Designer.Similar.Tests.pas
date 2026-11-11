@@ -197,7 +197,7 @@ begin
   mItem := Item('edtName', ['TEdit'], '');
   mItem.Values := ['Left = 8', 'Font.Name = ''Tahoma''', 'TabOrder = 0', 'Color = clInfoBk', 'Width = 121'];
   mValues := TAtlasSimilar.OfferedValues(mItem);
-  Assert.AreEqual(2, Length(mValues));
+  Assert.AreEqual(2, Integer(Length(mValues)));
   Assert.AreEqual('Font.Name = ''Tahoma''', mValues[0]);
   Assert.AreEqual('Color = clInfoBk', mValues[1]);
 end;
