@@ -12,7 +12,9 @@
 // - Befehle (Palette), Einträge im Atlas-Menü, unter Ansicht › Atlas,
 //   „Weg von hier nach …“ im Kontextmenü des Editors sowie „Unit-Beziehungen“
 //   und „Abhängige Units (n)“ im Kontextmenü der Projektverwaltung (#1817; nur
-//   für genau eine Unit, n aus dem gemerkten Stand),
+//   für genau eine Unit, n aus dem gemerkten Stand) und den Assistenten
+//   „Unit nach Architekturrolle“ in Datei › Neu › Weitere (#1821,
+//   Atlas.IDE.Architecture.RoleUnit),
 // - Hörer für Einstellungen und Thema.
 // Das Feld „interface-Änderung“ im Atlas-Statusfeld setzt das Modul über
 // TAtlasIdeHost und nimmt es beim Stoppen zurück. Befehle an den Server
@@ -73,6 +75,7 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.Architecture.RoleUnit,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.SymbolPath.Service,
@@ -324,6 +327,18 @@ begin
   Result.Visible := AVisible;
 end;
 
+/// <summary>Assistent „Unit nach Architekturrolle“ (#1821).</summary>
+procedure NewRoleUnit;
+begin
+  TAtlasIdeRoleUnit.Execute;
+end;
+
+function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasAnalysisTextId): TAtlasModuleCommand;
+begin
+  Result := ACommand;
+  Result.Description := TAtlasAnalysisStrings.Text(ADescription);
+end;
+
 // Sichtbar nach Schalter und Sicherung, wie bisher im Atlas-Menü.
 function ArchitectureVisible: Boolean;
 begin
@@ -473,6 +488,9 @@ begin
       SymbolPathVisible),
     Command('Atlas.SymbolPathFromHere', TAtlasAnalysisTextId.SymbolPathFromHere,
       Guarded(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible),
+    // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
+    Described(Command('Atlas.NewRoleUnit', TAtlasAnalysisTextId.RoleUnitCommand,
+      Guarded(TAtlasFeature.Generate, NewRoleUnit), nil), TAtlasAnalysisTextId.RoleUnitHint),
     // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
     Command('Atlas.ProjectUnitRelations', TAtlasAnalysisTextId.ProjectUnitRelations,
       Guarded(TAtlasFeature.UnitRelations, ShowProjectUnitRelations), ProjectUnitVisible),
@@ -509,7 +527,8 @@ begin
     MenuEntry('Atlas.SymbolPathFromHere', TAtlasMenuPlace.EditorContext),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectUnitRelations', TAtlasMenuPlace.ProjectContext),
-    MenuEntry('Atlas.ProjectDependents', TAtlasMenuPlace.ProjectContext)];
+    MenuEntry('Atlas.ProjectDependents', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.NewRoleUnit', TAtlasMenuPlace.Gallery)];
 end;
 
 procedure TAtlasAnalysisModule.ApplySettings;

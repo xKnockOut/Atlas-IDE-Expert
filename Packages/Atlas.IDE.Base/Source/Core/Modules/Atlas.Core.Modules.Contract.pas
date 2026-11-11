@@ -26,7 +26,8 @@ const
   /// 3 (#1905): IAtlasLineChanges und TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges).
   /// 4 (#1906): IAtlasBuildRequests.Forget.
   /// 5 (#1817): TAtlasMenuPlace.ProjectContext.
-  cAtlasCoreContractVersion = 5;
+  /// 6 (#1821): TAtlasMenuPlace.Gallery.
+  cAtlasCoreContractVersion = 6;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
@@ -39,8 +40,10 @@ type
   TAtlasSafeLevel = (Normal, Safe, Minimal);
   /// <summary>Wo ein Menüeintrag eines Moduls erscheint: Atlas-Menü der IDE, Untermenü „Atlas“ im Kontextmenü des
   /// Editors, Ansicht › Atlas (Fenster) oder Untermenü „Atlas“ im Kontextmenü der Projektverwaltung (#1817; die
-  /// Auswahl steht dort in TAtlasProjectContext, Atlas.Core.Commands.ProjectSelection).</summary>
-  TAtlasMenuPlace = (AtlasMenu, EditorContext, ViewMenu, ProjectContext);
+  /// Auswahl steht dort in TAtlasProjectContext, Atlas.Core.Commands.ProjectSelection) oder Assistent der Kategorie
+  /// „Atlas“ in Datei › Neu › Weitere (#1821; eine gesetzte Caption ersetzt den Text des Befehls, seine
+  /// Beschreibung steht unter dem Assistenten).</summary>
+  TAtlasMenuPlace = (AtlasMenu, EditorContext, ViewMenu, ProjectContext, Gallery);
   /// <summary>Vorrang einer Taste eines Moduls vor fremden Belegungen: Shared folgt keys.editorPriority wie die
   /// Editorbefehle von Base, Take übernimmt die Taste, Yield lässt eine fremde Belegung aktiv.</summary>
   TAtlasKeyPriority = (Shared, Take, Yield);
