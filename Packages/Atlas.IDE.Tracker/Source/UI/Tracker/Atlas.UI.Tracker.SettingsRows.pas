@@ -18,7 +18,6 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.UI.Settings.Contract,
-  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,

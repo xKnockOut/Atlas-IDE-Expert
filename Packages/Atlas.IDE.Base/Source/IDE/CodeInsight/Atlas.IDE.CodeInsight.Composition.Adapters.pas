@@ -26,7 +26,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Files.Adapters.FolderWatcher,

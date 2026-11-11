@@ -40,7 +40,6 @@ uses
   Vcl.Graphics,
   Vcl.Menus,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.Layout,

@@ -127,8 +127,7 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.TypeDeclarations.Texts,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Rules.Builtin.TypeDeclarations.Texts;
 
 const
   // Knoten, unter denen Klassendeklarationen stehen können (Anweisungen bleiben außen vor).

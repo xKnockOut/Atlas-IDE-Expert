@@ -120,7 +120,6 @@ uses
   Atlas.Core.Completion.Width,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Documentation.Layout,
-  Atlas.UI.Popup.Window,
   Atlas.UI.Strings,
   Atlas.UI.Completion.PopupTexts;
 

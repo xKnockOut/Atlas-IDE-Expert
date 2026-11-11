@@ -36,7 +36,6 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette;
 
 type

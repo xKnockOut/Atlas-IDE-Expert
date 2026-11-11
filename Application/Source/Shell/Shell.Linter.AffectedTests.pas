@@ -35,7 +35,6 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Diagnostics.CheckProfile,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Output,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Impact,

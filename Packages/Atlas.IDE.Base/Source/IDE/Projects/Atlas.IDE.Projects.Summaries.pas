@@ -147,7 +147,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Recording,
   Atlas.Core.Projects.Trends,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,

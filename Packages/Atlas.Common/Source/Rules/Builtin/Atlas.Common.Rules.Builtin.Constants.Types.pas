@@ -79,19 +79,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Index.NameFacts,
   System.StrUtils,
-  Atlas.Common.Rules.Derived,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Semantics.OrdinalConstants,
-  Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Rules.Options,
-  Atlas.Text.Lines;
+  Atlas.Common.Semantics.OrdinalConstants;
 
 const
   // Einheitliche Namen eingebauter Zahltypen (klein geschrieben): Alias, Name.

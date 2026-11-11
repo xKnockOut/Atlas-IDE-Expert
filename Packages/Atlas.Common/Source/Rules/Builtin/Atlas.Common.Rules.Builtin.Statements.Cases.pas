@@ -55,7 +55,6 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CaseCompletion,
-  Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Statements.Tokens,

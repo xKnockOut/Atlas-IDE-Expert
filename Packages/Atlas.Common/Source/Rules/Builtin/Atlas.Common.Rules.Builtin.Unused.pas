@@ -90,7 +90,6 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,

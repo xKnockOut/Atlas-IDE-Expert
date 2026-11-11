@@ -88,7 +88,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Colors,
