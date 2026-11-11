@@ -16,6 +16,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard;
 
@@ -74,6 +75,12 @@ type
   public
     /// <summary>Wer belegt AShortCut außer Atlas? '' wenn frei.</summary>
     class function Owner(AShortCut: Word): string; static;
+    /// <summary>Besitzer aller Tasten der IDE-Aktionen (nicht Atlas) in einem einzigen Lauf über die ActionList
+    /// nach AOwners; die erste Aktion je Taste gewinnt wie bei Owner. Für viele Abfragen hintereinander: Owner
+    /// läuft je Aufruf über die ganze ActionList.</summary>
+    class procedure CollectOwners(AOwners: TDictionary<Word, string>); static;
+    /// <summary>Wie Owner, aber aus den mit CollectOwners gesammelten Besitzern.</summary>
+    class function OwnerIn(AOwners: TDictionary<Word, string>; AShortCut: Word): string; static;
     /// <summary>Soll Atlas AShortCut für AWhat belegen? Meldet einen Konflikt einmal je Taste und Besitzer.</summary>
     class function Decide(AShortCut: Word; APriority: Boolean; const AWhat: string): Boolean; static;
     /// <summary>ABinding (neu) anmelden bzw. abmelden; AIndex -1 = nicht angemeldet.</summary>
@@ -312,6 +319,59 @@ begin
   end;
   Result := ActionOwner(AShortCut);
   if Result = '' then
+  begin
+    Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
+  end;
+end;
+
+class procedure TAtlasIdeKeys.CollectOwners(AOwners: TDictionary<Word, string>);
+var
+  mServices: INTAServices;
+  mIndex, mSecondary: Integer;
+  mAction: TCustomAction;
+  mCaption: string;
+
+  procedure Note(AShortCut: Word);
+  begin
+    if (AShortCut <> 0) and not AOwners.ContainsKey(AShortCut) then
+    begin
+      AOwners.Add(AShortCut, mCaption);
+    end;
+  end;
+
+begin
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
+  begin
+    if not (mServices.ActionList.Actions[mIndex] is TCustomAction) then
+    begin
+      Continue;
+    end;
+    mAction := TCustomAction(mServices.ActionList.Actions[mIndex]);
+    if SameText(mAction.Category, 'Atlas') then
+    begin
+      Continue;
+    end;
+    mCaption := StripHotkey(mAction.Caption);
+    Note(mAction.ShortCut);
+    for mSecondary := 0 to mAction.SecondaryShortCuts.Count - 1 do
+    begin
+      Note(mAction.SecondaryShortCuts.ShortCuts[mSecondary]);
+    end;
+  end;
+end;
+
+class function TAtlasIdeKeys.OwnerIn(AOwners: TDictionary<Word, string>; AShortCut: Word): string;
+begin
+  Result := '';
+  if AShortCut = 0 then
+  begin
+    Exit;
+  end;
+  if not AOwners.TryGetValue(AShortCut, Result) then
   begin
     Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
   end;

@@ -11,14 +11,14 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.IssueFrame;
+  Atlas.UI.Tracker.IssueFrame,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   TAtlasIssuePreviewProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -32,7 +32,7 @@ type
     FProvider: TAtlasIssuePreviewProviderHook;
     FTransport: TAtlasIssuePreviewTransportHook;
     FCache: TAtlasTrackerIssueCache;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FStarted: Boolean;
     FCurrent: TAtlasIssueHistoryEntry;
     FHasCurrent: Boolean;
@@ -84,7 +84,6 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.IDE.Tracker.IssueWindow;
 
@@ -96,7 +95,7 @@ begin
   FProvider := AProvider;
   FTransport := ATransport;
   FCache := TAtlasTrackerIssueCache.Create(ACacheFolder);
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FRecent := TAtlasRecentIssues.Create;
   if ACacheFolder <> '' then
   begin
@@ -106,7 +105,6 @@ end;
 
 destructor TAtlasIdeIssueContext.Destroy;
 begin
-  ReleaseThreads(True);
   FWorkers.Free;
   FRecent.Free;
   FCache.Free;
@@ -190,43 +188,17 @@ end;
 
 procedure TAtlasIdeIssueContext.Run(AThread: TThread);
 begin
-  AThread.FreeOnTerminate := False;
-  FWorkers.Add(AThread);
-  AThread.Start;
+  FWorkers.Start(AThread);
 end;
 
 procedure TAtlasIdeIssueContext.Retire(AThread: TThread);
 begin
-  if AThread <> nil then
-  begin
-    FWorkers.Add(AThread);
-  end;
+  FWorkers.Keep(AThread);
 end;
 
 procedure TAtlasIdeIssueContext.ReleaseThreads(AWait: Boolean);
-var
-  mIndex: Integer;
-  mThread: TThread;
 begin
-  if AWait and (FWorkers.Count > 0) then
-  begin
-    TAtlasShutdown.WaitForThreads(FWorkers.ToArray);
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    mThread := FWorkers[mIndex];
-    if mThread.Finished then
-    begin
-      mThread.Free;
-      FWorkers.Delete(mIndex);
-    end
-    else if AWait then
-    begin
-      // Läuft noch (Zeitgrenze): räumt sich selbst auf.
-      mThread.FreeOnTerminate := True;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
+  FWorkers.Release(AWait);
 end;
 
 procedure TAtlasIdeIssueContext.Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);

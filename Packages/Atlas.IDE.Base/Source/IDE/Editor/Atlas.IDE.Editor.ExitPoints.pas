@@ -30,7 +30,6 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.ExtCtrls,
@@ -39,7 +38,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExitPoints,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -73,7 +73,7 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTimer: TTimer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FFont: TFont;
     FFontKey: string;
     FRequest: Integer;
@@ -95,7 +95,6 @@ type
     procedure Clear;
     procedure Ask(const AText: string; ALine, ACharacter: Integer; AExceptions, ALoops: Boolean);
     procedure Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal; const ASet: TAtlasExitPointSet);
-    procedure ReapWorkers(AWait: Boolean);
     procedure EnsureFont(const AEditorFont: TFont);
     function Jump(ABackward: Boolean): Boolean;
     procedure PaintPoints(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
@@ -170,7 +169,7 @@ begin
   inherited Create;
   FSession := ASession;
   FIndex := -1;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FFont := TFont.Create;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
@@ -196,10 +195,17 @@ begin
   begin
     mServices.RemoveEditorEventsNotifier(FIndex);
   end;
-  FEvents.OnEditorPaintLine := nil;
+  if FEvents <> nil then
+  begin
+    FEvents.OnEditorPaintLine := nil;
+  end;
   FEventsRef := nil;
-  // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  // Laufende Anfragen halten die Sitzung als rohen Zeiger: bis zu ihrem Ende abwarten (sie haben eine eigene
+  // Zeitgrenze), nicht nur bis cStopMs.
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   mPainted := FSet.Found;
   Clear;
@@ -275,25 +281,6 @@ begin
   FVersion := 0;
   FLines := nil;
   FAskedKey := '';
-end;
-
-procedure TAtlasIdeExitPoints.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 procedure TAtlasIdeExitPoints.TimerTick(Sender: TObject);
@@ -494,13 +481,11 @@ begin
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(FFileName, AText);
-  ReapWorkers(False);
+  FWorkers.Prune;
   Inc(FRequest);
   mWorker := Asker(mSession, ExitPointArguments(FFileName, ALine, ACharacter, AExceptions, ALoops), FRequest,
     FFileName, FVersion);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 procedure TAtlasIdeExitPoints.Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal;

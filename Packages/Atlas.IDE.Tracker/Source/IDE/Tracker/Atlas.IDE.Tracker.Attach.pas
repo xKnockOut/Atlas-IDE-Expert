@@ -30,7 +30,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
-  Atlas.IDE.Tracker.IssueContext;
+  Atlas.IDE.Tracker.IssueContext,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   TAtlasIssueAttachHooks = record
@@ -55,11 +56,10 @@ type
   private
     FHooks: TAtlasIssueAttachHooks;
     FStarted: Boolean;
-    FThread: TThread;
+    FWorker: TAtlasWorkerSlot;
     FCancel: IAtlasCiCancel;
     FTemp: TAtlasAttachTemp;
     procedure Report(const AText: string);
-    procedure ReleaseThread(AWait: Boolean);
     procedure Send(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest);
     procedure Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
       const AOutcome: TAtlasAttachOutcome);
@@ -213,11 +213,12 @@ constructor TAtlasIdeIssueAttach.Create(const AHooks: TAtlasIssueAttachHooks);
 begin
   inherited Create;
   FHooks := AHooks;
+  FWorker := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeIssueAttach.Destroy;
 begin
-  ReleaseThread(True);
+  FWorker.Free;
   DropTemp;
   inherited;
 end;
@@ -253,37 +254,16 @@ begin
   begin
     FCancel.Cancel;
   end;
-  ReleaseThread(True);
+  FWorker.Stop(TAtlasShutdown.cStopMs);
   DropTemp;
   FHooks := Default(TAtlasIssueAttachHooks);
 end;
 
 function TAtlasIdeIssueAttach.Busy: Boolean;
 begin
-  Result := (FThread <> nil) and not FThread.Finished;
+  Result := FWorker.Busy;
 end;
 
-procedure TAtlasIdeIssueAttach.ReleaseThread(AWait: Boolean);
-begin
-  if FThread = nil then
-  begin
-    Exit;
-  end;
-  if AWait and not FThread.Finished then
-  begin
-    TAtlasShutdown.WaitForThreads([FThread]);
-  end;
-  if FThread.Finished then
-  begin
-    FreeAndNil(FThread);
-  end
-  else if AWait then
-  begin
-    // Läuft noch (Zeitgrenze): räumt sich selbst auf.
-    FThread.FreeOnTerminate := True;
-    FThread := nil;
-  end;
-end;
 
 procedure TAtlasIdeIssueAttach.DropTemp;
 begin
@@ -536,9 +516,7 @@ begin
     FCancel := nil;
   end;
   Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachSending, [ARequest.Key]));
-  FThread := TThread.CreateAnonymousThread(SendWorker(Self, Self, AProvider, mTransport, ARequest));
-  FThread.FreeOnTerminate := False;
-  FThread.Start;
+  FWorker.Start(TThread.CreateAnonymousThread(SendWorker(Self, Self, AProvider, mTransport, ARequest)));
 end;
 
 procedure TAtlasIdeIssueAttach.Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
@@ -547,7 +525,7 @@ var
   mState: string;
 begin
   FCancel := nil;
-  ReleaseThread(False);
+  FWorker.Prune;
   // Die Dateien sind gesendet bzw. gescheitert: der Ordner des Laufs geht in jedem Fall.
   DropTemp;
   if AOutcome.Succeeded then

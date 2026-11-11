@@ -62,6 +62,9 @@
           "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]},
         {"name": "System.Classes.TThread.ForceQueue", "message": "Einreihen ohne Besitzer überlebt das Entladen, TAtlasMainThread.ForceQueue verwenden",
           "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]},
+        {"name": "Winapi.Windows.GetTickCount", "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden",
+          "units": ["!Atlas.Core.Diagnostics.UserIdle"]},
+        {"name": "System.Classes.TThread.GetTickCount", "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden"},
         {"name": "Winapi.Windows.CreateProcess", "message": "Kindprozesse über TAtlasProcessLauncher.Launch starten: vererbt nur die Standard-Handles (Handle-Liste)",
           "units": ["!Atlas.WinBase.Process"]}
       ]
