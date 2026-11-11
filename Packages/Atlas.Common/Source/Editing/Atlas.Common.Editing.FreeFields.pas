@@ -120,7 +120,6 @@ uses
   System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.FreeFields.Types,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;

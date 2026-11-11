@@ -69,7 +69,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.IssueCache,
-  Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip;

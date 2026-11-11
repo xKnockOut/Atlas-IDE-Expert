@@ -415,7 +415,8 @@ var
   mEntry: TUsesEntry;
   mItem, mData: TJSONObject;
 begin
-  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep) do
+  for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep,
+    AContext.Resolution(AText, AInactive)) do
   begin
     if (mEntry.State = TUsesEntryState.Unused) and (ASuppressions <> nil) and
       ASuppressions.IsSuppressed(cUnusedUsesRuleId, mEntry.Range.StartPos.Line) then

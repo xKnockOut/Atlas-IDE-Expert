@@ -102,7 +102,6 @@ uses
   Vcl.Graphics,
   Vcl.Clipbrd,
   Vcl.Dialogs,
-  Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,

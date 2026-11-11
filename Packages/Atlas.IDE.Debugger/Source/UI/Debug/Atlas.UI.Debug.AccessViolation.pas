@@ -8,7 +8,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner;
 

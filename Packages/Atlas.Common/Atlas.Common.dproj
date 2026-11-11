@@ -475,6 +475,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UsesUsage.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Syntax.pas"/>
@@ -616,6 +618,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Info.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Lookup.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.UnitContents.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rationale.pas"/>

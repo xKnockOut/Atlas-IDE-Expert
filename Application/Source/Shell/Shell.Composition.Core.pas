@@ -110,8 +110,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Query.Contract,
-  Atlas.Common.Architecture.UsesService,
   Shell.Bootstrap;
 
 constructor TShellCore.Create(const AServices: TShellCoreServices);

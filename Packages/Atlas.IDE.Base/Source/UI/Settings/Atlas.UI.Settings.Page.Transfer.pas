@@ -101,6 +101,8 @@ begin
   AddTitle(TAtlasTextId.SettingsTransferTitle);
   FSettingsExportImport := BindCheck('SettingsExportImport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExportImport)));
   FSettingsMarkModified := BindCheck('SettingsMarkModified', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMarkModified)));
+  // Suche über die Einstellungen (#1884).
+  BindCheck('SettingsSearch', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchEnabled)));
   BindCheck('SettingsBackupBeforeImport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBackupBeforeImport)));
   FSettingsExportSecrets := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets),
     [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),

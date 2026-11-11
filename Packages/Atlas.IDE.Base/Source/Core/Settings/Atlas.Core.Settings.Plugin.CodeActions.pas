@@ -30,6 +30,10 @@ type
     GenerateMenuRecentFirst: Boolean;
     /// <summary>Befehlsnamen (/name) rechts in der Zeile (#719, keys.generateMenu.showCommandNames).</summary>
     GenerateMenuShowCommandNames: Boolean;
+    /// <summary>Untermenü „Atlas“ im Kontextmenü der Projektverwaltung (#1817, commands.projectContextMenu).</summary>
+    ProjectContextMenu: Boolean;
+    /// <summary>Kategorie „Atlas“ in Datei › Neu › Weitere (#1821, generate.galleryWizards).</summary>
+    GalleryWizards: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginCodeActionsSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -54,6 +58,8 @@ begin
   Result.GenerateMenuHidden := '';
   Result.GenerateMenuRecentFirst := True;
   Result.GenerateMenuShowCommandNames := True;
+  Result.ProjectContextMenu := True;
+  Result.GalleryWizards := True;
 end;
 
 procedure TAtlasPluginCodeActionsSettings.Normalize;
@@ -71,6 +77,8 @@ begin
   AIo.Text('GenerateMenuHidden', GenerateMenuHidden);
   AIo.Flag('GenerateMenuRecentFirst', GenerateMenuRecentFirst);
   AIo.Flag('GenerateMenuShowCommandNames', GenerateMenuShowCommandNames);
+  AIo.Flag('ProjectContextMenu', ProjectContextMenu);
+  AIo.Flag('GalleryWizards', GalleryWizards);
 end;
 
 end.

@@ -102,7 +102,6 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Localization.Texts;
 

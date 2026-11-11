@@ -166,7 +166,6 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Editor.MouseButtons,
   Atlas.IDE.Contracts.MouseHistory,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.EditorStyle,

@@ -38,8 +38,7 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils,
-  Atlas.Common.Pascal.Contract;
+  System.StrUtils;
 
 function ShortName(const AName: string): string;
 var

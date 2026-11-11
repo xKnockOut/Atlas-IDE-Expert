@@ -50,6 +50,7 @@ uses
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
   Atlas.UI.Updates.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
@@ -175,6 +176,9 @@ begin
   BindCheck('BugReportAnonymize', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize)));
   // Protokoll des Plugins mit Klarnamen (#1478, diagnostics.log.names); Vorgabe anonym.
   BindCheck('LogNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLogNames)));
+  // Kommandozeilen-Compiler prüfen (#1822, diagnostics.editionCheck).
+  BindCheck('DiagnosticsEditionCheck',
+    AddCheck(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SettingsEditionCheck)));
 end;
 
 procedure TAtlasSettingsStartupPart.Load(const ASettings: TAtlasPluginSettings);

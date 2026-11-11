@@ -708,9 +708,18 @@ type
     SettingsHoverMembersMaxLines,
     // Parameter und Rückgabe immer offen im Hover (#1919).
     SettingsHoverSignatureParams,
+    // Marken folgen ihrer Zeile sofort (#1818).
+    SettingsTrackLines,
+    // Kontextmenü der Projektverwaltung (#1817).
+    SettingsProjectContextMenu, ProjectMenuCheck,
+    // Assistenten in der Objektgalerie (#1821).
+    SettingsGalleryWizards, GalleryFileExists, GalleryChoiceSearch, GalleryChoiceOk, GalleryChoiceCancel,
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
+    // Suche über die Einstellungen (#1884).
+    SettingsSearchEnabled, SettingsSearchPrompt, SettingsSearchOtherNode, SettingsSearchHint,
+    PaletteSettingsPrefix,
     SettingsBreadcrumbsVisibility, SettingsBreadcrumbsMemberBlocks,
     // Sichtbarkeitsmarke am Methodenglied (#1765).
     SettingsBreadcrumbsVisibilityMark, BreadcrumbsMarkHint,
@@ -737,6 +746,8 @@ type
     BreadcrumbsMetricsMissing,
     // Wechsel zwischen den uses-Klauseln (#1760).
     GotoUsesToward,
+    // Auswahlsätze im Designer: Taste in der Übersicht (#739).
+    DesignerSelectionSetsSaveCommand,
     // Zurück-/Vor-Taste der Maus (#1889).
     SettingsMouseNavButtons);
 
@@ -2399,6 +2410,14 @@ const
      'Lokale Routinen im dunklen Thema',
      'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
      'Parameter und Rückgabe im Hover immer untereinander zeigen, auch ohne XMLDoc',
+     'Befunde folgen ihrer Zeile sofort beim Bearbeiten',
+     'Untermenü Atlas im Kontextmenü der Projektverwaltung',
+     'Mit Atlas prüfen',
+     'Atlas-Assistenten unter Datei › Neu › Weitere',
+     'Die Datei %s gibt es schon.',
+     'Suchen',
+     'OK',
+     'Abbrechen',
      'Module',
      'Packages von Atlas',
      'installiert',
@@ -2408,6 +2427,11 @@ const
      'Packages: %d von %d installiert, %d eingeschaltet',
      '%s  –  %s › %s › %s',
      'Keine Einstellung gefunden.',
+     'Suchfeld über den Einstellungen (Strg+F)',
+     'Einstellung suchen …',
+     'in %s',
+     'Enter springt zum ersten Treffer, Pfeil runter in die Liste.',
+     'Einstellungen mit @ in der Befehlspalette suchen (Alt+Enter schaltet um)',
      'Sichtbarkeitsabschnitt (private, public …) als Glied zeigen',
      'Unterblock in Typen (const, type, class var) als Glied zeigen',
      'Sichtbarkeitsmarke (−, #, +, ◆) am Methodenglied im implementation-Teil zeigen',
@@ -2455,6 +2479,7 @@ const
      '%s (Grenze %d)',
      'Kennzahlen noch nicht verfügbar',
      'Zur uses-Klausel (%s)',
+     'Designer: Auswahl speichern …',
      'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
@@ -4032,6 +4057,14 @@ const
      'Local routines in the dark theme',
      'Members in the hover: max. lines before scrolling (0 = screen)',
      'Always list parameters and return value in the hover, also without XMLDoc',
+     'Findings follow their line immediately while editing',
+     'Atlas submenu in the Project Manager context menu',
+     'Check with Atlas',
+     'Atlas wizards in File › New › Other',
+     'The file %s already exists.',
+     'Search',
+     'OK',
+     'Cancel',
      'Modules',
      'Atlas packages',
      'installed',
@@ -4041,6 +4074,11 @@ const
      'Packages: %d of %d installed, %d switched on',
      '%s  –  %s › %s › %s',
      'No setting found.',
+     'Search box above the settings (Ctrl+F)',
+     'Search settings …',
+     'in %s',
+     'Enter jumps to the first hit, arrow down moves into the list.',
+     'Search settings with @ in the command palette (Alt+Enter toggles)',
      'Show the visibility section (private, public …) as a part',
      'Show the block inside a type (const, type, class var) as a part',
      'Show the visibility mark (−, #, +, ◆) on the method part in the implementation section',
@@ -4088,6 +4126,7 @@ const
      '%s (limit %d)',
      'Metrics not available yet',
      'Go to uses clause (%s)',
+     'Designer: Save selection …',
      'Mouse back/forward buttons step through the navigation history'));
 
 { TAtlasStrings }

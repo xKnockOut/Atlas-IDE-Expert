@@ -18,7 +18,6 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SmartPaste;
 

@@ -193,7 +193,6 @@ uses
   System.Math,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Modules.Registry,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,

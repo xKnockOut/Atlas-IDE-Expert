@@ -50,6 +50,7 @@ Zurück zum [README](../../../README_DE.md)
 - Nichtvisuelle über Strg+H der IDE ein- und ausblenden
 - Elternelement auswählen
 - Tab-Reihenfolge als Marken auf den Steuerelementen
+- Gleiche auswählen: gleiche Klasse (auch mit Nachfahren), gleiches Elternelement, Kinder, gleicher Eigenschaftswert oder Handler, Auswahl umkehren; mit Trefferzahl, Umschalt ergänzt die Auswahl
 - experimentell: Tab-Reihenfolge per Klick neu vergeben und Ausrichten
 
 ### Atlas-Statusleiste
@@ -65,11 +66,12 @@ Unten in jedem Editorfenster (Zustandsfarben für helles und dunkles Design eige
 
 ### Weitere Ansichten
 
-- **Gliederung** als andockbares Fenster mit Filter
+- <a id="window-atlasoutline"></a>**Gliederung** als andockbares Fenster mit Filter
 - **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen
 - **Minimap** *(experimentell)*
 - **mitlaufender Kopf** der umgebenden Klasse, Routine und großen Blöcke, je Art abschaltbar *(experimentell)*
 
+<a id="window-atlassearchreplace"></a>
 ## Suchen und Ersetzen
 
 **Suchleiste** unter dem Editor (Strg+F):
@@ -92,6 +94,7 @@ Aus `atlas.json` (`tasks`):
 
 ## Verwendungen und Zusammenhänge
 
+<a id="window-atlasresults"></a>
 ### Ergebnisfenster „Atlas-Ergebnisse“
 
 - für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung
@@ -130,6 +133,7 @@ Weiter:
 - Enter oder Doppelklick springt; Filter „Nur Projektcode“ und „Tests ausblenden“.
 - Abschaltbar über `navigation.dataFlow`
 
+<a id="window-atlasbookmarks"></a>
 ## Lesezeichen und Notizen
 
 - **Benannte Lesezeichen** (Strg+Alt+K) und persönliche **Notizen** an Codezeilen, die nicht im Quelltext landen

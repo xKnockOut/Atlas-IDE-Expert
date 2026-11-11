@@ -2,6 +2,7 @@
 
 Back to the [README](../../../README.md)
 
+<a id="window-atlasstart"></a>
 ## Atlas welcome page
 
 - Shown:
@@ -46,6 +47,7 @@ Back to the [README](../../../README.md)
 - "Edit query" dialog with templates (YouTrack in German and English) and "Test"
   - "Test" names the cause (no token, rejected, unknown project, query rejected with the tracker's message, unreadable answer) and the query actually sent
 
+<a id="window-atlasissue"></a>
 ### Issue preview
 
 - In the dockable window *Atlas Issue* (`issues.preview`): click an issue in "My issues" or run *Show issue…*
@@ -95,6 +97,7 @@ Back to the [README](../../../README.md)
   - pause, correct, *Open time bookings…*
   - offers to book it as a YouTrack work item when finishing (rounded, work type, text from the commits; GitHub as a comment)
 
+<a id="window-atlasboard"></a>
 ### Board and sprint
 
 - A board in the dockable window *Atlas Board* (`issues.board`):
@@ -272,6 +275,7 @@ Settings: `vcs.externals.show`, `vcs.externals.update` (with, without, ask)
 | **Notification centre**: collects messages from builds, checks and the server | Ctrl+Shift+Alt+N |
 | **Find selection** | F3 or Shift+F3 |
 
+<a id="window-atlasserverstatus"></a>
 ### Atlas server window (#1356, `server.statusWindow`)
 
 - Opened via *Atlas › Help and diagnostics*, command `Atlas.ServerStatus`, click on the *Server* line of the status window, double-click on the status in the Atlas status bar
@@ -287,6 +291,7 @@ Settings: `vcs.externals.show`, `vcs.externals.update` (with, without, ask)
   - *Rebuild index*
   - *Create diagnostic package …* writes a ZIP with the bug report (#108), status, the session log and, with `--trace`, the trace of the last minutes, anonymised like the bug report and never with credentials, after a preview
 
+<a id="window-atlasdiagnostics"></a>
 ### Plugin timings in the diagnostic window (`diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`)
 
 With the diagnostic mode on, *Atlas diagnostics* shows what in Atlas is slow right now:

@@ -100,6 +100,9 @@ type
     class function ReassignedOn(out ATargets, AStyle, AColor: string): Boolean; static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und Marken folgen ihrer Zeile sofort (#1818, editor.trackLines); ohne Kopie des
+    /// Einstellungsrecords.</summary>
+    class function TrackLinesOn: Boolean; static;
     /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
     /// </summary>
     class function InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode; static;
@@ -640,6 +643,12 @@ class function TAtlasIdeSettings.ProblemMarksOn: Boolean;
 begin
   EnsureLoaded;
   Result := GState.Effective.Enabled and GState.Effective.Problems;
+end;
+
+class function TAtlasIdeSettings.TrackLinesOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := GState.Effective.Enabled and GState.Effective.TrackLines;
 end;
 
 class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode;

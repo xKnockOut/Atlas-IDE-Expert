@@ -86,6 +86,9 @@ type
     /// </summary>
     [Test]
     procedure OpenSignatureCollapsedHidesRest;
+    /// <summary>#1921: Inhalt einer Unit je Überschrift als Tabelle, immer offen, Namen als Verweise.</summary>
+    [Test]
+    procedure UnitContentsBelowPath;
   end;
 
 implementation
@@ -843,6 +846,29 @@ begin
   Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), True), 600, Metrics,
     Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYA|WHYB|NOTEC|HACKD|HACKE|Weniger anzeigen ▴|', Texts(Result_));
+end;
+
+function UnitGroup(const AHeading, AName, AType: string): string;
+begin
+  Result := '{"kind":"unitContents","heading":"' + AHeading + '","name":"' + AName + '","runs":[' +
+    '{"kind":"ref","text":"' + AType + '","target":"' + AType + '","file":"C:\\P\\Werk.pas","line":3}]}';
+end;
+
+procedure TAtlasDocumentationTests.UnitContentsBelowPath;
+var
+  Doc: TAtlasDoc;
+  Result_: TAtlasDocLayout;
+begin
+  Doc := DocOf('{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Werk.pas"}]},' +
+    UnitGroup('BENUTZT (1)', 'Klassen', 'TKunde') + ',' + UnitGroup('WEITERE (2)', 'Klassen', 'TAuftrag') + ',' +
+    UnitGroup('WEITERE (2)', 'Records', 'TPunkt') + ']}');
+  Assert.AreEqual(3, Integer(Length(Doc.SectionsOf(TAtlasDocSectionKind.UnitContents))));
+  Assert.AreEqual('WEITERE (2)', Doc.Sections[2].Heading);
+  Assert.IsFalse(TAtlasDocTypeset.IsCollapsible(Doc));
+  Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), False), 600, Metrics,
+    Measure, TAtlasDocLabels.German);
+  Assert.AreEqual('Werk.pas|BENUTZT (1)|KlassenTKunde|WEITERE (2)|KlassenTAuftrag|RecordsTPunkt|', Texts(Result_));
+  Assert.AreEqual(3, Integer(Length(Result_.Links)));
 end;
 
 procedure TAtlasDocumentationTests.IssueLinksNeedTracker;

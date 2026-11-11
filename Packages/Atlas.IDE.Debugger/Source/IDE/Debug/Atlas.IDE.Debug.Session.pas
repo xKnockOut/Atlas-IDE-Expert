@@ -149,7 +149,6 @@ implementation
 uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Projects.Context;
 
 function Debugger: IOTADebuggerServices;
