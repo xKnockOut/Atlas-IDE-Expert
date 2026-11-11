@@ -2,7 +2,7 @@
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746).
 
 interface
 
@@ -111,6 +111,13 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitContainerPadding));
   Switch('designer.fitContainer.alignTopLeft',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFitContainerTopLeft));
+  Switch('designer.nearAlignment', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearAlignment));
+  Number('designer.nearAlignment.tolerance',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearTolerance));
+  Switch('designer.nearAlignment.baseline',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearBaseline));
+  Line('designer.nearAlignment.ignoreClasses',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerNearIgnore));
 end;
 
 end.

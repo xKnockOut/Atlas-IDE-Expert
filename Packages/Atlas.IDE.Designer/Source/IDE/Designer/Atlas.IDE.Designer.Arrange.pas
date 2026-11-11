@@ -12,6 +12,9 @@
 // - An Inhalt anpassen (Untermenü: beide, nur Breite, nur Höhe, alle auf
 //   dieselbe Breite) und dessen Rückgängig (#742, designer.fitContainer,
 //   TAtlasIdeFitContainer).
+// - Fast bündige Kanten (Untermenü: anzeigen, alle angleichen, Auswahl als
+//   gewollt markieren, deren Ausnahmen entfernen) und Angleichen rückgängig
+//   (#746, designer.nearAlignment, TAtlasIdeNearAlign).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -23,7 +26,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Designer.DuplicateRow,
   Atlas.IDE.Designer.InsertSpace,
-  Atlas.IDE.Designer.FitContainer;
+  Atlas.IDE.Designer.FitContainer,
+  Atlas.IDE.Designer.NearAlign;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -33,8 +37,10 @@ type
     FDuplicate: TAtlasIdeDuplicateRow;
     FSpace: TAtlasIdeInsertSpace;
     FFit: TAtlasIdeFitContainer;
+    FNear: TAtlasIdeNearAlign;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
     procedure AddFitItems(AEnabled, AMany: Boolean);
+    procedure AddNearItems(ASelection: Boolean);
     procedure ItemClick(Sender: TObject);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
@@ -73,6 +79,8 @@ const
   cFitHeight = 10;
   cFitSame = 11;
   cFitUndo = 12;
+  /// <summary>Ab hier TAtlasNearCommand: cNearFirst + Ord(Befehl).</summary>
+  cNearFirst = 20;
 
 { TAtlasIdeDesignerArrange }
 
@@ -84,10 +92,12 @@ begin
   FDuplicate := TAtlasIdeDuplicateRow.Create(AOnMessage);
   FSpace := TAtlasIdeInsertSpace.Create(AOnMessage);
   FFit := TAtlasIdeFitContainer.Create(AOnMessage);
+  FNear := TAtlasIdeNearAlign.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FNear.Free;
   FFit.Free;
   FSpace.Free;
   FDuplicate.Free;
@@ -98,7 +108,7 @@ end;
 class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
-    ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer;
+    ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -126,6 +136,23 @@ begin
   AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitContainerSame), cFitSame, AMany);
   AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitContainerUndoCmd), cFitUndo,
     FFit.CanUndo);
+end;
+
+procedure TAtlasIdeDesignerArrange.AddNearItems(ASelection: Boolean);
+var
+  mSub: TMenuItem;
+begin
+  mSub := AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearCmd), 0, True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearShow),
+    cNearFirst + Ord(TAtlasNearCommand.Show), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearFixAll),
+    cNearFirst + Ord(TAtlasNearCommand.FixAll), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearExcept),
+    cNearFirst + Ord(TAtlasNearCommand.MarkSelection), ASelection);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearRemoveExcept),
+    cNearFirst + Ord(TAtlasNearCommand.RemoveSelection), ASelection);
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerNearUndoCmd),
+    cNearFirst + Ord(TAtlasNearCommand.Undo), FNear.CanUndo);
 end;
 
 procedure TAtlasIdeDesignerArrange.Popup(const APoint: TPoint);
@@ -173,6 +200,10 @@ begin
     AddFitItems(Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 0,
       Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 1);
   end;
+  if mSettings.DesignerNearAlignment then
+  begin
+    AddNearItems(Length(mSelected) > 0);
+  end;
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -183,15 +214,22 @@ var
   mDuplicate: TAtlasIdeDuplicateRow;
   mSpace: TAtlasIdeInsertSpace;
   mFit: TAtlasIdeFitContainer;
+  mNear: TAtlasIdeNearAlign;
 begin
   mTag := TMenuItem(Sender).Tag;
   mOnMessage := FOnMessage;
   mDuplicate := FDuplicate;
   mSpace := FSpace;
   mFit := FFit;
+  mNear := FNear;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
+      if mTag >= cNearFirst then
+      begin
+        mNear.Execute(TAtlasNearCommand(mTag - cNearFirst));
+        Exit;
+      end;
       case mTag of
         cFitToText:
           TAtlasIdeFitText.Execute(mOnMessage);
@@ -224,6 +262,7 @@ end;
 procedure TAtlasIdeDesignerArrange.ApplyTheme;
 begin
   FDuplicate.ApplyTheme;
+  FNear.ApplyTheme;
 end;
 
 end.

@@ -2017,6 +2017,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.InsertSpace.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitContainer.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FitContainer.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.NearAlign.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.NearAlign.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
