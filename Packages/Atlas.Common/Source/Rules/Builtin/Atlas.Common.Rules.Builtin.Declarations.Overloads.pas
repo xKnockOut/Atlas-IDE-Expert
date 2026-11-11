@@ -35,6 +35,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.RoutineSignatures,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
   Atlas.Common.Localization.Texts;
@@ -89,7 +90,7 @@ var
 
   function FirstToken(ANode: TSyntaxNode): Integer;
   begin
-    Result := TokenAtOffset(mTokens, ANode.StartOffset);
+    Result := TokenFrom(mTokens, ANode.StartOffset);
   end;
 
   function NodeKey(ANode: TSyntaxNode): string;

@@ -70,6 +70,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   System.Generics.Collections,
   Atlas.Common.Pascal.Parser;
@@ -85,11 +86,6 @@ type
     /// <summary>Bei Local: begin (zählt einmal je Routine).</summary>
     IsBegin: Boolean;
   end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
 begin

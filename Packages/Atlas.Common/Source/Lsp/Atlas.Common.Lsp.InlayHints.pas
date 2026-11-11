@@ -167,6 +167,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Editing.InterfaceStubs,
@@ -218,11 +219,6 @@ end;
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
   Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;

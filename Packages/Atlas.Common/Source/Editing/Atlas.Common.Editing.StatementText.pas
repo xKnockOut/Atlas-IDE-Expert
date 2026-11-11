@@ -100,6 +100,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 { TStatementRewrite }
@@ -149,11 +150,6 @@ begin
   begin
     Result := [ANode];
   end;
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 /// <summary>Zeile (ab 0) des Offsets AOffset.</summary>

@@ -54,6 +54,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
@@ -303,7 +304,6 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     FUsesTypes: Boolean;
-    function TokenAt(AOffset: Integer): Integer;
     function PathOf(ANode: TSyntaxNode): string;
     function SourceOf(ANode: TSyntaxNode): string;
     function NodeRange(ANode: TSyntaxNode): TTextRange;
@@ -345,31 +345,9 @@ begin
   FReport := AReport;
 end;
 
-/// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
-function TPublishedScan.TokenAt(AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(FTokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if FTokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
-
 function TPublishedScan.PathOf(ANode: TSyntaxNode): string;
 begin
-  Result := TConditionalBranches.PathAt(FPaths, TokenAt(ANode.StartOffset));
+  Result := TConditionalBranches.PathAt(FPaths, TokenFrom(FTokens, ANode.StartOffset));
 end;
 
 function TPublishedScan.SourceOf(ANode: TSyntaxNode): string;
@@ -387,7 +365,7 @@ function TPublishedScan.NameRange(ANode: TSyntaxNode; const AName: string): TTex
 var
   mIndex: Integer;
 begin
-  mIndex := TokenAt(ANode.StartOffset);
+  mIndex := TokenFrom(FTokens, ANode.StartOffset);
   while (mIndex < Length(FTokens)) and (FTokens[mIndex].Offset < ANode.EndOffset) do
   begin
     if (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mIndex].Text, AName) then
@@ -743,7 +721,7 @@ function TPublishedScan.IsClassProperty(AMember: TSyntaxNode): Boolean;
 var
   mToken: Integer;
 begin
-  mToken := TokenAt(AMember.StartOffset) - 1;
+  mToken := TokenFrom(FTokens, AMember.StartOffset) - 1;
   while (mToken >= 0) and (FTokens[mToken].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
     Dec(mToken);

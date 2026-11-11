@@ -11,7 +11,10 @@
 //   bleibt der Haken als reiner Durchreicher in ihrer Kette.
 // - Unhook gibt den Haken frei oder legt einen Durchreicher bis zum Entladen
 //   des Packages beiseite. OrphanCount zählt diese Fälle: Nach dem Entladen
-//   zeigte die fremde Kette auf entladenen Code.
+//   zeigte die fremde Kette auf entladenen Code. Deshalb kennzeichnet Unhook
+//   das Package dann als „Entladen ohne Neustart nicht sicher“
+//   (TAtlasUnloadSafety, #1978): Es bleibt im Speicher, Protokoll und
+//   Diagnose nennen den Grund, und die IDE bittet um einen Neustart.
 // Nur im Hauptthread.
 
 interface
@@ -50,6 +53,8 @@ type
     class procedure Forget(var AHook: TAtlasWndProcHook); static;
     /// <summary>Haken, die in einer fremden Kette verblieben sind (Entladen ohne Neustart nicht sicher).</summary>
     class function OrphanCount: Integer; static;
+    /// <summary>Nur für Tests, nachdem die Steuerelemente freigegeben sind: beiseitegelegte Haken freigeben.</summary>
+    class procedure ForgetOrphansForTests; static;
     /// <summary>Handler des Besitzers wird noch gerufen.</summary>
     property Active: Boolean read FActive;
     property Control: TControl read FControl;
@@ -58,7 +63,12 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Diagnostics.UnloadSafety;
+
+const
+  // Grund im Diagnoselog, nicht übersetzt.
+  cForeignChainReason = 'window procedure hook of %s stays in a foreign chain';
 
 function SameMethod(const ALeft, ARight: TMethod): Boolean;
 begin
@@ -140,11 +150,17 @@ begin
     FOrphans := TObjectList<TAtlasWndProcHook>.Create(True);
   end;
   FOrphans.Add(mHook);
+  TAtlasUnloadSafety.MarkUnsafe(HInstance, Format(cForeignChainReason, [mHook.Control.ClassName]));
 end;
 
 class procedure TAtlasWndProcHook.Forget(var AHook: TAtlasWndProcHook);
 begin
   FreeAndNil(AHook);
+end;
+
+class procedure TAtlasWndProcHook.ForgetOrphansForTests;
+begin
+  FreeAndNil(FOrphans);
 end;
 
 class function TAtlasWndProcHook.OrphanCount: Integer;

@@ -59,6 +59,7 @@ uses
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Rules.ConsideredUsed,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Query.Catalog,
@@ -215,33 +216,6 @@ begin
   end;
 end;
 
-/// <summary>Name ohne Typargumente: TFoo&lt;T&gt;.Bar → TFoo.Bar.</summary>
-function WithoutTypeArgs(const AName: string): string;
-var
-  mDepth, mIndex: Integer;
-begin
-  Result := '';
-  mDepth := 0;
-  for mIndex := 1 to Length(AName) do
-  begin
-    if AName[mIndex] = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if AName[mIndex] = '>' then
-    begin
-      if mDepth > 0 then
-      begin
-        Dec(mDepth);
-      end;
-    end
-    else if mDepth = 0 then
-    begin
-      Result := Result + AName[mIndex];
-    end;
-  end;
-end;
-
 function RelativePath(const ARoot, AFileName: string): string;
 var
   mRoot, mPath: string;
@@ -269,7 +243,7 @@ class function TCodeQueryEngine.ShortName(const AName: string): string;
 var
   mDot: Integer;
 begin
-  Result := Trim(WithoutTypeArgs(AName));
+  Result := Trim(TRoutineSignatures.WithoutTypeParams(AName));
   mDot := LastDelimiter('.', Result);
   if mDot > 0 then
   begin
@@ -543,7 +517,7 @@ begin
   Result := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
   for mIndex := 0 to High(AMetrics) do
   begin
-    mKey := UpperCase(WithoutTypeArgs(AMetrics[mIndex].Name));
+    mKey := UpperCase(TRoutineSignatures.WithoutTypeParams(AMetrics[mIndex].Name));
     if not Result.TryGetValue(mKey, mList) then
     begin
       mList := TList<Integer>.Create;
@@ -605,7 +579,7 @@ begin
     begin
       mSymbol := AUnit.Data.Symbols[mIndex];
       if not (mSymbol.Kind in cRoutineKinds) or (mSymbol.FileName <> '') or
-        not mByName.TryGetValue(UpperCase(WithoutTypeArgs(mSymbol.QualifiedName)), mList) then
+        not mByName.TryGetValue(UpperCase(TRoutineSignatures.WithoutTypeParams(mSymbol.QualifiedName)), mList) then
       begin
         Continue;
       end;
@@ -1028,10 +1002,10 @@ var
   mCall: TQueryCall;
   mTarget: string;
 begin
-  mTarget := WithoutTypeArgs(Trim(AName));
+  mTarget := TRoutineSignatures.WithoutTypeParams(Trim(AName));
   for mCall in CallsOf(AElement, False) do
   begin
-    if SameText(WithoutTypeArgs(mCall.Name), mTarget) or
+    if SameText(TRoutineSignatures.WithoutTypeParams(mCall.Name), mTarget) or
       ((Pos('.', mTarget) = 0) and SameText(TCodeQueryEngine.ShortName(mCall.Name), mTarget)) then
     begin
       Exit(True);

@@ -138,6 +138,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Semantics.ControlFlow;
 
@@ -211,32 +212,6 @@ end;
 function TokenRange(const AToken: TPascalToken): TTextRange;
 begin
   Result := TTextRange.Create(AToken.StartPos, AToken.EndPos);
-end;
-
-/// <summary>Token, das an AOffset beginnt; -1 ohne.</summary>
-function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens) - 1;
-  while mLow <= mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else if ATokens[mMiddle].Offset > AOffset then
-    begin
-      mHigh := mMiddle - 1;
-    end
-    else
-    begin
-      Exit(mMiddle);
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Bezeichner oder Schlüsselwort, auf dem APosition steht (auch direkt dahinter); -1 ohne.</summary>
@@ -746,7 +721,7 @@ var
   mWord: string;
 begin
   APoint := Default(TExitPoint);
-  mIndex := TokenAtOffset(AScan.Tokens, ANode.StartOffset);
+  mIndex := TokenExactly(AScan.Tokens, ANode.StartOffset);
   mWord := '';
   if mIndex < 0 then
   begin
@@ -1089,7 +1064,7 @@ var
 begin
   Result := nil;
   mTokens := ATree.Tokens;
-  mIndex := TokenAtOffset(mTokens, ALoop.StartOffset);
+  mIndex := TokenExactly(mTokens, ALoop.StartOffset);
   if mIndex >= 0 then
   begin
     Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(mTokens[mIndex]), '')];
@@ -1122,7 +1097,7 @@ begin
   // Break und Continue dieser Schleife, nicht die einer inneren.
   for mBody in LoopJumps(ALoop) do
   begin
-    mIndex := TokenAtOffset(mTokens, mBody.StartOffset);
+    mIndex := TokenExactly(mTokens, mBody.StartOffset);
     if mIndex >= 0 then
     begin
       Result := Result + [MakePoint(TExitPointKind.LoopJump, TokenRange(mTokens[mIndex]), '')];
