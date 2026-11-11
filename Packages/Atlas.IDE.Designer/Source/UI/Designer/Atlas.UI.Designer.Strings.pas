@@ -107,12 +107,13 @@ type
     DesignerGroupsKind, DesignerGroupsNeedTwo, DesignerGroupsTitle, DesignerGroupsPrompt, DesignerGroupsMade,
     DesignerGroupsNone, DesignerGroupsUngrouped, DesignerGroupsUndone, SettingsDesignerGroups,
     SettingsDesignerGroupsClick, SettingsDesignerGroupsAlt, SettingsDesignerGroupsDouble,
-    SettingsDesignerGroupsStorage,
-    DesignerTabPaths, DesignerTabClickMode,
-    DesignerTabSort, DesignerTabUndo, DesignerTabJump, DesignerTabGap, DesignerTabDuplicate, DesignerTabNoStop,
-    DesignerTabClickStarted, DesignerTabClickDone, DesignerTabClickCanceled, DesignerTabSorted,
-    DesignerTabSortedNone, DesignerTabUndone, DesignerTabModeHint, SettingsDesignerTabOrderOverlay,
-    SettingsDesignerTabOrderPaths);
+    SettingsDesignerGroupsStorage, DesignerTabPaths, DesignerTabClickMode, DesignerTabSort, DesignerTabUndo,
+    DesignerTabJump, DesignerTabGap, DesignerTabDuplicate, DesignerTabNoStop, DesignerTabClickStarted,
+    DesignerTabClickDone, DesignerTabClickCanceled, DesignerTabSorted, DesignerTabSortedNone, DesignerTabUndone,
+    DesignerTabModeHint, SettingsDesignerTabOrderOverlay, SettingsDesignerTabOrderPaths, DesignerCaptionEditCmd,
+    DesignerCaptionUndoCmd, DesignerCaptionNone, DesignerCaptionDuplicate, DesignerCaptionUndone,
+    SettingsDesignerCaption, SettingsDesignerCaptionSlow, SettingsDesignerCaptionWidth, SettingsDesignerCaptionKey,
+    SettingsDesignerCaptionMap);
 
   TAtlasDesignerStrings = class
   public
@@ -549,7 +550,17 @@ const
      'Tab-Reihenfolge rückgängig gemacht.',
      'Reihenfolge klicken: Enter oder Klick übernimmt, Esc bricht ab',
      'Tab-Reihenfolge beim Öffnen eines Formulars einblenden',
-     'Verschachtelte Tab-Reihenfolge als Pfad (2.1)'),
+     'Verschachtelte Tab-Reihenfolge als Pfad (2.1)',
+     'Beschriftung bearbeiten (F2)',
+     'Beschriftung rückgängig',
+     'Die markierte Komponente hat keine Beschriftung zum Bearbeiten.',
+     '%s: Tastenkürzel doppelt im selben Container (rot umrandet).',
+     '%s zurückgesetzt.',
+     'Beschriftungen direkt im Designer bearbeiten',
+     'Langsamer Doppelklick öffnet die Bearbeitung',
+     'Breite nach dem Übernehmen an den Text anpassen',
+     'Taste für die Bearbeitung',
+     'Eigene Zuordnung (Klasse=Eigenschaft, …)'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -967,7 +978,17 @@ const
      'Tab order undone.',
      'Click the order: Enter or click keeps it, Esc cancels',
      'Show the tab order when a form opens',
-     'Nested tab order as a path (2.1)'));
+     'Nested tab order as a path (2.1)',
+     'Edit caption (F2)',
+     'Undo caption',
+     'The selected component has no caption to edit.',
+     '%s: shortcut used twice in the same container (red frame).',
+     '%s restored.',
+     'Edit captions directly in the designer',
+     'A slow double click starts editing',
+     'Fit the width to the text after editing',
+     'Key for editing',
+     'Own mapping (class=property, …)'));
 
 { TAtlasDesignerStrings }
 

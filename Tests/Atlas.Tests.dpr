@@ -1659,6 +1659,8 @@ uses
   Atlas.Core.Designer.FontsColors.Tests in 'IDE.Expert\Atlas.Core.Designer.FontsColors.Tests.pas',
   Atlas.Core.Designer.Groups in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Groups.pas',
   Atlas.Core.Designer.Groups.Tests in 'IDE.Expert\Atlas.Core.Designer.Groups.Tests.pas',
+  Atlas.Core.Designer.InlineCaption in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.InlineCaption.pas',
+  Atlas.Core.Designer.InlineCaption.Tests in 'IDE.Expert\Atlas.Core.Designer.InlineCaption.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.TabOrder in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas',

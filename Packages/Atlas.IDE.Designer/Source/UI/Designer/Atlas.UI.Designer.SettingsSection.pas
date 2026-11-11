@@ -3,7 +3,7 @@
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
 // Gleiche auswählen (#738),
-// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744), Werkzeuge mit eigenem Knopf (#734 ff.).
+// Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744), Beschriftung (#748), Werkzeuge mit eigenem Knopf (#734 ff.).
 
 interface
 
@@ -217,6 +217,14 @@ begin
     [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSetsLocal),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSetsShared)],
     [TAtlasPluginSettings.cDesignerSetsLocal, TAtlasPluginSettings.cDesignerSetsShared]);
+  Switch('designer.inlineCaption', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerCaption));
+  Switch('designer.inlineCaption.slowDoubleClick',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerCaptionSlow));
+  Switch('designer.inlineCaption.autoWidth',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerCaptionWidth));
+  Key('designer.inlineCaption.key', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerCaptionKey));
+  Line('designer.inlineCaption.properties',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerCaptionMap));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildButtonRows;

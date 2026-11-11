@@ -1139,6 +1139,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.Wrap` | `Core/Designer/Atlas.Core.Designer.Wrap.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FontsColors` | `Core/Designer/Atlas.Core.Designer.FontsColors.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Groups` | `Core/Designer/Atlas.Core.Designer.Groups.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.InlineCaption` | `Core/Designer/Atlas.Core.Designer.InlineCaption.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FitText` | `Core/Designer/Atlas.Core.Designer.FitText.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Gaps` | `Core/Designer/Atlas.Core.Designer.Gaps.pas` | Ordner `Core/Designer` |
@@ -1170,6 +1171,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.Wrap` | `IDE/Designer/Atlas.IDE.Designer.Wrap.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FontsColors` | `IDE/Designer/Atlas.IDE.Designer.FontsColors.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Groups` | `IDE/Designer/Atlas.IDE.Designer.Groups.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.InlineCaption` | `IDE/Designer/Atlas.IDE.Designer.InlineCaption.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.GapHandles` | `IDE/Designer/Atlas.IDE.Designer.GapHandles.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.HandleTool` | `IDE/Designer/Atlas.IDE.Designer.HandleTool.pas` | Ordner `IDE/Designer`; gemeinsamer Teil der Werkzeuge mit Griffen |
@@ -1196,6 +1198,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.AnchorDialog` | `UI/Designer/Atlas.UI.Designer.AnchorDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.TextsDialog` | `UI/Designer/Atlas.UI.Designer.TextsDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.FontsDialog` | `UI/Designer/Atlas.UI.Designer.FontsDialog.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.CaptionEditor` | `UI/Designer/Atlas.UI.Designer.CaptionEditor.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.ToolStrings` | `UI/Designer/Atlas.UI.Designer.ToolStrings.pas` | Texte der Werkzeuge mit eigenem Knopf in der Designer-Leiste, Sprache von Base |

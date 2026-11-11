@@ -5822,6 +5822,61 @@
       "x-node": "editor.designerBar",
       "x-issue": "#744"
     },
+    "DesignerInlineCaption": {
+      "description": "Beschriftungen direkt im Designer bearbeiten: F2 oder ein langsamer Doppelklick öffnet über Caption, Text, EditLabel.Caption oder dem Spaltentitel eines DB-Grids ein Eingabefeld. Enter übernimmt, Esc verwirft, Tab geht zur nächsten Komponente in Tab-Reihenfolge, Strg+H tauscht Text und TextHint. „Anordnen › Beschriftung rückgängig“ nimmt die letzte Übernahme zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.inlineCaption",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#748"
+    },
+    "DesignerInlineCaptionSlowDoubleClick": {
+      "description": "Ein zweiter Klick auf die schon markierte Komponente nach mehr als der Doppelklickzeit, ohne Ziehen, öffnet die Bearbeitung (wie das Umbenennen im Explorer). Der normale Doppelklick legt weiter den Ereignis-Handler an.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.inlineCaption.slowDoubleClick",
+      "x-parent": "designer.inlineCaption",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#748"
+    },
+    "DesignerInlineCaptionAutoWidth": {
+      "description": "Nach dem Übernehmen die Breite an den Text anpassen (wie „Breite nach Text“), wenn er nicht mehr passt und AutoSize aus ist.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.inlineCaption.autoWidth",
+      "x-parent": "designer.inlineCaption",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#748"
+    },
+    "DesignerInlineCaptionKey": {
+      "description": "Taste für die Bearbeitung; wirkt nur, solange der Formular-Designer den Fokus hat und die markierte Komponente eine Beschriftung hat, sonst bleibt sie bei der IDE. 0 = keine Taste. Vorgabe F2.",
+      "type": "integer",
+      "default": 113,
+      "x-key": "designer.inlineCaption.key",
+      "x-parent": "designer.inlineCaption",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#748"
+    },
+    "DesignerInlineCaptionProperties": {
+      "description": "Eigene Zuordnung Klasse=Eigenschaft, durch Komma getrennt, vor der eingebauten; „-“ schaltet eine Klasse ab. Beispiel: TMyHeader=Title, TMyMemo=-",
+      "type": "string",
+      "default": "",
+      "x-key": "designer.inlineCaption.properties",
+      "x-parent": "designer.inlineCaption",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#748"
+    },
     "DesignerGapHandles": {
       "description": "Abstandsgriffe bei Mehrfachauswahl: Bilden mindestens zwei markierte Steuerelemente im selben Elternelement eine Reihe oder Spalte, steht zwischen je zwei Nachbarn eine Pille mit dem Abstand in Pixeln (abweichende gedämpft). Ziehen setzt alle Abstände auf denselben Wert, Doppelklick fragt ihn ab, Pfeiltasten bei gehaltener Pille ändern um 1 px; nur Left bzw. Top ändern sich. Ragt ein Steuerelement danach aus dem Elternelement, gilt die Änderung erst nach Rückfrage. Knopf in der Designer-Leiste: Symbol blendet die Griffe ein und aus, das Menü am Pfeil setzt Abstände und macht den letzten Schritt rückgängig.",
       "type": "boolean",

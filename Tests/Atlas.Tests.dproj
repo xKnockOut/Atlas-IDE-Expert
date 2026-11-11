@@ -2051,6 +2051,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FontsColors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Groups.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Groups.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.InlineCaption.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.InlineCaption.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>

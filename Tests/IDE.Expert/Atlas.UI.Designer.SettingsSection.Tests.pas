@@ -63,6 +63,8 @@ type
     [Test]
     procedure GroupsRoundTrip;
     [Test]
+    procedure InlineCaptionRoundTrip;
+    [Test]
     procedure GapHandlesRoundTrip;
     [Test]
     procedure MultiResizeRoundTrip;
@@ -726,6 +728,31 @@ begin
     Assert.IsFalse(mSaved.DesignerGroups, 'abschaltbar');
     Assert.AreEqual(TAtlasPluginSettings.cDesignerGroupsDoubleClick, mSaved.DesignerGroupsMemberClick);
     Assert.AreEqual(TAtlasPluginSettings.cDesignerSetsShared, mSaved.DesignerGroupsStorage);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.InlineCaptionRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInlineCaption').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerInlineCaptionSlowDoubleClick').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerInlineCaptionAutoWidth').Checked);
+    CheckOf(mPage, 'DesignerInlineCaption').Checked := False;
+    CheckOf(mPage, 'DesignerInlineCaptionAutoWidth').Checked := True;
+    EditOf(mPage, 'DesignerInlineCaptionProperties').Text := 'TMyHeader=Title';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerInlineCaption, 'abschaltbar');
+    Assert.IsTrue(mSaved.DesignerInlineCaptionAutoWidth);
+    Assert.AreEqual('TMyHeader=Title', mSaved.DesignerInlineCaptionProperties);
+    Assert.AreEqual(113, mSaved.DesignerInlineCaptionKey, 'F2');
   finally
     mPage.Free;
   end;

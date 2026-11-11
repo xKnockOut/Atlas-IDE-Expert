@@ -771,6 +771,16 @@ type
       write FEditorView.DesignerGroupsMemberClick;
     property DesignerGroupsStorage: string read FEditorView.DesignerGroupsStorage
       write FEditorView.DesignerGroupsStorage;
+    property DesignerInlineCaption: Boolean read FEditorView.DesignerInlineCaption
+      write FEditorView.DesignerInlineCaption;
+    property DesignerInlineCaptionSlowDoubleClick: Boolean read FEditorView.DesignerInlineCaptionSlowDoubleClick
+      write FEditorView.DesignerInlineCaptionSlowDoubleClick;
+    property DesignerInlineCaptionAutoWidth: Boolean read FEditorView.DesignerInlineCaptionAutoWidth
+      write FEditorView.DesignerInlineCaptionAutoWidth;
+    property DesignerInlineCaptionKey: Integer read FEditorView.DesignerInlineCaptionKey
+      write FEditorView.DesignerInlineCaptionKey;
+    property DesignerInlineCaptionProperties: string read FEditorView.DesignerInlineCaptionProperties
+      write FEditorView.DesignerInlineCaptionProperties;
     property DesignerGapHandles: Boolean read FEditorView.DesignerGapHandles write FEditorView.DesignerGapHandles;
     property DesignerGapHandlesSnapValues: string read FEditorView.DesignerGapHandlesSnapValues
       write FEditorView.DesignerGapHandlesSnapValues;

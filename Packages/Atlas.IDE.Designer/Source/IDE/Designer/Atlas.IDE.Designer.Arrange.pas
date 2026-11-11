@@ -40,6 +40,8 @@
 //   designer.fontsColors, TAtlasIdeFontsColors).
 // - Gruppieren, Gruppe auflösen und Gruppen rückgängig (#744,
 //   designer.groups, TAtlasIdeDesignerGroups).
+// - Beschriftung bearbeiten (F2) und Beschriftung rückgängig (#748,
+//   designer.inlineCaption, TAtlasIdeInlineCaption).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -62,7 +64,16 @@ uses
   Atlas.IDE.Designer.FormGrid,
   Atlas.IDE.Designer.Wrap,
   Atlas.IDE.Designer.FontsColors,
-  Atlas.IDE.Designer.Groups;
+  Atlas.IDE.Designer.Groups,
+  Atlas.IDE.Designer.InlineCaption;
+
+type
+  /// <summary>Befehle hinter RunExtra: Schriften und Farben (#741), Gruppen (#744), Beschriftung (#748).</summary>
+  TAtlasArrangeExtras = record
+    Fonts: TAtlasIdeFontsColors;
+    Groups: TAtlasIdeDesignerGroups;
+    Caption: TAtlasIdeInlineCaption;
+  end;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -81,8 +92,7 @@ type
     FPairs: TAtlasIdeLabelPairs;
     FGrid: TAtlasIdeFormGrid;
     FWrap: TAtlasIdeWrap;
-    FFonts: TAtlasIdeFontsColors;
-    FGroups: TAtlasIdeDesignerGroups;
+    FExtra: TAtlasArrangeExtras;
     /// <summary>Containerklassen im zuletzt gezeigten Menü.</summary>
     FWrapClasses: TArray<string>;
     /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
@@ -98,7 +108,7 @@ type
     /// <summary>Einpacken (#733): 0 auflösen, 1 rückgängig, ab 2 Klasse aus FWrapClasses.</summary>
     procedure RunWrap(ACommand: Integer);
     procedure AddExtraItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
-    /// <summary>Schriften und Farben, Gruppen: ACommand ist cFontsOpen … cGroupsUndo.</summary>
+    /// <summary>TAtlasArrangeExtras: ACommand ist cFontsOpen … cCaptionUndo.</summary>
     procedure RunExtra(ACommand: Integer);
     /// <summary>Untermenüs ab „Fast bündige Kanten“ (#746 ff.).</summary>
     procedure AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
@@ -167,13 +177,15 @@ const
   cWrapUnwrap = 0;
   cWrapUndo = 1;
   cWrapClasses = 2;
-  /// <summary>Ab hier RunExtra: Schriften und Farben (#741), Gruppen (#744).</summary>
+  /// <summary>Ab hier RunExtra: Schriften und Farben (#741), Gruppen (#744), Beschriftung (#748).</summary>
   cFontsFirst = 90;
   cFontsOpen = 0;
   cFontsUndo = 1;
   cGroupsGroup = 2;
   cGroupsUngroup = 3;
   cGroupsUndo = 4;
+  cCaptionEdit = 5;
+  cCaptionUndo = 6;
   /// <summary>Ab hier Einträge des Stapels: cStackFirst + Index in FStackNames.</summary>
   cStackFirst = 100;
 
@@ -196,14 +208,16 @@ begin
   FPairs := TAtlasIdeLabelPairs.Create(AOnMessage);
   FGrid := TAtlasIdeFormGrid.Create(AOnMessage);
   FWrap := TAtlasIdeWrap.Create(AOnMessage);
-  FFonts := TAtlasIdeFontsColors.Create(AOnMessage);
-  FGroups := TAtlasIdeDesignerGroups.Create(AOnMessage);
+  FExtra.Fonts := TAtlasIdeFontsColors.Create(AOnMessage);
+  FExtra.Groups := TAtlasIdeDesignerGroups.Create(AOnMessage);
+  FExtra.Caption := TAtlasIdeInlineCaption.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
-  FGroups.Free;
-  FFonts.Free;
+  FExtra.Caption.Free;
+  FExtra.Groups.Free;
+  FExtra.Fonts.Free;
   FWrap.Free;
   FGrid.Free;
   FPairs.Free;
@@ -228,7 +242,7 @@ begin
     ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
     ASettings.DesignerTextTable or ASettings.DesignerLabelPairs or
     ASettings.DesignerArrangeForm or ASettings.DesignerWrapInContainer or ASettings.DesignerFontsColors or
-    ASettings.DesignerGroups;
+    ASettings.DesignerGroups or ASettings.DesignerInlineCaption;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -435,16 +449,23 @@ begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFontsCmd), cFontsFirst + cFontsOpen,
       True);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFontsUndoCmd),
-      cFontsFirst + cFontsUndo, FFonts.CanUndo);
+      cFontsFirst + cFontsUndo, FExtra.Fonts.CanUndo);
   end;
   if ASettings.DesignerGroups then
   begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsCmd),
       cFontsFirst + cGroupsGroup, ASelection);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsUngroupCmd),
-      cFontsFirst + cGroupsUngroup, FGroups.HasGroup);
+      cFontsFirst + cGroupsUngroup, FExtra.Groups.HasGroup);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsUndoCmd),
-      cFontsFirst + cGroupsUndo, FGroups.CanUndo);
+      cFontsFirst + cGroupsUndo, FExtra.Groups.CanUndo);
+  end;
+  if ASettings.DesignerInlineCaption then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerCaptionEditCmd),
+      cFontsFirst + cCaptionEdit, FExtra.Caption.CanEdit);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerCaptionUndoCmd),
+      cFontsFirst + cCaptionUndo, FExtra.Caption.CanUndo);
   end;
 end;
 
@@ -452,15 +473,19 @@ procedure TAtlasIdeDesignerArrange.RunExtra(ACommand: Integer);
 begin
   case ACommand of
     cFontsOpen:
-      FFonts.Execute;
+      FExtra.Fonts.Execute;
     cFontsUndo:
-      FFonts.Undo;
+      FExtra.Fonts.Undo;
     cGroupsGroup:
-      FGroups.Group;
+      FExtra.Groups.Group;
     cGroupsUngroup:
-      FGroups.Ungroup;
+      FExtra.Groups.Ungroup;
     cGroupsUndo:
-      FGroups.Undo;
+      FExtra.Groups.Undo;
+    cCaptionEdit:
+      FExtra.Caption.Edit;
+    cCaptionUndo:
+      FExtra.Caption.Undo;
   end;
 end;
 
@@ -639,7 +664,8 @@ procedure TAtlasIdeDesignerArrange.UpdateKeys(AWanted: Boolean);
 begin
   FLayers.UpdateKeys(AWanted);
   FPainter.UpdateKeys(AWanted);
-  FGroups.UpdateKeys(AWanted);
+  FExtra.Groups.UpdateKeys(AWanted);
+  FExtra.Caption.UpdateKeys(AWanted);
 end;
 
 procedure TAtlasIdeDesignerArrange.ApplyTheme;
@@ -649,7 +675,8 @@ begin
   FSizes.ApplyTheme;
   FAnchors.ApplyTheme;
   FGrid.ApplyTheme;
-  FGroups.ApplyTheme;
+  FExtra.Groups.ApplyTheme;
+  FExtra.Caption.ApplyTheme;
 end;
 
 end.

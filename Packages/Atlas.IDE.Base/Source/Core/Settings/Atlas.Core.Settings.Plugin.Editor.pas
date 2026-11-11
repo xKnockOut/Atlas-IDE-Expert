@@ -73,6 +73,8 @@ const
   /// <summary>Werte von designer.groups.memberClick (#744).</summary>
   cDesignerGroupsAltClick = 'altClick';
   cDesignerGroupsDoubleClick = 'doubleClick';
+  /// <summary>Vorgabe von designer.inlineCaption.key: F2 (#748).</summary>
+  cInlineCaptionKey = 113;
   /// <summary>Quellen von designer.fitToText.sources (#730).</summary>
   cFitSourceCaption = 'caption';
   cFitSourceText = 'text';
@@ -679,6 +681,16 @@ type
     DesignerGroupsMemberClick: string;
     /// <summary>Ablage: cDesignerSetsLocal oder cDesignerSetsShared (#744, designer.groups.storage).</summary>
     DesignerGroupsStorage: string;
+    /// <summary>Beschriftung direkt im Designer bearbeiten (#748, designer.inlineCaption).</summary>
+    DesignerInlineCaption: Boolean;
+    /// <summary>Langsamer Doppelklick öffnet die Bearbeitung (#748, designer.inlineCaption.slowDoubleClick).</summary>
+    DesignerInlineCaptionSlowDoubleClick: Boolean;
+    /// <summary>Breite nach dem Übernehmen anpassen (#748, designer.inlineCaption.autoWidth).</summary>
+    DesignerInlineCaptionAutoWidth: Boolean;
+    /// <summary>Taste als TShortCut, 0 = keine (#748, designer.inlineCaption.key).</summary>
+    DesignerInlineCaptionKey: Integer;
+    /// <summary>Eigene Zuordnung Klasse=Eigenschaft (#748, designer.inlineCaption.properties).</summary>
+    DesignerInlineCaptionProperties: string;
     /// <summary>Abstandsgriffe bei Mehrfachauswahl (#734, designer.gapHandles).</summary>
     DesignerGapHandles: Boolean;
     /// <summary>Rastwerte beim Ziehen, durch Komma getrennt (#734, designer.gapHandles.snapValues).</summary>
@@ -753,7 +765,7 @@ type
     class function Defaults: TAtlasPluginEditorViewSettings; static;
     /// <summary>Vorgaben der Befehle im Menü „Anordnen“ der Designer-Leiste (#730 ff.).</summary>
     procedure SetArrangeDefaults;
-    /// <summary>Formularraster (#731), Einpacken (#733), Schriften und Farben (#741), Gruppen (#744).</summary>
+    /// <summary>Raster (#731), Einpacken (#733), Schriften (#741), Gruppen (#744), Beschriftung (#748).</summary>
     procedure SetFormToolDefaults;
     /// <summary>Einstellungen der Befehle im Menü „Anordnen“ lesen bzw. schreiben.</summary>
     procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1335,6 +1347,11 @@ begin
   DesignerGroups := True;
   DesignerGroupsMemberClick := cDesignerGroupsAltClick;
   DesignerGroupsStorage := cDesignerSetsLocal;
+  DesignerInlineCaption := True;
+  DesignerInlineCaptionSlowDoubleClick := True;
+  DesignerInlineCaptionAutoWidth := False;
+  DesignerInlineCaptionKey := cInlineCaptionKey;
+  DesignerInlineCaptionProperties := '';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1408,6 +1425,11 @@ begin
   AIo.Flag('DesignerGroups', DesignerGroups);
   AIo.Text('DesignerGroupsMemberClick', DesignerGroupsMemberClick);
   AIo.Text('DesignerGroupsStorage', DesignerGroupsStorage);
+  AIo.Flag('DesignerInlineCaption', DesignerInlineCaption);
+  AIo.Flag('DesignerInlineCaptionSlowDoubleClick', DesignerInlineCaptionSlowDoubleClick);
+  AIo.Flag('DesignerInlineCaptionAutoWidth', DesignerInlineCaptionAutoWidth);
+  AIo.Number('DesignerInlineCaptionKey', DesignerInlineCaptionKey);
+  AIo.Text('DesignerInlineCaptionProperties', DesignerInlineCaptionProperties);
 end;
 
 procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
@@ -1472,6 +1494,7 @@ begin
   DesignerSelectionSetsStorage := Choice(DesignerSelectionSetsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
   DesignerGroupsStorage := Choice(DesignerGroupsStorage, [cDesignerSetsLocal, cDesignerSetsShared]);
   DesignerGroupsMemberClick := Choice(DesignerGroupsMemberClick, [cDesignerGroupsAltClick, cDesignerGroupsDoubleClick]);
+  DesignerInlineCaptionKey := EnsureRange(DesignerInlineCaptionKey, 0, $FFFF);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
