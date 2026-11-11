@@ -683,6 +683,13 @@ type
       write FEditorView.DesignerNameSuggestRenameHandlers;
     property DesignerNameSuggestPrefixes: string read FEditorView.DesignerNameSuggestPrefixes
       write FEditorView.DesignerNameSuggestPrefixes;
+    property DesignerStructure: Boolean read FEditorView.DesignerStructure write FEditorView.DesignerStructure;
+    property DesignerStructureHideOnForm: Boolean read FEditorView.DesignerStructureHideOnForm
+      write FEditorView.DesignerStructureHideOnForm;
+    property DesignerDataBindings: Boolean read FEditorView.DesignerDataBindings
+      write FEditorView.DesignerDataBindings;
+    property DesignerExtractFrame: Boolean read FEditorView.DesignerExtractFrame
+      write FEditorView.DesignerExtractFrame;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;

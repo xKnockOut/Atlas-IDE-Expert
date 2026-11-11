@@ -154,7 +154,7 @@ begin
   AView.Block.Reset;
   AView.CursorPos := mTarget;
   TAtlasIdeSearchSession.Repaint;
-  TAtlasIdeSearchSteps.TryNext(False);
+  TAtlasIdeSearchSteps.TryNext(False, False);
 end;
 
 /// <summary>Über Dateien: frisch suchen (Ergebnisse von vorhin können veraltet sein), dann alle Treffer ersetzen.
@@ -328,7 +328,7 @@ begin
   // Kein Treffer markiert: erst hinspringen, der nächste Klick ersetzt.
   if mIndex < 0 then
   begin
-    TAtlasIdeSearchSteps.TryNext(False);
+    TAtlasIdeSearchSteps.TryNext(False, False);
   end
   else if not RejectReadOnly(mView) then
   begin

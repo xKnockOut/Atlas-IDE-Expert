@@ -589,6 +589,16 @@ type
     /// <summary>Eigene Präfixe „TKlasse=präfix“ vor der eingebauten Tabelle (#608, designer.nameSuggestPrefixes).
     /// </summary>
     DesignerNameSuggestPrefixes: string;
+    /// <summary>Knopf „Atlas-Struktur“ mit andockbarem Fenster (#609, designer.structure).</summary>
+    DesignerStructure: Boolean;
+    /// <summary>Symbole nichtvisueller Komponenten auf der Formularfläche ausblenden, solange das Fenster offen ist
+    /// (#609, designer.structureHideOnForm).</summary>
+    DesignerStructureHideOnForm: Boolean;
+    /// <summary>Knopf „Datenbindung“ mit der Brotkrumenleiste unter dem Designer (#610, designer.dataBindings).
+    /// </summary>
+    DesignerDataBindings: Boolean;
+    /// <summary>Knopf „In Frame auslagern“ (#611, designer.extractFrame).</summary>
+    DesignerExtractFrame: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1683,6 +1693,10 @@ begin
   DesignerNameSuggestUmlauts := 'replace';
   DesignerNameSuggestRenameHandlers := True;
   DesignerNameSuggestPrefixes := '';
+  DesignerStructure := False;
+  DesignerStructureHideOnForm := True;
+  DesignerDataBindings := False;
+  DesignerExtractFrame := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1701,6 +1715,10 @@ begin
   AIo.Text('DesignerNameSuggestUmlauts', DesignerNameSuggestUmlauts);
   AIo.Flag('DesignerNameSuggestRenameHandlers', DesignerNameSuggestRenameHandlers);
   AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
+  AIo.Flag('DesignerStructure', DesignerStructure);
+  AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
+  AIo.Flag('DesignerDataBindings', DesignerDataBindings);
+  AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
 end;
 
 end.

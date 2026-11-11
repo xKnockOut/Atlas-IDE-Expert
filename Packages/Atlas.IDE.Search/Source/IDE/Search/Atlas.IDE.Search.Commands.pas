@@ -21,7 +21,7 @@
 //   der Meldungsansicht), auch bei geschlossener Leiste. Ohne letzte Suche
 //   False: die Taste geht weiter (Markierung suchen bzw. „Erneut suchen“ der
 //   IDE). Ist ein anderer Text einzeilig markiert als zuletzt gesucht, sucht
-//   F3 nach der Markierung. Bei Bereich Methode und Cursor außerhalb jeder
+//   F3 im Editor nach der Markierung; in der Leiste gilt ihr Text. Bei Bereich Methode und Cursor außerhalb jeder
 //   Routine sucht F3 in der ganzen Unit (Meldung).
 // - Esc bzw. × schließt die Leiste, gibt den Fokus an den Editor zurück und
 //   beendet die Hervorhebung; F3 sucht weiter mit der letzten Suche.
@@ -553,7 +553,7 @@ class procedure TAtlasIdeSearch.BarStep(ABackward: Boolean);
 begin
   TAtlasIdeSearchSession.SaveHistories;
   TAtlasIdeSearchSteps.Sync(False);
-  TryNext(ABackward);
+  TAtlasIdeSearchSteps.TryNext(ABackward, False);
 end;
 
 class procedure TAtlasIdeSearch.CloseBar;
@@ -699,7 +699,7 @@ end;
 
 class function TAtlasIdeSearch.TryNext(ABackward: Boolean): Boolean;
 begin
-  Result := TAtlasIdeSearchSteps.TryNext(ABackward);
+  Result := TAtlasIdeSearchSteps.TryNext(ABackward, True);
 end;
 
 class procedure TAtlasIdeSearch.FindNext;

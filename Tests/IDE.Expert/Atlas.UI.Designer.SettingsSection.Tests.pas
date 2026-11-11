@@ -33,6 +33,12 @@ type
     [Test]
     procedure NameSuggestRoundTrip;
     [Test]
+    procedure StructureRoundTrip;
+    [Test]
+    procedure DataBindingsRoundTrip;
+    [Test]
+    procedure ExtractFrameRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -246,6 +252,63 @@ begin
     Assert.AreEqual('remove', mSaved.DesignerNameSuggestUmlauts);
     Assert.IsFalse(mSaved.DesignerNameSuggestRenameHandlers);
     Assert.AreEqual('TButton=cmd', mSaved.DesignerNameSuggestPrefixes);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.StructureRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerStructure').Checked, 'Vorgabe aus');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerStructureHideOnForm').Checked);
+    CheckOf(mPage, 'DesignerStructure').Checked := True;
+    CheckOf(mPage, 'DesignerStructureHideOnForm').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.DesignerStructure);
+    Assert.IsFalse(mSaved.DesignerStructureHideOnForm);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.DataBindingsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerDataBindings').Checked, 'Vorgabe aus');
+    CheckOf(mPage, 'DesignerDataBindings').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.DesignerDataBindings);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ExtractFrameRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerExtractFrame').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerExtractFrame').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerExtractFrame);
   finally
     mPage.Free;
   end;
