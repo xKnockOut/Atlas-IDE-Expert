@@ -298,6 +298,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `editor.smartPaste` (experimental) – depends on `completion.enabled`
   - `hints.xmlDocExpand`
   - `hints.xmlDocMaxLines`
+  - `navigation.mouseButtons` – depends on `navHistory.enabled`
   - `callHierarchy.diagram`
   - `editor.breadcrumbsIdeColors`
   - `editor.breadcrumbsHideIdeToolbar`

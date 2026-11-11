@@ -298,6 +298,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `editor.smartPaste` (experimentell) – hängt an `completion.enabled`
   - `hints.xmlDocExpand`
   - `hints.xmlDocMaxLines`
+  - `navigation.mouseButtons` – hängt an `navHistory.enabled`
   - `callHierarchy.diagram`
   - `editor.breadcrumbsIdeColors`
   - `editor.breadcrumbsHideIdeToolbar`

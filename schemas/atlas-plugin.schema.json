@@ -4246,6 +4246,7 @@
       "x-area": "editor",
       "x-page": "Editor",
       "x-parent": "navHistory.enabled",
+      "x-node": "",
       "x-caption": "Maustasten Zurück/Vor",
       "x-captionEn": "Mouse back/forward buttons",
       "x-issue": "#1889"
