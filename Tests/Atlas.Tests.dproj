@@ -2093,6 +2093,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Layout.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Scale.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Scale.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.NameSuggest.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.NameSuggest.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas"/>
