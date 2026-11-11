@@ -706,6 +706,8 @@ type
     SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark,
     // Rollbereich der published-Mitglieder im Hover (#1841).
     SettingsHoverMembersMaxLines,
+    // Parameter und Rückgabe immer offen im Hover (#1919).
+    SettingsHoverSignatureParams,
     // Optionen je Package (#1903).
     SettingsModulesNode, SettingsModulesTitle, SettingsModuleInstalled, SettingsModuleMissing, SettingsModulesHint,
     SettingsAtlasSearch, SettingsAtlasPackages, SettingsAtlasHit, SettingsAtlasNoHits,
@@ -2392,6 +2394,7 @@ const
      'Lokale Routinen im hellen Thema',
      'Lokale Routinen im dunklen Thema',
      'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
+     'Parameter und Rückgabe im Hover immer untereinander zeigen, auch ohne XMLDoc',
      'Module',
      'Packages von Atlas',
      'installiert',
@@ -4022,6 +4025,7 @@ const
      'Local routines in the light theme',
      'Local routines in the dark theme',
      'Members in the hover: max. lines before scrolling (0 = screen)',
+     'Always list parameters and return value in the hover, also without XMLDoc',
      'Modules',
      'Atlas packages',
      'installed',
