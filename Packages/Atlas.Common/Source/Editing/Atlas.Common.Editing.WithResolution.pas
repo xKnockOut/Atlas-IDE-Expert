@@ -200,7 +200,7 @@ var
   mList: TList<TSyntaxNode>;
 begin
   mList := AList;
-  // Walk statt Rekursion (Bericht M1).
+  // Walk statt Rekursion.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
@@ -217,7 +217,7 @@ function IsSimple(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  // Schleife statt Rekursion (Bericht M1).
+  // Schleife statt Rekursion.
   mNode := ANode;
   while (mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess]) and
     (mNode.ChildCount > 0) do

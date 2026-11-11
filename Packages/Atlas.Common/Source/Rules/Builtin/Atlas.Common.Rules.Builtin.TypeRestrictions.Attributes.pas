@@ -101,7 +101,7 @@ begin
   end;
 end;
 
-/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken. Iterativ (Bericht M1):
+/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken. Iterativ (tiefe Bäume sprengen den Stapel nicht):
 /// erst die Kette hinab, dann die Namen von innen nach außen anhängen.</summary>
 function DottedNameOf(ANode: TSyntaxNode): string;
 var
@@ -378,7 +378,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
   var
     mPending: TStack<TSyntaxNode>;

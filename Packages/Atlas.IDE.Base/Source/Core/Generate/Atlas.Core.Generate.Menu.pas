@@ -30,7 +30,7 @@ type
   TAtlasGenerateArgument = (None, Optional, Required);
   {$SCOPEDENUMS OFF}
 
-  /// <summary>Seit A-09 in Atlas.Core.Generate.Contract; Alias für bestehende Nutzer.</summary>
+  /// <summary>Liegt in Atlas.Core.Generate.Contract; Alias für bestehende Nutzer.</summary>
   TAtlasGenerateGroup = Atlas.Core.Generate.Contract.TAtlasGenerateGroup;
 
   TAtlasGenerateEntry = record

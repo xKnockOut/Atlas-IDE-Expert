@@ -69,7 +69,7 @@ type
     /// <summary>Eine Datei des zurückgestellten Projekts war offen.</summary>
     property Activated: Boolean read FActivated write FActivated;
     /// <summary>Thread der Nachrichtenschleife: Reload aus einem anderen Thread löst EInvalidOpException aus
-    /// (Code-Review A-03). 0 = keine Prüfung, z. B. MCP, Linter, Tests.</summary>
+    ///. 0 = keine Prüfung, z. B. MCP, Linter, Tests.</summary>
     property LoopThreadId: TThreadID read FLoopThreadId write FLoopThreadId;
     /// <summary>Projektkontexte aus der IDE (#396): Was die IDE meldet, hat Vorrang vor der .dproj. nil ohne
     /// Plugin; gehört der Komposition.</summary>

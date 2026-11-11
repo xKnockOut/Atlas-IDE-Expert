@@ -195,7 +195,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -258,7 +258,7 @@ begin
       Result.Connection := mResolution.Connection.Name;
     end;
     Result.Queries := TAtlasTrackerQueries.Available(TAtlasTrackerQueries.Read(mSettings.IssuesQueries),
-      Result.Target, Result.Connection, mConnections, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryDefault));
+      Result.Target, Result.Connection, mConnections, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault));
   except
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do
@@ -356,7 +356,7 @@ function IdeProject: string;
 begin
   Result := '';
   try
-    Result := TAtlasIdeTeamFile.ActiveProject;
+    Result := TAtlasIdeFiles.ActiveProjectFile;
   except
     on E: Exception do
     begin
@@ -542,7 +542,7 @@ var
   mProject: string;
 begin
   // Das aktive Projekt der IDE, sonst das des Bereichs; Tracker wie im Bereich (.atlas, sonst Zuordnung #1261).
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     mProject := CurrentProject;

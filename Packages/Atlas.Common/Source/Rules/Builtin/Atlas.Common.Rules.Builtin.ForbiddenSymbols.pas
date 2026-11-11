@@ -86,7 +86,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -141,21 +142,6 @@ begin
     begin
       Result := Result + [TJSONString(mItem).Value];
     end;
-  end;
-end;
-
-function ReadText(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end
-  else
-  begin
-    Result := '';
   end;
 end;
 
@@ -333,14 +319,14 @@ begin
         Continue;
       end;
       mEntry := Default(TForbiddenSymbol);
-      mEntry.Name := Trim(ReadText(TJSONObject(mItem), 'name'));
-      if (mEntry.Name = '') or not TryParseKind(ReadText(TJSONObject(mItem), 'kind'), mEntry.Kind) then
+      mEntry.Name := Trim(TJsonRead.Text(TJSONObject(mItem), 'name'));
+      if (mEntry.Name = '') or not TryParseKind(TJsonRead.Text(TJSONObject(mItem), 'kind'), mEntry.Kind) then
       begin
         Continue;
       end;
-      mEntry.Message := ReadText(TJSONObject(mItem), 'message');
-      mEntry.Replacement := ReadText(TJSONObject(mItem), 'replacement');
-      mEntry.Severity := ParseSeverity(ReadText(TJSONObject(mItem), 'severity'));
+      mEntry.Message := TJsonRead.Text(TJSONObject(mItem), 'message');
+      mEntry.Replacement := TJsonRead.Text(TJSONObject(mItem), 'replacement');
+      mEntry.Severity := ParseSeverity(TJsonRead.Text(TJSONObject(mItem), 'severity'));
       mEntry.Units := ReadStrings(TJSONObject(mItem), 'units');
       mEntry.FirstArgument := ReadStrings(TJSONObject(mItem), 'firstArgument');
       mEntry.AllowFirstArgument := ReadStrings(TJSONObject(mItem), 'allowFirstArgument');
@@ -686,7 +672,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

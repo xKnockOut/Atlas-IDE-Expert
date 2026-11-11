@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Search.Composition;
 
-// Modul Suche (#1455, ADR 0017): einzige Unit, die die Atlas-Suche (#877,
+// Modul Suche (#1455): einzige Unit, die die Atlas-Suche (#877,
 // #878, Ersetzen #893), „Units suchen“ (#777, Unit verwenden und Formulare
 // #786) und das Fenster „Atlas-Abfrage“ (#1351) einbindet. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.search“ (Modulschalter search, #1454) bei

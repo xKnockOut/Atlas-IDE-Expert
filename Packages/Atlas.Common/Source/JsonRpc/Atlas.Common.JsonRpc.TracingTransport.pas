@@ -10,7 +10,7 @@
 //
 // Nach dem ersten Schreibfehler (z. B. Datenträger entfernt) schreibt der
 // Transport keinen Mitschnitt mehr und meldet das einmal über OnFailed
-// (Code-Review S-07).
+//.
 //
 // Die letzten Zeilen (höchstens RecentMinutes alt und RecentMaxBytes groß)
 // hält er zusätzlich im Speicher (#1356): Das Diagnosepaket nimmt den Trace

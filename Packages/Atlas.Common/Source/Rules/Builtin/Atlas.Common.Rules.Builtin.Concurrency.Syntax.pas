@@ -48,7 +48,7 @@ function VariableName(ANode: TSyntaxNode): string;
 
 function IsStatementList(ANode: TSyntaxNode): Boolean;
 
-/// <summary>Anweisungslisten in ARoot in Baumreihenfolge. Iterativ gesammelt (Bericht M1), damit die Regeln sie
+/// <summary>Anweisungslisten in ARoot in Baumreihenfolge. Iterativ gesammelt, damit die Regeln sie
 /// ohne eigene Rekursion prüfen.</summary>
 function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 
@@ -63,7 +63,7 @@ function MethodPart(const ARoutineName: string): string;
 /// <summary>Klassen der Unit, die direkt oder über Klassen der Unit von TThread erben.</summary>
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 
-/// <summary>ThreadClasses der geprüften Datei, je Lauf einmal berechnet (Review P-03).</summary>
+/// <summary>ThreadClasses der geprüften Datei, je Lauf einmal berechnet.</summary>
 function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
 
 /// <summary>Bereich einer ganzen Anweisung samt Semikolon und Zeilenende, wenn sie allein in ihrer Zeile
@@ -197,7 +197,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -242,7 +242,7 @@ begin
   begin
     Exit;
   end;
-  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Der Lauf geht auch durch lange Ausdrucksketten.
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var

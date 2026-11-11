@@ -98,7 +98,7 @@ type
     procedure TextFormKeepsCharacterCodesAfterEdit;
     [Test]
     procedure SurveySkipsBinaryFormsAndNamesCodePage;
-    /// <summary>LoadFromFile liest über den Leser der Plattform (Bericht M5).</summary>
+    /// <summary>LoadFromFile liest über den Leser der Plattform.</summary>
     [Test]
     procedure LoadsThroughPlatformReader;
     /// <summary>Ohne Leser der Plattform: lesen, während ein anderer die Datei zum Schreiben offen hat.</summary>

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.JsonRpc.CurrentRequest.Tests;
 
-// Abbruchsignal der laufenden Anfrage je Thread (Code-Review A-06).
+// Abbruchsignal der laufenden Anfrage je Thread.
 
 interface
 

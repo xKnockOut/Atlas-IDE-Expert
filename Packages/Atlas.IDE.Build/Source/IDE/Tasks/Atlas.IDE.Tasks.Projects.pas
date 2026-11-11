@@ -29,7 +29,6 @@ type
     /// <summary>Schlüssel der Läufe ohne Projekt (nur globale Aufgaben).</summary>
     cNoProject = '(global)';
   public
-    class function ActiveProject: string; static;
     /// <summary>tasks.json in %APPDATA%\Atlas (Verlauf).</summary>
     class function HistoryFile: string; static;
     /// <summary>AProject, '' als NoProject.</summary>
@@ -47,8 +46,6 @@ type
     class procedure SaveModified; static;
     /// <summary>Zeile in der Meldungsansicht (Gruppe Atlas); AShow holt die Ansicht nach vorn.</summary>
     class procedure Say(const AText: string; AShow: Boolean); static;
-    /// <summary>Zeilen von AFileName aus dem Puffer, sonst von der Platte; False, wenn nicht lesbar.</summary>
-    class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
     /// <summary>Befunde aller Aufgaben aus dem Problemspeicher entfernen.</summary>
     class procedure ClearFindings; static;
   end;
@@ -72,9 +69,6 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Tasks.Runs,
-  Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Settings.Project,
@@ -109,11 +103,6 @@ begin
 end;
 
 { TAtlasIdeTaskProjects }
-
-class function TAtlasIdeTaskProjects.ActiveProject: string;
-begin
-  Result := TAtlasProjectSettings.ActiveProject;
-end;
 
 class function TAtlasIdeTaskProjects.HistoryFile: string;
 begin
@@ -295,34 +284,6 @@ begin
   begin
     mMessages.ShowMessageView(mGroup);
   end;
-end;
-
-class function TAtlasIdeTaskProjects.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-  mText: string;
-begin
-  ALines := nil;
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    mText := TAtlasEditorBuffer.Text(mBuffer);
-  end
-  else
-  begin
-    if not FileExists(AFileName) then
-    begin
-      Exit(False);
-    end;
-    try
-      mText := TAtlasTextFile.Load(AFileName).Text;
-    except
-      on Exception do
-        Exit(False);
-    end;
-  end;
-  ALines := TTextLines.SplitLines(mText);
-  Result := True;
 end;
 
 class procedure TAtlasIdeTaskProjects.ClearFindings;

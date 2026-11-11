@@ -225,7 +225,7 @@ end;
 function TResolverQueries.ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;
   out AResult: TResolvedSymbol): Boolean;
 begin
-  // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
+  // Helfer- und Vorfahren-Cache bleiben: Ihre Schlüssel enthalten Unit und Abschnitt.
   FParts.Place.MoveToUnit(AFromUnit);
   Result := FParts.Lookup.ResolveTypeName(ATypeName, AFromUnit, True, AResult);
 end;

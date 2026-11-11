@@ -70,12 +70,12 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
-  Atlas.IDE.Tracker.IssueLookups;
+  Atlas.IDE.Tracker.IssueLookups,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeIssueCommands }
 
@@ -135,12 +135,12 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
         Exit;
       end;
       mInput := '';
-      if not InputQuery(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCaption),
-        TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewPrompt, [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
+      if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCaption),
+        TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewPrompt, [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
         mInput) then
       begin
         Exit;
@@ -148,7 +148,7 @@ begin
       mKey := TAtlasIssuePreview.KeyOf(mTarget.Provider, mInput);
       if mKey = '' then
       begin
-        FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
+        FContext.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
         Exit;
       end;
       FServices.Preview.Show(mTarget, mKey);
@@ -166,7 +166,7 @@ begin
     Exit;
   end;
   // Wie „Issue anzeigen …“: das aktive Projekt der IDE, sonst das des Bereichs.
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     mProject := FContext.CurrentProject;
@@ -285,7 +285,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
         Exit;
       end;
       // Das aktuelle Issue vorwählen, wenn es zum selben Tracker gehört.

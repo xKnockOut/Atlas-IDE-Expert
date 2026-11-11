@@ -26,7 +26,7 @@ type
     [Test]
     procedure HistoryRoundTrip;
     /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
-    /// überschrieben (Bericht N3).</summary>
+    /// überschrieben.</summary>
     [Test]
     procedure BrokenFileSetAsideLockedFileKept;
     [Test]
@@ -107,7 +107,7 @@ begin
   end;
 end;
 
-/// <summary>Wie ein Feature, das seine Befehle anmeldet (A-09: nur die Schnittstelle aus dem Core).</summary>
+/// <summary>Wie ein Feature, das seine Befehle anmeldet (nur die Schnittstelle aus dem Core).</summary>
 procedure RegisterSample(const ARegistry: IAtlasCommandRegistry);
 begin
   ARegistry.RegisterCommand('Atlas.Eins', 'Eins', '',

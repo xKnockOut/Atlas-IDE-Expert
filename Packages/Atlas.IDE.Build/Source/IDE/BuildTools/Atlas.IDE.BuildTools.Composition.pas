@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.BuildTools.Composition;
 
-// Modul Build-Werkzeuge (#1455, ADR 0017): einzige Unit, die „Beim Öffnen
+// Modul Build-Werkzeuge (#1455): einzige Unit, die „Beim Öffnen
 // bauen“ (#764), die Projektaufgaben (#900), die Startprofile (#575) und die
 // wirksamen Compiler-Schalter (#558) erzeugt. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.build“ (Modulschalter buildTools, #1454)

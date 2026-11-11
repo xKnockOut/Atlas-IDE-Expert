@@ -140,7 +140,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Editor.LinkedEditing;
+  Atlas.Core.Editor.LinkedEditing,
+  Atlas.Text.Json;
 
 function IsName(const AName: string): Boolean;
 begin
@@ -175,25 +176,6 @@ begin
   if (mValue <> nil) and not (mValue is TJSONNull) then
   begin
     Result := mValue.Value;
-  end;
-end;
-
-function BoolOf(AObject: TJSONObject; const AKey: string; ADefault: Boolean): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := nil;
-  if AObject <> nil then
-  begin
-    mValue := AObject.GetValue(AKey);
-  end;
-  if mValue is TJSONBool then
-  begin
-    Result := TJSONBool(mValue).AsBoolean;
-  end
-  else
-  begin
-    Result := ADefault;
   end;
 end;
 
@@ -255,8 +237,8 @@ begin
   Result.Units := StringsOf(APrepared, 'units');
   Result.MemberName := StringOf(APrepared, 'member');
   Result.Direction := StringOf(APrepared, 'direction');
-  Result.NeedsRequired := BoolOf(APrepared, 'needsRequired', True);
-  Result.MultiTarget := BoolOf(APrepared, 'multiTarget', False);
+  Result.NeedsRequired := TJsonRead.FlagOr(APrepared, 'needsRequired', True);
+  Result.MultiTarget := TJsonRead.FlagOr(APrepared, 'multiTarget', False);
   Result.OptionKind := StringOf(OptionOf(APrepared), 'kind');
 end;
 
@@ -289,7 +271,7 @@ begin
     mTarget := Default(TAtlasExtractionTarget);
     mTarget.Name := StringOf(mEntry, 'name');
     mTarget.UnitName := StringOf(mEntry, 'unit');
-    mTarget.Checked := BoolOf(mEntry, 'checked', False);
+    mTarget.Checked := TJsonRead.FlagOr(mEntry, 'checked', False);
     Result := Result + [mTarget];
   end;
 end;
@@ -305,11 +287,11 @@ begin
   Result.Kind := StringOf(AEntry, 'kind');
   Result.Display := StringOf(AEntry, 'display');
   Result.Visibility := StringOf(AEntry, 'visibility');
-  Result.Enabled := BoolOf(AEntry, 'enabled', True);
-  Result.Checked := BoolOf(AEntry, 'checked', False) and Result.Enabled;
+  Result.Enabled := TJsonRead.FlagOr(AEntry, 'enabled', True);
+  Result.Checked := TJsonRead.FlagOr(AEntry, 'checked', False) and Result.Enabled;
   Result.Reason := StringOf(AEntry, 'reason');
-  Result.CanAbstract := BoolOf(AEntry, 'canAbstract', False) and Result.Enabled;
-  Result.Abstract := BoolOf(AEntry, 'abstract', False) and Result.CanAbstract;
+  Result.CanAbstract := TJsonRead.FlagOr(AEntry, 'canAbstract', False) and Result.Enabled;
+  Result.Abstract := TJsonRead.FlagOr(AEntry, 'abstract', False) and Result.CanAbstract;
   Result.Needs := IdsOf(AEntry, 'needs');
 end;
 
@@ -365,7 +347,7 @@ begin
   FSource := ReadSource(APrepared);
   FName := StringOf(APrepared, 'name');
   FTargetUnit := StringOf(APrepared, 'unit');
-  FOption := BoolOf(OptionOf(APrepared), 'value', False);
+  FOption := TJsonRead.FlagOr(OptionOf(APrepared), 'value', False);
   FTargets := ReadTargets(APrepared);
   FMembers := ReadMembers(APrepared);
 end;

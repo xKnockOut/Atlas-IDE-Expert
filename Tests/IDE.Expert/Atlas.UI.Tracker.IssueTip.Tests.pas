@@ -125,8 +125,8 @@ var
 begin
   mText := TAtlasIssueTip.Compose('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
     TAtlasCiFetchError.Unauthorized, cNow, True);
-  Assert.IsTrue(mText.StartsWith(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken)), mText);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork),
+  Assert.IsTrue(mText.StartsWith(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken)), mText);
+  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.Network, 'ATL-9'));
   Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.UnknownProvider, 'ATL-9'));
@@ -158,7 +158,7 @@ begin
     TAtlasTrackerDetails.Empty, TAtlasCiFetchError.None));
   Assert.AreEqual('ATL-9 · Issue ATL-9 nicht gefunden.', TAtlasIssueTip.KeyLine('ATL-9',
     TAtlasIssueTipState.NotFound, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotFound));
-  Assert.AreEqual('ATL-9 · ' + TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork),
+  Assert.AreEqual('ATL-9 · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork),
     TAtlasIssueTip.KeyLine('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
     TAtlasCiFetchError.Network));
 end;

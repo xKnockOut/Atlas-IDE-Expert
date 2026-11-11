@@ -163,7 +163,8 @@ uses
   System.Math,
   System.StrUtils,
   System.Generics.Defaults,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Json;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
@@ -179,70 +180,6 @@ begin
     not (mValue is TJSONArray) then
   begin
     Result := mValue.Value;
-  end;
-end;
-
-function IntegerOf(AObject: TJSONObject; const AName: string): Int64;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt64;
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := TJSONBool(mValue).AsBoolean;
-  end;
-end;
-
-function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
-
-function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
   end;
 end;
 
@@ -340,11 +277,11 @@ begin
   mObject := TJSONObject(AItem);
   Result.FileName := StringOf(mObject, 'file');
   Result.Path := StringOf(mObject, 'path');
-  Result.Line := Integer(IntegerOf(mObject, 'line'));
-  Result.Character := Integer(IntegerOf(mObject, 'character'));
-  Result.Inferred := FlagOf(mObject, 'inferred');
+  Result.Line := Integer(TJsonRead.Int64Or(mObject, 'line', 0));
+  Result.Character := Integer(TJsonRead.Int64Or(mObject, 'character', 0));
+  Result.Inferred := TJsonRead.Flag(mObject, 'inferred');
   Result.InferredDetail := StringOf(mObject, 'inferredDetail');
-  mValues := ObjectOf(mObject, 'values');
+  mValues := TJsonRead.Obj(mObject, 'values');
   SetLength(Result.Cells, Length(AColumns));
   if mValues <> nil then
   begin
@@ -363,21 +300,21 @@ var
   mIndex: Integer;
 begin
   AAnswer.Query := StringOf(AData, 'query');
-  mError := ObjectOf(AData, 'error');
+  mError := TJsonRead.Obj(AData, 'error');
   if mError <> nil then
   begin
     AAnswer.Error := StringOf(mError, 'message');
-    AAnswer.ErrorColumn := Integer(IntegerOf(mError, 'column'));
+    AAnswer.ErrorColumn := Integer(TJsonRead.Int64Or(mError, 'column', 0));
     AAnswer.Suggestion := StringOf(mError, 'suggestion');
     Exit;
   end;
   AAnswer.Entity := StringOf(AData, 'entity');
-  AAnswer.Total := Integer(IntegerOf(AData, 'total'));
-  AAnswer.InferredCount := Integer(IntegerOf(AData, 'inferred'));
-  AAnswer.ElapsedMs := IntegerOf(AData, 'elapsedMs');
-  AAnswer.Truncated := FlagOf(AData, 'truncated');
-  AAnswer.Columns := ValuesOf(ArrayOf(AData, 'columns'));
-  mRows := ArrayOf(AData, 'rows');
+  AAnswer.Total := Integer(TJsonRead.Int64Or(AData, 'total', 0));
+  AAnswer.InferredCount := Integer(TJsonRead.Int64Or(AData, 'inferred', 0));
+  AAnswer.ElapsedMs := TJsonRead.Int64Or(AData, 'elapsedMs', 0);
+  AAnswer.Truncated := TJsonRead.Flag(AData, 'truncated');
+  AAnswer.Columns := ValuesOf(TJsonRead.Items(AData, 'columns'));
+  mRows := TJsonRead.Items(AData, 'rows');
   if mRows = nil then
   begin
     Exit;
@@ -400,8 +337,8 @@ begin
     Result := mValue is TJSONObject;
     if Result then
     begin
-      AAnswer.Enabled := FlagOf(TJSONObject(mValue), 'enabled');
-      mData := ObjectOf(TJSONObject(mValue), 'data');
+      AAnswer.Enabled := TJsonRead.Flag(TJSONObject(mValue), 'enabled');
+      mData := TJsonRead.Obj(TJSONObject(mValue), 'data');
       if mData <> nil then
       begin
         ReadAnswerData(mData, AAnswer);
@@ -561,8 +498,8 @@ begin
       mEntity := Default(TAtlasQueryEntity);
       mEntity.Name := StringOf(mItem, 'name');
       mEntity.Caption := StringOf(mItem, 'caption');
-      mEntity.Fields := FieldsOf(ArrayOf(mItem, 'fields'));
-      mEntity.Predicates := FieldsOf(ArrayOf(mItem, 'predicates'));
+      mEntity.Fields := FieldsOf(TJsonRead.Items(mItem, 'fields'));
+      mEntity.Predicates := FieldsOf(TJsonRead.Items(mItem, 'predicates'));
       Result := Result + [mEntity];
     end;
   end;
@@ -588,7 +525,7 @@ begin
       mSaved.Name := StringOf(mItem, 'name');
       mSaved.Query := StringOf(mItem, 'query');
       mSaved.Description := StringOf(mItem, 'description');
-      mSaved.FailIfAny := FlagOf(mItem, 'failIfAny');
+      mSaved.FailIfAny := TJsonRead.Flag(mItem, 'failIfAny');
       Result := Result + [mSaved];
     end;
   end;
@@ -607,13 +544,13 @@ begin
     begin
       Exit;
     end;
-    ACatalog.Enabled := FlagOf(TJSONObject(mValue), 'enabled');
-    mCatalog := ObjectOf(TJSONObject(mValue), 'catalog');
+    ACatalog.Enabled := TJsonRead.Flag(TJSONObject(mValue), 'enabled');
+    mCatalog := TJsonRead.Obj(TJSONObject(mValue), 'catalog');
     if mCatalog <> nil then
     begin
-      ACatalog.Entities := EntitiesOf(ArrayOf(mCatalog, 'entities'));
-      ACatalog.Keywords := ValuesOf(ArrayOf(mCatalog, 'keywords'));
-      ACatalog.Saved := SavedOf(ArrayOf(mCatalog, 'queries'));
+      ACatalog.Entities := EntitiesOf(TJsonRead.Items(mCatalog, 'entities'));
+      ACatalog.Keywords := ValuesOf(TJsonRead.Items(mCatalog, 'keywords'));
+      ACatalog.Saved := SavedOf(TJsonRead.Items(mCatalog, 'queries'));
     end;
   finally
     mValue.Free;

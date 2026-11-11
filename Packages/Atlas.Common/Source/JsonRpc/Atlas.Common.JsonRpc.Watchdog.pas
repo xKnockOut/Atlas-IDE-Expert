@@ -8,7 +8,7 @@
 // Nebenläufige Anfragen (Watch mit Token und Responder) beantwortet der
 // Watchdog beim Ablauf sofort mit RequestCancelled, falls der Handler noch
 // nicht geantwortet hat; dessen spätere Antwort verwirft der Worker
-// (IJsonRpcPendingRequests.TryAnswer, Code-Review A-06). Anfragen im Thread
+// (IJsonRpcPendingRequests.TryAnswer). Anfragen im Thread
 // der Schleife erhalten nur den Abbruch.
 //
 // OnExpired meldet zusätzlich die id der Anfrage (JSON-Text), damit der

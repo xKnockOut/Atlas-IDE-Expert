@@ -17,7 +17,7 @@
 // Unterschied erscheinen nur bei „einblenden“; „Vergleichen“ schreibt den
 // Unterschied auf Abruf dorthin und zeigt das Fenster.
 // Die Platte liest TAtlasTextFile wie beim Speichern (Kodierung mit der
-// Vorgabe aus atlas.json, Lesen teilt Löschen, Bericht M5): Ein gleichzeitiges
+// Vorgabe aus atlas.json, Lesen teilt Löschen): Ein gleichzeitiges
 // atomares Ersetzen scheitert nicht an diesem Vergleich.
 
 interface
@@ -50,7 +50,6 @@ type
     class function FindModule(const AFileName: string): IOTAModule; static;
     class function DiskStamp(const AFileName: string; out AStamp: Int64): Boolean; static;
     class function SameAsDisk(const AEditor: IOTASourceEditor; const AFileName: string): Boolean; static;
-    class procedure AddMessage(const AText: string); static;
   public
     /// <summary>AReport erhält je Vorgang eine Zeile fürs Protokoll (was neu geladen bzw. behalten wurde).</summary>
     constructor Create(const AReport: TProc<string>);
@@ -74,7 +73,8 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources;
+  Atlas.Core.Notifications.Sources,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Text der Datei auf der Platte in ihrer Kodierung; Ausnahme, wenn sie nicht lesbar ist.</summary>
 function DiskText(const AFileName: string): string;
@@ -321,7 +321,7 @@ begin
   end;
   mStates := SaveViews(mEditor);
   mModule.Refresh(True);
-  // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen (P-04).
+  // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen.
   TAtlasEditorSnapshots.Invalidate(AFileName);
   RestoreViews(SourceEditorOf(mModule), mStates);
   Result := True;
@@ -362,39 +362,22 @@ begin
   begin
     Exit;
   end;
-  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
+  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
   for mIndex := 0 to High(mLines) do
   begin
     if mIndex < cMaxDiffLines then
     begin
-      AddMessage('    ' + mLines[mIndex]);
+      TAtlasIdeHost.Message('    ' + mLines[mIndex]);
     end;
   end;
   if Length(mLines) > cMaxDiffLines then
   begin
-    AddMessage('    …');
+    TAtlasIdeHost.Message('    …');
   end;
   if AShow and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     mMessages.ShowMessageView(mMessages.GetGroup('Atlas'));
   end;
-end;
-
-class procedure TAtlasFileReloader.AddMessage(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
-begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    Exit;
-  end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
-  end;
-  mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
@@ -417,7 +400,7 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [mName]),
     [TAtlasFileReloader.CompareAction(AFileName)]) = TAtlasNotificationMode.Show then
   begin
-    TAtlasFileReloader.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [mName]));
+    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [mName]));
     TAtlasFileReloader.ShowDiff(AFileName, False);
   end;
 end;
@@ -431,7 +414,7 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [mName]), AFileName) =
     TAtlasNotificationMode.Show then
   begin
-    TAtlasFileReloader.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [mName]));
+    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [mName]));
   end;
 end;
 
@@ -453,10 +436,10 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
     TAtlasNotificationMode.Show then
   begin
-    TAtlasFileReloader.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(AReloaded)]));
+    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(AReloaded)]));
     for mName in AReloaded do
     begin
-      TAtlasFileReloader.AddMessage('    ' + mName);
+      TAtlasIdeHost.Message('    ' + mName);
     end;
   end;
 end;

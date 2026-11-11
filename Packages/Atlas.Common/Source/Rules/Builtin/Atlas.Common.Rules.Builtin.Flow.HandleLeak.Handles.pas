@@ -261,7 +261,7 @@ var
 begin
   mText := AText;
   mHandle := AHandle;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -297,7 +297,7 @@ var
   mHandle: TOpenedHandle;
 begin
   mHandle := AHandle;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -312,7 +312,7 @@ end;
 /// <summary>Ist E das Handle selbst, seine Wurzel (PI) oder eine Typumwandlung davon (THandle(H), (H))?</summary>
 function IsHandleValue(AE: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 begin
-  // Iterativ (Bericht M1): an Klammern und Typumwandlungen entlang nach innen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): an Klammern und Typumwandlungen entlang nach innen.
   Result := False;
   while True do
   begin
@@ -432,7 +432,7 @@ begin
   mHandle := AHandle;
   mOpenCall := AOpenCall;
   mLocals := ALocals;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -579,7 +579,7 @@ var
   mValues: TStack<Integer>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Iterativ (Bericht M1): Nachordnung mit Wertestapel; lange and/or-Ketten sind tiefe Bäume. Die Auswertung
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; lange and/or-Ketten sind tiefe Bäume. Die Auswertung
   // hat keine Nebenwirkungen, daher darf sie ohne Kurzschluss beide Operanden berechnen.
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   mValues := TStack<Integer>.Create;

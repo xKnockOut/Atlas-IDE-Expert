@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.SavedPlaces.Contract;
 
-// Gemerkte Stellen als allgemeiner Vertrag von Base (#1456, ADR 0017 Regel 6):
+// Gemerkte Stellen als allgemeiner Vertrag von Base (#1456, Modulregel 6):
 // Ein Modul, das gemerkte Stellen kennt (Lesezeichen und Notizen), stellt
 // über seinen Scope eine IAtlasSavedPlacesSource bereit; der Reiter
 // „Gemerkt“ der Willkommensseite (#755) fragt sie über die Registry und kommt

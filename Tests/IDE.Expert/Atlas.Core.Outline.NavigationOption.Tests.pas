@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Outline.NavigationOption.Tests;
 
-// Option „Navigationssymbolleiste anzeigen“ der IDE (Bericht M3): Name unter
+// Option „Navigationssymbolleiste anzeigen“ der IDE: Name unter
 // den Optionsnamen finden, ähnliche Namen fürs Protokoll, Wert lesen und in
 // derselben Art zurückschreiben.
 

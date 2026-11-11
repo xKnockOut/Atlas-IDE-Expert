@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Internals.Namespaces.Tests;
 
-// Namespaces der LSP-Features unter gemeinsamer Sperre (Code-Review A-03).
+// Namespaces der LSP-Features unter gemeinsamer Sperre.
 
 interface
 

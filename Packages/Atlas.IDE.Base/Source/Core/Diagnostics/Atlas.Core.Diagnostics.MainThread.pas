@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.MainThread;
 
 // Einreihen in den Hauptthread der IDE, ohne dass ein Eintrag das Entladen des
-// Packages überlebt (Code-Review A-02). TThread.Queue(nil, …) und
+// Packages überlebt. TThread.Queue(nil, …) und
 // ForceQueue(nil, …) gehören keinem Thread: Nichts räumt sie beim Entladen
 // weg, und CheckSynchronize ruft sie danach in nicht mehr geladenem Code auf.
 // Hier gehört jeder Eintrag einem eigenen, ruhenden Besitzer-Thread. Stop (die
@@ -11,7 +11,7 @@
 // fertige Arbeiter frei (ReapWorkers), bevor CheckSynchronize ihre Einträge
 // ausführt; TThread.Destroy würde die Ergebnisse dann entfernen.
 // Jeder Eintrag läuft unter der Sicherung (#493): Eine Ausnahme zählt für das
-// angegebene Feature und erreicht nie TApplication.HandleException (S-05).
+// angegebene Feature und erreicht nie TApplication.HandleException.
 // Queue führt im Hauptthread sofort aus (wie TThread.Queue), ForceQueue reiht
 // immer ein. Beide sind aus jedem Thread aufrufbar.
 // Einträge je Modul: Base bleibt geladen, wenn ein Modul-Package einzeln

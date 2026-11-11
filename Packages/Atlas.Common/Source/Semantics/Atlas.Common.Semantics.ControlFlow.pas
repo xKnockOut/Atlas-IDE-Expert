@@ -313,7 +313,7 @@ end;
 /// <summary>Enthält der Teilbaum einen Fehlerknoten (auch in Ausdrücken)?</summary>
 function ContainsError(ANode: TSyntaxNode): Boolean;
 begin
-  // Iterativ (Bericht M1): Ausdrücke wie 1 - 1 - … - 1 sind so tief wie lang.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Ausdrücke wie 1 - 1 - … - 1 sind so tief wie lang.
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -567,7 +567,7 @@ var
   mHeaders: TList<TSyntaxNode>;
   mHeader: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1): erst die Köpfe sammeln, dann eintragen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Köpfe sammeln, dann eintragen.
   mHeaders := TList<TSyntaxNode>.Create;
   try
     ANode.Walk(
@@ -1240,7 +1240,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  // Iterativ mit eigenem Stapel, Reihenfolge wie die frühere Rekursion.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(AExpression);
@@ -1382,7 +1382,7 @@ var
   mStep: TAnalyzeStep;
   mIndex: Integer;
 begin
-  // Iterativ mit eigenem Stapel (Bericht M1): Ausdrücke wie 1 - 1 - … - 1 sind so tief wie lang. Jeder Knoten
+  // Iterativ mit eigenem Stapel: Ausdrücke wie 1 - 1 - … - 1 sind so tief wie lang. Jeder Knoten
   // legt seine Folgeschritte in FSteps ab; sie kommen rückwärts auf den Stapel, damit Lesen und Berühren in
   // derselben Reihenfolge geschehen wie in der früheren Rekursion.
   FPending.Clear;

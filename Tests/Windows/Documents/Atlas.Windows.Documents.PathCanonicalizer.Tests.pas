@@ -42,7 +42,7 @@ end;
 procedure TWindowsPathCanonicalizerTests.TearDown;
 begin
   TDirectory.Delete(FDir, True);
-  // Sonst gibt erst das nächste Setup die Pfade frei, und der erste Test meldete sie als Leck (Bericht N2).
+  // Sonst gibt erst das nächste Setup die Pfade frei, und der erste Test meldete sie als Leck.
   FDir := '';
   FFile := '';
 end;

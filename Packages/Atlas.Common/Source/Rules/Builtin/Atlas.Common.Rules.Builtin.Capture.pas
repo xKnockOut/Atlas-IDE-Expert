@@ -155,7 +155,7 @@ function CalleeText(ANode: TSyntaxNode): string;
 var
   mSuffix: string;
 begin
-  // Iterativ (Bericht M1): von rechts nach links an der Kette entlang.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang.
   mSuffix := '';
   while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) do
   begin
@@ -219,7 +219,7 @@ procedure CollectAnonymous(ANode: TSyntaxNode; var AMethods: TArray<TSyntaxNode>
 var
   mMethods: TArray<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
   mMethods := AMethods;
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
@@ -239,7 +239,7 @@ var
   mList: TList<TSyntaxNode>;
 begin
   mList := AList;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
@@ -321,7 +321,7 @@ function Locals(ARoutine, ABlock: TSyntaxNode): TArray<TLocal>;
     mNode, mTypeNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+    // Iterativ mit eigenem Stapel, Reihenfolge wie die frühere Rekursion.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -562,7 +562,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FApis := DeferredApis(AContext.Options);
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   FCache := TRuleDerived.Open(AContext);
 end;
 
@@ -879,7 +879,7 @@ type
     /// <summary>Deklariert ANode (Inline-Variable oder for var) AName, sichtbar an AOffset?</summary>
     function DeclaresInline(ANode: TSyntaxNode; const AName: string; AOffset: Integer): Boolean;
     /// <summary>Inline-Variablen und for var dieses Bereichs (nicht verschachtelter anonymer Methoden), die
-    /// AOffset sehen. Iterativ (Bericht M1).</summary>
+    /// AOffset sehen. Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
     function FindInline(AScope: TSyntaxNode; const AName: string; AOffset: Integer;
       out ADecl: TCaptureDecl): Boolean;
     /// <summary>Result einer Funktion: Ergebnistyp am Kopf (Routine) bzw. "function" (anonyme Methode).
@@ -1401,7 +1401,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

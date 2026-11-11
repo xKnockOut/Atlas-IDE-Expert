@@ -1,10 +1,10 @@
 ﻿unit Atlas.Core.Lsp.Adapters.ServerProcess;
 
 // Startet Atlas als Kindprozess mit umgeleitetem stdin/stdout und
-// verbindet ihn mit einem TLspClient (ADR 0006). Ein Lese-Thread reicht die
+// verbindet ihn mit einem TLspClient. Ein Lese-Thread reicht die
 // Ausgabe an TLspClient.Receive weiter; endet der Prozess, wird der Client
 // geschlossen, mit Exit-Code, Laufzeit und Zeilen auf stderr
-// (TLspClient.CloseWith, Bericht H5).
+// (TLspClient.CloseWith).
 // stderr geht in die Datei server-stderr.log im Protokollordner (anhängen,
 // eine Kopfzeile je Start), nicht in eine Pipe, die volllaufen und den Server
 // blockieren könnte. Früher ging stderr nach NUL, und was die Laufzeit beim
@@ -283,7 +283,7 @@ begin
   mOutputWrite := 0;
   mErrorHandle := INVALID_HANDLE_VALUE;
   // Die Enden des Kindprozesses schließt das finally auf jedem Weg, auch wenn die zweite Pipe oder CreateProcess
-  // scheitert (Code-Review S-07); die eigenen Enden (FInputWrite, FOutputRead) schließt Destroy.
+  // scheitert; die eigenen Enden (FInputWrite, FOutputRead) schließt Destroy.
   try
     CreatePipes(@mSecurity, mInputRead, mOutputWrite);
     mErrorHandle := OpenStderr(@mSecurity);

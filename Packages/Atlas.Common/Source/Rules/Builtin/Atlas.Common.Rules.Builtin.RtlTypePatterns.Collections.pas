@@ -117,7 +117,7 @@ var
   mNode, mChild: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1); mPending hält die Knoten, deren Kinder noch zu prüfen sind.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); mPending hält die Knoten, deren Kinder noch zu prüfen sind.
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -421,7 +421,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -445,7 +445,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (nach Start sortiert).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion (nach Start sortiert).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -697,7 +697,7 @@ var
     mNode, mReference: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1), Vorordnung wie die frühere Rekursion: der erste passende Typ mit Verweis zählt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion: der erste passende Typ mit Verweis zählt.
     Result := '';
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -774,7 +774,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -802,7 +802,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -847,7 +847,7 @@ var
       mSource: TSyntaxNode;
       mName: string;
     begin
-      // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion.
       mPending := TStack<TSyntaxNode>.Create;
       try
         mPending.Push(ANode);
@@ -1023,7 +1023,7 @@ var
     mNode: TSyntaxNode;
   begin
     Result := FilledInLoop(AScope, AAccess, ADict);
-    // Iterativ (Bericht M1); Kinder ab dem Ende des Zugriffs bleiben wie zuvor aus.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Kinder ab dem Ende des Zugriffs bleiben wie zuvor aus.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(AScope);
@@ -1128,7 +1128,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -1245,7 +1245,7 @@ var
   var
     mNode: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1): je Ebene in das Kind, das AOffset enthält.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): je Ebene in das Kind, das AOffset enthält.
     Result := nil;
     mNode := ChildAt(ANode, AOffset);
     while mNode <> nil do
@@ -1263,7 +1263,7 @@ var
   var
     mNode: TSyntaxNode;
   begin
-    // Iterativ (Bericht M1) wie RoutineAt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht) wie RoutineAt.
     Result := nil;
     mNode := ChildAt(ANode, AOffset);
     while mNode <> nil do

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Help.SettingsSection;
 
-// Abschnitt „Allgemein“ des Moduls Hilfe im Optionsdialog (#1886, ADR 0017): Modulschalter help.enabled und Quelle
+// Abschnitt „Allgemein“ des Moduls Hilfe im Optionsdialog (#1886): Modulschalter help.enabled und Quelle
 // der Hilfe (help.source: GitHub-Doku zur installierten Version oder installierte HTML-Seiten).
 
 interface

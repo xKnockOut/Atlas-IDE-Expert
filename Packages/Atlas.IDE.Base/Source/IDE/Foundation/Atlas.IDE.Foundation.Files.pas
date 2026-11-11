@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Foundation.Files;
 
 // Dateien aus Sicht der IDE (#397, #121, #721): offener Puffer, geladenes Projekt, Kodierung auf der Platte.
-// Foundation des Plugins (A-09): importiert kein Atlas.IDE-Feature, nur Open Tools API und Atlas.Core.
+// Foundation des Plugins: importiert kein Atlas.IDE-Feature, nur Open Tools API und Atlas.Core.
 // Bis S-03b Teil von TAtlasIdeWorkspaceEdit. Nur im Hauptthread.
 
 interface
@@ -22,6 +22,11 @@ type
     class function DiskEncoding(const AFileName: string): TAtlasTextFileContent; static;
     /// <summary>Puffer der IDE zu einer Datei, auch wenn sie nicht vorn liegt; nil, wenn sie nicht offen ist.</summary>
     class function BufferOf(const AFileName: string): IOTAEditBuffer; static;
+    /// <summary>Datei des aktiven Projekts der IDE; '' ohne Projekt.</summary>
+    class function ActiveProjectFile: string; static;
+    /// <summary>Zeilen von AFileName: aus dem Editorpuffer, wenn die Datei offen ist, sonst von der Platte;
+    /// False, wenn sie fehlt oder nicht lesbar ist.</summary>
+    class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
     /// <summary>Text von AFileName: offener Puffer (auch ungespeichert), sonst die Datei; False, wenn sie sich nicht
     /// lesen lässt (ASource dann leer).</summary>
     class function SourceText(const AFileName: string; out ASource: string): Boolean; static;
@@ -47,7 +52,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Files.EncodingDefault,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Text.Lines;
 
 class function TAtlasIdeFiles.ProjectModule(const AFileName: string): IOTAModule;
 var
@@ -126,6 +132,35 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+class function TAtlasIdeFiles.ActiveProjectFile: string;
+var
+  mServices: IOTAModuleServices;
+  mProject: IOTAProject;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  mProject := mServices.GetActiveProject;
+  if mProject <> nil then
+  begin
+    Result := mProject.FileName;
+  end;
+end;
+
+class function TAtlasIdeFiles.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
+var
+  mText: string;
+begin
+  ALines := nil;
+  Result := SourceText(AFileName, mText);
+  if Result then
+  begin
+    ALines := TTextLines.SplitLines(mText);
+  end;
 end;
 
 class function TAtlasIdeFiles.SourceText(const AFileName: string; out ASource: string): Boolean;

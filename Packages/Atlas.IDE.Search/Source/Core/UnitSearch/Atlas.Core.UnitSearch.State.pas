@@ -7,7 +7,7 @@
 //   - nur für die Sitzung, nicht gespeichert: von Hand auf- oder zugeklappte
 //     Abschnitte der Vorschau (#876).
 // Gespeichert als JSON (Datei unter %LOCALAPPDATA%\Atlas, setzt die IDE-Schicht),
-// gelesen und atomar geschrieben über TAtlasDataFile (Bericht N3): Eine
+// gelesen und atomar geschrieben über TAtlasDataFile: Eine
 // unbrauchbare Datei liegt danach als .defekt daneben, eine gesperrte bleibt
 // unverändert und wird nicht überschrieben.
 

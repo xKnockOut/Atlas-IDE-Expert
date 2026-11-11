@@ -47,7 +47,8 @@ uses
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
-  Atlas.IDE.Foundation.ResultsWindow;
+  Atlas.IDE.Foundation.ResultsWindow,
+  Atlas.Text.Json;
 
 const
   // Referenzsuche im Projekt, Nachfahren und uses aller Units: dauert.
@@ -239,7 +240,7 @@ begin
     TAtlasTextId.SafeDeleteFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mDeleted := TAtlasIdeServerEdit.NumberOf(AReply, 'deleted');
+      mDeleted := TJsonRead.Int(AReply, 'deleted');
     end, AMessage, mReply) then
   begin
     Exit;

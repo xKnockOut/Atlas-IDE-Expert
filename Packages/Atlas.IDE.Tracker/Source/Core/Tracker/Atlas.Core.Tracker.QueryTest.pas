@@ -86,7 +86,8 @@ uses
   System.JSON,
   System.Math,
   System.Diagnostics,
-  Atlas.Core.Tracker.Templates;
+  Atlas.Core.Tracker.Templates,
+  Atlas.Text.Json;
 
 { TAtlasTrackerQueryTestResult }
 
@@ -114,22 +115,6 @@ begin
   end;
 end;
 
-function TextOf(AValue: TJSONValue; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if not (AValue is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject(AValue).GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
-
 function LooksLikeHtml(const AText: string): Boolean;
 begin
   Result := Trim(AText).StartsWith('<');
@@ -153,7 +138,7 @@ begin
       Exit(OneLine(AText));
     end;
     // YouTrack: {"error": "bad_request", "error_description": "…"}.
-    Result := TextOf(mRoot, 'error_description');
+    Result := TJsonRead.TrimmedText(TJsonRead.AsObject(mRoot), 'error_description');
     if Result <> '' then
     begin
       Exit(OneLine(Result));
@@ -165,7 +150,7 @@ begin
     begin
       for mItem in TJSONArray(mErrors) do
       begin
-        mPart := TextOf(mItem, 'message');
+        mPart := TJsonRead.TrimmedText(TJsonRead.AsObject(mItem), 'message');
         if mPart <> '' then
         begin
           mParts := mParts + [mPart];
@@ -176,10 +161,10 @@ begin
     begin
       Exit(OneLine(string.Join('; ', mParts)));
     end;
-    Result := TextOf(mRoot, 'message');
+    Result := TJsonRead.TrimmedText(TJsonRead.AsObject(mRoot), 'message');
     if Result = '' then
     begin
-      Result := TextOf(mRoot, 'error');
+      Result := TJsonRead.TrimmedText(TJsonRead.AsObject(mRoot), 'error');
     end;
     Result := OneLine(Result);
   finally
@@ -199,14 +184,14 @@ begin
       Exit;
     end;
     mLocale := TJSONObject(mRoot).GetValue('locale');
-    Result := TAtlasTrackerTemplates.NormalLanguage(TextOf(mLocale, 'language'));
+    Result := TAtlasTrackerTemplates.NormalLanguage(TJsonRead.TrimmedText(TJsonRead.AsObject(mLocale), 'language'));
     if Result = '' then
     begin
-      Result := TAtlasTrackerTemplates.NormalLanguage(TextOf(mLocale, 'locale'));
+      Result := TAtlasTrackerTemplates.NormalLanguage(TJsonRead.TrimmedText(TJsonRead.AsObject(mLocale), 'locale'));
     end;
     if Result = '' then
     begin
-      Result := TAtlasTrackerTemplates.NormalLanguage(TextOf(mLocale, 'id'));
+      Result := TAtlasTrackerTemplates.NormalLanguage(TJsonRead.TrimmedText(TJsonRead.AsObject(mLocale), 'id'));
     end;
   finally
     mRoot.Free;
