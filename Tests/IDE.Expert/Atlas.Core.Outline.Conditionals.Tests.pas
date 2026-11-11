@@ -187,7 +187,7 @@ begin
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[2]));
   Assert.AreEqual('uses › {$IFDEF MSWINDOWS}', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 4, 2, '', False,
     [TAtlasCrumbPart.Conditionals])));
-  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 12, 4, '', False)), 'ausgeschaltet');
+  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 12, 4, '', False, [])), 'ausgeschaltet');
 end;
 
 initialization
