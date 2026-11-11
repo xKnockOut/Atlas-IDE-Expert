@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Designer.SettingsSection;
 
 // Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
-// „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Gleiche auswählen (#738),
+// „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
+// Gleiche auswählen (#738),
 // Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Werkzeuge mit eigenem Knopf (#734 ff.).
 
 interface
@@ -59,6 +60,9 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchPopup)],
     [TAtlasPluginSettings.cDesignerSearchWindow, TAtlasPluginSettings.cDesignerSearchPopup]);
   Switch('editor.designerBar.tabOrderClick', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderClick));
+  Switch('designer.tabOrderOverlay',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderOverlay));
+  Switch('designer.tabOrderPaths', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderPaths));
   Switch('editor.designerBar.align', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAlign));
   Switch('designer.selectSimilar', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSelectSimilar));
   Switch('designer.selectSimilar.includeDescendants',
@@ -230,6 +234,11 @@ begin
   Number('designer.selectionBar.delayMs', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarDelay));
   Line('designer.selectionBar.items', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarItems));
   Key('designer.selectionBar.key', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsBarKey));
+  Switch('designer.magnifier', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMag));
+  Number('designer.magnifier.zoom', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagZoom));
+  Switch('designer.magnifier.grid', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagGrid));
+  Switch('designer.magnifier.edges', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagEdges));
+  Key('designer.magnifier.key', TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.SettingsMagKey));
 end;
 
 end.

@@ -66,6 +66,8 @@ type
     procedure MultiResizeRoundTrip;
     [Test]
     procedure SelectionBarRoundTrip;
+    [Test]
+    procedure MagnifierRoundTrip;
   end;
 
 implementation
@@ -103,19 +105,25 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'DesignerEnabled').Checked, 'Modulschalter');
     Assert.IsTrue(CheckOf(mPage, 'EditorDesignerBar').Checked);
     Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerSearchStyle').Choice, 'Fenster');
-    Assert.IsFalse(CheckOf(mPage, 'DesignerTabOrderClick').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerTabOrderClick').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerTabOrderOverlay').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerTabOrderPaths').Checked);
     Assert.IsFalse(CheckOf(mPage, 'DesignerAlign').Checked);
     CheckOf(mPage, 'EditorDesignerBar').Checked := False;
     ChoiceOf(mPage, 'DesignerSearchStyle').Choice := 1;
     EditOf(mPage, 'DesignerSearchKey').Text := '';
-    CheckOf(mPage, 'DesignerTabOrderClick').Checked := True;
+    CheckOf(mPage, 'DesignerTabOrderClick').Checked := False;
+    CheckOf(mPage, 'DesignerTabOrderOverlay').Checked := True;
+    CheckOf(mPage, 'DesignerTabOrderPaths').Checked := True;
     CheckOf(mPage, 'DesignerAlign').Checked := True;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.EditorDesignerBar, 'abschaltbar');
     Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchPopup, mSaved.DesignerSearchStyle);
     Assert.AreEqual(0, mSaved.DesignerSearchKey, 'leer = keine Taste');
-    Assert.IsTrue(mSaved.DesignerTabOrderClick);
+    Assert.IsFalse(mSaved.DesignerTabOrderClick);
+    Assert.IsTrue(mSaved.DesignerTabOrderOverlay);
+    Assert.IsTrue(mSaved.DesignerTabOrderPaths);
     Assert.IsTrue(mSaved.DesignerAlign);
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
     mPage.LoadFrom(mSaved);
@@ -667,6 +675,33 @@ begin
     Assert.AreEqual(TAtlasPluginSettings.cSelectionBarShortcut, mSaved.DesignerSelectionBarMode);
     Assert.AreEqual(250, mSaved.DesignerSelectionBarDelayMs);
     Assert.AreEqual('bold, italic', mSaved.DesignerSelectionBarItems);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.MagnifierRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMagnifier').Checked, 'Vorgabe an');
+    Assert.AreEqual('4', EditOf(mPage, 'DesignerMagnifierZoom').Text);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerMagnifierGrid').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerMagnifierEdges').Checked);
+    CheckOf(mPage, 'DesignerMagnifier').Checked := False;
+    EditOf(mPage, 'DesignerMagnifierZoom').Text := '8';
+    CheckOf(mPage, 'DesignerMagnifierGrid').Checked := False;
+    CheckOf(mPage, 'DesignerMagnifierEdges').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerMagnifier, 'abschaltbar');
+    Assert.AreEqual(8, mSaved.DesignerMagnifierZoom);
+    Assert.IsFalse(mSaved.DesignerMagnifierGrid);
+    Assert.IsTrue(mSaved.DesignerMagnifierEdges);
   finally
     mPage.Free;
   end;
