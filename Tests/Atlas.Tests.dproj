@@ -1463,6 +1463,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Processes.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.SafeMode.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Edition.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Edition.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Diagnostics\Atlas.UI.Diagnostics.Strings.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.SafeModeNotice.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Timing.pas"/>

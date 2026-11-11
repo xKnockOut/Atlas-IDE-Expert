@@ -151,7 +151,9 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.SetupPreview,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Diagnostics.Edition,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Foundation.Host;
@@ -665,6 +667,10 @@ begin
   end;
   Result.ConfigName := ExtractFileName(TAtlasProjectSetups.ExistingConfig(Result.Project, FileThere));
   Result.ShowCard := TAtlasWelcomeSetup.ShowCard(True, Result.Facts);
+  if TAtlasIdeEdition.CommandLineMissing then
+  begin
+    Result.Edition := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.EditionSetupLine);
+  end;
   if mSummary.Rules.Known then
   begin
     Result.BaselineNewHits := mSummary.Rules.NewHits;

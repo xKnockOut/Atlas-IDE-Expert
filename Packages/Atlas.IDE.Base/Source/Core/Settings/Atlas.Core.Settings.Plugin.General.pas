@@ -199,6 +199,11 @@ type
     HelpEnabled: Boolean;
     /// <summary>Quelle der Hilfe (#1886, help.source): cHelpSourceOnline oder cHelpSourceLocal.</summary>
     HelpSource: string;
+    /// <summary>Kommandozeilen-Compiler prüfen (#1822, diagnostics.editionCheck): ohne dcc32/dcc64 Hinweis und
+    /// Projektaufgaben mit dcc oder MSBuild abgeschaltet.</summary>
+    DiagnosticsEditionCheck: Boolean;
+    /// <summary>Hinweis „kein Kommandozeilen-Compiler“ wurde gezeigt (#1822, Zustand).</summary>
+    EditionNoticeShown: Boolean;
     /// <summary>Vor jedem Import und vor „Alles zurücksetzen“ den aktuellen Stand als Datei sichern (#723,
     /// settings.backupBeforeImport; %APPDATA%\Atlas\Backups).</summary>
     SettingsBackupBeforeImport: Boolean;
@@ -346,6 +351,8 @@ begin
   Result.PaletteSettingsPrefix := True;
   Result.HelpEnabled := True;
   Result.HelpSource := cHelpSourceOnline;
+  Result.DiagnosticsEditionCheck := True;
+  Result.EditionNoticeShown := False;
   Result.SettingsBackupBeforeImport := True;
   Result.SettingsExportSecrets := 'omit';
 end;
@@ -420,6 +427,8 @@ begin
   AIo.Flag('PaletteSettingsPrefix', PaletteSettingsPrefix);
   AIo.Flag('HelpEnabled', HelpEnabled);
   AIo.Text('HelpSource', HelpSource);
+  AIo.Flag('DiagnosticsEditionCheck', DiagnosticsEditionCheck);
+  AIo.Flag('EditionNoticeShown', EditionNoticeShown);
   AIo.Flag('SettingsBackupBeforeImport', SettingsBackupBeforeImport);
   AIo.Text('SettingsExportSecrets', SettingsExportSecrets);
 end;
