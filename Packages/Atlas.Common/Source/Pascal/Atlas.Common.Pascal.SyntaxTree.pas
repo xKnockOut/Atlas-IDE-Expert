@@ -206,7 +206,8 @@ function SyntaxKindName(AKind: TSyntaxKind): string;
 implementation
 
 uses
-  System.TypInfo;
+  System.TypInfo,
+  Atlas.Common.Pascal.TokenCursor;
 
 function SyntaxKindName(AKind: TSyntaxKind): string;
 begin
@@ -483,24 +484,8 @@ begin
 end;
 
 class function TSyntaxTree.FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
 begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
+  Result := TokenFrom(ATokens, AOffset);
 end;
 
 function TSyntaxTree.IdentifierAt(const APosition: TTextPosition): Integer;

@@ -221,8 +221,6 @@ function CollapseSpace(const AText: string): string;
 /// <summary>Bezeichner nach Delphi-Regeln (Buchstabe oder _, danach auch Ziffern, optional &amp; davor).
 /// </summary>
 function IsIdentifier(const AName: string): Boolean;
-/// <summary>Kommentar oder Compiler-Direktive.</summary>
-function IsTrivia(const AToken: TPascalToken): Boolean;
 /// <summary>Index des ersten Tokens ab AOffset; Length(ATokens) dahinter.</summary>
 function TokenIndexAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 
@@ -232,6 +230,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Character,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 const
@@ -292,11 +291,6 @@ begin
       Exit(False);
     end;
   end;
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 function TokenIndexAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
