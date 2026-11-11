@@ -100,7 +100,7 @@ const
 {$SCOPEDENUMS OFF}
 
 type
-  /// <summary>Eintrag des eigenen Stapels von TJumpOutsideAllowedScopeRule.Check (Bericht M1): Knoten samt
+  /// <summary>Eintrag des eigenen Stapels von TJumpOutsideAllowedScopeRule.Check: Knoten samt
   /// Zustand der umschließenden Sprunggrenze.</summary>
   TJumpVisit = record
     Node: TSyntaxNode;
@@ -268,7 +268,7 @@ var
 
   // AHasLoop: eine Schleife umschließt die Stelle in derselben Routine; AFinallySinceLoop: zwischen ihr und der
   // Stelle liegt ein finally; AInFinally: irgendein finally der Routine umschließt die Stelle.
-  // Iterativ (Bericht M1): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TJumpVisit>;
@@ -497,7 +497,7 @@ var
   end;
 
   /// <summary>Gesetzte Marken und goto-Anweisungen unter ARoot; False, wenn ein asm-Block vorkommt (dessen
-  /// Marken sieht der Baum nicht). Iterativ (Bericht M1).</summary>
+  /// Marken sieht der Baum nicht). Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
   function Collect(ARoot: TSyntaxNode; ASets: TLabelSets; AGotos: TList<TSyntaxNode>): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
@@ -707,7 +707,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

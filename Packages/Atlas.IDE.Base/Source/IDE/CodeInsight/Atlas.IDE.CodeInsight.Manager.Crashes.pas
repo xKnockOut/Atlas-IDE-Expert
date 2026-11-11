@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.CodeInsight.Manager.Crashes;
 
-// Abstürze des Servers im Code Insight-Manager, vierte Stufe der Klassenkette. Ende des Servers (Bericht H5): Endet
+// Abstürze des Servers im Code Insight-Manager, vierte Stufe der Klassenkette. Ende des Servers: Endet
 // er von selbst, steht in atlas.log, womit (Exit-Code, etwa Stapelüberlauf), nach welcher Laufzeit, bei welcher
 // Anfrage und wie viel er auf stderr schrieb; das Statusfeld nennt die Ursache. Den ersten Absturz startet die
 // nächste Anfrage wie bisher neu. Endet er zweimal mit demselben Code innerhalb von zehn Minuten, startet Atlas ihn
@@ -25,10 +25,10 @@ type
   /// <summary>Ende und Abstürze des Servers, Absturzfälle und übersprungene Anfragen.</summary>
   TAtlasCodeInsightCrashes = class(TAtlasCodeInsightCommands)
   protected
-    /// <summary>Der Server endete von selbst (Lese-Thread, Bericht H5): Ursache, Laufzeit und letzte Anfrage
+    /// <summary>Der Server endete von selbst (Lese-Thread): Ursache, Laufzeit und letzte Anfrage
     /// ins Protokoll, Ursache ins Statusfeld; nach zwei gleichen Abstürzen anhalten (ServerHeld).</summary>
     procedure ServerEnded(const AInfo: TLspCloseInfo); override;
-    /// <summary>Hauptthread: Statusfeld und Benachrichtigung mit Neustart und Fehlerbericht (Bericht H5).</summary>
+    /// <summary>Hauptthread: Statusfeld und Benachrichtigung mit Neustart und Fehlerbericht.</summary>
     procedure ServerHeld(ACode: Cardinal);
     /// <summary>Hauptthread nach ServerEnded: anhalten oder die Ursache ins Statusfeld.</summary>
     procedure ServerEndedMain(ACode: Cardinal; AContinues: Boolean);

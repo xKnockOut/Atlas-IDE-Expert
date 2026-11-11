@@ -432,7 +432,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1): nur Deklarationen, keine Anweisungen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): nur Deklarationen, keine Anweisungen.
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

@@ -554,7 +554,7 @@ begin
   mOwner := TQuickOpenState.Create;
   FState := mOwner;
   // Fehlt, unbrauchbar oder gesperrt: leer weiter; TAtlasDataFile legt Unbrauchbares als quickopen.json.defekt
-  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht.
   mOwner.Recent.Kind := 'Verlauf von Schnell öffnen';
   mOwner.Recent.LoadFromFile(RecentFile);
   if Supports(BorlandIDEServices, IOTAServices, mServices) then

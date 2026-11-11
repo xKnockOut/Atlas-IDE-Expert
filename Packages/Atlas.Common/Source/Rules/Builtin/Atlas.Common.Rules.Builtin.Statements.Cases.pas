@@ -121,7 +121,7 @@ var
     mMembers: TArray<string>;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1): von rechts nach links an der Kette entlang; die Namen der Zugriffe kommen erst nach
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang; die Namen der Zugriffe kommen erst nach
     // dem Bezeichner ganz links dazu.
     mMembers := nil;
     mNode := ANode;
@@ -258,7 +258,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -591,7 +591,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

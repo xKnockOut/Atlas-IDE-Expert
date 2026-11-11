@@ -2,6 +2,7 @@
 
 // Befehl atlas.server.reassigned (#712): Antwort im JSON, Ziele aus den
 // Argumenten und Übergabeart über die Namensauflösung aus anderen Units.
+// Zeilenbereich (nur Routinen im sichtbaren Teil) und Abbruch der Anfrage.
 
 interface
 
@@ -9,6 +10,7 @@ uses
   DUnitX.TestFramework,
   System.Generics.Collections,
   System.JSON,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract;
 
@@ -18,7 +20,8 @@ type
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
-    function Run(const ASettings: string): TJSONObject;
+    function Run(const ASettings: string): TJSONObject; overload;
+    function Run(const ASettings: string; const ACancellation: IJsonRpcCancellationToken): TJSONObject; overload;
     /// <summary>Namen der Antwort, mit Leerzeichen getrennt.</summary>
     class function Names(AReply: TJSONObject): string; static;
   public
@@ -34,13 +37,20 @@ type
     procedure VarArgumentOfOtherUnit;
     [Test]
     procedure UnknownDocumentGivesError;
+    [Test]
+    procedure RangeKeepsOnlyTouchedRoutines;
+    [Test]
+    procedure RangeCountsWholeRoutine;
+    [Test]
+    procedure InvalidRangeMeansWholeFile;
+    [Test]
+    procedure CancelledRequestEnds;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Index.SymbolIndex,
@@ -85,6 +95,24 @@ const
     'end;' + LB +
     'end.';
 
+type
+  /// <summary>Abbruchsignal einer abgebrochenen Anfrage.</summary>
+  TCancelledToken = class(TInterfacedObject, IJsonRpcCancellationToken)
+  public
+    function IsCancellationRequested: Boolean;
+    procedure ThrowIfCancellationRequested;
+  end;
+
+function TCancelledToken.IsCancellationRequested: Boolean;
+begin
+  Result := True;
+end;
+
+procedure TCancelledToken.ThrowIfCancellationRequested;
+begin
+  raise EJsonRpcRequestCancelled.Create;
+end;
+
 { TLspReassignedTests }
 
 procedure TLspReassignedTests.Setup;
@@ -102,6 +130,11 @@ begin
 end;
 
 function TLspReassignedTests.Run(const ASettings: string): TJSONObject;
+begin
+  Result := Run(ASettings, nil);
+end;
+
+function TLspReassignedTests.Run(const ASettings: string; const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
   Uri: string;
   Arguments: TJSONArray;
@@ -117,7 +150,7 @@ begin
     begin
       Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
     end;
-    Reply := TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments);
+    Reply := TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments, ACancellation);
   finally
     Arguments.Free;
   end;
@@ -209,12 +242,69 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments).Free;
+        TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments, nil).Free;
       end,
       EJsonRpcError);
   finally
     Arguments.Free;
   end;
+end;
+
+procedure TLspReassignedTests.RangeKeepsOnlyTouchedRoutines;
+var
+  Reply: TJSONObject;
+begin
+  // Nur Zweite (Zeilen 13 bis 19) reicht in den Bereich: Probe bleibt außen vor.
+  Reply := Run('{"targets":["locals","valueParams"],"range":{"start":16,"end":18}}');
+  try
+    Assert.AreEqual('W', Names(Reply));
+  finally
+    Reply.Free;
+  end;
+  Reply := Run('{"range":{"start":0,"end":5}}');
+  try
+    Assert.AreEqual('A Total', Names(Reply));
+  finally
+    Reply.Free;
+  end;
+end;
+
+procedure TLspReassignedTests.RangeCountsWholeRoutine;
+var
+  Reply, Total: TJSONObject;
+begin
+  // Der Bereich trifft nur den Kopf von Probe; alle Stellen der Routine zählen trotzdem.
+  Reply := Run('{"targets":["locals"],"range":{"start":4,"end":4}}');
+  try
+    Assert.AreEqual('Total', Names(Reply));
+    Total := ((Reply.GetValue('symbols') as TJSONArray).Items[0]) as TJSONObject;
+    Assert.AreEqual('2', Total.GetValue('writes').Value);
+    Assert.AreEqual(5, (Total.GetValue('uses') as TJSONArray).Count);
+  finally
+    Reply.Free;
+  end;
+end;
+
+procedure TLspReassignedTests.InvalidRangeMeansWholeFile;
+var
+  Reply: TJSONObject;
+begin
+  Reply := Run('{"targets":["locals"],"range":{"start":12,"end":3}}');
+  try
+    Assert.AreEqual('Total W', Names(Reply));
+  finally
+    Reply.Free;
+  end;
+end;
+
+procedure TLspReassignedTests.CancelledRequestEnds;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      Run('', TCancelledToken.Create).Free;
+    end,
+    EJsonRpcRequestCancelled);
 end;
 
 initialization

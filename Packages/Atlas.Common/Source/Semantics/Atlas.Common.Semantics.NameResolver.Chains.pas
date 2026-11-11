@@ -184,7 +184,7 @@ begin
   end;
 end;
 
-/// <summary>Äußerster Knoten unter ARoot um AOffset, für den AMatch gilt. Iterativ mit eigenem Stapel (Bericht M1).
+/// <summary>Äußerster Knoten unter ARoot um AOffset, für den AMatch gilt. Iterativ mit eigenem Stapel.
 /// </summary>
 function FindAround(ARoot: TSyntaxNode; AOffset: Integer; const AMatch: TFunc<TSyntaxNode, Boolean>): TSyntaxNode;
 var

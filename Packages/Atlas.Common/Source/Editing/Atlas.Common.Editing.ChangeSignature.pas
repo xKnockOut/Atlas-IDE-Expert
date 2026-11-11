@@ -1181,7 +1181,7 @@ var
 begin
   mRoot := ANode;
   mOffset := AOffset;
-  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die AOffset enthalten.
+  // Search statt Rekursion; unter ANode nur Knoten, die AOffset enthalten.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin

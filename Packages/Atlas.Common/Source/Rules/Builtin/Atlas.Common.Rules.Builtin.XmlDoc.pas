@@ -257,7 +257,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure CollectDeclarations(ARoot: TSyntaxNode; AMap: TDictionary<Integer, TSyntaxNode>);
 var
   mPending: TStack<TSyntaxNode>;
@@ -912,7 +912,7 @@ end;
 
 // requirePublic: öffentliche Mitglieder von Typen im interface ohne Doku. Die Rekursion steigt nur in
 // verschachtelte Typdeklarationen ab (Tiefe wie die Schachtelung der Typen im Quelltext, unabhängig von
-// Anweisungen und Ausdrücken) und bleibt deshalb (Bericht M1).
+// Anweisungen und Ausdrücken) und bleibt deshalb.
 procedure TXmlDocCheck.CheckPublic(ANode: TSyntaxNode; APublic: Boolean);
 var
   mIndex: Integer;

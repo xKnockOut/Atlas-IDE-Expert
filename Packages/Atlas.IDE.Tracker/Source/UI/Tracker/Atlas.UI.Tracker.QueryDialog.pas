@@ -125,7 +125,6 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
 const
@@ -405,7 +404,7 @@ begin
     TAtlasTrackerTemplateKind.RecentlyChanged:
       mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateRecentlyChanged);
   else
-    mKind := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryDefault);
+    mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault);
   end;
   Result := mProvider + ' · ' + mKind;
   // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.

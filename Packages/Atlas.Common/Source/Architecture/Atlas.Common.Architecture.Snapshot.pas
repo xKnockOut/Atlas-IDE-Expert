@@ -170,7 +170,8 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -762,11 +763,6 @@ type
     FUnitNames: TArray<string>;
     FSubsystemNames: TArray<string>;
     procedure Fail(const AText: string);
-    function Field(AObject: TJSONObject; const AName: string): TJSONValue;
-    function TextOf(AObject: TJSONObject; const AName: string): string;
-    function IntOf(AObject: TJSONObject; const AName: string): Integer;
-    function FloatOf(AObject: TJSONObject; const AName: string): Double;
-    function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
     function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
     function ObjectAt(AItems: TJSONArray; AIndex: Integer; const AWhat: string): TJSONObject;
     /// <summary>Name einer Unit: Format 2 der Text, Format 1 die Nummer in "units".</summary>
@@ -806,73 +802,11 @@ begin
   raise EArchitectureSnapshot.Create(cTexts[TSnapshotText.ArchitectureStateIsDamaged].Text + AText);
 end;
 
-function TSnapshotReader.Field(AObject: TJSONObject; const AName: string): TJSONValue;
-begin
-  Result := nil;
-  if AObject <> nil then
-  begin
-    Result := AObject.GetValue(AName);
-  end;
-end;
-
-function TSnapshotReader.TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := Field(AObject, AName);
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
-  begin
-    Result := mValue.Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-function TSnapshotReader.IntOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  mValue := Field(AObject, AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else
-  begin
-    Result := 0;
-  end;
-end;
-
-function TSnapshotReader.FloatOf(AObject: TJSONObject; const AName: string): Double;
-var
-  mValue: TJSONValue;
-begin
-  mValue := Field(AObject, AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsDouble;
-  end
-  else
-  begin
-    Result := 0;
-  end;
-end;
-
-function TSnapshotReader.FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := Field(AObject, AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 function TSnapshotReader.ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
 var
   mValue: TJSONValue;
 begin
-  mValue := Field(AObject, AName);
+  mValue := TJsonRead.Value(AObject, AName);
   if mValue = nil then
   begin
     Exit(nil);
@@ -984,9 +918,9 @@ begin
   end
   else if AValue is TJSONObject then
   begin
-    Result.Source := UnitName(Field(TJSONObject(AValue), 'source'), AWhat);
-    Result.Target := UnitName(Field(TJSONObject(AValue), 'target'), AWhat);
-    mSection := TextOf(TJSONObject(AValue), 'section');
+    Result.Source := UnitName(TJsonRead.Value(TJSONObject(AValue), 'source'), AWhat);
+    Result.Target := UnitName(TJsonRead.Value(TJSONObject(AValue), 'target'), AWhat);
+    mSection := TJsonRead.StrictText(TJSONObject(AValue), 'section');
   end
   else
   begin
@@ -1002,16 +936,16 @@ var
   mValue: TJSONValue;
 begin
   ASnapshot.FormatVersion := FFormat;
-  ASnapshot.Title := TextOf(FData, 'title');
-  ASnapshot.Scope := TextOf(FData, 'scope');
-  ASnapshot.IncludeLibrary := FlagOf(FData, 'includeLibrary');
+  ASnapshot.Title := TJsonRead.StrictText(FData, 'title');
+  ASnapshot.Scope := TJsonRead.StrictText(FData, 'scope');
+  ASnapshot.IncludeLibrary := TJsonRead.Flag(FData, 'includeLibrary');
   ASnapshot.Grouping := TArchitectureGrouping.Default;
-  if Field(FData, 'grouping') is TJSONObject then
+  if TJsonRead.Value(FData, 'grouping') is TJSONObject then
   begin
-    mItem := TJSONObject(Field(FData, 'grouping'));
-    if Field(mItem, 'resolution') is TJSONNumber then
+    mItem := TJSONObject(TJsonRead.Value(FData, 'grouping'));
+    if TJsonRead.Value(mItem, 'resolution') is TJSONNumber then
     begin
-      ASnapshot.Grouping.Resolution := FloatOf(mItem, 'resolution');
+      ASnapshot.Grouping.Resolution := TJsonRead.Float(mItem, 'resolution');
     end;
     ASnapshot.Grouping := ASnapshot.Grouping.Clamped;
   end;
@@ -1032,7 +966,7 @@ begin
   SetLength(FUnitNames, AUnits.Count);
   for mIndex := 0 to AUnits.Count - 1 do
   begin
-    FUnitNames[mIndex] := TextOf(ObjectAt(AUnits, mIndex, 'Unit'), 'name');
+    FUnitNames[mIndex] := TJsonRead.StrictText(ObjectAt(AUnits, mIndex, 'Unit'), 'name');
     if FUnitNames[mIndex] = '' then
     begin
       Fail(cTexts[TSnapshotText.UnitWithoutName].Fmt([IntToStr(mIndex + 1)]));
@@ -1043,7 +977,7 @@ begin
     SetLength(FSubsystemNames, ASubsystems.Count);
     for mIndex := 0 to ASubsystems.Count - 1 do
     begin
-      FSubsystemNames[mIndex] := TextOf(ObjectAt(ASubsystems, mIndex, cTexts[TSnapshotText.Subsystem].Text), 'name');
+      FSubsystemNames[mIndex] := TJsonRead.StrictText(ObjectAt(ASubsystems, mIndex, cTexts[TSnapshotText.Subsystem].Text), 'name');
     end;
   end;
 end;
@@ -1059,13 +993,13 @@ begin
     mItem := TJSONObject(AItems.Items[mIndex]);
     Result[mIndex] := Default(TSnapshotUnit);
     Result[mIndex].Name := FUnitNames[mIndex];
-    Result[mIndex].FileName := TextOf(mItem, 'file');
-    Result[mIndex].Subsystem := SubsystemName(Field(mItem, 'subsystem'), 'Unit ' + FUnitNames[mIndex]);
-    Result[mIndex].Direct := IntOf(mItem, 'direct');
-    Result[mIndex].Total := IntOf(mItem, 'total');
-    Result[mIndex].Uses_ := IntOf(mItem, 'uses');
-    Result[mIndex].Role := TextOf(mItem, 'role');
-    Result[mIndex].Library_ := FlagOf(mItem, 'library');
+    Result[mIndex].FileName := TJsonRead.StrictText(mItem, 'file');
+    Result[mIndex].Subsystem := SubsystemName(TJsonRead.Value(mItem, 'subsystem'), 'Unit ' + FUnitNames[mIndex]);
+    Result[mIndex].Direct := TJsonRead.Int(mItem, 'direct');
+    Result[mIndex].Total := TJsonRead.Int(mItem, 'total');
+    Result[mIndex].Uses_ := TJsonRead.Int(mItem, 'uses');
+    Result[mIndex].Role := TJsonRead.StrictText(mItem, 'role');
+    Result[mIndex].Library_ := TJsonRead.Flag(mItem, 'library');
   end;
 end;
 
@@ -1108,19 +1042,19 @@ begin
   Result := Default(TSnapshotSubsystem);
   Result.Name := AName;
   Result.Units := UnitNames(ArrayOf(AItem, 'units'), cTexts[TSnapshotText.Subsystem2].Text + AName);
-  if HasCentral(Field(AItem, 'central')) then
+  if HasCentral(TJsonRead.Value(AItem, 'central')) then
   begin
-    Result.Central := UnitName(Field(AItem, 'central'), cTexts[TSnapshotText.Subsystem2].Text + AName);
+    Result.Central := UnitName(TJsonRead.Value(AItem, 'central'), cTexts[TSnapshotText.Subsystem2].Text + AName);
   end;
-  Result.Inner := IntOf(AItem, 'inner');
-  Result.Outer := IntOf(AItem, 'outer');
-  Result.Cohesion := FloatOf(AItem, 'cohesion');
-  Result.Isolated := FlagOf(AItem, 'isolated');
-  Result.Parent := TextOf(AItem, 'parent');
-  Result.Foundation := FlagOf(AItem, 'foundation');
-  Result.HasColor := Field(AItem, 'color') is TJSONNumber;
-  Result.ColorSlot := IntOf(AItem, 'color');
-  Result.Shade := IntOf(AItem, 'shade');
+  Result.Inner := TJsonRead.Int(AItem, 'inner');
+  Result.Outer := TJsonRead.Int(AItem, 'outer');
+  Result.Cohesion := TJsonRead.Float(AItem, 'cohesion');
+  Result.Isolated := TJsonRead.Flag(AItem, 'isolated');
+  Result.Parent := TJsonRead.StrictText(AItem, 'parent');
+  Result.Foundation := TJsonRead.Flag(AItem, 'foundation');
+  Result.HasColor := TJsonRead.Value(AItem, 'color') is TJSONNumber;
+  Result.ColorSlot := TJsonRead.Int(AItem, 'color');
+  Result.Shade := TJsonRead.Int(AItem, 'shade');
 end;
 
 function TSnapshotReader.ReadSubsystems(AItems: TJSONArray): TArray<TSnapshotSubsystem>;
@@ -1156,9 +1090,9 @@ begin
   begin
     mItem := ObjectAt(mItems, mIndex, cTexts[TSnapshotText.Outliers].Text);
     Result[mIndex] := Default(TSnapshotOutlier);
-    Result[mIndex].Unit_ := UnitName(Field(mItem, 'unit'), cTexts[TSnapshotText.Outliers].Text);
-    Result[mIndex].Suggested := SubsystemName(Field(mItem, 'suggested'), cTexts[TSnapshotText.Outliers].Text);
-    Result[mIndex].Reason := TextOf(mItem, 'reason');
+    Result[mIndex].Unit_ := UnitName(TJsonRead.Value(mItem, 'unit'), cTexts[TSnapshotText.Outliers].Text);
+    Result[mIndex].Suggested := SubsystemName(TJsonRead.Value(mItem, 'suggested'), cTexts[TSnapshotText.Outliers].Text);
+    Result[mIndex].Reason := TJsonRead.StrictText(mItem, 'reason');
   end;
 end;
 
@@ -1168,7 +1102,7 @@ var
   mMember: Integer;
 begin
   Result := Default(TSnapshotCycle);
-  Result.InterfaceOnly := FlagOf(AItem, 'interfaceOnly');
+  Result.InterfaceOnly := TJsonRead.Flag(AItem, 'interfaceOnly');
   Result.Units := UnitNames(ArrayOf(AItem, 'units'), cTexts[TSnapshotText.Cycle].Text);
   mEdges := ArrayOf(AItem, 'edges');
   if mEdges = nil then
@@ -1218,11 +1152,11 @@ begin
     mItem := ObjectAt(mItems, mIndex, cTexts[TSnapshotText.CrossLink].Text);
     Result[mIndex] := Default(TSnapshotCrossLink);
     Result[mIndex].Edge := EdgeOf(mItem, cTexts[TSnapshotText.CrossLink].Text);
-    Result[mIndex].FromSubsystem := SubsystemName(Field(mItem, 'from'), cTexts[TSnapshotText.CrossLink].Text);
-    Result[mIndex].ToSubsystem := SubsystemName(Field(mItem, 'to'), cTexts[TSnapshotText.CrossLink].Text);
-    Result[mIndex].Reason := TextOf(mItem, 'reason');
-    Result[mIndex].Forward := IntOf(mItem, 'forward');
-    Result[mIndex].Backward := IntOf(mItem, 'backward');
+    Result[mIndex].FromSubsystem := SubsystemName(TJsonRead.Value(mItem, 'from'), cTexts[TSnapshotText.CrossLink].Text);
+    Result[mIndex].ToSubsystem := SubsystemName(TJsonRead.Value(mItem, 'to'), cTexts[TSnapshotText.CrossLink].Text);
+    Result[mIndex].Reason := TJsonRead.StrictText(mItem, 'reason');
+    Result[mIndex].Forward := TJsonRead.Int(mItem, 'forward');
+    Result[mIndex].Backward := TJsonRead.Int(mItem, 'backward');
   end;
 end;
 

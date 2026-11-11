@@ -87,7 +87,7 @@ type
     procedure ApplySettings(const AUri: string; var AInfo: THoverInfo);
     function InfoAnswer(const AUri: string; const AInfo: THoverInfo): TJSONObject;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);

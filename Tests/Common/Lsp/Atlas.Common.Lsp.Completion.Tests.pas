@@ -51,7 +51,7 @@ type
     procedure NothingInCommentsAndStrings;
     [Test]
     procedure WritesCompletionList;
-    /// <summary>Golden-Test (Code-Review S-01): alle Felder von data in der heutigen Reihenfolge.</summary>
+    /// <summary>Golden-Test: alle Felder von data in der heutigen Reihenfolge.</summary>
     [Test]
     procedure ToJsonWritesAllDataFields;
     /// <summary>Felder außerhalb des Gates (container, depth …) allein ergeben kein data.</summary>
@@ -328,7 +328,7 @@ end;
 procedure TLspCompletionTests.FuzzyFindsSubsequencesAndAbbreviations;
 begin
   // "ehl" ist Teilwort von Zaehler, "TB" Kürzel von TBasis. Verstreute Teilfolgen wie "zlr" filtert
-  // das Plugin beim Weitertippen weg; der Server liefert sie deshalb auch nicht (D-05, ADR 0012).
+  // das Plugin beim Weitertippen weg; der Server liefert sie deshalb auch nicht.
   Assert.AreEqual('Zaehler', Names(ItemsAt(WithCode('  ehl'), '  ehl', TCompletionMatching.Fuzzy)));
   Assert.AreEqual('', Names(ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy)));
   Assert.AreEqual('TBasis', Names(ItemsAt(WithCode('  TBa'), '  TBa', TCompletionMatching.Fuzzy)));

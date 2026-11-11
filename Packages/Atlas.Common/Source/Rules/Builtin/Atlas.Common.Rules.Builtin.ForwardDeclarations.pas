@@ -463,7 +463,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1): der Stapel hält Container und Index der Routinen, in derselben Reihenfolge wie
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel hält Container und Index der Routinen, in derselben Reihenfolge wie
   // zuvor die Rekursion in lokale Routinen.
   procedure CheckRoutines(ARoot: TSyntaxNode);
   var
@@ -655,7 +655,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure VisitTypes(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

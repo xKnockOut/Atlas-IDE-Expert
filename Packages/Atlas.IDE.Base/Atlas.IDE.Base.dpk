@@ -31,14 +31,14 @@
 // Atlas-Symbol (#751): Symbole und PNG je Größe, erzeugt mit Resources\Symbol\Quellen\Erzeuge-Res.py.
 {$R 'Resources\Symbol\Atlas.Symbol.res'}
 
-// Design-Time-Package für RAD Studio (ADR 0006): meldet Atlas als
+// Design-Time-Package für RAD Studio: meldet Atlas als
 // Code Insight-Manager für Delphi an und spricht über eine eigene LSP-Sitzung
 // mit dem Server. Win32 für die klassische IDE, Win64 für die 64-Bit-IDE
-// (ADR 0008, #281). LIBSUFFIX AUTO hängt die Package-Version an
+// (#281). LIBSUFFIX AUTO hängt die Package-Version an
 // (Atlas.IDE.Base290.bpl für Delphi 12, …370.bpl für Delphi 13), damit die
 // BPLs beider IDE-Versionen nebeneinander liegen können.
 // Bewusst ohne Atlas.Common/Atlas.Windows: ein einzelnes Package, das die IDE
-// ohne weitere BPLs laden kann (ADR 0012). Gemeinsamen Textcode mit dem Server
+// ohne weitere BPLs laden kann. Gemeinsamen Textcode mit dem Server
 // (Atlas.Text) übersetzt das Plugin als Quelltext mit; die Liste unten muss
 // alle Units von Atlas.Text.dpk enthalten (Tools\Check-PackageDependencies.ps1).
 
@@ -108,6 +108,7 @@ contains
   Atlas.Core.Signature.Providers.Server in 'Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas',
   Atlas.UI.Signature.Hint in 'Source\UI\Signature\Atlas.UI.Signature.Hint.pas',
   Atlas.UI.Popup.Window in 'Source\UI\Popup\Atlas.UI.Popup.Window.pas',
+  Atlas.UI.Foundation.WndProcHook in 'Source\UI\Foundation\Atlas.UI.Foundation.WndProcHook.pas',
   Atlas.UI.Popup.Draw in 'Source\UI\Popup\Atlas.UI.Popup.Draw.pas',
   Atlas.UI.Popup.Accessibility in 'Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas',
   Atlas.UI.Completion.Popup in 'Source\UI\Completion\Atlas.UI.Completion.Popup.pas',
@@ -370,6 +371,10 @@ contains
   Atlas.Core.Diagnostics.MainThread in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.MainThread.pas',
   Atlas.Core.Diagnostics.Shutdown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas',
   Atlas.Core.Diagnostics.TimeLimit in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas',
+  Atlas.Core.Diagnostics.Deadline in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas',
+  Atlas.Core.Diagnostics.UserIdle in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas',
+  Atlas.Core.Diagnostics.UnloadSafety in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas',
+  Atlas.Core.Diagnostics.WorkerSlot in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas',
   Atlas.Core.Product.Version in 'Source\Core\Product\Atlas.Core.Product.Version.pas',
   Atlas.Core.Diagnostics.StartTimes in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas',
   Atlas.Core.Diagnostics.Hangs in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas',

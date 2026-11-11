@@ -290,7 +290,7 @@ var
     mName: string;
     mFixes: TArray<TRuleFix>;
   begin
-    // Iterativ (Bericht M1): statt sich mit dem Empfänger erneut aufzurufen, geht die Schleife zum Empfänger weiter.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): statt sich mit dem Empfänger erneut aufzurufen, geht die Schleife zum Empfänger weiter.
     mTarget := ATarget;
     mStep := TMemberStep.Next;
     mFixes := nil;
@@ -340,7 +340,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -994,7 +994,7 @@ var
     mPending: TStack<TSyntaxNode>;
     mPendingWritten: TStack<Boolean>;
   begin
-    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er geschrieben wird.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er geschrieben wird.
     mPending := TStack<TSyntaxNode>.Create;
     mPendingWritten := TStack<Boolean>.Create;
     try

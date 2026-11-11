@@ -219,7 +219,7 @@ begin
   begin
     Exit;
   end;
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   mCache := TRuleDerived.Open(AContext);
   mRoutines := TRuleDerived.Routines(mCache, AContext);
   for mRoutine in mRoutines do
@@ -306,7 +306,7 @@ var
     Result := False;
   end;
 
-  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (Bericht M1): von den
+  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (tiefe Bäume sprengen den Stapel nicht): von den
   // unerreichbaren Anweisungen aufwärts statt rekursiv durch ANode.
   function HasDead(ANode: TSyntaxNode): Boolean;
   var
@@ -365,7 +365,7 @@ begin
   begin
     Exit;
   end;
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   mCache := TRuleDerived.Open(AContext);
   mRoutines := TRuleDerived.Routines(mCache, AContext);
   for mRoutine in mRoutines do

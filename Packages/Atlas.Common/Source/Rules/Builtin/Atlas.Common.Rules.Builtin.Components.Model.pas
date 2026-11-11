@@ -125,7 +125,7 @@ type
 /// <summary>Ist AText (ohne Groß-/Kleinschreibung) eines der Wörter AWords?</summary>
 function IsIn(const AText: string; const AWords: array of string): Boolean;
 
-/// <summary>Modell der Datei, je Lauf einmal gebaut (Review P-03); gehört ACache, nie freigeben.
+/// <summary>Modell der Datei, je Lauf einmal gebaut; gehört ACache, nie freigeben.
 /// False ohne Syntaxbaum.</summary>
 function PrepareModel(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
   out AModel: TComponentModel): Boolean;
@@ -192,7 +192,7 @@ end;
 
 procedure TComponentModel.Collect(ANode: TSyntaxNode);
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     var

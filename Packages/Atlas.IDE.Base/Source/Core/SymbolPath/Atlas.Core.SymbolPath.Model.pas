@@ -120,73 +120,32 @@ type
 
 implementation
 
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-function IntegerOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
+uses
+  Atlas.Text.Json;
 
 function NodeOf(AObject: TJSONObject): TAtlasSymbolPathNode;
 begin
   Result := Default(TAtlasSymbolPathNode);
-  Result.Caption := StringOf(AObject, 'caption');
-  Result.UnitName := StringOf(AObject, 'unit');
-  Result.FileName := StringOf(AObject, 'file');
-  Result.Line := IntegerOf(AObject, 'line');
-  Result.Character := IntegerOf(AObject, 'character');
-  Result.IsUnit := BoolOf(AObject, 'isUnit');
-  Result.Library_ := BoolOf(AObject, 'library');
+  Result.Caption := TJsonRead.Text(AObject, 'caption');
+  Result.UnitName := TJsonRead.Text(AObject, 'unit');
+  Result.FileName := TJsonRead.Text(AObject, 'file');
+  Result.Line := TJsonRead.Int(AObject, 'line');
+  Result.Character := TJsonRead.Int(AObject, 'character');
+  Result.IsUnit := TJsonRead.Flag(AObject, 'isUnit');
+  Result.Library_ := TJsonRead.Flag(AObject, 'library');
 end;
 
 function StepOf(AObject: TJSONObject): TAtlasSymbolPathStep;
 begin
   Result := Default(TAtlasSymbolPathStep);
-  Result.Kind := StringOf(AObject, 'kind');
-  Result.Caption := StringOf(AObject, 'caption');
-  Result.Inferred := BoolOf(AObject, 'inferred');
-  Result.Reverse := BoolOf(AObject, 'reverse');
-  Result.Implementation_ := BoolOf(AObject, 'implementation');
-  Result.FileName := StringOf(AObject, 'file');
-  Result.Line := IntegerOf(AObject, 'line');
-  Result.Character := IntegerOf(AObject, 'character');
+  Result.Kind := TJsonRead.Text(AObject, 'kind');
+  Result.Caption := TJsonRead.Text(AObject, 'caption');
+  Result.Inferred := TJsonRead.Flag(AObject, 'inferred');
+  Result.Reverse := TJsonRead.Flag(AObject, 'reverse');
+  Result.Implementation_ := TJsonRead.Flag(AObject, 'implementation');
+  Result.FileName := TJsonRead.Text(AObject, 'file');
+  Result.Line := TJsonRead.Int(AObject, 'line');
+  Result.Character := TJsonRead.Int(AObject, 'character');
 end;
 
 function NodesOf(AArray: TJSONArray): TArray<TAtlasSymbolPathNode>;
@@ -282,8 +241,8 @@ begin
     if mItem is TJSONObject then
     begin
       mRoute := Default(TAtlasSymbolPathRoute);
-      mRoute.Nodes := NodesOf(ArrayOf(TJSONObject(mItem), 'nodes'));
-      mRoute.Steps := StepsOf(ArrayOf(TJSONObject(mItem), 'steps'));
+      mRoute.Nodes := NodesOf(TJsonRead.Items(TJSONObject(mItem), 'nodes'));
+      mRoute.Steps := StepsOf(TJsonRead.Items(TJSONObject(mItem), 'steps'));
       Result := Length(mRoute.Nodes) = Length(mRoute.Steps) + 1;
       if not Result then
       begin
@@ -299,24 +258,24 @@ function ReadAnswer(AData: TJSONObject; var AModel: TAtlasSymbolPathAnswer): Boo
 var
   mStatus: TAtlasSymbolPathStatus;
 begin
-  Result := StatusOf(StringOf(AData, 'status'), mStatus);
+  Result := StatusOf(TJsonRead.Text(AData, 'status'), mStatus);
   if not Result then
   begin
     Exit;
   end;
   AModel.Status := mStatus;
-  AModel.From := StringOf(AData, 'from');
-  AModel.To_ := StringOf(AData, 'to');
-  AModel.MoreRoutes := BoolOf(AData, 'moreRoutes');
-  AModel.MaxSteps := IntegerOf(AData, 'maxSteps');
-  AModel.SearchedSteps := IntegerOf(AData, 'searchedSteps');
-  AModel.Visited := IntegerOf(AData, 'visited');
-  AModel.ElapsedMs := IntegerOf(AData, 'elapsedMs');
-  AModel.AbortReason := StringOf(AData, 'abortReason');
-  AModel.Subject := StringOf(AData, 'subject');
-  AModel.CallsIncomplete := BoolOf(AData, 'callsIncomplete');
-  AModel.Candidates := NodesOf(ArrayOf(AData, 'candidates'));
-  Result := RoutesOf(ArrayOf(AData, 'routes'), AModel);
+  AModel.From := TJsonRead.Text(AData, 'from');
+  AModel.To_ := TJsonRead.Text(AData, 'to');
+  AModel.MoreRoutes := TJsonRead.Flag(AData, 'moreRoutes');
+  AModel.MaxSteps := TJsonRead.Int(AData, 'maxSteps');
+  AModel.SearchedSteps := TJsonRead.Int(AData, 'searchedSteps');
+  AModel.Visited := TJsonRead.Int(AData, 'visited');
+  AModel.ElapsedMs := TJsonRead.Int(AData, 'elapsedMs');
+  AModel.AbortReason := TJsonRead.Text(AData, 'abortReason');
+  AModel.Subject := TJsonRead.Text(AData, 'subject');
+  AModel.CallsIncomplete := TJsonRead.Flag(AData, 'callsIncomplete');
+  AModel.Candidates := NodesOf(TJsonRead.Items(AData, 'candidates'));
+  Result := RoutesOf(TJsonRead.Items(AData, 'routes'), AModel);
 end;
 
 function ParsedObject(const AAnswer: string): TJSONObject;
@@ -358,7 +317,7 @@ begin
   try
     if mData.GetValue('enabled') is TJSONBool then
     begin
-      AModel.Enabled := BoolOf(mData, 'enabled');
+      AModel.Enabled := TJsonRead.Flag(mData, 'enabled');
       Result := not AModel.Enabled or ReadAnswer(mData, AModel);
     end;
   finally

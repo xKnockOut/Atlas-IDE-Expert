@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Modules.Registry;
 
-// Modul-Registry von Base (#1455, ADR 0017, Regeln 1–5, 8, 9):
+// Modul-Registry von Base (#1455, Regeln 1–5, 8, 9):
 // - AtlasModuleRegistry besteht ab der Unit-Initialisierung (verzögert
 //   erzeugt); nach dem Abbau in der Finalisierung liefert es nil, damit Module
 //   sich in ihrer Finalisierung nur abmelden, solange Base läuft (Regel 5).
@@ -14,7 +14,7 @@
 //   es mit TAtlasMainThread.CloseModule: wartende Einträge des Moduls liefen
 //   sonst nach dem Entladen seines Packages in nicht mehr geladenem Code),
 //   Anmelden ruft OnModuleOpened. Als Haken, damit Core.Modules nicht von
-//   Core.Diagnostics abhängt (Feature-Zyklus A-09).
+//   Core.Diagnostics abhängt (sonst ein Feature-Zyklus).
 // - Objekte nach Interface-GUID (Provide/FindAll); die Registry versteht
 //   nicht, was dahinter steckt.
 // - Änderungsmeldung außerhalb der Sperre; ein gelöster Hörer wird auch

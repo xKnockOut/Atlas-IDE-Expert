@@ -163,7 +163,7 @@ type
       Names: TAtlasIdeTaskNames;
     end;
 
-    /// <summary>Verlauf in tasks.json; Kept = gesperrt gelesen, nicht überschreiben (Bericht N3).</summary>
+    /// <summary>Verlauf in tasks.json; Kept = gesperrt gelesen, nicht überschreiben.</summary>
     THistory = record
       Data: TAtlasTaskHistory;
       Kept: Boolean;
@@ -341,7 +341,7 @@ end;
 
 procedure SaveHistory(const AHistory: TAtlasIdeTasks.THistory);
 begin
-  // Gesperrt gelesene Datei nicht mit dem Stand dieser Sitzung überschreiben (Bericht N3).
+  // Gesperrt gelesene Datei nicht mit dem Stand dieser Sitzung überschreiben.
   if AHistory.Kept then
   begin
     Exit;

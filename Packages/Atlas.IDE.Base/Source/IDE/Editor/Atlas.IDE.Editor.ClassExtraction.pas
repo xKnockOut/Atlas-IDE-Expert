@@ -47,7 +47,8 @@ uses
   Atlas.UI.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Editor.ExtractMembers,
-  Atlas.IDE.Editor.Rename;
+  Atlas.IDE.Editor.Rename,
+  Atlas.Text.Json;
 
 /// <summary>Modell aus der Antwort auf APrepare; False mit Meldung, wenn der Server scheitert.</summary>
 function FetchModel(ASession: TLspSession; const APrepare: TAtlasServerEditCommand; const AMessage: TProc<string>;
@@ -61,7 +62,7 @@ begin
   try
     mAnswer := ASession.RunCommand(APrepare.Command, APrepare.Arguments, APrepare.TimeoutMs);
     try
-      AModel := TAtlasClassExtractionModel.Create(TAtlasIdeServerEdit.AsObject(mAnswer));
+      AModel := TAtlasClassExtractionModel.Create(TJsonRead.AsObject(mAnswer));
     finally
       mAnswer.Free;
     end;

@@ -9,7 +9,7 @@
 //   Zeitzone). Als JSON in %LOCALAPPDATA%\Atlas\index-state.json:
 //   {"format": 1, "units": 1284, "fullIndexAt": "…", "at": "…"}.
 //   Die Datei gehört nur dem Plugin; sie hält keinen Pfad und keinen Namen.
-//   Geschrieben wird atomar über TAtlasDataFile (Bericht N3); eine
+//   Geschrieben wird atomar über TAtlasDataFile; eine
 //   unbrauchbare Datei wird nicht beiseitegelegt: Sie hält nur einen Stand,
 //   den der nächste laufende Server neu liefert.
 // - TAtlasIndexTracker: verfolgt bei laufendem Server, was das Statusfeld

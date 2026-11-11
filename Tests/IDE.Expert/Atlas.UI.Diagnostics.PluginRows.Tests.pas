@@ -107,10 +107,17 @@ begin
   mRequest.Stat.Calls := 3;
   mRequest.TimedOut := 1;
   mRequest.Failed := 1;
+  // Drei Wartezeiten des Hauptthreads, zusammen 30 ms: Mittel 10 ms liegt unter der Schwelle.
+  mRequest.WaitedMs := 30;
+  mRequest.WaitedCalls := 3;
   mRows := TAtlasPluginGridRows.Requests(TArray<TAtlasRequestTiming>.Create(mRequest), 16);
   Assert.AreEqual('textDocument/hover', mRows[0].Cells[0]);
-  Assert.AreEqual(Ord(TAtlasGridMark.Warn), Ord(mRows[0].Mark(5)), 'Zeitüberschreitung');
-  Assert.AreEqual(Ord(TAtlasGridMark.Bad), Ord(mRows[0].Mark(7)), 'Fehler');
+  Assert.AreEqual('3', mRows[0].Cells[4]);
+  Assert.AreEqual(TAtlasPluginRows.Ms(10), mRows[0].Cells[5]);
+  Assert.AreEqual(Ord(TAtlasGridMark.None), Ord(mRows[0].Mark(5)), 'Mittel unter der Schwelle');
+  Assert.AreEqual(Ord(TAtlasGridMark.Warn), Ord(mRows[0].Mark(6)), 'Zeitüberschreitung');
+  Assert.AreEqual(Ord(TAtlasGridMark.Bad), Ord(mRows[0].Mark(8)), 'Fehler');
+  Assert.AreEqual(Integer(Length(TAtlasPluginGridRows.RequestColumns)), Integer(Length(mRows[0].Cells)));
 end;
 
 procedure TAtlasPluginGridRowsTests.ColumnsMatchCells;

@@ -164,7 +164,9 @@ const
     // Neue Zeile am Ende des Abschnitts (#1768): Editorbefehl.
     3,
     // Auswahl speichern (#739): keine Bindung, wirkt nur im Designer (Modul Designer).
-    0);
+    0,
+    // Im Designer zeigen (#511): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
@@ -922,27 +924,36 @@ var
   mIds, mKeys: TArray<string>;
   mKnown: Boolean;
   mIndex: Integer;
+  mOwners: TDictionary<Word, string>;
 begin
   mIds := nil;
   mKeys := nil;
-  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
-  for mEntry in AtlasEntries do
-  begin
-    mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
-    if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+  // Besitzer aller IDE-Tasten in einem Lauf über die ActionList, nicht je Eintrag (Einträge × Aktionen).
+  mOwners := TDictionary<Word, string>.Create;
+  try
+    TAtlasIdeKeys.CollectOwners(mOwners);
+    // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
+    for mEntry in AtlasEntries do
     begin
-      Continue;
+      mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
+      if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+      begin
+        Continue;
+      end;
+      mKnown := False;
+      for mIndex := 0 to High(mIds) do
+      begin
+        mKnown := mKnown or SameText(mIds[mIndex], mId);
+      end;
+      if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.OwnerIn(mOwners, mEntry.Key),
+        mEntry.Priority) then
+      begin
+        mIds := mIds + [mId];
+        mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
+      end;
     end;
-    mKnown := False;
-    for mIndex := 0 to High(mIds) do
-    begin
-      mKnown := mKnown or SameText(mIds[mIndex], mId);
-    end;
-    if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority) then
-    begin
-      mIds := mIds + [mId];
-      mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
-    end;
+  finally
+    mOwners.Free;
   end;
   Result := ShortCutLookup(mIds, mKeys);
 end;

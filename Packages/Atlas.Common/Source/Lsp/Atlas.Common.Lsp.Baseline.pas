@@ -21,7 +21,7 @@
 // zu "removed". "skipped" sind Projektdateien, die nicht lesbar waren.
 // War die bisherige Baseline unbrauchbar ("previous": "invalid"), legt der
 // Befehl sie vor dem Schreiben als <Name>.defekt beiseite und nennt den
-// vollen Pfad in "setAside" (Bericht N3); früher ersetzte er sie still.
+// vollen Pfad in "setAside", statt sie still zu ersetzen.
 //
 // Ohne Projektdateien (Projekt noch nicht geladen) schreibt der Befehl nichts
 // und antwortet mit einem Fehler, damit keine leere Baseline entsteht.
@@ -64,7 +64,7 @@ type
     /// <summary>Soll atomar ersetzen: Der Arbeitsbereich liest die Datei, sobald sich ihr Zeitstempel ändert.
     /// </summary>
     Write: TLspBaselineWrite;
-    /// <summary>Unbrauchbare bisherige Baseline beiseitelegen (Bericht N3). nil: Sie wird ersetzt.</summary>
+    /// <summary>Unbrauchbare bisherige Baseline beiseitelegen. nil: Sie wird ersetzt.</summary>
     SetAside: TLspBaselineSetAside;
   end;
 
@@ -162,7 +162,7 @@ begin
     on EJSONException do
       Result := 'invalid';
   end;
-  // Nicht still ersetzen (Bericht N3): Die alte Datei bleibt als .defekt zum Nachsehen, die Antwort nennt sie.
+  // Nicht still ersetzen: Die alte Datei bleibt als .defekt zum Nachsehen, die Antwort nennt sie.
   if (Result = 'invalid') and Assigned(FFiles.SetAside) and not FFiles.SetAside(mFileName, ASetAsideFile) then
   begin
     ASetAsideFile := '';

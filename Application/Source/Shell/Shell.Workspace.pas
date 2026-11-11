@@ -109,7 +109,7 @@ type
 
   TShellWorkspaces = class
   public
-    /// <summary>Arbeitsbereich zu einer Datei (S-02): AFound, sonst bei genau einem Arbeitsbereich dieser,
+    /// <summary>Arbeitsbereich zu einer Datei: AFound, sonst bei genau einem Arbeitsbereich dieser,
     /// sonst nil. Eine Regel für alle Einstellungs- und Pfadabfragen des Servers.</summary>
     class function Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace; static;
   end;
@@ -271,7 +271,7 @@ end;
 procedure TShellWorkspace.Reload;
 begin
   // StartIndex ändert Zustand ohne Sperre: Andere Threads stellen Reload über TJsonRpcConnection.Queue
-  // in die Schleife (A-03).
+  // in die Schleife.
   if (FSetup.LoopThreadId <> 0) and (TThread.Current.ThreadID <> FSetup.LoopThreadId) then
   begin
     raise EInvalidOpException.Create('Reload nur im Thread der Nachrichtenschleife');

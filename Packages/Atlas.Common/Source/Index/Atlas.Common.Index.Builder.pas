@@ -26,9 +26,9 @@
 //   Komposition bereit.
 // - Jede Datei liest nur ein Thread zur selben Zeit (#1236): Fragen Aufbau und
 //   Anfragen (EnsureUnit) dieselbe Unit gleichzeitig an, wartet der zweite
-//   auf den ersten und übernimmt sein Ergebnis. Früher parsten beim Start
-//   mehrere Anfrage-Threads und der Aufbau dieselben RTL-/VCL-Units parallel.
-//   Verschiedene Units laufen weiter parallel (#617).
+//   auf den ersten und übernimmt sein Ergebnis; sonst parsten beim Start
+//   mehrere Anfrage-Threads und der Aufbau dieselben RTL-/VCL-Units doppelt.
+//   Verschiedene Units laufen parallel (#617).
 // - ReleaseCache gibt die Cache-Einträge nach dem Aufbau frei (Rückmeldung
 //   15.10.2026): Jeder Eintrag hält die ganze gelesene Cache-Datei; mit sechs
 //   Projekten lagen so Projekt- und Bibliotheks-Cache sechsmal im Speicher,

@@ -150,7 +150,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 { TAtlasTaskIssue }
 
@@ -369,19 +370,6 @@ begin
   Result := mModifiers or mKey;
 end;
 
-function StringOf(AObject: TJSONObject; const AName: string; out AValue: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AValue := '';
-  mValue := AObject.GetValue(AName);
-  Result := mValue is TJSONString;
-  if Result then
-  begin
-    AValue := TJSONString(mValue).Value;
-  end;
-end;
-
 /// <summary>Eingebautes Muster nach Name; unbekannte (außer leer und none) melden.</summary>
 function NamedMatcher(const AText, AName: string; var AIssues: TAtlasTaskIssues): TAtlasTaskMatcher;
 var
@@ -430,14 +418,14 @@ var
   mText: string;
   mSeverity: TAtlasTaskSeverity;
 begin
-  if not StringOf(AItem, 'regex', mText) or (mText = '') then
+  if not TJsonRead.TryText(AItem, 'regex', mText) or (mText = '') then
   begin
     AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MatcherWithoutRegex, AName)];
     Exit(TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None));
   end;
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.Custom);
   Result.Regex := mText;
-  if StringOf(AItem, 'severity', mText) and TAtlasTasks.TrySeverity(mText, mSeverity) then
+  if TJsonRead.TryText(AItem, 'severity', mText) and TAtlasTasks.TrySeverity(mText, mSeverity) then
   begin
     Result.DefaultSeverity := mSeverity;
   end;
@@ -521,7 +509,7 @@ end;
 procedure ReadKey(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
   var AIssues: TAtlasTaskIssues);
 begin
-  if StringOf(AItem, 'key', ATask.KeyText) and (Trim(ATask.KeyText) <> '') then
+  if TJsonRead.TryText(AItem, 'key', ATask.KeyText) and (Trim(ATask.KeyText) <> '') then
   begin
     ATask.Key := TAtlasTasks.ParseKey(ATask.KeyText);
     if ATask.Key = 0 then
@@ -557,7 +545,7 @@ procedure ReadGroup(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasT
 var
   mText: string;
 begin
-  if StringOf(AItem, 'group', mText) and not TAtlasTasks.TryGroup(mText, ATask.Group) then
+  if TJsonRead.TryText(AItem, 'group', mText) and not TAtlasTasks.TryGroup(mText, ATask.Group) then
   begin
     AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.UnknownGroup, AWhere, mText)];
   end;
@@ -568,7 +556,7 @@ procedure ReadBeforeBuild(AItem: TJSONObject; const AWhere: string; var ATask: T
 var
   mText: string;
 begin
-  if StringOf(AItem, 'beforeBuild', mText) then
+  if TJsonRead.TryText(AItem, 'beforeBuild', mText) then
   begin
     ATask.HasBeforeBuild := TAtlasTasks.TryBeforeBuild(mText, ATask.BeforeBuild);
     if not ATask.HasBeforeBuild then
@@ -587,21 +575,21 @@ begin
   ATask.Group := TAtlasTaskGroup.Other;
   ATask.TimeoutSec := TAtlasTasks.cDefaultTimeoutSec;
   ATask.Global := AGlobal;
-  if not StringOf(AItem, 'name', ATask.Name) or (Trim(ATask.Name) = '') then
+  if not TJsonRead.TryText(AItem, 'name', ATask.Name) or (Trim(ATask.Name) = '') then
   begin
     AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MissingName, Format('tasks[%d]', [AIndex]))];
     Exit(False);
   end;
   ATask.Name := Trim(ATask.Name);
   mWhere := ATask.Name;
-  if not StringOf(AItem, 'command', ATask.Command) or (Trim(ATask.Command) = '') then
+  if not TJsonRead.TryText(AItem, 'command', ATask.Command) or (Trim(ATask.Command) = '') then
   begin
     AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MissingCommand, mWhere)];
     Exit(False);
   end;
   ATask.Command := Trim(ATask.Command);
   ReadArgs(AItem, mWhere, ATask, AIssues);
-  StringOf(AItem, 'cwd', ATask.Cwd);
+  TJsonRead.TryText(AItem, 'cwd', ATask.Cwd);
   ReadEnv(AItem, ATask);
   ReadGroup(AItem, mWhere, ATask, AIssues);
   ATask.Matcher := ParseMatcher(AItem.GetValue('matcher'), mWhere, AIssues);

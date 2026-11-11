@@ -9,7 +9,7 @@
 // Depth liefert die größte Tiefe des Baums; rekursive Auswertungen wie die
 // Prüfregeln prüfen damit, ob der Stapel reicht (#1094). Walk, Depth und das
 // Freigeben laufen iterativ und brauchen auch bei tiefen Bäumen keinen Stapel
-// (Bericht M1); Läufer sollen Walk nutzen statt eigener Rekursion.
+//; Läufer sollen Walk nutzen statt eigener Rekursion.
 
 interface
 
@@ -66,8 +66,8 @@ type
   /// <summary>Besuch eines Knotens für TSyntaxNode.Search.</summary>
   TSyntaxNodeSearch = reference to function(ANode: TSyntaxNode): TSyntaxSearchStep;
 
-  /// <summary>Eintrag eines eigenen Stapels für Läufe, die einen Knoten nach seinen Kindern prüfen (Post-Order,
-  /// Bericht M1): Done = die Kinder sind schon durchlaufen.</summary>
+  /// <summary>Eintrag eines eigenen Stapels für Läufe, die einen Knoten nach seinen Kindern prüfen
+  /// (Post-Order): Done = die Kinder sind schon durchlaufen.</summary>
   TSyntaxPostOrderEntry = record
     Node: TSyntaxNode;
     Done: Boolean;
@@ -113,10 +113,10 @@ type
     /// <summary>Setzt den Bereich im Quelltext.</summary>
     procedure SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
     /// <summary>Besucht diesen Knoten und, wenn AVisit True liefert, alle Kinder in Baumreihenfolge
-    /// (Review P-03). Iterativ: auch für sehr tiefe Bäume ohne Stapelbedarf (Bericht M1).</summary>
+    ///. Iterativ: auch für sehr tiefe Bäume ohne Stapelbedarf.</summary>
     procedure Walk(const AVisit: TSyntaxNodeVisit);
     /// <summary>Wie Walk, hört aber beim ersten Knoten auf, für den AVisit Found liefert, und gibt ihn zurück;
-    /// nil ohne Treffer. Iterativ wie Walk (Bericht M1).</summary>
+    /// nil ohne Treffer. Iterativ wie Walk.</summary>
     function Search(const AVisit: TSyntaxNodeSearch): TSyntaxNode;
     property Kind: TSyntaxKind read FKind write FKind;
     /// <summary>Nur bei Parameter: const, var, out oder constref.</summary>
@@ -173,7 +173,7 @@ type
     /// Iterativ bestimmt und gemerkt; auch für sehr tiefe Bäume sicher.</summary>
     function Depth: Integer;
     /// <summary>Der erste Knoten in Baumreihenfolge, der so tief liegt wie Depth; nil ohne Wurzel. Bei einer
-    /// langen Kette wie 1 - 1 - … - 1 ist das ihr erstes Glied (Bericht M1).</summary>
+    /// langen Kette wie 1 - 1 - … - 1 ist das ihr erstes Glied.</summary>
     function Deepest: TSyntaxNode;
     /// <summary>Steht das Token ATokenIndex in einem Steuerzeichen wie ^C (#862)? Dann ist der Bezeichner C
     /// kein Name, sondern Teil eines Literals.</summary>
@@ -434,7 +434,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die Kette lang; rekursiv
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die Kette lang; rekursiv
   // kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge auf den Stapel,
   // damit die Reihenfolge der Besuche die der Rekursion bleibt.
   if not AVisit(Self) or (ChildCount = 0) then

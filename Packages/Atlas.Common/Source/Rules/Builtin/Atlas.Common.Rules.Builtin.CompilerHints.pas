@@ -444,7 +444,7 @@ var
   mNode, mBody: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Klassen auf Ebene der Abschnitte; verschachtelte und lokale Klassen nicht (Bericht M1: iterativ).
+  // Klassen auf Ebene der Abschnitte; verschachtelte und lokale Klassen nicht (iterativ).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(FContext.Tree.Root);

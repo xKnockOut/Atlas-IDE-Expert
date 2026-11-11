@@ -559,7 +559,7 @@ var
   mPending: TStack<TSyntaxPostOrderEntry>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1): Der Weg zum Offset kann durch tiefe Ausdrücke führen.
+  // Eigener Stapel statt Rekursion: Der Weg zum Offset kann durch tiefe Ausdrücke führen.
   // Ein Knoten wird nach seinen Kindern geprüft; eine Grenze beendet wie früher die Suche unter ihren
   // Geschwistern, die Vorfahren werden danach noch geprüft.
   Result := nil;
@@ -624,7 +624,7 @@ var
 begin
   mRoot := ANode;
   mOffset := AOffset;
-  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die AOffset enthalten.
+  // Search statt Rekursion; unter ANode nur Knoten, die AOffset enthalten.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     var

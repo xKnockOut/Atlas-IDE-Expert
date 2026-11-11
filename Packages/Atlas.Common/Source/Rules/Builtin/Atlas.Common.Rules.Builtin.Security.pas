@@ -129,7 +129,7 @@ const
   cHttpExceptions: array[0..6] of string = ('http://localhost', 'http://127.0.0.1', 'http://[::1]',
     'http://www.w3.org/', 'http://schemas.', 'http://ns.', 'http://json-schema.org/');
 
-/// <summary>Token ohne Kommentare und Direktiven, je Lauf einmal berechnet (Review P-03, P-08).</summary>
+/// <summary>Token ohne Kommentare und Direktiven, je Lauf einmal berechnet.</summary>
 function CodeTokens(const AContext: TRuleContext): TArray<TPascalToken>;
 var
   mCache: IRuleDerivedCache;

@@ -67,7 +67,7 @@ begin
     cTexts[TUnusedDuplicatesText.Title].Text);
 end;
 
-// Iterativ (Bericht M1): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von innen nach außen bauen.
+// Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von innen nach außen bauen.
 class function TDuplicateAssignmentRule.TargetKey(ANode: TSyntaxNode): string;
 var
   mChain: TStack<TSyntaxNode>;
@@ -163,7 +163,7 @@ end;
 
 /// <summary>Kommt unter ANode ein Bezeichner aus AParts vor, ein Aufruf oder etwas, das Code ausführt?
 /// Dann kann der Ausdruck den ersten Wert lesen.</summary>
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 function MayRead(ANode: TSyntaxNode; const AParts: TArray<string>): Boolean;
 var
   mPending: TStack<TSyntaxNode>;
@@ -440,7 +440,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1): der Stapel hält Elternknoten und Kindindex, damit jedes Kind wie bisher vor dem
+// Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel hält Elternknoten und Kindindex, damit jedes Kind wie bisher vor dem
 // Abstieg in seine Kinder geprüft wird.
 procedure TDuplicateAssignmentCheck.Visit(ARoot: TSyntaxNode);
 var

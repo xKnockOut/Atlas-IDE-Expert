@@ -43,7 +43,7 @@ type
     class function NewTransport(const AOptions: TCommandLineOptions; const ALogger: ILogger;
       out ATracing: TJsonRpcTracingTransport): IJsonRpcTransport; static;
     /// <summary>Meldet den Abbruch des Mitschnitts. Fängt nur den Logger ein; den Zyklus Logger → Sink → Transport →
-    /// Closure bricht das einmalige Leeren beim Melden bzw. Destroy (S-07). Anonym: Klasse und Meldung, kein Pfad.
+    /// Closure bricht das einmalige Leeren beim Melden bzw. Destroy. Anonym: Klasse und Meldung, kein Pfad.
     /// </summary>
     class procedure WatchTracing(ATracing: TJsonRpcTracingTransport; const ALogger: ILogger); static;
     /// <summary>Mitschnitt anlegen. Rotiert bei Überlänge (#283). Hält ihn schon ein anderer Server (jede
@@ -155,7 +155,7 @@ begin
   Result := Default(TShellStdioChannel);
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
-  // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE (Bericht M5), soweit die
+  // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE, soweit die
   // Plattform sie braucht.
   TShellPlatform.InstallGuards;
   mLoggerImpl := NewLogger(AOptions, Result.RecentLog, Result.Anonymizer);

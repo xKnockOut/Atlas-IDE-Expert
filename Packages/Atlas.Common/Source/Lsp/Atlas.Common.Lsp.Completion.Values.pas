@@ -212,7 +212,7 @@ var
   mOwner: TUnitIndex;
 begin
   Result := ALookup.Resolver.ResolveChain(ALookup.Tree, ALookup.FileName, ATypeName.Split(['.']), AOffset);
-  // Eingebaute Typen (Integer, string) stehen nicht im Index: nicht danach suchen (Code-Review P-12).
+  // Eingebaute Typen (Integer, string) stehen nicht im Index: nicht danach suchen.
   if (Result.Found and Result.IsType) or (ALookup.Index = nil) or (Pos('.', ATypeName) > 0) or
     TResolverText.IsBuiltinTypeName(ATypeName) then
   begin
@@ -431,7 +431,7 @@ begin
 end;
 
 /// <summary>Ein schlichter Typname, der einen uses-Eintrag brauchen kann: nicht generisch, nicht qualifiziert,
-/// kein Platzhalter, nicht eingebaut (Code-Review P-12).</summary>
+/// kein Platzhalter, nicht eingebaut.</summary>
 function IsImportableName(const ATypeName: string): Boolean;
 begin
   Result := (ATypeName <> '') and (Pos('<', ATypeName) = 0) and (Pos('.', ATypeName) = 0) and

@@ -4,7 +4,7 @@
 // das Fenster des abgesicherten Starts: holt den Bericht des laufenden
 // Servers (atlas.server.bugReport; ein gestoppter Server wird dafür nicht
 // gestartet), ergänzt Plugin- und IDE-Version, Einstellungen, atlas.log und
-// das Ende von server-stderr.log (Bericht H5),
+// das Ende von server-stderr.log,
 // zeigt die Vorschau und schreibt nach Bestätigung eine Markdown-Datei.
 // Die Meldungsansicht nennt Datei und Adresse für ein neues Issue.
 // Der Bericht des Servers kommt im Hintergrund (#874); bis dahin bleibt die IDE

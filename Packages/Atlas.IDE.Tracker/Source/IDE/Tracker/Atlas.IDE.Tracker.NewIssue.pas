@@ -81,6 +81,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
@@ -106,13 +107,13 @@ var
 
 function Labels: TAtlasNewIssueLabels;
 begin
-  Result.Location := TAtlasStrings.Text(TAtlasTextId.NewIssueLabelLocation);
-  Result.Line := TAtlasStrings.Text(TAtlasTextId.NewIssueLabelLine);
-  Result.Method := TAtlasStrings.Text(TAtlasTextId.NewIssueLabelMethod);
-  Result.Branch := TAtlasStrings.Text(TAtlasTextId.NewIssueLabelBranch);
-  Result.Commit := TAtlasStrings.Text(TAtlasTextId.NewIssueLabelCommit);
-  Result.Findings := TAtlasStrings.Text(TAtlasTextId.NewIssueLabelFindings);
-  Result.FindingsTitle := TAtlasStrings.Text(TAtlasTextId.NewIssueFindingsTitle);
+  Result.Location := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelLocation);
+  Result.Line := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelLine);
+  Result.Method := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelMethod);
+  Result.Branch := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelBranch);
+  Result.Commit := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelCommit);
+  Result.Findings := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelFindings);
+  Result.FindingsTitle := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueFindingsTitle);
 end;
 
 procedure Say(const AText: string);
@@ -242,10 +243,10 @@ begin
       TAtlasGuard.Log(cLogClipboard);
   end;
   mPage := AResult.Page;
-  mText := TAtlasStrings.Fmt(TAtlasTextId.NewIssueCreated, [AResult.Key]);
+  mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueCreated, [AResult.Key]);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cNewIssue, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle), mText,
-    [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NewIssueOpen),
+    [TAtlasNotificationCenter.Action(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueOpen),
     procedure
     begin
       OpenPage(mPage);
@@ -445,7 +446,7 @@ begin
   end;
   if not TAtlasNewIssuePlace.Capture(mPlace, mContext) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NewIssueNoEditor));
+    Say(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoEditor));
     Exit;
   end;
   mProject := TAtlasIdeTeamFile.ActiveProject;

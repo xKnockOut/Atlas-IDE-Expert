@@ -512,7 +512,7 @@ end;
 
 procedure TUnresolvedNamesTests.KnowsMembersOfStrictNestedTypes;
 begin
-  // Code-Review F-02: Der Kopf TAussen.TInnen.Lauf wurde mit den Sichtbarkeitsregeln des Rumpfs aufgelöst;
+  // Der Kopf TAussen.TInnen.Lauf wurde mit den Sichtbarkeitsregeln des Rumpfs aufgelöst;
   // für TInnen in strict private fragte IsVisible nach der Klasse der Methode, die gerade ermittelt wurde,
   // und die Rekursion lief bis zum Stapelüberlauf. Jetzt gilt der Pfad im Kopf unabhängig von der
   // Sichtbarkeit, und die strict-Mitglieder sind im eigenen Rumpf bekannt.

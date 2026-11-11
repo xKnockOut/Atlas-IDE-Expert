@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Foundation.EditorSnapshot;
 
-// Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints (P-04):
+// Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints:
 // Beide Zeitgeber fragten bisher je Takt den ganzen Puffer ab und verglichen
 // den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
@@ -39,13 +39,13 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
   DockForm,
   Atlas.Core.Editor.SnapshotPolicy,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   TEntry = record
@@ -147,7 +147,7 @@ var
   mEntry: TEntry;
   mLines: Integer;
   mModified: Boolean;
-  mStamp: Cardinal;
+  mStamp: UInt64;
 begin
   mBuffer := AView.Buffer;
   Result.FileName := mBuffer.FileName;
@@ -158,7 +158,7 @@ begin
   end;
   mLines := mBuffer.GetLinesInBuffer;
   mModified := mBuffer.GetModified;
-  mStamp := GetTickCount;
+  mStamp := TAtlasTicks.Now;
   if TAtlasSnapshotPolicy.MustRead(mEntry.State, mLines, mModified, mStamp) then
   begin
     mText := TAtlasEditorBuffer.Text(mBuffer);

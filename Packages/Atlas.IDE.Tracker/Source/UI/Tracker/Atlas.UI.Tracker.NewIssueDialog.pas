@@ -194,7 +194,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 const
   cGap = 8;
@@ -359,17 +359,17 @@ end;
 
 procedure TAtlasNewIssueParts.CreateRows;
 begin
-  FTracker := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssueTracker), csDropDownList);
+  FTracker := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueTracker), csDropDownList);
   FProject := TEdit.Create(FForm);
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueProject), FProject, cRowHeight);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueProject), FProject, cRowHeight);
   FTitle := TEdit.Create(FForm);
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueSummary), FTitle, cRowHeight);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueSummary), FTitle, cRowHeight);
   FDescription := TMemo.Create(FForm);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueDescription), FDescription, cMemoHeight);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueDescription), FDescription, cMemoHeight);
   FIncludeCode := TCheckBox.Create(FForm);
-  FIncludeCode.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueIncludeCode);
+  FIncludeCode.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueIncludeCode);
   AddRow('', FIncludeCode, cCheckHeight);
   FCode := TMemo.Create(FForm);
   FCode.ScrollBars := ssBoth;
@@ -377,9 +377,9 @@ begin
   FCode.WantReturns := True;
   FCode.Font.Name := cCodeFontName;
   AddRow('', FCode, cMemoHeight);
-  FType := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssueType), csDropDown);
-  FPriority := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssuePriority), csDropDown);
-  FAssignee := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssueAssignee), csDropDown);
+  FType := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueType), csDropDown);
+  FPriority := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssuePriority), csDropDown);
+  FAssignee := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueAssignee), csDropDown);
 end;
 
 procedure TAtlasNewIssueParts.CreateOptions;
@@ -397,13 +397,13 @@ begin
   FAssignToMe.Left := Scaled(cGap + cLabelWidth);
   FAssignToMe.Top := Scaled(cControlTop);
   FAssignToMe.Width := Scaled(cAssignToMeWidth);
-  FAssignToMe.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueAssignToMe);
+  FAssignToMe.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueAssignToMe);
   FStartNow := TCheckBox.Create(FForm);
   FStartNow.Parent := mOptions;
   FStartNow.Left := FAssignToMe.Left + FAssignToMe.Width + Scaled(cGap);
   FStartNow.Top := Scaled(cControlTop);
   FStartNow.Width := Scaled(cStartNowWidth);
-  FStartNow.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueStartNow);
+  FStartNow.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueStartNow);
 end;
 
 procedure TAtlasNewIssueParts.CreateStatus;
@@ -428,10 +428,10 @@ begin
   mBottom.Align := alBottom;
   mBottom.Height := Scaled(cBottomHeight);
   mBottom.BevelOuter := bvNone;
-  FCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.NewIssueCancel));
+  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueCancel));
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - Scaled(cGap);
-  FCreate := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.NewIssueCreate));
+  FCreate := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueCreate));
   FCreate.Left := FCancel.Left - FCreate.Width - Scaled(cGap);
   // Kein Default-Knopf: Enter in der Beschreibung ist ein Zeilenumbruch, nie ein Senden.
   FForm.ClientHeight := FStatus.Top + Scaled(cStatusSpace) + mBottom.Height;
@@ -500,7 +500,7 @@ begin
   FLink := TAtlasNewIssueLink.Create;
   FLink.Dialog := Self;
   FLinkRef := FLink;
-  Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueDialogTitle);
+  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueDialogTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -633,7 +633,7 @@ begin
   FParts.AssigneeBox.Enabled := not FParts.AssignToMeBox.Checked;
   if not FSending and (Length(FSetup.Trackers) = 0) then
   begin
-    FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTracker);
+    FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoTracker);
   end;
 end;
 
@@ -665,7 +665,7 @@ begin
   mTicket := FLoadTicket;
   mLinkRef := FLinkRef;
   mLink := FLink;
-  FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoading);
+  FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLoading);
   FOnLoad(mTarget,
     procedure(const AFields: TAtlasNewIssueFields; ALoaded: Boolean)
     begin
@@ -692,7 +692,7 @@ begin
   end
   else
   begin
-    FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoadFailed);
+    FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLoadFailed);
   end;
 end;
 
@@ -708,11 +708,11 @@ begin
   end;
   if Trim(FParts.TitleEdit.Text) = '' then
   begin
-    FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTitle);
+    FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoTitle);
     Exit;
   end;
   FSending := True;
-  FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueSending);
+  FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueSending);
   Changed(Sender);
   mLinkRef := FLinkRef;
   mLink := FLink;
@@ -747,23 +747,23 @@ class function TAtlasNewIssueDialog.ResultText(const AResult: TAtlasNewIssueResu
 begin
   case AResult.Outcome of
     TAtlasNewIssueOutcome.Created:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.NewIssueCreated, [AResult.Key]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueCreated, [AResult.Key]);
     TAtlasNewIssueOutcome.NoToken:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.NewIssueNoToken, [AServer]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueNoToken, [AServer]);
     TAtlasNewIssueOutcome.NotConfigured:
-      Result := TAtlasStrings.Text(TAtlasTextId.NewIssueNotConfigured);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNotConfigured);
     TAtlasNewIssueOutcome.Rejected:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.NewIssueRejected, [AResult.HttpStatus]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueRejected, [AResult.HttpStatus]);
     TAtlasNewIssueOutcome.ProjectUnknown:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.NewIssueProjectUnknown, [AProject]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueProjectUnknown, [AProject]);
     TAtlasNewIssueOutcome.Invalid:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.NewIssueInvalid, [AResult.TrackerMessage]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueInvalid, [AResult.TrackerMessage]);
     TAtlasNewIssueOutcome.Unreadable:
-      Result := TAtlasStrings.Text(TAtlasTextId.NewIssueUnreadable);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueUnreadable);
     TAtlasNewIssueOutcome.ServerError:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.NewIssueServerError, [AResult.HttpStatus]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueServerError, [AResult.HttpStatus]);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.NewIssueUnreachable);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueUnreachable);
   end;
 end;
 

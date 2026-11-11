@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.VersionControl.Strings;
 
 // Oberflächentexte des Moduls Versionsverwaltung (Seite Versionsverwaltung, Branch anlegen, Arbeitskopien,
-// Änderungsmarken und Zeilenhistorie) auf Deutsch und Englisch (#1905, ADR 0017). Die Sprache bestimmt Base
+// Änderungsmarken und Zeilenhistorie) auf Deutsch und Englisch (#1905). Die Sprache bestimmt Base
 // (`TAtlasStrings.Language`); jeder Aufruf liest sie neu. Texte, die auch Base oder andere Module nutzen, bleiben in
 // `Atlas.UI.Strings`.
 

@@ -15,7 +15,7 @@ type
     procedure EditorConfigOverridesEditor;
     [Test]
     procedure ConfiguredKeysOverrideEditorConfig;
-    /// <summary>Code-Review A-06: Abgebrochen, bevor Schnellbefehle Projekt und Platte ändern.</summary>
+    /// <summary>Abgebrochen, bevor Schnellbefehle Projekt und Platte ändern.</summary>
     [Test]
     procedure OnTypeStopsBeforeSlashCommandsWhenCancelled;
     [Test]

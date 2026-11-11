@@ -135,7 +135,7 @@ begin
     SameText(ANode.Name, AName);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (Bericht M1).
+/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (tiefe Bäume sprengen den Stapel nicht).
 /// </summary>
 function IsQualifiedName(ANode: TSyntaxNode): Boolean;
 var
@@ -155,7 +155,7 @@ begin
   Result := TConditionalBranches.PathAt(APaths, TokenFrom(ATokens, ANode.StartOffset));
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure CollectNodes(ARoot: TSyntaxNode; AOwnRoutineOnly: Boolean; AList: TList<TSyntaxNode>);
 var
   mPending: TStack<TSyntaxNode>;
@@ -219,7 +219,7 @@ begin
   end;
 end;
 
-/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (Bericht M1).</summary>
+/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
 function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mPending: TStack<TSyntaxNode>;
@@ -357,7 +357,7 @@ var
       MatchText(ACallee[0].Name, cDialogServices);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

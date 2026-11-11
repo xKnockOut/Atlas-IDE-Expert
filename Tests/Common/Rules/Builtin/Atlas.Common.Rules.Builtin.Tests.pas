@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Tests;
 
-// Tests für alle eingebauten Regeln zusammen (Bericht M1): Sie laufen auch
+// Tests für alle eingebauten Regeln zusammen: Sie laufen auch
 // auf sehr tiefen Syntaxbäumen ohne Stapelüberlauf. Tiefe Bäume entstehen aus
 // langen Ketten wie 1 - 1 - … - 1, die der Parser linkslastig baut. Die Kette
 // steht an vielen Stellen einer Unit (Thread-Klasse, case, try, anonyme

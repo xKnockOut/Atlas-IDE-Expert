@@ -64,13 +64,13 @@ type
     [Test]
     procedure ServiceSharesLibraryCache;
     /// <summary>Ergänzt ein anderer Schreiber den Bibliotheks-Cache, nachdem dieser Aufbau ihn gelesen hat,
-    /// bleiben dessen Units erhalten (Bericht N1).</summary>
+    /// bleiben dessen Units erhalten.</summary>
     [Test]
     procedure ServiceKeepsLibraryUnitsOfOtherWriters;
     /// <summary>Hält ein anderer die Schreibsperre des Bibliotheks-Caches, wartet der Aufbau darauf.</summary>
     [Test]
     procedure ServiceWaitsForLibraryWriteLock;
-    /// <summary>Ein nicht geschriebener Cache wird gemeldet statt verschluckt (Bericht N1).</summary>
+    /// <summary>Ein nicht geschriebener Cache wird gemeldet statt verschluckt.</summary>
     [Test]
     procedure ServiceReportsUnwrittenCache;
     /// <summary>Rückmeldung 22.10.2026 (3 GB bei acht Projekten): Projekte, die zusammen aufbauen, schreiben
@@ -93,7 +93,7 @@ type
     procedure ReadsInstallationUnitsWithoutProjectDefines;
     [Test]
     procedure ServiceWritesCacheAfterProjectStage;
-    /// <summary>Code-Review A-04: Fehler im Aufbau gehen genau einmal an OnError.</summary>
+    /// <summary>Fehler im Aufbau gehen genau einmal an OnError.</summary>
     [Test]
     procedure ServiceReportsCacheWriteFailureOnce;
     [Test]

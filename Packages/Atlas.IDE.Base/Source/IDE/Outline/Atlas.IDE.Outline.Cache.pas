@@ -9,17 +9,17 @@
 // vorher Knoten gab (Syntaxfehler), bleibt der letzte gültige Stand. Die
 // letzten Dateien bleiben gemerkt, ein Wechsel zurück fragt nicht neu.
 // Antwortet der Server nicht rechtzeitig (ELspClientError), ist das kein
-// Fehler des Aufrufers: Der alte Stand bleibt, später neu versuchen. Früher
-// lief die Ausnahme bis in den Takt von Brotkrumen und mitlaufendem Kopf und
-// zählte dort für die Absturzsicherung.
+// Fehler des Aufrufers: Der alte Stand bleibt, später neu versuchen. Die
+// Ausnahme darf nicht bis in den Takt von Brotkrumen und mitlaufendem Kopf
+// laufen, sonst zählte sie dort für die Absturzsicherung.
 // Während einer Abfrage (Sitzung holen, Server starten, auf documentSymbol
 // warten) kann der Manager alle Stände vergessen oder ein weiterer Takt
 // einsteigen; Entfernen und Leeren hält TAtlasOutlineLoadGuard bis zum Ende
 // der Abfrage zurück, damit der ladende Eintrag gültig bleibt.
 // documentSymbol selbst läuft im Hintergrund (TAtlasBackgroundRequest),
 // höchstens eine Anfrage zugleich; die Antwort gilt nur für den Eintrag und
-// die Version, für die gefragt wurde. Früher wartete der Hauptthread bis zu
-// 2 s (2.0-stable: „keine Antwort vom Server“ bei jedem Reiterwechsel).
+// die Version, für die gefragt wurde. Der Hauptthread wartet nie auf die
+// Antwort, sonst hinge jeder Reiterwechsel bis zur Zeitgrenze.
 // Mit WithInterfaces holt derselbe Abruf danach atlas.server.interfaceMethods
 // (#1785, Interface-Marke der Brotkrumen); ohne Antwort (älterer Server,
 // Zeitgrenze) bleibt die Liste leer, die Gliederung gilt trotzdem. Wird die

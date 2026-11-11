@@ -816,7 +816,7 @@ begin
     not TConditionalBranches.Exclusive(PathOf(AOther), PathOf(AMember));
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TPublishedScan.Visit(ARoot: TSyntaxNode);
 var
   mPending: TStack<TSyntaxNode>;
@@ -854,7 +854,7 @@ begin
 end;
 
 /// <summary>Bindet die Unit System.Types oder Winapi.Windows ein (TPoint, TRect, TPointF ...)? Die Rekursion
-/// geht nur über Abschnitt, uses und Unit (feste Tiefe) und bleibt deshalb (Bericht M1).</summary>
+/// geht nur über Abschnitt, uses und Unit (feste Tiefe) und bleibt deshalb.</summary>
 function TPublishedScan.FindTypesUnit(ANode: TSyntaxNode): Boolean;
 var
   mIndex: Integer;

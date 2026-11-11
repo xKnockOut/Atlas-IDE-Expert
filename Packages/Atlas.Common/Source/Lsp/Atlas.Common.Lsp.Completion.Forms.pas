@@ -2,7 +2,7 @@
 
 // Vervollständigung aus der Formulardatei: Komponenten des Formulars (#455), "Sender." in Ereignisbehandlern
 // (#480) und Feld- bzw. Parameternamen in FieldByName und Verwandten (#461). Dazu der Zugriff auf die
-// Formulare mit und ohne Zwischenspeicher (Code-Review P-06). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// Formulare mit und ohne Zwischenspeicher. Aus Atlas.Common.Lsp.Completion herausgelöst.
 
 interface
 
@@ -112,8 +112,8 @@ begin
   Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
 end;
 
-/// <summary>Innerste Routine aus AUnit (aus dem Baum), deren Bereich APosition enthält (Code-Review P-06,
-/// P-11); lokale Prozeduren stehen nicht im Index, daher ist das die umgebende Methode bzw. Routine.</summary>
+/// <summary>Innerste Routine aus AUnit (aus dem Baum), deren Bereich APosition enthält; lokale Prozeduren
+/// stehen nicht im Index, daher ist das die umgebende Methode bzw. Routine.</summary>
 function RoutineAt(const AUnit: TUnitIndex; const APosition: TTextPosition; out ARoutine: TIndexSymbol): Boolean;
 var
   mSymbol: TIndexSymbol;
@@ -150,7 +150,7 @@ begin
   end;
 end;
 
-/// <summary>Stand der Formulardatei (Code-Review P-06): Offene Formulare (Designer) über ihren Text – die
+/// <summary>Stand der Formulardatei: Offene Formulare (Designer) über ihren Text – die
 /// Versionsnummer beginnt nach Schließen und erneutem Öffnen wieder vorn –, Dateien auf der Platte über die
 /// Dateizeit; '' ohne Stand. False, wenn sich ein offenes Formular nicht lesen lässt.</summary>
 function FormStamp(const ASource: TFormSource; const AFormFile: string; out AFormText, AStamp: string): Boolean;
@@ -281,7 +281,7 @@ begin
   end;
   AContext := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position);
   // Komponenten gibt es nur in Routinen (Methoden der Formularklasse): außerhalb das Formular gar nicht
-  // erst lesen (Code-Review P-06).
+  // erst lesen.
   Result := (AContext.Kind = TCompletionContextKind.Scope) and
     RoutineAt(ARequest.UnitIndex, ARequest.Position, mRoutine) and AForms(ARequest.FileName, ARequest.Text, AForm);
 end;
@@ -364,7 +364,7 @@ begin
 end;
 
 /// <summary>Kopf der umgebenden Methode "procedure TForm1.btnAnyClick(Sender: TObject);" oberhalb des Cursors:
-/// aus dem Index (Code-Review P-11); nur ohne passende Methode dort Zeile für Zeile nach oben.</summary>
+/// aus dem Index; nur ohne passende Methode dort Zeile für Zeile nach oben.</summary>
 function SenderHeader(ARequest: TCompletionRequest; const ALines: TArray<string>; out AHeaderLine: Integer;
   out AMethodName: string): Boolean;
 var
@@ -559,7 +559,7 @@ begin
       mByType := MatchScore(mComponent.Name, mContext.Prefix, ARequest.Matching) = TFuzzyMatch.cNoMatch;
       if not mByType or MatchesByType(ARequest, mAncestors, mComponent.TypeName, mContext.Prefix) then
       begin
-        // Liste statt AItems := AItems + [...] (Code-Review P-08).
+        // Liste statt AItems := AItems + [...].
         mItems.Add(ComponentItem(ARequest, mForm, mComponent, mContext.Prefix, mByType));
       end;
     end;
@@ -591,7 +591,7 @@ begin
   begin
     Exit;
   end;
-  // Muster je Aufruf übersetzen (Code-Review P-11); lokal, weil die Vervollständigung nebenläufig läuft.
+  // Muster je Aufruf übersetzen; lokal, weil die Vervollständigung nebenläufig läuft.
   mSenderParam := TRegEx.Create('\b(Sender\s*:\s*)TObject\b', [roIgnoreCase]);
   mParamLine := SenderParamLine(mLines, mHeaderLine, ARequest.Position.Line, mSenderParam);
   if (mParamLine < 0) or not AForms(ARequest.FileName, ARequest.Text, mForm) or

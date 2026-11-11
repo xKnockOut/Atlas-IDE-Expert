@@ -202,7 +202,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Der Lauf geht auch durch lange Ausdrucksketten.
   Result := ABlock.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -215,7 +215,7 @@ var
   mKind: TSyntaxKind;
 begin
   mKind := AKind;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -374,7 +374,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -404,7 +404,7 @@ var
   E: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := nil;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -466,7 +466,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := nil;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -504,7 +504,7 @@ var
   E: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := nil;
   if AClass = nil then
   begin
@@ -592,7 +592,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ARoutine.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin

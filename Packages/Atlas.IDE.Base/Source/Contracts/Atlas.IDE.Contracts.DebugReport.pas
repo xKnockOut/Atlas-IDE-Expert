@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.DebugReport;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 6): Ein Modul, das eine
+// Vertrag zwischen Modulen (#1455, Modulregel 6): Ein Modul, das eine
 // Debug-Sitzung kennt (der Debugger), stellt über seinen Scope eine
 // IAtlasDebugReportSource bereit; andere Module (der Tracker für „An Issue
 // anhängen …“, #1276) fragen sie über die Registry und kommen ohne

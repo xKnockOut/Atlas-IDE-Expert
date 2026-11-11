@@ -95,7 +95,9 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  System.Math,
+  Atlas.Text.Json;
 
 { TAtlasTip }
 
@@ -137,38 +139,6 @@ end;
 
 { JSON-Helfer }
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else if mValue is TJSONString then
-  begin
-    Result := StrToIntDef(TJSONString(mValue).Value, 0);
-  end;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
 function ListOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mValue, mItem: TJSONValue;
@@ -202,23 +172,23 @@ end;
 function TipOf(AItem: TJSONObject): TAtlasTip;
 begin
   Result := Default(TAtlasTip);
-  Result.Command := TextOf(AItem, 'command');
-  Result.Id := TextOf(AItem, 'id');
+  Result.Command := TJsonRead.TrimmedText(AItem, 'command');
+  Result.Id := TJsonRead.TrimmedText(AItem, 'id');
   if Result.Id = '' then
   begin
     Result.Id := Result.Command;
   end;
   Result.Usage := ListOf(AItem, 'usage');
-  Result.Setting := TextOf(AItem, 'setting');
-  Result.TryCommand := TextOf(AItem, 'try');
-  Result.Title := TextOf(AItem, 'title');
-  Result.TitleEn := TextOf(AItem, 'titleEn');
-  Result.Text := TextOf(AItem, 'text');
-  Result.TextEn := TextOf(AItem, 'textEn');
-  Result.Image := TextOf(AItem, 'image');
-  Result.Sample := TextOf(AItem, 'sample');
-  Result.Line := NumberOf(AItem, 'line');
-  Result.Column := NumberOf(AItem, 'column');
+  Result.Setting := TJsonRead.TrimmedText(AItem, 'setting');
+  Result.TryCommand := TJsonRead.TrimmedText(AItem, 'try');
+  Result.Title := TJsonRead.TrimmedText(AItem, 'title');
+  Result.TitleEn := TJsonRead.TrimmedText(AItem, 'titleEn');
+  Result.Text := TJsonRead.TrimmedText(AItem, 'text');
+  Result.TextEn := TJsonRead.TrimmedText(AItem, 'textEn');
+  Result.Image := TJsonRead.TrimmedText(AItem, 'image');
+  Result.Sample := TJsonRead.TrimmedText(AItem, 'sample');
+  Result.Line := Max(0, TJsonRead.Int(AItem, 'line'));
+  Result.Column := Max(0, TJsonRead.Int(AItem, 'column'));
 end;
 
 class function TAtlasTipCatalog.Parse(const AJson: string): TAtlasTips;

@@ -168,7 +168,7 @@ var
 begin
   mRoot := ANode;
   mPosition := APosition;
-  // Iterativ (Bericht M1): Der Weg zur Position kann durch lange Ausdrucksketten führen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Der Weg zur Position kann durch lange Ausdrucksketten führen.
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -597,7 +597,7 @@ var
   mEntry: TFinallyEntry;
   mInFinally: Boolean;
 begin
-  // Iterativ (Bericht M1) mit eigenem Stapel; die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die der
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht) mit eigenem Stapel; die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die der
   // früheren Rekursion bleibt.
   mPending := TStack<TFinallyEntry>.Create;
   try
@@ -738,7 +738,7 @@ function EndsWithOpenIf(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  // Iterativ (Bericht M1): am letzten Kind entlang, z. B. durch lange else-if-Ketten.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): am letzten Kind entlang, z. B. durch lange else-if-Ketten.
   Result := False;
   mNode := ANode;
   while mNode <> nil do
@@ -888,7 +888,7 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mReport := AReport;
-  // Iterativ (Bericht M1): Jeder Knoten prüft seine Kinder; die Treffer sortiert die Engine nach Position.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Jeder Knoten prüft seine Kinder; die Treffer sortiert die Engine nach Position.
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
@@ -915,7 +915,7 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mReport := AReport;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -1126,7 +1126,7 @@ var
     mParent, mChild, mNext: TSyntaxNode;
     mIndex, mItem: Integer;
   begin
-    // Iterativ (Bericht M1): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere Rekursion.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere Rekursion.
     mParents := TStack<TSyntaxNode>.Create;
     mIndexes := TStack<Integer>.Create;
     try
@@ -1330,7 +1330,7 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);
@@ -1523,7 +1523,7 @@ var
     mInBody: Boolean;
     mIndex: Integer;
   begin
-    // Iterativ (Bericht M1); InBodies führt AInBody je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); InBodies führt AInBody je Knoten mit.
     mPending := TStack<TSyntaxNode>.Create;
     mInBodies := TStack<Boolean>.Create;
     try

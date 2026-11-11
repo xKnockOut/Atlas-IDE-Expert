@@ -10,7 +10,7 @@
 // Der Wächter arbeitet im Hauptthread nur die Antwort auf die Messnachricht.
 // Gemessen wird erst, wenn die Nachrichtenschleife nach dem Laden frei ist;
 // das Laden der übrigen Packages beim Start ist kein Hänger (die Startzeit
-// samt Anteilen von Atlas meldet die Composition, Bericht N4). Ebenso das
+// samt Anteilen von Atlas meldet die Composition). Ebenso das
 // Beenden: ohne sichtbares Hauptfenster oder nach Application.Terminate wird
 // nichts gemeldet.
 
@@ -32,7 +32,8 @@ type
     cWM_ATLAS_PING = WM_APP + $4A1;
     cWM_ATLAS_STARTUP = WM_APP + $4A2;
     cPeriodMs = 100;
-    cStackWords = 4096;
+    // 512 KB unter x64: Ruft Atlas eine lange Arbeit der IDE auf, liegt sein Rahmen tief (#1989).
+    cStackWords = 65536;
   private type
     TWatchThread = class(TThread)
     private
@@ -105,7 +106,7 @@ begin
     begin
       Result := True;
       AHang.At := Now;
-      AHang.Activity := TAtlasActivity.Current;
+      AHang.Activity := TAtlasActivity.Running;
       AHang.Window := ForegroundWindowText;
       FOwner.Capture;
     end;
@@ -164,11 +165,19 @@ begin
   mAddresses := AAddresses;
   Queue(
     procedure
+    var
+      mModules: TArray<TAtlasModuleRange>;
     begin
       // Module erst jetzt im Hauptthread: Die Ladersperre ist frei.
       // Rahmen im Atlas-Modul mit Unit, Routine und Zeile, wenn die Map-Datei neben der BPL liegt.
-      mHang.Frames := TAtlasIdeStackCapture.Symbolize(TAtlasStackScan.Frames(mAddresses,
-        TAtlasIdeStackCapture.Modules));
+      mModules := TAtlasIdeStackCapture.Modules;
+      mHang.Frames := TAtlasIdeStackCapture.Symbolize(TAtlasStackScan.Frames(mAddresses, mModules));
+      // Ob Atlas beteiligt ist, entscheidet der ganze Abzug, nicht nur die angezeigten Rahmen.
+      mHang.AtlasFrame := TAtlasStackScan.FirstIn(mAddresses, mModules, 'Atlas');
+      if mHang.AtlasFrame <> '' then
+      begin
+        mHang.AtlasFrame := TAtlasIdeStackCapture.Symbolize([mHang.AtlasFrame])[0];
+      end;
       if Assigned(FOwner.FOnHang) then
       begin
         FOwner.FOnHang(mHang);

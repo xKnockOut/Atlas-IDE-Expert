@@ -292,7 +292,7 @@ begin
   mIdentity.Client := FServices.ClientName();
   Result.Setup.ProcessIdentity := mIdentity;
   // Ordner entstehen in der Nachrichtenschleife (initialized, didChangeWorkspaceFolders, didOpen):
-  // Reload ist nur dort erlaubt (Code-Review A-03).
+  // Reload ist nur dort erlaubt.
   Result.Setup.LoopThreadId := TThread.Current.ThreadID;
 end;
 
@@ -456,7 +456,7 @@ begin
     Result := False;
     for mWorkspace in mTargets do
     begin
-      // Abgebrochene Anfrage (Watchdog, $/cancelRequest): keine weitere Unit parsen (Code-Review A-06).
+      // Abgebrochene Anfrage (Watchdog, $/cancelRequest): keine weitere Unit parsen.
       TJsonRpcCurrentRequest.ThrowIfCancellationRequested;
       if mWorkspace.EnsureUnit(AUnitName) then
       begin

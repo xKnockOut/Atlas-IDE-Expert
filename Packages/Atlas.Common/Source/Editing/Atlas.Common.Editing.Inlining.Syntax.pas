@@ -124,7 +124,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1); wie früher die Kinder vor dem Knoten selbst.
+  // Eigener Stapel statt Rekursion; wie früher die Kinder vor dem Knoten selbst.
   Result := nil;
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
@@ -173,7 +173,7 @@ class function TInlineSyntax.RoutineContaining(ANode: TSyntaxNode; AOffset: Inte
 var
   mNode: TSyntaxNode;
 begin
-  // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das AOffset enthält; die letzte Routine
+  // Schleife statt Rekursion: dem ersten Kind folgen, das AOffset enthält; die letzte Routine
   // auf dem Weg ist die innerste.
   Result := nil;
   mNode := ChildContaining(ANode, AOffset);
@@ -204,7 +204,7 @@ var
   mNode: TSyntaxNode;
   mCount, mIndex: Integer;
 begin
-  // Schleife statt Rekursion (Bericht M1).
+  // Schleife statt Rekursion.
   mCount := 0;
   mNode := ANode;
   while mNode.Kind = TSyntaxKind.MemberAccess do
@@ -426,7 +426,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin

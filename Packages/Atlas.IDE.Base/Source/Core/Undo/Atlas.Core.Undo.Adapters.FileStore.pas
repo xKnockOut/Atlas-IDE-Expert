@@ -5,7 +5,7 @@
 // set-<Kennung>.json mit Aktion, Zeit und je Datei Art, Projekt, Zustand und
 // den Inhalten vorher und nachher samt Kodierung. Geschrieben wird erst in
 // eine Nachbardatei, die dann die alte atomar ersetzt (TAtlasTextFile.Replace;
-// früher Löschen und Umbenennen, Bericht N3). Ein unlesbarer Satz wird beim
+// früher Löschen und Umbenennen). Ein unlesbarer Satz wird beim
 // Laden übergangen und nicht als .defekt beiseitegelegt: Er ließe sich ohnehin
 // nicht anwenden, und Shrink räumt ihn mit den ältesten weg. Nach jedem
 // Sichern fallen die ältesten Sätze weg, bis alle zusammen höchstens
@@ -310,7 +310,7 @@ begin
   Result := nil;
   for mFileName in SetFiles do
   begin
-    // Nicht lesbare oder kaputte Datei: überspringen (siehe Kopf). Lesen teilt Löschen (Bericht M5).
+    // Nicht lesbare oder kaputte Datei: überspringen (siehe Kopf). Lesen teilt Löschen.
     mValue := ReadSet(mFileName);
     try
       if FromJson(mValue, mChangeSet) then

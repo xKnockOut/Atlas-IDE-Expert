@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.VersionControl.Composition;
 
-// Modul Versionsverwaltung (#1891, ADR 0017): einzige Unit, die die Umsetzungen
+// Modul Versionsverwaltung (#1891): einzige Unit, die die Umsetzungen
 // für Git und SVN (Prozessläufer, Auswahl, Anbieter) mit dem Dienst der IDE
 // (TAtlasIdeVcsCore) verbindet. Sie meldet in ihrer Initialisierung das Modul
 // „atlas.vcs“ (Modulschalter vcs) bei der Registry von Base an und stellt über
@@ -382,7 +382,7 @@ end;
 procedure TAtlasVcsAppliesSettings.ApplySettings;
 begin
   TAtlasIdeVcs.Reload;
-  // Änderungsmarken (#507, seit #1905 im Modul): nur, solange der Teil läuft.
+  // Änderungsmarken (#507): nur, solange der Teil läuft.
   if GStarted then
   begin
     TAtlasIdeLineChanges.ApplySettings;

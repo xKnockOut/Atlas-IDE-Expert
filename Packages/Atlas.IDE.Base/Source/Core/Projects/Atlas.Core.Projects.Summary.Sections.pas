@@ -180,7 +180,8 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.Math,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Core.Projects.Summary.Json,
+  Atlas.Text.Json;
 
 const
   cSetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
@@ -228,12 +229,12 @@ begin
     begin
       Continue;
     end;
-    mFinding.Name := TextOf(TJSONObject(mItem), 'name');
-    mFinding.FileName := TextOf(TJSONObject(mItem), 'file');
-    mFinding.Line := NumberOf(TJSONObject(mItem), 'line', 0);
-    mFinding.Count := NumberOf(TJSONObject(mItem), 'count', 1);
-    mFinding.Uncertain := FlagOf(TJSONObject(mItem), 'uncertain');
-    mFinding.Note := TextOf(TJSONObject(mItem), 'note');
+    mFinding.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
+    mFinding.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
+    mFinding.Line := TJsonRead.IntOr(TJSONObject(mItem), 'line', 0);
+    mFinding.Count := TJsonRead.IntOr(TJSONObject(mItem), 'count', 1);
+    mFinding.Uncertain := TJsonRead.Flag(TJSONObject(mItem), 'uncertain');
+    mFinding.Note := TJsonRead.Text(TJSONObject(mItem), 'note');
     mFinding.Project := '';
     if (mFinding.Name <> '') and (Length(Result) < TAtlasProjectSetup.cMaxFindings) then
     begin
@@ -310,38 +311,38 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.Dismissed := FlagOf(ASection, 'dismissed');
-  Result.DismissedAt := SummaryTimeOf(TextOf(ASection, 'dismissedAt'));
-  mPaths := ObjectOf(ASection, 'paths');
+  Result.Dismissed := TJsonRead.Flag(ASection, 'dismissed');
+  Result.DismissedAt := SummaryTimeOf(TJsonRead.Text(ASection, 'dismissedAt'));
+  mPaths := TJsonRead.Obj(ASection, 'paths');
   if mPaths = nil then
   begin
     Exit;
   end;
   Result.Checked := True;
-  Result.CheckedAt := SummaryTimeOf(TextOf(mPaths, 'at'));
-  Result.Files := NumberOf(mPaths, 'files', 0);
-  Result.Unreadable := NumberOf(mPaths, 'unreadable', 0);
+  Result.CheckedAt := SummaryTimeOf(TJsonRead.Text(mPaths, 'at'));
+  Result.Files := TJsonRead.IntOr(mPaths, 'files', 0);
+  Result.Unreadable := TJsonRead.IntOr(mPaths, 'unreadable', 0);
   Result.MissingUnits := SetupFindingsOf(mPaths.GetValue('units'));
   Result.UndefinedDefines := SetupFindingsOf(mPaths.GetValue('defines'));
   Result.Hints := SetupFindingsOf(mPaths.GetValue('hints'));
   // Die Zähler sind nie kleiner als die gespeicherten Funde.
-  Result.MissingUnitCount := NumberOf(mPaths, 'missingUnits', 0);
+  Result.MissingUnitCount := TJsonRead.IntOr(mPaths, 'missingUnits', 0);
   if Result.MissingUnitCount < Length(Result.MissingUnits) then
   begin
     Result.MissingUnitCount := Length(Result.MissingUnits);
   end;
-  Result.UndefinedDefineCount := NumberOf(mPaths, 'undefinedDefines', 0);
+  Result.UndefinedDefineCount := TJsonRead.IntOr(mPaths, 'undefinedDefines', 0);
   if Result.UndefinedDefineCount < Length(Result.UndefinedDefines) then
   begin
     Result.UndefinedDefineCount := Length(Result.UndefinedDefines);
   end;
   // Unsichere nie mehr als alle.
-  Result.UncertainUnitCount := NumberOf(mPaths, 'uncertainUnits', 0);
+  Result.UncertainUnitCount := TJsonRead.IntOr(mPaths, 'uncertainUnits', 0);
   if Result.UncertainUnitCount > Result.MissingUnitCount then
   begin
     Result.UncertainUnitCount := Result.MissingUnitCount;
   end;
-  Result.UncertainDefineCount := NumberOf(mPaths, 'uncertainDefines', 0);
+  Result.UncertainDefineCount := TJsonRead.IntOr(mPaths, 'uncertainDefines', 0);
   if Result.UncertainDefineCount > Result.UndefinedDefineCount then
   begin
     Result.UncertainDefineCount := Result.UndefinedDefineCount;
@@ -393,7 +394,7 @@ begin
     begin
       mPaths.AddPair('hints', SetupFindingsJson(ASetup.Hints));
     end;
-    KeepUnknown(mPaths, ObjectOf(AOriginal, 'paths'), cPathsKeys);
+    KeepUnknown(mPaths, TJsonRead.Obj(AOriginal, 'paths'), cPathsKeys);
   end;
   KeepUnknown(Result, AOriginal, cSetupKeys);
 end;
@@ -451,15 +452,15 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.At := SummaryTimeOf(TextOf(ASection, 'at'));
-  Result.Project := TextOf(ASection, 'project');
-  Result.Configuration := TextOf(ASection, 'configuration');
-  Result.Platform := TextOf(ASection, 'platform');
-  Result.Passed := NumberOf(ASection, 'passed', 0);
-  Result.Failed := NumberOf(ASection, 'failed', 0);
-  Result.Errors := NumberOf(ASection, 'errors', 0);
-  Result.Skipped := NumberOf(ASection, 'skipped', 0);
-  Result.DurationMs := NumberOf(ASection, 'durationMs', 0);
+  Result.At := SummaryTimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Project := TJsonRead.Text(ASection, 'project');
+  Result.Configuration := TJsonRead.Text(ASection, 'configuration');
+  Result.Platform := TJsonRead.Text(ASection, 'platform');
+  Result.Passed := TJsonRead.IntOr(ASection, 'passed', 0);
+  Result.Failed := TJsonRead.IntOr(ASection, 'failed', 0);
+  Result.Errors := TJsonRead.IntOr(ASection, 'errors', 0);
+  Result.Skipped := TJsonRead.IntOr(ASection, 'skipped', 0);
+  Result.DurationMs := TJsonRead.IntOr(ASection, 'durationMs', 0);
   mItems := ASection.GetValue('failures');
   if not (mItems is TJSONArray) then
   begin
@@ -472,10 +473,10 @@ begin
       Continue;
     end;
     mFailure := Default(TAtlasProjectTestFailure);
-    mFailure.Test := TextOf(TJSONObject(mItem), 'test');
-    mFailure.Message := TextOf(TJSONObject(mItem), 'message');
-    mFailure.FileName := TextOf(TJSONObject(mItem), 'file');
-    mFailure.Line := NumberOf(TJSONObject(mItem), 'line', 0);
+    mFailure.Test := TJsonRead.Text(TJSONObject(mItem), 'test');
+    mFailure.Message := TJsonRead.Text(TJSONObject(mItem), 'message');
+    mFailure.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
+    mFailure.Line := TJsonRead.IntOr(TJSONObject(mItem), 'line', 0);
     if mFailure.Test <> '' then
     begin
       Result.Failures := Result.Failures + [mFailure];
@@ -591,11 +592,11 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.CheckedAt := SummaryTimeOf(TextOf(ASection, 'checkedAt'));
-  Result.Configuration := TextOf(ASection, 'configuration');
-  Result.Platform := TextOf(ASection, 'platform');
-  Result.Findings := NumberOf(ASection, 'findings', 0);
-  Result.Blocked := FlagOf(ASection, 'blocked');
+  Result.CheckedAt := SummaryTimeOf(TJsonRead.Text(ASection, 'checkedAt'));
+  Result.Configuration := TJsonRead.Text(ASection, 'configuration');
+  Result.Platform := TJsonRead.Text(ASection, 'platform');
+  Result.Findings := TJsonRead.IntOr(ASection, 'findings', 0);
+  Result.Blocked := TJsonRead.Flag(ASection, 'blocked');
   mItems := ASection.GetValue('rules');
   if mItems is TJSONArray then
   begin
@@ -619,10 +620,10 @@ begin
       Continue;
     end;
     mBuild := Default(TAtlasProjectReleaseBuild);
-    mBuild.Configuration := TextOf(TJSONObject(mItem), 'configuration');
-    mBuild.Platform := TextOf(TJSONObject(mItem), 'platform');
-    mBuild.Version := TextOf(TJSONObject(mItem), 'version');
-    mBuild.At := SummaryTimeOf(TextOf(TJSONObject(mItem), 'at'));
+    mBuild.Configuration := TJsonRead.Text(TJSONObject(mItem), 'configuration');
+    mBuild.Platform := TJsonRead.Text(TJSONObject(mItem), 'platform');
+    mBuild.Version := TJsonRead.Text(TJSONObject(mItem), 'version');
+    mBuild.At := SummaryTimeOf(TJsonRead.Text(TJSONObject(mItem), 'at'));
     if mBuild.Configuration <> '' then
     begin
       Result.Builds := Result.Builds + [mBuild];
@@ -648,8 +649,8 @@ begin
   end;
   for mItem in TJSONArray(mItems) do
   begin
-    if (mItem is TJSONObject) and SameText(TextOf(TJSONObject(mItem), 'configuration'), AConfiguration) and
-      SameText(TextOf(TJSONObject(mItem), 'platform'), APlatform) then
+    if (mItem is TJSONObject) and SameText(TJsonRead.Text(TJSONObject(mItem), 'configuration'), AConfiguration) and
+      SameText(TJsonRead.Text(TJSONObject(mItem), 'platform'), APlatform) then
     begin
       Exit(TJSONObject(mItem));
     end;
@@ -725,26 +726,26 @@ begin
     Exit;
   end;
   Result.Known := True;
-  Result.Provider := TextOf(ASection, 'provider');
-  Result.Server := TextOf(ASection, 'server');
-  Result.Job := TextOf(ASection, 'job');
-  Result.Branch := TextOf(ASection, 'branch');
-  Result.Attempt := SummaryTimeOf(TextOf(ASection, 'attempt'));
-  Result.Error := TAtlasCiBuild.ErrorOf(TextOf(ASection, 'error'));
-  Result.At := SummaryTimeOf(TextOf(ASection, 'at'));
-  Result.Build.Number := NumberOf(ASection, 'number', 0);
+  Result.Provider := TJsonRead.Text(ASection, 'provider');
+  Result.Server := TJsonRead.Text(ASection, 'server');
+  Result.Job := TJsonRead.Text(ASection, 'job');
+  Result.Branch := TJsonRead.Text(ASection, 'branch');
+  Result.Attempt := SummaryTimeOf(TJsonRead.Text(ASection, 'attempt'));
+  Result.Error := TAtlasCiBuild.ErrorOf(TJsonRead.Text(ASection, 'error'));
+  Result.At := SummaryTimeOf(TJsonRead.Text(ASection, 'at'));
+  Result.Build.Number := TJsonRead.IntOr(ASection, 'number', 0);
   if Result.Build.Number < 0 then
   begin
     Result.Build.Number := 0;
   end;
-  Result.Build.Outcome := TAtlasCiBuild.OutcomeOf(TextOf(ASection, 'result'));
-  Result.Build.StartedUtc := SummaryTimeOf(TextOf(ASection, 'started'));
-  Result.Build.DurationMs := NumberOf(ASection, 'durationMs', 0);
+  Result.Build.Outcome := TAtlasCiBuild.OutcomeOf(TJsonRead.Text(ASection, 'result'));
+  Result.Build.StartedUtc := SummaryTimeOf(TJsonRead.Text(ASection, 'started'));
+  Result.Build.DurationMs := TJsonRead.IntOr(ASection, 'durationMs', 0);
   mItems := ASection.GetValue('failures');
   Result.Build.TestsKnown := (ASection.GetValue('passed') is TJSONNumber) or (mItems is TJSONArray);
-  Result.Build.Passed := NumberOf(ASection, 'passed', 0);
-  Result.Build.Failed := NumberOf(ASection, 'failed', 0);
-  Result.Build.Skipped := NumberOf(ASection, 'skipped', 0);
+  Result.Build.Passed := TJsonRead.IntOr(ASection, 'passed', 0);
+  Result.Build.Failed := TJsonRead.IntOr(ASection, 'failed', 0);
+  Result.Build.Skipped := TJsonRead.IntOr(ASection, 'skipped', 0);
   if not (mItems is TJSONArray) then
   begin
     Exit;
@@ -755,8 +756,8 @@ begin
     begin
       Continue;
     end;
-    mFailure.Test := TextOf(TJSONObject(mItem), 'test');
-    mFailure.Message := TextOf(TJSONObject(mItem), 'message');
+    mFailure.Test := TJsonRead.Text(TJSONObject(mItem), 'test');
+    mFailure.Message := TJsonRead.Text(TJSONObject(mItem), 'message');
     if mFailure.Test <> '' then
     begin
       Result.Build.Failures := Result.Build.Failures + [mFailure];
@@ -782,7 +783,7 @@ begin
   end;
   for mItem in TJSONArray(mItems) do
   begin
-    if (mItem is TJSONObject) and (TextOf(TJSONObject(mItem), 'test') = ATest) then
+    if (mItem is TJSONObject) and (TJsonRead.Text(TJSONObject(mItem), 'test') = ATest) then
     begin
       Exit(TJSONObject(mItem));
     end;

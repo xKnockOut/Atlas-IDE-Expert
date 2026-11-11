@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Outline.NavigationOption;
 
-// Navigationsleiste der IDE über ihre eigene Option ausblenden (Bericht M3,
-// editor.breadcrumbsHideIdeToolbar): RAD Studio hat unter Tools › Optionen ›
+// Navigationsleiste der IDE über ihre eigene Option ausblenden
+// (editor.breadcrumbsHideIdeToolbar): RAD Studio hat unter Tools › Optionen ›
 // Editor › Anzeige „Navigationssymbolleiste anzeigen“. Bisher hängte Atlas
 // die Leiste in ein eigenes Panel um, weil die IDE Visible bei jedem Reiter
 // neu setzt; das ist ein Eingriff in das Editorfenster der IDE (Hänger

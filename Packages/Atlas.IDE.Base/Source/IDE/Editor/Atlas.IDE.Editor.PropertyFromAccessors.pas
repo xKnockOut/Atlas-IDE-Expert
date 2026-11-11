@@ -34,7 +34,8 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.ServerEdit;
+  Atlas.IDE.Editor.ServerEdit,
+  Atlas.Text.Json;
 
 const
   cApplyCommand = 'atlas.server.propertyFromAccessors';
@@ -61,8 +62,8 @@ begin
     TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson, cTimeoutMs, TAtlasTextId.PropertyAccessorsFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mProperties := TAtlasIdeServerEdit.NumberOf(AReply, 'properties');
-      mCalls := TAtlasIdeServerEdit.NumberOf(AReply, 'calls');
+      mProperties := TJsonRead.Int(AReply, 'properties');
+      mCalls := TJsonRead.Int(AReply, 'calls');
     end, AMessage, mReply) then
   begin
     Exit;

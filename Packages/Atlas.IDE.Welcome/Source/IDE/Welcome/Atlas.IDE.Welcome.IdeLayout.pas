@@ -238,7 +238,7 @@ begin
   if not FileExists(mBackup) then
   begin
     try
-      // Atomar (Bericht N3): Eine halb geschriebene Sicherung verlöre das Layout vor Atlas für immer.
+      // Atomar: Eine halb geschriebene Sicherung verlöre das Layout vor Atlas für immer.
       TAtlasDataFile.Write(mBackup, TAtlasWelcomeBackup.Snapshot(FAccess, WelcomeKey));
     except
       on E: Exception do

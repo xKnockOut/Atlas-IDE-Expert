@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Tracker.TestResults;
 
-// Kachel „Testergebnisse“ in der IDE (#763; seit #1455 Kachel des Moduls
+// Kachel „Testergebnisse“ in der IDE (#763; Kachel des Moduls
 // Tracker über Atlas.IDE.Contracts.WelcomeTiles): Quelle der Kachel
 // (IAtlasTestResultsSource), Abfrage beim Build-Server im Hintergrund und die
 // Aktionen.
@@ -45,7 +45,8 @@ uses
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.TestActions,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.UI.Tracker.TestResults;
+  Atlas.UI.Tracker.TestResults,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Ein Job und die Projekte, deren Zusammenfassung sein Ergebnis bekommt.</summary>
@@ -126,7 +127,7 @@ type
     FActions: TAtlasTestResultsActions;
     FStarted: Boolean;
     FActive: Boolean;
-    FThread: TThread;
+    FWorker: TAtlasWorkerSlot;
     procedure Changed;
     procedure Report(const AText: string);
     /// <summary>Fällige Jobs; AForce ohne Intervall, AOnly nur dieses Projekt, AServer nur Jobs dieses Servers
@@ -138,7 +139,6 @@ type
     class procedure AddFetch(var AList: TArray<TAtlasTestResultsFetch>; const AItem: TAtlasTestProject); static;
     procedure Fetch(AForce: Boolean; const AOnly, AServer: string);
     procedure TurnedRed(const AProject: string; const AJob: TAtlasCiJob; const ABuild: TAtlasCiBuild);
-    procedure ReleaseThread(AWait: Boolean);
     procedure Guarded(const AProc: TProc);
   public
     /// <summary>ALink: Projekte und Kacheln der Willkommensseite (gehört dem Aufrufer). AAccess: Anbieter,
@@ -443,12 +443,13 @@ begin
   FMessage := AMessage;
   FData := TAtlasTestResultsData.Create(ALink);
   FActions := TAtlasTestResultsActions.Create(ALink, AAccess, AMessage);
+  FWorker := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeTestResults.Destroy;
 begin
   Stop;
-  ReleaseThread(True);
+  FWorker.Free;
   FActions.Free;
   FData.Free;
   inherited;
@@ -478,32 +479,12 @@ begin
   end;
   FStarted := False;
   // Die Abfrage bricht beim Abbruchsignal ab (Transport); kurz warten, dann sich selbst überlassen.
-  ReleaseThread(True);
+  FWorker.Stop(TAtlasShutdown.cStopMs);
   FLink := nil;
   FActions.Release;
   FData.FLink := nil;
 end;
 
-procedure TAtlasIdeTestResults.ReleaseThread(AWait: Boolean);
-begin
-  if FThread = nil then
-  begin
-    Exit;
-  end;
-  if AWait and not FThread.Finished then
-  begin
-    TAtlasShutdown.WaitForThreads([FThread]);
-  end;
-  if FThread.Finished then
-  begin
-    FreeAndNil(FThread);
-  end
-  else if AWait then
-  begin
-    FThread.FreeOnTerminate := True;
-    FThread := nil;
-  end;
-end;
 
 procedure TAtlasIdeTestResults.Refresh;
 begin
@@ -635,8 +616,8 @@ begin
   begin
     Exit;
   end;
-  ReleaseThread(False);
-  if FThread <> nil then
+  FWorker.Prune;
+  if FWorker.Busy then
   begin
     Exit;
   end;
@@ -654,8 +635,7 @@ begin
   mJob.Access := FAccess;
   mJob.Keep := Self;
   mJob.Owner := Self;
-  FThread := FetchThread(mJob);
-  FThread.Start;
+  FWorker.Start(FetchThread(mJob));
 end;
 
 procedure TAtlasIdeTestResults.Fetched(const AFetch: TAtlasTestResultsFetch; ASucceeded: Boolean;

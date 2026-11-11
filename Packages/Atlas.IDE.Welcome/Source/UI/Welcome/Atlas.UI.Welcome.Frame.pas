@@ -26,7 +26,7 @@ uses
   Atlas.UI.Style.Canvas;
 
 type
-  /// <summary>Zeichenfläche der Bereiche ohne Flackern; seit #1455 in Base (Atlas.UI.Style.Canvas).</summary>
+  /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.UI.Style.Canvas).</summary>
   TAtlasWelcomeCanvas = TAtlasStyledCanvas;
 
   TAtlasWelcomeFrame = class(TFrame)
