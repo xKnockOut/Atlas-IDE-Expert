@@ -1133,6 +1133,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Gaps` | `Core/Designer/Atlas.Core.Designer.Gaps.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.MultiResize` | `Core/Designer/Atlas.Core.Designer.MultiResize.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Neighbours` | `Core/Designer/Atlas.Core.Designer.Neighbours.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
@@ -1148,7 +1149,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.NearAlign` | `IDE/Designer/Atlas.IDE.Designer.NearAlign.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.FitText` | `IDE/Designer/Atlas.IDE.Designer.FitText.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.GapHandles` | `IDE/Designer/Atlas.IDE.Designer.GapHandles.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.HandleTool` | `IDE/Designer/Atlas.IDE.Designer.HandleTool.pas` | Ordner `IDE/Designer`; gemeinsamer Teil der Werkzeuge mit Griffen |
 | `Atlas.IDE.Designer.InsertSpace` | `IDE/Designer/Atlas.IDE.Designer.InsertSpace.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.MultiResize` | `IDE/Designer/Atlas.IDE.Designer.MultiResize.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Navigate` | `IDE/Designer/Atlas.IDE.Designer.Navigate.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.SearchItems` | `IDE/Designer/Atlas.IDE.Designer.SearchItems.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Select` | `IDE/Designer/Atlas.IDE.Designer.Select.pas` | Ordner `IDE/Designer` |

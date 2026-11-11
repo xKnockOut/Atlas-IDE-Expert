@@ -102,6 +102,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Gaps.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.InsertSpace.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Neighbours.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
@@ -118,7 +119,9 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Select.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.HandleTool.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.GapHandles.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.MultiResize.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Tools.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Commands.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SearchItems.pas"/>
