@@ -68,6 +68,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Text.Lines,
@@ -445,7 +446,7 @@ begin
   Result := Result and (FOpen <= High(FTokens)) and FTokens[FOpen].IsSymbol('(');
   if Result then
   begin
-    FClose := Closing(FTokens, FOpen);
+    FClose := MatchingParen(FTokens, FOpen);
     Result := FClose >= 0;
   end;
 end;

@@ -81,15 +81,11 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Files,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.FuzzyMatch;
+  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   cMaxAncestorDepth = 32;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

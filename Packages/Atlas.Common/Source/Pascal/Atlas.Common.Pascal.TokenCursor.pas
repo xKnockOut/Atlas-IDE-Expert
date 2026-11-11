@@ -48,7 +48,7 @@ type
   end;
 
 /// <summary>Kommentar oder Compileranweisung?</summary>
-function IsTrivia(const AToken: TPascalToken): Boolean; inline;
+function IsTrivia(const AToken: TPascalToken): Boolean;
 /// <summary>Ist AToken eines der Schlüsselwörter AWords (ohne Groß-/Kleinschreibung)?</summary>
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
 /// <summary>Index des ersten Tokens, das bei AOffset oder dahinter beginnt (binäre Suche, die Token sind nach

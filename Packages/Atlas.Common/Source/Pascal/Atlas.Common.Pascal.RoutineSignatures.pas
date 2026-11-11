@@ -56,6 +56,9 @@ type
     /// <summary>Typknoten des Parameters AParameter (TypeReference, ArrayType …); nil bei untypisierten
     /// Parametern.</summary>
     class function ParameterType(AParameter: TSyntaxNode): TSyntaxNode; static;
+    /// <summary>Name ohne Typparameterlisten auf jeder Ebene: "TList&lt;T&gt;.Add" ergibt "TList.Add".
+    /// </summary>
+    class function WithoutTypeParams(const AName: string): string; static;
   end;
 
 implementation
@@ -463,6 +466,32 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+class function TRoutineSignatures.WithoutTypeParams(const AName: string): string;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := '';
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
+  begin
+    if AName[mIndex] = '<' then
+    begin
+      Inc(mDepth);
+    end
+    else if AName[mIndex] = '>' then
+    begin
+      if mDepth > 0 then
+      begin
+        Dec(mDepth);
+      end;
+    end
+    else if mDepth = 0 then
+    begin
+      Result := Result + AName[mIndex];
+    end;
+  end;
 end;
 
 end.
