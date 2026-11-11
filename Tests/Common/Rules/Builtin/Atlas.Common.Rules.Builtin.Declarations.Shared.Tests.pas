@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Declarations.Shared.Tests;
 
-// Tests der gemeinsamen Hilfen der Deklarationsregeln: Token zu einem Offset, Leerraum vor und hinter einer
-// Stelle, Aufzählung und Name ohne Vorsatz.
+// Tests der gemeinsamen Hilfen der Deklarationsregeln: Leerraum vor und hinter einer Stelle,
+// Aufzählung und Name ohne Vorsatz.
 
 interface
 
@@ -12,8 +12,6 @@ type
   [TestFixture]
   TDeclarationSharedTests = class
   public
-    [Test]
-    procedure TokenAtOffsetFindsFirstTokenFromOffset;
     [Test]
     procedure BlankBeforeAndAfter;
     [Test]
@@ -26,20 +24,7 @@ implementation
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Builtin.Declarations.Shared;
-
-procedure TDeclarationSharedTests.TokenAtOffsetFindsFirstTokenFromOffset;
-var
-  mTokens: TArray<TPascalToken>;
-begin
-  mTokens := TPascalLexer.Tokenize('A := B;');
-  Assert.AreEqual(0, TokenAtOffset(mTokens, 0));
-  Assert.AreEqual(1, TokenAtOffset(mTokens, 1));
-  Assert.AreEqual('B', mTokens[TokenAtOffset(mTokens, 3)].Text);
-  Assert.AreEqual(Integer(Length(mTokens)), TokenAtOffset(mTokens, 100));
-end;
 
 procedure TDeclarationSharedTests.BlankBeforeAndAfter;
 var

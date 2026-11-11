@@ -149,10 +149,10 @@ procedure TAtlasPropertyPainterTests.EventHandlerTypes;
 var
   mSkipped: TArray<string>;
 begin
-  Assert.AreEqual(1, Length(TAtlasPropertyPainter.Match(ButtonProps, ['OnClick'],
-    [TAtlasPaintProperty.Create('OnClick', 'TNotifyEvent', True)], mSkipped)));
-  Assert.AreEqual(0, Length(TAtlasPropertyPainter.Match(ButtonProps, ['OnClick'],
-    [TAtlasPaintProperty.Create('OnClick', 'TMouseEvent', True)], mSkipped)), 'anderer Handler-Typ');
+  Assert.AreEqual(1, Integer(Length(TAtlasPropertyPainter.Match(ButtonProps, ['OnClick'],
+    [TAtlasPaintProperty.Create('OnClick', 'TNotifyEvent', True)], mSkipped))));
+  Assert.AreEqual(0, Integer(Length(TAtlasPropertyPainter.Match(ButtonProps, ['OnClick'],
+    [TAtlasPaintProperty.Create('OnClick', 'TMouseEvent', True)], mSkipped))), 'anderer Handler-Typ');
   Assert.AreEqual('OnClick', mSkipped[0]);
 end;
 

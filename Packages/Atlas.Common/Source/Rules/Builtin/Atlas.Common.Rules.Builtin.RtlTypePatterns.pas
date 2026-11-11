@@ -83,6 +83,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
@@ -280,7 +281,7 @@ begin
     begin
       if IsCallOf(mTokens, mIndex, ['Move', 'FillChar', 'ZeroMemory', 'CopyMemory', 'FillMemory'], mOpen) then
       begin
-        ReportPointerSizes(mTypes, mTokens, mOpen, Closing(mTokens, mOpen), AReport);
+        ReportPointerSizes(mTypes, mTokens, mOpen, MatchingParen(mTokens, mOpen), AReport);
       end;
     end;
   finally
