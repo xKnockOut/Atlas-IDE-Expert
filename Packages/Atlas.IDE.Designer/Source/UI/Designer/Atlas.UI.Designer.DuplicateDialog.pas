@@ -21,7 +21,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Designer.DuplicateRow;
+  Atlas.Core.Designer.DuplicateRow,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasDuplicateOptions = record
@@ -34,7 +35,7 @@ type
     Push: Boolean;
   end;
 
-  TAtlasDuplicateDialog = class(TForm)
+  TAtlasDuplicateDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 480;
     cMaxCount = 99;
@@ -84,7 +85,9 @@ implementation
 uses
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Designer.Strings;
+  Atlas.UI.Designer.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 10;
@@ -96,13 +99,7 @@ constructor TAtlasDuplicateDialog.CreateDialog(AOwner: TComponent; const AOption
 var
   mRow: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateTitle);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateTitle), cDialogWidth);
   Canvas.Font := Font;
 
   mRow := AddRow;
@@ -136,7 +133,9 @@ begin
   FPreview := AddLabel(mRow, '');
   mRow := AddRow;
   FBad := AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateBad));
-  FBad.Font.Color := clRed;
+  FBad.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FBad.StyleElements := FBad.StyleElements - [seFont];
   FBad.Visible := False;
 
   AddButtons;

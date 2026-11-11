@@ -20,7 +20,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasNameRow = record
@@ -36,7 +37,7 @@ type
   TAtlasNameDialogResult = (Cancel, Apply, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasNameDialog = class(TForm)
+  TAtlasNameDialog = class(TAtlasDialog)
   private
     FRows: TArray<TAtlasNameRow>;
     FList: TListView;
@@ -90,11 +91,10 @@ end;
 constructor TAtlasNameDialog.CreateDialog(AOwner: TComponent; const AFormName: string;
   const ARows: TArray<TAtlasNameRow>; ACanUndo: Boolean);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FRows := Copy(ARows);
   Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.NameTitle, [AFormName]);
   BorderStyle := bsSizeToolWin;
-  Position := poMainFormCenter;
   Width := MulDiv(cWidth, CurrentPPI, cBasePpi);
   Height := MulDiv(cHeight, CurrentPPI, cBasePpi);
   AddBottom(ACanUndo);
