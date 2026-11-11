@@ -87,6 +87,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.SavedQueries,
   Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Common.Lsp.ServerActivity,
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
@@ -369,7 +370,9 @@ end;
 
 function TLinterCheck.Execute: Integer;
 var
-  mFileName, mOutput: string;
+  mOutput: string;
+  mFiles: TArray<string>;
+  mIndex: Integer;
   mSources: TCheckSourceFunc;
   mWatch: TStopwatch;
 begin
@@ -388,10 +391,14 @@ begin
     FProfiler.BeginRun(Now);
   end;
   mWatch := TStopwatch.StartNew;
-  for mFileName in Candidates(mSources) do
+  mFiles := Candidates(mSources);
+  // Fortschritt für die Statusdatei (#1901).
+  for mIndex := 0 to High(mFiles) do
   begin
-    CheckFile(mFileName, mSources(mFileName));
+    TServerActivity.Shared.SetProgress(mIndex, Length(mFiles));
+    CheckFile(mFiles[mIndex], mSources(mFiles[mIndex]));
   end;
+  TServerActivity.Shared.SetProgress(Length(mFiles), Length(mFiles));
   if FOptions.UpdateBaseline then
   begin
     Exit(WriteBaseline);
