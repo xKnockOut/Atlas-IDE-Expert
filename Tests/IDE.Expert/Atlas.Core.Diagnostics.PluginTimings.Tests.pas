@@ -43,6 +43,10 @@ type
     /// für sich.</summary>
     [Test]
     procedure ModalDialogIsNotOwnTime;
+    /// <summary>Menü, Kontextmenü und Verschieben beginnen und beenden eine eigene Nachrichtenschleife; ein
+    /// offenes Kontextmenü zählt nicht als Zeit des Aufrufs, der es öffnete.</summary>
+    [Test]
+    procedure MessageLoopsCountLikeModalDialogs;
     [Test]
     procedure OtherThreadsAreNotMeasured;
     [Test]
@@ -219,6 +223,36 @@ begin
   end;
   Assert.AreEqual(1.5, mSnapshot.Busy[0], 0.001, 'Belegung ohne Dialog');
   Assert.AreEqual(0.0, mSnapshot.Busy[5], 0.001);
+end;
+
+procedure TAtlasPluginTimingsTests.MessageLoopsCountLikeModalDialogs;
+var
+  mOuter: Integer;
+  mSnapshot: TAtlasPluginSnapshot;
+begin
+  Assert.AreEqual(1, TAtlasMessageLoop.Change($0211), 'WM_ENTERMENULOOP');
+  Assert.AreEqual(-1, TAtlasMessageLoop.Change($0212), 'WM_EXITMENULOOP');
+  Assert.AreEqual(1, TAtlasMessageLoop.Change($0231), 'WM_ENTERSIZEMOVE');
+  Assert.AreEqual(-1, TAtlasMessageLoop.Change($0232), 'WM_EXITSIZEMOVE');
+  Assert.AreEqual(0, TAtlasMessageLoop.Change($000F), 'WM_PAINT');
+  Assert.AreEqual(0, TAtlasMessageLoop.Change($0111), 'WM_COMMAND');
+  // Designer-Leiste: Klick öffnet ein Kontextmenü, das 5,9 s offen steht.
+  mOuter := FRecorder.Enter;
+  FClockUs := 2000;
+  FRecorder.ModalBegin;
+  FClockUs := 5902000;
+  FRecorder.ModalEnd;
+  FClockUs := 5903000;
+  FRecorder.Leave(TAtlasFeature.DesignerBar, mOuter);
+  FClockUs := 7000000;
+  mSnapshot := FRecorder.Snapshot;
+  Assert.AreEqual(1, Integer(Length(mSnapshot.Features)));
+  Assert.AreEqual(3.0, mSnapshot.Features[0].Stat.TotalMs, 0.001, 'nur die eigene Zeit ohne das Menü');
+  Assert.AreEqual(0, mSnapshot.Features[0].Stat.SlowCalls);
+  Assert.AreEqual(0.3, mSnapshot.Busy[0], 0.001, 'Belegung ohne das Menü');
+  // Ende ohne Beginn (Messung lief beim Öffnen noch nicht) ändert nichts.
+  FRecorder.ModalEnd;
+  Assert.AreEqual(3.0, FRecorder.Snapshot.Features[0].Stat.TotalMs, 0.001);
 end;
 
 procedure TAtlasPluginTimingsTests.BusySplitsAtSecondBoundary;
