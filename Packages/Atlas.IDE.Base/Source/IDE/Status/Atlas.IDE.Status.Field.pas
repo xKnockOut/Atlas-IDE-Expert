@@ -66,6 +66,7 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Status.Contract,
+  Atlas.UI.Foundation.WndProcHook,
   Atlas.UI.Status.Window;
 
 type
@@ -130,7 +131,7 @@ type
     /// <summary>Eine eingehängte Statusleiste: ihre Panels, die verketteten Handler und deren Behandlung.</summary>
     THook = class
     public
-      /// <summary>Feld des Hakens; nil, wenn die Leiste geht oder eine fremde WindowProc darüber liegt.</summary>
+      /// <summary>Feld des Hakens; nil, wenn die Leiste geht oder ausgehängt ist.</summary>
       Field: TAtlasStatusField;
       Bar: TStatusBar;
       /// <summary>Panel des Atlas-Felds; nil, wenn die IDE es gelöscht hat (bis zum nächsten Refresh).</summary>
@@ -141,7 +142,8 @@ type
       OldDraw: TDrawPanelEvent;
       OldMouseUp: TMouseEvent;
       OldMouseMove: TMouseMoveEvent;
-      OldWndProc: TWndMethod;
+      /// <summary>Eingehängte WindowProc der Leiste; nil nach Restore.</summary>
+      WndHook: TAtlasWndProcHook;
       OldHint: string;
       OldShowHint: Boolean;
       /// <summary>Panel unter der Maus, dessen Tooltip gilt: -1 keins, 0 Atlas-Feld, ab 1 Zusatzfeld.</summary>
@@ -498,8 +500,7 @@ begin
   ABar.OnDrawPanel := mHook.DrawPanel;
   ABar.OnMouseUp := mHook.BarMouseUp;
   ABar.OnMouseMove := mHook.BarMouseMove;
-  mHook.OldWndProc := ABar.WindowProc;
-  ABar.WindowProc := mHook.WndProc;
+  mHook.WndHook := TAtlasWndProcHook.Create(ABar, mHook.WndProc);
   AField.FHooks.Add(mHook);
   ABar.FreeNotification(AField);
 end;
@@ -507,20 +508,13 @@ end;
 procedure UnhookAll(AField: TAtlasStatusField);
 var
   mHook: TAtlasStatusField.THook;
-  mIndex: Integer;
 begin
   for mHook in AField.FHooks do
   begin
     mHook.Restore;
   end;
-  // Noch in einer fremden Kette: nicht freigeben, die Leiste ruft seine WndProc weiter auf.
-  for mIndex := AField.FHooks.Count - 1 downto 0 do
-  begin
-    if AField.FHooks[mIndex].Field = nil then
-    begin
-      AField.FHooks.Extract(AField.FHooks[mIndex]);
-    end;
-  end;
+  // Liegt eine fremde WindowProc darüber, bleibt nur der kleine TAtlasWndProcHook in deren Kette; der Haken selbst
+  // wird von der Leiste nicht mehr gerufen.
   AField.FHooks.Clear;
 end;
 
@@ -669,6 +663,8 @@ begin
     end;
   end;
   Extras.Free;
+  // Nur noch da, wenn die Leiste schon weg ist (FDead): nichts mehr an ihr zurückzusetzen.
+  TAtlasWndProcHook.Forget(WndHook);
   inherited Destroy;
 end;
 
@@ -726,7 +722,7 @@ procedure TAtlasStatusField.THook.WndProc(var AMessage: TMessage);
 begin
   if (Field = nil) or not Swallow(AMessage) then
   begin
-    OldWndProc(AMessage);
+    WndHook.CallOld(AMessage);
   end;
 end;
 
@@ -897,7 +893,6 @@ var
   mDraw, mCurrentDraw: TDrawPanelEvent;
   mMouseUp, mCurrentUp: TMouseEvent;
   mMouseMove, mCurrentMove: TMouseMoveEvent;
-  mWndProc, mCurrentWndProc: TWndMethod;
   mIndex: Integer;
 begin
   if Bar = nil then
@@ -905,16 +900,11 @@ begin
     Exit;
   end;
   mOwner := Field;
-  // Fremde WindowProc darüber: Unsere bleibt in deren Kette und reicht ab jetzt nur noch durch.
-  mWndProc := WndProc;
-  mCurrentWndProc := Bar.WindowProc;
-  if SameMethod(TMethod(mCurrentWndProc), TMethod(mWndProc)) then
+  Field := nil;
+  // Fremde WindowProc darüber: Der Haken der WindowProc bleibt in deren Kette und reicht ab jetzt nur noch durch.
+  if not TAtlasWndProcHook.Unhook(WndHook) then
   begin
-    Bar.WindowProc := OldWndProc;
-  end
-  else
-  begin
-    Field := nil;
+    TAtlasGuard.Log('Statusleiste: fremde Fensterprozedur über Atlas, Haken bleibt als Durchreicher'); // german-ok Protokoll
   end;
   if mOwner <> nil then
   begin

@@ -686,6 +686,8 @@ uses
   Atlas.UI.Popup.Accessibility in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas',
   Atlas.UI.Popup.Accessibility.Tests in 'IDE.Expert\Atlas.UI.Popup.Accessibility.Tests.pas',
   Atlas.UI.Popup.Window in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Window.pas',
+  Atlas.UI.Foundation.WndProcHook in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.WndProcHook.pas',
+  Atlas.UI.Foundation.WndProcHook.Tests in 'IDE.Expert\Atlas.UI.Foundation.WndProcHook.Tests.pas',
   Atlas.UI.Popup.Draw in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Draw.pas',
   Atlas.UI.Commands.ShortcutTip in '..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas',
   Atlas.UI.Commands.ShortcutTip.Tests in 'IDE.Expert\Atlas.UI.Commands.ShortcutTip.Tests.pas',
