@@ -1545,6 +1545,7 @@ uses
   Atlas.Core.Settings.ProblemsUpdate in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas',
   Atlas.Core.Settings.ProblemsUpdate.Tests in 'IDE.Expert\Atlas.Core.Settings.ProblemsUpdate.Tests.pas',
   Atlas.Core.Problems.Findings.Tests in 'IDE.Expert\Atlas.Core.Problems.Findings.Tests.pas',
+  Atlas.Core.Problems.IdeErrors in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas',
   Atlas.Core.Problems.IdeErrors.Tests in 'IDE.Expert\Atlas.Core.Problems.IdeErrors.Tests.pas',
   Atlas.Core.Problems.ScopeProjects in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas',
   Atlas.Core.Problems.ScopeProjects.Tests in 'IDE.Expert\Atlas.Core.Problems.ScopeProjects.Tests.pas',
