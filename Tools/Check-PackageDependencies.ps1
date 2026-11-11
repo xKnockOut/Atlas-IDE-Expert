@@ -26,6 +26,10 @@
     implementation-Teil keine Routine wie LineBreakOf, SplitLines, IndentOf,
     IsWordChar, IsIdentChar, IsUtf8, PercentDecode usw. neu entstehen. Erlaubt
     sind nur die Fassaden und Sonderfälle in $AllowedLocal, jeweils mit Grund.
+    Ebenso für die Token-Helfer (#1979): Innerhalb von Packages/Atlas.Common
+    definiert nur Atlas.Common.Pascal.TokenCursor Routinen wie TokenFrom,
+    NextCode, PreviousCode, IsTrivia, MatchingParen, IsKeywordIn; abweichende
+    Fassungen stehen mit Grund in $TokenAllowedLocal.
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
     NumberOf, IntOf, FlagOf, ObjectOf, ArrayOf usw. mit einem TJSONObject und
     einem Namen als Parametern gibt es nur als TJsonRead in Atlas.Text.Json;
@@ -267,6 +271,52 @@ function Remove-PascalCommentsOnly([string] $Text) {
     return [regex]::Replace($Text, $pattern, {
         param($m) [regex]::Replace($m.Value, '[^\r\n]', ' ')
     })
+}
+
+
+# Kopien-Sperre der Token-Helfer (#1979): Innerhalb von Packages/Atlas.Common definieren nur
+# Atlas.Common.Pascal.TokenCursor (Token zu einem Offset, Code-Token, Klammern, Schlüsselwörter) und
+# TRoutineSignatures.WithoutTypeParams diese Namen; ContainsText_ ersetzt System.StrUtils.MatchText.
+$TokenLockNames = @('TokenAt', 'TokenFrom', 'TokenAtOffset', 'TokenExactly', 'MatchingParen', 'NextCode', 'PreviousCode',
+    'IsTrivia', 'IsKeywordIn', 'WithoutTypeParams', 'ContainsText_')
+$TokenLockHomes = @('Atlas.Common.Pascal.TokenCursor', 'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.WithoutTypeParams')
+
+# Erlaubte abweichende Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
+$TokenAllowedLocal = @{
+    'Atlas.Common.Editing.DocumentationCommands:NextCode'                 = 'beginnt hinter AIndex und zählt nach IsCode der Unit'
+    'Atlas.Common.Editing.RoutineBody:TRoutineBody.TokenAt'               = 'öffentliche Weiterleitung an TSyntaxTree.FirstTokenOf'
+    'Atlas.Common.Editing.Unwrap:NextCode'                                = 'Offset im Text statt Token-Index'
+    'Atlas.Common.Editing.Unwrap:TBuilder.NextCode'                       = 'Offset im Text statt Token-Index'
+    'Atlas.Common.Editing.WrapCommands:NextCode'                          = 'beginnt hinter AIndex'
+    'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.NextCode'      = 'Methode des Lesers über seinen eigenen Token-Ausschnitt'
+    'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.PreviousCode'  = 'schließt AIndex ein'
+    'Atlas.Common.Lsp.Completion.Cases:TokenAt'                           = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Lsp.CompletionInherited:MatchingParen'                  = 'Klammer im Text (Zeichenindex), nicht in Token'
+    'Atlas.Common.Lsp.DocumentHighlights:TokenAt'                         = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Lsp.InvertBoolean:TokenAt'                              = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
+    'Atlas.Common.Lsp.InvertBoolean:TSourceFile.TokenAt'                  = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Lsp.KeywordHighlights:TokenAt'                          = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Lsp.References:TokenAt'                                 = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Lsp.Rename:TokenAt'                                     = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Lsp.SelectionRanges:TokenAt'                            = 'Token im Syntaxbaum mit out-Parameter, sucht das umschließende Token'
+    'Atlas.Common.Pascal.LanguageFeatures:NextCode'                       = 'beginnt hinter AIndex, -1 statt Length ohne Treffer'
+    'Atlas.Common.Pascal.SyntaxChecks:NextCode'                           = 'Methodendeklaration von TTreeChecker'
+    'Atlas.Common.Pascal.SyntaxChecks:TTreeChecker.NextCode'              = 'überspringt zusätzlich Token außerhalb aktiver Zweige'
+    'Atlas.Common.Rules.ConsideredUsed:TConsideredUsed.TokenAt'           = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Rules.Builtin.Automation:NextCode'                      = 'Methodendeklaration von TAutomationCheck'
+    'Atlas.Common.Rules.Builtin.Automation:TAutomationCheck.NextCode'     = 'mit Grenze AStop'
+    'Atlas.Common.Rules.Builtin.Calls:TokenAt'                            = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
+    'Atlas.Common.Rules.Builtin.Constants:MatchingParen'                  = 'Klammer im Text (Zeichenindex), nicht in Token'
+    'Atlas.Common.Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
+    'Atlas.Common.Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
+    'Atlas.Common.Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
+    'Atlas.Common.Rules.Builtin.MethodDirectives:WithoutTypeParams'       = 'schneidet beim ersten < ab ("A<T>.B" ergibt "A")'
+    'Atlas.Common.Rules.Builtin.TypeDeclarations:NextCode'                = 'Methodendeklaration und lokale Fassung mit Grenze AStop'
+    'Atlas.Common.Rules.Builtin.TypeDeclarations:TDeclarationScan.NextCode' = 'mit Grenze AStop'
+    'Atlas.Common.Rules.Builtin.Units:NextCode'                           = 'zählt nach IsCode der Unit'
+    'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
+    'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
+    'Atlas.Common.Semantics.ConstantValues:TConstantValues.TokenAt'       = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
 }
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
@@ -821,6 +871,38 @@ foreach ($folder in @('Packages', 'Application')) {
                 $violations += "${relative}:${line}: $($match.Groups[1].Value) – JSON-Lesehelfer gibt es als TJsonRead in Atlas.Text.Json (Kopien-Sperre, #1969); dort verwenden oder in `$AllowedJsonLocal begründen"
             }
         }
+    }
+}
+
+# Kopien-Sperre der Token-Helfer (#1979)
+$tokenLockPattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($TokenLockNames -join '|') + '))\b'
+foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common') -Recurse -File -Include '*.pas') {
+    $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+    $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+    if ($TokenLockHomes -contains $ownUnit) { continue }
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+    $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+    if (-not $implementation.Success) { continue }
+    foreach ($match in [regex]::Matches($text.Substring($implementation.Index), $tokenLockPattern)) {
+        $key = "${ownUnit}:$($match.Groups[1].Value)"
+        if (-not $TokenAllowedLocal.ContainsKey($key) -and -not ($TokenLockHomes -contains $key)) {
+            $line = ($text.Substring(0, $implementation.Index + $match.Index) -split "`n").Count
+            $violations += "${relative}:${line}: $($match.Groups[1].Value) – gibt es in Atlas.Common.Pascal.TokenCursor (Kopien-Sperre #1979); dort verwenden oder in `$TokenAllowedLocal begründen"
+        }
+    }
+}
+foreach ($key in $TokenAllowedLocal.Keys) {
+    $unitName = $key.Split(':')[0]
+    $found = @(Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common') -Recurse -File -Filter "$unitName.pas")
+    if ($found.Count -eq 0) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$TokenAllowedLocal nennt $key, die Unit gibt es nicht mehr; Zeile streichen"
+        continue
+    }
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($found[0].FullName))
+    $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+    $routine = [regex]::Escape($key.Substring($unitName.Length + 1))
+    if (-not $implementation.Success -or -not [regex]::IsMatch($text.Substring($implementation.Index), '(?im)^\s*(?:class\s+)?function\s+' + $routine + '\b')) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$TokenAllowedLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
     }
 }
 

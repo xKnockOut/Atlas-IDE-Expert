@@ -77,6 +77,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 function Compare(const A, B: TTextPosition): Integer;
@@ -86,11 +87,6 @@ begin
   begin
     Result := A.Character - B.Character;
   end;
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -108,24 +104,6 @@ begin
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
   begin
     Inc(Result);
-  end;
-end;
-
-function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  Result := False;
-  if AToken.Kind <> TPascalTokenKind.Keyword then
-  begin
-    Exit;
-  end;
-  for mWord in AWords do
-  begin
-    if AToken.IsKeyword(mWord) then
-    begin
-      Exit(True);
-    end;
   end;
 end;
 
@@ -738,16 +716,6 @@ begin
   until not mDescended;
 end;
 
-/// <summary>Index des ersten Tokens ab AOffset.</summary>
-function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-begin
-  Result := 0;
-  while (Result <= High(ATokens)) and (ATokens[Result].Offset < AOffset) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 class function TCaseCompletion.OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode;
   out APosition: TTextPosition): Boolean;
 var
@@ -756,7 +724,7 @@ var
 begin
   Result := False;
   mTokens := ATree.Tokens;
-  mIndex := TokenAt(mTokens, ACase.StartOffset);
+  mIndex := TokenFrom(mTokens, ACase.StartOffset);
   mParens := 0;
   while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ACase.EndOffset) do
   begin
@@ -786,11 +754,11 @@ begin
   AHasElse := mElse <> nil;
   if AHasElse then
   begin
-    Result := TokenAt(ATokens, mElse.StartOffset);
+    Result := TokenFrom(ATokens, mElse.StartOffset);
   end
   else
   begin
-    Result := TokenAt(ATokens, ACase.EndOffset) - 1;
+    Result := TokenFrom(ATokens, ACase.EndOffset) - 1;
     while (Result >= 0) and IsTrivia(ATokens[Result]) do
     begin
       Dec(Result);

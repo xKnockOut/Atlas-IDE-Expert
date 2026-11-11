@@ -80,6 +80,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.FuzzyMatch,
@@ -107,11 +108,6 @@ const
     (Routine: 'RaiseLastOSError'; ClassName: 'EOSError'; UnitName: 'System.SysUtils'),
     (Routine: 'LoadFromFile'; ClassName: 'EFOpenError'; UnitName: 'System.Classes'),
     (Routine: 'SaveToFile'; ClassName: 'EFCreateError'; UnitName: 'System.Classes'));
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function PreviousSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

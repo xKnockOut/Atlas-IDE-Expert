@@ -94,8 +94,8 @@ var
 begin
   mItems := [TAtlasLayerItem.Create('a', Bounds(0, 0, 10, 10), True),
     TAtlasLayerItem.Create('b', Bounds(10, 0, 10, 10), True)];
-  Assert.AreEqual(0, Length(TAtlasLayers.Step(mItems, 0, True)), 'nur berührend');
-  Assert.AreEqual(0, Length(TAtlasLayers.Step(mItems, 1, False)));
+  Assert.AreEqual(0, Integer(Length(TAtlasLayers.Step(mItems, 0, True))), 'nur berührend');
+  Assert.AreEqual(0, Integer(Length(TAtlasLayers.Step(mItems, 1, False))));
 end;
 
 procedure TAtlasLayersTests.GraphicStaysBelowWindowed;
@@ -104,9 +104,9 @@ var
 begin
   mItems := [TAtlasLayerItem.Create('lblName', Bounds(0, 0, 100, 20), False),
     TAtlasLayerItem.Create('edtName', Bounds(10, 5, 100, 21), True)];
-  Assert.AreEqual(0, Length(TAtlasLayers.Step(mItems, 0, True)));
-  Assert.AreEqual(0, Length(TAtlasLayers.Step(mItems, 1, False)));
-  Assert.AreEqual(0, Length(TAtlasLayers.Extreme(mItems, 0, True)));
+  Assert.AreEqual(0, Integer(Length(TAtlasLayers.Step(mItems, 0, True))));
+  Assert.AreEqual(0, Integer(Length(TAtlasLayers.Step(mItems, 1, False))));
+  Assert.AreEqual(0, Integer(Length(TAtlasLayers.Extreme(mItems, 0, True))));
 end;
 
 procedure TAtlasLayersTests.ExtremeWithinKind;
@@ -119,7 +119,7 @@ begin
     TAtlasLayerItem.Create('pnl2', Bounds(0, 0, 10, 10), True)];
   Assert.AreEqual('1023', OrderText(TAtlasLayers.Extreme(mItems, 0, True)));
   Assert.AreEqual('0132', OrderText(TAtlasLayers.Extreme(mItems, 3, False)));
-  Assert.AreEqual(0, Length(TAtlasLayers.Extreme(mItems, 3, True)));
+  Assert.AreEqual(0, Integer(Length(TAtlasLayers.Extreme(mItems, 3, True))));
 end;
 
 end.

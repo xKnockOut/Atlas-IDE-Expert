@@ -56,6 +56,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,

@@ -40,6 +40,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
 
@@ -114,11 +115,6 @@ begin
       Result := Result + mCh;
     end;
   end;
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 /// <summary>Index der schließenden Klammer zur öffnenden an AIndex (oder das letzte Token).</summary>

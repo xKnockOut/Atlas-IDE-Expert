@@ -65,6 +65,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor.TypeText,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.DirectiveNames,
@@ -243,30 +244,6 @@ end;
 function IsTypeSymbol(const ASymbol: TIndexSymbol): Boolean;
 begin
   Result := (ASymbol.Container = '') and (UnitKindKey(ASymbol) = 'type');
-end;
-
-/// <summary>Name ohne Typparameter: TListe&lt;T&gt;.Add -> TListe.Add.</summary>
-function WithoutTypeParams(const AName: string): string;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := '';
-  mDepth := 0;
-  for mIndex := 1 to Length(AName) do
-  begin
-    if AName[mIndex] = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if AName[mIndex] = '>' then
-    begin
-      Dec(mDepth);
-    end
-    else if mDepth = 0 then
-    begin
-      Result := Result + AName[mIndex];
-    end;
-  end;
 end;
 
 /// <summary>Kurzform einer Attributklasse ([Behalten] für BehaltenAttribute), sonst ''.</summary>
@@ -1059,7 +1036,7 @@ begin
   for mNode in TRuleDerived.Routines(FCache, FContext) do
   begin
     if (SameText(mNode.Name, mWanted) and (mIsType or IsOwnOverload(ASymbol, mNode))) or
-      (mIsType and StartsText(ASymbol.Name + '.', WithoutTypeParams(mNode.Name))) then
+      (mIsType and StartsText(ASymbol.Name + '.', TRoutineSignatures.WithoutTypeParams(mNode.Name))) then
     begin
       Result := Result + [TTextRange.Create(mNode.StartPos, mNode.EndPos)];
     end;

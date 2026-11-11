@@ -76,6 +76,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.GenericLists.Kinds,
@@ -191,7 +192,7 @@ begin
   end;
   // TStack<T> und TObjectList<T> stammen aus System.Generics.Collections.
   mNext := AIndex + 1;
-  while (mNext <= High(mTokens)) and TGenericListSyntax.IsTrivia(mTokens[mNext]) do
+  while (mNext <= High(mTokens)) and IsTrivia(mTokens[mNext]) do
   begin
     Inc(mNext);
   end;

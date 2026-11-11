@@ -29,6 +29,7 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
   Atlas.Text.Lines,
@@ -130,8 +131,8 @@ begin
   Result := False;
   AToken := -1;
   AAlone := False;
-  mIndex := TokenAtOffset(ATokens, AParams.StartOffset) + 1;
-  mLast := TokenAtOffset(ATokens, AParams.EndOffset);
+  mIndex := TokenFrom(ATokens, AParams.StartOffset) + 1;
+  mLast := TokenFrom(ATokens, AParams.EndOffset);
   while not Result and (mIndex < mLast) do
   begin
     mGroup := ReadParamGroup(ATokens, mIndex, mLast, AName);
@@ -234,8 +235,8 @@ var
     begin
       mText := TrimRight(Copy(mText, 1, Length(mText) - 1));
     end;
-    mFirst := TokenAtOffset(mTokens, AField.StartOffset);
-    mLast := TokenAtOffset(mTokens, AField.EndOffset) - 1;
+    mFirst := TokenFrom(mTokens, AField.StartOffset);
+    mLast := TokenFrom(mTokens, AField.EndOffset) - 1;
     if mTokens[mLast].IsSymbol(';') and (mPosition < mItem.ChildCount - 1) then
     begin
       // Bis vor das nächste Feld.
@@ -259,7 +260,7 @@ var
     begin
       mRemoval := TTextRange.Create(mTokens[mFirst].StartPos, mTokens[mLast].EndPos);
     end;
-    mCaseToken := TokenAtOffset(mTokens, APart.StartOffset);
+    mCaseToken := TokenFrom(mTokens, APart.StartOffset);
     Result := TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.MoveToFixed].Fmt([AField.Name]),
       [TRuleEdit.Create(TTextRange.Create(mTokens[mCaseToken].StartPos, mTokens[mCaseToken].StartPos),
       mText + ';' + mLineBreak + TTextLines.IndentOf(mLines[mTokens[mCaseToken].StartPos.Line])),
