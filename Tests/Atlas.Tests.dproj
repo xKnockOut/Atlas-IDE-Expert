@@ -2102,6 +2102,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.TabOverlay.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.UpdateFakes.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.EditorFilesFake.pas"/>
         <DCCReference Include="Text\Atlas.Text.Updates.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.UpdateRun.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>

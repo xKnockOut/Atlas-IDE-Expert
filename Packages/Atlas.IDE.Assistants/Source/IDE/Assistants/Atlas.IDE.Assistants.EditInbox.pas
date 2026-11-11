@@ -6,14 +6,16 @@
 // (nur der geänderte Bereich) und speichert sie, wenn sie vorher gespeichert
 // war. So erscheint die Änderung sofort im Editor, und die Platte stimmt für
 // den MCP-Server wieder. Ob angewendet, abgelehnt oder vom MCP-Server selbst
-// geschrieben wird, entscheidet Atlas.Core.Assistants.EditPlan (getestet);
-// diese Unit liest nur den Puffer und führt die Entscheidung aus.
+// geschrieben wird, und den ganzen Ablauf eines Auftrags führt
+// Atlas.Core.Assistants.EditPlan.Run aus (getestet); diese Unit stellt nur den
+// Zeitgeber, das Anwenden im Editor und die Antwort.
 
 interface
 
 uses
   System.SysUtils,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Core.Files.Contract;
 
 type
   TAtlasEditInboxProc = reference to procedure(const AMessage: string);
@@ -23,12 +25,14 @@ type
     FFolder: string;
     FTimer: TTimer;
     FOnMessage: TAtlasEditInboxProc;
+    FFiles: IAtlasEditorFiles;
     procedure Tick(Sender: TObject);
     procedure Process(const ARequestFile: string);
     procedure Clean;
   public
-    /// <summary>AOnMessage: Zeile für die Meldungsansicht (geänderte Datei, Ablehnung).</summary>
-    constructor Create(const AOnMessage: TAtlasEditInboxProc);
+    /// <summary>AFiles: offene Dateien der IDE; AOnMessage: Zeile für die Meldungsansicht (geänderte
+    /// Datei).</summary>
+    constructor Create(const AFiles: IAtlasEditorFiles; const AOnMessage: TAtlasEditInboxProc);
     destructor Destroy; override;
     property Folder: string read FFolder;
   end;
@@ -38,19 +42,18 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
-  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Assistants.Strings,
   Atlas.Core.Assistants.EditInbox,
   Atlas.Core.Assistants.EditPlan,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.Files,
   Atlas.Core.Editor.WorkspacePlan;
 
-constructor TAtlasIdeEditInbox.Create(const AOnMessage: TAtlasEditInboxProc);
+constructor TAtlasIdeEditInbox.Create(const AFiles: IAtlasEditorFiles; const AOnMessage: TAtlasEditInboxProc);
 begin
   inherited Create;
+  FFiles := AFiles;
   FOnMessage := AOnMessage;
   FFolder := TAtlasEditInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
@@ -101,69 +104,25 @@ begin
   end;
 end;
 
-function ModuleOf(const AFileName: string): IOTAModule;
-var
-  mModules: IOTAModuleServices;
+function ApplyInEditor(const AEdit: TLspWorkspaceEdit): string;
 begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Result := mModules.FindModule(AFileName);
-  end;
-end;
-
-procedure SaveModule(const AFileName: string);
-var
-  mModule: IOTAModule;
-begin
-  mModule := ModuleOf(AFileName);
-  if mModule <> nil then
-  begin
-    mModule.Save(False, True);
-  end;
+  Result := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.UndoActionMcp)).Error;
 end;
 
 procedure TAtlasIdeEditInbox.Process(const ARequestFile: string);
 var
   mRequest: TAtlasEditRequest;
-  mBuffer: IOTAEditBuffer;
-  mState: TAtlasEditInboxBuffer;
-  mDecision: TAtlasEditInboxDecision;
-  mOutcome: TAtlasWorkspaceEditResult;
+  mOutcome: TAtlasEditInboxOutcome;
 begin
   if not TAtlasEditInbox.Take(ARequestFile, mRequest) then
   begin
     Exit;
   end;
-  mBuffer := TAtlasIdeFiles.BufferOf(mRequest.FileName);
-  if mBuffer = nil then
-  begin
-    mState := TAtlasEditInboxBuffer.Closed;
-  end
-  else
-  begin
-    mState := TAtlasEditInboxBuffer.Opened(TAtlasEditorBuffer.Text(mBuffer), mBuffer.IsModified);
-  end;
-  mDecision := TAtlasEditInboxPlan.Decide(mState, mRequest.Expected);
-  if not mDecision.Applies then
-  begin
-    TAtlasEditInbox.Answer(FFolder, mRequest, False, mDecision.ServerWrites, mDecision.Reason);
-    Exit;
-  end;
-  mOutcome := TAtlasIdeWorkspaceEdit.Apply(
-    TAtlasEditInboxPlan.EditOf(mRequest.FileName, mRequest.Expected, mRequest.Text),
-    TAtlasUnopenedPolicy.WriteToDisk, TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.UndoActionMcp));
-  if mOutcome.Error <> '' then
-  begin
-    TAtlasEditInbox.Answer(FFolder, mRequest, False, False, mOutcome.Error);
-    Exit;
-  end;
-  if mDecision.SaveAfter then
-  begin
-    SaveModule(mRequest.FileName);
-  end;
-  TAtlasEditInbox.Answer(FFolder, mRequest, True, False, '');
-  if Assigned(FOnMessage) then
+  mOutcome := TAtlasEditInboxPlan.Run(FFiles, mRequest.FileName, mRequest.Expected, mRequest.Text,
+    ApplyInEditor);
+  TAtlasEditInbox.Answer(FFolder, mRequest, mOutcome.Applied, mOutcome.ServerWrites, mOutcome.Reason);
+  if mOutcome.Applied and Assigned(FOnMessage) then
   begin
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied, [ExtractFileName(mRequest.FileName)]));
   end;

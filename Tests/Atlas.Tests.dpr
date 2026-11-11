@@ -2064,6 +2064,7 @@ uses
   Atlas.UI.Debug.StepFilterFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas',
   Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas',
   Atlas.Tests.UpdateFakes in 'Support\Atlas.Tests.UpdateFakes.pas',
+  Atlas.Tests.EditorFilesFake in 'Support\Atlas.Tests.EditorFilesFake.pas',
   Atlas.Text.Updates.Tests in 'Text\Atlas.Text.Updates.Tests.pas',
   Atlas.Text.UpdateRun.Tests in 'Text\Atlas.Text.UpdateRun.Tests.pas',
   Atlas.Common.Updates.Tests in 'Common\Updates\Atlas.Common.Updates.Tests.pas',
