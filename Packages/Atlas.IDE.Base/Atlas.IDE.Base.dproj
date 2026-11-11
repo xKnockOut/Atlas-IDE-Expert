@@ -166,6 +166,10 @@
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Wrap.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Scaling.pas"/>
+        <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Listeners.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Theme.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Symbol.pas"/>
         <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Symbol.pas"/>
         <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Canvas.pas"/>
