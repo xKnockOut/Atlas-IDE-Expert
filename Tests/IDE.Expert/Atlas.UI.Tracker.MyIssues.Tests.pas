@@ -9,6 +9,8 @@
 // (weder .atlas noch Zuordnung, #1261) ist die Fußzeile der Link „zuordnen …“.
 // Abfragen (#1262): Klappliste mit Trefferzahl, Wahl und „Abfragen
 // bearbeiten …“ über die Quelle, Zeile mit Verbindung, Projekt und Abfrage.
+// Tracker-Projekt (#1927): Klappliste „Projekt: … ▾“ mit „Automatisch“, den
+// Tracker-Projekten, „Alle“ (#1928) und „bearbeiten …“; Köpfe der Gruppen.
 
 interface
 
@@ -47,6 +49,10 @@ type
     /// </summary>
     [Test]
     procedure SprintFilterLine;
+    /// <summary>#1927/#1928: Klappliste „Tracker-Projekt“, Wahl über die Quelle; Köpfe der Gruppen bei „Alle“.
+    /// </summary>
+    [Test]
+    procedure ProjectPickerAndGroups;
   end;
 
 implementation
@@ -61,7 +67,10 @@ uses
   Atlas.Core.Tracker.Queries,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.MyIssues,
+  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Projects,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.MyIssues;
 
 type
@@ -85,6 +94,8 @@ type
     procedure SelectQuery(const AName: string);
     procedure EditQueries;
     procedure ClearFilter;
+    procedure SelectProject(const AKey: string);
+    procedure EditProjects;
   end;
 
 function NowUtc0: TDateTime;
@@ -195,6 +206,16 @@ end;
 procedure TFakeIssues.ClearFilter;
 begin
   Calls := Calls + ['clearFilter'];
+end;
+
+procedure TFakeIssues.SelectProject(const AKey: string);
+begin
+  Calls := Calls + ['project:' + AKey];
+end;
+
+procedure TFakeIssues.EditProjects;
+begin
+  Calls := Calls + ['editProjects'];
 end;
 
 { TAtlasTrackerIssuesViewTests }
@@ -624,6 +645,108 @@ begin
     TAtlasStrings.Language := mSaved;
     mHost.Free;
     mFake.Calls := nil;
+  end;
+end;
+
+/// <summary>Zwei Tracker-Projekte für die Klappliste.</summary>
+function ChoicesView: TAtlasIssuesView;
+begin
+  Result := SampleView;
+  Result.ProjectPicker := True;
+  Result.AllProjects := True;
+  Result.AutomaticName := 'Kasse';
+  Result.ProjectChoices := TAtlasTrackerProjects.Choices(TAtlasTrackerProjects.Read(
+    '[{"match": "C:\\Kasse", "connection": "Firma", "project": "KASSE"}, ' +
+    '{"match": "C:\\Atlas", "connection": "GitHub", "project": "owner/repo"}]'),
+    TAtlasTrackerConnections.Read('[{"name": "Firma", "provider": "youtrack", "url": "https://yt.local"}, ' +
+    '{"name": "GitHub", "provider": "github", "url": "https://github.com"}]'));
+end;
+
+procedure TAtlasTrackerIssuesViewTests.ProjectPickerAndGroups;
+var
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasTrackerIssuesView;
+  mView, mGroup: TAtlasIssuesView;
+  mTop: Integer;
+begin
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mView := ChoicesView;
+    Assert.AreEqual(2, Integer(Length(mView.ProjectChoices)));
+    Assert.IsTrue(TAtlasTrackerProjectPicker.Shows(mView));
+    Assert.AreEqual('Projekt: Automatisch', TAtlasTrackerProjectPicker.CaptionOf(mView));
+    mFake.FView := mView;
+    mFrame := TAtlasTrackerIssuesView.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    Assert.IsTrue(mFrame.Queries.Projects.Visible);
+    Assert.IsTrue(mFrame.Queries.Bar.Visible);
+    // Automatisch (mit Projekt), zwei Tracker-Projekte, Alle, Linie, bearbeiten.
+    mFrame.Queries.Projects.Fill;
+    Assert.AreEqual(6, mFrame.Queries.Projects.Menu.Items.Count);
+    Assert.AreEqual('Automatisch – nach dem Delphi-Projekt (Kasse)', mFrame.Queries.Projects.Menu.Items[0].Caption);
+    Assert.IsTrue(mFrame.Queries.Projects.Menu.Items[0].Checked);
+    Assert.AreEqual('Firma · KASSE', mFrame.Queries.Projects.Menu.Items[1].Caption);
+    Assert.AreEqual('Alle Tracker-Projekte', mFrame.Queries.Projects.Menu.Items[3].Caption);
+    mFake.Calls := nil;
+    mFrame.Queries.Projects.Menu.Items[1].Click;
+    mFrame.Queries.Projects.Menu.Items[3].Click;
+    mFrame.Queries.Projects.Menu.Items[5].Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'nicht im Menüereignis');
+    CheckSynchronize;
+    Assert.AreEqual(3, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('project:KASSE@Firma', mFake.Calls[0]);
+    Assert.AreEqual('project:*', mFake.Calls[1]);
+    Assert.AreEqual('editProjects', mFake.Calls[2]);
+    // Gewählt: Beschriftung mit dem Tracker-Projekt; ohne issues.allProjects kein „Alle“.
+    mView.ProjectKey := 'owner/repo@GitHub';
+    mView.AllProjects := False;
+    Assert.AreEqual('Projekt: GitHub · owner/repo', TAtlasTrackerProjectPicker.CaptionOf(mView));
+    mFake.FView := mView;
+    mFrame.UpdateContent;
+    mFrame.Queries.Projects.Fill;
+    Assert.AreEqual(5, mFrame.Queries.Projects.Menu.Items.Count);
+    Assert.IsTrue(mFrame.Queries.Projects.Menu.Items[2].Checked);
+    // issues.projectPicker aus: keine Klappliste.
+    mView.ProjectPicker := False;
+    mFake.FView := mView;
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.Queries.Projects.Visible);
+    // „Alle“ (#1928): Kopf je Gruppe, die Zeilen rücken darunter.
+    mView := ChoicesView;
+    mView.Items := nil;
+    mGroup := SampleView;
+    TAtlasMyIssues.AddGroup(mView, 'Firma · KASSE', 'C:\Kasse', mGroup, 1);
+    mGroup.Status := TAtlasIssuesStatus.Failed;
+    mGroup.Error := TAtlasCiFetchError.NoCredentials;
+    mGroup.Items := nil;
+    TAtlasMyIssues.AddGroup(mView, 'GitHub · owner/repo', 'C:\Atlas', mGroup, 1);
+    Assert.AreEqual(Format('Firma · KASSE (%d)', [Length(SampleView.Items)]),
+      TAtlasTrackerIssuesText.GroupCaption(mView.Groups[0]));
+    Assert.AreEqual(Format('+ %d weitere', [Length(SampleView.Items) - 1]),
+      TAtlasTrackerIssuesText.GroupNote(mView.Groups[0]));
+    Assert.AreEqual('Kein Zugang hinterlegt', TAtlasTrackerIssuesText.GroupNote(mView.Groups[1]));
+    mFake.FView := mView;
+    mFrame.UpdateContent;
+    mTop := mFrame.Painter.ListTop;
+    Assert.AreEqual(mTop + mFrame.ScaleValue(TAtlasTrackerIssuesView.cStatusHeight), mFrame.Painter.RowTop(0));
+    Assert.AreEqual(mTop + 2 * mFrame.ScaleValue(TAtlasTrackerIssuesView.cStatusHeight) +
+      mFrame.Painter.RowHeight(0), mFrame.Painter.FooterTop, 'Kopf der leeren Gruppe vor der Fußzeile');
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Project: Automatic', TAtlasTrackerProjectPicker.CaptionOf(ChoicesView));
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
+    mFake.FView := Default(TAtlasIssuesView);
   end;
 end;
 

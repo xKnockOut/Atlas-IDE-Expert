@@ -5,6 +5,7 @@
 // schreibgeschützt, von ihr überdeckte persönliche Zeilen grau. „Hinzufügen …“
 // fragt nach Projektdatei oder Ordner (Haken OnBrowse, sonst die Dialoge von
 // Windows). Die Zeilen und alle Prüfungen hält TAtlasTrackerProjectTable.
+// Spalte und Feld „Arbeitskopien“ (#1926) liefert TAtlasTrackerPathsPart.
 
 interface
 
@@ -17,6 +18,7 @@ uses
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.SettingsTables,
   Atlas.UI.Settings.ChoiceBox,
+  Atlas.UI.Tracker.SettingsPaths,
   Atlas.UI.Tracker.SettingsRows;
 
 type
@@ -42,7 +44,9 @@ type
     FAnchor: TWinControl;
     FFilling: Boolean;
     FOnChanged: TAtlasTrackerTableChanged;
+    FPaths: TAtlasTrackerPathsPart;
     function Table: TAtlasTrackerProjectTable;
+    procedure PathsChanged(APaths: TArray<string>);
     procedure BuildList;
     procedure BuildFields;
     procedure BuildButtons;
@@ -65,6 +69,7 @@ type
   public
     constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
       ATables: TAtlasTrackerSettingsTables; AOnChanged: TAtlasTrackerTableChanged);
+    destructor Destroy; override;
     procedure Build;
     /// <summary>Kontext der IDE holen, Auswahl der Verbindungen, Tabelle und Felder neu; meldet OnChanged.
     /// </summary>
@@ -72,6 +77,8 @@ type
     /// <summary>Zeile für AMatch anlegen bzw. wählen und das Feld Tracker-Projekt zeigen.</summary>
     procedure AddMatch(const AMatch: string);
     property View: TAtlasTrackerProjectsView read FView;
+    /// <summary>Feld „Arbeitskopien“ (#1926); nil vor Build.</summary>
+    property Paths: TAtlasTrackerPathsPart read FPaths;
   end;
 
 implementation
@@ -88,12 +95,14 @@ const
   cMatchColumn = 230;
   cConnectionColumn = 100;
   cProjectColumn = 100;
+  cPathsColumn = 150;
   cSourceColumn = 150;
   cAddCurrentWidth = 180;
   cAddWidth = 110;
   cConnectionSubItem = 0;
   cProjectSubItem = 1;
-  cSourceSubItem = 2;
+  cPathsSubItem = 2;
+  cSourceSubItem = 3;
 
 type
   TRows = TAtlasTrackerSettingsRows;
@@ -110,6 +119,12 @@ begin
   FOnChanged := AOnChanged;
 end;
 
+destructor TAtlasTrackerProjectsPart.Destroy;
+begin
+  FreeAndNil(FPaths);
+  inherited Destroy;
+end;
+
 function TAtlasTrackerProjectsPart.Table: TAtlasTrackerProjectTable;
 begin
   Result := FTables.Projects;
@@ -120,6 +135,15 @@ begin
   BuildList;
   BuildFields;
   BuildButtons;
+end;
+
+procedure TAtlasTrackerProjectsPart.PathsChanged(APaths: TArray<string>);
+begin
+  Table.SetPaths(APaths);
+  if ItemReady then
+  begin
+    FView.List.Items[Table.Selected].SubItems[cPathsSubItem] := TAtlasTrackerPathsPart.Caption(Table.SelectedRow);
+  end;
 end;
 
 procedure TAtlasTrackerProjectsPart.BuildList;
@@ -134,6 +158,7 @@ begin
     cConnectionColumn);
   FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject),
     cProjectColumn);
+  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPaths), cPathsColumn);
   FRows.AddColumn(FView.List, TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectSource), cSourceColumn);
 end;
 
@@ -149,6 +174,14 @@ begin
   FView.Project := FRows.NewEdit(ProjectChange);
   FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject),
     FView.Project, TRows.cFieldWidth), FAnchor);
+  // Arbeitskopien (#1926).
+  FPaths := TAtlasTrackerPathsPart.Create(FRows, FHooks, FAnchor,
+    function(out APath: string): Boolean
+    begin
+      Result := Browse(True, APath);
+    end,
+    PathsChanged);
+  FPaths.Build;
   // Grund, warum eine Zeile nicht greift (Verbindung fehlt, von .atlas überdeckt …).
   FView.Note := FRows.AddNote(FAnchor);
 end;
@@ -256,6 +289,7 @@ begin
       mItem.Caption := mRow.Match;
       mItem.SubItems.Add(mRow.Connection);
       mItem.SubItems.Add(mRow.Project);
+      mItem.SubItems.Add(TAtlasTrackerPathsPart.Caption(mRow));
       mItem.SubItems.Add(SourceText(mRow));
     end;
     if Table.Selected >= 0 then
@@ -293,6 +327,10 @@ begin
   FRows.Allow(FView.Project, mEditable);
   FRows.Allow(FView.Remove, mEditable);
   FRows.Allow(FView.AddCurrent, Table.Context.ProjectFile <> '');
+  if FPaths <> nil then
+  begin
+    FPaths.Show(mRow, mEditable and not mRow.ReadOnly);
+  end;
 end;
 
 function TAtlasTrackerProjectsPart.ItemReady: Boolean;

@@ -35,7 +35,8 @@ type
     ABranchNameContainsNo, VcsProjectsMustBeA, AMappingIsAnObject2, VcsTimeoutSecondsMustBeA,
     InThePatternAllowedRegex, EnvMustBeAnObject, TaskWithoutName, OnlyHttpsAddressesWithoutUser,
     ConnectionWithoutName, QueryWithoutName, UnknownEntry, CustomPatternWithoutRegex, TaskWithoutCommand,
-    ConnectionWithoutProvider, ConnectionWithoutUrl, MappingWithoutConnection, QueryWithoutQuery);
+    ConnectionWithoutProvider, ConnectionWithoutUrl, MappingWithoutConnection, QueryWithoutQuery,
+    PathsMustBeAList);
 
 const
   cTexts: array[TWorkflowOptionsText] of TAtlasText = (
@@ -97,7 +98,8 @@ const
     (De: 'Verbindung ohne "provider"'; En: 'Connection without "provider"'),
     (De: 'Verbindung ohne "url"'; En: 'Connection without "url"'),
     (De: 'Zuordnung ohne "connection"'; En: 'Mapping without "connection"'),
-    (De: 'Abfrage ohne "query"'; En: 'Query without "query"'));
+    (De: 'Abfrage ohne "query"'; En: 'Query without "query"'),
+    (De: '"paths" muss eine Liste von Ordnern sein'; En: '"paths" must be a list of folders'));
 
 {$SCOPEDENUMS OFF}
 
@@ -566,6 +568,7 @@ procedure CheckIssueProject(AReader: TConfigurationReader; AMapping: TJsonNode; 
 var
   mInner: Integer;
   mKey, mText: string;
+  mPaths: TArray<string>;
   mHasMatch, mHasConnection: Boolean;
 begin
   mHasMatch := False;
@@ -584,6 +587,11 @@ begin
     else if mKey = 'project' then
     begin
       AReader.ExpectString(AMapping[mInner], 'project', mText);
+    end
+    else if mKey = 'paths' then
+    begin
+      // Arbeitskopien des Tracker-Projekts (#1926); der Inhalt gehört dem Plugin.
+      AReader.ExpectStrings(AMapping[mInner], 'paths', cTexts[TWorkflowOptionsText.PathsMustBeAList].Text, mPaths);
     end
     else
     begin
