@@ -95,8 +95,6 @@ begin
   Result := TAtlasBreadcrumbs.QualifiedName(ANodes, ANode);
 end;
 
-/// <summary>Text ab ALine/ACharacter bis vor das erste Semikolon außerhalb von Klammern; Leerraum
-/// zusammengezogen.</summary>
 /// <summary>AChar an AText anhängen; Leerraum zählt einmal als Leerzeichen, nur zwischen Zeichen.</summary>
 procedure AddCollapsed(var AText: string; var ASpace: Boolean; AChar: Char);
 begin
@@ -113,6 +111,8 @@ begin
   AText := AText + AChar;
 end;
 
+/// <summary>Text ab ALine/ACharacter bis vor das erste Semikolon außerhalb von Klammern; Leerraum
+/// zusammengezogen.</summary>
 function HeaderFrom(const ALines: TArray<string>; ALine, ACharacter: Integer): string;
 var
   mLine, mIndex, mDepth: Integer;

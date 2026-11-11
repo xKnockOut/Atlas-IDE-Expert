@@ -137,6 +137,35 @@ type
     property EmptyText: string read FEmptyText write SetEmptyText;
   end;
 
+  /// <summary>Hinweistexte und Rückrufe der Brotkrumenleiste.</summary>
+  TAtlasCrumbBarSetup = record
+    /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
+    CrumbHint: string;
+    SeparatorHint: string;
+    /// <summary>Hinweis zur Sichtbarkeitsmarke (#1765), Format mit Sichtbarkeit (%s) und Zeile (%d).</summary>
+    MarkHint: string;
+    /// <summary>Hinweis über dem Zähler der Überladungen (#1784), Format mit dem Namen (%s).</summary>
+    OverloadHint: string;
+    /// <summary>Hinweis je erfüllter Interface-Methode (#1785), Format mit Name (%s), Datei (%s) und Zeile (%d).
+    /// </summary>
+    InterfaceHint: string;
+    /// <summary>Letzte Zeile des Hinweises über der Interface-Marke (Bedienung).</summary>
+    InterfaceKeyHint: string;
+    OnOpenMenu: TAtlasCrumbMenuEvent;
+    OnOpenChildren: TAtlasCrumbMenuEvent;
+    OnOpenOverloads: TAtlasCrumbMenuEvent;
+    OnOpenInterfaces: TAtlasCrumbMenuEvent;
+    OnJump: TAtlasCrumbJumpEvent;
+    /// <summary>Rechtsklick-Menü am Glied (#1786); APoint ist die Stelle am Bildschirm.</summary>
+    OnContextMenu: TAtlasCrumbMenuEvent;
+    OnLeave: TProc;
+    /// <summary>Hat das Glied eine Kennzahlen-Karte (#1787)? Ohne Ereignis keine Karte, nur der Hinweis.</summary>
+    HasCard: TFunc<Integer, Boolean>;
+    /// <summary>Karte zum Glied zeigen; APoint ist die linke untere Ecke des Glieds am Bildschirm.</summary>
+    OnShowCard: TAtlasCrumbMenuEvent;
+    OnHideCard: TProc;
+  end;
+
   TAtlasBreadcrumbBar = class(TAtlasBreadcrumbLayout)
   private const
     /// <summary>Teil des „›“ hinter Glied i: SeparatorPart + i.</summary>
@@ -147,22 +176,8 @@ type
     /// <summary>Teil der Interface-Marke (#1785) in Glied i: InterfacePart + i (unter CounterPart).</summary>
     cInterfacePart = $4000;
   private
-    FCrumbHint: string;
-    FOverloadHint: string;
-    FOnOpenOverloads: TAtlasCrumbMenuEvent;
-    FInterfaceHint: string;
-    FInterfaceKeyHint: string;
-    FOnOpenInterfaces: TAtlasCrumbMenuEvent;
-    FSeparatorHint: string;
-    FMarkHint: string;
-    FOnOpenMenu: TAtlasCrumbMenuEvent;
-    FOnOpenChildren: TAtlasCrumbMenuEvent;
-    FOnJump: TAtlasCrumbJumpEvent;
-    FOnContextMenu: TAtlasCrumbMenuEvent;
-    FOnLeave: TProc;
-    FHasCard: TFunc<Integer, Boolean>;
-    FOnShowCard: TAtlasCrumbMenuEvent;
-    FOnHideCard: TProc;
+    /// <summary>Hinweistexte und Rückrufe aus der Komposition.</summary>
+    FSetup: TAtlasCrumbBarSetup;
     FCardTimer: TTimer;
     /// <summary>Glied, dessen Karte nach der Verzögerung erscheint; -1 ohne.</summary>
     FCardCrumb: Integer;
@@ -224,31 +239,8 @@ type
     procedure ShowCard(AIndex: Integer);
     /// <summary>Karte schließen und die Verzögerung abbrechen.</summary>
     procedure HideCard;
-    /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
-    property CrumbHint: string read FCrumbHint write FCrumbHint;
-    property SeparatorHint: string read FSeparatorHint write FSeparatorHint;
-    /// <summary>Hinweis zur Sichtbarkeitsmarke (#1765), Format mit Sichtbarkeit (%s) und Zeile (%d).</summary>
-    property MarkHint: string read FMarkHint write FMarkHint;
-    property OnOpenMenu: TAtlasCrumbMenuEvent read FOnOpenMenu write FOnOpenMenu;
-    property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
-    /// <summary>Hinweis über dem Zähler der Überladungen (#1784), Format mit dem Namen (%s).</summary>
-    property OverloadHint: string read FOverloadHint write FOverloadHint;
-    property OnOpenOverloads: TAtlasCrumbMenuEvent read FOnOpenOverloads write FOnOpenOverloads;
-    /// <summary>Hinweis je erfüllter Interface-Methode (#1785), Format mit Name (%s), Datei (%s) und Zeile (%d).
-    /// </summary>
-    property InterfaceHint: string read FInterfaceHint write FInterfaceHint;
-    /// <summary>Letzte Zeile des Hinweises über der Interface-Marke (Bedienung).</summary>
-    property InterfaceKeyHint: string read FInterfaceKeyHint write FInterfaceKeyHint;
-    property OnOpenInterfaces: TAtlasCrumbMenuEvent read FOnOpenInterfaces write FOnOpenInterfaces;
-    property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
-    /// <summary>Rechtsklick-Menü am Glied (#1786); APoint ist die Stelle am Bildschirm.</summary>
-    property OnContextMenu: TAtlasCrumbMenuEvent read FOnContextMenu write FOnContextMenu;
-    property OnLeave: TProc read FOnLeave write FOnLeave;
-    /// <summary>Hat das Glied eine Kennzahlen-Karte (#1787)? Ohne Ereignis keine Karte, nur der Hinweis.</summary>
-    property HasCard: TFunc<Integer, Boolean> read FHasCard write FHasCard;
-    /// <summary>Karte zum Glied zeigen; APoint ist die linke untere Ecke des Glieds am Bildschirm.</summary>
-    property OnShowCard: TAtlasCrumbMenuEvent read FOnShowCard write FOnShowCard;
-    property OnHideCard: TProc read FOnHideCard write FOnHideCard;
+    /// <summary>Hinweistexte und Rückrufe; als Ganzes setzen.</summary>
+    property Setup: TAtlasCrumbBarSetup read FSetup write FSetup;
   end;
 
 implementation
@@ -868,7 +860,7 @@ var
 begin
   // Je Interface-Methode eine Zeile, darunter die Bedienung.
   Result := '';
-  if FInterfaceHint = '' then
+  if FSetup.InterfaceHint = '' then
   begin
     Exit;
   end;
@@ -878,11 +870,12 @@ begin
     begin
       Result := Result + sLineBreak;
     end;
-    Result := Result + Format(FInterfaceHint, [mTarget.Name, ExtractFileName(mTarget.FileName), mTarget.Line + 1]);
+    Result := Result + Format(FSetup.InterfaceHint,
+      [mTarget.Name, ExtractFileName(mTarget.FileName), mTarget.Line + 1]);
   end;
-  if FInterfaceKeyHint <> '' then
+  if FSetup.InterfaceKeyHint <> '' then
   begin
-    Result := Result + sLineBreak + FInterfaceKeyHint;
+    Result := Result + sLineBreak + FSetup.InterfaceKeyHint;
   end;
 end;
 
@@ -911,55 +904,29 @@ begin
     Exit(cPartNone);
   end;
   mCounter := InterfaceRect(Result);
-  if not mCounter.IsEmpty and (X >= mCounter.Left) and Assigned(FOnOpenInterfaces) then
+  if not mCounter.IsEmpty and (X >= mCounter.Left) and Assigned(FSetup.OnOpenInterfaces) then
   begin
     Exit(cInterfacePart + Result);
   end;
   mCounter := CounterRect(Result);
-  if not mCounter.IsEmpty and (X >= mCounter.Left) and (X < mCounter.Right) and Assigned(FOnOpenOverloads) then
+  if not mCounter.IsEmpty and (X >= mCounter.Left) and (X < mCounter.Right) and Assigned(FSetup.OnOpenOverloads) then
   begin
     Result := cCounterPart + Result;
   end;
 end;
 
-function TAtlasBreadcrumbBar.PartHint(APart: Integer): string;
+/// <summary>Sichtbarkeitsmarke (#1765) vor AHint: Sichtbarkeit und Zeile der Deklaration (1-basiert) nach
+/// AFormat; AHint unverändert ohne Marke oder Format.</summary>
+function WithMark(const AHint: string; const ACrumb: TAtlasCrumb; const AFormat: string): string;
 var
   mMark: string;
 begin
-  // Hinweis je Teil: Glied (Menü, Strg+Klick), Zähler der Überladungen oder „›“ (Kinder).
-  if APart >= cSeparatorPart then
-  begin
-    Exit(FSeparatorHint);
-  end;
-  if CounterOf(APart) >= 0 then
-  begin
-    Result := '';
-    if FOverloadHint <> '' then
-    begin
-      Result := Format(FOverloadHint, [FCrumbs[CounterOf(APart)].Text]);
-    end;
-    Exit;
-  end;
-  if InterfaceOf(APart) >= 0 then
-  begin
-    Exit(InterfaceHintOf(InterfaceOf(APart)));
-  end;
-  // Die Kennzahlen-Karte ersetzt den Hinweis des Glieds (#1787).
-  if CardAt(APart) then
-  begin
-    Exit('');
-  end;
-  Result := '';
-  if Clickable(APart) then
-  begin
-    Result := FCrumbHint;
-  end;
-  // Sichtbarkeitsmarke (#1765): Sichtbarkeit und Zeile der Deklaration (1-basiert) zuerst.
-  if (APart < 0) or (APart > High(FCrumbs)) or (FCrumbs[APart].Mark = '') or (FMarkHint = '') then
+  Result := AHint;
+  if (ACrumb.Mark = '') or (AFormat = '') then
   begin
     Exit;
   end;
-  mMark := Format(FMarkHint, [FCrumbs[APart].MarkVisibility, FCrumbs[APart].MarkLine + 1]);
+  mMark := Format(AFormat, [ACrumb.MarkVisibility, ACrumb.MarkLine + 1]);
   if Result = '' then
   begin
     Result := mMark;
@@ -967,6 +934,39 @@ begin
   else
   begin
     Result := mMark + sLineBreak + Result;
+  end;
+end;
+
+function TAtlasBreadcrumbBar.PartHint(APart: Integer): string;
+begin
+  // Hinweis je Teil: Glied (Menü, Strg+Klick), Zähler der Überladungen oder „›“ (Kinder). Die Kennzahlen-Karte
+  // ersetzt den Hinweis des Glieds (#1787).
+  Result := '';
+  if APart >= cSeparatorPart then
+  begin
+    Result := FSetup.SeparatorHint;
+  end
+  else if CounterOf(APart) >= 0 then
+  begin
+    if FSetup.OverloadHint <> '' then
+    begin
+      Result := Format(FSetup.OverloadHint, [FCrumbs[CounterOf(APart)].Text]);
+    end;
+  end
+  else if InterfaceOf(APart) >= 0 then
+  begin
+    Result := InterfaceHintOf(InterfaceOf(APart));
+  end
+  else if not CardAt(APart) then
+  begin
+    if Clickable(APart) then
+    begin
+      Result := FSetup.CrumbHint;
+    end;
+    if (APart >= 0) and (APart <= High(FCrumbs)) then
+    begin
+      Result := WithMark(Result, FCrumbs[APart], FSetup.MarkHint);
+    end;
   end;
 end;
 
@@ -1024,12 +1024,12 @@ var
   mArea: TRect;
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or not TAtlasBreadcrumbs.HasMenu(FCrumbs[AIndex]) or
-    not Assigned(FOnOpenMenu) then
+    not Assigned(FSetup.OnOpenMenu) then
   begin
     Exit;
   end;
   mArea := CrumbRect(AIndex);
-  FOnOpenMenu(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+  FSetup.OnOpenMenu(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.OpenChildren(AIndex: Integer);
@@ -1037,7 +1037,7 @@ var
   mArea: TRect;
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Children) = 0) or
-    not Assigned(FOnOpenChildren) then
+    not Assigned(FSetup.OnOpenChildren) then
   begin
     Exit;
   end;
@@ -1047,7 +1047,7 @@ begin
   begin
     mArea := CrumbRect(AIndex);
   end;
-  FOnOpenChildren(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+  FSetup.OnOpenChildren(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.OpenOverloads(AIndex: Integer);
@@ -1055,7 +1055,7 @@ var
   mArea: TRect;
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or (CounterText(FCrumbs[AIndex]) = '') or
-    not Assigned(FOnOpenOverloads) then
+    not Assigned(FSetup.OnOpenOverloads) then
   begin
     Exit;
   end;
@@ -1064,7 +1064,7 @@ begin
   begin
     mArea := CrumbRect(AIndex);
   end;
-  FOnOpenOverloads(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+  FSetup.OnOpenOverloads(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.OpenInterfaces(AIndex: Integer);
@@ -1072,7 +1072,7 @@ var
   mArea: TRect;
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Interfaces) = 0) or
-    not Assigned(FOnOpenInterfaces) then
+    not Assigned(FSetup.OnOpenInterfaces) then
   begin
     Exit;
   end;
@@ -1081,12 +1081,12 @@ begin
   begin
     mArea := CrumbRect(AIndex);
   end;
-  FOnOpenInterfaces(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+  FSetup.OnOpenInterfaces(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.Jump(AIndex: Integer; ADeclaration: Boolean);
 begin
-  if (AIndex < 0) or (AIndex > High(FCrumbs)) or not Assigned(FOnJump) then
+  if (AIndex < 0) or (AIndex > High(FCrumbs)) or not Assigned(FSetup.OnJump) then
   begin
     Exit;
   end;
@@ -1094,7 +1094,7 @@ begin
   begin
     Exit;
   end;
-  FOnJump(AIndex, ADeclaration);
+  FSetup.OnJump(AIndex, ADeclaration);
 end;
 
 procedure TAtlasBreadcrumbBar.FocusLast;
@@ -1123,7 +1123,36 @@ begin
   end;
 end;
 
+/// <summary>↓ oder Enter auf dem gewählten Glied: Strg+↓ Kinder, Strg+Enter springen (mit Umschalt zur
+/// Deklaration), Umschalt+↓ Überladungen (#1784), Alt+↓ erfüllte Interface-Methoden (#1785), sonst das Menü.
+/// </summary>
+procedure OpenByKey(ABar: TAtlasBreadcrumbBar; AKey: Word; AShift: TShiftState);
+begin
+  if (ssCtrl in AShift) and (AKey = VK_DOWN) then
+  begin
+    ABar.OpenChildren(ABar.Selected);
+  end
+  else if ssCtrl in AShift then
+  begin
+    ABar.Jump(ABar.Selected, ssShift in AShift);
+  end
+  else if (ssShift in AShift) and (AKey = VK_DOWN) then
+  begin
+    ABar.OpenOverloads(ABar.Selected);
+  end
+  else if (ssAlt in AShift) and (AKey = VK_DOWN) then
+  begin
+    ABar.OpenInterfaces(ABar.Selected);
+  end
+  else
+  begin
+    ABar.OpenMenu(ABar.Selected);
+  end;
+end;
+
 procedure TAtlasBreadcrumbBar.KeyDown(var Key: Word; Shift: TShiftState);
+var
+  mHandled: Boolean;
 begin
   inherited KeyDown(Key, Shift);
   // Strg+I: Kennzahlen-Karte des gewählten Glieds (#1787); jede andere Taste schließt sie.
@@ -1134,6 +1163,7 @@ begin
     Exit;
   end;
   HideCard;
+  mHandled := True;
   case Key of
     VK_LEFT:
       MoveSelection(-1);
@@ -1150,52 +1180,30 @@ begin
         Invalidate;
       end;
     VK_DOWN, VK_RETURN:
-      if ssCtrl in Shift then
-      begin
-        if Key = VK_DOWN then
-        begin
-          OpenChildren(FSelected);
-        end
-        else
-        begin
-          Jump(FSelected, ssShift in Shift);
-        end;
-      end
-      else if (ssShift in Shift) and (Key = VK_DOWN) then
-      begin
-        // Menü der Überladungen (#1784).
-        OpenOverloads(FSelected);
-      end
-      else if (ssAlt in Shift) and (Key = VK_DOWN) then
-      begin
-        // Menü der erfüllten Interface-Methoden (#1785).
-        OpenInterfaces(FSelected);
-      end
-      else
-      begin
-        OpenMenu(FSelected);
-      end;
+      OpenByKey(Self, Key, Shift);
     VK_ESCAPE:
-      if Assigned(FOnLeave) then
+      if Assigned(FSetup.OnLeave) then
       begin
-        FOnLeave();
+        FSetup.OnLeave();
       end;
     // Menütaste und Umschalt+F10 (#1786): Menü des gewählten Glieds.
     VK_APPS:
       ContextMenu(KeyboardMenuPoint, FSelected);
     VK_F10:
-      if ssShift in Shift then
       begin
-        ContextMenu(KeyboardMenuPoint, FSelected);
-      end
-      else
-      begin
-        Exit;
+        mHandled := ssShift in Shift;
+        if mHandled then
+        begin
+          ContextMenu(KeyboardMenuPoint, FSelected);
+        end;
       end;
   else
-    Exit;
+    mHandled := False;
   end;
-  Key := 0;
+  if mHandled then
+  begin
+    Key := 0;
+  end;
 end;
 
 procedure TAtlasBreadcrumbBar.ContextMenu(const APoint: TPoint; APart: Integer);
@@ -1213,11 +1221,11 @@ begin
   begin
     APart := InterfaceOf(APart);
   end;
-  if (APart < 0) or (APart > High(FCrumbs)) or not Assigned(FOnContextMenu) then
+  if (APart < 0) or (APart > High(FCrumbs)) or not Assigned(FSetup.OnContextMenu) then
   begin
     Exit;
   end;
-  FOnContextMenu(APart, ClientToScreen(APoint));
+  FSetup.OnContextMenu(APart, ClientToScreen(APoint));
 end;
 
 function TAtlasBreadcrumbBar.KeyboardMenuPoint: TPoint;
@@ -1384,8 +1392,8 @@ end;
 
 function TAtlasBreadcrumbBar.CardAt(APart: Integer): Boolean;
 begin
-  Result := (APart >= 0) and (APart <= High(FCrumbs)) and Assigned(FHasCard) and Assigned(FOnShowCard) and
-    FHasCard(APart);
+  Result := (APart >= 0) and (APart <= High(FCrumbs)) and Assigned(FSetup.HasCard) and Assigned(FSetup.OnShowCard) and
+    FSetup.HasCard(APart);
 end;
 
 procedure TAtlasBreadcrumbBar.HotChanged;
@@ -1414,7 +1422,7 @@ var
   mArea: TRect;
 begin
   FCardTimer.Enabled := False;
-  if not CardAt(AIndex) or not Assigned(FOnShowCard) then
+  if not CardAt(AIndex) or not Assigned(FSetup.OnShowCard) then
   begin
     Exit;
   end;
@@ -1424,16 +1432,16 @@ begin
     Exit;
   end;
   Application.CancelHint;
-  FOnShowCard(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
+  FSetup.OnShowCard(AIndex, ClientToScreen(Point(mArea.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.HideCard;
 begin
   FCardTimer.Enabled := False;
   FCardCrumb := -1;
-  if Assigned(FOnHideCard) then
+  if Assigned(FSetup.OnHideCard) then
   begin
-    FOnHideCard();
+    FSetup.OnHideCard();
   end;
 end;
 

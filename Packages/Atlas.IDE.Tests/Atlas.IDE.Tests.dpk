@@ -54,6 +54,7 @@ contains
   Atlas.IDE.Tests.Composition in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas',
   Atlas.IDE.Tests.Composition.Hooks in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Hooks.pas',
   Atlas.IDE.Tests.Affected in 'Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas',
+  Atlas.IDE.Tests.UnitCommands in 'Source\IDE\Tests\Atlas.IDE.Tests.UnitCommands.pas',
   Atlas.IDE.Tests.Debug in 'Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas',
   Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';

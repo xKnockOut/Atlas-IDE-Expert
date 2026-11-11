@@ -77,17 +77,11 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Vcl.Forms,
-  Vcl.Controls,
-  Vcl.ComCtrls,
-  Vcl.ExtCtrls,
-  Vcl.ActnList,
-  Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.NodeScope,
-  Atlas.Core.Lsp.Progress,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Overview,
   Atlas.Core.Settings.Catalog,
@@ -96,13 +90,13 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.SubPages,
+  Atlas.IDE.Settings.OptionsDialog,
   Atlas.IDE.Settings.ModuleNodes,
   Atlas.IDE.Settings.PageOptions,
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.Index,
   Atlas.UI.Settings.Page.Sections,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings;
@@ -125,8 +119,6 @@ type
     /// <summary>Führt ACommand im Hintergrund aus; AText macht aus der Antwort (nil ohne Server) den Text für
     /// die Seite.</summary>
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
-    /// <summary>Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.</summary>
-    procedure ConnectIndex;
   public
     constructor Create(const AScope: TAtlasSettingsNodeScope; const ACaption, ATitle: string);
     function GetArea: string;
@@ -167,6 +159,8 @@ var
   PendingReveal: string;
   /// <summary>Vorgabe zu PendingReveal für den Abschnitt eines Moduls (#1455); '' ohne.</summary>
   PendingArgument: string;
+  /// <summary>Rückfall, solange der modale Dialog offen ist: wählt die Seite „Atlas“ im Baum.</summary>
+  Selector: TAtlasOptionsSelector;
 
 /// <summary>Im offenen Dialog zum Knoten der Einstellung springen (Übersicht und Suchfeld der Knoten, #1903, #1884).
 /// </summary>
@@ -184,136 +178,6 @@ begin
   Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
 end;
 
-type
-  /// <summary>Zugriff auf Items, das TCustomTreeView geschützt hält (Baum des Optionsdialogs ist eine eigene
-  /// Ableitung).
-  /// </summary>
-  TAtlasTreeAccess = class(TCustomTreeView);
-
-type
-  /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
-  TAtlasOptionsSelector = class
-  private const
-    cIntervalMs = 200;
-    cMaxTries = 50;
-  private
-    FTimer: TTimer;
-    FTries: Integer;
-    procedure Tick(Sender: TObject);
-    class function FindTree(AParent: TWinControl): TCustomTreeView; static;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Start;
-    procedure Stop;
-  end;
-
-var
-  Selector: TAtlasOptionsSelector;
-
-{ TAtlasOptionsSelector }
-
-constructor TAtlasOptionsSelector.Create;
-begin
-  inherited Create;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cIntervalMs;
-  FTimer.OnTimer := Tick;
-end;
-
-destructor TAtlasOptionsSelector.Destroy;
-begin
-  FTimer.Free;
-  inherited Destroy;
-end;
-
-procedure TAtlasOptionsSelector.Start;
-begin
-  FTries := 0;
-  FTimer.Enabled := True;
-end;
-
-procedure TAtlasOptionsSelector.Stop;
-begin
-  FTimer.Enabled := False;
-end;
-
-class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TCustomTreeView;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to AParent.ControlCount - 1 do
-  begin
-    // TCustomTreeView: Delphi 13 nimmt eine eigene Ableitung statt TTreeView (#1903).
-    if AParent.Controls[mIndex] is TCustomTreeView then
-    begin
-      Exit(TCustomTreeView(AParent.Controls[mIndex]));
-    end;
-    if AParent.Controls[mIndex] is TWinControl then
-    begin
-      Result := FindTree(TWinControl(AParent.Controls[mIndex]));
-      if Result <> nil then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-end;
-
-procedure TAtlasOptionsSelector.Tick(Sender: TObject);
-var
-  mForm: TCustomForm;
-  mTree: TCustomTreeView;
-  mNode: TTreeNode;
-begin
-  try
-    Inc(FTries);
-    if (FTries > cMaxTries) or (PendingReveal = '') then
-    begin
-      Stop;
-      Exit;
-    end;
-    mForm := Screen.ActiveCustomForm;
-    if (mForm = nil) or not (fsModal in mForm.FormState) then
-    begin
-      Exit;
-    end;
-    mTree := FindTree(mForm);
-    if mTree = nil then
-    begin
-      Exit;
-    end;
-    // Die Seite heißt „Atlas“ (GetCaption) und hängt unter „Drittanbieter“, nicht oben im Baum.
-    for mNode in TAtlasTreeAccess(mTree).Items do
-    begin
-      if SameText(mNode.Text, 'Atlas') and (mNode.Parent <> nil) then
-      begin
-        Stop;
-        mNode.MakeVisible;
-        mTree.Selected := mNode;
-        Exit;
-      end;
-    end;
-    // Nicht gefunden: Delphi 13 legt die Unterseiten erst beim Aufklappen an ("Fremdhersteller" zu). Obere
-    // Zweige aufklappen und beim nächsten Takt erneut suchen, statt aufzugeben.
-    for mNode in TAtlasTreeAccess(mTree).Items do
-    begin
-      if (mNode.Parent = nil) and mNode.HasChildren and not mNode.Expanded then
-      begin
-        mNode.Expand(False);
-      end;
-    end;
-  except
-    on E: Exception do
-    begin
-      Stop;
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-    end;
-  end;
-end;
-
 /// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
 function HookText(const AHook: TFunc<string>): string;
 begin
@@ -321,32 +185,6 @@ begin
   if Assigned(AHook) then
   begin
     Result := AHook();
-  end;
-end;
-
-/// <summary>Text der Antwort auf „Index neu aufbauen“.</summary>
-function RebuildText(AAnswer: TJSONValue): string;
-begin
-  if AAnswer <> nil then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
-  end;
-end;
-
-/// <summary>Text der Antwort auf „Index löschen“.</summary>
-function ClearText(AAnswer: TJSONValue): string;
-begin
-  if AAnswer <> nil then
-  begin
-    Result := TLspIndexStatus.ClearedText(AAnswer);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
   end;
 end;
 
@@ -424,37 +262,6 @@ begin
   Result := TAtlasSettingsPage;
 end;
 
-procedure TAtlasAddInOptions.ConnectIndex;
-begin
-  FPage.Part<TAtlasSettingsIndexPart>.OnIndexMetrics :=
-    procedure
-    begin
-      Run('atlas.server.status',
-        function(AAnswer: TJSONValue): string
-        begin
-          Result := TLspIndexStatus.Metrics(AAnswer).Text;
-        end);
-    end;
-  FPage.Part<TAtlasSettingsIndexPart>.OnIndexRebuild :=
-    procedure
-    begin
-      Run('atlas.server.rebuildIndex',
-        function(AAnswer: TJSONValue): string
-        begin
-          Result := RebuildText(AAnswer);
-        end);
-    end;
-  FPage.Part<TAtlasSettingsIndexPart>.OnIndexClear :=
-    procedure
-    begin
-      Run('atlas.server.clearIndex',
-        function(AAnswer: TJSONValue): string
-        begin
-          Result := ClearText(AAnswer);
-        end);
-    end;
-end;
-
 procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   Inc(FGeneration);
@@ -468,7 +275,8 @@ begin
     FPage.Reveal(PendingReveal);
   end;
   TAtlasPageOptions.ConnectFavorites(FPage, Hooks.ToolbarCommands);
-  ConnectIndex;
+  // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
+  TAtlasPageOptions.ConnectIndex(FPage, Run);
   TAtlasPageOptions.ConnectTransfer(FPage);
   TAtlasPageOptions.ConnectHelp(FPage);
   // Suchfeld über dem Baum (#1884): nur installierte Packages; Treffer anderer Knoten im offenen Dialog öffnen.
@@ -550,91 +358,6 @@ begin
     TAtlasModuleNodes.CaptionOf(AInfo.Name), AInfo.Name);
 end;
 
-/// <summary>Klassen der Steuerelemente unter AParent, deren Name „Tree“ enthält (Protokoll, wenn kein Baum passt).
-/// </summary>
-function TreeLikeClasses(AParent: TWinControl): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to AParent.ControlCount - 1 do
-  begin
-    if Pos('TREE', UpperCase(AParent.Controls[mIndex].ClassName)) > 0 then
-    begin
-      Result := Result + ' ' + AParent.Controls[mIndex].ClassName;
-    end;
-    if AParent.Controls[mIndex] is TWinControl then
-    begin
-      Result := Result + TreeLikeClasses(TWinControl(AParent.Controls[mIndex]));
-    end;
-  end;
-end;
-
-/// <summary>Kind von ANode mit dem Text AText; klappt ANode dafür auf, weil Delphi 13 Unterknoten erst beim Aufklappen
-/// anlegt. nil, wenn ANode nil ist oder kein Kind passt.</summary>
-function ChildNamed(ANode: TTreeNode; const AText: string): TTreeNode;
-begin
-  Result := nil;
-  if ANode = nil then
-  begin
-    Exit;
-  end;
-  if not ANode.Expanded then
-  begin
-    ANode.Expand(False);
-  end;
-  Result := ANode.getFirstChild;
-  while (Result <> nil) and not SameText(Result.Text, AText) do
-  begin
-    Result := Result.getNextSibling;
-  end;
-end;
-
-/// <summary>Wählt im offenen Optionsdialog den Knoten Atlas › APath (#1903). False, wenn sich Baum oder Knoten nicht
-/// finden lassen; dann steht im Protokoll, welche Baumklassen der Dialog hat.</summary>
-function SelectOptionsNode(const APath: TArray<string>): Boolean;
-var
-  mForm: TCustomForm;
-  mTree: TCustomTreeView;
-  mNode, mAtlas: TTreeNode;
-  mText: string;
-begin
-  Result := False;
-  mForm := Screen.ActiveCustomForm;
-  if mForm = nil then
-  begin
-    Exit;
-  end;
-  mTree := TAtlasOptionsSelector.FindTree(mForm);
-  if mTree = nil then
-  begin
-    TAtlasGuard.Log('Optionen: kein Baum im Dialog zum Springen gefunden; Klassen:' + TreeLikeClasses(mForm)); // german-ok Protokoll
-    Exit;
-  end;
-  mAtlas := nil;
-  for mNode in TAtlasTreeAccess(mTree).Items do
-  begin
-    if SameText(mNode.Text, 'Atlas') and (mNode.Parent <> nil) then
-    begin
-      mAtlas := mNode;
-      Break;
-    end;
-  end;
-  mNode := mAtlas;
-  for mText in APath do
-  begin
-    mNode := ChildNamed(mNode, mText);
-  end;
-  if mNode = nil then
-  begin
-    TAtlasGuard.Log('Optionen: Knoten Atlas › ' + string.Join(' › ', APath) + ' nicht im Baum ' + mTree.ClassName); // german-ok Protokoll
-    Exit;
-  end;
-  mNode.MakeVisible;
-  mTree.Selected := mNode;
-  Result := True;
-end;
-
 { TAtlasOverviewOptions }
 
 function TAtlasOverviewOptions.GetArea: string;
@@ -661,7 +384,7 @@ var
 begin
   if ASetting = '' then
   begin
-    SelectOptionsNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode)]);
+    TAtlasIdeOptionsDialog.SelectNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode)]);
     Exit;
   end;
   mName := 'Base';
@@ -670,7 +393,7 @@ begin
     mName := TAtlasModuleNodes.NameOfSwitch(ASwitch);
   end;
   PendingReveal := ASetting;
-  if not SelectOptionsNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), mName]) then
+  if not TAtlasIdeOptionsDialog.SelectNode([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), mName]) then
   begin
     PendingReveal := '';
     Exit;
@@ -823,79 +546,6 @@ begin
   FreeAndNil(Selector);
 end;
 
-/// <summary>Aktion bzw. Menüpunkt „Optionen…“ der IDE ausführen; False, wenn keins zu finden ist.</summary>
-function RunOptionsDialog: Boolean;
-const
-  cActionName = 'ToolsOptionsCommand';
-  cItemName = 'ToolsOptionsItem';
-var
-  mServices: INTAServices;
-  mIndex: Integer;
-
-  function FindItem(AItem: TMenuItem): TMenuItem;
-  var
-    mChild: Integer;
-  begin
-    Result := nil;
-    if SameText(AItem.Name, cItemName) then
-    begin
-      Exit(AItem);
-    end;
-    for mChild := 0 to AItem.Count - 1 do
-    begin
-      Result := FindItem(AItem.Items[mChild]);
-      if Result <> nil then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-
-var
-  mItem: TMenuItem;
-begin
-  Result := False;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) then
-  begin
-    Exit;
-  end;
-  if mServices.ActionList <> nil then
-  begin
-    for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
-    begin
-      if SameText(mServices.ActionList.Actions[mIndex].Name, cActionName) then
-      begin
-        mServices.ActionList.Actions[mIndex].Execute;
-        Exit(True);
-      end;
-    end;
-  end;
-  if mServices.MainMenu <> nil then
-  begin
-    mItem := FindItem(mServices.MainMenu.Items);
-    if mItem <> nil then
-    begin
-      mItem.Click;
-      Exit(True);
-    end;
-  end;
-end;
-
-/// <summary>Tools › Optionen über IOTAEnvironmentOptions140.EditOptions auf der Seite „Atlas“ öffnen; False, wenn die
-/// IDE das nicht anbietet.</summary>
-function EditAtlasOptions(const ACaption: string): Boolean;
-var
-  mServices: IOTAServices;
-  mEnvironment: IOTAEnvironmentOptions140;
-begin
-  Result := Supports(BorlandIDEServices, IOTAServices, mServices) and (mServices.GetEnvironmentOptions <> nil) and
-    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mEnvironment);
-  if Result then
-  begin
-    mEnvironment.EditOptions('', ACaption);
-  end;
-end;
-
 /// <summary>Knoten, in dem die Einstellung AKey steht (#1903): der des Moduls, dem sie gehört, sonst Base.
 /// Schlüssel, die nur die Seite kennt (Zeilen der Versionsverwaltung wie „VcsProjects“), nach ihrer Vorsilbe.
 /// </summary>
@@ -944,17 +594,18 @@ begin
   PendingReveal := AKey;
   if Selector = nil then
   begin
-    Selector := TAtlasOptionsSelector.Create;
+    Selector := TAtlasOptionsSelector.Create(
+      function: Boolean
+      begin
+        Result := PendingReveal <> '';
+      end);
   end;
   // Der Dialog ist modal: Der Zeitgeber wählt die Seite, während er offen ist (nur noch Rückfall).
   Selector.Start;
   try
     // Offizieller Weg: Dialog gleich auf der Seite „Atlas“ unter „Fremdhersteller“ (leere Area). Die Seite zeigt
     // beim Anlegen PendingReveal. Der Baum von Delphi 13 ist kein TTreeView mehr; die Suche darin fand nichts.
-    if not EditAtlasOptions(NodeOfSetting(AKey).GetCaption) then
-    begin
-      RunOptionsDialog;
-    end;
+    TAtlasIdeOptionsDialog.Open(NodeOfSetting(AKey).GetCaption);
   finally
     // Modal: Hier ist der Dialog wieder zu. Nicht gefunden oder geschlossen: nichts mehr vormerken.
     if Selector <> nil then

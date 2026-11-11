@@ -30,6 +30,13 @@ type
     class function ForLocale(const ALocale: string): TLspInitializeOptions; static;
   end;
 
+  /// <summary>Empfänger für Anfragen und Meldungen des Servers (siehe die gleichnamigen Eigenschaften).</summary>
+  TLspSessionEvents = record
+    OnApplyEdit: TLspApplyEditProc;
+    OnShowMessage: TLspShowMessageProc;
+    OnAtlasNotification: TLspAtlasNotificationProc;
+  end;
+
   /// <summary>Zustand der LSP-Sitzung: Client, Dokumentabgleich, Projekte und initialize. Vorfahr der
   /// Anfragen (TLspSessionRequests) und von TLspSession.</summary>
   TLspSessionBase = class(TLspSessionJson)
@@ -51,9 +58,7 @@ type
     FContexts: TArray<TAtlasProjectContext>;
     /// <summary>Zuletzt gemeldeter Schlüssel je Projekt (#396).</summary>
     FSentContexts: TDictionary<string, string>;
-    FOnApplyEdit: TLspApplyEditProc;
-    FOnShowMessage: TLspShowMessageProc;
-    FOnAtlasNotification: TLspAtlasNotificationProc;
+    FEvents: TLspSessionEvents;
     FInitializeOptions: TLspInitializeOptions;
     FServerVersion: string;
     procedure SyncLocked(const AFileName, AText: string);
@@ -89,12 +94,13 @@ type
     function SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>): TArray<TAtlasProjectContext>;
     procedure Initialize;
     /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
-    property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
+    property OnApplyEdit: TLspApplyEditProc read FEvents.OnApplyEdit write FEvents.OnApplyEdit;
     /// <summary>Vor Initialize setzen (#121): Meldungen des Servers für den Benutzer.</summary>
-    property OnShowMessage: TLspShowMessageProc read FOnShowMessage write FOnShowMessage;
+    property OnShowMessage: TLspShowMessageProc read FEvents.OnShowMessage write FEvents.OnShowMessage;
     /// <summary>Vor Initialize setzen: Benachrichtigungen atlas/… des Servers (Absturzfälle #1355, IDE-Mitglieder).
     /// </summary>
-    property OnAtlasNotification: TLspAtlasNotificationProc read FOnAtlasNotification write FOnAtlasNotification;
+    property OnAtlasNotification: TLspAtlasNotificationProc read FEvents.OnAtlasNotification
+      write FEvents.OnAtlasNotification;
     /// <summary>Einstellungen und Sprache für initialize (#652, #1458), vor Initialize setzen.</summary>
     property InitializeOptions: TLspInitializeOptions read FInitializeOptions write FInitializeOptions;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
@@ -267,10 +273,10 @@ end;
 
 procedure TLspSessionBase.AttachClientHandlers;
 begin
-  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FOnShowMessage, FOnAtlasNotification);
-  if Assigned(FOnApplyEdit) then
+  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FEvents.OnShowMessage, FEvents.OnAtlasNotification);
+  if Assigned(FEvents.OnApplyEdit) then
   begin
-    FClient.OnServerRequest := ApplyEditRequestHandler(FOnApplyEdit, FClient);
+    FClient.OnServerRequest := ApplyEditRequestHandler(FEvents.OnApplyEdit, FClient);
   end;
 end;
 
@@ -307,7 +313,7 @@ var
   mContext: TAtlasProjectContext;
   mResponse: TJSONValue;
 begin
-  mParams := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FOnApplyEdit),
+  mParams := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FEvents.OnApplyEdit),
     FInitializeOptions.Locale);
   // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
   for mContext in FContexts do

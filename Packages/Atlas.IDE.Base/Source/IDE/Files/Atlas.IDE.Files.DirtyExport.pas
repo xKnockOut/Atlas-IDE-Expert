@@ -121,7 +121,6 @@ begin
   end;
 end;
 
-/// <summary>Dateien und Build-Eingänge beendeter Prozesse unter AFolder entfernen.</summary>
 /// <summary>Exportierte Dateien in AFolder mit der Prozessnummer im Namen.</summary>
 function DirtyFiles(const AFolder: string): TArray<TAtlasLeftover>;
 var
@@ -164,6 +163,7 @@ begin
   end;
 end;
 
+/// <summary>Dateien und Build-Eingänge beendeter Prozesse unter AFolder entfernen.</summary>
 procedure RemoveLeftovers(const AFolder: string);
 var
   mPath: string;

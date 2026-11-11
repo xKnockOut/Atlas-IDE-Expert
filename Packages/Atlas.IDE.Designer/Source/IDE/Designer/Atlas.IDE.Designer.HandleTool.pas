@@ -147,30 +147,20 @@ begin
   FOverlay := TAtlasDesignerHandles.CreateHandles(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
   FOverlay.OnDown :=
     procedure(AIndex: Integer; AShift: TShiftState)
-    var
-      mIndex: Integer;
-      mShift: TShiftState;
     begin
-      mIndex := AIndex;
-      mShift := AShift;
       mOwner.RunGuarded(
         procedure
         begin
-          mOwner.Down(mIndex, mShift);
+          mOwner.Down(AIndex, AShift);
         end);
     end;
   FOverlay.OnDrag :=
     procedure(ADelta: TPoint; AShift: TShiftState)
-    var
-      mDelta: TPoint;
-      mShift: TShiftState;
     begin
-      mDelta := ADelta;
-      mShift := AShift;
       mOwner.RunGuarded(
         procedure
         begin
-          mOwner.Drag(mDelta, mShift);
+          mOwner.Drag(ADelta, AShift);
         end);
     end;
   FOverlay.OnUp :=
@@ -184,16 +174,11 @@ begin
     end;
   FOverlay.OnDoubleClick :=
     procedure(AIndex: Integer; AShift: TShiftState)
-    var
-      mIndex: Integer;
-      mShift: TShiftState;
     begin
-      mIndex := AIndex;
-      mShift := AShift;
       mOwner.RunGuarded(
         procedure
         begin
-          mOwner.DoubleClick(mIndex, mShift);
+          mOwner.DoubleClick(AIndex, AShift);
         end);
     end;
 end;

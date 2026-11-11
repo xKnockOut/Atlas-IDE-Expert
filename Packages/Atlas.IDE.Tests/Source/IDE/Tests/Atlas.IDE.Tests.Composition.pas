@@ -81,13 +81,6 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
   Atlas.Core.Tests.Debug,
-  Atlas.Core.Tests.UnitMatch,
-  Atlas.Core.Commands.ProjectSelection,
-  Atlas.Text.DUnitX,
-  Atlas.IDE.Problems.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Commands.Editor,
-  Atlas.UI.Generate.Choice,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager.Paths,
@@ -97,6 +90,7 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Affected,
+  Atlas.IDE.Tests.UnitCommands,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings;
 
@@ -286,92 +280,18 @@ end;
 
 function ProjectUnitTestsVisible: Boolean;
 begin
-  Result := TAtlasProjectContext.Active and TestsVisible and TAtlasProjectContext.Current.HasUnits;
-end;
-
-/// <summary>Testunits (mit Fixtures) der Units AUnits unter AFiles und die vollen Namen ihrer Fixtures.</summary>
-function FindUnitTests(const AUnits, AFiles: TArray<string>; out ANames: TArray<string>): TArray<string>;
-var
-  mUnit, mCandidate: string;
-  mNames: TArray<string>;
-begin
-  Result := nil;
-  ANames := nil;
-  for mUnit in AUnits do
-  begin
-    for mCandidate in TAtlasTestUnitMatch.Candidates(mUnit, AFiles) do
-    begin
-      mNames := TAtlasTestUnitMatch.Names(TDUnitXSource.Scan(TAtlasIdeProblemFiles.DiskLines(mCandidate)));
-      if Length(mNames) > 0 then
-      begin
-        Result := Result + [mCandidate];
-        ANames := ANames + mNames;
-      end;
-    end;
-  end;
+  Result := TestsVisible and TAtlasIdeTestUnitCommands.HasProjectUnits;
 end;
 
 procedure RunProjectUnitTests;
-var
-  mSelection: TAtlasProjectSelection;
-  mKey: string;
-  mTestUnits, mNames: TArray<string>;
 begin
-  mSelection := TAtlasProjectContext.Current;
-  if (GTests = nil) or not mSelection.HasUnits then
-  begin
-    Exit;
-  end;
-  mTestUnits := FindUnitTests(mSelection.Units, TAtlasIdeProblemFiles.GroupFiles(mKey), mNames);
-  if Length(mTestUnits) = 0 then
-  begin
-    TAtlasIdeHost.Message(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsProjectNoTestUnit,
-      [ExtractFileName(mSelection.Units[0])]));
-    Exit;
-  end;
-  // Das Testprojekt bestimmt die erste Testunit; die Namen gelten für alle gefundenen.
-  GTests.RunTests(mTestUnits[0], mNames);
+  TAtlasIdeTestUnitCommands.RunProjectUnits(GTests);
 end;
 
 function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasTestsTextId): TAtlasModuleCommand;
 begin
   Result := ACommand;
   Result.Description := TAtlasTestsStrings.Text(ADescription);
-end;
-
-/// <summary>Assistent „DUnitX-Testunit zu Unit …“ (#1821): Unit wählen, dann wie „Zur Testunit wechseln“.
-/// </summary>
-procedure NewTestUnitFor;
-var
-  mKey, mActive: string;
-  mUnits, mNames: TArray<string>;
-  mUnit: string;
-  mIndex: Integer;
-  mView: IOTAEditView;
-begin
-  mUnits := TAtlasTestUnitMatch.Units(TAtlasIdeProblemFiles.GroupFiles(mKey));
-  if Length(mUnits) = 0 then
-  begin
-    TAtlasIdeHost.Message(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsGalleryNoUnits));
-    Exit;
-  end;
-  mNames := nil;
-  for mUnit in mUnits do
-  begin
-    mNames := mNames + [TAtlasTestUnitMatch.UnitNameOf(mUnit)];
-  end;
-  mActive := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) then
-  begin
-    mActive := mView.Buffer.FileName;
-  end;
-  mIndex := TAtlasTestUnitMatch.IndexOf(mUnits, mActive);
-  if TAtlasChoiceDialog.Execute(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsGalleryTestUnit),
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsGalleryChooseUnit), mNames, mIndex) then
-  begin
-    TAtlasIdeEditorCommands.TestUnitFor(mUnits[mIndex]);
-  end;
 end;
 
 { TAtlasTestsModule }
@@ -420,7 +340,7 @@ begin
       Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
-      Guarded(TAtlasFeature.Generate, NewTestUnitFor), nil), TAtlasTestsTextId.TestsGalleryTestUnitHint)];
+      Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil), TAtlasTestsTextId.TestsGalleryTestUnitHint)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;

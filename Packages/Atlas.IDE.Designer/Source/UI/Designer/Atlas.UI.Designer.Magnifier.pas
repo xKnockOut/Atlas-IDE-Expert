@@ -35,6 +35,13 @@ type
     class function Create(AVertical: Boolean; APosition: Integer; ASelected: Boolean): TAtlasMagnifierLine; static;
   end;
 
+  /// <summary>Rückrufe des Lupenfensters: Kopieren, Mausrad, Schließen.</summary>
+  TAtlasMagnifierEvents = record
+    OnCopy: TProc;
+    OnWheel: TProc<Integer>;
+    OnClosed: TProc;
+  end;
+
   TAtlasMagnifierWindow = class(TForm)
   private
     FColors: TAtlasColors;
@@ -46,9 +53,7 @@ type
     FHeader: string;
     FFooter: string;
     FLines: TArray<TAtlasMagnifierLine>;
-    FOnCopy: TProc;
-    FOnWheel: TProc<Integer>;
-    FOnClosed: TProc;
+    FEvents: TAtlasMagnifierEvents;
     FShown: Boolean;
     FPlaced: Boolean;
     function BarHeight: Integer;
@@ -83,9 +88,9 @@ type
     function Contains(const APoint: TPoint): Boolean;
     property Shown: Boolean read FShown;
     property Source: TRect read FSource;
-    property OnCopy: TProc read FOnCopy write FOnCopy;
-    property OnWheel: TProc<Integer> read FOnWheel write FOnWheel;
-    property OnClosed: TProc read FOnClosed write FOnClosed;
+    property OnCopy: TProc read FEvents.OnCopy write FEvents.OnCopy;
+    property OnWheel: TProc<Integer> read FEvents.OnWheel write FEvents.OnWheel;
+    property OnClosed: TProc read FEvents.OnClosed write FEvents.OnClosed;
   end;
 
 implementation
@@ -156,9 +161,9 @@ end;
 
 procedure TAtlasMagnifierWindow.WMMouseWheel(var Message: TWMMouseWheel);
 begin
-  if Assigned(FOnWheel) then
+  if Assigned(FEvents.OnWheel) then
   begin
-    FOnWheel(Message.WheelDelta);
+    FEvents.OnWheel(Message.WheelDelta);
   end;
   Message.Result := 1;
 end;
@@ -168,9 +173,9 @@ begin
   // Gezeigt wird ohne Visible (kein Aktivieren): selbst ausblenden.
   Action := caNone;
   HideWindow;
-  if Assigned(FOnClosed) then
+  if Assigned(FEvents.OnClosed) then
   begin
-    FOnClosed();
+    FEvents.OnClosed();
   end;
 end;
 
@@ -358,9 +363,9 @@ end;
 procedure TAtlasMagnifierWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if (Button = mbLeft) and Assigned(FOnCopy) then
+  if (Button = mbLeft) and Assigned(FEvents.OnCopy) then
   begin
-    FOnCopy();
+    FEvents.OnCopy();
   end;
 end;
 

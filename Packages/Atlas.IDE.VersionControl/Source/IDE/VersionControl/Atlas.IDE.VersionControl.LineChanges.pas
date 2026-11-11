@@ -109,23 +109,19 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
-  Atlas.Core.Editor.Pairs,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.UI.Popup.TitledTip,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.VersionControl.LineChangesData;
+  Atlas.IDE.VersionControl.LineChangesData,
+  Atlas.IDE.VersionControl.LineChangesPaint;
 
 const
   cTickMs = 150;
   cHoverMs = 400;
-  /// <summary>Höchstens so viele alte Zeilen im Fenster.</summary>
-  cMaxOldLines = 15;
   /// <summary>Deckkraft der Zeilenhistorie über dem Hintergrund.</summary>
   cBlameStrength = 0.55;
 
@@ -225,16 +221,6 @@ begin
   Result := TLineChangesState(TAtlasIdeLineChanges.FState);
 end;
 
-procedure Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 function TopView: IOTAEditView;
 var
   mEditors: IOTAEditorServices;
@@ -244,12 +230,6 @@ begin
   begin
     Result := mEditors.TopView;
   end;
-end;
-
-/// <summary>Editorspalte (1-basiert) hinter dem letzten Zeichen von ALine; Tabs aufgelöst.</summary>
-function EndColumn(const ALine: string; ATabWidth: Integer): Integer;
-begin
-  Result := Length(TAtlasPairs.DisplayLine(TrimRight(ALine), ATabWidth)) + 1;
 end;
 
 /// <summary>Ergänzungen der Zeilenhistorie für den Stand; lesen die Haken der Komposition erst beim Aufruf.</summary>
@@ -290,80 +270,6 @@ begin
         Result := TAtlasIdeLineChanges.FHooks.Suffix(AMessage);
       end;
     end;
-end;
-
-/// <summary>Alter Stand einer Änderung, höchstens MaxOldLines Zeilen; leere Zeilen bleiben sichtbar.</summary>
-function OldText(const AChange: TAtlasLineChange): string;
-var
-  mIndex, mShown: Integer;
-begin
-  if AChange.Kind = TAtlasLineChangeKind.Added then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
-  end;
-  mShown := Min(Length(AChange.OldLines), cMaxOldLines);
-  Result := '';
-  for mIndex := 0 to mShown - 1 do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + sLineBreak;
-    end;
-    Result := Result + AChange.OldLines[mIndex];
-    if AChange.OldLines[mIndex] = '' then
-    begin
-      Result := Result + ' ';
-    end;
-  end;
-  if Length(AChange.OldLines) > mShown then
-  begin
-    Result := Result + sLineBreak + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.ChangeMoreLines,
-      [Length(AChange.OldLines) - mShown]);
-  end;
-end;
-
-procedure FillBar(ADC: HDC; const ABar: TRect; AColor: TAtlasColor);
-var
-  mBrush: HGDIOBJ;
-begin
-  mBrush := CreateSolidBrush(ColorToRGB(TColor(AColor)));
-  try
-    FillRect(ADC, ABar, mBrush);
-  finally
-    DeleteObject(mBrush);
-  end;
-end;
-
-/// <summary>Dreieck nach rechts an ALeft: über der Zeile ARect, mit AAtEnd (Dateiende) unter ihr.</summary>
-procedure PaintDeleted(ADC: HDC; ALeft, ASize: Integer; const ARect: TRect; AAtEnd: Boolean; AColor: TAtlasColor);
-var
-  mPoints: array[0..2] of TPoint;
-  mBrush, mPen, mOldBrush, mOldPen: HGDIOBJ;
-begin
-  if AAtEnd then
-  begin
-    mPoints[0] := Point(ALeft, ARect.Bottom - 2 * ASize);
-    mPoints[1] := Point(ALeft, ARect.Bottom);
-    mPoints[2] := Point(ALeft + ASize, ARect.Bottom - ASize);
-  end
-  else
-  begin
-    mPoints[0] := Point(ALeft, ARect.Top);
-    mPoints[1] := Point(ALeft, ARect.Top + 2 * ASize);
-    mPoints[2] := Point(ALeft + ASize, ARect.Top + ASize);
-  end;
-  mBrush := CreateSolidBrush(ColorToRGB(TColor(AColor)));
-  mPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(AColor)));
-  mOldBrush := SelectObject(ADC, mBrush);
-  mOldPen := SelectObject(ADC, mPen);
-  try
-    Polygon(ADC, mPoints, 3);
-  finally
-    SelectObject(ADC, mOldPen);
-    SelectObject(ADC, mOldBrush);
-    DeleteObject(mPen);
-    DeleteObject(mBrush);
-  end;
 end;
 
 { TEvents }
@@ -436,7 +342,7 @@ begin
   FRows.Free;
   // Ergebnisse, die noch unterwegs sind, verfallen.
   FData.Free;
-  Invalidate;
+  TAtlasLineChangesPaint.Invalidate;
   inherited Destroy;
 end;
 
@@ -566,17 +472,18 @@ begin
   try
     if AMark = TAtlasLineMark.Added then
     begin
-      FillBar(mDC, mBar, mColors.Add);
+      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Add);
     end
     else if AMark <> TAtlasLineMark.None then
     begin
-      FillBar(mDC, mBar, mColors.Accent);
+      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Accent);
     end;
     if ADeleted >= 0 then
     begin
       // Über der Zeile, am Dateiende unter der letzten Zeile.
       mSize := Max(4, ARect.Height div 3);
-      PaintDeleted(mDC, mLeft, mSize, ARect, FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
+      TAtlasLineChangesPaint.PaintDeleted(mDC, mLeft, mSize, ARect,
+        FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
       mBar.Right := Max(mBar.Right, mLeft + mSize);
       if AMark = TAtlasLineMark.None then
       begin
@@ -622,7 +529,8 @@ var
   mSize: TSize;
 begin
   mCell := AContext.EditorState.GetCharacterPosPx(
-    EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + 3, AContext.EditorLineNum);
+    TAtlasLineChangesPaint.EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + 3,
+    AContext.EditorLineNum);
   mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   mX := TAtlasLineTail.Start(Self, mKey, mCell.Left);
   mDC := AContext.Canvas.Handle;
@@ -834,8 +742,9 @@ begin
   FTipChange := AChange;
   FTipEntered := False;
   TAtlasIdeStyle.Apply(FTip, AScreen);
-  FTip.ShowNote(TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeOldTitle), OldText(FData.Changes[AChange]),
-    [TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeRevert)], Point(AScreen.Right + 4, AScreen.Top));
+  FTip.ShowNote(TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeOldTitle),
+    TAtlasLineChangesPaint.OldText(FData.Changes[AChange]), [TAtlasVcsStrings.Text(TAtlasVcsTextId.ChangeRevert)],
+    Point(AScreen.Right + 4, AScreen.Top));
 end;
 
 procedure TLineChangesState.ShowCommit;
@@ -920,7 +829,7 @@ begin
   end;
   if TAtlasLineChanges.Next(FData.Changes, mView.CursorPos.Line - 1, FData.LineCount, AForward, mTarget) then
   begin
-    TAtlasIdeNavigation.GoToLocation(FData.FileName, Min(mTarget, Max(0, FData.LineCount - 1)), 0);
+    TAtlasLineChangesPaint.GoToLine(FData.FileName, mTarget, FData.LineCount);
   end;
 end;
 
@@ -964,7 +873,7 @@ begin
   else
   begin
     TLineChangesState(FState).Reset;
-    Invalidate;
+    TAtlasLineChangesPaint.Invalidate;
   end;
 end;
 
@@ -973,7 +882,7 @@ begin
   // Die Farben kommen beim Zeichnen aus dem Grund der Rinne.
   if FState <> nil then
   begin
-    Invalidate;
+    TAtlasLineChangesPaint.Invalidate;
   end;
 end;
 
@@ -1001,7 +910,7 @@ begin
   if FState <> nil then
   begin
     TLineChangesState(FState).Reset;
-    Invalidate;
+    TAtlasLineChangesPaint.Invalidate;
   end;
 end;
 

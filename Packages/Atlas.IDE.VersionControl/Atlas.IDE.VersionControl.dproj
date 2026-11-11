@@ -115,6 +115,7 @@
         <DCCReference Include="Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsSection.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Settings.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChangesData.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChangesPaint.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChanges.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Commands.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Composition.pas"/>

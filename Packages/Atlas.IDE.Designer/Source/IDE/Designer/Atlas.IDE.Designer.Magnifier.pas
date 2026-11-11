@@ -33,6 +33,15 @@ uses
   Atlas.IDE.Foundation.KeyHook;
 
 type
+  /// <summary>Zustand der Lupe: Zoomstufe, Raster, Kanten, eingefroren und Mitte des Ausschnitts.</summary>
+  TAtlasMagnifierState = record
+    Zoom: Integer;
+    Grid: Boolean;
+    Edges: Boolean;
+    Frozen: Boolean;
+    Center: TPoint;
+  end;
+
   TAtlasIdeMagnifier = class;
 
   /// <summary>Taste der Lupe und, eingefroren, die Pfeiltasten.</summary>
@@ -54,11 +63,7 @@ type
     FTimer: TTimer;
     FKeys: TAtlasMagnifierKeys;
     FSystemColors: TArray<TAtlasNamedColor>;
-    FZoom: Integer;
-    FGrid: Boolean;
-    FEdges: Boolean;
-    FFrozen: Boolean;
-    FCenter: TPoint;
+    FState: TAtlasMagnifierState;
     FLastCapture: UInt64;
     FCoordinates: string;
     FColorText: string;
@@ -98,7 +103,7 @@ type
     procedure Hide;
     procedure ApplyTheme;
     function Shown: Boolean;
-    property Frozen: Boolean read FFrozen;
+    property Frozen: Boolean read FState.Frozen;
   end;
 
 implementation
@@ -288,7 +293,7 @@ begin
   FWindow.OnWheel :=
     procedure(ADelta: Integer)
     begin
-      mOwner.SetZoom(TAtlasMagnifier.NextZoom(mOwner.FZoom, ADelta));
+      mOwner.SetZoom(TAtlasMagnifier.NextZoom(mOwner.FState.Zoom, ADelta));
     end;
   FWindow.OnClosed :=
     procedure
@@ -312,10 +317,10 @@ begin
     Exit;
   end;
   EnsureWindow;
-  FZoom := TAtlasMagnifier.NormalizeZoom(mSettings.DesignerMagnifierZoom);
-  FGrid := mSettings.DesignerMagnifierGrid;
-  FEdges := mSettings.DesignerMagnifierEdges;
-  FFrozen := False;
+  FState.Zoom := TAtlasMagnifier.NormalizeZoom(mSettings.DesignerMagnifierZoom);
+  FState.Grid := mSettings.DesignerMagnifierGrid;
+  FState.Edges := mSettings.DesignerMagnifierEdges;
+  FState.Frozen := False;
   mArea := TRect.Empty;
   TAtlasDesignerAccess.ClientArea(TWinControl(mRoot), 0, mOrigin, mArea);
   FWindow.ShowNear(mArea);
@@ -342,22 +347,22 @@ begin
     Open;
     Exit;
   end;
-  FFrozen := not FFrozen;
+  FState.Frozen := not FState.Frozen;
   UpdateView(True);
 end;
 
 procedure TAtlasIdeMagnifier.Nudge(ADX, ADY: Integer);
 begin
-  if Shown and FFrozen then
+  if Shown and FState.Frozen then
   begin
-    FCenter := Point(FCenter.X + ADX, FCenter.Y + ADY);
+    FState.Center := Point(FState.Center.X + ADX, FState.Center.Y + ADY);
     UpdateView(True);
   end;
 end;
 
 procedure TAtlasIdeMagnifier.SetZoom(AZoom: Integer);
 begin
-  FZoom := TAtlasMagnifier.NormalizeZoom(AZoom);
+  FState.Zoom := TAtlasMagnifier.NormalizeZoom(AZoom);
   UpdateView(True);
 end;
 
@@ -377,7 +382,7 @@ end;
 procedure TAtlasIdeMagnifier.Hide;
 begin
   FTimer.Enabled := False;
-  FFrozen := False;
+  FState.Frozen := False;
   if FWindow <> nil then
   begin
     FWindow.HideWindow;
@@ -412,18 +417,18 @@ begin
     Exit;
   end;
   mMoved := False;
-  if not FFrozen and GetCursorPos(mCursor) and not FWindow.Contains(mCursor) then
+  if not FState.Frozen and GetCursorPos(mCursor) and not FWindow.Contains(mCursor) then
   begin
-    mMoved := mCursor <> FCenter;
-    FCenter := mCursor;
+    mMoved := mCursor <> FState.Center;
+    FState.Center := mCursor;
   end;
   if not AForce and not mMoved and (GetTickCount64 - FLastCapture < cRefresh) then
   begin
     Exit;
   end;
   FLastCapture := GetTickCount64;
-  FWindow.Capture(TAtlasMagnifier.SourceRect(FCenter, FWindow.ViewSize, FZoom), FZoom, FGrid);
-  if FEdges then
+  FWindow.Capture(TAtlasMagnifier.SourceRect(FState.Center, FWindow.ViewSize, FState.Zoom), FState.Zoom, FState.Grid);
+  if FState.Edges then
   begin
     FWindow.SetLines(EdgeLines);
   end
@@ -444,17 +449,17 @@ var
 begin
   mControl := nil;
   FCoordinates := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagOutside);
-  mHeader := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagZoom, [FZoom]) + '   ' + FCoordinates;
+  mHeader := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagZoom, [FState.Zoom]) + '   ' + FCoordinates;
   if TAtlasDesignerAccess.Current(mEditor, mRoot) and (mRoot is TWinControl) then
   begin
     mHeader := CoordinatesOf(TWinControl(mRoot), mControl);
   end;
-  if FFrozen then
+  if FState.Frozen then
   begin
     mHeader := mHeader + TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagFrozen);
   end;
   FColorText := '';
-  if FWindow.ColorAt(FCenter, mRgb) then
+  if FWindow.ColorAt(FState.Center, mRgb) then
   begin
     FColorText := TAtlasMagnifier.HexOf(mRgb);
   end;
@@ -478,11 +483,11 @@ begin
   begin
     mDesign := TCustomForm(ARoot).PixelsPerInch;
   end;
-  mOffset := ARoot.ScreenToClient(FCenter);
+  mOffset := ARoot.ScreenToClient(FState.Center);
   FCoordinates := Format('%d, %d', [TAtlasMagnifier.ToDesign(mOffset.X, mCurrent, mDesign),
     TAtlasMagnifier.ToDesign(mOffset.Y, mCurrent, mDesign)]);
   Result := TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagHeader,
-    [FZoom, TAtlasMagnifier.ToDesign(mOffset.X, mCurrent, mDesign), TAtlasMagnifier.ToDesign(mOffset.Y, mCurrent,
+    [FState.Zoom, TAtlasMagnifier.ToDesign(mOffset.X, mCurrent, mDesign), TAtlasMagnifier.ToDesign(mOffset.Y, mCurrent,
     mDesign)]);
   if not ARoot.ClientRect.Contains(mOffset) then
   begin
@@ -493,7 +498,7 @@ begin
   begin
     Exit;
   end;
-  mParent := AControl.Parent.ScreenToClient(FCenter);
+  mParent := AControl.Parent.ScreenToClient(FState.Center);
   Result := Result + TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagHeaderParent,
     [TAtlasMagnifier.ToDesign(mParent.X, mCurrent, mDesign), TAtlasMagnifier.ToDesign(mParent.Y, mCurrent, mDesign),
     AControl.Parent.Name]);
@@ -539,10 +544,11 @@ begin
   begin
     Exit;
   end;
-  ALines := ALines + [TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Left, mSource.Left, FZoom),
-    ASelected), TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Right, mSource.Left, FZoom), ASelected),
-    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Top, mSource.Top, FZoom), ASelected),
-    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Bottom, mSource.Top, FZoom), ASelected)];
+  ALines := ALines + [TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Left, mSource.Left, FState.Zoom),
+    ASelected),
+    TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Right, mSource.Left, FState.Zoom), ASelected),
+    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Top, mSource.Top, FState.Zoom), ASelected),
+    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Bottom, mSource.Top, FState.Zoom), ASelected)];
 end;
 
 function TAtlasIdeMagnifier.EdgeLines: TArray<TAtlasMagnifierLine>;
@@ -625,17 +631,17 @@ var
 begin
   FMenu.Items.Clear;
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagShow), cMenuShow, Shown);
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagFreeze), cMenuFreeze, FFrozen);
+  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagFreeze), cMenuFreeze, FState.Frozen);
   FMenu.Items.Add(NewLine);
   mZoom := TAtlasMagnifier.cMinZoom;
   while mZoom <= TAtlasMagnifier.cMaxZoom do
   begin
     AddMenuItem(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagZoom, [mZoom]), cMenuZoom + mZoom,
-      mZoom = FZoom);
+      mZoom = FState.Zoom);
     mZoom := mZoom * 2;
   end;
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagGrid), cMenuGrid, FGrid);
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagEdges), cMenuEdges, FEdges);
+  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagGrid), cMenuGrid, FState.Grid);
+  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagEdges), cMenuEdges, FState.Edges);
   FMenu.Items.Add(NewLine);
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyColor), cMenuCopyColor, False);
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyPos), cMenuCopyPos, False);
@@ -664,12 +670,12 @@ begin
           mOwner.KeyPressed;
         cMenuGrid:
           begin
-            mOwner.FGrid := not mOwner.FGrid;
+            mOwner.FState.Grid := not mOwner.FState.Grid;
             mOwner.UpdateView(True);
           end;
         cMenuEdges:
           begin
-            mOwner.FEdges := not mOwner.FEdges;
+            mOwner.FState.Edges := not mOwner.FState.Edges;
             mOwner.UpdateView(True);
           end;
         cMenuCopyColor:

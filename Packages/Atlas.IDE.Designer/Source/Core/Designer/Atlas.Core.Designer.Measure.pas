@@ -226,8 +226,6 @@ begin
   Result := TAtlasMeasurePlace.RightOf;
 end;
 
-/// <summary>Gibt es unter den Geschwistern ein Paar auf derselben Achse wie ASide mit Abstand ADistance? Liefert
-/// die Lage des nächstgelegenen solchen Paars, sonst None.</summary>
 /// <summary>Hat ASiblings[AIndex] auf der Seite ASide den Abstand ADistance: zum nächsten Geschwister, ohne
 /// Geschwister auf der Seite AWanted zur Innenkante AInner?</summary>
 function KeepsDistance(const ASiblings: TArray<TAtlasMeasureItem>; AIndex: Integer; ASide, AWanted: TAtlasMeasureSide;
@@ -248,6 +246,8 @@ begin
   end;
 end;
 
+/// <summary>Gibt es unter den Geschwistern ein Paar auf derselben Achse wie ASide mit Abstand ADistance? Liefert
+/// die Lage des nächstgelegenen solchen Paars, sonst None.</summary>
 function SamePlace(const ASubject: TRect; const ASiblings: TArray<TAtlasMeasureItem>; const AInner: TRect;
   ASide: TAtlasMeasureSide; ADistance: Integer): TAtlasMeasurePlace;
 var
