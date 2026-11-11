@@ -5340,6 +5340,38 @@
       "x-node": "editor.designerBar",
       "x-issue": "#747"
     },
+    "DesignerZOrder": {
+      "description": "Untermenü „Ebene“ im Menü „Anordnen“ der Designer-Leiste: eine Ebene nach vorn oder hinten unter den überlappenden Steuerelementen, ganz nach vorn oder hinten, Stapel unter dem markierten Steuerelement zum Auswählen verdeckter Steuerelemente.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.zOrder",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#749"
+    },
+    "DesignerZOrderShortcuts": {
+      "description": "Strg+Bild auf und Strg+Bild ab schieben das markierte Steuerelement im Designer eine Ebene nach vorn bzw. hinten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.zOrder.shortcuts",
+      "x-parent": "designer.zOrder",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#749"
+    },
+    "DesignerZOrderIncludeParents": {
+      "description": "Im Stapel nach einer Trennlinie auch die Container-Vorfahren des markierten Steuerelements zeigen.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.zOrder.includeParents",
+      "x-parent": "designer.zOrder",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#749"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",

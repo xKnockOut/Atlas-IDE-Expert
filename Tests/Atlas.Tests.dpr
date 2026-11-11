@@ -1622,6 +1622,8 @@ uses
   Atlas.Core.Designer.NearAlign.Tests in 'IDE.Expert\Atlas.Core.Designer.NearAlign.Tests.pas',
   Atlas.Core.Designer.DefaultSizes in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DefaultSizes.pas',
   Atlas.Core.Designer.DefaultSizes.Tests in 'IDE.Expert\Atlas.Core.Designer.DefaultSizes.Tests.pas',
+  Atlas.Core.Designer.Layers in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Layers.pas',
+  Atlas.Core.Designer.Layers.Tests in 'IDE.Expert\Atlas.Core.Designer.Layers.Tests.pas',
   Atlas.Core.Designer.Components in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',

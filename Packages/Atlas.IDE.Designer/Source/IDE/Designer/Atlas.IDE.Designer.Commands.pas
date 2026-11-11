@@ -111,6 +111,7 @@ procedure TAtlasIdeDesignerCommands.UpdateKeys(AWanted: Boolean);
 begin
   FSelect.UpdateKeys(AWanted);
   FNavigate.UpdateKeys(AWanted);
+  FArrange.UpdateKeys(AWanted);
 end;
 
 procedure TAtlasIdeDesignerCommands.ApplyTheme;

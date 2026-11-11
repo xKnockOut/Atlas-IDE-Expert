@@ -678,6 +678,11 @@ type
       write FEditorView.DesignerDefaultSizesApplyOnInsert;
     property DesignerDefaultSizesMarkDeviations: Boolean read FEditorView.DesignerDefaultSizesMarkDeviations
       write FEditorView.DesignerDefaultSizesMarkDeviations;
+    property DesignerZOrder: Boolean read FEditorView.DesignerZOrder write FEditorView.DesignerZOrder;
+    property DesignerZOrderShortcuts: Boolean read FEditorView.DesignerZOrderShortcuts
+      write FEditorView.DesignerZOrderShortcuts;
+    property DesignerZOrderIncludeParents: Boolean read FEditorView.DesignerZOrderIncludeParents
+      write FEditorView.DesignerZOrderIncludeParents;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick

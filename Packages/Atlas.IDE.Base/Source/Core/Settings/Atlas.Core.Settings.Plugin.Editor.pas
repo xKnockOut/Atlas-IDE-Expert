@@ -575,6 +575,12 @@ type
     DesignerDefaultSizesApplyOnInsert: Boolean;
     /// <summary>Befehl „Abweichungen anzeigen“ (#747, designer.defaultSizes.markDeviations).</summary>
     DesignerDefaultSizesMarkDeviations: Boolean;
+    /// <summary>Ebenen schrittweise ordnen (#749, designer.zOrder).</summary>
+    DesignerZOrder: Boolean;
+    /// <summary>Strg+Bild auf/ab im Designer (#749, designer.zOrder.shortcuts).</summary>
+    DesignerZOrderShortcuts: Boolean;
+    /// <summary>Container-Vorfahren im Stapel (#749, designer.zOrder.includeParents).</summary>
+    DesignerZOrderIncludeParents: Boolean;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1142,6 +1148,9 @@ begin
   DesignerDefaultSizesTable := '';
   DesignerDefaultSizesApplyOnInsert := True;
   DesignerDefaultSizesMarkDeviations := False;
+  DesignerZOrder := True;
+  DesignerZOrderShortcuts := True;
+  DesignerZOrderIncludeParents := False;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeArrange(const AIo: TAtlasSettingsExchange);
@@ -1173,6 +1182,9 @@ begin
   AIo.Text('DesignerDefaultSizesTable', DesignerDefaultSizesTable);
   AIo.Flag('DesignerDefaultSizesApplyOnInsert', DesignerDefaultSizesApplyOnInsert);
   AIo.Flag('DesignerDefaultSizesMarkDeviations', DesignerDefaultSizesMarkDeviations);
+  AIo.Flag('DesignerZOrder', DesignerZOrder);
+  AIo.Flag('DesignerZOrderShortcuts', DesignerZOrderShortcuts);
+  AIo.Flag('DesignerZOrderIncludeParents', DesignerZOrderIncludeParents);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;

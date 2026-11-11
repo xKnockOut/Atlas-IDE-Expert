@@ -18,6 +18,9 @@
 // - Standardgröße (Untermenü: setzen, Tabelle aus Formular übernehmen,
 //   Abweichungen anzeigen) und Standardgröße rückgängig (#747,
 //   designer.defaultSizes, TAtlasIdeDefaultSizes).
+// - Ebene (Untermenü: eine Ebene nach vorn/hinten, ganz nach vorn/hinten,
+//   Stapel unter dem markierten Steuerelement zum Auswählen) und Ebene
+//   rückgängig (#749, designer.zOrder, TAtlasIdeDesignerLayers).
 // Gesperrt sind Einträge, für die die Auswahl nicht passt. Nur im Hauptthread.
 
 interface
@@ -31,7 +34,8 @@ uses
   Atlas.IDE.Designer.InsertSpace,
   Atlas.IDE.Designer.FitContainer,
   Atlas.IDE.Designer.NearAlign,
-  Atlas.IDE.Designer.DefaultSizes;
+  Atlas.IDE.Designer.DefaultSizes,
+  Atlas.IDE.Designer.Layers;
 
 type
   TAtlasIdeDesignerArrange = class
@@ -43,11 +47,18 @@ type
     FFit: TAtlasIdeFitContainer;
     FNear: TAtlasIdeNearAlign;
     FSizes: TAtlasIdeDefaultSizes;
+    FLayers: TAtlasIdeDesignerLayers;
+    /// <summary>Namen der Stapel-Einträge im zuletzt gezeigten Menü.</summary>
+    FStackNames: TArray<string>;
     function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; AEnabled: Boolean): TMenuItem;
     procedure AddFitItems(AEnabled, AMany: Boolean);
     procedure AddNearItems(ASelection: Boolean);
     procedure AddSizeItems(const ASettings: TAtlasPluginSettings);
+    procedure AddLayerItems;
     procedure ItemClick(Sender: TObject);
+    /// <summary>Befehl zum Menü-Tag ATag ausführen.</summary>
+    procedure Run(ATag: Integer);
+    procedure RunArrange(ATag: Integer);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -57,6 +68,8 @@ type
     /// <summary>Menü für die Auswahl im aktiven Designer an APoint (Bildschirm).</summary>
     procedure Popup(const APoint: TPoint);
     procedure ApplyTheme;
+    /// <summary>Tasten an- oder abmelden (Designer gezeigt).</summary>
+    procedure UpdateKeys(AWanted: Boolean);
   end;
 
 implementation
@@ -89,6 +102,10 @@ const
   cNearFirst = 20;
   /// <summary>Ab hier TAtlasSizesCommand: cSizesFirst + Ord(Befehl).</summary>
   cSizesFirst = 30;
+  /// <summary>Ab hier TAtlasLayersCommand: cLayersFirst + Ord(Befehl).</summary>
+  cLayersFirst = 40;
+  /// <summary>Ab hier Einträge des Stapels: cStackFirst + Index in FStackNames.</summary>
+  cStackFirst = 100;
 
 { TAtlasIdeDesignerArrange }
 
@@ -102,10 +119,12 @@ begin
   FFit := TAtlasIdeFitContainer.Create(AOnMessage);
   FNear := TAtlasIdeNearAlign.Create(AOnMessage);
   FSizes := TAtlasIdeDefaultSizes.Create(AOnMessage);
+  FLayers := TAtlasIdeDesignerLayers.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerArrange.Destroy;
 begin
+  FLayers.Free;
   FSizes.Free;
   FNear.Free;
   FFit.Free;
@@ -119,7 +138,7 @@ class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginS
 begin
   Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
     ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
-    ASettings.DesignerDefaultSizes;
+    ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder;
 end;
 
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
@@ -184,6 +203,37 @@ begin
     cSizesFirst + Ord(TAtlasSizesCommand.Undo), FSizes.CanUndo);
 end;
 
+procedure TAtlasIdeDesignerArrange.AddLayerItems;
+var
+  mSub: TMenuItem;
+  mOne: Boolean;
+  mEntry: TAtlasStackEntry;
+begin
+  mOne := TAtlasIdeDesignerLayers.HasTarget;
+  mSub := AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerCmd), 0, mOne);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerForward),
+    cLayersFirst + Ord(TAtlasLayersCommand.Forward), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerBackward),
+    cLayersFirst + Ord(TAtlasLayersCommand.Backward), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerFront),
+    cLayersFirst + Ord(TAtlasLayersCommand.Front), True);
+  AddItem(mSub, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerBack),
+    cLayersFirst + Ord(TAtlasLayersCommand.Back), True);
+  FStackNames := nil;
+  AddItem(mSub, '-', 0, True);
+  for mEntry in TAtlasIdeDesignerLayers.Stack do
+  begin
+    if mEntry.BreakBefore then
+    begin
+      AddItem(mSub, '-', 0, True);
+    end;
+    AddItem(mSub, mEntry.Caption, cStackFirst + Length(FStackNames), True).Checked := mEntry.Selected;
+    FStackNames := FStackNames + [mEntry.Name];
+  end;
+  AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerUndoCmd),
+    cLayersFirst + Ord(TAtlasLayersCommand.Undo), FLayers.CanUndo);
+end;
+
 procedure TAtlasIdeDesignerArrange.Popup(const APoint: TPoint);
 var
   mEditor: IOTAFormEditor;
@@ -237,66 +287,87 @@ begin
   begin
     AddSizeItems(mSettings);
   end;
+  if mSettings.DesignerZOrder then
+  begin
+    AddLayerItems;
+  end;
   FMenu.Popup(APoint.X, APoint.Y);
+end;
+
+procedure TAtlasIdeDesignerArrange.RunArrange(ATag: Integer);
+begin
+  case ATag of
+    cFitToText:
+      TAtlasIdeFitText.Execute(FOnMessage);
+    cButtonBar:
+      TAtlasIdeButtonBar.Execute(FOnMessage);
+    cDuplicate:
+      FDuplicate.Execute;
+    cDuplicateUndo:
+      FDuplicate.Undo;
+    cSpaceInsert:
+      FSpace.Execute(False);
+    cSpaceRemove:
+      FSpace.Execute(True);
+    cSpaceUndo:
+      FSpace.Undo;
+    cFitBoth:
+      FFit.Execute(TAtlasFitMode.Both, False);
+    cFitWidth:
+      FFit.Execute(TAtlasFitMode.Width, False);
+    cFitHeight:
+      FFit.Execute(TAtlasFitMode.Height, False);
+    cFitSame:
+      FFit.Execute(TAtlasFitMode.Both, True);
+    cFitUndo:
+      FFit.Undo;
+  end;
+end;
+
+procedure TAtlasIdeDesignerArrange.Run(ATag: Integer);
+begin
+  if ATag >= cStackFirst then
+  begin
+    if ATag - cStackFirst <= High(FStackNames) then
+    begin
+      TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
+    end;
+  end
+  else if ATag >= cLayersFirst then
+  begin
+    FLayers.Execute(TAtlasLayersCommand(ATag - cLayersFirst));
+  end
+  else if ATag >= cSizesFirst then
+  begin
+    FSizes.Execute(TAtlasSizesCommand(ATag - cSizesFirst));
+  end
+  else if ATag >= cNearFirst then
+  begin
+    FNear.Execute(TAtlasNearCommand(ATag - cNearFirst));
+  end
+  else
+  begin
+    RunArrange(ATag);
+  end;
 end;
 
 procedure TAtlasIdeDesignerArrange.ItemClick(Sender: TObject);
 var
   mTag: Integer;
-  mOnMessage: TProc<string>;
-  mDuplicate: TAtlasIdeDuplicateRow;
-  mSpace: TAtlasIdeInsertSpace;
-  mFit: TAtlasIdeFitContainer;
-  mNear: TAtlasIdeNearAlign;
-  mSizes: TAtlasIdeDefaultSizes;
+  mSelf: TAtlasIdeDesignerArrange;
 begin
   mTag := TMenuItem(Sender).Tag;
-  mOnMessage := FOnMessage;
-  mDuplicate := FDuplicate;
-  mSpace := FSpace;
-  mFit := FFit;
-  mNear := FNear;
-  mSizes := FSizes;
+  mSelf := Self;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
-      if mTag >= cSizesFirst then
-      begin
-        mSizes.Execute(TAtlasSizesCommand(mTag - cSizesFirst));
-        Exit;
-      end;
-      if mTag >= cNearFirst then
-      begin
-        mNear.Execute(TAtlasNearCommand(mTag - cNearFirst));
-        Exit;
-      end;
-      case mTag of
-        cFitToText:
-          TAtlasIdeFitText.Execute(mOnMessage);
-        cButtonBar:
-          TAtlasIdeButtonBar.Execute(mOnMessage);
-        cDuplicate:
-          mDuplicate.Execute;
-        cDuplicateUndo:
-          mDuplicate.Undo;
-        cSpaceInsert:
-          mSpace.Execute(False);
-        cSpaceRemove:
-          mSpace.Execute(True);
-        cSpaceUndo:
-          mSpace.Undo;
-        cFitBoth:
-          mFit.Execute(TAtlasFitMode.Both, False);
-        cFitWidth:
-          mFit.Execute(TAtlasFitMode.Width, False);
-        cFitHeight:
-          mFit.Execute(TAtlasFitMode.Height, False);
-        cFitSame:
-          mFit.Execute(TAtlasFitMode.Both, True);
-        cFitUndo:
-          mFit.Undo;
-      end;
+      mSelf.Run(mTag);
     end);
+end;
+
+procedure TAtlasIdeDesignerArrange.UpdateKeys(AWanted: Boolean);
+begin
+  FLayers.UpdateKeys(AWanted);
 end;
 
 procedure TAtlasIdeDesignerArrange.ApplyTheme;

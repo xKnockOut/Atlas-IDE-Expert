@@ -44,6 +44,8 @@ type
     procedure NearAlignmentRoundTrip;
     [Test]
     procedure DefaultSizesRoundTrip;
+    [Test]
+    procedure ZOrderRoundTrip;
   end;
 
 implementation
@@ -353,6 +355,30 @@ begin
     Assert.AreEqual('TButton=88,25', mSaved.DesignerDefaultSizesTable);
     Assert.IsFalse(mSaved.DesignerDefaultSizesApplyOnInsert);
     Assert.IsTrue(mSaved.DesignerDefaultSizesMarkDeviations);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ZOrderRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerZOrder').Checked, 'Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerZOrderShortcuts').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerZOrderIncludeParents').Checked);
+    CheckOf(mPage, 'DesignerZOrder').Checked := False;
+    CheckOf(mPage, 'DesignerZOrderShortcuts').Checked := False;
+    CheckOf(mPage, 'DesignerZOrderIncludeParents').Checked := True;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerZOrder, 'abschaltbar');
+    Assert.IsFalse(mSaved.DesignerZOrderShortcuts);
+    Assert.IsTrue(mSaved.DesignerZOrderIncludeParents);
   finally
     mPage.Free;
   end;

@@ -64,7 +64,10 @@ type
     DesignerSizesLearn, DesignerSizesShow, DesignerSizesUndoCmd, DesignerSizesDone, DesignerSizesNone,
     DesignerSizesNoTable, DesignerSizesSkipped, DesignerSizesUndone, DesignerSizesLearned, DesignerSizesDeviations,
     DesignerSizesNoDeviations, DesignerSizesTarget, DesignerSizesInserted, SettingsDesignerDefaultSizes,
-    SettingsDesignerSizesTable, SettingsDesignerSizesOnInsert, SettingsDesignerSizesMark);
+    SettingsDesignerSizesTable, SettingsDesignerSizesOnInsert, SettingsDesignerSizesMark, DesignerLayerCmd,
+    DesignerLayerForward, DesignerLayerBackward, DesignerLayerFront, DesignerLayerBack, DesignerLayerUndoCmd,
+    DesignerLayerNone, DesignerLayerDone, DesignerLayerUndone, SettingsDesignerZOrder,
+    SettingsDesignerZOrderShortcuts, SettingsDesignerZOrderParents);
 
   TAtlasDesignerStrings = class
   public
@@ -296,7 +299,19 @@ const
      'Standardgrößen je Klasse',
      'Tabelle (Klasse=Breite,Höhe; …)',
      'Beim Ablegen neuer Komponenten anwenden',
-     'Befehl „Abweichungen anzeigen“'),
+     'Befehl „Abweichungen anzeigen“',
+     'Ebene',
+     'Eine Ebene nach vorn',
+     'Eine Ebene nach hinten',
+     'Ganz nach vorn',
+     'Ganz nach hinten',
+     'Ebene rückgängig',
+     '%s: kein überlappendes Steuerelement derselben Art in dieser Richtung.',
+     '%s: Ebene geändert.',
+     'Ebene zurückgenommen.',
+     'Ebenen schrittweise ordnen',
+     'Strg+Bild auf/ab im Designer',
+     'Container-Vorfahren im Stapel zeigen'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -509,7 +524,19 @@ const
      'Default sizes per class',
      'Table (class=width,height; …)',
      'Apply when dropping new components',
-     '“Show deviations” command'));
+     '“Show deviations” command',
+     'Layer',
+     'Bring forward',
+     'Send backward',
+     'Bring to front',
+     'Send to back',
+     'Undo layer',
+     '%s: no overlapping control of the same kind in that direction.',
+     '%s: layer changed.',
+     'Layer undone.',
+     'Order layers step by step',
+     'Ctrl+PgUp/PgDn in the designer',
+     'Show container ancestors in the stack'));
 
 { TAtlasDesignerStrings }
 
