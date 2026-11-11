@@ -76,6 +76,10 @@ const
   cFitSourceItems = 'items';
   cMaxFitMinWidth = 2000;
   cMaxFitPadding = 200;
+  /// <summary>Werte von designer.gapHandles.anchor (#734).</summary>
+  cGapAnchorCenter = 'center';
+  cGapAnchorFirst = 'first';
+  cGapAnchorLast = 'last';
   /// <summary>Werte von designer.buttonBar.position (#732).</summary>
   cButtonBarBottomRight = 'bottomRight';
   cButtonBarBottomLeft = 'bottomLeft';
@@ -648,6 +652,13 @@ type
     DesignerWrapInContainerDefaultClass: string;
     /// <summary>Eigene Containerklassen, Komma-Liste (#733, designer.wrapInContainer.classes).</summary>
     DesignerWrapInContainerClasses: string;
+    /// <summary>Abstandsgriffe bei Mehrfachauswahl (#734, designer.gapHandles).</summary>
+    DesignerGapHandles: Boolean;
+    /// <summary>Rastwerte beim Ziehen, durch Komma getrennt (#734, designer.gapHandles.snapValues).</summary>
+    DesignerGapHandlesSnapValues: string;
+    /// <summary>Fester Punkt: cGapAnchorCenter, cGapAnchorFirst oder cGapAnchorLast (#734,
+    /// designer.gapHandles.anchor).</summary>
+    DesignerGapHandlesAnchor: string;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -695,6 +706,10 @@ type
     procedure ExchangeArrange(const AIo: TAtlasSettingsExchange);
     /// <summary>Einstellungen von Formularraster und Einpacken lesen bzw. schreiben.</summary>
     procedure ExchangeFormTools(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben der Werkzeuge mit eigenem Knopf in der Designer-Leiste (#734 ff.).</summary>
+    procedure SetToolDefaults;
+    /// <summary>Einstellungen der Werkzeuge mit eigenem Knopf lesen bzw. schreiben.</summary>
+    procedure ExchangeTools(const AIo: TAtlasSettingsExchange);
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
@@ -1172,6 +1187,7 @@ begin
   Result.DesignerSpatialCrossContainers := True;
   Result.SetArrangeDefaults;
   Result.SetFormToolDefaults;
+  Result.SetToolDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
@@ -1327,6 +1343,20 @@ begin
   AIo.Text('DesignerWrapInContainerClasses', DesignerWrapInContainerClasses);
 end;
 
+procedure TAtlasPluginEditorViewSettings.SetToolDefaults;
+begin
+  DesignerGapHandles := True;
+  DesignerGapHandlesSnapValues := '4, 8, 12, 16';
+  DesignerGapHandlesAnchor := cGapAnchorCenter;
+end;
+
+procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DesignerGapHandles', DesignerGapHandles);
+  AIo.Text('DesignerGapHandlesSnapValues', DesignerGapHandlesSnapValues);
+  AIo.Text('DesignerGapHandlesAnchor', DesignerGapHandlesAnchor);
+end;
+
 procedure TAtlasPluginEditorViewSettings.Normalize;
 begin
   MinimapRender := Choice(MinimapRender, ['characters', 'blocks']);
@@ -1365,6 +1395,7 @@ begin
     DesignerWrapInContainerDefaultClass := 'TPanel';
   end;
   DesignerNearAlignmentTolerance := EnsureRange(DesignerNearAlignmentTolerance, 1, cMaxNearTolerance);
+  DesignerGapHandlesAnchor := Choice(DesignerGapHandlesAnchor, [cGapAnchorCenter, cGapAnchorFirst, cGapAnchorLast]);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -1392,6 +1423,7 @@ begin
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeArrange(AIo);
   ExchangeFormTools(AIo);
+  ExchangeTools(AIo);
   AIo.Flag('Minimap', Minimap);
   AIo.Text('MinimapRender', MinimapRender);
   AIo.Number('MinimapWidth', MinimapWidth);

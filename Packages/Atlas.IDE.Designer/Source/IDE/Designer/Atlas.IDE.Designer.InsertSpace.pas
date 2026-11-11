@@ -54,7 +54,6 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Designer.InsertSpace,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.SpaceDialog,
   Atlas.IDE.Designer.Access,
