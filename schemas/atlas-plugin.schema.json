@@ -5263,39 +5263,24 @@
       "x-node": "editor.designerBar",
       "x-issue": "#608"
     },
-    "DesignerNonVisualTray": {
-      "description": "Knopf „Nichtvisuelle Komponenten“ in der Designer-Leiste: öffnet eine andockbare Leiste mit allen nichtvisuellen Komponenten des Formulars, gruppiert nach Daten, Aktionen und Menüs, Dialogen, Bildern und Sonstigem, mit Filter nach Namen. Klick wählt die Komponente im Designer, Doppelklick öffnet ihren Editor, Rechtsklick die Befehle ihres Komponenten-Editors; eine Komponente aus der Palette landet per Ziehen oder Klick an einer freien Stelle am unteren Rand des Formulars. Left/Top in der DFM bleiben unverändert.",
+    "DesignerStructure": {
+      "description": "Knopf „Atlas-Struktur“ in der Designer-Leiste: öffnet ein andockbares Fenster mit den Steuerelementen des Formulars als Baum wie im Fenster „Struktur“ und den nichtvisuellen Komponenten gruppiert nach Klasse (umschaltbar nach Art), mit Symbolen der Palette und Filter nach Name oder Klasse. Unter jeder nichtvisuellen Komponente lassen sich ihre Verknüpfungen aufklappen: → worauf sie verweist, ← wer sie verwendet; leere Pflichtverweise und unbenutzte Menüs, Bildlisten und DataSources sind markiert. Klick wählt die Komponente bzw. das Ziel der Verknüpfung, Doppelklick öffnet ihren Editor, Rechtsklick die Befehle ihres Komponenten-Editors; eine nichtvisuelle Komponente aus der Palette landet per Ziehen an einer freien Stelle am unteren Rand des Formulars. Left/Top in der DFM bleiben unverändert.",
       "type": "boolean",
       "default": false,
-      "x-key": "designer.nonVisualTray",
+      "x-key": "designer.structure",
       "x-area": "editor",
       "x-page": "Editor",
       "x-node": "editor.designerBar",
       "x-issue": "#609"
     },
-    "DesignerNonVisualTrayPosition": {
-      "description": "Lage der Leiste beim ersten Öffnen: unter dem Designer (bottom) oder rechts daneben (right). Danach lässt sie sich wie jedes Fenster der IDE andocken; die IDE merkt sich die Lage im Desktop.",
-      "type": "string",
-      "enum": [
-        "bottom",
-        "right"
-      ],
-      "default": "bottom",
-      "x-key": "designer.nonVisualTrayPosition",
-      "x-area": "editor",
-      "x-page": "Editor",
-      "x-parent": "designer.nonVisualTray",
-      "x-node": "editor.designerBar",
-      "x-issue": "#609"
-    },
-    "DesignerNonVisualTrayHideOnForm": {
-      "description": "Symbole der nichtvisuellen Komponenten auf der Formularfläche ausblenden, solange die Leiste offen ist (über den Befehl „Nichtvisuelle Komponenten ausblenden“ der IDE; beim Schließen gilt wieder der vorherige Zustand).",
+    "DesignerStructureHideOnForm": {
+      "description": "Symbole der nichtvisuellen Komponenten auf der Formularfläche ausblenden, solange das Fenster „Atlas-Struktur“ offen ist (über den Befehl „Nichtvisuelle Komponenten ausblenden“ der IDE; beim Schließen gilt wieder der vorherige Zustand).",
       "type": "boolean",
       "default": true,
-      "x-key": "designer.nonVisualTrayHideOnForm",
+      "x-key": "designer.structureHideOnForm",
       "x-area": "editor",
       "x-page": "Editor",
-      "x-parent": "designer.nonVisualTray",
+      "x-parent": "designer.structure",
       "x-node": "editor.designerBar",
       "x-issue": "#609"
     },

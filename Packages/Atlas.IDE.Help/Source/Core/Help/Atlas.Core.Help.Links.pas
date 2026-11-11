@@ -82,7 +82,7 @@ const
     (Id: 'AtlasDebugExceptions'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasStepFilter'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasCompilerSwitches'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
-    (Id: 'AtlasNonVisualTray'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
+    (Id: 'AtlasStructure'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
     (Id: TAtlasHelpLinks.cOptionsWindow; German: 'Einstellungen'; English: 'Settings')); // german-ok Dateiname
 
 function Target(const APath, AAnchor: string): TAtlasHelpTarget;

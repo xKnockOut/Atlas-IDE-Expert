@@ -33,7 +33,7 @@ type
     [Test]
     procedure NameSuggestRoundTrip;
     [Test]
-    procedure NonVisualTrayRoundTrip;
+    procedure StructureRoundTrip;
     [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
@@ -253,7 +253,7 @@ begin
   end;
 end;
 
-procedure TDesignerSettingsSectionTests.NonVisualTrayRoundTrip;
+procedure TDesignerSettingsSectionTests.StructureRoundTrip;
 var
   mPage: TAtlasSettingsPage;
   mSaved: TAtlasPluginSettings;
@@ -261,17 +261,14 @@ begin
   mPage := TAtlasSettingsPage.Create(nil);
   try
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsFalse(CheckOf(mPage, 'DesignerNonVisualTray').Checked, 'Vorgabe aus');
-    Assert.AreEqual(0, ChoiceOf(mPage, 'DesignerNonVisualTrayPosition').Choice, 'unten');
-    Assert.IsTrue(CheckOf(mPage, 'DesignerNonVisualTrayHideOnForm').Checked);
-    CheckOf(mPage, 'DesignerNonVisualTray').Checked := True;
-    ChoiceOf(mPage, 'DesignerNonVisualTrayPosition').Choice := 1;
-    CheckOf(mPage, 'DesignerNonVisualTrayHideOnForm').Checked := False;
+    Assert.IsFalse(CheckOf(mPage, 'DesignerStructure').Checked, 'Vorgabe aus');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerStructureHideOnForm').Checked);
+    CheckOf(mPage, 'DesignerStructure').Checked := True;
+    CheckOf(mPage, 'DesignerStructureHideOnForm').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
-    Assert.IsTrue(mSaved.DesignerNonVisualTray);
-    Assert.AreEqual('right', mSaved.DesignerNonVisualTrayPosition);
-    Assert.IsFalse(mSaved.DesignerNonVisualTrayHideOnForm);
+    Assert.IsTrue(mSaved.DesignerStructure);
+    Assert.IsFalse(mSaved.DesignerStructureHideOnForm);
   finally
     mPage.Free;
   end;

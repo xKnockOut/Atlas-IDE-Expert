@@ -589,13 +589,11 @@ type
     /// <summary>Eigene Präfixe „TKlasse=präfix“ vor der eingebauten Tabelle (#608, designer.nameSuggestPrefixes).
     /// </summary>
     DesignerNameSuggestPrefixes: string;
-    /// <summary>Knopf „Nichtvisuelle Komponenten“ mit eigener Leiste (#609, designer.nonVisualTray).</summary>
-    DesignerNonVisualTray: Boolean;
-    /// <summary>Lage der Leiste beim ersten Öffnen: bottom oder right (#609, designer.nonVisualTrayPosition).</summary>
-    DesignerNonVisualTrayPosition: string;
-    /// <summary>Symbole auf der Formularfläche ausblenden, solange die Leiste offen ist (#609,
-    /// designer.nonVisualTrayHideOnForm).</summary>
-    DesignerNonVisualTrayHideOnForm: Boolean;
+    /// <summary>Knopf „Atlas-Struktur“ mit andockbarem Fenster (#609, designer.structure).</summary>
+    DesignerStructure: Boolean;
+    /// <summary>Symbole nichtvisueller Komponenten auf der Formularfläche ausblenden, solange das Fenster offen ist
+    /// (#609, designer.structureHideOnForm).</summary>
+    DesignerStructureHideOnForm: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1690,9 +1688,8 @@ begin
   DesignerNameSuggestUmlauts := 'replace';
   DesignerNameSuggestRenameHandlers := True;
   DesignerNameSuggestPrefixes := '';
-  DesignerNonVisualTray := False;
-  DesignerNonVisualTrayPosition := 'bottom';
-  DesignerNonVisualTrayHideOnForm := True;
+  DesignerStructure := False;
+  DesignerStructureHideOnForm := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1711,9 +1708,8 @@ begin
   AIo.Text('DesignerNameSuggestUmlauts', DesignerNameSuggestUmlauts);
   AIo.Flag('DesignerNameSuggestRenameHandlers', DesignerNameSuggestRenameHandlers);
   AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
-  AIo.Flag('DesignerNonVisualTray', DesignerNonVisualTray);
-  AIo.Text('DesignerNonVisualTrayPosition', DesignerNonVisualTrayPosition);
-  AIo.Flag('DesignerNonVisualTrayHideOnForm', DesignerNonVisualTrayHideOnForm);
+  AIo.Flag('DesignerStructure', DesignerStructure);
+  AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
 end;
 
 end.
