@@ -151,7 +151,7 @@ Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE. Was ohn
 
 - **Claude Code:** MCP-Werkzeuge und LSP als Plugin, siehe [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
 - **CI und Kommandozeile:** `AtlasServer.exe --check`, siehe [Linter-Modus](docs/features/de/Kommandozeile.md#linter-modus)
-- **AtlasMonitor (Windows):** eigenes Fenster mit Symbol im Infobereich für alle laufenden Atlas-Server (IDE, MCP, Kommandozeile): Zustandspunkt (ruht, arbeitet, hängt), Einzelheiten, Server beenden, Protokoll öffnen, Index-Cache leeren, mit Windows starten (#1901). Jeder Server schreibt dafür alle 5 s `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` (`server.statusFile`). Einstellungen in `%APPDATA%\Atlas\monitor.json`. Prüfläufe ohne IDE folgen mit #1900.
+- **AtlasMonitor (Windows):** eigenes Fenster mit Symbol im Infobereich für alle laufenden Atlas-Server (IDE, MCP, Kommandozeile): Zustandspunkt (ruht, arbeitet, hängt), Einzelheiten, Server beenden, Protokoll öffnen, Index-Cache leeren, mit Windows starten (#1901). Jeder Server schreibt dafür alle 5 s `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` (`server.statusFile`). Einstellungen in `%APPDATA%\Atlas\monitor.json`. Reiter **Prüfen** (#1900): alle Befehle der Kommandozeile ohne IDE (check mit allen Optionen, Metriken, TODOs, Formatierung prüfen/schreiben, Fix mit Probelauf, betroffene Tests, Architektur speichern/vergleichen, Hotspots, Abfrage, Replay) auf einer Zielliste (Ordner, .dproj, .groupproj, Dateien; an/aus, speichern/laden). Jedes Ziel läuft als unsichtbarer Kindprozess mit Fortschritt, Abbrechen und einem Job, der beim Schließen des Monitors alle Läufe beendet; Befunde mit Filter, Doppelklick öffnet den Editor, Export als HTML oder SARIF, „Aufruf kopieren“. Architektur- und Hotspot-Seiten erscheinen im Reiter **Bericht** (WebView2, sonst Standardbrowser).
 - **Claude Code in der Cloud (Linux):** Setup-Skript der Umgebung und SessionStart-Hook legen den Server als `AtlasServer` (und `AtlasServer.exe`) nach `/usr/local/bin`, fertig gebaut aus dem Vorab-Release `cloud-linux` oder mit Free Pascal; Einrichtung in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([Bauen unter Linux](#bauen-unter-linux))
 
 Ausführlich: [docs/Installation.md](docs/Installation.md).
@@ -180,7 +180,7 @@ Englisch gibt es dieselben Seiten unter [docs/en](docs/en/) und [docs/features/e
 | `Packages/Atlas.Linux` | Linux-Gegenstücke der Windows-Adapter des Servers, nur Quelltext, für den Bau mit Free Pascal |
 | `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout, MCP mit `--mcp`, Linter mit `--check`) |
 | `Application/AtlasUpdate` | Installer und Updater (#1519): `install`, `prepare`, `apply` |
-| `Application/AtlasMonitor` | Fenster und Symbol im Infobereich für alle laufenden Atlas-Server (#1901), VCL |
+| `Application/AtlasMonitor` | Fenster und Symbol im Infobereich für alle laufenden Atlas-Server (#1901), Prüfen ohne IDE (#1900), VCL |
 | `Packages/Atlas.IDE.*` | Das IDE-Plugin: ein Kern-Package und Modul-Packages (unten) |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 

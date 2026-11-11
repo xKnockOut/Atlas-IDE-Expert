@@ -829,6 +829,10 @@
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Servers.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Settings.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Texts.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Commands.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Results.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Runs.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Targets.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

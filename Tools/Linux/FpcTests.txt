@@ -179,6 +179,10 @@ Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
 Atlas.Common.Monitor.Settings.Tests
 Atlas.Common.Monitor.Texts.Tests
+Atlas.Common.Monitor.Commands.Tests
+Atlas.Common.Monitor.Results.Tests
+Atlas.Common.Monitor.Runs.Tests
+Atlas.Common.Monitor.Targets.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests

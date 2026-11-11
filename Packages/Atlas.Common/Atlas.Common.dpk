@@ -793,6 +793,10 @@ contains
   Atlas.Common.Updates.Apply in 'Source\Updates\Atlas.Common.Updates.Apply.pas',
   Atlas.Common.Monitor.Servers in 'Source\Monitor\Atlas.Common.Monitor.Servers.pas',
   Atlas.Common.Monitor.Settings in 'Source\Monitor\Atlas.Common.Monitor.Settings.pas',
-  Atlas.Common.Monitor.Texts in 'Source\Monitor\Atlas.Common.Monitor.Texts.pas';
+  Atlas.Common.Monitor.Texts in 'Source\Monitor\Atlas.Common.Monitor.Texts.pas',
+  Atlas.Common.Monitor.Commands in 'Source\Monitor\Atlas.Common.Monitor.Commands.pas',
+  Atlas.Common.Monitor.Results in 'Source\Monitor\Atlas.Common.Monitor.Results.pas',
+  Atlas.Common.Monitor.Runs in 'Source\Monitor\Atlas.Common.Monitor.Runs.pas',
+  Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas';
 
 end.

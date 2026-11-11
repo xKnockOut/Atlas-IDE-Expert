@@ -35,6 +35,8 @@
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+        <!-- Reiter „Bericht“ (#1900): TEdgeBrowser braucht WebView2Loader.dll neben der exe. -->
+        <PostBuildEvent>if exist "$(BDS)\Redist\$(Platform)\WebView2Loader.dll" copy /Y "$(BDS)\Redist\$(Platform)\WebView2Loader.dll" "..\Output\$(Platform)\$(Config)\Bin\" &gt;nul</PostBuildEvent>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -57,6 +59,9 @@
         <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Monitor.pas"/>
         <DCCReference Include="Source\Shell\Shell.Monitor.MainForm.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Monitor.CheckOptions.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Monitor.CheckPage.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Monitor.ReportPage.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

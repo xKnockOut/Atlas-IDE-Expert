@@ -95,6 +95,7 @@
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Archive.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.Adapters.System.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.Adapters.Process.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
