@@ -52,8 +52,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.IdeErrors,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Problems.Findings,
-  Atlas.IDE.Contracts.Rules;
+  Atlas.Core.Problems.Findings;
 
 const
   cFile = 'C:\P\Kunde.pas';

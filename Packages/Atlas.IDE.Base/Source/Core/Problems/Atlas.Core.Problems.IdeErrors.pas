@@ -23,8 +23,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Problems.Contract,
-  Atlas.IDE.Contracts.Rules;
+  Atlas.Core.Problems.Contract;
 
 type
   {$SCOPEDENUMS ON}

@@ -21,6 +21,9 @@
 
 interface
 
+uses
+  Atlas.Core.Problems.Contract;
+
 type
   /// <summary>Ergebnis des Aktualisierens im Hauptthread: ASucceeded mit Treffern ATotal in AFiles Dateien, sonst
   /// AReason.</summary>
@@ -58,16 +61,9 @@ type
     procedure Disable(const ARule: string);
   end;
 
-  /// <summary>Ein Fehler aus Error Insight der IDE (#1819), Werte wie in TOTAError: Zeilen 1-basiert, Spalten
-  /// (CharIndex) wie geliefert, Severity roh.</summary>
-  TAtlasIdeError = record
-    Text: string;
-    StartLine: Integer;
-    StartCharIndex: Integer;
-    StopLine: Integer;
-    StopCharIndex: Integer;
-    Severity: Integer;
-  end;
+  /// <summary>Ein Fehler aus Error Insight (#1819); liegt bei den Problemen im Kern (Atlas.Core.Problems.Contract).
+  /// </summary>
+  TAtlasIdeError = Atlas.Core.Problems.Contract.TAtlasIdeError;
 
   /// <summary>Fehler der IDE zu einer Datei (#1819). Aufruf im Hauptthread der IDE.</summary>
   IAtlasIdeErrors = interface
