@@ -12,13 +12,16 @@ uses
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.NodeScope,
   Atlas.UI.Settings.Group,
-  Atlas.UI.Settings.Page.Nodes;
+  Atlas.UI.Settings.Page.Nodes,
+  Atlas.UI.Settings.Page.Search;
 
 type
   TAtlasSettingsPageTree = class(TAtlasSettingsPageNodes)
   protected
     /// <summary>Bereiche und ihre Unterpunkte als Baum links (#890; vorher eine Liste).</summary>
     FTree: TTreeView;
+    /// <summary>Suchfeld über dem Baum (#1884); mit Text ersetzt die Trefferliste den Baum.</summary>
+    FSearch: TAtlasSettingsSearchBox;
     /// <summary>Baum links und rechts daneben die Reiter der Knoten.</summary>
     procedure AddNavigation;
     procedure FillTree;
@@ -43,6 +46,10 @@ type
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     function PageShown(AIndex: Integer): Boolean;
+    /// <summary>Vom Knoten ausgeblendete Seite AIndex: nur ein Bereich mit sichtbaren Unterpunkten bleibt.</summary>
+    function ScopeShown(AIndex: Integer): Boolean;
+    /// <summary>Hauptknoten AIndex: trifft der Filter einen Unterpunkt seines Bereichs?</summary>
+    function AreaHasMatch(AIndex: Integer): Boolean;
     procedure RefreshTree;
     /// <summary>Knoten der gezeigten Seiten; liefert den Knoten der Seite ASelected, sonst den ersten.</summary>
     function AddTreeNodes(ASelected: Integer): TTreeNode;
@@ -85,6 +92,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Forms,
   Vcl.Graphics,
+  Vcl.ExtCtrls,
   Atlas.UI.Strings,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Marks,
@@ -117,14 +125,32 @@ end;
 { TAtlasSettingsPageTree }
 
 procedure TAtlasSettingsPageTree.AddNavigation;
+var
+  mPanel: TPanel;
 begin
   // Reiter je Bereich (#227); jeder stapelt seine Elemente neu von oben. Viele Reiter: in Zeilen.
   // Bereiche und Unterpunkte als Baum links (#890); die Reiter selbst bleiben unsichtbar, der Baum schaltet sie um.
+  // Links: Suchfeld (#1884) über dem Baum; mit Suchtext ersetzt die Trefferliste den Baum.
+  mPanel := TPanel.Create(Self);
+  mPanel.Parent := Self;
+  mPanel.Align := alLeft;
+  mPanel.Width := 176;
+  mPanel.BevelOuter := bvNone;
+  mPanel.ParentBackground := True;
+  FSearch := TAtlasSettingsSearchBox.Create(Self, mPanel, Catalog,
+    function: TAtlasSettingsGroups
+    begin
+      Result := FGroups;
+    end);
+  FSearch.OnSearching :=
+    procedure(AShowing: Boolean)
+    begin
+      FTree.Visible := not AShowing;
+    end;
   FTree := TTreeView.Create(Self);
-  FTree.Parent := Self;
-  FTree.Align := alLeft;
+  FTree.Parent := mPanel;
+  FTree.Align := alClient;
   FTree.AlignWithMargins := True;
-  FTree.Width := 170;
   FTree.ReadOnly := True;
   FTree.HideSelection := False;
   FTree.OnChange := TreeChange;
@@ -217,6 +243,7 @@ var
   mAny: Boolean;
 begin
   FScope := AScope;
+  FSearch.OwnModule := AScope.Switch;
   SetLength(FScopeHidden, Length(FNodePages));
   for mIndex := 0 to High(FNodePages) do
   begin
@@ -298,44 +325,57 @@ begin
   Result := Length(FScopeHidden) = 0;
 end;
 
-function TAtlasSettingsPageTree.PageShown(AIndex: Integer): Boolean;
+function TAtlasSettingsPageTree.ScopeShown(AIndex: Integer): Boolean;
 var
   mIndex: Integer;
 begin
   // Knoten je Package (#1903): Seiten ohne Element des Knotens fallen weg; ein Bereich bleibt für seine Punkte.
+  Result := False;
+  if FNodePages[AIndex].Node <> '' then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(FNodePages) do
+  begin
+    if (mIndex <> AIndex) and (FNodePages[mIndex].Area = FNodePages[AIndex].Area) and
+      (mIndex <= High(FScopeHidden)) and not FScopeHidden[mIndex] then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAtlasSettingsPageTree.AreaHasMatch(AIndex: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  // Ein Bereich bleibt, solange einer seiner Punkte trifft.
+  Result := False;
+  if FNodePages[AIndex].Node <> '' then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(FNodePages) do
+  begin
+    if (mIndex <> AIndex) and (FNodePages[mIndex].Area = FNodePages[AIndex].Area) and
+      FMarks.HasMatch(FNodePages[mIndex].Box) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAtlasSettingsPageTree.PageShown(AIndex: Integer): Boolean;
+begin
   if (AIndex <= High(FScopeHidden)) and FScopeHidden[AIndex] then
   begin
-    if FNodePages[AIndex].Node <> '' then
-    begin
-      Exit(False);
-    end;
-    for mIndex := 0 to High(FNodePages) do
-    begin
-      if (mIndex <> AIndex) and (FNodePages[mIndex].Area = FNodePages[AIndex].Area) and
-        (mIndex <= High(FScopeHidden)) and not FScopeHidden[mIndex] then
-      begin
-        Exit(True);
-      end;
-    end;
-    Exit(False);
-  end;
-  // Der Filter blendet Unterpunkte ohne Treffer aus; ein Bereich bleibt, solange einer seiner Punkte trifft.
-  if (FMarks.Filter = sfAll) or FMarks.HasMatch(FNodePages[AIndex].Box) then
+    Result := ScopeShown(AIndex);
+  end
+  else
   begin
-    Exit(True);
+    // Der Filter blendet Unterpunkte ohne Treffer aus.
+    Result := (FMarks.Filter = sfAll) or FMarks.HasMatch(FNodePages[AIndex].Box) or AreaHasMatch(AIndex);
   end;
-  if FNodePages[AIndex].Node = '' then
-  begin
-    for mIndex := 0 to High(FNodePages) do
-    begin
-      if (mIndex <> AIndex) and (FNodePages[mIndex].Area = FNodePages[AIndex].Area) and
-        FMarks.HasMatch(FNodePages[mIndex].Box) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
 end;
 
 function TAtlasSettingsPageTree.AddTreeNodes(ASelected: Integer): TTreeNode;

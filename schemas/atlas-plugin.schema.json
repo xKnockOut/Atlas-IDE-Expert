@@ -1,7 +1,7 @@
-{
+﻿{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
-  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. x-module (#1454): Kennung des Moduls an dessen Modul-Schalter; alles darunter (x-parent bzw. Präfixregel) gehört zum Modul. Ist der Schalter aus, liefern die wirksamen Werte für jede boolesche Einstellung des Moduls „aus“ und für eine mit x-offValue diesen Wert; gespeichert bleibt der eigene Wert. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
+  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-keywords (#1884): Synonyme für die Suche über die Einstellungen (Liste von Wörtern, deutsch oder englisch), gelten abgeschwächt auch für die Unteroptionen; x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. x-module (#1454): Kennung des Moduls an dessen Modul-Schalter; alles darunter (x-parent bzw. Präfixregel) gehört zum Modul. Ist der Schalter aus, liefern die wirksamen Werte für jede boolesche Einstellung des Moduls „aus“ und für eine mit x-offValue diesen Wert; gespeichert bleibt der eigene Wert. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
   "x-version": 1,
   "x-areas": {
     "editor": {
@@ -567,7 +567,12 @@
       "x-quickToggle": true,
       "x-caption": "Experimentelle Funktionen erlauben",
       "x-captionEn": "Allow experimental features",
-      "x-issue": "#834"
+      "x-issue": "#834",
+      "x-keywords": [
+        "Beta",
+        "Vorschau",
+        "Preview"
+      ]
     },
     "PairColors": {
       "type": "boolean",
@@ -582,7 +587,12 @@
       "x-drawing": true,
       "x-caption": "Klammerfarben",
       "x-captionEn": "Bracket colors",
-      "x-issue": "#514"
+      "x-issue": "#514",
+      "x-keywords": [
+        "Klammern",
+        "Brackets",
+        "Rainbow"
+      ]
     },
     "PairGuides": {
       "type": "boolean",
@@ -701,7 +711,14 @@
       "x-drawing": true,
       "x-caption": "Probleme unterstreichen",
       "x-captionEn": "Underline problems",
-      "x-issue": "#398"
+      "x-issue": "#398",
+      "x-keywords": [
+        "Fehler",
+        "Warnungen",
+        "Diagnostics",
+        "Squiggles",
+        "Kringel"
+      ]
     },
     "InlayHints": {
       "type": "boolean",
@@ -981,7 +998,14 @@
       "x-quickToggle": true,
       "x-caption": "Hover-Tooltip",
       "x-captionEn": "Hover tooltip",
-      "x-issue": "#442"
+      "x-issue": "#442",
+      "x-keywords": [
+        "Tooltip",
+        "Hint",
+        "Kurzinfo",
+        "Hover",
+        "Help Insight"
+      ]
     },
     "FilterChips": {
       "type": "boolean",
@@ -1109,7 +1133,14 @@
       "x-quickToggle": true,
       "x-caption": "KI-Assistenten",
       "x-captionEn": "AI assistants",
-      "x-issue": "#1888"
+      "x-issue": "#1888",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "Copilot",
+        "MCP",
+        "LLM"
+      ]
     },
     "AssistantsEdit": {
       "type": "boolean",
@@ -1320,7 +1351,12 @@
       "x-quickToggle": true,
       "x-caption": "Debugger-Funktionen von Atlas",
       "x-captionEn": "Atlas debugger features",
-      "x-issue": "#1454"
+      "x-issue": "#1454",
+      "x-keywords": [
+        "Debugger",
+        "Haltepunkt",
+        "Breakpoint"
+      ]
     },
     "DebugHoverValues": {
       "type": "boolean",
@@ -1874,7 +1910,11 @@
       "x-quickToggle": true,
       "x-caption": "Atlas-Willkommensseite",
       "x-captionEn": "Atlas welcome page",
-      "x-issue": "#753"
+      "x-issue": "#753",
+      "x-keywords": [
+        "Startseite",
+        "Start page"
+      ]
     },
     "WelcomePageProjectSetup": {
       "type": "boolean",
@@ -2046,7 +2086,11 @@
       "x-key": "keys.palette",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Tastenkonflikte"
+      "x-page": "Tastenkonflikte",
+      "x-keywords": [
+        "Befehlspalette",
+        "Command palette"
+      ]
     },
     "CheckKey": {
       "type": "integer",
@@ -2779,7 +2823,14 @@
       "x-quickToggle": true,
       "x-caption": "Prüfregeln",
       "x-captionEn": "Rule checks",
-      "x-issue": "#1454"
+      "x-issue": "#1454",
+      "x-keywords": [
+        "Lint",
+        "Linter",
+        "Analyse",
+        "Code-Prüfung",
+        "static analysis"
+      ]
     },
     "ProblemsUpdate": {
       "type": "string",
@@ -3660,6 +3711,21 @@
       "x-page": "Befehle",
       "x-parent": "completion.enabled"
     },
+    "PaletteSettingsPrefix": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "palette.settingsPrefix",
+      "x-area": "general",
+      "x-page": "Befehle",
+      "description": "Präfix @ in der Befehlspalette: @minimap listet passende Einstellungen mit Zustand; Enter öffnet die Optionen an der Stelle, Alt+Enter schaltet einen Schnellschalter direkt um.",
+      "x-control": "Kontrollkästchen",
+      "x-keywords": [
+        "Befehlspalette",
+        "Command palette",
+        "@"
+      ],
+      "x-issue": "#1884"
+    },
     "GenerateMenuKey": {
       "type": "integer",
       "default": 32813,
@@ -3815,7 +3881,11 @@
       "x-key": "keys.quickToggles",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Tastenkonflikte"
+      "x-page": "Tastenkonflikte",
+      "x-keywords": [
+        "Schnellschalter",
+        "Quick toggles"
+      ]
     },
     "QuickToggleKeyPriority": {
       "type": "boolean",
@@ -4495,7 +4565,12 @@
       "x-quickToggle": true,
       "x-caption": "Brotkrumenleiste",
       "x-captionEn": "Breadcrumbs",
-      "x-issue": "#590"
+      "x-issue": "#590",
+      "x-keywords": [
+        "Navigationsleiste",
+        "Navigation bar",
+        "Pfadleiste"
+      ]
     },
     "BreadcrumbsShowUnit": {
       "description": "Unit-Namen als erstes Glied der Brotkrumenleiste zeigen.",
@@ -4969,7 +5044,12 @@
       "x-caption": "Minimap",
       "x-captionEn": "Minimap",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#873"
+      "x-issue": "#873",
+      "x-keywords": [
+        "Übersichtskarte",
+        "Code map",
+        "Scrollbar"
+      ]
     },
     "MinimapRender": {
       "description": "Darstellung der Minimap: blocks (je Wort ein Farbbalken) oder characters (winzige Zeichen); Farben aus der Syntaxfärbung und dem Thema.",
@@ -6015,6 +6095,22 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#723"
     },
+    "SettingsSearch": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "settings.search",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "description": "Suchfeld über dem Baum der Optionsseite und Suche auf der Übersicht „Atlas“: findet Einstellungen über Beschriftung (deutsch und englisch), Schlüssel, Synonyme und Beschreibung; Enter oder Klick springt hin. Strg+F oder Strg+E setzt den Fokus ins Feld.",
+      "x-control": "Kontrollkästchen",
+      "x-keywords": [
+        "Suche",
+        "Search",
+        "Filter",
+        "Finden"
+      ],
+      "x-issue": "#1884"
+    },
     "SettingsBackupBeforeImport": {
       "type": "boolean",
       "default": true,
@@ -6054,7 +6150,14 @@
       "x-quickToggle": true,
       "x-caption": "Issue-Tracker und Build-Server",
       "x-captionEn": "Issue tracker and build server",
-      "x-issue": "#1454"
+      "x-issue": "#1454",
+      "x-keywords": [
+        "GitHub",
+        "GitLab",
+        "YouTrack",
+        "Jira",
+        "Ticket"
+      ]
     },
     "IssuesTracker": {
       "type": "string",
@@ -6300,7 +6403,13 @@
       "x-quickToggle": true,
       "x-caption": "Versionsverwaltung",
       "x-captionEn": "Version control",
-      "x-issue": "#1891"
+      "x-issue": "#1891",
+      "x-keywords": [
+        "Git",
+        "SVN",
+        "Subversion",
+        "VCS"
+      ]
     },
     "VcsProvider": {
       "type": "string",

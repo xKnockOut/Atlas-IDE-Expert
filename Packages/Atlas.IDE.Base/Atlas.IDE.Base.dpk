@@ -290,6 +290,7 @@ contains
   Atlas.IDE.Foundation.StartOptions in 'Source\IDE\Foundation\Atlas.IDE.Foundation.StartOptions.pas',
   Atlas.IDE.Settings.Options in 'Source\IDE\Settings\Atlas.IDE.Settings.Options.pas',
   Atlas.IDE.Settings.PageOptions in 'Source\IDE\Settings\Atlas.IDE.Settings.PageOptions.pas',
+  Atlas.IDE.Settings.PaletteSearch in 'Source\IDE\Settings\Atlas.IDE.Settings.PaletteSearch.pas',
   Atlas.Core.Settings.JsonText in 'Source\Core\Settings\Atlas.Core.Settings.JsonText.pas',
   Atlas.Core.Settings.Schema in 'Source\Core\Settings\Atlas.Core.Settings.Schema.pas',
   Atlas.Core.Settings.Scopes in 'Source\Core\Settings\Atlas.Core.Settings.Scopes.pas',
@@ -454,6 +455,8 @@ contains
   Atlas.IDE.Settings.Experimental in 'Source\IDE\Settings\Atlas.IDE.Settings.Experimental.pas',
   Atlas.IDE.Settings.RuleChecksNotice in 'Source\IDE\Settings\Atlas.IDE.Settings.RuleChecksNotice.pas',
   Atlas.Core.Settings.NodeScope in 'Source\Core\Settings\Atlas.Core.Settings.NodeScope.pas',
+  Atlas.Core.Settings.Search in 'Source\Core\Settings\Atlas.Core.Settings.Search.pas',
+  Atlas.Core.Commands.SettingsPalette in 'Source\Core\Commands\Atlas.Core.Commands.SettingsPalette.pas',
   Atlas.Core.Settings.History in 'Source\Core\Settings\Atlas.Core.Settings.History.pas',
   Atlas.Core.Settings.Renames in 'Source\Core\Settings\Atlas.Core.Settings.Renames.pas',
   Atlas.Core.Settings.QueryMigration in 'Source\Core\Settings\Atlas.Core.Settings.QueryMigration.pas',
@@ -735,6 +738,7 @@ contains
   Atlas.Text.Updates in '..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas',
   Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas',
   Atlas.UI.Settings.Overview in 'Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
+  Atlas.UI.Settings.Page.Search in 'Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas',
   Atlas.UI.Settings.Section in 'Source\UI\Settings\Atlas.UI.Settings.Section.pas';
 
 end.

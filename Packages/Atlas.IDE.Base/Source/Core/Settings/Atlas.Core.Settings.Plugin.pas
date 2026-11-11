@@ -940,6 +940,8 @@ type
     property NotificationsKey: Integer read FNavigationKeys.NotificationsKey write FNavigationKeys.NotificationsKey;
     property SettingsExportImport: Boolean read FGeneral.SettingsExportImport write FGeneral.SettingsExportImport;
     property SettingsMarkModified: Boolean read FGeneral.SettingsMarkModified write FGeneral.SettingsMarkModified;
+    property SettingsSearch: Boolean read FGeneral.SettingsSearch write FGeneral.SettingsSearch;
+    property PaletteSettingsPrefix: Boolean read FGeneral.PaletteSettingsPrefix write FGeneral.PaletteSettingsPrefix;
     property SettingsBackupBeforeImport: Boolean read FGeneral.SettingsBackupBeforeImport
       write FGeneral.SettingsBackupBeforeImport;
     property SettingsExportSecrets: string read FGeneral.SettingsExportSecrets write FGeneral.SettingsExportSecrets;
