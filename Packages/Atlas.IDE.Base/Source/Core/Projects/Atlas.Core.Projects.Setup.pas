@@ -57,7 +57,7 @@ type
     /// <summary>Ordner der Vorlagen im Release-Paket (Setup/Vorlagen im Repository).</summary>
     cTemplatesFolder = 'Vorlagen';
     /// <summary>$schema der Vorlagen, wie in docs/Konfiguration.md.</summary>
-    cSchemaUrl = 'https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json';
+    cSchemaUrl = 'https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json';
   public
     /// <summary>"existing", "strict", "legacy".</summary>
     class function TemplateId(ATemplate: TAtlasSetupTemplate): string; static;

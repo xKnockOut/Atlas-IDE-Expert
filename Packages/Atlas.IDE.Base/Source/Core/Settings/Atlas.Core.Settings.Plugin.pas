@@ -646,6 +646,12 @@ type
       write FEditorView.DesignerSelectionSetsStorage;
     property DesignerSelectionSetsSaveKey: Integer read FEditorView.DesignerSelectionSetsSaveKey
       write FEditorView.DesignerSelectionSetsSaveKey;
+    property DesignerShowInDesigner: Boolean read FEditorView.DesignerShowInDesigner
+      write FEditorView.DesignerShowInDesigner;
+    property DesignerShowInDesignerKey: Integer read FEditorView.DesignerShowInDesignerKey
+      write FEditorView.DesignerShowInDesignerKey;
+    property DesignerPropertySearch: Boolean read FEditorView.DesignerPropertySearch
+      write FEditorView.DesignerPropertySearch;
     property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
@@ -668,6 +674,15 @@ type
       write FEditorView.DesignerScalePreviewScreens;
     property DesignerLongTextFactor: Integer read FEditorView.DesignerLongTextFactor
       write FEditorView.DesignerLongTextFactor;
+    property DesignerNameSuggest: Boolean read FEditorView.DesignerNameSuggest write FEditorView.DesignerNameSuggest;
+    property DesignerNameSuggestSources: string read FEditorView.DesignerNameSuggestSources
+      write FEditorView.DesignerNameSuggestSources;
+    property DesignerNameSuggestUmlauts: string read FEditorView.DesignerNameSuggestUmlauts
+      write FEditorView.DesignerNameSuggestUmlauts;
+    property DesignerNameSuggestRenameHandlers: Boolean read FEditorView.DesignerNameSuggestRenameHandlers
+      write FEditorView.DesignerNameSuggestRenameHandlers;
+    property DesignerNameSuggestPrefixes: string read FEditorView.DesignerNameSuggestPrefixes
+      write FEditorView.DesignerNameSuggestPrefixes;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;

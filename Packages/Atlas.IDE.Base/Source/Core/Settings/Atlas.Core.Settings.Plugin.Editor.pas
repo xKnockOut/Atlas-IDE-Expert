@@ -51,6 +51,8 @@ const
   /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
   cDefaultSearchHistory = 20;
   cMaxSearchHistory = 100;
+  /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (scShift + VK_F12).</summary>
+  cDefaultShowInDesignerKey = $2000 + $7B;
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
   cBeginEndAlways = 'always';
   cBeginEndMultiLine = 'multiLine';
@@ -546,6 +548,12 @@ type
     DesignerSelectionSetsStorage: string;
     /// <summary>Taste „Auswahl speichern …“ als TShortCut, 0 = keine (#739, designer.selectionSets.saveKey).</summary>
     DesignerSelectionSetsSaveKey: Integer;
+    /// <summary>Befehl „Im Designer zeigen“ im Code-Editor (#511, designer.showInDesigner).</summary>
+    DesignerShowInDesigner: Boolean;
+    /// <summary>Taste für „Im Designer zeigen“ als TShortCut, 0 = keine (#511, designer.showInDesigner.key).</summary>
+    DesignerShowInDesignerKey: Integer;
+    /// <summary>Eigenschaften in Formularen suchen (#524, designer.propertySearch).</summary>
+    DesignerPropertySearch: Boolean;
     /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
     DesignerSpatialNavigation: Boolean;
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
@@ -569,6 +577,18 @@ type
     DesignerScalePreviewScreens: string;
     /// <summary>Verlängerung bei „Lange Texte“ in Prozent (#607, designer.longTextFactor).</summary>
     DesignerLongTextFactor: Integer;
+    /// <summary>Knopf „Sprechende Namen“ (#608, designer.nameSuggest).</summary>
+    DesignerNameSuggest: Boolean;
+    /// <summary>Quellen und Reihenfolge „caption, label, handler, dataField“ (#608, designer.nameSuggestSources).
+    /// </summary>
+    DesignerNameSuggestSources: string;
+    /// <summary>Umlaute „replace“ oder „remove“ (#608, designer.nameSuggestUmlauts).</summary>
+    DesignerNameSuggestUmlauts: string;
+    /// <summary>Handler mit Standardnamen mit umbenennen (#608, designer.nameSuggestRenameHandlers).</summary>
+    DesignerNameSuggestRenameHandlers: Boolean;
+    /// <summary>Eigene Präfixe „TKlasse=präfix“ vor der eingebauten Tabelle (#608, designer.nameSuggestPrefixes).
+    /// </summary>
+    DesignerNameSuggestPrefixes: string;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1272,6 +1292,10 @@ begin
   Result.DesignerSelectionSetsStorage := cDesignerSetsLocal;
   // Strg+Umschalt+S.
   Result.DesignerSelectionSetsSaveKey := 24659;
+  Result.DesignerShowInDesigner := True;
+  // Umschalt+F12 (in der IDE „Formulare anzeigen“).
+  Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
+  Result.DesignerPropertySearch := True;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetViewDefaults;
@@ -1519,6 +1543,7 @@ begin
   DesignerGroupsMemberClick := Choice(DesignerGroupsMemberClick, [cDesignerGroupsAltClick, cDesignerGroupsDoubleClick]);
   DesignerInlineCaptionKey := EnsureRange(DesignerInlineCaptionKey, 0, $FFFF);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
+  DesignerShowInDesignerKey := EnsureRange(DesignerShowInDesignerKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
@@ -1584,6 +1609,9 @@ begin
   AIo.Flag('DesignerSelectionSetsShortcuts', DesignerSelectionSetsShortcuts);
   AIo.Text('DesignerSelectionSetsStorage', DesignerSelectionSetsStorage);
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
+  AIo.Flag('DesignerShowInDesigner', DesignerShowInDesigner);
+  AIo.Number('DesignerShowInDesignerKey', DesignerShowInDesignerKey);
+  AIo.Flag('DesignerPropertySearch', DesignerPropertySearch);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeViews(AIo);
@@ -1625,6 +1653,11 @@ begin
   DesignerScalePreviewLevels := '100, 125, 150, 175, 200';
   DesignerScalePreviewScreens := '1366x768, 1920x1080';
   DesignerLongTextFactor := cLongTextFactor;
+  DesignerNameSuggest := True;
+  DesignerNameSuggestSources := 'caption, label, handler, dataField';
+  DesignerNameSuggestUmlauts := 'replace';
+  DesignerNameSuggestRenameHandlers := True;
+  DesignerNameSuggestPrefixes := '';
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1638,6 +1671,11 @@ begin
   AIo.Text('DesignerScalePreviewLevels', DesignerScalePreviewLevels);
   AIo.Text('DesignerScalePreviewScreens', DesignerScalePreviewScreens);
   AIo.Number('DesignerLongTextFactor', DesignerLongTextFactor);
+  AIo.Flag('DesignerNameSuggest', DesignerNameSuggest);
+  AIo.Text('DesignerNameSuggestSources', DesignerNameSuggestSources);
+  AIo.Text('DesignerNameSuggestUmlauts', DesignerNameSuggestUmlauts);
+  AIo.Flag('DesignerNameSuggestRenameHandlers', DesignerNameSuggestRenameHandlers);
+  AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
 end;
 
 end.

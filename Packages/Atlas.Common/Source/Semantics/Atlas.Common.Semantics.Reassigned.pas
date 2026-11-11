@@ -27,6 +27,14 @@
 // Welche Arten gezeigt werden, entscheiden die Ziele (TReassignedTarget).
 // Namen gehören der innersten Routine, die sie deklariert, auch aus
 // verschachtelten Routinen und anonymen Methoden heraus.
+//
+// Ausschnitt (TReassignedScope): Das Plugin fragt nur nach den sichtbaren
+// Zeilen. Lokale Namen und Parameter bekommen dann nur die Routinen, die in
+// den Ausschnitt reichen; deren Stellen zählen ganz, auch außerhalb. Nur für
+// sie fragt ALookup nach der Übergabeart von Argumenten, das teuerste Stück
+// (Namensauflösung je Aufruf). Felder sammelt Analyze nur, wenn die Ziele sie
+// enthalten; ihre Schreibstellen zählen in der ganzen Datei. Der Abbruch wird
+// in allen Schleifen gefragt und endet mit EReassignedCancelled.
 
 interface
 
@@ -47,6 +55,24 @@ type
   TReassignedWrite = (None, Write, LoopWrite, MaybeWrite);
 {$SCOPEDENUMS OFF}
   TReassignedTargets = set of TReassignedTarget;
+
+  /// <summary>Ausschnitt und Abbruch für Analyze.</summary>
+  TReassignedScope = record
+    /// <summary>Gebrauchte Arten; ohne Fields sammelt Analyze keine Felder.</summary>
+    Targets: TReassignedTargets;
+    /// <summary>Erste und letzte Zeile (ab 0) des Ausschnitts; FirstLine &lt; 0: die ganze Datei.</summary>
+    FirstLine: Integer;
+    LastLine: Integer;
+    /// <summary>nil: kein Abbruch.</summary>
+    Cancellation: IPascalCancellation;
+    /// <summary>Alle Arten, die ganze Datei, ohne Abbruch.</summary>
+    class function Whole: TReassignedScope; static;
+    /// <summary>Reicht ANode in den Ausschnitt?</summary>
+    function Covers(ANode: TSyntaxNode): Boolean;
+  end;
+
+  /// <summary>Analyze wurde über TReassignedScope.Cancellation abgebrochen.</summary>
+  EReassignedCancelled = class(Exception);
 
   TReassignedOccurrence = record
     Range: TTextRange;
@@ -103,7 +129,10 @@ type
     class function WriteOf(ANode: TSyntaxNode; const ALookup: TFlowSignatureLookup): TReassignedWrite; static;
     /// <summary>Alle Namen der Datei mit ihren Stellen; ALookup nil = TFlowSignatures.FromTree.</summary>
     class function Analyze(const AText: string; ATree: TSyntaxTree;
-      const ALookup: TFlowSignatureLookup): TArray<TReassignedSymbol>; static;
+      const ALookup: TFlowSignatureLookup): TArray<TReassignedSymbol>; overload; static;
+    /// <summary>Wie oben für den Ausschnitt AScope; EReassignedCancelled beim Abbruch.</summary>
+    class function Analyze(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup;
+      const AScope: TReassignedScope): TArray<TReassignedSymbol>; overload; static;
     /// <summary>Die neu zugewiesenen Namen, deren Art in ATargets steht.</summary>
     class function Filter(const ASymbols: TArray<TReassignedSymbol>;
       ATargets: TReassignedTargets): TArray<TReassignedSymbol>; static;
@@ -119,9 +148,25 @@ implementation
 
 uses
   System.StrUtils,
+  System.Math,
   System.Generics.Defaults,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals;
+
+{ TReassignedScope }
+
+class function TReassignedScope.Whole: TReassignedScope;
+begin
+  Result := Default(TReassignedScope);
+  Result.Targets := [Low(TReassignedTarget)..High(TReassignedTarget)];
+  Result.FirstLine := -1;
+  Result.LastLine := -1;
+end;
+
+function TReassignedScope.Covers(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (FirstLine < 0) or ((ANode.StartPos.Line <= LastLine) and (ANode.EndPos.Line >= FirstLine));
+end;
 
 { TReassignedSymbol }
 
@@ -330,7 +375,11 @@ type
     FTree: TSyntaxTree;
     FTokens: TArray<TPascalToken>;
     FLookup: TFlowSignatureLookup;
+    FScope: TReassignedScope;
     FSymbols: TArray<TReassignedSymbol>;
+    /// <summary>Belegte Einträge in FSymbols; die Länge wächst in Stufen.</summary>
+    FCount: Integer;
+    FSteps: Integer;
     FRoutines: TList<TSyntaxNode>;
     FIdentifiers: TList<TSyntaxNode>;
     FSelfMembers: TList<TSyntaxNode>;
@@ -339,6 +388,8 @@ type
     FLocals: TDictionary<TSyntaxNode, TArray<TRoutineLocal>>;
     // Routine (Offset) und Index des lokalen Namens bzw. Klasse.Feld (klein) zum Eintrag in FSymbols.
     FKeys: TDictionary<string, Integer>;
+    /// <summary>Fragt den Abbruch alle cCheckSteps Schritte.</summary>
+    procedure Step;
     procedure Gather;
     procedure AddLocals(ARoutine: TSyntaxNode);
     /// <summary>Eintrag für den lokalen Namen ALocal mit Index AIndex der Routine ARoutine.</summary>
@@ -365,18 +416,21 @@ type
     class function NamedRoutineOf(ARoutine: TSyntaxNode): string; static;
     class function ClassOf(const AMethodName: string): string; static;
   public
-    constructor Create(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup);
+    constructor Create(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup;
+      const AScope: TReassignedScope);
     destructor Destroy; override;
     function Run: TArray<TReassignedSymbol>;
   end;
 
-constructor TReassignedRun.Create(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup);
+constructor TReassignedRun.Create(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup;
+  const AScope: TReassignedScope);
 begin
   inherited Create;
   FText := AText;
   FTree := ATree;
   FTokens := ATree.Tokens;
   FLookup := ALookup;
+  FScope := AScope;
   if not Assigned(FLookup) then
   begin
     FLookup := TFlowSignatures.FromTree(ATree.Root);
@@ -439,10 +493,29 @@ begin
     end);
 end;
 
+const
+  /// <summary>Schritte zwischen zwei Fragen nach dem Abbruch.</summary>
+  cCheckSteps = 256;
+
+procedure TReassignedRun.Step;
+begin
+  Inc(FSteps);
+  if ((FSteps mod cCheckSteps) = 1) and (FScope.Cancellation <> nil) and FScope.Cancellation.IsCancelled then
+  begin
+    raise EReassignedCancelled.Create('atlas.server.reassigned');
+  end;
+end;
+
 function TReassignedRun.Add(const ASymbol: TReassignedSymbol): Integer;
 begin
-  Result := Length(FSymbols);
-  FSymbols := FSymbols + [ASymbol];
+  // In Stufen wachsen: Anhängen mit + kopierte bei Tausenden Namen je Eintrag das ganze Feld.
+  if FCount = Length(FSymbols) then
+  begin
+    SetLength(FSymbols, Max(64, 2 * FCount));
+  end;
+  FSymbols[FCount] := ASymbol;
+  Result := FCount;
+  Inc(FCount);
 end;
 
 procedure TReassignedRun.AddOccurrence(AIndex: Integer; const ARange: TTextRange; AOffset: Integer;
@@ -635,11 +708,11 @@ begin
   mWrite := DeclarationWrite(mSymbol, mToken);
   if (mSymbol.Kind = TReassignedKind.InlineVariable) and (mWrite = TReassignedWrite.Write) then
   begin
-    FSymbols[High(FSymbols)].Initialized := True;
+    FSymbols[FCount - 1].Initialized := True;
   end;
-  AddOccurrence(High(FSymbols), TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
+  AddOccurrence(FCount - 1, TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
     FTokens[mToken].Offset, mWrite, nil);
-  Count(High(FSymbols), mWrite, nil);
+  Count(FCount - 1, mWrite, nil);
 end;
 
 procedure TReassignedRun.AddLocals(ARoutine: TSyntaxNode);
@@ -648,7 +721,12 @@ var
   mIndex: Integer;
 begin
   mLocals := TRoutineLocals.Collect(FText, FTree, ARoutine);
+  // Auch Routinen außerhalb des Ausschnitts: Ihre Namen verdecken Felder (OwnerOf -2), Einträge bekommen sie nicht.
   FLocals.AddOrSetValue(ARoutine, mLocals);
+  if not FScope.Covers(ARoutine) then
+  begin
+    Exit;
+  end;
   for mIndex := 0 to High(mLocals) do
   begin
     AddLocal(ARoutine, mIndex, mLocals[mIndex]);
@@ -705,7 +783,7 @@ begin
         mToken := NameToken(mNode.StartOffset, mNode.EndOffset, mSymbol.Name);
         if mToken >= 0 then
         begin
-          AddOccurrence(High(FSymbols), TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
+          AddOccurrence(FCount - 1, TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
             FTokens[mToken].Offset, TReassignedWrite.None, nil);
         end;
       end;
@@ -849,37 +927,52 @@ var
   mOccurrences: TArray<TReassignedOccurrence>;
 begin
   Gather;
-  for mNode in FTypes do
+  if TReassignedTarget.Fields in FScope.Targets then
   begin
-    AddFields(mNode);
+    for mNode in FTypes do
+    begin
+      Step;
+      AddFields(mNode);
+    end;
   end;
   for mNode in FRoutines do
   begin
+    Step;
     AddLocals(mNode);
   end;
   for mNode in FIdentifiers do
   begin
+    Step;
     AddIdentifierUse(mNode);
   end;
   for mNode in FSelfMembers do
   begin
+    Step;
     AddSelfMemberUse(mNode);
   end;
   for mNode in FLoops do
   begin
+    Step;
     AddLoopUse(mNode);
   end;
-  for mIndex := 0 to High(FSymbols) do
+  for mIndex := 0 to FCount - 1 do
   begin
+    Step;
     mOccurrences := FSymbols[mIndex].Occurrences;
     TArray.Sort<TReassignedOccurrence>(mOccurrences, OccurrenceComparer);
     FSymbols[mIndex].Occurrences := mOccurrences;
   end;
-  Result := FSymbols;
+  Result := Copy(FSymbols, 0, FCount);
 end;
 
 class function TReassigned.Analyze(const AText: string; ATree: TSyntaxTree;
   const ALookup: TFlowSignatureLookup): TArray<TReassignedSymbol>;
+begin
+  Result := Analyze(AText, ATree, ALookup, TReassignedScope.Whole);
+end;
+
+class function TReassigned.Analyze(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup;
+  const AScope: TReassignedScope): TArray<TReassignedSymbol>;
 var
   mRun: TReassignedRun;
 begin
@@ -888,7 +981,7 @@ begin
   begin
     Exit;
   end;
-  mRun := TReassignedRun.Create(AText, ATree, ALookup);
+  mRun := TReassignedRun.Create(AText, ATree, ALookup, AScope);
   try
     Result := mRun.Run;
   finally
@@ -900,15 +993,19 @@ class function TReassigned.Filter(const ASymbols: TArray<TReassignedSymbol>;
   ATargets: TReassignedTargets): TArray<TReassignedSymbol>;
 var
   mSymbol: TReassignedSymbol;
+  mCount: Integer;
 begin
-  Result := nil;
+  SetLength(Result, Length(ASymbols));
+  mCount := 0;
   for mSymbol in ASymbols do
   begin
     if (mSymbol.Target in ATargets) and mSymbol.IsReassigned then
     begin
-      Result := Result + [mSymbol];
+      Result[mCount] := mSymbol;
+      Inc(mCount);
     end;
   end;
+  SetLength(Result, mCount);
 end;
 
 class function TReassigned.SymbolAt(const ASymbols: TArray<TReassignedSymbol>; const APosition: TTextPosition;

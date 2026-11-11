@@ -132,6 +132,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ResolvedSignatures.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Commands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeComments.Tests.pas"/>
@@ -150,6 +151,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.EventAssignments.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TokenCursor.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
@@ -807,6 +809,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Popup.Accessibility.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Window.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.WndProcHook.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.WndProcHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Draw.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.ShortcutTip.Tests.pas"/>
@@ -2057,6 +2061,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.TabOrder.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.CodeLink.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.PropertySearch.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FitText.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\Core\Help\Atlas.Core.Help.Links.pas"/>
@@ -2115,6 +2123,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Layout.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Scale.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Scale.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.NameSuggest.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.NameSuggest.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Help\Source\UI\Help\Atlas.UI.Help.SettingsSection.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Help.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas"/>

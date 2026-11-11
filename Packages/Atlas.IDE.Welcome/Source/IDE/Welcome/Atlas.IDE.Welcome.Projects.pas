@@ -320,7 +320,11 @@ begin
       end;
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
       begin
-        Actions.OpenProject(AProject, True);
+        TAtlasGuard.RunIde(
+          procedure
+          begin
+            Actions.OpenProject(AProject, True);
+          end);
       end;
     end);
 end;
@@ -344,7 +348,11 @@ begin
       // Erst das Projekt (wie die Liste der IDE), dann die erste Meldung.
       if not ProjectOpen(AProject) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
       begin
-        Actions.OpenProject(AProject, True);
+        TAtlasGuard.RunIde(
+          procedure
+          begin
+            Actions.OpenProject(AProject, True);
+          end);
       end;
       if mTarget.IsEmpty or not FileExists(mTarget.FileName) then
       begin

@@ -214,7 +214,8 @@ const
     TAtlasTextId.DesignerBarSearchHint, // DesignerSearch
     TAtlasTextId.ProblemsCheckFileCommand, // CheckFile
     TAtlasTextId.SectionAppendCommand, // SectionAppend
-    TAtlasTextId.DesignerSelectionSetsSaveCommand); // DesignerSelectionSetsSave
+    TAtlasTextId.DesignerSelectionSetsSaveCommand, // DesignerSelectionSetsSave
+    TAtlasTextId.DesignerShowComponentCommand); // DesignerShowComponent
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 

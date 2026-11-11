@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsBranch;
 
-// Versionsverwaltung: Branches (#1288), SVN (#1290), Externals (#1291, #1292) und Git (#1289), seit #1905 im Modul.
+// Versionsverwaltung: Branches (#1288), SVN (#1290), Externals (#1291, #1292) und Git (#1289).
 // Schalter, Texte und Auswahlen sind gebundene Felder der Seite (Werte wie im Schema); die Regeln für Externals
 // (vcs.externals.rules) liest und schreibt der Teil selbst.
 
