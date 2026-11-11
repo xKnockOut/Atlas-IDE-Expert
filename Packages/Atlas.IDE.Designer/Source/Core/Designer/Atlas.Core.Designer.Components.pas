@@ -63,13 +63,18 @@ type
   public
     /// <summary>Wie gut passt AText zu APattern (ohne Groß-/Kleinschreibung)? Leeres Suchwort: None. Fuzzy nur
     /// mit AFuzzy und ab zwei Zeichen.</summary>
-    class function MatchOf(const AText, APattern: string; AFuzzy: Boolean = False): TAtlasDesignerMatch; static;
+    class function MatchOf(const AText, APattern: string; AFuzzy: Boolean): TAtlasDesignerMatch; overload; static;
+    /// <summary>MatchOf ohne unscharfe Treffer.</summary>
+    class function MatchOf(const AText, APattern: string): TAtlasDesignerMatch; overload; static;
     /// <summary>Gehört AItem zur Art AKind?</summary>
     class function OfKind(const AItem: TAtlasDesignerItem; AKind: TAtlasDesignerKind): Boolean; static;
     /// <summary>Indizes der Treffer in AItems, beste zuerst. Ohne Suchwort alle der Art nach Namen. AFuzzy
     /// nimmt unscharfe Treffer in Name und Caption dazu.</summary>
     class function Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
-      AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind; AFuzzy: Boolean = False): TArray<Integer>; static;
+      AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind; AFuzzy: Boolean): TArray<Integer>; overload; static;
+    /// <summary>Find ohne unscharfe Treffer.</summary>
+    class function Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
+      AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>; overload; static;
     /// <summary>Nächster Index von AIndex aus um ADelta, am Rand stehen bleiben; -1 ohne Zeilen.</summary>
     class function Step(AIndex, ACount, ADelta: Integer): Integer; static;
   end;
@@ -288,6 +293,17 @@ begin
       Exit(cPerField * Ord(mField) + Ord(mMatch));
     end;
   end;
+end;
+
+class function TAtlasDesignerSearch.MatchOf(const AText, APattern: string): TAtlasDesignerMatch;
+begin
+  Result := MatchOf(AText, APattern, False);
+end;
+
+class function TAtlasDesignerSearch.Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
+  AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>;
+begin
+  Result := Find(AItems, APattern, AFields, AKind, False);
 end;
 
 class function TAtlasDesignerSearch.Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;

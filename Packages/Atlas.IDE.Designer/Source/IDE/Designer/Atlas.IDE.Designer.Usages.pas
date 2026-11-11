@@ -93,6 +93,8 @@ uses
 
 const
   cKeyPriority = 44;
+  /// <summary>Trenner zwischen Ereignis und Methode in TAtlasDesignerSearchItems.Events („OnClick = Klick“).</summary>
+  cEventAssign = ' = ';
   /// <summary>So lange muss die Auswahl stehen, bevor der Zähler fragt.</summary>
   cDebounceMs = 400;
   cCountTimeoutMs = 10000;
@@ -299,8 +301,8 @@ begin
   begin
     for mEvent in TAtlasDesignerSearchItems.Events(mTarget.Component, ADesigner) do
     begin
-      mPos := Pos(' = ', mEvent);
-      mMethod := Copy(mEvent, mPos + 3, MaxInt);
+      mPos := Pos(cEventAssign, mEvent);
+      mMethod := Copy(mEvent, mPos + Length(cEventAssign), MaxInt);
       // Ohne Implementierung (Handler gelöscht) an den Anfang der Unit.
       mLine := TAtlasDesignerUsages.HandlerLine(ACache.Lines(mTarget.UnitFile), ARoot.ClassName, mMethod);
       if mLine < 0 then
@@ -370,9 +372,10 @@ function TargetsOf(const AEditor: IOTAFormEditor; ARoot: TComponent; ACache: TLi
 var
   mComponent: TComponent;
   mTarget: TTarget;
+  mNames: TArray<string>;
 begin
   Result := nil;
-  ANames := '';
+  mNames := nil;
   for mComponent in TAtlasDesignerAccess.Selection(AEditor, ARoot) do
   begin
     if not TargetOf(AEditor, ARoot, mComponent, ACache, mTarget) then
@@ -381,12 +384,9 @@ begin
       Continue;
     end;
     Result := Result + [mTarget];
-    if ANames <> '' then
-    begin
-      ANames := ANames + ', ';
-    end;
-    ANames := ANames + mComponent.Name;
+    mNames := mNames + [mComponent.Name];
   end;
+  ANames := string.Join(', ', mNames);
 end;
 
 /// <summary>Referenzsuche für alle Ziele, gefiltert und eingeordnet; False (mit Meldung) bei Fehler.</summary>
