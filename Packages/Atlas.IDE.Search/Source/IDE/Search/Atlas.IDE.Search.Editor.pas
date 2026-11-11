@@ -28,6 +28,9 @@ type
       out ALines: TArray<string>; out AAt: TAtlasSearchPos): TArray<TAtlasSearchHit>; static;
     class procedure SelectHit(const AView: IOTAEditView; const ALines: TArray<string>;
       const AHit: TAtlasSearchHit); static;
+    /// <summary>Markierung aufheben und den Cursor an APos setzen (in den Text geklemmt).</summary>
+    class procedure PlaceCursor(const AView: IOTAEditView; const ALines: TArray<string>;
+      const APos: TAtlasSearchPos); static;
     /// <summary>Index des Treffers, der genau markiert ist; -1 ohne.</summary>
     class function MarkedHit(const AView: IOTAEditView; const ALines: TArray<string>;
       const AHits: TArray<TAtlasSearchHit>): Integer; static;
@@ -158,6 +161,30 @@ begin
   mTarget.Col := TLspSession.IndexToColumn(mLineText, AHit.Character + AHit.Length, mTabWidth);
   AView.CursorPos := mTarget;
   AView.Block.EndBlock;
+  AView.MoveViewToCursor;
+  AView.Paint;
+end;
+
+class procedure TAtlasIdeSearchEditor.PlaceCursor(const AView: IOTAEditView; const ALines: TArray<string>;
+  const APos: TAtlasSearchPos);
+var
+  mRow: Integer;
+  mTarget: TOTAEditPos;
+begin
+  mRow := APos.Line;
+  if mRow > High(ALines) then
+  begin
+    mRow := High(ALines);
+  end;
+  if mRow < 0 then
+  begin
+    mRow := 0;
+  end;
+  AView.Block.Reset;
+  mTarget.Line := mRow + 1;
+  mTarget.Col := TLspSession.IndexToColumn(LineAt(ALines, mRow), APos.Character,
+    TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  AView.CursorPos := mTarget;
   AView.MoveViewToCursor;
   AView.Paint;
 end;
