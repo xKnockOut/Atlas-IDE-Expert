@@ -55,7 +55,7 @@ type
   TAtlasGroupClick = record
     Selected: TArray<string>;
     Single: string;
-    Tick: Cardinal;
+    Tick: UInt64;
   end;
 
   TAtlasIdeDesignerGroups = class
@@ -137,7 +137,8 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Diagnostics.Deadline;
 
 const
   cKeyPriority = 50;
@@ -579,7 +580,7 @@ begin
   if Length(mNames) = 1 then
   begin
     FClick.Single := mNames[0];
-    FClick.Tick := GetTickCount;
+    FClick.Tick := TAtlasTicks.Now;
   end;
   FBusy := True;
   try
@@ -596,7 +597,7 @@ begin
   Result := SameText(TAtlasIdeSettings.Current.DesignerGroupsMemberClick,
     TAtlasPluginSettings.cDesignerGroupsDoubleClick) and
     (Length(ANames) = 1) and SameText(ANames[0], FClick.Single) and
-    (GetTickCount - FClick.Tick <= GetDoubleClickTime);
+    (TAtlasTicks.Since(FClick.Tick) <= GetDoubleClickTime);
   if Result then
   begin
     FClick.Single := '';

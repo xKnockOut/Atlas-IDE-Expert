@@ -83,7 +83,7 @@ end;
 
 procedure TSnapshotPolicyTests.TickWrapAroundMustRead;
 begin
-  // GetTickCount nach rund 49 Tagen übergelaufen: jetzt kleiner als beim Lesen.
+  // Uhr zurückgesetzt: jetzt kleiner als beim Lesen.
   Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(Clean, 120, True, 5));
 end;
 
