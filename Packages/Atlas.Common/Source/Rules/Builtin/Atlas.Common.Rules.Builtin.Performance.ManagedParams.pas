@@ -31,6 +31,7 @@ uses
   System.RegularExpressions,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
@@ -105,30 +106,6 @@ type
     Group: TSyntaxNode;
     Position: Integer;
   end;
-
-/// <summary>Name ohne Typparameter: TListe&lt;T&gt; wird TListe.</summary>
-function WithoutTypeParams(const AName: string): string;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := '';
-  mDepth := 0;
-  for mIndex := 1 to Length(AName) do
-  begin
-    if AName[mIndex] = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if AName[mIndex] = '>' then
-    begin
-      Dec(mDepth);
-    end
-    else if mDepth = 0 then
-    begin
-      Result := Result + AName[mIndex];
-    end;
-  end;
-end;
 
 /// <summary>Quelltext ohne Leerraum, klein geschrieben; für den Vergleich von Parameterlisten.</summary>
 function Squeezed(const AText: string): string;
@@ -226,7 +203,7 @@ var
 begin
   for mNode in NodesOf(ARoot, [TSyntaxKind.TypeDecl], [TSyntaxKind.Block, TSyntaxKind.RoutineDecl]) do
   begin
-    if SameText(WithoutTypeParams(mNode.Name), ATypeName) and (mNode.ChildCount > 0) then
+    if SameText(TRoutineSignatures.WithoutTypeParams(mNode.Name), ATypeName) and (mNode.ChildCount > 0) then
     begin
       SearchClass(AText, mNode[mNode.ChildCount - 1], ASearch);
     end;
@@ -298,7 +275,7 @@ begin
   mTypeName := '';
   if Pos('.', mSearch.Name) > 0 then
   begin
-    mTypeName := WithoutTypeParams(Copy(mSearch.Name, 1, LastDelimiter('.', mSearch.Name) - 1));
+    mTypeName := TRoutineSignatures.WithoutTypeParams(Copy(mSearch.Name, 1, LastDelimiter('.', mSearch.Name) - 1));
     mSearch.Name := Copy(mSearch.Name, LastDelimiter('.', mSearch.Name) + 1, MaxInt);
   end;
   mSearch.Params := ParamsText(AText, mHeader);

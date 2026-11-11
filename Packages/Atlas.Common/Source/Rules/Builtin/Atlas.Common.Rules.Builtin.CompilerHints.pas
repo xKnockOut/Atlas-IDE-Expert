@@ -54,6 +54,7 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.TypeInfoClasses,
   Atlas.Common.Rules.Derived,
@@ -108,7 +109,6 @@ type
     FScope: TTypedScope;
     // Gelesene Dateien der Vorfahren: aktive Token, nil = nicht lesbar.
     FFiles: TDictionary<string, TArray<TPascalToken>>;
-    function TokenAt(AOffset: Integer): Integer;
     function PathOf(ANode: TSyntaxNode): string;
     function HintsEnabled(AOffset: Integer): Boolean;
     /// <summary>Aktive Token der Datei AFileName eines Vorfahren; False, wenn sie sich nicht lesen lässt.</summary>
@@ -158,30 +158,9 @@ begin
   inherited Destroy;
 end;
 
-function TCompilerHintsCheck.TokenAt(AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(FTokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if FTokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
-
 function TCompilerHintsCheck.PathOf(ANode: TSyntaxNode): string;
 begin
-  Result := TConditionalBranches.PathAt(FPaths, TokenAt(ANode.StartOffset));
+  Result := TConditionalBranches.PathAt(FPaths, TokenFrom(FTokens, ANode.StartOffset));
 end;
 
 function TCompilerHintsCheck.HintsEnabled(AOffset: Integer): Boolean;
@@ -330,7 +309,7 @@ var
   mToken: Integer;
 begin
   Result := TTextRange.Create(AMember.StartPos, AMember.StartPos);
-  mToken := TokenAt(AMember.StartOffset);
+  mToken := TokenFrom(FTokens, AMember.StartOffset);
   while (mToken < Length(FTokens)) and (FTokens[mToken].Offset < AMember.EndOffset) do
   begin
     if FTokens[mToken].Kind = TPascalTokenKind.Identifier then

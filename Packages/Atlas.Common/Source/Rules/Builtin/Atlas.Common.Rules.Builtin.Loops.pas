@@ -62,6 +62,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Localization.Texts;
@@ -155,46 +156,6 @@ begin
   Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName);
 end;
 
-function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
-
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function SourceOf(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -269,7 +230,7 @@ var
 begin
   ACompare := '<=';
   AStep := 'Inc';
-  for mIndex := TokenAt(ATokens, AStart.EndOffset) to TokenAt(ATokens, AStop.StartOffset) do
+  for mIndex := TokenFrom(ATokens, AStart.EndOffset) to TokenFrom(ATokens, AStop.StartOffset) do
   begin
     if (mIndex <= High(ATokens)) and ATokens[mIndex].IsKeyword('downto') then
     begin
@@ -304,7 +265,7 @@ var
   mEnd, mBefore: Integer;
 begin
   AEdits := nil;
-  mEnd := PreviousCode(ATokens, TokenAt(ATokens, ABody.EndOffset));
+  mEnd := PreviousCode(ATokens, TokenFrom(ATokens, ABody.EndOffset));
   Result := (mEnd >= 0) and ATokens[mEnd].IsKeyword('end');
   if not Result then
   begin
@@ -355,7 +316,7 @@ begin
     mParts.LineBreak := #13#10;
   end;
   LoopDirection(ATokens, mStartExpr, mStopExpr, mCompare, mParts.Step);
-  mParts.DoToken := PreviousCode(ATokens, TokenAt(ATokens, mBody.StartOffset));
+  mParts.DoToken := PreviousCode(ATokens, TokenFrom(ATokens, mBody.StartOffset));
   if (mParts.DoToken < 0) or not ATokens[mParts.DoToken].IsKeyword('do') then
   begin
     Exit;
@@ -715,7 +676,7 @@ var
       mIsInline: Boolean;
     begin
       // Erstes Code-Token nach for: var bei for var I, sonst der Name.
-      mForToken := NextCode(mTokens, TokenAt(mTokens, ALoop.StartOffset) + 1);
+      mForToken := NextCode(mTokens, TokenFrom(mTokens, ALoop.StartOffset) + 1);
       mIsInline := (mForToken <= High(mTokens)) and mTokens[mForToken].IsKeyword('var');
       if not mIsInline and not mLocals.ContainsKey(LowerCase(ALoop.Name)) then
       begin
@@ -1106,7 +1067,7 @@ var
         end;
         if (mNode.Kind = TSyntaxKind.ForStatement) and ALocals.ContainsKey(LowerCase(mNode.Name)) then
         begin
-          mForToken := NextCode(mTokens, TokenAt(mTokens, mNode.StartOffset) + 1);
+          mForToken := NextCode(mTokens, TokenFrom(mTokens, mNode.StartOffset) + 1);
           if (mForToken <= High(mTokens)) and not mTokens[mForToken].IsKeyword('var') then
           begin
             CheckLoop(mNode);

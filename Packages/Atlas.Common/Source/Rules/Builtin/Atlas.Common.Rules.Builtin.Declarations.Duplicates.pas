@@ -35,6 +35,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
@@ -135,7 +136,7 @@ var
   var
     mIndex: Integer;
   begin
-    for mIndex := TokenAtOffset(mTokens, ANode.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, ANode.StartOffset) to High(mTokens) do
     begin
       if mTokens[mIndex].Offset >= ANode.EndOffset then
       begin
@@ -206,7 +207,7 @@ var
     mPart: string;
   begin
     mParts := ANode.Name.Split([',']);
-    mFrom := TokenAtOffset(mTokens, ANode.StartOffset);
+    mFrom := TokenFrom(mTokens, ANode.StartOffset);
     for mIndex := 0 to High(mParts) do
     begin
       mToken := mFrom;
@@ -240,7 +241,7 @@ var
     mIndex, mCount, mPosition: Integer;
   begin
     mCount := 0;
-    for mIndex := TokenAtOffset(mTokens, ASection.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, ASection.StartOffset) to High(mTokens) do
     begin
       if mTokens[mIndex].Offset >= ASection.EndOffset then
       begin
@@ -252,7 +253,7 @@ var
       end;
     end;
     mPosition := 0;
-    for mIndex := TokenAtOffset(mTokens, ASection.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, ASection.StartOffset) to High(mTokens) do
     begin
       if mTokens[mIndex].Offset >= ASection.EndOffset then
       begin
@@ -346,7 +347,7 @@ var
     begin
       Exit;
     end;
-    for mIndex := TokenAtOffset(mTokens, ANode.StartOffset) to High(mTokens) - 1 do
+    for mIndex := TokenFrom(mTokens, ANode.StartOffset) to High(mTokens) - 1 do
     begin
       if mTokens[mIndex].Offset >= ANode.EndOffset then
       begin
@@ -632,7 +633,7 @@ var
   function SameUnit(ALater, AEarlier: TSyntaxNode): Boolean;
   begin
     Result := SameText(AEarlier.Name, ALater.Name) and TConditionalBranches.Implies(TConditionalBranches.PathAt(
-      mPaths, TokenAtOffset(mTokens, ALater.StartOffset)), TConditionalBranches.PathAt(mPaths, TokenAtOffset(mTokens,
+      mPaths, TokenFrom(mTokens, ALater.StartOffset)), TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens,
       AEarlier.StartOffset)));
   end;
 

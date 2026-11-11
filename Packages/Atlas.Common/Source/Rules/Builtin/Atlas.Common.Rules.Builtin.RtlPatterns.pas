@@ -62,6 +62,7 @@ procedure RegisterRtlPatternRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   System.Generics.Collections,
   System.SysUtils,
@@ -130,31 +131,6 @@ type
     Last: Integer;
   end;
 
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-/// <summary>Nächstes Code-Token ab AIndex; Length(ATokens) ohne.</summary>
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-/// <summary>Vorheriges Code-Token vor AIndex; -1 ohne.</summary>
-function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Beginnt hinter ATokens[AIndex] eine Anweisung?</summary>
 function EndsStatement(const ATokens: TTokens; AIndex: Integer): Boolean;
 begin
@@ -178,30 +154,6 @@ begin
   Result := ATokens[AIndex].IsSymbol(';') or ATokens[AIndex].IsKeyword('end') or
     ATokens[AIndex].IsKeyword('else') or ATokens[AIndex].IsKeyword('until') or
     ATokens[AIndex].IsKeyword('except') or ATokens[AIndex].IsKeyword('finally');
-end;
-
-/// <summary>Index der zur öffnenden Klammer bei AOpen passenden schließenden; -1 ohne.</summary>
-function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  for Result := AOpen to High(ATokens) do
-  begin
-    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Code der Token AFirst..ALast ohne Kommentare, Wörter klein, mit Leerzeichen getrennt.</summary>
@@ -485,7 +437,7 @@ begin
   begin
     Exit;
   end;
-  Result := NextCode(ATokens, Closing(ATokens, mOpen) + 1) = AStop;
+  Result := NextCode(ATokens, MatchingParen(ATokens, mOpen) + 1) = AStop;
 end;
 
 /// <summary>Wert eines einzelnen Zeichens (#13 bzw. 'a'); False für anderes.</summary>
@@ -723,7 +675,7 @@ begin
     mStop := NextCode(mTokens, mCtor + 1);
     if (mStop <= High(mTokens)) and mTokens[mStop].IsSymbol('(') then
     begin
-      mStop := NextCode(mTokens, Closing(mTokens, mStop) + 1);
+      mStop := NextCode(mTokens, MatchingParen(mTokens, mStop) + 1);
     end;
     if not IsStatementEnd(mTokens, mStop) then
     begin
@@ -788,7 +740,7 @@ begin
     (AOpen <= High(ATokens)) and ATokens[AOpen].IsSymbol('(');
   if Result then
   begin
-    AClose := Closing(ATokens, AOpen);
+    AClose := MatchingParen(ATokens, AOpen);
     Result := AClose >= 0;
   end;
 end;

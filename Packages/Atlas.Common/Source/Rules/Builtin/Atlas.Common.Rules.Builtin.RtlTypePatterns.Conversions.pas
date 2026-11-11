@@ -99,6 +99,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
@@ -294,7 +295,7 @@ begin
   begin
     Exit;
   end;
-  AClose := Closing(ATokens, mOpen);
+  AClose := MatchingParen(ATokens, mOpen);
   if AClose < 0 then
   begin
     Exit;

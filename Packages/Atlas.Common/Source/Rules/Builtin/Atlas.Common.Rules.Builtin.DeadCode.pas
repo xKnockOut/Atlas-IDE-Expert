@@ -123,6 +123,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.DirectiveNames,
@@ -267,30 +268,6 @@ function IsTypeKind(AKind: TIndexSymbolKind): Boolean;
 begin
   Result := AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-end;
-
-/// <summary>Name ohne Typparameter: TListe&lt;T&gt;.Add -> TListe.Add.</summary>
-function WithoutTypeParams(const AName: string): string;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := '';
-  mDepth := 0;
-  for mIndex := 1 to Length(AName) do
-  begin
-    if AName[mIndex] = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if AName[mIndex] = '>' then
-    begin
-      Dec(mDepth);
-    end
-    else if mDepth = 0 then
-    begin
-      Result := Result + AName[mIndex];
-    end;
-  end;
 end;
 
 function ProjectKindKey(AKind: TRuleProjectKind): string;
@@ -895,7 +872,7 @@ begin
   for mNode in TRuleDerived.Routines(FCache, FContext) do
   begin
     if ((ASymbol.Kind = TIndexSymbolKind.Routine) and SameText(mNode.Name, ASymbol.Name)) or
-      (IsTypeKind(ASymbol.Kind) and StartsText(ASymbol.Name + '.', WithoutTypeParams(mNode.Name))) then
+      (IsTypeKind(ASymbol.Kind) and StartsText(ASymbol.Name + '.', TRoutineSignatures.WithoutTypeParams(mNode.Name))) then
     begin
       Result := Result + [TTextRange.Create(mNode.StartPos, mNode.EndPos)];
     end;

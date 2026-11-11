@@ -69,6 +69,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
@@ -148,32 +149,10 @@ begin
   Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
-/// <summary>Index des ersten Tokens ab AOffset (binäre Suche); Length(ATokens), wenn keiner folgt.</summary>
-function TokenAt(const ATokens: TTokens; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
-
 /// <summary>Pfad der bedingten Übersetzung am Anfang von ANode; '' ohne Bedingungen.</summary>
 function PathOf(const APaths: TArray<string>; const ATokens: TTokens; ANode: TSyntaxNode): string;
 begin
-  Result := TConditionalBranches.PathAt(APaths, TokenAt(ATokens, ANode.StartOffset));
+  Result := TConditionalBranches.PathAt(APaths, TokenFrom(ATokens, ANode.StartOffset));
 end;
 
 // Iterativ (Bericht M1).
@@ -1049,7 +1028,7 @@ var
   mItem: Integer;
 begin
   Result := nil;
-  for mItem := TokenAt(FTokens, FRoutine.StartOffset) to High(FTokens) do
+  for mItem := TokenFrom(FTokens, FRoutine.StartOffset) to High(FTokens) do
   begin
     if FTokens[mItem].Offset >= FRoutine.EndOffset then
     begin

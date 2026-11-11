@@ -69,6 +69,7 @@ implementation
 
 uses
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   System.SysUtils,
   System.StrUtils,

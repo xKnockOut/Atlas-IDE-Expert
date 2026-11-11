@@ -118,6 +118,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.UsesClause,
@@ -643,7 +644,7 @@ var
     mName: string;
   begin
     Result := False;
-    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
@@ -1394,7 +1395,7 @@ var
   var
     mIndex: Integer;
   begin
-    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) do
     begin
       Inc(mIndex);

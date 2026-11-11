@@ -32,6 +32,7 @@ implementation
 
 uses
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Statements.Tokens;
 
@@ -65,8 +66,8 @@ var
 begin
   // F ( A , ( B ) ) do: Token 0 bis 8
   mTokens := TPascalLexer.Tokenize('F(A, (B)) do');
-  Assert.AreEqual(7, Closing(mTokens, 1, Length(mTokens)));
-  Assert.AreEqual(-1, Closing(mTokens, 1, 7));
+  Assert.AreEqual(7, MatchingParen(mTokens, 1, Length(mTokens)));
+  Assert.AreEqual(-1, MatchingParen(mTokens, 1, 7));
   Assert.AreEqual(8, DepthZero(mTokens, 0, Length(mTokens), 'do', True));
   Assert.AreEqual(-1, DepthZero(mTokens, 0, Length(mTokens), ',', False));
 end;

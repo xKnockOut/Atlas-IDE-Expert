@@ -71,6 +71,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Chars,
   Atlas.Common.Localization.Texts;
@@ -168,30 +169,6 @@ end;
 function TokenRange(const AToken: TPascalToken): TTextRange;
 begin
   Result := TTextRange.Create(AToken.StartPos, AToken.EndPos);
-end;
-
-/// <summary>Index der schließenden Klammer zu ATokens[AOpen]; -1 ohne.</summary>
-function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  for Result := AOpen to High(ATokens) do
-  begin
-    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Argumente eines Aufrufs als [Anfang, Ende]-Paare (Indizes inklusive).</summary>

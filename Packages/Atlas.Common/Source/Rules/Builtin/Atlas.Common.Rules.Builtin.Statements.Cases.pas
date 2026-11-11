@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
@@ -381,7 +382,7 @@ var
       else if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
       begin
         // Klammern überspringen, damit "," darin nicht trennt.
-        mIndex := Closing(mTokens, mIndex, mColon);
+        mIndex := MatchingParen(mTokens, mIndex, mColon);
         Result := mIndex >= 0;
       end;
       Inc(mIndex);

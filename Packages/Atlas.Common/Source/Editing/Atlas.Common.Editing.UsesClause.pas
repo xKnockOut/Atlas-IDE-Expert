@@ -103,12 +103,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Pascal.Lexer;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor;
 
 function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

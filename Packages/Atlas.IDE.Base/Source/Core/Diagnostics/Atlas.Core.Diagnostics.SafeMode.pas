@@ -177,6 +177,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Math,
   System.Classes,
   System.IOUtils,
@@ -226,20 +227,6 @@ begin
     end;
   end;
   Result := TAtlasSafeLevel.Normal;
-end;
-
-function ContainsText_(const AList: TArray<string>; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 { TAtlasSessionMarker }
@@ -633,7 +620,7 @@ begin
   // Zuerst, was zuletzt geändert wurde: das ist am ehesten die Ursache.
   for mKey in AChangedKeys do
   begin
-    if TAtlasQuickToggles.Find(AToggles, mKey, mToggle) and not ContainsText_(Result, mToggle.Key) then
+    if TAtlasQuickToggles.Find(AToggles, mKey, mToggle) and not MatchText(mToggle.Key, Result) then
     begin
       Result := Result + [mToggle.Key];
     end;
@@ -643,7 +630,7 @@ begin
   for mToggle in AToggles do
   begin
     if (mToggle.Feature <> '') and (ACrashed.FailureCount(mToggle.Feature) > 0) and
-      not ContainsText_(Result, mToggle.Key) then
+      not MatchText(mToggle.Key, Result) then
     begin
       mCandidates := mCandidates + [TPair<string, Integer>.Create(mToggle.Key, ACrashed.FailureCount(mToggle.Feature))];
     end;

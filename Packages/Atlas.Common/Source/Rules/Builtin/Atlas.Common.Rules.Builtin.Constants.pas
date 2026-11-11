@@ -121,6 +121,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -732,7 +733,7 @@ var
   begin
     Result := False;
     mTokens := AContext.Tree.Tokens;
-    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if mTokens[mIndex].Kind = TPascalTokenKind.Directive then

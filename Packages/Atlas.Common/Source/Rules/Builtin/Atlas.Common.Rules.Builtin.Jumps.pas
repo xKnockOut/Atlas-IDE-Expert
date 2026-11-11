@@ -68,7 +68,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -341,30 +342,9 @@ var
   mTokens: TArray<TPascalToken>;
   mPaths: TArray<string>;
 
-  function TokenAt(AOffset: Integer): Integer;
-  var
-    mLow, mHigh, mMiddle: Integer;
-  begin
-    mLow := 0;
-    mHigh := Length(mTokens);
-    while mLow < mHigh do
-    begin
-      mMiddle := (mLow + mHigh) div 2;
-      if mTokens[mMiddle].Offset < AOffset then
-      begin
-        mLow := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
-    end;
-    Result := mLow;
-  end;
-
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(mPaths, TokenAt(ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ANode.StartOffset));
   end;
 
   // try-Anweisungen und ihre Teile von der Routine bis zu ANode, als Kette von Knoten.
@@ -428,7 +408,7 @@ var
   var
     mToken: Integer;
   begin
-    mToken := TokenAt(ASection.StartOffset) + 1;
+    mToken := TokenFrom(mTokens, ASection.StartOffset) + 1;
     while (mToken <= High(mTokens)) and (mTokens[mToken].Offset < ASection.EndOffset) and
       not mTokens[mToken].IsSymbol(';') do
     begin

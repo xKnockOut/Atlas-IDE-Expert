@@ -103,6 +103,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Style.Tokens,
@@ -153,30 +154,6 @@ const
     (De: 'Durch %s ersetzen'; En: 'Replace with %s'));
 
 {$SCOPEDENUMS OFF}
-
-/// <summary>Index der schließenden Klammer zu AOpen; -1 ohne.</summary>
-function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  for Result := AOpen to High(ATokens) do
-  begin
-    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
-end;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -435,7 +412,7 @@ begin
   begin
     Exit;
   end;
-  mClose := Closing(ATokens, mOpen);
+  mClose := MatchingParen(ATokens, mOpen);
   if (mClose < 0) or not PathBetween(ATokens, mOpen, mClose, APath) then
   begin
     Exit;
@@ -715,7 +692,7 @@ begin
   begin
     Exit;
   end;
-  AClose := Closing(ATokens, AOpen);
+  AClose := MatchingParen(ATokens, AOpen);
   if (AClose < 0) or not ATokens[AClose].IsSymbol(')') then
   begin
     Exit;

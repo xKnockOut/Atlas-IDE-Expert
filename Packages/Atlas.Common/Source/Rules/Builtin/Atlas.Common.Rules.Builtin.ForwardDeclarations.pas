@@ -72,6 +72,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.ForwardDeclarations,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -195,31 +196,9 @@ var
   mHasIncludes: Boolean;
   mImplementation_: TSyntaxNode;
 
-  /// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
-  function TokenAt(AOffset: Integer): Integer;
-  var
-    mLow, mHigh, mMiddle: Integer;
-  begin
-    mLow := 0;
-    mHigh := Length(mTokens);
-    while mLow < mHigh do
-    begin
-      mMiddle := (mLow + mHigh) div 2;
-      if mTokens[mMiddle].Offset < AOffset then
-      begin
-        mLow := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
-    end;
-    Result := mLow;
-  end;
-
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(mPaths, TokenAt(ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ANode.StartOffset));
   end;
 
   /// <summary>Bereich des ersten Bezeichners AName ab dem Anfang von ANode; der ganze Knoten ohne.</summary>
@@ -227,7 +206,7 @@ var
   var
     mIndex: Integer;
   begin
-    mIndex := TokenAt(ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex < Length(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
@@ -397,7 +376,7 @@ var
   var
     mFirst, mStop: Integer;
   begin
-    mFirst := TokenAt(AHeader.StartOffset);
+    mFirst := TokenFrom(mTokens, AHeader.StartOffset);
     mStop := HeadStop(mFirst);
     if mStop < 0 then
     begin

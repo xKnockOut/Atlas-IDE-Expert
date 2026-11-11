@@ -49,7 +49,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -80,11 +81,6 @@ const
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
 begin
   Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(AToken.Text, AWord);
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 /// <summary>Werte des Elements ATag in der .dproj ADproj, in der Reihenfolge des Textes.</summary>
@@ -167,16 +163,6 @@ var
     end;
   end;
 
-  /// <summary>Code-Token vor AIndex; -1 ohne.</summary>
-  function PreviousCode(AIndex: Integer): Integer;
-  begin
-    Result := AIndex - 1;
-    while (Result >= 0) and IsTrivia(mTokens[Result]) do
-    begin
-      Dec(Result);
-    end;
-  end;
-
   function HasDirective(AHeader: TSyntaxNode; const AName: string; out ADirective: TSyntaxNode): Boolean;
   var
     mIndex: Integer;
@@ -211,7 +197,7 @@ var
     begin
       Exit;
     end;
-    mBefore := PreviousCode(FirstCode(AReference));
+    mBefore := PreviousCode(mTokens, FirstCode(AReference));
     if (mBefore >= 0) and IsWord(mTokens[mBefore], 'packed') then
     begin
       AReport.Add(TokenRange(mBefore), cTexts[TInvalidDeclarationsText.PackedType].Fmt([AReference.Name]),
@@ -372,7 +358,7 @@ var
       mBefore := FirstCode(mParam);
       if (mBefore < Length(mTokens)) and not IsModifier(mTokens[mBefore]) then
       begin
-        mBefore := PreviousCode(mBefore);
+        mBefore := PreviousCode(mTokens, mBefore);
       end;
       if (mBefore >= 0) and (mBefore < Length(mTokens)) and IsModifier(mTokens[mBefore]) then
       begin

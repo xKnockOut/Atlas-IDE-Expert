@@ -34,6 +34,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
   Atlas.Text.Lines,
@@ -90,7 +91,7 @@ var
   begin
     mName := BareName(AHeader.Name);
     Result := -1;
-    for mIndex := TokenAtOffset(mTokens, AHeader.StartOffset) to High(mTokens) do
+    for mIndex := TokenFrom(mTokens, AHeader.StartOffset) to High(mTokens) do
     begin
       if (mTokens[mIndex].Offset >= AHeader.EndOffset) or mTokens[mIndex].IsSymbol('(') or
         mTokens[mIndex].IsSymbol(':') or

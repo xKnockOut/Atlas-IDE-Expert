@@ -70,6 +70,7 @@ implementation
 
 uses
   Atlas.Common.Index.NameFacts,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
