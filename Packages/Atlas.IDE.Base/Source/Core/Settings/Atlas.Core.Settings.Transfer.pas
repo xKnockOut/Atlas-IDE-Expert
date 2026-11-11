@@ -229,7 +229,8 @@ uses
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
   Atlas.Core.Settings.ProblemsUpdate,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -1171,18 +1172,6 @@ begin
   end;
 end;
 
-function IntegerField(ARoot: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := ARoot.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
 procedure AddSettingPairs(ASettings: TJSONObject; var AFile: TAtlasSettingsFile);
 var
   mPair: TJSONPair;
@@ -1214,8 +1203,8 @@ end;
 
 procedure ReadFileHeader(ARoot: TJSONObject; var AFile: TAtlasSettingsFile);
 begin
-  AFile.FormatVersion := IntegerField(ARoot, 'formatVersion');
-  AFile.SchemaVersion := IntegerField(ARoot, 'schemaVersion');
+  AFile.FormatVersion := TJsonRead.Int(ARoot, 'formatVersion');
+  AFile.SchemaVersion := TJsonRead.Int(ARoot, 'schemaVersion');
   AFile.AtlasVersion := StringField(ARoot, 'atlasVersion');
   AFile.Name := StringField(ARoot, 'name');
   AFile.NameEn := StringField(ARoot, 'nameEn');

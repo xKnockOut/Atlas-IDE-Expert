@@ -69,7 +69,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 { TAtlasTrackerQuery }
 
@@ -104,18 +105,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 class function TAtlasTrackerQueries.Read(const AJson: string): TArray<TAtlasTrackerQuery>;
 var
   mRoot: TJSONValue;
@@ -139,8 +128,8 @@ begin
       begin
         Continue;
       end;
-      mQuery := TAtlasTrackerQuery.Create(TextOf(TJSONObject(mItem), 'name'), TextOf(TJSONObject(mItem), 'query'),
-        TextOf(TJSONObject(mItem), 'connection'), TextOf(TJSONObject(mItem), 'project'));
+      mQuery := TAtlasTrackerQuery.Create(TJsonRead.Text(TJSONObject(mItem), 'name'), TJsonRead.Text(TJSONObject(mItem), 'query'),
+        TJsonRead.Text(TJSONObject(mItem), 'connection'), TJsonRead.Text(TJSONObject(mItem), 'project'));
       if (mQuery.Name = '') or (mQuery.Query = '') or (IndexOfName(Result, mQuery.Name) >= 0) then
       begin
         Continue;

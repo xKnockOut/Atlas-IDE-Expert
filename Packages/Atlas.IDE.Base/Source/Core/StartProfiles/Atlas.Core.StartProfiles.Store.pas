@@ -184,6 +184,7 @@ uses
   Winapi.Windows,
   System.Classes,
   System.JSON,
+  Atlas.Text.Json,
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin,
   Atlas.Core.Projects.Summary,
@@ -215,18 +216,6 @@ begin
   end;
 end;
 
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 function ReadProfile(AValue: TJSONValue; out AProfile: TAtlasStartProfile): Boolean;
 var
   mEntry, mEnvironment: TJSONObject;
@@ -240,10 +229,10 @@ begin
     Exit;
   end;
   mEntry := TJSONObject(AValue);
-  AProfile.Name := Trim(StringOf(mEntry, 'name'));
-  AProfile.Parameters := StringOf(mEntry, 'parameters');
-  AProfile.WorkingDir := Trim(StringOf(mEntry, 'workingDir'));
-  AProfile.Host := Trim(StringOf(mEntry, 'host'));
+  AProfile.Name := Trim(TJsonRead.Text(mEntry, 'name'));
+  AProfile.Parameters := TJsonRead.Text(mEntry, 'parameters');
+  AProfile.WorkingDir := Trim(TJsonRead.Text(mEntry, 'workingDir'));
+  AProfile.Host := Trim(TJsonRead.Text(mEntry, 'host'));
   if mEntry.GetValue('environment') is TJSONObject then
   begin
     mEnvironment := TJSONObject(mEntry.GetValue('environment'));
@@ -271,10 +260,10 @@ begin
   begin
     Exit;
   end;
-  AOptions.Parameters := StringOf(TJSONObject(AValue), 'parameters');
-  AOptions.WorkingDir := StringOf(TJSONObject(AValue), 'workingDir');
-  AOptions.Host := StringOf(TJSONObject(AValue), 'host');
-  AOptions.Environment := StringOf(TJSONObject(AValue), 'environment');
+  AOptions.Parameters := TJsonRead.Text(TJSONObject(AValue), 'parameters');
+  AOptions.WorkingDir := TJsonRead.Text(TJSONObject(AValue), 'workingDir');
+  AOptions.Host := TJsonRead.Text(TJSONObject(AValue), 'host');
+  AOptions.Environment := TJsonRead.Text(TJSONObject(AValue), 'environment');
 end;
 
 function ReadTemporary(AValue: TJSONValue; var AState: TAtlasStartProfileState): Boolean;
@@ -282,7 +271,7 @@ begin
   Result := ReadOptions(AValue, AState.TemporaryBefore);
   if Result then
   begin
-    AState.TemporaryWritten := StringOf(TJSONObject(AValue), 'written');
+    AState.TemporaryWritten := TJsonRead.Text(TJSONObject(AValue), 'written');
   end;
 end;
 
@@ -381,11 +370,11 @@ begin
       Exit;
     end;
     AValid := True;
-    if StringOf(TJSONObject(mRoot), 'project') <> '' then
+    if TJsonRead.Text(TJSONObject(mRoot), 'project') <> '' then
     begin
-      Result.Project := StringOf(TJSONObject(mRoot), 'project');
+      Result.Project := TJsonRead.Text(TJSONObject(mRoot), 'project');
     end;
-    Result.Active := Trim(StringOf(TJSONObject(mRoot), 'active'));
+    Result.Active := Trim(TJsonRead.Text(TJSONObject(mRoot), 'active'));
     mValue := TJSONObject(mRoot).GetValue('profiles');
     if mValue is TJSONArray then
     begin

@@ -72,14 +72,8 @@ type
 
 implementation
 
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AName) is TJSONString then
-  begin
-    Result := AObject.GetValue(AName).Value;
-  end;
-end;
+uses
+  Atlas.Text.Json;
 
 function UsagesOf(const AObject: TJSONObject; const AName: string): TArray<TAtlasSafeDeleteUsage>;
 var
@@ -98,11 +92,11 @@ begin
       Continue;
     end;
     mUsage := Default(TAtlasSafeDeleteUsage);
-    mUsage.FileName := StringOf(TJSONObject(mItem), 'file');
+    mUsage.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
     TJSONObject(mItem).TryGetValue<Integer>('line', mUsage.Line);
     TJSONObject(mItem).TryGetValue<Integer>('character', mUsage.Character);
-    mUsage.Text := StringOf(TJSONObject(mItem), 'text');
-    mUsage.Kind := StringOf(TJSONObject(mItem), 'kind');
+    mUsage.Text := TJsonRead.Text(TJSONObject(mItem), 'text');
+    mUsage.Kind := TJsonRead.Text(TJSONObject(mItem), 'kind');
     Result := Result + [mUsage];
   end;
 end;
@@ -135,22 +129,22 @@ begin
     Exit;
   end;
   mAnswer := TJSONObject(AValue);
-  Result.Kind := StringOf(mAnswer, 'kind');
-  Result.Name := StringOf(mAnswer, 'name');
-  Result.Title := StringOf(mAnswer, 'title');
+  Result.Kind := TJsonRead.Text(mAnswer, 'kind');
+  Result.Name := TJsonRead.Text(mAnswer, 'name');
+  Result.Title := TJsonRead.Text(mAnswer, 'title');
   Result.Usages := UsagesOf(mAnswer, 'usages');
   Result.Overrides := UsagesOf(mAnswer, 'overrides');
   Result.Cascade := StringsOf(mAnswer, 'cascade');
   Result.Warnings := StringsOf(mAnswer, 'warnings');
   Result.PreviewWhenUnused := (mAnswer.GetValue('previewWhenUnused') is TJSONBool) and
     TJSONBool(mAnswer.GetValue('previewWhenUnused')).AsBoolean;
-  if StringOf(mAnswer, 'cascadeMode') <> '' then
+  if TJsonRead.Text(mAnswer, 'cascadeMode') <> '' then
   begin
-    Result.CascadeMode := StringOf(mAnswer, 'cascadeMode');
+    Result.CascadeMode := TJsonRead.Text(mAnswer, 'cascadeMode');
   end;
-  if StringOf(mAnswer, 'overridesMode') <> '' then
+  if TJsonRead.Text(mAnswer, 'overridesMode') <> '' then
   begin
-    Result.OverridesMode := StringOf(mAnswer, 'overridesMode');
+    Result.OverridesMode := TJsonRead.Text(mAnswer, 'overridesMode');
   end;
 end;
 

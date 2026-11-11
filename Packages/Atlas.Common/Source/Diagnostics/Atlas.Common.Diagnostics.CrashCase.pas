@@ -138,6 +138,7 @@ uses
   System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Text.Json,
   Atlas.Text.Jsonc,
   Atlas.Common.Localization.Texts;
 
@@ -710,31 +711,6 @@ begin
   Prune(ARoot, cMaxCases);
 end;
 
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-/// <summary>Zahl AName aus AObject; ADefault, wenn sie fehlt.</summary>
-function Int64Of(const AObject: TJSONObject; const AName: string; ADefault: Int64): Int64;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt64;
-  end;
-end;
-
 /// <summary>Wert AName aus AObject als JSON-Text; '' ohne Wert und bei null.</summary>
 function JsonOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -754,34 +730,34 @@ var
   mValue: TJSONValue;
   mTime: TDateTime;
 begin
-  if StringOf(AObject, 'kind') = cKindNames[TCrashCaseKind.Timeout] then
+  if TJsonRead.Text(AObject, 'kind') = cKindNames[TCrashCaseKind.Timeout] then
   begin
     ACase.Kind := TCrashCaseKind.Timeout;
   end;
-  if TryISO8601ToDate(StringOf(AObject, 'time'), mTime, False) then
+  if TryISO8601ToDate(TJsonRead.Text(AObject, 'time'), mTime, False) then
   begin
     ACase.Time := mTime;
   end;
-  ACase.ProcessId := Cardinal(Int64Of(AObject, 'processId', ACase.ProcessId));
+  ACase.ProcessId := Cardinal(TJsonRead.Int64Or(AObject, 'processId', ACase.ProcessId));
   mValue := AObject.GetValue('id');
   if mValue <> nil then
   begin
     ACase.Id := mValue.ToJSON;
   end;
   ACase.Params := JsonOf(AObject, 'params');
-  ACase.Uri := StringOf(AObject, 'uri');
-  ACase.FileName := StringOf(AObject, 'file');
-  ACase.Line := Integer(Int64Of(AObject, 'line', ACase.Line));
-  ACase.TimeoutMs := Cardinal(Int64Of(AObject, 'timeoutMs', ACase.TimeoutMs));
+  ACase.Uri := TJsonRead.Text(AObject, 'uri');
+  ACase.FileName := TJsonRead.Text(AObject, 'file');
+  ACase.Line := Integer(TJsonRead.Int64Or(AObject, 'line', ACase.Line));
+  ACase.TimeoutMs := Cardinal(TJsonRead.Int64Or(AObject, 'timeoutMs', ACase.TimeoutMs));
   mValue := AObject.GetValue('exception');
   if mValue is TJSONObject then
   begin
-    ACase.ExceptionClass := StringOf(TJSONObject(mValue), 'class');
-    ACase.ExceptionMessage := StringOf(TJSONObject(mValue), 'message');
+    ACase.ExceptionClass := TJsonRead.Text(TJSONObject(mValue), 'class');
+    ACase.ExceptionMessage := TJsonRead.Text(TJSONObject(mValue), 'message');
   end;
-  ACase.AtlasVersion := StringOf(AObject, 'atlasVersion');
-  ACase.BuildCompiler := StringOf(AObject, 'buildCompiler');
-  ACase.Client := StringOf(AObject, 'client');
+  ACase.AtlasVersion := TJsonRead.Text(AObject, 'atlasVersion');
+  ACase.BuildCompiler := TJsonRead.Text(AObject, 'buildCompiler');
+  ACase.Client := TJsonRead.Text(AObject, 'client');
   mValue := AObject.GetValue('initialize');
   if mValue <> nil then
   begin
@@ -812,7 +788,7 @@ var
   mName: string;
   mValue: TJSONValue;
 begin
-  mName := StringOf(AFiles, 'snapshot');
+  mName := TJsonRead.Text(AFiles, 'snapshot');
   if (mName <> '') and TFile.Exists(TPath.Combine(AFolder, ExtractFileName(mName))) then
   begin
     ACase.Text := TFile.ReadAllText(TPath.Combine(AFolder, ExtractFileName(mName)), TEncoding.UTF8);
@@ -851,7 +827,7 @@ begin
       Exit;
     end;
     mObject := TJSONObject(mRoot);
-    ACase.Method := StringOf(mObject, 'method');
+    ACase.Method := TJsonRead.Text(mObject, 'method');
     if ACase.Method = '' then
     begin
       AError := cTexts[TCrashCaseText.TheCrashCaseLacksMethod].Text;

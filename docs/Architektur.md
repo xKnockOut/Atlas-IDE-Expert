@@ -36,6 +36,7 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 - Das Plugin enthält genau die Units aus `Atlas.Text.dpk` (sonst W1033) und außer eigenen Units nur solche aus `..\Atlas.Text\Source`.
 - `Atlas.Tests.dpr` und `AtlasServer.dpr` binden Atlas.Text nicht als Quelltext ein; sie linken die DCUs aus `Dcu/Atlas.Text`.
 - **Kopien-Sperre:** Außerhalb von `Packages/Atlas.Text` entsteht keine neue Routine wie `LineBreakOf`, `SplitLines`, `IndentOf`, `IsWordChar`, `IsIdentChar`, `IsUtf8`, `PercentDecode` oder `DecodeEntities`. Ausnahmen (Fassaden mit eigenem Typ, öffentliche Weiterleitungen, SQL-Bezeichner, Block Rules) stehen mit Grund in `$AllowedLocal`; die Liste soll nur schrumpfen.
+- **Kopien-Sperre JSON:** JSON-Lesehelfer (`TextOf`, `StringOf`, `NumberOf`, `IntOf`, `FlagOf`, `ObjectOf`, `ArrayOf` usw. mit einem `TJSONObject` und einem Namen) gibt es nur als `TJsonRead` in `Atlas.Text.Json`: nachsichtig, `nil`, fehlender Wert, `null` und falscher Typ geben die Vorgabe, Ganzzahlen auch aus `12.0` und `"12"`. Ausnahmen mit eigenem Verhalten stehen mit Grund in `$AllowedJsonLocal`.
 
 ### Ausnahme: Atlas.Common als Fachcode-Package des Servers
 
@@ -149,7 +150,7 @@ Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes
 Auch über implementation-uses bilden die Units unter `Packages/` und `Application/` keinen Zyklus: `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts. Eine Unit eines Zyklus ließe sich weder allein testen noch austauschen. Die Muster dafür:
 
 - Gemeinsame Typen eines Features stehen in seiner Contract-Unit. `Atlas.Common.Editing.Contract` trägt die Typen der Schnellbefehle (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` …) und den Kontext der uses-Aktionen (`TUsesContext`). Die Befehls-Units (`*Commands`) binden nur den Contract ein und melden ihre Befehle über `TSlashRegister`; nur das Register `Atlas.Common.Editing.SlashCommands` bindet alle Befehls-Units ein. Es bleibt eine Root-Unit, weil Lsp, Rules und `ClassActions` es nutzen (eine Composition dürften sie nach der Matrix nicht einbinden).
-- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Lsp.FormMentions`, JSON-Strings in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Core.Lsp.Uris`, die Steuerelemente `Atlas.UI.Settings.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
+- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Lsp.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Core.Lsp.Uris`, die Steuerelemente `Atlas.UI.Settings.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
 - Eine Funktion gehört zu ihren Daten: Die Nutzung je Befehl fragt `TAtlasIdeCommandUsage.UsageOf`, nicht die Tastenkürzel-Tipps; der Rückruf „Testen“ des Abfragedialogs (`TAtlasQueryTestEvent`) steht beim Dialog, nicht auf der Seite, die ihn öffnet.
 
 ### Genehmigte Ausnahmen
