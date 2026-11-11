@@ -1665,6 +1665,8 @@ uses
   Atlas.Core.Designer.Similar.Tests in 'IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas',
   Atlas.Core.Designer.Gaps in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Gaps.pas',
   Atlas.Core.Designer.Gaps.Tests in 'IDE.Expert\Atlas.Core.Designer.Gaps.Tests.pas',
+  Atlas.Core.Designer.MultiResize in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas',
+  Atlas.Core.Designer.MultiResize.Tests in 'IDE.Expert\Atlas.Core.Designer.MultiResize.Tests.pas',
   Atlas.UI.Designer.Bar in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas',
   Atlas.UI.Designer.Bar.Tests in 'IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas',
   Atlas.UI.Designer.Search in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas',

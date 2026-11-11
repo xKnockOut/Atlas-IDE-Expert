@@ -6,6 +6,7 @@
 // öffnet sein Menü. Der Takt der Leiste lässt die Werkzeuge der Auswahl im
 // Designer folgen.
 // - Abstandsgriffe (#734, designer.gapHandles, TAtlasIdeGapHandles).
+// - Gemeinsame Größengriffe (#737, designer.multiResize, TAtlasIdeMultiResize).
 // Nur im Hauptthread.
 
 interface
@@ -15,12 +16,17 @@ uses
   System.Types,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
-  Atlas.IDE.Designer.GapHandles;
+  Atlas.IDE.Designer.HandleTool,
+  Atlas.IDE.Designer.GapHandles,
+  Atlas.IDE.Designer.MultiResize;
 
 type
   TAtlasIdeDesignerTools = class
   private
     FGaps: TAtlasIdeGapHandles;
+    FResize: TAtlasIdeMultiResize;
+    /// <summary>Werkzeug mit Griffen zum Knopf AId; nil ohne.</summary>
+    function HandleToolOf(const AId: string): TAtlasIdeHandleTool;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -48,10 +54,12 @@ constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create;
   FGaps := TAtlasIdeGapHandles.Create(AOnMessage);
+  FResize := TAtlasIdeMultiResize.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerTools.Destroy;
 begin
+  FResize.Free;
   FGaps.Free;
   inherited Destroy;
 end;
@@ -63,43 +71,69 @@ begin
   begin
     Result := Result + [FGaps.Button];
   end;
+  if TAtlasIdeMultiResize.Available(ASettings) then
+  begin
+    Result := Result + [FResize.Button];
+  end;
+end;
+
+function TAtlasIdeDesignerTools.HandleToolOf(const AId: string): TAtlasIdeHandleTool;
+begin
+  Result := nil;
+  if SameText(AId, TAtlasIdeGapHandles.cId) then
+  begin
+    Result := FGaps;
+  end
+  else if SameText(AId, TAtlasIdeMultiResize.cId) then
+  begin
+    Result := FResize;
+  end;
 end;
 
 function TAtlasIdeDesignerTools.Toggle(const AId: string): Boolean;
+var
+  mTool: TAtlasIdeHandleTool;
 begin
-  Result := SameText(AId, TAtlasIdeGapHandles.cId);
+  mTool := HandleToolOf(AId);
+  Result := mTool <> nil;
   if Result then
   begin
-    FGaps.Toggle;
+    mTool.Toggle;
   end;
 end;
 
 function TAtlasIdeDesignerTools.HasMenu(const AId: string): Boolean;
 begin
-  Result := SameText(AId, TAtlasIdeGapHandles.cId);
+  Result := HandleToolOf(AId) <> nil;
 end;
 
 procedure TAtlasIdeDesignerTools.Popup(const AId: string; const APoint: TPoint);
+var
+  mTool: TAtlasIdeHandleTool;
 begin
-  if SameText(AId, TAtlasIdeGapHandles.cId) then
+  mTool := HandleToolOf(AId);
+  if mTool <> nil then
   begin
-    FGaps.Popup(APoint);
+    mTool.Popup(APoint);
   end;
 end;
 
 procedure TAtlasIdeDesignerTools.Tick;
 begin
   FGaps.Tick;
+  FResize.Tick;
 end;
 
 procedure TAtlasIdeDesignerTools.Hide;
 begin
   FGaps.Hide;
+  FResize.Hide;
 end;
 
 procedure TAtlasIdeDesignerTools.ApplyTheme;
 begin
   FGaps.ApplyTheme;
+  FResize.ApplyTheme;
 end;
 
 end.

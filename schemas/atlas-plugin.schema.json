@@ -5423,6 +5423,43 @@
       "x-node": "editor.designerBar",
       "x-issue": "#734"
     },
+    "DesignerMultiResize": {
+      "description": "Gemeinsame Größengriffe bei Mehrfachauswahl: An jedem markierten Steuerelement stehen eigene Griffe in der Akzentfarbe an rechter und unterer Kante und an der rechten unteren Ecke. Ein Zug ändert alle markierten Steuerelemente; die gezogene Kante rastet am Raster des Designers ein (Alt: ohne Raster), mit Umschalt rücken angrenzende Nachbarn im selben Elternelement mit. AutoSize und Align bleiben unverändert und sind gestrichelt umrandet. Knopf in der Designer-Leiste: Symbol blendet die Griffe ein und aus, das Menü am Pfeil macht den letzten Zug rückgängig.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.multiResize",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#737"
+    },
+    "DesignerMultiResizeMode": {
+      "description": "Was ein Zug ändert: alle um denselben Betrag (delta) oder alle auf dieselbe Kante wie das gezogene Steuerelement (align). Mindestgröße ist Constraints.MinWidth/MinHeight, sonst 8 px.",
+      "type": "string",
+      "enum": [
+        "delta",
+        "align"
+      ],
+      "default": "delta",
+      "x-key": "designer.multiResize.mode",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.multiResize",
+      "x-node": "editor.designerBar",
+      "x-issue": "#737"
+    },
+    "DesignerMultiResizeLeftTopHandles": {
+      "description": "Eigene Griffe auch an linker und oberer Kante (die rechte bzw. untere bleibt stehen). Aus = Alt beim Drücken eines Griffs rechts bzw. unten zieht stattdessen die linke bzw. obere Kante.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.multiResize.leftTopHandles",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.multiResize",
+      "x-node": "editor.designerBar",
+      "x-issue": "#737"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
