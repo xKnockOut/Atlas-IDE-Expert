@@ -1,4 +1,4 @@
-unit Atlas.IDE.Designer.Snapshot;
+﻿unit Atlas.IDE.Designer.Snapshot;
 
 // Stand von Lage und Größe im Designer für „… rückgängig“ der Befehle im Menü
 // „Anordnen“, die nur Lage und Größe ändern (#740, #742): Datei, alle
