@@ -85,8 +85,10 @@ end;
 
 { /sortuses }
 
-/// <summary>Ungenutzte Units laut Index (#284); nil ohne Host, Index oder bei abgeschalteter Einstellung.</summary>
-function UnusedUnitsOf(const AContext: TSlashContext; const ATokens: TArray<TPascalToken>): TArray<string>;
+/// <summary>Ungenutzte Units laut Index (#284) und Namensauflösung (#1925) in AText; nil ohne Host, Index oder bei
+/// abgeschalteter Einstellung.</summary>
+function UnusedUnitsOf(const AContext: TSlashContext; const AText: string;
+  const ATokens: TArray<TPascalToken>): TArray<string>;
 var
   mUses_: TUsesContext;
 begin
@@ -98,7 +100,7 @@ begin
   end;
   if AContext.Host.UsesContext(AContext.Uri, mUses_) and Assigned(mUses_.Info) then
   begin
-    Result := TUsesActions.UnusedUnits(ATokens, mUses_.Info, mUses_.Keep);
+    Result := TUsesActions.UnusedUnits(ATokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(AText, nil));
   end;
 end;
 
@@ -119,7 +121,7 @@ begin
     mOptions := Default(TUsesRewrite);
     mOptions.Dedupe := True;
     mOptions.Sort := True;
-    mOptions.Drop := UnusedUnitsOf(AContext, mTokens);
+    mOptions.Drop := UnusedUnitsOf(AContext, mText, mTokens);
     if not TUsesClauses.Rewrite(mTokens, mText, mOptions, mSource.LineBreak, mEdits) then
     begin
       mEdits := nil;
@@ -151,8 +153,8 @@ begin
     mText := mSource.Text;
     mTokens := TPascalLexer.Tokenize(mText);
     // Nur streichen, nicht sortieren: Die gewählte Reihenfolge bleibt.
-    if not TUsesActions.RemoveUnits(mTokens, mText, TUsesActions.UnusedUnits(mTokens, mUses_.Info, mUses_.Keep),
-      mSource.LineBreak, mEdits) then
+    if not TUsesActions.RemoveUnits(mTokens, mText, TUsesActions.UnusedUnits(mTokens, mUses_.Info, mUses_.Keep,
+      mUses_.Resolution(mText, nil)), mSource.LineBreak, mEdits) then
     begin
       mEdits := nil;
     end;

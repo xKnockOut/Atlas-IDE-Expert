@@ -442,6 +442,8 @@ contains
   Atlas.Common.Editing.TestUnits in 'Source\Editing\Atlas.Common.Editing.TestUnits.pas',
   Atlas.Common.Editing.ErrorCommands in 'Source\Editing\Atlas.Common.Editing.ErrorCommands.pas',
   Atlas.Common.Semantics.UnresolvedNames in 'Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas',
+  Atlas.Common.Semantics.InlineCallees in 'Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas',
+  Atlas.Common.Semantics.UsesUsage in 'Source\Semantics\Atlas.Common.Semantics.UsesUsage.pas',
   Atlas.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas',
   Atlas.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas',
   Atlas.Common.Rules.Builtin.Concurrency.Syntax in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Syntax.pas',

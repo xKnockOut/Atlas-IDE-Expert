@@ -7,6 +7,12 @@
 //   einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil
 //   ihres Namens gleicht. Das ist großzügig: lieber eine Unit stehen lassen
 //   als eine benötigte entfernen.
+// - Mit einer Nutzung aus der Namensauflösung (TUsesResolution, #1925) zählt
+//   ein aufgelöster Bezeichner nur für die Unit seiner Deklaration, und nur,
+//   wenn er sie im uses braucht (Unit-Ebene, Enum-Wert, Helper). Für die
+//   übrigen bleibt der Namensvergleich, aber vor einem Punkt nur mit den
+//   Namen auf Unit-Ebene und dahinter nur mit Mitgliedern von Helpern:
+//   Mitglieder einer Klasse erreicht man ohne deren Unit im uses.
 // - Nie entfernt werden Units, die der Index nicht kennt, Units mit
 //   initialization/finalization (Registrierungen, Treiber, Testfixtures),
 //   Units aus "usesKeep" und Einträge in Listen mit {$IFDEF} oder Kommentaren.
@@ -89,7 +95,17 @@ type
     /// (inaktive Zweige) zählen nicht: weder ihre Einträge noch ihre Bezeichner. Unbekannte Units entfallen,
     /// ebenso benutzte, die richtig stehen.</summary>
     class function Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
-      const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>; static;
+      const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>; overload; static;
+    /// <summary>Wie oben mit der Nutzung AResolution aus der Namensauflösung (#1925).</summary>
+    class function Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
+      const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>;
+      const AResolution: TUsesResolution): TArray<TUsesEntry>; overload; static;
+    /// <summary>Steht vor dem Token AIndex (Kommentare und Direktiven übersprungen) ein Punkt, ist es also ein
+    /// Mitglied oder ein qualifizierter Name?</summary>
+    class function DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean; static;
+    /// <summary>Die Token außerhalb der Bereiche AInactive (inaktive Zweige der bedingten Kompilierung).</summary>
+    class function ActiveTokens(const ATokens: TArray<TPascalToken>;
+      const AInactive: TArray<TTextRange>): TArray<TPascalToken>; static;
     /// <summary>Ein Edit, das die Einträge an ARanges (Bereiche der Namen) streicht (#621), auch aus Listen mit
     /// Direktiven oder Kommentaren: mit dem Komma davor oder dahinter, der einzige Eintrag mit dem ganzen uses.
     /// False, wenn ein Bereich keinen Eintrag trifft oder das Komma nur über eine Direktive hinweg zu erreichen
@@ -98,7 +114,10 @@ type
       out AEdit: TTextEdit): Boolean; static;
     /// <summary>Entfernbare Units in Reihenfolge der uses-Listen.</summary>
     class function UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
-      const AKeep: TArray<string>): TArray<string>; static;
+      const AKeep: TArray<string>): TArray<string>; overload; static;
+    /// <summary>Wie oben mit der Nutzung AResolution aus der Namensauflösung (#1925).</summary>
+    class function UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
+      const AKeep: TArray<string>; const AResolution: TUsesResolution): TArray<string>; overload; static;
     /// <summary>Bezeichner im interface-Teil einer Unit (außerhalb der uses-Listen), die einen der Namen ANames
     /// (interface-Symbole der Unit AUnitName, auch Mitglieder) oder den letzten Teil von AUnitName nennen (#896),
     /// in Quelltextreihenfolge. Leer in Programmen und wenn die Unit im interface nicht gebraucht wird.</summary>
@@ -106,7 +125,10 @@ type
       const ANames: TArray<string>): TArray<TUsesInterfaceUsage>; static;
     /// <summary>interface-Units, die nur im implementation-Teil gebraucht werden.</summary>
     class function MovableUnits(const ATokens: TArray<TPascalToken>;
-      const AInfo: TUsesUnitInfoFunc): TArray<string>; static;
+      const AInfo: TUsesUnitInfoFunc): TArray<string>; overload; static;
+    /// <summary>Wie oben mit der Nutzung AResolution aus der Namensauflösung (#1925).</summary>
+    class function MovableUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
+      const AResolution: TUsesResolution): TArray<string>; overload; static;
     /// <summary>Edits, die AUnits aus allen schlichten Listen streichen.</summary>
     class function RemoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
       const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
@@ -143,10 +165,12 @@ uses
   Atlas.Text.Lines;
 
 const
-  cInInterfacePart = 1;
-  cInImplementationPart = 2;
+  cInInterfacePart = TUsesResolution.cInterfacePart;
+  cInImplementationPart = TUsesResolution.cImplementationPart;
   // Vorsilbe für Bezeichner mit Punkt dahinter (Qualifizierer); kein Bezeichner beginnt mit einem Punkt.
   cQualifierKey = '.';
+  // Vorsilbe für Bezeichner mit Punkt davor (Mitglieder), nur mit Namensauflösung (#1925).
+  cMemberKey = '>';
 
 function Bare(const AIdentifier: string): string;
 begin
@@ -218,10 +242,23 @@ begin
   AMap.AddOrSetValue(AKey, mMask or APart);
 end;
 
+class function TUsesActions.DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mPrevious: Integer;
+begin
+  mPrevious := AIndex - 1;
+  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(mPrevious);
+  end;
+  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
+end;
+
 /// <summary>Bezeichner außerhalb der uses-Listen mit Bitmaske des Teils (interface/implementation). Steht ein
-/// Punkt dahinter (Qualifizierer wie SysUtils.Format), zählt er zusätzlich unter "." + Name.</summary>
-function CollectIdentifiers(const ATokens: TArray<TPascalToken>;
-  const AClauses: TArray<TUsesClauseInfo>): TDictionary<string, Integer>;
+/// Punkt dahinter (Qualifizierer wie SysUtils.Format), zählt er zusätzlich unter "." + Name. Mit AResolution.Active
+/// fallen aufgelöste Bezeichner weg, und Mitglieder (Punkt davor) zählen unter ">" + Name (#1925).</summary>
+function CollectIdentifiers(const ATokens: TArray<TPascalToken>; const AClauses: TArray<TUsesClauseInfo>;
+  const AResolution: TUsesResolution): TDictionary<string, Integer>; overload;
 var
   mIndex, mClauseIndex, mPart: Integer;
   mKey: string;
@@ -242,10 +279,18 @@ begin
     begin
       mPart := cInImplementationPart;
     end
-    else if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
+    else if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      not (AResolution.Active and AResolution.IsSettled(ATokens[mIndex].Offset)) then
     begin
       mKey := LowerCase(Bare(ATokens[mIndex].Text));
-      AddUsage(Result, mKey, mPart);
+      if AResolution.Active and TUsesActions.DotPrecedes(ATokens, mIndex) then
+      begin
+        AddUsage(Result, cMemberKey + mKey, mPart);
+      end
+      else
+      begin
+        AddUsage(Result, mKey, mPart);
+      end;
       if DotFollows(ATokens, mIndex) then
       begin
         AddUsage(Result, cQualifierKey + mKey, mPart);
@@ -255,11 +300,41 @@ begin
   end;
 end;
 
-/// <summary>Teile (Bitmaske), in denen die Unit benutzt wird.</summary>
-function UsageOf(const AUnitName: string; const AInfo: TUsesUnitInfo;
-  AIdentifiers: TDictionary<string, Integer>): Integer;
+/// <summary>Wie oben ohne Namensauflösung.</summary>
+function CollectIdentifiers(const ATokens: TArray<TPascalToken>;
+  const AClauses: TArray<TUsesClauseInfo>): TDictionary<string, Integer>; overload;
+begin
+  Result := CollectIdentifiers(ATokens, AClauses, Default(TUsesResolution));
+end;
+
+/// <summary>Bitmaske der Teile, in denen ein Name aus ANames mit der Vorsilbe APrefix in AIdentifiers vorkommt;
+/// AResult bringt die bisherige Maske mit.</summary>
+function NamesUsage(const ANames: TArray<string>; const APrefix: string; AIdentifiers: TDictionary<string, Integer>;
+  AResult: Integer): Integer;
 var
   mName: string;
+  mMask: Integer;
+begin
+  Result := AResult;
+  for mName in ANames do
+  begin
+    if Result = cInInterfacePart or cInImplementationPart then
+    begin
+      Exit;
+    end;
+    if AIdentifiers.TryGetValue(APrefix + LowerCase(mName), mMask) then
+    begin
+      Result := Result or mMask;
+    end;
+  end;
+end;
+
+/// <summary>Teile (Bitmaske), in denen die Unit benutzt wird. Mit AResolution.Active zählt zuerst, was die
+/// Namensauflösung fand; übrige Bezeichner vor einem Punkt gelten für Namen auf Unit-Ebene, dahinter für Mitglieder
+/// von Helpern (#1925).</summary>
+function UsageOf(const AUnitName: string; const AInfo: TUsesUnitInfo; AIdentifiers: TDictionary<string, Integer>;
+  const AResolution: TUsesResolution): Integer; overload;
+var
   mMask: Integer;
 begin
   Result := 0;
@@ -275,17 +350,23 @@ begin
   begin
     Result := Result or mMask;
   end;
-  for mName in AInfo.Names do
+  if AResolution.Active then
   begin
-    if AIdentifiers.TryGetValue(LowerCase(mName), mMask) then
-    begin
-      Result := Result or mMask;
-      if Result = cInInterfacePart or cInImplementationPart then
-      begin
-        Exit;
-      end;
-    end;
+    Result := Result or AResolution.MaskOf(AUnitName);
+    Result := NamesUsage(AInfo.TopNames, '', AIdentifiers, Result);
+    Result := NamesUsage(AInfo.HelperNames, cMemberKey, AIdentifiers, Result);
+  end
+  else
+  begin
+    Result := NamesUsage(AInfo.Names, '', AIdentifiers, Result);
   end;
+end;
+
+/// <summary>Wie oben ohne Namensauflösung.</summary>
+function UsageOf(const AUnitName: string; const AInfo: TUsesUnitInfo;
+  AIdentifiers: TDictionary<string, Integer>): Integer; overload;
+begin
+  Result := UsageOf(AUnitName, AInfo, AIdentifiers, Default(TUsesResolution));
 end;
 
 function IsBefore(const A, B: TTextPosition): Boolean;
@@ -307,8 +388,8 @@ begin
   Result := False;
 end;
 
-/// <summary>Die Token außerhalb der Bereiche AInactive (inaktive Zweige der bedingten Kompilierung).</summary>
-function ActiveTokens(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>): TArray<TPascalToken>;
+class function TUsesActions.ActiveTokens(const ATokens: TArray<TPascalToken>;
+  const AInactive: TArray<TTextRange>): TArray<TPascalToken>;
 var
   mCount, mIndex: Integer;
 begin
@@ -366,6 +447,12 @@ end;
 
 class function TUsesActions.Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
   const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>;
+begin
+  Result := Entries(ATokens, AInactive, AInfo, AKeep, Default(TUsesResolution));
+end;
+
+class function TUsesActions.Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
+  const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>; const AResolution: TUsesResolution): TArray<TUsesEntry>;
 var
   mActive: TArray<TPascalToken>;
   mClauses: TArray<TUsesClauseInfo>;
@@ -387,7 +474,7 @@ begin
   mClauses := TUsesClauses.Clauses(mActive);
   mReferences := TUsesClauses.References(mActive);
   mSeen := nil;
-  mIdentifiers := CollectIdentifiers(mActive, mClauses);
+  mIdentifiers := CollectIdentifiers(mActive, mClauses, AResolution);
   try
     for mClause in mClauses do
     begin
@@ -400,8 +487,8 @@ begin
         end;
         mSeen := mSeen + [mReference.Name];
         mInfo := AInfo(mReference.Name);
-        if mInfo.Known and EntryState(mReference.Name, mInfo, UsageOf(mReference.Name, mInfo, mIdentifiers),
-          mClause.InInterface, AKeep, mEntry.State) then
+        if mInfo.Known and EntryState(mReference.Name, mInfo, UsageOf(mReference.Name, mInfo, mIdentifiers,
+          AResolution), mClause.InInterface, AKeep, mEntry.State) then
         begin
           mEntry.Name := mReference.Name;
           mEntry.Range := mReference.Range;
@@ -750,13 +837,20 @@ end;
 
 /// <summary>Bekannte Unit ohne initialization, die genau in den Teilen AMask benutzt wird.</summary>
 function IsUsedOnlyIn(const AName: string; const AInfo: TUsesUnitInfo; AIdentifiers: TDictionary<string, Integer>;
-  AMask: Integer): Boolean;
+  AMask: Integer; const AResolution: TUsesResolution): Boolean;
 begin
-  Result := AInfo.Known and not AInfo.HasInitialization and (UsageOf(AName, AInfo, AIdentifiers) = AMask);
+  Result := AInfo.Known and not AInfo.HasInitialization and
+    (UsageOf(AName, AInfo, AIdentifiers, AResolution) = AMask);
 end;
 
 class function TUsesActions.UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
   const AKeep: TArray<string>): TArray<string>;
+begin
+  Result := UnusedUnits(ATokens, AInfo, AKeep, Default(TUsesResolution));
+end;
+
+class function TUsesActions.UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
+  const AKeep: TArray<string>; const AResolution: TUsesResolution): TArray<string>;
 var
   mClauses: TArray<TUsesClauseInfo>;
   mIdentifiers: TDictionary<string, Integer>;
@@ -764,12 +858,12 @@ var
 begin
   Result := nil;
   mClauses := TUsesClauses.Clauses(ATokens);
-  mIdentifiers := CollectIdentifiers(ATokens, mClauses);
+  mIdentifiers := CollectIdentifiers(ATokens, mClauses, AResolution);
   try
     for mName in PlainNames(mClauses, False) do
     begin
       if not (ContainsText_(AKeep, mName) or ContainsText_(Result, mName)) and
-        IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, 0) then
+        IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, 0, AResolution) then
       begin
         Result := Result + [mName];
       end;
@@ -857,6 +951,12 @@ end;
 
 class function TUsesActions.MovableUnits(const ATokens: TArray<TPascalToken>;
   const AInfo: TUsesUnitInfoFunc): TArray<string>;
+begin
+  Result := MovableUnits(ATokens, AInfo, Default(TUsesResolution));
+end;
+
+class function TUsesActions.MovableUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
+  const AResolution: TUsesResolution): TArray<string>;
 var
   mClauses: TArray<TUsesClauseInfo>;
   mIdentifiers: TDictionary<string, Integer>;
@@ -868,12 +968,12 @@ begin
   begin
     Exit;
   end;
-  mIdentifiers := CollectIdentifiers(ATokens, mClauses);
+  mIdentifiers := CollectIdentifiers(ATokens, mClauses, AResolution);
   try
     for mName in PlainNames(mClauses, True) do
     begin
       // Initialisierungsreihenfolge kann zählen; solche Units bleiben, wo sie sind.
-      if IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, cInImplementationPart) then
+      if IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, cInImplementationPart, AResolution) then
       begin
         Result := Result + [mName];
       end;

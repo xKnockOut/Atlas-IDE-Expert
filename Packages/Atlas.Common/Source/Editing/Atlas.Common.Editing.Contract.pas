@@ -25,6 +25,12 @@ type
     HasInitialization: Boolean;
     /// <summary>Namen der interface-Symbole, auch Mitglieder.</summary>
     Names: TArray<string>;
+    /// <summary>Namen der interface-Symbole auf Unit-Ebene samt Enum-Werten (#1925): nur sie braucht ein
+    /// Bezeichner, der nicht hinter einem Punkt steht, aus dem uses.</summary>
+    TopNames: TArray<string>;
+    /// <summary>Namen der Mitglieder von Class- und Record-Helpern im interface (#1925): Hinter einem Punkt
+    /// braucht nur ein Helper seine Unit im uses.</summary>
+    HelperNames: TArray<string>;
     /// <summary>Die Formulardatei der geprüften Unit verweist auf ein Modul dieser Unit (Connection =
     /// Form1.Connection): Der Eintrag gilt als im implementation-Teil verwendet, die IDE braucht ihn
     /// (dfm-reference-unit-missing).</summary>
@@ -32,6 +38,30 @@ type
   end;
 
   TUsesUnitInfoFunc = reference to function(const AUnitName: string): TUsesUnitInfo;
+
+  /// <summary>Nutzung der uses-Einträge aus der Namensauflösung (#1925, TUsesUsage). Bezeichner, deren
+  /// Deklaration feststeht, zählen nur für die Unit dieser Deklaration; die übrigen vergleicht TUsesActions mit den
+  /// Namen der Units wie zuvor, aber genauer: vor einem Punkt mit TopNames, dahinter mit HelperNames. Ohne Active
+  /// gilt der großzügige Namensvergleich mit allen Namen.</summary>
+  TUsesResolution = record
+  public const
+    cInterfacePart = 1;
+    cImplementationPart = 2;
+  public
+    Active: Boolean;
+    /// <summary>Offsets der Bezeichner mit bekannter Deklaration, aufsteigend.</summary>
+    Settled: TArray<Integer>;
+    /// <summary>uses-Einträge, wie sie dastehen, und je Eintrag die Teile (cInterfacePart, cImplementationPart),
+    /// in denen ihn ein aufgelöster Bezeichner oder ein Rumpf einer gerufenen inline-Routine braucht.</summary>
+    Units: TArray<string>;
+    Masks: TArray<Integer>;
+    function IsSettled(AOffset: Integer): Boolean;
+    function MaskOf(const AName: string): Integer;
+  end;
+
+  /// <summary>Nutzung der uses-Einträge von AText (Token in AInactive zählen nicht); nicht Active, wenn sich der
+  /// Text nicht auflösen lässt (Syntaxfehler, kein Index).</summary>
+  TUsesResolveFunc = reference to function(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
 
   /// <summary>Units, deren interface ein Symbol AName auf Unit-Ebene deklariert.</summary>
   TUnitsDeclaringFunc = reference to function(const AName: string): TArray<string>;
@@ -46,6 +76,10 @@ type
     Namespaces: TArray<string>;
     /// <summary>Inaktive Zweige, deren uses bei der Prüfung nicht zählen (#621); nil = keine.</summary>
     Inactive: TArray<TTextRange>;
+    /// <summary>Namensauflösung für die Datei (#1925); nil = nur Namensvergleich.</summary>
+    Resolve: TUsesResolveFunc;
+    /// <summary>Resolve für AText, sonst eine Nutzung ohne Active.</summary>
+    function Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
   end;
 
   /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
@@ -214,6 +248,62 @@ type
   end;
 
 implementation
+
+uses
+  System.StrUtils;
+
+{ TUsesResolution }
+
+function TUsesResolution.IsSettled(AOffset: Integer): Boolean;
+var
+  mLow, mHigh, mMiddle: Integer;
+begin
+  mLow := 0;
+  mHigh := High(Settled);
+  while mLow <= mHigh do
+  begin
+    mMiddle := (mLow + mHigh) div 2;
+    if Settled[mMiddle] = AOffset then
+    begin
+      Exit(True);
+    end;
+    if Settled[mMiddle] < AOffset then
+    begin
+      mLow := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle - 1;
+    end;
+  end;
+  Result := False;
+end;
+
+function TUsesResolution.MaskOf(const AName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexText(AName, Units);
+  if mIndex < 0 then
+  begin
+    Exit(0);
+  end;
+  Result := Masks[mIndex];
+end;
+
+{ TUsesContext }
+
+function TUsesContext.Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
+begin
+  if Assigned(Resolve) then
+  begin
+    Result := Resolve(AText, AInactive);
+  end
+  else
+  begin
+    Result := Default(TUsesResolution);
+  end;
+end;
 
 { TSlashContext }
 
