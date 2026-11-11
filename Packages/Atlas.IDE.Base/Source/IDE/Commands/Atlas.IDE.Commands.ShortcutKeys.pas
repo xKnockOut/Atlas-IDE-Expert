@@ -113,20 +113,19 @@ uses
   Atlas.UI.Commands.KeyMap,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
-  Atlas.IDE.Commands.KeyMap;
+  Atlas.IDE.Commands.KeyMap,
+  Atlas.Core.Diagnostics.UserIdle;
 
 /// <summary>Der Benutzer hat gerade etwas eingegeben (Maus oder Tastatur, auch im Menü).</summary>
 function UserJustActed: Boolean;
 var
-  mInfo: TLastInputInfo;
+  mIdle: Cardinal;
 begin
-  mInfo.cbSize := SizeOf(mInfo);
-  mInfo.dwTime := 0;
-  if not GetLastInputInfo(mInfo) then
+  if not TAtlasUserIdle.IdleMs(mIdle) then
   begin
     Exit(True);
   end;
-  Result := DWORD(GetTickCount - mInfo.dwTime) < DWORD(TAtlasIdeShortcutKeys.cUserInputMs);
+  Result := mIdle < Cardinal(TAtlasIdeShortcutKeys.cUserInputMs);
 end;
 
 /// <summary>Kürzel aus Menüeinträgen: Aktion → Text hinter dem Tab der Beschriftung (auch Kürzel mit zwei

@@ -58,7 +58,8 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
-  Atlas.IDE.Build.Target;
+  Atlas.IDE.Build.Target,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Sitzung, auf Wunsch gestartet; nil, wenn keine läuft bzw. der Start scheitert.</summary>
@@ -199,15 +200,15 @@ type
     FTimer: TTimer;
     // Zuletzt aktiver Editor: beim Wechsel seinen Stand sofort an den Server (Index, #492).
     FLastFile: string;
-    FChangedAt: Cardinal;
+    FChangedAt: UInt64;
     FPaintedVersion: Integer;
     FListedVersion: Integer;
     // Stand des Schalters ProblemsMessageList beim letzten Aufbau der Liste.
     FListShown: Boolean;
-    FListDue: Cardinal;
-    FClosedCheckAt: Cardinal;
+    FListDue: TAtlasDeadline;
+    FClosedCheckAt: UInt64;
     // Nach gescheitertem Serverstart erst später wieder versuchen.
-    FRetryAt: Cardinal;
+    FRetryAt: TAtlasDeadline;
     // Zähler (#509): zuletzt gemeldeter Stand.
     FCountsShown: Boolean;
     FCountsVersion: Integer;
@@ -391,7 +392,7 @@ var
   mJobs: TArray<TPull>;
   mJob, mDone: TPull;
   mReport: TLspDiagnosticReport;
-  mStarted: Cardinal;
+  mStarted: UInt64;
 begin
   while not Terminated do
   begin
@@ -414,11 +415,11 @@ begin
         Break;
       end;
       try
-        mStarted := TThread.GetTickCount;
+        mStarted := TAtlasTicks.Now;
         mReport := FSession.DocumentDiagnostics(mJob.FileName, mJob.PreviousId, cDocumentTimeoutMs);
         // Kopie: Die Schleifenvariable ist nicht zuweisbar.
         mDone := mJob;
-        mDone.DurationMs := TThread.GetTickCount - mStarted;
+        mDone.DurationMs := TAtlasTicks.SinceMs(mStarted);
         Deliver(mDone, mReport);
       except
         on E: Exception do
@@ -507,12 +508,12 @@ end;
 procedure TAtlasProblemsSync.TWorkspaceWorker.Execute;
 var
   mChanged: TArray<TLspDiagnosticReport>;
-  mStarted: Cardinal;
+  mStarted: UInt64;
   mRun: TLspWorkspaceRun;
 begin
   while not Terminated do
   begin
-    mStarted := GetTickCount;
+    mStarted := TAtlasTicks.Now;
     try
       mChanged := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, cWorkspaceTimeoutMs, mRun));
       // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
@@ -521,7 +522,7 @@ begin
         Deliver(mChanged, mRun);
       end;
       // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
-      if (Length(mChanged) = 0) and (GetTickCount - mStarted < cWorkspaceQuietMs) then
+      if (Length(mChanged) = 0) and (TAtlasTicks.Since(mStarted) < cWorkspaceQuietMs) then
       begin
         FStop.WaitFor(cWorkspaceQuietMs);
       end;
@@ -830,7 +831,7 @@ begin
     FVersions.AddOrSetValue(mKey, mSnapshot.Version);
     FTexts.AddOrSetValue(mKey, Result);
     FStore.Edit(mFileName, Result);
-    FChangedAt := GetTickCount;
+    FChangedAt := TAtlasTicks.Now;
   end;
 end;
 
@@ -995,7 +996,7 @@ begin
   mState.CheckedBefore := FPulled.TryGetValue(AKey, mKnown);
   mState.Changed := not mState.CheckedBefore or (mKnown <> AText);
   mState.Modified := AModified;
-  mState.QuietMs := GetTickCount - FChangedAt;
+  mState.QuietMs := TAtlasTicks.SinceMs(FChangedAt);
   mState.Requested := TAtlasProblemsCheckRequest.Pending;
   mDelay := TAtlasIdeSettings.Current.ProblemsLiveDelayMs;
   // Kürzere Verzögerung als der Takt: öfter nachsehen.
@@ -1009,12 +1010,12 @@ procedure TAtlasProblemsController.Serve(ASession: TLspSession; const AView: IOT
 begin
   EnsureWorkers(ASession);
   // Konfiguration oder Plattform gewechselt, Defines geändert (#615).
-  FBuildTarget.Tick(ASession, GetTickCount);
+  FBuildTarget.Tick(ASession, TAtlasTicks.Now);
   SyncPrevious(ASession, AFileName);
   PullIfDue(ASession, AView, AFileName, AText);
-  if GetTickCount - FClosedCheckAt >= cClosedCheckMs then
+  if TAtlasTicks.Since(FClosedCheckAt) >= cClosedCheckMs then
   begin
-    FClosedCheckAt := GetTickCount;
+    FClosedCheckAt := TAtlasTicks.Now;
     CloseUnopened(ASession);
   end;
 end;
@@ -1042,10 +1043,10 @@ begin
     if mView <> nil then
     begin
       mText := TrackEdit(mView);
-      mSession := FSession(GetTickCount >= FRetryAt);
+      mSession := FSession(FRetryAt.Reached);
       if mSession = nil then
       begin
-        FRetryAt := GetTickCount + cStartRetryMs;
+        FRetryAt := TAtlasDeadline.After(cStartRetryMs);
       end
       else
       begin
@@ -1128,10 +1129,10 @@ begin
   begin
     FPaintedVersion := FStore.Version;
     TAtlasProblemsPainter.Invalidate;
-    FListDue := GetTickCount + cListDelayMs;
+    FListDue := TAtlasDeadline.After(cListDelayMs);
   end;
   mShow := ProblemsActive and TAtlasIdeSettings.Current.ProblemsMessageList;
-  if (mShow <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then
+  if (mShow <> FListShown) or ((FListedVersion <> FStore.Version) and FListDue.Reached) then
   begin
     FListedVersion := FStore.Version;
     FListShown := mShow;

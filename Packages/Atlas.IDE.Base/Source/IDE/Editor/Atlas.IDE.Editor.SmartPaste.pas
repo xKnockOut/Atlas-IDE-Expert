@@ -29,7 +29,6 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
   Winapi.Windows,
   Winapi.Messages,
   Vcl.ExtCtrls,
@@ -38,7 +37,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.SmartPaste,
-  Atlas.UI.Editor.SmartPaste;
+  Atlas.UI.Editor.SmartPaste,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   TAtlasSmartPasteSessionFunc = reference to function: TLspSession;
@@ -57,7 +57,7 @@ type
     FTimer: TTimer;
     FMessages: TApplicationEvents;
     FWindow: TAtlasSmartPasteWindow;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     // Zwischenablage nach ihrer Folgenummer zwischengespeichert.
     FClipSequence: DWORD;
@@ -87,7 +87,6 @@ type
     procedure Accept;
     function FetchUses(ASession: TLspSession; const AUnits: TArray<string>; out AEdit: TLspWorkspaceEdit;
       out AAdded, AMoved: TArray<string>): Boolean;
-    procedure ReapWorkers(AWait: Boolean);
   public
     constructor Create(const ABusy: TFunc<Boolean>; const ASession: TAtlasSmartPasteSessionFunc;
       const AMessage: TProc<string>);
@@ -194,7 +193,7 @@ begin
   FSession := ASession;
   FMessage := AMessage;
   FArmed := True;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
@@ -207,8 +206,12 @@ destructor TAtlasIdeSmartPaste.Destroy;
 begin
   FreeAndNil(FMessages);
   FreeAndNil(FTimer);
-  // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  // Laufende Anfragen halten die Sitzung als rohen Zeiger: bis zu ihrem Ende abwarten (sie haben eine eigene
+  // Zeitgrenze), nicht nur bis cStopMs.
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FreeAndNil(FWindow);
   FClipLines := nil;
@@ -288,25 +291,6 @@ end;
 function TAtlasIdeSmartPaste.IsBusy: Boolean;
 begin
   Result := Assigned(FBusy) and FBusy();
-end;
-
-procedure TAtlasIdeSmartPaste.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 procedure TAtlasIdeSmartPaste.TimerTick(Sender: TObject);
@@ -537,7 +521,7 @@ begin
   mSession.Sync(FFileName, FText);
   mArguments := TAtlasSmartPaste.Arguments(TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine,
     FEndCharacter);
-  ReapWorkers(False);
+  FWorkers.Prune;
   Inc(FRequest);
   mRequest := FRequest;
   mWorker := TThread.CreateAnonymousThread(
@@ -575,9 +559,7 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 procedure TAtlasIdeSmartPaste.Answered(ARequest: Integer; const AAnalysis: TAtlasPasteAnalysis);

@@ -10,6 +10,8 @@
 //   Fenster mit der Probegröße.
 // - Skalierung und Texte (#607, designer.scalePreview, TAtlasIdeScalePreview):
 //   Fenster mit Skalierung, Bildschirm und langen Texten.
+// - Sprechende Namen (#608, designer.nameSuggest, TAtlasIdeNameSuggest):
+//   Dialog mit Vorschlägen für Standardnamen.
 // Nur im Hauptthread.
 
 interface
@@ -19,6 +21,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.Measure,
+  Atlas.IDE.Designer.NameSuggest,
   Atlas.IDE.Designer.ResizePreview,
   Atlas.IDE.Designer.ScalePreview;
 
@@ -28,6 +31,7 @@ type
     FMeasure: TAtlasIdeDesignerMeasure;
     FResize: TAtlasIdeResizePreview;
     FScale: TAtlasIdeScalePreview;
+    FNames: TAtlasIdeNameSuggest;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -49,10 +53,12 @@ begin
   FMeasure := TAtlasIdeDesignerMeasure.Create;
   FResize := TAtlasIdeResizePreview.Create(AOnMessage);
   FScale := TAtlasIdeScalePreview.Create(AOnMessage);
+  FNames := TAtlasIdeNameSuggest.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerViews.Destroy;
 begin
+  FNames.Free;
   FScale.Free;
   FResize.Free;
   FMeasure.Free;
@@ -65,7 +71,8 @@ var
   mButton: TAtlasDesignerButton;
 begin
   Result := nil;
-  mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings)];
+  mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings),
+    FNames.Button(ASettings)];
   for mButton in mAll do
   begin
     if mButton.Id <> '' then
@@ -89,6 +96,10 @@ begin
   else if SameText(AId, TAtlasIdeScalePreview.cId) then
   begin
     FScale.Toggle;
+  end
+  else if SameText(AId, TAtlasIdeNameSuggest.cId) then
+  begin
+    FNames.Run;
   end
   else
   begin

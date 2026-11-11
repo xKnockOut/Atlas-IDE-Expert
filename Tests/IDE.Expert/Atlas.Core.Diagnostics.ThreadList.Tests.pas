@@ -28,7 +28,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Diagnostics.ThreadList;
+  Atlas.Core.Diagnostics.ThreadList,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Setzt beim Freigeben AFreed: zeigt, wann ein Thread, der sich selbst freigibt, seine anonyme
@@ -166,13 +167,15 @@ begin
   List := TAtlasThreadList.Create;
   try
     StartHanging(List, Release, Freed);
-    // Hängt der Thread, meldet StopAll das; er gibt sich nach seiner Rückkehr selbst frei.
+    // Hängt der Thread, meldet StopAll das; TAtlasOverdueThreads gibt ihn nach seiner Rückkehr frei.
     Assert.IsFalse(List.StopAll(50));
     Assert.AreEqual(0, Integer(List.Count));
+    Assert.AreEqual(1, TAtlasOverdueThreads.Pending(HInstance));
     Release.SetEvent;
-    // Mit sich selbst gibt er seine anonyme Methode frei und damit das Signal.
+    Assert.IsTrue(TAtlasOverdueThreads.Settle(HInstance, 5000));
+    // Mit dem Thread geht seine anonyme Methode und damit das Signal.
     Signaled := Freed.WaitFor(5000) = TWaitResult.wrSignaled;
-    Assert.IsTrue(Signaled, 'Thread gab sich nicht selbst frei');
+    Assert.IsTrue(Signaled, 'Überfälliger Thread wurde nicht freigegeben');
   finally
     List.Free;
     // Läuft der Thread noch, greift er später auf beide Ereignisse zu: dann lieber ein Leck im roten Test.

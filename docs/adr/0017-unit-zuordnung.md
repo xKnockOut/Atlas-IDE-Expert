@@ -157,6 +157,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.ExitWatch` | `Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.ThreadList` | `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.TimeLimit` | `Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.Deadline` | `Core/Diagnostics/Atlas.Core.Diagnostics.Deadline.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.UserIdle` | `Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.UnloadSafety` | `Core/Diagnostics/Atlas.Core.Diagnostics.UnloadSafety.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.WorkerSlot` | `Core/Diagnostics/Atlas.Core.Diagnostics.WorkerSlot.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Timing` | `Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
@@ -784,6 +788,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Assistants.BuildInbox` | `Core/Assistants/Atlas.Core.Assistants.BuildInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
@@ -1155,6 +1160,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.Layout` | `Core/Designer/Atlas.Core.Designer.Layout.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Scale` | `Core/Designer/Atlas.Core.Designer.Scale.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.TabOrder` | `Core/Designer/Atlas.Core.Designer.TabOrder.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.NameSuggest` | `Core/Designer/Atlas.Core.Designer.NameSuggest.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.CodeLink` | `Core/Designer/Atlas.Core.Designer.CodeLink.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.PropertySearch` | `Core/Designer/Atlas.Core.Designer.PropertySearch.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
@@ -1198,6 +1204,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.ScalePreview` | `IDE/Designer/Atlas.IDE.Designer.ScalePreview.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.TabOrder` | `IDE/Designer/Atlas.IDE.Designer.TabOrder.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Tools` | `IDE/Designer/Atlas.IDE.Designer.Tools.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.NameSuggest` | `IDE/Designer/Atlas.IDE.Designer.NameSuggest.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.ShowComponent` | `IDE/Designer/Atlas.IDE.Designer.ShowComponent.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.PropertySearch` | `IDE/Designer/Atlas.IDE.Designer.PropertySearch.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
@@ -1223,6 +1230,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.ToolStrings` | `UI/Designer/Atlas.UI.Designer.ToolStrings.pas` | Texte der Werkzeuge mit eigenem Knopf in der Designer-Leiste, Sprache von Base |
 | `Atlas.UI.Designer.SelectionBar` | `UI/Designer/Atlas.UI.Designer.SelectionBar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Magnifier` | `UI/Designer/Atlas.UI.Designer.Magnifier.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.NameDialog` | `UI/Designer/Atlas.UI.Designer.NameDialog.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Help
 

@@ -47,15 +47,15 @@ type
     FLock: TCriticalSection;
     FPending: TDictionary<string, TAtlasFileChange>;
     FOrder: TList<string>;
-    FLastAdd: Cardinal;
+    FLastAdd: UInt64;
     procedure Merge(const AFileName: string; AKind: TAtlasFileChangeKind);
   public
     constructor Create;
     destructor Destroy; override;
     /// <summary>Rohes Ereignis zu einem vollen Pfad zum Zeitpunkt ANow (ms).</summary>
-    procedure Add(const AFileName: string; AAction: Cardinal; ANow: Cardinal);
+    procedure Add(const AFileName: string; AAction: Cardinal; ANow: UInt64);
     /// <summary>Gesammelte Änderungen, wenn seit dem letzten Add QuietMs vergangen sind; sonst leer.</summary>
-    function Take(ANow: Cardinal): TArray<TAtlasFileChange>;
+    function Take(ANow: UInt64): TArray<TAtlasFileChange>;
     /// <summary>Quelltext, Formular oder Projektdatei, nicht in .git, __history oder __recovery.</summary>
     class function IsWatched(const AFileName: string): Boolean; static;
     /// <summary>Zu beobachtende Ordner zu den Projektdateien: Git-Arbeitsverzeichnis darüber,
@@ -158,7 +158,7 @@ begin
   FPending[mKey] := mKnown;
 end;
 
-procedure TAtlasWatchedChanges.Add(const AFileName: string; AAction: Cardinal; ANow: Cardinal);
+procedure TAtlasWatchedChanges.Add(const AFileName: string; AAction: Cardinal; ANow: UInt64);
 begin
   if not IsWatched(AFileName) then
   begin
@@ -182,7 +182,7 @@ begin
   end;
 end;
 
-function TAtlasWatchedChanges.Take(ANow: Cardinal): TArray<TAtlasFileChange>;
+function TAtlasWatchedChanges.Take(ANow: UInt64): TArray<TAtlasFileChange>;
 var
   mKey: string;
 begin

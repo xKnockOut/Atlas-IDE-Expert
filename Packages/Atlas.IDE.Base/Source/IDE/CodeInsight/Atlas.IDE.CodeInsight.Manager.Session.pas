@@ -23,12 +23,12 @@ type
   TAtlasCodeInsightSession = class(TAtlasCodeInsightState)
   protected
     // Ob AtlasServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
-    FServerChecked: Cardinal;
+    FServerChecked: UInt64;
     FServerFound: Boolean;
     // Zuletzt geprüfte Projektgruppe (#648).
-    FProjectsChecked: Cardinal;
+    FProjectsChecked: UInt64;
     /// <summary>Zuletzt geprüfter Projektkontext (#396).</summary>
-    FContextsChecked: Cardinal;
+    FContextsChecked: UInt64;
     /// <summary>Änderungen außerhalb der IDE (#395).</summary>
     FFileChanges: TAtlasWatchedChanges;
     FFolderWatcher: IAtlasFolderWatcher;
@@ -118,7 +118,8 @@ uses
   Atlas.Core.Lsp.IdeTypes,
   Atlas.Core.Lsp.IdeMembers,
   System.Diagnostics,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Core.Diagnostics.Deadline;
 
 {$SCOPEDENUMS ON}
 
@@ -378,7 +379,7 @@ begin
     begin
       ServerChanged;
     end);
-  FProjectsChecked := GetTickCount;
+  FProjectsChecked := TAtlasTicks.Now;
   FSession.Initialize;
   SendIdeTypes;
   if ADocuments <> nil then
@@ -514,11 +515,11 @@ var
   mProjects: TArray<string>;
 begin
   // Open Tools API nur im Hauptthread.
-  if (GetCurrentThreadId <> MainThreadID) or (GetTickCount - FProjectsChecked < 2000) then
+  if (GetCurrentThreadId <> MainThreadID) or (TAtlasTicks.Since(FProjectsChecked) < 2000) then
   begin
     Exit;
   end;
-  FProjectsChecked := GetTickCount;
+  FProjectsChecked := TAtlasTicks.Now;
   try
     mProjects := GroupProjects;
     FSession.SetProjects(mProjects);
@@ -538,11 +539,11 @@ var
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or
-    ((FContextsChecked <> 0) and (GetTickCount - FContextsChecked < 1000)) then
+    ((FContextsChecked <> 0) and (TAtlasTicks.Since(FContextsChecked) < 1000)) then
   begin
     Exit;
   end;
-  FContextsChecked := GetTickCount;
+  FContextsChecked := TAtlasTicks.Now;
   try
     // Mit Diagnose=1 prüfbar, ob die geerbten Optionen ankommen (#396).
     mChanged := FSession.SetProjectContexts(TAtlasIdeProjectContext.Group);
@@ -651,7 +652,7 @@ begin
   begin
     Exit;
   end;
-  mChanges := FFileChanges.Take(GetTickCount);
+  mChanges := FFileChanges.Take(TAtlasTicks.Now);
   if mChanges = nil then
   begin
     Exit;
@@ -685,9 +686,9 @@ function TAtlasCodeInsightSession.ServerAvailable: Boolean;
 var
   mArguments, mPath: string;
 begin
-  if (FServerChecked = 0) or (GetTickCount - FServerChecked > 5000) then
+  if (FServerChecked = 0) or (TAtlasTicks.Since(FServerChecked) > 5000) then
   begin
-    FServerChecked := GetTickCount;
+    FServerChecked := TAtlasTicks.Now;
     mPath := TAtlasCodeInsightPaths.ServerPath(mArguments);
     FServerFound := FileExists(mPath);
     if not FServerFound then

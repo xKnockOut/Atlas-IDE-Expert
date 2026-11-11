@@ -17,7 +17,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
-  Atlas.IDE.Tracker.IssuesStatus;
+  Atlas.IDE.Tracker.IssuesStatus,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Eine Abfrage: was gefragt wird und (nach Execute im Hintergrund) die Antwort.</summary>
@@ -39,7 +40,7 @@ type
     FContext: TAtlasIdeIssuesContext;
     FServices: TAtlasIdeIssuesServices;
     FStatus: TAtlasIdeIssuesStatus;
-    FThread: TThread;
+    FWorker: TAtlasWorkerSlot;
     function Prepare(AForce: Boolean; out AJob: TAtlasIssuesFetchJob): Boolean;
     procedure Fetched(const AJob: TAtlasIssuesFetchJob);
     /// <summary>Fetch(False) über die Nachrichtenschleife, z. B. nach einer Abfrage.</summary>
@@ -52,7 +53,8 @@ type
     destructor Destroy; override;
     /// <summary>Abfragen, wenn fällig (AForce: sofort).</summary>
     procedure Fetch(AForce: Boolean);
-    /// <summary>Beendeten Abfrage-Thread freigeben; AWait: kurz warten, dann sich selbst überlassen.</summary>
+    /// <summary>Beendeten Abfrage-Thread freigeben; AWait: bis zur Zeitgrenze warten, dann an
+    /// TAtlasOverdueThreads übergeben.</summary>
     procedure Release(AWait: Boolean);
     /// <summary>„Jetzt abfragen“: Liste und Sprint-Kachel sofort.</summary>
     procedure QueryNow;
@@ -129,33 +131,18 @@ begin
   FContext := AContext;
   FServices := AServices;
   FStatus := AStatus;
+  FWorker := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeIssuesQuery.Destroy;
 begin
-  Release(True);
+  FWorker.Free;
   inherited;
 end;
 
 procedure TAtlasIdeIssuesQuery.Release(AWait: Boolean);
 begin
-  if FThread = nil then
-  begin
-    Exit;
-  end;
-  if AWait and not FThread.Finished then
-  begin
-    TAtlasShutdown.WaitForThreads([FThread]);
-  end;
-  if FThread.Finished then
-  begin
-    FreeAndNil(FThread);
-  end
-  else if AWait then
-  begin
-    FThread.FreeOnTerminate := True;
-    FThread := nil;
-  end;
+  FWorker.Release(AWait);
 end;
 
 function TAtlasIdeIssuesQuery.Prepare(AForce: Boolean; out AJob: TAtlasIssuesFetchJob): Boolean;
@@ -166,7 +153,7 @@ begin
   // welcomePage.issues aus: kein Netzzugriff. Eine Abfrage zur Zeit; die nächste kommt beim nächsten Anzeigen.
   Release(False);
   AJob.Transports := FContext.Hooks.Transport;
-  Result := FContext.Started and TAtlasIdeIssuesTargets.Active and Assigned(AJob.Transports) and (FThread = nil);
+  Result := FContext.Started and TAtlasIdeIssuesTargets.Active and Assigned(AJob.Transports) and not FWorker.Busy;
   if not Result then
   begin
     Exit;
@@ -212,7 +199,7 @@ begin
   FContext.QueryProject := mJob.Project;
   mKeep := FContext.Actions;
   mOwner := Self;
-  FThread := TThread.CreateAnonymousThread(
+  FWorker.Start(TThread.CreateAnonymousThread(
     procedure
     begin
       mJob.Execute;
@@ -220,9 +207,7 @@ begin
       begin
         Deliver(mKeep, mOwner, mJob);
       end;
-    end);
-  FThread.FreeOnTerminate := False;
-  FThread.Start;
+    end));
   FContext.Changed;
 end;
 
