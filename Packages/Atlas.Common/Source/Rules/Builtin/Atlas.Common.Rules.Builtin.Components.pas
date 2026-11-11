@@ -870,15 +870,15 @@ begin
   end;
 end;
 
-/// <summary>Pixelwert der Zuweisung AAssign? Nicht bei Zahlen ab cAlignOrder, nicht in einem Produkt oder
-/// Quotienten (Zeilenzahl mal Zeilenhöhe) und nicht als Argument eines Aufrufs außer Min und Max (AddPanel(30)
-/// legt selbst fest, was die Zahl ist).</summary>
-function IsBoundsLiteral(ANode, AAssign: TSyntaxNode): Boolean;
+/// <summary>Pixelwert der Zuweisung AAssign (Zahl oder Konstante)? Nicht bei Zahlen ab cAlignOrder, nicht in
+/// einem Produkt oder Quotienten (Zeilenzahl mal Zeilenhöhe) und nicht als Argument eines Aufrufs außer Min und
+/// Max (AddPanel(30) legt selbst fest, was die Zahl ist).</summary>
+function IsBoundsValue(ANode, AAssign: TSyntaxNode): Boolean;
 var
   mValue: Integer;
   mParent: TSyntaxNode;
 begin
-  Result := TryStrToInt(ANode.Name, mValue) and (mValue < cAlignOrder);
+  Result := (ANode.Kind <> TSyntaxKind.Literal) or (TryStrToInt(ANode.Name, mValue) and (mValue < cAlignOrder));
   mParent := ANode.Parent;
   while Result and (mParent <> nil) and (mParent <> AAssign) do
   begin
@@ -890,6 +890,55 @@ begin
     end;
     mParent := mParent.Parent;
   end;
+end;
+
+/// <summary>Konstanten der Datei mit einem Pixelwert (cRowHeight = 24): Name = ganze Zahl über 1 und unter
+/// cAlignOrder.</summary>
+function PixelConstants(ARoot: TSyntaxNode): TArray<string>;
+var
+  mNames: TArray<string>;
+begin
+  mNames := nil;
+  ARoot.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    var
+      mValue: Integer;
+    begin
+      Result := AVisited.Kind <> TSyntaxKind.RoutineDecl;
+      if (AVisited.Kind = TSyntaxKind.ConstDecl) and (AVisited.ChildCount = 1) and
+        IsPixelLiteral(AVisited.Children[0]) and TryStrToInt(AVisited.Children[0].Name, mValue) and
+        (mValue < cAlignOrder) then
+      begin
+        mNames := mNames + [AVisited.Name];
+      end;
+    end);
+  Result := mNames;
+end;
+
+/// <summary>Feste Pixelwerte im Wert der Zuweisung AAssign: Zahlen und Konstanten aus AConstants, die weder
+/// skaliert noch ausgenommen sind, in Quelltextreihenfolge.</summary>
+procedure CollectBounds(AAssign: TSyntaxNode; const AConstants, AHelpers: TArray<string>;
+  AList: TList<TSyntaxNode>);
+var
+  mList: TList<TSyntaxNode>;
+  mAssign: TSyntaxNode;
+  mConstants, mHelpers: TArray<string>;
+begin
+  mList := AList;
+  mAssign := AAssign;
+  mConstants := AConstants;
+  mHelpers := AHelpers;
+  AAssign.Children[1].Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
+      if Result and (IsPixelLiteral(AVisited) or ((AVisited.Kind = TSyntaxKind.Identifier) and
+        IsIn(AVisited.Name, mConstants))) and not Excluded(AVisited, mHelpers) and
+        IsBoundsValue(AVisited, mAssign) then
+      begin
+        mList.Add(AVisited);
+      end;
+    end);
 end;
 
 /// <summary>Aufruf, der AValue für das Ziel der Zuweisung AAssign skaliert: ScaleValue des Steuerelements, dem
@@ -944,9 +993,8 @@ var
   mCache: IRuleDerivedCache;
   mAssigns, mLiterals: TList<TSyntaxNode>;
   mAssign, mLiteral: TSyntaxNode;
-  mHelpers: TArray<string>;
+  mHelpers, mConstants: TArray<string>;
   mEdits: TArray<TRuleEdit>;
-  mIndex: Integer;
 begin
   if (AContext.Tree = nil) or not UsesVcl(AContext) then
   begin
@@ -958,6 +1006,7 @@ begin
     Exit;
   end;
   mHelpers := ScalingHelpers(mModel);
+  mConstants := PixelConstants(AContext.Tree.Root);
   mAssigns := TList<TSyntaxNode>.Create;
   mLiterals := TList<TSyntaxNode>.Create;
   try
@@ -977,14 +1026,7 @@ begin
         Continue;
       end;
       mLiterals.Clear;
-      CollectPixels(mAssign.Children[1], mLiterals, mHelpers);
-      for mIndex := mLiterals.Count - 1 downto 0 do
-      begin
-        if not IsBoundsLiteral(mLiterals[mIndex], mAssign) then
-        begin
-          mLiterals.Delete(mIndex);
-        end;
-      end;
+      CollectBounds(mAssign, mConstants, mHelpers, mLiterals);
       if mLiterals.Count = 0 then
       begin
         Continue;

@@ -491,6 +491,13 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  NewEdit(Self).Top := Max(ScaleValue(80), Width);'),
     ApplyFix(Source, Findings[0].Fixes[0]));
+  // Konstanten mit Pixelwert wie Zahlen; cOrder liegt über der Grenze für Align und bleibt still.
+  Source := StringReplace(BoundsUnit('Vcl.Forms, Vcl.StdCtrls', '  mEdit.Height := cRow;'#10'  mEdit.Top := cOrder;'),
+    'implementation'#10, 'implementation'#10'const'#10'  cRow = 24;'#10'  cOrder = 20000;'#10, []);
+  Findings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(StringReplace(Source, 'mEdit.Height := cRow;', 'mEdit.Height := mEdit.ScaleValue(cRow);', []),
+    ApplyFix(Source, Findings[0].Fixes[0]));
 end;
 
 procedure TComponentRulesTests.FixedBoundsSilentCases;
