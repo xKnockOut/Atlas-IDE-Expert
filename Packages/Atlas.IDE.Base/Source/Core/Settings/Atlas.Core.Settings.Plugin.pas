@@ -643,6 +643,8 @@ type
       write FEditorView.DesignerShowInDesigner;
     property DesignerShowInDesignerKey: Integer read FEditorView.DesignerShowInDesignerKey
       write FEditorView.DesignerShowInDesignerKey;
+    property DesignerPropertySearch: Boolean read FEditorView.DesignerPropertySearch
+      write FEditorView.DesignerPropertySearch;
     property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers

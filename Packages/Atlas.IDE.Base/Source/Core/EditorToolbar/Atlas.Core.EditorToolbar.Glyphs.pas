@@ -324,6 +324,10 @@ begin
       // Lupe: Glas mit Pixelkreuz, Griff nach rechts unten.
       Result := [Circle(6.5, 6.5, 4.5, False), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
         Stroke([P(9.75, 9.75), P(14, 14)])];
+    TAtlasToolbarIcon.PropertySearch:
+      // Gleichheitszeichen (Eigenschaft = Wert) mit Lupe.
+      Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Circle(10.5, 10, 2.5, False),
+        Stroke([P(12.3, 11.8), P(14.5, 14)])];
   else
     Result := nil;
   end;

@@ -540,6 +540,8 @@ type
     DesignerShowInDesigner: Boolean;
     /// <summary>Taste für „Im Designer zeigen“ als TShortCut, 0 = keine (#511, designer.showInDesigner.key).</summary>
     DesignerShowInDesignerKey: Integer;
+    /// <summary>Eigenschaften in Formularen suchen (#524, designer.propertySearch).</summary>
+    DesignerPropertySearch: Boolean;
     /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
     DesignerSpatialNavigation: Boolean;
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
@@ -1149,6 +1151,7 @@ begin
   Result.DesignerShowInDesigner := True;
   // Umschalt+F12 (in der IDE „Formulare anzeigen“).
   Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
+  Result.DesignerPropertySearch := True;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetArrangeDefaults;
@@ -1345,6 +1348,7 @@ begin
   AIo.Number('DesignerSelectionSetsSaveKey', DesignerSelectionSetsSaveKey);
   AIo.Flag('DesignerShowInDesigner', DesignerShowInDesigner);
   AIo.Number('DesignerShowInDesignerKey', DesignerShowInDesignerKey);
+  AIo.Flag('DesignerPropertySearch', DesignerPropertySearch);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeArrange(AIo);

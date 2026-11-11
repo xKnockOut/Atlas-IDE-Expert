@@ -80,6 +80,8 @@ begin
   Switch('designer.showInDesigner',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerShowInDesigner));
   Key('designer.showInDesigner.key', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerShowKey));
+  Switch('designer.propertySearch',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPropertySearch));
   Switch('designer.spatialNavigation',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',

@@ -65,7 +65,11 @@ type
     DesignerTabClickStarted, DesignerTabClickDone, DesignerTabClickCanceled, DesignerTabSorted,
     DesignerTabSortedNone, DesignerTabUndone, DesignerTabModeHint, SettingsDesignerTabOrderOverlay,
     SettingsDesignerTabOrderPaths, DesignerShowCommand, DesignerShowNoForm, DesignerShowNothing,
-    SettingsDesignerShowInDesigner, SettingsDesignerShowKey);
+    SettingsDesignerShowInDesigner, SettingsDesignerShowKey, PropertySearchCommand, PropertySearchHint,
+    PropertySearchTitle, PropertySearchCondition, PropertySearchExamples, PropertySearchScopeForm,
+    PropertySearchScopeProject, PropertySearchScopeGroup, PropertySearchRun, PropertySearchInvalid,
+    PropertySearchResults, PropertySearchInherited, PropertySearchNoForms, PropertySearchSkipped,
+    SettingsDesignerPropertySearch);
 
   TAtlasDesignerStrings = class
   public
@@ -300,7 +304,22 @@ const
      'Zu dieser Unit gehört kein Formular.',
      'Unter dem Cursor steht keine Komponente und kein zugewiesener Handler des Formulars.',
      '„Im Designer zeigen“ im Code-Editor (Feld oder Handler unter dem Cursor)',
-     'Taste für „Im Designer zeigen“'),
+     'Taste für „Im Designer zeigen“',
+     'Eigenschaften suchen …',
+     'Eigenschaften in Formularen suchen (etwa Font.Name = ''Tahoma'')',
+     'Eigenschaften suchen',
+     'Bedingung:',
+     'Beispiele: Font.Name = ''Tahoma'' · Visible = False · Klasse = TDBGrid · Caption enthält ''Kunde'' · Hint gesetzt · mehrere mit „und“',
+     'Aktuelles Formular',
+     'Projekt',
+     'Projektgruppe',
+     'Suchen',
+     'Nicht verständlich: %s',
+     'Eigenschaften: %s (%d Treffer)',
+     'geerbt',
+     'Kein Formular im gewählten Bereich.',
+     '%d Formulare übersprungen (binär gespeichert oder nicht lesbar).',
+     '„Eigenschaften suchen“ in Formular, Projekt oder Projektgruppe'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -516,7 +535,22 @@ const
      'This unit has no form.',
      'No component and no assigned handler of the form under the cursor.',
      '“Show in designer” in the code editor (field or handler under the cursor)',
-     'Key for “Show in designer”'));
+     'Key for “Show in designer”',
+     'Search properties …',
+     'Search properties in forms (such as Font.Name = ''Tahoma'')',
+     'Search properties',
+     'Condition:',
+     'Examples: Font.Name = ''Tahoma'' · Visible = False · Class = TDBGrid · Caption contains ''Customer'' · Hint is set · several with “and”',
+     'Current form',
+     'Project',
+     'Project group',
+     'Search',
+     'Not understood: %s',
+     'Properties: %s (%d hits)',
+     'inherited',
+     'No form in the chosen scope.',
+     '%d forms skipped (stored as binary or not readable).',
+     '“Search properties” in form, project or project group'));
 
 { TAtlasDesignerStrings }
 

@@ -83,6 +83,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
 - **Show in designer** (Shift+F12): from a field or handler in the code to the component in the designer
+- **Search properties** in the form, project or project group (`Font.Name = 'Tahoma'`, `Visible = False`, `Class = TDBGrid`), inherited values marked
 - **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges), gap handles for a row or column, shared resize handles, quick bar for a multiple selection, magnifier
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)

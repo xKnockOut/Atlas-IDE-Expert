@@ -5074,6 +5074,17 @@
       "x-node": "editor.designerBar",
       "x-issue": "#511"
     },
+    "DesignerPropertySearch": {
+      "description": "Knopf „Eigenschaften suchen“ in der Designer-Leiste und Befehl im Atlas-Menü: sucht im aktuellen Formular, im Projekt oder in der Projektgruppe nach Bedingungen wie Font.Name = 'Tahoma', Visible = False, Klasse = TDBGrid, Caption enthält 'Kunde' oder Hint gesetzt bzw. nicht gesetzt, mehrere mit „und“. Offene Formulare mit ihrem ungespeicherten Stand, die anderen aus der .dfm; binäre Formulare werden übersprungen. Werte aus einem Vorfahrformular der Projektgruppe zählen und sind als geerbt markiert. Treffer im Ergebnisfenster; Doppelklick wählt die Komponente im Designer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.propertySearch",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#524"
+    },
     "DesignerSpatialNavigation": {
       "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
       "type": "boolean",
