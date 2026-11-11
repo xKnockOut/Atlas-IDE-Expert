@@ -37,6 +37,8 @@ type
     [Test]
     procedure DataBindingsRoundTrip;
     [Test]
+    procedure ExtractFrameRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -289,6 +291,24 @@ begin
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsTrue(mSaved.DesignerDataBindings);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.ExtractFrameRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerExtractFrame').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerExtractFrame').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerExtractFrame);
   finally
     mPage.Free;
   end;
