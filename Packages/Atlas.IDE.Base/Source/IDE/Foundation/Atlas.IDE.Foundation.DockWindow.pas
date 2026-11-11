@@ -24,12 +24,15 @@
 // Wurzel des Atlas-Fensters, alle Kinder erben; ein geänderter Name legt die
 // Fenster mit dem neuen Stil neu an. Liefert die Wurzel danach trotzdem einen
 // anderen Stil, steht die Kette im Protokoll.
+// OnFrameCreated meldet jeden neu angelegten Frame mit der Kennung des Fensters; so hängen andere Teile von
+// Base (F1-Hilfe, #1886) etwas an, ohne dass die Grundlage sie kennt.
 
 interface
 
 uses
   Winapi.Messages,
   System.Classes,
+  System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI;
@@ -46,6 +49,7 @@ type
     /// <summary>Formen aller Atlas-Dockfenster: Nur sie bekommen das Thema auch an der Form (schwebend).
     /// </summary>
     class var FDockForms: TArray<TCustomForm>;
+    class var FOnFrameCreated: TProc<string, TCustomFrame>;
     class function IsDockForm(AForm: TCustomForm): Boolean; static;
     /// <summary>Thema der IDE an der Form: Grund per ApplyTheme, bei dunklem Thema eine dunkle Titelleiste von
     /// Windows. Kein VCL-Stil an der Form: Der zeichnete die Titelleiste selbst und verlor beim Ziehen die
@@ -77,6 +81,8 @@ type
     procedure Hide;
     /// <summary>Thema der IDE auf AControl anwenden (beim Anlegen und bei jedem Themenwechsel).</summary>
     class procedure ApplyIdeTheme(AControl: TWinControl); static;
+    /// <summary>Rückruf für jeden neuen Frame (Kennung des Fensters, Frame); nur im Hauptthread.</summary>
+    class property OnFrameCreated: TProc<string, TCustomFrame> read FOnFrameCreated write FOnFrameCreated;
   end;
 
 implementation
@@ -84,7 +90,6 @@ implementation
 uses
   Winapi.Windows,
   Winapi.Dwmapi,
-  System.SysUtils,
   Vcl.Graphics,
   Vcl.Themes,
   Vcl.ComCtrls,
@@ -211,6 +216,10 @@ begin
   if (FFrame <> nil) and (FFrame <> AFrame) then
   begin
     FFrame.RemoveFreeNotification(Self);
+  end;
+  if (FFrame <> AFrame) and Assigned(FOnFrameCreated) and (FDock <> nil) then
+  begin
+    FOnFrameCreated(FDock.GetIdentifier, AFrame);
   end;
   FFrame := AFrame;
   FFrame.FreeNotification(Self);

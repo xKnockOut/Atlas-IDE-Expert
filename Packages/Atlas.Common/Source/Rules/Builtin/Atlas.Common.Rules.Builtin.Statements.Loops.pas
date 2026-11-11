@@ -46,15 +46,12 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Localization.Texts;

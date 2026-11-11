@@ -84,7 +84,6 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Timing,
-  Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings,
   Atlas.UI.Completion.PopupTexts,

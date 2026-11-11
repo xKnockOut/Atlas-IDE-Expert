@@ -50,7 +50,6 @@ uses
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help,
-  Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Tiles,
   Atlas.IDE.Welcome.TileProjects,
   Atlas.IDE.Welcome.Neighbors,

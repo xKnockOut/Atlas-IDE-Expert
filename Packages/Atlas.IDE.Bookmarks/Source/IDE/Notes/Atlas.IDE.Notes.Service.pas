@@ -84,7 +84,6 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Notes.Dialog,
   Atlas.UI.Notes.List,

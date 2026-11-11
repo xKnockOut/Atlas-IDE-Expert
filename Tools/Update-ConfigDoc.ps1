@@ -633,7 +633,8 @@ foreach ($Node in $NodeTable.Keys) { if (-not $UsedNodes.ContainsKey($Node)) { $
 
 function Write-Group([string] $Name, [string] $Node, [int] $Depth) {
     $P = $PluginProps[$Name]
-    $Line = ('  ' * $Depth) + '- `' + $P['x-key'] + '`'
+    # Anker je Schlüssel für die F1-Hilfe (#1886): Einstellungen.md#setting-<Schlüssel>.
+    $Line = ('  ' * $Depth) + '- <a id="setting-' + $P['x-key'] + '"></a>`' + $P['x-key'] + '`'
     if (Is-Experimental $P) { $Line += (Tr ' (experimentell)' ' (experimental)') }
     $Parent = $Parents[$Name]
     if (($Depth -eq 1) -and ($Parent -ne '')) { $Line += (Tr ' – hängt an `' ' – depends on `') + $PluginProps[$Parent]['x-key'] + '`' }

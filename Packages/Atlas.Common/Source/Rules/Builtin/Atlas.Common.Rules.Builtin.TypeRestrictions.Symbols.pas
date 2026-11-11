@@ -90,11 +90,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Derived,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Rules.Derived;
 
 /// <summary>Typknoten einer Typdeklaration (das erste Kind außer den Typparametern), nil ohne.</summary>
 function TypeOfDecl(ADecl: TSyntaxNode): TSyntaxNode;

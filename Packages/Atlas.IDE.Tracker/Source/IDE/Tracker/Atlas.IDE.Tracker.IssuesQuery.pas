@@ -76,8 +76,7 @@ uses
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Files;
 
 const
   cLogAborted = 'Meine Issues: Abfrage beim Tracker mit %s abgebrochen';

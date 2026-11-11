@@ -21,7 +21,6 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.SymbolPath.Nodes;

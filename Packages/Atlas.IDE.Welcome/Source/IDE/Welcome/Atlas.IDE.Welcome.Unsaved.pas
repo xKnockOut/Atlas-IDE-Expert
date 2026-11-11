@@ -123,7 +123,6 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Projects.Summaries;
 
 { TAtlasIdeUnsaved.TIdeNotifier }

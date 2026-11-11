@@ -74,7 +74,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Rename** project-wide including forms, **change signature**, **safe delete**
 - **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions
 - **Class actions:** implement interface, extract interface or superclass, generate properties
-- **uses:** add missing units, sort, remove unused ones
+- **uses:** add missing units, sort, remove unused ones; a unit counts as used only when a name really resolves to it, as dcc decides (members of its classes and names shadowed later do not count; enum values, helpers, attributes and inline bodies do)
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
@@ -102,6 +102,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Options page as a tree**, every feature with its own switch
 - **Search settings** above the tree (Ctrl+F) and with `@` in the command palette, also by key, synonym or with a typo; Alt+Enter flips quick toggles directly
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
+- **F1 help** for Atlas: F1 on a finding (editor or "Atlas Findings"), on a setting or in an Atlas window opens the matching documentation page, online or from the local docs (`help.enabled`, `help.source`)
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
 - **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions; without `language` in settings.json the server follows the language the IDE actually shows (its loaded resource files, then `Locales` in the registry, then Windows), and `atlas.log` names the detected language and its source
@@ -194,6 +195,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, branch when starting an issue, working copies, project state, line history | `vcs.enabled` |
 | `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients | `assistants.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
+| `Atlas.IDE.Help` | F1 help: rule, setting and window pages of the documentation | `help.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
 
 `TAtlasMainThread` tracks queued main thread entries per module: when a module unregisters or its package is unloaded, its waiting entries are dropped instead of running later in unloaded code.

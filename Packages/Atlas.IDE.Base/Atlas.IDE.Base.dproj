@@ -549,6 +549,7 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Help.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.KnownPackages.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
@@ -687,6 +688,7 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Files.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Service.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.RuleActions.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Explanation.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.MessageView.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.LastMessages.pas"/>
@@ -701,6 +703,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.IdleGate.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
+        <DCCReference Include="Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>

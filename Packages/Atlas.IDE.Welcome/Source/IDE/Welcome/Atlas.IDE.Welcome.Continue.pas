@@ -182,7 +182,6 @@ uses
   Winapi.Windows,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Results.Model,
   Atlas.Core.VersionControl.Contract,

@@ -214,6 +214,9 @@ begin
   Assert.AreEqual('ask', ASettings.UpdatesInstall);
   Assert.AreEqual('stable', ASettings.UpdatesChannel);
   Assert.AreEqual('ask', ASettings.UpdatesNewModules);
+  // Modul Hilfe (#1886).
+  Assert.IsTrue(ASettings.HelpEnabled, 'F1-Hilfe an');
+  Assert.AreEqual(TAtlasPluginSettings.cHelpSourceOnline, ASettings.HelpSource);
   Assert.IsTrue(ASettings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
   Assert.IsFalse(ASettings.LogNames, 'atlas.log anonym (#1478)');
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
@@ -345,6 +348,8 @@ begin
   ASettings.UpdatesInstall := 'auto';
   ASettings.UpdatesChannel := 'prerelease';
   ASettings.UpdatesNewModules := 'skip';
+  ASettings.HelpEnabled := False;
+  ASettings.HelpSource := TAtlasPluginSettings.cHelpSourceLocal;
   ASettings.BugReportAnonymize := False;
   ASettings.LogNames := True;
   ASettings.ProblemsMessageList := True;
@@ -471,6 +476,8 @@ begin
   Assert.AreEqual('auto', ALoaded.UpdatesInstall);
   Assert.AreEqual('prerelease', ALoaded.UpdatesChannel);
   Assert.AreEqual('skip', ALoaded.UpdatesNewModules);
+  Assert.IsFalse(ALoaded.HelpEnabled);
+  Assert.AreEqual(TAtlasPluginSettings.cHelpSourceLocal, ALoaded.HelpSource);
   Assert.IsFalse(ALoaded.BugReportAnonymize);
   Assert.IsTrue(ALoaded.LogNames);
 end;
@@ -776,7 +783,9 @@ begin
   mSettings.UpdatesInstall := 'immer';
   mSettings.UpdatesChannel := 'nightly';
   mSettings.UpdatesNewModules := 'alle';
+  mSettings.HelpSource := 'Offline';
   mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cHelpSourceOnline, mSettings.HelpSource, 'unbekannte Quelle: online');
   Assert.AreEqual('ask', mSettings.UpdatesInstall);
   Assert.AreEqual('stable', mSettings.UpdatesChannel);
   Assert.AreEqual('ask', mSettings.UpdatesNewModules);

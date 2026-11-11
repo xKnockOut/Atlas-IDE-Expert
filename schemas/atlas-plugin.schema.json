@@ -6479,6 +6479,44 @@
       ],
       "x-issue": "#1884"
     },
+    "HelpEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Hilfe (#1886): F1 auf einem Atlas-Befund (Editor, Fenster „Atlas-Prüfung“), auf einer Einstellung der Optionsseite und in einem Atlas-Fenster öffnet die passende Stelle der Atlas-Doku; überall sonst bleibt die Hilfe der IDE. Aus = F1 wie ohne Atlas.",
+      "x-key": "help.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "help",
+      "x-quickToggle": true,
+      "x-caption": "F1-Hilfe zu Atlas",
+      "x-captionEn": "F1 help for Atlas",
+      "x-keywords": [
+        "F1",
+        "Hilfe",
+        "Help",
+        "Doku",
+        "Documentation"
+      ],
+      "x-issue": "#1886"
+    },
+    "HelpSource": {
+      "type": "string",
+      "enum": [
+        "online",
+        "local"
+      ],
+      "default": "online",
+      "description": "Quelle der F1-Hilfe: die Doku auf GitHub zum installierten Versionstag (online) oder die mit Atlas installierten HTML-Seiten im Ordner Doku (local, ohne Netz; fehlen sie, gilt online). Sprache wie die IDE.",
+      "x-key": "help.source",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-parent": "help.enabled",
+      "x-caption": "Quelle der Hilfe",
+      "x-captionEn": "Help source",
+      "x-issue": "#1886"
+    },
     "SettingsBackupBeforeImport": {
       "type": "boolean",
       "default": true,

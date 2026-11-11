@@ -44,6 +44,18 @@ $Pages = @(
     @{ Source = 'CHANGELOG.md'; Target = 'Aenderungen.html'; Title = 'Änderungen'; Text = 'Was sich in welcher Version geändert hat.' }
 )
 
+# Seiten für die F1-Hilfe (#1886, Atlas.Core.Help.Links): englische Regeln und Einstellungen sowie die
+# Funktionsseiten (docs/features/de als Funktion-<Name>.html, docs/features/en als Feature-<Name>.html). Sie stehen
+# weder in der Kopfleiste noch im Inhaltsverzeichnis.
+$Pages += @{ Source = 'docs/en/Rules.md'; Target = 'en-Rules.html'; Title = 'Rules'; Text = ''; Hidden = $true }
+$Pages += @{ Source = 'docs/en/Settings.md'; Target = 'en-Settings.html'; Title = 'Settings'; Text = ''; Hidden = $true }
+foreach ($Language in @(@{ Dir = 'de'; Prefix = 'Funktion-' }, @{ Dir = 'en'; Prefix = 'Feature-' })) {
+    $FeatureDir = Join-Path $Root "docs/features/$($Language.Dir)"
+    foreach ($File in @(Get-ChildItem -Path $FeatureDir -Filter '*.md' | Sort-Object Name)) {
+        $Pages += @{ Source = "docs/features/$($Language.Dir)/$($File.Name)"; Target = "$($Language.Prefix)$($File.BaseName).html"; Title = $File.BaseName; Text = ''; Hidden = $true }
+    }
+}
+
 $Version = 'unbekannt'
 $VersionUnit = Join-Path $Root 'Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas'
 if (Test-Path $VersionUnit) {
@@ -157,6 +169,7 @@ function Write-Page([string] $Target, [string] $Title, [string] $Body) {
     $Class = if ($Target -eq 'index.html') { ' class="on"' } else { '' }
     [void]$Nav.Append("<b>Atlas-Doku</b><a href=""index.html""$Class>Inhalt</a>")
     foreach ($Page in $Pages) {
+        if ($Page.ContainsKey('Hidden')) { continue }
         $Class = if ($Page.Target -eq $Target) { ' class="on"' } else { '' }
         [void]$Nav.Append("<a href=""$($Page.Target)""$Class>$(Escape-Html $Page.Title)</a>")
     }
@@ -205,6 +218,7 @@ foreach ($Page in $Pages) {
 $List = New-Object System.Text.StringBuilder
 [void]$List.Append("<h1>Atlas-Doku</h1>`n<p>Die mit Atlas $(Escape-Html $Version) installierte Doku. Die aktuelle Fassung steht im <a href=""$RepoUrl/tree/main/docs"">Repository</a>.</p>`n<ul class=""pages"">`n")
 foreach ($Page in $Pages) {
+    if ($Page.ContainsKey('Hidden')) { continue }
     [void]$List.Append("<li><a href=""$($Page.Target)"">$(Escape-Html $Page.Title)</a><small>$(Escape-Html $Page.Text)</small></li>`n")
 }
 [void]$List.Append('</ul>')

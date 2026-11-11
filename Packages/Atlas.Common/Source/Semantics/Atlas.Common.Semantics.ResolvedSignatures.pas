@@ -39,7 +39,6 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.ChangeSignature;
 

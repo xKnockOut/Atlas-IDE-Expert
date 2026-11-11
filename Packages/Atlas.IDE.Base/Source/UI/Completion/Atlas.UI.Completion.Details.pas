@@ -99,7 +99,6 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
