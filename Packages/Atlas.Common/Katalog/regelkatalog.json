@@ -1126,7 +1126,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "A value parameter of type string, interface, dynamic or open array, or a record of the file with at least minRecordSize bytes, that the routine never changes. Every call pays reference counting or a copy; const avoids both. Changed means: assigned, a part assigned (characters, fields, elements), passed to var or out, @Param, a method call on a record, a for loop variable. The rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay silent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (event handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation and the declaration and splits parameter groups when needed. References as method pointers in other units are not visible to the rule; the compiler reports them after the fix.",
+      "description": "A value parameter of type string, interface, dynamic or open array, or a record of the file with at least minRecordSize bytes, that the routine never changes. Every call pays reference counting or a copy; const avoids both. Changed means: assigned, a part assigned (characters, fields, elements), passed to var or out, @Param, a method call on a record, a for loop variable. The rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay silent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (event handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation and the declaration and splits parameter groups when needed. With the project files (IDE, MCP) a use as a value in units that use this unit counts too, such as an assignment to a TFunc<string, …> whose parameter has no const; without them (command line without project) the compiler reports such references after the fix.",
       "bad": "function Formatieren(Text: string; Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",
       "good": "function Formatieren(const Text: string; const Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",
       "options": [
@@ -4601,7 +4601,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. No quick fix: only the developer knows which side is wrong.",
+      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose parameters differ in count, const/var/out or type, assigned or passed as an argument (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",
       "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 'drei';",
       "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",
       "compilerCodes": [
@@ -4730,6 +4730,21 @@
         "E2532"
       ],
       "level": "T"
+    },
+    {
+      "id": "dunitx-areequal-length",
+      "name": "Assert.AreEqual with integer and NativeInt",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Assert.AreEqual or Assert.AreNotEqual with an integer on one side and a NativeInt on the other: Length, High or Low of a dynamic array (NativeInt since Delphi 12) or an expression whose type is certainly NativeInt or NativeUInt (TList<T>.Count with the RTL in the index). None of the overloads Integer, Int64, Double … fits unambiguously, so Delphi falls back to AreEqual<T> and cannot infer T (like E2532). Free Pascal compiles the call, so the error only shows when building with Delphi. Strings (Length returns Integer), static arrays, expressions of unknown type, calls with a type argument and a known Delphi version before 12 stay silent. Quick fix (safe, also for the whole file): wrap the NativeInt side in Integer(...).",
+      "bad": "Assert.AreEqual(5, Length(mObjects));",
+      "good": "Assert.AreEqual(5, Integer(Length(mObjects)));",
+      "compilerCodes": [
+        "E2532"
+      ],
+      "level": "T",
+      "safeFix": true
     },
     {
       "id": "unresolved-type",
