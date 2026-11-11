@@ -122,7 +122,8 @@ uses
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.Core.Diagnostics.UserIdle;
 
 type
   /// <summary>Der offene Buchungsdialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>
@@ -430,7 +431,7 @@ end;
 
 procedure TAtlasIdeTrackerTime.Detect;
 var
-  mInfo: TLastInputInfo;
+  mInput: Cardinal;
   mAge: Cardinal;
 begin
   if FClock.Issue.IsEmpty then
@@ -442,19 +443,17 @@ begin
   begin
     FClock.Activity;
   end;
-  mInfo.cbSize := SizeOf(mInfo);
-  mInfo.dwTime := 0;
-  if not GetLastInputInfo(mInfo) or (mInfo.dwTime = FLastInput) then
+  if not TAtlasUserIdle.LastInput(mInput) or (mInput = FLastInput) then
   begin
     Exit;
   end;
-  FLastInput := mInfo.dwTime;
+  FLastInput := mInput;
   // Nur Eingaben in der IDE: Sie muss vorn sein.
   if not Application.Active then
   begin
     Exit;
   end;
-  mAge := Cardinal(GetTickCount - mInfo.dwTime);
+  mAge := TAtlasUserIdle.Since(mInput);
   FClock.Activity(Now - mAge / MSecsPerDay);
 end;
 

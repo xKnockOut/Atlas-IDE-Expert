@@ -56,7 +56,7 @@ type
     FTimer: TTimer;
     FCursorKey: string;
     FCursorText: string;
-    FTypedAt: Cardinal;
+    FTypedAt: UInt64;
     /// <summary>Merkt Tastendrücke in der Cursorzeile; True, solange die Pause nicht um ist.</summary>
     function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
     procedure TimerTick(Sender: TObject);
@@ -101,7 +101,8 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.LineTracker;
+  Atlas.IDE.Foundation.LineTracker,
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -174,7 +175,7 @@ begin
   else if AText <> FCursorText then
   begin
     FCursorText := AText;
-    FTypedAt := GetTickCount;
+    FTypedAt := TAtlasTicks.Now;
     if FTypedAt = 0 then
     begin
       FTypedAt := 1;
@@ -183,7 +184,7 @@ begin
     FTimer.Enabled := False;
     FTimer.Enabled := True;
   end;
-  Result := not TAtlasInlineDiagnostics.PauseOver(FTypedAt, GetTickCount);
+  Result := not TAtlasInlineDiagnostics.PauseOver(FTypedAt, TAtlasTicks.Now);
 end;
 
 procedure TAtlasProblemsPainter.EnsureFont(const AEditorFont: TFont);

@@ -25,14 +25,14 @@
 // IAtlasVcsBranching (#765) legt für ein Issue einen Branch an und wechselt
 // dorthin: Git lokal von einer Basis (checkout -b), SVN als Kopie im
 // Repository (svn copy ^/trunk ^/branches/…) mit svn switch; dazu die Ordner
-// für den Commit-Hook (Git prepare-commit-msg). Seit #1288 baut
-// Atlas.Core.VersionControl.BranchPlan die Schritte (TAtlasVcsBranchStep), zeigt sie im
-// Dialog „Branch anlegen“ und IAtlasVcsBranching.RunStep führt genau diese
-// aus. Seit #1290 bestimmt TAtlasVcsSvnBranchOptions, wo SVN-Branches liegen
+// für den Commit-Hook (Git prepare-commit-msg). Atlas.Core.VersionControl.BranchPlan
+// baut die Schritte (TAtlasVcsBranchStep, #1288), der Dialog „Branch anlegen“
+// zeigt sie und IAtlasVcsBranching.RunStep führt genau diese
+// aus. TAtlasVcsSvnBranchOptions (#1290) bestimmt, wo SVN-Branches liegen
 // (vcs.branch.svn.location, Vorgabe {projektwurzel}/branches/{name}); Anlegen,
 // BranchExists und SwitchBranch nutzen denselben Ort.
 // IAtlasVcsSvnWorkingCopy bündelt, was nur SVN kennt (Revisionen der
-// Arbeitskopie über svnversion, seit #1291 svn:externals, Wurzel des
+// Arbeitskopie über svnversion, svn:externals (#1291), Wurzel des
 // Repositorys und Version von svn); nur die SVN-Umsetzung bietet sie an.
 // Externals beim Branch (#1291): TAtlasVcsSvnExternal beschreibt eine Zeile
 // aus svn:externals samt Zustand der Arbeitskopie; TAtlasVcsExternalAction

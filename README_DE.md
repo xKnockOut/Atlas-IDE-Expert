@@ -1,4 +1,4 @@
-# Atlas IDE Expert
+﻿# Atlas IDE Expert
 
 [![Spenden mit PayPal](https://img.shields.io/badge/Spenden-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
@@ -78,12 +78,14 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Schnellkorrekturen** für viele Regeln (Alt+Enter) und **Atlas-Änderungen rückgängig** über Dateien hinweg
 
 ### [Formulare](docs/features/de/Formulare.md)
-- **Designer-Ansichten** mit eigenen Knöpfen in der Designer-Leiste: Abstände messen beim Ziehen und mit Alt, Formulargröße ausprobieren, Skalierung und lange Texte prüfen
+- **Designer-Ansichten** mit eigenen Knöpfen in der Designer-Leiste: Abstände messen beim Ziehen und mit Alt, Formulargröße ausprobieren, Skalierung und lange Texte prüfen, sprechende Namen vorschlagen
 - **Ungespeicherter Stand des Designers** zählt für Referenzen, Umbenennen und Prüfungen
 - **Tab-Reihenfolge** in der Designer-Leiste: Marken mit Rücksprüngen, Lücken und Doppelten, per Klick neu vergeben, nach Lesereihenfolge sortieren
 - **Prüfungen zwischen Formular und Code** und Property-Regeln für Formulardateien
 - **Binäre Formulare** in Textformulare umwandeln
-- **Designer-Werkzeuge** in der Designer-Leiste: gleiche Komponenten auswählen (Klasse, Elternelement, Eigenschaftswert, Handler), benannte Auswahlsätze je Formular mit Strg+Umschalt+1…9, Alt+Pfeil zum benachbarten Steuerelement, Menü „Anordnen“ (Breite nach Text, Knopfleiste, in Reihe duplizieren, Platz einfügen und entfernen, an Inhalt anpassen, fast bündige Kanten), Abstandsgriffe für eine Reihe oder Spalte, gemeinsame Größengriffe, Schnellleiste für eine Mehrfachauswahl, Lupe
+- **Im Designer zeigen** (Umschalt+F12): vom Feld oder Handler im Code zur Komponente im Designer
+- **Eigenschaften suchen** in Formular, Projekt oder Projektgruppe (`Font.Name = 'Tahoma'`, `Visible = False`, `Klasse = TDBGrid`), geerbte Werte markiert
+- **Designer-Werkzeuge** in der Designer-Leiste: gleiche Komponenten auswählen (Klasse, Elternelement, Eigenschaftswert, Handler), benannte Auswahlsätze je Formular mit Strg+Umschalt+1…9, Alt+Pfeil zum benachbarten Steuerelement, Menü „Anordnen“ (Breite nach Text, Knopfleiste, in Reihe duplizieren, Platz einfügen und entfernen, an Inhalt anpassen, fast bündige Kanten, Standardgrößen je Klasse, Ebenen schrittweise ordnen, Format-Pinsel, Anchors vorschlagen, alle Texte des Formulars als Tabelle, Label und Feld als Paar, als Formularraster anordnen, in Container einpacken und auflösen, Schriften und Farben vereinheitlichen, Gruppen ohne Container), Beschriftungen mit F2 oder langsamem Doppelklick direkt bearbeiten, Abstandsgriffe für eine Reihe oder Spalte, gemeinsame Größengriffe, Schnellleiste für eine Mehrfachauswahl, Lupe
 
 ### [Bauen, Testen, Debuggen](docs/features/de/Bauen-Testen-Debuggen.md)
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build

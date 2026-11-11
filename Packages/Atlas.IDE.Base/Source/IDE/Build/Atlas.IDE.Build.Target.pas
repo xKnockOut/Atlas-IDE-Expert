@@ -49,9 +49,9 @@ type
     FTracker: TAtlasBuildTargetTracker;
     FLog: TAtlasIdeBuildTargetLog;
     FSession: TLspSession;
-    FCheckedAt: Cardinal;
+    FCheckedAt: UInt64;
     // Zeitpunkt der Antwort ohne Projekt; FRetryPending bis RetryMs danach.
-    FRetryFrom: Cardinal;
+    FRetryFrom: UInt64;
     FRetryPending: Boolean;
     // Laufende bzw. angehaltene Anfragen; frei, sobald fertig.
     FRequests: TObjectList<TThread>;
@@ -65,7 +65,7 @@ type
     /// <summary>Stand des aktiven Projekts der IDE; False ohne Projekt.</summary>
     class function Read(out ATarget: TAtlasBuildTarget): Boolean; static;
     /// <summary>Hauptthread: höchstens alle IntervalMs prüfen und bei Bedarf an ASession senden.</summary>
-    procedure Tick(ASession: TLspSession; ANow: Cardinal);
+    procedure Tick(ASession: TLspSession; ANow: UInt64);
     /// <summary>Anfragen anhalten; mit AWait auf sie warten (vor dem Ende der Sitzung).</summary>
     procedure Stop(AWait: Boolean);
   end;
@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  Winapi.Windows;
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasIdeBuildTarget.TRequest }
 
@@ -188,7 +188,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBuildTarget.Tick(ASession: TLspSession; ANow: Cardinal);
+procedure TAtlasIdeBuildTarget.Tick(ASession: TLspSession; ANow: UInt64);
 var
   mTarget: TAtlasBuildTarget;
   mAction: TAtlasBuildTargetAction;
@@ -258,7 +258,7 @@ begin
       begin
         // Projekt noch nicht geladen oder nicht im Arbeitsbereich: später noch einmal fragen.
         FRetryPending := True;
-        FRetryFrom := GetTickCount;
+        FRetryFrom := TAtlasTicks.Now;
       end;
     end));
 end;

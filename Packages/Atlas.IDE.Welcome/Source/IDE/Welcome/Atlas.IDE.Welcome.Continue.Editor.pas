@@ -45,6 +45,7 @@ uses
   System.TypInfo,
   Vcl.Forms,
   ToolsAPI,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Results.Commands,
@@ -347,7 +348,11 @@ begin
   end;
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(AProject, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, True);
+      end);
   end;
 end;
 

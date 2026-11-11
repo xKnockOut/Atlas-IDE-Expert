@@ -294,7 +294,11 @@ begin
   // Wie „Öffnen“ der IDE: Eine neue Gruppe fragt nach dem Speichern der offenen; Abbrechen lässt sie offen.
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(AProject, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, True);
+      end);
   end;
   Result := ProjectOpen(AProject);
   if not Result then
@@ -369,7 +373,11 @@ begin
   end;
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(ATestProject, False);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(ATestProject, False);
+      end);
   end;
   if not ProjectOpen(ATestProject) then
   begin

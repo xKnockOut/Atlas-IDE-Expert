@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Build.OpenBuildSettings.Tests;
 
-// Werte der Einstellungen „Bauen beim Öffnen“ (#1293, im Kern seit #1455).
+// Werte der Einstellungen „Bauen beim Öffnen“ (#1293).
 
 interface
 

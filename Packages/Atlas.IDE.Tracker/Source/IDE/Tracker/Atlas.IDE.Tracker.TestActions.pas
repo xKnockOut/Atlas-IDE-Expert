@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Tracker.TestActions;
 
-// Aktionen der Kachel „Testergebnisse“ (#763, seit #1455 eigene Unit des
+// Aktionen der Kachel „Testergebnisse“ (#763, eigene Unit des
 // Moduls Tracker): Projekt öffnen (Willkommensseite), Test öffnen (für
 // Fehlschläge vom Server über die Testunit im Projekt gesucht),
 // „Fehlgeschlagene erneut ausführen“ (#69) und „Im Debugger“ (#585) über das
@@ -51,6 +51,7 @@ implementation
 uses
   Winapi.Windows,
   ToolsAPI,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Modules.Contract,
@@ -138,7 +139,11 @@ begin
   end
   else if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    mActions.OpenProject(AProject, True);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, True);
+      end);
     Result := ProjectIsOpen(AProject);
   end;
 end;

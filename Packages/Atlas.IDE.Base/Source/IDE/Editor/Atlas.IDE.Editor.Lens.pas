@@ -25,7 +25,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.LensAsk,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Style.Color;
+  Atlas.Core.Style.Color,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server (RunServerCommandAsync des
@@ -47,12 +48,12 @@ type
     /// <summary>Datei und Text im oberen Editor beim letzten Takt.</summary>
     FileName: string;
     Text: string;
-    ChangedAt: Cardinal;
+    ChangedAt: UInt64;
     /// <summary>Stand der letzten Antwort; '' wenn keiner.</summary>
     FetchedFile: string;
     FetchedText: string;
-    FetchedAt: Cardinal;
-    RetryAt: Cardinal;
+    FetchedAt: UInt64;
+    RetryAt: TAtlasDeadline;
     /// <summary>Ausstehende Frage im Hintergrund.</summary>
     Asked: TAtlasLensAsk;
     /// <summary>Oberer Editor oder nil.</summary>
@@ -131,10 +132,10 @@ end;
 function TAtlasLensPoll.Due(const AView: IOTAEditView; AQuietMs, ARefreshMs: Cardinal): Boolean;
 var
   mText: string;
-  mMoment: Cardinal;
+  mMoment: UInt64;
 begin
   mText := TAtlasEditorSnapshots.Get(AView).Text;
-  mMoment := GetTickCount;
+  mMoment := TAtlasTicks.Now;
   Result := SameText(FileName, AView.Buffer.FileName) and (Text = mText);
   if not Result then
   begin
@@ -143,7 +144,7 @@ begin
     ChangedAt := mMoment;
     Exit;
   end;
-  Result := not Asked.Waiting and (mMoment - ChangedAt >= AQuietMs) and (mMoment >= RetryAt);
+  Result := not Asked.Waiting and (mMoment - ChangedAt >= AQuietMs) and RetryAt.Reached;
   // Gleicher Stand schon gefragt: nur ab und zu neu.
   if Result and SameText(FetchedFile, FileName) and (FetchedText = Text) then
   begin
@@ -175,7 +176,7 @@ begin
   // Server indexiert: Er antwortet erst danach (#874). Später noch einmal.
   if ASession.Indexing(mPercent) then
   begin
-    RetryAt := GetTickCount + ARetryMs;
+    RetryAt := TAtlasDeadline.After(ARetryMs);
     Exit;
   end;
   try
@@ -185,7 +186,7 @@ begin
     on ELspClientError do
     begin
       // Server weg oder beschäftigt: später noch einmal, ohne den Editor zu bremsen.
-      RetryAt := GetTickCount + ARetryMs;
+      RetryAt := TAtlasDeadline.After(ARetryMs);
       Exit;
     end;
   end;
@@ -200,12 +201,12 @@ begin
   if not Result then
   begin
     // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal.
-    RetryAt := GetTickCount + ARetryMs;
+    RetryAt := TAtlasDeadline.After(ARetryMs);
     Exit;
   end;
   FetchedFile := Asked.FileName;
   FetchedText := Asked.Text;
-  FetchedAt := GetTickCount;
+  FetchedAt := TAtlasTicks.Now;
 end;
 
 function TAtlasLensPoll.UriArguments: string;
@@ -239,7 +240,7 @@ procedure TAtlasLensPoll.Fetched;
 begin
   FetchedFile := FileName;
   FetchedText := Text;
-  FetchedAt := GetTickCount;
+  FetchedAt := TAtlasTicks.Now;
 end;
 
 procedure TAtlasLensPoll.Forget;
