@@ -6,6 +6,9 @@
 
 interface
 
+uses
+  Atlas.Core.Localization.Language;
+
 {$SCOPEDENUMS ON}
 
 type
@@ -33,13 +36,23 @@ type
     DesignerSetsDefaultName, DesignerSetsSaveTitle, DesignerSetsSavePrompt, DesignerSetsSaved,
     SettingsDesignerSelectionSets, SettingsDesignerSelectionSetsShortcuts, SettingsDesignerSelectionSetsStorage,
     SettingsDesignerSetsLocal, SettingsDesignerSetsShared, SettingsDesignerSelectionSetsSaveKey, DesignerSetsKind,
-    SettingsDesignerSpatialNavigation, SettingsDesignerSpatialCross);
+    SettingsDesignerSpatialNavigation, SettingsDesignerSpatialCross, DesignerArrangeHint, DesignerFitToText,
+    DesignerFitNoText, DesignerFitDone, DesignerFitSkipped, SettingsDesignerFitToText, SettingsDesignerFitMinWidth,
+    SettingsDesignerFitPadding, SettingsDesignerFitSources, DesignerButtonBarCmd, DesignerBarNoButtons,
+    DesignerBarDefaultTaken, DesignerBarCancelTaken, DesignerBarHandlerCloses, DesignerBarArranged,
+    SettingsDesignerButtonBar, SettingsDesignerButtonBarOrder, SettingsDesignerButtonBarPosition,
+    SettingsDesignerBarBottomRight, SettingsDesignerBarBottomLeft, SettingsDesignerBarRightTop,
+    SettingsDesignerBarRightBottom, SettingsDesignerButtonBarGap, SettingsDesignerButtonBarMargin,
+    SettingsDesignerButtonBarModal, SettingsDesignerButtonBarRoles, DesignerBarRoleTerms);
 
   TAtlasDesignerStrings = class
   public
     class function Text(AId: TAtlasDesignerTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasDesignerTextId; const AArgs: array of const): string; static;
+    /// <summary>Text in ALanguage, unabhängig von der Sprache der Oberfläche (Begriffe, die Atlas in beiden
+    /// Sprachen erkennt).</summary>
+    class function TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerTextId): string; static;
   end;
 
 implementation
@@ -147,7 +160,34 @@ const
      'Taste „Auswahl speichern …“',
      'Auswahlsätze',
      'Räumliche Navigation mit Alt+Pfeil',
-     'Am Rand in benachbarte Container weiter'),
+     'Am Rand in benachbarte Container weiter',
+     'Anordnen (Menü)',
+     'Breite nach Text',
+     'Keine markierte Komponente mit Text.',
+     'Breite nach Text: %d px für %d Komponenten.',
+     'Breite unverändert (AutoSize oder Align): %s',
+     'Befehl „Breite nach Text“',
+     'Mindestbreite (px)',
+     'Innenabstand links und rechts (px)',
+     'Textquellen (caption, text, items)',
+     'Knopfleiste anordnen',
+     'Kein markierter Knopf.',
+     '%s: kein Default, %s hat es schon.',
+     '%s: kein Cancel, %s hat es schon.',
+     '%s: kein ModalResult, der Handler %s setzt es selbst oder schließt.',
+     'Knopfleiste angeordnet: %s',
+     'Befehl „Knopfleiste anordnen“',
+     'Reihenfolge der Rollen',
+     'Lage der Knopfleiste',
+     'Unten rechts',
+     'Unten links',
+     'Rechts oben (senkrecht)',
+     'Rechts unten (senkrecht)',
+     'Abstand zwischen den Knöpfen (px)',
+     'Abstand zum Rand (px)',
+     'Default, Cancel und ModalResult setzen',
+     'Eigene Begriffe (ok=Weiter|Los; cancel=Zurück)',
+     'ok=OK|Speichern|Übernehmen und schließen|Fertig|Ja; cancel=Abbrechen|Schließen|Nein; apply=Übernehmen|Anwenden; help=Hilfe|?'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -245,13 +285,45 @@ const
      'Key for “Save selection …”',
      'Selection sets',
      'Spatial navigation with Alt+Arrow',
-     'Continue into neighbouring containers at the edge'));
+     'Continue into neighbouring containers at the edge',
+     'Arrange (menu)',
+     'Width from text',
+     'No selected component with text.',
+     'Width from text: %d px for %d components.',
+     'Width unchanged (AutoSize or Align): %s',
+     '“Width from text” command',
+     'Minimum width (px)',
+     'Padding left and right (px)',
+     'Text sources (caption, text, items)',
+     'Arrange button bar',
+     'No selected button.',
+     '%s: no Default, %s already has it.',
+     '%s: no Cancel, %s already has it.',
+     '%s: no ModalResult, handler %s sets it itself or closes.',
+     'Button bar arranged: %s',
+     '“Arrange button bar” command',
+     'Order of roles',
+     'Position of the button bar',
+     'Bottom right',
+     'Bottom left',
+     'Right top (vertical)',
+     'Right bottom (vertical)',
+     'Gap between buttons (px)',
+     'Margin to the edge (px)',
+     'Set Default, Cancel and ModalResult',
+     'Own terms (ok=Next|Go; cancel=Back)',
+     'ok=OK|Save|Done|Yes; cancel=Cancel|Close|No; apply=Apply; help=Help|?'));
 
 { TAtlasDesignerStrings }
 
 class function TAtlasDesignerStrings.Text(AId: TAtlasDesignerTextId): string;
 begin
   Result := cTexts[TAtlasStrings.Language, AId];
+end;
+
+class function TAtlasDesignerStrings.TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerTextId): string;
+begin
+  Result := cTexts[ALanguage, AId];
 end;
 
 class function TAtlasDesignerStrings.Fmt(AId: TAtlasDesignerTextId; const AArgs: array of const): string;
