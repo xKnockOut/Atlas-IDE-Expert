@@ -46,6 +46,9 @@ Keine neuen Funktionen mehr.
 Größere Schritte, die Schnittstellen ändern dürfen: Atlas-SDK (#1459), Komponenten-Werkbank (#1463), eigene Prüfregeln
 (#73, #279, #280). Dazu AtlasUpdate: Atlas entfernen und reparieren (#1885, erster Stand auf Branch `uninstall-1885`).
 
+AtlasServer unter Linux als unterstützte Plattform (#2070): Release-Datei für Linux x86_64 (#2071), DUnitX-Tests
+unter FPC/Linux in der CI (#2072), Doku zu Installation und Grenzen (#2073). Das IDE-Plugin bleibt Windows-only.
+
 ## Laufend
 
 - Prüfregeln in jeder Version: #1345, #1126, #1112, #1136, #624, #1839, #1840, #145.
