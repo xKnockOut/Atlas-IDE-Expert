@@ -98,7 +98,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
 - **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue
-- **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE
+- **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE; "My issues" can show a fixed tracker project or all of them, with working copies per tracker project
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
 - **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts
 - **Atlas wizards in *File › New › Other***: *DUnitX test unit for unit…*, *Unit by architecture role…* and *Custom rule…* in the gallery category *Atlas* (`generate.galleryWizards`)

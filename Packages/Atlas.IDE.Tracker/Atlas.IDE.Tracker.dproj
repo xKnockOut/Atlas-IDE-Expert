@@ -164,6 +164,12 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesContext.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.WorkingCopies.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsPaths.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PathSuggestions.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PathSuggestions.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SuggestDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ProjectPicker.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesServices.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueCommands.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesStatus.pas"/>

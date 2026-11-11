@@ -4,7 +4,8 @@
 // ohne Dateien: Liste lesen und schreiben, Art der Zeile, Vergleich der Pfade
 // (Groß-/Kleinschreibung, „/“, Laufwerk, UNC), Reihenfolge der Auflösung
 // (.atlas → .dproj → .groupproj → längster Ordner), überdeckte Zeilen und das
-// Ziel für „Meine Issues“.
+// Ziel für „Meine Issues“. Dazu Arbeitskopien je Zeile (#1926) und die
+// Einträge der Klappliste „Tracker-Projekt“ (#1927).
 
 interface
 
@@ -44,6 +45,20 @@ type
     /// <summary>Ziel für „Meine Issues“: Anbieter und Adresse der Verbindung, Tracker-Projekt der Zeile.</summary>
     [Test]
     procedure TargetForMyIssues;
+    /// <summary>"paths" lesen und schreiben; die erste ist die Haupt-Arbeitskopie, ohne gilt „Gilt für“.</summary>
+    [Test]
+    procedure PathsRoundTripAndMainFolder;
+    [Test]
+    procedure SplitPathsTrimsAndDropsDuplicates;
+    /// <summary>„Beginnen“ arbeitet im ersten Pfad der geltenden Zeile, sonst im Ordner des Projekts.</summary>
+    [Test]
+    procedure WorkingFolderPrefersPaths;
+    /// <summary>Je Paar aus Verbindung und Tracker-Projekt ein Eintrag; ohne Verbindung keiner.</summary>
+    [Test]
+    procedure ChoicesOnePerTrackerProject;
+    /// <summary>Gewählt: Der Pfad der Zeile (.groupproj oder Ordner) löst genau diese Zeile auf.</summary>
+    [Test]
+    procedure ResolveTakesExactRow;
   end;
 
 implementation
@@ -291,6 +306,95 @@ begin
   // Ohne Treffer: kein Ziel, „Meine Issues“ bietet „zuordnen …“ an.
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, 'D:\X\X.dproj', '');
   Assert.IsFalse(TAtlasMyIssues.TargetFor(mResult, '', '').Configured);
+  mRows := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.PathsRoundTripAndMainFolder;
+var
+  mItems, mAgain: TArray<TAtlasTrackerProjectMapping>;
+  mJson: string;
+begin
+  mItems := TAtlasTrackerProjects.Read('[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", ' +
+    '"project": "KASSE", "paths": ["D:\\SVN\\Kasse\\trunk", "D:\\SVN\\Basis\\trunk"]}, ' +
+    '{"match": "C:\\Projekte\\Atlas", "connection": "GitHub", "project": "owner/repo"}]');
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual(2, Integer(Length(mItems[0].Paths)));
+  Assert.AreEqual('D:\SVN\Kasse\trunk', mItems[0].MainFolder);
+  Assert.AreEqual(cKassePath, mItems[0].MatchFolder);
+  Assert.AreEqual(2, Integer(Length(mItems[0].Folders)));
+  // Ohne "paths": der Ordner aus „Gilt für“.
+  Assert.AreEqual('C:\Projekte\Atlas', mItems[1].MainFolder);
+  Assert.AreEqual(1, Integer(Length(mItems[1].Folders)));
+  mJson := TAtlasTrackerProjects.ToJson(mItems);
+  Assert.IsTrue(mJson.Contains('"paths"'));
+  mAgain := TAtlasTrackerProjects.Read(mJson);
+  Assert.AreEqual('D:\SVN\Basis\trunk', mAgain[0].Paths[1]);
+  // Leere Liste wird nicht geschrieben.
+  Assert.IsFalse(TAtlasTrackerProjects.ToJson([mItems[1]]).Contains('"paths"'));
+  mItems := nil;
+  mAgain := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.SplitPathsTrimsAndDropsDuplicates;
+var
+  mPaths: TArray<string>;
+begin
+  mPaths := TAtlasTrackerProjects.SplitPaths('  D:\SVN\Kasse\trunk\ '#13#10#13#10'd:/svn/kasse/trunk;D:\Lib');
+  Assert.AreEqual(2, Integer(Length(mPaths)));
+  Assert.AreEqual('D:\SVN\Kasse\trunk', mPaths[0]);
+  Assert.AreEqual('D:\Lib', mPaths[1]);
+  Assert.AreEqual(0, Integer(Length(TAtlasTrackerProjects.SplitPaths(' '#13#10))));
+  mPaths := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.WorkingFolderPrefersPaths;
+var
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+begin
+  mRows := TAtlasTrackerProjects.Read('[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", ' +
+    '"project": "KASSE", "paths": ["D:\\SVN\\Kasse\\trunk"]}]');
+  Assert.AreEqual('D:\SVN\Kasse\trunk', TAtlasTrackerProjects.WorkingFolder(mRows, Connections, cBonProject,
+    cKasseGroup));
+  // Ohne geltende Zeile: der Ordner des Projekts.
+  Assert.AreEqual('D:\X', TAtlasTrackerProjects.WorkingFolder(mRows, Connections, 'D:\X\X.dproj', ''));
+  Assert.AreEqual('', TAtlasTrackerProjects.WorkingFolder(mRows, Connections, '', ''));
+  mRows := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.ChoicesOnePerTrackerProject;
+var
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+  mChoices: TArray<TAtlasTrackerChoice>;
+begin
+  mRows := TAtlasTrackerProjects.Read('[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", ' +
+    '"project": "KASSE"}, {"match": "C:\\Projekte\\Kasse\\Bon", "connection": "Firma", "project": "KASSE"}, ' +
+    '{"match": "C:\\Projekte\\Atlas", "connection": "GitHub", "project": "owner/repo"}, ' +
+    '{"match": "C:\\Alt", "connection": "Weg", "project": "ALT"}]');
+  mChoices := TAtlasTrackerProjects.Choices(mRows, Connections);
+  Assert.AreEqual(2, Integer(Length(mChoices)));
+  Assert.AreEqual('KASSE@Firma', mChoices[0].Key);
+  Assert.AreEqual(cKasseGroup, mChoices[0].Match);
+  Assert.AreEqual('Firma · KASSE', mChoices[0].Caption);
+  Assert.AreEqual(1, TAtlasTrackerProjects.IndexOfChoice(mChoices, 'OWNER/REPO@github'));
+  Assert.AreEqual(-1, TAtlasTrackerProjects.IndexOfChoice(mChoices, 'ALT@Weg'));
+  Assert.AreEqual(-1, TAtlasTrackerProjects.IndexOfChoice(mChoices, ''));
+  mRows := nil;
+  mChoices := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.ResolveTakesExactRow;
+var
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+  mResult: TAtlasTrackerResolution;
+begin
+  mRows := TAtlasTrackerProjects.Read('[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", ' +
+    '"project": "KASSE"}, {"match": "C:\\Projekte", "connection": "GitHub", "project": "owner/repo"}]');
+  // Die .groupproj selbst als Projekt (gewählt in „Meine Issues“): genau ihre Zeile, ohne geöffnete Gruppe.
+  mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, cKasseGroup, '');
+  Assert.AreEqual(0, mResult.Index);
+  // Der Ordner einer Zeile: diese Zeile, nicht eine tiefere.
+  mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, 'C:\Projekte', '');
+  Assert.AreEqual(1, mResult.Index);
   mRows := nil;
 end;
 
