@@ -2,6 +2,8 @@
 
 // Host-Rolle Shell: Einstiegspunkt der Anwendung. stdout gehört ausschließlich
 // dem LSP-Protokoll; Diagnosemeldungen laufen über das Logging der Komposition.
+// LSP-Server, MCP-Server und Läufe ohne Editor schreiben ihre Statusdatei für
+// AtlasMonitor (#1901, TServerStatusHeartbeat); --clear-cache und --replay nicht.
 
 interface
 
@@ -19,6 +21,10 @@ uses
   System.SysUtils,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Lsp.StatusHeartbeat,
+  Atlas.Common.Index.Adapters.CacheDirectory,
   Shell.Platform,
   Shell.CommandLine,
   Shell.Bootstrap,
@@ -84,9 +90,40 @@ begin
   end;
 end;
 
+/// <summary>Statusdatei des Prozesses (#1901) mit Art, Befehl und Ziel; nil für --clear-cache und --replay.
+/// </summary>
+function StartHeartbeat(const AOptions: TCommandLineOptions): TServerStatusHeartbeat;
+var
+  mKind: string;
+begin
+  Result := nil;
+  if AOptions.ClearCache or (AOptions.ReplayFile <> '') then
+  begin
+    Exit;
+  end;
+  mKind := TServerStatusEntry.cKindLsp;
+  if AOptions.RunCommand <> '' then
+  begin
+    mKind := TServerStatusEntry.cKindCli;
+  end
+  else if AOptions.Mcp then
+  begin
+    mKind := TServerStatusEntry.cKindMcp;
+  end;
+  // Das Ziel des MCP-Servers setzt TMcpShell (Ordner aus --root bzw. dem Arbeitsordner).
+  TServerActivity.Shared.Describe(mKind, AOptions.RunCommand, AOptions.CheckTarget);
+  if AOptions.LogFile <> '' then
+  begin
+    TServerActivity.Shared.SetLogFile(ExpandFileName(AOptions.LogFile));
+  end;
+  Result := TServerStatusHeartbeat.Create(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId,
+    TServerActivity.Shared, TServerStatusHeartbeat.cIntervalMs);
+end;
+
 class function TApplicationShell.Run: Integer;
 var
   mOptions: TCommandLineOptions;
+  mHeartbeat: TServerStatusHeartbeat;
 begin
   try
     mOptions := TCommandLineOptions.FromProcess;
@@ -96,7 +133,12 @@ begin
     TShellBootstrap.UseTextLanguage(mOptions.Locale);
     // Liste der published-Mitglieder je Klasse merken (Hover auf VCL-Klassen kostet sonst jedes Mal rund 1 s).
     TPublishedMembers.UseCache(True);
-    Result := RunMode(mOptions);
+    mHeartbeat := StartHeartbeat(mOptions);
+    try
+      Result := RunMode(mOptions);
+    finally
+      mHeartbeat.Free;
+    end;
   except
     // Letzte Auffangstelle, falls schon der Aufbau scheitert und kein Logger existiert.
     on E: Exception do

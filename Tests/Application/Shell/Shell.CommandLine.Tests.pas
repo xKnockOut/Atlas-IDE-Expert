@@ -66,6 +66,9 @@ type
     /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
     [Test]
     procedure ReadsFormatterArguments;
+    /// <summary>#1901: Befehl des Laufs für die Statusdatei.</summary>
+    [Test]
+    procedure NamesRunCommand;
   end;
 
 implementation
@@ -458,6 +461,22 @@ begin
   Assert.IsFalse(mOptions.FormatDiff);
   Assert.IsTrue(mOptions.CheckFormat = TFindingsFormat.Json);
   Assert.IsFalse(TCommandLineOptions.Parse([]).FormatCheck);
+end;
+
+procedure TCommandLineOptionsTests.NamesRunCommand;
+begin
+  Assert.AreEqual('', TCommandLineOptions.Parse([]).RunCommand);
+  Assert.AreEqual('', TCommandLineOptions.Parse(['--mcp', '--root', 'Src']).RunCommand);
+  Assert.AreEqual('check', TCommandLineOptions.Parse(['--check', 'Src']).RunCommand);
+  Assert.AreEqual('fix', TCommandLineOptions.Parse(['--check', 'Src', '--fix', 'all']).RunCommand);
+  Assert.AreEqual('format-check', TCommandLineOptions.Parse(['--check', 'Src', '--format-check']).RunCommand);
+  Assert.AreEqual('format-write', TCommandLineOptions.Parse(['--check', 'Src', '--format-write']).RunCommand);
+  Assert.AreEqual('metrics', TCommandLineOptions.Parse(['--check', 'Src', '--metrics']).RunCommand);
+  Assert.AreEqual('todos', TCommandLineOptions.Parse(['--check', 'Src', '--todos']).RunCommand);
+  Assert.AreEqual('architecture', TCommandLineOptions.Parse(['--check', 'Src', '--architecture', 'a.md']).RunCommand);
+  Assert.AreEqual('affected-tests', TCommandLineOptions.Parse(['--check', 'T.dproj', '--affected-tests']).RunCommand);
+  Assert.AreEqual('query', TCommandLineOptions.Parse(['--query', 'classes']).RunCommand);
+  Assert.AreEqual('hotspots', TCommandLineOptions.Parse(['--hotspots', 'h.html']).RunCommand);
 end;
 
 initialization

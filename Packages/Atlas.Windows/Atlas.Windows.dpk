@@ -57,6 +57,7 @@ contains
   Atlas.Windows.Updates.Adapters.Trust in 'Source\Updates\Atlas.Windows.Updates.Adapters.Trust.pas',
   Atlas.Windows.Updates.Adapters.Network in 'Source\Updates\Atlas.Windows.Updates.Adapters.Network.pas',
   Atlas.Windows.Updates.Adapters.Archive in 'Source\Updates\Atlas.Windows.Updates.Adapters.Archive.pas',
-  Atlas.Windows.Updates.Adapters.Builder in 'Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas';
+  Atlas.Windows.Updates.Adapters.Builder in 'Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas',
+  Atlas.Windows.Monitor.Adapters.System in 'Source\Monitor\Atlas.Windows.Monitor.Adapters.System.pas';
 
 end.

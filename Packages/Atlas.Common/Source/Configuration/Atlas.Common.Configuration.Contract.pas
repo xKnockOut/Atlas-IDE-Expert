@@ -758,6 +758,9 @@ type
     /// <summary>Sicherheitsnetz: Anfrage nach zwei Abstürzen an derselben Datei überspringen (#1355,
     /// server.crashSkip).</summary>
     ServerCrashSkip: Boolean;
+    /// <summary>Statusdatei je Server für AtlasMonitor und get_server_status schreiben (#1901,
+    /// server.statusFile).</summary>
+    ServerStatusFile: Boolean;
     /// <summary>Anonymisiertes Diagnoselog (#647): schreiben, Aufbewahrung in Tagen und lokale
     /// Zuordnung Kurz-ID → Name (nur für die eigene Analyse).</summary>
     DiagnosticsLog: Boolean;
@@ -1463,6 +1466,7 @@ begin
   ASettings.RequestTimeoutMs := 10000;
   ASettings.ServerCrashCases := True;
   ASettings.ServerCrashSkip := True;
+  ASettings.ServerStatusFile := True;
   ASettings.DiagnosticsLog := True;
   ASettings.DiagnosticsLogDays := 7;
   ASettings.DiagnosticsLogMapFile := False;
