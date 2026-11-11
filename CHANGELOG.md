@@ -23,6 +23,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Unterblock in der Brotkrumenleiste (#1767): Hinter dem Sichtbarkeitsabschnitt steht der Block am Cursor, etwa `TKunde › private › const › cRabatt`, für `const`, `type` und `class var` in Klassen und Records. Ein ausdrückliches `var`, Methoden, Eigenschaften und der nächste Abschnitt beenden den Block. Ein Klick listet die Unterblöcke des Abschnitts, „›“ ihre Mitglieder. Auf der Kopfzeile eines verschachtelten Typs zeigt die Leiste jetzt Abschnitt und Block des umgebenden Typs. Abschaltbar mit `editor.breadcrumbsMemberBlocks`.
 - Sichtbarkeitsabschnitt in der Brotkrumenleiste (#1759): Im Deklarationsteil einer Klasse, eines Records, Objekts oder Helfers steht hinter dem Typ der Abschnitt am Cursor, etwa `TKunde › strict private › FName`, auch auf Leerzeilen und Kommentaren zwischen den Mitgliedern. Ein Klick listet alle Abschnitte des Typs und springt zum Schlüsselwort, „›“ dahinter die Mitglieder des Abschnitts. Vor dem ersten Schlüsselwort steht die implizite Sichtbarkeit kursiv (`published` bei Klassen von TPersistent oder unter `{$M+}`, sonst `public`). Bei verschachtelten Typen zählt der innerste; Interfaces haben kein Abschnittsglied. Abschaltbar mit `editor.breadcrumbsVisibility`.
 
+### Geändert
+- Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
+
 ## [2.0.1] - 2026-11-08
 
 ### Neu
