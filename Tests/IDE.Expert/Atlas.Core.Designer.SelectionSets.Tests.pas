@@ -80,10 +80,10 @@ begin
   Assert.AreEqual(0, FSets.Add(cForm, 'Adressfelder', ['edtStrasse', 'edtPlz', 'edtPlz']));
   Assert.AreEqual(1, FSets.Add(cForm, 'Knöpfe', ['btnOk']));
   Assert.AreEqual(0, FSets.Add(cForm, ' adressfelder ', ['edtOrt']));
-  Assert.AreEqual(2, Length(FSets.SetsOf(cForm)));
-  Assert.AreEqual(1, Length(FSets.SetsOf(cForm)[0].Members));
+  Assert.AreEqual(2, Integer(Length(FSets.SetsOf(cForm))));
+  Assert.AreEqual(1, Integer(Length(FSets.SetsOf(cForm)[0].Members)));
   Assert.AreEqual('edtOrt', FSets.SetsOf(cForm)[0].Members[0]);
-  Assert.AreEqual(1, Length(FSets.SetsOf(cForm)[1].Members), 'Knöpfe unverändert');
+  Assert.AreEqual(1, Integer(Length(FSets.SetsOf(cForm)[1].Members)), 'Knöpfe unverändert');
   Assert.IsTrue(FSets.Changed);
 end;
 
@@ -92,18 +92,18 @@ begin
   FSets.Add(cForm, 'Adressfelder', ['edtStrasse', 'edtPlz', 'edtOrt', 'edtLand']);
   FSets.ComponentRenamed(cForm, 'EDTORT', 'edtWohnort');
   Assert.AreEqual('edtWohnort', FSets.SetsOf(cForm)[0].Members[2]);
-  Assert.AreEqual(4, Length(FSets.SetsOf(cForm)[0].Members));
+  Assert.AreEqual(4, Integer(Length(FSets.SetsOf(cForm)[0].Members)));
 end;
 
 procedure TAtlasSelectionSetsTests.DeletedComponentLeavesEmptySet;
 begin
   FSets.Add(cForm, 'Adressfelder', ['edtStrasse', 'edtPlz', 'edtOrt', 'edtLand']);
   FSets.ComponentDeleted(cForm, 'edtPlz');
-  Assert.AreEqual(3, Length(FSets.SetsOf(cForm)[0].Members));
+  Assert.AreEqual(3, Integer(Length(FSets.SetsOf(cForm)[0].Members)));
   FSets.Add(cForm, 'Einer', ['btnOk']);
   FSets.ComponentDeleted(cForm, 'btnOk');
-  Assert.AreEqual(2, Length(FSets.SetsOf(cForm)), 'leerer Satz bleibt');
-  Assert.AreEqual(0, Length(FSets.SetsOf(cForm)[1].Members));
+  Assert.AreEqual(2, Integer(Length(FSets.SetsOf(cForm))), 'leerer Satz bleibt');
+  Assert.AreEqual(0, Integer(Length(FSets.SetsOf(cForm)[1].Members)));
 end;
 
 procedure TAtlasSelectionSetsTests.MaintainSets;
@@ -126,9 +126,9 @@ begin
   FSets.Delete(cForm, 2);
   FSets.Delete(cForm, 7);
   mSets := FSets.SetsOf(cForm);
-  Assert.AreEqual(2, Length(mSets));
+  Assert.AreEqual(2, Integer(Length(mSets)));
   Assert.AreEqual('Knöpfe', mSets[1].Name, 'leerer Name ändert nichts');
-  Assert.AreEqual(3, Length(mSets[0].Members));
+  Assert.AreEqual(3, Integer(Length(mSets[0].Members)));
   Assert.AreEqual('z', mSets[0].Members[2]);
 end;
 
@@ -137,8 +137,8 @@ begin
   FSets.Add(cForm, 'A', ['a1']);
   FSets.Add('C:\Projekt\uLager.dfm', 'B', ['a1']);
   FSets.ComponentDeleted(cForm, 'a1');
-  Assert.AreEqual(1, Length(FSets.SetsOf('c:\projekt\ulager.dfm')[0].Members));
-  Assert.AreEqual(0, Length(FSets.SetsOf(cForm)[0].Members));
+  Assert.AreEqual(1, Integer(Length(FSets.SetsOf('c:\projekt\ulager.dfm')[0].Members)));
+  Assert.AreEqual(0, Integer(Length(FSets.SetsOf(cForm)[0].Members)));
 end;
 
 procedure TAtlasSelectionSetsTests.JsonRoundTrip;
@@ -155,10 +155,10 @@ begin
     Assert.IsTrue(mLoaded.LoadJson(mText));
     Assert.IsFalse(mLoaded.Changed);
     mSets := mLoaded.SetsOf(cForm);
-    Assert.AreEqual(2, Length(mSets));
+    Assert.AreEqual(2, Integer(Length(mSets)));
     Assert.AreEqual('Adressfelder', mSets[0].Name);
     Assert.AreEqual('edtPlz', mSets[0].Members[1]);
-    Assert.AreEqual(0, Length(mSets[1].Members));
+    Assert.AreEqual(0, Integer(Length(mSets[1].Members)));
   finally
     mLoaded.Free;
   end;
@@ -168,9 +168,9 @@ procedure TAtlasSelectionSetsTests.BrokenJsonIsEmpty;
 begin
   FSets.Add(cForm, 'A', ['a1']);
   Assert.IsFalse(FSets.LoadJson('{kaputt'));
-  Assert.AreEqual(0, Length(FSets.SetsOf(cForm)));
+  Assert.AreEqual(0, Integer(Length(FSets.SetsOf(cForm))));
   Assert.IsTrue(FSets.LoadJson('{"forms":{"X":[{"name":""},{"name":"B","members":[1,"b"]},7]}}'));
-  Assert.AreEqual(1, Length(FSets.SetsOf('x')));
+  Assert.AreEqual(1, Integer(Length(FSets.SetsOf('x'))));
   Assert.AreEqual('b', FSets.SetsOf('x')[0].Members[0]);
 end;
 
@@ -179,7 +179,7 @@ var
   mMissing: TArray<string>;
 begin
   mMissing := TAtlasSelectionSets.Missing(TAtlasSelectionSet.Create('A', ['edtPlz', 'edtOrt']), ['EDTPLZ']);
-  Assert.AreEqual(1, Length(mMissing));
+  Assert.AreEqual(1, Integer(Length(mMissing)));
   Assert.AreEqual('edtOrt', mMissing[0]);
 end;
 
