@@ -20,6 +20,8 @@
 // entprellt selbst), OnGroupExecute bekommt Enter, Strg+Enter,
 // Umschalt+Enter und Strg+C auf einem Eintrag der Gruppe, OnClosed das
 // Schließen (einmal, auch beim Freigeben).
+// Mit RowHints zeigt ein Befehl mit Description diese als Hinweis über
+// seiner Zeile (volle Signatur gekürzter Überladungen, #1784).
 
 interface
 
@@ -121,6 +123,7 @@ type
     FKeepOrder: Boolean;
     FPresorted: Boolean;
     FGroup: TAtlasPaletteGroup;
+    FRowHints: Boolean;
     procedure PatternChanged;
     procedure QueryTick(Sender: TObject);
     procedure Refilter;
@@ -134,6 +137,8 @@ type
     procedure DrawRow(ARow: Integer);
     procedure SetKeepOrder(AValue: Boolean);
     procedure SetPresorted(AValue: Boolean);
+    procedure SetRowHints(AValue: Boolean);
+    procedure CMHintShow(var Message: TCMHintShow); message CM_HINTSHOW;
   protected
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -161,6 +166,8 @@ type
     property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
     /// <summary>Einträge in der Reihenfolge von OnQuery bzw. ACommands zeigen, ohne zu filtern (#503).</summary>
     property Presorted: Boolean read FPresorted write SetPresorted;
+    /// <summary>Description eines Befehls als Hinweis über seiner Zeile (#1784); Vorgabe aus.</summary>
+    property RowHints: Boolean read FRowHints write SetRowHints;
     property Group: TAtlasPaletteGroup read FGroup;
   end;
 
@@ -348,6 +355,38 @@ procedure TAtlasPaletteWindow.SetCommands(const ACommands: TArray<TAtlasCommand>
 begin
   FCommands := ACommands;
   Refilter;
+end;
+
+procedure TAtlasPaletteWindow.SetRowHints(AValue: Boolean);
+begin
+  FRowHints := AValue;
+  ShowHint := AValue;
+end;
+
+procedure TAtlasPaletteWindow.CMHintShow(var Message: TCMHintShow);
+var
+  mRow: Integer;
+  mText: string;
+begin
+  mText := '';
+  mRow := -1;
+  if FRowHints and (Message.HintInfo.CursorPos.Y >= InputHeight) then
+  begin
+    mRow := (Message.HintInfo.CursorPos.Y - InputHeight) div RowHeight;
+    if (FTop + mRow >= 0) and (FTop + mRow < Length(FOrder)) then
+    begin
+      mText := FCommands[FOrder[FTop + mRow]].Description;
+    end;
+  end;
+  // Ohne Beschreibung kein Hinweis; die Fläche der Zeile begrenzt ihn, damit die nächste Zeile ihren eigenen zeigt.
+  if mText = '' then
+  begin
+    Message.Result := 1;
+    Exit;
+  end;
+  Message.HintInfo.HintStr := mText;
+  Message.HintInfo.CursorRect := RowRect(mRow);
+  Message.Result := 0;
 end;
 
 function TAtlasPaletteWindow.Rows: TAtlasPaletteRows;

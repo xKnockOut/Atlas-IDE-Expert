@@ -105,6 +105,8 @@ type
     class function NodeAt(const ANodes: TAtlasOutlineNodes; ALine, ACharacter: Integer): Integer; static;
     /// <summary>Zeichen vor dem Namen für die Sichtbarkeit (−, #, +, ◆); leer ohne.</summary>
     class function VisibilityMark(AVisibility: TAtlasOutlineVisibility): string; static;
+    /// <summary>Abschnitt der Unit (interface, implementation) statt eines Elements?</summary>
+    class function IsSection(const ANode: TAtlasOutlineNode): Boolean; static;
   end;
 
 implementation
@@ -258,6 +260,11 @@ begin
   else
     Result := '';
   end;
+end;
+
+class function TAtlasOutline.IsSection(const ANode: TAtlasOutlineNode): Boolean;
+begin
+  Result := (ANode.Kind = cKindNamespace) or (ANode.Category = TAtlasOutlineCategory.Section);
 end;
 
 type

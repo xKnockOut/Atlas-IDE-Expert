@@ -376,6 +376,38 @@ type
     Breadcrumbs: Boolean;
     /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
     BreadcrumbsShowUnit: Boolean;
+    /// <summary>Sichtbarkeitsabschnitt als Glied hinter dem Typ (#1759, editor.breadcrumbsVisibility).</summary>
+    BreadcrumbsVisibility: Boolean;
+    /// <summary>Unterblock (const, type, class var) als Glied (#1767, editor.breadcrumbsMemberBlocks).</summary>
+    BreadcrumbsMemberBlocks: Boolean;
+    /// <summary>Sichtbarkeitsmarke am Methodenglied im implementation-Teil (#1765,
+    /// editor.breadcrumbsVisibilityMark).</summary>
+    BreadcrumbsVisibilityMark: Boolean;
+    /// <summary>Deklarationsblock der Unit als Glied (#1766, editor.breadcrumbsDeclarationBlocks).</summary>
+    BreadcrumbsDeclarationBlocks: Boolean;
+    /// <summary>Bedingungszweig ({$IFDEF …}) als Glied (#1763, editor.breadcrumbsConditionals).</summary>
+    BreadcrumbsConditionals: Boolean;
+    /// <summary>Region ({$REGION}) als Glied (#1764, editor.breadcrumbsRegions).</summary>
+    BreadcrumbsRegions: Boolean;
+    /// <summary>try/except/finally und case-Zweig als Glied (#1769, editor.breadcrumbsStatements).</summary>
+    BreadcrumbsStatements: Boolean;
+    /// <summary>Mitgliederzahl je Abschnitt im Menü des Sichtbarkeitsglieds (#1768,
+    /// editor.breadcrumbsSectionCounts).</summary>
+    BreadcrumbsSectionCounts: Boolean;
+    /// <summary>Einträge „Neue Zeile am Ende von …“ im Menü des Sichtbarkeitsglieds (#1768,
+    /// editor.breadcrumbsSectionAppend); auch Befehl und Taste keys.sectionAppend.</summary>
+    BreadcrumbsSectionAppend: Boolean;
+    /// <summary>Einträge „Abschnitt anlegen: …“ für fehlende Abschnitte (#1768,
+    /// editor.breadcrumbsSectionCreate).</summary>
+    BreadcrumbsSectionCreate: Boolean;
+    /// <summary>Rechtsklick-Menü an den Gliedern der Leiste (#1786, editor.breadcrumbsContextMenu).</summary>
+    BreadcrumbsContextMenu: Boolean;
+    /// <summary>Zähler und Parameter bei Überladungen (#1784, editor.breadcrumbsOverloads).</summary>
+    BreadcrumbsOverloads: Boolean;
+    /// <summary>Interface-Marke an Methodengliedern (#1785, editor.breadcrumbsInterfaces).</summary>
+    BreadcrumbsInterfaces: Boolean;
+    /// <summary>Kennzahlen-Karte an Methoden- und Typgliedern (#1787, editor.breadcrumbsMetrics).</summary>
+    BreadcrumbsMetrics: Boolean;
     /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
     /// (editor.breadcrumbsIdeColors).</summary>
     BreadcrumbsIdeColors: Boolean;
@@ -860,6 +892,20 @@ class function TAtlasPluginStickyScrollSettings.Defaults: TAtlasPluginStickyScro
 begin
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
+  Result.BreadcrumbsVisibility := True;
+  Result.BreadcrumbsMemberBlocks := True;
+  Result.BreadcrumbsVisibilityMark := True;
+  Result.BreadcrumbsDeclarationBlocks := True;
+  Result.BreadcrumbsConditionals := True;
+  Result.BreadcrumbsRegions := True;
+  Result.BreadcrumbsStatements := False;
+  Result.BreadcrumbsSectionCounts := True;
+  Result.BreadcrumbsSectionAppend := True;
+  Result.BreadcrumbsSectionCreate := True;
+  Result.BreadcrumbsContextMenu := True;
+  Result.BreadcrumbsOverloads := True;
+  Result.BreadcrumbsInterfaces := True;
+  Result.BreadcrumbsMetrics := True;
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
@@ -884,6 +930,20 @@ procedure TAtlasPluginStickyScrollSettings.Exchange(const AIo: TAtlasSettingsExc
 begin
   AIo.Flag('Breadcrumbs', Breadcrumbs);
   AIo.Flag('BreadcrumbsShowUnit', BreadcrumbsShowUnit);
+  AIo.Flag('BreadcrumbsVisibility', BreadcrumbsVisibility);
+  AIo.Flag('BreadcrumbsMemberBlocks', BreadcrumbsMemberBlocks);
+  AIo.Flag('BreadcrumbsVisibilityMark', BreadcrumbsVisibilityMark);
+  AIo.Flag('BreadcrumbsDeclarationBlocks', BreadcrumbsDeclarationBlocks);
+  AIo.Flag('BreadcrumbsConditionals', BreadcrumbsConditionals);
+  AIo.Flag('BreadcrumbsRegions', BreadcrumbsRegions);
+  AIo.Flag('BreadcrumbsStatements', BreadcrumbsStatements);
+  AIo.Flag('BreadcrumbsSectionCounts', BreadcrumbsSectionCounts);
+  AIo.Flag('BreadcrumbsSectionAppend', BreadcrumbsSectionAppend);
+  AIo.Flag('BreadcrumbsSectionCreate', BreadcrumbsSectionCreate);
+  AIo.Flag('BreadcrumbsContextMenu', BreadcrumbsContextMenu);
+  AIo.Flag('BreadcrumbsOverloads', BreadcrumbsOverloads);
+  AIo.Flag('BreadcrumbsInterfaces', BreadcrumbsInterfaces);
+  AIo.Flag('BreadcrumbsMetrics', BreadcrumbsMetrics);
   AIo.Flag('BreadcrumbsIdeColors', BreadcrumbsIdeColors);
   AIo.Flag('BreadcrumbsHideIdeToolbar', BreadcrumbsHideIdeToolbar);
   AIo.Flag('StickyScroll', StickyScroll);

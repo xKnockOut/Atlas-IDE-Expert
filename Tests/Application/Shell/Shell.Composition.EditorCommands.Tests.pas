@@ -49,6 +49,7 @@ uses
   Atlas.Common.Lsp.ExpressionType,
   Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Lsp.OverrideMarks,
+  Atlas.Common.Lsp.InterfaceMethods,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
@@ -94,8 +95,8 @@ begin
       mCapability.Free;
     end;
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand, TLspExpressionType.cCommand,
-      TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
-      TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
+      TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
+      TEnumValueCommands.cCommand, TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
       TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
@@ -172,9 +173,9 @@ begin
     mEditorCommands.RegisterMarkCommands(mCommands);
     mEditorCommands.RegisterTextCommands(mCommands);
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
-      TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TQualifiedNames.cCommand,
-      TEnumValueCommands.cCommand, TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand,
-      TLspSmartIndent.cCommand) do
+      TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
+      TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
+      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;

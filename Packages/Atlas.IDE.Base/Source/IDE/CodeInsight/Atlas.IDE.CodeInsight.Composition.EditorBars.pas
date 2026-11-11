@@ -23,6 +23,9 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Outline.CrumbMenu,
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.StatusBar.Service,
@@ -36,7 +39,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Palette,
   Atlas.IDE.CodeInsight.Composition.Navigation,
-  Atlas.IDE.CodeInsight.Composition.Editing;
+  Atlas.IDE.CodeInsight.Composition.Editing,
+  Atlas.IDE.CodeInsight.Composition.Tools;
 
 var
   // Ergebnisfenster (#400) und Editorbefehle (#399) angemeldet.
@@ -134,6 +138,50 @@ begin
   RequestStatusRefresh;
 end;
 
+/// <summary>Haken des Kontextmenüs der Brotkrumen (#1786): Umbenennen, Verwendungen, Formulartext.</summary>
+function CrumbMenuHooks: TAtlasCrumbMenuHooks;
+begin
+  Result := Default(TAtlasCrumbMenuHooks);
+  Result.Rename := RenameSymbol;
+  Result.References :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer; const AName: string)
+    begin
+      TAtlasIdeResults.ShowReferences(AFileName, ALine, ACharacter, AName);
+    end;
+  Result.CurrentText :=
+    function(AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end;
+end;
+
+const
+  /// <summary>Kennung der Brotkrumen beim Abruf der Metriken (Kennzahlen-Karte, #1787).</summary>
+  cBreadcrumbsClient = 'atlas.breadcrumbs';
+
+/// <summary>Kennzahlen-Karte der Brotkrumen (#1787): dieselben Metriken wie Statusleiste und Metrik-Linse.</summary>
+function CrumbCardHooks: TAtlasCrumbCardHooks;
+begin
+  Result := Default(TAtlasCrumbCardHooks);
+  Result.Metrics :=
+    function(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean
+    begin
+      Result := TAtlasEditorMetricsSource.Latest(AFileName, AMetrics);
+    end;
+  Result.WantMetrics :=
+    procedure(AOn: Boolean)
+    begin
+      if AOn then
+      begin
+        TAtlasEditorMetricsSource.Want(cBreadcrumbsClient, TAtlasMetricsDemand.Read);
+      end
+      else
+      begin
+        TAtlasEditorMetricsSource.Want(cBreadcrumbsClient, TAtlasMetricsDemand.None);
+      end;
+    end;
+end;
+
 /// <summary>Verlauf, Einblenden, Gliederung, Brotkrumen, Editor- und Statusleiste und mitlaufender Kopf.</summary>
 procedure InstallBars;
 begin
@@ -144,7 +192,7 @@ begin
   // Gemeinsamer Stand der Gliederung, Gliederungsfenster (#537) und Brotkrumenleiste (#590).
   TAtlasIdeOutlineCache.Install(ActiveSession);
   TAtlasIdeOutline.Install;
-  TAtlasIdeBreadcrumbs.Install;
+  TAtlasIdeBreadcrumbs.Install(CrumbMenuHooks, CrumbCardHooks);
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
   StartStatusBar;

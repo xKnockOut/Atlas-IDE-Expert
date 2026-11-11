@@ -20,6 +20,10 @@
 // höchstens eine Anfrage zugleich; die Antwort gilt nur für den Eintrag und
 // die Version, für die gefragt wurde. Früher wartete der Hauptthread bis zu
 // 2 s (2.0-stable: „keine Antwort vom Server“ bei jedem Reiterwechsel).
+// Mit WithInterfaces holt derselbe Abruf danach atlas.server.interfaceMethods
+// (#1785, Interface-Marke der Brotkrumen); ohne Antwort (älterer Server,
+// Zeitgrenze) bleibt die Liste leer, die Gliederung gilt trotzdem. Wird die
+// Marke eingeschaltet, fragt der nächste Takt einmal neu.
 // Nur im Hauptthread.
 
 interface
@@ -28,7 +32,8 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Outline.Model;
+  Atlas.Core.Outline.Model,
+  Atlas.Core.Outline.Interfaces;
 
 type
 {$SCOPEDENUMS ON}
@@ -40,6 +45,8 @@ type
     Nodes: TAtlasOutlineNodes;
     /// <summary>Text, zu dem die Knoten gehören.</summary>
     Text: string;
+    /// <summary>Erfüllte Interface-Methoden (#1785); leer ohne WithInterfaces.</summary>
+    Interfaces: TAtlasInterfaceMethods;
     /// <summary>Steigt bei jedem neuen Stand (über alle Dateien eindeutig).</summary>
     Stamp: Cardinal;
     Status: TAtlasOutlineStatus;
@@ -58,6 +65,8 @@ type
     class procedure InvalidateAll; static;
     /// <summary>Pascal-Quelltext (.pas, .dpr, .dpk, .inc, .pp)?</summary>
     class function IsPascal(const AFileName: string): Boolean; static;
+    /// <summary>Auch die erfüllten Interface-Methoden holen (#1785).</summary>
+    class var WithInterfaces: Boolean;
   end;
 
 implementation
@@ -69,6 +78,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
   Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Core.Lsp.Client,
   Atlas.IDE.Foundation.EditorSnapshot;
 
 const
@@ -77,6 +87,7 @@ const
   /// <summary>Ohne Server oder nach Zeitgrenze: so oft neu versuchen.</summary>
   cRetryMs = 2000;
   cRequestTimeoutMs = 5000;
+  cInterfacesCommand = 'atlas.server.interfaceMethods';
   /// <summary>So viele Dateien bleiben gemerkt.</summary>
   cKeptFiles = 8;
   cPascalExtensions: array[0..4] of string = ('.pas', '.dpr', '.dpk', '.inc', '.pp');
@@ -87,6 +98,9 @@ type
     FileName: string;
     Nodes: TAtlasOutlineNodes;
     Text: string;
+    Interfaces: TAtlasInterfaceMethods;
+    /// <summary>Der letzte Abruf hat die Interface-Methoden mitgeholt.</summary>
+    WithInterfaces: Boolean;
     Version: Cardinal;
     Stamp: Cardinal;
     Loaded: Boolean;
@@ -133,7 +147,8 @@ end;
 
 /// <summary>Antwort auf Load im Hauptthread: gilt nur, solange der Eintrag besteht und noch dieselbe Version hat.
 /// </summary>
-procedure Loaded(const AKey, AText: string; AVersion: Cardinal; AOk: Boolean; const ANodes: TAtlasOutlineNodes);
+procedure Loaded(const AKey, AText: string; AVersion: Cardinal; AOk: Boolean; const ANodes: TAtlasOutlineNodes;
+  const AInterfaces: TAtlasInterfaceMethods; AWithInterfaces: Boolean);
 var
   mEntry: TEntry;
 begin
@@ -149,6 +164,8 @@ begin
     Exit;
   end;
   mEntry.Loaded := True;
+  // Auch beim Syntaxfehler gemerkt: sonst fragte jeder Takt erneut nach den Interface-Methoden.
+  mEntry.WithInterfaces := AWithInterfaces;
   // Syntaxfehler: Ohne Knoten bleibt der letzte gültige Stand.
   if (Length(ANodes) = 0) and (Length(mEntry.Nodes) > 0) then
   begin
@@ -156,8 +173,38 @@ begin
   end;
   mEntry.Nodes := ANodes;
   mEntry.Text := AText;
+  mEntry.Interfaces := AInterfaces;
   Inc(LastStamp);
   mEntry.Stamp := LastStamp;
+end;
+
+/// <summary>Erfüllte Interface-Methoden der Datei (#1785), im Hintergrund; leer ohne Antwort.</summary>
+function FetchInterfaces(ASession: TLspSession; const AFileName: string): TAtlasInterfaceMethods;
+var
+  mArguments: TJSONArray;
+  mArgumentsJson: string;
+  mResponse: TJSONValue;
+begin
+  Result := nil;
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(TLspSession.PathToUri(AFileName));
+    mArgumentsJson := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+  try
+    mResponse := ASession.RunCommand(cInterfacesCommand, mArgumentsJson, cRequestTimeoutMs);
+  except
+    // Älterer Server ohne den Befehl oder Zeitgrenze: ohne Marke weiter.
+    on ELspClientError do
+      Exit;
+  end;
+  try
+    Result := TAtlasOutlineInterfaces.FromJson(mResponse);
+  finally
+    mResponse.Free;
+  end;
 end;
 
 procedure Load(AEntry: TEntry; const ASnapshot: TAtlasEditorSnapshot);
@@ -166,7 +213,8 @@ var
   mFileName, mKey, mText: string;
   mVersion: Cardinal;
   mNodes: TAtlasOutlineNodes;
-  mAnswered: Boolean;
+  mInterfaces: TAtlasInterfaceMethods;
+  mAnswered, mWithInterfaces: Boolean;
 begin
   AEntry.Version := ASnapshot.Version;
   AEntry.PendingVersion := ASnapshot.Version;
@@ -191,7 +239,9 @@ begin
   mText := ASnapshot.Text;
   mVersion := ASnapshot.Version;
   mNodes := nil;
+  mInterfaces := nil;
   mAnswered := False;
+  mWithInterfaces := TAtlasIdeOutlineCache.WithInterfaces;
   Request.Start(
     procedure
     var
@@ -207,6 +257,10 @@ begin
       finally
         mResponse.Free;
       end;
+      if mAnswered and mWithInterfaces then
+      begin
+        mInterfaces := FetchInterfaces(mSession, mFileName);
+      end;
     end,
     procedure(AOk: Boolean; const AError: string)
     begin
@@ -216,7 +270,7 @@ begin
         TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.MessageText(AError) +
           '); alter Stand bleibt');
       end;
-      Loaded(mKey, mText, mVersion, AOk and mAnswered, mNodes);
+      Loaded(mKey, mText, mVersion, AOk and mAnswered, mNodes, mInterfaces, mWithInterfaces);
     end);
 end;
 
@@ -327,7 +381,9 @@ begin
   end
   else if ASnapshot.Version = mEntry.Version then
   begin
-    if not mEntry.Loaded and (AMoment >= mEntry.RetryAt) then
+    // Marke eingeschaltet (#1785): einmal mit Interface-Methoden neu fragen.
+    if (not mEntry.Loaded and (AMoment >= mEntry.RetryAt)) or
+      (mEntry.Loaded and TAtlasIdeOutlineCache.WithInterfaces and not mEntry.WithInterfaces) then
     begin
       GuardedLoad(mEntry, ASnapshot);
     end;
@@ -349,6 +405,7 @@ procedure FillSnapshot(AEntry: TEntry; var AResult: TAtlasOutlineSnapshot);
 begin
   AResult.Nodes := AEntry.Nodes;
   AResult.Text := AEntry.Text;
+  AResult.Interfaces := AEntry.Interfaces;
   AResult.Stamp := AEntry.Stamp;
   if AEntry.NoServer and (Length(AEntry.Nodes) = 0) then
   begin

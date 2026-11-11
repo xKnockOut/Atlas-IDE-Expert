@@ -200,6 +200,9 @@ type
     PreviousBookmarkKey: Integer;
     /// <summary>Kürzel „Brotkrumenleiste“ (#590, keys.breadcrumbs); Vorgabe Strg+Umschalt+Punkt.</summary>
     BreadcrumbsKey: Integer;
+    /// <summary>„Neue Zeile am Ende des Abschnitts“ (#1768, keys.sectionAppend): leere Zeile hinter dem letzten
+    /// Mitglied des Sichtbarkeitsabschnitts am Cursor; 0 = keine (Vorgabe).</summary>
+    SectionAppendKey: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -428,6 +431,7 @@ begin
   Result.NextBookmarkKey := 0;
   Result.PreviousBookmarkKey := 0;
   Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
+  Result.SectionAppendKey := 0;
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -455,6 +459,7 @@ begin
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
+  SectionAppendKey := EnsureRange(SectionAppendKey, 0, $FFFF);
   QuickBookmarkSetKey := EnsureRange(QuickBookmarkSetKey, 0, $FFFF);
   QuickBookmarkJumpKey := EnsureRange(QuickBookmarkJumpKey, 0, $FFFF);
   NextBookmarkKey := EnsureRange(NextBookmarkKey, 0, $FFFF);
@@ -511,6 +516,7 @@ begin
   AIo.Number('NextBookmarkKey', NextBookmarkKey);
   AIo.Number('PreviousBookmarkKey', PreviousBookmarkKey);
   AIo.Number('BreadcrumbsKey', BreadcrumbsKey);
+  AIo.Number('SectionAppendKey', SectionAppendKey);
   AIo.Number('NextChangeKey', NextChangeKey);
   AIo.Number('PreviousChangeKey', PreviousChangeKey);
   AIo.Flag('JumpToMatch', JumpToMatch);
