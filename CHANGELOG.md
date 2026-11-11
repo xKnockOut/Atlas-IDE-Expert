@@ -64,6 +64,8 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Geändert
 - Prüfregel `type-mismatch` prüft Methodenreferenzen (#1897, #1899): Eine Routine für `reference to …`, auch generisch wie `TFunc<string, TArray<string>>`, deren Parameter in Zahl, `const`/`var`/`out` oder Typ abweichen, meldet sie wie dcc als E2010, als Zuweisung und als Argument (`OnLastFailed := LastFailed` mit `const AProject`). Ebenso eine parameterlose Funktion, die genau den prozeduralen Typ des Ziels liefert und ohne `()` zugewiesen oder übergeben wird (`ABar.OnExtra := ExtraClick`); Korrektur „() ergänzen“. Parameter von prozeduralem Typ prüft sie jetzt auch bei Argumenten.
+- Prüfregel `duplicate-declaration` meldet zwei gleiche Werte in einer Aufzählung (#1345, wie E2004), etwa einen neuen Wert in `TAtlasTextId`, den es schon gab.
+- Prüfregel `inline-not-expanded` prüft auch die default-Property hinter `Liste[0]` ohne ihren Namen (#1345, H2443).
 - Prüfregel `managed-param-without-const` schweigt, wenn eine andere Unit die Routine als Wert benutzt, etwa einer `TFunc<string, …>` zuweist (#1898); das ergänzte `const` brach dort den Bau.
 - Neu zugewiesene Variablen in großen Units (#1996): Atlas fragt den Server nur nach dem sichtbaren Teil mit einer Bildschirmhöhe Rand und fragt beim Blättern neu; der Server rechnet nur die Routinen, die hineinreichen. Läuft eine Anfrage ins Zeitlimit, bricht der Server die Rechnung ab, statt sie im Hintergrund weiterzuführen und Hover, Glühbirne und Vervollständigung auszubremsen.
 - Prüfregel `virtual-instead-of-override` nennt in der Meldung den Vorfahren, dessen virtuelle Methode verdeckt wird, etwa „"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden“; bei `Destroy` ohne Treffer im Index TObject.
