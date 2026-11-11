@@ -54,6 +54,11 @@ type
     /// <summary>Präfixe neuer Namen nach der Namensregel (#1111): Konstante einführen → cNewConstant; ohne leer.
     /// </summary>
     Names: TPascalNamePrefixes;
+    /// <summary>Zu „Methode extrahieren“ auch gleiche Stellen der Unit anbieten (#2054,
+    /// refactoring.extractMethodDuplicates).</summary>
+    Duplicates: Boolean;
+    /// <summary>Wunschname der neuen Methode (MCP extract_method); '' ExtractedMethod.</summary>
+    MethodName: string;
     class function Default: TExtractOptions; static;
   end;
 
@@ -96,6 +101,11 @@ type
     class function InSelection(ANode: TSyntaxNode; AStart, AEnd: Integer): Boolean; static;
     /// <summary>Kommentar, Direktive oder ";": zählt am Rand und zwischen Anweisungen nicht.</summary>
     class function IsFiller(const AToken: TPascalToken): Boolean; static;
+    /// <summary>Normalform eines Knotens für den Vergleich: Token ohne Kommentare, Groß- und Kleinschreibung
+    /// egal außer in String-Literalen. Direktiven nur mit AKeepDirectives (gleiche Stellen, #2054: ein anderes
+    /// {$IFDEF} ändert die Bedeutung).</summary>
+    class function NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode; AKeepDirectives: Boolean = False): string;
+      static;
     /// <summary>Liegt ANode in einer anonymen Methode, einem with-Rumpf oder asm innerhalb von ABody? Dort hätten
     /// Namen in einer neuen Routine eine andere Bedeutung.</summary>
     class function InsideBlocked(ANode, ABody: TSyntaxNode; out AReason: string): Boolean; static;
@@ -150,6 +160,8 @@ type
     /// <summary>Kopf, var- und const-Abschnitt und Rumpf aus ABody (eingerückt wie ABodyIndent), eine Ebene
     /// unter begin.</summary>
     function RoutineText(const AHead, ABody, ABodyIndent: string): string;
+    /// <summary>Kopf AHead mit var- und const-Abschnitt: vergleicht neue Routinen ohne Rumpf (#2054).</summary>
+    function Key(const AHead: string): string;
     property Edits: TArray<TTextEdit> read FEdits write FEdits;
   end;
 
@@ -196,6 +208,8 @@ begin
   Result.Style := TFormatStyle.Default;
   Result.Probe := nil;
   Result.Names := TPascalNamePrefixes.None;
+  Result.Duplicates := False;
+  Result.MethodName := '';
 end;
 
 { TExtractSupport }
@@ -214,6 +228,34 @@ end;
 class function TExtractSupport.IsFiller(const AToken: TPascalToken): Boolean;
 begin
   Result := (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or AToken.IsSymbol(';');
+end;
+
+class function TExtractSupport.NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode; AKeepDirectives: Boolean): string;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mSkipped: set of TPascalTokenKind;
+begin
+  mSkipped := [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
+  if AKeepDirectives then
+  begin
+    mSkipped := [TPascalTokenKind.Comment];
+  end;
+  mTokens := ATree.Tokens;
+  Result := '';
+  mIndex := TRoutineBody.TokenAt(mTokens, ANode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    if mTokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
+    begin
+      Result := Result + mTokens[mIndex].Text + ' ';
+    end
+    else if not (mTokens[mIndex].Kind in mSkipped) then
+    begin
+      Result := Result + LowerCase(mTokens[mIndex].Text) + ' ';
+    end;
+    Inc(mIndex);
+  end;
 end;
 
 class function TExtractSupport.Trimmed(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
@@ -550,6 +592,11 @@ begin
   begin
     Result := Result + FIndent + 'const' + FLineBreak + FConstLines;
   end;
+end;
+
+function TExtractSignature.Key(const AHead: string): string;
+begin
+  Result := AHead + Declarations;
 end;
 
 function TExtractSignature.RoutineText(const AHead, ABody, ABodyIndent: string): string;

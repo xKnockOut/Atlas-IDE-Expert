@@ -56,6 +56,7 @@ type
   // Aliase: Die Typen stehen in Atlas.Core.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
   TLspLocation = Atlas.Core.Lsp.Session.Json.TLspLocation;
   TLspCodeAction = Atlas.Core.Lsp.Session.Json.TLspCodeAction;
+  TLspCodeActionChoice = Atlas.Core.Lsp.Session.Json.TLspCodeActionChoice;
   TLspHoverParts = Atlas.Core.Lsp.Session.Json.TLspHoverParts;
   TLspDiagnosticReport = Atlas.Core.Lsp.Session.Json.TLspDiagnosticReport;
   TLspWorkspaceRun = Atlas.Core.Lsp.Session.Json.TLspWorkspaceRun;

@@ -19,6 +19,9 @@ type
     class procedure Apply(const AAction: TLspCodeAction); static;
     /// <summary>Vorschau der Änderungen mit AAction.Preview als Hinweis; True, wenn übernommen werden soll.</summary>
     class function ConfirmPreview(const AAction: TLspCodeAction): Boolean; static;
+    /// <summary>Abwählbare Teile (#2054) im Dialog wählen und abgewählte Edits entfernen; False bei Abbrechen.
+    /// </summary>
+    class function ChooseParts(var AAction: TLspCodeAction): Boolean; static;
     class procedure RunCommand(const ACommand, AArgumentsJson: string); static;
     /// <summary>Code-Aktionen des Servers für ARange; False mit Meldung bei einem Fehler.</summary>
     class function FetchActions(const AFileName: string; const ARange: TLspRange;
@@ -56,6 +59,7 @@ uses
   Atlas.UI.Commands.Palette,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
+  Atlas.UI.Editor.ActionChoices,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
@@ -251,6 +255,29 @@ begin
   Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.UsesActionMissing));
 end;
 
+class function TAtlasEditorActionCommands.ChooseParts(var AAction: TLspCodeAction): Boolean;
+var
+  mTitles: TArray<string>;
+  mChoice: TLspCodeActionChoice;
+  mChosen: TArray<Boolean>;
+begin
+  Result := True;
+  if AAction.Choices = nil then
+  begin
+    Exit;
+  end;
+  mTitles := nil;
+  for mChoice in AAction.Choices do
+  begin
+    mTitles := mTitles + [mChoice.Title];
+  end;
+  Result := TAtlasActionChoicesDialog.Choose(AAction.Title, AAction.Preview, mTitles, mChosen);
+  if Result then
+  begin
+    AAction := AAction.WithChoices(mChosen);
+  end;
+end;
+
 class function TAtlasEditorActionCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
 var
   mPreview: TArray<TAtlasResultEntry>;
@@ -272,22 +299,29 @@ end;
 class procedure TAtlasEditorActionCommands.Apply(const AAction: TLspCodeAction);
 var
   mOutcome: TAtlasWorkspaceEditResult;
+  mAction: TLspCodeAction;
 begin
-  if AAction.Disabled <> '' then
+  mAction := AAction;
+  if mAction.Disabled <> '' then
   begin
-    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
+    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorActionDisabled, [mAction.Title, mAction.Disabled]));
+    Exit;
+  end;
+  // Abwählbare Teile (#2054): erst wählen, dann die gewohnte Vorschau der übrigen Änderungen.
+  if not ChooseParts(mAction) then
+  begin
     Exit;
   end;
   // LSP: erst die Änderung, dann der Befehl.
-  if not AAction.Edit.IsEmpty then
+  if not mAction.Edit.IsEmpty then
   begin
-    if (AAction.Preview <> '') and not ConfirmPreview(AAction) then
+    if (mAction.Preview <> '') and not ConfirmPreview(mAction) then
     begin
       Exit;
     end;
-    mOutcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mAction.Edit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-      AAction.Title);
+      mAction.Title);
     if mOutcome.Error <> '' then
     begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
@@ -298,13 +332,13 @@ begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
     end;
   end;
-  if AAction.Edit.Unsupported > 0 then
+  if mAction.Edit.Unsupported > 0 then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [AAction.Edit.Unsupported]));
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [mAction.Edit.Unsupported]));
   end;
-  if AAction.Command <> '' then
+  if mAction.Command <> '' then
   begin
-    RunCommand(AAction.Command, AAction.ArgumentsJson);
+    RunCommand(mAction.Command, mAction.ArgumentsJson);
   end;
 end;
 
