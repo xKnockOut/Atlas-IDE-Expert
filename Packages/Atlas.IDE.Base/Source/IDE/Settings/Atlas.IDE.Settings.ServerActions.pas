@@ -30,8 +30,12 @@ implementation
 uses
   Atlas.Core.Localization.Language,
   Atlas.IDE.Settings.ServerTool,
-  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.Files;
+
+const
+  // Exit-Code des Servers bei einem Fehler des Werkzeugs und sein Text in der Meldung.
+  cToolErrorExitText = 'Exit-Code 3';
 
 function ServerExe: string;
 begin
@@ -57,11 +61,11 @@ begin
     ExtractFileDir(TAtlasIdeFiles.ActiveProjectFile), ATimeoutMs);
   if not TAtlasServerTool.Run(mCall, mResult) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [mResult.Error]);
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [mResult.Error]);
   end
   else if mResult.ExitCode = 3 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, ['Exit-Code 3']);
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [cToolErrorExitText]);
   end;
   AOutput := mResult.Output;
 end;
@@ -77,7 +81,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ServerPageToolDone);
+    Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageToolDone);
   end;
 end;
 

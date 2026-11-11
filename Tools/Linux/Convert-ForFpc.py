@@ -44,8 +44,9 @@ if '--root' in OPTIONS:
 else:
     ROOT = os.path.join(REPO, 'Application', 'AtlasServer.dpr')
 
-# Ordner, deren Units der Server nie braucht (Tests, Installer, Referenzprojekt, Werkzeuge, Bauausgabe).
-SKIP_DIRS = ('/.git', '/Setup', '/Tools/', '/Editors', '/docs', '/Output/') + (() if WITH_TESTS else ('/Tests',))
+# Ordner unter der Wurzel des Repositorys, deren Units der Server nie braucht (Tests, Installer, Werkzeuge,
+# Bauausgabe). Nur am Anfang des Pfads: Feature-Ordner wie Source/UI/Setup gehören dazu.
+SKIP_DIRS = ('/.git/', '/Setup/', '/Tools/', '/Editors/', '/docs/', '/Output/') + (() if WITH_TESTS else ('/Tests/',))
 
 # DUnitX-Attribute stehen in Testunits allein auf einer Zeile; der Ersatz in Compat/DUnitX kennt sie nicht.
 TEST_ATTRIBUTE = re.compile(r"^[ \t]*\[(TestFixture|Setup|TearDown|SetupFixture|TearDownFixture|Test|TestCase|Category|Ignore|"
@@ -73,7 +74,7 @@ def index_units():
     found = {}
     for d, _, files in os.walk(REPO):
         rel = d[len(REPO):].replace('\\', '/') + '/'
-        if any(s in rel for s in SKIP_DIRS) or 'Referenzprojekt' in rel:
+        if rel.startswith(SKIP_DIRS) or 'Referenzprojekt' in rel:
             continue
         for f in files:
             if f.lower().endswith('.pas'):

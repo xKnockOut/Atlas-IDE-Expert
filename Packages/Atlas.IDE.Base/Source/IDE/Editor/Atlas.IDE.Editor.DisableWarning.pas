@@ -41,6 +41,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.DisableWarning,
@@ -56,8 +57,8 @@ const
 function AskReason(const ARequest: TAtlasDisableWarningRequest; out AReason: string): Boolean;
 begin
   AReason := '';
-  Result := not ARequest.AskReason or InputQuery(TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle),
-    TAtlasStrings.Text(TAtlasTextId.DisableWarningReasonPrompt), AReason);
+  Result := not ARequest.AskReason or InputQuery(TAtlasEditorStrings.Text(TAtlasEditorTextId.DisableWarningTitle),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.DisableWarningReasonPrompt), AReason);
 end;
 
 /// <summary>Lässt den Server die Änderung berechnen; False, wenn er scheitert (Meldung über AMessage) oder
@@ -85,7 +86,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningFailed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningFailed, [E.Message]));
       Exit;
     end;
   end;
@@ -101,11 +102,11 @@ begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [AOutcome.Error]));
     Exit;
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningDone, [ARequest.Code,
+  AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningDone, [ARequest.Code,
     ExtractFileName(TLspSession.UriToPath(ARequest.Uri))]));
   if AAllWarnings then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningAllWarnings, [ARequest.Code]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningAllWarnings, [ARequest.Code]));
   end;
   if AOutcome.Written > 0 then
   begin
@@ -116,7 +117,7 @@ end;
 /// <summary>Fragt, ob die Warnung im ganzen Projekt AProject aus sein soll.</summary>
 function ConfirmProject(const ARequest: TAtlasDisableWarningProject; const AProject: IOTAProject): Boolean;
 begin
-  Result := MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectConfirm, [ARequest.Code,
+  Result := MessageDlg(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningProjectConfirm, [ARequest.Code,
     ARequest.Identifier, ExtractFileName(AProject.FileName), ARequest.OptionName]), mtConfirmation, [mbYes, mbNo],
     0) = mrYes;
 end;
@@ -145,7 +146,7 @@ begin
   except
     on E: Exception do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [ARequest.Code, E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningProjectFailed, [ARequest.Code, E.Message]));
     end;
   end;
 end;
@@ -175,7 +176,7 @@ begin
   begin
     // Ein Rückgängig-Schritt: beide Schalter in einer Änderung der Datei.
     ReportOutcome(mRequest, TAtlasIdeWorkspaceEdit.Apply(mEdit, APolicy,
-      TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle)), mAllWarnings, AMessage);
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.DisableWarningTitle)), mAllWarnings, AMessage);
   end;
 end;
 
@@ -194,7 +195,7 @@ begin
   mProject := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ProjectOfFile(mFileName));
   if mProject = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningNoProject, [ExtractFileName(mFileName)]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningNoProject, [ExtractFileName(mFileName)]));
     Exit;
   end;
   if not ConfirmProject(mRequest, mProject) then
@@ -204,13 +205,13 @@ begin
   mBase := BaseConfiguration(mProject);
   if mBase = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [mRequest.Code,
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningProjectFailed, [mRequest.Code,
       ExtractFileName(mProject.FileName)]));
     Exit;
   end;
   if SwitchOff(mBase, mProject, mRequest, AMessage) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectDone, [mRequest.Code,
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.DisableWarningProjectDone, [mRequest.Code,
       ExtractFileName(mProject.FileName), mRequest.OptionName]));
   end;
 end;

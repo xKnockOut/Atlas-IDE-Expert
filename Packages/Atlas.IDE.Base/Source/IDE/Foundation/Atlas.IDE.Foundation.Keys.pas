@@ -108,7 +108,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyStroke,
-  Atlas.UI.Strings,
+  Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Host;
 
 { TAtlasIdeKeyBinding.TBinding }
@@ -396,7 +396,8 @@ begin
     end;
   end;
   FReported := FReported + [mKey];
-  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyConflict, [ShortCutToText(AShortCut), mHolder, AWhat]));
+  TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.KeyConflict,
+    [ShortCutToText(AShortCut), mHolder, AWhat]));
   MarkReported(AShortCut);
 end;
 
@@ -488,7 +489,7 @@ begin
       Continue;
     end;
     FForeignReported := FForeignReported + [mExtension];
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ForeignCompletion, [mExtension]));
+    TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.ForeignCompletion, [mExtension]));
   end;
 end;
 

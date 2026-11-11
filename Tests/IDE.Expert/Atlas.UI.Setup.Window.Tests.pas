@@ -45,6 +45,7 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Strings,
+  Atlas.UI.Setup.Strings,
   Atlas.UI.Setup.Window;
 
 var
@@ -129,8 +130,8 @@ begin
         'Knopf genau bei gelb oder rot: ' + IntToStr(Index));
     end;
     Assert.AreEqual('Jetzt aufbauen', Window.FixButtons[3].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupCopy), Window.CopyButton.Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupRecheck), Window.RecheckButton.Caption);
+    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopy), Window.CopyButton.Caption);
+    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupRecheck), Window.RecheckButton.Caption);
   finally
     Window.Free;
   end;
@@ -196,7 +197,7 @@ begin
     Assert.AreEqual('Warum?', Window.FixButtons[1].Caption);
     Window.FixButtons[1].Click;
     Assert.IsFalse(Called, '„Warum?“ erklärt nur');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupWhyDelphiNoProject), Window.Note);
+    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyDelphiNoProject), Window.Note);
     Assert.IsTrue(Window.ClientHeight > Height_, 'Platz für die Erklärung');
   finally
     Window.Free;

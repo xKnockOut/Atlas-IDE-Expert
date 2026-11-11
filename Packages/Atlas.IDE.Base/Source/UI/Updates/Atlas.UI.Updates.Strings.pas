@@ -19,14 +19,14 @@ type
     UpdatesOfferChanges, UpdatesOfferLater, UpdatesReadyText, UpdatesReadyModules, UpdatesReadyDiscard,
     UpdatesStagePreparing, UpdatesStageBuilding, UpdatesStageReady, UpdatesStageChoose, UpdatesStageFailed,
     UpdatesPreparedMessage, UpdatesChooseMessage, UpdatesPrepareFailedMessage, UpdatesBlockedMessage,
-    UpdatesBlockedGetIt, UpdatesBlockedNoUpdater, UpdatesBlockedFolder, UpdatesSelectionTitle,
-    UpdatesSelectionText, UpdatesSelectionNew, UpdatesSelectionRequired, UpdatesSelectionApply,
-    UpdatesSelectionCancel, UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved,
-    UpdatesOutcomeRolledBack, UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest,
-    UpdatesErrorVersion, UpdatesErrorNoPackage, UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash,
-    UpdatesErrorArchive, UpdatesErrorUnsigned, UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked,
-    UpdatesErrorCopy, UpdatesErrorRegistry, UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection,
-    UpdatesErrorUnexpected, UpdatesErrorStart, UpdatesCheckFailedMessage);
+    UpdatesBlockedGetIt, UpdatesBlockedNoUpdater, UpdatesBlockedFolder, UpdatesSelectionTitle, UpdatesSelectionText,
+    UpdatesSelectionNew, UpdatesSelectionRequired, UpdatesSelectionApply, UpdatesSelectionCancel,
+    UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved, UpdatesOutcomeRolledBack,
+    UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest, UpdatesErrorVersion, UpdatesErrorNoPackage,
+    UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash, UpdatesErrorArchive, UpdatesErrorUnsigned,
+    UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
+    UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection, UpdatesErrorUnexpected, UpdatesErrorStart,
+    UpdatesCheckFailedMessage);
 
   TAtlasUpdatesStrings = class
   public

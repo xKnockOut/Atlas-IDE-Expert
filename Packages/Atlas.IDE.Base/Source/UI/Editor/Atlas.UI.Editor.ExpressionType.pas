@@ -43,7 +43,7 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
-    /// <summary>Texte des Tooltips aus Atlas.UI.Strings; AKey ist das Kürzel als Text ('' = keine Zeile zum
+    /// <summary>Texte des Tooltips aus Atlas.UI.Editor.Strings; AKey ist das Kürzel als Text ('' = keine Zeile zum
     /// Erweitern).</summary>
     class function Texts(const AKey: string): TAtlasExpressionTypeTexts; static;
     /// <summary>Zeigt ARows unter APoint (Bildschirm).</summary>
@@ -64,6 +64,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -82,20 +83,20 @@ end;
 class function TAtlasExpressionTypeTip.Texts(const AKey: string): TAtlasExpressionTypeTexts;
 begin
   Result := Default(TAtlasExpressionTypeTexts);
-  Result.Value := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeValue);
-  Result.Widen := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeWiden);
-  Result.Convert := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeConvert);
-  Result.Overload := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeOverload);
-  Result.NoExpression := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeNoExpression);
-  Result.UnknownName := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeUnknownName);
-  Result.OperatorMismatch := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeOperator);
-  Result.OperatorUnary := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeOperatorUnary);
-  Result.NoResult := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeNoResult);
-  Result.Unknown := TAtlasStrings.Text(TAtlasTextId.ExpressionTypeUnknown);
+  Result.Value := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeValue);
+  Result.Widen := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeWiden);
+  Result.Convert := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeConvert);
+  Result.Overload := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOverload);
+  Result.NoExpression := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeNoExpression);
+  Result.UnknownName := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeUnknownName);
+  Result.OperatorMismatch := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOperator);
+  Result.OperatorUnary := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOperatorUnary);
+  Result.NoResult := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeNoResult);
+  Result.Unknown := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeUnknown);
   Result.Expand := '';
   if AKey <> '' then
   begin
-    Result.Expand := TAtlasStrings.Fmt(TAtlasTextId.ExpressionTypeExpand, [AKey]);
+    Result.Expand := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExpressionTypeExpand, [AKey]);
   end;
 end;
 

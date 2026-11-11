@@ -47,6 +47,7 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Undo.Contract,
   Atlas.UI.Strings,
+  Atlas.UI.Undo.Strings,
   Atlas.UI.Undo.Messages,
   Atlas.UI.Undo.DiffView,
   Atlas.UI.Results.Frame;
@@ -113,10 +114,10 @@ begin
   Lines := TAtlasUndoMessages.Report(Report);
   Assert.AreEqual(5, Integer(Length(Lines)));
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoPartial, ['Code-Aktion', 1, 4]), Lines[0]);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoConflictChanged, ['C:\P\B.pas']), Lines[1]);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoConflictExists, ['C:\P\C.pas']), Lines[2]);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoConflictMissing, ['C:\P\D.pas']), Lines[3]);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoFailed, ['C:\P\E.pas', 'schreibgeschützt']), Lines[4]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictChanged, ['C:\P\B.pas']), Lines[1]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictExists, ['C:\P\C.pas']), Lines[2]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictMissing, ['C:\P\D.pas']), Lines[3]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoFailed, ['C:\P\E.pas', 'schreibgeschützt']), Lines[4]);
   Report.Redo := True;
   Lines := TAtlasUndoMessages.Report(Report);
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, ['Code-Aktion', 1, 4]), Lines[0]);
@@ -142,7 +143,7 @@ begin
   Report.Disabled := True;
   Lines := TAtlasUndoMessages.Report(Report);
   Assert.AreEqual(1, Integer(Length(Lines)));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UndoDisabled), Lines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoDisabled), Lines[0]);
 
   Report := Default(TAtlasUndoReport);
   Report.NotFound := True;
@@ -158,19 +159,20 @@ var
 begin
   ChangeSet := SampleSet(False);
   Caption := TAtlasUndoMessages.SetCaption(ChangeSet, EncodeDateTime(2026, 10, 14, 18, 0, 0, 0));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoSetCaption, [ChangeSet.Action, 2, '14:03',
-    TAtlasStrings.Text(TAtlasTextId.UndoStateApplied)]), Caption);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoSetCaption, [ChangeSet.Action, 2, '14:03',
+    TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateApplied)]), Caption);
   // Von einem anderen Tag: mit Datum.
   Caption := TAtlasUndoMessages.SetCaption(SampleSet(True), EncodeDateTime(2026, 10, 15, 9, 0, 0, 0));
   Assert.Contains(Caption, '14.10. 14:03');
-  Assert.Contains(Caption, TAtlasStrings.Text(TAtlasTextId.UndoStateUndone));
+  Assert.Contains(Caption, TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone));
   ChangeSet.Files[0].Undone := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UndoStatePartly), TAtlasUndoMessages.StateText(ChangeSet.State));
+  Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStatePartly),
+    TAtlasUndoMessages.StateText(ChangeSet.State));
 
   Assert.AreEqual('A.pas (C:\P)', TAtlasUndoMessages.FileCaption(SampleSet(False).Files[0]));
-  Assert.AreEqual('B.pas (C:\P) · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindCreated),
+  Assert.AreEqual('B.pas (C:\P) · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindCreated),
     TAtlasUndoMessages.FileCaption(SampleSet(False).Files[1]));
-  Assert.AreEqual('A.pas (C:\P) · ' + TAtlasStrings.Text(TAtlasTextId.UndoStateUndone),
+  Assert.AreEqual('A.pas (C:\P) · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone),
     TAtlasUndoMessages.FileCaption(SampleSet(True).Files[0]));
 end;
 
@@ -188,7 +190,7 @@ begin
   Lines := TAtlasUndoMessages.DiffLines(SampleSet(False), '');
   Joined := string.Join(#10, Lines);
   Assert.Contains(Joined, '=== A.pas (C:\P) ===');
-  Assert.Contains(Joined, '=== B.pas (C:\P) · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindCreated) + ' ===');
+  Assert.Contains(Joined, '=== B.pas (C:\P) · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindCreated) + ' ===');
   Assert.Contains(Joined, '+ unit B;');
   Assert.Contains(Joined, #10#10'===');
   Assert.AreEqual(0, Integer(Length(TAtlasUndoMessages.DiffLines(SampleSet(False), 'C:\P\X.pas'))));

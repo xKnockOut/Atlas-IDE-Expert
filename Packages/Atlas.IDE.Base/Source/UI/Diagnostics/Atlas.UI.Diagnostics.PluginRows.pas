@@ -40,7 +40,8 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 const
   cNoValue = '–';
@@ -245,10 +246,10 @@ begin
   SetLength(Result, Length(AHangs));
   for mIndex := 0 to High(AHangs) do
   begin
-    mWithAtlas := TAtlasStrings.Text(TAtlasTextId.DiagNo);
+    mWithAtlas := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagNo);
     if AHangs[mIndex].WithAtlas then
     begin
-      mWithAtlas := TAtlasStrings.Text(TAtlasTextId.DiagYes);
+      mWithAtlas := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagYes);
     end;
     Result[mIndex].Cells := Cells([TextOrDash(AHangs[mIndex].Activity), TAtlasPluginRows.Clock(AHangs[mIndex].At),
       IntToStr(AHangs[mIndex].DurationMs), mWithAtlas]);

@@ -28,7 +28,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.FeatureTable,
@@ -348,7 +348,8 @@ begin
   begin
     mParts := ': ' + mParts;
   end;
-  MessageLine(TAtlasStrings.Fmt(TAtlasTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total, mParts]));
+  MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total,
+    mParts]));
 end;
 
 procedure ReportStartup(ALoadMs: Int64);

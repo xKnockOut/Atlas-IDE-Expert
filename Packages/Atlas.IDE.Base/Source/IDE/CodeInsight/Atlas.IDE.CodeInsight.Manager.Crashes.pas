@@ -50,6 +50,7 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Status.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -121,7 +122,7 @@ begin
     Exit;
   end;
   mCause := TAtlasServerExits.Describe(ACode);
-  SetPhase(TAtlasServerPhase.Stopped, TAtlasStrings.Fmt(TAtlasTextId.ServerHeldPhase, [mCause]));
+  SetPhase(TAtlasServerPhase.Stopped, TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ServerHeldPhase, [mCause]));
   mManager := Self;
   mActions := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.StatusRestartServer),
     procedure
@@ -138,8 +139,9 @@ begin
   end;
   mActions := mActions + LogActions;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Error,
-    TAtlasStrings.Text(TAtlasTextId.ServerHeldTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.ServerHeldText, [mCause, TAtlasServerCrashes.cWindowMinutes]), mActions);
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.ServerHeldTitle),
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ServerHeldText, [mCause, TAtlasServerCrashes.cWindowMinutes]),
+    mActions);
 end;
 
 procedure TAtlasCodeInsightCrashes.AcceptNotifications(ASession: TLspSession);
@@ -216,8 +218,8 @@ procedure TAtlasCodeInsightCrashes.CrashCaseSaved(const ACase: TAtlasCrashCase);
 begin
   Diagnose('Absturzfall gesichert: ' + ACase.Summary);
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning,
-    TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.CrashCaseText, [TAtlasCrashCases.SummaryText(ACase)]),
+    TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle),
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashCaseText, [TAtlasCrashCases.SummaryText(ACase)]),
     TAtlasServerHandlers.CrashActions(ACase, FOnCrashIssue));
 end;
 
@@ -260,14 +262,17 @@ begin
   if ASkip.Active then
   begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Warning,
-      TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipText,
+      TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashSkipTitle),
+      TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashSkipText,
       [ASkip.Method, mName, ASkip.Crashes, ASkip.ExceptionClass]),
-      [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashRetry), RetryAction(ASkip.Uri))]);
+      [TAtlasNotificationCenter.Action(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashRetry),
+      RetryAction(ASkip.Uri))]);
   end
   else
   begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer, TAtlasNotificationSeverity.Info,
-      TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipEnded,
+      TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashSkipTitle),
+      TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.CrashSkipEnded,
       [ASkip.Method, mName]), LogActions);
   end;
   ServerChanged;

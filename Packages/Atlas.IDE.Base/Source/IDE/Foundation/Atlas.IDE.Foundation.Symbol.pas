@@ -44,7 +44,7 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.UI.Foundation.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.EditorStyle;
 
@@ -75,7 +75,7 @@ var
 
 function Title: string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolTitle, [TAtlasPluginVersion.cVersion]);
+  Result := TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.SymbolTitle, [TAtlasPluginVersion.cVersion]);
 end;
 
 /// <summary>Ein Durchlauf AMs nach der Meldung; die Zeile im Protokoll zeigt, welches Thema die IDE da liefert.
@@ -179,7 +179,8 @@ begin
     Exit;
   end;
   mBitmap := TAtlasSymbolImages.Bitmap(TAtlasIdeSymbol.Current, TAtlasSymbol.cAboutSize, Screen.PixelsPerInch);
-  AboutIndex := mServices.AddPluginInfo(Title, TAtlasStrings.Text(TAtlasTextId.SymbolDescription), mBitmap);
+  AboutIndex := mServices.AddPluginInfo(Title, TAtlasFoundationStrings.Text(TAtlasFoundationTextId.SymbolDescription),
+    mBitmap);
 end;
 
 procedure AddImages;

@@ -65,7 +65,7 @@ uses
   System.IOUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Undo.Names,
-  Atlas.UI.Strings,
+  Atlas.UI.Undo.Strings,
   Atlas.UI.Undo.Messages,
   Atlas.UI.Undo.DiffView,
   Atlas.UI.Results.Frame,
@@ -268,7 +268,8 @@ begin
   mFrame := TAtlasIdeResultsWindow.ExistingFrame;
   if (FJournal <> nil) and (mFrame <> nil) and mFrame.Changes.Shows then
   begin
-    mFrame.Changes.Show(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now, True);
+    mFrame.Changes.Show(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now,
+      True);
   end;
 end;
 
@@ -280,7 +281,7 @@ begin
   end;
   if not FJournal.Options.Enabled then
   begin
-    Say([TAtlasStrings.Text(TAtlasTextId.UndoDisabled)]);
+    Say([TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoDisabled)]);
     Exit;
   end;
   TAtlasIdeResultsWindow.OnChangeUndo :=
@@ -298,7 +299,7 @@ begin
     begin
       ShowDiff(ASetId, AFileName);
     end;
-  TAtlasIdeResultsWindow.ShowChanges(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]),
+  TAtlasIdeResultsWindow.ShowChanges(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoListTitle, [FJournal.Count]),
     FJournal.Sets);
 end;
 
@@ -310,7 +311,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasUndoDiffView.Execute(TAtlasStrings.Fmt(TAtlasTextId.UndoDiffTitle, [mChangeSet.Action]),
+  TAtlasUndoDiffView.Execute(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoDiffTitle, [mChangeSet.Action]),
     TAtlasUndoMessages.DiffLines(mChangeSet, AFileName));
 end;
 

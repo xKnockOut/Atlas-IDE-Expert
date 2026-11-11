@@ -66,7 +66,7 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.UI.Status.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.UI.Status.ServerFrame,
   Atlas.IDE.Foundation.Settings,
@@ -207,7 +207,7 @@ end;
 
 function TServerDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.ServerWindowCaption);
+  Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowCaption);
 end;
 
 function TServerDock.GetIdentifier: string;
@@ -348,8 +348,9 @@ begin
   FShownRunning := mRunning;
   FShownRestarts := mRestarts;
   mFrame.SetSnapshot(TAtlasServerSnapshot.Parse(mJson), mRunning, mRestarts);
-  mFrame.ShowNote(TAtlasStrings.Fmt(TAtlasTextId.ServerWindowUpdated, [FormatDateTime('hh":"nn":"ss', Now)]) +
-    ' · ' + TAtlasStrings.Text(TAtlasTextId.ServerWindowHint));
+  mFrame.ShowNote(TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowUpdated, [FormatDateTime('hh":"nn":"ss',
+    Now)]) +
+    ' · ' + TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint));
 end;
 
 { TAtlasIdeServerWindow }

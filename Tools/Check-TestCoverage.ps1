@@ -62,7 +62,6 @@ $Exempt = @{
     'Atlas.Windows.Process.ParentWatcher'               = 'wartet auf das Ende des Elternprozesses'
     'Atlas.Windows.Console.StdStreams'                  = 'Handles der Konsole (stdin/stdout)'
     'Atlas.Core.Files.Adapters.FolderWatcher'           = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
-    'Atlas.Core.Files.Contract'                         = 'nur Typen, ohne Logik'
     'Atlas.Core.Results.CallDiagramTemplate'            = 'erzeugt; Update-ArchitectureMap.ps1 prüft sie gegen Aufrufdiagramm.html'
     'Atlas.Core.Updates.Adapters.HttpSource'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Core.Updates'
     'Atlas.Core.Ci.Adapters.Http'                       = 'HTTP-Zugriff; die Anbieter testen Atlas.Core.Ci.Providers.*'

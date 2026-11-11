@@ -75,7 +75,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.PluginReport,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows;
 
 {$R *.dfm}
@@ -99,7 +99,7 @@ begin
   FFooter.Font.Color := clGrayText;
   FOffNote := NewLabel(alTop);
   FOffNote.WordWrap := True;
-  FOffNote.Caption := TAtlasStrings.Text(TAtlasTextId.DiagPluginOff);
+  FOffNote.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagPluginOff);
   FMain := TAtlasMainThreadPage.Create(Self);
   Place(FMain);
   FServer := TAtlasTablePage.CreatePage(Self, False);
@@ -203,7 +203,7 @@ begin
   FMain.SetSnapshot(ASnapshot);
   FServer.Grid.SetRows(TAtlasPluginGridRows.Requests(TAtlasPluginRows.Requests(ASnapshot), ASnapshot.ThresholdMs));
   FBackground.Grid.SetRows(TAtlasPluginGridRows.Sources(TAtlasPluginRows.Sources(ASnapshot)));
-  FBackground.Header.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagWorkers, [AWorkers]);
+  FBackground.Header.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagWorkers, [AWorkers]);
   mHangs := TAtlasPluginRows.Hangs(ASnapshot);
   FHangs.Grid.SetRows(TAtlasPluginGridRows.Hangs(mHangs));
   mWithAtlas := 0;
@@ -214,14 +214,16 @@ begin
       Inc(mWithAtlas);
     end;
   end;
-  FHangs.Header.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagHangSummary, [Length(mHangs), mWithAtlas]);
-  mFooter := TAtlasStrings.Fmt(TAtlasTextId.DiagSince, [FormatDateTime('hh":"nn":"ss', ASnapshot.Since),
+  FHangs.Header.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagHangSummary, [Length(mHangs),
+    mWithAtlas]);
+  mFooter := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagSince, [FormatDateTime('hh":"nn":"ss',
+    ASnapshot.Since),
     Length(ASnapshot.Features)]);
   if ASnapshot.Paused then
   begin
-    mFooter := mFooter + ' · ' + TAtlasStrings.Text(TAtlasTextId.DiagPaused);
+    mFooter := mFooter + ' · ' + TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagPaused);
   end;
-  FFooter.Caption := mFooter + ' · ' + TAtlasStrings.Text(TAtlasTextId.DiagHint);
+  FFooter.Caption := mFooter + ' · ' + TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagHint);
 end;
 
 procedure TAtlasDiagnosticsFrame.SetColors(const AColors: TAtlasColors);
@@ -237,7 +239,8 @@ end;
 
 procedure TAtlasDiagnosticsFrame.FeatureDisabled(AFeature: TAtlasFeature);
 begin
-  FBar.ShowNote(TAtlasStrings.Fmt(TAtlasTextId.DiagDisabled, [TAtlasGuard.FeatureName(AFeature)]));
+  FBar.ShowNote(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagDisabled,
+    [TAtlasGuard.FeatureName(AFeature)]));
 end;
 
 end.

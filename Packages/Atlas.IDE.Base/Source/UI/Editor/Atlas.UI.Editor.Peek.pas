@@ -77,6 +77,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Popup.Accessibility;
 
@@ -262,7 +263,7 @@ begin
   Canvas.LineTo(ClientWidth, mArea.Bottom);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(UIFont);
-  mKeysHint := TAtlasStrings.Text(TAtlasTextId.PeekKeysHint);
+  mKeysHint := TAtlasEditorStrings.Text(TAtlasEditorTextId.PeekKeysHint);
   Canvas.Font.Color := ToColor(Colors.Muted);
   mHintWidth := Canvas.TextWidth(mKeysHint);
   mArea.Inflate(-Scale(cPad), 0);
@@ -393,7 +394,8 @@ begin
   Canvas.LineTo(ARect.Right - Scale(cPad), ARect.CenterPoint.Y);
   Canvas.Font.Assign(UIFont);
   Canvas.Font.Color := ToColor(Colors.Muted);
-  mValue := ' ' + TAtlasStrings.Fmt(TAtlasTextId.PeekImplementation, [ExtractFileName(ARow.FileName), ARow.Line + 1]) +
+  mValue := ' ' + TAtlasEditorStrings.Fmt(TAtlasEditorTextId.PeekImplementation, [ExtractFileName(ARow.FileName),
+    ARow.Line + 1]) +
     ' ';
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);

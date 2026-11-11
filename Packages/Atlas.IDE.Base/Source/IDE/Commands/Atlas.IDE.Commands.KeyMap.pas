@@ -112,6 +112,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Keys,
@@ -639,7 +640,7 @@ var
   mItem: TAtlasKeyItem;
 begin
   mItem := TAtlasKeyItem.Create(AKey, ShortCutToText(TShortCut(AKey)),
-    TAtlasStrings.Text(TAtlasTextId.KeyMapEditorBinding), TAtlasKeyProvenance.Create(AOrigin, AName,
+    TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapEditorBinding), TAtlasKeyProvenance.Create(AOrigin, AName,
     TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(AKey), AOrder));
   mItem.Effective := True;
   AItems.Add(mItem);
@@ -1047,7 +1048,7 @@ begin
     TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
   except
     on E: Exception do
-      TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyMapExportFailed, [E.ClassName]));
+      TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapExportFailed, [E.ClassName]));
   end;
 end;
 
@@ -1149,9 +1150,9 @@ begin
     end
     else
     begin
-      mWinner := TAtlasStrings.Text(TAtlasTextId.KeyMapNobody);
+      mWinner := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNobody);
     end;
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.KeyMapStartConflict,
+    TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapStartConflict,
       [mItems[mIndex].KeyText, mItems[mIndex].Command, mItems[mPartner].Holder, mWinner]));
     TAtlasIdeKeys.MarkReported(mItems[mIndex].ShortCut);
   end;

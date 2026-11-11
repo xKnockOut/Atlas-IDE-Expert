@@ -38,6 +38,7 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.ClassExtraction,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
@@ -56,11 +57,11 @@ function TitleOf(AModel: TAtlasClassExtractionModel): string;
 begin
   if AModel.Source.Direction = 'down' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveDownTitle, [AModel.Source.MemberName]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveDownTitle, [AModel.Source.MemberName]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveUpTitle, [AModel.Source.MemberName]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveUpTitle, [AModel.Source.MemberName]);
   end;
 end;
 
@@ -107,17 +108,17 @@ begin
   end;
   if mReply.Edit.IsEmpty or (mMoved = 0) then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.MoveMemberNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveMemberNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, override, uses) im Hinweis.
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.MoveMemberPreviewHint, [mMoved, mReply.Edit.EditCount,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveMemberPreviewHint, [mMoved, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
-  mApply := TAtlasStrings.Text(TAtlasTextId.MoveMemberApply);
+  mApply := TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveMemberApply);
   if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
     TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberDone, [mMoved, mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveMemberDone, [mMoved, mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);
     if mTargetFile <> '' then
     begin
