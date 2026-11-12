@@ -4,6 +4,8 @@
 // doppelt belegte Kürzel rot mit Hinweis auf den Gewinner, Suche nach Taste
 // und „Nur Konflikte“, Knöpfe und HTML-Export der gezeigten Zeilen; Spalte
 // „Selten per Tastatur“ aus der Zählung der Tastenkürzel-Tipps (#600).
+// Das Fenster ist ein Atlas-Dialog ohne eigene Farben (Thema der IDE), die
+// Spalte „Hinweis“ füllt die übrige Breite.
 
 interface
 
@@ -35,13 +37,18 @@ type
     procedure FunctionCaptionsWithoutPunctuation;
     [Test]
     procedure RarelyByKeyboardColumn;
+    [Test]
+    procedure ThemedDialogWithFillingHintColumn;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Palette,
+  Vcl.Graphics,
+  Vcl.Forms,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Foundation.Theme,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
   Atlas.UI.Strings,
@@ -100,7 +107,7 @@ var
   Window: TAtlasKeyMapWindow;
   Cells: TArray<string>;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil, TAtlasColors.Light);
+  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
     Window.SetItems(Sample);
     Assert.AreEqual(4, Integer(Length(Window.Shown)));
@@ -145,7 +152,7 @@ procedure TAtlasKeyMapWindowTests.SearchByKeyAndOnlyConflicts;
 var
   Window: TAtlasKeyMapWindow;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil, TAtlasColors.Dark);
+  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
     Window.SetItems(Sample);
     Window.SetQuery('Strg+Umschalt+P');
@@ -175,7 +182,7 @@ begin
   Exported := 0;
   Settings := 0;
   Refreshed := 0;
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil, TAtlasColors.Light);
+  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
     Window.OnExport :=
       procedure
@@ -211,7 +218,7 @@ var
   Window: TAtlasKeyMapWindow;
   Html: string;
 begin
-  Window := TAtlasKeyMapWindow.CreateKeyMap(nil, TAtlasColors.Light);
+  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
   try
     Window.SetItems(Sample);
     Html := Window.ExportHtml('15.10.2026 12:00');
@@ -258,6 +265,33 @@ begin
   Items[0].MouseUses := 2;
   Items[0].KeyUses := 0;
   Assert.IsFalse(Items[0].RarelyByKeyboard);
+end;
+
+procedure TAtlasKeyMapWindowTests.ThemedDialogWithFillingHintColumn;
+var
+  Window: TAtlasKeyMapWindow;
+  Fixed, Index: Integer;
+begin
+  Window := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  try
+    Assert.IsTrue(Window is TAtlasDialog, 'Thema über den Atlas-Dialog');
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(Window), 'folgt dem Themenwechsel');
+    Assert.AreEqual(Integer(clBtnFace), Integer(Window.Color), 'keine eigene Fensterfarbe');
+    Assert.AreEqual(Integer(clWindow), Integer(Window.List.Color), 'keine eigene Listenfarbe');
+    Assert.IsTrue(Window.BorderStyle = bsSizeable, 'Größe ziehbar');
+    Window.SetItems(Sample);
+    Fixed := 0;
+    for Index := 0 to Window.List.Columns.Count - 2 do
+    begin
+      Inc(Fixed, Window.List.Columns[Index].Width);
+    end;
+    Assert.AreEqual(Window.List.ClientWidth - Fixed, Integer(Window.List.Columns[5].Width),
+      'Hinweis nimmt die übrige Breite');
+    Window.Width := Window.Width + 200;
+    Assert.AreEqual(Window.List.ClientWidth - Fixed, Integer(Window.List.Columns[5].Width), 'wächst mit');
+  finally
+    Window.Free;
+  end;
 end;
 
 /// <summary>Jede Funktion hat eine eigene, nicht leere Beschriftung ohne Doppelpunkt oder Auslassung.</summary>

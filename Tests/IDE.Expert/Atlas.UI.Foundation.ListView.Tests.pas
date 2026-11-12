@@ -2,7 +2,8 @@
 
 // Liste der Atlas-Fenster (#2063): Spaltenbreiten in logischen Pixeln, nach
 // einem DPI-Wechsel genau einmal skaliert (nicht doppelt), Sonderbreiten
-// unverändert, Berichtsansicht ohne eigene Farben.
+// unverändert, Berichtsansicht ohne eigene Farben; die füllende Spalte nimmt
+// die übrige Breite und wächst mit der Liste.
 
 interface
 
@@ -32,6 +33,8 @@ type
     procedure AutoSizeWidthsStay;
     [Test]
     procedure ReportViewWithoutOwnColors;
+    [Test]
+    procedure FillColumnTakesRestAndKeepsMinimum;
   end;
 
 implementation
@@ -109,6 +112,29 @@ procedure TAtlasListViewTests.ReportViewWithoutOwnColors;
 begin
   Assert.IsTrue(FList.ViewStyle = vsReport);
   Assert.AreEqual(Integer(clWindow), Integer(FList.Color));
+end;
+
+procedure TAtlasListViewTests.FillColumnTakesRestAndKeepsMinimum;
+var
+  mFixed: Integer;
+begin
+  FList.AddColumn('Taste', 100);
+  FList.AddColumn('Befehl', 120);
+  FList.AddColumn('Hinweis', 50);
+  mFixed := FList.Columns[0].Width + FList.Columns[1].Width;
+  FList.FillColumn(2, 80);
+  Assert.AreEqual(FList.ClientWidth - mFixed, Integer(FList.Columns[2].Width), 'übrige Breite');
+  // Breiter: die Spalte wächst mit.
+  FForm.Width := 900;
+  Assert.AreEqual(FList.ClientWidth - mFixed, Integer(FList.Columns[2].Width), 'wächst mit dem Fenster');
+  // Zu schmal: Mindestbreite, die anderen Spalten bleiben.
+  FForm.Width := 200;
+  Assert.AreEqual(TAtlasScaling.ToDevice(80, FList.CurrentPPI), Integer(FList.Columns[2].Width), 'Mindestbreite');
+  Assert.AreEqual(TAtlasScaling.ToDevice(100, FList.CurrentPPI), Integer(FList.Columns[0].Width));
+  // Abgeschaltet: Breite bleibt beim Größenwechsel.
+  FList.FillColumn(-1, 0);
+  FForm.Width := 700;
+  Assert.AreEqual(TAtlasScaling.ToDevice(80, FList.CurrentPPI), Integer(FList.Columns[2].Width), 'ohne Füllen fest');
 end;
 
 initialization
