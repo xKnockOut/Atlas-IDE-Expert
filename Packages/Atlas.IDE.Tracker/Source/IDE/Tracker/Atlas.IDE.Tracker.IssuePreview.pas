@@ -796,7 +796,7 @@ var
 begin
   mKeep := Self;
   FComments.Unbind;
-  AFrame.ApplyColors(TAtlasIdeStyle.Colors);
+  AFrame.ApplyColors(TAtlasIdeStyle.WindowColorsIf(TAtlasIdeSettings.Current.IssuesIdeColors));
   ApplyMonoFont(AFrame);
   mEvents := Default(TAtlasIssueFrameEvents);
   AddMoveEvents(Self, mKeep, mEvents);

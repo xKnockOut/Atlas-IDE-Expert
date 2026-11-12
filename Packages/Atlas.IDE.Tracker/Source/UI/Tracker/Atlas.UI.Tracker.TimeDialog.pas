@@ -169,6 +169,9 @@ begin
   AddKind;
   mRow := AddText;
   AddButtons(mRow.Top + mRow.Height + 1);
+  // Größer ziehen: Arbeitstyp wird breiter, die Beschreibung nimmt die Höhe auf.
+  FitRight(FParts.WorkType);
+  AllowResize(FParts.Text);
   ActiveControl := FParts.Duration;
 end;
 

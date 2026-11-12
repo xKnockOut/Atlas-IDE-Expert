@@ -190,7 +190,8 @@ type
     TrackerReviewTestsDone, TrackerReviewTestsFailed, TrackerReviewTestsSkipped, TrackerReviewResult,
     TrackerReviewComment, TrackerReviewBack, TrackerReviewLater, TrackerReviewSend, TrackerReviewSendBack,
     TrackerReviewDone, TrackerReviewBackDone, TrackerReviewBackFailed, TrackerReviewBusy, TrackerReviewNoVcs,
-    SettingsIssuesReviewBuild, SettingsIssuesReviewComment);
+    SettingsIssuesReviewBuild, SettingsIssuesReviewComment,
+    IssuePreviewDescription, SettingsIssuesIdeColors);
 
   TAtlasTrackerStrings = class
   public
@@ -1016,7 +1017,9 @@ const
      'Es läuft schon eine Prüfung (%s).',
      '„Prüfen“ braucht Git oder SVN im Projekt.',
      'Beim Prüfen bauen und betroffene Tests ausführen',
-     'Kommentar beim Prüfen:'),
+     'Kommentar beim Prüfen:',
+     'Beschreibung',
+     'Issue-Fenster und Board in den Farben des IDE-Themas'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1821,7 +1824,9 @@ const
      'A review is already running (%s).',
      '“Review” needs Git or SVN in the project.',
      'Build and run affected tests when reviewing',
-     'Comment when reviewing:'));
+     'Comment when reviewing:',
+     'Description',
+     'Issue window and board in the colors of the IDE theme'));
 
 { TAtlasTrackerStrings }
 

@@ -824,6 +824,16 @@ begin
   Assert.AreEqual(Face, Colors.Gutter);
   Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar (hell)');
   Assert.AreNotEqual(Face, Colors.Selection, 'Auswahl abgesetzt');
+  // Fenster mit Inhalt: Fläche aus dem Thema, Gutter leicht abgesetzt.
+  Face := TAtlasColorMath.FromHex('#36414A');
+  Text := TAtlasColorMath.FromHex('#E3E7ED');
+  Colors := TAtlasColors.ForWindow(Face, Text);
+  Assert.IsTrue(Colors.IsDark);
+  Assert.AreEqual(Face, Colors.Surface, 'Fläche des Themas statt der festen Palette');
+  Assert.AreEqual(Text, Colors.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(Text, Face, cAtlasMixWindowGutter), Colors.Gutter);
+  Assert.AreNotEqual(Face, Colors.Gutter, 'Gutter abgesetzt');
+  Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar (Fenster)');
 end;
 
 { TAtlasWrapTests }

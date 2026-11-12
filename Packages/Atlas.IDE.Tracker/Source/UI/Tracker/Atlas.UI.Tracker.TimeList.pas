@@ -117,6 +117,8 @@ begin
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
+  // Größer ziehen: Die Liste nimmt die Höhe auf.
+  AllowResize(FList);
   UpdateButtons;
 end;
 

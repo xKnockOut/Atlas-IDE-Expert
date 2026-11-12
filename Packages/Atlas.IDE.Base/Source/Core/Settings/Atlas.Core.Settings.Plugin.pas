@@ -1206,6 +1206,7 @@ type
     property IssuesBoardConfirmMove: Boolean read FIssueWork.IssuesBoardConfirmMove
       write FIssueWork.IssuesBoardConfirmMove;
     property IssuesBoardOnlyMine: Boolean read FIssueWork.IssuesBoardOnlyMine write FIssueWork.IssuesBoardOnlyMine;
+    property IssuesIdeColors: Boolean read FIssueWork.IssuesIdeColors write FIssueWork.IssuesIdeColors;
     property IssuesSprintBurndown: Boolean read FIssueWork.IssuesSprintBurndown write FIssueWork.IssuesSprintBurndown;
     property IssuesSprintCompare: Boolean read FIssueWork.IssuesSprintCompare write FIssueWork.IssuesSprintCompare;
     property IssuesPaletteSearch: Boolean read FIssueWork.IssuesPaletteSearch write FIssueWork.IssuesPaletteSearch;

@@ -4,7 +4,8 @@
 // von Hand: Vorschläge und Vorgabe des Zielzustands, Änderung aus den
 // Feldern, „Senden“ ohne etwas zu schreiben, Fehler im Dialog mit dem Text
 // des Trackers (400/401/403/404, Zeitlimit) und die Zeile der Meldungsansicht;
-// unter einer Zustandsmaschine (#2122) nur die erlaubten Übergänge.
+// unter einer Zustandsmaschine (#2122) nur die erlaubten Übergänge; größer
+// ziehen (#2131).
 
 interface
 
@@ -41,6 +42,8 @@ type
     procedure TransitionsUnderStateMachine;
     [Test]
     procedure SummaryTextWithTransition;
+    [Test]
+    procedure GrowsWithWindow;
   end;
 
 implementation
@@ -50,6 +53,7 @@ uses
   System.UITypes,
   Vcl.Controls,
   Vcl.StdCtrls,
+  Vcl.Forms,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Workflow,
@@ -321,6 +325,31 @@ begin
   Assert.AreEqual('Übergang „Beginnen“, mir zugewiesen', TAtlasTrackerEndDialog.SummaryText(mChange));
   Assert.AreEqual('Übergang „Beginnen“ → In Bearbeitung, mir zugewiesen',
     TAtlasTrackerEndDialog.SummaryText(mChange, 'In Bearbeitung'));
+end;
+
+procedure TAtlasTrackerEndDialogTests.GrowsWithWindow;
+const
+  cMore = 120;
+var
+  mDialog: TAtlasTrackerEndDialog;
+  mStateWidth, mEditorHeight, mSendTop: Integer;
+begin
+  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-1', Options('Erledigt'), '');
+  try
+    Assert.IsTrue(mDialog.BorderStyle = bsSizeable);
+    Assert.AreEqual(mDialog.Height, Integer(mDialog.Constraints.MinHeight), 'kleiner als gebaut geht nicht');
+    mStateWidth := mDialog.Parts.State.Width;
+    mEditorHeight := mDialog.Parts.Editor.Height;
+    mSendTop := mDialog.Parts.Send.Parent.Top;
+    mDialog.Width := mDialog.Width + mDialog.ScaleValue(cMore);
+    mDialog.Height := mDialog.Height + mDialog.ScaleValue(cMore);
+    Assert.AreEqual(mStateWidth + mDialog.ScaleValue(cMore), mDialog.Parts.State.Width, 'Zielzustand breiter');
+    Assert.AreEqual(mDialog.Parts.State.Width, mDialog.Parts.Assignee.Width, 'Zuständig gleich breit');
+    Assert.AreEqual(mEditorHeight + mDialog.ScaleValue(cMore), mDialog.Parts.Editor.Height, 'Kommentar höher');
+    Assert.AreEqual(mSendTop + mDialog.ScaleValue(cMore), mDialog.Parts.Send.Parent.Top, 'Knöpfe bleiben unten');
+  finally
+    mDialog.Free;
+  end;
 end;
 
 initialization
