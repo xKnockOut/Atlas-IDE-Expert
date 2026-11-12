@@ -18,6 +18,9 @@
 //   im Kontextmenü des Editors verteilt von Atlas.Core.Commands.MenuSlots). Der
 //   Befehl wird beim Klick über seine Id neu gesucht: Ein abgemeldetes Modul
 //   erreicht er nicht mehr (Regel 3).
+// - Name und Verb jedes Eintrags sind gültige Komponentennamen
+//   (TAtlasMenuSlots.MenuName): Die IDE übernimmt Name als TMenuItem.Name, ein
+//   Punkt darin ließ jeden Rechtsklick in der Projektverwaltung scheitern.
 // - Uninstall meldet den Notifier ab; danach baut die IDE kein Atlas-Menü
 //   mehr, und ein noch offenes Menü ruft nichts mehr auf.
 // Nur im Hauptthread verwenden.
@@ -52,8 +55,10 @@ uses
   Atlas.IDE.Foundation.Settings;
 
 const
+  // Name und Verb: nur Buchstaben und Ziffern (Komponentenname, siehe oben).
   cRootVerb = 'AtlasProjectMenu';
-  cGroupVerb = 'AtlasProjectMenu.Group';
+  cItemVerb = 'AtlasProjectMenuItem';
+  cGroupVerb = 'AtlasProjectMenuGroup';
   cCheckId = 'Atlas.ProjectCheck';
   // Weit unten im Menü, nach den Einträgen der IDE; die Abstände lassen Platz für Einträge darunter.
   cRootPosition = 9000000;
@@ -126,22 +131,33 @@ end;
 /// <summary>Dateien des Projekts (Units, Formulare, Ressourcen) aus der Projektverwaltung.</summary>
 function FilesOf(const AProject: IOTAProject): TArray<string>;
 var
-  mIndex: Integer;
+  mIndex, mCount: Integer;
   mInfo: IOTAModuleInfo;
+  mFileName: string;
 begin
   Result := nil;
   if AProject = nil then
   begin
     Exit;
   end;
-  for mIndex := 0 to AProject.GetModuleCount - 1 do
+  // Einmal in voller Größe anlegen: Projekte mit über 2000 Dateien, Anhängen je Datei kopierte jedes Mal alles.
+  SetLength(Result, AProject.GetModuleCount);
+  mCount := 0;
+  for mIndex := 0 to High(Result) do
   begin
     mInfo := AProject.GetModule(mIndex);
-    if (mInfo <> nil) and (mInfo.FileName <> '') then
+    if mInfo = nil then
     begin
-      Result := Result + [mInfo.FileName];
+      Continue;
+    end;
+    mFileName := mInfo.FileName;
+    if mFileName <> '' then
+    begin
+      Result[mCount] := mFileName;
+      Inc(mCount);
     end;
   end;
+  SetLength(Result, mCount);
 end;
 
 function ProjectFileOf(const AProject: IOTAProject): string;
@@ -197,7 +213,11 @@ var
   mIndex: Integer;
   mContext: IOTAProjectMenuContext;
   mPart: TAtlasProjectSelection;
+  mProject: IOTAProject;
+  mFiles: TArray<string>;
 begin
+  mProject := nil;
+  mFiles := nil;
   Result := Default(TAtlasProjectSelection);
   Result.Resolved := True;
   if AContexts = nil then
@@ -208,8 +228,13 @@ begin
   begin
     if Supports(AContexts[mIndex], IOTAProjectMenuContext, mContext) then
     begin
-      mPart := TAtlasProjectSelection.Resolve([mContext.GetIdent], ProjectFileOf(mContext.GetProject),
-        FilesOf(mContext.GetProject));
+      // Dateien je Projekt nur einmal lesen, auch wenn viele Knoten desselben Projekts gewählt sind.
+      if (mFiles = nil) or (mContext.GetProject <> mProject) then
+      begin
+        mProject := mContext.GetProject;
+        mFiles := FilesOf(mProject);
+      end;
+      mPart := TAtlasProjectSelection.Resolve([mContext.GetIdent], ProjectFileOf(mProject), mFiles);
       Result := TAtlasProjectSelection.Merge(Result, mPart);
     end;
   end;
@@ -268,7 +293,7 @@ begin
     begin
       mCaption := '-';
     end;
-    AMenus.Add(TProjectMenuItem.Create(mCaption, cRootVerb + '.' + IntToStr(APosition), AParent,
+    AMenus.Add(TProjectMenuItem.Create(mCaption, TAtlasMenuSlots.MenuName(cItemVerb, APosition), AParent,
       AEntries[mItem].Id, APosition));
   end;
 end;
@@ -316,7 +341,7 @@ begin
       Continue;
     end;
     Inc(mPosition, cPositionStep);
-    mVerb := cGroupVerb + IntToStr(mIndex);
+    mVerb := TAtlasMenuSlots.MenuName(cGroupVerb, mIndex);
     AMenus.Add(TProjectMenuItem.Create(mLayout.Groups[mIndex].Caption, mVerb, cRootVerb, '', mPosition));
     AddList(mLayout.Groups[mIndex], mEntries, mVerb, AMenus, mPosition);
   end;
