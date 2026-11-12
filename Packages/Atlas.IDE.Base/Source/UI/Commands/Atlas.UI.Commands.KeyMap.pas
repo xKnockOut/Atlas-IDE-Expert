@@ -11,6 +11,11 @@
 // Browser), „Tastenkonflikte…“ (OnSettings), „Aktualisieren“ (OnRefresh) und
 // „Schließen“. Das Fenster ist nicht modal und schließt mit Esc; es zeigt, was
 // SetItems bekommt (ausgewertet mit TAtlasKeyMap.Analyze).
+// Grundlage ist TAtlasDialog: Fläche, Liste und Knöpfe zeichnet das IDE-Thema,
+// auch nach einem Themenwechsel; eigene Farbe hat nur die Schrift der
+// Konflikte (Fehlerfarbe aus TAtlasUiTheme). Die Spalte „Hinweis“ nimmt die
+// übrige Breite der Liste (TAtlasListView.FillColumn) und wächst mit dem
+// Fenster.
 
 interface
 
@@ -23,13 +28,14 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Commands.KeyMap;
+  Atlas.Core.Commands.KeyMap,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Foundation.ListView;
 
 type
   /// <summary>Grundlage des Fensters: Texte der Spalten und Hinweise sowie die Ereignisse der Knöpfe.</summary>
-  TAtlasKeyMapForm = class(TForm)
+  TAtlasKeyMapForm = class(TAtlasDialog)
   private
     FOnExport: TProc;
     FOnSettings: TProc;
@@ -62,8 +68,13 @@ type
   end;
 
   TAtlasKeyMapWindow = class(TAtlasKeyMapForm)
+  public const
+    /// <summary>Innenbreite und -höhe beim Öffnen, logische Pixel.</summary>
+    cWidth = 1150;
+    cHeight = 560;
+    /// <summary>Mindestbreite der Spalte „Hinweis“, logische Pixel.</summary>
+    cHintMinWidth = 240;
   private
-    FColors: TAtlasColors;
     FItems: TArray<TAtlasKeyItem>;
     FShown: TArray<Integer>;
     FTop: TPanel;
@@ -71,7 +82,8 @@ type
     FSearch: TEdit;
     FOnlyConflicts: TCheckBox;
     FSummary: TLabel;
-    FList: TListView;
+    FList: TAtlasListView;
+    FButtons: TAtlasButtonRow;
     FExportButton: TButton;
     FSettingsButton: TButton;
     FRefreshButton: TButton;
@@ -83,6 +95,7 @@ type
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
+    function StyleColor(AColor: TColor): TColor;
     /// <summary>Kopf mit Suchfeld, „Nur Konflikte“ und Anzahl.</summary>
     procedure CreateTop;
     /// <summary>Fuß mit den Knöpfen.</summary>
@@ -91,19 +104,22 @@ type
     procedure CreateList;
   protected
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    /// <summary>Nach dem Anwenden des Themas (das Fenster ist neu erzeugt): Zeilenzahl der virtuellen Liste und
+    /// Breite der Spalte „Hinweis“ neu setzen.</summary>
+    procedure DoShow; override;
+    procedure ThemeChanged; override;
   public
-    constructor CreateKeyMap(AOwner: TComponent; const AColors: TAtlasColors);
+    constructor CreateKeyMap(AOwner: TComponent);
     /// <summary>Druckbare HTML-Seite der gezeigten Zeilen; ACreated ist der Zeitpunkt als Text.</summary>
     function ExportHtml(const ACreated: string): string;
     /// <summary>Belegungen setzen (auch bei offenem Fenster); Suche und Filter bleiben.</summary>
     procedure SetItems(const AItems: TArray<TAtlasKeyItem>);
-    procedure SetColors(const AColors: TAtlasColors);
     /// <summary>Suchtext setzen, z. B. für einen Einstieg mit Taste (#600, #766).</summary>
     procedure SetQuery(const AText: string);
     property Items: TArray<TAtlasKeyItem> read FItems;
     /// <summary>Indizes in Items der gezeigten Zeilen, in Reihenfolge der Liste.</summary>
     property Shown: TArray<Integer> read FShown;
-    property List: TListView read FList;
+    property List: TAtlasListView read FList;
     property SearchEdit: TEdit read FSearch;
     property OnlyConflictsBox: TCheckBox read FOnlyConflicts;
     property SummaryLabel: TLabel read FSummary;
@@ -116,16 +132,36 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
   Vcl.Themes,
   Winapi.Windows,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings;
 
-function ToColor(AColor: TAtlasColor): TColor;
-begin
-  Result := TColor(AColor);
-end;
+const
+  /// <summary>Breiten der Spalten Taste bis „Selten per Tastatur“, logische Pixel; „Hinweis“ füllt den Rest.</summary>
+  cColumnWidths: array[0..4] of Integer = (140, 260, 90, 120, 140);
+  // Maße des Fensters in logischen Pixeln (96 dpi), skaliert mit ScaleValue.
+  /// <summary>Kleinste Innenbreite und -höhe.</summary>
+  cMinWidth = 640;
+  cMinHeight = 320;
+  /// <summary>Rand links und rechts, Abstand zwischen Elementen nebeneinander.</summary>
+  cEdge = 12;
+  cGap = 8;
+  /// <summary>Kopf: Höhe, Oberkante und Größe von Suchfeld und „Nur Konflikte“, Breite der Anzahl.</summary>
+  cTopHeight = 40;
+  cSearchTop = 9;
+  cSearchWidth = 360;
+  cSearchHeight = 23;
+  cConflictsLeft = cEdge + cSearchWidth + 2 * cGap;
+  cConflictsTop = 11;
+  cConflictsWidth = 180;
+  cConflictsHeight = 19;
+  cSummaryWidth = 300;
+  /// <summary>Fuß: Höhe und Abstand der Knöpfe oben und unten.</summary>
+  cBottomHeight = 44;
+  cButtonTop = 9;
 
 /// <summary>Text ohne „:“ und „…“ am Ende.</summary>
 function Plain(const AText: string): string;
@@ -224,44 +260,38 @@ const
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
-constructor TAtlasKeyMapWindow.CreateKeyMap(AOwner: TComponent; const AColors: TAtlasColors);
+constructor TAtlasKeyMapWindow.CreateKeyMap(AOwner: TComponent);
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle);
+  inherited CreateDialog(AOwner, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), cWidth);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
-  Position := poMainFormCenter;
   KeyPreview := True;
-  Width := ScaleValue(900);
-  Height := ScaleValue(560);
-  Constraints.MinWidth := 560;
-  Constraints.MinHeight := 320;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
+  ClientHeight := ScaleValue(cHeight);
+  Constraints.MinWidth := ScaleValue(cMinWidth);
+  Constraints.MinHeight := ScaleValue(cMinHeight);
   OnClose := FormClose;
   CreateTop;
   CreateBottom;
   CreateList;
-  SetColors(AColors);
   ApplyFilter;
 end;
 
 procedure TAtlasKeyMapWindow.CreateTop;
 begin
   FTop := TPanel.Create(Self);
-  FTop.Parent := Self;
+  FTop.Height := ScaleValue(cTopHeight);
   FTop.Align := alTop;
-  FTop.Height := FTop.ScaleValue(40);
+  FTop.Parent := Self;
   FTop.BevelOuter := bvNone;
-  FTop.ParentBackground := False;
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTop;
-  FSearch.SetBounds(12, 9, 360, 23);
+  FSearch.SetBounds(ScaleValue(cEdge), ScaleValue(cSearchTop), ScaleValue(cSearchWidth), ScaleValue(cSearchHeight));
   FSearch.TextHint := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapSearchHint);
   FSearch.OnChange := SearchChange;
   FOnlyConflicts := TCheckBox.Create(Self);
   FOnlyConflicts.Parent := FTop;
-  FOnlyConflicts.SetBounds(388, 11, 160, 19);
+  FOnlyConflicts.SetBounds(ScaleValue(cConflictsLeft), ScaleValue(cConflictsTop), ScaleValue(cConflictsWidth),
+    ScaleValue(cConflictsHeight));
   FOnlyConflicts.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOnlyConflicts);
   FOnlyConflicts.OnClick := OnlyConflictsClick;
   FSummary := TLabel.Create(Self);
@@ -270,8 +300,8 @@ begin
   FSummary.AutoSize := False;
   FSummary.Align := alRight;
   FSummary.AlignWithMargins := True;
-  FSummary.Margins.SetBounds(8, 0, 12, 0);
-  FSummary.Width := FSummary.ScaleValue(300);
+  FSummary.Margins.SetBounds(ScaleValue(cGap), 0, ScaleValue(cEdge), 0);
+  FSummary.Width := ScaleValue(cSummaryWidth);
   FSummary.Alignment := taRightJustify;
   FSummary.Layout := tlCenter;
 end;
@@ -279,61 +309,71 @@ end;
 procedure TAtlasKeyMapWindow.CreateBottom;
 begin
   FBottom := TPanel.Create(Self);
-  FBottom.Parent := Self;
+  FBottom.Height := ScaleValue(cBottomHeight);
   FBottom.Align := alBottom;
-  FBottom.Height := FBottom.ScaleValue(44);
+  FBottom.Parent := Self;
   FBottom.BevelOuter := bvNone;
-  FBottom.ParentBackground := False;
-  FExportButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapExport), ExportClick);
-  FExportButton.SetBounds(12, 9, 150, 26);
-  FSettingsButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapConflictsButton), SettingsClick);
-  FSettingsButton.SetBounds(170, 9, 140, 26);
-  FRefreshButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapRefresh), RefreshClick);
-  FRefreshButton.SetBounds(318, 9, 120, 26);
-  FCloseButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapClose), CloseClick);
+  FCloseButton := TButton.Create(Self);
+  FCloseButton.Parent := FBottom;
+  FCloseButton.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapClose);
+  FCloseButton.OnClick := CloseClick;
   FCloseButton.Align := alRight;
   FCloseButton.AlignWithMargins := True;
-  FCloseButton.Margins.SetBounds(8, 9, 12, 9);
-  FCloseButton.Width := FCloseButton.ScaleValue(100);
+  FCloseButton.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cButtonTop), ScaleValue(cEdge), ScaleValue(cButtonTop));
   FCloseButton.Cancel := True;
+  // Knöpfe links in der Knopfleiste der Atlas-Dialoge: Breite nach dem Text (auch englisch).
+  FButtons := TAtlasButtonRow.Create(Self);
+  FButtons.Parent := FBottom;
+  FButtons.AutoSize := False;
+  FButtons.Align := alClient;
+  FButtons.Margins.SetBounds(ScaleValue(cEdge), ScaleValue(cButtonTop), 0, 0);
+  FCloseButton.Width := FButtons.ButtonWidth(FCloseButton.Caption);
+  FExportButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapExport), ExportClick);
+  FSettingsButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapConflictsButton), SettingsClick);
+  FRefreshButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapRefresh), RefreshClick);
 end;
 
 procedure TAtlasKeyMapWindow.CreateList;
 var
-  mColumn: TListColumn;
-  mHeader: string;
-  mWidths: TArray<Integer>;
+  mHeaders: TArray<string>;
   mIndex: Integer;
 begin
-  FList := TListView.Create(Self);
+  FList := TAtlasListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(12, 0, 12, 0);
-  FList.ViewStyle := vsReport;
+  FList.Margins.SetBounds(ScaleValue(cEdge), 0, ScaleValue(cEdge), 0);
   FList.OwnerData := True;
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnData := ListData;
   FList.OnCustomDrawItem := ListCustomDrawItem;
-  mWidths := [150, 260, 130, 110, 150, 400];
-  mIndex := 0;
-  for mHeader in Headers do
+  mHeaders := Headers;
+  for mIndex := 0 to High(mHeaders) do
   begin
-    mColumn := FList.Columns.Add;
-    mColumn.Caption := mHeader;
-    mColumn.Width := FList.ScaleValue(mWidths[mIndex]);
-    Inc(mIndex);
+    if mIndex <= High(cColumnWidths) then
+    begin
+      FList.AddColumn(mHeaders[mIndex], cColumnWidths[mIndex]);
+    end
+    else
+    begin
+      FList.AddColumn(mHeaders[mIndex], cHintMinWidth);
+    end;
   end;
+  // „Hinweis“ (letzte Spalte) nimmt die übrige Breite, statt rechts abgeschnitten zu werden.
+  FList.FillColumn(High(mHeaders), cHintMinWidth);
 end;
 
 function TAtlasKeyMapWindow.AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := FBottom;
-  Result.Caption := ACaption;
+  Result := FButtons.AddButton(ACaption);
   Result.OnClick := AOnClick;
+end;
+
+function TAtlasKeyMapWindow.StyleColor(AColor: TColor): TColor;
+begin
+  Result := StyleServices(FList).GetSystemColor(AColor);
 end;
 
 class function TAtlasKeyMapForm.FunctionCaption(AFunc: TAtlasKeyFunction): string;
@@ -488,6 +528,7 @@ procedure TAtlasKeyMapWindow.ApplyFilter;
 begin
   FShown := TAtlasKeyMap.Filter(FItems, FSearch.Text, FOnlyConflicts.Checked);
   FList.Items.Count := Length(FShown);
+  FList.FitColumns;
   FList.Invalidate;
   FSummary.Caption := SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems));
 end;
@@ -498,17 +539,16 @@ begin
   ApplyFilter;
 end;
 
-procedure TAtlasKeyMapWindow.SetColors(const AColors: TAtlasColors);
+procedure TAtlasKeyMapWindow.DoShow;
 begin
-  FColors := AColors;
-  Color := ToColor(FColors.Surface);
-  Font.Color := ToColor(FColors.Text);
-  FTop.Color := ToColor(FColors.Surface);
-  FBottom.Color := ToColor(FColors.Gutter);
-  FList.Color := ToColor(FColors.Surface);
-  FList.Font.Color := ToColor(FColors.Text);
-  FSummary.Font.Color := ToColor(FColors.Muted);
-  FList.Invalidate;
+  inherited;
+  ApplyFilter;
+end;
+
+procedure TAtlasKeyMapWindow.ThemeChanged;
+begin
+  inherited;
+  ApplyFilter;
 end;
 
 procedure TAtlasKeyMapWindow.SetQuery(const AText: string);
@@ -552,20 +592,21 @@ begin
   begin
     Exit;
   end;
-  // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
-  if not (cdsSelected in State) then
+  // Hintergrund und Schrift in den Farben des Themas, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow,
+  // clWindowText ohne Stil).
+  if cdsSelected in State then
   begin
-    Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
-    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clWindowText);
-  end;
-  // Doppelt belegte Kürzel rot (#520).
-  if FItems[FShown[Item.Index]].Conflict then
-  begin
-    Sender.Canvas.Font.Color := ToColor(FColors.Error);
+    Sender.Canvas.Font.Color := StyleColor(clHighlightText);
   end
   else
   begin
-    Sender.Canvas.Font.Color := ToColor(FColors.Text);
+    Sender.Canvas.Brush.Color := StyleColor(clWindow);
+    Sender.Canvas.Font.Color := StyleColor(clWindowText);
+  end;
+  // Doppelt belegte Kürzel in der Fehlerfarbe der Fensterfläche (#520); ausgewählt in der Farbe der Auswahl.
+  if FItems[FShown[Item.Index]].Conflict and not (cdsSelected in State) then
+  begin
+    Sender.Canvas.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   end;
 end;
 

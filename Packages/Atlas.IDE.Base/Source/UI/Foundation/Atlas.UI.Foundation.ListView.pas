@@ -11,6 +11,9 @@
 //   skaliert hat oder nicht; so wird nichts doppelt skaliert. Vom Benutzer
 //   gezogene Breiten bleiben im Verhältnis erhalten.
 // - Keine eigenen Farben: Grund und Schrift kommen aus dem Stil der Wurzel.
+// - FillColumn: eine Spalte (meist die letzte, ein Hinweis) nimmt die übrige
+//   Breite der Liste und wächst mit dem Fenster, statt rechts abgeschnitten
+//   zu werden; sie wird nie schmaler als ihre Mindestbreite.
 // Für DFM-Frames bleibt TListView (kein Design-Time-Package).
 
 interface
@@ -21,10 +24,20 @@ uses
 
 type
   TAtlasListView = class(TListView)
+  private
+    FFillColumn: Integer;
+    FFillMinWidth96: Integer;
   protected
     procedure ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean); override;
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
+    /// <summary>Spalte AIndex nimmt die übrige Breite der Liste, mindestens AMinWidth96 (logische Pixel);
+    /// AIndex -1 schaltet das ab.</summary>
+    procedure FillColumn(AIndex, AMinWidth96: Integer);
+    /// <summary>Breite der füllenden Spalte neu setzen (nach Größenwechsel, neuen Zeilen oder Bildlaufleiste).
+    /// </summary>
+    procedure FitColumns;
     /// <summary>Spalte mit Überschrift ACaption und Breite AWidth96 in logischen Pixeln anfügen; negative
     /// Breiten (LVSCW_AUTOSIZE, LVSCW_AUTOSIZE_USEHEADER) bleiben unverändert.</summary>
     function AddColumn(const ACaption: string; AWidth96: Integer; AAlignment: TAlignment): TListColumn; overload;
@@ -43,6 +56,47 @@ constructor TAtlasListView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   ViewStyle := vsReport;
+  FFillColumn := -1;
+end;
+
+procedure TAtlasListView.FillColumn(AIndex, AMinWidth96: Integer);
+begin
+  FFillColumn := AIndex;
+  FFillMinWidth96 := AMinWidth96;
+  FitColumns;
+end;
+
+procedure TAtlasListView.FitColumns;
+var
+  mRest, mMin, mIndex: Integer;
+begin
+  if (FFillColumn < 0) or (FFillColumn >= Columns.Count) then
+  begin
+    Exit;
+  end;
+  mRest := ClientWidth;
+  for mIndex := 0 to Columns.Count - 1 do
+  begin
+    if mIndex <> FFillColumn then
+    begin
+      Dec(mRest, Columns[mIndex].Width);
+    end;
+  end;
+  mMin := TAtlasScaling.ToDevice(FFillMinWidth96, CurrentPPI);
+  if mRest < mMin then
+  begin
+    mRest := mMin;
+  end;
+  if Columns[FFillColumn].Width <> mRest then
+  begin
+    Columns[FFillColumn].Width := mRest;
+  end;
+end;
+
+procedure TAtlasListView.Resize;
+begin
+  inherited;
+  FitColumns;
 end;
 
 function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer): TListColumn;
@@ -80,6 +134,7 @@ begin
       Columns[mIndex].Width := (mWidths[mIndex] * AM + AD div 2) div AD;
     end;
   end;
+  FitColumns;
 end;
 
 end.
