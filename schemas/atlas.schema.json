@@ -876,6 +876,13 @@
                 "description": "Nur uses-unit-not-found: wo nach Units gesucht wird (#1016). project: wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothekspfade der Installation, .pas und .dcu); atlas: was Atlas kennt (Index, Quellpfade der Installation); both: beides.",
                 "x-description-en": "Only uses-unit-not-found: where units are searched (#1016). project: like the compiler (project, search paths of the .dproj, library paths of the installation, .pas and .dcu); atlas: what Atlas knows (index, source paths of the installation); both: both."
               },
+              "placement": {
+                "type": "string",
+                "enum": ["grouped", "declaration", "alphabetical", "off"],
+                "default": "grouped",
+                "description": "Nur method-order: Ordnung der Rümpfe wie editor.methodPlacement; off schaltet die Regel ab (#1840).",
+                "x-description-en": "Only method-order: order of the bodies like editor.methodPlacement; off switches the rule off (#1840)."
+              },
               "switchConstants": {
                 "type": "array",
                 "items": {

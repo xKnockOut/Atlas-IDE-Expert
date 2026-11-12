@@ -505,6 +505,7 @@ contains
   Atlas.Common.Rules.Builtin.Style.LineLength in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.LineLength.pas',
   Atlas.Common.Rules.Builtin.Style.Declarations in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Declarations.pas',
   Atlas.Common.Rules.Builtin.Style.BeginEnd in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.BeginEnd.pas',
+  Atlas.Common.Rules.Builtin.Style.MethodOrder in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.MethodOrder.pas',
   Atlas.Common.Rules.Builtin.PaletteIcons in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.pas',
   Atlas.Common.Rules.Builtin.Performance in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.pas',
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.DynamicArrays.pas',

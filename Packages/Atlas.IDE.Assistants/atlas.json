@@ -13,6 +13,7 @@
     },
     "catch-all-without-raise": "off",
     "narrowing-assignment": "off",
+    "method-order": "off",
     "architecture-role-import": {
       "severity": "warning",
       "exclude": [

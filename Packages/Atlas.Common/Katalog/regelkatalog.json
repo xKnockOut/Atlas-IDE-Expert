@@ -5389,6 +5389,28 @@
       "profiles": [
         "strict"
       ]
+    },
+    {
+      "id": "method-order",
+      "name": "Method bodies not in class order",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "The method bodies of a class or record in the implementation section are not in the order that the command \"Order implementation like class\" and class completion produce, or the type comment above them is missing. Units written before the class order (#1836) and the type comment (#1835) can be found and tidied up one class at a time this way, so related methods stand together and the bodies follow the class declaration. One finding per type at the type name in its first body: \"Method bodies of TKunde are not in class order (grouped)\". The order comes from the option placement (default grouped as editor.methodPlacement; declaration, alphabetical; off switches the rule off), constructors and destructors first with classCompletion.lifecycleFirst. Only the bodies of one type among themselves count; the order of the types in the unit does not. Bodies that stay in place when arranging (inside a region or {$IF…}, sharing a line with other code) do not count as wrong. A second finding \"Comment { TKunde } is missing\" when classCompletion.typeComment is not off and there is no type comment of any form above the bodies. Off by default (experimental, only in the strict profile or when switched on). Quick fixes: Arrange bodies of TKunde (only this type, same logic as the command) and Insert comment { TKunde } in the form of classCompletion.typeComment.",
+      "bad": "{ TKunde }\n\nprocedure TKunde.Speichern;\nbegin\nend;\n\nconstructor TKunde.Create;\nbegin\nend;",
+      "good": "{ TKunde }\n\nconstructor TKunde.Create;\nbegin\nend;\n\nprocedure TKunde.Speichern;\nbegin\nend;",
+      "options": [
+        {
+          "name": "placement",
+          "type": "string",
+          "default": "grouped",
+          "description": "Order of the bodies like editor.methodPlacement: grouped, declaration, alphabetical or off."
+        }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     }
   ]
 }
