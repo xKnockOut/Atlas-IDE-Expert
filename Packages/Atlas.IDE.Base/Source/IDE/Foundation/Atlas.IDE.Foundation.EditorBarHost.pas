@@ -32,6 +32,10 @@
 //   (Brotkrumen, Editorleiste), nur im Formular-Designer (Designer-Leiste)
 //   oder in beiden steht; Ensure blendet sie danach ein und aus
 //   (TAtlasIdeDesignerView).
+// - Neben dem Editor-Bereich: DockTop bzw. DockBottom hängen die Leisten
+//   nicht über den Haken Place ein, sondern über TAtlasIdeEditorBarDock oben
+//   bzw. unten neben das Eltern-Steuerelement des Editors (im Designer lag
+//   die Designfläche samt Bildlaufleisten sonst über Leisten darin).
 // - Abbau: Destroy (bzw. Clear) gibt alle Leisten frei; der Wächter schreibt
 //   dabei nicht mehr zurück. Danach hält Atlas keine Leiste in einem
 //   IDE-Fenster mehr (vgl. #1233).
@@ -45,7 +49,8 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Editor.BarDock;
 
 type
 {$SCOPEDENUMS ON}
@@ -82,12 +87,13 @@ type
     FLogged: set of TAtlasEditorBarLogged;
     FOnRemoved: TProc<TControl>;
     FShowIn: TAtlasEditorBarView;
+    /// <summary>Platz neben dem Editor-Bereich (DockTop, DockBottom); None = über Place.</summary>
+    FDock: TAtlasBarDockPlace;
     procedure Removed(ABar: TControl);
     function CreateFor(AEditorParent: TWinControl): TControl;
-    procedure PlaceGuarded(ABar: TControl; AEditorParent: TWinControl);
-    procedure Show(AShown: Boolean);
   public
-    /// <summary>AName steht im Protokoll („Editorleiste“); AFeature ist die Sicherung der Leisten.</summary>
+    /// <summary>AName steht im Protokoll („Editorleiste“); AFeature ist die Sicherung der Leisten. APlace darf
+    /// nil sein, wenn DockTop bzw. DockBottom einordnen.</summary>
     constructor Create(const AName: string; AFeature: TAtlasFeature; const ACreate: TCreateBar;
       const APlace: TPlaceBar);
     destructor Destroy; override;
@@ -131,6 +137,11 @@ type
     property Hidden: Boolean read FHidden;
     /// <summary>Eine Leiste ist weg (von der IDE freigegeben); nicht bei Clear.</summary>
     property OnRemoved: TProc<TControl> read FOnRemoved write FOnRemoved;
+    /// <summary>Leisten oben neben dem Editor-Bereich einhängen statt über Place, direkt am Editor.</summary>
+    procedure DockTop;
+    /// <summary>Leisten unten neben dem Editor-Bereich einhängen statt über Place; AOrder: kleiner = näher am
+    /// Editor (TAtlasBarDock.cOrderNearest; Statusleiste TAtlasBarDock.cOrderStatusBar).</summary>
+    procedure DockBottom(AOrder: Integer);
     /// <summary>Wo die Leisten stehen (#1442); Vorgabe Any. Gilt ab dem nächsten Ensure.</summary>
     property ShowIn: TAtlasEditorBarView read FShowIn write FShowIn;
     /// <summary>Steht die Leiste ABar gerade sichtbar im Editorfenster (nach Ansicht und Sicherung)?</summary>
@@ -142,6 +153,8 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Forms,
+  Atlas.UI.Editor.Bar,
+  Atlas.IDE.Foundation.EditorBarDock,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.IDE.Foundation.EditorBuffer;
 
@@ -229,6 +242,51 @@ begin
   end;
 end;
 
+/// <summary>Leiste einordnen: neben dem Editor-Bereich (DockTop, DockBottom), sonst über den Haken Place.</summary>
+procedure PlaceBar(AHost: TAtlasEditorBarHost; ABar: TControl; AEditorParent: TWinControl);
+begin
+  if AHost.FDock.Docked and (ABar is TAtlasEditorBar) then
+  begin
+    TAtlasEditorBar(ABar).DockOrder := AHost.FDock.Order;
+    TAtlasIdeEditorBarDock.Place(TAtlasEditorBar(ABar), AEditorParent, AHost.FDock.Side);
+  end
+  else if Assigned(AHost.FPlace) then
+  begin
+    AHost.FPlace(ABar, AEditorParent);
+  end;
+end;
+
+/// <summary>Einordnen und nach der Ansicht ein- bzw. ausblenden, je Leiste abgesichert.</summary>
+procedure PlaceGuarded(AHost: TAtlasEditorBarHost; ABar: TControl; AEditorParent: TWinControl);
+begin
+  try
+    PlaceBar(AHost, ABar, AEditorParent);
+    ApplyBarView(AHost, ABar, AEditorParent);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(AHost.FFeature, E);
+  end;
+end;
+
+/// <summary>Leisten ein- bzw. ausblenden; eingeblendet wird nur, was zur Ansicht passt.</summary>
+procedure ShowBars(AHost: TAtlasEditorBarHost; AShown: Boolean);
+var
+  mIndex: Integer;
+begin
+  // Eingeblendet wird nur, was zur Ansicht passt (Code bzw. Designer).
+  for mIndex := 0 to AHost.FBars.Count - 1 do
+  begin
+    if AShown and (AHost.FShowIn <> TAtlasEditorBarView.Any) then
+    begin
+      ApplyBarView(AHost, AHost.FBars[mIndex], AHost.FParents[mIndex]);
+    end
+    else if AHost.FBars[mIndex].Visible <> AShown then
+    begin
+      AHost.FBars[mIndex].Visible := AShown;
+    end;
+  end;
+end;
+
 { TAtlasEditorBarHost.TWatcher }
 
 procedure TAtlasEditorBarHost.TWatcher.Notification(AComponent: TComponent; Operation: TOperation);
@@ -250,6 +308,7 @@ begin
   FFeature := AFeature;
   FCreate := ACreate;
   FPlace := APlace;
+  FDock := TAtlasBarDockPlace.None;
   FBars := TList<TControl>.Create;
   FParents := TList<TWinControl>.Create;
   FWatcher := TWatcher.Create(nil);
@@ -448,7 +507,7 @@ begin
     mBar.FreeNotification(FWatcher);
     FBars.Add(mBar);
     FParents.Add(AEditorParent);
-    FPlace(mBar, AEditorParent);
+    PlaceBar(Self, mBar, AEditorParent);
     ApplyBarView(Self, mBar, AEditorParent);
     Result := mBar;
   except
@@ -469,15 +528,14 @@ begin
   end;
 end;
 
-procedure TAtlasEditorBarHost.PlaceGuarded(ABar: TControl; AEditorParent: TWinControl);
+procedure TAtlasEditorBarHost.DockTop;
 begin
-  try
-    FPlace(ABar, AEditorParent);
-    ApplyBarView(Self, ABar, AEditorParent);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(FFeature, E);
-  end;
+  FDock := TAtlasBarDockPlace.Create(TAtlasBarSide.Top, TAtlasBarDock.cOrderNearest);
+end;
+
+procedure TAtlasEditorBarHost.DockBottom(AOrder: Integer);
+begin
+  FDock := TAtlasBarDockPlace.Create(TAtlasBarSide.Bottom, AOrder);
 end;
 
 procedure TAtlasEditorBarHost.Ensure;
@@ -505,7 +563,7 @@ begin
     end
     else
     begin
-      PlaceGuarded(mBar, mEditor.Parent);
+      PlaceGuarded(Self, mBar, mEditor.Parent);
     end;
   end;
   // Erst mit aktivem Editor: Während die IDE ihre Editoren schließt, gilt ihre Sperre noch.
@@ -532,7 +590,7 @@ begin
   end
   else
   begin
-    PlaceGuarded(Result, mEditor.Parent);
+    PlaceGuarded(Self, Result, mEditor.Parent);
   end;
 end;
 
@@ -595,24 +653,6 @@ begin
   Result := Contains(ABar) and ABar.Visible;
 end;
 
-procedure TAtlasEditorBarHost.Show(AShown: Boolean);
-var
-  mIndex: Integer;
-begin
-  // Eingeblendet wird nur, was zur Ansicht passt (Code bzw. Designer).
-  for mIndex := 0 to FBars.Count - 1 do
-  begin
-    if AShown and (FShowIn <> TAtlasEditorBarView.Any) then
-    begin
-      ApplyBarView(Self, FBars[mIndex], FParents[mIndex]);
-    end
-    else if FBars[mIndex].Visible <> AShown then
-    begin
-      FBars[mIndex].Visible := AShown;
-    end;
-  end;
-end;
-
 function TAtlasEditorBarHost.Guard: Boolean;
 begin
   Result := not TAtlasGuard.Disabled(FFeature);
@@ -630,7 +670,7 @@ begin
     TAtlasGuard.Log(FName + ': wieder eingeschaltet');
   end;
   try
-    Show(Result);
+    ShowBars(Self, Result);
   except
     // Läuft außerhalb von TAtlasGuard.Run (Feature abgeschaltet); nichts darf in die IDE durchschlagen.
     on E: Exception do

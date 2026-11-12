@@ -167,10 +167,6 @@ type
   public
     /// <summary>Datei der Lesezeichen zu AProject: lokal bzw. für das Team.</summary>
     class function FileFor(const AProject: string; AShared: Boolean): string; static;
-    /// <summary>Gleiche Datei: Groß-/Kleinschreibung (ASCII), „/“ und „\“ sowie Leerraum am Rand egal.
-    /// </summary>
-    class function SameFile(const A, B: string): Boolean; static;
-    class function NewId: string; static;
     /// <summary>Anker, Methode, Parametertypen und Abstand für ALine von AText in ABookmark.</summary>
     class procedure Capture(const AText: string; ALine: Integer; var ABookmark: TAtlasBookmark); static;
     /// <summary>Sucht ABookmark in AText (Ablauf oben). ALine ist die gefundene Zeile, bei Orphaned („nicht
@@ -218,6 +214,7 @@ uses
   System.Math,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Files.DataFile,
+  Atlas.Core.Marks.Ids,
   Atlas.Text.Json;
 
 const
@@ -321,7 +318,7 @@ begin
   Result := nil;
   for mMark in Bookmarks do
   begin
-    if not mMark.Lost and (mMark.Line = ALine) and TAtlasBookmarks.SameFile(mMark.FileName, AFileName) then
+    if not mMark.Lost and (mMark.Line = ALine) and TAtlasMarkIds.SameFile(mMark.FileName, AFileName) then
     begin
       Result := Result + [mMark];
     end;
@@ -335,7 +332,7 @@ begin
   Result := nil;
   for mMark in Bookmarks do
   begin
-    if TAtlasBookmarks.SameFile(mMark.FileName, AFileName) then
+    if TAtlasMarkIds.SameFile(mMark.FileName, AFileName) then
     begin
       Result := Result + [mMark];
     end;
@@ -354,7 +351,7 @@ begin
     mKnown := False;
     for mName in Result do
     begin
-      if TAtlasBookmarks.SameFile(mName, mMark.FileName) then
+      if TAtlasMarkIds.SameFile(mName, mMark.FileName) then
       begin
         mKnown := True;
         Break;
@@ -387,7 +384,7 @@ var
   mMark: TAtlasBookmark;
 begin
   mMark := Default(TAtlasBookmark);
-  mMark.Id := TAtlasBookmarks.NewId;
+  mMark.Id := TAtlasMarkIds.NewId;
   mMark.Name := Trim(AName);
   mMark.FileName := AFileName;
   TAtlasBookmarks.Capture(AText, ALine, mMark);
@@ -580,7 +577,7 @@ begin
   mParsed := Default(TParsedText);
   for mIndex := 0 to High(Bookmarks) do
   begin
-    if not TAtlasBookmarks.SameFile(Bookmarks[mIndex].FileName, AFileName) then
+    if not TAtlasMarkIds.SameFile(Bookmarks[mIndex].FileName, AFileName) then
     begin
       Continue;
     end;
@@ -618,7 +615,7 @@ begin
   Result := False;
   for mIndex := 0 to High(Bookmarks) do
   begin
-    if TAtlasBookmarks.SameFile(Bookmarks[mIndex].FileName, AFileName) and not Bookmarks[mIndex].Lost then
+    if TAtlasMarkIds.SameFile(Bookmarks[mIndex].FileName, AFileName) and not Bookmarks[mIndex].Lost then
     begin
       Bookmarks[mIndex].Lost := True;
       Result := True;
@@ -940,26 +937,6 @@ begin
   begin
     Result := mFolder + cLocalFileName;
   end;
-end;
-
-class function TAtlasBookmarks.SameFile(const A, B: string): Boolean;
-begin
-  Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);
-end;
-
-class function TAtlasBookmarks.NewId: string;
-var
-  mGuid: TGUID;
-begin
-  if CreateGUID(mGuid) <> 0 then
-  begin
-    // Ohne GUID: Zeitpunkt und Zufall genügen für eine Liste. Ohne Randomize wäre die Folge
-    // bei jedem Start gleich.
-    Randomize;
-    Exit(LowerCase(IntToHex(Trunc(Now * 86400000), 12) + IntToHex(Random(MaxInt), 8)));
-  end;
-  Result := LowerCase(GUIDToString(mGuid));
-  Result := Copy(Result, 2, Length(Result) - 2);
 end;
 
 class procedure TAtlasBookmarks.Capture(const AText: string; ALine: Integer; var ABookmark: TAtlasBookmark);

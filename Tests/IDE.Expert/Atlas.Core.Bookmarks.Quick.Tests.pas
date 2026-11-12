@@ -73,7 +73,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Bookmarks.Quick;
+  Atlas.Core.Bookmarks.Quick,
+  Atlas.Core.Marks.Ids;
 
 const
   cKundeFile = 'C:\Projekte\Source\Kunde.pas';
@@ -138,7 +139,7 @@ begin
   TAtlasQuickBookmarks.SetNumber(FList, cLagerFile, Text, 10, 5, 0);
   Assert.AreEqual(Ord(TAtlasQuickChange.Moved), Ord(TAtlasQuickBookmarks.SetNumber(FList, cKundeFile, Text, 20, 5, 0)));
   Assert.AreEqual(1, Integer(FList.Count));
-  Assert.IsTrue(TAtlasBookmarks.SameFile(cKundeFile, FList.Bookmarks[0].FileName));
+  Assert.IsTrue(TAtlasMarkIds.SameFile(cKundeFile, FList.Bookmarks[0].FileName));
   Assert.AreEqual(20, FList.Bookmarks[0].Line);
 end;
 
@@ -391,7 +392,7 @@ begin
   Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 12)[0].Number);
   Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 14)[0].Number,
     'Nummer bei Atlas schon vergeben: unnummeriert');
-  Assert.IsTrue(TAtlasBookmarks.SameFile(cLagerFile, FList.Bookmarks[FList.IndexOfNumber(2)].FileName));
+  Assert.IsTrue(TAtlasMarkIds.SameFile(cLagerFile, FList.Bookmarks[FList.IndexOfNumber(2)].FileName));
   Assert.AreEqual(0, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, cKundeFile, 3))));
 end;
 

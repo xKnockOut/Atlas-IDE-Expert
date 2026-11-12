@@ -1,0 +1,47 @@
+﻿package Atlas.WinBase;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas WinBase (RTL und Windows-API, gemeinsam für Server und Plugin)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+// Gegenstück zu Atlas.Text für Code, der die Windows-API braucht und den
+// Server und IDE-Plugin gleich brauchen (Prozessstart mit Handle-Liste).
+// Erlaubt sind RTL, Winapi.* und System.Win.*; keine VCL, kein Atlas.Common,
+// kein Atlas.Windows, nichts aus dem Plugin. Keine Zustände über Aufrufe
+// hinweg, keine eigenen Protokollaufrufe (Server und Plugin protokollieren
+// verschieden), Fehler als Rückgabewert.
+// Server, AtlasUpdate und Tests linken die DCUs; das Plugin übersetzt
+// dieselben Quelldateien per "contains … in" mit, damit die IDE weiterhin nur
+// ein BPL lädt. Geprüft durch Tools\Check-PackageDependencies.ps1.
+
+requires
+  rtl;
+
+contains
+  Atlas.WinBase.Process in 'Source\Process\Atlas.WinBase.Process.pas';
+
+end.

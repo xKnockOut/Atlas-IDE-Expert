@@ -133,7 +133,8 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Bookmarks.Store;
+  Atlas.Core.Bookmarks.Store,
+  Atlas.Core.Marks.Ids;
 
 const
   cKundeFile = 'C:\Projekte\Source\Kunde.pas';
@@ -660,7 +661,7 @@ begin
   Assert.IsTrue(TAtlasBookmarks.Parse(mJson, IncludeTrailingPathDelimiter(FFolder), mBack));
   Assert.AreEqual(2, Integer(mBack.Count));
   Assert.AreEqual(Project, mBack.Project);
-  Assert.IsTrue(TAtlasBookmarks.SameFile(UnitFile, mBack.Bookmarks[0].FileName));
+  Assert.IsTrue(TAtlasMarkIds.SameFile(UnitFile, mBack.Bookmarks[0].FileName));
   Assert.AreEqual(mList.Bookmarks[0].Id, mBack.Bookmarks[0].Id);
   Assert.AreEqual('Rundung', mBack.Bookmarks[0].Name);
   Assert.AreEqual('TKunde.Runde', mBack.Bookmarks[0].Method);
@@ -755,7 +756,7 @@ begin
   Assert.AreEqual(1, Integer(mBack.Count));
   Assert.AreEqual(Project, mBack.Project);
   Assert.AreEqual('Rundung', mBack.Bookmarks[0].Name);
-  Assert.IsTrue(TAtlasBookmarks.SameFile(UnitFile, mBack.Bookmarks[0].FileName));
+  Assert.IsTrue(TAtlasMarkIds.SameFile(UnitFile, mBack.Bookmarks[0].FileName));
   Assert.AreEqual('TKunde.Runde', mBack.Bookmarks[0].Method);
   // Auch ein anderes Projekt im selben Ordner liest dieselbe Datei.
   Assert.IsTrue(TAtlasBookmarks.Load(TPath.Combine(FFolder, 'Zweites.dproj'), False, mBack));

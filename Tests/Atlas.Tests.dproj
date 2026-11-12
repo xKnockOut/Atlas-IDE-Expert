@@ -28,7 +28,7 @@
         <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>Atlas_Tests</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;..\Output\$(Platform)\$(Config)\Dcu\Atlas.WinBase;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Tests</DCC_DcuOutput>
         <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
@@ -104,6 +104,7 @@
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CrashReserve.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
+        <DCCReference Include="WinBase\Atlas.WinBase.Process.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Uris.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas"/>
@@ -796,6 +797,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas"/>
@@ -845,6 +847,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.MainThread.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.TimeLimit.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Deadline.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.AsyncWait.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.UserIdle.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.UnloadSafety.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.WorkerSlot.Tests.pas"/>
@@ -1189,7 +1192,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Results\Atlas.UI.Results.CallDiagram.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Results.CallDiagram.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Marks\Atlas.Core.Marks.Ids.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Marks.Ids.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.SavedPlaces.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.SavedPlaces.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
@@ -1686,6 +1691,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.BarDock.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.BarDock.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Styled.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.InlineHints.Tests.pas"/>

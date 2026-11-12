@@ -51,7 +51,8 @@ uses
   System.IOUtils,
   Vcl.Forms,
   Vcl.Controls,
-  System.UITypes;
+  System.UITypes,
+  Atlas.WinBase.Process;
 
 { TAtlasServerToolCall }
 
@@ -70,22 +71,17 @@ type
     OutputName: string;
     OutputFile: THandle;
     NulHandle: THandle;
-    /// <summary>Legt die temporäre Datei und NUL vererbbar an; False (AError gesetzt), wenn die Datei nicht
-    /// angelegt werden kann.</summary>
+    /// <summary>Legt die temporäre Datei und NUL an (nicht vererbbar, das macht TAtlasProcessLauncher gezielt);
+    /// False (AError gesetzt), wenn die Datei nicht angelegt werden kann.</summary>
     function Open(out AError: string): Boolean;
     procedure Close;
   end;
 
 function TAtlasToolHandles.Open(out AError: string): Boolean;
-var
-  mSecurity: TSecurityAttributes;
 begin
   AError := '';
-  mSecurity := Default(TSecurityAttributes);
-  mSecurity.nLength := SizeOf(mSecurity);
-  mSecurity.bInheritHandle := True;
   OutputName := TPath.GetTempFileName;
-  OutputFile := CreateFile(PChar(OutputName), GENERIC_WRITE, FILE_SHARE_READ, @mSecurity, CREATE_ALWAYS,
+  OutputFile := CreateFile(PChar(OutputName), GENERIC_WRITE, FILE_SHARE_READ, nil, CREATE_ALWAYS,
     FILE_ATTRIBUTE_TEMPORARY, 0);
   Result := OutputFile <> INVALID_HANDLE_VALUE;
   if not Result then
@@ -93,8 +89,7 @@ begin
     AError := SysErrorMessage(GetLastError);
     Exit;
   end;
-  NulHandle := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity, OPEN_EXISTING, 0,
-    0);
+  NulHandle := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
 end;
 
 procedure TAtlasToolHandles.Close;
@@ -111,21 +106,11 @@ end;
 function RunProcess(const ACall: TAtlasServerToolCall; const AHandles: TAtlasToolHandles;
   var AResult: TAtlasServerToolResult): Boolean;
 var
-  mCommandLine: string;
-  mStartup: TStartupInfo;
   mInfo: TProcessInformation;
 begin
   Result := False;
-  mStartup := Default(TStartupInfo);
-  mStartup.cb := SizeOf(mStartup);
-  mStartup.dwFlags := STARTF_USESTDHANDLES;
-  mStartup.hStdInput := 0;
-  mStartup.hStdOutput := AHandles.OutputFile;
-  mStartup.hStdError := AHandles.NulHandle;
-  mCommandLine := '"' + ACall.Exe + '" ' + ACall.Arguments;
-  UniqueString(mCommandLine);
-  if not CreateProcess(nil, PChar(mCommandLine), nil, nil, True, CREATE_NO_WINDOW, nil, PChar(ACall.Directory),
-    mStartup, mInfo) then
+  if not TAtlasProcessLauncher.Launch(TAtlasProcessLaunch.Create('', '"' + ACall.Exe + '" ' + ACall.Arguments,
+    ACall.Directory, 0, AHandles.OutputFile, AHandles.NulHandle), mInfo) then
   begin
     AResult.Error := SysErrorMessage(GetLastError);
     Exit;

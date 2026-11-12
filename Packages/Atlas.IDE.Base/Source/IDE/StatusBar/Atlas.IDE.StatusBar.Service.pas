@@ -1,10 +1,13 @@
 ﻿unit Atlas.IDE.StatusBar.Service;
 
 // Atlas-Statusleiste (#1155) in der IDE:
-// - Unten im Eltern-Steuerelement des Editors jedes Editorfensters steht eine
-//   Leiste (TAtlasEditorStatusBar), direkt über der Statuszeile der IDE und
-//   unter einer offenen Atlas-Suchleiste (#878); Fenster, die später aufgehen,
-//   bekommen sie beim nächsten Takt.
+// - Unter dem Eltern-Steuerelement des Editors jedes Editorfensters (daneben,
+//   nicht darin, DockBottom des Leisten-Hosts: im Designer lag sonst die
+//   Bildlaufleiste der Designfläche darüber) steht eine Leiste
+//   (TAtlasEditorStatusBar), direkt über der Statuszeile der IDE und unter
+//   einer offenen Atlas-Suchleiste (#878) und der Brotkrumenleiste der
+//   Datenbindung; Fenster, die später aufgehen, bekommen sie beim nächsten
+//   Takt.
 // - Ein Zeitgeber (250 ms) setzt den Inhalt: Status aus dem Atlas-Feld
 //   (TAtlasStatusField, Text, Zustand, Tooltip), Meldungen dieser Unit aus dem
 //   Speicher der Probleme (TAtlasProblemsController.Current), Live-Prüfung
@@ -39,7 +42,7 @@
 //   Statuszeile; Elemente gelten ohne Neustart.
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
 //   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
-//   (#1248); hier stehen nur Einordnen (Place) und Inhalt.
+//   (#1248), samt Einordnen (DockBottom); hier steht nur der Inhalt.
 // Nur im Hauptthread.
 
 interface
@@ -97,6 +100,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
+  Atlas.Core.Editor.BarDock,
   Atlas.UI.StatusBar.Strings,
   Atlas.UI.StatusBar.Bar,
   Atlas.IDE.Foundation.EditorBarHost,
@@ -128,7 +132,6 @@ type
     procedure WireStatus(ABar: TAtlasEditorStatusBar);
     /// <summary>Klicks auf Zähler, Live-Prüfung, Methode und das Menü „Leiste anpassen“.</summary>
     procedure WireItems(ABar: TAtlasEditorStatusBar);
-    procedure Place(ABar: TAtlasEditorStatusBar; AHost: TWinControl);
     procedure Want(AOn: Boolean);
     procedure Later(const AAction: TProc);
     /// <summary>Klick auf ein Element des Atlas-Felds: AAction mit dem Feld nach dem Klick; ALog ins Protokoll.
@@ -198,11 +201,9 @@ begin
     function(AEditorParent: TWinControl): TControl
     begin
       Result := CreateBar;
-    end,
-    procedure(ABar: TControl; AEditorParent: TWinControl)
-    begin
-      Place(TAtlasEditorStatusBar(ABar), AEditorParent);
-    end);
+    end, nil);
+  // Am weitesten unten von den Leisten neben dem Editor-Bereich, direkt über der Statuszeile der IDE.
+  FHost.DockBottom(TAtlasBarDock.cOrderStatusBar);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
@@ -369,33 +370,6 @@ begin
     begin
       HideBar;
     end);
-end;
-
-/// <summary>Ganz unten im Eltern-Steuerelement des Editors: unter einer Atlas-Suchleiste (alBottom ordnet nach
-/// Top, größer steht weiter unten). Die Suchleiste kann später kommen; jeder Takt prüft die Reihenfolge.</summary>
-procedure TStatusBarState.Place(ABar: TAtlasEditorStatusBar; AHost: TWinControl);
-var
-  mIndex: Integer;
-  mControl: TControl;
-begin
-  if ABar.Parent <> AHost then
-  begin
-    ABar.Parent := nil;
-    ABar.Align := alNone;
-    ABar.Top := AHost.ClientHeight;
-    ABar.Align := alBottom;
-    ABar.Parent := AHost;
-    Exit;
-  end;
-  for mIndex := 0 to AHost.ControlCount - 1 do
-  begin
-    mControl := AHost.Controls[mIndex];
-    if (mControl <> ABar) and mControl.Visible and (mControl.Align = alBottom) and (mControl.Top > ABar.Top) then
-    begin
-      ABar.Top := AHost.ClientHeight + 1;
-      Exit;
-    end;
-  end;
 end;
 
 procedure TStatusBarState.Tick(Sender: TObject);
