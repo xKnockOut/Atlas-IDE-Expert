@@ -151,7 +151,7 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 - **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.en.md)
 - **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](docs/features/en/Command-line.md#linter-mode)
-- **AtlasMonitor (Windows):** standalone window with an icon in the notification area for all running Atlas servers (IDE, MCP, command line): state dot (idle, working, not responding), details, stop a server, open its log, clear the index cache, start with Windows (#1901). Every server writes `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` every 5 s (`server.statusFile`). Settings in `%APPDATA%\Atlas\monitor.json`. Checks without the IDE follow in #1900.
+- **AtlasMonitor (Windows):** standalone window with an icon in the notification area for all running Atlas servers (IDE, MCP, command line): state dot (idle, working, not responding), details, stop a server, open its log, clear the index cache, start with Windows (#1901). Every server writes `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` every 5 s (`server.statusFile`). Settings in `%APPDATA%\Atlas\monitor.json`. Tab **Check** (#1900): every CLI command without the IDE (check with all options, metrics, todos, format check/write, fix with dry run, affected tests, architecture save/compare, hotspots, query, replay) on a target list (folders, .dproj, .groupproj, files; on/off, save/load). Each target runs as a hidden child process with progress, cancel and a job that ends all runs when the monitor closes; findings with filter, double click opens the editor, export as HTML or SARIF, "Copy command". Architecture and hotspot pages show in the **Report** tab (WebView2, otherwise the default browser).
 - **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([Building on Linux](#building-on-linux))
 
 More: [docs/en/Installation.md](docs/en/Installation.md).
@@ -181,7 +181,7 @@ Every English page links its German original and vice versa.
 | `Packages/Atlas.Linux` | Linux counterparts of the server's Windows adapters, source only, for the Free Pascal build |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout, MCP with `--mcp`, linter with `--check`) |
 | `Application/AtlasUpdate` | Installer and updater (#1519): `install`, `prepare`, `apply` |
-| `Application/AtlasMonitor` | Window and notification area icon for all running Atlas servers (#1901), VCL |
+| `Application/AtlasMonitor` | Window and notification area icon for all running Atlas servers (#1901), checks without the IDE (#1900), VCL |
 | `Packages/Atlas.IDE.*` | The IDE plugin: a core package and module packages (below) |
 | `Tests/Atlas.Tests` | DUnitX tests |
 

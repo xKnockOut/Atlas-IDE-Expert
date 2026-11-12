@@ -2179,6 +2179,10 @@
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Servers.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Settings.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Texts.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Commands.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Results.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Runs.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Targets.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>
