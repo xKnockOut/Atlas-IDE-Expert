@@ -31,7 +31,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Marks.Ids;
 
 function NotePlace(const ABook: TAtlasNoteBook; const ANote: TAtlasNote): TAtlasSavedPlace;
 var
@@ -73,7 +74,7 @@ begin
   Result := False;
   for mPlace in APlaces do
   begin
-    if SameText(mPlace.Id, AMark.Id) and TAtlasBookmarks.SameFile(mPlace.FileName, AMark.FileName) then
+    if SameText(mPlace.Id, AMark.Id) and TAtlasMarkIds.SameFile(mPlace.FileName, AMark.FileName) then
     begin
       Result := True;
     end;

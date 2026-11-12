@@ -159,7 +159,8 @@ uses
   Winapi.Windows,
   Winapi.CommCtrl,
   Vcl.Themes,
-  Atlas.UI.Bookmarks.Strings;
+  Atlas.UI.Bookmarks.Strings,
+  Atlas.Core.Marks.Ids;
 
 {$R *.dfm}
 
@@ -660,7 +661,7 @@ begin
   begin
     // „nur diese Datei“ (#1104): ohne bekannte Datei alle.
     if not FParts.OnlyFile.Checked or (FCurrentFile = '') or
-      TAtlasBookmarks.SameFile(FBookmarks.Bookmarks[mIndex].FileName, FCurrentFile) then
+      TAtlasMarkIds.SameFile(FBookmarks.Bookmarks[mIndex].FileName, FCurrentFile) then
     begin
       FShown := FShown + [FBookmarks.Bookmarks[mIndex]];
     end;

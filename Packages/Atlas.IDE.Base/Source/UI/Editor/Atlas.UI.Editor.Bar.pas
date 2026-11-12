@@ -23,6 +23,8 @@
 //   Editoren). OnDisabled meldet das im Moment des Sperrens, über die VCL
 //   (Enabled := False, der Aufrufer steht noch auf dem Stapel) wie an ihr
 //   vorbei (EnableWindow, WM_ENABLE).
+// - DockOrder: Platz unter bzw. über dem Editor, wenn die Leiste neben dem
+//   EditorPanel steht (TAtlasIdeEditorBarDock).
 // Teile sind Ganzzahlen; PartNone heißt keins. Jede Leiste legt fest, was
 // eine Zahl bedeutet.
 
@@ -49,6 +51,7 @@ type
     FSkipUp: Boolean;
     FFixedHeight: Boolean;
     FOnDisabled: TProc<TObject>;
+    FDockOrder: Integer;
     procedure SetFixedHeight(AValue: Boolean);
     procedure FixHeight(APPI: Integer);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -93,6 +96,9 @@ type
     /// <summary>Jemand sperrt die Leiste; gerufen, bevor sie gesperrt ist (VCL) bzw. sobald ihr Fenster gesperrt
     /// ist (EnableWindow).</summary>
     property OnDisabled: TProc<TObject> read FOnDisabled write FOnDisabled;
+    /// <summary>Platz neben dem Editor (TAtlasIdeEditorBarDock): kleiner = näher am Editor; -1 (Vorgabe) = die
+    /// Leiste steht nicht dort.</summary>
+    property DockOrder: Integer read FDockOrder write FDockOrder;
   end;
 
 implementation
@@ -114,6 +120,7 @@ begin
   FHot := cPartNone;
   FDown := cPartNone;
   FFixedHeight := True;
+  FDockOrder := -1;
   // Bei 96 DPI anlegen; das Elternteil skaliert beim Einhängen auf seine DPI (ChangeScale).
   FixHeight(96);
 end;

@@ -73,6 +73,7 @@ uses
   Winapi.Windows,
   System.IOUtils,
   Atlas.Text.Updates,
+  Atlas.WinBase.Process,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Texts;
@@ -168,23 +169,18 @@ end;
 function TAtlasIdeUpdateInstaller.Launch(const AExe: string; const AArgs: TUpdateArguments;
   AVisible: Boolean): THandle;
 var
-  mStartup: TStartupInfo;
+  mLaunch: TAtlasProcessLaunch;
   mProcess: TProcessInformation;
-  mCommand: string;
-  mFlags: DWORD;
 begin
   Result := 0;
-  mStartup := Default(TStartupInfo);
-  mStartup.cb := SizeOf(mStartup);
-  mCommand := TUpdateNames.QuoteArgument(AExe) + ' ' + AArgs.CommandLine;
-  UniqueString(mCommand);
-  mFlags := CREATE_NO_WINDOW;
+  // Ohne Standard-Handles: AtlasUpdate erbt nichts.
+  mLaunch := TAtlasProcessLaunch.Create(AExe, TUpdateNames.QuoteArgument(AExe) + ' ' + AArgs.CommandLine,
+    ExtractFileDir(AExe), 0, 0, 0);
   if AVisible then
   begin
-    mFlags := CREATE_NEW_CONSOLE;
+    mLaunch.Flags := CREATE_NEW_CONSOLE;
   end;
-  if not CreateProcess(PChar(AExe), PChar(mCommand), nil, nil, False, mFlags, nil, PChar(ExtractFileDir(AExe)),
-    mStartup, mProcess) then
+  if not TAtlasProcessLauncher.Launch(mLaunch, mProcess) then
   begin
     Log('AtlasUpdate not started: ' + SysErrorMessage(GetLastError));
     Exit;

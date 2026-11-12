@@ -28,7 +28,7 @@
         <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>AtlasMonitor</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;..\Output\$(Platform)\$(Config)\Dcu\Atlas.WinBase;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\AtlasMonitor</DCC_DcuOutput>
         <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <!-- Fensterprogramm mit Themes und Skalierung je Monitor. -->

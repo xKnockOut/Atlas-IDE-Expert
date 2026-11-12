@@ -456,6 +456,7 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas"/>
@@ -518,6 +519,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Refresh.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.BarDock.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.GutterColumn.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas"/>
@@ -743,6 +745,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
         <DCCReference Include="Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarDock.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Pipeline.pas"/>
@@ -878,6 +881,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
+        <DCCReference Include="..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Overview.pas">
             <Form>AtlasSettingsOverview</Form>
             <DesignClass>TFrame</DesignClass>

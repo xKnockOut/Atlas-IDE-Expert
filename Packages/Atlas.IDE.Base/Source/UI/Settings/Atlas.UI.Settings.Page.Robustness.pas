@@ -182,12 +182,8 @@ begin
 end;
 
 procedure TAtlasSettingsRobustnessPart.HangTestClick(Sender: TObject);
-var
-  mActivity: IInterface;
 begin
-  // Künstlicher Hänger für den Einfrier-Wächter (#501): erscheint im Protokoll mit dieser Aktion.
-  mActivity := TAtlasActivity.Scope('Wächter-Test');
-  Sleep(1000); // lsp-ignore: blocking-call-in-main-thread
+  TAtlasActivity.HangTest;
 end;
 
 procedure TAtlasSettingsRobustnessPart.DiagnosticModeClick(Sender: TObject);

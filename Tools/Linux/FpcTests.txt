@@ -299,6 +299,7 @@ Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
+Atlas.Core.Editor.BarDock.Tests
 Atlas.Core.Designer.ExtractFrame.Tests
 Atlas.Core.Designer.EventMap.Tests
 Atlas.Core.Designer.FormUnit.Tests

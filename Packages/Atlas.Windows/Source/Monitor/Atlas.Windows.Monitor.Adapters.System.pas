@@ -41,6 +41,7 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Win.Registry,
+  Atlas.WinBase.Process,
   Atlas.Windows.Process.Instances;
 
 const
@@ -167,16 +168,13 @@ end;
 
 class function TMonitorSystem.Launch(const ACommandLine: string): Boolean;
 var
-  mStartup: TStartupInfo;
+  mLaunch: TAtlasProcessLaunch;
   mInfo: TProcessInformation;
-  mCommandLine: string;
 begin
-  FillChar(mStartup, SizeOf(mStartup), 0);
-  mStartup.cb := SizeOf(mStartup);
-  mCommandLine := ACommandLine;
-  UniqueString(mCommandLine);
-  Result := (mCommandLine <> '') and CreateProcess(nil, PChar(mCommandLine), nil, nil, False, 0, nil, nil, mStartup,
-    mInfo);
+  // Ohne Standard-Handles: Das gestartete Programm erbt nichts.
+  mLaunch := Default(TAtlasProcessLaunch);
+  mLaunch.CommandLine := ACommandLine;
+  Result := (ACommandLine <> '') and TAtlasProcessLauncher.Launch(mLaunch, mInfo);
   if Result then
   begin
     CloseHandle(mInfo.hThread);

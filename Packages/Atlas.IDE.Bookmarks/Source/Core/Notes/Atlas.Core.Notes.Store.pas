@@ -122,9 +122,6 @@ type
     class function DefaultFolder: string; static;
     /// <summary>AFolder\&lt;schlüssel&gt;.json; Schlüssel wie TAtlasProjectSummaries.KeyOf.</summary>
     class function FileFor(const AFolder, AProject: string): string; static;
-    /// <summary>Gleiche Datei: Groß-/Kleinschreibung (ASCII), „/“ und „\“ sowie Leerraum am Rand egal.</summary>
-    class function SameFile(const A, B: string): Boolean; static;
-    class function NewId: string; static;
     /// <summary>Liest AJson. False bei ungültigem Inhalt oder höherem Format; ABook ist dann leer.</summary>
     class function Parse(const AJson: string; out ABook: TAtlasNoteBook): Boolean; static;
     class function ToJson(const ABook: TAtlasNoteBook): string; static;
@@ -153,6 +150,7 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Files.DataFile,
+  Atlas.Core.Marks.Ids,
   Atlas.Text.Json;
 
 const
@@ -234,7 +232,7 @@ begin
   for mIndex := 0 to High(Notes) do
   begin
     if not Notes[mIndex].Orphaned and (Notes[mIndex].Line = ALine) and
-      TAtlasNotes.SameFile(Notes[mIndex].FileName, AFileName) then
+      TAtlasMarkIds.SameFile(Notes[mIndex].FileName, AFileName) then
     begin
       Exit(mIndex);
     end;
@@ -248,7 +246,7 @@ begin
   Result := nil;
   for mNote in Notes do
   begin
-    if not mNote.Orphaned and (mNote.Line = ALine) and TAtlasNotes.SameFile(mNote.FileName, AFileName) then
+    if not mNote.Orphaned and (mNote.Line = ALine) and TAtlasMarkIds.SameFile(mNote.FileName, AFileName) then
     begin
       Result := Result + [mNote];
     end;
@@ -262,7 +260,7 @@ begin
   Result := nil;
   for mNote in Notes do
   begin
-    if TAtlasNotes.SameFile(mNote.FileName, AFileName) then
+    if TAtlasMarkIds.SameFile(mNote.FileName, AFileName) then
     begin
       Result := Result + [mNote];
     end;
@@ -281,7 +279,7 @@ begin
     mKnown := False;
     for mName in Result do
     begin
-      if TAtlasNotes.SameFile(mName, mNote.FileName) then
+      if TAtlasMarkIds.SameFile(mName, mNote.FileName) then
       begin
         mKnown := True;
         Break;
@@ -314,7 +312,7 @@ var
   mNote: TAtlasNote;
 begin
   mNote := Default(TAtlasNote);
-  mNote.Id := TAtlasNotes.NewId;
+  mNote.Id := TAtlasMarkIds.NewId;
   mNote.FileName := AFileName;
   mNote.Text := AText;
   mNote.Anchor := TAtlasLineAnchors.Capture(ALines, ALine);
@@ -358,7 +356,7 @@ begin
   Result := False;
   for mIndex := 0 to High(Notes) do
   begin
-    if not TAtlasNotes.SameFile(Notes[mIndex].FileName, AFileName) then
+    if not TAtlasMarkIds.SameFile(Notes[mIndex].FileName, AFileName) then
     begin
       Continue;
     end;
@@ -389,7 +387,7 @@ begin
   Result := False;
   for mIndex := 0 to High(Notes) do
   begin
-    if TAtlasNotes.SameFile(Notes[mIndex].FileName, AFileName) and not Notes[mIndex].Orphaned then
+    if TAtlasMarkIds.SameFile(Notes[mIndex].FileName, AFileName) and not Notes[mIndex].Orphaned then
     begin
       Notes[mIndex].Orphaned := True;
       Result := True;
@@ -448,7 +446,7 @@ begin
       mOrphans.Notes := mOrphans.Notes + [mNote];
       Continue;
     end;
-    if (Length(mGroup.Notes) > 0) and not TAtlasNotes.SameFile(mGroup.FileName, mNote.FileName) then
+    if (Length(mGroup.Notes) > 0) and not TAtlasMarkIds.SameFile(mGroup.FileName, mNote.FileName) then
     begin
       Result := Result + [mGroup];
       mGroup := Default(TAtlasNoteGroup);
@@ -657,26 +655,6 @@ end;
 class function TAtlasNotes.FileFor(const AFolder, AProject: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(AFolder) + TAtlasProjectSummaries.KeyOf(AProject) + '.json';
-end;
-
-class function TAtlasNotes.SameFile(const A, B: string): Boolean;
-begin
-  Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);
-end;
-
-class function TAtlasNotes.NewId: string;
-var
-  mGuid: TGUID;
-begin
-  if CreateGUID(mGuid) <> 0 then
-  begin
-    // Ohne GUID: Zeitpunkt und Zufall genügen für ein Notizbuch. Ohne Randomize wäre die Folge
-    // bei jedem Start gleich.
-    Randomize;
-    Exit(LowerCase(IntToHex(Trunc(Now * 86400000), 12) + IntToHex(Random(MaxInt), 8)));
-  end;
-  Result := LowerCase(GUIDToString(mGuid));
-  Result := Copy(Result, 2, Length(Result) - 2);
 end;
 
 class function TAtlasNotes.FormatOf(const AJson: string): Integer;

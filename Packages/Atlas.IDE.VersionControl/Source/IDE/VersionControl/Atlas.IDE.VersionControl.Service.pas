@@ -142,6 +142,7 @@ uses
   System.Generics.Collections,
   Winapi.Windows,
   Vcl.ExtCtrls,
+  Atlas.WinBase.Process,
   Atlas.Core.Projects.Matching,
   Atlas.Core.Settings.TeamFile,
   Atlas.IDE.Foundation.TeamFile;
@@ -694,7 +695,7 @@ end;
 class function TAtlasIdeVcsCore.OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
 var
   mShell, mCommandLine: string;
-  mStartup: TStartupInfo;
+  mLaunch: TAtlasProcessLaunch;
   mProcess: TProcessInformation;
 begin
   Result := False;
@@ -713,13 +714,11 @@ begin
   begin
     Exit;
   end;
-  UniqueString(mCommandLine);
-  FillChar(mStartup, SizeOf(mStartup), 0);
-  mStartup.cb := SizeOf(mStartup);
-  FillChar(mProcess, SizeOf(mProcess), 0);
-  // Sichtbar und mit eigener Konsole: Hier dürfen git, Git Credential Manager und svn nachfragen.
-  if not CreateProcess(nil, PChar(mCommandLine), nil, nil, False, CREATE_NEW_CONSOLE, nil, PChar(ACheck.Root),
-    mStartup, mProcess) then
+  // Sichtbar und mit eigener Konsole: Hier dürfen git, Git Credential Manager und svn nachfragen. Ohne
+  // Standard-Handles erbt die Konsole nichts.
+  mLaunch := TAtlasProcessLaunch.Create('', mCommandLine, ACheck.Root, 0, 0, 0);
+  mLaunch.Flags := CREATE_NEW_CONSOLE;
+  if not TAtlasProcessLauncher.Launch(mLaunch, mProcess) then
   begin
     Exit;
   end;

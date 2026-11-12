@@ -29,11 +29,12 @@
 {$IMPLICITBUILD ON}
 
 // Platform-Package für Windows-spezifische Funktionen, ohne Abhängigkeit zur VCL.
-// Erlaubt sind RTL, Winapi.* und System.Win.* sowie Atlas.Common.
+// Erlaubt sind RTL, Winapi.* und System.Win.* sowie Atlas.Common und Atlas.WinBase.
 // Geprüft durch Tools\Check-PackageDependencies.ps1.
 
 requires
   rtl,
+  Atlas.WinBase,
   Atlas.Common;
 
 contains

@@ -159,18 +159,6 @@ begin
   end;
 end;
 
-/// <summary>Leiste über dem Designer: zuerst ganz oben einhängen, dann oben ausrichten.</summary>
-procedure PlaceBar(ABar: TAtlasDesignerBar; AEditorParent: TWinControl);
-begin
-  if ABar.Parent = AEditorParent then
-  begin
-    Exit;
-  end;
-  ABar.Top := 0;
-  ABar.Align := alTop;
-  ABar.Parent := AEditorParent;
-end;
-
 function AlignCaption(AKind: TAtlasAlignKind): string;
 begin
   case AKind of
@@ -412,11 +400,9 @@ begin
     function(AEditorParent: TWinControl): TControl
     begin
       Result := CreateBar;
-    end,
-    procedure(ABar: TControl; AEditorParent: TWinControl)
-    begin
-      PlaceBar(TAtlasDesignerBar(ABar), AEditorParent);
-    end);
+    end, nil);
+  // Oben neben dem Editor-Bereich, nicht im EditorPanel: Dort lag die Designfläche darunter.
+  FHost.DockTop;
   FHost.ShowIn := TAtlasEditorBarView.Designer;
   FAlignMenu := TPopupMenu.Create(nil);
   FCommands := TAtlasIdeDesignerCommands.Create(

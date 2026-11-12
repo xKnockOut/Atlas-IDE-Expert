@@ -39,8 +39,9 @@
 // BPLs beider IDE-Versionen nebeneinander liegen können.
 // Bewusst ohne Atlas.Common/Atlas.Windows: ein einzelnes Package, das die IDE
 // ohne weitere BPLs laden kann. Gemeinsamen Textcode mit dem Server
-// (Atlas.Text) übersetzt das Plugin als Quelltext mit; die Liste unten muss
-// alle Units von Atlas.Text.dpk enthalten (Tools\Check-PackageDependencies.ps1).
+// (Atlas.Text) und den gemeinsamen Windows-Code (Atlas.WinBase) übersetzt das
+// Plugin als Quelltext mit; die Liste unten muss alle Units von Atlas.Text.dpk
+// und Atlas.WinBase.dpk enthalten (Tools\Check-PackageDependencies.ps1).
 
 requires
   rtl,
@@ -395,6 +396,7 @@ contains
   Atlas.Core.Diagnostics.Shutdown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas',
   Atlas.Core.Diagnostics.TimeLimit in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas',
   Atlas.Core.Diagnostics.Deadline in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas',
+  Atlas.Core.Diagnostics.AsyncWait in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas',
   Atlas.Core.Diagnostics.UserIdle in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas',
   Atlas.Core.Diagnostics.UnloadSafety in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas',
   Atlas.Core.Diagnostics.WorkerSlot in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas',
@@ -456,6 +458,7 @@ contains
   Atlas.Core.Problems.InlineHints in 'Source\Core\Problems\Atlas.Core.Problems.InlineHints.pas',
   Atlas.Core.Problems.Refresh in 'Source\Core\Problems\Atlas.Core.Problems.Refresh.pas',
   Atlas.Core.Editor.LineTail in 'Source\Core\Editor\Atlas.Core.Editor.LineTail.pas',
+  Atlas.Core.Editor.BarDock in 'Source\Core\Editor\Atlas.Core.Editor.BarDock.pas',
   Atlas.Core.Editor.Recursion in 'Source\Core\Editor\Atlas.Core.Editor.Recursion.pas',
   Atlas.Core.Editor.GutterColumn in 'Source\Core\Editor\Atlas.Core.Editor.GutterColumn.pas',
   Atlas.Core.Editor.SelectionMatches in 'Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas',
@@ -661,6 +664,7 @@ contains
   Atlas.IDE.Foundation.DockWindow in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas',
   Atlas.IDE.ElementHelp.Keys in 'Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas',
   Atlas.IDE.Foundation.EditorBarHost in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas',
+  Atlas.IDE.Foundation.EditorBarDock in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarDock.pas',
   Atlas.Core.Projects.Recording in 'Source\Core\Projects\Atlas.Core.Projects.Recording.pas',
   Atlas.Core.Build.PipelineSettings in 'Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas',
   Atlas.Core.Build.Pipeline in 'Source\Core\Build\Atlas.Core.Build.Pipeline.pas',
@@ -792,6 +796,7 @@ contains
   Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',
   Atlas.Text.Updates in '..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas',
   Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas',
+  Atlas.WinBase.Process in '..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas',
   Atlas.UI.Settings.Overview in 'Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
   Atlas.UI.Settings.Page.Search in 'Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas',
   Atlas.UI.Settings.Section in 'Source\UI\Settings\Atlas.UI.Settings.Section.pas';

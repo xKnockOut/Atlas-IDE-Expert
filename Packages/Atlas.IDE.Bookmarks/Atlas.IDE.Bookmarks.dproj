@@ -96,6 +96,7 @@
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.SavedPlaces.pas"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
+        <DCCReference Include="Source\Core\Marks\Atlas.Core.Marks.Ids.pas"/>
         <DCCReference Include="Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.pas"/>
