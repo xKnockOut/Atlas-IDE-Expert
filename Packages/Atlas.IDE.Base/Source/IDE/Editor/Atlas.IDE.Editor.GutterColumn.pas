@@ -9,7 +9,9 @@
 //   für Code-Aktionen der Cursorzeile (nach einer Tipp-Pause beim Server
 //   erfragt, kurze Wartezeit), ↑ überschreibt bzw. ↓ wird überschrieben aus
 //   atlas.server.overrideMarks (nur, wenn der Server ohnehin läuft, je Datei
-//   und Textstand gemerkt).
+//   und Textstand gemerkt). Zeigt das vorderste Editorfenster den Designer
+//   oder die Willkommensseite statt Code, fragt die Spalte den Server nicht
+//   (TAtlasIdeGutterColumnState.FetchDue).
 // - Farben aus dem Grund der Rinne (hell/dunkel), Breite aus der Zeilenhöhe:
 //   Ändert sich die Schrift oder die Skalierung, fordert der Zeitgeber die
 //   Spalte in der neuen Breite an.

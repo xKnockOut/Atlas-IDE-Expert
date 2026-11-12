@@ -31,6 +31,10 @@ type
     /// <summary>#1355: OnExpired bekommt id (als JSON-Text), Methode und Zeitlimit für den Absturzfall.</summary>
     [Test]
     procedure ExpiredEventGetsIdAndMethod;
+    /// <summary>Hat der Client die Anfrage vor dem Zeitlimit abgebrochen ($/cancelRequest nach seiner kürzeren
+    /// Frist), meldet OnExpired sie nicht (kein Absturzfall); OnTimeout und die Antwort bleiben.</summary>
+    [Test]
+    procedure ExpiredEventSkipsRequestCancelledByClient;
   end;
 
 implementation
@@ -396,6 +400,56 @@ begin
   finally
     mLock.Free;
   end;
+end;
+
+procedure TJsonRpcWatchdogTests.ExpiredEventSkipsRequestCancelledByClient;
+var
+  mPending: IJsonRpcPendingRequests;
+  mWatchdog: TJsonRpcWatchdog;
+  mWatchdogRef: IJsonRpcWatchdog;
+  mId: TJSONValue;
+  mToken: IJsonRpcCancellationToken;
+  mExpired, mTimeouts, mAnswers: Integer;
+begin
+  mPending := TJsonRpcPendingRequests.Create;
+  mExpired := 0;
+  mTimeouts := 0;
+  mAnswers := 0;
+  mWatchdog := TJsonRpcWatchdog.Create(mPending, 20,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
+    begin
+      TInterlocked.Increment(mTimeouts);
+    end);
+  mWatchdogRef := mWatchdog;
+  mWatchdog.OnExpired :=
+    procedure(const AId, AMethod: string; ATimeoutMs: Cardinal)
+    begin
+      TInterlocked.Increment(mExpired);
+    end;
+  mId := TJSONNumber.Create(11);
+  try
+    mToken := mPending.Acquire(mId);
+    // Der Client gibt auf, bevor das Zeitlimit des Servers abläuft; der Handler prüft sein Signal nicht.
+    mPending.Cancel(mId);
+    mWatchdog.Watch(mId, 'textDocument/codeAction', mToken,
+      procedure(const AResponse: TJSONObject)
+      begin
+        TInterlocked.Increment(mAnswers);
+        AResponse.Free;
+      end);
+    Assert.IsTrue(WaitUntil(
+      function: Boolean
+      begin
+        Result := TInterlocked.CompareExchange(mTimeouts, 0, 0) > 0;
+      end, 2000));
+    TThread.Sleep(20);
+    Assert.AreEqual(0, TInterlocked.CompareExchange(mExpired, 0, 0), 'kein Absturzfall');
+    Assert.AreEqual(1, TInterlocked.CompareExchange(mAnswers, 0, 0), 'genau eine Antwort');
+    mPending.Release(mId, mToken);
+  finally
+    mId.Free;
+  end;
+  mWatchdogRef := nil;
 end;
 
 initialization

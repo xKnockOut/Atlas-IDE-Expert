@@ -4,8 +4,13 @@
 // Überschreibungen vom Server (atlas.server.overrideMarks, je Datei und
 // Textstand gemerkt), die Glühbirne der Cursorzeile und die Probleme der
 // Datei. Fragt den Server nur, wenn er ohnehin läuft, und nach einer
-// Tipp-Pause; ist er beschäftigt oder weg, erst nach RetryMs wieder. Neue
-// Antworten zeichnen den oberen Editor neu. Nur im Hauptthread.
+// Tipp-Pause; ist er beschäftigt oder weg, erst nach RetryMs wieder, nach
+// jedem weiteren Fehlschlag doppelt so lange (höchstens MaxRetryMs). Die
+// Glühbirne derselben Zeile fragt sie nach ActionTries Fehlschlägen erst
+// wieder, wenn sich Datei, Zeile oder Zeilentext ändern: Sonst lief eine
+// Zeile, die der Server nicht in der Frist beantwortet, im Leerlauf alle
+// paar Sekunden erneut ins Zeitlimit. Neue Antworten zeichnen den oberen
+// Editor neu. Nur im Hauptthread.
 // Überschreibungen und Glühbirne fragt eine Anfrage im Hintergrund
 // (TAtlasBackgroundRequest), höchstens eine zugleich. Früher wartete der
 // Hauptthread bis zu 800 ms; bei beschäftigtem Server kam keine Antwort an
@@ -32,6 +37,8 @@ type
     Line: Integer;
     Asked: Boolean;
     Found: Boolean;
+    /// <summary>Fehlgeschlagene Fragen zu Datei, Zeile und Text.</summary>
+    Failures: Integer;
   end;
 
   TAtlasIdeGutterColumnState = class
@@ -42,7 +49,7 @@ type
     cOverridesTimeoutMs = 5000;
     cActionsTimeoutMs = 5000;
     cFixesTimeoutMs = 3000;
-    cRetryMs = 5000;
+    cActionTries = 2;
   private
     FSession: TAtlasGutterColumnSessionFunc;
     FRequest: TAtlasBackgroundRequest;
@@ -52,7 +59,7 @@ type
     FText: string;
     FCaretLine: Integer;
     FChangedAt: UInt64;
-    FRetryAt: UInt64;
+    FRetry: TAtlasGutterRetry;
     // Überschreibungen vom Server.
     FFetchedFile: string;
     FFetchedText: string;
@@ -128,6 +135,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.LineTracker,
+  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.IDE.Foundation.DesignerView,
   Atlas.Core.Editor.LineTracking;
 
 procedure InvalidateTop;
@@ -222,7 +231,7 @@ var
   mMoment: UInt64;
 begin
   mMoment := TThread.GetTickCount64;
-  Result := (mMoment - FChangedAt >= cQuietMs) and (mMoment >= FRetryAt);
+  Result := (mMoment - FChangedAt >= cQuietMs) and (mMoment >= FRetry.RetryAt);
 end;
 
 function TAtlasIdeGutterColumnState.ActionDue: Boolean;
@@ -260,6 +269,11 @@ end;
 
 procedure TAtlasIdeGutterColumnState.FetchDue(ASession: TLspSession);
 begin
+  // Im Designer und auf der Willkommensseite ist die Spalte nicht zu sehen: keine Anfragen an den Server.
+  if not TAtlasIdeDesignerView.CodeInFront(TAtlasEditorBarHost.TopEditor) then
+  begin
+    Exit;
+  end;
   if FOptions.Overrides and not (SameText(FFetchedFile, FFileName) and (FFetchedText = FText)) then
   begin
     FetchOverrides(ASession);
@@ -317,9 +331,10 @@ procedure TAtlasIdeGutterColumnState.OverridesFetched(AOk: Boolean; const AFileN
 begin
   if not AOk then
   begin
-    FRetryAt := TThread.GetTickCount64 + cRetryMs;
+    FRetry.Failed(TThread.GetTickCount64);
     Exit;
   end;
+  FRetry.Succeeded;
   // Gilt für den gefragten Stand; ist der Text inzwischen anders, fragt Track neu.
   FOverrides := AOverrides;
   FFetchedFile := AFileName;
@@ -334,6 +349,11 @@ var
   mFound: TArray<TLspCodeAction>;
 begin
   mLineText := TAtlasRecursionMarks.LineOf(FText, FCaretLine);
+  // Neue Frage (andere Datei, Zeile oder Text): Fehlschläge der alten zählen nicht.
+  if not SameText(FAction.FileName, FFileName) or (FAction.Line <> FCaretLine) or (FAction.Text <> mLineText) then
+  begin
+    FAction.Failures := 0;
+  end;
   FAction.FileName := FFileName;
   FAction.Line := FCaretLine;
   FAction.Text := mLineText;
@@ -361,11 +381,21 @@ var
   mAction: TLspCodeAction;
   mHad: Boolean;
 begin
-  if not AOk then
+  if AOk then
   begin
-    FRetryAt := TThread.GetTickCount64 + cRetryMs;
-    // Ohne Antwort noch einmal fragen, sonst bliebe die Glühbirne aus, bis die Einfügemarke wandert.
-    FAction.Asked := False;
+    FRetry.Succeeded;
+  end
+  else
+  begin
+    FRetry.Failed(TThread.GetTickCount64);
+    // Ohne Antwort noch einmal fragen, sonst bliebe die Glühbirne aus, bis die Einfügemarke wandert; aber nicht
+    // ohne Ende: Beantwortet der Server diese Zeile nicht in der Frist, rechnete er im Leerlauf immer wieder bis
+    // ins Zeitlimit.
+    if SameText(FAction.FileName, AFileName) and (FAction.Line = ALine) and (FAction.Text = ALineText) then
+    begin
+      Inc(FAction.Failures);
+      FAction.Asked := FAction.Failures >= cActionTries;
+    end;
   end;
   // Inzwischen eine andere Zeile gefragt: Diese Antwort gilt nicht mehr.
   if not SameText(FAction.FileName, AFileName) or (FAction.Line <> ALine) or (FAction.Text <> ALineText) then

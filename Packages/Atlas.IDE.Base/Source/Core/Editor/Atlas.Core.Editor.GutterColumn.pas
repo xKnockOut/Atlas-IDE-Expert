@@ -69,6 +69,22 @@ type
     function HasLines: Boolean;
   end;
 
+  /// <summary>Wartezeit nach gescheiterten Anfragen: RetryMs, nach jedem weiteren Fehlschlag doppelt so lange,
+  /// höchstens MaxRetryMs; eine Antwort setzt sie zurück.</summary>
+  TAtlasGutterRetry = record
+  public const
+    cRetryMs = 5000;
+    cMaxRetryMs = 120000;
+  public
+    /// <summary>Fehlschläge in Folge.</summary>
+    Failures: Integer;
+    /// <summary>Frühester Zeitpunkt der nächsten Anfrage (GetTickCount64).</summary>
+    RetryAt: UInt64;
+    /// <summary>Anfrage gescheitert (Server beschäftigt, weg oder zu langsam) zum Zeitpunkt ANow.</summary>
+    procedure Failed(ANow: UInt64);
+    procedure Succeeded;
+  end;
+
   TAtlasGutterColumn = class
   public const
     /// <summary>Breite bei 96 DPI und 16 Pixeln Zeilenhöhe.</summary>
@@ -192,6 +208,32 @@ end;
 function TAtlasFileOverrides.HasLines: Boolean;
 begin
   Result := Length(Lines) > 0;
+end;
+
+{ TAtlasGutterRetry }
+
+procedure TAtlasGutterRetry.Failed(ANow: UInt64);
+var
+  mDelay: UInt64;
+  mStep: Integer;
+begin
+  mDelay := cRetryMs;
+  for mStep := 1 to Failures do
+  begin
+    mDelay := mDelay * 2;
+    if mDelay >= cMaxRetryMs then
+    begin
+      mDelay := cMaxRetryMs;
+      Break;
+    end;
+  end;
+  Inc(Failures);
+  RetryAt := ANow + mDelay;
+end;
+
+procedure TAtlasGutterRetry.Succeeded;
+begin
+  Failures := 0;
 end;
 
 { TAtlasGutterColumn }
