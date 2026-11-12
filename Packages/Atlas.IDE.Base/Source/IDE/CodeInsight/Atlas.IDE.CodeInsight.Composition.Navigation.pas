@@ -21,6 +21,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Explanation,
+  Atlas.Core.Hover.View,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -32,6 +34,7 @@ uses
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Problems.Service,
   Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.CodeInsight.Composition.Session;
 
@@ -42,6 +45,8 @@ const
   /// <summary>Regel-Aktionen im Tooltip (TAtlasEditorHoverActions.TipProblemAction).</summary>
   cConfigureTag = 'rule.configure';
   cSuppressLineTag = 'rule.suppressLine';
+  /// <summary>„Erklären“ im Tooltip (#54): Dialog mit Erklärung, Ursache und Beispiel.</summary>
+  cExplainTag = 'problem.explain';
 
 procedure SwitchTestUnit;
 begin
@@ -70,6 +75,10 @@ begin
   begin
     TAtlasRuleActions.Configure(AProblem.Code);
   end
+  else if ATag = cExplainTag then
+  begin
+    TAtlasIdeProblems.Explain(AProblem);
+  end
   else if ATag = cSuppressLineTag then
   begin
     // Der Befund steht im oberen Editor: ohne Datei, kein Sprung.
@@ -87,6 +96,20 @@ begin
   begin
     TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
       AProblem.EndLine, AProblem.EndCharacter), ATag);
+  end;
+end;
+
+/// <summary>Erklärung im Tooltip (#54): Eintrag aus dem Katalog des Servers.</summary>
+function HoverExplanation(const AProblem: TAtlasProblem): TAtlasHoverExplanation;
+var
+  mExplanation: TAtlasRuleExplanation;
+begin
+  Result := Default(TAtlasHoverExplanation);
+  if TAtlasRuleExplanation.Find(TAtlasIdeProblems.Catalog, TAtlasRuleExplanation.Key(AProblem), mExplanation) then
+  begin
+    Result.Known := True;
+    Result.Cause := mExplanation.Cause;
+    Result.DocWiki := mExplanation.DocWiki;
   end;
 end;
 
@@ -179,6 +202,7 @@ begin
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := SwitchTestUnit;
   TAtlasEditorHover.OnProblemAction := ProblemAction;
   TAtlasEditorHover.OnVisualize := HoverValue;
+  TAtlasEditorHover.OnExplanation := HoverExplanation;
   InstallEditorCommandHooks;
   InstallGenerate;
 end;
@@ -189,6 +213,7 @@ begin
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
   TAtlasEditorHover.OnProblemAction := nil;
   TAtlasEditorHover.OnVisualize := nil;
+  TAtlasEditorHover.OnExplanation := nil;
   TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeImpact.Uninstall;
   TAtlasIdeResults.Uninstall;

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeSecurity: array[0..54] of string = (
+  cCatalogLinesDeSecurity: array[0..65] of string = (
     '{',
     '      "id": "bidi-control",',
     '      "name": "Bidirektionales Steuerzeichen",',
@@ -64,6 +64,23 @@ const
     '      "name": "Random für sicherheitsrelevante Werte",',
     '      "description": "Random wird einem Token, Kennwort, Salt, Nonce oder Schlüssel zugewiesen. Random ist vorhersagbar; einen kryptografischen Zufallsgenerator verwenden. Fehlendes Randomize behandel' +
     't #153."',
+    '    },',
+    '{',
+    '      "id": "security-hardcoded-credential",',
+    '      "name": "Zugangsdaten im Code",',
+    '      "description": "Ein Kennwort, Schlüssel oder Token steht im Quelltext oder in der Formulardatei. Drei Muster in String-Literalen (Kommentare zählen nicht): Password= bzw. Pwd= mit Wert in einer ' +
+    'Verbindungszeichenfolge (ConnectionString, Params, Params.Add, auch in der Formulardatei; ohne Leerzeichen vor =, damit SQL wie WHERE Password = :Pwd still bleibt), Konfidenz hoch; bekannte Schlüsself' +
+    'ormate (GitHub-Token, AWS-Zugriffsschlüssel, private Schlüssel, Slack- und Google-Schlüssel) in jedem Literal, auch in resourcestring, Konfidenz hoch; ein Literal, das einem Namen auf Password, Passwd' +
+    ', Passwort, Kennwort, Pwd, Secret, ApiKey, AccessKey, Token oder PrivateKey zugewiesen oder mit ihm verglichen wird (const, vorbelegte Variable, :=, =, Params.Values[''Password''], Komponenten-Property ' +
+    'in der Formulardatei), Konfidenz mittel. Werte für Secret, Schlüssel und Token zählen ab acht Zeichen. Leere Werte, Platzhalter (''***'', ''xxx'', ''<…>'', ''%s'', ''{0}'', ''changeme'', :Param), Texte mit Leerze' +
+    'ichen und Werte, die wie ein Schlüsselname aussehen, bleiben still. Der Befund zeigt den Wert nie im Klartext: höchstens die ersten vier Zeichen, dahinter ****. Befunde aus der Formulardatei stehen am' +
+    ' Feld der Komponente in der Unit. Keine Korrektur; Zugangsdaten aus der Konfiguration, der Umgebung oder einem Tresor lesen.",',
+    '      "options": [',
+    '        {',
+    '          "name": "patterns",',
+    '          "description": "Weitere reguläre Ausdrücke für eigene Schlüsselformate (z. B. \\bACME-[0-9]{6}\\b); sie melden wie die eingebauten Formate."',
+    '        }',
+    '      ]',
     '    },',
     '{',
     '      "id": "security-sql-injection",',

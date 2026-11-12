@@ -333,6 +333,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.Core.Problems.Colors,
+  Atlas.Core.Problems.Explanation,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.KindIcon;
@@ -1852,7 +1853,16 @@ begin
   // Regel-Aktionen liefert das Modul Prüfregeln (#1755); Syntaxfehler (#1022) lassen sich nicht per Kommentar
   // unterdrücken.
   ShowRuleActions(mRule and mFinding.Problem.CanSuppress, mRule);
-  FExplainItem.Enabled := mRule;
+  // Compilermeldungen mit Nummer erklärt der Katalog ebenfalls (#54).
+  FExplainItem.Enabled := mRule or (mHas and (TAtlasRuleExplanation.MessageCode(mFinding.Problem) <> ''));
+  if mRule or not FExplainItem.Enabled then
+  begin
+    FExplainItem.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuExplain);
+  end
+  else
+  begin
+    FExplainItem.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuExplainMessage);
+  end;
   // Issue anlegen (#1268): auch für Compilermeldungen; mehrere markierte ergeben ein Issue mit Liste.
   mCount := Length(SelectedFindings);
   FIssueItem.Visible := Assigned(FOnCreateIssue) and Assigned(FCanCreateIssue) and FCanCreateIssue();

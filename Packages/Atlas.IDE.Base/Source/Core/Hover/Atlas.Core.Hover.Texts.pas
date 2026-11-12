@@ -40,6 +40,11 @@ type
     KindInfo: string;
     Suppress: string;
     Configure: string;
+    /// <summary>Erklärungen (#54): Links „Erklären“ und „DocWiki“, Format mit %s für die typische Ursache.
+    /// </summary>
+    Explain: string;
+    DocWiki: string;
+    Cause: string;
     Stale: string;
     /// <summary>Zusatz eines vom Build bestätigten Befunds (#1024): „vom Compiler bestätigt“; mit Code
     /// „vom Compiler bestätigt (%s)“.</summary>

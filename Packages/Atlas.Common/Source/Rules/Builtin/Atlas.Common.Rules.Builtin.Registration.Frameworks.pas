@@ -37,6 +37,7 @@ uses
   Atlas.Common.Rules.Builtin.Ownership.StringListObjects,
   Atlas.Common.Rules.Builtin.Ownership.ComponentInterface,
   Atlas.Common.Rules.Builtin.Database,
+  Atlas.Common.Rules.Builtin.Credentials,
   Atlas.Common.Rules.Builtin.DllExports,
   Atlas.Common.Rules.Builtin.Files,
   Atlas.Common.Rules.Builtin.Forms,
@@ -52,6 +53,7 @@ begin
   RegisterComponentRules(ARegistry);
   RegisterFormFieldRules(ARegistry);
   RegisterSecurityRules(ARegistry);
+  RegisterCredentialRules(ARegistry);
   RegisterRtlPatternRules(ARegistry);
   RegisterRtlTypePatternRules(ARegistry);
   RegisterExceptionRules(ARegistry);

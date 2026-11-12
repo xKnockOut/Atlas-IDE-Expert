@@ -218,10 +218,15 @@ begin
 end;
 
 function TShellServerCommands.RunSettingsCatalog(const AArguments: TJSONArray): TJSONValue;
+var
+  mCatalog: TJSONObject;
 begin
   // Experimentelle Regeln (#834) markiert die Einstellungsseite (#909) aus "profiles" des Regelkatalogs (#145).
-  Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments),
+  mCatalog := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments),
     FServices.GlobalSettingsFile());
+  // Erklärungen der Compilermeldungen (#54) für Hover und „Erklären“ des Plugins.
+  TLspSettingsCommands.AddMessages(mCatalog, AArguments);
+  Result := mCatalog;
 end;
 
 function TShellServerCommands.RunConvertForms(const AArguments: TJSONArray): TJSONValue;

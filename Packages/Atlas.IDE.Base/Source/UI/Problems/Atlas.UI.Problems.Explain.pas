@@ -4,7 +4,9 @@
 // „Atlas-Prüfung“. Oben Name und Kennung, bei experimentellen Regeln die
 // Marke „Experimentell“ (#834), darunter die Beschreibung und die Beispiele
 // falsch und richtig in Festbreitenschrift. Esc oder „Schließen“ schließt.
-// Reine VCL; den Katalog liefert der Aufrufer.
+// Compilermeldungen (#54): Titel „Meldung E2003“, nach der Beschreibung die
+// typische Ursache, unten links „Im DocWiki öffnen“.
+// Reine VCL; den Katalog und das Öffnen von Links liefert der Aufrufer.
 
 interface
 
@@ -27,18 +29,36 @@ type
     FTitle: TLabel;
     FMark: TLabel;
     FDescription: TLabel;
+    FCause: TLabel;
+    FDocWiki: TButton;
+    FUrl: string;
+    FOpenUrl: TProc<string>;
     FBad: TMemo;
     FGood: TMemo;
     FClose: TButton;
     function AddLabel(const ACaption: string): TLabel;
     function AddExample(const AText: string): TMemo;
     procedure CloseClick(Sender: TObject);
+    procedure DocWikiClick(Sender: TObject);
+    /// <summary>Titel „Regel …“ bzw. „Meldung …“ (Compilermeldungen tragen einen DocWiki-Link, #54).</summary>
+    class function TitleOf(const AExplanation: TAtlasRuleExplanation): string; static;
+    /// <summary>„Im DocWiki öffnen“ links in ABottom (#54), nur mit Link.</summary>
+    procedure AddDocWiki(ABottom: TWinControl);
+    /// <summary>Überschrift „Typische Ursache“ und ACause (#54), nur mit Ursache.</summary>
+    procedure AddCause(const ACause: string);
   public
     constructor CreateDialog(AOwner: TComponent; const AExplanation: TAtlasRuleExplanation);
-    class procedure Execute(const AExplanation: TAtlasRuleExplanation); static;
+    /// <summary>Dialog zeigen; AOpenUrl öffnet den DocWiki-Link (#54).</summary>
+    class procedure Execute(const AExplanation: TAtlasRuleExplanation; const AOpenUrl: TProc<string>); static;
     property TitleLabel: TLabel read FTitle;
     property MarkLabel: TLabel read FMark;
     property DescriptionLabel: TLabel read FDescription;
+    /// <summary>Typische Ursache einer Compilermeldung (#54); nil ohne.</summary>
+    property CauseLabel: TLabel read FCause;
+    /// <summary>„Im DocWiki öffnen“ (#54); nil ohne Link.</summary>
+    property DocWikiButton: TButton read FDocWiki;
+    /// <summary>Öffnet den DocWiki-Link (#54); ohne Zuweisung tut der Knopf nichts.</summary>
+    property OpenUrl: TProc<string> read FOpenUrl write FOpenUrl;
     property BadMemo: TMemo read FBad;
     property GoodMemo: TMemo read FGood;
   end;
@@ -53,6 +73,8 @@ uses
 const
   cGap = 8;
   cDialogWidth = 560;
+  cButtonHeight = 28;
+  cDocWikiWidth = 140;
 
 { TAtlasRuleExplainDialog }
 
@@ -61,8 +83,8 @@ var
   mBottom: TPanel;
   mHeading: TLabel;
 begin
-  inherited CreateDialog(AOwner,
-    TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainTitle, [AExplanation.Id]), cDialogWidth);
+  inherited CreateDialog(AOwner, TitleOf(AExplanation), cDialogWidth);
+  FUrl := AExplanation.DocWiki;
   BorderStyle := bsSizeToolWin;
   BorderIcons := [biSystemMenu];
   KeyPreview := True;
@@ -85,6 +107,7 @@ begin
   FClose.Cancel := True;
   FClose.Default := True;
   FClose.OnClick := CloseClick;
+  AddDocWiki(mBottom);
 
   FTitle := AddLabel(AExplanation.Name);
   FTitle.Font.Style := [fsBold];
@@ -97,6 +120,7 @@ begin
   FMark.Visible := AExplanation.Experimental;
   FDescription := AddLabel(AExplanation.Description);
   FDescription.WordWrap := True;
+  AddCause(AExplanation.Cause);
   if AExplanation.Bad <> '' then
   begin
     mHeading := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad));
@@ -147,11 +171,63 @@ begin
   ModalResult := mrOk;
 end;
 
-class procedure TAtlasRuleExplainDialog.Execute(const AExplanation: TAtlasRuleExplanation);
+class function TAtlasRuleExplainDialog.TitleOf(const AExplanation: TAtlasRuleExplanation): string;
+begin
+  if AExplanation.DocWiki <> '' then
+  begin
+    Result := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainMessageTitle, [AExplanation.Id]);
+  end
+  else
+  begin
+    Result := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainTitle, [AExplanation.Id]);
+  end;
+end;
+
+procedure TAtlasRuleExplainDialog.AddDocWiki(ABottom: TWinControl);
+begin
+  if FUrl = '' then
+  begin
+    Exit;
+  end;
+  FDocWiki := TButton.Create(Self);
+  FDocWiki.Parent := ABottom;
+  FDocWiki.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsExplainDocWiki);
+  FDocWiki.Width := ScaleValue(cDocWikiWidth);
+  FDocWiki.Height := ScaleValue(cButtonHeight);
+  FDocWiki.Top := ScaleValue(cGap);
+  FDocWiki.Left := ScaleValue(cGap);
+  FDocWiki.OnClick := DocWikiClick;
+end;
+
+procedure TAtlasRuleExplainDialog.AddCause(const ACause: string);
+var
+  mHeading: TLabel;
+begin
+  if ACause = '' then
+  begin
+    Exit;
+  end;
+  mHeading := AddLabel(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsExplainCause));
+  mHeading.Font.Style := [fsBold];
+  FCause := AddLabel(ACause);
+  FCause.WordWrap := True;
+end;
+
+procedure TAtlasRuleExplainDialog.DocWikiClick(Sender: TObject);
+begin
+  if Assigned(FOpenUrl) then
+  begin
+    FOpenUrl(FUrl);
+  end;
+end;
+
+class procedure TAtlasRuleExplainDialog.Execute(const AExplanation: TAtlasRuleExplanation;
+  const AOpenUrl: TProc<string>);
 var
   mDialog: TAtlasRuleExplainDialog;
 begin
   mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, AExplanation);
+  mDialog.OpenUrl := AOpenUrl;
   try
     mDialog.ShowModal;
   finally

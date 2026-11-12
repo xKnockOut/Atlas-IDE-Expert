@@ -53,6 +53,7 @@ uses
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.View,
   Atlas.Core.Hover.Texts,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
@@ -271,6 +272,9 @@ begin
   ATexts.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
   ATexts.Suppress := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress);
   ATexts.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
+  ATexts.Explain := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsExplain);
+  ATexts.DocWiki := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsDocWiki);
+  ATexts.Cause := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsCause);
   ATexts.Stale := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsStale);
 end;
 
