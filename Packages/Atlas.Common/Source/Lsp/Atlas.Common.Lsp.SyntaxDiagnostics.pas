@@ -165,7 +165,8 @@ type
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
     function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
-    /// <summary>Ungenutzte uses (#621) als Darstellung der Regel unused-uses (#1135) in AItems.</summary>
+    /// <summary>Auffällige uses (#621) als Darstellung der Regeln unused-uses (#1135) und
+    /// uses-only-in-implementation (#1136) in AItems.</summary>
     procedure AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput;
       AHasRules: Boolean);
   public
@@ -238,6 +239,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Suppressions,
   Atlas.Common.Rules.Builtin.DeadCode,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Rules.Checker;
 
 // Übernimmt AParams.
@@ -605,18 +607,36 @@ begin
   AddCompilerMessages(mItems, ADocument, CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
 end;
 
+/// <summary>Ist die Regel ARuleId für die Datei aus ARules an (Einstellungen, exclude, Gruppen)?</summary>
+function UsesRuleOn(const ARuleId: string; const ARules: TRuleCheckContext): Boolean;
+begin
+  Result := TRuleEngine.RuleOn(ARuleId, ARules.Settings, ARules.RelativePath,
+    ChangeFileExt(ExtractFileName(ARules.FileName), ''));
+end;
+
 procedure TLspSyntaxDiagnostics.AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument;
   const AInput: TSyntaxDiagnosticsInput; AHasRules: Boolean);
 var
   mUses: TUsesContext;
   mTree: ISharedSyntaxTree;
   mSuppressions: TSuppressions;
+  mShown: TUsesEntryStates;
 begin
-  // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135): Mit der Regel aus, für ausgeschlossene
-  // Dateien und unter lsp-ignore bleibt es weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
-  if not CurrentUses(ADocument.Uri, mUses) or (AHasRules and not TRuleEngine.RuleOn(cUnusedUsesRuleId,
-    AInput.Rules.Settings, AInput.Rules.RelativePath, ChangeFileExt(ExtractFileName(AInput.Rules.FileName), '')))
-    then
+  // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135), der Hinweis „nur in der implementation
+  // gebraucht“ die von uses-only-in-implementation (#1136): Mit der Regel aus, für ausgeschlossene Dateien und
+  // unter lsp-ignore bleiben sie weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
+  mShown := [TUsesEntryState.Unused, TUsesEntryState.KeptForInitialization, TUsesEntryState.KeptByAllowlist,
+    TUsesEntryState.OnlyImplementation];
+  if AHasRules and not UsesRuleOn(cUnusedUsesRuleId, AInput.Rules) then
+  begin
+    mShown := mShown - [TUsesEntryState.Unused, TUsesEntryState.KeptForInitialization,
+      TUsesEntryState.KeptByAllowlist];
+  end;
+  if AHasRules and not UsesRuleOn(cUsesOnlyInImplementationRuleId, AInput.Rules) then
+  begin
+    mShown := mShown - [TUsesEntryState.OnlyImplementation];
+  end;
+  if (mShown = []) or not CurrentUses(ADocument.Uri, mUses) then
   begin
     Exit;
   end;
@@ -630,7 +650,7 @@ begin
   mSuppressions := TSuppressions.Create(mTree.Tree.Tokens);
   try
     TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TLspInactiveRegions.RangesOf(AInput.Inactive), mUses,
-      mSuppressions);
+      mSuppressions, mShown);
   finally
     mSuppressions.Free;
   end;

@@ -37,7 +37,7 @@ In Atlas style instead of Help Insight:
   - the first `uses`: units
 - **Recursion marks** in the gutter
 - **Inactive `{$IFDEF}` branches** dimmed with the reason in the tooltip
-- **Unused uses** dimmed (rule `unused-uses`: also in `--check`, `get_diagnostics` and the baseline; `off`, `exclude`, `lsp-ignore` and the `keep` option apply to the dimming as well)
+- **Unused uses** dimmed (rule `unused-uses`: also in `--check`, `get_diagnostics` and the baseline; `off`, `exclude`, `lsp-ignore` and the `keep` option apply to the dimming as well); interface uses only needed by the implementation part get a hint and the fix "Move to implementation uses" (rule `uses-only-in-implementation`, configurable the same way)
 - **Bracket and block pairs** coloured by depth, with matching block lines; local routines either one level deeper, in their own colour with a dashed line or like the outer routine, optionally shaded (`highlight.nestedRoutines`, `highlight.nestedRoutineBand`)
 
 ### No findings in foreign code (`diagnostics.librarySources`)

@@ -267,6 +267,7 @@ Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
 Atlas.Common.Rules.Builtin.Units.Tests
 Atlas.Common.Rules.Builtin.Unused.Tests
+Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests
 Atlas.Common.Rules.ChangedFiles.Tests
 Atlas.Common.Rules.CodeActions.Tests
 Atlas.Common.Rules.Confidence.Tests
