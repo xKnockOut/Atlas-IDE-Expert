@@ -63,7 +63,7 @@ var
   mList: TArray<string>;
 begin
   mList := TAtlasDuplicateRow.ParseList(' Fax, Mobil;Privat ,, ');
-  Assert.AreEqual(3, Length(mList));
+  Assert.AreEqual(3, Integer(Length(mList)));
   Assert.AreEqual('Mobil', mList[1]);
   Assert.AreEqual(3, TAtlasDuplicateRow.CopyCount(mList, 7), 'Liste geht vor');
   Assert.AreEqual(2, TAtlasDuplicateRow.CopyCount(nil, 2));
@@ -79,7 +79,7 @@ begin
   Assert.AreEqual(37, mGroup.Top);
   Assert.AreEqual(250, mGroup.Right);
   mLayout := TAtlasDuplicateRow.Layout(Request(mGroup, Rect(0, 0, 400, 300), nil, TAtlasDuplicateDirection.Down, 3));
-  Assert.AreEqual(3, Length(mLayout.Copies));
+  Assert.AreEqual(3, Integer(Length(mLayout.Copies)));
   Assert.AreEqual(68, mLayout.Copies[0].Top, '37 + 23 + 8');
   Assert.AreEqual(130, mLayout.Copies[2].Top, 'gleicher Abstand');
   Assert.AreEqual(8, mLayout.Copies[2].Left);
@@ -188,8 +188,8 @@ begin
   Assert.AreEqual(10, mLayout.Others[0].Top, 'davor bleibt');
   Assert.AreEqual(133, mLayout.Others[1].Top, '71 + 2 * (23 + 8)');
   Assert.IsFalse(mLayout.AnyBad);
-  Assert.AreEqual(1, Length(TAtlasDuplicateRow.Followers(mRequest.Group, mRequest.Others,
-    TAtlasDuplicateDirection.Down)));
+  Assert.AreEqual(1, Integer(Length(TAtlasDuplicateRow.Followers(mRequest.Group, mRequest.Others,
+    TAtlasDuplicateDirection.Down))));
 end;
 
 end.

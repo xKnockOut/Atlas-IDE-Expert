@@ -123,6 +123,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Settings.Plugin,

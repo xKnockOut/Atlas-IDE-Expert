@@ -11,7 +11,10 @@
 //   (editor.designerBar.searchStyle). Taste editor.designerBar.searchKey
 //   (Vorgabe Alt+^) nur, solange der Designer den Fokus hat: Tastaturbindungen
 //   der IDE wirken nur im Code-Editor, darum über TAtlasKeyHook, angemeldet nur
-//   solange ein Designer gezeigt wird.
+//   solange ein Designer gezeigt wird. Die Liste enthält auch die
+//   Komponenten eingebetteter Frames; Enter zeigt die Wahl über
+//   TAtlasIdeShowComponent (verdeckte Registerseiten werden aktiv),
+//   Strg+Enter fügt sie der Auswahl hinzu (#539).
 // - Nichtvisuelle: führt die Aktion der IDE hinter Strg+H aus und zeigt ihren
 //   Zustand (gedrückt = ausgeblendet). Atlas blendet nichts selbst aus.
 // - Elternelement auswählen: Parent der ersten Auswahl, auf dem Formular das
@@ -78,6 +81,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Commands,
   Atlas.IDE.Designer.SearchItems,
+  Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.TabOrder,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorStyle,
@@ -306,6 +310,22 @@ begin
   end;
 end;
 
+/// <summary>Auswahl ohne das Formular selbst und ohne AComponent, dahinter AComponent (#539).</summary>
+function SelectionPlus(const AEditor: IOTAFormEditor; ARoot, AComponent: TComponent): TArray<TComponent>;
+var
+  mItem: TComponent;
+begin
+  Result := nil;
+  for mItem in TAtlasDesignerAccess.Selection(AEditor, ARoot) do
+  begin
+    if (mItem <> ARoot) and (mItem <> AComponent) then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+  Result := Result + [AComponent];
+end;
+
 procedure SearchAction(AAction: TAtlasComponentSearchAction; const AItem: TAtlasDesignerItem);
 var
   mEditor: IOTAFormEditor;
@@ -317,7 +337,8 @@ begin
   begin
     Exit;
   end;
-  mComponent := mRoot.FindComponent(AItem.Name);
+  // Auch in eingebetteten Frames (#539).
+  mComponent := TAtlasIdeShowComponent.FindComponent(mRoot, AItem.Name);
   mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
   // Umbenannt oder gelöscht, seit das Fenster offen ist.
   if (mComponent = nil) or (mDesigner = nil) then
@@ -326,7 +347,16 @@ begin
   end;
   if AAction = TAtlasComponentSearchAction.Select then
   begin
-    mDesigner.SelectComponent(mComponent);
+    TAtlasIdeShowComponent.Show(mEditor, mComponent);
+  end
+  else if AAction = TAtlasComponentSearchAction.Add then
+  begin
+    // Ohne den Designer nach vorn zu holen: Das Suchfenster bleibt offen und behält den Fokus.
+    if TAtlasIdeShowComponent.Reveal(mComponent) then
+    begin
+      mDesigner.Modified;
+    end;
+    TAtlasDesignerAccess.Select(mDesigner, mRoot, SelectionPlus(mEditor, mRoot, mComponent));
   end
   else if AAction = TAtlasComponentSearchAction.Event then
   begin
@@ -787,6 +817,7 @@ begin
   Result := FSearchChoice;
   Result.Compact := SameText(TAtlasIdeSettings.Current.DesignerSearchStyle,
     TAtlasPluginSettings.cDesignerSearchPopup);
+  Result.Fuzzy := TAtlasIdeSettings.Current.DesignerFuzzySearch;
   Result.FormName := ARoot.Name;
   Result.FormBounds := TRect.Empty;
   if ARoot is TWinControl then

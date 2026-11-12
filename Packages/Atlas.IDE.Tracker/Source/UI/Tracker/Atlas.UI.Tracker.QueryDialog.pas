@@ -28,7 +28,8 @@ uses
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.UI.Settings.ChoiceBox,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Ergebnis von „Testen“ (#1263), im Hauptthread.</summary>
@@ -61,7 +62,7 @@ type
     Cancel: TButton;
   end;
 
-  TAtlasTrackerQueryDialog = class(TForm)
+  TAtlasTrackerQueryDialog = class(TAtlasDialog)
   private
     FView: TAtlasQueryDialogView;
     FConnections: TArray<TAtlasTrackerConnection>;
@@ -125,15 +126,12 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
 const
   cGap = 8;
   cLabelWidth = 110;
   cDialogWidth = 560;
-  cFontName = 'Segoe UI';
-  cFontSize = 9;
   cRowHeight = 30;
   cControlTop = 4;
   cTestRowHeight = 36;
@@ -151,7 +149,7 @@ constructor TAtlasTrackerQueryDialog.CreateDialog(AOwner: TComponent; const AQue
   const AConnections: TArray<TAtlasTrackerConnection>; const ATaken: TArray<string>;
   const AOnTest: TAtlasQueryTestEvent);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FConnections := AConnections;
   FTaken := ATaken;
   FOnTest := AOnTest;
@@ -159,12 +157,7 @@ begin
   FLink.Dialog := Self;
   FLinkRef := FLink;
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTitle);
-  BorderStyle := bsDialog;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := cFontName;
-  Font.Size := cFontSize;
-  ClientWidth := ScaleValue(cDialogWidth);
   BuildFields;
   BuildTest;
   BuildButtons;
@@ -405,7 +398,7 @@ begin
     TAtlasTrackerTemplateKind.RecentlyChanged:
       mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateRecentlyChanged);
   else
-    mKind := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryDefault);
+    mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault);
   end;
   Result := mProvider + ' · ' + mKind;
   // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.

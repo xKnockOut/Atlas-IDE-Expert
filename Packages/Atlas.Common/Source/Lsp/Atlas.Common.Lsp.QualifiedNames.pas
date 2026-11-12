@@ -90,7 +90,7 @@ var
   mIndex: Integer;
   mNode, mChild: TSyntaxNode;
 begin
-  // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das APosition enthält.
+  // Schleife statt Rekursion: dem ersten Kind folgen, das APosition enthält.
   Result := nil;
   mNode := ANode;
   while mNode <> nil do
@@ -140,7 +140,7 @@ var
   mPosition: TTextPosition;
 begin
   mPosition := APosition;
-  // Search statt Rekursion (Bericht M1); in eine uses-Liste geht die Suche nicht weiter hinein.
+  // Search statt Rekursion; in eine uses-Liste geht die Suche nicht weiter hinein.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin

@@ -93,7 +93,6 @@ type
     procedure Finish;
     procedure RemoveBreakpoints;
     procedure Report(const AText: string);
-    function SourceText(const AFileName: string; out AText: string): Boolean;
     class function CanBreak(const AFileName: string): Boolean; static;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
   public
@@ -126,13 +125,11 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Projects.Context,
@@ -288,27 +285,6 @@ begin
   end;
 end;
 
-function TAtlasIdeStepInto.SourceText(const AFileName: string; out AText: string): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-begin
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    AText := TAtlasEditorBuffer.Text(mBuffer);
-    Exit(True);
-  end;
-  try
-    AText := TAtlasTextFile.Load(AFileName).Text;
-    Result := True;
-  except
-    on E: EInOutError do
-      Result := False;
-    on E: EAtlasTextFileError do
-      Result := False;
-  end;
-end;
-
 class function TAtlasIdeStepInto.CanBreak(const AFileName: string): Boolean;
 var
   mServices: IOTAServices;
@@ -366,7 +342,7 @@ begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
   end
   else if not TAtlasIdeBreakpoints.Position(mProcess.CurrentThread, FFileName, mLine) or
-    not SourceText(FFileName, mText) then
+    not TAtlasIdeFiles.SourceText(FFileName, mText) then
   begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNoSourceAt));
   end

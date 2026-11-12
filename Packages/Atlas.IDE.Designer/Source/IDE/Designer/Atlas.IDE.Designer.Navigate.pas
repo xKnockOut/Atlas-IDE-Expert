@@ -322,8 +322,9 @@ begin
   begin
     FFlash := TAtlasDesignerFlash.CreateFlash(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
   end;
-  FFlash.FlashAt(Rect(mControl.ClientToScreen(Point(0, 0)), mControl.ClientToScreen(Point(mControl.Width,
-    mControl.Height))));
+  // TRect.Create statt Rect(P1, P2): Je nach uses-Reihenfolge gilt nur Rect(L, T, R, B) (E2010).
+  FFlash.FlashAt(TRect.Create(mControl.ClientToScreen(Point(0, 0)),
+    mControl.ClientToScreen(Point(mControl.Width, mControl.Height))));
 end;
 
 end.

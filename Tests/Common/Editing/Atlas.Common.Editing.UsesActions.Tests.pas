@@ -53,6 +53,10 @@ type
     /// <summary>#621: In {$IFDEF}-Listen zählt nur der aktive Zweig, auch für die Bezeichner.</summary>
     [Test]
     procedure EntriesFollowActiveBranch;
+    /// <summary>Das uses eines Programms, einer Bibliothek oder eines Packages zählt die Units des Projekts auf:
+    /// nichts abblenden, nichts zum Streichen anbieten.</summary>
+    [Test]
+    procedure ProjectUsesAreNeverUnused;
     /// <summary>#621: Einzelne Einträge streichen ergibt parsbaren Code, auch mit Direktiven und Kommentaren.
     /// </summary>
     [Test]
@@ -524,6 +528,27 @@ begin
   Text := Source('', '', 'Units.B', 'procedure P;'#10'begin'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
   Assert.AreEqual('Units.B:unused|', States(Text, TLspInactiveRegions.Ranges(Text, []), nil));
   Assert.AreEqual('', States(Text, TLspInactiveRegions.Ranges(Text, ['X']), nil));
+end;
+
+procedure TUsesActionsTests.ProjectUsesAreNeverUnused;
+var
+  mText: string;
+  mHead: string;
+  mTokens: TArray<TPascalToken>;
+begin
+  for mHead in TArray<string>.Create('program P;', '{ Kopf }'#10'{$APPTYPE CONSOLE}'#10'program P;', 'library L;',
+    'package Pk;') do
+  begin
+    mText := mHead + #10'uses'#10'  Units.A in ''A.pas'', Units.B, Units.Reg;'#10'begin'#10'  Foo;'#10'end.'#10;
+    mTokens := TPascalLexer.Tokenize(mText);
+    Assert.IsTrue(TUsesActions.ListsProjectUnits(mTokens), mHead);
+    Assert.AreEqual(0, Integer(Length(TUsesActions.Entries(mTokens, nil, Info, nil))), mHead);
+    Assert.AreEqual(0, Integer(Length(TUsesActions.UnusedUnits(mTokens, Info, nil))), mHead);
+  end;
+  // Eine Unit mit denselben uses meldet Units.B weiterhin.
+  mText := Source('Units.A, Units.B', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
+  Assert.IsFalse(TUsesActions.ListsProjectUnits(TPascalLexer.Tokenize(mText)));
+  Assert.AreEqual('Units.A:impl|Units.B:unused|', States(mText, nil, nil));
 end;
 
 /// <summary>Streicht die Einträge ANames (Bereiche aus References) und prüft, dass das Ergebnis parst.</summary>

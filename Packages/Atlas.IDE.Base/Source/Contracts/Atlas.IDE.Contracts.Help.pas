@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.Help;
 
-// Vertrag zwischen Base und Modulen (#1886, ADR 0017 Regel 6): „Hilfe zum Element“. Ein Modul, das Hilfe
+// Vertrag zwischen Base und Modulen (#1886, Modulregel 6): „Hilfe zum Element“. Ein Modul, das Hilfe
 // zeigen kann (Atlas.IDE.Help), stellt über seinen Scope eine IAtlasHelpProvider bereit. Base meldet nur die
 // Kennung des Elements unter dem Fokus: die Regel eines Befunds, den Schlüssel einer Einstellung oder die Kennung
 // eines Atlas-Fensters (Identifier des Dockfensters). Ohne laufenden Anbieter bleibt F1 bei der IDE. Nur Typen

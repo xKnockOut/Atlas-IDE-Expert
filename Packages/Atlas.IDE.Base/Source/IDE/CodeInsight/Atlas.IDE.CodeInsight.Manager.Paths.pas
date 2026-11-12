@@ -88,7 +88,7 @@ begin
   // Neben dem Plugin, nicht im Temp-Ordner: Den hat die IDE nicht in jedem Fall gemeinsam mit uns.
   mModule := GetModuleName(HInstance);
   mName := ChangeFileExt(ExtractFileName(mModule), '.log');
-  // Der Name bleibt trotz neuem BPL-Namen (#1456, ADR 0017): Atlas.IDE.Base370.bpl schreibt Atlas.IDE.Expert370.log.
+  // Der Name bleibt trotz neuem BPL-Namen (#1456): Atlas.IDE.Base370.bpl schreibt Atlas.IDE.Expert370.log.
   if SameText(Copy(mName, 1, Length(cBaseName)), cBaseName) then
   begin
     mName := cLogName + Copy(mName, Length(cBaseName) + 1, MaxInt);
@@ -138,7 +138,7 @@ begin
   begin
     Exit;
   end;
-  // Release-Paket (#495, ADR 0016): BPL in <Ziel>\Win32 bzw. \Win64, der Server eine Ebene darüber.
+  // Release-Paket (#495): BPL in <Ziel>\Win32 bzw. \Win64, der Server eine Ebene darüber.
   Result := ExpandFileName(mPluginDir + '..\AtlasServer.exe');
   if FileExists(Result) then
   begin

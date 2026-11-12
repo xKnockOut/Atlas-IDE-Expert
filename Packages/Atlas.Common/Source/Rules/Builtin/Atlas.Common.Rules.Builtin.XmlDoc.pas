@@ -65,6 +65,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Rules.Builtin.XmlDoc.Scanner,
   Atlas.Common.Semantics.NameResolver,
@@ -256,7 +257,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure CollectDeclarations(ARoot: TSyntaxNode; AMap: TDictionary<Integer, TSyntaxNode>);
 var
   mPending: TStack<TSyntaxNode>;
@@ -537,7 +538,6 @@ type
     /// <summary>Dokumentiert dcc die Deklaration hinter ABlock (interface-Teil einer Unit)? Nur dann meldet es
     /// W1201 bis W1208 (#1383).</summary>
     function CompilerChecks(const ABlock: TDocBlock): Boolean;
-    function TokenAt(AOffset: Integer): Integer;
     function ReplacementEdit(const ABlock: TDocBlock; const AReplacement: TDocReplacement): TRuleEdit;
     procedure ReportFlaws(const ABlock: TDocBlock; const AFlaws: TArray<TDocFlaw>);
     /// <summary>Deklaration hinter dem Block; nil ohne.</summary>
@@ -717,36 +717,11 @@ begin
   end;
 end;
 
-function TXmlDocCheck.TokenAt(AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := High(FTokens);
-  while mLow <= mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if FTokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else if FTokens[mMiddle].Offset > AOffset then
-    begin
-      mHigh := mMiddle - 1;
-    end
-    else
-    begin
-      Exit(mMiddle);
-    end;
-  end;
-  Result := -1;
-end;
-
 function TXmlDocCheck.DeclarationRange(ANode: TSyntaxNode): TTextRange;
 var
   mFirst, mLast: Integer;
 begin
-  mFirst := TokenAt(ANode.StartOffset);
+  mFirst := TokenExactly(FTokens, ANode.StartOffset);
   if (mFirst >= 0) and NameRange(FTokens, mFirst, mFirst, mLast) then
   begin
     Result := TTextRange.Create(FTokens[mFirst].StartPos, FTokens[mLast].EndPos);
@@ -910,7 +885,7 @@ function TXmlDocCheck.SkeletonRow(AMember: TSyntaxNode): Integer;
 var
   mFirst: Integer;
 begin
-  mFirst := TokenAt(AMember.StartOffset);
+  mFirst := TokenExactly(FTokens, AMember.StartOffset);
   Result := AMember.StartPos.Line;
   while (mFirst > 0) and FTokens[mFirst - 1].IsSymbol(']') do
   begin
@@ -937,7 +912,7 @@ end;
 
 // requirePublic: öffentliche Mitglieder von Typen im interface ohne Doku. Die Rekursion steigt nur in
 // verschachtelte Typdeklarationen ab (Tiefe wie die Schachtelung der Typen im Quelltext, unabhängig von
-// Anweisungen und Ausdrücken) und bleibt deshalb (Bericht M1).
+// Anweisungen und Ausdrücken) und bleibt deshalb.
 procedure TXmlDocCheck.CheckPublic(ANode: TSyntaxNode; APublic: Boolean);
 var
   mIndex: Integer;

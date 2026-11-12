@@ -12,8 +12,10 @@
 //               mit Trefferzahl.
 //     Vorschau: Lage im Formular als kleine Karte mit hervorgehobener
 //               Komponente, Position und Größe, Eigenschaften, Ereignisse (F4).
-//     Aktionen: Im Designer auswählen, Zum Ereignis, Name kopieren; Fußzeile
-//               mit Tasten und „n von m“.
+//     Aktionen: Im Designer auswählen (Enter), Zur Auswahl hinzufügen
+//               (Strg+Enter, #539; das Fenster bleibt offen), Zum Ereignis
+//               (Umschalt+Enter), Name kopieren; Fußzeile mit Tasten und
+//               „n von m“.
 // - Klein wie Strg+P: nur Suchfeld und einzeilige, flache Liste; schließt,
 //   sobald es den Fokus verliert.
 // Was die Aktionen in der IDE tun, entscheidet Atlas.IDE.Designer.Bar
@@ -37,7 +39,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasComponentSearchAction = (Select, Event, CopyName);
+  TAtlasComponentSearchAction = (Select, Add, Event, CopyName);
 {$SCOPEDENUMS OFF}
 
   TAtlasComponentSearchOptions = record
@@ -55,6 +57,8 @@ type
     Bounds: TRect;
     /// <summary>Komponente, die zuerst gewählt ist (Auswahl im Designer); '' = die erste.</summary>
     Current: string;
+    /// <summary>Auch unscharfe Treffer (#539, designer.fuzzySearch).</summary>
+    Fuzzy: Boolean;
   end;
 
   TAtlasComponentSearchActionEvent = reference to procedure(AAction: TAtlasComponentSearchAction;
@@ -262,6 +266,7 @@ end;
 function ActionCaption(AAction: TAtlasComponentSearchAction): string;
 begin
   case AAction of
+    TAtlasComponentSearchAction.Add: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchAdd);
     TAtlasComponentSearchAction.Event: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchEvent);
     TAtlasComponentSearchAction.CopyName: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchCopy);
   else
@@ -1270,7 +1275,7 @@ end;
 
 procedure TAtlasComponentSearchWindow.Refilter(const AKeep: string);
 begin
-  FState.Hits := TAtlasDesignerSearch.Find(FItems, FState.Pattern, FState.Fields, FState.Kind);
+  FState.Hits := TAtlasDesignerSearch.Find(FItems, FState.Pattern, FState.Fields, FState.Kind, FOptions.Fuzzy);
   FState.Rebuild(FItems, FOptions.FormName, FPainter.Metrics);
   FState.SelectName(FItems, AKeep);
   if FState.Selected < 0 then
@@ -1355,6 +1360,15 @@ begin
     Exit;
   end;
   mHandler := FHooks.OnAction;
+  // Zur Auswahl hinzufügen lässt das Fenster offen, damit weitere folgen können.
+  if AAction = TAtlasComponentSearchAction.Add then
+  begin
+    if Assigned(mHandler) then
+    begin
+      mHandler(AAction, mItem);
+    end;
+    Exit;
+  end;
   // Erst schließen, dann im Designer bzw. Code wirken: Die IDE holt dort den Fokus.
   if HandleAllocated then
   begin
@@ -1491,6 +1505,10 @@ begin
       Close;
     VK_RETURN:
       if ssCtrl in Shift then
+      begin
+        Run(TAtlasComponentSearchAction.Add);
+      end
+      else if ssShift in Shift then
       begin
         Run(TAtlasComponentSearchAction.Event);
       end

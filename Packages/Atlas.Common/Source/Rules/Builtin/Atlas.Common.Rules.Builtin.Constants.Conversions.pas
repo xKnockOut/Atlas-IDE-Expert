@@ -231,7 +231,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -518,7 +518,7 @@ var
     mPending: TStack<TSyntaxPostOrderEntry>;
     mKnown: TDictionary<TSyntaxNode, TNumericType>;
   begin
-    // Iterativ (Bericht M1): Nachordnung, die Operanden zuerst; lange Rechenketten ergeben sehr tiefe Bäume.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Rechenketten ergeben sehr tiefe Bäume.
     // Bekannte Typen stehen in mKnown, unbekannte fehlen dort.
     mPending := TStack<TSyntaxPostOrderEntry>.Create;
     mKnown := TDictionary<TSyntaxNode, TNumericType>.Create;
@@ -552,7 +552,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -593,7 +593,7 @@ var
       mNode: TSyntaxNode;
       mPending: TStack<TSyntaxNode>;
     begin
-      // Iterativ (Bericht M1).
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht).
       mPending := TStack<TSyntaxNode>.Create;
       try
         mPending.Push(ARoot);
@@ -720,7 +720,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1165,7 +1165,7 @@ var
     mPending: TStack<TSyntaxPostOrderEntry>;
     mLengths: TDictionary<TSyntaxNode, Integer>;
   begin
-    // Iterativ (Bericht M1): Nachordnung, die Operanden zuerst; lange Verkettungen ergeben sehr tiefe Bäume.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Verkettungen ergeben sehr tiefe Bäume.
     mPending := TStack<TSyntaxPostOrderEntry>.Create;
     mLengths := TDictionary<TSyntaxNode, Integer>.Create;
     try
@@ -1217,7 +1217,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1245,7 +1245,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1339,7 +1339,7 @@ var
     end;
     mDeclarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
     mTypeBodies := TDictionary<string, TSyntaxNode>.Create;
-    // Iterativ (Bericht M1); Vorordnung wie die frühere Suche, damit der erste Treffer gleich bleibt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung wie die frühere Suche, damit der erste Treffer gleich bleibt.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(AContext.Tree.Root);
@@ -1376,7 +1376,7 @@ var
     end;
   end;
 
-  // TypeNodeLength und TypeNameLength rufen sich gegenseitig auf; die Rekursion bleibt (Bericht M1): sie folgt
+  // TypeNodeLength und TypeNameLength rufen sich gegenseitig auf; die Rekursion bleibt: sie folgt
   // nur einer Kette von Typaliasen (TName = TKurz; TKurz = string[8]), nicht dem Syntaxbaum.
   function TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer; forward;
 
@@ -1637,7 +1637,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

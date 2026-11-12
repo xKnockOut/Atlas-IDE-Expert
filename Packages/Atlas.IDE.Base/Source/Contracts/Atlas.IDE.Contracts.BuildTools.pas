@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.BuildTools;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 6): Das Modul Build
+// Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Build
 // stellt über seinen Scope eine IAtlasBuildToolsSource bereit
 // (Startprofile #575, Projektaufgaben #900); die Schnellaktionen der
 // Willkommensseite (#764) fragen sie über die Registry und kommen ohne das

@@ -1069,7 +1069,7 @@ begin
   FInsertLine.ParentBackground := False;
   FInsertLine.StyleElements := [];
   FInsertLine.Color := clHighlight;
-  FInsertLine.Height := 3;
+  FInsertLine.Height := FInsertLine.ScaleValue(3);
   FInsertLine.Visible := False;
 end;
 
@@ -1142,7 +1142,7 @@ begin
     begin
       FBoard.GripOf(mFrame.SectionId).Free;
       FBoard.ToolsOf(mFrame.SectionId).Free;
-      mFrame.TitleLabel.Left := 2;
+      mFrame.TitleLabel.Left := mFrame.TitleLabel.ScaleValue(2);
     end;
     // Rechtsklick „Ausblenden“ (#628-Weg) an Titel und Fläche des Bereichs.
     FBoard.FMenus.AttachTo(mFrame, FBoard.FSource <> nil);

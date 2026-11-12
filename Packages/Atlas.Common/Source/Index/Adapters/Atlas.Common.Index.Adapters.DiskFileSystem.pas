@@ -6,7 +6,7 @@
 // die die alte in einem Schritt ersetzt (TFile.Replace). So sieht ein Leser
 // nie einen halben Cache, auch nicht nach einem Abbruch (#184).
 //
-// Ein Schreiber je Cache (Bericht N1): Den Projekt-Cache schreibt nur die
+// Ein Schreiber je Cache: Den Projekt-Cache schreibt nur die
 // Instanz, die seine Sperre hält (TShellWorkspace.LockCache), den gemeinsamen
 // Bibliotheks-Cache nur, wer TryLockWrite erhalten hat. WriteBytes muss darum
 // keine Wettläufe zweier Schreiber mehr ausgleichen; scheitert es, meldet es
@@ -131,7 +131,7 @@ begin
   end;
   try
     // Über TFileEncoding: teilt Löschen, damit ein zweiter Server den Cache währenddessen ersetzen kann
-    // (Bericht M5).
+    //.
     ABytes := TFileEncoding.ReadAllBytes(AFileName);
     Result := True;
   except

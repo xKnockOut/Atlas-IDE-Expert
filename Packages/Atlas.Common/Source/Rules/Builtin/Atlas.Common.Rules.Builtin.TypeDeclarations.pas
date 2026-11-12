@@ -113,6 +113,7 @@ procedure RegisterTypeDeclarationRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
@@ -161,11 +162,6 @@ type
     First: Integer;
     Last: Integer;
   end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 /// <summary>Einziger Methodenkopf AName im Typ AType; nil ohne oder bei Überladungen.</summary>
 function UniqueMethodHeader(AType: TSyntaxNode; const AName: string): TSyntaxNode;
@@ -234,8 +230,6 @@ type
     function StopToken(ANode: TSyntaxNode): Integer;
     /// <summary>Erstes Token ab AIndex, das kein Kommentar und keine Direktive ist (höchstens AStop).</summary>
     function NextCode(AIndex, AStop: Integer): Integer;
-    /// <summary>Letztes Token vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
-    function PreviousCode(AIndex: Integer): Integer;
     /// <summary>Löscht die Direktive ADirective samt ihrem Semikolon und dem Leerraum davor.</summary>
     function DirectiveRemoval(ADirective: TSyntaxNode): TTextEdit;
     /// <summary>Token des Schlüsselworts dispinterface am Anfang von AType (InterfaceType); -1 bei
@@ -298,12 +292,12 @@ end;
 
 function TDeclarationScan.FirstToken(ANode: TSyntaxNode): Integer;
 begin
-  Result := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
+  Result := TokenFrom(FTokens, ANode.StartOffset);
 end;
 
 function TDeclarationScan.StopToken(ANode: TSyntaxNode): Integer;
 begin
-  Result := TConstantValues.TokenFrom(FTokens, ANode.EndOffset);
+  Result := TokenFrom(FTokens, ANode.EndOffset);
 end;
 
 function TDeclarationScan.NextCode(AIndex, AStop: Integer): Integer;
@@ -312,15 +306,6 @@ begin
   while (Result < AStop) and IsTrivia(FTokens[Result]) do
   begin
     Inc(Result);
-  end;
-end;
-
-function TDeclarationScan.PreviousCode(AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(FTokens[Result]) do
-  begin
-    Dec(Result);
   end;
 end;
 
@@ -335,7 +320,7 @@ begin
   begin
     mLast := mNext;
   end;
-  mBefore := PreviousCode(mFirst);
+  mBefore := PreviousCode(FTokens, mFirst);
   if mBefore < 0 then
   begin
     mBefore := mFirst;
@@ -544,7 +529,7 @@ var
 
   function FirstToken(ANode: TSyntaxNode): Integer;
   begin
-    Result := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    Result := TokenFrom(mTokens, ANode.StartOffset);
   end;
 
   function NextCode(AIndex, AStop: Integer): Integer;
@@ -565,7 +550,7 @@ var
     mMethod.ClassName := AClassName;
     mMethod.Header := AHeader;
     mMethod.Directive := ADirective;
-    mStop := TConstantValues.TokenFrom(mTokens, ADirective.EndOffset);
+    mStop := TokenFrom(mTokens, ADirective.EndOffset);
     mMethod.First := NextCode(FirstToken(ADirective) + 1, mStop);
     mMethod.Last := mStop - 1;
     while (mMethod.Last >= mMethod.First) and IsTrivia(mTokens[mMethod.Last]) do
@@ -595,7 +580,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Collect(ARoot: TSyntaxNode; const AOwner: string);
   var
     mPending: TStack<TSyntaxNode>;
@@ -638,7 +623,7 @@ var
     mIndex, mStop: Integer;
   begin
     Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
-    mStop := TConstantValues.TokenFrom(mTokens, AHeader.EndOffset);
+    mStop := TokenFrom(mTokens, AHeader.EndOffset);
     for mIndex := FirstToken(AHeader) to mStop - 1 do
     begin
       if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
@@ -1138,7 +1123,7 @@ var
     CheckInheritedMembers(AType, AName);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1443,7 +1428,7 @@ var
     end;
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1691,7 +1676,7 @@ var
       TRuleConfidence.High, [TRuleFix.Create(cTexts[TTypeDeclarationsText.SetCdecl].Text, [mEdit])]);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode; const AOwner: string);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1900,7 +1885,7 @@ var
     CheckMembers(mBody);
   end;
 
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   procedure Visit(ARoot: TSyntaxNode);
   var
     mPending: TStack<TSyntaxNode>;

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "findings": [
+    {"path": "Source/Core/Help/Atlas.Core.Help.Links.pas", "rule": "hardcoded-string", "fingerprint": "593fcbe0", "count": 1, "routine": "TAtlasHelpLinks.RedirectHtml", "context": "6f24adf3"},
+    {"path": "Source/Core/Help/Atlas.Core.Help.Links.pas", "rule": "magic-number", "fingerprint": "1a833b5e", "count": 1, "routine": "IsCompilerCode", "context": "5ac6ef52"},
+    {"path": "Source/Core/Help/Atlas.Core.Help.Links.pas", "rule": "string-if-chain", "fingerprint": "6c262033", "count": 1, "routine": "TAtlasHelpLinks.LocalPage", "context": "c29bb588"}
+  ]
+}

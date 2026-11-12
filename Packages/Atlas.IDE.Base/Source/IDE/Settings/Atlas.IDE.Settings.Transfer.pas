@@ -70,9 +70,11 @@ uses
   Atlas.Core.Settings.ProfileData,
   Atlas.Core.Projects.Setup,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.Files;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -148,7 +150,7 @@ var
 begin
   AProject := '';
   ATeam := '';
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
     Exit;
@@ -206,8 +208,8 @@ begin
       // Scheitert nur das Aufräumen, gilt die Sicherung trotzdem.
       if not Result then
       begin
-        MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.SettingsTransferFailed, [E.Message]), TMsgDlgType.mtError,
-          [TMsgDlgBtn.mbOK], 0);
+        MessageDlg(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTransferFailed, [E.Message]),
+          TMsgDlgType.mtError, [TMsgDlgBtn.mbOK], 0);
       end;
   end;
 end;
@@ -217,7 +219,8 @@ var
   mOptions: TAtlasExportOptions;
   mDialog: TSaveDialog;
   mExport_: TAtlasExportResult;
-  mMessage, mKeys: string;
+  mMessage: string;
+  mKeys: TArray<string>;
   mOmission: TAtlasExportOmission;
 begin
   mOptions := TAtlasExportOptions.Create(nil, smOmit);
@@ -233,7 +236,7 @@ begin
   try
     mDialog.FileName := TAtlasSettingsTransfer.cFileName;
     mDialog.DefaultExt := 'json';
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
+    mDialog.Filter := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFileFilter);
     mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if not mDialog.Execute then
     begin
@@ -245,25 +248,25 @@ begin
     except
       on E: Exception do
       begin
-        MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.SettingsTransferFailed, [E.Message]), TMsgDlgType.mtError,
-          [TMsgDlgBtn.mbOK], 0);
+        MessageDlg(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTransferFailed, [E.Message]),
+          TMsgDlgType.mtError, [TMsgDlgBtn.mbOK], 0);
         Exit;
       end;
     end;
-    mMessage := TAtlasStrings.Fmt(TAtlasTextId.SettingsExportDone, [mExport_.Count, mDialog.FileName]);
+    mMessage := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsExportDone, [mExport_.Count, mDialog.FileName]);
     if Length(mExport_.Omitted) > 0 then
     begin
-      mKeys := '';
+      mKeys := nil;
       for mOmission in mExport_.Omitted do
       begin
-        mKeys := mKeys + ', ' + mOmission.Key;
+        mKeys := mKeys + [mOmission.Key];
       end;
-      mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportOmitted, [Copy(mKeys, 3,
-        MaxInt)]);
+      mMessage := mMessage + sLineBreak + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsExportOmitted,
+        [string.Join(', ', mKeys)]);
     end;
     if Length(mExport_.Placeholders) > 0 then
     begin
-      mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportPlaceholders,
+      mMessage := mMessage + sLineBreak + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsExportPlaceholders,
         [string.Join(', ', mExport_.Placeholders)]);
     end;
     Inform(mMessage);
@@ -281,7 +284,7 @@ begin
   mDialog := TOpenDialog.Create(nil);
   try
     mDialog.FileName := TAtlasSettingsTransfer.cFileName;
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
+    mDialog.Filter := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFileFilter);
     mDialog.Options := mDialog.Options + [ofFileMustExist];
     Result := mDialog.Execute and ReadText(mDialog.FileName, AText);
     AFileName := mDialog.FileName;
@@ -317,7 +320,7 @@ begin
     end;
   end;
   // Letzter Eintrag: eigene Datei.
-  mNames := mNames + [TAtlasStrings.Text(TAtlasTextId.SettingsProfileFromFile)];
+  mNames := mNames + [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileFromFile)];
   mDescriptions := mDescriptions + [''];
   Result := TAtlasProfileDialog.Choose(mNames, mDescriptions, mIndex, nil);
   if not Result then
@@ -347,7 +350,8 @@ begin
   mSource := TAtlasSettingsTransfer.ParseFile(AText);
   if not mSource.Valid then
   begin
-    MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.SettingsImportInvalidFile, [ExtractFileName(AFileName), mSource.Error]),
+    MessageDlg(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportInvalidFile, [ExtractFileName(AFileName),
+      mSource.Error]),
       TMsgDlgType.mtWarning, [TMsgDlgBtn.mbOK], 0);
     Exit;
   end;
@@ -367,7 +371,7 @@ begin
   mCount := mPreview.SelectedCount;
   if mCount = 0 then
   begin
-    Inform(TAtlasStrings.Text(TAtlasTextId.SettingsImportNothing));
+    Inform(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportNothing));
     Exit;
   end;
   // Vor jedem Import sichern (settings.backupBeforeImport); ohne Sicherung kein Import.
@@ -380,10 +384,11 @@ begin
   Save(mNext);
   AResult := TAtlasIdeSettings.Stored;
   Result := True;
-  mMessage := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportDone, [mCount]);
+  mMessage := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportDone, [mCount]);
   if mBackupFile <> '' then
   begin
-    mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [mBackupFile]);
+    mMessage := mMessage + sLineBreak + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsBackupDone,
+      [mBackupFile]);
   end;
   Inform(mMessage);
 end;
@@ -413,7 +418,7 @@ var
 begin
   AResult := ACurrent;
   Result := False;
-  if MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllConfirm), TMsgDlgType.mtConfirmation,
+  if MessageDlg(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetAllConfirm), TMsgDlgType.mtConfirmation,
     [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo], 0, TMsgDlgBtn.mbNo) <> mrYes then
   begin
     Exit;
@@ -426,10 +431,11 @@ begin
   Save(TAtlasSettingsTransfer.ResetAll(Catalog, State(ACurrent)));
   AResult := TAtlasIdeSettings.Stored;
   Result := True;
-  mMessage := TAtlasStrings.Text(TAtlasTextId.SettingsResetAllDone);
+  mMessage := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetAllDone);
   if mBackupFile <> '' then
   begin
-    mMessage := mMessage + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [mBackupFile]);
+    mMessage := mMessage + sLineBreak + TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsBackupDone,
+      [mBackupFile]);
   end;
   Inform(mMessage);
 end;

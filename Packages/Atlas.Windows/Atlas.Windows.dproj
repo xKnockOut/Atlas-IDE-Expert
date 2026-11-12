@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{A749A6FB-85B2-4D9D-92DB-B9B65233397F}</ProjectGuid>
         <MainSource>Atlas.Windows.dpk</MainSource>
@@ -53,6 +53,8 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_RangeChecking>true</DCC_RangeChecking>
+        <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
         <DCC_DebugDCUs>false</DCC_DebugDCUs>
         <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
@@ -92,6 +94,8 @@
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Network.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Archive.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.Adapters.System.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.Adapters.Process.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

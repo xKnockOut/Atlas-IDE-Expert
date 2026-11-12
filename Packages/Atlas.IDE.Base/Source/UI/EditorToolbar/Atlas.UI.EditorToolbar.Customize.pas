@@ -23,7 +23,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Settings.ToolbarItems,
-  Atlas.Core.EditorToolbar.Icons;
+  Atlas.Core.EditorToolbar.Icons,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Ein Befehl, der in die Leiste kann (aus der Befehlspalette).</summary>
@@ -41,7 +42,7 @@ type
     Position: string;
   end;
 
-  TAtlasToolbarCustomizeDialog = class(TForm)
+  TAtlasToolbarCustomizeDialog = class(TAtlasDialog)
   private
     FCommands: TArray<TAtlasToolbarCommandInfo>;
     FConfig: TAtlasToolbarConfig;
@@ -109,10 +110,12 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.UI.Strings,
+  Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
   cGap = 8;
+  cDialogWidth = 640;
 
 type
 {$SCOPEDENUMS ON}
@@ -183,18 +186,20 @@ var
   mDefault: TButton;
 begin
   mBottom := NewPanel(Dialog, alBottom, Dialog.ScaleValue(44));
-  Dialog.FCancel := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarCancel), '',
+  Dialog.FCancel := NewButton(mBottom, TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCancel),
+    '',
     TAtlasToolbarCustomizeAction.None);
   Dialog.FCancel.Cancel := True;
   Dialog.FCancel.ModalResult := mrCancel;
   Dialog.FCancel.Left := mBottom.ClientWidth - Dialog.FCancel.Width - Dialog.ScaleValue(cGap);
   Dialog.FCancel.Anchors := [akTop, akRight];
-  Dialog.FOk := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarOk), '',
+  Dialog.FOk := NewButton(mBottom, TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarOk), '',
     TAtlasToolbarCustomizeAction.Ok);
   Dialog.FOk.Default := True;
   Dialog.FOk.Left := Dialog.FCancel.Left - Dialog.FOk.Width - Dialog.ScaleValue(cGap);
   Dialog.FOk.Anchors := [akTop, akRight];
-  mDefault := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarRestoreDefault), '',
+  mDefault := NewButton(mBottom, TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarRestoreDefault),
+    '',
     TAtlasToolbarCustomizeAction.Default);
   mDefault.Left := Dialog.ScaleValue(cGap);
 end;
@@ -232,11 +237,13 @@ begin
   mLists := NewPanel(Dialog, alClient, 0);
   // Links verfügbar, Mitte → ←, rechts die Leiste, ganz rechts ↑ ↓.
   mSide := NewPanel(mLists, alRight, Dialog.ScaleValue(48));
-  Dialog.FUpButton := NewButton(mSide, '↑', TAtlasStrings.Text(TAtlasTextId.EditorToolbarUpHint),
+  Dialog.FUpButton := NewButton(mSide, '↑',
+    TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarUpHint),
     TAtlasToolbarCustomizeAction.Up);
   Dialog.FUpButton.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(80), Dialog.ScaleValue(32),
     Dialog.ScaleValue(28));
-  Dialog.FDownButton := NewButton(mSide, '↓', TAtlasStrings.Text(TAtlasTextId.EditorToolbarDownHint),
+  Dialog.FDownButton := NewButton(mSide, '↓',
+    TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarDownHint),
     TAtlasToolbarCustomizeAction.Down);
   Dialog.FDownButton.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(116), Dialog.ScaleValue(32),
     Dialog.ScaleValue(28));
@@ -247,11 +254,13 @@ begin
   Dialog.FCurrentList.ItemHeight := Dialog.ScaleValue(24);
   Dialog.FCurrentList.OnDrawItem := Dialog.CurrentDrawItem;
   mMiddle := NewPanel(mLists, alRight, Dialog.ScaleValue(56));
-  Dialog.FAddButton := NewButton(mMiddle, '→', TAtlasStrings.Text(TAtlasTextId.EditorToolbarAddHint),
+  Dialog.FAddButton := NewButton(mMiddle, '→',
+    TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarAddHint),
     TAtlasToolbarCustomizeAction.Add);
   Dialog.FAddButton.SetBounds(Dialog.ScaleValue(12), Dialog.ScaleValue(80), Dialog.ScaleValue(32),
     Dialog.ScaleValue(28));
-  Dialog.FRemoveButton := NewButton(mMiddle, '←', TAtlasStrings.Text(TAtlasTextId.EditorToolbarRemoveHint),
+  Dialog.FRemoveButton := NewButton(mMiddle, '←',
+    TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarRemoveHint),
     TAtlasToolbarCustomizeAction.Remove);
   Dialog.FRemoveButton.SetBounds(Dialog.ScaleValue(12), Dialog.ScaleValue(116), Dialog.ScaleValue(32),
     Dialog.ScaleValue(28));
@@ -270,8 +279,8 @@ begin
   mCaption.AlignWithMargins := True;
   mCaption.Margins.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(cGap), Dialog.ScaleValue(cGap), 0);
   mCaption.ShowAccelChar := False;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarAvailable) + '  ›  ' +
-    TAtlasStrings.Text(TAtlasTextId.EditorToolbarCurrent);
+  mCaption.Caption := TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarAvailable) + '  ›  ' +
+    TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCurrent);
 end;
 
 { TAtlasToolbarCommandInfo }
@@ -290,17 +299,13 @@ var
   mBuilder: TAtlasToolbarCustomizeBuilder;
   mPosition: string;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FCommands := ACommands;
   FConfig := AConfig;
   FConfig.Items := TAtlasToolbarItems.Clean(AConfig.Items);
-  Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeTitle);
+  Caption := TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCustomizeTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(640);
   ClientHeight := ScaleValue(440);
   Constraints.MinWidth := ScaleValue(480);
   Constraints.MinHeight := ScaleValue(320);
@@ -330,7 +335,7 @@ var
 begin
   if TAtlasToolbarItems.IsSeparator(AId) then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.EditorToolbarSeparator));
+    Exit(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarSeparator));
   end;
   for mCommand in FCommands do
   begin

@@ -53,7 +53,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -70,7 +71,7 @@ function DottedName(ANode: TSyntaxNode): string;
 var
   mSuffix: string;
 begin
-  // Iterativ (Bericht M1): von rechts nach links an der Kette entlang.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang.
   mSuffix := '';
   while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) do
   begin
@@ -93,7 +94,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  // Iterativ mit eigenem Stapel, Reihenfolge wie die frühere Rekursion.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -196,11 +197,6 @@ end;
 const
   /// <summary>Tiefe für Ketten wie [A] [B] [C] am Zeilenanfang.</summary>
   cMaxChainedBrackets = 16;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

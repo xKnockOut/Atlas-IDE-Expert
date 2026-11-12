@@ -121,6 +121,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -509,7 +510,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -732,7 +733,7 @@ var
   begin
     Result := False;
     mTokens := AContext.Tree.Tokens;
-    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
@@ -763,7 +764,7 @@ var
       Exit;
     end;
     mLine := ASymbol.SelectionRange.StartPos.Line;
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(AContext.Tree.Root);
@@ -1070,7 +1071,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1287,7 +1288,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := nil;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -1622,7 +1623,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

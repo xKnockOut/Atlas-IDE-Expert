@@ -7,7 +7,7 @@
 // Zeilenumbrüche wie beim Server: CR, LF und CRLF. Eine Grenze liegt nie
 // zwischen CR und LF und nie mitten in einem Surrogatpaar, sonst würde der
 // Server die Position anders deuten. Zeilen und Positionen rechnet
-// TLineTable aus Atlas.Text, dieselbe Tabelle wie beim Server (ADR 0012).
+// TLineTable aus Atlas.Text, dieselbe Tabelle wie beim Server.
 
 interface
 

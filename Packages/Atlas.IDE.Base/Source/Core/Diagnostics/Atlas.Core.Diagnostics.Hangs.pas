@@ -4,7 +4,7 @@
 // - TAtlasActivity: Atlas-Arbeit im Hauptthread meldet sich mit Scope an; der
 //   Wächter liest den Namen aus seinem Thread (threadsicher, ohne zu warten).
 //   Während des Starts zählt TimeInto die Dauer jeder äußersten Aktion zu den
-//   Startanteilen (Bericht N4). Running ergänzt die laufende Funktion
+//   Startanteilen. Running ergänzt die laufende Funktion
 //   aus TAtlasGuard.Run, wenn keine Aktion angemeldet ist (#1988).
 // - TAtlasHangMonitor: Schwelle, Statistik je Sitzung und Bericht.
 // - TAtlasStackScan: ordnet Adressen eines rohen Stapelabzugs Modulen zu
@@ -40,8 +40,8 @@ type
     class destructor Destroy;
     /// <summary>Meldet AName an, bis das Ergebnis freigegeben wird (Ende der Routine).</summary>
     class function Scope(const AName: string): IInterface; static;
-    /// <summary>Ab jetzt die Dauer jeder äußersten Aktion als „Aktion Name“ zu ATimes addieren (Startanteile,
-    /// Bericht N4); nil beendet das. ATimes gehört dem Aufrufer und darf nach TimeInto(nil) freigegeben werden.
+    /// <summary>Ab jetzt die Dauer jeder äußersten Aktion als „Aktion Name“ zu ATimes addieren
+    /// (Startanteile); nil beendet das. ATimes gehört dem Aufrufer und darf nach TimeInto(nil) freigegeben werden.
     /// </summary>
     class procedure TimeInto(ATimes: TAtlasStartTimes); static;
     /// <summary>Innerste laufende Aktion; '' ohne oder wenn gerade gesperrt.</summary>

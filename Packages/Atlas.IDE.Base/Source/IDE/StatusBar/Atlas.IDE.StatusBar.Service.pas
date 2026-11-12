@@ -97,7 +97,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
-  Atlas.UI.Strings,
+  Atlas.UI.StatusBar.Strings,
   Atlas.UI.StatusBar.Bar,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -173,9 +173,10 @@ end;
 function ItemCaptions: TArray<string>;
 begin
   // Reihenfolge wie TAtlasStatusBarItems.All.
-  Result := TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.StatusBarItemStatus),
-    TAtlasStrings.Text(TAtlasTextId.StatusBarItemFindings), TAtlasStrings.Text(TAtlasTextId.StatusBarItemLiveCheck),
-    TAtlasStrings.Text(TAtlasTextId.StatusBarItemMethod));
+  Result := TArray<string>.Create(TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarItemStatus),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarItemFindings),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarItemLiveCheck),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarItemMethod));
 end;
 
 /// <summary>Atlas-Feld der Statuszeile; nil ohne.</summary>
@@ -279,7 +280,8 @@ begin
       mHost.Disabled(ASender);
     end;
   mBar.Texts := TAtlasStatusBarTexts.Create(ItemCaptions,
-    TAtlasStrings.Text(TAtlasTextId.StatusBarCustomize), TAtlasStrings.Text(TAtlasTextId.StatusBarHide));
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarCustomize),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarHide));
   WireStatus(mBar);
   WireItems(mBar);
   Result := mBar;
@@ -570,7 +572,7 @@ begin
   if not TAtlasStatusBarContent.NextOf(TAtlasProblemsController.Current.ForFile(mFileName), AKind,
     TAtlasIdeSettings.Current.ProblemsWindowCompiler, mLine, mCharacter, mTarget) then
   begin
-    TAtlasIdeStatusBar.Say(TAtlasStrings.Text(TAtlasTextId.StatusBarNoFindingOfKind));
+    TAtlasIdeStatusBar.Say(TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarNoFindingOfKind));
     Exit;
   end;
   TAtlasIdeNavigation.GoToLocation(mFileName, mTarget.StartLine, mTarget.StartCharacter);
@@ -604,7 +606,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasIdeStatusBar.Say(TAtlasStrings.Text(TAtlasTextId.StatusBarRechecking));
+  TAtlasIdeStatusBar.Say(TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarRechecking));
   TAtlasIdeStatusBar.FHooks.Recheck();
 end;
 

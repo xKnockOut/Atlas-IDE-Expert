@@ -70,12 +70,12 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
-  Atlas.IDE.Tracker.IssueLookups;
+  Atlas.IDE.Tracker.IssueLookups,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeIssueCommands }
 
@@ -111,7 +111,7 @@ begin
   begin
     Exit;
   end;
-  mTarget := FContext.TargetOf(FContext.CurrentProject);
+  mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
   mProvider := FContext.ProviderOf(mTarget.Provider);
   if mProvider <> nil then
   begin
@@ -135,12 +135,13 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
         Exit;
       end;
       mInput := '';
-      if not InputQuery(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCaption),
-        TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewPrompt, [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
+      if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCaption),
+        TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewPrompt,
+          [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
         mInput) then
       begin
         Exit;
@@ -148,7 +149,7 @@ begin
       mKey := TAtlasIssuePreview.KeyOf(mTarget.Provider, mInput);
       if mKey = '' then
       begin
-        FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
+        FContext.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
         Exit;
       end;
       FServices.Preview.Show(mTarget, mKey);
@@ -166,10 +167,10 @@ begin
     Exit;
   end;
   // Wie „Issue anzeigen …“: das aktive Projekt der IDE, sonst das des Bereichs.
-  mProject := TAtlasIdeTeamFile.ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
-    mProject := FContext.CurrentProject;
+    mProject := FContext.Selection.CurrentProject;
   end;
   ATarget := FContext.CachedTargetOf(mProject).Target;
   Result := FContext.ProviderOf(ATarget.Provider) <> nil;
@@ -285,13 +286,14 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
         Exit;
       end;
       // Das aktuelle Issue vorwählen, wenn es zum selben Tracker gehört.
       mKey := '';
-      mData := FContext.Actions.ViewOf(FContext.CurrentProject);
-      if mData.Active.Active and SameText(FContext.TargetOf(FContext.CurrentProject).Provider, mTarget.Provider) then
+      mData := FContext.Actions.ViewOf(FContext.Selection.CurrentProject);
+      if mData.Active.Active and
+        SameText(FContext.TargetOf(FContext.Selection.CurrentProject).Provider, mTarget.Provider) then
       begin
         mKey := mData.Active.Key;
       end;
@@ -319,7 +321,7 @@ begin
       mTarget: TAtlasTrackerTarget;
       mProvider: IAtlasTrackerProvider;
     begin
-      mTarget := FContext.TargetOf(FContext.CurrentProject);
+      mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if mProvider = nil then
       begin
@@ -348,7 +350,7 @@ begin
       begin
         Exit;
       end;
-      mTarget := FContext.TargetOf(FContext.CurrentProject);
+      mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
       // Mit Punkt (#1271): am ersten neuen Kommentar öffnen, der Punkt verschwindet.
       mAnchor := 0;
       if FServices.Notify <> nil then
@@ -371,7 +373,7 @@ begin
       mTarget: TAtlasTrackerTarget;
       mProvider: IAtlasTrackerProvider;
     begin
-      mTarget := FContext.TargetOf(FContext.CurrentProject);
+      mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (mProvider <> nil) and (mIssue.PullRequest.Number > 0) then
       begin
@@ -399,7 +401,7 @@ begin
   end;
   mFilter.Caption := ACaption;
   mFilter.Issues := AIssues;
-  mFilter.Project := FContext.CurrentProject;
+  mFilter.Project := FContext.Selection.CurrentProject;
   FContext.Filter := mFilter;
   FContext.Changed;
 end;

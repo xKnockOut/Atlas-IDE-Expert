@@ -82,6 +82,7 @@ uses
   Atlas.Core.Completion.Word,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -90,7 +91,8 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Host;
 
 const
   // Beim Tippen: lieber leer als die IDE aufhalten.
@@ -122,7 +124,7 @@ begin
         mChildren := mCurrent.HierarchyChildren(ADirection, AItem);
       except
         on E: ELspClientError do
-          TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+          TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
       end;
     end);
   Result := mChildren;
@@ -181,23 +183,6 @@ begin
     end;
     mCommand.ShortCut := TAtlasResults.SymbolBadge(ASymbols[mIndex].Kind);
     Result := Result + [mCommand];
-  end;
-end;
-
-/// <summary>Fläche, über der die Symbolsuche erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
   end;
 end;
 
@@ -377,7 +362,7 @@ begin
     except
       on E: ELspClientError do
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
         Exit;
       end;
     end;
@@ -385,7 +370,7 @@ begin
     Screen.Cursor := crDefault;
   end;
   Result := Length(mFound);
-  TAtlasIdeResultsWindow.ShowReferences(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
+  TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
     [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
 end;
 
@@ -417,7 +402,7 @@ begin
     except
       on E: ELspClientError do
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
         Exit;
       end;
     end;
@@ -435,7 +420,7 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsImplementations,
+  TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsImplementations,
     [mName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
 end;
 
@@ -477,7 +462,7 @@ begin
     except
       on E: ELspClientError do
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
         Exit;
       end;
     end;
@@ -501,7 +486,7 @@ begin
   // Abgeschaltet: Befehl und Menüeintrag sind verborgen; über die Palette nur eine Zeile.
   if not TAtlasIdeSettings.Current.DataFlow then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
+    Say(TAtlasResultsStrings.Text(TAtlasResultsTextId.ResultsDataFlowOff));
     Exit;
   end;
   if not AtCursor(mFileName, mLine, mCharacter, mName) then
@@ -521,7 +506,7 @@ var
 begin
   if not TAtlasIdeSettings.Current.DataFlow then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
+    Say(TAtlasResultsStrings.Text(TAtlasResultsTextId.ResultsDataFlowOff));
     Exit;
   end;
   mCurrent := Session;
@@ -559,7 +544,7 @@ begin
     except
       on E: ELspClientError do
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
         Exit;
       end;
     end;
@@ -604,7 +589,7 @@ begin
       Result := mCurrent.DataFlow(mRequest);
     except
       on E: ELspClientError do
-        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
     end;
   finally
     Screen.Cursor := crDefault;
@@ -641,7 +626,7 @@ begin
         Open(mSymbols[Index].FileName, mSymbols[Index].Line, mSymbols[Index].Character);
       end;
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 class procedure TAtlasIdeResults.ShowWindow;

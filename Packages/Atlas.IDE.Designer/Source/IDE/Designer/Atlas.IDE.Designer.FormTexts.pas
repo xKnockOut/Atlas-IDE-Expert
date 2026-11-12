@@ -56,7 +56,8 @@ begin
     TAtlasFormTexts.ParseSynonyms(mSettings.DesignerTextTableSynonyms));
 end;
 
-procedure SelectByName(const AName: string);
+// Ohne const: wird als TProc<string> übergeben, Delphi verlangt dieselbe Signatur (E2010).
+procedure SelectByName(AName: string);
 var
   mEditor: IOTAFormEditor;
   mRoot, mComponent: TComponent;

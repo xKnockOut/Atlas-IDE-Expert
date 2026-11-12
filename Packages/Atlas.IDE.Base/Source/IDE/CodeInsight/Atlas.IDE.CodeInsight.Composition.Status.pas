@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Status;
 
 // Atlas-Statusfeld mit seinen Zeilen (#591), Fenster „Atlas-Server“ (#1356), Fehlerzähler (#509),
-// Benachrichtigungszentrale (#601) mit Plakette und Einträgen der Sicherung (#493, Bericht M4) und die
+// Benachrichtigungszentrale (#601) mit Plakette und Einträgen der Sicherung (#493) und die
 // Schnellschalter (#604) am Feld. Immer angemeldet, auch im abgesicherten Start (#722).
 
 interface
@@ -47,7 +47,7 @@ procedure ShowServerWindow;
 /// „Protokoll öffnen“ (atlas.log mit Stacktrace): Der Fehler soll auffallen und behoben werden, statt still eine
 /// Funktion zu kosten. Aus jedem Thread; die Aktionen laufen im Hauptthread.</summary>
 procedure GuardTripped(AFeature: TAtlasFeature; const AMessage: string);
-/// <summary>Atlas-Protokoll gestört (Bericht M4), aus dem Thread des Schreibers: über OutputDebugString (DebugView
+/// <summary>Atlas-Protokoll gestört, aus dem Thread des Schreibers: über OutputDebugString (DebugView
 /// zeigt es, auch wenn atlas.log nichts mehr annimmt) und als Benachrichtigung; '' = schreibt wieder.</summary>
 procedure LogError(const AMessage: string);
 
@@ -57,6 +57,7 @@ uses
   Winapi.Windows,
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
@@ -255,8 +256,10 @@ begin
     StatusFieldInstance.SetExtra(cProblemCountsExtra, '', '', nil);
     Exit;
   end;
-  StatusFieldInstance.SetExtra(cProblemCountsExtra, TAtlasStrings.Fmt(TAtlasTextId.ProblemCounterText,
-    [ACounts.Errors, ACounts.Warnings, ACounts.Hints]), TAtlasStrings.Fmt(TAtlasTextId.ProblemCounterHint,
+  StatusFieldInstance.SetExtra(cProblemCountsExtra,
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ProblemCounterText,
+    [ACounts.Errors, ACounts.Warnings, ACounts.Hints]),
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ProblemCounterHint,
     [ACounts.Errors, ACounts.Warnings, ACounts.Hints]),
     procedure(APoint: TPoint)
     begin
@@ -379,7 +382,7 @@ begin
   mBadge.Shown := TAtlasIdeNotifications.Active;
   mBadge.Count := AUnread;
   mBadge.State := BadgeState(AWorst);
-  mBadge.Hint := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]);
+  mBadge.Hint := TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.NotificationsBadgeHint, [AUnread]);
   mBadge.OnClick := ShowNotificationList;
   StatusFieldInstance.SetBadge(mBadge);
 end;
@@ -416,14 +419,14 @@ var
   mEnable, mLog: TAtlasNotificationAction;
 begin
   mFeature := AFeature;
-  mEnable.Caption := TAtlasStrings.Text(TAtlasTextId.FuseTrippedEnable);
+  mEnable.Caption := TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.FuseTrippedEnable);
   mEnable.Run :=
     procedure
     begin
       TAtlasGuard.Enable(mFeature);
       TAtlasGuard.Log(TAtlasGuard.FeatureName(mFeature) + ': aus der Benachrichtigung wieder eingeschaltet');
     end;
-  mLog.Caption := TAtlasStrings.Text(TAtlasTextId.FuseTrippedOpenLog);
+  mLog.Caption := TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.FuseTrippedOpenLog);
   mLog.Run :=
     procedure
     begin
@@ -433,7 +436,8 @@ begin
       end;
     end;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cFuse, TAtlasNotificationSeverity.Error,
-    TAtlasStrings.Fmt(TAtlasTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(mFeature)]), AMessage,
+    TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(mFeature)]),
+    AMessage,
     [mEnable, mLog]);
 end;
 
@@ -448,8 +452,9 @@ begin
   end;
   mReason := TAtlasGuard.SafeMessage(AMessage);
   OutputDebugString(PChar('Atlas: Protokoll gestört: ' + mReason));
-  mText := TAtlasStrings.Text(TAtlasTextId.LogBrokenTitle);
-  mDetail := TAtlasStrings.Fmt(TAtlasTextId.LogBrokenText, [TAtlasGuard.RotatingLog.FileName, mReason]);
+  mText := TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.LogBrokenTitle);
+  mDetail := TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.LogBrokenText, [TAtlasGuard.RotatingLog.FileName,
+    mReason]);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cFuse, TAtlasNotificationSeverity.Warning,
     mText, mDetail) <> TAtlasNotificationMode.Show then
   begin

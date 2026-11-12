@@ -67,6 +67,7 @@ uses
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.TitledTip,
   Atlas.UI.Editor.OverviewRuler,
   Atlas.IDE.Foundation.EditorBarHost,
@@ -324,7 +325,7 @@ begin
   for mLine in ASearchLines do
   begin
     Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, mLine, 1,
-      TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [ASearchTerm]))];
+      TAtlasEditorStrings.Fmt(TAtlasEditorTextId.OverviewSearch, [ASearchTerm]))];
   end;
 end;
 
@@ -336,10 +337,10 @@ begin
         TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
     TAtlasLineChangeKind.Modified:
       Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Modified, AChange.Line, AChange.Count,
-        TAtlasStrings.Text(TAtlasTextId.OverviewModified));
+        TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewModified));
   else
     Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted, Min(AChange.Line, Max(0, ALineCount - 1)), 1,
-      TAtlasStrings.Text(TAtlasTextId.OverviewDeleted));
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewDeleted));
   end;
 end;
 
@@ -378,7 +379,7 @@ begin
     if (mBreakpoint <> nil) and SameText(mBreakpoint.FileName, AFileName) and (mBreakpoint.LineNumber > 0) then
     begin
       Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Breakpoint, mBreakpoint.LineNumber - 1,
-        1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
+        1, TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewBreakpoint))];
     end;
   end;
 end;
@@ -400,7 +401,7 @@ begin
     if mBookmark.Line > 0 then
     begin
       Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, mBookmark.Line - 1, 1,
-        TAtlasStrings.Fmt(TAtlasTextId.OverviewBookmark, [mIndex]))];
+        TAtlasEditorStrings.Fmt(TAtlasEditorTextId.OverviewBookmark, [mIndex]))];
     end;
   end;
 end;
@@ -435,7 +436,7 @@ begin
   if TAtlasOverviewKind.Cursor in AKinds then
   begin
     Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, AView.CursorPos.Line - 1, 1,
-      TAtlasStrings.Text(TAtlasTextId.OverviewCursor))];
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewCursor))];
   end;
 end;
 
@@ -597,7 +598,7 @@ begin
     HoverEnd;
     Exit;
   end;
-  mTitle := TAtlasStrings.Fmt(TAtlasTextId.OverviewLine, [FHoverLine + 1]);
+  mTitle := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.OverviewLine, [FHoverLine + 1]);
   mText := Trim(TAtlasEditorBuffer.LineText(mView, FHoverLine + 1));
   if Length(mText) > cMaxPreview then
   begin

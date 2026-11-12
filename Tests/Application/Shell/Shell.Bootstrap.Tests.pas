@@ -1,6 +1,6 @@
 ﻿unit Shell.Bootstrap.Tests;
 
-// Gemeinsamer Aufbau von LSP-Server, MCP-Modus und Linter (Code-Review D-08):
+// Gemeinsamer Aufbau von LSP-Server, MCP-Modus und Linter:
 // Dateien lesen, Projektgruppe, globale settings.json und atlas.json ohne Editor.
 
 interface

@@ -149,7 +149,7 @@ begin
   TAtlasIdeDiagnosticExport.Execute(Warnings());
 end;
 
-/// <summary>Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07),
+/// <summary>Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479),
 /// auch über Verlauf oder Taste nicht außerhalb.</summary>
 procedure HangTest;
 begin

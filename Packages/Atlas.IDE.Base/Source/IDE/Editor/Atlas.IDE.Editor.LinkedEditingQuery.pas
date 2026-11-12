@@ -61,6 +61,8 @@ type
     /// <summary>Antwort übernehmen, wenn sie zur jüngsten Anfrage gehört.</summary>
     procedure Accept(ARequest: Integer; const AFileName, AText: string; const ARanges: TAtlasLinkedRanges;
       const AConflicts: TAtlasLinkedConflicts);
+    /// <summary>Beendete Arbeiter freigeben (je Takt, auch ohne neue Anfrage).</summary>
+    procedure Prune;
     /// <summary>Letzte Antwort verwerfen.</summary>
     procedure Drop;
     /// <summary>Text geändert: Antwort verwerfen, beim nächsten Ruhen neu fragen.</summary>
@@ -201,7 +203,7 @@ begin
         // Server langsam oder weg: keine Sitzung, die Taste geht an die IDE.
         mRanges := nil;
       end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,
         procedure
         begin
@@ -228,6 +230,11 @@ begin
   FCandidate.Text := AText;
   FCandidate.Ranges := ARanges;
   FCandidate.Conflicts := AConflicts;
+end;
+
+procedure TAtlasIdeLinkedEditingQuery.Prune;
+begin
+  FWorkers.Prune;
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Drop;

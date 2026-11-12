@@ -31,7 +31,7 @@
 // erhalten; "format" steigt nur bei einer inkompatiblen Änderung, eine Datei
 // mit höherem Format wird weder gelesen noch überschrieben. Ein leeres
 // Notizbuch löscht seine Datei.
-// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt
+// Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
 // (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich das Notizbuch
 // (KeptFile), und Save überschreibt sie nicht.
@@ -81,7 +81,7 @@ type
     /// <summary>Gelesener Text der Datei; ToJson behält daraus unbekannte Felder.</summary>
     Raw: string;
     /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
-    /// Notizen verloren (Bericht N3). '' sonst.</summary>
+    /// Notizen verloren. '' sonst.</summary>
     KeptFile: string;
     class function Create(const AProject: string): TAtlasNoteBook; static;
     function Count: Integer;
@@ -150,7 +150,8 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Marks.Ids;
+  Atlas.Core.Marks.Ids,
+  Atlas.Text.Json;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -479,58 +480,6 @@ begin
   end;
 end;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else if mValue is TJSONString then
-  begin
-    Result := StrToIntDef(TJSONString(mValue).Value, ADefault);
-  end;
-end;
-
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := SameText(mValue.Value, 'true');
-  end;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mValue: TJSONValue;
@@ -634,26 +583,26 @@ end;
 function NoteOf(AObject: TJSONObject; out ANote: TAtlasNote): Boolean;
 begin
   ANote := Default(TAtlasNote);
-  ANote.Id := TextOf(AObject, 'id');
-  ANote.FileName := TextOf(AObject, 'file');
+  ANote.Id := TJsonRead.Text(AObject, 'id');
+  ANote.FileName := TJsonRead.Text(AObject, 'file');
   // Ohne Kennung oder Datei lässt sich die Notiz weder zeigen noch ändern.
   Result := (ANote.Id <> '') and (ANote.FileName <> '');
   if not Result then
   begin
     Exit;
   end;
-  ANote.Text := TextOf(AObject, 'text');
-  ANote.Anchor.Line := NumberOf(AObject, 'line', 1) - 1;
+  ANote.Text := TJsonRead.Text(AObject, 'text');
+  ANote.Anchor.Line := TJsonRead.IntOr(AObject, 'line', 1) - 1;
   if ANote.Anchor.Line < 0 then
   begin
     ANote.Anchor.Line := 0;
   end;
-  ANote.Anchor.Text := TextOf(AObject, 'lineText');
+  ANote.Anchor.Text := TJsonRead.Text(AObject, 'lineText');
   ANote.Anchor.Before := TextsOf(AObject, 'before');
   ANote.Anchor.After := TextsOf(AObject, 'after');
-  ANote.Created := TAtlasProjectSummaries.TimeOf(TextOf(AObject, 'created'));
-  ANote.Changed := TAtlasProjectSummaries.TimeOf(TextOf(AObject, 'changed'));
-  ANote.Orphaned := FlagOf(AObject, 'orphaned');
+  ANote.Created := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(AObject, 'created'));
+  ANote.Changed := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(AObject, 'changed'));
+  ANote.Orphaned := TJsonRead.Flag(AObject, 'orphaned');
   ANote.Extra := ExtraOf(AObject);
 end;
 
@@ -714,7 +663,7 @@ var
 begin
   mRoot := ParseObject(AJson);
   try
-    Result := NumberOf(mRoot, 'format', 0);
+    Result := TJsonRead.IntOr(mRoot, 'format', 0);
   finally
     mRoot.Free;
   end;
@@ -737,12 +686,12 @@ begin
       Exit;
     end;
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
-    if NumberOf(mRoot, 'format', 1) > cFormat then
+    if TJsonRead.IntOr(mRoot, 'format', 1) > cFormat then
     begin
       Exit;
     end;
     ABook.Raw := AJson;
-    ABook.Project := TextOf(mRoot, 'project');
+    ABook.Project := TJsonRead.Text(mRoot, 'project');
     mValue := mRoot.GetValue('notes');
     if mValue is TJSONArray then
     begin

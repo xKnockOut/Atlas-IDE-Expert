@@ -107,7 +107,7 @@ type
     [Test]
     procedure SaveKeepsNewerFormatFile;
     /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
-    /// überschrieben (Bericht N3).</summary>
+    /// überschrieben.</summary>
     [Test]
     procedure BrokenFileSetAsideLockedFileKept;
     [Test]

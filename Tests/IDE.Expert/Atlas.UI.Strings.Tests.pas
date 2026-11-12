@@ -41,7 +41,8 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Completion.Strings;
 
 function Placeholders(const AText: string): string;
 var
@@ -128,11 +129,12 @@ begin
   Saved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Assert.AreEqual('Enter übernehmen · Esc schließen', TAtlasStrings.Text(TAtlasTextId.FooterKeys));
-    Assert.AreEqual('3 von 84', TAtlasStrings.Fmt(TAtlasTextId.CountOf, [3, 84]));
+    Assert.AreEqual('Enter übernehmen · Esc schließen',
+      TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys));
+    Assert.AreEqual('3 von 84', TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [3, 84]));
     TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.AreEqual('Enter to accept · Esc to close', TAtlasStrings.Text(TAtlasTextId.FooterKeys));
-    Assert.AreEqual('3 of 84', TAtlasStrings.Fmt(TAtlasTextId.CountOf, [3, 84]));
+    Assert.AreEqual('Enter to accept · Esc to close', TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys));
+    Assert.AreEqual('3 of 84', TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [3, 84]));
   finally
     TAtlasStrings.Language := Saved;
   end;

@@ -13,10 +13,11 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasUndoDiffView = class(TForm)
+  TAtlasUndoDiffView = class(TAtlasDialog)
   private
     FLines: TMemo;
     FClose: TButton;
@@ -31,22 +32,21 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Undo.Strings;
 
 { TAtlasUndoDiffView }
+
+const
+  cViewWidth = 760;
 
 constructor TAtlasUndoDiffView.CreateView(AOwner: TComponent; const ATitle: string; const ALines: TArray<string>);
 var
   mBottom: TPanel;
   mLine: string;
 begin
-  inherited CreateNew(AOwner);
-  Caption := ATitle;
+  inherited CreateDialog(AOwner, ATitle, cViewWidth);
   BorderIcons := [biSystemMenu, biMaximize];
   Position := poScreenCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(760);
   ClientHeight := ScaleValue(480);
   KeyPreview := True;
   mBottom := TPanel.Create(Self);
@@ -56,7 +56,7 @@ begin
   mBottom.Height := ScaleValue(40);
   FClose := TButton.Create(Self);
   FClose.Parent := mBottom;
-  FClose.Caption := TAtlasStrings.Text(TAtlasTextId.UndoClose);
+  FClose.Caption := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoClose);
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
   FClose.Default := True;

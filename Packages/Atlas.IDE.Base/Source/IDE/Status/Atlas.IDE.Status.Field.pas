@@ -613,7 +613,7 @@ begin
     mCenter + mRadius + 1);
   mCanvas.Brush.Style := bsClear;
   mPart := ARect;
-  mPart.Left := mLeft + 4 * mRadius + 2;
+  mPart.Left := mLeft + 4 * mRadius + MulDiv(2, mPPI, 96);
   // Plakette der Benachrichtigungen (#601) ganz rechts, der Text endet davor.
   if ABadge.Count > 0 then
   begin
@@ -901,11 +901,9 @@ begin
   end;
   mOwner := Field;
   Field := nil;
-  // Fremde WindowProc darüber: Der Haken der WindowProc bleibt in deren Kette und reicht ab jetzt nur noch durch.
-  if not TAtlasWndProcHook.Unhook(WndHook) then
-  begin
-    TAtlasGuard.Log('Statusleiste: fremde Fensterprozedur über Atlas, Haken bleibt als Durchreicher'); // german-ok Protokoll
-  end;
+  // Fremde WindowProc darüber: Der Haken der WindowProc bleibt in deren Kette und reicht ab jetzt nur noch durch;
+  // Unhook kennzeichnet das Entladen dann als unsicher (Protokoll, Diagnose, Neustart).
+  TAtlasWndProcHook.Unhook(WndHook);
   if mOwner <> nil then
   begin
     Bar.RemoveFreeNotification(mOwner);

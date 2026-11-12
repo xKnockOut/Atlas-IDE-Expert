@@ -39,8 +39,6 @@ type
     class function SectionOf(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode; static;
     /// <summary>AOffset liegt im interface-Abschnitt.</summary>
     class function InInterface(ATree: TSyntaxTree; AOffset: Integer): Boolean; static;
-    /// <summary>Kommentar oder Compiler-Direktive.</summary>
-    class function IsTrivia(const AToken: TPascalToken): Boolean; static;
     /// <summary>Nächste Routine um ANode; nil außerhalb.</summary>
     class function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode; static;
     /// <summary>VarDecl im var-Abschnitt der Routine selbst; Parameter, Felder und globale Variablen zählen
@@ -67,7 +65,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 class function TGenericListSyntax.LastName(const AText: string): string;
 var
@@ -187,11 +186,6 @@ var
 begin
   mSection := SectionOf(ATree, AOffset);
   Result := (mSection <> nil) and (mSection.Kind = TSyntaxKind.InterfaceSection);
-end;
-
-class function TGenericListSyntax.IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 class function TGenericListSyntax.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;

@@ -114,6 +114,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -171,11 +172,11 @@ class function TAtlasHideMenu.ScopeCaption(AElement: TAtlasDrawnElement; AScope:
 begin
   case AScope of
     TAtlasHideScope.Here:
-      Result := TAtlasStrings.Text(TAtlasTextId.HideHere);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideHere);
     TAtlasHideScope.InFile:
-      Result := TAtlasStrings.Text(TAtlasTextId.HideInFile);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideInFile);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.HideEverywhere, [ElementName(AElement, True)]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideEverywhere, [ElementName(AElement, True)]);
   end;
 end;
 
@@ -217,7 +218,7 @@ begin
   mChoice.Target := ATarget;
   mChoice.Scope := TAtlasHideScope.Everywhere;
   mChoice.Settings := True;
-  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.HideSettings), mChoice);
+  AddChoice(AParent, TAtlasEditorStrings.Text(TAtlasEditorTextId.HideSettings), mChoice);
 end;
 
 procedure TAtlasHideMenu.Build(const ATargets: TArray<TAtlasHideTarget>);
@@ -298,7 +299,7 @@ constructor TAtlasHideNoticeWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Hide;
-  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.HideNotice));
+  SetAccessible(cUiaToolTipControlType, TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice));
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.Interval := cVisibleMs;
@@ -390,7 +391,7 @@ begin
   begin
     Exit;
   end;
-  mUndo := TAtlasStrings.Text(TAtlasTextId.HideUndo);
+  mUndo := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndo);
   PutText(Canvas, ADraw, AX, AY, '  ·  ', ToColor(Colors.Muted));
   FUndoRect := Rect(AX, AY, AX + Canvas.TextWidth(mUndo), AY + ATextHeight);
   if ADraw and FUndoHot then

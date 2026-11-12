@@ -56,12 +56,13 @@ uses
   DockForm,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Host;
 
 const
   cTickMs = 150;
@@ -417,11 +418,11 @@ function KindText(AKind: TAtlasNavKind): string;
 begin
   case AKind of
     TAtlasNavKind.Back:
-      Result := TAtlasStrings.Text(TAtlasTextId.NavKindBack);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindBack);
     TAtlasNavKind.Ahead:
-      Result := TAtlasStrings.Text(TAtlasTextId.NavKindAhead);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindAhead);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.NavKindEdit);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavKindEdit);
   end;
 end;
 
@@ -446,25 +447,8 @@ begin
   if Length(Result) = 0 then
   begin
     mCommand := Default(TAtlasCommand);
-    mCommand.Caption := TAtlasStrings.Text(TAtlasTextId.NavEmpty);
+    mCommand.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavEmpty);
     Result := [mCommand];
-  end;
-end;
-
-/// <summary>Fläche, über der die Palette erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
   end;
 end;
 
@@ -479,7 +463,7 @@ begin
   end;
   mEntries := State.History.Entries;
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, ListCommands(mEntries), nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := TAtlasStrings.Text(TAtlasTextId.NavListPrompt);
+  mWindow.Prompt := TAtlasEditorStrings.Text(TAtlasEditorTextId.NavListPrompt);
   mWindow.KeepOrder := True;
   mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)
@@ -498,7 +482,7 @@ begin
         GoTo_(mTarget);
       end;
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 end.

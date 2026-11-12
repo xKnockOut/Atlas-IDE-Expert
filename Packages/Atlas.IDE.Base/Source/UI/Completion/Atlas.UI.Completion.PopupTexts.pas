@@ -84,20 +84,22 @@ uses
   System.SysUtils,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Sets,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Completion.Strings;
 
 { TAtlasCompletionTexts }
 
 class function TAtlasCompletionTexts.TagText(const ATag: TAtlasTag): string;
 begin
   case ATag.Id of
-    TAtlasTagId.Recent: Result := TAtlasStrings.Text(TAtlasTextId.TagRecent);
-    TAtlasTagId.Frequent: Result := TAtlasStrings.Text(TAtlasTextId.TagFrequent);
-    TAtlasTagId.Cycle: Result := TAtlasStrings.Text(TAtlasTextId.UsesCycleTag);
-    TAtlasTagId.SameParams: Result := TAtlasStrings.Text(TAtlasTextId.InheritedSameTag);
-    TAtlasTagId.Overload: Result := TAtlasStrings.Text(TAtlasTextId.InheritedOverloadTag);
-    TAtlasTagId.Active: Result := TAtlasStrings.Text(TAtlasTextId.SameNameActiveTag);
-    TAtlasTagId.VariantBranch: Result := TAtlasStrings.Fmt(TAtlasTextId.TagVariantBranch, [ATag.Arg]);
+    TAtlasTagId.Recent: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.TagRecent);
+    TAtlasTagId.Frequent: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.TagFrequent);
+    TAtlasTagId.Cycle: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesCycleTag);
+    TAtlasTagId.SameParams: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedSameTag);
+    TAtlasTagId.Overload: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedOverloadTag);
+    TAtlasTagId.Active: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameActiveTag);
+    TAtlasTagId.VariantBranch: Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.TagVariantBranch,
+      [ATag.Arg]);
   else
     Result := ATag.Text;
   end;
@@ -107,11 +109,11 @@ class function TAtlasCompletionTexts.DetailText(const AItem: TAtlasCompletionIte
 begin
   if AItem.UsesElsewhere = 'interface' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesInInterface);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInInterface);
   end
   else if AItem.UsesElsewhere = 'implementation' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesInImplementation);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInImplementation);
   end
   else
   begin
@@ -159,12 +161,12 @@ begin
   if AOrder[APosition] = TAtlasRanking.cTypoHeader then
   begin
     // Tippfehler-Treffer (#485).
-    Result := TAtlasStrings.Text(TAtlasTextId.DidYouMean);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.DidYouMean);
   end
   else if AOrder[APosition] = TAtlasRanking.cRestHeader then
   begin
     // Rest der Liste ohne Treffer (#497).
-    Result := TAtlasStrings.Text(TAtlasTextId.CompletionRestHeader);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.CompletionRestHeader);
   end
   else if (APosition < High(AOrder)) and (AOrder[APosition + 1] >= 0) then
   begin
@@ -172,7 +174,7 @@ begin
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.InheritedPlain);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedPlain);
   end;
 end;
 
@@ -185,13 +187,13 @@ begin
   if AOrder[APosition] = TAtlasRanking.cUnknownHeader then
   begin
     // Unbekannter Name (#471): „TotalCount ist unbekannt“.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [mItem.Unknown]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.UnknownHeader, [mItem.Unknown]);
   end
   else if (APosition = 0) and (mItem.Sender <> '') then
   begin
     // Sender mit Typumwandlung (#480): „Sender ist TButton · btnSave, btnLoad“ über der Liste; weitere
     // Überschriften darin sind die der geerbten Gruppen.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SenderHeader, [mItem.Sender, mItem.SenderOf]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SenderHeader, [mItem.Sender, mItem.SenderOf]);
   end
   else if mItem.TypeParam <> '' then
   begin
@@ -217,15 +219,15 @@ begin
   // uses-Abschnitt (#469): Projekt, RTL/VCL, Drittanbieter.
   if AGroup = 'project' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesGroupProject);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesGroupProject);
   end
   else if AGroup = 'rtl' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesGroupRtl);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesGroupRtl);
   end
   else if AGroup = 'library' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesGroupLibrary);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesGroupLibrary);
   end
   else
   begin
@@ -238,26 +240,26 @@ begin
   if AItem.Form <> '' then
   begin
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [AItem.Form]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FormHeader, [AItem.Form]);
   end
   else if AItem.Assign then
   begin
     // Alle Felder zuweisen (#491): „Alle Felder zuweisen · TOptions“.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.AssignHeader, [AItem.SetOf]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.AssignHeader, [AItem.SetOf]);
   end
   else if AItem.Batch then
   begin
     // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [AItem.SetOf]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.BatchHeader, [AItem.SetOf]);
   end
   else if AItem.ExceptionGroup = 'try' then
   begin
     // Exception-Klassen nach "on E: " (#483): „Aus dem try-Block“ und „Allgemein“.
-    Result := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupTry);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.ExceptionGroupTry);
   end
   else if AItem.ExceptionGroup = 'general' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupGeneral);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.ExceptionGroupGeneral);
   end
   else
   begin
@@ -272,36 +274,36 @@ begin
     // Mengenmodus (#448): „TAnchors · Menge von TAnchorKind“, bei "X in [" nur „Menge von …“.
     if AItem.ExpectedType.StartsWith('set of ') then
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetHeaderPlain, [AItem.SetOf]);
+      Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SetHeaderPlain, [AItem.SetOf]);
     end
     else
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetHeader, [AItem.ExpectedType, AItem.SetOf]);
+      Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SetHeader, [AItem.ExpectedType, AItem.SetOf]);
     end;
   end
   else if AItem.ExpectedType <> '' then
   begin
     if AItem.Fits then
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.FitsType, [AItem.ExpectedType]);
+      Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FitsType, [AItem.ExpectedType]);
     end
     else
     begin
-      Result := TAtlasStrings.Text(TAtlasTextId.OtherGroup);
+      Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.OtherGroup);
     end;
   end
   else if AAfterForm then
   begin
     // Direkt nach den Komponenten des Formulars (#455) beginnt die übrige Liste.
-    Result := TAtlasStrings.Text(TAtlasTextId.OtherGroup);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.OtherGroup);
   end
   else if AItem.DeclaringClass <> '' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.InheritedFrom, [AItem.DeclaringClass]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.InheritedFrom, [AItem.DeclaringClass]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.InheritedPlain);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedPlain);
   end;
 end;
 
@@ -326,7 +328,7 @@ begin
   else if Length(TAtlasItemPresentation.SameNameHidden(AItems)) > 0 then
   begin
     // Gleichnamige Bezeichner (#475): ausgeblendete FireMonkey-Varianten.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SameNameHiddenFooter,
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameHiddenFooter,
       [string.Join(', ', TAtlasItemPresentation.SameNameHidden(AItems))]);
   end
   else
@@ -353,11 +355,11 @@ class function TAtlasCompletionTexts.KeysText(const AList: TAtlasCompletionList)
 begin
   if (AList.Target <> '') and HasCondition(AList) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TargetFooter, [AList.Target]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.TargetFooter, [AList.Target]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys);
   end;
 end;
 
@@ -396,32 +398,35 @@ begin
   // Mengenmodus (#448): wie viele Werte angehakt sind.
   if TAtlasCompletionSets.Active(AList.Items) then
   begin
-    Exit(TAtlasStrings.Fmt(TAtlasTextId.SetChosen, [TAtlasCompletionSets.CheckedCount(AList.Items)]));
+    Exit(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SetChosen,
+      [TAtlasCompletionSets.CheckedCount(AList.Items)]));
   end;
   mFitting := FittingCount(AList);
   if TAtlasRanking.OnlyTypos(AList.Order) or (AList.RestFrom = 0) then
   begin
     // Nur ähnliche Namen (#485) bzw. nur der Rest (#497): kein echter Treffer für das Getippte.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [AList.Pattern]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.NoMatchesFor, [AList.Pattern]);
   end
   else if AList.RestFrom > 0 then
   begin
     // Treffer, darunter der gedämpfte Rest (#497).
-    Result := TAtlasStrings.Fmt(TAtlasTextId.CountHitsRest,
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountHitsRest,
       [TAtlasRanking.ItemCount(Copy(AList.Order, 0, AList.RestFrom)),
       TAtlasRanking.ItemCount(Copy(AList.Order, AList.RestFrom, MaxInt))]);
   end
   else if mFitting > 0 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.CountFits, [mFitting, TAtlasRanking.ItemCount(AList.Order)]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountFits, [mFitting,
+      TAtlasRanking.ItemCount(AList.Order)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.CountOf, [TAtlasRanking.ItemCount(AList.Order), Length(AList.Items)]);
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [TAtlasRanking.ItemCount(AList.Order),
+      Length(AList.Items)]);
   end;
   if AList.Limited then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.CompletionLimited) + ' · ' + Result;
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.CompletionLimited) + ' · ' + Result;
   end;
 end;
 
@@ -430,18 +435,19 @@ begin
   Result.Right := CountText(AList);
   if TAtlasCompletionSets.Active(AList.Items) then
   begin
-    Result.Left := TAtlasStrings.Text(TAtlasTextId.SetFooterKeys);
+    Result.Left := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SetFooterKeys);
   end
   else if TAtlasItemPresentation.Guarding(AList.Items) then
   begin
     // Freigabe absichern (#489).
-    Result.Left := TAtlasStrings.Text(TAtlasTextId.GuardFooterKeys);
+    Result.Left := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.GuardFooterKeys);
     Result.Right := '';
   end
   else if TAtlasItemPresentation.DataSource(AList.Items) <> '' then
   begin
     // Feld- und Parameternamen (#461): die SQL-Anweisung als Quellenangabe.
-    Result.Left := TAtlasStrings.Fmt(TAtlasTextId.DataSourceFooter, [TAtlasItemPresentation.DataSource(AList.Items)]);
+    Result.Left := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.DataSourceFooter,
+      [TAtlasItemPresentation.DataSource(AList.Items)]);
   end
   else if TAtlasItemPresentation.HiddenKinds(AList.Items) <> '' then
   begin
@@ -459,17 +465,17 @@ class function TAtlasCompletionTexts.SyntaxLead(ATrust: TAtlasSyntaxTrust): stri
 begin
   if ATrust = TAtlasSyntaxTrust.Unknown then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SyntaxUnknown);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SyntaxUnknown);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SyntaxLimited);
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SyntaxLimited);
   end;
 end;
 
 class function TAtlasCompletionTexts.SyntaxLineText(ALine: Integer): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SyntaxLine, [ALine + 1]);
+  Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SyntaxLine, [ALine + 1]);
 end;
 
 class function TAtlasCompletionTexts.TipText(const AItem: TAtlasCompletionItem; const ATags: TAtlasTags): string;

@@ -27,14 +27,14 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Foundation.Files;
 
 /// <summary>Projektdatei des aktiven Projekts mit Versionsverwaltung; '' ohne, dann die Meldung ANoVcs.</summary>
 function VcsProject(ANoVcs: TAtlasVcsTextId): string;
 begin
-  Result := TAtlasIdeProjectSummaries.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+  Result := TAtlasIdeProjectSummaries.ProjectFileOf(TAtlasIdeFiles.ActiveProjectFile);
   if Result = '' then
   begin
     TAtlasIdeVcs.Report(TAtlasVcsStrings.Text(ANoVcs));

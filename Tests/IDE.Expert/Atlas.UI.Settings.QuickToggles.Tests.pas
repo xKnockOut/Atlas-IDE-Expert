@@ -44,7 +44,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.QuickToggles;
 
 const
@@ -83,7 +83,7 @@ begin
     Assert.AreEqual('Hints', Window.Rows.Text(3));
     Assert.AreEqual(-1, Window.Rows.Item(3));
     Assert.AreEqual('Hover', Window.Rows.Text(4));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff), Window.AllButton.Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff), Window.AllButton.Caption);
   finally
     Window.Free;
   end;
@@ -202,7 +202,7 @@ begin
     Window.AllButton.Click;
     Assert.AreEqual(1, Clicked);
     Window.SetItems(SampleItems, True);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn), Window.AllButton.Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn), Window.AllButton.Caption);
   finally
     Window.Free;
   end;

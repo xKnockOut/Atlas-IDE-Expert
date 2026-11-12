@@ -12,6 +12,8 @@
 // - Lupe (#743, designer.magnifier, TAtlasIdeMagnifier).
 // - Eigenschaften suchen (#524, designer.propertySearch,
 //   TAtlasIdePropertySearch): Knopf ohne Menü, öffnet den Dialog.
+// - Verwendungen im Code (#750, designer.usages, TAtlasIdeDesignerUsages):
+//   Knopf ohne Menü; der Takt führt Taste und Zähler im Statusfeld nach.
 // Nur im Hauptthread.
 
 interface
@@ -22,11 +24,13 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.HandleTool,
+  Atlas.IDE.Designer.PropertyPainter,
   Atlas.IDE.Designer.GapHandles,
   Atlas.IDE.Designer.MultiResize,
   Atlas.IDE.Designer.SelectionBar,
   Atlas.IDE.Designer.Magnifier,
-  Atlas.IDE.Designer.PropertySearch;
+  Atlas.IDE.Designer.PropertySearch,
+  Atlas.IDE.Designer.Usages;
 
 type
   TAtlasIdeDesignerTools = class
@@ -38,8 +42,8 @@ type
     /// <summary>Werkzeug mit Griffen zum Knopf AId; nil ohne.</summary>
     function HandleToolOf(const AId: string): TAtlasIdeHandleTool;
   public
-    /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
-    constructor Create(const AOnMessage: TProc<string>);
+    /// <summary>AOnMessage: Zeile in der Meldungsansicht; APainter: Format-Pinsel für die Schnellleiste.</summary>
+    constructor Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
     destructor Destroy; override;
     /// <summary>Knöpfe nach den Einstellungen.</summary>
     function Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
@@ -60,12 +64,12 @@ implementation
 
 { TAtlasIdeDesignerTools }
 
-constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>);
+constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
 begin
   inherited Create;
   FGaps := TAtlasIdeGapHandles.Create(AOnMessage);
   FResize := TAtlasIdeMultiResize.Create(AOnMessage);
-  FBar := TAtlasIdeSelectionBar.Create(AOnMessage);
+  FBar := TAtlasIdeSelectionBar.Create(AOnMessage, APainter);
   FMagnifier := TAtlasIdeMagnifier.Create(AOnMessage);
 end;
 
@@ -100,6 +104,10 @@ begin
   if TAtlasIdePropertySearch.Available(ASettings) then
   begin
     Result := Result + [TAtlasIdePropertySearch.Button];
+  end;
+  if TAtlasIdeDesignerUsages.Available(ASettings) then
+  begin
+    Result := Result + [TAtlasIdeDesignerUsages.Button];
   end;
 end;
 
@@ -140,6 +148,11 @@ begin
   begin
     TAtlasIdePropertySearch.Run(True);
     Result := True;
+  end
+  else if SameText(AId, TAtlasIdeDesignerUsages.cId) then
+  begin
+    TAtlasIdeDesignerUsages.Run;
+    Result := True;
   end;
 end;
 
@@ -174,6 +187,7 @@ begin
   FResize.Tick;
   FBar.Tick;
   FMagnifier.Tick;
+  TAtlasIdeDesignerUsages.Tick;
 end;
 
 procedure TAtlasIdeDesignerTools.Hide;
@@ -182,6 +196,7 @@ begin
   FResize.Hide;
   FBar.Hide;
   FMagnifier.Hide;
+  TAtlasIdeDesignerUsages.Hide;
 end;
 
 procedure TAtlasIdeDesignerTools.ApplyTheme;

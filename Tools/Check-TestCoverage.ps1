@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Prüft, dass jede Unit mit Logik eigene DUnitX-Tests hat und jede Testunit läuft (#415).
 
@@ -16,7 +16,7 @@
        einbindet, muss samt allen Plugin-Units, die sie ihrerseits einbindet, in
        Tests/Atlas.Tests.dpr stehen. Das Testprojekt hat keinen Suchpfad auf die
        Plugin-Quellen; Delphi fände sie sonst nicht.
-    5. Testkategorie je Modul (#1455, ADR 0017): Jede Testklasse einer Testunit,
+    5. Testkategorie je Modul (#1455): Jede Testklasse einer Testunit,
        deren Unit zu einem Modul gehört, trägt [Category('<Package>')], z. B.
        [Category('Atlas.IDE.Debugger')]; damit laufen die Tests eines Moduls
        allein (--include:Atlas.IDE.Debugger). Das Package der Unit "<Unit>"
@@ -62,7 +62,6 @@ $Exempt = @{
     'Atlas.Windows.Process.ParentWatcher'               = 'wartet auf das Ende des Elternprozesses'
     'Atlas.Windows.Console.StdStreams'                  = 'Handles der Konsole (stdin/stdout)'
     'Atlas.Core.Files.Adapters.FolderWatcher'           = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
-    'Atlas.Core.Files.Contract'                         = 'nur Typen, ohne Logik'
     'Atlas.Core.Results.CallDiagramTemplate'            = 'erzeugt; Update-ArchitectureMap.ps1 prüft sie gegen Aufrufdiagramm.html'
     'Atlas.Core.Updates.Adapters.HttpSource'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Core.Updates'
     'Atlas.Core.Ci.Adapters.Http'                       = 'HTTP-Zugriff; die Anbieter testen Atlas.Core.Ci.Providers.*'
@@ -79,6 +78,13 @@ $Exempt = @{
     'Atlas.Windows.Updates.Adapters.Builder'            = 'startet MSBuild der Delphi-Installation'
     'Shell.Update'                                      = 'Einstieg von AtlasUpdate.exe (Befehlszeile, Konsole)'
     'Shell.Update.System'                               = 'setzt nur die Windows-Adapter zusammen'
+    'Shell.Monitor'                                     = 'Einstieg von AtlasMonitor.exe (eine Instanz, Fenster); Logik testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
+    'Atlas.Windows.Monitor.Adapters.System'             = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
+    'Atlas.Windows.Monitor.Adapters.Process'            = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'
     'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
 }
 
@@ -161,7 +167,7 @@ foreach ($key in $needed.Keys) {
     }
 }
 
-# Testkategorie je Modul (#1455, ADR 0017).
+# Testkategorie je Modul (#1455).
 $assignmentPath = Join-Path $Root 'docs/adr/0017-unit-zuordnung.md'
 if (Test-Path $assignmentPath) {
     $unitPackage = @{}

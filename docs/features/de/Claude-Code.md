@@ -4,7 +4,7 @@ Zurück zum [README](../../../README_DE.md)
 
 ## MCP-Werkzeuge
 
-Der Server bietet Claude Code 32 MCP-Werkzeuge, jeweils mit Vorschau:
+Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
 
 - **Code verstehen:**
   - Symbole suchen
@@ -30,6 +30,7 @@ Der Server bietet Claude Code 32 MCP-Werkzeuge, jeweils mit Vorschau:
   - schreibend umbenennen
   - Code-Aktionen anwenden
   - formatieren (`format_code`)
+  - Methode extrahieren, auf Wunsch samt gleicher Stellen (`extract_method`)
   - oder alle sicheren Treffer von Regeln auf einmal korrigieren (`fix_findings`)
 
 Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.

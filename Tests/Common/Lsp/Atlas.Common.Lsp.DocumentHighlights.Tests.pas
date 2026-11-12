@@ -28,7 +28,7 @@ type
     procedure MarksMethodDeclarationAndImplementation;
     [Test]
     procedure NothingOutsideIdentifiers;
-    /// <summary>Code-Review P-01: Mit vom Aufrufer gepinntem Baum dasselbe Ergebnis; der Pin bleibt danach.</summary>
+    /// <summary>Mit vom Aufrufer gepinntem Baum dasselbe Ergebnis; der Pin bleibt danach.</summary>
     [Test]
     procedure HighlightsWithPinnedResolver;
   end;

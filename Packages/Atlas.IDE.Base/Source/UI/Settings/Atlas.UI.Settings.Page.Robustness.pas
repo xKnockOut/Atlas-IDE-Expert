@@ -34,7 +34,7 @@ type
     property FuseList: TListBox read FFuseList;
     property FuseEnableSelected: TButton read FFuseEnableSelected;
     property FuseEnableAll: TButton read FFuseEnableAll;
-    /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar (Code-Review S-07).</summary>
+    /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar.</summary>
     property HangTestRow: TWinControl read FHangTestRow;
   end;
 
@@ -45,6 +45,7 @@ uses
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.General;
 
 { TAtlasSettingsRobustnessPart }
@@ -55,12 +56,13 @@ var
 begin
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
-  BindText('HangThresholdMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold)));
-  BindCheck('HangHint', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint)));
+  BindText('HangThresholdMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangThreshold)));
+  BindCheck('HangHint', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangHint)));
   // Blockierschutz für Datenquellen (#493).
-  BindText('ProviderTimeLimitMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit)));
+  BindText('ProviderTimeLimitMs',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProviderTimeLimit)));
   mPanel := AddPanel(32);
-  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen (S-07).
+  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen.
   FHangTestRow := mPanel;
   FHangTestRow.Visible := False;
   FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.OnClick := DiagnosticModeClick;
@@ -68,8 +70,8 @@ begin
   FHangTest.Parent := mPanel;
   FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
   FHangTest.Left := 0;
-  FHangTest.Top := 3;
-  FHangTest.Width := 150;
+  FHangTest.Top := FHangTest.ScaleValue(3);
+  FHangTest.Width := FHangTest.ScaleValue(150);
   FHangTest.OnClick := HangTestClick;
   AddFuseSection;
 end;
@@ -93,17 +95,17 @@ begin
   mPanel := AddPanel(32);
   FFuseEnableSelected := TButton.Create(FPage);
   FFuseEnableSelected.Parent := mPanel;
-  FFuseEnableSelected.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableSelected);
+  FFuseEnableSelected.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseEnableSelected);
   FFuseEnableSelected.Left := 0;
-  FFuseEnableSelected.Top := 3;
-  FFuseEnableSelected.Width := 150;
+  FFuseEnableSelected.Top := FFuseEnableSelected.ScaleValue(3);
+  FFuseEnableSelected.Width := FFuseEnableSelected.ScaleValue(150);
   FFuseEnableSelected.OnClick := FuseEnableSelectedClick;
   FFuseEnableAll := TButton.Create(FPage);
   FFuseEnableAll.Parent := mPanel;
-  FFuseEnableAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableAll);
-  FFuseEnableAll.Left := 160;
-  FFuseEnableAll.Top := 3;
-  FFuseEnableAll.Width := 150;
+  FFuseEnableAll.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseEnableAll);
+  FFuseEnableAll.Left := FFuseEnableAll.ScaleValue(160);
+  FFuseEnableAll.Top := FFuseEnableAll.ScaleValue(3);
+  FFuseEnableAll.Width := FFuseEnableAll.ScaleValue(150);
   FFuseEnableAll.OnClick := FuseEnableAllClick;
 end;
 
@@ -133,7 +135,7 @@ begin
     mAny := FFuseList.Items.Count > 0;
     if not mAny then
     begin
-      FFuseList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFuseNone));
+      FFuseList.Items.Add(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseNone));
     end;
   finally
     FFuseList.Items.EndUpdate;

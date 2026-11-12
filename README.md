@@ -1,10 +1,10 @@
-﻿# Atlas IDE Expert
+# Atlas IDE Expert
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 313 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and eleven module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 315 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and eleven module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -61,9 +61,9 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
+- **315 check rules** while you type: 205 bugs, 100 code smells, 10 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
-- **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
+- **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Experimental style rules with few false alarms:** `hardcoded-string` skips log, check and comparison calls, date masks and markup; `magic-number` skips the DPI base 96, full bit masks, time units and point lists; `naming-prefix` keeps the parameter names of event handlers assigned in code; `public-field` skips helper classes under `private type`
 - **Types from installed packages:** the IDE tells Atlas the types of its packages (even without .pas). "Type is not declared" stays silent for them, the quick fix suggests their unit, completion offers them with a `uses` entry
@@ -72,18 +72,20 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Refactorings and code actions](docs/features/en/Refactorings.md)
 - **Rename** project-wide including forms, **change signature**, **safe delete**
-- **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions
+- **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions; *Extract method* also replaces equal places in the unit on request, each one deselectable in the preview
 - **Class actions:** implement interface, extract interface or superclass, generate properties
 - **uses:** add missing units, sort, remove unused ones; a unit counts as used only when a name really resolves to it, as dcc decides (members of its classes and names shadowed later do not count; enum values, helpers, attributes and inline bodies do)
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
 ### [Forms](docs/features/en/Forms.md)
-- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names
+- **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components, data binding of the selection as a breadcrumb bar below the designer, extract the selection to a frame, event map
 - **Unsaved designer state** is seen by references, renames and checks
 - **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
 - **Show in designer** (Shift+F12): from a field or handler in the code to the component in the designer
+- **Search components** in the designer fuzzily (`bspei` finds `btnSpeichern`), frames included; Enter reveals hidden tab pages, Ctrl+Enter adds to the selection
+- **Usages in code** from the designer (Shift+Alt+F7): real accesses to the selected component per unit and method, classified as reads, writes, passes or event, plus a counter in the status field
 - **Search properties** in the form, project or project group (`Font.Name = 'Tahoma'`, `Visible = False`, `Class = TDBGrid`), inherited values marked
 - **Designer tools** in the designer bar: select similar components (class, parent, property value, handler), named selection sets per form with Ctrl+Shift+1…9, Alt+Arrow to the neighbouring control, Arrange menu (width from text, button bar, duplicate in row, insert and remove space, fit to content, near-aligned edges, default sizes per class, layers step by step, format painter, suggest anchors, all form texts as a table, label and field as a pair, arrange as a form grid, wrap in a container and dissolve it, unify fonts and colors, groups without a container), edit captions in place with F2 or a slow double click, gap handles for a row or column, shared resize handles, quick bar for a multiple selection, magnifier
 
@@ -95,8 +97,8 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Exceptions:** history window, exception bar, just my code, access violations explained
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
-- **Atlas welcome page** with projects, history, issues and news
-- **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE
+- **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue
+- **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE; "My issues" can show a fixed tracker project or all of them, with working copies per tracker project
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
 - **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts
 - **Atlas wizards in *File › New › Other***: *DUnitX test unit for unit…*, *Unit by architecture role…* and *Custom rule…* in the gallery category *Atlas* (`generate.galleryWizards`)
@@ -113,7 +115,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions; without `language` in settings.json the server follows the language the IDE actually shows (its loaded resource files, then `Locales` in the registry, then Windows), and `atlas.log` names the detected language and its source
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
-- **32 MCP tools** to read, check, build, test, rename and fix Delphi code
+- **33 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 
@@ -149,7 +151,8 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 - **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.en.md)
 - **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](docs/features/en/Command-line.md#linter-mode)
-- **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) (ADR 0013, [Building on Linux](#building-on-linux))
+- **AtlasMonitor (Windows):** standalone window with an icon in the notification area for all running Atlas servers (IDE, MCP, command line): state dot (idle, working, not responding), details, stop a server, open its log, clear the index cache, start with Windows (#1901). Every server writes `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` every 5 s (`server.statusFile`). Settings in `%APPDATA%\Atlas\monitor.json`. Tab **Check** (#1900): every CLI command without the IDE (check with all options, metrics, todos, format check/write, fix with dry run, affected tests, architecture save/compare, hotspots, query, replay) on a target list (folders, .dproj, .groupproj, files; on/off, save/load). Each target runs as a hidden child process with progress, cancel and a job that ends all runs when the monitor closes; findings with filter, double click opens the editor, export as HTML or SARIF, "Copy command". Architecture and hotspot pages show in the **Report** tab (WebView2, otherwise the default browser).
+- **Claude Code in the cloud (Linux):** the environment's setup script and the SessionStart hook install the server as `AtlasServer` (and `AtlasServer.exe`) in `/usr/local/bin`, prebuilt from the `cloud-linux` pre-release or built with Free Pascal; setup in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([Building on Linux](#building-on-linux))
 
 More: [docs/en/Installation.md](docs/en/Installation.md).
 
@@ -175,13 +178,14 @@ Every English page links its German original and vice versa.
 | `Packages/Atlas.Text` | Package, RTL only (free of Windows and VCL); the IDE plugin includes it as source |
 | `Packages/Atlas.Common` | Package, free of Windows and VCL: parser, index, check rules, LSP and MCP logic |
 | `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
-| `Packages/Atlas.Linux` | Linux counterparts of the server's Windows adapters, source only, for the Free Pascal build (ADR 0013) |
+| `Packages/Atlas.Linux` | Linux counterparts of the server's Windows adapters, source only, for the Free Pascal build |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout, MCP with `--mcp`, linter with `--check`) |
-| `Application/AtlasUpdate` | Installer and updater (#1519, ADR 0018): `install`, `prepare`, `apply` |
+| `Application/AtlasUpdate` | Installer and updater (#1519): `install`, `prepare`, `apply` |
+| `Application/AtlasMonitor` | Window and notification area icon for all running Atlas servers (#1901), checks without the IDE (#1900), VCL |
 | `Packages/Atlas.IDE.*` | The IDE plugin: a core package and module packages (below) |
 | `Tests/Atlas.Tests` | DUnitX tests |
 
-### Packages of the IDE plugin (2.0, ADR 0017)
+### Packages of the IDE plugin (2.0)
 
 All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3), with layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Every module requires only `Atlas.IDE.Base`, never another module; Base knows no module. Each module brings its settings in the options dialog as its own section, module switch included: with only `Atlas.IDE.Base` installed, *Tools › Options › Atlas* shows only the settings of Base.
 
@@ -207,7 +211,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 
 The main thread does not wait for the server while you type or click: slash commands, `///` scaffolds and "Switch to test unit" (also from the code lens) ask in the background. The diagnostics window does not count open modal dialogs as main thread load, and for a slow call it names the server request the main thread waited for. In the server, reading commands (switch to test unit, interface cost, metrics, TODOs, unit relations, editor marks, unit search and others) run concurrently, so hover, completion and diagnostics no longer queue behind a long command.
 
-How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins") and ADR 0017; each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
+How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins"); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Requirements
 
@@ -218,7 +222,7 @@ How a module registers, which contracts it uses and the rules for loading and un
 
 ## Building
 
-Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → AtlasUpdate → `Atlas.IDE.Base` → module packages → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The plugin packages are set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE (ADR 0008).
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → AtlasUpdate → AtlasMonitor → `Atlas.IDE.Base` → module packages → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The plugin packages are set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE.
 
 On the command line (RAD Studio command prompt or after `rsvars.bat`):
 
@@ -230,7 +234,7 @@ Output goes to `Output\<platform>\<config>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
 
 ### Building on Linux
 
-Only the server, only for Claude Code sessions in the cloud and other Linux machines without Delphi (ADR 0013):
+Only the server, only for Claude Code sessions in the cloud and other Linux machines without Delphi:
 
 ```bash
 Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin
@@ -250,10 +254,18 @@ Tests\Tests.bat benchmark    :: benchmarks only (category Benchmark)
 Tests\Tests.bat alle         :: both
 ```
 
+Without Delphi, the platform-independent tests (Atlas.Text, Atlas.Common, the plugin core) run on Linux with Free Pascal; every pull request does this as well (`linux-server.yml`):
+
+```bash
+Tools/Linux/Test-Fpc.sh      # test units from Tools/Linux/FpcTests.txt
+```
+
+The list only contains test units that pass completely under FPC. A new test unit without Windows or VCL dependencies belongs in it. Without a Delphi runner, `server.yml` reports the Delphi run as neutral; pull requests into `main` or `release/*` then fail.
+
 Check scripts (also run as GitHub Actions):
 
 ```powershell
-pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies, module boundaries from ADR 0017
+pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies, module boundaries from docs/adr/0017-unit-zuordnung.md
 pwsh Tools/Test-PackageDependencies.ps1    # self-test of the module boundaries with deliberate violations
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
@@ -272,7 +284,7 @@ pwsh Tools/Check-ProjectFiles.ps1          # project files readable by MSBuild (
 
 ## CI
 
-- `server.yml`: build of the project group through the build script in the runner's environment variable `ATLAS_DELPHI_BUILD` (same parameters and JSON as `Tools/Build-Ide.ps1`; the group contains the Atlas plugin itself, so it cannot be built through `Tools/Build-Ide.ps1`) for Win64 and Win32, including the plugin BPLs `Atlas.IDE.*370.bpl` (core and modules) for the classic and the 64-bit IDE (Win32 and Win64, kept as artifacts), and DUnitX tests (Win64 only, ADR 0008). Results as the check "DUnitX-Ergebnisse" in pull requests.
+- `server.yml`: build of the project group through the build script in the runner's environment variable `ATLAS_DELPHI_BUILD` (same parameters and JSON as `Tools/Build-Ide.ps1`; the group contains the Atlas plugin itself, so it cannot be built through `Tools/Build-Ide.ps1`) for Win64 and Win32, including the plugin BPLs `Atlas.IDE.*370.bpl` (core and modules) for the classic and the 64-bit IDE (Win32 and Win64, kept as artifacts), and DUnitX tests (Win64 only). Results as the check "DUnitX-Ergebnisse" in pull requests.
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, in case the build script starts an IDE, and only while that machine is switched on. Without `ATLAS_DELPHI_BUILD` the job fails with a clear message.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary.
   - A new push to the same branch cancels the running build (`concurrency`).

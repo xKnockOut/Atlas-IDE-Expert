@@ -112,7 +112,7 @@ var
   Outer, Inner: IInterface;
   Parts: TArray<TAtlasStartPart>;
 begin
-  // Bericht N4: Bis zur freien Nachrichtenschleife zählt jede äußerste Atlas-Aktion zu den Startanteilen.
+  // Bis zur freien Nachrichtenschleife zählt jede äußerste Atlas-Aktion zu den Startanteilen.
   Tick := 0;
   Clock :=
     function: Int64

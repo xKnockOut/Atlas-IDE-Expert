@@ -83,6 +83,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -160,29 +161,6 @@ type
     First: Integer;
     Last: Integer;
   end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
 
 function RangeOf(const ATokens: TTokens; AFirst, ALast: Integer): TTextRange;
 begin
@@ -508,7 +486,7 @@ var
 begin
   mBest := nil;
   mOffset := ATokens[AIndex].Offset;
-  // Iterativ (Bericht M1); die letzte passende Routine in Baumreihenfolge ist die innerste.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); die letzte passende Routine in Baumreihenfolge ist die innerste.
   if ATree.Root <> nil then
   begin
     ATree.Root.Walk(
@@ -687,7 +665,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -737,7 +715,7 @@ var
     mPending: TStack<TSyntaxNode>;
     mPendingActive: TStack<Boolean>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     mPendingActive := TStack<Boolean>.Create;
     try
@@ -777,7 +755,7 @@ var
     mNode, mBody: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1011,7 +989,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1230,7 +1208,7 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
     mPending, mPendingScope: TStack<TSyntaxNode>;
     mPendingFlags: TStack<Integer>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     mPendingScope := TStack<TSyntaxNode>.Create;
     mPendingFlags := TStack<Integer>.Create;
@@ -1285,27 +1263,6 @@ begin
     cTexts[TExceptionsText.TryTitle].Text);
 end;
 
-/// <summary>Erstes Token ab AOffset (die Tokens sind nach Offset sortiert).</summary>
-function TokenAtOffset(const ATokens: TTokens; AOffset: Integer): Integer;
-var
-  mUpper, mMiddle: Integer;
-begin
-  Result := 0;
-  mUpper := Length(ATokens);
-  while Result < mUpper do
-  begin
-    mMiddle := (Result + mUpper) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      Result := mMiddle + 1;
-    end
-    else
-    begin
-      mUpper := mMiddle;
-    end;
-  end;
-end;
-
 /// <summary>Knoten unter ARoot in Quelltextreihenfolge, ohne Rekursion (#1094). Mit ASkipRoutines ohne
 /// eingebettete Routinen und anonyme Methoden.</summary>
 function NodesBelow(ARoot: TSyntaxNode; ASkipRoutines: Boolean): TArray<TSyntaxNode>;
@@ -1353,7 +1310,7 @@ var
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(mPaths, TokenAtOffset(mTokens, ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ANode.StartOffset));
   end;
 
   function IsConstructor(ARoutine: TSyntaxNode): Boolean;
@@ -1392,13 +1349,13 @@ var
     begin
       Exit;
     end;
-    mTryToken := TokenAtOffset(mTokens, ATry.StartOffset);
+    mTryToken := TokenFrom(mTokens, ATry.StartOffset);
     // Kommentare zwischen try und Aufruf gingen mit dem Verschieben verloren.
     if (mTryToken + 1 > High(mTokens)) or (mTokens[mTryToken + 1].Offset <> mStatement.StartOffset) then
     begin
       Exit;
     end;
-    mLast := PreviousCode(mTokens, TokenAtOffset(mTokens, mStatement.EndOffset));
+    mLast := PreviousCode(mTokens, TokenFrom(mTokens, mStatement.EndOffset));
     mSemicolon := NextCode(mTokens, mLast + 1);
     mRemoval := TTextRange.Create(mTokens[mTryToken].EndPos, mTokens[mLast].EndPos);
     if (mSemicolon <= High(mTokens)) and mTokens[mSemicolon].IsSymbol(';') then

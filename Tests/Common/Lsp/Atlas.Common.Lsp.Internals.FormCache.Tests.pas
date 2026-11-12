@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Internals.FormCache.Tests;
 
-// Auszüge aus Formulardateien für die Vervollständigung (Code-Review P-06).
+// Auszüge aus Formulardateien für die Vervollständigung.
 
 interface
 

@@ -19,7 +19,7 @@
 //     dem Zeilenende („Count = 3, Name = 'Meier'“), seit dem letzten Halt
 //     geänderte Werte in der Warnfarbe; nur, wenn die Zeile im Editor dem
 //     abgeglichenen Text entspricht. Platz hinter dem Zeilenende über
-//     TAtlasLineTail. Reines GDI zwischen SaveDC und RestoreDC.
+//     TAtlasLineTail. Schrift, Farben und GDI: TAtlasInlineValuePainter.
 //   - Fortsetzen, neuer Halt und Ende der Sitzung verwerfen die Werte und
 //     laufende Anfragen.
 //   - Kein Zugriff (#840): Mit debug.explainUnavailable steht ein Name, dessen
@@ -44,7 +44,8 @@ uses
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.InlineValues,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Hover.DebugValue;
+  Atlas.IDE.Hover.DebugValue,
+  Atlas.UI.Debug.InlineValuePainter;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -89,24 +90,6 @@ type
       Name: string;
       Since: UInt64;
     end;
-    /// <summary>Schrift und Farben der Werte; je Hintergrund bzw. Editorschrift einmal bestimmt.</summary>
-    TPaintStyle = class
-    private
-      FFont: TFont;
-      FFontKey: string;
-      FBack: COLORREF;
-      FBackKnown: Boolean;
-      FTextColor: COLORREF;
-      FChangedColor: COLORREF;
-      procedure EnsureColors(ABack: COLORREF);
-      procedure EnsureFont(const AEditorFont: TFont);
-    public
-      constructor Create;
-      destructor Destroy; override;
-      procedure Ensure(ABack: COLORREF; const AEditorFont: TFont);
-      /// <summary>AItems ab AX in ARect zeichnen; Ergebnis: rechte Kante.</summary>
-      function Draw(ADC: HDC; const ARect: TRect; AX: Integer; const AItems: TAtlasInlineValueItems): Integer;
-    end;
   private class var
     FInstance: TAtlasIdeDebugInlineValues;
   private
@@ -127,7 +110,7 @@ type
     FLine: Integer;
     FText: string;
     FLines: TArray<string>;
-    FStyle: TPaintStyle;
+    FStyle: TAtlasInlineValuePainter;
     constructor Create(const ASession: TAtlasInlineValuesSessionFunc);
     /// <summary>Werte und laufende Arbeit verwerfen; AForget auch die gemerkten Werte (Ende der Sitzung).</summary>
     procedure Drop(AForget: Boolean);
@@ -165,8 +148,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Debug.CallStack,
@@ -236,7 +217,7 @@ begin
   FValues := TAtlasInlineValues.Create;
   FEvaluator := TAtlasIdeDebugValues.Create;
   FWorkers := TList<TThread>.Create;
-  FStyle := TPaintStyle.Create;
+  FStyle := TAtlasInlineValuePainter.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := cTickMs;
@@ -491,7 +472,7 @@ begin
         // Server langsam oder weg: keine Werte.
         Refs := nil;
       end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
         procedure
         begin
@@ -689,93 +670,6 @@ begin
       FWorkers[mIndex].Free;
       FWorkers.Delete(mIndex);
     end;
-  end;
-end;
-
-{ TAtlasIdeDebugInlineValues.TPaintStyle }
-
-constructor TAtlasIdeDebugInlineValues.TPaintStyle.Create;
-begin
-  inherited Create;
-  FFont := TFont.Create;
-end;
-
-destructor TAtlasIdeDebugInlineValues.TPaintStyle.Destroy;
-begin
-  FreeAndNil(FFont);
-  inherited Destroy;
-end;
-
-procedure TAtlasIdeDebugInlineValues.TPaintStyle.EnsureColors(ABack: COLORREF);
-var
-  mColors: TAtlasHintColors;
-begin
-  if FBackKnown and (FBack = ABack) then
-  begin
-    Exit;
-  end;
-  mColors := TAtlasColors.InlayHint(TAtlasColor(ABack));
-  FTextColor := COLORREF(ColorToRGB(TColor(mColors.Text)));
-  FChangedColor := COLORREF(ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ABack)).Warn)));
-  FBack := ABack;
-  FBackKnown := True;
-end;
-
-procedure TAtlasIdeDebugInlineValues.TPaintStyle.EnsureFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FFont.Assign(AEditorFont);
-  FFont.Style := [fsItalic];
-  FFontKey := mKey;
-end;
-
-procedure TAtlasIdeDebugInlineValues.TPaintStyle.Ensure(ABack: COLORREF; const AEditorFont: TFont);
-begin
-  EnsureColors(ABack);
-  EnsureFont(AEditorFont);
-end;
-
-function TAtlasIdeDebugInlineValues.TPaintStyle.Draw(ADC: HDC; const ARect: TRect; AX: Integer;
-  const AItems: TAtlasInlineValueItems): Integer;
-var
-  mSaved, mIndex, mTop: Integer;
-  mSize: TSize;
-  mPart: string;
-begin
-  Result := AX;
-  mSaved := SaveDC(ADC);
-  try
-    SelectObject(ADC, FFont.Handle);
-    SetBkMode(ADC, TRANSPARENT);
-    GetTextExtentPoint32W(ADC, 'Xg', 2, mSize);
-    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
-    for mIndex := 0 to High(AItems) do
-    begin
-      mPart := AItems[mIndex].Caption;
-      if mIndex < High(AItems) then
-      begin
-        mPart := mPart + ', ';
-      end;
-      if AItems[mIndex].Changed then
-      begin
-        SetTextColor(ADC, FChangedColor);
-      end
-      else
-      begin
-        SetTextColor(ADC, FTextColor);
-      end;
-      TextOutW(ADC, Result, mTop, PChar(mPart), Length(mPart));
-      GetTextExtentPoint32W(ADC, PChar(mPart), Length(mPart), mSize);
-      Inc(Result, mSize.cx);
-    end;
-  finally
-    RestoreDC(ADC, mSaved);
   end;
 end;
 

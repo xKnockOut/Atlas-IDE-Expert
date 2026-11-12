@@ -89,18 +89,14 @@ implementation
 uses
   System.StrUtils,
   System.Character,
-  Atlas.Common.Editing.StringLiterals;
+  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   /// <summary>Wörter ohne eigene Bedeutung; sie zählen nur, wenn sonst keins bleibt.</summary>
   cStopWords: array[0..19] of string = ('der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'einem',
     'einer', 'eines', 'und', 'oder', 'the', 'a', 'an', 'and', 'or', 'of');
   cMaxWords = 4;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
 
 function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin

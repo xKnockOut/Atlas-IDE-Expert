@@ -151,7 +151,7 @@ end;
 /// <summary>Erster VCL-Zugriff in ANode außerhalb von Synchronize/Queue, sonst nil.</summary>
 function FindVclAccess(ANode: TSyntaxNode): TSyntaxNode;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     var
@@ -213,7 +213,7 @@ var
 begin
   // const-Parameter dürfen anonyme Methoden nicht erfassen (E2555): lokale Kopie.
   mThreads := AThreads;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -254,7 +254,7 @@ end;
 /// übergeben werden.</summary>
 procedure CollectThreadArgumentBodies(ARoot: TSyntaxNode; ABodies: TList<TSyntaxNode>);
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -290,7 +290,7 @@ begin
   begin
     Exit;
   end;
-  // Iterativ (Bericht M1): erst die Rümpfe sammeln, dann prüfen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Rümpfe sammeln, dann prüfen.
   mBodies := TList<TSyntaxNode>.Create;
   try
     CollectExecuteBodies(AContext.Tree.Root, SharedThreadClasses(AContext), mBodies);
@@ -428,7 +428,7 @@ begin
   mText := AText;
   mRelease := ARelease;
   mKey := AKey;
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := mFinal.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -733,7 +733,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1), Vorordnung wie die frühere Rekursion.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion.
   AReceiver := nil;
   Result := nil;
   mPending := TStack<TSyntaxNode>.Create;
@@ -901,7 +901,7 @@ var
       mIndex: Integer;
       mKey: string;
     begin
-      // Iterativ (Bericht M1).
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht).
       Result := False;
       mPending := TStack<TSyntaxNode>.Create;
       try
@@ -1150,7 +1150,7 @@ var
     mIndex: Integer;
     mOpening: TOpening;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);

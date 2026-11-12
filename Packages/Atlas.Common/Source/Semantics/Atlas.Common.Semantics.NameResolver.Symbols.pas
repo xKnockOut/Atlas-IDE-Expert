@@ -189,10 +189,10 @@ type
     /// <summary>Erstes Kind von ANode, in dem AOffset liegt; nil ohne.</summary>
     class function ChildAround(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode; static;
     /// <summary>Legt die Kinder von ANode bis vor das erste, das hinter AOffset beginnt, rückwärts auf APending:
-    /// So kommen sie in Quelltextreihenfolge wieder herunter wie in der früheren Rekursion (Bericht M1).</summary>
+    /// So kommen sie in Quelltextreihenfolge wieder herunter wie in der früheren Rekursion.</summary>
     class procedure PushChildrenBefore(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode; AOffset: Integer); static;
     /// <summary>Legt die Kinder von ANode, die vor AOffset beginnen und nicht vor AOffset enden, rückwärts auf
-    /// APending (Bericht M1).</summary>
+    /// APending.</summary>
     class procedure PushChildrenAround(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode; AOffset: Integer); static;
     /// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
     /// bei einer anonymen Methode der Knoten selbst; nil ohne Kopf.</summary>

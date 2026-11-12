@@ -32,6 +32,10 @@
 //                "gitDir": "C:\\…\\.git"}
 //   Unbekannte Felder im Abschnitt gehen beim Schreiben verloren; die übrige
 //   Datei bleibt unverändert (Format 1). Nie Zugangsdaten.
+// - Tracker-Projekt wählen (#1927) und „Alle Tracker-Projekte“ (#1928): Die
+//   IDE legt die Wahl in die Ansicht (ProjectChoices, ProjectKey); bei „Alle“
+//   hängt AddGroup je Tracker-Projekt höchstens PerGroup Zeilen an Items und
+//   merkt Kopf, Trefferzahl und Zustand der Gruppe in Groups.
 
 interface
 
@@ -202,6 +206,24 @@ type
     function Succeeded: Boolean;
   end;
 
+  /// <summary>Kopf einer Gruppe bei „Alle Tracker-Projekte“ (#1928).</summary>
+  TAtlasIssuesGroup = record
+    /// <summary>„Verbindung · Tracker-Projekt“.</summary>
+    Caption: string;
+    /// <summary>Projekt (Pfad aus „Gilt für“), für „Beginnen“ der Zeilen dieser Gruppe.</summary>
+    Project: string;
+    /// <summary>Index der ersten Zeile in Items; bei einer leeren Gruppe der der nächsten.</summary>
+    First: Integer;
+    /// <summary>Gezeigte und gefundene Zeilen.</summary>
+    Shown: Integer;
+    Total: Integer;
+    Status: TAtlasIssuesStatus;
+    Error: TAtlasCiFetchError;
+    Querying: Boolean;
+    /// <summary>Weitere, nicht gezeigte Zeilen („+ N weitere“).</summary>
+    function More: Integer;
+  end;
+
   TAtlasIssuesView = record
     Status: TAtlasIssuesStatus;
     Error: TAtlasCiFetchError;
@@ -243,6 +265,17 @@ type
     Filter: string;
     /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
     Unseen: TArray<string>;
+    /// <summary>Klappliste „Tracker-Projekt“ (#1927, issues.projectPicker), ihre Einträge und die Wahl ('' =
+    /// automatisch, "*" = alle, sonst „projekt@verbindung“).</summary>
+    ProjectPicker: Boolean;
+    ProjectChoices: TArray<TAtlasTrackerChoice>;
+    ProjectKey: string;
+    /// <summary>Eintrag „Alle Tracker-Projekte“ anbieten (issues.allProjects).</summary>
+    AllProjects: Boolean;
+    /// <summary>Name des Delphi-Projekts, nach dem „Automatisch“ wählt; '' ohne.</summary>
+    AutomaticName: string;
+    /// <summary>Gruppen bei „Alle“ (#1928); leer sonst.</summary>
+    Groups: TArray<TAtlasIssuesGroup>;
     /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
     function OpenCount: Integer;
     /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
@@ -303,6 +336,12 @@ type
       ABranch: string): TAtlasActiveIssue; static;
     class function View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
       const ABranch: string): TAtlasIssuesView; static;
+    /// <summary>„Alle Tracker-Projekte“ (#1928): höchstens APerGroup Zeilen aus AGroup an AView.Items hängen und
+    /// den Kopf (ACaption, AProject) an AView.Groups.</summary>
+    class procedure AddGroup(var AView: TAtlasIssuesView; const ACaption, AProject: string;
+      const AGroup: TAtlasIssuesView; APerGroup: Integer); static;
+    /// <summary>Gruppe der Zeile AIndex; -1 ohne Gruppen.</summary>
+    class function GroupOf(const AView: TAtlasIssuesView; AIndex: Integer): Integer; static;
     /// <summary>Je Abfrage aus AQueries die Trefferzahl der letzten Abfrage (-1 = noch keine), für die Klappliste
     /// (#1262).</summary>
     class function QueryCounts(const AState: TAtlasIssuesState;
@@ -347,10 +386,12 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.VersionControl.BranchNames,
-  Atlas.Core.Tracker.Naming;
+  Atlas.Core.Tracker.Naming,
+  Atlas.Text.Json;
 
 const
   cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');
@@ -606,6 +647,13 @@ begin
   end;
 end;
 
+{ TAtlasIssuesGroup }
+
+function TAtlasIssuesGroup.More: Integer;
+begin
+  Result := Total - Shown;
+end;
+
 { TAtlasIssuesView }
 
 function TAtlasIssuesView.OpenCount: Integer;
@@ -809,6 +857,43 @@ begin
   end;
 end;
 
+class procedure TAtlasMyIssues.AddGroup(var AView: TAtlasIssuesView; const ACaption, AProject: string;
+  const AGroup: TAtlasIssuesView; APerGroup: Integer);
+var
+  mGroup: TAtlasIssuesGroup;
+  mIndex: Integer;
+begin
+  mGroup := Default(TAtlasIssuesGroup);
+  mGroup.Caption := ACaption;
+  mGroup.Project := AProject;
+  mGroup.First := Length(AView.Items);
+  mGroup.Total := Length(AGroup.Items);
+  mGroup.Shown := Min(mGroup.Total, Max(1, APerGroup));
+  mGroup.Status := AGroup.Status;
+  mGroup.Error := AGroup.Error;
+  mGroup.Querying := AGroup.Querying;
+  for mIndex := 0 to mGroup.Shown - 1 do
+  begin
+    AView.Items := AView.Items + [AGroup.Items[mIndex]];
+  end;
+  AView.Unseen := AView.Unseen + AGroup.Unseen;
+  AView.Groups := AView.Groups + [mGroup];
+end;
+
+class function TAtlasMyIssues.GroupOf(const AView: TAtlasIssuesView; AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AView.Groups) do
+  begin
+    if AView.Groups[mIndex].First <= AIndex then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
 class function TAtlasMyIssues.View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
   const ABranch: string): TAtlasIssuesView;
 begin
@@ -1004,71 +1089,6 @@ end;
 
 { JSON }
 
-function TextIn(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberIn(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
-function FlagIn(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
-
 function ParseObject(const AJson: string): TJSONValue;
 begin
   Result := nil;
@@ -1211,19 +1231,19 @@ end;
 function ItemOf(AEntry: TJSONObject; out AItem: TAtlasTrackerIssue): Boolean;
 begin
   AItem := TAtlasTrackerIssue.Empty;
-  AItem.Key := TextIn(AEntry, 'key');
+  AItem.Key := TJsonRead.Text(AEntry, 'key');
   Result := AItem.Key <> '';
   if Result then
   begin
-    AItem.Number := NumberIn(AEntry, 'number');
-    AItem.Title := TextIn(AEntry, 'title');
+    AItem.Number := Max(0, TJsonRead.Int(AEntry, 'number'));
+    AItem.Title := TJsonRead.Text(AEntry, 'title');
     AItem.Labels := LabelsOf(AEntry);
-    AItem.State := TextIn(AEntry, 'state');
-    AItem.Priority := TextIn(AEntry, 'priority');
-    AItem.Sprint := TextIn(AEntry, 'sprint');
-    AItem.PullRequest.Number := NumberIn(AEntry, 'pr');
-    AItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TextIn(AEntry, 'checks'));
-    AItem.PullRequest.Draft := FlagIn(AEntry, 'draft');
+    AItem.State := TJsonRead.Text(AEntry, 'state');
+    AItem.Priority := TJsonRead.Text(AEntry, 'priority');
+    AItem.Sprint := TJsonRead.Text(AEntry, 'sprint');
+    AItem.PullRequest.Number := Max(0, TJsonRead.Int(AEntry, 'pr'));
+    AItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TJsonRead.Text(AEntry, 'checks'));
+    AItem.PullRequest.Draft := TJsonRead.Flag(AEntry, 'draft');
   end;
 end;
 
@@ -1250,14 +1270,14 @@ procedure ActiveOf(ASection: TJSONObject; var AState: TAtlasIssuesState);
 var
   mActive: TJSONObject;
 begin
-  mActive := ObjectIn(ASection, 'active');
-  if (mActive <> nil) and (TextIn(mActive, 'key') <> '') then
+  mActive := TJsonRead.Obj(ASection, 'active');
+  if (mActive <> nil) and (TJsonRead.Text(mActive, 'key') <> '') then
   begin
-    AState.Active.Key := TextIn(mActive, 'key');
-    AState.Active.Title := TextIn(mActive, 'title');
-    AState.Active.Mode := TAtlasMyIssues.StartOf(TextIn(mActive, 'mode'));
-    AState.Active.Branch := TextIn(mActive, 'branch');
-    AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TextIn(mActive, 'started'));
+    AState.Active.Key := TJsonRead.Text(mActive, 'key');
+    AState.Active.Title := TJsonRead.Text(mActive, 'title');
+    AState.Active.Mode := TAtlasMyIssues.StartOf(TJsonRead.Text(mActive, 'mode'));
+    AState.Active.Branch := TJsonRead.Text(mActive, 'branch');
+    AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mActive, 'started'));
   end;
 end;
 
@@ -1266,7 +1286,7 @@ var
   mCounts: TJSONObject;
   mIndex: Integer;
 begin
-  mCounts := ObjectIn(ASection, 'counts');
+  mCounts := TJsonRead.Obj(ASection, 'counts');
   if mCounts <> nil then
   begin
     for mIndex := 0 to mCounts.Count - 1 do
@@ -1285,19 +1305,19 @@ begin
   Result := ASection <> nil;
   if Result then
   begin
-    AState.Provider := TextIn(ASection, 'provider');
-    AState.Server := TextIn(ASection, 'server');
-    AState.Project := TextIn(ASection, 'project');
-    AState.Query := TextIn(ASection, 'query');
-    AState.Attempt := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'attempt'));
-    AState.Error := TAtlasCiBuild.ErrorOf(TextIn(ASection, 'error'));
-    AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
+    AState.Provider := TJsonRead.Text(ASection, 'provider');
+    AState.Server := TJsonRead.Text(ASection, 'server');
+    AState.Project := TJsonRead.Text(ASection, 'project');
+    AState.Query := TJsonRead.Text(ASection, 'query');
+    AState.Attempt := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'attempt'));
+    AState.Error := TAtlasCiBuild.ErrorOf(TJsonRead.Text(ASection, 'error'));
+    AState.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
     ItemsOf(ASection, AState);
     ActiveOf(ASection, AState);
-    AState.EndedBranch := TextIn(ASection, 'endedBranch');
-    AState.Hook := TextIn(ASection, 'hook');
-    AState.GitDir := TextIn(ASection, 'gitDir');
-    AState.Selected := TextIn(ASection, 'selected');
+    AState.EndedBranch := TJsonRead.Text(ASection, 'endedBranch');
+    AState.Hook := TJsonRead.Text(ASection, 'hook');
+    AState.GitDir := TJsonRead.Text(ASection, 'gitDir');
+    AState.Selected := TJsonRead.Text(ASection, 'selected');
     CountsOf(ASection, AState);
   end;
 end;
@@ -1334,7 +1354,7 @@ begin
   AState := TAtlasIssuesState.Empty;
   mValue := ParseObject(ASummary.Raw);
   try
-    Result := (mValue is TJSONObject) and StateOf(ObjectIn(TJSONObject(mValue), cSectionName), AState);
+    Result := (mValue is TJSONObject) and StateOf(TJsonRead.Obj(TJSONObject(mValue), cSectionName), AState);
   finally
     mValue.Free;
   end;

@@ -879,13 +879,13 @@ begin
   AEditor.FParts.Bar.Align := alBottom;
   AEditor.FParts.Bar.BevelOuter := bvNone;
   AEditor.FParts.Bar.ShowCaption := False;
-  AEditor.FParts.Bar.Height := 30;
+  AEditor.FParts.Bar.Height := AEditor.FParts.Bar.ScaleValue(30);
   AEditor.FParts.PreviewButton := AddBarButton(AEditor, alLeft, 90,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview));
   AEditor.FParts.PreviewButton.OnClick := AEditor.ButtonClick;
   AEditor.FParts.SnippetButton := AddBarButton(AEditor, alLeft, 120,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorSnippets));
-  AEditor.FParts.SnippetButton.Left := 100;
+  AEditor.FParts.SnippetButton.Left := AEditor.FParts.SnippetButton.ScaleValue(100);
   AEditor.FParts.SnippetButton.OnClick := AEditor.ButtonClick;
   AEditor.FParts.DraftButton := AddBarButton(AEditor, alRight, 100, '');
   AEditor.FParts.DraftButton.Visible := False;
@@ -893,7 +893,7 @@ begin
   AEditor.FParts.DraftNote.Parent := AEditor.FParts.Bar;
   AEditor.FParts.DraftNote.Align := alClient;
   AEditor.FParts.DraftNote.AlignWithMargins := True;
-  AEditor.FParts.DraftNote.Margins.Top := 7;
+  AEditor.FParts.DraftNote.Margins.Top := AEditor.FParts.DraftNote.ScaleValue(7);
   AEditor.FParts.DraftNote.Alignment := taRightJustify;
   AEditor.FParts.DraftNote.ShowAccelChar := False;
   AEditor.FParts.DraftNote.Font.Color := clGrayText;

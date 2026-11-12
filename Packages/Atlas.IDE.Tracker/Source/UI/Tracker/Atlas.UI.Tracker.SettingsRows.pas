@@ -41,6 +41,14 @@ type
   /// TrackerValuesDone.</summary>
   TAtlasTrackerValuesEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
     const AStateField: string);
+  /// <summary>„Prüfen“ der Arbeitskopien (#1926): je Ordner Art und Branch im Hintergrund; ADone bekommt je Ordner
+  /// eine Zeile (Hauptthread).</summary>
+  TAtlasTrackerPathsCheckEvent = reference to procedure(const AFolders: TArray<string>;
+    const ADone: TProc<TArray<string>>);
+  /// <summary>„Vorschlagen …“ (#1929): Dialog mit Funden für AMapping; True und die angehakten Ordner in APaths bei
+  /// „Übernehmen“, True mit leerem APaths nach „Ordner selbst wählen …“.</summary>
+  TAtlasTrackerPathsSuggestEvent = reference to function(const AMapping: TAtlasTrackerProjectMapping;
+    out APaths: TArray<string>): Boolean;
   /// <summary>Eine Tabelle hat sich geändert; die folgenden bauen neu auf.</summary>
   TAtlasTrackerTableChanged = procedure of object;
 
@@ -57,6 +65,8 @@ type
     FOnQueryEdit: TAtlasTrackerQueryEditEvent;
     FOnContext: TFunc<TAtlasTrackerProjectContext>;
     FOnBrowse: TAtlasTrackerBrowseEvent;
+    FOnCheckPaths: TAtlasTrackerPathsCheckEvent;
+    FOnSuggestPaths: TAtlasTrackerPathsSuggestEvent;
   public
     /// <summary>Zustand je Server (ohne Netz); nil = „fehlt“.</summary>
     property OnState: TAtlasTrackerStateEvent read FOnState write FOnState;
@@ -78,6 +88,10 @@ type
     property OnContext: TFunc<TAtlasTrackerProjectContext> read FOnContext write FOnContext;
     /// <summary>„Hinzufügen …“ (#1261); nil = Datei- bzw. Ordnerauswahl von Windows.</summary>
     property OnBrowse: TAtlasTrackerBrowseEvent read FOnBrowse write FOnBrowse;
+    /// <summary>„Prüfen“ der Arbeitskopien (#1926); nil = Knopf gesperrt.</summary>
+    property OnCheckPaths: TAtlasTrackerPathsCheckEvent read FOnCheckPaths write FOnCheckPaths;
+    /// <summary>„Vorschlagen …“ (#1929); nil = kein Knopf (auch mit issues.suggestPaths aus).</summary>
+    property OnSuggestPaths: TAtlasTrackerPathsSuggestEvent read FOnSuggestPaths write FOnSuggestPaths;
   end;
 
   /// <summary>Zeilen des Abschnitts über den Host der Seite.</summary>
@@ -219,7 +233,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := 0;
-  Result.Top := cLabelTop;
+  Result.Top := Result.ScaleValue(cLabelTop);
 end;
 
 function TAtlasTrackerSettingsRows.AddLabelled(const ACaption: string; AControl: TWinControl;
@@ -228,7 +242,7 @@ begin
   Result := AddPanel(cRowHeight);
   AddLabel(Result, ACaption + ':');
   AControl.Parent := Result;
-  AControl.Left := cFieldLeft;
+  AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
   AControl.Width := AWidth;
   if AWidth >= cWideWidth then
@@ -243,9 +257,9 @@ begin
   Result := AddPanel(AHeight);
   AddLabel(Result, ACaption + ':');
   AControl.Parent := Result;
-  AControl.Left := cFieldLeft;
+  AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
-  AControl.Width := cWideWidth;
+  AControl.Width := AControl.ScaleValue(cWideWidth);
   AControl.Height := AHeight - cControlTop - cControlTop;
   AControl.Anchors := [akLeft, akTop, akRight];
 end;
@@ -257,7 +271,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := ALeft;
-  Result.Top := cButtonTop;
+  Result.Top := Result.ScaleValue(cButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;
@@ -290,7 +304,7 @@ begin
   mPanel := AddPanel(cNoteRow);
   Result := TLabel.Create(FOwner);
   Result.Parent := mPanel;
-  Result.Left := cFieldLeft;
+  Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := cControlTop;
   Result.Font.Color := clRed;
   Attach(mPanel, AAnchor);
@@ -321,7 +335,7 @@ begin
   Result.Parent := mPanel;
   Result.Left := ALeft;
   Result.Top := cControlTop;
-  Result.Width := cFieldWidth;
+  Result.Width := Result.ScaleValue(cFieldWidth);
 end;
 
 function TAtlasTrackerSettingsRows.NewEdit(AChange: TNotifyEvent): TEdit;

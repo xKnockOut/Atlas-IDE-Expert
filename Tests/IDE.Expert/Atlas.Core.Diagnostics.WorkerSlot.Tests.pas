@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.WorkerSlot.Tests;
 
-// Arbeiter-Threads über ihrer Zeitgrenze (Code-Review T-101): Der Slot gibt
+// Arbeiter-Threads über ihrer Zeitgrenze: Der Slot gibt
 // beendete frei, übergibt überfällige an TAtlasOverdueThreads, und diese
 // kennzeichnen ihr Package als unsicher, wenn es beim Entladen noch Code von
 // ihnen ausführt.
@@ -142,7 +142,7 @@ begin
     mSlot.Stop(20);
     Assert.IsFalse(TAtlasOverdueThreads.Settle(cModule, 20));
     Assert.IsFalse(TAtlasUnloadSafety.IsSafe(cModule));
-    Assert.AreEqual(1, Length(FPinned));
+    Assert.AreEqual(1, Integer(Length(FPinned)));
     Assert.AreEqual(HMODULE(cModule), FPinned[0]);
   finally
     mSlot.Free;
@@ -160,7 +160,7 @@ begin
     FRelease.SetEvent;
     Assert.IsTrue(TAtlasOverdueThreads.Settle(cModule, 2000));
     Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule));
-    Assert.AreEqual(0, Length(FPinned));
+    Assert.AreEqual(0, Integer(Length(FPinned)));
   finally
     mSlot.Free;
   end;

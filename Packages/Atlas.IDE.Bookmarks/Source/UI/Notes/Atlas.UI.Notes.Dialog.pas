@@ -14,14 +14,15 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasNoteChoice = (Cancel, Save, Delete);
 {$SCOPEDENUMS OFF}
 
-  TAtlasNoteDialog = class(TForm)
+  TAtlasNoteDialog = class(TAtlasDialog)
   private
     FHint: TLabel;
     FMemo: TMemo;
@@ -72,16 +73,12 @@ constructor TAtlasNoteDialog.CreateDialog(AOwner: TComponent; const ATitle, ATex
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FCanDelete := ACanDelete;
   FChoice := TAtlasNoteChoice.Cancel;
   Caption := ATitle;
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   ClientHeight := ScaleValue(cDialogHeight);
   KeyPreview := False;
 

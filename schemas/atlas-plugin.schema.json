@@ -2888,6 +2888,19 @@
       "x-node": "rules.window",
       "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus."
     },
+    "ProblemsIdeErrors": {
+      "type": "boolean",
+      "default": false,
+      "description": "Nach jeder Prüfung einer Datei die Fehler der IDE (Error Insight) abfragen und im Fenster „Atlas-Prüfung“ neben die Atlas-Befunde stellen: Spalte und Filter „Quelle“ (Atlas und IDE, nur Atlas, nur IDE). Befunde „nur Atlas“ der Regeln für undeklarierte Bezeichner und unbekannte Typen gehen ohne Namen ins Protokoll. Braucht das Modul Prüfregeln.",
+      "x-key": "problems.ideErrors",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-node": "rules.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Fehler der IDE (Error Insight) neben die Atlas-Befunde stellen",
+      "x-captionEn": "Show IDE errors (Error Insight) next to the Atlas findings",
+      "x-issue": "#1819"
+    },
     "HoverProblemActions": {
       "type": "boolean",
       "default": true,
@@ -4921,6 +4934,17 @@
       "x-node": "editor.designerBar",
       "x-issue": "#1442"
     },
+    "DesignerFuzzySearch": {
+      "description": "Fenster „Komponenten suchen“ unscharf: findet auch Komponenten, deren Name oder Caption die Zeichen des Suchworts nur in ihrer Reihenfolge enthält („bspei“ findet btnSpeichern). Solche Treffer stehen nach allen genauen. Die Klasse wird nie unscharf durchsucht. Aus = nur zusammenhängende Treffer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.fuzzySearch",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#539"
+    },
     "DesignerTabOrderClick": {
       "description": "Befehle im Menü am Pfeil des Knopfs „Tab-Reihenfolge“, die die Reihenfolge neu vergeben: „Reihenfolge klicken“ (Klicks auf die Marken setzen je Elternelement 0, 1, 2 …, nicht geklickte rücken dahinter; Enter oder ein Klick auf das Symbol übernimmt, Esc stellt den alten Stand her), „Nach Lesereihenfolge sortieren“ und „Tab-Reihenfolge rückgängig“ (auch Strg+Z, solange die Marken zu sehen sind). Ändert die .dfm. Aus = die Marken sind nur Anzeige.",
       "type": "boolean",
@@ -5084,6 +5108,56 @@
       "x-parent": "editor.designerBar",
       "x-node": "editor.designerBar",
       "x-issue": "#524"
+    },
+    "DesignerUsages": {
+      "description": "Knopf „Verwendungen im Code“ in der Designer-Leiste, Befehl im Atlas-Menü und Taste im Designer: zeigt für die markierten Komponenten alle echten Zugriffe im Code aus der Referenzsuche (keine Kommentare, Strings oder gleichnamigen Bezeichner), je Unit und Methode mit Art des Zugriffs (liest, schreibt, übergibt, Ereignis) und die Handler aus der DFM. Doppelklick springt zur Stelle.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.usages",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
+    "DesignerUsagesStatusCount": {
+      "description": "Zähler „edtRabatt · 3 Verwendungen“ für die markierte Komponente im Atlas-Statusfeld, im Hintergrund nach einem Auswahlwechsel berechnet; „keine Verwendung, keine Ereignisse“ heißt rein optisch. Klick öffnet die Liste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.usages.statusCount",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.usages",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
+    "DesignerUsagesScope": {
+      "description": "Suchbereich für „Verwendungen im Code“: nur die Unit des Formulars (unit), das aktive Projekt (project) oder die ganze Projektgruppe (projectGroup).",
+      "type": "string",
+      "enum": [
+        "unit",
+        "project",
+        "projectGroup"
+      ],
+      "default": "project",
+      "x-key": "designer.usages.scope",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.usages",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
+    },
+    "DesignerUsagesKey": {
+      "description": "Taste für „Verwendungen im Code“, solange der Designer den Fokus hat, als TShortCut (Vorgabe Umschalt+Alt+F7); 0 = keine.",
+      "type": "integer",
+      "default": 41078,
+      "x-key": "designer.usages.key",
+      "x-area": "editor",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "designer.usages",
+      "x-node": "editor.designerBar",
+      "x-issue": "#750"
     },
     "DesignerSpatialNavigation": {
       "description": "Räumliche Navigation im Formular-Designer, solange er den Fokus hat: Alt+Pfeil wählt das nächste Steuerelement in dieser Richtung im selben Elternelement, Alt+Umschalt+Pfeil fügt es zur Auswahl hinzu, Alt+Pos1 wählt das Elternelement, Alt+Ende das Kind oben links eines Containers, Alt+Bild auf/ab wechselt in den vorherigen bzw. nächsten Container derselben Ebene. Ein kurzer Rahmen zeigt das Ziel. Nichtvisuelle Komponenten nur untereinander. Aus = die Tasten gehen an die IDE.",
@@ -5262,6 +5336,57 @@
       "x-parent": "designer.nameSuggest",
       "x-node": "editor.designerBar",
       "x-issue": "#608"
+    },
+    "DesignerStructure": {
+      "description": "Knopf „Atlas-Struktur“ in der Designer-Leiste: öffnet ein andockbares Fenster mit den Steuerelementen des Formulars als Baum wie im Fenster „Struktur“ und den nichtvisuellen Komponenten gruppiert nach Klasse (umschaltbar nach Art), mit Symbolen der Palette und Filter nach Name oder Klasse. Unter jeder nichtvisuellen Komponente lassen sich ihre Verknüpfungen aufklappen: → worauf sie verweist, ← wer sie verwendet; leere Pflichtverweise und unbenutzte Menüs, Bildlisten und DataSources sind markiert. Klick wählt die Komponente bzw. das Ziel der Verknüpfung, Doppelklick öffnet ihren Editor, Rechtsklick die Befehle ihres Komponenten-Editors; eine nichtvisuelle Komponente aus der Palette landet per Ziehen an einer freien Stelle am unteren Rand des Formulars. Left/Top in der DFM bleiben unverändert.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.structure",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
+    "DesignerStructureHideOnForm": {
+      "description": "Symbole der nichtvisuellen Komponenten auf der Formularfläche ausblenden, solange das Fenster „Atlas-Struktur“ offen ist (über den Befehl „Nichtvisuelle Komponenten ausblenden“ der IDE; beim Schließen gilt wieder der vorherige Zustand).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.structureHideOnForm",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.structure",
+      "x-node": "editor.designerBar",
+      "x-issue": "#609"
+    },
+    "DesignerDataBindings": {
+      "description": "Knopf „Datenbindung“ in der Designer-Leiste: schaltet eine einzeilige Leiste am unteren Rand des Designers ein und aus, ähnlich der Brotkrumenleiste des Editors. Sie zeigt für die gewählte Komponente ihr Datenkonstrukt, etwa SQLConnection1 › qryKunden › dspKunden › cdsKunden › dsKunden › edtOrt (über Connection, SQLConnection, DataSet, ProviderName, MasterSource, DataSource und ListSource, auch in geöffneten Datenmodulen), je Glied mit Symbol der Palette und Feld. Hat eine Stufe weitere Glieder, klappt „n ▾“ die Liste nach oben auf; Klick wählt die Komponente, auch im Datenmodul. Ein Feld, das in der Datenmenge fehlt, und ein DataField ohne DataSource sind rot.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.dataBindings",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#610"
+    },
+    "DesignerExtractFrame": {
+      "description": "Knopf „In Frame auslagern“ der Designer-Leiste: legt aus den markierten Komponenten (alle im selben Parent) oder aus den Kindern eines Panels einen Frame mit Unit und DFM an, setzt ihn an dieselbe Stelle, verschiebt Felder und Handler, die nur diese Komponenten nutzen, passt Zugriffe im Formular-Code an (edtName wird frmAdresse.edtName) und trägt die Unit ins Projekt ein. Vorschau je Datei; „Letzte Auslagerung rückgängig“ stellt die Dateien wieder her.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.extractFrame",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#611"
+    },
+    "DesignerEventMap": {
+      "description": "Knopf „Ereignis-Karte“ der Designer-Leiste: andockbares Fenster mit allen zugewiesenen Ereignissen des Formulars (Komponente, Klasse, Ereignis, Handler, Zeilen, Befund), gruppiert nach Komponente, Ereignis oder Handler, mit Filter und „Nur Befunde“. Befunde: leerer Handler, veröffentlichter Handler ohne Zuweisung, Zuweisung auf eine fehlende Methode. Doppelklick springt zum Handler, ein zweiter wählt die Komponente; Kontextmenü „Handler umbenennen“ und „Leeren Handler entfernen“.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.eventMap",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#612"
     },
     "DesignerFitToText": {
       "description": "Befehl „Breite nach Text“ im Menü „Anordnen“ der Designer-Leiste: setzt die markierten Steuerelemente auf die Breite des längsten Texts plus Innenabstand und Anteil des Steuerelements (Kästchen, Pfeil, Glyph), mindestens die Mindestbreite. In einer Reihe bleiben die Abstände und die linke bzw. (bei akRight oder am rechten Rand) die rechte Kante; AutoSize und Align ohne freie Breite bleiben. Ändert die .dfm.",
@@ -6181,9 +6306,9 @@
       "x-issue": "#735"
     },
     "DesignerSelectionBarItems": {
-      "description": "Knöpfe der Schnellleiste und ihre Reihenfolge, durch Komma getrennt: fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight und optional fitText (Breite nach Text). Unbekannte Namen werden übergangen.",
+      "description": "Knöpfe der Schnellleiste und ihre Reihenfolge, durch Komma getrennt: fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight, transfer (Eigenschaften übertragen mit dem Format-Pinsel, designer.propertyPainter) und optional fitText (Breite nach Text). Unbekannte Namen werden übergangen.",
       "type": "string",
-      "default": "fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight",
+      "default": "fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, alignCenter, alignRight, transfer",
       "x-key": "designer.selectionBar.items",
       "x-area": "editor",
       "x-page": "Editor",
@@ -7241,6 +7366,24 @@
       "x-area": "welcome",
       "x-page": "Willkommensseite"
     },
+    "WelcomePageContinueIssues": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.continue.issues",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
+    "WelcomePageContinueIssuesCount": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 30,
+      "x-key": "welcomePage.continue.issues.count",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
     "WelcomePageSaved": {
       "type": "boolean",
       "default": true,
@@ -7745,6 +7888,59 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1262"
+    },
+    "IssuesProjectPicker": {
+      "type": "boolean",
+      "default": true,
+      "description": "Klappliste „Tracker-Projekt“ vor der Abfrage im Kopf von „Meine Issues“ (#1927): „Automatisch“ (nach dem Delphi-Projekt wie bisher) oder ein Tracker-Projekt aus der Tabelle Projekte, unabhängig vom Ordner; aus = keine Klappliste, das Tracker-Projekt folgt dem Delphi-Projekt.",
+      "x-key": "issues.projectPicker",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1927"
+    },
+    "IssuesWelcomeProject": {
+      "type": "string",
+      "default": "",
+      "examples": ["KASSE@YouTrack", "*"],
+      "description": "In „Meine Issues“ gewähltes Tracker-Projekt (#1927), von der Klappliste geschrieben: leer = automatisch nach dem Delphi-Projekt, \"<projekt>@<verbindung>\" = fest, \"*\" = alle Tracker-Projekte (#1928). Gibt es die Zeile nicht mehr, gilt automatisch.",
+      "x-key": "issues.welcomeProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste in „Meine Issues“",
+      "x-issue": "#1927"
+    },
+    "IssuesAllProjects": {
+      "type": "boolean",
+      "default": true,
+      "description": "Eintrag „Alle Tracker-Projekte“ in der Klappliste „Tracker-Projekt“ (#1928): eine Gruppe je Tracker-Projekt mit Trefferzahl; aus = kein Eintrag.",
+      "x-key": "issues.allProjects",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1928"
+    },
+    "IssuesAllProjectsPerGroup": {
+      "type": "integer",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 20,
+      "description": "Zeilen je Gruppe in „Alle Tracker-Projekte“ (#1928); der Rest steht hinter „+ N weitere“.",
+      "x-key": "issues.allProjects.perGroup",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Zahl (1–20)",
+      "x-issue": "#1928"
+    },
+    "IssuesSuggestPaths": {
+      "type": "boolean",
+      "default": true,
+      "description": "Knopf „Vorschlagen …“ bei den Arbeitskopien eines Tracker-Projekts (#1929): Funde aus der Projektdatei, deren Externals bzw. Submodulen, der .groupproj und bei GitHub den zuletzt geöffneten Projekten mit passendem origin; aus = kein Knopf.",
+      "x-key": "issues.suggestPaths",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1929"
     },
     "IssuesCreate": {
       "type": "boolean",

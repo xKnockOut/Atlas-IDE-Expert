@@ -241,6 +241,7 @@ uses
   System.Math,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Text.Json,
   Atlas.Text.Uris,
   Atlas.Text.Lines,
   Atlas.Core.Tracker.Internals.GitHubApi,
@@ -909,38 +910,6 @@ end;
 
 { JSON }
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.Values[AName];
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function NumberOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.Values[AName];
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
 function IsOneOf(const AName: string; const ANames: array of string): Boolean;
 var
   mName: string;
@@ -990,7 +959,7 @@ begin
     begin
       if mItem is TJSONObject then
       begin
-        ANames := AddUnique(ANames, TextOf(TJSONObject(mItem), AName));
+        ANames := AddUnique(ANames, TJsonRead.Text(TJSONObject(mItem), AName));
       end;
     end;
   finally
@@ -1007,7 +976,7 @@ begin
   try
     if mRoot is TJSONObject then
     begin
-      Result := TextOf(TJSONObject(mRoot), 'login');
+      Result := TJsonRead.Text(TJSONObject(mRoot), 'login');
     end;
   finally
     mRoot.Free;
@@ -1039,9 +1008,9 @@ begin
     end;
     for mItem in TJSONArray(mRoot) do
     begin
-      if (mItem is TJSONObject) and SameText(TextOf(TJSONObject(mItem), 'shortName'), Trim(AShortName)) then
+      if (mItem is TJSONObject) and SameText(TJsonRead.Text(TJSONObject(mItem), 'shortName'), Trim(AShortName)) then
       begin
-        AId := TextOf(TJSONObject(mItem), 'id');
+        AId := TJsonRead.Text(TJSONObject(mItem), 'id');
         Exit(AId <> '');
       end;
     end;
@@ -1068,11 +1037,11 @@ begin
   Result := '';
   if AUsers then
   begin
-    Result := TextOf(AItem, 'login');
+    Result := TJsonRead.Text(AItem, 'login');
   end;
   if Result = '' then
   begin
-    Result := TextOf(AItem, 'name');
+    Result := TJsonRead.Text(AItem, 'name');
   end;
 end;
 
@@ -1106,7 +1075,7 @@ begin
   begin
     if mItem is TJSONObject then
     begin
-      Result := AddUnique(Result, TextOf(TJSONObject(mItem), 'login'));
+      Result := AddUnique(Result, TJsonRead.Text(TJSONObject(mItem), 'login'));
     end;
   end;
 end;
@@ -1135,7 +1104,7 @@ begin
       begin
         Continue;
       end;
-      mName := TextOf(TJSONObject(mField), 'name');
+      mName := TJsonRead.Text(TJSONObject(mField), 'name');
       mBundle := TJSONObject(mItem).Values['bundle'];
       if not (mBundle is TJSONObject) then
       begin
@@ -1253,8 +1222,8 @@ begin
   try
     if mRoot is TJSONObject then
     begin
-      AKey := TextOf(TJSONObject(mRoot), 'idReadable');
-      ANumber := NumberOf(TJSONObject(mRoot), 'numberInProject');
+      AKey := TJsonRead.Text(TJSONObject(mRoot), 'idReadable');
+      ANumber := TJsonRead.Int(TJSONObject(mRoot), 'numberInProject');
     end;
   finally
     mRoot.Free;
@@ -1346,7 +1315,7 @@ begin
   try
     if mRoot is TJSONObject then
     begin
-      ANumber := NumberOf(TJSONObject(mRoot), 'number');
+      ANumber := TJsonRead.Int(TJSONObject(mRoot), 'number');
     end;
   finally
     mRoot.Free;

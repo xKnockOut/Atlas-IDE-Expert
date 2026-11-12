@@ -79,13 +79,14 @@ jobs:
             Sort-Object Name | ForEach-Object { "Packages\$($_.Name)\$($_.Name).dproj" })
           foreach ($project in @('Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.Common\Atlas.Common.dproj',
             'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj',
-            'Application\AtlasUpdate.dproj') + $plugin) {
+            'Application\AtlasUpdate.dproj', 'Application\AtlasMonitor.dproj') + $plugin) {
             $r = pwsh -File $env:ATLAS_DELPHI_BUILD -Project "$env:GITHUB_WORKSPACE\$project" -Platform Win64 -Configuration Release -Mode build -Json | Out-String | ConvertFrom-Json
             $r | ConvertTo-Json -Depth 8 | Write-Host
             if (-not $r.ok) { throw "Build fehlgeschlagen: $project" }
             if ($r.summary.warnings -gt 0 -or $r.summary.hints -gt 0) { throw "Build hat Hinweise oder Warnungen: $project" }
           }
-          foreach ($exe in 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe') {
+          foreach ($exe in 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe',
+            'Output\Win64\Release\Bin\AtlasMonitor.exe') {
             if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw "Release-exe wurde nicht neu geschrieben: $exe" }
           }
       - name: Plugin bauen (Win32 Release)
@@ -116,7 +117,9 @@ jobs:
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
           try {
             # AtlasUpdate.exe zuerst mitsigniert: Signiert prüft sie jedes Update auf denselben Herausgeber (#1519).
-            $files = @('Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe') +
+            # WebView2Loader.dll (Microsoft) bekommt dieselbe Signatur, sonst lehnt AtlasUpdate das Update ab.
+            $files = @('Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe',
+              'Output\Win64\Release\Bin\AtlasMonitor.exe', 'Output\Win64\Release\Bin\WebView2Loader.dll') +
               @(Get-ChildItem 'Output\Win32\Release\Bpl\Atlas.IDE.*.bpl', 'Output\Win64\Release\Bpl\Atlas.IDE.*.bpl' -ErrorAction SilentlyContinue | ForEach-Object FullName)
             foreach ($file in $files) {
               signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
@@ -128,7 +131,7 @@ jobs:
       - name: Installationspaket packen (#495)
         shell: pwsh
         # Dasselbe Skript nimmt man ohne Delphi-Runner lokal (Publish-ReleasePackage.ps1): Aufbau wie der Zielordner
-        # (ADR 0016), Server und Daten oben, Kern und Modul-Packages je Plattform mit Map-Datei darunter.
+        # Server und Daten oben, Kern und Modul-Packages je Plattform mit Map-Datei darunter.
         run: ./Tools/New-ReleasePackage.ps1 -Version '${{ needs.version.outputs.version }}'
       - uses: actions/upload-artifact@v4
         with:

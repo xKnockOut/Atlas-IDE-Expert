@@ -18,10 +18,11 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.CheckLst,
-  Atlas.Core.Problems.BulkFix;
+  Atlas.Core.Problems.BulkFix,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasBulkFixDialog = class(TForm)
+  TAtlasBulkFixDialog = class(TAtlasDialog)
   private
     FPreview: TAtlasBulkFixPreview;
     FSummary: TLabel;
@@ -63,21 +64,18 @@ uses
 
 const
   cGap = 8;
+  cDialogWidth = 860;
 
 { TAtlasBulkFixDialog }
 
 constructor TAtlasBulkFixDialog.CreateDialog(AOwner: TComponent; APreview: TAtlasBulkFixPreview);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FPreview := APreview;
   Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.FixPreviewTitle, [APreview.Rule]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
-  Position := poMainFormCenter;
   KeyPreview := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(860);
   ClientHeight := ScaleValue(520);
 
   CreateSummary;

@@ -28,7 +28,7 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Diagnostics.Export,
   Atlas.UI.Diagnostics.ExportDialog,
-  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Diagnostics.Timing;
 
 class procedure TAtlasIdeDiagnosticExport.Execute(const AMessage: TProc<string>);
@@ -50,17 +50,18 @@ begin
   end;
   if Length(mFiles) = 0 then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportEmpty, [TAtlasDiagnosticExport.cDefaultDays]));
+    AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagExportEmpty,
+      [TAtlasDiagnosticExport.cDefaultDays]));
     Exit;
   end;
-  if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.DiagExportHint,
+  if not TAtlasDiagnosticExportDialog.Execute(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagExportHint,
     [TAtlasDiagnosticExport.cDefaultDays]), TAtlasDiagnosticExport.Preview(mFiles, mInfo), mTarget,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;
   end;
   TAtlasDiagnosticExport.WriteZip(mFiles, mTarget, mInfo);
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportDone, [mTarget]));
+  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagExportDone, [mTarget]));
 end;
 
 end.

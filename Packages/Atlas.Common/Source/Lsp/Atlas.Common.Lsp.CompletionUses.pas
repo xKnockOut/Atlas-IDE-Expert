@@ -97,12 +97,8 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Lsp.FuzzyMatch;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
+  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Pascal.TokenCursor;
 
 /// <summary>A liegt vor B.</summary>
 function Before(const A, B: TTextPosition): Boolean;

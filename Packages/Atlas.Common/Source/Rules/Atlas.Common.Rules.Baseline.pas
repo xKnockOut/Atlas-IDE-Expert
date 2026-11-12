@@ -888,22 +888,6 @@ begin
   Result := TJSONArray(mValue);
 end;
 
-/// <summary>Text des Felds AName von AItem; '' ohne Feld oder bei anderem Typ.</summary>
-function OptionalText(AItem: TJSONObject; const AName: string): string;
-var
-  mField: TJSONValue;
-begin
-  mField := AItem.GetValue(AName);
-  if mField is TJSONString then
-  begin
-    Result := TJSONString(mField).Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 /// <summary>Eintrag aus AValue; False bei count unter 1. Löst ERuleBaseline bei ungültigem Eintrag aus.</summary>
 function EntryOf(AValue: TJSONValue; out AEntry: TBaselineEntry): Boolean;
 var
@@ -931,8 +915,8 @@ begin
   AEntry.RuleId := LowerCase(TJSONString(mItem.GetValue('rule')).Value);
   AEntry.Fingerprint := TJSONString(mItem.GetValue('fingerprint')).Value;
   // Fehlen bei Dateien vor #97 (Routine im Schlüssel).
-  AEntry.Routine := OptionalText(mItem, 'routine');
-  AEntry.Context := OptionalText(mItem, 'context');
+  AEntry.Routine := TJsonRead.Text(mItem, 'routine');
+  AEntry.Context := TJsonRead.Text(mItem, 'context');
   Result := AEntry.Count >= 1;
 end;
 

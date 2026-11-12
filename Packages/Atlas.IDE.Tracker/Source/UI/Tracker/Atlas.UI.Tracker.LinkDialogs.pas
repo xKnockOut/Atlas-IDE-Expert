@@ -23,10 +23,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasSubtaskDialog = class(TForm)
+  TAtlasSubtaskDialog = class(TAtlasDialog)
   private
     FProject: TLabel;
     FTitleLabel: TLabel;
@@ -55,7 +56,7 @@ type
     property CancelButton: TButton read FCancel;
   end;
 
-  TAtlasIssueLinkDialog = class(TForm)
+  TAtlasIssueLinkDialog = class(TAtlasDialog)
   private
     FKey: string;
     FProvider: string;
@@ -142,17 +143,6 @@ begin
   Result.Anchors := [akTop, akRight];
 end;
 
-procedure SetupForm(AForm: TForm; const ACaption: string);
-begin
-  AForm.Caption := ACaption;
-  AForm.BorderStyle := bsDialog;
-  AForm.BorderIcons := [biSystemMenu];
-  AForm.Position := poMainFormCenter;
-  AForm.Font.Name := 'Segoe UI';
-  AForm.Font.Size := 9;
-  AForm.ClientWidth := Scaled(AForm, cDialogWidth);
-end;
-
 function AddBottom(AForm: TForm): TPanel;
 begin
   Result := TPanel.Create(AForm);
@@ -169,8 +159,9 @@ constructor TAtlasSubtaskDialog.CreateDialog(AOwner: TComponent; const AParentKe
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskTitle, [AParentKey]));
+  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskTitle, [AParentKey]),
+    cDialogWidth);
+  BorderIcons := [biSystemMenu];
   FProject := AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskProject, [AProject]), 0);
   FTitleLabel := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskSummary), 100);
 
@@ -179,7 +170,7 @@ begin
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
   FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
-  FTitle.Top := 200;
+  FTitle.Top := FTitle.ScaleValue(200);
   FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
   FTitleLabel.FocusControl := FTitle;
@@ -190,7 +181,7 @@ begin
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
   FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
-  FDescription.Top := 400;
+  FDescription.Top := FDescription.ScaleValue(400);
   FDescription.Height := ScaleValue(140);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;
@@ -281,10 +272,10 @@ constructor TAtlasIssueLinkDialog.CreateDialog(AOwner: TComponent; const AKey, A
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkTitle, [AKey]), cDialogWidth);
+  BorderIcons := [biSystemMenu];
   FKey := AKey;
   FProvider := AProvider;
-  SetupForm(Self, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkTitle, [AKey]));
 
   FDependsOn := TRadioButton.Create(Self);
   FDependsOn.Parent := Self;
@@ -300,7 +291,7 @@ begin
   FBlocks.Align := alTop;
   FBlocks.AlignWithMargins := True;
   FBlocks.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  FBlocks.Top := 100;
+  FBlocks.Top := FBlocks.ScaleValue(100);
   FBlocks.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkBlocks, [AKey]);
 
   FOtherLabel := TLabel.Create(Self);
@@ -308,7 +299,7 @@ begin
   FOtherLabel.Align := alTop;
   FOtherLabel.AlignWithMargins := True;
   FOtherLabel.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
-  FOtherLabel.Top := 200;
+  FOtherLabel.Top := FOtherLabel.ScaleValue(200);
   FOtherLabel.ShowAccelChar := False;
   FOtherLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkKey,
     [TAtlasIssuePreview.KeyExample(AProvider)]);
@@ -318,7 +309,7 @@ begin
   FOther.Align := alTop;
   FOther.AlignWithMargins := True;
   FOther.Margins.SetBounds(cGap, 0, cGap, 0);
-  FOther.Top := 300;
+  FOther.Top := FOther.ScaleValue(300);
   FOther.OnChange := OtherChange;
   FOtherLabel.FocusControl := FOther;
 

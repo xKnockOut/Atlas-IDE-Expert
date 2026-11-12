@@ -114,7 +114,8 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Visualizers,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.IDE.Foundation.Files;
 
 const
   cVisualizerIdentifier = 'Atlas.Visualizer.DisplayRules';
@@ -298,7 +299,7 @@ end;
 
 class function TAtlasIdeDisplayRules.StateKey: string;
 begin
-  Result := TAtlasIdeTeamFile.ActiveProject + '|' + IntToStr(TAtlasIdeTeamFile.Version);
+  Result := TAtlasIdeFiles.ActiveProjectFile + '|' + IntToStr(TAtlasIdeTeamFile.Version);
 end;
 
 class procedure TAtlasIdeDisplayRules.Tick;
@@ -382,7 +383,7 @@ begin
   end;
   if mSession <> nil then
     try
-      mAnswer := mSession.RunCommand(cCommand, ServerArguments(TAtlasIdeTeamFile.ActiveProject, FRules.ProjectNames),
+      mAnswer := mSession.RunCommand(cCommand, ServerArguments(TAtlasIdeFiles.ActiveProjectFile, FRules.ProjectNames),
         cTimeoutMs);
       try
         if (mAnswer <> nil) and FRules.LoadJson(mAnswer.ToJSON) then

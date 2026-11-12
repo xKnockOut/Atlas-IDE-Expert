@@ -111,7 +111,7 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.UI.Strings,
+  Atlas.UI.Completion.Strings,
   Atlas.IDE.Foundation.EditorRefresh;
 
 /// <summary>Zeile ALine (0-basiert) aus AText ohne Zeilenende.</summary>
@@ -666,7 +666,8 @@ begin
   begin
     Exit;
   end;
-  mHint := Format(TAtlasStrings.Text(TAtlasTextId.PlaceholderFooter), [Session.Position, Session.Count]);
+  mHint := Format(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.PlaceholderFooter), [Session.Position,
+    Session.Count]);
   mLeft := Context.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(Text, TabWidth)) + 4,
     Context.EditorLineNum).Left;
   mOldFont := Context.Canvas.Font.Color;

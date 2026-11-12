@@ -11,6 +11,7 @@ uses
   System.Diagnostics,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Status,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Text.LogMarks,
   Shell.Workspace,
   Shell.Composition.Status.Contract;
@@ -38,8 +39,11 @@ type
     constructor Create(const AServices: TShellStatusServices);
     /// <summary>Fehlerbericht und Diagnosepaket, nebenläufig (#874).</summary>
     procedure RegisterCommands(ACommands: TLspCommands);
-    /// <summary>Status als JSON und ins Log; nicht anonym auch als Statusdatei für get_server_status.</summary>
+    /// <summary>Status als JSON und ins Log.</summary>
     function StatusJson(AAnonymize: Boolean): TJSONObject;
+    /// <summary>Ausführlicher Status für die Statusdatei (#1356, #1901): Wurzeln, Status im Klartext (gehört dem
+    /// Aufrufer) und Zustand; ohne Protokollzeile, weil TServerStatusHeartbeat ihn alle paar Sekunden holt.</summary>
+    function FileDetails: TServerDetails;
   end;
 
 implementation
@@ -65,7 +69,6 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
-  Atlas.Common.Lsp.StatusFile,
   Atlas.Text.Anonymize,
   Shell.Platform;
 
@@ -440,12 +443,18 @@ begin
     mStatus := mStatus.Mapped(AnonymousMap());
   end;
   Result := mStatus.ToJson;
-  // Für get_server_status (#1356): dieselben Zahlen wie das Fenster, nur lokal und nie anonym abgefragt.
-  if not AAnonymize then
-  begin
-    TServerStatusFile.Write(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId, WorkspaceRoots,
-      Result, Now);
-  end;
+end;
+
+function TShellStatusReports.FileDetails: TServerDetails;
+var
+  mStatus: TServerStatus;
+begin
+  // Für get_server_status und AtlasMonitor: dieselben Zahlen wie das Fenster, nur lokal und nie anonym.
+  mStatus := CollectStatus;
+  Result := Default(TServerDetails);
+  Result.Roots := WorkspaceRoots;
+  Result.State := mStatus.State;
+  Result.Status := mStatus.ToJson;
 end;
 
 function TShellStatusReports.DiagnosticPackage(const AArguments: TJSONArray): TJSONValue;

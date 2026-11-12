@@ -184,10 +184,10 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or prop' +
-    'erty of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (opti' +
-    'on checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the' +
-    ' second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties. Default array properties overload' +
-    'ed under the same name are checked by default-property-invalid (#1380).",',
+    'erty of a type, two types, a constant and a variable of the unit across interface and implementation, two values of the same enumeration (no quick fix). Likewise a unit twice in uses or in the uses cl' +
+    'auses of interface and implementation at once (option checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of' +
+    ' the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, method' +
+    's and properties. Default array properties overloaded under the same name are checked by default-property-invalid (#1380).",',
     '      "bad": "procedure TRechnung.Summieren(Betrag: Currency);\nvar\n  Betrag: Currency;\nbegin",',
     '      "good": "procedure TRechnung.Summieren(Betrag: Currency);\nbegin",',
     '      "compilerCodes": [',

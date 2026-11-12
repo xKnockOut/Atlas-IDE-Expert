@@ -123,8 +123,8 @@ begin
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesLoadValues), LoadValuesClick);
   FView.ValuesNote := TLabel.Create(FRows.Owner);
   FView.ValuesNote.Parent := mPanel;
-  FView.ValuesNote.Left := cNoteLeft;
-  FView.ValuesNote.Top := cNoteTop;
+  FView.ValuesNote.Left := FView.ValuesNote.ScaleValue(cNoteLeft);
+  FView.ValuesNote.Top := FView.ValuesNote.ScaleValue(cNoteTop);
   FView.ValuesNote.Font.Color := clGrayText;
   FView.ValuesNote.Caption := '';
 end;

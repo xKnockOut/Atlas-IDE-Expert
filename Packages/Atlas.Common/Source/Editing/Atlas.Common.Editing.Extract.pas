@@ -11,6 +11,9 @@
 //     var-Abschnitt entfernt). Lokale Konstanten werden mitkopiert. Liegt die
 //     Auswahl in einer Schleife, gelten Zugriffe in der Schleife vor der
 //     Auswahl als „danach“.
+//     Auf Wunsch (#2054) eine zweite Aktion, die auch textgleiche Stellen
+//     der Unit mit derselben neuen Methode durch den Aufruf ersetzt
+//     (Atlas.Common.Editing.Extract.Duplicates).
 //   - „Variable einführen“: Der markierte Ausdruck wird in eine Variable vor
 //     der Anweisung ausgelagert; auf Wunsch alle textgleichen Vorkommen im
 //     selben Block, solange dazwischen keiner seiner Namen geändert wird.
@@ -48,7 +51,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract.Shared;
@@ -76,6 +78,10 @@ type
       const AOptions: TExtractOptions; out AAction: TCodeAction; out AReason: string): Boolean; overload; static;
     class function ExtractMethod(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
       const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean; overload; static;
+    /// <summary>„Methode extrahieren“ samt textgleicher Stellen der Unit (#2054), die derselbe Aufruf ersetzt;
+    /// je Stelle ein abwählbarer Teil (TCodeAction.Choices). False ohne gleiche Stelle, Grund in AReason.</summary>
+    class function ExtractMethodWithDuplicates(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AOptions: TExtractOptions; out AAction: TCodeAction; out AReason: string): Boolean; static;
     /// <summary>„Variable einführen“ für den Ausdruck in ARange; mit AAll für alle textgleichen Vorkommen im
     /// selben Block (False, wenn es nur eins gibt).</summary>
     class function IntroduceVariable(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
@@ -109,6 +115,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.Extract.Method,
+  Atlas.Common.Editing.Extract.Duplicates,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -171,30 +178,20 @@ begin
   end;
 end;
 
-{ Variable einführen }
-
-/// <summary>Normalform eines Ausdrucks für den Vergleich: Token ohne Kommentare, Groß-/Kleinschreibung egal.</summary>
-function NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
+class function TExtractRefactoring.ExtractMethodWithDuplicates(const AText: string; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction; out AReason: string): Boolean;
 var
-  mTokens: TArray<TPascalToken>;
-  mIndex: Integer;
+  mDuplicates: TExtractDuplicates;
 begin
-  mTokens := ATree.Tokens;
-  Result := '';
-  mIndex := TRoutineBody.TokenAt(mTokens, ANode.StartOffset);
-  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
-  begin
-    if mTokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
-    begin
-      Result := Result + mTokens[mIndex].Text + ' ';
-    end
-    else if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      Result := Result + LowerCase(mTokens[mIndex].Text) + ' ';
-    end;
-    Inc(mIndex);
+  mDuplicates := TExtractDuplicates.Create(AText, ATree, AOptions);
+  try
+    Result := mDuplicates.Run(ARange, AAction, AReason);
+  finally
+    mDuplicates.Free;
   end;
 end;
+
+{ Variable einführen }
 
 /// <summary>Name für die Variable aus dem Ausdruck: letzter Name einer Kette ohne "Get", sonst Value.</summary>
 function NameFor(ANode: TSyntaxNode): string;
@@ -313,13 +310,13 @@ var
   mNode: TSyntaxNode;
 begin
   Result := nil;
-  mNormal := NormalText(FTree, FExpression);
+  mNormal := TExtractSupport.NormalText(FTree, FExpression);
   mNodes := TList<TSyntaxNode>.Create;
   try
     TRoutineLocals.CollectKind(AHost.Parent, FExpression.Kind, mNodes);
     for mNode in mNodes do
     begin
-      if (mNode.StartOffset >= AHost.StartOffset) and (NormalText(FTree, mNode) = mNormal) and
+      if (mNode.StartOffset >= AHost.StartOffset) and (TExtractSupport.NormalText(FTree, mNode) = mNormal) and
         (TRoutineBody.HostStatement(mNode, FBody) <> nil) and
         ((Result = nil) or (mNode.StartOffset >= Result[High(Result)].EndOffset)) then
       begin
@@ -880,11 +877,16 @@ class function TExtractRefactoring.Actions(const AText: string; ATree: TSyntaxTr
   const AOptions: TExtractOptions): TArray<TCodeAction>;
 var
   mAction: TCodeAction;
+  mReason: string;
 begin
   Result := nil;
   if ExtractMethod(AText, ATree, ARange, AOptions, mAction) then
   begin
     Result := Result + [mAction];
+    if AOptions.Duplicates and ExtractMethodWithDuplicates(AText, ATree, ARange, AOptions, mAction, mReason) then
+    begin
+      Result := Result + [mAction];
+    end;
   end;
   if IntroduceVariable(AText, ATree, ARange, AOptions, False, mAction) then
   begin

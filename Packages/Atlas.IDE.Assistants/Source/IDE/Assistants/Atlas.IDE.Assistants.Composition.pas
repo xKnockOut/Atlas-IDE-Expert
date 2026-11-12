@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Assistants.Composition;
 
-// Modul KI-Assistenten (#1888, ADR 0017): einzige Unit, die die Eingänge für
+// Modul KI-Assistenten (#1888): einzige Unit, die die Eingänge für
 // Aufträge von MCP-Clients in der laufenden IDE erzeugt. Sie meldet in ihrer
 // Initialisierung das Modul „atlas.assistants“ (Modulschalter assistants) bei
 // der Registry von Base an und stellt über dessen Scope bereit:
@@ -52,6 +52,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
@@ -112,7 +113,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(MessageLine);
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, MessageLine);
 end;
 
 procedure StopEdits;

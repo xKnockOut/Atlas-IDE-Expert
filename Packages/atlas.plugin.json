@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas-IDE-Expert/main/schemas/atlas.schema.json",
+  "profile": "strict",
+  "minConfidence": "low",
+  "testProfile": "standard",
+  "exclude": ["__history/**", "__recovery/**"],
+  "rules": {
+    "loop-runs-at-most-once": {"allowFirstElement": true},
+    "catch-all-without-raise": "off",
+    "narrowing-assignment": "off"
+  }
+}

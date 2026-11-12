@@ -11,6 +11,11 @@
 // - Obtain: Je Datei und Text rechnet nur ein Lauf (#1761). Diagnose und Glühbirne warten auf einen laufenden
 //   Lauf am selben Text, statt die Regeln daneben noch einmal zu rechnen; bei großen Units liefen sonst je
 //   Cursorbewegung weitere volle Läufe parallel (Speicher, CPU, Zeitlimit).
+//   Wartende schlafen auf der Sperre (TMonitor.Wait); das Ende eines Laufs weckt
+//   sie sofort (PulseAll), den Abbruch prüfen sie im Takt WaitSliceMs.
+// - Await: nur abgelegte Treffer oder die eines laufenden Laufs am selben Text, nie ein eigener Lauf. Die
+//   Glühbirne fragt so (Diagnoselog 11.11.2026: ein eigener Lauf aller Regeln dauerte in einer Unit mit 27.000
+//   Zeilen rund 9 s); den Lauf übernimmt die Diagnose, die bei jeder Änderung ohnehin prüft.
 // - Höchstens MaxEntries Dateien; der am längsten nicht benutzte Eintrag fällt heraus.
 // - Threadsicher; Treffer gehen als Kopie hinein und heraus.
 
@@ -37,13 +42,19 @@ type
     /// mit ERuleCheckCancelled.</summary>
     function Obtain(const AFileName, AText: string; const ARun: TRuleFindingsRun;
       const ACancelled: TRuleCancelled): TArray<TRuleFinding>;
+    /// <summary>Wie Obtain, aber ohne eigenen Lauf: abgelegte Treffer oder die eines laufenden Laufs am selben Text
+    /// (wartet darauf). False, wenn weder abgelegt ist noch ein Lauf rechnet oder der Lauf scheitert; ACancelled
+    /// beendet das Warten mit ERuleCheckCancelled.</summary>
+    function Await(const AFileName, AText: string; const ACancelled: TRuleCancelled;
+      out AFindings: TArray<TRuleFinding>): Boolean;
   end;
 
   TRuleFindingsMemo = class(TInterfacedObject, IRuleFindingsMemo)
   public const
     cMaxEntries = 32;
-    /// <summary>Takt, in dem Obtain auf einen laufenden Lauf wartet.</summary>
-    cWaitSliceMs = 20;
+    /// <summary>Takt, in dem Obtain beim Warten auf einen laufenden Lauf den Abbruch prüft; das Ende des Laufs weckt
+    /// sofort.</summary>
+    cWaitSliceMs = 100;
   private type
     TEntry = record
       Text: string;
@@ -54,7 +65,8 @@ type
     FLock: TObject;
     FEntries: TDictionary<string, TEntry>;
     FClock: Int64;
-    /// <summary>Laufende Läufe: Schlüssel der Datei -> Text. Unter FLock.</summary>
+    /// <summary>Laufende Läufe: Schlüssel der Datei -> Text. Unter FLock; Release weckt Wartende mit PulseAll.
+    /// </summary>
     FRunning: TDictionary<string, string>;
     /// <summary>Den am längsten nicht benutzten Eintrag entfernen; nur unter FLock.</summary>
     procedure DropOldest;
@@ -71,6 +83,8 @@ type
     function TryGet(const AFileName, AText: string; out AFindings: TArray<TRuleFinding>): Boolean;
     function Obtain(const AFileName, AText: string; const ARun: TRuleFindingsRun;
       const ACancelled: TRuleCancelled): TArray<TRuleFinding>;
+    function Await(const AFileName, AText: string; const ACancelled: TRuleCancelled;
+      out AFindings: TArray<TRuleFinding>): Boolean;
   end;
 
 implementation
@@ -187,6 +201,8 @@ begin
     begin
       FRunning.Remove(AKey);
     end;
+    // Wartende auf denselben Text finden jetzt die Treffer (oder rechnen selbst, wenn der Lauf scheiterte).
+    System.TMonitor.PulseAll(FLock);
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -196,27 +212,65 @@ function TRuleFindingsMemo.Obtain(const AFileName, AText: string; const ARun: TR
   const ACancelled: TRuleCancelled): TArray<TRuleFinding>;
 var
   mKey: string;
-  mCached: Boolean;
+  mCached, mClaimed: Boolean;
 begin
   mKey := AnsiUpperCase(AFileName);
-  while not Claim(mKey, AText, Result, mCached) do
-  begin
+  repeat
+    System.TMonitor.Enter(FLock);
+    try
+      mClaimed := Claim(mKey, AText, Result, mCached);
+      if not mClaimed and not mCached then
+      begin
+        // Gibt die Sperre frei, bis Release weckt oder der Takt für die Abbruchprüfung abläuft. Claim und Wait
+        // stehen unter derselben Sperre: Ein Release dazwischen geht nicht verloren.
+        System.TMonitor.Wait(FLock, cWaitSliceMs);
+      end;
+    finally
+      System.TMonitor.Exit(FLock);
+    end;
     if mCached then
     begin
       Exit;
     end;
-    if Assigned(ACancelled) and ACancelled() then
+    // Abbruch außerhalb der Sperre fragen: ACancelled darf andere Sperren nehmen (Dokumentspeicher).
+    if not mClaimed and Assigned(ACancelled) and ACancelled() then
     begin
       raise ERuleCheckCancelled.Create(AFileName);
     end;
-    Sleep(cWaitSliceMs);
-  end;
+  until mClaimed;
   try
     Result := ARun();
     Put(AFileName, AText, Result);
   finally
     Release(mKey, AText);
   end;
+end;
+
+function TRuleFindingsMemo.Await(const AFileName, AText: string; const ACancelled: TRuleCancelled;
+  out AFindings: TArray<TRuleFinding>): Boolean;
+var
+  mKey, mText: string;
+  mRunning: Boolean;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  repeat
+    System.TMonitor.Enter(FLock);
+    try
+      Result := Lookup(mKey, AText, AFindings);
+      mRunning := not Result and FRunning.TryGetValue(mKey, mText) and (mText = AText);
+      if mRunning then
+      begin
+        // Release weckt; Lookup und Wait unter derselben Sperre.
+        System.TMonitor.Wait(FLock, cWaitSliceMs);
+      end;
+    finally
+      System.TMonitor.Exit(FLock);
+    end;
+    if mRunning and Assigned(ACancelled) and ACancelled() then
+    begin
+      raise ERuleCheckCancelled.Create(AFileName);
+    end;
+  until not mRunning;
 end;
 
 end.

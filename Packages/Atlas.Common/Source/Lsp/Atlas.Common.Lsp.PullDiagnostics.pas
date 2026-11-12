@@ -15,7 +15,7 @@
 // die Anfrage liefert ihre gespeicherten Befunde samt Fortschritt
 // ("atlas": {"run": …}). Gibt es nichts Neues, wartet die Anfrage bis WaitMs
 // auf eine Änderung (Long-Polling); mit RequestTimeout endet das Warten sicher
-// vor dem Zeitlimit des Watchdogs (Code-Review P-14). Die erste Anfrage
+// vor dem Zeitlimit des Watchdogs. Die erste Anfrage
 // startet die Projektprüfung; ohne Projektprüfung im Client ruht sie.
 //
 // Changed (Einstellungen, Index, „neu prüfen“) hebt die Generation der
@@ -76,7 +76,7 @@ type
     class function ClientSupportsRefresh(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>Eintrag diagnosticProvider für die Server-Capabilities.</summary>
     class function Capability: TJSONObject; static;
-    /// <summary>Antwort sicher vor dem Zeitlimit des Watchdogs (P-14): 2 s Reserve, bei kurzen Limits die
+    /// <summary>Antwort sicher vor dem Zeitlimit des Watchdogs: 2 s Reserve, bei kurzen Limits die
     /// Hälfte. ATimeoutMs = 0 (kein Limit): High(Cardinal).</summary>
     class function TimeLimitMs(ATimeoutMs: Cardinal): Cardinal; static;
     /// <summary>Wartezeit des Long-Pollings: AWaitMs, höchstens TimeLimitMs(ATimeoutMs).</summary>
@@ -87,6 +87,8 @@ type
   IPullDocumentJob = interface
     ['{8B4E2D17-9C3A-4F61-A5D8-2E7B0C9F1A46}']
     function Finished: Boolean;
+    /// <summary>Wartet höchstens ATimeoutMs auf das Ende der Prüfung; True, wenn sie fertig ist.</summary>
+    function WaitFinished(ATimeoutMs: Cardinal): Boolean;
     /// <summary>Eine Anfrage wartet nicht mehr; True, solange die Prüfung noch läuft.</summary>
     function Abandon: Boolean;
     /// <summary>Ende der Prüfung; True, wenn eine Anfrage vorher aufgegeben hat.</summary>
@@ -106,8 +108,8 @@ type
   TPullOpenJobs = class
   private
     FOwner: TLspPullDiagnostics;
-    /// <summary>Laufende Prüfungen: Uri + #0 + Ergebnis-Id -> TPullDocumentJob. Sperre: das Wörterbuch selbst.
-    /// </summary>
+    /// <summary>Laufende Prüfungen: Uri + #0 + Ergebnis-Id -> TPullDocumentJob. Sperre: das Wörterbuch selbst;
+    /// das Ende jeder Prüfung weckt Destroy mit PulseAll.</summary>
     FJobs: TDictionary<string, IPullDocumentJob>;
     FRunning: Integer;
     FStopping: Integer;
@@ -538,12 +540,17 @@ type
     cDoneAbandoned = 3;
   private
     FState: Integer;
+    /// <summary>Gesetzt mit Finish; Wartende schlafen darauf, statt den Zustand abzufragen.</summary>
+    FDone: TEvent;
     FItems: TBytes;
     FErrorClass: ExceptClass;
     FErrorMessage: string;
     FErrorCode: Integer;
   public
+    constructor Create;
+    destructor Destroy; override;
     function Finished: Boolean;
+    function WaitFinished(ATimeoutMs: Cardinal): Boolean;
     function Abandon: Boolean;
     function Finish: Boolean;
     procedure Succeed(const AItems: TJSONArray);
@@ -553,6 +560,23 @@ type
   end;
 
 { TPullDocumentJob }
+
+constructor TPullDocumentJob.Create;
+begin
+  inherited Create;
+  FDone := TEvent.Create(nil, True, False, '');
+end;
+
+destructor TPullDocumentJob.Destroy;
+begin
+  FDone.Free;
+  inherited;
+end;
+
+function TPullDocumentJob.WaitFinished(ATimeoutMs: Cardinal): Boolean;
+begin
+  Result := Finished or (FDone.WaitFor(ATimeoutMs) = wrSignaled);
+end;
 
 procedure TPullDocumentJob.Succeed(const AItems: TJSONArray);
 begin
@@ -587,6 +611,8 @@ begin
   begin
     TInterlocked.Exchange(FState, cDoneAbandoned);
   end;
+  // Erst nach dem Zustand: Wer aufwacht, sieht Finished.
+  FDone.SetEvent;
 end;
 
 procedure TPullDocumentJob.Fail(AError: Exception);
@@ -628,9 +654,15 @@ end;
 destructor TPullOpenJobs.Destroy;
 begin
   TInterlocked.Exchange(FStopping, 1);
-  while TInterlocked.CompareExchange(FRunning, 0, 0) > 0 do
-  begin
-    Sleep(TPullReportCache.cRunningPollMs);
+  // Laufende Prüfungen enden vor der nächsten Regel; JobProc weckt nach jedem Ende.
+  System.TMonitor.Enter(FJobs);
+  try
+    while TInterlocked.CompareExchange(FRunning, 0, 0) > 0 do
+    begin
+      System.TMonitor.Wait(FJobs, TLspPullDiagnostics.cChangeSliceMs);
+    end;
+  finally
+    System.TMonitor.Exit(FJobs);
   end;
   FJobs.Free;
   inherited;
@@ -707,7 +739,14 @@ begin
       try
         AJobs.Run(AJob, AKey, AResultId, ADocument, AGeneration);
       finally
-        TInterlocked.Decrement(AJobs.FRunning);
+        // Unter der Sperre, damit Destroy zwischen Prüfen und Warten kein Ende verpasst.
+        System.TMonitor.Enter(AJobs.FJobs);
+        try
+          TInterlocked.Decrement(AJobs.FRunning);
+          System.TMonitor.PulseAll(AJobs.FJobs);
+        finally
+          System.TMonitor.Exit(AJobs.FJobs);
+        end;
       end;
     end;
 end;
@@ -756,7 +795,8 @@ begin
       raise EJsonRpcError.Create(TLspErrorCode.cServerCancelled,
         cTexts[TPullDiagnosticsText.StillChecking].Fmt([mWait]));
     end;
-    Sleep(TPullReportCache.cRunningPollMs);
+    // Das Ende der Prüfung weckt sofort; Abbruch und Wartezeit im Takt ChangeSliceMs.
+    mJob.WaitFinished(TLspPullDiagnostics.cChangeSliceMs);
   end;
   Result := mJob.Items;
 end;
@@ -950,7 +990,7 @@ var
   mNow: TWorkspaceCheckRun;
   mAtlas: TJSONObject;
 begin
-  // Zeitrahmen der Anfrage: Antwort vor dem Zeitlimit des Watchdogs (P-14).
+  // Zeitrahmen der Anfrage: Antwort vor dem Zeitlimit des Watchdogs.
   mClock := TStopwatch.StartNew;
   mPollMs := FWaitMs;
   if TimeLimit(FRequestTimeout) < mPollMs then

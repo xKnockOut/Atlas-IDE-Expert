@@ -90,7 +90,7 @@ var
 begin
   mReader := ABuffer.CreateReader;
   mPosition := 0;
-  // Direkt in den Puffer lesen, Kapazität verdoppeln (P-04): kein Zwischenstück und kein Umkopieren je Stück.
+  // Direkt in den Puffer lesen, Kapazität verdoppeln: kein Zwischenstück und kein Umkopieren je Stück.
   mCapacity := cChunkSize;
   mBytes := nil;
   SetLength(mBytes, mCapacity);

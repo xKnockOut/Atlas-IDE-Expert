@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Editing.CodeActions;
 
 // Code-Aktionen ohne Protokollbezug (#42, #147):
-//   - Korrekturen der Regeltreffer: Atlas.Common.Rules.CodeActions (A-11)
+//   - Korrekturen der Regeltreffer: Atlas.Common.Rules.CodeActions
 //   - "Regel für diese Zeile unterdrücken": eigene Kommentarzeile darüber,
 //     bestehende "// lsp-ignore:"-Zeile darüber wird ergänzt
 //   - "Regel für diese Datei unterdrücken": "// lsp-ignore-file:" in Zeile 1
@@ -70,6 +70,14 @@ type
     Edits: TArray<TTextEdit>;
   end;
 
+  /// <summary>Teil einer Code-Aktion, den der Client abwählen kann (gleiche Stellen, #2054).</summary>
+  TCodeActionChoice = record
+    Title: string;
+    /// <summary>Stelle im Dokument, die der Teil ändert.</summary>
+    Range: TTextRange;
+    class function Create(const ATitle: string; const ARange: TTextRange): TCodeActionChoice; static;
+  end;
+
   TCodeAction = record
     Title: string;
     Kind: string;
@@ -91,6 +99,11 @@ type
     Preview: string;
     /// <summary>Grund, warum die Aktion hier nicht geht (Hinweis statt Aktion, #663); '' wenn sie geht.</summary>
     Disabled: string;
+    /// <summary>Abwählbare Teile (#2054); nil ohne.</summary>
+    Choices: TArray<TCodeActionChoice>;
+    /// <summary>Je Edit in Edits die Indizes in Choices, die alle gewählt sein müssen; fehlt der Eintrag oder ist
+    /// er leer, gilt der Edit immer.</summary>
+    EditChoices: TArray<TArray<Integer>>;
   end;
 
   TCodeActions = class
@@ -146,6 +159,14 @@ uses
   Atlas.Common.Editing.StringLiterals,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
+
+{ TCodeActionChoice }
+
+class function TCodeActionChoice.Create(const ATitle: string; const ARange: TTextRange): TCodeActionChoice;
+begin
+  Result.Title := ATitle;
+  Result.Range := ARange;
+end;
 
 {$SCOPEDENUMS ON}
 

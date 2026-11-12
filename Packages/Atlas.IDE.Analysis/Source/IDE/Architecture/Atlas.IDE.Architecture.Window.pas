@@ -29,7 +29,6 @@ type
     class function ExistingFrame: TAtlasArchitectureFrame; static;
     class function Visible: Boolean; static;
     class procedure Hide; static;
-    class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
     /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt
     /// (#879).</summary>
@@ -53,7 +52,6 @@ uses
   Atlas.UI.Style.Symbol,
   Atlas.Core.Dock.Plan,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -119,7 +117,7 @@ begin
     Host.FrameCreated(AFrame);
   end;
   mFrame := TAtlasArchitectureFrame(AFrame);
-  TAtlasIdeArchitectureWindow.UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
   Theme(mFrame);
   if Assigned(TAtlasIdeArchitectureWindow.OnFrame) then
   begin
@@ -225,7 +223,7 @@ begin
   Host.Show(mCreated);
   if mCreated then
   begin
-    UpdateIcon;
+    TAtlasIdeDockWindow.UpdateIcon(Host);
     DockToDefault;
     // Nach dem Andocken die Reiterseite wählen und Gastgeber zeigen.
     Host.Show(mCreated);
@@ -256,23 +254,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeArchitectureWindow.UpdateIcon;
-var
-  mIcon: TIcon;
-begin
-  if (Host = nil) or (Host.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(Host.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
-  end;
-end;
-
 class procedure TAtlasIdeArchitectureWindow.ApplyTheme;
 var
   mFrame: TAtlasArchitectureFrame;
@@ -282,7 +263,7 @@ begin
   begin
     Theme(mFrame);
   end;
-  UpdateIcon;
+  TAtlasIdeDockWindow.UpdateIcon(Host);
 end;
 
 class procedure TAtlasIdeArchitectureWindow.Prepare;

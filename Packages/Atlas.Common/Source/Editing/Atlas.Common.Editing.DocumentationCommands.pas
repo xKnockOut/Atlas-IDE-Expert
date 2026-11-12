@@ -416,7 +416,7 @@ var
 begin
   mRoot := ANode;
   mLine := ALine;
-  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.
+  // Search statt Rekursion; unter ANode nur Knoten, die ALine überdecken.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin

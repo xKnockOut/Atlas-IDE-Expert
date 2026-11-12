@@ -7,7 +7,7 @@
 // eingerückt wie ihre Geschwister. Pfade mit Punkt: "compiler.onSave".
 // Werte werden als JSON-Text übergeben ("true", "12", "\"de\"", "[\"a\"]").
 // Leerraum, Kommentare und Strings überspringt TJsoncScanner aus Atlas.Text,
-// derselbe wie beim Server (ADR 0012): // endet an LF oder CR.
+// derselbe wie beim Server: // endet an LF oder CR.
 
 interface
 

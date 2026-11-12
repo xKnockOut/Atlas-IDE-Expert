@@ -89,16 +89,16 @@ var
 begin
   mEdit := Host.AddText(AKey, TAtlasVcsStrings.Text(ACaption)) as TEdit;
   mEdit.Anchors := [akLeft, akTop];
-  mEdit.Width := 466 - 2 * 36 - 60;
+  mEdit.Width := mEdit.ScaleValue(466 - 2 * 36 - 60);
   mEdit.Tag := Ord(AKind);
   mEdit.OnChange := VcsPathChange;
   mPanel := mEdit.Parent;
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
   mButton.Caption := '…';
-  mButton.Left := mEdit.Left + mEdit.Width + 6;
+  mButton.Left := mEdit.Left + mEdit.Width + mButton.ScaleValue(6);
   mButton.Top := 0;
-  mButton.Width := 30;
+  mButton.Width := mButton.ScaleValue(30);
   mButton.Anchors := [akTop, akRight];
   mButton.Tag := Ord(AKind);
   mButton.OnClick := VcsBrowseClick;
@@ -106,9 +106,9 @@ begin
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
   mButton.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsCheck);
-  mButton.Left := FVcsBrowse[AKind].Left + 36;
+  mButton.Left := FVcsBrowse[AKind].Left + mButton.ScaleValue(36);
   mButton.Top := 0;
-  mButton.Width := 90;
+  mButton.Width := mButton.ScaleValue(90);
   mButton.Anchors := [akTop, akRight];
   mButton.Tag := Ord(AKind);
   mButton.OnClick := VcsCheckClick;

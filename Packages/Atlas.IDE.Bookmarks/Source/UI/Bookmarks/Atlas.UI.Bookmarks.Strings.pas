@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Bookmarks.Strings;
 
-// Oberflächentexte des Moduls Lesezeichen und Notizen auf Deutsch und Englisch (ADR 0017, #1455). Die Sprache
+// Oberflächentexte des Moduls Lesezeichen und Notizen auf Deutsch und Englisch (#1455). Die Sprache
 // bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
 // daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
 

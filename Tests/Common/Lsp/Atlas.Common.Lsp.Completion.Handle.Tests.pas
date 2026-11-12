@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Completion.Handle.Tests;
 
-// Charakterisierungstests für textDocument/completion über den Dispatcher (Code-Review S-01, Block H
+// Charakterisierungstests für textDocument/completion über den Dispatcher (Block H
 // Schritt 0): Reihenfolge und Exklusivität der Fälle in TLspCompletion.Handle – Schnellbefehle,
 // Feldnamen im String, Freigabe absichern, Mengen, Aufzählungswerte vorab, Interface-Hinweise,
 // Sender, Deklarieren am Ende, abschaltbare Schlüsselwörter und gestaffelte Teilergebnisse.

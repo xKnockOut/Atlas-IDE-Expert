@@ -61,7 +61,7 @@ type
     /// <summary>Filter im Baum und „Seite zurücksetzen“ je Knoten (#890).</summary>
     [Test]
     procedure FilterAndResetPerNode;
-    /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
+    /// <summary>„Wächter testen“ nur im Diagnosemodus.</summary>
     [Test]
     procedure HangTestOnlyInDiagnosticMode;
     /// <summary>#909: Bereich Prüfregeln mit Prüffenster, Knoten je Gruppe, Hauptschalter, Reveal einer Regel
@@ -107,6 +107,7 @@ uses
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.EditorView,
@@ -303,7 +304,7 @@ begin
     Assert.IsFalse(CheckOf(Page, 'Minimap').Enabled);
     Assert.IsFalse(EditOf(Page, 'MinimapWidth').Enabled);
     Assert.IsTrue(Frame.Reason.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsLockedExperimental), Frame.Reason.Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsLockedExperimental), Frame.Reason.Caption);
     Assert.IsTrue(CheckOf(Page, 'Minimap').Checked, 'Wert bleibt');
     Page.Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked := True;
     Assert.IsTrue(CheckOf(Page, 'Minimap').Enabled);
@@ -334,7 +335,8 @@ begin
     Assert.IsFalse(CheckOf(Page, 'StickyScroll').Enabled, 'Hauptschalter gesperrt');
     Assert.IsFalse(EditOf(Page, 'StickyScrollMaxLines').Enabled, 'Unteroption gesperrt');
     Assert.IsTrue(Frame.Reason.Visible, 'Grund im Rahmen');
-    Assert.IsTrue(Pos(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled).Replace('&', ''), Frame.Reason.Caption) > 0,
+    Assert.IsTrue(Pos(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEnabled).Replace('&', ''),
+      Frame.Reason.Caption) > 0,
       Frame.Reason.Caption);
     Assert.IsFalse(Page.ControlOf('PairGuides').Enabled, 'auch Klammerfarben');
     Master.Checked := True;
@@ -457,7 +459,8 @@ begin
   try
     Settings := TAtlasPluginSettings.Defaults;
     Page.LoadFrom(Settings);
-    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject));
+    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption,
+      TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileNoProject));
     Assert.IsFalse(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileOpenButton.Enabled, 'ohne Projekt');
     Page.Part<TAtlasSettingsTeamFilePart>.OnTeamFile :=
       function: TAtlasTeamSettings
@@ -469,9 +472,11 @@ begin
       begin
         Inc(Opened);
       end;
-    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue,
+    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption,
+      TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileValue,
       ['naming.field', '"F"']));
-    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [1]),
+    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption,
+      TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileIssues, [1]),
       'Zugangsdaten ignoriert');
     Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamSnippetsLabel.Caption, 'Vorlagen');
     Assert.IsTrue(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileOpenButton.Enabled);
@@ -479,7 +484,8 @@ begin
     Assert.AreEqual(1, Opened);
     // Ausgeschaltet: keine Werte, kein Hinweis bei den Vorlagen, gespeichert als TeamFile = False.
     Page.Part<TAtlasSettingsTeamFilePart>.TeamFileCheck.Checked := False;
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff), Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileOff),
+      Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption);
     Assert.AreEqual('', Page.Part<TAtlasSettingsTeamFilePart>.TeamSnippetsLabel.Caption);
     Page.SaveTo(Settings);
     Assert.IsFalse(Settings.TeamFile);
@@ -488,7 +494,8 @@ begin
     Team.Project := 'C:\Repo\Kasse.dproj';
     Page.Part<TAtlasSettingsTeamFilePart>.TeamFileCheck.Checked := True;
     // Mit Lage des Fehlers in der Datei (Zeile 1, Spalte 2 für "{").
-    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileInvalidAt, [1, 2]));
+    Assert.Contains(Page.Part<TAtlasSettingsTeamFilePart>.TeamFileInfo.Caption,
+      TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsTeamFileInvalidAt, [1, 2]));
   finally
     Page.Free;
   end;
@@ -671,7 +678,8 @@ begin
     Page.Part<TAtlasSettingsIndexPart>.IndexRebuild.Click;
     Assert.AreEqual(1, Rebuilds);
     Assert.IsTrue(Page.Part<TAtlasSettingsIndexPart>.IndexBusy);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIndexAsking), Page.Part<TAtlasSettingsIndexPart>.IndexInfo.Caption);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexAsking),
+      Page.Part<TAtlasSettingsIndexPart>.IndexInfo.Caption);
     Assert.IsFalse(Page.Part<TAtlasSettingsIndexPart>.IndexRebuild.Enabled or Page.Part<TAtlasSettingsIndexPart>.IndexClear.Enabled, 'gesperrt bis zur Antwort');
     Page.Part<TAtlasSettingsIndexPart>.IndexRebuild.Click;
     Assert.AreEqual(1, Rebuilds, 'kein zweiter Befehl, solange einer läuft');
@@ -855,7 +863,8 @@ begin
     Assert.IsTrue(Marks.HasExperimental);
     Assert.IsTrue(Marks.IsExperimental(Third));
     Assert.IsFalse(Marks.IsExperimental(First));
-    Assert.AreEqual('Dritte  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']', string(Third.Caption));
+    Assert.AreEqual('Dritte  [' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalTag) + ']',
+      string(Third.Caption));
     Marks.ApplyFilter(sfExperimental);
     Assert.IsFalse(First.Visible);
     Assert.IsFalse(Second.Visible);

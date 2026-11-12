@@ -59,24 +59,24 @@ type
     procedure OffersGenericInterfaceMethods;
     [Test]
     procedure GroupsByExpectedType;
-    /// <summary>Code-Review P-02: Collect mit vom Aufrufer gepinntem Baum liefert dasselbe.</summary>
+    /// <summary>Collect mit vom Aufrufer gepinntem Baum liefert dasselbe.</summary>
     [Test]
     procedure CollectWithOuterPinSameItems;
-    /// <summary>Code-Review P-07: Jede Vorfahren-Unit wird einmal gelesen, nicht je Kandidat.</summary>
+    /// <summary>Jede Vorfahren-Unit wird einmal gelesen, nicht je Kandidat.</summary>
     [Test]
     procedure OverrideItemsReadsEachFileOnce;
-    /// <summary>Code-Review P-06: Außerhalb von Routinen wird das Formular gar nicht gelesen.</summary>
+    /// <summary>Außerhalb von Routinen wird das Formular gar nicht gelesen.</summary>
     [Test]
     procedure ComponentItemsOutsideRoutineDoesNotReadForm;
-    /// <summary>Code-Review P-06: Die zweite Anfrage nutzt den Auszug der Formulardatei; nach einer Änderung
+    /// <summary>Die zweite Anfrage nutzt den Auszug der Formulardatei; nach einer Änderung
     /// der Datei wird neu gelesen.</summary>
     [Test]
     procedure ComponentItemsSecondRequestUsesCache;
-    /// <summary>Code-Review P-11: Kopf der Methode aus dem Baum, auch weiter oben als die Zeilensuche reichte,
+    /// <summary>Kopf der Methode aus dem Baum, auch weiter oben als die Zeilensuche reichte,
     /// und nicht der einer lokalen Prozedur.</summary>
     [Test]
     procedure SenderItemsFindsHeaderFarAboveAndSkipsLocalRoutines;
-    /// <summary>Code-Review P-12: Eingebaute Typen werden nicht im Index gesucht (kein gleichnamiger Fremdtyp).</summary>
+    /// <summary>Eingebaute Typen werden nicht im Index gesucht (kein gleichnamiger Fremdtyp).</summary>
     [Test]
     procedure BuiltinTypeNotShadowedByIndexEnum;
     /// <summary>#456: Helper aus nicht eingebundenen Units nach den eigenen Mitgliedern, mit Kennzeichen und

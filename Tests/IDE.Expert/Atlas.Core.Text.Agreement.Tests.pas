@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Text.Agreement.Tests;
 
-// Server und Plugin entscheiden gleich (ADR 0012, D-01 bis D-05): Kodierung,
+// Server und Plugin entscheiden gleich: Kodierung,
 // unscharfe Treffer der Vervollständigung und Anonymisierung im Fehlerbericht.
 // Beide Seiten nutzen Atlas.Text; diese Tests halten fest, dass die Hüllen
 // darum herum nichts Eigenes mehr entscheiden.

@@ -62,6 +62,7 @@ begin
     TFlagOption.Create('disableWarning', ARefactoring.DisableWarning),
     TFlagOption.Create('disableWarningReason', ARefactoring.DisableWarningReason),
     TFlagOption.Create('extract', ARefactoring.Extract),
+    TFlagOption.Create('extractMethodDuplicates', ARefactoring.ExtractMethodDuplicates),
     TFlagOption.Create('completeCase', ARefactoring.CompleteCase),
     TFlagOption.Create('resolveWith', ARefactoring.ResolveWith),
     TFlagOption.Create('inline', ARefactoring.InlineCode),

@@ -211,24 +211,17 @@ type
     function Enter: Integer; virtual; abstract;
     /// <summary>Ende des Aufrufs, der mit Enter begann (auch nach einem Fehler).</summary>
     procedure Leave(AFeature: TAtlasFeature; AToken: Integer); virtual; abstract;
-    /// <summary>Arbeit der IDE beginnt im laufenden Aufruf (RunIde); ohne Wirkung, wenn nicht überschrieben.
-    /// </summary>
-    procedure IdeBegin; virtual;
-    /// <summary>Die mit IdeBegin begonnene Arbeit der IDE ist zu Ende (auch nach einem Fehler).</summary>
-    procedure IdeEnd; virtual;
+    /// <summary>Zeit, die nicht Atlas gehört, beginnt im laufenden Aufruf: Arbeit der IDE (RunIde), ein modaler
+    /// Dialog oder eine eigene Nachrichtenschleife; ohne Wirkung, wenn nicht überschrieben.</summary>
+    procedure ModalBegin; virtual;
+    /// <summary>Die mit ModalBegin begonnene Zeit ist zu Ende (auch nach einem Fehler).</summary>
+    procedure ModalEnd; virtual;
     /// <summary>Die Quelle AName war zu langsam (Zeitlimit oder vorige Anfrage läuft noch).</summary>
     procedure ProviderSlow(const AName: string); virtual; abstract;
   end;
 
   TAtlasGuard = class
-  private const
-    cRunningMax = 32;
-    // Eintrag von RunIde: Arbeit der IDE, keine Funktion von Atlas.
-    cRunningIde = -1;
   private class var
-    // Nur der Hauptthread schreibt; der Wächter liest ohne Sperre (ganze Zahlen, Index begrenzt).
-    FRunning: array[0..cRunningMax - 1] of Integer;
-    FRunningDepth: Integer;
     FFuse: TAtlasFuse;
     FLog: TAtlasRotatingLog;
     FOnWarning: TAtlasGuardMessage;
@@ -236,15 +229,7 @@ type
     FStackOf: TAtlasGuardStackFunc;
     FOnTripped: TAtlasGuardTripped;
     FTiming: TAtlasGuardTiming;
-    /// <summary>Im Hauptthread AEntry (Ord eines Features oder cRunningIde) auflegen; Ergebnis für
-    /// LeaveRunning, -1 in anderen Threads.</summary>
-    class function EnterRunning(AEntry: Integer): Integer; static;
-    class procedure LeaveRunning(ADepth: Integer); static;
-    class procedure Warn(const AText: string); static;
     class function ErrorLine(const AWhere: string; AE: Exception): string; static;
-    /// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
-    /// </summary>
-    class function FailureKey(AE: Exception): string; static;
   public
     /// <summary>Höchstlänge einer Fehlermeldung im Protokoll; mehr könnte Quelltext enthalten.</summary>
     const cMaxMessageLength = 300;
@@ -924,18 +909,21 @@ begin
   end;
 end;
 
-class procedure TAtlasGuard.Warn(const AText: string);
+/// <summary>AText ins Protokoll und an TAtlasGuard.OnWarning (Meldungsansicht).</summary>
+procedure Warn(const AText: string);
 begin
-  Log(AText);
-  if Assigned(FOnWarning) then
+  TAtlasGuard.Log(AText);
+  if Assigned(TAtlasGuard.FOnWarning) then
     try
-      FOnWarning(TLogMarks.Plain(AText));
+      TAtlasGuard.FOnWarning(TLogMarks.Plain(AText));
     except
       // Auch die Warnung darf nicht in die IDE durchschlagen.
     end;
 end;
 
-class function TAtlasGuard.FailureKey(AE: Exception): string;
+/// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
+/// </summary>
+function FailureKey(AE: Exception): string;
 begin
   // ExceptAddr gehört zur gerade behandelten Ausnahme; Report läuft in deren except-Block.
   if ExceptAddr <> nil then
@@ -1088,6 +1076,67 @@ begin
   end;
 end;
 
+type
+  /// <summary>Was im Hauptthread gerade über TAtlasGuard.Run bzw. RunIde läuft, innerstes oben. Nur der
+  /// Hauptthread schreibt; der Einfrier-Wächter liest ohne Sperre (ganze Zahlen, Index begrenzt).</summary>
+  TRunningStack = class
+  public const
+    cMax = 32;
+    /// <summary>Eintrag von RunIde: Arbeit der IDE, keine Funktion von Atlas.</summary>
+    cIde = -1;
+  private class var
+    FEntries: array[0..cMax - 1] of Integer;
+    FDepth: Integer;
+  public
+    /// <summary>Im Hauptthread AEntry (Ord eines Features oder cIde) auflegen; Ergebnis für Leave, -1 in anderen
+    /// Threads.</summary>
+    class function Enter(AEntry: Integer): Integer; static;
+    class procedure Leave(ADepth: Integer); static;
+    /// <summary>Innerster Eintrag; False, wenn nichts läuft.</summary>
+    class function Top(out AEntry: Integer): Boolean; static;
+  end;
+
+class function TRunningStack.Enter(AEntry: Integer): Integer;
+begin
+  Result := -1;
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+  begin
+    Exit;
+  end;
+  Result := FDepth;
+  // Erst der Eintrag, dann die Tiefe: Der Wächter liest nie einen alten Eintrag unter der neuen Tiefe.
+  if Result < cMax then
+  begin
+    FEntries[Result] := AEntry;
+  end;
+  FDepth := Result + 1;
+end;
+
+class procedure TRunningStack.Leave(ADepth: Integer);
+begin
+  if ADepth >= 0 then
+  begin
+    FDepth := ADepth;
+  end;
+end;
+
+class function TRunningStack.Top(out AEntry: Integer): Boolean;
+var
+  mDepth: Integer;
+begin
+  AEntry := 0;
+  mDepth := FDepth;
+  if mDepth > cMax then
+  begin
+    mDepth := cMax;
+  end;
+  Result := mDepth > 0;
+  if Result then
+  begin
+    AEntry := FEntries[mDepth - 1];
+  end;
+end;
+
 function RunGuarded(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
 begin
   try
@@ -1104,46 +1153,12 @@ begin
   end;
 end;
 
-class function TAtlasGuard.EnterRunning(AEntry: Integer): Integer;
-begin
-  Result := -1;
-  if TThread.CurrentThread.ThreadID <> MainThreadID then
-  begin
-    Exit;
-  end;
-  Result := FRunningDepth;
-  // Erst der Eintrag, dann die Tiefe: Der Wächter liest nie einen alten Eintrag unter der neuen Tiefe.
-  if Result < cRunningMax then
-  begin
-    FRunning[Result] := AEntry;
-  end;
-  FRunningDepth := Result + 1;
-end;
-
-class procedure TAtlasGuard.LeaveRunning(ADepth: Integer);
-begin
-  if ADepth >= 0 then
-  begin
-    FRunningDepth := ADepth;
-  end;
-end;
-
 class function TAtlasGuard.CurrentFeatureName: string;
 var
-  mDepth, mEntry: Integer;
+  mEntry: Integer;
 begin
   Result := '';
-  mDepth := FRunningDepth;
-  if mDepth <= 0 then
-  begin
-    Exit;
-  end;
-  if mDepth > cRunningMax then
-  begin
-    mDepth := cRunningMax;
-  end;
-  mEntry := FRunning[mDepth - 1];
-  if (mEntry >= Ord(Low(TAtlasFeature))) and (mEntry <= Ord(High(TAtlasFeature))) then
+  if TRunningStack.Top(mEntry) and (mEntry >= Ord(Low(TAtlasFeature))) and (mEntry <= Ord(High(TAtlasFeature))) then
   begin
     Result := FeatureName(TAtlasFeature(mEntry));
   end;
@@ -1158,7 +1173,7 @@ begin
   begin
     Exit(False);
   end;
-  mDepth := EnterRunning(Ord(AFeature));
+  mDepth := TRunningStack.Enter(Ord(AFeature));
   try
     // Einmal lesen: Schaltet der Diagnosemodus mitten im Aufruf um, endet der Aufruf beim selben Rekorder.
     mTiming := FTiming;
@@ -1173,7 +1188,7 @@ begin
       mTiming.Leave(AFeature, mToken);
     end;
   finally
-    LeaveRunning(mDepth);
+    TRunningStack.Leave(mDepth);
   end;
 end;
 
@@ -1182,7 +1197,7 @@ var
   mTiming: TAtlasGuardTiming;
   mDepth: Integer;
 begin
-  mDepth := EnterRunning(cRunningIde);
+  mDepth := TRunningStack.Enter(TRunningStack.cIde);
   try
     mTiming := FTiming;
     if mTiming = nil then
@@ -1190,25 +1205,25 @@ begin
       AProc();
       Exit;
     end;
-    mTiming.IdeBegin;
+    mTiming.ModalBegin;
     try
       AProc();
     finally
-      mTiming.IdeEnd;
+      mTiming.ModalEnd;
     end;
   finally
-    LeaveRunning(mDepth);
+    TRunningStack.Leave(mDepth);
   end;
 end;
 
 { TAtlasGuardTiming }
 
-procedure TAtlasGuardTiming.IdeBegin;
+procedure TAtlasGuardTiming.ModalBegin;
 begin
   // Ohne Rekorder nichts zu tun.
 end;
 
-procedure TAtlasGuardTiming.IdeEnd;
+procedure TAtlasGuardTiming.ModalEnd;
 begin
   // Ohne Rekorder nichts zu tun.
 end;

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Text.Entities;
 
-// XML-Entities entschlüsseln (gemeinsam für Server und Plugin, ADR 0012):
+// XML-Entities entschlüsseln (gemeinsam für Server und Plugin):
 // &lt; &gt; &amp; &quot; &apos; sowie numerische &#NN; und &#xNN;
 // (auch über U+FFFF als Surrogatpaar). Unbekanntes bleibt stehen.
 

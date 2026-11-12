@@ -3,7 +3,7 @@
 // Unveränderliche Momentaufnahme eines Dokuments mit Zeilenindex.
 // Zeilenumbrüche sind CRLF, LF oder CR (LSP-Spezifikation); sie gehören zur
 // vorangehenden Zeile, zählen aber nicht zu ihrem Text. Der Zeilenindex ist
-// TLineTable aus Atlas.Text.Lines (gemeinsam mit dem Plugin, ADR 0012).
+// TLineTable aus Atlas.Text.Lines (gemeinsam mit dem Plugin).
 
 interface
 

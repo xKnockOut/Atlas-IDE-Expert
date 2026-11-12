@@ -92,7 +92,7 @@ begin
 end;
 
 /// <summary>Innerste Routine, die AOffset enthält; nil außerhalb von Routinen. Schleife statt Rekursion
-/// (Bericht M1): dem ersten Kind folgen, das AOffset enthält.</summary>
+///: dem ersten Kind folgen, das AOffset enthält.</summary>
 function InnermostRoutine(ARoot: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
   mIndex: Integer;

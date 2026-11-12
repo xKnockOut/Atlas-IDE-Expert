@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.CompletionRequest.Tests;
 
-// Anfrage der Vervollständigung (Code-Review S-01, Block H Schritt 2): Zeilenhelfer mit der Semantik der
+// Anfrage der Vervollständigung: Zeilenhelfer mit der Semantik der
 // früheren freien Funktionen, Zeilenende, Offset wie das Dokument und Index der eigenen Unit.
 
 interface

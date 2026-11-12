@@ -82,6 +82,7 @@ implementation
 
 uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Product.Version,
   Atlas.Text.LogMarks;
 
@@ -101,7 +102,8 @@ begin
   FDiagnosticsRef := FDiagnostics;
   FDiagnostics.TimeoutMs := CurrentRequestTimeout;
   FDiagnostics.IndexLoading := IndexLoading;
-  FServices.Dispatcher.Observer := FDiagnosticsRef;
+  // Laufende Anfragen für die Statusdatei (#1901); der Beobachter reicht alles an das Diagnoselog weiter.
+  FServices.Dispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, FDiagnosticsRef);
 end;
 
 destructor TShellSession.Destroy;

@@ -510,7 +510,7 @@ begin
     FText.AutoSize := False;
     FText.AutoSize := True;
     FText.Left := ATextLeft;
-    FText.Top := Result + 2;
+    FText.Top := Result + FText.ScaleValue(2);
     Result := FText.Top + FText.Height;
   end;
   if FAge.Visible or FPosition.Visible then

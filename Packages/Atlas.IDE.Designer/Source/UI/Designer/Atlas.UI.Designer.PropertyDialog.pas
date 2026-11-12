@@ -16,7 +16,8 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Designer.Dialog;
 
 type
   {$SCOPEDENUMS ON}
@@ -32,16 +33,18 @@ type
     HasForm: Boolean;
   end;
 
-  TAtlasPropertyDialog = class(TForm)
+  TAtlasPropertyDialog = class(TAtlasDesignerDialog)
   public const
     cDialogWidth = 480;
     cMaxHistory = 10;
+  private const
+    /// <summary>Linker und rechter Rand einer Zeile.</summary>
+    // Voll qualifiziert: In der Klassendeklaration sieht Delphi geerbte Konstanten noch nicht (E2003).
+    cRowMargins = 2 * TAtlasDesignerDialog.cGap;
   private
     FQuery: TComboBox;
     FError: TLabel;
     FScopes: array[TAtlasPropertyScope] of TRadioButton;
-    function AddRow: TFlowPanel;
-    procedure AddLabel(AParent: TWinControl; const ACaption: string);
     procedure AddScopes(const AOptions: TAtlasPropertyOptions);
     procedure AddButtons;
     procedure CheckQuery(Sender: TObject; var ACanClose: Boolean);
@@ -63,7 +66,6 @@ uses
   Atlas.UI.Designer.Strings;
 
 const
-  cGap = 10;
   cRadioGap = 24;
 
 { TAtlasPropertyDialog }
@@ -74,13 +76,7 @@ var
   mHistory: string;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchTitle);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
-  Canvas.Font := Font;
+  InitDialog(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchTitle), cDialogWidth, bsDialog);
   OnCloseQuery := CheckQuery;
 
   mRow := AddRow;
@@ -88,10 +84,15 @@ begin
   FQuery := TComboBox.Create(Self);
   FQuery.Parent := mRow;
   FQuery.Width := ScaleValue(cDialogWidth) - Canvas.TextWidth(TAtlasDesignerStrings.Text(
-    TAtlasDesignerTextId.PropertySearchCondition)) - ScaleValue(cGap * 3);
-  for mHistory in AOptions.History do
-  begin
-    FQuery.Items.Add(mHistory);
+    TAtlasDesignerTextId.PropertySearchCondition)) - ScaleValue(cRowMargins + cGap);
+  FQuery.Items.BeginUpdate;
+  try
+    for mHistory in AOptions.History do
+    begin
+      FQuery.Items.Add(mHistory);
+    end;
+  finally
+    FQuery.Items.EndUpdate;
   end;
   FQuery.Text := AOptions.Query;
   mRow := AddRow;
@@ -104,30 +105,6 @@ begin
   AddScopes(AOptions);
   AddButtons;
   ActiveControl := FQuery;
-end;
-
-function TAtlasPropertyDialog.AddRow: TFlowPanel;
-begin
-  Result := TFlowPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AutoSize := True;
-  Result.BevelOuter := bvNone;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
-  Result.Top := ScaleValue(2000) + ComponentCount;
-end;
-
-procedure TAtlasPropertyDialog.AddLabel(AParent: TWinControl; const ACaption: string);
-var
-  mLabel: TLabel;
-begin
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := AParent;
-  mLabel.Caption := ACaption;
-  mLabel.AlignWithMargins := True;
-  mLabel.Margins.SetBounds(0, ScaleValue(3), cGap div 2, 0);
 end;
 
 procedure TAtlasPropertyDialog.AddScopes(const AOptions: TAtlasPropertyOptions);
@@ -178,7 +155,7 @@ begin
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 procedure TAtlasPropertyDialog.CheckQuery(Sender: TObject; var ACanClose: Boolean);

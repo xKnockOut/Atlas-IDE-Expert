@@ -67,7 +67,7 @@ type
     class function LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
       out AAnonymizer: ILogAnonymizer): ILogSink; static;
     /// <summary>Hängt die Logdatei AFileName (--log) ab ALevel an ALogger; gemeinsam für LSP-Server und
-    /// MCP-Modus (D-08). Lässt sie sich nicht öffnen, steht der Fehler im Log und das Ergebnis ist False.
+    /// MCP-Modus. Lässt sie sich nicht öffnen, steht der Fehler im Log und das Ergebnis ist False.
     /// Ohne AFileName geschieht nichts (True).</summary>
     class function AddLogFile(ALogger: TLogger; const AFileName, AFallbackTag: string; ANames: Boolean;
       ALevel: TLogLevel; out AAnonymizer: ILogAnonymizer): Boolean; static;

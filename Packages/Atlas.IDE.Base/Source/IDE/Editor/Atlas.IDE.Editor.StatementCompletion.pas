@@ -58,30 +58,13 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.Host;
 
 const
   // Wie ClassBodiesTag und CaseCompleteTag des Servers (Atlas.Common.Editing.CodeActions).
   cClassBodiesTag = 'class.bodies';
   cCaseCompleteTag = 'case.complete';
-
-/// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein
-/// Rückgängig-Schritt.</summary>
-procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
-  const AInsert: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
-  if AInsert <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
 
 function LineCount(const AText: string): Integer;
 var
@@ -178,23 +161,6 @@ begin
   end;
 end;
 
-/// <summary>Fläche, über der die Auswahl erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
-end;
-
 /// <summary>Gerüst nach try erfragen und damit vervollständigen.</summary>
 procedure ChooseTryKind;
 var
@@ -227,7 +193,7 @@ begin
           end;
         end);
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 /// <summary>Cursor auf Zeile ALine (ab 0), Zeichen ACharacter in ALines; nichts, wenn es die Zeile nicht gibt.
@@ -387,7 +353,7 @@ begin
     mCursorCharacter);
   if TAtlasLineMover.Difference(mText, mFinal, mStart, mOldLength, mInsert) then
   begin
-    WriteBuffer(mView.Buffer, mText, mStart, mOldLength, mInsert);
+    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mStart, mOldLength, mInsert);
   end;
   PlaceCursor(mView, mFinal.Split([#13#10, #10]), mCursorLine, mCursorCharacter,
     TAtlasEditorBuffer.TabWidth(mView.Buffer));

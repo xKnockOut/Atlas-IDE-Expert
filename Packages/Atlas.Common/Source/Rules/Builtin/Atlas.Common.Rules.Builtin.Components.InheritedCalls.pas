@@ -191,7 +191,7 @@ var
   mChild: Integer;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := False;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -705,7 +705,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(ANode);
@@ -897,7 +897,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := nil;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -935,7 +935,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -1122,7 +1122,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

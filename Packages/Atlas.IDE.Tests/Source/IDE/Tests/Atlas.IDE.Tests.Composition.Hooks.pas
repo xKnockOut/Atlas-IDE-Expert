@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Tests.Composition.Hooks;
 
-// Haken des Testläufers (A-09), aus Atlas.IDE.Tests.Composition gelöst; die
+// Haken des Testläufers, aus Atlas.IDE.Tests.Composition gelöst; die
 // Composition setzt sie in StartTests:
 // - OnBuild: vor den Tests bauen über IAtlasBuildJobs der Build-Pipeline
 //   (Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht),

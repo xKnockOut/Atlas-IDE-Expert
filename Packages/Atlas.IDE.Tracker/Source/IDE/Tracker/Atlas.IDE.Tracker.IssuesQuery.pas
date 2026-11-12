@@ -6,6 +6,8 @@
 // zur Zeit. Ohne Token kein Netzzugriff. Dazu die Schaltflächen der Kachel,
 // die neu abfragen: „Jetzt abfragen“, „Zugang hinterlegen“, Wahl der Abfrage
 // (#1262), „Abfragen bearbeiten …“ und „zuordnen …“ (#1261).
+// Bei „Alle Tracker-Projekte“ (#1928) kommen die Projekte nacheinander dran:
+// je Fetch das erste fällige; „Jetzt abfragen“ fragt jedes einmal.
 // Protokoll anonym: Anbieter, Anzahl bzw. Fehlerart.
 
 interface
@@ -41,6 +43,10 @@ type
     FServices: TAtlasIdeIssuesServices;
     FStatus: TAtlasIdeIssuesStatus;
     FWorker: TAtlasWorkerSlot;
+    // Bei „Alle“ nach „Jetzt abfragen“ noch zu fragen (#1928).
+    FForced: TArray<string>;
+    /// <summary>Nächstes Projekt: zuerst die noch zu fragenden, sonst das erste fällige; False ohne.</summary>
+    function NextProject(AForce: Boolean; out AProject: string; out AForced: Boolean): Boolean;
     function Prepare(AForce: Boolean; out AJob: TAtlasIssuesFetchJob): Boolean;
     procedure Fetched(const AJob: TAtlasIssuesFetchJob);
     /// <summary>Fetch(False) über die Nachrichtenschleife, z. B. nach einer Abfrage.</summary>
@@ -77,7 +83,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -145,9 +151,40 @@ begin
   FWorker.Release(AWait);
 end;
 
+function TAtlasIdeIssuesQuery.NextProject(AForce: Boolean; out AProject: string; out AForced: Boolean): Boolean;
+var
+  mProjects: TArray<string>;
+  mProject: string;
+begin
+  mProjects := FContext.Selection.Projects;
+  if AForce then
+  begin
+    FForced := Copy(mProjects);
+  end;
+  AForced := Length(FForced) > 0;
+  if AForced then
+  begin
+    AProject := FForced[0];
+    Delete(FForced, 0, 1);
+    Exit(True);
+  end;
+  for mProject in mProjects do
+  begin
+    if TAtlasMyIssues.Due(FContext.StateOf(mProject), FContext.CachedTargetOf(mProject).Target,
+      TAtlasIdeIssuesTargets.NowUtc, False) then
+    begin
+      AProject := mProject;
+      Exit(True);
+    end;
+  end;
+  AProject := '';
+  Result := False;
+end;
+
 function TAtlasIdeIssuesQuery.Prepare(AForce: Boolean; out AJob: TAtlasIssuesFetchJob): Boolean;
 var
   mCached: TAtlasIssuesCachedTarget;
+  mForced: Boolean;
 begin
   AJob := Default(TAtlasIssuesFetchJob);
   // welcomePage.issues aus: kein Netzzugriff. Eine Abfrage zur Zeit; die nächste kommt beim nächsten Anzeigen.
@@ -158,14 +195,19 @@ begin
   begin
     Exit;
   end;
-  AJob.Project := FContext.CurrentProject;
+  Result := NextProject(AForce, AJob.Project, mForced);
+  if not Result then
+  begin
+    Exit;
+  end;
   mCached := FContext.CachedTargetOf(AJob.Project);
   AJob.Target := mCached.Target;
   if mCached.QueryIndex >= 0 then
   begin
     AJob.QueryName := mCached.Queries[mCached.QueryIndex].Name;
   end;
-  Result := TAtlasMyIssues.Due(FContext.StateOf(AJob.Project), AJob.Target, TAtlasIdeIssuesTargets.NowUtc, AForce);
+  Result := TAtlasMyIssues.Due(FContext.StateOf(AJob.Project), AJob.Target, TAtlasIdeIssuesTargets.NowUtc,
+    mForced);
   if Result then
   begin
     AJob.Provider := FContext.ProviderOf(AJob.Target.Provider);
@@ -291,11 +333,11 @@ begin
       begin
         Exit;
       end;
-      mTarget := FContext.TargetOf(FContext.CurrentProject);
+      mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (mProvider = nil) or (mTarget.Server = '') then
       begin
-        FContext.Report(TAtlasStrings.Text(TAtlasTextId.TrackerLoginNoTracker));
+        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginNoTracker));
       end
       else if FContext.Hooks.Credentials(mProvider, mTarget) then
       begin
@@ -320,7 +362,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasStrings.Text(TAtlasTextId.TrackerLoginNoTracker));
+        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginNoTracker));
       end
       else if FContext.Hooks.Credentials(mProvider, mTarget) then
       begin
@@ -333,23 +375,32 @@ procedure TAtlasIdeIssuesQuery.SelectQuery(const AName: string);
 var
   mProject: string;
   mState: TAtlasIssuesState;
+  mChanged: Boolean;
 begin
-  mProject := FContext.CurrentProject;
-  if not FContext.Started or (mProject = '') then
+  if not FContext.Started then
   begin
     Exit;
   end;
-  mState := FContext.StateOf(mProject);
-  if SameText(mState.Selected, AName) then
+  // Bei „Alle“ (#1928) für jedes Tracker-Projekt, sonst nur für das gezeigte.
+  mChanged := False;
+  for mProject in FContext.Selection.Projects do
   begin
-    Exit;
+    mState := FContext.StateOf(mProject);
+    if SameText(mState.Selected, AName) then
+    begin
+      Continue;
+    end;
+    // Je Projekt gemerkt; das neue Ziel (andere Abfrage) ist sofort fällig, unabhängig von DueMinutes.
+    mState.Selected := AName;
+    FContext.SaveState(mProject, mState);
+    FContext.ForgetTarget(mProject);
+    mChanged := True;
   end;
-  // Je Projekt gemerkt; das neue Ziel (andere Abfrage) ist sofort fällig, unabhängig von DueMinutes.
-  mState.Selected := AName;
-  FContext.SaveState(mProject, mState);
-  FContext.ForgetTarget(mProject);
-  FContext.Changed;
-  Fetch(False);
+  if mChanged then
+  begin
+    FContext.Changed;
+    Fetch(False);
+  end;
 end;
 
 procedure TAtlasIdeIssuesQuery.EditQueries;
@@ -379,7 +430,7 @@ begin
       mProject: string;
       mAssign: TProc<string>;
     begin
-      mProject := FContext.CurrentProject;
+      mProject := FContext.Selection.CurrentProject;
       mAssign := FContext.Hooks.AssignProject;
       if not FContext.CanAssign or (mProject = '') or not Assigned(mAssign) then
       begin

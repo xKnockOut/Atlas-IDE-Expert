@@ -17,7 +17,7 @@ type
     procedure ZeroTimeoutDisablesWatching;
     [Test]
     procedure SetTimeoutAppliesToLaterRequests;
-    /// <summary>Code-Review A-06: nebenläufige Anfrage wird beim Ablauf genau einmal beantwortet.</summary>
+    /// <summary>Nebenläufige Anfrage wird beim Ablauf genau einmal beantwortet.</summary>
     [Test]
     procedure AnswersConcurrentRequestOnceAfterTimeout;
     [Test]

@@ -111,7 +111,7 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Naming,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.MyIssues,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuePreview,
@@ -272,7 +272,7 @@ begin
   begin
     FWatch.Enabled := True;
   end;
-  mProject := FContext.CurrentProject;
+  mProject := FContext.Selection.CurrentProject;
   mData := FContext.Actions.ViewOf(mProject);
   FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, FServices.Options.CommitPattern);
   try
@@ -291,9 +291,10 @@ begin
   end;
   FServices.SyncTime(mProject, mData.Active.Key);
   EnsureLine;
-  mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusLine, [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
+  mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStatusLine,
+    [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
   FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesText.TileText(mData),
-    TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStatusHint));
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStatusHint));
   UpdateChecklist(mProject, mData.Active.Key);
   UpdateAttach(mData.Active.Key);
 end;
@@ -333,10 +334,11 @@ begin
     FChecklistLine := NewLine(TAtlasMyIssues.cChecklistStatusId, TAtlasMyIssues.cChecklistStatusOrder, mAction,
       FChecklistLineRef);
   end;
-  mText := TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistStatusLine, [AKey, mProgress.Text]);
+  mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistStatusLine, [AKey, mProgress.Text]);
   FChecklistLine.Update(mText, TAtlasStatusState.Neutral, mText, mText,
-    TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistProgress, [mProgress.Done, mProgress.Total]) + sLineBreak +
-    TAtlasStrings.Text(TAtlasTextId.IssueChecklistStatusHint));
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress, [mProgress.Done, mProgress.Total]) +
+    sLineBreak +
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistStatusHint));
 end;
 
 procedure TAtlasIdeIssuesStatus.RemoveChecklist;
@@ -356,7 +358,7 @@ begin
       begin
         Exit;
       end;
-      mData := FContext.Actions.ViewOf(FContext.CurrentProject);
+      mData := FContext.Actions.ViewOf(FContext.Selection.CurrentProject);
       if not mData.Active.Active or (Trim(mData.Active.Key) = '') then
       begin
         Exit;
@@ -364,7 +366,7 @@ begin
       // In der Vorschau an der Liste; ist sie aus, im Browser.
       if (FServices.Preview <> nil) and TAtlasIdeIssuePreview.Active then
       begin
-        FServices.Preview.ShowChecklist(FContext.TargetOf(FContext.CurrentProject), mData.Active.Key);
+        FServices.Preview.ShowChecklist(FContext.TargetOf(FContext.Selection.CurrentProject), mData.Active.Key);
       end
       else
       begin
@@ -391,8 +393,8 @@ begin
     FAttachLine := NewLine(TAtlasMyIssues.cAttachStatusId, TAtlasMyIssues.cAttachStatusOrder, mAction,
       FAttachLineRef);
   end;
-  FAttachLine.Update(TAtlasStrings.Fmt(TAtlasTextId.AttachStatusLine, [AKey]), TAtlasStatusState.Neutral, AKey,
-    AKey, TAtlasStrings.Text(TAtlasTextId.AttachStatusHint));
+  FAttachLine.Update(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachStatusLine, [AKey]), TAtlasStatusState.Neutral,
+    AKey, AKey, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachStatusHint));
 end;
 
 procedure TAtlasIdeIssuesStatus.RemoveAttach;
@@ -513,7 +515,7 @@ begin
   mProject := '';
   if FContext.Started and TAtlasIdeIssuesTargets.Active then
   begin
-    mProject := FContext.CurrentProject;
+    mProject := FContext.Selection.CurrentProject;
   end;
   Result := TAtlasTrackerIssuesText.TitleText(FContext.ProjectName(mProject), (mProject <> '') and
     (Length(FServices.UnseenOf(FContext.TargetOf(mProject))) > 0));

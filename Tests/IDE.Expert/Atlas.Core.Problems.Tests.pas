@@ -670,7 +670,7 @@ var
   Colors: TAtlasColors;
   Faded: TAtlasProblem;
 begin
-  // Editor und Hover gleich blass (D-07).
+  // Editor und Hover gleich blass.
   Colors := TAtlasColors.Dark;
   Faded := Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Warning);
   Faded.Stale := True;
