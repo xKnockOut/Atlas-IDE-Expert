@@ -129,7 +129,7 @@ var
   mFont: TFont;
   mTexts: TArray<string>;
   mText, mLine: string;
-  mBitmap: TBitmap;
+  mBitmap: Vcl.Graphics.TBitmap;
 begin
   Result := -1;
   mFont := FontOf(AControl);
@@ -138,7 +138,7 @@ begin
   begin
     Exit;
   end;
-  mBitmap := TBitmap.Create;
+  mBitmap := Vcl.Graphics.TBitmap.Create;
   try
     mBitmap.Canvas.Font.Assign(mFont);
     for mText in mTexts do
@@ -159,7 +159,7 @@ end;
 /// <summary>Anteil des Steuerelements neben dem Text bei 96 dpi.</summary>
 function ExtraOf(AControl: TControl): Integer;
 var
-  mGlyph: TBitmap;
+  mGlyph: Vcl.Graphics.TBitmap;
   mCount, mSpacing: Integer;
 begin
   Result := 0;

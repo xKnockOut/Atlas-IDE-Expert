@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerSyntax: array[0..188] of string = (
+  cCatalogLinesDeCompilerSyntax: array[0..198] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntaxfehler",',
@@ -274,6 +274,20 @@ const
     'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur k' +
     'leine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf ' +
     'der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."',
+    '    },',
+    '{',
+    '      "id": "exit-array-literal",',
+    '      "name": "Exit mit Array-Literal",',
+    '      "description": "Exit([...]) in einer Funktion, deren Ergebnis ein dynamisches Array ist (TArray<T>, array of T, TBytes, TStringDynArray … oder ein Typ derselben Unit, der so deklariert ist). Del' +
+    'phi liest die Klammern in Exit als Mengenkonstruktor, nicht als Array-Literal, und lehnt den Aufruf ab (wie E2001 bzw. E2010); Free Pascal übersetzt ihn, deshalb fällt der Fehler erst beim Bau mit Del' +
+    'phi auf. Result := [...] ist in Ordnung. Exit() in einer anonymen Methode, ein leeres [] und Funktionen mit anderem Ergebnistyp bleiben still. Korrektur (sicher): Result := [...]; Exit;."',
+    '    },',
+    '{',
+    '      "id": "uses-order-hides-type",',
+    '      "name": "Unit verdeckt einen Typ",',
+    '      "description": "Winapi.Windows (bzw. Windows) steht in uses hinter Vcl.Graphics, FMX.Graphics oder Graphics, und die Unit nennt TBitmap. Die letzte Unit gewinnt, TBitmap meint also den Record au' +
+    's Winapi.Windows: TBitmap.Create und die Methoden der Grafikklasse werden nicht gefunden (wie E2003). uses des interface- und implementation-Teils zählen zusammen. TBitmap hinter einem Punkt (Vcl.Grap' +
+    'hics.TBitmap) bleibt still. Korrektur (sicher) nur, wenn beide Units in derselben uses-Liste stehen: Winapi.Windows vor die Grafik-Unit stellen."',
     '    },',
     '{',
     '      "id": "jump-outside-allowed-scope",',

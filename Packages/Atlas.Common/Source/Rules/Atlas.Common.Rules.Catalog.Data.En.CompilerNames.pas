@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerNames: array[0..719] of string = (
+  cCatalogLinesEnCompilerNames: array[0..733] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Deprecated or bound symbol",',
@@ -838,6 +838,22 @@ const
     '        "E2515",',
     '        "E2568",',
     '        "E2571"',
+    '      ],',
+    '      "level": "B"',
+    '    },',
+    '{',
+    '      "id": "interface-uses-missing",',
+    '      "name": "Unit only in the uses of the implementation section",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A type in the interface section (field, parameter, result, property, ancestor) comes from a unit that is only listed in the uses of the implementation section. There the name is ' +
+    'not known yet (like E2003). Reported when the name does not resolve in the interface section and exactly such a unit declares it in its interface part; each unit once per file. Quick fix: move the uni' +
+    't to the uses of the interface section (offered when the interface section has a uses clause).",',
+    '      "bad": "interface\nuses\n  System.SysUtils;\ntype\n  TFenster = class\n    FListe: TStringList;\n  end;\nimplementation\nuses\n  System.Classes;",',
+    '      "good": "interface\nuses\n  System.SysUtils, System.Classes;\ntype\n  TFenster = class\n    FListe: TStringList;\n  end;\nimplementation",',
+    '      "compilerCodes": [',
+    '        "E2003"',
     '      ],',
     '      "level": "B"',
     '    },',

@@ -17,6 +17,9 @@
 // Speicher und Referenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert meldet sie weiter.
 // Den Code H2077 nennt die Meldung nur bei bekanntem, nicht verwaltetem Typ: Für Strings, dynamische
 // Arrays, Variants und Records mit solchen Feldern meldet dcc nichts (#1383, Cm.E2056).
+// Result prüft sie wie eine lokale Variable, aber nur bei angegebenem, nicht verwaltetem Ergebnistyp
+// (#1345): Vorbelegung Result := False vor try, Schleife oder case, nach der jeder Weg neu zuweist oder mit
+// Exit(Wert) endet. Gelesen ist Result am normalen Ende der Routine, nicht beim Verlassen über eine Ausnahme.
 //
 // unused-parameter nimmt aus:
 // - Parameter namens Sender und Routinen mit einem solchen (Ereignis-Handler),
@@ -890,6 +893,7 @@ type
     function WriteUnread(AWrite: TSyntaxNode): Boolean;
     procedure CheckName;
     function LocalNames: TArray<string>;
+    function UnmanagedResult: Boolean;
     procedure CheckRoutine(ARoutine: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -984,7 +988,19 @@ end;
 function TUnusedAssignmentCheck.IsRead(ADefinition: TFlowNode): Boolean;
 var
   mRead: TSyntaxNode;
+  mDefinition: TFlowNode;
 begin
+  // Result liest der Aufrufer am normalen Ende.
+  if SameText(FName, 'Result') then
+  begin
+    for mDefinition in FGraph.ReachingDefinitions(FGraph.ExitNode, FName).Definitions do
+    begin
+      if mDefinition = ADefinition then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
   for mRead in FReads do
   begin
     if ReadReaches(mRead, ADefinition) then
@@ -1100,6 +1116,31 @@ begin
       Result := Result + SplitNames(mDecl.Name);
       AddTypes(mDecl);
     end;
+  end;
+  // Eine lokale Variable namens Result gibt es nicht; FTypes kennt sie sonst schon.
+  if not FTypes.ContainsKey('result') and UnmanagedResult then
+  begin
+    Result := Result + ['Result'];
+  end;
+end;
+
+/// <summary>Hat die Routine einen angegebenen, nicht verwalteten Ergebnistyp? Merkt ihn unter "result".</summary>
+function TUnusedAssignmentCheck.UnmanagedResult: Boolean;
+var
+  mHeader: TSyntaxNode;
+  mTypeText: string;
+begin
+  Result := False;
+  mHeader := FRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
+  begin
+    Exit;
+  end;
+  mTypeText := FManaged.NodeTypeText(mHeader);
+  Result := (mTypeText <> '') and (FManaged.Managed(mTypeText, 0) = '') and not FManaged.CustomManaged(mTypeText, 0);
+  if Result then
+  begin
+    FTypes.AddOrSetValue('result', mTypeText);
   end;
 end;
 
