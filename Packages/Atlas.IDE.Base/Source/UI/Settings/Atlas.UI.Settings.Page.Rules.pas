@@ -95,6 +95,9 @@ begin
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsLiveDelay)));
   // Liste „Atlas-Probleme“ im Meldungsfenster (#398), seit #909 nur noch zusätzlich zum Fenster.
   BindCheck('ProblemsMessageList', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsList)));
+  // Fehler der IDE (Error Insight) neben die Atlas-Befunde (#1819).
+  BindCheck('ProblemsIdeErrors',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsIdeErrors)));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsCompilerMerge),
     [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsCompilerMergeMerge),

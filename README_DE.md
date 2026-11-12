@@ -63,7 +63,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
 - **315 Prüfregeln** schon beim Tippen: 205 Fehler, 100 Code-Smells, 10 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
-- **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an
+- **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
 - **Experimentelle Stilregeln mit wenig Fehlalarmen:** `hardcoded-string` übergeht Protokoll-, Prüf- und Vergleichsaufrufe, Datumsmasken und Markup; `magic-number` übergeht die DPI-Basis 96, volle Bitmasken, Zeiteinheiten und Punktlisten; `naming-prefix` lässt Ereignis-Handlern, die der Code zuweist, ihre Parameternamen; `public-field` übergeht Hilfsklassen unter `private type`
 - **Typen aus installierten Packages:** Die IDE meldet Atlas die Typen ihrer Packages (auch ohne .pas). „Typ ist nicht deklariert“ schweigt für sie, die Schnellkorrektur schlägt ihre Unit vor, die Vervollständigung bietet sie mit `uses`-Eintrag an
@@ -72,7 +72,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Umbauen und Code-Aktionen](docs/features/de/Umbauen.md)
 - **Umbenennen** projektweit samt Formularen, **Signatur ändern**, **sicheres Löschen**
-- **Methode extrahieren, Variable einführen, `if` ⇄ `case`** und viele weitere Umwandlungen
+- **Methode extrahieren, Variable einführen, `if` ⇄ `case`** und viele weitere Umwandlungen; *Methode extrahieren* ersetzt auf Wunsch auch gleiche Stellen der Unit, jede in der Vorschau abwählbar
 - **Klassenaktionen:** Interface implementieren, Interface oder Basisklasse herauslösen, Properties erzeugen
 - **uses:** fehlende Units ergänzen, sortieren, ungenutzte entfernen; eine Unit gilt nur als benutzt, wenn ein Name wirklich zu ihr aufgelöst wird, so wie dcc entscheidet (Mitglieder ihrer Klassen und später verdeckte Namen zählen nicht, Aufzählungswerte, Helper, Attribute und inline-Rümpfe schon)
 - **Schnellkorrekturen** für viele Regeln (Alt+Enter) und **Atlas-Änderungen rückgängig** über Dateien hinweg
@@ -97,7 +97,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
-- **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten
+- **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten; „Weiterarbeiten“ merkt sich den Arbeitsstand je Issue (Reiter „Issues“) und setzt ihn mit „Fortsetzen“ auf dem Branch des Issues fort
 - **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE; „Meine Issues“ zeigt auf Wunsch ein festes oder alle Tracker-Projekte, mit Arbeitskopien je Tracker-Projekt
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
 - **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Module) und rechtsbündigen Tastenkürzeln
@@ -115,7 +115,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Sprache wie die IDE** (Deutsch oder Englisch), auch Issue-Tracker, Willkommensseite und Debugger; unveränderte Vorgabetexte wie Textbausteine wechseln mit; ebenso Meldungen, Statuszeilen, Hinweise der Vervollständigung, Code-Vorlagen, Hinweise zu Serverabstürzen und das Aufrufdiagramm; außerdem Hinweise zu ungültigen Projektaufgaben, die Antworten von IDE-Builds für Claude Code und die Fragen des pre-commit-Hooks für betroffene Tests; dazu Meldungen und Korrekturen aller Prüfregeln; und die Antworten des Servers: Meldungen, Codeaktionen, Hover, MCP-Antworten, Berichte und Architekturkarte sowie die Meldungen von `--check` und die Beschreibungen der MCP-Werkzeuge; ohne `language` in settings.json folgt der Server der Sprache, die die IDE tatsächlich zeigt (geladene Ressourcendateien, dann `Locales` in der Registry, dann Windows), `atlas.log` nennt die erkannte Sprache und ihre Quelle
 
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
-- **32 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
+- **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

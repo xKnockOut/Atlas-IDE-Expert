@@ -1867,6 +1867,13 @@
           "x-description-en": "Code actions \"Extract method\" (selected statements become a new method or routine; parameters by data flow: only read const, written and then read var or out, only inside local variable), \"Introduce variable\" (also for all textually equal occurrences in the block) and \"Extract constant\" (in the routine or in the unit). Inline variable or var section according to inlineVar.",
           "x-issue": "#50"
         },
+        "extractMethodDuplicates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Zu „Methode extrahieren“ die zweite Aktion „Methode extrahieren und gleiche Stellen ersetzen“: Sie sucht in allen Routinen der Unit Anweisungsfolgen, die der Auswahl textgleich sind (Kommentare, Leerraum und Groß-/Kleinschreibung zählen nicht), und ersetzt sie durch denselben Aufruf. Angeboten wird eine Stelle nur, wenn dort dieselbe neue Methode entstünde: gleiche Klasse bzw. Ebene, gleiche Bedeutung der Namen, gleiche Parameterliste nach Datenfluss; nicht in with-Rümpfen. Die Vorschau listet die Stellen zum Abwählen.",
+          "x-description-en": "For \"Extract method\" the second action \"Extract method and replace equal places\": it searches all routines of the unit for statement sequences that are textually equal to the selection (comments, whitespace and case do not count) and replaces them with the same call. A place is only offered if the same new method would result there: same class or level, same meaning of the names, same parameter list by data flow; not in with bodies. The preview lists the places for deselecting.",
+          "x-issue": "#2054"
+        },
         "completeCase": {
           "type": "boolean",
           "default": true,

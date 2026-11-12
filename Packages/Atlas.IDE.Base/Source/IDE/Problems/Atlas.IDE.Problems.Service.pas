@@ -120,6 +120,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.RuleActions,
+  Atlas.IDE.Problems.IdeErrors,
   Atlas.IDE.Problems.Window,
   Atlas.IDE.Problems.Files,
   Atlas.IDE.Foundation.Navigation,
@@ -530,6 +531,7 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   AFrame.ShowCompilerCode := mSettings.ProblemsShowCompilerCode;
+  AFrame.ShowIdeErrors := TAtlasIdeErrorSource.Enabled;
   AFrame.ApplySettings(ScopeOf(mSettings.ProblemsWindowScope), GroupingOf(mSettings.ProblemsWindowGroupBy),
     mSettings.ProblemsWindowColumns, mSettings.ProblemsWindowCompiler);
   AFrame.ApplyScopeSettings(mSettings.ProblemsWindowScopeProjects, mSettings.ProblemsWindowScopeProject);
@@ -817,6 +819,7 @@ begin
   if mFrame <> nil then
   begin
     mFrame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
+    mFrame.ShowIdeErrors := TAtlasIdeErrorSource.Enabled;
     mFrame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
       Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
     mFrame.ApplyScopeSettings(Settings.ProblemsWindowScopeProjects, Settings.ProblemsWindowScopeProject);

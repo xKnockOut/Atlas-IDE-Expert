@@ -71,6 +71,7 @@ Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Editing.DocComments.Tests
 Atlas.Common.Editing.EnumTables.Tests
 Atlas.Common.Editing.ExpressionText.Tests
+Atlas.Common.Editing.Extract.Duplicates.Tests
 Atlas.Common.Editing.Extract.Shared.Tests
 Atlas.Common.Editing.Extract.Tests
 Atlas.Common.Editing.ExtractInterface.Tests
@@ -171,6 +172,7 @@ Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
+Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
@@ -292,12 +294,14 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
 Atlas.Core.Designer.ExtractFrame.Tests
 Atlas.Core.Designer.EventMap.Tests
 Atlas.Core.Designer.FormUnit.Tests
+Atlas.Core.Tracker.IssueWork.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests

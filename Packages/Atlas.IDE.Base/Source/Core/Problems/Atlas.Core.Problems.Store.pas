@@ -41,6 +41,13 @@
 // bei einer reinen Löschung (die geänderte Stelle ist im neuen Text leer)
 // die Meldungen weg, die ganz in den gelöschten Zeilen lagen, statt blass
 // auf die Folgezeile zu rutschen; bis zur nächsten Antwort des Servers.
+// Fehler der IDE (#1819, problems.ideErrors): SetIdeErrors ersetzt die
+// Fehler aus Error Insight einer Datei. Sie stehen nicht in ForFile (keine
+// Wellenlinie, kein Hover, keine Zähler: die IDE zeichnet ihre Fehler
+// selbst), sondern nur in WithIde für das Fenster „Atlas-Prüfung“, dort mit
+// den Atlas-Befunden abgeglichen (Atlas.Core.Problems.IdeErrors). Wie
+// Befunde von Aufgaben gelten sie für den Text, den die IDE sah: Bei Edit
+// fallen sie in der geänderten Stelle weg, dahinter verschieben sie sich.
 
 interface
 
@@ -76,6 +83,8 @@ type
       FTests: TArray<TAtlasProblem>;
       /// <summary>Befunde von Projektaufgaben (#900), Source = Name der Aufgabe.</summary>
       FTasks: TArray<TAtlasProblem>;
+      /// <summary>Fehler aus Error Insight der IDE (#1819), Source "IDE".</summary>
+      FIde: TArray<TAtlasProblem>;
       /// <summary>Diagnosen des Servers kamen schon (Update); False bei einer Datei nur mit Tests.</summary>
       FFromServer: Boolean;
       // ForFile bzw. Inactive, bis sich etwas ändert.
@@ -109,6 +118,13 @@ type
     constructor Create;
     destructor Destroy; override;
     class function Key(const AFileName: string): string; static;
+    /// <summary>Fehler der IDE für AFileName (#1819): ersetzt die bisherigen; Positionen zum Text der letzten
+    /// Prüfung. Ohne Eintrag der Datei geschieht nichts.</summary>
+    procedure SetIdeErrors(const AFileName: string; const AErrors: TArray<TAtlasProblem>);
+    /// <summary>Fehler der IDE aller Dateien entfernen (problems.ideErrors aus).</summary>
+    procedure ClearIdeErrors;
+    /// <summary>Fehler der IDE der Datei, wie zuletzt gesetzt und mitgeführt.</summary>
+    function IdeErrors(const AFileName: string): TArray<TAtlasProblem>;
     property Version: Integer read FVersion;
   end;
 
@@ -152,6 +168,9 @@ type
     function TaskNames: TArray<string>;
     /// <summary>Zahl der Befunde der Aufgabe ATask, auch ausgeblendet.</summary>
     function TaskCount(const ATask: string): Integer;
+    /// <summary>ForFile mit den Fehlern der IDE abgeglichen (#1819): bestätigte Befunde mit IdeConfirmed, übrige
+    /// Fehler der IDE dazu. Ohne Fehler der IDE gleich ForFile.</summary>
+    function WithIde(const AFileName: string): TArray<TAtlasProblem>;
     /// <summary>Hat der Server die Datei schon geliefert? Dateien nur mit Tests zählen nicht.</summary>
     function Contains(const AFileName: string): Boolean;
     function ResultId(const AFileName: string): string;
@@ -202,6 +221,7 @@ uses
   System.Math,
   System.Generics.Defaults,
   Atlas.Core.Editor.Pairs,
+  Atlas.Core.Problems.IdeErrors,
   Atlas.Text.Diff;
 
 { TAtlasColumnSpan }
@@ -409,11 +429,33 @@ begin
   end;
 end;
 
+/// <summary>Meldungen außerhalb der geänderten Zeilen [AFrom, ATill); dahinter um ADelta verschoben.</summary>
+function OutsideChange(const AProblems: TArray<TAtlasProblem>; AFrom, ATill, ADelta: Integer):
+  TArray<TAtlasProblem>;
+var
+  mProblem: TAtlasProblem;
+  mItem: TAtlasProblem;
+begin
+  Result := nil;
+  for mItem in AProblems do
+  begin
+    if (mItem.EndLine >= AFrom) and (mItem.StartLine < ATill) then
+    begin
+      Continue;
+    end;
+    mProblem := mItem;
+    if mProblem.StartLine >= ATill then
+    begin
+      Inc(mProblem.StartLine, ADelta);
+      Inc(mProblem.EndLine, ADelta);
+    end;
+    Result := Result + [mProblem];
+  end;
+end;
+
 class procedure TAtlasProblemEntries.Shift(AEntry: TEntry; const ANewText: string; ADropDeleted: Boolean);
 var
   mOldCount, mNewCount, mPrefix, mSuffix, mChangedEnd, mDelta, mIndex: Integer;
-  mKept: TArray<TAtlasProblem>;
-  mProblem: TAtlasProblem;
 
   procedure Map(var AProblem: TAtlasProblem; ACompiler: Boolean);
   begin
@@ -461,23 +503,10 @@ begin
   begin
     Map(AEntry.FTests[mIndex], False);
   end;
-  // Befunde von Aufgaben gelten für den Stand, den das Werkzeug sah: in der geänderten Stelle fallen sie weg.
-  mKept := nil;
-  for mIndex := 0 to High(AEntry.FTasks) do
-  begin
-    mProblem := AEntry.FTasks[mIndex];
-    if (mProblem.EndLine >= mPrefix) and (mProblem.StartLine < mChangedEnd) then
-    begin
-      Continue;
-    end;
-    if mProblem.StartLine >= mChangedEnd then
-    begin
-      Inc(mProblem.StartLine, mDelta);
-      Inc(mProblem.EndLine, mDelta);
-    end;
-    mKept := mKept + [mProblem];
-  end;
-  AEntry.FTasks := mKept;
+  // Befunde von Aufgaben und Fehler der IDE (#1819) gelten für den Stand, den das Werkzeug bzw. die IDE sah: in
+  // der geänderten Stelle fallen sie weg.
+  AEntry.FTasks := OutsideChange(AEntry.FTasks, mPrefix, mChangedEnd, mDelta);
+  AEntry.FIde := OutsideChange(AEntry.FIde, mPrefix, mChangedEnd, mDelta);
   AEntry.FText := ANewText;
   AEntry.FLinesValid := False;
   AEntry.FVisibleValid := False;
@@ -731,6 +760,65 @@ begin
   for mFileName in mEmptied do
   begin
     FEntries.Remove(Key(mFileName));
+  end;
+end;
+
+procedure TAtlasProblemEntries.SetIdeErrors(const AFileName: string; const AErrors: TArray<TAtlasProblem>);
+var
+  mEntry: TEntry;
+begin
+  mEntry := Find(AFileName);
+  if (mEntry = nil) or ((mEntry.FIde = nil) and (AErrors = nil)) then
+  begin
+    Exit;
+  end;
+  mEntry.FIde := Copy(AErrors);
+  Touch(mEntry);
+  Inc(FVersion);
+end;
+
+procedure TAtlasProblemEntries.ClearIdeErrors;
+var
+  mEntry: TEntry;
+  mChanged: Boolean;
+begin
+  mChanged := False;
+  for mEntry in FEntries.Values do
+  begin
+    if mEntry.FIde <> nil then
+    begin
+      mEntry.FIde := nil;
+      Touch(mEntry);
+      mChanged := True;
+    end;
+  end;
+  if mChanged then
+  begin
+    Inc(FVersion);
+  end;
+end;
+
+function TAtlasProblemEntries.IdeErrors(const AFileName: string): TArray<TAtlasProblem>;
+var
+  mEntry: TEntry;
+begin
+  mEntry := Find(AFileName);
+  if mEntry = nil then
+  begin
+    Exit(nil);
+  end;
+  Result := mEntry.FIde;
+end;
+
+function TAtlasProblemStore.WithIde(const AFileName: string): TArray<TAtlasProblem>;
+var
+  mIde: TArray<TAtlasProblem>;
+begin
+  mIde := IdeErrors(AFileName);
+  Result := ForFile(AFileName);
+  if mIde <> nil then
+  begin
+    Result := TAtlasIdeErrors.Merge(Result, mIde);
   end;
 end;
 

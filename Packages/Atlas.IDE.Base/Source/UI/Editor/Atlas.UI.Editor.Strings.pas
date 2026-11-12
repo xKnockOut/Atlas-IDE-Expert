@@ -55,7 +55,8 @@ type
     ExtractMembersKeepAbstract, MoveUpTitle, MoveDownTitle, MoveMemberNothing, MoveMemberPreviewHint,
     MoveMemberApply, MoveMemberDone, InlineAccessorTitle, InlineAccessorNothing, InlineAccessorPreviewHint,
     InlineAccessorApply, InlineAccessorDone, SafeDeleteUsages, SafeDeleteShow, SafeDeleteForce, SafeDeleteCancel,
-    SafeDeletePreviewHint, SafeDeleteApply, SafeDeleteDone, SafeDeleteUsagesTitle, SafeDeleteMore);
+    SafeDeletePreviewHint, SafeDeleteApply, SafeDeleteDone, SafeDeleteUsagesTitle, SafeDeleteMore,
+    ChoicesText, ChoicesApply, ChoicesCancel);
 
   TAtlasEditorStrings = class
   public
@@ -322,7 +323,10 @@ const
      'Löschen',
      '%d Symbole sicher gelöscht: %d Änderungen in %d Dateien übernommen.',
      'Verwendungen von „%s“',
-     '… %d weitere'),
+     '… %d weitere',
+     'Diese Stellen werden mit ersetzt. Abgewählte Stellen bleiben unverändert.',
+     'Weiter',
+     'Abbrechen'),
     ('Atlas: Rename',
      'New name for “%s”:',
      'Atlas: nothing to rename here.',
@@ -571,7 +575,10 @@ const
      'Delete',
      '%d symbols safely deleted: %d changes applied in %d files.',
      'Usages of “%s”',
-     '… %d more'));
+     '… %d more',
+     'These places are replaced as well. Deselected places stay unchanged.',
+     'Continue',
+     'Cancel'));
 
 { TAtlasEditorStrings }
 

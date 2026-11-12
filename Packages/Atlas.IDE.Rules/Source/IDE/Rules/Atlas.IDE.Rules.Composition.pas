@@ -18,6 +18,8 @@
 //   Unterdrückungen) und „Editor“ im Optionsdialog,
 // - das Aktualisieren der Baseline (IAtlasBaselineSource) für die
 //   Einrichtung der Willkommensseite (#759),
+// - die Fehler der IDE aus Error Insight (IAtlasIdeErrors, #1819,
+//   Atlas.IDE.Rules.IdeErrors) für das Fenster „Atlas-Prüfung“,
 // - den Assistenten „Eigene Prüfregel“ in Datei › Neu › Weitere (#1821):
 //   neue Schicht in forbidden-uses der Projektdatei
 //   (Atlas.Core.Rules.CustomLayer), danach der Regel-Editor bei der Regel.
@@ -80,6 +82,7 @@ uses
   Atlas.IDE.Rules.Baseline,
   Atlas.IDE.Rules.BulkFix,
   Atlas.IDE.Rules.FindingActions,
+  Atlas.IDE.Rules.IdeErrors,
   Atlas.IDE.Rules.Settings,
   Atlas.UI.Rules.SettingsDialog,
   Atlas.UI.Rules.SettingsSection,
@@ -311,6 +314,7 @@ begin
   GScope.Provide(IAtlasBaselineSource, mRef);
   GScope.Provide(IAtlasBulkFixer, TAtlasIdeRulesBulkFix.Create(GScope) as IAtlasBulkFixer);
   GScope.Provide(IAtlasRuleActions, TAtlasIdeRuleActions.Create as IAtlasRuleActions);
+  GScope.Provide(IAtlasIdeErrors, TAtlasIdeRulesIdeErrors.Create as IAtlasIdeErrors);
   GScope.Provide(IAtlasSettingsDialogProvider, TAtlasRulesDialogProvider.Create as IAtlasSettingsDialogProvider);
   ProvideSettingsSections;
   Result := True;
