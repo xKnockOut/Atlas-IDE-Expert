@@ -59,7 +59,8 @@ foreach ($File in Get-ChildItem $CatalogDir -Filter 'regelkatalog.*.json' | Sort
 # Gruppen der Einstellungsseite und des Fensters „Atlas-Prüfung“ (#909), Reihenfolge wie TRuleGroup.
 $GroupNames = [ordered]@{
     'find-bugs' = 'Fehler finden'; 'exceptions' = 'Exceptions'; 'threads' = 'Threads'; 'database' = 'Datenbank'
-    'compiler' = 'Compiler vorab'; 'robustness' = 'Robustheit und Muster'; 'performance' = 'Performance'
+    'compiler' = 'Compiler vorab'; 'robustness' = 'Robustheit und Muster'; 'migration' = 'Migration'
+    'performance' = 'Performance'
     'security' = 'Sicherheit'; 'components' = 'Komponenten'; 'forms' = 'Formulare und Daten'
     'architecture' = 'Architektur'; 'style' = 'Stil und Metriken'; 'packages' = 'Packages und Tests'
     'internal' = 'Atlas intern'
@@ -345,7 +346,8 @@ $DocTexts = @{
         Severities = @{ 'error' = 'Error'; 'warning' = 'Warning'; 'information' = 'Information'; 'hint' = 'Hint' }
         GroupNames = [ordered]@{
             'find-bugs' = 'Find bugs'; 'exceptions' = 'Exceptions'; 'threads' = 'Threads'; 'database' = 'Database'
-            'compiler' = 'Compiler ahead'; 'robustness' = 'Robustness and patterns'; 'performance' = 'Performance'
+            'compiler' = 'Compiler ahead'; 'robustness' = 'Robustness and patterns'; 'migration' = 'Migration'
+            'performance' = 'Performance'
             'security' = 'Security'; 'components' = 'Components'; 'forms' = 'Forms and data'
             'architecture' = 'Architecture'; 'style' = 'Style and metrics'; 'packages' = 'Packages and tests'
             'internal' = 'Atlas internal'

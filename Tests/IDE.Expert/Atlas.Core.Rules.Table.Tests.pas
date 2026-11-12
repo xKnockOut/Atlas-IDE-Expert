@@ -297,8 +297,9 @@ begin
     mFound := TAtlasRuleTable.Filter(mRows, '', 'CODE-SMELL');
     Assert.AreEqual(1, Integer(Length(mFound)));
     Assert.AreEqual('magic-number', mRows[mFound[0]].Id);
-    Assert.AreEqual(14, Integer(Length(TAtlasRuleTable.cGroupIds)));
+    Assert.AreEqual(15, Integer(Length(TAtlasRuleTable.cGroupIds)));
     Assert.AreEqual('find-bugs', TAtlasRuleTable.cGroupIds[0]);
+    Assert.AreEqual('migration', TAtlasRuleTable.cGroupIds[6]);
   finally
     mValue.Free;
   end;

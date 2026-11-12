@@ -264,6 +264,8 @@ uses
   Atlas.Common.Rules.Builtin.TypeDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Tests.pas',
   Atlas.Common.Rules.Builtin.Automation.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Automation.Tests.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.Tests.pas',
+  Atlas.Common.Rules.Builtin.Migration.Unicode.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Unicode.Tests.pas',
+  Atlas.Common.Rules.Builtin.Migration.Win64.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Win64.Tests.pas',
   Atlas.Common.Rules.Builtin.StringConversions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.StringConversions.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeRestrictions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests.pas',

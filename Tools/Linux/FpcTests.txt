@@ -250,6 +250,8 @@ Atlas.Common.Rules.Builtin.Inheritance.OverrideTargets.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Shadowing.Tests
 Atlas.Common.Rules.Builtin.InvalidDeclarations.Tests
 Atlas.Common.Rules.Builtin.MethodDirectives.Tests
+Atlas.Common.Rules.Builtin.Migration.Unicode.Tests
+Atlas.Common.Rules.Builtin.Migration.Win64.Tests
 Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
