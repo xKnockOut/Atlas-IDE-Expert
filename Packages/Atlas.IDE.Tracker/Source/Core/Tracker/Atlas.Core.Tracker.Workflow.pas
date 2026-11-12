@@ -47,6 +47,10 @@ type
     EndStates: TArray<string>;
     /// <summary>Kommentarvorlage beim Beenden.</summary>
     EndComment: string;
+    /// <summary>Felder im Beenden-Dialog (#2123, issues.endFields).</summary>
+    EndFields: TArray<string>;
+    /// <summary>Erfasste Zeit im Beenden-Dialog buchen (#2123, issues.endTime).</summary>
+    EndTime: Boolean;
     /// <summary>Prüfzustände (#2126, #2127, issues.reviewStates).</summary>
     ReviewStates: TArray<string>;
     /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben. Beginnen und Beenden setzen
@@ -59,6 +63,8 @@ type
     /// <summary>Kopie mit den Werten beim Beenden; AEndStates ist eine Liste mit Komma, Semikolon oder
     /// Zeilenumbruch.</summary>
     function WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
+    /// <summary>Kopie mit Feldern und Zeit im Beenden-Dialog (#2123); AEndFields wie bei WithEnd.</summary>
+    function WithEndSteps(const AEndFields: string; AEndTime: Boolean): TAtlasTrackerSyncOptions;
     /// <summary>Kopie mit den Prüfzuständen; AReviewStates wie bei WithEnd.</summary>
     function WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
@@ -199,6 +205,13 @@ begin
   Result.StartComment := AStartComment;
 end;
 
+function TAtlasTrackerSyncOptions.WithEndSteps(const AEndFields: string; AEndTime: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.EndFields := TAtlasTrackerWorkflow.ParseList(AEndFields);
+  Result.EndTime := AEndTime;
+end;
+
 function TAtlasTrackerSyncOptions.WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
 begin
   Result := Self;
@@ -281,6 +294,26 @@ begin
   end;
 end;
 
+/// <summary>AOwn, wenn gesetzt, sonst AFallback.</summary>
+function TextOr(const AOwn, AFallback: string): string;
+begin
+  Result := AFallback;
+  if AOwn <> '' then
+  begin
+    Result := AOwn;
+  end;
+end;
+
+/// <summary>Kopie von AOwn, wenn nicht leer, sonst AFallback.</summary>
+function ListOr(const AOwn, AFallback: TArray<string>): TArray<string>;
+begin
+  Result := AFallback;
+  if Length(AOwn) > 0 then
+  begin
+    Result := Copy(AOwn);
+  end;
+end;
+
 class function TAtlasTrackerWorkflow.ForConnection(const AOptions: TAtlasTrackerSyncOptions;
   const AConnections: TArray<TAtlasTrackerConnection>; const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
 var
@@ -295,32 +328,16 @@ begin
   end;
   for mConnection in AConnections do
   begin
-    if not SameText(mConnection.Provider, ATarget.Provider) or
-      not SameText(mConnection.Target.Server, mServer) then
+    if SameText(mConnection.Provider, ATarget.Provider) and SameText(mConnection.Target.Server, mServer) then
     begin
-      Continue;
+      Result.StateField := TextOr(mConnection.StateField, Result.StateField);
+      Result.AssigneeField := TextOr(mConnection.AssigneeField, Result.AssigneeField);
+      Result.StartState := TextOr(mConnection.StartState, Result.StartState);
+      Result.EndStates := ListOr(mConnection.EndStates, Result.EndStates);
+      Result.EndFields := ListOr(mConnection.EndFields, Result.EndFields);
+      Result.ReviewStates := ListOr(mConnection.ReviewStates, Result.ReviewStates);
+      Exit;
     end;
-    if mConnection.StateField <> '' then
-    begin
-      Result.StateField := mConnection.StateField;
-    end;
-    if mConnection.AssigneeField <> '' then
-    begin
-      Result.AssigneeField := mConnection.AssigneeField;
-    end;
-    if mConnection.StartState <> '' then
-    begin
-      Result.StartState := mConnection.StartState;
-    end;
-    if Length(mConnection.EndStates) > 0 then
-    begin
-      Result.EndStates := Copy(mConnection.EndStates);
-    end;
-    if Length(mConnection.ReviewStates) > 0 then
-    begin
-      Result.ReviewStates := Copy(mConnection.ReviewStates);
-    end;
-    Exit;
   end;
 end;
 

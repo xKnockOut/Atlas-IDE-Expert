@@ -76,7 +76,7 @@ type
     /// <summary>Prüft AUrl; nur eine gültige Adresse wird übernommen (Werte der Verbindung bleiben).</summary>
     function SetUrl(const AUrl: string): TAtlasTrackerUrlCheck;
     /// <summary>Zustand und Zuständigkeit der gewählten Zeile (#1266); AEndStates wie eingegeben.</summary>
-    procedure SetWorkflow(const AStateField, AAssigneeField, AStartState, AEndStates: string);
+    procedure SetWorkflow(const AStateField, AAssigneeField, AStartState, AEndStates, AEndFields: string);
     /// <summary>Prüfzustände der gewählten Zeile (#2126); AReviewStates wie eingegeben.</summary>
     procedure SetReviewStates(const AReviewStates: string);
     /// <summary>Neue Zeile ohne Adresse (gespeichert erst mit Adresse) mit freiem Namen nach ABaseName.</summary>
@@ -417,8 +417,8 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerConnectionTable.SetWorkflow(const AStateField, AAssigneeField, AStartState,
-  AEndStates: string);
+procedure TAtlasTrackerConnectionTable.SetWorkflow(const AStateField, AAssigneeField, AStartState, AEndStates,
+  AEndFields: string);
 begin
   if Editable then
   begin
@@ -426,6 +426,7 @@ begin
     FItems[FSelected].AssigneeField := AAssigneeField;
     FItems[FSelected].StartState := AStartState;
     FItems[FSelected].EndStates := TAtlasTrackerWorkflow.ParseList(AEndStates);
+    FItems[FSelected].EndFields := TAtlasTrackerWorkflow.ParseList(AEndFields);
   end;
 end;
 

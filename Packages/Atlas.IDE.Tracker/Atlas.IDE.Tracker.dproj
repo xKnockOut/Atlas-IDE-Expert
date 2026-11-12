@@ -132,6 +132,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.EndSteps.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.YouTrackJson.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackApi.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas"/>

@@ -17,7 +17,8 @@
 //   Dauer, Arbeitstyp (YouTrack, nachgeladen) bzw. Kommentar (GitHub) und
 //   Beschreibung aus den Commit-Betreffen. „Buchen“ und „Verwerfen“ ziehen die
 //   angezeigte Zeit ab, „Später“ behält sie für „Offene Zeitbuchungen …“.
-// - {time} für den Beenden-Dialog (#1266) über TimeText.
+// - {time} für den Beenden-Dialog (#1266) über TAtlasIdeTrackerIssueTime.Text,
+//   die Zeit im Dialog selbst (#2123) über Seconds und Booked.
 // Gebucht wird nur nach Klick, im Hintergrund über TAtlasIdeTrackerSync.
 // Protokoll anonym: nie Kennung, Adresse oder Beschreibung.
 
@@ -64,6 +65,8 @@ type
     FFileFailed: Boolean;
     FOffering: Boolean;
     FOfferNext: TAtlasTimeIssue;
+    // Kennung, deren Zeit der Beenden-Dialog gebucht hat (#2123): Ended bietet dann nichts mehr an.
+    FBookedOnEnd: string;
     FStatusShown: Boolean;
     FStopped: Boolean;
     procedure TimerTick(Sender: TObject);
@@ -98,11 +101,22 @@ type
     /// <summary>AIssue wurde beendet: Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits von
     /// ABranch gegen ABase im Ordner AFolder).</summary>
     procedure Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
-    /// <summary>{time} für AKey: erfasste Zeit des aktuellen Issues, gerundet; '' ohne Zeiterfassung.</summary>
-    function TimeText(const AKey: string): string;
     /// <summary>Befehl „Offene Zeitbuchungen …“.</summary>
     procedure ShowOpen;
     property OnStatus: TAtlasIdeTimeStatus read FStatus write FStatus;
+  end;
+
+  /// <summary>Erfasste Zeit des aktuellen Issues für Kommentarvorlagen und den Beenden-Dialog (#2123).</summary>
+  TAtlasIdeTrackerIssueTime = class
+  public
+    /// <summary>Erfasste Zeit des aktuellen Issues AKey in Sekunden; 0 ohne Zeiterfassung oder wenn AKey nicht das
+    /// aktuelle ist.</summary>
+    class function Seconds(ATime: TAtlasIdeTrackerTime; const AKey: string): Int64; static;
+    /// <summary>{time} für AKey: erfasste Zeit des aktuellen Issues, gerundet; '' ohne Zeiterfassung.</summary>
+    class function Text(ATime: TAtlasIdeTrackerTime; const AKey: string): string; static;
+    /// <summary>Der Beenden-Dialog hat ASeconds der Zeit von AKey gebucht: genau diese Zeit abziehen; das folgende
+    /// Ended bietet nichts mehr an.</summary>
+    class procedure Booked(ATime: TAtlasIdeTrackerTime; const AKey: string; ASeconds: Int64); static;
   end;
 
 implementation
@@ -564,18 +578,13 @@ begin
   end;
   Flush;
   UpdateStatus;
-  Offer(AIssue, AFolder, ABranch, ABase);
-end;
-
-function TAtlasIdeTrackerTime.TimeText(const AKey: string): string;
-begin
-  Result := '';
-  if FStopped or not Active or FClock.Issue.IsEmpty or not SameText(FClock.Issue.Key, AKey) then
+  // Schon im Beenden-Dialog gebucht: Was seitdem dazukam, bleibt für „Offene Zeitbuchungen …“.
+  if SameText(FBookedOnEnd, AIssue.Key) then
   begin
+    FBookedOnEnd := '';
     Exit;
   end;
-  Result := TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(CurrentTotal,
-    TAtlasIdeSettings.Current.IssuesTimeRounding));
+  Offer(AIssue, AFolder, ABranch, ABase);
 end;
 
 procedure TAtlasIdeTrackerTime.HideStatus;
@@ -860,6 +869,37 @@ begin
   else
     // Schließen.
   end;
+end;
+
+{ TAtlasIdeTrackerIssueTime }
+
+class function TAtlasIdeTrackerIssueTime.Seconds(ATime: TAtlasIdeTrackerTime; const AKey: string): Int64;
+begin
+  Result := 0;
+  if (ATime = nil) or ATime.FStopped or not ATime.Active or ATime.FClock.Issue.IsEmpty or
+    not SameText(ATime.FClock.Issue.Key, AKey) then
+  begin
+    Exit;
+  end;
+  Result := ATime.CurrentTotal;
+end;
+
+class function TAtlasIdeTrackerIssueTime.Text(ATime: TAtlasIdeTrackerTime; const AKey: string): string;
+begin
+  Result := TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(Seconds(ATime, AKey),
+    TAtlasIdeSettings.Current.IssuesTimeRounding));
+end;
+
+class procedure TAtlasIdeTrackerIssueTime.Booked(ATime: TAtlasIdeTrackerTime; const AKey: string; ASeconds: Int64);
+begin
+  if (ATime = nil) or ATime.FStopped or ATime.FClock.Issue.IsEmpty or not SameText(ATime.FClock.Issue.Key, AKey) then
+  begin
+    Exit;
+  end;
+  // Erst die offene Spanne schreiben, dann genau die gezeigte Zeit abziehen.
+  ATime.Flush;
+  ATime.Settle(ATime.FClock.Issue, ASeconds);
+  ATime.FBookedOnEnd := AKey;
 end;
 
 end.

@@ -8540,6 +8540,24 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1266"
     },
+    "IssuesEndFields": {
+      "type": "string",
+      "default": "",
+      "description": "Felder im Beenden-Dialog, mit Komma getrennt (z. B. „Behoben in Version, Ursache“): je Feld eine Zeile mit den Werten vom Tracker (Versionen, Aufzählungen) bzw. ein Textfeld; leer gelassene Felder schreibt Atlas nicht. Für Abläufe, die ein Issue erst mit gesetzten Feldern weiterlassen. „Senden“ schreibt Zeit, Felder, Kommentar und zuletzt Zustand bzw. Übergang, hält beim ersten Fehler an und überspringt beim erneuten Senden, was schon geschrieben ist; nennt die Ablehnung ein Feld, markiert der Dialog die Zeile bzw. bietet „Feld hinzufügen“ an. Nur YouTrack. Je Verbindung überschreibbar (endFields).",
+      "x-key": "issues.endFields",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#2123"
+    },
+    "IssuesEndTime": {
+      "type": "boolean",
+      "default": true,
+      "description": "Mit Zeiterfassung (issues.timeTracking) steht die erfasste Zeit mit Dauer und Arbeitstyp im Beenden-Dialog und wird vor allem anderen gebucht; der Zeitdialog danach entfällt. Aus: Zeit wie bisher im eigenen Dialog nach dem Beenden. Nur YouTrack (Work Item).",
+      "x-key": "issues.endTime",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#2123"
+    },
     "IssuesReviewStates": {
       "type": "string",
       "default": "",

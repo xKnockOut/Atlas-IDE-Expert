@@ -1,0 +1,11 @@
+[
+  {"shortName": "WEB", "customFields": [
+    {"field": {"name": "Ursache", "fieldType": {"id": "enum[1]"}}, "bundle": {"values": [{"name": "Tippfehler", "archived": false}]}}
+  ]},
+  {"shortName": "ATL", "customFields": [
+    {"field": {"name": "Status", "fieldType": {"id": "state[1]"}}, "bundle": {"values": [{"name": "Offen", "archived": false}, {"name": "Zur Prüfung", "archived": false}]}},
+    {"field": {"name": "Behoben in Version", "fieldType": {"id": "version[*]"}}, "bundle": {"values": [{"name": "2.0.0", "archived": true}, {"name": "2.1.0", "archived": false}, {"name": "2.2.0", "archived": false}]}},
+    {"field": {"name": "Ursache", "fieldType": {"id": "enum[1]"}}, "bundle": {"values": [{"name": "Fehlende Prüfung", "archived": false}, {"name": "Falsche Annahme", "archived": false}]}},
+    {"field": {"name": "Notiz", "fieldType": {"id": "text[1]"}}}
+  ]}
+]
