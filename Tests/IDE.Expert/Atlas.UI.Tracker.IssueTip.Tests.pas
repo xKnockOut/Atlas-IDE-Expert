@@ -10,7 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Strings;
 
 type
   [TestFixture]
@@ -51,6 +51,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.Strings,
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,

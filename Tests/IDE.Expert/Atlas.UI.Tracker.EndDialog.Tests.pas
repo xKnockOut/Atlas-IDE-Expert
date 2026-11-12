@@ -3,7 +3,8 @@
 // Tests des Dialogs „ATL-123 beenden“ (#1266) und der Klappliste mit Eingabe
 // von Hand: Vorschläge und Vorgabe des Zielzustands, Änderung aus den
 // Feldern, „Senden“ ohne etwas zu schreiben, Fehler im Dialog mit dem Text
-// des Trackers (400/401/403/404, Zeitlimit) und die Zeile der Meldungsansicht.
+// des Trackers (400/401/403/404, Zeitlimit) und die Zeile der Meldungsansicht;
+// unter einer Zustandsmaschine (#2122) nur die erlaubten Übergänge.
 
 interface
 
@@ -36,6 +37,10 @@ type
     procedure ErrorTexts;
     [Test]
     procedure SummaryText;
+    [Test]
+    procedure TransitionsUnderStateMachine;
+    [Test]
+    procedure SummaryTextWithTransition;
   end;
 
 implementation
@@ -245,6 +250,77 @@ begin
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'anna';
   Assert.AreEqual('an anna übergeben', TAtlasTrackerEndDialog.SummaryText(mChange));
+end;
+
+/// <summary>Zustandsmaschine ab „In Bearbeitung“ mit benannten Ereignissen.</summary>
+function NamedRules: TAtlasTrackerStateRules;
+begin
+  Result := Default(TAtlasTrackerStateRules);
+  Result.StateMachine := True;
+  Result.FieldId := '82-11';
+  Result.Current := 'In Bearbeitung';
+  Result.Transitions := [TAtlasTrackerTransition.Create('review', 'Zur Prüfung geben'),
+    TAtlasTrackerTransition.Create('zurueckgestellt', 'Zurückstellen'),
+    TAtlasTrackerTransition.Create('offen', 'Abbrechen')];
+end;
+
+procedure TAtlasTrackerEndDialogTests.TransitionsUnderStateMachine;
+var
+  mDialog: TAtlasTrackerEndDialog;
+  mChange: TAtlasTrackerWrite;
+begin
+  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-2052', Options('Behoben, Offen'), 'Fertig');
+  try
+    mDialog.SetStates(TArray<string>.Create('Neu', 'Zurückgestellt', 'Behoben'));
+    mDialog.SetRules(NamedRules);
+    Assert.AreEqual('Übergang (ab „In Bearbeitung“):', mDialog.Parts.StateLabel.Caption);
+    Assert.AreEqual(4, Integer(Length(mDialog.Parts.State.Values)), 'nur „nicht ändern“ und die Übergänge');
+    Assert.AreEqual('Zustand nicht ändern', mDialog.Parts.State.Values[0]);
+    Assert.AreEqual('Zur Prüfung geben', mDialog.Parts.State.Values[1]);
+    Assert.AreEqual('Zurückstellen', mDialog.Parts.State.Values[2], 'Kennung "zurueckgestellt" verrät kein Ziel');
+    Assert.AreEqual('Abbrechen → Offen', mDialog.Parts.State.Values[3], 'Ziel über die Kennung');
+    Assert.AreEqual('Abbrechen → Offen', mDialog.Parts.State.Value, '„Behoben“ geht nicht, „Offen“ schon');
+    Assert.AreEqual('„Behoben“ ist ab „In Bearbeitung“ nicht erlaubt.', mDialog.Parts.Note.Caption);
+    mChange := mDialog.Change;
+    Assert.AreEqual('offen', mChange.Transition.Id);
+    Assert.AreEqual('82-11', mChange.FieldId);
+    Assert.AreEqual('', mChange.State, 'kein Befehl mit dem Wert');
+    Assert.AreEqual('Fertig', mChange.Comment);
+    mDialog.Parts.State.Value := 'Zur Prüfung geben';
+    Assert.AreEqual('review', mDialog.Change.Transition.Id);
+    mDialog.Parts.State.Value := 'Zustand nicht ändern';
+    Assert.AreEqual('', mDialog.Change.Transition.Id);
+    Assert.AreEqual('', mDialog.Change.State);
+    // Von Hand: Name eines Übergangs wird zum Übergang, Unbekanntes geht als Wert hinaus.
+    mDialog.Parts.State.Value := 'zurückstellen';
+    Assert.AreEqual('zurueckgestellt', mDialog.Change.Transition.Id);
+    mDialog.Parts.State.Value := 'Wartet';
+    Assert.AreEqual('', mDialog.Change.Transition.Id);
+    Assert.AreEqual('Wartet', mDialog.Change.State);
+  finally
+    mDialog.Free;
+  end;
+  // Ohne Zustandsmaschine bleibt die Liste der Zustände.
+  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-1', Options('Erledigt'), '');
+  try
+    mDialog.SetRules(Default(TAtlasTrackerStateRules));
+    Assert.AreEqual('Erledigt', mDialog.Parts.State.Value);
+    Assert.AreEqual('Erledigt', mDialog.Change.State);
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasTrackerEndDialogTests.SummaryTextWithTransition;
+var
+  mChange: TAtlasTrackerWrite;
+begin
+  mChange := TAtlasTrackerWrite.Empty;
+  mChange.Transition := TAtlasTrackerTransition.Create('start', 'Beginnen');
+  mChange.Assign := TAtlasTrackerAssign.Me;
+  Assert.AreEqual('Übergang „Beginnen“, mir zugewiesen', TAtlasTrackerEndDialog.SummaryText(mChange));
+  Assert.AreEqual('Übergang „Beginnen“ → In Bearbeitung, mir zugewiesen',
+    TAtlasTrackerEndDialog.SummaryText(mChange, 'In Bearbeitung'));
 end;
 
 initialization

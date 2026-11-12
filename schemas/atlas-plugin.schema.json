@@ -2984,6 +2984,16 @@
       "x-parent": "editor.hoverTooltip",
       "x-issue": "#54"
     },
+    "HoverRuleExamples": {
+      "type": "boolean",
+      "default": true,
+      "description": "Link „Beispiel zeigen“ in der Aktionszeile unter Regelbefunden im Hover: klappt Beschreibung und Beispiel falsch/richtig aus dem Regelkatalog auf (Klick oder Tab und Enter); jeder neue Hover beginnt zugeklappt.",
+      "x-key": "hover.ruleExamples",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "hover.problemActions",
+      "x-issue": "#145"
+    },
     "HoverMembersMaxLines": {
       "type": "integer",
       "default": 15,
@@ -8487,7 +8497,7 @@
     "IssuesStartState": {
       "type": "string",
       "default": "",
-      "description": "Zustand beim Beginnen, z. B. „In Arbeit“ (GitHub: Name eines Labels); leer = Zustand nicht ändern. Je Verbindung überschreibbar (startState).",
+      "description": "Zustand beim Beginnen, z. B. „In Arbeit“ (GitHub: Name eines Labels); leer = Zustand nicht ändern. Steht das Zustandsfeld unter einer Zustandsmaschine (YouTrack, #2122), ist es das gewünschte Ziel: Atlas löst den erlaubten Übergang dorthin aus; führt keiner hin, bleibt der Zustand und die Meldungsansicht nennt die erlaubten Übergänge. Je Verbindung überschreibbar (startState).",
       "x-key": "issues.startState",
       "x-area": "issues",
       "x-page": "Issue-Tracker",
@@ -8515,7 +8525,7 @@
     "IssuesEndStates": {
       "type": "string",
       "default": "",
-      "description": "Angebotene Zielzustände im Beenden-Dialog, mit Komma getrennt (z. B. „Zur Prüfung, Erledigt“); dazu immer „Zustand nicht ändern“. GitHub: Labels, „Erledigt“ schließt das Issue. Je Verbindung überschreibbar (endStates).",
+      "description": "Angebotene Zielzustände im Beenden-Dialog, mit Komma getrennt (z. B. „Zur Prüfung, Erledigt“); dazu immer „Zustand nicht ändern“. GitHub: Labels, „Erledigt“ schließt das Issue. Unter einer Zustandsmaschine (YouTrack, #2122) zeigt der Dialog nur die ab dem aktuellen Zustand erlaubten Übergänge; vorgewählt ist der erste, der in einen dieser Zustände führt (Reihenfolge = Vorliebe). Je Verbindung überschreibbar (endStates).",
       "x-key": "issues.endStates",
       "x-area": "issues",
       "x-page": "Issue-Tracker",

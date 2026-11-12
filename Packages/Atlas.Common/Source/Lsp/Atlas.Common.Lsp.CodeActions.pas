@@ -25,7 +25,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics;
@@ -122,6 +121,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.Contract,
   System.Generics.Collections,
   System.Diagnostics,
   Atlas.Common.JsonRpc.PendingRequests,

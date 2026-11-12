@@ -8,8 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Debug.EventBreak,
-  Atlas.Core.Settings.EventBreakNames;
+  Atlas.Core.Debug.EventBreak;
 
 type
   [TestFixture]
@@ -42,6 +41,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Settings.EventBreakNames,
   System.SysUtils,
   System.JSON;
 

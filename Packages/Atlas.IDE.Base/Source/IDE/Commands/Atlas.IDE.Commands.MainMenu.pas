@@ -63,7 +63,6 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.UI.Strings,
-  Atlas.UI.Commands.Strings,
   Atlas.IDE.Commands.MenuModules;
 
 type
@@ -190,6 +189,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Commands.Strings,
   Atlas.Core.Diagnostics.Guard,
   ToolsAPI,
   Atlas.IDE.Settings.Project,

@@ -21,7 +21,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
@@ -234,6 +233,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Tracker.Contract,
   System.Math,
   System.StrUtils,
   Atlas.Core.Tracker.Workflow;

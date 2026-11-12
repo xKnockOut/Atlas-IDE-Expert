@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 320 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und elf Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 321 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und elf Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -46,7 +46,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Gelernte Vorschläge:** Nach `X := TFoo.Create;` oder `L.BeginUpdate;` und Enter schlägt Atlas als grauen Schattentext vor, was im eigenen Projekt meist folgt (`try … finally X.Free; end;`), ohne KI und ohne Netz; Tab übernimmt, Esc verwirft, Hausregeln des Teams in `atlas.json`
 
 ### [Verstehen](docs/features/de/Verstehen.md)
-- **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen; die aufgeklappten published-Mitglieder großer Komponenten scrollen mit dem Mausrad (`hover.membersMaxLines`, Vorgabe 15 Zeilen); Parameter und Rückgabe einer Routine stehen wie bei Help Insight immer untereinander unter der Deklaration, auch ohne XMLDoc (`hover.signatureParams`); über einem uses-Eintrag listet er die Typen der Unit nach Art gruppiert und anklickbar, die in der Datei benutzten zuerst (`hints.unitContents`)
+- **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen; die aufgeklappten published-Mitglieder großer Komponenten scrollen mit dem Mausrad (`hover.membersMaxLines`, Vorgabe 15 Zeilen); Parameter und Rückgabe einer Routine stehen wie bei Help Insight immer untereinander unter der Deklaration, auch ohne XMLDoc (`hover.signatureParams`); über einem uses-Eintrag listet er die Typen der Unit nach Art gruppiert und anklickbar, die in der Datei benutzten zuerst (`hints.unitContents`); unter einem Befund klappt „Beispiel zeigen“ Beschreibung und Beispiel falsch/richtig aus dem Regelkatalog auf (`hover.ruleExamples`)
 - **Typhinweise, Code-Metriken und Rekursionsmarken** im Editor; inaktive `{$IFDEF}`-Zweige abgeblendet
 - **Paarfarben und Blocklinien** nach Tiefe; lokale Routinen heben sich ab (eine Stufe tiefer oder eigene Farbe, auf Wunsch hinterlegt)
 - **Architekturübersicht:** Teilsysteme, zentrale Units, Zyklen, Vergleich mit einem gespeicherten Stand
@@ -62,7 +62,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **320 Prüfregeln** schon beim Tippen: 209 Fehler, 100 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
+- **321 Prüfregeln** schon beim Tippen: 209 Fehler, 101 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
@@ -100,7 +100,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten; „Weiterarbeiten“ merkt sich den Arbeitsstand je Issue (Reiter „Issues“) und setzt ihn mit „Fortsetzen“ auf dem Branch des Issues fort
-- **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE; „Meine Issues“ zeigt auf Wunsch ein festes oder alle Tracker-Projekte, mit Arbeitskopien je Tracker-Projekt
+- **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE; „Meine Issues“ zeigt auf Wunsch ein festes oder alle Tracker-Projekte, mit Arbeitskopien je Tracker-Projekt; „Beginnen“ und „Beenden“ halten sich an die Zustandsmaschine von YouTrack und bieten nur die ab dem aktuellen Zustand erlaubten Übergänge an
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
 - **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde mit Zahl, Module) und rechtsbündigen Tastenkürzeln; zeigt nur, was passt (Debuggen beim Debuggen, Tests in Testunits, Designer mit Formular), Untermenüs einzeln abwählbar (`commands.editorContextMenu.*`)
 - **Atlas-Assistenten unter *Datei › Neu › Weitere***: *DUnitX-Testunit zu Unit …*, *Unit nach Architekturrolle …* und *Eigene Prüfregel …* in der Galerie-Kategorie *Atlas* (`generate.galleryWizards`)

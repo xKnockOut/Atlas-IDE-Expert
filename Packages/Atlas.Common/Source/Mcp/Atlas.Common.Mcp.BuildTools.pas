@@ -11,7 +11,6 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.IdeBuild;
 
 type
@@ -31,6 +30,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Compiler.Contract,
   System.Generics.Collections,
   System.DateUtils,
   System.StrUtils,

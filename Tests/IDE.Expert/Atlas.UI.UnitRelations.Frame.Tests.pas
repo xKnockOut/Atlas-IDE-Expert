@@ -12,7 +12,6 @@ interface
 uses
   DUnitX.TestFramework,
   Vcl.Forms,
-  Atlas.Core.UnitRelations.Model,
   Atlas.UI.UnitRelations.Frame;
 
 type
@@ -56,6 +55,7 @@ type
 implementation
 
 uses
+  Atlas.Core.UnitRelations.Model,
   Vcl.Controls,
   System.SysUtils,
   Vcl.ComCtrls,

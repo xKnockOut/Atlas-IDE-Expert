@@ -22,8 +22,6 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Settings.ToolbarItems,
-  Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Foundation.Dialog;
 
 type
@@ -105,6 +103,8 @@ const
 implementation
 
 uses
+  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Core.EditorToolbar.Icons,
   System.Math,
   System.UITypes,
   System.Generics.Collections,

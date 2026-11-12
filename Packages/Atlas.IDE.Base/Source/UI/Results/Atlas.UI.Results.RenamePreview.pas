@@ -18,8 +18,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Results.Model,
-  Atlas.UI.Results.View,
-  Atlas.UI.Results.Frame;
+  Atlas.UI.Results.View;
 
 type
   TAtlasRenamePreview = class
@@ -35,6 +34,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Results.Frame,
   Atlas.UI.Results.Strings;
 
 /// <summary>Knöpfe unten rechts: „Abbrechen“ und AApply; liefert den Knopf, der übernimmt.</summary>

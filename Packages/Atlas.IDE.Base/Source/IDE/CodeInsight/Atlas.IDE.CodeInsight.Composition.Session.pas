@@ -16,7 +16,6 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.UI.CodeInsight.Strings,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.CodeInsight.Manager;
 
@@ -103,6 +102,7 @@ procedure AddCommand(APalette: TAtlasIdePalette; const AId: string; ATextId: TAt
 implementation
 
 uses
+  Atlas.UI.CodeInsight.Strings,
   Atlas.IDE.CodeInsight.Manager.Paths,
   ToolsAPI,
   Atlas.Core.Modules.Registry,

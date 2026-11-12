@@ -19,7 +19,6 @@ interface
 
 uses
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract;
 
 const
@@ -46,6 +45,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,

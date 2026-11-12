@@ -82,7 +82,6 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Attach;
 
@@ -166,6 +165,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Tracker.GitHubParse,
   System.Classes,
   System.DateUtils,
   System.Generics.Collections,

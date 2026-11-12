@@ -10,9 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Documentation.Contract,
-  Atlas.Core.Documentation.Layout,
-  Atlas.Core.Documentation.Typeset;
+  Atlas.Core.Documentation.Layout;
 
 type
   [TestFixture]
@@ -94,6 +92,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Documentation.Typeset,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections;

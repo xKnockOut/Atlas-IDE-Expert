@@ -1,54 +1,56 @@
 ﻿unit Atlas.Core.Tracker.YouTrackWorkflow;
 
-// Karten im Board von YouTrack verschieben (#1272), ohne VCL und Open Tools
-// API, unter Beachtung der Workflow-Regeln. Steuert eine Zustandsmaschine
+// Karten im Board von YouTrack verschieben (#1272) und Regeln des
+// Zustandsfeldes eines Issues lesen (#2122), ohne VCL und Open Tools API,
+// unter Beachtung der Workflow-Regeln. Steuert eine Zustandsmaschine
 // das Spaltenfeld ("StateMachineIssueCustomField"), lässt YouTrack ab dem
 // aktuellen Wert nur bestimmte Übergänge zu ("possibleEvents"); ein Wert ohne
 // Übergang wird abgelehnt ("No event found"). Das Board von YouTrack löst
 // deshalb den passenden Übergang aus, statt den Wert zu setzen. Atlas macht
 // es genauso:
 // - Lesen: die Felder einer Karte bringen $type, id und possibleEvents(id,
-//   presentation) mit (CardFieldParts in TAtlasYouTrackBoards.cCardFields).
+//   presentation) mit (CardFieldParts in TAtlasYouTrackBoards.cCardFields),
+//   beim Beginnen und Beenden das Issue selbst
+//   (TAtlasYouTrackApi.cStateRuleFields, mit dem aktuellen Wert).
 // - Auslösen: POST <url>/api/issues/<Kennung>/fields/<Feld-ID> mit
 //   {"event": {"id": …, "presentation": …, "$type": "Event"}, "id": …,
-//   "$type": "StateMachineIssueCustomField"}; ein Kommentar geht vorher als
+//   "$type": "StateMachineIssueCustomField"} (TAtlasYouTrackApi.ApplyChange
+//   mit TAtlasTrackerWrite.Transition); ein Kommentar geht vorher als
 //   eigener Kommentar hinaus, damit bei einem Fehler nichts halb geändert ist.
 // - Ohne passenden Übergang (oder ohne Zustandsmaschine) ein Befehl je Wert
 //   der Zielspalte: Lehnt YouTrack einen Wert ab (400, etwa weil eine Regel
 //   nur einen anderen Wert einer zusammengefassten Spalte erlaubt), folgt der
 //   nächste; bei anderen Fehlern nicht.
 // Welcher Übergang in welche Spalte führt, entscheidet TAtlasBoardTransitions
-// (Atlas.Core.Tracker.Board); Befehle, Status und Fehlertexte über
-// TAtlasYouTrackApi.
+// (Atlas.Core.Tracker.Board, über Atlas.Core.Tracker.Transitions); Befehle,
+// Status und Fehlertexte über TAtlasYouTrackApi.
 
 interface
 
 uses
   System.JSON,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board;
 
 type
   TAtlasYouTrackWorkflow = class
   public const
-    /// <summary>$type eines Feldes unter einer Zustandsmaschine.</summary>
-    cStateMachineType = 'StateMachineIssueCustomField';
     /// <summary>Felder, die eine Karte zusätzlich zu name und value je Feld braucht.</summary>
     cCardFieldParts = 'id,possibleEvents(id,presentation)';
   public
-    /// <summary>Regeln des Feldes AField aus customFields von AIssue (ohne Groß-/Kleinschreibung). Leer ohne
-    /// Zustandsmaschine oder wenn die Antwort keine possibleEvents enthält (dann entscheidet YouTrack beim
-    /// Verschieben).</summary>
-    class function Find(AIssue: TJSONObject; const AField: string): TAtlasBoardWorkflow; static;
+    /// <summary>Regeln des Feldes AField aus customFields von AIssue (ohne Groß-/Kleinschreibung). Ohne
+    /// Zustandsmaschine oder ohne possibleEvents in der Antwort ist StateMachine False (dann entscheidet YouTrack
+    /// beim Verschieben); Current trägt den Wert, falls die Antwort ihn enthält.</summary>
+    class function Find(AIssue: TJSONObject; const AField: string): TAtlasTrackerStateRules; static;
     /// <summary>Regeln eines einzelnen Feldes aus customFields.</summary>
-    class function Parse(AField: TJSONObject): TAtlasBoardWorkflow; static;
-    /// <summary>Adresse des Feldes AFieldId am Issue AKey; '' ohne Server oder bei ungültiger Kennung bzw. ID.
-    /// </summary>
-    class function FieldUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFieldId: string): string; static;
-    /// <summary>Inhalt des POST, der ATransition am Feld AFieldId auslöst.</summary>
-    class function EventJson(const AFieldId: string; const ATransition: TAtlasBoardTransition): string; static;
+    class function Parse(AField: TJSONObject): TAtlasTrackerStateRules; static;
+    /// <summary>Regeln des Feldes AField aus der Antwort auf GET /api/issues/&lt;Kennung&gt;?fields=
+    /// TAtlasYouTrackApi.cStateRuleFields; False bei ungültigem JSON.</summary>
+    class function ParseIssue(const AJson, AField: string; out ARules: TAtlasTrackerStateRules): Boolean; static;
+    /// <summary>Regeln des Zustandsfeldes AField am Issue AKey lesen (#2122).</summary>
+    class function Read(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
+      AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult; static;
     /// <summary>AMove.Card in die Spalte AMove.Column von ASnapshot verschieben (Ablauf siehe Kopf der Unit).
     /// </summary>
     class function Move(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
@@ -64,46 +66,28 @@ type
 implementation
 
 uses
+  Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   System.Diagnostics,
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Text.Json;
 
-/// <summary>Nur Buchstaben, Ziffern, '-' und '_', nicht leer (Kennung "ATL-123", Feld-ID "82-11").</summary>
-function ValidPart(const AText: string): Boolean;
-var
-  mChar: Char;
-begin
-  Result := AText <> '';
-  for mChar in AText do
-  begin
-    Result := Result and CharInSet(mChar, ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']);
-  end;
-end;
-
-/// <summary>Restzeit von ATimeoutMs seit dem Start von AWatch; nie negativ.</summary>
-function Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
-begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
-  end;
-end;
-
 { TAtlasYouTrackWorkflow }
 
-class function TAtlasYouTrackWorkflow.Parse(AField: TJSONObject): TAtlasBoardWorkflow;
+class function TAtlasYouTrackWorkflow.Parse(AField: TJSONObject): TAtlasTrackerStateRules;
 var
-  mEvents, mItem: TJSONValue;
+  mEvents, mItem, mValue: TJSONValue;
   mId: string;
 begin
-  Result := Default(TAtlasBoardWorkflow);
+  Result := Default(TAtlasTrackerStateRules);
+  mValue := AField.Values['value'];
+  if mValue is TJSONObject then
+  begin
+    Result.Current := Trim(TJsonRead.Text(TJSONObject(mValue), 'name'));
+  end;
   mEvents := AField.Values['possibleEvents'];
-  if not SameText(TJsonRead.Text(AField, '$type'), cStateMachineType) or not (mEvents is TJSONArray) then
+  if not SameText(TJsonRead.Text(AField, '$type'), TAtlasYouTrackApi.cStateMachineType) or
+    not (mEvents is TJSONArray) then
   begin
     Exit;
   end;
@@ -117,17 +101,17 @@ begin
       if mId <> '' then
       begin
         Result.Transitions := Result.Transitions +
-          [TAtlasBoardTransition.Create(mId, TJsonRead.Text(TJSONObject(mItem), 'presentation'))];
+          [TAtlasTrackerTransition.Create(mId, TJsonRead.Text(TJSONObject(mItem), 'presentation'))];
       end;
     end;
   end;
 end;
 
-class function TAtlasYouTrackWorkflow.Find(AIssue: TJSONObject; const AField: string): TAtlasBoardWorkflow;
+class function TAtlasYouTrackWorkflow.Find(AIssue: TJSONObject; const AField: string): TAtlasTrackerStateRules;
 var
   mFields, mItem: TJSONValue;
 begin
-  Result := Default(TAtlasBoardWorkflow);
+  Result := Default(TAtlasTrackerStateRules);
   mFields := AIssue.Values['customFields'];
   if (AField = '') or not (mFields is TJSONArray) then
   begin
@@ -142,34 +126,45 @@ begin
   end;
 end;
 
-class function TAtlasYouTrackWorkflow.FieldUrl(const ATarget: TAtlasTrackerTarget;
-  const AKey, AFieldId: string): string;
+class function TAtlasYouTrackWorkflow.ParseIssue(const AJson, AField: string;
+  out ARules: TAtlasTrackerStateRules): Boolean;
+var
+  mValue: TJSONValue;
 begin
-  Result := '';
-  if (ATarget.Server <> '') and ValidPart(Trim(AKey)) and ValidPart(AFieldId) then
-  begin
-    Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/fields/' + AFieldId + '?fields=id';
+  ARules := Default(TAtlasTrackerStateRules);
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := mValue is TJSONObject;
+    if Result then
+    begin
+      ARules := Find(TJSONObject(mValue), Trim(AField));
+    end;
+  finally
+    mValue.Free;
   end;
 end;
 
-class function TAtlasYouTrackWorkflow.EventJson(const AFieldId: string;
-  const ATransition: TAtlasBoardTransition): string;
+class function TAtlasYouTrackWorkflow.Read(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
 var
-  mObject, mEvent: TJSONObject;
+  mJson: string;
+  mError: TAtlasCiFetchError;
 begin
-  mObject := TJSONObject.Create;
-  try
-    mEvent := TJSONObject.Create;
-    mEvent.AddPair('id', ATransition.Id);
-    mEvent.AddPair('presentation', ATransition.Name);
-    mEvent.AddPair('$type', 'Event');
-    mObject.AddPair('event', mEvent);
-    mObject.AddPair('id', AFieldId);
-    mObject.AddPair('$type', cStateMachineType);
-    Result := mObject.ToJSON;
-  finally
-    mObject.Free;
+  ARules := Default(TAtlasTrackerStateRules);
+  if ATransport = nil then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
+  if not TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.IssueUrl(ATarget, AKey,
+    TAtlasYouTrackApi.cStateRuleFields), ATimeoutMs, mJson, mError) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
+  if not ParseIssue(mJson, AField, ARules) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+  end;
+  Result := TAtlasTrackerWriteResult.Ok;
 end;
 
 class function TAtlasYouTrackWorkflow.Move(const AMove: TAtlasBoardMove;
@@ -197,40 +192,13 @@ end;
 class function TAtlasYouTrackWorkflow.Fire(const AMove: TAtlasBoardMove;
   ATransition: Integer): TAtlasTrackerWriteResult;
 var
-  mWatch: TStopwatch;
-  mSend: IAtlasCiSend;
   mChange: TAtlasTrackerWrite;
-  mUrl: string;
-  mResponse: TAtlasCiResponse;
 begin
-  Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
-  mUrl := FieldUrl(AMove.Target, AMove.Card.Key, AMove.Card.Workflow.FieldId);
-  if (mUrl = '') or not Supports(AMove.Transport, IAtlasCiSend, mSend) then
-  begin
-    Exit;
-  end;
-  mWatch := TStopwatch.StartNew;
-  Result := TAtlasTrackerWriteResult.Ok;
-  if Trim(AMove.Comment) <> '' then
-  begin
-    mChange := TAtlasTrackerWrite.Empty;
-    mChange.Comment := AMove.Comment;
-    Result := TAtlasYouTrackApi.ApplyChange(AMove.Target, AMove.Transport, AMove.Card.Key, mChange, AMove.TimeoutMs);
-  end;
-  if not Result.Succeeded then
-  begin
-    Exit;
-  end;
-  if not mSend.Send('POST', mUrl, EventJson(AMove.Card.Workflow.FieldId,
-    AMove.Card.Workflow.Transitions[ATransition]), Rest(mWatch, AMove.TimeoutMs), mResponse) then
-  begin
-    Result := TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, '');
-  end
-  else if (mResponse.Status < 200) or (mResponse.Status > 299) then
-  begin
-    Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
-      TAtlasYouTrackApi.ErrorMessage(mResponse.Text));
-  end;
+  mChange := TAtlasTrackerWrite.Empty;
+  mChange.Comment := AMove.Comment;
+  mChange.Transition := AMove.Card.Workflow.Transitions[ATransition];
+  mChange.FieldId := AMove.Card.Workflow.FieldId;
+  Result := TAtlasYouTrackApi.ApplyChange(AMove.Target, AMove.Transport, AMove.Card.Key, mChange, AMove.TimeoutMs);
 end;
 
 class function TAtlasYouTrackWorkflow.SetValue(const AMove: TAtlasBoardMove; const AField: string;
@@ -249,7 +217,7 @@ begin
     mChange.State := mValue;
     mChange.Comment := AMove.Comment;
     Result := TAtlasYouTrackApi.ApplyChange(AMove.Target, AMove.Transport, AMove.Card.Key, mChange,
-      Rest(mWatch, AMove.TimeoutMs));
+      TAtlasYouTrackApi.Rest(mWatch, AMove.TimeoutMs));
     if Result.Succeeded or (Result.Error <> TAtlasCiFetchError.Invalid) then
     begin
       Break;

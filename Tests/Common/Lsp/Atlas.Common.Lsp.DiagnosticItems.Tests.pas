@@ -148,6 +148,10 @@ begin
   Assert.AreEqual('initialization', TLspDiagnosticItems.UsesStateName(TUsesEntryState.KeptForInitialization));
   Assert.AreEqual('allowlist', TLspDiagnosticItems.UsesStateName(TUsesEntryState.KeptByAllowlist));
   Assert.AreEqual('implementation', TLspDiagnosticItems.UsesStateName(TUsesEntryState.OnlyImplementation));
+  // Welche Regel ihr lsp-ignore und ihre Einstellungen für den Zustand gelten (#1135, #1136).
+  Assert.AreEqual('unused-uses', TLspDiagnosticItems.UsesRuleOf(TUsesEntryState.Unused));
+  Assert.AreEqual('uses-only-in-implementation', TLspDiagnosticItems.UsesRuleOf(TUsesEntryState.OnlyImplementation));
+  Assert.AreEqual('', TLspDiagnosticItems.UsesRuleOf(TUsesEntryState.KeptForInitialization));
 end;
 
 procedure TLspDiagnosticItemsTests.FormParamsOnlyForFormFiles;

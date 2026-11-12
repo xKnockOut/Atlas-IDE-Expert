@@ -143,7 +143,9 @@ type
     SettingsContextGroupEdit, SettingsContextGroupAnalysis, SettingsContextGroupFindings, SettingsContextGroupDebug,
     SettingsContextGroupTests, SettingsContextGroupNotes,
     // Compilermeldungen im Hover erklären (#54).
-    SettingsHoverExplainMessages);
+    SettingsHoverExplainMessages,
+    // Beispiel falsch/richtig im Befund-Hover (#145).
+    SettingsHoverRuleExamples);
 
   TAtlasSettingsStrings = class
   public
@@ -701,7 +703,8 @@ const
      'Debuggen',
      'Tests',
      'Notizen und Lesezeichen',
-     'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“'),
+     'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“',
+     'Link „Beispiel zeigen“ unter Befunden im Hover (Beschreibung und Beispiel aus dem Regelkatalog)'),
     ('Completion, parameter hint and tooltip by Atlas',
      'Code Insight by Atlas (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:',
@@ -1242,7 +1245,8 @@ const
      'Debugging',
      'Tests',
      'Notes and bookmarks',
-     'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"'));
+     'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"',
+     'Link "Show example" below findings in the hover (description and example from the rule catalog)'));
 
 { TAtlasSettingsStrings }
 

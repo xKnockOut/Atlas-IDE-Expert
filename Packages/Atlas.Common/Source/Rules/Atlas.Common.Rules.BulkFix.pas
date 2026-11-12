@@ -30,7 +30,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Catalog;
@@ -176,6 +175,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Rules.Scopes,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,

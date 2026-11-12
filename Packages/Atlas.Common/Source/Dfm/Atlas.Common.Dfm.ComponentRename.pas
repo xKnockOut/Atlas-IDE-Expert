@@ -8,8 +8,7 @@
 interface
 
 uses
-  System.SysUtils,
-  Atlas.Common.Dfm.Contract;
+  System.SysUtils;
 
 type
   THandlerRename = record
@@ -27,6 +26,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser;
 
 function FindObject(AObject: TDfmObject; const AName: string): TDfmObject;

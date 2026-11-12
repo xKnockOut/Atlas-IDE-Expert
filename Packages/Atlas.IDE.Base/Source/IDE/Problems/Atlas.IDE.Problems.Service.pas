@@ -43,8 +43,6 @@ uses
   System.JSON,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.FindingsCache,
-  Atlas.Core.Problems.Refresh,
   Atlas.Core.Settings.ProblemsUpdate;
 
 type
@@ -104,6 +102,9 @@ type
     /// <summary>Katalog des Servers mit Regeln und Compilermeldungen (#54, TAtlasRuleExplanation.Find). Fehlt er
     /// noch, fragt der Aufruf ihn im Hintergrund an und liefert nil; der nächste Hover hat ihn.</summary>
     class function Catalog: TJSONValue; static;
+    /// <summary>Katalog an ADone im Hauptthread (#145): sofort der gemerkte, sonst nach der Antwort des Servers;
+    /// nil ohne Server. Der Wert gehört dem Dienst.</summary>
+    class procedure WithCatalog(const ADone: TProc<TJSONValue>); static;
     /// <summary>„Erklären“ im Hover (#54): Dialog mit Erklärung, Ursache, Beispiel und DocWiki-Link.</summary>
     class procedure Explain(const AProblem: TAtlasProblem); static;
   end;
@@ -111,6 +112,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Problems.FindingsCache,
+  Atlas.Core.Problems.Refresh,
   System.Classes,
   System.Math,
   System.Generics.Collections,
@@ -868,6 +871,28 @@ begin
   begin
     LoadCatalog(nil);
   end;
+end;
+
+class procedure TAtlasIdeProblems.WithCatalog(const ADone: TProc<TJSONValue>);
+var
+  mDone: TProc<TJSONValue>;
+begin
+  if CatalogReady then
+  begin
+    ADone(State.Catalog);
+    Exit;
+  end;
+  if (State = nil) or not Assigned(State.Hooks.Command) then
+  begin
+    ADone(nil);
+    Exit;
+  end;
+  mDone := ADone;
+  LoadCatalog(
+    procedure
+    begin
+      mDone(State.Catalog);
+    end);
 end;
 
 class procedure TAtlasIdeProblems.Explain(const AProblem: TAtlasProblem);

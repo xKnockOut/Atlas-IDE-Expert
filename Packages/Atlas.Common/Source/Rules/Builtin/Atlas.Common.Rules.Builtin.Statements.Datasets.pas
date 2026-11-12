@@ -20,7 +20,6 @@
 interface
 
 uses
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract;
 
 type
@@ -54,6 +53,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,

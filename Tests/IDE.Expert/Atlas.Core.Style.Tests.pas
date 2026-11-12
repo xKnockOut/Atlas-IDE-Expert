@@ -6,7 +6,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette;
 
 type
@@ -138,6 +137,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   System.SysUtils,
   System.Math,
   System.Types,

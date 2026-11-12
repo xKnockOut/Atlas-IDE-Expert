@@ -25,7 +25,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.MethodWithoutSelf,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
   Atlas.Common.Lsp.References;
 
@@ -67,6 +66,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.MethodWithoutSelf,
   System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,

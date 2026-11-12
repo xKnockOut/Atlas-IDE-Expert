@@ -8,7 +8,6 @@ interface
 uses
   System.Generics.Collections,
   DUnitX.TestFramework,
-  Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation;
 
 type
@@ -74,6 +73,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.AccessChains,
   System.SysUtils;
 
 function Link(const AExpression: string; AKind: TAtlasAvLinkKind; const ATypeName: string): TAtlasAvLink;

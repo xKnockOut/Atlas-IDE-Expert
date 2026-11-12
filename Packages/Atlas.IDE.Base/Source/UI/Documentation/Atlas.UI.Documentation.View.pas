@@ -15,7 +15,6 @@ uses
   Winapi.Windows,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Documentation.Layout,
@@ -129,6 +128,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Atlas.UI.Popup.Draw,
   System.SysUtils,
   System.Math,

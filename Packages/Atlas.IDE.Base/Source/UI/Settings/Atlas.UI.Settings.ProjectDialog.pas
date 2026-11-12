@@ -42,7 +42,6 @@ uses
   Vcl.ComCtrls,
   Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.Validation,
@@ -212,6 +211,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Settings.Schema,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.Math,

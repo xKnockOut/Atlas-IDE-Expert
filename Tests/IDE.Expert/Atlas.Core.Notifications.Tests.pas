@@ -12,11 +12,7 @@ uses
   DUnitX.TestFramework,
   System.SysUtils,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Sources,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Build;
+  Atlas.Core.Notifications.Center;
 
 type
   [TestFixture]
@@ -91,6 +87,12 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Build.Verdict,
+  Atlas.Core.Notifications.Contract,
+  Atlas.Core.Notifications.Sources,
+  Atlas.Core.Notifications.Build;
 
 const
   Server = TAtlasNotificationSources.cServer;

@@ -43,7 +43,6 @@ interface
 uses
   Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Editor.LineChanges,
   Atlas.IDE.Contracts.LineChanges;
 
@@ -93,6 +92,7 @@ type
 implementation
 
 uses
+  Atlas.Core.VersionControl.Contract,
   System.Classes,
   System.Types,
   System.Math,
