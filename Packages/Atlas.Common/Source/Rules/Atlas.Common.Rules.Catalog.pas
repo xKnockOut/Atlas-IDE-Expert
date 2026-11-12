@@ -31,8 +31,8 @@ uses
 type
   TRuleCategory = (Bug, Vulnerability, CodeSmell, SecurityHotspot);
   /// <summary>Gruppe der Einstellungsseite und des Fensters „Atlas-Prüfung“ (#909).</summary>
-  TRuleGroup = (FindBugs, Exceptions, Threads, Database, Compiler, Robustness, Performance, Security, Components,
-    Forms, Architecture, Style, Packages, Internal);
+  TRuleGroup = (FindBugs, Exceptions, Threads, Database, Compiler, Robustness, Migration, Performance, Security,
+    Components, Forms, Architecture, Style, Packages, Internal);
 
   /// <summary>Spalte einer Option der Art "object-list" (#1133): Schlüssel der Objekte.</summary>
   TRuleOptionColumn = record
@@ -189,7 +189,7 @@ const
 const
   cCategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
   cGroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
-    'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
+    'robustness', 'migration', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
   cOptionKinds: array[0..6] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list',
     'json');
   // Mitgelieferte Profile ohne Kategorie-Profile ("profiles", #145); strict schaltet alle Regeln ein.

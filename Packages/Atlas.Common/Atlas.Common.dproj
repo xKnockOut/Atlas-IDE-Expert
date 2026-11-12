@@ -190,6 +190,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Packages.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Performance.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Robustness.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Migration.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Security.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Style.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Threads.pas"/>
@@ -207,6 +208,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Packages.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Performance.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Robustness.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Migration.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Security.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Style.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De.Threads.pas"/>
@@ -717,6 +719,10 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Texts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Automation.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Shared.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Unicode.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Win64.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.StringConversions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Heads.pas"/>
