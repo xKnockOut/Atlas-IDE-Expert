@@ -21,11 +21,14 @@ type
     procedure CountsItemsWithoutSlot;
     [Test]
     procedure EmptyInputLeavesAllSlotsFree;
+    [Test]
+    procedure MenuNameIsValidComponentName;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Core.Commands.MenuSlots;
 
 function Item(const AId, ASection: string; AVisible: Boolean): TAtlasSlotItem;
@@ -108,6 +111,16 @@ begin
   Assert.IsFalse(mLayout.Top.Shown);
   Assert.AreEqual(2, Integer(Length(mLayout.Groups[0].Items)));
   Assert.AreEqual(0, mLayout.Missing);
+end;
+
+procedure TAtlasMenuSlotsTests.MenuNameIsValidComponentName;
+begin
+  // Die IDE übernimmt den Namen als TMenuItem.Name; „AtlasProjectMenu.9000010“ scheiterte dort bei jedem Rechtsklick.
+  Assert.AreEqual('AtlasProjectMenu9000010', TAtlasMenuSlots.MenuName('AtlasProjectMenu.', 9000010));
+  Assert.IsTrue(IsValidIdent(TAtlasMenuSlots.MenuName('AtlasProjectMenu.', 9000010)));
+  Assert.AreEqual('AtlasProjectMenuGroup0', TAtlasMenuSlots.MenuName('Atlas Project-Menu.Group', 0));
+  Assert.AreEqual('Atlas1Men2', TAtlasMenuSlots.MenuName('1.Menü', 2), 'Ziffer vorn, Umlaut entfällt');
+  Assert.AreEqual('Atlas7', TAtlasMenuSlots.MenuName('', -7));
 end;
 
 initialization
