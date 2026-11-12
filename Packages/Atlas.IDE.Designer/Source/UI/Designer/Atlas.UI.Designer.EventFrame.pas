@@ -30,7 +30,14 @@ uses
 
 type
   TAtlasEventFrame = class(TFrame)
+  private type
+    /// <summary>Anfangseinträge einer Klappliste: Items braucht ein Fenster, gefüllt wird in CreateWnd.</summary>
+    TComboFill = record
+      Combo: TComboBox;
+      Items: TArray<string>;
+    end;
   private
+    FComboFills: TArray<TComboFill>;
     FTop: TPanel;
     FFilter: TEdit;
     FEvent: TComboBox;
@@ -59,6 +66,8 @@ type
     procedure RemoveClick(Sender: TObject);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
+  protected
+    procedure CreateWnd; override;
     procedure FillEvents(const AEvents: TArray<string>);
   public
     constructor Create(AOwner: TComponent); override;
@@ -182,17 +191,40 @@ begin
   Result.AlignWithMargins := True;
   Result.Style := csDropDownList;
   Result.Width := MulDiv(cComboWidth, CurrentPPI, cBasePpi);
-  Result.Items.BeginUpdate;
-  try
-    for mItem in AItems do
-    begin
-      Result.Items.Add(mItem);
-    end;
-  finally
-    Result.Items.EndUpdate;
+  // Items braucht ein Fenster (ohne Parent: kein übergeordnetes Fenster): erst in CreateWnd füllen.
+  SetLength(FComboFills, Length(FComboFills) + 1);
+  FComboFills[High(FComboFills)].Combo := Result;
+  FComboFills[High(FComboFills)].Items := nil;
+  for mItem in AItems do
+  begin
+    FComboFills[High(FComboFills)].Items := FComboFills[High(FComboFills)].Items + [mItem];
   end;
-  Result.ItemIndex := 0;
   Result.OnChange := OptionsChanged;
+end;
+
+procedure TAtlasEventFrame.CreateWnd;
+var
+  mFill: TComboFill;
+  mItem: string;
+begin
+  inherited CreateWnd;
+  for mFill in FComboFills do
+  begin
+    // Bei jedem neuen Fenster nur, solange die Liste noch leer ist (Einträge von Fill bleiben).
+    if mFill.Combo.Items.Count = 0 then
+    begin
+      mFill.Combo.Items.BeginUpdate;
+      try
+        for mItem in mFill.Items do
+        begin
+          mFill.Combo.Items.Add(mItem);
+        end;
+      finally
+        mFill.Combo.Items.EndUpdate;
+      end;
+      mFill.Combo.ItemIndex := 0;
+    end;
+  end;
 end;
 
 function TAtlasEventFrame.AddMenuItem(const ACaption: string; const AOnClick: TNotifyEvent): TMenuItem;

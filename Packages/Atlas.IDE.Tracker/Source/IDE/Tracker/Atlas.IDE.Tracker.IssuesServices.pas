@@ -83,6 +83,7 @@ type
     property Preview: TAtlasIdeIssuePreview read FPreview;
     /// <summary>Fenster „Atlas-Board“ (#1272; nil vor Start bzw. nach Stop).</summary>
     property Board: TAtlasIdeBoard read FBoard;
+    property FlowMap: TAtlasIdeFlowMap read FFlowMap;
     /// <summary>Sprint-Kachel (#1277; nil vor Start bzw. nach Stop).</summary>
     property Sprint: TAtlasIdeSprint read FSprint;
     /// <summary>Tracker nachführen (#1266; nil vor Start bzw. nach Stop).</summary>

@@ -27,6 +27,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.UITypes,
   Winapi.Messages,
   Vcl.Controls,
   Vcl.Graphics,
@@ -199,8 +200,9 @@ const
   // Ohne Fenster und ohne brauchbare Schrifthöhe angenommene Zeilenhöhe.
   cMinLineHeight = 8;
   cFallbackLineHeight = 15;
-  // Bis zu so vielen Bogenhöhen Abstand gilt ein Ziel als benachbart (gerade Linie statt Bogen).
-  cAdjacentArcs = 4;
+  // Bis zu so vielen Bogenhöhen Abstand gilt ein Ziel als benachbart (gerade Linie statt Bogen). 5 × cArcLift = 70:
+  // Nachbarspalten (cColumnGap = 64) gerade, der übernächste Kasten (64 + 150 + 64) im Bogen.
+  cAdjacentArcs = 5;
   cArcLift = 14;
   cArrowSize = 8;
   // Halber Öffnungswinkel der Pfeilspitze im Bogenmaß.
