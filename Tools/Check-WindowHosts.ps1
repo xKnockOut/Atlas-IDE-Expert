@@ -28,6 +28,10 @@
       verlangen das Senken der Baseline (-UpdateBaseline). Eine Zeile mit
       // window-ok ist ausgenommen (Überlagerungen und Popups ohne
       Dialogcharakter, mit Begründung im Kommentar).
+    - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
+      eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
+      ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
+      auslöst; das Fenster öffnet dann nicht (#609, #612).
 
     Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.*/Source/.
     Kommentare werden übergangen.
@@ -111,6 +115,8 @@ if (Test-Path -LiteralPath $BaselineFile) {
 $Counts = [ordered]@{}
 
 $violations = @()
+# Frame-Klasse aus GetFrameClass → Fundstelle (für die DFM-Prüfung nach der Schleife).
+$FrameClasses = [ordered]@{}
 $files = $SourceDirs | ForEach-Object { Get-ChildItem -Path (Join-Path $Root $_) -Recurse -File -Include '*.pas' }
 
 foreach ($file in $files) {
@@ -149,6 +155,50 @@ foreach ($file in $files) {
             $violations += "${relative}:$(Get-LineNumber $text $dock.Index): INTACustomDockableForm ohne TAtlasIdeDockWindow"
         }
     }
+
+    $mFramePattern = '(?is)\.\s*GetFrameClass\s*:\s*TCustomFrameClass\s*;\s*begin\s*Result\s*:=\s*(\w+)\s*;'
+    foreach ($match in [regex]::Matches($text, $mFramePattern)) {
+        $FrameClasses[$match.Groups[1].Value] = "${relative}:$(Get-LineNumber $text $match.Index)"
+    }
+}
+
+# Frames der Dockfenster brauchen eine DFM-Ressource (TCustomFrame.Create, sonst EResNotFound). Es genügt die eines
+# Atlas-Vorfahren (InitInheritedComponent liest die Kette): Die Tafel der Startseite erbt die von TAtlasWelcomeFrame.
+$Declarations = @{}
+foreach ($file in $files) {
+    $mPlain = Remove-PascalComments ([IO.File]::ReadAllText($file.FullName))
+    foreach ($match in [regex]::Matches($mPlain, '(?i)\b(T\w+)\s*=\s*class\s*\(\s*(\w+)')) {
+        $Declarations[$match.Groups[1].Value] = @{ File = $file; Parent = $match.Groups[2].Value }
+    }
+}
+
+function Test-FrameResource([string] $Class) {
+    # Wahr, wenn die Unit von $Class {$R *.dfm} hat und die .dfm daneben ein Objekt dieser Klasse beschreibt.
+    $mDeclaration = $Declarations[$Class]
+    $mDfm = [IO.Path]::ChangeExtension($mDeclaration.File.FullName, '.dfm')
+    if ([IO.File]::ReadAllText($mDeclaration.File.FullName) -notmatch '(?i)\{\$R\s+\*\.dfm\}') { return $false }
+    if (-not (Test-Path -LiteralPath $mDfm)) { return $false }
+    return [IO.File]::ReadAllText($mDfm) -match ('(?im)^\W*(object|inherited|inline)\s+\w+\s*:\s*' + [regex]::Escape($Class) + '\b')
+}
+
+foreach ($mClass in $FrameClasses.Keys) {
+    if (-not $Declarations.ContainsKey($mClass)) {
+        $violations += "$($FrameClasses[$mClass]): Frame-Klasse $mClass nicht gefunden"
+        continue
+    }
+    $mCurrent = $mClass
+    $mFound = $false
+    while ($Declarations.ContainsKey($mCurrent)) {
+        if (Test-FrameResource $mCurrent) {
+            $mFound = $true
+            break
+        }
+        $mCurrent = $Declarations[$mCurrent].Parent
+    }
+    if (-not $mFound) {
+        $mRelative = [IO.Path]::GetRelativePath($Root, $Declarations[$mClass].File.FullName) -replace '\\', '/'
+        $violations += "${mRelative}: Frame $mClass eines Dockfensters ohne DFM ({`$R *.dfm} und .dfm, auch kein Vorfahr); die IDE kann ihn nicht anlegen (EResNotFound)"
+    }
 }
 
 if ($UpdateBaseline) {
@@ -175,5 +225,5 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten).' -ForegroundColor Green
+Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten), Frames der Dockfenster mit DFM.' -ForegroundColor Green
 exit 0
