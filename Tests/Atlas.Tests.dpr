@@ -1747,6 +1747,8 @@ uses
   Atlas.Core.Designer.PropertySearch.Tests in 'IDE.Expert\Atlas.Core.Designer.PropertySearch.Tests.pas',
   Atlas.Core.Designer.Usages in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Usages.pas',
   Atlas.Core.Designer.Usages.Tests in 'IDE.Expert\Atlas.Core.Designer.Usages.Tests.pas',
+  Atlas.Core.Designer.Undo in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Undo.pas',
+  Atlas.Core.Designer.Undo.Tests in 'IDE.Expert\Atlas.Core.Designer.Undo.Tests.pas',
   Atlas.Core.Designer.FitText in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FitText.pas',
   Atlas.Core.Designer.FitText.Tests in 'IDE.Expert\Atlas.Core.Designer.FitText.Tests.pas',
   Atlas.Core.Help.Links in '..\Packages\Atlas.IDE.Help\Source\Core\Help\Atlas.Core.Help.Links.pas',

@@ -55,6 +55,7 @@
     "editor.minimap": true,
     "editor.designerBar.tabOrderClick": true,
     "editor.designerBar.align": true,
+    "designer.undo": true,
     "debug.enabled": true,
     "issues.enabled": true,
     "analysis.enabled": true,

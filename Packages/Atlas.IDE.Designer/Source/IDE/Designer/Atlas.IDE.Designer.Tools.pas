@@ -14,6 +14,9 @@
 //   TAtlasIdePropertySearch): Knopf ohne Menü, öffnet den Dialog.
 // - Verwendungen im Code (#750, designer.usages, TAtlasIdeDesignerUsages):
 //   Knopf ohne Menü; der Takt führt Taste und Zähler im Statusfeld nach.
+// - Rückgängig im Designer (#1887, designer.undo, experimentell,
+//   TAtlasIdeDesignerUndo): Symbol nimmt den letzten Schritt zurück, der
+//   Pfeil listet die Schritte; der Takt meldet Strg+Z an und ab.
 // Nur im Hauptthread.
 
 interface
@@ -30,7 +33,8 @@ uses
   Atlas.IDE.Designer.SelectionBar,
   Atlas.IDE.Designer.Magnifier,
   Atlas.IDE.Designer.PropertySearch,
-  Atlas.IDE.Designer.Usages;
+  Atlas.IDE.Designer.Usages,
+  Atlas.IDE.Designer.Undo;
 
 type
   TAtlasIdeDesignerTools = class
@@ -39,6 +43,7 @@ type
     FResize: TAtlasIdeMultiResize;
     FBar: TAtlasIdeSelectionBar;
     FMagnifier: TAtlasIdeMagnifier;
+    FUndo: TAtlasIdeDesignerUndo;
     /// <summary>Werkzeug mit Griffen zum Knopf AId; nil ohne.</summary>
     function HandleToolOf(const AId: string): TAtlasIdeHandleTool;
   public
@@ -71,10 +76,12 @@ begin
   FResize := TAtlasIdeMultiResize.Create(AOnMessage);
   FBar := TAtlasIdeSelectionBar.Create(AOnMessage, APainter);
   FMagnifier := TAtlasIdeMagnifier.Create(AOnMessage);
+  FUndo := TAtlasIdeDesignerUndo.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerTools.Destroy;
 begin
+  FUndo.Free;
   FMagnifier.Free;
   FBar.Free;
   FResize.Free;
@@ -108,6 +115,10 @@ begin
   if TAtlasIdeDesignerUsages.Available(ASettings) then
   begin
     Result := Result + [TAtlasIdeDesignerUsages.Button];
+  end;
+  if TAtlasIdeDesignerUndo.Available(ASettings) then
+  begin
+    Result := Result + [FUndo.Button];
   end;
 end;
 
@@ -153,13 +164,18 @@ begin
   begin
     TAtlasIdeDesignerUsages.Run;
     Result := True;
+  end
+  else if SameText(AId, TAtlasIdeDesignerUndo.cId) then
+  begin
+    FUndo.Undo;
+    Result := True;
   end;
 end;
 
 function TAtlasIdeDesignerTools.HasMenu(const AId: string): Boolean;
 begin
   Result := (HandleToolOf(AId) <> nil) or SameText(AId, TAtlasIdeSelectionBar.cId) or
-    SameText(AId, TAtlasIdeMagnifier.cId);
+    SameText(AId, TAtlasIdeMagnifier.cId) or SameText(AId, TAtlasIdeDesignerUndo.cId);
 end;
 
 procedure TAtlasIdeDesignerTools.Popup(const AId: string; const APoint: TPoint);
@@ -178,6 +194,10 @@ begin
   else if SameText(AId, TAtlasIdeMagnifier.cId) then
   begin
     FMagnifier.Popup(APoint);
+  end
+  else if SameText(AId, TAtlasIdeDesignerUndo.cId) then
+  begin
+    FUndo.Popup(APoint);
   end;
 end;
 
@@ -188,6 +208,7 @@ begin
   FBar.Tick;
   FMagnifier.Tick;
   TAtlasIdeDesignerUsages.Tick;
+  FUndo.Tick;
 end;
 
 procedure TAtlasIdeDesignerTools.Hide;
@@ -197,6 +218,7 @@ begin
   FBar.Hide;
   FMagnifier.Hide;
   TAtlasIdeDesignerUsages.Hide;
+  FUndo.Hide;
 end;
 
 procedure TAtlasIdeDesignerTools.ApplyTheme;

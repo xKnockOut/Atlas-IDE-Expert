@@ -89,6 +89,10 @@ const
   cFitSourceItems = 'items';
   cMaxFitMinWidth = 2000;
   cMaxFitPadding = 200;
+  /// <summary>Grenzen und Vorgabe von designer.undoSteps (#1887).</summary>
+  cMinUndoSteps = 5;
+  cMaxUndoSteps = 200;
+  cDefaultUndoSteps = 50;
   /// <summary>Werte von designer.gapHandles.anchor (#734).</summary>
   cGapAnchorCenter = 'center';
   cGapAnchorFirst = 'first';
@@ -798,6 +802,10 @@ type
     DesignerMagnifierEdges: Boolean;
     /// <summary>Taste zum Öffnen und Einfrieren (#743, designer.magnifier.key).</summary>
     DesignerMagnifierKey: Integer;
+    /// <summary>Rückgängig im Designer über Formular-Stände (#1887, designer.undo, experimentell).</summary>
+    DesignerUndo: Boolean;
+    /// <summary>Höchstzahl der Schritte je Formular (#1887, designer.undoSteps).</summary>
+    DesignerUndoSteps: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -853,7 +861,8 @@ type
     procedure SetToolDefaults;
     /// <summary>Einstellungen der Werkzeuge mit eigenem Knopf lesen bzw. schreiben.</summary>
     procedure ExchangeTools(const AIo: TAtlasSettingsExchange);
-    /// <summary>Abstände und Ränder der Designer-Werkzeuge in ihre Grenzen bringen.</summary>
+    /// <summary>Abstände und Ränder der Designer-Werkzeuge (und die Schritte von designer.undoSteps) in ihre
+    /// Grenzen bringen.</summary>
     procedure NormalizeSpacing;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -1557,6 +1566,8 @@ begin
   DesignerMagnifierEdges := False;
   // Strg+Alt+L.
   DesignerMagnifierKey := 49228;
+  DesignerUndo := False;
+  DesignerUndoSteps := cDefaultUndoSteps;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
@@ -1577,6 +1588,8 @@ begin
   AIo.Flag('DesignerMagnifierGrid', DesignerMagnifierGrid);
   AIo.Flag('DesignerMagnifierEdges', DesignerMagnifierEdges);
   AIo.Number('DesignerMagnifierKey', DesignerMagnifierKey);
+  AIo.Flag('DesignerUndo', DesignerUndo);
+  AIo.Number('DesignerUndoSteps', DesignerUndoSteps);
 end;
 
 procedure TAtlasPluginEditorViewSettings.NormalizeSpacing;
@@ -1590,6 +1603,7 @@ begin
   DesignerArrangeFormRowGap := EnsureRange(DesignerArrangeFormRowGap, 0, cMaxButtonBarSpace);
   DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
   DesignerWrapInContainerPadding := EnsureRange(DesignerWrapInContainerPadding, 0, cMaxButtonBarSpace);
+  DesignerUndoSteps := EnsureRange(DesignerUndoSteps, cMinUndoSteps, cMaxUndoSteps);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
