@@ -373,6 +373,7 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.Namespaces.Tests.pas',
   Atlas.Common.Lsp.Internals.FormCache.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.FormCache.Tests.pas',
   Atlas.Common.JsonRpc.Watchdog.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.Watchdog.Tests.pas',
+  Atlas.Common.JsonRpc.WorkerPool.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.Tests.pas',
   Atlas.Common.JsonRpc.RecentMessages.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.Tests.pas',
   Atlas.Common.JsonRpc.CurrentRequest.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.Tests.pas',
   Atlas.Common.JsonRpc.Messages.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.Messages.Tests.pas',

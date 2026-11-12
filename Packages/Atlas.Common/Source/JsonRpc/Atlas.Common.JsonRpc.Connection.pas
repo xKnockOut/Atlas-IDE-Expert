@@ -92,10 +92,10 @@ implementation
 uses
   System.Classes,
   System.SyncObjs,
-  System.Threading,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.JsonRpc.PendingRequests,
+  Atlas.Common.JsonRpc.WorkerPool,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -113,6 +113,8 @@ const
 
 const
   cWaitForever = Cardinal($FFFFFFFF);
+  /// <summary>Warten auf die Arbeitsthreads nach WaitForWork; dann laufen sie höchstens noch aus.</summary>
+  cPoolCloseMs = 2000;
 
 type
   TJsonRpcInboxKind = (ikMessage, ikInvalid, ikClosed, ikFailed, ikWakeUp, ikWork);
@@ -428,12 +430,21 @@ begin
   end;
 end;
 
-function ThreadPoolScheduler: TJsonRpcScheduler;
+// Eigene Arbeitsthreads statt TTask.Run (Begründung in Atlas.Common.JsonRpc.WorkerPool): Wartende Anfragen
+// belegten dort die Plätze des Standard-Threadpools, und kurze Anfragen standen dahinter an.
+function PoolScheduler(const APool: IJsonRpcWorkerPool): TJsonRpcScheduler;
+var
+  mPool: IJsonRpcWorkerPool;
 begin
+  mPool := APool;
   Result :=
     procedure(const AWork: TProc)
     begin
-      TTask.Run(AWork);
+      if not mPool.Run(AWork) then
+      begin
+        // Pool schon geschlossen (Ende der Schleife): wie ohne Scheduler im aufrufenden Thread.
+        AWork();
+      end;
     end;
 end;
 
@@ -573,6 +584,7 @@ var
   mInbox: IJsonRpcInbox;
   mFailure: Exception;
   mOwnScheduler, mOwnResponder: Boolean;
+  mPool: IJsonRpcWorkerPool;
   mReader: TThread;
 
   // Meldet eine unlesbare Nachricht und antwortet mit dem Fehler.
@@ -634,6 +646,11 @@ var
     if mOwnScheduler then
     begin
       FDispatcher.Scheduler := nil;
+      // Alle Antworten sind geschrieben oder aufgegeben; die Threads enden jetzt ohne Arbeit.
+      if not mPool.Close(cPoolCloseMs) then
+      begin
+        FUnfinishedWork := True;
+      end;
     end;
     if mOwnResponder then
     begin
@@ -650,7 +667,8 @@ begin
   mOwnScheduler := not Assigned(FDispatcher.Scheduler);
   if mOwnScheduler then
   begin
-    FDispatcher.Scheduler := ThreadPoolScheduler();
+    mPool := TJsonRpcWorkerPool.Create;
+    FDispatcher.Scheduler := PoolScheduler(mPool);
   end;
   mOwnResponder := not Assigned(FDispatcher.Responder);
   if mOwnResponder then
