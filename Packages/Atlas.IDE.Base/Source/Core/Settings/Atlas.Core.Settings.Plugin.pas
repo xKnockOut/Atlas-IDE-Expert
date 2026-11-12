@@ -1216,6 +1216,8 @@ type
     property IssuesAttachLogFiles: string read FIssueWork.IssuesAttachLogFiles write FIssueWork.IssuesAttachLogFiles;
     property IssuesAttachMaxImageWidth: Integer read FIssueWork.IssuesAttachMaxImageWidth
       write FIssueWork.IssuesAttachMaxImageWidth;
+    property IssuesAttachRaiseProgram: Boolean read FIssueWork.IssuesAttachRaiseProgram
+      write FIssueWork.IssuesAttachRaiseProgram;
     property WelcomePageCustomLayout: Boolean read FWelcome.WelcomePageCustomLayout
       write FWelcome.WelcomePageCustomLayout;
     property WelcomePageColumns: Integer read FWelcome.WelcomePageColumns write FWelcome.WelcomePageColumns;

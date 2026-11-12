@@ -31,6 +31,8 @@ type
     [Test]
     procedure ConditionalDeclarationIsSilent;
     [Test]
+    procedure GuardedNonEmptyIsSilent;
+    [Test]
     procedure OffAndExclude;
   end;
 
@@ -188,6 +190,25 @@ begin
   TRuleAssert.Silent(TFirstCharAddressRule.Create, Source('const AText: string',
     '{$IFDEF BREIT}'#10'  mPuffer: string;'#10'{$ELSE}'#10'  mPuffer: array[1..10] of Byte;'#10'{$ENDIF}'#10,
     '  WriteBuffer(@mPuffer[1], 1);'#10));
+end;
+
+procedure TFirstCharAddressTests.GuardedNonEmptyIsSilent;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026 (F12): Bedingungen, die den String als nicht leer sichern.
+  TRuleAssert.Silent(TFirstCharAddressRule.Create, Source('const AText: string; ALen: Integer',
+    '  mText: string;'#10, '  if AText <> '''' then'#10'    WriteBuffer(@AText[1], 1);'#10 +
+    '  if (Length(AText) > 0) and (ALen > 1) then'#10'    WriteBuffer(@AText[1], 1);'#10 +
+    '  SetLength(mText, ALen);'#10'  if ALen > 0 then'#10'    WriteBuffer(@mText[1], ALen);'#10 +
+    '  if AText = '''' then'#10'    WriteBuffer(nil, 0)'#10'  else'#10'    WriteBuffer(@AText[1], 1);'#10 +
+    '  if Length(AText) = 0 then'#10'    Exit;'#10'  WriteBuffer(@AText[1], 1);'#10));
+  // Eine Bedingung über etwas anderes, oder mit or, sichert nichts.
+  mFound := Findings(Source('const AText: string; ALen: Integer', '',
+    '  if ALen > 0 then'#10'    WriteBuffer(@AText[1], 1);'#10 +
+    '  if (AText <> '''') or (ALen > 0) then'#10'    WriteBuffer(@AText[1], 1);'#10));
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  mFound := nil;
 end;
 
 procedure TFirstCharAddressTests.OffAndExclude;

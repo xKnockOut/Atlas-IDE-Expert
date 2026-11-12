@@ -96,8 +96,6 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.SettingsCommands,
@@ -221,21 +219,11 @@ end;
 
 function TShellServerCommands.RunSettingsCatalog(const AArguments: TJSONArray): TJSONValue;
 var
-  mRule: IRule;
-  mExperimental: TArray<string>;
   mCatalog: TJSONObject;
 begin
-  // Experimentelle Regeln (#834) kennt nur ihr Deskriptor; die Einstellungsseite (#909) markiert sie.
-  mExperimental := nil;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Experimental then
-    begin
-      mExperimental := mExperimental + [mRule.Descriptor.Id];
-    end;
-  end;
+  // Experimentelle Regeln (#834) markiert die Einstellungsseite (#909) aus "profiles" des Regelkatalogs (#145).
   mCatalog := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments),
-    FServices.GlobalSettingsFile(), mExperimental);
+    FServices.GlobalSettingsFile());
   // Erklärungen der Compilermeldungen (#54) für Hover und „Erklären“ des Plugins.
   TLspSettingsCommands.AddMessages(mCatalog, AArguments);
   Result := mCatalog;

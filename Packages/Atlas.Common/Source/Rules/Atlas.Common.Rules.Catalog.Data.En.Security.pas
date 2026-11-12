@@ -8,7 +8,7 @@
 interface
 
 const
-  cCatalogLinesEnSecurity: array[0..127] of string = (
+  cCatalogLinesEnSecurity: array[0..142] of string = (
     '{',
     '      "id": "bidi-control",',
     '      "name": "Bidirectional control character",',
@@ -18,7 +18,8 @@ const
     '      "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source); also in form files. Direction marks in RTL text only with low confidence.' +
     '",',
     '      "bad": "if IsAdmin then { U+202E } begin",',
-    '      "good": "if IsAdmin then begin"',
+    '      "good": "if IsAdmin then begin",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "invisible-char",',
@@ -28,7 +29,8 @@ const
     '      "group": "security",',
     '      "description": "Invisible or zero-width characters in the source code and form files; medium confidence in strings and comments.",',
     '      "bad": "Count{U+200B} := 0;",',
-    '      "good": "Count := 0;"',
+    '      "good": "Count := 0;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "control-char",',
@@ -39,7 +41,8 @@ const
     '      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column. Like dcc, a file without a BOM counts as UTF-8 on' +
     'ly if the whole file is valid UTF-8; an ANSI file is checked for invalid bytes only if its valid UTF-8 sequences outweigh them. U+FFFD is an error in code, a hint in strings and ignored in comments.",',
     '      "bad": "S := ''abc{U+0000}'';",',
-    '      "good": "S := ''abc'' + #0;"',
+    '      "good": "S := ''abc'' + #0;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "confusable-identifier",',
@@ -49,7 +52,8 @@ const
     '      "group": "security",',
     '      "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",',
     '      "bad": "var Pаssword: string; { Cyrillic ''а'' }",',
-    '      "good": "var Password: string;"',
+    '      "good": "var Password: string;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "security-command-injection",',
@@ -60,7 +64,8 @@ const
     '      "description": "ShellExecute, ShellExecuteEx, CreateProcess or WinExec receives an argument built with +, Format or Concat from non-constant values. Input could inject further commands. Without ' +
     'data flow analysis only this simple pattern is found (medium confidence).",',
     '      "bad": "ShellExecute(0, ''open'', PChar(''cmd /c '' + Edit1.Text), nil, nil, SW_SHOW);",',
-    '      "good": "ShellExecute(0, ''open'', ''tool.exe'', PChar(QuotedArgument), nil, SW_SHOW);  // validated"',
+    '      "good": "ShellExecute(0, ''open'', ''tool.exe'', PChar(QuotedArgument), nil, SW_SHOW);  // validated",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "security-path-traversal",',
@@ -71,7 +76,11 @@ const
     '      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first ' +
     'argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.",',
     '      "bad": "List.LoadFromFile(''C:\\Data\\'' + Edit1.Text);",',
-    '      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"',
+    '      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "security-weak-crypto",',
@@ -82,7 +91,8 @@ const
     '      "description": "MD5, SHA-1, DES or RC4 is used. For checksums this is fine; for passwords and signatures it is not. Low confidence, medium when the statement mentions a password, secret or signa' +
     'ture.",',
     '      "bad": "Stored := THashSHA1.GetHashString(PasswordText);",',
-    '      "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);"',
+    '      "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "security-tls-verification-disabled",',
@@ -92,7 +102,8 @@ const
     '      "group": "security",',
     '      "description": "Indy SSLOptions.VerifyMode := [], an OnVerifyPeer handler that always returns True, or a ValidateServerCertificate handler that sets Accepted := True without a check.",',
     '      "bad": "IdSSL.SSLOptions.VerifyMode := [];",',
-    '      "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];"',
+    '      "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "security-insecure-http",',
@@ -102,7 +113,8 @@ const
     '      "group": "security",',
     '      "description": "A string contains an http:// URL. XML namespaces and schema URIs, comments and localhost, 127.0.0.1 and [::1] are skipped. The fix replaces http:// with https://.",',
     '      "bad": "Client.Get(''http://api.example.com/data'');",',
-    '      "good": "Client.Get(''https://api.example.com/data'');"',
+    '      "good": "Client.Get(''https://api.example.com/data'');",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "security-insecure-random",',
@@ -112,7 +124,8 @@ const
     '      "group": "security",',
     '      "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",',
     '      "bad": "Token := IntToStr(Random(MaxInt));",',
-    '      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"',
+    '      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "security-hardcoded-credential",',
@@ -129,6 +142,7 @@ const
     'e environment or a vault.",',
     '      "bad": "const\n  DbPassword = ''geheim'';\n…\nConnection.ConnectionString := ''Provider=SQLOLEDB;User ID=sa;Password=geheim'';",',
     '      "good": "Connection.Params.Values[''Password''] := Settings.ReadString(''Db'', ''Password'', '''');",',
+    '      "safeFix": false,',
     '      "options": [',
     '        {',
     '          "name": "patterns",',
@@ -147,7 +161,8 @@ const
     '      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). C' +
     'onstants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",',
     '      "bad": "Q.SQL.Text := ''select * from K where N = '''''' + Edit1.Text + '''''''';",',
-    '      "good": "Q.SQL.Text := ''select * from K where N = :N'';\nQ.ParamByName(''N'').AsString := Edit1.Text;"',
+    '      "good": "Q.SQL.Text := ''select * from K where N = :N'';\nQ.ParamByName(''N'').AsString := Edit1.Text;",',
+    '      "safeFix": false',
     '    }');
 
 implementation

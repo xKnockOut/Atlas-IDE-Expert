@@ -93,6 +93,8 @@ type
     [Test]
     procedure CaseMissingEnumValueSilentCases;
     [Test]
+    procedure CaseMissingEnumValueCoverage;
+    [Test]
     procedure CaseMissingEnumValueOptions;
     [Test]
     procedure DatasetLoopIssueExample;
@@ -741,6 +743,26 @@ begin
     TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
 end;
 
+procedure TStatementPatternRulesTests.CaseMissingEnumValueCoverage;
+const
+  cTypes = 'unit U;'#10'interface'#10'type'#10'  TFarbe = (f1, f2, f3, f4, f5, f6, f7, f8, f9, f10);'#10 +
+    'implementation'#10'procedure Malen(A: TFarbe);'#10'begin'#10;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026: Ein case über zwei von zehn Werten ist meist gewollt (niedrige Konfidenz).
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, cTypes + '  case A of'#10'    f1: ;'#10 +
+    '    f2: ;'#10'  end;'#10'end;'#10'end.', '{"minConfidence": "low"}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
+  // Fehlen höchstens zwei oder höchstens die Hälfte, ist wohl ein Wert vergessen.
+  mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, cTypes + '  case A of'#10 +
+    '    f1..f5: ;'#10'  end;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  mFindings := nil;
+end;
+
 procedure TStatementPatternRulesTests.CaseMissingEnumValueSilentCases;
 begin
   // Vollständig, mit else, Ganzzahl, unbekannter Typ, Aufruf als Selektor.
@@ -758,8 +780,9 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   Source := Bestellung('  case Stand of'#10'    bsNeu: Anlegen;'#10'  else'#10'    Protokoll;'#10'  end;');
+  // Drei von vier Werten fehlen: niedrige Konfidenz, darum minConfidence low.
   Findings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, Source,
-    '{"rules": {"case-missing-enum-value": {"requireElse": true}}}', 'U.pas');
+    '{"minConfidence": "low", "rules": {"case-missing-enum-value": {"requireElse": true}}}', 'U.pas');
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual('Fehlende Werte von TBestellStatus: bsBezahlt, bsStorniert, bsZurueck.', Findings[0].Message);
   Assert.IsTrue(Pos('bsZurueck: ;'#10'  else', TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits)) > 0);

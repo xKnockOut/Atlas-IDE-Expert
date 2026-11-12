@@ -68,6 +68,14 @@ type
     /// <summary>#1352: sichere Sammelkorrektur.</summary>
     [Test]
     procedure ReadsSafeFix;
+    /// <summary>#145: Jede Regel des eingebetteten Katalogs nennt "category" und "safeFix" ausdrücklich.</summary>
+    [Test]
+    procedure EveryEmbeddedRuleNamesCategoryAndSafeFix;
+    /// <summary>#145: "profiles" (standard, strict); ohne standard ist die Regel experimentell.</summary>
+    [Test]
+    procedure ReadsProfiles;
+    [Test]
+    procedure RejectsInvalidProfiles;
   end;
 
 implementation
@@ -469,6 +477,67 @@ begin
   Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
   Assert.IsFalse(Entry.SafeFix);
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","safeFix":"ja"}]}');
+end;
+
+procedure TRuleCatalogTests.EveryEmbeddedRuleNamesCategoryAndSafeFix;
+var
+  Root, Item: TJSONValue;
+  Category: TRuleCategory;
+  Id: string;
+begin
+  Root := TJSONObject.ParseJSONValue(RuleCatalogBaseJson);
+  try
+    for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
+    begin
+      Id := TJSONObject(Item).GetValue<string>('id');
+      Assert.IsTrue(TRuleCatalog.TryParseCategory(TJSONObject(Item).GetValue<string>('category', ''), Category), Id);
+      Assert.IsTrue(TJSONObject(Item).GetValue('safeFix') is TJSONBool, Id);
+    end;
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TRuleCatalogTests.ReadsProfiles;
+var
+  Catalog: TRuleCatalog;
+  Entry: TRuleCatalogEntry;
+begin
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
+    '"profiles":["strict"]},{"id":"y","category":"code-smell","severity":"hint"},' +
+    '{"id":"z","category":"bug","severity":"error","profiles":["Standard","strict"]}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('x', Entry));
+    Assert.AreEqual('strict', string.Join(',', Entry.Profiles));
+    Assert.IsTrue(Entry.Experimental);
+    Assert.IsTrue(Entry.InProfile('strict'));
+    Assert.IsFalse(Entry.InProfile('standard'));
+    Assert.IsTrue(Catalog.TryFind('y', Entry));
+    Assert.AreEqual(0, Integer(Length(Entry.Profiles)));
+    Assert.IsFalse(Entry.Experimental);
+    Assert.IsTrue(Entry.InProfile('standard'));
+    Assert.IsTrue(Entry.InProfile('STRICT'));
+    // Kategorie-Profile stehen nicht in "profiles".
+    Assert.IsFalse(Entry.InProfile('fast'));
+    Assert.IsTrue(Catalog.TryFind('z', Entry));
+    Assert.IsFalse(Entry.Experimental);
+  finally
+    Catalog.Free;
+  end;
+  // Eingebauter Katalog: magic-number läuft nur unter strict, empty-except überall.
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('magic-number', Entry));
+  Assert.IsTrue(Entry.Experimental);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
+  Assert.IsFalse(Entry.Experimental);
+end;
+
+procedure TRuleCatalogTests.RejectsInvalidProfiles;
+begin
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":"strict"}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":[]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":["standard"]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":["strict","fast"]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":[1]}]}');
 end;
 
 procedure TRuleCatalogTests.RejectsOptionWithUnknownType;

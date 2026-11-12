@@ -47,7 +47,8 @@
       "description": "The code uses a language feature that the project's language level does not know yet: inline variable and constant (Delphi 10.3), managed record with class operator Initialize/Finalize (Delphi 10.4), digit separator 1_000 and binary literal %1010 (Delphi 11), multiline string ''' (Delphi 12), if expression, \"is not\" and \"not in\" (Delphi 13). The language level is the older of delphiVersion and minDelphiVersion in atlas.json: minDelphiVersion names the oldest Delphi version the project must still compile with (e.g. \"12\" for code shared by Delphi 12 and 13). Without either setting nothing is reported. Inactive {$IF CompilerVersion >= …} branches are not reported, so code for several versions can live side by side. Reported in the editor, by --check, check_code and the Claude Code hook (hook_check). Code actions and slash commands do not generate features beyond the language level.",
       "bad": "// minDelphiVersion \"12\"\nif Sender is not TButton then\n  Exit;",
       "good": "if not (Sender is TButton) then\n  Exit;",
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "asm-invalid",
@@ -67,7 +68,8 @@
         "E2114",
         "E2118"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "unused-suppression",
@@ -99,7 +101,8 @@
       "group": "internal",
       "description": "The syntax tree of the unit is more than 100000 levels deep, so the rules do not run for it. Such trees only come from chains with as many terms, such as X := A - B - C - … The hint marks the deepest point; splitting the chain into partial expressions makes the unit checkable again.",
       "bad": "X := A - B - C - D - E; // … 100000 terms",
-      "good": "Part := A - B - C;\nX := Part - D - E;"
+      "good": "Part := A - B - C;\nX := Part - D - E;",
+      "safeFix": false
     },
     {
       "id": "bidi-control",
@@ -109,7 +112,8 @@
       "group": "security",
       "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source); also in form files. Direction marks in RTL text only with low confidence.",
       "bad": "if IsAdmin then { U+202E } begin",
-      "good": "if IsAdmin then begin"
+      "good": "if IsAdmin then begin",
+      "safeFix": false
     },
     {
       "id": "invisible-char",
@@ -119,7 +123,8 @@
       "group": "security",
       "description": "Invisible or zero-width characters in the source code and form files; medium confidence in strings and comments.",
       "bad": "Count{U+200B} := 0;",
-      "good": "Count := 0;"
+      "good": "Count := 0;",
+      "safeFix": false
     },
     {
       "id": "control-char",
@@ -129,7 +134,8 @@
       "group": "security",
       "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column. Like dcc, a file without a BOM counts as UTF-8 only if the whole file is valid UTF-8; an ANSI file is checked for invalid bytes only if its valid UTF-8 sequences outweigh them. U+FFFD is an error in code, a hint in strings and ignored in comments.",
       "bad": "S := 'abc{U+0000}';",
-      "good": "S := 'abc' + #0;"
+      "good": "S := 'abc' + #0;",
+      "safeFix": false
     },
     {
       "id": "confusable-identifier",
@@ -139,7 +145,8 @@
       "group": "security",
       "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",
       "bad": "var Pаssword: string; { Cyrillic 'а' }",
-      "good": "var Password: string;"
+      "good": "var Password: string;",
+      "safeFix": false
     },
     {
       "id": "forbidden-uses",
@@ -157,7 +164,8 @@
           "default": [],
           "description": "Layer rules: [{\"from\": glob, \"deny\": [globs], \"allow\": [globs]}]."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "uses-cycle",
@@ -179,7 +187,8 @@
           "default": true,
           "description": "Also report cycles with at least one edge in an implementation section (allowed by the compiler)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "architecture-role-import",
@@ -215,6 +224,10 @@
           "default": [],
           "description": "Approved exceptions \"Source -> Target\" (both globs)."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -239,6 +252,10 @@
           "default": [],
           "description": "Approved exceptions \"Unit.Type\" as glob."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -286,6 +303,10 @@
           "default": [],
           "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement, severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -296,7 +317,8 @@
       "group": "threads",
       "description": "TThread.Execute, TThread.CreateAnonymousThread or TTask accesses the VCL (Application, Screen, ShowMessage, MessageDlg …) outside Synchronize or Queue. The VCL is not thread-safe.",
       "bad": "procedure TWorker.Execute;\nbegin\n  Application.Title := 'Done';\nend;",
-      "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := 'Done' end);\nend;"
+      "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := 'Done' end);\nend;",
+      "safeFix": false
     },
     {
       "id": "lock-without-finally",
@@ -314,7 +336,8 @@
           "default": [],
           "description": "Additional lock pairs as [[\"Lock\", \"Release\"]]."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "thread-use-after-free-on-terminate",
@@ -324,7 +347,8 @@
       "group": "threads",
       "description": "A thread with FreeOnTerminate := True may free itself as soon as it is started; using the variable afterwards can access a freed object.",
       "bad": "T.FreeOnTerminate := True;\nT.Start;\nLog(T.ThreadID);",
-      "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;"
+      "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;",
+      "safeFix": false
     },
     {
       "id": "thread-free-with-free-on-terminate",
@@ -334,7 +358,8 @@
       "group": "threads",
       "description": "Free on a thread with FreeOnTerminate := True frees it twice.",
       "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.Free;",
-      "good": "T.FreeOnTerminate := True;\nT.Start;"
+      "good": "T.FreeOnTerminate := True;\nT.Start;",
+      "safeFix": false
     },
     {
       "id": "synchronize-in-destructor",
@@ -344,7 +369,8 @@
       "group": "threads",
       "description": "Synchronize in the destructor of a TThread descendant (or a method it calls) deadlocks: the main thread waits in WaitFor while the thread waits for Synchronize.",
       "bad": "destructor TWorker.Destroy;\nbegin\n  Synchronize(Notify);\n  inherited;\nend;",
-      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;"
+      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;",
+      "safeFix": false
     },
     {
       "id": "thread-resume-suspend",
@@ -365,7 +391,8 @@
       "group": "find-bugs",
       "description": "A path through the function ends without assigning Result. The caller then reads an undefined value. A for loop runs at least once when both bounds are number literals or true constants of the unit (cAttempts = 3) and the range is not empty, as Delphi evaluates it.",
       "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",
-      "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"
+      "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;",
+      "safeFix": false
     },
     {
       "id": "possibly-uninitialized",
@@ -375,7 +402,8 @@
       "group": "find-bugs",
       "description": "A local variable is read on a path where it was never assigned.",
       "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",
-      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"
+      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",
+      "safeFix": false
     },
     {
       "id": "unreachable-code",
@@ -385,7 +413,8 @@
       "group": "find-bugs",
       "description": "A statement after Exit, raise, Abort, Halt, Break, Continue or goto is never executed. Usually a leftover or a misplaced jump. Only the first statement of an unreachable section is reported.",
       "bad": "procedure Save;\nbegin\n  Exit;\n  Store;\nend;",
-      "good": "procedure Save;\nbegin\n  if not Ready then\n    Exit;\n  Store;\nend;"
+      "good": "procedure Save;\nbegin\n  if not Ready then\n    Exit;\n  Store;\nend;",
+      "safeFix": false
     },
     {
       "id": "unused-local",
@@ -403,7 +432,8 @@
           "default": [],
           "description": "Name patterns that are never reported (* and ?)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unused-parameter",
@@ -421,7 +451,8 @@
           "default": [],
           "description": "Name patterns that are never reported (* and ?)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unused-assignment",
@@ -439,7 +470,8 @@
           "default": [],
           "description": "Name patterns that are never reported (* and ?)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "duplicate-assignment",
@@ -460,7 +492,8 @@
           ],
           "description": "Properties where setting twice may be intended (setter with side effects), patterns with * and ?."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "declared-not-implemented",
@@ -470,7 +503,8 @@
       "group": "find-bugs",
       "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065). A body of the same name with a different header is reported by signature-mismatch instead.",
       "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",
-      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend."
+      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend.",
+      "safeFix": false
     },
     {
       "id": "implemented-not-declared",
@@ -480,7 +514,8 @@
       "group": "find-bugs",
       "description": "A method body TFoo.Bar has no declaration of that name in the type. A declaration of the same name with a different header is reported by signature-mismatch instead.",
       "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",
-      "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"
+      "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",
+      "safeFix": false
     },
     {
       "id": "destroy-without-override",
@@ -490,7 +525,8 @@
       "group": "find-bugs",
       "description": "A destructor Destroy is declared without override. Free calls TObject.Destroy, so this destructor never runs.",
       "bad": "type\n  TFoo = class\n    destructor Destroy;\n  end;",
-      "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"
+      "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;",
+      "safeFix": false
     },
     {
       "id": "setter-recursion",
@@ -500,7 +536,8 @@
       "group": "find-bugs",
       "description": "A setter assigns to its own property (Name := Value in SetName) or a getter reads it (Result := Name in GetName). The accessor calls itself endlessly and ends in a stack overflow at run time; the compiler stays silent. Quick fix: use the field instead (the field from the property declaration, otherwise F plus the name, if the class has it). Formerly recursive-property-accessor; settings and suppressions with the old ID still apply.",
       "bad": "procedure TKunde.SetName(const Value: string);\nbegin\n  if Name <> Value then\n    Name := Value;\nend;",
-      "good": "procedure TKunde.SetName(const Value: string);\nbegin\n  if FName <> Value then\n    FName := Value;\nend;"
+      "good": "procedure TKunde.SetName(const Value: string);\nbegin\n  if FName <> Value then\n    FName := Value;\nend;",
+      "safeFix": false
     },
     {
       "id": "component-create-without-override",
@@ -510,7 +547,8 @@
       "group": "components",
       "description": "A TComponent descendant declares constructor Create(AOwner: TComponent) without override. Components created from a form file are built through the virtual constructor and skip this one.",
       "bad": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent);\n  end;",
-      "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;"
+      "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;",
+      "safeFix": false
     },
     {
       "id": "hides-virtual",
@@ -520,7 +558,8 @@
       "group": "find-bugs",
       "description": "A method has the same name as a virtual method of an ancestor but neither overrides nor reintroduces it (compiler warning W1010).",
       "bad": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run;\n  end;",
-      "good": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
+      "good": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;",
+      "safeFix": false
     },
     {
       "id": "virtual-instead-of-override",
@@ -530,7 +569,8 @@
       "group": "find-bugs",
       "description": "A descendant declares a method virtual although the ancestor already has a virtual method with the same signature; this starts a new chain instead of overriding.",
       "bad": "type\n  TFoo = class(TBase)\n    procedure Run; virtual;\n  end;",
-      "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
+      "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;",
+      "safeFix": false
     },
     {
       "id": "captured-loop-variable",
@@ -548,7 +588,8 @@
           "default": [],
           "description": "Additional deferred APIs (besides TThread.Queue, TTask.Run and others)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "component-missing-inherited",
@@ -558,7 +599,8 @@
       "group": "components",
       "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. Paint is reported only if an ancestor's Paint draws something itself (TCustomPanel, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomForm and TPaintBox only fire OnPaint at run time, so a Paint without inherited is reported there only if the unit uses OnPaint or has a form file; TCustomControl.Paint and TGraphicControl.Paint are empty, so leaving out inherited there is normal.",
       "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",
-      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"
+      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;",
+      "safeFix": false
     },
     {
       "id": "component-default-mismatch",
@@ -568,7 +610,8 @@
       "group": "components",
       "description": "A property declares a default value, but the constructor sets its field to a different literal. The streaming system does not store values equal to default, so the property is loaded wrongly from the DFM.",
       "bad": "property Size: Integer read FSize write FSize default 5;\n...\nFSize := 10;",
-      "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;"
+      "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;",
+      "safeFix": false
     },
     {
       "id": "component-missing-free-notification",
@@ -578,7 +621,8 @@
       "group": "components",
       "description": "A component property refers to another component, but its setter does not call FreeNotification. When the other component is freed, a dangling pointer remains. Subcomponents created in the constructor are ignored.",
       "bad": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\nend;",
-      "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;"
+      "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;",
+      "safeFix": false
     },
     {
       "id": "component-setter-without-invalidate",
@@ -588,7 +632,8 @@
       "group": "components",
       "description": "A property setter changes a field that Paint reads, but does not call Invalidate (or Repaint, Refresh, Changed). The control keeps showing the old state.",
       "bad": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\nend;",
-      "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;"
+      "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;",
+      "safeFix": false
     },
     {
       "id": "component-fixed-pixels",
@@ -598,7 +643,8 @@
       "group": "components",
       "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv or through a method of the class that scales itself (calls ScaleValue, MulDiv or a Scale... routine), 0, 1 and -1, and factors of multiplications and divisions are not reported.",
       "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",
-      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"
+      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));",
+      "safeFix": false
     },
     {
       "id": "control-fixed-bounds",
@@ -608,7 +654,8 @@
       "group": "components",
       "description": "Code in a VCL unit sets Width, Height, Left, Top, ClientWidth or ClientHeight to a fixed pixel value (a number or a constant of the unit such as cRowHeight = 24). Controls created in code are not scaled by the VCL, so dialogs and columns stay too small above 96 dpi. Values passed through ScaleValue, MulDiv or a method of the class that scales itself, 0, 1 and -1, factors of multiplications and divisions, values from 10000 on (order for Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales with ScaleValue of the control itself (for Margins, Padding and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.",
       "bad": "mEdit.Width := 240;",
-      "good": "mEdit.Width := ScaleValue(240);"
+      "good": "mEdit.Width := ScaleValue(240);",
+      "safeFix": false
     },
     {
       "id": "component-hardcoded-color",
@@ -618,7 +665,8 @@
       "group": "components",
       "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",
       "bad": "Canvas.Brush.Color := $00FF8000;",
-      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"
+      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);",
+      "safeFix": false
     },
     {
       "id": "form-field-without-object",
@@ -628,7 +676,8 @@
       "group": "forms",
       "description": "A published component field of the form class has no object in the .dfm/.fmx next to the unit. After loading, the field stays nil. Fields outside published are not checked.",
       "bad": "Edit1: TEdit;  // object Edit1 was deleted from the form",
-      "good": "// remove the field or restore the object"
+      "good": "// remove the field or restore the object",
+      "safeFix": false
     },
     {
       "id": "form-object-without-field",
@@ -638,7 +687,8 @@
       "group": "forms",
       "description": "An object of the form file has no field in the form class. Inherited objects, objects inside inline frames, unnamed components and collection items are skipped. The fix adds the field.",
       "bad": "object Button2: TButton  // no Button2 in TForm1",
-      "good": "Button2: TButton;"
+      "good": "Button2: TButton;",
+      "safeFix": false
     },
     {
       "id": "form-field-type-mismatch",
@@ -648,7 +698,8 @@
       "group": "forms",
       "description": "The field type differs from the class of the object in the form file. Without source for the class in the form file, nothing is compared. The fix changes the field type.",
       "bad": "Edit1: TEdit;  // object Edit1: TMaskEdit",
-      "good": "Edit1: TMaskEdit;"
+      "good": "Edit1: TMaskEdit;",
+      "safeFix": false
     },
     {
       "id": "security-command-injection",
@@ -658,7 +709,8 @@
       "group": "security",
       "description": "ShellExecute, ShellExecuteEx, CreateProcess or WinExec receives an argument built with +, Format or Concat from non-constant values. Input could inject further commands. Without data flow analysis only this simple pattern is found (medium confidence).",
       "bad": "ShellExecute(0, 'open', PChar('cmd /c ' + Edit1.Text), nil, nil, SW_SHOW);",
-      "good": "ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // validated"
+      "good": "ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // validated",
+      "safeFix": false
     },
     {
       "id": "security-path-traversal",
@@ -668,7 +720,11 @@
       "group": "security",
       "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.",
       "bad": "List.LoadFromFile('C:\\Data\\' + Edit1.Text);",
-      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"
+      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "security-weak-crypto",
@@ -678,7 +734,8 @@
       "group": "security",
       "description": "MD5, SHA-1, DES or RC4 is used. For checksums this is fine; for passwords and signatures it is not. Low confidence, medium when the statement mentions a password, secret or signature.",
       "bad": "Stored := THashSHA1.GetHashString(PasswordText);",
-      "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);"
+      "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);",
+      "safeFix": false
     },
     {
       "id": "security-tls-verification-disabled",
@@ -688,7 +745,8 @@
       "group": "security",
       "description": "Indy SSLOptions.VerifyMode := [], an OnVerifyPeer handler that always returns True, or a ValidateServerCertificate handler that sets Accepted := True without a check.",
       "bad": "IdSSL.SSLOptions.VerifyMode := [];",
-      "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];"
+      "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];",
+      "safeFix": false
     },
     {
       "id": "security-insecure-http",
@@ -698,7 +756,8 @@
       "group": "security",
       "description": "A string contains an http:// URL. XML namespaces and schema URIs, comments and localhost, 127.0.0.1 and [::1] are skipped. The fix replaces http:// with https://.",
       "bad": "Client.Get('http://api.example.com/data');",
-      "good": "Client.Get('https://api.example.com/data');"
+      "good": "Client.Get('https://api.example.com/data');",
+      "safeFix": false
     },
     {
       "id": "security-insecure-random",
@@ -708,7 +767,8 @@
       "group": "security",
       "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",
       "bad": "Token := IntToStr(Random(MaxInt));",
-      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"
+      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));",
+      "safeFix": false
     },
     {
       "id": "security-hardcoded-credential",
@@ -719,6 +779,7 @@
       "description": "A password, key or token is written into the source or the form file. Three patterns in string literals (comments do not count): Password= or Pwd= with a value in a connection string (ConnectionString, Params, Params.Add, also in the form file; no blank before =, so SQL such as WHERE Password = :Pwd stays silent), high confidence; known key formats (GitHub tokens, AWS access keys, private keys, Slack and Google keys) in any literal, also in resourcestring, high confidence; a literal assigned to or compared with a name that ends in Password, Passwd, Passwort, Kennwort, Pwd, Secret, ApiKey, AccessKey, Token or PrivateKey (const, initialized variable, :=, =, Params.Values['Password'], component property in the form file), medium confidence. Secret, key and token values count from eight characters. Empty values, placeholders ('***', 'xxx', '<…>', '%s', '{0}', 'changeme', :Param), texts with blanks and values that look like a key name stay silent. The finding never shows the value in clear text: at most the first four characters, followed by ****. Form file findings appear at the component field in the unit. No quick fix; read credentials from the configuration, the environment or a vault.",
       "bad": "const\n  DbPassword = 'geheim';\n…\nConnection.ConnectionString := 'Provider=SQLOLEDB;User ID=sa;Password=geheim';",
       "good": "Connection.Params.Values['Password'] := Settings.ReadString('Db', 'Password', '');",
+      "safeFix": false,
       "options": [
         {
           "name": "patterns",
@@ -736,7 +797,8 @@
       "group": "forms",
       "description": "MasterSource/DataSource links in the form file form a cycle (tblA → dsB → tblB → dsA → tblA). Opening the datasets recurses or never shows consistent data.",
       "bad": "tblA.MasterSource = dsB; tblB.MasterSource = dsA",
-      "good": "tblB.MasterSource = dsA  // tblA has no master"
+      "good": "tblB.MasterSource = dsA  // tblA has no master",
+      "safeFix": false
     },
     {
       "id": "dfm-master-without-fields",
@@ -746,7 +808,8 @@
       "group": "forms",
       "description": "A dataset has MasterSource but no MasterFields. The detail is not filtered and shows all records.",
       "bad": "MasterSource = dsKunden",
-      "good": "MasterSource = dsKunden; MasterFields = 'KundenID'"
+      "good": "MasterSource = dsKunden; MasterFields = 'KundenID'",
+      "safeFix": false
     },
     {
       "id": "dfm-required-field-without-control",
@@ -756,7 +819,8 @@
       "group": "forms",
       "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.",
       "bad": "tblKundenName: Required = True, no TDBEdit for Name",
-      "good": "edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'"
+      "good": "edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'",
+      "safeFix": false
     },
     {
       "id": "dfm-control-field-type-mismatch",
@@ -766,7 +830,8 @@
       "group": "forms",
       "description": "The control does not suit the persistent field, e.g. TDBEdit on a TBooleanField or blob field, TDBImage on a non-graphic field.",
       "bad": "edAktiv: TDBEdit; DataField = 'Aktiv'  // TBooleanField",
-      "good": "cbAktiv: TDBCheckBox; DataField = 'Aktiv'"
+      "good": "cbAktiv: TDBCheckBox; DataField = 'Aktiv'",
+      "safeFix": false
     },
     {
       "id": "dfm-duplicate-binding",
@@ -776,7 +841,8 @@
       "group": "forms",
       "description": "Two input controls use the same DataSource and DataField. Usually a copy-and-paste error. Display controls (TDBText, TDBImage) are ignored.",
       "bad": "ed1, ed2: DataSource = dsA; DataField = 'Name'",
-      "good": "ed1: DataField = 'Name'; ed2: DataField = 'Vorname'"
+      "good": "ed1: DataField = 'Name'; ed2: DataField = 'Vorname'",
+      "safeFix": false
     },
     {
       "id": "dfm-property",
@@ -786,7 +852,8 @@
       "group": "forms",
       "description": "A component property in the form file does not meet a rule from dfmPropertyRules in atlas.json (class, property, condition, value). A property that is not stored counts with its default value; objects of the ancestor form are only reported where this form sets the value itself. The quick fix sets the value in the form file (fix: auto also with source.fixAll); the command \"Apply property rules\" corrects one form, the project or the group with a preview.",
       "bad": "// dfmPropertyRules: TLabel.Transparent = True\nobject Label1: TLabel\n  Caption = 'Name'\nend",
-      "good": "object Label1: TLabel\n  Caption = 'Name'\n  Transparent = True\nend"
+      "good": "object Label1: TLabel\n  Caption = 'Name'\n  Transparent = True\nend",
+      "safeFix": false
     },
     {
       "id": "foreign-form-control-access",
@@ -796,7 +863,8 @@
       "group": "forms",
       "description": "Code accesses a field of a form or frame from another unit through its global variable (Form2.Edit1.Text). This couples the units tightly; use a method or property of the form.",
       "bad": "Form2.Edit1.Text := 'x';",
-      "good": "Form2.Kundenname := 'x';"
+      "good": "Form2.Kundenname := 'x';",
+      "safeFix": false
     },
     {
       "id": "security-sql-injection",
@@ -806,7 +874,8 @@
       "group": "security",
       "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). Constants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",
       "bad": "Q.SQL.Text := 'select * from K where N = ''' + Edit1.Text + '''';",
-      "good": "Q.SQL.Text := 'select * from K where N = :N';\nQ.ParamByName('N').AsString := Edit1.Text;"
+      "good": "Q.SQL.Text := 'select * from K where N = :N';\nQ.ParamByName('N').AsString := Edit1.Text;",
+      "safeFix": false
     },
     {
       "id": "slash-command",
@@ -816,7 +885,8 @@
       "group": "internal",
       "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names the reason. \"/ignore rule\" is also reported when that rule finds nothing in the line below.",
       "bad": "/gibtsnicht X",
-      "good": "/uses System.Classes"
+      "good": "/uses System.Classes",
+      "safeFix": false
     },
     {
       "id": "empty-except",
@@ -826,7 +896,8 @@
       "group": "exceptions",
       "description": "An except block without statements swallows every exception. A block that contains only a comment counts as deliberate and is not reported.",
       "bad": "try\n  Save;\nexcept\nend;",
-      "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;"
+      "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;",
+      "safeFix": false
     },
     {
       "id": "interface-guid",
@@ -839,7 +910,8 @@
       "good": "type\n  ISaver = interface\n    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\n    procedure Save;\n  end;",
       "compilerCodes": [
         "E2232"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "duplicate-interface-guid",
@@ -849,7 +921,8 @@
       "group": "find-bugs",
       "description": "Two interfaces in the file declare the same GUID, usually after copying a declaration. Supports and as then mix them up. The quick fix generates a new GUID.",
       "bad": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;",
-      "good": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}']\nend;"
+      "good": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}']\nend;",
+      "safeFix": false
     },
     {
       "id": "file-header",
@@ -867,6 +940,10 @@
           "default": "",
           "description": "Expected file header; placeholders as documented."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -877,7 +954,11 @@
       "group": "style",
       "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and check calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",
       "bad": "ShowMessage('File not found');",
-      "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);"
+      "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "self-assignment",
@@ -887,7 +968,8 @@
       "group": "find-bugs",
       "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field. If a parameter or local variable hides a field of the same name (Name := Name), Atlas offers Self.Name := Name as the fix.",
       "bad": "FName := FName;",
-      "good": "FName := AName;"
+      "good": "FName := AName;",
+      "safeFix": false
     },
     {
       "id": "for-high-to-low",
@@ -901,7 +983,8 @@
       "level": "A",
       "compilerCodes": [
         "H2135"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "conditional-expression-version",
@@ -915,7 +998,8 @@
       "level": "A",
       "compilerCodes": [
         "E2029"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "exception-not-raised",
@@ -925,7 +1009,8 @@
       "group": "find-bugs",
       "description": "An exception object is created as a statement on its own. Without raise nothing happens and the object leaks.",
       "bad": "if X = nil then\n  EArgumentException.Create('X missing');",
-      "good": "if X = nil then\n  raise EArgumentException.Create('X missing');"
+      "good": "if X = nil then\n  raise EArgumentException.Create('X missing');",
+      "safeFix": false
     },
     {
       "id": "assert-side-effect",
@@ -950,7 +1035,8 @@
           ],
           "description": "Methods that change their object."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "ifthen-side-effect",
@@ -960,7 +1046,8 @@
       "group": "find-bugs",
       "description": "IfThen is a function: both branches are evaluated before the call. A nil access or a function call in the branch that is not chosen still happens. High confidence when a branch dereferences a name checked in the condition, medium for a function call.",
       "bad": "S := IfThen(Assigned(X), X.Name, '');",
-      "good": "if Assigned(X) then S := X.Name else S := '';"
+      "good": "if Assigned(X) then S := X.Name else S := '';",
+      "safeFix": false
     },
     {
       "id": "random-without-randomize",
@@ -970,7 +1057,11 @@
       "group": "robustness",
       "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
       "bad": "Dice := Random(6) + 1;",
-      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"
+      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "int32-mul-overflow",
@@ -980,7 +1071,8 @@
       "group": "find-bugs",
       "description": "Both operands have at most 32 bits, so the product is computed in 32 bits and overflows before it is assigned to the Int64 variable. Cast one operand to Int64.",
       "bad": "Total := Width * Height; // Total: Int64; Width, Height: Integer",
-      "good": "Total := Int64(Width) * Height;"
+      "good": "Total := Int64(Width) * Height;",
+      "safeFix": false
     },
     {
       "id": "sizeof-pointer",
@@ -990,7 +1082,8 @@
       "group": "find-bugs",
       "description": "SizeOf of a pointer, string or dynamic array is the size of the reference (4 or 8 bytes), not of the data. Move and FillChar then copy or clear too little.",
       "bad": "FillChar(Buffer[0], SizeOf(Buffer), 0); // Buffer: TBytes",
-      "good": "FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);"
+      "good": "FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);",
+      "safeFix": false
     },
     {
       "id": "char-to-pchar",
@@ -1000,7 +1093,8 @@
       "group": "find-bugs",
       "description": "PChar(C) with a Char variable turns the character code into an address. A string was meant.",
       "bad": "ShowMessage(PChar(C)); // C: Char",
-      "good": "ShowMessage(PChar(string(C)));"
+      "good": "ShowMessage(PChar(string(C)));",
+      "safeFix": false
     },
     {
       "id": "unrelated-class-cast",
@@ -1018,7 +1112,8 @@
           "default": [],
           "description": "Types that may be hard cast on purpose: a type name (as source or target) or a pair \"Source=Target\"."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "first-char-address",
@@ -1028,7 +1123,8 @@
       "group": "find-bugs",
       "description": "@S[1] and PChar(@S[1]) raise a range check error for an empty string with {$R+}; without range checking they yield nil or garbage. The index access also forces a unique copy (UniqueString). PChar(S) and Pointer(S) are safe for empty strings too. Applies to string, UnicodeString, WideString, AnsiString, RawByteString and UTF8String, also S[Low(S)]; ShortString, arrays and other indexes stay silent. Reported only when the type of S is known for sure. High confidence. Quick fix for const parameters: replace with PChar(S) (PAnsiChar for AnsiString types), a surrounding PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) or Pointer(…) is replaced as a whole. For other strings the pointer may be used for writing, where the unique copy is intended, so there is no quick fix and the message names UniqueString(S).",
       "bad": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));\nend;",
-      "good": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));\nend;"
+      "good": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));\nend;",
+      "safeFix": false
     },
     {
       "id": "float-equality",
@@ -1038,7 +1134,8 @@
       "group": "find-bugs",
       "description": "Floating-point values are rarely exactly equal after calculations. Compare with SameValue from System.Math and a tolerance. Comparisons with 0 are not reported.",
       "bad": "if Total = Expected then",
-      "good": "if SameValue(Total, Expected) then"
+      "good": "if SameValue(Total, Expected) then",
+      "safeFix": false
     },
     {
       "id": "constructor-on-instance",
@@ -1048,7 +1145,8 @@
       "group": "find-bugs",
       "description": "Create is called on a variable instead of the class. That does not create a new object; with an unassigned variable it crashes. Class references (class of …) are not reported.",
       "bad": "List.Create; // List: TStringList",
-      "good": "List := TStringList.Create;"
+      "good": "List := TStringList.Create;",
+      "safeFix": false
     },
     {
       "id": "format-without-settings",
@@ -1058,7 +1156,8 @@
       "group": "robustness",
       "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy\"-\"mm\"-\"dd' or 'ddddd t'. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after System.SysUtils in uses.",
       "bad": "Line := Format('%.2f', [Amount]);",
-      "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
+      "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);",
+      "safeFix": false
     },
     {
       "id": "format-args",
@@ -1076,7 +1175,8 @@
           "default": [],
           "description": "Further routines with a format string followed by an array of const argument list, e.g. \"TLogger.LogFmt\" or \"Protokoll\". With a dot the method name after any qualifier counts when name resolution cannot find the routine."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "generic-exception-raised",
@@ -1086,7 +1186,8 @@
       "group": "exceptions",
       "description": "Raising the base class Exception prevents callers from handling the error specifically. Declare a dedicated exception class.",
       "bad": "raise Exception.Create('Customer missing');",
-      "good": "raise ECustomerMissing.Create('Customer missing');"
+      "good": "raise ECustomerMissing.Create('Customer missing');",
+      "safeFix": false
     },
     {
       "id": "catch-all-without-raise",
@@ -1096,7 +1197,11 @@
       "group": "exceptions",
       "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",
       "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",
-      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;"
+      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "exception-freed",
@@ -1106,7 +1211,8 @@
       "group": "exceptions",
       "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",
       "bad": "on E: Exception do\n  E.Free;",
-      "good": "on E: Exception do\n  Log(E.Message);"
+      "good": "on E: Exception do\n  Log(E.Message);",
+      "safeFix": false
     },
     {
       "id": "string-concat-in-loop",
@@ -1116,7 +1222,11 @@
       "group": "performance",
       "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster. Silent when the variable is assigned anew earlier in every iteration, directly in the loop body and not behind then, else or a case label (it does not grow across the loop).",
       "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",
-      "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"
+      "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "loop-invariant-call",
@@ -1126,7 +1236,11 @@
       "group": "performance",
       "description": "The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field according to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",
       "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",
-      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"
+      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "missing-begin-update",
@@ -1136,7 +1250,11 @@
       "group": "performance",
       "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
       "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
-      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
+      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "setlength-in-loop",
@@ -1146,7 +1264,8 @@
       "group": "performance",
       "description": "SetLength(A, Length(A) + 1) inside a loop copies the dynamic array on every iteration. The rule only reports when A is surely a dynamic array (array of, TArray<T>, an array type of the file or a known RTL type such as TBytes), never for strings. In a for loop the count is known: the message names it, and when A is a local variable not used before the loop and only written as A[High(A)] or A[Length(A) - 1] inside it, the quick fix sets the length once before the loop and indexes with the loop variable. Otherwise collect the values in a TList<T>.",
       "bad": "for I := 0 to Liste.Count - 1 do\nbegin\n  SetLength(Namen, Length(Namen) + 1);\n  Namen[High(Namen)] := Liste[I].Name;\nend;",
-      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;"
+      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;",
+      "safeFix": false
     },
     {
       "id": "managed-param-without-const",
@@ -1170,6 +1289,10 @@
           "default": true,
           "description": "Do not report overrides; their signature is given by the ancestor."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -1180,7 +1303,8 @@
       "group": "style",
       "description": "Comparing a Boolean with True or False is redundant; use the expression or not directly.",
       "bad": "if Visible = True then\n  Show;",
-      "good": "if Visible then\n  Show;"
+      "good": "if Visible then\n  Show;",
+      "safeFix": false
     },
     {
       "id": "redundant-assigned-free",
@@ -1201,7 +1325,8 @@
       "group": "exceptions",
       "description": "An exception raised in a finally block replaces the exception that is currently propagating, which is then lost.",
       "bad": "try\n  Work;\nfinally\n  raise Exception.Create('Fehler');\nend;",
-      "good": "try\n  Work;\nfinally\n  Cleanup;\nend;"
+      "good": "try\n  Work;\nfinally\n  Cleanup;\nend;",
+      "safeFix": false
     },
     {
       "id": "redundant-parens",
@@ -1211,7 +1336,11 @@
       "group": "style",
       "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",
       "bad": "if (Done) then\n  Exit;",
-      "good": "if Done then\n  Exit;"
+      "good": "if Done then\n  Exit;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "redundant-cast",
@@ -1243,6 +1372,10 @@
       "good": "if Done then\n  Exit;",
       "overriddenBy": [
         "missing-begin-end"
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -1253,7 +1386,8 @@
       "group": "style",
       "description": "Inside a with block it is unclear which object an identifier belongs to, and a new member of the with object silently changes the meaning. Write the expression out or use a local variable.",
       "bad": "with Customer do\n  Name := Edit.Text;",
-      "good": "Customer.Name := Edit.Text;"
+      "good": "Customer.Name := Edit.Text;",
+      "safeFix": false
     },
     {
       "id": "metric-method-length",
@@ -1271,7 +1405,8 @@
           "default": 60,
           "description": "Highest allowed number of statement lines."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-nesting-depth",
@@ -1289,7 +1424,8 @@
           "default": 4,
           "description": "Highest allowed nesting depth."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-cyclomatic-complexity",
@@ -1307,7 +1443,8 @@
           "default": 15,
           "description": "Highest allowed cyclomatic complexity."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-cognitive-complexity",
@@ -1325,7 +1462,8 @@
           "default": 15,
           "description": "Highest allowed cognitive complexity."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-parameter-count",
@@ -1343,7 +1481,8 @@
           "default": 6,
           "description": "Highest allowed number of parameters."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-boolean-operands",
@@ -1361,7 +1500,8 @@
           "default": 5,
           "description": "Highest allowed number of operands in one condition."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-local-count",
@@ -1379,7 +1519,8 @@
           "default": 12,
           "description": "Highest allowed number of local variables."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-exit-points",
@@ -1397,7 +1538,8 @@
           "default": 4,
           "description": "Highest allowed number of Exit and raise statements."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "todo-comment",
@@ -1418,6 +1560,10 @@
           ],
           "description": "Markers of open TODO entries (letters only)."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -1428,7 +1574,8 @@
       "group": "robustness",
       "description": "A debugger display rule above a type (// atlas-debug: '{Name}, {City}', [AtlasDebugDisplay('…')], // atlas-debug-children: Name, City or [AtlasDebugChildren('…')]) names a placeholder or child that is not a field, property or method of the type or one of its ancestors, or the template is invalid (unclosed or empty brace). In the debugger such a placeholder stays empty ({?Name}). Ancestors come from the unit and the index; when an ancestor is unknown the rule stays silent for that type. Members of TObject (ClassName, ToString, …) are always known.",
       "bad": "// atlas-debug: '{Name}, {Stadt}'\nTKunde = class\n  Name, Ort: string;\nend;",
-      "good": "// atlas-debug: '{Name}, {Ort}'\nTKunde = class\n  Name, Ort: string;\nend;"
+      "good": "// atlas-debug: '{Name}, {Ort}'\nTKunde = class\n  Name, Ort: string;\nend;",
+      "safeFix": false
     },
     {
       "id": "component-palette-icon",
@@ -1438,7 +1585,8 @@
       "group": "components",
       "description": "Every class passed to RegisterComponents needs a bitmap named after the class in upper case in a .dcr or .res included with {$R}. From Delphi 11 the sizes 16, 24 and 32 px (NAME16, NAME24, NAME32) are expected as well. Silent when the unit includes no readable resource file.",
       "bad": "{$R *.dcr} // without TMYBUTTON\nRegisterComponents('Samples', [TMyButton]);",
-      "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents('Samples', [TMyButton]);"
+      "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents('Samples', [TMyButton]);",
+      "safeFix": false
     },
     {
       "id": "unresolved-identifier",
@@ -1454,7 +1602,8 @@
         "E2601",
         "E2602",
         "E2078"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "deprecated-symbol",
@@ -1488,7 +1637,8 @@
           ],
           "description": "Reported kinds: deprecated, experimental, platform, library (all four by default; a warning switched off in the project or file stays silent anyway)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "implicit-package-import",
@@ -1498,7 +1648,8 @@
       "group": "packages",
       "description": "In a package (.dpk) a unit from contains uses a unit that is neither in contains nor provided by a package in requires. The compiler pulls it in implicitly (W1033), which later causes duplicate units when another package also contains it. The quick fix adds the unit to contains.",
       "bad": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in 'uHaupt.pas';  // uHaupt uses uMathe\nend.",
-      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in 'uHaupt.pas',\n  uMathe in 'uMathe.pas';\nend."
+      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in 'uHaupt.pas',\n  uMathe in 'uMathe.pas';\nend.",
+      "safeFix": false
     },
     {
       "id": "type-used-before-declaration",
@@ -1508,7 +1659,8 @@
       "group": "find-bugs",
       "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias of the same-named type of another unit (TX = UnitY.TX: before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",
       "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",
-      "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"
+      "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",
+      "safeFix": false
     },
     {
       "id": "unneeded-forward-declaration",
@@ -1518,7 +1670,8 @@
       "group": "style",
       "description": "A forward declaration whose type is not used before its full declaration in the same type block. Quick fix: remove it.",
       "bad": "type\n  TNode = class;\n  TNode = class\n  end;",
-      "good": "type\n  TNode = class\n  end;"
+      "good": "type\n  TNode = class\n  end;",
+      "safeFix": false
     },
     {
       "id": "field-not-freed",
@@ -1536,7 +1689,8 @@
           "default": [],
           "description": "Classes that are freed elsewhere; generic types match without type parameters."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "owned-field-free-unclear",
@@ -1546,7 +1700,8 @@
       "group": "find-bugs",
       "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object or to its Add…, Insert…, Register…, Attach…, Push or Enqueue, assigned without Create or writable through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix. Silent when the receiver owns its elements: a TObjectList, TObjectStack, TObjectQueue or TComponentList field not created with False, or a field whose class (from the file or the index) holds such a list for the element type. TArray<T> fields are dynamic arrays and never reported.",
       "bad": "function TCache.Take: TList;\nbegin\n  Result := FList;  // created in Create, never freed\nend;",
-      "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;"
+      "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;",
+      "safeFix": false
     },
     {
       "id": "operator-precedence",
@@ -1556,7 +1711,8 @@
       "group": "find-bugs",
       "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports these forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).",
       "bad": "if not Zustand in [zsOffen, zsGesperrt] then\n  Bearbeiten;",
-      "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;"
+      "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;",
+      "safeFix": false
     },
     {
       "id": "empty-statement",
@@ -1574,7 +1730,8 @@
           "default": true,
           "description": "Do not report begin { intentionally empty } end."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "loop-off-by-one",
@@ -1598,7 +1755,8 @@
       ],
       "compilerCodes": [
         "E2157"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "collection-modified-in-loop",
@@ -1623,7 +1781,8 @@
           ],
           "description": "Methods that change the list."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "use-after-free",
@@ -1633,7 +1792,8 @@
       "group": "find-bugs",
       "description": "After X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X) or Dispose(X), X is used again without a new assignment: a method, field, index or X^, with X, and after Free also Assigned(X) (always True) or a second Free. The rule follows the data flow of the routine; an assignment to X, passing X to a routine, @X and after FreeAndNil a check for nil end the path, ways only through a possible exception are left out. Confidence high when release and access stand one after the other in the same block, otherwise medium. No automatic fix; the action jumps to the release.",
       "bad": "Bericht.Free;\nProtokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));",
-      "good": "Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));\nBericht.Free;"
+      "good": "Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));\nBericht.Free;",
+      "safeFix": false
     },
     {
       "id": "deref-before-nil-check",
@@ -1643,7 +1803,8 @@
       "group": "find-bugs",
       "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Reported only when every path to the check passes the access and X was not checked before; a new assignment, FreeAndNil(X), passing X or one of its fields or elements (X.Field, X[I]) to a routine and, for fields and global variables, any call in between end the path. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",
       "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",
-      "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"
+      "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;",
+      "safeFix": false
     },
     {
       "id": "field-free-without-nil",
@@ -1664,7 +1825,8 @@
           ],
           "description": "Methods in which Free without nil is allowed."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "missing-inherited",
@@ -1687,7 +1849,8 @@
           ],
           "description": "Checked methods; Create stands for all constructors whose name starts with Create."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "inherited-order",
@@ -1697,7 +1860,8 @@
       "group": "find-bugs",
       "description": "In a destructor, inherited (inherited; or inherited Destroy) stands as a statement of the method body before a later statement frees a field of the class itself (F.Free, F.DisposeOf, FreeAndNil(F), also with Self.): the ancestor may still call virtual methods that need the field. Classes whose chain contains a class with Thread in its name stay silent, because TThread.Destroy waits for Execute and belongs at the start there. In a constructor, the statements before inherited access a field or property inherited from an ancestor (resolved through the file and the index; own fields, parameters and local variables do not count), while the ancestor is not set up yet. missing-inherited reports a missing inherited; this rule the order. Medium confidence. Quick fix: move inherited to the end of the destructor or the start of the constructor; not when the arguments of inherited Create use local variables set before.",
       "bad": "destructor TExport.Destroy;\nbegin\n  inherited;\n  FDatei.Free;\nend;",
-      "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;"
+      "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;",
+      "safeFix": false
     },
     {
       "id": "inherited-wrong-method",
@@ -1715,7 +1879,8 @@
           "default": [],
           "description": "Allowed pairs \"Method>inherited method\", patterns with * and ?, e.g. \"Speichern>Pruefen\"."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "getter-side-effect",
@@ -1733,7 +1898,8 @@
           "default": true,
           "description": "Allow lazy initialization in the getter (if FListe = nil then FListe := …)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "equals-without-gethashcode",
@@ -1743,7 +1909,8 @@
       "group": "find-bugs",
       "description": "A class overrides Equals but not GetHashCode (or the other way round). In TDictionary and THashSet with the default comparer equal objects then do not find each other. Silent when an ancestor overrides the counterpart, when the ancestor chain is not known completely and for Equals without override. Also applies to records of the file with class operator Equal used as keys of TDictionary, TObjectDictionary, THashSet or TMultiMap without a comparer (Create without arguments or only with constants such as capacity or ownership): the default comparer compares records byte by byte, which is only wrong for fields of type string, Variant, floating point, interface or TArray; records with only such ordinal fields stay silent. High confidence. Quick fix for classes: declare GetHashCode after Equals and implement it after the body of Equals with THashBobJenkins over the own fields that Equals compares (case-insensitively via LowerCase when Equals uses SameText), adding System.Hash to uses.",
       "bad": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n  end;",
-      "good": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n    function GetHashCode: Integer; override;\n  end;"
+      "good": "  TKundenNr = class\n    function Equals(Obj: TObject): Boolean; override;\n    function GetHashCode: Integer; override;\n  end;",
+      "safeFix": false
     },
     {
       "id": "destroy-called-directly",
@@ -1764,7 +1931,8 @@
       "group": "find-bugs",
       "description": "FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem or FreeMem on a variable whose type contains strings, interfaces, dynamic arrays or variants (records, static arrays and aliases are resolved in the file and in the index). Reference counts are overwritten or skipped: leaks, double frees, access violations. Only plain variables (X, @X, P^) are checked; array elements such as S[1] and types that cannot be resolved stay silent. High confidence. Quick fixes: FillChar(X, SizeOf(X), 0) becomes X := Default(T), Move(A, B, SizeOf(T)) becomes B := A, GetMem(P, SizeOf(T)) becomes New(P) and FreeMem(P) becomes Dispose(P); otherwise Initialize and Finalize help.",
       "bad": "FillChar(Adresse, SizeOf(Adresse), 0);",
-      "good": "Adresse := Default(TAdresse);"
+      "good": "Adresse := Default(TAdresse);",
+      "safeFix": false
     },
     {
       "id": "threadvar-managed",
@@ -1774,7 +1942,8 @@
       "group": "threads",
       "description": "Delphi does not finalize threadvar variables. A string, interface, dynamic array or variant in a threadvar (also inside a record or static array) leaks in every thread that ends. Types are resolved in the file and in the index. High confidence. No quick fix: release the value at the end of the thread (for example set it to '' or nil in TThread.Execute), or store a pointer or a fixed-size buffer instead.",
       "bad": "threadvar\n  LetzteMeldung: string;",
-      "good": "threadvar\n  LetzteMeldung: PChar;"
+      "good": "threadvar\n  LetzteMeldung: PChar;",
+      "safeFix": false
     },
     {
       "id": "pchar-of-temporary",
@@ -1784,7 +1953,8 @@
       "group": "find-bugs",
       "description": "PChar (PWideChar, PAnsiChar) of a temporary string, such as a concatenation with a string (S + '.bak') or a function result (IntToStr(N)), is stored in a variable, a field or Result, or passed to PostMessage, PostThreadMessage, SendNotifyMessage or SendMessageCallback (also behind LPARAM(…)). The temporary string is released after the statement, so the pointer points to freed memory. Passing it to an ordinary call such as CopyFile is fine. High confidence. Quick fix for local variables: keep the intermediate result in an inline string variable.",
       "bad": "Ziel := PChar(Pfad + '.bak');\nCopyFile(PChar(Pfad), Ziel, False);",
-      "good": "var ZielText: string := Pfad + '.bak';\nZiel := PChar(ZielText);\nCopyFile(PChar(Pfad), Ziel, False);"
+      "good": "var ZielText: string := Pfad + '.bak';\nZiel := PChar(ZielText);\nCopyFile(PChar(Pfad), Ziel, False);",
+      "safeFix": false
     },
     {
       "id": "out-param-read",
@@ -1794,7 +1964,8 @@
       "group": "find-bugs",
       "description": "An out parameter is read before the routine sets it on some path through the control flow. For managed types (string, interfaces, dynamic arrays, Variant) the caller has already cleared it, so the old value is gone; for other types the value is undefined. Usually var was meant. Uses the control flow graph cannot follow (passing the parameter to a routine, setting a field of it, @Param) stay silent. High confidence. Quick fix: out becomes var in the implementation and in the declaration.",
       "bad": "procedure Anhaengen(out Text: string);\nbegin\n  Text := Text + sLineBreak + 'Ende';\nend;",
-      "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + 'Ende';\nend;"
+      "good": "procedure Anhaengen(var Text: string);\nbegin\n  Text := Text + sLineBreak + 'Ende';\nend;",
+      "safeFix": false
     },
     {
       "id": "noreturn-returns",
@@ -1804,7 +1975,8 @@
       "group": "find-bugs",
       "description": "A routine marked noreturn (Delphi 13 and later) may only end through raise, Abort, Halt, RunError or a call to another noreturn routine. When a path reaches the end of the body or an Exit, the routine returns normally; the compiler has dropped the code after the call, the behaviour is undefined. The directive counts on the implementation and on the declaration (interface, class). Calls whose target neither the file, the standard routines nor the symbol index knows might be noreturn themselves and end the path too, so only paths made of known statements are reported. Incomplete control flow (asm, syntax errors) stays silent. Exit is reported at the statement, the end of the body at the routine name. High confidence. No quick fix.",
       "bad": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText <> '' then\n    raise EImport.Create(AText);\nend;",
-      "good": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText = '' then\n    raise EImport.Create('Unbekannter Fehler');\n  raise EImport.Create(AText);\nend;"
+      "good": "procedure Fehler(const AText: string); noreturn;\nbegin\n  if AText = '' then\n    raise EImport.Create('Unbekannter Fehler');\n  raise EImport.Create(AText);\nend;",
+      "safeFix": false
     },
     {
       "id": "stringlist-unsorted",
@@ -1814,7 +1986,8 @@
       "group": "find-bugs",
       "description": "Find on a TStringList or THashedStringList that is created in the unit but never sorted: Find searches binary and returns wrong results on an unsorted list. The same holds for Duplicates := dupIgnore or dupError, which only works on sorted lists. Sorted counts as Sorted := True (or any value other than False), Sort, CustomSort, Create(Duplicates, True, ...) and with List do. A list passed to a routine or assigned to another variable stays silent. Locals are tracked per routine, fields across the unit. Medium confidence. Quick fixes: Sorted := True after the creation (not offered when the list uses Insert, Move or Exchange, which raise on sorted lists) and, for if List.Find(S, I) then, I := List.IndexOf(S) with if I >= 0.",
       "bad": "Namen := TStringList.Create;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);",
-      "good": "Namen := TStringList.Create;\nNamen.Sorted := True;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);"
+      "good": "Namen := TStringList.Create;\nNamen.Sorted := True;\nNamen.LoadFromFile(Datei);\nif Namen.Find(Suche, Index) then\n  Namen.Delete(Index);",
+      "safeFix": false
     },
     {
       "id": "writeln-in-gui-app",
@@ -1832,7 +2005,8 @@
           "default": "OutputDebugString",
           "description": "Replacement for Write and Writeln in the quick fix; %s stands for the text."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "exception-in-destructor",
@@ -1842,7 +2016,8 @@
       "group": "exceptions",
       "description": "raise in a destructor (also class destructor) that no except inside the destructor catches. The exception aborts the destruction: inherited Destroy no longer runs, the object stays half freed, and in a finally of the caller it hides the original exception. A raise in the try part of a try..except is caught; raise in the except or finally part, including a bare raise; to re-raise, is reported. Nested routines and anonymous methods are exempt. Calls that raise are not followed. High confidence. No quick fix: log the state or release it without an exception.",
       "bad": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    raise ESitzung.Create('Sitzung noch offen');\n  inherited;\nend;",
-      "good": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    Schliessen;\n  inherited;\nend;"
+      "good": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    Schliessen;\n  inherited;\nend;",
+      "safeFix": false
     },
     {
       "id": "duplicate-condition",
@@ -1852,7 +2027,8 @@
       "group": "find-bugs",
       "description": "The same condition twice in an if ... else if chain (the later branch is never reached), identical then and else branches, the same operand twice in an and, or or xor chain, and comparisons of an expression with itself (X = X, X < X). Usually a copy error. Expressions are compared by their tokens without whitespace, comments and case. Chains with calls that may change state (anything but SameText, Length, Assigned, Pos and similar pure functions, or Read, Next, Pop, Random ...) stay silent, as do float self-comparisons (NaN check X <> X) and comparisons on class members such as TFoo.Shared = TFoo.Shared. High confidence. No quick fix; the action jumps to the first occurrence.",
       "bad": "if Betrag > 1000 then\n  Stufe := 3\nelse if Betrag > 500 then\n  Stufe := 2\nelse if Betrag > 1000 then\n  Stufe := 1;",
-      "good": "if Betrag > 1000 then\n  Stufe := 3\nelse if Betrag > 500 then\n  Stufe := 2\nelse if Betrag > 100 then\n  Stufe := 1;"
+      "good": "if Betrag > 1000 then\n  Stufe := 3\nelse if Betrag > 500 then\n  Stufe := 2\nelse if Betrag > 100 then\n  Stufe := 1;",
+      "safeFix": false
     },
     {
       "id": "case-missing-enum-value",
@@ -1870,7 +2046,8 @@
           "default": false,
           "description": "Also report case statements with else when values are missing."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "pair-without-finally",
@@ -1888,7 +2065,8 @@
           "default": [],
           "description": "Additional pairs as [{\"open\": \"Freeze\", \"close\": \"Thaw\"}], optionally with openArg/closeArg."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "processmessages-in-loop",
@@ -1906,7 +2084,8 @@
           "default": [],
           "description": "Methods in which ProcessMessages is allowed, as Name or Class.Name."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unchecked-conversion",
@@ -1941,7 +2120,8 @@
           ],
           "description": "Properties that count as user input."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "dictionary-get-without-check",
@@ -1951,7 +2131,8 @@
       "group": "find-bugs",
       "description": "Dict[Key] or Dict.Items[Key] is read on a TDictionary or TObjectDictionary (also through a type alias of the file) although neither ContainsKey nor TryGetValue checked the same key earlier in the routine. The rule stays silent when the routine fills the dictionary itself beforehand (Add, AddOrSetValue, TryAdd, Dict[K] := ...) or when the key stems from Keys or the pairs (for K in Dict.Keys, Names := Dict.Keys.ToArray, for Pair in Dict with K := Pair.Key). A missing key raises EListError. Medium confidence. Quick fix for X := Dict[Key]; as its own statement, when X is a variable of the value type: if not Dict.TryGetValue(Key, X) then X := 0 (or '', False, Default(T)).",
       "bad": "Preis := Preise[Artikel.Nummer];",
-      "good": "if not Preise.TryGetValue(Artikel.Nummer, Preis) then\n  Preis := 0;"
+      "good": "if not Preise.TryGetValue(Artikel.Nummer, Preis) then\n  Preis := 0;",
+      "safeFix": false
     },
     {
       "id": "shadowed-name",
@@ -1978,7 +2159,8 @@
           "default": false,
           "description": "Report every local name that shadows a member inherited from RTL, VCL or another library, not only suspicious ones."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "naming-prefix",
@@ -2020,6 +2202,10 @@
           "default": [],
           "description": "Name patterns (* and ?) that are never reported, e.g. fields of API records."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -2030,7 +2216,8 @@
       "group": "style",
       "description": "if B then X := True else X := False (also with begin/end and the values swapped), if B then Exit(True) else Exit(False) and if B then Exit(True); followed by Exit(False); can be written directly. Complements bool-compare. High confidence. Quick fix: X := B, X := not B or Exit(B); negations are simplified (not B becomes B), compound conditions are wrapped in parentheses. Without a fix when comments stand inside the if.",
       "bad": "if Betrag > 0 then\n  Result := True\nelse\n  Result := False;",
-      "good": "Result := Betrag > 0;"
+      "good": "Result := Betrag > 0;",
+      "safeFix": false
     },
     {
       "id": "case-insensitive-compare",
@@ -2040,7 +2227,8 @@
       "group": "performance",
       "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> 'x', AnsiUpperCase(...) or A.ToUpper = B.ToUpper creates two strings for one comparison. SameText (AnsiSameText for the Ansi functions and the Unicode string helpers) is shorter and faster. A literal is only accepted if the conversion does not change it; UpperCase(A) = LowerCase(B) and UpperCase(A) = 'ja' are left alone because they are different mistakes. Does not replace the string helper modernisation of #71. High confidence. Quick fix: SameText(A, B) or not SameText(A, B).",
       "bad": "if UpperCase(Land) = UpperCase(Standard) then",
-      "good": "if SameText(Land, Standard) then"
+      "good": "if SameText(Land, Standard) then",
+      "safeFix": false
     },
     {
       "id": "magic-number",
@@ -2065,6 +2253,10 @@
           ],
           "description": "Numbers that are never reported."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -2098,6 +2290,10 @@
           "default": false,
           "description": "Do not report lines that are only too long because of a comment."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -2116,7 +2312,8 @@
           "default": 40,
           "description": "Maximum number of members per class."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-unit-length",
@@ -2134,7 +2331,8 @@
           "default": 2000,
           "description": "Maximum number of lines per unit."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-uses-count",
@@ -2152,7 +2350,8 @@
           "default": 30,
           "description": "Maximum number of units in all uses clauses."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "metric-inheritance-depth",
@@ -2170,7 +2369,8 @@
           "default": 5,
           "description": "Highest allowed number of own ancestors."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "public-field",
@@ -2188,6 +2388,10 @@
           "default": false,
           "description": "Also report fields of records."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -2198,7 +2402,11 @@
       "group": "style",
       "description": "A non-generic TList (System.Classes) or TObjectList (System.Contnrs) whose items are read with a cast: T(List[I]), T(List.Items[I]), T(List.First), List[I] as T and so on. TList<T> and TObjectList<T> from System.Generics.Collections check the type at compile time and need no cast. The rule reports once per list, at its declaration when it is in this file, otherwise at the first cast; with several target types, all of them are named. Only when name resolution finds the list type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must still compile with old Delphi versions, use exclude. Quick fix (#1105): converts the list to TList<T> or TObjectList<T> in one step: declaration, every Create (arguments are kept), every cast and System.Generics.Collections in the uses clause; Contnrs is removed when nothing else uses it. Only when every read has the same cast and no member without a generic counterpart is used (Sort with TListSortCompare, Assign with TListAssignOp, List), no Pointer or Integer values are stored, Add, Extract, Remove and IndexOf get T, and the list is not passed on. If the list is visible outside the unit, the fix also rewrites the other units of the project group or is not offered; \"fix all\" (source.fixAll) never applies such fixes. Otherwise the finding hover names the reason. Stacks and queues: legacy-stack-queue.",
       "bad": "FPositionen: TList;\n...\nPos := TPosition(FPositionen[I]);",
-      "good": "FPositionen: TList<TPosition>;\n...\nPos := FPositionen[I];"
+      "good": "FPositionen: TList<TPosition>;\n...\nPos := FPositionen[I];",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "legacy-stack-queue",
@@ -2208,7 +2416,11 @@
       "group": "style",
       "description": "A non-generic TStack, TQueue, TObjectStack or TObjectQueue (System.Contnrs) whose items are read with a cast: T(Stack.Pop), T(Stack.Peek), Queue.Pop as T and so on. TStack<T>, TQueue<T>, TObjectStack<T> and TObjectQueue<T> from System.Generics.Collections check the type at compile time and need no cast. Like legacy-tlist, the rule reports once per stack or queue, at its declaration when it is in this file, otherwise at the first cast; with several target types, all of them are named. Only when name resolution finds the type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must still compile with old Delphi versions, use exclude. Quick fix: converts in one step like legacy-tlist; for queues Push becomes Enqueue and Pop becomes Dequeue. TObjectStack<T> and TObjectQueue<T> own their objects, the Contnrs classes do not: the fix therefore creates them with Create(False) and reads with Extract, because Pop and Dequeue are procedures there that free the object. Without a Create in the unit, with different casts or with members without a generic counterpart (AtLeast) there is no fix; the finding hover names the reason.",
       "bad": "FOffen: TObjectStack;\n...\nKnoten := TKnoten(FOffen.Pop);",
-      "good": "FOffen: TObjectStack<TKnoten>;\n...\nFOffen := TObjectStack<TKnoten>.Create(False);\n...\nKnoten := FOffen.Extract;"
+      "good": "FOffen: TObjectStack<TKnoten>;\n...\nFOffen := TObjectStack<TKnoten>.Create(False);\n...\nKnoten := FOffen.Extract;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "global-variable",
@@ -2226,6 +2438,10 @@
           "default": false,
           "description": "Also report the form variables created by the designer."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -2244,7 +2460,8 @@
           "default": 3,
           "description": "Minimum number of consecutive commented-out code lines."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "default-parameter",
@@ -2254,7 +2471,11 @@
       "group": "style",
       "description": "A parameter with a default value (Count: Integer = 10). For teams that prefer overloads: default values end up compiled into the caller, do not change with the library and do not mix well with overloads. Reported once per declaration (class member, interface section, forward or a routine only in the implementation part); the body of a declaration is not reported again. The quick fix inserts one overload per omitted trailing default parameter before the declaration, each forwarding with the default value, removes the default values (also repeated ones in the body) and adds overload. No fix when the signature is given from outside (virtual, dynamic, abstract, override, message, external, interface types), when the name is used as a value (@Routine, method pointer), when an overload of the same name exists, inside conditional compilation, or when the body cannot be found unambiguously.",
       "bad": "procedure Exportieren(const Datei: string; MitKopf: Boolean = True);",
-      "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;"
+      "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "empty-routine",
@@ -2264,7 +2485,8 @@
       "group": "style",
       "description": "A method or routine whose body has neither a statement nor a comment (nor a compiler directive). Either the content is missing or the method can go. Not reported: virtual and dynamic methods (a stand-in for abstract in base classes), message handlers, methods of classes that list interfaces (the compiler requires every interface method), event handlers named in the form file (the IDE removes empty ones when saving) and bodies with a comment, such as overrides that deliberately do nothing. Quick fixes: insert a comment between begin and end; remove the method (declaration with its XML doc and body) only for private methods and routines without a declaration in the interface part that occur nowhere else in the file and fulfil no signature from outside.",
       "bad": "procedure TImport.Pruefen;\nbegin\nend;",
-      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"
+      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;",
+      "safeFix": false
     },
     {
       "id": "trivial-accessor",
@@ -2274,7 +2496,8 @@
       "group": "style",
       "description": "A getter whose body is only Result := FName; (also Exit(FName), Self.FName) or a setter whose body is only FName := Value; (with refactoring.inlineAccessorEqualityCheck also if FName <> Value then FName := Value;). The property can point to the field directly. Only methods that are not virtual, dynamic, override or abstract, not class methods, not overloaded or generic, implement no interface method (also via a method resolution clause), have no index specifier and are not used by other members of the class; the field belongs to the class and has the type of the property. Silent unless refactoring.inlineAccessorDiagnostic is on (default off) and refactoring.inlineAccessor is on. Medium confidence: calls in other units are not visible to the rule. No quick fix in the rule; the code action \"Replace accessor GetName with field FName\" at the same place checks calls with the reference search and replaces it.",
       "bad": "property Name: string read GetName write FName;\n...\nfunction TCustomer.GetName: string;\nbegin\n  Result := FName;\nend;",
-      "good": "property Name: string read FName write FName;"
+      "good": "property Name: string read FName write FName;",
+      "safeFix": false
     },
     {
       "id": "write-only-property",
@@ -2292,7 +2515,8 @@
           "default": [],
           "description": "Attributes that allow a property without read."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "xmldoc-mismatch",
@@ -2326,7 +2550,8 @@
           "default": true,
           "description": "Check <returns>."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "queue-nil-in-package",
@@ -2350,7 +2575,8 @@
           "default": "mainthread-ok",
           "description": "Comment that exempts a line."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "ota-notifier-not-removed",
@@ -2377,7 +2603,8 @@
           ],
           "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "dunitx-test-without-assert",
@@ -2399,7 +2626,8 @@
           ],
           "description": "Calls that count as a check, as patterns with * and ?; replaces the default."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "event-call-without-assigned",
@@ -2409,7 +2637,8 @@
       "group": "find-bugs",
       "description": "FOnChange(Self) or OnChange(Self) is called in a method of the class without Assigned(FOnChange) or FOnChange <> nil guarding the call: without a handler an access violation follows. Events are fields and properties of the class with a method pointer or reference type (procedure ... of object, reference to ..., TNotifyEvent, TProc/TFunc, types ending in Event, procedural types of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, \"Assigned(F) and\" before the call, or \"if not Assigned(F) then Exit/raise\" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected dependencies such as FReadText := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in \"if Assigned(F) then\" when it is a statement of its own in a block.",
       "bad": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  FOnChange(Self);\nend;",
-      "good": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  if Assigned(FOnChange) then\n    FOnChange(Self);\nend;"
+      "good": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  if Assigned(FOnChange) then\n    FOnChange(Self);\nend;",
+      "safeFix": false
     },
     {
       "id": "owned-item-freed",
@@ -2419,7 +2648,8 @@
       "group": "find-bugs",
       "description": "An item of a TObjectList/TObjectList<T> (OwnsObjects, default True) or of a TObjectDictionary with doOwnsValues is freed with Free, FreeAndNil, Destroy or DisposeOf, directly (List[I].Free, List.Items[I].Free) or through a variable taken from List[I], List.First/Last or a for-in loop over the list or Dictionary.Values. The list frees the item itself on Delete, Remove, Clear, an assignment to List[I], or at the latest when it is freed: a double free. A list is owning when the unit creates it that way (TObjectList without False, TObjectDictionary with doOwnsValues) or declares it as TObjectList without creating it, and no OwnsObjects := False follows. Extract in the same routine keeps the rule silent. High confidence. Quick fixes: remove the Free (the whole loop when it only frees), Delete or Remove instead of Free, Extract instead of Remove.",
       "bad": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege[I].Free;\nAuftraege.Delete(I);",
-      "good": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege.Delete(I);"
+      "good": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege.Delete(I);",
+      "safeFix": false
     },
     {
       "id": "create-without-assignment",
@@ -2437,7 +2667,8 @@
           "default": [],
           "description": "Classes that register themselves in their constructor, as patterns with * and ?; Create as a statement stays silent for them."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "raw-memory-leak",
@@ -2447,7 +2678,8 @@
       "group": "find-bugs",
       "description": "A local variable receives memory from GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc or StrNew, but the routine never releases it with FreeMem, FreeMemory, Dispose, StrDispose or ReallocMem(P, 0), and the pointer neither leaves the routine nor is stored: not returned (Result, Exit), not assigned to another variable or field, not passed by address (@P), not handed to a method that keeps it (Add, Insert, Push …), not captured by an anonymous method and not used in a local routine. Passing the pointer to read or fill it (Checksum(P, N), Stream.ReadBuffer(P^, N)) is fine; a routine whose name contains Free, Frei, Release, Dispose, Destroy or Dealloc counts as the release. A release without try/finally is reported by pair-without-finally. Medium confidence. Quick fix: wrap the following statements of the block in try … finally with the matching release.",
       "bad": "GetMem(Puffer, Groesse);\nStrom.ReadBuffer(Puffer^, Groesse);\nErgebnis := Pruefsumme(Puffer, Groesse);",
-      "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;"
+      "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;",
+      "safeFix": false
     },
     {
       "id": "stringlist-objects-leak",
@@ -2457,7 +2689,8 @@
       "group": "find-bugs",
       "description": "AddObject or InsertObject puts a newly created object (T.Create(…) directly, or a local variable created that way and otherwise only read) into a TStringList (or THashedStringList) that the unit creates without OwnsObjects, or into the Items of a TListBox, TComboBox, TCheckListBox, TComboBoxEx or TColorListBox field; nobody frees these objects. A list is owning with TStringList.Create(True) or OwnsObjects := True. Silent when a routine of the unit reads List.Objects[…] and frees something, when the list is passed on (FreeObjects(List), assigned elsewhere), when the object has an owner (Self, Owner, AOwner, Application or a TComponent descendant with an argument) and for lists not created in the unit. Medium confidence. Quick fix: TStringList.Create(True) (also instead of Create(False)), with other constructors OwnsObjects := True after the creation; none for control items.",
       "bad": "FKunden := TStringList.Create;\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));",
-      "good": "FKunden := TStringList.Create(True);\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));"
+      "good": "FKunden := TStringList.Create(True);\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));",
+      "safeFix": false
     },
     {
       "id": "message-handler-without-inherited",
@@ -2477,7 +2710,8 @@
           ],
           "description": "Messages that may be handled without inherited; replaces the default."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "string-index-base",
@@ -2487,7 +2721,8 @@
       "group": "find-bugs",
       "description": "The classic string routines count from 1: Copy(S, 0, N) and Insert(T, S, 0) only work like 1 by chance, Delete(S, 0, N) deletes nothing. The string must be known: declared type in the file, literal, or .Text/.Caption; dynamic arrays (0-based) stay silent. Pos, PosEx and AnsiPos return 0 for no match: Pos(...) > -1, >= 0 and <> -1 are always true, = -1 and < 0 never. Conversely S.IndexOf(...) > 0 or >= 1 misses a match at the start, < 1 or <= 0 counts it as not found (medium confidence; LastIndexOf stays silent, where > 0 usually means \"not at the start\"). High confidence for Delete and Pos. Quick fix: start value 1 or the corrected comparison (> 0, = 0, >= 0, < 0).",
       "bad": "if Pos(';', Zeile) > -1 then\n  Felder := Copy(Zeile, 0, Pos(';', Zeile) - 1);",
-      "good": "if Pos(';', Zeile) > 0 then\n  Felder := Copy(Zeile, 1, Pos(';', Zeile) - 1);"
+      "good": "if Pos(';', Zeile) > 0 then\n  Felder := Copy(Zeile, 1, Pos(';', Zeile) - 1);",
+      "safeFix": false
     },
     {
       "id": "delimited-text-without-strict",
@@ -2497,7 +2732,8 @@
       "group": "find-bugs",
       "description": "List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. For fields, StrictDelimiter anywhere in the unit counts (often in the constructor); StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.",
       "bad": "Teile.Delimiter := ';';\nTeile.DelimitedText := Zeile;",
-      "good": "Teile.Delimiter := ';';\nTeile.StrictDelimiter := True;\nTeile.DelimitedText := Zeile;"
+      "good": "Teile.Delimiter := ';';\nTeile.StrictDelimiter := True;\nTeile.DelimitedText := Zeile;",
+      "safeFix": false
     },
     {
       "id": "self-as-interface-in-constructor",
@@ -2507,7 +2743,8 @@
       "group": "find-bugs",
       "description": "Self is passed as an interface while reference counting can already free the object. Only two real error cases are reported: (1) a class with its own reference counting (an _Release in the class chain frees the object, no class overrides NewInstance, the chain is known up to TObject) passes Self as an interface in a constructor or in AfterConstruction: the counter goes from 0 to 1 and back to 0, the object is destroyed before construction ends. (2) A TInterfacedObject descendant passes Self as an interface in AfterConstruction after inherited: inherited AfterConstruction has already removed the protective count from NewInstance. In the constructor of a TInterfacedObject descendant Self is protected and the rule stays silent. Passing counts as Self as IX, IX(Self), an argument whose parameter is an interface in all known overloads, and an assignment to an interface variable. High confidence. Quick fix in case 2: move the statement before inherited.",
       "bad": "procedure TBeobachter.AfterConstruction;\nbegin\n  inherited;\n  FQuelle.Anmelden(Self);\nend;",
-      "good": "procedure TBeobachter.AfterConstruction;\nbegin\n  FQuelle.Anmelden(Self);\n  inherited;\nend;"
+      "good": "procedure TBeobachter.AfterConstruction;\nbegin\n  FQuelle.Anmelden(Self);\n  inherited;\nend;",
+      "safeFix": false
     },
     {
       "id": "null-compare",
@@ -2517,7 +2754,8 @@
       "group": "robustness",
       "description": "X = Null or X <> Null compares a variant with Null. The result depends on the global System.Variants.NullEqualityRule: with the default ncrLoose the comparison works as expected, with ncrStrict it is never true and with ncrError it raises an exception. A library, a test framework or another part of the project can change the rule. VarIsNull(X) and Field.IsNull check independently of it. Reported only where the comparison stands on its own (condition, argument, assignment); not X = Null binds as (not X) = Null and gets no quick fix. High confidence. Quick fix: Field.IsNull for X.Value on FieldByName, FindField, Fields[...], ParamByName, Params[...] or a field of type T...Field/T...Param, otherwise VarIsNull(X); with <> preceded by not.",
       "bad": "if qryKunde.FieldByName('Geburtstag').Value = Null then\n  Alter := 0;",
-      "good": "if qryKunde.FieldByName('Geburtstag').IsNull then\n  Alter := 0;"
+      "good": "if qryKunde.FieldByName('Geburtstag').IsNull then\n  Alter := 0;",
+      "safeFix": false
     },
     {
       "id": "unchecked-enum-cast",
@@ -2540,7 +2778,8 @@
           ],
           "description": "Calls whose result counts as unchecked."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "createprocess-readonly-commandline",
@@ -2550,7 +2789,8 @@
       "group": "find-bugs",
       "description": "CreateProcess (CreateProcessW) and CreateProcessAsUser write into the buffer of lpCommandLine. A PChar on memory that cannot be written causes an access violation. Reported for PChar(...)/PWideChar(...) on: a string literal or constant; a concatenation of exactly one literal and one value (if the value is empty, the RTL returns the literal itself); a local string variable whose last assignment before the call is one of these, without UniqueString afterwards; a string parameter (medium confidence, the caller may pass a literal). Function results such as Format and concatenations with several parts are writable heap strings and stay silent, as does CreateProcessA, which copies the command line itself. Quick fix: copy the command line into a local variable and call UniqueString; for a variable, UniqueString before the statement. No quick fix in loop conditions.",
       "bad": "CreateProcess(nil, PChar('notepad.exe ' + Datei), nil, nil, False, 0, nil, nil, SI, PI);",
-      "good": "Befehl := 'notepad.exe ' + Datei;\nUniqueString(Befehl);\nCreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);"
+      "good": "Befehl := 'notepad.exe ' + Datei;\nUniqueString(Befehl);\nCreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);",
+      "safeFix": false
     },
     {
       "id": "form-access-before-create",
@@ -2560,7 +2800,8 @@
       "group": "find-bugs",
       "description": "The constructor, AfterConstruction or the OnCreate handler of an automatically created form or data module uses the global variable of another form that the .dpr creates later with Application.CreateForm. The variable is still nil at that point. The order comes from the .dpr of the project the unit belongs to; the OnCreate handler from the form file (FormCreate or DataModuleCreate without one). Silent when the routine checks the variable (Assigned, comparison with nil), assigns it itself, creates it with CreateForm or declares a local name of the same name, and for forms that are not created automatically. Each variable is reported once per routine. Medium confidence. No quick fix: change the order in the .dpr or move the access to OnShow.",
       "bad": "procedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;",
-      "good": "// .dpr: Application.CreateForm(TdmDaten, dmDaten) before TfrmHaupt\nprocedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;"
+      "good": "// .dpr: Application.CreateForm(TdmDaten, dmDaten) before TfrmHaupt\nprocedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;",
+      "safeFix": false
     },
     {
       "id": "except-handler-order",
@@ -2570,7 +2811,8 @@
       "group": "exceptions",
       "description": "In a try..except with several on handlers the first matching handler wins. A handler for a class that an earlier handler already catches is never reached: its code is dead and the special treatment never runs. Reported when an earlier handler names the same class, an ancestor of it, Exception (covers every exception class) or TObject. Ancestors come from the unit, the project index and a table of known RTL, VCL and FireDAC exception classes (for example EStreamError > EFOpenError, EIntError > ERangeError); unknown classes are only compared with Exception and TObject. Quick fix: move the specific handler before the general one (only when both handlers stand on their own lines). A duplicate handler for the same class is reported without a quick fix.",
       "bad": "except\n  on E: Exception do\n    Protokoll(E.Message);\n  on E: EConvertError do\n    ShowMessage('Ungültige Zahl');\nend;",
-      "good": "except\n  on E: EConvertError do\n    ShowMessage('Ungültige Zahl');\n  on E: Exception do\n    Protokoll(E.Message);\nend;"
+      "good": "except\n  on E: EConvertError do\n    ShowMessage('Ungültige Zahl');\n  on E: Exception do\n    Protokoll(E.Message);\nend;",
+      "safeFix": false
     },
     {
       "id": "reraise-exception-object",
@@ -2580,7 +2822,8 @@
       "group": "exceptions",
       "description": "raise E; in an on E: … handler raises the caught exception object again as a new raise. The RTL does not free the object twice, but the exception now starts at the handler: ExceptAddr and the call stack of tools such as madExcept or JclDebug point to the handler instead of the original fault, and the original location is lost. raise; re-raises the current exception unchanged. Also reported for raise E at …, then without a quick fix. Silent when the handler takes the object over with AcquireExceptionObject or assigns a new object to the variable, inside anonymous methods and for handlers without a variable name. High confidence. Quick fix: raise E; → raise;.",
       "bad": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise E;\n  end;\nend;",
-      "good": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise;\n  end;\nend;"
+      "good": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise;\n  end;\nend;",
+      "safeFix": false
     },
     {
       "id": "blocking-call-in-main-thread",
@@ -2610,7 +2853,8 @@
           ],
           "description": "Calls that block. Other names are reported regardless of their arguments."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "thread-loop-without-terminated",
@@ -2620,7 +2864,8 @@
       "group": "threads",
       "description": "A while or repeat loop in TThread.Execute, or in a method of the thread class that is only called from there (also through other such methods, including nested routines), does not check Terminated. Terminate then has no effect, and WaitFor or Free hang when the program shuts down. Reported for endless loops (while True, until False) and for waiting loops with Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects, MsgWaitForMultipleObjects, Wait or Yield whose condition and body never mention Terminated or CheckTerminated. Thread classes come from the unit and the index. Bounded loops, for loops, anonymous methods and classes that override TerminatedSet (they end their loops another way) stay silent. High confidence. Quick fix: add Terminated to the loop condition (while True → while not Terminated, otherwise and not Terminated; until False → until Terminated, otherwise or Terminated).",
       "bad": "procedure TPoller.Execute;\nbegin\n  while True do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;",
-      "good": "procedure TPoller.Execute;\nbegin\n  while not Terminated do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;"
+      "good": "procedure TPoller.Execute;\nbegin\n  while not Terminated do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;",
+      "safeFix": false
     },
     {
       "id": "anonymous-thread-not-started",
@@ -2630,7 +2875,8 @@
       "group": "threads",
       "description": "TThread.CreateAnonymousThread(…) creates the thread suspended with FreeOnTerminate set. Without Start the thread never runs, and because it never terminates it is never freed either. Reported for the call as a statement of its own and for a local variable (also an inline variable) that is never started with Start or Resume and not passed on (argument, assignment, Result, field). Setting properties such as FreeOnTerminate or OnTerminate does not count as passing on. High confidence. Quick fix: append .Start; for a variable, T.Start; after the last statement of the same block that mentions it.",
       "bad": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end);",
-      "good": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end).Start;"
+      "good": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end).Start;",
+      "safeFix": false
     },
     {
       "id": "task-exception-unobserved",
@@ -2640,7 +2886,8 @@
       "group": "threads",
       "description": "TTask.Run(…) or TTask.Create(…).Start whose result is never kept or queried with Wait, Status or similar, and whose anonymous method has no try … except. An exception in the task disappears silently. Also reported for a local variable that is never mentioned again (for TTask.Create only in V.Start). Silent for kept results (fields, Result, any other use of the variable) and for method references, whose body the rule cannot see. Medium confidence. Quick fix: wrap the body in try … except and report the message on the main thread through TThread.Queue with ShowMessage (adds Vcl.Dialogs, or FMX.Dialogs in FireMonkey units, and System.SysUtils to the uses clause when missing); only when begin and end of the anonymous method stand on their own lines.",
       "bad": "TTask.Run(\n  procedure\n  begin\n    Importieren(Datei);\n  end);",
-      "good": "TTask.Run(\n  procedure\n  begin\n    try\n      Importieren(Datei);\n    except\n      on E: Exception do\n      begin\n        var Fehler := E.Message;\n        TThread.Queue(nil,\n          procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);"
+      "good": "TTask.Run(\n  procedure\n  begin\n    try\n      Importieren(Datei);\n    except\n      on E: Exception do\n      begin\n        var Fehler := E.Message;\n        TThread.Queue(nil,\n          procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);",
+      "safeFix": false
     },
     {
       "id": "dataset-loop-without-next",
@@ -2650,7 +2897,8 @@
       "group": "database",
       "description": "while not Q.Eof do without Q.Next in the body, or with Next only on some of the paths that continue the loop (an if without else, Continue before Next). The loop spins forever on the same record. Delete, MoveBy, Last, Close, FindNext and Free also count as moving on; Break, Exit, Abort and raise end the loop. Nested while and for loops are not trusted to run. When Q is passed on in the body (argument, assignment, with), the called code may move the record pointer and the rule stays silent. High confidence when Next is missing entirely, medium when only some paths miss it. Quick fix: insert Q.Next; at the end of the begin … end body (only when Next is missing entirely).",
       "bad": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\nend;",
-      "good": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\n  qryPositionen.Next;\nend;"
+      "good": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\n  qryPositionen.Next;\nend;",
+      "safeFix": false
     },
     {
       "id": "dataset-edit-without-post",
@@ -2660,7 +2908,8 @@
       "group": "database",
       "description": "After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save button) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end of the try part and Cancel; raise; in the except part.",
       "bad": "tblKunde.Edit;\ntblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\nProtokollieren;",
-      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;"
+      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;",
+      "safeFix": false
     },
     {
       "id": "transaction-without-rollback",
@@ -2694,7 +2943,8 @@
           ],
           "description": "Transaction methods per library as [{\"start\": …, \"commit\": …, \"rollback\": …}]; replaces the built-in pairs."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "sql-write-without-where",
@@ -2712,7 +2962,8 @@
           "default": [],
           "description": "Tables that are deliberately emptied or changed completely, with or without schema."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "signature-mismatch",
@@ -2728,7 +2979,8 @@
         "E2211",
         "E2065"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "interface-not-implemented",
@@ -2744,7 +2996,8 @@
         "E2211",
         "E2265"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "uses-unit-not-found",
@@ -2770,7 +3023,8 @@
           "description": "Where units are searched: project (like the compiler: project, search paths of the .dproj, library paths, .pas and .dcu), atlas (what Atlas knows: index and browsing paths of the installation) or both."
         }
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "unresolved-attribute",
@@ -2786,7 +3040,8 @@
         "E2289",
         "E1074"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "comparison-as-statement",
@@ -2816,7 +3071,8 @@
         "E2030",
         "E2027"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "field-after-method",
@@ -2830,7 +3086,8 @@
       "compilerCodes": [
         "E2169"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "overload-directive-missing",
@@ -2847,7 +3104,8 @@
         "E2252",
         "E2301"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "duplicate-declaration",
@@ -2892,7 +3150,8 @@
         "E2573",
         "E1030"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "compiler-directive-invalid",
@@ -2914,7 +3173,8 @@
         "E2245",
         "E1026"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "override-target-missing",
@@ -2931,7 +3191,8 @@
         "E2352",
         "E2353"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "abstract-class-instantiated",
@@ -2945,7 +3206,8 @@
       "compilerCodes": [
         "W1020"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "property-accessor-invalid",
@@ -2971,7 +3233,8 @@
         "E2008",
         "E2250"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "assign-to-property-member",
@@ -2986,7 +3249,8 @@
         "E2064",
         "E2453"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "readonly-property-assigned",
@@ -3001,7 +3265,8 @@
         "E2129",
         "E2130"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "sql-select-star",
@@ -3011,7 +3276,11 @@
       "group": "database",
       "description": "SELECT * or SELECT alias.* in a column list, in the same places as sql-write-without-where: string literals, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, Open and similar calls, constants, local values and SQL.Strings/CommandText of the form file. New columns silently change the dataset, persistent fields no longer match, and more data is transferred than needed. Subqueries count; EXISTS (SELECT * …) and COUNT(*) stay silent, as does a column list from a variable. Literals outside SQL properties count only with SELECT in capitals and a FROM, so message texts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields in the form file, replace * with their FieldName list (without calculated and lookup fields).",
       "bad": "qry.SQL.Text := 'SELECT * FROM Kunden WHERE Ort = :Ort';",
-      "good": "qry.SQL.Text := 'SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort';"
+      "good": "qry.SQL.Text := 'SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort';",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "path-concat-without-delimiter",
@@ -3021,7 +3290,8 @@
       "group": "robustness",
       "description": "A folder without a trailing path delimiter is joined to a file or folder name with +: results of ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHomePath, TPath.GetDocumentsPath and the other TPath.Get…Path folders, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory and TDirectory.GetParent, called directly or held in a local variable that the routine only assigns such values to. The result is C:\\Datadatei.txt instead of C:\\Data\\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter and TPath.GetTempPath end with a delimiter and stay silent, as do delimiters, extensions (ExtractFileExt, '.bak') and texts that start with a space or punctuation. A literal name reports with high confidence, an identifier with medium confidence. A local variable passed to a procedure other than ForceDirectories, FileExists and similar read-only calls may be changed there and stays silent. Quick fix: TPath.Combine(Folder, Name), adding System.IOUtils to uses.",
       "bad": "Ordner := TPath.GetDocumentsPath;\nDatei := Ordner + 'export.csv';",
-      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, 'export.csv');"
+      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, 'export.csv');",
+      "safeFix": false
     },
     {
       "id": "hardcoded-path",
@@ -3039,7 +3309,8 @@
           "default": [],
           "description": "Units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "filename-compare-case",
@@ -3049,7 +3320,8 @@
       "group": "robustness",
       "description": "A comparison with = or <> where one side is a file or path name: the result of ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt, ExpandFileName, ChangeFileExt and related System.SysUtils functions, of TPath.GetFileName, GetExtension, GetDirectoryName, GetFullPath, Combine and related methods, or a variable or property whose name ends in FileName, or Application.ExeName. On Windows Kunde.pas and kunde.PAS are the same file. Comparisons with an empty string, nil or a literal without letters stay silent, as does ExtractFileDir(X) = X (both sides come from the same text). It also stays silent when the same statement compares the same two sides ignoring case (SameText, AnsiSameText, CompareText, AnsiCompareText, SameFileName, AnsiCompareFileName), for example platform-dependent with PathDelim = '\\', and in test units (test doubles compare with names the test assigns itself). Medium confidence. Quick fix: SameFileName(A, B), or not SameFileName(A, B) for <>; adds System.SysUtils to uses if needed.",
       "bad": "if ExtractFileName(Datei) = 'Config.ini' then",
-      "good": "if SameFileName(ExtractFileName(Datei), 'Config.ini') then"
+      "good": "if SameFileName(ExtractFileName(Datei), 'Config.ini') then",
+      "safeFix": false
     },
     {
       "id": "initialization-not-finalized",
@@ -3059,7 +3331,8 @@
       "group": "robustness",
       "description": "An object is created with TClass.Create in the initialization section and assigned to a unit variable, or created in a class constructor and assigned to a class var, but the unit never frees it (no Free, Destroy, DisposeOf, Release or FreeAndNil anywhere in the unit). FastMM reports a leak on shutdown; in packages the object stays behind on every unload. Interface and record types, components with an owner (Application, Self, Owner) and objects the unit hands over stay silent: every mention of the variable must be harmless (member access, comparison with nil, Assigned, a new Create or nil assignment); passing it as an argument, assigning it elsewhere, with, a property reading it or FreeOnTerminate silence the rule. For variables in the interface section and public class vars the rule also stays silent when another indexed unit uses the name. High confidence. Quick fix: FreeAndNil at the end of finalization or in the class destructor; a missing finalization section or class destructor (declaration and body) is created and System.SysUtils is added to uses when needed.",
       "bad": "initialization\n  GProtokoll := TProtokoll.Create;\nend.",
-      "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend."
+      "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend.",
+      "safeFix": false
     },
     {
       "id": "compiler-warnings-disabled",
@@ -3077,7 +3350,8 @@
           "default": [],
           "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "dll-export-unsafe",
@@ -3095,7 +3369,8 @@
           "default": true,
           "description": "With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "destructor-not-nil-safe",
@@ -3113,7 +3388,8 @@
           "default": true,
           "description": "Only report when the constructor calls something that can raise before it creates the field."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "handle-leak",
@@ -3131,7 +3407,8 @@
           "default": [],
           "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "global-formatsettings-modified",
@@ -3149,7 +3426,8 @@
           "default": false,
           "description": "Allow the assignments in the .dpr, for example once at program start."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "component-interface-dangling",
@@ -3169,7 +3447,8 @@
           ],
           "description": "Base classes without reference counting; with TComponent the known VCL and FMX classes (TForm, TFrame, TDataModule …) count as well."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unit-name-mismatch",
@@ -3185,7 +3464,8 @@
         "W1038",
         "E2085"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "text-after-final-end",
@@ -3207,7 +3487,8 @@
       "compilerCodes": [
         "W1011"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "exports-invalid",
@@ -3223,7 +3504,8 @@
         "E2276",
         "E2287"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "unit-name-conflict",
@@ -3238,7 +3520,8 @@
         "E2272",
         "E2242"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "implicit-variants-unit",
@@ -3253,7 +3536,10 @@
         "W1040"
       ],
       "level": "B",
-      "safeFix": true
+      "safeFix": true,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "file-encoding-unsupported",
@@ -3268,7 +3554,8 @@
         "F2438",
         "E2038"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "anonymous-capture-invalid",
@@ -3282,7 +3569,8 @@
       "compilerCodes": [
         "E2555"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "operator-declaration-invalid",
@@ -3303,7 +3591,8 @@
         "E2617",
         "E2037"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "generic-declaration-invalid",
@@ -3336,7 +3625,8 @@
         "E2603",
         "H2509"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "type-restriction-violated",
@@ -3388,7 +3678,8 @@
           "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."
         }
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "attribute-usage-invalid",
@@ -3405,7 +3696,8 @@
         "E2448",
         "E2584"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "typeinfo-invalid",
@@ -3423,7 +3715,8 @@
         "E2538",
         "E2015"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "missing-begin-end",
@@ -3474,7 +3767,8 @@
       "compilerCodes": [
         "H2505"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "variant-record-managed-field",
@@ -3492,7 +3786,8 @@
         "E2417",
         "E2569"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "guid-syntax-invalid",
@@ -3506,7 +3801,8 @@
       "compilerCodes": [
         "E2204"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "untyped-pointer-refcount",
@@ -3520,7 +3816,8 @@
       "compilerCodes": [
         "W1070"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "type-too-large",
@@ -3535,7 +3832,8 @@
         "E2100",
         "E2543"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "comparison-always-constant",
@@ -3551,7 +3849,8 @@
         "W1022",
         "W1018"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "constant-initializer-mismatch",
@@ -3566,7 +3865,8 @@
         "E2072",
         "E2083"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "case-selector-not-ordinal",
@@ -3582,7 +3882,8 @@
         "E2032",
         "E2026"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "suspicious-string-pointer-cast",
@@ -3596,7 +3897,8 @@
       "compilerCodes": [
         "W1044"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "string-conversion",
@@ -3624,7 +3926,8 @@
           "description": "ANSI code page of the machine that compiles; characters it surely lacks are reported like W1062 when assigned to an AnsiString. Only 1252 is known; 0 or another value turns this check off."
         }
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "unsafe-code",
@@ -3639,7 +3942,8 @@
       "compilerCodes": [
         "W1047",
         "W1048"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "inaccessible-member",
@@ -3657,7 +3961,8 @@
         "E2124",
         "W1045"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "unused-private-member",
@@ -3679,7 +3984,8 @@
           "description": "Also report private fields that are never used (the compiler reports only methods)."
         }
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "unused-public-member",
@@ -3765,7 +4071,8 @@
           "default": [],
           "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unused-declaration",
@@ -3775,7 +4082,8 @@
       "group": "style",
       "description": "A routine, type, constant or global variable declared in the implementation section of a unit (or in a program or library) is used nowhere in the unit; the compiler does not report these. Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches; not counted are the declarations themselves (including forward declarations), occurrences in the routine's own body (recursion) and, for types, occurrences in their own declaration and in the bodies of their own methods including the TType.Name header. For attribute classes (XyzAttribute) the short form [Xyz] counts. Considered used (service shared with unused-public-member): exported routines, declarations with attributes, names matching deadCode.keepPatterns, types with an attribute from deadCode.keepAttributes, and names from the form file. Bodies of interface routines are left to unused-public-member. Silent for units with include files. Quick fix: mark as intentionally present (lsp-ignore comment).",
       "bad": "implementation\n\nprocedure AltesFormat(const AText: string);  // called nowhere\nbegin\nend;",
-      "good": "implementation\n\nprocedure NeuesFormat(const AText: string);\nbegin\nend;\n\nprocedure Exportieren;\nbegin\n  NeuesFormat('x');\nend;"
+      "good": "implementation\n\nprocedure NeuesFormat(const AText: string);\nbegin\nend;\n\nprocedure Exportieren;\nbegin\n  NeuesFormat('x');\nend;",
+      "safeFix": false
     },
     {
       "id": "unused-unit",
@@ -3795,7 +4103,8 @@
           ],
           "description": "Project kinds whose units are checked: application, package, library."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unused-uses",
@@ -3830,7 +4139,8 @@
         "E2139",
         "E2140"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "interface-declaration-invalid",
@@ -3849,7 +4159,8 @@
         "E2209",
         "E2210"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "implements-clause-invalid",
@@ -3871,7 +4182,8 @@
         "E2264",
         "E2148"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "calling-convention-required",
@@ -3888,7 +4200,8 @@
         "E2277",
         "E2591"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "automation-invalid",
@@ -3915,7 +4228,8 @@
         "E2185",
         "E2281"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "dispinterface-invalid",
@@ -3932,7 +4246,8 @@
         "E2230",
         "E2231"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "abstract-declaration-invalid",
@@ -3953,7 +4268,8 @@
         "E2539",
         "E2376"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "declaration-invalid",
@@ -3971,7 +4287,8 @@
         "E2128",
         "W1029"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "unsatisfied-forward",
@@ -3987,7 +4304,8 @@
         "E2086",
         "E2420"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "member-hides-ancestor",
@@ -4009,7 +4327,8 @@
           "description": "Do not report hidden strict private members of the ancestor."
         }
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "published-type-invalid",
@@ -4029,7 +4348,8 @@
         "E2545",
         "E2452"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "override-case-mismatch",
@@ -4044,7 +4364,11 @@
         "H2365",
         "H2269"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "default-property-invalid",
@@ -4060,7 +4384,8 @@
         "E2132",
         "E2149"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "property-redeclaration-invalid",
@@ -4075,7 +4400,8 @@
         "E2147",
         "E2233"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "inline-not-expanded",
@@ -4109,7 +4435,8 @@
         "H2243",
         "H2244"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "directive-typo",
@@ -4123,7 +4450,8 @@
       "compilerCodes": [
         "E2070"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "ui-call-in-console-or-service",
@@ -4133,7 +4461,8 @@
       "group": "robustness",
       "description": "ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox or TDialogService in a program with {$APPTYPE CONSOLE} (or DCC_ConsoleTarget in the .dproj), in a Windows service or in a DLL without forms. In a service the dialog blocks invisibly; a console program waits for a click nobody sees when it runs unattended. A service is a unit with a class derived from TService, or any unit of a project whose .dpr uses Vcl.SvcMgr without Vcl.Forms. A DLL without forms is a library whose .dpr lists no form and does not use Vcl.Forms; there the rule reports with medium confidence, because only the host decides whether there is a user interface. Units with a form file, calls under if IsConsole and routines of the same name declared in the unit stay silent. Counterpart of writeln-in-gui-app. High confidence. No quick fix: log the message instead of showing it.",
       "bad": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    ShowMessage('Keine Verbindung');\nend;",
-      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE);\nend;"
+      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE);\nend;",
+      "safeFix": false
     },
     {
       "id": "load-without-encoding",
@@ -4151,7 +4480,8 @@
           "default": "UTF8",
           "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "registry-hklm-write",
@@ -4161,7 +4491,8 @@
       "group": "robustness",
       "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, RenameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code through exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_CURRENT_USER.",
       "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);",
-      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);"
+      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);",
+      "safeFix": false
     },
     {
       "id": "now-for-elapsed-time",
@@ -4171,7 +4502,8 @@
       "group": "style",
       "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the same routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in another routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, SecondsBetween or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",
       "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + ' ms');",
-      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + ' ms');"
+      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + ' ms');",
+      "safeFix": false
     },
     {
       "id": "money-as-float",
@@ -4204,6 +4536,10 @@
           "default": false,
           "description": "Also report Round on money amounts."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -4222,6 +4558,10 @@
           "default": 4,
           "description": "Number of comparisons of the same string from which the rule reports; at least 2."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -4240,6 +4580,10 @@
           "default": 4,
           "description": "Number of branches (the final else included) from which the rule reports; at least 2."
         }
+      ],
+      "safeFix": false,
+      "profiles": [
+        "strict"
       ]
     },
     {
@@ -4258,7 +4602,8 @@
           "default": [],
           "description": "Constants that deliberately serve as switches; conditions on them are not reported."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "infinite-loop",
@@ -4268,7 +4613,8 @@
       "group": "find-bugs",
       "description": "while True do, repeat … until False or another loop whose condition never ends it, without an exit in the body: no Break (a Break in a nested loop only leaves that loop), Exit, raise, goto, Halt, Abort or RunError, no call of a routine of the file that raises an exception or ends the program, and no check of Terminated (thread loops are covered by thread-loop-without-terminated). Anonymous methods in the body do not count. The action jumps to the loop head.",
       "bad": "while True do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;",
-      "good": "while not Reader.EndOfStream do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;"
+      "good": "while not Reader.EndOfStream do\nbegin\n  Line := Reader.ReadLine;\n  Process(Line);\nend;",
+      "safeFix": false
     },
     {
       "id": "loop-condition-unchanged",
@@ -4278,7 +4624,8 @@
       "group": "find-bugs",
       "description": "No variable of the while or until condition changes in the body: no assignment, no Inc/Dec, no argument (possibly var), no method or member access on the object of the condition, no for loop over it. Typically a forgotten Inc(I) or Next. The rule only reports when every variable of the condition is a local variable or value parameter of the routine and at least one appears directly (not only as X.Property). Conditions with function calls, fields, global variables, var and out parameters and Terminated are not reported, nor loops with an exit (Break, Exit, raise …), waiting loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",
       "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",
-      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"
+      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;",
+      "safeFix": false
     },
     {
       "id": "loop-runs-at-most-once",
@@ -4296,7 +4643,8 @@
           "default": false,
           "description": "Do not report a for-in loop of simple statements that ends with Exit or Break (fetching the first element)."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "unconditional-recursion",
@@ -4306,7 +4654,8 @@
       "group": "find-bugs",
       "description": "A routine calls itself on every path before it can return: there is no path without a self-call and no Exit or raise before it. The result is a stack overflow. Paths without a call are: an if without else or a case without else, the body of while and for, the right side of and/or, branches of if expressions and anonymous methods. Getters and setters of their own property are reported by setter-recursion; overloaded routines stay silent (the call may go to another overload). The margin marker from #623 shows every recursion.",
       "bad": "function TTree.Depth(N: TNode): Integer;\nbegin\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",
-      "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;"
+      "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",
+      "safeFix": false
     },
     {
       "id": "pos-arguments-swapped",
@@ -4324,7 +4673,8 @@
           "default": 3,
           "description": "Longest literal in the place of the text that is still taken as swapped."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "integer-division-to-float",
@@ -4334,7 +4684,8 @@
       "group": "find-bugs",
       "description": "Average := Sum div Count with Average: Double: div cuts off the fraction before the value is assigned. Also Percent := Part div Total * 100, Result of a function with a floating-point result and var X: Double := A div B. The div is searched through parentheses, signs and + - * /, not inside calls (Round(A div B)), indexes, mod or comparisons. The target must be a variable, field (also Self.X) or Result whose type Single, Double, Extended, Real, Currency … is declared in the file. TDateTime, TDate and TTime stay silent (whole days are usually intended there), as do assignments inside with and Trunc(A) div Trunc(B) (also Round, Floor, Ceil: explicitly converted, so integer division is intended). High confidence. Quick fix: replace div with / (same precedence).",
       "bad": "var Average: Double;\n…\nAverage := Sum div Count;",
-      "good": "var Average: Double;\n…\nAverage := Sum / Count;"
+      "good": "var Average: Double;\n…\nAverage := Sum / Count;",
+      "safeFix": false
     },
     {
       "id": "empty-finally",
@@ -4344,7 +4695,8 @@
       "group": "style",
       "description": "A finally block without statements: usually the release got lost during a rework. If the statement right before try is X := T….Create, the message names X.Free. A block with an explaining comment counts as deliberate and is not reported (as with empty-except); a block with a compiler directive is skipped as well, because another branch may contain code. High confidence. Quick fix: remove try, finally and end and outdent the body (when try, finally and end each stand on their own line); as the only statement of an if, while, for, with or case branch with several statements in the body, try becomes begin.",
       "bad": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\nend;",
-      "good": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\n  Liste.Free;\nend;"
+      "good": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\n  Liste.Free;\nend;",
+      "safeFix": false
     },
     {
       "id": "form-resource-missing",
@@ -4357,7 +4709,8 @@
       "good": "implementation\n\n{$R *.dfm}\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",
       "compilerCodes": [
         "F1026"
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "form-autocreate-and-manual",
@@ -4367,7 +4720,8 @@
       "group": "forms",
       "description": "The .dpr creates a form with Application.CreateForm, and the code also assigns TfrmX.Create(…) to the same global variable. There are then two instances; the first one stays invisible in memory. The automatically created forms come from the .dpr of the project the unit belongs to; when the rule can read the .dpr, the class must match the CreateForm call. Silent when the routine checks the variable (Assigned, comparison with nil) or frees it before (Free, FreeAndNil, Release), for local names and for fields of the own class with the same name, and for units without a project. High confidence. Quick fix: remove the Application.CreateForm line from the .dpr (the form is then only created by the code).",
       "bad": "// Projekt.dpr: Application.CreateForm(TfrmBericht, frmBericht);\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;",
-      "good": "// Projekt.dpr without CreateForm for TfrmBericht\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;"
+      "good": "// Projekt.dpr without CreateForm for TfrmBericht\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;",
+      "safeFix": false
     },
     {
       "id": "inherited-form-handler-without-inherited",
@@ -4377,7 +4731,8 @@
       "group": "forms",
       "description": "With form inheritance, an ancestor form assigns a handler of the same name to the same event of the same component, but the handler in the descendant does not call inherited (any more). The IDE generates inherited; when the handler is created; once it is deleted, the logic of the ancestor is lost silently. The ancestor's form file comes from the index (file of the class) or from the units in the uses clause next to the unit; the chain follows inherited forms up to the first form with object. Handlers with a different name count as a deliberate replacement. Silent without the ancestor's form file. High confidence. Quick fix: insert inherited; at the start.",
       "bad": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  FKunde.Speichern;\nend;",
-      "good": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  inherited;\n  FKunde.Speichern;\nend;"
+      "good": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  inherited;\n  FKunde.Speichern;\nend;",
+      "safeFix": false
     },
     {
       "id": "self-free-in-event-handler",
@@ -4387,7 +4742,8 @@
       "group": "forms",
       "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form's own class, as a statement in an event handler of the form or one of its controls. After the handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sender: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Statements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caFree.",
       "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",
-      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"
+      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;",
+      "safeFix": false
     },
     {
       "id": "dfm-reference-unit-missing",
@@ -4397,7 +4753,8 @@
       "group": "forms",
       "description": "A property in the form file points to a component of another form, frame or data module (Connection = Form1.Connection), but the unit of that module is neither in the interface nor in the implementation uses clause. When the form is opened, the IDE only opens the modules from the uses clause along with it; otherwise the reference stays empty and is lost when the form is saved. At run time the VCL only resolves the reference while a module of that name exists. The module is the name of the root component (Form1, not TForm1). Its unit comes from the .dpr of the project (Unit1 in 'Unit1.pas' {Form1}, high confidence) or else from the index: a global variable of that name in the interface of a unit that declares its type as a class (medium confidence). Silent for references to the own form, to own components (embedded frames such as Frame11.Button1) and to modules whose unit is known neither from the .dpr nor from the index. Reported at the field of the component that holds the reference, otherwise at the form class; the line in the form file is shown as a related location. Quick fix: add the unit to the implementation uses clause, as the IDE offers.",
       "bad": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\n{$R *.dfm}",
-      "good": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\nuses\n  Unit1;\n\n{$R *.dfm}"
+      "good": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\nuses\n  Unit1;\n\n{$R *.dfm}",
+      "safeFix": false
     },
     {
       "id": "parallel-for-shared-write",
@@ -4418,7 +4775,8 @@
           ],
           "description": "Types that count as thread-safe; their collection calls stay silent."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "thread-unsafe-increment",
@@ -4428,7 +4786,8 @@
       "group": "threads",
       "description": "Inc, Dec, X := X + 1 or X := X - 1 without a lock on a global variable in Execute of a TThread descendant, or on a field or global variable in the body of TTask.Run/Create/Future outside loops and of TThread.CreateAnonymousThread. Inc is not atomic: when several threads count at the same time, increments get lost. Thread classes come from the unit (also through intermediate classes) and from the index. Own fields of the thread in Execute and captured local variables of a single task have only one writer and stay silent, as do bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked) and nested anonymous methods (Synchronize, Queue). Tasks inside loops and TParallel.For are reported by parallel-for-shared-write. Medium confidence. Quick fix: TInterlocked.Increment/Decrement/Add for Integer, Int64 and Cardinal (adds System.SyncObjs).",
       "bad": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then Inc(GVerarbeitet);\nend;",
-      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;"
+      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;",
+      "safeFix": false
     },
     {
       "id": "constant-expression-error",
@@ -4449,7 +4808,8 @@
         "E2028",
         "E2572"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "default-parameter-invalid",
@@ -4467,7 +4827,8 @@
         "E2268",
         "E2146"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "signed-unsigned-mix",
@@ -4483,7 +4844,8 @@
         "W1024",
         "W1073"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "narrowing-assignment",
@@ -4509,7 +4871,11 @@
           "description": "Reported pairs source type>target type, e.g. Double>Single or Extended>Double."
         }
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     },
     {
       "id": "typed-constant-modified",
@@ -4527,7 +4893,8 @@
         "E2064",
         "E2197"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "string-length-limit",
@@ -4543,7 +4910,8 @@
         "E2056",
         "E2381"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "dynamic-array-misuse",
@@ -4562,7 +4930,8 @@
         "E2307",
         "E2308"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "local-routine-as-callback",
@@ -4577,7 +4946,8 @@
         "E2094",
         "E2278"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "hresult-integer-mix",
@@ -4591,7 +4961,8 @@
       "compilerCodes": [
         "W1008"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "invalid-var-argument",
@@ -4607,7 +4978,8 @@
         "E2192",
         "E2036"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "condition-not-boolean",
@@ -4621,7 +4993,8 @@
       "compilerCodes": [
         "E2012"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "type-mismatch",
@@ -4640,7 +5013,8 @@
         "E2033",
         "E2089"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "for-in-not-enumerable",
@@ -4655,7 +5029,8 @@
         "E2430",
         "E2431"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "type-kind-required",
@@ -4681,7 +5056,8 @@
         "E2054",
         "E2055"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "inherited-abstract-call",
@@ -4692,7 +5068,8 @@
       "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor: the call raises EAbstractError at runtime. The compiler accepts it without an error. A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
       "bad": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  inherited Zeichnen(C);\n  C.Ellipse(FRahmen);\nend;",
       "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "override-only-inherited",
@@ -4702,7 +5079,8 @@
       "group": "style",
       "description": "An overriding method whose body only calls the inherited method: a bare inherited;, inherited Name or inherited Name(A, B) with its own parameters in unchanged order, in functions only Result := inherited Name(…). It does nothing of its own and pretends a changed behaviour. Silent when the method changes the visibility of the ancestor's method (protected to public), carries an attribute, default values or the directives final, deprecated, experimental, platform, library or reintroduce, has local declarations, more than one statement, comments or conditional directives in the body, or when the overridden method is unknown (ancestor not indexed; virtual methods of TObject count as public). High confidence. Quick fix: remove declaration and body, including XMLDoc comments and the blank line after the body.",
       "bad": "type\n  TKundenForm = class(TForm)\n  protected\n    procedure Loaded; override;\n  end;\n\nprocedure TKundenForm.Loaded;\nbegin\n  inherited Loaded;\nend;",
-      "good": "type\n  TKundenForm = class(TForm)\n  end;"
+      "good": "type\n  TKundenForm = class(TForm)\n  end;",
+      "safeFix": false
     },
     {
       "id": "inherited-without-ancestor",
@@ -4712,7 +5090,8 @@
       "group": "style",
       "description": "A bare inherited; in a method that no ancestor declares (a new method, no override) does nothing. This points to a forgotten override or a misspelled name. Not reported: message handlers (inherited calls DefaultHandler there), class and static methods, constructors and destructors, override and reintroduce, inherited inside anonymous methods, ancestors with a member of that name (also non-virtual) and unknown ancestors. Ancestors from other units come from the symbol index; methods of TObject count as known when System is not indexed. High confidence. Quick fix: remove inherited when it is a statement of its own in a begin…end block.",
       "bad": "procedure TImport.Vorbereiten;\nbegin\n  inherited;\n  FZeilen.Clear;\nend;",
-      "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;"
+      "good": "procedure TImport.Vorbereiten;\nbegin\n  FZeilen.Clear;\nend;",
+      "safeFix": false
     },
     {
       "id": "redundant-jump",
@@ -4722,7 +5101,8 @@
       "group": "style",
       "description": "A bare Exit; as the last statement of a routine or anonymous method, or a bare Continue; as the last statement of a loop body (for, for-in, while, repeat), also in the last branch of an if at the end (the then branch only without else; then Continue else … guards an else-if chain). The jump changes nothing. Not reported: Exit with a value, jumps inside try…finally or try…except (the jump deliberately triggers the finally part), inside case, qualified names such as System.Continue, statements with a goto label and bodies with conditional directives. High confidence. Quick fix: remove the statement when it stands in a begin…end block or directly in repeat.",
       "bad": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\n  Exit;\nend;",
-      "good": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\nend;"
+      "good": "procedure TPuffer.Leeren;\nbegin\n  FLaenge := 0;\nend;",
+      "safeFix": false
     },
     {
       "id": "generic-constraint-violated",
@@ -4742,7 +5122,8 @@
         "E2568",
         "E2571"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "generic-inference-failed",
@@ -4757,7 +5138,8 @@
         "E2531",
         "E2532"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "dunitx-areequal-length",
@@ -4832,7 +5214,8 @@
       "compilerCodes": [
         "E2003"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "unresolved-type",
@@ -4850,7 +5233,8 @@
         "E2003",
         "E2007"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "class-reference-nonvirtual-constructor",
@@ -4864,7 +5248,8 @@
       "compilerCodes": [
         "E2391"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": false
     },
     {
       "id": "jump-outside-allowed-scope",
@@ -4879,7 +5264,8 @@
         "E2097",
         "E2126"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "reraise-outside-handler",
@@ -4893,7 +5279,8 @@
       "compilerCodes": [
         "E2145"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "label-misuse",
@@ -4910,7 +5297,8 @@
         "E2093",
         "E2127"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "for-variable-misuse",
@@ -4927,7 +5315,8 @@
         "E1019",
         "W1019"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "for-variable-after-loop",
@@ -4941,7 +5330,8 @@
       "compilerCodes": [
         "W1037"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": false
     },
     {
       "id": "argument-count-mismatch",
@@ -4956,7 +5346,8 @@
         "E2034",
         "E2035"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "overload-resolution",
@@ -4971,7 +5362,8 @@
         "E2250",
         "E2251"
       ],
-      "level": "T"
+      "level": "T",
+      "safeFix": false
     },
     {
       "id": "method-without-self",
@@ -4981,7 +5373,11 @@
       "group": "style",
       "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.",
       "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",
-      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"
+      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;",
+      "safeFix": false,
+      "profiles": [
+        "strict"
+      ]
     }
   ]
 }

@@ -471,7 +471,7 @@ end;
 function TRoleImportRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('architecture-role-import', TRuleSeverity.Warning,
-    cTexts[TArchitectureText.RoleTitle].Text, True);
+    cTexts[TArchitectureText.RoleTitle].Text);
 end;
 
 class function TRoleImportRule.ParseOptions(const AOptions: string): TRoleImportOptions;
@@ -582,7 +582,7 @@ end;
 function TContractContentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('architecture-contract-content', TRuleSeverity.Warning,
-    cTexts[TArchitectureText.ContractTitle].Text, True);
+    cTexts[TArchitectureText.ContractTitle].Text);
 end;
 
 function IsExceptionName(const AName: string): Boolean;

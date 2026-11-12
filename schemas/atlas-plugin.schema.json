@@ -8785,6 +8785,19 @@
       "x-caption": "Bilder höchstens so breit (Pixel)",
       "x-captionEn": "Maximum image width (pixels)",
       "x-issue": "#1276"
+    },
+    "IssuesAttachRaiseProgram": {
+      "type": "boolean",
+      "default": true,
+      "description": "„Per Klick wählen“ im Dialog „An Issue anhängen“ holt das Hauptfenster des debuggten Programms über die IDE, damit ein Klick es aufnehmen kann; danach kommt der Dialog zurück. Ein im Debugger angehaltenes Programm bleibt, wo es ist. Aus: nur sichtbare Fenster lassen sich wählen.",
+      "x-key": "issues.attach.raiseProgram",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-parent": "issues.attach",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "„Per Klick wählen“ holt das debuggte Programm nach vorn",
+      "x-captionEn": "“Pick by click” brings the debugged program to the front",
+      "x-issue": "#1276"
     }
   },
   "additionalProperties": false

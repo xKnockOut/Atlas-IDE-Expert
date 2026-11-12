@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnExceptions: array[0..79] of string = (
+  cCatalogLinesEnExceptions: array[0..90] of string = (
     '{',
     '      "id": "empty-except",',
     '      "name": "Empty except block",',
@@ -15,7 +15,8 @@ const
     '      "group": "exceptions",',
     '      "description": "An except block without statements swallows every exception. A block that contains only a comment counts as deliberate and is not reported.",',
     '      "bad": "try\n  Save;\nexcept\nend;",',
-    '      "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;"',
+    '      "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "generic-exception-raised",',
@@ -25,7 +26,8 @@ const
     '      "group": "exceptions",',
     '      "description": "Raising the base class Exception prevents callers from handling the error specifically. Declare a dedicated exception class.",',
     '      "bad": "raise Exception.Create(''Customer missing'');",',
-    '      "good": "raise ECustomerMissing.Create(''Customer missing'');"',
+    '      "good": "raise ECustomerMissing.Create(''Customer missing'');",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "catch-all-without-raise",',
@@ -35,7 +37,11 @@ const
     '      "group": "exceptions",',
     '      "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",',
     '      "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",',
-    '      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;"',
+    '      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "exception-freed",',
@@ -45,7 +51,8 @@ const
     '      "group": "exceptions",',
     '      "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",',
     '      "bad": "on E: Exception do\n  E.Free;",',
-    '      "good": "on E: Exception do\n  Log(E.Message);"',
+    '      "good": "on E: Exception do\n  Log(E.Message);",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "raise-in-finally",',
@@ -55,7 +62,8 @@ const
     '      "group": "exceptions",',
     '      "description": "An exception raised in a finally block replaces the exception that is currently propagating, which is then lost.",',
     '      "bad": "try\n  Work;\nfinally\n  raise Exception.Create(''Fehler'');\nend;",',
-    '      "good": "try\n  Work;\nfinally\n  Cleanup;\nend;"',
+    '      "good": "try\n  Work;\nfinally\n  Cleanup;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "exception-in-destructor",',
@@ -67,7 +75,8 @@ const
     'ys half freed, and in a finally of the caller it hides the original exception. A raise in the try part of a try..except is caught; raise in the except or finally part, including a bare raise; to re-ra' +
     'ise, is reported. Nested routines and anonymous methods are exempt. Calls that raise are not followed. High confidence. No quick fix: log the state or release it without an exception.",',
     '      "bad": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    raise ESitzung.Create(''Sitzung noch offen'');\n  inherited;\nend;",',
-    '      "good": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    Schliessen;\n  inherited;\nend;"',
+    '      "good": "destructor TSitzung.Destroy;\nbegin\n  if FOffen then\n    Schliessen;\n  inherited;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "except-handler-order",',
@@ -80,7 +89,8 @@ const
     ' index and a table of known RTL, VCL and FireDAC exception classes (for example EStreamError > EFOpenError, EIntError > ERangeError); unknown classes are only compared with Exception and TObject. Quic' +
     'k fix: move the specific handler before the general one (only when both handlers stand on their own lines). A duplicate handler for the same class is reported without a quick fix.",',
     '      "bad": "except\n  on E: Exception do\n    Protokoll(E.Message);\n  on E: EConvertError do\n    ShowMessage(''Ungültige Zahl'');\nend;",',
-    '      "good": "except\n  on E: EConvertError do\n    ShowMessage(''Ungültige Zahl'');\n  on E: Exception do\n    Protokoll(E.Message);\nend;"',
+    '      "good": "except\n  on E: EConvertError do\n    ShowMessage(''Ungültige Zahl'');\n  on E: Exception do\n    Protokoll(E.Message);\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "reraise-exception-object",',
@@ -93,7 +103,8 @@ const
     ' Also reported for raise E at …, then without a quick fix. Silent when the handler takes the object over with AcquireExceptionObject or assigns a new object to the variable, inside anonymous methods a' +
     'nd for handlers without a variable name. High confidence. Quick fix: raise E; → raise;.",',
     '      "bad": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise E;\n  end;\nend;",',
-    '      "good": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise;\n  end;\nend;"',
+    '      "good": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise;\n  end;\nend;",',
+    '      "safeFix": false',
     '    }');
 
 implementation

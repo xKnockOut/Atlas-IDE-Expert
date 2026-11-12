@@ -66,7 +66,7 @@ const
 function TOverrideCaseMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cOverrideCaseMismatchRuleId, TRuleSeverity.Hint,
-    cTexts[TInheritanceOverrideCaseText.Title].Text, True);
+    cTexts[TInheritanceOverrideCaseText.Title].Text);
 end;
 
 /// <summary>Stufe einer Sichtbarkeit: 0 privat, 1 geschützt, 2 öffentlich (public und published). Nur Stufen

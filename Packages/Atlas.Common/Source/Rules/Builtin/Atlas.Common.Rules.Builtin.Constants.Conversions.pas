@@ -284,7 +284,7 @@ end;
 function TNarrowingAssignmentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cNarrowingAssignmentRuleId, TRuleSeverity.Warning,
-    cTexts[TConstantsConversionsText.LossTitle].Text, True);
+    cTexts[TConstantsConversionsText.LossTitle].Text);
 end;
 
 class function TNarrowingAssignmentRule.DefaultTypes: TArray<string>;

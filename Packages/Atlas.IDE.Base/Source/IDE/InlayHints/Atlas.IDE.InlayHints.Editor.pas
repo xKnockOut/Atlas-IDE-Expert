@@ -207,7 +207,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.CodeView;
 
 /// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
 /// Fläche aller Pillen, leer ohne.</summary>
@@ -406,8 +407,9 @@ begin
       mView := TopSourceView;
     end;
     // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
+    // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
     if (mView <> nil) and not SnapshotChanged(mView) and (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
-      FRetryAt.Reached then
+      FRetryAt.Reached and TAtlasIdeCodeView.InFront then
     begin
       Fetch(mView);
     end;

@@ -50,6 +50,9 @@ type
     /// <summary>Zeigt das Editorfenster mit dem Editor-Steuerelement AEditor (TAtlasEditorBarHost.EditorIn) gerade
     /// den Code-Editor (sichtbar, nicht von Willkommensseite oder Designer verdeckt)?</summary>
     class function CodeShown(AEditor: TWinControl): Boolean; static;
+    /// <summary>CodeShown und das Editorfenster von AEditor zeigt nicht den Designer: Leisten und Anfragen, die nur
+    /// zum Code gehören. False bei AEditor = nil.</summary>
+    class function CodeInFront(AEditor: TWinControl): Boolean; static;
   end;
 
 implementation
@@ -276,6 +279,11 @@ begin
     end;
     AWindow := mChild;
   end;
+end;
+
+class function TAtlasIdeDesignerView.CodeInFront(AEditor: TWinControl): Boolean;
+begin
+  Result := (AEditor <> nil) and CodeShown(AEditor) and not Shown(AEditor.Parent);
 end;
 
 class function TAtlasIdeDesignerView.CodeShown(AEditor: TWinControl): Boolean;

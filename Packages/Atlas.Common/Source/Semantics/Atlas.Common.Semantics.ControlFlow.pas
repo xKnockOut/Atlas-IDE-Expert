@@ -6,7 +6,9 @@
 //
 // Jede Anweisung ist ein Knoten. Bedingungen von if, case und Schleifen
 // sind eigene Knoten der Art Condition. Berücksichtigt werden
-// try/finally/except, Exit, Break, Continue, raise, Abort, Halt und goto.
+// try/finally/except, Exit, Break, Continue, raise, Abort, Halt und goto,
+// dazu Aufrufe von Routinen mit der Direktive noreturn (wie Abort), wenn der
+// Aufrufer sie nennt (TFlowNoReturnLookup).
 // Innerhalb eines try kann jede Anweisung eine Ausnahme auslösen; außerhalb
 // führen nur raise und Abort zum Knoten RaiseExit.
 //
@@ -56,6 +58,10 @@ type
   /// <summary>Übergabeart des Arguments AArgument (0-basiert) im Aufruf ACall (Knoten der Art Call).</summary>
   TFlowSignatureLookup = reference to function(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode;
 
+  /// <summary>Kehrt die Routine AName (einfacher Aufruf ohne Objekt) nie normal zurück (Direktive noreturn)?
+  /// </summary>
+  TFlowNoReturnLookup = reference to function(const AName: string): Boolean;
+
   TFlowSignatures = class
   public
     /// <summary>Übergabeart bei Standardroutinen und Typumwandlungen (SetLength, FillChar, Inc, Str,
@@ -66,6 +72,9 @@ type
     /// sonst Unknown; Aufrufe über Objekte sind Unknown. Liest den Baum erst beim ersten Aufruf;
     /// ARoot muss länger leben als die Funktion.</summary>
     class function FromTree(ARoot: TSyntaxNode): TFlowSignatureLookup; static;
+    /// <summary>Alle Routinenköpfe unter ARoot als Kurzname (ohne Klassennamen, klein) und ob der Kopf die
+    /// Direktive noreturn (ab Delphi 13) trägt; je Kopf ein Eintrag.</summary>
+    class function NoReturnVerdicts(ARoot: TSyntaxNode): TArray<TPair<string, Boolean>>; static;
   end;
 
   TFlowNode = class
@@ -136,6 +145,10 @@ type
     /// mit der Wurzel des Baums.</summary>
     class function Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup): TControlFlowGraph;
       overload; static;
+    /// <summary>Wie oben; ANoReturn nennt Routinen, die nie normal zurückkehren: Ein Aufruf beendet den Weg wie
+    /// Abort. nil = keine.</summary>
+    class function Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup;
+      const ANoReturn: TFlowNoReturnLookup): TControlFlowGraph; overload; static;
     /// <summary>Wie oben mit ALookup = nil.</summary>
     class function Build(ARoutine: TSyntaxNode): TControlFlowGraph; overload; static;
     function NodeOf(ASyntax: TSyntaxNode): TFlowNode;
@@ -204,6 +217,7 @@ type
     FLabels: TDictionary<string, TFlowNode>;
     FTryDepth: Integer;
     FLookup: TFlowSignatureLookup;
+    FNoReturn: TFlowNoReturnLookup;
     procedure Analyze(ANode: TFlowNode);
     function NewNode(AKind: TFlowNodeKind; ASyntax: TSyntaxNode): TFlowNode;
     function NewTarget: TJumpTarget;
@@ -232,7 +246,8 @@ type
     procedure FinallyCopies(AContext: TFinallyContext; AFinallyPart: TSyntaxNode);
     function BuildTryExcept(AStatement, AExceptPart: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
   public
-    constructor Create(AGraph: TControlFlowGraph; const ALookup: TFlowSignatureLookup);
+    constructor Create(AGraph: TControlFlowGraph; const ALookup: TFlowSignatureLookup;
+      const ANoReturn: TFlowNoReturnLookup);
     destructor Destroy; override;
     procedure Run(ARoutine: TSyntaxNode);
   end;
@@ -477,6 +492,70 @@ begin
     end;
 end;
 
+class function TFlowSignatures.NoReturnVerdicts(ARoot: TSyntaxNode): TArray<TPair<string, Boolean>>;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex, mCount: Integer;
+  mNoReturn: Boolean;
+  mName: string;
+begin
+  Result := nil;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mCount := 0;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mName := '';
+      if mNode.Kind = TSyntaxKind.RoutineHeader then
+      begin
+        mName := mNode.Name;
+        if (mName = '') and (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.RoutineDecl) then
+        begin
+          mName := mNode.Parent.Name;
+        end;
+        mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+        if Pos('<', mName) > 0 then
+        begin
+          mName := Copy(mName, 1, Pos('<', mName) - 1);
+        end;
+      end;
+      if mName <> '' then
+      begin
+        mNoReturn := False;
+        for mIndex := 0 to mNode.ChildCount - 1 do
+        begin
+          if (mNode[mIndex].Kind = TSyntaxKind.Directive) and SameText(mNode[mIndex].Name, 'noreturn') then
+          begin
+            mNoReturn := True;
+          end;
+        end;
+        if Length(Result) = mCount then
+        begin
+          SetLength(Result, 2 * mCount + 8);
+        end;
+        Result[mCount] := TPair<string, Boolean>.Create(
+          LowerCase(mName), mNoReturn);
+        Inc(mCount);
+      end;
+      for mIndex := 0 to mNode.ChildCount - 1 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+  SetLength(Result, mCount);
+end;
+
 { TFlowRoutineTable }
 
 constructor TFlowRoutineTable.Create(ARoot: TSyntaxNode);
@@ -642,11 +721,13 @@ end;
 
 { TFlowBuilder }
 
-constructor TFlowBuilder.Create(AGraph: TControlFlowGraph; const ALookup: TFlowSignatureLookup);
+constructor TFlowBuilder.Create(AGraph: TControlFlowGraph; const ALookup: TFlowSignatureLookup;
+  const ANoReturn: TFlowNoReturnLookup);
 begin
   inherited Create;
   FGraph := AGraph;
   FLookup := ALookup;
+  FNoReturn := ANoReturn;
   FTargets := TObjectList<TJumpTarget>.Create;
   FFinallies := TObjectList<TFinallyContext>.Create(False);
   FLoops := TList<TLoopContext>.Create;
@@ -1140,8 +1221,9 @@ begin
     Jump(mNode, FLoops.Last.ContinueTarget);
     Result := nil;
   end
-  else if mName = 'abort' then
+  else if (mName = 'abort') or (mName <> '') and Assigned(FNoReturn) and FNoReturn(mName) then
   begin
+    // noreturn-Routinen (ab Delphi 13) kehren wie Abort nie normal zurück.
     Jump(mNode, FRaiseTargets.Last);
     Result := nil;
   end
@@ -1563,6 +1645,12 @@ end;
 
 class function TControlFlowGraph.Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup):
   TControlFlowGraph;
+begin
+  Result := Build(ARoutine, ALookup, nil);
+end;
+
+class function TControlFlowGraph.Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup;
+  const ANoReturn: TFlowNoReturnLookup): TControlFlowGraph;
 var
   mBuilder: TFlowBuilder;
   mLookup: TFlowSignatureLookup;
@@ -1579,7 +1667,7 @@ begin
     mLookup := TFlowSignatures.FromTree(mRoot);
   end;
   Result := TControlFlowGraph.Create;
-  mBuilder := TFlowBuilder.Create(Result, mLookup);
+  mBuilder := TFlowBuilder.Create(Result, mLookup, ANoReturn);
   try
     mBuilder.Run(ARoutine);
   finally

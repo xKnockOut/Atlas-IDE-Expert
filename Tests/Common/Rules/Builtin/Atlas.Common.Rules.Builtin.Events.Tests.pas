@@ -236,6 +236,9 @@ begin
   // Ereignis ohne Argumente als eigene Anweisung.
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FOnIdle: TProc;'#10, '  FOnIdle;'#10));
+  // FP-Prüfung 28.10.2026: Feld und Property aus "read FOnChange" sind dasselbe Ereignis.
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, Body('  if Assigned(FOnChange) then'#10 +
+    '    OnChange(Self);'#10'  if OnChange = nil then'#10'    Exit;'#10'  FOnChange(Self);'#10));
 end;
 
 procedure TEventRulesTests.OnlyEventTypesCount;

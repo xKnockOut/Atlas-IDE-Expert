@@ -30,6 +30,8 @@ type
     [Test]
     procedure UnknownDirectiveCodeFollowsDelphiVersion;
     [Test]
+    procedure UnknownDirectiveInBranchLowConfidence;
+    [Test]
     procedure UnbalancedOptionStack;
     [Test]
     procedure UnbalancedAlign;
@@ -268,6 +270,25 @@ begin
   mFound := Findings(Dienst('{$FOOBAR}'#10, ''), '{"delphiVersion": "37.0"}', 'Dienst.pas');
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie E1030).', mFound[0].Message);
+  mFound := nil;
+end;
+
+procedure TDirectiveRulesTests.UnknownDirectiveInBranchLowConfidence;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // graphics32: {$error} im {$else} hinter {$if defined(TARGET_x64)}; dcc überspringt nicht geltende Zweige.
+  mFound := Findings(Dienst('{$if defined(TARGET_x86)}'#10'{$elseif defined(TARGET_x64)}'#10'{$else}'#10 +
+    '{$error ''Missing target''}'#10'{$WARN NEU_IN_DELPHI_14 OFF}'#10'{$ifend}'#10'{$FOOBAR}'#10, ''), '{"minConfidence": "low"}', 'Dienst.pas');
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFound[0].Confidence));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFound[1].Confidence));
+  // Außerhalb bedingter Zweige bleibt es sicher.
+  Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie E1030).', mFound[2].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[2].Confidence));
+  // Mit der Vorgabe minConfidence medium bleibt nur der sichere Treffer.
+  mFound := Findings(Dienst('{$IFDEF X}'#10'{$error ''x''}'#10'{$ENDIF}'#10, ''));
+  Assert.AreEqual(0, Integer(Length(mFound)));
   mFound := nil;
 end;
 

@@ -46,6 +46,7 @@ type
     Attach: TCheckBox;
     AttachLogFiles: TEdit;
     AttachMaxImageWidth: TEdit;
+    AttachRaiseProgram: TCheckBox;
   end;
 
   TAtlasTrackerGeneralPart = class
@@ -207,6 +208,8 @@ begin
   FView.AttachLogFiles := Line('issues.attach.logFiles', TAtlasTrackerTextId.SettingsIssuesAttachLogFiles);
   FView.AttachMaxImageWidth := Number('issues.attach.maxImageWidth',
     TAtlasTrackerTextId.SettingsIssuesAttachMaxImageWidth);
+  FView.AttachRaiseProgram := Check('issues.attach.raiseProgram',
+    TAtlasTrackerTextId.SettingsIssuesAttachRaiseProgram);
 end;
 
 end.
