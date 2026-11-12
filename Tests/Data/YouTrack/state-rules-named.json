@@ -1,0 +1,14 @@
+{
+  "idReadable": "ATL-2052",
+  "customFields": [
+    {"name": "Priorität", "id": "82-10", "$type": "SingleEnumIssueCustomField", "value": {"name": "Normal", "$type": "EnumBundleElement"}},
+    {"name": "Status", "id": "82-11", "$type": "StateMachineIssueCustomField",
+     "value": {"name": "In Bearbeitung", "$type": "StateBundleElement"},
+     "possibleEvents": [
+       {"id": "review", "presentation": "Zur Prüfung geben", "$type": "Event"},
+       {"id": "zurueckgestellt", "presentation": "Zurückstellen", "$type": "Event"},
+       {"id": "abbrechen", "presentation": "Abbrechen", "$type": "Event"}
+     ]}
+  ],
+  "$type": "Issue"
+}

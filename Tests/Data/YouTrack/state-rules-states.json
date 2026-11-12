@@ -1,0 +1,12 @@
+{
+  "idReadable": "ATL-2053",
+  "customFields": [
+    {"name": "Status", "id": "82-11", "$type": "StateMachineIssueCustomField",
+     "value": {"name": "Neu", "$type": "StateBundleElement"},
+     "possibleEvents": [
+       {"id": "in-bearbeitung", "presentation": "In Bearbeitung", "$type": "Event"},
+       {"id": "abgelehnt", "presentation": "Abgelehnt", "$type": "Event"}
+     ]}
+  ],
+  "$type": "Issue"
+}

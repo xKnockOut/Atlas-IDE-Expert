@@ -8,6 +8,13 @@
 // - „Beenden“: {commits} im Hintergrund über IAtlasVcsLocalWork.Outgoing,
 //   dann der Dialog „ATL-123 beenden“ (TAtlasTrackerEndDialog) mit Benutzern
 //   und Zuständen vom Tracker; geschrieben wird nur mit „Senden“.
+// - Zustandsmaschine (#2122): Bietet der Anbieter IAtlasTrackerStateRules,
+//   liest „Beginnen“ zuerst die erlaubten Übergänge des Issues und löst den
+//   Übergang nach issues.startState aus (TAtlasTrackerWorkflow.FitStart);
+//   führt keiner dorthin, bleibt der Zustand, und die Zeile nennt die ab hier
+//   erlaubten Übergänge. Nach einem Übergang liest Atlas den neuen Zustand
+//   einmal (benannte Ereignisse verraten ihr Ziel nicht). Der
+//   Beenden-Dialog bekommt die Regeln mit den übrigen Werten (SetRules).
 // - Kommentar aus der Vorschau (SendComment).
 // - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
 //   (Atlas.IDE.Tracker.TimeTracking); unabhängig von issues.syncState.
@@ -56,6 +63,18 @@ type
     class function Create(const AKey, ABranch, AFolder, ABase, APullRequest: string): TAtlasIdeTrackerEnd; static;
   end;
 
+  /// <summary>„Beginnen“ unter einer Zustandsmaschine (#2122): geschriebene Änderung, gelesene Regeln, ob kein
+  /// Übergang nach issues.startState führte, Zustand danach und Ergebnis.</summary>
+  TAtlasIdeTrackerStarted = record
+    Change: TAtlasTrackerWrite;
+    Rules: TAtlasTrackerStateRules;
+    Blocked: Boolean;
+    /// <summary>Nach einem Übergang gelesener Zustand; '' ohne.</summary>
+    NewState: string;
+    Outcome: TAtlasTrackerWriteResult;
+    class function Create(const AChange: TAtlasTrackerWrite): TAtlasIdeTrackerStarted; static;
+  end;
+
   TAtlasIdeTrackerSync = class
   public const
     /// <summary>Zeitlimit je Aufruf der Versionsverwaltung für {commits}.</summary>
@@ -77,9 +96,14 @@ type
       const AKey, AStateField: string; const ASession: IInterface): TProc<TAtlasTrackerEndDialog>;
     procedure BindComment(ADialog: TAtlasTrackerEndDialog; const ATarget: TAtlasTrackerTarget; const AKey: string);
     procedure LoadEndValues(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AStateField: string; const ASession: IInterface);
+      const AKey, AStateField: string; const ASession: IInterface);
+    procedure StartWithRules(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+      const AKey: string; const AChange: TAtlasTrackerWrite; const AField: string);
+    procedure ReportStart(const AKey: string; const AStarted: TAtlasIdeTrackerStarted);
     class procedure Logged(const AProvider: IAtlasTrackerProvider; const AWhat: string;
       const AResult: TAtlasTrackerWriteResult); static;
+    /// <summary>Protokoll: AWhat mit der Ausnahme AError abgebrochen (nur die Klasse, nie die Meldung).</summary>
+    class procedure Aborted(const AWhat: string; AError: Exception); static;
   public
     /// <summary>AReport: Zeile in die Meldungsansicht.</summary>
     constructor Create(const ATransport: TAtlasIdeTrackerTransport; const AReport: TProc<string>);
@@ -90,6 +114,8 @@ type
     class function Options(const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions; static;
     /// <summary>Schreibzugriff des Anbieters; nil, wenn er nicht schreiben kann.</summary>
     class function WriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerWriter; static;
+    /// <summary>Regeln des Zustandsfeldes (#2122); nil, wenn der Anbieter keine kennt (GitHub).</summary>
+    class function RulesOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerStateRules; static;
     /// <summary>issues.syncState an, der Anbieter kann schreiben und ein Server ist eingetragen.</summary>
     function Enabled(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
     /// <summary>Nach „Beginnen“: Zustand, Zuweisung und Kommentar im Hintergrund schreiben, Ergebnis als Zeile.
@@ -127,6 +153,7 @@ implementation
 uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Tracker.Transitions,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
@@ -158,6 +185,86 @@ end;
 procedure TAtlasTrackerEndSession.SetDialog(ADialog: TAtlasTrackerEndDialog);
 begin
   FDialog := ADialog;
+end;
+
+{ TAtlasIdeTrackerStarted }
+
+class function TAtlasIdeTrackerStarted.Create(const AChange: TAtlasTrackerWrite): TAtlasIdeTrackerStarted;
+begin
+  Result.Change := AChange;
+  Result.Rules := Default(TAtlasTrackerStateRules);
+  Result.Blocked := False;
+  Result.NewState := '';
+  Result.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+end;
+
+type
+  /// <summary>Zugriff auf ein Issue im Hintergrund: Schreiben, Regeln, Ziel, Transport, Kennung, Zustandsfeld.
+  /// </summary>
+  TAtlasIssueCall = record
+    Writer: IAtlasTrackerWriter;
+    Rules: IAtlasTrackerStateRules;
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    Key: string;
+    Field: string;
+  end;
+
+  /// <summary>Werte für den Beenden-Dialog: Benutzer, Zustände und Regeln (#2122).</summary>
+  TAtlasEndValues = record
+    Users: TArray<string>;
+    States: TArray<string>;
+    Rules: TAtlasTrackerStateRules;
+  end;
+
+function IssueCall(const AWriter: IAtlasTrackerWriter; const ARules: IAtlasTrackerStateRules;
+  const ATarget: TAtlasTrackerTarget; const AKey, AField: string): TAtlasIssueCall;
+begin
+  Result.Writer := AWriter;
+  Result.Rules := ARules;
+  Result.Target := ATarget;
+  Result.Transport := nil;
+  Result.Key := AKey;
+  Result.Field := AField;
+end;
+
+/// <summary>Im Hintergrund: Regeln lesen, Änderung anpassen (FitStart), schreiben und nach einem Übergang den
+/// Zustand einmal lesen. Ohne lesbare Regeln wie bisher: Befehl mit dem Wert, YouTrack begründet eine Ablehnung.
+/// </summary>
+procedure RunStart(const ACall: TAtlasIssueCall; var AStarted: TAtlasIdeTrackerStarted);
+var
+  mAfter: TAtlasTrackerStateRules;
+begin
+  if ACall.Rules.StateRules(ACall.Target, ACall.Transport, ACall.Key, ACall.Field,
+    TAtlasTrackerWorkflow.cWriteTimeoutMs, AStarted.Rules).Succeeded then
+  begin
+    AStarted.Change := TAtlasTrackerWorkflow.FitStart(AStarted.Change, AStarted.Rules, AStarted.Blocked);
+  end;
+  AStarted.Outcome := ACall.Writer.Apply(ACall.Target, ACall.Transport, ACall.Key, AStarted.Change,
+    TAtlasTrackerWorkflow.cWriteTimeoutMs);
+  if AStarted.Outcome.Succeeded and (AStarted.Change.Transition.Id <> '') and ACall.Rules.StateRules(ACall.Target,
+    ACall.Transport, ACall.Key, ACall.Field, TAtlasTrackerWorkflow.cWriteTimeoutMs, mAfter).Succeeded then
+  begin
+    AStarted.NewState := mAfter.Current;
+  end;
+end;
+
+/// <summary>Werte für den Beenden-Dialog im Hintergrund. Ohne Leserecht bleiben die Klapplisten frei
+/// beschreibbar; ohne Regeln (GitHub) bleibt die Liste der Zustände.</summary>
+function ReadEndValues(const ACall: TAtlasIssueCall): TAtlasEndValues;
+begin
+  Result.Users := nil;
+  Result.States := nil;
+  Result.Rules := Default(TAtlasTrackerStateRules);
+  ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.Users, '',
+    TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.Users);
+  ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.States, ACall.Field,
+    TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.States);
+  if ACall.Rules <> nil then
+  begin
+    ACall.Rules.StateRules(ACall.Target, ACall.Transport, ACall.Key, ACall.Field,
+      TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.Rules);
+  end;
 end;
 
 { TAtlasIdeTrackerEnd }
@@ -233,6 +340,14 @@ begin
   end;
 end;
 
+class function TAtlasIdeTrackerSync.RulesOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerStateRules;
+begin
+  if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerStateRules, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
 function TAtlasIdeTrackerSync.Enabled(const AProvider: IAtlasTrackerProvider;
   const ATarget: TAtlasTrackerTarget): Boolean;
 begin
@@ -260,6 +375,11 @@ begin
     TAtlasGuard.Log(Format('Tracker nachführen: %s %s nicht geschrieben (%s, %d)', [mName, AWhat,
       TAtlasCiBuild.ErrorKey(AResult.Error), AResult.Status]));
   end;
+end;
+
+class procedure TAtlasIdeTrackerSync.Aborted(const AWhat: string; AError: Exception);
+begin
+  TAtlasGuard.Log(Format('Tracker nachführen: %s mit %s abgebrochen', [AWhat, AError.ClassName]));
 end;
 
 procedure TAtlasIdeTrackerSync.Apply(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -307,7 +427,7 @@ begin
         on E: Exception do
         begin
           mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
-          TAtlasGuard.Log('Tracker nachführen: Schreiben mit ' + E.ClassName + ' abgebrochen');
+          Aborted('Schreiben', E);
         end;
       end;
     end,
@@ -339,6 +459,12 @@ begin
     Exit;
   end;
   mChange := TAtlasTrackerWorkflow.StartChange(mOptions, TAtlasTrackerPlaceholders.Create(AKey, ABranch));
+  // Zustandsmaschine (#2122): erst die erlaubten Übergänge lesen, dann den passenden auslösen.
+  if (mChange.State <> '') and (RulesOf(AProvider) <> nil) then
+  begin
+    StartWithRules(AProvider, ATarget, AKey, mChange, mOptions.StateField);
+    Exit;
+  end;
   mOwner := Self;
   mProvider := AProvider;
   mKey := AKey;
@@ -357,6 +483,86 @@ begin
           [mKey, TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
       end;
     end);
+end;
+
+procedure TAtlasIdeTrackerSync.StartWithRules(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string; const AChange: TAtlasTrackerWrite; const AField: string);
+var
+  mOwner: TAtlasIdeTrackerSync;
+  mProvider: IAtlasTrackerProvider;
+  mTransports: TAtlasIdeTrackerTransport;
+  mCall: TAtlasIssueCall;
+  mStarted: TAtlasIdeTrackerStarted;
+begin
+  mOwner := Self;
+  mProvider := AProvider;
+  mTransports := FTransport;
+  mCall := IssueCall(WriterOf(AProvider), RulesOf(AProvider), ATarget, AKey, AField);
+  mStarted := TAtlasIdeTrackerStarted.Create(AChange);
+  if (mCall.Writer = nil) or not Assigned(mTransports) then
+  begin
+    Exit;
+  end;
+  FWorker.Run(
+    procedure
+    begin
+      try
+        mCall.Transport := mTransports(mProvider, mCall.Target);
+        if mCall.Transport = nil then
+        begin
+          mStarted.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
+          Exit;
+        end;
+        RunStart(mCall, mStarted);
+      except
+        on E: Exception do
+        begin
+          mStarted.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+          Aborted('Beginnen', E);
+        end;
+      end;
+    end,
+    procedure
+    begin
+      Logged(mProvider, 'Beginnen', mStarted.Outcome);
+      mOwner.ReportStart(mCall.Key, mStarted);
+    end);
+end;
+
+procedure TAtlasIdeTrackerSync.ReportStart(const AKey: string; const AStarted: TAtlasIdeTrackerStarted);
+var
+  mNames: TArray<string>;
+  mIndex: Integer;
+begin
+  if not AStarted.Outcome.Succeeded then
+  begin
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
+      [AKey, TAtlasTrackerEndDialog.ErrorText(AKey, AStarted.Outcome)]));
+    Exit;
+  end;
+  if AStarted.Change.HasWork then
+  begin
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
+      [AKey, TAtlasTrackerEndDialog.SummaryText(AStarted.Change, AStarted.NewState)]));
+  end;
+  if not AStarted.Blocked then
+  begin
+    Exit;
+  end;
+  // Kein Übergang führt nach issues.startState: der Zustand bleibt, die Zeile nennt die erlaubten.
+  mNames := TAtlasTrackerTransitions.Captions(AStarted.Rules);
+  if Length(mNames) = 0 then
+  begin
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartNoTransitionNone, [AKey,
+      AStarted.Rules.Current]));
+    Exit;
+  end;
+  for mIndex := 0 to High(mNames) do
+  begin
+    mNames[mIndex] := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerQuoted, [mNames[mIndex]]);
+  end;
+  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartNoTransition,
+    [AKey, AStarted.Rules.Current, string.Join(', ', mNames)]));
 end;
 
 procedure TAtlasIdeTrackerSync.EndIssue(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -497,7 +703,7 @@ begin
     begin
       (mSession as IAtlasTrackerEndSession).SetDialog(ADialog);
       mOwner.BindComment(ADialog, mTarget, mKey);
-      mOwner.LoadEndValues(mProvider, mTarget, mField, mSession);
+      mOwner.LoadEndValues(mProvider, mTarget, mKey, mField, mSession);
     end;
 end;
 
@@ -517,47 +723,35 @@ begin
 end;
 
 procedure TAtlasIdeTrackerSync.LoadEndValues(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AStateField: string; const ASession: IInterface);
+  const ATarget: TAtlasTrackerTarget; const AKey, AStateField: string; const ASession: IInterface);
 var
-  mWriter: IAtlasTrackerWriter;
   mProvider: IAtlasTrackerProvider;
   mTransports: TAtlasIdeTrackerTransport;
-  mTarget: TAtlasTrackerTarget;
-  mField: string;
+  mCall: TAtlasIssueCall;
   mSession: IAtlasTrackerEndSession;
-  mUsers, mStates: TArray<string>;
+  mValues: TAtlasEndValues;
 begin
-  mWriter := WriterOf(AProvider);
+  mCall := IssueCall(WriterOf(AProvider), RulesOf(AProvider), ATarget, AKey, AStateField);
   mTransports := FTransport;
-  if (mWriter = nil) or not Assigned(mTransports) then
+  if (mCall.Writer = nil) or not Assigned(mTransports) then
   begin
     Exit;
   end;
   mProvider := AProvider;
-  mTarget := ATarget;
-  mField := AStateField;
   mSession := ASession as IAtlasTrackerEndSession;
-  mUsers := nil;
-  mStates := nil;
-  // Ohne Leserecht auf Benutzer oder Felder bleiben die Klapplisten frei beschreibbar.
+  mValues := Default(TAtlasEndValues);
   FWorker.Run(
     procedure
-    var
-      mTransport: IAtlasCiTransport;
     begin
       try
-        mTransport := mTransports(mProvider, mTarget);
-        if mTransport = nil then
+        mCall.Transport := mTransports(mProvider, mCall.Target);
+        if mCall.Transport <> nil then
         begin
-          Exit;
+          mValues := ReadEndValues(mCall);
         end;
-        mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.Users, '', TAtlasTrackerWorkflow.cWriteTimeoutMs,
-          mUsers);
-        mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.States, mField,
-          TAtlasTrackerWorkflow.cWriteTimeoutMs, mStates);
       except
         on E: Exception do
-          TAtlasGuard.Log('Tracker nachführen: Werte mit ' + E.ClassName + ' abgebrochen');
+          Aborted('Werte', E);
       end;
     end,
     procedure
@@ -566,8 +760,9 @@ begin
       begin
         Exit;
       end;
-      mSession.Dialog.SetUsers(mUsers);
-      mSession.Dialog.SetStates(mStates);
+      mSession.Dialog.SetUsers(mValues.Users);
+      mSession.Dialog.SetStates(mValues.States);
+      mSession.Dialog.SetRules(mValues.Rules);
     end);
 end;
 

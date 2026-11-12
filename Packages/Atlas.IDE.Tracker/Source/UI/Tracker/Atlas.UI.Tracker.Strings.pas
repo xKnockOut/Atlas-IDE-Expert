@@ -174,6 +174,9 @@ type
     SettingsIssuesPathsFound, SettingsIssuesPathsNone, SettingsIssuesPathsHint, SuggestTitle, SuggestIntro,
     SuggestColumnPath, SuggestColumnKind, SuggestColumnWhy, SuggestWhyProject, SuggestWhyExternal, SuggestWhySubmodule,
     SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
+    TrackerEndTransition, TrackerEndTransitionFrom, TrackerEndNotAllowed, TrackerPartTransition,
+    TrackerPartTransitionTo, TrackerStartNoTransition, TrackerStartNoTransitionNone,
+    TrackerQuoted,
     IssuePreviewDescription, SettingsIssuesIdeColors);
 
   TAtlasTrackerStrings = class
@@ -941,6 +944,14 @@ const
      'Nichts gefunden – Ordner selbst wählen …',
      'Übernehmen',
      'Suche Arbeitskopien …',
+     'Übergang:',
+     'Übergang (ab „%s“):',
+     '„%s“ ist ab „%s“ nicht erlaubt.',
+     'Übergang „%s“',
+     'Übergang „%s“ → %s',
+     'Atlas: %s bleibt „%s“: Ab hier erlaubt sind %s.',
+     'Atlas: %s bleibt „%s“: Ab hier ist kein Übergang erlaubt.',
+     '„%s“',
      'Beschreibung',
      'Issue-Fenster und Board in den Farben des IDE-Themas'),
     ('Show issue…',
@@ -1688,6 +1699,14 @@ const
      'Nothing found – choose folder…',
      'Apply',
      'Searching working copies…',
+     'Transition:',
+     'Transition (from “%s”):',
+     '“%s” is not allowed from “%s”.',
+     'transition “%s”',
+     'transition “%s” → %s',
+     'Atlas: %s stays “%s”: allowed from here are %s.',
+     'Atlas: %s stays “%s”: no transition is allowed from here.',
+     '“%s”',
      'Description',
      'Issue window and board in the colors of the IDE theme'));
 
