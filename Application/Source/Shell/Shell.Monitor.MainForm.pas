@@ -5,7 +5,8 @@
 // ihren Statusdateien, Einzelheiten, Beenden, Protokoll öffnen) und Symbol im Infobereich mit Zustandspunkt
 // (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List; Regeln und
 // Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich schließt
-// das Kreuz nur das Fenster; „Beenden“ beendet das Programm. Ohne Symbol beendet das Schließen das Programm.
+// das Kreuz nur das Fenster (Knopf in der Taskleiste nur bei offenem oder minimiertem Fenster); „Beenden“ beendet
+// das Programm. Ohne Symbol beendet das Schließen das Programm.
 
 interface
 
@@ -79,6 +80,7 @@ type
     function InformProc: TProc<string>;
     function ConfirmFunc: TMonitorConfirm;
   protected
+    procedure CreateParams(var AParams: TCreateParams); override;
     procedure CreateWnd; override;
     procedure WndProc(var AMessage: TMessage); override;
   public
@@ -341,6 +343,17 @@ begin
   FTray.OnDblClick := OpenWindowClick;
   FTray.Icon := FIcons[TMonitorHealth.Idle];
   FTray.Visible := FSettings.TrayIcon;
+end;
+
+procedure TAtlasMonitorForm.CreateParams(var AParams: TCreateParams);
+begin
+  inherited CreateParams(AParams);
+  // Das Formular entsteht mit CreateNew ohne .dfm; dabei merkt sich die VCL nicht, dass es das Hauptformular wird,
+  // und macht das verborgene Fenster der Anwendung zum Besitzer. Ein besessenes Fenster hat keinen Knopf in der
+  // Taskleiste und fehlt bei Alt+Tab. Daher ausdrücklich ein Fenster der obersten Ebene mit eigenem Knopf; verborgen
+  // (Infobereich) zeigt Windows ihn ohnehin nicht.
+  AParams.ExStyle := (AParams.ExStyle or WS_EX_APPWINDOW) and not WS_EX_TOOLWINDOW;
+  AParams.WndParent := 0;
 end;
 
 procedure TAtlasMonitorForm.CreateWnd;
