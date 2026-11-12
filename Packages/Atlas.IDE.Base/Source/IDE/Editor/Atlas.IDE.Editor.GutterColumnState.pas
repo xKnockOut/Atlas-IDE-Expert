@@ -135,6 +135,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.LineTracker,
+  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.IDE.Foundation.DesignerView,
   Atlas.Core.Editor.LineTracking;
 
 procedure InvalidateTop;
@@ -267,6 +269,11 @@ end;
 
 procedure TAtlasIdeGutterColumnState.FetchDue(ASession: TLspSession);
 begin
+  // Im Designer und auf der Willkommensseite ist die Spalte nicht zu sehen: keine Anfragen an den Server.
+  if not TAtlasIdeDesignerView.CodeInFront(TAtlasEditorBarHost.TopEditor) then
+  begin
+    Exit;
+  end;
   if FOptions.Overrides and not (SameText(FFetchedFile, FFileName) and (FFetchedText = FText)) then
   begin
     FetchOverrides(ASession);

@@ -10,7 +10,8 @@
 //   erfragt, kurze Wartezeit), ↑ überschreibt bzw. ↓ wird überschrieben aus
 //   atlas.server.overrideMarks (nur, wenn der Server ohnehin läuft, je Datei
 //   und Textstand gemerkt). Zeigt das vorderste Editorfenster den Designer
-//   oder die Willkommensseite statt Code, fragt die Spalte den Server nicht.
+//   oder die Willkommensseite statt Code, fragt die Spalte den Server nicht
+//   (TAtlasIdeGutterColumnState.FetchDue).
 // - Farben aus dem Grund der Rinne (hell/dunkel), Breite aus der Zeilenhöhe:
 //   Ändert sich die Schrift oder die Skalierung, fordert der Zeitgeber die
 //   Spalte in der neuen Breite an.
@@ -142,8 +143,7 @@ uses
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.EditorBarHost;
+  Atlas.IDE.Foundation.EditorRefresh;
 
 type
   /// <summary>Maße eines Symbols in seiner Zelle.</summary>
@@ -564,11 +564,7 @@ begin
     EnsureColumn;
     // Andere Datei oben: Die gemerkten Zeilen gehören zur alten.
     mFileName := FState.FileName;
-    // Im Designer und auf der Willkommensseite ist die Spalte nicht zu sehen: keine Anfragen an den Server.
-    if TAtlasEditorBarHost.TopCodeShown then
-    begin
-      FState.Track(TopView);
-    end;
+    FState.Track(TopView);
     if not SameText(mFileName, FState.FileName) then
     begin
       FRows.Clear;
