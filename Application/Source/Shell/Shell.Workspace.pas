@@ -47,6 +47,8 @@ type
     FBaseline: TShellBaselineFile;
     procedure SettingsChanged(const ASettings: TServerSettings);
     procedure StartIndex(const ASettings: TServerSettings);
+    /// <summary>Token und laufender Aufbau für den Status (#2142).</summary>
+    procedure AddIndexing(var AStatus: TWorkspaceStatus);
   public
     constructor Create(const ARoot, AName: string; const AServices: TShellWorkspaceServices);
     destructor Destroy; override;
@@ -121,6 +123,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.Scheduler,
   Shell.Bootstrap,
   Shell.Workspace.Loader,
   Shell.Workspace.RuleProjects,
@@ -397,6 +400,27 @@ begin
   Result.BuildChosen := FBuild.Chosen;
   Result.CacheBytes := TIndexCacheDirectory.SizeOf([Result.CacheFile]);
   Result.LibraryCacheBytes := TIndexCacheDirectory.SizeOf([Result.LibraryCacheFile]);
+  AddIndexing(Result);
+end;
+
+procedure TShellWorkspace.AddIndexing(var AStatus: TWorkspaceStatus);
+var
+  mStage: TIndexStageState;
+begin
+  // Fortschritt je Projekt für „Atlas-Einrichtung“ (#2142).
+  AStatus.ProgressToken := FIndexing.ProgressToken;
+  AStatus.IndexPercent := FIndexing.Loading;
+  AStatus.Indexing := AStatus.IndexPercent >= 0;
+  if not AStatus.Indexing then
+  begin
+    Exit;
+  end;
+  mStage := FIndexing.Stage;
+  if mStage.Running then
+  begin
+    AStatus.IndexStage := mStage.StageName;
+    AStatus.IndexWaiting := mStage.Waiting;
+  end;
 end;
 
 procedure TShellWorkspace.Activate;

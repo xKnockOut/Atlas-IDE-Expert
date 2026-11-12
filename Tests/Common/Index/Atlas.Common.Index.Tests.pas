@@ -148,6 +148,9 @@ type
     /// <summary>#1356: wartende und laufende Aufbauten mit Wartezeit für das Fenster „Atlas-Server“.</summary>
     [Test]
     procedure QueueCountsWaitingBuilds;
+    /// <summary>#2142: Stufe und Warten je Aufbau für „Atlas-Einrichtung“, auch ohne Scheduler.</summary>
+    [Test]
+    procedure StageWatchFollowsTurn;
   end;
 
   [TestFixture]
@@ -1481,6 +1484,75 @@ begin
     mOther := nil;
   finally
     mScheduler.Free;
+  end;
+end;
+
+type
+  /// <summary>Reihenfolge, die einmal den Abbruch fragt: wartet, bis er nein sagt (für StageWatchFollowsTurn).</summary>
+  TProbeTurn = class(TInterfacedObject, IIndexTurn)
+  public
+    function Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
+    procedure Leave;
+  end;
+
+function TProbeTurn.Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
+begin
+  Result := not (Assigned(ACancelled) and ACancelled());
+end;
+
+procedure TProbeTurn.Leave;
+begin
+  // Nichts freizugeben.
+end;
+
+/// <summary>Abbruchprüfung, die den Stand von AWatch merkt und mit ACancel antwortet.</summary>
+function StageProbe(AWatch: TIndexStageWatch; var AState: TIndexStageState; ACancel: Boolean): TIndexCancelled;
+var
+  mState: ^TIndexStageState;
+begin
+  mState := @AState;
+  Result :=
+    function: Boolean
+    begin
+      mState^ := AWatch.State;
+      Result := ACancel;
+    end;
+end;
+
+procedure TIndexSchedulerTests.StageWatchFollowsTurn;
+var
+  mWatch: TIndexStageWatch;
+  mTurn: IIndexTurn;
+  mSeen: TIndexStageState;
+begin
+  mWatch := TIndexStageWatch.Create;
+  try
+    Assert.IsFalse(mWatch.State.Running);
+    mTurn := mWatch.Watch(TProbeTurn.Create);
+    // Während der Aufbau auf seine Reihe wartet: Stufe bekannt, wartet.
+    mSeen := Default(TIndexStageState);
+    Assert.IsTrue(mTurn.Enter(TIndexStage.SearchPaths, StageProbe(mWatch, mSeen, False)));
+    Assert.IsTrue(mSeen.Running);
+    Assert.IsTrue(mSeen.Waiting);
+    Assert.AreEqual('searchPaths', mSeen.StageName);
+    // Dran: läuft, wartet nicht mehr.
+    Assert.IsTrue(mWatch.State.Running);
+    Assert.IsFalse(mWatch.State.Waiting);
+    mTurn.Leave;
+    // Abgebrochen beim Warten: läuft nicht mehr.
+    Assert.IsFalse(mTurn.Enter(TIndexStage.Library_, StageProbe(mWatch, mSeen, True)));
+    Assert.AreEqual('library', mSeen.StageName);
+    Assert.IsFalse(mWatch.State.Running);
+    // Ohne Scheduler ist jede Stufe sofort dran.
+    mTurn := mWatch.Watch(nil);
+    Assert.IsTrue(mTurn.Enter(TIndexStage.Project, nil));
+    Assert.AreEqual('projectFiles', mWatch.State.StageName);
+    mTurn.Leave;
+    mWatch.Clear;
+    Assert.IsFalse(mWatch.State.Running);
+    mTurn := nil;
+  finally
+    mWatch.Free;
   end;
 end;
 

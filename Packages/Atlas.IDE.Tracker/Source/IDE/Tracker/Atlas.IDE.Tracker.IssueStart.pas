@@ -13,6 +13,11 @@
 //   vorher. Mit worktree gilt das Issue für das Projekt im neuen Ordner.
 // - Danach Git-Hook für das Präfix (nach Zustimmung), Tracker nachführen
 //   (#1266) und das Projekt öffnen.
+// - Sprint (#2128, issues.sprintOnStart): Mit Tracker nachführen und einem
+//   laufenden Sprint des Boards im Zwischenspeicher (Sprint-Kachel, sonst
+//   Board), in dem das Issue fehlt, fragt „Beginnen“ vorher (ask) bzw. nimmt
+//   ohne Frage auf (always); Abbrechen bricht das Beginnen ab. Aufgenommen
+//   wird mit dem Nachführen; danach laden Board und Sprint-Kachel neu.
 // - „Beenden“: mit issues.syncState der Dialog „ATL-123 beenden“, sonst die
 //   Rückfrage; danach die Zeiterfassung (#1267).
 // - „Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): wie
@@ -54,6 +59,8 @@ type
     Outcome: TAtlasIssueStartResult;
     /// <summary>„Weiterarbeiten“ (#2127): gemerkter Branch; '' bei „Beginnen“.</summary>
     ResumeBranch: string;
+    /// <summary>In diesen Sprint aufnehmen (#2128); nicht gesetzt = keiner.</summary>
+    Sprint: TAtlasTrackerSprintRef;
     /// <summary>„Weiterarbeiten“ statt „Beginnen“?</summary>
     function Resuming: Boolean;
     /// <summary>Im Hintergrund: Art der Versionsverwaltung, Plan, lokale Änderungen und Stand.</summary>
@@ -81,7 +88,15 @@ type
     procedure Blocked(const AProject: string; const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue;
       AMode: TAtlasIssueStart; AKnown: Boolean; const ADetails: TAtlasTrackerDetails);
     procedure StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
-    procedure StartJob(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart; const AResumeBranch: string);
+    /// <summary>Sprint für „Beginnen“ (#2128): ASprint gesetzt = aufnehmen; False = abgebrochen.</summary>
+    function AskSprint(const AIssue: TAtlasTrackerIssue; out ASprint: TAtlasTrackerSprintRef): Boolean;
+    /// <summary>Laufender Sprint ohne AKey im Zwischenspeicher von Sprint-Kachel bzw. Board.</summary>
+    class function CachedSprint(const ATarget: TAtlasTrackerTarget; const AKey: string;
+      out ASprint: TAtlasTrackerSprintRef): Boolean; static;
+    procedure StartJob(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart; const AResumeBranch: string;
+      const ASprint: TAtlasTrackerSprintRef);
+    /// <summary>Nach dem Nachführen: Board und Sprint-Kachel neu laden.</summary>
+    function SprintWritten: TProc;
     /// <summary>„Weiterarbeiten“, Branch fehlt: neu anlegen? (sonst abbrechen)</summary>
     class function RecreateGone(const AJob: TAtlasIssueStartJob): Boolean; static;
     procedure Inspect(const AJob: TAtlasIssueStartJob; const AOptions: TAtlasIssuesOptions);
@@ -121,16 +136,21 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Links,
+  Atlas.Core.Tracker.SprintStart,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.LinkDialogs,
+  Atlas.UI.Tracker.SprintDialog,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueWorkLink,
+  Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.WorkingCopies;
 
@@ -391,21 +411,107 @@ begin
   // Mit gemerktem Branch immer als Branch, auch wenn issues.start „merken“ sagt: Es gab ihn schon.
   if ABranch = '' then
   begin
-    StartJob(AIssue, FServices.Options.Start, '');
+    StartJob(AIssue, FServices.Options.Start, '', TAtlasTrackerSprintRef.None);
   end
   else
   begin
-    StartJob(AIssue, TAtlasIssueStart.Branch, ABranch);
+    StartJob(AIssue, TAtlasIssueStart.Branch, ABranch, TAtlasTrackerSprintRef.None);
   end;
 end;
 
 procedure TAtlasIdeIssueStart.StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+var
+  mSprint: TAtlasTrackerSprintRef;
 begin
-  StartJob(AIssue, AMode, '');
+  if FContext.CanStart and AskSprint(AIssue, mSprint) then
+  begin
+    StartJob(AIssue, AMode, '', mSprint);
+  end;
+end;
+
+class function TAtlasIdeIssueStart.CachedSprint(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  out ASprint: TAtlasTrackerSprintRef): Boolean;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+  mFolder: string;
+begin
+  // Ohne Netz: der zuletzt gelesene Stand; die Kachel zeigt den laufenden Sprint, das Board den gewählten.
+  mFolder := TAtlasIdeIssuesTargets.IssuesFolder;
+  Result := TAtlasTrackerBoard.Load(mFolder, ATarget, TAtlasIdeSprint.cCacheName, mSnapshot) and
+    TAtlasSprintStart.Running(mSnapshot, TAtlasIdeIssuesTargets.NowUtc);
+  if not Result then
+  begin
+    Result := TAtlasTrackerBoard.Load(mFolder, ATarget, mSnapshot) and
+      TAtlasSprintStart.Running(mSnapshot, TAtlasIdeIssuesTargets.NowUtc);
+  end;
+  Result := Result and TAtlasSprintStart.Missing(mSnapshot, AKey, TAtlasIdeIssuesTargets.NowUtc, ASprint);
+end;
+
+function TAtlasIdeIssueStart.AskSprint(const AIssue: TAtlasTrackerIssue; out ASprint: TAtlasTrackerSprintRef): Boolean;
+var
+  mMode: string;
+  mTarget: TAtlasTrackerTarget;
+  mFound: TAtlasTrackerSprintRef;
+  mAnswer: TAtlasSprintAnswer;
+  mDontAsk: Boolean;
+  mNext: TAtlasPluginSettings;
+begin
+  ASprint := TAtlasTrackerSprintRef.None;
+  Result := True;
+  mMode := TAtlasIdeSettings.Current.IssuesSprintOnStart;
+  mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
+  if (mMode = TAtlasPluginSettings.cIssuesSprintNever) or (FServices.Sync = nil) or
+    not FServices.Sync.Enabled(FContext.ProviderOf(mTarget.Provider), mTarget) or
+    not CachedSprint(mTarget, AIssue.Key, mFound) then
+  begin
+    Exit;
+  end;
+  if mMode = TAtlasPluginSettings.cIssuesSprintAlways then
+  begin
+    ASprint := mFound;
+    Exit;
+  end;
+  mAnswer := TAtlasTrackerSprintDialog.Ask(AIssue.Key, AIssue.Title, mFound, mDontAsk);
+  Result := mAnswer <> TAtlasSprintAnswer.Cancel;
+  if mAnswer = TAtlasSprintAnswer.Add then
+  begin
+    ASprint := mFound;
+  end;
+  // „Nicht mehr fragen“ merkt die Antwort: aufnehmen = always, ohne Sprint = never.
+  if mDontAsk then
+  begin
+    mNext := TAtlasIdeSettings.Stored;
+    mNext.IssuesSprintOnStart := TAtlasPluginSettings.cIssuesSprintNever;
+    if ASprint.IsSet then
+    begin
+      mNext.IssuesSprintOnStart := TAtlasPluginSettings.cIssuesSprintAlways;
+    end;
+    TAtlasIdeSettings.Update(mNext);
+  end;
+end;
+
+function TAtlasIdeIssueStart.SprintWritten: TProc;
+var
+  mServices: TAtlasIdeIssuesServices;
+begin
+  mServices := FServices;
+  Result :=
+    procedure
+    begin
+      // Das Board lädt nur, wenn es sichtbar ist; die Kachel sofort.
+      if mServices.Board <> nil then
+      begin
+        mServices.Board.Refresh;
+      end;
+      if mServices.Sprint <> nil then
+      begin
+        mServices.Sprint.IssuesFetched(True);
+      end;
+    end;
 end;
 
 procedure TAtlasIdeIssueStart.StartJob(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart;
-  const AResumeBranch: string);
+  const AResumeBranch: string; const ASprint: TAtlasTrackerSprintRef);
 var
   mJob: TAtlasIssueStartJob;
 begin
@@ -420,6 +526,7 @@ begin
   mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Issue := AIssue;
   mJob.ResumeBranch := AResumeBranch;
+  mJob.Sprint := ASprint;
   mJob.Facts := TAtlasVcsBranchFacts.Empty;
   FContext.StartProject := mJob.Project;
   FContext.Notice := TAtlasIssuesNotice.Create(mJob.Project,
@@ -693,7 +800,8 @@ begin
   if (FServices.Sync <> nil) and not AJob.Resuming then
   begin
     mTarget := FContext.TargetOf(AJob.Project);
-    FServices.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key, AJob.Outcome.Branch);
+    FServices.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key, AJob.Outcome.Branch,
+      AJob.Sprint, SprintWritten);
   end;
   FServices.ActiveChanged;
   // Branch und Änderungen neu abfragen; „Projekte“ meldet sich danach selbst.

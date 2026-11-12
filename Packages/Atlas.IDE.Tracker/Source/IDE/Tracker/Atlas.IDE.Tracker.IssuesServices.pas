@@ -4,7 +4,8 @@
 // Vorschau „Atlas-Issue“ (#1264), Board (#1272), Sprint-Kachel (#1277),
 // Tracker nachführen (#1266), Zeiterfassung (#1267), Issues in der
 // Befehlspalette (#1270), Kommentar-Editor (#1278), Meldungen zu meinen Issues
-// (#1271), „An Issue anhängen“ (#1276) und wieder geöffnete Issues (#2127). Alle mit Anbieter und Transport aus
+// (#1271), „An Issue anhängen“ (#1276), wieder geöffnete Issues (#2127) und der Zustand im Statusfeld (#2124). Alle
+// mit Anbieter und Transport aus
 // dem Kontext; ihre Hooks halten den Besitzer (TAtlasIssuesLink.Keep), Stop
 // löst den Ring.
 
@@ -20,6 +21,7 @@ uses
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.Notify,
   Atlas.IDE.Tracker.TimeTracking,
+  Atlas.IDE.Tracker.IssueState,
   Atlas.IDE.Tracker.Board,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.PaletteSearch,
@@ -38,6 +40,8 @@ type
     FSprint: TAtlasIdeSprint;
     FSync: TAtlasIdeTrackerSync;
     FTime: TAtlasIdeTrackerTime;
+    // Zustand und Zeit im Statusfeld (#2124).
+    FIssueState: TAtlasIdeIssueState;
     FSearch: TAtlasIdeIssueSearch;
     FSearchRef: IAtlasPaletteSource;
     FComments: TAtlasIdeCommentService;
@@ -64,8 +68,9 @@ type
     /// <summary>Gemeldetes Issue öffnen: Vorschau am ersten neuen Kommentar, sonst Browser.</summary>
     procedure OpenNotified(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
     function TimeIssueOf(const AProject, AKey: string): TAtlasTimeIssue;
-    /// <summary>Die Uhr der Zeiterfassung auf das aktuelle Issue von AProject stellen ('' = keins).</summary>
-    procedure SyncTime(const AProject, AKey: string);
+    /// <summary>Uhr der Zeiterfassung und Statusfeld auf das aktuelle Issue AKey von AProject stellen ('' = keins);
+    /// AState ist sein Zustand aus „Meine Issues“ ('' unbekannt).</summary>
+    procedure SyncTime(const AProject, AKey, AState: string);
     /// <summary>Befehl Atlas.IssueTimeOpen (#1267): offene Zeitbuchungen zeigen.</summary>
     procedure ShowTimeOpen;
     /// <summary>Die zuletzt abgefragte Liste aus „Meine Issues“ als Vorschläge, ohne Netz.</summary>
@@ -429,6 +434,47 @@ begin
     end;
 end;
 
+/// <summary>Zustand im Statusfeld (#2124): Anbieter, Transport, Feld, Meldungen, „Beenden …“ und Kommentar-Editor
+/// über den Kontext.</summary>
+function CreateIssueState(const ALink: TAtlasIssuesLink): TAtlasIdeIssueState;
+var
+  mLink: TAtlasIssuesLink;
+  mHooks: TAtlasIdeIssueStateHooks;
+begin
+  mLink := ALink;
+  mHooks := Default(TAtlasIdeIssueStateHooks);
+  mHooks.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := mLink.Provider(AName);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    begin
+      Result := mLink.Transport(AProvider, ATarget);
+    end;
+  mHooks.Field := ALink.Context.Hooks.TimeStatus;
+  mHooks.Report :=
+    procedure(AText: string)
+    begin
+      mLink.Report(AText);
+    end;
+  mHooks.EndIssue :=
+    procedure
+    begin
+      if mLink.Keep <> nil then
+      begin
+        mLink.EndIssue(mLink.Context.ActiveKey);
+      end;
+    end;
+  mHooks.Assist :=
+    function(const ATarget: TAtlasTrackerTarget; const AKey, AField: string): IAtlasCommentAssist
+    begin
+      Result := mLink.Assist(ATarget, AKey, AField);
+    end;
+  Result := TAtlasIdeIssueState.Create(ALink.Services.FSync, mHooks);
+end;
+
 function CreateTime(const ALink: TAtlasIssuesLink): TAtlasIdeTrackerTime;
 var
   mLink: TAtlasIssuesLink;
@@ -444,7 +490,15 @@ begin
       mLink.Report(AText);
     end,
     TAtlasTimeFile.DefaultPath);
-  Result.OnStatus := ALink.Context.Hooks.TimeStatus;
+  // Die Zeit zeigt das Feld des Zustands (#2124) mit an.
+  Result.OnStatus :=
+    procedure(const AField: TAtlasIdeTimeField)
+    begin
+      if (mLink.Keep <> nil) and (mLink.Services.FIssueState <> nil) then
+      begin
+        mLink.Services.FIssueState.TimeChanged(AField);
+      end;
+    end;
   ALink.Services.FSync.TimeText :=
     function(const AKey: string): string
     begin
@@ -718,6 +772,31 @@ begin
   Result.Welcome := ALink.Context.Welcome;
 end;
 
+/// <summary>AHooks mit den Übergängen des aktuellen Issues (#2124) für die Palette.</summary>
+function StateSearchHooks(const ALink: TAtlasIssuesLink; const AHooks: TAtlasIssueSearchHooks):
+  TAtlasIssueSearchHooks;
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  Result := AHooks;
+  Result.States :=
+    function(const APattern: string): TArray<TAtlasCommand>
+    begin
+      Result := nil;
+      if (mLink.Keep <> nil) and (mLink.Services.FIssueState <> nil) then
+      begin
+        Result := mLink.Services.FIssueState.PaletteRows(APattern);
+      end;
+    end;
+  Result.StateRun :=
+    function(AId: string): Boolean
+    begin
+      Result := (mLink.Keep <> nil) and (mLink.Services.FIssueState <> nil) and
+        mLink.Services.FIssueState.PaletteRun(AId);
+    end;
+end;
+
 function SearchHooks(const ALink: TAtlasIssuesLink): TAtlasIssueSearchHooks;
 var
   mLink: TAtlasIssuesLink;
@@ -925,7 +1004,8 @@ begin
   end;
 end;
 
-/// <summary>Zeiterfassung und Tracker nachführen anhalten (zuerst: schreibt die letzte Zeit über Sync).</summary>
+/// <summary>Statusfeld, Zeiterfassung und Tracker nachführen anhalten (die Zeit zuerst vor Sync: schreibt die letzte
+/// Zeit darüber).</summary>
 procedure StopTracking(AServices: TAtlasIdeIssuesServices);
 begin
   // „Prüfen“ vor Sync: Sein Dialog schreibt über Sync.
@@ -935,6 +1015,10 @@ begin
     DropRef(AServices, AServices.FReview);
   end;
   AServices.FReview := nil;
+  if AServices.FIssueState <> nil then
+  begin
+    AServices.FIssueState.Stop;
+  end;
   if AServices.FTime <> nil then
   begin
     AServices.FTime.Stop;
@@ -945,6 +1029,8 @@ begin
   begin
     AServices.FSync.Stop;
   end;
+  // Nach Sync.Stop kommt keine Antwort eines Übergangs mehr an.
+  FreeAndNil(AServices.FIssueState);
 end;
 
 /// <summary>Vorschau, Board und Sprint anhalten (ihre Hooks halten den Besitzer).</summary>
@@ -1025,6 +1111,7 @@ begin
   FComments := TAtlasIdeCommentService.Create(CommentHooks(mLink), mFolder);
   Keep(FComments);
   FSync := CreateSync(mLink);
+  FIssueState := CreateIssueState(mLink);
   FTime := CreateTime(mLink);
   Keep(FTime);
   FReview := TAtlasIdeIssueReview.Create(FContext, FSync);
@@ -1043,7 +1130,7 @@ begin
   FSprint := TAtlasIdeSprint.Create(SprintHooks(mLink), mFolder);
   Keep(FSprint);
   FSprint.Start;
-  FSearch := TAtlasIdeIssueSearch.Create(SearchHooks(mLink));
+  FSearch := TAtlasIdeIssueSearch.Create(StateSearchHooks(mLink, SearchHooks(mLink)));
   FSearchRef := FSearch;
   // Vor den Meldungen: deren Hook fragt die Erkennung.
   FReopened := TAtlasIdeIssueReopened.Create(FContext, ReopenedHooks(mLink));
@@ -1165,8 +1252,13 @@ begin
   Result := TAtlasTimeIssue.Create(mTarget.Provider, mTarget.Url, mTarget.Project, AKey);
 end;
 
-procedure TAtlasIdeIssuesServices.SyncTime(const AProject, AKey: string);
+procedure TAtlasIdeIssuesServices.SyncTime(const AProject, AKey, AState: string);
 begin
+  // Zuerst das Feld: Die Uhr meldet ihre Zeit gleich dorthin.
+  if FIssueState <> nil then
+  begin
+    FIssueState.SetIssue(TimeIssueOf(AProject, AKey), AState);
+  end;
   if FTime <> nil then
   begin
     FTime.SetIssue(TimeIssueOf(AProject, AKey));

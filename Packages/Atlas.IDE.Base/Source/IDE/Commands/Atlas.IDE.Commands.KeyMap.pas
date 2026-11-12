@@ -94,7 +94,6 @@ type
     procedure CheckAtStart;
     /// <summary>Eigene Tasten prüfen und neue Konflikte melden; offenes Fenster neu einlesen.</summary>
     procedure CheckNow;
-    procedure ThemeChanged;
   end;
 
 implementation
@@ -112,7 +111,6 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
@@ -984,7 +982,7 @@ procedure TAtlasIdeKeyMap.ShowWindow(const AQuery: string);
 begin
   if FWindow = nil then
   begin
-    FWindow := TAtlasKeyMapWindow.CreateKeyMap(nil, TAtlasIdeStyle.Colors);
+    FWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
     if Application.MainForm <> nil then
     begin
       FWindow.PopupMode := pmExplicit;
@@ -1006,7 +1004,6 @@ begin
         AMap.Refresh;
       end);
   end;
-  FWindow.SetColors(TAtlasIdeStyle.Colors);
   Refresh;
   if AQuery <> '' then
   begin
@@ -1150,14 +1147,6 @@ begin
     TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapStartConflict,
       [mItems[mIndex].KeyText, mItems[mIndex].Command, mItems[mPartner].Holder, mWinner]));
     TAtlasIdeKeys.MarkReported(mItems[mIndex].ShortCut);
-  end;
-end;
-
-procedure TAtlasIdeKeyMap.ThemeChanged;
-begin
-  if FWindow <> nil then
-  begin
-    FWindow.SetColors(TAtlasIdeStyle.Colors);
   end;
 end;
 

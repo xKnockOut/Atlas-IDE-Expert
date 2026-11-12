@@ -264,7 +264,8 @@ begin
   TAtlasIdeHost.Message(AText);
 end;
 
-// Zeiterfassung (#1267): „ATL-123 · 1:25“ als Zusatzfeld im Statusfeld, Klick öffnet das Menü der Uhr.
+// Aktuelles Issue: „ATL-123 · In Bearbeitung · 1:25“ als Zusatzfeld im Statusfeld (#1267, #2124), Klick öffnet das
+// Menü mit Übergängen und Uhr.
 procedure TimeStatus(const AText, AHint: string; const AOnClick: TProc<TPoint>);
 begin
   TAtlasIdeHost.SetStatusField(cIssueTimeExtra, AText, AHint, AOnClick);

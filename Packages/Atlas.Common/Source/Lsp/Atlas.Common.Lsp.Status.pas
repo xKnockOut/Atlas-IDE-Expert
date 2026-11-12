@@ -15,6 +15,8 @@
 // Konfiguration, langsame Units) und jeder Pfad (Projekt, Caches) über eine
 // Funktion läuft: für die Protokollzeile gekennzeichnet (TLogMarks), für den
 // anonymen Status über den Anonymisierer des Servers.
+// Je Ordner (#2142) das Token seiner $/progress-Meldungen und, solange er
+// aufbaut, Prozent, Stufe und ob er auf sie wartet (Fenster „Atlas-Einrichtung“).
 
 interface
 
@@ -49,6 +51,14 @@ type
     BuildChosen: Boolean;
     Active: Boolean;
     Selected: Boolean;
+    /// <summary>Token der $/progress-Meldungen dieses Ordners ('' ohne, #2142).</summary>
+    ProgressToken: string;
+    /// <summary>Aufbau läuft (#2142): Prozent (-1 = unbekannt), Stufe ('projectFiles', 'searchPaths',
+    /// 'library'; '' = unbekannt) und ob er auf sie wartet.</summary>
+    Indexing: Boolean;
+    IndexPercent: Integer;
+    IndexStage: string;
+    IndexWaiting: Boolean;
     /// <summary>" · Debug/Win64 (gewählt) · aktiv in der IDE · ausgewählt"; '' ohne Projekt.</summary>
     function ProjectText: string;
     /// <summary>Kopie mit AMap auf Name, eigener Konfiguration (Name), Projekt und Caches (Pfad).</summary>
@@ -405,6 +415,29 @@ begin
   end;
 end;
 
+/// <summary>Token und laufender Aufbau eines Ordners (#2142); ohne Aufbau nur das Token.</summary>
+procedure AddIndexing(AItem: TJSONObject; const AWorkspace: TWorkspaceStatus);
+var
+  mIndexing: TJSONObject;
+begin
+  if AWorkspace.ProgressToken <> '' then
+  begin
+    AItem.AddPair('progressToken', AWorkspace.ProgressToken);
+  end;
+  if not AWorkspace.Indexing then
+  begin
+    Exit;
+  end;
+  mIndexing := TJSONObject.Create;
+  mIndexing.AddPair('percent', TJSONNumber.Create(AWorkspace.IndexPercent));
+  if AWorkspace.IndexStage <> '' then
+  begin
+    mIndexing.AddPair('stage', AWorkspace.IndexStage);
+  end;
+  mIndexing.AddPair('waiting', TJSONBool.Create(AWorkspace.IndexWaiting));
+  AItem.AddPair('indexing', mIndexing);
+end;
+
 function WorkspacesJson(const AWorkspaces: TArray<TWorkspaceStatus>): TJSONArray;
 var
   mWorkspace: TWorkspaceStatus;
@@ -422,6 +455,7 @@ begin
     mItem.AddPair('lastUpdate', DateText(mWorkspace.LastUpdate));
     mItem.AddPair('cacheBytes', TJSONNumber.Create(mWorkspace.CacheBytes));
     mItem.AddPair('libraryCacheBytes', TJSONNumber.Create(mWorkspace.LibraryCacheBytes));
+    AddIndexing(mItem, mWorkspace);
     if mWorkspace.Project <> '' then
     begin
       mItem.AddPair('project', mWorkspace.Project);

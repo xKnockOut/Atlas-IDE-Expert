@@ -18,6 +18,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Service,
+  Atlas.Common.Index.Scheduler,
   Shell.Workspace.Setup,
   Shell.Workspace.State,
   Shell.Workspace.Cache,
@@ -84,6 +85,10 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Fortschritt des laufenden Aufbaus in Prozent; -1, wenn keiner läuft (#647).</summary>
     function Loading: Integer;
+    /// <summary>Stufe des laufenden Aufbaus und ob er auf sie wartet (#2142).</summary>
+    function Stage: TIndexStageState;
+    /// <summary>Token der $/progress-Meldungen dieses Arbeitsbereichs (#2142).</summary>
+    function ProgressToken: string;
     /// <summary>Der gemeinsame Symbolindex.</summary>
     function Index: ISymbolIndex;
   end;
@@ -477,6 +482,16 @@ begin
   begin
     Result := FProgress.Percent;
   end;
+end;
+
+function TShellWorkspaceIndexing.Stage: TIndexStageState;
+begin
+  Result := FService.StageState;
+end;
+
+function TShellWorkspaceIndexing.ProgressToken: string;
+begin
+  Result := FParts.ProgressToken;
 end;
 
 function TShellWorkspaceIndexing.Index: ISymbolIndex;

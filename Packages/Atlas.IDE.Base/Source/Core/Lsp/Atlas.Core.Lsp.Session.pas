@@ -135,6 +135,8 @@ type
     function IndexingText: string;
     /// <summary>Läuft eine Indizierung? APercent = Fortschritt, -1 = unbekannt (#591).</summary>
     function Indexing(out APercent: Integer): Boolean;
+    /// <summary>Läuft der Vorgang mit dem Token AToken (ein Projekt der Gruppe, #2142)?</summary>
+    function IndexingOf(const AToken: string; out APercent: Integer): Boolean;
     /// <summary>Beobachter für $/progress, im Lese-Thread (#591).</summary>
     procedure SetOnProgress(const AProc: TProc);
     /// <summary>workspace/executeCommand; Ergebnis gehört dem Aufrufer (nil bei Fehler oder Zeitlimit).</summary>
@@ -636,6 +638,11 @@ end;
 function TLspSession.Indexing(out APercent: Integer): Boolean;
 begin
   Result := FProgress.Active(APercent);
+end;
+
+function TLspSession.IndexingOf(const AToken: string; out APercent: Integer): Boolean;
+begin
+  Result := FProgress.ActiveOf(AToken, APercent);
 end;
 
 procedure TLspSession.SetOnProgress(const AProc: TProc);

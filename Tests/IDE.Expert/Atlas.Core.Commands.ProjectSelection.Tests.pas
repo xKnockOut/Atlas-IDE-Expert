@@ -40,11 +40,18 @@ type
     procedure SingleUnitNeedsOneNode;
     [Test]
     procedure ContextOnlyBetweenEnterAndLeave;
+    /// <summary>Rechtsklick auf ein Projekt mit über 2000 Units darf die IDE nicht anhalten (früher quadratisch).
+    /// </summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure LargeProjectResolvesQuickly;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  System.Diagnostics,
   Atlas.Core.Commands.ProjectSelection;
 
 function ProjectFiles: TArray<string>;
@@ -196,6 +203,30 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasProjectContext.Current.Units)));
   TAtlasProjectContext.Leave;
   Assert.IsFalse(TAtlasProjectContext.Active, 'überzähliges Leave schadet nicht');
+end;
+
+procedure TAtlasProjectSelectionTests.LargeProjectResolvesQuickly;
+var
+  mFiles: TArray<string>;
+  mIndex: Integer;
+  mWatch: TStopwatch;
+  mSelection: TAtlasProjectSelection;
+begin
+  SetLength(mFiles, 5000);
+  for mIndex := 0 to High(mFiles) do
+  begin
+    mFiles[mIndex] := 'C:\Projekte\Atlas\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Teil' +
+      IntToStr(mIndex) + '.pas';
+  end;
+  mWatch := TStopwatch.StartNew;
+  mSelection := TAtlasProjectSelection.Resolve(['C:\Projekte\Atlas\Atlas.Tests.dproj'],
+    'C:\Projekte\Atlas\Atlas.Tests.dproj', mFiles);
+  mSelection := TAtlasProjectSelection.Merge(mSelection, mSelection);
+  mWatch.Stop;
+  Assert.AreEqual(5000, Integer(Length(mSelection.Units)));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 500, Format('%d ms', [mWatch.ElapsedMilliseconds]));
+  mFiles := nil;
+  mSelection := Default(TAtlasProjectSelection);
 end;
 
 initialization

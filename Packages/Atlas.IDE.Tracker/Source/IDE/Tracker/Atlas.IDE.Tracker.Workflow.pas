@@ -15,6 +15,10 @@
 //   erlaubten Übergänge. Nach einem Übergang liest Atlas den neuen Zustand
 //   einmal (benannte Ereignisse verraten ihr Ziel nicht). Der
 //   Beenden-Dialog bekommt die Regeln mit den übrigen Werten (SetRules).
+// - Sprint beim Beginnen (#2128): Ein mitgegebener Sprint geht im selben
+//   Befehl wie Zustand und Zuweisung hinaus (TAtlasTrackerWrite.Sprint) und
+//   steht in derselben Zeile; nach dem Schreiben lädt AWritten Board und
+//   Sprint-Kachel neu.
 // - Ablauf-Reihenfolge (#2123): Mit issues.endTime und Zeiterfassung steht
 //   die erfasste Zeit (Hook TimeSeconds) im Dialog, mit issues.endFields je
 //   Feld eine Zeile mit Werten vom Tracker (IAtlasTrackerFields). „Senden“
@@ -126,7 +130,7 @@ type
     procedure LoadEndValues(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey, AStateField: string; const ASession: IInterface);
     procedure StartWithRules(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AKey: string; const AChange: TAtlasTrackerWrite; const AField: string);
+      const AKey: string; const AChange: TAtlasTrackerWrite; const AField: string; const AWritten: TProc);
     procedure ReportStart(const AKey: string; const AStarted: TAtlasIdeTrackerStarted);
     class procedure Logged(const AProvider: IAtlasTrackerProvider; const AWhat: string;
       const AResult: TAtlasTrackerWriteResult); static;
@@ -146,10 +150,11 @@ type
     class function RulesOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerStateRules; static;
     /// <summary>issues.syncState an, der Anbieter kann schreiben und ein Server ist eingetragen.</summary>
     function Enabled(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-    /// <summary>Nach „Beginnen“: Zustand, Zuweisung und Kommentar im Hintergrund schreiben, Ergebnis als Zeile.
+    /// <summary>Nach „Beginnen“: Zustand, Zuweisung, Kommentar und ASprint (#2128, nicht gesetzt = keiner) im
+    /// Hintergrund schreiben, Ergebnis als Zeile; AWritten (darf nil sein) im Hauptthread nach dem Schreiben.
     /// </summary>
     procedure Started(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AKey, ABranch: string);
+      const AKey, ABranch: string; const ASprint: TAtlasTrackerSprintRef; const AWritten: TProc);
     /// <summary>„Beenden“ mit Dialog; AEnded nach erfolgreichem „Senden“ (bzw. ohne etwas zu schreiben) mit der
     /// geschriebenen Änderung. Abbrechen ändert nichts.</summary>
     procedure EndIssue(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -578,33 +583,37 @@ begin
 end;
 
 procedure TAtlasIdeTrackerSync.Started(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-  const AKey, ABranch: string);
+  const AKey, ABranch: string; const ASprint: TAtlasTrackerSprintRef; const AWritten: TProc);
 var
   mOptions: TAtlasTrackerSyncOptions;
   mChange: TAtlasTrackerWrite;
   mOwner: TAtlasIdeTrackerSync;
   mProvider: IAtlasTrackerProvider;
   mKey: string;
+  mWritten: TProc;
 begin
   if not Enabled(AProvider, ATarget) then
   begin
     Exit;
   end;
   mOptions := Options(ATarget);
-  if not mOptions.HasStartWork then
+  if not mOptions.HasStartWork and not ASprint.IsSet then
   begin
     Exit;
   end;
   mChange := TAtlasTrackerWorkflow.StartChange(mOptions, TAtlasTrackerPlaceholders.Create(AKey, ABranch));
+  // Sprint (#2128) im selben Befehl wie Zustand und Zuweisung.
+  mChange.Sprint := ASprint;
   // Zustandsmaschine (#2122): erst die erlaubten Übergänge lesen, dann den passenden auslösen.
   if (mChange.State <> '') and (RulesOf(AProvider) <> nil) then
   begin
-    StartWithRules(AProvider, ATarget, AKey, mChange, mOptions.StateField);
+    StartWithRules(AProvider, ATarget, AKey, mChange, mOptions.StateField, AWritten);
     Exit;
   end;
   mOwner := Self;
   mProvider := AProvider;
   mKey := AKey;
+  mWritten := AWritten;
   Apply(AProvider, ATarget, AKey, mChange,
     procedure(const AResult: TAtlasTrackerWriteResult)
     begin
@@ -613,6 +622,10 @@ begin
       begin
         mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
           [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+        if Assigned(mWritten) then
+        begin
+          mWritten();
+        end;
       end
       else
       begin
@@ -623,8 +636,10 @@ begin
 end;
 
 procedure TAtlasIdeTrackerSync.StartWithRules(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AKey: string; const AChange: TAtlasTrackerWrite; const AField: string);
+  const ATarget: TAtlasTrackerTarget; const AKey: string; const AChange: TAtlasTrackerWrite; const AField: string;
+  const AWritten: TProc);
 var
+  mWritten: TProc;
   mOwner: TAtlasIdeTrackerSync;
   mProvider: IAtlasTrackerProvider;
   mTransports: TAtlasIdeTrackerTransport;
@@ -636,6 +651,7 @@ begin
   mTransports := FTransport;
   mCall := IssueCall(WriterOf(AProvider), RulesOf(AProvider), ATarget, AKey, AField);
   mStarted := TAtlasIdeTrackerStarted.Create(AChange);
+  mWritten := AWritten;
   if (mCall.Writer = nil) or not Assigned(mTransports) then
   begin
     Exit;
@@ -663,6 +679,10 @@ begin
     begin
       Logged(mProvider, 'Beginnen', mStarted.Outcome);
       mOwner.ReportStart(mCall.Key, mStarted);
+      if mStarted.Outcome.Succeeded and Assigned(mWritten) then
+      begin
+        mWritten();
+      end;
     end);
 end;
 

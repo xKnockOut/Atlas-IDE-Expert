@@ -5,7 +5,8 @@
 // (grün, gelb, rot), der Text, gedämpft die Einzelheit (z. B. „AtlasServer
 // 0.1.0“) und rechts der Knopf, der das Problem behebt oder erklärt. Unter
 // dem Index steht je Projekt der Gruppe eine Unterzeile mit ihrem Stand
-// (#619). „Warum?“ zeigt die Erklärung im Fenster, die übrigen Knöpfe rufen
+// (#619): Name, ein schmaler Balken und rechts Prozent und Stufe bzw.
+// „wartet“ (#2142). „Warum?“ zeigt die Erklärung im Fenster, die übrigen Knöpfe rufen
 // OnFix. Unten der Einstieg „Probier es aus: Strg+Leertaste in einer
 // Methode“, „Beim Start zeigen …“ (ui.setupChecklist), „Bericht kopieren“,
 // „Erneut prüfen“ und „Schließen“. Das Fenster ist nicht modal; es zeigt, was
@@ -35,8 +36,13 @@ type
     class function ResultText(const AResult: TAtlasSetupResult): string; static;
     /// <summary>Gedämpfte Einzelheit hinter dem Text, z. B. „AtlasServer 0.1.0“; '' ohne.</summary>
     class function DetailText(const AResult: TAtlasSetupResult): string; static;
-    /// <summary>Unterzeile je Projekt, z. B. „Kunden: fertig“.</summary>
+    /// <summary>Unterzeile je Projekt für den Bericht, z. B. „Kunden: fertig“, „Lager: 62 % · Suchpfade“.</summary>
     class function ProjectText(const AProject: TAtlasSetupProject): string; static;
+    /// <summary>Stand ohne Namen: „fertig“, „fehlt im Index“, „62 % · Suchpfade“, „18 % · wartet“ (#2142).
+    /// </summary>
+    class function ProjectStatus(const AProject: TAtlasSetupProject): string; static;
+    /// <summary>Füllung des Balkens in Prozent: fertig 100, im Aufbau sein Prozent, sonst -1 (kein Balken).</summary>
+    class function ProjectBar(const AProject: TAtlasSetupProject): Integer; static;
     class function ProjectState(const AProject: TAtlasSetupProject): TAtlasStatusState; static;
     /// <summary>Beschriftung des Knopfs; '' für None.</summary>
     class function FixCaption(AFix: TAtlasSetupFix): string; static;
@@ -227,13 +233,74 @@ end;
 
 class function TAtlasSetupTexts.ProjectText(const AProject: TAtlasSetupProject): string;
 begin
+  Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectLine, [AProject.Name, ProjectStatus(AProject)]);
+end;
+
+/// <summary>Prozent und Stufe bzw. „wartet“ eines Projekts im Aufbau; '' ohne beides.</summary>
+function BuildingStatus(const AIndexing: TAtlasSetupIndexing): string;
+const
+  cStages: array[TAtlasSetupIndexStage] of TAtlasSetupTextId = (TAtlasSetupTextId.SetupProjectBuilding,
+    TAtlasSetupTextId.SetupStageProjectFiles, TAtlasSetupTextId.SetupStageSearchPaths,
+    TAtlasSetupTextId.SetupStageLibrary);
+var
+  mStage: string;
+begin
+  Result := '';
+  if AIndexing.Percent >= 0 then
+  begin
+    Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupIndexPercent, [IntToStr(AIndexing.Percent)]);
+  end;
+  mStage := '';
+  if AIndexing.Waiting then
+  begin
+    mStage := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupStageWaiting);
+  end
+  else if AIndexing.Stage <> TAtlasSetupIndexStage.Unknown then
+  begin
+    mStage := TAtlasSetupStrings.Text(cStages[AIndexing.Stage]);
+  end;
+  if (Result <> '') and (mStage <> '') then
+  begin
+    Result := Result + ' · ';
+  end;
+  Result := Result + mStage;
+end;
+
+class function TAtlasSetupTexts.ProjectStatus(const AProject: TAtlasSetupProject): string;
+begin
   case AProject.State of
     TAtlasSetupProjectState.Done:
-      Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectDone, [AProject.Name]);
+      Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupProjectDone);
     TAtlasSetupProjectState.Building:
-      Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectBuilding, [AProject.Name]);
+      begin
+        Result := BuildingStatus(AProject.Indexing);
+        if Result = '' then
+        begin
+          Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupProjectBuilding);
+        end;
+      end;
   else
-    Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupProjectMissing, [AProject.Name]);
+    Result := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupProjectMissing);
+  end;
+end;
+
+class function TAtlasSetupTexts.ProjectBar(const AProject: TAtlasSetupProject): Integer;
+begin
+  Result := -1;
+  case AProject.State of
+    TAtlasSetupProjectState.Done:
+      Result := 100;
+    TAtlasSetupProjectState.Building:
+      if AProject.Indexing.Percent >= 0 then
+      begin
+        Result := Min(AProject.Indexing.Percent, 100);
+      end
+      else
+      begin
+        Result := 0;
+      end;
+  else
+    // Fehlt im Index: kein Balken, nur der Text.
   end;
 end;
 
@@ -357,6 +424,9 @@ type
     Metrics: TAtlasSetupMetrics;
     procedure Dot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
     procedure Header;
+    /// <summary>Breite der Namen und des Stands über alle Projekte von AItem.</summary>
+    procedure ProjectColumns(const AItem: TAtlasSetupResult; out ANameWidth, AStatusWidth: Integer);
+    procedure Bar(const AArea: TRect; APercent: Integer);
     procedure ProjectLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
     procedure ResultLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
     procedure Note;
@@ -510,20 +580,90 @@ begin
   Window.Canvas.LineTo(Window.ClientWidth, Metrics.HeaderHeight - Window.ScaleValue(2));
 end;
 
+const
+  /// <summary>Unterzeile je Projekt (#2142), in Pixeln bei 96 dpi: Beginn des Namens, Rand rechts, Abstand
+  /// zwischen den Spalten, halbe Höhe und Mindestbreite des Balkens.</summary>
+  cProjectLeft = 50;
+  cProjectRight = 12;
+  cProjectGap = 10;
+  cBarHalfHeight = 3;
+  cBarMinWidth = 24;
+  /// <summary>Der Name nimmt höchstens diesen Teil der Breite neben Punkt und Rändern.</summary>
+  cNameShare = 3;
+
+procedure TAtlasSetupPainter.ProjectColumns(const AItem: TAtlasSetupResult; out ANameWidth, AStatusWidth: Integer);
+var
+  mProject: TAtlasSetupProject;
+begin
+  // Gleiche Spalten für alle Projekte einer Prüfung: Name höchstens ein Drittel, Stand so breit wie nötig.
+  ANameWidth := 0;
+  AStatusWidth := 0;
+  for mProject in AItem.Projects do
+  begin
+    ANameWidth := Max(ANameWidth, Window.Canvas.TextWidth(mProject.Name));
+    AStatusWidth := Max(AStatusWidth, Window.Canvas.TextWidth(TAtlasSetupTexts.ProjectStatus(mProject)));
+  end;
+  ANameWidth := Min(ANameWidth, (Window.ClientWidth - Window.ScaleValue(cProjectLeft + cProjectRight)) div
+    cNameShare);
+end;
+
+procedure TAtlasSetupPainter.Bar(const AArea: TRect; APercent: Integer);
+var
+  mFill: TRect;
+begin
+  // Schmaler Balken (#2142): Spur in der Linienfarbe, fertig grün, im Aufbau in der Akzentfarbe.
+  Window.Canvas.Pen.Style := psClear;
+  Window.Canvas.Brush.Style := bsSolid;
+  Window.Canvas.Brush.Color := ToColor(Window.FColors.Line);
+  Window.Canvas.Rectangle(AArea.Left, AArea.Top, AArea.Right + 1, AArea.Bottom + 1);
+  if APercent > 0 then
+  begin
+    mFill := AArea;
+    mFill.Right := AArea.Left + MulDiv(AArea.Width, APercent, 100);
+    if APercent >= 100 then
+    begin
+      Window.Canvas.Brush.Color := ToColor(Window.FColors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
+    end
+    else
+    begin
+      Window.Canvas.Brush.Color := ToColor(Window.FColors.Accent);
+    end;
+    Window.Canvas.Rectangle(mFill.Left, mFill.Top, mFill.Right + 1, mFill.Bottom + 1);
+  end;
+  Window.Canvas.Pen.Style := psSolid;
+end;
+
 procedure TAtlasSetupPainter.ProjectLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
 var
+  mProject: TAtlasSetupProject;
   mPart: TRect;
+  mNameWidth, mStatusWidth, mLeft, mRight, mMiddle, mBar: Integer;
   mText: string;
 begin
-  // Unterzeile je Projekt (#619): kleiner Punkt, gedämpfter Text.
+  // Unterzeile je Projekt (#619): kleiner Punkt, Name, Balken, rechts Prozent und Stufe (#2142).
+  mProject := AItem.Projects[ALine.Project];
   Dot(Point(Window.ScaleValue(40), ALine.Top + ALine.Height div 2), Window.ScaleValue(3),
-    TAtlasSetupTexts.ProjectState(AItem.Projects[ALine.Project]));
-  Window.Canvas.Brush.Style := bsClear;
+    TAtlasSetupTexts.ProjectState(mProject));
   Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
-  mPart := Rect(Window.ScaleValue(50), ALine.Top, Window.ClientWidth - Window.ScaleValue(12), ALine.Top + ALine.Height);
-  mText := TAtlasSetupTexts.ProjectText(AItem.Projects[ALine.Project]);
+  ProjectColumns(AItem, mNameWidth, mStatusWidth);
+  mLeft := Window.ScaleValue(cProjectLeft);
+  mRight := Window.ClientWidth - Window.ScaleValue(cProjectRight);
+  Window.Canvas.Brush.Style := bsClear;
+  mPart := Rect(mLeft, ALine.Top, mLeft + mNameWidth, ALine.Top + ALine.Height);
+  DrawText(Window.Canvas.Handle, PChar(mProject.Name), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+  mText := TAtlasSetupTexts.ProjectStatus(mProject);
+  mPart := Rect(Max(mRight - mStatusWidth, mLeft + mNameWidth), ALine.Top, mRight, ALine.Top + ALine.Height);
   DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
     DT_END_ELLIPSIS);
+  mBar := TAtlasSetupTexts.ProjectBar(mProject);
+  mMiddle := ALine.Top + ALine.Height div 2;
+  mPart := Rect(mLeft + mNameWidth + Window.ScaleValue(cProjectGap), mMiddle - Window.ScaleValue(cBarHalfHeight),
+    mRight - mStatusWidth - Window.ScaleValue(cProjectGap), mMiddle + Window.ScaleValue(cBarHalfHeight));
+  if (mBar >= 0) and (mPart.Width >= Window.ScaleValue(cBarMinWidth)) then
+  begin
+    Bar(mPart, mBar);
+  end;
 end;
 
 procedure TAtlasSetupPainter.ResultLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);

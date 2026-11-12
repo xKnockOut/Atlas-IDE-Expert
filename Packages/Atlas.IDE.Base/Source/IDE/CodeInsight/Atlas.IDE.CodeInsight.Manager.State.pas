@@ -100,6 +100,8 @@ type
     function ServerInfo: TAtlasServerInfo;
     /// <summary>Indizierung läuft? APercent = Fortschritt, -1 = unbekannt; False ohne Sitzung.</summary>
     function ServerIndexing(out APercent: Integer): Boolean;
+    /// <summary>Wie ServerIndexing für den Vorgang AToken (ein Projekt der Gruppe, #2142).</summary>
+    function ServerIndexingOf(const AToken: string; out APercent: Integer): Boolean;
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
     procedure Log(const AMessage: string);
     /// <summary>Zeile im Protokoll unabhängig von Diagnose, z. B. Hänger (#501).</summary>
@@ -311,6 +313,12 @@ function TAtlasCodeInsightState.ServerIndexing(out APercent: Integer): Boolean;
 begin
   APercent := -1;
   Result := (FSession <> nil) and FSession.Initialized and FSession.Indexing(APercent);
+end;
+
+function TAtlasCodeInsightState.ServerIndexingOf(const AToken: string; out APercent: Integer): Boolean;
+begin
+  APercent := -1;
+  Result := (FSession <> nil) and FSession.Initialized and FSession.IndexingOf(AToken, APercent);
 end;
 
 end.

@@ -9,7 +9,8 @@
 //   Erweiterungen). Index je Projekt und
 //   Bibliotheks-Cache kommen aus der letzten Antwort von atlas.server.status,
 //   die das Statusfeld ohnehin alle 5 s im Hintergrund holt; die Prüfliste
-//   fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
+//   fragt den Server nie selbst und startet ihn nur auf Knopfdruck. Prozent
+//   je Projekt kommt live aus den $/progress-Meldungen (#2142).
 // - Fenster „Atlas-Einrichtung“ (nicht modal) aus Menü Atlas › „Einrichtung
 //   prüfen…“, Befehlspalette und Klick auf die Zeile im Statusfeld; es prüft
 //   alle 2 s neu, solange es offen ist. Die Knöpfe gehen über den Controller
@@ -43,6 +44,8 @@ type
   TAtlasSetupHooks = record
     ServerInfo: TFunc<TAtlasServerInfo>;
     Indexing: TAtlasSetupIndexingFunc;
+    /// <summary>Fortschritt eines Projekts über sein $/progress-Token (#2142); nil = nur aus dem Status.</summary>
+    IndexingOf: TAtlasSetupTokenIndexingFunc;
     /// <summary>Letzte Antwort von atlas.server.status ('' ohne).</summary>
     StatusJson: TFunc<string>;
     /// <summary>Server starten (False) bzw. neu starten (True); True, wenn er läuft.</summary>
@@ -242,7 +245,8 @@ begin
   end;
   if Assigned(FHooks.StatusJson) and (Result.Server.Phase = TAtlasServerPhase.Running) then
   begin
-    Result.Status := TAtlasSetupServerStatus.Parse(FHooks.StatusJson());
+    // Prozent je Projekt live aus $/progress, Stufe und Warten aus dem Status (#2142).
+    Result.Status := TAtlasSetupServerStatus.Parse(FHooks.StatusJson()).WithLiveProgress(FHooks.IndexingOf);
   end;
   Result.ErrorInsight := TAtlasIdeStructureSwitch.ErrorInsight;
   Result.ErrorInsightRestart := TAtlasIdeStructureSwitch.ErrorInsightChanged;
