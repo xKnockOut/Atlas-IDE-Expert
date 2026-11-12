@@ -607,6 +607,7 @@ begin
     Assert.AreEqual(Ord(Group), Ord(Parsed));
   end;
   Assert.AreEqual('find-bugs', TRuleCatalog.GroupName(TRuleGroup.FindBugs));
+  Assert.AreEqual('migration', TRuleCatalog.GroupName(TRuleGroup.Migration));
   Assert.IsFalse(TRuleCatalog.TryParseGroup('', Parsed));
 end;
 

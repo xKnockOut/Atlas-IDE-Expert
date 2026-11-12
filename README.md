@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 321 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 329 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -38,7 +38,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 |---|---|--:|---|
 | `Atlas.IDE.Base` | Core, always needed: server session and code insight (completion, hover with parameters and unit contents, parameter hint, learned suggestions as ghost text), editor (breadcrumb bar, sticky header, minimap, inlay hints, editor bar, finding marks), navigation and result window, refactorings and light bulb, findings and the “Atlas Findings” window, compiler messages explained, options with search, command palette, diagnostic mode; registry and all contracts between the modules | 759 | – |
 | `Atlas.IDE.Designer` | Designer bar: “Arrange” (width to text, button bar, form grid, duplicate in a row, insert space, fit to content, layers, wrap in container, fonts and colors, suggest anchors, format painter, groups), measure spacing and set it by handle, shared size handles, quick bar, magnifier, tab order, try sizes and scaling, meaningful names, “Atlas Structure” and “Event map” windows, data binding, extract to frame, usages in code, find components and properties, undo (experimental) | 121 | `designer.enabled` |
-| `Atlas.IDE.Tracker` | Issue tracker (YouTrack, GitHub and others): “My issues” with project choice, start, finish and review along the workflow transitions, time tracking, state in the status bar, board with swimlanes, sprint tile, activity map, “Attach to issue”, issue ids in code | 143 | `issues.enabled` |
+| `Atlas.IDE.Tracker` | Issue tracker (YouTrack, GitHub and others): “My issues” with project choice, start, finish and review along the workflow transitions, time tracking, state in the status bar, board with swimlanes, sprint tile, flow map, “Attach to issue”, issue ids in code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page with projects, “Continue” with the work state per issue, “What's new in Atlas”, “Discover Atlas” and “Atlas setup” with index progress per project; “Atlas Start” | 75 | `welcomePage.enabled` |
 | `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations | 59 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas search with replace, regex and project scope, unit search, code queries | 38 | `search.enabled` |
@@ -84,7 +84,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **321 check rules** while you type: 209 bugs, 101 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
+- **329 check rules** while you type: 216 bugs, 102 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
 - **Compiler messages explained:** the hover shows the typical cause of a dcc or IDE message such as E2003 or W1035 below the message, with the links "Explain" (dialog with a wrong and a right example) and "DocWiki"; about 40 messages in English and German, also without dcc (`hover.explainMessages`)
@@ -104,7 +104,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Forms](docs/features/en/Forms.md)
 - **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components, data binding of the selection as a breadcrumb bar below the designer, extract the selection to a frame, event map, undo with Ctrl+Z and a step list (experimental)
 - **Unsaved designer state** is seen by references, renames and checks
-- **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
+- **Tab order** in the designer bar: badges with jumps, gaps and duplicates, nested containers in colours, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
 - **Show in designer** (Shift+F12): from a field or handler in the code to the component in the designer

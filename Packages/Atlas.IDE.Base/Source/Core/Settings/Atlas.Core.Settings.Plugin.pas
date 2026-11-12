@@ -657,6 +657,8 @@ type
       write FEditorView.DesignerTabOrderOverlay;
     property DesignerTabOrderPaths: Boolean read FEditorView.DesignerTabOrderPaths
       write FEditorView.DesignerTabOrderPaths;
+    property DesignerTabOrderColors: Boolean read FEditorView.DesignerTabOrderColors
+      write FEditorView.DesignerTabOrderColors;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
     property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
       write FEditorView.DesignerSelectSimilar;
@@ -1214,6 +1216,10 @@ type
       write FIssueWork.IssuesBoardConfirmMove;
     property IssuesBoardOnlyMine: Boolean read FIssueWork.IssuesBoardOnlyMine write FIssueWork.IssuesBoardOnlyMine;
     property IssuesIdeColors: Boolean read FIssueWork.IssuesIdeColors write FIssueWork.IssuesIdeColors;
+    property IssuesFlowMap: Boolean read FIssueWork.IssuesFlowMap write FIssueWork.IssuesFlowMap;
+    property IssuesFlowMapDays: Integer read FIssueWork.IssuesFlowMapDays write FIssueWork.IssuesFlowMapDays;
+    property IssuesFlowMapStuckDays: Integer read FIssueWork.IssuesFlowMapStuckDays
+      write FIssueWork.IssuesFlowMapStuckDays;
     property IssuesSprintBurndown: Boolean read FIssueWork.IssuesSprintBurndown write FIssueWork.IssuesSprintBurndown;
     property IssuesSprintCompare: Boolean read FIssueWork.IssuesSprintCompare write FIssueWork.IssuesSprintCompare;
     property IssuesPaletteSearch: Boolean read FIssueWork.IssuesPaletteSearch write FIssueWork.IssuesPaletteSearch;

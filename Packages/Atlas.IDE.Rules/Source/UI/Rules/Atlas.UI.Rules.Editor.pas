@@ -233,11 +233,11 @@ const
   cMinMemoHeight = 72;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
   cSeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
-  cGroupTexts: array[0..13] of TAtlasRulesTextId =
+  cGroupTexts: array[0..14] of TAtlasRulesTextId =
     (TAtlasRulesTextId.RulesGroupFindBugs, TAtlasRulesTextId.RulesGroupExceptions,
     TAtlasRulesTextId.RulesGroupThreads, TAtlasRulesTextId.RulesGroupDatabase, TAtlasRulesTextId.RulesGroupCompiler,
-    TAtlasRulesTextId.RulesGroupRobustness, TAtlasRulesTextId.RulesGroupPerformance,
-      TAtlasRulesTextId.RulesGroupSecurity,
+    TAtlasRulesTextId.RulesGroupRobustness, TAtlasRulesTextId.RulesGroupMigration,
+    TAtlasRulesTextId.RulesGroupPerformance, TAtlasRulesTextId.RulesGroupSecurity,
     TAtlasRulesTextId.RulesGroupComponents, TAtlasRulesTextId.RulesGroupForms, TAtlasRulesTextId.RulesGroupArchitecture,
     TAtlasRulesTextId.RulesGroupStyle, TAtlasRulesTextId.RulesGroupPackages, TAtlasRulesTextId.RulesGroupInternal);
 

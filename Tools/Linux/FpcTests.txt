@@ -243,6 +243,7 @@ Atlas.Common.Rules.Builtin.Flow.UseAfterFree.Tests
 Atlas.Common.Rules.Builtin.FormFields.Tests
 Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests
 Atlas.Common.Rules.Builtin.General.Tests
+Atlas.Common.Rules.Builtin.IgnoredResult.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests
 Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.Tests
 Atlas.Common.Rules.Builtin.Inheritance.MemberHides.Tests
@@ -251,6 +252,8 @@ Atlas.Common.Rules.Builtin.Inheritance.OverrideTargets.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Shadowing.Tests
 Atlas.Common.Rules.Builtin.InvalidDeclarations.Tests
 Atlas.Common.Rules.Builtin.MethodDirectives.Tests
+Atlas.Common.Rules.Builtin.Migration.Unicode.Tests
+Atlas.Common.Rules.Builtin.Migration.Win64.Tests
 Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
@@ -262,6 +265,7 @@ Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests
 Atlas.Common.Rules.Builtin.Security.Tests
 Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
 Atlas.Common.Rules.Builtin.Style.Tests
+Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests

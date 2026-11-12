@@ -103,6 +103,9 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Attach.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.BlameLinks.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.FlowMap.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackFlow.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Checklist.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CodeLinks.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommentEditor.pas"/>
@@ -158,6 +161,8 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BlameScope.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Board.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BoardWindow.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.FlowMap.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.FlowWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinks.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinkMarks.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CommentAssist.pas"/>
@@ -205,6 +210,11 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas">
             <Form>AtlasBoardFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.FlowFrame.pas">
+            <Form>AtlasFlowFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>

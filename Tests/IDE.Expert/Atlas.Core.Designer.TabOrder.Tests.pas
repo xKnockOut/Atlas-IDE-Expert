@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Designer.TabOrder.Tests;
 
 // Tests der Tab-Reihenfolge im Designer ohne VCL (#1442, #603):
-// Lesereihenfolge, Rücksprünge, Lücken und Doppelte, Pfade, Sortieren nach
+// Lesereihenfolge, Rücksprünge, Lücken und Doppelte, Pfade, Pfade mit
+// Namen, Farbgruppen je Container, Sortieren nach
 // Lesereihenfolge, Zuweisungen und der Modus „Reihenfolge klicken“ samt Esc,
 // auf Steuerelementen und auf Fixture-DFMs über das Formularmodell.
 
@@ -27,6 +28,16 @@ type
     procedure DuplicatesAndGaps;
     [Test]
     procedure PathsFollowContainers;
+    [Test]
+    procedure NamedPathGivesWay;
+    [Test]
+    procedure GroupsDifferFromParentAndNeighbour;
+    [Test]
+    procedure GroupsOnlyForParents;
+    [Test]
+    procedure GroupsWithoutCount;
+    [Test]
+    procedure StopShownByDefault;
     [Test]
     procedure SortByReadingOrder;
     [Test]
@@ -226,6 +237,95 @@ begin
   Assert.AreEqual('2.1', mPaths[2]);
   Assert.AreEqual('2.0', mPaths[3]);
   Assert.AreEqual('2.0.3', mPaths[4]);
+end;
+
+/// <summary>Seiten (PageControl) › tsStamm › grpAdresse › pnlOrt › edPlz, daneben grpKontakt mit pnlNews.</summary>
+function NestedStops: TArray<TAtlasTabStop>;
+begin
+  Result := TArray<TAtlasTabStop>.Create(
+    Stop('edSuche', '', 0, Rect(0, 0, 300, 20)),
+    Stop('pgcSeiten', '', 1, Rect(0, 40, 500, 300)),
+    Stop('tsStamm', 'pgcSeiten', 0, Rect(4, 64, 496, 296)),
+    Stop('tsHistorie', 'pgcSeiten', 1, Rect(4, 64, 496, 296)),
+    Stop('grpAdresse', 'tsStamm', 0, Rect(10, 70, 240, 290)),
+    Stop('grpKontakt', 'tsStamm', 1, Rect(250, 70, 490, 290)),
+    Stop('pnlOrt', 'grpAdresse', 2, Rect(20, 160, 230, 200)),
+    Stop('edPlz', 'pnlOrt', 0, Rect(24, 170, 80, 190)),
+    Stop('pnlNews', 'grpKontakt', 2, Rect(260, 160, 480, 220)),
+    Stop('cbNews', 'pnlNews', 0, Rect(264, 170, 400, 186)),
+    Stop('lvHistorie', 'tsHistorie', 0, Rect(10, 70, 490, 290)));
+end;
+
+procedure TAtlasTabOrderTests.NamedPathGivesWay;
+var
+  mStops: TArray<TAtlasTabStop>;
+begin
+  mStops := NestedStops;
+  Assert.AreEqual('edSuche 0', TAtlasTabOrder.NamedPath(mStops, 0), 'oberste Ebene: nur der eigene Name');
+  Assert.AreEqual('pgcSeiten 1 › tsStamm 0 › grpAdresse 0 › pnlOrt 2 › edPlz 0',
+    TAtlasTabOrder.NamedPath(mStops, 7));
+end;
+
+procedure TAtlasTabOrderTests.GroupsDifferFromParentAndNeighbour;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mGroups: TArray<Integer>;
+  mIndex, mParent: Integer;
+begin
+  mStops := NestedStops;
+  mGroups := TAtlasTabOrder.Groups(mStops, 3);
+  for mIndex := 0 to High(mStops) do
+  begin
+    mParent := TAtlasTabOrder.IndexOf(mStops, mStops[mIndex].ParentName);
+    if (mGroups[mIndex] >= 0) and (mParent >= 0) then
+    begin
+      Assert.AreNotEqual(mGroups[mParent], mGroups[mIndex], mStops[mIndex].Name + ' wie sein Elternelement');
+    end;
+    Assert.IsTrue(mGroups[mIndex] < 3, 'innerhalb der Zahl der Farben');
+  end;
+  Assert.AreNotEqual(mGroups[4], mGroups[5], 'grpAdresse und grpKontakt nebeneinander');
+  Assert.AreNotEqual(mGroups[2], mGroups[3], 'Registerseiten nebeneinander');
+  Assert.AreEqual(mGroups[6], TAtlasTabOrder.GroupOf(mStops, mGroups, 7), 'edPlz trägt die Farbe von pnlOrt');
+  Assert.AreEqual(-1, TAtlasTabOrder.GroupOf(mStops, mGroups, 0), 'oberste Ebene ohne Gruppe');
+  Assert.AreEqual(mGroups[1], TAtlasTabOrder.GroupOf(mStops, mGroups, 2));
+end;
+
+procedure TAtlasTabOrderTests.GroupsOnlyForParents;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mGroups, mAgain: TArray<Integer>;
+  mIndex: Integer;
+begin
+  mStops := NestedStops;
+  mGroups := TAtlasTabOrder.Groups(mStops, 6);
+  Assert.AreEqual(-1, mGroups[0], 'edSuche hat keine Kinder');
+  Assert.AreEqual(-1, mGroups[7], 'edPlz hat keine Kinder');
+  Assert.AreEqual(0, mGroups[1], 'erster Container in Tab-Reihenfolge');
+  Assert.IsTrue(mGroups[3] >= 0, 'verborgene Registerseite behält ihre Farbe');
+  // Gleiche Eingabe in anderer Reihenfolge der Liste: gleiche Farben je Name.
+  mAgain := TAtlasTabOrder.Groups(TArray<TAtlasTabStop>.Create(mStops[10], mStops[9], mStops[8], mStops[7],
+    mStops[6], mStops[5], mStops[4], mStops[3], mStops[2], mStops[1], mStops[0]), 6);
+  for mIndex := 0 to High(mStops) do
+  begin
+    Assert.AreEqual(mGroups[mIndex], mAgain[High(mStops) - mIndex], mStops[mIndex].Name);
+  end;
+end;
+
+procedure TAtlasTabOrderTests.GroupsWithoutCount;
+var
+  mGroups: TArray<Integer>;
+begin
+  mGroups := TAtlasTabOrder.Groups(NestedStops, 0);
+  Assert.AreEqual(11, Integer(Length(mGroups)));
+  Assert.AreEqual(-1, mGroups[1], 'ohne Farben keine Gruppe');
+end;
+
+procedure TAtlasTabOrderTests.StopShownByDefault;
+var
+  mStop: TAtlasTabStop;
+begin
+  mStop := Stop('edA', '', 0, Rect(0, 0, 10, 10));
+  Assert.IsTrue(mStop.Shown);
 end;
 
 procedure TAtlasTabOrderTests.SortByReadingOrder;

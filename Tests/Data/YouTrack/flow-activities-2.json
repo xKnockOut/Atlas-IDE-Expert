@@ -1,0 +1,96 @@
+{
+ "hasAfter": false,
+ "afterCursor": "AI.2-2",
+ "activities": [
+  {
+   "id": "1-8",
+   "timestamp": 1773489600000,
+   "target": {
+    "idReadable": "ATL-2",
+    "summary": "Board lädt Swimlanes neu",
+    "created": 1761998400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "Zur Prüfung",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ]
+  },
+  {
+   "id": "1-9",
+   "timestamp": 1773576000000,
+   "target": {
+    "idReadable": "ATL-2",
+    "summary": "Board lädt Swimlanes neu",
+    "created": 1761998400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "Zur Prüfung",
+     "isResolved": false
+    }
+   ]
+  },
+  {
+   "id": "1-10",
+   "timestamp": 1774699200000,
+   "target": {
+    "idReadable": "ATL-5",
+    "summary": "Tabreihenfolge in Farben",
+    "created": 1774440000000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "Offen",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ]
+  }
+ ]
+}

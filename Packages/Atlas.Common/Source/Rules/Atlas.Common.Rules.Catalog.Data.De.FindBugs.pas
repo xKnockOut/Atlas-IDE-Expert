@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..534] of string = (
+  cCatalogLinesDeFindBugs: array[0..545] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -736,6 +736,32 @@ const
     'iable, ein Feld (auch Self.X) oder Result sein, deren Typ Single, Double, Extended, Real, Currency … in der Datei deklariert ist. TDateTime, TDate und TTime bleiben still (ganze Tage sind dort meist g' +
     'ewollt), ebenso Zuweisungen in with und Trunc(A) div Trunc(B) (auch Round, Floor, Ceil: ausdrücklich gewandelt, also gewollt ganzzahlig). Konfidenz hoch. Schnellkorrektur: div durch / ersetzen (gleich' +
     'er Vorrang)."',
+    '    },',
+    '{',
+    '      "id": "ignored-result",',
+    '      "name": "Ergebnis einer Funktion ohne Seiteneffekte verworfen",',
+    '      "description": "Eine Funktion ohne Seiteneffekte steht als eigene Anweisung, ihr Ergebnis geht verloren: Trim(S); ändert S nicht, S.Replace(''a'', ''b''); auch nicht. Gemeldet werden die unten genan' +
+    'nten Standardroutinen (auch mit Unit davor, SysUtils.Trim), Methoden von TStringHelper ohne Seiteneffekte, wenn der Empfänger sicher vom Typ string ist, und die Funktionen aus der Option pureFunctions' +
+    '. Findet die Namensauflösung den Namen in einer Unit außerhalb der RTL oder deklariert die Datei selbst eine Routine dieses Namens (eigenes Trim mit var-Parameter), bleibt die Regel still, ebenso in w' +
+    'ith-Blöcken. Routinen mit var- oder out-Parametern und Routinen, die bei falscher Eingabe absichtlich eine Exception werfen (StrToInt oder S.ToInteger als Prüfung), stehen nicht in der Liste. Konfiden' +
+    'z hoch. Schnellkorrektur „Ergebnis zuweisen“: Liefert die Funktion den Typ ihres ersten Arguments bzw. des Helfer-Empfängers (Trim, StringReplace, Copy, S.Replace …) und ist dieser zuweisbar, wird dar' +
+    'aus S := Trim(S); sonst eine neue Inline-Variable var Ergebnis := … (nur direkt in einem Block begin … end und ab Delphi 10.3). Standardroutinen je Unit: System: Abs, Assigned, Chr, Concat, Copy, Frac' +
+    ', High, Int, Length, Low, Odd, Ord, Pos, Pred, Round, SizeOf, Sqr, Sqrt, StringOfChar, Succ, Trunc, UpCase; System.SysUtils: IntToStr, IntToHex, FloatToStr, CurrToStr, BoolToStr, Format, FormatFloat, ' +
+    'QuotedStr, AnsiQuotedStr, Trim, TrimLeft, TrimRight, LowerCase, UpperCase, AnsiLowerCase, AnsiUpperCase, StringReplace, SameText, SameStr, CompareText, CompareStr, AnsiSameText, AnsiSameStr, AnsiCompa' +
+    'reText, AnsiCompareStr, AnsiPos, StrToIntDef, StrToInt64Def, StrToFloatDef, StrToBoolDef, ExtractFileName, ExtractFileExt, ExtractFilePath, ExtractFileDir, ExtractFileDrive, ChangeFileExt, ChangeFileP' +
+    'ath, IncludeTrailingPathDelimiter, ExcludeTrailingPathDelimiter, IncludeTrailingBackslash, ExcludeTrailingBackslash, AdjustLineBreaks, IsDelimiter, LastDelimiter, string.Join, string.Create, string.Fo' +
+    'rmat, string.IsNullOrEmpty, string.IsNullOrWhiteSpace, string.Compare, string.CompareOrdinal, string.CompareText, string.LowerCase, string.UpperCase, string.EndsText; System.StrUtils: PosEx, ContainsT' +
+    'ext, ContainsStr, StartsText, StartsStr, EndsText, EndsStr, MatchText, MatchStr, IndexText, IndexStr, LeftStr, RightStr, MidStr, ReplaceStr, ReplaceText, AnsiReplaceStr, AnsiReplaceText, AnsiContainsT' +
+    'ext, AnsiStartsText, AnsiEndsText, DupeString, ReverseString, SplitString, IfThen; System.Math: Max, Min, Ceil, Floor, Power, IntPower, Sign, EnsureRange, InRange, SameValue, IsZero, RoundTo, SimpleRo' +
+    'undTo, Log10, Log2; System.IOUtils: TPath.Combine, TPath.GetFileName, TPath.GetFileNameWithoutExtension, TPath.GetExtension, TPath.GetDirectoryName, TPath.ChangeExtension. TStringHelper: Trim, TrimLef' +
+    't, TrimRight, TrimStart, TrimEnd, ToUpper, ToLower, ToUpperInvariant, ToLowerInvariant, Replace, Substring, PadLeft, PadRight, Insert, Remove, QuotedString, DeQuotedString, Contains, StartsWith, EndsW' +
+    'ith, IndexOf, IndexOfAny, LastIndexOf, LastIndexOfAny, IsEmpty, Split, ToCharArray, Equals, CompareTo, CountChar, IsDelimiter, LastDelimiter, GetHashCode.",',
+    '      "options": [',
+    '        {',
+    '          "name": "pureFunctions",',
+    '          "description": "Weitere Funktionen ohne Seiteneffekte, die wie die Standardroutinen gemeldet werden, als Name, Klasse.Name oder Unit.Name."',
+    '        }',
+    '      ]',
     '    }');
 
 implementation

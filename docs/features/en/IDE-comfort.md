@@ -117,6 +117,14 @@ Back to the [README](../../../README.md)
   - compared with the previous sprint plus the velocity of the last three sprints
   - clicking the numbers filters "My issues"
 
+<a id="window-atlasflowmap"></a>
+### Flow map
+
+- Window *Atlas Flow* (View › Atlas › Flow, command *Atlas.FlowMap*, `issues.flowMap`, YouTrack only):
+  - used transitions between states with counts, average time per state, open and own issues
+  - list "Stuck": issues that stayed in the same state longer than `issues.flowMap.stuckDays` days
+  - period `issues.flowMap.days` (7–365 days)
+
 ### Search from the command palette
 
 `issues.paletteSearch`: `#text`, `#42` or `ATL-12`

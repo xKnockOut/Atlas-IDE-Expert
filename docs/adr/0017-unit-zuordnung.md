@@ -951,6 +951,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.BoardLanes` | `Core/Tracker/Atlas.Core.Tracker.BoardLanes.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.FlowMap` | `Core/Tracker/Atlas.Core.Tracker.FlowMap.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.YouTrackFlow` | `Core/Tracker/Atlas.Core.Tracker.YouTrackFlow.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Checklist` | `Core/Tracker/Atlas.Core.Tracker.Checklist.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CodeLinks` | `Core/Tracker/Atlas.Core.Tracker.CodeLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CommentEditor` | `Core/Tracker/Atlas.Core.Tracker.CommentEditor.pas` | Ordner `Core/Tracker` |
@@ -1003,6 +1006,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.BlameScope` | `IDE/Tracker/Atlas.IDE.Tracker.BlameScope.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.FlowMap` | `IDE/Tracker/Atlas.IDE.Tracker.FlowMap.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.FlowWindow` | `IDE/Tracker/Atlas.IDE.Tracker.FlowWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CodeLinks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CodeLinkMarks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinkMarks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
@@ -1050,6 +1055,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.BoardFrame` | `UI/Tracker/Atlas.UI.Tracker.BoardFrame.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.FlowFrame` | `UI/Tracker/Atlas.UI.Tracker.FlowFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Capture` | `UI/Tracker/Atlas.UI.Tracker.Capture.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.CiLogin` | `UI/Tracker/Atlas.UI.Tracker.CiLogin.pas` | Ordner `UI/Tracker`, Abfrage des Zugangs zu Build-Server und Tracker, #1455 |
 | `Atlas.UI.Tracker.CommentEditor` | `UI/Tracker/Atlas.UI.Tracker.CommentEditor.pas` | Ordner `UI/Tracker` |

@@ -113,6 +113,11 @@ type
     class function Active: Boolean; static;
     /// <summary>AUrl im Browser, nur Web-Adressen (http, https).</summary>
     class procedure OpenPage(const AUrl: string); static;
+    /// <summary>Optionen für „Meine Issues“ aus den Einstellungen (issues.start, Branch-Muster, Basis,
+    /// Commit-Präfix); Vorschau nur mit issues.preview und APreviewAvailable.</summary>
+    class function IssuesOptions(APreviewAvailable: Boolean): TAtlasIssuesOptions; static;
+    /// <summary>Tracker der persönlichen Verbindungen (issues.connections), nur mit Server.</summary>
+    class function ConnectionTargets: TArray<TAtlasTrackerTarget>; static;
   end;
 
   TAtlasIdeIssuesContext = class;
@@ -278,6 +283,31 @@ begin
 end;
 
 { TAtlasIdeIssuesTargets }
+
+class function TAtlasIdeIssuesTargets.IssuesOptions(APreviewAvailable: Boolean): TAtlasIssuesOptions;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasIssuesOptions.Create(TAtlasMyIssues.StartOf(mSettings.IssuesStart),
+    mSettings.IssuesBranchPattern, mSettings.IssuesBranchBase,
+    mSettings.IssuesCommitPattern);
+  Result.Preview := mSettings.IssuesPreview and APreviewAvailable;
+end;
+
+class function TAtlasIdeIssuesTargets.ConnectionTargets: TArray<TAtlasTrackerTarget>;
+var
+  mConnection: TAtlasTrackerConnection;
+begin
+  Result := nil;
+  for mConnection in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
+  begin
+    if mConnection.Target.Server <> '' then
+    begin
+      Result := Result + [mConnection.Target];
+    end;
+  end;
+end;
 
 class function TAtlasIdeIssuesTargets.Resolve(const AProject: string): TAtlasIssuesCachedTarget;
 var

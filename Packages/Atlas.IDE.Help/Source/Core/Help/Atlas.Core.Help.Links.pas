@@ -63,7 +63,7 @@ implementation
 const
   cFeaturesGerman = 'docs/features/de/';
   cFeaturesEnglish = 'docs/features/en/';
-  cWindows: array[0..20] of TAtlasHelpWindow = (
+  cWindows: array[0..21] of TAtlasHelpWindow = (
     (Id: 'AtlasProblems'; German: 'Code-Analyse'; English: 'Code-analysis'), // german-ok Dateiname
     (Id: 'AtlasResults'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
     (Id: 'AtlasOutline'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
@@ -74,6 +74,7 @@ const
     (Id: 'AtlasStart'; German: 'IDE-Komfort'; English: 'IDE-comfort'), // german-ok Dateiname
     (Id: 'AtlasIssue'; German: 'IDE-Komfort'; English: 'IDE-comfort'), // german-ok Dateiname
     (Id: 'AtlasBoard'; German: 'IDE-Komfort'; English: 'IDE-comfort'), // german-ok Dateiname
+    (Id: 'AtlasFlowMap'; German: 'IDE-Komfort'; English: 'IDE-comfort'), // german-ok Dateiname
     (Id: 'AtlasArchitecture'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname
     (Id: 'AtlasQuery'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname
     (Id: 'AtlasHotspots'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname

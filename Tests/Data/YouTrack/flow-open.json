@@ -1,0 +1,116 @@
+[
+ {
+  "idReadable": "ATL-2",
+  "summary": "Board lädt Swimlanes neu",
+  "created": 1761998400000,
+  "customFields": [
+   {
+    "$type": "StateIssueCustomField",
+    "name": "Zustand",
+    "value": {
+     "$type": "StateBundleElement",
+     "name": "Zur Prüfung"
+    }
+   },
+   {
+    "$type": "SingleUserIssueCustomField",
+    "name": "Assignee",
+    "value": {
+     "login": "marco",
+     "fullName": "Marco B."
+    }
+   },
+   {
+    "$type": "SingleEnumIssueCustomField",
+    "name": "Priority",
+    "value": {
+     "name": "Normal"
+    }
+   }
+  ]
+ },
+ {
+  "idReadable": "ATL-3",
+  "summary": "Neues Issue ohne Wechsel",
+  "created": 1774008000000,
+  "customFields": [
+   {
+    "$type": "StateIssueCustomField",
+    "name": "Zustand",
+    "value": {
+     "$type": "StateBundleElement",
+     "name": "Offen"
+    }
+   },
+   {
+    "$type": "SingleUserIssueCustomField",
+    "name": "Assignee",
+    "value": null
+   },
+   {
+    "$type": "SingleEnumIssueCustomField",
+    "name": "Priority",
+    "value": {
+     "name": "Normal"
+    }
+   }
+  ]
+ },
+ {
+  "idReadable": "ATL-4",
+  "summary": "Alter Wunsch",
+  "created": 1748779200000,
+  "customFields": [
+   {
+    "$type": "StateMachineIssueCustomField",
+    "name": "Zustand",
+    "value": {
+     "$type": "StateBundleElement",
+     "name": "Zurückgestellt"
+    }
+   },
+   {
+    "$type": "SingleUserIssueCustomField",
+    "name": "Assignee",
+    "value": null
+   },
+   {
+    "$type": "SingleEnumIssueCustomField",
+    "name": "Priority",
+    "value": {
+     "name": "Normal"
+    }
+   }
+  ]
+ },
+ {
+  "idReadable": "ATL-5",
+  "summary": "Tabreihenfolge in Farben",
+  "created": 1774440000000,
+  "customFields": [
+   {
+    "$type": "StateIssueCustomField",
+    "name": "Zustand",
+    "value": {
+     "$type": "StateBundleElement",
+     "name": "In Bearbeitung"
+    }
+   },
+   {
+    "$type": "SingleUserIssueCustomField",
+    "name": "Assignee",
+    "value": {
+     "login": "ben",
+     "fullName": "Ben"
+    }
+   },
+   {
+    "$type": "SingleEnumIssueCustomField",
+    "name": "Priority",
+    "value": {
+     "name": "Normal"
+    }
+   }
+  ]
+ }
+]

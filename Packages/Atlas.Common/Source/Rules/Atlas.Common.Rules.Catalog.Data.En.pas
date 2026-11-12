@@ -20,6 +20,7 @@ uses
   Atlas.Common.Rules.Catalog.Data.En.CompilerNames,
   Atlas.Common.Rules.Catalog.Data.En.CompilerTypes,
   Atlas.Common.Rules.Catalog.Data.En.Robustness,
+  Atlas.Common.Rules.Catalog.Data.En.Migration,
   Atlas.Common.Rules.Catalog.Data.En.Performance,
   Atlas.Common.Rules.Catalog.Data.En.Security,
   Atlas.Common.Rules.Catalog.Data.En.Components,
@@ -46,6 +47,7 @@ begin
     Joined(cCatalogLinesEnCompilerNames) + ',' + #10 +
     Joined(cCatalogLinesEnCompilerTypes) + ',' + #10 +
     Joined(cCatalogLinesEnRobustness) + ',' + #10 +
+    Joined(cCatalogLinesEnMigration) + ',' + #10 +
     Joined(cCatalogLinesEnPerformance) + ',' + #10 +
     Joined(cCatalogLinesEnSecurity) + ',' + #10 +
     Joined(cCatalogLinesEnComponents) + ',' + #10 +

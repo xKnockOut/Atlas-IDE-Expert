@@ -23,6 +23,7 @@ uses
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.IssueState,
   Atlas.IDE.Tracker.Board,
+  Atlas.IDE.Tracker.FlowMap,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.CommentAssist,
@@ -37,6 +38,7 @@ type
     FContext: TAtlasIdeIssuesContext;
     FPreview: TAtlasIdeIssuePreview;
     FBoard: TAtlasIdeBoard;
+    FFlowMap: TAtlasIdeFlowMap;
     FSprint: TAtlasIdeSprint;
     FSync: TAtlasIdeTrackerSync;
     FTime: TAtlasIdeTrackerTime;
@@ -105,14 +107,11 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Reopened,
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.WorkingCopies;
 
 type
@@ -713,6 +712,42 @@ begin
     end;
 end;
 
+function FlowMapHooks(const ALink: TAtlasIssuesLink): TAtlasFlowMapHooks;
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  Result := Default(TAtlasFlowMapHooks);
+  Result.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := mLink.Provider(AName);
+    end;
+  Result.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    begin
+      Result := mLink.Transport(AProvider, ATarget);
+    end;
+  Result.Target :=
+    function: TAtlasTrackerTarget
+    begin
+      Result := mLink.ActiveTarget;
+    end;
+  Result.StateField :=
+    function(ATarget: TAtlasTrackerTarget): string
+    begin
+      Result := TAtlasIdeTrackerSync.Options(ATarget).StateField;
+    end;
+  Result.Preview :=
+    procedure(ATarget: TAtlasTrackerTarget; AKey: string)
+    begin
+      if mLink.PreviewActive then
+      begin
+        mLink.Show(ATarget, AKey);
+      end;
+    end;
+end;
+
 function SprintHooks(const ALink: TAtlasIssuesLink): TAtlasSprintHooks;
 var
   mLink: TAtlasIssuesLink;
@@ -1048,6 +1083,12 @@ begin
     DropRef(AServices, AServices.FBoard);
   end;
   AServices.FBoard := nil;
+  if AServices.FFlowMap <> nil then
+  begin
+    AServices.FFlowMap.Stop;
+    DropRef(AServices, AServices.FFlowMap);
+  end;
+  AServices.FFlowMap := nil;
   if AServices.FSprint <> nil then
   begin
     AServices.FSprint.Stop;
@@ -1127,6 +1168,9 @@ begin
   FBoard := TAtlasIdeBoard.Create(BoardHooks(mLink), mFolder);
   Keep(FBoard);
   FBoard.Start;
+  FFlowMap := TAtlasIdeFlowMap.Create(FlowMapHooks(mLink), mFolder);
+  Keep(FFlowMap);
+  FFlowMap.Start;
   FSprint := TAtlasIdeSprint.Create(SprintHooks(mLink), mFolder);
   Keep(FSprint);
   FSprint.Start;
@@ -1159,6 +1203,11 @@ begin
   begin
     FBoard.UpdateSettings;
   end;
+  // issues.flowMap aus: Fenster „Atlas-Ablauf“ zu.
+  if FFlowMap <> nil then
+  begin
+    FFlowMap.UpdateSettings;
+  end;
   // welcomePage.sprint, issues.sprint.*, anderes Projekt.
   if FSprint <> nil then
   begin
@@ -1172,14 +1221,8 @@ begin
 end;
 
 function TAtlasIdeIssuesServices.Options: TAtlasIssuesOptions;
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasIssuesOptions.Create(TAtlasMyIssues.StartOf(mSettings.IssuesStart),
-    mSettings.IssuesBranchPattern, mSettings.IssuesBranchBase,
-    mSettings.IssuesCommitPattern);
-  Result.Preview := mSettings.IssuesPreview and (FPreview <> nil);
+  Result := TAtlasIdeIssuesTargets.IssuesOptions(FPreview <> nil);
 end;
 
 function TAtlasIdeIssuesServices.UnseenOf(const ATarget: TAtlasTrackerTarget): TArray<string>;
@@ -1193,7 +1236,6 @@ end;
 
 function TAtlasIdeIssuesServices.NotifyTargets: TArray<TAtlasTrackerTarget>;
 var
-  mConnection: TAtlasTrackerConnection;
   mTarget: TAtlasTrackerTarget;
 begin
   Result := nil;
@@ -1207,14 +1249,7 @@ begin
   begin
     Result := Result + [mTarget];
   end;
-  for mConnection in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
-  begin
-    mTarget := mConnection.Target;
-    if mTarget.Server <> '' then
-    begin
-      Result := Result + [mTarget];
-    end;
-  end;
+  Result := Result + TAtlasIdeIssuesTargets.ConnectionTargets;
 end;
 
 procedure TAtlasIdeIssuesServices.OpenNotified(const ATarget: TAtlasTrackerTarget; const AKey: string;

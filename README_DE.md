@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 321 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 329 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -84,7 +84,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **321 Prüfregeln** schon beim Tippen: 209 Fehler, 101 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
+- **329 Prüfregeln** schon beim Tippen: 216 Fehler, 102 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
@@ -104,7 +104,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Formulare](docs/features/de/Formulare.md)
 - **Designer-Ansichten** mit eigenen Knöpfen in der Designer-Leiste: Abstände messen beim Ziehen und mit Alt, Formulargröße ausprobieren, Skalierung und lange Texte prüfen, sprechende Namen vorschlagen, Fenster „Atlas-Struktur“ mit Verknüpfungen der Komponenten, Datenbindung der Auswahl als Brotkrumenleiste unter dem Designer, Auswahl in einen Frame auslagern, Ereignis-Karte, Rückgängig mit Strg+Z und Schrittliste (experimentell)
 - **Ungespeicherter Stand des Designers** zählt für Referenzen, Umbenennen und Prüfungen
-- **Tab-Reihenfolge** in der Designer-Leiste: Marken mit Rücksprüngen, Lücken und Doppelten, per Klick neu vergeben, nach Lesereihenfolge sortieren
+- **Tab-Reihenfolge** in der Designer-Leiste: Marken mit Rücksprüngen, Lücken und Doppelten, verschachtelte Container in Farben, per Klick neu vergeben, nach Lesereihenfolge sortieren
 - **Prüfungen zwischen Formular und Code** und Property-Regeln für Formulardateien
 - **Binäre Formulare** in Textformulare umwandeln
 - **Im Designer zeigen** (Umschalt+F12): vom Feld oder Handler im Code zur Komponente im Designer
