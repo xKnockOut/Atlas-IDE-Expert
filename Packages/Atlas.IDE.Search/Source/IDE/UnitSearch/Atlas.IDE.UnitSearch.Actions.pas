@@ -4,9 +4,12 @@
 // und die Aktionen des Fensters, ohne das Fenster selbst (das öffnet und
 // verdrahtet Atlas.IDE.UnitSearch.Commands).
 // - LoadEntries: Einträge über atlas.server.units, offene Module markiert.
+//   Im Hintergrund: Die Liste dauert bei großen Projektgruppen Sekunden, und
+//   der Hauptthread wartete so lange (Diagnose: Hänger bis 2,9 s beim Öffnen).
 // - Preview: Vorschau über atlas.server.unitPreview (Formularskizze und
 //   „Verwendet von“ nach den Einstellungen).
-// - LoadUseInfo: „schon in uses“ und Kreise der Zielunit (atlas.useUnitInfo).
+// - LoadUseInfo: „schon in uses“ und Kreise der Zielunit (atlas.useUnitInfo),
+//   ebenfalls im Hintergrund.
 // - Run: Öffnen, Formular öffnen, In uses aufnehmen (atlas.server.addUses),
 //   Testunits öffnen (atlas.server.testUnit), Im Projektmanager zeigen, Im
 //   Explorer zeigen. UseUnits fügt in einen gewählten Abschnitt ein.
@@ -22,14 +25,21 @@ uses
   Atlas.UI.UnitSearch.Data;
 
 type
+  /// <summary>Befehl im Hintergrund an den laufenden Server; ADone im Hauptthread mit dem Ergebnis als JSON ('' bei
+  /// Fehler oder Zeitlimit), nur solange das Modul angemeldet ist. False = nicht gestartet.</summary>
+  TAtlasUnitSearchCommandAsync = reference to function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
+    const ADone: TProc<string>): Boolean;
+
   TAtlasIdeUnitSearchActions = class
   private class var
     FSessionOf: TFunc<TLspSession>;
     FMessage: TProc<string>;
+    FRunAsync: TAtlasUnitSearchCommandAsync;
   public
     /// <summary>ASessionOf: laufende Sitzung (Server bei Bedarf gestartet) oder nil; AMessage: Zeile für
-    /// die Meldungsansicht.</summary>
-    class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
+    /// die Meldungsansicht; ARunAsync: Befehl im Hintergrund.</summary>
+    class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
+      const ARunAsync: TAtlasUnitSearchCommandAsync); static;
     class procedure Uninstall; static;
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -37,14 +47,15 @@ type
     class function RunNamedAction(const AName: string): Boolean; static;
     /// <summary>Datei, in deren uses „Unit verwenden“ und „In uses aufnehmen“ einfügen können.</summary>
     class function UsesTarget(const AFileName: string): Boolean; static;
-    /// <summary>Einträge vom Server, offene Module markiert; False mit Meldung ohne Antwort.</summary>
-    class function LoadEntries(ALive: TLspSession; const AActiveProject: string;
-      out AEntries: TAtlasUnitEntries): Boolean; static;
+    /// <summary>Einträge vom Server im Hintergrund; ADone im Hauptthread mit den Einträgen, offene Module
+    /// markiert. Ohne Antwort kommt statt ADone eine Meldung. False = nicht gestartet.</summary>
+    class function LoadEntries(const AActiveProject: string; const ADone: TProc<TAtlasUnitEntries>): Boolean; static;
     /// <summary>Vorschau einer Unit; ohne Server oder Antwort nur der Dateiname.</summary>
     class function Preview(const AEntry: TAtlasUnitEntry): TAtlasUnitPreview; static;
-    /// <summary>„schon in uses“ und Kreise der Zielunit (#786); False ohne Antwort.</summary>
-    class function LoadUseInfo(ALive: TLspSession; const ATarget: string; out AInfo: TAtlasUseUnitInfo): Boolean;
-      static;
+    /// <summary>„schon in uses“ und Kreise der Zielunit (#786) im Hintergrund; ADone im Hauptthread nur mit
+    /// Antwort. False = nicht gestartet.</summary>
+    class function LoadUseInfo(ALive: TLspSession; const ATarget: string;
+      const ADone: TProc<TAtlasUseUnitInfo>): Boolean; static;
     /// <summary>Aktion des Fensters für die gewählten Einträge; ATarget ist die Datei für „In uses aufnehmen“.
     /// </summary>
     class procedure Run(AAction: TAtlasUnitSearchAction; const AEntries: TArray<TAtlasUnitEntry>;
@@ -212,16 +223,18 @@ end;
 { TAtlasIdeUnitSearchActions }
 
 class procedure TAtlasIdeUnitSearchActions.Install(const ASessionOf: TFunc<TLspSession>;
-  const AMessage: TProc<string>);
+  const AMessage: TProc<string>; const ARunAsync: TAtlasUnitSearchCommandAsync);
 begin
   FSessionOf := ASessionOf;
   FMessage := AMessage;
+  FRunAsync := ARunAsync;
 end;
 
 class procedure TAtlasIdeUnitSearchActions.Uninstall;
 begin
   FSessionOf := nil;
   FMessage := nil;
+  FRunAsync := nil;
 end;
 
 class function TAtlasIdeUnitSearchActions.Session: TLspSession;
@@ -266,21 +279,20 @@ begin
     SameText(ExtractFileExt(AFileName), '.dpr') or SameText(ExtractFileExt(AFileName), '.dpk'));
 end;
 
-class function TAtlasIdeUnitSearchActions.LoadEntries(ALive: TLspSession; const AActiveProject: string;
-  out AEntries: TAtlasUnitEntries): Boolean;
+/// <summary>Antwort von atlas.server.units als Einträge; False ohne Antwort.</summary>
+function EntriesFromJson(const AJson, AActiveProject: string; out AEntries: TAtlasUnitEntries): Boolean;
 var
   mAnswer: TJSONValue;
 begin
   AEntries := nil;
-  try
-    mAnswer := ALive.RunCommand(cUnitsCommand,
-      TAtlasUnitSearch.UnitsArguments(TAtlasIdeSettings.Current.UnitSearchFormCaptions), cUnitsTimeoutMs);
-  except
-    on E: ELspClientError do
-    begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-      Exit(False);
-    end;
+  mAnswer := nil;
+  if AJson <> '' then
+  begin
+    mAnswer := TJSONObject.ParseJSONValue(AJson);
+  end;
+  if mAnswer = nil then
+  begin
+    Exit(False);
   end;
   try
     AEntries := TAtlasUnitSearch.FromJson(mAnswer, AActiveProject, UriToPath);
@@ -289,6 +301,38 @@ begin
   end;
   MarkOpen(AEntries);
   Result := True;
+end;
+
+/// <summary>Rückruf für LoadEntries; eigene Routine, damit die anonyme Methode nur ihre Parameter festhält.</summary>
+function EntriesDone(const AActiveProject: string; const ADone: TProc<TAtlasUnitEntries>): TProc<string>;
+var
+  mActive: string;
+  mDone: TProc<TAtlasUnitEntries>;
+begin
+  mActive := AActiveProject;
+  mDone := ADone;
+  Result :=
+    procedure(AJson: string)
+    var
+      mEntries: TAtlasUnitEntries;
+    begin
+      if EntriesFromJson(AJson, mActive, mEntries) then
+      begin
+        mDone(mEntries);
+      end
+      else
+      begin
+        TAtlasIdeUnitSearchActions.Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [cUnitsCommand]));
+      end;
+    end;
+end;
+
+class function TAtlasIdeUnitSearchActions.LoadEntries(const AActiveProject: string;
+  const ADone: TProc<TAtlasUnitEntries>): Boolean;
+begin
+  Result := Assigned(FRunAsync) and FRunAsync(cUnitsCommand,
+    TAtlasUnitSearch.UnitsArguments(TAtlasIdeSettings.Current.UnitSearchFormCaptions), cUnitsTimeoutMs,
+    EntriesDone(AActiveProject, ADone));
 end;
 
 /// <summary>Argumente von atlas.server.unitPreview: Uri und die gewünschten Teile.</summary>
@@ -338,27 +382,32 @@ begin
   end;
 end;
 
-class function TAtlasIdeUnitSearchActions.LoadUseInfo(ALive: TLspSession; const ATarget: string;
-  out AInfo: TAtlasUseUnitInfo): Boolean;
+/// <summary>Rückruf für LoadUseInfo; ADone nur mit lesbarer Antwort.</summary>
+function UseInfoDone(const ADone: TProc<TAtlasUseUnitInfo>): TProc<string>;
 var
-  mAnswer: TJSONValue;
+  mDone: TProc<TAtlasUseUnitInfo>;
 begin
-  AInfo := Default(TAtlasUseUnitInfo);
-  SyncBuffer(ALive, ATarget);
-  try
-    mAnswer := ALive.RunCommand(TAtlasUseUnit.cCommand, TAtlasUseUnit.Arguments(TLspSession.PathToUri(ATarget)),
-      cCommandTimeoutMs);
-  except
-    on E: ELspClientError do
+  mDone := ADone;
+  Result :=
+    procedure(AJson: string)
+    var
+      mInfo: TAtlasUseUnitInfo;
     begin
-      Exit(False);
+      mInfo := Default(TAtlasUseUnitInfo);
+      if (AJson <> '') and TAtlasUseUnit.Parse(AJson, mInfo) then
+      begin
+        mDone(mInfo);
+      end;
     end;
-  end;
-  try
-    Result := (mAnswer <> nil) and TAtlasUseUnit.Parse(mAnswer.ToJSON, AInfo);
-  finally
-    mAnswer.Free;
-  end;
+end;
+
+class function TAtlasIdeUnitSearchActions.LoadUseInfo(ALive: TLspSession; const ATarget: string;
+  const ADone: TProc<TAtlasUseUnitInfo>): Boolean;
+begin
+  // Der Server braucht den Stand des Puffers; das Senden ist kurz und gehört in den Hauptthread.
+  SyncBuffer(ALive, ATarget);
+  Result := Assigned(FRunAsync) and FRunAsync(TAtlasUseUnit.cCommand,
+    TAtlasUseUnit.Arguments(TLspSession.PathToUri(ATarget)), cCommandTimeoutMs, UseInfoDone(ADone));
 end;
 
 /// <summary>Testunit einer Unit über atlas.server.testUnit öffnen; False, wenn es nicht weitergehen soll (kein

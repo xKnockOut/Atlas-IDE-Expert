@@ -30,7 +30,8 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.UnitSearch.UseUnit;
+  Atlas.Core.UnitSearch.UseUnit,
+  Atlas.IDE.UnitSearch.Actions;
 
 type
   TAtlasIdeUnitSearch = class
@@ -41,8 +42,10 @@ type
     class procedure Say(const AText: string); static;
   public
     /// <summary>ASessionOf: laufende Sitzung (Server bei Bedarf gestartet) oder nil; AMessage: Zeile für
-    /// die Meldungsansicht. Hängt sich an die IDE-Aktion für Strg+F12.</summary>
-    class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
+    /// die Meldungsansicht; ARunAsync: Serverbefehl im Hintergrund. Hängt sich an die IDE-Aktion für Strg+F12.
+    /// </summary>
+    class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
+      const ARunAsync: TAtlasUnitSearchCommandAsync); static;
     class procedure Uninstall; static;
     /// <summary>Atlas-Fenster zeigen; abgeschaltet den IDE-Dialog, ohne Server mit AFallback ebenso.</summary>
     class procedure Show(AFallback: Boolean); overload; static;
@@ -87,8 +90,7 @@ uses
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.UnitSearch.Actions;
+  Atlas.IDE.Foundation.Settings;
 
 const
   // Aktionen der IDE je Modus (#777, #786) und ihre Standardtasten als Ersatz.
@@ -320,12 +322,13 @@ end;
 
 { TAtlasIdeUnitSearch }
 
-class procedure TAtlasIdeUnitSearch.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>);
+class procedure TAtlasIdeUnitSearch.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
+  const ARunAsync: TAtlasUnitSearchCommandAsync);
 var
   mAction: TContainedAction;
   mMode: TAtlasUnitSearchMode;
 begin
-  TAtlasIdeUnitSearchActions.Install(ASessionOf, AMessage);
+  TAtlasIdeUnitSearchActions.Install(ASessionOf, AMessage, ARunAsync);
   for mMode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
   begin
     FHooks[mMode] := nil;
@@ -550,7 +553,50 @@ begin
     end;
 end;
 
-/// <summary>Einträge erst nach dem Zeichnen laden: Das Fenster zeigt so lange „Units werden geladen …“.</summary>
+/// <summary>Rückruf für „schon in uses“ (#786); eigene Routine, damit die anonyme Methode nur ihren Parameter
+/// festhält.</summary>
+function UseInfoArrived(ASearch: TOpenSearch): TProc<TAtlasUseUnitInfo>;
+var
+  mSearch: TOpenSearch;
+begin
+  mSearch := ASearch;
+  Result :=
+    procedure(AInfo: TAtlasUseUnitInfo)
+    begin
+      if Current = mSearch then
+      begin
+        mSearch.Window.SetUseInfo(AInfo);
+      end;
+    end;
+end;
+
+/// <summary>Rückruf für die Einträge; danach im Modus „Unit verwenden“ Kreise und „schon in uses“ der Zielunit
+/// (#786), ohne Antwort ohne Kennzeichen.</summary>
+function EntriesArrived(ASearch: TOpenSearch; ALive: TLspSession): TProc<TAtlasUnitEntries>;
+var
+  mSearch: TOpenSearch;
+  mLive: TLspSession;
+begin
+  mSearch := ASearch;
+  mLive := ALive;
+  Result :=
+    procedure(AEntries: TAtlasUnitEntries)
+    begin
+      // Inzwischen geschlossen oder neu geöffnet: Die Antwort gehört keinem Fenster mehr.
+      if Current <> mSearch then
+      begin
+        Exit;
+      end;
+      mSearch.Window.SetEntries(AEntries);
+      if (mSearch.Mode = TAtlasUnitSearchMode.UseUnit) and (TAtlasIdeUnitSearchActions.Session = mLive) then
+      begin
+        TAtlasIdeUnitSearchActions.LoadUseInfo(mLive, mSearch.Target, UseInfoArrived(mSearch));
+      end;
+    end;
+end;
+
+/// <summary>Einträge erst nach dem Zeichnen und im Hintergrund laden: Das Fenster zeigt so lange „Units werden
+/// geladen …“ und bleibt bedienbar (atlas.server.units braucht bei großen Gruppen Sekunden).</summary>
 procedure LoadLater(ASearch: TOpenSearch; const AActiveProject: string);
 var
   mSearch: TOpenSearch;
@@ -561,30 +607,17 @@ begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
     procedure
     var
-      mEntries: TAtlasUnitEntries;
       mLive: TLspSession;
-      mUseInfo: TAtlasUseUnitInfo;
     begin
       if Current <> mSearch then
       begin
         Exit;
       end;
+      // Startet den Server bei Bedarf; der Befehl selbst läuft dann im Hintergrund.
       mLive := TAtlasIdeUnitSearchActions.Session;
-      if mLive = nil then
+      if (mLive = nil) or not TAtlasIdeUnitSearchActions.LoadEntries(mActive, EntriesArrived(mSearch, mLive)) then
       begin
         TAtlasIdeUnitSearchActions.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
-        Exit;
-      end;
-      if not TAtlasIdeUnitSearchActions.LoadEntries(mLive, mActive, mEntries) or (Current <> mSearch) then
-      begin
-        Exit;
-      end;
-      mSearch.Window.SetEntries(mEntries);
-      // Unit verwenden: Kreise und „schon in uses“ der Zielunit (#786); ohne Antwort ohne Kennzeichen.
-      if (mSearch.Mode = TAtlasUnitSearchMode.UseUnit) and
-        TAtlasIdeUnitSearchActions.LoadUseInfo(mLive, mSearch.Target, mUseInfo) and (Current = mSearch) then
-      begin
-        mSearch.Window.SetUseInfo(mUseInfo);
       end;
     end);
 end;
