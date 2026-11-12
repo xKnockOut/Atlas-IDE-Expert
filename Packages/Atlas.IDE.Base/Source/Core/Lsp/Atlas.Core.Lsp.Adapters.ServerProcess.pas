@@ -76,6 +76,8 @@ uses
 const
   // FILE_APPEND_DATA: Jedes WriteFile landet am Ende, auch wenn mehrere Server dieselbe Datei offen haben.
   cAppendData = $0004;
+  // Puffergröße der Pipe zum Server: 1 MiB.
+  cPipeBufferBits = 20;
 
 // Eigene Deklaration (Vista und neuer), unabhängig von der Delphi-Version.
 function CancelSynchronousIoOf(AThread: THandle): BOOL; stdcall; external kernel32 name 'CancelSynchronousIo';
@@ -294,7 +296,7 @@ procedure TLspServerProcess.CreatePipes(var AInputRead, AOutputWrite: THandle);
 begin
   // Alle Enden nicht vererbbar; die Kindenden vererbt TAtlasProcessLauncher gezielt (R-101).
   // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
-  if not CreatePipe(AInputRead, FInputWrite, nil, 1 shl 20) then
+  if not CreatePipe(AInputRead, FInputWrite, nil, 1 shl cPipeBufferBits) then
   begin
     RaiseLastOSError;
   end;
