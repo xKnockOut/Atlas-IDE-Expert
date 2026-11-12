@@ -66,7 +66,6 @@ type
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
-    class procedure AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer); static;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
     /// <summary>Reiter und ihr Inhalt in der Reihenfolge des Aufbaus.</summary>
@@ -120,15 +119,6 @@ begin
   Result.Top := Result.ScaleValue(cRowButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
-end;
-
-class procedure TAtlasSettingsPageSheets.AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(AId);
-  mColumn.Width := AWidth;
 end;
 
 function TAtlasSettingsPageSheets.AddTextLine(const ACaption: string): TEdit;

@@ -191,6 +191,33 @@ begin
   end;
 end;
 
+/// <summary>Antwort nach dem Build in AFolder und Meldung über AOnMessage; hält nur Werte, nicht den Briefkasten.
+/// </summary>
+function BuildDone(const AFolder: string; const ARequest: TAtlasBuildRequest;
+  const AOnMessage: TAtlasBuildInboxProc): TAtlasBuildDoneProc;
+begin
+  Result :=
+    procedure(const AReport: TAtlasBuildReport; const AError: string)
+    begin
+      try
+        if AError <> '' then
+        begin
+          TAtlasBuildInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AError));
+          Exit;
+        end;
+        TAtlasBuildInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.SuccessText(AReport));
+        if Assigned(AOnMessage) then
+        begin
+          AOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildFinished,
+            [ExtractFileName(ARequest.Project), ErrorCount(AReport.Messages)]));
+        end;
+      except
+        on E: Exception do
+          TAtlasGuard.Report(TAtlasFeature.Build, E);
+      end;
+    end;
+end;
+
 procedure TAtlasIdeBuildInbox.Process(const ARequestFile: string);
 var
   mRequest: TAtlasBuildRequest;
@@ -217,29 +244,8 @@ begin
   mReason := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.NoBuildPipeline);
   if mRequests <> nil then
   begin
-    mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
-    procedure(const AReport: TAtlasBuildReport; const AError: string)
-    begin
-      try
-        if AError <> '' then
-        begin
-          TAtlasBuildInbox.Answer(mFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(AError));
-        end
-        else
-        begin
-          TAtlasBuildInbox.Answer(mFolder, mRequest.Id, TAtlasBuildInbox.SuccessText(AReport));
-        end;
-        if Assigned(mOnMessage) and (AError = '') then
-        begin
-          mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildFinished,
-            [ExtractFileName(mRequest.Project),
-            ErrorCount(AReport.Messages)]));
-        end;
-      except
-        on E: Exception do
-          TAtlasGuard.Report(TAtlasFeature.Build, E);
-      end;
-    end, mReason);
+    mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy, BuildDone(mFolder, mRequest, mOnMessage),
+      mReason);
   end;
   if not mStarted then
   begin

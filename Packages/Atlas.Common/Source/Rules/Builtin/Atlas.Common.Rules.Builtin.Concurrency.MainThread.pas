@@ -187,7 +187,8 @@ var
     mIndex, mLoops: Integer;
     mHandler, mIsAllowed: Boolean;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ALoops, AHandler und AAllowed je Knoten mit.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ALoops, AHandler und AAllowed je Knoten
+    // mit.
     mPending := TStack<TSyntaxNode>.Create;
     mLoopStack := TStack<Integer>.Create;
     mHandlers := TStack<Boolean>.Create;

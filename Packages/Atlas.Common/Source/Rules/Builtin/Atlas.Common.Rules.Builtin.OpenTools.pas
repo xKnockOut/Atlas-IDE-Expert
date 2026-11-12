@@ -375,8 +375,8 @@ begin
   Result := False;
 end;
 
-// Innerste Routine um AOffset; nil außerhalb. Iterativ (tiefe Bäume sprengen den Stapel nicht): Suche in Vorordnung über die Knoten um
-// AOffset; jede gefundene Routine ersetzt das Ergebnis, und die Suche geht nur in ihr weiter.
+// Innerste Routine um AOffset; nil außerhalb. Iterativ (tiefe Bäume sprengen den Stapel nicht): Suche in Vorordnung
+// über die Knoten um AOffset; jede gefundene Routine ersetzt das Ergebnis, und die Suche geht nur in ihr weiter.
 function TOtaNotifierScan.RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
   mPending: TStack<TSyntaxNode>;

@@ -168,8 +168,8 @@ end;
 
 function PathAt(ALine, ACharacter: Integer): string;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, ALine, ACharacter, '', False,
-    [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks]));
+  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks])));
 end;
 
 procedure TAtlasMemberBlocksTests.BlocksInSourceOrder;
@@ -241,17 +241,17 @@ begin
   Assert.AreEqual('TKunde › private › type › TInnen', PathAt(10, 8));
   Assert.AreEqual('TKunde › TInnen › public › const › cTief', PathAt(12, 9));
   Assert.AreEqual('TKunde › private › FName', PathAt(17, 7));
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 6, 7, '', False,
-    [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks]);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks]));
   Assert.AreEqual('kw', mCrumbs[2].Badge.Code);
   Assert.AreEqual(3, Integer(Length(mCrumbs[2].Places)));
   Assert.AreEqual(0, mCrumbs[2].Current);
   Assert.AreEqual(5, mCrumbs[2].Places[0].Line);
   // Ohne Unterblöcke bzw. ohne Abschnitt.
-  Assert.AreEqual('TKunde › private › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 6, 7, '', False,
-    [TAtlasCrumbPart.Visibility])));
-  Assert.AreEqual('TKunde › const › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 6, 7, '', False,
-    [TAtlasCrumbPart.MemberBlocks])));
+  Assert.AreEqual('TKunde › private › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.Visibility]))));
+  Assert.AreEqual('TKunde › const › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.MemberBlocks]))));
 end;
 
 procedure TAtlasMemberBlocksTests.TypeTextSkipsCommentsAndStrings;

@@ -2,8 +2,8 @@
 
 // Übersicht „Atlas“ unter Tools › Optionen (#1903): oben der Stand der Packages (installiert, eingeschaltet),
 // darunter eine Suche über alle Einstellungen. Einen Hauptschalter für ganz Atlas gibt es nicht; die Code Insight
-// von Atlas schaltet Base › Allgemein, jedes Modul seinen Modulschalter. Ein Treffer nennt den Knoten, in dem die Einstellung
-// steht (Module › <Package> › <Bereich>). Die Einstellungen selbst stehen in den Knoten unter „Module“.
+// von Atlas schaltet Base › Allgemein, jedes Modul seinen Modulschalter. Ein Treffer nennt den Knoten, in dem die
+// Einstellung steht (Module › <Package> › <Bereich>). Die Einstellungen selbst stehen in den Knoten unter „Module“.
 // Reine VCL; den Namen eines Moduls zu seinem Schalter liefert die IDE-Schicht (OnModuleName).
 // Suche (#1884, settings.search): Rangfolge, Synonyme, Tippfehler und Zustand je Treffer aus
 // Atlas.Core.Settings.Search; nur installierte Packages (OnInstalled), Zustand nach OnSettings. Enter im Feld öffnet

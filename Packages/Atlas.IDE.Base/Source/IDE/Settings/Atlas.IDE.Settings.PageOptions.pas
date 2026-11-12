@@ -2,20 +2,27 @@
 
 // Haken der Optionsseite „Atlas“ zu anderen Teilen der IDE-Schicht: Version des Servers (#227), angeheftete Favoriten
 // (#458), Befehle für „Leiste anpassen …“ (#1101), Projektdatei .atlas (#486),
-// Export, Import und „Alles zurücksetzen“ (#723), F1 zur Einstellung unter dem Fokus (#1886). Ohne Zustand; die Seite
-// hält die Methodenreferenzen.
+// Export, Import und „Alles zurücksetzen“ (#723), F1 zur Einstellung unter dem Fokus (#1886), Symbolindex (#492). Ohne
+// Zustand; die Seite hält die Methodenreferenzen.
 
 interface
 
 uses
   System.SysUtils,
+  System.JSON,
   Vcl.Controls,
   Atlas.UI.EditorToolbar.Customize,
   Atlas.UI.Settings.Page;
 
 type
+  /// <summary>Befehl an den Server im Hintergrund; AText macht aus der Antwort (nil ohne Server) den Text für die
+  /// Seite.</summary>
+  TAtlasIndexRun = reference to procedure(const ACommand: string; const AText: TFunc<TJSONValue, string>);
+
   TAtlasPageOptions = class
   public
+    /// <summary>Symbolindex (#492): Kennzahlen, „Index neu aufbauen“ und „Index löschen“ über ARun.</summary>
+    class procedure ConnectIndex(APage: TAtlasSettingsPage; const ARun: TAtlasIndexRun); static;
     /// <summary>Version der gewählten AtlasServer.exe (#227). Wege zu den Regeln und Baseline liefert das Modul
     /// Prüfregeln als Abschnitt (#1755).</summary>
     class procedure ConnectServerVersion(APage: TAtlasSettingsPage); static;
@@ -36,6 +43,9 @@ implementation
 uses
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Lsp.Progress,
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Page.Index,
   Atlas.Core.Settings.Catalog,
   Atlas.IDE.Contracts.Help,
   Atlas.IDE.ElementHelp.Keys,
@@ -52,6 +62,63 @@ uses
   Atlas.UI.Settings.Page.TeamFile,
   Atlas.UI.Settings.Page.Transfer,
   Atlas.IDE.Foundation.Files;
+
+/// <summary>Text der Antwort auf „Index neu aufbauen“.</summary>
+function RebuildText(AAnswer: TJSONValue): string;
+begin
+  if AAnswer <> nil then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+  end;
+end;
+
+/// <summary>Text der Antwort auf „Index löschen“.</summary>
+function ClearText(AAnswer: TJSONValue): string;
+begin
+  if AAnswer <> nil then
+  begin
+    Result := TLspIndexStatus.ClearedText(AAnswer);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+  end;
+end;
+
+class procedure TAtlasPageOptions.ConnectIndex(APage: TAtlasSettingsPage; const ARun: TAtlasIndexRun);
+begin
+  APage.Part<TAtlasSettingsIndexPart>.OnIndexMetrics :=
+    procedure
+    begin
+      ARun('atlas.server.status',
+        function(AAnswer: TJSONValue): string
+        begin
+          Result := TLspIndexStatus.Metrics(AAnswer).Text;
+        end);
+    end;
+  APage.Part<TAtlasSettingsIndexPart>.OnIndexRebuild :=
+    procedure
+    begin
+      ARun('atlas.server.rebuildIndex',
+        function(AAnswer: TJSONValue): string
+        begin
+          Result := RebuildText(AAnswer);
+        end);
+    end;
+  APage.Part<TAtlasSettingsIndexPart>.OnIndexClear :=
+    procedure
+    begin
+      ARun('atlas.server.clearIndex',
+        function(AAnswer: TJSONValue): string
+        begin
+          Result := ClearText(AAnswer);
+        end);
+    end;
+end;
 
 class procedure TAtlasPageOptions.ConnectServerVersion(APage: TAtlasSettingsPage);
 begin

@@ -78,6 +78,7 @@ type
     FOpen: Boolean;
     function NextText(AIndex: Integer): string;
     function NextIsWord(AIndex: Integer): Boolean;
+    function EndsBlock(AIndex: Integer): Boolean;
     procedure Close(ALine, ACharacter: Integer);
     procedure Open(const AKeyword: string; const AToken: TAtlasTypeToken);
     procedure Visit(var AIndex: Integer);
@@ -104,6 +105,17 @@ end;
 function TBlockCollector.NextIsWord(AIndex: Integer): Boolean;
 begin
   Result := (AIndex >= High(FTokens)) or FTokens[AIndex + 1].Word;
+end;
+
+/// <summary>Feldteil, Methoden- und Eigenschaftsteil, nächster Abschnitt oder Ende des Typs an AIndex?</summary>
+function TBlockCollector.EndsBlock(AIndex: Integer): Boolean;
+var
+  mText: string;
+begin
+  mText := FTokens[AIndex].Text;
+  Result := TAtlasTypeText.IsOneOf(mText, ['var', 'end']) or TAtlasTypeText.IsOneOf(mText, cMemberWords) or
+    ((mText = 'class') and TAtlasTypeText.IsOneOf(NextText(AIndex), cMemberWords));
+  Result := Result or (TAtlasTypeText.IsOneOf(mText, cVisibilityWords) and NextIsWord(AIndex));
 end;
 
 procedure TBlockCollector.Close(ALine, ACharacter: Integer);
@@ -149,11 +161,8 @@ begin
     Open('class var', mToken);
     Inc(AIndex);
   end
-  else if TAtlasTypeText.IsOneOf(mToken.Text, ['var', 'end']) or TAtlasTypeText.IsOneOf(mToken.Text, cMemberWords) or
-    ((mToken.Text = 'class') and TAtlasTypeText.IsOneOf(NextText(AIndex), cMemberWords)) or
-    (TAtlasTypeText.IsOneOf(mToken.Text, cVisibilityWords) and NextIsWord(AIndex)) then
+  else if EndsBlock(AIndex) then
   begin
-    // Feldteil, Methoden- und Eigenschaftsteil, nächster Abschnitt oder Ende des Typs.
     Close(mToken.Line, mToken.Character);
   end;
 end;

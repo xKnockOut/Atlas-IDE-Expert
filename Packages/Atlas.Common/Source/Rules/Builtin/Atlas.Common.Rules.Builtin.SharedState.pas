@@ -747,7 +747,8 @@ var
     mPending, mRoutines: TStack<TSyntaxNode>;
     mInLoops: TStack<Boolean>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er in einer Schleife liegt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er
+    // in einer Schleife liegt.
     mPending := TStack<TSyntaxNode>.Create;
     mRoutines := TStack<TSyntaxNode>.Create;
     mInLoops := TStack<Boolean>.Create;
@@ -922,7 +923,8 @@ var
     mPending, mRoutines: TStack<TSyntaxNode>;
     mInLoops: TStack<Boolean>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er in einer Schleife liegt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er
+    // in einer Schleife liegt.
     mPending := TStack<TSyntaxNode>.Create;
     mRoutines := TStack<TSyntaxNode>.Create;
     mInLoops := TStack<Boolean>.Create;

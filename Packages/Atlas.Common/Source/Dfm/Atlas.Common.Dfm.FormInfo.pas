@@ -27,6 +27,9 @@ type
     class function ComponentMarkdown(AObject: TDfmObject; const AFormFile: string): string; static;
     /// <summary>Objekt AName in der Formulardatei, deren Formularklasse AFormClass ist; nil sonst.</summary>
     class function FindComponent(ADocument: TDfmDocument; const AFormClass, AName: string): TDfmObject; static;
+    /// <summary>ComponentMarkdown des Felds AFieldName im Formular AFormText mit der Formularklasse AFormClass
+    /// (#126); '' ohne Formulartext oder Komponente.</summary>
+    class function FieldMarkdown(const AFormText, AFormFile, AFormClass, AFieldName: string): string; static;
   end;
 
 implementation
@@ -253,6 +256,28 @@ begin
     Exit;
   end;
   Result := SearchByName(ADocument.Root, AName);
+end;
+
+class function TFormInfo.FieldMarkdown(const AFormText, AFormFile, AFormClass, AFieldName: string): string;
+var
+  mDocument: TDfmDocument;
+  mObject: TDfmObject;
+begin
+  Result := '';
+  if AFormText = '' then
+  begin
+    Exit;
+  end;
+  mDocument := TDfmParser.Parse(AFormText);
+  try
+    mObject := FindComponent(mDocument, AFormClass, AFieldName);
+    if mObject <> nil then
+    begin
+      Result := ComponentMarkdown(mObject, AFormFile);
+    end;
+  finally
+    mDocument.Free;
+  end;
 end;
 
 initialization

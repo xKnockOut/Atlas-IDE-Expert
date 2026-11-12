@@ -114,6 +114,8 @@ type
     // "unit|container" (klein) -> Ist der Container ein Helper?
     FHelpers: TDictionary<string, Boolean>;
     procedure AddEntries(const AInfo: TUsesUnitInfoFunc);
+    /// <summary>Trägt den Eintrag an APosition in FByUnit (auch mit den Namensräumen) und FByName ein.</summary>
+    procedure IndexEntry(const AEntry: TUsageEntry; APosition: Integer);
     function IsHelperMember(const AResolved: TResolvedSymbol): Boolean;
     function NeedsUnit(const AResolved: TResolvedSymbol): Boolean;
     function IsDone(const AEntry: TUsageEntry): Boolean;
@@ -176,14 +178,40 @@ begin
   inherited;
 end;
 
+procedure TUsageRun.IndexEntry(const AEntry: TUsageEntry; APosition: Integer);
+var
+  mName, mKey, mNamespace: string;
+  mList: TArray<Integer>;
+begin
+  FByUnit.AddOrSetValue(LowerCase(AEntry.Name), APosition);
+  for mNamespace in FSource.Namespaces do
+  begin
+    mKey := LowerCase(mNamespace + '.' + AEntry.Name);
+    if not FByUnit.ContainsKey(mKey) then
+    begin
+      FByUnit.Add(mKey, APosition);
+    end;
+  end;
+  for mName in AEntry.Names do
+  begin
+    mKey := LowerCase(mName);
+    if not FByName.TryGetValue(mKey, mList) then
+    begin
+      mList := nil;
+    end;
+    if (Length(mList) = 0) or (mList[High(mList)] <> APosition) then
+    begin
+      FByName.AddOrSetValue(mKey, mList + [APosition]);
+    end;
+  end;
+end;
+
 procedure TUsageRun.AddEntries(const AInfo: TUsesUnitInfoFunc);
 var
   mReference: TUsesReference;
   mEntry: TUsageEntry;
   mInfo: TUsesUnitInfo;
-  mName, mKey, mNamespace: string;
   mPosition: Integer;
-  mList: TArray<Integer>;
 begin
   for mReference in TUsesClauses.References(FTokens) do
   begin
@@ -203,27 +231,7 @@ begin
     mPosition := Length(FEntries);
     FEntries := FEntries + [mEntry];
     Inc(FOpen);
-    FByUnit.AddOrSetValue(LowerCase(mReference.Name), mPosition);
-    for mNamespace in FSource.Namespaces do
-    begin
-      mKey := LowerCase(mNamespace + '.' + mReference.Name);
-      if not FByUnit.ContainsKey(mKey) then
-      begin
-        FByUnit.Add(mKey, mPosition);
-      end;
-    end;
-    for mName in mEntry.Names do
-    begin
-      mKey := LowerCase(mName);
-      if not FByName.TryGetValue(mKey, mList) then
-      begin
-        mList := nil;
-      end;
-      if (Length(mList) = 0) or (mList[High(mList)] <> mPosition) then
-      begin
-        FByName.AddOrSetValue(mKey, mList + [mPosition]);
-      end;
-    end;
+    IndexEntry(mEntry, mPosition);
   end;
 end;
 
@@ -538,6 +546,62 @@ end;
 
 { TUsesUsage }
 
+/// <summary>Qualifizierte Namen der Helper-Typen im interface von AUnit.</summary>
+function InterfaceHelpers(const AUnit: TUnitIndex): TArray<string>;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := nil;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if mSymbol.InInterface and (mSymbol.Kind = TIndexSymbolKind.HelperType) then
+    begin
+      Result := Result + [mSymbol.QualifiedName];
+    end;
+  end;
+end;
+
+/// <summary>Name auf oberster Ebene; Attribute auch ohne Endung, denn [Test] meint TestAttribute.</summary>
+procedure AddTopName(var AInfo: TUsesUnitInfo; const ASymbol: TIndexSymbol);
+begin
+  AInfo.TopNames := AInfo.TopNames + [ASymbol.Name];
+  if (ASymbol.Kind = TIndexSymbolKind.ClassType) and EndsText(cAttributeSuffix, ASymbol.Name) and
+    (Length(ASymbol.Name) > Length(cAttributeSuffix)) then
+  begin
+    AInfo.TopNames := AInfo.TopNames + [Copy(ASymbol.Name, 1, Length(ASymbol.Name) - Length(cAttributeSuffix))];
+  end;
+end;
+
+/// <summary>Namen im interface von AUnit; UsedByForm, wenn eine Variable eines der Module AModules ist.</summary>
+function InfoOfUnit(const AUnit: TUnitIndex; const AModules: TArray<string>): TUsesUnitInfo;
+var
+  mSymbol: TIndexSymbol;
+  mHelpers: TArray<string>;
+begin
+  Result := Default(TUsesUnitInfo);
+  Result.Known := True;
+  Result.HasInitialization := AUnit.HasInitialization;
+  mHelpers := InterfaceHelpers(AUnit);
+  for mSymbol in AUnit.Symbols do
+  begin
+    if not mSymbol.InInterface then
+    begin
+      Continue;
+    end;
+    Result.Names := Result.Names + [mSymbol.Name];
+    if (mSymbol.Container = '') or (mSymbol.Kind = TIndexSymbolKind.EnumMember) then
+    begin
+      AddTopName(Result, mSymbol);
+    end
+    else if MatchText(mSymbol.Container, mHelpers) then
+    begin
+      Result.HelperNames := Result.HelperNames + [mSymbol.Name];
+    end;
+    Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, AModules) and
+      (mSymbol.Kind = TIndexSymbolKind.Variable));
+  end;
+end;
+
 class function TUsesUsage.UnitInfo(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
   const AModules: TArray<string>): TUsesUnitInfoFunc;
 begin
@@ -545,52 +609,15 @@ begin
     function(const AUnitName: string): TUsesUnitInfo
     var
       mUnit: TUnitIndex;
-      mSymbol: TIndexSymbol;
-      mHelpers: TArray<string>;
     begin
       Result := Default(TUsesUnitInfo);
       if Assigned(AEnsureUnit) then
       begin
         AEnsureUnit(AUnitName);
       end;
-      if not AIndex.FindUnit(AUnitName, mUnit) then
+      if AIndex.FindUnit(AUnitName, mUnit) then
       begin
-        Exit;
-      end;
-      Result.Known := True;
-      Result.HasInitialization := mUnit.HasInitialization;
-      mHelpers := nil;
-      for mSymbol in mUnit.Symbols do
-      begin
-        if mSymbol.InInterface and (mSymbol.Kind = TIndexSymbolKind.HelperType) then
-        begin
-          mHelpers := mHelpers + [mSymbol.QualifiedName];
-        end;
-      end;
-      for mSymbol in mUnit.Symbols do
-      begin
-        if not mSymbol.InInterface then
-        begin
-          Continue;
-        end;
-        Result.Names := Result.Names + [mSymbol.Name];
-        if (mSymbol.Container = '') or (mSymbol.Kind = TIndexSymbolKind.EnumMember) then
-        begin
-          Result.TopNames := Result.TopNames + [mSymbol.Name];
-          // Attribute stehen ohne Endung da: [Test] meint TestAttribute.
-          if (mSymbol.Kind = TIndexSymbolKind.ClassType) and EndsText(cAttributeSuffix, mSymbol.Name) and
-            (Length(mSymbol.Name) > Length(cAttributeSuffix)) then
-          begin
-            Result.TopNames := Result.TopNames + [Copy(mSymbol.Name, 1, Length(mSymbol.Name) -
-              Length(cAttributeSuffix))];
-          end;
-        end
-        else if MatchText(mSymbol.Container, mHelpers) then
-        begin
-          Result.HelperNames := Result.HelperNames + [mSymbol.Name];
-        end;
-        Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, AModules) and
-          (mSymbol.Kind = TIndexSymbolKind.Variable));
+        Result := InfoOfUnit(mUnit, AModules);
       end;
     end;
 end;

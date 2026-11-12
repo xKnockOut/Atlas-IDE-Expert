@@ -183,22 +183,22 @@ begin
   begin
     Exit(TMcpBuildTools.NoBuild(AContext.Root));
   end;
-  Result := TMcpBuildTools.Report(mBuild, AContext.Root, TMcpServer.OptionalString(AArguments, 'project'));
+  Result := TMcpBuildTools.Report(mBuild, AContext.Root, TMcpArgs.OptionalString(AArguments, 'project'));
 end;
 
 procedure AddGetLastBuild(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_last_build', cTexts[TMcpBuildTestText.GetLastBuildTool].Text,
-    TMcpServer.StringSchema(['project'],
+    TMcpArgs.StringSchema(['project'],
       [cTexts[TMcpBuildTestText.GetLastBuildProject].Text], 0),
     ContextTool(AContext, ToolGetLastBuild));
 end;
 
 function ToolBuildProject(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := TMcpBuildTools.Report(BuildInIde(AContext.Root, TMcpServer.OptionalString(AArguments, 'project'),
-    TMcpServer.OptionalString(AArguments, 'mode'), TMcpServer.OptionalString(AArguments, 'configuration'),
-    TMcpServer.OptionalString(AArguments, 'platform')), AContext.Root, '');
+  Result := TMcpBuildTools.Report(BuildInIde(AContext.Root, TMcpArgs.OptionalString(AArguments, 'project'),
+    TMcpArgs.OptionalString(AArguments, 'mode'), TMcpArgs.OptionalString(AArguments, 'configuration'),
+    TMcpArgs.OptionalString(AArguments, 'platform')), AContext.Root, '');
 end;
 
 procedure AddBuildProject(const AContext: TMcpToolContext);
@@ -222,7 +222,7 @@ function TestProjectOf(const ARoot: string; const AArguments: TJSONObject): stri
 var
   mWanted, mReason: string;
 begin
-  mWanted := TMcpServer.OptionalString(AArguments, 'project');
+  mWanted := TMcpArgs.OptionalString(AArguments, 'project');
   if (mWanted <> '') and ((Pos('\', mWanted) > 0) or (Pos('/', mWanted) > 0)) and not TPath.IsPathRooted(mWanted) then
   begin
     mWanted := TPath.GetFullPath(TPath.Combine(ARoot, mWanted));
@@ -259,10 +259,10 @@ var
 begin
   Result := Default(TMcpTestTarget);
   Result.Project := AProject;
-  mConfiguration := TMcpServer.OptionalString(AArguments, 'configuration');
+  mConfiguration := TMcpArgs.OptionalString(AArguments, 'configuration');
   // Erst die Vorgaben der Datei lesen, dann für die Wahl der Plattform auswerten.
   LoadTestProject(AProject, mConfiguration, '', AInfo);
-  if not TMcpTestTools.ChoosePlatform(TMcpServer.OptionalString(AArguments, 'platform'), AInfo.Platform,
+  if not TMcpTestTools.ChoosePlatform(TMcpArgs.OptionalString(AArguments, 'platform'), AInfo.Platform,
     AInfo.Platforms, Result.Platform, mReason) then
   begin
     raise EMcpToolError.Create(mReason);

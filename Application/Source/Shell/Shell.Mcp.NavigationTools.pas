@@ -94,40 +94,40 @@ const
 
 function ToolFindSymbol(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Tools.FindSymbol(TMcpServer.RequiredString(AArguments, 'name'));
+  Result := AContext.Tools.FindSymbol(TMcpArgs.RequiredString(AArguments, 'name'));
 end;
 
 procedure AddFindSymbol(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('find_symbol', cTexts[TMcpNavigationText.FindSymbolTool].Text,
-    TMcpServer.StringSchema(['name'],
+    TMcpArgs.StringSchema(['name'],
       [cTexts[TMcpNavigationText.FindSymbolName].Text]),
     ContextTool(AContext, ToolFindSymbol));
 end;
 
 function ToolGetDeclaration(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Tools.Declaration(TMcpServer.RequiredString(AArguments, 'name'));
+  Result := AContext.Tools.Declaration(TMcpArgs.RequiredString(AArguments, 'name'));
 end;
 
 procedure AddGetDeclaration(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_declaration', cTexts[TMcpNavigationText.GetDeclarationTool].Text,
-    TMcpServer.StringSchema(['name'],
+    TMcpArgs.StringSchema(['name'],
       [cTexts[TMcpNavigationText.GetDeclarationName].Text]),
     ContextTool(AContext, ToolGetDeclaration));
 end;
 
 function ToolGetRationale(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Tools.Rationale(TMcpServer.OptionalString(AArguments, 'unit'),
-    TMcpServer.OptionalString(AArguments, 'name'));
+  Result := AContext.Tools.Rationale(TMcpArgs.OptionalString(AArguments, 'unit'),
+    TMcpArgs.OptionalString(AArguments, 'name'));
 end;
 
 procedure AddGetRationale(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_rationale', cTexts[TMcpNavigationText.GetRationaleTool].Text,
-    TMcpServer.StringSchema(['unit', 'name'],
+    TMcpArgs.StringSchema(['unit', 'name'],
       [cTexts[TMcpNavigationText.GetRationaleUnit].Text,
       cTexts[TMcpNavigationText.GetRationaleName].Text], 0),
     ContextTool(AContext, ToolGetRationale));
@@ -135,39 +135,39 @@ end;
 
 function ToolGetTypeHierarchy(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Tools.TypeHierarchy(TMcpServer.RequiredString(AArguments, 'name'));
+  Result := AContext.Tools.TypeHierarchy(TMcpArgs.RequiredString(AArguments, 'name'));
 end;
 
 procedure AddGetTypeHierarchy(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_type_hierarchy', cTexts[TMcpNavigationText.GetTypeHierarchyTool].Text,
-    TMcpServer.StringSchema(['name'],
+    TMcpArgs.StringSchema(['name'],
       [cTexts[TMcpNavigationText.GetTypeHierarchyName].Text]),
     ContextTool(AContext, ToolGetTypeHierarchy));
 end;
 
 function ToolGetComponentInfo(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Tools.ComponentInfo(TMcpServer.RequiredString(AArguments, 'name'));
+  Result := AContext.Tools.ComponentInfo(TMcpArgs.RequiredString(AArguments, 'name'));
 end;
 
 procedure AddGetComponentInfo(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_component_info', cTexts[TMcpNavigationText.GetComponentInfoTool].Text,
-    TMcpServer.StringSchema(['name'],
+    TMcpArgs.StringSchema(['name'],
       [cTexts[TMcpNavigationText.GetComponentInfoName].Text]),
     ContextTool(AContext, ToolGetComponentInfo));
 end;
 
 function ToolGetUnitOutline(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AContext.Tools.UnitOutline(TMcpServer.RequiredString(AArguments, 'unit'));
+  Result := AContext.Tools.UnitOutline(TMcpArgs.RequiredString(AArguments, 'unit'));
 end;
 
 procedure AddGetUnitOutline(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_unit_outline', cTexts[TMcpNavigationText.GetUnitOutlineTool].Text,
-    TMcpServer.StringSchema(['unit'],
+    TMcpArgs.StringSchema(['unit'],
       [cTexts[TMcpNavigationText.GetUnitOutlineUnit].Text]),
     ContextTool(AContext, ToolGetUnitOutline));
 end;
@@ -175,13 +175,13 @@ end;
 function ToolFindReferences(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
   AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
-  Result := AContext.Code.References(TMcpServer.RequiredString(AArguments, 'name'));
+  Result := AContext.Code.References(TMcpArgs.RequiredString(AArguments, 'name'));
 end;
 
 procedure AddFindReferences(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('find_references', cTexts[TMcpNavigationText.FindReferencesTool].Text,
-    TMcpServer.StringSchema(['name'],
+    TMcpArgs.StringSchema(['name'],
       [cTexts[TMcpNavigationText.FindReferencesName].Text]),
     ContextTool(AContext, ToolFindReferences));
 end;
@@ -189,14 +189,14 @@ end;
 function ToolGetCallHierarchy(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
   AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
-  Result := AContext.Code.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
-    TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
+  Result := AContext.Code.CallHierarchy(TMcpArgs.RequiredString(AArguments, 'name'),
+    TMcpCodeTools.ParseDirection(TMcpArgs.OptionalString(AArguments, 'direction')));
 end;
 
 procedure AddGetCallHierarchy(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_call_hierarchy', cTexts[TMcpNavigationText.GetCallHierarchyTool].Text,
-    TMcpServer.StringSchema(['name', 'direction'],
+    TMcpArgs.StringSchema(['name', 'direction'],
       [cTexts[TMcpNavigationText.GetCallHierarchyName].Text,
       cTexts[TMcpNavigationText.GetCallHierarchyDirection].Text], 1),
     ContextTool(AContext, ToolGetCallHierarchy));
@@ -207,8 +207,8 @@ var
   mName, mFormat: string;
   mDepth: Integer;
 begin
-  mName := TMcpServer.RequiredString(AArguments, 'name');
-  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  mName := TMcpArgs.RequiredString(AArguments, 'name');
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json']));
@@ -244,7 +244,7 @@ var
   mLine, mColumn: Integer;
   mWithParameters: Boolean;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not (AArguments.TryGetValue<Integer>('line', mLine) and AArguments.TryGetValue<Integer>('column', mColumn)) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line', 'column']));

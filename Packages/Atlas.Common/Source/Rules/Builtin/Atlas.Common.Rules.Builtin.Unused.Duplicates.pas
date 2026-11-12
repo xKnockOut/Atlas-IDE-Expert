@@ -67,7 +67,8 @@ begin
     cTexts[TUnusedDuplicatesText.Title].Text);
 end;
 
-// Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von innen nach außen bauen.
+// Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von
+// innen nach außen bauen.
 class function TDuplicateAssignmentRule.TargetKey(ANode: TSyntaxNode): string;
 var
   mChain: TStack<TSyntaxNode>;
@@ -440,8 +441,8 @@ begin
   end;
 end;
 
-// Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel hält Elternknoten und Kindindex, damit jedes Kind wie bisher vor dem
-// Abstieg in seine Kinder geprüft wird.
+// Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel hält Elternknoten und Kindindex, damit jedes Kind wie
+// bisher vor dem Abstieg in seine Kinder geprüft wird.
 procedure TDuplicateAssignmentCheck.Visit(ARoot: TSyntaxNode);
 var
   mPendingParent: TStack<TSyntaxNode>;

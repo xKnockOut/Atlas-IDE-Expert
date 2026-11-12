@@ -257,7 +257,8 @@ procedure CollectInlineVars(ANode: TSyntaxNode; var AVars: TArray<TSyntaxNode>);
 var
   mVars: TArray<TSyntaxNode>;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); var-Parameter lassen sich nicht in der anonymen Methode
+  // verwenden.
   mVars := AVars;
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean

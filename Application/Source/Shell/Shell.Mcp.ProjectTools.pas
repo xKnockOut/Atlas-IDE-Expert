@@ -147,7 +147,7 @@ function ToolGetServerStatus(const AContext: TMcpToolContext; const AArguments: 
 var
   mFormat: string;
 begin
-  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
@@ -198,7 +198,7 @@ end;
 /// <summary>Format von query_code: markdown oder json ('' = markdown).</summary>
 function QueryFormatOf(const AArguments: TJSONObject): string;
 begin
-  Result := TMcpServer.OptionalString(AArguments, 'format');
+  Result := TMcpArgs.OptionalString(AArguments, 'format');
   if (Result <> '') and not SameText(Result, 'markdown') and not SameText(Result, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
@@ -233,7 +233,7 @@ begin
     raise EMcpToolError.Create(cTexts[TMcpProjectText.QueriesOff].Text);
   end;
   mFormat := QueryFormatOf(AArguments);
-  mText := Trim(TMcpServer.OptionalString(AArguments, 'query'));
+  mText := Trim(TMcpArgs.OptionalString(AArguments, 'query'));
   if mText = '' then
   begin
     Exit(TQueryCatalog.Help);
@@ -273,8 +273,8 @@ var
   mFileName, mFormat: string;
   mFiles: TArray<string>;
 begin
-  mFileName := TMcpServer.OptionalString(AArguments, 'file');
-  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  mFileName := TMcpArgs.OptionalString(AArguments, 'file');
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
@@ -313,12 +313,12 @@ var
   mDirection: TMcpUsesDirection;
   mTransitive: Boolean;
 begin
-  mUnitName := TMcpServer.RequiredString(AArguments, 'unit');
+  mUnitName := TMcpArgs.RequiredString(AArguments, 'unit');
   if (Pos('\', mUnitName) > 0) or (Pos('/', mUnitName) > 0) or SameText(ExtractFileExt(mUnitName), '.pas') then
   begin
     mUnitName := AContext.Guard.Resolve(mUnitName);
   end;
-  if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), mDirection) then
+  if not TMcpDeadCodeTools.ParseDirection(TMcpArgs.OptionalString(AArguments, 'direction'), mDirection) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('direction', ['uses', 'usedBy', 'both']));
   end;
@@ -326,7 +326,7 @@ begin
   begin
     mTransitive := False;
   end;
-  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));

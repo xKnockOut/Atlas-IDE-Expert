@@ -1113,7 +1113,8 @@ var
     mMembers: TArray<string>;
     mIndex: Integer;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): am Empfänger entlang nach innen, die Namen dann von innen nach außen.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): am Empfänger entlang nach innen, die Namen dann von innen nach
+    // außen.
     ANames := nil;
     mMembers := nil;
     mNode := ANode;

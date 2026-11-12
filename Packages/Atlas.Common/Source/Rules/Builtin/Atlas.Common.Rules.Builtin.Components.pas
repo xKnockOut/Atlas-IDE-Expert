@@ -289,7 +289,8 @@ var
   mFound: TSyntaxNode;
 begin
   mField := AField;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht); out-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); out-Parameter lassen sich nicht in der anonymen Methode
+  // verwenden.
   mFound := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     var
@@ -918,6 +919,12 @@ begin
   Result := mNames;
 end;
 
+/// <summary>Zahl oder Bezeichner einer der Konstanten AConstants?</summary>
+function IsFixedValue(ANode: TSyntaxNode; const AConstants: TArray<string>): Boolean;
+begin
+  Result := IsPixelLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and IsIn(ANode.Name, AConstants));
+end;
+
 /// <summary>Feste Pixelwerte im Wert der Zuweisung AAssign: Zahlen und Konstanten aus AConstants, die weder
 /// skaliert noch ausgenommen sind, in Quelltextreihenfolge.</summary>
 procedure CollectBounds(AAssign: TSyntaxNode; const AConstants, AHelpers: TArray<string>;
@@ -935,8 +942,7 @@ begin
     function(AVisited: TSyntaxNode): Boolean
     begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
-      if Result and (IsPixelLiteral(AVisited) or ((AVisited.Kind = TSyntaxKind.Identifier) and
-        IsIn(AVisited.Name, mConstants))) and not Excluded(AVisited, mHelpers) and
+      if Result and IsFixedValue(AVisited, mConstants) and not Excluded(AVisited, mHelpers) and
         IsBoundsValue(AVisited, mAssign) then
       begin
         mList.Add(AVisited);

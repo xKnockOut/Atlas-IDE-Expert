@@ -30,7 +30,6 @@ type
   TAtlasButtonBar = class
   public const
     /// <summary>ModalResult-Werte der VCL.</summary>
-    cMrNone = 0;
     cMrOk = 1;
     cMrCancel = 2;
     cMrYes = 6;

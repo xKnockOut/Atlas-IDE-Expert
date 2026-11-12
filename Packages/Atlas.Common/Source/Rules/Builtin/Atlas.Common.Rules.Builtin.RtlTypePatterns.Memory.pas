@@ -698,8 +698,8 @@ var
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   end;
 
-  // Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (tiefe Bäume sprengen den Stapel nicht): die Verkettung ist eine
-  // Oder-Verknüpfung, die Reihenfolge bleibt links vor rechts.
+  // Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (tiefe Bäume sprengen den Stapel nicht): die
+  // Verkettung ist eine Oder-Verknüpfung, die Reihenfolge bleibt links vor rechts.
   function IsStringValue(ANode: TSyntaxNode): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
@@ -720,8 +720,8 @@ var
     end;
   end;
 
-  // Nur Literale: der Compiler legt den String als Konstante ab. Iterativ (tiefe Bäume sprengen den Stapel nicht): Und-Verknüpfung über
-  // Klammern und zweistellige Ausdrücke.
+  // Nur Literale: der Compiler legt den String als Konstante ab. Iterativ (tiefe Bäume sprengen den Stapel nicht):
+  // Und-Verknüpfung über Klammern und zweistellige Ausdrücke.
   function IsConstant(ANode: TSyntaxNode): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
@@ -1138,7 +1138,8 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung zählt).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung
+    // zählt).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ANode);

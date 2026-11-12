@@ -579,8 +579,8 @@ var
   mValues: TStack<Integer>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; lange and/or-Ketten sind tiefe Bäume. Die Auswertung
-  // hat keine Nebenwirkungen, daher darf sie ohne Kurzschluss beide Operanden berechnen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; lange and/or-Ketten sind tiefe
+  // Bäume. Die Auswertung hat keine Nebenwirkungen, daher darf sie ohne Kurzschluss beide Operanden berechnen.
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   mValues := TStack<Integer>.Create;
   try

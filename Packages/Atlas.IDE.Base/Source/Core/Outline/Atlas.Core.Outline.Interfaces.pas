@@ -97,12 +97,38 @@ begin
   Result := (ATarget.Name <> '') and (ATarget.Line >= 0);
 end;
 
+/// <summary>Methode mit Zeile und erfüllten Interfaces; False ohne Zeile oder Interface.</summary>
+function ReadMethod(AItem: TJSONValue; out AMethod: TAtlasInterfaceMethod): Boolean;
+var
+  mTargets, mTargetItem: TJSONValue;
+  mTarget: TAtlasInterfaceTarget;
+begin
+  AMethod := Default(TAtlasInterfaceMethod);
+  if not (AItem is TJSONObject) then
+  begin
+    Exit(False);
+  end;
+  AMethod.Line := TJSONObject(AItem).GetValue<Integer>('line', -1);
+  AMethod.Name := TJSONObject(AItem).GetValue<string>('name', '');
+  mTargets := TJSONObject(AItem).GetValue('interfaces');
+  if mTargets is TJSONArray then
+  begin
+    for mTargetItem in TJSONArray(mTargets) do
+    begin
+      if ReadTarget(mTargetItem, mTarget) then
+      begin
+        AMethod.Targets := AMethod.Targets + [mTarget];
+      end;
+    end;
+  end;
+  Result := (AMethod.Line >= 0) and (Length(AMethod.Targets) > 0);
+end;
+
 class function TAtlasOutlineInterfaces.FromJson(AValue: TJSONValue): TAtlasInterfaceMethods;
 var
-  mMethods, mTargets: TJSONValue;
-  mItem, mTargetItem: TJSONValue;
+  mMethods: TJSONValue;
+  mItem: TJSONValue;
   mMethod: TAtlasInterfaceMethod;
-  mTarget: TAtlasInterfaceTarget;
 begin
   Result := nil;
   if not (AValue is TJSONObject) then
@@ -116,25 +142,7 @@ begin
   end;
   for mItem in TJSONArray(mMethods) do
   begin
-    if not (mItem is TJSONObject) then
-    begin
-      Continue;
-    end;
-    mMethod := Default(TAtlasInterfaceMethod);
-    mMethod.Line := TJSONObject(mItem).GetValue<Integer>('line', -1);
-    mMethod.Name := TJSONObject(mItem).GetValue<string>('name', '');
-    mTargets := TJSONObject(mItem).GetValue('interfaces');
-    if mTargets is TJSONArray then
-    begin
-      for mTargetItem in TJSONArray(mTargets) do
-      begin
-        if ReadTarget(mTargetItem, mTarget) then
-        begin
-          mMethod.Targets := mMethod.Targets + [mTarget];
-        end;
-      end;
-    end;
-    if (mMethod.Line >= 0) and (Length(mMethod.Targets) > 0) then
+    if ReadMethod(mItem, mMethod) then
     begin
       Result := Result + [mMethod];
     end;

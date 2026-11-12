@@ -101,8 +101,8 @@ begin
   end;
 end;
 
-/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken. Iterativ (tiefe Bäume sprengen den Stapel nicht):
-/// erst die Kette hinab, dann die Namen von innen nach außen anhängen.</summary>
+/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken. Iterativ (tiefe Bäume sprengen
+/// den Stapel nicht): erst die Kette hinab, dann die Namen von innen nach außen anhängen.</summary>
 function DottedNameOf(ANode: TSyntaxNode): string;
 var
   mChain: TStack<TSyntaxNode>;

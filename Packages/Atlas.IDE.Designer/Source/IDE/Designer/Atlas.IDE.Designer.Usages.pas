@@ -93,12 +93,12 @@ uses
 
 const
   cKeyPriority = 44;
+  /// <summary>Trenner zwischen Ereignis und Methode in TAtlasDesignerSearchItems.Events („OnClick = Klick“).</summary>
+  cEventAssign = ' = ';
   /// <summary>So lange muss die Auswahl stehen, bevor der Zähler fragt.</summary>
   cDebounceMs = 400;
   cCountTimeoutMs = 10000;
   cStatusField = 'designer.usages';
-  // Trenner in „OnClick = btnOkClick“ (Ereignisliste des Designers).
-  cEventAssign = ' = ';
 
 type
   TUsagesKeys = class(TAtlasKeyClient)
