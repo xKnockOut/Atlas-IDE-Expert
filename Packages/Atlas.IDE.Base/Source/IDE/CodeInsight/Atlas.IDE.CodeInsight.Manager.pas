@@ -29,6 +29,9 @@ type
     function EditorHooks: TAtlasCodeInsightEditorHooks;
     /// <summary>Zeigt Atlas den Tooltip selbst (Hauptschalter und Tooltip an)?</summary>
     class function OwnTooltip: Boolean; static;
+    /// <summary>Strg+Klick auf den mitlaufenden Kopf: zur Definition des Bezeichners an ALine, ACharacter
+    /// (0-basiert) in AFileName springen.</summary>
+    procedure JumpToDefinition(const AFileName: string; ALine, ACharacter: Integer);
   public
     constructor Create(const AAdapters: TAtlasCodeInsightAdapters);
     destructor Destroy; override;
@@ -95,6 +98,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.LineTracker,
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.CodeInsight.Manager.Queries,
   Atlas.Core.Localization.Language;
 
@@ -139,6 +144,11 @@ begin
   // Gemeinsamer Pufferstand für Probleme und Inlay-Hints.
   TAtlasEditorSnapshots.Install;
   FEditors := TAtlasCodeInsightEditors.Create(EditorHooks);
+  TAtlasIdeStickyScroll.SetDefinitionJump(
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      JumpToDefinition(AFileName, ALine, ACharacter);
+    end);
 end;
 
 destructor TAtlasCodeInsightManager.Destroy;
@@ -199,6 +209,7 @@ begin
   end;
   FShutDown := True;
   FEnabled := False;
+  TAtlasIdeStickyScroll.SetDefinitionJump(nil);
   RetireManager(Self);
   // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
   FFolderWatcher := nil;
@@ -246,6 +257,7 @@ function TAtlasCodeInsightManager.GetHintText(HintLine, HintCol: Integer): strin
 var
   mView: IOTAEditView;
   mActivity: IInterface;
+  mLine, mIndex: Integer;
 begin
   mActivity := TAtlasActivity.Scope('Symbolhinweis');
   Result := '';
@@ -262,6 +274,14 @@ begin
   end;
   try
     mView := TAtlasCodeInsightQueries.CurrentEditView;
+    // Mitlaufender Kopf unter der Maus: Der Hinweis gilt dem Bezeichner im Kopf (gleiche Spalte), nie der verdeckten
+    // Zeile; wo der Kopf keinen Quelltext zeigt, gibt es keinen.
+    case TAtlasIdeStickyScroll.MouseSourceAt(mView, HintCol, mLine, mIndex) of
+      TAtlasStickyHit.Source:
+        HintLine := mLine;
+      TAtlasStickyHit.Covered:
+        Exit;
+    end;
     if (mView <> nil) and (mView.Buffer <> nil) and EnsureSession then
     begin
       Result := TAtlasCodeInsightQueries.HintAt(FSession, mView, HintLine, HintCol,
@@ -309,6 +329,12 @@ begin
     begin
       Diagnose('Gehe zu Definition: keine Editoransicht');
     end
+    else if TAtlasIdeStickyScroll.TakeCtrlClick(mView.Buffer.FileName) then
+    begin
+      // Strg+Klick auf den mitlaufenden Kopf: Der Cursor steht in der verdeckten Zeile, den Sprung macht der Kopf;
+      // AFileName = '' bricht still ab.
+      Exit;
+    end
     else if EnsureSession then
     begin
       TAtlasCodeInsightQueries.DefinitionAt(FSession, mView, Index,
@@ -324,6 +350,36 @@ begin
       ReportFailure(TAtlasFeature.GoToDefinition, E);
       AFileName := '';
       ALineNum := 0;
+    end;
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.JumpToDefinition(const AFileName: string; ALine, ACharacter: Integer);
+var
+  mView: IOTAEditView;
+  mLocation: TLspLocation;
+begin
+  if FShutDown or TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
+  begin
+    Exit;
+  end;
+  try
+    // Nur in der Ansicht, deren Kopf geklickt wurde, und nur, wo Atlas die Code Insight übernimmt.
+    mView := TAtlasCodeInsightQueries.CurrentEditView;
+    if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) or
+      not Handles(AFileName) or not EnsureSession then
+    begin
+      Exit;
+    end;
+    if TAtlasCodeInsightQueries.DefinitionOf(FSession, mView, ALine, ACharacter, mLocation) then
+    begin
+      TAtlasIdeNavigation.GoToLocation(mLocation.FileName, mLocation.Line, mLocation.Character);
+    end;
+  except
+    on E: Exception do
+    begin
+      ReportError(E.Message);
+      ReportFailure(TAtlasFeature.GoToDefinition, E);
     end;
   end;
 end;

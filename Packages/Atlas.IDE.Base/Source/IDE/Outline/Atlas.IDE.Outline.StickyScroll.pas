@@ -34,9 +34,14 @@
 //   Zeitgeber und PaintLine fangen Bildläufe ohne Ereignis weiter ab.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
 //   Mausereignis zum Namen im Kopf.
-// - Hover: HeaderAt nennt dem Tooltip die Kopfzeile unter der Maus. Er zeigt
-//   dann den Bezeichner im Kopf (TAtlasStickyScroll.SourceIndex) und nie den
-//   der verdeckten Zeile darunter.
+// - Strg+Klick auf einen Bezeichner im Kopf springt über SetDefinitionJump zu
+//   dessen Definition; wo der Kopf keinen Quelltext zeigt, wie ein Klick zum
+//   Namen im Kopf. Gehe zu Definition der IDE, die der Klick ebenfalls
+//   auslöst, bricht danach ab (TakeCtrlClick), sonst spränge sie zum
+//   verdeckten Bezeichner.
+// - Hover und Tooltip der IDE: SourceAt bzw. MouseSourceAt nennen den
+//   Quelltext im Kopf unter der Maus (TAtlasStickyScroll.SourceIndex); der
+//   Tooltip gilt ihm und nie der verdeckten Zeile darunter.
 // - Die oberste Zeile ist View.TopRow; zugeklappte Bereiche darunter zählt
 //   der Kopf wie offene.
 // - Thema (Hell/Dunkel): Die IDE schreibt beim Wechsel das Farbschema des
@@ -49,12 +54,22 @@
 interface
 
 uses
-  Atlas.Core.Outline.StickyScroll;
+  ToolsAPI;
 
 type
+  {$SCOPEDENUMS ON}
+  /// <summary>Was am Mauspunkt im Editor liegt: kein Kopf; Kopf mit Quelltext an dieser Stelle; Kopf ohne
+  /// Quelltext (Zusammenfassung, Einrückung, gekürzte Parameterliste „(…)“).</summary>
+  TAtlasStickyHit = (None, Source, Covered);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Sprung zur Definition des Bezeichners in AFileName an ALine, ACharacter (0-basiert).</summary>
+  TAtlasStickyJump = reference to procedure(const AFileName: string; ALine, ACharacter: Integer);
+
   TAtlasIdeStickyScroll = class
   private class var
     FState: TObject;
+    FDefinitionJump: TAtlasStickyJump;
   public
     /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren).</summary>
     class procedure Install; static;
@@ -70,10 +85,19 @@ type
     /// <summary>True, wenn die Blocklinie in Spalte AColumn in der ersten Zeile unter dem Kopf spitz beginnen soll:
     /// Ihr Element ist hinter dem Kopf verschwunden, und ihre Spitze läge im Text der letzten Kopfzeile.</summary>
     class function TaperBelow(const AFileName: string; AColumn: Integer): Boolean; static;
-    /// <summary>True, wenn am Mauspunkt AX, AY (Editorkoordinaten) der Kopf steht, wie er zu AFileName mit oberster
-    /// Zeile ATopRow (1-basiert, IOTAEditView.TopRow) gezeichnet ist; ARow ist dann die Kopfzeile dort.</summary>
-    class function HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer; out ARow: TAtlasStickyRow): Boolean;
-      static;
+    /// <summary>Was der Kopf von AView am Mauspunkt AX, AY (Editorkoordinaten) in Spalte AColumn (1-basiert) zeigt;
+    /// bei Source die Stelle im Quelltext: Zeile ALine (1-basiert), Zeichen AIndex (0-basiert).</summary>
+    class function SourceAt(const AView: IOTAEditView; AX, AY, AColumn: Integer; out ALine,
+      AIndex: Integer): TAtlasStickyHit; static;
+    /// <summary>Wie SourceAt am letzten Mauspunkt im Editor; für den Tooltip der IDE, der nur Zeile und Spalte nennt.
+    /// </summary>
+    class function MouseSourceAt(const AView: IOTAEditView; AColumn: Integer; out ALine,
+      AIndex: Integer): TAtlasStickyHit; static;
+    /// <summary>Sprung für Strg+Klick auf einen Bezeichner im Kopf; nil meldet ab.</summary>
+    class procedure SetDefinitionJump(const AJump: TAtlasStickyJump); static;
+    /// <summary>True, wenn eben ein Strg+Klick auf den Kopf von AFileName lag: Den Sprung übernimmt der Kopf, Gehe zu
+    /// Definition der IDE bricht ab. Gilt einmal je Klick.</summary>
+    class function TakeCtrlClick(const AFileName: string): Boolean; static;
   end;
 
 implementation
@@ -88,7 +112,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
@@ -97,6 +120,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Model,
+  Atlas.Core.Outline.StickyScroll,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.RoutineNesting,
@@ -111,6 +135,8 @@ uses
 
 const
   cTickMs = 100;
+  /// <summary>So lange nach einem Strg+Klick auf den Kopf gilt Gehe zu Definition der IDE als dessen Folge.</summary>
+  cCtrlClickMs = 2000;
 
 var
   /// <summary>Neuzeichnen eingereiht; außerhalb des Zustands, weil der Eintrag ihn nicht kennen soll.</summary>
@@ -238,9 +264,19 @@ type
       const AColors: TAtlasColors; ATextColor: TColor);
   end;
 
+  /// <summary>Maus über dem Editor: letzter Mauspunkt und zuletzt Strg+Klick auf den Kopf (Datei, Zeitpunkt).</summary>
+  TStickyPointer = record
+    X: Integer;
+    Y: Integer;
+    Known: Boolean;
+    CtrlFile: string;
+    CtrlTick: UInt64;
+  end;
+
   TStickyState = class(TStickyPainter)
   private
     FTimer: TTimer;
+    FPointer: TStickyPointer;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
@@ -252,6 +288,10 @@ type
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
+    /// <summary>Kopfzeile ARow am Mauspunkt AX, AY, wie sie zu AFileName mit oberster Zeile ATopRow (1-basiert)
+    /// gezeichnet steht.</summary>
+    function HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer; out ARow: TAtlasStickyRow): Boolean;
     procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
   public
     constructor Create;
@@ -311,6 +351,7 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
+  FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorScrolled := EditorScrolled;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
@@ -337,6 +378,7 @@ begin
   end;
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
+  FEvents.OnEditorMouseMove := nil;
   FEvents.OnEditorScrolled := nil;
   FEventsRef := nil;
   StickyShown := False;
@@ -1281,16 +1323,70 @@ begin
   end;
 end;
 
+/// <summary>Spalte (1-basiert) am Mauspunkt AX, AY in AEditor; 0, wenn der Editor sie nicht nennt.</summary>
+function ColumnAt(const AEditor: TWinControl; AX, AY: Integer): Integer;
+var
+  mServices: INTACodeEditorServices;
+  mState: INTACodeEditorState;
+  mVisibleLine: Integer;
+begin
+  Result := 0;
+  if not Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    Exit;
+  end;
+  mState := mServices.EditorState[AEditor];
+  if (mState = nil) or not mState.PointToCharacterPos(Point(AX, AY), Result, mVisibleLine) then
+  begin
+    Result := 0;
+  end;
+end;
+
+/// <summary>Nach dem Mausereignis zu AFileName, ALine, ACharacter (0-basiert) springen: der Editor setzt sonst den
+/// Cursor auf die angeklickte Stelle.</summary>
+procedure QueueJump(const AFileName: string; ALine, ACharacter: Integer);
+begin
+  TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.StickyScroll,
+        procedure
+        begin
+          TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+        end);
+    end);
+end;
+
+/// <summary>Nach dem Mausereignis zur Definition des Bezeichners an ALine, ACharacter (0-basiert) springen.</summary>
+procedure QueueDefinition(const AFileName: string; ALine, ACharacter: Integer);
+begin
+  TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.StickyScroll,
+        procedure
+        var
+          mJump: TAtlasStickyJump;
+        begin
+          mJump := TAtlasIdeStickyScroll.FDefinitionJump;
+          if Assigned(mJump) then
+          begin
+            mJump(AFileName, ALine, ACharacter);
+          end;
+        end);
+    end);
+end;
+
 procedure TStickyState.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
   mView: IOTAEditView;
-  mRow: Integer;
-  mTarget: TAtlasStickyRow;
-  mFileName: string;
+  mRow, mLine, mIndex: Integer;
+  mKeys: TShiftState;
 begin
   try
-    if not FOn or (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not RowAt(X, Y, mRow) then
+    mKeys := Shift * [ssShift, ssCtrl, ssAlt];
+    if not FOn or (Button <> mbLeft) or ((mKeys <> []) and (mKeys <> [ssCtrl])) or not RowAt(X, Y, mRow) then
     begin
       Exit;
     end;
@@ -1301,21 +1397,42 @@ begin
     begin
       Exit;
     end;
-    mTarget := FRows[mRow];
-    mFileName := FFileName;
-    // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor auf die angeklickte Stelle.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
-      procedure
+    if mKeys = [ssCtrl] then
+    begin
+      // Gehe zu Definition der IDE meint die verdeckte Zeile: Sie bricht ab, den Sprung macht der Kopf.
+      FPointer.CtrlFile := FFileName;
+      FPointer.CtrlTick := GetTickCount64;
+      if TAtlasIdeStickyScroll.SourceAt(mView, X, Y, ColumnAt(Editor, X, Y), mLine, mIndex) =
+        TAtlasStickyHit.Source then
       begin
-        TAtlasGuard.Run(TAtlasFeature.StickyScroll,
-          procedure
-          begin
-            TAtlasIdeNavigation.GoToLocation(mFileName, mTarget.Line, mTarget.Character);
-          end);
-      end);
+        QueueDefinition(FFileName, mLine - 1, mIndex);
+        Exit;
+      end;
+    end;
+    QueueJump(FFileName, FRows[mRow].Line, FRows[mRow].Character);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
+  end;
+end;
+
+procedure TStickyState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
+begin
+  FPointer.X := X;
+  FPointer.Y := Y;
+  FPointer.Known := True;
+end;
+
+function TStickyState.HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer; out ARow: TAtlasStickyRow): Boolean;
+var
+  mRow: Integer;
+begin
+  ARow := Default(TAtlasStickyRow);
+  // Nur der Kopf, der so gezeichnet steht: gleiche Datei, nicht gescrollt (wie beim Klick).
+  Result := FOn and SameText(FFileName, AFileName) and (ATopRow - 1 = FPaintedTop) and RowAt(AX, AY, mRow);
+  if Result then
+  begin
+    ARow := FRows[mRow];
   end;
 end;
 
@@ -1380,26 +1497,67 @@ begin
     HasColumn(mState.FTaperColumns, AColumn);
 end;
 
-class function TAtlasIdeStickyScroll.HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer;
-  out ARow: TAtlasStickyRow): Boolean;
+class function TAtlasIdeStickyScroll.SourceAt(const AView: IOTAEditView; AX, AY, AColumn: Integer; out ALine,
+  AIndex: Integer): TAtlasStickyHit;
+var
+  mHeader: TAtlasStickyRow;
+begin
+  ALine := 0;
+  AIndex := -1;
+  Result := TAtlasStickyHit.None;
+  if (FState = nil) or (AView = nil) or (AView.Buffer = nil) or
+    not TStickyState(FState).HeaderAt(AView.Buffer.FileName, AView.TopRow, AX, AY, mHeader) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasStickyHit.Covered;
+  // Der Kopf zeigt die Zeile ab ihrer Einrückung in Spalte Indent + 1, Zeichen für Zeichen wie im Editor; verglichen
+  // wird mit dem Puffer, nicht mit dem Stand der Gliederung.
+  if (mHeader.Line >= 0) and TAtlasStickyScroll.SourceIndex(mHeader, TAtlasEditorBuffer.LineText(AView,
+    mHeader.Line + 1), AColumn - mHeader.Indent - 1, AIndex) then
+  begin
+    ALine := mHeader.Line + 1;
+    Result := TAtlasStickyHit.Source;
+  end;
+end;
+
+class function TAtlasIdeStickyScroll.MouseSourceAt(const AView: IOTAEditView; AColumn: Integer; out ALine,
+  AIndex: Integer): TAtlasStickyHit;
+var
+  mPointer: TStickyPointer;
+begin
+  ALine := 0;
+  AIndex := -1;
+  Result := TAtlasStickyHit.None;
+  if FState = nil then
+  begin
+    Exit;
+  end;
+  mPointer := TStickyState(FState).FPointer;
+  if mPointer.Known then
+  begin
+    Result := SourceAt(AView, mPointer.X, mPointer.Y, AColumn, ALine, AIndex);
+  end;
+end;
+
+class procedure TAtlasIdeStickyScroll.SetDefinitionJump(const AJump: TAtlasStickyJump);
+begin
+  FDefinitionJump := AJump;
+end;
+
+class function TAtlasIdeStickyScroll.TakeCtrlClick(const AFileName: string): Boolean;
 var
   mState: TStickyState;
-  mRow: Integer;
 begin
-  ARow := Default(TAtlasStickyRow);
   Result := False;
   if FState = nil then
   begin
     Exit;
   end;
   mState := TStickyState(FState);
-  // Nur der Kopf, der so gezeichnet steht: gleiche Datei, nicht gescrollt (wie beim Klick).
-  Result := mState.FOn and SameText(mState.FFileName, AFileName) and (ATopRow - 1 = mState.FPaintedTop) and
-    mState.RowAt(AX, AY, mRow);
-  if Result then
-  begin
-    ARow := mState.FRows[mRow];
-  end;
+  Result := (mState.FPointer.CtrlFile <> '') and SameText(mState.FPointer.CtrlFile, AFileName) and
+    (GetTickCount64 - mState.FPointer.CtrlTick < cCtrlClickMs);
+  mState.FPointer.CtrlFile := '';
 end;
 
 class function TAtlasIdeStickyScroll.Enabled: Boolean;
