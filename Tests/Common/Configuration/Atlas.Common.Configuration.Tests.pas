@@ -753,6 +753,12 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // pureFunctions von ignored-result (#624).
+  Parse('{"rules": {"ignored-result": {"pureFunctions": ["Bereinigt", "TText.Clean"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"ignored-result": {"pureFunctions": "Bereinigt"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"pureFunctions"');
   // formatMethods von format-args (#56).
   Parse('{"rules": {"format-args": {"formatMethods": ["TLogger.LogFmt", "Protokoll"]}}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));

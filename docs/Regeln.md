@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 75 |
+| [Fehler finden](#gruppe-find-bugs) | 76 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -103,6 +103,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
+| [`ignored-result`](#ignored-result) | Ergebnis einer Funktion ohne Seiteneffekte verworfen | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -7734,6 +7735,31 @@ Richtig:
 var Average: Double;
 …
 Average := Sum / Count;
+```
+
+<a id="ignored-result"></a>
+### ignored-result
+
+**Ergebnis einer Funktion ohne Seiteneffekte verworfen** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Funktion ohne Seiteneffekte steht als eigene Anweisung, ihr Ergebnis geht verloren: Trim(S); ändert S nicht, S.Replace('a', 'b'); auch nicht. Gemeldet werden die unten genannten Standardroutinen (auch mit Unit davor, SysUtils.Trim), Methoden von TStringHelper ohne Seiteneffekte, wenn der Empfänger sicher vom Typ string ist, und die Funktionen aus der Option pureFunctions. Findet die Namensauflösung den Namen in einer Unit außerhalb der RTL oder deklariert die Datei selbst eine Routine dieses Namens (eigenes Trim mit var-Parameter), bleibt die Regel still, ebenso in with-Blöcken. Routinen mit var- oder out-Parametern und Routinen, die bei falscher Eingabe absichtlich eine Exception werfen (StrToInt oder S.ToInteger als Prüfung), stehen nicht in der Liste. Konfidenz hoch. Schnellkorrektur „Ergebnis zuweisen“: Liefert die Funktion den Typ ihres ersten Arguments bzw. des Helfer-Empfängers (Trim, StringReplace, Copy, S.Replace …) und ist dieser zuweisbar, wird daraus S := Trim(S); sonst eine neue Inline-Variable var Ergebnis := … (nur direkt in einem Block begin … end und ab Delphi 10.3). Standardroutinen je Unit: System: Abs, Assigned, Chr, Concat, Copy, Frac, High, Int, Length, Low, Odd, Ord, Pos, Pred, Round, SizeOf, Sqr, Sqrt, StringOfChar, Succ, Trunc, UpCase; System.SysUtils: IntToStr, IntToHex, FloatToStr, CurrToStr, BoolToStr, Format, FormatFloat, QuotedStr, AnsiQuotedStr, Trim, TrimLeft, TrimRight, LowerCase, UpperCase, AnsiLowerCase, AnsiUpperCase, StringReplace, SameText, SameStr, CompareText, CompareStr, AnsiSameText, AnsiSameStr, AnsiCompareText, AnsiCompareStr, AnsiPos, StrToIntDef, StrToInt64Def, StrToFloatDef, StrToBoolDef, ExtractFileName, ExtractFileExt, ExtractFilePath, ExtractFileDir, ExtractFileDrive, ChangeFileExt, ChangeFilePath, IncludeTrailingPathDelimiter, ExcludeTrailingPathDelimiter, IncludeTrailingBackslash, ExcludeTrailingBackslash, AdjustLineBreaks, IsDelimiter, LastDelimiter, string.Join, string.Create, string.Format, string.IsNullOrEmpty, string.IsNullOrWhiteSpace, string.Compare, string.CompareOrdinal, string.CompareText, string.LowerCase, string.UpperCase, string.EndsText; System.StrUtils: PosEx, ContainsText, ContainsStr, StartsText, StartsStr, EndsText, EndsStr, MatchText, MatchStr, IndexText, IndexStr, LeftStr, RightStr, MidStr, ReplaceStr, ReplaceText, AnsiReplaceStr, AnsiReplaceText, AnsiContainsText, AnsiStartsText, AnsiEndsText, DupeString, ReverseString, SplitString, IfThen; System.Math: Max, Min, Ceil, Floor, Power, IntPower, Sign, EnsureRange, InRange, SameValue, IsZero, RoundTo, SimpleRoundTo, Log10, Log2; System.IOUtils: TPath.Combine, TPath.GetFileName, TPath.GetFileNameWithoutExtension, TPath.GetExtension, TPath.GetDirectoryName, TPath.ChangeExtension. TStringHelper: Trim, TrimLeft, TrimRight, TrimStart, TrimEnd, ToUpper, ToLower, ToUpperInvariant, ToLowerInvariant, Replace, Substring, PadLeft, PadRight, Insert, Remove, QuotedString, DeQuotedString, Contains, StartsWith, EndsWith, IndexOf, IndexOfAny, LastIndexOf, LastIndexOfAny, IsEmpty, Split, ToCharArray, Equals, CompareTo, CountChar, IsDelimiter, LastDelimiter, GetHashCode.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `pureFunctions` | string-list | `[]` | Weitere Funktionen ohne Seiteneffekte, die wie die Standardroutinen gemeldet werden, als Name, Klasse.Name oder Unit.Name. |
+
+Mit Treffer:
+
+```pascal
+Trim(Input);
+S.Replace('a', 'b');
+```
+
+Richtig:
+
+```pascal
+Input := Trim(Input);
+S := S.Replace('a', 'b');
 ```
 
 <a id="empty-finally"></a>

@@ -707,6 +707,7 @@ contains
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',
   Atlas.Common.Rules.Builtin.Testing.AreEqual in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas',
+  Atlas.Common.Rules.Builtin.IgnoredResult in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas',
   Atlas.Common.Rules.Builtin.Events in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas',
   Atlas.Common.Rules.Builtin.Ownership in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas',
   Atlas.Common.Rules.Builtin.Ownership.RawMemory in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.RawMemory.pas',

@@ -357,6 +357,15 @@
                 "description": "Nur file-header: erwarteter Dateikopf mit Platzhaltern (siehe Regeln.md).",
                 "x-description-en": "Only file-header: expected file header with placeholders (see Regeln.md)."
               },
+              "pureFunctions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur ignored-result: weitere Funktionen ohne Seiteneffekte, deren verworfenes Ergebnis gemeldet wird, als Name, Klasse.Name oder Unit.Name (#624).",
+                "x-description-en": "Only ignored-result: further functions without side effects whose discarded result is reported, as Name, Class.Name or Unit.Name (#624)."
+              },
               "allowCommented": {
                 "type": "boolean",
                 "default": true,
