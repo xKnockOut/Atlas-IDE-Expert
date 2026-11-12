@@ -39,7 +39,13 @@ type
     class function MessageCode(const AProblem: TAtlasProblem): string; static;
     /// <summary>Schlüssel für Find: Meldungsnummer, sonst die Regel-ID; '' ohne.</summary>
     class function Key(const AProblem: TAtlasProblem): string; static;
+    /// <summary>Zeilen eines Beispiels (Bad, Good) für die Anzeige (#145): ohne Leerzeilen am Ende, Tabulatoren als
+    /// zwei Leerzeichen; mehr als AMaxLines Zeilen gekürzt auf AMaxLines - 1 und „…“.</summary>
+    class function ExampleLines(const ACode: string; AMaxLines: Integer): TArray<string>; static;
   end;
+
+  /// <summary>Katalogtext einer Regel, im Hauptthread; Id = '' ohne Eintrag oder ohne Server (#145).</summary>
+  TAtlasRuleExplanationEvent = reference to procedure(const AExplanation: TAtlasRuleExplanation);
 
 implementation
 
@@ -166,6 +172,33 @@ begin
   if (Result = '') and not AProblem.IsCompiler and not AProblem.IsIde then
   begin
     Result := AProblem.Code;
+  end;
+end;
+
+class function TAtlasRuleExplanation.ExampleLines(const ACode: string; AMaxLines: Integer): TArray<string>;
+var
+  mLines: TArray<string>;
+  mCount, mShown, mLine: Integer;
+begin
+  mLines := ACode.Replace(#13, '').Replace(#9, '  ').Split([#10]);
+  mCount := Length(mLines);
+  while (mCount > 0) and (Trim(mLines[mCount - 1]) = '') do
+  begin
+    Dec(mCount);
+  end;
+  mShown := mCount;
+  if (AMaxLines > 0) and (mCount > AMaxLines) then
+  begin
+    mShown := AMaxLines;
+  end;
+  SetLength(Result, mShown);
+  for mLine := 0 to mShown - 1 do
+  begin
+    Result[mLine] := mLines[mLine];
+  end;
+  if mShown < mCount then
+  begin
+    Result[mShown - 1] := '…';
   end;
 end;
 

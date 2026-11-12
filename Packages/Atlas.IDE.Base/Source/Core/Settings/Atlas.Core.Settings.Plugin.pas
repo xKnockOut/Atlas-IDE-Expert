@@ -321,6 +321,8 @@ type
       write FEditorInsight.HoverProblemActions;
     property HoverExplainMessages: Boolean read FEditorInsight.HoverExplainMessages
       write FEditorInsight.HoverExplainMessages;
+    property HoverRuleExamples: Boolean read FEditorInsight.HoverRuleExamples
+      write FEditorInsight.HoverRuleExamples;
     property HoverMembersMaxLines: Integer read FEditorInsight.HoverMembersMaxLines
       write FEditorInsight.HoverMembersMaxLines;
     property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams
