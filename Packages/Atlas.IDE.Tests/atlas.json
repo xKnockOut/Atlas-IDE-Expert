@@ -127,6 +127,13 @@
         {
           "name": "System.Classes.TThread.GetTickCount",
           "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden"
+        },
+        {
+          "name": "Winapi.Windows.CreateProcess",
+          "message": "Kindprozesse über TAtlasProcessLauncher.Launch starten: vererbt nur die Standard-Handles (Handle-Liste)",
+          "units": [
+            "!Atlas.WinBase.Process"
+          ]
         }
       ]
     }
