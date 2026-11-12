@@ -2215,6 +2215,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Magnifier.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.StructureFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.StructureFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.EventFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.EventFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Search.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>

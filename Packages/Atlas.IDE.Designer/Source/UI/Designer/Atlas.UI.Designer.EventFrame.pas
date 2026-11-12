@@ -86,6 +86,8 @@ uses
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings;
 
+{$R *.dfm}
+
 /// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
 function TextWidthIn(AFont: TFont; const AText: string): Integer;
 var
@@ -119,6 +121,8 @@ var
   mColumn: TListColumn;
 begin
   inherited Create(AOwner);
+  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
+  Name := '';
   FErrorColor := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   FLastJump := -1;
   FTop := TPanel.Create(Self);
