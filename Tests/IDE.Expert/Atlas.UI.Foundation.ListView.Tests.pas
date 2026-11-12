@@ -62,8 +62,8 @@ end;
 procedure TAtlasListViewTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);
-  FForm.Width := 600;
-  FForm.Height := 300;
+  FForm.Width := FForm.ScaleValue(600);
+  FForm.Height := FForm.ScaleValue(300);
   FList := TAtlasListView.Create(FForm);
   FList.Parent := FForm;
   FList.Align := alClient;
@@ -125,15 +125,15 @@ begin
   FList.FillColumn(2, 80);
   Assert.AreEqual(FList.ClientWidth - mFixed, Integer(FList.Columns[2].Width), 'übrige Breite');
   // Breiter: die Spalte wächst mit.
-  FForm.Width := 900;
+  FForm.Width := FForm.ScaleValue(900);
   Assert.AreEqual(FList.ClientWidth - mFixed, Integer(FList.Columns[2].Width), 'wächst mit dem Fenster');
   // Zu schmal: Mindestbreite, die anderen Spalten bleiben.
-  FForm.Width := 200;
+  FForm.Width := FForm.ScaleValue(200);
   Assert.AreEqual(TAtlasScaling.ToDevice(80, FList.CurrentPPI), Integer(FList.Columns[2].Width), 'Mindestbreite');
   Assert.AreEqual(TAtlasScaling.ToDevice(100, FList.CurrentPPI), Integer(FList.Columns[0].Width));
   // Abgeschaltet: Breite bleibt beim Größenwechsel.
   FList.FillColumn(-1, 0);
-  FForm.Width := 700;
+  FForm.Width := FForm.ScaleValue(700);
   Assert.AreEqual(TAtlasScaling.ToDevice(80, FList.CurrentPPI), Integer(FList.Columns[2].Width), 'ohne Füllen fest');
 end;
 

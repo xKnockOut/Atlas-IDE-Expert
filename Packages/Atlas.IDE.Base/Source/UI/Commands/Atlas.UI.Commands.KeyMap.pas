@@ -142,6 +142,26 @@ uses
 const
   /// <summary>Breiten der Spalten Taste bis „Selten per Tastatur“, logische Pixel; „Hinweis“ füllt den Rest.</summary>
   cColumnWidths: array[0..4] of Integer = (140, 260, 90, 120, 140);
+  // Maße des Fensters in logischen Pixeln (96 dpi), skaliert mit ScaleValue.
+  /// <summary>Kleinste Innenbreite und -höhe.</summary>
+  cMinWidth = 640;
+  cMinHeight = 320;
+  /// <summary>Rand links und rechts, Abstand zwischen Elementen nebeneinander.</summary>
+  cEdge = 12;
+  cGap = 8;
+  /// <summary>Kopf: Höhe, Oberkante und Größe von Suchfeld und „Nur Konflikte“, Breite der Anzahl.</summary>
+  cTopHeight = 40;
+  cSearchTop = 9;
+  cSearchWidth = 360;
+  cSearchHeight = 23;
+  cConflictsLeft = cEdge + cSearchWidth + 2 * cGap;
+  cConflictsTop = 11;
+  cConflictsWidth = 180;
+  cConflictsHeight = 19;
+  cSummaryWidth = 300;
+  /// <summary>Fuß: Höhe und Abstand der Knöpfe oben und unten.</summary>
+  cBottomHeight = 44;
+  cButtonTop = 9;
 
 /// <summary>Text ohne „:“ und „…“ am Ende.</summary>
 function Plain(const AText: string): string;
@@ -247,8 +267,8 @@ begin
   BorderIcons := [biSystemMenu, biMaximize];
   KeyPreview := True;
   ClientHeight := ScaleValue(cHeight);
-  Constraints.MinWidth := ScaleValue(640);
-  Constraints.MinHeight := ScaleValue(320);
+  Constraints.MinWidth := ScaleValue(cMinWidth);
+  Constraints.MinHeight := ScaleValue(cMinHeight);
   OnClose := FormClose;
   CreateTop;
   CreateBottom;
@@ -259,18 +279,19 @@ end;
 procedure TAtlasKeyMapWindow.CreateTop;
 begin
   FTop := TPanel.Create(Self);
-  FTop.Height := ScaleValue(40);
+  FTop.Height := ScaleValue(cTopHeight);
   FTop.Align := alTop;
   FTop.Parent := Self;
   FTop.BevelOuter := bvNone;
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTop;
-  FSearch.SetBounds(ScaleValue(12), ScaleValue(9), ScaleValue(360), ScaleValue(23));
+  FSearch.SetBounds(ScaleValue(cEdge), ScaleValue(cSearchTop), ScaleValue(cSearchWidth), ScaleValue(cSearchHeight));
   FSearch.TextHint := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapSearchHint);
   FSearch.OnChange := SearchChange;
   FOnlyConflicts := TCheckBox.Create(Self);
   FOnlyConflicts.Parent := FTop;
-  FOnlyConflicts.SetBounds(ScaleValue(388), ScaleValue(11), ScaleValue(180), ScaleValue(19));
+  FOnlyConflicts.SetBounds(ScaleValue(cConflictsLeft), ScaleValue(cConflictsTop), ScaleValue(cConflictsWidth),
+    ScaleValue(cConflictsHeight));
   FOnlyConflicts.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOnlyConflicts);
   FOnlyConflicts.OnClick := OnlyConflictsClick;
   FSummary := TLabel.Create(Self);
@@ -279,8 +300,8 @@ begin
   FSummary.AutoSize := False;
   FSummary.Align := alRight;
   FSummary.AlignWithMargins := True;
-  FSummary.Margins.SetBounds(ScaleValue(8), 0, ScaleValue(12), 0);
-  FSummary.Width := ScaleValue(300);
+  FSummary.Margins.SetBounds(ScaleValue(cGap), 0, ScaleValue(cEdge), 0);
+  FSummary.Width := ScaleValue(cSummaryWidth);
   FSummary.Alignment := taRightJustify;
   FSummary.Layout := tlCenter;
 end;
@@ -288,7 +309,7 @@ end;
 procedure TAtlasKeyMapWindow.CreateBottom;
 begin
   FBottom := TPanel.Create(Self);
-  FBottom.Height := ScaleValue(44);
+  FBottom.Height := ScaleValue(cBottomHeight);
   FBottom.Align := alBottom;
   FBottom.Parent := Self;
   FBottom.BevelOuter := bvNone;
@@ -298,14 +319,14 @@ begin
   FCloseButton.OnClick := CloseClick;
   FCloseButton.Align := alRight;
   FCloseButton.AlignWithMargins := True;
-  FCloseButton.Margins.SetBounds(ScaleValue(8), ScaleValue(9), ScaleValue(12), ScaleValue(9));
+  FCloseButton.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cButtonTop), ScaleValue(cEdge), ScaleValue(cButtonTop));
   FCloseButton.Cancel := True;
   // Knöpfe links in der Knopfleiste der Atlas-Dialoge: Breite nach dem Text (auch englisch).
   FButtons := TAtlasButtonRow.Create(Self);
   FButtons.Parent := FBottom;
   FButtons.AutoSize := False;
   FButtons.Align := alClient;
-  FButtons.Margins.SetBounds(ScaleValue(12), ScaleValue(9), 0, 0);
+  FButtons.Margins.SetBounds(ScaleValue(cEdge), ScaleValue(cButtonTop), 0, 0);
   FCloseButton.Width := FButtons.ButtonWidth(FCloseButton.Caption);
   FExportButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapExport), ExportClick);
   FSettingsButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapConflictsButton), SettingsClick);
@@ -321,7 +342,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(ScaleValue(12), 0, ScaleValue(12), 0);
+  FList.Margins.SetBounds(ScaleValue(cEdge), 0, ScaleValue(cEdge), 0);
   FList.OwnerData := True;
   FList.ReadOnly := True;
   FList.RowSelect := True;

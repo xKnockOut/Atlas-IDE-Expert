@@ -287,7 +287,7 @@ begin
     end;
     Assert.AreEqual(Window.List.ClientWidth - Fixed, Integer(Window.List.Columns[5].Width),
       'Hinweis nimmt die übrige Breite');
-    Window.Width := Window.Width + 200;
+    Window.Width := Window.Width + Window.ScaleValue(200);
     Assert.AreEqual(Window.List.ClientWidth - Fixed, Integer(Window.List.Columns[5].Width), 'wächst mit');
   finally
     Window.Free;
