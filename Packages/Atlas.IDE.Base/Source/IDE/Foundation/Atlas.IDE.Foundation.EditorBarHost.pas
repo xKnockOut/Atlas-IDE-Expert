@@ -97,6 +97,9 @@ type
     class function EditorIn(AControl: TControl): TWinControl; static;
     /// <summary>Editor des vordersten Editorfensters; nil ohne.</summary>
     class function TopEditor: TWinControl; static;
+    /// <summary>Zeigt das vorderste Editorfenster Code, nicht Designer oder Willkommensseite (wie die Leisten mit
+    /// Ansicht Code)?</summary>
+    class function TopCodeShown: Boolean; static;
     /// <summary>Fokus an den Editor des Fensters, in dem AControl liegt (Leiste schließen, Esc).</summary>
     class procedure FocusEditor(AControl: TControl); static;
     /// <summary>Für jedes Editorfenster die Leiste anlegen bzw. einordnen; danach gesperrte freigeben, wenn ein
@@ -313,6 +316,15 @@ begin
   begin
     Result := EditorOf(mServices.TopEditWindow);
   end;
+end;
+
+class function TAtlasEditorBarHost.TopCodeShown: Boolean;
+var
+  mEditor: TWinControl;
+begin
+  mEditor := TopEditor;
+  Result := (mEditor <> nil) and TAtlasIdeDesignerView.CodeShown(mEditor) and
+    not TAtlasIdeDesignerView.Shown(mEditor.Parent);
 end;
 
 class procedure TAtlasEditorBarHost.FocusEditor(AControl: TControl);
