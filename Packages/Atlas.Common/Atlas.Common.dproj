@@ -89,6 +89,7 @@
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Watchdog.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.pas"/>
