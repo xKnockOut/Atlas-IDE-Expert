@@ -50,6 +50,8 @@ type
     [Test]
     procedure ReadsSmartIndent;
     [Test]
+    procedure ReadsSuggestionPatterns;
+    [Test]
     procedure ReadsClassCompletion;
     /// <summary>"references" (#1119): erschlossene Treffer an, Textfunde aus.</summary>
     [Test]
@@ -571,6 +573,31 @@ begin
   Assert.IsTrue(Issues[0].IsError);
   Assert.IsFalse(Issues[1].IsError);
 end;
+procedure TConfigurationParserTests.ReadsSuggestionPatterns;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(0, Integer(Length(Settings.Suggestions.Patterns)), 'Ohne atlas.json keine eigenen Muster (#1890)');
+  Settings := Parse('{"suggestions": {"patterns": [{"after": " Log.Enter ", "insert": ["try", "  $|", "finally", ' +
+    '"  Log.Leave;", "end;"]}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(1, Integer(Length(Settings.Suggestions.Patterns)));
+  Assert.AreEqual('Log.Enter', Settings.Suggestions.Patterns[0].After);
+  Assert.AreEqual(5, Integer(Length(Settings.Suggestions.Patterns[0].Insert)));
+  Assert.AreEqual('  Log.Leave;', Settings.Suggestions.Patterns[0].Insert[3]);
+  // Ohne Zeilen, ohne Auslöser und kein Objekt: alle fallen mit Fehler weg, das gültige bleibt.
+  Settings := Parse('{"suggestions": {"patterns": [{"after": "A"}, {"insert": ["x"]}, 3, ' +
+    '{"after": "B", "insert": ["y"]}]}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.Suggestions.Patterns)));
+  Assert.AreEqual('B', Settings.Suggestions.Patterns[0].After);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Settings := Parse('{"suggestions": {"patterns": {}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
 procedure TConfigurationParserTests.ReadsClassCompletion;
 var
   Settings: TServerSettings;
