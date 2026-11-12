@@ -346,6 +346,7 @@ begin
   Assert.AreEqual(200, ASettings.IssuesBlameMaxRevisions);
   Assert.IsTrue(ASettings.IssuesPreviewChecklists);
   Assert.IsTrue(ASettings.IssuesChecklistStatus);
+  Assert.IsTrue(ASettings.IssuesStatusState, 'Zustand im Statusfeld (#2124) an');
   Assert.IsTrue(ASettings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
   Assert.IsTrue(ASettings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
   Assert.IsTrue(ASettings.IssuesBoard, 'Board (#1272) an');
@@ -448,6 +449,7 @@ begin
   ASettings.IssuesBlameMaxRevisions := 75;
   ASettings.IssuesPreviewChecklists := False;
   ASettings.IssuesChecklistStatus := False;
+  ASettings.IssuesStatusState := False;
   ASettings.IssuesPreviewLinks := False;
   ASettings.IssuesWarnBlocked := False;
   ASettings.IssuesBoard := False;
@@ -495,6 +497,7 @@ begin
   Assert.IsFalse(ALoaded.IssuesPaletteSearch);
   Assert.IsFalse(ALoaded.IssuesPreviewChecklists);
   Assert.IsFalse(ALoaded.IssuesChecklistStatus);
+  Assert.IsFalse(ALoaded.IssuesStatusState);
   Assert.IsFalse(ALoaded.IssuesPreviewLinks);
   Assert.IsFalse(ALoaded.IssuesWarnBlocked);
   Assert.IsFalse(ALoaded.IssuesBoard);

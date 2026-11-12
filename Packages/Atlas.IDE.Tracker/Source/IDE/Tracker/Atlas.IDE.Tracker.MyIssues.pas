@@ -53,7 +53,8 @@
 //   folgt dem aktuellen Issue (UpdateStatus); nach „Beenden“ und beim Wechsel
 //   auf ein anderes Issue der Dialog „… buchen?“; {time} im Beenden-Dialog;
 //   Befehl Atlas.IssueTimeOpen (ShowTimeOpen). Das Zusatzfeld im Statusfeld
-//   setzt die Komposition (OnTimeStatus).
+//   zeigt TAtlasIdeIssueState mit dem Zustand (#2124) über den Hook
+//   TimeStatus der Komposition.
 // - Issue-Links "#312" in Begründungen (#1123): Adresse aus dem Tracker des
 //   aktuellen Projekts (IssueUrl), angemeldet bei TAtlasDocIssueLinks von Start
 //   bis Stop; ohne Tracker sind die Links nicht anklickbar.

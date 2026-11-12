@@ -14,7 +14,11 @@
 // - Enter öffnet die Vorschau (#1264; mit issues.preview aus den Browser),
 //   Strg+Enter beginnt das Issue wie in „Meine Issues“, Umschalt+Enter öffnet
 //   den Browser, Strg+C kopiert die Kennung.
-// - Mit issues.paletteSearch aus gibt es weder Gruppe noch Netzzugriff.
+// - Andere Eingaben zeigen die Übergänge des aktuellen Issues (#2124, Hook
+//   States, issues.statusState) als Gruppe „Aktuelles Issue“; Enter führt
+//   den Übergang aus (Hook StateRun). Ohne Netz, auch mit issues.paletteSearch
+//   aus.
+// - Mit issues.paletteSearch aus gibt es keine Suche und keinen Netzzugriff.
 // - Protokoll anonym: Anbieter, Anzahl und Fehlerart, nie Suchtext, Kennung
 //   oder Adresse.
 // Ziel, Transport, Vorschau, „Beginnen“ und die zuletzt geöffneten Issues
@@ -40,6 +44,8 @@ type
   TAtlasIssueSearchRecentHook = reference to function(const ATarget: TAtlasTrackerTarget):
     TArray<TAtlasTrackerIssue>;
   TAtlasIssueSearchShowHook = reference to procedure(const ATarget: TAtlasTrackerTarget; const AKey: string);
+  /// <summary>Übergänge des aktuellen Issues, die zur Eingabe passen (#2124); nil ohne.</summary>
+  TAtlasIssueSearchStatesHook = reference to function(const APattern: string): TArray<TAtlasCommand>;
 
   TAtlasIssueSearchHooks = record
     Target: TAtlasIssueSearchTargetHook;
@@ -55,6 +61,9 @@ type
     CanStart: TFunc<Boolean>;
     /// <summary>Zeile in der Meldungsansicht.</summary>
     Report: TProc<string>;
+    States: TAtlasIssueSearchStatesHook;
+    /// <summary>Zeile aus States ausführen; False, wenn sie nicht von dort stammt.</summary>
+    StateRun: TFunc<string, Boolean>;
   end;
 
   TAtlasIdeIssueSearch = class(TInterfacedObject, IAtlasPaletteSource)
@@ -189,13 +198,17 @@ begin
   FHasLast := False;
   FLastIssues := nil;
   FIssues := nil;
-  if not FStarted or not Active or not Assigned(FHooks.Target) then
+  if not FStarted then
   begin
     Exit;
   end;
+  // Die Übergänge des aktuellen Issues (#2124) gibt es auch ohne Suche im Tracker.
   FShow := AShow;
-  // Einmal je Öffnen: Tracker des aktiven Projekts (liest die .atlas, kein Netz).
-  FProvider := FHooks.Target(FTarget);
+  if Active and Assigned(FHooks.Target) then
+  begin
+    // Einmal je Öffnen: Tracker des aktiven Projekts (liest die .atlas, kein Netz).
+    FProvider := FHooks.Target(FTarget);
+  end;
 end;
 
 procedure TAtlasIdeIssueSearch.Closed;
@@ -243,16 +256,36 @@ begin
   ShowGroup(TAtlasPaletteGroup.Create(ATitle, mStatus, AQuery.Highlight, TAtlasIssuePaletteSearch.Rows(AIssues)));
 end;
 
+/// <summary>Übergänge des aktuellen Issues zur Eingabe (#2124); ohne passende keine Gruppe.</summary>
+procedure ShowStates(AOwner: TAtlasIdeIssueSearch; const APattern: string);
+var
+  mRows: TArray<TAtlasCommand>;
+begin
+  mRows := nil;
+  if Assigned(AOwner.FHooks.States) then
+  begin
+    mRows := AOwner.FHooks.States(APattern);
+  end;
+  AOwner.FIssues := nil;
+  if Length(mRows) = 0 then
+  begin
+    AOwner.ShowGroup(TAtlasPaletteGroup.None);
+    Exit;
+  end;
+  AOwner.ShowGroup(TAtlasPaletteGroup.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteStateGroup),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteStateStatus), Trim(APattern), mRows));
+end;
+
 /// <summary>Ohne Tracker gehört "#…" trotzdem nicht zu den Befehlen: Hinweis statt stiller Leere.</summary>
 procedure ShowNoTracker(AOwner: TAtlasIdeIssueSearch; const APattern: string);
 begin
-  if StartsStr('#', TrimLeft(APattern)) then
+  if TAtlasIdeIssueSearch.Active and StartsStr('#', TrimLeft(APattern)) then
   begin
     AOwner.ShowStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesNoTracker));
   end
   else
   begin
-    AOwner.ShowGroup(TAtlasPaletteGroup.None);
+    ShowStates(AOwner, APattern);
   end;
 end;
 
@@ -320,10 +353,7 @@ begin
       FQuery := mQuery;
       case mQuery.Kind of
         TAtlasIssueSearchKind.None:
-          begin
-            FIssues := nil;
-            ShowGroup(TAtlasPaletteGroup.None);
-          end;
+          ShowStates(Self, APattern);
         TAtlasIssueSearchKind.Recent:
           ShowRecent(Self, mQuery);
       else
@@ -591,11 +621,19 @@ begin
   TAtlasIssuePreview.Browse(mUrl);
 end;
 
+/// <summary>Übergang des aktuellen Issues (#2124): Enter und Strg+Enter führen ihn aus, die übrigen Tasten nichts.
+/// True, wenn AItem von dort stammt.</summary>
+function RanState(AOwner: TAtlasIdeIssueSearch; const AItem: TAtlasCommand; AAction: TAtlasPaletteAction): Boolean;
+begin
+  Result := AOwner.FStarted and (AAction in [TAtlasPaletteAction.Open, TAtlasPaletteAction.Start]) and
+    Assigned(AOwner.FHooks.StateRun) and AOwner.FHooks.StateRun(AItem.Id);
+end;
+
 procedure TAtlasIdeIssueSearch.Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
 var
   mIssue: TAtlasTrackerIssue;
 begin
-  if not FStarted or not IssueOf(AItem, mIssue) then
+  if RanState(Self, AItem, AAction) or not FStarted or not IssueOf(AItem, mIssue) then
   begin
     Exit;
   end;

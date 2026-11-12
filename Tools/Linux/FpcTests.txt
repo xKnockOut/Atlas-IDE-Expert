@@ -351,3 +351,4 @@ Atlas.Core.Hover.Layout.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
+Atlas.Core.Tracker.StatusState.Tests

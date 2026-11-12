@@ -10,8 +10,10 @@
 //   %LOCALAPPDATA%\Atlas\time.json (TAtlasTimeFile, Sperrdatei; mehrere
 //   IDE-Instanzen zählen nicht doppelt). Scheitert das Schreiben, bleiben die
 //   Spannen im Speicher und gehen beim nächsten Mal mit.
-// - Zusatzfeld im Statusfeld „ATL-123 · 1:25“; Klick: Pause/Weiter,
-//   Zurücksetzen, Zeit korrigieren, Jetzt buchen, Offene Zeitbuchungen.
+// - Zeit für das Statusfeld (OnStatus): Kennung, „1:25“ bzw. „1:25 (Pause)“,
+//   Hinweis und die Einträge des Menüs (Pause/Weiter, Zurücksetzen, Zeit
+//   korrigieren, Jetzt buchen, Offene Zeitbuchungen); das Feld zeigt
+//   Atlas.IDE.Tracker.IssueState zusammen mit dem Zustand (#2124).
 // - Buchen: beim Beenden (Ended) und beim Wechsel auf ein anderes Issue
 //   (beim nächsten Takt) der Dialog „… buchen?“ (TAtlasTrackerTimeDialog) mit
 //   Dauer, Arbeitstyp (YouTrack, nachgeladen) bzw. Kommentar (GitHub) und
@@ -38,6 +40,21 @@ uses
 type
   /// <summary>Zusatzfeld im Statusfeld setzen; AText '' entfernt es.</summary>
   TAtlasIdeTimeStatus = reference to procedure(const AText, AHint: string; const AOnClick: TProc<TPoint>);
+
+  /// <summary>Erfasste Zeit des aktuellen Issues fürs Statusfeld (#2124); Key '' = keine Anzeige.</summary>
+  TAtlasIdeTimeField = record
+    Key: string;
+    /// <summary>„1:25“ bzw. „1:25 (Pause)“.</summary>
+    Clock: string;
+    Hint: string;
+    /// <summary>Hängt die Einträge der Uhr an den Menüeintrag an (Pause, Zurücksetzen, Korrigieren, Buchen,
+    /// Offene Zeitbuchungen).</summary>
+    Menu: TProc<TMenuItem>;
+    class function None: TAtlasIdeTimeField; static;
+  end;
+
+  /// <summary>Zeit fürs Statusfeld geändert.</summary>
+  TAtlasIdeTimeChanged = reference to procedure(const AField: TAtlasIdeTimeField);
   /// <summary>Anbieter zum Namen; nil ohne.</summary>
   TAtlasIdeTimeProvider = reference to function(const AName: string): IAtlasTrackerProvider;
 
@@ -52,11 +69,10 @@ type
     FSync: TAtlasIdeTrackerSync;
     FProvider: TAtlasIdeTimeProvider;
     FReport: TProc<string>;
-    FStatus: TAtlasIdeTimeStatus;
+    FStatus: TAtlasIdeTimeChanged;
     FPath: string;
     FClock: TAtlasTimeClock;
     FTimer: TTimer;
-    FMenu: TPopupMenu;
     FTicks: Integer;
     FLastInput: Cardinal;
     // Summe des aktuellen Issues in der Datei und Spannen, die noch nicht geschrieben sind.
@@ -77,7 +93,8 @@ type
     function CurrentTotal: Int64;
     procedure UpdateStatus;
     procedure HideStatus;
-    procedure ShowMenu(const APoint: TPoint);
+    /// <summary>Einträge der Uhr an AParent anhängen (das Menü gehört dem Statusfeld).</summary>
+    procedure FillMenu(AParent: TMenuItem);
     /// <summary>Eintrag des Menüs am Feld; Tag ist die Nummer des Eintrags (TTimeMenu).</summary>
     procedure MenuClick(Sender: TObject);
     procedure Offer(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
@@ -103,7 +120,7 @@ type
     procedure Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
     /// <summary>Befehl „Offene Zeitbuchungen …“.</summary>
     procedure ShowOpen;
-    property OnStatus: TAtlasIdeTimeStatus read FStatus write FStatus;
+    property OnStatus: TAtlasIdeTimeChanged read FStatus write FStatus;
   end;
 
   /// <summary>Erfasste Zeit des aktuellen Issues für Kommentarvorlagen und den Beenden-Dialog (#2123).</summary>
@@ -394,7 +411,6 @@ begin
     Flush;
   end;
   HideStatus;
-  FreeAndNil(FMenu);
   FSync := nil;
   FProvider := nil;
   FReport := nil;
@@ -591,15 +607,22 @@ procedure TAtlasIdeTrackerTime.HideStatus;
 begin
   if FStatusShown and Assigned(FStatus) then
   begin
-    FStatus('', '', nil);
+    FStatus(TAtlasIdeTimeField.None);
   end;
   FStatusShown := False;
+end;
+
+{ TAtlasIdeTimeField }
+
+class function TAtlasIdeTimeField.None: TAtlasIdeTimeField;
+begin
+  Result := Default(TAtlasIdeTimeField);
 end;
 
 procedure TAtlasIdeTrackerTime.UpdateStatus;
 var
   mTotal: Int64;
-  mText: string;
+  mField: TAtlasIdeTimeField;
   mOwner: TAtlasIdeTrackerTime;
 begin
   if FStopped or not Active or FClock.Issue.IsEmpty or not Assigned(FStatus) then
@@ -608,49 +631,42 @@ begin
     Exit;
   end;
   mTotal := CurrentTotal;
+  mField := TAtlasIdeTimeField.None;
+  mField.Key := FClock.Issue.Key;
+  mField.Clock := TAtlasTimeRounding.ClockText(mTotal);
   if FClock.Paused then
   begin
-    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusPaused, [FClock.Issue.Key,
-      TAtlasTimeRounding.ClockText(mTotal)]);
-  end
-  else
-  begin
-    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusText,
-      [FClock.Issue.Key, TAtlasTimeRounding.ClockText(mTotal)]);
+    mField.Clock := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusPaused, [mField.Clock]);
   end;
+  mField.Hint := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusHint, [FClock.Issue.Key,
+    TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]);
   mOwner := Self;
-  FStatus(mText, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusHint, [FClock.Issue.Key,
-    TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]),
-    procedure(APoint: TPoint)
+  mField.Menu :=
+    procedure(AParent: TMenuItem)
     begin
       if not mOwner.FStopped then
       begin
-        mOwner.ShowMenu(APoint);
+        mOwner.FillMenu(AParent);
       end;
-    end);
+    end;
+  FStatus(mField);
   FStatusShown := True;
 end;
 
-procedure TAtlasIdeTrackerTime.ShowMenu(const APoint: TPoint);
+procedure TAtlasIdeTrackerTime.FillMenu(AParent: TMenuItem);
 var
   mItem: TMenuItem;
 
   procedure Add(AText: TAtlasTrackerTextId; AEntry: TTimeMenu);
   begin
-    mItem := TMenuItem.Create(FMenu);
+    mItem := TMenuItem.Create(AParent);
     mItem.Caption := TAtlasTrackerStrings.Text(AText);
     mItem.Tag := Ord(AEntry);
     mItem.OnClick := MenuClick;
-    FMenu.Items.Add(mItem);
+    AParent.Add(mItem);
   end;
 
 begin
-  // Ein Menü für die ganze Sitzung: Die Klicks kommen erst nach Popup an.
-  if FMenu = nil then
-  begin
-    FMenu := TPopupMenu.Create(nil);
-  end;
-  FMenu.Items.Clear;
   if FClock.Paused then
   begin
     Add(TAtlasTrackerTextId.TimeMenuResume, TTimeMenu.Pause);
@@ -663,7 +679,6 @@ begin
   Add(TAtlasTrackerTextId.TimeMenuCorrect, TTimeMenu.Correct);
   Add(TAtlasTrackerTextId.TimeMenuBook, TTimeMenu.Book);
   Add(TAtlasTrackerTextId.TimeMenuOpen, TTimeMenu.Open);
-  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 procedure TAtlasIdeTrackerTime.MenuClick(Sender: TObject);
