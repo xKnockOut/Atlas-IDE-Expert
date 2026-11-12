@@ -265,23 +265,7 @@ end;
 function StatesJson(const AName: string; const AStates: TArray<string>): string;
 var
   mParts: TArray<string>;
-  mItem: string;
-begin
-  Result := '';
-  if Length(AItems) = 0 then
-  begin
-    Exit;
-  end;
-  mParts := nil;
-  for mItem in AItems do
-  begin
-    mParts := mParts + [Quoted(mItem)];
-  end;
-  Result := ', "' + AName + '": [' + string.Join(', ', mParts) + ']';
-end;
-
-/// <summary>Die Felder aus #1266 und #2123, nur wenn gesetzt: ', "stateField": …' usw.</summary>
-function StateJson(const AItem: TAtlasTrackerConnection): string;
+  mState: string;
 begin
   Result := '';
   if Length(AStates) = 0 then
@@ -296,7 +280,7 @@ begin
   Result := ', ' + Quoted(AName) + ': [' + string.Join(', ', mParts) + ']';
 end;
 
-/// <summary>Die Felder aus #1266 und #2126, nur wenn gesetzt: ', "stateField": …' usw.</summary>
+/// <summary>Die Felder aus #1266, #2123 und #2126, nur wenn gesetzt: ', "stateField": …' usw.</summary>
 function StateJson(const AItem: TAtlasTrackerConnection): string;
 begin
   Result := '';

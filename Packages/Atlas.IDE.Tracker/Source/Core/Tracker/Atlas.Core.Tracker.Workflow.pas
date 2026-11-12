@@ -294,6 +294,26 @@ begin
   end;
 end;
 
+/// <summary>AOwn, wenn gesetzt, sonst AFallback.</summary>
+function TextOr(const AOwn, AFallback: string): string;
+begin
+  Result := AFallback;
+  if AOwn <> '' then
+  begin
+    Result := AOwn;
+  end;
+end;
+
+/// <summary>Kopie von AOwn, wenn nicht leer, sonst AFallback.</summary>
+function ListOr(const AOwn, AFallback: TArray<string>): TArray<string>;
+begin
+  Result := AFallback;
+  if Length(AOwn) > 0 then
+  begin
+    Result := Copy(AOwn);
+  end;
+end;
+
 class function TAtlasTrackerWorkflow.ForConnection(const AOptions: TAtlasTrackerSyncOptions;
   const AConnections: TArray<TAtlasTrackerConnection>; const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
 var
@@ -308,36 +328,16 @@ begin
   end;
   for mConnection in AConnections do
   begin
-    if not SameText(mConnection.Provider, ATarget.Provider) or
-      not SameText(mConnection.Target.Server, mServer) then
+    if SameText(mConnection.Provider, ATarget.Provider) and SameText(mConnection.Target.Server, mServer) then
     begin
-      Continue;
+      Result.StateField := TextOr(mConnection.StateField, Result.StateField);
+      Result.AssigneeField := TextOr(mConnection.AssigneeField, Result.AssigneeField);
+      Result.StartState := TextOr(mConnection.StartState, Result.StartState);
+      Result.EndStates := ListOr(mConnection.EndStates, Result.EndStates);
+      Result.EndFields := ListOr(mConnection.EndFields, Result.EndFields);
+      Result.ReviewStates := ListOr(mConnection.ReviewStates, Result.ReviewStates);
+      Exit;
     end;
-    if mConnection.StateField <> '' then
-    begin
-      Result.StateField := mConnection.StateField;
-    end;
-    if mConnection.AssigneeField <> '' then
-    begin
-      Result.AssigneeField := mConnection.AssigneeField;
-    end;
-    if mConnection.StartState <> '' then
-    begin
-      Result.StartState := mConnection.StartState;
-    end;
-    if Length(mConnection.EndStates) > 0 then
-    begin
-      Result.EndStates := Copy(mConnection.EndStates);
-    end;
-    if Length(mConnection.EndFields) > 0 then
-    begin
-      Result.EndFields := Copy(mConnection.EndFields);
-    end;
-    if Length(mConnection.ReviewStates) > 0 then
-    begin
-      Result.ReviewStates := Copy(mConnection.ReviewStates);
-    end;
-    Exit;
   end;
 end;
 
