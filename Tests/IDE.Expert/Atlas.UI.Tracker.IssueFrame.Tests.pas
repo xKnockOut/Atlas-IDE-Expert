@@ -58,6 +58,9 @@ type
     /// <summary>#1276: „Anhängen …“ nur mit CanAttach, aktiv erst mit Issue, meldet OnAttach.</summary>
     [Test]
     procedure AttachButtonAndMenu;
+    /// <summary>#2126: „Prüfen …“ nur mit CanReview und Issue, meldet OnReview.</summary>
+    [Test]
+    procedure ReviewButton;
   end;
 
 implementation
@@ -636,6 +639,41 @@ begin
     Assert.AreEqual(2, mCalls);
     mFrame.SetFlag(TAtlasIssueFlag.CanAttach, False);
     Assert.IsFalse(mFrame.Parts.Attach.Visible);
+    mFrame.Events := Default(TAtlasIssueFrameEvents);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.ReviewButton;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mEvents: TAtlasIssueFrameEvents;
+  mCalls: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mCalls := 0;
+    mEvents := mFrame.Events;
+    mEvents.Review :=
+      procedure
+      begin
+        Inc(mCalls);
+      end;
+    mFrame.Events := mEvents;
+    mFrame.ShowEmpty;
+    mFrame.SetFlag(TAtlasIssueFlag.CanReview, True);
+    Assert.IsFalse(mFrame.Parts.Review.Visible, 'ohne Issue');
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    Assert.IsTrue(mFrame.Parts.Review.Visible);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand), mFrame.Parts.Review.Caption);
+    mFrame.Parts.Review.Click;
+    Assert.AreEqual(1, mCalls);
+    mFrame.SetFlag(TAtlasIssueFlag.CanReview, False);
+    Assert.IsFalse(mFrame.Parts.Review.Visible, 'kein Prüfzustand');
     mFrame.Events := Default(TAtlasIssueFrameEvents);
   finally
     mHost.Free;

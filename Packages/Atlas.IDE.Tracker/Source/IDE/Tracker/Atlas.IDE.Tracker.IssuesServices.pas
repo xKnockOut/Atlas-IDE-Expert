@@ -105,6 +105,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Reopened,
+  Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.WorkingCopies;
@@ -551,11 +552,32 @@ begin
     end;
 end;
 
+/// <summary>„Prüfen …“ in der Vorschau (#2126): Issue im Prüfzustand, nicht das aktuelle.</summary>
+procedure PreviewReviewHooks(const ALink: TAtlasIssuesLink; var AHooks: TAtlasIssuePreviewHooks);
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  AHooks.CanReview :=
+    function(ATarget: TAtlasTrackerTarget; AIssue: TAtlasTrackerIssue): Boolean
+    begin
+      Result := (mLink.Keep <> nil) and (mLink.Services.FReview <> nil) and
+        not SameText(mLink.Context.ActiveKey, AIssue.Key) and
+        TAtlasTrackerReview.Offered(AIssue.State, TAtlasIdeTrackerSync.Options(ATarget).ReviewStates);
+    end;
+  AHooks.Review :=
+    procedure(AIssue: TAtlasTrackerIssue)
+    begin
+      mLink.Review(AIssue);
+    end;
+end;
+
 function PreviewHooks(const ALink: TAtlasIssuesLink): TAtlasIssuePreviewHooks;
 begin
   Result := Default(TAtlasIssuePreviewHooks);
   PreviewAccessHooks(ALink, Result);
   PreviewWorkHooks(ALink, Result);
+  PreviewReviewHooks(ALink, Result);
 end;
 
 function BoardHooks(const ALink: TAtlasIssuesLink): TAtlasBoardHooks;
