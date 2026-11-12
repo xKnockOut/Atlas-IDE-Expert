@@ -519,6 +519,19 @@ type
     function Caption: string;
   end;
 
+  /// <summary>Sprint eines Boards, in den „Beginnen“ das Issue aufnimmt (#2128): Namen wie im Befehl des Trackers
+  /// (YouTrack „Board“, Name des Boards, Name des Sprints).</summary>
+  TAtlasTrackerSprintRef = record
+    Board: string;
+    Sprint: string;
+    /// <summary>Ende des Sprints (UTC); 0 = unbekannt.</summary>
+    Finish: TDateTime;
+    class function Create(const ABoard, ASprint: string; AFinish: TDateTime): TAtlasTrackerSprintRef; static;
+    class function None: TAtlasTrackerSprintRef; static;
+    /// <summary>Board und Sprint sind gesetzt.</summary>
+    function IsSet: Boolean;
+  end;
+
   /// <summary>Regeln des Zustandsfeldes eines Issues (#1569, #2122). Steuert eine Zustandsmaschine das Feld
   /// (YouTrack „StateMachineIssueCustomField“), sind ab dem aktuellen Wert nur die Übergänge in Transitions
   /// erlaubt.</summary>
@@ -555,6 +568,9 @@ type
     Transition: TAtlasTrackerTransition;
     /// <summary>ID des Zustandsfeldes am Issue für Transition (TAtlasTrackerStateRules.FieldId).</summary>
     FieldId: string;
+    /// <summary>In diesen Sprint aufnehmen (#2128); nicht gesetzt = keiner. Geht mit Zuständigkeit und Kommentar
+    /// hinaus.</summary>
+    Sprint: TAtlasTrackerSprintRef;
     class function Empty: TAtlasTrackerWrite; static;
     /// <summary>Nur ein Kommentar.</summary>
     class function CommentOnly(const AText: string): TAtlasTrackerWrite; static;
@@ -941,7 +957,7 @@ end;
 function TAtlasTrackerWrite.HasWork: Boolean;
 begin
   Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '') or
-    (Transition.Id <> '');
+    (Transition.Id <> '') or Sprint.IsSet;
 end;
 
 { TAtlasTrackerTransition }
@@ -959,6 +975,26 @@ begin
   begin
     Result := Id;
   end;
+end;
+
+{ TAtlasTrackerSprintRef }
+
+class function TAtlasTrackerSprintRef.Create(const ABoard, ASprint: string;
+  AFinish: TDateTime): TAtlasTrackerSprintRef;
+begin
+  Result.Board := Trim(ABoard);
+  Result.Sprint := Trim(ASprint);
+  Result.Finish := AFinish;
+end;
+
+class function TAtlasTrackerSprintRef.None: TAtlasTrackerSprintRef;
+begin
+  Result := Create('', '', 0);
+end;
+
+function TAtlasTrackerSprintRef.IsSet: Boolean;
+begin
+  Result := (Board <> '') and (Sprint <> '');
 end;
 
 { TAtlasTrackerWorkItem }

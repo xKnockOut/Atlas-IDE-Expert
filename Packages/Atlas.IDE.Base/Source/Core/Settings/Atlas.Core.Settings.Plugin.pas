@@ -134,6 +134,9 @@ type
     cIssuesNotifyAssigned = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyAssigned;
     cIssuesNotifyAssignedOrCreated = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyAssignedOrCreated;
     cIssuesNotifyWatched = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyWatched;
+    cIssuesSprintAsk = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAsk;
+    cIssuesSprintAlways = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAlways;
+    cIssuesSprintNever = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintNever;
     cBeginEndAlways = Atlas.Core.Settings.Plugin.Editor.cBeginEndAlways;
     cBeginEndMultiLine = Atlas.Core.Settings.Plugin.Editor.cBeginEndMultiLine;
     cBeginEndNever = Atlas.Core.Settings.Plugin.Editor.cBeginEndNever;
@@ -1201,6 +1204,7 @@ type
     property IssuesChecklistStatus: Boolean read FIssueWork.IssuesChecklistStatus
       write FIssueWork.IssuesChecklistStatus;
     property IssuesStatusState: Boolean read FIssueWork.IssuesStatusState write FIssueWork.IssuesStatusState;
+    property IssuesSprintOnStart: string read FIssueWork.IssuesSprintOnStart write FIssueWork.IssuesSprintOnStart;
     property IssuesPreviewLinks: Boolean read FIssueWork.IssuesPreviewLinks write FIssueWork.IssuesPreviewLinks;
     property IssuesWarnBlocked: Boolean read FIssueWork.IssuesWarnBlocked write FIssueWork.IssuesWarnBlocked;
     property IssuesBoard: Boolean read FIssueWork.IssuesBoard write FIssueWork.IssuesBoard;

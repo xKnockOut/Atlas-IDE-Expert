@@ -347,6 +347,7 @@ begin
   Assert.IsTrue(ASettings.IssuesPreviewChecklists);
   Assert.IsTrue(ASettings.IssuesChecklistStatus);
   Assert.IsTrue(ASettings.IssuesStatusState, 'Zustand im Statusfeld (#2124) an');
+  Assert.AreEqual('ask', ASettings.IssuesSprintOnStart, 'Sprint beim Beginnen (#2128): fragen');
   Assert.IsTrue(ASettings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
   Assert.IsTrue(ASettings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
   Assert.IsTrue(ASettings.IssuesBoard, 'Board (#1272) an');
@@ -450,6 +451,7 @@ begin
   ASettings.IssuesPreviewChecklists := False;
   ASettings.IssuesChecklistStatus := False;
   ASettings.IssuesStatusState := False;
+  ASettings.IssuesSprintOnStart := 'ALWAYS';
   ASettings.IssuesPreviewLinks := False;
   ASettings.IssuesWarnBlocked := False;
   ASettings.IssuesBoard := False;
@@ -498,6 +500,7 @@ begin
   Assert.IsFalse(ALoaded.IssuesPreviewChecklists);
   Assert.IsFalse(ALoaded.IssuesChecklistStatus);
   Assert.IsFalse(ALoaded.IssuesStatusState);
+  Assert.AreEqual('always', ALoaded.IssuesSprintOnStart, 'auf den bekannten Wert gebracht');
   Assert.IsFalse(ALoaded.IssuesPreviewLinks);
   Assert.IsFalse(ALoaded.IssuesWarnBlocked);
   Assert.IsFalse(ALoaded.IssuesBoard);

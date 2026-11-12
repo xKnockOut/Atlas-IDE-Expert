@@ -8633,6 +8633,21 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#2124"
     },
+    "IssuesSprintOnStart": {
+      "type": "string",
+      "enum": [
+        "ask",
+        "always",
+        "never"
+      ],
+      "default": "ask",
+      "description": "„Beginnen“ und der laufende Sprint: Steht das Issue in keinem laufenden Sprint des eingestellten Boards (letzter Stand von Board bzw. Sprint-Kachel), fragt Atlas „In den laufenden Sprint 47 (bis 19.11.) aufnehmen?“ (ask), nimmt ohne Frage auf (always) oder nie (never). Geschrieben wird im selben Hintergrundschritt wie Zustand und Zuweisung (YouTrack: Befehl „Board <Board> <Sprint>“); „Nicht mehr fragen“ stellt always bzw. never ein. Nur YouTrack-Agile-Boards.",
+      "x-key": "issues.sprintOnStart",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Auswahl",
+      "x-issue": "#2128"
+    },
     "IssuesPreviewLinks": {
       "type": "boolean",
       "default": true,

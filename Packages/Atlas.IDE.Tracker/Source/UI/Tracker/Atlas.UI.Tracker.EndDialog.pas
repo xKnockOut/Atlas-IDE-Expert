@@ -1149,6 +1149,10 @@ begin
   begin
     mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartComment)];
   end;
+  if AChange.Sprint.IsSet then
+  begin
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartSprint, [AChange.Sprint.Sprint])];
+  end;
   Result := string.Join(', ', mParts);
 end;
 

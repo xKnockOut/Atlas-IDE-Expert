@@ -908,6 +908,7 @@ begin
   Assert.IsTrue(ASection.General.View.PreviewChecklists.Checked);
   Assert.IsTrue(ASection.General.View.ChecklistStatus.Checked);
   Assert.IsTrue(ASection.General.View.StatusState.Checked);
+  Assert.AreEqual(0, ASection.General.View.SprintOnStart.Choice, 'Sprint beim Beginnen: fragen');
   Assert.IsTrue(ASection.General.View.PreviewLinks.Checked);
   Assert.IsTrue(ASection.General.View.WarnBlocked.Checked);
   Assert.IsTrue(ASection.General.View.Board.Checked);
@@ -941,6 +942,7 @@ begin
   ASection.General.View.PreviewChecklists.Checked := False;
   ASection.General.View.ChecklistStatus.Checked := False;
   ASection.General.View.StatusState.Checked := False;
+  ASection.General.View.SprintOnStart.Choice := 2;
   ASection.General.View.PreviewLinks.Checked := False;
   ASection.General.View.WarnBlocked.Checked := False;
   ASection.General.View.Board.Checked := False;
@@ -972,6 +974,7 @@ begin
   Assert.IsFalse(ASaved.IssuesPreviewChecklists);
   Assert.IsFalse(ASaved.IssuesChecklistStatus);
   Assert.IsFalse(ASaved.IssuesStatusState);
+  Assert.AreEqual('never', ASaved.IssuesSprintOnStart);
   Assert.IsFalse(ASaved.IssuesPreviewLinks);
   Assert.IsFalse(ASaved.IssuesWarnBlocked);
   Assert.IsFalse(ASaved.IssuesBoard);
@@ -999,6 +1002,7 @@ begin
   Assert.IsFalse(ASection.General.View.PreviewChecklists.Checked);
   Assert.IsFalse(ASection.General.View.ChecklistStatus.Checked);
   Assert.IsFalse(ASection.General.View.StatusState.Checked);
+  Assert.AreEqual(2, ASection.General.View.SprintOnStart.Choice);
   Assert.IsFalse(ASection.General.View.PreviewLinks.Checked);
   Assert.IsFalse(ASection.General.View.WarnBlocked.Checked);
   Assert.IsFalse(ASection.General.View.Board.Checked);
