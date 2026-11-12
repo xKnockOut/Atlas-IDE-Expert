@@ -7,7 +7,6 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree;
 
 type
@@ -64,6 +63,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.Contract,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor;

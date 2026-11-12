@@ -64,7 +64,6 @@ uses
   Vcl.Forms,
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.DocBox,
   Atlas.UI.Tracker.CommentEditor,
@@ -303,6 +302,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Tracker.Markdown,
   Winapi.Windows,
   System.Math,
   System.UITypes,

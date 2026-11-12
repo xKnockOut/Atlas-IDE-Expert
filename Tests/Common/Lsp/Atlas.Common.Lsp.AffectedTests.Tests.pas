@@ -10,7 +10,6 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Lsp.AffectedTests;
 
 type
@@ -83,6 +82,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Rules.ChangedFiles,
   System.SysUtils,
   System.JSON,
   System.Diagnostics,

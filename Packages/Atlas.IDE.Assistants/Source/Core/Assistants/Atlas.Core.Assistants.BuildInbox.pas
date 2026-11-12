@@ -25,7 +25,6 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
   Atlas.Core.Build.Requests;
 
 type
@@ -71,6 +70,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.Messages,
   Winapi.Windows,
   System.IOUtils,
   System.DateUtils,

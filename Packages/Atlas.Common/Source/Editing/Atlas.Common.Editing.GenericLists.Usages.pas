@@ -9,7 +9,6 @@ interface
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.GenericLists.Source,
   Atlas.Common.Editing.GenericLists.State,
   Atlas.Common.Editing.GenericLists.Declarations;
@@ -57,6 +56,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.NameResolver,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,

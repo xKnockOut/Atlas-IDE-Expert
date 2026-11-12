@@ -10,7 +10,6 @@ interface
 uses
   DUnitX.TestFramework,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.CompilerSwitches;
 
 type
@@ -47,6 +46,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
   System.SysUtils,
   Atlas.Common.Pascal.Preprocessor;
 

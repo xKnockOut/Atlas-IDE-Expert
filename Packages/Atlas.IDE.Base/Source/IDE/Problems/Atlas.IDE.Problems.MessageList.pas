@@ -11,7 +11,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store;
 
 type
@@ -32,6 +31,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Problems.Contract,
   ToolsAPI,
   Atlas.UI.Problems.Strings;
 

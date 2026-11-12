@@ -11,8 +11,6 @@ interface
 uses
   DUnitX.TestFramework,
   System.Types,
-  Atlas.Core.Hover.Contract,
-  Atlas.Core.Hover.History,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.Texts;
@@ -99,6 +97,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Hover.Contract,
+  Atlas.Core.Hover.History,
   System.SysUtils,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Wrap,

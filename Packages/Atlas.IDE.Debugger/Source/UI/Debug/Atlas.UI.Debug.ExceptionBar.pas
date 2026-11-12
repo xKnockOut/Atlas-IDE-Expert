@@ -31,7 +31,6 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Debug.ExceptionBanner;
 
@@ -100,6 +99,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   System.Math,
   Vcl.Forms,
   Atlas.UI.Debug.Strings;

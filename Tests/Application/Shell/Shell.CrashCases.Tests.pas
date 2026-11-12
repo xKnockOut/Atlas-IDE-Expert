@@ -12,7 +12,6 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.RecentMessages,
-  Atlas.Common.Diagnostics.CrashSkip,
   Shell.CrashCases;
 
 type
@@ -59,6 +58,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Diagnostics.CrashSkip,
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Logging.Providers.Logger,

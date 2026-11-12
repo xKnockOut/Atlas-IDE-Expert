@@ -18,7 +18,6 @@ uses
   System.Classes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
@@ -98,6 +97,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Rules.Contract,
   System.StrUtils,
   System.JSON,
   Atlas.Common.Documents.Uris,

@@ -8,7 +8,6 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Semantics.NameResolver.Place,
@@ -100,6 +99,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   System.SysUtils,
   Atlas.Common.Diagnostics.RequestScope;
 

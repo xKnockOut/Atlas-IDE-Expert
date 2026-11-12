@@ -19,7 +19,6 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette;
 
 type
@@ -102,6 +101,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Winapi.Windows,
   System.Math;
 

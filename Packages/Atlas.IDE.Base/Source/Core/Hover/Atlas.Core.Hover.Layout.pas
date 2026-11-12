@@ -38,7 +38,6 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
@@ -168,6 +167,7 @@ function HoverBadgeKind(const ACode: string): TAtlasBadgeKind;
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   System.SysUtils,
   System.Math,
   System.StrUtils,

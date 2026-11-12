@@ -28,7 +28,6 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Dfm.Contract,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract;
 
@@ -152,6 +151,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Dfm.Contract,
   System.Math,
   System.StrUtils,
   System.DateUtils,

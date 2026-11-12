@@ -31,7 +31,6 @@ uses
   Vcl.ComCtrls,
   Vcl.Graphics,
   Atlas.UI.Strings,
-  Atlas.UI.Diagnostics.Strings,
   Atlas.Core.Diagnostics.Processes,
   Atlas.UI.Foundation.Dialog;
 
@@ -123,6 +122,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.UI.Diagnostics.Strings;
 
 const
   // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.

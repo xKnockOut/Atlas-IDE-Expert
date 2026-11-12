@@ -32,7 +32,6 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeClock,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.UI.Tracker.TimeDialog,
   Atlas.IDE.Tracker.Workflow;
 
 type
@@ -109,6 +108,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.TimeDialog,
   Winapi.Windows,
   System.UITypes,
   Vcl.Forms,

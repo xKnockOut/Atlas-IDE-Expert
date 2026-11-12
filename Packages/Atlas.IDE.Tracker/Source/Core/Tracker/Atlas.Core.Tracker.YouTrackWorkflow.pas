@@ -25,8 +25,6 @@ interface
 
 uses
   System.JSON,
-  Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board;
 
@@ -64,6 +62,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   System.Diagnostics,
   Atlas.Core.Tracker.YouTrackApi,

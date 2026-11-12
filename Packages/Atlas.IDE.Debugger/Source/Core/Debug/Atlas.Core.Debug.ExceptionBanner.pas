@@ -18,7 +18,6 @@
 interface
 
 uses
-  Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionDialog;
 
@@ -102,6 +101,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.CallStack,
   System.SysUtils,
   System.Math,
   Atlas.Core.Debug.OwnCode;

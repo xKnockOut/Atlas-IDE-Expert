@@ -20,7 +20,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout;
 
 type
@@ -112,6 +111,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Welcome.Sections,
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Settings.History;

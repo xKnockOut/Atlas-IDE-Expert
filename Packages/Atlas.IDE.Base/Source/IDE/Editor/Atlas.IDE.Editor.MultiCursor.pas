@@ -51,7 +51,6 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Editor.MultiCursor,
   Atlas.IDE.Editor.MultiCursorState;
 
 type
@@ -131,6 +130,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.MultiCursor,
   System.Math,
   Vcl.Forms,
   Vcl.Graphics,

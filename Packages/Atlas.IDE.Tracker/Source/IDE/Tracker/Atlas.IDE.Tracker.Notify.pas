@@ -34,7 +34,6 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.ExtCtrls,
-  Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
@@ -142,6 +141,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Ci.Contract,
   Winapi.Windows,
   System.Types,
   System.DateUtils,

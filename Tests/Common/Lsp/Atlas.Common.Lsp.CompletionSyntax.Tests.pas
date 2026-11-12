@@ -8,7 +8,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.CompletionSyntax;
 
 type
@@ -51,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Dispatcher,

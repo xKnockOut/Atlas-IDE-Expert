@@ -9,8 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings,
-  Atlas.UI.Build.Strings;
+  Atlas.UI.Strings;
 
 type
   [TestFixture]
@@ -45,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Build.Strings,
   System.SysUtils,
   System.Classes,
   Winapi.Windows,

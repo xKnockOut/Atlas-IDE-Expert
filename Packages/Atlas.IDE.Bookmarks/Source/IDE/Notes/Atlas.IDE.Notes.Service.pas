@@ -22,7 +22,6 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Notes.Store;
 
 type
@@ -76,6 +75,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.LineAnchor,
   Atlas.IDE.Foundation.EditorBuffer,
   System.Classes,
   System.DateUtils,

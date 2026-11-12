@@ -10,8 +10,7 @@
 interface
 
 uses
-  System.SysUtils,
-  Atlas.Core.CiBuild.Contract;
+  System.SysUtils;
 
 type
   TAtlasCiAddresses = class
@@ -28,6 +27,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.CiBuild.Contract;
 
 class function TAtlasCiAddresses.OriginOf(const AUrl: string): string;
 begin

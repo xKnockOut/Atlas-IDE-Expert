@@ -19,12 +19,10 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.IdeTypes,
   Atlas.Common.Lsp.CompletionRequest;
 
 const
@@ -198,6 +196,8 @@ function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TC
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Lsp.IdeTypes,
   System.Math,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
