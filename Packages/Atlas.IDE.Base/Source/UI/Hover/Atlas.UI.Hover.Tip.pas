@@ -52,7 +52,6 @@ uses
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Texts,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Popup.Window;
