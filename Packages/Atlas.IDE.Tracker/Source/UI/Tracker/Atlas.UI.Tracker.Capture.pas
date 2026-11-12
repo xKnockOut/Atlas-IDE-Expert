@@ -14,6 +14,10 @@
 //   nächsten Klick, höchstens TimeoutMs, Esc bricht ab) schluckt den Klick,
 //   damit im Programm nichts ausgelöst wird, und meldet das Hauptfenster
 //   unter dem Zeiger.
+// - BringToFront: Fenster des Programms über die IDE legen, ohne es zu
+//   aktivieren (der Dialog bleibt aktiv und darf sich danach wieder nach vorn
+//   holen). Asynchron: Ein angehaltenes Programm würde sonst die IDE
+//   blockieren; es bleibt dann einfach, wo es ist.
 // - TAtlasAttachImages: Verkleinern auf issues.attach.maxImageWidth, PNG,
 //   Bilder untereinander (GitHub: ein Bild in der Zwischenablage).
 // Nur im Hauptthread.
@@ -48,6 +52,9 @@ type
     class function RootAt(const APoint: TPoint): HWND; static;
     /// <summary>Prozess eines Fensters.</summary>
     class function ProcessOf(AWindow: HWND): DWORD; static;
+    /// <summary>AWindow nach oben holen, ohne es zu aktivieren (minimiert: wiederherstellen); False ohne gültiges,
+    /// sichtbares Fenster.</summary>
+    class function BringToFront(AWindow: HWND): Boolean; static;
   end;
 
   TAtlasWindowPicked = reference to procedure(AWindow: HWND);
@@ -182,6 +189,22 @@ class function TAtlasWindowCapture.ProcessOf(AWindow: HWND): DWORD;
 begin
   Result := 0;
   GetWindowThreadProcessId(AWindow, @Result);
+end;
+
+class function TAtlasWindowCapture.BringToFront(AWindow: HWND): Boolean;
+begin
+  Result := False;
+  if (AWindow = 0) or not IsWindow(AWindow) or not IsWindowVisible(AWindow) then
+  begin
+    Exit;
+  end;
+  // Nur Anfragen an den Thread des Programms stellen: Ein angehaltenes Programm darf die IDE nicht blockieren.
+  if IsIconic(AWindow) then
+  begin
+    ShowWindowAsync(AWindow, SW_SHOWNOACTIVATE);
+  end;
+  Result := SetWindowPos(AWindow, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE or
+    SWP_ASYNCWINDOWPOS);
 end;
 
 class function TAtlasWindowCapture.RootAt(const APoint: TPoint): HWND;

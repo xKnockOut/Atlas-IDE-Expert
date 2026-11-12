@@ -225,6 +225,8 @@ type
     /// <summary>Bilder höchstens so breit (#1276, issues.attach.maxImageWidth, MinAttachImageWidth bis
     /// MaxAttachImageWidth).</summary>
     IssuesAttachMaxImageWidth: Integer;
+    /// <summary>„Per Klick wählen“ holt das debuggte Programm nach vorn (issues.attach.raiseProgram).</summary>
+    IssuesAttachRaiseProgram: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssueWorkSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -433,6 +435,7 @@ begin
   Result.IssuesAttach := True;
   Result.IssuesAttachLogFiles := '';
   Result.IssuesAttachMaxImageWidth := cDefaultAttachImageWidth;
+  Result.IssuesAttachRaiseProgram := True;
 end;
 
 procedure TAtlasPluginIssueWorkSettings.Normalize;
@@ -485,6 +488,7 @@ begin
   AIo.Flag('IssuesAttach', IssuesAttach);
   AIo.Text('IssuesAttachLogFiles', IssuesAttachLogFiles);
   AIo.Number('IssuesAttachMaxImageWidth', IssuesAttachMaxImageWidth);
+  AIo.Flag('IssuesAttachRaiseProgram', IssuesAttachRaiseProgram);
 end;
 
 end.
