@@ -19,6 +19,10 @@
 // „dcc · W1036“, die Konfidenz, wenn sie nicht hoch ist, und mit
 // Input.ProblemActions die Aktionszeile „Alt+Enter: <Korrektur>“ (nur mit
 // Korrektur), „Für diese Zeile unterdrücken“, „Regel einstellen…“.
+// Erklärungen (#54): Zu einer Compilermeldung mit Katalogeintrag (View.Explanations)
+// steht klein „Typische Ursache: …“ unter der Meldung, darunter die Links
+// „Erklären“ (Dialog mit Beispiel) und „DocWiki“; Regelbefunde bekommen
+// „Erklären“ in ihrer Aktionszeile.
 // Weitere Stellen eines Befunds (relatedInformation, #896) stehen darunter als
 // Links, beim Unit-Zyklus als Pfad „uC → uA → uB → uC“ und mit „Graph
 // zeigen“; ihre Klickfläche trägt Problem, Aktion Related und die Stelle.
@@ -45,46 +49,10 @@ uses
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Texts;
+  Atlas.Core.Hover.Texts,
+  Atlas.Core.Hover.View;
 
 type
-  {$SCOPEDENUMS ON}
-  TAtlasHoverAction = (Navigate, Usages, Copy, Help);
-  /// <summary>Schalter der published-Mitglieder (#110): geerbte zeigen, nur mit Vorgabe, Abschnitte zu- bzw.
-  /// aufklappen, alle Zeilen zeigen.</summary>
-  TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
-  /// <summary>Aktion unter einem Problem im Tooltip (#621). Related: Sprung zu einer weiteren Stelle (#896),
-  /// ShowGraph: Unit-Beziehungen zeigen (#896).</summary>
-  TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure, Related, ShowGraph);
-  {$SCOPEDENUMS OFF}
-
-  /// <summary>Was der Tooltip zeigt: Inhalt, Pfad und Zustand.</summary>
-  TAtlasHoverView = record
-    Data: TAtlasHoverData;
-    Path: TArray<TAtlasHoverPathItem>;
-    Pinned: Boolean;
-    CanGoBack: Boolean;
-    /// <summary>Anzahl der Verwendungen, wenn bekannt; sonst -1.</summary>
-    UsagesCount: Integer;
-    /// <summary>Probleme an der Mausposition (#398).</summary>
-    Problems: TArray<TAtlasProblem>;
-    /// <summary>Wert des Ausdrucks unter der Maus im angehaltenen Debugger (#891).</summary>
-    DebugValue: TAtlasDebugValue;
-    /// <summary>Anzeige der XMLDoc (#654): Angabe des Servers bzw. Einstellungen des Plugins.</summary>
-    Display: TAtlasDocDisplay;
-    /// <summary>published-Mitglieder (#110): geerbte ausblenden, nur Properties mit Vorgabe, Abschnitte
-    /// zugeklappt, alle Zeilen statt der ersten.</summary>
-    HideInherited: Boolean;
-    OnlyDefaults: Boolean;
-    PropertiesCollapsed: Boolean;
-    EventsCollapsed: Boolean;
-    AllProperties: Boolean;
-    AllEvents: Boolean;
-    class function Create(const AData: TAtlasHoverData): TAtlasHoverView; static;
-    /// <summary>Schaltet den Schalter AToggle der published-Mitglieder um (#110).</summary>
-    procedure Toggle(AToggle: TAtlasHoverPublishedToggle);
-  end;
-
   /// <summary>Messen in der Oberfläche; Build ruft nur diese Funktionen.</summary>
   IAtlasHoverMeasure = interface
     ['{96C7EBD2-5C83-4DC6-8E88-88DB86BCD6D5}']
@@ -182,6 +150,8 @@ const
   cEventRows = 4;
   /// <summary>Höchstens so viele weitere Stellen je Problem im Hover (#896).</summary>
   cMaxRelated = 64;
+  /// <summary>Höchstens so viele Zeilen „Typische Ursache“ (#54).</summary>
+  cCauseLines = 3;
 
 type
   /// <summary>Klickfläche und Hervorhebung eines Stücks Fließtext: Index >= 0 legt eine Klickfläche an,
@@ -291,6 +261,12 @@ type
     /// <summary>Pille mit der Art des Befunds (#909); setzt FLeft hinter die Pille für die Meldung.</summary>
     procedure SeverityPill(const AProblem: TAtlasProblem);
     procedure RuleActions(const AProblem: TAtlasProblem; AIndex: Integer);
+    /// <summary>Erklärung von Problem AIndex (#54); False ohne Katalogeintrag.</summary>
+    function Explanation(AIndex: Integer; out AExplanation: TAtlasHoverExplanation): Boolean;
+    /// <summary>„Typische Ursache: …“ unter einer Compilermeldung (#54).</summary>
+    procedure Cause(AIndex: Integer);
+    /// <summary>Links „Erklären“ und „DocWiki“ unter einer Compilermeldung (#54).</summary>
+    procedure MessageActions(AIndex: Integer);
     /// <summary>Aktionen zum uses-Eintrag (#621).</summary>
     procedure UsesActions(const AProblem: TAtlasProblem; AIndex: Integer);
     /// <summary>Herkunft und Regel eines Regelbefunds.</summary>
@@ -334,28 +310,6 @@ begin
     6: Result := TAtlasBadgeKind.Unit_;
   else
     Result := TAtlasBadgeKind.Keyword;
-  end;
-end;
-
-{ TAtlasHoverView }
-
-class function TAtlasHoverView.Create(const AData: TAtlasHoverData): TAtlasHoverView;
-begin
-  Result := Default(TAtlasHoverView);
-  Result.Data := AData;
-  Result.UsagesCount := -1;
-  Result.Display := TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0);
-end;
-
-procedure TAtlasHoverView.Toggle(AToggle: TAtlasHoverPublishedToggle);
-begin
-  case AToggle of
-    TAtlasHoverPublishedToggle.ShowInherited: HideInherited := not HideInherited;
-    TAtlasHoverPublishedToggle.OnlyDefaults: OnlyDefaults := not OnlyDefaults;
-    TAtlasHoverPublishedToggle.Properties: PropertiesCollapsed := not PropertiesCollapsed;
-    TAtlasHoverPublishedToggle.Events: EventsCollapsed := not EventsCollapsed;
-    TAtlasHoverPublishedToggle.MoreProperties: AllProperties := not AllProperties;
-    TAtlasHoverPublishedToggle.MoreEvents: AllEvents := not AllEvents;
   end;
 end;
 
@@ -1193,6 +1147,48 @@ begin
     ProblemLink(FInput.Texts.Suppress, AIndex, TAtlasHoverProblemAction.SuppressLine);
   end;
   ProblemLink(FInput.Texts.Configure, AIndex, TAtlasHoverProblemAction.Configure);
+  if Explanation(AIndex, mExplanation) then
+  begin
+    ProblemLink(FInput.Texts.Explain, AIndex, TAtlasHoverProblemAction.Explain);
+  end;
+  EndLinkRow(mOldFont);
+end;
+
+function TBuilder.Explanation(AIndex: Integer; out AExplanation: TAtlasHoverExplanation): Boolean;
+begin
+  AExplanation := Default(TAtlasHoverExplanation);
+  Result := (AIndex <= High(FInput.View.Explanations)) and FInput.View.Explanations[AIndex].Known;
+  if Result then
+  begin
+    AExplanation := FInput.View.Explanations[AIndex];
+  end;
+end;
+
+procedure TBuilder.Cause(AIndex: Integer);
+var
+  mExplanation: TAtlasHoverExplanation;
+begin
+  if Explanation(AIndex, mExplanation) and (mExplanation.Cause <> '') then
+  begin
+    Block(Format(FInput.Texts.Cause, [mExplanation.Cause]), FColors.Muted, cCauseLines);
+  end;
+end;
+
+procedure TBuilder.MessageActions(AIndex: Integer);
+var
+  mOldFont: TAtlasHoverFont;
+  mExplanation: TAtlasHoverExplanation;
+begin
+  if not Explanation(AIndex, mExplanation) then
+  begin
+    Exit;
+  end;
+  mOldFont := BeginLinkRow;
+  ProblemLink(FInput.Texts.Explain, AIndex, TAtlasHoverProblemAction.Explain);
+  if mExplanation.DocWiki <> '' then
+  begin
+    ProblemLink(FInput.Texts.DocWiki, AIndex, TAtlasHoverProblemAction.DocWiki);
+  end;
   EndLinkRow(mOldFont);
 end;
 
@@ -1318,9 +1314,16 @@ begin
     UsesActions(mProblem, AIndex);
   end
   // Aktionszeile nur an Regelbefunden: Compilermeldungen und Syntaxfehler haben keine Regel.
-  else if FInput.ProblemActions and mIsRule and not mProblem.IsCompiler and (mProblem.Code <> '') then
+  else if FInput.ProblemActions and mIsRule and not mProblem.IsCompiler and not mProblem.IsIde and
+    (mProblem.Code <> '') then
   begin
     RuleActions(mProblem, AIndex);
+  end
+  // Compilermeldungen (dcc, IDE) mit Katalogeintrag: Ursache, „Erklären“, „DocWiki“ (#54).
+  else if mIsRule then
+  begin
+    Cause(AIndex);
+    MessageActions(AIndex);
   end;
   SideBar(mStart, ProblemColor(FColors, mProblem));
 end;

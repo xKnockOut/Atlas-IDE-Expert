@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Compiler vorab](#gruppe-compiler) | 95 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
-| [Sicherheit](#gruppe-security) | 11 |
+| [Sicherheit](#gruppe-security) | 12 |
 | [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
@@ -298,6 +298,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`security-tls-verification-disabled`](#security-tls-verification-disabled) | TLS-Zertifikatsprüfung abgeschaltet | Schwachstelle | Warnung |
 | [`security-insecure-http`](#security-insecure-http) | Unverschlüsselte http://-URL | Sicherheits-Hotspot | Hinweis |
 | [`security-insecure-random`](#security-insecure-random) | Random für sicherheitsrelevante Werte | Sicherheits-Hotspot | Warnung |
+| [`security-hardcoded-credential`](#security-hardcoded-credential) | Zugangsdaten im Code | Schwachstelle | Warnung |
 | [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
 
 <a id="gruppe-components"></a>
@@ -1733,6 +1734,32 @@ Richtig:
 
 ```pascal
 Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));
+```
+
+<a id="security-hardcoded-credential"></a>
+### security-hardcoded-credential
+
+**Zugangsdaten im Code** · Schwachstelle · Warnung · Gruppe Sicherheit
+
+Ein Kennwort, Schlüssel oder Token steht im Quelltext oder in der Formulardatei. Drei Muster in String-Literalen (Kommentare zählen nicht): Password= bzw. Pwd= mit Wert in einer Verbindungszeichenfolge (ConnectionString, Params, Params.Add, auch in der Formulardatei; ohne Leerzeichen vor =, damit SQL wie WHERE Password = :Pwd still bleibt), Konfidenz hoch; bekannte Schlüsselformate (GitHub-Token, AWS-Zugriffsschlüssel, private Schlüssel, Slack- und Google-Schlüssel) in jedem Literal, auch in resourcestring, Konfidenz hoch; ein Literal, das einem Namen auf Password, Passwd, Passwort, Kennwort, Pwd, Secret, ApiKey, AccessKey, Token oder PrivateKey zugewiesen oder mit ihm verglichen wird (const, vorbelegte Variable, :=, =, Params.Values['Password'], Komponenten-Property in der Formulardatei), Konfidenz mittel. Werte für Secret, Schlüssel und Token zählen ab acht Zeichen. Leere Werte, Platzhalter ('***', 'xxx', '<…>', '%s', '{0}', 'changeme', :Param), Texte mit Leerzeichen und Werte, die wie ein Schlüsselname aussehen, bleiben still. Der Befund zeigt den Wert nie im Klartext: höchstens die ersten vier Zeichen, dahinter ****. Befunde aus der Formulardatei stehen am Feld der Komponente in der Unit. Keine Korrektur; Zugangsdaten aus der Konfiguration, der Umgebung oder einem Tresor lesen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `patterns` | string-list | `[]` | Weitere reguläre Ausdrücke für eigene Schlüsselformate (z. B. \bACME-[0-9]{6}\b); sie melden wie die eingebauten Formate. |
+
+Mit Treffer:
+
+```pascal
+const
+  DbPassword = 'geheim';
+…
+Connection.ConnectionString := 'Provider=SQLOLEDB;User ID=sa;Password=geheim';
+```
+
+Richtig:
+
+```pascal
+Connection.Params.Values['Password'] := Settings.ReadString('Db', 'Password', '');
 ```
 
 <a id="dfm-circular-datasource"></a>

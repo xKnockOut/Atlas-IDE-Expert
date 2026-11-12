@@ -41,6 +41,9 @@ type
     procedure LiveAndPausedAndStatus;
     [Test]
     procedure ExplainDialogShowsExamples;
+    /// <summary>#54: Compilermeldung mit Ursache und DocWiki-Knopf.</summary>
+    [Test]
+    procedure ExplainDialogShowsMessageCause;
     /// <summary>#1108: aktive Unit angepinnt, Trennzeile, nicht geöffnete ausgegraut, ↓ springt über die
     /// Trennzeile, Knopf „Offene zuerst“.</summary>
     [Test]
@@ -557,6 +560,45 @@ begin
     Assert.AreEqual('except raise; end;', Dialog.GoodMemo.Lines.Text.Trim);
   finally
     Dialog.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.ExplainDialogShowsMessageCause;
+var
+  mExplanation: TAtlasRuleExplanation;
+  mDialog: TAtlasRuleExplainDialog;
+  mOpened: string;
+begin
+  mExplanation := Default(TAtlasRuleExplanation);
+  mExplanation.Id := 'E2003';
+  mExplanation.Name := 'Undeklarierter Bezeichner';
+  mExplanation.Cause := 'Unit fehlt in uses';
+  mExplanation.DocWiki := 'https://docwiki.embarcadero.com/RADStudio/Athens/e/index.php?search=E2003';
+  mOpened := '';
+  mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, mExplanation);
+  try
+    mDialog.OpenUrl :=
+      procedure(AUrl: string)
+      begin
+        mOpened := AUrl;
+      end;
+    Assert.AreEqual('Meldung E2003', mDialog.Caption);
+    Assert.AreEqual('Unit fehlt in uses', mDialog.CauseLabel.Caption);
+    Assert.IsNotNull(mDialog.DocWikiButton);
+    mDialog.DocWikiButton.Click;
+    Assert.AreEqual(mExplanation.DocWiki, mOpened);
+  finally
+    mDialog.Free;
+  end;
+  // Regel: kein Ursachenfeld, kein Knopf.
+  mExplanation := Default(TAtlasRuleExplanation);
+  mExplanation.Id := 'empty-except';
+  mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, mExplanation);
+  try
+    Assert.IsNull(mDialog.CauseLabel);
+    Assert.IsNull(mDialog.DocWikiButton);
+  finally
+    mDialog.Free;
   end;
 end;
 

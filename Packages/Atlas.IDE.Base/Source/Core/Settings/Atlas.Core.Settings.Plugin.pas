@@ -319,6 +319,8 @@ type
     property FixBulk: Boolean read FRules.FixBulk write FRules.FixBulk;
     property HoverProblemActions: Boolean read FEditorInsight.HoverProblemActions
       write FEditorInsight.HoverProblemActions;
+    property HoverExplainMessages: Boolean read FEditorInsight.HoverExplainMessages
+      write FEditorInsight.HoverExplainMessages;
     property HoverMembersMaxLines: Integer read FEditorInsight.HoverMembersMaxLines
       write FEditorInsight.HoverMembersMaxLines;
     property HoverSignatureParams: Boolean read FEditorInsight.HoverSignatureParams

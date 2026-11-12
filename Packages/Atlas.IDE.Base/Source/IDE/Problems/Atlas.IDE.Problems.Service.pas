@@ -67,6 +67,8 @@ type
     CreateIssue: TProc<TArray<TAtlasFinding>>;
     /// <summary>Eintrag sichtbar (issues.create).</summary>
     CanCreateIssue: TFunc<Boolean>;
+    /// <summary>Webadresse im Browser öffnen: DocWiki-Link im Dialog „Erklären“ (#54); nil = kein Knopf.</summary>
+    OpenUrl: TProc<string>;
   end;
 
   TAtlasIdeProblems = class
@@ -97,6 +99,11 @@ type
     /// <summary>Fortschritt der Projektprüfung (#1232): geprüfte und alle Units des aktiven Projekts wie in der
     /// Statuszeile des Fensters. False ohne Projekt oder Speicher. Die Projektliste höchstens alle 2 s neu.</summary>
     class function ProjectProgress(out AChecked, ATotal: Integer): Boolean; static;
+    /// <summary>Katalog des Servers mit Regeln und Compilermeldungen (#54, TAtlasRuleExplanation.Find). Fehlt er
+    /// noch, fragt der Aufruf ihn im Hintergrund an und liefert nil; der nächste Hover hat ihn.</summary>
+    class function Catalog: TJSONValue; static;
+    /// <summary>„Erklären“ im Hover (#54): Dialog mit Erklärung, Ursache, Beispiel und DocWiki-Link.</summary>
+    class procedure Explain(const AProblem: TAtlasProblem); static;
   end;
 
 implementation
@@ -171,6 +178,11 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Tick(Sender: TObject);
+  private
+    FCatalogLoading: Boolean;
+  public
+    /// <summary>Eine Anfrage nach dem Katalog läuft (Hover fragt nur einmal, #54).</summary>
+    property CatalogLoading: Boolean read FCatalogLoading write FCatalogLoading;
   end;
 
 var
@@ -455,31 +467,44 @@ begin
   end;
 end;
 
-procedure ShowExplanation(ACatalog: TJSONValue; const ARule: string);
+procedure ShowExplanation(ACatalog: TJSONValue; const AKey: string);
 var
   mExplanation: TAtlasRuleExplanation;
 begin
-  if TAtlasRuleExplanation.Find(ACatalog, ARule, mExplanation) then
+  if TAtlasRuleExplanation.Find(ACatalog, AKey, mExplanation) then
   begin
-    TAtlasRuleExplainDialog.Execute(mExplanation);
+    TAtlasRuleExplainDialog.Execute(mExplanation, State.Hooks.OpenUrl);
   end
   else
   begin
-    Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainUnknown, [ARule]));
+    Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsExplainUnknown, [AKey]));
   end;
 end;
 
-procedure Explain(const AFinding: TAtlasFinding);
-var
-  mRule, mLanguage: string;
+/// <summary>Delphi-Version der IDE als BDS-Nummer für den DocWiki-Link (#54): Delphi 13 ist 37.0, ältere
+/// Versionen zählen 13 unter CompilerVersion (Delphi 12: 36 → 23.0).</summary>
+function BdsVersion: string;
 begin
-  mRule := AFinding.Rule;
-  if (State.Catalog <> nil) and (State.CatalogLanguage = TAtlasStrings.Language) then
-  begin
-    ShowExplanation(State.Catalog, mRule);
-    Exit;
-  end;
-  if not Assigned(State.Hooks.Command) then
+  {$IF CompilerVersion >= 37.0}
+  Result := Format('%d.0', [Trunc(CompilerVersion)]);
+  {$ELSE}
+  Result := Format('%d.0', [Trunc(CompilerVersion) - 13]);
+  {$IFEND}
+end;
+
+/// <summary>Katalog in der Sprache der Oberfläche vorhanden?</summary>
+function CatalogReady: Boolean;
+begin
+  Result := (State <> nil) and (State.Catalog <> nil) and (State.CatalogLanguage = TAtlasStrings.Language);
+end;
+
+/// <summary>Holt den Katalog (Regeln und Compilermeldungen) im Hintergrund; ADone danach im Hauptthread, nur wenn
+/// er da ist. Ohne ADone (Hover) höchstens eine Anfrage zur Zeit und keine Meldung ohne Server.</summary>
+procedure LoadCatalog(const ADone: TProc);
+var
+  mLanguage: string;
+begin
+  if (State = nil) or not Assigned(State.Hooks.Command) or (State.CatalogLoading and not Assigned(ADone)) then
   begin
     Exit;
   end;
@@ -488,24 +513,64 @@ begin
   begin
     mLanguage := 'en';
   end;
-  State.Hooks.Command(TAtlasProjectSettings.cCatalogCommand, '["' + mLanguage + '"]',
+  State.CatalogLoading := True;
+  State.Hooks.Command(TAtlasProjectSettings.cCatalogCommand, '["' + mLanguage + '", "' + BdsVersion + '"]',
     procedure(AValue: TJSONValue)
     begin
       if State = nil then
       begin
         Exit;
       end;
+      State.CatalogLoading := False;
       if AValue = nil then
       begin
-        Say(TAtlasStrings.Text(TAtlasTextId.ProblemsNoServer));
+        if Assigned(ADone) then
+        begin
+          Say(TAtlasStrings.Text(TAtlasTextId.ProblemsNoServer));
+        end;
         Exit;
       end;
       // Der Wert gehört dem Absender: eine Kopie merken.
       FreeAndNil(State.Catalog);
       State.Catalog := AValue.Clone as TJSONValue;
       State.CatalogLanguage := TAtlasStrings.Language;
-      ShowExplanation(State.Catalog, mRule);
+      if Assigned(ADone) then
+      begin
+        ADone();
+      end;
     end);
+end;
+
+/// <summary>Erklärung zu AKey (Regel-ID oder Meldungsnummer) im Dialog; holt den Katalog bei Bedarf.</summary>
+procedure ExplainKey(const AKey: string);
+begin
+  if AKey = '' then
+  begin
+    Exit;
+  end;
+  if CatalogReady then
+  begin
+    ShowExplanation(State.Catalog, AKey);
+    Exit;
+  end;
+  LoadCatalog(
+    procedure
+    begin
+      ShowExplanation(State.Catalog, AKey);
+    end);
+end;
+
+procedure ExplainFinding(const AFinding: TAtlasFinding);
+var
+  mKey: string;
+begin
+  // Compilermeldung: ihre Nummer (#54); Regelbefund: die Regel.
+  mKey := TAtlasRuleExplanation.Key(AFinding.Problem);
+  if mKey = '' then
+  begin
+    mKey := AFinding.Rule;
+  end;
+  ExplainKey(mKey);
 end;
 
 /// <summary>Sammelkorrektur (#1352) eines laufenden Moduls; False ohne.</summary>
@@ -631,7 +696,7 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Problems,
         procedure
         begin
-          Explain(AFinding);
+          ExplainFinding(AFinding);
         end);
     end;
   AFrame.OnCreateIssue :=
@@ -790,6 +855,24 @@ begin
   begin
     TAtlasIdeProblemsWindow.Prepare;
   end;
+end;
+
+class function TAtlasIdeProblems.Catalog: TJSONValue;
+begin
+  Result := nil;
+  if CatalogReady then
+  begin
+    Result := State.Catalog;
+  end
+  else
+  begin
+    LoadCatalog(nil);
+  end;
+end;
+
+class procedure TAtlasIdeProblems.Explain(const AProblem: TAtlasProblem);
+begin
+  ExplainKey(TAtlasRuleExplanation.Key(AProblem));
 end;
 
 class procedure TAtlasIdeProblems.Release;

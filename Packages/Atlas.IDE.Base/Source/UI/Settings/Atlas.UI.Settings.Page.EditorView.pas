@@ -136,6 +136,9 @@ begin
   // Aktionszeile unter Befunden im Hover (#909).
   BindCheck('HoverProblemActions',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverProblemActions)));
+  // Compilermeldungen erklären (#54).
+  BindCheck('HoverExplainMessages',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverExplainMessages)));
   // Rollbereich der published-Mitglieder (#1841).
   BindText('HoverMembersMaxLines',
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverMembersMaxLines)));

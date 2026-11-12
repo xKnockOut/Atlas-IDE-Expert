@@ -166,7 +166,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Completion.Word,
   Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.View,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,

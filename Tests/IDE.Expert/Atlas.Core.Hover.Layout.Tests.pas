@@ -13,6 +13,7 @@ uses
   System.Types,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.View,
   Atlas.Core.Hover.Texts;
 
 type
@@ -76,6 +77,9 @@ type
     /// <summary>#909: Aktionszeile nur an Regelbefunden und nur mit hover.problemActions.</summary>
     [Test]
     procedure RuleFindingsOfferActions;
+    /// <summary>#54: Compilermeldung mit Katalogeintrag zeigt die Ursache und „Erklären“/„DocWiki“.</summary>
+    [Test]
+    procedure ExplainedMessagesShowCauseAndLinks;
     /// <summary>#909: Tab wandert reihum über die Aktionen unter den Befunden.</summary>
     [Test]
     procedure NextProblemHitCycles;
@@ -953,6 +957,42 @@ begin
   Layout := Build(HoverInput);
   Assert.IsTrue(Pos('Atlas · empty-routine|Durchsucht: 3 Dateien der Projektgruppe|',
     TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0, TextsOf(Layout, TAtlasHoverItemKind.Text));
+end;
+
+procedure THoverLayoutTests.ExplainedMessagesShowCauseAndLinks;
+var
+  HoverView: TAtlasHoverView;
+  HoverInput: TAtlasHoverInput;
+  Layout: TAtlasHoverLayout;
+  Explanations: TArray<TAtlasHoverExplanation>;
+begin
+  HoverView := View('');
+  HoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'dcc', 'E2003', 'Unbekannt', ''),
+    Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-routine', 'Leer', '')];
+  HoverInput := Input(HoverView, 460);
+  HoverInput.Texts.Suppress := 'Unterdrücken';
+  HoverInput.Texts.Configure := 'Einstellen';
+  HoverInput.Texts.Explain := 'Erklären';
+  HoverInput.Texts.DocWiki := 'DocWiki';
+  HoverInput.Texts.Cause := 'Typische Ursache: %s';
+  HoverInput.ProblemActions := True;
+  // Ohne Erklärungen (hover.explainMessages aus): keine Ursache, keine Links an der Meldung.
+  Layout := Build(HoverInput);
+  Assert.AreEqual('1:4|1:5|', ActionCodes(Layout));
+  SetLength(Explanations, 2);
+  Explanations[0] := Default(TAtlasHoverExplanation);
+  Explanations[0].Known := True;
+  Explanations[0].Cause := 'Unit fehlt in uses';
+  Explanations[0].DocWiki := 'https://docwiki.embarcadero.com/RADStudio/Athens/e/index.php?search=E2003';
+  Explanations[1] := Default(TAtlasHoverExplanation);
+  Explanations[1].Known := True;
+  HoverView.Explanations := Explanations;
+  HoverInput.View := HoverView;
+  Layout := Build(HoverInput);
+  // Meldung: Erklären (8) und DocWiki (9); Regel: unterdrücken, einstellen, erklären.
+  Assert.AreEqual('0:8|0:9|1:4|1:5|1:8|', ActionCodes(Layout));
+  Assert.IsTrue(Pos('Typische Ursache: Unit fehlt in uses|', TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0,
+    TextsOf(Layout, TAtlasHoverItemKind.Text));
 end;
 
 procedure THoverLayoutTests.NextProblemHitCycles;
