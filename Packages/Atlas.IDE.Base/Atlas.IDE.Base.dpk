@@ -395,6 +395,7 @@ contains
   Atlas.Core.Diagnostics.Shutdown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas',
   Atlas.Core.Diagnostics.TimeLimit in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas',
   Atlas.Core.Diagnostics.Deadline in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas',
+  Atlas.Core.Diagnostics.AsyncWait in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas',
   Atlas.Core.Diagnostics.UserIdle in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas',
   Atlas.Core.Diagnostics.UnloadSafety in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas',
   Atlas.Core.Diagnostics.WorkerSlot in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas',

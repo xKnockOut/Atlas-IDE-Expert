@@ -23,51 +23,43 @@ implementation
 uses
   System.Classes,
   System.Types,
-  System.Diagnostics,
+  System.Math,
   System.Net.HttpClient,
   System.Net.URLClient,
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Core.Diagnostics.AsyncWait;
 
 const
   // Die Versionsdatei ist ein paar Byte groß; mehr wird nicht gelesen.
   cMaxBytes = 64 * 1024;
   cMaxRedirects = 5;
-  cSliceMs = 50;
 
 function IsRedirect(AStatus: Integer): Boolean;
 begin
   Result := (AStatus = 301) or (AStatus = 302) or (AStatus = 303) or (AStatus = 307) or (AStatus = 308);
 end;
 
-/// <summary>Holt AUrl in AContent; False, wenn das Abbruchsignal kommt oder die Zeit (ab AWatch) abläuft.
-/// </summary>
-function AwaitGet(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; const AWatch: TStopwatch;
-  ATimeoutMs: Integer; out AResponse: IHTTPResponse): Boolean;
+/// <summary>Holt AUrl in AContent; False, wenn das Abbruchsignal kommt oder ADeadline erreicht ist.</summary>
+function AwaitGet(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; const ADeadline: TAtlasDeadline;
+  out AResponse: IHTTPResponse): Boolean;
 var
   mAsync: IAsyncResult;
-  mWait: TStopwatch;
 begin
   AResponse := nil;
   AContent.Clear;
   mAsync := AClient.BeginGet(AUrl, AContent);
-  Result := True;
-  while Result and not mAsync.IsCompleted do
-  begin
-    Result := not TAtlasShutdown.Wait(cSliceMs) and (AWatch.ElapsedMilliseconds <= ATimeoutMs);
-  end;
+  Result := TAtlasAsyncWait.Await(
+    function: Boolean
+    begin
+      Result := mAsync.IsCompleted;
+    end,
+    procedure
+    begin
+      mAsync.Cancel;
+    end, ADeadline, nil) = TAtlasAsyncEnd.Done;
   if Result then
   begin
     AResponse := THTTPClient.EndAsyncHTTP(mAsync);
-  end
-  else
-  begin
-    mAsync.Cancel;
-    // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
-    mWait := TStopwatch.StartNew;
-    while not mAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.cStopMs div 2) do
-    begin
-      Sleep(10);
-    end;
   end;
 end;
 
@@ -75,20 +67,20 @@ end;
 function FollowRedirects(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; ATimeoutMs: Integer;
   out AResponse: IHTTPResponse; out AError: string): Boolean;
 var
-  mWatch: TStopwatch;
+  mDeadline: TAtlasDeadline;
   mUrl: string;
   mRedirects: Integer;
 begin
   AError := '';
   mUrl := AUrl;
   mRedirects := 0;
-  mWatch := TStopwatch.StartNew;
+  mDeadline := TAtlasDeadline.After(Cardinal(Max(ATimeoutMs, 0)));
   repeat
     if not mUrl.StartsWith('https://', True) then
     begin
       AError := 'nur https';
     end
-    else if not AwaitGet(AClient, mUrl, AContent, mWatch, ATimeoutMs, AResponse) then
+    else if not AwaitGet(AClient, mUrl, AContent, mDeadline, AResponse) then
     begin
       AError := 'abgebrochen';
     end

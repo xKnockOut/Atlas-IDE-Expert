@@ -158,6 +158,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.ThreadList` | `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.TimeLimit` | `Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Deadline` | `Core/Diagnostics/Atlas.Core.Diagnostics.Deadline.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.AsyncWait` | `Core/Diagnostics/Atlas.Core.Diagnostics.AsyncWait.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.UserIdle` | `Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.UnloadSafety` | `Core/Diagnostics/Atlas.Core.Diagnostics.UnloadSafety.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.WorkerSlot` | `Core/Diagnostics/Atlas.Core.Diagnostics.WorkerSlot.pas` | Ordner `Core/Diagnostics` |
@@ -1443,6 +1444,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Bookmarks.Quick` | `Core/Bookmarks/Atlas.Core.Bookmarks.Quick.pas` | Ordner `Core/Bookmarks` |
 | `Atlas.Core.Bookmarks.SavedPlaces` | `Core/Bookmarks/Atlas.Core.Bookmarks.SavedPlaces.pas` | Notizen und Lesezeichen als gemerkte Stellen (Vertrag SavedPlaces), #1456 |
 | `Atlas.Core.Bookmarks.Store` | `Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas` | Ordner `Core/Bookmarks` |
+| `Atlas.Core.Marks.Ids` | `Core/Marks/Atlas.Core.Marks.Ids.pas` | Ordner `Core/Marks` |
 | `Atlas.Core.Notes.Store` | `Core/Notes/Atlas.Core.Notes.Store.pas` | Ordner `Core/Notes` |
 | `Atlas.IDE.Bookmarks.Gutter` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Gutter.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.Composition` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas` | Anmeldung des Moduls `atlas.bookmarks`, #1455 |

@@ -125,7 +125,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Marks.Ids;
 
 const
   cKeyMask = $00FF;
@@ -237,7 +238,7 @@ begin
     mMark := AList.Bookmarks[mIndex];
     DropNumber(AList, mIndex);
     // Stand schon in dieser Zeile: nur entfernen.
-    if not mMark.Lost and (mMark.Line = ALine) and TAtlasBookmarks.SameFile(mMark.FileName, AFileName) then
+    if not mMark.Lost and (mMark.Line = ALine) and TAtlasMarkIds.SameFile(mMark.FileName, AFileName) then
     begin
       Exit(TAtlasQuickChange.Removed);
     end;
@@ -363,7 +364,7 @@ begin
   Result := 0;
   for mIndex := High(AList.Bookmarks) downto 0 do
   begin
-    if TAtlasBookmarks.SameFile(AList.Bookmarks[mIndex].FileName, AFileName) and InColumn(AList.Bookmarks[mIndex]) then
+    if TAtlasMarkIds.SameFile(AList.Bookmarks[mIndex].FileName, AFileName) and InColumn(AList.Bookmarks[mIndex]) then
     begin
       if AList.Bookmarks[mIndex].Kind = TAtlasBookmarkKind.Quick then
       begin
@@ -387,7 +388,7 @@ begin
     Exit(TAtlasQuickJump.NotAssigned);
   end;
   if (AScope = TAtlasQuickScope.CurrentFile) and
-    not TAtlasBookmarks.SameFile(AList.Bookmarks[AIndex].FileName, ACurrentFile) then
+    not TAtlasMarkIds.SameFile(AList.Bookmarks[AIndex].FileName, ACurrentFile) then
   begin
     Exit(TAtlasQuickJump.OtherFile);
   end;
