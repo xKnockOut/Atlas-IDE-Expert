@@ -3810,6 +3810,14 @@
                 },
                 "description": "Angebotene Zielzustände beim Beenden für diesen Tracker (#1266); fehlen sie, gilt issues.endStates.",
                 "x-description-en": "Offered target states when finishing for this tracker (#1266); if missing, issues.endStates applies."
+              },
+              "reviewStates": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Prüfzustände dieses Trackers (#2126, #2127); fehlen sie, gilt issues.reviewStates.",
+                "x-description-en": "Review states of this tracker (#2126, #2127); if missing, issues.reviewStates applies."
               }
             }
           }

@@ -33,6 +33,8 @@ type
     AssigneeField: TAtlasValueBox;
     StartState: TAtlasValueBox;
     EndStates: TEdit;
+    /// <summary>Prüfzustände der Verbindung (#2126).</summary>
+    ReviewStates: TEdit;
     /// <summary>Zeilen von Zustandsfeld und Benutzerfeld: nur bei Anbietern mit Feldern sichtbar.</summary>
     StateRow: TWinControl;
     AssigneeRow: TWinControl;
@@ -187,6 +189,10 @@ begin
   FView.EndStates := FRows.NewEdit(WorkflowChange);
   FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionEndStates),
     FView.EndStates, TRows.cWideWidth), FAnchor);
+  FView.ReviewStates := FRows.NewEdit(WorkflowChange);
+  FRows.Attach(FRows.AddLabelled(
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionReviewStates), FView.ReviewStates,
+    TRows.cWideWidth), FAnchor);
   FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionStatesHint), FAnchor);
 end;
 
@@ -315,6 +321,7 @@ begin
   FView.AssigneeField.Value := AConnection.AssigneeField;
   FView.StartState.Value := AConnection.StartState;
   FView.EndStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndStates);
+  FView.ReviewStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.ReviewStates);
 end;
 
 procedure TAtlasTrackerConnectionsPart.FillFields;
@@ -354,6 +361,7 @@ begin
   FRows.Allow(FView.AssigneeField, mEditable);
   FRows.Allow(FView.StartState, mEditable);
   FRows.Allow(FView.EndStates, mEditable);
+  FRows.Allow(FView.ReviewStates, mEditable);
   FRows.Allow(FView.Remove, mEditable);
   // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
   FRows.Allow(FView.Token, mHasUrl and Assigned(FHooks.OnToken));
@@ -475,6 +483,7 @@ begin
   end;
   Table.SetWorkflow(FView.StateField.Value, FView.AssigneeField.Value, FView.StartState.Value,
     FView.EndStates.Text);
+  Table.SetReviewStates(FView.ReviewStates.Text);
 end;
 
 procedure TAtlasTrackerConnectionsPart.AddClick(Sender: TObject);

@@ -548,6 +548,8 @@ begin
   Assert.IsFalse(mSettings.IssuesAssignOnStart);
   Assert.AreEqual('', mSettings.IssuesStartComment);
   Assert.AreEqual('', mSettings.IssuesEndStates);
+  Assert.AreEqual('', mSettings.IssuesReviewStates);
+  Assert.IsTrue(mSettings.IssuesReopened, '#2127: Vorgabe an');
   Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
   // Normalisieren: Felder ohne Leerraum außen, leer = Vorgabe; Vorlagen einzeilig mit \n.
   mSettings.IssuesStateField := '  Status ';
@@ -555,6 +557,7 @@ begin
   mSettings.IssuesStartState := ' In Arbeit ';
   mSettings.IssuesStartComment := 'Beginne {kennung}'#13#10'in {branch}';
   mSettings.IssuesEndStates := ' Zur Prüfung, Erledigt ';
+  mSettings.IssuesReviewStates := ' Zur Prüfung ';
   mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.cMaxIssuesTemplate + 10);
   mSettings.Normalize;
   Assert.AreEqual('Status', mSettings.IssuesStateField);
@@ -562,11 +565,13 @@ begin
   Assert.AreEqual('In Arbeit', mSettings.IssuesStartState);
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mSettings.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mSettings.IssuesEndStates);
+  Assert.AreEqual('Zur Prüfung', mSettings.IssuesReviewStates);
   Assert.AreEqual(TAtlasPluginSettings.cMaxIssuesTemplate, Integer(Length(mSettings.IssuesEndComment)));
   // Speichern und Laden.
   mSettings.IssuesSyncState := False;
   mSettings.IssuesAssignOnStart := True;
   mSettings.IssuesEndComment := 'Fertig: {pr}';
+  mSettings.IssuesReopened := False;
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);
   mLoaded := TAtlasPluginSettings.Defaults;
@@ -578,6 +583,8 @@ begin
   Assert.IsTrue(mLoaded.IssuesAssignOnStart);
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
+  Assert.AreEqual('Zur Prüfung', mLoaded.IssuesReviewStates);
+  Assert.IsFalse(mLoaded.IssuesReopened);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
 end;
 procedure TAtlasIssueSettingsTests.IssuesTimeOptions;

@@ -1107,6 +1107,7 @@ class function TAtlasGitHubParse.ParseCommentChanges(const AJson: string; const 
 var
   mValue, mItem: TJSONValue;
   mTime: TDateTime;
+  mChange: TAtlasTrackerChange;
 begin
   AChanges := nil;
   Result := False;
@@ -1127,8 +1128,12 @@ begin
       mTime := TAtlasGitHubJson.TimeOf(TJSONObject(mItem), 'created_at');
       if mTime > ASince then
       begin
-        AChanges := AChanges + [ChangeOf(AThread, TAtlasTrackerChangeKind.Comment,
-          TAtlasGitHubJson.LoginOf(TJSONObject(mItem).Values['user']), mTime)];
+        mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.Comment,
+          TAtlasGitHubJson.LoginOf(TJSONObject(mItem).Values['user']), mTime);
+        // Grund in der Meldung „wieder offen“ (#2127).
+        mChange.Text := TAtlasGitHubJson.Shorten(TJsonRead.Text(TJSONObject(mItem), 'body'),
+          TAtlasTrackerChange.cMaxText);
+        AChanges := AChanges + [mChange];
       end;
     end;
   finally
@@ -1156,11 +1161,13 @@ begin
     // Zustand wie bei GitHub; die Oberfläche übersetzt "closed" und "open".
     AChange := TAtlasGitHubParse.ChangeOf(AThread, TAtlasTrackerChangeKind.State, mActor, ATime);
     AChange.Value := 'closed';
+    AChange.Previous := 'open';
   end
   else if mEvent = 'reopened' then
   begin
     AChange := TAtlasGitHubParse.ChangeOf(AThread, TAtlasTrackerChangeKind.State, mActor, ATime);
     AChange.Value := 'open';
+    AChange.Previous := 'closed';
   end
   else
   begin

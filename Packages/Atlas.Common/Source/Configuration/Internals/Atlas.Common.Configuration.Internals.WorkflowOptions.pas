@@ -29,7 +29,7 @@ type
   TWorkflowOptionsText = (ThereAlreadyIsAMapping, SeverityMapMustBeAnObject, AllowedAreErrorWarningAnd,
     RegexMustNotBeEmpty, AllowedAreDccPwshMsbuild, MatcherMustBeAName, ArgsMustBeAList, TimeoutSecMustBeAWhole,
     AllowedAreCheckBuildTest, AllowedAreOffWarnAnd, TheTaskAlreadyExists, InATask, TasksMustBeAList, ATaskIsAnObject,
-    EndStatesMustBeAList, AStateInEndStatesIs, LanguageIsDeOrEn, TheConnectionAlreadyExists, InAConnection,
+    StatesMustBeAList, AStateInStatesIs, LanguageIsDeOrEn, TheConnectionAlreadyExists, InAConnection,
     ConnectionsMustBeAList, AConnectionIsAnObject, InAMapping, MappingWithoutMatchPathOf, ProjectsMustBeAList,
     AMappingIsAnObject, TheQueryAlreadyExists, InAQuery, QueriesMustBeAList, AQueryIsAnObject, AllowedAreAutoGitSvn,
     ABranchNameContainsNo, VcsProjectsMustBeA, AMappingIsAnObject2, VcsTimeoutSecondsMustBeA,
@@ -58,9 +58,9 @@ const
     (De: 'in einer Aufgabe'; En: 'in a task'),
     (De: '"tasks" muss eine Liste von Aufgaben sein'; En: '"tasks" must be a list of tasks'),
     (De: 'Eine Aufgabe ist ein Objekt mit "name" und "command"'; En: 'A task is an object with "name" and "command"'),
-    (De: '"endStates" muss eine Liste von Zuständen sein, z. B. ["Zur Prüfung", "Erledigt"]';
-     En: '"endStates" must be a list of states, e.g. ["In Review", "Done"]'),
-    (De: 'Ein Zustand in "endStates" ist ein Text'; En: 'A state in "endStates" is a text'),
+    (De: '"%s" muss eine Liste von Zuständen sein, z. B. ["Zur Prüfung", "Erledigt"]';
+     En: '"%s" must be a list of states, e.g. ["In Review", "Done"]'),
+    (De: 'Ein Zustand in "%s" ist ein Text'; En: 'A state in "%s" is a text'),
     (De: '"language" ist "de" oder "en"'; En: '"language" is "de" or "en"'),
     (De: 'Die Verbindung "%s" gibt es schon'; En: 'The connection "%s" already exists'),
     (De: 'in einer Verbindung'; En: 'in a connection'),
@@ -456,20 +456,21 @@ begin
   end;
 end;
 
-procedure CheckEndStates(AReader: TConfigurationReader; ANode: TJsonNode);
+/// <summary>Liste von Zuständen unter AKey (endStates #1266, reviewStates #2126).</summary>
+procedure CheckStates(AReader: TConfigurationReader; ANode: TJsonNode; const AKey: string);
 var
   mIndex: Integer;
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, cTexts[TWorkflowOptionsText.EndStatesMustBeAList].Text);
+    AReader.ReportNode(ANode, Format(cTexts[TWorkflowOptionsText.StatesMustBeAList].Text, [AKey]));
     Exit;
   end;
   for mIndex := 0 to ANode.Count - 1 do
   begin
     if ANode[mIndex].Kind <> TJsonKind.String_ then
     begin
-      AReader.ReportNode(ANode[mIndex], cTexts[TWorkflowOptionsText.AStateInEndStatesIs].Text);
+      AReader.ReportNode(ANode[mIndex], Format(cTexts[TWorkflowOptionsText.AStateInStatesIs].Text, [AKey]));
     end;
   end;
 end;
@@ -490,9 +491,10 @@ begin
   begin
     AReader.ExpectString(AValue, AKey, mText);
   end
-  else if AKey = 'endStates' then
+  // Zielzustände beim Beenden (#1266) und Prüfzustände (#2126, #2127).
+  else if MatchStr(AKey, ['endStates', 'reviewStates']) then
   begin
-    CheckEndStates(AReader, AValue);
+    CheckStates(AReader, AValue, AKey);
   end
   else
   begin

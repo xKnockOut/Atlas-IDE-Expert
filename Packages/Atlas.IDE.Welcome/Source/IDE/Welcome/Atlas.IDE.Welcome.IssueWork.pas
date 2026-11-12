@@ -3,7 +3,8 @@
 // Arbeitsstand je Issue für andere Module (#2052, Vertrag
 // Atlas.IDE.Contracts.IssueWork): Das Modul stellt IAtlasIssueWork über seinen
 // Scope bereit; der Tracker meldet darüber den Wechsel des aktiven Issues und
-// bietet nach „Beginnen“ das Wiederherstellen an. Das Objekt fragt die
+// bietet nach „Beginnen“ das Wiederherstellen an; nach „Weiterarbeiten“ an
+// einem wieder geöffneten Issue (#2127) stellt er ohne Rückfrage wieder her. Das Objekt fragt die
 // laufende Seite bei jedem Aufruf neu und tut ohne sie nichts (Regel 3).
 
 interface
@@ -31,6 +32,7 @@ type
     procedure SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
     function HasState(const AProject, AKey: string): Boolean;
     procedure OfferRestore(const AProject, AKey: string);
+    procedure Restore(const AProject, AKey: string);
     procedure StatusesChanged;
   end;
 
@@ -117,6 +119,24 @@ begin
       procedure
       begin
         mIssues.OfferRestore(mProject, mKey);
+      end);
+  end;
+end;
+
+procedure TAtlasWelcomeIssueWork.Restore(const AProject, AKey: string);
+var
+  mIssues: TAtlasIdeContinueIssues;
+  mProject, mKey: string;
+begin
+  mIssues := Issues;
+  mProject := AProject;
+  mKey := AKey;
+  if (mIssues <> nil) and mIssues.HasState(mProject, mKey) then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        mIssues.Restore(mProject, mKey);
       end);
   end;
 end;

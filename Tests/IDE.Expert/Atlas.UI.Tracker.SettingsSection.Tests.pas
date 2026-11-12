@@ -669,6 +669,9 @@ begin
   Assert.AreEqual('Status', ASection.Connections.View.StateField.Value);
   Assert.AreEqual('', ASection.Connections.View.StartState.Value);
   Assert.AreEqual('Geprüft', ASection.Connections.View.EndStates.Text);
+  Assert.AreEqual('Im Review', ASection.Connections.View.ReviewStates.Text);
+  Assert.AreEqual('Zur Prüfung', ASection.Workflow.View.ReviewStates.Text);
+  Assert.IsTrue(ASection.Workflow.View.Reopened.Checked, 'Vorgabe an');
   Assert.IsTrue(ASection.Connections.View.StateField.Enabled);
   ASection.Connections.View.EndStates.Text := 'Geprüft; Abgelehnt';
   Assert.AreEqual(2, Integer(Length(ASection.Tables.Connections.Items[0].EndStates)));
@@ -687,10 +690,13 @@ begin
   Assert.AreEqual('Status', ASaved.IssuesStateField);
   Assert.AreEqual('Zur Prüfung, Erledigt', ASaved.IssuesEndStates);
   Assert.AreEqual('Fertig: {pr}', ASaved.IssuesEndComment);
+  Assert.AreEqual('Zur Prüfung, QA', ASaved.IssuesReviewStates);
+  Assert.IsFalse(ASaved.IssuesReopened);
   mRead := TAtlasTrackerConnections.Read(ASaved.IssuesConnections);
   Assert.AreEqual('https://yt.firma.local', mRead[0].Url);
   Assert.AreEqual('Status', mRead[0].StateField);
   Assert.AreEqual(2, Integer(Length(mRead[0].EndStates)));
+  Assert.AreEqual('Im Review', mRead[0].ReviewStates[0]);
 end;
 
 /// <summary>Werte vom Tracker als Vorschläge; ein Fehler lässt die Vorschläge stehen.</summary>
@@ -738,8 +744,9 @@ begin
     mSettings.IssuesStartState := 'In Arbeit';
     mSettings.IssuesAssignOnStart := True;
     mSettings.IssuesEndStates := 'Zur Prüfung, Erledigt';
+    mSettings.IssuesReviewStates := 'Zur Prüfung';
     mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local",' +
-      ' "stateField": "Status", "endStates": ["Geprüft"]}]';
+      ' "stateField": "Status", "endStates": ["Geprüft"], "reviewStates": ["Im Review"]}]';
     mPage.LoadFrom(mSettings);
     AssertWorkflowLoaded(FSection);
     // Speichern.
@@ -747,6 +754,9 @@ begin
     FSection.Workflow.View.StateField.Value := ' Status ';
     FSection.Workflow.View.EndStates.Text := 'Zur Prüfung;; Erledigt';
     FSection.Workflow.View.EndComment.Text := 'Fertig: {pr}';
+    // #2126/#2127: Prüfzustände geordnet, Schalter für wieder geöffnete Issues.
+    FSection.Workflow.View.ReviewStates.Text := 'Zur Prüfung;; QA';
+    FSection.Workflow.View.Reopened.Checked := False;
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
     AssertWorkflowSaved(mSaved);

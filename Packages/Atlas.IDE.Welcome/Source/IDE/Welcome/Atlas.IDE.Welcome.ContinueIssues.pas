@@ -15,7 +15,8 @@
 // - Fortsetzen: Branch nur nach Rückfrage wechseln (Abfrage im Hintergrund);
 //   fehlt der Branch, nur die Reiter mit Hinweis. Dann Projekt öffnen, Reiter
 //   in ihrer Reihenfolge, Cursor an die letzte Änderung.
-// - Nach „Beginnen“ bietet OfferRestore „Arbeitsstand wiederherstellen“ an.
+// - Nach „Beginnen“ bietet OfferRestore „Arbeitsstand wiederherstellen“ an;
+//   Restore stellt ohne Rückfrage wieder her (#2127, „Weiterarbeiten“).
 
 interface
 
@@ -65,6 +66,8 @@ type
     procedure SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
     function HasState(const AProject, AKey: string): Boolean;
     procedure OfferRestore(const AProject, AKey: string);
+    /// <summary>Ohne Rückfrage wiederherstellen (#2127, „Weiterarbeiten“ an einem wieder geöffneten Issue).</summary>
+    procedure Restore(const AProject, AKey: string);
     procedure StatusesChanged;
     { IAtlasContinueIssuesSource }
     function IssuesEnabled: Boolean;
@@ -390,6 +393,17 @@ begin
   if MessageDlg(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIssuesRestorePrompt,
     [mEntry.Key, TAtlasContinueIssueTexts.TabsText(mEntry.State.TabCount)]), mtConfirmation, [mbYes, mbNo],
     0) = mrYes then
+  begin
+    ResumeIssue(mTarget, mEntry.Key);
+  end;
+end;
+
+procedure TAtlasIdeContinueIssues.Restore(const AProject, AKey: string);
+var
+  mTarget: string;
+  mEntry: TAtlasIssueWorkEntry;
+begin
+  if Enabled and FindEntry(AProject, AKey, mTarget, mEntry) then
   begin
     ResumeIssue(mTarget, mEntry.Key);
   end;

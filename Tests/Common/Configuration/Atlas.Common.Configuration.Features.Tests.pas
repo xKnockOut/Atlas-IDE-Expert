@@ -1245,6 +1245,12 @@ begin
     ' "endStates": ["Erledigt", 4]}]}}', mIssues);
   // stateField keine Zeichenkette, endStates keine Liste, 4 kein Text.
   Assert.AreEqual(3, Integer(Length(mIssues)));
+  // #2126: reviewStates wie endStates.
+  Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack", "url": "https://yt.local",' +
+    ' "reviewStates": ["Zur Prüfung"]}, {"name": "B", "provider": "github", "url": "https://github.com",' +
+    ' "reviewStates": "QA"}]}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].Message.Contains('reviewStates'), mIssues[0].Message);
 end;
 procedure TConfigurationFeatureTests.ReadsMcpDisabledTools;
 var
