@@ -90,6 +90,8 @@ type
     function DescendsFrom(const ATypeName, AAncestor: string): Boolean;
     /// <summary>Deklariert die Klasse ATypeName selbst einen Konstruktor (Datei oder Index, #919)?</summary>
     function HasConstructor(const ATypeName: string): Boolean;
+    /// <summary>Deklariert die Klasse ATypeName selbst einen Destruktor Destroy (Datei oder Index)?</summary>
+    function HasDestructor(const ATypeName: string): Boolean;
     /// <summary>Nächste gleichnamige Methode in den Vorfahren, falls sie virtuell ist.</summary>
     function InheritedVirtual(const AMethod: TMethodDecl): TInherited;
     /// <summary>Methode oder Konstruktor der Klasse ATypeName in dieser Datei, der bei APos beginnt.</summary>
@@ -851,6 +853,28 @@ begin
   begin
     // Der Index führt Destruktoren ebenfalls als Constructor_.
     if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and not SameText(mMembers[mIndex].Name, 'Destroy') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAncestry.HasDestructor(const ATypeName: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex: Integer;
+begin
+  Result := False;
+  if not FindType(ATypeName, mLocation) then
+  begin
+    Exit;
+  end;
+  mMembers := MemberList(mLocation);
+  for mIndex := 0 to High(mMembers) do
+  begin
+    // Der Index führt Destruktoren als Constructor_.
+    if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and SameText(mMembers[mIndex].Name, 'Destroy') then
     begin
       Exit(True);
     end;

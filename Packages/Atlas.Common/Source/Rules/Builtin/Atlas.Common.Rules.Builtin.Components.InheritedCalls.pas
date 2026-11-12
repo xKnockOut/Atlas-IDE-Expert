@@ -89,8 +89,10 @@ const
     (De: 'inherited an der falschen Stelle'; En: 'inherited in the wrong place'),
     (De: 'inherited an das Ende des Destruktors verschieben'; En: 'Move inherited to the end of the destructor'),
     (De: 'inherited an den Anfang des Konstruktors verschieben'; En: 'Move inherited to the start of the constructor'),
-    (De: 'inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.';
-     En: 'inherited before freeing the own fields; the ancestor can still access %s.'),
+    (De: 'inherited vor dem Freigeben von %s; der Vorfahr ist dann schon abgebaut, %s darf beim Freigeben ' +
+       'nichts mehr von ihm brauchen.';
+     En: 'inherited before freeing %s; the ancestor is already torn down then, so %s must not need anything ' +
+       'from it while being freed.'),
     (De: '%s greift vor inherited auf %s aus %s zu; der Vorfahr ist noch nicht angelegt.';
      En: '%s accesses %s from %s before inherited; the ancestor is not created yet.'),
     (De: 'inherited ruft eine andere Methode'; En: 'inherited calls a different method'),
@@ -849,6 +851,30 @@ var
     end;
   end;
 
+  // Baut ein Vorfahr in seinem Destruktor etwas ab? Ohne Destruktor in der ganzen Kette (bis TObject) ist die
+  // Reihenfolge gleich (FP-Prüfung 28.10.2026); ein unbekannter Vorfahr zählt wie einer mit Destruktor.
+  function AncestorDestroys(const AClassName: string): Boolean;
+  var
+    mName: string;
+    mDepth: Integer;
+  begin
+    mName := mModel.Ancestry.ParentOf(AClassName);
+    for mDepth := 0 to 63 do
+    begin
+      if (mName = '') or IsIn(mName, cComponentBases) or IsIn(mName, cConstructorBases) or
+        mModel.Ancestry.HasDestructor(mName) then
+      begin
+        Exit(True);
+      end;
+      if SameText(mName, 'TObject') then
+      begin
+        Exit(False);
+      end;
+      mName := mModel.Ancestry.ParentOf(mName);
+    end;
+    Result := True;
+  end;
+
   procedure CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
   var
     mIndex: Integer;
@@ -857,7 +883,7 @@ var
     mFix: TRuleFix;
     mFixes: TArray<TRuleFix>;
   begin
-    if WaitsInDestructor(AInfo.Name) then
+    if WaitsInDestructor(AInfo.Name) or not AncestorDestroys(AInfo.Name) then
     begin
       Exit;
     end;
@@ -881,7 +907,7 @@ var
           mFixes := [mFix];
         end;
         AReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
-          cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([mField]), TRuleConfidence.Medium, mFixes);
+          cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([mField, mField]), TRuleConfidence.Medium, mFixes);
       end;
       Exit;
     end;
