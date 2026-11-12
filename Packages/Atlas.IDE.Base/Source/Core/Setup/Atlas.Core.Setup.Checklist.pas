@@ -7,7 +7,9 @@
 // Gange ist (Server startet, Index wird aufgebaut):
 // - Server: gefunden, gestartet und Version passend zum Plugin.
 // - Delphi: Version der IDE und Plattform des aktiven Projekts erkannt.
-// - Index: alle Projekte der Gruppe indiziert, Fortschritt je Projekt (#619).
+// - Index: alle Projekte der Gruppe indiziert, Fortschritt je Projekt (#619)
+//   mit Prozent, Stufe und Warten (#2142): Stufe und Warten aus
+//   atlas.server.status, Prozent live über das $/progress-Token des Projekts.
 // - Bibliotheks-Cache (#492): von mindestens einem Arbeitsbereich angelegt.
 // - Error Insight (#407): genau eine Fehleranzeige (IDE oder Atlas-Probleme);
 //   beide an heißt doppelte Meldungen.
@@ -42,14 +44,33 @@ type
   TAtlasSetupFix = (None, Explain, ChooseServerPath, StartServer, RestartServer, RebuildIndex, BuildLibraryCache,
     DisableErrorInsight, EnableErrorInsight, OpenKeyConflicts);
   TAtlasSetupProjectState = (Done, Building, Missing);
+  /// <summary>Stufe des Aufbaus eines Projekts (#2142); Unknown bei älterem Server.</summary>
+  TAtlasSetupIndexStage = (Unknown, ProjectFiles, SearchPaths, Library_);
   /// <summary>Wait: Ergebnis steht noch nicht fest; Open: Prüfliste zeigen; Skip: nicht von selbst zeigen.</summary>
   TAtlasSetupStartAction = (Wait, Open, Skip);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Laufender Aufbau eines Projekts (#2142).</summary>
+  TAtlasSetupIndexing = record
+    Active: Boolean;
+    /// <summary>-1 = unbekannt.</summary>
+    Percent: Integer;
+    Stage: TAtlasSetupIndexStage;
+    /// <summary>Wartet, bis andere Projekte der Gruppe ihre Stufe fertig haben.</summary>
+    Waiting: Boolean;
+    /// <summary>Gleich, wenn sich für die Anzeige nichts geändert hat.</summary>
+    function Key: string;
+  end;
+
+  /// <summary>Fortschritt des $/progress-Vorgangs AToken; False, wenn er nicht läuft (#2142).</summary>
+  TAtlasSetupTokenIndexingFunc = reference to function(const AToken: string; out APercent: Integer): Boolean;
 
   /// <summary>Ein Projekt der Gruppe mit seinem Stand im Index (#619).</summary>
   TAtlasSetupProject = record
     Name: string;
     State: TAtlasSetupProjectState;
+    /// <summary>Nur bei Building: Prozent, Stufe und Warten (#2142).</summary>
+    Indexing: TAtlasSetupIndexing;
     class function Create(const AName: string; AState: TAtlasSetupProjectState): TAtlasSetupProject; static;
   end;
 
@@ -79,6 +100,9 @@ type
     /// <summary>Erster Indexlauf fertig (lastIndexMs ≥ 0).</summary>
     Done: Boolean;
     LibraryCacheBytes: Int64;
+    /// <summary>Token der $/progress-Meldungen ('' bei älterem Server, #2142).</summary>
+    ProgressToken: string;
+    Indexing: TAtlasSetupIndexing;
   end;
 
   TAtlasSetupServerStatus = record
@@ -89,6 +113,9 @@ type
     Workspaces: TArray<TAtlasSetupWorkspace>;
     /// <summary>Antwort von atlas.server.status (#28, #492); Known = False bei leerem oder ungültigem Text.</summary>
     class function Parse(const AJson: string): TAtlasSetupServerStatus; static;
+    /// <summary>Kopie mit dem Prozent der laufenden $/progress-Vorgänge je Token (#2142): Der Status ist bis
+    /// zu 5 s alt, die Meldungen nicht. Ein Token, das nicht läuft, hat keinen Aufbau mehr.</summary>
+    function WithLiveProgress(const AIndexingOf: TAtlasSetupTokenIndexingFunc): TAtlasSetupServerStatus;
   end;
 
   /// <summary>Eine Atlas-Taste mit Text und fremder Belegung ('' = frei).</summary>
@@ -255,6 +282,15 @@ class function TAtlasSetupProject.Create(const AName: string; AState: TAtlasSetu
 begin
   Result.Name := AName;
   Result.State := AState;
+  Result.Indexing := Default(TAtlasSetupIndexing);
+  Result.Indexing.Percent := -1;
+end;
+
+{ TAtlasSetupIndexing }
+
+function TAtlasSetupIndexing.Key: string;
+begin
+  Result := Format('%d/%d/%d/%d', [Ord(Active), Percent, Ord(Stage), Ord(Waiting)]);
 end;
 
 { TAtlasSetupResult }
@@ -271,11 +307,47 @@ begin
   end;
   for mProject in Projects do
   begin
-    Result := Result + '|' + mProject.Name + '=' + IntToStr(Ord(mProject.State));
+    Result := Result + '|' + mProject.Name + '=' + IntToStr(Ord(mProject.State)) + '/' + mProject.Indexing.Key;
   end;
 end;
 
 { TAtlasSetupServerStatus }
+
+/// <summary>Stufe aus dem Namen des Servers; Unknown bei unbekanntem.</summary>
+function ParseStage(const AName: string): TAtlasSetupIndexStage;
+begin
+  Result := TAtlasSetupIndexStage.Unknown;
+  if AName = 'projectFiles' then
+  begin
+    Result := TAtlasSetupIndexStage.ProjectFiles;
+  end
+  else if AName = 'searchPaths' then
+  begin
+    Result := TAtlasSetupIndexStage.SearchPaths;
+  end
+  else if AName = 'library' then
+  begin
+    Result := TAtlasSetupIndexStage.Library_;
+  end;
+end;
+
+/// <summary>"indexing" eines Arbeitsbereichs (#2142); nicht aktiv ohne.</summary>
+function ParseIndexing(AValue: TJSONValue): TAtlasSetupIndexing;
+var
+  mObject: TJSONObject;
+begin
+  Result := Default(TAtlasSetupIndexing);
+  Result.Percent := -1;
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mObject := TJSONObject(AValue);
+  Result.Active := True;
+  Result.Percent := Integer(TJsonRead.Int64Or(mObject, 'percent', -1));
+  Result.Stage := ParseStage(TJsonRead.Text(mObject, 'stage'));
+  Result.Waiting := TJsonRead.Flag(mObject, 'waiting');
+end;
 
 class function TAtlasSetupServerStatus.Parse(const AJson: string): TAtlasSetupServerStatus;
 var
@@ -312,12 +384,44 @@ begin
           mWorkspace.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
           mWorkspace.Done := TJsonRead.Int64Or(TJSONObject(mItem), 'lastIndexMs', -1) >= 0;
           mWorkspace.LibraryCacheBytes := TJsonRead.Int64Or(TJSONObject(mItem), 'libraryCacheBytes', 0);
+          mWorkspace.ProgressToken := TJsonRead.Text(TJSONObject(mItem), 'progressToken');
+          mWorkspace.Indexing := ParseIndexing(TJSONObject(mItem).GetValue('indexing'));
           Result.Workspaces := Result.Workspaces + [mWorkspace];
         end;
       end;
     end;
   finally
     mValue.Free;
+  end;
+end;
+
+function TAtlasSetupServerStatus.WithLiveProgress(
+  const AIndexingOf: TAtlasSetupTokenIndexingFunc): TAtlasSetupServerStatus;
+var
+  mIndex, mPercent: Integer;
+begin
+  Result := Self;
+  Result.Workspaces := Copy(Workspaces);
+  if not Assigned(AIndexingOf) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(Result.Workspaces) do
+  begin
+    if Result.Workspaces[mIndex].ProgressToken = '' then
+    begin
+      Continue;
+    end;
+    if AIndexingOf(Result.Workspaces[mIndex].ProgressToken, mPercent) then
+    begin
+      Result.Workspaces[mIndex].Indexing.Active := True;
+      Result.Workspaces[mIndex].Indexing.Percent := mPercent;
+    end
+    else
+    begin
+      Result.Workspaces[mIndex].Indexing := Default(TAtlasSetupIndexing);
+      Result.Workspaces[mIndex].Indexing.Percent := -1;
+    end;
   end;
 end;
 
@@ -437,7 +541,8 @@ end;
 
 function WorkspaceState(const AWorkspace: TAtlasSetupWorkspace): TAtlasSetupProjectState;
 begin
-  if AWorkspace.Done then
+  // Ein neuer Aufbau (Rebuild, geänderte Units) läuft auch nach dem ersten fertigen Lauf (#2142).
+  if AWorkspace.Done and not AWorkspace.Indexing.Active then
   begin
     Result := TAtlasSetupProjectState.Done;
   end
@@ -447,24 +552,32 @@ begin
   end;
 end;
 
-/// <summary>Zustand des Projekts AName nach der Antwort des Servers.</summary>
-function ProjectStateOf(const AStatus: TAtlasSetupServerStatus; const AName: string): TAtlasSetupProjectState;
+/// <summary>Projekt AName nach der Antwort des Servers: Zustand und laufender Aufbau.</summary>
+function ProjectOf(const AStatus: TAtlasSetupServerStatus; const AName: string): TAtlasSetupProject;
 var
   mWorkspace: TAtlasSetupWorkspace;
 begin
   // Vor der ersten Antwort des Servers gilt jedes Projekt als „wird aufgebaut“.
-  Result := TAtlasSetupProjectState.Missing;
+  Result := TAtlasSetupProject.Create(AName, TAtlasSetupProjectState.Missing);
   if not AStatus.Known then
   begin
-    Result := TAtlasSetupProjectState.Building;
+    Result.State := TAtlasSetupProjectState.Building;
   end;
   for mWorkspace in AStatus.Workspaces do
   begin
     if SameName(mWorkspace.Name, AName) then
     begin
-      Result := WorkspaceState(mWorkspace);
+      Result.State := WorkspaceState(mWorkspace);
+      Result.Indexing := mWorkspace.Indexing;
     end;
   end;
+end;
+
+/// <summary>Projekt aus einem Arbeitsbereich ohne Projektgruppe.</summary>
+function WorkspaceProject(const AWorkspace: TAtlasSetupWorkspace): TAtlasSetupProject;
+begin
+  Result := TAtlasSetupProject.Create(AWorkspace.Name, WorkspaceState(AWorkspace));
+  Result.Indexing := AWorkspace.Indexing;
 end;
 
 type
@@ -475,13 +588,13 @@ type
     MissingCount: Integer;
     Missing: string;
     Building: Boolean;
-    procedure Add(const AName: string; AState: TAtlasSetupProjectState);
+    procedure Add(const AProject: TAtlasSetupProject);
     function Verdict(const AInput: TAtlasSetupInput): TAtlasSetupResult;
   end;
 
-procedure TIndexTally.Add(const AName: string; AState: TAtlasSetupProjectState);
+procedure TIndexTally.Add(const AProject: TAtlasSetupProject);
 begin
-  case AState of
+  case AProject.State of
     TAtlasSetupProjectState.Done:
       Inc(DoneCount);
     TAtlasSetupProjectState.Building:
@@ -493,10 +606,10 @@ begin
       begin
         Missing := Missing + ', ';
       end;
-      Missing := Missing + AName;
+      Missing := Missing + AProject.Name;
     end;
   end;
-  Projects := Projects + [TAtlasSetupProject.Create(AName, AState)];
+  Projects := Projects + [AProject];
 end;
 
 function TIndexTally.Verdict(const AInput: TAtlasSetupInput): TAtlasSetupResult;
@@ -552,14 +665,14 @@ begin
   mTally.Building := AInput.Indexing or not AInput.Status.Known;
   for mName in AInput.Projects do
   begin
-    mTally.Add(mName, ProjectStateOf(AInput.Status, mName));
+    mTally.Add(ProjectOf(AInput.Status, mName));
   end;
   // Ohne Projektgruppe: die Arbeitsbereiche, die der Server aus geöffneten Dateien abgeleitet hat.
   if Length(AInput.Projects) = 0 then
   begin
     for mWorkspace in AInput.Status.Workspaces do
     begin
-      mTally.Add(mWorkspace.Name, WorkspaceState(mWorkspace));
+      mTally.Add(WorkspaceProject(mWorkspace));
     end;
   end;
   Result := mTally.Verdict(AInput);

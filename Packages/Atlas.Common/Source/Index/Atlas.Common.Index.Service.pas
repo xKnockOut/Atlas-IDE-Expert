@@ -176,6 +176,7 @@ type
     FOnProjectReady: TIndexFinishedEvent;
     FOnError: TIndexErrorEvent;
     FScheduler: TIndexScheduler;
+    FStages: TIndexStageWatch;
     FCacheEvents: TIndexCacheEvents;
     /// <summary>Cache-Datei des letzten Aufbaus; nur unter FLock.</summary>
     FCacheFile: string;
@@ -208,6 +209,8 @@ type
     /// <summary>Verwendungen der Bezeichner in AFileName (#492): aus dem Speicher, bei ausgelagerten aus dem
     /// Cache, sonst frisch aus der Datei. False, wenn die Unit nicht im Index ist oder keine erfasst wurden.</summary>
     function UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
+    /// <summary>Stufe des laufenden Aufbaus und ob er auf sie wartet (#2142).</summary>
+    function StageState: TIndexStageState;
     property Index: ISymbolIndex read FIndex;
     property OnCacheRejected: TIndexCacheRejectedEvent read FCacheEvents.Rejected write FCacheEvents.Rejected;
     /// <summary>Cache nicht geschrieben; AReason ohne Pfad. Im Index-Thread.</summary>
@@ -589,12 +592,14 @@ begin
   FFileSystem := AFileSystem;
   FLock := TObject.Create;
   FApplyLock := TObject.Create;
+  FStages := TIndexStageWatch.Create;
 end;
 
 destructor TIndexService.Destroy;
 begin
   Stop;
   ReplaceBuilder(nil);
+  FStages.Free;
   FApplyLock.Free;
   FLock.Free;
   inherited;
@@ -1036,6 +1041,7 @@ begin
       begin
         mTurn := FScheduler.Register(ARequest.Priority);
       end;
+      mTurn := FStages.Watch(mTurn);
       mBuilder.OnProjectDone := ProjectDoneHandler(mCaches, mWatch, FOnProjectReady);
       mResult := mBuilder.Build(ARequest.Files, ARequest.SearchFiles, ARequest.LibraryFiles, FOnProgress,
         BuilderCancelled(ACancelled), mTurn);
@@ -1062,9 +1068,15 @@ begin
         ReportError(E);
     end;
   finally
+    FStages.Clear;
     // Gemeinsame Kopien freigeben (TSharedCacheHold), auch nach einer Ausnahme.
     mCaches.Free;
   end;
+end;
+
+function TIndexService.StageState: TIndexStageState;
+begin
+  Result := FStages.State;
 end;
 
 procedure TIndexService.ReportError(const AError: Exception);

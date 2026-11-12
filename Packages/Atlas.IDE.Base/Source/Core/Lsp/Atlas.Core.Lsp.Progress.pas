@@ -13,6 +13,8 @@
 //   dann "eingeschränkt".
 // - OnChanged (#591): nach jeder $/progress-Nachricht, im Lese-Thread; das
 //   Atlas-Statusfeld aktualisiert so die Zeile „Index“ ohne Abfrage.
+// - ActiveOf (#2142): Stand eines einzelnen Vorgangs über sein Token; die
+//   Einrichtung ordnet so jedem Projekt der Gruppe seinen Fortschritt zu.
 
 interface
 
@@ -33,6 +35,8 @@ type
     function IndexingText: string;
     /// <summary>Fortschritt in Prozent (-1 = unbekannt) und ob ein Vorgang läuft.</summary>
     function Active(out APercent: Integer): Boolean;
+    /// <summary>Läuft der Vorgang AToken? APercent = sein Fortschritt, -1 = unbekannt (#2142).</summary>
+    function ActiveOf(const AToken: string; out APercent: Integer): Boolean;
     /// <summary>Beobachter für Änderungen; läuft im Lese-Thread.</summary>
     procedure SetOnChanged(const AProc: TProc);
   end;
@@ -55,6 +59,7 @@ type
     function Text: string;
     function IndexingText: string;
     function Active(out APercent: Integer): Boolean;
+    function ActiveOf(const AToken: string; out APercent: Integer): Boolean;
     procedure SetOnChanged(const AProc: TProc);
     /// <summary>Wie IndexingText aus Prozent (-1 = unbekannt); '' wenn nicht AActive.</summary>
     class function IndexingTextOf(AActive: Boolean; APercent: Integer): string; static;
@@ -237,6 +242,23 @@ begin
         Break;
       end;
     end;
+    if Result then
+    begin
+      APercent := mEntry.Percent;
+    end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TLspProgress.ActiveOf(const AToken: string; out APercent: Integer): Boolean;
+var
+  mEntry: TEntry;
+begin
+  APercent := -1;
+  FLock.Enter;
+  try
+    Result := FRunning.TryGetValue(AToken, mEntry);
     if Result then
     begin
       APercent := mEntry.Percent;

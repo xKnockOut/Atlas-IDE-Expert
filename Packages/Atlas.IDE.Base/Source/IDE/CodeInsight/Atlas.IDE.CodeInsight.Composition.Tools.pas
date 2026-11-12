@@ -260,6 +260,7 @@ var
 begin
   mHooks.ServerInfo := ServerInfo;
   mHooks.Indexing := ServerIndexing;
+  mHooks.IndexingOf := ServerIndexingOf;
   mHooks.StatusJson := StatusJson;
   mHooks.StartServer := StartServer;
   mHooks.ServerCommand := SendServerCommand;

@@ -14,6 +14,9 @@ type
     procedure TracksBeginReportEnd;
     [Test]
     procedure IgnoresForeignMessages;
+    /// <summary>#2142: Stand je Token, auch wenn ein anderer Vorgang zuletzt gemeldet hat.</summary>
+    [Test]
+    procedure ActiveOfFollowsEachToken;
     [Test]
     procedure StatusLinesNameUnitsAndWorkspaces;
     [Test]
@@ -69,6 +72,26 @@ begin
   Assert.AreEqual('', Progress.Text);
   Send(Progress, '{"token":"c","value":{"kind":"begin","title":"Kompilieren"}}');
   Assert.AreEqual('Kompilieren', Progress.Text, 'ohne Prozent nur der Titel');
+end;
+
+procedure TLspProgressTests.ActiveOfFollowsEachToken;
+var
+  Progress: ILspProgress;
+  Percent: Integer;
+begin
+  Progress := TLspProgress.Create;
+  Assert.IsFalse(Progress.ActiveOf('atlas-index-1', Percent));
+  Assert.AreEqual(-1, Percent);
+  Send(Progress, '{"token":"atlas-index-1","value":{"kind":"begin","title":"Symbolindex","percentage":0}}');
+  Send(Progress, '{"token":"atlas-index-1","value":{"kind":"report","percentage":30}}');
+  Send(Progress, '{"token":"atlas-index-1-1","value":{"kind":"begin","title":"Symbolindex"}}');
+  Assert.IsTrue(Progress.ActiveOf('atlas-index-1', Percent));
+  Assert.AreEqual(30, Percent);
+  Assert.IsTrue(Progress.ActiveOf('atlas-index-1-1', Percent));
+  Assert.AreEqual(-1, Percent, 'ohne Prozent');
+  Send(Progress, '{"token":"atlas-index-1","value":{"kind":"end"}}');
+  Assert.IsFalse(Progress.ActiveOf('atlas-index-1', Percent));
+  Assert.IsTrue(Progress.ActiveOf('atlas-index-1-1', Percent));
 end;
 
 procedure TLspProgressTests.StatusLinesNameUnitsAndWorkspaces;
