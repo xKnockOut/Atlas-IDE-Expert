@@ -60,7 +60,8 @@ uses
   Atlas.Common.Rules.Builtin.Properties,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers; ABodies im implementation-Teil.</summary>
 function Kunden(const AMembers, ABodies: string): string;
@@ -381,7 +382,7 @@ procedure TPropertyRulesTests.WriteOnlyReported;
 var
   Found: TArray<TRuleFinding>;
 begin
-  Assert.IsFalse((TWriteOnlyPropertyRule.Create as IRule).Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse(TRuleProfiles.IsExperimental((TWriteOnlyPropertyRule.Create as IRule).Descriptor.Id), 'Standard an');
   Found := WriteOnly(Kunden('  private'#10'    procedure SetPasswort(const Value: string);'#10'  public'#10 +
     '    property Passwort: string write SetPasswort;'#10, ''));
   Assert.AreEqual(1, Integer(Length(Found)));

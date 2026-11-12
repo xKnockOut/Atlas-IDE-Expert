@@ -600,6 +600,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Files.DirtyExport` | `IDE/Files/Atlas.IDE.Files.DirtyExport.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Files.Reloader` | `IDE/Files/Atlas.IDE.Files.Reloader.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Forms.Designer` | `IDE/Forms/Atlas.IDE.Forms.Designer.pas` | Ordner `IDE/Forms` |
+| `Atlas.IDE.Foundation.CodeView` | `IDE/Foundation/Atlas.IDE.Foundation.CodeView.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.DesignerView` | `IDE/Foundation/Atlas.IDE.Foundation.DesignerView.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.DockWindow` | `IDE/Foundation/Atlas.IDE.Foundation.DockWindow.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorBarDock` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBarDock.pas` | Ordner `IDE/Foundation` |

@@ -61,9 +61,15 @@ type
     /// <summary>TFlowSignatures.FromTree der Datei; nil ohne Baum.</summary>
     class function FlowSignatures(const ACache: IRuleDerivedCache;
       const AContext: TRuleContext): TFlowSignatureLookup; static;
-    /// <summary>Kontrollflussgraph der Routine mit FlowSignatures; gehört dem Cache, nie freigeben.</summary>
+    /// <summary>Kontrollflussgraph der Routine mit FlowSignatures; Aufrufe von noreturn-Routinen beenden den Weg
+    /// wie Abort (NoReturnLookup). Gehört dem Cache, nie freigeben.</summary>
     class function Graph(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
       ARoutine: TSyntaxNode): TControlFlowGraph; static;
+    /// <summary>Kennt die Datei oder der Index die Routine AName (Kurzname) nur als noreturn? Eine Deklaration in
+    /// der Datei entscheidet allein; sonst müssen alle Symbole dieses Namens im Index noreturn tragen. Antworten
+    /// werden je Datei gemerkt.</summary>
+    class function NoReturnLookup(const ACache: IRuleDerivedCache;
+      const AContext: TRuleContext): TFlowNoReturnLookup; static;
     /// <summary>Token ohne Kommentare und Direktiven.</summary>
     class function CodeTokens(const ACache: IRuleDerivedCache;
       const AContext: TRuleContext): TArray<TPascalToken>; static;
@@ -87,6 +93,7 @@ const
   cKeyRoutines = 'rules.routines';
   cKeyFlowSignatures = 'rules.flowSignatures';
   cKeyGraph = 'rules.graph:';
+  cKeyNoReturn = 'rules.noReturn';
   cKeyCodeTokens = 'rules.codeTokens';
   cKeyLines = 'rules.lines';
   cKeyResolver = 'rules.resolver';
@@ -119,6 +126,55 @@ end;
 procedure TRuleDerivedCache.Clear;
 begin
   FValues.Clear;
+end;
+
+type
+  /// <summary>Gemerkte noreturn-Antworten einer Datei; gehört dem Cache.</summary>
+  TNoReturnMemo = class
+  public
+    Own: TDictionary<string, Boolean>;
+    Known: TDictionary<string, Boolean>;
+    Index: ISymbolIndex;
+    constructor Create;
+    destructor Destroy; override;
+    function Answer(const AName: string): Boolean;
+  end;
+
+constructor TNoReturnMemo.Create;
+begin
+  inherited Create;
+  Own := TDictionary<string, Boolean>.Create;
+  Known := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TNoReturnMemo.Destroy;
+begin
+  Known.Free;
+  Own.Free;
+  inherited Destroy;
+end;
+
+function TNoReturnMemo.Answer(const AName: string): Boolean;
+var
+  mKey: string;
+begin
+  mKey := LowerCase(AName);
+  if Own.TryGetValue(mKey, Result) or Known.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Result := (Index <> nil) and
+    Index.HasSymbol(mKey,
+      function(const ASymbol: TIndexSymbol): Boolean
+      begin
+        Result := ASymbol.HasDirective('noreturn');
+      end) and
+    not Index.HasSymbol(mKey,
+      function(const ASymbol: TIndexSymbol): Boolean
+      begin
+        Result := not ASymbol.HasDirective('noreturn');
+      end);
+  Known.Add(mKey, Result);
 end;
 
 { TRuleDerivedValue<T> }
@@ -246,8 +302,45 @@ begin
     Exit(TControlFlowGraph(mValue));
   end;
   mLookup := FlowSignatures(ACache, AContext);
-  Result := TControlFlowGraph.Build(ARoutine, mLookup);
+  Result := TControlFlowGraph.Build(ARoutine, mLookup, NoReturnLookup(ACache, AContext));
   ACache.Put(mKey, Result);
+end;
+
+class function TRuleDerived.NoReturnLookup(const ACache: IRuleDerivedCache;
+  const AContext: TRuleContext): TFlowNoReturnLookup;
+var
+  mValue: TObject;
+  mMemo: TNoReturnMemo;
+  mVerdict: TPair<string, Boolean>;
+  mOld: Boolean;
+begin
+  if ACache.TryGet(cKeyNoReturn, mValue) then
+  begin
+    mMemo := TNoReturnMemo(mValue);
+  end
+  else
+  begin
+    mMemo := TNoReturnMemo.Create;
+    mMemo.Index := AContext.Index;
+    if AContext.Tree <> nil then
+    begin
+      // Eine Routine der Datei entscheidet allein; noreturn steht nur an der Deklaration, der Kopf der
+      // Implementierung darf es weglassen.
+      for mVerdict in TFlowSignatures.NoReturnVerdicts(AContext.Tree.Root) do
+      begin
+        if not mMemo.Own.TryGetValue(mVerdict.Key, mOld) or (mVerdict.Value and not mOld) then
+        begin
+          mMemo.Own.AddOrSetValue(mVerdict.Key, mVerdict.Value);
+        end;
+      end;
+    end;
+    ACache.Put(cKeyNoReturn, mMemo);
+  end;
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := mMemo.Answer(AName);
+    end;
 end;
 
 class function TRuleDerived.CodeTokens(const ACache: IRuleDerivedCache;

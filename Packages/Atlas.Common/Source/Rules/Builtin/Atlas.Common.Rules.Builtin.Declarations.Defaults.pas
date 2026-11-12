@@ -62,7 +62,7 @@ const
 function TDefaultParameterRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cDefaultParameterRuleId, TRuleSeverity.Warning,
-    cTexts[TDeclarationsDefaultsText.Title].Text, True);
+    cTexts[TDeclarationsDefaultsText.Title].Text);
 end;
 
 type

@@ -128,11 +128,14 @@ procedure TMemberHidingRulesTests.MethodHidesStaticMethod;
 var
   Found: TArray<TRuleFinding>;
 begin
+  // Niedrige Konfidenz: dcc schweigt, und in der FP-Prüfung vom 28.10.2026 war das meist gewollt.
   Found := Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
-    '    procedure Speichern(const APfad: string);'#10, ''));
+    '    procedure Speichern(const APfad: string);'#10, ''), '{"minConfidence": "low"}', 'Kunden.pas');
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Speichern verdeckt TBasis.Speichern.', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Found[0].Confidence));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Found[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
+    '    procedure Speichern(const APfad: string);'#10, '')))));
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
 end;
 

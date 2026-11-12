@@ -1236,7 +1236,7 @@ end;
 function TManagedParamWithoutConstRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cManagedParamRuleId, TRuleSeverity.Hint,
-    cTexts[TPerformanceManagedParamsText.Title].Text, True);
+    cTexts[TPerformanceManagedParamsText.Title].Text);
 end;
 
 procedure TManagedParamWithoutConstRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

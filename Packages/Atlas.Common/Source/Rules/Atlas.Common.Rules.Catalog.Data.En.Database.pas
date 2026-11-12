@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnDatabase: array[0..81] of string = (
+  cCatalogLinesEnDatabase: array[0..89] of string = (
     '{',
     '      "id": "dataset-loop-without-next",',
     '      "name": "Dataset loop without Next",',
@@ -18,7 +18,8 @@ const
     ' on in the body (argument, assignment, with), the called code may move the record pointer and the rule stays silent. High confidence when Next is missing entirely, medium when only some paths miss it.' +
     ' Quick fix: insert Q.Next; at the end of the begin … end body (only when Next is missing entirely).",',
     '      "bad": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;\nend;",',
-    '      "good": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;\n  qryPositionen.Next;\nend;"',
+    '      "good": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;\n  qryPositionen.Next;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "dataset-edit-without-post",',
@@ -31,7 +32,8 @@ const
     'utton) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end' +
     ' of the try part and Cancel; raise; in the except part.",',
     '      "bad": "tblKunde.Edit;\ntblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\nProtokollieren;",',
-    '      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;"',
+    '      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "transaction-without-rollback",',
@@ -69,7 +71,8 @@ const
     '          ],',
     '          "description": "Transaction methods per library as [{\"start\": …, \"commit\": …, \"rollback\": …}]; replaces the built-in pairs."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "sql-write-without-where",',
@@ -92,7 +95,8 @@ const
     '          "default": [],',
     '          "description": "Tables that are deliberately emptied or changed completely, with or without schema."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "sql-select-star",',
@@ -106,7 +110,11 @@ const
     'exts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields i' +
     'n the form file, replace * with their FieldName list (without calculated and lookup fields).",',
     '      "bad": "qry.SQL.Text := ''SELECT * FROM Kunden WHERE Ort = :Ort'';",',
-    '      "good": "qry.SQL.Text := ''SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort'';"',
+    '      "good": "qry.SQL.Text := ''SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort'';",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    }');
 
 implementation

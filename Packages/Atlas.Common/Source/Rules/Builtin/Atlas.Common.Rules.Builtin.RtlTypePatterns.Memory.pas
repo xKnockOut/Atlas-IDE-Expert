@@ -5,7 +5,8 @@
 // RegisterRtlTypePatternRules):
 //   managed-type-raw-memory  FillChar, ZeroMemory, Move, CopyMemory, GetMem oder FreeMem auf Variablen,
 //                            deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält
-//                            (#921). Records und Aliasse werden in der Datei und im Index aufgelöst.
+//                            (#921). Records und Aliasse werden in der Datei und im Index aufgelöst. Still bleibt
+//                            FillChar(P^, …, 0) direkt nach New(P) bzw. GetMem(P, …): Das ist frischer Speicher.
 //   threadvar-managed        threadvar mit verwaltetem Typ: Delphi finalisiert ihn am Thread-Ende
 //                            nicht (#922)
 //   pchar-of-temporary       PChar(S + '.bak'), PChar(IntToStr(N)) … in einer Variablen, einem Feld oder
@@ -164,6 +165,8 @@ type
     procedure CheckCopy(ASource, ADestination: Integer);
     procedure CheckMemory(AAllocate: Boolean);
     function IsCallAt(AIndex: Integer): Boolean;
+    function AllocatedJustBefore(const AName: string): Boolean;
+    function ZeroedJustAfter(const AName: string): Boolean;
     procedure CheckCall;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -315,6 +318,85 @@ begin
     TRuleConfidence.High, AFixes);
 end;
 
+/// <summary>Steht direkt vor dem Aufruf "New(AName);" oder "GetMem(AName, …);"? Dann füllt FillChar frischen
+/// Speicher: New hat die verwalteten Felder schon mit nil belegt, nach GetMem ist Nullen die Initialisierung
+/// (FP-Prüfung 28.10.2026, F10).</summary>
+function TRawMemoryScan.AllocatedJustBefore(const AName: string): Boolean;
+var
+  mSemicolon, mClose, mOpen, mDepth, mFirst: Integer;
+begin
+  Result := False;
+  mSemicolon := PreviousCode(FTokens, FCall);
+  if (mSemicolon < 0) or not FTokens[mSemicolon].IsSymbol(';') then
+  begin
+    Exit;
+  end;
+  mClose := PreviousCode(FTokens, mSemicolon);
+  if (mClose < 0) or not FTokens[mClose].IsSymbol(')') then
+  begin
+    Exit;
+  end;
+  mOpen := mClose;
+  mDepth := 0;
+  repeat
+    if FTokens[mOpen].IsSymbol(')') then
+    begin
+      Inc(mDepth);
+    end
+    else if FTokens[mOpen].IsSymbol('(') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth > 0 then
+    begin
+      mOpen := PreviousCode(FTokens, mOpen);
+    end;
+  until (mDepth = 0) or (mOpen < 0);
+  if mOpen <= 0 then
+  begin
+    Exit;
+  end;
+  mFirst := NextCode(FTokens, mOpen + 1);
+  Result := MatchText(FTokens[PreviousCode(FTokens, mOpen)].Text, ['New', 'GetMem']) and
+    SameText(FTokens[mFirst].Text, AName) and (FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(')') or
+    FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(','));
+end;
+
+/// <summary>Folgt direkt auf den Aufruf "FillChar(AName^, …, 0);" oder "ZeroMemory(AName, …);"? Dann ist der mit
+/// GetMem geholte Speicher initialisiert.</summary>
+function TRawMemoryScan.ZeroedJustAfter(const AName: string): Boolean;
+var
+  mSemicolon, mCall, mOpen, mFirst, mClose: Integer;
+begin
+  Result := False;
+  mSemicolon := NextCode(FTokens, FClose + 1);
+  if (mSemicolon > High(FTokens)) or not FTokens[mSemicolon].IsSymbol(';') then
+  begin
+    Exit;
+  end;
+  mCall := NextCode(FTokens, mSemicolon + 1);
+  mOpen := NextCode(FTokens, mCall + 1);
+  if (mOpen > High(FTokens)) or not FTokens[mOpen].IsSymbol('(') then
+  begin
+    Exit;
+  end;
+  mClose := MatchingParen(FTokens, mOpen);
+  mFirst := NextCode(FTokens, mOpen + 1);
+  if (mClose < 0) or not SameText(FTokens[mFirst].Text, AName) then
+  begin
+    Exit;
+  end;
+  if SameText(FTokens[mCall].Text, 'FillChar') then
+  begin
+    Result := FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol('^') and
+      MatchText(FTokens[PreviousCode(FTokens, mClose)].Text, ['0', '#0', '$0', '$00']);
+  end
+  else if SameText(FTokens[mCall].Text, 'ZeroMemory') then
+  begin
+    Result := FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(',');
+  end;
+end;
+
 procedure TRawMemoryScan.CheckOverwrite;
 var
   mName: Integer;
@@ -329,7 +411,7 @@ begin
   end;
   mTypeName := DataType(mName, mDeref);
   mKind := FManaged.Managed(mTypeName, 0);
-  if mKind = '' then
+  if (mKind = '') or mDeref and AllocatedJustBefore(FTokens[mName].Text) then
   begin
     Exit;
   end;
@@ -404,7 +486,7 @@ begin
   end;
   mTypeName := DataType(mName, True);
   mKind := FManaged.Managed(mTypeName, 0);
-  if mKind = '' then
+  if (mKind = '') or AAllocate and ZeroedJustAfter(FTokens[mName].Text) then
   begin
     Exit;
   end;

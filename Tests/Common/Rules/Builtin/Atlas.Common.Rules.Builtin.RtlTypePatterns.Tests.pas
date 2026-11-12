@@ -502,6 +502,13 @@ begin
     '  S: string;'#10'  Puffer: array[0..15] of Byte;'#10'  Liste: TListe;',
     '  FillChar(S[1], Length(S) * SizeOf(Char), '' '');'#10'  FillChar(Puffer, SizeOf(Puffer), 0);'#10 +
     '  Liste.Move(0, 1);'));
+  // FP-Prüfung 28.10.2026 (F10): Nullen direkt nach New bzw. GetMem füllt frischen Speicher.
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse, '  P, Q: PAdresse;',
+    '  New(P);'#10'  FillChar(P^, SizeOf(TAdresse), 0);'#10'  GetMem(Q, SizeOf(TAdresse));'#10 +
+    '  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);'#10'  Dispose(Q);'));
+  // Ein anderer Zeiger oder ein anderer Füllwert bleibt ein Treffer.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(Adresse,
+    '  P, Q: PAdresse;', '  New(P);'#10'  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);')))));
 end;
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemoryOffAndExclude;

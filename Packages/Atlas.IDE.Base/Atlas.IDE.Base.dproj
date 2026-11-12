@@ -885,6 +885,7 @@
         <DCCReference Include="..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas"/>
         <DCCReference Include="Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.CodeView.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
         <DCCReference Include="..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas"/>

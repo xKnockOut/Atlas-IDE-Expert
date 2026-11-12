@@ -412,8 +412,8 @@
                   "type": "string"
                 },
                 "default": ["Destroy", "BeforeDestruction"],
-                "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer.",
-                "x-description-en": "Only field-free-without-nil: methods in which Free without nil is allowed (#917). Destructors and methods with [TearDown] always count."
+                "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren, Methoden mit [TearDown], TearDown aus DUnit und OnDestroy-Behandlungen (FormDestroy(Sender: TObject)) gelten immer.",
+                "x-description-en": "Only field-free-without-nil: methods in which Free without nil is allowed (#917). Destructors, methods with [TearDown], TearDown from DUnit and OnDestroy handlers (FormDestroy(Sender: TObject)) always count."
               },
               "ignoreCalls": {
                 "type": "array",

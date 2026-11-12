@@ -114,7 +114,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.CodeView;
 
 { TAtlasLensPoll }
 
@@ -144,7 +145,9 @@ begin
     ChangedAt := mMoment;
     Exit;
   end;
-  Result := not Asked.Waiting and (mMoment - ChangedAt >= AQuietMs) and RetryAt.Reached;
+  // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
+  Result := not Asked.Waiting and (mMoment - ChangedAt >= AQuietMs) and RetryAt.Reached and
+    TAtlasIdeCodeView.InFront;
   // Gleicher Stand schon gefragt: nur ab und zu neu.
   if Result and SameText(FetchedFile, FileName) and (FetchedText = Text) then
   begin

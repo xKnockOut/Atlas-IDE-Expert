@@ -20,6 +20,8 @@ type
     [Test]
     procedure TearDownIsSilent;
     [Test]
+    procedure DestroyHandlerAndDUnitTearDownAreSilent;
+    [Test]
     procedure DefaultIgnoreMethodsNameDestroy;
   end;
 
@@ -69,6 +71,26 @@ begin
     'unit U;'#10'interface'#10'type'#10'  TTests = class'#10'  private'#10'    FDaten: TObject;'#10 +
     '  public'#10'    [TearDown]'#10'    procedure Aufraeumen;'#10'  end;'#10'implementation'#10 +
     'procedure TTests.Aufraeumen;'#10'begin'#10'  FDaten.Free;'#10'end;'#10'end.');
+end;
+
+procedure TFlowFieldFreeWithoutNilTests.DestroyHandlerAndDUnitTearDownAreSilent;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026: OnDestroy-Behandlung wie von der IDE angelegt und TearDown aus DUnit (override).
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10'    procedure FormDestroy(Sender: TObject);'#10 +
+    '  private'#10'    FDaten: TObject;'#10'  end;'#10'  TTests = class(TTestCase)'#10'  private'#10 +
+    '    FDaten: TObject;'#10'  protected'#10'    procedure TearDown; override;'#10'  end;'#10'implementation'#10 +
+    'procedure TForm1.FormDestroy(Sender: TObject);'#10'begin'#10'  FDaten.Free;'#10'end;'#10 +
+    'procedure TTests.TearDown;'#10'begin'#10'  FDaten.Free;'#10'end;'#10'end.');
+  // Ein Name auf Destroy ohne Sender-Parameter bleibt ein Treffer.
+  mFindings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TLader = class'#10'  private'#10'    FDaten: TObject;'#10 +
+    '    procedure DatenDestroy;'#10'  end;'#10'implementation'#10 +
+    'procedure TLader.DatenDestroy;'#10'begin'#10'  FDaten.Free;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mFindings := nil;
 end;
 
 procedure TFlowFieldFreeWithoutNilTests.DefaultIgnoreMethodsNameDestroy;

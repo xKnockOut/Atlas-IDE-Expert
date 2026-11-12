@@ -717,6 +717,8 @@ uses uTypen;
 
 Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Quelle -> Ziel"-Globs. Testunits (mit DUnitX, DUnit oder TestInsight im uses) prüft die Regel nicht.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
@@ -745,6 +747,8 @@ uses System.SysUtils;
 **Klasse in einer Contract-Unit** · Code Smell · Warnung · Gruppe Architektur
 
 Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Unit.Typ"-Globs. Testunits prüft die Regel nicht.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -777,6 +781,8 @@ type
 **Verbotenes Symbol verwendet** · Code Smell · Warnung · Gruppe Architektur
 
 Eine Liste unter "symbols" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, "!" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -1639,6 +1645,8 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Nur der Pfad (erstes Argument) zählt, nicht der geschriebene Inhalt (WriteAllText(Pfad, Liste.Text)). Experimentell, bis die Datenflussanalyse verfügbar ist.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -1996,6 +2004,8 @@ end;
 
 Die Datei beginnt nicht mit dem Kopf aus der Regeloption "template". Standardmäßig aus; in atlas.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `template` | string | `""` | Erwarteter Dateikopf; Platzhalter wie dokumentiert. |
@@ -2019,6 +2029,8 @@ unit Tools;
 **Text im Code statt resourcestring** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Still bei Texten, die niemand übersetzt: Argumente von Protokoll- und Prüfaufrufen (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), Vergleichs- und Registry-Aufrufen (StartsText, Pos, ReadString …), Masken von FormatDateTime und FormatFloat, Markup (HTML ab <, JSON ab { oder "Schlüssel":, Markdown-Überschriften # und ##) und Font.Name; die Option ignoreCalls nennt weitere Routinen. Standardmäßig aus, niedrige Konfidenz.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 
@@ -2175,6 +2187,8 @@ if Assigned(X) then S := X.Name else S := '';
 **Random ohne Randomize** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
 Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Ein eigenes Random (Aufzählungswert, Routine) ist nicht System.Random. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 
@@ -2413,6 +2427,8 @@ raise ECustomerMissing.Create('Customer missing');
 
 Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -2462,6 +2478,8 @@ on E: Exception do
 
 Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller. Still, wenn die Variable in jedem Durchlauf vorher neu gesetzt wird, direkt im Schleifenrumpf und nicht hinter then, else oder einer case-Marke (sie wächst dann nicht über die Schleife).
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -2489,6 +2507,8 @@ end;
 
 Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld bzw. eine Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -2510,6 +2530,8 @@ while I < Length(Text) do
 **Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis · Gruppe Performance
 
 Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items, auch in Records, die in der Klasse verschachtelt sind), bei Listen ohne Steuerelement (TObjectList<T>, TList, TDictionary), bei Typen im Index ohne BeginUpdate und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 
@@ -2561,6 +2583,8 @@ for I := 0 to Liste.Count - 1 do
 **Verwalteter Parameter ohne const** · Code Smell · Hinweis · Gruppe Performance
 
 Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Referenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufvariable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Korrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Mit den Projektdateien (IDE, MCP) zählt auch die Verwendung als Wert in Units, die diese Unit einbinden, etwa die Zuweisung an ein TFunc<string, …>, dessen Parameter kein const hat; ohne sie (Kommandozeile ohne Projekt) meldet solche Verweise nach der Korrektur der Compiler.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -2662,6 +2686,8 @@ end;
 
 Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -2715,6 +2741,8 @@ end;
 **begin … end um eine einzelne Anweisung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Schweigt, solange [`missing-begin-end`](#missing-begin-end) an ist.
 
@@ -2989,6 +3017,8 @@ Result := Process(A, B);
 **Offener TODO-Kommentar** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. "rules": {"todo-comment": {"severity": "hint"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe ["TODO", "FIXME"]); sie gilt auch für get_todos und --todos.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4004,6 +4034,8 @@ end;
 
 Einer lokalen Variable (auch Inline und for var), einem Feld (auch class var), einem Parameter oder einer Konstante (const, auch lokal, in Klassen und Inline; nicht resourcestring) fehlt das Präfix ihrer Art. Standard: lokal m, Feld F, Parameter A, Konstante c; hinter einem Präfix, das auf einen Buchstaben endet, folgt ein Großbuchstabe oder eine Ziffer (mIndex, nicht menu). Globale Variablen prüft die Regel nicht. Je Art kommt das Präfix aus der Option in atlas.json, sonst aus der Projektdatei .atlas (naming, auch constant), sonst der Standard; ein leerer Wert schaltet die Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, öffentliche Felder (public, published und Felder eines Records vor seinem ersten Sichtbarkeitsabschnitt: Das F gilt nur für Felder hinter Properties, nicht für TPoint.X), Felder vor dem ersten Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnellkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonstanten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name dort schon vorkommt, wo umbenannt wird (Routine samt Parameterliste, bei Feldern die Klasse und ihre Methoden, bei Konstanten der implementation die Datei), der Bereich with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist. Läuft die Regel, bilden andere Korrekturen und Refactorings neue Namen mit diesen Präfixen (Konstante einführen → cNewConstant, Variable einführen und with auflösen → mValue, Parameter von „Methode anlegen“ → APreis), damit die Regel sie nicht gleich wieder meldet.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `local` | string | `"m"` | Präfix lokaler Variablen; leer = nicht prüfen. |
@@ -4080,6 +4112,8 @@ if SameText(Land, Standard) then
 
 Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Still bei Zahlen, die für sich sprechen: DPI-Basis 96 in MulDiv, volle Bitmasken ($FF, $FFFF, $FFFFFFFF), Zeiteinheiten 24, 60, 1000 und 3600 in *, /, div und mod sowie Argumente von Aufrufen in einem Array-Literal, deren Argumente alle Zahlen sind (Punktlisten wie [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) bleibt gemeldet. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `allowed` | number-list | `[0,1,-1,2,10,100]` | Zahlen, die nie gemeldet werden. |
@@ -4109,6 +4143,8 @@ if Tage > Mahnfrist then
 Zeilen über der Grenze max (Vorgabe 120 Zeichen, passend zu den Linealen aus #710). Tabs zählen bis zur nächsten Tabstelle nach format.indentSize. Zeilen, die nur wegen eines Strings oder, mit ignoreComments, eines Kommentars zu lang sind, werden nicht gemeldet. Zeilen über 1023 Zeichen meldet die Regel unabhängig von max immer als Warnung, weil der Compiler dort je nach Delphi-Version abbricht; Zeilen über 4095 Zeichen als Fehler, weil auch Delphi 13 dort abbricht (F2069). Standard aus. Schnellkorrektur: Zeile umbrechen hinter Kommas bzw. vor zweistelligen Operatoren, wenn die Stücke danach passen.
 
 Entspricht der Compilermeldung `F2069`.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4237,6 +4273,8 @@ TStufe2 = class(TBasis)
 
 Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var und Hilfsklassen unter einem private- oder protected-type-Abschnitt werden nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `includeRecords` | boolean | `false` | Auch Felder von Records melden. |
@@ -4268,6 +4306,8 @@ end;
 
 Eine ungenerische TList (System.Classes) oder TObjectList (System.Contnrs), deren Elemente mit Cast gelesen werden: T(Liste[I]), T(Liste.Items[I]), T(Liste.First), Liste[I] as T usw. TList<T> und TObjectList<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Die Regel meldet je Liste einmal, an ihrer Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Listentyp und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Schnellkorrektur (#1105): wandelt die Liste in einem Schritt in TList<T> bzw. TObjectList<T> um: Deklaration, jedes Create (Argumente bleiben), jeden Cast und System.Generics.Collections im uses; Contnrs entfällt, wenn nichts anderes es braucht. Nur wenn alle Lesezugriffe denselben Cast haben, kein Mitglied ohne generisches Gegenstück vorkommt (Sort mit TListSortCompare, Assign mit TListAssignOp, List), keine Pointer- oder Integer-Werte in der Liste stehen, Add, Extract, Remove und IndexOf T bekommen und die Liste nicht weitergegeben wird. Ist die Liste außerhalb der Unit sichtbar, schreibt die Korrektur die anderen Units der Projektgruppe mit um oder entfällt; solche Korrekturen wendet „Alle korrigieren“ (source.fixAll) nie an. Sonst nennt der Befund-Hover den Grund. Stapel und Warteschlangen: legacy-stack-queue.
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -4290,6 +4330,8 @@ Pos := FPositionen[I];
 **Ungenerischer Stapel oder ungenerische Warteschlange mit Cast** · Code Smell · Information · Gruppe Stil und Metriken
 
 Ein ungenerischer TStack, TQueue, TObjectStack oder TObjectQueue (System.Contnrs), dessen Elemente mit Cast gelesen werden: T(Stapel.Pop), T(Stapel.Peek), Schlange.Pop as T usw. TStack<T>, TQueue<T>, TObjectStack<T> und TObjectQueue<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Wie legacy-tlist meldet die Regel je Stapel bzw. Warteschlange einmal, an der Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Typ und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Schnellkorrektur: wandelt in einem Schritt um wie legacy-tlist; bei Warteschlangen wird Push zu Enqueue und Pop zu Dequeue. TObjectStack<T> und TObjectQueue<T> besitzen ihre Objekte, die Contnrs-Klassen nicht: Die Korrektur erzeugt sie deshalb mit Create(False) und liest mit Extract, weil Pop und Dequeue dort Prozeduren sind, die das Objekt freigeben. Ohne Create in der Unit, mit verschiedenen Casts oder mit Mitgliedern ohne generisches Gegenstück (AtLeast) gibt es keine Korrektur; der Befund-Hover nennt den Grund.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 
@@ -4315,6 +4357,8 @@ Knoten := FOffen.Extract;
 **Globale Variable im interface** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 var oder threadvar im interface-Teil einer Unit: Jede Unit, die sie einbindet, kann den Wert lesen und ändern. Die Formularvariable des Designers (frmHaupt: TfrmHaupt, bei Nachfahren von TForm, TFrame, TDataModule oder jeder Klasse einer Unit mit Formulardatei) ist ausgenommen, außer mit includeFormVariables. Standard aus. Die Variable in den implementation-Teil verschieben und eine Funktion oder Property anbieten.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4370,6 +4414,8 @@ Speichern;
 **Standardparameter statt Überladung** · Code Smell · Warnung · Gruppe Stil und Metriken
 
 Ein Parameter mit Vorgabewert (Anzahl: Integer = 10). Für Teams, die Überladungen bevorzugen: Vorgabewerte landen beim Aufrufer im Code, ändern sich nicht mit der Bibliothek und vertragen sich schlecht mit Überladungen. Gemeldet wird einmal je Deklaration (Klassenmitglied, interface-Teil, forward oder eine Routine nur im implementation-Teil); der Rumpf zu einer Deklaration nicht noch einmal. Die Schnellkorrektur fügt vor der Deklaration je weggelassenem Standardparameter am Ende eine Überladung ein, die mit dem Vorgabewert weiterreicht, entfernt die Vorgabewerte (auch im Rumpf wiederholte) und ergänzt overload. Keine Korrektur, wenn die Signatur von außen vorgegeben ist (virtual, dynamic, abstract, override, message, external, Interface-Typen), der Name als Wert benutzt wird (@Routine, Methodenzeiger), es schon eine gleichnamige Überladung gibt, in bedingter Übersetzung oder wenn der Rumpf nicht eindeutig zu finden ist.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 
@@ -5703,6 +5749,8 @@ Liste.Clear;
 
 SELECT * oder SELECT Alias.* in einer Spaltenliste, an denselben Stellen wie bei sql-write-without-where: String-Literale, SQL.Text, SQL.Add, CommandText, das erste Argument von ExecSQL, Open und ähnlichen Aufrufen, Konstanten, lokale Werte und SQL.Strings/CommandText der Formulardatei. Neue Spalten ändern still die Datenmenge, persistente Felder passen nicht mehr, und es werden mehr Daten übertragen als nötig. Unterabfragen zählen; EXISTS (SELECT * …) und COUNT(*) bleiben still, ebenso eine Spaltenliste aus einer Variablen. Literale außerhalb von SQL-Eigenschaften zählen nur mit SELECT in Großbuchstaben und einem FROM, damit Meldungstexte still bleiben. Standardmäßig aus (in den Regeleinstellungen oder mit dem Profil strict einschalten). Konfidenz hoch. Schnellkorrektur: Steht der Stern in einem einzelnen Literal und hat die Datenmenge persistente Felder in der Formulardatei, ersetzt sie * durch deren FieldName-Liste (ohne berechnete und Nachschlagefelder).
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -6142,6 +6190,8 @@ Entspricht der Compilermeldung `W1040`.
 Stufe B (Namensauflösung über Units).
 
 Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix implicit-variants-unit`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 
@@ -7208,6 +7258,8 @@ Entspricht der Compilermeldung `H2365`, `H2269`.
 
 Stufe B (Namensauflösung über Units).
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 Mit Treffer:
 
 ```pascal
@@ -7468,6 +7520,8 @@ Log(Uhr.ElapsedMilliseconds.ToString + ' ms');
 
 Feld, Variable, Parameter oder Property, deren Name einen Geldbetrag bezeichnet (Option namePatterns), mit dem Typ Double, Single, Extended oder Real: Binäres Gleitkomma rundet Cent-Beträge falsch (0.1 + 0.2), Currency rechnet sie exakt. Maßgeblich ist der letzte Namensteil (GesamtPreis, Nettobetrag, FNetto, Preise; nicht NettoGewicht); Sätze, Faktoren, Quoten, Anteile (Steuersatz, PriceFactor) und Prüfsummen bleiben still. Mehrdeutige Wörter (Amount, Summe, Sum, Total: Menge bzw. Summe von irgendetwas) zählen nur mit Geldbezug in Typ bzw. Routine: ein anderer Geldname, Currency oder Wörter wie Cent, Euro, Rabatt, Rechnung, Zahlung, Kosten (Lighten(AColor, AAmount: Double) bleibt still). Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur, wenn alle Namen der Deklaration Geldbeträge sind: Typ Currency, bei Parametern auch im Kopf der Implementierung, bei Feldern und Properties auch die Property bzw. das Feld hinter read und write; keine Korrektur, wenn ein Getter oder Setter mitwandern müsste. Mit checkRound meldet die Regel zusätzlich Round mit einem Geldbetrag im Argument (Banker's Rounding: 2,5 wird 2).
 
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `namePatterns` | string-list | `["Betrag","Preis","Summe","Netto","Brutto","Steuer","Amount","Price"]` | Namensteile, die einen Geldbetrag bezeichnen; Mehrzahl eingeschlossen. |
@@ -7497,6 +7551,8 @@ end;
 **Lange if-Kette über denselben String** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine if … else if-Kette vergleicht denselben String (Bezeichner oder A.B, keine Funktionsaufrufe) mit mindestens min Literalen: S = 'x', 'x' = S, SameText(S, 'x'), auch mit or verknüpft, in mindestens zwei Zweigen (ein einzelnes if mit or bleibt still). case IndexStr(S, [...]) of oder ein Dictionary ist kürzer und schneller. Es zählen nur Vergleiche, die immer zusammen mit dem Kopf übersetzt werden ({$IFDEF}-Zweige innerhalb der Kette nicht). Standard aus, Konfidenz hoch. Schnellkorrektur wie die Code-Aktion if-Kette in case umwandeln (#646): case IndexStr(…) of, IndexText(…) bei SameText, mit or verknüpfte Vergleiche teilen sich eine Marke, der Rest der Kette wird zum else, System.StrUtils kommt ins uses. Keine Korrektur bei Kommentaren oder Direktiven zwischen den Zweigen, doppelten Literalen oder gemischtem = und SameText.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -7528,6 +7584,8 @@ end;
 **if-Kette lässt sich als case schreiben** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine if … else if-Kette mit mindestens min Zweigen (das abschließende else zählt mit) vergleicht denselben ordinalen Ausdruck (Ganzzahl, Zeichen, Aufzählung; ohne Seiteneffekte, kein Funktionsaufruf) mit Konstanten: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), auch mit or verknüpft. Die Marken sind Literale, Konstantenausdrücke, untypisierte Konstanten oder Aufzählungswerte, ohne Doppelte und Überlappungen. Den Typ liefert die Namensauflösung; Ketten mit unbekanntem Typ und Ketten mit Direktiven bleiben still. Standard aus, Konfidenz hoch. Schnellkorrektur: die Code-Aktion „In case umwandeln“ (#646, refactoring.ifCase); begin … end nur, wo ein Zweig mehrere Anweisungen hat, Kommentare in den Zweigen bleiben.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -8058,6 +8116,8 @@ Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als d
 Entspricht der Compilermeldung `W1072`, `W1066`.
 
 Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -8944,6 +9004,8 @@ Nimm(Round(1.5));
 **Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, hat kein Attribut und ist nicht published (DUnitX-Tests und RTTI rufen sie an der Instanz auf), ist kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
 Mit Treffer:
 

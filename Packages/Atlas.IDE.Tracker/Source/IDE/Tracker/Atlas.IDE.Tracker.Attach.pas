@@ -356,6 +356,7 @@ begin
   TAtlasIdeIssueAttach.DebugNote(Result.DebugNote, Result.DebugNoteName);
   Result.ExceptionsText := TAtlasIdeIssueAttach.ExceptionsText(Result.ExceptionCount);
   Result.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
+  Result.RaiseProgram := TAtlasIdeSettings.Current.IssuesAttachRaiseProgram;
   Result.Extra := AExtra;
   try
     Result.FormImage := DesignerImage(Result.FormName);

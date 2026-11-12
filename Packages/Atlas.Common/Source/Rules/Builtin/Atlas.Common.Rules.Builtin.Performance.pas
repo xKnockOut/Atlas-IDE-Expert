@@ -482,7 +482,7 @@ end;
 function TStringConcatInLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('string-concat-in-loop', TRuleSeverity.Hint,
-    cTexts[TPerformanceText.ConcatTitle].Text, True);
+    cTexts[TPerformanceText.ConcatTitle].Text);
 end;
 
 procedure TStringConcatInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -613,7 +613,7 @@ const
 function TLoopInvariantCallRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('loop-invariant-call', TRuleSeverity.Hint,
-    cTexts[TPerformanceText.ConditionTitle].Text, True);
+    cTexts[TPerformanceText.ConditionTitle].Text);
 end;
 
 /// <summary>Punktkette vor dem Punkt ADot (ASpan in ASpan.Text, FParts.Scanner in FParts.Scanner.Text); '' wenn
@@ -1205,7 +1205,7 @@ end;
 function TMissingBeginUpdateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('missing-begin-update', TRuleSeverity.Hint,
-    cTexts[TPerformanceText.BeginUpdateTitle].Text, True);
+    cTexts[TPerformanceText.BeginUpdateTitle].Text);
 end;
 
 /// <summary>Meldet das Hinzufügen ab AIndex bis ALast.</summary>
