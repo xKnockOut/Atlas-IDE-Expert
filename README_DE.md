@@ -101,7 +101,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten; „Weiterarbeiten“ merkt sich den Arbeitsstand je Issue (Reiter „Issues“) und setzt ihn mit „Fortsetzen“ auf dem Branch des Issues fort
 - **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE; „Meine Issues“ zeigt auf Wunsch ein festes oder alle Tracker-Projekte, mit Arbeitskopien je Tracker-Projekt
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
-- **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Module) und rechtsbündigen Tastenkürzeln
+- **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde mit Zahl, Module) und rechtsbündigen Tastenkürzeln; zeigt nur, was passt (Debuggen beim Debuggen, Tests in Testunits, Designer mit Formular), Untermenüs einzeln abwählbar (`commands.editorContextMenu.*`)
 - **Atlas-Assistenten unter *Datei › Neu › Weitere***: *DUnitX-Testunit zu Unit …*, *Unit nach Architekturrolle …* und *Eigene Prüfregel …* in der Galerie-Kategorie *Atlas* (`generate.galleryWizards`)
 - **Untermenü *Atlas* in der Projektverwaltung**: *Mit Atlas prüfen* für Units, Ordner und Projekte (auch Mehrfachauswahl, ohne die Units zu öffnen), *Unit-Beziehungen*, *Abhängige Units (n)* und *Tests dieser Unit ausführen* (`commands.projectContextMenu`)
 - **Robustheit:** Fehler erreichen nie die IDE, sicherer Start, nachspielbare Absturzfälle

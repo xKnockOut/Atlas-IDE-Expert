@@ -358,11 +358,20 @@ begin
   Result.Place := APlace;
 end;
 
-/// <summary>Eintrag im Untermenü „Debuggen“ von Atlas im Kontextmenü des Editors.</summary>
+/// <summary>Läuft eine Debug-Sitzung?</summary>
+function WhileDebugging(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.Debugging;
+end;
+
+/// <summary>Eintrag im Untermenü „Debuggen“ von Atlas im Kontextmenü des Editors; nur während einer Debug-Sitzung.
+/// </summary>
 function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
   Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+  Result.Group := 'debug';
+  Result.When := WhileDebugging;
 end;
 
 function TAtlasDebugModule.MenuEntries: TArray<TAtlasMenuEntry>;

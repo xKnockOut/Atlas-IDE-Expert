@@ -137,7 +137,11 @@ type
     SettingsBreadcrumbsSectionCreate, SettingsBreadcrumbsContextMenu, SettingsBreadcrumbsOverloads,
     SettingsBreadcrumbsInterfaces, SettingsBreadcrumbsMetrics, SettingsMouseNavButtons,
     // Fehler der IDE neben den Atlas-Befunden (#1819).
-    SettingsProblemsIdeErrors);
+    SettingsProblemsIdeErrors,
+    // Untermenü Atlas im Kontextmenü des Editors: nur Passendes, gezeigte Untermenüs.
+    SettingsEditorContextMenuContextual, SettingsEditorContextMenuGroups, SettingsContextGroupNavigation,
+    SettingsContextGroupEdit, SettingsContextGroupAnalysis, SettingsContextGroupFindings, SettingsContextGroupDebug,
+    SettingsContextGroupTests, SettingsContextGroupNotes);
 
   TAtlasSettingsStrings = class
   public
@@ -684,7 +688,17 @@ const
      'Interface-Marke [IKunde] an Methoden zeigen',
      'Kennzahlen-Karte beim Überfahren von Methoden und Typen (Strg+I)',
      'Zurück-/Vor-Taste der Maus blättern im Navigationsverlauf',
-     'Fehler der IDE (Error Insight) neben die Atlas-Befunde stellen'),
+     'Fehler der IDE (Error Insight) neben die Atlas-Befunde stellen',
+     'Kontextmenü Atlas im Editor: nur Einträge zeigen, die hier passen (Debuggen nur beim Debuggen, Tests nur in '
+       + 'Testunits, Designer nur mit Formular)',
+     'Untermenüs im Kontextmenü Atlas des Editors:',
+     'Navigation',
+     'Bearbeiten',
+     'Suchen und analysieren',
+     'Befunde',
+     'Debuggen',
+     'Tests',
+     'Notizen und Lesezeichen'),
     ('Completion, parameter hint and tooltip by Atlas',
      'Code Insight by Atlas (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:',
@@ -1214,7 +1228,17 @@ const
      'Show interface mark [IKunde] on methods',
      'Metrics card when hovering methods and types (Ctrl+I)',
      'Mouse back/forward buttons step through the navigation history',
-     'Show IDE errors (Error Insight) next to the Atlas findings'));
+     'Show IDE errors (Error Insight) next to the Atlas findings',
+     'Atlas editor context menu: only show entries that fit here (debugging only while debugging, tests only in '
+       + 'test units, designer only with a form)',
+     'Submenus in the Atlas editor context menu:',
+     'Navigation',
+     'Edit',
+     'Search and analyze',
+     'Findings',
+     'Debugging',
+     'Tests',
+     'Notes and bookmarks'));
 
 { TAtlasSettingsStrings }
 

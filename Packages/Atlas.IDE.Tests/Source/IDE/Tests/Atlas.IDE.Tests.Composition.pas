@@ -351,11 +351,19 @@ begin
   Result.Place := APlace;
 end;
 
-/// <summary>Eintrag im Untermenü „Tests“ von Atlas im Kontextmenü des Editors.</summary>
+/// <summary>Ist die Datei eine DUnitX-Testunit?</summary>
+function InTestUnit(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.TestUnit;
+end;
+
+/// <summary>Eintrag im Untermenü „Tests“ von Atlas im Kontextmenü des Editors; nur in einer Testunit.</summary>
 function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
   Result.Section := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsEditorMenuGroup);
+  Result.Group := 'tests';
+  Result.When := InTestUnit;
 end;
 
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;

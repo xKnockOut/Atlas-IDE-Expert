@@ -436,6 +436,7 @@ function NotesContextEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
   Result := NotesMenuEntry(ACommandId);
   Result.Place := TAtlasMenuPlace.EditorContext;
+  Result.Group := 'notes';
 end;
 
 function TAtlasBookmarksModule.MenuEntries: TArray<TAtlasMenuEntry>;

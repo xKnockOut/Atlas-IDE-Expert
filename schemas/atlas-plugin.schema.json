@@ -3874,6 +3874,29 @@
       "x-captionEn": "Atlas wizards in File › New › Other",
       "x-issue": "#1821"
     },
+    "EditorContextMenuContextual": {
+      "type": "boolean",
+      "default": true,
+      "description": "Untermenü Atlas im Kontextmenü des Editors: nur Einträge zeigen, die an dieser Stelle passen. Debuggen nur während einer Debug-Sitzung, Tests nur in einer DUnitX-Testunit, Im Designer zeigen nur in Units mit Formular, Regionen zu-/aufklappen nur in Units mit Regionen; hinter Befunde steht die Zahl der Befunde der Datei. Aus = alle Einträge immer.",
+      "x-key": "commands.editorContextMenu.contextual",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Kontextmenü Atlas: nur passende Einträge",
+      "x-captionEn": "Atlas context menu: only fitting entries",
+      "x-issue": "#2102"
+    },
+    "EditorContextMenuGroups": {
+      "type": "string",
+      "default": "navigation,edit,analysis,findings,debug,tests,notes",
+      "description": "Untermenüs im Untermenü Atlas des Editor-Kontextmenüs, kommagetrennt: navigation, edit (Bearbeiten), analysis (Suchen und analysieren), findings (Befunde), debug (Debuggen), tests, notes (Notizen und Lesezeichen); unbekannte Namen fallen weg. Fehlende Untermenüs bleiben über Tastenkürzel, das Menü Atlas und die Befehlspalette erreichbar.",
+      "x-key": "commands.editorContextMenu.groups",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-parent": "commands.editorContextMenu.contextual",
+      "x-control": "Kontrollkästchen je Art",
+      "x-issue": "#2102"
+    },
     "Snippets": {
       "type": "boolean",
       "default": true,

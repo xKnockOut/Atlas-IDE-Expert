@@ -4,9 +4,10 @@
 // TAtlasIdeEditorCommands.Install (Atlas.IDE.Commands.Editor, Beschreibung dort)
 // ausgelagert, in der Reihenfolge des Menüs. Oben die häufigsten Befehle
 // (Code-Aktionen, Erzeugen), danach Untermenüs Navigation, Bearbeiten, Suchen
-// und analysieren, Befunde, dann die Einträge der Module (eigene Untermenüs
-// nach Section) und „Element ausblenden“. Alles in einer Ebene war höher als
-// der Bildschirm.
+// und analysieren, Befunde (mit der Zahl der Befunde der Datei), dann die
+// Einträge der Module (eigene Untermenüs nach Section) und „Element
+// ausblenden“. Alles in einer Ebene war höher als der Bildschirm. Regionen
+// zu-/aufklappen nur in Units mit Regionen (TAtlasIdeMenuContext).
 
 interface
 
@@ -60,6 +61,9 @@ uses
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Commands.EditorActions,
+  Atlas.IDE.Commands.MenuContext,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Settings.ContextMenuGroups,
   Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
@@ -80,10 +84,23 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
-/// <summary>Regionen zu-/aufklappen (#1814) sichtbar, solange editor.regionFolds nicht off ist.</summary>
+/// <summary>Hat die Unit Regionen?</summary>
+function UnitHasRegions(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.HasRegions;
+end;
+
+/// <summary>Regionen zu-/aufklappen (#1814) sichtbar, solange editor.regionFolds nicht off ist und die Unit
+/// Regionen hat.</summary>
 function RegionFoldsVisible: Boolean;
 begin
-  Result := TAtlasIdeRegionFolds.Enabled;
+  Result := TAtlasIdeRegionFolds.Enabled and TAtlasIdeMenuContext.Applies(UnitHasRegions);
+end;
+
+/// <summary>Kennung eines Untermenüs für commands.editorContextMenu.groups.</summary>
+function GroupKey(AGroup: TAtlasContextMenuGroup): string;
+begin
+  Result := TAtlasContextMenuGroupNames.Name(AGroup);
 end;
 
 /// <summary>„Gelernte Vorschläge anzeigen …“ (#1890) sichtbar mit suggestions.learned.</summary>
@@ -133,7 +150,7 @@ end;
 
 class procedure TAtlasEditorMenu.AddEditing(AMenu: TAtlasIdeContextMenu);
 begin
-  AMenu.BeginGroup(UiText(TEditorMenuText.Edit));
+  AMenu.BeginGroup(UiText(TEditorMenuText.Edit), GroupKey(TAtlasContextMenuGroup.Edit), nil);
   AMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
     function: Integer
     begin
@@ -180,7 +197,8 @@ end;
 
 class procedure TAtlasEditorMenu.AddNavigation(AMenu: TAtlasIdeContextMenu);
 begin
-  AMenu.BeginGroup(TAtlasStrings.Text(TAtlasTextId.MenuGroupNavigation));
+  AMenu.BeginGroup(TAtlasStrings.Text(TAtlasTextId.MenuGroupNavigation), GroupKey(TAtlasContextMenuGroup.Navigation),
+    nil);
   AMenu.Add('Atlas.Implementations', TAtlasStrings.Text(TAtlasTextId.MenuImplementations),
     function: Integer
     begin
@@ -276,7 +294,7 @@ end;
 
 class procedure TAtlasEditorMenu.AddLookups(AMenu: TAtlasIdeContextMenu);
 begin
-  AMenu.BeginGroup(UiText(TEditorMenuText.Analysis));
+  AMenu.BeginGroup(UiText(TEditorMenuText.Analysis), GroupKey(TAtlasContextMenuGroup.Analysis), nil);
   AMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
     begin
@@ -344,7 +362,12 @@ end;
 class procedure TAtlasEditorMenu.AddProblems(AMenu: TAtlasIdeContextMenu);
 begin
   // Nächster/vorheriger Befund (#509).
-  AMenu.BeginGroup(UiText(TEditorMenuText.Findings));
+  // Mit der Zahl der Befunde der Datei, etwa „Befunde (3)“.
+  AMenu.BeginGroup(UiText(TEditorMenuText.Findings), GroupKey(TAtlasContextMenuGroup.Findings),
+    function: Integer
+    begin
+      Result := TAtlasIdeMenuContext.ProblemCount;
+    end);
   AMenu.Add('Atlas.NextProblem', TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),
     function: Integer
     begin
