@@ -206,9 +206,22 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Hat die Unit ein Formular?</summary>
+function WithForm(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.HasForm;
+end;
+
+/// <summary>„Im Designer zeigen“ im Kontextmenü des Editors; nur in Units mit Formular.</summary>
+function ShowInDesignerContextEntry: TAtlasMenuEntry;
+begin
+  Result := MenuEntry(TAtlasDesignerModule.cShowCommandId, TAtlasMenuPlace.EditorContext);
+  Result.When := WithForm;
+end;
+
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
-  Result := [MenuEntry(cShowCommandId, TAtlasMenuPlace.EditorContext),
+  Result := [ShowInDesignerContextEntry,
     MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cUsagesCommandId, TAtlasMenuPlace.AtlasMenu)];

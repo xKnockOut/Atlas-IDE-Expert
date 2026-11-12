@@ -756,6 +756,8 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.XmlDoc.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.OverviewKinds.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.ContextMenuGroups.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.ContextMenuGroups.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Store.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Bookmarks.pas"/>
@@ -1320,6 +1322,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyStroke.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.MenuSlots.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.MenuSlots.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.MenuContext.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.MenuContext.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ProjectSelection.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ProjectSelection.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Generate\Atlas.Core.Generate.Gallery.pas"/>

@@ -7,11 +7,17 @@
 // Früher hängte Atlas eigene TMenuItem direkt in „EditorLocalMenu“ ein; beim
 // Neuaufbau meldete die IDE dann „Komponente … existiert bereits“.
 // Untermenüs darin (BeginGroup/EndGroup): Die Gruppe ist eine Aktion der
-// Kategorie „Atlas.Eintrag“, ihre Einträge folgen direkt danach mit der
-// Kategorie „Atlas.Eintrag.<Index der Gruppe>“ (so verlangt es
-// RegisterActionList). Alle Einträge in einer Ebene waren höher als der
-// Bildschirm, das Menü war oben abgeschnitten. Eine Gruppe ohne sichtbaren
-// Eintrag bleibt aus.
+// Kategorie „Atlas.Eintrag“. Die IDE baut nur diese eine Ebene; eine tiefere
+// Kategorie hing sie flach an, die Gruppennamen standen dann als Zeilen
+// zwischen rund 50 Einträgen. Die Aktionen der Einträge einer Gruppe liegen
+// deshalb in einer eigenen, nicht registrierten Liste; beim Öffnen von „Atlas“
+// (RootExecute) hängt Atlas.IDE.Commands.ContextSubmenus sie an den Eintrag der
+// Gruppe. Eine Gruppe ohne sichtbaren Eintrag bleibt aus, ebenso eine, die
+// commands.editorContextMenu.groups abwählt.
+// Beim Öffnen liest TAtlasIdeMenuContext die Lage (Datei, Testunit, Formular,
+// Debug-Sitzung, Befunde); Einträge mit Bedingung (Visible bzw. bei Modulen
+// TAtlasMenuEntry.When) zeigen sich nur, wo sie passen. Trennlinien erscheinen
+// nur zwischen sichtbaren Einträgen.
 // Tastenkürzel stehen als ShortCut an der Aktion: Nur so zeichnet das Menü der
 // IDE sie rechtsbündig (einen Tabulator in der Beschriftung zeichnet es nicht,
 // der Text klebte am Kürzel). Dieselbe Taste belegt die Tastaturbindung von
@@ -41,6 +47,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ActnList,
+  Vcl.Menus,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Commands.MenuSlots;
@@ -68,6 +75,10 @@ type
       /// <summary>Plätze der Module: Untermenü der Module (-1 = direkt im Untermenü Atlas) und Platz darin.</summary>
       ModuleGroup: Integer;
       Slot: Integer;
+      /// <summary>Gruppen: Kennung für commands.editorContextMenu.groups ('' = immer) und Zahl hinter dem Namen
+      /// (nil = keine).</summary>
+      GroupKey: string;
+      Count: TFunc<Integer>;
     end;
   private const
     cCategory = 'Atlas';
@@ -75,6 +86,11 @@ type
   private
     FEntries: TArray<TEntry>;
     FActions: TActionList;
+    /// <summary>Aktionen der Einträge in Gruppen; nicht bei der IDE registriert (gehören FActions).</summary>
+    FSubActions: TActionList;
+    FRoot: TAction;
+    /// <summary>Ersatz, wenn die IDE das Öffnen von „Atlas“ nicht meldet: Gruppe als eigenes Menü.</summary>
+    FGroupPopup: TPopupMenu;
     /// <summary>Aktion je Eintrag (gleicher Index wie FEntries); die IDE überschreibt Tag.</summary>
     FItems: TArray<TBasicAction>;
     FRegistered: Boolean;
@@ -91,10 +107,15 @@ type
       const ACommands: TArray<TAtlasModuleCommand>);
     procedure UpdateModuleSlots;
     procedure UpdateGroups;
+    procedure UpdateSeparators(AParent: Integer);
+    function IsLine(AIndex: Integer): Boolean;
+    function ChildActions(AParent: Integer): TArray<TBasicAction>;
+    procedure FillGroups(ARootItem: TMenuItem);
     procedure RunModuleSlot(AIndex: Integer);
     function IndexOfAction(AAction: TBasicAction): Integer;
     procedure ItemExecute(Sender: TObject);
     procedure RootExecute(Sender: TObject);
+    procedure GroupExecute(Sender: TObject);
     procedure Register;
   public
     constructor Create;
@@ -113,8 +134,10 @@ type
     /// UpdateVisibility).</summary>
     procedure AddWhen(AFeature: TAtlasFeature; const AId, ACaption: string; const AKey: TFunc<Integer>;
       const AProc: TProc; const AVisible: TFunc<Boolean>);
-    /// <summary>Untermenü ACaption; die folgenden Einträge bis EndGroup stehen darin. Nicht verschachtelt.</summary>
-    procedure BeginGroup(const ACaption: string);
+    /// <summary>Untermenü ACaption; die folgenden Einträge bis EndGroup stehen darin. Nicht verschachtelt. AKey ist
+    /// die Kennung für commands.editorContextMenu.groups ('' = immer gezeigt), ACount liefert die Zahl hinter dem
+    /// Namen (nil bzw. 0 = keine).</summary>
+    procedure BeginGroup(const ACaption, AKey: string; const ACount: TFunc<Integer>);
     procedure EndGroup;
     /// <summary>Plätze für Einträge der Module (#1455) an dieser Stelle (nicht in einer Gruppe): AGroupCount
     /// Untermenüs mit je AGroupSize Plätzen, danach ATopCount Plätze direkt im Untermenü Atlas. Mehr Einträge, als
@@ -132,9 +155,11 @@ implementation
 uses
   System.Math,
   Winapi.Windows,
-  Vcl.Menus,
   ToolsAPI,
   Atlas.UI.Commands.Strings,
+  Atlas.Core.Commands.MenuContext,
+  Atlas.IDE.Commands.MenuContext,
+  Atlas.IDE.Commands.ContextSubmenus,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Commands.KeyStroke,
@@ -144,6 +169,7 @@ constructor TAtlasIdeContextMenu.Create;
 begin
   inherited Create;
   FActions := TActionList.Create(nil);
+  FSubActions := TActionList.Create(nil);
   FGroup := -1;
 end;
 
@@ -157,6 +183,9 @@ begin
   begin
     mServices.GetEditorLocalMenu.UnregisterActionList(cCategory);
   end;
+  FGroupPopup.Free;
+  // Die Aktionen der Gruppen gehören FActions; FSubActions gibt sie zuerst frei, FActions danach den Rest.
+  FSubActions.Free;
   FActions.Free;
   inherited;
 end;
@@ -211,10 +240,15 @@ begin
   Append(mEntry);
 end;
 
-procedure TAtlasIdeContextMenu.BeginGroup(const ACaption: string);
+procedure TAtlasIdeContextMenu.BeginGroup(const ACaption, AKey: string; const ACount: TFunc<Integer>);
+var
+  mEntry: TEntry;
 begin
   EndGroup;
-  Append(NewEntry(TEntryKind.ekGroup, ACaption));
+  mEntry := NewEntry(TEntryKind.ekGroup, ACaption);
+  mEntry.GroupKey := AKey;
+  mEntry.Count := ACount;
+  Append(mEntry);
   FGroup := High(FEntries);
 end;
 
@@ -321,7 +355,9 @@ begin
     mItem := Default(TAtlasSlotItem);
     mItem.Id := mCommand.Id;
     mItem.Section := mEntry.Section;
-    mItem.Visible := (mCommand.Id = '-') or TAtlasModuleContributions.IsVisible(mCommand);
+    // Abgewählte Untermenüs (commands.editorContextMenu.groups) und Einträge, die nicht zur Lage passen, fehlen.
+    mItem.Visible := ((mCommand.Id = '-') or TAtlasModuleContributions.IsVisible(mCommand)) and
+      TAtlasIdeMenuContext.GroupShown(mEntry.Group) and TAtlasIdeMenuContext.Applies(mEntry.When);
     Result := Result + [mCommand];
     AItems := AItems + [mItem];
   end;
@@ -414,7 +450,80 @@ begin
     if (FEntries[mIndex].Kind = TEntryKind.ekCommand) and (mParent >= 0) and (ActionOf(mParent) <> nil) and
       (ActionOf(mIndex) <> nil) and ActionOf(mIndex).Visible then
     begin
-      ActionOf(mParent).Visible := True;
+      ActionOf(mParent).Visible := TAtlasIdeMenuContext.GroupShown(FEntries[mParent].GroupKey);
+    end;
+  end;
+  // Zahl hinter dem Namen, etwa „Befunde (3)“.
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if (FEntries[mIndex].Kind = TEntryKind.ekGroup) and Assigned(FEntries[mIndex].Count) and
+      (ActionOf(mIndex) <> nil) then
+    begin
+      ActionOf(mIndex).Caption := TAtlasMenuContextRules.CountedCaption(FEntries[mIndex].Caption,
+        FEntries[mIndex].Count());
+    end;
+  end;
+end;
+
+function TAtlasIdeContextMenu.IsLine(AIndex: Integer): Boolean;
+begin
+  Result := (FEntries[AIndex].Kind = TEntryKind.ekSeparator) or
+    ((FEntries[AIndex].Kind = TEntryKind.ekModuleSlot) and (ActionOf(AIndex) <> nil) and
+    (ActionOf(AIndex).Caption = '-'));
+end;
+
+procedure TAtlasIdeContextMenu.UpdateSeparators(AParent: Integer);
+var
+  mIndexes: TArray<Integer>;
+  mIsLine, mVisible, mShown: TArray<Boolean>;
+  mIndex, mAt: Integer;
+begin
+  // Plätze in Untermenüs der Module ordnet schon TAtlasMenuSlots; hier die oberste Ebene und die Gruppen von Base.
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if (FEntries[mIndex].Parent = AParent) and (ActionOf(mIndex) <> nil) then
+    begin
+      mIndexes := mIndexes + [mIndex];
+      mIsLine := mIsLine + [IsLine(mIndex)];
+      mVisible := mVisible + [ActionOf(mIndex).Visible];
+    end;
+  end;
+  mShown := TAtlasMenuContextRules.Separators(mIsLine, mVisible);
+  for mAt := 0 to High(mIndexes) do
+  begin
+    if mIsLine[mAt] then
+    begin
+      ActionOf(mIndexes[mAt]).Visible := mShown[mAt];
+    end;
+  end;
+end;
+
+function TAtlasIdeContextMenu.ChildActions(AParent: Integer): TArray<TBasicAction>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if FEntries[mIndex].Parent = AParent then
+    begin
+      Result := Result + [FItems[mIndex]];
+    end;
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.FillGroups(ARootItem: TMenuItem);
+var
+  mChild, mIndex: Integer;
+  mItem: TMenuItem;
+begin
+  for mChild := 0 to ARootItem.Count - 1 do
+  begin
+    mItem := ARootItem.Items[mChild];
+    mIndex := IndexOfAction(mItem.Action);
+    if (mIndex >= 0) and (FEntries[mIndex].Kind in [TEntryKind.ekGroup, TEntryKind.ekModuleGroup]) then
+    begin
+      TAtlasIdeContextSubmenus.Fill(mItem, ChildActions(mIndex));
     end;
   end;
 end;
@@ -435,8 +544,15 @@ begin
       ActionOf(mIndex).Visible := FEntries[mIndex].Visible();
     end;
   end;
-  UpdateGroups;
   UpdateModuleSlots;
+  UpdateGroups;
+  for mIndex := -1 to High(FEntries) do
+  begin
+    if (mIndex < 0) or (FEntries[mIndex].Kind = TEntryKind.ekGroup) then
+    begin
+      UpdateSeparators(mIndex);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeContextMenu.Register;
@@ -457,10 +573,16 @@ begin
   mRoot.Category := cCategory;
   mRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas);
   mRoot.OnExecute := RootExecute;
+  FRoot := mRoot;
   for mIndex := 0 to High(FEntries) do
   begin
+    // Einträge in Gruppen nicht in der registrierten Liste: Die IDE baut nur eine Ebene (siehe oben).
     mItem := TAction.Create(FActions);
     mItem.ActionList := FActions;
+    if FEntries[mIndex].Parent >= 0 then
+    begin
+      mItem.ActionList := FSubActions;
+    end;
     mItem.Category := CategoryOf(mIndex);
     mItem.Caption := FEntries[mIndex].Caption;
     FItems := FItems + [mItem];
@@ -468,7 +590,7 @@ begin
       TEntryKind.ekCommand, TEntryKind.ekModuleSlot:
         mItem.OnExecute := ItemExecute;
       TEntryKind.ekGroup, TEntryKind.ekModuleGroup:
-        mItem.OnExecute := RootExecute;
+        mItem.OnExecute := GroupExecute;
     end;
     // Plätze der Module bleiben aus, bis UpdateModuleSlots sie belegt.
     mItem.Visible := not (FEntries[mIndex].Kind in [TEntryKind.ekModuleGroup, TEntryKind.ekModuleSlot]);
@@ -486,11 +608,6 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
   end;
-end;
-
-procedure TAtlasIdeContextMenu.RootExecute(Sender: TObject);
-begin
-  // Nur das Untermenü; ohne Handler wäre die Aktion ausgegraut.
 end;
 
 /// <summary>Die eigene Aktion hinter Sender (aus AOwner), sonst die verknüpfte des Menüeintrags; nil, wenn keine.
@@ -520,6 +637,63 @@ begin
   begin
     TAtlasGuard.Log('Kontextmenü: unbekannter Absender ' + Sender.ClassName);
   end;
+end;
+
+/// <summary>Der Menüeintrag hinter ASender (er selbst oder der, über den die Aktion gerade läuft); nil, wenn keiner.
+/// </summary>
+function MenuItemOf(ASender: TObject): TMenuItem;
+begin
+  Result := nil;
+  if ASender is TMenuItem then
+  begin
+    Result := TMenuItem(ASender);
+  end
+  else if (ASender is TBasicAction) and (TBasicAction(ASender).ActionComponent is TMenuItem) then
+  begin
+    Result := TMenuItem(TBasicAction(ASender).ActionComponent);
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.RootExecute(Sender: TObject);
+var
+  mRootItem: TMenuItem;
+begin
+  // Die VCL ruft beim Öffnen eines Untermenüs den Klick seines Eintrags (TMenu.DispatchPopup), hier also beim
+  // Öffnen von „Atlas“: Lage lesen, Sichtbarkeit setzen, Untermenüs füllen. Ohne Handler wäre die Aktion
+  // ausgegraut.
+  if (FRoot = nil) or (OwnAction(Sender, FActions) <> FRoot) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeMenuContext.Refresh;
+  UpdateVisibility;
+  mRootItem := MenuItemOf(Sender);
+  if mRootItem <> nil then
+  begin
+    FillGroups(mRootItem);
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.GroupExecute(Sender: TObject);
+var
+  mItem: TMenuItem;
+  mIndex: Integer;
+begin
+  // Mit Einträgen öffnet sich gerade das Untermenü; ohne (die IDE hat das Öffnen von „Atlas“ nicht gemeldet)
+  // zeigt ein Klick die Gruppe als eigenes Menü an der Maus.
+  mItem := MenuItemOf(Sender);
+  if (mItem <> nil) and (mItem.Count > 0) then
+  begin
+    Exit;
+  end;
+  mIndex := IndexOfAction(OwnAction(Sender, FActions));
+  if (mIndex < 0) or not (FEntries[mIndex].Kind in [TEntryKind.ekGroup, TEntryKind.ekModuleGroup]) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeMenuContext.Refresh;
+  UpdateVisibility;
+  TAtlasIdeContextSubmenus.Popup(FGroupPopup, ChildActions(mIndex));
 end;
 
 function TAtlasIdeContextMenu.IndexOfAction(AAction: TBasicAction): Integer;

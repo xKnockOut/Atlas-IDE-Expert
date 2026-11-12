@@ -1,11 +1,14 @@
 ﻿unit Atlas.UI.Settings.Page.Commands;
 
-// Reiter „Editorbefehle“ (#399): Tasten der Befehle und Blockkommentar (#703).
+// Reiter „Editorbefehle“ (#399): Tasten der Befehle und Blockkommentar (#703),
+// Untermenü Atlas im Kontextmenü des Editors (#2102).
 
 interface
 
 uses
+  Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.ContextMenuGroups,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
@@ -16,6 +19,9 @@ type
     FToggleBlockCommentStyle: TAtlasChoiceBox;
     FToggleBlockCommentFallback: TAtlasChoiceBox;
     FToggleBlockCommentScope: TAtlasChoiceBox;
+    /// <summary>Gezeigte Untermenüs im Kontextmenü Atlas des Editors (#2102), je Gruppe ein Häkchen.</summary>
+    FContextGroups: array[TAtlasContextMenuGroup] of TCheckBox;
+    procedure BuildContextMenu;
   public
     procedure Build;
     procedure Build2;
@@ -163,19 +169,56 @@ begin
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProjectContextMenu)));
   // Assistenten in Datei › Neu › Weitere (#1821).
   BindCheck('GalleryWizards', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsGalleryWizards)));
+  BuildContextMenu;
   // Liste der Benachrichtigungen (#601).
   BindKey('NotificationsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand)));
 end;
 
-procedure TAtlasSettingsCommandsPart.BindMarks;
+procedure TAtlasSettingsCommandsPart.BuildContextMenu;
+const
+  // Eine Zeile Text über den Häkchen der Untermenüs.
+  cGroupsLabelHeight = 20;
+  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (
+    TAtlasSettingsTextId.SettingsContextGroupNavigation, TAtlasSettingsTextId.SettingsContextGroupEdit,
+    TAtlasSettingsTextId.SettingsContextGroupAnalysis, TAtlasSettingsTextId.SettingsContextGroupFindings,
+    TAtlasSettingsTextId.SettingsContextGroupDebug, TAtlasSettingsTextId.SettingsContextGroupTests,
+    TAtlasSettingsTextId.SettingsContextGroupNotes);
+var
+  mGroup: TAtlasContextMenuGroup;
 begin
+  // Untermenü Atlas im Kontextmenü des Editors (#2102): nur Passendes und je Untermenü ein Häkchen.
+  BindCheck('EditorContextMenuContextual',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorContextMenuContextual)));
+  AddWrappedLabel(cGroupsLabelHeight, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorContextMenuGroups));
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    FContextGroups[mGroup] := AddCheck(TAtlasSettingsStrings.Text(cTexts[mGroup]));
+  end;
+end;
+
+procedure TAtlasSettingsCommandsPart.BindMarks;
+var
+  mGroup: TAtlasContextMenuGroup;
+begin
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    FPage.Marks.Bind(FContextGroups[mGroup], ['EditorContextMenuGroups']);
+  end;
   FPage.Marks.Bind(FToggleBlockCommentStyle, ['ToggleBlockCommentStyle']);
   FPage.Marks.Bind(FToggleBlockCommentFallback, ['ToggleBlockCommentFallback']);
   FPage.Marks.Bind(FToggleBlockCommentScope, ['ToggleBlockCommentWithoutSelection']);
 end;
 
 procedure TAtlasSettingsCommandsPart.Load(const ASettings: TAtlasPluginSettings);
+var
+  mGroup: TAtlasContextMenuGroup;
+  mGroups: TAtlasContextMenuGroups;
 begin
+  mGroups := TAtlasContextMenuGroupNames.Parse(ASettings.EditorContextMenuGroups);
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    FContextGroups[mGroup].Checked := mGroup in mGroups;
+  end;
   FToggleBlockCommentStyle.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentStyle, ['braces', 'parens']));
   FToggleBlockCommentFallback.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentFallback,
     ['lineComments', 'refuse']));
@@ -184,7 +227,19 @@ begin
 end;
 
 procedure TAtlasSettingsCommandsPart.Save(var ASettings: TAtlasPluginSettings);
+var
+  mGroup: TAtlasContextMenuGroup;
+  mGroups: TAtlasContextMenuGroups;
 begin
+  mGroups := [];
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    if FContextGroups[mGroup].Checked then
+    begin
+      Include(mGroups, mGroup);
+    end;
+  end;
+  ASettings.EditorContextMenuGroups := TAtlasContextMenuGroupNames.Text(mGroups);
   ASettings.ToggleBlockCommentStyle := 'braces';
   if FToggleBlockCommentStyle.Choice = 1 then
   begin

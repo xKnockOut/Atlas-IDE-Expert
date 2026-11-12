@@ -101,7 +101,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue
 - **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE; "My issues" can show a fixed tracker project or all of them, with working copies per tracker project
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
-- **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts
+- **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings with count, modules) and right-aligned shortcuts; shows only what fits (Debugging while debugging, Tests in test units, designer with a form), submenus can be turned off one by one (`commands.editorContextMenu.*`)
 - **Atlas wizards in *File › New › Other***: *DUnitX test unit for unit…*, *Unit by architecture role…* and *Custom rule…* in the gallery category *Atlas* (`generate.galleryWizards`)
 - **Project Manager submenu *Atlas***: *Check with Atlas* for units, folders and projects (multi-selection too, without opening the units), *Unit relations*, *Dependent units (n)* and *Run tests for this unit* (`commands.projectContextMenu`)
 - **Robustness:** errors never reach the IDE, safe start, crash cases you can replay

@@ -304,6 +304,8 @@ Atlas.Core.Designer.EventMap.Tests
 Atlas.Core.Designer.FormUnit.Tests
 Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Tracker.IssueWork.Tests
+Atlas.Core.Commands.MenuContext.Tests
+Atlas.Core.Settings.ContextMenuGroups.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests

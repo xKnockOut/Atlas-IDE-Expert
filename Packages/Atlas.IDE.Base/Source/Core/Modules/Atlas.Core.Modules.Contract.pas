@@ -30,7 +30,8 @@ const
   /// 7 (#1819): IAtlasIdeErrors (Atlas.IDE.Contracts.Rules), TAtlasIdeError (Atlas.Core.Problems.Contract),
   /// TAtlasProblem.IdeConfirmed.
   /// 8 (#2052): IAtlasIssueWork und IAtlasIssueWorkSource, welcomePage.continue.issues(.count).
-  cAtlasCoreContractVersion = 8;
+  /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).
+  cAtlasCoreContractVersion = 9;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
@@ -130,6 +131,22 @@ type
     Key: TFunc<Integer>;
   end;
 
+  /// <summary>Lage beim Öffnen des Kontextmenüs im Editor: Datei der obersten Editoransicht, ob sie eine DUnitX-
+  /// Testunit ist, Regionen ({$REGION}) oder ein Formular hat, ob ein Prozess debuggt wird, Zahl ihrer Befunde.
+  /// Base liest sie bei jedem Öffnen neu.</summary>
+  TAtlasMenuContext = record
+    FileName: string;
+    TestUnit: Boolean;
+    HasRegions: Boolean;
+    HasForm: Boolean;
+    Debugging: Boolean;
+    ProblemCount: Integer;
+  end;
+
+  /// <summary>Passt ein Eintrag im Kontextmenü des Editors zur Lage AContext? Ein Typ für Base und Module.
+  /// </summary>
+  TAtlasMenuWhen = reference to function(const AContext: TAtlasMenuContext): Boolean;
+
   /// <summary>Befehle eines Moduls (Regel 4); Base fragt sie bei jedem Öffnen der Palette bzw. des Menüs.</summary>
   IAtlasCommandSource = interface
     ['{0C9E4B7D-3A61-4F2E-8D05-B6A1E97C2F44}']
@@ -142,13 +159,18 @@ type
   /// (ViewMenu) ersetzt eine gesetzte Caption den Text des Befehls.
   /// Eintrag ohne Befehl (nur im Atlas-Menü): CommandId ist eine eindeutige Kennung, Caption der Text, Run die
   /// Aktion (nil = ausgegraut), etwa je Projektaufgabe; Base fragt die Einträge bei jedem Öffnen und beim Klick
-  /// neu (Regel 3).</summary>
+  /// neu (Regel 3).
+  /// Nur im Kontextmenü des Editors: Group ist die feste Kennung des Untermenüs für
+  /// commands.editorContextMenu.groups (z. B. „debug“; '' = immer gezeigt), When blendet den Eintrag aus, solange er
+  /// nicht zur Lage passt (nil = passt immer; gilt nur mit commands.editorContextMenu.contextual).</summary>
   TAtlasMenuEntry = record
     CommandId: string;
     Section: string;
     Place: TAtlasMenuPlace;
     Caption: string;
     Run: TProc;
+    Group: string;
+    When: TAtlasMenuWhen;
   end;
 
   /// <summary>Einträge eines Moduls im Atlas-Menü.</summary>

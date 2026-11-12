@@ -34,6 +34,12 @@ type
     ProjectContextMenu: Boolean;
     /// <summary>Kategorie „Atlas“ in Datei › Neu › Weitere (#1821, generate.galleryWizards).</summary>
     GalleryWizards: Boolean;
+    /// <summary>Kontextmenü Atlas im Editor: nur Einträge, die zur Lage passen
+    /// (commands.editorContextMenu.contextual).</summary>
+    EditorContextMenuContextual: Boolean;
+    /// <summary>Gezeigte Untermenüs im Kontextmenü Atlas des Editors (commands.editorContextMenu.groups),
+    /// kommagetrennt: navigation, edit, analysis, findings, debug, tests, notes.</summary>
+    EditorContextMenuGroups: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginCodeActionsSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -45,7 +51,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Generate.Contract;
+  Atlas.Core.Generate.Contract,
+  Atlas.Core.Settings.ContextMenuGroups;
 
 { TAtlasPluginCodeActionsSettings }
 
@@ -60,12 +67,15 @@ begin
   Result.GenerateMenuShowCommandNames := True;
   Result.ProjectContextMenu := True;
   Result.GalleryWizards := True;
+  Result.EditorContextMenuContextual := True;
+  Result.EditorContextMenuGroups := TAtlasContextMenuGroupNames.Text(TAtlasContextMenuGroupNames.cAll);
 end;
 
 procedure TAtlasPluginCodeActionsSettings.Normalize;
 begin
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
+  EditorContextMenuGroups := TAtlasContextMenuGroupNames.Normalize(EditorContextMenuGroups);
 end;
 
 procedure TAtlasPluginCodeActionsSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -79,6 +89,8 @@ begin
   AIo.Flag('GenerateMenuShowCommandNames', GenerateMenuShowCommandNames);
   AIo.Flag('ProjectContextMenu', ProjectContextMenu);
   AIo.Flag('GalleryWizards', GalleryWizards);
+  AIo.Flag('EditorContextMenuContextual', EditorContextMenuContextual);
+  AIo.Text('EditorContextMenuGroups', EditorContextMenuGroups);
 end;
 
 end.

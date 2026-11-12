@@ -56,6 +56,10 @@ type
     /// <summary>#1821: generate.galleryWizards mit Vorgabe an.</summary>
     [Test]
     procedure GalleryWizardsRoundTrip;
+    /// <summary>#2102: commands.editorContextMenu.contextual (Vorgabe an) und .groups (Vorgabe alle, normalisiert).
+    /// </summary>
+    [Test]
+    procedure EditorContextMenuRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -732,6 +736,26 @@ begin
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.GalleryWizards);
+end;
+
+procedure TAtlasPluginSettingsTests.EditorContextMenuRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.EditorContextMenuContextual);
+  Assert.AreEqual('navigation,edit,analysis,findings,debug,tests,notes', Settings.EditorContextMenuGroups);
+  Settings.EditorContextMenuContextual := False;
+  Settings.EditorContextMenuGroups := 'notes; quatsch, Debug';
+  Settings.Normalize;
+  Assert.AreEqual('debug,notes', Settings.EditorContextMenuGroups);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.EditorContextMenuContextual);
+  Assert.AreEqual('debug,notes', Loaded.EditorContextMenuGroups);
 end;
 
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
