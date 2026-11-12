@@ -34,6 +34,9 @@
 //   Zeitgeber und PaintLine fangen Bildläufe ohne Ereignis weiter ab.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
 //   Mausereignis zum Namen im Kopf.
+// - Hover: HeaderAt nennt dem Tooltip die Kopfzeile unter der Maus. Er zeigt
+//   dann den Bezeichner im Kopf (TAtlasStickyScroll.SourceIndex) und nie den
+//   der verdeckten Zeile darunter.
 // - Die oberste Zeile ist View.TopRow; zugeklappte Bereiche darunter zählt
 //   der Kopf wie offene.
 // - Thema (Hell/Dunkel): Die IDE schreibt beim Wechsel das Farbschema des
@@ -44,6 +47,9 @@
 // Nur im Hauptthread.
 
 interface
+
+uses
+  Atlas.Core.Outline.StickyScroll;
 
 type
   TAtlasIdeStickyScroll = class
@@ -64,6 +70,10 @@ type
     /// <summary>True, wenn die Blocklinie in Spalte AColumn in der ersten Zeile unter dem Kopf spitz beginnen soll:
     /// Ihr Element ist hinter dem Kopf verschwunden, und ihre Spitze läge im Text der letzten Kopfzeile.</summary>
     class function TaperBelow(const AFileName: string; AColumn: Integer): Boolean; static;
+    /// <summary>True, wenn am Mauspunkt AX, AY (Editorkoordinaten) der Kopf steht, wie er zu AFileName mit oberster
+    /// Zeile ATopRow (1-basiert, IOTAEditView.TopRow) gezeichnet ist; ARow ist dann die Kopfzeile dort.</summary>
+    class function HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer; out ARow: TAtlasStickyRow): Boolean;
+      static;
   end;
 
 implementation
@@ -87,7 +97,6 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Model,
-  Atlas.Core.Outline.StickyScroll,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.RoutineNesting,
@@ -1369,6 +1378,28 @@ begin
   mState := TStickyState(FState);
   Result := mState.FOn and (mState.FPaintedRows > 0) and SameText(mState.FFileName, AFileName) and
     HasColumn(mState.FTaperColumns, AColumn);
+end;
+
+class function TAtlasIdeStickyScroll.HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer;
+  out ARow: TAtlasStickyRow): Boolean;
+var
+  mState: TStickyState;
+  mRow: Integer;
+begin
+  ARow := Default(TAtlasStickyRow);
+  Result := False;
+  if FState = nil then
+  begin
+    Exit;
+  end;
+  mState := TStickyState(FState);
+  // Nur der Kopf, der so gezeichnet steht: gleiche Datei, nicht gescrollt (wie beim Klick).
+  Result := mState.FOn and SameText(mState.FFileName, AFileName) and (ATopRow - 1 = mState.FPaintedTop) and
+    mState.RowAt(AX, AY, mRow);
+  if Result then
+  begin
+    ARow := mState.FRows[mRow];
+  end;
 end;
 
 class function TAtlasIdeStickyScroll.Enabled: Boolean;

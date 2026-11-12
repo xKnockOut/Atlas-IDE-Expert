@@ -3,7 +3,8 @@
 // Mitlaufender Kopf (#506): Kopf einer langen Methode, äußerer und innerer
 // Kopf untereinander, nach inneren Routinen nur der äußere, Zusammenfassung
 // bei vier Ebenen, gekürzte mehrzeilige Köpfe, Klasse im interface,
-// Sprungziel, Arten im Kopf, Beginn und Einblenden der Blocklinien im Kopf.
+// Sprungziel, Arten im Kopf, Beginn und Einblenden der Blocklinien im Kopf,
+// Zeichen im Kopf als Stelle im Quelltext (Hover).
 
 interface
 
@@ -58,6 +59,10 @@ type
     /// <summary>Nur die eingestellten Arten der Gliederung (Klassen, Routinen) bekommen eine Kopfzeile.</summary>
     [Test]
     procedure OutlineKindsCanBeSwitchedOff;
+    /// <summary>Hover über dem Kopf: Ein Zeichen der Kopfzeile ist die Stelle in ihrer Quellzeile; gekürzte
+    /// Parameterliste, Einrückung, Zusammenfassung, Tabulator und geänderte Zeile haben keine.</summary>
+    [Test]
+    procedure HeaderCharactersMapToTheSource;
   end;
 
 implementation
@@ -550,6 +555,42 @@ begin
   Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
     Source.Marks.EinsBody + 5)));
   Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [], Source.Marks.EinsBody + 5)));
+end;
+
+procedure TAtlasStickyScrollTests.HeaderCharactersMapToTheSource;
+const
+  cLine = '    function Pruefe(const A: Integer;';
+var
+  mRow: TAtlasStickyRow;
+  mIndex: Integer;
+begin
+  mRow := Default(TAtlasStickyRow);
+  mRow.Text := 'function Pruefe(…): Boolean;';
+  mRow.Indent := 4;
+  // Name und Klammer im Kopf stehen hinter der Einrückung in der Zeile.
+  Assert.IsTrue(TAtlasStickyScroll.SourceIndex(mRow, cLine, 9, mIndex), 'Name');
+  Assert.AreEqual(13, mIndex, 'Name');
+  Assert.IsTrue(TAtlasStickyScroll.SourceIndex(mRow, cLine, 15, mIndex), 'Klammer');
+  Assert.AreEqual(19, mIndex, 'Klammer');
+  // „…“ und was dahinter steht, zeigt die Zeile so nicht.
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, cLine, 16, mIndex), '…');
+  Assert.AreEqual(-1, mIndex, '…');
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, cLine, 20, mIndex), 'Ergebnistyp');
+  // Vor und hinter dem Text des Kopfs.
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, cLine, -1, mIndex), 'Einrückung');
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, cLine, Length(mRow.Text), mIndex), 'dahinter');
+  // Zeile inzwischen geändert.
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, '    procedure Pruefe(', 9, mIndex), 'geändert');
+  // Tabulator im Text: Danach passen die Spalten nicht mehr.
+  mRow.Text := 'a'#9'b';
+  Assert.IsTrue(TAtlasStickyScroll.SourceIndex(mRow, #9'a'#9'b', 0, mIndex), 'vor dem Tabulator');
+  Assert.AreEqual(1, mIndex, 'vor dem Tabulator');
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, #9'a'#9'b', 2, mIndex), 'hinter dem Tabulator');
+  // Zusammenfassung „A › B“ zeigt keine Quellzeile.
+  mRow.Text := 'TForm1 › Laden';
+  mRow.Summary := True;
+  Assert.IsFalse(TAtlasStickyScroll.SourceIndex(mRow, 'TForm1 › Laden', 0, mIndex), 'Zusammenfassung');
+  mRow.Text := '';
 end;
 
 initialization

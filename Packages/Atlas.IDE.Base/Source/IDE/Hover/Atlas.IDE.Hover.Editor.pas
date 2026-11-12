@@ -43,6 +43,10 @@
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText und GetHelpInsightHtml
 // liefern '' (Manager). Bedient Atlas die Datei nicht (Hauptschalter, Server
 // fehlt, Sicherung), übernimmt die IDE und der Atlas-Tooltip bleibt zu.
+// Mitlaufender Kopf: Er verdeckt die obersten Zeilen. Steht die Maus auf ihm,
+// gilt der Quelltext, den er zeigt (Bezeichner im Kopf), nie die verdeckte
+// Zeile darunter; wo er keinen zeigt (Zusammenfassung „A › B“, Einrückung,
+// gekürzte Parameterliste), kommt kein Tooltip.
 // Delphi 12 (#281): Tastatur-Ereignisse des Code-Editors gibt es erst ab
 // Delphi 13 (INTACodeEditorEvents370). Dort schließt der Tooltip über den
 // Tastatur-Hook, solange er sichtbar ist.
@@ -163,10 +167,12 @@ uses
   Atlas.Core.Completion.Word,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Outline.StickyScroll,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Hover.DebugValue;
+  Atlas.IDE.Hover.DebugValue,
+  Atlas.IDE.Outline.StickyScroll;
 
 { TAtlasEditorHover.TEvents }
 
@@ -371,6 +377,27 @@ begin
   end;
 end;
 
+/// <summary>Steht an AX, AY der mitlaufende Kopf, zeigt APos auf den Quelltext darin (Zeile, Text, Index). False,
+/// wo der Kopf keinen zeigt; sonst bleibt APos, wie es ist.</summary>
+function StickyPos(var APos: TAtlasHoverMousePos; AX, AY: Integer): Boolean;
+var
+  mRow: TAtlasStickyRow;
+begin
+  Result := True;
+  if not TAtlasIdeStickyScroll.HeaderAt(APos.View.Buffer.FileName, APos.View.TopRow, AX, AY, mRow) then
+  begin
+    Exit;
+  end;
+  Result := mRow.Line >= 0;
+  if Result then
+  begin
+    // Der Kopf zeigt die Zeile ab ihrer Einrückung in Spalte Indent + 1, Zeichen für Zeichen wie im Editor.
+    APos.Line := mRow.Line + 1;
+    APos.Text := TAtlasEditorBuffer.LineText(APos.View, APos.Line);
+    Result := TAtlasStickyScroll.SourceIndex(mRow, APos.Text, APos.Column - mRow.Indent - 1, APos.Index);
+  end;
+end;
+
 function TAtlasEditorHover.MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos):
   Boolean;
 var
@@ -397,6 +424,7 @@ begin
   begin
     APos.Text := TAtlasEditorBuffer.LineText(APos.View, APos.Line);
     APos.Index := TLspSession.ColumnToIndex(APos.Text, APos.Column, TAtlasEditorBuffer.TabWidth(APos.View.Buffer));
+    Result := StickyPos(APos, AX, AY);
   end;
 end;
 
