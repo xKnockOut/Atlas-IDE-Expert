@@ -493,6 +493,8 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LinkedEditing.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SmartPaste.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SmartIndent.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LearnedSuggestions.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LearnedUsage.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.StatementCompletion.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
@@ -576,6 +578,7 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.GhostSuggestions.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
@@ -771,6 +774,8 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LinkedEditingQuery.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.SmartPaste.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.SmartIndent.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GhostSuggestions.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LearnedSuggestions.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.StatementCompletion.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineTracking.pas"/>
@@ -782,6 +787,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Hide.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Hide.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.RegionFolds.pas"/>
+        <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.LearnedSuggestions.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ExtractMembers.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ActionChoices.pas"/>

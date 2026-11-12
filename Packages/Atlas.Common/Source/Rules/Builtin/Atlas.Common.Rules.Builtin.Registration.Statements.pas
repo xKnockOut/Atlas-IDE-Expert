@@ -29,6 +29,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeChecks,
   Atlas.Common.Rules.Builtin.TypeKinds,
   Atlas.Common.Rules.Builtin.TypeMismatch,
+  Atlas.Common.Rules.Builtin.CompilerTraps,
   Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
@@ -57,6 +58,7 @@ begin
   RegisterTypeCheckRules(ARegistry);
   RegisterTypeKindRules(ARegistry);
   RegisterTypeMismatchRules(ARegistry);
+  RegisterCompilerTrapRules(ARegistry);
   RegisterConditionRules(ARegistry);
   RegisterIdiomRules(ARegistry);
   RegisterInliningRules(ARegistry);

@@ -425,6 +425,11 @@ begin
   // Als Argument (Debug.EventBreak: Report(const AText: string) an TProc<string>).
   Assert.AreEqual('26: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; die Parameter von Say' + cWie,
     Messages(ReferenceFindings(cRoutinen, '  Frage(''Weiter?'', Say);'#10)));
+  // Anonyme Methoden mit const bzw. ohne Parameter (#1345).
+  Assert.AreEqual('26: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; die Parameter von ' +
+    'procedure(const AText: string)' + cWie + ' | 27: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; ' +
+    'die Parameter von procedure' + cWie, Messages(ReferenceFindings(cRoutinen,
+    '  GProc := procedure(const AText: string) begin end;'#10'  Frage(''Weiter?'', procedure begin end);'#10)));
 end;
 
 procedure TTypeMismatchTests.FunctionReturningReferenceWithoutParens;

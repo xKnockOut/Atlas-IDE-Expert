@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerNames: array[0..217] of string = (
+  cCatalogLinesDeCompilerNames: array[0..222] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Veraltetes oder gebundenes Symbol",',
@@ -369,6 +369,13 @@ const
     'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' +
     'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' +
     'nschränkung ergänzen (T: class, constructor bzw. T: class)."',
+    '    },',
+    '{',
+    '      "id": "interface-uses-missing",',
+    '      "name": "Unit nur im uses des implementation-Teils",',
+    '      "description": "Ein Typ im interface-Teil (Feld, Parameter, Ergebnis, Property, Vorfahr) kommt aus einer Unit, die nur im uses des implementation-Teils steht. Dort ist der Name noch nicht bekann' +
+    't (wie E2003). Gemeldet, wenn der Name im interface-Teil nicht aufgelöst wird und genau eine solche Unit ihn in ihrem interface-Teil deklariert; je Unit einmal pro Datei. Korrektur: Unit ins uses des ' +
+    'interface-Teils verschieben (angeboten, wenn der interface-Teil ein uses hat)."',
     '    },',
     '{',
     '      "id": "unresolved-type",',

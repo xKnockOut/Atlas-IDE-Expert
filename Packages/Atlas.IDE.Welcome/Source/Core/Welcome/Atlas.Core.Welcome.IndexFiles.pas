@@ -49,8 +49,8 @@ type
     // #848, #849, #861, #862, 25: Methodenzuordnungen je Klasse, 26: Namen ohne Escape-& (#1137), 27: Codepage-
     // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
     // die Willkommensseite fand deshalb keinen Cache. 30: inline-Routinen ohne Verweise (#1381).
-    // 31: Typargumente je Vorfahr.
-    cFormatVersion = 32;
+    // 31: Typargumente je Vorfahr. 33: Folgemuster im Unit-Kopf (#1890).
+    cFormatVersion = 33;
     cIndexFolder = 'Index';
     cLibraryFolder = 'Bibliothek';
   private
@@ -291,6 +291,20 @@ begin
   end;
 end;
 
+/// <summary>Folgemuster der gelernten Vorschläge (#1890): je Muster Auslöser, Folge, Zahl und Zeilen.</summary>
+procedure SkipPatterns(var AReader: TReader);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to AReader.ReadCount do
+  begin
+    AReader.ReadVar; // Auslöser
+    AReader.ReadVar; // Folge
+    AReader.ReadVar; // Zahl
+    AReader.SkipList; // Zeilen der Belege
+  end;
+end;
+
 /// <summary>Ein Unit-Eintrag; liefert seine Flags. Alles außer Name und Datei wird übersprungen.</summary>
 function ReadEntry(var AReader: TReader; const AStrings: TArray<string>; out AEntry: TAtlasIndexFile): Integer;
 var
@@ -312,6 +326,7 @@ begin
   AReader.SkipList; // Hinweise im Unit-Kopf (#1018)
   AReader.ReadVar; // Grund hinter deprecated
   AReader.SkipList; // Begründungen der Unit (#1123)
+  SkipPatterns(AReader);
   AReader.ReadVar; // Symbolzahl
   AReader.ReadVar; // nicht verfügbar
   AReader.Skip(AReader.ReadCount); // Symbolblock
