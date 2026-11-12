@@ -278,6 +278,9 @@ type
     Unseen: TArray<string>;
     /// <summary>Marken „wieder offen“ (#2127, issues.reopened); leer ohne.</summary>
     Reopened: TArray<TAtlasTrackerReopen>;
+    /// <summary>Prüfzustände des Trackers (#2126, issues.reviewStates): Zeilen in diesen Zuständen bieten „Prüfen“
+    /// statt „Beginnen“; leer = nur im Kontextmenü.</summary>
+    ReviewStates: TArray<string>;
     /// <summary>Klappliste „Tracker-Projekt“ (#1927, issues.projectPicker), ihre Einträge und die Wahl ('' =
     /// automatisch, "*" = alle, sonst „projekt@verbindung“).</summary>
     ProjectPicker: Boolean;

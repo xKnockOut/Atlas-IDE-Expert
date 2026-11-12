@@ -142,10 +142,11 @@ type
     cVersion = 1;
     cMaxDrafts = 100;
     /// <summary>Felder: Vorschau (#1264), Beenden-Dialog (#1266), Beschreibung (#1268), Rückfrage (#1272),
-    /// „Mit Kommentar …“ am Statusfeld (#2124).</summary>
+    /// „Mit Kommentar …“ am Statusfeld (#2124), Prüfen (#2126).</summary>
     cFieldPreview = 'preview';
     cFieldEnd = 'end';
     cFieldState = 'state';
+    cFieldReview = 'review';
     cFileName = 'drafts.json';
   private type
     TEntry = record

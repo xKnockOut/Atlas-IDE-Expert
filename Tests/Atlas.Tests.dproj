@@ -1173,6 +1173,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Notify.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Reopened.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Reopened.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Review.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Review.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.ReviewDialog.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.ReviewDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Notify.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Capture.pas"/>

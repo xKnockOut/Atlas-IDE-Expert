@@ -10,10 +10,8 @@
 //   Vorschau (Atlas.Core.Tracker.IssueWork). Ohne frischen Stand fragt es im
 //   Hintergrund ohne Kommentare nach (TAtlasIdeIssueLookups) und meldet
 //   danach IAtlasIssueWork.StatusesChanged.
-// - TAtlasTrackerIssueWorkLink: „Beginnen“ und „Beenden“ melden der
-//   Willkommensseite das bisherige Issue (Arbeitsstand sichern); nach
-//   „Beginnen“ bietet sie das Wiederherstellen an. Ohne Willkommensseite
-//   wirkungslos.
+// Die Meldungen von „Beginnen“, „Beenden“ und „Prüfen“ an die
+// Willkommensseite stehen in Atlas.IDE.Tracker.IssueWorkLink.
 // Hauptthread. Protokoll ohne Kennung oder Titel.
 
 interface
@@ -21,7 +19,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.MyIssues,
   Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices;
@@ -44,47 +41,17 @@ type
     function Statuses(const AProject: string; const AKeys: TArray<string>): TArray<TAtlasIssueWorkInfo>;
   end;
 
-  TAtlasTrackerIssueWorkLink = class
-  public
-    /// <summary>Arbeitsstand je Issue der Willkommensseite; False ohne sie.</summary>
-    class function Work(out AWork: IAtlasIssueWork): Boolean; static;
-    /// <summary>Aktives Issue von AProject im Format des Vertrags; False ohne.</summary>
-    class function ActiveOf(AContext: TAtlasIdeIssuesContext; const AProject: string;
-      out AIssue: TAtlasIssueWorkIssue): Boolean; static;
-    /// <summary>Vor „Beginnen“ von ANewKey: Arbeitsstand des bisher aktiven Issues sichern (nicht, wenn es dasselbe
-    /// ist).</summary>
-    class procedure BeforeStart(AContext: TAtlasIdeIssuesContext; const AProject, ANewKey: string); static;
-    /// <summary>Vor „Beenden“: Arbeitsstand von AActive (auf ABranch) sichern.</summary>
-    class procedure BeforeEnd(const AProject, ABranch: string; const AActive: TAtlasActiveIssue); static;
-    /// <summary>Nach „Beginnen“: „Arbeitsstand wiederherstellen?“, wenn es einen gibt.</summary>
-    class procedure AfterStart(const AProject, AKey: string); static;
-    /// <summary>Nach „Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): ohne Rückfrage wiederherstellen.
-    /// </summary>
-    class procedure AfterResume(const AProject, AKey: string); static;
-  end;
 
 implementation
 
 uses
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Modules.Registry,
   Atlas.Core.Tracker.IssueWork,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Tracker.IssueLookups,
+  Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.Workflow;
-
-function IssueOf(const AActive: TAtlasActiveIssue; const ABranch: string): TAtlasIssueWorkIssue;
-begin
-  Result := Default(TAtlasIssueWorkIssue);
-  Result.Key := AActive.Key;
-  Result.Title := AActive.Title;
-  Result.Branch := AActive.Branch;
-  // Aus dem Branch erkannt bzw. ohne gemerkten Branch: der ausgecheckte.
-  if Result.Branch = '' then
-  begin
-    Result.Branch := ABranch;
-  end;
-end;
 
 function StatusOf(AResolution: TAtlasTrackerResolution): TAtlasIssueWorkStatus;
 begin
@@ -95,88 +62,6 @@ begin
       Result := TAtlasIssueWorkStatus.Resolved;
   else
     Result := TAtlasIssueWorkStatus.Unknown;
-  end;
-end;
-
-{ TAtlasTrackerIssueWorkLink }
-
-class function TAtlasTrackerIssueWorkLink.Work(out AWork: IAtlasIssueWork): Boolean;
-var
-  mItems: TArray<IInterface>;
-begin
-  AWork := nil;
-  Result := False;
-  if AtlasModuleRegistry = nil then
-  begin
-    Exit;
-  end;
-  mItems := AtlasModuleRegistry.FindAll(IAtlasIssueWork);
-  Result := (Length(mItems) > 0) and Supports(mItems[0], IAtlasIssueWork, AWork) and AWork.Enabled;
-end;
-
-class function TAtlasTrackerIssueWorkLink.ActiveOf(AContext: TAtlasIdeIssuesContext; const AProject: string;
-  out AIssue: TAtlasIssueWorkIssue): Boolean;
-var
-  mTarget: TAtlasTrackerTarget;
-  mBranch: string;
-  mActive: TAtlasActiveIssue;
-begin
-  AIssue := Default(TAtlasIssueWorkIssue);
-  Result := False;
-  if (AContext = nil) or (AProject = '') then
-  begin
-    Exit;
-  end;
-  mTarget := AContext.TargetOf(AProject);
-  mBranch := AContext.BranchOf(AProject);
-  mActive := TAtlasMyIssues.Effective(AContext.StateOf(AProject), mTarget.Provider, mTarget.Project, mBranch);
-  Result := mActive.Active;
-  if Result then
-  begin
-    AIssue := IssueOf(mActive, mBranch);
-  end;
-end;
-
-class procedure TAtlasTrackerIssueWorkLink.BeforeStart(AContext: TAtlasIdeIssuesContext;
-  const AProject, ANewKey: string);
-var
-  mWork: IAtlasIssueWork;
-  mIssue: TAtlasIssueWorkIssue;
-begin
-  if Work(mWork) and ActiveOf(AContext, AProject, mIssue) and not SameText(mIssue.Key, ANewKey) then
-  begin
-    mWork.SaveIssue(AProject, mIssue);
-  end;
-end;
-
-class procedure TAtlasTrackerIssueWorkLink.BeforeEnd(const AProject, ABranch: string;
-  const AActive: TAtlasActiveIssue);
-var
-  mWork: IAtlasIssueWork;
-begin
-  if AActive.Active and Work(mWork) then
-  begin
-    mWork.SaveIssue(AProject, IssueOf(AActive, ABranch));
-  end;
-end;
-
-class procedure TAtlasTrackerIssueWorkLink.AfterStart(const AProject, AKey: string);
-var
-  mWork: IAtlasIssueWork;
-begin
-  if Work(mWork) and mWork.HasState(AProject, AKey) then
-  begin
-    mWork.OfferRestore(AProject, AKey);
-  end;
-end;
-
-class procedure TAtlasTrackerIssueWorkLink.AfterResume(const AProject, AKey: string);
-var
-  mWork: IAtlasIssueWork;
-begin
-  if Work(mWork) and mWork.HasState(AProject, AKey) then
-  begin
-    mWork.Restore(AProject, AKey);
   end;
 end;
 

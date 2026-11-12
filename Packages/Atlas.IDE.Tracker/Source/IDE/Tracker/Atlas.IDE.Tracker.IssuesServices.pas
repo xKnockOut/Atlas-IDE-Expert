@@ -28,6 +28,7 @@ uses
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Reopened,
+  Atlas.IDE.Tracker.Review,
   Atlas.IDE.Tracker.IssuesContext;
 
 type
@@ -47,6 +48,7 @@ type
     FNotify: TAtlasIdeIssueNotify;
     FAttach: TAtlasIdeIssueAttach;
     FReopened: TAtlasIdeIssueReopened;
+    FReview: TAtlasIdeIssueReview;
     // Referenzgezählte Dienste: gehalten bis Stop.
     FRefs: TArray<IInterface>;
     procedure Keep(const AService: IInterface);
@@ -93,6 +95,8 @@ type
     property Attach: TAtlasIdeIssueAttach read FAttach;
     /// <summary>Wieder geöffnete Issues (#2127; nil vor Start bzw. nach Stop).</summary>
     property Reopened: TAtlasIdeIssueReopened read FReopened;
+    /// <summary>„Prüfen“ (#2126; nil vor Start bzw. nach Stop).</summary>
+    property Review: TAtlasIdeIssueReview read FReview;
   end;
 
 implementation
@@ -106,6 +110,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Reopened,
+  Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.WorkingCopies;
@@ -127,6 +132,8 @@ type
     /// </summary>
     function BoardProject: string;
     procedure Start(const AIssue: TAtlasTrackerIssue);
+    /// <summary>„Prüfen …“ (#2126) für AIssue.</summary>
+    procedure Review(const AIssue: TAtlasTrackerIssue);
     function CanStart: Boolean;
     procedure Settings;
     function Recent(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
@@ -207,6 +214,14 @@ begin
   if (Keep <> nil) and (Context.Actions <> nil) then
   begin
     Context.Actions.Start(AIssue, Services.Options.Start);
+  end;
+end;
+
+procedure TAtlasIssuesLink.Review(const AIssue: TAtlasTrackerIssue);
+begin
+  if (Keep <> nil) and (Services.FReview <> nil) then
+  begin
+    Services.FReview.Review(AIssue, Services.Options);
   end;
 end;
 
@@ -609,11 +624,32 @@ begin
     end;
 end;
 
+/// <summary>„Prüfen …“ in der Vorschau (#2126): Issue im Prüfzustand, nicht das aktuelle.</summary>
+procedure PreviewReviewHooks(const ALink: TAtlasIssuesLink; var AHooks: TAtlasIssuePreviewHooks);
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  AHooks.CanReview :=
+    function(ATarget: TAtlasTrackerTarget; AIssue: TAtlasTrackerIssue): Boolean
+    begin
+      Result := (mLink.Keep <> nil) and (mLink.Services.FReview <> nil) and
+        not SameText(mLink.Context.ActiveKey, AIssue.Key) and
+        TAtlasTrackerReview.Offered(AIssue.State, TAtlasIdeTrackerSync.Options(ATarget).ReviewStates);
+    end;
+  AHooks.Review :=
+    procedure(AIssue: TAtlasTrackerIssue)
+    begin
+      mLink.Review(AIssue);
+    end;
+end;
+
 function PreviewHooks(const ALink: TAtlasIssuesLink): TAtlasIssuePreviewHooks;
 begin
   Result := Default(TAtlasIssuePreviewHooks);
   PreviewAccessHooks(ALink, Result);
   PreviewWorkHooks(ALink, Result);
+  PreviewReviewHooks(ALink, Result);
 end;
 
 function BoardHooks(const ALink: TAtlasIssuesLink): TAtlasBoardHooks;
@@ -649,6 +685,11 @@ begin
     procedure(AIssue: TAtlasTrackerIssue)
     begin
       mLink.Start(AIssue);
+    end;
+  Result.Review :=
+    procedure(AIssue: TAtlasTrackerIssue)
+    begin
+      mLink.Review(AIssue);
     end;
   Result.CanStart :=
     function: Boolean
@@ -967,6 +1008,13 @@ end;
 /// Zeit darüber).</summary>
 procedure StopTracking(AServices: TAtlasIdeIssuesServices);
 begin
+  // „Prüfen“ vor Sync: Sein Dialog schreibt über Sync.
+  if AServices.FReview <> nil then
+  begin
+    AServices.FReview.Stop;
+    DropRef(AServices, AServices.FReview);
+  end;
+  AServices.FReview := nil;
   if AServices.FIssueState <> nil then
   begin
     AServices.FIssueState.Stop;
@@ -1066,6 +1114,8 @@ begin
   FIssueState := CreateIssueState(mLink);
   FTime := CreateTime(mLink);
   Keep(FTime);
+  FReview := TAtlasIdeIssueReview.Create(FContext, FSync);
+  Keep(FReview);
   FTime.Start;
   // Anhängen vor der Vorschau: deren Knopf „Anhängen …“ ruft es.
   FAttach := TAtlasIdeIssueAttach.Create(AttachHooks(mLink));

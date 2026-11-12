@@ -971,6 +971,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.NewIssue` | `Core/Tracker/Atlas.Core.Tracker.NewIssue.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Notify` | `Core/Tracker/Atlas.Core.Tracker.Notify.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Reopened` | `Core/Tracker/Atlas.Core.Tracker.Reopened.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Review` | `Core/Tracker/Atlas.Core.Tracker.Review.pas` | Ordner `Core/Tracker`, „Prüfen“, #2126 |
 | `Atlas.Core.Tracker.PaletteSearch` | `Core/Tracker/Atlas.Core.Tracker.PaletteSearch.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Preview` | `Core/Tracker/Atlas.Core.Tracker.Preview.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.IssueWork` | `Core/Tracker/Atlas.Core.Tracker.IssueWork.pas` | Ordner `Core/Tracker` |
@@ -1033,6 +1034,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.NewIssuePlace` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssuePlace.pas` | Ordner `IDE/Tracker`, Editorseite von „Issue anlegen“, #1455 |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Reopened` | `IDE/Tracker/Atlas.IDE.Tracker.Reopened.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Review` | `IDE/Tracker/Atlas.IDE.Tracker.Review.pas` | Ordner `IDE/Tracker`, „Prüfen“, #2126 |
+| `Atlas.IDE.Tracker.IssueWorkLink` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWorkLink.pas` | Ordner `IDE/Tracker`, Arbeitsstand bei „Beginnen“, „Beenden“, „Prüfen“ |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Parts.pas` | Teile, Befehle und Menü des Moduls; die Komposition meldet nur an und baut die Adapter, #1455 |
 | `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
@@ -1053,6 +1056,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.DevelopmentView` | `UI/Tracker/Atlas.UI.Tracker.DevelopmentView.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.DocBox` | `UI/Tracker/Atlas.UI.Tracker.DocBox.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.EndDialog` | `UI/Tracker/Atlas.UI.Tracker.EndDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.ReviewDialog` | `UI/Tracker/Atlas.UI.Tracker.ReviewDialog.pas` | Ordner `UI/Tracker`, „Prüfen“, #2126 |
 | `Atlas.UI.Tracker.StateDialog` | `UI/Tracker/Atlas.UI.Tracker.StateDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SprintDialog` | `UI/Tracker/Atlas.UI.Tracker.SprintDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.ImageMarkup` | `UI/Tracker/Atlas.UI.Tracker.ImageMarkup.pas` | Ordner `UI/Tracker` |

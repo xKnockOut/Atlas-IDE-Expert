@@ -182,7 +182,7 @@ type
     procedure ClearFilter;
     procedure SelectProject(const AKey: string);
     procedure EditProjects;
-    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
+    procedure IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
     /// <summary>Projekt, Tracker, Zustand und Hooks der Komposition.</summary>
     property Context: TAtlasIdeIssuesContext read FContext;
     /// <summary>Vorschau, Board, Sprint, Zeiterfassung, Palettensuche, Meldungen, Anhängen.</summary>
@@ -203,7 +203,8 @@ uses
   Atlas.Core.Tracker.Templates,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Tracker.Workflow;
 
 /// <summary>Fußzeile: die gesendete Abfrage, bei der Vorgabe die des Anbieters.</summary>
 function QueryTextOf(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): string;
@@ -372,6 +373,11 @@ begin
   begin
     Result.Reopened := FServices.Reopened.Marks(AProject);
   end;
+  // „Prüfen“ (#2126) an Zeilen im Prüfzustand.
+  if FServices.Review <> nil then
+  begin
+    Result.ReviewStates := TAtlasIdeTrackerSync.Options(mTarget).ReviewStates;
+  end;
 end;
 
 /// <summary>Abfragen aus AQueries, die es (nach Name) auch in AOther gibt.</summary>
@@ -512,14 +518,22 @@ begin
   FStarter.Start(AIssue, AMode);
 end;
 
-procedure TAtlasIdeIssues.Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
+procedure TAtlasIdeIssues.IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
 var
   mReopen: TAtlasTrackerReopen;
   mProject: string;
 begin
   FocusIssue(AIssue);
   mProject := FContext.Selection.CurrentProject;
-  if AAction = TAtlasIssueReopenedAction.Continue then
+  if AAction = TAtlasIssueAction.Review then
+  begin
+    // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
+    if FServices.Review <> nil then
+    begin
+      FServices.Review.Review(AIssue, FServices.Options);
+    end;
+  end
+  else if AAction = TAtlasIssueAction.Continue then
   begin
     // Ohne Marke (schon ausgeblendet): Weiterarbeiten ohne gemerkten Branch, wie „Beginnen“.
     if (FServices.Reopened = nil) or not FServices.Reopened.Find(mProject, AIssue.Key, mReopen) then
@@ -532,7 +546,7 @@ begin
   begin
     Exit;
   end
-  else if AAction = TAtlasIssueReopenedAction.Dismiss then
+  else if AAction = TAtlasIssueAction.Dismiss then
   begin
     FServices.Reopened.Dismiss(mProject, AIssue.Key);
   end

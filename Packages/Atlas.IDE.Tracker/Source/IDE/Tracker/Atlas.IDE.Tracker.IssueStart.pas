@@ -149,7 +149,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.IssueWork,
+  Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.WorkingCopies;

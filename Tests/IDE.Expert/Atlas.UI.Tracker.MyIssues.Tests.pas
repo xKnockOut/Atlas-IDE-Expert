@@ -58,6 +58,9 @@ type
     /// <summary>#2127: Zeile mit Marke „wieder offen“, Grund und Knöpfen; Klicks erreichen die Quelle.</summary>
     [Test]
     procedure ReopenedRow;
+    /// <summary>#2126: Zeile im Prüfzustand bietet „Prüfen …“ statt „Beginnen“; Kontextmenü „Prüfen …“.</summary>
+    [Test]
+    procedure ReviewRowAndMenu;
   end;
 
 implementation
@@ -102,7 +105,7 @@ type
     procedure ClearFilter;
     procedure SelectProject(const AKey: string);
     procedure EditProjects;
-    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
+    procedure IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
   end;
 
 function NowUtc0: TDateTime;
@@ -225,9 +228,9 @@ begin
   Calls := Calls + ['editProjects'];
 end;
 
-procedure TFakeIssues.Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
+procedure TFakeIssues.IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
 const
-  cNames: array[TAtlasIssueReopenedAction] of string = ('continue ', 'read ', 'reason ');
+  cNames: array[TAtlasIssueAction] of string = ('continue ', 'read ', 'reason ', 'review ');
 begin
   Calls := Calls + [cNames[AAction] + AIssue.Key];
 end;
@@ -828,6 +831,52 @@ begin
     CheckSynchronize;
     Assert.AreEqual(1, Integer(Length(mFake.Calls)));
     Assert.AreEqual('read #612', mFake.Calls[0]);
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
+    mFake.FView := Default(TAtlasIssuesView);
+  end;
+end;
+
+procedure TAtlasTrackerIssuesViewTests.ReviewRowAndMenu;
+var
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasTrackerIssuesView;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  TAtlasStrings.Language := TAtlasLanguage.German;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mFake.FView := SampleView;
+  mFake.FView.Items[1].State := 'In Review';
+  mFake.FView.ReviewStates := TArray<string>.Create('in review');
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasTrackerIssuesView.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    mFrame.UpdateContent;
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewHint),
+      TAtlasTrackerIssuesText.HintAt(mFake.FView, TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 1)));
+    mFake.Calls := nil;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 1));
+    CheckSynchronize;
+    Assert.AreEqual(2, Integer(Length(mFake.Calls)), string.Join('|', mFake.Calls));
+    Assert.AreEqual('start #753 branch', mFake.Calls[0]);
+    Assert.AreEqual('review #612', mFake.Calls[1]);
+    // Kontextmenü: „Prüfen …“ auch außerhalb der Prüfzustände.
+    Assert.AreEqual('Prüfen …', mFrame.Menus.ReviewItem.Caption);
+    mFake.Calls := nil;
+    mFrame.Menus.MenuRow := 0;
+    mFrame.Menus.ReviewItem.Click;
+    CheckSynchronize;
+    Assert.AreEqual('review #753', string.Join('|', mFake.Calls));
   finally
     TAtlasStrings.Language := mSaved;
     mHost.Free;

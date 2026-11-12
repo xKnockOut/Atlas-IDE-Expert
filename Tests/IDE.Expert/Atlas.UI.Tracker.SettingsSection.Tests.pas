@@ -672,6 +672,8 @@ begin
   Assert.AreEqual('Im Review', ASection.Connections.View.ReviewStates.Text);
   Assert.AreEqual('Zur Prüfung', ASection.Workflow.View.ReviewStates.Text);
   Assert.IsTrue(ASection.Workflow.View.Reopened.Checked, 'Vorgabe an');
+  Assert.IsTrue(ASection.Workflow.View.ReviewBuild.Checked, '#2126: Vorgabe an');
+  Assert.AreEqual('Geprüft: {build}, {tests}.', ASection.Workflow.View.ReviewComment.Text);
   Assert.IsTrue(ASection.Connections.View.StateField.Enabled);
   ASection.Connections.View.EndStates.Text := 'Geprüft; Abgelehnt';
   Assert.AreEqual(2, Integer(Length(ASection.Tables.Connections.Items[0].EndStates)));
@@ -692,6 +694,8 @@ begin
   Assert.AreEqual('Fertig: {pr}', ASaved.IssuesEndComment);
   Assert.AreEqual('Zur Prüfung, QA', ASaved.IssuesReviewStates);
   Assert.IsFalse(ASaved.IssuesReopened);
+  Assert.IsFalse(ASaved.IssuesReviewBuild);
+  Assert.AreEqual('Ok: {tests}', ASaved.IssuesReviewComment);
   mRead := TAtlasTrackerConnections.Read(ASaved.IssuesConnections);
   Assert.AreEqual('https://yt.firma.local', mRead[0].Url);
   Assert.AreEqual('Status', mRead[0].StateField);
@@ -757,6 +761,8 @@ begin
     // #2126/#2127: Prüfzustände geordnet, Schalter für wieder geöffnete Issues.
     FSection.Workflow.View.ReviewStates.Text := 'Zur Prüfung;; QA';
     FSection.Workflow.View.Reopened.Checked := False;
+    FSection.Workflow.View.ReviewBuild.Checked := False;
+    FSection.Workflow.View.ReviewComment.Text := 'Ok: {tests}';
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
     AssertWorkflowSaved(mSaved);

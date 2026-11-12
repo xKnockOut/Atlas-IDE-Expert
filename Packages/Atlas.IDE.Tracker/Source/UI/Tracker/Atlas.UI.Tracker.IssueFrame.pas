@@ -92,6 +92,8 @@ type
     CanWrite,
     /// <summary>Das gezeigte Issue ist das aktuelle: „Beenden …“ geht.</summary>
     CanEnd,
+    /// <summary>Das gezeigte Issue steht in einem Prüfzustand (#2126): „Prüfen …“ zeigen.</summary>
+    CanReview,
     /// <summary>„Anhängen …“ zeigen (issues.attach, #1276).</summary>
     CanAttach,
     /// <summary>issues.preview.checklists (#1273): Häkchen und Zurückschreiben; aus = Text wie geschrieben.</summary>
@@ -123,6 +125,8 @@ type
     Start: TButton;
     /// <summary>„Beenden …“ (#1266).</summary>
     Finish: TButton;
+    /// <summary>„Prüfen …“ (#2126) für ein Issue im Prüfzustand.</summary>
+    Review: TButton;
     Browse: TButton;
     CopyKey: TButton;
     Attach: TButton;
@@ -216,6 +220,8 @@ type
     Start: TProc;
     /// <summary>„Beenden …“ (#1266) für das gezeigte, aktuelle Issue.</summary>
     Finish: TProc;
+    /// <summary>„Prüfen …“ (#2126) für das gezeigte Issue.</summary>
+    Review: TProc;
     /// <summary>Kommentar senden (#1266); Ergebnis über CommentDone.</summary>
     Comment: TProc<string>;
     Browse: TProc;
@@ -328,7 +334,7 @@ uses
 type
   {$SCOPEDENUMS ON}
   /// <summary>Feste Knöpfe, Reiter und Aktionen (Tag = cToolTag + Ord).</summary>
-  TIssueTool = (Back, Forward, Start, Finish, Browse, CopyKey, Attach, Refresh, Fix, CommentSend, Pages);
+  TIssueTool = (Back, Forward, Start, Finish, Review, Browse, CopyKey, Attach, Refresh, Fix, CommentSend, Pages);
   /// <summary>Teile des Inhalts (Tag = cContentTag + Ord).</summary>
   TIssueContent = (Title, Older, AddTask, Image, Attachment, Link, LinkTree, CreateSubtask, AddLink);
   {$SCOPEDENUMS OFF}
@@ -408,7 +414,8 @@ begin
   AFrame.PopupMenu := AFrame.FParts.Menu;
 end;
 
-/// <summary>Werkzeugleiste: Zurück, Vor, Beginnen, Beenden, Browser, Kennung, Anhängen, Aktualisieren.</summary>
+/// <summary>Werkzeugleiste: Zurück, Vor, Beginnen, Beenden, Prüfen, Browser, Kennung, Anhängen,
+/// Aktualisieren.</summary>
 procedure AddToolbar(AFrame: TAtlasIssueFrame);
 begin
   AFrame.FParts.Tools := TFlowPanel.Create(AFrame);
@@ -431,6 +438,10 @@ begin
     TIssueTool.Finish);
   AFrame.FParts.Finish.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEndHint);
   AFrame.FParts.Finish.Visible := False;
+  AFrame.FParts.Review := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand),
+    TIssueTool.Review);
+  AFrame.FParts.Review.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewHint);
+  AFrame.FParts.Review.Visible := False;
   AFrame.FParts.Browse := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse),
     TIssueTool.Browse);
   AFrame.FParts.CopyKey := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey),
@@ -1280,6 +1291,7 @@ begin
   end;
   mParts.Finish.Visible := mWrite;
   mParts.Finish.Enabled := mHas and HasFlag(AFrame, TAtlasIssueFlag.CanEnd);
+  mParts.Review.Visible := mHas and HasFlag(AFrame, TAtlasIssueFlag.CanReview);
   mParts.CommentPanel.Visible := mWrite and mHas;
   mParts.CommentSend.Enabled := mHas and not HasFlag(AFrame, TAtlasIssueFlag.CommentSending);
   mParts.Browse.Enabled := mHas;
@@ -1389,7 +1401,7 @@ begin
         end;
       end;
     TAtlasIssueFlag.CanStart, TAtlasIssueFlag.CanWrite, TAtlasIssueFlag.CanEnd, TAtlasIssueFlag.CanAttach,
-      TAtlasIssueFlag.LinksAsTree, TAtlasIssueFlag.CanWriteLinks:
+      TAtlasIssueFlag.CanReview, TAtlasIssueFlag.LinksAsTree, TAtlasIssueFlag.CanWriteLinks:
       begin
         // Nur die Knöpfe; Baum und Knöpfe darüber gelten ab dem nächsten ShowDetails.
       end;
@@ -1497,6 +1509,8 @@ begin
       Fire(AFrame.FEvents.Start);
     TIssueTool.Finish:
       FireIf(mHas and HasFlag(AFrame, TAtlasIssueFlag.CanEnd), AFrame.FEvents.Finish);
+    TIssueTool.Review:
+      FireIf(mHas and HasFlag(AFrame, TAtlasIssueFlag.CanReview), AFrame.FEvents.Review);
     TIssueTool.Browse:
       Fire(AFrame.FEvents.Browse);
     TIssueTool.CopyKey:

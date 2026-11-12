@@ -556,6 +556,8 @@ begin
   Assert.AreEqual('', mSettings.IssuesEndStates);
   Assert.AreEqual('', mSettings.IssuesReviewStates);
   Assert.IsTrue(mSettings.IssuesReopened, '#2127: Vorgabe an');
+  Assert.IsTrue(mSettings.IssuesReviewBuild, '#2126: Vorgabe an');
+  Assert.AreEqual('Geprüft: {build}, {tests}.', mSettings.IssuesReviewComment);
   Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
   Assert.AreEqual('', mSettings.IssuesEndFields, 'ab Werk keine Felder beim Beenden');
   Assert.IsTrue(mSettings.IssuesEndTime, 'erfasste Zeit beim Beenden anbieten');
@@ -567,6 +569,9 @@ begin
   mSettings.IssuesEndStates := ' Zur Prüfung, Erledigt ';
   mSettings.IssuesReviewStates := ' Zur Prüfung ';
   mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.cMaxIssuesTemplate + 10);
+  mSettings.IssuesReviewComment := 'Geprüft'#13#10'{build}';
+  mSettings.Normalize;
+  Assert.AreEqual('Geprüft\n{build}', mSettings.IssuesReviewComment, 'einzeilig mit \n');
   mSettings.IssuesEndFields := ' Behoben in Version, Ursache ';
   mSettings.Normalize;
   Assert.AreEqual('Behoben in Version, Ursache', mSettings.IssuesEndFields);
@@ -583,6 +588,7 @@ begin
   mSettings.IssuesEndComment := 'Fertig: {pr}';
   mSettings.IssuesEndTime := False;
   mSettings.IssuesReopened := False;
+  mSettings.IssuesReviewBuild := False;
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);
   mLoaded := TAtlasPluginSettings.Defaults;
@@ -596,6 +602,8 @@ begin
   Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
   Assert.AreEqual('Zur Prüfung', mLoaded.IssuesReviewStates);
   Assert.IsFalse(mLoaded.IssuesReopened);
+  Assert.IsFalse(mLoaded.IssuesReviewBuild);
+  Assert.AreEqual('Geprüft\n{build}', mLoaded.IssuesReviewComment);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
   Assert.AreEqual('Behoben in Version, Ursache', mLoaded.IssuesEndFields);
   Assert.IsFalse(mLoaded.IssuesEndTime);

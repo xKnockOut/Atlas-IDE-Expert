@@ -71,6 +71,11 @@ type
     IsActive: TFunc<string, Boolean>;
     /// <summary>„Beenden …“ für das aktuelle Issue (#1266).</summary>
     EndIssue: TProc<string>;
+    /// <summary>„Prüfen …“ zeigen (#2126): Zustand des Issues in issues.reviewStates, nicht das aktuelle.
+    /// </summary>
+    CanReview: TFunc<TAtlasTrackerTarget, TAtlasTrackerIssue, Boolean>;
+    /// <summary>„Prüfen …“ für das gezeigte Issue (#2126).</summary>
+    Review: TProc<TAtlasTrackerIssue>;
     Comment: TAtlasIssuePreviewCommentHook;
     CommentAssist: TAtlasIssuePreviewAssistHook;
     /// <summary>Kommentar zu AKey gesendet, das Feld zeigt schon ein anderes Issue: dessen Entwurf löschen.
@@ -214,6 +219,8 @@ begin
   mLinks := TAtlasIdeSettings.Current.IssuesPreviewLinks;
   AFrame.SetFlag(TAtlasIssueFlag.LinksAsTree, mLinks);
   AFrame.SetFlag(TAtlasIssueFlag.CanWriteLinks, mLinks and Supports(mProvider, IAtlasTrackerLinkWriter));
+  AFrame.SetFlag(TAtlasIssueFlag.CanReview, AOwner.FContext.HasCurrent and Assigned(AOwner.FHooks.CanReview) and
+    AOwner.FHooks.CanReview(AOwner.FContext.Current.Target, ADetails.Issue));
   AFrame.ShowDetails(ADetails, TAtlasIdeIssueContext.NowUtc, AStatus,
     not TAtlasIdeSettings.Current.IssuesPreviewComments);
 end;
@@ -286,6 +293,25 @@ begin
       if (mKeep <> nil) and AOwner.FContext.HasCurrent then
       begin
         AOwner.Fix(TAtlasIssueFix.Browser);
+      end;
+    end;
+end;
+
+/// <summary>„Prüfen …“ (#2126) für das gezeigte Issue.</summary>
+procedure AddReviewEvent(AOwner: TAtlasIdeIssuePreview; const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+var
+  mKeep: IInterface;
+begin
+  mKeep := AKeep;
+  AEvents.Review :=
+    procedure
+    var
+      mFrame: TAtlasIssueFrame;
+    begin
+      mFrame := AOwner.FContext.Frame;
+      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails and Assigned(AOwner.FHooks.Review) then
+      begin
+        AOwner.FHooks.Review(mFrame.State.Details.Issue);
       end;
     end;
 end;
@@ -801,6 +827,7 @@ begin
   mEvents := Default(TAtlasIssueFrameEvents);
   AddMoveEvents(Self, mKeep, mEvents);
   AddIssueEvents(Self, mKeep, mEvents);
+  AddReviewEvent(Self, mKeep, mEvents);
   AddOpenEvents(Self, mKeep, mEvents);
   AddWriteEvents(Self, mKeep, mEvents);
   AFrame.Events := mEvents;
