@@ -43,6 +43,8 @@ type
     EndStates: TArray<string>;
     /// <summary>Kommentarvorlage beim Beenden.</summary>
     EndComment: string;
+    /// <summary>Prüfzustände (#2126, #2127, issues.reviewStates).</summary>
+    ReviewStates: TArray<string>;
     /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben. Beginnen und Beenden setzen
     /// WithStart und WithEnd.</summary>
     class function Create(ASyncState: Boolean; const AStateField, AAssigneeField: string): TAtlasTrackerSyncOptions;
@@ -53,6 +55,8 @@ type
     /// <summary>Kopie mit den Werten beim Beenden; AEndStates ist eine Liste mit Komma, Semikolon oder
     /// Zeilenumbruch.</summary>
     function WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
+    /// <summary>Kopie mit den Prüfzuständen; AReviewStates wie bei WithEnd.</summary>
+    function WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
     function HasStartWork: Boolean;
   end;
@@ -186,6 +190,12 @@ begin
   Result.EndComment := AEndComment;
 end;
 
+function TAtlasTrackerSyncOptions.WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.ReviewStates := TAtlasTrackerWorkflow.ParseList(AReviewStates);
+end;
+
 function TAtlasTrackerSyncOptions.HasStartWork: Boolean;
 begin
   Result := SyncState and ((StartState <> '') or AssignOnStart or (Trim(StartComment) <> ''));
@@ -289,6 +299,10 @@ begin
     if Length(mConnection.EndStates) > 0 then
     begin
       Result.EndStates := Copy(mConnection.EndStates);
+    end;
+    if Length(mConnection.ReviewStates) > 0 then
+    begin
+      Result.ReviewStates := Copy(mConnection.ReviewStates);
     end;
     Exit;
   end;

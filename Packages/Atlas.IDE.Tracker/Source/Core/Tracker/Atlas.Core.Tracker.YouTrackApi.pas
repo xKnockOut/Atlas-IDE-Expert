@@ -44,7 +44,7 @@ type
     /// <summary>Felder der Änderungsabfrage (#1271).</summary>
     cChangeIssueFields = 'idReadable,summary,updated';
     cActivityFields = 'timestamp,author(login,fullName),category(id),field(name),' +
-      'added(id,name,login,fullName,text,presentation)';
+      'added(id,name,login,fullName,text,presentation),removed(id,name,login,fullName,presentation)';
     cActivityCategories = 'CommentsCategory,CustomFieldCategory';
     /// <summary>Höchstens so viele geänderte Issues je Abfrage bekommen ihre Einzelheiten.</summary>
     cMaxChangedIssues = 20;

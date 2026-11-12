@@ -411,6 +411,7 @@ begin
   mConnection := TAtlasTrackerConnection.Create('Firma', 'youtrack', 'https://yt.beispiel.de/');
   mConnection.StateField := 'Status';
   mConnection.EndStates := TArray<string>.Create('Geprüft');
+  mConnection.ReviewStates := TArray<string>.Create('Im Review');
   mOther := TAtlasTrackerConnection.Create('Andere', 'youtrack', 'https://anders.beispiel.de');
   mOther.StateField := 'Falsch';
   mOptions := TAtlasTrackerWorkflow.ForConnection(Options('Erledigt'), TArray<TAtlasTrackerConnection>.Create(mOther,
@@ -420,10 +421,13 @@ begin
   Assert.AreEqual('In Arbeit', mOptions.StartState);
   Assert.AreEqual(1, Integer(Length(mOptions.EndStates)));
   Assert.AreEqual('Geprüft', mOptions.EndStates[0]);
-  mOptions := TAtlasTrackerWorkflow.ForConnection(Options('Erledigt'), TArray<TAtlasTrackerConnection>.Create(mOther),
-    YouTrackTarget);
+  Assert.AreEqual('Im Review', mOptions.ReviewStates[0], '#2126: Prüfzustände der Verbindung');
+  mOptions := TAtlasTrackerWorkflow.ForConnection(Options('Erledigt').WithReview('Zur Prüfung, QA'),
+    TArray<TAtlasTrackerConnection>.Create(mOther), YouTrackTarget);
   Assert.AreEqual('State', mOptions.StateField, 'ohne passende Verbindung die globalen Werte');
   Assert.AreEqual('Erledigt', mOptions.EndStates[0]);
+  Assert.AreEqual(2, Integer(Length(mOptions.ReviewStates)));
+  Assert.AreEqual('QA', mOptions.ReviewStates[1]);
 end;
 
 procedure TAtlasTrackerWorkflowTests.StartChangeOnlyWithSyncState;
@@ -486,6 +490,7 @@ begin
   mConnection.AssigneeField := 'Zuständig';
   mConnection.StartState := 'In Arbeit';
   mConnection.EndStates := TArray<string>.Create('Zur Prüfung', 'Erledigt');
+  mConnection.ReviewStates := TArray<string>.Create('Im Review');
   // Andere Adresse auf der Optionsseite: die Werte für Zustand und Zuständigkeit bleiben.
   mMoved := mConnection.WithUrl(' https://neu.beispiel.de/ ');
   Assert.AreEqual('https://neu.beispiel.de', mMoved.Url);
@@ -493,6 +498,7 @@ begin
   Assert.AreEqual('Zuständig', mMoved.AssigneeField);
   Assert.AreEqual('In Arbeit', mMoved.StartState);
   Assert.AreEqual(2, Integer(Length(mMoved.EndStates)));
+  Assert.AreEqual('Im Review', mMoved.ReviewStates[0]);
   mRead := TAtlasTrackerConnections.Read(TAtlasTrackerConnections.ToJson(TArray<TAtlasTrackerConnection>.Create(
     mMoved)));
   Assert.AreEqual(1, Integer(Length(mRead)));
@@ -500,9 +506,12 @@ begin
   Assert.AreEqual('Zuständig', mRead[0].AssigneeField);
   Assert.AreEqual('In Arbeit', mRead[0].StartState);
   Assert.AreEqual('Erledigt', mRead[0].EndStates[1]);
+  Assert.AreEqual('Im Review', mRead[0].ReviewStates[0], '#2126: reviewStates gelesen und geschrieben');
   // Ohne Werte bleiben die Schlüssel weg.
   Assert.IsFalse(TAtlasTrackerConnections.ToJson(TArray<TAtlasTrackerConnection>.Create(
     TAtlasTrackerConnection.Create('X', 'github', 'https://github.com'))).Contains('stateField'));
+  Assert.IsFalse(TAtlasTrackerConnections.ToJson(TArray<TAtlasTrackerConnection>.Create(
+    TAtlasTrackerConnection.Create('X', 'github', 'https://github.com'))).Contains('reviewStates'));
 end;
 
 { TAtlasTrackerWriterTests }

@@ -7,6 +7,8 @@
 //   ATL-123 dir zugewiesen · neuer Kommentar von Ben
 //   #812 geändert
 //   4 weitere Issues geändert
+//   ATL-2052 ist wieder offen: „Die Lesezeichen fehlen.“ (Jana)   (#2127)
+//   ATL-2052 ist wieder offen · Zustand → In Bearbeitung          (#2127)
 // Text der Meldung ist der Titel des Issues. Fehler nennen den Server, nie
 // das Token.
 
@@ -14,7 +16,8 @@ interface
 
 uses
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Notify;
+  Atlas.Core.Tracker.Notify,
+  Atlas.Core.Tracker.Reopened;
 
 type
   TAtlasTrackerNoticeText = class
@@ -25,6 +28,9 @@ type
     /// <summary>Titel der Meldung zu einem Issue: Kennung und was neu ist (Zuweisung, Kommentare, Zustand).
     /// </summary>
     class function Title(const ANotice: TAtlasTrackerNotice): string; static;
+    /// <summary>Titel der Meldung „wieder offen“ (#2127): mit dem neuesten Kommentar als Grund, sonst mit dem
+    /// neuen Zustand.</summary>
+    class function ReopenedTitle(const AReopen: TAtlasTrackerReopen): string; static;
     /// <summary>Zustand zur Anzeige: GitHub "open"/"closed" übersetzt, sonst wie vom Tracker.</summary>
     class function StateText(const AState: string): string; static;
     /// <summary>Sammelmeldung „n weitere Issues geändert“.</summary>
@@ -98,6 +104,20 @@ begin
   else
   begin
     Result := ANotice.Key + ': ' + string.Join(cSeparator, mParts);
+  end;
+end;
+
+class function TAtlasTrackerNoticeText.ReopenedTitle(const AReopen: TAtlasTrackerReopen): string;
+begin
+  if AReopen.Comment <> '' then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueReopenedNotice, [AReopen.Key, AReopen.Comment,
+      AReopen.CommentBy]);
+  end
+  else
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueReopenedNoticePlain, [AReopen.Key,
+      StateText(AReopen.State)]);
   end;
 end;
 

@@ -8530,6 +8530,16 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1266"
     },
+    "IssuesReviewStates": {
+      "type": "string",
+      "default": "",
+      "description": "Prüfzustände, mit Komma getrennt (z. B. „Zur Prüfung, In Review“): Ein Issue darin wartet auf die Prüfung. Kommt es von dort (oder aus einem erledigten Zustand) zurück in einen offenen, gilt es als wieder offen (#2127). Je Verbindung überschreibbar (reviewStates). Leer = keine.",
+      "x-key": "issues.reviewStates",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2126"
+    },
     "IssuesTimeTracking": {
       "type": "boolean",
       "default": false,
@@ -8744,6 +8754,16 @@
       "x-page": "Issue-Tracker",
       "x-control": "Auswahl",
       "x-issue": "#1271"
+    },
+    "IssuesReopened": {
+      "type": "boolean",
+      "default": true,
+      "description": "Wieder geöffnete Issues hervorheben: Kommt ein Issue, das ich mit Atlas beendet habe oder das mir zugewiesen ist, aus einem erledigten Zustand oder aus der Prüfung (issues.reviewStates) zurück in einen offenen, trägt es in „Meine Issues“ die Marke „wieder offen“ mit dem neuesten Kommentar seit dem Beenden und „Weiterarbeiten auf <Branch>“ (alter Branch, Arbeitsstand aus „Weiterarbeiten“); die Meldung (issues.notify) nennt den Grund. Erkannt wird mit den vorhandenen Abfragen, ohne eigenes Abfragen. Aus: wie bisher.",
+      "x-key": "issues.reopened",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2127"
     },
     "IssuesAttach": {
       "type": "boolean",

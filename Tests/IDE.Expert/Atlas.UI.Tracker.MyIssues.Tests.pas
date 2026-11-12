@@ -11,6 +11,8 @@
 // bearbeiten …“ über die Quelle, Zeile mit Verbindung, Projekt und Abfrage.
 // Tracker-Projekt (#1927): Klappliste „Projekt: … ▾“ mit „Automatisch“, den
 // Tracker-Projekten, „Alle“ (#1928) und „bearbeiten …“; Köpfe der Gruppen.
+// Wieder geöffnet (#2127): Marke, Grund und Knöpfe in einer höheren Zeile;
+// „Weiterarbeiten“, „Gelesen“ und Grund erreichen die Quelle.
 
 interface
 
@@ -53,6 +55,9 @@ type
     /// </summary>
     [Test]
     procedure ProjectPickerAndGroups;
+    /// <summary>#2127: Zeile mit Marke „wieder offen“, Grund und Knöpfen; Klicks erreichen die Quelle.</summary>
+    [Test]
+    procedure ReopenedRow;
   end;
 
 implementation
@@ -69,6 +74,7 @@ uses
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.MyIssues;
@@ -96,6 +102,9 @@ type
     procedure ClearFilter;
     procedure SelectProject(const AKey: string);
     procedure EditProjects;
+    procedure ContinueReopened(const AIssue: TAtlasTrackerIssue);
+    procedure DismissReopened(const AIssue: TAtlasTrackerIssue);
+    procedure ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
   end;
 
 function NowUtc0: TDateTime;
@@ -216,6 +225,21 @@ end;
 procedure TFakeIssues.EditProjects;
 begin
   Calls := Calls + ['editProjects'];
+end;
+
+procedure TFakeIssues.ContinueReopened(const AIssue: TAtlasTrackerIssue);
+begin
+  Calls := Calls + ['continue ' + AIssue.Key];
+end;
+
+procedure TFakeIssues.DismissReopened(const AIssue: TAtlasTrackerIssue);
+begin
+  Calls := Calls + ['read ' + AIssue.Key];
+end;
+
+procedure TFakeIssues.ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
+begin
+  Calls := Calls + ['reason ' + AIssue.Key];
 end;
 
 { TAtlasTrackerIssuesViewTests }
@@ -742,6 +766,78 @@ begin
       mFrame.Painter.RowHeight(0), mFrame.Painter.FooterTop, 'Kopf der leeren Gruppe vor der Fußzeile');
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Project: Automatic', TAtlasTrackerProjectPicker.CaptionOf(ChoicesView));
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
+    mFake.FView := Default(TAtlasIssuesView);
+  end;
+end;
+
+procedure TAtlasTrackerIssuesViewTests.ReopenedRow;
+var
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasTrackerIssuesView;
+  mSaved: TAtlasLanguage;
+  mReopen: TAtlasTrackerReopen;
+  mPlain: Integer;
+begin
+  mSaved := TAtlasStrings.Language;
+  TAtlasStrings.Language := TAtlasLanguage.German;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mFake.FView := SampleView;
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasTrackerIssuesView.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    mPlain := mFrame.Painter.RowHeight(1);
+    mReopen := Default(TAtlasTrackerReopen);
+    mReopen.Key := '#612';
+    mReopen.Branch := 'issue/612';
+    mReopen.State := 'open';
+    mReopen.Previous := 'closed';
+    mReopen.CommentBy := 'jana';
+    mReopen.CommentAt := NowUtc0 - 20 / MinsPerDay;
+    mReopen.Comment := 'Lesezeichen fehlen.';
+    mFake.FView.Reopened := [mReopen];
+    mFrame.UpdateContent;
+    // Zeile ohne Chips: Chip-Zeile, Grund und Knöpfe kommen dazu.
+    Assert.AreEqual(mPlain + mFrame.ScaleValue(TAtlasTrackerIssuesView.cChipLineHeight) +
+      mFrame.ScaleValue(TAtlasTrackerIssuesView.cLineHeight) +
+      mFrame.ScaleValue(TAtlasTrackerIssuesView.cActionLineHeight), mFrame.Painter.RowHeight(1));
+    Assert.AreEqual('jana, vor 20 Min.: „Lesezeichen fehlen.“',
+      TAtlasTrackerIssuesText.ReasonText(mReopen, NowUtc0));
+    Assert.AreEqual('Weiterarbeiten auf issue/612', TAtlasTrackerIssuesText.ContinueText(mReopen));
+    mReopen.Comment := '';
+    Assert.AreEqual('closed → open, kein neuer Kommentar', TAtlasTrackerIssuesText.ReasonText(mReopen, NowUtc0));
+    mReopen.Branch := '';
+    Assert.AreEqual('Weiterarbeiten', TAtlasTrackerIssuesText.ContinueText(mReopen));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Continue', TAtlasTrackerIssuesText.ContinueText(mReopen));
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mFake.Calls := nil;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Continue, 1));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Reason, 1));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Dismiss, 1));
+    CheckSynchronize;
+    Assert.AreEqual(3, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('continue #612', mFake.Calls[0]);
+    Assert.AreEqual('reason #612', mFake.Calls[1]);
+    Assert.AreEqual('read #612', mFake.Calls[2]);
+    // Während „Beginnen“ läuft, kein „Weiterarbeiten“; „Gelesen“ geht weiter.
+    mFake.Calls := nil;
+    mFake.FView.Starting := True;
+    mFrame.UpdateContent;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Continue, 1));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Dismiss, 1));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('read #612', mFake.Calls[0]);
   finally
     TAtlasStrings.Language := mSaved;
     mHost.Free;

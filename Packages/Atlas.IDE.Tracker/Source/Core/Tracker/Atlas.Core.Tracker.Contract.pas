@@ -331,6 +331,10 @@ type
 
   /// <summary>Eine Änderung an einem Issue seit dem letzten Stand (#1271).</summary>
   TAtlasTrackerChange = record
+  public const
+    /// <summary>Höchstlänge von Text.</summary>
+    cMaxText = 300;
+  public
     /// <summary>Kennung wie im Tracker ("ATL-123", "#753").</summary>
     Key: string;
     /// <summary>GitHub: "owner/repo" des Issues (Benachrichtigungen kommen aus allen Repositories); sonst ''.
@@ -349,6 +353,11 @@ type
     Value: string;
     /// <summary>Assigned: dem angemeldeten Benutzer zugewiesen.</summary>
     ToMe: Boolean;
+    /// <summary>State: Zustand davor (#2127, wieder geöffnete Issues); '' = unbekannt.</summary>
+    Previous: string;
+    /// <summary>Comment: Text des Kommentars, gekürzt auf cMaxText (#2127, Grund in der Meldung); sonst ''.
+    /// </summary>
+    Text: string;
     class function Create(const AKey: string; AKind: TAtlasTrackerChangeKind; const AAuthor: string;
       ATime: TDateTime): TAtlasTrackerChange; static;
     /// <summary>Anzeigename, sonst der Anmeldename.</summary>

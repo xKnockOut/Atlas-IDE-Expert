@@ -4,7 +4,9 @@
 // und Zustände mit Werten vom Tracker (Klapplisten), Vorlagen der Kommentare
 // beim Beginnen und Beenden und „Werte vom Tracker laden“. Die Klapplisten
 // liest Load und schreibt Save selbst; die Kommentare bleiben ungekürzt, die
-// Zielzustände werden geordnet.
+// Zielzustände werden geordnet. Dazu die Prüfzustände (#2126,
+// issues.reviewStates) und der Schalter für wieder geöffnete Issues (#2127,
+// issues.reopened).
 
 interface
 
@@ -29,6 +31,8 @@ type
     StartComment: TEdit;
     EndStates: TEdit;
     EndComment: TEdit;
+    ReviewStates: TEdit;
+    Reopened: TCheckBox;
     LoadValues: TButton;
     ValuesNote: TLabel;
   end;
@@ -41,6 +45,7 @@ type
     cStartCommentKey = 'issues.startComment';
     cEndStatesKey = 'issues.endStates';
     cEndCommentKey = 'issues.endComment';
+    cReviewStatesKey = 'issues.reviewStates';
   private
     FRows: TAtlasTrackerSettingsRows;
     FHooks: TAtlasTrackerSettingsHooks;
@@ -112,6 +117,10 @@ begin
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndStates));
   FView.EndComment := FRows.AddText(cEndCommentKey,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndComment));
+  FView.ReviewStates := FRows.AddText(cReviewStatesKey,
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewStates));
+  FView.Reopened := FRows.AddCheck('issues.reopened',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReopened));
 end;
 
 procedure TAtlasTrackerWorkflowPart.BuildLoad;
@@ -146,6 +155,8 @@ begin
   AValues.WriteString(cEndCommentKey, FView.EndComment.Text);
   AValues.WriteString(cEndStatesKey,
     TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndStates.Text)));
+  AValues.WriteString(cReviewStatesKey,
+    TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.ReviewStates.Text)));
   AValues.WriteString(cStateFieldKey, FView.StateField.Value);
   AValues.WriteString(cAssigneeFieldKey, FView.AssigneeField.Value);
   AValues.WriteString(cStartStateKey, FView.StartState.Value);

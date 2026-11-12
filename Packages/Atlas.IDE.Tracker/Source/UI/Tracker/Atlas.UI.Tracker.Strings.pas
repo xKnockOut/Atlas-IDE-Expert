@@ -173,7 +173,12 @@ type
     SettingsIssuesPathsAdd, SettingsIssuesPathsCheck, SettingsIssuesPathsSuggest, SettingsIssuesPathsChecking,
     SettingsIssuesPathsFound, SettingsIssuesPathsNone, SettingsIssuesPathsHint, SuggestTitle, SuggestIntro,
     SuggestColumnPath, SuggestColumnKind, SuggestColumnWhy, SuggestWhyProject, SuggestWhyExternal, SuggestWhySubmodule,
-    SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching);
+    SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
+    IssueReopenedNotice, IssueReopenedNoticePlain, WelcomeIssuesReopened, WelcomeIssuesReopenedComment,
+    WelcomeIssuesReopenedState, WelcomeIssuesContinueOn, WelcomeIssuesContinue, WelcomeIssuesReopenedRead,
+    WelcomeIssuesContinueHint, WelcomeIssuesReopenedReadHint, WelcomeIssuesReopenedCommentHint,
+    WelcomeIssuesContinueBranchGone, SettingsIssuesReopened, SettingsIssuesReviewStates,
+    SettingsIssuesConnectionReviewStates);
 
   TAtlasTrackerStrings = class
   public
@@ -939,7 +944,22 @@ const
      'Worktree desselben Repositorys',
      'Nichts gefunden – Ordner selbst wählen …',
      'Übernehmen',
-     'Suche Arbeitskopien …'),
+     'Suche Arbeitskopien …',
+     '%s ist wieder offen: „%s“ (%s)',
+     '%s ist wieder offen · Zustand → %s',
+     'wieder offen',
+     '%s, %s: „%s“',
+     '%s → %s, kein neuer Kommentar',
+     'Weiterarbeiten auf %s',
+     'Weiterarbeiten',
+     'Gelesen',
+     'Wechselt auf den Branch, auf dem du %s beendet hast, und öffnet die gemerkten Reiter wieder; der Zustand bleibt',
+     'Marke „wieder offen“ entfernen',
+     'Klick: in der Vorschau an diesem Kommentar öffnen',
+     'Der Branch %s ist nicht mehr da (gemergt oder gelöscht). Neu von der Basis anlegen?',
+     'Wieder geöffnete Issues hervorheben (Marke, Grund, Weiterarbeiten)',
+     'Prüfzustände (mit Komma getrennt)',
+     'Prüfzustände'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1684,7 +1704,22 @@ const
      'Worktree of the same repository',
      'Nothing found – choose folder…',
      'Apply',
-     'Searching working copies…'));
+     'Searching working copies…',
+     '%s is open again: “%s” (%s)',
+     '%s is open again · state → %s',
+     'reopened',
+     '%s, %s: “%s”',
+     '%s → %s, no new comment',
+     'Continue on %s',
+     'Continue',
+     'Mark as read',
+     'Switches to the branch you finished %s on and reopens the remembered tabs; the state stays',
+     'Remove the “reopened” mark',
+     'Click: open the preview at this comment',
+     'The branch %s no longer exists (merged or deleted). Create it again from the base?',
+     'Highlight reopened issues (mark, reason, continue)',
+     'Review states (comma separated)',
+     'Review states'));
 
 { TAtlasTrackerStrings }
 

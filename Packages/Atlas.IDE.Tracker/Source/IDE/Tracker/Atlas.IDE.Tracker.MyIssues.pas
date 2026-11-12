@@ -103,6 +103,8 @@
 //   mit höchstens issues.allProjects.perGroup Zeilen, eine Abfrage für alle
 //   (nur Abfragen, die jedes Projekt kennt); eine Zeile bedient ihr Projekt
 //   (Context.Selection.Focus).
+// - Wieder geöffnet (#2127, issues.reopened): Marke, Grund und
+//   „Weiterarbeiten“ auf dem alten Branch (Services.Reopened, Starter.Resume).
 // Aufbau (#1455): TAtlasIdeIssues ist die Quelle der Kachel und hält die
 // Teile Kontext (Atlas.IDE.Tracker.IssuesContext), Dienste (IssuesServices),
 // Befehle (IssueCommands), Statusfeld und Titel (IssuesStatus), Abfrage
@@ -181,6 +183,9 @@ type
     procedure ClearFilter;
     procedure SelectProject(const AKey: string);
     procedure EditProjects;
+    procedure ContinueReopened(const AIssue: TAtlasTrackerIssue);
+    procedure DismissReopened(const AIssue: TAtlasTrackerIssue);
+    procedure ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
     /// <summary>Projekt, Tracker, Zustand und Hooks der Komposition.</summary>
     property Context: TAtlasIdeIssuesContext read FContext;
     /// <summary>Vorschau, Board, Sprint, Zeiterfassung, Palettensuche, Meldungen, Anhängen.</summary>
@@ -195,6 +200,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Tracker.Reopened,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.Templates,
@@ -364,6 +370,11 @@ begin
     Result.Items := FContext.Filter.Issues;
   end;
   Result.Unseen := FServices.UnseenOf(mTarget);
+  // Wieder geöffnete Issues (#2127).
+  if FServices.Reopened <> nil then
+  begin
+    Result.Reopened := FServices.Reopened.Marks(AProject);
+  end;
 end;
 
 /// <summary>Abfragen aus AQueries, die es (nach Name) auch in AOther gibt.</summary>
@@ -501,6 +512,40 @@ begin
   // Bei „Alle“ nimmt „Beginnen“ das Tracker-Projekt der Zeile und dessen Arbeitskopie (#1928).
   FocusIssue(AIssue);
   FStarter.Start(AIssue, AMode);
+end;
+
+procedure TAtlasIdeIssues.ContinueReopened(const AIssue: TAtlasTrackerIssue);
+var
+  mReopen: TAtlasTrackerReopen;
+begin
+  FocusIssue(AIssue);
+  if (FServices.Reopened <> nil) and
+    FServices.Reopened.Find(FContext.Selection.CurrentProject, AIssue.Key, mReopen) then
+  begin
+    FStarter.Resume(AIssue, mReopen.Branch);
+  end
+  else
+  begin
+    FStarter.Resume(AIssue, '');
+  end;
+end;
+
+procedure TAtlasIdeIssues.DismissReopened(const AIssue: TAtlasTrackerIssue);
+begin
+  FocusIssue(AIssue);
+  if FServices.Reopened <> nil then
+  begin
+    FServices.Reopened.Dismiss(FContext.Selection.CurrentProject, AIssue.Key);
+  end;
+end;
+
+procedure TAtlasIdeIssues.ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
+begin
+  FocusIssue(AIssue);
+  if FServices.Reopened <> nil then
+  begin
+    FServices.Reopened.ShowComment(FContext.Selection.CurrentProject, AIssue.Key);
+  end;
 end;
 
 procedure TAtlasIdeIssues.Browse(const AIssue: TAtlasTrackerIssue);

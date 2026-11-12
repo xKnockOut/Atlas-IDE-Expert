@@ -59,6 +59,9 @@ type
     function HasState(const AProject, AKey: string): Boolean;
     /// <summary>Nach „Beginnen“: „Arbeitsstand wiederherstellen?“ fragen und bei Ja die Reiter öffnen.</summary>
     procedure OfferRestore(const AProject, AKey: string);
+    /// <summary>„Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): den gespeicherten Arbeitsstand von AKey
+    /// ohne Rückfrage wiederherstellen; ohne gespeicherten Stand nichts.</summary>
+    procedure Restore(const AProject, AKey: string);
     /// <summary>Zustände der Issues haben sich geändert (Abfrage im Hintergrund fertig): neu zeichnen.</summary>
     procedure StatusesChanged;
   end;

@@ -39,6 +39,9 @@ type
     /// <summary>Abnahme: eine Meldung je Issue mit Kommentaren, Zuweisung und Zustand; neueste zuerst.</summary>
     [Test]
     procedure SummarizePerIssue;
+    /// <summary>#2127: Zustand vor dem ersten Wechsel und neuester Kommentar mit Text.</summary>
+    [Test]
+    procedure SummarizeKeepsReturnAndReason;
     [Test]
     procedure SummarizeLimitsAndCountsRest;
     [Test]
@@ -259,6 +262,35 @@ begin
   Assert.AreEqual('beispiel/andere', mNotices[2].Project);
   Assert.IsTrue(mNotices[2].Other, 'nur allgemeine Änderung');
   Assert.AreEqual(Double(0), Double(mNotices[2].Anchor));
+end;
+
+procedure TAtlasTrackerNotifyTests.SummarizeKeepsReturnAndReason;
+var
+  mChanges: TArray<TAtlasTrackerChange>;
+  mNotices: TArray<TAtlasTrackerNotice>;
+  mRest: Integer;
+  mFirst, mSecond, mOld, mNew: TAtlasTrackerChange;
+begin
+  mFirst := Change('ATL-3', TAtlasTrackerChangeKind.State, 'jana', 2);
+  mFirst.Previous := 'Zur Prüfung';
+  mFirst.Value := 'Offen';
+  mSecond := Change('ATL-3', TAtlasTrackerChangeKind.State, 'jana', 4);
+  mSecond.Previous := 'Offen';
+  mSecond.Value := 'In Bearbeitung';
+  mOld := Change('ATL-3', TAtlasTrackerChangeKind.Comment, 'jana', 1);
+  mOld.Text := 'alt';
+  mNew := Change('ATL-3', TAtlasTrackerChangeKind.Comment, 'jana', 3);
+  mNew.AuthorName := 'Jana Muster';
+  mNew.Text := 'Lesezeichen fehlen';
+  mChanges := [mSecond, mNew, mFirst, mOld];
+  mNotices := TAtlasTrackerNotify.Summarize(mChanges, 10, mRest);
+  Assert.AreEqual(Integer(1), Integer(Length(mNotices)));
+  Assert.IsTrue(mNotices[0].StateChanged);
+  Assert.AreEqual('Zur Prüfung', mNotices[0].Previous, 'Zustand vor dem ersten Wechsel');
+  Assert.AreEqual('In Bearbeitung', mNotices[0].State, 'letzter Zustand');
+  Assert.AreEqual('Lesezeichen fehlen', mNotices[0].LastComment, 'neuester Kommentar');
+  Assert.AreEqual('Jana Muster', mNotices[0].LastCommentBy);
+  Assert.AreEqual(At(3), mNotices[0].LastCommentAt, 1 / SecsPerDay);
 end;
 
 procedure TAtlasTrackerNotifyTests.SummarizeLimitsAndCountsRest;

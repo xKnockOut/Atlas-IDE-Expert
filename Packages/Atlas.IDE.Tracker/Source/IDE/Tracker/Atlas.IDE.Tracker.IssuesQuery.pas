@@ -271,6 +271,11 @@ begin
   if AJob.Succeeded then
   begin
     mState.SetCount(AJob.QueryName, Length(AJob.Issues));
+    // Wieder geöffnete Issues (#2127): erledigt beendete, die jetzt offen in der Liste stehen.
+    if FServices.Reopened <> nil then
+    begin
+      FServices.Reopened.ListRecorded(AJob.Target, mState);
+    end;
     TAtlasGuard.Log(Format(cLogFetched, [AJob.Target.Provider, Length(AJob.Issues)], TFormatSettings.Invariant));
   end
   else

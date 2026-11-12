@@ -1187,6 +1187,7 @@ type
     property IssuesAssignOnStart: Boolean read FIssues.IssuesAssignOnStart write FIssues.IssuesAssignOnStart;
     property IssuesStartComment: string read FIssues.IssuesStartComment write FIssues.IssuesStartComment;
     property IssuesEndStates: string read FIssues.IssuesEndStates write FIssues.IssuesEndStates;
+    property IssuesReviewStates: string read FIssues.IssuesReviewStates write FIssues.IssuesReviewStates;
     property IssuesEndComment: string read FIssues.IssuesEndComment write FIssues.IssuesEndComment;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
@@ -1212,6 +1213,7 @@ type
     property IssuesNotifyIntervalMinutes: Integer read FIssueWork.IssuesNotifyIntervalMinutes
       write FIssueWork.IssuesNotifyIntervalMinutes;
     property IssuesNotifyScope: string read FIssueWork.IssuesNotifyScope write FIssueWork.IssuesNotifyScope;
+    property IssuesReopened: Boolean read FIssueWork.IssuesReopened write FIssueWork.IssuesReopened;
     property IssuesAttach: Boolean read FIssueWork.IssuesAttach write FIssueWork.IssuesAttach;
     property IssuesAttachLogFiles: string read FIssueWork.IssuesAttachLogFiles write FIssueWork.IssuesAttachLogFiles;
     property IssuesAttachMaxImageWidth: Integer read FIssueWork.IssuesAttachMaxImageWidth

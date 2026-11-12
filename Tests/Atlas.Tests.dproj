@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{7737E737-7F8E-4B01-9B7C-42DA754393D2}</ProjectGuid>
         <MainSource>Atlas.Tests.dpr</MainSource>
@@ -1157,6 +1157,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.DevelopmentView.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Notify.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Reopened.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Reopened.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Notify.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Capture.pas"/>

@@ -29,7 +29,14 @@
 //                "active": {"key": "#753", "title": "…", "mode": "branch",
 //                           "branch": "feature/753-…", "started": "…"},
 //                "endedBranch": "feature/612-…", "hook": "yes|no|foreign",
-//                "gitDir": "C:\\…\\.git"}
+//                "gitDir": "C:\\…\\.git",
+//                "ended": [{"key": "#753", "branch": "…", "at": "…",
+//                           "state": "Fixed", "done": true}],
+//                "reopened": [{"key": "#753", "title": "…", "state": "Open",
+//                              "previous": "Fixed", "at": "…", "endedAt": "…",
+//                              "branch": "…", "commentBy": "…",
+//                              "commentAt": "…", "comment": "…"}]}
+//   (#2127, Atlas.Core.Tracker.Reopened).
 //   Unbekannte Felder im Abschnitt gehen beim Schreiben verloren; die übrige
 //   Datei bleibt unverändert (Format 1). Nie Zugangsdaten.
 // - Tracker-Projekt wählen (#1927) und „Alle Tracker-Projekte“ (#1928): Die
@@ -46,6 +53,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
+  Atlas.Core.Tracker.Reopened,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.BranchPlan;
 
@@ -121,6 +129,9 @@ type
     /// <summary>Name der gewählten Abfrage (#1262); '' = erste passende.</summary>
     Selected: string;
     Counts: TArray<TAtlasIssuesQueryCount>;
+    /// <summary>Mit Atlas beendete Issues und Marken „wieder offen“ (#2127).</summary>
+    Ended: TArray<TAtlasTrackerEnded>;
+    Reopened: TArray<TAtlasTrackerReopen>;
     class function Empty: TAtlasIssuesState; static;
     /// <summary>Die Liste gehört zu ATarget (Anbieter, Server, Projekt und Abfrage gleich).</summary>
     function Matches(const ATarget: TAtlasTrackerTarget): Boolean;
@@ -265,6 +276,8 @@ type
     Filter: string;
     /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
     Unseen: TArray<string>;
+    /// <summary>Marken „wieder offen“ (#2127, issues.reopened); leer ohne.</summary>
+    Reopened: TArray<TAtlasTrackerReopen>;
     /// <summary>Klappliste „Tracker-Projekt“ (#1927, issues.projectPicker), ihre Einträge und die Wahl ('' =
     /// automatisch, "*" = alle, sonst „projekt@verbindung“).</summary>
     ProjectPicker: Boolean;
@@ -280,6 +293,8 @@ type
     function OpenCount: Integer;
     /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
     function IsUnseen(const AKey: string): Boolean;
+    /// <summary>Marke „wieder offen“ von AKey; False ohne.</summary>
+    function ReopenOf(const AKey: string; out AReopen: TAtlasTrackerReopen): Boolean;
   end;
 
   TAtlasMyIssues = class
@@ -349,6 +364,9 @@ type
     /// <summary>Plan für „Beginnen“ auf AIssue. Ohne Git oder SVN wird nur gemerkt.</summary>
     class function PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
       const AIssue: TAtlasTrackerIssue): TAtlasIssueStartPlan; static;
+    /// <summary>„Weiterarbeiten“ (#2127): APlan auf den gemerkten Branch ABranch statt des Musters umstellen;
+    /// nur bei Branch-Modus und gültigem Namen, sonst unverändert.</summary>
+    class procedure ResumeOn(var APlan: TAtlasIssueStartPlan; const ABranch: string); static;
     /// <summary>„Beginnen“ ausführen (aus einem Hintergrund-Thread): vorhandenen Branch auschecken, sonst mit
     /// der Vorgabe aus TAtlasVcsBranchPlan anlegen (erster vorhandener Kandidat aus APlan.Bases) und auschecken;
     /// Remember ändert nichts. Git liefert zusätzlich die Ordner für Hook und Präfix-Datei. AVcs nil = nur
@@ -363,7 +381,8 @@ type
     class function Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
       const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
       overload; static;
-    /// <summary>Nach „Beginnen“: aktiv setzen, EndedBranch löschen.</summary>
+    /// <summary>Nach „Beginnen“: aktiv setzen, EndedBranch löschen; Marke „wieder offen“ und gemerktes Beenden des
+    /// Issues entfallen (#2127).</summary>
     class procedure Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
       AMode: TAtlasIssueStart; const ABranch: string; ANowUtc: TDateTime); static;
     /// <summary>„Beenden“: gemerktes Issue löschen; ein erkanntes Issue bleibt für ABranch aus.</summary>
@@ -586,6 +605,8 @@ begin
   Result := Default(TAtlasIssuesState);
   Result.Items := nil;
   Result.Counts := nil;
+  Result.Ended := nil;
+  Result.Reopened := nil;
   Result.Active := TAtlasActiveIssue.Empty;
 end;
 
@@ -659,6 +680,11 @@ end;
 function TAtlasIssuesView.OpenCount: Integer;
 begin
   Result := Length(Items);
+end;
+
+function TAtlasIssuesView.ReopenOf(const AKey: string; out AReopen: TAtlasTrackerReopen): Boolean;
+begin
+  Result := (AKey <> '') and TAtlasTrackerReopened.Find(Reopened, AKey, AReopen);
 end;
 
 function TAtlasIssuesView.IsUnseen(const AKey: string): Boolean;
@@ -877,6 +903,7 @@ begin
     AView.Items := AView.Items + [AGroup.Items[mIndex]];
   end;
   AView.Unseen := AView.Unseen + AGroup.Unseen;
+  AView.Reopened := AView.Reopened + AGroup.Reopened;
   AView.Groups := AView.Groups + [mGroup];
 end;
 
@@ -900,6 +927,7 @@ begin
   Result := Default(TAtlasIssuesView);
   Result.Items := nil;
   Result.Unseen := nil;
+  Result.Reopened := nil;
   Result.Active := Effective(AState, ATarget.Provider, ATarget.Project, ABranch);
   if not ATarget.Configured then
   begin
@@ -980,6 +1008,16 @@ begin
   Result.Message := TAtlasVcsBranchPlan.SvnMessage(Result.Svn, Result.Branch);
 end;
 
+class procedure TAtlasMyIssues.ResumeOn(var APlan: TAtlasIssueStartPlan; const ABranch: string);
+begin
+  if (APlan.Mode <> TAtlasIssueStart.Branch) or not APlan.Valid or (Trim(ABranch) = '') then
+  begin
+    Exit;
+  end;
+  APlan.Branch := Trim(ABranch);
+  APlan.Message := TAtlasVcsBranchPlan.SvnMessage(APlan.Svn, APlan.Branch);
+end;
+
 class function TAtlasMyIssues.Execute(const AVcs: IAtlasVersionControl;
   const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult;
 begin
@@ -1014,6 +1052,8 @@ end;
 
 class procedure TAtlasMyIssues.Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
   AMode: TAtlasIssueStart; const ABranch: string; ANowUtc: TDateTime);
+var
+  mIndex: Integer;
 begin
   AState.Active := TAtlasActiveIssue.Empty;
   AState.Active.Key := AIssue.Key;
@@ -1025,6 +1065,12 @@ begin
   end;
   AState.Active.StartedUtc := ANowUtc;
   AState.EndedBranch := '';
+  TAtlasTrackerReopened.Dismiss(AState.Reopened, AIssue.Key);
+  mIndex := TAtlasTrackerReopened.IndexOfEnded(AState.Ended, AIssue.Key);
+  if mIndex >= 0 then
+  begin
+    Delete(AState.Ended, mIndex, 1);
+  end;
 end;
 
 class procedure TAtlasMyIssues.Ended(var AState: TAtlasIssuesState; const ABranch: string);
@@ -1207,6 +1253,7 @@ begin
   begin
     Result.AddPair('counts', CountsJson(AState.Counts));
   end;
+  TAtlasTrackerReopened.WriteJson(Result, AState.Ended, AState.Reopened);
 end;
 
 function LabelsOf(AEntry: TJSONObject): TArray<string>;
@@ -1319,6 +1366,7 @@ begin
     AState.GitDir := TJsonRead.Text(ASection, 'gitDir');
     AState.Selected := TJsonRead.Text(ASection, 'selected');
     CountsOf(ASection, AState);
+    TAtlasTrackerReopened.ReadJson(ASection, AState.Ended, AState.Reopened);
   end;
 end;
 

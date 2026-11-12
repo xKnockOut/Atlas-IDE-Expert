@@ -1032,6 +1032,8 @@ uses
   Atlas.UI.Tracker.DevelopmentView.Tests in 'IDE.Expert\Atlas.UI.Tracker.DevelopmentView.Tests.pas',
   Atlas.Core.Tracker.Notify in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas',
   Atlas.Core.Tracker.Notify.Tests in 'IDE.Expert\Atlas.Core.Tracker.Notify.Tests.pas',
+  Atlas.Core.Tracker.Reopened in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Reopened.pas',
+  Atlas.Core.Tracker.Reopened.Tests in 'IDE.Expert\Atlas.Core.Tracker.Reopened.Tests.pas',
   Atlas.UI.Tracker.Notify in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas',
   Atlas.UI.Tracker.Notify.Tests in 'IDE.Expert\Atlas.UI.Tracker.Notify.Tests.pas',
   Atlas.UI.Tracker.Capture in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Capture.pas',
