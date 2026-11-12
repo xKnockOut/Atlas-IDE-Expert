@@ -82,7 +82,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Formulare](docs/features/de/Formulare.md)
 - **Designer-Ansichten** mit eigenen Knöpfen in der Designer-Leiste: Abstände messen beim Ziehen und mit Alt, Formulargröße ausprobieren, Skalierung und lange Texte prüfen, sprechende Namen vorschlagen, Fenster „Atlas-Struktur“ mit Verknüpfungen der Komponenten, Datenbindung der Auswahl als Brotkrumenleiste unter dem Designer, Auswahl in einen Frame auslagern, Ereignis-Karte, Rückgängig mit Strg+Z und Schrittliste (experimentell)
 - **Ungespeicherter Stand des Designers** zählt für Referenzen, Umbenennen und Prüfungen
-- **Tab-Reihenfolge** in der Designer-Leiste: Marken mit Rücksprüngen, Lücken und Doppelten, per Klick neu vergeben, nach Lesereihenfolge sortieren
+- **Tab-Reihenfolge** in der Designer-Leiste: Marken mit Rücksprüngen, Lücken und Doppelten, verschachtelte Container in Farben, per Klick neu vergeben, nach Lesereihenfolge sortieren
 - **Prüfungen zwischen Formular und Code** und Property-Regeln für Formulardateien
 - **Binäre Formulare** in Textformulare umwandeln
 - **Im Designer zeigen** (Umschalt+F12): vom Feld oder Handler im Code zur Komponente im Designer

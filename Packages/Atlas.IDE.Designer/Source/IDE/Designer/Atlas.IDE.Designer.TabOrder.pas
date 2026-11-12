@@ -6,8 +6,12 @@
 //   Formular beim ersten Zeigen von selbst an. Auffällige Marken (Rücksprung
 //   gegen die Lesereihenfolge, Lücke, Doppelte; TAtlasTabOrder.Issues) in
 //   Fehlerfarbe mit Hinweis, Steuerelemente ohne TabStop grau mit „–“,
-//   verschachtelte als Pfad „2.1“ mit designer.tabOrderPaths. Leserichtung
-//   rechts nach links, wenn das Formular BiDiMode bdRightToLeft hat.
+//   verschachtelte als Pfad „2.1“ mit designer.tabOrderPaths, in Farben je
+//   Container mit Rahmen mit designer.tabOrderColors (nicht im Modus
+//   „Reihenfolge klicken“). Der Hinweis an einer verschachtelten Marke nennt
+//   den Weg mit Namen. Nur sichtbare Steuerelemente bekommen eine Marke,
+//   nicht die auf verborgenen Registerseiten. Leserichtung rechts nach
+//   links, wenn das Formular BiDiMode bdRightToLeft hat.
 // - Menü am Pfeil: Zeigen, „Reihenfolge klicken“, „Nach Lesereihenfolge
 //   sortieren“ und „Tab-Reihenfolge rückgängig“; die ändernden Befehle nur mit
 //   editor.designerBar.tabOrderClick.
@@ -63,7 +67,10 @@ type
     FUndoFile: string;
     /// <summary>Pfade für diese Sitzung umgeschaltet (Menü); Vorgabe aus designer.tabOrderPaths.</summary>
     FPathsToggled: Boolean;
+    /// <summary>Farben für diese Sitzung umgeschaltet (Menü); Vorgabe aus designer.tabOrderColors.</summary>
+    FColorsToggled: Boolean;
     function PathsWanted: Boolean;
+    function ColorsWanted: Boolean;
     procedure Say(const AText: string);
     procedure EnsureOverlay;
     procedure ItemClick(Sender: TObject);
@@ -121,6 +128,7 @@ const
   cSort = 3;
   cUndo = 4;
   cPaths = 5;
+  cColors = 6;
 
 /// <summary>Formular des Designers für die Marken: aktiv, mit sichtbarem Fenster.</summary>
 function OverlayForm(out AEditor: IOTAFormEditor; out AForm: TWinControl): Boolean;
@@ -161,6 +169,8 @@ begin
       mControl.TabOrder, TAtlasDesignerAccess.BoundsInRoot(mControl, TWinControl(ARoot)));
     mStop.Focusable := mControl.TabStop;
     mStop.Container := csAcceptsControls in mControl.ControlStyle;
+    // Showing: auch Elternelemente sichtbar; falsch auf verborgenen Registerseiten.
+    mStop.Shown := mControl.Showing;
     Result := Result + [mStop];
   end;
 end;
@@ -206,45 +216,92 @@ begin
   end;
 end;
 
-/// <summary>Marken im Fenster AVisible: oben rechts am Steuerelement.</summary>
-function BadgesOf(const AStops: TArray<TAtlasTabStop>; ARightToLeft, APaths: Boolean; const AScreen,
-  AVisible: TRect; APicked: TFunc<string, Boolean>): TArray<TAtlasTabBadge>;
+/// <summary>Verschiebung vom Client des Formulars (AScreen) in den Client des Fensters (AVisible).</summary>
+function OffsetOf(const AScreen, AVisible: TRect): TPoint;
+begin
+  Result := Point(AScreen.Left - AVisible.Left, AScreen.Top - AVisible.Top);
+end;
+
+/// <summary>Stil und Hinweis der Marke nach Zustand: ohne TabStop, geklickt, auffällig. APath: Weg mit Namen.
+/// </summary>
+procedure MarkBadge(var ABadge: TAtlasTabBadge; const AStop: TAtlasTabStop; AIssue: TAtlasTabIssue;
+  APicked: TFunc<string, Boolean>; const APath: string);
+begin
+  if not AStop.Reached then
+  begin
+    ABadge.Text := '–';
+    ABadge.Style := TAtlasTabBadgeStyle.Muted;
+    ABadge.Hint := APath + ': ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabNoStop);
+  end
+  else if APicked(AStop.Name) then
+  begin
+    ABadge.Style := TAtlasTabBadgeStyle.Picked;
+  end
+  else if AIssue <> TAtlasTabIssue.None then
+  begin
+    ABadge.Style := TAtlasTabBadgeStyle.Warn;
+    ABadge.Hint := APath + ': ' + IssueText(AIssue);
+  end;
+end;
+
+/// <summary>Marken der sichtbaren Steuerelemente oben rechts; AOffset aus OffsetOf. AGroups: Farbgruppen aus
+/// TAtlasTabOrder.Groups, nil = ohne Farben.</summary>
+function BadgesOf(const AStops: TArray<TAtlasTabStop>; ARightToLeft, APaths: Boolean;
+  const AGroups: TArray<Integer>; const AOffset: TPoint; APicked: TFunc<string, Boolean>): TArray<TAtlasTabBadge>;
 var
   mIssues: TArray<TAtlasTabIssue>;
   mPaths: TArray<string>;
   mIndex: Integer;
   mBadge: TAtlasTabBadge;
-  mText: string;
+  mPath: string;
 begin
   mIssues := TAtlasTabOrder.Issues(AStops, ARightToLeft);
   mPaths := TAtlasTabOrder.Paths(AStops);
   Result := nil;
   for mIndex := 0 to High(AStops) do
   begin
-    mText := IntToStr(AStops[mIndex].TabOrder);
+    if not AStops[mIndex].Shown then
+    begin
+      Continue;
+    end;
+    mBadge := TAtlasTabBadge.Create(AStops[mIndex].Name, IntToStr(AStops[mIndex].TabOrder),
+      TAtlasTabBadgeStyle.Normal, Point(AStops[mIndex].Bounds.Right + AOffset.X,
+      AStops[mIndex].Bounds.Top + AOffset.Y));
     if APaths then
     begin
-      mText := mPaths[mIndex];
+      mBadge.Text := mPaths[mIndex];
     end;
-    mBadge := TAtlasTabBadge.Create(AStops[mIndex].Name, mText, TAtlasTabBadgeStyle.Normal,
-      Point(AStops[mIndex].Bounds.Right + AScreen.Left - AVisible.Left,
-      AStops[mIndex].Bounds.Top + AScreen.Top - AVisible.Top));
-    if not AStops[mIndex].Reached then
+    mPath := TAtlasTabOrder.NamedPath(AStops, mIndex);
+    if AGroups <> nil then
     begin
-      mBadge.Text := '–';
-      mBadge.Style := TAtlasTabBadgeStyle.Muted;
-      mBadge.Hint := AStops[mIndex].Name + ': ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabNoStop);
-    end
-    else if APicked(AStops[mIndex].Name) then
-    begin
-      mBadge.Style := TAtlasTabBadgeStyle.Picked;
-    end
-    else if mIssues[mIndex] <> TAtlasTabIssue.None then
-    begin
-      mBadge.Style := TAtlasTabBadgeStyle.Warn;
-      mBadge.Hint := AStops[mIndex].Name + ': ' + IssueText(mIssues[mIndex]);
+      mBadge.Group := TAtlasTabOrder.GroupOf(AStops, AGroups, mIndex);
     end;
+    if TAtlasTabOrder.IndexOf(AStops, AStops[mIndex].ParentName) >= 0 then
+    begin
+      // Verschachtelt: Der Hinweis nennt den ganzen Weg, die Marke nur die eigene Nummer.
+      mBadge.Hint := mPath;
+    end;
+    MarkBadge(mBadge, AStops[mIndex], mIssues[mIndex], APicked, mPath);
     Result := Result + [mBadge];
+  end;
+end;
+
+/// <summary>Gestrichelte Rahmen der sichtbaren Container mit Farbgruppe.</summary>
+function FramesOf(const AStops: TArray<TAtlasTabStop>; const AGroups: TArray<Integer>;
+  const AOffset: TPoint): TArray<TAtlasTabFrame>;
+var
+  mIndex: Integer;
+  mBounds: TRect;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AGroups) do
+  begin
+    if AStops[mIndex].Shown and (AGroups[mIndex] >= 0) then
+    begin
+      mBounds := AStops[mIndex].Bounds;
+      mBounds.Offset(AOffset);
+      Result := Result + [TAtlasTabFrame.Create(mBounds, AGroups[mIndex])];
+    end;
   end;
 end;
 
@@ -321,6 +378,11 @@ begin
   Result := TAtlasIdeSettings.Current.DesignerTabOrderPaths <> FPathsToggled;
 end;
 
+function TAtlasIdeDesignerTabOrder.ColorsWanted: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DesignerTabOrderColors <> FColorsToggled;
+end;
+
 procedure TAtlasIdeDesignerTabOrder.Say(const AText: string);
 begin
   if Assigned(FOnMessage) then
@@ -387,6 +449,7 @@ begin
   FMenu.Items.Clear;
   AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint), cShow, mForm, FShown);
   AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabPaths), cPaths, mForm, PathsWanted);
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabColors), cColors, mForm, ColorsWanted);
   AddItem('-', 0, True, False);
   AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabClickMode), cClicks, mChange, FClicks.Active);
   AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabSort), cSort, mChange and not FClicks.Active,
@@ -413,6 +476,12 @@ begin
           begin
             // Wahl für die Sitzung; dauerhaft über designer.tabOrderPaths.
             mOwner.FPathsToggled := not mOwner.FPathsToggled;
+            mOwner.Update;
+          end;
+        cColors:
+          begin
+            // Wahl für die Sitzung; dauerhaft über designer.tabOrderColors.
+            mOwner.FColorsToggled := not mOwner.FColorsToggled;
             mOwner.Update;
           end;
         cClicks:
@@ -474,6 +543,8 @@ var
   mForm: TWinControl;
   mScreen, mVisible: TRect;
   mClicks: TAtlasTabClicks;
+  mStops: TArray<TAtlasTabStop>;
+  mGroups: TArray<Integer>;
 begin
   if not OverlayForm(mEditor, mForm) then
   begin
@@ -498,8 +569,15 @@ begin
   EnsureOverlay;
   mClicks := FClicks;
   FOverlay.Clickable := FClicks.Active;
-  FOverlay.SetBadges(BadgesOf(TabStopsOf(mForm), RightToLeft(mForm), PathsWanted,
-    mScreen, mVisible,
+  mStops := TabStopsOf(mForm);
+  mGroups := nil;
+  // Beim Klicken ruhen die Farben: Grün heißt dort „schon geklickt“.
+  if ColorsWanted and not FClicks.Active then
+  begin
+    mGroups := TAtlasTabOrder.Groups(mStops, TAtlasTabOrderOverlay.GroupCount);
+  end;
+  FOverlay.SetFrames(FramesOf(mStops, mGroups, OffsetOf(mScreen, mVisible)));
+  FOverlay.SetBadges(BadgesOf(mStops, RightToLeft(mForm), PathsWanted, mGroups, OffsetOf(mScreen, mVisible),
     function(AName: string): Boolean
     begin
       Result := mClicks.Active and mClicks.Clicked(AName);

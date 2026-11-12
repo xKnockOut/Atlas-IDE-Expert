@@ -657,6 +657,8 @@ type
       write FEditorView.DesignerTabOrderOverlay;
     property DesignerTabOrderPaths: Boolean read FEditorView.DesignerTabOrderPaths
       write FEditorView.DesignerTabOrderPaths;
+    property DesignerTabOrderColors: Boolean read FEditorView.DesignerTabOrderColors
+      write FEditorView.DesignerTabOrderColors;
     property DesignerAlign: Boolean read FEditorView.DesignerAlign write FEditorView.DesignerAlign;
     property DesignerSelectSimilar: Boolean read FEditorView.DesignerSelectSimilar
       write FEditorView.DesignerSelectSimilar;

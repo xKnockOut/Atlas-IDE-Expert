@@ -82,7 +82,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Forms](docs/features/en/Forms.md)
 - **Designer views** with their own buttons in the designer bar: measure distances while dragging and with Alt, try form sizes, check scaling and long texts, suggest meaningful names, Atlas Structure window with links between components, data binding of the selection as a breadcrumb bar below the designer, extract the selection to a frame, event map, undo with Ctrl+Z and a step list (experimental)
 - **Unsaved designer state** is seen by references, renames and checks
-- **Tab order** in the designer bar: badges with jumps, gaps and duplicates, click-to-renumber, sort by reading order
+- **Tab order** in the designer bar: badges with jumps, gaps and duplicates, nested containers in colours, click-to-renumber, sort by reading order
 - **Checks between form and code** and property rules for form files
 - **Convert binary forms** to text forms
 - **Show in designer** (Shift+F12): from a field or handler in the code to the component in the designer
