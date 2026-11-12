@@ -145,9 +145,6 @@ begin
   end;
 end;
 
-const
-  cEventPrefix = 'On';
-
 /// <summary>„OnClick“, „OnChange“: Name eines Ereignisses.</summary>
 function IsEventName(const AName: string): Boolean;
 begin
