@@ -548,6 +548,9 @@ type
     DesignerTabOrderOverlay: Boolean;
     /// <summary>Verschachtelte Tab-Reihenfolge als Pfad „2.1“ (#603, designer.tabOrderPaths).</summary>
     DesignerTabOrderPaths: Boolean;
+    /// <summary>Tab-Reihenfolge je Container farbig mit Rahmen statt langer Pfade (designer.tabOrderColors).
+    /// </summary>
+    DesignerTabOrderColors: Boolean;
     /// <summary>Knopf „Ausrichten“ mit Menü (experimentell, editor.designerBar.align).</summary>
     DesignerAlign: Boolean;
     /// <summary>Menü „Gleiche auswählen“ in der Designer-Leiste (#738, designer.selectSimilar).</summary>
@@ -1346,6 +1349,7 @@ begin
   Result.DesignerTabOrderClick := True;
   Result.DesignerTabOrderOverlay := False;
   Result.DesignerTabOrderPaths := False;
+  Result.DesignerTabOrderColors := True;
   Result.DesignerAlign := False;
   Result.DesignerSelectSimilar := True;
   Result.DesignerSelectDescendants := True;
@@ -1680,6 +1684,7 @@ begin
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
   AIo.Flag('DesignerTabOrderOverlay', DesignerTabOrderOverlay);
   AIo.Flag('DesignerTabOrderPaths', DesignerTabOrderPaths);
+  AIo.Flag('DesignerTabOrderColors', DesignerTabOrderColors);
   AIo.Flag('DesignerAlign', DesignerAlign);
   AIo.Flag('DesignerSelectSimilar', DesignerSelectSimilar);
   AIo.Flag('DesignerSelectDescendants', DesignerSelectDescendants);

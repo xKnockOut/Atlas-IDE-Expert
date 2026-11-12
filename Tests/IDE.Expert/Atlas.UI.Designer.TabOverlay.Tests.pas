@@ -2,7 +2,8 @@
 
 // Tab-Reihenfolge im Designer (#1442, #603): Marken oben rechts am
 // Steuerelement, breiter mit mehr Zeichen (Pfad), Treffer auf der obersten
-// Marke; Klicks melden sich nur mit Clickable (Modus „Reihenfolge klicken“).
+// Marke; Klicks melden sich nur mit Clickable (Modus „Reihenfolge klicken“);
+// Farbgruppen färben normale Marken, Zustände gehen vor; Rahmen der Container.
 
 interface
 
@@ -25,6 +26,10 @@ type
     procedure BadgesSitTopRight;
     [Test]
     procedure ClicksOnlyWhenClickable;
+    [Test]
+    procedure GroupColorsNormalBadges;
+    [Test]
+    procedure FramesKeepGroups;
   end;
 
 implementation
@@ -87,6 +92,39 @@ begin
   mClicked := '';
   TOverlayAccess(FOverlay).MouseDown(mbLeft, [], 150, 100);
   Assert.AreEqual('', mClicked, 'daneben nichts');
+end;
+
+procedure TAtlasTabOrderOverlayTests.GroupColorsNormalBadges;
+var
+  mColors: TAtlasColors;
+  mBadge: TAtlasTabBadge;
+begin
+  mColors := TAtlasColors.Light;
+  mBadge := TAtlasTabBadge.Create('edtName', '0', TAtlasTabBadgeStyle.Normal, Point(100, 20));
+  Assert.AreEqual(-1, mBadge.Group, 'ohne Gruppe');
+  Assert.AreEqual(Integer(mColors.Accent), Integer(TOverlayAccess(FOverlay).BadgeColor(mBadge)), 'Akzent');
+  mBadge.Group := 2;
+  Assert.AreEqual(Integer(mColors.Placeholders[2]), Integer(TOverlayAccess(FOverlay).BadgeColor(mBadge)));
+  mBadge.Group := 2 + TAtlasTabOrderOverlay.GroupCount;
+  Assert.AreEqual(Integer(mColors.Placeholders[2]), Integer(TOverlayAccess(FOverlay).BadgeColor(mBadge)),
+    'zyklisch');
+  mBadge.Style := TAtlasTabBadgeStyle.Warn;
+  Assert.AreEqual(Integer(mColors.Error), Integer(TOverlayAccess(FOverlay).BadgeColor(mBadge)), 'Befund geht vor');
+  Assert.IsFalse(mBadge.SameAs(TAtlasTabBadge.Create('edtName', '0', TAtlasTabBadgeStyle.Warn, Point(100, 20))),
+    'andere Gruppe zeichnet neu');
+  Assert.AreEqual(6, TAtlasTabOrderOverlay.GroupCount);
+end;
+
+procedure TAtlasTabOrderOverlayTests.FramesKeepGroups;
+begin
+  Assert.AreEqual(0, Integer(Length(FOverlay.Frames)), 'ohne Farben keine Rahmen');
+  FOverlay.SetFrames(TArray<TAtlasTabFrame>.Create(TAtlasTabFrame.Create(Rect(10, 10, 200, 100), 1),
+    TAtlasTabFrame.Create(Rect(20, 20, 100, 90), 2)));
+  Assert.AreEqual(2, Integer(Length(FOverlay.Frames)));
+  Assert.AreEqual(2, FOverlay.Frames[1].Group);
+  Assert.IsTrue(FOverlay.Frames[0].Bounds = Rect(10, 10, 200, 100));
+  FOverlay.SetFrames(nil);
+  Assert.AreEqual(0, Integer(Length(FOverlay.Frames)));
 end;
 
 initialization

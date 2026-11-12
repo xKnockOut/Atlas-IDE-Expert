@@ -9,7 +9,12 @@
 //   rechts-nach-links rechts nach links). Rücksprünge zählen nur zwischen
 //   Steuerelementen, die Tab erreicht (TabStop oder Container).
 // - Paths: verschachtelte Reihenfolge als Pfad („2.1“ = Kind 1 im
-//   Container mit TabOrder 2).
+//   Container mit TabOrder 2); NamedPath derselbe Weg mit Namen für den
+//   Hinweis an der Marke.
+// - Groups/GroupOf: Farbgruppe je Container für die farbige Anzeige statt
+//   langer Pfade. Ein Container unterscheidet sich immer von seinem
+//   Elternelement und vom vorigen Container daneben; seine Kinder tragen
+//   seine Farbe.
 // - ReadingOrder: neue TabOrder je Steuerelement nach der Lesereihenfolge
 //   („Nach Lesereihenfolge sortieren“); Assignments: Folge von Zuweisungen,
 //   die nacheinander gesetzt genau diesen Stand ergibt (der Setter der VCL
@@ -38,6 +43,9 @@ type
     Focusable: Boolean;
     /// <summary>Hat Kinder (Panel, GroupBox, Frame, Registerseite): Tab führt hinein.</summary>
     Container: Boolean;
+    /// <summary>Im Designer zu sehen; False z. B. auf einer verborgenen Registerseite. Solche bekommen keine
+    /// Marke, zählen aber für Lücken und Doppelte ihrer Geschwister mit.</summary>
+    Shown: Boolean;
     /// <summary>Fokussierbar, ohne Kinder.</summary>
     class function Create(const AName, AParentName: string; ATabOrder: Integer;
       const ABounds: TRect): TAtlasTabStop; static;
@@ -71,6 +79,17 @@ type
       static;
     /// <summary>Je Stop der Pfad der TabOrder über die umschließenden Container („2.1“).</summary>
     class function Paths(const AStops: TArray<TAtlasTabStop>): TArray<string>; static;
+    /// <summary>Weg zum Stop AIndex über die umschließenden Container mit Namen: „Seiten 1 › tsAdresse 0 ›
+    /// edOrt 2“.</summary>
+    class function NamedPath(const AStops: TArray<TAtlasTabStop>; AIndex: Integer): string; static;
+    /// <summary>Je Stop die Farbgruppe (0 .. ACount - 1), die er als Container mit Kindern seinen Kindern gibt;
+    /// -1 ohne Kinder. Sie unterscheidet sich von der seines Elternelements und der des vorigen Containers unter
+    /// demselben Elternelement (ab ACount = 3). Vergeben in Tab-Reihenfolge, damit sie beim Umschalten der
+    /// Registerseiten gleich bleibt.</summary>
+    class function Groups(const AStops: TArray<TAtlasTabStop>; ACount: Integer): TArray<Integer>; static;
+    /// <summary>Farbgruppe der Marke AIndex: die ihres Elternelements aus AGroups; -1 auf oberster Ebene.</summary>
+    class function GroupOf(const AStops: TArray<TAtlasTabStop>; const AGroups: TArray<Integer>;
+      AIndex: Integer): Integer; static;
     /// <summary>Je Stop die TabOrder nach der Lesereihenfolge in seinem Elternelement (0, 1, 2 …).</summary>
     class function ReadingOrder(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean = False): TArray<Integer>;
       static;
@@ -132,6 +151,7 @@ begin
   Result.Bounds := ABounds;
   Result.Focusable := True;
   Result.Container := False;
+  Result.Shown := True;
 end;
 
 function TAtlasTabStop.Reached: Boolean;
@@ -312,6 +332,132 @@ begin
       Dec(mGuard);
     end;
     Result[mIndex] := mPath;
+  end;
+end;
+
+class function TAtlasTabOrder.NamedPath(const AStops: TArray<TAtlasTabStop>; AIndex: Integer): string;
+var
+  mIndex, mGuard: Integer;
+begin
+  Result := AStops[AIndex].Name + ' ' + IntToStr(AStops[AIndex].TabOrder);
+  mIndex := IndexOf(AStops, AStops[AIndex].ParentName);
+  // Schutz gegen Ringe in fehlerhaften Daten.
+  mGuard := Length(AStops);
+  while (mIndex >= 0) and (mGuard > 0) do
+  begin
+    Result := AStops[mIndex].Name + ' ' + IntToStr(AStops[mIndex].TabOrder) + ' › ' + Result;
+    mIndex := IndexOf(AStops, AStops[mIndex].ParentName);
+    Dec(mGuard);
+  end;
+end;
+
+type
+  /// <summary>Vergabe der Farbgruppen: von oben nach unten, je Elternelement in Tab-Reihenfolge.</summary>
+  TAtlasTabGroupWalk = record
+    Stops: TArray<TAtlasTabStop>;
+    Order: TArray<Integer>;
+    Done: TArray<Boolean>;
+    Groups: TArray<Integer>;
+    Parents: TDictionary<string, Boolean>;
+    Count: Integer;
+    Next: Integer;
+    /// <summary>Nächste Gruppe, die weder AParent noch APrevious ist.</summary>
+    function Take(AParent, APrevious: Integer): Integer;
+    procedure Visit(const AParentName: string; AParentGroup, ADepth: Integer);
+  end;
+
+function TAtlasTabGroupWalk.Take(AParent, APrevious: Integer): Integer;
+var
+  mTries: Integer;
+begin
+  Result := Next mod Count;
+  Inc(Next);
+  mTries := Count;
+  while ((Result = AParent) or (Result = APrevious)) and (mTries > 0) do
+  begin
+    Result := Next mod Count;
+    Inc(Next);
+    Dec(mTries);
+  end;
+end;
+
+procedure TAtlasTabGroupWalk.Visit(const AParentName: string; AParentGroup, ADepth: Integer);
+var
+  mIndex, mStop, mPrevious: Integer;
+begin
+  // Schutz gegen Ringe in fehlerhaften Daten.
+  if ADepth > Length(Stops) then
+  begin
+    Exit;
+  end;
+  mPrevious := -1;
+  for mIndex := 0 to High(Order) do
+  begin
+    mStop := Order[mIndex];
+    if Done[mStop] or not SameText(Stops[mStop].ParentName, AParentName) then
+    begin
+      Continue;
+    end;
+    Done[mStop] := True;
+    if Parents.ContainsKey(Key(Stops[mStop].Name)) then
+    begin
+      Groups[mStop] := Take(AParentGroup, mPrevious);
+      mPrevious := Groups[mStop];
+      Visit(Stops[mStop].Name, Groups[mStop], ADepth + 1);
+    end;
+  end;
+end;
+
+class function TAtlasTabOrder.Groups(const AStops: TArray<TAtlasTabStop>; ACount: Integer): TArray<Integer>;
+var
+  mWalk: TAtlasTabGroupWalk;
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AStops));
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := -1;
+  end;
+  if ACount <= 0 then
+  begin
+    Exit;
+  end;
+  mWalk.Stops := AStops;
+  mWalk.Order := ByParentAndOrder(AStops);
+  SetLength(mWalk.Done, Length(AStops));
+  mWalk.Groups := Result;
+  mWalk.Count := ACount;
+  mWalk.Next := 0;
+  mWalk.Parents := TDictionary<string, Boolean>.Create;
+  try
+    for mIndex := 0 to High(AStops) do
+    begin
+      mWalk.Parents.AddOrSetValue(Key(AStops[mIndex].ParentName), True);
+    end;
+    // Oberste Ebene: Elternelement ist kein Stop (die Wurzel).
+    for mIndex := 0 to High(mWalk.Order) do
+    begin
+      if not mWalk.Done[mWalk.Order[mIndex]] and (IndexOf(AStops, AStops[mWalk.Order[mIndex]].ParentName) < 0) then
+      begin
+        mWalk.Visit(AStops[mWalk.Order[mIndex]].ParentName, -1, 0);
+      end;
+    end;
+  finally
+    mWalk.Parents.Free;
+  end;
+  Result := mWalk.Groups;
+end;
+
+class function TAtlasTabOrder.GroupOf(const AStops: TArray<TAtlasTabStop>; const AGroups: TArray<Integer>;
+  AIndex: Integer): Integer;
+var
+  mParent: Integer;
+begin
+  mParent := IndexOf(AStops, AStops[AIndex].ParentName);
+  Result := -1;
+  if mParent >= 0 then
+  begin
+    Result := AGroups[mParent];
   end;
 end;
 
