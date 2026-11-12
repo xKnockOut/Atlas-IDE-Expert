@@ -77,6 +77,8 @@ type
     function SetUrl(const AUrl: string): TAtlasTrackerUrlCheck;
     /// <summary>Zustand und Zuständigkeit der gewählten Zeile (#1266); AEndStates wie eingegeben.</summary>
     procedure SetWorkflow(const AStateField, AAssigneeField, AStartState, AEndStates: string);
+    /// <summary>Prüfzustände der gewählten Zeile (#2126); AReviewStates wie eingegeben.</summary>
+    procedure SetReviewStates(const AReviewStates: string);
     /// <summary>Neue Zeile ohne Adresse (gespeichert erst mit Adresse) mit freiem Namen nach ABaseName.</summary>
     procedure Add(const ABaseName: string);
     /// <summary>Entfernt die gewählte persönliche Zeile und liefert sie.</summary>
@@ -424,6 +426,14 @@ begin
     FItems[FSelected].AssigneeField := AAssigneeField;
     FItems[FSelected].StartState := AStartState;
     FItems[FSelected].EndStates := TAtlasTrackerWorkflow.ParseList(AEndStates);
+  end;
+end;
+
+procedure TAtlasTrackerConnectionTable.SetReviewStates(const AReviewStates: string);
+begin
+  if Editable then
+  begin
+    FItems[FSelected].ReviewStates := TAtlasTrackerWorkflow.ParseList(AReviewStates);
   end;
 end;
 

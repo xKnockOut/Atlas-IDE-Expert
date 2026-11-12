@@ -48,8 +48,17 @@ type
     AssignedTo: string;
     /// <summary>Letzter neuer Zustand; '' ohne Zustandswechsel.</summary>
     State: string;
+    /// <summary>Zustand vor dem ersten Zustandswechsel (#2127); '' unbekannt bzw. ohne Zustandswechsel.</summary>
+    Previous: string;
+    /// <summary>Neuester neuer Kommentar (#2127): Text (gekürzt), Urheber (Anzeigename) und Zeitpunkt (UTC); ''
+    /// bzw. 0 ohne.</summary>
+    LastComment: string;
+    LastCommentBy: string;
+    LastCommentAt: TDateTime;
     /// <summary>Nur allgemeine Änderungen ohne Einzelheit.</summary>
     Other: Boolean;
+    /// <summary>Mindestens ein Zustandswechsel.</summary>
+    StateChanged: Boolean;
     /// <summary>Erster neuer Kommentar (UTC): dort öffnet die Vorschau; 0 ohne.</summary>
     Anchor: TDateTime;
     /// <summary>Letzte Änderung (UTC).</summary>
@@ -511,6 +520,10 @@ begin
   begin
     ANotice.Anchor := AChange.Time;
   end;
+  // Älteste zuerst: Der letzte Kommentar ist der neueste (Grund bei „wieder offen“, #2127).
+  ANotice.LastComment := AChange.Text;
+  ANotice.LastCommentBy := AChange.Who;
+  ANotice.LastCommentAt := AChange.Time;
   mKnown := AChange.Who = '';
   for mAuthor in ANotice.CommentAuthors do
   begin
@@ -553,7 +566,15 @@ begin
         end;
       end;
     TAtlasTrackerChangeKind.State:
-      ANotice.State := AChange.Value;
+      begin
+        // Der Zustand vor dem ersten Wechsel zählt (#2127: von erledigt zurück zu offen).
+        if not ANotice.StateChanged then
+        begin
+          ANotice.Previous := AChange.Previous;
+        end;
+        ANotice.StateChanged := True;
+        ANotice.State := AChange.Value;
+      end;
     TAtlasTrackerChangeKind.Other: ;
   end;
 end;

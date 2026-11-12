@@ -1772,6 +1772,9 @@ begin
   Assert.IsTrue(mChanges[1].ToMe, 'an den angemeldeten Benutzer');
   Assert.IsTrue(mChanges[2].Kind = TAtlasTrackerChangeKind.State);
   Assert.AreEqual('Fertig', mChanges[2].Value);
+  // #2127: Zustand davor und Text des Kommentars.
+  Assert.AreEqual('Zur Prüfung', mChanges[2].Previous);
+  Assert.AreEqual('Bitte prüfen', mChanges[0].Text);
   // Ohne bekannten Benutzer: keine Zuweisung „an mich“.
   Assert.IsTrue(TAtlasYouTrackParse.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
     '', Since, mChanges));
@@ -1851,6 +1854,7 @@ begin
   Assert.AreEqual('anna', mChanges[0].Author);
   Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Comment);
   Assert.AreEqual('marco', mChanges[1].Author);
+  Assert.IsTrue(mChanges[0].Text <> '', '#2127: Text des Kommentars');
   Assert.IsTrue(TAtlasGitHubParse.ParseEventChanges(Fixture('GitHub', 'issue-events.json'),
     GitHubThread('beispiel/atlas', 12), 'Marco', Since, mChanges));
   Assert.AreEqual(Integer(2), Integer(Length(mChanges)), 'labeled und alte Ereignisse nicht');
@@ -1860,6 +1864,7 @@ begin
   Assert.AreEqual('ben', mChanges[0].Author);
   Assert.IsTrue(mChanges[1].Kind = TAtlasTrackerChangeKind.State);
   Assert.AreEqual('closed', mChanges[1].Value);
+  Assert.AreEqual('open', mChanges[1].Previous, '#2127: Zustand davor');
   Assert.IsFalse(TAtlasGitHubParse.ParseEventChanges('nichts', GitHubThread('beispiel/atlas', 12), '', Since,
     mChanges));
 end;

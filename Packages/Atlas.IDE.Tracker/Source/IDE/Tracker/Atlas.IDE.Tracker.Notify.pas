@@ -37,6 +37,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
+  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Notifications.Notice,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.Core.Diagnostics.WorkerSlot;
@@ -47,6 +48,10 @@ type
   /// <summary>Issue AKey zeigen, am Kommentar zu AAnchor (UTC; 0 = oben).</summary>
   TAtlasIssueNotifyOpenHook = reference to procedure(const ATarget: TAtlasTrackerTarget; const AKey: string;
     AAnchor: TDateTime);
+  /// <summary>Ist ANotice die Rückkehr eines meiner Issues (#2127)? Dann True mit AReopen für Titel und Sprung
+  /// zum Kommentar.</summary>
+  TAtlasIssueNotifyReopenedHook = reference to function(const ATarget: TAtlasTrackerTarget;
+    const ANotice: TAtlasTrackerNotice; out AReopen: TAtlasTrackerReopen): Boolean;
 
   TAtlasIssueNotifyHooks = record
     Provider: TAtlasIssuePreviewProviderHook;
@@ -59,6 +64,8 @@ type
     Changed: TProc;
     /// <summary>Andere haben Issues im Tracker geändert: Board und Sprint neu laden (#1272, #1277).</summary>
     Updated: TProc;
+    /// <summary>Wieder geöffnete Issues erkennen (#2127); nil = Meldungen wie bisher.</summary>
+    Reopened: TAtlasIssueNotifyReopenedHook;
   end;
 
   TAtlasIdeIssueNotify = class(TInterfacedObject)
@@ -134,6 +141,8 @@ type
     function AnchorOf(const ATarget: TAtlasTrackerTarget; const AKey: string): TDateTime;
     /// <summary>Issue wurde geöffnet: Punkt entfernen.</summary>
     procedure Seen(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    /// <summary>Mein Anmeldename bei ATarget, wie die Meldungen ihn kennen; '' vor der ersten Abfrage.</summary>
+    function LoginOf(const ATarget: TAtlasTrackerTarget): string;
     /// <summary>issues.notify an?</summary>
     class function Active: Boolean; static;
   end;
@@ -594,6 +603,8 @@ var
   mCenter: IAtlasNotificationCenter;
   mIndex: Integer;
   mMode: TAtlasNotificationMode;
+  mReopen: TAtlasTrackerReopen;
+  mAnchor: TDateTime;
 begin
   mCenter := TAtlasNotificationCenter.Default;
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyOpen);
@@ -612,8 +623,22 @@ begin
     begin
       mTarget.Project := mNotice.Project;
     end;
-    mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mNotice.Anchor);
-    mTitle := TAtlasTrackerNoticeText.Title(mNotice);
+    // Wieder geöffnet (#2127): eigener Titel mit Grund, Sprung zum Kommentar.
+    if Assigned(FHooks.Reopened) and FHooks.Reopened(mTarget, mNotice, mReopen) then
+    begin
+      mTitle := TAtlasTrackerNoticeText.ReopenedTitle(mReopen);
+      mAnchor := mNotice.Anchor;
+      if mReopen.CommentAt > 0 then
+      begin
+        mAnchor := mReopen.CommentAt;
+      end;
+    end
+    else
+    begin
+      mTitle := TAtlasTrackerNoticeText.Title(mNotice);
+      mAnchor := mNotice.Anchor;
+    end;
+    mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mAnchor);
     mMode := mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
       [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
     if (mIndex = 0) and (mMode = TAtlasNotificationMode.Show) then
@@ -705,6 +730,22 @@ begin
     begin
       Result := Result + [mItem.Key];
     end;
+  end;
+end;
+
+function TAtlasIdeIssueNotify.LoginOf(const ATarget: TAtlasTrackerTarget): string;
+var
+  mConnection: TAtlasTrackerNotifyConnection;
+begin
+  Result := '';
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  EnsureLoaded;
+  if FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
+  begin
+    Result := mConnection.Me;
   end;
 end;
 

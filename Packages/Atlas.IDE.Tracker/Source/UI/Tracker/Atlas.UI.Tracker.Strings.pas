@@ -176,7 +176,12 @@ type
     SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
     TrackerEndTransition, TrackerEndTransitionFrom, TrackerEndNotAllowed, TrackerPartTransition,
     TrackerPartTransitionTo, TrackerStartNoTransition, TrackerStartNoTransitionNone,
-    TrackerQuoted);
+    TrackerQuoted,
+    IssueReopenedNotice, IssueReopenedNoticePlain, WelcomeIssuesReopened, WelcomeIssuesReopenedComment,
+    WelcomeIssuesReopenedState, WelcomeIssuesContinueOn, WelcomeIssuesContinue, WelcomeIssuesReopenedRead,
+    WelcomeIssuesContinueHint, WelcomeIssuesReopenedReadHint, WelcomeIssuesReopenedCommentHint,
+    WelcomeIssuesContinueBranchGone, SettingsIssuesReopened, SettingsIssuesReviewStates,
+    SettingsIssuesConnectionReviewStates);
 
   TAtlasTrackerStrings = class
   public
@@ -950,7 +955,22 @@ const
      'Übergang „%s“ → %s',
      'Atlas: %s bleibt „%s“: Ab hier erlaubt sind %s.',
      'Atlas: %s bleibt „%s“: Ab hier ist kein Übergang erlaubt.',
-     '„%s“'),
+     '„%s“',
+     '%s ist wieder offen: „%s“ (%s)',
+     '%s ist wieder offen · Zustand → %s',
+     'wieder offen',
+     '%s, %s: „%s“',
+     '%s → %s, kein neuer Kommentar',
+     'Weiterarbeiten auf %s',
+     'Weiterarbeiten',
+     'Gelesen',
+     'Wechselt auf den Branch, auf dem du %s beendet hast, und öffnet die gemerkten Reiter wieder; der Zustand bleibt',
+     'Marke „wieder offen“ entfernen',
+     'Klick: in der Vorschau an diesem Kommentar öffnen',
+     'Der Branch %s ist nicht mehr da (gemergt oder gelöscht). Neu von der Basis anlegen?',
+     'Wieder geöffnete Issues hervorheben (Marke, Grund, Weiterarbeiten)',
+     'Prüfzustände (mit Komma getrennt)',
+     'Prüfzustände'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1703,7 +1723,22 @@ const
      'transition “%s” → %s',
      'Atlas: %s stays “%s”: allowed from here are %s.',
      'Atlas: %s stays “%s”: no transition is allowed from here.',
-     '“%s”'));
+     '“%s”',
+     '%s is open again: “%s” (%s)',
+     '%s is open again · state → %s',
+     'reopened',
+     '%s, %s: “%s”',
+     '%s → %s, no new comment',
+     'Continue on %s',
+     'Continue',
+     'Mark as read',
+     'Switches to the branch you finished %s on and reopens the remembered tabs; the state stays',
+     'Remove the “reopened” mark',
+     'Click: open the preview at this comment',
+     'The branch %s no longer exists (merged or deleted). Create it again from the base?',
+     'Highlight reopened issues (mark, reason, continue)',
+     'Review states (comma separated)',
+     'Review states'));
 
 { TAtlasTrackerStrings }
 

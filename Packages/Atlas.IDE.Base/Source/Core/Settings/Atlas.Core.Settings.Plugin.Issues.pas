@@ -129,6 +129,9 @@ type
     /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
     /// "\n" = neue Zeile.</summary>
     IssuesEndComment: string;
+    /// <summary>Prüfzustände (#2126, #2127, issues.reviewStates), mit Komma getrennt: Ein Issue darin wartet auf
+    /// die Prüfung; zurück in einen offenen Zustand gilt es als wieder offen. '' = keine.</summary>
+    IssuesReviewStates: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -216,6 +219,10 @@ type
     /// <summary>Beobachtete Issues (#1271, issues.notify.scope): IssuesNotifyAssigned, IssuesNotifyAssignedOrCreated
     /// (Vorgabe) oder IssuesNotifyWatched.</summary>
     IssuesNotifyScope: string;
+    /// <summary>Wieder geöffnete Issues hervorheben (#2127, issues.reopened): Marke „wieder offen“ in „Meine
+    /// Issues“ mit dem neuesten Kommentar und „Weiterarbeiten“ auf dem alten Branch, Grund in der Meldung; aus =
+    /// wie bisher.</summary>
+    IssuesReopened: Boolean;
     /// <summary>„An Issue anhängen …“ (#1276, issues.attach): Bildschirmfoto, Formular, Log, Debug-Notiz und
     /// Exception-Verlauf an ein Issue hängen; aus = der Befehl fehlt überall.</summary>
     IssuesAttach: Boolean;
@@ -329,6 +336,7 @@ begin
   Result.IssuesAssignOnStart := False;
   Result.IssuesStartComment := '';
   Result.IssuesEndStates := '';
+  Result.IssuesReviewStates := '';
   Result.IssuesEndComment := cDefaultIssuesEndComment;
 end;
 
@@ -371,6 +379,7 @@ begin
   IssuesStartState := NormalizedIssuesText(IssuesStartState, True);
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
+  IssuesReviewStates := NormalizedIssuesTemplate(IssuesReviewStates);
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
 end;
 
@@ -400,6 +409,7 @@ begin
   AIo.Text('IssuesStartComment', IssuesStartComment);
   AIo.Text('IssuesEndStates', IssuesEndStates);
   AIo.Text('IssuesEndComment', IssuesEndComment);
+  AIo.Text('IssuesReviewStates', IssuesReviewStates);
 end;
 
 { TAtlasPluginIssueWorkSettings }
@@ -432,6 +442,7 @@ begin
   Result.IssuesNotify := False;
   Result.IssuesNotifyIntervalMinutes := cDefaultIssuesNotifyMinutes;
   Result.IssuesNotifyScope := cIssuesNotifyAssignedOrCreated;
+  Result.IssuesReopened := True;
   Result.IssuesAttach := True;
   Result.IssuesAttachLogFiles := '';
   Result.IssuesAttachMaxImageWidth := cDefaultAttachImageWidth;
@@ -485,6 +496,7 @@ begin
   AIo.Flag('IssuesNotify', IssuesNotify);
   AIo.Number('IssuesNotifyIntervalMinutes', IssuesNotifyIntervalMinutes);
   AIo.Text('IssuesNotifyScope', IssuesNotifyScope);
+  AIo.Flag('IssuesReopened', IssuesReopened);
   AIo.Flag('IssuesAttach', IssuesAttach);
   AIo.Text('IssuesAttachLogFiles', IssuesAttachLogFiles);
   AIo.Number('IssuesAttachMaxImageWidth', IssuesAttachMaxImageWidth);
