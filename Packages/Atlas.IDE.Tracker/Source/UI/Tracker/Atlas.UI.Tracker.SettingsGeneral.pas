@@ -40,6 +40,9 @@ type
     BoardConfirmMove: TCheckBox;
     BoardOnlyMine: TCheckBox;
     IdeColors: TCheckBox;
+    FlowMap: TCheckBox;
+    FlowMapDays: TEdit;
+    FlowMapStuckDays: TEdit;
     SprintBurndown: TCheckBox;
     SprintCompare: TCheckBox;
     PreviewDevelopment: TCheckBox;
@@ -192,6 +195,10 @@ begin
   FView.BoardOnlyMine := Check('issues.board.onlyMine', TAtlasTrackerTextId.SettingsIssuesBoardOnlyMine);
   // Farben des IDE-Themas für Issue-Fenster und Board (#2131).
   FView.IdeColors := Check('issues.ideColors', TAtlasTrackerTextId.SettingsIssuesIdeColors);
+  // Ablauf-Karte (#2125): Hauptschalter, Zeitraum und Grenze „liegt lange“ darunter.
+  FView.FlowMap := Check('issues.flowMap', TAtlasTrackerTextId.SettingsIssuesFlowMap);
+  FView.FlowMapDays := Number('issues.flowMap.days', TAtlasTrackerTextId.SettingsIssuesFlowMapDays);
+  FView.FlowMapStuckDays := Number('issues.flowMap.stuckDays', TAtlasTrackerTextId.SettingsIssuesFlowMapStuckDays);
   // Sprint-Kachel (#1277): Burndown-Linie, Vergleich mit dem Vorsprint und Velocity.
   FView.SprintBurndown := Check('issues.sprint.burndown', TAtlasTrackerTextId.SettingsIssuesSprintBurndown);
   FView.SprintCompare := Check('issues.sprint.compare', TAtlasTrackerTextId.SettingsIssuesSprintCompare);

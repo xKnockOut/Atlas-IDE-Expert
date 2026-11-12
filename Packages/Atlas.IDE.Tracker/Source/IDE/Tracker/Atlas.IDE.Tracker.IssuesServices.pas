@@ -23,6 +23,7 @@ uses
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.IssueState,
   Atlas.IDE.Tracker.Board,
+  Atlas.IDE.Tracker.FlowMap,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.CommentAssist,
@@ -37,6 +38,7 @@ type
     FContext: TAtlasIdeIssuesContext;
     FPreview: TAtlasIdeIssuePreview;
     FBoard: TAtlasIdeBoard;
+    FFlowMap: TAtlasIdeFlowMap;
     FSprint: TAtlasIdeSprint;
     FSync: TAtlasIdeTrackerSync;
     FTime: TAtlasIdeTrackerTime;
@@ -81,6 +83,8 @@ type
     property Preview: TAtlasIdeIssuePreview read FPreview;
     /// <summary>Fenster „Atlas-Board“ (#1272; nil vor Start bzw. nach Stop).</summary>
     property Board: TAtlasIdeBoard read FBoard;
+    /// <summary>Fenster „Atlas-Ablauf“ (#2125; nil vor Start bzw. nach Stop).</summary>
+    property FlowMap: TAtlasIdeFlowMap read FFlowMap;
     /// <summary>Sprint-Kachel (#1277; nil vor Start bzw. nach Stop).</summary>
     property Sprint: TAtlasIdeSprint read FSprint;
     /// <summary>Tracker nachführen (#1266; nil vor Start bzw. nach Stop).</summary>
@@ -713,6 +717,42 @@ begin
     end;
 end;
 
+function FlowMapHooks(const ALink: TAtlasIssuesLink): TAtlasFlowMapHooks;
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  Result := Default(TAtlasFlowMapHooks);
+  Result.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := mLink.Provider(AName);
+    end;
+  Result.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    begin
+      Result := mLink.Transport(AProvider, ATarget);
+    end;
+  Result.Target :=
+    function: TAtlasTrackerTarget
+    begin
+      Result := mLink.ActiveTarget;
+    end;
+  Result.StateField :=
+    function(ATarget: TAtlasTrackerTarget): string
+    begin
+      Result := TAtlasIdeTrackerSync.Options(ATarget).StateField;
+    end;
+  Result.Preview :=
+    procedure(ATarget: TAtlasTrackerTarget; AKey: string)
+    begin
+      if mLink.PreviewActive then
+      begin
+        mLink.Show(ATarget, AKey);
+      end;
+    end;
+end;
+
 function SprintHooks(const ALink: TAtlasIssuesLink): TAtlasSprintHooks;
 var
   mLink: TAtlasIssuesLink;
@@ -1048,6 +1088,12 @@ begin
     DropRef(AServices, AServices.FBoard);
   end;
   AServices.FBoard := nil;
+  if AServices.FFlowMap <> nil then
+  begin
+    AServices.FFlowMap.Stop;
+    DropRef(AServices, AServices.FFlowMap);
+  end;
+  AServices.FFlowMap := nil;
   if AServices.FSprint <> nil then
   begin
     AServices.FSprint.Stop;
@@ -1127,6 +1173,9 @@ begin
   FBoard := TAtlasIdeBoard.Create(BoardHooks(mLink), mFolder);
   Keep(FBoard);
   FBoard.Start;
+  FFlowMap := TAtlasIdeFlowMap.Create(FlowMapHooks(mLink), mFolder);
+  Keep(FFlowMap);
+  FFlowMap.Start;
   FSprint := TAtlasIdeSprint.Create(SprintHooks(mLink), mFolder);
   Keep(FSprint);
   FSprint.Start;
@@ -1158,6 +1207,11 @@ begin
   if FBoard <> nil then
   begin
     FBoard.UpdateSettings;
+  end;
+  // issues.flowMap aus: Fenster „Atlas-Ablauf“ zu.
+  if FFlowMap <> nil then
+  begin
+    FFlowMap.UpdateSettings;
   end;
   // welcomePage.sprint, issues.sprint.*, anderes Projekt.
   if FSprint <> nil then

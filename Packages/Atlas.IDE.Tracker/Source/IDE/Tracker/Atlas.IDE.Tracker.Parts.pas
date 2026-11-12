@@ -563,6 +563,19 @@ begin
   Result := TAtlasIdeSettings.Current.IssuesBoard and SessionAvailable;
 end;
 
+procedure ShowFlowMap;
+begin
+  if SessionAvailable and (GIssues.Services.FlowMap <> nil) then
+  begin
+    GIssues.Services.FlowMap.Show;
+  end;
+end;
+
+function FlowMapVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.IssuesFlowMap and SessionAvailable;
+end;
+
 procedure AttachPrompt;
 begin
   if SessionAvailable then
@@ -618,6 +631,9 @@ begin
       TimeVisible),
     // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
     Command('Atlas.Board', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardCommand), ShowBoard, BoardVisible),
+    // Atlas-Ablauf (#2125): genutzte Übergänge, Verweildauer, liegen gebliebene Issues; sichtbar mit issues.flowMap.
+    Command('Atlas.FlowMap', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowCommand), ShowFlowMap,
+      FlowMapVisible),
     // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
     Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
       AttachVisible),
@@ -657,14 +673,18 @@ end;
 
 class function TAtlasTrackerParts.MenuEntries: TArray<TAtlasMenuEntry>;
 var
-  mBoard: TAtlasMenuEntry;
+  mBoard, mFlow: TAtlasMenuEntry;
 begin
   // Ansicht › Atlas › Board (#1272) mit dem bisherigen Text.
   mBoard := MenuEntry('Atlas.Board', TAtlasMenuPlace.ViewMenu);
   mBoard.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardViewMenu);
+  // Ansicht › Atlas › Ablauf (#2125).
+  mFlow := MenuEntry('Atlas.FlowMap', TAtlasMenuPlace.ViewMenu);
+  mFlow.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowViewMenu);
   Result := [
     MenuEntry('Atlas.IssueAttach', TAtlasMenuPlace.AtlasMenu),
     mBoard,
+    mFlow,
     // Issue anlegen (#1268): aus Auswahl bzw. TODO an der Schreibmarke, nur mit issues.create.
     MenuEntry('Atlas.CreateIssue', TAtlasMenuPlace.EditorContext)];
 end;

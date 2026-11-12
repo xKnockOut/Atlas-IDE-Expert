@@ -205,7 +205,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.Designer` | Designer bar | `designer.enabled` |
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, branch when starting an issue, working copies, project state, line history | `vcs.enabled` |
 | `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients | `assistants.enabled` |
-| `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
+| `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, flow map, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
 | `Atlas.IDE.Help` | F1 help: rule, setting and window pages of the documentation | `help.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
 
