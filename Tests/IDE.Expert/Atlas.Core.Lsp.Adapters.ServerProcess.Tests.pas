@@ -153,7 +153,7 @@ begin
     try
       Session.Initialize;
       Assert.IsTrue(Server.Running);
-      Assert.AreEqual('FWert: Integer;', Session.Hover(FileName, UnitText, 10, 3));
+      Assert.AreEqual('FWert: Integer;', Session.Hover(FileName, UnitText, 10, 3, 0));
       Assert.IsTrue(Session.Definition(FileName, UnitText, 10, 3, Location));
       Assert.AreEqual(4, Location.Line);
       Assert.IsTrue(SameText(FileName, Location.FileName), Location.FileName);

@@ -632,6 +632,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Cache` | `IDE/Outline/Atlas.IDE.Outline.Cache.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbMenu` | `IDE/Outline/Atlas.IDE.Outline.CrumbMenu.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.CrumbLists` | `IDE/Outline/Atlas.IDE.Outline.CrumbLists.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.NavigationOption` | `IDE/Outline/Atlas.IDE.Outline.NavigationOption.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.SectionEdit` | `IDE/Outline/Atlas.IDE.Outline.SectionEdit.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Service` | `IDE/Outline/Atlas.IDE.Outline.Service.pas` | Ordner `IDE/Outline` |
@@ -653,6 +654,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Results.Peek` | `IDE/Results/Atlas.IDE.Results.Peek.pas` | Ordner `IDE/Results` |
 | `Atlas.IDE.Settings.Experimental` | `IDE/Settings/Atlas.IDE.Settings.Experimental.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Options` | `IDE/Settings/Atlas.IDE.Settings.Options.pas` | Ordner `IDE/Settings` |
+| `Atlas.IDE.Settings.OptionsDialog` | `IDE/Settings/Atlas.IDE.Settings.OptionsDialog.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.PageOptions` | `IDE/Settings/Atlas.IDE.Settings.PageOptions.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.PaletteSearch` | `IDE/Settings/Atlas.IDE.Settings.PaletteSearch.pas` | Einstellungen mit „@“ in der Befehlspalette, #1884 |
 | `Atlas.IDE.Settings.Project` | `IDE/Settings/Atlas.IDE.Settings.Project.pas` | Ordner `IDE/Settings` |
@@ -849,6 +851,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.VersionControl.Commands` | `IDE/VersionControl/Atlas.IDE.VersionControl.Commands.pas` | Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905) |
 | `Atlas.IDE.VersionControl.LineChanges` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChanges.pas` | Änderungsmarken und Zeilenhistorie (#507, #1905) |
 | `Atlas.IDE.VersionControl.LineChangesData` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesData.pas` | Daten der Änderungsmarken (#507, #1905) |
+| `Atlas.IDE.VersionControl.LineChangesPaint` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesPaint.pas` | Zeichnen und Hilfen der Änderungsmarken (#507) |
 | `Atlas.IDE.VersionControl.Service` | `IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.WorkingCopies` | `IDE/VersionControl/Atlas.IDE.VersionControl.WorkingCopies.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.UI.VersionControl.SettingsSection` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsSection.pas` | Ordner `UI/VersionControl` |
@@ -1391,6 +1394,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.SettingsSection` | `UI/Tests/Atlas.UI.Tests.SettingsSection.pas` | Ordner `UI/Tests`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |

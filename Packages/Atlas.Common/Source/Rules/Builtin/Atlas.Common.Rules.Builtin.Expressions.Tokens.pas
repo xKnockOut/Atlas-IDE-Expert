@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Expressions.Tokens;
 
-// Hilfen der Ausdrucksregeln (Atlas.Common.Rules.Builtin.Expressions) über der Tokenliste: Operandenende, einfacher Bezeichner, Lage im Routinenrumpf, Länge eines Literals
-// und die Form "not X op Y" für operator-precedence.
+// Hilfen der Ausdrucksregeln (Atlas.Common.Rules.Builtin.Expressions) über der Tokenliste: Operandenende, einfacher
+// Bezeichner, Lage im Routinenrumpf, Länge eines Literals und die Form "not X op Y" für operator-precedence.
 
 interface
 

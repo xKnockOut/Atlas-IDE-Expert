@@ -340,7 +340,8 @@ var
     mPending: TStack<TSyntaxPostOrderEntry>;
     mValues: TDictionary<TSyntaxNode, Boolean>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Teile zuerst; lange else-if-Ketten ergeben sehr tiefe Bäume.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Teile zuerst; lange else-if-Ketten ergeben
+    // sehr tiefe Bäume.
     Result := False;
     if ANode = nil then
     begin
@@ -380,7 +381,8 @@ var
     mNode, mParent: TSyntaxNode;
     mPending, mParents: TStack<TSyntaxNode>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der Wurzel).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der
+    // Wurzel).
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     mParents := TStack<TSyntaxNode>.Create;
@@ -655,8 +657,8 @@ var
     mNode, mParent: TSyntaxNode;
     mPending, mParents: TStack<TSyntaxNode>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der Wurzel). Eine Nennung
-    // der Datenmenge als Empfänger beendet nur ihren Zweig, wie in der Rekursion.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der
+    // Wurzel). Eine Nennung der Datenmenge als Empfänger beendet nur ihren Zweig, wie in der Rekursion.
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     mParents := TStack<TSyntaxNode>.Create;
@@ -1028,7 +1030,8 @@ var
     mPending: TStack<TSyntaxNode>;
     mPendingInside: TStack<Boolean>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in einem except-Teil liegt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in einem except-Teil
+    // liegt.
     Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     mPendingInside := TStack<Boolean>.Create;

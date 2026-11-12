@@ -47,7 +47,8 @@ type
   /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
   /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
   /// hineinspringen (#836) nur in der Übersicht. „Datei jetzt prüfen“ (#1744). Neue Funktionen
-  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716). Neue Zeile am Ende des Abschnitts (#1768).</summary>
+  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716). Neue Zeile am Ende
+  /// des Abschnitts (#1768).</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
@@ -91,10 +92,6 @@ type
     /// <summary>Zweiter Teil von AllFromSettings ab dem Navigationsverlauf; AShared ist der gemeinsame Vorrang
     /// der Editorbefehle.</summary>
     class function MoreFromSettings(const ASettings: TAtlasPluginSettings;
-      AShared: Boolean): TArray<TAtlasKeyEntry>; static;
-    /// <summary>Dritter Teil von AllFromSettings ab „Komponenten suchen“ (Designer, Datei prüfen); AShared wie
-    /// bei MoreFromSettings.</summary>
-    class function RestFromSettings(const ASettings: TAtlasPluginSettings;
       AShared: Boolean): TArray<TAtlasKeyEntry>; static;
     /// <summary>Tasten und Vorrang zurück in die Einstellungen; Disabled und die feste Taste Strg+F12 nicht (dafür
     /// gibt es eigene Schalter).</summary>
@@ -266,6 +263,38 @@ begin
   Result := Result + MoreFromSettings(ASettings, mShared);
 end;
 
+/// <summary>Letzter Teil von AllFromSettings: Designer, Prüfung und Abschnitt; AShared wie dort.</summary>
+function DesignerKeys(const ASettings: TAtlasPluginSettings; AShared: Boolean): TArray<TAtlasKeyEntry>;
+begin
+  Result := [
+    // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
+    // Willkommensseite).
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True,
+      ASettings.EditorDesignerBar),
+    // Datei jetzt prüfen (#1744): in jedem Modus von problems.update; ohne Prüfregeln ist das Kürzel frei.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.CheckFile, Word(ASettings.CheckFileKey), AShared, ASettings.Problems),
+    // Neue Zeile am Ende des Abschnitts (#1768): frei belegbar, ohne Vorgabe.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.SectionAppend, Word(ASettings.SectionAppendKey), AShared,
+      ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend),
+    // Auswahl speichern (#739): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang (wie DesignerSearch).
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerSelectionSetsSave, Word(ASettings.DesignerSelectionSetsSaveKey),
+      True, ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets),
+    // Im Designer zeigen (#511): Editorbefehl; Umschalt+F12 ist in der IDE „Formulare anzeigen“.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerShowComponent, Word(ASettings.DesignerShowInDesignerKey), AShared,
+      ASettings.DesignerShowInDesigner),
+    // Text im Designer bearbeiten (#748): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerInlineCaption, Word(ASettings.DesignerInlineCaptionKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerInlineCaption),
+    // Auswahlleiste und Lupe im Designer: nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerSelectionBar, Word(ASettings.DesignerSelectionBarKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerSelectionBar),
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerMagnifier, Word(ASettings.DesignerMagnifierKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerMagnifier),
+    // Verwendungen im Code (#750): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerUsages, Word(ASettings.DesignerUsagesKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerUsages)];
+end;
+
 class function TAtlasKeyEntry.MoreFromSettings(const ASettings: TAtlasPluginSettings;
   AShared: Boolean): TArray<TAtlasKeyEntry>;
 begin
@@ -343,38 +372,7 @@ begin
     // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
     Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), AShared,
       ASettings.WelcomePage and ASettings.IssuesCreate)];
-  Result := Result + RestFromSettings(ASettings, AShared);
-end;
-
-class function TAtlasKeyEntry.RestFromSettings(const ASettings: TAtlasPluginSettings;
-  AShared: Boolean): TArray<TAtlasKeyEntry>;
-begin
-  Result := [
-    // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
-    // Willkommensseite).
-    Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar),
-    // Datei jetzt prüfen (#1744): in jedem Modus von problems.update; ohne Prüfregeln ist das Kürzel frei.
-    Create(TAtlasKeyFunction.CheckFile, Word(ASettings.CheckFileKey), AShared, ASettings.Problems),
-    // Neue Zeile am Ende des Abschnitts (#1768): frei belegbar, ohne Vorgabe.
-    Create(TAtlasKeyFunction.SectionAppend, Word(ASettings.SectionAppendKey), AShared,
-      ASettings.Breadcrumbs and ASettings.BreadcrumbsSectionAppend),
-    // Auswahl speichern (#739): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang (wie DesignerSearch).
-    Create(TAtlasKeyFunction.DesignerSelectionSetsSave, Word(ASettings.DesignerSelectionSetsSaveKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets),
-    // Im Designer zeigen (#511): Editorbefehl; Umschalt+F12 ist in der IDE „Formulare anzeigen“.
-    Create(TAtlasKeyFunction.DesignerShowComponent, Word(ASettings.DesignerShowInDesignerKey), AShared,
-      ASettings.DesignerShowInDesigner),
-    // Text im Designer bearbeiten (#748): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
-    Create(TAtlasKeyFunction.DesignerInlineCaption, Word(ASettings.DesignerInlineCaptionKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerInlineCaption),
-    // Auswahlleiste und Lupe im Designer: nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
-    Create(TAtlasKeyFunction.DesignerSelectionBar, Word(ASettings.DesignerSelectionBarKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerSelectionBar),
-    Create(TAtlasKeyFunction.DesignerMagnifier, Word(ASettings.DesignerMagnifierKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerMagnifier),
-    // Verwendungen im Code (#750): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
-    Create(TAtlasKeyFunction.DesignerUsages, Word(ASettings.DesignerUsagesKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerUsages)];
+  Result := Result + DesignerKeys(ASettings, AShared);
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher

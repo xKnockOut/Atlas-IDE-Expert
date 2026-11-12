@@ -800,7 +800,8 @@ begin
   AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerServer, cVcsServerServerColumn);
   AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerState, cVcsServerStateColumn);
   mPanel := AddPanel(32);
-  FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasVcsTextId.SettingsVcsServerCheck, VcsServerCheckClick);
+  FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasVcsTextId.SettingsVcsServerCheck,
+    VcsServerCheckClick);
   FVcsServerCheckAll := AddRowButton(mPanel, cVcsCheckWidth + cVcsButtonGap, cVcsCheckAllWidth,
     TAtlasVcsTextId.SettingsVcsServerCheckAll, VcsServerCheckAllClick);
   FVcsServerLogin := AddRowButton(mPanel, cVcsCheckWidth + cVcsCheckAllWidth + cVcsButtonGap + cVcsButtonGap,

@@ -267,25 +267,25 @@ begin
   mScope := ScopeOf(ASettings);
   Add(FMenu.Items, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectSameClass,
     [AItems[AReference].Classes[0]]), AItems, TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameClass, AReference,
-    mScope));
+    mScope, ''));
   if ASettings.DesignerSelectDescendants then
   begin
     Add(FMenu.Items, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSelectDescendants,
       [TAtlasSimilar.CommonBase(AItems, AReference)]), AItems,
-      TAtlasSimilarQuery.Create(TAtlasSimilarKind.ClassAndDescendants, AReference, mScope));
+      TAtlasSimilarQuery.Create(TAtlasSimilarKind.ClassAndDescendants, AReference, mScope, ''));
   end;
   Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectSameParent), AItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameParent, AReference, mScope));
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.SameParent, AReference, mScope, ''));
   Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectChildren), AItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Children, AReference, mScope));
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Children, AReference, mScope, ''));
   Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectAllChildren), AItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.AllChildren, AReference, mScope));
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.AllChildren, AReference, mScope, ''));
   FMenu.Items.Add(NewLine);
   AddValues(AItems, AReference, mScope);
   AddHandlers(AItems, AReference, mScope);
   FMenu.Items.Add(NewLine);
   Add(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSelectInvert), AItems,
-    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Invert, AReference, mScope));
+    TAtlasSimilarQuery.Create(TAtlasSimilarKind.Invert, AReference, mScope, ''));
 end;
 
 procedure TAtlasIdeDesignerSelect.AddNote;

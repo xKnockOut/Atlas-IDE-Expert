@@ -100,61 +100,82 @@ begin
   Inc(AY, Result.Height + MulDiv(4, ADialog.CurrentPPI, 96));
 end;
 
-/// <summary>Felder Ausgabeartefakt, Feature, Rolle und Sache ab AY.</summary>
-procedure BuildFields(ADialog: TAtlasRoleUnitDialog; const ALayout: TDialogLayout; const APrefixes: TArray<string>;
-  var AY: Integer; out APrefix: TComboBox; out AFeature: TEdit; out ARole: TComboBox; out AThing: TEdit);
+type
+  /// <summary>Eingabefelder des Dialogs.</summary>
+  TRoleUnitFields = record
+    Prefix: TComboBox;
+    Feature: TEdit;
+    Role: TComboBox;
+    Thing: TEdit;
+  end;
+
+/// <summary>AControl in der Zeile AY mit Beschriftung AText; AY rückt um die Höhe und ASpacing weiter.</summary>
+procedure PlaceRow(ADialog: TForm; const ALayout: TDialogLayout; AControl: TWinControl; AText: TAtlasAnalysisTextId;
+  ASpacing: Integer; var AY: Integer);
+begin
+  AControl.Parent := ADialog;
+  AControl.SetBounds(ALayout.Gap + ALayout.LabelWidth, AY, ALayout.EditWidth, AControl.Height);
+  AddLabel(ADialog, ALayout, AText, AControl);
+  Inc(AY, AControl.Height + ASpacing);
+end;
+
+/// <summary>Auswahl der Rollen; die Wurzel heißt im Dialog anders als in der Architektur.</summary>
+procedure FillRoles(ARole: TComboBox);
 var
-  mPrefix: string;
   mRole: TAtlasArchitectureRole;
 begin
-  APrefix := TComboBox.Create(ADialog);
-  APrefix.Parent := ADialog;
-  APrefix.SetBounds(ALayout.Gap + ALayout.LabelWidth, AY, ALayout.EditWidth, APrefix.Height);
-  for mPrefix in APrefixes do
-  begin
-    APrefix.Items.Add(mPrefix);
-  end;
-  AddLabel(ADialog, ALayout, TAtlasAnalysisTextId.RoleUnitPrefix, APrefix);
-  Inc(AY, APrefix.Height + ALayout.Spacing);
-  AFeature := TEdit.Create(ADialog);
-  AFeature.Parent := ADialog;
-  AFeature.SetBounds(ALayout.Gap + ALayout.LabelWidth, AY, ALayout.EditWidth, AFeature.Height);
-  AddLabel(ADialog, ALayout, TAtlasAnalysisTextId.RoleUnitFeature, AFeature);
-  Inc(AY, AFeature.Height + ALayout.Spacing);
-  ARole := TComboBox.Create(ADialog);
-  ARole.Parent := ADialog;
-  ARole.Style := csDropDownList;
-  ARole.SetBounds(ALayout.Gap + ALayout.LabelWidth, AY, ALayout.EditWidth, ARole.Height);
-  for mRole := Low(TAtlasArchitectureRole) to High(TAtlasArchitectureRole) do
-  begin
-    if mRole = TAtlasArchitectureRole.Root then
+  ARole.Items.BeginUpdate;
+  try
+    for mRole := Low(TAtlasArchitectureRole) to High(TAtlasArchitectureRole) do
     begin
-      ARole.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitRoot));
-    end
-    else
-    begin
-      ARole.Items.Add(TAtlasRoleUnit.RoleName(mRole));
+      if mRole = TAtlasArchitectureRole.Root then
+      begin
+        ARole.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitRoot));
+      end
+      else
+      begin
+        ARole.Items.Add(TAtlasRoleUnit.RoleName(mRole));
+      end;
     end;
+  finally
+    ARole.Items.EndUpdate;
   end;
-  AddLabel(ADialog, ALayout, TAtlasAnalysisTextId.RoleUnitRole, ARole);
-  Inc(AY, ARole.Height + ALayout.Spacing);
-  AThing := TEdit.Create(ADialog);
-  AThing.Parent := ADialog;
-  AThing.SetBounds(ALayout.Gap + ALayout.LabelWidth, AY, ALayout.EditWidth, AThing.Height);
-  AddLabel(ADialog, ALayout, TAtlasAnalysisTextId.RoleUnitThing, AThing);
-  Inc(AY, AThing.Height + ALayout.Spacing * 2);
+end;
+
+/// <summary>Felder Ausgabeartefakt, Feature, Rolle und Sache ab AY.</summary>
+function BuildFields(ADialog: TAtlasRoleUnitDialog; const ALayout: TDialogLayout; const APrefixes: TArray<string>;
+  var AY: Integer): TRoleUnitFields;
+begin
+  // Einträge erst mit Parent: die Liste einer ComboBox braucht das Fenster.
+  Result.Prefix := TComboBox.Create(ADialog);
+  PlaceRow(ADialog, ALayout, Result.Prefix, TAtlasAnalysisTextId.RoleUnitPrefix, ALayout.Spacing, AY);
+  Result.Prefix.Items.AddStrings(APrefixes);
+  Result.Feature := TEdit.Create(ADialog);
+  PlaceRow(ADialog, ALayout, Result.Feature, TAtlasAnalysisTextId.RoleUnitFeature, ALayout.Spacing, AY);
+  Result.Role := TComboBox.Create(ADialog);
+  Result.Role.Parent := ADialog;
+  Result.Role.Style := csDropDownList;
+  PlaceRow(ADialog, ALayout, Result.Role, TAtlasAnalysisTextId.RoleUnitRole, ALayout.Spacing, AY);
+  FillRoles(Result.Role);
+  Result.Thing := TEdit.Create(ADialog);
+  PlaceRow(ADialog, ALayout, Result.Thing, TAtlasAnalysisTextId.RoleUnitThing, ALayout.Spacing * 2, AY);
 end;
 
 constructor TAtlasRoleUnitDialog.CreateDialog(AOwner: TComponent; const APrefixes: TArray<string>);
 var
   mLayout: TDialogLayout;
   mY: Integer;
+  mFields: TRoleUnitFields;
 begin
   inherited CreateDialog(AOwner, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitCommand), 0);
   mLayout := LayoutOf(Self);
   ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
   mY := mLayout.Gap;
-  BuildFields(Self, mLayout, APrefixes, mY, FPrefix, FFeature, FRole, FThing);
+  mFields := BuildFields(Self, mLayout, APrefixes, mY);
+  FPrefix := mFields.Prefix;
+  FFeature := mFields.Feature;
+  FRole := mFields.Role;
+  FThing := mFields.Thing;
   FPreview := NewInfo(Self, mLayout, mY);
   FPreview.Font.Style := [fsBold];
   FOwn := NewInfo(Self, mLayout, mY);

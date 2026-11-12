@@ -58,6 +58,10 @@ uses
   System.Generics.Collections,
   Atlas.Text.Chars;
 
+const
+  /// <summary>Vorsilbe eines Ereignisnamens.</summary>
+  cEventPrefix = 'On';
+
 /// <summary>Leerzeichen ab APos (1-basiert) überspringen.</summary>
 function SkipBlanks(const ALine: string; APos: Integer): Integer;
 begin
@@ -140,9 +144,6 @@ begin
     Result := mStop;
   end;
 end;
-
-const
-  cEventPrefix = 'On';
 
 /// <summary>„OnClick“, „OnChange“: Name eines Ereignisses.</summary>
 function IsEventName(const AName: string): Boolean;

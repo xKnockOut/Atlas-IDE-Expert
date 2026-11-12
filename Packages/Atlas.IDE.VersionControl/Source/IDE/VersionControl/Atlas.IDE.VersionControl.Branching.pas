@@ -230,7 +230,8 @@ begin
       if not TAtlasIdeVcsCore.Run(
         procedure
         begin
-          TAtlasVcsBranchPlan.InspectServer(TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cTimeoutMs)), mFacts);
+          TAtlasVcsBranchPlan.InspectServer(
+            TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cTimeoutMs)), mFacts);
         end,
         procedure
         begin
@@ -327,7 +328,8 @@ var
   mAnswer: Integer;
 begin
   AStash := False;
-  mDialog := CreateMessageDialog(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedAsk, [AChanges, AName, AName]),
+  mDialog := CreateMessageDialog(
+    TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedAsk, [AChanges, AName, AName]),
     mtConfirmation, [mbYes, mbNo, mbCancel], mbYes);
   try
     // Eigene Beschriftungen statt Ja/Nein: mitnehmen, beiseitelegen, abbrechen.

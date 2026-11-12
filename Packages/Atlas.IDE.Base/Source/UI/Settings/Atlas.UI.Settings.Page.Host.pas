@@ -114,8 +114,6 @@ type
     function BindKey(const AName: string; AControl: TEdit): TEdit;
     procedure BindValues(ABindings: TAtlasSettingsBindings; const AName: string; AControl: TControl;
       AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
-    /// <summary>Seite der Einstellung AName (auch eines Moduls); ohne Element (Modul fehlt) nichts.</summary>
-    procedure SelectSettingPage(const AName: string);
     function Catalog: TAtlasSettingsCatalog;
     /// <summary>Gebundenes Element der Einstellung AName (Registry-Name); nil ohne (Modul fehlt).</summary>
     function ControlOfSetting(const AName: string): TControl;
@@ -383,18 +381,6 @@ begin
     end;
   end;
   Result := nil;
-end;
-
-procedure TAtlasSettingsPageHost.SelectSettingPage(const AName: string);
-var
-  mControl: TControl;
-begin
-  // Die Einstellungen eines Moduls baut das Modul (#1456); fehlt es, gibt es kein Ziel.
-  mControl := ControlOfSetting(AName);
-  if mControl <> nil then
-  begin
-    SelectPage(PageOf(mControl));
-  end;
 end;
 
 function TAtlasSettingsPageHost.Catalog: TAtlasSettingsCatalog;

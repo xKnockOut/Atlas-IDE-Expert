@@ -306,8 +306,8 @@ var
     Result := False;
   end;
 
-  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (tiefe Bäume sprengen den Stapel nicht): von den
-  // unerreichbaren Anweisungen aufwärts statt rekursiv durch ANode.
+  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (tiefe Bäume sprengen den Stapel
+  // nicht): von den unerreichbaren Anweisungen aufwärts statt rekursiv durch ANode.
   function HasDead(ANode: TSyntaxNode): Boolean;
   var
     mItem, mCurrent: TSyntaxNode;

@@ -316,7 +316,8 @@ begin
   mAmount := mOptions.Amount;
   if mOptions.Snap then
   begin
-    mAmount := Max(TAtlasInsertSpace.Snap(mAmount, TAtlasDesignerAccess.GridSize(mOptions.Axis = TAtlasSpaceAxis.Rows)), 1);
+    mAmount := Max(TAtlasInsertSpace.Snap(mAmount,
+      TAtlasDesignerAccess.GridSize(mOptions.Axis = TAtlasSpaceAxis.Rows)), 1);
   end;
   if ARemove then
   begin

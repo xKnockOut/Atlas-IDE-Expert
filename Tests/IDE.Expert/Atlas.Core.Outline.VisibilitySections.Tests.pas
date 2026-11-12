@@ -321,7 +321,8 @@ var
   mCrumbs: TAtlasCrumbs;
 begin
   mList := Nodes;
-  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, 7, 6, '', False, [TAtlasCrumbPart.Visibility]);
+  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines,
+    TAtlasCrumbRequest.Create(7, 6, '', False, [TAtlasCrumbPart.Visibility]));
   Assert.AreEqual('TKunde › strict private › FName', Joined(mCrumbs));
   Assert.AreEqual('kw', mCrumbs[1].Badge.Code);
   Assert.AreEqual(-1, mCrumbs[1].Node);
@@ -333,25 +334,30 @@ begin
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[1]));
   Assert.AreEqual('FName', NamesOf(mList, mCrumbs[1].Children));
   // Leerzeile: der Abschnitt ist das letzte Glied.
-  Assert.AreEqual('TKunde › strict private', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 9, 0, '', False, [TAtlasCrumbPart.Visibility])));
+  Assert.AreEqual('TKunde › strict private', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+    TAtlasCrumbRequest.Create(9, 0, '', False, [TAtlasCrumbPart.Visibility]))));
   // Verschachtelt: Es zählt der innerste Typ.
   Assert.AreEqual('TKunde › TInnen › private › FWert',
-    Joined(TAtlasBreadcrumbs.Path(mList, Lines, 16, 9, '', False, [TAtlasCrumbPart.Visibility])));
+    Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+      TAtlasCrumbRequest.Create(16, 9, '', False, [TAtlasCrumbPart.Visibility]))));
   // Implizit: kursiv, ohne aktuellen Abschnitt.
-  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, 5, 6, '', False, [TAtlasCrumbPart.Visibility]);
+  mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines,
+    TAtlasCrumbRequest.Create(5, 6, '', False, [TAtlasCrumbPart.Visibility]));
   Assert.AreEqual('TKunde › published › btnOk', Joined(mCrumbs));
   Assert.IsTrue(mCrumbs[1].Implicit);
   Assert.AreEqual(-1, mCrumbs[1].Current);
   // Interface und Methodenrumpf: kein Abschnittsglied.
-  Assert.AreEqual('IDienst › Rufe', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 30, 6, '', False, [TAtlasCrumbPart.Visibility])));
-  Assert.AreEqual('TKunde › Speichere', Joined(TAtlasBreadcrumbs.Path(mList, Lines, 48, 0, '', False, [TAtlasCrumbPart.Visibility])));
+  Assert.AreEqual('IDienst › Rufe', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+    TAtlasCrumbRequest.Create(30, 6, '', False, [TAtlasCrumbPart.Visibility]))));
+  Assert.AreEqual('TKunde › Speichere', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+    TAtlasCrumbRequest.Create(48, 0, '', False, [TAtlasCrumbPart.Visibility]))));
 end;
 
 procedure TAtlasVisibilitySectionsTests.PathWithoutSettingIsUnchanged;
 var
   mCrumbs: TAtlasCrumbs;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 7, 6, '', False, []);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, TAtlasCrumbRequest.Create(7, 6, '', False, []));
   Assert.AreEqual('TKunde › FName', Joined(mCrumbs));
   Assert.IsFalse(TAtlasBreadcrumbs.HasMenu(Default(TAtlasCrumb)));
 end;
@@ -415,8 +421,8 @@ var
   mCrumbs: TAtlasCrumbs;
   mLast: TAtlasCrumb;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]), ALine, ACharacter, '', False,
-    AParts);
+  mCrumbs := TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]),
+    TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, AParts));
   if Length(mCrumbs) = 0 then
   begin
     Exit('');
@@ -445,8 +451,8 @@ begin
   Assert.AreEqual('− Tief (private@14)', LastMarked(37));
   Assert.AreEqual('◆ Klick (published@17)', LastMarked(40));
   // Nur das Methodenglied trägt die Marke.
-  Assert.AreEqual('', TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]), 37, 0, '', False,
-    [TAtlasCrumbPart.VisibilityMark])[0].Mark);
+  Assert.AreEqual('', TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]),
+    TAtlasCrumbRequest.Create(37, 0, '', False, [TAtlasCrumbPart.VisibilityMark]))[0].Mark);
 end;
 
 procedure TAtlasVisibilitySectionsTests.NoMarkOutsideMethodsOfTheUnit;

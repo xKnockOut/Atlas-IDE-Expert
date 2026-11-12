@@ -573,7 +573,7 @@ begin
     begin
       mData := Default(TAtlasHoverData);
       try
-        mData := ASession.HoverDataAt(mFileName, mLine, mCharacter);
+        mData := ASession.HoverDataAt(mFileName, mLine, mCharacter, 0);
       except
         // Server langsam oder weg: kein Tooltip, die IDE wartet nie darauf.
         mData := Default(TAtlasHoverData);

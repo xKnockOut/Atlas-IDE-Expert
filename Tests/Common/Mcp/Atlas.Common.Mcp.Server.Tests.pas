@@ -54,10 +54,10 @@ uses
 function NewServer: TMcpServer;
 begin
   Result := TMcpServer.Create('Atlas', '1.0');
-  Result.AddTool('echo', 'Gibt den Text zurück', TMcpServer.StringSchema(['text'], ['Text']),
+  Result.AddTool('echo', 'Gibt den Text zurück', TMcpArgs.StringSchema(['text'], ['Text']),
     function(const AArguments: TJSONObject): string
     begin
-      Result := 'Echo: ' + TMcpServer.RequiredString(AArguments, 'text');
+      Result := 'Echo: ' + TMcpArgs.RequiredString(AArguments, 'text');
     end);
 end;
 
@@ -187,7 +187,7 @@ procedure TMcpServerTests.BuildsStringSchema;
 begin
   Assert.AreEqual('{"type":"object","properties":{"a":{"type":"string","description":"A"},' +
     '"b":{"type":"string","description":"B"}},"required":["a"]}',
-    TMcpServer.StringSchema(['a', 'b'], ['A', 'B'], 1));
+    TMcpArgs.StringSchema(['a', 'b'], ['A', 'B'], 1));
 end;
 
 procedure TMcpServerTests.ResourceTemplatesAreEmptyList;
@@ -515,7 +515,7 @@ begin
   mArguments := TJSONObject.Create;
   try
     mArguments.AddPair('text', 'x');
-    mServer.AddTool('write', 'Schreibt', TMcpServer.StringSchema([], []),
+    mServer.AddTool('write', 'Schreibt', TMcpArgs.StringSchema([], []),
       function(const AArguments: TJSONObject): string
       begin
         Result := 'geschrieben';

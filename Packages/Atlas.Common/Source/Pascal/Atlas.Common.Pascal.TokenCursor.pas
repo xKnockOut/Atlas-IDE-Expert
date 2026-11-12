@@ -22,11 +22,11 @@ type
   public
     constructor Create(const ATokens: TArray<TPascalToken>);
     /// <summary>Anzahl der Token.</summary>
-    function Count: Integer; inline;
+    function Count: Integer;
     /// <summary>Die Token selbst (ohne Kopie).</summary>
-    function Tokens: TArray<TPascalToken>; inline;
+    function Tokens: TArray<TPascalToken>;
     /// <summary>Liegt AIndex im Array?</summary>
-    function InRange(AIndex: Integer): Boolean; inline;
+    function InRange(AIndex: Integer): Boolean;
     /// <summary>Token an AIndex; außerhalb ein leeres Token (Kind Unknown, Text '', Offset -1), nie ein
     /// Fehler.</summary>
     function At(AIndex: Integer): TPascalToken;
@@ -34,17 +34,17 @@ type
     /// Symbol AText? Außerhalb, bei Kommentaren, Direktiven und Literalen False.</summary>
     function Is_(AIndex: Integer; const AText: string): Boolean;
     /// <summary>Index des ersten Tokens, das bei AOffset oder dahinter beginnt; Count, wenn keines folgt.</summary>
-    function From(AOffset: Integer): Integer; inline;
+    function From(AOffset: Integer): Integer;
     /// <summary>Index des Tokens, das genau bei AOffset beginnt; -1 ohne.</summary>
-    function Exactly(AOffset: Integer): Integer; inline;
+    function Exactly(AOffset: Integer): Integer;
     /// <summary>Erstes Code-Token ab AIndex (AIndex eingeschlossen), Kommentare und Direktiven übersprungen;
     /// Count ohne.</summary>
-    function NextCode(AIndex: Integer): Integer; inline;
+    function NextCode(AIndex: Integer): Integer;
     /// <summary>Letztes Code-Token vor AIndex (AIndex ausgeschlossen); -1 ohne.</summary>
-    function PreviousCode(AIndex: Integer): Integer; inline;
+    function PreviousCode(AIndex: Integer): Integer;
     /// <summary>Index der schließenden runden oder eckigen Klammer zur öffnenden an AOpenIndex; -1 ohne
     /// Gegenstück oder wenn an AOpenIndex keine öffnende Klammer steht.</summary>
-    function MatchingParen(AOpenIndex: Integer): Integer; inline;
+    function MatchingParen(AOpenIndex: Integer): Integer;
   end;
 
 /// <summary>Kommentar oder Compileranweisung?</summary>
@@ -65,7 +65,9 @@ function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Int
 /// <summary>Index der schließenden Klammer zur öffnenden an AOpen; runde und eckige Klammern (auch (. und .))
 /// zählen gemeinsam. Gesucht wird nur vor AStop (Index ausgeschlossen, höchstens Length(ATokens)). -1 ohne
 /// Gegenstück oder wenn an AOpen keine öffnende Klammer steht.</summary>
-function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer; AStop: Integer = MaxInt): Integer;
+function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer; AStop: Integer): Integer; overload;
+/// <summary>Wie oben, gesucht wird bis zum Ende des Arrays.</summary>
+function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer; overload;
 
 implementation
 
@@ -156,6 +158,11 @@ begin
   begin
     Result := -1;
   end;
+end;
+
+function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
+begin
+  Result := MatchingParen(ATokens, AOpen, MaxInt);
 end;
 
 function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer; AStop: Integer): Integer;

@@ -876,7 +876,8 @@ begin
   Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
+/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (tiefe Bäume sprengen den Stapel
+/// nicht).</summary>
 function IsSubject(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
@@ -963,8 +964,8 @@ var
   end;
 
   // Vergleiche in ACondition: S = 'x', 'x' = S, SameText(S, 'x'), mit or verknüpft und geklammert.
-  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt. Iterativ (tiefe Bäume sprengen den Stapel nicht): die Vergleiche der
-  // or-Kette von links nach rechts; der erste, der nicht passt, beendet die Suche.
+  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt. Iterativ (tiefe Bäume sprengen den Stapel nicht): die
+  // Vergleiche der or-Kette von links nach rechts; der erste, der nicht passt, beendet die Suche.
   function Comparisons(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
     var ASensitive: Integer): Boolean;
   var

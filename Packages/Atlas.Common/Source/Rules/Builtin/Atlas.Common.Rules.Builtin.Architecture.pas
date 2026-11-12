@@ -56,7 +56,8 @@ type
   end;
 
   {$SCOPEDENUMS ON}
-  /// <summary>Rolle einer Unit nach Ausgabeartefakt.Feature.Rolle.Sache; Host = Unit der Anwendung ohne Präfix, None = extern.</summary>
+  /// <summary>Rolle einer Unit nach Ausgabeartefakt.Feature.Rolle.Sache; Host = Unit der Anwendung ohne Präfix, None =
+  /// extern.</summary>
   TArchitectureRole = (None, Contract, Internals, Providers, Adapters, Root, Composition, Hosting, Host);
   {$SCOPEDENUMS OFF}
   TArchitectureRoles = set of TArchitectureRole;

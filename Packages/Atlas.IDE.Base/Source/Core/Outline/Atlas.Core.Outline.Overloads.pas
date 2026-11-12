@@ -111,11 +111,62 @@ begin
   end;
 end;
 
+/// <summary>Index hinter dem Namen ab AIndex (mit Besitzer und generischen Parametern) und dem Leerraum danach.
+/// </summary>
+function SkipName(const AText: string; AIndex: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  Result := AIndex;
+  mDepth := 0;
+  while (Result <= Length(AText)) and ((mDepth > 0) or CharInSet(AText[Result], ['a'..'z', 'A'..'Z', '0'..'9',
+    '_', '.', '&', '<'])) do
+  begin
+    if AText[Result] = '<' then
+    begin
+      Inc(mDepth);
+    end
+    else if AText[Result] = '>' then
+    begin
+      Dec(mDepth);
+    end;
+    Inc(Result);
+  end;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], [' ', #9, #10, #13]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Klammer ab AStart bis zur passenden schließenden, zusammengefasst; '()' ohne Gegenstück.</summary>
+function ParenFrom(const AText: string; AStart: Integer): string;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := '()';
+  mDepth := 0;
+  for mIndex := AStart to Length(AText) do
+  begin
+    if AText[mIndex] = '(' then
+    begin
+      Inc(mDepth);
+    end
+    else if AText[mIndex] = ')' then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit(Collapse(Copy(AText, AStart, mIndex - AStart + 1)));
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasOverloads.ParamsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   ANode: Integer): string;
 var
   mText: string;
-  mIndex, mDepth, mStart: Integer;
+  mIndex: Integer;
 begin
   Result := '';
   if (ANode < 0) or (ANode > High(ANodes)) or not IsRoutine(ANodes[ANode]) or (ANodes[ANode].NameLine < 0) or
@@ -124,48 +175,11 @@ begin
     Exit;
   end;
   mText := TextFrom(ALines, ANodes[ANode].NameLine, ANodes[ANode].NameCharacter, 20);
-  // Name mit Besitzer und generischen Parametern überspringen.
-  mIndex := 1;
-  mDepth := 0;
-  while (mIndex <= Length(mText)) and ((mDepth > 0) or CharInSet(mText[mIndex], ['a'..'z', 'A'..'Z', '0'..'9',
-    '_', '.', '&', '<'])) do
-  begin
-    if mText[mIndex] = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if mText[mIndex] = '>' then
-    begin
-      Dec(mDepth);
-    end;
-    Inc(mIndex);
-  end;
-  while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], [' ', #9, #10, #13]) do
-  begin
-    Inc(mIndex);
-  end;
+  mIndex := SkipName(mText, 1);
   Result := '()';
-  if (mIndex > Length(mText)) or (mText[mIndex] <> '(') then
+  if (mIndex <= Length(mText)) and (mText[mIndex] = '(') then
   begin
-    Exit;
-  end;
-  mStart := mIndex;
-  mDepth := 0;
-  while mIndex <= Length(mText) do
-  begin
-    if mText[mIndex] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if mText[mIndex] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(Collapse(Copy(mText, mStart, mIndex - mStart + 1)));
-      end;
-    end;
-    Inc(mIndex);
+    Result := ParenFrom(mText, mIndex);
   end;
 end;
 

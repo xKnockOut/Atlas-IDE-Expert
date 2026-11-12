@@ -293,7 +293,8 @@ var
   mAnswer: TJSONObject;
   mValue: TJSONValue;
 begin
-  if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(TJsonRead.TrimmedText(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
+  if not (Assigned(FSettingsFor) and
+    FSettingsFor(PathOf(TJsonRead.TrimmedText(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
   begin
     mSettings := TServerSettings.Default;
   end;

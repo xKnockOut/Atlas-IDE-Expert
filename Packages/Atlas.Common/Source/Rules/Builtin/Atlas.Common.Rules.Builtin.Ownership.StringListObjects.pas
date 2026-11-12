@@ -546,7 +546,8 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion (die erste Erzeugung zählt).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion (die erste Erzeugung
+  // zählt).
   Result := True;
   AFound := '';
   mPending := TStack<TSyntaxNode>.Create;

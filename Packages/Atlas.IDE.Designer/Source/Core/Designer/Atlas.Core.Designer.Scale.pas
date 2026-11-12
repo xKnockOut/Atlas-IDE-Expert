@@ -234,32 +234,32 @@ begin
   Result.Amount := AAmount;
 end;
 
-/// <summary>Breite der Texte prüfen; AutoSize-Labels wachsen in ABounds mit.</summary>
-function TextFindings(const ANodes: TArray<TAtlasLayoutNode>; const ATexts: TArray<TAtlasScaleText>;
-  const AShown: TArray<string>; APpi, ADesignPpi: Integer; const AWidth: TAtlasTextWidth;
-  var ABounds: TArray<TRect>): TArray<TAtlasLayoutFinding>;
+/// <summary>Breite der Texte prüfen; AutoSize-Labels wachsen in AView.Bounds mit.</summary>
+function TextFindings(var AView: TAtlasScaleView; const ATexts: TArray<TAtlasScaleText>; APpi, ADesignPpi: Integer;
+  const AWidth: TAtlasTextWidth): TArray<TAtlasLayoutFinding>;
 var
   mIndex, mNeed: Integer;
 begin
   Result := nil;
-  for mIndex := 0 to High(ANodes) do
+  for mIndex := 0 to High(AView.Nodes) do
   begin
-    if (mIndex > High(ATexts)) or (AShown[mIndex] = '') or ATexts[mIndex].WordWrap or not ANodes[mIndex].Visible then
+    if (mIndex > High(ATexts)) or (AView.Texts[mIndex] = '') or ATexts[mIndex].WordWrap or
+      not AView.Nodes[mIndex].Visible then
     begin
       Continue;
     end;
-    mNeed := WidestLine(ATexts[mIndex], AShown[mIndex], APpi, AWidth) +
+    mNeed := WidestLine(ATexts[mIndex], AView.Texts[mIndex], APpi, AWidth) +
       TAtlasFormScale.Value(ATexts[mIndex].Extra, ADesignPpi, APpi);
     if ATexts[mIndex].AutoSize then
     begin
-      if ANodes[mIndex].Align = TAtlasLayoutAlign.None then
+      if AView.Nodes[mIndex].Align = TAtlasLayoutAlign.None then
       begin
-        ABounds[mIndex].Right := ABounds[mIndex].Left + mNeed;
+        AView.Bounds[mIndex].Right := AView.Bounds[mIndex].Left + mNeed;
       end;
     end
-    else if mNeed > ABounds[mIndex].Width then
+    else if mNeed > AView.Bounds[mIndex].Width then
     begin
-      Result := Result + [Finding(mIndex, TAtlasLayoutProblem.Clipped, mNeed - ABounds[mIndex].Width)];
+      Result := Result + [Finding(mIndex, TAtlasLayoutProblem.Clipped, mNeed - AView.Bounds[mIndex].Width)];
     end;
   end;
 end;
@@ -316,7 +316,7 @@ begin
       Result.Texts[mIndex] := ShownText(ATexts[mIndex].Text, ASetup.LongFactor);
     end;
   end;
-  Result.Findings := TextFindings(Result.Nodes, ATexts, Result.Texts, mPpi, ASetup.DesignPpi, AWidth, Result.Bounds);
+  Result.Findings := TextFindings(Result, ATexts, mPpi, ASetup.DesignPpi, AWidth);
   Result.Findings := TAtlasFormLayout.Problems(Result.Nodes, Result.Bounds, Result.Client) + Result.Findings +
     ScreenFindings(ASetup, Result.Client, mUsable);
   Result.Usable := mUsable;

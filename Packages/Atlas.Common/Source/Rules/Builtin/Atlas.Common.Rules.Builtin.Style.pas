@@ -597,8 +597,8 @@ var
   mEntry: TFinallyEntry;
   mInFinally: Boolean;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht) mit eigenem Stapel; die Kinder rückwärts darauf, damit die Reihenfolge der Treffer die der
-  // früheren Rekursion bleibt.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht) mit eigenem Stapel; die Kinder rückwärts darauf, damit die
+  // Reihenfolge der Treffer die der früheren Rekursion bleibt.
   mPending := TStack<TFinallyEntry>.Create;
   try
     mPending.Push(FinallyEntry(ARoot, False));
@@ -888,7 +888,8 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mReport := AReport;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Jeder Knoten prüft seine Kinder; die Treffer sortiert die Engine nach Position.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Jeder Knoten prüft seine Kinder; die Treffer sortiert die Engine
+  // nach Position.
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
@@ -1126,7 +1127,8 @@ var
     mParent, mChild, mNext: TSyntaxNode;
     mIndex, mItem: Integer;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere Rekursion.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere
+    // Rekursion.
     mParents := TStack<TSyntaxNode>.Create;
     mIndexes := TStack<Integer>.Create;
     try

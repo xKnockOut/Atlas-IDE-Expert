@@ -67,7 +67,6 @@ type
     FSending: Boolean;
     FSent: Boolean;
     FChange: TAtlasTrackerWrite;
-    function AddRow(AHeight: Integer): TPanel;
     function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddState;
     procedure AddComment(const AComment: string);
@@ -239,31 +238,6 @@ begin
   FParts.Cancel.ModalResult := mrCancel;
   FParts.Cancel.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
-end;
-
-function TAtlasTrackerEndDialog.AddRow(AHeight: Integer): TPanel;
-var
-  mTop: Integer;
-  mIndex: Integer;
-begin
-  // Unter das bisher unterste Element (alTop stapelt nach Top).
-  mTop := 0;
-  for mIndex := 0 to ControlCount - 1 do
-  begin
-    if Controls[mIndex].Top + Controls[mIndex].Height + 1 > mTop then
-    begin
-      mTop := Controls[mIndex].Top + Controls[mIndex].Height + 1;
-    end;
-  end;
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  Result.BevelOuter := bvNone;
-  Result.Caption := '';
-  Result.Top := mTop;
-  Result.Height := ScaleValue(AHeight);
 end;
 
 function TAtlasTrackerEndDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;

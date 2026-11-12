@@ -98,7 +98,8 @@ end;
 
 function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts): string;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, ALine, ACharacter, 'uKunden', True, AParts));
+  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(ALine, ACharacter, 'uKunden', True, AParts)));
 end;
 
 procedure TAtlasRegionsTests.RegionsWithDepth;
@@ -134,7 +135,8 @@ procedure TAtlasRegionsTests.PathShowsRegionBehindUnitAndSection;
 var
   mCrumbs: TAtlasCrumbs;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 5, 6, 'uKunden', True, [TAtlasCrumbPart.Regions]);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(5, 6, 'uKunden', True, [TAtlasCrumbPart.Regions]));
   Assert.AreEqual('uKunden › Datenbankzugriff › TKunde › Speichern', Joined(mCrumbs));
   Assert.AreEqual('rg', mCrumbs[1].Badge.Code);
   Assert.AreEqual(3, Integer(Length(mCrumbs[1].Places)));
@@ -144,7 +146,8 @@ begin
   Assert.AreEqual('uKunden › interface › Datenbankzugriff › type › TKunde › Speichern',
     Path(5, 6, [TAtlasCrumbPart.Regions, TAtlasCrumbPart.DeclarationBlocks]));
   // Ohne Namen: leerer Text, die Anzeige ergänzt ihn.
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 15, 2, 'uKunden', True, [TAtlasCrumbPart.Regions]);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(15, 2, 'uKunden', True, [TAtlasCrumbPart.Regions]));
   Assert.AreEqual('uKunden ›  › TKunde › Speichern', Joined(mCrumbs));
   Assert.AreEqual(2, mCrumbs[1].Current);
   Assert.AreEqual(14, mCrumbs[1].Places[2].Line);

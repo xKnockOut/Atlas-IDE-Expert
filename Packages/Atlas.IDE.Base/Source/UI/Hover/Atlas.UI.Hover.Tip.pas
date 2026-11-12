@@ -12,8 +12,8 @@
 //     Signatur, Rückgabe, Ausnahmen, Hinweise, Beispiel mit Code, Listen,
 //     Tabellen. Zugeklappt nur die Beschreibung mit „Mehr anzeigen ▾“ (Einstellung
 //     hints.xmlDocExpand); mit hover.signatureParams (#1919) stehen PARAMETER und
-//     RÜCKGABE aus der Deklaration auch zugeklappt und ohne XMLDoc da. Der Klick klappt auf, das Fenster wächst nach unten
-//     (ohne Platz dort nach oben), „Weniger anzeigen ▴“ klappt wieder zu. Ist sie höher als der Platz auf dem
+//     RÜCKGABE aus der Deklaration auch zugeklappt und ohne XMLDoc da. Der Klick klappt auf, das Fenster wächst nach
+//     unten (ohne Platz dort nach oben), „Weniger anzeigen ▴“ klappt wieder zu. Ist sie höher als der Platz auf dem
 //     Bildschirm bzw. als hints.xmlDocMaxLines, scrollt nur sie mit dem
 //     Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (cref)
 //     zeigen den Typ im Tooltip, mit Strg zur Deklaration; Links öffnen den
@@ -69,15 +69,21 @@ type
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
     AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 
+  /// <summary>Schalter des Tooltips aus den Einstellungen.</summary>
+  TAtlasHoverTipOptions = record
+    ProblemActions: Boolean;
+    HideCompilerCode: Boolean;
+    SignatureParams: Boolean;
+  end;
+
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
   TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
     cMaxWidth = 460;
   private
     FDeclaration: TAtlasStyledText;
-    FProblemActions: Boolean;
-    FHideCompilerCode: Boolean;
-    FSignatureParams: Boolean;
+    /// <summary>Schalter aus den Einstellungen: Aktionszeile, Compilercode, Signaturparameter.</summary>
+    FOptions: TAtlasHoverTipOptions;
     /// <summary>Über dem Wort gezeigt: Beim Auf- und Zuklappen bleibt der untere Rand.</summary>
     FAbove: Boolean;
     /// <summary>Rollbereich der published-Mitglieder: Zeilen aus hover.membersMaxLines, Grenze aus dem Platz auf
@@ -128,14 +134,14 @@ type
     procedure UpdateContent(const AView: TAtlasHoverView);
     property View: TAtlasHoverView read FView;
     /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
-    property ProblemActions: Boolean read FProblemActions write SetProblemActions;
+    property ProblemActions: Boolean read FOptions.ProblemActions write SetProblemActions;
     /// <summary>problems.showCompilerCode aus (#1024).</summary>
-    property HideCompilerCode: Boolean read FHideCompilerCode write SetHideCompilerCode;
+    property HideCompilerCode: Boolean read FOptions.HideCompilerCode write SetHideCompilerCode;
     /// <summary>hover.membersMaxLines: Zeilen der Mitgliedertabellen ohne Scrollen, 0 = bis zur Bildschirmhöhe.
     /// </summary>
     property MembersMaxLines: Integer read FMembers.MaxLines write FMembers.MaxLines;
     /// <summary>hover.signatureParams (#1919): Parameter und Rückgabe immer offen, auch ohne XMLDoc.</summary>
-    property SignatureParams: Boolean read FSignatureParams write FSignatureParams;
+    property SignatureParams: Boolean read FOptions.SignatureParams write FOptions.SignatureParams;
   end;
 
   /// <summary>Tooltip mit Maus, Tastatur im Befund-Hover und Ereignissen.</summary>
@@ -443,7 +449,7 @@ begin
   end;
   mContent := TAtlasDocContent.Create(mDoc, TAtlasDocSignature.Parse(FView.Data.Declaration),
     TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip));
-  mContent.OpenSignature := FSignatureParams;
+  mContent.OpenSignature := FOptions.SignatureParams;
   // Ohne Doku nur mit offener Signatur (#1919): Parameter und Rückgabe aus der Deklaration.
   if mDoc.IsEmpty and not mContent.SignatureShown then
   begin
@@ -611,9 +617,9 @@ end;
 function TAtlasHoverTipView.LayoutKey(AWidth: Integer): string;
 begin
   Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
-    Ord(FDoc.HasSelection), Ord(FProblemActions), Ord(FHideCompilerCode), PPI, Font.Height, UIFont.Height,
-    Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembers.MaxLines, FMembers.Limit,
-    FMembers.Scroll]);
+    Ord(FDoc.HasSelection), Ord(FOptions.ProblemActions), Ord(FOptions.HideCompilerCode), PPI, Font.Height,
+    UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembers.MaxLines,
+    FMembers.Limit, FMembers.Scroll]);
 end;
 
 procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);
@@ -630,8 +636,8 @@ begin
   mInput.HasDoc := not FDoc.IsEmpty;
   mInput.DocHeight := FDoc.Height;
   mInput.HasSelection := FDoc.HasSelection;
-  mInput.ProblemActions := FProblemActions;
-  mInput.HideCompilerCode := FHideCompilerCode;
+  mInput.ProblemActions := FOptions.ProblemActions;
+  mInput.HideCompilerCode := FOptions.HideCompilerCode;
   mInput.Members := FMembers;
   FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
@@ -974,11 +980,11 @@ end;
 
 procedure TAtlasHoverTipView.SetProblemActions(AValue: Boolean);
 begin
-  if FProblemActions = AValue then
+  if FOptions.ProblemActions = AValue then
   begin
     Exit;
   end;
-  FProblemActions := AValue;
+  FOptions.ProblemActions := AValue;
   FHot := -1;
   FLayoutKey := '';
   Invalidate;
@@ -986,11 +992,11 @@ end;
 
 procedure TAtlasHoverTipView.SetHideCompilerCode(AValue: Boolean);
 begin
-  if FHideCompilerCode = AValue then
+  if FOptions.HideCompilerCode = AValue then
   begin
     Exit;
   end;
-  FHideCompilerCode := AValue;
+  FOptions.HideCompilerCode := AValue;
   FLayoutKey := '';
   Invalidate;
 end;

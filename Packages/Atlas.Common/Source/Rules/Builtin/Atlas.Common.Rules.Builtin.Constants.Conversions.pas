@@ -518,8 +518,8 @@ var
     mPending: TStack<TSyntaxPostOrderEntry>;
     mKnown: TDictionary<TSyntaxNode, TNumericType>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Rechenketten ergeben sehr tiefe Bäume.
-    // Bekannte Typen stehen in mKnown, unbekannte fehlen dort.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Rechenketten ergeben
+    // sehr tiefe Bäume. Bekannte Typen stehen in mKnown, unbekannte fehlen dort.
     mPending := TStack<TSyntaxPostOrderEntry>.Create;
     mKnown := TDictionary<TSyntaxNode, TNumericType>.Create;
     try
@@ -1165,7 +1165,8 @@ var
     mPending: TStack<TSyntaxPostOrderEntry>;
     mLengths: TDictionary<TSyntaxNode, Integer>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Verkettungen ergeben sehr tiefe Bäume.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Verkettungen ergeben
+    // sehr tiefe Bäume.
     mPending := TStack<TSyntaxPostOrderEntry>.Create;
     mLengths := TDictionary<TSyntaxNode, Integer>.Create;
     try
@@ -1339,7 +1340,8 @@ var
     end;
     mDeclarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
     mTypeBodies := TDictionary<string, TSyntaxNode>.Create;
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung wie die frühere Suche, damit der erste Treffer gleich bleibt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung wie die frühere Suche, damit der erste Treffer
+    // gleich bleibt.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(AContext.Tree.Root);
