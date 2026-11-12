@@ -648,6 +648,36 @@
       "text": "Ein Punkt markiert jede geänderte Einstellung. Rechtsklick setzt sie einzeln zurück, „Seite zurücksetzen“ den ganzen Bereich, „Alles zurücksetzen…“ fragt nach und sichert vorher.",
       "textEn": "A dot marks every changed setting. A right-click resets it on its own, “Reset page” the whole area, “Reset all…” asks first and makes a backup.",
       "image": "Tipps\\einstellungen-zuruecksetzen.png"
+    },
+    {
+      "id": "learnedSuggestions",
+      "command": "Atlas.LearnedSuggestions",
+      "setting": "SuggestionsLearned",
+      "title": "Gelernte Vorschläge",
+      "titleEn": "Learned suggestions",
+      "text": "Atlas lernt wiederkehrende Folgen aus dem eigenen Code, etwa Create mit try … finally Free, und schlägt sie als Schattentext vor. Tab übernimmt, Esc verwirft.",
+      "textEn": "Atlas learns recurring sequences from your own code, such as Create with try … finally Free, and suggests them as ghost text. Tab accepts, Esc discards.",
+      "image": "Tipps\\gelernte-vorschlaege.png"
+    },
+    {
+      "id": "breadcrumbMenu",
+      "command": "Atlas.Breadcrumbs",
+      "setting": "BreadcrumbsContextMenu",
+      "title": "Menü an den Brotkrumen",
+      "titleEn": "Breadcrumb menu",
+      "text": "Rechtsklick auf ein Glied der Brotkrumenleiste kopiert Namen oder Signatur, sucht Verwendungen oder benennt um.",
+      "textEn": "Right-click a segment of the breadcrumb bar to copy the name or signature, find usages or rename.",
+      "image": "Tipps\\brotkrumen-menue.png"
+    },
+    {
+      "id": "designerUsages",
+      "command": "Atlas.DesignerUsages",
+      "setting": "DesignerUsages",
+      "title": "Verwendungen aus dem Designer",
+      "titleEn": "Usages from the designer",
+      "text": "Umschalt+Alt+F7 im Designer zeigt, wo der Code die markierte Komponente liest, schreibt, übergibt oder als Ereignis nutzt.",
+      "textEn": "Shift+Alt+F7 in the designer shows where the code reads, writes or passes the selected component or uses it as an event.",
+      "image": "Tipps\\designer-verwendungen.png"
     }
   ]
 }
