@@ -30,6 +30,10 @@ type
     procedure ButtonsFitTextAndRoles;
     [Test]
     procedure NoteUsesPaletteColors;
+    [Test]
+    procedure ResizeGrowsMiddleRow;
+    [Test]
+    procedure FitRightStretchesWithRow;
   end;
 
 implementation
@@ -201,6 +205,62 @@ begin
     mNote.ShowNote('Nur lokal gespeichert', TAtlasSignalKind.Info);
     Assert.IsTrue(seFont in mNote.StyleElements);
     Assert.AreEqual(Integer(clWindowText), Integer(mNote.Font.Color));
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.ResizeGrowsMiddleRow;
+var
+  mDialog: TAtlasDialog;
+  mTop, mGrow, mBottom: TPanel;
+  mMinHeight: Integer;
+begin
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 300);
+  try
+    mTop := mDialog.AddRow(22);
+    mGrow := mDialog.AddRow(60);
+    mBottom := mDialog.AddRow(26);
+    mDialog.HandleNeeded;
+    mDialog.FitHeight;
+    mDialog.AllowResize(mGrow);
+    Assert.IsTrue(mDialog.BorderStyle = bsSizeable);
+    Assert.AreEqual(mDialog.Width, Integer(mDialog.Constraints.MinWidth));
+    mMinHeight := mDialog.Constraints.MinHeight;
+    Assert.AreEqual(mDialog.Height, mMinHeight);
+    Assert.IsTrue(mTop.Align = alTop);
+    Assert.IsTrue(mGrow.Align = alClient);
+    Assert.IsTrue(mBottom.Align = alBottom);
+    mDialog.Height := mMinHeight + mDialog.ScaleValue(100);
+    Assert.AreEqual(mDialog.ScaleValue(26), mBottom.Height, 'untere Zeile behält ihre Höhe');
+    Assert.IsTrue(mGrow.Height >= mDialog.ScaleValue(60 + 100) - 2, Format('Höhe %d', [mGrow.Height]));
+    Assert.IsTrue(mBottom.Top > mGrow.Top, 'Reihenfolge bleibt');
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.FitRightStretchesWithRow;
+var
+  mDialog: TAtlasDialog;
+  mRow: TPanel;
+  mEdit: TEdit;
+  mWidth: Integer;
+begin
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 300);
+  try
+    mRow := mDialog.AddRow(26);
+    mEdit := TEdit.Create(mDialog);
+    mEdit.Parent := mRow;
+    mEdit.Left := mDialog.ScaleValue(100);
+    mDialog.HandleNeeded;
+    mDialog.FitHeight;
+    mDialog.FitRight(mEdit);
+    Assert.AreEqual(mRow.ClientWidth - mDialog.ScaleValue(TAtlasDialog.cRowGap), mEdit.Left + mEdit.Width);
+    mDialog.AllowResize(nil);
+    mWidth := mEdit.Width;
+    mDialog.Width := mDialog.Width + mDialog.ScaleValue(50);
+    Assert.AreEqual(mWidth + mDialog.ScaleValue(50), mEdit.Width);
   finally
     mDialog.Free;
   end;

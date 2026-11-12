@@ -432,6 +432,7 @@ begin
   // Direkt über dem Übergang, also unter Zeit und den übrigen Feldern.
   mRow := NewFieldRow(AName, FDialog.FParts.StateLabel.Parent.Top - 1);
   FDialog.FParts.Fields := FDialog.FParts.Fields + [mRow];
+  FDialog.FitRight(mRow.Box);
   FDialog.ClientHeight := FDialog.ClientHeight + mRow.Box.Parent.Height + mRow.Box.Parent.Margins.Top;
   Result := High(FDialog.FParts.Fields);
 end;
@@ -588,6 +589,7 @@ end;
 constructor TAtlasTrackerEndDialog.CreateDialog(AOwner: TComponent; const ARequest: TAtlasTrackerEndRequest);
 var
   mSteps: TPanel;
+  mRow: TAtlasEndFieldRow;
 begin
   inherited CreateDialog(AOwner, '', cDialogWidth);
   FKey := ARequest.Key;
@@ -609,6 +611,18 @@ begin
   FParts.Steps.Align := alClient;
   FParts.Steps.Caption := '';
   AddButtons(mSteps.BoundsRect.Bottom + 1);
+  // Größer ziehen: Klapplisten werden breiter, der Kommentar nimmt die Höhe auf.
+  FitRight(FParts.State);
+  FitRight(FParts.Assignee);
+  for mRow in FParts.Fields do
+  begin
+    FitRight(mRow.Box);
+  end;
+  if FParts.WorkType <> nil then
+  begin
+    FitRight(FParts.WorkType);
+  end;
+  AllowResize(FParts.Editor);
   ActiveControl := FParts.Comment;
 end;
 

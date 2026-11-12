@@ -10,7 +10,11 @@
 //   jedem Wechsel, solange der Dialog lebt; Abmelden im Destroy;
 // - AddRow, AddLabel, AddButtonRow, AddNote: Zeilen von oben nach unten,
 //   Größen in logischen Pixeln, skaliert über das Formular;
-// - FitHeight: Höhe bis unter das letzte Element.
+// - FitHeight: Höhe bis unter das letzte Element;
+// - AllowResize: Rahmen ziehbar, die gebaute Größe ist die kleinste; eine
+//   Zeile (Liste, Textfeld) nimmt zusätzliche Höhe, alles darunter bleibt
+//   unten. Felder, die mitwachsen sollen, verankert der Dialog rechts
+//   (FitRight).
 // TAtlasButtonRow misst die Knöpfe nach ihrem Text, TAtlasNoteLabel zeigt
 // Hinweise in der Textfarbe der Palette (Fehler, Warnung, Ok); Hinweise ohne
 // Aussage zeichnet der Stil. Eigene Farben holt ein Dialog in ThemeChanged.
@@ -91,11 +95,20 @@ type
     function AddNote(AHeight96: Integer): TAtlasNoteLabel;
     /// <summary>Innenhöhe bis unter das unterste Element plus Rand.</summary>
     procedure FitHeight;
+    /// <summary>Größe ziehbar machen, nachdem alles gebaut ist: Rahmen bsSizeable, die jetzige Größe ist die
+    /// kleinste. AGrow (direktes Kind, alTop) nimmt zusätzliche Höhe auf, die alTop-Elemente darunter bleiben
+    /// am unteren Rand; ohne AGrow (nil) nur breiter. In frei gesetzten Dialogen (alNone) wird AGrow unten
+    /// verankert und alles darunter vom oberen an den unteren Rand umgehängt.</summary>
+    procedure AllowResize(AGrow: TControl);
+    /// <summary>AControl wächst mit der Breite seiner Zeile: rechter Rand wie der linke Abstand zur Zeile, oder
+    /// bündig, wenn es links bei 0 steht.</summary>
+    procedure FitRight(AControl: TControl);
   end;
 
 implementation
 
 uses
+  System.Math,
   Vcl.Graphics,
   Atlas.UI.Foundation.Theme;
 
@@ -299,6 +312,72 @@ end;
 procedure TAtlasDialog.FitHeight;
 begin
   ClientHeight := NextTop + ScaleValue(cRowGap);
+end;
+
+procedure TAtlasDialog.AllowResize(AGrow: TControl);
+var
+  mIndex, mClientWidth, mClientHeight: Integer;
+  mControl: TControl;
+begin
+  mClientWidth := ClientWidth;
+  mClientHeight := ClientHeight;
+  BorderStyle := bsSizeable;
+  BorderIcons := [biSystemMenu];
+  // Der breitere Rahmen nimmt sonst Platz vom Inhalt.
+  ClientWidth := mClientWidth;
+  ClientHeight := mClientHeight;
+  Constraints.MinWidth := Width;
+  Constraints.MinHeight := Height;
+  if AGrow = nil then
+  begin
+    Constraints.MaxHeight := Height;
+    Exit;
+  end;
+  DisableAlign;
+  try
+    for mIndex := 0 to ControlCount - 1 do
+    begin
+      mControl := Controls[mIndex];
+      if (mControl = AGrow) or (mControl.Top <= AGrow.Top) then
+      begin
+        Continue;
+      end;
+      if mControl.Align = alTop then
+      begin
+        mControl.Align := alBottom;
+      end
+      else if mControl.Align = alNone then
+      begin
+        // Frei gesetzte Dialoge: am unteren Rand verankern statt oben.
+        mControl.Anchors := mControl.Anchors - [akTop] + [akBottom];
+      end;
+    end;
+    if AGrow.Align = alTop then
+    begin
+      AGrow.Align := alClient;
+    end
+    else if AGrow.Align = alNone then
+    begin
+      AGrow.Anchors := AGrow.Anchors + [akBottom];
+    end;
+  finally
+    EnableAlign;
+  end;
+end;
+
+procedure TAtlasDialog.FitRight(AControl: TControl);
+var
+  mParent: TWinControl;
+begin
+  mParent := AControl.Parent;
+  if mParent = nil then
+  begin
+    Exit;
+  end;
+  // Ohne Fenster ordnet die VCL die Zeilen nicht an, ihre Breite wäre die vorläufige.
+  HandleNeeded;
+  AControl.Width := mParent.ClientWidth - AControl.Left - Min(AControl.Left, ScaleValue(cRowGap));
+  AControl.Anchors := [akLeft, akTop, akRight];
 end;
 
 end.

@@ -124,6 +124,7 @@ uses
   System.DateUtils,
   Vcl.Graphics,
   Atlas.Core.Style.Color,
+  Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Strings;
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -173,7 +174,7 @@ begin
 end;
 function AddLabel(AView: TAtlasIssueDevelopmentView; const ACaption: string; AHeading: Boolean): TLabel;
 begin
-  Result := TLabel.Create(AView);
+  Result := TAtlasWrapLabel.Create(AView);
   Place(AView, Result);
   Result.WordWrap := True;
   Result.ShowAccelChar := False;

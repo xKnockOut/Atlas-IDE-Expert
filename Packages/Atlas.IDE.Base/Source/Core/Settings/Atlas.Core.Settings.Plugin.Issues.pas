@@ -196,6 +196,9 @@ type
     IssuesBoardConfirmMove: Boolean;
     /// <summary>Board öffnet mit dem Filter „Nur meine“ (#1272, issues.board.onlyMine); aus = alle Karten.</summary>
     IssuesBoardOnlyMine: Boolean;
+    /// <summary>Issue-Fenster und Board in den Farben des IDE-Themas (#2131, issues.ideColors); aus = feste
+    /// Atlas-Palette.</summary>
+    IssuesIdeColors: Boolean;
     /// <summary>Burndown-Linie in der Sprint-Kachel (#1277, issues.sprint.burndown); aus = nur Kopf und Zahlen.
     /// </summary>
     IssuesSprintBurndown: Boolean;
@@ -443,6 +446,7 @@ begin
   Result.IssuesBoard := True;
   Result.IssuesBoardConfirmMove := True;
   Result.IssuesBoardOnlyMine := True;
+  Result.IssuesIdeColors := True;
   Result.IssuesSprintBurndown := True;
   Result.IssuesSprintCompare := True;
   Result.IssuesPaletteSearch := True;
@@ -497,6 +501,7 @@ begin
   AIo.Flag('IssuesBoard', IssuesBoard);
   AIo.Flag('IssuesBoardConfirmMove', IssuesBoardConfirmMove);
   AIo.Flag('IssuesBoardOnlyMine', IssuesBoardOnlyMine);
+  AIo.Flag('IssuesIdeColors', IssuesIdeColors);
   AIo.Flag('IssuesSprintBurndown', IssuesSprintBurndown);
   AIo.Flag('IssuesSprintCompare', IssuesSprintCompare);
   AIo.Flag('IssuesPaletteSearch', IssuesPaletteSearch);

@@ -296,6 +296,7 @@ begin
   ADialog.FParts.Issue.Parent := ADialog;
   ADialog.FParts.Issue.SetBounds(TAtlasAttachDialog.cGap + 70, ATop,
     TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap - 70, 23);
+  ADialog.FParts.Issue.Anchors := [akLeft, akTop, akRight];
   ADialog.FParts.Issue.Style := csDropDown;
   ADialog.FParts.Issue.OnChange := ADialog.TextChanged;
   ADialog.FParts.Issue.Text := ADialog.FInput.Key;
@@ -306,6 +307,7 @@ begin
   ADialog.FParts.Hint.WordWrap := True;
   ADialog.FParts.Hint.SetBounds(TAtlasAttachDialog.cGap, ATop,
     TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 32);
+  ADialog.FParts.Hint.Anchors := [akLeft, akTop, akRight];
   if ADialog.FInput.CanUpload then
   begin
     ADialog.FParts.Hint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint,
@@ -436,6 +438,7 @@ begin
   mGroup.Parent := ADialog;
   mGroup.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachSources);
   mGroup.SetBounds(TAtlasAttachDialog.cGap, ATop, TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 248);
+  mGroup.Anchors := [akLeft, akTop, akRight];
   mRow := 22;
   AddScreenshotRows(ADialog, mGroup, mRow);
   AddFormRow(ADialog, mGroup, mRow);
@@ -455,6 +458,7 @@ begin
   ADialog.FParts.CommentMemo.Parent := ADialog;
   ADialog.FParts.CommentMemo.SetBounds(TAtlasAttachDialog.cGap, ATop,
     TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 60);
+  ADialog.FParts.CommentMemo.Anchors := [akLeft, akTop, akRight];
   ADialog.FParts.CommentMemo.ScrollBars := ssVertical;
   // Tippen schreibt keine Dateien neu, nur „Senden“ wird geprüft.
   ADialog.FParts.CommentMemo.OnChange := ADialog.CommentChanged;
@@ -476,6 +480,7 @@ begin
   ADialog.FParts.List.Parent := ADialog;
   ADialog.FParts.List.SetBounds(TAtlasAttachDialog.cGap, ATop,
     TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 110);
+  ADialog.FParts.List.Anchors := [akLeft, akTop, akRight];
   ADialog.FParts.List.ViewStyle := vsReport;
   ADialog.FParts.List.ReadOnly := True;
   ADialog.FParts.List.RowSelect := True;
@@ -501,15 +506,18 @@ begin
   mBottom.Parent := ADialog;
   mBottom.BevelOuter := bvNone;
   mBottom.SetBounds(0, ATop, TAtlasAttachDialog.cDialogWidth, 44);
+  mBottom.Anchors := [akLeft, akTop, akRight];
   ADialog.FParts.Send := TButton.Create(ADialog);
   ADialog.FParts.Send.Parent := mBottom;
   ADialog.FParts.Send.SetBounds(TAtlasAttachDialog.cDialogWidth - 2 * (110 + TAtlasAttachDialog.cGap), 8, 110, 28);
+  ADialog.FParts.Send.Anchors := [akTop, akRight];
   ADialog.FParts.Send.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachSend);
   ADialog.FParts.Send.Default := True;
   ADialog.FParts.Send.ModalResult := mrOk;
   mButton := TButton.Create(ADialog);
   mButton.Parent := mBottom;
   mButton.SetBounds(TAtlasAttachDialog.cDialogWidth - (110 + TAtlasAttachDialog.cGap), 8, 110, 28);
+  mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
@@ -526,6 +534,8 @@ begin
   AddFileList(Self, mTop);
   AddButtons(Self, mTop);
   ClientHeight := mTop + ScaleValue(44);
+  // Größer ziehen: Felder werden breiter, die Dateiliste nimmt die Höhe auf.
+  AllowResize(FParts.List);
   // Fenster des Programms; das Hauptfenster zuerst. In die Liste erst mit Fenster (CreateWnd).
   if FInput.ProcessId <> 0 then
   begin
