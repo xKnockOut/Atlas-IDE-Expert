@@ -17,8 +17,9 @@
 //                            96 in MulDiv, volle Bitmasken ($FF, $FFFF, $FFFFFFFF), Zeiteinheiten 24, 60, 1000, 3600
 //                            in *, /, div, mod und Argumente von Aufrufen in einem Array-Literal, deren Argumente
 //                            alle Zahlen sind (Punktlisten wie [P(3.5, 1.5), P(9.5, 1.5)])
-//   line-length, public-field, global-variable und missing-begin-end stehen in Style.LineLength,
-//                            Style.Declarations und Style.BeginEnd; RegisterStyleRules meldet auch sie an.
+//   line-length, public-field, global-variable, missing-begin-end und method-order stehen in Style.LineLength,
+//                            Style.Declarations, Style.BeginEnd und Style.MethodOrder; RegisterStyleRules meldet
+//                            auch sie an.
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -110,6 +111,7 @@ uses
   Atlas.Common.Rules.Builtin.Style.LineLength,
   Atlas.Common.Rules.Builtin.Style.Declarations,
   Atlas.Common.Rules.Builtin.Style.BeginEnd,
+  Atlas.Common.Rules.Builtin.Style.MethodOrder,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -1597,6 +1599,7 @@ begin
   ARegistry.Register(TPublicFieldRule.Create);
   ARegistry.Register(TGlobalVariableRule.Create);
   ARegistry.Register(TMissingBeginEndRule.Create);
+  ARegistry.Register(TMethodOrderRule.Create);
 end;
 
 initialization

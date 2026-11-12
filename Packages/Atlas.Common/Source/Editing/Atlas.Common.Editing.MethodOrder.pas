@@ -34,6 +34,11 @@
 // steht danach vor seinem ersten Rumpf; eine solche Region hält ihre Rümpfe
 // nicht fest. PlaceNew legt für einen Typ, dessen Rümpfe alle neu sind, den
 // Kommentar in der eingestellten Form an bzw. bringt den der IDE in diese.
+//
+// Review (Regel method-order, #1840) prüft je Typ, ob seine verschiebbaren
+// Rümpfe untereinander in der Ordnung stehen und ob über ihnen ein
+// Typkommentar steht, und liefert die Änderungen, die nur diesen Typ ordnen
+// bzw. nur seinen Kommentar einfügen.
 
 interface
 
@@ -86,6 +91,19 @@ type
     Moves: TArray<TMethodMove>;
   end;
 
+  /// <summary>Stand eines Typs für die Regel method-order (#1840).</summary>
+  TMethodTypeReview = record
+    TypeName: string;
+    /// <summary>Typname im Kopf des ersten Rumpfs (nach Zeilen).</summary>
+    NameRange: TTextRange;
+    /// <summary>Ordnet nur die Rümpfe dieses Typs untereinander; nil = sie stehen schon in der Ordnung.</summary>
+    OrderEdits: TArray<TTextEdit>;
+    /// <summary>Fügt den fehlenden Typkommentar ein; nil = vorhanden oder TypeComment Off.</summary>
+    CommentEdits: TArray<TTextEdit>;
+    /// <summary>Zeile des einzufügenden Kommentars mit dem Typnamen, z. B. "{ TKunde }"; '' ohne.</summary>
+    CommentText: string;
+  end;
+
   TMethodOrder = class
   public
     /// <summary>Ordnet alle Rümpfe der Unit; ohne Edits, wenn alles passt oder APlacement Off ist.</summary>
@@ -99,6 +117,10 @@ type
       APlacement: TMethodPlacement): TMethodOrderResult; overload; static;
     class function PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
       const AOptions: TMethodOrderOptions): TMethodOrderResult; overload; static;
+    /// <summary>Je Typ mit Rümpfen (in der Reihenfolge des ersten Rumpfs), ob seine Rümpfe in der Ordnung
+    /// stehen und ob ein Typkommentar fehlt (#1840); leer bei APlacement Off.</summary>
+    class function Review(ATree: TSyntaxTree; const AText: string;
+      const AOptions: TMethodOrderOptions): TArray<TMethodTypeReview>; static;
     /// <summary>off, declaration, alphabetical, grouped.</summary>
     class function PlacementName(APlacement: TMethodPlacement): string; static;
     /// <summary>Unbekannt: Declaration; leer: Grouped (Vorgabe seit #1836).</summary>
@@ -1510,6 +1532,168 @@ begin
     Restyle(AHeaders[mIndex], AOptions, TTypeShape.Read(mUnit, ALines, mBlock.TypeName).Summary);
     // Je Typ nur einmal.
     AHeaders[mIndex].Comment.Style := AOptions.TypeComment;
+  end;
+end;
+
+{ Review (#1840) }
+
+/// <summary>Kopie von ABlocks, in der nur die Rümpfe von ATypeName (ohne AAll: keine) verschiebbar bleiben.
+/// </summary>
+function MovableOnly(const ABlocks: TBlocks; const ATypeName: string; AAll: Boolean): TBlocks;
+var
+  mIndex: Integer;
+begin
+  Result := Copy(ABlocks);
+  for mIndex := 0 to High(Result) do
+  begin
+    if not AAll or not SameText(Result[mIndex].TypeName, ATypeName) then
+    begin
+      Result[mIndex].Fixed := True;
+    end;
+  end;
+end;
+
+/// <summary>Kommentar des Typs ATypeName aus AHeaders; leer ohne.</summary>
+function HeadersOf(const AHeaders: THeaders; const ATypeName: string): THeaders;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  mIndex := IndexOfHeader(AHeaders, ATypeName);
+  if mIndex >= 0 then
+  begin
+    Result := TArray<THeader>.Create(AHeaders[mIndex]);
+  end;
+end;
+
+/// <summary>Steht über den Rümpfen von ATypeName ein Typkommentar in irgendeiner Form (auch eine Region, die
+/// Rümpfe anderer Typen umschließt)?</summary>
+function HasTypeComment(const ALines: TArray<string>; const ABlocks: TBlocks; const ATypeName: string): Boolean;
+var
+  mBlocks: TBlocks;
+  mFirst, mLast: Integer;
+begin
+  mBlocks := Copy(ABlocks);
+  Result := TypeRange(mBlocks, ATypeName, mFirst, mLast) and
+    CommentAbove(ALines, mBlocks, mFirst, mLast, ATypeName).Found;
+end;
+
+/// <summary>Bereich von ATypeName im Kopf des Rumpfs ABlock; ohne Fund der Anfang des Kopfs.</summary>
+function NameRangeOf(const ALines: TArray<string>; const ABlock: TBlock; const ATypeName: string): TTextRange;
+var
+  mLine: string;
+  mColumn, mLength: Integer;
+begin
+  mLine := LowerCase(ALines[ABlock.Header]);
+  mLength := Length(ATypeName);
+  mColumn := Pos(LowerCase(ATypeName) + '.', mLine);
+  if mColumn = 0 then
+  begin
+    // Generische Typen: TListe<T> steht im Kopf auch als TListe<TElement>.
+    mLength := Length(SplitString(ATypeName, '<')[0]);
+    mColumn := Pos(LowerCase(Copy(ATypeName, 1, mLength)) + '<', mLine);
+  end;
+  if mColumn = 0 then
+  begin
+    mColumn := Length(mLine) - Length(TrimLeft(mLine)) + 1;
+    mLength := Length(Trim(mLine));
+  end;
+  Result := TTextRange.Create(ABlock.Header, mColumn - 1, ABlock.Header, mColumn - 1 + mLength);
+end;
+
+/// <summary>Zeile des Kommentars AHeader, die den Typnamen nennt; sonst die erste.</summary>
+function CommentTextOf(const AHeader: THeader): string;
+var
+  mLine: string;
+begin
+  Result := '';
+  for mLine in AHeader.Lines do
+  begin
+    if ContainsText(mLine, AHeader.TypeName) then
+    begin
+      Exit(Trim(mLine));
+    end;
+  end;
+  if AHeader.Lines <> nil then
+  begin
+    Result := Trim(AHeader.Lines[0]);
+  end;
+end;
+
+type
+  /// <summary>Prüft die Typen einer Unit für Review.</summary>
+  TOrderReview = record
+    Lines: TArray<string>;
+    LineBreak: string;
+    Options: TMethodOrderOptions;
+    Blocks: TBlocks;
+    Headers: THeaders;
+    UnitIndex: TUnitIndex;
+    function ReviewOf(const ATypeName: string): TMethodTypeReview;
+    procedure AddComment(var AReview: TMethodTypeReview);
+  end;
+
+procedure TOrderReview.AddComment(var AReview: TMethodTypeReview);
+var
+  mHeader: THeader;
+begin
+  if (Options.TypeComment = TTypeCommentStyle.Off) or HasTypeComment(Lines, Blocks, AReview.TypeName) then
+  begin
+    Exit;
+  end;
+  mHeader := Default(THeader);
+  mHeader.TypeName := AReview.TypeName;
+  mHeader.Comment := TTypeComment.None;
+  Restyle(mHeader, Options, TTypeShape.Read(UnitIndex, Lines, AReview.TypeName).Summary);
+  AReview.CommentText := CommentTextOf(mHeader);
+  AReview.CommentEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, AReview.TypeName, False),
+    TArray<THeader>.Create(mHeader), Options, LineBreak).Edits;
+end;
+
+function TOrderReview.ReviewOf(const ATypeName: string): TMethodTypeReview;
+var
+  mFirst, mLast: Integer;
+begin
+  Result := Default(TMethodTypeReview);
+  Result.TypeName := ATypeName;
+  TypeRange(Blocks, ATypeName, mFirst, mLast);
+  Result.NameRange := NameRangeOf(Lines, Blocks[mFirst], ATypeName);
+  Result.OrderEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, ATypeName, True), HeadersOf(Headers, ATypeName),
+    Options, LineBreak).Edits;
+  AddComment(Result);
+end;
+
+class function TMethodOrder.Review(ATree: TSyntaxTree; const AText: string;
+  const AOptions: TMethodOrderOptions): TArray<TMethodTypeReview>;
+var
+  mReview: TOrderReview;
+  mDone: TDictionary<string, Boolean>;
+  mBlock: TBlock;
+begin
+  Result := nil;
+  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
+  begin
+    Exit;
+  end;
+  mReview := Default(TOrderReview);
+  mReview.Options := AOptions;
+  mReview.Lines := TTextLines.SplitLines(AText);
+  mReview.LineBreak := TTextLines.LineBreakOf(AText);
+  mReview.Blocks := PreparedBlocks(ATree, AText, mReview.Lines, mReview.Headers);
+  mReview.UnitIndex := TIndexExtractor.Extract(ATree, '');
+  mDone := TDictionary<string, Boolean>.Create;
+  try
+    for mBlock in mReview.Blocks do
+    begin
+      if mDone.ContainsKey(LowerCase(mBlock.TypeName)) then
+      begin
+        Continue;
+      end;
+      mDone.Add(LowerCase(mBlock.TypeName), True);
+      Result := Result + [mReview.ReviewOf(mBlock.TypeName)];
+    end;
+  finally
+    mDone.Free;
   end;
 end;
 

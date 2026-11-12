@@ -19,7 +19,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
-| [Stil und Metriken](#gruppe-style) | 54 |
+| [Stil und Metriken](#gruppe-style) | 55 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -406,6 +406,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
 | [`redundant-jump`](#redundant-jump) | Überflüssiges Exit oder Continue | Code Smell | Hinweis |
 | [`method-without-self`](#method-without-self) | Methode braucht Self nicht | Code Smell | Hinweis |
+| [`method-order`](#method-order) | Methodenrümpfe nicht in Klassenordnung | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -8934,5 +8935,44 @@ Richtig:
 class function TRechner.Doppelt(A: Integer): Integer; static;
 begin
   Result := A * 2;
+end;
+```
+
+<a id="method-order"></a>
+### method-order
+
+**Methodenrümpfe nicht in Klassenordnung** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Methodenrümpfe einer Klasse oder eines Records im implementation-Teil stehen nicht in der Ordnung, die der Befehl „implementation wie Klasse ordnen“ und die Klassenvervollständigung erzeugen, oder der Typkommentar über ihnen fehlt. So lassen sich Units, die vor der Klassenordnung (#1836) und dem Typkommentar (#1835) entstanden sind, gezielt finden und klassenweise aufräumen: Zusammengehörige Methoden stehen beieinander, die Rümpfe folgen der Klassendeklaration. Ein Befund je Typ am Typnamen im ersten Rumpf: „Methodenrümpfe von TKunde stehen nicht in der Klassenordnung (gruppiert)“. Die Ordnung kommt aus der Option placement (Vorgabe grouped wie editor.methodPlacement; declaration, alphabetical; off schaltet die Regel ab), Konstruktoren und Destruktoren mit classCompletion.lifecycleFirst zuerst. Es zählen nur die Rümpfe eines Typs untereinander, nicht die Reihenfolge der Typen in der Unit. Rümpfe, die beim Ordnen stehen bleiben (in einer Region oder {$IF…}, in einer Zeile mit anderem Code), zählen nicht als falsch. Eine zweite Meldung „Kommentar { TKunde } fehlt“, wenn classCompletion.typeComment nicht off ist und über den Rümpfen kein Typkommentar in irgendeiner Form steht. Standard aus. Schnellkorrekturen: Rümpfe von TKunde ordnen (nur dieser Typ, gleiche Logik wie der Befehl) und Kommentar { TKunde } einfügen in der Form von classCompletion.typeComment.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `placement` | string | `"grouped"` | Ordnung der Rümpfe wie editor.methodPlacement: grouped, declaration, alphabetical oder off. |
+
+Mit Treffer:
+
+```pascal
+{ TKunde }
+
+procedure TKunde.Speichern;
+begin
+end;
+
+constructor TKunde.Create;
+begin
+end;
+```
+
+Richtig:
+
+```pascal
+{ TKunde }
+
+constructor TKunde.Create;
+begin
+end;
+
+procedure TKunde.Speichern;
+begin
 end;
 ```

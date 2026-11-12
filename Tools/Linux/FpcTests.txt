@@ -261,6 +261,7 @@ Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests
 Atlas.Common.Rules.Builtin.Security.Tests
 Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
 Atlas.Common.Rules.Builtin.Style.Tests
+Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests

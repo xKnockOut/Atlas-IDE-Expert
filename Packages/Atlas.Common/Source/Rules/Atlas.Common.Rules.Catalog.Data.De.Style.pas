@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeStyle: array[0..553] of string = (
+  cCatalogLinesDeStyle: array[0..564] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Ungenutzte lokale Variable",',
@@ -718,6 +718,24 @@ const
     'nd ist nicht published (DUnitX-Tests und RTTI rufen sie an der Instanz auf), ist kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentel' +
     'l: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-A' +
     'ktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe."',
+    '    },',
+    '{',
+    '      "id": "method-order",',
+    '      "name": "Methodenrümpfe nicht in Klassenordnung",',
+    '      "description": "Die Methodenrümpfe einer Klasse oder eines Records im implementation-Teil stehen nicht in der Ordnung, die der Befehl „implementation wie Klasse ordnen“ und die Klassenvervollstä' +
+    'ndigung erzeugen, oder der Typkommentar über ihnen fehlt. So lassen sich Units, die vor der Klassenordnung (#1836) und dem Typkommentar (#1835) entstanden sind, gezielt finden und klassenweise aufräum' +
+    'en: Zusammengehörige Methoden stehen beieinander, die Rümpfe folgen der Klassendeklaration. Ein Befund je Typ am Typnamen im ersten Rumpf: „Methodenrümpfe von TKunde stehen nicht in der Klassenordnung' +
+    ' (gruppiert)“. Die Ordnung kommt aus der Option placement (Vorgabe grouped wie editor.methodPlacement; declaration, alphabetical; off schaltet die Regel ab), Konstruktoren und Destruktoren mit classCo' +
+    'mpletion.lifecycleFirst zuerst. Es zählen nur die Rümpfe eines Typs untereinander, nicht die Reihenfolge der Typen in der Unit. Rümpfe, die beim Ordnen stehen bleiben (in einer Region oder {$IF…}, in ' +
+    'einer Zeile mit anderem Code), zählen nicht als falsch. Eine zweite Meldung „Kommentar { TKunde } fehlt“, wenn classCompletion.typeComment nicht off ist und über den Rümpfen kein Typkommentar in irgen' +
+    'deiner Form steht. Standard aus. Schnellkorrekturen: Rümpfe von TKunde ordnen (nur dieser Typ, gleiche Logik wie der Befehl) und Kommentar { TKunde } einfügen in der Form von classCompletion.typeComme' +
+    'nt.",',
+    '      "options": [',
+    '        {',
+    '          "name": "placement",',
+    '          "description": "Ordnung der Rümpfe wie editor.methodPlacement: grouped, declaration, alphabetical oder off."',
+    '        }',
+    '      ]',
     '    }');
 
 implementation

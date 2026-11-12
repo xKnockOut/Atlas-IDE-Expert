@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnStyle: array[0..995] of string = (
+  cCatalogLinesEnStyle: array[0..1013] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Unused local variable",',
@@ -1154,6 +1154,30 @@ const
     ' and a record helper for the type of the first parameter, each with a preview of all changed calls.",',
     '      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",',
     '      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"',
+    '    },',
+    '{',
+    '      "id": "method-order",',
+    '      "name": "Method bodies not in class order",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "style",',
+    '      "description": "The method bodies of a class or record in the implementation section are not in the order that the command \"Order implementation like class\" and class completion produce, or th' +
+    'e type comment above them is missing. Units written before the class order (#1836) and the type comment (#1835) can be found and tidied up one class at a time this way, so related methods stand togeth' +
+    'er and the bodies follow the class declaration. One finding per type at the type name in its first body: \"Method bodies of TKunde are not in class order (grouped)\". The order comes from the option p' +
+    'lacement (default grouped as editor.methodPlacement; declaration, alphabetical; off switches the rule off), constructors and destructors first with classCompletion.lifecycleFirst. Only the bodies of o' +
+    'ne type among themselves count; the order of the types in the unit does not. Bodies that stay in place when arranging (inside a region or {$IF…}, sharing a line with other code) do not count as wrong.' +
+    ' A second finding \"Comment { TKunde } is missing\" when classCompletion.typeComment is not off and there is no type comment of any form above the bodies. Off by default. Quick fixes: Arrange bodies o' +
+    'f TKunde (only this type, same logic as the command) and Insert comment { TKunde } in the form of classCompletion.typeComment.",',
+    '      "bad": "{ TKunde }\n\nprocedure TKunde.Speichern;\nbegin\nend;\n\nconstructor TKunde.Create;\nbegin\nend;",',
+    '      "good": "{ TKunde }\n\nconstructor TKunde.Create;\nbegin\nend;\n\nprocedure TKunde.Speichern;\nbegin\nend;",',
+    '      "options": [',
+    '        {',
+    '          "name": "placement",',
+    '          "type": "string",',
+    '          "default": "grouped",',
+    '          "description": "Order of the bodies like editor.methodPlacement: grouped, declaration, alphabetical or off."',
+    '        }',
+    '      ]',
     '    }');
 
 implementation
