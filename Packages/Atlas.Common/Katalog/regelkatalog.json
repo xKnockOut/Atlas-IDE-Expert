@@ -4714,7 +4714,8 @@
           "default": [],
           "description": "Further functions without side effects that are reported like the standard routines, as Name, Class.Name or Unit.Name."
         }
-      ]
+      ],
+      "safeFix": false
     },
     {
       "id": "empty-finally",

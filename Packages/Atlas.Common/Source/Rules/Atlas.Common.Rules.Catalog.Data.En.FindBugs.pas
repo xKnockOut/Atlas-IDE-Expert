@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1116] of string = (
+  cCatalogLinesEnFindBugs: array[0..1117] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -1322,7 +1322,8 @@ const
     '          "default": [],',
     '          "description": "Further functions without side effects that are reported like the standard routines, as Name, Class.Name or Unit.Name."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    }');
 
 implementation
