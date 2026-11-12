@@ -3,7 +3,10 @@
 // case-Anweisungen mit fehlenden oder doppelten Werten (#909):
 //   case-missing-enum-value
 //                     case über einen Aufzählungstyp ohne else, dem Werte fehlen
-//                     (#929); mit Option requireElse auch mit else. Den Typ des
+//                     (#929); mit Option requireElse auch mit else. Fehlen mehr
+//                     als zwei Werte und mehr als die Hälfte, behandelt die
+//                     Anweisung bewusst nur einige Werte: niedrige Konfidenz.
+//                     Den Typ des
 //                     Selektors löst die Namensauflösung, die Werte kommen aus
 //                     dem Index bzw. der Unit selbst; die Korrektur ergänzt die
 //                     fehlenden Zweige über TCaseCompletion (#449).
@@ -104,6 +107,21 @@ begin
     begin
       Result := Result + [mSymbol.Name];
     end;
+  end;
+end;
+
+/// <summary>Konfidenz nach Abdeckung: Fehlen höchstens zwei Werte oder höchstens die Hälfte, ist wohl ein neuer
+/// Wert vergessen (hoch); behandelt die Anweisung nur wenige Werte, ist das meist gewollt (niedrig, FP-Prüfung
+/// 28.10.2026: rund 80 % solcher Treffer waren Absicht).</summary>
+function MissingConfidence(AMissing, ATotal: Integer): TRuleConfidence;
+begin
+  if (AMissing <= 2) or (2 * AMissing <= ATotal) then
+  begin
+    Result := TRuleConfidence.High;
+  end
+  else
+  begin
+    Result := TRuleConfidence.Low;
   end;
 end;
 
@@ -248,7 +266,7 @@ var
       Exit;
     end;
     AReport.Add(TTextRange.Create(ACase[0].StartPos, ACase[0].EndPos), cTexts[TStatementsCasesText.Missing].Fmt(
-      [mTypeName, string.Join(', ', mAbsent)]), TRuleConfidence.High,
+      [mTypeName, string.Join(', ', mAbsent)]), MissingConfidence(Length(mAbsent), Length(mValues)),
       CompletionFixes(ACase, mValues, LabelPrefix(mSlot.Labels, mTypeName)));
   end;
 

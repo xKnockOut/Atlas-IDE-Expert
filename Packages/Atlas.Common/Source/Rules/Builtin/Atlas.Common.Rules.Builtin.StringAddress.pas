@@ -15,7 +15,10 @@
 //                     Korrektur die ganze Umwandlung. Korrektur nur bei
 //                     const-Parametern: Bei anderen Strings kann der Zeiger
 //                     zum Schreiben dienen, dann ist die eigene Kopie gewollt
-//                     (die Meldung nennt dafür UniqueString).
+//                     (die Meldung nennt dafür UniqueString). Still bleibt die
+//                     Regel, wenn eine Bedingung S als nicht leer sichert
+//                     (if S <> '' then, if Length(S) > 0 then, if N > 0 then
+//                     nach SetLength(S, N), if S = '' then Exit davor).
 
 interface
 
@@ -181,6 +184,134 @@ var
     Result := AWidth <> 0;
   end;
 
+  /// <summary>Text von ANode klein und ohne Leerraum, zum Vergleichen von Bedingungen.</summary>
+  function Squeezed(ANode: TSyntaxNode): string;
+  begin
+    Result := LowerCase(mScope.Text(ANode)).Replace(' ', '').Replace(#9, '').Replace(#13, '').Replace(#10, '');
+  end;
+
+  /// <summary>Ist ANode Length(S) oder eine Variable N mit SetLength(S, N) in der Routine ARoutine? S ist ABase
+  /// in Squeezed-Form.</summary>
+  function IsLengthOf(ANode: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+  var
+    mText: string;
+  begin
+    mText := Squeezed(Unwrapped(ANode));
+    Result := (mText = 'length(' + ABase + ')') or (ARoutine <> '') and (ANode.Kind = TSyntaxKind.Identifier) and
+      ARoutine.Contains('setlength(' + ABase + ',' + mText + ')');
+  end;
+
+  /// <summary>Ist ACondition (oder ein mit and verknüpfter Teil) wahr nur bei nicht leerem S (ANonEmpty) bzw. nur
+  /// bei leerem S (not ANonEmpty)? Erkannt: S &lt;&gt; '', Length(S) &gt; 0, &gt;= 1, &lt;&gt; 0 und dieselben Vergleiche mit der
+  /// Länge aus SetLength(S, N).</summary>
+  function ConditionSays(ACondition: TSyntaxNode; const ABase, ARoutine: string; ANonEmpty: Boolean): Boolean;
+  var
+    mOperator, mLeft, mRight: string;
+  begin
+    ACondition := Unwrapped(ACondition);
+    Result := False;
+    if (ACondition.Kind <> TSyntaxKind.BinaryExpr) or (ACondition.ChildCount <> 2) then
+    begin
+      Exit;
+    end;
+    mOperator := LowerCase(ACondition.Name);
+    if ANonEmpty and (mOperator = 'and') or not ANonEmpty and (mOperator = 'or') then
+    begin
+      Exit(ConditionSays(ACondition[0], ABase, ARoutine, ANonEmpty) or
+        ConditionSays(ACondition[1], ABase, ARoutine, ANonEmpty));
+    end;
+    mLeft := Squeezed(Unwrapped(ACondition[0]));
+    mRight := Squeezed(Unwrapped(ACondition[1]));
+    if (mLeft = ABase) and (mRight = '''''') or (mRight = ABase) and (mLeft = '''''') then
+    begin
+      Exit(ANonEmpty and (mOperator = '<>') or not ANonEmpty and (mOperator = '='));
+    end;
+    if IsLengthOf(ACondition[0], ABase, ARoutine) then
+    begin
+      if ANonEmpty then
+      begin
+        Result := (mRight = '0') and MatchStr(mOperator, ['>', '<>']) or (mRight = '1') and (mOperator = '>=');
+      end
+      else
+      begin
+        Result := (mRight = '0') and MatchStr(mOperator, ['=', '<=']) or (mRight = '1') and (mOperator = '<');
+      end;
+    end
+    else if IsLengthOf(ACondition[1], ABase, ARoutine) and (mLeft = '0') then
+    begin
+      Result := ANonEmpty and MatchStr(mOperator, ['<', '<>']) or not ANonEmpty and MatchStr(mOperator, ['=', '>=']);
+    end;
+  end;
+
+  /// <summary>Verlässt ANode die Routine bzw. Schleife (Exit, raise, Continue, Break)?</summary>
+  function Leaves(ANode: TSyntaxNode): Boolean;
+  var
+    mText: string;
+  begin
+    mText := Squeezed(ANode).Replace(';', '');
+    if mText.StartsWith('begin') and mText.EndsWith('end') then
+    begin
+      mText := Copy(mText, 6, Length(mText) - 8);
+    end;
+    Result := (mText = 'exit') or mText.StartsWith('exit(') or mText.StartsWith('raise') or (mText = 'continue') or
+      (mText = 'break');
+  end;
+
+  /// <summary>Steht ANode nur bei nicht leerem ABase: im then-Zweig von "if S &lt;&gt; '' then" bzw. hinter
+  /// "if S = '' then Exit;" (FP-Prüfung 28.10.2026, F12: SetLength(Result, Len); if Len &gt; 0 then … @Result[1]).
+  /// </summary>
+  function GuardedNonEmpty(ANode, ABase: TSyntaxNode): Boolean;
+  var
+    mChild, mParent, mRoutineNode: TSyntaxNode;
+    mBase, mRoutine: string;
+    mIndex: Integer;
+  begin
+    Result := False;
+    mBase := Squeezed(ABase);
+    mRoutineNode := ANode.Parent;
+    while (mRoutineNode <> nil) and (mRoutineNode.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
+      mRoutineNode := mRoutineNode.Parent;
+    end;
+    mRoutine := '';
+    if mRoutineNode <> nil then
+    begin
+      mRoutine := Squeezed(mRoutineNode);
+    end;
+    mChild := ANode;
+    mParent := ANode.Parent;
+    while (mParent <> nil) and (mParent <> mRoutineNode) do
+    begin
+      if (mParent.Kind = TSyntaxKind.IfStatement) and (mParent.ChildCount > 1) and (mParent[1] = mChild) and
+        ConditionSays(mParent[0], mBase, mRoutine, True) then
+      begin
+        Exit(True);
+      end;
+      if (mParent.Kind = TSyntaxKind.IfStatement) and (mParent.ChildCount > 2) and (mParent[2] = mChild) and
+        ConditionSays(mParent[0], mBase, mRoutine, False) then
+      begin
+        Exit(True);
+      end;
+      if mParent.Kind = TSyntaxKind.Block then
+      begin
+        for mIndex := 0 to mParent.ChildCount - 1 do
+        begin
+          if mParent[mIndex] = mChild then
+          begin
+            Break;
+          end;
+          if (mParent[mIndex].Kind = TSyntaxKind.IfStatement) and (mParent[mIndex].ChildCount = 2) and
+            Leaves(mParent[mIndex][1]) and ConditionSays(mParent[mIndex][0], mBase, mRoutine, False) then
+          begin
+            Exit(True);
+          end;
+        end;
+      end;
+      mChild := mParent;
+      mParent := mParent.Parent;
+    end;
+  end;
+
   procedure CheckAddress(ANode: TSyntaxNode);
   var
     mBase, mCast, mReplaced: TSyntaxNode;
@@ -189,7 +320,7 @@ var
     mPointer, mSafe, mMessage: string;
     mFixes: TArray<TRuleFix>;
   begin
-    if not IsFirstCharAddress(ANode, mBase, mSymbol, mWidth) then
+    if not IsFirstCharAddress(ANode, mBase, mSymbol, mWidth) or GuardedNonEmpty(ANode, mBase) then
     begin
       Exit;
     end;

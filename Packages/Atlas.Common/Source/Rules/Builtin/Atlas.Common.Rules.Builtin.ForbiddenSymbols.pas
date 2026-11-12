@@ -275,7 +275,7 @@ end;
 function TForbiddenSymbolRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cForbiddenSymbolRuleId, TRuleSeverity.Warning,
-    cTexts[TForbiddenSymbolsText.Title].Text, True);
+    cTexts[TForbiddenSymbolsText.Title].Text);
 end;
 
 class function TForbiddenSymbolRule.TryParseKind(const AText: string; out AKind: TForbiddenKind): Boolean;

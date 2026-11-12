@@ -144,7 +144,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 function Routine(const ABody: string; const AHeader: string = 'procedure P;';
   const AVars: string = ''): string;
@@ -790,7 +791,7 @@ procedure TUnusedRulesTests.EmptyRoutineReported;
 var
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsFalse((TEmptyRoutineRule.Create as IRule).Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse(TRuleProfiles.IsExperimental((TEmptyRoutineRule.Create as IRule).Descriptor.Id), 'Standard an');
   Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit('  public'#10'    procedure Pruefen;',
     'procedure TImport.Pruefen;'#10'begin'#10'end;'));
   Assert.AreEqual(1, Integer(Length(Findings)));

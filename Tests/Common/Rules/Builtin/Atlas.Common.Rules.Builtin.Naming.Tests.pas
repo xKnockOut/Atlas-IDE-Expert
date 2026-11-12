@@ -73,7 +73,8 @@ uses
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Style,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 const
   Enabled = '{"rules": {"naming-prefix": "hint"}}';
@@ -150,7 +151,7 @@ begin
   Assert.AreEqual('mIndex', TNamingConvention.Expected('Index', 'm'));
   Assert.AreEqual('mIndex', TNamingConvention.Expected('index', 'm'));
   Assert.AreEqual('f_name', TNamingConvention.Expected('name', 'f_'));
-  Assert.IsTrue((TNamingPrefixRule.Create as IRule).Descriptor.Experimental, 'nur eingeschaltet aktiv');
+  Assert.IsTrue(TRuleProfiles.IsExperimental((TNamingPrefixRule.Create as IRule).Descriptor.Id), 'nur eingeschaltet aktiv');
 end;
 
 procedure TNamingRulesTests.LocalReportedAndRenamed;

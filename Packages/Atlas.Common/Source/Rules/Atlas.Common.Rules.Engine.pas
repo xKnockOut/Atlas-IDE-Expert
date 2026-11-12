@@ -577,7 +577,7 @@ var
   mEnabled: Boolean;
 begin
   ASeverity := TRuleEngine.EffectiveSeverity(ADescriptor, ASettings, ARelativePath, mEnabled);
-  Result := (ASeverity <> TRuleSeverity.Off) and (mEnabled or not ADescriptor.Experimental);
+  Result := (ASeverity <> TRuleSeverity.Off) and (mEnabled or not TRuleProfiles.IsExperimental(ADescriptor.Id));
 end;
 
 /// <summary>Beschreibung der Regel AId aus ARules, sonst aus dem Katalog; False, wenn sie keiner kennt.</summary>

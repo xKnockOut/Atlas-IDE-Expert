@@ -145,14 +145,14 @@ begin
   end;
 end;
 
-/// <summary>metric-method-length: Gruppe style, experimentell, eine Option max mit Vorgabe 60.</summary>
+/// <summary>metric-method-length: Gruppe style, nicht experimentell, eine Option max mit Vorgabe 60.</summary>
 procedure AssertMethodLengthEntry(const ARule: TJSONValue);
 var
   mOptions: TJSONArray;
   mOption: TJSONValue;
 begin
   Assert.AreEqual('style', ARule.GetValue<string>('group'));
-  Assert.IsTrue(ARule.GetValue<Boolean>('experimental'));
+  Assert.IsNull(ARule.FindValue('experimental'));
   mOptions := ARule.GetValue<TJSONArray>('options');
   Assert.AreEqual(1, mOptions.Count);
   mOption := mOptions.Items[0];
@@ -186,6 +186,7 @@ var
   Index: Integer;
   SeenMetric: Boolean;
   SeenSyntax: Boolean;
+  SeenMagic: Boolean;
 begin
   Args := Arguments('de');
   try
@@ -193,11 +194,12 @@ begin
   finally
     Args.Free;
   end;
-  Answer := TLspSettingsCommands.Catalog(Entries, '', ['metric-method-length']);
+  Answer := TLspSettingsCommands.Catalog(Entries, '');
   try
     Rules := Answer.GetValue('rules') as TJSONArray;
     SeenMetric := False;
     SeenSyntax := False;
+    SeenMagic := False;
     for Index := 0 to Rules.Count - 1 do
     begin
       Rule := Rules.Items[Index];
@@ -211,6 +213,12 @@ begin
       if Rule.GetValue<string>('id') = 'forbidden-symbol' then
       begin
         AssertForbiddenSymbolColumns(Rule);
+      end;
+      // Experimentell laut "profiles" des Katalogs (#145).
+      if Rule.GetValue<string>('id') = 'magic-number' then
+      begin
+        SeenMagic := True;
+        Assert.IsTrue(Rule.GetValue<Boolean>('experimental'));
       end;
       // Gegenregel (#1025).
       if Rule.GetValue<string>('id') = 'redundant-begin-end' then
@@ -229,6 +237,7 @@ begin
     end;
     Assert.IsTrue(SeenMetric);
     Assert.IsTrue(SeenSyntax);
+    Assert.IsTrue(SeenMagic);
   finally
     Answer.Free;
   end;

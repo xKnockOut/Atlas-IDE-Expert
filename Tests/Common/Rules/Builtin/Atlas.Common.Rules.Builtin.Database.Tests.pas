@@ -62,7 +62,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Database,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 function Body(const AStatements: string): string;
 begin
@@ -435,7 +436,7 @@ var
 begin
   Source := Body('  qry.SQL.Text := ''SELECT * FROM Kunden'';'#10);
   Rule := TSqlSelectStarRule.Create;
-  Assert.IsTrue(Rule.Descriptor.Experimental, 'Standard aus');
+  Assert.IsTrue(TRuleProfiles.IsExperimental(Rule.Descriptor.Id), 'Standard aus');
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSqlSelectStarRule.Create, Source))));
   Assert.AreEqual(1, StarCount(Source));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSqlSelectStarRule.Create, Source,

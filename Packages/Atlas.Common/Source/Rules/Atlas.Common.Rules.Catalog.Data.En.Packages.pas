@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..58] of string = (
+  cCatalogLinesEnPackages: array[0..61] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -16,7 +16,8 @@ const
     '      "description": "In a package (.dpk) a unit from contains uses a unit that is neither in contains nor provided by a package in requires. The compiler pulls it in implicitly (W1033), which later c' +
     'auses duplicate units when another package also contains it. The quick fix adds the unit to contains.",',
     '      "bad": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'';  // uHaupt uses uMathe\nend.",',
-    '      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'',\n  uMathe in ''uMathe.pas'';\nend."',
+    '      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'',\n  uMathe in ''uMathe.pas'';\nend.",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "ota-notifier-not-removed",',
@@ -48,7 +49,8 @@ const
     '          ],',
     '          "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "dunitx-test-without-assert",',
@@ -72,7 +74,8 @@ const
     '          ],',
     '          "description": "Calls that count as a check, as patterns with * and ?; replaces the default."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    }');
 
 implementation

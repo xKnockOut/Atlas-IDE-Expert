@@ -19,6 +19,9 @@ type
     procedure SecurityAndStyleFilterCategories;
     [Test]
     procedure StrictEnablesExperimentalAndLowConfidence;
+    /// <summary>#145: Experimentell ist, was laut "profiles" im Katalog nicht im Profil standard läuft.</summary>
+    [Test]
+    procedure ExperimentalComesFromCatalog;
     [Test]
     procedure ExplicitMinConfidenceWinsOverProfile;
     [Test]
@@ -72,13 +75,12 @@ begin
 end;
 
 function SeverityOf(const ASettings: TServerSettings; const ACategory: string;
-  ADefault: TRuleSeverity = TRuleSeverity.Warning; const APath: string = 'Source/Main.pas';
-  AExperimental: Boolean = False): TRuleSeverity;
+  ADefault: TRuleSeverity = TRuleSeverity.Warning; const APath: string = 'Source/Main.pas'): TRuleSeverity;
 var
   Enabled: Boolean;
 begin
   Result := TRuleProfiles.Severity(ASettings, ASettings.Profile,
-    TRuleDescriptor.Create('probe', ADefault, 'Probe', AExperimental), ACategory, APath, Enabled);
+    TRuleDescriptor.Create('probe', ADefault, 'Probe'), ACategory, APath, Enabled);
 end;
 
 procedure TRuleProfilesTests.StandardKeepsDefault;
@@ -119,12 +121,21 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(TRuleProfiles.MinConfidence(Streng, 'fast')));
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(TRuleProfiles.MinConfidence(
     Settings('{"profile":"ci","profiles":{"ci":{"extends":"strict"}}}'), 'ci')));
-  TRuleProfiles.Severity(Streng, Streng.Profile, TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe', True),
+  TRuleProfiles.Severity(Streng, Streng.Profile, TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe'),
     'bug', '', Enabled);
   Assert.IsTrue(Enabled);
-  TRuleProfiles.Severity(TServerSettings.Default, '', TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe', True),
+  TRuleProfiles.Severity(TServerSettings.Default, '', TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe'),
     'bug', '', Enabled);
   Assert.IsFalse(Enabled);
+end;
+
+procedure TRuleProfilesTests.ExperimentalComesFromCatalog;
+begin
+  Assert.IsTrue(TRuleProfiles.IsExperimental('magic-number'));
+  Assert.IsTrue(TRuleProfiles.IsExperimental('Line-Length'));
+  Assert.IsFalse(TRuleProfiles.IsExperimental('empty-except'));
+  // Gespeicherte Abfragen und unbekannte Kennungen stehen nicht im Katalog.
+  Assert.IsFalse(TRuleProfiles.IsExperimental('probe'));
 end;
 
 procedure TRuleProfilesTests.ExplicitMinConfidenceWinsOverProfile;
@@ -149,7 +160,7 @@ begin
   for Rule in BuiltinRules do
   begin
     if (TRuleEngine.EffectiveSeverity(Rule.Descriptor, Config, '', Enabled) <> TRuleSeverity.Off) and
-      (Enabled or not Rule.Descriptor.Experimental) then
+      (Enabled or not TRuleProfiles.IsExperimental(Rule.Descriptor.Id)) then
     begin
       Ids := Ids + [Rule.Descriptor.Id];
     end;

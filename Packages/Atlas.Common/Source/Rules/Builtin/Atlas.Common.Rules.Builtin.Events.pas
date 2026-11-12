@@ -12,7 +12,9 @@
 //                                "if Assigned(F) then" einschließen, wenn der Aufruf als eigene Anweisung in
 //                                einem Block steht. Still bleiben Felder, die ein Konstruktor mit einem Wert
 //                                belegt (eingereichte Abhängigkeiten wie FReadText := AReadText), Properties
-//                                auf solche Felder und gleichnamige lokale Variablen oder Parameter.
+//                                auf solche Felder und gleichnamige lokale Variablen oder Parameter. Eine
+//                                Property und das Feld aus ihrem read gelten als dasselbe Ereignis
+//                                ("if Assigned(FOnX) then OnX(Self)").
 
 interface
 
@@ -83,6 +85,10 @@ type
     FLineBreak: string;
     FUnitTypes: TArray<TSyntaxNode>;
     FRoutines: TArray<TSyntaxNode>;
+    /// <summary>Ereignis-Properties der aktuellen Klasse und das Feld aus ihrem read (klein geschrieben, gleiche
+    /// Stelle): "if Assigned(FOnX) then OnX(Self)" prüft dasselbe wie Assigned(OnX).</summary>
+    FAliasProperties: TArray<string>;
+    FAliasFields: TArray<string>;
     function NodeText(ANode: TSyntaxNode): string;
     procedure CollectTypes(ARoot: TSyntaxNode);
     function IsEventType(const ATypeName: string): Boolean;
@@ -93,6 +99,7 @@ type
     function EventTypeOf(AMember: TSyntaxNode): TSyntaxNode;
     function IsInjected(const AClassName, AField: string; const AWritten: TArray<string>): Boolean;
     function ReadsInjected(AMember: TSyntaxNode; const AClassName: string; const AWritten: TArray<string>): Boolean;
+    procedure AddAlias(AProperty: TSyntaxNode);
     function EventsOf(const AClassName: string; AClass: TSyntaxNode): TArray<string>;
     function Leaves(ABranch: TSyntaxNode): Boolean;
     function AssignedFlag(ARoutine: TSyntaxNode; AOffset: Integer; const AFlag, AName: string): Boolean;
@@ -545,6 +552,19 @@ begin
   Result := mRead.Success and IsInjected(AClassName, mRead.Groups[1].Value, AWritten);
 end;
 
+// Property mit "read FOnX" als Gegenstück zum Feld merken.
+procedure TEventCallScan.AddAlias(AProperty: TSyntaxNode);
+var
+  mRead: TMatch;
+begin
+  mRead := TRegEx.Match(NodeText(AProperty), '\bread\s+(\w+)', [roIgnoreCase]);
+  if mRead.Success and (Trim(AProperty.Name) <> '') then
+  begin
+    FAliasProperties := FAliasProperties + [LowerCase(Trim(AProperty.Name))];
+    FAliasFields := FAliasFields + [LowerCase(mRead.Groups[1].Value)];
+  end;
+end;
+
 // Felder und Properties der Klasse mit Ereignistyp; ohne Felder, die der Konstruktor belegt (ohne
 // schreibbare Property: irgendeine Methode der Klasse), und ohne Properties, die solche Felder lesen.
 function TEventCallScan.EventsOf(const AClassName: string; AClass: TSyntaxNode): TArray<string>;
@@ -555,6 +575,8 @@ var
   mWritten: TArray<string>;
 begin
   Result := nil;
+  FAliasProperties := nil;
+  FAliasFields := nil;
   mWritten := WrittenFields(AClass);
   for mIndex := 0 to AClass.ChildCount - 1 do
   begin
@@ -563,6 +585,10 @@ begin
       ReadsInjected(mMember, AClassName, mWritten)) then
     begin
       Continue;
+    end;
+    if mMember.Kind = TSyntaxKind.PropertyDecl then
+    begin
+      AddAlias(mMember);
     end;
     for mName in mMember.Name.Split([',']) do
     begin
@@ -874,10 +900,23 @@ end;
 function TEventCallScan.SafeCall(ARoutine: TSyntaxNode; AFirst, APosition: Integer): Boolean;
 var
   mName: string;
+  mIndex: Integer;
 begin
   mName := LowerCase(FCode.At(APosition).Text);
   Result := ((AFirst = APosition) and Shadowed(ARoutine, mName)) or Guarded(ARoutine, FCode.At(APosition).Offset,
     mName);
+  // Property und Feld aus ihrem read sind dasselbe Ereignis (FP-Prüfung 28.10.2026).
+  for mIndex := 0 to High(FAliasProperties) do
+  begin
+    if not Result and (mName = FAliasProperties[mIndex]) then
+    begin
+      Result := Guarded(ARoutine, FCode.At(APosition).Offset, FAliasFields[mIndex]);
+    end
+    else if not Result and (mName = FAliasFields[mIndex]) then
+    begin
+      Result := Guarded(ARoutine, FCode.At(APosition).Offset, FAliasProperties[mIndex]);
+    end;
+  end;
 end;
 
 procedure TEventCallScan.ReportCall(ARoutine: TSyntaxNode; AFirst, APosition: Integer);

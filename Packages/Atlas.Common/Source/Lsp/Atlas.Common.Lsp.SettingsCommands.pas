@@ -37,13 +37,10 @@ type
     /// <summary>{"rules": [{"id", "name", "category", "severity", "group", "description", "bad", "good",
     /// "options": [{"name", "type", "columns" (nur object-list), "default", "description"}], "experimental",
     /// "safeFix" (#1352)}],
-    /// "globalFile", "version"}.
+    /// "globalFile", "version"}. "experimental" (#834, #909) kommt aus "profiles" des Regelkatalogs (#145).
     /// </summary>
     class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject;
-      overload; static;
-    /// <summary>Wie oben; Regeln aus AExperimental tragen "experimental": true (#834, #909).</summary>
-    class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string;
-      const AExperimental: TArray<string>): TJSONObject; overload; static;
+      static;
     /// <summary>Katalog in der Sprache aus AArguments[0] ("de", "en"; sonst englisch).</summary>
     class function CatalogEntries(const AArguments: TJSONArray): TArray<TRuleCatalogEntry>; static;
   end;
@@ -52,7 +49,6 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.StrUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -138,11 +134,6 @@ begin
   end;
 end;
 
-class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>;
-  const AGlobalFile: string): TJSONObject;
-begin
-  Result := Catalog(AEntries, AGlobalFile, nil);
-end;
 
 /// <summary>Option einer Regel mit Art, Spalten, Vorgabe und Beschreibung.</summary>
 function OptionJson(const AOption: TRuleOption): TJSONObject;
@@ -200,7 +191,7 @@ begin
 end;
 
 /// <summary>Eintrag einer Regel im Katalog.</summary>
-function RuleJson(const AEntry: TRuleCatalogEntry; const AExperimental: TArray<string>): TJSONObject;
+function RuleJson(const AEntry: TRuleCatalogEntry): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('id', AEntry.Id);
@@ -216,13 +207,13 @@ begin
   begin
     Result.AddPair('overriddenBy', StringsJson(AEntry.OverriddenBy));
   end;
-  AddFlag(Result, 'experimental', MatchText(AEntry.Id, AExperimental));
+  AddFlag(Result, 'experimental', AEntry.Experimental);
   // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
   AddFlag(Result, 'safeFix', AEntry.SafeFix);
 end;
 
-class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string;
-  const AExperimental: TArray<string>): TJSONObject;
+class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>;
+  const AGlobalFile: string): TJSONObject;
 var
   mRules: TJSONArray;
   mEntry: TRuleCatalogEntry;
@@ -230,7 +221,7 @@ begin
   mRules := TJSONArray.Create;
   for mEntry in AEntries do
   begin
-    mRules.AddElement(RuleJson(mEntry, AExperimental));
+    mRules.AddElement(RuleJson(mEntry));
   end;
   Result := TJSONObject.Create;
   Result.AddPair('rules', mRules);

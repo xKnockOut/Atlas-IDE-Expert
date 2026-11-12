@@ -65,7 +65,7 @@ const
 function TPublicFieldRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('public-field', TRuleSeverity.Hint,
-    cTexts[TStyleDeclarationsText.PublicFieldTitle].Text, True);
+    cTexts[TStyleDeclarationsText.PublicFieldTitle].Text);
 end;
 
 procedure TPublicFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -374,7 +374,7 @@ end;
 function TGlobalVariableRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('global-variable', TRuleSeverity.Hint,
-    cTexts[TStyleDeclarationsText.GlobalTitle].Text, True);
+    cTexts[TStyleDeclarationsText.GlobalTitle].Text);
 end;
 
 procedure TGlobalVariableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

@@ -120,10 +120,19 @@ end;
 
 { Units suchen (#777) }
 
+/// <summary>Befehl der Unit-Suche im Hintergrund, nebenläufig zu anderen Befehlen (atlas.server.units braucht bei
+/// großen Gruppen Sekunden); startet keinen Server. Die Antwort nur, solange das Modul angemeldet ist.</summary>
+function UnitSearchCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
+  const ADone: TProc<string>): Boolean;
+begin
+  Result := TAtlasIdeHost.RunServerCommandAsync(GScope, TAtlasFeature.UnitSearch, ACommand, AArgumentsJson,
+    ATimeoutMs, ADone);
+end;
+
 procedure StartUnitSearch;
 begin
   // Übernimmt Strg+F12, solange die Einstellungen es wollen.
-  TAtlasIdeUnitSearch.Install(ActiveSession, Warn);
+  TAtlasIdeUnitSearch.Install(ActiveSession, Warn, UnitSearchCommand);
   GUnitSearchStarted := True;
 end;
 
