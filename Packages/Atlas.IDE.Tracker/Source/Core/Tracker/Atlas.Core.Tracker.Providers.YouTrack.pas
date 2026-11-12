@@ -32,6 +32,11 @@
 //   <url>/api/issues/<Kennung>/comments. Werte für die Klapplisten aus
 //   /api/admin/projects (Felder des Projekts mit ihren Werten, ohne Projekt
 //   aus /api/admin/customFieldSettings/customFields) und /api/users.
+// - Übergänge (#2122, IAtlasTrackerStateRules): Steht das Zustandsfeld unter
+//   einer Zustandsmaschine, liest StateRules die erlaubten Übergänge des
+//   Issues (GET <url>/api/issues/<Kennung>?fields=customFields(name,id,
+//   value(name),possibleEvents(id,presentation))); Apply löst einen Übergang
+//   statt eines Befehls mit dem Wert aus (TAtlasYouTrackApi.ApplyChange).
 // - Zeit buchen (#1267, IAtlasTrackerTimeWriter): POST
 //   <url>/api/issues/<Kennung>/timeTracking/workItems mit
 //   {"duration": {"presentation": "1h 25m"}, "date": <ms>, "type": {"name":
@@ -89,7 +94,7 @@ uses
 type
   TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
     IAtlasTrackerTimeWriter, IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards,
-    IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach)
+    IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach, IAtlasTrackerStateRules)
   public const
     cProviderName = TAtlasYouTrackApi.cProviderName;
     cQuery = TAtlasYouTrackApi.cDefaultQuery;
@@ -117,6 +122,9 @@ type
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
+    { IAtlasTrackerStateRules (#2122): über TAtlasYouTrackWorkflow }
+    function StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
+      AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
     { IAtlasTrackerTimeWriter }
     function TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out ASettings: TAtlasTrackerTimeSettings): TAtlasTrackerWriteResult;
@@ -170,7 +178,8 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.YouTrackJson,
   Atlas.Core.Tracker.YouTrackParse,
-  Atlas.Core.Tracker.YouTrackBoards;
+  Atlas.Core.Tracker.YouTrackBoards,
+  Atlas.Core.Tracker.YouTrackWorkflow;
 
 function TAtlasYouTrackTracker.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
@@ -181,6 +190,12 @@ function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const A
   const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 begin
   Result := TAtlasYouTrackApi.ApplyChange(ATarget, ATransport, AKey, AChange, ATimeoutMs);
+end;
+
+function TAtlasYouTrackTracker.StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
+begin
+  Result := TAtlasYouTrackWorkflow.Read(ATarget, ATransport, AKey, AField, ATimeoutMs, ARules);
 end;
 
 function TAtlasYouTrackTracker.Name: string;
