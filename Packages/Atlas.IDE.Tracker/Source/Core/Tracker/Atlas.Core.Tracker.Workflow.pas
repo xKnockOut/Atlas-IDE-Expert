@@ -13,6 +13,10 @@
 // - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerWrite), die
 //   der Anbieter (IAtlasTrackerWriter) schreibt. Geschrieben wird nur nach
 //   „Beginnen“ bzw. dem Klick auf „Senden“ im Beenden-Dialog.
+// - Unter einer Zustandsmaschine (#2122) gilt der Zustand als Wunschziel:
+//   FitStart ersetzt issues.startState durch den Übergang dorthin (oder
+//   lässt den Zustand, wenn keiner hinführt); EndTransition baut die
+//   Änderung beim Beenden mit dem gewählten Übergang.
 // - LoadValues holt Zustände und Felder für die Klapplisten (bricht beim
 //   ersten Fehler ab); CommitsFor sucht die Commits mit der Kennung gegen
 //   issues.branchBase, sonst main bzw. master.
@@ -134,6 +138,17 @@ type
     /// Zuständigkeit.</summary>
     class function EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState, AComment: string;
       AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite; static;
+    /// <summary>AChange (von StartChange) unter den Regeln ARules (#2122): Steht das Feld unter einer
+    /// Zustandsmaschine, wird der Zustand zum Übergang, der dorthin führt; steht das Issue schon dort, entfällt er.
+    /// Führt keiner hin, entfällt der Zustand und ABlocked ist True (Zuweisung und Kommentar bleiben). Ohne
+    /// Zustandsmaschine unverändert.</summary>
+    class function FitStart(const AChange: TAtlasTrackerWrite; const ARules: TAtlasTrackerStateRules;
+      out ABlocked: Boolean): TAtlasTrackerWrite; static;
+    /// <summary>Änderung beim Beenden mit Übergang AIndex von ARules (#2122); AIndex &lt; 0 = Zustand nicht ändern.
+    /// Kommentar und Übergabe wie EndChange.</summary>
+    class function EndTransition(const AOptions: TAtlasTrackerSyncOptions; const ARules: TAtlasTrackerStateRules;
+      AIndex: Integer; const AComment: string; AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite;
+      static;
     /// <summary>Betreffe aus {commits} ohne Kurz-Hash, eine Zeile je Commit (Vorlage der Beschreibung einer
     /// Zeitbuchung, #1267).</summary>
     class function CommitSubjects(const ACommits: string): string; static;
@@ -149,6 +164,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Core.Tracker.Transitions,
   Atlas.Core.VersionControl.BranchNames;
 
 { TAtlasTrackerSyncOptions }
@@ -460,6 +476,44 @@ begin
   begin
     Result.Assign := TAtlasTrackerAssign.User;
     Result.Assignee := Trim(AAssignee);
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.FitStart(const AChange: TAtlasTrackerWrite;
+  const ARules: TAtlasTrackerStateRules; out ABlocked: Boolean): TAtlasTrackerWrite;
+var
+  mIndex: Integer;
+begin
+  Result := AChange;
+  ABlocked := False;
+  if not ARules.StateMachine or (ARules.FieldId = '') or (Trim(AChange.State) = '') then
+  begin
+    Exit;
+  end;
+  Result.State := '';
+  if TAtlasTrackerTransitions.IsAt(ARules, AChange.State) then
+  begin
+    Exit;
+  end;
+  mIndex := TAtlasTrackerTransitions.Preferred(ARules, TArray<string>.Create(Trim(AChange.State)));
+  if mIndex < 0 then
+  begin
+    ABlocked := True;
+    Exit;
+  end;
+  Result.Transition := ARules.Transitions[mIndex];
+  Result.FieldId := ARules.FieldId;
+end;
+
+class function TAtlasTrackerWorkflow.EndTransition(const AOptions: TAtlasTrackerSyncOptions;
+  const ARules: TAtlasTrackerStateRules; AIndex: Integer; const AComment: string; AHandOver: Boolean;
+  const AAssignee: string): TAtlasTrackerWrite;
+begin
+  Result := EndChange(AOptions, '', AComment, AHandOver, AAssignee);
+  if (AIndex >= 0) and (AIndex <= High(ARules.Transitions)) then
+  begin
+    Result.Transition := ARules.Transitions[AIndex];
+    Result.FieldId := ARules.FieldId;
   end;
 end;
 

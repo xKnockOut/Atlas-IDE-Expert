@@ -173,7 +173,10 @@ type
     SettingsIssuesPathsAdd, SettingsIssuesPathsCheck, SettingsIssuesPathsSuggest, SettingsIssuesPathsChecking,
     SettingsIssuesPathsFound, SettingsIssuesPathsNone, SettingsIssuesPathsHint, SuggestTitle, SuggestIntro,
     SuggestColumnPath, SuggestColumnKind, SuggestColumnWhy, SuggestWhyProject, SuggestWhyExternal, SuggestWhySubmodule,
-    SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching);
+    SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
+    TrackerEndTransition, TrackerEndTransitionFrom, TrackerEndNotAllowed, TrackerPartTransition,
+    TrackerPartTransitionTo, TrackerStartNoTransition, TrackerStartNoTransitionNone,
+    TrackerQuoted);
 
   TAtlasTrackerStrings = class
   public
@@ -939,7 +942,15 @@ const
      'Worktree desselben Repositorys',
      'Nichts gefunden – Ordner selbst wählen …',
      'Übernehmen',
-     'Suche Arbeitskopien …'),
+     'Suche Arbeitskopien …',
+     'Übergang:',
+     'Übergang (ab „%s“):',
+     '„%s“ ist ab „%s“ nicht erlaubt.',
+     'Übergang „%s“',
+     'Übergang „%s“ → %s',
+     'Atlas: %s bleibt „%s“: Ab hier erlaubt sind %s.',
+     'Atlas: %s bleibt „%s“: Ab hier ist kein Übergang erlaubt.',
+     '„%s“'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1684,7 +1695,15 @@ const
      'Worktree of the same repository',
      'Nothing found – choose folder…',
      'Apply',
-     'Searching working copies…'));
+     'Searching working copies…',
+     'Transition:',
+     'Transition (from “%s”):',
+     '“%s” is not allowed from “%s”.',
+     'transition “%s”',
+     'transition “%s” → %s',
+     'Atlas: %s stays “%s”: allowed from here are %s.',
+     'Atlas: %s stays “%s”: no transition is allowed from here.',
+     '“%s”'));
 
 { TAtlasTrackerStrings }
 
