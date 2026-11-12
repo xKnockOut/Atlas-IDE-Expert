@@ -41,7 +41,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Mcp.Server,
@@ -154,7 +154,7 @@ begin
     raise EMcpToolError.CreateFmt(cTexts[TExtractToolsText.BadName].Text, [ARequest.Name]);
   end;
   mText := ReadSource(AEdit, ARequest.FileName);
-  mTree := TPascalParser.Parse(mText);
+  mTree := TSyntaxTreeCache.Parse(mText);
   try
     mAction := PlanAction(mText, mTree, LinesRange(mText, ARequest), OptionsOf(ARequest), mNote);
   finally

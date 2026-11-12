@@ -201,7 +201,7 @@ begin
   end;
   BuildMenus;
   BuildServerTab;
-  FCheckPage := TMonitorCheckPage.Create(Self, FPages, FSettings.Check, FStatusRoot, InformProc, ConfirmFunc);
+  FCheckPage := TMonitorCheckPage.Create(Self, FPages, FSettings.Check, FStatusRoot, InformProc(), ConfirmFunc());
   BuildTray;
   // Die Einstellung gilt: ein fehlender oder veralteter Eintrag (Programm verschoben) wird nachgezogen.
   ApplyAutostart(FSettings.StartWithWindows);

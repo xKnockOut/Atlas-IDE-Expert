@@ -52,6 +52,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Atlas.Common.Monitor.Texts;
 
 const
