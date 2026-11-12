@@ -63,7 +63,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Interfaces,
@@ -211,6 +210,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Palette,
   System.Math,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Outline.Conditionals,

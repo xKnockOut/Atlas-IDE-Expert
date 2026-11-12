@@ -30,8 +30,7 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
-  Atlas.Core.Build.OpenBuildSettings;
+  System.Generics.Collections;
 
 type
   /// <summary>Ergebnis eines Laufs beim Öffnen.</summary>
@@ -109,6 +108,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Build.OpenBuildSettings;
 
 { TAtlasOpenBuildResult }
 

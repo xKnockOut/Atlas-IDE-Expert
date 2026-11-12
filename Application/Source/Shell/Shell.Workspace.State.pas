@@ -12,7 +12,6 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Builder,
-  Atlas.Common.Index.NameFacts,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Shell.Workspace.Setup,
@@ -121,6 +120,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
   Atlas.Common.Pascal.IncludeFiles;
 
 constructor TShellProjectState.Create(ASetup: TShellWorkspaceSetup);

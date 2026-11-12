@@ -53,7 +53,6 @@ uses
   System.Classes,
   Vcl.AppEvnts,
   Atlas.Core.Commands.Usage,
-  Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.UI.Commands.ShortcutTip,
   Atlas.IDE.Commands.Usage,
@@ -127,6 +126,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Messages,
   System.Types,

@@ -1815,6 +1815,11 @@
       ]
     },
     {
+      "id": "uses-only-in-implementation",
+      "name": "Unit gehört in die uses des implementation-Teils",
+      "description": "Eine Unit im interface-uses braucht nur der implementation-Teil: Kein Bezeichner des interface-Teils (außerhalb der uses-Listen) verweist auf sie. Ein solcher Eintrag verlängert Übersetzungszeiten, denn nach einer Änderung an ihr übersetzt der Compiler jede Unit neu, die diese verwendet, und erzeugt unnötige Abhängigkeiten und Zyklen. Dieselbe Analyse wie der Hinweis im Editor (#621) und wie unused-uses, mit Namensauflösung: Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt (ihre Reihenfolge zählt) und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Korrektur: den Eintrag in die uses des implementation-Teils verschieben (legt sie bei Bedarf an, sortiert mit sortUses). Sie gilt nicht als sicher: Im implementation-uses steht die Unit später und kann gleichnamige Bezeichner anderer Units verdecken (TBitmap aus Winapi.Windows und Vcl.Graphics). Still im Editor, wo dieselben Einträge den Hinweis tragen (der Hinweis folgt der Regel: off, exclude und lsp-ignore nehmen ihn mit weg), ohne Symbolindex (--no-index), bei Syntaxfehlern und außerhalb von Units."
+    },
+    {
       "id": "message-method-invalid",
       "name": "message-Methode falsch deklariert",
       "description": "Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E2138; der Typ wird nicht geprüft, ein untypisierter var-Parameter ist in Ordnung), ihre Nachrichtennummer ist kleiner als 1 (wie E2139) oder eine frühere message-Methode derselben Klasse behandelt schon dieselbe Nummer (wie E2140, meist nach Kopieren). Nummern gelten als gleich, wenn ihre Werte bekannt sind (Zahlen, Konstanten aus dem Index) oder die Ausdrücke gleich lauten. Methoden in sich ausschließenden {$IF}-Zweigen sind nicht doppelt; dieselbe Nummer in einem Nachfahren überschreibt den Handler und ist erlaubt. Korrektur für E2138: einen einzelnen Parameter zu var machen, sonst die Liste durch (var Msg: TMessage) ersetzen; der Rumpf in derselben Datei wird mit angepasst."

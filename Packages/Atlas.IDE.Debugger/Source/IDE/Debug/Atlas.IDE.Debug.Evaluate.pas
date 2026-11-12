@@ -53,8 +53,7 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.EvaluateHook,
-  Atlas.IDE.Debug.EvaluateStore,
-  Atlas.UI.Debug.EvaluateFrame;
+  Atlas.IDE.Debug.EvaluateStore;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -209,6 +208,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Debug.EvaluateFrame,
   System.JSON,
   Vcl.Controls,
   Vcl.Dialogs,

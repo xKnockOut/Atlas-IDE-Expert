@@ -12,8 +12,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Contract;
 
 type
   /// <summary>Bereich ganzer Zeilen als Offsets ab 0: Anfang und Ende samt Zeilenumbruch.</summary>
@@ -186,6 +185,7 @@ function ResolverFileName(const AContext: TRuleContext): string;
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,

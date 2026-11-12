@@ -22,7 +22,6 @@
 interface
 
 uses
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree;
 
@@ -38,6 +37,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,

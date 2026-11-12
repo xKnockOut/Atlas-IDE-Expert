@@ -31,7 +31,6 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExpressionType,
   Atlas.UI.Editor.ExpressionType;
@@ -102,6 +101,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.TextChanges,
   System.Math,
   System.JSON,
   Vcl.Controls,

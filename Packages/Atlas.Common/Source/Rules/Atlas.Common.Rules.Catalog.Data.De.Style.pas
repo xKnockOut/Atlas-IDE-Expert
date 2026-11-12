@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeStyle: array[0..553] of string = (
+  cCatalogLinesDeStyle: array[0..558] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Ungenutzte lokale Variable",',
@@ -618,6 +618,16 @@ const
     '          "description": "Units, die nie als ungenutzt gelten, zusätzlich zu usesKeep; auch für das Abblenden im Editor und „uses aufräumen“."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "uses-only-in-implementation",',
+    '      "name": "Unit gehört in die uses des implementation-Teils",',
+    '      "description": "Eine Unit im interface-uses braucht nur der implementation-Teil: Kein Bezeichner des interface-Teils (außerhalb der uses-Listen) verweist auf sie. Ein solcher Eintrag verlängert ' +
+    'Übersetzungszeiten, denn nach einer Änderung an ihr übersetzt der Compiler jede Unit neu, die diese verwendet, und erzeugt unnötige Abhängigkeiten und Zyklen. Dieselbe Analyse wie der Hinweis im Edito' +
+    'r (#621) und wie unused-uses, mit Namensauflösung: Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt (ihre Reihenfolge zählt) und Einträge in inaktiven {$IFDEF}-Z' +
+    'weigen bleiben. Konfidenz hoch. Korrektur: den Eintrag in die uses des implementation-Teils verschieben (legt sie bei Bedarf an, sortiert mit sortUses). Sie gilt nicht als sicher: Im implementation-us' +
+    'es steht die Unit später und kann gleichnamige Bezeichner anderer Units verdecken (TBitmap aus Winapi.Windows und Vcl.Graphics). Still im Editor, wo dieselben Einträge den Hinweis tragen (der Hinweis ' +
+    'folgt der Regel: off, exclude und lsp-ignore nehmen ihn mit weg), ohne Symbolindex (--no-index), bei Syntaxfehlern und außerhalb von Units."',
     '    },',
     '{',
     '      "id": "now-for-elapsed-time",',

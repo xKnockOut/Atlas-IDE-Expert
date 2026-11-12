@@ -32,8 +32,6 @@ uses
   Atlas.IDE.Designer.MultiResize,
   Atlas.IDE.Designer.SelectionBar,
   Atlas.IDE.Designer.Magnifier,
-  Atlas.IDE.Designer.PropertySearch,
-  Atlas.IDE.Designer.Usages,
   Atlas.IDE.Designer.Undo;
 
 type
@@ -66,6 +64,10 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.IDE.Designer.PropertySearch,
+  Atlas.IDE.Designer.Usages;
 
 { TAtlasIdeDesignerTools }
 

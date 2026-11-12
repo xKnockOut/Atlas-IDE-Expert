@@ -18,7 +18,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Editing.RoutineLocals,
@@ -165,6 +164,7 @@ function SameParameters(const ALeft, ARight: TArray<TExtractParameter>): Boolean
 implementation
 
 uses
+  Atlas.Common.Pascal.Contract,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Editing.RoutineBody,

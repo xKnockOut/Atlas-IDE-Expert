@@ -12,8 +12,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings,
-  Atlas.UI.Search.Strings;
+  Atlas.UI.Strings;
 
 type
   [TestFixture]
@@ -65,6 +64,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Search.Strings,
   System.SysUtils,
   System.Classes,
   Winapi.Windows,

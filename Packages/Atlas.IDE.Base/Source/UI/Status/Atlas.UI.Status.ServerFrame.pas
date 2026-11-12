@@ -32,7 +32,6 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Status.Server;
 
@@ -155,6 +154,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Winapi.Windows,
   System.Math,
   Atlas.UI.Status.Strings;

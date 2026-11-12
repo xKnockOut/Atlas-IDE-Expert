@@ -17,7 +17,6 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Build.Requests,
   Atlas.Core.Assistants.InboxPace,
   Atlas.IDE.Contracts.BuildRequests,
   Atlas.IDE.Assistants.FolderSignal;
@@ -47,6 +46,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.Requests,
   Winapi.Windows,
   ToolsAPI,
   System.IOUtils,

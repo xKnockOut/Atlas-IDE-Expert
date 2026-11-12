@@ -16,7 +16,6 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.UI.Foundation.Dialog;
 
@@ -50,6 +49,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Symbol,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings;

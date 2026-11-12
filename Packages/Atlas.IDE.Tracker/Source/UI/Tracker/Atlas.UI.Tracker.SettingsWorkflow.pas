@@ -13,7 +13,6 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.SettingsTables,
   Atlas.UI.Tracker.ValueBox,
@@ -66,6 +65,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Tracker.Connections,
   Vcl.Graphics,
   Atlas.UI.Tracker.Strings;
 

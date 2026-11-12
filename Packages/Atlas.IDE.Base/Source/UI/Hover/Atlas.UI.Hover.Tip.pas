@@ -49,13 +49,10 @@ uses
   Vcl.Controls,
   Atlas.Core.Style.Color,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Texts,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Popup.Window;
@@ -210,6 +207,9 @@ type
 implementation
 
 uses
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Hover.Texts,
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   System.StrUtils,

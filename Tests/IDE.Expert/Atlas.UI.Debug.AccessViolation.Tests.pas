@@ -9,10 +9,8 @@ uses
   System.Generics.Collections,
   DUnitX.TestFramework,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings,
   Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
-  Atlas.Core.Debug.ExceptionBanner,
   Atlas.UI.Debug.AccessViolation;
 
 type
@@ -53,6 +51,8 @@ type
 implementation
 
 uses
+  Atlas.UI.Debug.Strings,
+  Atlas.Core.Debug.ExceptionBanner,
   System.SysUtils;
 
 function Link(const AExpression, AName: string; AKind: TAtlasAvLinkKind; const ATypeName: string): TAtlasAvLink;

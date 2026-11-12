@@ -270,6 +270,7 @@ uses
   Atlas.Common.Rules.Builtin.PublicMembers.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.Tests.pas',
   Atlas.Common.Rules.Builtin.DeadCode.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DeadCode.Tests.pas',
   Atlas.Common.Rules.Builtin.UnusedUses.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.UnusedUses.Tests.pas',
+  Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests.pas',
   Atlas.Common.Rules.ConsideredUsed.Tests in 'Common\Rules\Atlas.Common.Rules.ConsideredUsed.Tests.pas',
   Atlas.Common.Rules.ProjectFiles.Tests in 'Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas',
   Atlas.Common.Rules.Builtin.XmlDoc.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas',

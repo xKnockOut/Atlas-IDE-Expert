@@ -19,7 +19,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
-| [Stil und Metriken](#gruppe-style) | 54 |
+| [Stil und Metriken](#gruppe-style) | 55 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -398,6 +398,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unused-declaration`](#unused-declaration) | Deklaration im implementation-Abschnitt wird nie verwendet | Code Smell | Hinweis |
 | [`unused-unit`](#unused-unit) | Unit wird von keiner anderen Unit verwendet | Code Smell | Hinweis |
 | [`unused-uses`](#unused-uses) | Ungenutzte Unit im uses | Code Smell | Hinweis |
+| [`uses-only-in-implementation`](#uses-only-in-implementation) | Unit gehört in die uses des implementation-Teils | Code Smell | Hinweis |
 | [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
@@ -6957,6 +6958,50 @@ uses
   System.SysUtils;
 
 function Titel(const AName: string): string;
+```
+
+<a id="uses-only-in-implementation"></a>
+### uses-only-in-implementation
+
+**Unit gehört in die uses des implementation-Teils** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Unit im interface-uses braucht nur der implementation-Teil: Kein Bezeichner des interface-Teils (außerhalb der uses-Listen) verweist auf sie. Ein solcher Eintrag verlängert Übersetzungszeiten, denn nach einer Änderung an ihr übersetzt der Compiler jede Unit neu, die diese verwendet, und erzeugt unnötige Abhängigkeiten und Zyklen. Dieselbe Analyse wie der Hinweis im Editor (#621) und wie unused-uses, mit Namensauflösung: Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt (ihre Reihenfolge zählt) und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Korrektur: den Eintrag in die uses des implementation-Teils verschieben (legt sie bei Bedarf an, sortiert mit sortUses). Sie gilt nicht als sicher: Im implementation-uses steht die Unit später und kann gleichnamige Bezeichner anderer Units verdecken (TBitmap aus Winapi.Windows und Vcl.Graphics). Still im Editor, wo dieselben Einträge den Hinweis tragen (der Hinweis folgt der Regel: off, exclude und lsp-ignore nehmen ihn mit weg), ohne Symbolindex (--no-index), bei Syntaxfehlern und außerhalb von Units.
+
+Mit Treffer:
+
+```pascal
+unit Import;
+
+interface
+
+uses
+  System.Classes, System.JSON;  // System.JSON is only used below implementation
+
+type
+  TImport = class
+    procedure Laden(AListe: TStrings);
+  end;
+```
+
+Richtig:
+
+```pascal
+unit Import;
+
+interface
+
+uses
+  System.Classes;
+
+type
+  TImport = class
+    procedure Laden(AListe: TStrings);
+  end;
+
+implementation
+
+uses
+  System.JSON;
 ```
 
 <a id="message-method-invalid"></a>

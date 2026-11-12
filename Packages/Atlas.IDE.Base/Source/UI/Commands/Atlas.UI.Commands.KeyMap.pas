@@ -23,7 +23,6 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap;
@@ -117,6 +116,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Vcl.Themes,
   Winapi.Windows,
   Atlas.UI.Strings,

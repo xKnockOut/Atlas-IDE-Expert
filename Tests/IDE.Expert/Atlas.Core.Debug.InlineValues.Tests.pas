@@ -10,7 +10,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Lsp.Contract,
   Atlas.Core.Debug.InlineValues;
 
 type
@@ -48,6 +47,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.Contract,
   System.SysUtils;
 
 function Refs: TAtlasInlineValueRefs;

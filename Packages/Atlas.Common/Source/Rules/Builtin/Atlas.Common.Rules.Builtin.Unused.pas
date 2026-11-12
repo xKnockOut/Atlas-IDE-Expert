@@ -67,7 +67,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -95,6 +94,7 @@ procedure RegisterUnusedRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   System.StrUtils,
   System.RegularExpressions,
   System.Generics.Collections,

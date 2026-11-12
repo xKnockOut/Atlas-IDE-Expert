@@ -8,8 +8,7 @@
 interface
 
 uses
-  System.SysUtils,
-  Atlas.Common.Projects.Contract;
+  System.SysUtils;
 
 type
   TGroupProjReader = class
@@ -24,6 +23,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.Contract,
   System.Generics.Collections,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Paths,

@@ -25,7 +25,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ChoiceBox;
 
 type
@@ -82,6 +81,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Commands.KeyMap;
 
 {$R *.dfm}

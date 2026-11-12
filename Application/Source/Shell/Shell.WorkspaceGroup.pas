@@ -23,7 +23,6 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
   Shell.Workspace;
@@ -113,6 +112,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Architecture.UsesGraph,
   System.Classes,
   System.Diagnostics,
   System.JSON,

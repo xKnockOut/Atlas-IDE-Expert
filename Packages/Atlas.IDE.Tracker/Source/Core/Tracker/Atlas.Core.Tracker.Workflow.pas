@@ -22,7 +22,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract;
@@ -148,6 +147,7 @@ type
 implementation
 
 uses
+  Atlas.Core.CiBuild.Contract,
   System.StrUtils,
   Atlas.Core.VersionControl.BranchNames;
 

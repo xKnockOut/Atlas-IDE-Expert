@@ -18,7 +18,6 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Welcome.Greeting,
   Atlas.UI.Style.Symbol,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Search;
@@ -90,6 +89,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Welcome.Greeting,
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;

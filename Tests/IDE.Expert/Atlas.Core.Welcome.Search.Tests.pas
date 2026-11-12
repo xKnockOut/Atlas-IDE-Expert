@@ -13,7 +13,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   DUnitX.TestFramework,
-  Atlas.Core.Welcome.IndexFiles,
   Atlas.Core.Welcome.Search;
 
 type
@@ -78,6 +77,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Welcome.IndexFiles,
   System.Classes,
   System.DateUtils,
   System.IOUtils,

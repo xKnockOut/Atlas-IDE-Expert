@@ -39,8 +39,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.Layout,
   Atlas.UI.Editor.Bar;
@@ -176,6 +174,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
+  Atlas.Core.Settings.ToolbarItems,
   System.Math,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,

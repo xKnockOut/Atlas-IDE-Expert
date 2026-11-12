@@ -25,7 +25,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.AssignmentSwap;
@@ -148,6 +147,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.UsesActions,
   System.Math,
   System.StrUtils,
   System.RegularExpressions,

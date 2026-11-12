@@ -23,7 +23,6 @@ uses
   System.Types,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Welcome.Layout,
-  Atlas.Core.Welcome.Layouts,
   Atlas.UI.Welcome.Arrange;
 
 type
@@ -77,6 +76,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.QuickToggles,

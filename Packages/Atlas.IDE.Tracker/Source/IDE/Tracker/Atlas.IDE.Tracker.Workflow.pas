@@ -27,7 +27,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Workflow,
@@ -126,6 +125,7 @@ type
 implementation
 
 uses
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,

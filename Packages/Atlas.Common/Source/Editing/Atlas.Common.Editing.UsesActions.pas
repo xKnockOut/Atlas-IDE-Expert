@@ -52,6 +52,9 @@ type
     KeptByAllowlist,
     /// <summary>Steht im interface, gebraucht wird sie nur in der implementation.</summary>
     OnlyImplementation);
+  /// <summary>Welche Zustände der Editor zeigt (#1136): OnlyImplementation folgt der Regel
+  /// uses-only-in-implementation, die übrigen unused-uses.</summary>
+  TUsesEntryStates = set of TUsesEntryState;
 
   /// <summary>Wohin AddUnits die Units schreibt (#786): selbst entscheiden oder ein Abschnitt fest.</summary>
   TUsesAddTarget = (

@@ -9,7 +9,6 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.Contract;
 
@@ -50,6 +49,7 @@ type
 implementation
 
 uses
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

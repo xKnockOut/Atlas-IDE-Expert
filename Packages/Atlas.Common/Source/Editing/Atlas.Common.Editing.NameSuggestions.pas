@@ -19,7 +19,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract;
 
@@ -71,6 +70,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.Contract,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,

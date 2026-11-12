@@ -53,7 +53,6 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
@@ -133,6 +132,7 @@ procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,

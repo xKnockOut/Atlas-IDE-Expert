@@ -10,7 +10,6 @@ interface
 uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Localization.Language,
-  Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format;
 
 {$SCOPEDENUMS ON}
@@ -268,6 +267,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Signature.Contract,
   System.SysUtils;
 
 const
