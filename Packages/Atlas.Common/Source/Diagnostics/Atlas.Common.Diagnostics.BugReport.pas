@@ -18,9 +18,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.JsonRpc.Statistics,
-  Atlas.Text.Anonymize,
-  Atlas.Text.LogMarks;
+  Atlas.Common.JsonRpc.Statistics;
 
 type
   TBugReportInput = record
@@ -56,6 +54,8 @@ type
 implementation
 
 uses
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

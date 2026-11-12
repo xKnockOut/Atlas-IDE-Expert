@@ -14,7 +14,6 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.SettingsTables,
@@ -92,6 +91,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Tracker.Contract,
   System.SysUtils,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;

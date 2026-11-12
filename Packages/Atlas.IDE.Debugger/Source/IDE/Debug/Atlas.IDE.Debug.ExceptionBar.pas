@@ -41,10 +41,8 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionBanner,
-  Atlas.Core.Debug.ExceptionDialog,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
@@ -135,6 +133,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Status.Registry,
+  Atlas.Core.Debug.ExceptionDialog,
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Clipbrd,

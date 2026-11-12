@@ -44,7 +44,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature;
 
 const
@@ -83,6 +82,7 @@ procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.Classes,

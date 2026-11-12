@@ -37,7 +37,6 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
@@ -179,6 +178,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Ci.Contract,
   Winapi.Windows,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,

@@ -14,8 +14,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Values;
 
@@ -134,6 +132,8 @@ function CollectAt(const ALookup: TEnumLookup; const APosition: TTextPosition; c
 implementation
 
 uses
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.Completion.Cases,
   Atlas.Common.Lsp.Completion.Declarations,

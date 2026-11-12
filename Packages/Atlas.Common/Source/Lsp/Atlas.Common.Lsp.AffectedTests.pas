@@ -41,7 +41,6 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.ChangedFiles,
@@ -179,6 +178,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,

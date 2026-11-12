@@ -38,7 +38,6 @@ uses
   Vcl.Buttons,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Board;
 
@@ -248,6 +247,7 @@ function TryWebColor(const AText: string; out AColor: TColor): Boolean;
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   System.Math,
   Winapi.Windows,
   Vcl.Clipbrd,

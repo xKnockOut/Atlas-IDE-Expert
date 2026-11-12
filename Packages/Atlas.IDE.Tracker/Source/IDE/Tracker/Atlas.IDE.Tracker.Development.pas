@@ -22,10 +22,8 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.Tracker.Preview,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.UI.Tracker.IssueFrame,
@@ -117,6 +115,8 @@ type
 implementation
 
 uses
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Tracker.Preview,
   ToolsAPI,
   System.DateUtils,
   System.UITypes,

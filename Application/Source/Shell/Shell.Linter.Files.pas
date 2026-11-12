@@ -7,7 +7,6 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Index.Contract,
@@ -43,6 +42,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.Contract,
   System.SysUtils,
   System.IOUtils,
   System.Generics.Collections,

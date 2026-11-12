@@ -22,7 +22,6 @@
 interface
 
 uses
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract;
 
@@ -82,6 +81,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.Contract,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,

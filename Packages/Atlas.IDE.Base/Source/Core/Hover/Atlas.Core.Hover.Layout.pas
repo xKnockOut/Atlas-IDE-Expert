@@ -42,13 +42,8 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Hover.Contract,
-  Atlas.Core.Hover.History,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Documentation.Contract,
-  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.View;
@@ -136,6 +131,11 @@ function HoverBadgeKind(const ACode: string): TAtlasBadgeKind;
 implementation
 
 uses
+  Atlas.Core.Hover.Contract,
+  Atlas.Core.Hover.History,
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Style.Color,
   System.SysUtils,
   System.Math,
   System.StrUtils,

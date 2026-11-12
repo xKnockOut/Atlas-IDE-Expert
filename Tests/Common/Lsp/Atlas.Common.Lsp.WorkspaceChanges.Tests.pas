@@ -12,8 +12,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.WorkspaceChanges;
 
 type
@@ -41,6 +39,8 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Editing.ChangeSignature;
 

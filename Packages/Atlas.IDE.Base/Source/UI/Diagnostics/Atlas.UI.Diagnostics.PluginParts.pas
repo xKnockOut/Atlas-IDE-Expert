@@ -24,11 +24,9 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Menus,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.UI.Strings,
-  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.Grid;
 
 type
@@ -153,6 +151,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
+  Atlas.UI.Diagnostics.Strings,
   Winapi.Windows,
   Atlas.Core.Diagnostics.PluginReport;
 

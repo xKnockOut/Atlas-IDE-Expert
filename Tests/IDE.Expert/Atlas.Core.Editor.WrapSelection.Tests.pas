@@ -8,7 +8,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Editor.WrapSelection;
 
 type
@@ -48,6 +47,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.TextChanges,
   System.SysUtils;
 
 procedure TAtlasWrapSelectionTests.TearDown;

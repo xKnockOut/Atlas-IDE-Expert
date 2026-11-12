@@ -12,8 +12,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings,
-  Atlas.UI.VersionControl.Strings;
+  Atlas.UI.Strings;
 
 type
   [TestFixture]
@@ -63,6 +62,7 @@ type
 implementation
 
 uses
+  Atlas.UI.VersionControl.Strings,
   System.SysUtils,
   System.UITypes,
   Atlas.Core.VersionControl.Contract,

@@ -23,7 +23,6 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.UI.Welcome.Frame;
 
@@ -106,6 +105,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Welcome.Continue,
   System.DateUtils,
   System.UITypes,
   Vcl.Forms,

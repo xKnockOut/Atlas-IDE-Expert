@@ -50,7 +50,6 @@ uses
   Atlas.Common.Lsp.Internals.FormCache,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.Forms,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix,
   Atlas.Common.Lsp.Completion.Hooks,
@@ -138,6 +137,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Forms,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,

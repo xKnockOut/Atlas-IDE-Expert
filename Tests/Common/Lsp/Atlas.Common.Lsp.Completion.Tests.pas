@@ -7,7 +7,6 @@ uses
   Atlas.Common.Lsp.Completion.TestSupport,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Completion;
 
 type
@@ -92,6 +91,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.NameResolver,
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,

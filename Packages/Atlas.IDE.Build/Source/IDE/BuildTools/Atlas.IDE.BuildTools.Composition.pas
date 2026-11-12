@@ -26,8 +26,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Contracts.BuildPipeline;
+  Atlas.IDE.Contracts.BuildTools;
 
 type
   TAtlasBuildModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -60,6 +59,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Contracts.BuildPipeline,
   Atlas.UI.Build.SettingsSection,
   System.Types,
   Atlas.Text.Product.Version,

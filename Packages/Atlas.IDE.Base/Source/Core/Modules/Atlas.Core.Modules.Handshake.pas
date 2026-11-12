@@ -11,8 +11,7 @@
 interface
 
 uses
-  Winapi.Windows,
-  Atlas.Core.Modules.Contract;
+  Winapi.Windows;
 
 type
   /// <summary>Ergebnis: passt, Base ohne Export (nicht geladen oder kein Atlas-Base), andere Vertragsversion.</summary>
@@ -36,6 +35,9 @@ type
 function AtlasCoreContractVersion: Integer; stdcall;
 
 implementation
+
+uses
+  Atlas.Core.Modules.Contract;
 
 function AtlasCoreContractVersion: Integer; stdcall;
 begin

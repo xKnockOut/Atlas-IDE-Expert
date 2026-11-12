@@ -16,7 +16,6 @@ interface
 uses
   Atlas.Core.Lsp.WorkspaceEdits,
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Editor.SlashTrigger,
   Atlas.Core.Editor.TestUnit,
@@ -67,6 +66,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.TextChanges,
   System.SysUtils,
   System.JSON,
   Vcl.Clipbrd,

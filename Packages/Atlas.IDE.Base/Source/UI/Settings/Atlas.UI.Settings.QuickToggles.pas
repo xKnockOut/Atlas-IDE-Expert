@@ -33,7 +33,6 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.QuickToggles;
 
@@ -149,6 +148,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.Math,

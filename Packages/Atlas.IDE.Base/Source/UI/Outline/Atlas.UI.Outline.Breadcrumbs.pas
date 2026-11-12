@@ -63,8 +63,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.UI.Editor.Bar;
 
@@ -246,6 +244,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   System.Math,
   Vcl.Forms,
   Atlas.Core.Outline.Interfaces;

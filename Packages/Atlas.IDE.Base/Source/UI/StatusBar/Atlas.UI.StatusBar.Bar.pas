@@ -43,8 +43,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
@@ -220,6 +218,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   System.Math,
   Vcl.Forms,
   Atlas.Core.Settings.StatusBarItems,

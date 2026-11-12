@@ -68,8 +68,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Editor.LineAnchor,
-  Atlas.Core.Editor.MethodToggle;
+  Atlas.Core.Editor.LineAnchor;
 
 type
   {$SCOPEDENUMS ON}
@@ -206,6 +205,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.MethodToggle,
   System.Generics.Collections,
   Winapi.Windows,
   System.Classes,

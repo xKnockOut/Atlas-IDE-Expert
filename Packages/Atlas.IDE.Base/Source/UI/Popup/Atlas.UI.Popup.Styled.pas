@@ -15,7 +15,6 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Syntax;
 
@@ -73,6 +72,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Winapi.Windows,
   System.Math,
   Atlas.Core.Style.Wrap;

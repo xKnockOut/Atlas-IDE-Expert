@@ -26,7 +26,6 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Build.Events,
   Atlas.Core.BuildPipeline.ReleaseGuard;
 
 type
@@ -59,6 +58,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,

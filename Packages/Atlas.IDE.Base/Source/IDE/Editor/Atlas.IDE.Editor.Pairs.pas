@@ -49,7 +49,6 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Problems.Store;
 
@@ -185,6 +184,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.Guides,
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.Plugin,

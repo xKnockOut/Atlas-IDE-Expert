@@ -39,10 +39,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
-  Atlas.Core.Tracker.BlameLinks,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Contracts.LineChanges,
-  Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameScope;
 
@@ -112,6 +110,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Tracker.BlameLinks,
+  Atlas.IDE.Tracker.IssuePreview,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,

@@ -43,8 +43,6 @@ uses
   System.JSON,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.FindingsCache,
-  Atlas.Core.Problems.Refresh,
   Atlas.Core.Settings.ProblemsUpdate;
 
 type
@@ -111,6 +109,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Problems.FindingsCache,
+  Atlas.Core.Problems.Refresh,
   System.Classes,
   System.Math,
   System.Generics.Collections,

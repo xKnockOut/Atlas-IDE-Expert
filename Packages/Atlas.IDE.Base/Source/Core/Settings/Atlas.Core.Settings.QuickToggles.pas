@@ -23,8 +23,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.History;
+  Atlas.Core.Settings.Plugin;
 
 type
   TAtlasQuickToggle = record
@@ -110,6 +109,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Settings.History,
   Atlas.Core.Settings.PluginSchemaData,
   Atlas.Text.Json;
 

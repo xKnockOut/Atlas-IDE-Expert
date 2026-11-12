@@ -5,8 +5,7 @@
 interface
 
 uses
-  DUnitX.TestFramework,
-  Atlas.Core.Hover.Contract;
+  DUnitX.TestFramework;
 
 type
   [TestFixture]
@@ -57,6 +56,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Hover.Contract,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,

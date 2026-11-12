@@ -8,7 +8,6 @@ interface
 uses
   System.JSON,
   DUnitX.TestFramework,
-  Atlas.Common.Logging.Contract,
   Atlas.Common.Compiler.Backend,
   Shell.Workspace,
   Shell.Composition.ServerCommands;
@@ -51,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Logging.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Commands,

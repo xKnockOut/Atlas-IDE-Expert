@@ -18,7 +18,6 @@ uses
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.ChoiceBox,
-  Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Layouts;
 
 type
@@ -92,6 +91,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Welcome.Layout,
   System.Math,
   System.UITypes,
   Vcl.Dialogs,

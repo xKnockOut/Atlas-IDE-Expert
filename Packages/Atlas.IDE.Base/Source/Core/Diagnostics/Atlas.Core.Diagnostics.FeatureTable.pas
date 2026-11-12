@@ -21,8 +21,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.StartTimes,
-  Atlas.Core.Diagnostics.Teardown;
+  Atlas.Core.Diagnostics.StartTimes;
 
 type
   /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung; der Typ steht im Modulvertrag.
@@ -84,6 +83,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Diagnostics.Teardown;
 
 { TAtlasFeatureTable }
 

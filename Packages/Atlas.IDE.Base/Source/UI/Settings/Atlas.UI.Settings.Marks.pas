@@ -26,8 +26,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.Menus,
-  Atlas.UI.Settings.Group;
+  Vcl.Menus;
 
 type
   /// <summary>Filter der Optionsseite (#834): alle, nur geänderte, nur experimentelle Einstellungen.</summary>
@@ -152,6 +151,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Settings.Group,
   Atlas.UI.Settings.Strings;
 
 type

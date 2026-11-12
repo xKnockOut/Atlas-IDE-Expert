@@ -42,8 +42,7 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Settings.ModuleSwitches,
-  Atlas.Core.Settings.QueryMigration;
+  Atlas.Core.Settings.ModuleSwitches;
 
 type
   TAtlasIdeSettings = class
@@ -150,6 +149,7 @@ const
 implementation
 
 uses
+  Atlas.Core.Settings.QueryMigration,
   Winapi.Windows,
   System.IOUtils,
   System.DateUtils,

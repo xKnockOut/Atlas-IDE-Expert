@@ -21,7 +21,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -45,6 +44,7 @@ procedure RegisterSharedStateRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,

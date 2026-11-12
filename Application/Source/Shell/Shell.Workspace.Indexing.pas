@@ -22,7 +22,6 @@ uses
   Shell.Workspace.State,
   Shell.Workspace.Cache,
   Shell.Workspace.Loader,
-  Shell.Workspace.Requests,
   Shell.Workspace.Encodings;
 
 type
@@ -92,6 +91,7 @@ type
 implementation
 
 uses
+  Shell.Workspace.Requests,
   System.StrUtils,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Index.Adapters.CacheDirectory,
