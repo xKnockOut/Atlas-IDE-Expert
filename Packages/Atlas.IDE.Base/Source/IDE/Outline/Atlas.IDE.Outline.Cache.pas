@@ -79,7 +79,8 @@ uses
   Atlas.Core.Outline.LoadGuard,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Lsp.Client,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.CodeView;
 
 const
   /// <summary>Tipppause, nach der neu gefragt wird.</summary>
@@ -444,7 +445,11 @@ begin
   Result.FileName := mFileName;
   Result.Status := TAtlasOutlineStatus.Waiting;
   mMoment := GetTickCount64;
-  UpdateEntry(mFileName, TAtlasEditorSnapshots.Get(AView), mMoment);
+  // Im Designer und auf der Willkommensseite nicht neu laden: Der Code ist nicht zu sehen; es gilt der letzte Stand.
+  if TAtlasIdeCodeView.InFront then
+  begin
+    UpdateEntry(mFileName, TAtlasEditorSnapshots.Get(AView), mMoment);
+  end;
   // Nach dem Laden neu nachschlagen: Vorgemerktes Leeren kann den Eintrag freigegeben haben.
   if (Entries = nil) or not Entries.TryGetValue(Key(mFileName), mEntry) then
   begin
