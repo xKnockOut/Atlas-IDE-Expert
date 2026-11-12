@@ -6,6 +6,8 @@
 //   2. eingebautes Profil: fast (nur Bugs und Schwachstellen), security
 //      (Schwachstellen und Security-Hotspots), style (nur Code-Smells),
 //      strict (experimentelle Regeln an), standard (unverändert);
+//      experimentell ist eine Regel, deren "profiles" im Regelkatalog
+//      standard nicht nennt (#145, IsExperimental);
 //   3. eigene Profile aus "profiles", vom Grundprofil nach außen;
 //   4. "rules" der Konfiguration;
 //   5. "overrides", deren Muster den Pfad treffen ("*" = alle Regeln).
@@ -41,6 +43,10 @@ type
     class function MinConfidence(const ASettings: TServerSettings; const AProfile: string): TRuleConfidence; static;
     /// <summary>Kategorie aus dem Regelkatalog, '' wenn die Regel dort fehlt.</summary>
     class function CategoryOf(const ARuleId: string): string; static;
+    /// <summary>True, wenn die Regel laut Regelkatalog nicht im Profil standard läuft (#145, #834): Dann meldet sie
+    /// nur im Profil strict oder in "rules" eingeschaltet. False für Regeln, die der Katalog nicht kennt
+    /// (gespeicherte Abfragen).</summary>
+    class function IsExperimental(const ARuleId: string): Boolean; static;
     /// <summary>Alle Regelkennungen des Katalogs in Kleinbuchstaben, sortiert (#41: unknown-rule-id).</summary>
     class function KnownRuleIds: TArray<string>; static;
     /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TUsesClauses.IsTestUnit.</summary>
@@ -56,8 +62,10 @@ uses
   Atlas.Common.Rules.Catalog.Data;
 
 var
-  // Wird in initialization gefüllt und danach nur gelesen, daher ohne Sperre.
+  // Werden in initialization gefüllt und danach nur gelesen, daher ohne Sperre.
   Categories: TDictionary<string, string>;
+  // Kennungen (klein) der experimentellen Regeln; Wert ohne Bedeutung.
+  Experimentals: TDictionary<string, Boolean>;
 
 function Contains(const AItems: TArray<string>; const AText: string): Boolean;
 var
@@ -197,6 +205,11 @@ begin
   end;
 end;
 
+class function TRuleProfiles.IsExperimental(const ARuleId: string): Boolean;
+begin
+  Result := (Experimentals <> nil) and Experimentals.ContainsKey(LowerCase(ARuleId));
+end;
+
 class function TRuleProfiles.KnownRuleIds: TArray<string>;
 var
   mPair: TPair<string, string>;
@@ -229,12 +242,17 @@ var
   mEntry: TRuleCatalogEntry;
 begin
   Categories := TDictionary<string, string>.Create;
+  Experimentals := TDictionary<string, Boolean>.Create;
   try
     mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson);
     try
       for mEntry in mCatalog.Entries do
       begin
         Categories.AddOrSetValue(LowerCase(mEntry.Id), TRuleCatalog.CategoryName(mEntry.Category));
+        if mEntry.Experimental then
+        begin
+          Experimentals.AddOrSetValue(LowerCase(mEntry.Id), True);
+        end;
       end;
     finally
       mCatalog.Free;
@@ -242,7 +260,10 @@ begin
   except
     // Ohne Katalog wirken Profile nur über "rules"; die Kategorie bleibt dann unbekannt.
     on ERuleCatalog do
+    begin
       Categories.Clear;
+      Experimentals.Clear;
+    end;
   end;
 end;
 
@@ -250,6 +271,7 @@ initialization
   LoadCategories;
 
 finalization
+  FreeAndNil(Experimentals);
   FreeAndNil(Categories);
 
 end.

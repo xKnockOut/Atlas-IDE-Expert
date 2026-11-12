@@ -249,8 +249,7 @@ const
 
 function TMoneyAsFloatRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cMoneyAsFloatRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.MoneyFloatTitle].Text,
-    True);
+  Result := TRuleDescriptor.Create(cMoneyAsFloatRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.MoneyFloatTitle].Text);
 end;
 
 class function TMoneyAsFloatRule.HeadOf(const AName: string): string;
@@ -845,8 +844,7 @@ type
 function TStringIfChainRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cStringIfChainRuleId, TRuleSeverity.Hint,
-    cTexts[TIdiomsText.StringIfChainTitle].Text,
-    True);
+    cTexts[TIdiomsText.StringIfChainTitle].Text);
 end;
 
 class function TStringIfChainRule.CountWord(ACount: Integer): string;
@@ -1282,8 +1280,7 @@ end;
 
 function TPreferCaseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cPreferCaseRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.IfChainTitle].Text,
-    True);
+  Result := TRuleDescriptor.Create(cPreferCaseRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.IfChainTitle].Text);
 end;
 
 /// <summary>Dateiname für den Resolver: die Datei, sonst der relative Pfad, sonst der Unitname mit .pas.</summary>

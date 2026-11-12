@@ -84,7 +84,7 @@ end;
 
 function TMethodOrderRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('method-order', TRuleSeverity.Hint, cTexts[TMethodOrderText.Title].Text, True);
+  Result := TRuleDescriptor.Create('method-order', TRuleSeverity.Hint, cTexts[TMethodOrderText.Title].Text);
 end;
 
 procedure TMethodOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

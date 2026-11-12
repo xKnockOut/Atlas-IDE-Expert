@@ -101,7 +101,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.UnitRelations.Window,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.IDE.Foundation.CodeView;
 
 const
   cTickMs = 250;
@@ -359,7 +360,9 @@ begin
   end;
   Locate(mView);
   // Gefragt wird nur, solange die Marke im interface steht; im implementation-Teil braucht niemand den Wert.
-  if FInInterface and not FPending and (TAtlasTicks.Since(FAsked) >= cCostRefreshMs) then
+  // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
+  if FInInterface and not FPending and (TAtlasTicks.Since(FAsked) >= cCostRefreshMs) and
+    TAtlasIdeCodeView.InFront then
   begin
     Request;
   end;

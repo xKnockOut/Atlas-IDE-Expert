@@ -1266,7 +1266,7 @@ end;
 function TImplicitVariantsUnitRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cImplicitVariantsUnitRuleId, TRuleSeverity.Hint,
-    cTexts[TUnitsText.VariantsTitle].Text, True);
+    cTexts[TUnitsText.VariantsTitle].Text);
 end;
 
 /// <summary>Nennt die uses-Liste AUsed System.Variants oder Variants?</summary>

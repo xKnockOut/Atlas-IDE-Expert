@@ -25,6 +25,8 @@ type
     [Test]
     procedure SetterWithoutFieldHasNoFix;
     [Test]
+    procedure ClampedSetterHasLowConfidence;
+    [Test]
     procedure FieldAccessIsSilent;
     [Test]
     procedure OtherPropertyIsSilent;
@@ -141,6 +143,39 @@ begin
   Assert.AreEqual('Feld FKundenName verwenden', Findings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
   Assert.AreEqual('FKundenName', Findings[0].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TRecursionRulesTests.ClampedSetterHasLowConfidence;
+const
+  Source =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBalken = class'#10 +
+    '  private'#10 +
+    '    FWert: Integer;'#10 +
+    '    procedure SetWert(AWert: Integer);'#10 +
+    '  public'#10 +
+    '    property Wert: Integer read FWert write SetWert;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TBalken.SetWert(AWert: Integer);'#10 +
+    'begin'#10 +
+    '  if AWert < 0 then'#10 +
+    '    Wert := 0'#10 +
+    '  else'#10 +
+    '    FWert := AWert;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026: Der Setter klemmt den Wert; der zweite Aufruf nimmt den else-Zweig.
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, Source, '{"minConfidence": "low"}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, Source))));
+  mFindings := nil;
 end;
 
 procedure TRecursionRulesTests.GetterUsesFieldOfDeclaration;

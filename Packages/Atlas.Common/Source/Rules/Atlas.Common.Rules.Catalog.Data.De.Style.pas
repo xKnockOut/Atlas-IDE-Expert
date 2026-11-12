@@ -728,8 +728,8 @@ const
     ' (gruppiert)“. Die Ordnung kommt aus der Option placement (Vorgabe grouped wie editor.methodPlacement; declaration, alphabetical; off schaltet die Regel ab), Konstruktoren und Destruktoren mit classCo' +
     'mpletion.lifecycleFirst zuerst. Es zählen nur die Rümpfe eines Typs untereinander, nicht die Reihenfolge der Typen in der Unit. Rümpfe, die beim Ordnen stehen bleiben (in einer Region oder {$IF…}, in ' +
     'einer Zeile mit anderem Code), zählen nicht als falsch. Eine zweite Meldung „Kommentar { TKunde } fehlt“, wenn classCompletion.typeComment nicht off ist und über den Rümpfen kein Typkommentar in irgen' +
-    'deiner Form steht. Standard aus. Schnellkorrekturen: Rümpfe von TKunde ordnen (nur dieser Typ, gleiche Logik wie der Befehl) und Kommentar { TKunde } einfügen in der Form von classCompletion.typeComme' +
-    'nt.",',
+    'deiner Form steht. Standard aus (experimentell, nur im Profil strict oder eingeschaltet). Schnellkorrekturen: Rümpfe von TKunde ordnen (nur dieser Typ, gleiche Logik wie der Befehl) und Kommentar { TK' +
+    'unde } einfügen in der Form von classCompletion.typeComment.",',
     '      "options": [',
     '        {',
     '          "name": "placement",',

@@ -41,7 +41,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 const
   /// <summary>Die Regel ist ohne Eintrag in atlas.json aus.</summary>
@@ -266,7 +267,7 @@ begin
   Source := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
     '    destructor destroy; override;'#10'  end;'#10'implementation'#10'end.';
   // Standard aus (#1021).
-  Assert.IsTrue((TOverrideCaseMismatchRule.Create as IRule).Descriptor.Experimental);
+  Assert.IsTrue(TRuleProfiles.IsExperimental((TOverrideCaseMismatchRule.Create as IRule).Descriptor.Id));
   Assert.AreEqual(0, Integer(Length(Findings(Source, '', 'Source/Kunden.pas'))));
   Assert.AreEqual(1, Integer(Length(Findings(Source, Enabled, 'Source/Kunden.pas'))));
   Assert.AreEqual(0, Integer(Length(Findings(Source,

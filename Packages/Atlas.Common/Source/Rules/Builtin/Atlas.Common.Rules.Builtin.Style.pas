@@ -644,7 +644,7 @@ end;
 
 function TRedundantParensRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('redundant-parens', TRuleSeverity.Hint, cTexts[TStyleText.ParensTitle].Text, True);
+  Result := TRuleDescriptor.Create('redundant-parens', TRuleSeverity.Hint, cTexts[TStyleText.ParensTitle].Text);
 end;
 
 /// <summary>Token, hinter dem ein ganzer Ausdruck folgt: if, while, until, case, :=.</summary>
@@ -732,7 +732,7 @@ end;
 function TRedundantBeginEndRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('redundant-begin-end', TRuleSeverity.Hint,
-    cTexts[TStyleText.BeginEndTitle].Text, True);
+    cTexts[TStyleText.BeginEndTitle].Text);
 end;
 
 /// <summary>Endet die Anweisung mit einem if ohne else (auch verschachtelt in for/while/with)?</summary>
@@ -1366,7 +1366,7 @@ end;
 
 function TMagicNumberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('magic-number', TRuleSeverity.Hint, cTexts[TStyleText.MagicTitle].Text, True);
+  Result := TRuleDescriptor.Create('magic-number', TRuleSeverity.Hint, cTexts[TStyleText.MagicTitle].Text);
 end;
 
 procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
