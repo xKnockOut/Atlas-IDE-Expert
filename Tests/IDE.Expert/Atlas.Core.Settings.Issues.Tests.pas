@@ -351,6 +351,9 @@ begin
   Assert.IsTrue(ASettings.IssuesBoard, 'Board (#1272) an');
   Assert.IsTrue(ASettings.IssuesBoardConfirmMove, 'Rückfrage beim Ziehen an');
   Assert.IsTrue(ASettings.IssuesBoardOnlyMine, 'Board öffnet mit „Nur meine“');
+  Assert.IsFalse(ASettings.IssuesFlowMap, 'Ablauf-Karte (#2125) aus');
+  Assert.AreEqual(90, ASettings.IssuesFlowMapDays);
+  Assert.AreEqual(5, ASettings.IssuesFlowMapStuckDays);
   Assert.IsTrue(ASettings.WelcomePageSprint, 'Sprint-Kachel (#1277) an');
   Assert.IsTrue(ASettings.IssuesSprintBurndown, 'Burndown an');
   Assert.IsTrue(ASettings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
@@ -409,6 +412,17 @@ begin
   ASettings.Normalize;
   Assert.AreEqual(1440, ASettings.IssuesNotifyIntervalMinutes, 'höchstens ein Tag');
   Assert.AreEqual('assignedOrCreated', ASettings.IssuesNotifyScope);
+  // #2125: Zeitraum 7–365 Tage, „liegt lange“ 1–90 Tage.
+  ASettings.IssuesFlowMapDays := 1;
+  ASettings.IssuesFlowMapStuckDays := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(7, ASettings.IssuesFlowMapDays, 'mindestens eine Woche');
+  Assert.AreEqual(1, ASettings.IssuesFlowMapStuckDays, 'mindestens ein Tag');
+  ASettings.IssuesFlowMapDays := 1000;
+  ASettings.IssuesFlowMapStuckDays := 1000;
+  ASettings.Normalize;
+  Assert.AreEqual(365, ASettings.IssuesFlowMapDays, 'höchstens ein Jahr');
+  Assert.AreEqual(90, ASettings.IssuesFlowMapStuckDays);
   // #1927, #1928: Wahl getrimmt, Zeilen je Gruppe 1–20.
   ASettings.IssuesWelcomeProject := ' KASSE@Firma ';
   ASettings.IssuesAllProjectsPerGroup := 0;
@@ -452,6 +466,9 @@ begin
   ASettings.IssuesBoard := False;
   ASettings.IssuesBoardConfirmMove := False;
   ASettings.IssuesBoardOnlyMine := False;
+  ASettings.IssuesFlowMap := True;
+  ASettings.IssuesFlowMapDays := 30;
+  ASettings.IssuesFlowMapStuckDays := 3;
   ASettings.WelcomePageSprint := False;
   ASettings.IssuesSprintBurndown := False;
   ASettings.IssuesSprintCompare := False;
@@ -498,6 +515,9 @@ begin
   Assert.IsFalse(ALoaded.IssuesBoard);
   Assert.IsFalse(ALoaded.IssuesBoardConfirmMove);
   Assert.IsFalse(ALoaded.IssuesBoardOnlyMine);
+  Assert.IsTrue(ALoaded.IssuesFlowMap);
+  Assert.AreEqual(30, ALoaded.IssuesFlowMapDays);
+  Assert.AreEqual(3, ALoaded.IssuesFlowMapStuckDays);
   Assert.IsFalse(ALoaded.WelcomePageSprint);
   Assert.IsFalse(ALoaded.IssuesSprintBurndown);
   Assert.IsFalse(ALoaded.IssuesSprintCompare);

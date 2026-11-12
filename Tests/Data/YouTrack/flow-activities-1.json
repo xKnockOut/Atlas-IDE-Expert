@@ -1,0 +1,207 @@
+{
+ "hasAfter": true,
+ "afterCursor": "AI.2-1",
+ "activities": [
+  {
+   "id": "1-1",
+   "timestamp": 1772539200000,
+   "target": {
+    "idReadable": "ATL-1",
+    "summary": "Hover zeigt Signatur doppelt",
+    "created": 1772366400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "Offen",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ]
+  },
+  {
+   "id": "1-2",
+   "timestamp": 1772539200000,
+   "target": {
+    "idReadable": "ATL-1",
+    "summary": "x",
+    "created": 1772366400000
+   },
+   "field": {
+    "name": "Assignee",
+    "customField": {
+     "fieldType": {
+      "id": "user[1]"
+     }
+    }
+   },
+   "removed": [],
+   "added": [
+    {
+     "login": "marco",
+     "name": "Marco"
+    }
+   ]
+  },
+  {
+   "id": "1-3",
+   "timestamp": 1772712000000,
+   "target": {
+    "idReadable": "ATL-1",
+    "summary": "Hover zeigt Signatur doppelt",
+    "created": 1772366400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "Zur Prüfung",
+     "isResolved": false
+    }
+   ]
+  },
+  {
+   "id": "1-4",
+   "timestamp": 1773057600000,
+   "target": {
+    "idReadable": "ATL-1",
+    "summary": "Hover zeigt Signatur doppelt",
+    "created": 1772366400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "Zur Prüfung",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "Behoben",
+     "isResolved": true
+    }
+   ]
+  },
+  {
+   "id": "1-5",
+   "timestamp": 1773057600000,
+   "target": {
+    "idReadable": "ATL-2",
+    "summary": "y",
+    "created": 1761998400000
+   },
+   "field": {
+    "name": "Priority",
+    "customField": {
+     "fieldType": {
+      "id": "enum[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "Normal"
+    }
+   ],
+   "added": [
+    {
+     "name": "Hoch"
+    }
+   ]
+  },
+  {
+   "id": "1-6",
+   "timestamp": 1773144000000,
+   "target": {
+    "idReadable": "ATL-2",
+    "summary": "Board lädt Swimlanes neu",
+    "created": 1761998400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "Offen",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ]
+  },
+  {
+   "id": "1-7",
+   "timestamp": 1773316800000,
+   "target": {
+    "idReadable": "ATL-2",
+    "summary": "Board lädt Swimlanes neu",
+    "created": 1761998400000
+   },
+   "field": {
+    "$type": "CustomFilterField",
+    "name": "Zustand",
+    "customField": {
+     "fieldType": {
+      "id": "state[1]"
+     }
+    }
+   },
+   "removed": [
+    {
+     "name": "In Bearbeitung",
+     "isResolved": false
+    }
+   ],
+   "added": [
+    {
+     "name": "Zur Prüfung",
+     "isResolved": false
+    }
+   ]
+  }
+ ]
+}

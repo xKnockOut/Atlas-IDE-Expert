@@ -1201,6 +1201,10 @@ type
     property IssuesBoardConfirmMove: Boolean read FIssueWork.IssuesBoardConfirmMove
       write FIssueWork.IssuesBoardConfirmMove;
     property IssuesBoardOnlyMine: Boolean read FIssueWork.IssuesBoardOnlyMine write FIssueWork.IssuesBoardOnlyMine;
+    property IssuesFlowMap: Boolean read FIssueWork.IssuesFlowMap write FIssueWork.IssuesFlowMap;
+    property IssuesFlowMapDays: Integer read FIssueWork.IssuesFlowMapDays write FIssueWork.IssuesFlowMapDays;
+    property IssuesFlowMapStuckDays: Integer read FIssueWork.IssuesFlowMapStuckDays
+      write FIssueWork.IssuesFlowMapStuckDays;
     property IssuesSprintBurndown: Boolean read FIssueWork.IssuesSprintBurndown write FIssueWork.IssuesSprintBurndown;
     property IssuesSprintCompare: Boolean read FIssueWork.IssuesSprintCompare write FIssueWork.IssuesSprintCompare;
     property IssuesPaletteSearch: Boolean read FIssueWork.IssuesPaletteSearch write FIssueWork.IssuesPaletteSearch;

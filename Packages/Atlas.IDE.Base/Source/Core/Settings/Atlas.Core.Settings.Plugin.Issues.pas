@@ -50,6 +50,14 @@ const
   cMinIssuesNotifyMinutes = 2;
   cMaxIssuesNotifyMinutes = 1440;
   cDefaultIssuesNotifyMinutes = 10;
+  /// <summary>Grenzen und Vorgaben der Ablauf-Karte (#2125, issues.flowMap.days, issues.flowMap.stuckDays).
+  /// </summary>
+  cMinIssuesFlowMapDays = 7;
+  cMaxIssuesFlowMapDays = 365;
+  cDefaultIssuesFlowMapDays = 90;
+  cMinIssuesFlowMapStuckDays = 1;
+  cMaxIssuesFlowMapStuckDays = 90;
+  cDefaultIssuesFlowMapStuckDays = 5;
   /// <summary>Werte von issues.notify.scope (#1271); wie TAtlasTrackerNotify.ScopeName.</summary>
   cIssuesNotifyAssigned = 'assigned';
   cIssuesNotifyAssignedOrCreated = 'assignedOrCreated';
@@ -188,6 +196,15 @@ type
     IssuesBoardConfirmMove: Boolean;
     /// <summary>Board öffnet mit dem Filter „Nur meine“ (#1272, issues.board.onlyMine); aus = alle Karten.</summary>
     IssuesBoardOnlyMine: Boolean;
+    /// <summary>Dockfenster „Atlas-Ablauf“ (#2125, issues.flowMap): Ablauf-Karte aus der Historie von YouTrack,
+    /// Menü Ansicht › Atlas › Ablauf und Befehl Atlas.FlowMap; aus = kein Menüeintrag, kein Befehl, kein Abruf.
+    /// </summary>
+    IssuesFlowMap: Boolean;
+    /// <summary>Zeitraum der Ablauf-Karte in Tagen (#2125, issues.flowMap.days), cMinIssuesFlowMapDays bis
+    /// cMaxIssuesFlowMapDays.</summary>
+    IssuesFlowMapDays: Integer;
+    /// <summary>Ab so vielen Tagen im selben Zustand „liegt lange“ (#2125, issues.flowMap.stuckDays).</summary>
+    IssuesFlowMapStuckDays: Integer;
     /// <summary>Burndown-Linie in der Sprint-Kachel (#1277, issues.sprint.burndown); aus = nur Kopf und Zahlen.
     /// </summary>
     IssuesSprintBurndown: Boolean;
@@ -423,6 +440,9 @@ begin
   Result.IssuesBoard := True;
   Result.IssuesBoardConfirmMove := True;
   Result.IssuesBoardOnlyMine := True;
+  Result.IssuesFlowMap := False;
+  Result.IssuesFlowMapDays := cDefaultIssuesFlowMapDays;
+  Result.IssuesFlowMapStuckDays := cDefaultIssuesFlowMapStuckDays;
   Result.IssuesSprintBurndown := True;
   Result.IssuesSprintCompare := True;
   Result.IssuesPaletteSearch := True;
@@ -455,6 +475,9 @@ begin
   IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, cMinIssuesNotifyMinutes,
     cMaxIssuesNotifyMinutes);
   IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
+  IssuesFlowMapDays := EnsureRange(IssuesFlowMapDays, cMinIssuesFlowMapDays, cMaxIssuesFlowMapDays);
+  IssuesFlowMapStuckDays := EnsureRange(IssuesFlowMapStuckDays, cMinIssuesFlowMapStuckDays,
+    cMaxIssuesFlowMapStuckDays);
 end;
 
 procedure TAtlasPluginIssueWorkSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -476,6 +499,9 @@ begin
   AIo.Flag('IssuesBoard', IssuesBoard);
   AIo.Flag('IssuesBoardConfirmMove', IssuesBoardConfirmMove);
   AIo.Flag('IssuesBoardOnlyMine', IssuesBoardOnlyMine);
+  AIo.Flag('IssuesFlowMap', IssuesFlowMap);
+  AIo.Number('IssuesFlowMapDays', IssuesFlowMapDays);
+  AIo.Number('IssuesFlowMapStuckDays', IssuesFlowMapStuckDays);
   AIo.Flag('IssuesSprintBurndown', IssuesSprintBurndown);
   AIo.Flag('IssuesSprintCompare', IssuesSprintCompare);
   AIo.Flag('IssuesPaletteSearch', IssuesPaletteSearch);

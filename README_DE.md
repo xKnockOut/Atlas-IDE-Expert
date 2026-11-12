@@ -204,7 +204,7 @@ Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE 
 | `Atlas.IDE.Designer` | Designer-Leiste | `designer.enabled` |
 | `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Branch beim Beginnen, Arbeitskopien, Projektzustand, Zeilenhistorie | `vcs.enabled` |
 | `Atlas.IDE.Assistants` | KI-Assistenten: Builds über `build_project` und Änderungen an offenen Dateien durch MCP-Clients | `assistants.enabled` |
-| `Atlas.IDE.Tracker` | Issue-Tracker: Issue-Kennungen im Code, Zeilenhistorie, Board, „An Issue anhängen“, Kacheln „Meine Issues“ und Sprint | `issues.enabled` |
+| `Atlas.IDE.Tracker` | Issue-Tracker: Issue-Kennungen im Code, Zeilenhistorie, Board, Ablauf-Karte, „An Issue anhängen“, Kacheln „Meine Issues“ und Sprint | `issues.enabled` |
 | `Atlas.IDE.Help` | F1-Hilfe: Seiten zu Regeln, Einstellungen und Fenstern der Doku | `help.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite und „Atlas-Start“ | `welcomePage.enabled` |
 

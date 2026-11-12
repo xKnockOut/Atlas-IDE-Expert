@@ -72,6 +72,8 @@
 //   attachments als multipart/form-data, danach POST …/comments mit
 //   {"text": …}; der Kommentar bettet die Bilder ein (![](Name)) und
 //   verweist auf die übrigen Dateien ([Name](Name)).
+// - Ablauf-Karte (#2125, IAtlasTrackerFlow): Zustandswechsel des Projekts
+//   über /api/activitiesPage, siehe Atlas.Core.Tracker.YouTrackFlow.
 
 
 interface
@@ -84,12 +86,13 @@ uses
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
+  Atlas.Core.Tracker.FlowMap,
   Atlas.Core.Tracker.Attach;
 
 type
   TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
     IAtlasTrackerTimeWriter, IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards,
-    IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach)
+    IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach, IAtlasTrackerFlow)
   public const
     cProviderName = TAtlasYouTrackApi.cProviderName;
     cQuery = TAtlasYouTrackApi.cDefaultQuery;
@@ -140,6 +143,9 @@ type
     { IAtlasTrackerWorkDays (#1277): über TAtlasYouTrackBoards }
     function WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
       out ADays: TArray<Integer>): Boolean;
+    { IAtlasTrackerFlow (#2125): über TAtlasYouTrackFlow }
+    function LoadFlow(const ARequest: TAtlasFlowRequest; out AData: TAtlasFlowData;
+      out AError: TAtlasCiFetchError): Boolean;
     function Search(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
       out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
@@ -170,7 +176,8 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.YouTrackJson,
   Atlas.Core.Tracker.YouTrackParse,
-  Atlas.Core.Tracker.YouTrackBoards;
+  Atlas.Core.Tracker.YouTrackBoards,
+  Atlas.Core.Tracker.YouTrackFlow;
 
 function TAtlasYouTrackTracker.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
@@ -677,6 +684,15 @@ var
 begin
   mWorkDays := TAtlasYouTrackBoards.Create;
   Result := mWorkDays.WorkDays(ATarget, ATransport, ATimeoutMs, ADays);
+end;
+
+function TAtlasYouTrackTracker.LoadFlow(const ARequest: TAtlasFlowRequest; out AData: TAtlasFlowData;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mFlow: IAtlasTrackerFlow;
+begin
+  mFlow := TAtlasYouTrackFlow.Create;
+  Result := mFlow.LoadFlow(ARequest, AData, AError);
 end;
 
 function TAtlasYouTrackTracker.Search(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
