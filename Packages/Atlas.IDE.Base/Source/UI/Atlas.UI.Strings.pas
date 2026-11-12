@@ -176,6 +176,8 @@ type
     ElementExitPoints, ElementExitPointsPlural,
     // Neu zugewiesene Variablen (#712): Optionsseite, Hover, Element.
     ElementReassigned, ElementReassignedPlural,
+    // Gelernte Vorschläge (#1890): Element zum Ausblenden.
+    ElementLearnedSuggestions, ElementLearnedSuggestionsPlural,
     // Typ des markierten Ausdrucks (#689): Befehl, Optionsseite, Tooltip.
     ExpressionTypeCommand,
     // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
@@ -677,6 +679,7 @@ const
      'Überladung anlegen fehlgeschlagen: %s',
      'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte', 'Unterstreichung einer neu zugewiesenen Variablen',
      'Unterstreichungen neu zugewiesener Variablen',
+     'gelernter Vorschlag', 'gelernte Vorschläge',
      'Typ des Ausdrucks',
      'implementation wie Klasse ordnen',
      'Interface herauslösen fehlgeschlagen: %s',
@@ -1149,6 +1152,7 @@ const
      'Creating the overload failed: %s',
      'exit point highlight', 'exit point highlights', 'reassigned variable underline',
      'reassigned variable underlines',
+     'learned suggestion', 'learned suggestions',
      'Expression type',
      'Order implementation like class',
      'Extract interface failed: %s',

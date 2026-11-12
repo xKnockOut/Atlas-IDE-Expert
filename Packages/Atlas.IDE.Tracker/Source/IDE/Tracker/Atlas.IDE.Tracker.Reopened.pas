@@ -30,15 +30,21 @@ uses
   Atlas.IDE.Tracker.IssuesContext;
 
 type
+  // Benannte Typen: Delphi kennt keine Felder mit direkt angegebenem `reference to` (FPC schon).
+  TAtlasIssueReopenedPeek = reference to function(const ATarget: TAtlasTrackerTarget; const AKey: string;
+    out ADetails: TAtlasTrackerDetails): Boolean;
+  TAtlasIssueReopenedMe = reference to function(const ATarget: TAtlasTrackerTarget): string;
+  TAtlasIssueReopenedOpen = reference to procedure(const ATarget: TAtlasTrackerTarget; const AKey: string;
+    AAnchor: TDateTime);
+
   /// <summary>Was die Erkennung von den Diensten braucht; gebaut in Atlas.IDE.Tracker.IssuesServices.</summary>
   TAtlasIssueReopenedHooks = record
     /// <summary>Issue aus dem Zwischenspeicher der Vorschau (ohne Abfrage); False, wenn nicht bekannt.</summary>
-    Peek: reference to function(const ATarget: TAtlasTrackerTarget; const AKey: string;
-      out ADetails: TAtlasTrackerDetails): Boolean;
+    Peek: TAtlasIssueReopenedPeek;
     /// <summary>Mein Anmeldename bei ATarget ('' unbekannt).</summary>
-    Me: reference to function(const ATarget: TAtlasTrackerTarget): string;
+    Me: TAtlasIssueReopenedMe;
     /// <summary>Issue in der Vorschau am Kommentar zu AAnchor zeigen (0 = oben).</summary>
-    Open: reference to procedure(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
+    Open: TAtlasIssueReopenedOpen;
   end;
 
   TAtlasIdeIssueReopened = class

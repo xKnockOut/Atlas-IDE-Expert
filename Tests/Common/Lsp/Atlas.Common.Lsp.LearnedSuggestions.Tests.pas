@@ -206,7 +206,7 @@ begin
   end;
   Assert.AreEqual(2, mOptions.MinCount);
   Assert.AreEqual(100, mOptions.MinShare);
-  Assert.AreEqual(1, Length(mOptions.AdjustIds));
+  Assert.AreEqual(1, Integer(Length(mOptions.AdjustIds)));
   Assert.AreEqual(5, mOptions.AdjustOf('A'));
 end;
 

@@ -309,6 +309,7 @@ type
     function NestedSomewhere(const AName: string): Boolean;
     function ReceiverTyped(ANode: TSyntaxNode; out AReceiverType: TResolvedSymbol): Boolean;
     function Tolerated(ANode: TSyntaxNode; const AReceiverType, AMember: TResolvedSymbol): Boolean;
+    function DescendantOrUnknown(ANode: TSyntaxNode; const AMember: TResolvedSymbol): Boolean;
     procedure CheckMemberAccess(ANode: TSyntaxNode);
     function HasClassOverload(ANode: TSyntaxNode): Boolean;
     function InstanceMember(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
@@ -557,14 +558,54 @@ begin
   // class constructor Create verdeckt den geerbten Konstruktor nicht (Spring4D, IM4).
   Result := (AMember.SymbolKind = TIndexSymbolKind.Constructor_) and HasDirective(AMember.Directives, 'class');
   Result := Result or ((AMember.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)));
-  // In der Klassendeklaration ohne bekannte Vorfahrenkette: wie dcc bei einem Nachfahren still (nie private).
+  // In der Deklaration eines Nachfahren sieht dcc protected und strict protected des Vorfahren (nie private);
+  // ist die Vorfahrenkette nicht sicher bekannt, bleibt die Regel ebenfalls still.
   Result := Result or ((AMember.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected]) and
-    InClassDeclaration(ANode));
+    InClassDeclaration(ANode) and DescendantOrUnknown(ANode, AMember));
   // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc aus generischem Code
   // einer anderen Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1, IM2); aus nicht generischem Code
   // meldet es E2362 (SG3, dcc-Lauf vom 29.10.2026, #1328).
   Result := Result or ((AMember.Visibility = TIndexVisibility.Protected) and (AReceiverType.TypeParams <> '') and
     InGenericCode(ANode));
+end;
+
+/// <summary>Ist die Klasse, in deren Deklaration ANode steht, ein Nachfahre der Klasse von AMember, oder lässt
+/// sich das nicht sicher sagen (Name oder Vorfahrenkette unbekannt)?</summary>
+function TInaccessibleMemberCheck.DescendantOrUnknown(ANode: TSyntaxNode; const AMember: TResolvedSymbol): Boolean;
+var
+  mNode: TSyntaxNode;
+  mAncestry: TAncestry;
+  mChain: TArray<TSymbolLocation>;
+  mComplete, mObjectMissing: Boolean;
+  mLevel: Integer;
+begin
+  mNode := ANode.Parent;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.TypeDecl) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  if (mNode = nil) or (mNode.Name = '') then
+  begin
+    Exit(True);
+  end;
+  mAncestry := TAncestry.Create(FContext.Index, FLocal);
+  try
+    mChain := mAncestry.Ancestors(mNode.Name, mComplete, mObjectMissing);
+    if not mComplete then
+    begin
+      Exit(True);
+    end;
+    for mLevel := 0 to High(mChain) do
+    begin
+      if SameText(mChain[mLevel].Symbol.Name, AMember.Container) then
+      begin
+        Exit(True);
+      end;
+    end;
+  finally
+    mAncestry.Free;
+  end;
+  Result := False;
 end;
 
 procedure TInaccessibleMemberCheck.CheckMemberAccess(ANode: TSyntaxNode);

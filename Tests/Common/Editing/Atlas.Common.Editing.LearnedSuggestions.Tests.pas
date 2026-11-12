@@ -146,7 +146,7 @@ begin
   Assert.AreEqual(5, mSuggestion.Pattern.Count);
   Assert.AreEqual(5, mSuggestion.Pattern.Total);
   Assert.AreEqual(100, mSuggestion.Pattern.Share);
-  Assert.AreEqual(3, Length(mSuggestion.Pattern.Evidence));
+  Assert.AreEqual(3, Integer(Length(mSuggestion.Pattern.Evidence)));
   Assert.AreEqual('C:\P\U1.pas', mSuggestion.Pattern.Evidence[0].FileName);
   Assert.AreEqual(5, mSuggestion.Pattern.Evidence[0].Line);
 end;
@@ -313,7 +313,7 @@ begin
   mOptions.Team := [mTeam];
   mList := TLearnedSuggestions.List(FUnits, mOptions);
   // Team, dann TFoo.Create und $T.Create (je 3), BeginUpdate (2); Open nur einmal: nicht gelistet.
-  Assert.AreEqual(4, Length(mList));
+  Assert.AreEqual(4, Integer(Length(mList)));
   Assert.IsTrue(mList[0].Team);
   Assert.AreEqual(3, mList[1].Count);
   Assert.AreEqual(3, mList[2].Count);

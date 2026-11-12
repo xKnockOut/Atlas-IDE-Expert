@@ -418,7 +418,9 @@ begin
     mWork := mProvider.Prepare(mContext);
     if Assigned(mWork) then
     begin
-      mWorks := mWorks + [mWork];
+      // Nicht mWorks + [mWork]: Delphi ruft die Methodenreferenz im Array-Literal auf (E2035).
+      SetLength(mWorks, Length(mWorks) + 1);
+      mWorks[High(mWorks)] := mWork;
       mProviders := mProviders + [mProvider];
     end;
   end;

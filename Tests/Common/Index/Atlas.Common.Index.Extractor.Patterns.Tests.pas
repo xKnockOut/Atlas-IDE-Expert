@@ -179,7 +179,7 @@ begin
     '  X.Add(1);'#10 +
     '  Y := TFoo.Create;'#10));
   Assert.AreEqual(2, Find(mPatterns, '$S := TFoo.Create', '').Count);
-  Assert.AreEqual(0, Length(Find(mPatterns, '$S := TFoo.Create', '').Lines), 'Ohne Folge keine Belege');
+  Assert.AreEqual(0, Integer(Length(Find(mPatterns, '$S := TFoo.Create', '').Lines)), 'Ohne Folge keine Belege');
 end;
 
 procedure TIndexFollowPatternsTests.FinallyKeepsOnlyStatementsNamingTheSubject;
@@ -235,7 +235,7 @@ begin
   end;
   mPattern := Find(PatternsOf(UnitWith(mBody)), '$S.BeginUpdate', 'try'#10'>$|'#10'finally'#10'>$S.EndUpdate;'#10'end;');
   Assert.AreEqual(5, mPattern.Count);
-  Assert.AreEqual(3, Length(mPattern.Lines));
+  Assert.AreEqual(3, Integer(Length(mPattern.Lines)));
 end;
 
 procedure TIndexFollowPatternsTests.NormalizeTextKeepsMarkers;
@@ -254,9 +254,9 @@ begin
   mUnit := TIndexExtractor.ExtractText(UnitWith('  X.BeginUpdate;'#10'  try'#10'  finally'#10'    X.EndUpdate;'#10 +
     '  end;'#10), 'C:\P\U.pas', nil, nil, False, True);
   mRead := TIndexCache.Deserialize(TIndexCache.Serialize([mUnit]));
-  Assert.AreEqual(1, Length(mRead));
+  Assert.AreEqual(1, Integer(Length(mRead)));
   // X.BeginUpdate mit Folge, X.EndUpdate im finally als Auslöser ohne Folge.
-  Assert.AreEqual(2, Length(mRead[0].Patterns));
+  Assert.AreEqual(2, Integer(Length(mRead[0].Patterns)));
   mPattern := Find(mRead[0].Patterns, '$S.BeginUpdate', mUnit.Patterns[0].Follow);
   Assert.AreEqual(1, mPattern.Count);
   Assert.AreEqual(5, mPattern.Lines[0]);
@@ -268,8 +268,8 @@ var
   mText: string;
 begin
   mText := UnitWith('  X.BeginUpdate;'#10);
-  Assert.AreEqual(0, Length(TIndexExtractor.ExtractText(mText, 'C:\P\U.pas', nil, nil, True).Patterns));
-  Assert.AreEqual(1, Length(TIndexExtractor.ExtractText(mText, 'C:\P\U.pas', nil, nil, False, True).Patterns));
+  Assert.AreEqual(0, Integer(Length(TIndexExtractor.ExtractText(mText, 'C:\P\U.pas', nil, nil, True).Patterns)));
+  Assert.AreEqual(1, Integer(Length(TIndexExtractor.ExtractText(mText, 'C:\P\U.pas', nil, nil, False, True).Patterns)));
 end;
 
 initialization

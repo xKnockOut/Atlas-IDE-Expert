@@ -81,7 +81,9 @@ type
     /// <summary>Hervorgehobene Austrittspunkte samt Marke am Routinenkopf (#698).</summary>
     ExitPoints,
     /// <summary>Unterstreichung neu zugewiesener Variablen (#712).</summary>
-    Reassigned);
+    Reassigned,
+    /// <summary>Gelernter Vorschlag als Schattentext (#1890).</summary>
+    LearnedSuggestions);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -183,7 +185,9 @@ const
     // Nur solange der Cursor steht; Ausblenden je Datei oder überall an der Marke.
     (Key: 'ExitPoints'; Scopes: cFileScopes; Overlay: True; Gutter: False),
     // Je Datei oder überall an einer Unterstreichung.
-    (Key: 'Reassigned'; Scopes: cFileScopes; Overlay: True; Gutter: False)
+    (Key: 'Reassigned'; Scopes: cFileScopes; Overlay: True; Gutter: False),
+    // Wie die Musterfortsetzung nur bis zum nächsten Tastendruck sichtbar.
+    (Key: 'SuggestionsLearned'; Scopes: [TAtlasHideScope.Everywhere]; Overlay: False; Gutter: False)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;

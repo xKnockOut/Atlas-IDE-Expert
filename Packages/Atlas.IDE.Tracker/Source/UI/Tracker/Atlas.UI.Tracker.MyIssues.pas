@@ -62,7 +62,10 @@ uses
 type
   /// <summary>Aktionen an einer Zeile: an einem wieder geöffneten Issue (#2127) Weiterarbeiten auf dem alten
   /// Branch, Marke ausblenden, Grund in der Vorschau am Kommentar zeigen; „Prüfen“ (#2126).</summary>
+  // Mit Gültigkeitsbereich: Ein Wert Continue verdeckte sonst in der ganzen Unit die Anweisung Continue (E2014).
+  {$SCOPEDENUMS ON}
   TAtlasIssueAction = (Continue, Dismiss, Reason, Review);
+  {$SCOPEDENUMS OFF}
 
   IAtlasIssuesSource = interface
     ['{8D3F6A21-5C4B-4E97-A1D8-2B7E9C05F364}']
@@ -1096,6 +1099,7 @@ var
   mItem: TAtlasTrackerIssue;
   mTop, mLeft, mLimit, mRight, mLine: Integer;
   mChips: TAtlasIssuesChipLine;
+  mReopen: TAtlasTrackerReopen;
 begin
   mItem := FOwner.View.Items[AIndex];
   mTop := RowTop(AIndex);

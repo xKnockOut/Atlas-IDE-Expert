@@ -172,7 +172,9 @@ end;
 
 class function TAtlasTrackerReopened.Shortened(const AText: string): string;
 begin
-  Result := Trim(StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  // Erst das Windows-Paar #13#10, sonst würden daraus zwei Leerzeichen (FPC-Tests liefen unter Linux mit #10).
+  Result := Trim(StringReplace(StringReplace(StringReplace(AText, #13#10, ' ', [rfReplaceAll]), #13, ' ',
+    [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   if Length(Result) > cMaxComment then
   begin
     Result := Copy(Result, 1, cMaxComment - 1) + '…';

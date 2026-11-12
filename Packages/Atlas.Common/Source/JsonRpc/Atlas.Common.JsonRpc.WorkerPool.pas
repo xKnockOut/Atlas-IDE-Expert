@@ -186,7 +186,8 @@ begin
       // Angenommene Aufträge laufen auch nach Close: Jede Anfrage bekommt ihre Antwort.
       if FQueue.Count > 0 then
       begin
-        AWork := FQueue.Dequeue;
+        // Mit (): Dequeue liefert eine Methodenreferenz, ohne Klammern sieht Delphi die Methode selbst (E2010).
+        AWork := FQueue.Dequeue();
         Exit(True);
       end;
       if FClosed then

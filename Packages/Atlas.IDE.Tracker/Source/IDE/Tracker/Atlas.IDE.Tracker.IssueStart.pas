@@ -801,7 +801,7 @@ begin
   begin
     mTarget := FContext.TargetOf(AJob.Project);
     FServices.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key, AJob.Outcome.Branch,
-      AJob.Sprint, SprintWritten);
+      AJob.Sprint, SprintWritten());
   end;
   FServices.ActiveChanged;
   // Branch und Änderungen neu abfragen; „Projekte“ meldet sich danach selbst.

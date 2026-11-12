@@ -13,6 +13,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links;
@@ -131,7 +132,6 @@ uses
   Winapi.Windows,
   System.Math,
   System.DateUtils,
-  Atlas.Core.Style.Color,
   Vcl.ExtCtrls,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip;

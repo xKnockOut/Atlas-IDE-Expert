@@ -43,7 +43,7 @@ var
   mId: string;
 begin
   mId := TAtlasMarkIds.NewId;
-  Assert.AreEqual(36, Length(mId));
+  Assert.AreEqual(36, Integer(Length(mId)));
   Assert.AreEqual(LowerCase(mId), mId);
   Assert.IsFalse(mId.Contains('{'));
   Assert.IsFalse(mId.Contains('}'));

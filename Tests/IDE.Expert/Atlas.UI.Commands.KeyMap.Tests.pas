@@ -45,6 +45,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.UI.Foundation.Dialog,

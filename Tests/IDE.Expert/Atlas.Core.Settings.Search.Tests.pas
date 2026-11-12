@@ -170,9 +170,25 @@ begin
 end;
 
 procedure TAtlasSettingsSearchTests.ToleratesTypo;
+var
+  mHits: TArray<TAtlasSettingHit>;
+  mHit: TAtlasSettingHit;
+  mNames: string;
 begin
-  Assert.AreEqual(0, RankOf('minimpa', 'Minimap'));
-  Assert.AreEqual(0, Integer(Length(TAtlasSettingsSearch.Find(FCatalog, FGroups, 'qxzvw', False, 10))));
+  mHits := TAtlasSettingsSearch.Find(FCatalog, FGroups, 'minimpa', False, 3);
+  mNames := '';
+  for mHit in mHits do
+  begin
+    mNames := mNames + ' ' + mHit.Name + '=' + IntToStr(mHit.Score);
+  end;
+  Assert.AreEqual(0, RankOf('minimpa', 'Minimap'), 'Vorn:' + mNames);
+  mHits := TAtlasSettingsSearch.Find(FCatalog, FGroups, 'qxzvw', False, 10);
+  mNames := '';
+  for mHit in mHits do
+  begin
+    mNames := mNames + ' ' + mHit.Name;
+  end;
+  Assert.AreEqual(0, Integer(Length(mHits)), 'Treffer:' + mNames);
 end;
 
 procedure TAtlasSettingsSearchTests.AllWordsMustMatch;

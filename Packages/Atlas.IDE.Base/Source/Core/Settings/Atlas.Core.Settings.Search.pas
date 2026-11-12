@@ -89,6 +89,8 @@ type
     cScoreInheritedPrefix = 250;
     cScoreDescription = 200;
     cScoreTypo = 150;
+    /// <summary>Zwei vertauschte Nachbarbuchstaben (minimpa für minimap): näher als andere Tippfehler.</summary>
+    cScoreSwap = 160;
     cScorePlace = 120;
   private
     class function TextScore(const AWord, AText: string): Integer; static;
@@ -323,6 +325,31 @@ begin
   end;
 end;
 
+/// <summary>Unterscheiden sich AWord und APart (ohne Groß-/Kleinschreibung) nur durch zwei vertauschte
+/// Nachbarbuchstaben?</summary>
+function SwappedOnce(const AWord, APart: string): Boolean;
+var
+  mWord, mPart: string;
+  mIndex: Integer;
+begin
+  Result := False;
+  mWord := LowerCase(AWord);
+  mPart := LowerCase(APart);
+  if (Length(mWord) <> Length(mPart)) or (mWord = mPart) then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to Length(mWord) - 1 do
+  begin
+    if mWord[mIndex] <> mPart[mIndex] then
+    begin
+      Result := (mWord[mIndex] = mPart[mIndex + 1]) and (mWord[mIndex + 1] = mPart[mIndex]) and
+        (Copy(mWord, mIndex + 2, MaxInt) = Copy(mPart, mIndex + 2, MaxInt));
+      Exit;
+    end;
+  end;
+end;
+
 class function TAtlasSettingsSearch.TypoScore(const AWord: string; const ATexts: TArray<string>): Integer;
 var
   mText, mPart: string;
@@ -343,10 +370,18 @@ begin
     for mPart in SplitWords(mText) do
     begin
       // Ganzes Wort oder sein gleich langer Anfang („minimpa“ → „minimap“, „hovr“ → „hover…“).
-      if (Length(mPart) >= 3) and ((TTextFuzzy.EditDistance(AWord, mPart, mLimit) <= mLimit) or
-        (TTextFuzzy.EditDistance(AWord, Copy(mPart, 1, Length(AWord)), mLimit) <= mLimit)) then
+      if Length(mPart) < 3 then
       begin
-        Exit(cScoreTypo);
+        Continue;
+      end;
+      if SwappedOnce(AWord, mPart) or SwappedOnce(AWord, Copy(mPart, 1, Length(AWord))) then
+      begin
+        Exit(cScoreSwap);
+      end;
+      if (TTextFuzzy.EditDistance(AWord, mPart, mLimit) <= mLimit) or
+        (TTextFuzzy.EditDistance(AWord, Copy(mPart, 1, Length(AWord)), mLimit) <= mLimit) then
+      begin
+        Result := cScoreTypo;
       end;
     end;
   end;

@@ -8,6 +8,9 @@
 // (65 Pixel) und bleibt, wenn das Label danach die volle Breite bekommt. Ein
 // Issue-Titel stand so mit Platz für sieben Zeilen in einer Zeile.
 // - Resize rechnet die Höhe neu, sobald sich die Breite geändert hat.
+// - AdjustBounds behält die Breite und rechnet nur die Höhe: Die VCL schrumpft
+//   bei WordWrap die Breite auf die längste Zeile (bei leerem Text auf ein
+//   Leerzeichen), danach bräche jeder spätere Text an dieser Breite um.
 // - Die neue Höhe ändert die Breite nicht, daher kein zweiter Durchlauf.
 
 interface
@@ -22,11 +25,17 @@ type
     FFitWidth: Integer;
   protected
     procedure Resize; override;
+    procedure AdjustBounds; override;
   public
     constructor Create(AOwner: TComponent); override;
   end;
 
 implementation
+
+uses
+  Winapi.Windows,
+  System.Types,
+  Vcl.Graphics;
 
 { TAtlasWrapLabel }
 
@@ -36,6 +45,41 @@ begin
   ShowAccelChar := False;
   WordWrap := True;
   FFitWidth := Width;
+end;
+
+procedure TAtlasWrapLabel.AdjustBounds;
+var
+  mText: string;
+  mRect: TRect;
+  mDC: HDC;
+begin
+  if not (WordWrap and AutoSize) or (Width <= 0) or (csReading in ComponentState) or
+    (csLoading in ComponentState) then
+  begin
+    inherited AdjustBounds;
+    Exit;
+  end;
+  mText := Caption;
+  if mText = '' then
+  begin
+    // Wie die VCL: Ein leerer Text ist eine Zeile hoch.
+    mText := ' ';
+  end;
+  mRect := TRect.Create(0, 0, Width, 0);
+  mDC := GetDC(0);
+  try
+    Canvas.Handle := mDC;
+    try
+      Canvas.Font := Font;
+      DrawText(Canvas.Handle, PChar(mText), Length(mText), mRect, DT_CALCRECT or DT_WORDBREAK or DT_EXPANDTABS or
+        DT_NOPREFIX);
+    finally
+      Canvas.Handle := 0;
+    end;
+  finally
+    ReleaseDC(0, mDC);
+  end;
+  SetBounds(Left, Top, Width, mRect.Bottom);
 end;
 
 procedure TAtlasWrapLabel.Resize;
