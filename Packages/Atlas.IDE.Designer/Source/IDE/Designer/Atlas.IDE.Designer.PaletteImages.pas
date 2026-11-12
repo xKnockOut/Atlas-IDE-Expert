@@ -23,6 +23,13 @@ type
     FImages: TImageList;
     FLoaded: TStringList;
     FClasses: TDictionary<string, TClass>;
+    /// <summary>Einträge der Komponentenpalette je Klassenname (klein); einmal aus der Palette gelesen.</summary>
+    FPaletteItems: TDictionary<string, IInterface>;
+    FPaletteRead: Boolean;
+    procedure ReadPalette;
+    /// <summary>Symbol aus der Palette selbst (INTAPalettePaintIcon); -1, wenn die Palette die Klasse nicht kennt.
+    /// </summary>
+    function PaintedIndex(const AClassName: string): Integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -44,7 +51,9 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Vcl.ImgList;
+  Vcl.ImgList,
+  ToolsAPI,
+  PaletteAPI;
 
 const
   cImageSize = 16;
@@ -87,6 +96,7 @@ begin
   inherited Create;
   FLoaded := TStringList.Create;
   FClasses := TDictionary<string, TClass>.Create;
+  FPaletteItems := TDictionary<string, IInterface>.Create;
   FImages := TImageList.Create(nil);
   FImages.ColorDepth := cd32Bit;
   FImages.SetSize(cImageSize, cImageSize);
@@ -95,9 +105,76 @@ end;
 destructor TAtlasPaletteImages.Destroy;
 begin
   FImages.Free;
+  FPaletteItems.Free;
   FClasses.Free;
   FLoaded.Free;
   inherited Destroy;
+end;
+
+/// <summary>Alle Komponenten-Einträge unter AGroup (rekursiv) in AItems, Schlüssel Klassenname klein.</summary>
+procedure CollectPalette(const AGroup: IOTAPaletteGroup; AItems: TDictionary<string, IInterface>);
+var
+  mIndex: Integer;
+  mItem: IOTABasePaletteItem;
+  mGroup: IOTAPaletteGroup;
+  mComponent: IOTAComponentPaletteItem;
+begin
+  for mIndex := 0 to AGroup.Count - 1 do
+  begin
+    mItem := AGroup.Items[mIndex];
+    if Supports(mItem, IOTAPaletteGroup, mGroup) then
+    begin
+      CollectPalette(mGroup, AItems);
+    end
+    else if Supports(mItem, IOTAComponentPaletteItem, mComponent) and (mComponent.ClassName <> '') then
+    begin
+      AItems.AddOrSetValue(mComponent.ClassName.ToLower, mItem);
+    end;
+  end;
+end;
+
+procedure TAtlasPaletteImages.ReadPalette;
+var
+  mPalette: IOTAPaletteServices;
+begin
+  FPaletteRead := True;
+  // Ohne IDE (Tests) gibt es keine Palette; dann nur die Ressourcen.
+  if (BorlandIDEServices <> nil) and Supports(BorlandIDEServices, IOTAPaletteServices, mPalette) and
+    (mPalette.BaseGroup <> nil) then
+  begin
+    CollectPalette(mPalette.BaseGroup, FPaletteItems);
+  end;
+end;
+
+function TAtlasPaletteImages.PaintedIndex(const AClassName: string): Integer;
+const
+  // Schlüsselfarbe für den durchsichtigen Hintergrund des gemalten Symbols.
+  cKeyColor = TColor($FF00FF);
+var
+  mItem: IInterface;
+  mPaint: INTAPalettePaintIcon;
+  mBitmap: TBitmap;
+begin
+  Result := -1;
+  if not FPaletteRead then
+  begin
+    ReadPalette;
+  end;
+  if not FPaletteItems.TryGetValue(AClassName.ToLower, mItem) or not Supports(mItem, INTAPalettePaintIcon, mPaint) then
+  begin
+    Exit;
+  end;
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.PixelFormat := pf24bit;
+    mBitmap.SetSize(cImageSize, cImageSize);
+    mBitmap.Canvas.Brush.Color := cKeyColor;
+    mBitmap.Canvas.FillRect(Rect(0, 0, cImageSize, cImageSize));
+    mPaint.Paint(mBitmap.Canvas, 0, 0, pi16x16);
+    Result := FImages.AddMasked(mBitmap, cKeyColor);
+  finally
+    mBitmap.Free;
+  end;
 end;
 
 procedure TAtlasPaletteImages.Remember(AClass: TClass);
@@ -137,6 +214,12 @@ begin
   mClass := AClass;
   while (Result < 0) and (mClass <> nil) and (mClass <> TComponent) do
   begin
+    // Zuerst wie die Palette selbst zeichnen lassen (Delphi 13 hält die Symbole nicht als RT_BITMAP vor).
+    Result := PaintedIndex(mClass.ClassName);
+    if Result >= 0 then
+    begin
+      Break;
+    end;
     mInstance := ModuleWithBitmap(FindClassHInstance(mClass), UpperCase(mClass.ClassName));
     if mInstance <> 0 then
     begin

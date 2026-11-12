@@ -93,6 +93,7 @@ type
 implementation
 
 uses
+  Vcl.Themes,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings;
@@ -466,16 +467,22 @@ begin
     Exit;
   end;
   mRow := FItemRows[Item.Index];
+  // Farben aus dem Thema der IDE (StyleServices): FList.Color bleibt clWindow, auch wenn das Thema dunkel malt.
   // Hintergrund immer setzen: Wer nur die Schrift ändert, bekommt im dunklen Thema eine weiße Zeile.
   if not (cdsSelected in State) then
   begin
-    Sender.Canvas.Brush.Color := FList.Color;
+    Sender.Canvas.Brush.Color := StyleServices(FList).GetSystemColor(clWindow);
+    Sender.Canvas.Font.Color := StyleServices(FList).GetSystemColor(clWindowText);
   end;
   if mRow < 0 then
   begin
-    // Überschrift: fett in der Textfarbe der Liste (folgt dem Thema).
+    // Überschrift: fett, auf dem Grund eines Panels, damit sie sich von den Zeilen abhebt.
     Sender.Canvas.Font.Style := [fsBold];
-    Sender.Canvas.Font.Color := FList.Font.Color;
+    if not (cdsSelected in State) then
+    begin
+      Sender.Canvas.Brush.Color := StyleServices(FList).GetSystemColor(clBtnFace);
+      Sender.Canvas.Font.Color := StyleServices(FList).GetSystemColor(clBtnText);
+    end;
   end
   else if (FRows[mRow].Finding <> TAtlasEventFinding.None) and not (cdsSelected in State) then
   begin

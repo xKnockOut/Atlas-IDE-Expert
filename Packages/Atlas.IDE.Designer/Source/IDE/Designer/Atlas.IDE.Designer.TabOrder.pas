@@ -110,6 +110,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Winapi.DwmApi,
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI,
@@ -141,9 +142,45 @@ begin
   begin
     AForm := TWinControl(mRoot);
     Result := AForm.HandleAllocated and IsWindowVisible(AForm.Handle);
-    // Nur solange das Fenster mit dem Designer vorn ist: Ein Dialog der IDE (In Frame auslagern …) zählt auch
-    // als aktive Anwendung, das Overlay läge sonst über ihm.
-    Result := Result and (GetAncestor(GetForegroundWindow, GA_ROOT) = GetAncestor(AForm.Handle, GA_ROOT));
+  end;
+end;
+
+/// <summary>Ist AWindow ein sichtbares Fenster, das wirklich auf dem Bildschirm steht (nicht minimiert, nicht von
+/// DWM verborgen wie Fenster anderer virtueller Desktops)?</summary>
+function ShownOnScreen(AWindow: HWND): Boolean;
+var
+  mCloaked: DWORD;
+begin
+  Result := IsWindowVisible(AWindow) and not IsIconic(AWindow);
+  if Result and (DwmGetWindowAttribute(AWindow, DWMWA_CLOAKED, @mCloaked, SizeOf(mCloaked)) = S_OK) then
+  begin
+    Result := mCloaked = 0;
+  end;
+end;
+
+/// <summary>Bereich für das Overlay über AVisible (Bildschirm) ohne alle Fenster, die in der Z-Reihenfolge über
+/// ARoot (oberstes Fenster des Designers) liegen: schwebende Atlas-Fenster, Dialoge, andere Programme. Das Overlay
+/// gehört dem Hauptfenster und läge sonst über ihnen. ASkip: das Overlay selbst. Koordinaten relativ zu AVisible.
+/// </summary>
+function UncoveredRegion(const AVisible: TRect; ARoot, ASkip: HWND): HRGN;
+var
+  mWindow: HWND;
+  mRect: TRect;
+  mHole: HRGN;
+begin
+  Result := CreateRectRgn(0, 0, AVisible.Width, AVisible.Height);
+  mWindow := GetTopWindow(0);
+  while (mWindow <> 0) and (mWindow <> ARoot) do
+  begin
+    if (mWindow <> ASkip) and ShownOnScreen(mWindow) and GetWindowRect(mWindow, mRect) and
+      mRect.IntersectsWith(AVisible) then
+    begin
+      mRect.Offset(-AVisible.Left, -AVisible.Top);
+      mHole := CreateRectRgnIndirect(mRect);
+      CombineRgn(Result, Result, mHole, RGN_DIFF);
+      DeleteObject(mHole);
+    end;
+    mWindow := GetWindow(mWindow, GW_HWNDNEXT);
   end;
 end;
 
@@ -597,6 +634,8 @@ begin
   begin
     FOverlay.ShowAt(mVisible);
   end;
+  // Bei jedem Takt neu: Fenster über dem Designer (schwebend, Dialoge) aus dem Overlay aussparen.
+  FOverlay.SetRegion(UncoveredRegion(mVisible, GetAncestor(mForm.Handle, GA_ROOT), FOverlay.Handle));
   FOverlay.UpdateHint(Mouse.CursorPos);
 end;
 

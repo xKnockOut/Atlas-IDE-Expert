@@ -71,6 +71,8 @@ type
     FClickable: Boolean;
     FOwnerWindow: HWND;
     FShown: Boolean;
+    /// <summary>Zuletzt gesetzter Fensterbereich (Kopie zum Vergleich); 0 = ganzes Fenster.</summary>
+    FRegion: HRGN;
     FHintWindow: THintWindow;
     FHintIndex: Integer;
     FOnBadgeClick: TProc<string>;
@@ -103,6 +105,9 @@ type
     /// <summary>Über AScreen zeigen, ohne den Fokus zu nehmen.</summary>
     procedure ShowAt(const AScreen: TRect);
     procedure HideOverlay;
+    /// <summary>Sichtbarer Bereich des Fensters (Fensterkoordinaten); übernimmt ARegion. Nur bei Änderung gesetzt,
+    /// damit das Overlay nicht bei jedem Takt neu zeichnet.</summary>
+    procedure SetRegion(ARegion: HRGN);
     /// <summary>Hinweis zur Marke unter ACursor (Bildschirm) zeigen, sonst ausblenden.</summary>
     procedure UpdateHint(const ACursor: TPoint);
     property Badges: TArray<TAtlasTabBadge> read FBadges;
@@ -166,6 +171,10 @@ end;
 
 destructor TAtlasTabOrderOverlay.Destroy;
 begin
+  if FRegion <> 0 then
+  begin
+    DeleteObject(FRegion);
+  end;
   FHintWindow.Free;
   inherited Destroy;
 end;
@@ -396,6 +405,25 @@ begin
   SetWindowPos(Handle, HWND_TOP, AScreen.Left, AScreen.Top, AScreen.Width, AScreen.Height,
     SWP_NOACTIVATE or SWP_SHOWWINDOW);
   FShown := True;
+end;
+
+procedure TAtlasTabOrderOverlay.SetRegion(ARegion: HRGN);
+var
+  mCopy: HRGN;
+begin
+  if not HandleAllocated or ((FRegion <> 0) and EqualRgn(FRegion, ARegion)) then
+  begin
+    DeleteObject(ARegion);
+    Exit;
+  end;
+  if FRegion = 0 then
+  begin
+    FRegion := CreateRectRgn(0, 0, 0, 0);
+  end;
+  CombineRgn(FRegion, ARegion, 0, RGN_COPY);
+  // Nach SetWindowRgn gehört ARegion dem System und darf nicht mehr freigegeben werden; FRegion bleibt eigene Kopie.
+  mCopy := ARegion;
+  SetWindowRgn(Handle, mCopy, True);
 end;
 
 procedure TAtlasTabOrderOverlay.HideOverlay;

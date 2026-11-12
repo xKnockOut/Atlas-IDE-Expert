@@ -316,6 +316,12 @@ var
   mNode: TTreeNode;
 begin
   mSelected := NameOf(FTree.Selected);
+  // Bildliste bei jedem Füllen nach dem Häkchen setzen: SetImages kann vor dem Häkchen kommen, dann blieb der
+  // Baum ohne Bilder (nicht einmal Platz dafür).
+  if FShowImages.Checked then
+  begin
+    FTree.Images := FImages;
+  end;
   FUpdating := True;
   FTree.Items.BeginUpdate;
   try
