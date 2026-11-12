@@ -5,6 +5,11 @@
 // (YouTrackBoards): Adressen, Felder der Abfragen, Zuordnung von HTTP-Status
 // zu Fehlern und der Schreibweg über Befehle (#1266). TAtlasYouTrackBodies
 // baut die Inhalte schreibender Anfragen.
+// Unter einer Zustandsmaschine (#1569, #2122) gilt im Befehl der Name des
+// Übergangs, nicht der Zielwert; ApplyChange löst deshalb einen Übergang
+// (TAtlasTrackerWrite.Transition) über POST <url>/api/issues/<Kennung>/
+// fields/<Feld-ID> aus, wie das Board von YouTrack. Kommentar und
+// Zuständigkeit gehen vorher als eigener Befehl bzw. Kommentar hinaus.
 
 interface
 
@@ -48,6 +53,13 @@ type
     cActivityCategories = 'CommentsCategory,CustomFieldCategory';
     /// <summary>Höchstens so viele geänderte Issues je Abfrage bekommen ihre Einzelheiten.</summary>
     cMaxChangedIssues = 20;
+    /// <summary>$type eines Feldes unter einer Zustandsmaschine (#1569).</summary>
+    cStateMachineType = 'StateMachineIssueCustomField';
+    /// <summary>Felder der Regeln des Zustandsfeldes eines Issues (#2122).</summary>
+    cStateRuleFields = 'idReadable,customFields(name,id,value(name),possibleEvents(id,presentation))';
+    /// <summary>Bereich der HTTP-Status, die ein Schreiben bestätigen.</summary>
+    cStatusOkFirst = 200;
+    cStatusOkLast = 299;
   public
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
     class function FullQuery(const ATarget: TAtlasTrackerTarget): string; static;
@@ -79,6 +91,9 @@ type
     /// <summary>Adresse zum Lesen (AFields "idReadable,description") bzw. Schreiben ("idReadable") der
     /// Beschreibung (#1273); '' bei ungültiger Kennung oder ohne Server.</summary>
     class function IssueUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFields: string): string; static;
+    /// <summary>Adresse des Feldes AFieldId am Issue AKey (Übergang auslösen, #1569); '' ohne Server oder bei
+    /// ungültiger Kennung bzw. ID.</summary>
+    class function FieldUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFieldId: string): string; static;
     /// <summary>Adresse der Linktypen; '' ohne Server.</summary>
     class function LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string; static;
     class function Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer; static;
@@ -111,6 +126,8 @@ type
     class function CommandQuery(const AChange: TAtlasTrackerWrite): string; static;
     /// <summary>Inhalt für /api/commands.</summary>
     class function CommandJson(const AKey, AQuery, AComment: string): string; static;
+    /// <summary>Inhalt des POST auf FieldUrl, der ATransition am Feld AFieldId auslöst.</summary>
+    class function EventJson(const AFieldId: string; const ATransition: TAtlasTrackerTransition): string; static;
     /// <summary>Inhalt für …/comments: {"text": AText}.</summary>
     class function CommentJson(const AText: string): string; static;
     /// <summary>Körper für timeTracking/workItems (#1267); "date" = Mittag des Tages in UTC (Millisekunden), damit
@@ -302,12 +319,55 @@ begin
     TTextUris.PercentEncode('login,fullName,banned') + '&$top=' + IntToStr(mLimit);
 end;
 
+/// <summary>POST AUrl mit ABody; Fehler mit Status und Text von YouTrack.</summary>
+function PostJson(const ASend: IAtlasCiSend; const AUrl, ABody: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mResponse: TAtlasCiResponse;
+begin
+  Result := TAtlasTrackerWriteResult.Ok;
+  if not ASend.Send('POST', AUrl, ABody, ATimeoutMs, mResponse) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
+  end;
+  if (mResponse.Status < TAtlasYouTrackApi.cStatusOkFirst) or (mResponse.Status > TAtlasYouTrackApi.cStatusOkLast) then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
+      TAtlasYouTrackApi.ErrorMessage(mResponse.Text));
+  end;
+end;
+
+/// <summary>Übergang von AChange auslösen: zuerst Zuständigkeit und Kommentar (ohne Zustand), dann das Ereignis.
+/// </summary>
+function FireTransition(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const ASend: IAtlasCiSend; const AKey: string; const AChange: TAtlasTrackerWrite;
+  ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mWatch: TStopwatch;
+  mBefore: TAtlasTrackerWrite;
+  mUrl: string;
+begin
+  mUrl := TAtlasYouTrackApi.FieldUrl(ATarget, AKey, AChange.FieldId);
+  if mUrl = '' then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  mWatch := TStopwatch.StartNew;
+  mBefore := AChange;
+  mBefore.State := '';
+  mBefore.Transition := TAtlasTrackerTransition.Create('', '');
+  Result := TAtlasYouTrackApi.ApplyChange(ATarget, ATransport, AKey, mBefore, ATimeoutMs);
+  if Result.Succeeded then
+  begin
+    Result := PostJson(ASend, mUrl, TAtlasYouTrackBodies.EventJson(AChange.FieldId, AChange.Transition),
+      TAtlasYouTrackApi.Rest(mWatch, ATimeoutMs));
+  end;
+end;
+
 class function TAtlasYouTrackApi.ApplyChange(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
   mSend: IAtlasCiSend;
   mQuery, mUrl, mBody: string;
-  mResponse: TAtlasCiResponse;
 begin
   Result := TAtlasTrackerWriteResult.Ok;
   if not AChange.HasWork then
@@ -318,6 +378,10 @@ begin
     not Supports(ATransport, IAtlasCiSend, mSend) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  if AChange.Transition.Id <> '' then
+  begin
+    Exit(FireTransition(ATarget, ATransport, mSend, AKey, AChange, ATimeoutMs));
   end;
   mQuery := TAtlasYouTrackBodies.CommandQuery(AChange);
   if mQuery = '' then
@@ -330,15 +394,7 @@ begin
     mUrl := ATarget.Url + '/api/commands';
     mBody := TAtlasYouTrackBodies.CommandJson(AKey, mQuery, AChange.Comment);
   end;
-  if not mSend.Send('POST', mUrl, mBody, ATimeoutMs, mResponse) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
-  end;
-  if (mResponse.Status < 200) or (mResponse.Status > 299) then
-  begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
-      ErrorMessage(mResponse.Text));
-  end;
+  Result := PostJson(mSend, mUrl, mBody, ATimeoutMs);
 end;
 
 
@@ -371,6 +427,16 @@ begin
   Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(AFields);
 end;
 
+
+class function TAtlasYouTrackApi.FieldUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFieldId: string): string;
+begin
+  Result := '';
+  if (ATarget.Server <> '') and TAtlasYouTrackJson.ValidKey(Trim(AKey)) and
+    TAtlasYouTrackJson.ValidKey(AFieldId) then
+  begin
+    Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/fields/' + AFieldId + '?fields=id';
+  end;
+end;
 
 class function TAtlasYouTrackApi.LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
@@ -568,6 +634,26 @@ begin
     begin
       mObject.AddPair('comment', AComment);
     end;
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
+  end;
+end;
+
+class function TAtlasYouTrackBodies.EventJson(const AFieldId: string;
+  const ATransition: TAtlasTrackerTransition): string;
+var
+  mObject, mEvent: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    mEvent := TJSONObject.Create;
+    mEvent.AddPair('id', ATransition.Id);
+    mEvent.AddPair('presentation', ATransition.Name);
+    mEvent.AddPair('$type', 'Event');
+    mObject.AddPair('event', mEvent);
+    mObject.AddPair('id', AFieldId);
+    mObject.AddPair('$type', TAtlasYouTrackApi.cStateMachineType);
     Result := mObject.ToJSON;
   finally
     mObject.Free;

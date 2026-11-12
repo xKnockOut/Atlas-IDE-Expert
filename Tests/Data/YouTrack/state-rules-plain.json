@@ -1,0 +1,8 @@
+{
+  "idReadable": "ATL-7",
+  "customFields": [
+    {"name": "Status", "id": "82-11", "$type": "StateIssueCustomField",
+     "value": {"name": "Offen", "$type": "StateBundleElement"}}
+  ],
+  "$type": "Issue"
+}

@@ -16,6 +16,12 @@
 //   und Entwurf, sobald APrepare ihn bindet; die Vorlage gilt nicht als Entwurf,
 //   ein vorhandener Entwurf wird mit „Übernehmen“ angeboten. Abbrechen behält
 //   den Entwurf, erfolgreiches Senden löscht ihn.
+// - Unter einer Zustandsmaschine (#2122, SetRules) heißt die Klappliste
+//   „Übergang (ab „In Bearbeitung“)“ und bietet nur „Zustand nicht ändern“
+//   und die erlaubten Übergänge an, mit bekanntem Ziel dahinter („Zur Prüfung
+//   geben → Zur Prüfung“). Vorgewählt ist der erste Übergang in einen
+//   Zustand aus issues.endStates (Reihenfolge = Vorliebe); ist der erste
+//   Wunsch ab hier nicht erlaubt, sagt es die Hinweiszeile.
 // SummaryText bildet die Zeile für die Meldungsansicht („Zustand „Erledigt“,
 // Kommentar“), ErrorText auch für „Beginnen“ und die Vorschau.
 
@@ -43,6 +49,7 @@ type
 
   /// <summary>Die Steuerelemente des Dialogs (für Tests und APrepare). Comment ist das Memo des Editors.</summary>
   TAtlasEndDialogParts = record
+    StateLabel: TLabel;
     State: TAtlasValueBox;
     Editor: TAtlasCommentEditor;
     Comment: TMemo;
@@ -59,6 +66,8 @@ type
     cCommentHeight = 150;
     /// <summary>Leiste des Kommentar-Editors (Vorschau, Textbaustein, Entwurf).</summary>
     cEditorBarHeight = 30;
+    /// <summary>Breite der Beschriftungen vor den Klapplisten.</summary>
+    cLabelWidth = 176;
   private
     FKey: string;
     FOptions: TAtlasTrackerSyncOptions;
@@ -67,6 +76,8 @@ type
     FSending: Boolean;
     FSent: Boolean;
     FChange: TAtlasTrackerWrite;
+    FRules: TAtlasTrackerStateRules;
+    FStates: TArray<string>;
     function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddState;
     procedure AddComment(const AComment: string);
@@ -78,12 +89,21 @@ type
     procedure DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure SetBusy(AValue: Boolean);
     procedure EditorCancel(Sender: TObject);
+    procedure ShowTransitions;
+    function ChosenTransition: Integer;
   public
     /// <summary>AComment: ausgefüllte Vorlage issues.endComment (Zeilen mit #10).</summary>
     constructor CreateDialog(AOwner: TComponent; const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
       const AComment: string);
     /// <summary>Werte des Zustandsfeldes vom Tracker als weitere Vorschläge hinter issues.endStates.</summary>
     procedure SetStates(const AStates: TArray<string>);
+    /// <summary>Regeln des Zustandsfeldes vom Tracker (#2122): Unter einer Zustandsmaschine bietet die Klappliste
+    /// nur die erlaubten Übergänge an; ohne bleibt sie bei den Zuständen.</summary>
+    procedure SetRules(const ARules: TAtlasTrackerStateRules);
+    /// <summary>Einträge der Klappliste unter ARules: „Zustand nicht ändern“, dann je Übergang ChoiceText mit
+    /// bekanntem Ziel aus AStates.</summary>
+    class function TransitionChoices(const ARules: TAtlasTrackerStateRules;
+      const AStates: TArray<string>): TArray<string>; static;
     /// <summary>Benutzer vom Tracker für „Zuständigkeit übergeben an“.</summary>
     procedure SetUsers(const AUsers: TArray<string>);
     /// <summary>Änderung nach den Feldern.</summary>
@@ -96,7 +116,10 @@ type
     /// <summary>Grund eines Fehlers mit dem Text des Trackers; '' bei Erfolg.</summary>
     class function ErrorText(const AKey: string; const AResult: TAtlasTrackerWriteResult): string; static;
     /// <summary>Was geschrieben wurde, z. B. „Zustand „Erledigt“, an anna übergeben, Kommentar“.</summary>
-    class function SummaryText(const AChange: TAtlasTrackerWrite): string; static;
+    class function SummaryText(const AChange: TAtlasTrackerWrite): string; overload; static;
+    /// <summary>Wie oben; nach einem Übergang mit dem danach gelesenen Zustand ANewState („Übergang „Beginnen“
+    /// → In Bearbeitung“), ANewState '' ohne.</summary>
+    class function SummaryText(const AChange: TAtlasTrackerWrite; const ANewState: string): string; overload; static;
     /// <summary>Modal zeigen; True nach erfolgreichem „Senden“ mit der geschriebenen Änderung in AChange.
     /// APrepare (darf nil sein) passt das Fenster vorher an und kann Werte nachladen (SetUsers).</summary>
     class function Execute(const AKey: string; const AOptions: TAtlasTrackerSyncOptions; const AComment: string;
@@ -118,6 +141,7 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Tracker.Transitions,
   Atlas.UI.Tracker.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
@@ -157,6 +181,12 @@ begin
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndState);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(4);
+  // Lange Beschriftung „Übergang (ab „…“)“ endet mit „…“ vor der Klappliste, voll im Hinweis.
+  mLabel.AutoSize := False;
+  mLabel.Width := ScaleValue(cLabelWidth);
+  mLabel.EllipsisPosition := epEndEllipsis;
+  mLabel.ShowHint := True;
+  FParts.StateLabel := mLabel;
   FParts.State := TAtlasValueBox.Create(Self);
   FParts.State.Parent := mRow;
   FParts.State.Left := ScaleValue(180);
@@ -263,6 +293,13 @@ var
   mState, mChoice: string;
   mFound: Boolean;
 begin
+  FStates := Copy(AStates);
+  // Unter einer Zustandsmaschine nur die Übergänge; die Zustände verraten deren Ziele.
+  if FRules.StateMachine then
+  begin
+    ShowTransitions;
+    Exit;
+  end;
   mChoices := StateChoices(FOptions);
   for mState in AStates do
   begin
@@ -282,6 +319,78 @@ begin
   FParts.State.SetValues(mChoices);
 end;
 
+class function TAtlasTrackerEndDialog.TransitionChoices(const ARules: TAtlasTrackerStateRules;
+  const AStates: TArray<string>): TArray<string>;
+var
+  mTransition: TAtlasTrackerTransition;
+begin
+  Result := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState));
+  for mTransition in ARules.Transitions do
+  begin
+    Result := Result + [TAtlasTrackerTransitions.ChoiceText(mTransition, AStates)];
+  end;
+end;
+
+procedure TAtlasTrackerEndDialog.SetRules(const ARules: TAtlasTrackerStateRules);
+begin
+  if not ARules.StateMachine or (ARules.FieldId = '') then
+  begin
+    Exit;
+  end;
+  FRules := ARules;
+  ShowTransitions;
+end;
+
+/// <summary>Klappliste und Beschriftung nach FRules; Vorwahl nach issues.endStates, Hinweis, wenn der erste Wunsch
+/// ab hier nicht erlaubt ist.</summary>
+procedure TAtlasTrackerEndDialog.ShowTransitions;
+var
+  mChoices, mKnown: TArray<string>;
+  mPreferred: Integer;
+begin
+  if FRules.Current <> '' then
+  begin
+    FParts.StateLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndTransitionFrom,
+      [FRules.Current]);
+  end
+  else
+  begin
+    FParts.StateLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndTransition);
+  end;
+  FParts.StateLabel.Hint := FParts.StateLabel.Caption;
+  mKnown := FOptions.EndStates + FStates;
+  mChoices := TransitionChoices(FRules, mKnown);
+  FParts.State.SetValues(mChoices);
+  mPreferred := TAtlasTrackerTransitions.Preferred(FRules, FOptions.EndStates);
+  FParts.State.Value := mChoices[mPreferred + 1];
+  FParts.Note.Caption := '';
+  if (Length(FOptions.EndStates) > 0) and (FRules.Current <> '') and
+    (TAtlasTrackerTransitions.Into(FRules, TArray<string>.Create(FOptions.EndStates[0])) < 0) then
+  begin
+    FParts.Note.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndNotAllowed,
+      [FOptions.EndStates[0], FRules.Current]);
+  end;
+end;
+
+/// <summary>Gewählter Übergang (Index in FRules.Transitions); -1 = Zustand nicht ändern bzw. von Hand
+/// eingetragener Text, zu dem kein Übergang passt.</summary>
+function TAtlasTrackerEndDialog.ChosenTransition: Integer;
+var
+  mChoices: TArray<string>;
+  mIndex: Integer;
+begin
+  mChoices := TransitionChoices(FRules, FOptions.EndStates + FStates);
+  for mIndex := 1 to High(mChoices) do
+  begin
+    if SameText(Trim(FParts.State.Value), mChoices[mIndex]) then
+    begin
+      Exit(mIndex - 1);
+    end;
+  end;
+  // Von Hand eingetragen: Name, Kennung oder Ziel eines Übergangs.
+  Result := TAtlasTrackerTransitions.Preferred(FRules, TArray<string>.Create(Trim(FParts.State.Value)));
+end;
+
 procedure TAtlasTrackerEndDialog.SetUsers(const AUsers: TArray<string>);
 begin
   FParts.Assignee.SetValues(AUsers);
@@ -299,8 +408,22 @@ end;
 function TAtlasTrackerEndDialog.Change: TAtlasTrackerWrite;
 var
   mState: string;
+  mTransition: Integer;
+  mKeep: Boolean;
 begin
   mState := FParts.State.Value;
+  mKeep := SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState));
+  if FRules.StateMachine and not mKeep then
+  begin
+    mTransition := ChosenTransition;
+    // Ohne passenden Übergang geht der Text als Wert hinaus; YouTrack begründet die Ablehnung.
+    if mTransition >= 0 then
+    begin
+      Exit(TAtlasTrackerWorkflow.EndTransition(FOptions, FRules, mTransition,
+        StringReplace(FParts.Comment.Text, #13#10, #10, [rfReplaceAll]), FParts.HandOver.Checked,
+        FParts.Assignee.Value));
+    end;
+  end;
   if SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState)) then
   begin
     mState := '';
@@ -433,11 +556,26 @@ begin
 end;
 
 class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerWrite): string;
+begin
+  Result := SummaryText(AChange, '');
+end;
+
+class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerWrite; const ANewState: string): string;
 var
   mParts: TArray<string>;
 begin
   mParts := nil;
-  if AChange.State <> '' then
+  if (AChange.Transition.Id <> '') and (Trim(ANewState) <> '') then
+  begin
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartTransitionTo,
+      [AChange.Transition.Caption, Trim(ANewState)])];
+  end
+  else if AChange.Transition.Id <> '' then
+  begin
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartTransition,
+      [AChange.Transition.Caption])];
+  end
+  else if AChange.State <> '' then
   begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartState, [AChange.State])];
   end;

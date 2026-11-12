@@ -170,7 +170,7 @@
   "Packages/Atlas.IDE.Tracker/Source/IDE/Tracker/Atlas.IDE.Tracker.SprintTile.pas": 1,
   "Packages/Atlas.IDE.Tracker/Source/IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas": 2,
   "Packages/Atlas.IDE.Tracker/Source/IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas": 2,
-  "Packages/Atlas.IDE.Tracker/Source/IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas": 6,
+  "Packages/Atlas.IDE.Tracker/Source/IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas": 5,
   "Packages/Atlas.IDE.VersionControl/Source/Core/VersionControl/Atlas.Core.VersionControl.Internals.GitParser.pas": 18,
   "Packages/Atlas.IDE.VersionControl/Source/Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnParser.pas": 4,
   "Packages/Atlas.IDE.VersionControl/Source/IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas": 1,

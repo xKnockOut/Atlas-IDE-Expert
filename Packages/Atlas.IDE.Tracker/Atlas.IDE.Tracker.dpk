@@ -78,6 +78,7 @@ contains
   Atlas.Core.Tracker.GitHubBoards in 'Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas',
   Atlas.Core.Tracker.Providers.YouTrack in 'Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas',
   Atlas.Core.Tracker.YouTrackWorkflow in 'Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas',
+  Atlas.Core.Tracker.Transitions in 'Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas',
   Atlas.Core.Tracker.Internals.YouTrackJson in 'Source\Core\Tracker\Atlas.Core.Tracker.Internals.YouTrackJson.pas',
   Atlas.Core.Tracker.YouTrackApi in 'Source\Core\Tracker\Atlas.Core.Tracker.YouTrackApi.pas',
   Atlas.Core.Tracker.YouTrackParse in 'Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas',

@@ -32,7 +32,9 @@
 //   (Zustände, Felder, Benutzer); Anbieter, die schreiben können, setzen sie
 //   zusätzlich um. Geschrieben wird über IAtlasCiSend, nur nach einem Klick
 //   des Benutzers und nie wiederholt; Fehler kommen mit dem Text des Trackers
-//   zurück (TAtlasTrackerWriteResult).
+//   zurück (TAtlasTrackerWriteResult). Unter einer Zustandsmaschine
+//   (#2122) trägt die Änderung statt des Zielwerts einen Übergang;
+//   IAtlasTrackerStateRules liest die erlaubten Übergänge eines Issues.
 // - IAtlasTrackerTimeWriter (#1267): Zeit als Work Item buchen
 //   (TAtlasTrackerWorkItem) und Zeiterfassung des Projekts mit Arbeitstypen
 //   lesen; nur Anbieter mit Zeiterfassung (YouTrack) setzen sie um.
@@ -502,6 +504,32 @@ type
       var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
+  /// <summary>Übergang einer Zustandsmaschine (Workflow von YouTrack, #1569, #2122): Ereignis mit Kennung und
+  /// Anzeigename.</summary>
+  TAtlasTrackerTransition = record
+    /// <summary>Kennung des Ereignisses ("in-progress"); '' = kein Übergang.</summary>
+    Id: string;
+    /// <summary>Anzeigename ("In Progress", "Beginnen").</summary>
+    Name: string;
+    class function Create(const AId, AName: string): TAtlasTrackerTransition; static;
+    /// <summary>Anzeigename, ohne Namen die Kennung.</summary>
+    function Caption: string;
+  end;
+
+  /// <summary>Regeln des Zustandsfeldes eines Issues (#1569, #2122). Steuert eine Zustandsmaschine das Feld
+  /// (YouTrack „StateMachineIssueCustomField“), sind ab dem aktuellen Wert nur die Übergänge in Transitions
+  /// erlaubt.</summary>
+  TAtlasTrackerStateRules = record
+    /// <summary>Das Feld steht unter einer Zustandsmaschine.</summary>
+    StateMachine: Boolean;
+    /// <summary>ID des Feldes am Issue ("82-11"), um einen Übergang auszulösen; '' unbekannt.</summary>
+    FieldId: string;
+    /// <summary>Aktueller Wert des Feldes; '' unbekannt.</summary>
+    Current: string;
+    /// <summary>Übergänge ab dem aktuellen Wert.</summary>
+    Transitions: TArray<TAtlasTrackerTransition>;
+  end;
+
   /// <summary>Eine Änderung an einem Issue (#1266): Zustand, Zuständigkeit und Kommentar in einem Schritt.</summary>
   TAtlasTrackerWrite = record
     /// <summary>Name des Zustandsfeldes (YouTrack, z. B. "State" oder "Status"); GitHub ohne Bedeutung.</summary>
@@ -519,6 +547,11 @@ type
     Assignee: string;
     /// <summary>Kommentar (Markdown); '' = keiner.</summary>
     Comment: string;
+    /// <summary>Übergang der Zustandsmaschine statt State (#2122); Id '' = keiner. Kommentar und Zuständigkeit
+    /// gehen vorher hinaus.</summary>
+    Transition: TAtlasTrackerTransition;
+    /// <summary>ID des Zustandsfeldes am Issue für Transition (TAtlasTrackerStateRules.FieldId).</summary>
+    FieldId: string;
     class function Empty: TAtlasTrackerWrite; static;
     /// <summary>Nur ein Kommentar.</summary>
     class function CommentOnly(const AText: string): TAtlasTrackerWrite; static;
@@ -553,6 +586,17 @@ type
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
+  end;
+
+  /// <summary>Regeln des Zustandsfeldes eines Issues lesen (#2122): Zustandsmaschine, aktueller Wert und erlaubte
+  /// Übergänge. Anbieter mit Workflow-Regeln (YouTrack) setzen es zusätzlich um; ausgelöst wird ein Übergang über
+  /// IAtlasTrackerWriter.Apply mit TAtlasTrackerWrite.Transition. Im Hintergrund.</summary>
+  IAtlasTrackerStateRules = interface
+    ['{6A2D9E41-7C58-4B13-9F06-3E8B1D5C7A92}']
+    /// <summary>Regeln des Feldes AField am Issue AKey. Ohne Zustandsmaschine ist ARules.StateMachine False (dann
+    /// gilt ein Befehl mit dem Wert).</summary>
+    function StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
+      AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
   end;
 
   /// <summary>Eine Zeitbuchung (#1267).</summary>
@@ -878,7 +922,25 @@ end;
 
 function TAtlasTrackerWrite.HasWork: Boolean;
 begin
-  Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '');
+  Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '') or
+    (Transition.Id <> '');
+end;
+
+{ TAtlasTrackerTransition }
+
+class function TAtlasTrackerTransition.Create(const AId, AName: string): TAtlasTrackerTransition;
+begin
+  Result.Id := AId;
+  Result.Name := AName;
+end;
+
+function TAtlasTrackerTransition.Caption: string;
+begin
+  Result := Name;
+  if Result = '' then
+  begin
+    Result := Id;
+  end;
 end;
 
 { TAtlasTrackerWorkItem }

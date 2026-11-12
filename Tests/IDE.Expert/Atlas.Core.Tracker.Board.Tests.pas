@@ -139,7 +139,7 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.YouTrackWorkflow,
+  Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Adapters.LocalFiles,
@@ -392,7 +392,7 @@ begin
   Result.Cards := [Card('ATL-1', 'Offen', nil)];
   Result.Cards[0].Workflow.StateMachine := True;
   Result.Cards[0].Workflow.FieldId := '82-11';
-  Result.Cards[0].Workflow.Transitions := [TAtlasBoardTransition.Create('in-arbeit', '')];
+  Result.Cards[0].Workflow.Transitions := [TAtlasTrackerTransition.Create('in-arbeit', '')];
 end;
 
 procedure TAtlasTrackerBoardTests.TransitionsDecideColumns;
@@ -409,7 +409,7 @@ begin
   Assert.AreEqual('in-arbeit', TAtlasBoardTransitions.Names(mSnapshot.Cards[0]));
   // Benanntes Ereignis verrät sein Ziel nicht: YouTrack entscheidet.
   mSnapshot.Cards[0].Workflow.Transitions := mSnapshot.Cards[0].Workflow.Transitions +
-    [TAtlasBoardTransition.Create('beginnen', 'Beginnen')];
+    [TAtlasTrackerTransition.Create('beginnen', 'Beginnen')];
   Assert.IsFalse(TAtlasBoardTransitions.Known(mSnapshot, 0));
   Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 2));
   Assert.AreEqual('in-arbeit, Beginnen', TAtlasBoardTransitions.Names(mSnapshot.Cards[0]));
@@ -419,7 +419,7 @@ begin
   Assert.IsFalse(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 1));
   Assert.AreEqual('', TAtlasBoardTransitions.Names(mSnapshot.Cards[0]));
   // Ohne Zustandsmaschine: wie CanMove.
-  mSnapshot.Cards[0].Workflow := Default(TAtlasBoardWorkflow);
+  mSnapshot.Cards[0].Workflow := Default(TAtlasTrackerStateRules);
   Assert.IsFalse(TAtlasBoardTransitions.Known(mSnapshot, 0));
   Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 2));
   Assert.IsFalse(TAtlasBoardTransitions.Known(mSnapshot, 5), 'keine Karte');
@@ -808,12 +808,12 @@ var
   mJson: string;
 begin
   Assert.AreEqual('https://firma.youtrack.cloud/api/issues/ATL-1/fields/82-11?fields=id',
-    TAtlasYouTrackWorkflow.FieldUrl(YouTrackTarget, 'ATL-1', '82-11'));
-  Assert.AreEqual('', TAtlasYouTrackWorkflow.FieldUrl(YouTrackTarget, 'ATL 1', '82-11'));
-  Assert.AreEqual('', TAtlasYouTrackWorkflow.FieldUrl(YouTrackTarget, 'ATL-1', '82/11'));
-  Assert.AreEqual('', TAtlasYouTrackWorkflow.FieldUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''),
+    TAtlasYouTrackApi.FieldUrl(YouTrackTarget, 'ATL-1', '82-11'));
+  Assert.AreEqual('', TAtlasYouTrackApi.FieldUrl(YouTrackTarget, 'ATL 1', '82-11'));
+  Assert.AreEqual('', TAtlasYouTrackApi.FieldUrl(YouTrackTarget, 'ATL-1', '82/11'));
+  Assert.AreEqual('', TAtlasYouTrackApi.FieldUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''),
     'ATL-1', '82-11'));
-  mJson := TAtlasYouTrackWorkflow.EventJson('82-11', TAtlasBoardTransition.Create('start', 'Beginnen'));
+  mJson := TAtlasYouTrackBodies.EventJson('82-11', TAtlasTrackerTransition.Create('start', 'Beginnen'));
   Assert.AreEqual('82-11', JsonText(mJson, 'id'));
   Assert.AreEqual('StateMachineIssueCustomField', JsonText(mJson, '$type'));
   mValue := TJSONObject.ParseJSONValue(mJson);
