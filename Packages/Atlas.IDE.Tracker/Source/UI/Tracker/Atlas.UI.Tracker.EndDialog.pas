@@ -5,7 +5,7 @@
 // Eingabe von Hand), Kommentar vorgefüllt aus issues.endComment und das
 // Häkchen „Zuständigkeit übergeben an“ mit der Benutzerliste vom Tracker.
 // - Geschrieben wird nur mit „Senden“: OnSend schreibt im Hintergrund und
-//   meldet über SendDone im Hauptthread. Solange gesendet wird, sind Felder
+//   meldet über StepsDone im Hauptthread. Solange gesendet wird, sind Felder
 //   und „Abbrechen“ gesperrt und der Dialog schließt nicht (die Zeitgrenze
 //   des Schreibens ist TAtlasTrackerWorkflow.cWriteTimeoutMs).
 // - Fehler erscheinen im Dialog mit dem Text des Trackers (ErrorText, z. B.
@@ -22,8 +22,22 @@
 //   geben → Zur Prüfung“). Vorgewählt ist der erste Übergang in einen
 //   Zustand aus issues.endStates (Reihenfolge = Vorliebe); ist der erste
 //   Wunsch ab hier nicht erlaubt, sagt es die Hinweiszeile.
+// - Ablauf-Reihenfolge (#2123): Mit erfasster Zeit (TAtlasTrackerEndTime,
+//   issues.endTime) steht oben „Zeit“ mit Dauer und Arbeitstyp, darunter je
+//   Feld aus issues.endFields eine Zeile mit den Werten vom Tracker
+//   (Rows.SetFieldValues). „Senden“ übergibt den Plan (TAtlasTrackerEndPlan) mit
+//   dem bisherigen Fortschritt an OnSend; geschrieben wird Zeit → Felder →
+//   Kommentar → Zustand bzw. Übergang (TAtlasTrackerEndSteps). Die Zeile über
+//   den Knöpfen zeigt die Schritte mit ✓/✗; Geschriebenes wird gesperrt und
+//   beim erneuten Senden übersprungen. Nennt die Ablehnung ein gezeigtes Feld,
+//   wird seine Zeile markiert; nennt sie ein anderes Feld des Projekts
+//   (Rows.SetKnownFields), bietet „Feld „…“ hinzufügen“ eine Zeile dafür an (nur
+//   für dieses Mal). Abbrechen nach einem Teilerfolg liefert den Fortschritt
+//   trotzdem (Execute), damit gebuchte Zeit nicht noch einmal angeboten wird.
 // SummaryText bildet die Zeile für die Meldungsansicht („Zustand „Erledigt“,
-// Kommentar“), ErrorText auch für „Beginnen“ und die Vorschau.
+// Kommentar“), ErrorText auch für „Beginnen“ und die Vorschau;
+// TAtlasTrackerEndTexts.EndSummary nennt nach dem Beenden alle geschriebenen
+// Schritte.
 
 interface
 
@@ -35,6 +49,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.CommentEditor,
@@ -43,12 +58,59 @@ uses
 type
   /// <summary>Ergebnis des Schreibens, im Hauptthread.</summary>
   TAtlasTrackerSendDone = reference to procedure(const AResult: TAtlasTrackerWriteResult);
-  /// <summary>AChange im Hintergrund schreiben und ADone im Hauptthread aufrufen (genau einmal).</summary>
-  TAtlasTrackerSendEvent = reference to procedure(const AChange: TAtlasTrackerWrite;
-    const ADone: TAtlasTrackerSendDone);
+  /// <summary>Fortschritt nach einem Lauf der Schritte (#2123), im Hauptthread.</summary>
+  TAtlasTrackerEndDone = reference to procedure(const AProgress: TAtlasTrackerEndProgress);
+  /// <summary>Offene Schritte von APlan ab AProgress im Hintergrund schreiben und ADone im Hauptthread aufrufen
+  /// (genau einmal).</summary>
+  TAtlasTrackerEndSendEvent = reference to procedure(const APlan: TAtlasTrackerEndPlan;
+    const AProgress: TAtlasTrackerEndProgress; const ADone: TAtlasTrackerEndDone);
+
+  /// <summary>Erfasste Zeit für den Abschnitt „Zeit“ (#2123): Seconds 0 = kein Abschnitt; Rounding
+  /// issues.timeRounding, Date Tag der Buchung, Text Beschreibung (Commit-Betreffe).</summary>
+  TAtlasTrackerEndTime = record
+    Seconds: Int64;
+    Rounding: Integer;
+    Date: TDateTime;
+    Text: string;
+    class function None: TAtlasTrackerEndTime; static;
+    class function Create(ASeconds: Int64; ARounding: Integer; ADate: TDateTime;
+      const AText: string): TAtlasTrackerEndTime; static;
+  end;
+
+  /// <summary>Was der Dialog zeigt: Kennung, Einstellungen, ausgefüllte Kommentarvorlage (Zeilen mit #10) und Zeit.
+  /// </summary>
+  TAtlasTrackerEndRequest = record
+    Key: string;
+    Options: TAtlasTrackerSyncOptions;
+    Comment: string;
+    Time: TAtlasTrackerEndTime;
+    class function Create(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
+      const AComment: string): TAtlasTrackerEndRequest; static;
+  end;
+
+  /// <summary>Ergebnis von Execute: Plan und Fortschritt (auch nach Abbrechen), ob alles geschrieben ist und die
+  /// gezeigte erfasste Zeit (gilt mit Progress.TimeBooked).</summary>
+  TAtlasTrackerEndOutcome = record
+    Plan: TAtlasTrackerEndPlan;
+    Progress: TAtlasTrackerEndProgress;
+    Finished: Boolean;
+    TimeSeconds: Int64;
+  end;
+
+  /// <summary>Zeile eines Feldes aus issues.endFields (#2123).</summary>
+  TAtlasEndFieldRow = record
+    Name: string;
+    Caption: TLabel;
+    Box: TAtlasValueBox;
+  end;
 
   /// <summary>Die Steuerelemente des Dialogs (für Tests und APrepare). Comment ist das Memo des Editors.</summary>
   TAtlasEndDialogParts = record
+    /// <summary>Abschnitt „Zeit“ (#2123); nil ohne erfasste Zeit.</summary>
+    BookTime: TCheckBox;
+    Duration: TEdit;
+    WorkType: TAtlasValueBox;
+    Fields: TArray<TAtlasEndFieldRow>;
     StateLabel: TLabel;
     State: TAtlasValueBox;
     Editor: TAtlasCommentEditor;
@@ -56,29 +118,67 @@ type
     HandOver: TCheckBox;
     Assignee: TAtlasValueBox;
     Note: TLabel;
+    /// <summary>Schritte mit ✓/✗ nach dem ersten Senden.</summary>
+    Steps: TLabel;
+    /// <summary>„Feld „…“ hinzufügen“; sichtbar, wenn eine Ablehnung ein nicht gezeigtes Feld nennt.</summary>
+    AddField: TButton;
     Send: TButton;
     Cancel: TButton;
   end;
 
+  TAtlasTrackerEndDialog = class;
+
+  /// <summary>Abschnitte „Zeit“ und Felder des Beenden-Dialogs (#2123): Werte vom Tracker, Sperren nach dem
+  /// Schreiben, Markieren des abgelehnten Feldes und „Feld hinzufügen“. Gehört dem Dialog.</summary>
+  TAtlasEndStepRows = class(TComponent)
+  private
+    FDialog: TAtlasTrackerEndDialog;
+    FTime: TAtlasTrackerEndTime;
+    FKnownFields: TArray<string>;
+    FMissingField: string;
+    FTimeOff: Boolean;
+    procedure AddTime;
+    function NewFieldRow(const AName: string; ATop: Integer): TAtlasEndFieldRow;
+    procedure AddFieldClick(Sender: TObject);
+  public
+    constructor CreateRows(ADialog: TAtlasTrackerEndDialog; const ATime: TAtlasTrackerEndTime;
+      const AFields: TArray<string>);
+    /// <summary>Arbeitstypen vom Tracker für den Abschnitt „Zeit“.</summary>
+    procedure SetWorkTypes(const ATypes: TArray<string>);
+    /// <summary>Zeiterfassung im Projekt aus: „Zeit“ abgewählt und gesperrt.</summary>
+    procedure SetTimeOff;
+    /// <summary>Werte vom Tracker für die Zeile des Feldes AName.</summary>
+    procedure SetFieldValues(const AName: string; const AValues: TArray<string>);
+    /// <summary>Felder des Projekts, damit eine Ablehnung, die ein nicht gezeigtes nennt, „Feld hinzufügen“
+    /// anbietet.</summary>
+    procedure SetKnownFields(const ANames: TArray<string>);
+    /// <summary>Zeile für Feld AName unter den übrigen Feldern (nur für dieses Mal); die vorhandene, wenn es sie
+    /// schon gibt. Liefert ihren Index in Parts.Fields.</summary>
+    function AddFieldRow(const AName: string): Integer;
+    /// <summary>Zeit und Felder in APlan; ist die Zeit schon gebucht, bleibt ABookedTime. False bei ungültiger
+    /// Dauer.</summary>
+    function Fill(var APlan: TAtlasTrackerEndPlan; const ABookedTime: TAtlasTrackerWorkItem;
+      ATimeBooked: Boolean): Boolean;
+    /// <summary>Zeit und Felder sperren (ABusy) bzw. wieder freigeben, Geschriebenes bleibt gesperrt.</summary>
+    procedure Lock(ABusy: Boolean; const AProgress: TAtlasTrackerEndProgress);
+    /// <summary>Ablehnung: genanntes Feld markieren bzw. „Feld hinzufügen“ anbieten; liefert den Namen des Feldes
+    /// für die Hinweiszeile ('' ohne).</summary>
+    function MarkRejected(const AProgress: TAtlasTrackerEndProgress): string;
+  end;
+
   TAtlasTrackerEndDialog = class(TAtlasDialog)
-  public const
-    cDialogWidth = 520;
-    cCommentHeight = 150;
-    /// <summary>Leiste des Kommentar-Editors (Vorschau, Textbaustein, Entwurf).</summary>
-    cEditorBarHeight = 30;
-    /// <summary>Breite der Beschriftungen vor den Klapplisten.</summary>
-    cLabelWidth = 176;
   private
     FKey: string;
     FOptions: TAtlasTrackerSyncOptions;
+    FRows: TAtlasEndStepRows;
     FParts: TAtlasEndDialogParts;
-    FOnSend: TAtlasTrackerSendEvent;
+    FOnSend: TAtlasTrackerEndSendEvent;
     FSending: Boolean;
     FSent: Boolean;
-    FChange: TAtlasTrackerWrite;
+    FPlan: TAtlasTrackerEndPlan;
+    FProgress: TAtlasTrackerEndProgress;
     FRules: TAtlasTrackerStateRules;
     FStates: TArray<string>;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddState;
     procedure AddComment(const AComment: string);
     function AddHandOver: TPanel;
@@ -91,28 +191,20 @@ type
     procedure EditorCancel(Sender: TObject);
     procedure ShowTransitions;
     function ChosenTransition: Integer;
+    procedure StepsDone(const AProgress: TAtlasTrackerEndProgress);
   public
-    /// <summary>AComment: ausgefüllte Vorlage issues.endComment (Zeilen mit #10).</summary>
-    constructor CreateDialog(AOwner: TComponent; const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
-      const AComment: string);
+    constructor CreateDialog(AOwner: TComponent; const ARequest: TAtlasTrackerEndRequest);
+    /// <summary>Plan nach den Feldern; False bei ungültiger Dauer.</summary>
+    function Plan(out APlan: TAtlasTrackerEndPlan): Boolean;
     /// <summary>Werte des Zustandsfeldes vom Tracker als weitere Vorschläge hinter issues.endStates.</summary>
     procedure SetStates(const AStates: TArray<string>);
     /// <summary>Regeln des Zustandsfeldes vom Tracker (#2122): Unter einer Zustandsmaschine bietet die Klappliste
     /// nur die erlaubten Übergänge an; ohne bleibt sie bei den Zuständen.</summary>
     procedure SetRules(const ARules: TAtlasTrackerStateRules);
-    /// <summary>Einträge der Klappliste unter ARules: „Zustand nicht ändern“, dann je Übergang ChoiceText mit
-    /// bekanntem Ziel aus AStates.</summary>
-    class function TransitionChoices(const ARules: TAtlasTrackerStateRules;
-      const AStates: TArray<string>): TArray<string>; static;
     /// <summary>Benutzer vom Tracker für „Zuständigkeit übergeben an“.</summary>
     procedure SetUsers(const AUsers: TArray<string>);
     /// <summary>Änderung nach den Feldern.</summary>
     function Change: TAtlasTrackerWrite;
-    /// <summary>Ergebnis von OnSend: geschrieben schließt den Dialog mit mrOk, sonst steht der Grund im Dialog.
-    /// </summary>
-    procedure SendDone(const AResult: TAtlasTrackerWriteResult);
-    /// <summary>Vorschläge der Klappliste Zielzustand: „Zustand nicht ändern“, dann AOptions.EndStates.</summary>
-    class function StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>; static;
     /// <summary>Grund eines Fehlers mit dem Text des Trackers; '' bei Erfolg.</summary>
     class function ErrorText(const AKey: string; const AResult: TAtlasTrackerWriteResult): string; static;
     /// <summary>Was geschrieben wurde, z. B. „Zustand „Erledigt“, an anna übergeben, Kommentar“.</summary>
@@ -120,18 +212,38 @@ type
     /// <summary>Wie oben; nach einem Übergang mit dem danach gelesenen Zustand ANewState („Übergang „Beginnen“
     /// → In Bearbeitung“), ANewState '' ohne.</summary>
     class function SummaryText(const AChange: TAtlasTrackerWrite; const ANewState: string): string; overload; static;
-    /// <summary>Modal zeigen; True nach erfolgreichem „Senden“ mit der geschriebenen Änderung in AChange.
-    /// APrepare (darf nil sein) passt das Fenster vorher an und kann Werte nachladen (SetUsers).</summary>
-    class function Execute(const AKey: string; const AOptions: TAtlasTrackerSyncOptions; const AComment: string;
-      const AOnSend: TAtlasTrackerSendEvent; const APrepare: TProc<TAtlasTrackerEndDialog>;
-      out AChange: TAtlasTrackerWrite): Boolean; static;
-    property OnSend: TAtlasTrackerSendEvent read FOnSend write FOnSend;
+    /// <summary>Modal zeigen; True, wenn nach „Senden“ alles geschrieben ist. AOutcome trägt Plan und Fortschritt
+    /// auch nach Abbrechen. APrepare (darf nil sein) passt das Fenster vorher an und kann Werte nachladen
+    /// (SetUsers, SetFieldValues, SetWorkTypes).</summary>
+    class function Execute(const ARequest: TAtlasTrackerEndRequest; const AOnSend: TAtlasTrackerEndSendEvent;
+      const APrepare: TProc<TAtlasTrackerEndDialog>; out AOutcome: TAtlasTrackerEndOutcome): Boolean; static;
+    property OnSend: TAtlasTrackerEndSendEvent read FOnSend write FOnSend;
+    /// <summary>Abschnitte „Zeit“ und Felder (#2123).</summary>
+    property Rows: TAtlasEndStepRows read FRows;
     /// <summary>Senden war erfolgreich.</summary>
     property Sent: Boolean read FSent;
     property Sending: Boolean read FSending;
     /// <summary>Gesendete Änderung (gilt mit Sent).</summary>
-    property SentChange: TAtlasTrackerWrite read FChange;
+    property SentChange: TAtlasTrackerWrite read FPlan.Change;
     property Parts: TAtlasEndDialogParts read FParts;
+  end;
+
+  /// <summary>Texte des Beenden-Dialogs ohne Fenster.</summary>
+  TAtlasTrackerEndTexts = class
+  public
+    /// <summary>Vorschläge der Klappliste Zielzustand: „Zustand nicht ändern“, dann AOptions.EndStates.</summary>
+    class function StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>; static;
+    /// <summary>Einträge der Klappliste unter ARules: „Zustand nicht ändern“, dann je Übergang ChoiceText mit
+    /// bekanntem Ziel aus AStates.</summary>
+    class function TransitionChoices(const ARules: TAtlasTrackerStateRules;
+      const AStates: TArray<string>): TArray<string>; static;
+    /// <summary>„✓ 1 Zeit   ✗ 2 Felder   3 Kommentar   4 Übergang“: geplante Schritte mit ihrem Stand.</summary>
+    class function StepsText(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress): string;
+      static;
+    /// <summary>Geschriebene Schritte für die Meldungsansicht („Zeit 1 h 25 min gebucht, Felder Ursache, Übergang
+    /// „Zur Prüfung geben“, Kommentar“).</summary>
+    class function EndSummary(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress): string;
+      static;
   end;
 
 implementation
@@ -142,29 +254,361 @@ uses
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Transitions,
+  Atlas.Core.Tracker.TimeLog,
   Atlas.UI.Tracker.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
 const
   cGap = 8;
+  cDialogWidth = 520;
+  cCommentHeight = 150;
+  /// <summary>Leiste des Kommentar-Editors (Vorschau, Textbaustein, Entwurf).</summary>
+  cEditorBarHeight = 30;
+  /// <summary>Breite der Beschriftungen vor den Klapplisten.</summary>
+  cLabelWidth = 176;
+  /// <summary>Höhe der Zeilen für Kommentar-Beschriftung, Hinweis und Schritte.</summary>
+  cTextRowHeight = 20;
+  /// <summary>Oberkante der Häkchen in einer Zeile mit Klappliste.</summary>
+  cCheckTop = 3;
+  /// <summary>Breite eines Knopfes über seiner Beschriftung.</summary>
+  cButtonPadding = 32;
+  /// <summary>Linker Rand der Eingaben hinter den Beschriftungen.</summary>
+  cFieldLeft = 180;
+  cFieldWidth = 240;
+  cDurationWidth = 80;
+  cRowHeight = 26;
+  cDoneMark = '✓ ';
+  cFailedMark = '✗ ';
+
+{ TAtlasTrackerEndTime }
+
+class function TAtlasTrackerEndTime.None: TAtlasTrackerEndTime;
+begin
+  Result := Create(0, 1, 0, '');
+end;
+
+class function TAtlasTrackerEndTime.Create(ASeconds: Int64; ARounding: Integer; ADate: TDateTime;
+  const AText: string): TAtlasTrackerEndTime;
+begin
+  Result.Seconds := ASeconds;
+  Result.Rounding := ARounding;
+  Result.Date := ADate;
+  Result.Text := AText;
+end;
+
+{ TAtlasTrackerEndRequest }
+
+class function TAtlasTrackerEndRequest.Create(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
+  const AComment: string): TAtlasTrackerEndRequest;
+begin
+  Result.Key := AKey;
+  Result.Options := AOptions;
+  Result.Comment := AComment;
+  Result.Time := TAtlasTrackerEndTime.None;
+end;
+
+/// <summary>Breite von AButton nach seiner Beschriftung.</summary>
+procedure FitButton(ADialog: TAtlasTrackerEndDialog; AButton: TButton);
+begin
+  ADialog.Canvas.Font := ADialog.Font;
+  AButton.Width := ADialog.Canvas.TextWidth(AButton.Caption) + ADialog.ScaleValue(cButtonPadding);
+end;
+
+/// <summary>Knopf mit ACaption in der Knopfleiste AParent.</summary>
+function NewButton(ADialog: TAtlasTrackerEndDialog; AParent: TWinControl; const ACaption: string): TButton;
+begin
+  Result := TButton.Create(ADialog);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  FitButton(ADialog, Result);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+end;
+
+/// <summary>Fehler rot in der Hinweiszeile ANote.</summary>
+procedure ShowErrorNote(ANote: TLabel; const AText: string);
+begin
+  ANote.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  ANote.StyleElements := ANote.StyleElements - [seFont];
+  ANote.Caption := AText;
+end;
+
+{ TAtlasEndStepRows }
+
+constructor TAtlasEndStepRows.CreateRows(ADialog: TAtlasTrackerEndDialog; const ATime: TAtlasTrackerEndTime;
+  const AFields: TArray<string>);
+var
+  mName: string;
+begin
+  inherited Create(ADialog);
+  FDialog := ADialog;
+  FTime := ATime;
+  AddTime;
+  for mName in AFields do
+  begin
+    FDialog.FParts.Fields := FDialog.FParts.Fields + [NewFieldRow(mName, FDialog.NextTop)];
+  end;
+end;
+
+/// <summary>Abschnitt „Zeit“ mit Dauer (gerundet) und Arbeitstyp; nur mit erfasster Zeit.</summary>
+procedure TAtlasEndStepRows.AddTime;
+var
+  mRow: TPanel;
+  mDialog: TAtlasTrackerEndDialog;
+begin
+  if FTime.Seconds <= 0 then
+  begin
+    Exit;
+  end;
+  mDialog := FDialog;
+  mRow := mDialog.AddRow(cRowHeight);
+  mDialog.FParts.BookTime := TCheckBox.Create(mDialog);
+  mDialog.FParts.BookTime.Parent := mRow;
+  mDialog.FParts.BookTime.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndTime);
+  mDialog.FParts.BookTime.Left := 0;
+  mDialog.FParts.BookTime.Top := mDialog.ScaleValue(cCheckTop);
+  mDialog.FParts.BookTime.Width := mDialog.ScaleValue(cLabelWidth);
+  mDialog.FParts.BookTime.Checked := True;
+  mDialog.FParts.Duration := TEdit.Create(mDialog);
+  mDialog.FParts.Duration.Parent := mRow;
+  mDialog.FParts.Duration.Left := mDialog.ScaleValue(cFieldLeft);
+  mDialog.FParts.Duration.Top := 0;
+  mDialog.FParts.Duration.Width := mDialog.ScaleValue(cDurationWidth);
+  mDialog.FParts.Duration.Text := TAtlasTimeRounding.ClockText(Int64(TAtlasTimeRounding.Minutes(FTime.Seconds,
+    FTime.Rounding)) * SecsPerMin);
+  mDialog.FParts.WorkType := TAtlasValueBox.Create(mDialog);
+  mDialog.FParts.WorkType.Parent := mRow;
+  mDialog.FParts.WorkType.Left := mDialog.ScaleValue(cFieldLeft + cDurationWidth + cGap);
+  mDialog.FParts.WorkType.Top := 0;
+  mDialog.FParts.WorkType.Width := mDialog.ScaleValue(cFieldWidth - cDurationWidth - cGap);
+end;
+
+/// <summary>Zeile für Feld AName mit Oberkante ATop (alTop ordnet nach Top ein).</summary>
+function TAtlasEndStepRows.NewFieldRow(const AName: string; ATop: Integer): TAtlasEndFieldRow;
+var
+  mRow: TPanel;
+  mDialog: TAtlasTrackerEndDialog;
+begin
+  mDialog := FDialog;
+  mRow := TPanel.Create(mDialog);
+  // Lage vor Align und Parent, damit die Zeile an ihrer Stelle einsortiert wird.
+  mRow.Top := ATop;
+  mRow.Height := mDialog.ScaleValue(cRowHeight);
+  mRow.AlignWithMargins := True;
+  mRow.Margins.SetBounds(mDialog.ScaleValue(TAtlasDialog.cRowGap), mDialog.ScaleValue(TAtlasDialog.cRowGap div 2),
+    mDialog.ScaleValue(TAtlasDialog.cRowGap), 0);
+  mRow.BevelOuter := bvNone;
+  mRow.Caption := '';
+  mRow.Align := alTop;
+  mRow.Parent := mDialog;
+  Result.Name := Trim(AName);
+  Result.Caption := mDialog.AddLabel(mRow, Result.Name + ':');
+  Result.Caption.AutoSize := False;
+  Result.Caption.Width := mDialog.ScaleValue(cLabelWidth);
+  Result.Caption.EllipsisPosition := epEndEllipsis;
+  Result.Caption.Hint := Result.Name;
+  Result.Caption.ShowHint := True;
+  Result.Box := TAtlasValueBox.Create(mDialog);
+  Result.Box.Parent := mRow;
+  Result.Box.Left := mDialog.ScaleValue(cFieldLeft);
+  Result.Box.Top := 0;
+  Result.Box.Width := mDialog.ScaleValue(cFieldWidth);
+end;
+
+function TAtlasEndStepRows.AddFieldRow(const AName: string): Integer;
+var
+  mRow: TAtlasEndFieldRow;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FDialog.FParts.Fields) do
+  begin
+    if SameText(FDialog.FParts.Fields[mIndex].Name, Trim(AName)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  // Direkt über dem Übergang, also unter Zeit und den übrigen Feldern.
+  mRow := NewFieldRow(AName, FDialog.FParts.StateLabel.Parent.Top - 1);
+  FDialog.FParts.Fields := FDialog.FParts.Fields + [mRow];
+  FDialog.ClientHeight := FDialog.ClientHeight + mRow.Box.Parent.Height + mRow.Box.Parent.Margins.Top;
+  Result := High(FDialog.FParts.Fields);
+end;
+
+procedure TAtlasEndStepRows.SetWorkTypes(const ATypes: TArray<string>);
+begin
+  if FDialog.FParts.WorkType <> nil then
+  begin
+    FDialog.FParts.WorkType.SetValues(ATypes);
+  end;
+end;
+
+procedure TAtlasEndStepRows.SetTimeOff;
+var
+  mParts: TAtlasEndDialogParts;
+begin
+  mParts := FDialog.FParts;
+  if (mParts.BookTime = nil) or FDialog.FProgress.TimeBooked then
+  begin
+    Exit;
+  end;
+  FTimeOff := True;
+  mParts.BookTime.Checked := False;
+  mParts.BookTime.Enabled := False;
+  mParts.BookTime.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff);
+  mParts.BookTime.ShowHint := True;
+  mParts.Duration.Enabled := False;
+  mParts.WorkType.Enabled := False;
+end;
+
+procedure TAtlasEndStepRows.SetFieldValues(const AName: string; const AValues: TArray<string>);
+var
+  mRow: TAtlasEndFieldRow;
+begin
+  for mRow in FDialog.FParts.Fields do
+  begin
+    if SameText(mRow.Name, Trim(AName)) then
+    begin
+      mRow.Box.SetValues(AValues);
+    end;
+  end;
+end;
+
+procedure TAtlasEndStepRows.SetKnownFields(const ANames: TArray<string>);
+begin
+  FKnownFields := Copy(ANames);
+end;
+
+function TAtlasEndStepRows.Fill(var APlan: TAtlasTrackerEndPlan; const ABookedTime: TAtlasTrackerWorkItem;
+  ATimeBooked: Boolean): Boolean;
+var
+  mMinutes: Integer;
+  mRow: TAtlasEndFieldRow;
+  mParts: TAtlasEndDialogParts;
+begin
+  Result := True;
+  mParts := FDialog.FParts;
+  // Schon gebucht: gleiche Buchung behalten, damit der Schritt als erledigt gilt.
+  if ATimeBooked then
+  begin
+    APlan.Time := ABookedTime;
+  end
+  else if (mParts.BookTime <> nil) and mParts.BookTime.Checked and mParts.BookTime.Enabled then
+  begin
+    Result := TAtlasTimeRounding.ParseDuration(mParts.Duration.Text, mMinutes) and (mMinutes > 0);
+    APlan.Time := TAtlasTrackerWorkItem.Create(mMinutes, FTime.Date, mParts.WorkType.Value, FTime.Text);
+  end;
+  for mRow in mParts.Fields do
+  begin
+    APlan.AddField(mRow.Name, mRow.Box.Value);
+  end;
+end;
+
+procedure TAtlasEndStepRows.Lock(ABusy: Boolean; const AProgress: TAtlasTrackerEndProgress);
+var
+  mRow: TAtlasEndFieldRow;
+  mParts: TAtlasEndDialogParts;
+begin
+  mParts := FDialog.FParts;
+  if mParts.BookTime <> nil then
+  begin
+    // Gebucht bleibt gesperrt, ebenso bei ausgeschalteter Zeiterfassung (SetTimeOff).
+    mParts.BookTime.Enabled := not ABusy and not AProgress.TimeBooked and not FTimeOff;
+    mParts.Duration.Enabled := mParts.BookTime.Enabled;
+    mParts.WorkType.Enabled := mParts.BookTime.Enabled;
+  end;
+  for mRow in mParts.Fields do
+  begin
+    mRow.Box.Enabled := not ABusy and not AProgress.FieldDone(TAtlasTrackerFieldValue.Create(mRow.Name,
+      mRow.Box.Value));
+  end;
+  mParts.AddField.Enabled := not ABusy;
+end;
+
+function TAtlasEndStepRows.MarkRejected(const AProgress: TAtlasTrackerEndProgress): string;
+var
+  mShown: TArray<string>;
+  mRow: TAtlasEndFieldRow;
+  mParts: TAtlasEndDialogParts;
+begin
+  mParts := FDialog.FParts;
+  mShown := nil;
+  for mRow in mParts.Fields do
+  begin
+    mShown := mShown + [mRow.Name];
+  end;
+  Result := AProgress.FailedField;
+  if Result = '' then
+  begin
+    Result := TAtlasTrackerEndSteps.MentionedField(AProgress.Outcome.Message, mShown);
+  end;
+  for mRow in mParts.Fields do
+  begin
+    if SameText(mRow.Name, Result) then
+    begin
+      mRow.Caption.Font.Style := [fsBold];
+      mRow.Caption.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+      mRow.Caption.StyleElements := mRow.Caption.StyleElements - [seFont];
+    end;
+  end;
+  FMissingField := '';
+  if Result = '' then
+  begin
+    FMissingField := TAtlasTrackerEndSteps.MentionedField(AProgress.Outcome.Message, FKnownFields);
+    Result := FMissingField;
+  end;
+  mParts.AddField.Visible := FMissingField <> '';
+  if FMissingField <> '' then
+  begin
+    mParts.AddField.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndAddField, [FMissingField]);
+    FitButton(FDialog, mParts.AddField);
+  end;
+end;
+
+procedure TAtlasEndStepRows.AddFieldClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  if (FMissingField = '') or FDialog.Sending then
+  begin
+    Exit;
+  end;
+  mIndex := AddFieldRow(FMissingField);
+  FMissingField := '';
+  FDialog.FParts.AddField.Visible := False;
+  if FDialog.FParts.Fields[mIndex].Box.CanFocus and FDialog.Showing then
+  begin
+    FDialog.FParts.Fields[mIndex].Box.SetFocus;
+  end;
+end;
 
 { TAtlasTrackerEndDialog }
 
-constructor TAtlasTrackerEndDialog.CreateDialog(AOwner: TComponent; const AKey: string;
-  const AOptions: TAtlasTrackerSyncOptions; const AComment: string);
+constructor TAtlasTrackerEndDialog.CreateDialog(AOwner: TComponent; const ARequest: TAtlasTrackerEndRequest);
+var
+  mSteps: TPanel;
 begin
   inherited CreateDialog(AOwner, '', cDialogWidth);
-  FKey := AKey;
-  FOptions := AOptions;
-  FChange := TAtlasTrackerWrite.Empty;
-  Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndCaption, [AKey]);
+  FKey := ARequest.Key;
+  FOptions := ARequest.Options;
+  FPlan := TAtlasTrackerEndPlan.Create(TAtlasTrackerWrite.Empty);
+  FProgress := TAtlasTrackerEndProgress.Empty;
+  Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndCaption, [FKey]);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
   OnCloseQuery := DialogCloseQuery;
+  // Reihenfolge wie beim Schreiben: Zeit, Felder, Übergang; Kommentar darunter.
+  FRows := TAtlasEndStepRows.CreateRows(Self, ARequest.Time, FOptions.EndFields);
   AddState;
-  AddComment(AComment);
-  AddButtons(AddHandOver.BoundsRect.Bottom + 1);
+  AddComment(ARequest.Comment);
+  AddHandOver;
+  mSteps := AddRow(cTextRowHeight);
+  FParts.Steps := TLabel.Create(Self);
+  FParts.Steps.Parent := mSteps;
+  FParts.Steps.Align := alClient;
+  FParts.Steps.Caption := '';
+  AddButtons(mSteps.BoundsRect.Bottom + 1);
   ActiveControl := FParts.Comment;
 end;
 
@@ -175,7 +619,7 @@ var
   mLabel: TLabel;
   mChoices: TArray<string>;
 begin
-  mRow := AddRow(26);
+  mRow := AddRow(cRowHeight);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndState);
@@ -189,10 +633,10 @@ begin
   FParts.StateLabel := mLabel;
   FParts.State := TAtlasValueBox.Create(Self);
   FParts.State.Parent := mRow;
-  FParts.State.Left := ScaleValue(180);
+  FParts.State.Left := ScaleValue(cFieldLeft);
   FParts.State.Top := 0;
-  FParts.State.Width := ScaleValue(240);
-  mChoices := StateChoices(FOptions);
+  FParts.State.Width := ScaleValue(cFieldWidth);
+  mChoices := TAtlasTrackerEndTexts.StateChoices(FOptions);
   FParts.State.SetValues(mChoices);
   FParts.State.Value := mChoices[Min(1, High(mChoices))];
 end;
@@ -203,7 +647,7 @@ var
   mRow: TPanel;
   mLabel: TLabel;
 begin
-  mRow := AddRow(20);
+  mRow := AddRow(cTextRowHeight);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndComment);
@@ -226,22 +670,22 @@ function TAtlasTrackerEndDialog.AddHandOver: TPanel;
 var
   mRow: TPanel;
 begin
-  mRow := AddRow(26);
+  mRow := AddRow(cRowHeight);
   mRow.Top := FParts.Editor.Top + FParts.Editor.Height + 1;
   FParts.HandOver := TCheckBox.Create(Self);
   FParts.HandOver.Parent := mRow;
   FParts.HandOver.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndHandOver);
   FParts.HandOver.Left := 0;
-  FParts.HandOver.Top := ScaleValue(3);
-  FParts.HandOver.Width := ScaleValue(176);
+  FParts.HandOver.Top := ScaleValue(cCheckTop);
+  FParts.HandOver.Width := ScaleValue(cLabelWidth);
   FParts.Assignee := TAtlasValueBox.Create(Self);
   FParts.Assignee.Parent := mRow;
-  FParts.Assignee.Left := ScaleValue(180);
+  FParts.Assignee.Left := ScaleValue(cFieldLeft);
   FParts.Assignee.Top := 0;
-  FParts.Assignee.Width := ScaleValue(240);
+  FParts.Assignee.Width := ScaleValue(cFieldWidth);
   FParts.Assignee.OnChange := AssigneeChange;
 
-  Result := AddRow(20);
+  Result := AddRow(cTextRowHeight);
   FParts.Note := TLabel.Create(Self);
   FParts.Note.Parent := Result;
   FParts.Note.Align := alClient;
@@ -261,27 +705,19 @@ begin
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := ATop;
-  FParts.Send := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
+  FParts.AddField := NewButton(Self, mButtons, '');
+  FParts.AddField.Visible := False;
+  FParts.AddField.OnClick := FRows.AddFieldClick;
+  FParts.Send := NewButton(Self, mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
   FParts.Send.OnClick := SendClick;
   FParts.Send.Default := True;
-  FParts.Cancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
+  FParts.Cancel := NewButton(Self, mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
   FParts.Cancel.ModalResult := mrCancel;
   FParts.Cancel.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
-function TAtlasTrackerEndDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
-end;
-
-class function TAtlasTrackerEndDialog.StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>;
+class function TAtlasTrackerEndTexts.StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>;
 begin
   Result := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState))
     + Copy(AOptions.EndStates);
@@ -300,7 +736,7 @@ begin
     ShowTransitions;
     Exit;
   end;
-  mChoices := StateChoices(FOptions);
+  mChoices := TAtlasTrackerEndTexts.StateChoices(FOptions);
   for mState in AStates do
   begin
     mFound := False;
@@ -319,7 +755,7 @@ begin
   FParts.State.SetValues(mChoices);
 end;
 
-class function TAtlasTrackerEndDialog.TransitionChoices(const ARules: TAtlasTrackerStateRules;
+class function TAtlasTrackerEndTexts.TransitionChoices(const ARules: TAtlasTrackerStateRules;
   const AStates: TArray<string>): TArray<string>;
 var
   mTransition: TAtlasTrackerTransition;
@@ -359,7 +795,7 @@ begin
   end;
   FParts.StateLabel.Hint := FParts.StateLabel.Caption;
   mKnown := FOptions.EndStates + FStates;
-  mChoices := TransitionChoices(FRules, mKnown);
+  mChoices := TAtlasTrackerEndTexts.TransitionChoices(FRules, mKnown);
   FParts.State.SetValues(mChoices);
   mPreferred := TAtlasTrackerTransitions.Preferred(FRules, FOptions.EndStates);
   FParts.State.Value := mChoices[mPreferred + 1];
@@ -379,7 +815,7 @@ var
   mChoices: TArray<string>;
   mIndex: Integer;
 begin
-  mChoices := TransitionChoices(FRules, FOptions.EndStates + FStates);
+  mChoices := TAtlasTrackerEndTexts.TransitionChoices(FRules, FOptions.EndStates + FStates);
   for mIndex := 1 to High(mChoices) do
   begin
     if SameText(Trim(FParts.State.Value), mChoices[mIndex]) then
@@ -434,14 +870,29 @@ begin
 end;
 
 procedure TAtlasTrackerEndDialog.SetBusy(AValue: Boolean);
+var
+  mOpen: Boolean;
 begin
   FSending := AValue;
+  // Geschriebenes bleibt gesperrt: Beim erneuten Senden wird es übersprungen.
+  FRows.Lock(AValue, FProgress);
+  mOpen := not AValue and not FProgress.CommentDone;
   FParts.State.Enabled := not AValue;
-  FParts.Comment.ReadOnly := AValue;
-  FParts.HandOver.Enabled := not AValue;
-  FParts.Assignee.Enabled := not AValue;
+  FParts.Comment.ReadOnly := not mOpen;
+  FParts.HandOver.Enabled := mOpen;
+  FParts.Assignee.Enabled := mOpen;
   FParts.Send.Enabled := not AValue;
   FParts.Cancel.Enabled := not AValue;
+end;
+
+function TAtlasTrackerEndDialog.Plan(out APlan: TAtlasTrackerEndPlan): Boolean;
+var
+  mBooked: TAtlasTrackerWorkItem;
+begin
+  // Vor dem Überschreiben merken: SendClick plant in FPlan selbst.
+  mBooked := FPlan.Time;
+  APlan := TAtlasTrackerEndPlan.Create(Change);
+  Result := FRows.Fill(APlan, mBooked, FProgress.TimeBooked);
 end;
 
 procedure TAtlasTrackerEndDialog.SendClick(Sender: TObject);
@@ -452,9 +903,13 @@ begin
   begin
     Exit;
   end;
-  FChange := Change;
-  // Nichts zu schreiben (Zustand bleibt, kein Kommentar, keine Übergabe): nur beenden.
-  if not FChange.HasWork or not Assigned(FOnSend) then
+  if not Plan(FPlan) then
+  begin
+    ShowErrorNote(FParts.Note, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid));
+    Exit;
+  end;
+  // Nichts (mehr) zu schreiben: nur beenden.
+  if FProgress.Finished(FPlan) or not Assigned(FOnSend) then
   begin
     FSent := True;
     FParts.Editor.Sent;
@@ -465,17 +920,21 @@ begin
   FParts.Note.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSending);
   SetBusy(True);
   mDialog := Self;
-  FOnSend(FChange,
-    procedure(const AResult: TAtlasTrackerWriteResult)
+  FOnSend(FPlan, FProgress,
+    procedure(const AProgress: TAtlasTrackerEndProgress)
     begin
-      mDialog.SendDone(AResult);
+      mDialog.StepsDone(AProgress);
     end);
 end;
 
-procedure TAtlasTrackerEndDialog.SendDone(const AResult: TAtlasTrackerWriteResult);
+procedure TAtlasTrackerEndDialog.StepsDone(const AProgress: TAtlasTrackerEndProgress);
+var
+  mField: string;
 begin
+  FProgress := AProgress;
   SetBusy(False);
-  if AResult.Succeeded then
+  FParts.Steps.Caption := TAtlasTrackerEndTexts.StepsText(FPlan, FProgress);
+  if FProgress.Finished(FPlan) then
   begin
     FSent := True;
     // Geschrieben: Der Entwurf hat sich erledigt.
@@ -485,10 +944,95 @@ begin
     Exit;
   end;
   // Kein neuer Versuch von selbst: Der Benutzer ändert und sendet erneut oder bricht ab.
-  FParts.Note.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
-  // Mit seFont übergeht der Stil Font.Color.
-  FParts.Note.StyleElements := FParts.Note.StyleElements - [seFont];
-  FParts.Note.Caption := ErrorText(FKey, AResult);
+  ShowErrorNote(FParts.Note, ErrorText(FKey, FProgress.Outcome));
+  mField := FRows.MarkRejected(FProgress);
+  if mField <> '' then
+  begin
+    FParts.Note.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndFixField,
+      [FParts.Note.Caption, mField]);
+  end;
+end;
+
+/// <summary>Name eines Schritts; der letzte heißt unter einer Zustandsmaschine „Übergang“.</summary>
+function StepName(const APlan: TAtlasTrackerEndPlan; AStep: TAtlasTrackerEndStep): string;
+begin
+  case AStep of
+    TAtlasTrackerEndStep.Time:
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepTime);
+    TAtlasTrackerEndStep.Fields:
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepFields);
+    TAtlasTrackerEndStep.Comment:
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepComment);
+  else
+    if APlan.Change.Transition.Id <> '' then
+    begin
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepTransition);
+    end
+    else
+    begin
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepState);
+    end;
+  end;
+end;
+
+class function TAtlasTrackerEndTexts.StepsText(const APlan: TAtlasTrackerEndPlan;
+  const AProgress: TAtlasTrackerEndProgress): string;
+var
+  mStep: TAtlasTrackerEndStep;
+  mParts: TArray<string>;
+  mMark: string;
+begin
+  mParts := nil;
+  for mStep := Low(TAtlasTrackerEndStep) to High(TAtlasTrackerEndStep) do
+  begin
+    case AProgress.StateOf(APlan, mStep) of
+      TAtlasTrackerStepState.Skipped:
+        Continue;
+      TAtlasTrackerStepState.Done:
+        mMark := cDoneMark;
+      TAtlasTrackerStepState.Failed:
+        mMark := cFailedMark;
+    else
+      mMark := '';
+    end;
+    mParts := mParts + [mMark + IntToStr(Length(mParts) + 1) + ' ' + StepName(APlan, mStep)];
+  end;
+  Result := string.Join('   ', mParts);
+end;
+
+class function TAtlasTrackerEndTexts.EndSummary(const APlan: TAtlasTrackerEndPlan;
+  const AProgress: TAtlasTrackerEndProgress): string;
+var
+  mParts, mNames: TArray<string>;
+  mField: TAtlasTrackerFieldValue;
+begin
+  mParts := nil;
+  if AProgress.TimeBooked and (APlan.Time.Minutes > 0) then
+  begin
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartTime,
+      [TAtlasTrackerWorkflow.DurationText(APlan.Time.Minutes)])];
+  end;
+  mNames := nil;
+  for mField in APlan.Fields do
+  begin
+    if AProgress.FieldDone(mField) then
+    begin
+      mNames := mNames + [mField.Name];
+    end;
+  end;
+  if Length(mNames) > 0 then
+  begin
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartFields, [string.Join(', ', mNames)])];
+  end;
+  if AProgress.TransitionDone and APlan.TransitionPart.HasWork then
+  begin
+    mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(APlan.TransitionPart)];
+  end;
+  if AProgress.CommentDone and APlan.CommentPart.HasWork then
+  begin
+    mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(APlan.CommentPart)];
+  end;
+  Result := string.Join(', ', mParts);
 end;
 
 procedure TAtlasTrackerEndDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -594,13 +1138,13 @@ begin
   Result := string.Join(', ', mParts);
 end;
 
-class function TAtlasTrackerEndDialog.Execute(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
-  const AComment: string; const AOnSend: TAtlasTrackerSendEvent; const APrepare: TProc<TAtlasTrackerEndDialog>;
-  out AChange: TAtlasTrackerWrite): Boolean;
+class function TAtlasTrackerEndDialog.Execute(const ARequest: TAtlasTrackerEndRequest;
+  const AOnSend: TAtlasTrackerEndSendEvent; const APrepare: TProc<TAtlasTrackerEndDialog>;
+  out AOutcome: TAtlasTrackerEndOutcome): Boolean;
 var
   mDialog: TAtlasTrackerEndDialog;
 begin
-  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, AKey, AOptions, AComment);
+  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, ARequest);
   try
     mDialog.OnSend := AOnSend;
     if Assigned(APrepare) then
@@ -608,7 +1152,10 @@ begin
       APrepare(mDialog);
     end;
     Result := (mDialog.ShowModal = mrOk) and mDialog.Sent;
-    AChange := mDialog.SentChange;
+    AOutcome.Plan := mDialog.FPlan;
+    AOutcome.Progress := mDialog.FProgress;
+    AOutcome.Finished := Result;
+    AOutcome.TimeSeconds := ARequest.Time.Seconds;
     // Entwurf sichern, solange das Fenster noch lebt (nach Senden ist er schon gelöscht).
     mDialog.FParts.Editor.Unbind;
   finally

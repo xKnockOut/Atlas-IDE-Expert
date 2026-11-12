@@ -83,6 +83,12 @@ type
     class function UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string; static;
     class function ApplyChange(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult; static;
+    /// <summary>Feld AField von AKey auf AValue setzen (#2123): ein Befehl „Feld Wert“ über /api/commands.
+    /// </summary>
+    class function SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
+      AField, AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult; static;
+    /// <summary>Projekte mit ihren Feldern und Werten (cProjectFields); '' ohne Server.</summary>
+    class function ProjectFieldsUrl(const ATarget: TAtlasTrackerTarget): string; static;
     /// <summary>Projektkürzel aus der Kennung ("ATL-123" → "ATL"); '' ohne Bindestrich.</summary>
     class function ProjectOfKey(const AKey: string): string; static;
     /// <summary>Die Buchung scheiterte, weil die Zeiterfassung im Projekt aus ist (400 mit Hinweis darauf).
@@ -124,6 +130,9 @@ type
     class function CommandWord(const AText: string): string; static;
     /// <summary>Befehl zu AChange ohne Kommentar ("State {In Arbeit} Assignee me"); '' = nur Kommentar.</summary>
     class function CommandQuery(const AChange: TAtlasTrackerWrite): string; static;
+    /// <summary>Befehl, der Feld AField auf AValue setzt ("{Behoben in Version} 2.1.0"); '' ohne Feld oder Wert.
+    /// </summary>
+    class function FieldQuery(const AField, AValue: string): string; static;
     /// <summary>Inhalt für /api/commands.</summary>
     class function CommandJson(const AKey, AQuery, AComment: string): string; static;
     /// <summary>Inhalt des POST auf FieldUrl, der ATransition am Feld AFieldId auslöst.</summary>
@@ -398,6 +407,31 @@ begin
 end;
 
 
+class function TAtlasYouTrackApi.SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField, AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mSend: IAtlasCiSend;
+  mQuery: string;
+begin
+  mQuery := TAtlasYouTrackBodies.FieldQuery(AField, AValue);
+  if (mQuery = '') or (ATarget.Server = '') or not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or
+    not Supports(ATransport, IAtlasCiSend, mSend) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  Result := PostJson(mSend, ATarget.Url + '/api/commands', TAtlasYouTrackBodies.CommandJson(AKey, mQuery, ''),
+    ATimeoutMs);
+end;
+
+class function TAtlasYouTrackApi.ProjectFieldsUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := '';
+  if ATarget.Server <> '' then
+  begin
+    Result := ATarget.Url + '/api/admin/projects?fields=' + TTextUris.PercentEncode(cProjectFields) + '&$top=500';
+  end;
+end;
+
 class function TAtlasYouTrackApi.ProjectOfKey(const AKey: string): string;
 var
   mDash: Integer;
@@ -614,6 +648,15 @@ begin
   else
   begin
     Result := Result + CommandWord(mField) + ' ' + CommandWord(AChange.Assignee);
+  end;
+end;
+
+class function TAtlasYouTrackBodies.FieldQuery(const AField, AValue: string): string;
+begin
+  Result := '';
+  if (Trim(AField) <> '') and (Trim(AValue) <> '') then
+  begin
+    Result := CommandWord(AField) + ' ' + CommandWord(AValue);
   end;
 end;
 

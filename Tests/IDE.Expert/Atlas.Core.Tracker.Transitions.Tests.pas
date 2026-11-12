@@ -6,7 +6,9 @@
 // Regeln aus Antworten von YouTrack (Tests\Data\YouTrack: benannte
 // Ereignisse, nach Zuständen benannte Ereignisse, ohne Zustandsmaschine) und
 // das Auslösen über TAtlasYouTrackApi.ApplyChange gegen einen Transport mit
-// festen Antworten (Kommentar bzw. Befehl vorher, Ablehnung mit Text).
+// festen Antworten (Kommentar bzw. Befehl vorher, Ablehnung mit Text); Felder
+// beim Beenden (#2123): Felder und Werte des Projekts, Setzen per Befehl und
+// ein ganzer Lauf der Schritte mit Ablehnung durch eine Workflow-Regel.
 
 interface
 
@@ -54,6 +56,20 @@ type
     procedure ApplyWithoutFieldIdNotConfigured;
   end;
 
+  [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
+  TAtlasYouTrackEndFieldsTests = class
+  public
+    [Test]
+    procedure ParseProjectFieldsFixture;
+    [Test]
+    procedure FieldValuesAndSetField;
+    /// <summary>Workflow-Regel lehnt den Übergang ab: Zeit und Kommentar bleiben geschrieben, das Feld wird
+    /// erkannt, der zweite Lauf schreibt nur noch Feld und Übergang.</summary>
+    [Test]
+    procedure RunRejectedByRuleThenResumes;
+  end;
+
 implementation
 
 uses
@@ -63,7 +79,9 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.Transitions,
+  Atlas.Core.Tracker.YouTrackParse,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.YouTrackApi,
@@ -481,8 +499,98 @@ begin
   Assert.AreEqual(0, Integer(Length(mTransport.Calls)), 'nichts halb geschrieben');
 end;
 
+{ TAtlasYouTrackEndFieldsTests }
+
+procedure TAtlasYouTrackEndFieldsTests.ParseProjectFieldsFixture;
+var
+  mValues: TArray<string>;
+begin
+  Assert.IsTrue(TAtlasYouTrackParse.ParseProjectFields(Fixture('end-fields-projects.json'), 'ATL', '', mValues));
+  Assert.AreEqual('Status|Behoben in Version|Ursache|Notiz', string.Join('|', mValues), 'Namen der Felder');
+  Assert.IsTrue(TAtlasYouTrackParse.ParseProjectFields(Fixture('end-fields-projects.json'), 'atl',
+    'behoben in version', mValues));
+  Assert.AreEqual('2.1.0|2.2.0', string.Join('|', mValues), 'archivierte Werte fehlen');
+  Assert.IsTrue(TAtlasYouTrackParse.ParseProjectFields(Fixture('end-fields-projects.json'), 'WEB', 'Ursache',
+    mValues));
+  Assert.AreEqual('Tippfehler', string.Join('|', mValues), 'nur das genannte Projekt');
+  Assert.IsTrue(TAtlasYouTrackParse.ParseProjectFields(Fixture('end-fields-projects.json'), 'ATL', 'Notiz',
+    mValues));
+  Assert.AreEqual(0, Integer(Length(mValues)), 'Textfeld ohne Werte');
+  Assert.IsFalse(TAtlasYouTrackParse.ParseProjectFields('{}', 'ATL', '', mValues));
+end;
+
+procedure TAtlasYouTrackEndFieldsTests.FieldValuesAndSetField;
+var
+  mTransport: TFakeRulesTransport;
+  mKeep: IAtlasCiTransport;
+  mFields: IAtlasTrackerFields;
+  mValues: TArray<string>;
+begin
+  mTransport := TFakeRulesTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/projects', 200, Fixture('end-fields-projects.json'));
+  mTransport.Answer('POST', 'https://yt.beispiel.de/api/commands', 200, '{}');
+  mFields := TAtlasYouTrackTracker.Create;
+  Assert.IsTrue(mFields.FieldValues(YouTrackTarget, mKeep, 'ATL-2052', 'Ursache', 5000, mValues).Succeeded);
+  Assert.AreEqual('Fehlende Prüfung|Falsche Annahme', string.Join('|', mValues));
+  Assert.IsTrue(mFields.SetField(YouTrackTarget, mKeep, 'ATL-2052', 'Behoben in Version', '2.1.0', 5000).Succeeded);
+  Assert.AreEqual('{Behoben in Version} 2.1.0', JsonText(mTransport.Bodies[0], 'query'));
+  Assert.IsTrue(mFields.SetField(YouTrackTarget, mKeep, 'ATL-2052', 'Ursache', '', 5000).Error =
+    TAtlasCiFetchError.NotConfigured, 'leerer Wert geht nicht hinaus');
+  Assert.AreEqual(1, Integer(Length(mTransport.Bodies)));
+end;
+
+procedure TAtlasYouTrackEndFieldsTests.RunRejectedByRuleThenResumes;
+var
+  mTransport: TFakeRulesTransport;
+  mKeep: IAtlasCiTransport;
+  mTracker: TAtlasYouTrackTracker;
+  mCall: TAtlasTrackerEndCall;
+  mPlan: TAtlasTrackerEndPlan;
+  mProgress: TAtlasTrackerEndProgress;
+begin
+  mTransport := TFakeRulesTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/timeTracking/workItems', 200, '{"id":"w"}');
+  mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/comments', 200, '{"id":"c"}');
+  mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11', 400,
+    Fixture('end-rule-rejected.json'));
+  mTracker := TAtlasYouTrackTracker.Create;
+  mCall := Default(TAtlasTrackerEndCall);
+  mCall.Writer := mTracker;
+  mCall.Time := mTracker;
+  mCall.Fields := mTracker;
+  mCall.Target := YouTrackTarget;
+  mCall.Transport := mKeep;
+  mCall.Key := 'ATL-2052';
+  mCall.TimeoutMs := 5000;
+  mPlan := TAtlasTrackerEndPlan.Create(ReviewChange('Fertig'));
+  mPlan.Time := TAtlasTrackerWorkItem.Create(85, EncodeDate(2026, 11, 12), '', 'abc1234 Fix');
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
+  Assert.IsTrue(mProgress.TimeBooked);
+  Assert.IsTrue(mProgress.CommentDone);
+  Assert.IsFalse(mProgress.TransitionDone);
+  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Transition);
+  Assert.AreEqual('Behoben in Version', TAtlasTrackerEndSteps.MentionedField(mProgress.Outcome.Message,
+    TArray<string>.Create('Status', 'Behoben in Version', 'Ursache', 'Version')), 'längster ganzer Name');
+  // Feld ergänzt, Regel erfüllt: nur Feld und Übergang gehen hinaus.
+  mPlan.AddField('Behoben in Version', '2.1.0');
+  mTransport := TFakeRulesTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('POST', 'https://yt.beispiel.de/api/commands', 200, '{}');
+  mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11', 200, '{}');
+  mCall.Transport := mKeep;
+  TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
+  Assert.IsTrue(mProgress.Finished(mPlan));
+  Assert.AreEqual(2, Integer(Length(mTransport.Calls)));
+  Assert.AreEqual('POST https://yt.beispiel.de/api/commands', mTransport.Calls[0]);
+  Assert.AreEqual('POST https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11?fields=id', mTransport.Calls[1]);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTrackerTransitionsTests);
   TDUnitX.RegisterTestFixture(TAtlasYouTrackTransitionTests);
+  TDUnitX.RegisterTestFixture(TAtlasYouTrackEndFieldsTests);
 
 end.

@@ -29,6 +29,8 @@ type
     StartComment: TEdit;
     EndStates: TEdit;
     EndComment: TEdit;
+    EndFields: TEdit;
+    EndTime: TCheckBox;
     LoadValues: TButton;
     ValuesNote: TLabel;
   end;
@@ -41,6 +43,7 @@ type
     cStartCommentKey = 'issues.startComment';
     cEndStatesKey = 'issues.endStates';
     cEndCommentKey = 'issues.endComment';
+    cEndFieldsKey = 'issues.endFields';
   private
     FRows: TAtlasTrackerSettingsRows;
     FHooks: TAtlasTrackerSettingsHooks;
@@ -112,6 +115,11 @@ begin
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndStates));
   FView.EndComment := FRows.AddText(cEndCommentKey,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndComment));
+  // Beenden in der Reihenfolge des Ablaufs (#2123): Felder und Zeit im Dialog.
+  FView.EndFields := FRows.AddText(cEndFieldsKey,
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndFields));
+  FView.EndTime := FRows.AddCheck('issues.endTime',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndTime));
 end;
 
 procedure TAtlasTrackerWorkflowPart.BuildLoad;
@@ -146,6 +154,8 @@ begin
   AValues.WriteString(cEndCommentKey, FView.EndComment.Text);
   AValues.WriteString(cEndStatesKey,
     TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndStates.Text)));
+  AValues.WriteString(cEndFieldsKey,
+    TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndFields.Text)));
   AValues.WriteString(cStateFieldKey, FView.StateField.Value);
   AValues.WriteString(cAssigneeFieldKey, FView.AssigneeField.Value);
   AValues.WriteString(cStartStateKey, FView.StartState.Value);

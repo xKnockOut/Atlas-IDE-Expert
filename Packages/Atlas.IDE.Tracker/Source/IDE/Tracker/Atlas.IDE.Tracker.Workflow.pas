@@ -15,6 +15,14 @@
 //   erlaubten Übergänge. Nach einem Übergang liest Atlas den neuen Zustand
 //   einmal (benannte Ereignisse verraten ihr Ziel nicht). Der
 //   Beenden-Dialog bekommt die Regeln mit den übrigen Werten (SetRules).
+// - Ablauf-Reihenfolge (#2123): Mit issues.endTime und Zeiterfassung steht
+//   die erfasste Zeit (Hook TimeSeconds) im Dialog, mit issues.endFields je
+//   Feld eine Zeile mit Werten vom Tracker (IAtlasTrackerFields). „Senden“
+//   schreibt über TAtlasTrackerEndSteps Zeit → Felder → Kommentar → Zustand
+//   bzw. Übergang und hält beim ersten Fehler an; gebuchte Zeit meldet der
+//   Hook TimeBooked an die Zeiterfassung (auch nach Abbrechen), damit sie
+//   nicht noch einmal angeboten wird. Ohne Zeitbuchung des Anbieters bzw.
+//   ohne Felder (GitHub) bleiben die Abschnitte weg.
 // - Kommentar aus der Vorschau (SendComment).
 // - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
 //   (Atlas.IDE.Tracker.TimeTracking); unabhängig von issues.syncState.
@@ -35,6 +43,7 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.Worker,
@@ -46,6 +55,10 @@ type
     const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
   /// <summary>{time} für AKey (#1267); '' ohne Zeiterfassung.</summary>
   TAtlasIdeTrackerTimeText = reference to function(const AKey: string): string;
+  /// <summary>Erfasste Zeit des aktuellen Issues AKey in Sekunden (#2123); 0 ohne.</summary>
+  TAtlasIdeTrackerTimeSeconds = reference to function(const AKey: string): Int64;
+  /// <summary>Im Beenden-Dialog wurden ASeconds der erfassten Zeit von AKey gebucht (#2123).</summary>
+  TAtlasIdeTrackerTimeBooked = reference to procedure(const AKey: string; ASeconds: Int64);
   /// <summary>Kommentar-Editor für Feld AField zu AKey (#1278); nil mit issues.commentEditor aus.</summary>
   TAtlasIdeTrackerAssist = reference to function(const ATarget: TAtlasTrackerTarget;
     const AKey, AField: string): IAtlasCommentAssist;
@@ -79,19 +92,29 @@ type
   public const
     /// <summary>Zeitlimit je Aufruf der Versionsverwaltung für {commits}.</summary>
     cVcsTimeoutMs = 10000;
+    /// <summary>Weniger erfasste Zeit zeigt der Beenden-Dialog nicht zum Buchen an (wie der Zeitdialog).</summary>
+    cMinTimeSeconds = 60;
   private
     FWorker: TAtlasVcsWorker;
     FTransport: TAtlasIdeTrackerTransport;
     FReport: TProc<string>;
     FTimeText: TAtlasIdeTrackerTimeText;
+    FTimeSeconds: TAtlasIdeTrackerTimeSeconds;
+    FTimeBooked: TAtlasIdeTrackerTimeBooked;
     FCommentAssist: TAtlasIdeTrackerAssist;
     FStopped: Boolean;
     procedure Report(const AText: string);
     procedure ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
       const AEnded: TProc<TAtlasTrackerWrite>);
+    function EndRequest(const AProvider: IAtlasTrackerProvider; const AInput: TAtlasIdeTrackerEnd;
+      const AOptions: TAtlasTrackerSyncOptions; const ACommits: string): TAtlasTrackerEndRequest;
+    procedure Finished(const AKey: string; const AOutcome: TAtlasTrackerEndOutcome;
+      const AEnded: TProc<TAtlasTrackerWrite>);
     function SendHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AKey: string): TAtlasTrackerSendEvent;
+      const AKey: string): TAtlasTrackerEndSendEvent;
+    procedure RunEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; const AKey: string;
+      const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress; const ADone: TAtlasTrackerEndDone);
     function PrepareHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey, AStateField: string; const ASession: IInterface): TProc<TAtlasTrackerEndDialog>;
     procedure BindComment(ADialog: TAtlasTrackerEndDialog; const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -112,6 +135,8 @@ type
     procedure Stop;
     /// <summary>Einstellungen issues.* mit den Werten der Verbindung zum Server von ATarget.</summary>
     class function Options(const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions; static;
+    /// <summary>Felder des Anbieters (#2123); nil, wenn er keine benannten Felder hat (GitHub).</summary>
+    class function FieldsOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerFields; static;
     /// <summary>Schreibzugriff des Anbieters; nil, wenn er nicht schreiben kann.</summary>
     class function WriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerWriter; static;
     /// <summary>Regeln des Zustandsfeldes (#2122); nil, wenn der Anbieter keine kennt (GitHub).</summary>
@@ -144,6 +169,10 @@ type
       const AKey: string; const ADone: TProc<TAtlasTrackerTimeSettings, TAtlasTrackerWriteResult>);
     /// <summary>{time} für den Kommentar beim Beenden (#1267).</summary>
     property TimeText: TAtlasIdeTrackerTimeText read FTimeText write FTimeText;
+    /// <summary>Erfasste Zeit für den Abschnitt „Zeit“ im Beenden-Dialog (#2123).</summary>
+    property TimeSeconds: TAtlasIdeTrackerTimeSeconds read FTimeSeconds write FTimeSeconds;
+    /// <summary>Im Beenden-Dialog gebuchte Zeit an die Zeiterfassung (#2123).</summary>
+    property TimeBooked: TAtlasIdeTrackerTimeBooked read FTimeBooked write FTimeBooked;
     /// <summary>Kommentar-Editor im Beenden-Dialog (#1278).</summary>
     property CommentAssist: TAtlasIdeTrackerAssist read FCommentAssist write FCommentAssist;
   end;
@@ -151,6 +180,7 @@ type
 implementation
 
 uses
+  System.Math,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Transitions,
@@ -204,17 +234,27 @@ type
   TAtlasIssueCall = record
     Writer: IAtlasTrackerWriter;
     Rules: IAtlasTrackerStateRules;
+    /// <summary>Felder und Zeitbuchung (#2123); nil, wenn der Anbieter sie nicht kennt.</summary>
+    Fields: IAtlasTrackerFields;
+    Time: IAtlasTrackerTimeWriter;
     Target: TAtlasTrackerTarget;
     Transport: IAtlasCiTransport;
     Key: string;
     Field: string;
   end;
 
-  /// <summary>Werte für den Beenden-Dialog: Benutzer, Zustände und Regeln (#2122).</summary>
+  /// <summary>Werte für den Beenden-Dialog: Benutzer, Zustände und Regeln (#2122); Werte je Feld in der Reihenfolge
+  /// von FieldNames, Felder des Projekts und Zeiterfassung (#2123).</summary>
   TAtlasEndValues = record
     Users: TArray<string>;
     States: TArray<string>;
     Rules: TAtlasTrackerStateRules;
+    FieldNames: TArray<string>;
+    FieldValues: TArray<TArray<string>>;
+    KnownFields: TArray<string>;
+    WithTime: Boolean;
+    Time: TAtlasTrackerTimeSettings;
+    TimeRead: Boolean;
   end;
 
 function IssueCall(const AWriter: IAtlasTrackerWriter; const ARules: IAtlasTrackerStateRules;
@@ -222,6 +262,8 @@ function IssueCall(const AWriter: IAtlasTrackerWriter; const ARules: IAtlasTrack
 begin
   Result.Writer := AWriter;
   Result.Rules := ARules;
+  Result.Fields := nil;
+  Result.Time := nil;
   Result.Target := ATarget;
   Result.Transport := nil;
   Result.Key := AKey;
@@ -249,21 +291,82 @@ begin
   end;
 end;
 
-/// <summary>Werte für den Beenden-Dialog im Hintergrund. Ohne Leserecht bleiben die Klapplisten frei
-/// beschreibbar; ohne Regeln (GitHub) bleibt die Liste der Zustände.</summary>
-function ReadEndValues(const ACall: TAtlasIssueCall): TAtlasEndValues;
+/// <summary>Werte je Feld aus AValues.FieldNames, die Felder des Projekts und die Zeiterfassung (#2123).</summary>
+procedure ReadEndSteps(const ACall: TAtlasIssueCall; var AValues: TAtlasEndValues);
+var
+  mName: string;
+  mValues: TArray<string>;
 begin
-  Result.Users := nil;
-  Result.States := nil;
-  Result.Rules := Default(TAtlasTrackerStateRules);
+  AValues.FieldValues := nil;
+  if (ACall.Fields <> nil) and (Length(AValues.FieldNames) > 0) then
+  begin
+    for mName in AValues.FieldNames do
+    begin
+      ACall.Fields.FieldValues(ACall.Target, ACall.Transport, ACall.Key, mName, TAtlasTrackerWorkflow.cWriteTimeoutMs,
+        mValues);
+      AValues.FieldValues := AValues.FieldValues + [mValues];
+    end;
+    ACall.Fields.FieldValues(ACall.Target, ACall.Transport, ACall.Key, '', TAtlasTrackerWorkflow.cWriteTimeoutMs,
+      AValues.KnownFields);
+  end;
+  AValues.TimeRead := AValues.WithTime and (ACall.Time <> nil) and ACall.Time.TimeSettings(ACall.Target,
+    ACall.Transport, ACall.Key, TAtlasTrackerWorkflow.cWriteTimeoutMs, AValues.Time).Succeeded;
+end;
+
+/// <summary>Benutzer, Zustände und Regeln für den Beenden-Dialog im Hintergrund; AValues bringt die Feldnamen und ob
+/// Zeit gefragt ist. Ohne Leserecht bleiben die Klapplisten frei beschreibbar; ohne Regeln (GitHub) bleibt die Liste
+/// der Zustände.</summary>
+procedure ReadEndValues(const ACall: TAtlasIssueCall; var AValues: TAtlasEndValues);
+begin
+  AValues.Users := nil;
+  AValues.States := nil;
+  AValues.Rules := Default(TAtlasTrackerStateRules);
   ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.Users, '',
-    TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.Users);
+    TAtlasTrackerWorkflow.cWriteTimeoutMs, AValues.Users);
   ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.States, ACall.Field,
-    TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.States);
+    TAtlasTrackerWorkflow.cWriteTimeoutMs, AValues.States);
   if ACall.Rules <> nil then
   begin
     ACall.Rules.StateRules(ACall.Target, ACall.Transport, ACall.Key, ACall.Field,
-      TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.Rules);
+      TAtlasTrackerWorkflow.cWriteTimeoutMs, AValues.Rules);
+  end;
+  ReadEndSteps(ACall, AValues);
+end;
+
+/// <summary>Was der Dialog zusätzlich braucht (#2123): Namen seiner Feldzeilen und ob er „Zeit“ zeigt.</summary>
+function EndValuesFor(ADialog: TAtlasTrackerEndDialog): TAtlasEndValues;
+var
+  mRow: TAtlasEndFieldRow;
+begin
+  Result := Default(TAtlasEndValues);
+  if ADialog = nil then
+  begin
+    Exit;
+  end;
+  for mRow in ADialog.Parts.Fields do
+  begin
+    Result.FieldNames := Result.FieldNames + [mRow.Name];
+  end;
+  Result.WithTime := ADialog.Parts.BookTime <> nil;
+end;
+
+/// <summary>Nachgeladene Werte der Felder und der Zeiterfassung in den Dialog (#2123).</summary>
+procedure ShowEndSteps(ADialog: TAtlasTrackerEndDialog; const AValues: TAtlasEndValues);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to Min(High(AValues.FieldNames), High(AValues.FieldValues)) do
+  begin
+    ADialog.Rows.SetFieldValues(AValues.FieldNames[mIndex], AValues.FieldValues[mIndex]);
+  end;
+  ADialog.Rows.SetKnownFields(AValues.KnownFields);
+  if AValues.TimeRead then
+  begin
+    ADialog.Rows.SetWorkTypes(AValues.Time.WorkTypes);
+    if not AValues.Time.Enabled then
+    begin
+      ADialog.Rows.SetTimeOff;
+    end;
   end;
 end;
 
@@ -308,6 +411,8 @@ begin
   FTransport := nil;
   FReport := nil;
   FTimeText := nil;
+  FTimeSeconds := nil;
+  FTimeBooked := nil;
   FCommentAssist := nil;
 end;
 
@@ -327,7 +432,8 @@ begin
   Result := TAtlasTrackerSyncOptions.Create(mSettings.IssuesSyncState, mSettings.IssuesStateField,
     mSettings.IssuesAssigneeField).WithStart(mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
     mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates,
-    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasTrackerStrings.English));
+    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasTrackerStrings.English)).WithEndSteps(
+    mSettings.IssuesEndFields, mSettings.IssuesEndTime);
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);
 end;
@@ -335,6 +441,14 @@ end;
 class function TAtlasIdeTrackerSync.WriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerWriter;
 begin
   if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerWriter, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+class function TAtlasIdeTrackerSync.FieldsOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerFields;
+begin
+  if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerFields, Result) then
   begin
     Result := nil;
   end;
@@ -616,14 +730,14 @@ begin
   end;
 end;
 
-procedure TAtlasIdeTrackerSync.ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-  const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
-  const AEnded: TProc<TAtlasTrackerWrite>);
+/// <summary>Was der Dialog zeigt: ohne Felder des Anbieters keine Feldzeilen, Zeit nur mit issues.endTime,
+/// Zeitbuchung des Anbieters und mindestens einer Minute erfasster Zeit.</summary>
+function TAtlasIdeTrackerSync.EndRequest(const AProvider: IAtlasTrackerProvider; const AInput: TAtlasIdeTrackerEnd;
+  const AOptions: TAtlasTrackerSyncOptions; const ACommits: string): TAtlasTrackerEndRequest;
 var
   mValues: TAtlasTrackerPlaceholders;
-  mSession: IAtlasTrackerEndSession;
-  mChange: TAtlasTrackerWrite;
-  mDone: Boolean;
+  mOptions: TAtlasTrackerSyncOptions;
+  mSeconds: Int64;
 begin
   mValues := TAtlasTrackerPlaceholders.Create(AInput.Key, AInput.Branch);
   mValues.Commits := ACommits;
@@ -632,29 +746,77 @@ begin
   begin
     mValues.Time := FTimeText(AInput.Key);
   end;
+  mOptions := AOptions;
+  if FieldsOf(AProvider) = nil then
+  begin
+    mOptions.EndFields := nil;
+  end;
+  Result := TAtlasTrackerEndRequest.Create(AInput.Key, mOptions,
+    TAtlasTrackerWorkflow.Fill(AOptions.EndComment, mValues));
+  mSeconds := 0;
+  if AOptions.EndTime and (TimeWriterOf(AProvider) <> nil) and Assigned(FTimeSeconds) then
+  begin
+    mSeconds := FTimeSeconds(AInput.Key);
+  end;
+  if mSeconds >= cMinTimeSeconds then
+  begin
+    Result.Time := TAtlasTrackerEndTime.Create(mSeconds, TAtlasIdeSettings.Current.IssuesTimeRounding, Date,
+      TAtlasTrackerWorkflow.CommitSubjects(ACommits));
+  end;
+end;
+
+procedure TAtlasIdeTrackerSync.ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
+  const AEnded: TProc<TAtlasTrackerWrite>);
+var
+  mSession: IAtlasTrackerEndSession;
+  mOutcome: TAtlasTrackerEndOutcome;
+begin
   mSession := TAtlasTrackerEndSession.Create;
   try
-    mDone := TAtlasTrackerEndDialog.Execute(AInput.Key, AOptions,
-      TAtlasTrackerWorkflow.Fill(AOptions.EndComment, mValues), SendHandler(AProvider, ATarget, AInput.Key),
-      PrepareHandler(AProvider, ATarget, AInput.Key, AOptions.StateField, mSession), mChange);
+    TAtlasTrackerEndDialog.Execute(EndRequest(AProvider, AInput, AOptions, ACommits),
+      SendHandler(AProvider, ATarget, AInput.Key),
+      PrepareHandler(AProvider, ATarget, AInput.Key, AOptions.StateField, mSession), mOutcome);
   finally
     // Nachgeladene Werte kommen danach nicht mehr an den freigegebenen Dialog.
     mSession.SetDialog(nil);
   end;
-  if not mDone or FStopped then
+  if not FStopped then
   begin
+    Finished(AInput.Key, mOutcome, AEnded);
+  end;
+end;
+
+/// <summary>Nach dem Dialog: gebuchte Zeit melden (auch nach Abbrechen), Zeile in die Meldungsansicht und bei
+/// vollständigem Beenden AEnded.</summary>
+procedure TAtlasIdeTrackerSync.Finished(const AKey: string; const AOutcome: TAtlasTrackerEndOutcome;
+  const AEnded: TProc<TAtlasTrackerWrite>);
+var
+  mSummary: string;
+begin
+  if AOutcome.Progress.TimeBooked and Assigned(FTimeBooked) then
+  begin
+    FTimeBooked(AKey, AOutcome.TimeSeconds);
+  end;
+  mSummary := TAtlasTrackerEndTexts.EndSummary(AOutcome.Plan, AOutcome.Progress);
+  if not AOutcome.Finished then
+  begin
+    // Abgebrochen nach einem Teilerfolg: sagen, was schon im Tracker steht.
+    if AOutcome.Progress.Wrote then
+    begin
+      Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndPartial, [AKey, mSummary]));
+    end;
     Exit;
   end;
-  if mChange.HasWork then
+  if mSummary <> '' then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndSent,
-      [AInput.Key, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndSent, [AKey, mSummary]));
   end;
-  AEnded(mChange);
+  AEnded(AOutcome.Plan.Change);
 end;
 
 function TAtlasIdeTrackerSync.SendHandler(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AKey: string): TAtlasTrackerSendEvent;
+  const ATarget: TAtlasTrackerTarget; const AKey: string): TAtlasTrackerEndSendEvent;
 var
   mOwner: TAtlasIdeTrackerSync;
   mProvider: IAtlasTrackerProvider;
@@ -667,18 +829,71 @@ begin
   mTarget := ATarget;
   mKey := AKey;
   Result :=
-    procedure(const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone)
-    var
-      mDone: TAtlasTrackerSendDone;
+    procedure(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress;
+      const ADone: TAtlasTrackerEndDone)
     begin
-      mDone := ADone;
-      mOwner.Apply(mProvider, mTarget, mKey, AChange,
-        procedure(const AResult: TAtlasTrackerWriteResult)
-        begin
-          Logged(mProvider, 'Beenden', AResult);
-          mDone(AResult);
-        end);
+      mOwner.RunEnd(mProvider, mTarget, mKey, APlan, AProgress, ADone);
     end;
+end;
+
+procedure TAtlasIdeTrackerSync.RunEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AKey: string; const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress;
+  const ADone: TAtlasTrackerEndDone);
+var
+  mProvider: IAtlasTrackerProvider;
+  mTransports: TAtlasIdeTrackerTransport;
+  mCall: TAtlasTrackerEndCall;
+  mPlan: TAtlasTrackerEndPlan;
+  mProgress: TAtlasTrackerEndProgress;
+  mDone: TAtlasTrackerEndDone;
+begin
+  mProvider := AProvider;
+  mTransports := FTransport;
+  mCall := Default(TAtlasTrackerEndCall);
+  mCall.Writer := WriterOf(AProvider);
+  mCall.Time := TimeWriterOf(AProvider);
+  mCall.Fields := FieldsOf(AProvider);
+  mCall.Target := ATarget;
+  mCall.Key := AKey;
+  mCall.TimeoutMs := TAtlasTrackerWorkflow.cWriteTimeoutMs;
+  mPlan := APlan;
+  mProgress := AProgress;
+  mDone := ADone;
+  if FStopped or (mCall.Writer = nil) or not Assigned(mTransports) then
+  begin
+    mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, ''));
+    ADone(mProgress);
+    Exit;
+  end;
+  if not FWorker.Run(
+    procedure
+    begin
+      try
+        // Token aus dem Anmeldespeicher ohne Dialog; ohne Token nichts schreiben.
+        mCall.Transport := mTransports(mProvider, mCall.Target);
+        if mCall.Transport = nil then
+        begin
+          mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+          Exit;
+        end;
+        TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
+      except
+        on E: Exception do
+        begin
+          mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, ''));
+          Aborted('Beenden', E);
+        end;
+      end;
+    end,
+    procedure
+    begin
+      Logged(mProvider, 'Beenden', mProgress.Outcome);
+      mDone(mProgress);
+    end) then
+  begin
+    mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+    ADone(mProgress);
+  end;
 end;
 
 function TAtlasIdeTrackerSync.PrepareHandler(const AProvider: IAtlasTrackerProvider;
@@ -732,6 +947,8 @@ var
   mValues: TAtlasEndValues;
 begin
   mCall := IssueCall(WriterOf(AProvider), RulesOf(AProvider), ATarget, AKey, AStateField);
+  mCall.Fields := FieldsOf(AProvider);
+  mCall.Time := TimeWriterOf(AProvider);
   mTransports := FTransport;
   if (mCall.Writer = nil) or not Assigned(mTransports) then
   begin
@@ -739,7 +956,7 @@ begin
   end;
   mProvider := AProvider;
   mSession := ASession as IAtlasTrackerEndSession;
-  mValues := Default(TAtlasEndValues);
+  mValues := EndValuesFor(mSession.Dialog);
   FWorker.Run(
     procedure
     begin
@@ -747,7 +964,7 @@ begin
         mCall.Transport := mTransports(mProvider, mCall.Target);
         if mCall.Transport <> nil then
         begin
-          mValues := ReadEndValues(mCall);
+          ReadEndValues(mCall, mValues);
         end;
       except
         on E: Exception do
@@ -763,6 +980,7 @@ begin
       mSession.Dialog.SetUsers(mValues.Users);
       mSession.Dialog.SetStates(mValues.States);
       mSession.Dialog.SetRules(mValues.Rules);
+      ShowEndSteps(mSession.Dialog, mValues);
     end);
 end;
 

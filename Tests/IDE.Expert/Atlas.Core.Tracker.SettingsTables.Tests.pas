@@ -205,7 +205,7 @@ begin
   mTable := TAtlasTrackerConnectionTable.Create;
   try
     mTable.Load(cTwoConnections);
-    mTable.SetWorkflow('State', 'Assignee', 'In Arbeit', 'Fertig, Erledigt');
+    mTable.SetWorkflow('State', 'Assignee', 'In Arbeit', 'Fertig, Erledigt', 'Ursache');
     // Absicht: Die Seite soll eine Adresse ohne https ablehnen.
     // lsp-ignore: security-insecure-http
     Assert.IsTrue(mTable.SetUrl('http://yt2.firma.local') = TAtlasTrackerUrlCheck.NotHttps);
@@ -214,6 +214,7 @@ begin
     Assert.AreEqual('https://yt2.firma.local', mTable.SelectedRow.Url);
     Assert.AreEqual('State', mTable.SelectedRow.StateField, 'Werte bleiben mit neuer Adresse');
     Assert.AreEqual(2, Integer(Length(mTable.SelectedRow.EndStates)));
+    Assert.AreEqual('Ursache', string.Join(',', mTable.SelectedRow.EndFields), 'Felder beim Beenden (#2123)');
     Assert.IsTrue(mTable.NameTaken('github'));
     Assert.IsFalse(mTable.NameTaken('Lager'));
     Assert.AreEqual('Firma', mTable.Rename('Lager'));

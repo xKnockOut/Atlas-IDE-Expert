@@ -35,6 +35,9 @@
 //   zurück (TAtlasTrackerWriteResult). Unter einer Zustandsmaschine
 //   (#2122) trägt die Änderung statt des Zielwerts einen Übergang;
 //   IAtlasTrackerStateRules liest die erlaubten Übergänge eines Issues.
+// - IAtlasTrackerFields (#2123): Felder des Projekts mit ihren Werten lesen
+//   und einzelne Felder eines Issues setzen (Beenden-Dialog, issues.endFields);
+//   nur Anbieter mit benannten Feldern (YouTrack) setzen es um.
 // - IAtlasTrackerTimeWriter (#1267): Zeit als Work Item buchen
 //   (TAtlasTrackerWorkItem) und Zeiterfassung des Projekts mit Arbeitstypen
 //   lesen; nur Anbieter mit Zeiterfassung (YouTrack) setzen sie um.
@@ -588,6 +591,21 @@ type
     /// gilt ein Befehl mit dem Wert).</summary>
     function StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
       AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
+  end;
+
+  /// <summary>Felder eines Issues beim Beenden (#2123): Namen und Werte der Felder des Projekts lesen und einzelne
+  /// Felder setzen. Anbieter mit benannten Feldern (YouTrack) setzen es zusätzlich um. Im Hintergrund; ATransport
+  /// muss zum Schreiben IAtlasCiSend unterstützen. Nichts wird wiederholt.</summary>
+  IAtlasTrackerFields = interface
+    ['{998A3C54-16A0-419D-916D-13C98F50B923}']
+    /// <summary>AField '': Namen der Felder des Projekts von AKey; sonst die Werte von AField (Versionen,
+    /// Aufzählungen, Zustände; nicht archiviert). Ein Feld ohne Werteliste (Text, Zahl) liefert leer.</summary>
+    function FieldValues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
+      AField: string; ATimeoutMs: Integer; out AValues: TArray<string>): TAtlasTrackerWriteResult;
+    /// <summary>Feld AField von AKey auf AValue setzen (YouTrack: Befehl „Feld Wert“). Lehnt eine Regel des
+    /// Ablaufs ab, steht ihr Text in Message.</summary>
+    function SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey, AField,
+      AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
   end;
 
   /// <summary>Eine Zeitbuchung (#1267).</summary>

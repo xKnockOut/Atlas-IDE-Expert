@@ -516,8 +516,8 @@ begin
     mHost.Free;
   end;
   Assert.AreEqual('bleibt', mAssist.Draft, 'beim Schließen der Vorschau gesichert');
-  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-1',
-    TAtlasTrackerSyncOptions.Create(True, 'Status', ''), 'Vorlage');
+  mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, TAtlasTrackerEndRequest.Create('ATL-1',
+    TAtlasTrackerSyncOptions.Create(True, 'Status', ''), 'Vorlage'));
   try
     Assert.IsTrue(mDialog.Parts.Comment = mDialog.Parts.Editor.Memo);
     Assert.AreEqual('Vorlage', mDialog.Parts.Comment.Text);

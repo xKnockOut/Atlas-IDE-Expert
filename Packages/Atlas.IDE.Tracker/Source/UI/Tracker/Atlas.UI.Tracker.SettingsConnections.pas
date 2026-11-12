@@ -33,6 +33,7 @@ type
     AssigneeField: TAtlasValueBox;
     StartState: TAtlasValueBox;
     EndStates: TEdit;
+    EndFields: TEdit;
     /// <summary>Zeilen von Zustandsfeld und Benutzerfeld: nur bei Anbietern mit Feldern sichtbar.</summary>
     StateRow: TWinControl;
     AssigneeRow: TWinControl;
@@ -187,6 +188,10 @@ begin
   FView.EndStates := FRows.NewEdit(WorkflowChange);
   FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionEndStates),
     FView.EndStates, TRows.cWideWidth), FAnchor);
+  // Felder im Beenden-Dialog (#2123); leer gilt issues.endFields.
+  FView.EndFields := FRows.NewEdit(WorkflowChange);
+  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionEndFields),
+    FView.EndFields, TRows.cWideWidth), FAnchor);
   FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionStatesHint), FAnchor);
 end;
 
@@ -315,6 +320,7 @@ begin
   FView.AssigneeField.Value := AConnection.AssigneeField;
   FView.StartState.Value := AConnection.StartState;
   FView.EndStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndStates);
+  FView.EndFields.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndFields);
 end;
 
 procedure TAtlasTrackerConnectionsPart.FillFields;
@@ -354,6 +360,7 @@ begin
   FRows.Allow(FView.AssigneeField, mEditable);
   FRows.Allow(FView.StartState, mEditable);
   FRows.Allow(FView.EndStates, mEditable);
+  FRows.Allow(FView.EndFields, mEditable);
   FRows.Allow(FView.Remove, mEditable);
   // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
   FRows.Allow(FView.Token, mHasUrl and Assigned(FHooks.OnToken));
@@ -474,7 +481,7 @@ begin
     Exit;
   end;
   Table.SetWorkflow(FView.StateField.Value, FView.AssigneeField.Value, FView.StartState.Value,
-    FView.EndStates.Text);
+    FView.EndStates.Text, FView.EndFields.Text);
 end;
 
 procedure TAtlasTrackerConnectionsPart.AddClick(Sender: TObject);

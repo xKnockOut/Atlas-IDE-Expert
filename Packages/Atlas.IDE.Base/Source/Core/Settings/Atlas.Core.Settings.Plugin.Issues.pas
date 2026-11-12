@@ -129,6 +129,11 @@ type
     /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
     /// "\n" = neue Zeile.</summary>
     IssuesEndComment: string;
+    /// <summary>Felder im Beenden-Dialog (#2123, issues.endFields), mit Komma getrennt; '' = keine.</summary>
+    IssuesEndFields: string;
+    /// <summary>Erfasste Zeit im Beenden-Dialog buchen (#2123, issues.endTime) statt im Zeitdialog danach.
+    /// </summary>
+    IssuesEndTime: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -330,6 +335,8 @@ begin
   Result.IssuesStartComment := '';
   Result.IssuesEndStates := '';
   Result.IssuesEndComment := cDefaultIssuesEndComment;
+  Result.IssuesEndFields := '';
+  Result.IssuesEndTime := True;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -372,6 +379,7 @@ begin
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
+  IssuesEndFields := NormalizedIssuesTemplate(IssuesEndFields);
 end;
 
 procedure TAtlasPluginIssuesSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -400,6 +408,8 @@ begin
   AIo.Text('IssuesStartComment', IssuesStartComment);
   AIo.Text('IssuesEndStates', IssuesEndStates);
   AIo.Text('IssuesEndComment', IssuesEndComment);
+  AIo.Text('IssuesEndFields', IssuesEndFields);
+  AIo.Flag('IssuesEndTime', IssuesEndTime);
 end;
 
 { TAtlasPluginIssueWorkSettings }

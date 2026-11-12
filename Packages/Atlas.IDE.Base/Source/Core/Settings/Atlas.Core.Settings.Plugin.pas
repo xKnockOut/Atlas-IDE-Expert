@@ -1190,6 +1190,8 @@ type
     property IssuesStartComment: string read FIssues.IssuesStartComment write FIssues.IssuesStartComment;
     property IssuesEndStates: string read FIssues.IssuesEndStates write FIssues.IssuesEndStates;
     property IssuesEndComment: string read FIssues.IssuesEndComment write FIssues.IssuesEndComment;
+    property IssuesEndFields: string read FIssues.IssuesEndFields write FIssues.IssuesEndFields;
+    property IssuesEndTime: Boolean read FIssues.IssuesEndTime write FIssues.IssuesEndTime;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;

@@ -176,7 +176,10 @@ type
     SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
     TrackerEndTransition, TrackerEndTransitionFrom, TrackerEndNotAllowed, TrackerPartTransition,
     TrackerPartTransitionTo, TrackerStartNoTransition, TrackerStartNoTransitionNone,
-    TrackerQuoted);
+    TrackerQuoted,
+    SettingsIssuesEndFields, SettingsIssuesEndTime, SettingsIssuesConnectionEndFields, TrackerEndTime,
+    TrackerEndAddField, TrackerEndFixField, TrackerStepTime, TrackerStepFields, TrackerStepComment,
+    TrackerStepState, TrackerStepTransition, TrackerPartTime, TrackerPartFields, TrackerEndPartial);
 
   TAtlasTrackerStrings = class
   public
@@ -950,7 +953,21 @@ const
      'Übergang „%s“ → %s',
      'Atlas: %s bleibt „%s“: Ab hier erlaubt sind %s.',
      'Atlas: %s bleibt „%s“: Ab hier ist kein Übergang erlaubt.',
-     '„%s“'),
+     '„%s“',
+     'Felder im Beenden-Dialog (mit Komma getrennt):',
+     'Erfasste Zeit im Beenden-Dialog buchen',
+     'Felder beim Beenden',
+     'Zeit (Dauer, Arbeitstyp):',
+     'Feld „%s“ hinzufügen',
+     '%s Feld „%s“ ergänzen und erneut senden.',
+     'Zeit',
+     'Felder',
+     'Kommentar',
+     'Zustand',
+     'Übergang',
+     'Zeit %s gebucht',
+     'Felder %s',
+     'Atlas: %s nur teilweise beendet (%s); der Rest ist nicht geschrieben.'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1703,7 +1720,21 @@ const
      'transition “%s” → %s',
      'Atlas: %s stays “%s”: allowed from here are %s.',
      'Atlas: %s stays “%s”: no transition is allowed from here.',
-     '“%s”'));
+     '“%s”',
+     'Fields in the finish dialog (comma-separated):',
+     'Book tracked time in the finish dialog',
+     'Fields on finish',
+     'Time (duration, work type):',
+     'Add field “%s”',
+     '%s Fill in “%s” and send again.',
+     'Time',
+     'Fields',
+     'Comment',
+     'State',
+     'Transition',
+     '%s booked',
+     'fields %s',
+     'Atlas: %s only partly finished (%s); the rest was not written.'));
 
 { TAtlasTrackerStrings }
 

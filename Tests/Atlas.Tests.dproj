@@ -1083,6 +1083,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.EndSteps.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.YouTrackJson.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackApi.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas"/>
@@ -1145,6 +1146,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Board.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Transitions.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.EndSteps.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
