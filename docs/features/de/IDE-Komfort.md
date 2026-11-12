@@ -105,6 +105,14 @@ Einstellungen: `issues.create`, `issues.create.includeCode`
   - Vergleich mit dem Vorsprint und Velocity der letzten drei Sprints
   - Klick auf die Zahlen filtert „Meine Issues“
 
+<a id="window-atlasflowmap"></a>
+### Ablauf-Karte
+
+- Fenster *Atlas-Ablauf* (Ansicht › Atlas › Ablauf, Befehl *Atlas.FlowMap*, `issues.flowMap`, nur YouTrack):
+  - genutzte Übergänge zwischen den Zuständen mit Anzahl, mittlere Verweildauer je Zustand, offene und eigene Issues
+  - Liste „Liegt lange“: Issues, die länger als `issues.flowMap.stuckDays` Tage im selben Zustand stehen
+  - Zeitraum `issues.flowMap.days` (7–365 Tage)
+
 ### Suche in der Befehlspalette
 
 Issues in der Befehlspalette suchen (`issues.paletteSearch`: `#Text`, `#42` oder `ATL-12`). Ein leeres `#` zeigt die zuletzt geöffneten.
