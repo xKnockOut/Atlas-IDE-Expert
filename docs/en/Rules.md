@@ -716,6 +716,8 @@ uses uTypen;
 
 A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; switch it on in atlas.json with the option "prefixes". Approved exceptions go to "allow" as "Source -> Target" globs. Test units (DUnitX, DUnit or TestInsight in the uses clause) are not checked.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Prefixes of the output artefacts, e.g. "Atlas.Common"; without them the rule reports nothing. |
@@ -744,6 +746,8 @@ uses System.SysUtils;
 **Class in a contract unit** · Code smell · Warning · Group Architecture
 
 A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with the option "prefixes". Approved exceptions go to "allow" as "Unit.Type" globs. Test units are not checked.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -776,6 +780,8 @@ type
 **Forbidden symbol used** · Code smell · Warning · Group Architecture
 
 A list under "symbols" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses name resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Identifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, "!" excludes), firstArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -1638,6 +1644,8 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 
 A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Only the path (first argument) counts, not the written content (WriteAllText(Path, List.Text)). Experimental until data flow analysis is available.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -1995,6 +2003,8 @@ end;
 
 The file does not start with the header from the rule option "template". Off by default; switch it on in atlas.json with a template. The quick fix inserts the header.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `template` | string | `""` | Expected file header; placeholders as documented. |
@@ -2018,6 +2028,8 @@ unit Tools;
 **Text in code instead of resourcestring** · Code smell · Hint · Group Style and metrics
 
 A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and check calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, JSON from { or "key":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 
@@ -2174,6 +2186,8 @@ if Assigned(X) then S := X.Name else S := '';
 **Random without Randomize** · Code smell · Hint · Group Robustness and patterns
 
 Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 
@@ -2412,6 +2426,8 @@ raise ECustomerMissing.Create('Customer missing');
 
 A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -2461,6 +2477,8 @@ on E: Exception do
 
 A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster. Silent when the variable is assigned anew earlier in every iteration, directly in the loop body and not behind then, else or a case label (it does not grow across the loop).
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -2488,6 +2506,8 @@ end;
 
 The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field according to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -2509,6 +2529,8 @@ while I < Length(Text) do
 **Adding items in a loop without BeginUpdate** · Code smell · Hint · Group Performance
 
 Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without BeginUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 
@@ -2560,6 +2582,8 @@ for I := 0 to Liste.Count - 1 do
 **Managed parameter without const** · Code smell · Hint · Group Performance
 
 A value parameter of type string, interface, dynamic or open array, or a record of the file with at least minRecordSize bytes, that the routine never changes. Every call pays reference counting or a copy; const avoids both. Changed means: assigned, a part assigned (characters, fields, elements), passed to var or out, @Param, a method call on a record, a for loop variable. The rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay silent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (event handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation and the declaration and splits parameter groups when needed. With the project files (IDE, MCP) a use as a value in units that use this unit counts too, such as an assignment to a TFunc<string, …> whose parameter has no const; without them (command line without project) the compiler reports such references after the fix.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -2661,6 +2685,8 @@ end;
 
 Parentheses around a whole condition or a single identifier add nothing. Off by default.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -2714,6 +2740,8 @@ end;
 **begin … end around a single statement** · Code smell · Hint · Group Style and metrics
 
 A begin … end block that holds exactly one statement can be removed. Off by default.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Silent while [`missing-begin-end`](#missing-begin-end) is on.
 
@@ -2988,6 +3016,8 @@ Result := Process(A, B);
 **Open TODO comment** · Code smell · Hint · Group Style and metrics
 
 A comment starts with a marker for open work: // TODO, // FIXME or the IDE to-do format { TODO 1 -oOwner -cCategory : Text }. The hint shows marker, priority, category, owner and text, so open work appears in the problem list. Off by default; switch it on in atlas.json, e.g. "rules": {"todo-comment": {"severity": "hint"}}. Completed entries ({ DONE … }) are never reported. The option keywords sets the markers (default ["TODO", "FIXME"]); it also applies to get_todos and --todos.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -4003,6 +4033,8 @@ end;
 
 A local variable (also inline and for var), field (also class var), parameter or constant (const, also local, in classes and inline; not resourcestring) lacks the prefix of its kind. Defaults: local m, field F, parameter A, constant c; after a prefix ending in a letter an upper-case letter or digit must follow (mIndex, not menu). Global variables are not checked. Per kind the prefix comes from the option in atlas.json, else from the project file .atlas (naming, also constant), else the default; an empty value switches the kind off. Off by default: the rule runs only when atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, public fields (public, published and fields of a record before its first visibility section: the F belongs to fields behind properties, not to TPoint.X), fields before the first visibility section of a form, frame or data module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file or the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for parameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No fix when the new name already occurs where the rename applies (the routine with its parameter list, for fields the class and its methods, for implementation constants the file), the scope contains with, a nested routine redeclares the name, or the name is visible outside the file. While the rule runs, other quick fixes and refactorings build new names with these prefixes (introduce constant → cNewConstant, introduce variable and resolve with → mValue, parameters of “create method” → APreis), so the rule does not report them right away.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `local` | string | `"m"` | Prefix of local variables; empty = not checked. |
@@ -4079,6 +4111,8 @@ if SameText(Land, Standard) then
 
 Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Numbers that speak for themselves stay silent: the DPI base 96 in MulDiv, full bit masks ($FF, $FFFF, $FFFFFFFF), time units 24, 60, 1000 and 3600 in *, /, div and mod, and arguments of calls in an array literal whose arguments are all numbers (point lists such as [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) is still reported. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `allowed` | number-list | `[0,1,-1,2,10,100]` | Numbers that are never reported. |
@@ -4108,6 +4142,8 @@ if Tage > Mahnfrist then
 Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long because of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as a warning regardless of max, because depending on the Delphi version the compiler stops there; lines over 4095 characters as an error, because Delphi 13 stops there too (F2069). Off by default. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.
 
 Matches the compiler message `F2069`.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -4236,6 +4272,8 @@ TStufe2 = class(TBasis)
 
 Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var and helper classes declared under a private or protected type section are not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `includeRecords` | boolean | `false` | Also report fields of records. |
@@ -4267,6 +4305,8 @@ end;
 
 A non-generic TList (System.Classes) or TObjectList (System.Contnrs) whose items are read with a cast: T(List[I]), T(List.Items[I]), T(List.First), List[I] as T and so on. TList<T> and TObjectList<T> from System.Generics.Collections check the type at compile time and need no cast. The rule reports once per list, at its declaration when it is in this file, otherwise at the first cast; with several target types, all of them are named. Only when name resolution finds the list type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must still compile with old Delphi versions, use exclude. Quick fix (#1105): converts the list to TList<T> or TObjectList<T> in one step: declaration, every Create (arguments are kept), every cast and System.Generics.Collections in the uses clause; Contnrs is removed when nothing else uses it. Only when every read has the same cast and no member without a generic counterpart is used (Sort with TListSortCompare, Assign with TListAssignOp, List), no Pointer or Integer values are stored, Add, Extract, Remove and IndexOf get T, and the list is not passed on. If the list is visible outside the unit, the fix also rewrites the other units of the project group or is not offered; "fix all" (source.fixAll) never applies such fixes. Otherwise the finding hover names the reason. Stacks and queues: legacy-stack-queue.
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -4289,6 +4329,8 @@ Pos := FPositionen[I];
 **Non-generic stack or queue with cast** · Code smell · Information · Group Style and metrics
 
 A non-generic TStack, TQueue, TObjectStack or TObjectQueue (System.Contnrs) whose items are read with a cast: T(Stack.Pop), T(Stack.Peek), Queue.Pop as T and so on. TStack<T>, TQueue<T>, TObjectStack<T> and TObjectQueue<T> from System.Generics.Collections check the type at compile time and need no cast. Like legacy-tlist, the rule reports once per stack or queue, at its declaration when it is in this file, otherwise at the first cast; with several target types, all of them are named. Only when name resolution finds the type and the target type for sure; casts to Pointer are ignored. Off by default; for code that must still compile with old Delphi versions, use exclude. Quick fix: converts in one step like legacy-tlist; for queues Push becomes Enqueue and Pop becomes Dequeue. TObjectStack<T> and TObjectQueue<T> own their objects, the Contnrs classes do not: the fix therefore creates them with Create(False) and reads with Extract, because Pop and Dequeue are procedures there that free the object. Without a Create in the unit, with different casts or with members without a generic counterpart (AtLeast) there is no fix; the finding hover names the reason.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 
@@ -4314,6 +4356,8 @@ Knoten := FOffen.Extract;
 **Global variable in interface** · Code smell · Hint · Group Style and metrics
 
 var or threadvar in the interface section of a unit: every unit that uses it can read and change the value. The form variable created by the designer (frmMain: TfrmMain, for classes derived from TForm, TFrame, TDataModule or any class in a unit with a form file) is excluded unless includeFormVariables is set. Off by default. Move the variable into the implementation section and offer a function or property instead.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -4369,6 +4413,8 @@ Speichern;
 **Default parameter instead of overload** · Code smell · Warning · Group Style and metrics
 
 A parameter with a default value (Count: Integer = 10). For teams that prefer overloads: default values end up compiled into the caller, do not change with the library and do not mix well with overloads. Reported once per declaration (class member, interface section, forward or a routine only in the implementation part); the body of a declaration is not reported again. The quick fix inserts one overload per omitted trailing default parameter before the declaration, each forwarding with the default value, removes the default values (also repeated ones in the body) and adds overload. No fix when the signature is given from outside (virtual, dynamic, abstract, override, message, external, interface types), when the name is used as a value (@Routine, method pointer), when an overload of the same name exists, inside conditional compilation, or when the body cannot be found unambiguously.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 
@@ -5702,6 +5748,8 @@ Liste.Clear;
 
 SELECT * or SELECT alias.* in a column list, in the same places as sql-write-without-where: string literals, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, Open and similar calls, constants, local values and SQL.Strings/CommandText of the form file. New columns silently change the dataset, persistent fields no longer match, and more data is transferred than needed. Subqueries count; EXISTS (SELECT * …) and COUNT(*) stay silent, as does a column list from a variable. Literals outside SQL properties count only with SELECT in capitals and a FROM, so message texts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields in the form file, replace * with their FieldName list (without calculated and lookup fields).
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -6141,6 +6189,8 @@ Matches the compiler message `W1040`.
 Level B (name resolution across units).
 
 Bulk fix: the safe fix can be applied project-wide (`--fix implicit-variants-unit`, MCP `fix_findings`, command "Fix all safe findings …").
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 
@@ -7207,6 +7257,8 @@ Matches the compiler message `H2365`, `H2269`.
 
 Level B (name resolution across units).
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 Flagged:
 
 ```pascal
@@ -7467,6 +7519,8 @@ Log(Uhr.ElapsedMilliseconds.ToString + ' ms');
 
 Field, variable, parameter or property whose name denotes a money amount (option namePatterns) with type Double, Single, Extended or Real: binary floating point rounds cent amounts wrongly (0.1 + 0.2), Currency calculates them exactly. The last part of the name counts (GesamtPreis, Nettobetrag, FNetto, Preise; not NettoGewicht); rates, factors, quotas, shares (Steuersatz, PriceFactor) and checksums stay silent. Ambiguous words (Amount, Summe, Sum, Total: a quantity or sum of anything) only count with a money context in the type or routine: another money name, Currency or words like Cent, Euro, Rabatt, Invoice, Payment, Kosten (Lighten(AColor, AAmount: Double) stays silent). Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix when all names of the declaration are money amounts: type Currency, for parameters also in the header of the implementation, for fields and properties also the property or the field behind read and write; no fix when a getter or setter would have to change too. With checkRound the rule also reports Round with a money amount in the argument (banker's rounding: 2.5 becomes 2).
 
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `namePatterns` | string-list | `["Betrag","Preis","Summe","Netto","Brutto","Steuer","Amount","Price"]` | Name parts that denote a money amount; plurals included. |
@@ -7496,6 +7550,8 @@ end;
 **Long if chain over the same string** · Code smell · Hint · Group Style and metrics
 
 An if … else if chain that compares the same string (identifier or A.B, no function calls) with at least min literals: S = 'x', 'x' = S, SameText(S, 'x'), also combined with or, in at least two branches (a single if with or stays silent). case IndexStr(S, [...]) of or a dictionary is shorter and faster. Only comparisons that are always compiled together with the head count ({$IFDEF} branches inside the chain do not). Off by default, high confidence. Quick fix as in the code action if chain to case (#646): case IndexStr(…) of, IndexText(…) for SameText, comparisons joined with or share one label, the rest of the chain becomes else, System.StrUtils is added to uses. No fix when comments or directives sit between the branches, a literal appears twice or = and SameText are mixed.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -7527,6 +7583,8 @@ end;
 **if chain can be written as case** · Code smell · Hint · Group Style and metrics
 
 An if … else if chain with at least min branches (the final else counts) that compares the same ordinal expression (integer, character, enumeration; no side effects, no function call) with constants: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), also combined with or. Labels must be literals, constant expressions, untyped constants or enumeration values, without duplicates or overlaps. The type comes from name resolution; chains with unknown types and chains with directives stay silent. Off by default, high confidence. Quick fix: the code action In case umwandeln (#646, refactoring.ifCase); begin … end only where a branch has several statements, comments in the branches stay.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -8032,6 +8090,8 @@ An assignment or an inline variable with a value whose type is wider than the ta
 Matches the compiler message `W1072`, `W1066`.
 
 Level T (needs expression types; can be turned off with "group:compiler": {"typeLevel": "off"}).
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -8918,6 +8978,8 @@ Nimm(Round(1.5));
 **Method does not need Self** · Code smell · Hint · Group Style and metrics
 
 A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
+
+Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
 Flagged:
 

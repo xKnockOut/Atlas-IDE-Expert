@@ -31,6 +31,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Output,
+  Atlas.Common.Rules.Profiles,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -81,7 +82,7 @@ begin
   for mRule in ARules do
   begin
     mSeverity := TRuleEngine.EffectiveSeverity(mRule.Descriptor, ASettings, '', mEnabled);
-    if (mSeverity <> TRuleSeverity.Off) and (mEnabled or not mRule.Descriptor.Experimental) then
+    if (mSeverity <> TRuleSeverity.Off) and (mEnabled or not TRuleProfiles.IsExperimental(mRule.Descriptor.Id)) then
     begin
       mItem.Id := mRule.Descriptor.Id;
       mItem.Severity := TFindingsOutput.SeverityName(mSeverity);

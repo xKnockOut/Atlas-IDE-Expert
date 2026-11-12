@@ -103,7 +103,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 const
   // Niedrige Konfidenz wird erst ab minConfidence "low" gemeldet.
@@ -128,7 +129,7 @@ begin
   for Rule in TArray<IRule>.Create(TStringConcatInLoopRule.Create, TLoopInvariantCallRule.Create,
     TMissingBeginUpdateRule.Create) do
   begin
-    Assert.IsTrue(Rule.Descriptor.Experimental, Rule.Descriptor.Id);
+    Assert.IsTrue(TRuleProfiles.IsExperimental(Rule.Descriptor.Id), Rule.Descriptor.Id);
   end;
 end;
 
@@ -376,7 +377,7 @@ procedure TPerformanceRulesTests.SetLengthInLoopReportedWithCount;
 var
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsFalse((TSetLengthInLoopRule.Create as IRule).Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse(TRuleProfiles.IsExperimental((TSetLengthInLoopRule.Create as IRule).Descriptor.Id), 'Standard an');
   Findings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;', IssueBody);
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual('SetLength in der Schleife kopiert Namen bei jedem Durchlauf; die Anzahl Liste.Count ist ' +
@@ -536,7 +537,7 @@ var
   Source, Expected: string;
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsTrue((TManagedParamWithoutConstRule.Create as IRule).Descriptor.Experimental, 'Standard aus');
+  Assert.IsTrue(TRuleProfiles.IsExperimental((TManagedParamWithoutConstRule.Create as IRule).Descriptor.Id), 'Standard aus');
   Source := ManagedUnit(Header, Body);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source))));
   Findings := ManagedFindings(Source);

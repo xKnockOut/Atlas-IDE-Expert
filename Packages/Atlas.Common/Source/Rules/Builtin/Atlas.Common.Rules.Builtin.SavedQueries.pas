@@ -91,7 +91,7 @@ begin
   begin
     mDescription := cTexts[TSavedQueriesText.Title].Fmt([FQuery.Query]);
   end;
-  Result := TRuleDescriptor.Create(RuleId(FQuery.Name), FQuery.Severity, mDescription, False);
+  Result := TRuleDescriptor.Create(RuleId(FQuery.Name), FQuery.Severity, mDescription);
 end;
 
 procedure TSavedQueryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

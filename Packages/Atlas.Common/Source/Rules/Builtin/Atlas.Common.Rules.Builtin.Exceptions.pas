@@ -432,7 +432,7 @@ end;
 function TCatchAllWithoutRaiseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('catch-all-without-raise', TRuleSeverity.Warning,
-    cTexts[TExceptionsText.CatchAllTitle].Text, True);
+    cTexts[TExceptionsText.CatchAllTitle].Text);
 end;
 
 procedure TCatchAllWithoutRaiseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

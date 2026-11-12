@@ -991,8 +991,7 @@ end;
 function TRandomWithoutRandomizeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('random-without-randomize', TRuleSeverity.Hint,
-    cTexts[TRtlPatternsText.RandomTitle].Text,
-    True);
+    cTexts[TRtlPatternsText.RandomTitle].Text);
 end;
 
 /// <summary>Steht AOffset in der Deklaration eines Aufzählungstyps? Ein Wert Random dort ist kein Aufruf

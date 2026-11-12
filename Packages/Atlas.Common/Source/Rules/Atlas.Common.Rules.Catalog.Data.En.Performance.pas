@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPerformance: array[0..73] of string = (
+  cCatalogLinesEnPerformance: array[0..91] of string = (
     '{',
     '      "id": "string-concat-in-loop",',
     '      "name": "String concatenation in a loop",',
@@ -17,7 +17,11 @@ const
     'ations TStringBuilder is faster. Silent when the variable is assigned anew earlier in every iteration, directly in the loop body and not behind then, else or a case label (it does not grow across the ' +
     'loop).",',
     '      "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",',
-    '      "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"',
+    '      "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "loop-invariant-call",',
@@ -30,7 +34,11 @@ const
     'ng to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignme' +
     'nt, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",',
     '      "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",',
-    '      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"',
+    '      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "missing-begin-update",',
@@ -42,7 +50,11 @@ const
     'eginUpdate, also through fields such as FParts.Menu.Items, including records nested in the class), for lists without a control (TObjectList<T>, TList, TDictionary), for types in the index without Begi' +
     'nUpdate and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",',
     '      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",',
-    '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"',
+    '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "setlength-in-loop",',
@@ -54,7 +66,8 @@ const
     'of the file or a known RTL type such as TBytes), never for strings. In a for loop the count is known: the message names it, and when A is a local variable not used before the loop and only written as ' +
     'A[High(A)] or A[Length(A) - 1] inside it, the quick fix sets the length once before the loop and indexes with the loop variable. Otherwise collect the values in a TList<T>.",',
     '      "bad": "for I := 0 to Liste.Count - 1 do\nbegin\n  SetLength(Namen, Length(Namen) + 1);\n  Namen[High(Namen)] := Liste[I].Name;\nend;",',
-    '      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;"',
+    '      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "managed-param-without-const",',
@@ -84,6 +97,10 @@ const
     '          "default": true,',
     '          "description": "Do not report overrides; their signature is given by the ancestor."',
     '        }',
+    '      ],',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
     '      ]',
     '    },',
     '{',
@@ -96,7 +113,8 @@ const
     's and the Unicode string helpers) is shorter and faster. A literal is only accepted if the conversion does not change it; UpperCase(A) = LowerCase(B) and UpperCase(A) = ''ja'' are left alone because the' +
     'y are different mistakes. Does not replace the string helper modernisation of #71. High confidence. Quick fix: SameText(A, B) or not SameText(A, B).",',
     '      "bad": "if UpperCase(Land) = UpperCase(Standard) then",',
-    '      "good": "if SameText(Land, Standard) then"',
+    '      "good": "if SameText(Land, Standard) then",',
+    '      "safeFix": false',
     '    }');
 
 implementation
