@@ -13,7 +13,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 ### Einfache Umbauten
 
-- **Methode extrahieren**
+- **Methode extrahieren**, auf Wunsch samt gleicher Stellen der Unit (#2054): Die zweite Aktion „Methode extrahieren und gleiche Stellen ersetzen“ findet textgleiche Anweisungsfolgen (Kommentare, Leerraum und Groß-/Kleinschreibung zählen nicht), an denen dieselbe Methode entstünde, und ersetzt sie durch denselben Aufruf; vorher lassen sich einzelne Stellen abwählen. Schalter `refactoring.extractMethodDuplicates`.
 - **Variable einführen**
 - **Bedingung in Funktion auslagern**
 - **with auflösen**

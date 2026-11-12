@@ -49,6 +49,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.Prompts,
@@ -293,6 +295,10 @@ begin
   mDispatcher.Recent := mRecent;
   mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);
   mDispatcher.OnRequestFailed := RequestFailedOf(mCrashCases, mServices.Workspace);
+  // Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
+  TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', mServices.Root);
+  TServerActivity.Shared.Enabled := mServices.Workspace.Configuration.Settings.ServerStatusFile;
+  mDispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
   try
     ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger);
     mServer.OnClientInfo := ClientInfoOf(mServices.Group, mCrashCases);

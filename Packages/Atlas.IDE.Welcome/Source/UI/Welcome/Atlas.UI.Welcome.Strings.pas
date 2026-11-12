@@ -118,7 +118,10 @@ type
     WelcomeQuickFolder, WelcomeQuickReasonNotOpened, WelcomeQuickReasonTasksOff, WelcomeQuickReasonTestsOff,
     WelcomeQuickRun, WelcomeQuickTasks, WelcomeQuickTests, WelcomeTrendsDuration, WelcomeTrendsMethodLength,
     WelcomeTrendsRuleHits, WelcomeTrendsTodos, WelcomeTrendsWarnings,
-    BaselineUpdateModuleOff);
+    BaselineUpdateModuleOff, WelcomeIssuesTab, WelcomeIssuesLast, WelcomeIssuesBranch, WelcomeIssuesStateUnknown,
+    WelcomeIssuesHintResume, WelcomeIssuesEmpty, WelcomeIssuesRestorePrompt, WelcomeIssuesSwitchPrompt,
+    WelcomeIssuesSwitchFailed, WelcomeIssuesBranchMissing, SettingsWelcomeContinueIssues,
+    SettingsWelcomeContinueIssuesCount);
 
   TAtlasWelcomeStrings = class
   public
@@ -580,7 +583,19 @@ const
      'Regeltreffer seit Baseline',
      'Offene TODOs',
      'Warnungen + Hinweise',
-     'Baseline aktualisieren: Das Modul Prüfregeln ist ausgeschaltet (Einstellungen, Seite Prüfregeln).'),
+     'Baseline aktualisieren: Das Modul Prüfregeln ist ausgeschaltet (Einstellungen, Seite Prüfregeln).',
+     'Issues',
+     'zuletzt %s',
+     'Branch %s',
+     'Zustand unbekannt',
+     '„Fortsetzen“ öffnet das Projekt, wechselt nach Rückfrage auf den Branch des Issues und öffnet seine Reiter.',
+     'Noch kein Arbeitsstand je Issue. Er wird beim Wechsel des aktiven Issues, bei „Beenden“ und beim Schließen gemerkt.',
+     'Für %s gibt es einen gemerkten Arbeitsstand (%s). Wiederherstellen?',
+     '%s gehört zum Branch %s, ausgecheckt ist %s.%s%sJa: Branch wechseln und Reiter öffnen. Nein: nur die Reiter öffnen.',
+     'Weiterarbeiten: Wechsel auf den Branch %s gescheitert (%s), nur Reiter geöffnet.',
+     'Weiterarbeiten: Branch %s nicht mehr vorhanden, nur Reiter.',
+     'Reiter „Issues“ (Arbeitsstand je aktivem Issue merken)',
+     'Anzahl der Arbeitsstände je Issue (1–30)'),
     ('Good night',
      'Good morning',
      'Good afternoon',
@@ -1026,7 +1041,19 @@ const
      'Rule hits since baseline',
      'Open TODOs',
      'Warnings + hints',
-     'Update baseline: the rule checks module is switched off (Settings, page Rule checks).'));
+     'Update baseline: the rule checks module is switched off (Settings, page Rule checks).',
+     'Issues',
+     'last %s',
+     'Branch %s',
+     'State unknown',
+     '"Resume" opens the project, switches to the issue''s branch after asking and opens its tabs.',
+     'No work state per issue yet. It is saved when the active issue changes, on "End" and on closing.',
+     'There is a saved work state for %s (%s). Restore it?',
+     '%s belongs to branch %s, %s is checked out.%s%sYes: switch branch and open the tabs. No: only open the tabs.',
+     'Continue working: switching to branch %s failed (%s), only the tabs were opened.',
+     'Continue working: branch %s no longer exists, only tabs.',
+     '"Issues" tab (remember the work state per active issue)',
+     'Number of work states per issue (1–30)'));
 
 { TAtlasWelcomeStrings }
 

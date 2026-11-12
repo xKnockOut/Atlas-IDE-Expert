@@ -213,6 +213,12 @@ type
     /// <summary>Parameter des laufenden Prozesses.</summary>
     class function FromProcess: TCommandLineOptions; static;
     class function TryParseLogLevel(const AText: string; out ALevel: TLogLevel): Boolean; static;
+    /// <summary>Befehl eines Laufs ohne Editor für die Statusdatei (#1901): check, fix, format-check, format-write,
+    /// metrics, todos, architecture, affected-tests, query, hotspots; '' für LSP- und MCP-Server.</summary>
+    function RunCommand: string;
+    /// <summary>Alle Schalter, die Parse kennt; AtlasMonitor (#1900) prüft damit, dass er jeden anbietet oder
+    /// bewusst auslässt.</summary>
+    class function Switches: TArray<string>; static;
   end;
 
 implementation
@@ -670,6 +676,90 @@ begin
     // Ohne Ref gilt --changed mit der Standardbasis.
     Result.ChangedRef := cDefaultChangedBase;
     Result.ChangedMergeBase := True;
+  end;
+end;
+
+/// <summary>Befehl eines Laufs mit --check als Ziel; Vorrang wie in TLinterShell.Run und TLinterCheck.</summary>
+function CheckCommandOf(const AOptions: TCommandLineOptions): string;
+begin
+  if AOptions.FixRules <> nil then
+  begin
+    Result := 'fix';
+  end
+  else if AOptions.FormatCheck then
+  begin
+    Result := 'format-check';
+  end
+  else if AOptions.FormatWrite then
+  begin
+    Result := 'format-write';
+  end
+  else if AOptions.Metrics then
+  begin
+    Result := 'metrics';
+  end
+  else if AOptions.Todos then
+  begin
+    Result := 'todos';
+  end
+  else
+  begin
+    Result := 'check';
+  end;
+end;
+
+function TCommandLineOptions.RunCommand: string;
+begin
+  // Reihenfolge wie die Wahl des Modus in TApplicationShell.
+  if ArchitectureFile <> '' then
+  begin
+    Result := 'architecture';
+  end
+  else if AffectedTests then
+  begin
+    Result := 'affected-tests';
+  end
+  else if QueryText <> '' then
+  begin
+    Result := 'query';
+  end
+  else if HotspotsFile <> '' then
+  begin
+    Result := 'hotspots';
+  end
+  else if CheckTarget <> '' then
+  begin
+    Result := CheckCommandOf(Self);
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+class function TCommandLineOptions.Switches: TArray<string>;
+var
+  mOptions: TCommandLineOptions;
+  mTables: TOptionTables;
+  mString: TStringOption;
+  mFlag: TFlagOption;
+  mValue: TValueOption;
+begin
+  mOptions := Default(TCommandLineOptions);
+  mTables := OptionTables(mOptions);
+  // Schalter mit optionalem Wert (ApplyOptional) und --stdio, das Parse übergeht.
+  Result := TArray<string>.Create('--changed', '--affected-tests', '--timings', '--stdio');
+  for mString in mTables.Strings do
+  begin
+    Result := Result + [mString.Name];
+  end;
+  for mFlag in mTables.Flags do
+  begin
+    Result := Result + [mFlag.Name];
+  end;
+  for mValue in mTables.Values do
+  begin
+    Result := Result + [mValue.Name];
   end;
 end;
 

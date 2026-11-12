@@ -67,6 +67,10 @@ type
     /// <summary>Rückfrage nur bei Änderungen an versionierten Dateien.</summary>
     [Test]
     procedure VcsKindFromText;
+    /// <summary>„Alle Tracker-Projekte“ (#1928): je Gruppe höchstens PerGroup Zeilen, Kopf mit Trefferzahl und
+    /// Zustand; GroupOf findet die Gruppe einer Zeile auch hinter einer leeren Gruppe.</summary>
+    [Test]
+    procedure GroupsLimitRowsPerProject;
   end;
 
 implementation
@@ -1027,6 +1031,47 @@ begin
   Assert.IsTrue(TAtlasMyIssues.VcsKindOf('git') = TAtlasVcsKind.Git);
   Assert.IsTrue(TAtlasMyIssues.VcsKindOf('SVN') = TAtlasVcsKind.Svn);
   Assert.IsTrue(TAtlasMyIssues.VcsKindOf('none') = TAtlasVcsKind.None);
+end;
+
+procedure TAtlasMyIssuesTests.GroupsLimitRowsPerProject;
+var
+  mView, mKasse, mBasis, mAtlas: TAtlasIssuesView;
+begin
+  mView := Default(TAtlasIssuesView);
+  mKasse := Default(TAtlasIssuesView);
+  mKasse.Status := TAtlasIssuesStatus.Ready;
+  mKasse.Items := [Issue('KASSE-1', 1, 'Eins'), Issue('KASSE-2', 2, 'Zwei'), Issue('KASSE-3', 3, 'Drei')];
+  mBasis := Default(TAtlasIssuesView);
+  mBasis.Status := TAtlasIssuesStatus.Failed;
+  mBasis.Error := TAtlasCiFetchError.NoCredentials;
+  mAtlas := Default(TAtlasIssuesView);
+  mAtlas.Status := TAtlasIssuesStatus.Ready;
+  mAtlas.Items := [Issue('#7', 7, 'Sieben')];
+  TAtlasMyIssues.AddGroup(mView, 'Firma · KASSE', 'C:\Kasse', mKasse, 2);
+  TAtlasMyIssues.AddGroup(mView, 'Firma · BASIS', 'C:\Basis', mBasis, 2);
+  TAtlasMyIssues.AddGroup(mView, 'GitHub · owner/repo', 'C:\Atlas', mAtlas, 2);
+  Assert.AreEqual(3, Integer(Length(mView.Items)));
+  Assert.AreEqual(3, Integer(Length(mView.Groups)));
+  Assert.AreEqual(2, mView.Groups[0].Shown);
+  Assert.AreEqual(3, mView.Groups[0].Total);
+  Assert.AreEqual(1, mView.Groups[0].More);
+  Assert.AreEqual(2, mView.Groups[1].First);
+  Assert.AreEqual(0, mView.Groups[1].Shown);
+  Assert.AreEqual(Ord(TAtlasCiFetchError.NoCredentials), Ord(mView.Groups[1].Error));
+  Assert.AreEqual(2, mView.Groups[2].First);
+  Assert.AreEqual(0, TAtlasMyIssues.GroupOf(mView, 1));
+  // Hinter der leeren Gruppe BASIS: die Zeile gehört zu owner/repo.
+  Assert.AreEqual(2, TAtlasMyIssues.GroupOf(mView, 2));
+  Assert.AreEqual('C:\Atlas', mView.Groups[TAtlasMyIssues.GroupOf(mView, 2)].Project);
+  // Mindestens eine Zeile je Gruppe.
+  mView := Default(TAtlasIssuesView);
+  TAtlasMyIssues.AddGroup(mView, 'Firma · KASSE', 'C:\Kasse', mKasse, 0);
+  Assert.AreEqual(1, Integer(Length(mView.Items)));
+  Assert.AreEqual(-1, TAtlasMyIssues.GroupOf(Default(TAtlasIssuesView), 0));
+  mView := Default(TAtlasIssuesView);
+  mKasse := Default(TAtlasIssuesView);
+  mBasis := Default(TAtlasIssuesView);
+  mAtlas := Default(TAtlasIssuesView);
 end;
 
 initialization

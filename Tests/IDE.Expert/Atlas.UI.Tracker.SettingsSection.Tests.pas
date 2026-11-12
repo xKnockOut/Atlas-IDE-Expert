@@ -398,8 +398,9 @@ begin
   Assert.AreEqual('C:\Projekte', AList.Items[0].Caption);
   Assert.AreEqual('Firma', AList.Items[0].SubItems[0]);
   Assert.AreEqual('KASSE', AList.Items[0].SubItems[1]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), AList.Items[0].SubItems[2]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), AList.Items[1].SubItems[2]);
+  // Spalte 2 sind die Arbeitskopien (#1926), die Herkunft steht in Spalte 3.
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), AList.Items[0].SubItems[3]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), AList.Items[1].SubItems[3]);
   Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectCoveredHint),
     ASection.Projects.View.Note.Caption);
   Assert.IsTrue(ASection.Projects.View.Match.Enabled);

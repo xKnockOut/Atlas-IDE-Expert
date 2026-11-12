@@ -167,6 +167,7 @@ begin
   Result.Style := AContext.Style;
   Result.Probe := TLspRefactorings.Probe(AContext);
   Result.Names := AContext.NewNames;
+  Result.Duplicates := AContext.Settings.ExtractMethodDuplicates;
 end;
 
 function NewResolver(const AContext: TRefactoringContext): TNameResolver;

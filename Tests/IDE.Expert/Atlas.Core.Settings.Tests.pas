@@ -47,6 +47,9 @@ type
     /// <summary>#1890: suggestions.* mit Vorgaben und Grenzen.</summary>
     [Test]
     procedure LearnedSuggestionsRoundTrip;
+    /// <summary>#1819: problems.ideErrors mit Vorgabe aus.</summary>
+    [Test]
+    procedure IdeErrorsRoundTrip;
     /// <summary>#1817: commands.projectContextMenu mit Vorgabe an.</summary>
     [Test]
     procedure ProjectContextMenuRoundTrip;
@@ -631,6 +634,22 @@ begin
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.HoverSignatureParams);
+end;
+
+procedure TAtlasPluginSettingsTests.IdeErrorsRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.ProblemsIdeErrors, 'Vorgabe aus');
+  mStore := TMemoryStore.Create;
+  mSettings.ProblemsIdeErrors := True;
+  mSettings.Save(mStore);
+  Assert.AreEqual(1, mStore.ReadInteger('ProblemsIdeErrors', 0));
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.ProblemsIdeErrors);
 end;
 
 procedure TAtlasPluginSettingsTests.TrackLinesRoundTrip;

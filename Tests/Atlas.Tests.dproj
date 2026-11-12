@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{7737E737-7F8E-4B01-9B7C-42DA754393D2}</ProjectGuid>
         <MainSource>Atlas.Tests.dpr</MainSource>
@@ -185,6 +185,8 @@
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusFile.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ServerActivity.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusHeartbeat.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StringLiteralCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Cancellation.Tests.pas"/>
@@ -564,6 +566,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Shared.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Duplicates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AnonymousMethods.Shared.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Types.Tests.pas"/>
@@ -983,6 +986,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsRows.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsConnections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsProjects.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsPaths.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SuggestDialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.ProjectPicker.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsQueries.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsSnippets.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsWorkflow.pas"/>
@@ -1079,6 +1085,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.IssueCache.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Preview.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.IssueWork.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.IssueWork.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CodeLinks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BlameLinks.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CodeLinks.Tests.pas"/>
@@ -1108,6 +1116,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.IssueTip.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.IssueTip.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Projects.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.PathSuggestions.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.PathSuggestions.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Queries.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SettingsTables.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.QueryTest.Tests.pas"/>
@@ -1318,6 +1328,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Continue.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.ContinueIssues.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.ContinueIssues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
@@ -1342,6 +1354,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Setup.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SetupPreview.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.ContinueIssues.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SettingsLayouts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SettingsSection.pas"/>
@@ -1350,6 +1363,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Setup.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Arrange.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Continue.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.ContinueIssues.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Projects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Trends.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.WhatsNew.Tests.pas"/>
@@ -1679,6 +1693,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.ProblemsUpdate.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Findings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.IdeErrors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.ScopeProjects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>
@@ -1839,6 +1855,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ExtractTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas"/>
@@ -2169,6 +2186,13 @@
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Servers.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Settings.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Texts.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Commands.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Results.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Runs.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Targets.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>

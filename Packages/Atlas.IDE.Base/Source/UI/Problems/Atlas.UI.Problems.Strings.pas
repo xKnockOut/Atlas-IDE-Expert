@@ -20,7 +20,9 @@ type
     ProblemsMenuCopy, ProblemsMenuColumns, ProblemsMenuResetSort, ProblemsExplainUnknown, ProblemsExplainTitle,
     ProblemsExplainClose, ProblemsColumnCompiler, ProblemsSectionActive, ProblemsSectionOpen, ProblemsSectionClosed,
     ProblemsTagActive, ProblemsTagClosed, ProblemsCleanActive, ProblemsCheckingActive, ProblemsOpenFirst,
-    ProblemsOpenFirstHint, ProblemsStatusTiers, ProblemsStatusHidden, ProblemsMenuFixAll, ProblemsManual);
+    ProblemsOpenFirstHint, ProblemsStatusTiers, ProblemsStatusHidden, ProblemsMenuFixAll, ProblemsManual,
+    // Fehler der IDE (#1819): Spalte und Filter „Quelle“.
+    ProblemsColumnSource, ProblemsOriginAll, ProblemsOriginAtlas, ProblemsOriginIde);
 
   TAtlasProblemsStrings = class
   public
@@ -92,7 +94,11 @@ const
      '%d Befunde · %d offene Units (%d) · %d nicht geöffnete Units (%d)',
      '%d nicht geöffnete Units ausgeblendet',
      'Alle sicheren Treffer von %s korrigieren …',
-     'Manuell'),
+     'Manuell',
+     'Quelle',
+     'Atlas und IDE',
+     'nur Atlas',
+     'nur IDE'),
     ('Atlas problems',
      '… %d more problems',
      'Error',
@@ -148,7 +154,11 @@ const
      '%d findings · %d open units (%d) · %d units not open (%d)',
      '%d units that are not open hidden',
      'Fix all safe findings of %s …',
-     'Manual'));
+     'Manual',
+     'Source',
+     'Atlas and IDE',
+     'Atlas only',
+     'IDE only'));
 
 { TAtlasProblemsStrings }
 

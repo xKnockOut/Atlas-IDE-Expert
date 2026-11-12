@@ -95,6 +95,7 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.ContinueIssues.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.AccountName.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
@@ -122,6 +123,8 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Editor.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Saved.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.ContinueIssues.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.IssueWork.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas"/>
@@ -147,6 +150,7 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Arrange.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.ContinueIssues.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Discover.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas">
             <Form>AtlasWelcomeFrame</Form>
