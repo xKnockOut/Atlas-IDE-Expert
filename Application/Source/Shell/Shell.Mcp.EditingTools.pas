@@ -298,7 +298,7 @@ var
   mRefactoring: TRefactoringSettings;
 begin
   mRequest := Default(TMcpExtractRequest);
-  mRequest.FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mRequest.FileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('startLine', mRequest.StartLine) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['startLine']));
@@ -308,7 +308,7 @@ begin
     mRequest.EndLine := mRequest.StartLine;
   end;
   mRefactoring := AContext.Group.WorkspaceOf(mRequest.FileName).Configuration.Settings.Refactoring;
-  mRequest.Name := TMcpServer.OptionalString(AArguments, 'name');
+  mRequest.Name := TMcpArgs.OptionalString(AArguments, 'name');
   if not AArguments.TryGetValue<Boolean>('replaceDuplicates', mRequest.ReplaceDuplicates) then
   begin
     mRequest.ReplaceDuplicates := mRefactoring.ExtractMethodDuplicates;
