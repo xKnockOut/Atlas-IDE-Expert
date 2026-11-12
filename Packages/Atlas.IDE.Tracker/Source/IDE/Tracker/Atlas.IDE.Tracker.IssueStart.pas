@@ -15,6 +15,11 @@
 //   (#1266) und das Projekt öffnen.
 // - „Beenden“: mit issues.syncState der Dialog „ATL-123 beenden“, sonst die
 //   Rückfrage; danach die Zeiterfassung (#1267).
+// - „Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): wie
+//   „Beginnen“, aber auf dem gemerkten Branch statt nach Muster, ohne Warnung
+//   und ohne den Tracker nachzuführen (der Zustand kam von dort); fehlt der
+//   Branch, fragt Atlas, ob er neu angelegt werden soll. Danach den
+//   Arbeitsstand ohne Rückfrage wiederherstellen (IAtlasIssueWork.Restore).
 // Arbeit mit der Versionsverwaltung im Hintergrund (TAtlasIdeVcs.Run), Dialoge
 // im Hauptthread. Protokoll anonym: Art und Ergebnis.
 
@@ -47,6 +52,10 @@ type
     /// <summary>Nach dem Dialog: scheitert der Abruf, „Vom lokalen Stand abzweigen?“ anbieten (#1289).</summary>
     OfferLocal: Boolean;
     Outcome: TAtlasIssueStartResult;
+    /// <summary>„Weiterarbeiten“ (#2127): gemerkter Branch; '' bei „Beginnen“.</summary>
+    ResumeBranch: string;
+    /// <summary>„Weiterarbeiten“ statt „Beginnen“?</summary>
+    function Resuming: Boolean;
     /// <summary>Im Hintergrund: Art der Versionsverwaltung, Plan, lokale Änderungen und Stand.</summary>
     procedure Inspect(const AOptions: TAtlasIssuesOptions);
     /// <summary>Im Hintergrund: Plan bzw. Request ausführen; im worktree Hook-Ordner des neuen Ordners.</summary>
@@ -72,6 +81,9 @@ type
     procedure Blocked(const AProject: string; const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue;
       AMode: TAtlasIssueStart; AKnown: Boolean; const ADetails: TAtlasTrackerDetails);
     procedure StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+    procedure StartJob(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart; const AResumeBranch: string);
+    /// <summary>„Weiterarbeiten“, Branch fehlt: neu anlegen? (sonst abbrechen)</summary>
+    class function RecreateGone(const AJob: TAtlasIssueStartJob): Boolean; static;
     procedure Inspect(const AJob: TAtlasIssueStartJob; const AOptions: TAtlasIssuesOptions);
     procedure NotStarted(const AJob: TAtlasIssueStartJob);
     procedure Cancelled(const AProject: string);
@@ -87,7 +99,8 @@ type
     procedure Track(const AJob: TAtlasIssueStartJob);
     procedure OpenAfter(const AJob: TAtlasIssueStartJob);
     procedure AskHook(var AState: TAtlasIssuesState; const AHooks: string);
-    procedure EndedLocally(const AProject, ABranch, AKey: string);
+    /// <summary>Beendet: AWritten ist der in den Tracker geschriebene Zustand ('' = nicht geändert).</summary>
+    procedure EndedLocally(const AProject, ABranch, AKey, AWritten: string);
     procedure EndWithTracker(const AProject, ABranch, AKey: string; const AProvider: IAtlasTrackerProvider;
       const ATarget: TAtlasTrackerTarget; const AState: TAtlasIssuesState);
   public
@@ -97,6 +110,9 @@ type
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
     /// <summary>Das aktuelle Issue beenden (Dialog mit issues.syncState, sonst Rückfrage).</summary>
     procedure EndActive;
+    /// <summary>„Weiterarbeiten“ an einem wieder geöffneten Issue (#2127) auf ABranch ('' = wie „Beginnen“).
+    /// </summary>
+    procedure Resume(const AIssue: TAtlasTrackerIssue; const ABranch: string);
   end;
 
 implementation
@@ -143,6 +159,7 @@ begin
     mKind := mVcs.Kind;
   end;
   Plan := TAtlasMyIssues.PlanStart(mKind, AOptions, Issue);
+  TAtlasMyIssues.ResumeOn(Plan, ResumeBranch);
   if not Branching or (mVcs = nil) then
   begin
     Exit;
@@ -190,6 +207,11 @@ begin
     Outcome.Hooks := mHooks;
     Outcome.GitDir := mGitDir;
   end;
+end;
+
+function TAtlasIssueStartJob.Resuming: Boolean;
+begin
+  Result := ResumeBranch <> '';
 end;
 
 function TAtlasIssueStartJob.Branching: Boolean;
@@ -360,7 +382,30 @@ begin
   end;
 end;
 
+procedure TAtlasIdeIssueStart.Resume(const AIssue: TAtlasTrackerIssue; const ABranch: string);
+begin
+  if not FContext.CanStart or (AIssue.Key = '') then
+  begin
+    Exit;
+  end;
+  // Mit gemerktem Branch immer als Branch, auch wenn issues.start „merken“ sagt: Es gab ihn schon.
+  if ABranch = '' then
+  begin
+    StartJob(AIssue, FServices.Options.Start, '');
+  end
+  else
+  begin
+    StartJob(AIssue, TAtlasIssueStart.Branch, ABranch);
+  end;
+end;
+
 procedure TAtlasIdeIssueStart.StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+begin
+  StartJob(AIssue, AMode, '');
+end;
+
+procedure TAtlasIdeIssueStart.StartJob(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart;
+  const AResumeBranch: string);
 var
   mJob: TAtlasIssueStartJob;
 begin
@@ -374,6 +419,7 @@ begin
   mJob.Project := FContext.Selection.CurrentProject;
   mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Issue := AIssue;
+  mJob.ResumeBranch := AResumeBranch;
   mJob.Facts := TAtlasVcsBranchFacts.Empty;
   FContext.StartProject := mJob.Project;
   FContext.Notice := TAtlasIssuesNotice.Create(mJob.Project,
@@ -437,6 +483,12 @@ begin
   mJob.OfferLocal := False;
   mJob.Request := Default(TAtlasVcsBranchRequest);
   mAsked := False;
+  // „Weiterarbeiten“ (#2127): Der gemerkte Branch fehlt (Facts nur dann gelesen): erst fragen.
+  if mJob.Resuming and mJob.Branching and (mJob.Facts.Outcome = TAtlasVcsOutcome.Ok) and not RecreateGone(mJob) then
+  begin
+    Cancelled(mJob.Project);
+    Exit;
+  end;
   // Neuer Branch (#1288): mit vcs.branch.confirm erst der Dialog „Branch anlegen“; „Abbrechen“ ändert nichts.
   // Ohne Dialog die Vorgaben aus dem Plan und den Git-Optionen (#1289). Findet SVN ohne erkennbares Layout
   // keinen Ort (#1290), fragt der Dialog trotzdem danach, statt an einem geratenen Ort anzulegen.
@@ -452,6 +504,12 @@ begin
     Exit;
   end;
   Run(mJob);
+end;
+
+class function TAtlasIdeIssueStart.RecreateGone(const AJob: TAtlasIssueStartJob): Boolean;
+begin
+  Result := MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesContinueBranchGone,
+    [AJob.Plan.Branch]), mtConfirmation, [mbYes, mbNo], 0) = mrYes;
 end;
 
 class function TAtlasIdeIssueStart.DefaultChoice(var AJob: TAtlasIssueStartJob; var AAsked: Boolean): Boolean;
@@ -630,8 +688,9 @@ procedure TAtlasIdeIssueStart.Track(const AJob: TAtlasIssueStartJob);
 var
   mTarget: TAtlasTrackerTarget;
 begin
-  // Tracker nachführen (#1266): Ergebnis als eigene Zeile, der Branch bleibt auch bei einem Fehler.
-  if FServices.Sync <> nil then
+  // Tracker nachführen (#1266): Ergebnis als eigene Zeile, der Branch bleibt auch bei einem Fehler. Nicht bei
+  // „Weiterarbeiten“ (#2127): Den Zustand hat der Tracker gerade selbst zurückgesetzt.
+  if (FServices.Sync <> nil) and not AJob.Resuming then
   begin
     mTarget := FContext.TargetOf(AJob.Project);
     FServices.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key, AJob.Outcome.Branch);
@@ -702,7 +761,12 @@ begin
   Track(AJob);
   OpenAfter(AJob);
   // Arbeitsstand je Issue (#2052): gemerkte Reiter anbieten; im neuen worktree gelten die alten Pfade nicht.
-  if AJob.Outcome.Folder = '' then
+  // „Weiterarbeiten“ (#2127) stellt ihn ohne Rückfrage wieder her.
+  if (AJob.Outcome.Folder = '') and AJob.Resuming then
+  begin
+    TAtlasTrackerIssueWorkLink.AfterResume(AJob.Project, AJob.Issue.Key);
+  end
+  else if AJob.Outcome.Folder = '' then
   begin
     TAtlasTrackerIssueWorkLink.AfterStart(AJob.Project, AJob.Issue.Key);
   end;
@@ -775,12 +839,12 @@ begin
       else if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesEndConfirm, [mCurrent.Key]),
         mtConfirmation, [mbYes, mbNo], 0) = mrYes then
       begin
-        EndedLocally(mProject, mBranch, mCurrent.Key);
+        EndedLocally(mProject, mBranch, mCurrent.Key, '');
       end;
     end);
 end;
 
-procedure TAtlasIdeIssueStart.EndedLocally(const AProject, ABranch, AKey: string);
+procedure TAtlasIdeIssueStart.EndedLocally(const AProject, ABranch, AKey, AWritten: string);
 var
   mState: TAtlasIssuesState;
 begin
@@ -790,6 +854,11 @@ begin
   end;
   mState := FContext.StateOf(AProject);
   TAtlasMyIssues.Ended(mState, ABranch);
+  // Wieder geöffnete Issues (#2127): Kennung, Branch und geschriebenen Zustand merken.
+  if FServices.Reopened <> nil then
+  begin
+    FServices.Reopened.EndedIssue(AProject, mState, AKey, ABranch, AWritten);
+  end;
   FContext.SaveState(AProject, mState);
   // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits).
   if FServices.Time <> nil then
@@ -833,7 +902,7 @@ begin
     begin
       if mKeep <> nil then
       begin
-        mOwner.EndedLocally(mProject, mBranch, mKey);
+        mOwner.EndedLocally(mProject, mBranch, mKey, AChange.State);
       end;
     end);
 end;

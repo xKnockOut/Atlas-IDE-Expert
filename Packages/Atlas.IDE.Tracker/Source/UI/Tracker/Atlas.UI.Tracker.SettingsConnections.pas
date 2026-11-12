@@ -34,6 +34,8 @@ type
     StartState: TAtlasValueBox;
     EndStates: TEdit;
     EndFields: TEdit;
+    /// <summary>Prüfzustände der Verbindung (#2126).</summary>
+    ReviewStates: TEdit;
     /// <summary>Zeilen von Zustandsfeld und Benutzerfeld: nur bei Anbietern mit Feldern sichtbar.</summary>
     StateRow: TWinControl;
     AssigneeRow: TWinControl;
@@ -192,6 +194,10 @@ begin
   FView.EndFields := FRows.NewEdit(WorkflowChange);
   FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionEndFields),
     FView.EndFields, TRows.cWideWidth), FAnchor);
+  FView.ReviewStates := FRows.NewEdit(WorkflowChange);
+  FRows.Attach(FRows.AddLabelled(
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionReviewStates), FView.ReviewStates,
+    TRows.cWideWidth), FAnchor);
   FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionStatesHint), FAnchor);
 end;
 
@@ -321,6 +327,7 @@ begin
   FView.StartState.Value := AConnection.StartState;
   FView.EndStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndStates);
   FView.EndFields.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndFields);
+  FView.ReviewStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.ReviewStates);
 end;
 
 procedure TAtlasTrackerConnectionsPart.FillFields;
@@ -361,6 +368,7 @@ begin
   FRows.Allow(FView.StartState, mEditable);
   FRows.Allow(FView.EndStates, mEditable);
   FRows.Allow(FView.EndFields, mEditable);
+  FRows.Allow(FView.ReviewStates, mEditable);
   FRows.Allow(FView.Remove, mEditable);
   // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
   FRows.Allow(FView.Token, mHasUrl and Assigned(FHooks.OnToken));
@@ -482,6 +490,7 @@ begin
   end;
   Table.SetWorkflow(FView.StateField.Value, FView.AssigneeField.Value, FView.StartState.Value,
     FView.EndStates.Text, FView.EndFields.Text);
+  Table.SetReviewStates(FView.ReviewStates.Text);
 end;
 
 procedure TAtlasTrackerConnectionsPart.AddClick(Sender: TObject);

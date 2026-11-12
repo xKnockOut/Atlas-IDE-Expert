@@ -58,6 +58,9 @@ type
     class procedure BeforeEnd(const AProject, ABranch: string; const AActive: TAtlasActiveIssue); static;
     /// <summary>Nach „Beginnen“: „Arbeitsstand wiederherstellen?“, wenn es einen gibt.</summary>
     class procedure AfterStart(const AProject, AKey: string); static;
+    /// <summary>Nach „Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): ohne Rückfrage wiederherstellen.
+    /// </summary>
+    class procedure AfterResume(const AProject, AKey: string); static;
   end;
 
 implementation
@@ -164,6 +167,16 @@ begin
   if Work(mWork) and mWork.HasState(AProject, AKey) then
   begin
     mWork.OfferRestore(AProject, AKey);
+  end;
+end;
+
+class procedure TAtlasTrackerIssueWorkLink.AfterResume(const AProject, AKey: string);
+var
+  mWork: IAtlasIssueWork;
+begin
+  if Work(mWork) and mWork.HasState(AProject, AKey) then
+  begin
+    mWork.Restore(AProject, AKey);
   end;
 end;
 

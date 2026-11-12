@@ -51,6 +51,8 @@ type
     EndFields: TArray<string>;
     /// <summary>Erfasste Zeit im Beenden-Dialog buchen (#2123, issues.endTime).</summary>
     EndTime: Boolean;
+    /// <summary>Prüfzustände (#2126, #2127, issues.reviewStates).</summary>
+    ReviewStates: TArray<string>;
     /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben. Beginnen und Beenden setzen
     /// WithStart und WithEnd.</summary>
     class function Create(ASyncState: Boolean; const AStateField, AAssigneeField: string): TAtlasTrackerSyncOptions;
@@ -63,6 +65,8 @@ type
     function WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
     /// <summary>Kopie mit Feldern und Zeit im Beenden-Dialog (#2123); AEndFields wie bei WithEnd.</summary>
     function WithEndSteps(const AEndFields: string; AEndTime: Boolean): TAtlasTrackerSyncOptions;
+    /// <summary>Kopie mit den Prüfzuständen; AReviewStates wie bei WithEnd.</summary>
+    function WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
     function HasStartWork: Boolean;
   end;
@@ -215,6 +219,12 @@ begin
   Result.EndComment := AEndComment;
 end;
 
+function TAtlasTrackerSyncOptions.WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.ReviewStates := TAtlasTrackerWorkflow.ParseList(AReviewStates);
+end;
+
 function TAtlasTrackerSyncOptions.HasStartWork: Boolean;
 begin
   Result := SyncState and ((StartState <> '') or AssignOnStart or (Trim(StartComment) <> ''));
@@ -322,6 +332,10 @@ begin
     if Length(mConnection.EndFields) > 0 then
     begin
       Result.EndFields := Copy(mConnection.EndFields);
+    end;
+    if Length(mConnection.ReviewStates) > 0 then
+    begin
+      Result.ReviewStates := Copy(mConnection.ReviewStates);
     end;
     Exit;
   end;

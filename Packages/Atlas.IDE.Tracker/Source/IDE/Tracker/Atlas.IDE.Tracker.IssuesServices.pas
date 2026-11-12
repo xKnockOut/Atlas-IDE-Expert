@@ -4,7 +4,7 @@
 // Vorschau „Atlas-Issue“ (#1264), Board (#1272), Sprint-Kachel (#1277),
 // Tracker nachführen (#1266), Zeiterfassung (#1267), Issues in der
 // Befehlspalette (#1270), Kommentar-Editor (#1278), Meldungen zu meinen Issues
-// (#1271) und „An Issue anhängen“ (#1276). Alle mit Anbieter und Transport aus
+// (#1271), „An Issue anhängen“ (#1276) und wieder geöffnete Issues (#2127). Alle mit Anbieter und Transport aus
 // dem Kontext; ihre Hooks halten den Besitzer (TAtlasIssuesLink.Keep), Stop
 // löst den Ring.
 
@@ -25,6 +25,7 @@ uses
   Atlas.IDE.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.SprintTile,
+  Atlas.IDE.Tracker.Reopened,
   Atlas.IDE.Tracker.IssuesContext;
 
 type
@@ -41,6 +42,7 @@ type
     FComments: TAtlasIdeCommentService;
     FNotify: TAtlasIdeIssueNotify;
     FAttach: TAtlasIdeIssueAttach;
+    FReopened: TAtlasIdeIssueReopened;
     // Referenzgezählte Dienste: gehalten bis Stop.
     FRefs: TArray<IInterface>;
     procedure Keep(const AService: IInterface);
@@ -84,6 +86,8 @@ type
     property Notify: TAtlasIdeIssueNotify read FNotify;
     /// <summary>„An Issue anhängen“ (#1276; nil vor Start bzw. nach Stop).</summary>
     property Attach: TAtlasIdeIssueAttach read FAttach;
+    /// <summary>Wieder geöffnete Issues (#2127; nil vor Start bzw. nach Stop).</summary>
+    property Reopened: TAtlasIdeIssueReopened read FReopened;
   end;
 
 implementation
@@ -95,6 +99,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Notify,
+  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.WorkingCopies;
@@ -724,6 +730,22 @@ begin
     end;
 end;
 
+/// <summary>Wieder geöffnet (#2127): Erkennung an der Benachrichtigung über Services.Reopened.</summary>
+function NotifyReopenedHook(const ALink: TAtlasIssuesLink): TAtlasIssueNotifyReopenedHook;
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  Result :=
+    function(const ATarget: TAtlasTrackerTarget; const ANotice: TAtlasTrackerNotice;
+      out AReopen: TAtlasTrackerReopen): Boolean
+    begin
+      AReopen := Default(TAtlasTrackerReopen);
+      Result := (mLink.Keep <> nil) and (mLink.Services.FReopened <> nil) and
+        mLink.Services.FReopened.FromNotice(ATarget, ANotice, AReopen);
+    end;
+end;
+
 function NotifyHooks(const ALink: TAtlasIssuesLink): TAtlasIssueNotifyHooks;
 var
   mLink: TAtlasIssuesLink;
@@ -775,6 +797,39 @@ begin
     procedure
     begin
       mLink.Updated;
+    end;
+  Result.Reopened := NotifyReopenedHook(ALink);
+end;
+
+function ReopenedHooks(const ALink: TAtlasIssuesLink): TAtlasIssueReopenedHooks;
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  Result := Default(TAtlasIssueReopenedHooks);
+  Result.Peek :=
+    function(const ATarget: TAtlasTrackerTarget; const AKey: string; out ADetails: TAtlasTrackerDetails): Boolean
+    begin
+      ADetails := Default(TAtlasTrackerDetails);
+      Result := (mLink.Keep <> nil) and (mLink.Services.FPreview <> nil) and
+        mLink.Services.FPreview.Lookups.Peek(ATarget, AKey, ADetails);
+    end;
+  Result.Me :=
+    function(const ATarget: TAtlasTrackerTarget): string
+    begin
+      Result := '';
+      if (mLink.Keep <> nil) and (mLink.Services.FNotify <> nil) then
+      begin
+        Result := mLink.Services.FNotify.LoginOf(ATarget);
+      end;
+    end;
+  Result.Open :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime)
+    begin
+      if mLink.Keep <> nil then
+      begin
+        mLink.Services.OpenNotified(ATarget, AKey, AAnchor);
+      end;
     end;
 end;
 
@@ -896,6 +951,7 @@ begin
     DropRef(AServices, AServices.FAttach);
   end;
   AServices.FAttach := nil;
+  FreeAndNil(AServices.FReopened);
 end;
 
 { TAtlasIdeIssuesServices }
@@ -939,6 +995,8 @@ begin
   FSprint.Start;
   FSearch := TAtlasIdeIssueSearch.Create(SearchHooks(mLink));
   FSearchRef := FSearch;
+  // Vor den Meldungen: deren Hook fragt die Erkennung.
+  FReopened := TAtlasIdeIssueReopened.Create(FContext, ReopenedHooks(mLink));
   FNotify := TAtlasIdeIssueNotify.Create(NotifyHooks(mLink), mFolder);
   Keep(FNotify);
   FNotify.Start;

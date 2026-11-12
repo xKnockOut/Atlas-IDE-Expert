@@ -545,6 +545,8 @@ begin
   Assert.IsFalse(mSettings.IssuesAssignOnStart);
   Assert.AreEqual('', mSettings.IssuesStartComment);
   Assert.AreEqual('', mSettings.IssuesEndStates);
+  Assert.AreEqual('', mSettings.IssuesReviewStates);
+  Assert.IsTrue(mSettings.IssuesReopened, '#2127: Vorgabe an');
   Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
   Assert.AreEqual('', mSettings.IssuesEndFields, 'ab Werk keine Felder beim Beenden');
   Assert.IsTrue(mSettings.IssuesEndTime, 'erfasste Zeit beim Beenden anbieten');
@@ -554,6 +556,7 @@ begin
   mSettings.IssuesStartState := ' In Arbeit ';
   mSettings.IssuesStartComment := 'Beginne {kennung}'#13#10'in {branch}';
   mSettings.IssuesEndStates := ' Zur Prüfung, Erledigt ';
+  mSettings.IssuesReviewStates := ' Zur Prüfung ';
   mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.cMaxIssuesTemplate + 10);
   mSettings.IssuesEndFields := ' Behoben in Version, Ursache ';
   mSettings.Normalize;
@@ -563,12 +566,14 @@ begin
   Assert.AreEqual('In Arbeit', mSettings.IssuesStartState);
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mSettings.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mSettings.IssuesEndStates);
+  Assert.AreEqual('Zur Prüfung', mSettings.IssuesReviewStates);
   Assert.AreEqual(TAtlasPluginSettings.cMaxIssuesTemplate, Integer(Length(mSettings.IssuesEndComment)));
   // Speichern und Laden.
   mSettings.IssuesSyncState := False;
   mSettings.IssuesAssignOnStart := True;
   mSettings.IssuesEndComment := 'Fertig: {pr}';
   mSettings.IssuesEndTime := False;
+  mSettings.IssuesReopened := False;
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);
   mLoaded := TAtlasPluginSettings.Defaults;
@@ -580,6 +585,8 @@ begin
   Assert.IsTrue(mLoaded.IssuesAssignOnStart);
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
+  Assert.AreEqual('Zur Prüfung', mLoaded.IssuesReviewStates);
+  Assert.IsFalse(mLoaded.IssuesReopened);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
   Assert.AreEqual('Behoben in Version, Ursache', mLoaded.IssuesEndFields);
   Assert.IsFalse(mLoaded.IssuesEndTime);

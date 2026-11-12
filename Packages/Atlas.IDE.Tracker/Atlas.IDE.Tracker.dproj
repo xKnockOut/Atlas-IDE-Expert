@@ -122,6 +122,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Reopened.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueWork.pas"/>
@@ -181,6 +182,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Notify.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Reopened.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PaletteSearch.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Parts.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsBranches.pas"/>

@@ -1081,7 +1081,19 @@ begin
   end;
 end;
 
-/// <summary>Autor und Wert einer gemeldeten Aktivität an AChange.</summary>
+/// <summary>Text des ersten hinzugefügten Kommentars, gekürzt (#2127); '' ohne.</summary>
+function CommentText(AAdded: TJSONArray): string;
+begin
+  Result := '';
+  if (AAdded.Count > 0) and (AAdded.Items[0] is TJSONObject) then
+  begin
+    Result := TAtlasYouTrackJson.Shorten(TJsonRead.Text(TJSONObject(AAdded.Items[0]), 'text'),
+      TAtlasTrackerChange.cMaxText);
+  end;
+end;
+
+/// <summary>Autor und Wert einer gemeldeten Aktivität an AChange; beim Zustand auch der Wert davor (#2127).
+/// </summary>
 procedure FillActivity(AObject: TJSONObject; AAdded: TJSONArray; const AMe: string; var AChange: TAtlasTrackerChange);
 var
   mAuthor: TJSONObject;
@@ -1093,9 +1105,17 @@ begin
     AChange.AuthorName := TAtlasYouTrackJson.Shorten(TJsonRead.Text(mAuthor, 'fullName'),
       TAtlasTrackerTextLimits.cPerson);
   end;
-  if AChange.Kind <> TAtlasTrackerChangeKind.Comment then
+  if AChange.Kind = TAtlasTrackerChangeKind.Comment then
+  begin
+    AChange.Text := CommentText(AAdded);
+  end
+  else
   begin
     AChange.Value := TAtlasYouTrackJson.ValueText(AAdded);
+  end;
+  if (AChange.Kind = TAtlasTrackerChangeKind.State) and (AObject.Values['removed'] is TJSONArray) then
+  begin
+    AChange.Previous := TAtlasYouTrackJson.ValueText(AObject.Values['removed']);
   end;
   AChange.ToMe := (AChange.Kind = TAtlasTrackerChangeKind.Assigned) and AddsMe(AAdded, AMe);
 end;

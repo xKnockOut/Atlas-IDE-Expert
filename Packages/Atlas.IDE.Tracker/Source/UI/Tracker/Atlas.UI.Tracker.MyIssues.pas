@@ -28,6 +28,13 @@
 // TAtlasTrackerProjectPicker). Bei „Alle Tracker-Projekte“ (#1928) steht vor
 // jeder Gruppe eine Kopfzeile „YouTrack · KASSE (7)“ mit „+ N weitere“ bzw.
 // dem Hinweis der Gruppe (kein Zugang, Fehler, keine Issues).
+// Wieder geöffnet (#2127): Marke „wieder offen“ vorn in der Chip-Zeile,
+// darunter der Grund (neuester Kommentar seit dem Beenden, Klick öffnet die
+// Vorschau dort) und die Knöpfe „Weiterarbeiten auf <Branch>“ und „Gelesen“:
+//   ATL-2052 Arbeitsstand je Issue merken                    [Beginnen]
+//            (wieder offen) (In Bearbeitung)
+//            Jana, vor 20 min: „Lesezeichen fehlen.“
+//            [Weiterarbeiten auf issue/ATL-2052] [Gelesen]
 // Daten und Aktionen kommen über IAtlasIssuesSource aus der IDE-Schicht;
 // Aktionen gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -47,11 +54,16 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
+  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Style.Canvas,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.TileView;
 
 type
+  /// <summary>Knöpfe an einem wieder geöffneten Issue (#2127): Weiterarbeiten auf dem alten Branch, Marke
+  /// ausblenden, Grund in der Vorschau am Kommentar zeigen.</summary>
+  TAtlasIssueReopenedAction = (Continue, Dismiss, Reason);
+
   IAtlasIssuesSource = interface
     ['{8D3F6A21-5C4B-4E97-A1D8-2B7E9C05F364}']
     function View: TAtlasIssuesView;
@@ -84,10 +96,12 @@ type
     procedure SelectProject(const AKey: string);
     /// <summary>„Tracker-Projekte bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
     procedure EditProjects;
+    /// <summary>Knopf AAction an einem wieder geöffneten Issue (#2127).</summary>
+    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
   end;
 
 {$SCOPEDENUMS ON}
-  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start, Assign, Filter);
+  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start, Assign, Filter, Continue, Dismiss, Reason);
 {$SCOPEDENUMS OFF}
 
   TAtlasIssuesHit = record
@@ -144,6 +158,11 @@ type
     class function TitleText(const AProjectName: string): string; overload; static;
     /// <summary>Wie oben, mit Punkt davor, wenn AUnseen (#1271: neue Änderungen an einem Issue).</summary>
     class function TitleText(const AProjectName: string; AUnseen: Boolean): string; overload; static;
+    /// <summary>Grund unter einem wieder geöffneten Issue (#2127): „Jana, vor 20 min: „…““, ohne Kommentar
+    /// „Erledigt → In Bearbeitung, kein neuer Kommentar“.</summary>
+    class function ReasonText(const AReopen: TAtlasTrackerReopen; ANowUtc: TDateTime): string; static;
+    /// <summary>„Weiterarbeiten auf issue/ATL-2052“; ohne gemerkten Branch „Weiterarbeiten“.</summary>
+    class function ContinueText(const AReopen: TAtlasTrackerReopen): string; static;
   end;
 
   /// <summary>Zeile der Chips beim Zeichnen: Zeichenfläche, nächste linke Kante, Oberkante, rechte Grenze.</summary>
@@ -161,6 +180,10 @@ type
     FKeyRects: TArray<TRect>;
     FPullRects: TArray<TRect>;
     FStartRects: TArray<TRect>;
+    // Wieder geöffnet (#2127): Grund, „Weiterarbeiten“ und „Gelesen“; leer ohne Marke.
+    FReasonRects: TArray<TRect>;
+    FContinueRects: TArray<TRect>;
+    FDismissRects: TArray<TRect>;
     /// <summary>Link „zuordnen …“ in der Fußzeile; leer ohne.</summary>
     FAssignRect: TRect;
     /// <summary>Zeile „Gefiltert: … · alle zeigen“ (#1277); leer ohne Filter.</summary>
@@ -176,6 +199,11 @@ type
     procedure PaintKey(ACanvas: TCanvas; AIndex, ATop, ALimit: Integer);
     procedure PaintChips(ACanvas: TCanvas; AIndex: Integer; const ALine: TAtlasIssuesChipLine);
     procedure PaintRow(ACanvas: TCanvas; AIndex: Integer);
+    /// <summary>Knopf mit Rahmen ab ALeft auf ATop; leer, wenn er nicht bis ALimit passt.</summary>
+    function PaintButton(ACanvas: TCanvas; const AText: string; ALeft, ATop, ALimit: Integer): TRect;
+    /// <summary>Grund und Knöpfe eines wieder geöffneten Issues (#2127) ab ATop.</summary>
+    procedure PaintReopened(ACanvas: TCanvas; AIndex, ALeft, ATop, ALimit: Integer;
+      const AReopen: TAtlasTrackerReopen);
     procedure PaintStatus(ACanvas: TCanvas);
     procedure PaintFilter(ACanvas: TCanvas);
     procedure PaintSource(ACanvas: TCanvas);
@@ -293,6 +321,9 @@ type
     cFooterOffset = 4;
     /// <summary>Durchmesser des Punkts vor der Kennung eines Issues mit neuen Änderungen (#1271).</summary>
     cUnseenDot = 6;
+    /// <summary>Knöpfe „Weiterarbeiten“ und „Gelesen“ (#2127): Höhe und Zeile samt Abstand darunter.</summary>
+    cActionHeight = 22;
+    cActionLineHeight = 28;
     cMonoFont = 'Consolas';
   private
     FSource: IAtlasIssuesSource;
@@ -307,6 +338,7 @@ type
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX, AY: Integer);
     procedure ClickIssue(const AHit: TAtlasIssuesHit; ABrowse: Boolean);
+    procedure ClickReopened(const AHit: TAtlasIssuesHit);
     class procedure Post(const AAction: TThreadProcedure); static;
   public
     constructor Create(AOwner: TComponent); override;
@@ -343,7 +375,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.TestResults;
 
 const
   cSeparator = ' · ';
@@ -722,8 +755,48 @@ begin
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintAssign);
     TAtlasIssuesHitKind.Filter:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintFilter);
+    TAtlasIssuesHitKind.Continue:
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesContinueHint,
+        [AView.Items[AHit.Index].Key]);
+    TAtlasIssuesHitKind.Dismiss:
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopenedReadHint);
+    TAtlasIssuesHitKind.Reason:
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopenedCommentHint);
   else
     Result := '';
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.ReasonText(const AReopen: TAtlasTrackerReopen; ANowUtc: TDateTime): string;
+var
+  mWho: string;
+begin
+  if AReopen.Comment <> '' then
+  begin
+    mWho := AReopen.CommentBy;
+    if mWho = '' then
+    begin
+      mWho := '?';
+    end;
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesReopenedComment, [mWho,
+      TAtlasTrackerTestResultsText.AgoText(AReopen.CommentAt, ANowUtc), AReopen.Comment]);
+  end
+  else
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesReopenedState, [AReopen.Previous,
+      AReopen.State]);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.ContinueText(const AReopen: TAtlasTrackerReopen): string;
+begin
+  if AReopen.Branch <> '' then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesContinueOn, [AReopen.Branch]);
+  end
+  else
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesContinue);
   end;
 end;
 
@@ -749,11 +822,17 @@ begin
   FKeyRects := nil;
   FPullRects := nil;
   FStartRects := nil;
+  FReasonRects := nil;
+  FContinueRects := nil;
+  FDismissRects := nil;
   FAssignRect := TRect.Empty;
   FFilterRect := TRect.Empty;
   SetLength(FKeyRects, ACount);
   SetLength(FPullRects, ACount);
   SetLength(FStartRects, ACount);
+  SetLength(FReasonRects, ACount);
+  SetLength(FContinueRects, ACount);
+  SetLength(FDismissRects, ACount);
 end;
 
 function TAtlasTrackerIssuesPainter.Scaled(AValue: Integer): Integer;
@@ -802,15 +881,23 @@ end;
 function TAtlasTrackerIssuesPainter.RowHeight(AIndex: Integer): Integer;
 var
   mItem: TAtlasTrackerIssue;
+  mReopen: TAtlasTrackerReopen;
+  mReopened: Boolean;
 begin
   Result := 2 * Scaled(TAtlasTrackerIssuesView.cRowPadding) + Scaled(TAtlasTrackerIssuesView.cLineHeight);
   if (AIndex >= 0) and (AIndex <= High(FOwner.View.Items)) then
   begin
     mItem := FOwner.View.Items[AIndex];
+    mReopened := FOwner.View.ReopenOf(mItem.Key, mReopen);
     if (Length(TAtlasMyIssues.Fields(mItem)) > 0) or (mItem.PullRequest.Number > 0) or
-      SameText(mItem.Key, FOwner.View.Active.Key) then
+      SameText(mItem.Key, FOwner.View.Active.Key) or mReopened then
     begin
       Inc(Result, Scaled(TAtlasTrackerIssuesView.cChipLineHeight));
+    end;
+    // Wieder geöffnet (#2127): Zeile mit dem Grund und Zeile mit den Knöpfen.
+    if mReopened then
+    begin
+      Inc(Result, Scaled(TAtlasTrackerIssuesView.cLineHeight) + Scaled(TAtlasTrackerIssuesView.cActionLineHeight));
     end;
   end;
 end;
@@ -960,12 +1047,18 @@ var
   mLine: TAtlasIssuesChipLine;
   mField, mText: string;
   mChip: TRect;
+  mReopen: TAtlasTrackerReopen;
 begin
   // Zweite Zeile: Felder als Chips mit Rahmen, dann der Pull Request mit CI-Ampel.
   mItem := FOwner.View.Items[AIndex];
   mLine := ALine;
   ACanvas.Font.Size := FOwner.Font.Size - 1;
   FPullRects[AIndex] := TRect.Empty;
+  // Wieder geöffnet (#2127): Marke zuerst.
+  if FOwner.View.ReopenOf(mItem.Key, mReopen) then
+  begin
+    PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopened), cYellowColor, True, mChip);
+  end;
   if SameText(mItem.Key, FOwner.View.Active.Key) then
   begin
     PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesActive), Color(clHighlight), True,
@@ -1026,6 +1119,74 @@ begin
     Scaled(TAtlasTrackerIssuesView.cChipHeight)) div 2;
   mChips.Limit := mLimit;
   PaintChips(ACanvas, AIndex, mChips);
+  FReasonRects[AIndex] := TRect.Empty;
+  FContinueRects[AIndex] := TRect.Empty;
+  FDismissRects[AIndex] := TRect.Empty;
+  if FOwner.View.ReopenOf(mItem.Key, mReopen) then
+  begin
+    PaintReopened(ACanvas, AIndex, mLeft, mTop + mLine + Scaled(TAtlasTrackerIssuesView.cChipLineHeight), mLimit,
+      mReopen);
+  end;
+end;
+
+function TAtlasTrackerIssuesPainter.PaintButton(ACanvas: TCanvas; const AText: string;
+  ALeft, ATop, ALimit: Integer): TRect;
+var
+  mWidth, mRadius: Integer;
+begin
+  Result := TRect.Empty;
+  mWidth := ACanvas.TextWidth(AText) + 2 * Scaled(TAtlasTrackerIssuesView.cChipPadding);
+  if ALeft + mWidth > ALimit then
+  begin
+    Exit;
+  end;
+  Result := Rect(ALeft, ATop, ALeft + mWidth, ATop + Scaled(TAtlasTrackerIssuesView.cActionHeight));
+  mRadius := Scaled(TAtlasTrackerIssuesView.cButtonRadius);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Pen.Color := Color(clBtnShadow);
+  ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, mRadius, mRadius);
+  ACanvas.TextOut(Result.Left + Scaled(TAtlasTrackerIssuesView.cChipPadding),
+    Result.Top + (Result.Height - ACanvas.TextHeight(AText)) div 2, AText);
+end;
+
+procedure TAtlasTrackerIssuesPainter.PaintReopened(ACanvas: TCanvas; AIndex, ALeft, ATop, ALimit: Integer;
+  const AReopen: TAtlasTrackerReopen);
+var
+  mText: string;
+  mLine, mGap: Integer;
+begin
+  mLine := Scaled(TAtlasTrackerIssuesView.cLineHeight);
+  mGap := Scaled(TAtlasTrackerIssuesView.cChipGap);
+  // Grund: Klick öffnet die Vorschau am Kommentar.
+  ACanvas.Font.Assign(FOwner.Font);
+  ACanvas.Font.Size := FOwner.Font.Size - 1;
+  ACanvas.Font.Color := Color(clHotLight);
+  mText := TAtlasTrackerIssuesText.ReasonText(AReopen, TTimeZone.Local.ToUniversalTime(Now));
+  if ALeft < ALimit then
+  begin
+    FReasonRects[AIndex] := Rect(ALeft, ATop, Min(ALeft + ACanvas.TextWidth(mText), ALimit), ATop + mLine);
+    ACanvas.TextRect(Rect(ALeft, ATop, ALimit, ATop + mLine), ALeft, ATop + Scaled(2), mText);
+  end;
+  // Knöpfe „Weiterarbeiten auf …“ (nur mit „Beginnen“ möglich) und „Gelesen“.
+  ACanvas.Font.Assign(FOwner.Font);
+  if FOwner.CanStart then
+  begin
+    ACanvas.Font.Color := Color(clWindowText);
+  end
+  else
+  begin
+    ACanvas.Font.Color := Color(clGrayText);
+  end;
+  FContinueRects[AIndex] := PaintButton(ACanvas, TAtlasTrackerIssuesText.ContinueText(AReopen), ALeft, ATop + mLine,
+    ALimit);
+  ACanvas.Font.Color := Color(clWindowText);
+  if not FContinueRects[AIndex].IsEmpty then
+  begin
+    FDismissRects[AIndex] := PaintButton(ACanvas,
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopenedRead), FContinueRects[AIndex].Right + mGap,
+      ATop + mLine, ALimit);
+  end;
+  ACanvas.Font.Assign(FOwner.Font);
 end;
 
 procedure TAtlasTrackerIssuesPainter.PaintStatus(ACanvas: TCanvas);
@@ -1189,6 +1350,18 @@ begin
   if Inside(FStartRects, AIndex, APoint) then
   begin
     Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, AIndex);
+  end
+  else if Inside(FContinueRects, AIndex, APoint) then
+  begin
+    Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Continue, AIndex);
+  end
+  else if Inside(FDismissRects, AIndex, APoint) then
+  begin
+    Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Dismiss, AIndex);
+  end
+  else if Inside(FReasonRects, AIndex, APoint) then
+  begin
+    Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Reason, AIndex);
   end
   else if Inside(FKeyRects, AIndex, APoint) then
   begin
@@ -1710,7 +1883,37 @@ begin
       begin
         ASource.Start(AIssue, mMode);
       end);
+  end
+  else
+  begin
+    ClickReopened(AHit);
   end;
+end;
+
+procedure TAtlasTrackerIssuesView.ClickReopened(const AHit: TAtlasIssuesHit);
+var
+  mAction: TAtlasIssueReopenedAction;
+begin
+  // Wieder geöffnet (#2127): Weiterarbeiten, Gelesen, Grund in der Vorschau.
+  case AHit.Kind of
+    TAtlasIssuesHitKind.Continue:
+      mAction := TAtlasIssueReopenedAction.Continue;
+    TAtlasIssuesHitKind.Dismiss:
+      mAction := TAtlasIssueReopenedAction.Dismiss;
+    TAtlasIssuesHitKind.Reason:
+      mAction := TAtlasIssueReopenedAction.Reason;
+  else
+    Exit;
+  end;
+  if (mAction = TAtlasIssueReopenedAction.Continue) and not CanStart then
+  begin
+    Exit;
+  end;
+  SendIssue(AHit.Index,
+    procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
+    begin
+      ASource.Reopened(AIssue, mAction);
+    end);
 end;
 
 procedure TAtlasTrackerIssuesView.BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);
@@ -1720,7 +1923,8 @@ var
 begin
   mHit := HitTest(AX, AY);
   if (mHit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
-    TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter]) or
+    TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter, TAtlasIssuesHitKind.Continue,
+    TAtlasIssuesHitKind.Dismiss, TAtlasIssuesHitKind.Reason]) or
     ((mHit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
   begin
     FBox.Cursor := crHandPoint;
