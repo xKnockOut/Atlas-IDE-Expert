@@ -251,6 +251,7 @@ uses
   System.Math,
   Winapi.Windows,
   Vcl.Clipbrd,
+  Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Strings;
 
 {$R *.dfm}
@@ -1018,7 +1019,7 @@ end;
 /// <summary>Statuszeile, Fläche mit Zeichenfläche und Hinweis.</summary>
 procedure AddBody(AFrame: TAtlasBoardFrame);
 begin
-  AFrame.FParts.Status := TLabel.Create(AFrame);
+  AFrame.FParts.Status := TAtlasWrapLabel.Create(AFrame);
   AFrame.FParts.Status.Parent := AFrame;
   AFrame.FParts.Status.Align := alTop;
   AFrame.FParts.Status.AlignWithMargins := True;

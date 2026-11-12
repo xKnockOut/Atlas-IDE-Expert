@@ -3,11 +3,16 @@
 // Inhalt des andockbaren Fensters „Atlas-Issue“ (#1264), reine VCL ohne Open
 // Tools API:
 //   [◀] [▶]  [Beginnen] [Beenden …] [Im Browser öffnen] [Kennung kopieren] [Anhängen …] [Aktualisieren]
+//   (die Leiste bricht bei schmalem Fenster um)
 //   ───────────────── dünne Leiste beim Laden ─────────────────
 //   (Stand vom …  bzw. Fehler mit Knopf zum Beheben)
-//   ATL-123 · 3/5   (Fortschritt der Checkliste, #1273)
-//   Titel des Issues (Klick öffnet den Tracker)
-//   (In Arbeit) (Hoch) (Bug) (M. Muster) (Sprint 12) (ui) (erstellt vor 3 Tg.)
+//   ┌ Kopf als abgesetzte Karte ──────────────────────────────────────────
+//   │ ATL-123 · 3/5   (Fortschritt der Checkliste, #1273)
+//   │ Titel des Issues (Klick öffnet den Tracker)
+//   │ (In Arbeit) (Hoch) (Bug) (M. Muster) (Sprint 12) (ui) (erstellt vor 3 Tg.)
+//   └─────────────────────────────────────────────────────────────────────
+//   Abschnitte beginnen mit einer Überschrift und einer Linie bis zum Rand.
+//   Texte brechen um und passen ihre Höhe jeder Breite an (TAtlasWrapLabel).
 //   Beschreibung: Markdown gesetzt wie die XMLDoc im Hover (TAtlasDocView):
 //   Überschriften, Listen, fett/kursiv, Links, Tabellen, Zitate, Codeblöcke
 //   (Delphi eingefärbt); alleinstehende Bilder als Vorschau in Fensterbreite,
@@ -16,17 +21,18 @@
 //   hinzufügen …“ (Events.AddTask); ohne Schreibrecht nur lesend mit Tooltip;
 //   mit Checklists = False als Text wie geschrieben. In Kommentaren nur
 //   Kästchen ohne Klick.
-//   KOMMENTARE (n): neueste unten, ältere hinter „12 ältere Kommentare“.
+//   Kommentare (n): je Kommentar eine Karte, neueste unten, ältere hinter
+//   „12 ältere Kommentare“.
 //   Aus einer Meldung (#1271, SetAnchor) öffnet der Inhalt am ersten neuen
 //   Kommentar; sein Kopf ist hervorgehoben.
-//   ANHÄNGE (n): Name und Größe; Doppelklick öffnet.
-//   VERKNÜPFTE ISSUES (n): Kennung, Titel, Art; Klick öffnet im Fenster.
+//   Anhänge (n): Name und Größe; Doppelklick öffnet.
+//   Verknüpfte Issues (n): Kennung, Titel, Art; Klick öffnet im Fenster.
 //   ───────────────── unten (#1266, nur mit issues.syncState) ─────────────────
 //   Kommentar schreiben … (Markdown, Strg+Enter sendet)          [Senden]
 // „Beenden …“ (#1266) gibt es nur für das aktuelle Issue (CanEnd), Feld und
 // Knopf nur, wenn der Tracker schreiben kann (CanWrite).
 //   Mit LinksAsTree (#1279, issues.preview.links) stattdessen
-//   VERKNÜPFUNGEN (n) als Baum: Hängt ab von, Blockiert, Unteraufgaben 2/3,
+//   Verknüpfungen (n) als Baum: Hängt ab von, Blockiert, Unteraufgaben 2/3,
 //   Übergeordnet; Duplikate, „Bezieht sich auf“ und Erwähnungen eingeklappt;
 //   je Zeile Symbol (✓ erledigt, ○ offen, ⛔ blockiert dieses Issue, ? Zustand
 //   unbekannt), Kennung, Titel und Zustand; Klick öffnet im Fenster. Mit
@@ -110,7 +116,8 @@ type
 
   /// <summary>Feste Steuerelemente des Frames; sie gehören dem Frame.</summary>
   TAtlasIssueFrameParts = record
-    Tools: TPanel;
+    /// <summary>Werkzeugleiste; bricht bei schmalem Fenster in eine zweite Zeile um.</summary>
+    Tools: TFlowPanel;
     Back: TButton;
     Forward: TButton;
     Start: TButton;
@@ -151,6 +158,10 @@ type
     Controls: TList<TControl>;
     Images: TList<TAtlasIssueImageBox>;
     Docs: TList<TAtlasIssueDocBox>;
+    /// <summary>Behälter für Place: nil = Bildlauf, sonst eine Karte (Kopf, Kommentar).</summary>
+    Target: TAtlasIssueCard;
+    /// <summary>Kopf mit Kennung, Titel und Abzeichen.</summary>
+    Head: TAtlasIssueCard;
     KeyLabel: TLabel;
     TitleLabel: TLabel;
     Badges: TAtlasIssueBadgeBar;
@@ -309,6 +320,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Links,
+  Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Strings;
 
 {$R *.dfm}
@@ -324,6 +336,11 @@ type
 const
   cToolTag = 1;
   cContentTag = 100;
+  /// <summary>Deckkraft der Schrift über der Fläche für den Kopf und die Kommentarkarten.</summary>
+  cHeadFill = 0.07;
+  cCardFill = 0.04;
+  /// <summary>Höhe der Knöpfe in der Werkzeugleiste bei 96 dpi.</summary>
+  cToolHeight = 26;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -367,11 +384,10 @@ end;
 function AddTool(AFrame: TAtlasIssueFrame; const ACaption: string; ATool: TIssueTool): TButton;
 begin
   Result := TButton.Create(AFrame);
+  // Reihenfolge wie angelegt: Die Leiste reiht in der Reihenfolge der Kinder.
   Result.Parent := AFrame.FParts.Tools;
-  Result.Align := alLeft;
   Result.AlignWithMargins := True;
-  // Reihenfolge wie angelegt: hinter den bisherigen.
-  Result.Left := AFrame.FParts.Tools.ControlCount * 200;
+  Result.Height := Result.ScaleValue(cToolHeight);
   Result.Caption := ACaption;
   Result.ShowHint := True;
   Result.Width := Result.ScaleValue(Max(80, Length(ACaption) * 8));
@@ -395,12 +411,14 @@ end;
 /// <summary>Werkzeugleiste: Zurück, Vor, Beginnen, Beenden, Browser, Kennung, Anhängen, Aktualisieren.</summary>
 procedure AddToolbar(AFrame: TAtlasIssueFrame);
 begin
-  AFrame.FParts.Tools := TPanel.Create(AFrame);
+  AFrame.FParts.Tools := TFlowPanel.Create(AFrame);
+  AFrame.FParts.Tools.Height := AFrame.FParts.Tools.ScaleValue(32);
   AFrame.FParts.Tools.Parent := AFrame;
   AFrame.FParts.Tools.Align := alTop;
   AFrame.FParts.Tools.BevelOuter := bvNone;
-  AFrame.FParts.Tools.Height := AFrame.FParts.Tools.ScaleValue(32);
   AFrame.FParts.Tools.ShowCaption := False;
+  // Schmales Fenster: Knöpfe in die nächste Zeile statt abgeschnitten.
+  AFrame.FParts.Tools.AutoSize := True;
   AFrame.FParts.Back := AddTool(AFrame, '◀', TIssueTool.Back);
   AFrame.FParts.Back.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBack);
   AFrame.FParts.Back.Width := AFrame.FParts.Back.ScaleValue(32);
@@ -531,7 +549,7 @@ begin
   AFrame.FParts.Scroll.HorzScrollBar.Visible := False;
   AFrame.FParts.Scroll.Padding.SetBounds(8, 4, 8, 8);
   AFrame.FParts.Scroll.OnMouseWheel := AFrame.ScrollWheel;
-  AFrame.FParts.Empty := TLabel.Create(AFrame);
+  AFrame.FParts.Empty := TAtlasWrapLabel.Create(AFrame);
   AFrame.FParts.Empty.Parent := AFrame.FParts.Scroll;
   AFrame.FParts.Empty.Align := alTop;
   AFrame.FParts.Empty.AlignWithMargins := True;
@@ -555,16 +573,58 @@ procedure Place(AFrame: TAtlasIssueFrame; AControl: TControl);
 begin
   // Untereinander in der Reihenfolge des Anlegens: alTop ordnet nach Top.
   Inc(AFrame.FContent.NextTop, 1000);
-  AControl.Parent := AFrame.FParts.Scroll;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
   AControl.Top := AFrame.FContent.NextTop;
+  if AFrame.FContent.Target <> nil then
+  begin
+    // Die Karte gibt ihre Kinder mit sich frei: nicht in Controls.
+    AControl.Parent := AFrame.FContent.Target;
+    Exit;
+  end;
+  AControl.Parent := AFrame.FParts.Scroll;
   AFrame.FContent.Controls.Add(AControl);
+end;
+
+/// <summary>Farben für Inhalt an der Stelle von Place: in einer Karte deren Fläche statt Surface.</summary>
+function ContentColors(AFrame: TAtlasIssueFrame): TAtlasColors;
+begin
+  Result := AFrame.FColors;
+  if AFrame.FContent.Target <> nil then
+  begin
+    Result.Surface := AFrame.FContent.Target.Fill;
+  end;
+end;
+
+/// <summary>Neue Karte im Bildlauf; Place legt danach in ihr ab, bis EndCard.</summary>
+function BeginCard(AFrame: TAtlasIssueFrame; AFillAlpha: Double): TAtlasIssueCard;
+begin
+  Result := TAtlasIssueCard.Create(AFrame);
+  Place(AFrame, Result);
+  Result.SetColors(TAtlasColorMath.Mix(AFrame.FColors.Text, AFrame.FColors.Surface, AFillAlpha),
+    AFrame.FColors.Line);
+  AFrame.FContent.Target := Result;
+end;
+
+procedure EndCard(AFrame: TAtlasIssueFrame);
+begin
+  AFrame.FContent.Target := nil;
+end;
+
+/// <summary>Überschrift eines Abschnitts mit Linie.</summary>
+procedure AddSection(AFrame: TAtlasIssueFrame; const ACaption: string);
+var
+  mHead: TAtlasIssueSectionHead;
+begin
+  mHead := TAtlasIssueSectionHead.Create(AFrame);
+  Place(AFrame, mHead);
+  mHead.Caption := ACaption;
+  mHead.SetColors(ContentColors(AFrame));
 end;
 
 function AddLabel(AFrame: TAtlasIssueFrame; const ACaption: string; ABold: Boolean): TLabel;
 begin
-  Result := TLabel.Create(AFrame);
+  Result := TAtlasWrapLabel.Create(AFrame);
   Place(AFrame, Result);
   Result.WordWrap := True;
   Result.ShowAccelChar := False;
@@ -642,7 +702,7 @@ function AddDocBox(AFrame: TAtlasIssueFrame; const ASegment: TAtlasMarkdownSegme
 begin
   Result := TAtlasIssueDocBox.Create(AFrame);
   Place(AFrame, Result);
-  Result.SetDoc(ASegment.Doc, AFrame.FColors, AFrame.FMono);
+  Result.SetDoc(ASegment.Doc, ContentColors(AFrame), AFrame.FMono);
   Result.OnLink :=
     procedure(AUrl: string)
     begin
@@ -685,7 +745,7 @@ begin
   begin
     mImage.Alt := ASegment.Image.Url;
   end;
-  mImage.Colors := AFrame.FColors;
+  mImage.Colors := ContentColors(AFrame);
   mImage.Tag := cContentTag + Ord(TIssueContent.Image);
   mImage.OnEnlarge := AFrame.ControlClick;
   AFrame.FContent.Images.Add(mImage);
@@ -795,7 +855,7 @@ begin
   end;
   AFrame.FContent.Badges := TAtlasIssueBadgeBar.Create(AFrame);
   Place(AFrame, AFrame.FContent.Badges);
-  AFrame.FContent.Badges.SetBadges(mTexts, mHints, AFrame.FColors);
+  AFrame.FContent.Badges.SetBadges(mTexts, mHints, ContentColors(AFrame));
 end;
 
 /// <summary>Kennung (mit Fortschritt der Checkliste, #1273), Titel und Abzeichen.</summary>
@@ -805,6 +865,7 @@ var
   mDetails: TAtlasTrackerDetails;
 begin
   mDetails := AFrame.FState.Details;
+  AFrame.FContent.Head := BeginCard(AFrame, cHeadFill);
   AFrame.FContent.ProgressText := AProgress.Text;
   if AFrame.FContent.ProgressText <> '' then
   begin
@@ -826,6 +887,7 @@ begin
   AFrame.FContent.TitleLabel.Font.Color := ToColor(AFrame.FColors.Text);
   AFrame.FContent.TitleLabel.Font.Height := MulDiv(AFrame.Font.Height, 13, 10);
   AddBadges(AFrame);
+  EndCard(AFrame);
 end;
 
 /// <summary>Beschreibung; mit issues.preview.checklists aus die Aufgabenlisten als Text wie geschrieben.</summary>
@@ -838,6 +900,7 @@ begin
   begin
     mTasks := TAtlasMarkdownTasks.Clickable;
   end;
+  AddSection(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewDescription));
   if Trim(AFrame.FState.Details.Description) = '' then
   begin
     AddMuted(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoDescription), False);
@@ -879,6 +942,7 @@ var
   mHead: TLabel;
 begin
   mHead := AddLabel(AFrame, AComment.Author + ' · ' + AgeText(AFrame, AComment.Created), True);
+  mHead.Font.Color := ToColor(AFrame.FColors.Muted);
   mHead.Hint := TAtlasIssueTimeText.Absolute(AComment.Created);
   mHead.ShowHint := True;
   if AIndex = AAnchor then
@@ -911,8 +975,7 @@ begin
   begin
     Exit;
   end;
-  AddMuted(AFrame, AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewComments,
-    [Length(mComments)])), True);
+  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewComments, [Length(mComments)]));
   mAnchor := TAtlasIssuePreview.CommentAt(mComments, AFrame.FState.Anchor);
   // Der neue Kommentar einer Meldung liegt bei den eingeklappten: aufklappen.
   if (mAnchor >= 0) and
@@ -924,8 +987,10 @@ begin
   AddOlder(AFrame, mCollapsed);
   for mIndex := mCollapsed to High(mComments) do
   begin
+    BeginCard(AFrame, cCardFill);
     AddCommentHead(AFrame, mComments[mIndex], mIndex, mAnchor);
     AddMarkdown(AFrame, mComments[mIndex].Text, mTasks);
+    EndCard(AFrame);
   end;
 end;
 
@@ -951,8 +1016,7 @@ begin
   begin
     Exit;
   end;
-  AddMuted(AFrame, AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachments,
-    [Length(mAttachments)])), True);
+  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachments, [Length(mAttachments)]));
   mList := AddList(AFrame, TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnSize)), TIssueContent.Attachment);
   mList.Items.BeginUpdate;
@@ -998,8 +1062,7 @@ begin
   begin
     Exit;
   end;
-  AddMuted(AFrame, AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewLinks, [Length(mLinks)])),
-    True);
+  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewLinks, [Length(mLinks)]));
   mList := AddList(AFrame, TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnKey),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnTitle),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnRelation)), TIssueContent.Link);
@@ -1114,8 +1177,8 @@ begin
   begin
     Exit;
   end;
-  AddMuted(AFrame, AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksCaption,
-    [Length(AFrame.FState.Details.Links)])), True);
+  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksCaption,
+    [Length(AFrame.FState.Details.Links)]));
   if mWrite then
   begin
     AddLinkTools(AFrame);
@@ -1640,14 +1703,19 @@ end;
 /// der Anker seinen Zweck erfüllt.</summary>
 procedure RevealAnchor(AFrame: TAtlasIssueFrame);
 var
-  mLabel: TLabel;
+  mItem: TControl;
 begin
-  mLabel := AFrame.FContent.AnchorLabel;
-  if mLabel = nil then
+  mItem := AFrame.FContent.AnchorLabel;
+  if mItem = nil then
   begin
     Exit;
   end;
-  AFrame.FParts.Scroll.VertScrollBar.Position := mLabel.Top - mLabel.Margins.Top;
+  // Der Kopf liegt in der Karte des Kommentars: zur Karte blättern.
+  while (mItem.Parent <> nil) and (mItem.Parent <> AFrame.FParts.Scroll) do
+  begin
+    mItem := mItem.Parent;
+  end;
+  AFrame.FParts.Scroll.VertScrollBar.Position := mItem.Top - mItem.Margins.Top;
   if AFrame.FState.Details.Comments[AFrame.FContent.AnchorComment].Created >=
     AFrame.FState.Anchor - TAtlasIssuePreview.cAnchorSlackMs / MSecsPerDay then
   begin

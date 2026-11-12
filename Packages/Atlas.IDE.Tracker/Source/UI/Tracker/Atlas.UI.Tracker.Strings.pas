@@ -173,7 +173,8 @@ type
     SettingsIssuesPathsAdd, SettingsIssuesPathsCheck, SettingsIssuesPathsSuggest, SettingsIssuesPathsChecking,
     SettingsIssuesPathsFound, SettingsIssuesPathsNone, SettingsIssuesPathsHint, SuggestTitle, SuggestIntro,
     SuggestColumnPath, SuggestColumnKind, SuggestColumnWhy, SuggestWhyProject, SuggestWhyExternal, SuggestWhySubmodule,
-    SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching);
+    SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
+    IssuePreviewDescription);
 
   TAtlasTrackerStrings = class
   public
@@ -939,7 +940,8 @@ const
      'Worktree desselben Repositorys',
      'Nichts gefunden – Ordner selbst wählen …',
      'Übernehmen',
-     'Suche Arbeitskopien …'),
+     'Suche Arbeitskopien …',
+     'Beschreibung'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1684,7 +1686,8 @@ const
      'Worktree of the same repository',
      'Nothing found – choose folder…',
      'Apply',
-     'Searching working copies…'));
+     'Searching working copies…',
+     'Description'));
 
 { TAtlasTrackerStrings }
 
