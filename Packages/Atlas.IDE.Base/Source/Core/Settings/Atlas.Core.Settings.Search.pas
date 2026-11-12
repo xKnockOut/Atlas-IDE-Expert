@@ -350,10 +350,37 @@ begin
   end;
 end;
 
+const
+  /// <summary>Kürzere Wortteile vergleicht die Tippfehlersuche nicht.</summary>
+  cMinTypoPartLength = 3;
+
+/// <summary>Tippfehlerwertung für einen Wortteil: ganzes Wort oder sein gleich langer Anfang
+/// („minimpa“ → „minimap“, „hovr“ → „hover…“); 0 ohne Treffer.</summary>
+function PartTypoScore(const AWord, APart: string; ALimit: Integer): Integer;
+var
+  mHead: string;
+begin
+  Result := 0;
+  if Length(APart) < cMinTypoPartLength then
+  begin
+    Exit;
+  end;
+  mHead := Copy(APart, 1, Length(AWord));
+  if SwappedOnce(AWord, APart) or SwappedOnce(AWord, mHead) then
+  begin
+    Result := TAtlasSettingsSearch.cScoreSwap;
+  end
+  else if (TTextFuzzy.EditDistance(AWord, APart, ALimit) <= ALimit) or
+    (TTextFuzzy.EditDistance(AWord, mHead, ALimit) <= ALimit) then
+  begin
+    Result := TAtlasSettingsSearch.cScoreTypo;
+  end;
+end;
+
 class function TAtlasSettingsSearch.TypoScore(const AWord: string; const ATexts: TArray<string>): Integer;
 var
   mText, mPart: string;
-  mLimit: Integer;
+  mLimit, mScore: Integer;
 begin
   Result := 0;
   if Length(AWord) < 4 then
@@ -369,19 +396,14 @@ begin
   begin
     for mPart in SplitWords(mText) do
     begin
-      // Ganzes Wort oder sein gleich langer Anfang („minimpa“ → „minimap“, „hovr“ → „hover…“).
-      if Length(mPart) < 3 then
-      begin
-        Continue;
-      end;
-      if SwappedOnce(AWord, mPart) or SwappedOnce(AWord, Copy(mPart, 1, Length(AWord))) then
+      mScore := PartTypoScore(AWord, mPart, mLimit);
+      if mScore = cScoreSwap then
       begin
         Exit(cScoreSwap);
       end;
-      if (TTextFuzzy.EditDistance(AWord, mPart, mLimit) <= mLimit) or
-        (TTextFuzzy.EditDistance(AWord, Copy(mPart, 1, Length(AWord)), mLimit) <= mLimit) then
+      if mScore > Result then
       begin
-        Result := cScoreTypo;
+        Result := mScore;
       end;
     end;
   end;

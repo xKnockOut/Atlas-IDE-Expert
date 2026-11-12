@@ -19,14 +19,19 @@ Keine neuen Funktionen mehr.
 - Optionen je Package mit Übersicht und Suche, Einstellungen beim Eigentümer (#1903).
 - Versionsverwaltung und KI-Assistenten ganz in ihren Modulen (#1905, #1906 erster Teil).
 
-## 2.1: Editor, Navigation und Formular-Designer
+## 2.1.0: Editor, Navigation und Formular-Designer
 
 - Lernende Schattentext-Vorschläge aus dem eigenen Code (#1890).
-- Brotkrumen: #1759, #1760, #1763 bis #1769, #1784 bis #1787.
+- Brotkrumen: #1759, #1760, #1763 bis #1769, #1784 bis #1787; Hover mit Parametern und Unit-Inhalt (#1919, #1921).
 - Bedienung und IDE-Einbindung: #1884 (Einstellungen durchsuchen), #1889 (Maustasten Zurück/Vor), #1886 (F1-Hilfe),
   #1817, #1818, #1819, #1821, #1822.
-- Formular-Designer: zuerst die Machbarkeit von Rückgängig (#1887), dann #603, #539, #606 bis #608, #729, #731, #738,
-  #745, #748, #750; die übrige Designer-Reihe #726 bis #749 als zweite Welle.
+- Formular-Designer: die ganze Reihe #511, #524, #539, #603, #605 bis #612, #726 bis #750, dazu Rückgängig (#1887,
+  experimentell).
+- Dazugekommen: Issue-Tracker mit Projektwahl, Arbeitskopien und YouTrack-Ablauf (#1926 bis #1929, #2052, #2122 bis
+  #2128), AtlasMonitor (#1900, #1901), Methode extrahieren mit gleichen Stellen (#2054), gemeinsame Dialogbasis
+  (#2061 bis #2065), neue Prüfregeln.
+- Nicht begonnen und nach 2.2 verschoben: #2079 (Designer-Layout), #2107 bis #2109 (Vervollständigung), #2134 bis
+  #2138 (GitHub im Tracker).
 
 ## 2.2: Debuggen, Testen und Lecks
 

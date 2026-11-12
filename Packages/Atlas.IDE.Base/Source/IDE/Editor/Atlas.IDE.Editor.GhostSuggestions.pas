@@ -395,7 +395,8 @@ var
   mProvider: IAtlasGhostProvider;
   mWork: TAtlasGhostWork;
   mWorks: TArray<TAtlasGhostWork>;
-  mProviders: TArray<IAtlasGhostProvider>;
+  mProviders, mAll: TArray<IAtlasGhostProvider>;
+  mCount: Integer;
 begin
   mAsked := FPending;
   FPending := Default(TAsked);
@@ -407,9 +408,11 @@ begin
   // Stand beim Fragen: Die Einrückung beim Tippen kann die Zeile nach Enter noch geändert haben.
   mAsked := AskedOf(mView, mAsked.Line);
   mContext := ContextOf(mView, mAsked);
-  mWorks := nil;
-  mProviders := nil;
-  for mProvider in TAtlasGhostProviders.List do
+  mAll := TAtlasGhostProviders.List;
+  SetLength(mWorks, Length(mAll));
+  SetLength(mProviders, Length(mAll));
+  mCount := 0;
+  for mProvider in mAll do
   begin
     if not mProvider.Enabled then
     begin
@@ -418,13 +421,15 @@ begin
     mWork := mProvider.Prepare(mContext);
     if Assigned(mWork) then
     begin
-      // Nicht mWorks + [mWork]: Delphi ruft die Methodenreferenz im Array-Literal auf (E2035).
-      SetLength(mWorks, Length(mWorks) + 1);
-      mWorks[High(mWorks)] := mWork;
-      mProviders := mProviders + [mProvider];
+      // Zuweisen statt mWorks + [mWork]: Delphi ruft die Methodenreferenz im Array-Literal auf (E2035).
+      mWorks[mCount] := mWork;
+      mProviders[mCount] := mProvider;
+      Inc(mCount);
     end;
   end;
-  if mWorks <> nil then
+  SetLength(mWorks, mCount);
+  SetLength(mProviders, mCount);
+  if mCount > 0 then
   begin
     Start(mAsked, mWorks, mProviders);
   end;
