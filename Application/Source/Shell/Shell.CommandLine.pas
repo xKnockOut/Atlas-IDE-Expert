@@ -216,6 +216,9 @@ type
     /// <summary>Befehl eines Laufs ohne Editor für die Statusdatei (#1901): check, fix, format-check, format-write,
     /// metrics, todos, architecture, affected-tests, query, hotspots; '' für LSP- und MCP-Server.</summary>
     function RunCommand: string;
+    /// <summary>Alle Schalter, die Parse kennt; AtlasMonitor (#1900) prüft damit, dass er jeden anbietet oder
+    /// bewusst auslässt.</summary>
+    class function Switches: TArray<string>; static;
   end;
 
 implementation
@@ -731,6 +734,32 @@ begin
   else
   begin
     Result := '';
+  end;
+end;
+
+class function TCommandLineOptions.Switches: TArray<string>;
+var
+  mOptions: TCommandLineOptions;
+  mTables: TOptionTables;
+  mString: TStringOption;
+  mFlag: TFlagOption;
+  mValue: TValueOption;
+begin
+  mOptions := Default(TCommandLineOptions);
+  mTables := OptionTables(mOptions);
+  // Schalter mit optionalem Wert (ApplyOptional) und --stdio, das Parse übergeht.
+  Result := TArray<string>.Create('--changed', '--affected-tests', '--timings', '--stdio');
+  for mString in mTables.Strings do
+  begin
+    Result := Result + [mString.Name];
+  end;
+  for mFlag in mTables.Flags do
+  begin
+    Result := Result + [mFlag.Name];
+  end;
+  for mValue in mTables.Values do
+  begin
+    Result := Result + [mValue.Name];
   end;
 end;
 

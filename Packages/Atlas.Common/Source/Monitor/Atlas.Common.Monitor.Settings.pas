@@ -3,14 +3,15 @@
 // Einstellungen von AtlasMonitor (#1901) in einer eigenen Datei des Programms, %APPDATA%\Atlas\monitor.json:
 // monitor.trayIcon (Symbol im Infobereich, Vorgabe an) und monitor.startWithWindows (Vorgabe aus). Lesen ist
 // nachsichtig: Fehlt die Datei oder ein Schlüssel, gilt die Vorgabe; unbekannte Schlüssel bleiben beim Speichern
-// erhalten, damit spätere Teile (Prüffenster, #1900) dieselbe Datei nutzen. Dazu die Sprache des Programms:
-// --locale, sonst language aus settings.json, sonst die Sprache von Windows.
+// erhalten. Der Abschnitt "check" hält den Stand des Prüffensters (#1900: Ziele, Befehl, Optionen, Editor). Dazu die
+// Sprache des Programms: --locale, sonst language aus settings.json, sonst die Sprache von Windows.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Monitor.Targets;
 
 type
   TMonitorSettings = record
@@ -19,6 +20,8 @@ type
   public
     TrayIcon: Boolean;
     StartWithWindows: Boolean;
+    /// <summary>Stand des Prüffensters (#1900).</summary>
+    Check: TMonitorCheckState;
     class function Defaults: TMonitorSettings; static;
     /// <summary>Einstellungen aus dem Text einer monitor.json; Vorgaben für fehlende oder ungültige Werte.</summary>
     class function FromText(const AText: string): TMonitorSettings; static;
@@ -46,6 +49,7 @@ const
   cSection = 'monitor';
   cTrayIcon = 'trayIcon';
   cStartWithWindows = 'startWithWindows';
+  cCheck = 'check';
 
 /// <summary>JSON-Objekt aus AText; ein leeres, wenn der Text kein Objekt ist. Gehört dem Aufrufer.</summary>
 function ObjectOf(const AText: string): TJSONObject;
@@ -73,6 +77,7 @@ begin
   Result := Default(TMonitorSettings);
   Result.TrayIcon := True;
   Result.StartWithWindows := False;
+  Result.Check := TMonitorCheckState.Defaults;
 end;
 
 class function TMonitorSettings.FromText(const AText: string): TMonitorSettings;
@@ -85,6 +90,7 @@ begin
     mSection := TJsonRead.Obj(mRoot, cSection);
     Result.TrayIcon := TJsonRead.FlagOr(mSection, cTrayIcon, Result.TrayIcon);
     Result.StartWithWindows := TJsonRead.FlagOr(mSection, cStartWithWindows, Result.StartWithWindows);
+    Result.Check := TMonitorCheckState.FromJson(TJsonRead.Obj(mRoot, cCheck));
   finally
     mRoot.Free;
   end;
@@ -112,6 +118,8 @@ begin
     end;
     PutFlag(mSection, cTrayIcon, TrayIcon);
     PutFlag(mSection, cStartWithWindows, StartWithWindows);
+    mRoot.RemovePair(cCheck).Free;
+    mRoot.AddPair(cCheck, Check.ToJson);
     Result := mRoot.Format(2);
   finally
     mRoot.Free;

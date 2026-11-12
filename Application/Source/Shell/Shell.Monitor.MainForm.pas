@@ -1,6 +1,7 @@
 ﻿unit Shell.Monitor.MainForm;
 
-// Host-Rolle Shell von AtlasMonitor (#1901): Fenster mit dem Reiter „Server“ (alle laufenden Atlas-Server aus
+// Host-Rolle Shell von AtlasMonitor (#1900, #1901): Fenster mit dem Reiter „Prüfen“ (Läufe ohne IDE über mehrere
+// Ziele, Shell.Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus
 // ihren Statusdateien, Einzelheiten, Beenden, Protokoll öffnen) und Symbol im Infobereich mit Zustandspunkt
 // (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List; Regeln und
 // Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich schließt
@@ -22,7 +23,8 @@ uses
   Vcl.Menus,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Monitor.Servers,
-  Atlas.Common.Monitor.Settings;
+  Atlas.Common.Monitor.Settings,
+  Shell.Monitor.CheckPage;
 
 type
   TAtlasMonitorForm = class(TForm)
@@ -33,6 +35,7 @@ type
     FEntries: TArray<TServerStatusEntry>;
     FPages: TPageControl;
     FServerTab: TTabSheet;
+    FCheckPage: TMonitorCheckPage;
     FServerList: TListView;
     FDetails: TMemo;
     FTimer: TTimer;
@@ -73,6 +76,8 @@ type
     function Confirm(const AText: string): Boolean;
     procedure Inform(const AText: string);
     function LogFolder: string;
+    function InformProc: TProc<string>;
+    function ConfirmFunc: TMonitorConfirm;
   protected
     procedure CreateWnd; override;
     procedure WndProc(var AMessage: TMessage); override;
@@ -183,8 +188,8 @@ var
 begin
   inherited CreateNew(AOwner);
   Caption := TMonitorTexts.Text(TMonitorText.Caption);
-  Width := Px(900);
-  Height := Px(520);
+  Width := Px(1180);
+  Height := Px(720);
   Position := poScreenCenter;
   OnCloseQuery := FormCloseQuery;
   FStatusRoot := TIndexCacheDirectory.DefaultRoot;
@@ -196,6 +201,7 @@ begin
   end;
   BuildMenus;
   BuildServerTab;
+  FCheckPage := TMonitorCheckPage.Create(Self, FPages, FSettings.Check, FStatusRoot, InformProc(), ConfirmFunc());
   BuildTray;
   // Die Einstellung gilt: ein fehlender oder veralteter Eintrag (Programm verschoben) wird nachgezogen.
   ApplyAutostart(FSettings.StartWithWindows);
@@ -213,6 +219,13 @@ begin
   if FTray <> nil then
   begin
     FTray.Visible := False;
+  end;
+  // Stand des Prüffensters für den nächsten Start; ein Fehler beim Speichern bleibt hier still.
+  if FCheckPage <> nil then
+  begin
+    FCheckPage.CancelRuns;
+    FSettings.Check := FCheckPage.State;
+    FSettings.Save(FSettingsFile);
   end;
   for mHealth := Low(TMonitorHealth) to High(TMonitorHealth) do
   begin
@@ -336,6 +349,7 @@ begin
   if (FServerTab <> nil) and not FServerTab.TabVisible then
   begin
     FServerTab.TabVisible := True;
+    FCheckPage.Activate;
     FPages.ActivePage := FServerTab;
   end;
 end;
@@ -525,6 +539,24 @@ begin
   Application.MessageBox(PChar(AText), PChar(Caption), MB_OK or MB_ICONINFORMATION);
 end;
 
+function TAtlasMonitorForm.InformProc: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Inform(AText);
+    end;
+end;
+
+function TAtlasMonitorForm.ConfirmFunc: TMonitorConfirm;
+begin
+  Result :=
+    function(const AText: string): Boolean
+    begin
+      Result := Confirm(AText);
+    end;
+end;
+
 procedure TAtlasMonitorForm.StopSelectedClick(ASender: TObject);
 var
   mEntry: TServerStatusEntry;
@@ -593,6 +625,7 @@ end;
 
 procedure TAtlasMonitorForm.SaveSettings;
 begin
+  FSettings.Check := FCheckPage.State;
   if not FSettings.Save(FSettingsFile) then
   begin
     Inform(TMonitorTexts.Fmt(TMonitorText.SaveFailed, [FSettingsFile]));
@@ -634,6 +667,9 @@ procedure TAtlasMonitorForm.FormCloseQuery(ASender: TObject; var ACanClose: Bool
 begin
   if FQuitting or not FSettings.TrayIcon then
   begin
+    // Beim Beenden laufen keine Kindprozesse weiter; laufende Befehle erst nach Rückfrage abbrechen.
+    ACanClose := not FCheckPage.Busy or Confirm(TMonitorTexts.Text(TMonitorText.ConfirmQuitRunning));
+    FQuitting := FQuitting and ACanClose;
     Exit;
   end;
   // Mit Symbol im Infobereich schließt das Kreuz nur das Fenster.

@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
@@ -211,7 +212,7 @@ begin
   end;
   mKnown := FHeads.TryGetValue(mKey, AHead);
   Result := mKnown and (AHead.Tick > 0);
-  if FStopped or (mKnown and (AHead.Querying or (GetTickCount64 - AHead.Tick < cHeadCacheMs))) then
+  if FStopped or (mKnown and (AHead.Querying or (GetTickCount64 - AHead.Tick < TAtlasIdeTrackerWorkingCopies.cHeadCacheMs))) then
   begin
     Exit;
   end;

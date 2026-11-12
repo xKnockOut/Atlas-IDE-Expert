@@ -2888,6 +2888,19 @@
       "x-node": "rules.window",
       "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus."
     },
+    "ProblemsIdeErrors": {
+      "type": "boolean",
+      "default": false,
+      "description": "Nach jeder Prüfung einer Datei die Fehler der IDE (Error Insight) abfragen und im Fenster „Atlas-Prüfung“ neben die Atlas-Befunde stellen: Spalte und Filter „Quelle“ (Atlas und IDE, nur Atlas, nur IDE). Befunde „nur Atlas“ der Regeln für undeklarierte Bezeichner und unbekannte Typen gehen ohne Namen ins Protokoll. Braucht das Modul Prüfregeln.",
+      "x-key": "problems.ideErrors",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-node": "rules.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Fehler der IDE (Error Insight) neben die Atlas-Befunde stellen",
+      "x-captionEn": "Show IDE errors (Error Insight) next to the Atlas findings",
+      "x-issue": "#1819"
+    },
     "HoverProblemActions": {
       "type": "boolean",
       "default": true,
@@ -7386,6 +7399,24 @@
       "x-key": "welcomePage.continue.fetch",
       "x-area": "welcome",
       "x-page": "Willkommensseite"
+    },
+    "WelcomePageContinueIssues": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.continue.issues",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
+    "WelcomePageContinueIssuesCount": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 30,
+      "x-key": "welcomePage.continue.issues.count",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
     },
     "WelcomePageSaved": {
       "type": "boolean",

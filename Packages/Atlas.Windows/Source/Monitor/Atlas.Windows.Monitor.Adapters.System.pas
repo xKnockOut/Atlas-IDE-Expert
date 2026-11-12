@@ -3,7 +3,7 @@
 // Platform-Feature "Monitor" (#1901), Adapter: was AtlasMonitor vom System braucht. Läuft ein Prozess noch, ist er
 // ein AtlasServer (nur solche beendet der Monitor, eine wiederverwendete Prozessnummer bleibt unberührt), Prozess
 // beenden, Sprache der Oberfläche von Windows, Autostart über HKCU\...\Run und Ordner bzw. Datei mit dem
-// zugeordneten Programm öffnen.
+// zugeordneten Programm öffnen, ein Programm mit Befehlszeile starten (Editor für einen Befund, #1900).
 
 interface
 
@@ -30,6 +30,9 @@ type
     class function SetStartWithWindows(AEnabled: Boolean; const ACommandLine: string): Boolean; static;
     /// <summary>Öffnet AFileName (Datei oder Ordner) mit dem zugeordneten Programm; False, wenn es fehlt.</summary>
     class function OpenFile(const AFileName: string): Boolean; static;
+    /// <summary>Startet ACommandLine (Programm mit Argumenten) sichtbar, ohne zu warten; False, wenn es nicht startet.
+    /// </summary>
+    class function Launch(const ACommandLine: string): Boolean; static;
   end;
 
 implementation
@@ -160,6 +163,25 @@ class function TMonitorSystem.OpenFile(const AFileName: string): Boolean;
 begin
   Result := (AFileName <> '') and (FileExists(AFileName) or DirectoryExists(AFileName)) and
     (ShellExecute(0, 'open', PChar(AFileName), nil, nil, SW_SHOWNORMAL) > 32);
+end;
+
+class function TMonitorSystem.Launch(const ACommandLine: string): Boolean;
+var
+  mStartup: TStartupInfo;
+  mInfo: TProcessInformation;
+  mCommandLine: string;
+begin
+  FillChar(mStartup, SizeOf(mStartup), 0);
+  mStartup.cb := SizeOf(mStartup);
+  mCommandLine := ACommandLine;
+  UniqueString(mCommandLine);
+  Result := (mCommandLine <> '') and CreateProcess(nil, PChar(mCommandLine), nil, nil, False, 0, nil, nil, mStartup,
+    mInfo);
+  if Result then
+  begin
+    CloseHandle(mInfo.hThread);
+    CloseHandle(mInfo.hProcess);
+  end;
 end;
 
 end.

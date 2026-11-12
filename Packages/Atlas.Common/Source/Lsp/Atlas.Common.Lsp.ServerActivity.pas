@@ -112,6 +112,12 @@ begin
   FRuns := TDictionary<TThreadID, TRun>.Create;
   FStarted := Now;
   FEnabled := True;
+  // TMonitor legt seinen Datensatz beim ersten Enter an und hält ihn bis zur Freigabe: gleich hier anlegen, damit
+  // er bei Shared zur Unit-Initialisierung gehört und nicht der ersten Anfrage (bzw. dem ersten Test) zufällt.
+  System.TMonitor.Enter(FLock);
+  System.TMonitor.Exit(FLock);
+  System.TMonitor.Enter(FDetailsLock);
+  System.TMonitor.Exit(FDetailsLock);
 end;
 
 destructor TServerActivity.Destroy;

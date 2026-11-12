@@ -31,6 +31,9 @@
 // voll bedienbar. Trennzeilen lassen sich nicht wählen; ↑/↓ springen über sie.
 // Wechselt die aktive Unit, bleibt die Auswahl sichtbar, ohne Auswahl steht
 // die oberste Zeile oben.
+// Fehler der IDE (#1819, problems.ideErrors): Mit ShowIdeErrors gibt es die
+// Spalte „Quelle“ (Atlas, Atlas + IDE, IDE) und rechts neben dem Textfilter
+// die Auswahl „Atlas und IDE“, „nur Atlas“, „nur IDE“; ohne fehlen beide.
 // Die DFM ist leer, weil TCustomFrame.Create für abgeleitete Frames eine
 // Ressource verlangt; aufgebaut wird im Code.
 
@@ -114,6 +117,8 @@ type
     FGrouping: TComboBox;
     FOpenFirst: TSpeedButton;
     FFilter: TEdit;
+    /// <summary>Filter „Quelle“ (#1819); nur mit ShowIdeErrors sichtbar.</summary>
+    FOrigin: TComboBox;
     FLive: TLabel;
     FList: TListView;
     FEmpty: TLabel;
@@ -124,6 +129,7 @@ type
     /// <summary>Einträge der Auswahllisten; gefüllt erst mit Fenster (CreateWnd).</summary>
     FCategoryTexts: TArray<string>;
     FGroupingTexts: TArray<string>;
+    FOriginTexts: TArray<string>;
     function AddMenuItem(AParent: TMenuItem; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
     function AddCombo(AWidth: Integer): TComboBox;
     procedure FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
@@ -142,6 +148,7 @@ type
     property GroupingBox: TComboBox read FGrouping;
     property OpenFirstButton: TSpeedButton read FOpenFirst;
     property FilterEdit: TEdit read FFilter;
+    property OriginBox: TComboBox read FOrigin;
     property LiveLabel: TLabel read FLive;
     property StatusLabel: TLabel read FStatus;
     property EmptyLabel: TLabel read FEmpty;
@@ -162,6 +169,7 @@ type
     FOrderHandle: HWND;
     FUpdating: Boolean;
     FShowCompilerCode: Boolean;
+    FShowIdeErrors: Boolean;
     /// <summary>Fläche, für die die ausgegrauten Symbole gebaut sind.</summary>
     FImagesBack: TColor;
     procedure BuildImages;
@@ -170,6 +178,9 @@ type
     procedure DrawSection(ACanvas: TCanvas; AItem: TListItem; const ARow: TAtlasFindingRow);
     procedure BuildColumns;
     procedure SetShowCompilerCode(AValue: Boolean);
+    procedure SetShowIdeErrors(AValue: Boolean);
+    /// <summary>Spalte gerade ausgeschaltet: Compiler ohne ShowCompilerCode, Quelle ohne ShowIdeErrors.</summary>
+    function ColumnSuppressed(AColumn: TAtlasFindingColumn): Boolean;
     /// <summary>Anzeigereihenfolge und Breiten der Liste nach FColumns übernehmen.</summary>
     procedure ReadColumns;
     /// <summary>Hebt die Markierung der virtuellen Liste mit einer Nachricht auf. TCustomListView.ClearSelection
@@ -202,6 +213,9 @@ type
     function Grouping: TAtlasFindingGrouping;
     /// <summary>Compilercodes zeigen (problems.showCompilerCode, #1024; Vorgabe an).</summary>
     property ShowCompilerCode: Boolean read FShowCompilerCode write SetShowCompilerCode;
+    /// <summary>Fehler der IDE abgefragt (problems.ideErrors, #1819; Vorgabe aus): Spalte und Filter „Quelle“.
+    /// </summary>
+    property ShowIdeErrors: Boolean read FShowIdeErrors write SetShowIdeErrors;
   end;
 
   /// <summary>Kontextmenü und Aktionen auf markierten Befunden.</summary>
@@ -327,10 +341,13 @@ uses
 
 const
   /// <summary>Vorgabebreiten bei 96 dpi.</summary>
-  cDefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150, 130);
+  cDefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150, 130, 90);
   /// <summary>Breite der Bereichsliste bei 96 dpi; die Klappliste wird so breit wie der längste Eintrag (#1843).
   /// </summary>
   cScopeWidth = 130;
+  /// <summary>Filter „Quelle“ (#1819): Breite und Abstand zum Textfilter bei 96 dpi.</summary>
+  cOriginWidth = 110;
+  cOriginGap = 4;
   /// <summary>Hervorhebung neuer Einträge.</summary>
   cNewMs = 1500;
   cIconSize = 16;
@@ -443,6 +460,14 @@ begin
   FFilter.TextHint := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsFilterHint);
   FFilter.OnChange := ControlsChanged;
   FFilter.OnKeyDown := FilterKeyDown;
+  // Filter „Quelle“ (#1819): erst mit ShowIdeErrors sichtbar.
+  FOriginTexts := [TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOriginAll),
+    TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOriginAtlas),
+    TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOriginIde)];
+  FOrigin := AddCombo(cOriginWidth);
+  FOrigin.Left := FFilter.Left + FFilter.Width + MulDiv(cOriginGap, CurrentPPI, 96);
+  FOrigin.Visible := False;
+  FOrigin.OnChange := ControlsChanged;
   FLive := TLabel.Create(Self);
   FLive.Parent := FBar;
   FLive.Align := alRight;
@@ -550,6 +575,7 @@ begin
     FScopeBox.Fill;
     FillCombo(FCategory, FCategoryTexts, mCategory);
     FillCombo(FGrouping, FGroupingTexts, Ord(FView.Grouping));
+    FillCombo(FOrigin, FOriginTexts, Ord(FView.Filter.Origin));
   finally
     FUpdating := False;
   end;
@@ -671,6 +697,8 @@ begin
       Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnRule);
     TAtlasFindingColumn.Compiler:
       Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnCompiler);
+    TAtlasFindingColumn.Source:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnSource);
   else
     Result := '';
   end;
@@ -733,8 +761,7 @@ begin
   FShown := [TAtlasFindingColumn.Icon];
   for mState in FColumns do
   begin
-    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) and
-      (FShowCompilerCode or (mState.Column <> TAtlasFindingColumn.Compiler)) then
+    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) and not ColumnSuppressed(mState.Column) then
     begin
       FShown := FShown + [mState.Column];
     end;
@@ -758,7 +785,7 @@ begin
   for mPosition := 0 to High(FColumns) do
   begin
     if not TAtlasFindings.IsMandatory(FColumns[mPosition].Column) and
-      (FShowCompilerCode or (FColumns[mPosition].Column <> TAtlasFindingColumn.Compiler)) then
+      not ColumnSuppressed(FColumns[mPosition].Column) then
     begin
       mItem := AddMenuItem(FColumnsItem, ColumnCaption(FColumns[mPosition].Column), ColumnToggleClick);
       mItem.Checked := FColumns[mPosition].Visible;
@@ -860,6 +887,38 @@ begin
   FShowCompilerCode := AValue;
   BuildColumns;
   Refill;
+end;
+
+procedure TAtlasProblemsFrameList.SetShowIdeErrors(AValue: Boolean);
+var
+  mFilter: TAtlasFindingFilter;
+begin
+  if FShowIdeErrors = AValue then
+  begin
+    Exit;
+  end;
+  ReadColumns;
+  FShowIdeErrors := AValue;
+  FOrigin.Visible := AValue;
+  // Ausgeschaltet: wieder alle Befunde, der Filter steht beim nächsten Einschalten auf „Atlas und IDE“.
+  if not AValue then
+  begin
+    if FOrigin.Items.Count > 0 then
+    begin
+      FOrigin.ItemIndex := 0;
+    end;
+    mFilter := FView.Filter;
+    mFilter.Origin := TAtlasFindingOrigin.All;
+    FView.Filter := mFilter;
+  end;
+  BuildColumns;
+  Refill;
+end;
+
+function TAtlasProblemsFrameList.ColumnSuppressed(AColumn: TAtlasFindingColumn): Boolean;
+begin
+  Result := ((AColumn = TAtlasFindingColumn.Compiler) and not FShowCompilerCode) or
+    ((AColumn = TAtlasFindingColumn.Source) and not FShowIdeErrors);
 end;
 
 procedure TAtlasProblemsFrame.ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping;
@@ -1008,6 +1067,11 @@ begin
     Result.Category := TAtlasFindingCategory(FCategory.ItemIndex - 1);
   end;
   Result.Text := Trim(FFilter.Text);
+  Result.Origin := TAtlasFindingOrigin.All;
+  if FShowIdeErrors and (FOrigin.ItemIndex > 0) then
+  begin
+    Result.Origin := TAtlasFindingOrigin(FOrigin.ItemIndex);
+  end;
 end;
 
 procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
@@ -1250,6 +1314,8 @@ begin
       Result := mFinding.Rule;
     TAtlasFindingColumn.Compiler:
       Result := mFinding.CompilerText;
+    TAtlasFindingColumn.Source:
+      Result := mFinding.SourceText;
   else
     // Symbol: kein Text.
     Result := '';

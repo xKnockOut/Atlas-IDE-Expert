@@ -4,7 +4,7 @@ Back to the [README](../../../README.md)
 
 ## MCP tools
 
-The server offers Claude Code 32 MCP tools:
+The server offers Claude Code 33 MCP tools:
 
 ### Search and understand
 
@@ -37,6 +37,7 @@ Each with preview:
 - rename
 - apply code actions
 - format (`format_code`)
+- extract method, optionally with equal places (`extract_method`)
 - fix all safe findings of rules at once (`fix_findings`)
 
 ### Resource
