@@ -30,6 +30,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeKinds,
   Atlas.Common.Rules.Builtin.TypeMismatch,
   Atlas.Common.Rules.Builtin.CompilerTraps,
+  Atlas.Common.Rules.Builtin.IgnoredResult,
   Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
@@ -60,6 +61,7 @@ begin
   RegisterTypeKindRules(ARegistry);
   RegisterTypeMismatchRules(ARegistry);
   RegisterCompilerTrapRules(ARegistry);
+  RegisterIgnoredResultRules(ARegistry);
   RegisterConditionRules(ARegistry);
   RegisterIdiomRules(ARegistry);
   RegisterInliningRules(ARegistry);

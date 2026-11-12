@@ -57,7 +57,7 @@ Marks move along while typing.
 
 ## Check rules
 
-**328 check rules** in four categories: 215 bugs, 102 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
+**329 check rules** in four categories: 216 bugs, 102 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
 
 ### Correctness
 

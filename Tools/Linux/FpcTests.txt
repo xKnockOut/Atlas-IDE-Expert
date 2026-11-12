@@ -243,6 +243,7 @@ Atlas.Common.Rules.Builtin.Flow.UseAfterFree.Tests
 Atlas.Common.Rules.Builtin.FormFields.Tests
 Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests
 Atlas.Common.Rules.Builtin.General.Tests
+Atlas.Common.Rules.Builtin.IgnoredResult.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests
 Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.Tests
 Atlas.Common.Rules.Builtin.Inheritance.MemberHides.Tests

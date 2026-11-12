@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1098] of string = (
+  cCatalogLinesEnFindBugs: array[0..1116] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -1290,6 +1290,39 @@ const
     '      "bad": "var Average: Double;\n…\nAverage := Sum div Count;",',
     '      "good": "var Average: Double;\n…\nAverage := Sum / Count;",',
     '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "ignored-result",',
+    '      "name": "Result of a function without side effects discarded",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A function without side effects is called as a statement on its own, so its result is lost: Trim(S); does not change S, S.Replace(''a'', ''b''); does not either. Reported are the sta' +
+    'ndard routines listed below (also with the unit in front, SysUtils.Trim), methods of TStringHelper without side effects when the receiver is surely of type string, and the functions from the option pu' +
+    'reFunctions. If name resolution finds the name in a unit outside the RTL, or the file declares a routine of that name itself (an own Trim with a var parameter), the rule stays silent; likewise inside ' +
+    'with blocks. Routines with var or out parameters and routines that raise on bad input on purpose (StrToInt or S.ToInteger used as a check) are not on the list. High confidence. Quick fix \"Assign the ' +
+    'result\": if the function returns the type of its first argument or of the helper receiver (Trim, StringReplace, Copy, S.Replace …) and that is assignable, it becomes S := Trim(S); otherwise a new inl' +
+    'ine variable var Value := … (only directly in a begin … end block and from Delphi 10.3 on). Standard routines by unit: System: Abs, Assigned, Chr, Concat, Copy, Frac, High, Int, Length, Low, Odd, Ord,' +
+    ' Pos, Pred, Round, SizeOf, Sqr, Sqrt, StringOfChar, Succ, Trunc, UpCase; System.SysUtils: IntToStr, IntToHex, FloatToStr, CurrToStr, BoolToStr, Format, FormatFloat, QuotedStr, AnsiQuotedStr, Trim, Tri' +
+    'mLeft, TrimRight, LowerCase, UpperCase, AnsiLowerCase, AnsiUpperCase, StringReplace, SameText, SameStr, CompareText, CompareStr, AnsiSameText, AnsiSameStr, AnsiCompareText, AnsiCompareStr, AnsiPos, St' +
+    'rToIntDef, StrToInt64Def, StrToFloatDef, StrToBoolDef, ExtractFileName, ExtractFileExt, ExtractFilePath, ExtractFileDir, ExtractFileDrive, ChangeFileExt, ChangeFilePath, IncludeTrailingPathDelimiter, ' +
+    'ExcludeTrailingPathDelimiter, IncludeTrailingBackslash, ExcludeTrailingBackslash, AdjustLineBreaks, IsDelimiter, LastDelimiter, string.Join, string.Create, string.Format, string.IsNullOrEmpty, string.' +
+    'IsNullOrWhiteSpace, string.Compare, string.CompareOrdinal, string.CompareText, string.LowerCase, string.UpperCase, string.EndsText; System.StrUtils: PosEx, ContainsText, ContainsStr, StartsText, Start' +
+    'sStr, EndsText, EndsStr, MatchText, MatchStr, IndexText, IndexStr, LeftStr, RightStr, MidStr, ReplaceStr, ReplaceText, AnsiReplaceStr, AnsiReplaceText, AnsiContainsText, AnsiStartsText, AnsiEndsText, ' +
+    'DupeString, ReverseString, SplitString, IfThen; System.Math: Max, Min, Ceil, Floor, Power, IntPower, Sign, EnsureRange, InRange, SameValue, IsZero, RoundTo, SimpleRoundTo, Log10, Log2; System.IOUtils:' +
+    ' TPath.Combine, TPath.GetFileName, TPath.GetFileNameWithoutExtension, TPath.GetExtension, TPath.GetDirectoryName, TPath.ChangeExtension. TStringHelper: Trim, TrimLeft, TrimRight, TrimStart, TrimEnd, T' +
+    'oUpper, ToLower, ToUpperInvariant, ToLowerInvariant, Replace, Substring, PadLeft, PadRight, Insert, Remove, QuotedString, DeQuotedString, Contains, StartsWith, EndsWith, IndexOf, IndexOfAny, LastIndex' +
+    'Of, LastIndexOfAny, IsEmpty, Split, ToCharArray, Equals, CompareTo, CountChar, IsDelimiter, LastDelimiter, GetHashCode.",',
+    '      "bad": "Trim(Input);\nS.Replace(''a'', ''b'');",',
+    '      "good": "Input := Trim(Input);\nS := S.Replace(''a'', ''b'');",',
+    '      "options": [',
+    '        {',
+    '          "name": "pureFunctions",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Further functions without side effects that are reported like the standard routines, as Name, Class.Name or Unit.Name."',
+    '        }',
+    '      ]',
     '    }');
 
 implementation

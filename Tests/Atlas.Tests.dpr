@@ -292,6 +292,7 @@ uses
   Atlas.Common.Rules.Builtin.Testing.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas',
+  Atlas.Common.Rules.Builtin.IgnoredResult.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.Tests.pas',
   Atlas.Common.Rules.Builtin.Events.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas',
   Atlas.Common.Rules.Builtin.Ownership.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas',
   Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas',
