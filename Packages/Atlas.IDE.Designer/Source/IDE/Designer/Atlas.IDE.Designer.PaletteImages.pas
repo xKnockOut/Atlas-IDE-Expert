@@ -3,8 +3,9 @@
 // Symbole der Komponentenpalette als 16-px-Bildliste für die Atlas-Struktur
 // (#609) und die Brotkrumenleiste der Datenbindung (#610).
 // - Symbol einer Klasse: Bitmap-Ressource mit dem Klassennamen in Großbuchstaben
-//   im Package der Klasse, sonst die des nächsten Vorfahren; verkleinert auf
-//   16 px, je Klasse einmal geladen.
+//   im Package der Klasse oder in einem anderen geladenen Package (die VCL-
+//   Symbole liegen in den Entwurfszeit-Packages), sonst die des nächsten
+//   Vorfahren; verkleinert auf 16 px, je Klasse einmal geladen.
 // - Remember merkt sich die Klasse zum Namen; IndexOfName findet so das Symbol
 //   zu einem Klassennamen aus dem Kern (der nur Namen kennt).
 // Nur im Hauptthread.
@@ -47,6 +48,29 @@ uses
 
 const
   cImageSize = 16;
+
+/// <summary>Modul mit einer Bitmap-Ressource AName: zuerst das Package der Klasse, sonst jedes geladene Modul.
+/// Die Palettensymbole der VCL-Komponenten (TPanel, TComboBox …) liegen nicht in vcl370.bpl, sondern in den
+/// Entwurfszeit-Packages (dclstd370.bpl u. a.); nur im eigenen Package gesucht, fehlten sie alle.</summary>
+function ModuleWithBitmap(AOwn: HMODULE; const AName: string): HMODULE;
+var
+  mModule: PLibModule;
+begin
+  if (AOwn <> 0) and (FindResource(AOwn, PChar(AName), RT_BITMAP) <> 0) then
+  begin
+    Exit(AOwn);
+  end;
+  mModule := LibModuleList;
+  while mModule <> nil do
+  begin
+    if FindResource(mModule.ResInstance, PChar(AName), RT_BITMAP) <> 0 then
+    begin
+      Exit(mModule.ResInstance);
+    end;
+    mModule := mModule.Next;
+  end;
+  Result := 0;
+end;
 
 /// <summary>Bitmap der Palette (meist 24 Pixel) auf die Größe der Bildliste verkleinert.</summary>
 function Shrunk(ABitmap: TBitmap; ASize: Integer): TBitmap;
@@ -113,8 +137,8 @@ begin
   mClass := AClass;
   while (Result < 0) and (mClass <> nil) and (mClass <> TComponent) do
   begin
-    mInstance := FindClassHInstance(mClass);
-    if (mInstance <> 0) and (FindResource(mInstance, PChar(UpperCase(mClass.ClassName)), RT_BITMAP) <> 0) then
+    mInstance := ModuleWithBitmap(FindClassHInstance(mClass), UpperCase(mClass.ClassName));
+    if mInstance <> 0 then
     begin
       mBitmap := TBitmap.Create;
       try

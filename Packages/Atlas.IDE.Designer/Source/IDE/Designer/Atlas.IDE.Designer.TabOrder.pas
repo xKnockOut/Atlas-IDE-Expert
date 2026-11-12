@@ -141,6 +141,9 @@ begin
   begin
     AForm := TWinControl(mRoot);
     Result := AForm.HandleAllocated and IsWindowVisible(AForm.Handle);
+    // Nur solange das Fenster mit dem Designer vorn ist: Ein Dialog der IDE (In Frame auslagern …) zählt auch
+    // als aktive Anwendung, das Overlay läge sonst über ihm.
+    Result := Result and (GetAncestor(GetForegroundWindow, GA_ROOT) = GetAncestor(AForm.Handle, GA_ROOT));
   end;
 end;
 
@@ -186,18 +189,26 @@ function VisibleArea(AForm: TWinControl; out AScreen, AVisible: TRect): Boolean;
 var
   mOrigin: TPoint;
   mHost: HWND;
+  mClient: TRect;
 begin
   mOrigin := AForm.ClientToScreen(Point(0, 0));
   AScreen := Rect(mOrigin.X, mOrigin.Y, mOrigin.X + AForm.ClientWidth, mOrigin.Y + AForm.ClientHeight);
-  mHost := GetParent(AForm.Handle);
   AVisible := AScreen;
-  if (mHost <> 0) and GetWindowRect(mHost, AVisible) then
+  // An jedem Elternfenster bis zum obersten abschneiden: Die Fläche des Designers ist breiter als der sichtbare
+  // Editorbereich, das Overlay reichte sonst unter angedockte Fenster (Atlas-Struktur).
+  mHost := GetParent(AForm.Handle);
+  while (mHost <> 0) and not AVisible.IsEmpty do
   begin
-    AVisible.Intersect(AScreen);
-  end
-  else
-  begin
-    AVisible := AScreen;
+    if GetClientRect(mHost, mClient) then
+    begin
+      MapWindowPoints(mHost, 0, mClient, 2);
+      AVisible.Intersect(mClient);
+    end;
+    if (GetWindowLongPtr(mHost, GWL_STYLE) and WS_CHILD) = 0 then
+    begin
+      Break;
+    end;
+    mHost := GetParent(mHost);
   end;
   Result := not AVisible.IsEmpty;
 end;

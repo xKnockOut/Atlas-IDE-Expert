@@ -47,6 +47,8 @@ type
     FMenu: TPopupMenu;
     FRemoveItem: TMenuItem;
     FRows: TArray<TAtlasEventRow>;
+    /// <summary>Je Listeneintrag der Index in FRows; -1 für eine Gruppenüberschrift.</summary>
+    FItemRows: TArray<Integer>;
     FLastJump: Integer;
     FUpdating: Boolean;
     FErrorColor: TColor;
@@ -168,7 +170,8 @@ begin
   FList.RowSelect := True;
   FList.ReadOnly := True;
   FList.HideSelection := False;
-  FList.GroupView := True;
+  // Keine Gruppen von Windows: Deren Köpfe folgen nicht dem IDE-Thema (dunkelblau auf dunkel). Überschriften
+  // sind eigene Zeilen, gezeichnet in ListCustomDrawItem.
   FList.PopupMenu := FMenu;
   for mIndex := 0 to High(cColumnWidths) do
   begin
@@ -274,23 +277,18 @@ begin
   end;
 end;
 
-/// <summary>Gruppe der Liste zur Überschrift, bei Bedarf neu angelegt.</summary>
-function GroupId(AList: TListView; const AHeader: string): Integer;
-var
-  mIndex: Integer;
-  mGroup: TListGroup;
+/// <summary>Überschrift der Gruppe von ARow.</summary>
+function HeaderOf(const ARow: TAtlasEventRow; AGroup: TAtlasEventGroup): string;
 begin
-  for mIndex := 0 to AList.Groups.Count - 1 do
+  Result := TAtlasEventMap.GroupKey(ARow, AGroup);
+  if Result = '' then
   begin
-    if AList.Groups[mIndex].Header = AHeader then
-    begin
-      Exit(AList.Groups[mIndex].GroupID);
-    end;
+    Result := cNoGroup;
+  end
+  else if (AGroup = TAtlasEventGroup.Handler) and (ARow.UseCount > 1) then
+  begin
+    Result := Result + ' (' + IntToStr(ARow.UseCount) + ')';
   end;
-  mGroup := AList.Groups.Add;
-  mGroup.Header := AHeader;
-  mGroup.State := [lgsCollapsible];
-  Result := mGroup.GroupID;
 end;
 
 procedure TAtlasEventFrame.FillEvents(const AEvents: TArray<string>);
@@ -323,46 +321,60 @@ procedure TAtlasEventFrame.ShowRows(const ARows: TArray<TAtlasEventRow>; const A
 var
   mRow: TAtlasEventRow;
   mItem: TListItem;
-  mHeader: string;
+  mHeaders: TStringList;
   mGroup: TAtlasEventGroup;
+  mHeader: Integer;
+  mIndex: Integer;
 begin
   FUpdating := True;
   FList.Items.BeginUpdate;
+  mHeaders := TStringList.Create;
   try
     FillEvents(AEvents);
     FList.Items.Clear;
-    FList.Groups.Clear;
     FRows := ARows;
+    FItemRows := nil;
     FLastJump := -1;
     mGroup := Group;
+    // Überschriften in der Reihenfolge ihres ersten Auftretens, darunter ihre Zeilen.
     for mRow in ARows do
     begin
+      if mHeaders.IndexOf(HeaderOf(mRow, mGroup)) < 0 then
+      begin
+        mHeaders.Add(HeaderOf(mRow, mGroup));
+      end;
+    end;
+    for mHeader := 0 to mHeaders.Count - 1 do
+    begin
       mItem := FList.Items.Add;
-      mItem.Caption := mRow.Component;
-      mItem.SubItems.Add(mRow.ClassName);
-      mItem.SubItems.Add(mRow.Event);
-      mItem.SubItems.Add(mRow.Handler);
-      if mRow.Lines > 0 then
+      mItem.Caption := mHeaders[mHeader];
+      FItemRows := FItemRows + [-1];
+      for mIndex := 0 to High(ARows) do
       begin
-        mItem.SubItems.Add(IntToStr(mRow.Lines));
-      end
-      else
-      begin
-        mItem.SubItems.Add('');
+        mRow := ARows[mIndex];
+        if HeaderOf(mRow, mGroup) <> mHeaders[mHeader] then
+        begin
+          Continue;
+        end;
+        mItem := FList.Items.Add;
+        mItem.Caption := mRow.Component;
+        mItem.SubItems.Add(mRow.ClassName);
+        mItem.SubItems.Add(mRow.Event);
+        mItem.SubItems.Add(mRow.Handler);
+        if mRow.Lines > 0 then
+        begin
+          mItem.SubItems.Add(IntToStr(mRow.Lines));
+        end
+        else
+        begin
+          mItem.SubItems.Add('');
+        end;
+        mItem.SubItems.Add(AFinding(mRow));
+        FItemRows := FItemRows + [mIndex];
       end;
-      mItem.SubItems.Add(AFinding(mRow));
-      mHeader := TAtlasEventMap.GroupKey(mRow, mGroup);
-      if mHeader = '' then
-      begin
-        mHeader := cNoGroup;
-      end
-      else if (mGroup = TAtlasEventGroup.Handler) and (mRow.UseCount > 1) then
-      begin
-        mHeader := mHeader + ' (' + IntToStr(mRow.UseCount) + ')';
-      end;
-      mItem.GroupID := GroupId(FList, mHeader);
     end;
   finally
+    mHeaders.Free;
     FList.Items.EndUpdate;
     FUpdating := False;
   end;
@@ -370,10 +382,12 @@ end;
 
 function TAtlasEventFrame.SelectedRow(out ARow: TAtlasEventRow): Boolean;
 begin
-  Result := (FList.Selected <> nil) and (FList.Selected.Index <= High(FRows));
+  // Überschriften (FItemRows = -1) sind keine Zeile.
+  Result := (FList.Selected <> nil) and (FList.Selected.Index <= High(FItemRows)) and
+    (FItemRows[FList.Selected.Index] >= 0);
   if Result then
   begin
-    ARow := FRows[FList.Selected.Index];
+    ARow := FRows[FItemRows[FList.Selected.Index]];
   end;
 end;
 
@@ -444,8 +458,26 @@ end;
 
 procedure TAtlasEventFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
   var DefaultDraw: Boolean);
+var
+  mRow: Integer;
 begin
-  if (Item.Index <= High(FRows)) and (FRows[Item.Index].Finding <> TAtlasEventFinding.None) then
+  if Item.Index > High(FItemRows) then
+  begin
+    Exit;
+  end;
+  mRow := FItemRows[Item.Index];
+  // Hintergrund immer setzen: Wer nur die Schrift ändert, bekommt im dunklen Thema eine weiße Zeile.
+  if not (cdsSelected in State) then
+  begin
+    Sender.Canvas.Brush.Color := FList.Color;
+  end;
+  if mRow < 0 then
+  begin
+    // Überschrift: fett in der Textfarbe der Liste (folgt dem Thema).
+    Sender.Canvas.Font.Style := [fsBold];
+    Sender.Canvas.Font.Color := FList.Font.Color;
+  end
+  else if (FRows[mRow].Finding <> TAtlasEventFinding.None) and not (cdsSelected in State) then
   begin
     Sender.Canvas.Font.Color := FErrorColor;
   end;
