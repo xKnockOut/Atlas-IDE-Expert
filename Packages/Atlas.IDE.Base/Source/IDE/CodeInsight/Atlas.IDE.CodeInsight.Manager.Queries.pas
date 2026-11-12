@@ -33,6 +33,10 @@ type
     /// </summary>
     class function HintAt(ASession: TLspSession; const AView: IOTAEditView; AHintLine, AHintCol: Integer;
       const ADiagnose: TProc<string>): string; static;
+    /// <summary>Definition des Bezeichners an ALine, ACharacter (0-basiert) in AView; False ohne Definition oder mit
+    /// einer Ersatz-Unit des Servers (atlas-ide:…), die es nicht als Datei gibt.</summary>
+    class function DefinitionOf(ASession: TLspSession; const AView: IOTAEditView; ALine, ACharacter: Integer;
+      out ALocation: TLspLocation): Boolean; static;
     /// <summary>Definition am Cursor von AView; AFileName = '' ohne Definition.</summary>
     class procedure DefinitionAt(ASession: TLspSession; const AView: IOTAEditView; AIndex: Integer;
       const ADiagnose: TProc<string>; out AFileName: string; out ALineNum: Integer); static;
@@ -239,6 +243,14 @@ begin
     Length(Result)]));
 end;
 
+class function TAtlasCodeInsightQueries.DefinitionOf(ASession: TLspSession; const AView: IOTAEditView; ALine,
+  ACharacter: Integer; out ALocation: TLspLocation): Boolean;
+begin
+  // Ersatz-Units des Servers (atlas-ide:…) gibt es nicht als Datei: kein Sprungziel für Strg+Klick.
+  Result := ASession.Definition(AView.Buffer.FileName, TAtlasEditorBuffer.Text(AView.Buffer), ALine, ACharacter,
+    ALocation) and not TAtlasIdeMembers.IsIdePath(ALocation.FileName);
+end;
+
 class procedure TAtlasCodeInsightQueries.DefinitionAt(ASession: TLspSession; const AView: IOTAEditView;
   AIndex: Integer; const ADiagnose: TProc<string>; out AFileName: string; out ALineNum: Integer);
 var
@@ -262,9 +274,7 @@ begin
   end;
   mCharacter := TLspSession.ColumnToIndex(mLines[mCursor.Line - 1], mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  // Ersatz-Units des Servers (atlas-ide:…) gibt es nicht als Datei: kein Sprungziel für Strg+Klick.
-  if ASession.Definition(AView.Buffer.FileName, mText, mCursor.Line - 1, mCharacter, mLocation) and
-    not TAtlasIdeMembers.IsIdePath(mLocation.FileName) then
+  if DefinitionOf(ASession, AView, mCursor.Line - 1, mCharacter, mLocation) then
   begin
     AFileName := mLocation.FileName;
     ALineNum := mLocation.Line + 1;
