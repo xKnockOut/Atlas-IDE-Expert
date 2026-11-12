@@ -30,11 +30,11 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Diagnostics,
   System.Net.URLClient,
   System.Net.HttpClient,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Diagnostics.Deadline;
 
 type
   TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiPost,
@@ -75,7 +75,7 @@ type
     function StartRequest(AClient: THTTPClient; const ARequest: TRequest; const AUrl: string;
       ASource, AContent: TBytesStream): IAsyncResult;
     /// <summary>Auf das Ende von AAsync warten; False mit AError bei Zeitgrenze, Abbruch oder Entladen.</summary>
-    function AwaitResponse(const AAsync: IAsyncResult; const AWatch: TStopwatch; ATimeoutMs: Integer;
+    function AwaitResponse(const AAsync: IAsyncResult; const ADeadline: TAtlasDeadline;
       var AError: TAtlasCiFetchError): Boolean;
     /// <summary>Schreiben nur angemeldet beim eingetragenen Server über https, nie ohne Token.</summary>
     function MayWrite(const AUrl: string): Boolean;
@@ -113,14 +113,14 @@ implementation
 uses
   System.NetEncoding,
   System.NetConsts,
-  Atlas.Core.Diagnostics.Shutdown,
+  System.Math,
+  Atlas.Core.Diagnostics.AsyncWait,
   Atlas.Core.Ci.Internals.Addresses;
 
 const
   // Testberichte mit tree=… bleiben klein; mehr wird nicht gelesen.
   cMaxBytes = 8 * 1024 * 1024;
   cMaxRedirects = 3;
-  cSliceMs = 50;
 
 function IsRedirect(AStatus: Integer): Boolean;
 begin
@@ -345,34 +345,32 @@ begin
   end;
 end;
 
-function TAtlasCiHttpTransport.AwaitResponse(const AAsync: IAsyncResult; const AWatch: TStopwatch;
-  ATimeoutMs: Integer; var AError: TAtlasCiFetchError): Boolean;
+function TAtlasCiHttpTransport.AwaitResponse(const AAsync: IAsyncResult; const ADeadline: TAtlasDeadline;
+  var AError: TAtlasCiFetchError): Boolean;
 var
-  mWait: TStopwatch;
+  mEnd: TAtlasAsyncEnd;
 begin
-  Result := True;
-  while Result and not AAsync.IsCompleted do
-  begin
-    Result := not (TAtlasShutdown.Wait(cSliceMs) or Cancelled or (AWatch.ElapsedMilliseconds > ATimeoutMs));
-  end;
-  if Result then
-  begin
-    Exit;
-  end;
-  if AWatch.ElapsedMilliseconds > ATimeoutMs then
+  mEnd := TAtlasAsyncWait.Await(
+    function: Boolean
+    begin
+      Result := AAsync.IsCompleted;
+    end,
+    procedure
+    begin
+      AAsync.Cancel;
+    end, ADeadline,
+    function: Boolean
+    begin
+      Result := Cancelled;
+    end);
+  Result := mEnd = TAtlasAsyncEnd.Done;
+  if mEnd = TAtlasAsyncEnd.Timeout then
   begin
     AError := TAtlasCiFetchError.Timeout;
   end
-  else
+  else if not Result then
   begin
     AError := TAtlasCiFetchError.Cancelled;
-  end;
-  AAsync.Cancel;
-  // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
-  mWait := TStopwatch.StartNew;
-  while not AAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.cStopMs div 2) do
-  begin
-    Sleep(10);
   end;
 end;
 
@@ -426,10 +424,10 @@ end;
 
 /// <summary>Fehler einer Anfrage, die mit einer Ausnahme endete: Timeout nach der Zeitgrenze, sonst Network.
 /// </summary>
-function FailureAfter(const AWatch: TStopwatch; ATimeoutMs: Integer): TAtlasCiFetchError;
+function FailureAfter(const ADeadline: TAtlasDeadline): TAtlasCiFetchError;
 begin
   Result := TAtlasCiFetchError.Network;
-  if AWatch.ElapsedMilliseconds > ATimeoutMs then
+  if ADeadline.Reached then
   begin
     Result := TAtlasCiFetchError.Timeout;
   end;
@@ -441,7 +439,7 @@ var
   mContent, mSource: TBytesStream;
   mAsync: IAsyncResult;
   mResponse: IHTTPResponse;
-  mWatch: TStopwatch;
+  mDeadline: TAtlasDeadline;
   mUrl: string;
   mRedirects: Integer;
 begin
@@ -463,11 +461,11 @@ begin
   try
     mUrl := ARequest.Url;
     mRedirects := 0;
-    mWatch := TStopwatch.StartNew;
+    mDeadline := TAtlasDeadline.After(Cardinal(Max(ARequest.TimeoutMs, 0)));
     try
       repeat
         mAsync := StartRequest(mClient, ARequest, mUrl, mSource, mContent);
-        if not AwaitResponse(mAsync, mWatch, ARequest.TimeoutMs, AReply.Error) then
+        if not AwaitResponse(mAsync, mDeadline, AReply.Error) then
         begin
           Exit;
         end;
@@ -481,7 +479,7 @@ begin
       Result := ReadReply(mResponse, mContent, ARequest.MaxBytes, AReply);
     except
       // Kein Netz, Name unbekannt, Zertifikat abgelehnt …: still als Fehler der Abfrage.
-      AReply.Error := FailureAfter(mWatch, ARequest.TimeoutMs);
+      AReply.Error := FailureAfter(mDeadline);
     end;
   finally
     // Erst die Schnittstellen lösen, sie verweisen auf den Client.

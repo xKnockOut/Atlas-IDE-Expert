@@ -457,6 +457,7 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas"/>
@@ -880,6 +881,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
+        <DCCReference Include="..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Overview.pas">
             <Form>AtlasSettingsOverview</Form>
             <DesignClass>TFrame</DesignClass>
