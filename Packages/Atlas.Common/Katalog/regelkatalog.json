@@ -4126,6 +4126,17 @@
       "safeFix": true
     },
     {
+      "id": "uses-only-in-implementation",
+      "name": "Unit belongs in the uses of the implementation part",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A unit in the interface uses is only needed by the implementation part: no identifier of the interface part (outside the uses clauses) refers to it. Such an entry lengthens compile times, because every unit that uses this one is recompiled after a change to it, and creates needless dependencies and cycles. Same analysis as the hint in the editor (#621) and as unused-uses, with name resolution: units the index does not know, units with an initialization or finalization section (their order counts) and entries in inactive {$IFDEF} branches stay. High confidence. Quick fix: move the entry to the uses of the implementation part (creates it if needed, sorted with sortUses). It is not a safe fix: in the implementation uses the unit comes later and can hide identifiers of the same name from other units (TBitmap from Winapi.Windows and Vcl.Graphics). Silent in the editor, where the same entries show the hint (the hint follows the rule: off, exclude and lsp-ignore remove it as well), without a symbol index (--no-index), with syntax errors and outside units.",
+      "bad": "unit Import;\n\ninterface\n\nuses\n  System.Classes, System.JSON;  // System.JSON is only used below implementation\n\ntype\n  TImport = class\n    procedure Laden(AListe: TStrings);\n  end;",
+      "good": "unit Import;\n\ninterface\n\nuses\n  System.Classes;\n\ntype\n  TImport = class\n    procedure Laden(AListe: TStrings);\n  end;\n\nimplementation\n\nuses\n  System.JSON;",
+      "safeFix": false
+    },
+    {
       "id": "message-method-invalid",
       "name": "Message method declared incorrectly",
       "category": "bug",

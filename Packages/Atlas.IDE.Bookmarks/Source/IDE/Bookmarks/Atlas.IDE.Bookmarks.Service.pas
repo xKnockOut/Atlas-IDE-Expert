@@ -39,8 +39,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Bookmarks.Store,
-  Atlas.UI.Bookmarks.Frame;
+  Atlas.Core.Bookmarks.Store;
 
 type
   TAtlasIdeBookmarks = class
@@ -138,6 +137,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Bookmarks.Frame,
   Atlas.IDE.Foundation.EditorBuffer,
   System.Classes,
   System.Types,

@@ -21,7 +21,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type
@@ -71,6 +70,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.UsesActions,
   System.Math,
   Atlas.Common.Editing.UsesClause;
 

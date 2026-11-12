@@ -16,7 +16,6 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.Frame,
   DUnitX.TestFramework;
 
 type
@@ -100,6 +99,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Welcome.Frame,
   System.Classes,
   System.Types,
   Winapi.Windows,

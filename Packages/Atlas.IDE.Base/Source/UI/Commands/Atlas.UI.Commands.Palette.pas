@@ -36,7 +36,6 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Commands.Palette;
 
@@ -177,6 +176,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.Math,

@@ -54,10 +54,14 @@ type
     /// <summary>Befund des Präprozessors: Include-Zyklus als Warnung, sonst Hinweis.</summary>
     class function IssueToJson(const AIssue: TPreprocessorIssue): TJSONObject; static;
     /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.
-    /// Ungenutzte Einträge, die ein lsp-ignore für unused-uses aus ASuppressions abdeckt, fehlen (#1135);
-    /// ASuppressions nil = keine.</summary>
+    /// Ungenutzte Einträge, die ein lsp-ignore für unused-uses aus ASuppressions abdeckt, fehlen (#1135), ebenso
+    /// nur in der implementation gebrauchte unter lsp-ignore für uses-only-in-implementation (#1136);
+    /// ASuppressions nil = keine. Nur Einträge mit einem Zustand aus AShown.</summary>
     class procedure AddUses(AItems: TJSONArray; const AText: string; const AInactive: TArray<TTextRange>;
-      const AContext: TUsesContext; ASuppressions: TSuppressions); static;
+      const AContext: TUsesContext; ASuppressions: TSuppressions; const AShown: TUsesEntryStates); static;
+    /// <summary>Regel, deren lsp-ignore einen Eintrag im Zustand AState verbirgt: unused-uses für ungenutzte,
+    /// uses-only-in-implementation für OnlyImplementation, sonst leer.</summary>
+    class function UsesRuleOf(AState: TUsesEntryState): string; static;
     /// <summary>Name des Zustands in data.uses.state: unused, initialization, allowlist, implementation.</summary>
     class function UsesStateName(AState: TUsesEntryState): string; static;
     /// <summary>Parameter für publishDiagnostics einer Formulardatei (#44): nur Lesefehler der DFM, bei binär
@@ -409,17 +413,36 @@ begin
   end;
 end;
 
+class function TLspDiagnosticItems.UsesRuleOf(AState: TUsesEntryState): string;
+begin
+  case AState of
+    TUsesEntryState.Unused:
+      Result := cUnusedUsesRuleId;
+    TUsesEntryState.OnlyImplementation:
+      Result := cUsesOnlyInImplementationRuleId;
+  else
+    Result := '';
+  end;
+end;
+
 class procedure TLspDiagnosticItems.AddUses(AItems: TJSONArray; const AText: string;
-  const AInactive: TArray<TTextRange>; const AContext: TUsesContext; ASuppressions: TSuppressions);
+  const AInactive: TArray<TTextRange>; const AContext: TUsesContext; ASuppressions: TSuppressions;
+  const AShown: TUsesEntryStates);
 var
   mEntry: TUsesEntry;
   mItem, mData: TJSONObject;
+  mRuleId: string;
 begin
+  if AShown = [] then
+  begin
+    Exit;
+  end;
   for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep,
     AContext.Resolution(AText, AInactive)) do
   begin
-    if (mEntry.State = TUsesEntryState.Unused) and (ASuppressions <> nil) and
-      ASuppressions.IsSuppressed(cUnusedUsesRuleId, mEntry.Range.StartPos.Line) then
+    mRuleId := UsesRuleOf(mEntry.State);
+    if not (mEntry.State in AShown) or ((mRuleId <> '') and (ASuppressions <> nil) and
+      ASuppressions.IsSuppressed(mRuleId, mEntry.Range.StartPos.Line)) then
     begin
       Continue;
     end;

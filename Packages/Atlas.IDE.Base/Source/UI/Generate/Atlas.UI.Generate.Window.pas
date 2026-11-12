@@ -27,7 +27,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Generate.Menu;
 
@@ -134,6 +133,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,

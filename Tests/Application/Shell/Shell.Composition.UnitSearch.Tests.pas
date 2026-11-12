@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.Contract,
   Shell.Composition.Contract,
   Shell.Composition.UnitSearch;
@@ -37,6 +36,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Compiler.Contract,
   System.JSON,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Lsp.Commands,

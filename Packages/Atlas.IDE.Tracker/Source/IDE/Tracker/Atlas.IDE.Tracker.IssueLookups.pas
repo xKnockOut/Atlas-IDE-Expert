@@ -12,7 +12,6 @@ uses
   Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.IDE.Tracker.IssueContext;
 
@@ -52,6 +51,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Ci.Contract,
   System.Classes,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,

@@ -19,8 +19,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Completion.SnippetCatalog,
-  Atlas.UI.Settings.Strings;
+  Atlas.Core.Completion.SnippetCatalog;
 
 type
   TAtlasSnippetsPage = class(TFrame)
@@ -63,6 +62,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.UI.Settings.Strings;
 
 const
   // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.

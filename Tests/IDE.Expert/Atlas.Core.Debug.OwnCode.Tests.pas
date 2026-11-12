@@ -8,8 +8,7 @@
 interface
 
 uses
-  DUnitX.TestFramework,
-  Atlas.Core.Debug.CallStack;
+  DUnitX.TestFramework;
 
 type
   [TestFixture]
@@ -35,6 +34,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.OwnCode;
 
 function Frame(const AHeader, AFile: string; ALine: Integer; AOwn: Boolean): TAtlasDebugFrame;

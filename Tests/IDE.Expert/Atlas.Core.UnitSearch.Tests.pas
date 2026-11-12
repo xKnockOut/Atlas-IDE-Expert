@@ -8,9 +8,7 @@ interface
 uses
   DUnitX.TestFramework,
   System.SysUtils,
-  Atlas.Core.UnitSearch.Model,
-  Atlas.Core.UnitSearch.Sections,
-  Atlas.Core.UnitSearch.State;
+  Atlas.Core.UnitSearch.Model;
 
 type
   [TestFixture]
@@ -64,6 +62,8 @@ type
 implementation
 
 uses
+  Atlas.Core.UnitSearch.Sections,
+  Atlas.Core.UnitSearch.State,
   System.Classes,
   System.IOUtils,
   System.JSON,

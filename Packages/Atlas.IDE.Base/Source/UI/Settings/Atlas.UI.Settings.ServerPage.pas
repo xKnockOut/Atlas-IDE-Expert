@@ -21,8 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
-  Vcl.Dialogs,
-  Atlas.UI.Settings.Strings;
+  Vcl.Dialogs;
 
 type
   /// <summary>Was die IDE-Schicht für die Seite liefert; nicht gesetzte Haken lassen ihren Knopf aus.</summary>
@@ -64,6 +63,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.UI.Settings.Strings;
 
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.

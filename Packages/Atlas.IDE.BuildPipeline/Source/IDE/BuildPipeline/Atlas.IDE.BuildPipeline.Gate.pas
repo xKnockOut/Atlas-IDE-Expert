@@ -20,7 +20,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Build.Events,
   Atlas.Core.BuildPipeline.Gate;
 
 type
@@ -36,6 +35,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.Events,
   System.Hash,
   ToolsAPI,
   Atlas.Core.Lsp.Contract,

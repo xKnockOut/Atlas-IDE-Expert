@@ -2984,6 +2984,16 @@
       "x-parent": "editor.hoverTooltip",
       "x-issue": "#54"
     },
+    "HoverRuleExamples": {
+      "type": "boolean",
+      "default": true,
+      "description": "Link „Beispiel zeigen“ in der Aktionszeile unter Regelbefunden im Hover: klappt Beschreibung und Beispiel falsch/richtig aus dem Regelkatalog auf (Klick oder Tab und Enter); jeder neue Hover beginnt zugeklappt.",
+      "x-key": "hover.ruleExamples",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "hover.problemActions",
+      "x-issue": "#145"
+    },
     "HoverMembersMaxLines": {
       "type": "integer",
       "default": 15,

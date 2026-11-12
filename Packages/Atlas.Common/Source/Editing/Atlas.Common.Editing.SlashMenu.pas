@@ -23,8 +23,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.SlashCommands;
 
 type
   {$SCOPEDENUMS ON}
@@ -127,6 +126,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.Contract,
   System.SysUtils,
   System.StrUtils,
   System.Math,

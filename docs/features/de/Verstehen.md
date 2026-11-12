@@ -32,7 +32,7 @@ Zurück zum [README](../../../README_DE.md)
   - hinter dem Unit-Namen (Zeilen) und dem ersten `uses` (Units)
 - **Rekursion im Rand**
 - **inaktive `{$IFDEF}`-Zweige** abgeschwächt mit Grund im Tooltip
-- **ungenutzte uses** abgeblendet (Regel `unused-uses`: auch in `--check`, `get_diagnostics` und der Baseline; `off`, `exclude`, `lsp-ignore` und die Option `keep` gelten auch fürs Abblenden)
+- **ungenutzte uses** abgeblendet (Regel `unused-uses`: auch in `--check`, `get_diagnostics` und der Baseline; `off`, `exclude`, `lsp-ignore` und die Option `keep` gelten auch fürs Abblenden); interface-uses, die nur der implementation-Teil braucht, mit Hinweis und Korrektur „In implementation-uses verschieben“ (Regel `uses-only-in-implementation`, ebenso einstellbar)
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien; lokale Routinen wahlweise eine Stufe tiefer, in eigener Farbe mit gestrichelter Linie oder wie die äußere Routine, auf Wunsch schwach hinterlegt (`highlight.nestedRoutines`, `highlight.nestedRoutineBand`)
 
 <a id="window-atlasarchitecture"></a>

@@ -10,7 +10,6 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.IDE.Commands.EditorContext;
 
 type
@@ -47,6 +46,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.TextChanges,
   System.SysUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,

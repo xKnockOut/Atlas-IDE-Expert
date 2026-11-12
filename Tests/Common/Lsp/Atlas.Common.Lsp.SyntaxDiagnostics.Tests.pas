@@ -92,6 +92,8 @@ type
     /// lsp-ignore für die im Editor schweigende Regel ist kein unused-suppression.</summary>
     [Test]
     procedure UnusedUsesFollowRule;
+    [Test]
+    procedure OnlyImplementationFollowsRule;
   end;
 
 implementation
@@ -999,6 +1001,26 @@ begin
     '{"rules": {"unused-uses": {"severity": "hint", "exclude": ["A"]}}}'));
   Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"exclude": ["A.pas"]}'));
   Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Ignored, '{}'));
+end;
+
+procedure TLspSyntaxDiagnosticsTests.OnlyImplementationFollowsRule;
+const
+  Code = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'var'#10'  G: TStringGrid;'#10'end.';
+  Ignored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: uses-only-in-implementation'#10'  Vcl.Grids;'#10 +
+    'implementation'#10'var'#10'  G: TStringGrid;'#10'end.';
+begin
+  // Der Hinweis ist die Darstellung von uses-only-in-implementation (#1136), unabhängig von unused-uses.
+  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport, Code,
+    '{}'));
+  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport, Code,
+    '{"rules": {"unused-uses": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"uses-only-in-implementation": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code,
+    '{"rules": {"uses-only-in-implementation": {"severity": "hint", "exclude": ["A"]}}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Ignored, '{}'));
+  // Das lsp-ignore der einen Regel verbirgt nicht den Hinweis der anderen.
+  Assert.AreEqual('Vcl.Grids wird nur in der implementation gebraucht|', UsesDiagnostics(FStore, FTransport,
+    Ignored.Replace('uses-only-in-implementation', 'unused-uses'), '{}'));
 end;
 
 initialization

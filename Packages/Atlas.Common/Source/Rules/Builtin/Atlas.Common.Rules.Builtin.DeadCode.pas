@@ -60,6 +60,17 @@
 //                       Einträge abgeblendet, nach ihren Einstellungen
 //                       (TLspSyntaxDiagnostics.AddUnusedUses); ohne Index und
 //                       bei Syntaxfehlern ebenso.
+//   uses-only-in-implementation
+//                       Eintrag im interface-uses, dessen Unit nur der
+//                       implementation-Teil braucht (#1136), mit derselben
+//                       Analyse (TUsesEntryState.OnlyImplementation). Units
+//                       mit initialization/finalization bleiben, denn ihre
+//                       Reihenfolge zählt. Korrektur „In implementation-uses
+//                       verschieben“ (sortiert mit sortUses), nicht sicher:
+//                       Im implementation-uses steht die Unit später und kann
+//                       gleichnamige Bezeichner anderer Units verdecken. Wann
+//                       sie läuft und die Darstellung im Editor wie bei
+//                       unused-uses.
 //
 // uses-cycle und unused-unit schweigen ohne Projekte (Linter, Datei ohne
 // Projekt), solange Projekte laden oder der Index läuft, und für Units, die der
@@ -76,6 +87,7 @@ const
   cUnusedDeclarationRuleId = 'unused-declaration';
   cUnusedUnitRuleId = 'unused-unit';
   cUnusedUsesRuleId = 'unused-uses';
+  cUsesOnlyInImplementationRuleId = 'uses-only-in-implementation';
 
 type
   TUsesCycleRule = class(TInterfacedObject, IRule, IRuleCondition)
@@ -108,6 +120,15 @@ type
     /// <summary>Units, die bleiben: AUsesKeep (usesKeep) und die Option keep der Regel aus AOptions (#1135).
     /// </summary>
     class function Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>; static;
+  end;
+
+  TUsesOnlyInImplementationRule = class(TInterfacedObject, IRule, IRuleCondition)
+  public
+    function Descriptor: TRuleDescriptor;
+    /// <summary>Wie unused-uses: nicht im Editor (dort zeigt der Server denselben Hinweis), ohne Index, bei
+    /// Syntaxfehlern und außerhalb von Units.</summary>
+    function Applies(const AContext: TRuleContext): Boolean;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
 procedure RegisterDeadCodeRules(const ARegistry: TRuleRegistry);
@@ -147,7 +168,7 @@ type
   TDeadCodeText = (MoveToImplementation, NeededInInterface, RemoveEntry, Circular, LikeF2092, SelfUses, AllInterface,
     OneImplementation, ShowGraph, LikeF2047, ViaImplementation, CycleTitle, Routine, Constant, GlobalVariable,
     TypeWord, MarkIntended, NeverUsed, UnusedTitle, UnitTitle, UnitUnused, UnitOnlyBy, UsesTitle, NothingUsed, JumpTo,
-    LineSuffix);
+    LineSuffix, PlacementTitle, OnlyImplementation);
 
 const
   cTexts: array[TDeadCodeText] of TAtlasText = (
@@ -182,7 +203,9 @@ const
     (De: 'Aus der Unit im uses wird nichts verwendet'; En: 'Nothing from the unit in uses is used'),
     (De: 'Aus %s wird nichts verwendet'; En: 'Nothing from %s is used'),
     (De: 'Zu %s springen (Zeile %s, braucht %s im interface)'; En: 'Go to %s (line %s, needs %s in the interface)'),
-    (De: ' (Zeile %s)'; En: ' (line %s)'));
+    (De: ' (Zeile %s)'; En: ' (line %s)'),
+    (De: 'Unit gehört in die uses des implementation-Teils'; En: 'Unit belongs in the uses of the implementation part'),
+    (De: '%s wird nur im implementation-Teil gebraucht'; En: '%s is only needed in the implementation part'));
 
 {$SCOPEDENUMS OFF}
 
@@ -337,6 +360,34 @@ begin
     Copy(ANew, mPrefix + 1, Length(ANew) - mPrefix - mSuffix));
 end;
 
+/// <summary>„In implementation-uses verschieben“ (sortiert wie sortUses), geteilt von uses-cycle und
+/// uses-only-in-implementation; nil, wenn das uses es nicht zulässt.</summary>
+function MoveToImplementationFixes(const AContext: TRuleContext; const AUnitName: string): TArray<TRuleFix>;
+var
+  mEdits, mSortEdits: TArray<TTextEdit>;
+  mLineBreak, mNewText: string;
+begin
+  Result := nil;
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  if not TUsesActions.MoveUnits(AContext.Tree.Tokens, AContext.Text, TArray<string>.Create(AUnitName), mLineBreak,
+    mEdits) then
+  begin
+    Exit;
+  end;
+  if AContext.SortUses then
+  begin
+    // Wie „uses aufräumen“ mit sortUses: erst verschieben, dann sortieren, als eine kleinste Ersetzung.
+    mNewText := TChangeSignature.ApplyEdits(AContext.Text, mEdits);
+    if TUsesClauses.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
+      AContext.SortUsesByNamespace) then
+    begin
+      mNewText := TChangeSignature.ApplyEdits(mNewText, mSortEdits);
+    end;
+    mEdits := TArray<TTextEdit>.Create(SmallestEdit(AContext.Text, mNewText));
+  end;
+  Result := TArray<TRuleFix>.Create(TRuleFix.Create(cTexts[TDeadCodeText.MoveToImplementation].Text, mEdits));
+end;
+
 { TUsesCycleCheck }
 
 type
@@ -353,7 +404,6 @@ type
     // Datei (groß) -> uses-Einträge, je Prüfung einmal gelesen.
     FEntries: TDictionary<string, TArray<TUsesReference>>;
     function EntryRange(const AFileName, AUsesName: string; AInInterface: Boolean): TTextRange;
-    function MoveFixes(const AUnitName: string): TArray<TRuleFix>;
     function JumpFixes(const AUnitName: string; const AShown: TArray<TUsesInterfaceUsage>;
       var ADetails: string): TArray<TRuleFix>;
     function InterfaceFixes(const AUnitName: string; var ADetails: string): TArray<TRuleFix>;
@@ -459,34 +509,6 @@ begin
   Result := Default(TTextRange);
 end;
 
-/// <summary>„In implementation-uses verschieben“ (sortiert wie sortUses); nil, wenn das uses es nicht
-/// zulässt.</summary>
-function TUsesCycleCheck.MoveFixes(const AUnitName: string): TArray<TRuleFix>;
-var
-  mEdits, mSortEdits: TArray<TTextEdit>;
-  mLineBreak, mNewText: string;
-begin
-  Result := nil;
-  mLineBreak := TTextLines.LineBreakOf(FContext.Text);
-  if not TUsesActions.MoveUnits(FContext.Tree.Tokens, FContext.Text, TArray<string>.Create(AUnitName), mLineBreak,
-    mEdits) then
-  begin
-    Exit;
-  end;
-  if FContext.SortUses then
-  begin
-    // Wie „uses aufräumen“ mit sortUses: erst verschieben, dann sortieren, als eine kleinste Ersetzung.
-    mNewText := TChangeSignature.ApplyEdits(FContext.Text, mEdits);
-    if TUsesClauses.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
-      FContext.SortUsesByNamespace) then
-    begin
-      mNewText := TChangeSignature.ApplyEdits(mNewText, mSortEdits);
-    end;
-    mEdits := TArray<TTextEdit>.Create(SmallestEdit(FContext.Text, mNewText));
-  end;
-  Result := TArray<TRuleFix>.Create(TRuleFix.Create(cTexts[TDeadCodeText.MoveToImplementation].Text, mEdits));
-end;
-
 /// <summary>Sprünge zu den Bezeichnern in AShown (höchstens cMaxJumps), ihre Liste in ADetails.</summary>
 function TUsesCycleCheck.JumpFixes(const AUnitName: string; const AShown: TArray<TUsesInterfaceUsage>;
   var ADetails: string): TArray<TRuleFix>;
@@ -536,7 +558,7 @@ begin
   mNeeded := TUsesActions.InterfaceUsages(FContext.Tree.Tokens, AUnitName, mAllNames);
   if mNeeded = nil then
   begin
-    Exit(MoveFixes(AUnitName));
+    Exit(MoveToImplementationFixes(FContext, AUnitName));
   end;
   // Erst die Typen, Routinen und Konstanten der Unit; nur Mitglieder (Create, Count) sind unsicherer.
   mShown := TUsesActions.InterfaceUsages(FContext.Tree.Tokens, AUnitName, mTopNames);
@@ -1192,6 +1214,17 @@ begin
   end;
 end;
 
+/// <summary>Wann unused-uses und uses-only-in-implementation prüfen.</summary>
+function UsesEntriesChecked(const AContext: TRuleContext): Boolean;
+begin
+  // Im Editor zeigt der Server dieselben Einträge (#621); ohne Index ist nichts sicher, und bei Syntaxfehlern
+  // fehlen Bezeichner. Das uses eines Programms, einer Bibliothek oder eines Packages zählt die Units des
+  // Projekts auf (Formulare, "in"-Pfade, DCCReference): Ein Eintrag dort ist Mitgliedschaft, nicht Abhängigkeit.
+  Result := not AContext.Live and (AContext.Index <> nil) and (AContext.Tree <> nil) and
+    (Length(AContext.Tree.Diagnostics) = 0) and
+    (TModuleHeader.Read(AContext.Tree.Tokens).Kind = TModuleKind.UnitModule);
+end;
+
 { TUnusedUsesRule }
 
 function TUnusedUsesRule.Descriptor: TRuleDescriptor;
@@ -1206,28 +1239,16 @@ end;
 
 function TUnusedUsesRule.Applies(const AContext: TRuleContext): Boolean;
 begin
-  // Im Editor zeigt der Server dieselben Einträge abgeblendet (#621); ohne Index ist nichts sicher, und bei
-  // Syntaxfehlern fehlen Bezeichner. Das uses eines Programms, einer Bibliothek oder eines Packages zählt die
-  // Units des Projekts auf (Formulare, "in"-Pfade, DCCReference): Ein Eintrag dort ist Mitgliedschaft, nicht
-  // Abhängigkeit.
-  Result := not AContext.Live and (AContext.Index <> nil) and (AContext.Tree <> nil) and
-    (Length(AContext.Tree.Diagnostics) = 0) and
-    (TModuleHeader.Read(AContext.Tree.Tokens).Kind = TModuleKind.UnitModule);
+  Result := UsesEntriesChecked(AContext);
 end;
 
-procedure TUnusedUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+/// <summary>Auffällige uses-Einträge der Datei wie im Editor (#621) samt Namensauflösung (#1925); AKeep: Units,
+/// die nie als ungenutzt gelten.</summary>
+function UsesEntries(const AContext: TRuleContext; const AKeep: TArray<string>): TArray<TUsesEntry>;
 var
-  mEntry: TUsesEntry;
-  mEdit: TTextEdit;
-  mFixes: TArray<TRuleFix>;
   mInfo: TUsesUnitInfoFunc;
   mSource: TUsesUsageSource;
 begin
-  // Auch bei einem Aufruf ohne Prüflauf (der Lauf fragt Applies vorher).
-  if not Applies(AContext) then
-  begin
-    Exit;
-  end;
   // Module, auf die die Formulardatei verweist: Ihr uses-Eintrag ist gebraucht (dfm-reference-unit-missing).
   mInfo := TUsesUsage.UnitInfo(AContext.Index, AContext.EnsureUnit, TFormModel.ForeignModulesOf(AContext.FormText));
   mSource := Default(TUsesUsageSource);
@@ -1236,9 +1257,22 @@ begin
   mSource.TreeUnits := AContext.TreeUnits;
   mSource.NameFacts := AContext.NameFacts;
   mSource.Namespaces := AContext.Namespaces;
-  for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges, mInfo,
-    Keep(AContext.Options, AContext.UsesKeep), TUsesUsage.Resolve(mSource, AContext.Tree, AContext.RelativePath,
-    AContext.InactiveRanges, mInfo)) do
+  Result := TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges, mInfo, AKeep,
+    TUsesUsage.Resolve(mSource, AContext.Tree, AContext.RelativePath, AContext.InactiveRanges, mInfo));
+end;
+
+procedure TUnusedUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mEntry: TUsesEntry;
+  mEdit: TTextEdit;
+  mFixes: TArray<TRuleFix>;
+begin
+  // Auch bei einem Aufruf ohne Prüflauf (der Lauf fragt Applies vorher).
+  if not Applies(AContext) then
+  begin
+    Exit;
+  end;
+  for mEntry in UsesEntries(AContext, Keep(AContext.Options, AContext.UsesKeep)) do
   begin
     if mEntry.State <> TUsesEntryState.Unused then
     begin
@@ -1254,12 +1288,46 @@ begin
   end;
 end;
 
+{ TUsesOnlyInImplementationRule }
+
+function TUsesOnlyInImplementationRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(cUsesOnlyInImplementationRuleId, TRuleSeverity.Hint,
+    cTexts[TDeadCodeText.PlacementTitle].Text);
+end;
+
+function TUsesOnlyInImplementationRule.Applies(const AContext: TRuleContext): Boolean;
+begin
+  Result := UsesEntriesChecked(AContext);
+end;
+
+procedure TUsesOnlyInImplementationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mEntry: TUsesEntry;
+begin
+  if not Applies(AContext) then
+  begin
+    Exit;
+  end;
+  // usesKeep betrifft nur ungenutzte Einträge. Units mit initialization nennt Entries hier nicht: Im
+  // implementation-uses liefe ihre Initialisierung später.
+  for mEntry in UsesEntries(AContext, AContext.UsesKeep) do
+  begin
+    if mEntry.State = TUsesEntryState.OnlyImplementation then
+    begin
+      AReport.Add(mEntry.Range, cTexts[TDeadCodeText.OnlyImplementation].Fmt([mEntry.Name]), TRuleConfidence.High,
+        MoveToImplementationFixes(AContext, mEntry.Name));
+    end;
+  end;
+end;
+
 procedure RegisterDeadCodeRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUsesCycleRule.Create);
   ARegistry.Register(TUnusedDeclarationRule.Create);
   ARegistry.Register(TUnusedUnitRule.Create);
   ARegistry.Register(TUnusedUsesRule.Create);
+  ARegistry.Register(TUsesOnlyInImplementationRule.Create);
 end;
 
 initialization

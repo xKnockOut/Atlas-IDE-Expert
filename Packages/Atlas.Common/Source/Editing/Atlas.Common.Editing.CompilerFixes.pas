@@ -28,7 +28,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type
@@ -76,6 +75,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.UsesActions,
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,

@@ -3,8 +3,7 @@
 interface
 
 uses
-  DUnitX.TestFramework,
-  Atlas.Common.Compiler.Contract;
+  DUnitX.TestFramework;
 
 type
   [TestFixture]
@@ -47,6 +46,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Compiler.Contract,
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,

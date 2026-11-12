@@ -8,8 +8,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
-  Shell.CommandLine,
-  Shell.WorkspaceGroup;
+  Shell.CommandLine;
 
 type
   TLinterAffectedTests = class
@@ -30,6 +29,7 @@ type
 implementation
 
 uses
+  Shell.WorkspaceGroup,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Compiler.Contract,

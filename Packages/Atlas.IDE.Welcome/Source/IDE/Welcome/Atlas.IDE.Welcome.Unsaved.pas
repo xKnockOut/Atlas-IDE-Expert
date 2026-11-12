@@ -30,7 +30,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Unsaved,
   Atlas.UI.Welcome.Unsaved;
@@ -103,6 +102,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Projects.Summary,
   Atlas.Core.Diagnostics.MainThread,
   System.Math,
   Winapi.Windows,

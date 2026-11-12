@@ -17,8 +17,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.Recursion;
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   /// <summary>Text einer Datei (offenes Dokument oder Platte); False, wenn sie fehlt.</summary>
@@ -40,6 +39,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.Recursion,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache;

@@ -8,7 +8,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Editor.BlockComment;
 
 type
@@ -56,6 +55,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Lsp.TextChanges,
   System.SysUtils;
 
 function TAtlasBlockCommentTests.Toggle(ALine, AStart, AEndLine, AEnd: Integer): TAtlasBlockCommentResult;

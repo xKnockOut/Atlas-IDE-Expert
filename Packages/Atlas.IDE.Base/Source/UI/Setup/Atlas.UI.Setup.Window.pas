@@ -23,7 +23,6 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Status.Contract,
   Atlas.Core.Setup.Checklist;
@@ -128,6 +127,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Color,
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Setup.Strings;

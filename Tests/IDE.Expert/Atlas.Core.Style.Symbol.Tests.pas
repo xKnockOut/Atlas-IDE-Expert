@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Symbol;
 
 type
@@ -35,6 +34,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Style.Color;
 
 { TAtlasSymbolTests }
 

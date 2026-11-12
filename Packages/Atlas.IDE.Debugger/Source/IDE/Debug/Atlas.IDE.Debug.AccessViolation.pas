@@ -32,7 +32,6 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
@@ -163,6 +162,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.CallStack,
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,

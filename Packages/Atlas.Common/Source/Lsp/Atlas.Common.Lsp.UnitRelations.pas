@@ -44,12 +44,9 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.UsesActions,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Architecture.UnitRelations,
   Atlas.Common.Lsp.SyntaxDiagnostics;
 
 type
@@ -104,6 +101,9 @@ type
 implementation
 
 uses
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Architecture.UnitRelations,
   System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,

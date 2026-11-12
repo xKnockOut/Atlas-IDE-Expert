@@ -49,7 +49,6 @@ uses
   Winapi.Windows,
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
-  Atlas.Core.Projects.Summary,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
@@ -168,6 +167,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Projects.Summary,
   Winapi.Messages,
   Winapi.ShellAPI,
   System.Classes,

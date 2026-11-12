@@ -8,7 +8,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Mcp.Paths,
-  Shell.WorkspaceGroup,
   Shell.Mcp.Context;
 
 /// <summary>get_affected_tests (#1353): betroffene Tests der Änderungen gegenüber einer Basis; das Ergebnis im
@@ -20,6 +19,7 @@ procedure RegisterHotspotTools(const AContext: TMcpToolContext);
 implementation
 
 uses
+  Shell.WorkspaceGroup,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Hotspots.Service,
   System.JSON,

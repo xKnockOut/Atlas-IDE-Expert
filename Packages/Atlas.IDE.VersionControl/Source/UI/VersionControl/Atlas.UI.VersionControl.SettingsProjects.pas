@@ -16,7 +16,6 @@ uses
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.UI.Strings,
-  Atlas.UI.VersionControl.Strings,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
 
@@ -189,6 +188,7 @@ type
 implementation
 
 uses
+  Atlas.UI.VersionControl.Strings,
   Vcl.Themes,
   System.Math,
   System.StrUtils,
