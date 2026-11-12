@@ -429,7 +429,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynamic arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil). Clearing a value that was set before (X := nil, '', Default(T), T.Empty) is not reported either: it releases memory and references early or guards after Free. Clearing without a previous value is still reported.",
+      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynamic arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil). Clearing a value that was set before (X := nil, '', Default(T), T.Empty) is not reported either: it releases memory and references early or guards after Free. Clearing without a previous value is still reported. Result counts too when the function has an unmanaged result type (Integer, Boolean, enumerations, classes): a preset such as Result := False before a try/except, a case or a loop whose every path assigns Result again or leaves with Exit(Value) is reported (#1345). Result is read where the routine ends normally, not when it is left through an exception.",
       "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
       "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",
       "options": [
@@ -4611,7 +4611,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose parameters differ in count, const/var/out or type, assigned or passed as an argument (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",
+      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose parameters differ in count, const/var/out or type, assigned or passed as an argument, and likewise an anonymous method such as procedure(const S: string) for TProc<string> (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",
       "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 'drei';",
       "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",
       "compilerCodes": [
@@ -4755,6 +4755,66 @@
       ],
       "level": "T",
       "safeFix": true
+    },
+    {
+      "id": "exit-array-literal",
+      "name": "Exit with array literal",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Exit([...]) in a function whose result is a dynamic array (TArray<T>, array of T, TBytes, TStringDynArray … or a type of the same unit declared as one of these). Delphi reads the brackets in Exit as a set constructor, not as an array literal, and rejects the call (like E2001 or E2010); Free Pascal compiles it, so the error only shows when building with Delphi. Result := [...] is fine. Exit() inside an anonymous method, an empty [] and functions with another result type stay silent. Quick fix (safe): Result := [...]; Exit;.",
+      "bad": "function Namen: TArray<string>;\nbegin\n  Exit(['a', 'b']);\nend;",
+      "good": "function Namen: TArray<string>;\nbegin\n  Result := ['a', 'b'];\n  Exit;\nend;",
+      "compilerCodes": [
+        "E2001",
+        "E2010"
+      ],
+      "level": "A",
+      "safeFix": true
+    },
+    {
+      "id": "caption-string-helper",
+      "name": "String helper on TCaption",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A method of TStringHelper (StartsWith, Contains, Trim, ToUpper, Length …) is called on an expression of type TCaption, such as Caption or the Text of a control. TCaption is declared as type string, a distinct type, and the string helper does not apply to it (like E2018). Free Pascal accepts the call. Reported only when the type of the expression is certainly TCaption. Quick fix (safe): wrap the expression in string(...).",
+      "bad": "if Button1.Caption.StartsWith('&') then",
+      "good": "if string(Button1.Caption).StartsWith('&') then",
+      "compilerCodes": [
+        "E2018"
+      ],
+      "level": "T",
+      "safeFix": true
+    },
+    {
+      "id": "uses-order-hides-type",
+      "name": "Unit hides a type",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Winapi.Windows (or Windows) comes after Vcl.Graphics, FMX.Graphics or Graphics in the uses clauses and the unit uses TBitmap. The last unit wins, so TBitmap means the record from Winapi.Windows: TBitmap.Create and the methods of the graphics class are not found (like E2003). The uses of the interface and implementation section count together. TBitmap after a dot (Vcl.Graphics.TBitmap) stays silent. Quick fix (safe) only when both units are in the same uses clause: move Winapi.Windows before the graphics unit.",
+      "bad": "uses\n  Vcl.Graphics, Winapi.Windows;\n…\n  mBild := TBitmap.Create;",
+      "good": "uses\n  Winapi.Windows, Vcl.Graphics;\n…\n  mBild := TBitmap.Create;",
+      "compilerCodes": [
+        "E2003"
+      ],
+      "level": "A",
+      "safeFix": true
+    },
+    {
+      "id": "interface-uses-missing",
+      "name": "Unit only in the uses of the implementation section",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A type in the interface section (field, parameter, result, property, ancestor) comes from a unit that is only listed in the uses of the implementation section. There the name is not known yet (like E2003). Reported when the name does not resolve in the interface section and exactly such a unit declares it in its interface part; each unit once per file. Quick fix: move the unit to the uses of the interface section (offered when the interface section has a uses clause).",
+      "bad": "interface\nuses\n  System.SysUtils;\ntype\n  TFenster = class\n    FListe: TStringList;\n  end;\nimplementation\nuses\n  System.Classes;",
+      "good": "interface\nuses\n  System.SysUtils, System.Classes;\ntype\n  TFenster = class\n    FListe: TStringList;\n  end;\nimplementation",
+      "compilerCodes": [
+        "E2003"
+      ],
+      "level": "B"
     },
     {
       "id": "unresolved-type",

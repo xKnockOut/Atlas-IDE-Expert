@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..624] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..655] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -655,6 +655,41 @@ const
     '        "E2146"',
     '      ],',
     '      "level": "A"',
+    '    },',
+    '{',
+    '      "id": "exit-array-literal",',
+    '      "name": "Exit with array literal",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "Exit([...]) in a function whose result is a dynamic array (TArray<T>, array of T, TBytes, TStringDynArray … or a type of the same unit declared as one of these). Delphi reads the' +
+    ' brackets in Exit as a set constructor, not as an array literal, and rejects the call (like E2001 or E2010); Free Pascal compiles it, so the error only shows when building with Delphi. Result := [...]' +
+    ' is fine. Exit() inside an anonymous method, an empty [] and functions with another result type stay silent. Quick fix (safe): Result := [...]; Exit;.",',
+    '      "bad": "function Namen: TArray<string>;\nbegin\n  Exit([''a'', ''b'']);\nend;",',
+    '      "good": "function Namen: TArray<string>;\nbegin\n  Result := [''a'', ''b''];\n  Exit;\nend;",',
+    '      "compilerCodes": [',
+    '        "E2001",',
+    '        "E2010"',
+    '      ],',
+    '      "level": "A",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "uses-order-hides-type",',
+    '      "name": "Unit hides a type",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "Winapi.Windows (or Windows) comes after Vcl.Graphics, FMX.Graphics or Graphics in the uses clauses and the unit uses TBitmap. The last unit wins, so TBitmap means the record from' +
+    ' Winapi.Windows: TBitmap.Create and the methods of the graphics class are not found (like E2003). The uses of the interface and implementation section count together. TBitmap after a dot (Vcl.Graphics' +
+    '.TBitmap) stays silent. Quick fix (safe) only when both units are in the same uses clause: move Winapi.Windows before the graphics unit.",',
+    '      "bad": "uses\n  Vcl.Graphics, Winapi.Windows;\n…\n  mBild := TBitmap.Create;",',
+    '      "good": "uses\n  Winapi.Windows, Vcl.Graphics;\n…\n  mBild := TBitmap.Create;",',
+    '      "compilerCodes": [',
+    '        "E2003"',
+    '      ],',
+    '      "level": "A",',
+    '      "safeFix": true',
     '    },',
     '{',
     '      "id": "jump-outside-allowed-scope",',

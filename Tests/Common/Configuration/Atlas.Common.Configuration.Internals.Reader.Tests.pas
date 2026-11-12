@@ -59,7 +59,8 @@ uses
   Atlas.Common.Configuration.Internals.RefactoringOptions,
   Atlas.Common.Configuration.Internals.WorkflowOptions,
   Atlas.Common.Configuration.Internals.AnalysisOptions,
-  Atlas.Common.Configuration.Internals.ProjectOptions;
+  Atlas.Common.Configuration.Internals.ProjectOptions,
+  Atlas.Common.Configuration.Internals.SuggestionOptions;
 
 /// <summary>Liest das Objekt unter "x" in AText mit einem Wahrheitswert "on" und einer Auswahl "mode"
 /// (ask, always); liefert die Meldungen.</summary>
@@ -87,7 +88,7 @@ end;
 function AllSections: TArray<TConfigurationSection>;
 begin
   Result := GeneralSections + RuleSections + McpSections + EditorSections + RefactoringSections + WorkflowSections +
-    AnalysisSections + ProjectSections;
+    AnalysisSections + ProjectSections + SuggestionSections;
 end;
 
 { TConfigurationReaderTests }

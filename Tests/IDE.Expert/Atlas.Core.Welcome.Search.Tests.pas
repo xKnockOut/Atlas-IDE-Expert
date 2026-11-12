@@ -169,6 +169,13 @@ begin
   PutVar(ABody, StringIndex(AStrings, 'Nutze Neu')); // Grund
   PutVar(ABody, 1); // Begründungen der Unit (#1123)
   PutVar(ABody, StringIndex(AStrings, 'W|3|Weil'));
+  PutVar(ABody, 1); // Folgemuster (#1890): Auslöser, Folge, Zahl, Zeilen
+  PutVar(ABody, StringIndex(AStrings, '$S.BeginUpdate'));
+  PutVar(ABody, StringIndex(AStrings, 'try'));
+  PutVar(ABody, 2);
+  PutVar(ABody, 2);
+  PutVar(ABody, 10);
+  PutVar(ABody, 300);
   PutVar(ABody, 2); // Symbolzahl
   PutVar(ABody, 1); // nicht verfügbar
   PutVar(ABody, 200); // Blocklänge über ein Byte hinaus

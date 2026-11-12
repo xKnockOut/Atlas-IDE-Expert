@@ -107,7 +107,10 @@ type
     class function Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex; static;
     /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag. Mit AResolver werden
     /// $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf. Mit AUsages kommen die
-    /// Verwendungen der Bezeichner dazu (#492).</summary>
+    /// Verwendungen der Bezeichner dazu (#492), mit APatterns die Folgemuster der Anweisungen (#1890).</summary>
+    class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; AUsages, APatterns: Boolean): TUnitIndex; overload; static;
+    /// <summary>Wie oben mit APatterns = False.</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
       const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex; overload; static;
     /// <summary>Wie oben mit AUsages = False.</summary>
@@ -138,7 +141,8 @@ uses
   Atlas.Common.Rationale.Scanner,
   Atlas.Common.Index.Extractor.TypeText,
   Atlas.Common.Index.Extractor.Conditions,
-  Atlas.Common.Index.Extractor.InlineRefs;
+  Atlas.Common.Index.Extractor.InlineRefs,
+  Atlas.Common.Index.Extractor.Patterns;
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
@@ -1157,7 +1161,8 @@ type
     destructor Destroy; override;
     procedure Merge(var AUnit: TUnitIndex);
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex; static;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages, APatterns: Boolean): TUnitIndex;
+      static;
   end;
 
 constructor TIncludeMerger.Create(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
@@ -1260,7 +1265,7 @@ begin
     mText := ASection + #10 + AText;
     mShift := 1;
   end;
-  AddSymbols(ExtractLevel(mText, AFile, FDefines, FResolver, FStack + [AFile], False), AFile, mHost, mShift,
+  AddSymbols(ExtractLevel(mText, AFile, FDefines, FResolver, FStack + [AFile], False, False), AFile, mHost, mShift,
     (FTree.Root.Kind = TSyntaxKind.UnitFile) and (AToken.Offset < FImplementationOffset));
 end;
 
@@ -1315,7 +1320,7 @@ begin
 end;
 
 class function TIncludeMerger.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex;
+  const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages, APatterns: Boolean): TUnitIndex;
 var
   mTree: TSyntaxTree;
   mIncludes: TArray<string>;
@@ -1332,6 +1337,10 @@ begin
     begin
       Result.Usages := CollectUsages(mTree.Tokens, Result.Symbols);
       Result.UsagesIndexed := True;
+    end;
+    if APatterns then
+    begin
+      Result.Patterns := TIndexFollowPatterns.Collect(mTree);
     end;
     if Assigned(AResolver) and (Length(AStack) <= cMaxIncludeDepth) then
     begin
@@ -1362,7 +1371,13 @@ end;
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
   const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
 begin
-  Result := TIncludeMerger.ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], AUsages);
+  Result := ExtractText(AText, AFileName, ADefines, AResolver, AUsages, False);
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string;
+  const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages, APatterns: Boolean): TUnitIndex;
+begin
+  Result := TIncludeMerger.ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], AUsages, APatterns);
 end;
 
 end.

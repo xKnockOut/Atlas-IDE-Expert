@@ -22,6 +22,8 @@
 // - Mit Usages (#492, index.usages) erfasst der Builder in Projekt-Units auch
 //   die Verwendungen der Bezeichner. Ein Cache-Eintrag ohne sie gilt dann als
 //   veraltet; ohne Usages bleiben Verwendungen aus dem Cache weg.
+// - Projekt-Units bekommen beim Einlesen ihre Folgemuster (#1890, gelernte
+//   Vorschläge); sie kommen mit dem Eintrag in den Cache. Bibliotheken nicht.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
 // - Jede Datei liest nur ein Thread zur selben Zeit (#1236): Fragen Aufbau und
@@ -726,7 +728,7 @@ var
 begin
   mWatch := TStopwatch.StartNew;
   mUnit := TIndexExtractor.ExtractText(AText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
-    WantsUsages(ALibrary));
+    WantsUsages(ALibrary), not ALibrary);
   Inc(AResult.ParseMs, mWatch.ElapsedMilliseconds);
   mUnit.Stamp := AStamp;
   mUnit.Hash := AHash;
@@ -950,7 +952,7 @@ begin
     Exit;
   end;
   mUnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
-    WantsUsages(mExisting.Library_));
+    WantsUsages(mExisting.Library_), not mExisting.Library_);
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
   mUnitIndex.Stamp := mExisting.Stamp;
   mUnitIndex.Hash := mHash;

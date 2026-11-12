@@ -19,6 +19,7 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Editor.RegionFolds,
+  Atlas.UI.Editor.LearnedSuggestions,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.LineMove,
@@ -35,6 +36,7 @@ uses
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Editor.LearnedSuggestions,
   Atlas.IDE.CodeInsight.Composition.Session;
 
 function JumpToMatchVisible: Boolean;
@@ -288,8 +290,21 @@ begin
     '', Guarded(TAtlasFeature.RegionFolds, ExpandRegions), RegionFoldsVisible);
 end;
 
+function LearnedSuggestionsVisible: Boolean;
+begin
+  Result := TAtlasIdeLearnedSuggestions.Enabled;
+end;
+
+procedure ShowLearnedSuggestions;
+begin
+  TAtlasIdeLearnedSuggestions.ShowPatterns;
+end;
+
 procedure AddEditingCommands(APalette: TAtlasIdePalette);
 begin
+  // Gelernte Vorschläge (#1890): Liste mit Schaltern und „Vergessen“.
+  APalette.RegisterCommand('Atlas.LearnedSuggestions', TAtlasLearnedTexts.Text(TAtlasLearnedText.Command), '',
+    Guarded(TAtlasFeature.LearnedSuggestions, ShowLearnedSuggestions), LearnedSuggestionsVisible);
   AddLineCommands(APalette);
   AddCodeCommands(APalette);
   AddMultiCursorCommands(APalette);

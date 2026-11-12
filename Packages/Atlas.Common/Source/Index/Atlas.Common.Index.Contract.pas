@@ -127,6 +127,22 @@ type
 
   TNamingCounts = array[TNamingKind] of TNamingCount;
 
+  /// <summary>Folgemuster einer Unit (#1890): Wie oft eine Anweisung mit dem Schlüssel Trigger vorkam und wie oft
+  /// darauf die Anweisung nach der Vorlage Follow folgte. Je Trigger gibt es einen Eintrag mit Follow = '' für alle
+  /// Stellen ohne erkannte Folge; der Anteil eines Musters ist sein Count durch die Summe aller Count seines
+  /// Triggers. Nur Projekt-Units.</summary>
+  TIndexFollowPattern = record
+    /// <summary>Schlüssel der auslösenden Anweisung wie geschrieben, z. B. "$S := $T.Create", "$S := TFoo.Create",
+    /// "$S.BeginUpdate" oder "EnterCriticalSection($A)"; verglichen ohne Groß-/Kleinschreibung.</summary>
+    Trigger: string;
+    /// <summary>Vorlage der folgenden Anweisung (TIndexFollowPatterns): Zeilen getrennt durch #10, Einrückung als
+    /// führende ">", "$|" für den Rumpf, $S und $A für Subjekt und Argument; '' = keine erkannte Folge.</summary>
+    Follow: string;
+    Count: Integer;
+    /// <summary>Zeilen (0-basiert) der ersten Auslöser als Beleg, höchstens drei; nur mit Follow.</summary>
+    Lines: TArray<Integer>;
+  end;
+
 const
   /// <summary>Übliche Präfixe je Art (#452): F für Felder, A für Parameter, L für lokale Variablen.</summary>
   cNamingPrefixes: array[TNamingKind] of string = ('F', 'A', 'L');
@@ -194,6 +210,8 @@ type
     /// <summary>Verwendungen liegen nur im Cache auf der Platte, weil das Speicherbudget überschritten
     /// war (#492); TIndexService.UsagesOf lädt sie bei Bedarf.</summary>
     UsagesOffloaded: Boolean;
+    /// <summary>Folgemuster der Unit (#1890); nur Projekt-Units, Bibliotheken bleiben leer.</summary>
+    Patterns: TArray<TIndexFollowPattern>;
     /// <summary>Nachschlagetabelle der Namen; nil, solange PrepareNames nicht lief.</summary>
     NameTable: IUnitNameTable;
     /// <summary>Datei, in der ASymbol steht: seine Include-Datei (#500), sonst FileName.</summary>

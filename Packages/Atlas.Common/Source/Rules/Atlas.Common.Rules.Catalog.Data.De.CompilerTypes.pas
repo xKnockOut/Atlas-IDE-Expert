@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerTypes: array[0..101] of string = (
+  cCatalogLinesDeCompilerTypes: array[0..106] of string = (
     '{',
     '      "id": "assign-to-property-member",',
     '      "name": "Zuweisung an ein Feld eines Property-Records",',
@@ -122,11 +122,11 @@ const
     'har, Double div 2, not ''a'' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer G' +
     'leitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozedurale' +
     'n Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference' +
-    ' to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument (wie E2010); eine parameterlose Funktion, deren Ergebnis ' +
-    'genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarati' +
-    'onen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Vari' +
-    'ant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur de' +
-    'r Entwickler."',
+    ' to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument, ebenso eine anonyme Methode wie procedure(const S: strin' +
+    'g) für TProc<string> (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst).' +
+    ' Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen ' +
+    'immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohn' +
+    'e (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler."',
     '    },',
     '{',
     '      "id": "for-in-not-enumerable",',
@@ -163,6 +163,13 @@ const
     'ativeInt) oder ein Ausdruck, dessen Typ sicher NativeInt bzw. NativeUInt ist (TList<T>.Count mit der RTL im Index). Keine der Überladungen Integer, Int64, Double … passt eindeutig, Delphi fällt auf Ar' +
     'eEqual<T> zurück und kann T nicht ableiten (wie E2532). Free Pascal übersetzt den Aufruf, deshalb fällt der Fehler erst beim Bau mit Delphi auf. Strings (Length liefert Integer), statische Arrays, Aus' +
     'drücke unbekannten Typs, Aufrufe mit Typargument und eine bekannte Delphi-Version vor 12 bleiben still. Korrektur (sicher, auch für die ganze Datei): Integer(...) um die NativeInt-Seite."',
+    '    },',
+    '{',
+    '      "id": "caption-string-helper",',
+    '      "name": "String-Helfer auf TCaption",',
+    '      "description": "Eine Methode von TStringHelper (StartsWith, Contains, Trim, ToUpper, Length …) wird auf einem Ausdruck vom Typ TCaption aufgerufen, etwa Caption oder Text eines Steuerelements. T' +
+    'Caption ist als type string deklariert, ein eigener Typ, für den der String-Helfer nicht gilt (wie E2018). Free Pascal nimmt den Aufruf an. Gemeldet nur, wenn der Typ des Ausdrucks sicher TCaption ist' +
+    '. Korrektur (sicher): string(...) um den Ausdruck."',
     '    },',
     '{',
     '      "id": "argument-count-mismatch",',

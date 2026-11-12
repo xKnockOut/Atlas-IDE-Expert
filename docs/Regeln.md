@@ -12,7 +12,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 91 |
+| [Compiler vorab](#gruppe-compiler) | 95 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -237,6 +237,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
 | [`generic-inference-failed`](#generic-inference-failed) | Typargumente lassen sich nicht ableiten | Bug | Fehler |
 | [`dunitx-areequal-length`](#dunitx-areequal-length) | Assert.AreEqual mit Ganzzahl und NativeInt | Bug | Fehler |
+| [`exit-array-literal`](#exit-array-literal) | Exit mit Array-Literal | Bug | Fehler |
+| [`caption-string-helper`](#caption-string-helper) | String-Helfer auf TCaption | Bug | Fehler |
+| [`uses-order-hides-type`](#uses-order-hides-type) | Unit verdeckt einen Typ | Bug | Fehler |
+| [`interface-uses-missing`](#interface-uses-missing) | Unit nur im uses des implementation-Teils | Bug | Fehler |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -1098,7 +1102,7 @@ end;
 
 **Zugewiesener Wert ungenutzt** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen gibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil). Ebenso still bleibt das Leeren eines zuvor gesetzten Werts (X := nil, '', Default(T), T.Empty): Es gibt Speicher und Referenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert wird weiter gemeldet.
+Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen gibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil). Ebenso still bleibt das Leeren eines zuvor gesetzten Werts (X := nil, '', Default(T), T.Empty): Es gibt Speicher und Referenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert wird weiter gemeldet. Auch Result zählt, wenn die Funktion einen nicht verwalteten Ergebnistyp hat (Integer, Boolean, Aufzählungen, Klassen): Eine Vorbelegung wie Result := False vor try/except, case oder einer Schleife, nach der jeder Weg Result neu setzt oder mit Exit(Wert) endet, wird gemeldet (#1345). Gelesen wird Result am normalen Ende der Routine, nicht beim Verlassen über eine Ausnahme.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -8249,7 +8253,7 @@ if Liste.Count > 0 then
 
 **Inkompatible Typen** · Bug · Fehler · Gruppe Compiler vorab
 
-Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := 'abc', ein Klassenparameter mit Standardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + ['a'] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - Char, Double div 2, not 'a' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer Gleitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozeduralen Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler.
+Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := 'abc', ein Klassenparameter mit Standardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + ['a'] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - Char, Double div 2, not 'a' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer Gleitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozeduralen Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument, ebenso eine anonyme Methode wie procedure(const S: string) für TProc<string> (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler.
 
 Entspricht der Compilermeldung `E2010`, `E2008`, `E2009`, `E2015`, `E2033`, `E2089`.
 
@@ -8510,6 +8514,133 @@ Richtig:
 
 ```pascal
 Assert.AreEqual(5, Integer(Length(mObjects)));
+```
+
+<a id="exit-array-literal"></a>
+### exit-array-literal
+
+**Exit mit Array-Literal** · Bug · Fehler · Gruppe Compiler vorab
+
+Exit([...]) in einer Funktion, deren Ergebnis ein dynamisches Array ist (TArray<T>, array of T, TBytes, TStringDynArray … oder ein Typ derselben Unit, der so deklariert ist). Delphi liest die Klammern in Exit als Mengenkonstruktor, nicht als Array-Literal, und lehnt den Aufruf ab (wie E2001 bzw. E2010); Free Pascal übersetzt ihn, deshalb fällt der Fehler erst beim Bau mit Delphi auf. Result := [...] ist in Ordnung. Exit() in einer anonymen Methode, ein leeres [] und Funktionen mit anderem Ergebnistyp bleiben still. Korrektur (sicher): Result := [...]; Exit;.
+
+Entspricht der Compilermeldung `E2001`, `E2010`.
+
+Stufe A (Parser genügt).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix exit-array-literal`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+function Namen: TArray<string>;
+begin
+  Exit(['a', 'b']);
+end;
+```
+
+Richtig:
+
+```pascal
+function Namen: TArray<string>;
+begin
+  Result := ['a', 'b'];
+  Exit;
+end;
+```
+
+<a id="caption-string-helper"></a>
+### caption-string-helper
+
+**String-Helfer auf TCaption** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Methode von TStringHelper (StartsWith, Contains, Trim, ToUpper, Length …) wird auf einem Ausdruck vom Typ TCaption aufgerufen, etwa Caption oder Text eines Steuerelements. TCaption ist als type string deklariert, ein eigener Typ, für den der String-Helfer nicht gilt (wie E2018). Free Pascal nimmt den Aufruf an. Gemeldet nur, wenn der Typ des Ausdrucks sicher TCaption ist. Korrektur (sicher): string(...) um den Ausdruck.
+
+Entspricht der Compilermeldung `E2018`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix caption-string-helper`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+if Button1.Caption.StartsWith('&') then
+```
+
+Richtig:
+
+```pascal
+if string(Button1.Caption).StartsWith('&') then
+```
+
+<a id="uses-order-hides-type"></a>
+### uses-order-hides-type
+
+**Unit verdeckt einen Typ** · Bug · Fehler · Gruppe Compiler vorab
+
+Winapi.Windows (bzw. Windows) steht in uses hinter Vcl.Graphics, FMX.Graphics oder Graphics, und die Unit nennt TBitmap. Die letzte Unit gewinnt, TBitmap meint also den Record aus Winapi.Windows: TBitmap.Create und die Methoden der Grafikklasse werden nicht gefunden (wie E2003). uses des interface- und implementation-Teils zählen zusammen. TBitmap hinter einem Punkt (Vcl.Graphics.TBitmap) bleibt still. Korrektur (sicher) nur, wenn beide Units in derselben uses-Liste stehen: Winapi.Windows vor die Grafik-Unit stellen.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe A (Parser genügt).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix uses-order-hides-type`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+uses
+  Vcl.Graphics, Winapi.Windows;
+…
+  mBild := TBitmap.Create;
+```
+
+Richtig:
+
+```pascal
+uses
+  Winapi.Windows, Vcl.Graphics;
+…
+  mBild := TBitmap.Create;
+```
+
+<a id="interface-uses-missing"></a>
+### interface-uses-missing
+
+**Unit nur im uses des implementation-Teils** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Typ im interface-Teil (Feld, Parameter, Ergebnis, Property, Vorfahr) kommt aus einer Unit, die nur im uses des implementation-Teils steht. Dort ist der Name noch nicht bekannt (wie E2003). Gemeldet, wenn der Name im interface-Teil nicht aufgelöst wird und genau eine solche Unit ihn in ihrem interface-Teil deklariert; je Unit einmal pro Datei. Korrektur: Unit ins uses des interface-Teils verschieben (angeboten, wenn der interface-Teil ein uses hat).
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+interface
+uses
+  System.SysUtils;
+type
+  TFenster = class
+    FListe: TStringList;
+  end;
+implementation
+uses
+  System.Classes;
+```
+
+Richtig:
+
+```pascal
+interface
+uses
+  System.SysUtils, System.Classes;
+type
+  TFenster = class
+    FListe: TStringList;
+  end;
+implementation
 ```
 
 <a id="unresolved-type"></a>
