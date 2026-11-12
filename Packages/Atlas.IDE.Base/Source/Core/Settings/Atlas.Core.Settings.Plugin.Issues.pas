@@ -181,6 +181,9 @@ type
     /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273, issues.checklistStatus); aus =
     /// keine Zeile.</summary>
     IssuesChecklistStatus: Boolean;
+    /// <summary>Zustand des aktuellen Issues im Statusfeld mit Menü der erlaubten Übergänge und Einträgen in der
+    /// Befehlspalette (#2124, issues.statusState); aus = nur die Zeit.</summary>
+    IssuesStatusState: Boolean;
     /// <summary>Verknüpfungen der Vorschau als Baum (#1279, issues.preview.links): hängt ab von, blockiert,
     /// Unteraufgaben mit Fortschritt, eingeklappt Duplikate und „bezieht sich auf“; dazu „Unteraufgabe anlegen …“
     /// und „Verknüpfen …“. Aus = flache Liste wie in #1264.</summary>
@@ -441,6 +444,7 @@ begin
   Result.IssuesTimeRounding := cDefaultIssuesTimeRounding;
   Result.IssuesPreviewChecklists := True;
   Result.IssuesChecklistStatus := True;
+  Result.IssuesStatusState := True;
   Result.IssuesPreviewLinks := True;
   Result.IssuesWarnBlocked := True;
   Result.IssuesBoard := True;
@@ -496,6 +500,7 @@ begin
   AIo.Number('IssuesTimeRounding', IssuesTimeRounding);
   AIo.Flag('IssuesPreviewChecklists', IssuesPreviewChecklists);
   AIo.Flag('IssuesChecklistStatus', IssuesChecklistStatus);
+  AIo.Flag('IssuesStatusState', IssuesStatusState);
   AIo.Flag('IssuesPreviewLinks', IssuesPreviewLinks);
   AIo.Flag('IssuesWarnBlocked', IssuesWarnBlocked);
   AIo.Flag('IssuesBoard', IssuesBoard);

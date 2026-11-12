@@ -1200,6 +1200,7 @@ type
       write FIssueWork.IssuesPreviewChecklists;
     property IssuesChecklistStatus: Boolean read FIssueWork.IssuesChecklistStatus
       write FIssueWork.IssuesChecklistStatus;
+    property IssuesStatusState: Boolean read FIssueWork.IssuesStatusState write FIssueWork.IssuesStatusState;
     property IssuesPreviewLinks: Boolean read FIssueWork.IssuesPreviewLinks write FIssueWork.IssuesPreviewLinks;
     property IssuesWarnBlocked: Boolean read FIssueWork.IssuesWarnBlocked write FIssueWork.IssuesWarnBlocked;
     property IssuesBoard: Boolean read FIssueWork.IssuesBoard write FIssueWork.IssuesBoard;

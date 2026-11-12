@@ -8,7 +8,10 @@
 //   eine Formulardatei (.dfm, .fmx) wird zu ihrer Unit, sofern die zum
 //   Projekt gehört, ein Ordner zu den Units des Projekts darin, das Projekt zu
 //   allen seinen Units. Doppelte fallen weg (ohne Rücksicht auf Groß- und
-//   Kleinschreibung), die Reihenfolge der Auswahl bleibt.
+//   Kleinschreibung), die Reihenfolge der Auswahl bleibt. Die Doppelten
+//   erkennt eine Menge der Schlüssel: Ein Projekt mit über 2000 Units
+//   verglich sonst jede neue Unit mit allen bisherigen, und der Rechtsklick
+//   auf Projekt oder Ordner hielt die IDE spürbar an.
 // - OfKinds beschreibt die Auswahl beim Aufbau des Menüs: Kennt die IDE nur
 //   die Art, gilt die Auswahl als ungeklärt (Resolved = False); ein einzelnes
 //   Projekt ist schon geklärt (seine Units sind bekannt).
@@ -19,6 +22,9 @@
 // Nur im Hauptthread verwenden.
 
 interface
+
+uses
+  System.Generics.Collections;
 
 type
 {$SCOPEDENUMS ON}
@@ -32,9 +38,14 @@ type
   private
     class function KeyOf(const AFileName: string): string; static;
     class function IsUnit(const AFileName: string): Boolean; static;
-    class procedure AddUnique(var AUnits: TArray<string>; const AFileName: string); static;
-    class procedure AddFolder(var AUnits: TArray<string>; const AFolder: string;
-      const AProjectFiles: TArray<string>); static;
+    class procedure AddUnique(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
+      const AFileName: string); static;
+    class procedure AddFolder(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
+      const AFolder: string; const AProjectFiles: TArray<string>); static;
+    class function AnyUnit(const AProjectFiles: TArray<string>): Boolean; static;
+    class function KeysOf(const AUnits: TArray<string>): TDictionary<string, Boolean>; static;
+    class procedure ResolveInto(var ASelection: TAtlasProjectSelection; AKeys: TDictionary<string, Boolean>;
+      const AIdents, AProjectFiles: TArray<string>); static;
     class function FindIn(const AFileName: string; const AProjectFiles: TArray<string>;
       out AFound: string): Boolean; static;
   public
@@ -127,19 +138,44 @@ begin
   Result := TAtlasProjectNodeKind.OtherFile;
 end;
 
-class procedure TAtlasProjectSelection.AddUnique(var AUnits: TArray<string>; const AFileName: string);
+class procedure TAtlasProjectSelection.AddUnique(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
+  const AFileName: string);
 var
-  mKey, mHeld: string;
+  mKey: string;
 begin
   mKey := KeyOf(AFileName);
-  for mHeld in AUnits do
+  if AKeys.ContainsKey(mKey) then
   begin
-    if KeyOf(mHeld) = mKey then
+    Exit;
+  end;
+  AKeys.Add(mKey, True);
+  SetLength(AUnits, Length(AUnits) + 1);
+  AUnits[High(AUnits)] := AFileName;
+end;
+
+class function TAtlasProjectSelection.AnyUnit(const AProjectFiles: TArray<string>): Boolean;
+var
+  mFile: string;
+begin
+  for mFile in AProjectFiles do
+  begin
+    if IsUnit(mFile) then
     begin
-      Exit;
+      Exit(True);
     end;
   end;
-  AUnits := AUnits + [AFileName];
+  Result := False;
+end;
+
+class function TAtlasProjectSelection.KeysOf(const AUnits: TArray<string>): TDictionary<string, Boolean>;
+var
+  mUnit: string;
+begin
+  Result := TDictionary<string, Boolean>.Create;
+  for mUnit in AUnits do
+  begin
+    Result.AddOrSetValue(KeyOf(mUnit), True);
+  end;
 end;
 
 class function TAtlasProjectSelection.FindIn(const AFileName: string; const AProjectFiles: TArray<string>;
@@ -160,8 +196,8 @@ begin
   Result := False;
 end;
 
-class procedure TAtlasProjectSelection.AddFolder(var AUnits: TArray<string>; const AFolder: string;
-  const AProjectFiles: TArray<string>);
+class procedure TAtlasProjectSelection.AddFolder(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
+  const AFolder: string; const AProjectFiles: TArray<string>);
 var
   mPrefix, mFile: string;
 begin
@@ -174,7 +210,7 @@ begin
   begin
     if IsUnit(mFile) and KeyOf(mFile).StartsWith(mPrefix) then
     begin
-      AddUnique(AUnits, mFile);
+      AddUnique(AUnits, AKeys, mFile);
     end;
   end;
 end;
@@ -182,13 +218,26 @@ end;
 class function TAtlasProjectSelection.Resolve(const AIdents: TArray<string>; const AProjectFile: string;
   const AProjectFiles: TArray<string>): TAtlasProjectSelection;
 var
-  mIdent, mFile: string;
-  mKind: TAtlasProjectNodeKind;
+  mKeys: TDictionary<string, Boolean>;
 begin
   Result := Default(TAtlasProjectSelection);
   Result.ProjectFile := AProjectFile;
   Result.Resolved := True;
   Result.Multiple := Length(AIdents) > 1;
+  mKeys := TDictionary<string, Boolean>.Create;
+  try
+    ResolveInto(Result, mKeys, AIdents, AProjectFiles);
+  finally
+    mKeys.Free;
+  end;
+end;
+
+class procedure TAtlasProjectSelection.ResolveInto(var ASelection: TAtlasProjectSelection;
+  AKeys: TDictionary<string, Boolean>; const AIdents, AProjectFiles: TArray<string>);
+var
+  mIdent, mFile: string;
+  mKind: TAtlasProjectNodeKind;
+begin
   for mIdent in AIdents do
   begin
     if mIdent = '' then
@@ -196,24 +245,24 @@ begin
       Continue;
     end;
     mKind := KindOf(mIdent);
-    Include(Result.Kinds, mKind);
+    Include(ASelection.Kinds, mKind);
     case mKind of
       TAtlasProjectNodeKind.SourceFile:
-        AddUnique(Result.Units, mIdent);
+        AddUnique(ASelection.Units, AKeys, mIdent);
       TAtlasProjectNodeKind.FormFile:
         // Nur eine Unit, die es im Projekt gibt; eine Formulardatei ohne Unit trägt nichts bei.
         if FindIn(ChangeFileExt(mIdent, cUnitExtension), AProjectFiles, mFile) then
         begin
-          AddUnique(Result.Units, mFile);
+          AddUnique(ASelection.Units, AKeys, mFile);
         end;
       TAtlasProjectNodeKind.Folder:
-        AddFolder(Result.Units, mIdent, AProjectFiles);
+        AddFolder(ASelection.Units, AKeys, mIdent, AProjectFiles);
       TAtlasProjectNodeKind.Project:
         for mFile in AProjectFiles do
         begin
           if IsUnit(mFile) then
           begin
-            AddUnique(Result.Units, mFile);
+            AddUnique(ASelection.Units, AKeys, mFile);
           end;
         end;
       TAtlasProjectNodeKind.OtherFile:
@@ -226,6 +275,7 @@ end;
 class function TAtlasProjectSelection.Merge(const AFirst, ASecond: TAtlasProjectSelection): TAtlasProjectSelection;
 var
   mFile: string;
+  mKeys: TDictionary<string, Boolean>;
 begin
   Result := AFirst;
   if Result.ProjectFile = '' then
@@ -235,9 +285,14 @@ begin
   Result.Kinds := AFirst.Kinds + ASecond.Kinds;
   Result.Resolved := AFirst.Resolved and ASecond.Resolved;
   Result.Multiple := AFirst.Multiple or ASecond.Multiple or ((AFirst.Kinds <> []) and (ASecond.Kinds <> []));
-  for mFile in ASecond.Units do
-  begin
-    AddUnique(Result.Units, mFile);
+  mKeys := KeysOf(Result.Units);
+  try
+    for mFile in ASecond.Units do
+    begin
+      AddUnique(Result.Units, mKeys, mFile);
+    end;
+  finally
+    mKeys.Free;
   end;
 end;
 
@@ -254,7 +309,7 @@ begin
   Result.Multiple := AMultiple;
   // Ordner und Projekte ohne eine einzige Unit im Projekt tragen nichts bei.
   if (AKinds * [TAtlasProjectNodeKind.Folder, TAtlasProjectNodeKind.Project] <> []) and
-    (Length(Resolve([AProjectFile], AProjectFile, AProjectFiles).Units) = 0) then
+    not AnyUnit(AProjectFiles) then
   begin
     Result.Kinds := Result.Kinds - [TAtlasProjectNodeKind.Folder, TAtlasProjectNodeKind.Project];
   end;

@@ -2,6 +2,8 @@
 
 // Anzeigen von „Meine Issues“ außerhalb der Kachel (aus
 // Atlas.IDE.Tracker.MyIssues gelöst, #1455):
+// - Zustand und Zeit im Zusatzfeld (#2124) über SyncTime mit dem Zustand aus
+//   der Liste.
 // - Statusfeld (#591): Zeile atlas.issue „Issue: ATL-123 Titel“ (Klick beendet
 //   das Issue nach Rückfrage), darunter die Checkliste (#1273,
 //   issues.checklistStatus) und „Anhängen …“ (#1276).
@@ -224,7 +226,7 @@ end;
 procedure TAtlasIdeIssuesStatus.Inactive;
 begin
   Remove;
-  FServices.SyncTime('', '');
+  FServices.SyncTime('', '', '');
   FPrefix := '';
   // Beim Entladen (Stop) bleibt das Präfix, damit der Hook außerhalb der IDE weiter gilt.
   if FContext.Started then
@@ -258,6 +260,21 @@ begin
   FLine := NewLine(TAtlasMyIssues.cStatusId, TAtlasMyIssues.cStatusOrder, mAction, FLineRef);
 end;
 
+/// <summary>Zustand von AKey in der Liste von „Meine Issues“ (#2124); '' wenn es nicht darin steht.</summary>
+function StateOf(const AItems: TArray<TAtlasTrackerIssue>; const AKey: string): string;
+var
+  mIssue: TAtlasTrackerIssue;
+begin
+  Result := '';
+  for mIssue in AItems do
+  begin
+    if SameText(mIssue.Key, AKey) then
+    begin
+      Exit(mIssue.State);
+    end;
+  end;
+end;
+
 procedure TAtlasIdeIssuesStatus.Update;
 var
   mProject, mText: string;
@@ -286,10 +303,10 @@ begin
   if not mData.Active.Active then
   begin
     Remove;
-    FServices.SyncTime('', '');
+    FServices.SyncTime('', '', '');
     Exit;
   end;
-  FServices.SyncTime(mProject, mData.Active.Key);
+  FServices.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
   EnsureLine;
   mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStatusLine,
     [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);

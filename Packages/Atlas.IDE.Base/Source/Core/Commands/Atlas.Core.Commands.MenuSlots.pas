@@ -11,6 +11,10 @@
 // abgeschnitten.
 // Trennlinien (Id „-“) erscheinen nur zwischen sichtbaren Befehlen derselben
 // Liste; ein Untermenü ohne sichtbaren Befehl bleibt aus.
+// MenuName bildet Namen für Einträge, die die IDE als Komponentennamen
+// übernimmt (Kontextmenü der Projektverwaltung: IOTALocalMenu.Name wird zu
+// TMenuItem.Name). Ein Punkt darin ließ jeden Rechtsklick in der
+// Projektverwaltung im Menüaufbau der IDE scheitern.
 // Ohne VCL und Open Tools API.
 
 interface
@@ -50,9 +54,15 @@ type
     /// <summary>Verteilt AItems auf ATopCount Plätze und AGroupCount Untermenüs mit je AGroupSize Plätzen.</summary>
     class function Layout(const AItems: TArray<TAtlasSlotItem>; ATopCount, AGroupCount,
       AGroupSize: Integer): TAtlasSlotLayout; static;
+    /// <summary>Gültiger Komponentenname aus APrefix und ANumber: nur Buchstaben A–Z, Ziffern und '_', beginnt mit
+    /// einem Buchstaben ('Atlas' vorn, wenn APrefix keinen liefert).</summary>
+    class function MenuName(const APrefix: string; ANumber: Integer): string; static;
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 class function TAtlasMenuSlots.NewList(ACount: Integer): TAtlasSlotList;
 var
@@ -165,6 +175,25 @@ begin
   begin
     Decide(Result.Groups[mIndex], AItems);
   end;
+end;
+
+class function TAtlasMenuSlots.MenuName(const APrefix: string; ANumber: Integer): string;
+var
+  mChar: Char;
+begin
+  Result := '';
+  for mChar in APrefix do
+  begin
+    if CharInSet(mChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
+      Result := Result + mChar;
+    end;
+  end;
+  if (Result = '') or not CharInSet(Result[1], ['A'..'Z', 'a'..'z', '_']) then
+  begin
+    Result := 'Atlas' + Result;
+  end;
+  Result := Result + IntToStr(Abs(ANumber));
 end;
 
 end.
