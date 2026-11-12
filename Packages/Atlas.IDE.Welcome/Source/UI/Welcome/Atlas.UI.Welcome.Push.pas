@@ -15,10 +15,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Welcome.Unsaved;
+  Atlas.Core.Welcome.Unsaved,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasPushDialog = class(TForm)
+  TAtlasPushDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 560;
     cDetailsHeight = 220;
@@ -60,13 +61,8 @@ constructor TAtlasPushDialog.CreateDialog(AOwner: TComponent; const AProjectName
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTitle, [AProjectName]);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTitle, [AProjectName]),
+    cDialogWidth);
 
   FIntro := TLabel.Create(Self);
   FIntro.Parent := Self;

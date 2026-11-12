@@ -14,6 +14,9 @@
 
 interface
 
+uses
+  Atlas.Core.Outline.Directives;
+
 type
   /// <summary>Teil eines Bedingungsblocks (IF, ELSEIF, ELSE, ENDIF) als Sprungziel.</summary>
   TAtlasConditionalPart = record
@@ -39,14 +42,17 @@ type
   TAtlasConditionalFinder = class
   public
     /// <summary>Zweige um ALine/ACharacter (0-basiert), außen zuerst; leer außerhalb jeder Bedingung.</summary>
-    class function At(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasConditionalBranches; static;
+    class function At(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasConditionalBranches;
+      overload; static;
+    /// <summary>Wie oben aus schon gelesenen Direktiven (je Stand einmal gelesen, nicht je Caret-Stelle).</summary>
+    class function At(const ADirectives: TAtlasDirectives; ALine, ACharacter: Integer): TAtlasConditionalBranches;
+      overload; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Outline.Directives,
   Atlas.Core.Outline.TypeText;
 
 const
@@ -184,19 +190,23 @@ end;
 
 class function TAtlasConditionalFinder.At(const ALines: TArray<string>; ALine,
   ACharacter: Integer): TAtlasConditionalBranches;
+begin
+  Result := At(TAtlasDirectiveScanner.Scan(ALines), ALine, ACharacter);
+end;
+
+class function TAtlasConditionalFinder.At(const ADirectives: TAtlasDirectives; ALine,
+  ACharacter: Integer): TAtlasConditionalBranches;
 var
-  mDirectives: TAtlasDirectives;
   mBlock: TBlock;
   mBranch: Integer;
 begin
   Result := nil;
-  mDirectives := TAtlasDirectiveScanner.Scan(ALines);
-  for mBlock in BlocksOf(mDirectives) do
+  for mBlock in BlocksOf(ADirectives) do
   begin
-    mBranch := BranchAt(mDirectives, mBlock, ALine, ACharacter);
+    mBranch := BranchAt(ADirectives, mBlock, ALine, ACharacter);
     if mBranch >= 0 then
     begin
-      Result := Result + [BranchOf(mDirectives, mBlock, mBranch)];
+      Result := Result + [BranchOf(ADirectives, mBlock, mBranch)];
     end;
   end;
 end;

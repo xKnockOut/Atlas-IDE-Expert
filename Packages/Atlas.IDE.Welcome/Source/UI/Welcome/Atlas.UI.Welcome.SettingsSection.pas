@@ -93,6 +93,8 @@ type
     ContinueCount: TEdit;
     ContinueIncoming: TCheckBox;
     ContinueFetch: TCheckBox;
+    ContinueIssues: TCheckBox;
+    ContinueIssuesCount: TEdit;
     Saved: TCheckBox;
     Projects: TCheckBox;
     MaxProjects: TEdit;
@@ -449,6 +451,9 @@ begin
   FTiles.ContinueIncoming := Check('welcomePage.continue.incoming',
     TAtlasWelcomeTextId.SettingsWelcomeContinueIncoming);
   FTiles.ContinueFetch := Check('welcomePage.continue.fetch', TAtlasWelcomeTextId.SettingsWelcomeContinueFetch);
+  FTiles.ContinueIssues := Check('welcomePage.continue.issues', TAtlasWelcomeTextId.SettingsWelcomeContinueIssues);
+  FTiles.ContinueIssuesCount := Number('welcomePage.continue.issues.count',
+    TAtlasWelcomeTextId.SettingsWelcomeContinueIssuesCount);
   FTiles.Saved := Check('welcomePage.saved', TAtlasWelcomeTextId.SettingsWelcomeSaved);
   // Bereich „Projekte“ (#592).
   FTiles.Projects := Check('welcomePage.projectStatus', TAtlasWelcomeTextId.SettingsWelcomeProjects);

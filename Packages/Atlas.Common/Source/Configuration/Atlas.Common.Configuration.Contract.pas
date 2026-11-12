@@ -474,6 +474,9 @@ type
     DisableWarningReason: Boolean;
     /// <summary>Code-Aktionen „Methode extrahieren“, „Variable einführen“ und „Konstante extrahieren“ (#50).</summary>
     Extract: Boolean;
+    /// <summary>Zu „Methode extrahieren“ eine zweite Aktion, die auch gleiche Stellen der Unit ersetzt (#2054).
+    /// </summary>
+    ExtractMethodDuplicates: Boolean;
     /// <summary>Code-Aktion „case vervollständigen“ (#50).</summary>
     CompleteCase: Boolean;
     /// <summary>Code-Aktion „with auflösen“ (#50).</summary>
@@ -758,6 +761,9 @@ type
     /// <summary>Sicherheitsnetz: Anfrage nach zwei Abstürzen an derselben Datei überspringen (#1355,
     /// server.crashSkip).</summary>
     ServerCrashSkip: Boolean;
+    /// <summary>Statusdatei je Server für AtlasMonitor und get_server_status schreiben (#1901,
+    /// server.statusFile).</summary>
+    ServerStatusFile: Boolean;
     /// <summary>Anonymisiertes Diagnoselog (#647): schreiben, Aufbewahrung in Tagen und lokale
     /// Zuordnung Kurz-ID → Name (nur für die eigene Analyse).</summary>
     DiagnosticsLog: Boolean;
@@ -1289,6 +1295,7 @@ begin
   ASettings.DisableWarning := True;
   ASettings.DisableWarningReason := True;
   ASettings.Extract := True;
+  ASettings.ExtractMethodDuplicates := True;
   ASettings.CompleteCase := True;
   ASettings.ResolveWith := True;
   ASettings.InlineCode := False;
@@ -1463,6 +1470,7 @@ begin
   ASettings.RequestTimeoutMs := 10000;
   ASettings.ServerCrashCases := True;
   ASettings.ServerCrashSkip := True;
+  ASettings.ServerStatusFile := True;
   ASettings.DiagnosticsLog := True;
   ASettings.DiagnosticsLogDays := 7;
   ASettings.DiagnosticsLogMapFile := False;

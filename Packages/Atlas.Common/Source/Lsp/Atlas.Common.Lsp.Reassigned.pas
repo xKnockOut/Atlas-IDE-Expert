@@ -106,7 +106,9 @@ var
 begin
   if ACancellation = nil then
   begin
-    Exit(ALookup);
+    // Nicht Exit(ALookup): Delphi ruft die Methodenreferenz dort auf (E2035).
+    Result := ALookup;
+    Exit;
   end;
   mLookup := ALookup;
   mCancellation := ACancellation;

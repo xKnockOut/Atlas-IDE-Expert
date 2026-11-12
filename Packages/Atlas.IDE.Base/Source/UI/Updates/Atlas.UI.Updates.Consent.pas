@@ -17,10 +17,11 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Style.Symbol,
-  Atlas.UI.Style.Symbol;
+  Atlas.UI.Style.Symbol,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasUpdateConsent = class(TForm)
+  TAtlasUpdateConsent = class(TAtlasDialog)
   private
     FText: TLabel;
     FSymbol: TAtlasSymbolImage;
@@ -63,14 +64,10 @@ constructor TAtlasUpdateConsent.CreateConsent(AOwner: TComponent);
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle);
+  inherited CreateDialog(AOwner, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), cConsentWidth);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cConsentWidth);
   OnClose := FormClose;
 
   // Atlas-Symbol (#751) links neben dem Text.

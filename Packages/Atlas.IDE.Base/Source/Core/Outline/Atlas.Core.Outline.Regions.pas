@@ -10,6 +10,9 @@
 
 interface
 
+uses
+  Atlas.Core.Outline.Directives;
+
 type
   TAtlasRegionMark = record
     /// <summary>Name ohne Anführungszeichen; leer bei {$REGION} ohne Text.</summary>
@@ -34,14 +37,18 @@ type
   TAtlasRegionFinder = class
   public
     /// <summary>Regionen des Texts und die innerste um ALine/ACharacter (0-basiert).</summary>
-    class function At(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasRegionPlace; static;
+    class function At(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasRegionPlace; overload;
+      static;
+    /// <summary>Wie oben aus schon gelesenen Direktiven eines Texts mit ALineCount Zeilen (je Stand einmal
+    /// gelesen, nicht je Caret-Stelle).</summary>
+    class function At(const ADirectives: TAtlasDirectives; ALineCount, ALine, ACharacter: Integer): TAtlasRegionPlace;
+      overload; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Outline.Directives,
   Atlas.Core.Outline.TypeText;
 
 /// <summary>Name aus dem Argument von {$REGION}: ohne Anführungszeichen.</summary>
@@ -86,11 +93,17 @@ begin
 end;
 
 class function TAtlasRegionFinder.At(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasRegionPlace;
+begin
+  Result := At(TAtlasDirectiveScanner.Scan(ALines), Length(ALines), ALine, ACharacter);
+end;
+
+class function TAtlasRegionFinder.At(const ADirectives: TAtlasDirectives; ALineCount, ALine,
+  ACharacter: Integer): TAtlasRegionPlace;
 var
   mIndex: Integer;
   mRegion: TAtlasRegionMark;
 begin
-  Result.Regions := RegionsOf(TAtlasDirectiveScanner.Scan(ALines), High(ALines) + 1);
+  Result.Regions := RegionsOf(ADirectives, ALineCount);
   Result.Current := -1;
   for mIndex := 0 to High(Result.Regions) do
   begin

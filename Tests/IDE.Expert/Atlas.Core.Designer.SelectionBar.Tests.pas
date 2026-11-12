@@ -167,11 +167,12 @@ procedure TAtlasSelectionBarTests.ParseItemsKeepsOrder;
 var
   mItems: TArray<TAtlasBarItem>;
 begin
-  mItems := TAtlasSelectionBar.ParseItems('bold; anchorRight, unknown, BOLD fitText');
-  Assert.AreEqual(3, Integer(Length(mItems)));
+  mItems := TAtlasSelectionBar.ParseItems('bold; anchorRight, unknown, BOLD fitText Transfer');
+  Assert.AreEqual(4, Integer(Length(mItems)));
   Assert.IsTrue(mItems[0] = TAtlasBarItem.Bold);
   Assert.IsTrue(mItems[1] = TAtlasBarItem.AnchorRight);
   Assert.IsTrue(mItems[2] = TAtlasBarItem.FitText);
+  Assert.IsTrue(mItems[3] = TAtlasBarItem.Transfer);
   Assert.AreEqual(0, Integer(Length(TAtlasSelectionBar.ParseItems(''))));
 end;
 
@@ -180,7 +181,8 @@ var
   mItems: TArray<TAtlasBarItem>;
 begin
   mItems := TAtlasSelectionBar.ParseItems(TAtlasSelectionBar.DefaultItems);
-  Assert.AreEqual(Ord(TAtlasBarItem.AlignRight) + 1, Integer(Length(mItems)));
+  Assert.AreEqual(Ord(TAtlasBarItem.Transfer) + 1, Integer(Length(mItems)));
+  Assert.IsTrue(mItems[High(mItems)] = TAtlasBarItem.Transfer);
   Assert.IsTrue(mItems[0] = TAtlasBarItem.FontSmaller);
   Assert.IsFalse(TAtlasSelectionBar.DefaultItems.Contains('fitText'));
   Assert.AreEqual('anchorRight', TAtlasSelectionBar.KeyOf(TAtlasBarItem.AnchorRight));

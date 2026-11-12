@@ -31,7 +31,8 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies;
+  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasWorkingCopyEvent = procedure(Sender: TObject; AIndex: Integer) of object;
@@ -84,7 +85,7 @@ type
     property UpdateOnlyButton: TButton read FUpdateOnlyButton;
   end;
 
-  TAtlasWorkingCopiesDialog = class(TForm)
+  TAtlasWorkingCopiesDialog = class(TAtlasDialog)
   public const
     cColumnCount = 5;
   private
@@ -387,13 +388,12 @@ end;
 
 constructor TAtlasWorkingCopiesDialog.CreateDialog(AOwner: TComponent; const AName: string);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FName := AName;
   FList := TAtlasVcsWorkingCopyList.Empty;
   Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesTitle, [AName]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
   Width := ScaleValue(860);
   Height := ScaleValue(380);
   Constraints.MinWidth := 560;
@@ -404,6 +404,8 @@ begin
   FMenu := TAtlasWorkingCopiesMenu.CreateFor(Self);
   AddView;
   UpdateButtons;
+  // Hat der Dialog sein Fenster schon (TAtlasDialog legt es im Konstruktor an), kommt kein CreateWnd mehr.
+  Fill;
 end;
 
 procedure TAtlasWorkingCopiesDialog.AddHint;
@@ -472,6 +474,12 @@ procedure TAtlasWorkingCopiesDialog.Fill;
 var
   mIndex: Integer;
 begin
+  // CreateWnd kann schon im Konstruktor der Basis laufen (TAtlasDialog, BorderStyle erzeugt das Fenster neu),
+  // bevor es die Liste gibt.
+  if FView = nil then
+  begin
+    Exit;
+  end;
   // Die Liste braucht ein Fenster; hat der Dialog schon eines, auch die Liste anlegen.
   if not FView.HandleAllocated then
   begin

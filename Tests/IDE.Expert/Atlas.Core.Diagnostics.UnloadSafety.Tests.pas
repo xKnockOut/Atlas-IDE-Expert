@@ -51,7 +51,7 @@ end;
 procedure TAtlasUnloadSafetyTests.UnknownModuleIsSafe;
 begin
   Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule));
-  Assert.AreEqual(0, Length(TAtlasUnloadSafety.Reasons));
+  Assert.AreEqual(0, Integer(Length(TAtlasUnloadSafety.Reasons)));
 end;
 
 procedure TAtlasUnloadSafetyTests.MarkUnsafeKeepsReasonsAndPinsOnce;
@@ -61,9 +61,9 @@ begin
   TAtlasUnloadSafety.MarkUnsafe(0, 'ohne Package');
   Assert.IsFalse(TAtlasUnloadSafety.IsSafe(cModule));
   Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule + 1));
-  Assert.AreEqual(2, Length(TAtlasUnloadSafety.Reasons));
+  Assert.AreEqual(2, Integer(Length(TAtlasUnloadSafety.Reasons)));
   Assert.AreEqual('zweiter Grund', TAtlasUnloadSafety.Reasons[1]);
-  Assert.AreEqual(1, Length(FPinned));
+  Assert.AreEqual(1, Integer(Length(FPinned)));
 end;
 
 initialization

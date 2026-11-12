@@ -23,6 +23,8 @@ type
     [Test]
     procedure EmptyPatternListsKind;
     [Test]
+    procedure FuzzyFindsLettersInOrder;
+    [Test]
     procedure StepStopsAtEdges;
   end;
 
@@ -82,16 +84,17 @@ end;
 
 procedure TAtlasDesignerSearchTests.MatchKinds;
 begin
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.Exact), Ord(TAtlasDesignerSearch.MatchOf('btnOK', 'BTNok')));
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.Prefix), Ord(TAtlasDesignerSearch.MatchOf('OKAction', 'ok')));
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.WordStart), Ord(TAtlasDesignerSearch.MatchOf('btnOK', 'ok')),
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Exact), Ord(TAtlasDesignerSearch.MatchOf('btnOK', 'BTNok', False)));
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Prefix), Ord(TAtlasDesignerSearch.MatchOf('OKAction', 'ok', False)));
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.WordStart), Ord(TAtlasDesignerSearch.MatchOf('btnOK', 'ok', False)),
     'Großbuchstabe nach Kleinbuchstaben');
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.WordStart), Ord(TAtlasDesignerSearch.MatchOf('pnl_ok', 'ok')), 'nach _');
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.WordStart), Ord(TAtlasDesignerSearch.MatchOf('Mit OK', 'ok')),
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.WordStart), Ord(TAtlasDesignerSearch.MatchOf('pnl_ok', 'ok', False)),
+    'nach _');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.WordStart), Ord(TAtlasDesignerSearch.MatchOf('Mit OK', 'ok', False)),
     'nach Leerzeichen');
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.Contains), Ord(TAtlasDesignerSearch.MatchOf('Lookup', 'ok')));
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('qryKunden', 'ok')));
-  Assert.AreEqual(Ord(TAtlasDesignerMatch.Prefix), Ord(TAtlasDesignerSearch.MatchOf('qryKunden', ' qry ')),
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Contains), Ord(TAtlasDesignerSearch.MatchOf('Lookup', 'ok', False)));
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('qryKunden', 'ok', False)));
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Prefix), Ord(TAtlasDesignerSearch.MatchOf('qryKunden', ' qry ', False)),
     'Leerzeichen am Rand zählen nicht');
 end;
 
@@ -99,7 +102,7 @@ procedure TAtlasDesignerSearchTests.FindOrdersBestFirst;
 var
   mHits: TArray<Integer>;
 begin
-  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.All);
+  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, False);
   // ok (gleich), OKAction (Anfang), btnOK und pnl_ok (Wortanfang, nach Namen), Lookup (irgendwo).
   Assert.AreEqual(5, Integer(Length(mHits)));
   Assert.AreEqual(2, mHits[0]);
@@ -107,10 +110,10 @@ begin
   Assert.AreEqual(0, mHits[2]);
   Assert.AreEqual(5, mHits[3]);
   Assert.AreEqual(3, mHits[4]);
-  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.NonVisual);
+  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.NonVisual, False);
   Assert.AreEqual(1, Integer(Length(mHits)), 'nur nichtvisuelle');
   Assert.AreEqual(1, mHits[0]);
-  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.Containers);
+  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.Containers, False);
   Assert.AreEqual(1, Integer(Length(mHits)), 'nur Container');
   Assert.AreEqual(5, mHits[0]);
 end;
@@ -119,19 +122,19 @@ procedure TAtlasDesignerSearchTests.CaptionAndClassRankAfterName;
 var
   mHits: TArray<Integer>;
 begin
-  mHits := TAtlasDesignerSearch.Find(Items, 'speichern', [TAtlasDesignerField.Name], TAtlasDesignerKind.All);
+  mHits := TAtlasDesignerSearch.Find(Items, 'speichern', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, False);
   Assert.AreEqual(0, Integer(Length(mHits)), 'ohne Caption nichts');
   mHits := TAtlasDesignerSearch.Find(Items, 'speichern', [TAtlasDesignerField.Name, TAtlasDesignerField.Caption],
-    TAtlasDesignerKind.All);
+    TAtlasDesignerKind.All, False);
   // OKAction (Caption gleich) vor lblHinweis (Caption Wortanfang).
   Assert.AreEqual(2, Integer(Length(mHits)));
   Assert.AreEqual(1, mHits[0]);
   Assert.AreEqual(6, mHits[1]);
   mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name, TAtlasDesignerField.Caption],
-    TAtlasDesignerKind.All);
+    TAtlasDesignerKind.All, False);
   Assert.AreEqual(6, Integer(Length(mHits)), 'lblHinweis über die Caption dazu');
   Assert.AreEqual(6, mHits[5], 'Caption-Treffer nach allen Namenstreffern');
-  mHits := TAtlasDesignerSearch.Find(Items, 'tlabel', [TAtlasDesignerField.ClassName], TAtlasDesignerKind.All);
+  mHits := TAtlasDesignerSearch.Find(Items, 'tlabel', [TAtlasDesignerField.ClassName], TAtlasDesignerKind.All, False);
   Assert.AreEqual(2, Integer(Length(mHits)));
   Assert.AreEqual(6, mHits[0], 'gleicher Rang: nach Namen (lblHinweis vor ok)');
   Assert.AreEqual(2, mHits[1]);
@@ -141,15 +144,46 @@ procedure TAtlasDesignerSearchTests.EmptyPatternListsKind;
 var
   mHits: TArray<Integer>;
 begin
-  mHits := TAtlasDesignerSearch.Find(Items, '  ', [TAtlasDesignerField.Name], TAtlasDesignerKind.All);
+  mHits := TAtlasDesignerSearch.Find(Items, '  ', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, False);
   Assert.AreEqual(7, Integer(Length(mHits)), 'ohne Suchwort alle');
   Assert.AreEqual(0, mHits[0], 'nach Namen: btnOK zuerst');
-  mHits := TAtlasDesignerSearch.Find(Items, '', [TAtlasDesignerField.Name], TAtlasDesignerKind.NonVisual);
+  mHits := TAtlasDesignerSearch.Find(Items, '', [TAtlasDesignerField.Name], TAtlasDesignerKind.NonVisual, False);
   Assert.AreEqual(2, Integer(Length(mHits)));
   Assert.AreEqual(1, mHits[0]);
   Assert.AreEqual(4, mHits[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasDesignerSearch.Find(nil, 'ok', [TAtlasDesignerField.Name],
-    TAtlasDesignerKind.All))));
+    TAtlasDesignerKind.All, False))));
+end;
+
+procedure TAtlasDesignerSearchTests.FuzzyFindsLettersInOrder;
+var
+  mItems: TArray<TAtlasDesignerItem>;
+  mHits: TArray<Integer>;
+begin
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Prefix), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'btnspei', True)),
+    'btnspei findet btnSpeichern');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Fuzzy), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'bspei', True)));
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.Fuzzy), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'b sp', True)),
+    'Leerzeichen zählen nicht');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'bspei', False)),
+    'ohne AFuzzy scharf');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'speib', True)),
+    'Reihenfolge zählt');
+  Assert.AreEqual(Ord(TAtlasDesignerMatch.None), Ord(TAtlasDesignerSearch.MatchOf('btnSpeichern', 'x', True)));
+  mItems := Items + [Item('btnSpeichern', 'TButton', True, '', 'pnlButtons')];
+  mHits := TAtlasDesignerSearch.Find(mItems, 'bspei', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, True);
+  Assert.AreEqual(1, Integer(Length(mHits)));
+  Assert.AreEqual(7, mHits[0]);
+  mHits := TAtlasDesignerSearch.Find(mItems, 'ok', [TAtlasDesignerField.Name, TAtlasDesignerField.Caption],
+    TAtlasDesignerKind.All, True);
+  // Dieselben sechs wie ohne AFuzzy: qryKunden und btnSpeichern haben kein „o“.
+  Assert.AreEqual(6, Integer(Length(mHits)), 'unscharf kommt nichts vor die scharfen');
+  mHits := TAtlasDesignerSearch.Find(mItems, 'lhw', [TAtlasDesignerField.Name, TAtlasDesignerField.Caption,
+    TAtlasDesignerField.ClassName], TAtlasDesignerKind.All, True);
+  Assert.AreEqual(1, Integer(Length(mHits)), 'lblHinweis unscharf im Namen');
+  Assert.AreEqual(6, mHits[0]);
+  mHits := TAtlasDesignerSearch.Find(mItems, 'tbtn', [TAtlasDesignerField.ClassName], TAtlasDesignerKind.All, True);
+  Assert.AreEqual(0, Integer(Length(mHits)), 'Klasse nie unscharf');
 end;
 
 procedure TAtlasDesignerSearchTests.StepStopsAtEdges;
@@ -169,7 +203,7 @@ var
   mHits: TArray<Integer>;
   mRows: TArray<TAtlasDesignerRow>;
 begin
-  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.All);
+  mHits := TAtlasDesignerSearch.Find(Items, 'ok', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, False);
   mRows := TAtlasDesignerGroups.Rows(Items, mHits, TAtlasDesignerGrouping.Hierarchy, 'MainForm');
   // MainForm (ok, OKAction), pnlButtons (btnOK), pnlTop (pnl_ok, Lookup).
   Assert.AreEqual(8, Integer(Length(mRows)));
@@ -191,7 +225,7 @@ var
   mHits: TArray<Integer>;
   mRows: TArray<TAtlasDesignerRow>;
 begin
-  mHits := TAtlasDesignerSearch.Find(Items, '', [TAtlasDesignerField.Name], TAtlasDesignerKind.All);
+  mHits := TAtlasDesignerSearch.Find(Items, '', [TAtlasDesignerField.Name], TAtlasDesignerKind.All, False);
   mRows := TAtlasDesignerGroups.Rows(Items, mHits, TAtlasDesignerGrouping.ClassName, 'MainForm');
   // Sechs Klassen, TLabel mit zwei.
   Assert.AreEqual(13, Integer(Length(mRows)));

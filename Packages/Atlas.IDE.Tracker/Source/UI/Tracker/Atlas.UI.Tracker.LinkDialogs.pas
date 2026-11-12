@@ -23,10 +23,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasSubtaskDialog = class(TForm)
+  TAtlasSubtaskDialog = class(TAtlasDialog)
   private
     FProject: TLabel;
     FTitleLabel: TLabel;
@@ -55,7 +56,7 @@ type
     property CancelButton: TButton read FCancel;
   end;
 
-  TAtlasIssueLinkDialog = class(TForm)
+  TAtlasIssueLinkDialog = class(TAtlasDialog)
   private
     FKey: string;
     FProvider: string;
@@ -142,17 +143,6 @@ begin
   Result.Anchors := [akTop, akRight];
 end;
 
-procedure SetupForm(AForm: TForm; const ACaption: string);
-begin
-  AForm.Caption := ACaption;
-  AForm.BorderStyle := bsDialog;
-  AForm.BorderIcons := [biSystemMenu];
-  AForm.Position := poMainFormCenter;
-  AForm.Font.Name := 'Segoe UI';
-  AForm.Font.Size := 9;
-  AForm.ClientWidth := Scaled(AForm, cDialogWidth);
-end;
-
 function AddBottom(AForm: TForm): TPanel;
 begin
   Result := TPanel.Create(AForm);
@@ -169,8 +159,9 @@ constructor TAtlasSubtaskDialog.CreateDialog(AOwner: TComponent; const AParentKe
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskTitle, [AParentKey]));
+  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskTitle, [AParentKey]),
+    cDialogWidth);
+  BorderIcons := [biSystemMenu];
   FProject := AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskProject, [AProject]), 0);
   FTitleLabel := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskSummary), 100);
 
@@ -281,10 +272,10 @@ constructor TAtlasIssueLinkDialog.CreateDialog(AOwner: TComponent; const AKey, A
 var
   mBottom: TPanel;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkTitle, [AKey]), cDialogWidth);
+  BorderIcons := [biSystemMenu];
   FKey := AKey;
   FProvider := AProvider;
-  SetupForm(Self, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkTitle, [AKey]));
 
   FDependsOn := TRadioButton.Create(Self);
   FDependsOn.Parent := Self;

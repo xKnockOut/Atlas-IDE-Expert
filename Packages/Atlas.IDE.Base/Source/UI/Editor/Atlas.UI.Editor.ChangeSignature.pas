@@ -18,10 +18,11 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Editor.ChangeSignature;
+  Atlas.Core.Editor.ChangeSignature,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasChangeSignatureDialog = class(TForm)
+  TAtlasChangeSignatureDialog = class(TAtlasDialog)
   private
     FModel: TAtlasSignatureModel;
     FList: TListView;
@@ -75,7 +76,9 @@ implementation
 uses
   Vcl.Graphics,
   Atlas.UI.Strings,
-  Atlas.UI.Editor.Strings;
+  Atlas.UI.Editor.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.
@@ -186,15 +189,11 @@ end;
 
 constructor TAtlasChangeSignatureDialog.CreateDialog(AOwner: TComponent; AModel: TAtlasSignatureModel);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FModel := AModel;
   Caption := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigTitle, [AModel.Name]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   ClientHeight := ScaleValue(cDialogHeight);
   // Reihenfolge zählt: Was zuerst unten ausgerichtet wird, steht zuunterst.
   CreateBottom;
@@ -233,7 +232,9 @@ begin
   FNotes := AddNoteLabel(Self, 0);
   FNotes.Caption := NotesOf(FModel);
   FError := AddNoteLabel(Self, 0);
-  FError.Font.Color := clRed;
+  FError.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FError.StyleElements := FError.StyleElements - [seFont];
   FPreview := AddNoteLabel(Self, cGap div 2);
   FPreview.Font.Name := 'Consolas';
 end;

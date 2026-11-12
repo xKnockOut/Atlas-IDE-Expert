@@ -70,7 +70,9 @@ type
   private
     procedure HandleThemeChanged;
   protected
-    procedure DoShow; override;
+    /// <summary>Thema anwenden, bevor das Fenster sichtbar wird: Das IDE-Thema setzt StyleName und erzeugt das
+    /// Fenster neu; mitten im Anzeigen (DoShow) bricht die VCL das mit einem Fehler ab.</summary>
+    procedure VisibleChanging; override;
     /// <summary>Thema der IDE hat gewechselt (nach dem Anwenden an der Wurzel): eigene Farben neu holen.</summary>
     procedure ThemeChanged; virtual;
     /// <summary>Oberkante unter dem bisher untersten Element (alTop stapelt nach Top).</summary>
@@ -213,9 +215,12 @@ begin
   inherited;
 end;
 
-procedure TAtlasDialog.DoShow;
+procedure TAtlasDialog.VisibleChanging;
 begin
-  TAtlasUiTheme.Apply(Self);
+  if not Visible then
+  begin
+    TAtlasUiTheme.Apply(Self);
+  end;
   inherited;
 end;
 
@@ -249,14 +254,16 @@ var
 begin
   mTop := NextTop;
   Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
+  // Lage vor Align und Parent: Sonst ordnet die VCL alTop-Zeilen beim Anlegen des Fensters nach der
+  // vorläufigen Lage und kann die Reihenfolge vertauschen.
+  Result.Top := mTop;
+  Result.Height := ScaleValue(AHeight96);
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap div 2), ScaleValue(cRowGap), 0);
   Result.BevelOuter := bvNone;
   Result.Caption := '';
-  Result.Top := mTop;
-  Result.Height := ScaleValue(AHeight96);
+  Result.Align := alTop;
+  Result.Parent := Self;
 end;
 
 function TAtlasDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;

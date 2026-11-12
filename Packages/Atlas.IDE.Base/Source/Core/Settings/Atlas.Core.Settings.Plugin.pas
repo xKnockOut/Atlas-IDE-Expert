@@ -113,6 +113,8 @@ type
     cMaxSearchHistory = Atlas.Core.Settings.Plugin.Editor.cMaxSearchHistory;
     cMinContinueCount = Atlas.Core.Settings.Plugin.Welcome.cMinContinueCount;
     cMaxContinueCount = Atlas.Core.Settings.Plugin.Welcome.cMaxContinueCount;
+    cMinContinueIssuesCount = Atlas.Core.Settings.Plugin.Welcome.cMinContinueIssuesCount;
+    cMaxContinueIssuesCount = Atlas.Core.Settings.Plugin.Welcome.cMaxContinueIssuesCount;
     cMinTrendPoints = Atlas.Core.Settings.Plugin.Welcome.cMinTrendPoints;
     cMaxTrendPoints = Atlas.Core.Settings.Plugin.Welcome.cMaxTrendPoints;
     cMinTestFailures = Atlas.Core.Settings.Plugin.Welcome.cMinTestFailures;
@@ -145,6 +147,9 @@ type
     cHelpSourceLocal = Atlas.Core.Settings.Plugin.General.cHelpSourceLocal;
     cDesignerSearchPopup = Atlas.Core.Settings.Plugin.Editor.cDesignerSearchPopup;
     cDesignerScopeForm = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeForm;
+    cDesignerUsagesUnit = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesUnit;
+    cDesignerUsagesProject = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesProject;
+    cDesignerUsagesGroup = Atlas.Core.Settings.Plugin.Editor.cDesignerUsagesGroup;
     cDesignerScopeParent = Atlas.Core.Settings.Plugin.Editor.cDesignerScopeParent;
     cDesignerSetsLocal = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsLocal;
     cDesignerSetsShared = Atlas.Core.Settings.Plugin.Editor.cDesignerSetsShared;
@@ -296,6 +301,7 @@ type
     property ProblemsCompilerMerge: string read FRules.ProblemsCompilerMerge write FRules.ProblemsCompilerMerge;
     property ProblemsShowCompilerCode: Boolean read FRules.ProblemsShowCompilerCode
       write FRules.ProblemsShowCompilerCode;
+    property ProblemsIdeErrors: Boolean read FRules.ProblemsIdeErrors write FRules.ProblemsIdeErrors;
     property ProblemsWindowKey: Integer read FNavigationKeys.ProblemsWindowKey write FNavigationKeys.ProblemsWindowKey;
     property CheckFileKey: Integer read FNavigationKeys.CheckFileKey write FNavigationKeys.CheckFileKey;
     property CreateIssueKey: Integer read FEditingKeys.CreateIssueKey write FEditingKeys.CreateIssueKey;
@@ -626,6 +632,7 @@ type
     property EditorDesignerBar: Boolean read FEditorView.EditorDesignerBar write FEditorView.EditorDesignerBar;
     property DesignerSearchKey: Integer read FEditorView.DesignerSearchKey write FEditorView.DesignerSearchKey;
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
+    property DesignerFuzzySearch: Boolean read FEditorView.DesignerFuzzySearch write FEditorView.DesignerFuzzySearch;
     property DesignerTabOrderClick: Boolean read FEditorView.DesignerTabOrderClick
       write FEditorView.DesignerTabOrderClick;
     property DesignerTabOrderOverlay: Boolean read FEditorView.DesignerTabOrderOverlay
@@ -652,6 +659,11 @@ type
       write FEditorView.DesignerShowInDesignerKey;
     property DesignerPropertySearch: Boolean read FEditorView.DesignerPropertySearch
       write FEditorView.DesignerPropertySearch;
+    property DesignerUsages: Boolean read FEditorView.DesignerUsages write FEditorView.DesignerUsages;
+    property DesignerUsagesStatusCount: Boolean read FEditorView.DesignerUsagesStatusCount
+      write FEditorView.DesignerUsagesStatusCount;
+    property DesignerUsagesScope: string read FEditorView.DesignerUsagesScope write FEditorView.DesignerUsagesScope;
+    property DesignerUsagesKey: Integer read FEditorView.DesignerUsagesKey write FEditorView.DesignerUsagesKey;
     property DesignerSpatialNavigation: Boolean read FEditorView.DesignerSpatialNavigation
       write FEditorView.DesignerSpatialNavigation;
     property DesignerSpatialCrossContainers: Boolean read FEditorView.DesignerSpatialCrossContainers
@@ -690,6 +702,7 @@ type
       write FEditorView.DesignerDataBindings;
     property DesignerExtractFrame: Boolean read FEditorView.DesignerExtractFrame
       write FEditorView.DesignerExtractFrame;
+    property DesignerEventMap: Boolean read FEditorView.DesignerEventMap write FEditorView.DesignerEventMap;
     property DesignerFitToText:Boolean read FEditorView.DesignerFitToText write FEditorView.DesignerFitToText;
     property DesignerFitToTextMinWidth: Integer read FEditorView.DesignerFitToTextMinWidth
       write FEditorView.DesignerFitToTextMinWidth;
@@ -849,6 +862,8 @@ type
       write FEditorView.DesignerMagnifierEdges;
     property DesignerMagnifierKey: Integer read FEditorView.DesignerMagnifierKey
       write FEditorView.DesignerMagnifierKey;
+    property DesignerUndo: Boolean read FEditorView.DesignerUndo write FEditorView.DesignerUndo;
+    property DesignerUndoSteps: Integer read FEditorView.DesignerUndoSteps write FEditorView.DesignerUndoSteps;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
@@ -1070,6 +1085,10 @@ type
       write FWelcomeTiles.WelcomePageContinueIncoming;
     property WelcomePageContinueFetch: Boolean read FWelcomeTiles.WelcomePageContinueFetch
       write FWelcomeTiles.WelcomePageContinueFetch;
+    property WelcomePageContinueIssues: Boolean read FWelcomeTiles.WelcomePageContinueIssues
+      write FWelcomeTiles.WelcomePageContinueIssues;
+    property WelcomePageContinueIssuesCount: Integer read FWelcomeTiles.WelcomePageContinueIssuesCount
+      write FWelcomeTiles.WelcomePageContinueIssuesCount;
     property WelcomePageSaved: Boolean read FWelcomeTiles.WelcomePageSaved write FWelcomeTiles.WelcomePageSaved;
     property WelcomePageTrends: Boolean read FWelcomeTiles.WelcomePageTrends write FWelcomeTiles.WelcomePageTrends;
     property WelcomePageTrendsPoints: Integer read FWelcomeTiles.WelcomePageTrendsPoints
@@ -1116,6 +1135,12 @@ type
     property IssuesProjects: string read FIssues.IssuesProjects write FIssues.IssuesProjects;
     property IssuesQueries: string read FIssues.IssuesQueries write FIssues.IssuesQueries;
     property IssuesQueryPicker: Boolean read FIssues.IssuesQueryPicker write FIssues.IssuesQueryPicker;
+    property IssuesProjectPicker: Boolean read FIssues.IssuesProjectPicker write FIssues.IssuesProjectPicker;
+    property IssuesWelcomeProject: string read FIssues.IssuesWelcomeProject write FIssues.IssuesWelcomeProject;
+    property IssuesAllProjects: Boolean read FIssues.IssuesAllProjects write FIssues.IssuesAllProjects;
+    property IssuesAllProjectsPerGroup: Integer read FIssues.IssuesAllProjectsPerGroup
+      write FIssues.IssuesAllProjectsPerGroup;
+    property IssuesSuggestPaths: Boolean read FIssues.IssuesSuggestPaths write FIssues.IssuesSuggestPaths;
     property IssuesCreate: Boolean read FIssueWork.IssuesCreate write FIssueWork.IssuesCreate;
     property IssuesCreateIncludeCode: Boolean read FIssueWork.IssuesCreateIncludeCode
       write FIssueWork.IssuesCreateIncludeCode;

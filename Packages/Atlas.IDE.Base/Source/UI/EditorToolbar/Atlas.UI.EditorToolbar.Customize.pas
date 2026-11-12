@@ -23,7 +23,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Settings.ToolbarItems,
-  Atlas.Core.EditorToolbar.Icons;
+  Atlas.Core.EditorToolbar.Icons,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Ein Befehl, der in die Leiste kann (aus der Befehlspalette).</summary>
@@ -41,7 +42,7 @@ type
     Position: string;
   end;
 
-  TAtlasToolbarCustomizeDialog = class(TForm)
+  TAtlasToolbarCustomizeDialog = class(TAtlasDialog)
   private
     FCommands: TArray<TAtlasToolbarCommandInfo>;
     FConfig: TAtlasToolbarConfig;
@@ -114,6 +115,7 @@ uses
 
 const
   cGap = 8;
+  cDialogWidth = 640;
 
 type
 {$SCOPEDENUMS ON}
@@ -297,17 +299,13 @@ var
   mBuilder: TAtlasToolbarCustomizeBuilder;
   mPosition: string;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FCommands := ACommands;
   FConfig := AConfig;
   FConfig.Items := TAtlasToolbarItems.Clean(AConfig.Items);
   Caption := TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCustomizeTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(640);
   ClientHeight := ScaleValue(440);
   Constraints.MinWidth := ScaleValue(480);
   Constraints.MinHeight := ScaleValue(320);

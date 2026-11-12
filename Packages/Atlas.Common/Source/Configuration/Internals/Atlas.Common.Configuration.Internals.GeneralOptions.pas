@@ -293,13 +293,15 @@ end;
 procedure ReadServer(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin
   AReader.ReadObject(ANode, 'server', [TFlagOption.Create('crashCases', ASettings.ServerCrashCases),
-    TFlagOption.Create('crashSkip', ASettings.ServerCrashSkip)], [], ASettings);
+    TFlagOption.Create('crashSkip', ASettings.ServerCrashSkip),
+    TFlagOption.Create('statusFile', ASettings.ServerStatusFile)], [], ASettings);
 end;
 
 procedure TakeServer(const ASource: TServerSettings; const AFileText: string; var ATarget: TServerSettings);
 begin
   ATarget.ServerCrashCases := ASource.ServerCrashCases;
   ATarget.ServerCrashSkip := ASource.ServerCrashSkip;
+  ATarget.ServerStatusFile := ASource.ServerStatusFile;
 end;
 
 procedure ReadLogDays(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;

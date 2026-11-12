@@ -109,6 +109,8 @@ type
     function FormatCode(const AStyle: TFormatStyle; const AFileName: string; const AScope: TFormatScope;
       ADryRun: Boolean): string; overload;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Liest Dateien wie die Werkzeuge selbst (extract_method, #2054).</summary>
+    property ReadText: TReferenceReadText read FReadText;
     property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
     property Audit: TMcpAudit read FAudit write FAudit;
     /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>

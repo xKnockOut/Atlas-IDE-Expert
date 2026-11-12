@@ -216,7 +216,11 @@ const
     TAtlasTextId.ProblemsCheckFileCommand, // CheckFile
     TAtlasTextId.SectionAppendCommand, // SectionAppend
     TAtlasTextId.DesignerSelectionSetsSaveCommand, // DesignerSelectionSetsSave
-    TAtlasTextId.DesignerShowComponentCommand); // DesignerShowComponent
+    TAtlasTextId.DesignerShowComponentCommand, // DesignerShowComponent
+    TAtlasTextId.DesignerInlineCaptionCommand, // DesignerInlineCaption
+    TAtlasTextId.DesignerSelectionBarCommand, // DesignerSelectionBar
+    TAtlasTextId.DesignerMagnifierCommand, // DesignerMagnifier
+    TAtlasTextId.DesignerUsagesCommand); // DesignerUsages
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 

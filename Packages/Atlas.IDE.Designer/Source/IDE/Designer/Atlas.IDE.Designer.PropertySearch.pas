@@ -47,7 +47,6 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Files.Contract,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Designer.FormModel,
@@ -182,61 +181,6 @@ begin
   end;
 end;
 
-/// <summary>Units mit Formular in AProject.</summary>
-function FormUnits(const AProject: IOTAProject): TArray<string>;
-var
-  mIndex: Integer;
-  mInfo: IOTAModuleInfo;
-begin
-  Result := nil;
-  if AProject = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to AProject.GetModuleCount - 1 do
-  begin
-    mInfo := AProject.GetModule(mIndex);
-    if (mInfo <> nil) and (mInfo.FormName <> '') and SameText(ExtractFileExt(mInfo.FileName), '.pas') then
-    begin
-      Result := Result + [mInfo.FileName];
-    end;
-  end;
-end;
-
-function GroupUnits: TArray<string>;
-var
-  mServices: IOTAModuleServices;
-  mGroup: IOTAProjectGroup;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mGroup := mServices.MainProjectGroup;
-  if mGroup = nil then
-  begin
-    Result := FormUnits(mServices.GetActiveProject);
-    Exit;
-  end;
-  for mIndex := 0 to mGroup.ProjectCount - 1 do
-  begin
-    Result := Result + FormUnits(mGroup.Projects[mIndex]);
-  end;
-end;
-
-function ActiveProjectUnits: TArray<string>;
-var
-  mServices: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Result := FormUnits(mServices.GetActiveProject);
-  end;
-end;
-
 /// <summary>Unit des aktuellen Formulars: im Designer oder die des aktiven Editors; '' ohne Formular.</summary>
 function CurrentFormUnit: string;
 var
@@ -291,7 +235,7 @@ var
   mSource: TFormSource;
 begin
   FLoaded := True;
-  for mUnit in GroupUnits do
+  for mUnit in TAtlasDesignerAccess.ProjectUnits(True, True) do
   begin
     if LoadSource(mUnit, mSource) then
     begin
@@ -383,9 +327,9 @@ begin
     TAtlasPropertyScope.Form:
       mUnits := [CurrentFormUnit];
     TAtlasPropertyScope.Project:
-      mUnits := ActiveProjectUnits;
+      mUnits := TAtlasDesignerAccess.ProjectUnits(False, True);
   else
-    mUnits := GroupUnits;
+    mUnits := TAtlasDesignerAccess.ProjectUnits(True, True);
   end;
   Result := nil;
   mSeen := TStringList.Create;

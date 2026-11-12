@@ -25,7 +25,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.NewIssue;
+  Atlas.Core.Tracker.NewIssue,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Ein Eintrag der Klappliste „Tracker“.</summary>
@@ -140,7 +141,7 @@ type
     property CancelButton: TButton read FCancel;
   end;
 
-  TAtlasNewIssueDialog = class(TForm)
+  TAtlasNewIssueDialog = class(TAtlasDialog)
   private
     FParts: TAtlasNewIssueParts;
     FSetup: TAtlasNewIssueSetup;
@@ -201,8 +202,6 @@ const
   cLabelWidth = 110;
   cDialogWidth = 640;
   cRowHeight = 30;
-  cFontName = 'Segoe UI';
-  cFontSize = 9;
   cCodeFontName = 'Consolas';
   cMemoHeight = 120;
   cCheckHeight = 26;
@@ -491,7 +490,7 @@ end;
 constructor TAtlasNewIssueDialog.CreateDialog(AOwner: TComponent; const ASetup: TAtlasNewIssueSetup;
   const AOnLoad: TAtlasNewIssueLoadEvent; const AOnSend: TAtlasNewIssueSendEvent);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cDialogWidth);
   FSetup := ASetup;
   FOnLoad := AOnLoad;
   FOnSend := AOnSend;
@@ -503,10 +502,6 @@ begin
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueDialogTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := cFontName;
-  Font.Size := cFontSize;
-  ClientWidth := ScaleValue(cDialogWidth);
   OnCloseQuery := FormCloseQuery;
   FParts := TAtlasNewIssueParts.Create(Self);
   FParts.CancelButton.OnClick := CancelClick;

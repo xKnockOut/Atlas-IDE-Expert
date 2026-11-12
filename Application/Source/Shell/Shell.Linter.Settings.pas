@@ -54,6 +54,7 @@ uses
   System.IOUtils,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Query.Language,
   Atlas.Common.Rules.Output,
   Shell.Bootstrap,
@@ -194,6 +195,8 @@ begin
   mFileName := ConfigFileOf(ARoot);
   TShellBootstrap.ReadSourceText(mFileName, mText);
   Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(mGlobalText, '', mText), mMisplaced);
+  // server.statusFile (#1901) gilt für jeden Lauf ohne Editor; alle Befehle laden ihre Einstellungen hier.
+  TServerActivity.Shared.Enabled := Result.ServerStatusFile;
   if mText <> '' then
   begin
     ReportIssues(mFileName, mText, Result);

@@ -192,6 +192,10 @@ type
     /// AWaitCancelled (nil = nie) beendet nur das Warten auf einen fremden Lauf (ERuleCheckCancelled).</summary>
     class function SharedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
       const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>; static;
+    /// <summary>Treffer aus dem Memo von ARules ohne eigenen Lauf (IRuleFindingsMemo.Await): abgelegte oder die eines
+    /// laufenden Laufs am selben Text. False ohne beides. Ohne Memo, Dateiname oder Regeln wie RuleFindings.</summary>
+    class function CachedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
+      const AWaitCancelled: TRuleCancelled; out AFindings: TArray<TRuleFinding>): Boolean; static;
     /// <summary>Treffer der Prüfregeln aus ARules für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft
     /// auch atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
     class function RuleFindings(const AText: string; ATree: TSyntaxTree;
@@ -737,6 +741,17 @@ begin
     Exit(RuleFindings(AText, ATree, ARules));
   end;
   Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
+end;
+
+class function TLspSyntaxDiagnostics.CachedRuleFindings(const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled; out AFindings: TArray<TRuleFinding>): Boolean;
+begin
+  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
+  begin
+    AFindings := RuleFindings(AText, ATree, ARules);
+    Exit(True);
+  end;
+  Result := ARules.Memo.Await(ARules.FileName, AText, AWaitCancelled, AFindings);
 end;
 
 class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;

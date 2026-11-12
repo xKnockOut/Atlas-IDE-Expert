@@ -39,6 +39,8 @@ type
     [Test]
     procedure ExtractFrameRoundTrip;
     [Test]
+    procedure EventMapRoundTrip;
+    [Test]
     procedure SelectSimilarRoundTrip;
     [Test]
     procedure SelectionSetsRoundTrip;
@@ -88,6 +90,8 @@ type
     procedure SelectionBarRoundTrip;
     [Test]
     procedure MagnifierRoundTrip;
+    [Test]
+    procedure UndoRoundTrip;
   end;
 
 implementation
@@ -100,8 +104,24 @@ uses
   Atlas.UI.Designer.SettingsSection;
 
 procedure TDesignerSettingsSectionTests.WarmUp;
+var
+  mRegistrations: TArray<IAtlasRegistration>;
+  mPage: TAtlasSettingsPage;
 begin
   WarmUpSettingsPage;
+  // Auch der Designer-Abschnitt hat Speicher erster Benutzung (Steuerelemente, Tastenliste), der sonst dem ersten
+  // Test zugerechnet wird.
+  mRegistrations := ProvideSections([TAtlasDesignerSettingsSection]);
+  try
+    mPage := TAtlasSettingsPage.Create(nil);
+    try
+      mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    finally
+      mPage.Free;
+    end;
+  finally
+    RevokeAll(mRegistrations);
+  end;
 end;
 
 procedure TDesignerSettingsSectionTests.Setup;
@@ -309,6 +329,24 @@ begin
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.DesignerExtractFrame);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.EventMapRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'DesignerEventMap').Checked, 'Vorgabe an');
+    CheckOf(mPage, 'DesignerEventMap').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.DesignerEventMap);
   finally
     mPage.Free;
   end;
@@ -886,6 +924,30 @@ begin
   end;
 end;
 
+procedure TDesignerSettingsSectionTests.UndoRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerUndo').Checked, 'experimentell: Vorgabe aus');
+    Assert.AreEqual('50', EditOf(mPage, 'DesignerUndoSteps').Text);
+    CheckOf(mPage, 'DesignerUndo').Checked := True;
+    EditOf(mPage, 'DesignerUndoSteps').Text := '20';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.DesignerUndo);
+    Assert.AreEqual(20, mSaved.DesignerUndoSteps);
+    mSaved.DesignerUndoSteps := 1000;
+    mSaved.Normalize;
+    Assert.AreEqual(200, mSaved.DesignerUndoSteps, 'Obergrenze');
+  finally
+    mPage.Free;
+  end;
+end;
+
 procedure TDesignerSettingsSectionTests.ShowInDesignerRoundTrip;
 var
   mPage: TAtlasSettingsPage;
@@ -897,6 +959,13 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'DesignerShowInDesigner').Checked, 'Vorgabe an');
     Assert.IsTrue(CheckOf(mPage, 'DesignerPropertySearch').Checked, 'Eigenschaftssuche (#524): Vorgabe an');
     CheckOf(mPage, 'DesignerPropertySearch').Checked := False;
+    Assert.IsTrue(CheckOf(mPage, 'DesignerFuzzySearch').Checked, 'unscharfe Suche (#539): Vorgabe an');
+    CheckOf(mPage, 'DesignerFuzzySearch').Checked := False;
+    Assert.IsTrue(CheckOf(mPage, 'DesignerUsages').Checked, 'Verwendungen im Code (#750): Vorgabe an');
+    Assert.IsTrue(CheckOf(mPage, 'DesignerUsagesStatusCount').Checked);
+    Assert.AreEqual(41078, TAtlasPluginSettings.Defaults.DesignerUsagesKey, 'Umschalt+Alt+F7');
+    Assert.AreEqual('project', TAtlasPluginSettings.Defaults.DesignerUsagesScope);
+    CheckOf(mPage, 'DesignerUsagesStatusCount').Checked := False;
     Assert.AreEqual(8315, TAtlasPluginSettings.Defaults.DesignerShowInDesignerKey, 'Umschalt+F12');
     CheckOf(mPage, 'DesignerShowInDesigner').Checked := False;
     EditOf(mPage, 'DesignerShowInDesignerKey').Text := '';
@@ -904,6 +973,9 @@ begin
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.DesignerShowInDesigner, 'abschaltbar');
     Assert.IsFalse(mSaved.DesignerPropertySearch, 'Eigenschaftssuche abschaltbar');
+    Assert.IsFalse(mSaved.DesignerFuzzySearch, 'unscharfe Suche abschaltbar');
+    Assert.IsTrue(mSaved.DesignerUsages, 'Zähler aus lässt den Befehl an');
+    Assert.IsFalse(mSaved.DesignerUsagesStatusCount, 'Zähler abschaltbar');
     Assert.AreEqual(0, mSaved.DesignerShowInDesignerKey, 'leer = keine Taste');
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'DesignerShowInDesigner').Checked);

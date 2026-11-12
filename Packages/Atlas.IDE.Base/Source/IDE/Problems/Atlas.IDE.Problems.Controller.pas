@@ -28,6 +28,13 @@
 // dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
 // steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
 // Checking meldet eine laufende Anfrage für die Atlas-Statusleiste (#1155).
+// Fehler der IDE (#1819, problems.ideErrors): Nach jeder Prüfung einer Datei
+// (Antwort auf textDocument/diagnostic, im Hauptthread) fragt der Controller
+// Error Insight der IDE über das Modul Prüfregeln ab und legt die Fehler in den
+// Speicher (SetIdeErrors); nie beim Tippen selbst. Befunde „nur Atlas“ der
+// Regeln für undeklarierte Bezeichner und unbekannte Typen gehen je Stelle
+// einmal ohne Namen ins Protokoll. Ausgeschaltet: keine Abfrage, der Speicher
+// verwirft die Fehler der IDE.
 // Angeforderte Dateien (#1817, „Mit Atlas prüfen“ in der Projektverwaltung)
 // gleicht der nächste Takt mit dem Text aus Editor bzw. Platte ab und holt sie,
 // auch ohne offenen Editor.
@@ -55,6 +62,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
+  Atlas.Core.Problems.IdeErrors,
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
@@ -165,6 +173,9 @@ type
     FBuildTarget: TAtlasIdeBuildTarget;
     // Zuletzt dem Server gemeldete Debug-Pause (#1247).
     FDebugPauseSent: Boolean;
+    // Fehler der IDE (#1819): mögliche Fehlalarme je Stelle einmal protokollieren; zuletzt abgefragt?
+    FIdeJournal: TAtlasIdeErrorJournal;
+    FIdeErrorsOn: Boolean;
     // Stand der Projektprüfung des Servers (#1247) und wann der letzte Lauf endete (GetTickCount64, 0 = nie).
     class var FRun: TLspWorkspaceRun;
     class var FRunFinishedAt: UInt64;
@@ -174,6 +185,11 @@ type
     procedure FreeFinished;
     procedure DeliverDocument(const APull: TPull; const AReport: TLspDiagnosticReport);
     procedure DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>; const ARun: TLspWorkspaceRun);
+    /// <summary>Nach der Prüfung von AFileName: Fehler der IDE abfragen und mögliche Fehlalarme protokollieren
+    /// (#1819); ausgeschaltet nichts.</summary>
+    procedure QueryIdeErrors(const AFileName: string);
+    /// <summary>problems.ideErrors übernehmen; beim Ausschalten die Fehler der IDE verwerfen.</summary>
+    procedure ApplyIdeErrorsSetting;
     /// <summary>Meldet dem Server Beginn und Ende des Debuggens (#1247): Die Projektprüfung ruht solange.</summary>
     procedure ReportDebugPause(APaused: Boolean);
     procedure CloseUnopened(ASession: TLspSession);
@@ -273,7 +289,8 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Problems.IdeErrors;
 
 /// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
 function ProblemsActive: Boolean;
@@ -559,6 +576,7 @@ begin
   FTexts := TDictionary<string, string>.Create;
   FVersions := TDictionary<string, Cardinal>.Create;
   FPulled := TDictionary<string, string>.Create;
+  FIdeJournal := TAtlasIdeErrorJournal.Create;
   FBuildTarget := TAtlasIdeBuildTarget.Create(
     procedure(const AMessage: string)
     begin
@@ -573,6 +591,7 @@ begin
   FRetired.Free;
   FBuildTarget.Free;
   FPulled.Free;
+  FIdeJournal.Free;
   FTexts.Free;
   FVersions.Free;
   FStore.Free;
@@ -771,6 +790,7 @@ begin
   FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
   // Meldungen gelöschter Zeilen fallen weg statt blass auf die Folgezeile zu rutschen (#1818, editor.trackLines).
   FStore.DropDeletedLines := TAtlasIdeSettings.TrackLinesOn;
+  ApplyIdeErrorsSetting;
   // Während des Debuggens ruht die Prüfung (#1241): keine Anfragen, keine Hintergrundprüfung; danach geht es weiter.
   // Die Projektprüfung des Servers erfährt es eigens (#1247), sonst liefe ihr Lauf weiter.
   Result := Paused;
@@ -1159,15 +1179,56 @@ begin
   FLastCheck.FileName := APull.FileName;
   FLastCheck.DurationMs := APull.DurationMs;
   FLastCheck.At := Now;
-  if AReport.Unchanged then
+  if not AReport.Unchanged then
+  begin
+    FStore.Update(APull.FileName, APull.Text, True, AReport.Problems, AReport.ResultId, APull.ReplaceCompiler);
+    // Inzwischen weitergetippt: Positionen auf den aktuellen Text bringen.
+    if FTexts.TryGetValue(TAtlasProblemStore.Key(APull.FileName), mCurrent) and (mCurrent <> APull.Text) then
+    begin
+      FStore.Edit(APull.FileName, mCurrent);
+    end;
+  end;
+  // Auch ohne neue Befunde: Error Insight der IDE kann sich seit der letzten Prüfung geändert haben.
+  QueryIdeErrors(APull.FileName);
+end;
+
+procedure TAtlasProblemsSync.ApplyIdeErrorsSetting;
+var
+  mOn: Boolean;
+begin
+  mOn := TAtlasIdeErrorSource.Enabled;
+  if mOn = FIdeErrorsOn then
   begin
     Exit;
   end;
-  FStore.Update(APull.FileName, APull.Text, True, AReport.Problems, AReport.ResultId, APull.ReplaceCompiler);
-  // Inzwischen weitergetippt: Positionen auf den aktuellen Text bringen.
-  if FTexts.TryGetValue(TAtlasProblemStore.Key(APull.FileName), mCurrent) and (mCurrent <> APull.Text) then
+  FIdeErrorsOn := mOn;
+  if not mOn then
   begin
-    FStore.Edit(APull.FileName, mCurrent);
+    FStore.ClearIdeErrors;
+    FIdeJournal.Clear;
+  end;
+end;
+
+procedure TAtlasProblemsSync.QueryIdeErrors(const AFileName: string);
+var
+  mErrors: TArray<TAtlasProblem>;
+  mLine: string;
+begin
+  ApplyIdeErrorsSetting;
+  if not FIdeErrorsOn then
+  begin
+    Exit;
+  end;
+  if not TAtlasIdeErrorSource.Query(AFileName, mErrors) then
+  begin
+    // Die IDE kennt die Datei nicht (mehr) bzw. kein Modul: keine Aussage, also auch kein Fehlalarm.
+    FStore.SetIdeErrors(AFileName, nil);
+    Exit;
+  end;
+  FStore.SetIdeErrors(AFileName, mErrors);
+  for mLine in FIdeJournal.NewLines(AFileName, FStore.WithIde(AFileName)) do
+  begin
+    FLog(mLine);
   end;
 end;
 

@@ -53,6 +53,12 @@ const
   cMaxSearchHistory = 100;
   /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (scShift + VK_F12).</summary>
   cDefaultShowInDesignerKey = $2000 + $7B;
+  /// <summary>Vorgabe für designer.usages.key (#750): Umschalt+Alt+F7 (scShift + scAlt + VK_F7).</summary>
+  cDefaultUsagesKey = $2000 + $8000 + $76;
+  /// <summary>Werte von designer.usages.scope (#750).</summary>
+  cDesignerUsagesUnit = 'unit';
+  cDesignerUsagesProject = 'project';
+  cDesignerUsagesGroup = 'projectGroup';
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
   cBeginEndAlways = 'always';
   cBeginEndMultiLine = 'multiLine';
@@ -83,6 +89,10 @@ const
   cFitSourceItems = 'items';
   cMaxFitMinWidth = 2000;
   cMaxFitPadding = 200;
+  /// <summary>Grenzen und Vorgabe von designer.undoSteps (#1887).</summary>
+  cMinUndoSteps = 5;
+  cMaxUndoSteps = 200;
+  cDefaultUndoSteps = 50;
   /// <summary>Werte von designer.gapHandles.anchor (#734).</summary>
   cGapAnchorCenter = 'center';
   cGapAnchorFirst = 'first';
@@ -93,6 +103,10 @@ const
   /// <summary>Werte von designer.selectionBar.mode (#735).</summary>
   cSelectionBarAuto = 'auto';
   cSelectionBarShortcut = 'shortcut';
+  /// <summary>Vorgabe von designer.selectionBar.items (#735).</summary>
+  cSelectionBarDefaultItems = 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
+    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
+    'alignCenter, alignRight, transfer';
   cMaxSelectionBarDelay = 5000;
   /// <summary>Werte von designer.buttonBar.position (#732).</summary>
   cButtonBarBottomRight = 'bottomRight';
@@ -523,6 +537,9 @@ type
     /// <summary>Fenster „Komponenten suchen“: DesignerSearchWindow (groß mit Vorschau) oder DesignerSearchPopup
     /// (klein wie Strg+P), editor.designerBar.searchStyle.</summary>
     DesignerSearchStyle: string;
+    /// <summary>„Komponenten suchen“ auch unscharf: Zeichen in ihrer Reihenfolge (#539, designer.fuzzySearch).
+    /// </summary>
+    DesignerFuzzySearch: Boolean;
     /// <summary>Tab-Reihenfolge neu vergeben: Reihenfolge klicken, nach Lesereihenfolge sortieren (#603,
     /// editor.designerBar.tabOrderClick).</summary>
     DesignerTabOrderClick: Boolean;
@@ -554,6 +571,14 @@ type
     DesignerShowInDesignerKey: Integer;
     /// <summary>Eigenschaften in Formularen suchen (#524, designer.propertySearch).</summary>
     DesignerPropertySearch: Boolean;
+    /// <summary>„Verwendungen im Code“ aus dem Designer (#750, designer.usages).</summary>
+    DesignerUsages: Boolean;
+    /// <summary>Zähler der Verwendungen im Atlas-Statusfeld (#750, designer.usages.statusCount).</summary>
+    DesignerUsagesStatusCount: Boolean;
+    /// <summary>Suchbereich: cDesignerUsagesUnit, …Project, …Group (#750, designer.usages.scope).</summary>
+    DesignerUsagesScope: string;
+    /// <summary>Taste im Designer als TShortCut, 0 = keine (#750, designer.usages.key).</summary>
+    DesignerUsagesKey: Integer;
     /// <summary>Räumliche Navigation mit Alt+Pfeil (#745, designer.spatialNavigation).</summary>
     DesignerSpatialNavigation: Boolean;
     /// <summary>Am Rand in benachbarte Container weiter (#745, designer.spatialNavigation.crossContainers).
@@ -599,6 +624,8 @@ type
     DesignerDataBindings: Boolean;
     /// <summary>Knopf „In Frame auslagern“ (#611, designer.extractFrame).</summary>
     DesignerExtractFrame: Boolean;
+    /// <summary>Knopf „Ereignis-Karte“ (#612, designer.eventMap).</summary>
+    DesignerEventMap: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -775,6 +802,10 @@ type
     DesignerMagnifierEdges: Boolean;
     /// <summary>Taste zum Öffnen und Einfrieren (#743, designer.magnifier.key).</summary>
     DesignerMagnifierKey: Integer;
+    /// <summary>Rückgängig im Designer über Formular-Stände (#1887, designer.undo, experimentell).</summary>
+    DesignerUndo: Boolean;
+    /// <summary>Höchstzahl der Schritte je Formular (#1887, designer.undoSteps).</summary>
+    DesignerUndoSteps: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -830,7 +861,8 @@ type
     procedure SetToolDefaults;
     /// <summary>Einstellungen der Werkzeuge mit eigenem Knopf lesen bzw. schreiben.</summary>
     procedure ExchangeTools(const AIo: TAtlasSettingsExchange);
-    /// <summary>Abstände und Ränder der Designer-Werkzeuge in ihre Grenzen bringen.</summary>
+    /// <summary>Abstände und Ränder der Designer-Werkzeuge (und die Schritte von designer.undoSteps) in ihre
+    /// Grenzen bringen.</summary>
     procedure NormalizeSpacing;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -1310,6 +1342,7 @@ begin
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
   Result.DesignerSearchStyle := cDesignerSearchWindow;
+  Result.DesignerFuzzySearch := True;
   Result.DesignerTabOrderClick := True;
   Result.DesignerTabOrderOverlay := False;
   Result.DesignerTabOrderPaths := False;
@@ -1326,6 +1359,10 @@ begin
   // Umschalt+F12 (in der IDE „Formulare anzeigen“).
   Result.DesignerShowInDesignerKey := cDefaultShowInDesignerKey;
   Result.DesignerPropertySearch := True;
+  Result.DesignerUsages := True;
+  Result.DesignerUsagesStatusCount := True;
+  Result.DesignerUsagesScope := cDesignerUsagesProject;
+  Result.DesignerUsagesKey := cDefaultUsagesKey;
   Result.DesignerSpatialNavigation := True;
   Result.DesignerSpatialCrossContainers := True;
   Result.SetViewDefaults;
@@ -1520,9 +1557,7 @@ begin
   DesignerSelectionBar := True;
   DesignerSelectionBarMode := cSelectionBarAuto;
   DesignerSelectionBarDelayMs := 400;
-  DesignerSelectionBarItems := 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
-    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
-    'alignCenter, alignRight';
+  DesignerSelectionBarItems := cSelectionBarDefaultItems;
   // Strg+Umschalt+Leer.
   DesignerSelectionBarKey := 24608;
   DesignerMagnifier := True;
@@ -1531,6 +1566,8 @@ begin
   DesignerMagnifierEdges := False;
   // Strg+Alt+L.
   DesignerMagnifierKey := 49228;
+  DesignerUndo := False;
+  DesignerUndoSteps := cDefaultUndoSteps;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeTools(const AIo: TAtlasSettingsExchange);
@@ -1551,6 +1588,8 @@ begin
   AIo.Flag('DesignerMagnifierGrid', DesignerMagnifierGrid);
   AIo.Flag('DesignerMagnifierEdges', DesignerMagnifierEdges);
   AIo.Number('DesignerMagnifierKey', DesignerMagnifierKey);
+  AIo.Flag('DesignerUndo', DesignerUndo);
+  AIo.Number('DesignerUndoSteps', DesignerUndoSteps);
 end;
 
 procedure TAtlasPluginEditorViewSettings.NormalizeSpacing;
@@ -1564,6 +1603,7 @@ begin
   DesignerArrangeFormRowGap := EnsureRange(DesignerArrangeFormRowGap, 0, cMaxButtonBarSpace);
   DesignerArrangeFormLabelGap := EnsureRange(DesignerArrangeFormLabelGap, 0, cMaxButtonBarSpace);
   DesignerWrapInContainerPadding := EnsureRange(DesignerWrapInContainerPadding, 0, cMaxButtonBarSpace);
+  DesignerUndoSteps := EnsureRange(DesignerUndoSteps, cMinUndoSteps, cMaxUndoSteps);
 end;
 
 procedure TAtlasPluginEditorViewSettings.Normalize;
@@ -1587,6 +1627,9 @@ begin
   DesignerInlineCaptionKey := EnsureRange(DesignerInlineCaptionKey, 0, $FFFF);
   DesignerSelectionSetsSaveKey := EnsureRange(DesignerSelectionSetsSaveKey, 0, $FFFF);
   DesignerShowInDesignerKey := EnsureRange(DesignerShowInDesignerKey, 0, $FFFF);
+  DesignerUsagesScope := Choice(DesignerUsagesScope, [cDesignerUsagesProject, cDesignerUsagesUnit,
+    cDesignerUsagesGroup]);
+  DesignerUsagesKey := EnsureRange(DesignerUsagesKey, 0, $FFFF);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
@@ -1633,6 +1676,7 @@ begin
   AIo.Flag('EditorDesignerBar', EditorDesignerBar);
   AIo.Number('DesignerSearchKey', DesignerSearchKey);
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);
+  AIo.Flag('DesignerFuzzySearch', DesignerFuzzySearch);
   AIo.Flag('DesignerTabOrderClick', DesignerTabOrderClick);
   AIo.Flag('DesignerTabOrderOverlay', DesignerTabOrderOverlay);
   AIo.Flag('DesignerTabOrderPaths', DesignerTabOrderPaths);
@@ -1647,6 +1691,10 @@ begin
   AIo.Flag('DesignerShowInDesigner', DesignerShowInDesigner);
   AIo.Number('DesignerShowInDesignerKey', DesignerShowInDesignerKey);
   AIo.Flag('DesignerPropertySearch', DesignerPropertySearch);
+  AIo.Flag('DesignerUsages', DesignerUsages);
+  AIo.Flag('DesignerUsagesStatusCount', DesignerUsagesStatusCount);
+  AIo.Text('DesignerUsagesScope', DesignerUsagesScope);
+  AIo.Number('DesignerUsagesKey', DesignerUsagesKey);
   AIo.Flag('DesignerSpatialNavigation', DesignerSpatialNavigation);
   AIo.Flag('DesignerSpatialCrossContainers', DesignerSpatialCrossContainers);
   ExchangeViews(AIo);
@@ -1697,6 +1745,7 @@ begin
   DesignerStructureHideOnForm := True;
   DesignerDataBindings := False;
   DesignerExtractFrame := True;
+  DesignerEventMap := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1719,6 +1768,7 @@ begin
   AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
   AIo.Flag('DesignerDataBindings', DesignerDataBindings);
   AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
+  AIo.Flag('DesignerEventMap', DesignerEventMap);
 end;
 
 end.

@@ -33,6 +33,9 @@ type
     /// <summary>#621: data.tag einer CodeAction landet in Tag.</summary>
     [Test]
     procedure CodeActionCarriesTag;
+    /// <summary>#2054: data.choices lesen; abgewählte Teile entfernen ihre Edits.</summary>
+    [Test]
+    procedure CodeActionChoicesFilterEdits;
     /// <summary>#503: Gliederung flach, Container = Elternsymbol; SymbolInformation ebenso.</summary>
     [Test]
     procedure DocumentSymbolsAreFlattened;
@@ -237,6 +240,37 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+procedure TLspInitializeParamsTests.CodeActionChoicesFilterEdits;
+var
+  mValue: TJSONValue;
+  mAction, mChosen: TLspCodeAction;
+begin
+  mValue := TJSONObject.ParseJSONValue('{"title":"Methode extrahieren und 2 gleiche Stellen ersetzen",' +
+    '"kind":"refactor.extract","edit":{"changes":{"file:///C:/P/U.pas":[' +
+    '{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":0}},"newText":"neu"},' +
+    '{"range":{"start":{"line":3,"character":0},"end":{"line":3,"character":4}},"newText":"A"},' +
+    '{"range":{"start":{"line":5,"character":0},"end":{"line":5,"character":4}},"newText":"B"},' +
+    '{"range":{"start":{"line":7,"character":0},"end":{"line":7,"character":4}},"newText":""}]}},' +
+    '"data":{"choices":[{"title":"Zeile 4 in TA.X","range":{"start":{"line":3,"character":0}}},' +
+    '{"title":"Zeile 6 in TA.Y","range":{"start":{"line":5,"character":0}}}],' +
+    '"editChoices":[[],[0],[1],[0,1]]}}');
+  try
+    Assert.IsTrue(TLspCodeAction.FromJson(mValue, mAction));
+  finally
+    mValue.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(mAction.Choices)));
+  Assert.AreEqual('Zeile 6 in TA.Y', mAction.Choices[1].Title);
+  Assert.AreEqual(5, mAction.Choices[1].Line);
+  mChosen := mAction.WithChoices([True, True]);
+  Assert.AreEqual(4, Integer(Length(mChosen.Edit.Files[0].Edits)));
+  mChosen := mAction.WithChoices([True, False]);
+  Assert.AreEqual(2, Integer(Length(mChosen.Edit.Files[0].Edits)));
+  Assert.AreEqual('A', mChosen.Edit.Files[0].Edits[1].NewText);
+  // Das Original bleibt vollständig.
+  Assert.AreEqual(4, Integer(Length(mAction.Edit.Files[0].Edits)));
 end;
 
 procedure TLspInitializeParamsTests.DocumentSymbolsAreFlattened;

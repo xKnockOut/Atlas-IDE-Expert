@@ -29,6 +29,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.CurrentRequest,
@@ -119,6 +120,7 @@ var
   Commands: TLspCommands;
   Arguments: TJSONArray;
   Reply: TJSONValue;
+  Token: IJsonRpcCancellationToken;
 begin
   Commands := TLspCommands.Create;
   try
@@ -130,7 +132,10 @@ begin
     Arguments := TJSONArray.Create;
     try
       Arguments.Add('x');
-      Reply := Commands.Execute('atlas.plain', Arguments, TProbeToken.Create);
+      // Nicht TProbeToken.Create direkt an den const-Interface-Parameter: Delphi zählt dann nie hoch und gibt
+      // das Objekt nicht frei (Leck).
+      Token := TProbeToken.Create;
+      Reply := Commands.Execute('atlas.plain', Arguments, Token);
       try
         Assert.AreEqual('x', Reply.Value);
       finally

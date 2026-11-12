@@ -168,7 +168,13 @@ const
     // Auswahl speichern (#739): keine Bindung, wirkt nur im Designer (Modul Designer).
     0,
     // Im Designer zeigen (#511): Editorbefehl.
-    3);
+    3,
+    // Text im Designer bearbeiten (#748): keine Bindung, wirkt nur im Designer (Modul Designer).
+    0,
+    // Auswahlleiste und Lupe im Designer: keine Bindung, wirken nur im Designer (Modul Designer).
+    0, 0,
+    // Verwendungen im Code (#750): keine Bindung, wirkt nur im Designer (Modul Designer).
+    0);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

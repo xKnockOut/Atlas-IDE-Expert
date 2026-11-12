@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Prüft, dass jede Unit mit Logik eigene DUnitX-Tests hat und jede Testunit läuft (#415).
 
@@ -78,6 +78,13 @@ $Exempt = @{
     'Atlas.Windows.Updates.Adapters.Builder'            = 'startet MSBuild der Delphi-Installation'
     'Shell.Update'                                      = 'Einstieg von AtlasUpdate.exe (Befehlszeile, Konsole)'
     'Shell.Update.System'                               = 'setzt nur die Windows-Adapter zusammen'
+    'Shell.Monitor'                                     = 'Einstieg von AtlasMonitor.exe (eine Instanz, Fenster); Logik testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
+    'Shell.Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
+    'Atlas.Windows.Monitor.Adapters.System'             = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
+    'Atlas.Windows.Monitor.Adapters.Process'            = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'
     'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
 }
 

@@ -48,6 +48,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Selection,

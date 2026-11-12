@@ -7,35 +7,10 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Base/Source/UI/Diagnostics/Atlas.UI.Diagnostics.ExportDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Diagnostics/Atlas.UI.Diagnostics.ProcessesDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Diagnostics/Atlas.UI.Diagnostics.ReportDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Diagnostics/Atlas.UI.Diagnostics.SafeModeNotice.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Editor/Atlas.UI.Editor.ChangeSignature.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
   "Packages/Atlas.IDE.Base/Source/UI/Editor/Atlas.UI.Editor.ExtractMembers.pas": {
     "create-new": 1,
     "segoe-font": 1,
     "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/EditorToolbar/Atlas.UI.EditorToolbar.Customize.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Generate/Atlas.UI.Generate.Choice.pas": {
-    "create-new": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Generate/Atlas.UI.Generate.Window.pas": {
     "create-new": 1,
@@ -45,20 +20,8 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Base/Source/UI/Problems/Atlas.UI.Problems.Explain.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.ProjectDialog.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
   "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.QuickToggles.pas": {
     "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.Transfer.pas": {
-    "create-new": 3,
     "segoe-font": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Setup/Atlas.UI.Setup.Window.pas": {
@@ -66,18 +29,6 @@
     "segoe-font": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Status/Atlas.UI.Status.Window.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Undo/Atlas.UI.Undo.DiffView.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Updates/Atlas.UI.Updates.Consent.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Updates/Atlas.UI.Updates.Selection.pas": {
     "create-new": 1,
     "segoe-font": 1
   },
@@ -104,15 +55,6 @@
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.CaptionEditor.pas": {
     "create-new": 1
   },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.ExtractDialog.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Flash.pas": {
     "create-new": 1
   },
@@ -134,9 +76,6 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.NameDialog.pas": {
-    "create-new": 1
-  },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Outlines.pas": {
     "create-new": 1,
     "segoe-font": 1
@@ -155,10 +94,6 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.SpaceDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.TabOverlay.pas": {
     "create-new": 1,
     "segoe-font": 1
@@ -166,57 +101,14 @@
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.TextsDialog.pas": {
     "create-new": 1
   },
-  "Packages/Atlas.IDE.Rules/Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Rules/Source/UI/Rules/Atlas.UI.Rules.Editor.pas": {
     "cl-red": 1
   },
   "Packages/Atlas.IDE.Search/Source/UI/UnitSearch/Atlas.UI.UnitSearch.Window.pas": {
     "create-new": 1
   },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.EndDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.ImageMarkup.pas": {
-    "create-new": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas": {
-    "create-new": 2,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas": {
-    "create-new": 1
-  },
   "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas": {
     "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "cl-red": 1
-  },
-  "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.TimeList.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas": {
-    "create-new": 1,
-    "cl-red": 2
   },
   "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.SettingsBranch.pas": {
     "cl-red": 1
@@ -224,18 +116,7 @@
   "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.SettingsProjects.pas": {
     "cl-red": 1
   },
-  "Packages/Atlas.IDE.VersionControl/Source/UI/VersionControl/Atlas.UI.VersionControl.WorkingCopies.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.Push.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.Search.pas": {
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Welcome/Source/UI/Welcome/Atlas.UI.Welcome.SetupPreview.pas": {
-    "create-new": 1,
     "segoe-font": 1
   }
 }

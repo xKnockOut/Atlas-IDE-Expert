@@ -94,6 +94,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Vcl.Graphics,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,

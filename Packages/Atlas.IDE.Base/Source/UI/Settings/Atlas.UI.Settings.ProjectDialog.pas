@@ -45,7 +45,8 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
-  Atlas.Core.Settings.Validation;
+  Atlas.Core.Settings.Validation,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Auswahl für ein Feld (Pfad); leer = keine eigene Auswahl.</summary>
@@ -55,7 +56,7 @@ type
     : TArray<TAtlasSettingIssue>;
 
   /// <summary>Rahmen des Dialogs: Titel, Knöpfe unten, Hinweis oben und die Fläche für die Felder.</summary>
-  TAtlasSettingsDialogFrame = class(TForm)
+  TAtlasSettingsDialogFrame = class(TAtlasDialog)
   private
     FOnOpenFile: TProc;
     FBuildHint: string;
@@ -217,7 +218,9 @@ uses
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Breite der Knöpfe OK und Abbrechen.
@@ -320,11 +323,10 @@ end;
 constructor TAtlasSettingsDialogFrame.CreateFrame(AOwner: TComponent; AModel: TAtlasSettingsModel;
   const AFileName: string);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FModel := AModel;
   Caption := DialogTitle(FModel.Global);
   BorderStyle := bsSizeable;
-  Position := poMainFormCenter;
   Width := ScaleValue(960);
   Height := ScaleValue(660);
   FServerChecks := True;
@@ -1183,13 +1185,16 @@ begin
   begin
     FModel.SetValue(mIndex, mText);
   end;
+  // Mit seFont übergeht der Stil Font.Color: ungültiger Text zeichnet seine Farbe selbst.
   if FRawValid[mIndex] then
   begin
+    TMemo(Sender).StyleElements := TMemo(Sender).StyleElements + [seFont];
     TMemo(Sender).Font.Color := clWindowText;
   end
   else
   begin
-    TMemo(Sender).Font.Color := clRed;
+    TMemo(Sender).StyleElements := TMemo(Sender).StyleElements - [seFont];
+    TMemo(Sender).Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   end;
   UpdateState(mIndex);
 end;

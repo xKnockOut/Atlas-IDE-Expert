@@ -120,8 +120,9 @@ begin
   Result.Spacing := MulDiv(8, ADialog.CurrentPPI, 96);
 end;
 
-function AddLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string; ATop: Integer;
-  AFocus: TWinControl): TLabel;
+// Nicht "AddLabel": Im Konstruktor verdeckt die geerbte Methode AddLabel des Dialogs den Namen (E2010/E2034).
+function AddFieldLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string;
+  ATop: Integer; AFocus: TWinControl): TLabel;
 begin
   Result := TLabel.Create(ADialog);
   Result.Parent := ADialog;
@@ -160,7 +161,7 @@ begin
   ADialog.FStepsUpDown.Min := 1;
   ADialog.FStepsUpDown.Max := cMaxSteps;
   ADialog.FStepsUpDown.Position := cDefaultSteps;
-  AddLabel(ADialog, ALayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), AY,
+  AddFieldLabel(ADialog, ALayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), AY,
     ADialog.FSteps);
   Inc(AY, ADialog.FSteps.Height + ALayout.Spacing);
   ADialog.FAll := TCheckBox.Create(ADialog);
@@ -230,10 +231,10 @@ begin
   ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
   mY := mLayout.Gap;
   FFrom := NewEdit(Self, mLayout, mY);
-  AddLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), mY, FFrom);
+  AddFieldLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), mY, FFrom);
   Inc(mY, FFrom.Height + mLayout.Spacing);
   FTo := NewEdit(Self, mLayout, mY);
-  AddLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), mY, FTo);
+  AddFieldLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), mY, FTo);
   Inc(mY, FTo.Height + mLayout.Spacing);
   BuildOptions(Self, mLayout, mY);
   BuildButtons(Self, mLayout, mY);
