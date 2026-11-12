@@ -45,7 +45,7 @@ type
     AssignProject: TProc<string>;
     /// <summary>„Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen öffnen.</summary>
     EditQueries: TProc;
-    /// <summary>Zusatzfeld der Zeiterfassung im Statusfeld (#1267).</summary>
+    /// <summary>Zusatzfeld des aktuellen Issues im Statusfeld: Zustand (#2124) und Zeit (#1267).</summary>
     TimeStatus: TAtlasIdeTimeStatus;
   end;
 

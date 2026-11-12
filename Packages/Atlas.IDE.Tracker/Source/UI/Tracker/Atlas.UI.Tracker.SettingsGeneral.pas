@@ -32,6 +32,7 @@ type
     TimeRounding: TEdit;
     PreviewChecklists: TCheckBox;
     ChecklistStatus: TCheckBox;
+    StatusState: TCheckBox;
     PreviewLinks: TCheckBox;
     WarnBlocked: TCheckBox;
     Board: TCheckBox;
@@ -167,6 +168,8 @@ begin
   // Checklisten (#1273): in der Vorschau unter deren Hauptschalter, das Statusfeld eigenständig.
   FView.PreviewChecklists := Check('issues.preview.checklists', TAtlasTrackerTextId.SettingsIssuesPreviewChecklists);
   FView.ChecklistStatus := Check('issues.checklistStatus', TAtlasTrackerTextId.SettingsIssuesChecklistStatus);
+  // Zustand des aktuellen Issues im Statusfeld (#2124).
+  FView.StatusState := Check('issues.statusState', TAtlasTrackerTextId.SettingsIssuesStatusState);
   // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
   FView.PreviewLinks := Check('issues.preview.links', TAtlasTrackerTextId.SettingsIssuesPreviewLinks);
   FView.WarnBlocked := Check('issues.warnBlocked', TAtlasTrackerTextId.SettingsIssuesWarnBlocked);

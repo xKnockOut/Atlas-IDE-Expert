@@ -60,7 +60,7 @@ type
     TrackerWriteTimeout, TrackerWriteNotConfigured, TrackerWriteUnsupported, TrackerWriteReason, TrackerPartState,
     TrackerPartAssigned, TrackerPartHandedOver, TrackerPartComment, TrackerStartSynced, TrackerStartFailed,
     TrackerEndSent, TrackerCommentSent, IssuePreviewCommentHint, IssuePreviewCommentSend,
-    IssuePreviewCommentSending, IssuePreviewEnd, IssuePreviewEndHint, TimeStatusText, TimeStatusPaused,
+    IssuePreviewCommentSending, IssuePreviewEnd, IssuePreviewEndHint, TimeStatusPaused,
     TimeStatusHint, TimeMenuPause, TimeMenuResume, TimeMenuReset, TimeMenuCorrect, TimeMenuBook, TimeMenuOpen,
     TimeResetConfirm, TimeCorrectCaption, TimeCorrectPrompt, TimeCorrectInvalid, TimeBookCaption,
     TimeBookQuestion, TimeBookDuration, TimeBookWorkType, TimeBookText, TimeBookAsComment, TimeBookComment,
@@ -185,7 +185,9 @@ type
     WelcomeIssuesContinueHint, WelcomeIssuesReopenedReadHint, WelcomeIssuesReopenedCommentHint,
     WelcomeIssuesContinueBranchGone, SettingsIssuesReopened, SettingsIssuesReviewStates,
     SettingsIssuesConnectionReviewStates,
-    IssuePreviewDescription, SettingsIssuesIdeColors);
+    IssuePreviewDescription, SettingsIssuesIdeColors,
+    SettingsIssuesStatusState, StatusStateHint, StatusMenuComment, StatusMenuNone, StatusMenuFailed,
+    StatusStateFailed, StatusDialogTitle, StatusDialogChoice, StatusDialogKeep, PaletteStateGroup, PaletteStateStatus);
 
   TAtlasTrackerStrings = class
   public
@@ -452,8 +454,7 @@ const
      'Sende …',
      'Beenden …',
      'Issue beenden: Zielzustand, Kommentar und Übergabe',
-     '%s · %s',
-     '%s · %s (Pause)',
+     '%s (Pause)',
      'Erfasste Zeit für %s: %s. Klick: Pause, Zurücksetzen, Korrigieren, Buchen',
      'Pause',
      'Weiter',
@@ -990,7 +991,18 @@ const
      'Prüfzustände (mit Komma getrennt)',
      'Prüfzustände',
      'Beschreibung',
-     'Issue-Fenster und Board in den Farben des IDE-Themas'),
+     'Issue-Fenster und Board in den Farben des IDE-Themas',
+     'Zustand des aktuellen Issues im Statusfeld (Übergänge, Befehlspalette)',
+     'Zustand von %s: %s. Klick: Übergänge, Kommentar, Beenden',
+     'Mit Kommentar …',
+     'Kein Übergang erlaubt',
+     'Übergänge nicht lesbar',
+     'Atlas: %s nicht geändert. %s',
+     '%s: Zustand ändern',
+     'Übergang:',
+     'Zustand behalten (nur Kommentar)',
+     'Aktuelles Issue',
+     'Enter führt den Übergang aus'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1237,8 +1249,7 @@ const
      'Sending …',
      'End …',
      'End the issue: target state, comment and hand-over',
-     '%s · %s',
-     '%s · %s (paused)',
+     '%s (paused)',
      'Tracked time for %s: %s. Click: pause, reset, correct, log',
      'Pause',
      'Resume',
@@ -1774,7 +1785,18 @@ const
      'Review states (comma separated)',
      'Review states',
      'Description',
-     'Issue window and board in the colors of the IDE theme'));
+     'Issue window and board in the colors of the IDE theme',
+     'State of the current issue in the status panel (transitions, command palette)',
+     'State of %s: %s. Click: transitions, comment, finish',
+     'With comment …',
+     'No transition allowed',
+     'Could not read the transitions',
+     'Atlas: %s not changed. %s',
+     '%s: Change state',
+     'Transition:',
+     'Keep the state (comment only)',
+     'Current issue',
+     'Enter runs the transition'));
 
 { TAtlasTrackerStrings }
 
