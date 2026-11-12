@@ -374,6 +374,8 @@ begin
   begin
     Exit;
   end;
+  // Ohne Fenster ordnet die VCL die Zeilen nicht an, ihre Breite wäre die vorläufige.
+  HandleNeeded;
   AControl.Width := mParent.ClientWidth - AControl.Left - Min(AControl.Left, ScaleValue(cRowGap));
   AControl.Anchors := [akLeft, akTop, akRight];
 end;

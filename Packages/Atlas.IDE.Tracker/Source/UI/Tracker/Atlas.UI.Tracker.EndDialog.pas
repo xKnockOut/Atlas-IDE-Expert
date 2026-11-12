@@ -165,6 +165,10 @@ begin
   AddState;
   AddComment(AComment);
   AddButtons(AddHandOver.BoundsRect.Bottom + 1);
+  // Größer ziehen: Klapplisten werden breiter, der Kommentar nimmt die Höhe auf.
+  FitRight(FParts.State);
+  FitRight(FParts.Assignee);
+  AllowResize(FParts.Editor);
   ActiveControl := FParts.Comment;
 end;
 
