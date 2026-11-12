@@ -12,6 +12,7 @@
 interface
 
 uses
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract;
@@ -23,6 +24,7 @@ type
     FTokens: TArray<TPascalToken>;
     FGuarded: TArray<Boolean>;
     FInactive: TArray<TTextRange>;
+    FLines: TLineTable;
     procedure BuildGuards;
   public
     constructor Create(const AContext: TRuleContext);
@@ -33,8 +35,8 @@ type
     function PlatformGuarded(const APosition: TTextPosition): Boolean;
     /// <summary>Weder inaktiv noch nach Plattform getrennt.</summary>
     function Reportable(const APosition: TTextPosition): Boolean;
-    /// <summary>Index des ersten Tokens, das bei APosition oder dahinter beginnt; Length(Tokens) am Ende.</summary>
-    function TokenAt(const APosition: TTextPosition): Integer;
+    /// <summary>Offset von APosition im geprüften Text (für TokenFrom).</summary>
+    function OffsetOf(const APosition: TTextPosition): Integer;
     property Tokens: TArray<TPascalToken> read FTokens;
   end;
 
@@ -70,6 +72,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.LanguageFeatures;
 
 function ComparePosition(const A, B: TTextPosition): Integer;
@@ -91,6 +94,7 @@ begin
     FTokens := AContext.Tree.Tokens;
   end;
   FInactive := AContext.InactiveRanges;
+  FLines := TLineTable.Build(AContext.Text);
   BuildGuards;
 end;
 
@@ -130,26 +134,9 @@ begin
   end;
 end;
 
-function TMigrationScope.TokenAt(const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
+function TMigrationScope.OffsetOf(const APosition: TTextPosition): Integer;
 begin
-  mLow := 0;
-  mHigh := High(FTokens);
-  Result := Length(FTokens);
-  while mLow <= mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ComparePosition(FTokens[mMiddle].StartPos, APosition) >= 0 then
-    begin
-      Result := mMiddle;
-      mHigh := mMiddle - 1;
-    end
-    else
-    begin
-      mLow := mMiddle + 1;
-    end;
-  end;
+  Result := FLines.OffsetAt(APosition);
 end;
 
 function TMigrationScope.Inactive(const APosition: TTextPosition): Boolean;
@@ -170,7 +157,7 @@ function TMigrationScope.PlatformGuarded(const APosition: TTextPosition): Boolea
 var
   mIndex: Integer;
 begin
-  mIndex := TokenAt(APosition);
+  mIndex := TokenFrom(FTokens, OffsetOf(APosition));
   Result := (mIndex <= High(FGuarded)) and FGuarded[mIndex];
 end;
 

@@ -84,6 +84,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.TypedScope,
@@ -408,7 +409,7 @@ var
     begin
       Exit;
     end;
-    mIndex := mMigration.TokenAt(ASymbol.SelectionRange.StartPos);
+    mIndex := TokenFrom(mTokens, mMigration.OffsetOf(ASymbol.SelectionRange.StartPos));
     if (mIndex > High(mTokens)) or not SameText(mTokens[mIndex].Text, ASymbol.Name) or
       ((mIndex > 0) and (mTokens[mIndex - 1].Text = ',')) then
     begin
@@ -647,7 +648,7 @@ var
     mIndex: Integer;
   begin
     Result := False;
-    mIndex := mMigration.TokenAt(ANode.StartPos);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (ANode.EndOffset > mTokens[mIndex].Offset) do
     begin
       if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and Is64BitRegister(mTokens[mIndex].Text) then
