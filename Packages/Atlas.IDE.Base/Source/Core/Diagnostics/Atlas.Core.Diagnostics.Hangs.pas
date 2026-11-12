@@ -50,7 +50,9 @@ type
     class function Running: string; static;
     /// <summary>Künstlicher Hänger für den Einfrier-Wächter (#501): blockiert den aufrufenden Thread AMs lang
     /// unter cHangTestName. Aus der Befehlspalette und den Einstellungen, beide nur im Diagnosemodus.</summary>
-    class procedure HangTest(AMs: Cardinal = cHangTestMs); static;
+    class procedure HangTest(AMs: Cardinal); overload; static;
+    /// <summary>HangTest mit cHangTestMs.</summary>
+    class procedure HangTest; overload; static;
   end;
 
   TAtlasModuleRange = record
@@ -237,6 +239,11 @@ var
 begin
   mActivity := Scope(cHangTestName);
   Sleep(AMs);
+end;
+
+class procedure TAtlasActivity.HangTest;
+begin
+  HangTest(cHangTestMs);
 end;
 
 { TAtlasStackScan }
