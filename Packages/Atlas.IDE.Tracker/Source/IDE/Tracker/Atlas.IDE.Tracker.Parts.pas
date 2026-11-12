@@ -7,7 +7,8 @@
 // Einstellungen und Palette ihres Moduls hierher weiter.
 // - MyIssues: „Meine Issues“ (#765) mit Vorschau, Beginnen, Board,
 //   Zeiterfassung, Anhängen und „Issue anlegen“ (#1268); die Kacheln „Meine
-//   Issues“ und „Sprint“ (#1277) und IAtlasIssueCreation für Base (#1355).
+//   Issues“ und „Sprint“ (#1277) und IAtlasIssueCreation für Base (#1355);
+//   „Prüfen“ (#2126) hört als IAtlasTestsListener auf das Modul Tests.
 // - IssueLinks und BlameIssues: Issue-Kennungen im Code (#1265) und in der
 //   Zeilenhistorie (#1275); Base hält die Haken nur, solange BlameIssues läuft
 //   (Regel 3).
@@ -328,6 +329,11 @@ begin
     GScope.Provide(IAtlasIssueCreation, TAtlasIdeIssueCreation.Create as IAtlasIssueCreation)];
   GIssueWork := TAtlasTrackerIssueWork.Create(GIssues.Context, GIssues.Services);
   GTiles := GTiles + [GScope.Provide(IAtlasIssueWorkSource, GIssueWork as IAtlasIssueWorkSource)];
+  // „Prüfen“ (#2126): Ende der betroffenen Tests.
+  if GIssues.Services.Review <> nil then
+  begin
+    GTiles := GTiles + [GIssues.Services.Review.ProvideIn(GScope)];
+  end;
 end;
 
 procedure StopMyIssues;

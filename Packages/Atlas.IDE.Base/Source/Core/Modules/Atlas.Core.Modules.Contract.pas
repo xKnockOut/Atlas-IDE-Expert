@@ -32,7 +32,8 @@ const
   /// 8 (#2052): IAtlasIssueWork und IAtlasIssueWorkSource, welcomePage.continue.issues(.count).
   /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).
   /// 10 (#2127): IAtlasIssueWork.Restore, issues.reopened, issues.reviewStates.
-  cAtlasCoreContractVersion = 10;
+  /// 11 (#2126): issues.reviewBuild, issues.reviewComment.
+  cAtlasCoreContractVersion = 11;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

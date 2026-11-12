@@ -125,6 +125,7 @@ type
     cIssuesStartBranch = Atlas.Core.Settings.Plugin.Issues.cIssuesStartBranch;
     cIssuesStartRemember = Atlas.Core.Settings.Plugin.Issues.cIssuesStartRemember;
     cDefaultIssuesEndComment = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesEndComment;
+    cDefaultIssuesReviewComment = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesReviewComment;
     cDefaultIssuesCommentSnippets = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesCommentSnippets;
     cMaxIssuesTemplate = Atlas.Core.Settings.Plugin.Issues.cMaxIssuesTemplate;
     cMinIssuesIdleMinutes = Atlas.Core.Settings.Plugin.Issues.cMinIssuesIdleMinutes;
@@ -1191,6 +1192,7 @@ type
     property IssuesEndStates: string read FIssues.IssuesEndStates write FIssues.IssuesEndStates;
     property IssuesReviewStates: string read FIssues.IssuesReviewStates write FIssues.IssuesReviewStates;
     property IssuesEndComment: string read FIssues.IssuesEndComment write FIssues.IssuesEndComment;
+    property IssuesReviewComment: string read FIssues.IssuesReviewComment write FIssues.IssuesReviewComment;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;
@@ -1216,6 +1218,7 @@ type
       write FIssueWork.IssuesNotifyIntervalMinutes;
     property IssuesNotifyScope: string read FIssueWork.IssuesNotifyScope write FIssueWork.IssuesNotifyScope;
     property IssuesReopened: Boolean read FIssueWork.IssuesReopened write FIssueWork.IssuesReopened;
+    property IssuesReviewBuild: Boolean read FIssueWork.IssuesReviewBuild write FIssueWork.IssuesReviewBuild;
     property IssuesAttach: Boolean read FIssueWork.IssuesAttach write FIssueWork.IssuesAttach;
     property IssuesAttachLogFiles: string read FIssueWork.IssuesAttachLogFiles write FIssueWork.IssuesAttachLogFiles;
     property IssuesAttachMaxImageWidth: Integer read FIssueWork.IssuesAttachMaxImageWidth

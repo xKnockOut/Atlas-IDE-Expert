@@ -5,8 +5,9 @@
 // beim Beginnen und Beenden und „Werte vom Tracker laden“. Die Klapplisten
 // liest Load und schreibt Save selbst; die Kommentare bleiben ungekürzt, die
 // Zielzustände werden geordnet. Dazu die Prüfzustände (#2126,
-// issues.reviewStates) und der Schalter für wieder geöffnete Issues (#2127,
-// issues.reopened).
+// issues.reviewStates), „Prüfen“ mit Build und Tests und die Vorlage seines
+// Kommentars (#2126, issues.reviewBuild, issues.reviewComment) und der
+// Schalter für wieder geöffnete Issues (#2127, issues.reopened).
 
 interface
 
@@ -32,6 +33,8 @@ type
     EndStates: TEdit;
     EndComment: TEdit;
     ReviewStates: TEdit;
+    ReviewBuild: TCheckBox;
+    ReviewComment: TEdit;
     Reopened: TCheckBox;
     LoadValues: TButton;
     ValuesNote: TLabel;
@@ -46,6 +49,7 @@ type
     cEndStatesKey = 'issues.endStates';
     cEndCommentKey = 'issues.endComment';
     cReviewStatesKey = 'issues.reviewStates';
+    cReviewCommentKey = 'issues.reviewComment';
   private
     FRows: TAtlasTrackerSettingsRows;
     FHooks: TAtlasTrackerSettingsHooks;
@@ -71,6 +75,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Review,
   Vcl.Graphics,
   Atlas.UI.Tracker.Strings;
 
@@ -119,6 +124,10 @@ begin
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndComment));
   FView.ReviewStates := FRows.AddText(cReviewStatesKey,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewStates));
+  FView.ReviewBuild := FRows.AddCheck('issues.reviewBuild',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewBuild));
+  FView.ReviewComment := FRows.AddText(cReviewCommentKey,
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewComment));
   FView.Reopened := FRows.AddCheck('issues.reopened',
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReopened));
 end;
@@ -146,6 +155,8 @@ begin
   // Die unveränderte Vorgabe in der Sprache der Oberfläche (#1458); die Seite hat den gespeicherten Text geladen.
   FView.EndComment.Text := TAtlasTrackerWorkflow.EndCommentFor(AValues.ReadString(cEndCommentKey),
     TAtlasTrackerStrings.English);
+  FView.ReviewComment.Text := TAtlasTrackerReview.CommentFor(AValues.ReadString(cReviewCommentKey),
+    TAtlasTrackerStrings.English);
 end;
 
 procedure TAtlasTrackerWorkflowPart.Save(const AValues: IAtlasSettingsValues);
@@ -153,6 +164,7 @@ begin
   // Die Kommentare bleiben, wie eingegeben (die Seite kürzt gebundene Textzeilen).
   AValues.WriteString(cStartCommentKey, FView.StartComment.Text);
   AValues.WriteString(cEndCommentKey, FView.EndComment.Text);
+  AValues.WriteString(cReviewCommentKey, FView.ReviewComment.Text);
   AValues.WriteString(cEndStatesKey,
     TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndStates.Text)));
   AValues.WriteString(cReviewStatesKey,

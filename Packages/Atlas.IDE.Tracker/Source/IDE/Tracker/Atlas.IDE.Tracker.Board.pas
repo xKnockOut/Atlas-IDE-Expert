@@ -20,7 +20,7 @@
 //   erlaubten Übergänge, ohne Anfrage an den Server. Lehnt YouTrack einen
 //   Wechsel ab, nennt die Meldung sie ebenfalls.
 // - Klick zeigt die Vorschau (#1264), Doppelklick beginnt (#765),
-//   Kontextmenü: Beginnen, Vorschau, Im Browser öffnen, Kennung kopieren,
+//   Kontextmenü: Beginnen, Prüfen … (#2126), Vorschau, Im Browser öffnen, Kennung kopieren,
 //   Mir zuweisen (Schreibweg #1266).
 // - „Nur meine“ gilt beim Öffnen nach issues.board.onlyMine, der Umschalter
 //   danach für die Sitzung.
@@ -56,6 +56,8 @@ type
     Preview: TProc<TAtlasTrackerTarget, string>;
     /// <summary>„Beginnen“ wie in „Meine Issues“ (#765).</summary>
     Start: TProc<TAtlasTrackerIssue>;
+    /// <summary>„Prüfen …“ wie in „Meine Issues“ (#2126).</summary>
+    Review: TProc<TAtlasTrackerIssue>;
     CanStart: TFunc<Boolean>;
     /// <summary>Kennung des aktuellen Issues; '' ohne.</summary>
     ActiveKey: TFunc<string>;
@@ -91,7 +93,8 @@ type
     procedure Moved(const ACard: TAtlasBoardCard; const AColumn, AOldState: string;
       const AResult: TAtlasTrackerWriteResult);
     procedure OpenCard(ACard: Integer);
-    procedure StartCard(ACard: Integer);
+    /// <summary>„Beginnen“ bzw. mit AReview „Prüfen …“ (#2126) an der Karte ACard.</summary>
+    procedure StartCard(ACard: Integer; AReview: Boolean);
     procedure BrowseCard(ACard: Integer);
     procedure AssignCard(ACard: Integer);
     procedure Report(const AText: string);
@@ -311,7 +314,15 @@ begin
     begin
       if mKeep <> nil then
       begin
-        mOwner.StartCard(ACard);
+        mOwner.StartCard(ACard, False);
+      end;
+    end;
+  AEvents.Review :=
+    procedure(ACard: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.StartCard(ACard, True);
       end;
     end;
   AEvents.Browse :=
@@ -865,13 +876,19 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBoard.StartCard(ACard: Integer);
+procedure TAtlasIdeBoard.StartCard(ACard: Integer; AReview: Boolean);
 var
   mFrame: TAtlasBoardFrame;
   mCard: TAtlasBoardCard;
+  mAction: TProc<TAtlasTrackerIssue>;
 begin
   mFrame := Frame;
-  if (mFrame = nil) or (ACard < 0) or not Assigned(FHooks.Start) then
+  mAction := FHooks.Start;
+  if AReview then
+  begin
+    mAction := FHooks.Review;
+  end;
+  if (mFrame = nil) or (ACard < 0) or not Assigned(mAction) then
   begin
     Exit;
   end;
@@ -884,7 +901,7 @@ begin
   begin
     Exit;
   end;
-  FHooks.Start(mCard.Issue);
+  mAction(mCard.Issue);
 end;
 
 procedure TAtlasIdeBoard.BrowseCard(ACard: Integer);

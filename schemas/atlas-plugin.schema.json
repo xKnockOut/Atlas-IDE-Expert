@@ -8550,6 +8550,16 @@
       "x-control": "Textfeld",
       "x-issue": "#2126"
     },
+    "IssuesReviewComment": {
+      "type": "string",
+      "default": "Geprüft: {build}, {tests}.",
+      "description": "Kommentarvorlage beim Prüfen („Prüfen“ in „Meine Issues“, Vorschau und Board) mit {build} (Ergebnis des Builds, z. B. „Build Win64 Debug 0/0/0“), {tests} (z. B. „14 Tests bestanden“), {branch} und {kennung}; \\n = neue Zeile. Der Dialog füllt das Kommentarfeld damit vor; gesendet wird nur mit „Senden“.",
+      "x-key": "issues.reviewComment",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2126"
+    },
     "IssuesTimeTracking": {
       "type": "boolean",
       "default": false,
@@ -8774,6 +8784,16 @@
       "x-page": "Issue-Tracker",
       "x-control": "Kontrollkästchen",
       "x-issue": "#2127"
+    },
+    "IssuesReviewBuild": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beim Prüfen eines Issues (#2126) nach dem Wechsel auf seinen Branch das aktive Projekt bauen (aktive Konfiguration, über das Modul Build-Pipeline) und danach die vom Branch betroffenen Tests ausführen (Befehl „Betroffene Tests ausführen“); das Ergebnis steht im Dialog „… prüfen“ und in {build} und {tests}. Aus: nur Branch wechseln und entscheiden.",
+      "x-key": "issues.reviewBuild",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2126"
     },
     "IssuesAttach": {
       "type": "boolean",

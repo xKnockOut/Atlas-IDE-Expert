@@ -17,7 +17,7 @@
 // (sofort sichtbar) bzw. RevertMove (springt zurück); Spalten, die der
 // Workflow des Trackers sicher ausschließt (TAtlasBoardTransitions), werden
 // beim Ziehen nicht hervorgehoben. Klick meldet Events.Open,
-// Doppelklick Events.Start, Rechtsklick zeigt das Kontextmenü (Beginnen,
+// Doppelklick Events.Start, Rechtsklick zeigt das Kontextmenü (Beginnen, Prüfen …,
 // Vorschau, Im Browser öffnen, Kennung kopieren, Mir zuweisen). Mit
 // CanDrag = False (ohne Netz) lässt sich nichts ziehen. Filter „Nur meine“
 // und Suche wirken lokal. Netz, Zwischenspeicher und Schreiben liegen in der
@@ -157,6 +157,8 @@ type
   TAtlasBoardFrameEvents = record
     Open: TAtlasBoardCardEvent;
     Start: TAtlasBoardCardEvent;
+    /// <summary>„Prüfen …“ (#2126).</summary>
+    Review: TAtlasBoardCardEvent;
     Browse: TAtlasBoardCardEvent;
     Assign: TAtlasBoardCardEvent;
     Move: TAtlasBoardMoveEvent;
@@ -917,7 +919,7 @@ end;
 type
   /// <summary>Einträge des Kontextmenüs einer Karte (Tag).</summary>
   {$SCOPEDENUMS ON}
-  TBoardMenu = (Start, Preview, Browse, Copy, Assign);
+  TBoardMenu = (Start, Review, Preview, Browse, Copy, Assign);
   {$SCOPEDENUMS OFF}
 
 function AddCombo(AFrame: TAtlasBoardFrame; AWidth: Integer; const AHint: string): TComboBox;
@@ -1063,6 +1065,7 @@ begin
   AddBody(Self);
   FParts.Menu := TPopupMenu.Create(Self);
   AddMenu(Self, TAtlasTrackerTextId.BoardMenuStart, TBoardMenu.Start).Default := True;
+  AddMenu(Self, TAtlasTrackerTextId.TrackerReviewCommand, TBoardMenu.Review);
   AddMenu(Self, TAtlasTrackerTextId.BoardMenuPreview, TBoardMenu.Preview);
   AddMenu(Self, TAtlasTrackerTextId.BoardMenuBrowse, TBoardMenu.Browse);
   AddMenu(Self, TAtlasTrackerTextId.BoardMenuCopy, TBoardMenu.Copy);
@@ -1428,6 +1431,8 @@ begin
   case TBoardMenu(TMenuItem(Sender).Tag) of
     TBoardMenu.Start:
       FireCard(FEvents.Start, FMenuCard);
+    TBoardMenu.Review:
+      FireCard(FEvents.Review, FMenuCard);
     TBoardMenu.Preview:
       FireCard(FEvents.Open, FMenuCard);
     TBoardMenu.Browse:

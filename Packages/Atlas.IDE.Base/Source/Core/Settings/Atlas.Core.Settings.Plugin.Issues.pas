@@ -32,6 +32,8 @@ const
   cDefaultIssuesStateField = 'State';
   cDefaultIssuesAssigneeField = 'Assignee';
   cDefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+  /// <summary>Vorgabe der Kommentarvorlage beim Prüfen (#2126); wie TAtlasTrackerReview.</summary>
+  cDefaultIssuesReviewComment = 'Geprüft: {build}, {tests}.'; // german-ok: Vorgabe der Einstellung
   /// <summary>Vorgabe von issues.commentSnippets (#1278), wie TAtlasCommentSnippets.Defaults.</summary>
   cDefaultIssuesCommentSnippets = '[{"name":"Bitte mit aktuellem Build prüfen","text":"Bitte mit dem aktuellen Build ' +
     'prüfen."},{"name":"Behoben in {commit}","text":"Behoben in {commit}."}]';
@@ -132,6 +134,9 @@ type
     /// <summary>Prüfzustände (#2126, #2127, issues.reviewStates), mit Komma getrennt: Ein Issue darin wartet auf
     /// die Prüfung; zurück in einen offenen Zustand gilt es als wieder offen. '' = keine.</summary>
     IssuesReviewStates: string;
+    /// <summary>Kommentarvorlage beim Prüfen (#2126, issues.reviewComment) mit {build}, {tests}, {branch} und
+    /// {kennung}; "\n" = neue Zeile.</summary>
+    IssuesReviewComment: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -223,6 +228,9 @@ type
     /// Issues“ mit dem neuesten Kommentar und „Weiterarbeiten“ auf dem alten Branch, Grund in der Meldung; aus =
     /// wie bisher.</summary>
     IssuesReopened: Boolean;
+    /// <summary>Beim Prüfen bauen und die betroffenen Tests laufen lassen (#2126, issues.reviewBuild); aus = nur
+    /// Branch wechseln und entscheiden.</summary>
+    IssuesReviewBuild: Boolean;
     /// <summary>„An Issue anhängen …“ (#1276, issues.attach): Bildschirmfoto, Formular, Log, Debug-Notiz und
     /// Exception-Verlauf an ein Issue hängen; aus = der Befehl fehlt überall.</summary>
     IssuesAttach: Boolean;
@@ -338,6 +346,7 @@ begin
   Result.IssuesEndStates := '';
   Result.IssuesReviewStates := '';
   Result.IssuesEndComment := cDefaultIssuesEndComment;
+  Result.IssuesReviewComment := cDefaultIssuesReviewComment;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -381,6 +390,7 @@ begin
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
   IssuesReviewStates := NormalizedIssuesTemplate(IssuesReviewStates);
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
+  IssuesReviewComment := NormalizedIssuesTemplate(IssuesReviewComment);
 end;
 
 procedure TAtlasPluginIssuesSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -410,6 +420,7 @@ begin
   AIo.Text('IssuesEndStates', IssuesEndStates);
   AIo.Text('IssuesEndComment', IssuesEndComment);
   AIo.Text('IssuesReviewStates', IssuesReviewStates);
+  AIo.Text('IssuesReviewComment', IssuesReviewComment);
 end;
 
 { TAtlasPluginIssueWorkSettings }
@@ -443,6 +454,7 @@ begin
   Result.IssuesNotifyIntervalMinutes := cDefaultIssuesNotifyMinutes;
   Result.IssuesNotifyScope := cIssuesNotifyAssignedOrCreated;
   Result.IssuesReopened := True;
+  Result.IssuesReviewBuild := True;
   Result.IssuesAttach := True;
   Result.IssuesAttachLogFiles := '';
   Result.IssuesAttachMaxImageWidth := cDefaultAttachImageWidth;
@@ -497,6 +509,7 @@ begin
   AIo.Number('IssuesNotifyIntervalMinutes', IssuesNotifyIntervalMinutes);
   AIo.Text('IssuesNotifyScope', IssuesNotifyScope);
   AIo.Flag('IssuesReopened', IssuesReopened);
+  AIo.Flag('IssuesReviewBuild', IssuesReviewBuild);
   AIo.Flag('IssuesAttach', IssuesAttach);
   AIo.Text('IssuesAttachLogFiles', IssuesAttachLogFiles);
   AIo.Number('IssuesAttachMaxImageWidth', IssuesAttachMaxImageWidth);

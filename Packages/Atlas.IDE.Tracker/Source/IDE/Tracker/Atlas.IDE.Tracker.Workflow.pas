@@ -16,6 +16,7 @@
 //   einmal (benannte Ereignisse verraten ihr Ziel nicht). Der
 //   Beenden-Dialog bekommt die Regeln mit den übrigen Werten (SetRules).
 // - Kommentar aus der Vorschau (SendComment).
+// - Zustände und Übergänge eines Issues für „Prüfen“ (#2126, ReadStates).
 // - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
 //   (Atlas.IDE.Tracker.TimeTracking); unabhängig von issues.syncState.
 // - Kommentarfeld des Dialogs als Kommentar-Editor (#1278, Hook
@@ -62,6 +63,10 @@ type
     PullRequest: string;
     class function Create(const AKey, ABranch, AFolder, ABase, APullRequest: string): TAtlasIdeTrackerEnd; static;
   end;
+
+  /// <summary>Zustände des Zustandsfeldes und Regeln eines Issues (#2122); leer, wenn nichts zu lesen war.</summary>
+  TAtlasIdeTrackerStatesDone = reference to procedure(const AStates: TArray<string>;
+    const ARules: TAtlasTrackerStateRules);
 
   /// <summary>„Beginnen“ unter einer Zustandsmaschine (#2122): geschriebene Änderung, gelesene Regeln, ob kein
   /// Übergang nach issues.startState führte, Zustand danach und Ergebnis.</summary>
@@ -130,6 +135,10 @@ type
     /// </summary>
     procedure Apply(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; const AKey: string;
       const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone);
+    /// <summary>Zustände und Regeln des Zustandsfeldes von AKey (#2126, Dialog „… prüfen“) im Hintergrund;
+    /// ADone im Hauptthread, genau einmal (nach Stop nie), ohne Leserecht mit leeren Werten.</summary>
+    procedure ReadStates(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+      const AKey: string; const ADone: TAtlasIdeTrackerStatesDone);
     /// <summary>Kommentar aus der Vorschau; ADone wie bei Apply.</summary>
     procedure SendComment(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey, AText: string; const ADone: TAtlasTrackerSendDone);
@@ -258,6 +267,21 @@ begin
   Result.Rules := Default(TAtlasTrackerStateRules);
   ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.Users, '',
     TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.Users);
+  ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.States, ACall.Field,
+    TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.States);
+  if ACall.Rules <> nil then
+  begin
+    ACall.Rules.StateRules(ACall.Target, ACall.Transport, ACall.Key, ACall.Field,
+      TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.Rules);
+  end;
+end;
+
+/// <summary>Zustände und Regeln für „Prüfen“ im Hintergrund, ohne die Benutzer.</summary>
+function ReadReviewValues(const ACall: TAtlasIssueCall): TAtlasEndValues;
+begin
+  Result.Users := nil;
+  Result.States := nil;
+  Result.Rules := Default(TAtlasTrackerStateRules);
   ACall.Writer.Values(ACall.Target, ACall.Transport, TAtlasTrackerValueKind.States, ACall.Field,
     TAtlasTrackerWorkflow.cWriteTimeoutMs, Result.States);
   if ACall.Rules <> nil then
@@ -765,6 +789,48 @@ begin
       mSession.Dialog.SetStates(mValues.States);
       mSession.Dialog.SetRules(mValues.Rules);
     end);
+end;
+
+procedure TAtlasIdeTrackerSync.ReadStates(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string; const ADone: TAtlasIdeTrackerStatesDone);
+var
+  mProvider: IAtlasTrackerProvider;
+  mTransports: TAtlasIdeTrackerTransport;
+  mCall: TAtlasIssueCall;
+  mValues: TAtlasEndValues;
+  mDone: TAtlasIdeTrackerStatesDone;
+begin
+  mCall := IssueCall(WriterOf(AProvider), RulesOf(AProvider), ATarget, AKey, Options(ATarget).StateField);
+  mTransports := FTransport;
+  mValues := Default(TAtlasEndValues);
+  if FStopped or (mCall.Writer = nil) or not Assigned(mTransports) then
+  begin
+    ADone(mValues.States, mValues.Rules);
+    Exit;
+  end;
+  mProvider := AProvider;
+  mDone := ADone;
+  if not FWorker.Run(
+    procedure
+    begin
+      try
+        mCall.Transport := mTransports(mProvider, mCall.Target);
+        if mCall.Transport <> nil then
+        begin
+          mValues := ReadReviewValues(mCall);
+        end;
+      except
+        on E: Exception do
+          Aborted('Review', E);
+      end;
+    end,
+    procedure
+    begin
+      mDone(mValues.States, mValues.Rules);
+    end) then
+  begin
+    ADone(mValues.States, mValues.Rules);
+  end;
 end;
 
 class function TAtlasIdeTrackerSync.TimeWriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerTimeWriter;

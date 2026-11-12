@@ -60,9 +60,9 @@ uses
   Atlas.UI.Tracker.TileView;
 
 type
-  /// <summary>Knöpfe an einem wieder geöffneten Issue (#2127): Weiterarbeiten auf dem alten Branch, Marke
-  /// ausblenden, Grund in der Vorschau am Kommentar zeigen.</summary>
-  TAtlasIssueReopenedAction = (Continue, Dismiss, Reason);
+  /// <summary>Aktionen an einer Zeile: an einem wieder geöffneten Issue (#2127) Weiterarbeiten auf dem alten
+  /// Branch, Marke ausblenden, Grund in der Vorschau am Kommentar zeigen; „Prüfen“ (#2126).</summary>
+  TAtlasIssueAction = (Continue, Dismiss, Reason, Review);
 
   IAtlasIssuesSource = interface
     ['{8D3F6A21-5C4B-4E97-A1D8-2B7E9C05F364}']
@@ -96,8 +96,8 @@ type
     procedure SelectProject(const AKey: string);
     /// <summary>„Tracker-Projekte bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
     procedure EditProjects;
-    /// <summary>Knopf AAction an einem wieder geöffneten Issue (#2127).</summary>
-    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
+    /// <summary>Aktion AAction an der Zeile AIssue (wieder geöffnet #2127, „Prüfen“ #2126).</summary>
+    procedure IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
   end;
 
 {$SCOPEDENUMS ON}
@@ -240,6 +240,7 @@ type
     FBrowsePullItem: TMenuItem;
     FStartBranchItem: TMenuItem;
     FStartRememberItem: TMenuItem;
+    FReviewItem: TMenuItem;
     FQueryItem: TMenuItem;
     FCredentialsItem: TMenuItem;
     FEndItem: TMenuItem;
@@ -253,6 +254,7 @@ type
     procedure BrowsePullClick(Sender: TObject);
     procedure StartBranchClick(Sender: TObject);
     procedure StartRememberClick(Sender: TObject);
+    procedure ReviewClick(Sender: TObject);
     procedure QueryClick(Sender: TObject);
     procedure CredentialsClick(Sender: TObject);
     procedure EndClick(Sender: TObject);
@@ -262,6 +264,8 @@ type
     property PreviewItem: TMenuItem read FPreviewItem;
     property BrowseItem: TMenuItem read FBrowseItem;
     property StartRememberItem: TMenuItem read FStartRememberItem;
+    /// <summary>„Prüfen …“ (#2126): für jede Zeile mit Git oder SVN, auch außerhalb der Prüfzustände.</summary>
+    property ReviewItem: TMenuItem read FReviewItem;
     property QueryItem: TMenuItem read FQueryItem;
     property CredentialsItem: TMenuItem read FCredentialsItem;
     property EndItem: TMenuItem read FEndItem;
@@ -375,6 +379,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
+  Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.TestResults;
 
@@ -716,6 +721,11 @@ class function TAtlasTrackerIssuesText.StartHint(const AView: TAtlasIssuesView;
 var
   mPlan: TAtlasIssueStartPlan;
 begin
+  // Im Prüfzustand (#2126) steht dort „Prüfen …“.
+  if TAtlasTrackerReview.Reviews(AView, AIssue) then
+  begin
+    Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewHint));
+  end;
   mPlan := TAtlasMyIssues.PlanStart(AView.VcsKind, AView.Options, AIssue);
   if (mPlan.Mode = TAtlasIssueStart.Branch) and mPlan.Valid then
   begin
@@ -990,6 +1000,10 @@ var
 begin
   ACanvas.Font.Assign(FOwner.Font);
   mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStart);
+  if TAtlasTrackerReview.Reviews(FOwner.View, FOwner.View.Items[AIndex]) then
+  begin
+    mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand);
+  end;
   mWidth := ACanvas.TextWidth(mText) + 2 * Scaled(TAtlasTrackerIssuesView.cButtonPadding);
   mHeight := Scaled(TAtlasTrackerIssuesView.cButtonHeight);
   // Über beide Zeilen der Zeile mittig (Mockup).
@@ -1425,6 +1439,7 @@ begin
     StartBranchClick);
   FStartRememberItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartRemember),
     StartRememberClick);
+  FReviewItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand), ReviewClick);
   mLine := TMenuItem.Create(AOwner);
   mLine.Caption := cMenuLine;
   FMenu.Items.Add(mLine);
@@ -1462,6 +1477,8 @@ begin
   FStartBranchItem.Enabled := FOwner.CanStart;
   FStartRememberItem.Visible := mHasItem;
   FStartRememberItem.Enabled := FOwner.CanStart;
+  FReviewItem.Visible := mHasItem and mBranching and not SameText(mItem.Key, mView.Active.Key);
+  FReviewItem.Enabled := FOwner.CanStart;
   FQueryItem.Visible := mConfigured;
   FQueryItem.Enabled := not mView.Querying;
   FCredentialsItem.Visible := mConfigured and (FOwner.Source <> nil) and FOwner.Source.CanEnterCredentials;
@@ -1517,6 +1534,20 @@ end;
 procedure TAtlasTrackerIssuesMenu.StartRememberClick(Sender: TObject);
 begin
   StartFromMenu(TAtlasIssueStart.Remember);
+end;
+
+procedure TAtlasTrackerIssuesMenu.ReviewClick(Sender: TObject);
+var
+  mItem: TAtlasTrackerIssue;
+begin
+  if FOwner.CanStart and MenuIssue(mItem) then
+  begin
+    FOwner.SendIssue(FMenuRow,
+      procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
+      begin
+        ASource.IssueAction(AIssue, TAtlasIssueAction.Review);
+      end);
+  end;
 end;
 
 procedure TAtlasTrackerIssuesMenu.QueryClick(Sender: TObject);
@@ -1875,7 +1906,8 @@ begin
         ASource.BrowsePullRequest(AIssue);
       end);
   end
-  else if (AHit.Kind = TAtlasIssuesHitKind.Start) and CanStart then
+  else if (AHit.Kind = TAtlasIssuesHitKind.Start) and CanStart and
+    not TAtlasTrackerReview.Reviews(FView, FView.Items[AHit.Index]) then
   begin
     mMode := FView.Options.Start;
     SendIssue(AHit.Index,
@@ -1892,27 +1924,36 @@ end;
 
 procedure TAtlasTrackerIssuesView.ClickReopened(const AHit: TAtlasIssuesHit);
 var
-  mAction: TAtlasIssueReopenedAction;
+  mAction: TAtlasIssueAction;
 begin
-  // Wieder geöffnet (#2127): Weiterarbeiten, Gelesen, Grund in der Vorschau.
+  // Wieder geöffnet (#2127): Weiterarbeiten, Gelesen, Grund in der Vorschau; „Prüfen …“ (#2126) im Prüfzustand.
   case AHit.Kind of
+    TAtlasIssuesHitKind.Start:
+      if TAtlasTrackerReview.Reviews(FView, FView.Items[AHit.Index]) then
+      begin
+        mAction := TAtlasIssueAction.Review;
+      end
+      else
+      begin
+        Exit;
+      end;
     TAtlasIssuesHitKind.Continue:
-      mAction := TAtlasIssueReopenedAction.Continue;
+      mAction := TAtlasIssueAction.Continue;
     TAtlasIssuesHitKind.Dismiss:
-      mAction := TAtlasIssueReopenedAction.Dismiss;
+      mAction := TAtlasIssueAction.Dismiss;
     TAtlasIssuesHitKind.Reason:
-      mAction := TAtlasIssueReopenedAction.Reason;
+      mAction := TAtlasIssueAction.Reason;
   else
     Exit;
   end;
-  if (mAction = TAtlasIssueReopenedAction.Continue) and not CanStart then
+  if (mAction in [TAtlasIssueAction.Continue, TAtlasIssueAction.Review]) and not CanStart then
   begin
     Exit;
   end;
   SendIssue(AHit.Index,
     procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
     begin
-      ASource.Reopened(AIssue, mAction);
+      ASource.IssueAction(AIssue, mAction);
     end);
 end;
 
