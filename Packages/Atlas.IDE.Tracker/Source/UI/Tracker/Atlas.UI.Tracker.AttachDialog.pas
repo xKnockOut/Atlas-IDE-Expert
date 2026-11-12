@@ -137,9 +137,6 @@ type
     procedure TextChanged(Sender: TObject);
     procedure CommentChanged(Sender: TObject);
     procedure LogChanged(Sender: TObject);
-    /// <summary>Hauptfenster des debuggten Programms nach vorn; False ohne Programm, Fenster oder Einstellung.
-    /// </summary>
-    function RaiseProgram: Boolean;
     procedure WindowChanged(Sender: TObject);
     procedure PickClick(Sender: TObject);
     procedure Picked(AWindow: HWND);
@@ -654,17 +651,18 @@ begin
   end;
 end;
 
-function TAtlasAttachDialog.RaiseProgram: Boolean;
+/// <summary>Hauptfenster des debuggten Programms nach vorn; False ohne Programm, Fenster oder Einstellung.</summary>
+function RaiseProgram(const AInput: TAtlasAttachDialogInput): Boolean;
 var
   mWindows: TArray<TAtlasWindowInfo>;
 begin
   Result := False;
-  if not FInput.RaiseProgram or (FInput.ProcessId = 0) then
+  if not AInput.RaiseProgram or (AInput.ProcessId = 0) then
   begin
     Exit;
   end;
   // Neu suchen: Seit dem Öffnen des Dialogs kann das Programm ein Fenster bekommen haben.
-  mWindows := TAtlasWindowCapture.WindowsOf(FInput.ProcessId);
+  mWindows := TAtlasWindowCapture.WindowsOf(AInput.ProcessId);
   Result := (Length(mWindows) > 0) and TAtlasWindowCapture.BringToFront(mWindows[0].Handle);
 end;
 
@@ -672,7 +670,7 @@ procedure TAtlasAttachDialog.PickClick(Sender: TObject);
 begin
   FParts.ShotInfo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPicking);
   FParts.Pick.Enabled := False;
-  FRaised := RaiseProgram;
+  FRaised := RaiseProgram(FInput);
   FPicker.Start(Picked);
 end;
 
