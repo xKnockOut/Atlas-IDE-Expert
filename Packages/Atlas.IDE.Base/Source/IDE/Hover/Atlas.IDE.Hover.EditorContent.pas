@@ -20,7 +20,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
-  Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.View,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Hover.DebugValue,
@@ -46,6 +46,8 @@ type
   /// Typ, dann seine Vorfahren, AText der Text der IDE. '' = den Text der IDE lassen.</summary>
   TAtlasHoverVisualizeFunc = reference to function(const AExpression: string; const ATypeChain: TArray<string>;
     const AText: string): string;
+  /// <summary>Erklärung eines Problems aus dem Katalog (#54); Known False ohne Eintrag.</summary>
+  TAtlasHoverExplanationFunc = reference to function(const AProblem: TAtlasProblem): TAtlasHoverExplanation;
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
@@ -55,6 +57,8 @@ type
 
   /// <summary>Tooltip, Verlauf, Sitzung, Probleme und das Wort unter der Maus.</summary>
   TAtlasEditorHoverContent = class
+  private class var
+    FOnExplanation: TAtlasHoverExplanationFunc;
   protected
     FTip: TAtlasHoverTip;
     FHistory: TAtlasHoverHistory;
@@ -84,6 +88,8 @@ type
     function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     /// <summary>Inhalt für den Tooltip aus Verlauf, Einstellungen und Problemen.</summary>
     function CurrentView: TAtlasHoverView; virtual;
+    /// <summary>Erklärungen zu AProblems (#54); nil, wenn abgeschaltet.</summary>
+    class function Explanations(const AProblems: TArray<TAtlasProblem>): TArray<TAtlasHoverExplanation>; static;
     procedure Refresh;
     function MouseOverTip: Boolean;
     /// <summary>Liegt der Editor unter der Maus (kein anderes Fenster davor)?</summary>
@@ -94,6 +100,9 @@ type
       const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
     destructor Destroy; override;
     procedure Hide; virtual;
+    /// <summary>Erklärungen zu Compilermeldungen und Regeln (#54, hover.explainMessages); setzt die
+    /// Kompositionswurzel, ohne Zuweisung keine.</summary>
+    class property OnExplanation: TAtlasHoverExplanationFunc read FOnExplanation write FOnExplanation;
   end;
 
   /// <summary>Wert im angehaltenen Debugger (#891) samt Erklärung (#840) und Visualisierern (#835).</summary>
@@ -281,6 +290,24 @@ begin
   if FHistory.Count <= 1 then
   begin
     Result.Problems := FProblems;
+    Result.Explanations := Explanations(FProblems);
+  end;
+end;
+
+class function TAtlasEditorHoverContent.Explanations(const AProblems: TArray<TAtlasProblem>):
+  TArray<TAtlasHoverExplanation>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not Assigned(FOnExplanation) or not TAtlasIdeSettings.Current.HoverExplainMessages then
+  begin
+    Exit;
+  end;
+  SetLength(Result, Length(AProblems));
+  for mIndex := 0 to High(AProblems) do
+  begin
+    Result[mIndex] := FOnExplanation(AProblems[mIndex]);
   end;
 end;
 
@@ -576,8 +603,9 @@ procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: I
   AAction: TAtlasHoverProblemAction; AItem: Integer);
 const
   // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
+  // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst.
   cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
-    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph');
+    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '');
 var
   mProblem: TAtlasProblem;
   mTag: string;
@@ -588,6 +616,16 @@ begin
       Exit;
     end;
     mProblem := FTip.View.Problems[AProblem];
+    if AAction = TAtlasHoverProblemAction.DocWiki then
+    begin
+      if AProblem <= High(FTip.View.Explanations) then
+      begin
+        mTag := FTip.View.Explanations[AProblem].DocWiki;
+        Hide;
+        TipUrl(Self, mTag);
+      end;
+      Exit;
+    end;
     mTag := cTags[AAction];
     if AAction = TAtlasHoverProblemAction.Related then
     begin

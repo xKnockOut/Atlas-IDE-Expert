@@ -42,7 +42,10 @@ procedure StopReassigned;
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.ShellAPI,
   System.SysUtils,
+  System.StrUtils,
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
@@ -154,6 +157,15 @@ begin
   Result := TAtlasIdeProblems.StepWindow(AForward);
 end;
 
+/// <summary>DocWiki-Link im Dialog „Erklären“ (#54): nur Webadressen im Browser öffnen.</summary>
+procedure OpenWebUrl(AUrl: string);
+begin
+  if StartsText('https://', AUrl) then
+  begin
+    ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+  end;
+end;
+
 procedure StartProblemsWindow;
 var
   mHooks: TAtlasIdeProblemsHooks;
@@ -169,6 +181,7 @@ begin
   mHooks.Indexing := ServerIndexing;
   mHooks.CreateIssue := CreateIssue;
   mHooks.CanCreateIssue := CanCreateIssue;
+  mHooks.OpenUrl := OpenWebUrl;
   TAtlasIdeProblems.Start(mHooks);
   TAtlasIdeEditorCommands.OnStepList := StepWindow;
   ProblemsWindowRunning := True;

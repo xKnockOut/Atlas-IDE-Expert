@@ -468,6 +468,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.MessageCatalog.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.BulkFix.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas"/>
@@ -531,6 +532,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.Model.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Security.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Credentials.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.General.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlPatterns.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests.pas"/>
@@ -709,7 +711,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Items.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.View.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Declaration.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas"/>

@@ -8,7 +8,7 @@
 interface
 
 const
-  cCatalogLinesEnSecurity: array[0..109] of string = (
+  cCatalogLinesEnSecurity: array[0..127] of string = (
     '{',
     '      "id": "bidi-control",',
     '      "name": "Bidirectional control character",',
@@ -113,6 +113,30 @@ const
     '      "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",',
     '      "bad": "Token := IntToStr(Random(MaxInt));",',
     '      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"',
+    '    },',
+    '{',
+    '      "id": "security-hardcoded-credential",',
+    '      "name": "Credentials in code",',
+    '      "category": "vulnerability",',
+    '      "severity": "warning",',
+    '      "group": "security",',
+    '      "description": "A password, key or token is written into the source or the form file. Three patterns in string literals (comments do not count): Password= or Pwd= with a value in a connection st' +
+    'ring (ConnectionString, Params, Params.Add, also in the form file; no blank before =, so SQL such as WHERE Password = :Pwd stays silent), high confidence; known key formats (GitHub tokens, AWS access ' +
+    'keys, private keys, Slack and Google keys) in any literal, also in resourcestring, high confidence; a literal assigned to or compared with a name that ends in Password, Passwd, Passwort, Kennwort, Pwd' +
+    ', Secret, ApiKey, AccessKey, Token or PrivateKey (const, initialized variable, :=, =, Params.Values[''Password''], component property in the form file), medium confidence. Secret, key and token values c' +
+    'ount from eight characters. Empty values, placeholders (''***'', ''xxx'', ''<…>'', ''%s'', ''{0}'', ''changeme'', :Param), texts with blanks and values that look like a key name stay silent. The finding never sho' +
+    'ws the value in clear text: at most the first four characters, followed by ****. Form file findings appear at the component field in the unit. No quick fix; read credentials from the configuration, th' +
+    'e environment or a vault.",',
+    '      "bad": "const\n  DbPassword = ''geheim'';\n…\nConnection.ConnectionString := ''Provider=SQLOLEDB;User ID=sa;Password=geheim'';",',
+    '      "good": "Connection.Params.Values[''Password''] := Settings.ReadString(''Db'', ''Password'', '''');",',
+    '      "options": [',
+    '        {',
+    '          "name": "patterns",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Additional regular expressions for key formats of your own (e.g. \\bACME-[0-9]{6}\\b); they report like the built-in formats."',
+    '        }',
+    '      ]',
     '    },',
     '{',
     '      "id": "security-sql-injection",',

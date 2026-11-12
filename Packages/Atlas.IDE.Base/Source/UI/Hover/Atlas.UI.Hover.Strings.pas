@@ -17,7 +17,8 @@ type
     PublishedEvents, PublishedName, PublishedType, PublishedDefault, PublishedDeclared, PublishedImplicit,
     PublishedMoreProperties, PublishedMoreEvents, PublishedEventsNote, PublishedArrayProperty,
     PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote, HoverShowGraph,
-    HoverDebugExplaining, HoverDebugChecked, ReassignedOne, ReassignedCount);
+    HoverDebugExplaining, HoverDebugChecked, ReassignedOne, ReassignedCount, ProblemsExplain, ProblemsDocWiki,
+    ProblemsCause);
 
   TAtlasHoverStrings = class
   public
@@ -77,7 +78,10 @@ const
      'Ursache wird ermittelt …',
      'Geprüft, ohne Treffer:',
      'Einmal neu zugewiesen (Zeile %s)',
-     'Neu zugewiesen: %d Zuweisungen (Zeilen %s)'),
+     'Neu zugewiesen: %d Zuweisungen (Zeilen %s)',
+     'Erklären',
+     'DocWiki',
+     'Typische Ursache: %s'),
     ('Inheritance',
      'Target type %s',
      'pinned',
@@ -121,7 +125,10 @@ const
      'Finding the cause …',
      'Checked without a match:',
      'Reassigned once (line %s)',
-     'Reassigned: %d assignments (lines %s)'));
+     'Reassigned: %d assignments (lines %s)',
+     'Explain',
+     'DocWiki',
+     'Typical cause: %s'));
 
 { TAtlasHoverStrings }
 

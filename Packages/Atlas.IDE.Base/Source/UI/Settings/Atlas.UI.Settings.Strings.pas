@@ -141,7 +141,9 @@ type
     // Untermenü Atlas im Kontextmenü des Editors: nur Passendes, gezeigte Untermenüs.
     SettingsEditorContextMenuContextual, SettingsEditorContextMenuGroups, SettingsContextGroupNavigation,
     SettingsContextGroupEdit, SettingsContextGroupAnalysis, SettingsContextGroupFindings, SettingsContextGroupDebug,
-    SettingsContextGroupTests, SettingsContextGroupNotes);
+    SettingsContextGroupTests, SettingsContextGroupNotes,
+    // Compilermeldungen im Hover erklären (#54).
+    SettingsHoverExplainMessages);
 
   TAtlasSettingsStrings = class
   public
@@ -698,7 +700,8 @@ const
      'Befunde',
      'Debuggen',
      'Tests',
-     'Notizen und Lesezeichen'),
+     'Notizen und Lesezeichen',
+     'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“'),
     ('Completion, parameter hint and tooltip by Atlas',
      'Code Insight by Atlas (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:',
@@ -1238,7 +1241,8 @@ const
      'Findings',
      'Debugging',
      'Tests',
-     'Notes and bookmarks'));
+     'Notes and bookmarks',
+     'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"'));
 
 { TAtlasSettingsStrings }
 

@@ -46,6 +46,10 @@ type
       const AExperimental: TArray<string>): TJSONObject; overload; static;
     /// <summary>Katalog in der Sprache aus AArguments[0] ("de", "en"; sonst englisch).</summary>
     class function CatalogEntries(const AArguments: TJSONArray): TArray<TRuleCatalogEntry>; static;
+    /// <summary>Erklärungen der Compilermeldungen (#54) als "messages": [{"code", "name", "description", "cause",
+    /// "bad", "good", "docWiki"}] in ACatalog; Sprache aus AArguments[0], Delphi-Version (BDS-Nummer wie "37.0")
+    /// für den DocWiki-Link aus AArguments[1], ohne Angabe das neueste Release.</summary>
+    class procedure AddMessages(ACatalog: TJSONObject; const AArguments: TJSONArray); static;
   end;
 
 implementation
@@ -57,6 +61,8 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Rules.Catalog.Data,
+  Atlas.Common.Rules.MessageCatalog,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Output,
   Atlas.Common.Product.Version;
 
@@ -236,6 +242,46 @@ begin
   Result.AddPair('rules', mRules);
   Result.AddPair('globalFile', AGlobalFile);
   Result.AddPair('version', TProductVersion.cVersion);
+end;
+
+/// <summary>Zweites Argument als Text (Delphi-Version); '' ohne.</summary>
+function SecondString(const AArguments: TJSONArray): string;
+begin
+  Result := '';
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+  begin
+    Result := AArguments.Items[1].Value;
+  end;
+end;
+
+function MessageJson(const AEntry: TCompilerMessageEntry; const ADelphiVersion: string): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('code', AEntry.Code);
+  Result.AddPair('name', AEntry.Name);
+  Result.AddPair('description', AEntry.Description);
+  Result.AddPair('cause', AEntry.Cause);
+  Result.AddPair('bad', AEntry.Bad);
+  Result.AddPair('good', AEntry.Good);
+  Result.AddPair('docWiki', TCompilerMessageCatalog.DocWikiUrl(AEntry.Code, ADelphiVersion));
+end;
+
+class procedure TLspSettingsCommands.AddMessages(ACatalog: TJSONObject; const AArguments: TJSONArray);
+var
+  mLanguage: TTextLanguage;
+  mMessages: TJSONArray;
+  mEntry: TCompilerMessageEntry;
+begin
+  if not TAtlasLocale.TryParse(FirstString(AArguments), mLanguage) then
+  begin
+    mLanguage := TTextLanguage.English;
+  end;
+  mMessages := TJSONArray.Create;
+  for mEntry in TCompilerMessageCatalog.Entries(mLanguage) do
+  begin
+    mMessages.AddElement(MessageJson(mEntry, SecondString(AArguments)));
+  end;
+  ACatalog.AddPair('messages', mMessages);
 end;
 
 end.

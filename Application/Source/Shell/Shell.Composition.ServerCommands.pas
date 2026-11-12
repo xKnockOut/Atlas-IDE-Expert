@@ -223,6 +223,7 @@ function TShellServerCommands.RunSettingsCatalog(const AArguments: TJSONArray): 
 var
   mRule: IRule;
   mExperimental: TArray<string>;
+  mCatalog: TJSONObject;
 begin
   // Experimentelle Regeln (#834) kennt nur ihr Deskriptor; die Einstellungsseite (#909) markiert sie.
   mExperimental := nil;
@@ -233,8 +234,11 @@ begin
       mExperimental := mExperimental + [mRule.Descriptor.Id];
     end;
   end;
-  Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments),
+  mCatalog := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments),
     FServices.GlobalSettingsFile(), mExperimental);
+  // Erklärungen der Compilermeldungen (#54) für Hover und „Erklären“ des Plugins.
+  TLspSettingsCommands.AddMessages(mCatalog, AArguments);
+  Result := mCatalog;
 end;
 
 function TShellServerCommands.RunConvertForms(const AArguments: TJSONArray): TJSONValue;

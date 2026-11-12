@@ -21,6 +21,7 @@
     "generic-exception-raised": {"exclude": ["Tests/**"]},
     "format-without-settings": {"exclude": ["Tests/**"]},
     "security-insecure-http": {"exclude": ["Tests/**"]},
+    "security-hardcoded-credential": {"exclude": ["Tests/**", "**/Atlas.Common.Rules.Catalog.Data.*"]},
     "control-fixed-bounds": {"exclude": ["Tests/**"]},
     "unused-unit": {"exclude": ["Tests/**/*Golden.pas"]},
     "loop-runs-at-most-once": {

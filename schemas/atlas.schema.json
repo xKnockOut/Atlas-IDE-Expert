@@ -804,6 +804,15 @@
                 "description": "Nur sql-write-without-where: Tabellen, die absichtlich ganz geleert bzw. geändert werden, mit oder ohne Schema (#966).",
                 "x-description-en": "Only sql-write-without-where: tables that are deliberately emptied or changed completely, with or without schema (#966)."
               },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur security-hardcoded-credential: weitere reguläre Ausdrücke für eigene Schlüsselformate, z. B. [\"\\\\bACME-[0-9]{6}\\\\b\"] (#57).",
+                "x-description-en": "Only security-hardcoded-credential: further regular expressions for key formats of your own, e.g. [\"\\\\bACME-[0-9]{6}\\\\b\"] (#57)."
+              },
               "allowProperties": {
                 "type": "array",
                 "items": {

@@ -2974,6 +2974,16 @@
       "x-parent": "editor.hoverTooltip",
       "x-issue": "#909"
     },
+    "HoverExplainMessages": {
+      "type": "boolean",
+      "default": true,
+      "description": "Compilermeldungen im Hover erklären: eine Zeile „Typische Ursache“ unter der Meldung und die Links „Erklären“ (Dialog mit Beispiel) und „DocWiki“. Der Katalog kennt die häufigsten Meldungen nach ihrer Nummer (E2003, W1035 …) auf Deutsch und Englisch.",
+      "x-key": "hover.explainMessages",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "editor.hoverTooltip",
+      "x-issue": "#54"
+    },
     "HoverMembersMaxLines": {
       "type": "integer",
       "default": 15,

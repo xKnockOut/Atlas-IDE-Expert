@@ -22,7 +22,9 @@ type
     ProblemsTagActive, ProblemsTagClosed, ProblemsCleanActive, ProblemsCheckingActive, ProblemsOpenFirst,
     ProblemsOpenFirstHint, ProblemsStatusTiers, ProblemsStatusHidden, ProblemsMenuFixAll, ProblemsManual,
     // Fehler der IDE (#1819): Spalte und Filter „Quelle“.
-    ProblemsColumnSource, ProblemsOriginAll, ProblemsOriginAtlas, ProblemsOriginIde);
+    ProblemsColumnSource, ProblemsOriginAll, ProblemsOriginAtlas, ProblemsOriginIde,
+    // Compilermeldungen erklären (#54).
+    ProblemsMenuExplainMessage, ProblemsExplainMessageTitle, ProblemsExplainCause, ProblemsExplainDocWiki);
 
   TAtlasProblemsStrings = class
   public
@@ -98,7 +100,11 @@ const
      'Quelle',
      'Atlas und IDE',
      'nur Atlas',
-     'nur IDE'),
+     'nur IDE',
+     'Meldung erklären',
+     'Meldung %s',
+     'Typische Ursache',
+     'Im DocWiki öffnen'),
     ('Atlas problems',
      '… %d more problems',
      'Error',
@@ -158,7 +164,11 @@ const
      'Source',
      'Atlas and IDE',
      'Atlas only',
-     'IDE only'));
+     'IDE only',
+     'Explain message',
+     'Message %s',
+     'Typical cause',
+     'Open in DocWiki'));
 
 { TAtlasProblemsStrings }
 

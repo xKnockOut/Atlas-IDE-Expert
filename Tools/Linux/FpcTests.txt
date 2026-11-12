@@ -218,6 +218,7 @@ Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
 Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests
 Atlas.Common.Rules.Builtin.Constants.Types.Tests
+Atlas.Common.Rules.Builtin.Credentials.Tests
 Atlas.Common.Rules.Builtin.Database.Statements.Tests
 Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests
 Atlas.Common.Rules.Builtin.Declarations.Duplicates.Tests
@@ -274,8 +275,10 @@ Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
+Atlas.Common.Rules.MessageCatalog.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
+Atlas.Common.Rules.Profiles.Tests
 Atlas.Common.Rules.Scopes.Tests
 Atlas.Common.Rules.SuppressionStats.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
@@ -296,6 +299,8 @@ Atlas.Common.Updates.Tests
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Problems.IdeErrors.Tests
+Atlas.Core.Problems.Explanation.Tests
+Atlas.Core.Hover.View.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
