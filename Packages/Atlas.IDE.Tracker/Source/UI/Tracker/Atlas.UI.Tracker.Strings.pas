@@ -187,7 +187,10 @@ type
     SettingsIssuesConnectionReviewStates,
     IssuePreviewDescription, SettingsIssuesIdeColors,
     SettingsIssuesStatusState, StatusStateHint, StatusMenuComment, StatusMenuNone, StatusMenuFailed,
-    StatusStateFailed, StatusDialogTitle, StatusDialogChoice, StatusDialogKeep, PaletteStateGroup, PaletteStateStatus);
+    StatusStateFailed, StatusDialogTitle, StatusDialogChoice, StatusDialogKeep, PaletteStateGroup, PaletteStateStatus,
+    SettingsIssuesSprintOnStart, SettingsIssuesSprintAsk, SettingsIssuesSprintAlways, SettingsIssuesSprintNever,
+    SprintStartTitle, SprintStartQuestion, SprintStartAdd, SprintStartAddOpen, SprintStartDate, SprintStartDontAsk,
+    SprintStartWithout, SprintStartAccept, SprintStartCancel, TrackerPartSprint);
 
   TAtlasTrackerStrings = class
   public
@@ -1002,7 +1005,21 @@ const
      'Übergang:',
      'Zustand behalten (nur Kommentar)',
      'Aktuelles Issue',
-     'Enter führt den Übergang aus'),
+     'Enter führt den Übergang aus',
+     'Beim Beginnen in den laufenden Sprint aufnehmen',
+     'Fragen',
+     'Immer aufnehmen',
+     'Nie',
+     '%s beginnen',
+     '%s „%s“ ist in keinem Sprint von „%s“.',
+     'In den laufenden Sprint „%s“ (bis %s) aufnehmen?',
+     'In den laufenden Sprint „%s“ aufnehmen?',
+     'dd.mm.',
+     'Nicht mehr fragen',
+     'Ohne Sprint beginnen',
+     'Aufnehmen und beginnen',
+     'Abbrechen',
+     'in Sprint „%s“'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1796,7 +1813,21 @@ const
      'Transition:',
      'Keep the state (comment only)',
      'Current issue',
-     'Enter runs the transition'));
+     'Enter runs the transition',
+     'Add to the running sprint on start',
+     'Ask',
+     'Always add',
+     'Never',
+     'Start %s',
+     '%s "%s" is in no sprint of "%s".',
+     'Add it to the running sprint "%s" (until %s)?',
+     'Add it to the running sprint "%s"?',
+     'mmm d',
+     'Don''t ask again',
+     'Start without sprint',
+     'Add and start',
+     'Cancel',
+     'added to sprint "%s"'));
 
 { TAtlasTrackerStrings }
 

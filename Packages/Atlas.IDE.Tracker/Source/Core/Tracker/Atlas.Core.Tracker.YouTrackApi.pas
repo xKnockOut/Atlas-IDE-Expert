@@ -130,6 +130,9 @@ type
     class function CommandWord(const AText: string): string; static;
     /// <summary>Befehl zu AChange ohne Kommentar ("State {In Arbeit} Assignee me"); '' = nur Kommentar.</summary>
     class function CommandQuery(const AChange: TAtlasTrackerWrite): string; static;
+    /// <summary>Befehl, der in ASprint aufnimmt ("Board Atlas-Board {Sprint 47}", #2128); '' ohne Sprint.
+    /// </summary>
+    class function SprintQuery(const ASprint: TAtlasTrackerSprintRef): string; static;
     /// <summary>Befehl, der Feld AField auf AValue setzt ("{Behoben in Version} 2.1.0"); '' ohne Feld oder Wert.
     /// </summary>
     class function FieldQuery(const AField, AValue: string): string; static;
@@ -610,7 +613,8 @@ begin
   end;
 end;
 
-class function TAtlasYouTrackBodies.CommandQuery(const AChange: TAtlasTrackerWrite): string;
+/// <summary>Zustand und Zuständigkeit von AChange als Befehl; '' ohne.</summary>
+function StateAssignQuery(const AChange: TAtlasTrackerWrite): string;
 var
   mField: string;
 begin
@@ -622,7 +626,7 @@ begin
     begin
       mField := 'State';
     end;
-    Result := CommandWord(mField) + ' ' + CommandWord(AChange.State);
+    Result := TAtlasYouTrackBodies.CommandWord(mField) + ' ' + TAtlasYouTrackBodies.CommandWord(AChange.State);
   end;
   if AChange.Assign = TAtlasTrackerAssign.Keep then
   begin
@@ -643,11 +647,30 @@ begin
   end;
   if AChange.Assign = TAtlasTrackerAssign.Me then
   begin
-    Result := Result + CommandWord(mField) + ' me';
+    Result := Result + TAtlasYouTrackBodies.CommandWord(mField) + ' me';
   end
   else
   begin
-    Result := Result + CommandWord(mField) + ' ' + CommandWord(AChange.Assignee);
+    Result := Result + TAtlasYouTrackBodies.CommandWord(mField) + ' ' +
+      TAtlasYouTrackBodies.CommandWord(AChange.Assignee);
+  end;
+end;
+
+class function TAtlasYouTrackBodies.CommandQuery(const AChange: TAtlasTrackerWrite): string;
+begin
+  Result := StateAssignQuery(AChange);
+  if SprintQuery(AChange.Sprint) <> '' then
+  begin
+    Result := Trim(Result + ' ' + SprintQuery(AChange.Sprint));
+  end;
+end;
+
+class function TAtlasYouTrackBodies.SprintQuery(const ASprint: TAtlasTrackerSprintRef): string;
+begin
+  Result := '';
+  if ASprint.IsSet then
+  begin
+    Result := 'Board ' + CommandWord(ASprint.Board) + ' ' + CommandWord(ASprint.Sprint);
   end;
 end;
 

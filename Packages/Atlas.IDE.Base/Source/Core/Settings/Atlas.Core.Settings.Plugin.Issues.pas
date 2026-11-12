@@ -54,6 +54,10 @@ const
   cIssuesNotifyAssigned = 'assigned';
   cIssuesNotifyAssignedOrCreated = 'assignedOrCreated';
   cIssuesNotifyWatched = 'watched';
+  /// <summary>Werte von issues.sprintOnStart (#2128): fragen, ohne Frage aufnehmen, nie.</summary>
+  cIssuesSprintAsk = 'ask';
+  cIssuesSprintAlways = 'always';
+  cIssuesSprintNever = 'never';
 
 type
   /// <summary>Plugin-Einstellungen: Verbindungen, Abfragen und Arbeitsablauf des Issue-Trackers.</summary>
@@ -184,6 +188,9 @@ type
     /// <summary>Zustand des aktuellen Issues im Statusfeld mit Menü der erlaubten Übergänge und Einträgen in der
     /// Befehlspalette (#2124, issues.statusState); aus = nur die Zeit.</summary>
     IssuesStatusState: Boolean;
+    /// <summary>Beim Beginnen in den laufenden Sprint des Boards aufnehmen (#2128, issues.sprintOnStart):
+    /// IssuesSprintAsk (Vorgabe), IssuesSprintAlways oder IssuesSprintNever.</summary>
+    IssuesSprintOnStart: string;
     /// <summary>Verknüpfungen der Vorschau als Baum (#1279, issues.preview.links): hängt ab von, blockiert,
     /// Unteraufgaben mit Fortschritt, eingeklappt Duplikate und „bezieht sich auf“; dazu „Unteraufgabe anlegen …“
     /// und „Verknüpfen …“. Aus = flache Liste wie in #1264.</summary>
@@ -266,6 +273,20 @@ begin
   if (Result <> 'github') and (Result <> 'youtrack') then
   begin
     Result := '';
+  end;
+end;
+
+/// <summary>issues.sprintOnStart (#2128): bekannter Wert, sonst IssuesSprintAsk.</summary>
+function NormalizedIssuesSprintOnStart(const AText: string): string;
+begin
+  Result := cIssuesSprintAsk;
+  if SameText(Trim(AText), cIssuesSprintAlways) then
+  begin
+    Result := cIssuesSprintAlways;
+  end
+  else if SameText(Trim(AText), cIssuesSprintNever) then
+  begin
+    Result := cIssuesSprintNever;
   end;
 end;
 
@@ -445,6 +466,7 @@ begin
   Result.IssuesPreviewChecklists := True;
   Result.IssuesChecklistStatus := True;
   Result.IssuesStatusState := True;
+  Result.IssuesSprintOnStart := cIssuesSprintAsk;
   Result.IssuesPreviewLinks := True;
   Result.IssuesWarnBlocked := True;
   Result.IssuesBoard := True;
@@ -484,6 +506,7 @@ begin
   IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, cMinIssuesNotifyMinutes,
     cMaxIssuesNotifyMinutes);
   IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
+  IssuesSprintOnStart := NormalizedIssuesSprintOnStart(IssuesSprintOnStart);
 end;
 
 procedure TAtlasPluginIssueWorkSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -501,6 +524,7 @@ begin
   AIo.Flag('IssuesPreviewChecklists', IssuesPreviewChecklists);
   AIo.Flag('IssuesChecklistStatus', IssuesChecklistStatus);
   AIo.Flag('IssuesStatusState', IssuesStatusState);
+  AIo.Text('IssuesSprintOnStart', IssuesSprintOnStart);
   AIo.Flag('IssuesPreviewLinks', IssuesPreviewLinks);
   AIo.Flag('IssuesWarnBlocked', IssuesWarnBlocked);
   AIo.Flag('IssuesBoard', IssuesBoard);
