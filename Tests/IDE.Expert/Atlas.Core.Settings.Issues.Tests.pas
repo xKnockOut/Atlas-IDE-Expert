@@ -362,6 +362,7 @@ begin
   Assert.IsTrue(ASettings.IssuesAttach, 'Anhängen (#1276) an');
   Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
   Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
+  Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
   // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.cIssuesStartBranch);
@@ -462,6 +463,7 @@ begin
   ASettings.IssuesAttach := False;
   ASettings.IssuesAttachLogFiles := '$(ProjectDir)\logs\*.log;C:\Temp\app.log';
   ASettings.IssuesAttachMaxImageWidth := 1280;
+  ASettings.IssuesAttachRaiseProgram := False;
 end;
 /// <summary>Meine Issues: gespeicherte Werte gelesen.</summary>
 procedure AssertIssuesLoaded(const ALoaded: TAtlasPluginSettings);
@@ -506,6 +508,7 @@ begin
   Assert.IsFalse(ALoaded.IssuesAttach);
   Assert.AreEqual('$(ProjectDir)\logs\*.log;C:\Temp\app.log', ALoaded.IssuesAttachLogFiles);
   Assert.AreEqual(1280, ALoaded.IssuesAttachMaxImageWidth);
+  Assert.IsFalse(ALoaded.IssuesAttachRaiseProgram);
 end;
 procedure TAtlasIssueSettingsTests.WelcomeIssuesOptions;
 var

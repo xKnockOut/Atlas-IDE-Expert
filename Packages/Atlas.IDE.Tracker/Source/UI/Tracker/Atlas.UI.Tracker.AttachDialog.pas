@@ -21,7 +21,10 @@
 //   angehängt; „Markieren …“ zeichnet Rahmen, Pfeile und Schwärzungen in das
 //   Bild selbst (TAtlasImageMarkupForm).
 // - Bildschirmfoto: Fenster des debuggten Prozesses (das Hauptfenster zuerst)
-//   oder per Klick gewählt; Fenster der IDE selbst gelten nicht.
+//   oder per Klick gewählt; Fenster der IDE selbst gelten nicht. „Per Klick
+//   wählen“ holt das debuggte Programm dafür nach vorn
+//   (issues.attach.raiseProgram) und danach den Dialog zurück.
+// - Text im Kommentar oder ein Pfad bei „Logdatei“ setzt den Haken davor.
 
 interface
 
@@ -64,6 +67,9 @@ type
     ExceptionsText: string;
     ExceptionCount: Integer;
     MaxImageWidth: Integer;
+    /// <summary>„Per Klick wählen“ holt das Hauptfenster von ProcessId nach vorn (issues.attach.raiseProgram).
+    /// </summary>
+    RaiseProgram: Boolean;
     /// <summary>Weitere Dateien, vorgewählt und gemeinsam abwählbar, etwa die eines Absturzfalls (#1355).
     /// </summary>
     Extra: TArray<TAtlasAttachFile>;
@@ -121,15 +127,23 @@ type
     FFilled: Boolean;
     /// <summary>BuildControls ist durch; vorher kann CreateWnd schon laufen (ClientWidth im Konstruktor).</summary>
     FBuilt: Boolean;
+    /// <summary>„Per Klick wählen“ hat das Programm nach vorn geholt: danach den Dialog zurückholen.</summary>
+    FRaised: Boolean;
     procedure BuildControls;
     /// <summary>Einträge der Auswahllisten (brauchen das Fenster); einmal, sobald Fenster und Steuerelemente da sind.
     /// </summary>
     procedure FillLists;
     procedure Changed(Sender: TObject);
     procedure TextChanged(Sender: TObject);
+    procedure CommentChanged(Sender: TObject);
+    procedure LogChanged(Sender: TObject);
+    /// <summary>Hauptfenster des debuggten Programms nach vorn; False ohne Programm, Fenster oder Einstellung.
+    /// </summary>
+    function RaiseProgram: Boolean;
     procedure WindowChanged(Sender: TObject);
     procedure PickClick(Sender: TObject);
     procedure Picked(AWindow: HWND);
+    procedure PickedWindow(AWindow: HWND);
     /// <summary>„Markieren …“ beim Bildschirmfoto oder beim Formular.</summary>
     procedure MarkupClick(Sender: TObject);
     procedure LogBrowseClick(Sender: TObject);
@@ -177,6 +191,7 @@ class function TAtlasAttachDialogInput.Empty: TAtlasAttachDialogInput;
 begin
   Result := Default(TAtlasAttachDialogInput);
   Result.MaxImageWidth := 1920;
+  Result.RaiseProgram := True;
 end;
 
 /// <summary>Ende der Logdatei ALog als Anhang (ALines Zeilen, &lt;= 0 = alle); False, wenn sie fehlt oder nicht
@@ -320,6 +335,10 @@ begin
   ADialog.FParts.WindowBox.OnChange := ADialog.WindowChanged;
   ADialog.FParts.Pick := AddButton(ADialog, AGroup, Bounds(418, ARow - 3, 120, 25),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPick), ADialog.PickClick);
+  ADialog.FParts.Pick.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPickHint);
+  ADialog.FParts.Pick.ShowHint := True;
+  // Die VCL zeigt Hinweise auch über gesperrten Steuerelementen (TApplication.DoMouseIdle).
+  ADialog.FParts.WindowBox.ShowHint := True;
   ADialog.FParts.ShotMarkup := AddButton(ADialog, AGroup, Bounds(544, ARow - 3, 110, 25),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkup), ADialog.MarkupClick);
   Inc(ARow, 24);
@@ -361,7 +380,7 @@ begin
   begin
     ADialog.FParts.LogBox.Text := ADialog.FInput.LogFiles[0];
   end;
-  ADialog.FParts.LogBox.OnChange := ADialog.Changed;
+  ADialog.FParts.LogBox.OnChange := ADialog.LogChanged;
   ADialog.FParts.LogBrowse := AddButton(ADialog, AGroup, Bounds(356, ARow - 3, 28, 25),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLogBrowse), ADialog.LogBrowseClick);
   ADialog.FParts.LogLines := AddCheck(ADialog, AGroup, ARow,
@@ -441,7 +460,7 @@ begin
     TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 60);
   ADialog.FParts.CommentMemo.ScrollBars := ssVertical;
   // Tippen schreibt keine Dateien neu, nur „Senden“ wird geprüft.
-  ADialog.FParts.CommentMemo.OnChange := ADialog.TextChanged;
+  ADialog.FParts.CommentMemo.OnChange := ADialog.CommentChanged;
   Inc(ATop, 60 + TAtlasAttachDialog.cGap);
 end;
 
@@ -548,9 +567,16 @@ begin
     begin
       FParts.WindowBox.Items.Add(mInfo.Caption);
     end;
-    if Length(FWindows) = 0 then
+    // Kurz in der Liste, die Erklärung als Hinweis: Die Liste ist schmal.
+    if FInput.ProcessId = 0 then
+    begin
+      FParts.WindowBox.Items.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgram));
+      FParts.WindowBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgramHint);
+    end
+    else if Length(FWindows) = 0 then
     begin
       FParts.WindowBox.Items.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoWindows));
+      FParts.WindowBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoWindowsHint);
     end;
   finally
     FParts.WindowBox.Items.EndUpdate;
@@ -628,16 +654,45 @@ begin
   end;
 end;
 
+function TAtlasAttachDialog.RaiseProgram: Boolean;
+var
+  mWindows: TArray<TAtlasWindowInfo>;
+begin
+  Result := False;
+  if not FInput.RaiseProgram or (FInput.ProcessId = 0) then
+  begin
+    Exit;
+  end;
+  // Neu suchen: Seit dem Öffnen des Dialogs kann das Programm ein Fenster bekommen haben.
+  mWindows := TAtlasWindowCapture.WindowsOf(FInput.ProcessId);
+  Result := (Length(mWindows) > 0) and TAtlasWindowCapture.BringToFront(mWindows[0].Handle);
+end;
+
 procedure TAtlasAttachDialog.PickClick(Sender: TObject);
 begin
   FParts.ShotInfo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPicking);
   FParts.Pick.Enabled := False;
+  FRaised := RaiseProgram;
   FPicker.Start(Picked);
 end;
 
 procedure TAtlasAttachDialog.Picked(AWindow: HWND);
 begin
   FParts.Pick.Enabled := True;
+  // Das Programm liegt über dem Dialog: ihn nach dem Bild wieder nach vorn holen.
+  try
+    PickedWindow(AWindow);
+  finally
+    if FRaised and HandleAllocated then
+    begin
+      SetWindowPos(Handle, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE);
+    end;
+    FRaised := False;
+  end;
+end;
+
+procedure TAtlasAttachDialog.PickedWindow(AWindow: HWND);
+begin
   // Abgebrochen oder ein Fenster der IDE selbst (auch dieser Dialog): nichts ändern.
   if (AWindow = 0) or (TAtlasWindowCapture.ProcessOf(AWindow) = GetCurrentProcessId) then
   begin
@@ -723,6 +778,31 @@ end;
 procedure TAtlasAttachDialog.TextChanged(Sender: TObject);
 begin
   UpdateSend;
+end;
+
+procedure TAtlasAttachDialog.CommentChanged(Sender: TObject);
+begin
+  // Wer Text einträgt, will ihn senden: Haken setzen (OnClick baut die Liste neu).
+  if Trim(FParts.CommentMemo.Lines.Text) <> '' then
+  begin
+    FParts.Comment.Checked := True;
+  end;
+  UpdateSend;
+end;
+
+procedure TAtlasAttachDialog.LogChanged(Sender: TObject);
+begin
+  if FUpdating then
+  begin
+    Exit;
+  end;
+  // Pfad eingetragen oder gewählt: Logdatei anhängen. Checked löst über OnClick schon Rebuild aus.
+  if (Trim(FParts.LogBox.Text) <> '') and not FParts.Log.Checked then
+  begin
+    FParts.Log.Checked := True;
+    Exit;
+  end;
+  Rebuild;
 end;
 
 function ImagePng(ABitmap: TBitmap; AMaxWidth: Integer; var ACache: TBytes): TBytes;

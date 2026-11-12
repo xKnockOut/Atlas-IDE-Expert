@@ -4,7 +4,8 @@
 // gesperrt, die Liste zeigt genau die Dateien (Namen eindeutig, Größe), die
 // auch im Ordner des Laufs liegen; Bilder werden auf die Höchstbreite
 // verkleinert; Logdatei mit „nur die letzten Zeilen“; „Senden“ nur mit
-// gültiger Kennung und Inhalt.
+// gültiger Kennung und Inhalt; Text im Kommentar und ein Pfad bei „Logdatei“
+// setzen den Haken davor.
 
 interface
 
@@ -38,6 +39,8 @@ type
     procedure MissingLogShowsHint;
     [Test]
     procedure SendNeedsKeyAndContent;
+    [Test]
+    procedure TextSetsCheck;
   end;
 
 implementation
@@ -125,6 +128,11 @@ begin
       mDialog.HandleNeeded;
       Assert.IsFalse(mDialog.Parts.Screenshot.Enabled, 'kein Programm');
       Assert.IsFalse(mDialog.Parts.WindowBox.Enabled);
+      // Kurz in der schmalen Liste, die Erklärung als Hinweis.
+      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgram),
+        mDialog.Parts.WindowBox.Items[0]);
+      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgramHint),
+        mDialog.Parts.WindowBox.Hint);
       Assert.IsFalse(mDialog.Parts.FormCheck.Enabled, 'kein Formular');
       Assert.IsFalse(mDialog.Parts.DebugNote.Enabled, 'nicht angehalten');
       Assert.IsFalse(mDialog.Parts.Exceptions.Enabled, 'leerer Verlauf');
@@ -340,6 +348,38 @@ begin
   finally
     mTemp.Free;
   end;
+end;
+
+procedure TAtlasAttachDialogTests.TextSetsCheck;
+var
+  mTemp: TAtlasAttachTemp;
+  mDialog: TAtlasAttachDialog;
+  mLog: string;
+begin
+  mLog := TPath.Combine(FDir, 'app.log');
+  mTemp := TAtlasAttachTemp.Create(FDir);
+  try
+    mDialog := TAtlasAttachDialog.CreateFor(nil, Input, mTemp);
+    try
+      mDialog.HandleNeeded;
+      Assert.IsFalse(mDialog.Parts.Comment.Checked);
+      mDialog.Parts.CommentMemo.Lines.Text := '   ';
+      Assert.IsFalse(mDialog.Parts.Comment.Checked, 'nur Leerzeichen');
+      mDialog.Parts.CommentMemo.Lines.Text := 'Siehe Anhang';
+      Assert.IsTrue(mDialog.Parts.Comment.Checked, 'Text im Kommentar');
+      Assert.IsTrue(mDialog.CanSend);
+      Assert.IsFalse(mDialog.Parts.Log.Checked);
+      // Text im Code löst bei einer Klappliste kein OnChange aus: wie bei einer Eingabe aufrufen.
+      mDialog.Parts.LogBox.Text := mLog;
+      mDialog.Parts.LogBox.OnChange(mDialog.Parts.LogBox);
+      Assert.IsTrue(mDialog.Parts.Log.Checked, 'Pfad bei Logdatei');
+    finally
+      mDialog.Free;
+    end;
+  finally
+    mTemp.Free;
+  end;
+  mLog := '';
 end;
 
 initialization

@@ -151,6 +151,7 @@ procedure TAtlasAttachImagesTests.NoWindowsWithoutProcess;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasWindowCapture.WindowsOf(0))));
   Assert.IsNull(TAtlasWindowCapture.Capture(0));
+  Assert.IsFalse(TAtlasWindowCapture.BringToFront(0), 'kein Fenster, nichts nach vorn');
 end;
 
 initialization
