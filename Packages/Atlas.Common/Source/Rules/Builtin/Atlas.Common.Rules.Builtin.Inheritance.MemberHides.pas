@@ -379,7 +379,9 @@ begin
 end;
 
 /// <summary>dcc meldet W1009 nur, wenn eine Property ein Feld verdeckt; Feld über Feld oder Property und statische
-/// Methode über statische Methode übersetzt Delphi 13 still (#1383).</summary>
+/// Methode über statische Methode übersetzt Delphi 13 still (#1383). Methoden meldet die Regel darum mit niedriger
+/// Konfidenz: In der FP-Prüfung vom 28.10.2026 waren rund 80 % davon gewollt (Ereignisbehandlungen geerbter
+/// Formulare, Hilfsmethoden gleichen Namens).</summary>
 procedure TMemberHidesCheck.ReportHidden(const AClass, AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
   const AHidden: TIndexSymbol);
 var
@@ -392,7 +394,7 @@ begin
   end;
   if AOwn.Kind = TIndexSymbolKind.Method then
   begin
-    FReport.Add(AOwn.SelectionRange, mMessage + '.', TRuleConfidence.Medium);
+    FReport.Add(AOwn.SelectionRange, mMessage + '.', TRuleConfidence.Low);
   end
   else
   begin

@@ -20,6 +20,8 @@ type
     [Test]
     procedure SelfAssignmentOffersSelfForHiddenField;
     [Test]
+    procedure SelfAssignmentThroughSetterSilent;
+    [Test]
     procedure ForHighToLowReportedWithFix;
     [Test]
     procedure ForLowToHighSilent;
@@ -133,6 +135,58 @@ begin
   Assert.AreEqual(17, Findings[1].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)));
   Assert.IsTrue(Pos('Zahl wird sich selbst zugewiesen', Findings[1].Message) = 1, Findings[1].Message);
+end;
+
+procedure TRtlPatternRulesTests.SelfAssignmentThroughSetterSilent;
+const
+  Source =
+    'unit Fenster;'#10 +                             // 0
+    'interface'#10 +                                 // 1
+    'type'#10 +                                      // 2
+    '  TFenster = class'#10 +                        // 3
+    '  private'#10 +                                 // 4
+    '    FTop, FLeft: Integer;'#10 +                 // 5
+    '    procedure SetTop(AValue: Integer);'#10 +    // 6
+    '  public'#10 +                                  // 7
+    '    procedure Auffrischen;'#10 +                // 8
+    '    property Top: Integer read FTop write SetTop;'#10 + // 9
+    '    property Left: Integer read FLeft write FLeft;'#10 + // 10
+    '  end;'#10 +                                    // 11
+    'implementation'#10 +                            // 12
+    'procedure TFenster.SetTop(AValue: Integer);'#10 + // 13
+    'begin'#10 +                                     // 14
+    '  FTop := AValue;'#10 +                         // 15
+    'end;'#10 +                                      // 16
+    'procedure TFenster.Auffrischen;'#10 +           // 17
+    'begin'#10 +                                     // 18
+    '  Top := Top;'#10 +                             // 19
+    '  Self.Top := Self.Top;'#10 +                   // 20
+    '  Left := Left;'#10 +                           // 21
+    'end;'#10 +                                      // 22
+    'end.';
+var
+  mIndex: ISymbolIndex;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026 (F08): "Top := Top" ruft den Setter auf und ist gewollt; nur Left schreibt ein Feld.
+  mIndex := TSymbolIndex.Create;
+  mTree := TPascalParser.Parse(Source);
+  try
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'Fenster.pas';
+    mContext.UnitName := 'Fenster';
+    mContext.Text := Source;
+    mContext.Tree := mTree;
+    mContext.Index := mIndex;
+    mFindings := TRuleEngine.Run([TSelfAssignmentRule.Create], TServerSettings.Default, mContext);
+  finally
+    mTree.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Line);
+  mFindings := nil;
 end;
 
 procedure TRtlPatternRulesTests.SelfAssignmentSilent;

@@ -14,7 +14,8 @@
 //                     nirgends gespeichert und nie freigegeben. Still bleiben Komponenten mit Owner (erstes Argument
 //                     Self, Owner, AOwner, Application bzw. ein Nachfahr von TComponent mit Argument ungleich nil),
 //                     Threads (geben sich mit FreeOnTerminate selbst frei), unbekannte Klassen mit Argumenten und
-//                     Klassen aus "selfRegistering". Korrektur: Zuweisung an eine neue lokale Variable, die
+//                     Klassen aus "selfRegistering", Konstruktoren mit var- oder out-Parameter und Aufrufe in
+//                     einer anonymen Methode für Assert.WillRaise…. Korrektur: Zuweisung an eine neue lokale Variable, die
 //                     folgenden Anweisungen des Blocks in try/finally mit Free.
 //   self-as-interface-in-constructor  Self als Interface weitergegeben, während die Referenzzählung das Objekt
 //                     freigeben kann (#950). Nur zwei echte Fehlerfälle: (1) Klassen mit eigener Referenzzählung
@@ -264,6 +265,8 @@ type
     function ScanArguments(var ACall: TCreateCall): Boolean;
     function CreateCallAt(AStatement: TSyntaxNode; out ACall: TCreateCall): Boolean;
     function IsLost(const ACall: TCreateCall): Boolean;
+    function PassesItselfOut(const AClassName: string): Boolean;
+    function ExpectedToRaise(AStatement: TSyntaxNode): Boolean;
     procedure ReportCreate(ARoutine, AStatement: TSyntaxNode; const ACall: TCreateCall);
     procedure CheckStatement(ARoutine, AStatement: TSyntaxNode);
     procedure VisitStatements(ARoutine, ANode: TSyntaxNode);
@@ -1110,7 +1113,79 @@ begin
   end;
 end;
 
+/// <summary>Symbole der Datei (über AAncestry) und des Index mit dem Namen AName.</summary>
+function LocalAndIndexSymbols(AAncestry: TAncestry; const AIndex: ISymbolIndex;
+  const AName: string): TArray<TIndexSymbol>;
+var
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+begin
+  Result := nil;
+  for mSymbol in AAncestry.Local.Symbols do
+  begin
+    if SameText(mSymbol.Name, AName) then
+    begin
+      Result := Result + [mSymbol];
+    end;
+  end;
+  if AIndex <> nil then
+  begin
+    for mLocation in AIndex.FindSymbols(AName) do
+    begin
+      Result := Result + [mLocation.Symbol];
+    end;
+  end;
+end;
+
 { TCreateWithoutAssignmentScan }
+
+/// <summary>Hat ein Konstruktor Create der Klasse AClassName einen var- oder out-Parameter? Dann gibt er das Objekt
+/// selbst weiter (FP-Prüfung 28.10.2026).</summary>
+function TCreateWithoutAssignmentScan.PassesItselfOut(const AClassName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mSignature: string;
+begin
+  for mSymbol in LocalAndIndexSymbols(FAncestry, FContext.Index, 'Create') do
+  begin
+    mSignature := ' ' + LowerCase(mSymbol.Signature).Replace('(', ' ').Replace(';', ' ').Replace(#9, ' ');
+    if (mSymbol.Kind = TIndexSymbolKind.Constructor_) and
+      (SameText(mSymbol.Container, AClassName) or EndsText('.' + AClassName, mSymbol.Container)) and
+      (mSignature.Contains(' out ') or mSignature.Contains(' var ')) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Steht AStatement in einer anonymen Methode, die an Assert.WillRaise… geht? Dort soll Create
+/// scheitern (FP-Prüfung 28.10.2026).</summary>
+function TCreateWithoutAssignmentScan.ExpectedToRaise(AStatement: TSyntaxNode): Boolean;
+var
+  mNode, mCall: TSyntaxNode;
+begin
+  Result := False;
+  mNode := AStatement.Parent;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if mNode.Kind = TSyntaxKind.AnonymousMethod then
+    begin
+      mCall := mNode.Parent;
+      while (mCall <> nil) and (mCall.Kind = TSyntaxKind.ParenExpr) do
+      begin
+        mCall := mCall.Parent;
+      end;
+      if (mCall <> nil) and (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount > 0) and
+        ContainsText(Copy(FContext.Text, mCall[0].StartOffset + 1, mCall[0].EndOffset - mCall[0].StartOffset),
+        'WillRaise') then
+      begin
+        Exit(True);
+      end;
+    end;
+    mNode := mNode.Parent;
+  end;
+end;
 
 function TCreateWithoutAssignmentScan.IsSelfRegistering(const AClassName: string): Boolean;
 var
@@ -1269,7 +1344,9 @@ procedure TCreateWithoutAssignmentScan.CheckStatement(ARoutine, AStatement: TSyn
 var
   mCall: TCreateCall;
 begin
-  if CreateCallAt(AStatement, mCall) and IsLost(mCall) then
+  if CreateCallAt(AStatement, mCall) and IsLost(mCall) and
+    not (mCall.HasArguments and PassesItselfOut(Token(mCall.ClassPosition).Text)) and
+    not ExpectedToRaise(AStatement) then
   begin
     ReportCreate(ARoutine, AStatement, mCall);
   end;
@@ -1347,27 +1424,9 @@ end;
 
 { TSelfAsInterfaceScan }
 
-/// <summary>Symbole der Datei und des Index mit dem Namen AName.</summary>
 function TSelfAsInterfaceScan.SymbolsNamed(const AName: string): TArray<TIndexSymbol>;
-var
-  mSymbol: TIndexSymbol;
-  mLocation: TSymbolLocation;
 begin
-  Result := nil;
-  for mSymbol in FAncestry.Local.Symbols do
-  begin
-    if SameText(mSymbol.Name, AName) then
-    begin
-      Result := Result + [mSymbol];
-    end;
-  end;
-  if FContext.Index <> nil then
-  begin
-    for mLocation in FContext.Index.FindSymbols(AName) do
-    begin
-      Result := Result + [mLocation.Symbol];
-    end;
-  end;
+  Result := LocalAndIndexSymbols(FAncestry, FContext.Index, AName);
 end;
 
 /// <summary>Methode AMethod (z. B. _Release) als Rumpf in der Datei: 'TKlasse._Release'.</summary>
