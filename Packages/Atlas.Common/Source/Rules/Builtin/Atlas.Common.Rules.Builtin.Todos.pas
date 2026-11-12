@@ -173,7 +173,7 @@ end;
 function TTodoRule.Descriptor: TRuleDescriptor;
 begin
   // Freiwillig (#68): läuft nur eingeschaltet, wie die experimentellen Regeln.
-  Result := TRuleDescriptor.Create(cTodoCommentRuleId, TRuleSeverity.Hint, cTexts[TTodosText.TodoTitle].Text, True);
+  Result := TRuleDescriptor.Create(cTodoCommentRuleId, TRuleSeverity.Hint, cTexts[TTodosText.TodoTitle].Text);
 end;
 
 procedure TTodoRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

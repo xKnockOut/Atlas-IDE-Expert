@@ -67,8 +67,7 @@ const
 function TMethodWithoutSelfRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cMethodWithoutSelfRuleId, TRuleSeverity.Hint,
-    cTexts[TMethodWithoutSelfText.Title].Text,
-    True);
+    cTexts[TMethodWithoutSelfText.Title].Text);
 end;
 
 /// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>

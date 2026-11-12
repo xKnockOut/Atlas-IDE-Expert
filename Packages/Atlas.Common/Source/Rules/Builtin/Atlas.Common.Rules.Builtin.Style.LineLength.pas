@@ -410,7 +410,7 @@ end;
 
 function TLineLengthRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('line-length', TRuleSeverity.Hint, cTexts[TStyleLineLengthText.Title].Text, True);
+  Result := TRuleDescriptor.Create('line-length', TRuleSeverity.Hint, cTexts[TStyleLineLengthText.Title].Text);
 end;
 
 procedure TLineLengthRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

@@ -443,7 +443,7 @@ end;
 function TSecurityPathTraversalRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-path-traversal', TRuleSeverity.Warning,
-    cTexts[TSecurityText.PathTitle].Text, True);
+    cTexts[TSecurityText.PathTitle].Text);
 end;
 
 /// <summary>Nennt AIndex einen Dateizugriff (FileCalls, TFileStream.Create)?</summary>

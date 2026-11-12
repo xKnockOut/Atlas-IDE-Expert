@@ -238,7 +238,7 @@ end;
 
 function TNamingPrefixRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cRuleId, TRuleSeverity.Hint, cTexts[TNamingText.Title].Text, True);
+  Result := TRuleDescriptor.Create(cRuleId, TRuleSeverity.Hint, cTexts[TNamingText.Title].Text);
 end;
 
 type

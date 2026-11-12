@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnRobustness: array[0..179] of string = (
+  cCatalogLinesEnRobustness: array[0..196] of string = (
     '{',
     '      "id": "random-without-randomize",',
     '      "name": "Random without Randomize",',
@@ -16,7 +16,11 @@ const
     '      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. A Random of your own (enumeration value, routine) is not System.Random. Randomize oft' +
     'en sits in the .dpr, so the rule is off by default and has low confidence.",',
     '      "bad": "Dice := Random(6) + 1;",',
-    '      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"',
+    '      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;",',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "format-without-settings",',
@@ -29,7 +33,8 @@ const
     '"mm\"-\"dd'' or ''ddddd t''. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after S' +
     'ystem.SysUtils in uses.",',
     '      "bad": "Line := Format(''%.2f'', [Amount]);",',
-    '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"',
+    '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "debug-display-placeholder",',
@@ -41,7 +46,8 @@ const
     'older or child that is not a field, property or method of the type or one of its ancestors, or the template is invalid (unclosed or empty brace). In the debugger such a placeholder stays empty ({?Name' +
     '}). Ancestors come from the unit and the index; when an ancestor is unknown the rule stays silent for that type. Members of TObject (ClassName, ToString, …) are always known.",',
     '      "bad": "// atlas-debug: ''{Name}, {Stadt}''\nTKunde = class\n  Name, Ort: string;\nend;",',
-    '      "good": "// atlas-debug: ''{Name}, {Ort}''\nTKunde = class\n  Name, Ort: string;\nend;"',
+    '      "good": "// atlas-debug: ''{Name}, {Ort}''\nTKunde = class\n  Name, Ort: string;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "null-compare",',
@@ -54,7 +60,8 @@ const
     'ntly of it. Reported only where the comparison stands on its own (condition, argument, assignment); not X = Null binds as (not X) = Null and gets no quick fix. High confidence. Quick fix: Field.IsNull' +
     ' for X.Value on FieldByName, FindField, Fields[...], ParamByName, Params[...] or a field of type T...Field/T...Param, otherwise VarIsNull(X); with <> preceded by not.",',
     '      "bad": "if qryKunde.FieldByName(''Geburtstag'').Value = Null then\n  Alter := 0;",',
-    '      "good": "if qryKunde.FieldByName(''Geburtstag'').IsNull then\n  Alter := 0;"',
+    '      "good": "if qryKunde.FieldByName(''Geburtstag'').IsNull then\n  Alter := 0;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "path-concat-without-delimiter",',
@@ -68,7 +75,8 @@ const
     ' delimiters, extensions (ExtractFileExt, ''.bak'') and texts that start with a space or punctuation. A literal name reports with high confidence, an identifier with medium confidence. A local variable p' +
     'assed to a procedure other than ForceDirectories, FileExists and similar read-only calls may be changed there and stays silent. Quick fix: TPath.Combine(Folder, Name), adding System.IOUtils to uses.",',
     '      "bad": "Ordner := TPath.GetDocumentsPath;\nDatei := Ordner + ''export.csv'';",',
-    '      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, ''export.csv'');"',
+    '      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, ''export.csv'');",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "hardcoded-path",',
@@ -88,7 +96,8 @@ const
     '          "default": [],',
     '          "description": "Units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "filename-compare-case",',
@@ -103,7 +112,8 @@ const
     'le platform-dependent with PathDelim = ''\\'', and in test units (test doubles compare with names the test assigns itself). Medium confidence. Quick fix: SameFileName(A, B), or not SameFileName(A, B) fo' +
     'r <>; adds System.SysUtils to uses if needed.",',
     '      "bad": "if ExtractFileName(Datei) = ''Config.ini'' then",',
-    '      "good": "if SameFileName(ExtractFileName(Datei), ''Config.ini'') then"',
+    '      "good": "if SameFileName(ExtractFileName(Datei), ''Config.ini'') then",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "initialization-not-finalized",',
@@ -118,7 +128,8 @@ const
     'ss vars the rule also stays silent when another indexed unit uses the name. High confidence. Quick fix: FreeAndNil at the end of finalization or in the class destructor; a missing finalization section' +
     ' or class destructor (declaration and body) is created and System.SysUtils is added to uses when needed.",',
     '      "bad": "initialization\n  GProtokoll := TProtokoll.Create;\nend.",',
-    '      "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend."',
+    '      "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend.",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "compiler-warnings-disabled",',
@@ -141,7 +152,8 @@ const
     '          "default": [],',
     '          "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "dll-export-unsafe",',
@@ -164,7 +176,8 @@ const
     '          "default": true,',
     '          "description": "With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "global-formatsettings-modified",',
@@ -187,7 +200,8 @@ const
     '          "default": false,',
     '          "description": "Allow the assignments in the .dpr, for example once at program start."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "ui-call-in-console-or-service",',
@@ -201,7 +215,8 @@ const
     'he rule reports with medium confidence, because only the host decides whether there is a user interface. Units with a form file, calls under if IsConsole and routines of the same name declared in the ' +
     'unit stay silent. Counterpart of writeln-in-gui-app. High confidence. No quick fix: log the message instead of showing it.",',
     '      "bad": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    ShowMessage(''Keine Verbindung'');\nend;",',
-    '      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage(''Keine Verbindung'', EVENTLOG_ERROR_TYPE);\nend;"',
+    '      "good": "procedure TDatenDienst.ServiceExecute(Sender: TService);\nbegin\n  if not Verbinden then\n    LogMessage(''Keine Verbindung'', EVENTLOG_ERROR_TYPE);\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "load-without-encoding",',
@@ -223,7 +238,8 @@ const
     '          "default": "UTF8",',
     '          "description": "TEncoding property the quick fix inserts: UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "registry-hklm-write",',
@@ -236,7 +252,8 @@ const
     'ugh exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_C' +
     'URRENT_USER.",',
     '      "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);",',
-    '      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);"',
+    '      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);",',
+    '      "safeFix": false',
     '    }');
 
 implementation

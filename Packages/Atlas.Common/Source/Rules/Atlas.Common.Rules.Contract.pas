@@ -27,15 +27,9 @@ type
     /// <summary>Schweregrad ohne Konfiguration; nie Default.</summary>
     DefaultSeverity: TRuleSeverity;
     Description: string;
-    /// <summary>
-    /// Ohne gemessene Fehlalarmquote: läuft nur, wenn die Regel in
-    /// atlas.json unter "rules" eingeschaltet ist.
-    /// </summary>
-    Experimental: Boolean;
-    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
-      AExperimental: Boolean); overload;
-    /// <summary>Wie oben mit AExperimental = False.</summary>
-    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string); overload;
+    // Ob die Regel experimentell ist (nur im Profil strict oder ausdrücklich eingeschaltet), steht allein im
+    // Regelkatalog ("profiles", #145): TRuleProfiles.IsExperimental.
+    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string);
   end;
 
   /// <summary>Eine Textersetzung einer Korrektur. Alias auf TTextEdit aus Documents.Contract,
@@ -555,16 +549,9 @@ end;
 
 constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string);
 begin
-  Self := TRuleDescriptor.Create(AId, ADefaultSeverity, ADescription, False);
-end;
-
-constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
-  AExperimental: Boolean);
-begin
   Id := AId;
   DefaultSeverity := ADefaultSeverity;
   Description := ADescription;
-  Experimental := AExperimental;
 end;
 
 { TRuleFix }

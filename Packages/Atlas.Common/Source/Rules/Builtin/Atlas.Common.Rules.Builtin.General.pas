@@ -939,7 +939,7 @@ end;
 
 function TFileHeaderRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('file-header', TRuleSeverity.Hint, cTexts[TGeneralText.FileHeaderTitle].Text, True);
+  Result := TRuleDescriptor.Create('file-header', TRuleSeverity.Hint, cTexts[TGeneralText.FileHeaderTitle].Text);
 end;
 
 class function TFileHeaderRule.Template(const AOptions: string): string;
@@ -992,8 +992,7 @@ end;
 function THardcodedStringRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('hardcoded-string', TRuleSeverity.Hint,
-    cTexts[TGeneralText.HardcodedStringTitle].Text,
-    True);
+    cTexts[TGeneralText.HardcodedStringTitle].Text);
 end;
 
 /// <summary>Sieht der Literalinhalt nach Text für Menschen aus: mindestens zwei Wörter mit Buchstaben?</summary>

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnInternal: array[0..41] of string = (
+  cCatalogLinesEnInternal: array[0..43] of string = (
     '{',
     '      "id": "unused-suppression",',
     '      "name": "Unused suppression",',
@@ -39,7 +39,8 @@ const
     '      "description": "The syntax tree of the unit is more than 100000 levels deep, so the rules do not run for it. Such trees only come from chains with as many terms, such as X := A - B - C - … The h' +
     'int marks the deepest point; splitting the chain into partial expressions makes the unit checkable again.",',
     '      "bad": "X := A - B - C - D - E; // … 100000 terms",',
-    '      "good": "Part := A - B - C;\nX := Part - D - E;"',
+    '      "good": "Part := A - B - C;\nX := Part - D - E;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "slash-command",',
@@ -50,7 +51,8 @@ const
     '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' +
     'the reason. \"/ignore rule\" is also reported when that rule finds nothing in the line below.",',
     '      "bad": "/gibtsnicht X",',
-    '      "good": "/uses System.Classes"',
+    '      "good": "/uses System.Classes",',
+    '      "safeFix": false',
     '    }');
 
 implementation

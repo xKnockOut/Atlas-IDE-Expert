@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnArchitecture: array[0..146] of string = (
+  cCatalogLinesEnArchitecture: array[0..160] of string = (
     '{',
     '      "id": "forbidden-uses",',
     '      "name": "Forbidden uses",',
@@ -23,7 +23,8 @@ const
     '          "default": [],',
     '          "description": "Layer rules: [{\"from\": glob, \"deny\": [globs], \"allow\": [globs]}]."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "uses-cycle",',
@@ -49,7 +50,8 @@ const
     '          "default": true,',
     '          "description": "Also report cycles with at least one edge in an implementation section (allowed by the compiler)."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "architecture-role-import",',
@@ -86,6 +88,10 @@ const
     '          "default": [],',
     '          "description": "Approved exceptions \"Source -> Target\" (both globs)."',
     '        }',
+    '      ],',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
     '      ]',
     '    },',
     '{',
@@ -111,6 +117,10 @@ const
     '          "default": [],',
     '          "description": "Approved exceptions \"Unit.Type\" as glob."',
     '        }',
+    '      ],',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
     '      ]',
     '    },',
     '{',
@@ -165,6 +175,10 @@ const
     '          "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement,' +
     ' severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."',
     '        }',
+    '      ],',
+    '      "safeFix": false,',
+    '      "profiles": [',
+    '        "strict"',
     '      ]',
     '    }');
 

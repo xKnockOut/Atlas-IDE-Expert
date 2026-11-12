@@ -209,7 +209,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 function ClassUnit(const AMembers, AImplementation: string; const AHead: string = 'TFoo = class'): string;
 begin
@@ -1534,7 +1535,7 @@ var
   Source: string;
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsTrue((TDefaultParameterRule.Create as IRule).Descriptor.Experimental, 'Standard aus');
+  Assert.IsTrue(TRuleProfiles.IsExperimental((TDefaultParameterRule.Create as IRule).Descriptor.Id), 'Standard aus');
   Source := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
     'implementation'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.';
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source))));
