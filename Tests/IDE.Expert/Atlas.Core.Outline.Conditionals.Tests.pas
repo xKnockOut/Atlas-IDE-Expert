@@ -178,16 +178,18 @@ procedure TAtlasConditionalsTests.PathEndsWithBranches;
 var
   mCrumbs: TAtlasCrumbs;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, 12, 4, '', False, [TAtlasCrumbPart.Conditionals]);
+  mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(12, 4, '', False, [TAtlasCrumbPart.Conditionals]));
   Assert.AreEqual('Laden › {$IFDEF DEBUG} › {$IFNDEF TEST}', Joined(mCrumbs));
   Assert.AreEqual('if', mCrumbs[1].Badge.Code);
   Assert.AreEqual(-1, mCrumbs[1].Node);
   Assert.AreEqual(3, Integer(Length(mCrumbs[1].Places)));
   Assert.AreEqual(0, mCrumbs[1].Current);
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[2]));
-  Assert.AreEqual('uses › {$IFDEF MSWINDOWS}', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 4, 2, '', False,
-    [TAtlasCrumbPart.Conditionals])));
-  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines, 12, 4, '', False, [])), 'ausgeschaltet');
+  Assert.AreEqual('uses › {$IFDEF MSWINDOWS}', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(4, 2, '', False, [TAtlasCrumbPart.Conditionals]))));
+  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(12, 4, '', False, []))), 'ausgeschaltet');
 end;
 
 initialization

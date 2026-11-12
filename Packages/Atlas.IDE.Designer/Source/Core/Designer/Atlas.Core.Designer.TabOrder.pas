@@ -61,18 +61,18 @@ type
   public
     /// <summary>Lesereihenfolge: A vor B? Gleiche Zeile, wenn sich die Höhen zur Hälfte überdecken; in der Zeile
     /// links zuerst, mit ARightToLeft rechts zuerst.</summary>
-    class function ReadsBefore(const A, B: TRect; ARightToLeft: Boolean = False): Boolean; static;
+    class function ReadsBefore(const A, B: TRect; ARightToLeft: Boolean): Boolean; static;
     /// <summary>Je Stop: springt die Tab-Reihenfolge seines Elternelements hierher zurück (gegen die
     /// Lesereihenfolge)?</summary>
-    class function OutOfOrder(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean = False): TArray<Boolean>;
+    class function OutOfOrder(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean): TArray<Boolean>;
       static;
     /// <summary>Je Stop die Auffälligkeit: Doppelte vor Lücken vor Rücksprüngen.</summary>
-    class function Issues(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean = False): TArray<TAtlasTabIssue>;
+    class function Issues(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean): TArray<TAtlasTabIssue>;
       static;
     /// <summary>Je Stop der Pfad der TabOrder über die umschließenden Container („2.1“).</summary>
     class function Paths(const AStops: TArray<TAtlasTabStop>): TArray<string>; static;
     /// <summary>Je Stop die TabOrder nach der Lesereihenfolge in seinem Elternelement (0, 1, 2 …).</summary>
-    class function ReadingOrder(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean = False): TArray<Integer>;
+    class function ReadingOrder(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean): TArray<Integer>;
       static;
     /// <summary>Zuweisungen für den Stand AOrders (je Stop): je Elternelement aufsteigend, damit der Setter der
     /// VCL beim Weiterschieben genau diesen Stand ergibt. Ohne Änderung leer.</summary>

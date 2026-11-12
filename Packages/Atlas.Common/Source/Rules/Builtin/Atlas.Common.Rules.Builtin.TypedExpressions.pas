@@ -832,8 +832,8 @@ var
     mName, mOuterName: string;
     mSeen: TList<TSyntaxNode>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): benannte Typen dieser Datei (TIndex = TBereich) werden in einer Schleife aufgelöst;
-    // die Meldung nennt den äußersten Namen. mSeen schützt vor Zyklen wie TA = TB; TB = TA.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): benannte Typen dieser Datei (TIndex = TBereich) werden in einer
+    // Schleife aufgelöst; die Meldung nennt den äußersten Namen. mSeen schützt vor Zyklen wie TA = TB; TB = TA.
     AInfo := Default(TIndexInfo);
     Result := False;
     mOuterName := '';

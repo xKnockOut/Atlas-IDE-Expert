@@ -36,13 +36,24 @@ type
     /// <summary>Elternelement; Nachbarn nur in derselben Gruppe.</summary>
     Group: Integer;
     class function Create(const ABounds: TRect; AMinWidth, AMinHeight: Integer; AFixed: Boolean;
-      AGroup: Integer = 0): TAtlasResizeItem; static;
+      AGroup: Integer): TAtlasResizeItem; static;
   end;
 
   TAtlasResizeNeighbour = record
     Bounds: TRect;
     Group: Integer;
-    class function Create(const ABounds: TRect; AGroup: Integer = 0): TAtlasResizeNeighbour; static;
+    class function Create(const ABounds: TRect; AGroup: Integer): TAtlasResizeNeighbour; static;
+  end;
+
+  /// <summary>Zug an einer Kante: AItems[Dragged] wird an Edge um Delta gezogen (Bildschirmpixel = Pixel im
+  /// Formular); Grid 0 = ohne Raster; Follow lässt die Nachbarn mitrücken.</summary>
+  TAtlasResizeDrag = record
+    Dragged: Integer;
+    Edge: TAtlasResizeEdge;
+    Delta: TPoint;
+    Mode: TAtlasResizeMode;
+    Grid: Integer;
+    Follow: Boolean;
   end;
 
   TAtlasResizeResult = record
@@ -55,13 +66,11 @@ type
   TAtlasMultiResize = class
   public const
     cMinSize = 8;
-    cModeDelta = 'delta';
     cModeAlign = 'align';
   public
-    /// <summary>AItems[ADragged] wird an AEdge um ADelta gezogen (Bildschirmpixel = Pixel im Formular).</summary>
+    /// <summary>Neue Lagen nach dem Zug ADrag.</summary>
     class function Apply(const AItems: TArray<TAtlasResizeItem>; const ANeighbours: TArray<TAtlasResizeNeighbour>;
-      ADragged: Integer; AEdge: TAtlasResizeEdge; const ADelta: TPoint; AMode: TAtlasResizeMode; AGrid: Integer;
-      AFollow: Boolean): TAtlasResizeResult; static;
+      const ADrag: TAtlasResizeDrag): TAtlasResizeResult; static;
     /// <summary>Wirkt die Kante waagerecht (Breite) bzw. senkrecht (Höhe)?</summary>
     class function Horizontal(AEdge: TAtlasResizeEdge): Boolean; static;
     class function Vertical(AEdge: TAtlasResizeEdge): Boolean; static;
@@ -114,29 +123,30 @@ begin
   end;
 end;
 
-/// <summary>Neue Kanten eines Rechtecks auf einer Achse: ANear/AFar alte Kanten, AMoveFar = die ferne Kante
-/// bewegt sich; Delta oder Ziel (Align).</summary>
-procedure ResizeAxis(var ANear, AFar: Integer; AMoveFar: Boolean; AMode: TAtlasResizeMode; ADelta, ATarget,
-  AMin: Integer);
+/// <summary>Neue Lage der bewegten Kante AOld: Ziel ATarget (Align) oder um ADelta verschoben.</summary>
+function MovedEdge(AOld, ADelta, ATarget: Integer; AMode: TAtlasResizeMode): Integer;
 begin
-  if AMoveFar then
+  if AMode = TAtlasResizeMode.Align then
   begin
-    if AMode = TAtlasResizeMode.Align then
-    begin
-      AFar := Max(ATarget, ANear + AMin);
-    end
-    else
-    begin
-      AFar := Max(AFar + ADelta, ANear + AMin);
-    end;
-  end
-  else if AMode = TAtlasResizeMode.Align then
-  begin
-    ANear := Min(ATarget, AFar - AMin);
+    Result := ATarget;
   end
   else
   begin
-    ANear := Min(ANear + ADelta, AFar - AMin);
+    Result := AOld + ADelta;
+  end;
+end;
+
+/// <summary>Neue Kanten eines Rechtecks auf einer Achse: ANear/AFar alte Kanten, AMoveFar = die ferne Kante
+/// bewegt sich nach ATo, sonst die nahe; die Größe bleibt mindestens AMin.</summary>
+procedure ResizeAxis(var ANear, AFar: Integer; AMoveFar: Boolean; ATo, AMin: Integer);
+begin
+  if AMoveFar then
+  begin
+    AFar := Max(ATo, ANear + AMin);
+  end
+  else
+  begin
+    ANear := Min(ATo, AFar - AMin);
   end;
 end;
 
@@ -177,7 +187,8 @@ end;
 function ResizeOne(const AItem: TAtlasResizeItem; AEdge: TAtlasResizeEdge; AMode: TAtlasResizeMode;
   const AMove, ATarget: TPoint): TRect;
 var
-  mNear, mFar: Integer;
+  mNear, mFar, mTo: Integer;
+  mFarMoves: Boolean;
 begin
   Result := AItem.Bounds;
   if AItem.Fixed then
@@ -188,7 +199,16 @@ begin
   begin
     mNear := Result.Left;
     mFar := Result.Right;
-    ResizeAxis(mNear, mFar, AEdge <> TAtlasResizeEdge.Left, AMode, AMove.X, ATarget.X, MinOf(AItem.MinWidth));
+    mFarMoves := AEdge <> TAtlasResizeEdge.Left;
+    if mFarMoves then
+    begin
+      mTo := MovedEdge(mFar, AMove.X, ATarget.X, AMode);
+    end
+    else
+    begin
+      mTo := MovedEdge(mNear, AMove.X, ATarget.X, AMode);
+    end;
+    ResizeAxis(mNear, mFar, mFarMoves, mTo, MinOf(AItem.MinWidth));
     Result.Left := mNear;
     Result.Right := mFar;
   end;
@@ -196,9 +216,64 @@ begin
   begin
     mNear := Result.Top;
     mFar := Result.Bottom;
-    ResizeAxis(mNear, mFar, AEdge <> TAtlasResizeEdge.Top, AMode, AMove.Y, ATarget.Y, MinOf(AItem.MinHeight));
+    mFarMoves := AEdge <> TAtlasResizeEdge.Top;
+    if mFarMoves then
+    begin
+      mTo := MovedEdge(mFar, AMove.Y, ATarget.Y, AMode);
+    end
+    else
+    begin
+      mTo := MovedEdge(mNear, AMove.Y, ATarget.Y, AMode);
+    end;
+    ResizeAxis(mNear, mFar, mFarMoves, mTo, MinOf(AItem.MinHeight));
     Result.Top := mNear;
     Result.Bottom := mFar;
+  end;
+end;
+
+/// <summary>Waagerechte Änderung für den Nachbarn AN des Steuerelements AOld → ANew: rechts hinter der rechten
+/// Kante (bzw. links vor der linken bei AEdge Left), senkrecht überlappend; sonst 0.</summary>
+function ShiftX(const AN, AOld, ANew: TRect; AEdge: TAtlasResizeEdge): Integer;
+begin
+  Result := 0;
+  if not TAtlasMultiResize.Horizontal(AEdge) or (AN.Top >= AOld.Bottom) or (AN.Bottom <= AOld.Top) then
+  begin
+    Exit;
+  end;
+  if (AEdge <> TAtlasResizeEdge.Left) and (AN.Left >= AOld.Right) then
+  begin
+    Result := ANew.Right - AOld.Right;
+  end
+  else if (AEdge = TAtlasResizeEdge.Left) and (AN.Right <= AOld.Left) then
+  begin
+    Result := ANew.Left - AOld.Left;
+  end;
+end;
+
+/// <summary>Wie ShiftX für die senkrechte Achse (Kante Top statt Left).</summary>
+function ShiftY(const AN, AOld, ANew: TRect; AEdge: TAtlasResizeEdge): Integer;
+begin
+  Result := 0;
+  if not TAtlasMultiResize.Vertical(AEdge) or (AN.Left >= AOld.Right) or (AN.Right <= AOld.Left) then
+  begin
+    Exit;
+  end;
+  if (AEdge <> TAtlasResizeEdge.Top) and (AN.Top >= AOld.Bottom) then
+  begin
+    Result := ANew.Bottom - AOld.Bottom;
+  end
+  else if (AEdge = TAtlasResizeEdge.Top) and (AN.Bottom <= AOld.Top) then
+  begin
+    Result := ANew.Top - AOld.Top;
+  end;
+end;
+
+/// <summary>AShift in AValue, wenn er dem Betrag nach größer ist.</summary>
+procedure KeepLarger(var AValue: Integer; AShift: Integer);
+begin
+  if Abs(AShift) > Abs(AValue) then
+  begin
+    AValue := AShift;
   end;
 end;
 
@@ -206,56 +281,15 @@ end;
 function NeighbourShift(const ANeighbour: TAtlasResizeNeighbour; const AItems: TArray<TAtlasResizeItem>;
   const ANew: TArray<TRect>; AEdge: TAtlasResizeEdge): TPoint;
 var
-  mIndex, mShift: Integer;
-  mOld, mN: TRect;
+  mIndex: Integer;
 begin
   Result := Point(0, 0);
-  mN := ANeighbour.Bounds;
   for mIndex := 0 to High(AItems) do
   begin
-    mOld := AItems[mIndex].Bounds;
-    if AItems[mIndex].Group <> ANeighbour.Group then
+    if AItems[mIndex].Group = ANeighbour.Group then
     begin
-      Continue;
-    end;
-    // Waagerecht: rechts hinter der rechten Kante (bzw. links vor der linken), senkrecht überlappend.
-    if TAtlasMultiResize.Horizontal(AEdge) and (mN.Top < mOld.Bottom) and (mN.Bottom > mOld.Top) then
-    begin
-      if (AEdge <> TAtlasResizeEdge.Left) and (mN.Left >= mOld.Right) then
-      begin
-        mShift := ANew[mIndex].Right - mOld.Right;
-        if Abs(mShift) > Abs(Result.X) then
-        begin
-          Result.X := mShift;
-        end;
-      end
-      else if (AEdge = TAtlasResizeEdge.Left) and (mN.Right <= mOld.Left) then
-      begin
-        mShift := ANew[mIndex].Left - mOld.Left;
-        if Abs(mShift) > Abs(Result.X) then
-        begin
-          Result.X := mShift;
-        end;
-      end;
-    end;
-    if TAtlasMultiResize.Vertical(AEdge) and (mN.Left < mOld.Right) and (mN.Right > mOld.Left) then
-    begin
-      if (AEdge <> TAtlasResizeEdge.Top) and (mN.Top >= mOld.Bottom) then
-      begin
-        mShift := ANew[mIndex].Bottom - mOld.Bottom;
-        if Abs(mShift) > Abs(Result.Y) then
-        begin
-          Result.Y := mShift;
-        end;
-      end
-      else if (AEdge = TAtlasResizeEdge.Top) and (mN.Bottom <= mOld.Top) then
-      begin
-        mShift := ANew[mIndex].Top - mOld.Top;
-        if Abs(mShift) > Abs(Result.Y) then
-        begin
-          Result.Y := mShift;
-        end;
-      end;
+      KeepLarger(Result.X, ShiftX(ANeighbour.Bounds, AItems[mIndex].Bounds, ANew[mIndex], AEdge));
+      KeepLarger(Result.Y, ShiftY(ANeighbour.Bounds, AItems[mIndex].Bounds, ANew[mIndex], AEdge));
     end;
   end;
 end;
@@ -297,8 +331,7 @@ begin
 end;
 
 class function TAtlasMultiResize.Apply(const AItems: TArray<TAtlasResizeItem>;
-  const ANeighbours: TArray<TAtlasResizeNeighbour>; ADragged: Integer; AEdge: TAtlasResizeEdge; const ADelta: TPoint;
-  AMode: TAtlasResizeMode; AGrid: Integer; AFollow: Boolean): TAtlasResizeResult;
+  const ANeighbours: TArray<TAtlasResizeNeighbour>; const ADrag: TAtlasResizeDrag): TAtlasResizeResult;
 var
   mIndex: Integer;
   mMove, mTarget, mShift: TPoint;
@@ -306,7 +339,7 @@ begin
   Result := Default(TAtlasResizeResult);
   SetLength(Result.Items, Length(AItems));
   SetLength(Result.Neighbours, Length(ANeighbours));
-  if (ADragged < 0) or (ADragged > High(AItems)) then
+  if (ADrag.Dragged < 0) or (ADrag.Dragged > High(AItems)) then
   begin
     for mIndex := 0 to High(AItems) do
     begin
@@ -318,10 +351,10 @@ begin
     end;
     Exit;
   end;
-  DraggedEdge(AItems[ADragged].Bounds, AEdge, ADelta, AGrid, mMove, mTarget);
+  DraggedEdge(AItems[ADrag.Dragged].Bounds, ADrag.Edge, ADrag.Delta, ADrag.Grid, mMove, mTarget);
   for mIndex := 0 to High(AItems) do
   begin
-    Result.Items[mIndex] := ResizeOne(AItems[mIndex], AEdge, AMode, mMove, mTarget);
+    Result.Items[mIndex] := ResizeOne(AItems[mIndex], ADrag.Edge, ADrag.Mode, mMove, mTarget);
     if Result.Items[mIndex] <> AItems[mIndex].Bounds then
     begin
       Inc(Result.Changed);
@@ -330,9 +363,9 @@ begin
   for mIndex := 0 to High(ANeighbours) do
   begin
     Result.Neighbours[mIndex] := ANeighbours[mIndex].Bounds;
-    if AFollow then
+    if ADrag.Follow then
     begin
-      mShift := NeighbourShift(ANeighbours[mIndex], AItems, Result.Items, AEdge);
+      mShift := NeighbourShift(ANeighbours[mIndex], AItems, Result.Items, ADrag.Edge);
       Result.Neighbours[mIndex].Offset(mShift.X, mShift.Y);
     end;
   end;

@@ -336,11 +336,15 @@ begin
     begin
       Word(mIndex);
     end
-    else if (mDepth <= 0) and (Top >= 0) and (mToken.Text = ';') then
+    else if (mDepth > 0) or (Top < 0) then
+    begin
+      Continue;
+    end
+    else if mToken.Text = ';' then
     begin
       Semicolon(mToken);
     end
-    else if (mDepth <= 0) and (Top >= 0) and (mToken.Text = ':') and (FStack[Top].Kind = TFrameKind.Case_) and
+    else if (mToken.Text = ':') and (FStack[Top].Kind = TFrameKind.Case_) and
       (FStack[Top].State = TCaseState.Label_) then
     begin
       CaseLabel(mToken);

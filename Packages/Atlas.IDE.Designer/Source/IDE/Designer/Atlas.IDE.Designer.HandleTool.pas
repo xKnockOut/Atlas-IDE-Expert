@@ -53,7 +53,7 @@ type
     procedure BeginStep;
     /// <summary>Schritt beenden: mit Änderung als Stand für „rückgängig“ (Designer geändert, ADone in die
     /// Meldungen), ohne verwerfen. ARestore: Stand vor dem Schritt wiederherstellen.</summary>
-    procedure CommitStep(const ADone: string; ARestore: Boolean = False);
+    procedure CommitStep(const ADone: string; ARestore: Boolean);
     function InStep: Boolean;
     property Overlay: TAtlasDesignerHandles read FOverlay;
     property Changed: Boolean read FChanged write FChanged;
@@ -147,30 +147,20 @@ begin
   FOverlay := TAtlasDesignerHandles.CreateHandles(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
   FOverlay.OnDown :=
     procedure(AIndex: Integer; AShift: TShiftState)
-    var
-      mIndex: Integer;
-      mShift: TShiftState;
     begin
-      mIndex := AIndex;
-      mShift := AShift;
       mOwner.RunGuarded(
         procedure
         begin
-          mOwner.Down(mIndex, mShift);
+          mOwner.Down(AIndex, AShift);
         end);
     end;
   FOverlay.OnDrag :=
     procedure(ADelta: TPoint; AShift: TShiftState)
-    var
-      mDelta: TPoint;
-      mShift: TShiftState;
     begin
-      mDelta := ADelta;
-      mShift := AShift;
       mOwner.RunGuarded(
         procedure
         begin
-          mOwner.Drag(mDelta, mShift);
+          mOwner.Drag(ADelta, AShift);
         end);
     end;
   FOverlay.OnUp :=
@@ -184,16 +174,11 @@ begin
     end;
   FOverlay.OnDoubleClick :=
     procedure(AIndex: Integer; AShift: TShiftState)
-    var
-      mIndex: Integer;
-      mShift: TShiftState;
     begin
-      mIndex := AIndex;
-      mShift := AShift;
       mOwner.RunGuarded(
         procedure
         begin
-          mOwner.DoubleClick(mIndex, mShift);
+          mOwner.DoubleClick(AIndex, AShift);
         end);
     end;
 end;

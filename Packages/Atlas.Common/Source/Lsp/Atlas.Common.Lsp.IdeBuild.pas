@@ -32,7 +32,8 @@ type
     DurationMs: Int64;
     FinishedAt: TDateTime;
     Messages: TArray<TCompilerMessage>;
-    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = ein KI-Assistent über build_project (#261).</summary>
+    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = ein KI-Assistent über build_project
+    /// (#261).</summary>
     RequestedBy: string;
   end;
 

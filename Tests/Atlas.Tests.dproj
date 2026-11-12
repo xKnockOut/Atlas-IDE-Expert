@@ -415,6 +415,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Namespaces.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.FormCache.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Watchdog.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Messages.Tests.pas"/>

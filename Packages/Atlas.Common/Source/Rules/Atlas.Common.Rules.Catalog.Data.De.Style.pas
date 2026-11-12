@@ -21,9 +21,10 @@ const
     '{',
     '      "id": "unused-parameter",',
     '      "name": "Ungenutzter Parameter",',
-    '      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen' +
-    ' und Callbacks, auch Routinen in Tabellen von Routinen (typisierte Konstanten, Array-Literale). Eine Routine, die nur aus einer anonymen Methode aufgerufen wird, hat eine freie Signatur und wird gemel' +
-    'det. Die Übergabe als Wert in einer anderen Unit sieht die Regel nicht; dort mit lsp-ignore und Grund unterdrücken.",',
+    '      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler (auch Methoden ohne Sichtbarkeitsangabe in Klass' +
+    'en mit RTTI wie TForm, TFrame und TDataModule sowie Methoden, die die Formulardatei einem Ereignis zuweist), published-Methoden, Interface-Implementierungen und Callbacks, auch Routinen in Tabellen vo' +
+    'n Routinen (typisierte Konstanten, Array-Literale). Eine Routine, die nur aus einer anonymen Methode aufgerufen wird, hat eine freie Signatur und wird gemeldet. Die Übergabe als Wert in einer anderen ' +
+    'Unit sieht die Regel nicht; dort mit lsp-ignore und Grund unterdrücken.",',
     '      "options": [',
     '        {',
     '          "name": "ignore",',

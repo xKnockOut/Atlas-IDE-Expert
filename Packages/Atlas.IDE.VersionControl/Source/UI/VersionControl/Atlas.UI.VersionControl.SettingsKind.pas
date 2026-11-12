@@ -56,8 +56,9 @@ begin
   // Art (#571): Reihenfolge wie die Werte von vcs.provider (auto, git, svn, off).
   AddTitle(TAtlasVcsTextId.SettingsVcsKindTitle);
   FVcsProvider := AddChoice('vcs.provider', TAtlasVcsTextId.SettingsVcsProvider,
-    [TAtlasVcsTextId.SettingsVcsProviderAuto, TAtlasVcsTextId.SettingsVcsProviderGit, TAtlasVcsTextId.SettingsVcsProviderSvn,
-    TAtlasVcsTextId.SettingsVcsProviderOff], TArray<string>.Create('auto', 'git', 'svn', 'off'));
+    [TAtlasVcsTextId.SettingsVcsProviderAuto, TAtlasVcsTextId.SettingsVcsProviderGit,
+    TAtlasVcsTextId.SettingsVcsProviderSvn, TAtlasVcsTextId.SettingsVcsProviderOff],
+    TArray<string>.Create('auto', 'git', 'svn', 'off'));
   FVcsProvider.Width := FVcsProvider.ScaleValue(220);
 end;
 

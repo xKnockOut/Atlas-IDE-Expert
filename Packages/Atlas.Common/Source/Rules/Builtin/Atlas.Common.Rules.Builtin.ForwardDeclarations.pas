@@ -463,8 +463,8 @@ var
     end;
   end;
 
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel hält Container und Index der Routinen, in derselben Reihenfolge wie
-  // zuvor die Rekursion in lokale Routinen.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): der Stapel hält Container und Index der Routinen, in derselben
+  // Reihenfolge wie zuvor die Rekursion in lokale Routinen.
   procedure CheckRoutines(ARoot: TSyntaxNode);
   var
     mPendingContainer: TStack<TSyntaxNode>;

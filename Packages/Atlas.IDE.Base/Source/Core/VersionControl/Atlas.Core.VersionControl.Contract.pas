@@ -162,7 +162,8 @@ type
   /// <summary>Optionen für SVN-Branches (#1290) mit den Werten für die Platzhalter. Location und Message sind
   /// Muster; Location beginnt mit {projektwurzel} oder ^/ und kennt {name} und {kennung}; Message kennt
   /// {kennung}, {titel} und {name}; CheckoutFolder kennt {projekt}, {name} und {kennung} und gilt relativ zur
-  /// Wurzel der Arbeitskopie. Aufgelöst wird mit TAtlasSvnLayout (Atlas.Core.VersionControl.Internals.SvnLayout).</summary>
+  /// Wurzel der Arbeitskopie. Aufgelöst wird mit TAtlasSvnLayout
+  /// (Atlas.Core.VersionControl.Internals.SvnLayout).</summary>
   TAtlasVcsSvnBranchOptions = record
     Location: string;
     Source: TAtlasVcsSvnSource;

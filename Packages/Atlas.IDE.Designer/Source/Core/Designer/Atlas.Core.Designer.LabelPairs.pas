@@ -30,7 +30,6 @@ type
 
   TAtlasLabelPairs = class
   public const
-    cDefaultDistance = 16;
     cDefaultAbbreviations = 'PLZ, IBAN, BIC, USt, ID';
     cLabelPrefix = 'lbl';
     /// <summary>Linke Textkante im Feld: Rahmen und Innenabstand bei 96 dpi.</summary>

@@ -116,7 +116,7 @@ var
   mFileName, mReason: string;
   mFiles: TArray<string>;
 begin
-  mFileName := TMcpServer.OptionalString(AArguments, 'file');
+  mFileName := TMcpArgs.OptionalString(AArguments, 'file');
   if mFileName <> '' then
   begin
     mFiles := [AContext.Guard.Resolve(mFileName)];
@@ -142,7 +142,7 @@ end;
 procedure AddGetDiagnostics(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_diagnostics', cTexts[TMcpCheckText.GetDiagnosticsTool].Text,
-    TMcpServer.StringSchema(['file'],
+    TMcpArgs.StringSchema(['file'],
       [cTexts[TMcpCheckText.GetDiagnosticsFile].Text], 0),
     ContextTool(AContext, ToolGetDiagnostics));
 end;
@@ -152,9 +152,9 @@ var
   mFileName: string;
   mSeverity: TRuleSeverity;
 begin
-  mSeverity := TMcpCheckTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
+  mSeverity := TMcpCheckTools.ParseHookSeverity(TMcpArgs.OptionalString(AArguments, 'severity'));
   try
-    mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+    mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   except
     // Dateien außerhalb des Projekts gehen Atlas nichts an; eine Fehlermeldung je Bearbeitung wäre Rauschen.
     on EMcpToolError do
@@ -168,7 +168,7 @@ end;
 procedure AddHookCheck(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('hook_check', cTexts[TMcpCheckText.HookCheckTool].Text,
-    TMcpServer.StringSchema(['file', 'severity'],
+    TMcpArgs.StringSchema(['file', 'severity'],
       [cTexts[TMcpCheckText.HookCheckFile].Text,
       cTexts[TMcpCheckText.HookCheckSeverity].Text], 1),
     ContextTool(AContext, ToolHookCheck));
@@ -179,8 +179,8 @@ var
   mFileName, mFormat: string;
   mFiles: TArray<string>;
 begin
-  mFileName := TMcpServer.OptionalString(AArguments, 'file');
-  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  mFileName := TMcpArgs.OptionalString(AArguments, 'file');
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
@@ -219,17 +219,17 @@ var
   mFilter: TTodoFilter;
   mIncludeDone: Boolean;
 begin
-  mFileName := TMcpServer.OptionalString(AArguments, 'file');
-  mFormat := TMcpServer.OptionalString(AArguments, 'format');
+  mFileName := TMcpArgs.OptionalString(AArguments, 'file');
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
   end;
   mFilter := TTodoFilter.Default;
-  mFilter.UnitName := TMcpServer.OptionalString(AArguments, 'unit');
-  mFilter.Category := TMcpServer.OptionalString(AArguments, 'category');
-  mFilter.Owner := TMcpServer.OptionalString(AArguments, 'owner');
-  mFilter.Keyword := TMcpServer.OptionalString(AArguments, 'keyword');
+  mFilter.UnitName := TMcpArgs.OptionalString(AArguments, 'unit');
+  mFilter.Category := TMcpArgs.OptionalString(AArguments, 'category');
+  mFilter.Owner := TMcpArgs.OptionalString(AArguments, 'owner');
+  mFilter.Keyword := TMcpArgs.OptionalString(AArguments, 'keyword');
   if (AArguments <> nil) and AArguments.TryGetValue<Boolean>('includeDone', mIncludeDone) then
   begin
     mFilter.IncludeDone := mIncludeDone;
@@ -278,7 +278,7 @@ var
   mFileName, mText: string;
   mStartLine, mEndLine: Integer;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<string>('text', mText) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['text']));
@@ -316,7 +316,7 @@ function ToolGetDfmInfo(const AContext: TMcpToolContext; const AArguments: TJSON
 var
   mFileName, mText: string;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if SameText(ExtractFileExt(mFileName), '.pas') then
   begin
     if FileExists(ChangeFileExt(mFileName, '.dfm')) then
@@ -338,7 +338,7 @@ end;
 procedure AddGetDfmInfo(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('get_dfm_info', cTexts[TMcpCheckText.GetDfmInfoTool].Text,
-    TMcpServer.StringSchema(['file'],
+    TMcpArgs.StringSchema(['file'],
       [cTexts[TMcpCheckText.GetDfmInfoFile].Text]),
     ContextTool(AContext, ToolGetDfmInfo));
 end;
@@ -351,12 +351,12 @@ var
   mCatalog: TRuleCatalog;
   mScopes: TFindingScopes;
 begin
-  mFileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) then
   begin
     raise EMcpToolError.Create(TShellTexts.Missing(['line']));
   end;
-  mRuleId := TMcpServer.OptionalString(AArguments, 'rule');
+  mRuleId := TMcpArgs.OptionalString(AArguments, 'rule');
   if not ReadSourceText(mFileName, mText) then
   begin
     raise EMcpToolError.Create(cTexts[TMcpCheckText.Unreadable].Fmt([mFileName]));

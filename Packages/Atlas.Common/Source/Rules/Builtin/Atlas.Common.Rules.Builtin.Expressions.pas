@@ -463,8 +463,8 @@ var
       [TRuleFix.Jump(cTexts[TExpressionsText.JumpToThen].Text, AIf[1].StartPos)]);
   end;
 
-  // Operanden einer Kette aus demselben Operator: A and B and A. Iterativ (tiefe Bäume sprengen den Stapel nicht): rechter Operand
-  // zuerst auf den Stapel, damit die Operanden von links nach rechts in AList landen.
+  // Operanden einer Kette aus demselben Operator: A and B and A. Iterativ (tiefe Bäume sprengen den Stapel nicht):
+  // rechter Operand zuerst auf den Stapel, damit die Operanden von links nach rechts in AList landen.
   procedure Operands(ANode: TSyntaxNode; const AOperator: string; var AList: TArray<TSyntaxNode>);
   var
     mPending: TStack<TSyntaxNode>;
@@ -1451,8 +1451,8 @@ var
   end;
 
   // Ist das Argument AFirst..ALast sicher ein String und kein Zeichen? Deklarierter String-Typ, .Text/.Caption,
-  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil. Iterativ (tiefe Bäume sprengen den Stapel nicht): die
-  // Teile einer langen Verkettung nacheinander statt einer Rekursionsebene je +.
+  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil. Iterativ (tiefe Bäume sprengen den
+  // Stapel nicht): die Teile einer langen Verkettung nacheinander statt einer Rekursionsebene je +.
   function IsStringArgument(AFirst, ALast: Integer): Boolean;
   var
     mStart, mPlus: Integer;

@@ -872,7 +872,8 @@ begin
   for mNode in TRuleDerived.Routines(FCache, FContext) do
   begin
     if ((ASymbol.Kind = TIndexSymbolKind.Routine) and SameText(mNode.Name, ASymbol.Name)) or
-      (IsTypeKind(ASymbol.Kind) and StartsText(ASymbol.Name + '.', TRoutineSignatures.WithoutTypeParams(mNode.Name))) then
+      (IsTypeKind(ASymbol.Kind) and
+      StartsText(ASymbol.Name + '.', TRoutineSignatures.WithoutTypeParams(mNode.Name))) then
     begin
       Result := Result + [TTextRange.Create(mNode.StartPos, mNode.EndPos)];
     end;

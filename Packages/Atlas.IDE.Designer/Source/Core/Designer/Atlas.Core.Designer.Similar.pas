@@ -46,7 +46,7 @@ type
     Argument: string;
     Scope: TAtlasSimilarScope;
     class function Create(AKind: TAtlasSimilarKind; AReference: Integer; AScope: TAtlasSimilarScope;
-      const AArgument: string = ''): TAtlasSimilarQuery; static;
+      const AArgument: string): TAtlasSimilarQuery; static;
   end;
 
   TAtlasSimilar = class

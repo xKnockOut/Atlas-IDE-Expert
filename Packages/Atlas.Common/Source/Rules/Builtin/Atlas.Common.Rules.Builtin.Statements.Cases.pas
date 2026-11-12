@@ -121,8 +121,8 @@ var
     mMembers: TArray<string>;
     mIndex: Integer;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang; die Namen der Zugriffe kommen erst nach
-    // dem Bezeichner ganz links dazu.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang; die Namen der
+    // Zugriffe kommen erst nach dem Bezeichner ganz links dazu.
     mMembers := nil;
     mNode := ANode;
     while (mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.ParenExpr]) and (mNode.ChildCount = 1) do

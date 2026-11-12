@@ -26,6 +26,19 @@ uses
   Atlas.Core.Projects.VersionControl;
 
 type
+  /// <summary>Frage „Branch anlegen“ beim Beginnen eines Issues (#765, #1288): Ordner des Projekts, Lage der
+  /// Arbeitskopie, vorgeschlagener Name, Commit-Nachricht und Kennung des Issues, SVN-Vorgaben;
+  /// OfferNeverAsk zeigt „Nicht mehr fragen“.</summary>
+  TAtlasVcsBranchAsk = record
+    Folder: string;
+    Facts: TAtlasVcsBranchFacts;
+    Name: string;
+    Message: string;
+    Key: string;
+    Svn: TAtlasVcsSvnBranchOptions;
+    OfferNeverAsk: Boolean;
+  end;
+
   /// <summary>Versionsverwaltung der IDE. ForFolder und Run in jedem Thread, alles andere im Hauptthread.</summary>
   IAtlasVcsService = interface
     ['{8E0B6C4D-5A21-4F3E-9C7B-2D61A4E9B305}']
@@ -39,8 +52,6 @@ type
     procedure Reload;
     /// <summary>Arbeitskopie zu AFolder; ATimeoutMs 0 = Zeitlimit der Einstellung.</summary>
     function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-    function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-    function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
     function MainBranchOf(const AProjectFile, AGroupFile: string): string;
     function Projects: TArray<TAtlasVcsProjectMapping>;
     /// <summary>AWork im Hintergrund, ADone danach im Hauptthread; False, wenn nichts gestartet wurde.</summary>
@@ -61,9 +72,8 @@ type
     /// <summary>Dialog „Arbeitskopien“ für AProject; ADone nach Änderungen.</summary>
     procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
     /// <summary>Dialog „Branch anlegen“ beim Beginnen eines Issues (#765, #1288).</summary>
-    function AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
-      AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-      out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+    function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+      out ANeverAsk: Boolean): Boolean;
     function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
     function GitOptions: TAtlasVcsGitBranchOptions;
     procedure OfferOpen(const AProject, ARoot, AFolder: string);
@@ -104,9 +114,6 @@ type
     class procedure Reload; static;
     class function ForFolder(const AFolder: string): IAtlasVersionControl; overload; static;
     class function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
-    class function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution; static;
-    class function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
-      static;
     class function MainBranchOf(const AProjectFile, AGroupFile: string): string; static;
     class function Projects: TArray<TAtlasVcsProjectMapping>; static;
     class function Run(const AWork, ADone: TProc): Boolean; static;
@@ -128,8 +135,6 @@ type
     function TimeoutMs: Cardinal;
     procedure Reload;
     function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-    function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-    function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
     function MainBranchOf(const AProjectFile, AGroupFile: string): string;
     function Projects: TArray<TAtlasVcsProjectMapping>;
     function Run(const AWork, ADone: TProc): Boolean;
@@ -146,9 +151,8 @@ type
   public
     procedure CreateBranchFor(const AProject: string; const ADone: TProc);
     procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
-    function AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
-      AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-      out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+    function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+      out ANeverAsk: Boolean): Boolean;
     function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
     function GitOptions: TAtlasVcsGitBranchOptions;
     procedure OfferOpen(const AProject, ARoot, AFolder: string);
@@ -272,16 +276,6 @@ begin
   Result := Service.ForFolder(AFolder, ATimeoutMs);
 end;
 
-class function TAtlasIdeVcs.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-begin
-  Result := Service.ForFolderResolution(AFolder);
-end;
-
-class function TAtlasIdeVcs.ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
-begin
-  Result := Service.ForProjectResolution(AProjectFile, AGroupFile);
-end;
-
 class function TAtlasIdeVcs.MainBranchOf(const AProjectFile, AGroupFile: string): string;
 begin
   Result := Service.MainBranchOf(AProjectFile, AGroupFile);
@@ -356,18 +350,6 @@ begin
   Result := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
 end;
 
-function TAtlasNullVcsService.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
-begin
-  Result := Default(TAtlasVcsProjectResolution);
-  Result.Provider := TAtlasVcsProvider.Off;
-end;
-
-function TAtlasNullVcsService.ForProjectResolution(const AProjectFile, AGroupFile: string):
-  TAtlasVcsProjectResolution;
-begin
-  Result := ForFolderResolution('');
-end;
-
 function TAtlasNullVcsService.MainBranchOf(const AProjectFile, AGroupFile: string): string;
 begin
   Result := '';
@@ -427,9 +409,8 @@ begin
   // Ohne Modul kein Dialog.
 end;
 
-function TAtlasNullVcsDialogs.AskBranch(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName,
-  AMessage, AKey: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
-  out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+function TAtlasNullVcsDialogs.AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
+  out ANeverAsk: Boolean): Boolean;
 begin
   ARequest := Default(TAtlasVcsBranchRequest);
   ANeverAsk := False;

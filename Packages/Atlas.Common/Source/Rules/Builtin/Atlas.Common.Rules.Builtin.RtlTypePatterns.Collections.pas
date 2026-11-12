@@ -698,7 +698,8 @@ var
     mNode, mReference: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion: der erste passende Typ mit Verweis zählt.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion: der erste passende Typ
+    // mit Verweis zählt.
     Result := '';
     mPending := TStack<TSyntaxNode>.Create;
     try

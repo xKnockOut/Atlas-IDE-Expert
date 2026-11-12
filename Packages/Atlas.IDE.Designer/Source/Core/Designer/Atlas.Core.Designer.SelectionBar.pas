@@ -50,11 +50,9 @@ type
 
   TAtlasSelectionBar = class
   public const
-    cModeAuto = 'auto';
     cModeShortcut = 'shortcut';
     cMinFontSize = 1;
     cMaxFontSize = 1638;
-    cMaxDelay = 5000;
   public
     /// <summary>Schlüssel des Knopfs in designer.selectionBar.items.</summary>
     class function KeyOf(AItem: TAtlasBarItem): string; static;
@@ -74,7 +72,8 @@ type
     class function SetFlag(const AProps: TArray<TAtlasBarProp>; const AElement: string): TAtlasBarState; static;
     /// <summary>Enthält die Menge („[a,b]“ oder „a,b“) das Element?</summary>
     class function SetHas(const ASet, AElement: string): Boolean; static;
-    /// <summary>Menge mit (AOn) oder ohne das Element, als „[a,b]“; Reihenfolge bleibt, ein neues Element kommt ans Ende.</summary>
+    /// <summary>Menge mit (AOn) oder ohne das Element, als „[a,b]“; Reihenfolge bleibt, ein neues Element
+    /// kommt ans Ende.</summary>
     class function SetWith(const ASet, AElement: string; AOn: Boolean): string; static;
     /// <summary>Wert nach dem Klick auf einen Umschalter: an außer bei On.</summary>
     class function Target(AState: TAtlasBarState): Boolean; static;

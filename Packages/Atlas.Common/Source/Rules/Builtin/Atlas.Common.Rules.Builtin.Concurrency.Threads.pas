@@ -1176,7 +1176,8 @@ var
     mIndex: Integer;
     mCall: TMethodCall;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion; ein Aufruf ohne Namen lässt seine Kinder aus.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion; ein Aufruf ohne Namen
+    // lässt seine Kinder aus.
     Result := '';
     mPending := TStack<TSyntaxNode>.Create;
     try

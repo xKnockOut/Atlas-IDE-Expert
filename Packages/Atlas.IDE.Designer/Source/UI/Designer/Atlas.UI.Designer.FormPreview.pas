@@ -45,15 +45,28 @@ type
     ShowAnchors: Boolean;
   end;
 
+  /// <summary>Steuerelemente des Vorschaufensters: Leiste, Größenfelder, Statuszeile, Rollbereich und
+  /// Zeichenfläche.</summary>
+  TAtlasFormPreviewParts = record
+    Bar: TFlowPanel;
+    WidthEdit: TEdit;
+    HeightEdit: TEdit;
+    Status: TLabel;
+    Box: TScrollBox;
+    Paint: TPaintBox;
+  end;
+
+  /// <summary>Ziehen am Griff läuft; Größenfelder werden gerade gesetzt.</summary>
+  TAtlasFormPreviewDrag = record
+    Dragging: Boolean;
+    Updating: Boolean;
+  end;
+
   TAtlasFormPreviewWindow = class(TForm)
   public const
     cMinProbe = 40;
   private
-    FWidthEdit: TEdit;
-    FHeightEdit: TEdit;
-    FBox: TScrollBox;
-    FDragging: Boolean;
-    FUpdating: Boolean;
+    FDrag: TAtlasFormPreviewDrag;
     FOnClosed: TProc;
     function FormRect: TRect;
     function GripRect: TRect;
@@ -71,15 +84,13 @@ type
     procedure FormKey(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormClosed(Sender: TObject; var Action: TCloseAction);
   protected
+    FParts: TAtlasFormPreviewParts;
     FData: TAtlasFormPreviewData;
     FColors: TAtlasColors;
     /// <summary>Client des Abbilds in Pixeln der Knoten.</summary>
     FProbe: TSize;
     FBounds: TArray<TRect>;
     FFindings: TArray<TAtlasLayoutFinding>;
-    FBar: TFlowPanel;
-    FStatus: TLabel;
-    FPaint: TPaintBox;
     /// <summary>AValue bei 96 dpi in Pixeln des Fensters (Leiste, Ränder).</summary>
     function S(AValue: Integer): Integer;
     function Origin: TPoint;
@@ -160,28 +171,28 @@ begin
   OnClose := FormClosed;
   Width := S(900);
   Height := S(640);
-  FBar := TFlowPanel.Create(Self);
-  FBar.Parent := Self;
-  FBar.Align := alTop;
-  FBar.AutoSize := True;
-  FBar.BevelOuter := bvNone;
+  FParts.Bar := TFlowPanel.Create(Self);
+  FParts.Bar.Parent := Self;
+  FParts.Bar.Align := alTop;
+  FParts.Bar.AutoSize := True;
+  FParts.Bar.BevelOuter := bvNone;
   BuildBar;
-  FStatus := TLabel.Create(Self);
-  FStatus.Parent := Self;
-  FStatus.Align := alBottom;
-  FStatus.AlignWithMargins := True;
-  FStatus.ShowAccelChar := False;
-  FBox := TScrollBox.Create(Self);
-  FBox.Parent := Self;
-  FBox.Align := alClient;
-  FBox.BorderStyle := bsNone;
-  FPaint := TPaintBox.Create(Self);
-  FPaint.Parent := FBox;
-  FPaint.OnPaint := PaintPreview;
-  FPaint.OnMouseDown := PreviewMouseDown;
-  FPaint.OnMouseMove := PreviewMouseMove;
-  FPaint.OnMouseUp := PreviewMouseUp;
-  FPaint.ShowHint := True;
+  FParts.Status := TLabel.Create(Self);
+  FParts.Status.Parent := Self;
+  FParts.Status.Align := alBottom;
+  FParts.Status.AlignWithMargins := True;
+  FParts.Status.ShowAccelChar := False;
+  FParts.Box := TScrollBox.Create(Self);
+  FParts.Box.Parent := Self;
+  FParts.Box.Align := alClient;
+  FParts.Box.BorderStyle := bsNone;
+  FParts.Paint := TPaintBox.Create(Self);
+  FParts.Paint.Parent := FParts.Box;
+  FParts.Paint.OnPaint := PaintPreview;
+  FParts.Paint.OnMouseDown := PreviewMouseDown;
+  FParts.Paint.OnMouseMove := PreviewMouseMove;
+  FParts.Paint.OnMouseUp := PreviewMouseUp;
+  FParts.Paint.ShowHint := True;
   SetProbe(AData.Design);
 end;
 
@@ -213,7 +224,7 @@ end;
 function TAtlasFormPreviewWindow.AddButton(const ACaption: string; ATag: Integer): TButton;
 begin
   Result := TButton.Create(Self);
-  Result.Parent := FBar;
+  Result.Parent := FParts.Bar;
   Result.Caption := ACaption;
   Result.Tag := ATag;
   Result.OnClick := QuickClick;
@@ -227,21 +238,21 @@ var
   mButton: TButton;
 begin
   mLabel := TLabel.Create(Self);
-  mLabel.Parent := FBar;
+  mLabel.Parent := FParts.Bar;
   mLabel.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeSize);
   mLabel.AlignWithMargins := True;
-  FWidthEdit := TEdit.Create(Self);
-  FWidthEdit.Parent := FBar;
-  FWidthEdit.Width := S(cEditWidth);
-  FWidthEdit.NumbersOnly := True;
-  FWidthEdit.AlignWithMargins := True;
-  FWidthEdit.OnChange := SizeEdited;
-  FHeightEdit := TEdit.Create(Self);
-  FHeightEdit.Parent := FBar;
-  FHeightEdit.Width := S(cEditWidth);
-  FHeightEdit.NumbersOnly := True;
-  FHeightEdit.AlignWithMargins := True;
-  FHeightEdit.OnChange := SizeEdited;
+  FParts.WidthEdit := TEdit.Create(Self);
+  FParts.WidthEdit.Parent := FParts.Bar;
+  FParts.WidthEdit.Width := S(cEditWidth);
+  FParts.WidthEdit.NumbersOnly := True;
+  FParts.WidthEdit.AlignWithMargins := True;
+  FParts.WidthEdit.OnChange := SizeEdited;
+  FParts.HeightEdit := TEdit.Create(Self);
+  FParts.HeightEdit.Parent := FParts.Bar;
+  FParts.HeightEdit.Width := S(cEditWidth);
+  FParts.HeightEdit.NumbersOnly := True;
+  FParts.HeightEdit.AlignWithMargins := True;
+  FParts.HeightEdit.OnChange := SizeEdited;
   mButton := AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeMinimum), cTagMinimum);
   mButton.Enabled := (FData.MinClient.cx > 0) or (FData.MinClient.cy > 0);
   if not mButton.Enabled then
@@ -278,7 +289,8 @@ procedure TAtlasFormPreviewWindow.SizeEdited(Sender: TObject);
 var
   mWidth, mHeight: Integer;
 begin
-  if FUpdating or not TryStrToInt(FWidthEdit.Text, mWidth) or not TryStrToInt(FHeightEdit.Text, mHeight) then
+  if FDrag.Updating or not TryStrToInt(FParts.WidthEdit.Text, mWidth) or
+    not TryStrToInt(FParts.HeightEdit.Text, mHeight) then
   begin
     Exit;
   end;
@@ -292,23 +304,23 @@ procedure TAtlasFormPreviewWindow.SetProbe(const ASize: TSize);
 begin
   FProbe := TAtlasFormLayout.Constrain(TSize.Create(Max(ASize.cx, cMinProbe), Max(ASize.cy, cMinProbe)),
     FData.MinClient.cx, FData.MinClient.cy, FData.MaxClient.cx, FData.MaxClient.cy);
-  if FWidthEdit = nil then
+  if FParts.WidthEdit = nil then
   begin
     Recalculate;
     Exit;
   end;
-  FUpdating := True;
+  FDrag.Updating := True;
   try
-    if FWidthEdit.Text <> IntToStr(FProbe.cx) then
+    if FParts.WidthEdit.Text <> IntToStr(FProbe.cx) then
     begin
-      FWidthEdit.Text := IntToStr(FProbe.cx);
+      FParts.WidthEdit.Text := IntToStr(FProbe.cx);
     end;
-    if FHeightEdit.Text <> IntToStr(FProbe.cy) then
+    if FParts.HeightEdit.Text <> IntToStr(FProbe.cy) then
     begin
-      FHeightEdit.Text := IntToStr(FProbe.cy);
+      FParts.HeightEdit.Text := IntToStr(FProbe.cy);
     end;
   finally
-    FUpdating := False;
+    FDrag.Updating := False;
   end;
   Recalculate;
 end;
@@ -317,18 +329,18 @@ procedure TAtlasFormPreviewWindow.Recalculate;
 begin
   FBounds := TAtlasFormLayout.Arrange(FData.Nodes, FData.Design, FProbe);
   FFindings := TAtlasFormLayout.Problems(FData.Nodes, FBounds, FProbe);
-  FPaint.SetBounds(0, 0, Px(FProbe.cx) + 2 * S(cMargin), Px(FProbe.cy) + 2 * S(cMargin));
+  FParts.Paint.SetBounds(0, 0, Px(FProbe.cx) + 2 * S(cMargin), Px(FProbe.cy) + 2 * S(cMargin));
   if Length(FFindings) = 0 then
   begin
-    FStatus.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeNone, [FProbe.cx, FProbe.cy]) +
-      ' · ' + TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeKeys);
+    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeNone,
+      [FProbe.cx, FProbe.cy]) + ' · ' + TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeKeys);
   end
   else
   begin
-    FStatus.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeCount, [Length(FFindings),
+    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeCount, [Length(FFindings),
       FProbe.cx, FProbe.cy]);
   end;
-  FPaint.Invalidate;
+  FParts.Paint.Invalidate;
 end;
 
 function TAtlasFormPreviewWindow.Origin: TPoint;
@@ -455,24 +467,24 @@ begin
   mAnchors := FData.Nodes[AIndex].Anchors;
   mMid := ARect.CenterPoint;
   mPin := S(cPin);
-  FPaint.Canvas.Brush.Style := bsSolid;
-  FPaint.Canvas.Brush.Color := TColor(FColors.Accent);
-  FPaint.Canvas.Pen.Color := TColor(FColors.Accent);
+  FParts.Paint.Canvas.Brush.Style := bsSolid;
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Accent);
+  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
   if TAtlasLayoutAnchor.Left in mAnchors then
   begin
-    FPaint.Canvas.Rectangle(ARect.Left, mMid.Y - mPin, ARect.Left + mPin div 2 + 1, mMid.Y + mPin);
+    FParts.Paint.Canvas.Rectangle(ARect.Left, mMid.Y - mPin, ARect.Left + mPin div 2 + 1, mMid.Y + mPin);
   end;
   if TAtlasLayoutAnchor.Right in mAnchors then
   begin
-    FPaint.Canvas.Rectangle(ARect.Right - mPin div 2 - 1, mMid.Y - mPin, ARect.Right, mMid.Y + mPin);
+    FParts.Paint.Canvas.Rectangle(ARect.Right - mPin div 2 - 1, mMid.Y - mPin, ARect.Right, mMid.Y + mPin);
   end;
   if TAtlasLayoutAnchor.Top in mAnchors then
   begin
-    FPaint.Canvas.Rectangle(mMid.X - mPin, ARect.Top, mMid.X + mPin, ARect.Top + mPin div 2 + 1);
+    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Top, mMid.X + mPin, ARect.Top + mPin div 2 + 1);
   end;
   if TAtlasLayoutAnchor.Bottom in mAnchors then
   begin
-    FPaint.Canvas.Rectangle(mMid.X - mPin, ARect.Bottom - mPin div 2 - 1, mMid.X + mPin, ARect.Bottom);
+    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Bottom - mPin div 2 - 1, mMid.X + mPin, ARect.Bottom);
   end;
 end;
 
@@ -486,35 +498,35 @@ begin
   mNode := FData.Nodes[AIndex];
   mRect := NodeRect(AIndex);
   mBad := HasFinding(AIndex);
-  FPaint.Canvas.Brush.Style := bsSolid;
-  FPaint.Canvas.Brush.Color := TColor(FColors.Surface);
+  FParts.Paint.Canvas.Brush.Style := bsSolid;
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Surface);
   if mBad then
   begin
-    FPaint.Canvas.Brush.Color := TColor(FColors.ErrorSoft);
+    FParts.Paint.Canvas.Brush.Color := TColor(FColors.ErrorSoft);
   end
   else if FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None) then
   begin
-    FPaint.Canvas.Brush.Color := TColor(FColors.AccentSoft);
+    FParts.Paint.Canvas.Brush.Color := TColor(FColors.AccentSoft);
   end;
-  FPaint.Canvas.Pen.Color := TColor(FColors.Line);
+  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Line);
   if mBad then
   begin
-    FPaint.Canvas.Pen.Color := TColor(FColors.Error);
+    FParts.Paint.Canvas.Pen.Color := TColor(FColors.Error);
   end;
-  FPaint.Canvas.Rectangle(mRect);
+  FParts.Paint.Canvas.Rectangle(mRect);
   mText := NodeText(AIndex);
   if FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None) then
   begin
     mText := mText + ' (' + cAlignNames[mNode.Align] + ')';
   end;
-  FPaint.Canvas.Brush.Style := bsClear;
-  FPaint.Canvas.Font.Color := TColor(FColors.Muted);
+  FParts.Paint.Canvas.Brush.Style := bsClear;
+  FParts.Paint.Canvas.Font.Color := TColor(FColors.Muted);
   if mBad then
   begin
-    FPaint.Canvas.Font.Color := TColor(FColors.Error);
+    FParts.Paint.Canvas.Font.Color := TColor(FColors.Error);
   end;
   InflateRect(mRect, -S(2), -S(1));
-  DrawText(FPaint.Canvas.Handle, PChar(mText), -1, mRect, DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or
+  DrawText(FParts.Paint.Canvas.Handle, PChar(mText), -1, mRect, DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   if FData.ShowAnchors and (mNode.Align = TAtlasLayoutAlign.None) then
   begin
@@ -527,13 +539,13 @@ var
   mIndex: Integer;
   mGrip: TRect;
 begin
-  FPaint.Canvas.Font := Font;
-  FPaint.Canvas.Brush.Style := bsSolid;
-  FPaint.Canvas.Brush.Color := TColor(FColors.Gutter);
-  FPaint.Canvas.FillRect(FPaint.ClientRect);
-  FPaint.Canvas.Brush.Color := TColor(FColors.Surface);
-  FPaint.Canvas.Pen.Color := TColor(FColors.Accent);
-  FPaint.Canvas.Rectangle(FormRect);
+  FParts.Paint.Canvas.Font := Font;
+  FParts.Paint.Canvas.Brush.Style := bsSolid;
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Gutter);
+  FParts.Paint.Canvas.FillRect(FParts.Paint.ClientRect);
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Surface);
+  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
+  FParts.Paint.Canvas.Rectangle(FormRect);
   for mIndex := 0 to High(FData.Nodes) do
   begin
     if FData.Nodes[mIndex].Visible then
@@ -548,17 +560,17 @@ begin
   end;
   // Ziehgriff rechts unten: Dreieck in der Akzentfarbe.
   mGrip := GripRect;
-  FPaint.Canvas.Brush.Style := bsSolid;
-  FPaint.Canvas.Brush.Color := TColor(FColors.Accent);
-  FPaint.Canvas.Pen.Color := TColor(FColors.Accent);
-  FPaint.Canvas.Polygon([Point(mGrip.Right, mGrip.Top), Point(mGrip.Right, mGrip.Bottom),
+  FParts.Paint.Canvas.Brush.Style := bsSolid;
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Accent);
+  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
+  FParts.Paint.Canvas.Polygon([Point(mGrip.Right, mGrip.Top), Point(mGrip.Right, mGrip.Bottom),
     Point(mGrip.Left, mGrip.Bottom)]);
 end;
 
 procedure TAtlasFormPreviewWindow.PreviewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 begin
-  FDragging := GripResizes and (Button = mbLeft) and GripRect.Contains(Point(X, Y));
+  FDrag.Dragging := GripResizes and (Button = mbLeft) and GripRect.Contains(Point(X, Y));
 end;
 
 procedure TAtlasFormPreviewWindow.PreviewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -566,18 +578,18 @@ var
   mIndex: Integer;
   mText: string;
 begin
-  if FDragging then
+  if FDrag.Dragging then
   begin
     SetProbe(TSize.Create(MulDiv(X - Origin.X, cBasePpi, CurrentPPI), MulDiv(Y - Origin.Y, cBasePpi, CurrentPPI)));
     Exit;
   end;
   if GripResizes and GripRect.Contains(Point(X, Y)) then
   begin
-    FPaint.Cursor := crSizeNWSE;
+    FParts.Paint.Cursor := crSizeNWSE;
   end
   else
   begin
-    FPaint.Cursor := crDefault;
+    FParts.Paint.Cursor := crDefault;
   end;
   mIndex := NodeAt(Point(X, Y));
   mText := '';
@@ -585,13 +597,13 @@ begin
   begin
     mText := Describe(mIndex);
   end;
-  if mText <> FPaint.Hint then
+  if mText <> FParts.Paint.Hint then
   begin
-    FPaint.Hint := mText;
+    FParts.Paint.Hint := mText;
     Application.CancelHint;
     if mText <> '' then
     begin
-      FStatus.Caption := mText;
+      FParts.Status.Caption := mText;
     end;
   end;
 end;
@@ -599,7 +611,7 @@ end;
 procedure TAtlasFormPreviewWindow.PreviewMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 begin
-  FDragging := False;
+  FDrag.Dragging := False;
 end;
 
 procedure TAtlasFormPreviewWindow.FormKey(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -623,7 +635,7 @@ end;
 procedure TAtlasFormPreviewWindow.ApplyColors(const AColors: TAtlasColors);
 begin
   FColors := AColors;
-  FPaint.Invalidate;
+  FParts.Paint.Invalidate;
 end;
 
 end.

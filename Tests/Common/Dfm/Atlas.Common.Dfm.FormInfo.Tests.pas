@@ -21,6 +21,8 @@ type
     procedure HoverAndDescribeAgree;
     [Test]
     procedure FindsOnlyInMatchingForm;
+    [Test]
+    procedure FieldMarkdownParsesTheForm;
   end;
 
 implementation
@@ -128,6 +130,13 @@ begin
   finally
     Document.Free;
   end;
+end;
+
+procedure TFormInfoTests.FieldMarkdownParsesTheForm;
+begin
+  Assert.AreEqual(Markdown('Liste'), TFormInfo.FieldMarkdown(FormText, 'C:\P\Unit1.dfm', 'TForm1', 'Liste'));
+  Assert.AreEqual('', TFormInfo.FieldMarkdown(FormText, 'C:\P\Unit1.dfm', 'TAnders', 'Liste'));
+  Assert.AreEqual('', TFormInfo.FieldMarkdown('', 'C:\P\Unit1.dfm', 'TForm1', 'Liste'));
 end;
 
 initialization

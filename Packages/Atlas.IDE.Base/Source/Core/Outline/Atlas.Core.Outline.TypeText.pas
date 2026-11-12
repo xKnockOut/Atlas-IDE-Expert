@@ -195,7 +195,7 @@ begin
   end
   else
   begin
-    Result := (FComment <> #0);
+    Result := FComment <> #0;
   end;
 end;
 

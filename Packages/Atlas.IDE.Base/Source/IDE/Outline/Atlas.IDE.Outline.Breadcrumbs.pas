@@ -67,6 +67,7 @@
 //   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
 //   (#1248). Bei ausgelöster Sicherung bleiben die Leisten stehen und sagen
 //   „abgeschaltet“ (ShowDisabled), statt zu verschwinden.
+// - Die Sprungmenüs selbst baut TAtlasIdeCrumbLists; hier bleiben Leisten, Stand, Sprung, Karte und Diagnose.
 // Abgrenzung zum mitlaufenden Kopf (#506) und zum Gliederungsfenster (#537):
 // docs/Architektur.md. Nur im Hauptthread.
 
@@ -114,31 +115,23 @@ uses
   Winapi.Windows,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
   Vcl.Controls,
-  Vcl.Forms,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.VisibilitySections,
-  Atlas.Core.Outline.SectionEdit,
-  Atlas.Core.Outline.Overloads,
   Atlas.Core.Outline.Interfaces,
   Atlas.Core.Editor.CrumbCard,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Popup.CrumbCard,
-  Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.Outline.NavigationToolbar,
   Atlas.IDE.Outline.NavigationOption,
-  Atlas.IDE.Outline.SectionEdit,
+  Atlas.IDE.Outline.CrumbLists,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -148,31 +141,27 @@ uses
 
 const
   cTickMs = 150;
-  cMenuWidth = 380;
-  /// <summary>Kennungen der Menüeinträge „Neue Zeile am Ende von …“ und „Abschnitt anlegen“ (#1768).</summary>
-  cAppendId = 'append:';
-  cCreateId = 'create:';
-  /// <summary>Höchstlänge von Name und Parametern im Menü (#1784); länger mit „…“.</summary>
-  cOverloadCaptionMax = 56;
 
 type
+  /// <summary>Wovon der gezeigte Pfad abhängt: Stand der Gliederung und Einstellungen der Leiste.</summary>
+  TBreadcrumbsKey = record
+    Stamp: Cardinal;
+    Status: TAtlasOutlineStatus;
+    WithInterfaces: Boolean;
+    ShowUnit: Boolean;
+    Parts: TAtlasCrumbParts;
+  end;
+
   TBreadcrumbsState = class
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
-    FFileName: string;
-    FStamp: Cardinal;
-    FStatus: TAtlasOutlineStatus;
-    FNodes: TAtlasOutlineNodes;
-    FInterfaces: TAtlasInterfaceMethods;
-    FWithInterfaces: Boolean;
-    /// <summary>Für den Pfad ausgewerteter Text mit seinen Zeilen, je Stand der Gliederung einmal (Remember).
-    /// </summary>
+    /// <summary>Datei, Gliederung, Zeilen und Caret des gezeigten Pfads.</summary>
+    FSource: TAtlasCrumbSource;
+    /// <summary>Für den Pfad ausgewerteter Text, je Stand der Gliederung einmal (Remember).</summary>
     FText: TAtlasCrumbText;
-    FLine: Integer;
-    FCharacter: Integer;
-    FShowUnit: Boolean;
-    FParts: TAtlasCrumbParts;
+    FKey: TBreadcrumbsKey;
+    FInterfaces: TAtlasInterfaceMethods;
     FShown: Boolean;
     FActiveBar: TAtlasBreadcrumbBar;
     FToolbars: TAtlasNavigationToolbar;
@@ -195,21 +184,13 @@ type
     procedure EnsureBars;
     function CreateBar: TAtlasBreadcrumbBar;
     procedure Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
-    procedure OpenMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-    procedure OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-    procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
-      ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean = False);
-    procedure OpenOverloads(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-    procedure OpenInterfaces(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-    function MarkInterfaces(const ACrumbs: TAtlasCrumbs): TAtlasCrumbs;
-    procedure OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
+    /// <summary>Sprungmenü AList am Glied AIndex, solange ABar die aktive Leiste ist.</summary>
+    procedure Open(AList: TAtlasCrumbList; ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
     procedure Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
     procedure ApplyToolbar(AParent: TWinControl);
     procedure Leave(ABar: TAtlasBreadcrumbBar);
-    function CommandsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-      const AIndices: TArray<Integer>; ACurrent: Integer; AOverloads: Boolean): TArray<TAtlasCommand>;
     function Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
   public
     constructor Create;
@@ -276,12 +257,12 @@ procedure TBreadcrumbsState.Reset;
 var
   mHide: Boolean;
 begin
-  FFileName := '';
-  FStamp := 0;
+  FSource.FileName := '';
+  FKey.Stamp := 0;
   FShown := False;
   HideCard;
-  FLine := -1;
-  FCharacter := -1;
+  FSource.Line := -1;
+  FSource.Character := -1;
   // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
   // Option aus; umgehängt wird nur ohne diese Option (Netz).
   ApplyTheme;
@@ -338,83 +319,95 @@ begin
   end;
 end;
 
+/// <summary>Hinweistexte der Leiste aus den Texten der Gliederung.</summary>
+function BarTexts: TAtlasCrumbBarSetup;
+begin
+  Result := Default(TAtlasCrumbBarSetup);
+  Result.CrumbHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCrumbHint);
+  Result.SeparatorHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsChildrenHint);
+  Result.MarkHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMarkHint);
+  Result.OverloadHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsHint);
+  Result.InterfaceHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesHint);
+  Result.InterfaceKeyHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesKey);
+end;
+
+/// <summary>Menü am Glied erst nach dem Klick öffnen (siehe Later); AOpen bekommt Glied und Stelle.</summary>
+function Deferred(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar;
+  const AOpen: TProc<Integer, TPoint>): TAtlasCrumbMenuEvent;
+begin
+  Result :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      AState.Later(ABar,
+        procedure
+        begin
+          AOpen(AIndex, At);
+        end);
+    end;
+end;
+
+/// <summary>Sprungmenü AList am Glied, nach dem Klick geöffnet.</summary>
+function ListEvent(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; AList: TAtlasCrumbList): TAtlasCrumbMenuEvent;
+begin
+  Result := Deferred(AState, ABar,
+    procedure(AIndex: Integer; APoint: TPoint)
+    begin
+      AState.Open(AList, ABar, AIndex, APoint);
+    end);
+end;
+
+/// <summary>Kennzahlen-Karte (#1787) an den Gliedern von ABar in ASetup eintragen.</summary>
+procedure AddCardEvents(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; var ASetup: TAtlasCrumbBarSetup);
+begin
+  ASetup.HasCard :=
+    function(AIndex: Integer): Boolean
+    begin
+      Result := AState.HasCard(ABar, AIndex);
+    end;
+  ASetup.OnShowCard :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+        procedure
+        begin
+          AState.ShowCard(ABar, AIndex, At);
+        end);
+    end;
+  ASetup.OnHideCard :=
+    procedure
+    begin
+      AState.HideCard;
+    end;
+end;
+
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
 function TBreadcrumbsState.CreateBar: TAtlasBreadcrumbBar;
 var
   mBar: TAtlasBreadcrumbBar;
   mHost: TAtlasEditorBarHost;
+  mSetup: TAtlasCrumbBarSetup;
 begin
   mBar := TAtlasBreadcrumbBar.Create(nil);
   mHost := FHost;
   mBar.SetColors(TAtlasIdeStyle.BarColors);
   mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
-  mBar.CrumbHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCrumbHint);
-  mBar.SeparatorHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsChildrenHint);
-  mBar.MarkHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMarkHint);
-  mBar.OverloadHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsHint);
-  mBar.InterfaceHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesHint);
-  mBar.InterfaceKeyHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesKey);
-  mBar.OnOpenMenu :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
+  mSetup := BarTexts;
+  mSetup.OnOpenMenu := ListEvent(Self, mBar, TAtlasCrumbList.Siblings);
+  mSetup.OnOpenChildren := ListEvent(Self, mBar, TAtlasCrumbList.Children);
+  mSetup.OnOpenOverloads := ListEvent(Self, mBar, TAtlasCrumbList.Overloads);
+  mSetup.OnOpenInterfaces := ListEvent(Self, mBar, TAtlasCrumbList.Interfaces);
+  mSetup.OnContextMenu := Deferred(Self, mBar,
+    procedure(AIndex: Integer; APoint: TPoint)
     begin
-      At := APoint;
-      Later(mBar,
-        procedure
-        begin
-          OpenMenu(mBar, AIndex, At);
-        end);
-    end;
-  mBar.OnOpenChildren :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      Later(mBar,
-        procedure
-        begin
-          OpenChildren(mBar, AIndex, At);
-        end);
-    end;
-  mBar.OnOpenOverloads :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      Later(mBar,
-        procedure
-        begin
-          OpenOverloads(mBar, AIndex, At);
-        end);
-    end;
-  mBar.OnOpenInterfaces :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      Later(mBar,
-        procedure
-        begin
-          OpenInterfaces(mBar, AIndex, At);
-        end);
-    end;
-  mBar.OnContextMenu :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      Later(mBar,
-        procedure
-        begin
-          ContextMenu(mBar, AIndex, At);
-        end);
-    end;
-  mBar.OnJump :=
+      ContextMenu(mBar, AIndex, APoint);
+    end);
+  mSetup.OnJump :=
     procedure(AIndex: Integer; ADeclaration: Boolean)
     begin
       TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
@@ -423,33 +416,13 @@ begin
           Jump(mBar, AIndex, ADeclaration);
         end);
     end;
-  mBar.OnLeave :=
+  mSetup.OnLeave :=
     procedure
     begin
       Leave(mBar);
     end;
-  mBar.HasCard :=
-    function(AIndex: Integer): Boolean
-    begin
-      Result := HasCard(mBar, AIndex);
-    end;
-  mBar.OnShowCard :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
-        procedure
-        begin
-          ShowCard(mBar, AIndex, At);
-        end);
-    end;
-  mBar.OnHideCard :=
-    procedure
-    begin
-      HideCard;
-    end;
+  AddCardEvents(Self, mBar, mSetup);
+  mBar.Setup := mSetup;
   mBar.OnDisabled :=
     procedure(ASender: TObject)
     begin
@@ -473,32 +446,6 @@ end;
 function TBreadcrumbsState.ActiveBar: TAtlasBreadcrumbBar;
 begin
   Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
-end;
-
-/// <summary>Text eines Sprungziels; Regionen ohne Namen als „Region (Z. n)“ (#1764).</summary>
-function PlaceText(const APlace: TAtlasCrumbPlace): string;
-begin
-  Result := APlace.Text;
-  if Result = '' then
-  begin
-    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsRegionUnnamed), [APlace.Line + 1]);
-  end;
-end;
-
-/// <summary>Glieder mit Namen für Regionen ohne Text (#1764).</summary>
-function NamedRegions(const ACrumbs: TAtlasCrumbs): TAtlasCrumbs;
-var
-  mIndex: Integer;
-begin
-  Result := ACrumbs;
-  for mIndex := 0 to High(Result) do
-  begin
-    if (Result[mIndex].Text = '') and (Result[mIndex].Current >= 0) and
-      (Result[mIndex].Current <= High(Result[mIndex].Places)) then
-    begin
-      Result[mIndex].Text := PlaceText(Result[mIndex].Places[Result[mIndex].Current]);
-    end;
-  end;
 end;
 
 /// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769, #1784).
@@ -551,27 +498,28 @@ begin
   mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
   mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
   mParts := CrumbParts;
-  Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FStatus) or
-    not SameText(ASnapshot.FileName, FFileName) or (ASnapshot.Stamp <> FStamp) or (mShowUnit <> FShowUnit) or
-    (mParts <> FParts) or (mWithInterfaces <> FWithInterfaces);
-  if (ASnapshot.Stamp <> FStamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FNodes)) then
+  Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FKey.Status) or
+    not SameText(ASnapshot.FileName, FSource.FileName) or (ASnapshot.Stamp <> FKey.Stamp) or
+    (mShowUnit <> FKey.ShowUnit) or (mParts <> FKey.Parts) or (mWithInterfaces <> FKey.WithInterfaces);
+  if (ASnapshot.Stamp <> FKey.Stamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FSource.Nodes)) then
   begin
-    mLines := FText.Lines;
-    if ASnapshot.Stamp <> FStamp then
+    mLines := FSource.Lines;
+    if ASnapshot.Stamp <> FKey.Stamp then
     begin
       mLines := TTextLines.SplitLines(ASnapshot.Text);
     end;
     FText := TAtlasBreadcrumbs.Prepare(ASnapshot.Nodes, mLines);
+    FSource.Lines := mLines;
   end;
   FShown := True;
   FActiveBar := ABar;
-  FStatus := ASnapshot.Status;
-  FFileName := ASnapshot.FileName;
-  FStamp := ASnapshot.Stamp;
-  FShowUnit := mShowUnit;
-  FParts := mParts;
-  FWithInterfaces := mWithInterfaces;
-  FNodes := ASnapshot.Nodes;
+  FKey.Status := ASnapshot.Status;
+  FSource.FileName := ASnapshot.FileName;
+  FKey.Stamp := ASnapshot.Stamp;
+  FKey.ShowUnit := mShowUnit;
+  FKey.Parts := mParts;
+  FKey.WithInterfaces := mWithInterfaces;
+  FSource.Nodes := ASnapshot.Nodes;
   FInterfaces := ASnapshot.Interfaces;
 end;
 
@@ -622,6 +570,8 @@ var
   mSnapshot: TAtlasOutlineSnapshot;
   mLine, mCharacter: Integer;
   mChanged: Boolean;
+  mRequest: TAtlasCrumbRequest;
+  mInterfaces: TAtlasInterfaceMethods;
 begin
   EnsureBars;
   mBar := ActiveBar;
@@ -638,425 +588,22 @@ begin
   begin
     Exit;
   end;
-  if not mChanged and (mLine = FLine) and (mCharacter = FCharacter) then
+  if not mChanged and (mLine = FSource.Line) and (mCharacter = FSource.Character) then
   begin
     Exit;
   end;
-  FLine := mLine;
-  FCharacter := mCharacter;
+  FSource.Line := mLine;
+  FSource.Character := mCharacter;
   mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
-  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FText, FLine, FCharacter,
-    ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts))));
-end;
-
-/// <summary>Erfüllte Interface-Methoden an die Methodenglieder (#1785); nur mit editor.breadcrumbsInterfaces.
-/// </summary>
-function TBreadcrumbsState.MarkInterfaces(const ACrumbs: TAtlasCrumbs): TAtlasCrumbs;
-var
-  mIndex: Integer;
-begin
-  Result := ACrumbs;
-  if not FWithInterfaces or (Length(FInterfaces) = 0) then
+  mRequest := TAtlasCrumbRequest.Create(FSource.Line, FSource.Character,
+    ChangeFileExt(ExtractFileName(FSource.FileName), ''), FKey.ShowUnit, FKey.Parts);
+  mInterfaces := nil;
+  if FKey.WithInterfaces then
   begin
-    Exit;
+    mInterfaces := FInterfaces;
   end;
-  for mIndex := 0 to High(Result) do
-  begin
-    Result[mIndex].Interfaces := TAtlasOutlineInterfaces.TargetsOf(FInterfaces, FNodes, Result[mIndex].Node);
-  end;
-end;
-
-function TBreadcrumbsState.CommandsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  const AIndices: TArray<Integer>; ACurrent: Integer; AOverloads: Boolean): TArray<TAtlasCommand>;
-var
-  mNode: Integer;
-  mCommand: TAtlasCommand;
-begin
-  Result := nil;
-  for mNode in AIndices do
-  begin
-    mCommand := Default(TAtlasCommand);
-    mCommand.Id := IntToStr(mNode);
-    mCommand.Caption := TAtlasBreadcrumbs.ShortName(ANodes[mNode].Name);
-    mCommand.Path := ANodes[mNode].Detail;
-    // Überladungen (#1784) mit Parametern, gekürzt; der Hinweis zeigt die volle Liste.
-    if AOverloads or (TAtlasIdeSettings.Current.BreadcrumbsOverloads and
-      (Length(TAtlasOverloads.Find(ANodes, mNode)) > 0)) then
-    begin
-      mCommand.Caption := TAtlasOverloads.Caption(ANodes, ALines, mNode, cOverloadCaptionMax);
-      mCommand.Description := TAtlasOverloads.Caption(ANodes, ALines, mNode, MaxInt);
-    end;
-    if AOverloads then
-    begin
-      mCommand.Path := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly),
-        [ANodes[mNode].NameLine + 1]);
-    end;
-    if mNode = ACurrent then
-    begin
-      mCommand.ShortCut := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCurrent);
-    end;
-    Result := Result + [mCommand];
-  end;
-end;
-
-procedure TBreadcrumbsState.OpenMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-var
-  mCrumb: TAtlasCrumb;
-begin
-  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
-  begin
-    Exit;
-  end;
-  mCrumb := ABar.Crumbs[AIndex];
-  if Length(mCrumb.Places) > 0 then
-  begin
-    OpenPlaces(ABar, mCrumb, APoint);
-    Exit;
-  end;
-  OpenList(ABar, mCrumb.Text, mCrumb.Siblings, mCrumb.Node, APoint);
-end;
-
-/// <summary>Menü „Überladungen von …“ am Zähler des Glieds (#1784).</summary>
-procedure TBreadcrumbsState.OpenOverloads(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-var
-  mCrumb: TAtlasCrumb;
-begin
-  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
-  begin
-    Exit;
-  end;
-  mCrumb := ABar.Crumbs[AIndex];
-  OpenList(ABar, Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsPrompt), [mCrumb.Text]),
-    mCrumb.Overloads, mCrumb.Node, APoint, True);
-end;
-
-/// <summary>Einträge des Menüs „Erfüllt“ (#1785), die zum Muster APattern passen: Interface-Methode, darunter
-/// Datei und Zeile.</summary>
-function InterfaceCommands(const ATargets: TAtlasInterfaceTargets; const APattern: string): TArray<TAtlasCommand>;
-var
-  mIndex: Integer;
-  mCommand: TAtlasCommand;
-begin
-  Result := nil;
-  for mIndex := 0 to High(ATargets) do
-  begin
-    if not TAtlasBreadcrumbs.MatchesAtWordStart(APattern, ATargets[mIndex].Name) then
-    begin
-      Continue;
-    end;
-    mCommand := Default(TAtlasCommand);
-    mCommand.Id := IntToStr(mIndex);
-    mCommand.Caption := ATargets[mIndex].Name;
-    mCommand.Path := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesPath),
-      [ExtractFileName(ATargets[mIndex].FileName), ATargets[mIndex].Line + 1]);
-    Result := Result + [mCommand];
-  end;
-end;
-
-/// <summary>Menü „Erfüllt“ an der Interface-Marke des Glieds (#1785): Interface-Methoden mit Unit und Zeile; Enter
-/// springt zur Deklaration im Interface.</summary>
-procedure TBreadcrumbsState.OpenInterfaces(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-var
-  mTargets: TAtlasInterfaceTargets;
-  mWindow: TAtlasPaletteWindow;
-  mCommands: TArray<TAtlasCommand>;
-begin
-  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
-  begin
-    Exit;
-  end;
-  // Kopie: Das Menü lebt länger als der aktuelle Stand.
-  mTargets := ABar.Crumbs[AIndex].Interfaces;
-  if Length(mTargets) = 0 then
-  begin
-    Exit;
-  end;
-  mCommands := InterfaceCommands(mTargets, '');
-  mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesPrompt);
-  mWindow.Presorted := True;
-  mWindow.QueryDelay := 0;
-  mWindow.OnQuery :=
-    function(APattern: string): TArray<TAtlasCommand>
-    begin
-      Result := InterfaceCommands(mTargets, APattern);
-    end;
-  mWindow.OnExecuteShift :=
-    procedure(ACommand: TAtlasCommand; AShifted: Boolean)
-    var
-      mChosen: Integer;
-    begin
-      mChosen := StrToIntDef(ACommand.Id, -1);
-      if (mChosen >= 0) and (mChosen <= High(mTargets)) and (mTargets[mChosen].FileName <> '') then
-      begin
-        TAtlasIdeNavigation.GoToLocation(mTargets[mChosen].FileName, mTargets[mChosen].Line,
-          mTargets[mChosen].Character);
-      end;
-    end;
-  mWindow.ShowAt(APoint, MulDiv(cMenuWidth, ABar.CurrentPPI, 96));
-end;
-
-procedure TBreadcrumbsState.OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-var
-  mCrumb: TAtlasCrumb;
-  mCurrent, mNext: Integer;
-begin
-  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
-  begin
-    Exit;
-  end;
-  mCrumb := ABar.Crumbs[AIndex];
-  // Vorgewählt ist das Kind, in dem der Caret steht: das nächste Glied mit Knoten (ein Abschnittsglied
-  // dazwischen hat keinen).
-  mCurrent := -1;
-  mNext := AIndex + 1;
-  while (mCurrent < 0) and (mNext <= High(ABar.Crumbs)) do
-  begin
-    mCurrent := ABar.Crumbs[mNext].Node;
-    Inc(mNext);
-  end;
-  OpenList(ABar, mCrumb.Text + ' ›', mCrumb.Children, mCurrent, APoint);
-end;
-
-procedure TBreadcrumbsState.OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string;
-  const AItems: TArray<Integer>; ACurrent: Integer; const APoint: TPoint; AOverloads: Boolean);
-var
-  mItems: TArray<Integer>;
-  mNodes: TAtlasOutlineNodes;
-  mLines: TArray<string>;
-  mFileName: string;
-  mWindow: TAtlasPaletteWindow;
-begin
-  if (Length(AItems) = 0) or (FFileName = '') then
-  begin
-    TAtlasGuard.Log(Format('Brotkrumen: kein Menü (Einträge %d, Datei %s)', [Length(AItems),
-      BoolToStr(FFileName <> '', True)]));
-    Exit;
-  end;
-  // Kopien: Das Menü lebt länger als der aktuelle Stand.
-  mItems := AItems;
-  mNodes := FNodes;
-  mLines := FText.Lines;
-  mFileName := FFileName;
-  mWindow := TAtlasPaletteWindow.CreatePalette(Application, CommandsOf(mNodes, mLines, mItems, ACurrent,
-    AOverloads), nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := APrompt;
-  mWindow.RowHints := True;
-  mWindow.Presorted := True;
-  mWindow.QueryDelay := 0;
-  if ACurrent >= 0 then
-  begin
-    mWindow.InitialId := IntToStr(ACurrent);
-  end;
-  mWindow.OnQuery :=
-    function(APattern: string): TArray<TAtlasCommand>
-    begin
-      Result := CommandsOf(mNodes, mLines, TAtlasBreadcrumbs.Filter(mNodes, mItems, APattern), ACurrent,
-        AOverloads);
-    end;
-  mWindow.OnExecuteShift :=
-    procedure(ACommand: TAtlasCommand; AShifted: Boolean)
-    var
-      Node, Target: Integer;
-    begin
-      Node := StrToIntDef(ACommand.Id, -1);
-      if (Node < 0) or (Node > High(mNodes)) then
-      begin
-        Exit;
-      end;
-      // Enter zur Implementierung, Umschalt+Enter zur Deklaration.
-      Target := TAtlasBreadcrumbs.Target(mNodes, Node, not AShifted);
-      if Target < 0 then
-      begin
-        Exit;
-      end;
-      TAtlasIdeNavigation.GoToLocation(mFileName, mNodes[Target].NameLine, mNodes[Target].NameCharacter);
-    end;
-  mWindow.ShowAt(APoint, MulDiv(cMenuWidth, ABar.CurrentPPI, 96));
-end;
-
-/// <summary>Gedimmte Zeile eines Sprungziels: bei Sichtbarkeitsabschnitten mit Mitgliederzahl (#1768,
-/// ACounts), bei Deklarationsblöcken (#1766) mit dem Teil der Unit, sonst nur die Zeile.</summary>
-function PlacePath(const APlace: TAtlasCrumbPlace; ACounts: Boolean): string;
-begin
-  if ACounts and (APlace.Mark <> '') then
-  begin
-    if APlace.Count = 1 then
-    begin
-      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
-    end
-    else
-    begin
-      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCount), [APlace.Count,
-        APlace.Line + 1]);
-    end;
-  end
-  else if APlace.Group <> '' then
-  begin
-    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLine), [APlace.Group,
-      APlace.Line + 1]);
-  end
-  else
-  begin
-    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
-  end;
-end;
-
-function PlaceCommands(const APlaces: TArray<TAtlasCrumbPlace>; const APattern: string;
-  ACurrent: Integer; ACounts: Boolean): TArray<TAtlasCommand>;
-var
-  mIndex: Integer;
-  mCommand: TAtlasCommand;
-  mText: string;
-begin
-  Result := nil;
-  for mIndex := 0 to High(APlaces) do
-  begin
-    mText := PlaceText(APlaces[mIndex]);
-    if not TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mText) then
-    begin
-      Continue;
-    end;
-    mCommand := Default(TAtlasCommand);
-    mCommand.Id := IntToStr(mIndex);
-    // Verschachtelte Regionen (#1764) eingerückt.
-    mCommand.Caption := StringOfChar(' ', 4 * APlaces[mIndex].Depth) + mText;
-    // Marke der Gliederung vor dem Abschnitt (#1768).
-    if ACounts and (APlaces[mIndex].Mark <> '') then
-    begin
-      mCommand.Caption := APlaces[mIndex].Mark + ' ' + mCommand.Caption;
-    end;
-    mCommand.Path := PlacePath(APlaces[mIndex], ACounts);
-    if mIndex = ACurrent then
-    begin
-      mCommand.ShortCut := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCurrent);
-    end;
-    Result := Result + [mCommand];
-  end;
-end;
-
-/// <summary>Einträge „Neue Zeile am Ende von …“ je Abschnitt und „Abschnitt anlegen: …“ je fehlendem Abschnitt
-/// (#1768), soweit an und zum Muster passend.</summary>
-function SectionCommands(const APlaces: TArray<TAtlasCrumbPlace>; const AMissing: TArray<string>;
-  const APattern: string): TArray<TAtlasCommand>;
-var
-  mIndex: Integer;
-  mCommand: TAtlasCommand;
-  mKeyword: string;
-begin
-  Result := nil;
-  if TAtlasIdeSettings.Current.BreadcrumbsSectionAppend then
-  begin
-    for mIndex := 0 to High(APlaces) do
-    begin
-      mCommand := Default(TAtlasCommand);
-      mCommand.Id := cAppendId + IntToStr(mIndex);
-      mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionAppend),
-        [APlaces[mIndex].Text]);
-      if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
-      begin
-        Result := Result + [mCommand];
-      end;
-    end;
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsSectionCreate then
-  begin
-    for mKeyword in AMissing do
-    begin
-      mCommand := Default(TAtlasCommand);
-      mCommand.Id := cCreateId + mKeyword;
-      mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCreate), [mKeyword]);
-      if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
-      begin
-        Result := Result + [mCommand];
-      end;
-    end;
-  end;
-end;
-
-/// <summary>Sprungziele und, beim Sichtbarkeitsglied (AEditable), die Einträge zum Ändern (#1768).</summary>
-function MenuCommands(const APlaces: TArray<TAtlasCrumbPlace>; const AMissing: TArray<string>;
-  const APattern: string; ACurrent: Integer; ACounts, AEditable: Boolean): TArray<TAtlasCommand>;
-begin
-  Result := PlaceCommands(APlaces, APattern, ACurrent, ACounts);
-  if AEditable then
-  begin
-    Result := Result + SectionCommands(APlaces, AMissing, APattern);
-  end;
-end;
-
-/// <summary>Menü der Sprungziele eines Glieds ohne Knoten (Sichtbarkeitsabschnitte des Typs, #1759); beim
-/// Sichtbarkeitsglied dahinter „Neue Zeile am Ende von …“ und „Abschnitt anlegen: …“ (#1768).</summary>
-procedure TBreadcrumbsState.OpenPlaces(ABar: TAtlasBreadcrumbBar; const ACrumb: TAtlasCrumb; const APoint: TPoint);
-var
-  mPlaces: TArray<TAtlasCrumbPlace>;
-  mMissing: TArray<string>;
-  mNodes: TAtlasOutlineNodes;
-  mLines: TArray<string>;
-  mCurrent, mLine, mCharacter: Integer;
-  mFileName: string;
-  mCounts, mEditable: Boolean;
-  mWindow: TAtlasPaletteWindow;
-begin
-  if FFileName = '' then
-  begin
-    Exit;
-  end;
-  // Kopien: Das Menü lebt länger als der aktuelle Stand.
-  mPlaces := ACrumb.Places;
-  mCurrent := ACrumb.Current;
-  mFileName := FFileName;
-  mNodes := FNodes;
-  mLines := FText.Lines;
-  mLine := FLine;
-  mCharacter := FCharacter;
-  mCounts := TAtlasIdeSettings.Current.BreadcrumbsSectionCounts;
-  // Nur das Sichtbarkeitsglied bekommt die Einträge zum Ändern.
-  mEditable := ACrumb.SectionType >= 0;
-  mMissing := nil;
-  if mEditable then
-  begin
-    mMissing := TAtlasSectionEditor.Missing(mNodes, TAtlasVisibilitySectionFinder.At(mNodes, mLines, mLine,
-      mCharacter));
-  end;
-  mWindow := TAtlasPaletteWindow.CreatePalette(Application, MenuCommands(mPlaces, mMissing, '', mCurrent, mCounts,
-    mEditable), nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := ACrumb.Text;
-  mWindow.Presorted := True;
-  mWindow.QueryDelay := 0;
-  if mCurrent >= 0 then
-  begin
-    mWindow.InitialId := IntToStr(mCurrent);
-  end;
-  mWindow.OnQuery :=
-    function(APattern: string): TArray<TAtlasCommand>
-    begin
-      Result := MenuCommands(mPlaces, mMissing, APattern, mCurrent, mCounts, mEditable);
-    end;
-  mWindow.OnExecuteShift :=
-    procedure(ACommand: TAtlasCommand; AShifted: Boolean)
-    var
-      mChosen: Integer;
-    begin
-      if ACommand.Id.StartsWith(cAppendId) then
-      begin
-        TAtlasIdeSectionEdit.Append(mFileName, mNodes, mLines, mLine, mCharacter,
-          StrToIntDef(ACommand.Id.Substring(Length(cAppendId)), -2));
-        Exit;
-      end;
-      if ACommand.Id.StartsWith(cCreateId) then
-      begin
-        TAtlasIdeSectionEdit.Add(mFileName, mNodes, mLines, mLine, mCharacter,
-          ACommand.Id.Substring(Length(cCreateId)));
-        Exit;
-      end;
-      mChosen := StrToIntDef(ACommand.Id, -1);
-      if (mChosen >= 0) and (mChosen <= High(mPlaces)) then
-      begin
-        TAtlasIdeNavigation.GoToLocation(mFileName, mPlaces[mChosen].Line, mPlaces[mChosen].Character);
-      end;
-    end;
-  mWindow.ShowAt(APoint, MulDiv(cMenuWidth, ABar.CurrentPPI, 96));
+  mBar.SetCrumbs(TAtlasIdeCrumbLists.Prepared(TAtlasBreadcrumbs.Path(FText, mRequest),
+    mInterfaces, FSource.Nodes));
 end;
 
 procedure TBreadcrumbsState.Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
@@ -1064,7 +611,7 @@ var
   mCrumb: TAtlasCrumb;
   mTarget: Integer;
 begin
-  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FFileName = '') then
+  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FSource.FileName = '') then
   begin
     Exit;
   end;
@@ -1075,33 +622,43 @@ begin
     // Unit-Glied: an den Anfang der Datei.
     if mCrumb.Badge.Kind = TAtlasBadgeKind.Unit_ then
     begin
-      TAtlasIdeNavigation.GoToLocation(FFileName, 0, 0);
+      TAtlasIdeNavigation.GoToLocation(FSource.FileName, 0, 0);
     end
     else if (mCrumb.Current >= 0) and (mCrumb.Current <= High(mCrumb.Places)) then
     begin
       // Abschnittsglied: zu seinem Schlüsselwort.
-      TAtlasIdeNavigation.GoToLocation(FFileName, mCrumb.Places[mCrumb.Current].Line,
+      TAtlasIdeNavigation.GoToLocation(FSource.FileName, mCrumb.Places[mCrumb.Current].Line,
         mCrumb.Places[mCrumb.Current].Character);
     end;
     Exit;
   end;
-  mTarget := TAtlasBreadcrumbs.Target(FNodes, mCrumb.Node, not ADeclaration);
+  mTarget := TAtlasBreadcrumbs.Target(FSource.Nodes, mCrumb.Node, not ADeclaration);
   if mTarget < 0 then
   begin
     Exit;
   end;
-  TAtlasIdeNavigation.GoToLocation(FFileName, FNodes[mTarget].NameLine, FNodes[mTarget].NameCharacter);
+  TAtlasIdeNavigation.GoToLocation(FSource.FileName, FSource.Nodes[mTarget].NameLine,
+    FSource.Nodes[mTarget].NameCharacter);
+end;
+
+procedure TBreadcrumbsState.Open(AList: TAtlasCrumbList; ABar: TAtlasBreadcrumbBar; AIndex: Integer;
+  const APoint: TPoint);
+begin
+  if (ABar = FActiveBar) and (AIndex >= 0) and (AIndex <= High(ABar.Crumbs)) then
+  begin
+    TAtlasIdeCrumbLists.Open(AList, FSource, ABar, AIndex, APoint);
+  end;
 end;
 
 /// <summary>Kontextmenü am Glied AIndex (#1786); nur mit editor.breadcrumbsContextMenu.</summary>
 procedure TBreadcrumbsState.ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
 begin
-  if (ABar <> FActiveBar) or (FFileName = '') or not TAtlasIdeSettings.Current.BreadcrumbsContextMenu then
+  if (ABar <> FActiveBar) or (FSource.FileName = '') or not TAtlasIdeSettings.Current.BreadcrumbsContextMenu then
   begin
     Exit;
   end;
-  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FText.Lines, ABar.Crumbs, AIndex,
-    TAtlasIdeBreadcrumbs.FMenuHooks);
+  TAtlasIdeCrumbMenu.Show(APoint, TAtlasCrumbMenuFile.Create(FSource.FileName, FSource.Nodes, FSource.Lines),
+    ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
 end;
 
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
@@ -1136,7 +693,7 @@ end;
 function TBreadcrumbsState.HasCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer): Boolean;
 begin
   Result := TAtlasIdeSettings.Current.BreadcrumbsMetrics and (ABar = FActiveBar) and (AIndex >= 0) and
-    (AIndex <= High(ABar.Crumbs)) and TAtlasCrumbCards.HasCard(FNodes, ABar.Crumbs[AIndex].Node);
+    (AIndex <= High(ABar.Crumbs)) and TAtlasCrumbCards.HasCard(FSource.Nodes, ABar.Crumbs[AIndex].Node);
 end;
 
 /// <summary>Karte aus den Metriken der Datei; ohne Metriken nur die Kopfzeile (#1787).</summary>
@@ -1151,14 +708,14 @@ begin
   end;
   mMetrics := Default(TAtlasFileMetrics);
   mHasMetrics := Assigned(TAtlasIdeBreadcrumbs.FCardHooks.Metrics) and
-    TAtlasIdeBreadcrumbs.FCardHooks.Metrics(FFileName, mMetrics);
+    TAtlasIdeBreadcrumbs.FCardHooks.Metrics(FSource.FileName, mMetrics);
   if FCard = nil then
   begin
     FCard := TAtlasCrumbCardTip.Create(nil);
   end;
   FCard.Colors := TAtlasIdeStyle.Colors;
-  FCard.ShowCard(TAtlasCrumbCards.Build(FNodes, FText.Lines, ABar.Crumbs[AIndex].Node, mHasMetrics, mMetrics),
-    APoint);
+  FCard.ShowCard(TAtlasCrumbCards.Build(FSource.Nodes, FSource.Lines, ABar.Crumbs[AIndex].Node, mHasMetrics,
+    mMetrics), APoint);
 end;
 
 procedure TBreadcrumbsState.HideCard;
@@ -1185,8 +742,8 @@ begin
     // Wieder eingeschaltet: alles neu zeichnen.
     FDisabled := False;
     FShown := False;
-    FLine := -1;
-    FCharacter := -1;
+    FSource.Line := -1;
+    FSource.Character := -1;
     TAtlasGuard.Log('Brotkrumen: wieder eingeschaltet');
   end;
   TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,

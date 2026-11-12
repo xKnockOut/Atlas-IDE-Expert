@@ -34,6 +34,7 @@ type
     FSelectionMatchesMinLength: TEdit;
     FSelectionMatchesMaxMatches: TEdit;
     procedure EditorToolbarCustomizeClick(Sender: TObject);
+    procedure BuildBreadcrumbs;
   public
     procedure Build;
     procedure Build2;
@@ -72,6 +73,59 @@ uses
   Atlas.Core.Settings.StatusBarItems;
 
 { TAtlasSettingsEditorViewPart }
+
+/// <summary>Brotkrumenleiste (#590): Glieder, Sprungmenüs, Farben und Tastenkürzel.</summary>
+procedure TAtlasSettingsEditorViewPart.BuildBreadcrumbs;
+begin
+  // Brotkrumenleiste (#590).
+  BindCheck('Breadcrumbs', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbs)));
+  BindCheck('BreadcrumbsShowUnit',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsShowUnit)));
+  // Sichtbarkeitsabschnitt als Glied (#1759).
+  BindCheck('BreadcrumbsVisibility',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsVisibility)));
+  // Unterblock in Typen (#1767).
+  BindCheck('BreadcrumbsMemberBlocks',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMemberBlocks)));
+  // Sichtbarkeitsmarke am Methodenglied (#1765).
+  BindCheck('BreadcrumbsVisibilityMark',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsVisibilityMark)));
+  // Deklarationsblock der Unit (#1766).
+  BindCheck('BreadcrumbsDeclarationBlocks',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsDeclarationBlocks)));
+  // Bedingungszweig (#1763).
+  BindCheck('BreadcrumbsConditionals',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsConditionals)));
+  // Region (#1764).
+  BindCheck('BreadcrumbsRegions',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsRegions)));
+  // try/except/finally und case-Zweig (#1769).
+  BindCheck('BreadcrumbsStatements',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsStatements)));
+  // Sprungmenü am Sichtbarkeitsglied (#1768).
+  BindCheck('BreadcrumbsSectionCounts',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionCounts)));
+  BindCheck('BreadcrumbsSectionAppend',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionAppend)));
+  BindCheck('BreadcrumbsSectionCreate',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionCreate)));
+  BindCheck('BreadcrumbsIdeColors',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsIdeColors)));
+  BindCheck('BreadcrumbsHideIdeToolbar',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsHideIdeToolbar)));
+  BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
+  BindKey('SectionAppendKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SectionAppendCommand)));
+  // Rechtsklick-Menü an den Gliedern (#1786).
+  BindCheck('BreadcrumbsContextMenu',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsContextMenu)));
+  // Überladungen mit Zähler und Parametern (#1784).
+  BindCheck('BreadcrumbsOverloads',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsOverloads)));
+  BindCheck('BreadcrumbsInterfaces',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsInterfaces)));
+  BindCheck('BreadcrumbsMetrics',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMetrics)));
+end;
 
 procedure TAtlasSettingsEditorViewPart.Build;
 var
@@ -122,54 +176,7 @@ begin
   BindText('BlockEndLabelsMinLines',
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBlockEndLabelsMinLines)));
   BindCheck('DimUnusedUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDimUnusedUses)));
-  // Brotkrumenleiste (#590).
-  BindCheck('Breadcrumbs', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbs)));
-  BindCheck('BreadcrumbsShowUnit',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsShowUnit)));
-  // Sichtbarkeitsabschnitt als Glied (#1759).
-  BindCheck('BreadcrumbsVisibility',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsVisibility)));
-  // Unterblock in Typen (#1767).
-  BindCheck('BreadcrumbsMemberBlocks',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMemberBlocks)));
-  // Sichtbarkeitsmarke am Methodenglied (#1765).
-  BindCheck('BreadcrumbsVisibilityMark',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsVisibilityMark)));
-  // Deklarationsblock der Unit (#1766).
-  BindCheck('BreadcrumbsDeclarationBlocks',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsDeclarationBlocks)));
-  // Bedingungszweig (#1763).
-  BindCheck('BreadcrumbsConditionals',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsConditionals)));
-  // Region (#1764).
-  BindCheck('BreadcrumbsRegions',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsRegions)));
-  // try/except/finally und case-Zweig (#1769).
-  BindCheck('BreadcrumbsStatements',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsStatements)));
-  // Sprungmenü am Sichtbarkeitsglied (#1768).
-  BindCheck('BreadcrumbsSectionCounts',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionCounts)));
-  BindCheck('BreadcrumbsSectionAppend',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionAppend)));
-  BindCheck('BreadcrumbsSectionCreate',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsSectionCreate)));
-  BindCheck('BreadcrumbsIdeColors',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsIdeColors)));
-  BindCheck('BreadcrumbsHideIdeToolbar',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsHideIdeToolbar)));
-  BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
-  BindKey('SectionAppendKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SectionAppendCommand)));
-  // Rechtsklick-Menü an den Gliedern (#1786).
-  BindCheck('BreadcrumbsContextMenu',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsContextMenu)));
-  // Überladungen mit Zähler und Parametern (#1784).
-  BindCheck('BreadcrumbsOverloads',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsOverloads)));
-  BindCheck('BreadcrumbsInterfaces',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsInterfaces)));
-  BindCheck('BreadcrumbsMetrics',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMetrics)));
+  BuildBreadcrumbs;
   BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
   // Atlas-Editorleiste (#1101).
   BindCheck('EditorToolbar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbar)));

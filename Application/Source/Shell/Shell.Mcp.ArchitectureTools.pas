@@ -259,7 +259,7 @@ var
   mValue: TJSONValue;
   mResolution: Double;
 begin
-  if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
+  if not TArchitectureReport.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('section',
       ['overview', 'central', 'subsystems', 'cycles', 'crossLinks']));
@@ -278,12 +278,12 @@ begin
     end;
     mResolution := TJSONNumber(mValue).AsDouble;
   end;
-  mCompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
+  mCompareWith := TMcpArgs.OptionalString(AArguments, 'compareWith');
   if mCompareWith <> '' then
   begin
     mCompareWith := AContext.Guard.Resolve(mCompareWith);
   end;
-  Result := AContext.Architecture(mSection, TMcpServer.OptionalString(AArguments, 'unit'), mCompareWith, mResolution);
+  Result := AContext.Architecture(mSection, TMcpArgs.OptionalString(AArguments, 'unit'), mCompareWith, mResolution);
 end;
 
 procedure AddGetArchitecture(const AContext: TMcpToolContext);

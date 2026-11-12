@@ -49,6 +49,16 @@ type
     procedure EventHandlerIsSilent;
     [Test]
     procedure PublishedMethodIsSilent;
+    /// <summary>Ohne Sichtbarkeitsangabe ist eine Methode in TDataModule, TForm, Nachfahren derselben Datei und
+    /// unter {$M+} published: Der Designer legt Ereignis-Handler dort an.</summary>
+    [Test]
+    procedure ImplicitlyPublishedHandlerIsSilent;
+    /// <summary>Ohne RTTI (TObject) oder hinter private bleibt die Methode ein Befund.</summary>
+    [Test]
+    procedure DefaultSectionWithoutTypeInfoReports;
+    /// <summary>Die Formulardatei weist die Methode einem Ereignis zu.</summary>
+    [Test]
+    procedure FormEventHandlerIsSilent;
     [Test]
     procedure CallbackRoutineIsSilent;
     [Test]
@@ -319,6 +329,56 @@ begin
   TRuleAssert.Silent(TUnusedParameterRule.Create,
     ClassUnit('  published'#10'    procedure Changed(AValue: Integer);',
       'procedure TFoo.Changed(AValue: Integer);'#10'begin'#10'end;'));
+end;
+
+procedure TUnusedRulesTests.ImplicitlyPublishedHandlerIsSilent;
+const
+  cImpl = 'procedure TFoo.DataSet1BeforePost(DataSet: TDataSet);'#10'begin'#10'end;';
+begin
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    ClassUnit('    procedure DataSet1BeforePost(DataSet: TDataSet);', cImpl, 'TDataModule'));
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    ClassUnit('    procedure DataSet1BeforePost(DataSet: TDataSet);'#10'  private'#10'    FWert: Integer;', cImpl,
+      'Vcl.Forms.TForm'));
+  // Vorfahr in derselben Datei.
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TBasis = class(TForm)'#10'  end;'#10 +
+    '  TFoo = class(TBasis)'#10'    procedure DataSet1BeforePost(DataSet: TDataSet);'#10'  end;'#10 +
+    'implementation'#10 + cImpl + #10'end.');
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  {$M+}'#10'  TFoo = class'#10 +
+    '    procedure DataSet1BeforePost(DataSet: TDataSet);'#10'  end;'#10'  {$M-}'#10 +
+    'implementation'#10 + cImpl + #10'end.');
+end;
+
+procedure TUnusedRulesTests.DefaultSectionWithoutTypeInfoReports;
+const
+  cImpl = 'procedure TFoo.Run(A: Integer);'#10'begin'#10'end;';
+begin
+  TRuleAssert.Reports(TUnusedParameterRule.Create, ClassUnit('    procedure Run(A: Integer);', cImpl));
+  TRuleAssert.Reports(TUnusedParameterRule.Create,
+    ClassUnit('  private'#10'    procedure Run(A: Integer);', cImpl, 'TDataModule'));
+  // Lokaler Vorfahr ohne RTTI.
+  TRuleAssert.Reports(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  end;'#10 +
+    '  TFoo = class(TBasis)'#10'    procedure Run(A: Integer);'#10'  end;'#10 +
+    'implementation'#10 + cImpl + #10'end.');
+end;
+
+procedure TUnusedRulesTests.FormEventHandlerIsSilent;
+var
+  Source: string;
+  Rule: IRule;
+begin
+  // Erst in eine Interface-Variable: an den const-Parameter direkt übergeben würde die Regel nie frei.
+  Rule := TUnusedParameterRule.Create;
+  Source := ClassUnit('  public'#10'    procedure DataSet1BeforePost(DataSet: TDataSet);',
+    'procedure TFoo.DataSet1BeforePost(DataSet: TDataSet);'#10'begin'#10'end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
+    'object Foo: TFoo'#10'  object DataSet1: TClientDataSet'#10'    BeforePost = DataSet1BeforePost'#10 +
+    '  end'#10'end'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
+    'object Foo: TFoo'#10'  Caption = ''DataSet1BeforePostX'''#10'end'))));
 end;
 
 procedure TUnusedRulesTests.CallbackRoutineIsSilent;

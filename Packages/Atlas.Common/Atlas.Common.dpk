@@ -54,6 +54,7 @@ contains
   Atlas.Common.JsonRpc.TracingTransport in 'Source\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.pas',
   Atlas.Common.JsonRpc.PendingRequests in 'Source\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.pas',
   Atlas.Common.JsonRpc.Watchdog in 'Source\JsonRpc\Atlas.Common.JsonRpc.Watchdog.pas',
+  Atlas.Common.JsonRpc.WorkerPool in 'Source\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.pas',
   Atlas.Common.JsonRpc.RecentMessages in 'Source\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.pas',
   Atlas.Common.JsonRpc.CurrentRequest in 'Source\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.pas',
   Atlas.Common.JsonRpc.Dispatcher in 'Source\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.pas',

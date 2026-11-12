@@ -43,9 +43,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.FormInfo,
-  Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.DocWiki,
@@ -205,29 +203,6 @@ begin
   end;
 end;
 
-/// <summary>Werte des Komponentenfelds AFieldName im Formular AFormText (#126); nur die eigene Formulardatei, ohne
-/// Vorfahr-Formulare (#115 nicht geplant).</summary>
-function FormFieldValues(const AFormText, AFormFile, AFormClass, AFieldName: string): string;
-var
-  mDocument: TDfmDocument;
-  mObject: TDfmObject;
-begin
-  Result := '';
-  if AFormText = '' then
-  begin
-    Exit;
-  end;
-  mDocument := TDfmParser.Parse(AFormText);
-  try
-    mObject := TFormInfo.FindComponent(mDocument, AFormClass, AFieldName);
-    if mObject <> nil then
-    begin
-      Result := TFormInfo.ComponentMarkdown(mObject, AFormFile);
-    end;
-  finally
-    mDocument.Free;
-  end;
-end;
 
 /// <summary>Konstruktor ASymbol steht in der Deklaration der Klasse AClass (Zeilen dazwischen).</summary>
 function IsOwnConstructor(const ASymbol, AClass: TIndexSymbol; const ALines: TArray<string>): Boolean;
@@ -541,7 +516,7 @@ begin
   FInfo.Value := ValueOf(ASymbol);
   if (ASymbol.Kind = TIndexSymbolKind.Field) and (ASymbol.Container <> '') then
   begin
-    FInfo.FormValues := FormFieldValues(FormText(FTarget.FileName, FFileName, FTreeText, FSource.ReadText,
+    FInfo.FormValues := TFormInfo.FieldMarkdown(FormText(FTarget.FileName, FFileName, FTreeText, FSource.ReadText,
       mFormFile), mFormFile, ASymbol.Container, ASymbol.Name);
   end;
 end;
