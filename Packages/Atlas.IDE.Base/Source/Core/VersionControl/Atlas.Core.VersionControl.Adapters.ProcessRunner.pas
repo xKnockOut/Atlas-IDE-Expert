@@ -53,6 +53,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.WinBase.Process,
   Atlas.Core.VersionControl.ServerAccess;
 
 const
@@ -266,7 +267,6 @@ type
     FOutput: TPipeBuffer;
     FErrors: TPipeBuffer;
     function OpenPipes: Boolean;
-    function StartupInfo: TStartupInfo;
     function Start(const AExecutable, ACommandLine, AWorkingDir: string): Boolean;
     procedure DrainAll;
     function Wait(ARunner: TAtlasVcsProcessRunner; ATimeoutMs: Cardinal): TAtlasVcsOutcome;
@@ -331,54 +331,29 @@ begin
 end;
 
 function TChildProcess.OpenPipes: Boolean;
-var
-  mSecurity: TSecurityAttributes;
 begin
-  mSecurity.nLength := SizeOf(mSecurity);
-  mSecurity.lpSecurityDescriptor := nil;
-  mSecurity.bInheritHandle := True;
-  Result := CreatePipe(FOutRead, FOutWrite, @mSecurity, 0) and CreatePipe(FErrRead, FErrWrite, @mSecurity, 0);
+  // Nicht vererbbar: Nur die Schreibenden und NUL erbt der Kindprozess, gezielt über TAtlasProcessLauncher (R-101).
+  Result := CreatePipe(FOutRead, FOutWrite, nil, 0) and CreatePipe(FErrRead, FErrWrite, nil, 0);
   if Result then
   begin
-    // Nur die Schreibenden erbt der Kindprozess.
-    SetHandleInformation(FOutRead, HANDLE_FLAG_INHERIT, 0);
-    SetHandleInformation(FErrRead, HANDLE_FLAG_INHERIT, 0);
-    FNullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity, OPEN_EXISTING, 0,
-      0);
+    FNullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
   end;
-end;
-
-function TChildProcess.StartupInfo: TStartupInfo;
-begin
-  FillChar(Result, SizeOf(Result), 0);
-  Result.cb := SizeOf(Result);
-  Result.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-  Result.wShowWindow := SW_HIDE;
-  if FNullInput <> INVALID_HANDLE_VALUE then
-  begin
-    Result.hStdInput := FNullInput;
-  end;
-  Result.hStdOutput := FOutWrite;
-  Result.hStdError := FErrWrite;
 end;
 
 function TChildProcess.Start(const AExecutable, ACommandLine, AWorkingDir: string): Boolean;
 var
-  mStartup: TStartupInfo;
-  mCommandLine, mEnvironment: string;
-  mWorkingDir: PChar;
+  mLaunch: TAtlasProcessLaunch;
+  mInput: THandle;
 begin
-  mStartup := StartupInfo;
-  mCommandLine := ACommandLine;
-  UniqueString(mCommandLine);
-  mWorkingDir := nil;
-  if AWorkingDir <> '' then
+  mInput := 0;
+  if FNullInput <> INVALID_HANDLE_VALUE then
   begin
-    mWorkingDir := PChar(AWorkingDir);
+    mInput := FNullInput;
   end;
-  mEnvironment := NoPromptBlock;
-  Result := CreateProcess(PChar(AExecutable), PChar(mCommandLine), nil, nil, True,
-    CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, PChar(mEnvironment), mWorkingDir, mStartup, FProcess);
+  mLaunch := TAtlasProcessLaunch.Create(AExecutable, ACommandLine, AWorkingDir, mInput, FOutWrite, FErrWrite);
+  mLaunch.Hidden := True;
+  mLaunch.Environment := NoPromptBlock;
+  Result := TAtlasProcessLauncher.Launch(mLaunch, FProcess);
   if Result then
   begin
     // Eigene Schreibenden schließen, damit die Pipes mit dem Prozess enden.

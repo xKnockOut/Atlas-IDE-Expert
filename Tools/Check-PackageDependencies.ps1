@@ -5,22 +5,24 @@
 .DESCRIPTION
     - Atlas.Text    : nur RTL, ohne andere Atlas-Artefakte; gemeinsamer Code
         für Server und Plugin
+    - Atlas.WinBase : RTL, Winapi.*, System.Win.* und Atlas.Text; gemeinsamer
+        Windows-Code für Server und Plugin (Prozessstart)
     - Atlas.Common  : frei von Windows und VCL (nur plattformunabhängige RTL,
         Atlas.Text)
-    - Atlas.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Atlas.Common)
+    - Atlas.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Atlas.Common, Atlas.WinBase)
     - Atlas.IDE.Base (Kern des Plugins, bis #1456 Atlas.IDE.Expert): eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
-        mit; darum nur RTL, Winapi und eigene Atlas.Core.VersionControl.*-Units
+        mit; darum nur RTL, Winapi, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
 
-    Atlas.Text im Plugin: Das Plugin requiret Atlas.Text nicht,
-    sondern übersetzt dessen Units selbst mit (contains … in
-    '..\Atlas.Text\Source\…'). Geprüft wird, dass
-      - das Plugin außer eigenen Units (Source\…) nur Atlas.Text-Units enthält,
-      - es genau die Units aus Atlas.Text.dpk enthält (sonst W1033),
-      - Atlas.Tests.dpr und AtlasServer.dpr keine Atlas.Text-Quellen einbinden
-        (sie linken die DCUs aus Dcu\Atlas.Text; zwei Fassungen vermeiden).
+    Atlas.Text und Atlas.WinBase im Plugin: Das Plugin requiret
+    beide nicht, sondern übersetzt deren Units selbst mit (contains … in
+    '..\Atlas.Text\Source\…' bzw. '..\Atlas.WinBase\Source\…'). Geprüft wird, dass
+      - das Plugin außer eigenen Units (Source\…) nur Units dieser beiden enthält,
+      - es genau die Units aus Atlas.Text.dpk und Atlas.WinBase.dpk enthält (sonst W1033),
+      - Atlas.Tests.dpr und AtlasServer.dpr keine Quellen der beiden einbinden
+        (sie linken die DCUs aus Dcu\Atlas.Text bzw. Dcu\Atlas.WinBase; zwei Fassungen vermeiden).
 
     Kopien-Sperre: Außerhalb von Packages/Atlas.Text darf im
     implementation-Teil keine Routine wie LineBreakOf, SplitLines, IndentOf,
@@ -127,6 +129,17 @@ $Packages = @(
         Reason           = 'nur RTL; wird auch ins Plugin übersetzt'
     },
     @{
+        # Gegenstück zu Atlas.Text für Code mit Windows-API (Code-Review R-101/D-104); wie Atlas.Text auch als
+        # Quelltext im Plugin, darum ohne VCL und ohne alles, was das Plugin nicht enthalten darf.
+        Name             = 'Atlas.WinBase'
+        Path             = 'Packages/Atlas.WinBase'
+        AllowedRequires  = @('rtl', 'Atlas.Text')
+        ForbiddenPrefix  = @('Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                             'Setup.')
+        ForbiddenUnits   = $LegacyVclUnits
+        Reason           = 'nur RTL, Windows-API und Atlas.Text; wird auch ins Plugin übersetzt'
+    },
+    @{
         Name             = 'Atlas.Common'
         Path             = 'Packages/Atlas.Common'
         AllowedRequires  = @('rtl', 'Atlas.Text')
@@ -137,7 +150,7 @@ $Packages = @(
     @{
         Name             = 'Atlas.Windows'
         Path             = 'Packages/Atlas.Windows'
-        AllowedRequires  = @('rtl', 'Atlas.Common', 'Atlas.Text')
+        AllowedRequires  = @('rtl', 'Atlas.Common', 'Atlas.Text', 'Atlas.WinBase')
         ForbiddenPrefix  = @('Vcl.', 'FMX.')
         ForbiddenUnits   = $LegacyVclUnits
         Reason           = 'frei von VCL'
@@ -443,11 +456,13 @@ foreach ($package in $Packages) {
         $layer = $Layers | Where-Object { $ownUnit.StartsWith($_.UnitPrefix, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            # Geteilte Units (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature.
+            # Geteilte Units (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature und Atlas.WinBase.*
+            # (Server und Plugin haben es beide).
             if ($ownUnit.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
                 $unit.Name.StartsWith('Atlas.', [StringComparison]::OrdinalIgnoreCase) -and
-                -not $unit.Name.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* übersetzt auch der Server mit und darf nur Atlas.Core.VersionControl.* verwenden"
+                -not $unit.Name.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
+                -not $unit.Name.StartsWith('Atlas.WinBase.', [StringComparison]::OrdinalIgnoreCase)) {
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* übersetzt auch der Server mit und darf nur Atlas.Core.VersionControl.* und Atlas.WinBase.* verwenden"
             }
             $prefixHit = $package.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
             $unitHit = $package.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
@@ -473,31 +488,36 @@ foreach ($package in $Packages) {
     }
 }
 
-# Atlas.Text im Plugin
-$textDpk = Join-Path $Root 'Packages/Atlas.Text/Atlas.Text.dpk'
+# Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk.
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
-if ((Test-Path $textDpk) -and (Test-Path $pluginDpk)) {
-    $textUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($textDpk))) | ForEach-Object { $_.Name })
+if (Test-Path $pluginDpk) {
     $pluginEntries = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($pluginDpk))))
     foreach ($entry in $pluginEntries) {
         $path = $entry.Path -replace '/', '\'
-        if ($path -ne '' -and -not $path.StartsWith('Source\') -and -not $path.StartsWith('..\Atlas.Text\Source\')) {
-            $violations += "${pluginDpkName}: contains $($entry.Name) in '$($entry.Path)' – das Plugin bindet fremde Units nur aus Atlas.Text ein"
+        $shared = $SharedSourcePackages | Where-Object { $path.StartsWith("..\$_\Source\") } | Select-Object -First 1
+        if ($path -ne '' -and -not $path.StartsWith('Source\') -and -not $shared) {
+            $violations += "${pluginDpkName}: contains $($entry.Name) in '$($entry.Path)' – das Plugin bindet fremde Units nur aus $($SharedSourcePackages -join ' und ') ein"
         }
-        if ($path.StartsWith('..\Atlas.Text\') -and -not $entry.Name.StartsWith('Atlas.Text.')) {
-            $violations += "${pluginDpkName}: contains $($entry.Name) – unter Atlas.Text nur Atlas.Text.*-Units"
+        if ($shared -and -not $entry.Name.StartsWith("$shared.")) {
+            $violations += "${pluginDpkName}: contains $($entry.Name) – unter $shared nur $shared.*-Units"
         }
     }
-    $pluginTextUnits = @($pluginEntries | Where-Object { $_.Name.StartsWith('Atlas.Text.') } | ForEach-Object { $_.Name })
-    foreach ($name in $textUnits | Where-Object { $pluginTextUnits -notcontains $_ }) {
-        $violations += "${pluginDpkName}: $name fehlt unter contains (steht in Atlas.Text.dpk; sonst W1033)"
-    }
-    foreach ($name in $pluginTextUnits | Where-Object { $textUnits -notcontains $_ }) {
-        $violations += "${pluginDpkName}: $name steht nicht in Atlas.Text.dpk"
+    foreach ($package in $SharedSourcePackages) {
+        $sharedDpk = Join-Path $Root "Packages/$package/$package.dpk"
+        if (-not (Test-Path $sharedDpk)) { continue }
+        $sharedUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($sharedDpk))) | ForEach-Object { $_.Name })
+        $pluginSharedUnits = @($pluginEntries | Where-Object { $_.Name.StartsWith("$package.") } | ForEach-Object { $_.Name })
+        foreach ($name in $sharedUnits | Where-Object { $pluginSharedUnits -notcontains $_ }) {
+            $violations += "${pluginDpkName}: $name fehlt unter contains (steht in $package.dpk; sonst W1033)"
+        }
+        foreach ($name in $pluginSharedUnits | Where-Object { $sharedUnits -notcontains $_ }) {
+            $violations += "${pluginDpkName}: $name steht nicht in $package.dpk"
+        }
     }
 }
-# Module und Verträge enthalten nur eigene Quellen; Atlas.Text kommt über requires Base (#1456).
+# Module und Verträge enthalten nur eigene Quellen; Atlas.Text und Atlas.WinBase kommen über requires Base (#1456).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
     $dpkName = "Packages/$folder/$folder.dpk"
     $dpkPath = Join-Path $Root $dpkName
@@ -515,8 +535,8 @@ foreach ($program in @('Tests/Atlas.Tests.dpr', 'Application/AtlasServer.dpr')) 
     $programPath = Join-Path $Root $program
     if (-not (Test-Path $programPath)) { continue }
     foreach ($entry in Get-UsesInEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($programPath)))) {
-        if (($entry.Path -replace '/', '\') -match '(?i)Atlas\.Text\\Source\\') {
-            $violations += "${program}: $($entry.Name) in '$($entry.Path)' – Atlas.Text kommt als DCU aus Dcu\Atlas.Text, nicht als Quelltext"
+        if (($entry.Path -replace '/', '\') -match '(?i)(Atlas\.Text|Atlas\.WinBase)\\Source\\') {
+            $violations += "${program}: $($entry.Name) in '$($entry.Path)' – $($Matches[1]) kommt als DCU aus Dcu\$($Matches[1]), nicht als Quelltext"
         }
     }
 }

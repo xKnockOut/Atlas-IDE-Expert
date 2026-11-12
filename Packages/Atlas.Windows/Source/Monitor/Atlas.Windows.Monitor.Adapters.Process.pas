@@ -37,7 +37,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Text.UpdateRun;
+  Atlas.Text.UpdateRun,
+  Atlas.WinBase.Process;
 
 type
   TJobBasicLimits = record
@@ -118,7 +119,8 @@ var
 begin
   mSecurity.nLength := SizeOf(mSecurity);
   mSecurity.lpSecurityDescriptor := nil;
-  mSecurity.bInheritHandle := True;
+  // Nicht vererbbar: Vererbbar macht sie erst TAtlasProcessLauncher, nur für diesen Start.
+  mSecurity.bInheritHandle := False;
   if AWrite then
   begin
     Result := CreateFile(PChar(AFileName), GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_DELETE, @mSecurity,
@@ -166,26 +168,12 @@ end;
 function Launch(const ACommandLine, AFolder: string; AOutput, AInput: THandle; out AInfo: TProcessInformation;
   out AError: string): Boolean;
 var
-  mStartup: TStartupInfo;
-  mCommandLine: string;
-  mFolder: PChar;
+  mLaunch: TAtlasProcessLaunch;
 begin
-  FillChar(mStartup, SizeOf(mStartup), 0);
-  mStartup.cb := SizeOf(mStartup);
-  mStartup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-  mStartup.wShowWindow := SW_HIDE;
-  mStartup.hStdInput := AInput;
-  mStartup.hStdOutput := AOutput;
-  mStartup.hStdError := AOutput;
-  mCommandLine := ACommandLine;
-  UniqueString(mCommandLine);
-  mFolder := nil;
-  if AFolder <> '' then
-  begin
-    mFolder := PChar(AFolder);
-  end;
-  Result := CreateProcess(nil, PChar(mCommandLine), nil, nil, True, cCreateNoWindow or CREATE_SUSPENDED, nil,
-    mFolder, mStartup, AInfo);
+  mLaunch := TAtlasProcessLaunch.Create('', ACommandLine, AFolder, AInput, AOutput, AOutput);
+  mLaunch.Flags := cCreateNoWindow or CREATE_SUSPENDED;
+  mLaunch.Hidden := True;
+  Result := TAtlasProcessLauncher.Launch(mLaunch, AInfo);
   if not Result then
   begin
     AError := SysErrorMessage(GetLastError);

@@ -879,6 +879,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
+        <DCCReference Include="..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Overview.pas">
             <Form>AtlasSettingsOverview</Form>
             <DesignClass>TFrame</DesignClass>
