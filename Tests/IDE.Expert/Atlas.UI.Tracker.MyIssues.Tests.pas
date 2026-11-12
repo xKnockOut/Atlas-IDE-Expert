@@ -80,6 +80,7 @@ uses
   Atlas.Core.Tracker.Reopened,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.ProjectPicker,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.MyIssues;
 
 type

@@ -28,15 +28,21 @@ uses
   Atlas.Core.Tracker.Review,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.CommentEditor,
+  Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Foundation.Dialog;
 
 type
+  /// <summary>AChange im Hintergrund schreiben und ADone im Hauptthread aufrufen (genau einmal). Eigener Typ:
+  /// Der frühere gemeinsame TAtlasTrackerSendEvent gilt seit #2123 nur noch als Plan des Beenden-Dialogs.</summary>
+  TAtlasReviewSendEvent = reference to procedure(const AChange: TAtlasTrackerWrite;
+    const ADone: TAtlasTrackerSendDone);
+
   /// <summary>Ereignisse des Dialogs; nil = nichts.</summary>
   TAtlasReviewDialogEvents = record
     /// <summary>„Wechseln“ auf den gewählten Branch.</summary>
     Switch: TProc<string>;
     /// <summary>„Senden“: Änderung im Hintergrund schreiben, Ergebnis über SendDone.</summary>
-    Send: TAtlasTrackerSendEvent;
+    Send: TAtlasReviewSendEvent;
     /// <summary>Der Dialog schließt (nach Senden, „Später entscheiden“ oder X), genau einmal; AReturn: zurück auf
     /// den eigenen Stand.</summary>
     Closed: TProc<Boolean>;
@@ -123,7 +129,6 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.EndDialog,
   Atlas.Core.Style.Signal,
   Atlas.Core.Tracker.Transitions,
   Atlas.UI.Tracker.Strings;
@@ -473,7 +478,7 @@ begin
   end
   else
   begin
-    FParts.Note.ShowNote(AText, TAtlasSignalKind.Warning);
+    FParts.Note.ShowNote(AText, TAtlasSignalKind.Warn);
   end;
 end;
 
