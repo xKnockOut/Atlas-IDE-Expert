@@ -26,6 +26,10 @@
 // - Methoden mit override, virtual, dynamic, abstract oder message,
 //   published-Methoden (DFM-Ereignisse), Methoden von Klassen mit Interfaces
 //   und Methoden, deren Typdeklaration nicht in der Datei steht,
+// - Methoden ohne Sichtbarkeitsangabe in Klassen mit RTTI für published ({$M+}, Nachfahren von TPersistent wie
+//   TForm, TFrame, TDataModule): Sie sind published, dort legt der Designer Ereignis-Handler an
+//   (DataSet1BeforePost(DataSet: TDataSet)); die Signatur gibt der Ereignistyp vor,
+// - Methoden, die die Formulardatei einem Ereignis zuweist (OnBeforePost = DataSet1BeforePost),
 // - Routinen, die als Wert verwendet werden (@P, X := P, X := Obj.P, Aufruf(P)), auch in Tabellen:
 //   typisierte Konstante (array[…] of TFix = (A, B), Record-Konstante (Lauf: A)), Array-Literal [A, B] und
 //   Vorbelegung (X: TFix = A) (#1451).
@@ -92,8 +96,10 @@ implementation
 
 uses
   System.StrUtils,
+  System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Semantics.TypeInfoClasses,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
@@ -342,9 +348,17 @@ type
     /// nil bis zum ersten Bedarf. Vorher durchsuchte jede Routine den ganzen Baum: quadratisch in der Länge
     /// der Unit (26.000 Zeilen: 52 s für die ganze Prüfung).</summary>
     FValueNames: TNameSet;
+    /// <summary>RTTI-Auskunft für Vorfahren aus anderen Units; nil bis zum ersten Bedarf.</summary>
+    FTypeInfo: TTypeInfoClasses;
+    /// <summary>Aktive Token samt Direktiven für {$M+}; erst gelesen, wenn FActiveRead gesetzt ist.</summary>
+    FActive: TArray<TPascalToken>;
+    FActiveRead: Boolean;
     procedure CheckParameter(AHeader, AParam: TSyntaxNode);
     function UsedAsValue(const AName: string): Boolean;
     function SignatureGiven(ARoutine: TSyntaxNode): Boolean;
+    function FormHandler(const AName: string): Boolean;
+    function ImplicitlyPublished(const AQualifiedName: string): Boolean;
+    function ClassHasTypeInfo(ATypeBody: TSyntaxNode; ADepth: Integer): Boolean;
   protected
     procedure CheckRoutine(ARoutine: TSyntaxNode); override;
   public
@@ -673,6 +687,7 @@ end;
 
 destructor TUnusedParameterCheck.Destroy;
 begin
+  FTypeInfo.Free;
   FValueNames.Free;
   inherited Destroy;
 end;
@@ -687,10 +702,73 @@ begin
   Result := FValueNames.ContainsKey(LowerCase(AName));
 end;
 
+/// <summary>Weist die Formulardatei die Routine einem Ereignis zu (OnBeforePost = DataSet1BeforePost)?</summary>
+function TUnusedParameterCheck.FormHandler(const AName: string): Boolean;
+begin
+  Result := (FContext.FormText <> '') and TRegEx.IsMatch(FContext.FormText, '=\s*' + AName + '\b',
+    [roIgnoreCase]);
+end;
+
+/// <summary>Wird die Klasse mit RTTI für published übersetzt ({$M+} bei der Deklaration oder ein so übersetzter
+/// Vorfahr wie TPersistent, TComponent, TForm, TDataModule)? Vorfahren derselben Datei folgt sie selbst.</summary>
+function TUnusedParameterCheck.ClassHasTypeInfo(ATypeBody: TSyntaxNode; ADepth: Integer): Boolean;
+var
+  mIndex: Integer;
+  mAncestor: string;
+  mLocal: TSyntaxNode;
+begin
+  if not FActiveRead then
+  begin
+    FActive := TTypeInfoClasses.ActiveTokens(FContext.Text);
+    FActiveRead := True;
+  end;
+  if (ATypeBody.Parent <> nil) and TTypeInfoClasses.SwitchAt(FActive, ATypeBody.Parent.StartPos) then
+  begin
+    Exit(True);
+  end;
+  for mIndex := 0 to ATypeBody.ChildCount - 1 do
+  begin
+    if (ATypeBody[mIndex].Kind <> TSyntaxKind.TypeReference) or (ATypeBody[mIndex].Name = '') then
+    begin
+      Continue;
+    end;
+    // Nur der erste Eintrag ist der Vorfahr, die übrigen sind Interfaces.
+    mAncestor := ATypeBody[mIndex].Name;
+    // TBasis<T> und Vcl.Forms.TForm: in der Datei zählt der bloße Name.
+    mLocal := FindTypeBody(FContext.Tree.Root, ShortName(Copy(mAncestor, 1, Pos('<', mAncestor + '<') - 1)));
+    if (mLocal <> nil) and (mLocal <> ATypeBody) and (mLocal.Kind = TSyntaxKind.ClassType) and
+      (ADepth < TTypeInfoClasses.cMaxDepth) then
+    begin
+      Exit(ClassHasTypeInfo(mLocal, ADepth + 1));
+    end;
+    if FTypeInfo = nil then
+    begin
+      FTypeInfo := TTypeInfoClasses.Create(FContext.Index, nil);
+    end;
+    Exit(FTypeInfo.HasTypeInfo(mAncestor));
+  end;
+  Result := False;
+end;
+
+/// <summary>Steht die Methode ohne Sichtbarkeitsangabe in einer Klasse mit RTTI für published? Dort ist sie
+/// published: Der Formulardesigner legt Ereignis-Handler so an.</summary>
+function TUnusedParameterCheck.ImplicitlyPublished(const AQualifiedName: string): Boolean;
+var
+  mBody: TSyntaxNode;
+begin
+  mBody := FindTypeBody(FContext.Tree.Root, MethodTypeName(AQualifiedName));
+  Result := (mBody <> nil) and (mBody.Kind = TSyntaxKind.ClassType) and
+    InDefaultSection(mBody, ShortName(AQualifiedName)) and ClassHasTypeInfo(mBody, 0);
+end;
+
 /// <summary>Ist die Signatur von außen vorgegeben oder wird die Routine als Wert verwendet?</summary>
 function TUnusedParameterCheck.SignatureGiven(ARoutine: TSyntaxNode): Boolean;
+var
+  mIsMethod: Boolean;
 begin
-  Result := ((Pos('.', ARoutine.Name) > 0) and MethodSignatureFixed(FContext.Tree.Root, ARoutine.Name)) or
+  mIsMethod := Pos('.', ARoutine.Name) > 0;
+  Result := (mIsMethod and (MethodSignatureFixed(FContext.Tree.Root, ARoutine.Name) or
+    ImplicitlyPublished(ARoutine.Name) or FormHandler(ShortName(ARoutine.Name)))) or
     UsedAsValue(ShortName(ARoutine.Name));
 end;
 
