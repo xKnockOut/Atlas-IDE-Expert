@@ -799,8 +799,8 @@ begin
   Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual('inherited-order', Findings[0].RuleId);
-  Assert.AreEqual('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf FDatei zugreifen.',
-    Findings[0].Message);
+  Assert.AreEqual('inherited vor dem Freigeben von FDatei; der Vorfahr ist dann schon abgebaut, FDatei darf ' +
+    'beim Freigeben nichts mehr von ihm brauchen.', Findings[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual(32, Findings[0].Range.StartPos.Line);
   Assert.AreEqual('inherited an das Ende des Destruktors verschieben', Findings[0].Fixes[0].Title);
@@ -821,6 +821,11 @@ begin
     '  try'#10'    FDatei.Free;'#10'  finally'#10'    inherited;'#10'  end;'#10));
   // Threads warten in Destroy auf das Ende von Execute: dort gehört inherited an den Anfang.
   TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TThread', '', '  inherited;'#10'  FDatei.Free;'#10));
+  // Ohne Destruktor in der Vorfahrenkette baut inherited nichts ab (FP-Prüfung 28.10.2026).
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TObject', '', '  inherited;'#10'  FDatei.Free;'#10));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport', '',
+    '  inherited;'#10'  FDatei.Free;'#10), '    destructor Destroy; override;'#10'    property',
+    '    property', []));
 end;
 
 procedure TInheritedOrderTests.ConstructorAccessBeforeInherited;
