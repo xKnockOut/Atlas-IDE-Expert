@@ -212,7 +212,8 @@ begin
   end;
   mKnown := FHeads.TryGetValue(mKey, AHead);
   Result := mKnown and (AHead.Tick > 0);
-  if FStopped or (mKnown and (AHead.Querying or (GetTickCount64 - AHead.Tick < TAtlasIdeTrackerWorkingCopies.cHeadCacheMs))) then
+  if FStopped or (mKnown and (AHead.Querying or
+    (GetTickCount64 - AHead.Tick < TAtlasIdeTrackerWorkingCopies.cHeadCacheMs))) then
   begin
     Exit;
   end;
