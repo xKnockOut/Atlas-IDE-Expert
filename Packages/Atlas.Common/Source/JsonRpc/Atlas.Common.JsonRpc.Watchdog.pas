@@ -33,9 +33,8 @@ type
   /// RequestCancelled beantwortet (nebenläufige Anfragen); sonst wurde nur der Abbruch angefordert.</summary>
   TJsonRpcTimeoutEvent = reference to procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
   /// <summary>Wie TJsonRpcTimeoutEvent, mit der id der Anfrage als JSON-Text (#1355); läuft im Thread des
-  /// Watchdogs nach dem Abbruch.</summary>
-  /// <summary>Nicht für Anfragen, die schon vor dem Zeitlimit abgebrochen waren (IJsonRpcPendingRequests.Abandoned).
-  /// </summary>
+  /// Watchdogs nach dem Abbruch. Nicht für Anfragen, die schon vor dem Zeitlimit abgebrochen waren
+  /// (IJsonRpcPendingRequests.Abandoned).</summary>
   TJsonRpcExpiredEvent = reference to procedure(const AId, AMethod: string; ATimeoutMs: Cardinal);
 
   IJsonRpcWatchdog = interface
