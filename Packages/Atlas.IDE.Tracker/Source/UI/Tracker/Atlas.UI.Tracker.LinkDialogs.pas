@@ -194,8 +194,13 @@ begin
   FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
+  // Knöpfe bleiben rechts, wenn der Dialog breiter wird.
+  FCancel.Anchors := [akTop, akRight];
+  FOk.Anchors := [akTop, akRight];
 
   ClientHeight := FDescription.Top + FDescription.Height + ScaleValue(cGap) + mBottom.Height;
+  // Größer ziehen: Die Beschreibung nimmt die Höhe auf.
+  AllowResize(FDescription);
   ActiveControl := FTitle;
   TitleChange(FTitle);
 end;
@@ -320,8 +325,12 @@ begin
   FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
+  // Knöpfe bleiben rechts, wenn der Dialog breiter wird.
+  FCancel.Anchors := [akTop, akRight];
+  FOk.Anchors := [akTop, akRight];
 
   ClientHeight := FOther.Top + FOther.Height + ScaleValue(cGap) + mBottom.Height;
+  AllowResize(nil);
   ActiveControl := FOther;
   OtherChange(FOther);
 end;

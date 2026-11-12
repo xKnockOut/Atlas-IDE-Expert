@@ -54,6 +54,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
+  Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Strings;
 
 const
@@ -69,7 +70,7 @@ begin
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
 
-  FQuestion := TLabel.Create(Self);
+  FQuestion := TAtlasWrapLabel.Create(Self);
   FQuestion.Parent := Self;
   FQuestion.Align := alTop;
   FQuestion.AlignWithMargins := True;
@@ -105,6 +106,8 @@ begin
   FDontAsk.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveDontAsk);
 
   AddButtons(FDontAsk.Top + FDontAsk.Height + 1);
+  // Größer ziehen: Der Kommentar nimmt die Höhe auf.
+  AllowResize(FComment);
   ActiveControl := FComment;
 end;
 

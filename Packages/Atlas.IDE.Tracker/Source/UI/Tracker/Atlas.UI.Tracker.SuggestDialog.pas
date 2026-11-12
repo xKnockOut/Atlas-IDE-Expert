@@ -89,6 +89,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Strings;
 
 const
@@ -120,7 +121,7 @@ begin
   inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SuggestTitle, [ATitle]),
     cDialogWidth);
 
-  FIntro := TLabel.Create(Self);
+  FIntro := TAtlasWrapLabel.Create(Self);
   FIntro.Parent := Self;
   FIntro.Top := NextTop;
   FIntro.Align := alTop;
@@ -153,6 +154,8 @@ begin
   FNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestSearching);
 
   AddButtons;
+  // Größer ziehen: Die Liste nimmt die Höhe auf.
+  AllowResize(FList);
 end;
 
 procedure TAtlasTrackerSuggestDialog.AddColumn(const ACaption: string; AWidth: Integer);
