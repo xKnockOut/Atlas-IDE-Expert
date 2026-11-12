@@ -519,6 +519,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Refresh.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.BarDock.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.GutterColumn.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas"/>
@@ -744,6 +745,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
         <DCCReference Include="Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarDock.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Pipeline.pas"/>

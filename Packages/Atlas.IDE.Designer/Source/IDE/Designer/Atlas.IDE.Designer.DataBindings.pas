@@ -3,8 +3,9 @@
 // Datenbindung der Auswahl als Brotkrumenleiste (#610,
 // designer.dataBindings): Knopf in der Designer-Leiste, der eine Leiste
 // (TAtlasBindingBar) am unteren Rand des Designers ein- und ausschaltet.
-// - Leisten je Editorfenster über den Leisten-Host (ShowIn Designer, unten
-//   ausgerichtet), wie die Designer-Leiste oben.
+// - Leisten je Editorfenster über den Leisten-Host (ShowIn Designer), unten
+//   neben dem Editor-Bereich (DockBottom des Hosts) über der Statusleiste,
+//   wie die Designer-Leiste oben.
 // - Daten: Komponenten des Formulars im Designer und aller im Projekt
 //   geöffneten Formulare und Datenmodule. Verweise (Connection,
 //   SQLConnection, DataSet, MasterSource, DataSource, ListSource) und Texte
@@ -66,6 +67,7 @@ uses
   System.TypInfo,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Editor.BarDock,
   Atlas.Core.Style.Palette,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,
@@ -186,18 +188,6 @@ begin
   Result := nil;
 end;
 
-/// <summary>Leiste unter dem Designer: zuerst ganz unten einhängen, dann unten ausrichten.</summary>
-procedure PlaceBar(ABar: TControl; AEditorParent: TWinControl);
-begin
-  if ABar.Parent = AEditorParent then
-  begin
-    Exit;
-  end;
-  ABar.Top := AEditorParent.ClientHeight;
-  ABar.Align := alBottom;
-  ABar.Parent := AEditorParent;
-end;
-
 { TAtlasIdeDataBindings }
 
 constructor TAtlasIdeDataBindings.Create;
@@ -208,11 +198,10 @@ begin
     function(AEditorParent: TWinControl): TControl
     begin
       Result := CreateBar;
-    end,
-    procedure(ABar: TControl; AEditorParent: TWinControl)
-    begin
-      PlaceBar(ABar, AEditorParent);
-    end);
+    end, nil);
+  // Unten neben dem Editor-Bereich direkt am Editor, über der Statusleiste; nicht im EditorPanel, dort lag die
+  // Designfläche samt Bildlaufleiste darüber.
+  FHost.DockBottom(TAtlasBarDock.cOrderNearest);
   FHost.ShowIn := TAtlasEditorBarView.Designer;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;

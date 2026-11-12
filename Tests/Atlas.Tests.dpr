@@ -1563,6 +1563,8 @@ uses
   Atlas.Core.Problems.FindingsCache in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas',
   Atlas.Core.Problems.BulkFix in '..\Packages\Atlas.IDE.Rules\Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas',
   Atlas.Core.Editor.LineTail in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTail.pas',
+  Atlas.Core.Editor.BarDock in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.BarDock.pas',
+  Atlas.Core.Editor.BarDock.Tests in 'IDE.Expert\Atlas.Core.Editor.BarDock.Tests.pas',
   Atlas.UI.Popup.Styled in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Styled.pas',
   Atlas.Core.Problems.Tests in 'IDE.Expert\Atlas.Core.Problems.Tests.pas',
   Atlas.Core.Problems.InlineHints.Tests in 'IDE.Expert\Atlas.Core.Problems.InlineHints.Tests.pas',
