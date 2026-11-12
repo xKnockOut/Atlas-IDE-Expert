@@ -290,7 +290,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Problems.IdeErrors;
+  Atlas.IDE.Problems.IdeErrors,
+  Atlas.IDE.Foundation.CodeView;
 
 /// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
 function ProblemsActive: Boolean;
@@ -1033,7 +1034,11 @@ begin
   // Konfiguration oder Plattform gewechselt, Defines geändert (#615).
   FBuildTarget.Tick(ASession, TAtlasTicks.Now);
   SyncPrevious(ASession, AFileName);
-  PullIfDue(ASession, AView, AFileName, AText);
+  // Im Designer und auf der Willkommensseite nicht nachfragen; zurück im Code holt der nächste Takt den Stand.
+  if TAtlasIdeCodeView.InFront then
+  begin
+    PullIfDue(ASession, AView, AFileName, AText);
+  end;
   if TAtlasTicks.Since(FClosedCheckAt) >= cClosedCheckMs then
   begin
     FClosedCheckAt := TAtlasTicks.Now;
