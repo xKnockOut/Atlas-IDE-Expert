@@ -34,6 +34,8 @@ uses
 
 const
   cMsPerDay = 86400000;
+  cStampDigits = 12;
+  cSerialDigits = 8;
 
 class function TAtlasMarkIds.SameFile(const A, B: string): Boolean;
 begin
@@ -54,7 +56,7 @@ end;
 
 class function TAtlasMarkIds.Fallback(AStampMs: Int64; ASerial: Cardinal): string;
 begin
-  Result := LowerCase(IntToHex(AStampMs, 12) + IntToHex(ASerial, 8));
+  Result := LowerCase(IntToHex(AStampMs, cStampDigits) + IntToHex(ASerial, cSerialDigits));
 end;
 
 end.
