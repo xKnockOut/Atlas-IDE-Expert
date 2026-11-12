@@ -7,7 +7,8 @@
 //   - TAtlasEditorHoverDebug: Wert im angehaltenen Debugger (#891), Erklärung „kein Zugriff“ (#840) und
 //     Ersatztext der Visualisierer (#835).
 //   - TAtlasEditorHoverActions: Klicks im Tooltip (Typen, Pfad, Zurück, Aktionsleiste, Aktionen unter
-//     Problemen #621/#909, Links der XMLDoc #654).
+//     Problemen #621/#909, Links der XMLDoc #654). „Beispiel zeigen“ (#145) holt den Katalogtext über
+//     OnRuleExample, klappt ihn im Tooltip auf und heftet ihn an; ein neuer Hover beginnt zugeklappt.
 // Die Stufen bauen aufeinander auf; TAtlasEditorHover ist die oberste.
 
 interface
@@ -22,6 +23,7 @@ uses
   Atlas.Core.Hover.History,
   Atlas.Core.Hover.View,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Hover.Tip;
@@ -36,6 +38,9 @@ type
   TAtlasHoverHandlesFunc = reference to function(const AFileName: string): Boolean;
   /// <summary>Code-Aktion mit Kennung ATag für den Bereich des Problems ausführen (#621).</summary>
   TAtlasHoverProblemActionProc = reference to procedure(const AProblem: TAtlasProblem; const ATag: string);
+  /// <summary>Katalogtext der Regel ARule (#145) an ADone im Hauptthread, sofort oder nach der Antwort des Servers.
+  /// </summary>
+  TAtlasHoverRuleExampleProc = reference to procedure(const ARule: string; const ADone: TAtlasRuleExplanationEvent);
   /// <summary>„kein Zugriff“ erklären (#840): AValue mit vorläufiger Erklärung oder unverändert (kein bekannter
   /// Text, abgeschaltet); die fertige Erklärung kommt später im Hauptthread an ADone.</summary>
   TAtlasHoverExplainFunc = reference to function(const AValue: TAtlasDebugValue;
@@ -69,6 +74,8 @@ type
     FHandles: TAtlasHoverHandlesFunc;
     // Probleme an der Mausposition; nur Probleme, wenn dort kein Bezeichner steht.
     FProblems: TArray<TAtlasProblem>;
+    // Aufgeklappte Beispiele je Problem (#145), gleicher Index wie FProblems; neu je Hover.
+    FExamples: TArray<TAtlasRuleExplanation>;
     // FAlive endet mit dem Objekt; Hintergrund-Anfragen und späte Rückrufe prüfen es.
     FAlive: TAtlasHoverAlive;
     FAliveRef: IInterface;
@@ -146,7 +153,14 @@ type
   TAtlasEditorHoverActions = class(TAtlasEditorHoverDebug)
   private class var
     FOnProblemAction: TAtlasHoverProblemActionProc;
+    FOnRuleExample: TAtlasHoverRuleExampleProc;
   private
+    /// <summary>„Beispiel zeigen“ bzw. „ausblenden“ unter Problem AProblem (#145).</summary>
+    procedure ToggleExample(AProblem: Integer);
+    /// <summary>Katalogtext ist da: aufklappen, wenn derselbe Tooltip (AKey) noch dasselbe Problem zeigt.</summary>
+    procedure ExampleDone(const AKey: string; AProblem: Integer; const ARule: string;
+      const AExplanation: TAtlasRuleExplanation);
+    procedure SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation);
     procedure TipLink(Sender: TObject; const ARef: TAtlasHoverTypeRef; AControl: Boolean);
     procedure TipPath(Sender: TObject; AIndex: Integer);
     procedure TipAction(Sender: TObject; AAction: TAtlasHoverAction);
@@ -166,6 +180,9 @@ type
     /// <summary>Aktion unter einem uses-Hinweis (#621); setzt die Kompositionswurzel (der Tooltip kennt die
     /// Editorbefehle nicht), ohne Zuweisung keine.</summary>
     class property OnProblemAction: TAtlasHoverProblemActionProc read FOnProblemAction write FOnProblemAction;
+    /// <summary>Katalogtext für „Beispiel zeigen“ (#145); setzt die Kompositionswurzel, ohne Zuweisung bleibt das
+    /// Beispiel zu.</summary>
+    class property OnRuleExample: TAtlasHoverRuleExampleProc read FOnRuleExample write FOnRuleExample;
   end;
 
 implementation
@@ -291,6 +308,7 @@ begin
   begin
     Result.Problems := FProblems;
     Result.Explanations := Explanations(FProblems);
+    Result.Examples := FExamples;
   end;
 end;
 
@@ -314,6 +332,7 @@ end;
 procedure TAtlasEditorHoverContent.Refresh;
 begin
   FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
+  FTip.RuleExamples := TAtlasIdeSettings.Current.HoverRuleExamples;
   FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
   FTip.MembersMaxLines := TAtlasIdeSettings.Current.HoverMembersMaxLines;
   FTip.SignatureParams := TAtlasIdeSettings.Current.HoverSignatureParams;
@@ -325,6 +344,7 @@ begin
   FTip.HidePopup;
   FHistory.Clear;
   FProblems := nil;
+  FExamples := nil;
   FUsagesCount := -1;
   FShownKey := '';
   FKey := '';
@@ -603,14 +623,20 @@ procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: I
   AAction: TAtlasHoverProblemAction; AItem: Integer);
 const
   // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
-  // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst.
+  // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst; Example (#145) bleibt im
+  // Tooltip und hat keine Kennung.
   cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
-    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '');
+    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '', '');
 var
   mProblem: TAtlasProblem;
   mTag: string;
 begin
   try
+    if AAction = TAtlasHoverProblemAction.Example then
+    begin
+      ToggleExample(AProblem);
+      Exit;
+    end;
     if not Assigned(FOnProblemAction) or (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
     begin
       Exit;
@@ -633,6 +659,81 @@ begin
     end;
     Hide;
     FOnProblemAction(mProblem, mTag);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHoverActions.SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation);
+begin
+  if Length(FExamples) <> Length(FProblems) then
+  begin
+    SetLength(FExamples, Length(FProblems));
+  end;
+  if (AProblem >= 0) and (AProblem <= High(FExamples)) then
+  begin
+    FExamples[AProblem] := AExample;
+  end;
+  FTip.SetExample(AProblem, AExample, FHistory.Pinned);
+end;
+
+procedure TAtlasEditorHoverActions.ToggleExample(AProblem: Integer);
+var
+  mOwner: TAtlasEditorHoverActions;
+  mAlive: TAtlasHoverAlive;
+  mAliveRef: IInterface;
+  mKey, mRule: string;
+begin
+  if (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
+  begin
+    Exit;
+  end;
+  if FTip.View.ExampleShown(AProblem) then
+  begin
+    SetExample(AProblem, Default(TAtlasRuleExplanation));
+    Exit;
+  end;
+  if not Assigned(FOnRuleExample) then
+  begin
+    Exit;
+  end;
+  // Angeheftet wie nach einem Klick auf einen Typ: Der Tooltip bleibt, während man das Beispiel liest.
+  FHistory.Pinned := True;
+  mRule := FTip.View.Problems[AProblem].Code;
+  mKey := FShownKey;
+  mOwner := Self;
+  mAlive := FAlive;
+  mAliveRef := FAliveRef;
+  FOnRuleExample(mRule,
+    procedure(const AExplanation: TAtlasRuleExplanation)
+    begin
+      // mAliveRef hält die Markierung, bis der Katalog kommt; das Objekt selbst kann schon weg sein.
+      if mAlive.Alive and (mAliveRef <> nil) then
+      begin
+        mOwner.ExampleDone(mKey, AProblem, mRule, AExplanation);
+      end;
+    end);
+end;
+
+procedure TAtlasEditorHoverActions.ExampleDone(const AKey: string; AProblem: Integer; const ARule: string;
+  const AExplanation: TAtlasRuleExplanation);
+var
+  mExample: TAtlasRuleExplanation;
+begin
+  try
+    if not FTip.IsShown or (AKey <> FShownKey) or (AProblem > High(FTip.View.Problems)) or
+      (FTip.View.Problems[AProblem].Code <> ARule) then
+    begin
+      Exit;
+    end;
+    // Ohne Katalogeintrag trotzdem aufklappen: Der Tooltip sagt dann, dass der Katalog nichts zur Regel hat.
+    mExample := AExplanation;
+    if mExample.Id = '' then
+    begin
+      mExample.Id := ARule;
+    end;
+    SetExample(AProblem, mExample);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
