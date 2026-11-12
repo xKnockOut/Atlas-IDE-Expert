@@ -87,6 +87,7 @@ contains
   Atlas.Core.Designer.FormUnit in 'Source\Core\Designer\Atlas.Core.Designer.FormUnit.pas',
   Atlas.Core.Designer.EventMap in 'Source\Core\Designer\Atlas.Core.Designer.EventMap.pas',
   Atlas.Core.Designer.Usages in 'Source\Core\Designer\Atlas.Core.Designer.Usages.pas',
+  Atlas.Core.Designer.Undo in 'Source\Core\Designer\Atlas.Core.Designer.Undo.pas',
   Atlas.UI.Designer.Flash in 'Source\UI\Designer\Atlas.UI.Designer.Flash.pas',
   Atlas.UI.Designer.Outlines in 'Source\UI\Designer\Atlas.UI.Designer.Outlines.pas',
   Atlas.UI.Designer.DuplicateDialog in 'Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas',
@@ -158,6 +159,8 @@ contains
   Atlas.IDE.Designer.ShowComponent in 'Source\IDE\Designer\Atlas.IDE.Designer.ShowComponent.pas',
   Atlas.IDE.Designer.PropertySearch in 'Source\IDE\Designer\Atlas.IDE.Designer.PropertySearch.pas',
   Atlas.IDE.Designer.Usages in 'Source\IDE\Designer\Atlas.IDE.Designer.Usages.pas',
+  Atlas.IDE.Designer.UndoApply in 'Source\IDE\Designer\Atlas.IDE.Designer.UndoApply.pas',
+  Atlas.IDE.Designer.Undo in 'Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas',
   Atlas.IDE.Designer.Composition in 'Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas',
   Atlas.UI.Designer.SettingsSection in 'Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas';
