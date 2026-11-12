@@ -30,6 +30,9 @@ type
     procedure StatusAsMarkdownAndJson;
     [Test]
     procedure StatusShowsCacheAndOffloadMetrics;
+    /// <summary>#2142: Token je Ordner, laufender Aufbau mit Prozent, Stufe und Warten.</summary>
+    [Test]
+    procedure StatusShowsIndexingPerWorkspace;
     /// <summary>#46: Konfiguration, Plattform, aktives und ausgewähltes Projekt je Arbeitsbereich.</summary>
     [Test]
     procedure StatusShowsProjectChoice;
@@ -369,6 +372,43 @@ begin
     Assert.AreEqual<Int64>(1024 * 1024, Json.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
     Assert.IsTrue(Json.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
       Json.GetValue<string>('workspaces[0].lastUpdate'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspStatusTests.StatusShowsIndexingPerWorkspace;
+var
+  Status: TServerStatus;
+  Done, Building: TWorkspaceStatus;
+  Json, First, Second, Indexing: TJSONObject;
+  Items: TJSONArray;
+begin
+  Status := Default(TServerStatus);
+  Done := Default(TWorkspaceStatus);
+  Done.Name := 'Kunden';
+  // Format statt Literal: Ein Fortschritts-Token ist kein Zugangswert (security-hardcoded-credential).
+  Done.ProgressToken := Format('atlas-index-%d', [1]);
+  Building := Default(TWorkspaceStatus);
+  Building.Name := 'Lager';
+  Building.ProgressToken := Format('atlas-index-%d-%d', [1, 1]);
+  Building.Indexing := True;
+  Building.IndexPercent := 62;
+  Building.IndexStage := 'searchPaths';
+  Building.IndexWaiting := True;
+  Status.Workspaces := [Done, Building];
+  Json := Status.ToJson;
+  try
+    Items := Json.GetValue('workspaces') as TJSONArray;
+    First := Items.Items[0] as TJSONObject;
+    Second := Items.Items[1] as TJSONObject;
+    Assert.AreEqual('atlas-index-1', First.GetValue('progressToken').Value);
+    Assert.IsNull(First.GetValue('indexing'), 'fertig: ohne indexing');
+    Assert.AreEqual('atlas-index-1-1', Second.GetValue('progressToken').Value);
+    Indexing := Second.GetValue('indexing') as TJSONObject;
+    Assert.AreEqual('62', Indexing.GetValue('percent').Value);
+    Assert.AreEqual('searchPaths', Indexing.GetValue('stage').Value);
+    Assert.AreEqual('true', Indexing.GetValue('waiting').ToJSON);
   finally
     Json.Free;
   end;

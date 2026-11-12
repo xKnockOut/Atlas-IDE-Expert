@@ -35,6 +35,8 @@ function RunningSession: TLspSession;
 function ServerInfo: TAtlasServerInfo;
 /// <summary>Indexiert der Server gerade (APercent -1 = unbekannt)? False ohne Manager.</summary>
 function ServerIndexing(out APercent: Integer): Boolean;
+/// <summary>Wie ServerIndexing für den Vorgang AToken (ein Projekt der Gruppe, #2142).</summary>
+function ServerIndexingOf(const AToken: string; out APercent: Integer): Boolean;
 /// <summary>Pfad des Servers nach den Einstellungen.</summary>
 function ServerPath: string;
 /// <summary>Zeile ins Diagnoseprotokoll des Managers; ohne Manager nichts.</summary>
@@ -208,6 +210,12 @@ function ServerIndexing(out APercent: Integer): Boolean;
 begin
   APercent := -1;
   Result := (ManagerInstance <> nil) and ManagerInstance.ServerIndexing(APercent);
+end;
+
+function ServerIndexingOf(const AToken: string; out APercent: Integer): Boolean;
+begin
+  APercent := -1;
+  Result := (ManagerInstance <> nil) and ManagerInstance.ServerIndexingOf(AToken, APercent);
 end;
 
 function ServerPath: string;

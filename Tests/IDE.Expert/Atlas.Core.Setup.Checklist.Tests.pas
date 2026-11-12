@@ -52,6 +52,12 @@ type
     procedure StartOpensOnlyWhileNotGreen;
     [Test]
     procedure StatusParsesWorkspaces;
+    /// <summary>#2142: Token und laufender Aufbau je Arbeitsbereich, Prozent live über das Token.</summary>
+    [Test]
+    procedure StatusParsesIndexingPerWorkspace;
+    /// <summary>#2142: Prozent, Stufe und Warten je Projekt; ein neuer Aufbau macht ein fertiges Projekt gelb.</summary>
+    [Test]
+    procedure IndexShowsStagePerProject;
     [Test]
     procedure ReportHasLinesAndNoIdentity;
   end;
@@ -94,6 +100,7 @@ begin
   Result.IndexPercent := -1;
   Result.Status.Known := True;
   Result.Status.Units := 1569;
+  Workspace := Default(TAtlasSetupWorkspace);
   Workspace.Name := 'Kunden';
   Workspace.Done := True;
   Workspace.LibraryCacheBytes := 5 * 1024 * 1024;
@@ -109,6 +116,7 @@ end;
 
 function Workspace(const AName: string; ADone: Boolean; ALibrary: Int64): TAtlasSetupWorkspace;
 begin
+  Result := Default(TAtlasSetupWorkspace);
   Result.Name := AName;
   Result.Done := ADone;
   Result.LibraryCacheBytes := ALibrary;
@@ -490,6 +498,93 @@ begin
   Assert.IsFalse(TAtlasSetupServerStatus.Parse('kein json').Known);
   Assert.AreEqual(-1, TAtlasSetupServerStatus.Parse('[]').Units);
   Assert.AreEqual('Kunden', TAtlasSetupChecklist.ProjectName('C:\Projekte\Kunden\Kunden.dproj'));
+end;
+
+procedure TAtlasSetupChecklistTests.StatusParsesIndexingPerWorkspace;
+var
+  Status, Live: TAtlasSetupServerStatus;
+  IndexingOf: TAtlasSetupTokenIndexingFunc;
+begin
+  Status := TAtlasSetupServerStatus.Parse('{"workspaces":[{"name":"Kunden","lastIndexMs":120,' +
+    '"progressToken":"atlas-index-1"},{"name":"Lager","lastIndexMs":-1,"progressToken":"atlas-index-1-1",' +
+    '"indexing":{"percent":40,"stage":"searchPaths","waiting":true}},{"name":"Alt","lastIndexMs":-1}]}');
+  Assert.AreEqual('atlas-index-1', Status.Workspaces[0].ProgressToken);
+  Assert.IsFalse(Status.Workspaces[0].Indexing.Active);
+  Assert.IsTrue(Status.Workspaces[1].Indexing.Active);
+  Assert.AreEqual(40, Status.Workspaces[1].Indexing.Percent);
+  Assert.AreEqual(Ord(TAtlasSetupIndexStage.SearchPaths), Ord(Status.Workspaces[1].Indexing.Stage));
+  Assert.IsTrue(Status.Workspaces[1].Indexing.Waiting);
+  Assert.AreEqual('', Status.Workspaces[2].ProgressToken, 'älterer Server');
+  Assert.AreEqual(-1, Status.Workspaces[2].Indexing.Percent);
+  // Live: Lager meldet 62 %, Kunden baut neu auf (10 %); ohne Token bleibt der Status.
+  IndexingOf :=
+    function(const AToken: string; out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := True;
+      if AToken = 'atlas-index-1-1' then
+      begin
+        APercent := 62;
+      end
+      else if AToken = 'atlas-index-1' then
+      begin
+        APercent := 10;
+      end;
+    end;
+  Live := Status.WithLiveProgress(IndexingOf);
+  Assert.AreEqual(62, Live.Workspaces[1].Indexing.Percent);
+  Assert.AreEqual(Ord(TAtlasSetupIndexStage.SearchPaths), Ord(Live.Workspaces[1].Indexing.Stage), 'Stufe bleibt');
+  Assert.IsTrue(Live.Workspaces[0].Indexing.Active);
+  Assert.AreEqual(10, Live.Workspaces[0].Indexing.Percent);
+  Assert.AreEqual(40, Status.Workspaces[1].Indexing.Percent, 'Original unverändert');
+  // Läuft das Token nicht mehr, ist der Aufbau vorbei, auch wenn der Status noch älter ist.
+  IndexingOf :=
+    function(const AToken: string; out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := False;
+    end;
+  Live := Status.WithLiveProgress(IndexingOf);
+  Assert.IsFalse(Live.Workspaces[1].Indexing.Active);
+  Live := Status.WithLiveProgress(nil);
+  Assert.IsTrue(Live.Workspaces[1].Indexing.Active, 'ohne Meldungen gilt der Status');
+end;
+
+procedure TAtlasSetupChecklistTests.IndexShowsStagePerProject;
+var
+  Input: TAtlasSetupInput;
+  Check: TAtlasSetupResult;
+  Building: TAtlasSetupWorkspace;
+begin
+  Input := GoodInput;
+  Building := Workspace('Export', False, 0);
+  Building.Indexing.Active := True;
+  Building.Indexing.Percent := 18;
+  Building.Indexing.Stage := TAtlasSetupIndexStage.Library_;
+  Building.Indexing.Waiting := True;
+  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Building];
+  Input.Indexing := True;
+  Check := TAtlasSetupChecklist.CheckIndex(Input);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Done), Ord(Check.Projects[0].State));
+  Assert.IsFalse(Check.Projects[0].Indexing.Active);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(Check.Projects[1].State));
+  Assert.AreEqual(18, Check.Projects[1].Indexing.Percent);
+  Assert.IsTrue(Check.Projects[1].Indexing.Waiting);
+  Assert.AreEqual(Ord(TAtlasSetupIndexStage.Library_), Ord(Check.Projects[1].Indexing.Stage));
+  // Neuer Aufbau eines schon fertigen Projekts (Index neu aufbauen): wieder gelb.
+  Building.Done := True;
+  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Building];
+  Check := TAtlasSetupChecklist.CheckIndex(Input);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Building), Ord(Check.Projects[1].State));
+  // Anderer Fortschritt: andere Zeile für die Anzeige.
+  Building.Indexing.Percent := 19;
+  Input.Status.Workspaces := [Workspace('Kunden', True, 0), Building];
+  Assert.AreNotEqual(Check.Key, TAtlasSetupChecklist.CheckIndex(Input).Key);
+  // Projekt ohne Arbeitsbereich: fehlt, ohne Prozent.
+  Input.Projects := ['Kunden', 'Export', 'Neu'];
+  Check := TAtlasSetupChecklist.CheckIndex(Input);
+  Assert.AreEqual(Ord(TAtlasSetupProjectState.Missing), Ord(Check.Projects[2].State));
+  Assert.AreEqual(-1, Check.Projects[2].Indexing.Percent);
 end;
 
 procedure TAtlasSetupChecklistTests.ReportHasLinesAndNoIdentity;

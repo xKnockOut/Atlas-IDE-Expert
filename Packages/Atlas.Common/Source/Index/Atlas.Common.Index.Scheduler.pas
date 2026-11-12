@@ -14,6 +14,10 @@
 //
 // Queue (#1356) nennt für das Fenster „Atlas-Server“, wie viele Aufbauten auf
 // eine Stufe warten, ob einer läuft und seit wann der älteste wartet.
+//
+// TIndexStageWatch (#2142) hält für den Status eines Arbeitsbereichs fest, in
+// welcher Stufe sein Aufbau steht und ob er auf sie wartet. Watch legt dazu
+// eine Hülle um das IIndexTurn des Aufbaus (auch ohne Scheduler).
 
 interface
 
@@ -21,6 +25,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
+  System.SyncObjs,
   Atlas.Common.Index.Contract;
 
 type
@@ -32,6 +37,36 @@ type
     Running: Integer;
     /// <summary>Wartezeit des am längsten wartenden Aufbaus; 0 ohne.</summary>
     OldestWaitMs: Int64;
+  end;
+
+  /// <summary>Stand eines Aufbaus für den Status (#2142).</summary>
+  TIndexStageState = record
+    /// <summary>Der Aufbau steht in einer Stufe oder wartet auf sie.</summary>
+    Running: Boolean;
+    Stage: TIndexStage;
+    /// <summary>Wartet auf seine Reihe (andere Projekte der Gruppe sind dran).</summary>
+    Waiting: Boolean;
+    /// <summary>Name der Stufe im Status: 'projectFiles', 'searchPaths', 'library'.</summary>
+    function StageName: string;
+  end;
+
+  /// <summary>Stufe des laufenden Aufbaus eines Arbeitsbereichs (#2142); threadsicher.</summary>
+  TIndexStageWatch = class
+  private
+    FLock: TCriticalSection;
+    FState: TIndexStageState;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Hülle um AInner (nil = ohne Reihenfolge), die Enter hier festhält.</summary>
+    function Watch(const AInner: IIndexTurn): IIndexTurn;
+    /// <summary>Aufbau will AStage betreten und wartet, bis sie dran ist.</summary>
+    procedure Entering(AStage: TIndexStage);
+    /// <summary>Stufe betreten (AEntered) bzw. abgebrochen.</summary>
+    procedure Entered(AEntered: Boolean);
+    /// <summary>Aufbau zu Ende.</summary>
+    procedure Clear;
+    function State: TIndexStageState;
   end;
 
   TIndexScheduler = class
@@ -79,6 +114,17 @@ type
     procedure Leave;
   end;
 
+  /// <summary>Hülle von TIndexStageWatch.Watch: reicht an FInner weiter (nil = sofort dran).</summary>
+  TWatchedTurn = class(TInterfacedObject, IIndexTurn)
+  private
+    FInner: IIndexTurn;
+    FWatch: TIndexStageWatch;
+  public
+    constructor Create(const AInner: IIndexTurn; AWatch: TIndexStageWatch);
+    function Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
+    procedure Leave;
+  end;
+
 const
   // Wartende prüfen so oft den Abbruch.
   cPollMs = 100;
@@ -106,6 +152,111 @@ end;
 procedure TIndexTurn.Leave;
 begin
   FScheduler.Leave(FTicket);
+end;
+
+{ TIndexStageState }
+
+function TIndexStageState.StageName: string;
+begin
+  case Stage of
+    TIndexStage.SearchPaths:
+      Result := 'searchPaths';
+    TIndexStage.Library_:
+      Result := 'library';
+  else
+    Result := 'projectFiles';
+  end;
+end;
+
+{ TWatchedTurn }
+
+constructor TWatchedTurn.Create(const AInner: IIndexTurn; AWatch: TIndexStageWatch);
+begin
+  inherited Create;
+  FInner := AInner;
+  FWatch := AWatch;
+end;
+
+function TWatchedTurn.Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
+begin
+  FWatch.Entering(AStage);
+  Result := True;
+  if FInner <> nil then
+  begin
+    Result := FInner.Enter(AStage, ACancelled);
+  end;
+  FWatch.Entered(Result);
+end;
+
+procedure TWatchedTurn.Leave;
+begin
+  if FInner <> nil then
+  begin
+    FInner.Leave;
+  end;
+end;
+
+{ TIndexStageWatch }
+
+constructor TIndexStageWatch.Create;
+begin
+  inherited Create;
+  // Kein TMonitor: Die Abbruchprüfung des Schedulers liest den Stand, während er seinen Monitor hält.
+  FLock := TCriticalSection.Create;
+end;
+
+destructor TIndexStageWatch.Destroy;
+begin
+  FLock.Free;
+  inherited;
+end;
+
+function TIndexStageWatch.Watch(const AInner: IIndexTurn): IIndexTurn;
+begin
+  Result := TWatchedTurn.Create(AInner, Self);
+end;
+
+procedure TIndexStageWatch.Entering(AStage: TIndexStage);
+begin
+  FLock.Enter;
+  try
+    FState.Running := True;
+    FState.Stage := AStage;
+    FState.Waiting := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TIndexStageWatch.Entered(AEntered: Boolean);
+begin
+  FLock.Enter;
+  try
+    FState.Running := AEntered;
+    FState.Waiting := False;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TIndexStageWatch.Clear;
+begin
+  FLock.Enter;
+  try
+    FState := Default(TIndexStageState);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TIndexStageWatch.State: TIndexStageState;
+begin
+  FLock.Enter;
+  try
+    Result := FState;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 { TIndexScheduler }

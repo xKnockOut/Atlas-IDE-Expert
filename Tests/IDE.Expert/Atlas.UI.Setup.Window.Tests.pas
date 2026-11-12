@@ -2,7 +2,8 @@
 
 // Fenster „Atlas-Einrichtung“ (#625): Texte je Befund, ein Knopf je gelbem
 // oder rotem Punkt, „Warum?“ erklärt im Fenster, die übrigen Knöpfe rufen
-// OnFix, Unterzeilen je Projekt, Bericht und Einstieg „Probier es aus“.
+// OnFix, Unterzeilen je Projekt mit Balken, Prozent und Stufe (#2142), Bericht
+// und Einstieg „Probier es aus“.
 
 interface
 
@@ -30,6 +31,9 @@ type
     procedure WhyExplainsInTheWindow;
     [Test]
     procedure ProjectsBecomeSubLines;
+    /// <summary>#2142: Stand je Projekt mit Prozent, Stufe oder „wartet“ und Füllung des Balkens.</summary>
+    [Test]
+    procedure ProjectStatusShowsPercentAndStage;
     [Test]
     procedure ReportLinesAndProgress;
     [Test]
@@ -65,6 +69,7 @@ begin
   Result.Projects := ['Kunden', 'Export'];
   Result.Status.Known := True;
   Result.Status.Units := 1569;
+  Workspace := Default(TAtlasSetupWorkspace);
   Workspace.Name := 'Kunden';
   Workspace.Done := True;
   Workspace.LibraryCacheBytes := 0;
@@ -224,6 +229,35 @@ begin
   finally
     Window.Free;
   end;
+end;
+
+procedure TAtlasSetupWindowTests.ProjectStatusShowsPercentAndStage;
+var
+  Project: TAtlasSetupProject;
+begin
+  Project := TAtlasSetupProject.Create('Lager', TAtlasSetupProjectState.Building);
+  Assert.AreEqual('wird aufgebaut', TAtlasSetupTexts.ProjectStatus(Project), 'älterer Server');
+  Assert.AreEqual(0, TAtlasSetupTexts.ProjectBar(Project), 'leere Spur');
+  Project.Indexing.Active := True;
+  Project.Indexing.Percent := 62;
+  Project.Indexing.Stage := TAtlasSetupIndexStage.SearchPaths;
+  Assert.AreEqual('62 % · Suchpfade', TAtlasSetupTexts.ProjectStatus(Project));
+  Assert.AreEqual('Lager: 62 % · Suchpfade', TAtlasSetupTexts.ProjectText(Project));
+  Assert.AreEqual(62, TAtlasSetupTexts.ProjectBar(Project));
+  Project.Indexing.Waiting := True;
+  Project.Indexing.Percent := 18;
+  Assert.AreEqual('18 % · wartet', TAtlasSetupTexts.ProjectStatus(Project));
+  Project.Indexing.Waiting := False;
+  Project.Indexing.Percent := -1;
+  Project.Indexing.Stage := TAtlasSetupIndexStage.Library_;
+  Assert.AreEqual('Bibliothek', TAtlasSetupTexts.ProjectStatus(Project));
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('library', TAtlasSetupTexts.ProjectStatus(Project));
+  TAtlasStrings.Language := TAtlasLanguage.German;
+  Assert.AreEqual(100, TAtlasSetupTexts.ProjectBar(TAtlasSetupProject.Create('Kunden',
+    TAtlasSetupProjectState.Done)));
+  Assert.AreEqual(-1, TAtlasSetupTexts.ProjectBar(TAtlasSetupProject.Create('Neu',
+    TAtlasSetupProjectState.Missing)), 'fehlt: kein Balken');
 end;
 
 procedure TAtlasSetupWindowTests.ReportLinesAndProgress;
