@@ -1157,6 +1157,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SprintStart.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SprintStart.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardLanes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>

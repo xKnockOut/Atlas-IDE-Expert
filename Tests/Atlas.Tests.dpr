@@ -1032,6 +1032,8 @@ uses
   Atlas.Core.Tracker.StatusState.Tests in 'IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas',
   Atlas.Core.Tracker.SprintStart in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SprintStart.pas',
   Atlas.Core.Tracker.SprintStart.Tests in 'IDE.Expert\Atlas.Core.Tracker.SprintStart.Tests.pas',
+  Atlas.Core.Tracker.BoardLanes in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas',
+  Atlas.Core.Tracker.BoardLanes.Tests in 'IDE.Expert\Atlas.Core.Tracker.BoardLanes.Tests.pas',
   Atlas.Core.Tracker.Sprint.Tests in 'IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas',
   Atlas.UI.Tracker.BoardFrame in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas',
   Atlas.UI.Tracker.MoveDialog in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas',

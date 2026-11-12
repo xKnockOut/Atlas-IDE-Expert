@@ -55,6 +55,14 @@ type
     procedure AgilesChooseBoardOfProject;
     [Test]
     procedure AgilesChooseBoardById;
+    /// <summary>Spalten in der Reihenfolge des Boards (ordinal), nicht in der Reihenfolge der Antwort; ohne ordinal
+    /// bleibt die Reihenfolge der Antwort.</summary>
+    [Test]
+    procedure AgilesColumnsFollowOrdinal;
+    /// <summary>Swimlanes nach einem Feld: Feldnamen, Werte, Lage der Zeile ohne Wert; Karten tragen ihren Wert.
+    /// Ausgeschaltete Swimlanes und solche ohne Feld (nach Eltern-Issues) zählen nicht.</summary>
+    [Test]
+    procedure AgilesAndCardsReadSwimlanes;
     /// <summary>Karten: Spalte, Kürzel, Farbe, Checkliste (#1273), Schloss (#1279).</summary>
     [Test]
     procedure SprintCardsFromFixture;
@@ -466,7 +474,20 @@ begin
   mSnapshot.Cards[0].Locked := True;
   mSnapshot.Cards[0].PriorityColor := '#e30000';
   mSnapshot.Fetched := EncodeDateTime(2026, 10, 28, 9, 30, 0, 0);
+  mSnapshot.Swimlanes.Fields := TArray<string>.Create('Assignee', 'Zugewiesen an');
+  mSnapshot.Swimlanes.Caption := 'Zugewiesen an';
+  mSnapshot.Swimlanes.Values := TArray<string>.Create('marco');
+  mSnapshot.Swimlanes.OrphansAtTop := True;
+  mSnapshot.Cards[0].Lane := 'Baehring, Marco';
+  mSnapshot.Cards[0].LaneId := 'marco';
   Assert.IsTrue(TAtlasTrackerBoard.FromJson(TAtlasTrackerBoard.ToJson(mSnapshot), mBack));
+  Assert.AreEqual('Zugewiesen an', mBack.Swimlanes.Fields[1]);
+  Assert.AreEqual('Zugewiesen an', mBack.Swimlanes.Caption);
+  Assert.AreEqual('marco', mBack.Swimlanes.Values[0]);
+  Assert.IsTrue(mBack.Swimlanes.OrphansAtTop);
+  Assert.IsFalse(mBack.Swimlanes.HideOrphans);
+  Assert.AreEqual('Baehring, Marco', mBack.Cards[0].Lane);
+  Assert.AreEqual('marco', mBack.Cards[0].LaneId);
   Assert.IsTrue(mBack.Kind = TAtlasBoardKind.Project);
   Assert.AreEqual('Roadmap', mBack.Board.Name);
   Assert.AreEqual(Integer(1), Integer(Length(mBack.Boards)));
@@ -544,6 +565,82 @@ begin
   Assert.AreEqual('108-1', mSnapshot.Board.Id);
   Assert.IsFalse(TAtlasYouTrackBoards.ParseAgiles('[]', '', 'ATL', mSnapshot, mCurrent));
   Assert.IsFalse(TAtlasYouTrackBoards.ParseAgiles('kaputt', '', 'ATL', mSnapshot, mCurrent));
+end;
+
+procedure TAtlasYouTrackBoardTests.AgilesColumnsFollowOrdinal;
+const
+  cJson = '[{"id":"108-7","name":"Sprint","projects":[{"shortName":"ATL"}],"columnSettings":{"field":{"name":' +
+    '"Zustand"},"columns":[{"presentation":"Zur Bearbeitung","ordinal":0,"fieldValues":[{"name":"Offen"}]},' +
+    '{"presentation":"In Bearbeitung","ordinal":1,"fieldValues":[{"name":"In Arbeit"}]},' +
+    '{"presentation":"Done","ordinal":8,"isResolved":true,"fieldValues":[{"name":"Erledigt"}]},' +
+    '{"presentation":"Merge","ordinal":7,"fieldValues":[{"name":"Merge"}]},' +
+    '{"presentation":"Review","ordinal":2,"fieldValues":[{"name":"Review"}]},' +
+    '{"presentation":"Test","ordinal":3,"fieldValues":[{"name":"Test"}]}]}}]';
+  cWithout = '[{"id":"108-8","name":"Alt","columnSettings":{"field":{"name":"State"},"columns":[' +
+    '{"presentation":"B","fieldValues":[{"name":"B"}]},{"presentation":"A","fieldValues":[{"name":"A"}]}]}}]';
+var
+  mSnapshot: TAtlasBoardSnapshot;
+  mCurrent: string;
+  mNames: string;
+  mColumn: TAtlasBoardColumn;
+begin
+  mSnapshot := TAtlasBoardSnapshot.Empty;
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(cJson, '', 'ATL', mSnapshot, mCurrent));
+  mNames := '';
+  for mColumn in mSnapshot.Columns do
+  begin
+    mNames := mNames + mColumn.Name + ';';
+  end;
+  Assert.AreEqual('Zur Bearbeitung;In Bearbeitung;Review;Test;Merge;Done;', mNames);
+  Assert.IsTrue(mSnapshot.Columns[5].Resolved);
+  Assert.AreEqual(4, mSnapshot.ColumnOf('Merge'));
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(cWithout, '', '', mSnapshot, mCurrent));
+  Assert.AreEqual('B', mSnapshot.Columns[0].Name);
+  Assert.AreEqual('A', mSnapshot.Columns[1].Name);
+  mNames := '';
+  mCurrent := '';
+end;
+
+procedure TAtlasYouTrackBoardTests.AgilesAndCardsReadSwimlanes;
+const
+  cBoard = '[{"id":"108-9","name":"Team","orphansAtTheTop":true,"hideOrphansSwimlane":false,' +
+    '"columnSettings":{"field":{"name":"Zustand"},"columns":[{"presentation":"Offen","ordinal":0,' +
+    '"fieldValues":[{"name":"Offen"}]}]},"swimlaneSettings":{"enabled":true,"field":{"name":"assignee",' +
+    '"presentation":"Zugewiesen an","customField":{"name":"Assignee"}},"values":[{"name":"marco"},{"name":"udo"}]}}]';
+  cSprint = '{"id":"109-1","name":"S","issues":[{"idReadable":"ATL-1","summary":"Eins","customFields":[' +
+    '{"name":"Zustand","value":{"name":"Offen"}},{"name":"Assignee","value":{"login":"marco","fullName":' +
+    '"Baehring, Marco"}}]},{"idReadable":"ATL-2","summary":"Zwei","customFields":[{"name":"Zustand","value":' +
+    '{"name":"Offen"}},{"name":"Assignee","value":null}]}]}';
+  cOff = '[{"id":"108-9","name":"Team","columnSettings":{"field":{"name":"Zustand"},"columns":[]},' +
+    '"swimlaneSettings":{"enabled":false,"field":{"name":"assignee"}}}]';
+  cIssues = '[{"id":"108-9","name":"Team","columnSettings":{"field":{"name":"Zustand"},"columns":[]},' +
+    '"swimlaneSettings":{"enabled":true}}]';
+var
+  mSnapshot: TAtlasBoardSnapshot;
+  mCurrent: string;
+begin
+  mSnapshot := TAtlasBoardSnapshot.Empty;
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(cBoard, '', '', mSnapshot, mCurrent));
+  Assert.IsTrue(mSnapshot.Swimlanes.Active);
+  // Name des Projektfeldes, Anzeige; "assignee" ist ohne Groß-/Kleinschreibung schon da.
+  Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Swimlanes.Fields)));
+  Assert.AreEqual('Assignee', mSnapshot.Swimlanes.Fields[0]);
+  Assert.AreEqual('Zugewiesen an', mSnapshot.Swimlanes.Fields[1]);
+  Assert.AreEqual('Zugewiesen an', mSnapshot.Swimlanes.Caption);
+  Assert.AreEqual('udo', mSnapshot.Swimlanes.Values[1]);
+  Assert.IsTrue(mSnapshot.Swimlanes.OrphansAtTop);
+  Assert.IsFalse(mSnapshot.Swimlanes.HideOrphans);
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprint(cSprint, YouTrackTarget, mSnapshot));
+  Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Cards)));
+  Assert.AreEqual('Baehring, Marco', mSnapshot.Cards[0].Lane);
+  Assert.AreEqual('marco', mSnapshot.Cards[0].LaneId);
+  Assert.AreEqual('', mSnapshot.Cards[1].Lane);
+  Assert.AreEqual('', mSnapshot.Cards[1].LaneId);
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(cOff, '', '', mSnapshot, mCurrent));
+  Assert.IsFalse(mSnapshot.Swimlanes.Active, 'ausgeschaltet');
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(cIssues, '', '', mSnapshot, mCurrent));
+  Assert.IsFalse(mSnapshot.Swimlanes.Active, 'nach Eltern-Issues');
+  mCurrent := '';
 end;
 
 procedure TAtlasYouTrackBoardTests.SprintCardsFromFixture;
