@@ -35,6 +35,10 @@ type
     procedure WidthFollowsLineHeight;
     [Test]
     procedure TextsForPanel;
+    /// <summary>Wartezeit nach Fehlschlägen verdoppelt sich bis zur Obergrenze; eine Antwort setzt sie zurück.
+    /// </summary>
+    [Test]
+    procedure RetryDoublesUpToLimit;
   end;
 
 implementation
@@ -215,6 +219,26 @@ begin
   Assert.AreEqual('✕', TAtlasGutterColumn.Glyph(TAtlasGutterSymbol.Error));
   Assert.AreEqual('↓', TAtlasGutterColumn.Glyph(TAtlasGutterSymbol.Overridden));
   Assert.AreEqual('', TAtlasGutterColumn.Glyph(TAtlasGutterSymbol.None));
+end;
+
+procedure TAtlasGutterColumnTests.RetryDoublesUpToLimit;
+var
+  mRetry: TAtlasGutterRetry;
+  mStep: Integer;
+begin
+  mRetry := Default(TAtlasGutterRetry);
+  mRetry.Failed(1000);
+  Assert.AreEqual(Int64(1000 + TAtlasGutterRetry.cRetryMs), Int64(mRetry.RetryAt));
+  mRetry.Failed(1000);
+  Assert.AreEqual(Int64(1000 + 2 * TAtlasGutterRetry.cRetryMs), Int64(mRetry.RetryAt));
+  for mStep := 1 to 20 do
+  begin
+    mRetry.Failed(1000);
+  end;
+  Assert.AreEqual(Int64(1000 + TAtlasGutterRetry.cMaxRetryMs), Int64(mRetry.RetryAt));
+  mRetry.Succeeded;
+  mRetry.Failed(5000);
+  Assert.AreEqual(Int64(5000 + TAtlasGutterRetry.cRetryMs), Int64(mRetry.RetryAt));
 end;
 
 end.

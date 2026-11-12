@@ -12,7 +12,11 @@
 // der Schleife erhalten nur den Abbruch.
 //
 // OnExpired meldet zusätzlich die id der Anfrage (JSON-Text), damit der
-// Absturzfall (#1355) ihre Parameter findet.
+// Absturzfall (#1355) ihre Parameter findet. Eine Anfrage, die der Client
+// vor dem Zeitlimit schon abgebrochen hatte ($/cancelRequest, etwa weil seine
+// eigene Frist kürzer ist) oder deren Dokument sich geändert hat, meldet
+// OnExpired nicht: Auf sie wartet niemand mehr, ein Absturzfall wäre ein
+// Fehlalarm. OnTimeout meldet sie weiter (Protokoll, Statistik).
 
 interface
 
@@ -29,7 +33,8 @@ type
   /// RequestCancelled beantwortet (nebenläufige Anfragen); sonst wurde nur der Abbruch angefordert.</summary>
   TJsonRpcTimeoutEvent = reference to procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
   /// <summary>Wie TJsonRpcTimeoutEvent, mit der id der Anfrage als JSON-Text (#1355); läuft im Thread des
-  /// Watchdogs nach dem Abbruch.</summary>
+  /// Watchdogs nach dem Abbruch. Nicht für Anfragen, die schon vor dem Zeitlimit abgebrochen waren
+  /// (IJsonRpcPendingRequests.Abandoned).</summary>
   TJsonRpcExpiredEvent = reference to procedure(const AId, AMethod: string; ATimeoutMs: Cardinal);
 
   IJsonRpcWatchdog = interface
@@ -228,12 +233,14 @@ end;
 
 procedure TJsonRpcWatchdog.Expire(const AEntry: TEntry);
 var
-  mAnswered: Boolean;
+  mAnswered, mAbandoned: Boolean;
   mLimit: Cardinal;
 begin
   try
     mLimit := Timeout;
     mAnswered := False;
+    // Vor dem eigenen Abbruch fragen: Danach ist jede Anfrage abgebrochen.
+    mAbandoned := FPending.Abandoned(AEntry.Id);
     if (AEntry.Token <> nil) and Assigned(AEntry.Responder) then
     begin
       // Abbrechen und die Antwort beanspruchen: Wer zuerst kommt (Worker oder Watchdog), antwortet.
@@ -261,7 +268,7 @@ begin
     begin
       FOnTimeout(AEntry.Method, mLimit, mAnswered);
     end;
-    if Assigned(FOnExpired) then
+    if Assigned(FOnExpired) and not mAbandoned then
     begin
       FOnExpired(AEntry.Id.ToJSON, AEntry.Method, mLimit);
     end;

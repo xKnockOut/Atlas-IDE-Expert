@@ -4,7 +4,10 @@
 // Formular, das an jedem Steuerelement mit TabOrder oben rechts eine kleine
 // runde Marke zeigt (Zahl oder Pfad „2.1“). Auffällige Marken (Rücksprung,
 // Lücke, Doppelte) stehen in Fehlerfarbe, Steuerelemente ohne TabStop grau
-// mit „–“, im Modus „Reihenfolge klicken“ schon vergebene in Grün. Steht die
+// mit „–“, im Modus „Reihenfolge klicken“ schon vergebene in Grün. Mit
+// Farbgruppen (Group >= 0) trägt eine Marke die Farbe ihres Containers, und
+// jeder Container mit Kindern bekommt einen gestrichelten Rahmen in seiner
+// Farbe (SetFrames); Farben aus TAtlasColors.Placeholders. Steht die
 // Maus auf einer Marke, nennt ein Hinweis den Grund (UpdateHint, vom Takt
 // der Leiste aufgerufen, weil das Fenster ohne Klicken keine Maus sieht).
 // - Das Fenster gehört dem Hauptfenster der IDE (liegt damit über dem
@@ -43,9 +46,19 @@ type
     Hint: string;
     /// <summary>Oben rechts des Steuerelements im Client des Fensters.</summary>
     Anchor: TPoint;
+    /// <summary>Farbgruppe für Style = Normal; -1 = Akzentfarbe.</summary>
+    Group: Integer;
     class function Create(const AName, AText: string; AStyle: TAtlasTabBadgeStyle;
       const AAnchor: TPoint): TAtlasTabBadge; static;
     function SameAs(const AOther: TAtlasTabBadge): Boolean;
+  end;
+
+  /// <summary>Gestrichelter Rahmen eines Containers in der Farbe seiner Gruppe.</summary>
+  TAtlasTabFrame = record
+    /// <summary>Fläche des Containers im Client des Fensters.</summary>
+    Bounds: TRect;
+    Group: Integer;
+    class function Create(const ABounds: TRect; AGroup: Integer): TAtlasTabFrame; static;
   end;
 
   TAtlasTabOrderOverlay = class(TForm)
@@ -54,6 +67,7 @@ type
   private
     FColors: TAtlasColors;
     FBadges: TArray<TAtlasTabBadge>;
+    FFrames: TArray<TAtlasTabFrame>;
     FClickable: Boolean;
     FOwnerWindow: HWND;
     FShown: Boolean;
@@ -62,8 +76,12 @@ type
     FOnBadgeClick: TProc<string>;
     function S(AValue: Integer): Integer;
     procedure ApplyExStyle;
+    procedure PaintFrames;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
   protected
+    function GroupColor(AGroup: Integer): TColor;
+    /// <summary>Füllung der Marke: Zustand vor Farbgruppe vor Akzent.</summary>
+    function BadgeColor(const ABadge: TAtlasTabBadge): TColor;
     procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -74,6 +92,10 @@ type
     procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Marken setzen; gleiche zeichnen nicht neu.</summary>
     procedure SetBadges(const ABadges: TArray<TAtlasTabBadge>);
+    /// <summary>Rahmen der Container setzen; gleiche zeichnen nicht neu.</summary>
+    procedure SetFrames(const AFrames: TArray<TAtlasTabFrame>);
+    /// <summary>Zahl der Farbgruppen (Länge von TAtlasColors.Placeholders).</summary>
+    class function GroupCount: Integer; static;
     /// <summary>Fläche der Marke AIndex im Client.</summary>
     function BadgeRect(AIndex: Integer): TRect;
     /// <summary>Marke unter dem Punkt (Client); -1 = keine.</summary>
@@ -84,6 +106,7 @@ type
     /// <summary>Hinweis zur Marke unter ACursor (Bildschirm) zeigen, sonst ausblenden.</summary>
     procedure UpdateHint(const ACursor: TPoint);
     property Badges: TArray<TAtlasTabBadge> read FBadges;
+    property Frames: TArray<TAtlasTabFrame> read FFrames;
     property Shown: Boolean read FShown;
     /// <summary>Klicks auf die Marken annehmen (Tab-Reihenfolge per Klick, experimentell).</summary>
     property Clickable: Boolean read FClickable write FClickable;
@@ -105,12 +128,21 @@ begin
   Result.Style := AStyle;
   Result.Hint := '';
   Result.Anchor := AAnchor;
+  Result.Group := -1;
 end;
 
 function TAtlasTabBadge.SameAs(const AOther: TAtlasTabBadge): Boolean;
 begin
   Result := (Name = AOther.Name) and (Text = AOther.Text) and (Style = AOther.Style) and (Hint = AOther.Hint) and
-    (Anchor = AOther.Anchor);
+    (Anchor = AOther.Anchor) and (Group = AOther.Group);
+end;
+
+{ TAtlasTabFrame }
+
+class function TAtlasTabFrame.Create(const ABounds: TRect; AGroup: Integer): TAtlasTabFrame;
+begin
+  Result.Bounds := ABounds;
+  Result.Group := AGroup;
 end;
 
 { TAtlasTabOrderOverlay }
@@ -211,6 +243,78 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasTabOrderOverlay.SetFrames(const AFrames: TArray<TAtlasTabFrame>);
+var
+  mIndex: Integer;
+begin
+  if Length(AFrames) = Length(FFrames) then
+  begin
+    mIndex := 0;
+    while (mIndex <= High(AFrames)) and (AFrames[mIndex].Bounds = FFrames[mIndex].Bounds) and
+      (AFrames[mIndex].Group = FFrames[mIndex].Group) do
+    begin
+      Inc(mIndex);
+    end;
+    if mIndex > High(AFrames) then
+    begin
+      Exit;
+    end;
+  end;
+  FFrames := Copy(AFrames);
+  Invalidate;
+end;
+
+class function TAtlasTabOrderOverlay.GroupCount: Integer;
+begin
+  Result := High(TAtlasPlaceholderColors) - Low(TAtlasPlaceholderColors) + 1;
+end;
+
+function TAtlasTabOrderOverlay.GroupColor(AGroup: Integer): TColor;
+begin
+  Result := TColor(FColors.Placeholders[AGroup mod GroupCount]);
+end;
+
+function TAtlasTabOrderOverlay.BadgeColor(const ABadge: TAtlasTabBadge): TColor;
+begin
+  case ABadge.Style of
+    TAtlasTabBadgeStyle.Warn:
+      Result := TColor(FColors.Error);
+    TAtlasTabBadgeStyle.Muted:
+      Result := TColor(FColors.Muted);
+    TAtlasTabBadgeStyle.Picked:
+      Result := TColor(FColors.Add);
+  else
+    if ABadge.Group >= 0 then
+    begin
+      Result := GroupColor(ABadge.Group);
+    end
+    else
+    begin
+      Result := TColor(FColors.Accent);
+    end;
+  end;
+end;
+
+procedure TAtlasTabOrderOverlay.PaintFrames;
+var
+  mFrame: TAtlasTabFrame;
+  mRect: TRect;
+begin
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Style := psDash;
+  Canvas.Pen.Width := 1;
+  for mFrame in FFrames do
+  begin
+    // Etwas nach innen, damit verschachtelte Rahmen nicht auf einer Linie liegen.
+    mRect := mFrame.Bounds;
+    mRect.Inflate(-S(2), -S(2));
+    Canvas.Pen.Color := GroupColor(mFrame.Group);
+    Canvas.Rectangle(mRect);
+  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Brush.Style := bsSolid;
+end;
+
 function TAtlasTabOrderOverlay.BadgeRect(AIndex: Integer): TRect;
 var
   mWidth: Integer;
@@ -246,20 +350,12 @@ var
 begin
   Canvas.Brush.Color := cKeyColor;
   Canvas.FillRect(ClientRect);
+  PaintFrames;
   Canvas.Font.Assign(Font);
   for mIndex := 0 to High(FBadges) do
   begin
     mRect := BadgeRect(mIndex);
-    case FBadges[mIndex].Style of
-      TAtlasTabBadgeStyle.Warn:
-        mBack := TColor(FColors.Error);
-      TAtlasTabBadgeStyle.Muted:
-        mBack := TColor(FColors.Muted);
-      TAtlasTabBadgeStyle.Picked:
-        mBack := TColor(FColors.Add);
-    else
-      mBack := TColor(FColors.Accent);
-    end;
+    mBack := BadgeColor(FBadges[mIndex]);
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := mBack;
     Canvas.Pen.Color := mBack;

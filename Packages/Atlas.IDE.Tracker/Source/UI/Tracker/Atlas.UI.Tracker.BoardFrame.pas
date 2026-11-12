@@ -12,7 +12,11 @@
 // Farbbalken links, Fortschritt der Checkliste (#1273), Schloss bei offenem
 // „hängt ab von“ (#1279), Rahmen in Akzentfarbe beim aktuellen Issue (#765).
 // Schmaler als 360 px: Spalten untereinander als einklappbare Gruppen (Klick
-// auf die Kopfzeile). Ziehen einer Karte in eine andere Spalte meldet
+// auf die Kopfzeile). Hat das Board Swimlanes (TAtlasBoardLanes), steht breit
+// links eine Spalte mit einer Zeile je Wert (z. B. je Zuständigem), die Karten
+// in den Zellen darunter; Klick auf den Namen klappt die Zeile, die eigene
+// Zeile ist links in Akzentfarbe markiert. Ziehen in eine andere Zeile ändert
+// nur die Spalte. Ziehen einer Karte in eine andere Spalte meldet
 // Events.Move; die IDE-Schicht fragt nach, schreibt und ruft danach MoveCard
 // (sofort sichtbar) bzw. RevertMove (springt zurück); Spalten, die der
 // Workflow des Trackers sicher ausschließt (TAtlasBoardTransitions), werden
@@ -39,7 +43,8 @@ uses
   Vcl.Menus,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Tracker.Board;
+  Atlas.Core.Tracker.Board,
+  Atlas.Core.Tracker.BoardLanes;
 
 type
   /// <summary>Maße in Pixeln (schon skaliert).</summary>
@@ -50,6 +55,8 @@ type
     CardHeight: Integer;
     /// <summary>Schmaler als das: Spalten untereinander.</summary>
     NarrowWidth: Integer;
+    /// <summary>Breite der Spalte mit den Namen der Swimlanes.</summary>
+    LaneWidth: Integer;
     /// <summary>Maße bei 96 dpi aus der Zeilenhöhe der Schrift.</summary>
     class function Create(ALineHeight: Integer): TAtlasBoardMetrics; static;
     /// <summary>Alle Maße mal AScale (PPI/96).</summary>
@@ -76,12 +83,29 @@ type
     /// <summary>Sichtbare Karten je Spalte gezählt (gleicher Index wie Columns).</summary>
     Counts: TArray<Integer>;
     Places: TArray<TAtlasBoardPlace>;
+    /// <summary>Swimlanes (nur breit); leer ohne.</summary>
+    Lanes: TArray<TAtlasBoardLane>;
+    /// <summary>Namensfeld je Swimlane über die Höhe der Zeile (gleicher Index wie Lanes).</summary>
+    LaneBoxes: TArray<TRect>;
+    /// <summary>Sichtbare Karten je Swimlane (gleicher Index wie Lanes).</summary>
+    LaneCounts: TArray<Integer>;
+    /// <summary>Kopf über den Namen der Swimlanes; leer ohne.</summary>
+    Corner: TRect;
     Width: Integer;
     Height: Integer;
     /// <summary>AVisible: Karten nach Filter; ACollapsed: eingeklappte Spalten (Nummer im Board, -1 für „ohne
     /// Spalte“), nur schmal wirksam.</summary>
     class function Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>; AWidth: Integer;
-      const ACollapsed: TArray<Integer>; const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout; static;
+      const ACollapsed: TArray<Integer>; const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout; overload; static;
+    /// <summary>Wie oben; ACollapsedLanes: eingeklappte Swimlanes (LaneKey). Sind nicht alle Karten sichtbar
+    /// (Filter), entfallen Swimlanes ohne sichtbare Karte.</summary>
+    class function Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>; AWidth: Integer;
+      const ACollapsed: TArray<Integer>; const ACollapsedLanes: TArray<string>;
+      const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout; overload; static;
+    /// <summary>Schlüssel zum Einklappen einer Swimlane: ihr Name, '' für die Zeile ohne Wert.</summary>
+    class function LaneKey(const ALane: TAtlasBoardLane): string; static;
+    /// <summary>Swimlane, deren Namensfeld unter APoint liegt; -1 ohne.</summary>
+    function LaneAt(const APoint: TPoint): Integer;
     /// <summary>Nummer der Karte unter APoint; -1 ohne.</summary>
     function CardAt(const APoint: TPoint): Integer;
     /// <summary>Spalte des Boards unter APoint (Fläche bzw. Kopf); -2 ohne.</summary>
@@ -117,6 +141,7 @@ type
     FLayout: TAtlasBoardLayout;
     FColors: TAtlasColors;
     FCollapsed: TArray<Integer>;
+    FCollapsedLanes: TArray<string>;
     FActiveKey: string;
     FCanDrag: Boolean;
     FPressCard: Integer;
@@ -128,6 +153,7 @@ type
     function Metrics: TAtlasBoardMetrics;
     procedure PaintCard(const APlace: TAtlasBoardPlace; const ABounds: TRect; AGhost: Boolean);
     procedure PaintColumn(AIndex: Integer);
+    procedure PaintLane(AIndex: Integer);
     procedure CancelDrag;
     procedure CMMouseLeave(var AMessage: TMessage); message CM_MOUSELEAVE;
   protected
@@ -145,6 +171,9 @@ type
     procedure SetData(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>);
     procedure ToggleColumn(AColumn: Integer);
     function Collapsed(AColumn: Integer): Boolean;
+    /// <summary>Swimlane mit dem Schlüssel AKey (TAtlasBoardLayout.LaneKey) ein- bzw. ausklappen.</summary>
+    procedure ToggleLane(const AKey: string);
+    function LaneCollapsed(const AKey: string): Boolean;
     property Snapshot: TAtlasBoardSnapshot read FSnapshot;
     property Layout: TAtlasBoardLayout read FLayout;
     property Colors: TAtlasColors read FColors write FColors;
@@ -258,6 +287,23 @@ uses
 
 {$R *.dfm}
 
+const
+  /// <summary>Breite der Spalte mit den Namen der Swimlanes bei 96 dpi.</summary>
+  cLaneWidth = 140;
+  /// <summary>Breite der Markierung der eigenen Swimlane bei 96 dpi.</summary>
+  cLaneMark = 3;
+  /// <summary>Innenabstand im Namensfeld einer Swimlane und im Kopf darüber bei 96 dpi.</summary>
+  cLaneInset = 6;
+
+type
+  /// <summary>Eine Swimlane beim Anordnen: Nummer, Oberkante, Breite der Spalten, eingeklappt.</summary>
+  TLaneRow = record
+    Lane: Integer;
+    Top: Integer;
+    ColumnWidth: Integer;
+    Collapsed: Boolean;
+  end;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
@@ -288,6 +334,7 @@ begin
   // Kopfzeile der Karte, zwei Zeilen Titel, Ränder.
   Result.CardHeight := 3 * ALineHeight + 16;
   Result.NarrowWidth := TAtlasTrackerBoard.cNarrowWidth;
+  Result.LaneWidth := cLaneWidth;
 end;
 
 function TAtlasBoardMetrics.Scaled(AMultiplier, ADivider: Integer): TAtlasBoardMetrics;
@@ -300,6 +347,7 @@ begin
   Result.ColumnWidth := MulDiv(ColumnWidth, AMultiplier, ADivider);
   Result.Gap := MulDiv(Gap, AMultiplier, ADivider);
   Result.NarrowWidth := MulDiv(NarrowWidth, AMultiplier, ADivider);
+  Result.LaneWidth := MulDiv(LaneWidth, AMultiplier, ADivider);
 end;
 
 { TAtlasBoardLayout }
@@ -307,6 +355,20 @@ end;
 function Contains(const AItems: TArray<Integer>; AValue: Integer): Boolean;
 var
   mItem: Integer;
+begin
+  Result := False;
+  for mItem in AItems do
+  begin
+    if mItem = AValue then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function ContainsKey(const AItems: TArray<string>; const AValue: string): Boolean;
+var
+  mItem: string;
 begin
   Result := False;
   for mItem in AItems do
@@ -368,8 +430,98 @@ begin
   end;
 end;
 
+class function TAtlasBoardLayout.LaneKey(const ALane: TAtlasBoardLane): string;
+begin
+  Result := '';
+  if not ALane.Orphans then
+  begin
+    Result := ALane.Name;
+  end;
+end;
+
+/// <summary>Linke Kante der Spalte AIndex neben den Namen der Swimlanes.</summary>
+function LaneColumnLeft(AIndex, AColumnWidth: Integer; const AMetrics: TAtlasBoardMetrics): Integer;
+begin
+  Result := 2 * AMetrics.Gap + AMetrics.LaneWidth + AIndex * (AColumnWidth + AMetrics.Gap);
+end;
+
+/// <summary>Karten der Swimlane ALane in ihre Zellen; Ergebnis: Unterkante der Zeile ab ATop.</summary>
+function PlaceLane(var ALayout: TAtlasBoardLayout; const ASnapshot: TAtlasBoardSnapshot;
+  const AVisible: TArray<Integer>; const ARow: TLaneRow; const AMetrics: TAtlasBoardMetrics): Integer;
+var
+  mIndex, mLeft: Integer;
+  mCards: TArray<Integer>;
+begin
+  Result := ARow.Top + AMetrics.Header;
+  if not ARow.Collapsed then
+  begin
+    // Leere Zeile: Platz zum Ablegen.
+    Result := ARow.Top + AMetrics.CardHeight div 2 + AMetrics.Gap;
+  end;
+  for mIndex := 0 to High(ALayout.Columns) do
+  begin
+    mCards := TAtlasBoardLanes.CellCards(ASnapshot, ALayout.Lanes, AVisible, ALayout.Columns[mIndex], ARow.Lane);
+    Inc(ALayout.Counts[mIndex], Length(mCards));
+    Inc(ALayout.LaneCounts[ARow.Lane], Length(mCards));
+    if not ARow.Collapsed then
+    begin
+      mLeft := LaneColumnLeft(mIndex, ARow.ColumnWidth, AMetrics);
+      Result := Max(Result, PlaceCards(ALayout, mCards, ALayout.Columns[mIndex], Rect(mLeft, ARow.Top,
+        mLeft + ARow.ColumnWidth, ARow.Top), AMetrics) + AMetrics.Gap div 2);
+    end;
+  end;
+end;
+
+/// <summary>Breit mit Swimlanes: links die Namen, rechts die Spalten; je Swimlane eine Zeile mit Zellen. False
+/// ohne Swimlanes (nichts angeordnet).</summary>
+function BuildLanes(var ALayout: TAtlasBoardLayout; const ASnapshot: TAtlasBoardSnapshot;
+  const AVisible: TArray<Integer>; AWidth: Integer; const ACollapsedLanes: TArray<string>;
+  const AMetrics: TAtlasBoardMetrics): Boolean;
+var
+  mIndex, mCount, mColumnWidth, mLeft, mTop: Integer;
+  mRow: TLaneRow;
+begin
+  ALayout.Lanes := TAtlasBoardLanes.Build(ASnapshot, AVisible, Length(AVisible) < Length(ASnapshot.Cards));
+  Result := Length(ALayout.Lanes) > 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mCount := Length(ALayout.Columns);
+  mColumnWidth := Max(AMetrics.ColumnWidth, (AWidth - AMetrics.LaneWidth - (mCount + 2) * AMetrics.Gap) div mCount);
+  ALayout.Corner := Rect(AMetrics.Gap, AMetrics.Gap, AMetrics.Gap + AMetrics.LaneWidth, AMetrics.Gap + AMetrics.Header);
+  SetLength(ALayout.LaneBoxes, Length(ALayout.Lanes));
+  SetLength(ALayout.LaneCounts, Length(ALayout.Lanes));
+  mTop := ALayout.Corner.Bottom;
+  for mIndex := 0 to High(ALayout.Lanes) do
+  begin
+    mRow.Lane := mIndex;
+    mRow.Top := mTop;
+    mRow.ColumnWidth := mColumnWidth;
+    mRow.Collapsed := ContainsKey(ACollapsedLanes, TAtlasBoardLayout.LaneKey(ALayout.Lanes[mIndex]));
+    mTop := PlaceLane(ALayout, ASnapshot, AVisible, mRow, AMetrics);
+    ALayout.LaneBoxes[mIndex] := Rect(AMetrics.Gap, mRow.Top, AMetrics.Gap + AMetrics.LaneWidth, mTop);
+  end;
+  mLeft := AMetrics.Gap;
+  for mIndex := 0 to mCount - 1 do
+  begin
+    mLeft := LaneColumnLeft(mIndex, mColumnWidth, AMetrics);
+    ALayout.Headers[mIndex] := Rect(mLeft, AMetrics.Gap, mLeft + mColumnWidth, AMetrics.Gap + AMetrics.Header);
+    ALayout.Areas[mIndex] := Rect(mLeft, AMetrics.Gap, mLeft + mColumnWidth, mTop);
+  end;
+  ALayout.Height := mTop + AMetrics.Gap;
+  ALayout.Width := Max(AWidth, mLeft + mColumnWidth + AMetrics.Gap);
+end;
+
 class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
   AWidth: Integer; const ACollapsed: TArray<Integer>; const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout;
+begin
+  Result := Build(ASnapshot, AVisible, AWidth, ACollapsed, nil, AMetrics);
+end;
+
+class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
+  AWidth: Integer; const ACollapsed: TArray<Integer>; const ACollapsedLanes: TArray<string>;
+  const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout;
 var
   mIndex, mCount, mColumnWidth, mLeft, mTop, mBottom: Integer;
   mCards: TArray<Integer>;
@@ -382,6 +534,10 @@ begin
   SetLength(Result.Counts, mCount);
   Result.Narrow := AWidth < AMetrics.NarrowWidth;
   if mCount = 0 then
+  begin
+    Exit;
+  end;
+  if not Result.Narrow and BuildLanes(Result, ASnapshot, AVisible, AWidth, ACollapsedLanes, AMetrics) then
   begin
     Exit;
   end;
@@ -449,6 +605,20 @@ begin
     end;
   end;
   Result := -2;
+end;
+
+function TAtlasBoardLayout.LaneAt(const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(LaneBoxes) do
+  begin
+    if LaneBoxes[mIndex].Contains(APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TAtlasBoardLayout.HeaderAt(const APoint: TPoint): Integer;
@@ -521,7 +691,7 @@ end;
 
 procedure TAtlasBoardView.Relayout(AWidth: Integer);
 begin
-  FLayout := TAtlasBoardLayout.Build(FSnapshot, FVisible, AWidth, FCollapsed, Metrics);
+  FLayout := TAtlasBoardLayout.Build(FSnapshot, FVisible, AWidth, FCollapsed, FCollapsedLanes, Metrics);
   SetBounds(0, 0, FLayout.Width, Max(FLayout.Height, 1));
   Invalidate;
 end;
@@ -544,6 +714,26 @@ begin
     end;
   end;
   FCollapsed := FCollapsed + [AColumn];
+end;
+
+function TAtlasBoardView.LaneCollapsed(const AKey: string): Boolean;
+begin
+  Result := ContainsKey(FCollapsedLanes, AKey);
+end;
+
+procedure TAtlasBoardView.ToggleLane(const AKey: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FCollapsedLanes) do
+  begin
+    if FCollapsedLanes[mIndex] = AKey then
+    begin
+      Delete(FCollapsedLanes, mIndex, 1);
+      Exit;
+    end;
+  end;
+  FCollapsedLanes := FCollapsedLanes + [AKey];
 end;
 
 function PriorityColor(const ACard: TAtlasBoardCard; const AColors: TAtlasColors): TColor;
@@ -728,6 +918,76 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
+/// <summary>Beschriftung einer Swimlane: Pfeil, Name bzw. „Ohne Zuordnung“, Anzahl.</summary>
+function LaneTitle(AView: TAtlasBoardView; AIndex: Integer): string;
+var
+  mLane: TAtlasBoardLane;
+  mName: string;
+begin
+  mLane := AView.FLayout.Lanes[AIndex];
+  mName := mLane.Name;
+  if mLane.Orphans then
+  begin
+    mName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardLaneNone);
+  end;
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardColumnCount, [mName, AView.FLayout.LaneCounts[AIndex]]);
+  if AView.LaneCollapsed(TAtlasBoardLayout.LaneKey(mLane)) then
+  begin
+    Result := '▸ ' + Result;
+  end
+  else
+  begin
+    Result := '▾ ' + Result;
+  end;
+end;
+
+procedure TAtlasBoardView.PaintLane(AIndex: Integer);
+var
+  mBox, mText: TRect;
+  mTitle: string;
+begin
+  mBox := FLayout.LaneBoxes[AIndex];
+  // Trennlinie über die ganze Breite, Namensfeld links.
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(FColors.Line);
+  Canvas.FillRect(Rect(mBox.Left, mBox.Top, FLayout.Width - Metrics.Gap, mBox.Top + 1));
+  Canvas.Brush.Color := ToColor(FColors.Gutter);
+  Canvas.FillRect(Rect(mBox.Left, mBox.Top + 1, mBox.Right, mBox.Bottom));
+  if TAtlasBoardLanes.Mine(FLayout.Lanes[AIndex], FSnapshot.Me) then
+  begin
+    Canvas.Brush.Color := ToColor(FColors.Accent);
+    Canvas.FillRect(Rect(mBox.Left, mBox.Top + 1, mBox.Left + ScaleValue(cLaneMark), mBox.Bottom));
+  end;
+  mTitle := LaneTitle(Self, AIndex);
+  mText := Rect(mBox.Left + ScaleValue(cLaneMark + cLaneInset), mBox.Top + ScaleValue(cLaneInset),
+    mBox.Right - ScaleValue(cLaneInset), mBox.Bottom);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(FColors.Text);
+  DrawText(Canvas.Handle, PChar(mTitle), Length(mTitle), mText,
+    DT_LEFT or DT_WORDBREAK or DT_END_ELLIPSIS or DT_EDITCONTROL or DT_NOPREFIX);
+  Canvas.Font.Style := [];
+  Canvas.Brush.Style := bsSolid;
+end;
+
+/// <summary>Kopf über den Namen der Swimlanes: Name des Feldes.</summary>
+procedure PaintCorner(AView: TAtlasBoardView);
+var
+  mText: string;
+  mRect: TRect;
+begin
+  mText := AnsiUpperCase(AView.FSnapshot.Swimlanes.Caption);
+  mRect := AView.FLayout.Corner;
+  InflateRect(mRect, -AView.ScaleValue(cLaneInset), 0);
+  AView.Canvas.Brush.Style := bsClear;
+  AView.Canvas.Font.Style := [fsBold];
+  AView.Canvas.Font.Color := ToColor(AView.FColors.Muted);
+  DrawText(AView.Canvas.Handle, PChar(mText), Length(mText), mRect,
+    DT_LEFT or DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
+  AView.Canvas.Font.Style := [];
+  AView.Canvas.Brush.Style := bsSolid;
+end;
+
 procedure TAtlasBoardView.Paint;
 var
   mIndex: Integer;
@@ -741,6 +1001,14 @@ begin
   for mIndex := 0 to High(FLayout.Columns) do
   begin
     PaintColumn(mIndex);
+  end;
+  if Length(FLayout.Lanes) > 0 then
+  begin
+    PaintCorner(Self);
+  end;
+  for mIndex := 0 to High(FLayout.Lanes) do
+  begin
+    PaintLane(mIndex);
   end;
   for mPlace in FLayout.Places do
   begin
@@ -780,10 +1048,15 @@ begin
   FPressCard := mCard;
   FPressPoint := Point(X, Y);
   FDragging := False;
-  // Schmal: Klick auf die Kopfzeile klappt die Gruppe.
+  // Schmal: Klick auf die Kopfzeile klappt die Gruppe; breit: Klick auf den Namen die Swimlane.
   if (mCard < 0) and FLayout.Narrow and (FLayout.HeaderAt(Point(X, Y)) > -2) then
   begin
     ToggleColumn(FLayout.HeaderAt(Point(X, Y)));
+    Relayout(Width);
+  end
+  else if (mCard < 0) and (FLayout.LaneAt(Point(X, Y)) >= 0) then
+  begin
+    ToggleLane(TAtlasBoardLayout.LaneKey(FLayout.Lanes[FLayout.LaneAt(Point(X, Y))]));
     Relayout(Width);
   end;
 end;

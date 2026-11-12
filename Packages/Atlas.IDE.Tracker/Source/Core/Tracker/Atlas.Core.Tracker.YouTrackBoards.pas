@@ -15,6 +15,12 @@ type
   // Agile Boards von YouTrack (#1272), ohne VCL und Open Tools API.
   // - Boards: GET /api/agiles mit Spalten (columnSettings: Spaltenfeld, je
   //   Spalte die Werte des Feldes wie auf dem Board des Servers, auch deutsche).
+  //   Die Reihenfolge der Spalten folgt ordinal; die Liste der Antwort ist nach
+  //   dem Anlegen sortiert, nicht nach der Anzeige im Board.
+  // - Swimlanes nach einem Feld (swimlaneSettings mit field, z. B. Zuständig):
+  //   Feldnamen, Werte in Board-Reihenfolge, Lage der Zeile ohne Wert
+  //   (orphansAtTheTop, hideOrphansSwimlane). Swimlanes nach Eltern-Issues
+  //   (ohne field) zeigt Atlas als Board ohne Swimlanes.
   //   Gewählt wird das Board ABoardId, sonst das erste mit dem Projekt des
   //   Ziels, sonst das erste.
   // - Sprints: GET /api/agiles/<id>/sprints; Karten aus
@@ -34,8 +40,10 @@ type
   //   (workDays, 1 = Montag … 7 = Sonntag; ohne Recht bleibt Mo–Fr).
   TAtlasYouTrackBoards = class(TInterfacedObject, IAtlasTrackerBoards, IAtlasTrackerWorkDays)
   public const
-    cAgileFields = 'id,name,projects(shortName),columnSettings(field(name),columns(presentation,isResolved,' +
-      'fieldValues(name))),currentSprint(id),estimationField(name)';
+    cAgileFields = 'id,name,projects(shortName),columnSettings(field(name),columns(presentation,isResolved,ordinal,' +
+      'fieldValues(name))),currentSprint(id),estimationField(name),' +
+      'swimlaneSettings(enabled,field(name,presentation,customField(name)),values(name)),orphansAtTheTop,' +
+      'hideOrphansSwimlane';
     cSprintFields = 'id,name,start,finish,archived';
     cWorkDaysPath = '/api/admin/timeTrackingSettings/workTimeSettings?fields=workDays';
     /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login, Farbe und minutes
@@ -193,11 +201,39 @@ begin
   Result := TAtlasBoardColumn.Create(mName, mValues, '', TJsonRead.Flag(AColumn, 'isResolved'));
 end;
 
+/// <summary>Spalten aus AColumns in der Reihenfolge des Boards: aufsteigend nach ordinal, bei Gleichstand oder
+/// in der Reihenfolge der Antwort (stabil); ohne ordinal zählt die Stelle in der Antwort.</summary>
+function BoardOrder(AColumns: TJSONArray): TArray<TJSONObject>;
+var
+  mItem: TJSONValue;
+  mKeys: TArray<Integer>;
+  mObject: TJSONObject;
+  mKey, mIndex: Integer;
+begin
+  Result := nil;
+  mKeys := nil;
+  for mItem in AColumns do
+  begin
+    if not (mItem is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mObject := TJSONObject(mItem);
+    mKey := TJsonRead.IntOr(mObject, 'ordinal', Length(Result));
+    mIndex := Length(Result);
+    while (mIndex > 0) and (mKeys[mIndex - 1] > mKey) do
+    begin
+      Dec(mIndex);
+    end;
+    Insert(mObject, Result, mIndex);
+    Insert(mKey, mKeys, mIndex);
+  end;
+end;
+
 /// <summary>Spalten und Feld eines Boards aus columnSettings.</summary>
 procedure ReadColumns(ABoard: TJSONObject; var ASnapshot: TAtlasBoardSnapshot);
 var
-  mSettings: TJSONObject;
-  mItem: TJSONValue;
+  mSettings, mItem: TJSONObject;
 begin
   ASnapshot.Columns := nil;
   ASnapshot.Field := '';
@@ -211,13 +247,80 @@ begin
   begin
     Exit;
   end;
-  for mItem in TJSONArray(mSettings.Values['columns']) do
+  for mItem in BoardOrder(TJSONArray(mSettings.Values['columns'])) do
+  begin
+    ASnapshot.Columns := ASnapshot.Columns + [ColumnOf(mItem)];
+  end;
+end;
+
+/// <summary>Namen aus AObject[AName] (Objekte mit name).</summary>
+function NamesOf(AObject: TJSONObject; const AName: string): TArray<string>;
+var
+  mItem: TJSONValue;
+  mName: string;
+begin
+  Result := nil;
+  if not (AObject.Values[AName] is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AObject.Values[AName]) do
   begin
     if mItem is TJSONObject then
     begin
-      ASnapshot.Columns := ASnapshot.Columns + [ColumnOf(TJSONObject(mItem))];
+      mName := Trim(TJsonRead.Text(TJSONObject(mItem), 'name'));
+      if mName <> '' then
+      begin
+        Result := Result + [mName];
+      end;
     end;
   end;
+end;
+
+/// <summary>Namen des Swimlane-Feldes: Name des Projektfeldes, Name und Anzeige des Filterfeldes, ohne doppelte.
+/// </summary>
+function LaneFieldNames(AField: TJSONObject): TArray<string>;
+var
+  mName: string;
+  mKnown: string;
+begin
+  Result := nil;
+  for mName in TArray<string>.Create(NestedText(AField, 'customField', 'name'), TJsonRead.Text(AField, 'name'),
+    TJsonRead.Text(AField, 'presentation')) do
+  begin
+    mKnown := Trim(mName);
+    if (mKnown <> '') and not TAtlasYouTrackJson.IsOneOf(mKnown, Result) then
+    begin
+      Result := Result + [mKnown];
+    end;
+  end;
+end;
+
+/// <summary>Swimlanes eines Boards aus swimlaneSettings; nur eingeschaltete nach einem Feld.</summary>
+procedure ReadSwimlanes(ABoard: TJSONObject; var ASnapshot: TAtlasBoardSnapshot);
+var
+  mSettings, mField: TJSONObject;
+begin
+  ASnapshot.Swimlanes := Default(TAtlasBoardSwimlanes);
+  if not (ABoard.Values['swimlaneSettings'] is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mSettings := TJSONObject(ABoard.Values['swimlaneSettings']);
+  if not TJsonRead.FlagOr(mSettings, 'enabled', True) or not (mSettings.Values['field'] is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mField := TJSONObject(mSettings.Values['field']);
+  ASnapshot.Swimlanes.Fields := LaneFieldNames(mField);
+  ASnapshot.Swimlanes.Caption := TJsonRead.Text(mField, 'presentation');
+  if ASnapshot.Swimlanes.Caption = '' then
+  begin
+    ASnapshot.Swimlanes.Caption := TJsonRead.Text(mField, 'name');
+  end;
+  ASnapshot.Swimlanes.Values := NamesOf(mSettings, 'values');
+  ASnapshot.Swimlanes.OrphansAtTop := TJsonRead.Flag(ABoard, 'orphansAtTheTop');
+  ASnapshot.Swimlanes.HideOrphans := TJsonRead.Flag(ABoard, 'hideOrphansSwimlane');
 end;
 
 /// <summary>Board-Objekt mit gültiger Kennung, sonst nil.</summary>
@@ -299,6 +402,7 @@ begin
     ASnapshot.Board := TAtlasBoardRef.Create(TJsonRead.Text(mChosen, 'id'),
       TJsonRead.Text(mChosen, 'name'));
     ReadColumns(mChosen, ASnapshot);
+    ReadSwimlanes(mChosen, ASnapshot);
     ASnapshot.PointsField := NestedText(mChosen, 'estimationField', 'name');
     ACurrentSprint := NestedText(mChosen, 'currentSprint', 'id');
   finally
@@ -409,6 +513,64 @@ begin
   end;
 end;
 
+/// <summary>Erstes Objekt eines Feldwerts (einzeln oder Liste); nil ohne.</summary>
+function FirstValue(AValue: TJSONValue): TJSONObject;
+begin
+  Result := nil;
+  if AValue is TJSONObject then
+  begin
+    Result := TJSONObject(AValue);
+  end
+  else if (AValue is TJSONArray) and (TJSONArray(AValue).Count > 0) and (TJSONArray(AValue).Items[0] is TJSONObject)
+  then
+  begin
+    Result := TJSONObject(TJSONArray(AValue).Items[0]);
+  end;
+end;
+
+/// <summary>Erster nicht leerer Text unter ANames in AObject.</summary>
+function FirstText(AObject: TJSONObject; const ANames: array of string): string;
+var
+  mName: string;
+begin
+  Result := '';
+  for mName in ANames do
+  begin
+    Result := Trim(TJsonRead.Text(AObject, mName));
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Wert des Swimlane-Feldes (ALaneFields) in ACard: Anzeige und Kennung; mehrere Werte: der erste.
+/// </summary>
+procedure ReadLane(AIssue: TJSONObject; const ALaneFields: TArray<string>; var ACard: TAtlasBoardCard);
+var
+  mItem: TJSONValue;
+  mValue: TJSONObject;
+begin
+  if (Length(ALaneFields) = 0) or not (AIssue.Values['customFields'] is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AIssue.Values['customFields']) do
+  begin
+    if (mItem is TJSONObject) and TAtlasYouTrackJson.IsOneOf(Trim(TJsonRead.Text(TJSONObject(mItem), 'name')),
+      ALaneFields) then
+    begin
+      mValue := FirstValue(TJSONObject(mItem).Values['value']);
+      if mValue <> nil then
+      begin
+        ACard.Lane := FirstText(mValue, ['fullName', 'name', 'presentation', 'login']);
+        ACard.LaneId := FirstText(mValue, ['login', 'name', 'presentation', 'fullName']);
+      end;
+      Exit;
+    end;
+  end;
+end;
+
 /// <summary>Spaltenwert, Zuständige (Anmeldename), Prioritätsfarbe und Schätzung (APoints) aus customFields.
 /// </summary>
 procedure ReadFields(AIssue: TJSONObject; const AField, APoints: string; var ACard: TAtlasBoardCard);
@@ -471,6 +633,7 @@ begin
         mCard.Page := TAtlasYouTrackApi.IssuePage(ATarget, mDetails.Key);
         mCard.ResolvedAt := TAtlasYouTrackJson.TimeOf(mIssue, 'resolved');
         ReadFields(mIssue, ASnapshot.Field, ASnapshot.PointsField, mCard);
+        ReadLane(mIssue, ASnapshot.Swimlanes.Fields, mCard);
         mCard.Workflow := TAtlasYouTrackWorkflow.Find(mIssue, ASnapshot.Field);
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
       end;

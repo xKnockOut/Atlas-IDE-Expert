@@ -83,8 +83,8 @@ type
   public const
     /// <summary>Gruppen des Regelkatalogs (TRuleGroup des Servers) in der Reihenfolge der Seite Prüfregeln.
     /// </summary>
-    cGroupIds: array[0..13] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
-      'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages',
+    cGroupIds: array[0..14] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
+      'robustness', 'migration', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages',
       'internal');
     /// <summary>Gruppe „Compiler vorab“ (#1024) mit der Option "typeLevel".</summary>
     cCompilerGroup = 'compiler';

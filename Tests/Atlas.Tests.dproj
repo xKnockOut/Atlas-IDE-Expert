@@ -353,6 +353,8 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Automation.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Unicode.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Migration.Win64.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.StringConversions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests.pas"/>
@@ -379,6 +381,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas"/>
@@ -540,6 +543,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tokens.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.Tests.pas"/>
@@ -1157,10 +1161,17 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SprintStart.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SprintStart.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardLanes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.FlowMap.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.FlowMap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.BoardFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.FlowFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.FlowFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas"/>
@@ -2215,6 +2226,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Magnifier.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.StructureFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.StructureFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.EventFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.EventFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Search.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>

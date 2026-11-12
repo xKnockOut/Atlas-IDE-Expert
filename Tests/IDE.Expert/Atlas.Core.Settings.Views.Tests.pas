@@ -831,6 +831,7 @@ begin
   Assert.IsTrue(Settings.DesignerTabOrderClick, 'Neuvergeben an (#603)');
   Assert.IsFalse(Settings.DesignerTabOrderOverlay, 'Marken nur auf Knopfdruck');
   Assert.IsFalse(Settings.DesignerTabOrderPaths);
+  Assert.IsTrue(Settings.DesignerTabOrderColors, 'Farben je Container an');
   Assert.IsFalse(Settings.DesignerAlign, 'experimentell: aus');
   Settings.EditorDesignerBar := False;
   Settings.DesignerSearchKey := 0;
@@ -838,6 +839,7 @@ begin
   Settings.DesignerTabOrderClick := False;
   Settings.DesignerTabOrderOverlay := True;
   Settings.DesignerTabOrderPaths := True;
+  Settings.DesignerTabOrderColors := False;
   Settings.DesignerAlign := True;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -849,6 +851,7 @@ begin
   Assert.IsFalse(Loaded.DesignerTabOrderClick);
   Assert.IsTrue(Loaded.DesignerTabOrderOverlay);
   Assert.IsTrue(Loaded.DesignerTabOrderPaths);
+  Assert.IsFalse(Loaded.DesignerTabOrderColors);
   Assert.IsTrue(Loaded.DesignerAlign);
   Store.WriteString('DesignerSearchStyle', 'riesig');
   Loaded.Load(Store);

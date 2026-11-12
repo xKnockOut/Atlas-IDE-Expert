@@ -71,6 +71,7 @@ begin
   Switch('designer.tabOrderOverlay',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderOverlay));
   Switch('designer.tabOrderPaths', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderPaths));
+  Switch('designer.tabOrderColors', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderColors));
   Switch('editor.designerBar.align', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerAlign));
   Switch('designer.selectSimilar', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSelectSimilar));
   Switch('designer.selectSimilar.includeDescendants',

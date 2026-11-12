@@ -45,6 +45,10 @@ type
     /// <summary>TJsonRpcPastTimeout übergeht das bloße Zeitlimit, nicht den Abbruch.</summary>
     [Test]
     procedure PastTimeoutIgnoresOnlyExpiry;
+    /// <summary>Abandoned: abgebrochen oder Dokument geändert, nicht das bloße Zeitlimit; unbekannte id nicht.
+    /// </summary>
+    [Test]
+    procedure AbandonedOnlyAfterCancelOrChange;
   end;
 
 implementation
@@ -372,6 +376,40 @@ begin
       mToken.ThrowIfCancellationRequested;
     end, EJsonRpcRequestCancelled);
   Assert.IsFalse((TJsonRpcPastTimeout.Create(nil) as IJsonRpcCancellationToken).IsCancellationRequested, 'ohne Anfrage');
+end;
+
+procedure TJsonRpcPendingRequestsTests.AbandonedOnlyAfterCancelOrChange;
+var
+  mPending: IJsonRpcPendingRequests;
+  mId: TJSONValue;
+  mToken: IJsonRpcCancellationToken;
+begin
+  mPending := TJsonRpcPendingRequests.Create;
+  mId := TJSONNumber.Create(5);
+  try
+    Assert.IsFalse(mPending.Abandoned(mId), 'unbekannt');
+    mToken := mPending.Acquire(mId);
+    Assert.IsFalse(mPending.Abandoned(mId), 'offen');
+    mPending.Expire(mToken);
+    Assert.IsFalse(mPending.Abandoned(mId), 'nur Zeitlimit');
+    mPending.Cancel(mId);
+    Assert.IsTrue(mPending.Abandoned(mId), 'abgebrochen');
+    mPending.Release(mId, mToken);
+    Assert.IsFalse(mPending.Abandoned(mId), 'beantwortet');
+  finally
+    mId.Free;
+  end;
+  mPending := TJsonRpcPendingRequests.Create;
+  mPending.AddContentChangeMethod('textDocument/didChange');
+  Assert.IsFalse(Observe(mPending, '{"jsonrpc":"2.0","id":6,"method":"textDocument/codeAction",' +
+    '"params":{"textDocument":{"uri":"file:///a.pas"}}}'));
+  mPending.CancelForUri('file:///a.pas');
+  mId := TJSONNumber.Create(6);
+  try
+    Assert.IsTrue(mPending.Abandoned(mId), 'Dokument geändert');
+  finally
+    mId.Free;
+  end;
 end;
 
 initialization

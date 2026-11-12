@@ -100,6 +100,8 @@ uses
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings;
 
+{$R *.dfm}
+
 const
   cBasePpi = 96;
   cBarHeight = 30;
@@ -197,6 +199,8 @@ var
   mButton: TSpeedButton;
 begin
   inherited Create(AOwner);
+  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
+  Name := '';
   FOpen := TDictionary<string, Boolean>.Create;
   mBar := TPanel.Create(Self);
   mBar.Parent := Self;

@@ -8,18 +8,19 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 75 |
+| [Fehler finden](#gruppe-find-bugs) | 76 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 95 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
+| [Migration](#gruppe-migration) | 6 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 12 |
 | [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
-| [Stil und Metriken](#gruppe-style) | 55 |
+| [Stil und Metriken](#gruppe-style) | 56 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -103,6 +104,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
+| [`ignored-result`](#ignored-result) | Ergebnis einer Funktion ohne Seiteneffekte verworfen | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -271,6 +273,18 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`load-without-encoding`](#load-without-encoding) | Text laden oder speichern ohne Kodierung | Bug | Warnung |
 | [`registry-hklm-write`](#registry-hklm-write) | Schreiben nach HKEY_LOCAL_MACHINE | Bug | Hinweis |
 
+<a id="gruppe-migration"></a>
+### Migration
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`pointer-integer-cast`](#pointer-integer-cast) | Zeiger in einer 32-Bit-Zahl | Bug | Warnung |
+| [`handle-as-integer`](#handle-as-integer) | Handle oder Nachrichtenparameter in einer 32-Bit-Zahl | Bug | Warnung |
+| [`window-long-ptr`](#window-long-ptr) | …LongPtr statt …Long für Zeiger und Handles | Bug | Warnung |
+| [`asm-without-win64`](#asm-without-win64) | Assembler ohne Win64-Variante | Bug | Warnung |
+| [`char-count-as-bytes`](#char-count-as-bytes) | Zeichenzahl als Byteanzahl | Bug | Warnung |
+| [`ansi-api-call`](#ansi-api-call) | Ansi-Funktion mit umgewandeltem string | Bug | Warnung |
+
 <a id="gruppe-performance"></a>
 ### Performance
 
@@ -408,6 +422,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
 | [`redundant-jump`](#redundant-jump) | Überflüssiges Exit oder Continue | Code Smell | Hinweis |
 | [`method-without-self`](#method-without-self) | Methode braucht Self nicht | Code Smell | Hinweis |
+| [`method-order`](#method-order) | Methodenrümpfe nicht in Klassenordnung | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -7866,6 +7881,31 @@ var Average: Double;
 Average := Sum / Count;
 ```
 
+<a id="ignored-result"></a>
+### ignored-result
+
+**Ergebnis einer Funktion ohne Seiteneffekte verworfen** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Funktion ohne Seiteneffekte steht als eigene Anweisung, ihr Ergebnis geht verloren: Trim(S); ändert S nicht, S.Replace('a', 'b'); auch nicht. Gemeldet werden die unten genannten Standardroutinen (auch mit Unit davor, SysUtils.Trim), Methoden von TStringHelper ohne Seiteneffekte, wenn der Empfänger sicher vom Typ string ist, und die Funktionen aus der Option pureFunctions. Findet die Namensauflösung den Namen in einer Unit außerhalb der RTL oder deklariert die Datei selbst eine Routine dieses Namens (eigenes Trim mit var-Parameter), bleibt die Regel still, ebenso in with-Blöcken. Routinen mit var- oder out-Parametern und Routinen, die bei falscher Eingabe absichtlich eine Exception werfen (StrToInt oder S.ToInteger als Prüfung), stehen nicht in der Liste. Konfidenz hoch. Schnellkorrektur „Ergebnis zuweisen“: Liefert die Funktion den Typ ihres ersten Arguments bzw. des Helfer-Empfängers (Trim, StringReplace, Copy, S.Replace …) und ist dieser zuweisbar, wird daraus S := Trim(S); sonst eine neue Inline-Variable var Ergebnis := … (nur direkt in einem Block begin … end und ab Delphi 10.3). Standardroutinen je Unit: System: Abs, Assigned, Chr, Concat, Copy, Frac, High, Int, Length, Low, Odd, Ord, Pos, Pred, Round, SizeOf, Sqr, Sqrt, StringOfChar, Succ, Trunc, UpCase; System.SysUtils: IntToStr, IntToHex, FloatToStr, CurrToStr, BoolToStr, Format, FormatFloat, QuotedStr, AnsiQuotedStr, Trim, TrimLeft, TrimRight, LowerCase, UpperCase, AnsiLowerCase, AnsiUpperCase, StringReplace, SameText, SameStr, CompareText, CompareStr, AnsiSameText, AnsiSameStr, AnsiCompareText, AnsiCompareStr, AnsiPos, StrToIntDef, StrToInt64Def, StrToFloatDef, StrToBoolDef, ExtractFileName, ExtractFileExt, ExtractFilePath, ExtractFileDir, ExtractFileDrive, ChangeFileExt, ChangeFilePath, IncludeTrailingPathDelimiter, ExcludeTrailingPathDelimiter, IncludeTrailingBackslash, ExcludeTrailingBackslash, AdjustLineBreaks, IsDelimiter, LastDelimiter, string.Join, string.Create, string.Format, string.IsNullOrEmpty, string.IsNullOrWhiteSpace, string.Compare, string.CompareOrdinal, string.CompareText, string.LowerCase, string.UpperCase, string.EndsText; System.StrUtils: PosEx, ContainsText, ContainsStr, StartsText, StartsStr, EndsText, EndsStr, MatchText, MatchStr, IndexText, IndexStr, LeftStr, RightStr, MidStr, ReplaceStr, ReplaceText, AnsiReplaceStr, AnsiReplaceText, AnsiContainsText, AnsiStartsText, AnsiEndsText, DupeString, ReverseString, SplitString, IfThen; System.Math: Max, Min, Ceil, Floor, Power, IntPower, Sign, EnsureRange, InRange, SameValue, IsZero, RoundTo, SimpleRoundTo, Log10, Log2; System.IOUtils: TPath.Combine, TPath.GetFileName, TPath.GetFileNameWithoutExtension, TPath.GetExtension, TPath.GetDirectoryName, TPath.ChangeExtension. TStringHelper: Trim, TrimLeft, TrimRight, TrimStart, TrimEnd, ToUpper, ToLower, ToUpperInvariant, ToLowerInvariant, Replace, Substring, PadLeft, PadRight, Insert, Remove, QuotedString, DeQuotedString, Contains, StartsWith, EndsWith, IndexOf, IndexOfAny, LastIndexOf, LastIndexOfAny, IsEmpty, Split, ToCharArray, Equals, CompareTo, CountChar, IsDelimiter, LastDelimiter, GetHashCode.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `pureFunctions` | string-list | `[]` | Weitere Funktionen ohne Seiteneffekte, die wie die Standardroutinen gemeldet werden, als Name, Klasse.Name oder Unit.Name. |
+
+Mit Treffer:
+
+```pascal
+Trim(Input);
+S.Replace('a', 'b');
+```
+
+Richtig:
+
+```pascal
+Input := Trim(Input);
+S := S.Replace('a', 'b');
+```
+
 <a id="empty-finally"></a>
 ### empty-finally
 
@@ -9069,4 +9109,171 @@ class function TRechner.Doppelt(A: Integer): Integer; static;
 begin
   Result := A * 2;
 end;
+```
+
+<a id="method-order"></a>
+### method-order
+
+**Methodenrümpfe nicht in Klassenordnung** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Die Methodenrümpfe einer Klasse oder eines Records im implementation-Teil stehen nicht in der Ordnung, die der Befehl „implementation wie Klasse ordnen“ und die Klassenvervollständigung erzeugen, oder der Typkommentar über ihnen fehlt. So lassen sich Units, die vor der Klassenordnung (#1836) und dem Typkommentar (#1835) entstanden sind, gezielt finden und klassenweise aufräumen: Zusammengehörige Methoden stehen beieinander, die Rümpfe folgen der Klassendeklaration. Ein Befund je Typ am Typnamen im ersten Rumpf: „Methodenrümpfe von TKunde stehen nicht in der Klassenordnung (gruppiert)“. Die Ordnung kommt aus der Option placement (Vorgabe grouped wie editor.methodPlacement; declaration, alphabetical; off schaltet die Regel ab), Konstruktoren und Destruktoren mit classCompletion.lifecycleFirst zuerst. Es zählen nur die Rümpfe eines Typs untereinander, nicht die Reihenfolge der Typen in der Unit. Rümpfe, die beim Ordnen stehen bleiben (in einer Region oder {$IF…}, in einer Zeile mit anderem Code), zählen nicht als falsch. Eine zweite Meldung „Kommentar { TKunde } fehlt“, wenn classCompletion.typeComment nicht off ist und über den Rümpfen kein Typkommentar in irgendeiner Form steht. Standard aus (experimentell, nur im Profil strict oder eingeschaltet). Schnellkorrekturen: Rümpfe von TKunde ordnen (nur dieser Typ, gleiche Logik wie der Befehl) und Kommentar { TKunde } einfügen in der Form von classCompletion.typeComment.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `placement` | string | `"grouped"` | Ordnung der Rümpfe wie editor.methodPlacement: grouped, declaration, alphabetical oder off. |
+
+Mit Treffer:
+
+```pascal
+{ TKunde }
+
+procedure TKunde.Speichern;
+begin
+end;
+
+constructor TKunde.Create;
+begin
+end;
+```
+
+Richtig:
+
+```pascal
+{ TKunde }
+
+constructor TKunde.Create;
+begin
+end;
+
+procedure TKunde.Speichern;
+begin
+end;
+```
+
+<a id="pointer-integer-cast"></a>
+### pointer-integer-cast
+
+**Zeiger in einer 32-Bit-Zahl** · Bug · Warnung · Gruppe Migration
+
+Umstellung auf Win64 (#112): Integer(P), Cardinal(Obj), LongInt(@X), DWORD(Pointer(X)) und andere Umwandlungen in einen 32-Bit-Ganzzahltyp mit einem Zeiger, einem Objekt, einer Klassenreferenz oder einem Interface als Argument. Unter Win64 sind Zeiger 8 Byte groß, die oberen 32 Bit gehen verloren. Auch umgekehrt: TKunde(I) bzw. IKunde(I) mit I: Integer heißt, I hat einen Zeiger in 32 Bit gehalten. Pointer(I) bleibt still (Zahlen in Zeigerlisten sind gewollt und verlustfrei). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der Umwandlung übersetzt wird; still in inaktiven Zweigen, in Zweigen nach Plattform ({$IFDEF CPUX86}, {$IFDEF WIN32}, {$IF SizeOf(Pointer) = 4} samt {$ELSE}) und vor Delphi XE2. Korrektur: NativeInt bzw. NativeUInt statt des 32-Bit-Typs.
+
+Mit Treffer:
+
+```pascal
+Liste.Add(IntToStr(Integer(Kunde)));
+```
+
+Richtig:
+
+```pascal
+Liste.Add(IntToStr(NativeInt(Kunde)));
+```
+
+<a id="handle-as-integer"></a>
+### handle-as-integer
+
+**Handle oder Nachrichtenparameter in einer 32-Bit-Zahl** · Bug · Warnung · Gruppe Migration
+
+Umstellung auf Win64 (#112): Parameter wParam bzw. lParam (auch AWParam, ALParam) mit Longint, Integer, Cardinal oder DWORD und das Ergebnis einer solchen Routine (Fensterprozedur): Unter Win64 sind WPARAM, LPARAM und LRESULT 64 Bit breit. Außerdem die Zuweisung eines Handles (THandle, HWND, HDC, HMODULE …), WPARAM, LPARAM, LRESULT oder *_PTR an eine Variable mit 32-Bit-Ganzzahltyp; der Typ stammt aus der Deklaration der Quelle und gilt daher auch ohne Windows-Quelltexte. NativeInt nach Integer meldet narrowing-assignment. Still in inaktiven Zweigen, in Zweigen nach Plattform und vor Delphi XE2. Korrekturen: WPARAM, LPARAM bzw. LRESULT als Typ; bei einer lokalen Variablen, die allein deklariert ist, den Typ der Quelle übernehmen.
+
+Mit Treffer:
+
+```pascal
+function FensterProc(Wnd: HWND; Msg: UINT; wParam: Longint; lParam: Longint): Longint; stdcall;
+```
+
+Richtig:
+
+```pascal
+function FensterProc(Wnd: HWND; Msg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
+```
+
+<a id="window-long-ptr"></a>
+### window-long-ptr
+
+**…LongPtr statt …Long für Zeiger und Handles** · Bug · Warnung · Gruppe Migration
+
+Umstellung auf Win64 (#112): SetWindowLong, GetWindowLong, SetClassLong und GetClassLong (auch mit A bzw. W) mit einem Index, der einen Zeiger oder ein Handle liest bzw. schreibt: GWL_WNDPROC, GWL_USERDATA, GWL_HINSTANCE, GWL_HWNDPARENT, DWL_MSGRESULT, DWL_DLGPROC, DWL_USER und die GCL_-Indizes für Symbole, Mauszeiger, Hintergrund, Modul, Menüname und Fensterprozedur. Unter Win64 lesen und schreiben diese Funktionen nur 32 Bit. Indizes mit 32-Bit-Werten (GWL_STYLE, GWL_EXSTYLE, GWL_ID) meldet die Regel nicht. Still in inaktiven Zweigen, in Zweigen nach Plattform und vor Delphi XE2. Korrektur: …LongPtr mit dem GWLP_-, DWLP_- bzw. GCLP_-Index; eine 32-Bit-Umwandlung des neuen Werts wird LONG_PTR.
+
+Mit Treffer:
+
+```pascal
+SetWindowLong(Handle, GWL_WNDPROC, Integer(@NeueProc));
+```
+
+Richtig:
+
+```pascal
+SetWindowLongPtr(Handle, GWLP_WNDPROC, LONG_PTR(@NeueProc));
+```
+
+<a id="asm-without-win64"></a>
+### asm-without-win64
+
+**Assembler ohne Win64-Variante** · Bug · Warnung · Gruppe Migration
+
+Umstellung auf Win64 (#112): asm-Block außerhalb eines Zweigs nach Plattform ({$IFDEF CPUX86}, {$IFNDEF CPUX64}, {$IFNDEF PUREPASCAL} …). dcc64 übersetzt weder x86-Assembler noch asm innerhalb von begin … end (E1025). Routinen, deren asm 64-Bit-Register (rax, r8 …) verwendet, sind schon Win64-Code und werden nicht gemeldet. Dateien für Free Pascal ({$MODE …}, {$ASMMODE …}) und Delphi-Versionen vor XE2 bleiben still. Keine Korrektur: Die Pascal-Variante entsteht von Hand.
+
+Mit Treffer:
+
+```pascal
+function Tausche(Wert: Cardinal): Cardinal;
+asm
+  bswap eax
+end;
+```
+
+Richtig:
+
+```pascal
+function Tausche(Wert: Cardinal): Cardinal;
+{$IFDEF CPUX86}
+asm
+  bswap eax
+end;
+{$ELSE}
+begin
+  Result := Swap(Wert shr 16) or (Cardinal(Swap(Wert)) shl 16);
+end;
+{$ENDIF}
+```
+
+<a id="char-count-as-bytes"></a>
+### char-count-as-bytes
+
+**Zeichenzahl als Byteanzahl** · Bug · Warnung · Gruppe Migration
+
+Umstellung auf Unicode (#117): Length(S) bzw. StrLen(P) als Byteanzahl von Move, FillChar, CopyMemory, MoveMemory, ZeroMemory, FillMemory, CompareMem, BlockRead, BlockWrite, ReadFile, WriteFile oder der Stream-Methoden Read, ReadBuffer, Write und WriteBuffer mit einem Puffer aus demselben String (S[1], @S[1], PChar(S), Pointer(S)^) sowie GetMem bzw. ReallocMem eines PChar mit Length(S) (+ 1). Seit Delphi 2009 hat ein Char 2 Byte: Es wird nur die Hälfte der Zeichen kopiert bzw. die Hälfte des Speichers angelegt. S ist sicher string, UnicodeString oder WideString, P sicher PChar bzw. PWideChar; Length(S) darf mit + bzw. - um eine Zahl verschoben sein. Still in inaktiven Zweigen, mit {$H-} und vor Delphi 2009. Korrektur: mit SizeOf(Char) malnehmen; nicht sicher, weil ein Zielpuffer aus AnsiChar dann überläuft und stattdessen eine Umwandlung braucht.
+
+Mit Treffer:
+
+```pascal
+Move(S[1], Puffer, Length(S));
+```
+
+Richtig:
+
+```pascal
+Move(S[1], Puffer, Length(S) * SizeOf(Char));
+```
+
+<a id="ansi-api-call"></a>
+### ansi-api-call
+
+**Ansi-Funktion mit umgewandeltem string** · Bug · Warnung · Gruppe Migration
+
+Umstellung auf Unicode (#117): Aufruf einer …A-Funktion (MessageBoxA, CreateFileA …) mit PAnsiChar(AnsiString(S)) und S sicher string: Zeichen außerhalb der ANSI-Codepage gehen verloren. Die Funktion ohne A nimmt den string unverändert. Mischungen von AnsiString und string (string-conversion, W1057/W1058) und PChar auf AnsiString (suspicious-string-pointer-cast, W1044) sind eigene Regeln. Still in inaktiven Zweigen, mit {$H-} und vor Delphi 2009. Korrektur: Funktion ohne A mit PChar(S); angeboten, wenn die Funktion nicht aufgelöst ist oder aus einer Winapi-Unit stammt und kein anderes Argument sicher ein Ansi-Typ ist.
+
+Mit Treffer:
+
+```pascal
+MessageBoxA(0, PAnsiChar(AnsiString(Text)), 'Atlas', MB_OK);
+```
+
+Richtig:
+
+```pascal
+MessageBox(0, PChar(Text), 'Atlas', MB_OK);
 ```

@@ -86,6 +86,9 @@ type
     procedure Cancel(const AId: TJSONValue);
     /// <summary>Bricht alle offenen Anfragen ab, z. B. beim Beenden der Verbindung.</summary>
     procedure CancelAll;
+    /// <summary>True, wenn die offene Anfrage AId schon vor ihrem Zeitlimit abgebrochen wurde
+    /// ($/cancelRequest, geändertes Dokument, Ende der Verbindung): Niemand wartet mehr auf sie.</summary>
+    function Abandoned(const AId: TJSONValue): Boolean;
     /// <summary>Zeitlimit abgelaufen: bricht über AToken ab und beansprucht die Antwort. True: Der
     /// Aufrufer sendet die Fehlerantwort; die spätere Antwort des Handlers wird verworfen. False, wenn der
     /// Handler schon geantwortet hat oder AToken fremd ist.</summary>
@@ -128,6 +131,7 @@ type
     procedure Release(const AId: TJSONValue; const AToken: IJsonRpcCancellationToken);
     procedure Cancel(const AId: TJSONValue);
     procedure CancelAll;
+    function Abandoned(const AId: TJSONValue): Boolean;
     function Expire(const AToken: IJsonRpcCancellationToken): Boolean;
     function TryAnswer(const AToken: IJsonRpcCancellationToken): Boolean;
     procedure AddContentChangeMethod(const AMethod: string);
@@ -424,6 +428,22 @@ begin
     for mSource in FRequests.Values do
     begin
       mSource.Cancel;
+    end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TJsonRpcPendingRequests.Abandoned(const AId: TJSONValue): Boolean;
+var
+  mSource: IJsonRpcCancellationSource;
+begin
+  Result := False;
+  FLock.Enter;
+  try
+    if FRequests.TryGetValue(KeyOf(AId), mSource) then
+    begin
+      Result := mSource.IsCancellationRequested and not mSource.OnlyExpired;
     end;
   finally
     FLock.Leave;
