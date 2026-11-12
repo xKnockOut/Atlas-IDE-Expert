@@ -21,6 +21,8 @@ type
     procedure PassedAsArgumentIsSilent;
     [Test]
     procedure AssignedAfterFreeIsReported;
+    [Test]
+    procedure OwnMethodMayReassignField;
   end;
 
 implementation
@@ -71,6 +73,25 @@ begin
   mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  if Assigned(L) then'#10 +
     '    Merke(nil);'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
+end;
+
+procedure TFlowUseAfterFreeTests.OwnMethodMayReassignField;
+const
+  cHead = 'unit U;'#10'interface'#10'type'#10'  TLader = class'#10'  private'#10'    FListe: TList;'#10 +
+    '    procedure Neu;'#10'    procedure Laden;'#10'  end;'#10'implementation'#10 +
+    'procedure TLader.Neu;'#10'begin'#10'  FListe := TList.Create;'#10'end;'#10 +
+    'procedure TLader.Laden;'#10'begin'#10;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026: Eine eigene Methode zwischen Free und Zugriff kann das Feld neu belegen.
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Neu;'#10'  FListe.Add(nil);'#10 +
+    '  FListe.Free;'#10'  Self.Neu;'#10'  FListe.Add(nil);'#10'end;'#10'end.');
+  // Eine fremde Routine belegt das Feld nicht neu.
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Melden;'#10 +
+    '  FListe.Add(nil);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mFindings := nil;
 end;
 
 initialization

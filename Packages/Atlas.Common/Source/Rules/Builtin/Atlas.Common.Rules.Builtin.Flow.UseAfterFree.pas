@@ -2,7 +2,8 @@
 
 // Regel use-after-free aus Atlas.Common.Rules.Builtin.Flow (#269): Nach X.Free, X.Destroy, X.DisposeOf,
 // FreeAndNil(X) oder Dispose(X) liest ein Weg des Kontrollflusses X wieder. Eine Zuweisung an X, die Übergabe als
-// Argument und @X beenden den Weg; Assigned(X) und Vergleiche mit nil trennen ihn.
+// Argument und @X beenden den Weg; Assigned(X) und Vergleiche mit nil trennen ihn. Bei einem Feld der Klasse
+// beendet auch der Aufruf einer eigenen Methode den Weg: Sie kann das Feld neu belegen.
 
 interface
 
@@ -63,6 +64,13 @@ type
     FUses: TArray<TSyntaxNode>;
     FStops: Boolean;
     FGuarded: Boolean;
+    /// <summary>Felder und Methoden der Klasse der aktuellen Routine.</summary>
+    FFields: TArray<string>;
+    FMethods: TArray<string>;
+    /// <summary>Ist FPath ein Feld der Klasse? Dann kann eine eigene Methode es neu belegen.</summary>
+    FIsField: Boolean;
+    function CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
+    procedure CollectMembers(ARoot, ARoutine: TSyntaxNode);
     function AlreadyReported(AOffset: Integer): Boolean;
     function VisitAccess(ANode: TSyntaxNode): Integer;
     procedure VisitArgument(const ACallee: string; AArgument: TSyntaxNode);
@@ -298,6 +306,74 @@ begin
     [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([mFreeLine]), FFree.Syntax.StartPos)]);
 end;
 
+/// <summary>Ruft AStatement eine Methode der eigenen Klasse auf (Reset; Self.Reset(1))? Sie kann ein Feld neu
+/// belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
+function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
+var
+  mTarget: TSyntaxNode;
+  mName: string;
+begin
+  Result := False;
+  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) then
+  begin
+    Exit;
+  end;
+  mName := AStatement.Name;
+  if AStatement.ChildCount > 0 then
+  begin
+    mTarget := AStatement[0];
+    if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
+    begin
+      mTarget := mTarget[0];
+    end;
+    // Name oder Self.Name.
+    mName := FreedPath(mTarget);
+  end;
+  Result := (mName <> '') and MatchText(mName, FMethods);
+end;
+
+procedure TUseAfterFreeCheck.CollectMembers(ARoot, ARoutine: TSyntaxNode);
+var
+  mClass, mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+begin
+  FFields := nil;
+  FMethods := nil;
+  if ClassOf(ARoutine) = '' then
+  begin
+    Exit;
+  end;
+  mClass := FindClassType(ARoot, DeclaredClassName(ClassOf(ARoutine)));
+  FFields := ClassFields(mClass);
+  if mClass = nil then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(mClass);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl] then
+      begin
+        FMethods := FMethods + [ShortName(mNode.Name)];
+        Continue;
+      end;
+      for mIndex := 0 to mNode.ChildCount - 1 do
+      begin
+        if mNode[mIndex].Kind <> TSyntaxKind.TypeSection then
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>
 function TUseAfterFreeCheck.WalksOn(ANode: TFlowNode): Boolean;
 var
@@ -310,6 +386,7 @@ begin
   begin
     Inspect(ANode.Syntax);
   end;
+  FStops := FStops or FIsField and CallsOwnMethod(ANode.Syntax);
   Result := False;
   if not (FGuarded and FToNil) then
   begin
@@ -331,6 +408,8 @@ begin
   FFree := AFree;
   FPath := APath;
   FToNil := AToNil;
+  FIsField := MatchText(APath, FFields) or StartsText('Self.', APath) and
+    MatchText(Copy(APath, Length('Self.') + 1, MaxInt), FFields);
   SetLength(mVisited, FGraph.Nodes.Count);
   mQueue := nil;
   QueueSuccessors(AFree, mVisited, mQueue);
@@ -381,6 +460,7 @@ begin
     FGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
     if FGraph.Complete then
     begin
+      CollectMembers(AContext.Tree.Root, mRoutine);
       CheckGraph;
     end;
   end;

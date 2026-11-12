@@ -37,7 +37,8 @@
 // Die Regel liest die Direktiven-Token des ganzen Textes, auch in inaktiven
 // Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen
 // prüft sie nicht in Zweigen, deren Bedingung FPC abfragt ({$IFDEF FPC}{$MODE
-// DELPHI}{$ENDIF}). {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon in
+// DELPHI}{$ENDIF}); in anderen bedingten Zweigen meldet sie sie mit niedriger
+// Konfidenz, weil dcc sie in nicht geltenden Zweigen überspringt. {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon in
 // einem bedingten Zweig steht.
 //
 // compiler-directive-invalid prüft nur Direktiven außerhalb bedingter Zweige:
@@ -311,6 +312,20 @@ var
     Result := (mStack <> nil) and mStack[High(mStack)].Fpc;
   end;
 
+  /// <summary>Konfidenz eines unbekannten Namens: In einem bedingten Zweig weiß die Regel nicht, ob er gilt, und
+  /// dcc meldet nur aus geltenden Zweigen (z. B. {$error} im {$else} hinter {$if defined(TARGET_x64)}).</summary>
+  function UnknownConfidence: TRuleConfidence;
+  begin
+    if mStack = nil then
+    begin
+      Result := TRuleConfidence.High;
+    end
+    else
+    begin
+      Result := TRuleConfidence.Low;
+    end;
+  end;
+
   /// <summary>Korrektur, die das Wort AWord (ab Zeichen AFrom der Direktive) durch AReplacement in seiner
   /// Schreibweise ersetzt; AShown steht im Titel.</summary>
   function ReplaceFix(AIndex: Integer; const AWord, AReplacement, AShown: string; AFrom: Integer;
@@ -447,12 +462,12 @@ var
     if (mClosest <> '') and ReplaceFix(AIndex, AName, mClosest, '{$' + mClosest + '}', 1, mFix) then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownDirectiveGuess].Fmt(
-        [AName, mClosest, mUnknownCode]), TRuleConfidence.High, [mFix]);
+        [AName, mClosest, mUnknownCode]), UnknownConfidence, [mFix]);
     end
     else
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownDirectiveCode].Fmt([AName, mUnknownCode]),
-        TRuleConfidence.High);
+        UnknownConfidence);
     end;
   end;
 
@@ -471,12 +486,12 @@ var
     if (mClosest <> '') and ReplaceFix(AIndex, mId, mClosest, mClosest, AFrom, mFix) then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarningGuess].Fmt(
-        [mId, mClosest, mUnknownCode]), TRuleConfidence.High, [mFix]);
+        [mId, mClosest, mUnknownCode]), UnknownConfidence, [mFix]);
     end
     else
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarning].Fmt([mId, mUnknownCode]),
-        TRuleConfidence.High);
+        UnknownConfidence);
     end;
   end;
 

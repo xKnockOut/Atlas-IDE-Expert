@@ -36,6 +36,8 @@ type
     [Test]
     procedure DistinctGuidsSilent;
     [Test]
+    procedure DispinterfaceSharesGuidSilent;
+    [Test]
     procedure FileHeaderNeedsTemplate;
     [Test]
     procedure FileHeaderReportedWithFix;
@@ -176,6 +178,15 @@ begin
   TRuleAssert.Silent(TDuplicateInterfaceGuidRule.Create, InType('  ILoader = interface'#10 +
     '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']'#10'  end;'#10'  ISaver = interface'#10 +
     '    [''{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}'']'#10'  end;'));
+end;
+
+procedure TGeneralRulesTests.DispinterfaceSharesGuidSilent;
+const
+  Guid = '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']';
+begin
+  // Typbibliotheken (*_TLB.pas) deklarieren interface und dispinterface absichtlich mit derselben GUID.
+  TRuleAssert.Silent(TDuplicateInterfaceGuidRule.Create, InType('  ILoader = interface(IDispatch)'#10 + Guid +
+    #10'  end;'#10'  ILoaderDisp = dispinterface'#10 + Guid + #10'  end;'));
 end;
 
 procedure TGeneralRulesTests.FileHeaderNeedsTemplate;

@@ -7,7 +7,8 @@
 //                             (als einzige Anweisung eines if/while … mit mehreren Anweisungen: begin … end)
 //   interface-guid            Interface ohne GUID; mit Supports/as/QueryInterface hohe Konfidenz (wie E2232)
 //                             (dispinterface ohne GUID meldet dispinterface-invalid)
-//   duplicate-interface-guid  zwei Interfaces der Datei mit derselben GUID
+//   duplicate-interface-guid  zwei Interfaces der Datei mit derselben GUID (interface und dispinterface
+//                             dürfen sie teilen)
 //   guid-syntax-invalid       GUID-Literal eines Interfaces oder einer TGUID-Konstante nicht in der Form
 //                             '{8-4-4-4-12}' (#1072, wie E2204); Korrektur: neue GUID bzw. Klammern ergänzen
 //   file-header               Dateikopf weicht von der Vorlage ab (Option "template", Standard aus)
@@ -760,7 +761,9 @@ begin
     end;
     for mOther := 0 to High(mDeclarations) do
     begin
-      if (mOther <> mIndex) and (mDeclarations[mOther].Guid = mDeclarations[mIndex].Guid) then
+      // Ein interface und sein dispinterface teilen die GUID absichtlich (Typbibliotheken, *_TLB.pas).
+      if (mOther <> mIndex) and (mDeclarations[mOther].Guid = mDeclarations[mIndex].Guid) and
+        (mDeclarations[mOther].IsDispinterface = mDeclarations[mIndex].IsDispinterface) then
       begin
         mToken := mTokens[mDeclarations[mIndex].GuidToken];
         AReport.Add(TokenRange(mToken), cTexts[TGeneralText.DuplicateGuid].Fmt([mDeclarations[mIndex].Name,

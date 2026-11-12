@@ -5,6 +5,10 @@
 //                      (Name := Value in SetName) und ruft sich damit endlos
 //                      selbst auf. Fehler mit hoher Konfidenz; bis #910 hieß
 //                      die Regel recursive-property-accessor (TRuleIdAliases).
+//                      Niedrige Konfidenz, wenn der Setter den Wert begrenzt
+//                      (Zuweisung in einem Zweig, dessen Bedingung einen
+//                      Parameter prüft, nicht des Parameters selbst): Dann
+//                      endet die Rekursion meist nach einem Schritt.
 // Die Analyse liefert TRecursionAnalysis.AccessorTraps. Die Korrektur setzt
 // das Feld ein: aus read/write der Property, sonst F<Name>, wenn die Klasse
 // es hat. Geerbte Properties und Accessoren in anderen Units sieht die
@@ -106,9 +110,157 @@ begin
   end;
 end;
 
+/// <summary>Liegt APosition in ANode (Ende ausgeschlossen)?</summary>
+function Covers(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
+begin
+  Result := ((ANode.StartPos.Line < APosition.Line) or (ANode.StartPos.Line = APosition.Line) and
+    (ANode.StartPos.Character <= APosition.Character)) and ((APosition.Line < ANode.EndPos.Line) or
+    (APosition.Line = ANode.EndPos.Line) and (APosition.Character < ANode.EndPos.Character));
+end;
+
+/// <summary>Tiefster Knoten unter ARoot, der APosition enthält.</summary>
+function DeepestAt(ARoot: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+var
+  mIndex: Integer;
+  mDeeper: Boolean;
+begin
+  Result := ARoot;
+  repeat
+    mDeeper := False;
+    for mIndex := 0 to Result.ChildCount - 1 do
+    begin
+      if Covers(Result[mIndex], APosition) then
+      begin
+        Result := Result[mIndex];
+        mDeeper := True;
+        Break;
+      end;
+    end;
+  until not mDeeper;
+end;
+
+/// <summary>Namen der Parameter von ARoutine.</summary>
+function ParameterNames(ARoutine: TSyntaxNode): TArray<string>;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+begin
+  Result := nil;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoutine);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.Parameter then
+      begin
+        for mName in SplitString(mNode.Name, ',') do
+        begin
+          Result := Result + [Trim(mName)];
+        end;
+      end
+      else if mNode.Kind = TSyntaxKind.Block then
+      begin
+        Continue;
+      end;
+      for mIndex := 0 to mNode.ChildCount - 1 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Kommt einer der Namen ANames als Bezeichner in AText vor?</summary>
+function MentionsAny(const AText: string; const ANames: TArray<string>): Boolean;
+var
+  mIndex, mStart: Integer;
+begin
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    if CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) then
+    begin
+      mStart := mIndex;
+      while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_', '0'..'9']) do
+      begin
+        Inc(mIndex);
+      end;
+      if MatchText(Copy(AText, mStart, mIndex - mStart), ANames) then
+      begin
+        Exit(True);
+      end;
+    end
+    else
+    begin
+      Inc(mIndex);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Begrenzt der Setter den Wert, bevor er die Property erneut schreibt ("if A &lt; 0 then V := 0 else
+/// FV := A")? Dann endet die Rekursion meist nach einem Schritt (FP-Prüfung 28.10.2026): Die Zuweisung steht in
+/// einem Zweig, dessen Bedingung einen Parameter prüft, und weist nicht den Parameter selbst zu.</summary>
+function IsClampedWrite(const AContext: TRuleContext; const ATrap: TAccessorTrap): Boolean;
+var
+  mNode, mChild, mRoutine, mAssign: TSyntaxNode;
+  mParams: TArray<string>;
+
+  function TextOf(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+begin
+  Result := False;
+  if not ATrap.IsSetter or (AContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  mNode := DeepestAt(AContext.Tree.Root, ATrap.Range.StartPos);
+  mAssign := nil;
+  mRoutine := mNode;
+  while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if (mAssign = nil) and (mRoutine.Kind = TSyntaxKind.AssignStatement) then
+    begin
+      mAssign := mRoutine;
+    end;
+    mRoutine := mRoutine.Parent;
+  end;
+  if (mRoutine = nil) or (mAssign = nil) or (mAssign.ChildCount < 2) then
+  begin
+    Exit;
+  end;
+  mParams := ParameterNames(mRoutine);
+  if (mParams = nil) or MatchText(Trim(TextOf(mAssign[1])), mParams) then
+  begin
+    Exit;
+  end;
+  mChild := mAssign;
+  mNode := mAssign.Parent;
+  while (mNode <> nil) and (mNode <> mRoutine) do
+  begin
+    if (mNode.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement]) and (mNode.ChildCount > 1) and
+      (mNode[0] <> mChild) and MentionsAny(TextOf(mNode[0]), mParams) then
+    begin
+      Exit(True);
+    end;
+    mChild := mNode;
+    mNode := mNode.Parent;
+  end;
+end;
+
 procedure TSetterRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTrap: TAccessorTrap;
+  mConfidence: TRuleConfidence;
+  mFixes: TArray<TRuleFix>;
 begin
   if AContext.Tree = nil then
   begin
@@ -116,15 +268,18 @@ begin
   end;
   for mTrap in TRecursionAnalysis.AccessorTraps(AContext.Tree) do
   begin
+    mConfidence := TRuleConfidence.High;
+    if IsClampedWrite(AContext, mTrap) then
+    begin
+      mConfidence := TRuleConfidence.Low;
+    end;
+    mFixes := nil;
     if mTrap.Field <> '' then
     begin
-      AReport.Add(mTrap.Range, Message(mTrap), [TRuleFix.Create(cTexts[TRecursionText.UseField].Fmt([mTrap.Field]),
-        [TRuleEdit.Create(mTrap.Range, mTrap.Field)])]);
-    end
-    else
-    begin
-      AReport.Add(mTrap.Range, Message(mTrap));
+      mFixes := [TRuleFix.Create(cTexts[TRecursionText.UseField].Fmt([mTrap.Field]),
+        [TRuleEdit.Create(mTrap.Range, mTrap.Field)])];
     end;
+    AReport.Add(mTrap.Range, Message(mTrap), mConfidence, mFixes);
   end;
 end;
 
