@@ -3,8 +3,8 @@
 // Internals-Rolle Shell: Befehle des Plugins am Editor. Austrittspunkte (#698), neu zugewiesene Variablen (#712),
 // Typ des markierten Ausdrucks (#689), Methodenrümpfe in Deklarationsreihenfolge (#660), Überschreibungen (#768),
 // erfüllte Interface-Methoden (#1785), qualifizierte Namen, Aufzählungswerte, resourcestring (#473),
-// Zeichenkettenliterale und die Einrückung beim Tippen (#1827). Die Komposition reicht Dokumente, Index, Quelltext,
-// Namensräume und Einstellungen als Dienste herein.
+// Zeichenkettenliterale, die Einrückung beim Tippen (#1827) und gelernte Vorschläge (#1890). Die Komposition reicht
+// Dokumente, Index, Quelltext, Namensräume und Einstellungen als Dienste herein.
 
 interface
 
@@ -19,6 +19,7 @@ uses
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Lsp.SmartIndent,
+  Atlas.Common.Lsp.LearnedSuggestions,
   Atlas.Common.Lsp.MethodOrder;
 
 type
@@ -42,6 +43,8 @@ type
     SmartIndentFor: TSmartIndentOptionsFunc;
     /// <summary>Einstellungen zum Ordnen der Methodenrümpfe (#1834) je Datei.</summary>
     MethodOrderFor: TMethodOrderOptionsFunc;
+    /// <summary>Einrückung und eigene Muster der gelernten Vorschläge (#1890) je Datei.</summary>
+    LearnedOptionsFor: TLearnedOptionsFunc;
   end;
 
   /// <summary>Befehle des Plugins am Editor.</summary>
@@ -61,13 +64,15 @@ type
     function RunPlainText(const AArguments: TJSONArray): TJSONValue;
     function RunToLiteral(const AArguments: TJSONArray): TJSONValue;
     function RunSmartIndent(const AArguments: TJSONArray): TJSONValue;
+    function RunSuggestNext(const AArguments: TJSONArray): TJSONValue;
+    function RunLearnedPatterns(const AArguments: TJSONArray): TJSONValue;
   public
     constructor Create(const AServices: TShellEditorCommandServices);
     /// <summary>Markierungen im Plugin: Austrittspunkte, neu zugewiesene Variablen, Ausdruckstyp,
     /// Methodenreihenfolge, Überschreibungen.</summary>
     procedure RegisterMarkCommands(ACommands: TLspCommands);
     /// <summary>Textbefehle: qualifizierte Namen, Aufzählungswerte, resourcestring, Zeichenkettenliterale,
-    /// Einrückung beim Tippen.</summary>
+    /// Einrückung beim Tippen, gelernte Vorschläge.</summary>
     procedure RegisterTextCommands(ACommands: TLspCommands);
   end;
 
@@ -121,6 +126,8 @@ begin
   ACommands.RegisterConcurrent(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
   ACommands.RegisterConcurrent(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
   ACommands.RegisterConcurrent(TLspSmartIndent.cCommand, RunSmartIndent);
+  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cSuggestCommand, RunSuggestNext);
+  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cListCommand, RunLearnedPatterns);
 end;
 
 function TShellEditorCommands.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
@@ -203,6 +210,22 @@ begin
     on E: EArgumentException do
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
   end;
+end;
+
+function TShellEditorCommands.RunSuggestNext(const AArguments: TJSONArray): TJSONValue;
+begin
+  try
+    Result := TLspLearnedSuggestions.ExecuteSuggest(FServices.Documents, FServices.Index, FServices.LearnedOptionsFor,
+      AArguments);
+  except
+    on E: EArgumentException do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
+  end;
+end;
+
+function TShellEditorCommands.RunLearnedPatterns(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspLearnedSuggestions.ExecuteList(FServices.Index, FServices.LearnedOptionsFor, AArguments);
 end;
 
 end.

@@ -269,6 +269,7 @@ $ControlsEn = @{
     'Datei wählen' = 'Choose file'
     'Eigener Editor (Klasse und Property aus dem Index)' = 'Own editor (class and property from the index)'
     'JSON in atlas.json bzw. settings.json (Liste der Aufgaben)' = 'JSON in atlas.json or settings.json (list of tasks)'
+    'JSON in atlas.json (Liste der Muster)' = 'JSON in atlas.json (list of patterns)'
     'Kontrollkästchen' = 'Checkbox'
     'Kontrollkästchen „Code-Abfragen (Fenster Atlas-Abfrage, query_code)“' = 'Checkbox “Code queries (window Atlas Query, query_code)”'
     'Kontrollkästchen „Experimentelle Funktionen erlauben“' = 'Checkbox “Allow experimental features”'

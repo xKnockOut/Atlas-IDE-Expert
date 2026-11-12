@@ -1,6 +1,7 @@
 ﻿unit Atlas.UI.Settings.Page.Completion;
 
-// Reiter „Vervollständigung“: Zeilen, Breite, Listenmodus, Verlauf und angeheftete Favoriten (#458).
+// Reiter „Vervollständigung“: Zeilen, Breite, Listenmodus, Verlauf, angeheftete Favoriten (#458) und gelernte
+// Vorschläge (#1890).
 
 interface
 
@@ -88,6 +89,7 @@ uses
   Vcl.Controls,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.LearnedSuggestions,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Completion.Ranking;
 
@@ -136,6 +138,12 @@ begin
     [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListScopeMembers),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsListScopeEverywhere)]);
   BindCheck('Preview', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPreview)));
+  // Gelernte Vorschläge (#1890): Schattentext nach Enter aus dem eigenen Code.
+  BindCheck('SuggestionsLearned', AddCheck(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingLearned)));
+  BindText('SuggestionsDelayMs', AddNumber(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingDelay)));
+  BindText('SuggestionsMinShare', AddNumber(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingMinShare)));
+  BindText('SuggestionsMinCount', AddNumber(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingMinCount)));
+  BindCheck('SuggestionsLearnFromUsage', AddCheck(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingLearnFromUsage)));
   mPanel := AddPanel(32);
   FResetHistory := TButton.Create(FPage);
   FResetHistory.Parent := mPanel;

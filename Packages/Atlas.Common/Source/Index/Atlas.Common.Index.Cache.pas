@@ -93,7 +93,8 @@ type
     // 31: Typargumente je Vorfahr statt nur des ersten (class(TInterfacedObject, IComparer<TKunde>)).
     // 32: Hinweiswort vor dem Startwert (NoErrMsg: Boolean platform = False); ohne neue Version blieb System.pas
     // aus dem alten Index ohne NoErrMsg (unresolved-identifier).
-    const cFormatVersion = 32;
+    // 33: Folgemuster der Projekt-Units im Kopf (#1890, gelernte Vorschläge).
+    const cFormatVersion = 33;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -582,7 +583,28 @@ begin
   end;
 end;
 
-/// <summary>Kopf einer Unit: Namen, Stempel, Flags, uses, Includes, Namenszählung und Hinweise.</summary>
+/// <summary>Folgemuster einer Unit (#1890): Trigger, Folge, Anzahl und Belegzeilen.</summary>
+procedure WritePatterns(AWriter: TCacheWriter; ATable: TStringTable; const APatterns: TArray<TIndexFollowPattern>);
+var
+  mPattern: TIndexFollowPattern;
+  mLine: Integer;
+begin
+  AWriter.WriteVar(Length(APatterns));
+  for mPattern in APatterns do
+  begin
+    AWriter.WriteVar(ATable.IndexOf(mPattern.Trigger));
+    AWriter.WriteVar(ATable.IndexOf(mPattern.Follow));
+    AWriter.WriteVar(mPattern.Count);
+    AWriter.WriteVar(Length(mPattern.Lines));
+    for mLine in mPattern.Lines do
+    begin
+      AWriter.WriteVar(mLine);
+    end;
+  end;
+end;
+
+/// <summary>Kopf einer Unit: Namen, Stempel, Flags, uses, Includes, Namenszählung, Hinweise und Folgemuster.
+/// </summary>
 procedure WriteUnitHeader(AWriter: TCacheWriter; ATable: TStringTable; const AUnit: TUnitIndex);
 var
   mKind: TNamingKind;
@@ -609,6 +631,7 @@ begin
   WriteList(AWriter, ATable, AUnit.Directives);
   AWriter.WriteVar(ATable.IndexOf(AUnit.DeprecatedText));
   WriteList(AWriter, ATable, AUnit.Rationale);
+  WritePatterns(AWriter, ATable, AUnit.Patterns);
 end;
 
 /// <summary>Symbole und Verwendungen einer Unit, jeweils als Block mit seiner Länge davor (über ABlock gesammelt).
@@ -900,6 +923,24 @@ begin
   end;
 end;
 
+function ReadPatterns(var AReader: TCacheReader; const AStrings: TArray<string>): TArray<TIndexFollowPattern>;
+var
+  mIndex, mLine: Integer;
+begin
+  SetLength(Result, AReader.ReadCount);
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex].Trigger := AReader.ReadString(AStrings);
+    Result[mIndex].Follow := AReader.ReadString(AStrings);
+    Result[mIndex].Count := AReader.ReadNumber;
+    SetLength(Result[mIndex].Lines, AReader.ReadCount);
+    for mLine := 0 to High(Result[mIndex].Lines) do
+    begin
+      Result[mIndex].Lines[mLine] := AReader.ReadNumber;
+    end;
+  end;
+end;
+
 function ReadUnitHeader(var AReader: TCacheReader; const AStrings: TArray<string>): TUnitIndex;
 var
   mFlags, mIndex: Integer;
@@ -932,6 +973,7 @@ begin
   Result.Directives := AReader.ReadList(AStrings);
   Result.DeprecatedText := AReader.ReadString(AStrings);
   Result.Rationale := AReader.ReadList(AStrings);
+  Result.Patterns := ReadPatterns(AReader, AStrings);
 end;
 
 function ReadEntry(var AReader: TCacheReader; const AData: TBytes; const AStrings: TArray<string>): TIndexCacheEntry;

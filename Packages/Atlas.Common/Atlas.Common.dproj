@@ -138,6 +138,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Conditions.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.InlineRefs.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Patterns.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Tokens.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.TypeText.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.TypeMembers.pas"/>
@@ -566,6 +567,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartIndent.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.LearnedSuggestions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
@@ -631,6 +633,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartIndent.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LearnedSuggestions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FuzzyMatch.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentHighlights.pas"/>
@@ -763,6 +766,7 @@
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.RuleOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.McpOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.EditorOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.SuggestionOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.RefactoringOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.WorkflowOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.AnalysisOptions.pas"/>

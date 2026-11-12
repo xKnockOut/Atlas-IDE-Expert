@@ -44,6 +44,9 @@ type
     /// <summary>#1818: editor.trackLines mit Vorgabe an.</summary>
     [Test]
     procedure TrackLinesRoundTrip;
+    /// <summary>#1890: suggestions.* mit Vorgaben und Grenzen.</summary>
+    [Test]
+    procedure LearnedSuggestionsRoundTrip;
     /// <summary>#1819: problems.ideErrors mit Vorgabe aus.</summary>
     [Test]
     procedure IdeErrorsRoundTrip;
@@ -664,6 +667,41 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.TrackLines);
 end;
+
+procedure TAtlasPluginSettingsTests.LearnedSuggestionsRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.SuggestionsLearned);
+  Assert.AreEqual(300, Settings.SuggestionsDelayMs);
+  Assert.AreEqual(70, Settings.SuggestionsMinShare);
+  Assert.AreEqual(5, Settings.SuggestionsMinCount);
+  Assert.IsTrue(Settings.SuggestionsLearnFromUsage);
+  Store := TMemoryStore.Create;
+  Settings.SuggestionsLearned := False;
+  Settings.SuggestionsDelayMs := 500;
+  Settings.SuggestionsMinShare := 80;
+  Settings.SuggestionsMinCount := 3;
+  Settings.SuggestionsLearnFromUsage := False;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.SuggestionsLearned);
+  Assert.AreEqual(500, Loaded.SuggestionsDelayMs);
+  Assert.AreEqual(80, Loaded.SuggestionsMinShare);
+  Assert.AreEqual(3, Loaded.SuggestionsMinCount);
+  Assert.IsFalse(Loaded.SuggestionsLearnFromUsage);
+  Store.WriteInteger('SuggestionsDelayMs', 10);
+  Store.WriteInteger('SuggestionsMinShare', 20);
+  Store.WriteInteger('SuggestionsMinCount', 1000);
+  Loaded.Load(Store);
+  Assert.AreEqual(100, Loaded.SuggestionsDelayMs);
+  Assert.AreEqual(50, Loaded.SuggestionsMinShare);
+  Assert.AreEqual(100, Loaded.SuggestionsMinCount);
+end;
+
 procedure TAtlasPluginSettingsTests.ProjectContextMenuRoundTrip;
 var
   Store: IAtlasSettingsStore;
