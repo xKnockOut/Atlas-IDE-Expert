@@ -1073,7 +1073,7 @@ end;
 
 **Unused parameter** · Code smell · Hint · Group Style and metrics
 
-A parameter is never used in the routine body. Overridden and virtual methods, event handlers, published methods, interface implementations and callbacks are exempt, including routines in tables of routines (typed constants, array literals). A routine that is only called from an anonymous method has a free signature and is reported. Passing a routine as a value in another unit is not visible to the rule; suppress it there with lsp-ignore and a reason.
+A parameter is never used in the routine body. Overridden and virtual methods, event handlers (also methods without a visibility section in classes with RTTI such as TForm, TFrame and TDataModule, and methods the form file assigns to an event), published methods, interface implementations and callbacks are exempt, including routines in tables of routines (typed constants, array literals). A routine that is only called from an anonymous method has a free signature and is reported. Passing a routine as a value in another unit is not visible to the rule; suppress it there with lsp-ignore and a reason.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|

@@ -61,6 +61,10 @@ function HasDirectiveIn(AHeader: TSyntaxNode; const ANames: array of string): Bo
 /// <summary>Ist die Signatur der Methode von außen vorgegeben (override, Interface, DFM …) oder unbekannt?</summary>
 function MethodSignatureFixed(ARoot: TSyntaxNode; const AQualifiedName: string): Boolean;
 
+/// <summary>Steht ein Kopf namens AName vor dem ersten Sichtbarkeitsabschnitt des Typs (Standardsichtbarkeit)?
+/// </summary>
+function InDefaultSection(ATypeBody: TSyntaxNode; const AName: string): Boolean;
+
 implementation
 
 uses
@@ -395,6 +399,26 @@ begin
   mBody := FindTypeBody(ARoot, MethodTypeName(AQualifiedName));
   // class(TBasis, IFoo) oder class(TInterfacedObject, IFoo): Methoden können ein Interface erfüllen.
   Result := (mBody = nil) or ListsInterfaces(mBody) or FixedMember(mBody, ShortName(AQualifiedName));
+end;
+
+function InDefaultSection(ATypeBody: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex: Integer;
+  mMember: TSyntaxNode;
+begin
+  for mIndex := 0 to ATypeBody.ChildCount - 1 do
+  begin
+    mMember := ATypeBody[mIndex];
+    if mMember.Kind = TSyntaxKind.Visibility then
+    begin
+      Break;
+    end;
+    if (mMember.Kind = TSyntaxKind.RoutineHeader) and SameText(mMember.Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 end.
