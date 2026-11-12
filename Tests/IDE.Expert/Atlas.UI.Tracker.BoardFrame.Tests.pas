@@ -25,6 +25,10 @@ type
     procedure WideLayoutPutsColumnsSideBySide;
     [Test]
     procedure CardsWithoutColumnGetOwnColumn;
+    /// <summary>Swimlanes breit: Namen links, eine Zeile je Wert, Karten in ihrer Zelle, Zähler je Spalte und
+    /// Zeile, Einklappen per Schlüssel; schmal ohne Swimlanes.</summary>
+    [Test]
+    procedure SwimlanesLayoutRowsPerValue;
     [Test]
     procedure NarrowLayoutStacksAndCollapses;
     [Test]
@@ -144,6 +148,48 @@ begin
   mLayout := TAtlasBoardLayout.Build(mSnapshot, TAtlasTrackerBoard.Visible(mSnapshot, False, 'ATL-1'), 1000, nil,
     Metrics);
   Assert.AreEqual(3, Integer(Length(mLayout.Columns)));
+end;
+
+procedure TAtlasBoardFrameTests.SwimlanesLayoutRowsPerValue;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+  mLayout: TAtlasBoardLayout;
+  mPlace: TAtlasBoardPlace;
+begin
+  mSnapshot := Snapshot;
+  mSnapshot.Swimlanes.Fields := TArray<string>.Create('Assignee');
+  mSnapshot.Swimlanes.Caption := 'Zugewiesen an';
+  mSnapshot.Cards[0].Lane := 'Bähring, Marco';
+  mSnapshot.Cards[0].LaneId := 'marco';
+  mSnapshot.Cards[1].Lane := 'Anna';
+  mSnapshot.Cards[1].LaneId := 'anna';
+  mSnapshot.Cards[2].Lane := 'Bähring, Marco';
+  mSnapshot.Cards[2].LaneId := 'marco';
+  mLayout := TAtlasBoardLayout.Build(mSnapshot, AllCards(mSnapshot), 1000, nil, Metrics);
+  // Anna, Bähring, ohne Wert (ATL-4).
+  Assert.AreEqual(Integer(3), Integer(Length(mLayout.Lanes)));
+  Assert.AreEqual('Anna', mLayout.Lanes[0].Name);
+  Assert.IsTrue(mLayout.Lanes[2].Orphans);
+  Assert.AreEqual(2, mLayout.LaneCounts[1]);
+  Assert.AreEqual(2, mLayout.Counts[0], 'Zähler der Spalte über alle Zeilen');
+  Assert.AreEqual(4, Integer(Length(mLayout.Places)));
+  // Spalten rechts der Namen; Karte ATL-3 (Bähring, In Arbeit) in der zweiten Zeile unter der zweiten Spalte.
+  Assert.IsTrue(mLayout.Headers[0].Left >= mLayout.Corner.Right);
+  Assert.IsTrue(mLayout.PlaceOf(2, mPlace));
+  Assert.IsTrue(mPlace.Bounds.Left >= mLayout.Headers[1].Left);
+  Assert.IsTrue(mPlace.Bounds.Top >= mLayout.LaneBoxes[1].Top);
+  Assert.IsTrue(mPlace.Bounds.Bottom <= mLayout.LaneBoxes[1].Bottom);
+  Assert.AreEqual(1, mLayout.LaneAt(Center(mLayout.LaneBoxes[1])));
+  Assert.AreEqual(1, mLayout.ColumnAt(Center(mPlace.Bounds)));
+  // Eingeklappt: Zeile ohne Karten, Zähler bleiben.
+  mLayout := TAtlasBoardLayout.Build(mSnapshot, AllCards(mSnapshot), 1000, nil,
+    TArray<string>.Create('Bähring, Marco'), Metrics);
+  Assert.AreEqual(2, Integer(Length(mLayout.Places)));
+  Assert.AreEqual(2, mLayout.LaneCounts[1]);
+  Assert.AreEqual('', TAtlasBoardLayout.LaneKey(mLayout.Lanes[2]));
+  // Schmal: ohne Swimlanes.
+  mLayout := TAtlasBoardLayout.Build(mSnapshot, AllCards(mSnapshot), 300, nil, Metrics);
+  Assert.AreEqual(Integer(0), Integer(Length(mLayout.Lanes)));
 end;
 
 procedure TAtlasBoardFrameTests.NarrowLayoutStacksAndCollapses;

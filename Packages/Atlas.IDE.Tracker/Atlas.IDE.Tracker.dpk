@@ -95,6 +95,7 @@ contains
   Atlas.Core.Tracker.TimeClock in 'Source\Core\Tracker\Atlas.Core.Tracker.TimeClock.pas',
   Atlas.Core.Tracker.Links in 'Source\Core\Tracker\Atlas.Core.Tracker.Links.pas',
   Atlas.Core.Tracker.Board in 'Source\Core\Tracker\Atlas.Core.Tracker.Board.pas',
+  Atlas.Core.Tracker.BoardLanes in 'Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas',
   Atlas.Core.Tracker.Sprint in 'Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas',
   Atlas.UI.Tracker.LinkDialogs in 'Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas',
   Atlas.Core.Tracker.PaletteSearch in 'Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas',

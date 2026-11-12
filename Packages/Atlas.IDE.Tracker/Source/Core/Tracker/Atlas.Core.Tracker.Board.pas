@@ -14,6 +14,9 @@
 //   Namen daneben ab.
 // - Für den Burndown (#1277) trägt jede Karte den Zeitpunkt der Erledigung und
 //   die Schätzung aus dem Schätzfeld des Boards (PointsField).
+// - Swimlanes wie auf dem Board des Servers (Swimlanes): jede Karte trägt den
+//   Wert des Swimlane-Feldes (Lane, LaneId); Zeilen bildet
+//   TAtlasBoardLanes.
 // Netz und Schreiben liegen beim Anbieter (IAtlasTrackerBoards); der Wechsel
 // des Zustands nutzt dessen Schreibweg (#1266).
 
@@ -86,6 +89,23 @@ type
     Transitions: TArray<TAtlasBoardTransition>;
   end;
 
+  /// <summary>Swimlanes des Boards nach einem Feld (YouTrack „AttributeBasedSwimlaneSettings“); ohne Fields
+  /// keine.</summary>
+  TAtlasBoardSwimlanes = record
+    /// <summary>Namen des Swimlane-Feldes, unter denen es an einer Karte stehen kann ("Assignee"); leer = keine
+    /// Swimlanes.</summary>
+    Fields: TArray<string>;
+    /// <summary>Beschriftung über den Zeilennamen ("Zugewiesen an").</summary>
+    Caption: string;
+    /// <summary>Werte in der Reihenfolge des Boards; weitere Werte der Karten folgen dahinter.</summary>
+    Values: TArray<string>;
+    /// <summary>Zeile der Karten ohne Wert oben statt unten.</summary>
+    OrphansAtTop: Boolean;
+    /// <summary>Karten ohne Wert werden nicht gezeigt.</summary>
+    HideOrphans: Boolean;
+    function Active: Boolean;
+  end;
+
   /// <summary>Karte je Issue.</summary>
   TAtlasBoardCard = record
   public const
@@ -117,6 +137,10 @@ type
     /// <summary>Schätzung aus dem Schätzfeld des Boards (#1277); nur mit HasPoints.</summary>
     Points: Double;
     HasPoints: Boolean;
+    /// <summary>Wert des Swimlane-Feldes zur Anzeige ("Bähring, Marco"); '' ohne Wert.</summary>
+    Lane: string;
+    /// <summary>Kennung des Werts (Anmeldename bzw. Name), um ihn den Werten des Boards zuzuordnen.</summary>
+    LaneId: string;
     /// <summary>Workflow-Regeln des Spaltenfeldes (YouTrack); ohne Zustandsmaschine leer. Nicht im
     /// Zwischenspeicher, ohne Netz wird ohnehin nicht verschoben.</summary>
     Workflow: TAtlasBoardWorkflow;
@@ -132,8 +156,8 @@ type
     /// <summary>Höchstens so viele Boards bzw. Sprints für die Klapplisten.</summary>
     cMaxBoards = 50;
     cMaxSprints = 50;
-    /// <summary>Version des Zwischenspeichers.</summary>
-    cVersion = 1;
+    /// <summary>Version des Zwischenspeichers (2: Spalten nach ordinal, Swimlanes).</summary>
+    cVersion = 2;
   public
     Kind: TAtlasBoardKind;
     /// <summary>Boards bzw. Projekte zur Auswahl.</summary>
@@ -146,6 +170,8 @@ type
     ProjectId: string;
     FieldId: string;
     Columns: TArray<TAtlasBoardColumn>;
+    /// <summary>Swimlanes des Boards; ohne Fields keine.</summary>
+    Swimlanes: TAtlasBoardSwimlanes;
     Sprints: TArray<TAtlasBoardSprint>;
     /// <summary>Gezeigter Sprint; Id '' ohne Sprints.</summary>
     Sprint: TAtlasBoardSprint;
@@ -349,6 +375,11 @@ begin
 end;
 
 { TAtlasBoardCard }
+
+function TAtlasBoardSwimlanes.Active: Boolean;
+begin
+  Result := Length(Fields) > 0;
+end;
 
 function TAtlasBoardCard.Issue: TAtlasTrackerIssue;
 begin
@@ -844,10 +875,22 @@ begin
   Result.AddPair('itemId', ACard.ItemId);
   Result.AddPair('page', ACard.Page);
   Result.AddPair('resolvedAt', TAtlasTrackerBoard.TimeText(ACard.ResolvedAt));
+  Result.AddPair('lane', ACard.Lane);
+  Result.AddPair('laneId', ACard.LaneId);
   if ACard.HasPoints then
   begin
     Result.AddPair('points', TJSONNumber.Create(ACard.Points));
   end;
+end;
+
+function SwimlanesJson(const ASwimlanes: TAtlasBoardSwimlanes): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('fields', Texts(ASwimlanes.Fields));
+  Result.AddPair('caption', ASwimlanes.Caption);
+  Result.AddPair('values', Texts(ASwimlanes.Values));
+  Result.AddPair('orphansAtTop', TJSONBool.Create(ASwimlanes.OrphansAtTop));
+  Result.AddPair('hideOrphans', TJSONBool.Create(ASwimlanes.HideOrphans));
 end;
 
 function CardsJson(const ACards: TArray<TAtlasBoardCard>): TJSONArray;
@@ -880,6 +923,7 @@ begin
     mRoot.AddPair('fieldId', ASnapshot.FieldId);
     mRoot.AddPair('boards', BoardsJson(ASnapshot.Boards));
     mRoot.AddPair('columns', ColumnsJson(ASnapshot.Columns));
+    mRoot.AddPair('swimlanes', SwimlanesJson(ASnapshot.Swimlanes));
     mRoot.AddPair('sprints', SprintsJson(ASnapshot.Sprints));
     mRoot.AddPair('sprint', SprintJson(ASnapshot.Sprint));
     mRoot.AddPair('cards', CardsJson(ASnapshot.Cards));
@@ -962,6 +1006,23 @@ begin
   end;
 end;
 
+function SwimlanesOf(AValue: TJSONValue): TAtlasBoardSwimlanes;
+var
+  mObject: TJSONObject;
+begin
+  Result := Default(TAtlasBoardSwimlanes);
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mObject := TJSONObject(AValue);
+  Result.Fields := TextsOf(mObject, 'fields');
+  Result.Caption := TJsonRead.Text(mObject, 'caption');
+  Result.Values := TextsOf(mObject, 'values');
+  Result.OrphansAtTop := TJsonRead.Flag(mObject, 'orphansAtTop');
+  Result.HideOrphans := TJsonRead.Flag(mObject, 'hideOrphans');
+end;
+
 function SprintsOf(AValue: TJSONValue): TArray<TAtlasBoardSprint>;
 var
   mItem: TJSONValue;
@@ -992,6 +1053,8 @@ begin
   Result.ItemId := TJsonRead.Text(AObject, 'itemId');
   Result.Page := TJsonRead.Text(AObject, 'page');
   Result.ResolvedAt := TAtlasTrackerBoard.TimeValue(TJsonRead.Text(AObject, 'resolvedAt'));
+  Result.Lane := TJsonRead.Text(AObject, 'lane');
+  Result.LaneId := TJsonRead.Text(AObject, 'laneId');
   Result.HasPoints := AObject.Values['points'] is TJSONNumber;
   if Result.HasPoints then
   begin
@@ -1052,6 +1115,7 @@ begin
     ASnapshot.FieldId := TJsonRead.Text(mRoot, 'fieldId');
     ASnapshot.Boards := BoardsOf(mRoot.Values['boards']);
     ASnapshot.Columns := ColumnsOf(mRoot.Values['columns']);
+    ASnapshot.Swimlanes := SwimlanesOf(mRoot.Values['swimlanes']);
     ASnapshot.Sprints := SprintsOf(mRoot.Values['sprints']);
     ASnapshot.Sprint := SprintOf(mRoot.Values['sprint']);
     ASnapshot.Cards := CardsOf(mRoot.Values['cards']);
