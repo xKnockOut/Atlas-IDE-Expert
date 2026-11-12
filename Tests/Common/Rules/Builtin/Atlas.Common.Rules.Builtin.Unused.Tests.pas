@@ -68,6 +68,10 @@ type
     [Test]
     procedure OverwrittenAssignmentReports;
     [Test]
+    procedure ResultPresetNeverRead;
+    [Test]
+    procedure ResultReadAtEndIsSilent;
+    [Test]
     procedure InterfaceAssignmentIsSilent;
     [Test]
     procedure AssignmentBeforeFailingTryIsRead;
@@ -392,6 +396,48 @@ begin
   TRuleAssert.Silent(TUnusedAssignmentRule.Create,
     Routine('  Recent := nil;'#10'  try'#10'    Recent := RecentProjects;'#10'  except'#10'    Report;'#10'  end;'#10 +
       '  for S in Recent do'#10'    Use(S);', 'procedure P;', 'var'#10'  Recent: TArray<string>;'#10'  S: string;'#10));
+end;
+
+function FindingLines(const AFindings: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFindings do
+  begin
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ':' + mFinding.Message + '|';
+  end;
+end;
+
+// Vorbelegung von Result, die jeder Weg überschreibt (#1345, wie H2077): vor try … except, vor einer Schleife
+// mit Exit(Wert) und eigener Zuweisung danach; dazu eine lokale Variable vor case.
+procedure TUnusedRulesTests.ResultPresetNeverRead;
+begin
+  Assert.AreEqual('5:Der an "Result" zugewiesene Wert wird nie gelesen (wie H2077)|',
+    FindingLines(TRuleAssert.Findings(TUnusedAssignmentRule.Create, Routine('  Result := False;'#10'  try'#10 +
+    '    Result := Load;'#10'  except'#10'    Result := False;'#10'  end;', 'function P: Boolean;'))));
+  Assert.AreEqual('7:Der an "Result" zugewiesene Wert wird nie gelesen (wie H2077)|',
+    FindingLines(TRuleAssert.Findings(TUnusedAssignmentRule.Create, Routine('  Result := -1;'#10 +
+    '  for I := 0 to N do'#10'    if I > 3 then'#10'      Exit(I);'#10'  Result := -2;',
+    'function P(N: Integer): Integer;', 'var'#10'  I: Integer;'#10))));
+  Assert.AreEqual('7:Der an "K" zugewiesene Wert wird nie gelesen (wie H2077)|',
+    FindingLines(TRuleAssert.Findings(TUnusedAssignmentRule.Create, Routine('  K := 0;'#10 +
+    '  case N of'#10'    1: K := 2;'#10'    2: K := 3;'#10'  else'#10'    Exit;'#10'  end;'#10'  Result := K;',
+    'function P(N: Integer): Integer;', 'var'#10'  K: Integer;'#10))));
+end;
+
+procedure TUnusedRulesTests.ResultReadAtEndIsSilent;
+begin
+  // Normales Ende, Lesen nach einer Ausnahme im except-Teil, Ergebnis ohne Typangabe, verwaltete Typen, Inc.
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create, Routine('  Result := False;'#10'  if N > 0 then'#10 +
+    '    Result := True;', 'function P(N: Integer): Boolean;'));
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create, Routine('  Result := nil;'#10'  try'#10 +
+    '    Result := Load;'#10'  except'#10'    Result.Free;'#10'    raise;'#10'  end;', 'function P: TObject;'));
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create, Routine('  Result := 1;'#10'  Result := 2;', 'function TA.P;'));
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create, Routine('  Result := '''';'#10'  Result := ''a'';',
+    'function P: string;'));
+  TRuleAssert.Silent(TUnusedAssignmentRule.Create, Routine('  Result := 0;'#10'  for I := 1 to N do'#10 +
+    '    Inc(Result, I);', 'function P(N: Integer): Integer;', 'var'#10'  I: Integer;'#10));
 end;
 
 procedure TUnusedRulesTests.OverwrittenAssignmentReports;

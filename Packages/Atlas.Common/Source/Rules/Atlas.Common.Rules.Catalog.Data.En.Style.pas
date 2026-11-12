@@ -54,7 +54,9 @@ const
     '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynami' +
     'c arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releas' +
     'es a reference (scope guards, Writer := nil). Clearing a value that was set before (X := nil, '''', Default(T), T.Empty) is not reported either: it releases memory and references early or guards after F' +
-    'ree. Clearing without a previous value is still reported.",',
+    'ree. Clearing without a previous value is still reported. Result counts too when the function has an unmanaged result type (Integer, Boolean, enumerations, classes): a preset such as Result := False b' +
+    'efore a try/except, a case or a loop whose every path assigns Result again or leaves with Exit(Value) is reported (#1345). Result is read where the routine ends normally, not when it is left through a' +
+    'n exception.",',
     '      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",',
     '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",',
     '      "options": [',

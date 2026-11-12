@@ -37,7 +37,9 @@ const
     '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen g' +
     'ibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: D' +
     'ie Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil). Ebenso still bleibt das Leeren eines zuvor gesetzten Werts (X := nil, '''', Default(T), T.Empty): Es gibt Speicher und Re' +
-    'ferenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert wird weiter gemeldet.",',
+    'ferenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert wird weiter gemeldet. Auch Result zählt, wenn die Funktion einen nicht verwalteten Ergebnistyp hat (Integer, Boolean, Aufzäh' +
+    'lungen, Klassen): Eine Vorbelegung wie Result := False vor try/except, case oder einer Schleife, nach der jeder Weg Result neu setzt oder mit Exit(Wert) endet, wird gemeldet (#1345). Gelesen wird Resu' +
+    'lt am normalen Ende der Routine, nicht beim Verlassen über eine Ausnahme.",',
     '      "options": [',
     '        {',
     '          "name": "ignore",',

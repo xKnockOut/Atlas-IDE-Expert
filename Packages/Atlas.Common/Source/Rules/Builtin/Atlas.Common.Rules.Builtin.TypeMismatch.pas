@@ -188,6 +188,12 @@ type
     procedure Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
     procedure CheckAssignment(ANode: TSyntaxNode);
     procedure CheckProcedural(ASource: TSyntaxNode; const ATarget: TProcShape; const ATargetName: string);
+    /// <summary>Text des Kopfs der anonymen Methode ANode: "procedure(const A: string)", "function: Integer".
+    /// </summary>
+    function AnonymousHeader(ANode: TSyntaxNode): string;
+    /// <summary>Anonyme Methode an eine Methodenreferenz: Zahl, const/var/out und Typen der Parameter müssen
+    /// passen (wie E2010, #1345).</summary>
+    procedure CheckAnonymous(ASource: TSyntaxNode; const ATarget: TProcShape; const ATargetName: string);
     procedure CheckDefault(ANode: TSyntaxNode);
     procedure CheckCall(ANode: TSyntaxNode);
     procedure CheckIntrinsic(ANode: TSyntaxNode; const AName: string);
@@ -1452,6 +1458,55 @@ begin
   end;
 end;
 
+function TTypeMismatchCheck.AnonymousHeader(ANode: TSyntaxNode): string;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  Result := ANode.Name;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    mChild := ANode[mIndex];
+    if mChild.Kind = TSyntaxKind.Parameters then
+    begin
+      Result := Result + FScope.Text(mChild);
+    end
+    else if mChild.Kind = TSyntaxKind.TypeReference then
+    begin
+      Result := Result + ': ' + FScope.Text(mChild);
+    end
+    else
+    begin
+      Break;
+    end;
+  end;
+end;
+
+procedure TTypeMismatchCheck.CheckAnonymous(ASource: TSyntaxNode; const ATarget: TProcShape;
+  const ATargetName: string);
+var
+  mHeader, mFormal, mActual: string;
+  mShape: TProcShape;
+  mMatch: TProcMatch;
+begin
+  mHeader := AnonymousHeader(ASource);
+  if not ATarget.Reference or not ParseShape(mHeader, False, mShape) then
+  begin
+    Exit;
+  end;
+  mMatch := ShapeKindMatch(ATarget, Default(TResolvedSymbol), mShape);
+  if mMatch = TProcMatch.Yes then
+  begin
+    mMatch := ParamTypesMatch(ATarget, mShape, mFormal, mActual);
+  end;
+  if mMatch in [TProcMatch.Parameters, TProcMatch.ParameterType] then
+  begin
+    FReport.Add(TTextRange.Create(ASource.StartPos, TTextPosition.Create(ASource.StartPos.Line,
+      ASource.StartPos.Character + Length(ASource.Name))),
+      cTexts[TTypeMismatchText.ReferenceParams].Fmt([ATargetName, mHeader]), TRuleConfidence.High);
+  end;
+end;
+
 procedure TTypeMismatchCheck.CheckProcedural(ASource: TSyntaxNode; const ATarget: TProcShape;
   const ATargetName: string);
 var
@@ -1488,6 +1543,11 @@ var
   end;
 
 begin
+  if ASource.Kind = TSyntaxKind.AnonymousMethod then
+  begin
+    CheckAnonymous(ASource, ATarget, ATargetName);
+    Exit;
+  end;
   if (ASource.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and NotCalled(ASource, ATargetName) then
   begin
     Exit;
