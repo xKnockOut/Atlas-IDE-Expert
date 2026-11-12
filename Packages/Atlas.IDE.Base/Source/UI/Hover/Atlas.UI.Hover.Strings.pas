@@ -18,7 +18,7 @@ type
     PublishedMoreProperties, PublishedMoreEvents, PublishedEventsNote, PublishedArrayProperty,
     PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote, HoverShowGraph,
     HoverDebugExplaining, HoverDebugChecked, ReassignedOne, ReassignedCount, ProblemsExplain, ProblemsDocWiki,
-    ProblemsCause);
+    ProblemsCause, HoverShowExample, HoverHideExample, HoverNoExample);
 
   TAtlasHoverStrings = class
   public
@@ -81,7 +81,10 @@ const
      'Neu zugewiesen: %d Zuweisungen (Zeilen %s)',
      'Erklären',
      'DocWiki',
-     'Typische Ursache: %s'),
+     'Typische Ursache: %s',
+     'Beispiel zeigen',
+     'Beispiel ausblenden',
+     'Der Regelkatalog hat zu dieser Regel keine Beschreibung.'),
     ('Inheritance',
      'Target type %s',
      'pinned',
@@ -128,7 +131,10 @@ const
      'Reassigned: %d assignments (lines %s)',
      'Explain',
      'DocWiki',
-     'Typical cause: %s'));
+     'Typical cause: %s',
+     'Show example',
+     'Hide example',
+     'The rule catalog has no description for this rule.'));
 
 { TAtlasHoverStrings }
 

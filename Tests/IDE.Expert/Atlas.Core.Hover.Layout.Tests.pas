@@ -85,6 +85,9 @@ type
     /// <summary>#909: Tab wandert reihum über die Aktionen unter den Befunden.</summary>
     [Test]
     procedure NextProblemHitCycles;
+    /// <summary>#145: „Beispiel zeigen“ in der Aktionszeile klappt Beschreibung und Beispiel über ihr auf.</summary>
+    [Test]
+    procedure RuleExampleLinkTogglesExample;
     /// <summary>#896: Unit-Zyklus mit anklickbaren Units und „Graph zeigen“.</summary>
     [Test]
     procedure CycleUnitsAreLinks;
@@ -107,6 +110,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Wrap,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.DebugValue;
 
 type
@@ -696,7 +700,7 @@ procedure THoverLayoutTests.UsesProblemsOfferActions;
     begin
       if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
       begin
-        TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action);
+        TAtlasHoverProblemActionCode.Decode(Hit.Index, Problem, Action);
         Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
       end;
     end;
@@ -709,7 +713,7 @@ var
   Problem: Integer;
   Action: TAtlasHoverProblemAction;
 begin
-  TAtlasHoverLayout.DecodeProblemAction(TAtlasHoverLayout.ProblemActionCode(3,
+  TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(3,
     TAtlasHoverProblemAction.MoveUses), Problem, Action);
   Assert.AreEqual(3, Problem);
   Assert.IsTrue(Action = TAtlasHoverProblemAction.MoveUses);
@@ -757,7 +761,7 @@ procedure THoverLayoutTests.CycleUnitsAreLinks;
     begin
       if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
       begin
-        TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action, Item);
+        TAtlasHoverProblemActionCode.Decode(Hit.Index, Problem, Action, Item);
         if Action in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
         begin
           Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + ':' + IntToStr(Item) + '|';
@@ -775,7 +779,7 @@ var
   Texts, Problem, Index: Integer;
   Action: TAtlasHoverProblemAction;
 begin
-  TAtlasHoverLayout.DecodeProblemAction(TAtlasHoverLayout.ProblemActionCode(2, TAtlasHoverProblemAction.Related, 3),
+  TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(2, TAtlasHoverProblemAction.Related, 3),
     Problem, Action, Index);
   Assert.AreEqual(2, Problem);
   Assert.AreEqual(3, Index);
@@ -835,7 +839,7 @@ begin
   begin
     if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
     begin
-      TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action);
+      TAtlasHoverProblemActionCode.Decode(Hit.Index, Problem, Action);
       Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
     end;
   end;
@@ -868,7 +872,7 @@ begin
   HoverView.Problems := [Finding(TAtlasProblemSeverity.Hint, 'Atlas', 'magic-number', 'Zahl', ''),
     Finding(TAtlasProblemSeverity.Warning, 'dcc', 'W1036', 'Variable', ''),
     Finding(TAtlasProblemSeverity.Error, 'Atlas', 'use-after-free', 'Freigegeben', '')];
-  Order := TAtlasHoverLayout.ProblemOrder(HoverView.Problems);
+  Order := HoverView.ProblemOrder;
   Assert.AreEqual(3, Integer(Length(Order)));
   Assert.AreEqual(2, Order[0]);
   Assert.AreEqual(0, Order[1]);
@@ -991,8 +995,9 @@ begin
   Layout := Build(HoverInput);
   // Meldung: Erklären (8) und DocWiki (9); Regel: unterdrücken, einstellen, erklären.
   Assert.AreEqual('0:8|0:9|1:4|1:5|1:8|', ActionCodes(Layout));
-  Assert.IsTrue(Pos('Typische Ursache: Unit fehlt in uses|', TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0,
-    TextsOf(Layout, TAtlasHoverItemKind.Text));
+  // Die Ursache ist ein umbrochener Absatz (Block), keine einzelne Textzeile.
+  Assert.IsTrue(Pos('Typische Ursache: Unit fehlt in uses|', TextsOf(Layout, TAtlasHoverItemKind.Block)) > 0,
+    TextsOf(Layout, TAtlasHoverItemKind.Block));
 end;
 
 procedure THoverLayoutTests.NextProblemHitCycles;
@@ -1021,6 +1026,72 @@ begin
   Last := Layout.NextProblemHit(-1, False);
   Assert.AreEqual(Second, Last);
   Assert.AreEqual(First, Layout.NextProblemHit(Last, False));
+end;
+
+function FirstProblemHit(const ALayout: TAtlasHoverLayout): Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  for Index := 0 to High(ALayout.Hits) do
+  begin
+    if ALayout.Hits[Index].Kind = TAtlasHoverHitKind.ProblemAction then
+    begin
+      Exit(Index);
+    end;
+  end;
+end;
+
+procedure THoverLayoutTests.RuleExampleLinkTogglesExample;
+var
+  HoverView: TAtlasHoverView;
+  HoverInput: TAtlasHoverInput;
+  Closed, Opened: TAtlasHoverLayout;
+  Example: TAtlasRuleExplanation;
+  FillCount: Integer;
+begin
+  HoverView := View('');
+  HoverView.Problems := [Finding(TAtlasProblemSeverity.Warning, 'Atlas', 'empty-except', 'Leer', '')];
+  HoverInput := Input(HoverView, 460);
+  HoverInput.Texts.Suppress := 'Unterdrücken';
+  HoverInput.Texts.Configure := 'Einstellen';
+  HoverInput.Texts.ShowExample := 'Zeigen';
+  HoverInput.Texts.HideExample := 'Ausblenden';
+  HoverInput.Texts.ExampleBad := 'Falsch:';
+  HoverInput.Texts.ExampleGood := 'Richtig:';
+
+  HoverInput.ProblemActions := True;
+  // Ohne hover.ruleExamples wie bisher: unterdrücken (4) und einstellen (5).
+  Assert.AreEqual('0:4|0:5|', ActionCodes(Build(HoverInput)));
+  HoverInput.RuleExamples := True;
+  Closed := Build(HoverInput);
+  Assert.AreEqual('0:4|0:5|0:10|', ActionCodes(Closed));
+  Assert.IsTrue(Pos('|Zeigen|', TextsOf(Closed, TAtlasHoverItemKind.Text)) > 0, TextsOf(Closed,
+    TAtlasHoverItemKind.Text));
+  Assert.AreEqual(0, Pos('Falsch:', TextsOf(Closed, TAtlasHoverItemKind.Text)));
+  // Aufgeklappt: Beschreibung, falsch und richtig über der Aktionszeile, der Link heißt „Ausblenden“.
+  Example := Default(TAtlasRuleExplanation);
+  Example.Id := 'empty-except';
+  Example.Description := 'Verschluckt jede Ausnahme.';
+  Example.Bad := 'try' + #10 + '  Save;' + #10 + 'except' + #10 + 'end;' + #10;
+  Example.Good := 'Log(E.Message);';
+  HoverView.Examples := [Example];
+  HoverInput.View := HoverView;
+  Opened := Build(HoverInput);
+  Assert.AreEqual('0:4|0:5|0:10|', ActionCodes(Opened));
+  Assert.IsTrue(Pos('Falsch:|try|  Save;|except|end;|Richtig:|Log(E.Message);|Unterdrücken|Einstellen|Ausblenden|',
+    TextsOf(Opened, TAtlasHoverItemKind.Text)) > 0, TextsOf(Opened, TAtlasHoverItemKind.Text));
+  Assert.IsTrue(Pos('Verschluckt jede Ausnahme.', TextsOf(Opened, TAtlasHoverItemKind.Block)) > 0);
+  // Je Beispiel eine Fläche und ein Randstrich.
+  FillCount := CountKind(Opened, TAtlasHoverItemKind.Fill) - CountKind(Closed, TAtlasHoverItemKind.Fill);
+  Assert.AreEqual(4, FillCount);
+  Assert.IsTrue(Opened.Height > Closed.Height);
+  Assert.IsTrue(Opened.Hits[FirstProblemHit(Opened)].Rect.Top > Closed.Hits[FirstProblemHit(Closed)].Rect.Top);
+  // Tab-Markierung bleibt beim Aufklappen auf derselben Klickfläche.
+  Assert.AreEqual(FirstProblemHit(Closed), FirstProblemHit(Opened));
+  // Ohne Aktionszeile kein Beispiel.
+  HoverInput.ProblemActions := False;
+  Assert.AreEqual(0, Pos('Verschluckt', TextsOf(Build(HoverInput), TAtlasHoverItemKind.Block)));
 end;
 
 function Member(const AName, AType, ADeclaring: string; AKind: TAtlasHoverDefaultKind;

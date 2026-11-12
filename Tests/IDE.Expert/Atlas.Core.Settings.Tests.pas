@@ -44,6 +44,9 @@ type
     /// <summary>#54: hover.explainMessages ist an und lässt sich abschalten.</summary>
     [Test]
     procedure HoverExplainMessagesRoundTrip;
+    /// <summary>#145: hover.ruleExamples mit Vorgabe an.</summary>
+    [Test]
+    procedure HoverRuleExamplesRoundTrip;
     /// <summary>#1818: editor.trackLines mit Vorgabe an.</summary>
     [Test]
     procedure TrackLinesRoundTrip;
@@ -657,6 +660,22 @@ begin
   mLoaded := Default(TAtlasPluginSettings);
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.HoverExplainMessages);
+end;
+
+procedure TAtlasPluginSettingsTests.HoverRuleExamplesRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.HoverRuleExamples);
+  mStore := TMemoryStore.Create;
+  mSettings.HoverRuleExamples := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mStore.ReadInteger('HoverRuleExamples', 1));
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.HoverRuleExamples);
 end;
 
 procedure TAtlasPluginSettingsTests.IdeErrorsRoundTrip;

@@ -13,7 +13,7 @@
 // Zeichnen am unteren Fensterrand (Anchor).
 // Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als
 // Links: Entfernen, Alle ungenutzten entfernen (ab zwei), In implementation-uses
-// verschieben; ihre Klickfläche trägt Problem und Aktion (ProblemActionCode).
+// verschieben; ihre Klickfläche trägt Problem und Aktion (TAtlasHoverProblemActionCode).
 // Befund-Hover (#909): Fehler zuerst, je Befund eine Schweregrad-Pille (Error,
 // Warnung, Info) vor der Meldung, darunter klein „Atlas · Regel-ID“ bzw.
 // „dcc · W1036“, die Konfidenz, wenn sie nicht hoch ist, und mit
@@ -26,6 +26,9 @@
 // Weitere Stellen eines Befunds (relatedInformation, #896) stehen darunter als
 // Links, beim Unit-Zyklus als Pfad „uC → uA → uB → uC“ und mit „Graph
 // zeigen“; ihre Klickfläche trägt Problem, Aktion Related und die Stelle.
+// Mit Input.RuleExamples (hover.ruleExamples, #145) steht in der Aktionszeile „Beispiel zeigen“; ist
+// View.Examples für das Problem gesetzt, folgen über der Aktionszeile Beschreibung und Beispiel falsch/richtig
+// aus dem Regelkatalog (je Beispiel höchstens cExampleMaxLines Zeilen) und der Link heißt „Beispiel ausblenden“.
 // Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n
 // Properties · m Ereignisse“ mit den Schaltern „geerbte“ und „nur mit
 // default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in)
@@ -44,11 +47,6 @@ uses
   System.Types,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Hover.Contract,
-  Atlas.Core.Hover.History,
-  Atlas.Core.Problems.Contract,
-  Atlas.Core.Documentation.Contract,
-  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.View;
@@ -83,6 +81,8 @@ type
     ProblemActions: Boolean;
     /// <summary>problems.showCompilerCode aus (#1024): Meldungen ohne „(wie E2035)“, Bestätigung ohne Code.</summary>
     HideCompilerCode: Boolean;
+    /// <summary>Link „Beispiel zeigen“ in der Aktionszeile (hover.ruleExamples, #145).</summary>
+    RuleExamples: Boolean;
     /// <summary>Rollbereich der published-Mitglieder: Zeilen, Grenze und gewünschter Versatz (#1841).</summary>
     Members: TAtlasHoverScrollRequest;
   end;
@@ -105,19 +105,6 @@ type
     Members: TAtlasHoverScroll;
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
-    /// <summary>Index der Klickfläche ProblemAction: Problem in View.Problems und Aktion (#621).</summary>
-    class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer; overload;
-      static;
-    /// <summary>Wie oben mit der Stelle AItem in Problem.Related (Aktion Related, #896); 0 bis MaxRelated - 1.
-    /// </summary>
-    class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction; AItem: Integer): Integer;
-      overload; static;
-    class procedure DecodeProblemAction(ACode: Integer; out AProblem: Integer;
-      out AAction: TAtlasHoverProblemAction); overload; static;
-    class procedure DecodeProblemAction(ACode: Integer; out AProblem: Integer;
-      out AAction: TAtlasHoverProblemAction; out AItem: Integer); overload; static;
-    /// <summary>Reihenfolge der Probleme im Hover: Fehler zuerst, sonst wie geliefert (#909).</summary>
-    class function ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>; static;
     /// <summary>Nächste (AForward) bzw. vorige Klickfläche ProblemAction nach AHot (Index in Hits, -1 vor der
     /// ersten), reihum; -1 ohne solche Klickfläche. Für Tab im Hover (#909).</summary>
     function NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
@@ -139,7 +126,13 @@ uses
   System.SysUtils,
   System.Math,
   System.StrUtils,
-  Atlas.Core.Problems.Colors;
+  Atlas.Core.Hover.Contract,
+  Atlas.Core.Hover.History,
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Explanation,
+  Atlas.Core.Problems.Colors,
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Hover.DebugValue;
 
 const
   cBandChain = 0;
@@ -148,10 +141,16 @@ const
   /// </summary>
   cPropertyRows = 7;
   cEventRows = 4;
-  /// <summary>Höchstens so viele weitere Stellen je Problem im Hover (#896).</summary>
-  cMaxRelated = 64;
   /// <summary>Höchstens so viele Zeilen „Typische Ursache“ (#54).</summary>
   cCauseLines = 3;
+  /// <summary>Beispiel aus dem Regelkatalog (#145): Zeilen je Beispiel und der Beschreibung.</summary>
+  cExampleMaxLines = 8;
+  cExampleDescriptionLines = 6;
+  /// <summary>Abstände eines Beispiels bei 96 dpi: Rand der Fläche oben, unten und rechts, Einzug des Codes,
+  /// Abstand darunter.</summary>
+  cExamplePadding = 4;
+  cExampleIndent = 8;
+  cExampleGap = 6;
 
 type
   /// <summary>Klickfläche und Hervorhebung eines Stücks Fließtext: Index >= 0 legt eine Klickfläche an,
@@ -267,6 +266,11 @@ type
     procedure Cause(AIndex: Integer);
     /// <summary>Links „Erklären“ und „DocWiki“ unter einer Compilermeldung (#54).</summary>
     procedure MessageActions(AIndex: Integer);
+    /// <summary>Beschreibung und Beispiel falsch/richtig unter Problem AIndex, wenn aufgeklappt (#145).</summary>
+    procedure RuleExample(AIndex: Integer);
+    /// <summary>Überschrift ACaption in AColor und darunter ACode in Festbreitenschrift auf abgesetzter Fläche.
+    /// </summary>
+    procedure ExampleCode(const ACaption, ACode: string; AColor: TAtlasColor);
     /// <summary>Aktionen zum uses-Eintrag (#621).</summary>
     procedure UsesActions(const AProblem: TAtlasProblem; AIndex: Integer);
     /// <summary>Herkunft und Regel eines Regelbefunds.</summary>
@@ -1035,7 +1039,7 @@ begin
     Inc(FX, Scale(12));
   end;
   FlowLink(ACaption, FColors.Accent, TAtlasHoverHitKind.ProblemAction,
-    TAtlasHoverLayout.ProblemActionCode(AProblem, AAction));
+    TAtlasHoverProblemActionCode.Encode(AProblem, AAction));
 end;
 
 procedure TBuilder.RelatedLinks(const AProblem: TAtlasProblem; AIndex: Integer);
@@ -1056,14 +1060,14 @@ begin
     mSeparator := ' → ';
   end;
   mOldFont := BeginLinkRow;
-  for mItem := 0 to Min(High(AProblem.Related), cMaxRelated - 1) do
+  for mItem := 0 to Min(High(AProblem.Related), TAtlasHoverProblemActionCode.cMaxRelated - 1) do
   begin
     if mItem > 0 then
     begin
       Flow(mSeparator, FColors.Muted, False);
     end;
     FlowLink(AProblem.Related[mItem].Message, FColors.Accent, TAtlasHoverHitKind.ProblemAction,
-      TAtlasHoverLayout.ProblemActionCode(AIndex, TAtlasHoverProblemAction.Related, mItem));
+      TAtlasHoverProblemActionCode.Encode(AIndex, TAtlasHoverProblemAction.Related, mItem));
   end;
   if mCycle and (FInput.Texts.ShowGraph <> '') then
   begin
@@ -1125,13 +1129,14 @@ var
   mOldFont: TAtlasHoverFont;
   mStart, mCode: Integer;
   mHot: THotSpot;
+  mExplanation: TAtlasHoverExplanation;
 begin
   // Aktionszeile eines Regelbefunds (#909): Korrektur (nur, wenn die Regel eine hat), unterdrücken, einstellen.
   mOldFont := BeginLinkRow;
   if AProblem.FixTitle <> '' then
   begin
     mStart := FX;
-    mCode := TAtlasHoverLayout.ProblemActionCode(AIndex, TAtlasHoverProblemAction.Fix);
+    mCode := TAtlasHoverProblemActionCode.Encode(AIndex, TAtlasHoverProblemAction.Fix);
     mHot := HoverHot(TAtlasHoverHitKind.ProblemAction, mCode, FColors.Accent);
     Flow('Alt+Enter: ', FColors.Accent, True, mHot);
     Flow(AProblem.FixTitle, FColors.Accent, True, mHot);
@@ -1150,6 +1155,12 @@ begin
   if Explanation(AIndex, mExplanation) then
   begin
     ProblemLink(FInput.Texts.Explain, AIndex, TAtlasHoverProblemAction.Explain);
+  end;
+  // Beschreibung und Beispiel aus dem Regelkatalog (#145): klappt im Tooltip auf, F1 bleibt bei der Regelseite.
+  if FInput.RuleExamples then
+  begin
+    ProblemLink(IfThen(FInput.View.ExampleShown(AIndex), FInput.Texts.HideExample, FInput.Texts.ShowExample), AIndex,
+      TAtlasHoverProblemAction.Example);
   end;
   EndLinkRow(mOldFont);
 end;
@@ -1190,6 +1201,51 @@ begin
     ProblemLink(FInput.Texts.DocWiki, AIndex, TAtlasHoverProblemAction.DocWiki);
   end;
   EndLinkRow(mOldFont);
+end;
+
+procedure TBuilder.ExampleCode(const ACaption, ACode: string; AColor: TAtlasColor);
+var
+  mLines: TArray<string>;
+  mCaptionFace, mCodeFace: TAtlasHoverFace;
+  mLineHeight, mTop, mBottom, mLine: Integer;
+begin
+  if ACode = '' then
+  begin
+    Exit;
+  end;
+  mCaptionFace := Face(TAtlasHoverFont.SmallUi, True);
+  AddText(FLeft, FY, ACaption, mCaptionFace, AColor);
+  Inc(FY, Height(mCaptionFace) + Scale(2));
+  mLines := TAtlasRuleExplanation.ExampleLines(ACode, cExampleMaxLines);
+  mCodeFace := Face(TAtlasHoverFont.SmallMono, False);
+  mLineHeight := Height(mCodeFace);
+  mTop := FY;
+  mBottom := mTop + Length(mLines) * mLineHeight + 2 * Scale(cExamplePadding);
+  // Abgesetzte Fläche mit Randstrich in der Farbe von falsch bzw. richtig, wie im Fenster „Regel erklären“.
+  Add(NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft, mTop, FRight, mBottom), FColors.Gutter));
+  Add(NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft, mTop, FLeft + Scale(2), mBottom), AColor));
+  for mLine := 0 to High(mLines) do
+  begin
+    AddText(FLeft + Scale(cExampleIndent), mTop + Scale(cExamplePadding) + mLine * mLineHeight,
+      Clipped(mCodeFace, mLines[mLine], FRight - FLeft - Scale(cExampleIndent + cExamplePadding)), mCodeFace,
+      FColors.Text);
+  end;
+  FY := mBottom + Scale(cExampleGap);
+end;
+
+procedure TBuilder.RuleExample(AIndex: Integer);
+var
+  mExample: TAtlasRuleExplanation;
+begin
+  if not FInput.RuleExamples or not FInput.View.ExampleShown(AIndex) then
+  begin
+    Exit;
+  end;
+  // Ohne Katalogtext setzt der Aufrufer den Hinweis „keine Beschreibung“ als Beschreibung.
+  mExample := FInput.View.Examples[AIndex];
+  Block(mExample.Description, FColors.Text, cExampleDescriptionLines);
+  ExampleCode(FInput.Texts.ExampleBad, mExample.Bad, FColors.Error);
+  ExampleCode(FInput.Texts.ExampleGood, mExample.Good, FColors.Add);
 end;
 
 procedure TBuilder.UsesActions(const AProblem: TAtlasProblem; AIndex: Integer);
@@ -1317,6 +1373,7 @@ begin
   else if FInput.ProblemActions and mIsRule and not mProblem.IsCompiler and not mProblem.IsIde and
     (mProblem.Code <> '') then
   begin
+    RuleExample(AIndex);
     RuleActions(mProblem, AIndex);
   end
   // Compilermeldungen (dcc, IDE) mit Katalogeintrag: Ursache, „Erklären“, „DocWiki“ (#54).
@@ -1335,7 +1392,7 @@ begin
   // Probleme an der Mausposition, Fehler zuerst (#909): Farbbalken, Pille mit der Art und Meldung, darunter
   // Herkunft und Regel, bei Regeltreffern die Konfidenz und die Aktionszeile. Klickflächen tragen den Index
   // in View.Problems, nicht die Position im Hover.
-  for mIndex in TAtlasHoverLayout.ProblemOrder(FInput.View.Problems) do
+  for mIndex in FInput.View.ProblemOrder do
   begin
     Problem(mIndex);
   end;
@@ -1878,62 +1935,6 @@ begin
     end;
   end;
   Result := -1;
-end;
-
-class function TAtlasHoverLayout.ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer;
-begin
-  Result := ProblemActionCode(AProblem, AAction, 0);
-end;
-
-class function TAtlasHoverLayout.ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction;
-  AItem: Integer): Integer;
-begin
-  Result := (AProblem * cMaxRelated + AItem) * (Ord(High(TAtlasHoverProblemAction)) + 1) + Ord(AAction);
-end;
-
-class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
-  out AAction: TAtlasHoverProblemAction);
-var
-  mItem: Integer;
-begin
-  DecodeProblemAction(ACode, AProblem, AAction, mItem);
-end;
-
-class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
-  out AAction: TAtlasHoverProblemAction; out AItem: Integer);
-var
-  mRest: Integer;
-begin
-  AAction := TAtlasHoverProblemAction(ACode mod (Ord(High(TAtlasHoverProblemAction)) + 1));
-  mRest := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
-  AProblem := mRest div cMaxRelated;
-  AItem := mRest mod cMaxRelated;
-end;
-
-class function TAtlasHoverLayout.ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;
-var
-  mIndex, mCount: Integer;
-begin
-  // Fehler zuerst, die übrigen in ihrer Reihenfolge (stabil).
-  Result := nil;
-  SetLength(Result, Length(AProblems));
-  mCount := 0;
-  for mIndex := 0 to High(AProblems) do
-  begin
-    if AProblems[mIndex].Severity = TAtlasProblemSeverity.Error then
-    begin
-      Result[mCount] := mIndex;
-      Inc(mCount);
-    end;
-  end;
-  for mIndex := 0 to High(AProblems) do
-  begin
-    if AProblems[mIndex].Severity <> TAtlasProblemSeverity.Error then
-    begin
-      Result[mCount] := mIndex;
-      Inc(mCount);
-    end;
-  end;
 end;
 
 function TAtlasHoverLayout.NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
