@@ -13,7 +13,13 @@
 // (#1025, z. B. redundant-begin-end bei missing-begin-end); Rules.Engine.
 // "safeFix" (#1352) gibt die als sicher markierten Korrekturen der Regel für
 // die Sammelkorrektur frei (--fix, fix_findings, „Alle sicheren Treffer
-// korrigieren …“); ohne das Feld korrigiert sie nur einzeln.
+// korrigieren …“); bei false korrigiert sie nur einzeln. Das Feld ist im
+// mitgelieferten Katalog Pflicht (Tools/Update-RuleCatalog.ps1 prüft das).
+// "profiles" (#145, #146) nennt die mitgelieferten Profile ohne die
+// Kategorie-Profile, in denen die Regel läuft: standard und strict; ohne das
+// Feld beide. ["strict"] heißt experimentell: Die Regel läuft nur im Profil
+// strict oder wenn sie in "rules" eingeschaltet ist. Diese Angabe steht nur
+// hier, nicht im Delphi-Code der Regel.
 
 interface
 
@@ -69,6 +75,14 @@ type
     OverriddenBy: TArray<string>;
     /// <summary>Sichere Korrekturen dürfen in die Sammelkorrektur (#1352, "safeFix").</summary>
     SafeFix: Boolean;
+    /// <summary>Mitgelieferte Profile ohne Kategorie-Profile, in denen die Regel läuft ("profiles", #145):
+    /// "standard" und/oder "strict"; nil = beide.</summary>
+    Profiles: TArray<string>;
+    /// <summary>True, wenn die Regel im Profil AName läuft (nur standard und strict; Groß-/Kleinschreibung
+    /// egal). Kategorie-Profile (fast, security, style) leiten sich aus Category ab.</summary>
+    function InProfile(const AName: string): Boolean;
+    /// <summary>Nur im Profil strict oder ausdrücklich eingeschaltet (#834): nicht im Profil standard.</summary>
+    function Experimental: Boolean;
   end;
 
   ERuleCatalog = class(Exception);
@@ -134,7 +148,7 @@ type
   TCatalogText = (Wrong, Right, CompilerCodes, OverriddenBy, OrSeparator, More, NeedsColumns, ColumnNoName,
     OptionNoObject, OptionNoName, OptionBadType, BadOptions, BadCompilerCodes, BadCompilerCode, BadOverriddenBy,
     BadCounterRule, ObjectExpected, RulesMissing, BadCategory, BadSeverity, BadGroup, BadLevel, BadSafeFix,
-    EntryNoObject, EntryNoId, Duplicate);
+    BadProfiles, EntryNoObject, EntryNoId, Duplicate);
 
 const
   cTexts: array[TCatalogText] of TAtlasText = (
@@ -164,6 +178,8 @@ const
     (De: 'Regelkatalog: "%s" hat keine gültige Gruppe'; En: 'Rule catalog: "%s" has no valid group'),
     (De: 'Regelkatalog: "%s" hat eine ungültige Stufe "%s"'; En: 'Rule catalog: "%s" has an invalid level "%s"'),
     (De: 'Regelkatalog: "%s" hat ein ungültiges "safeFix"'; En: 'Rule catalog: "%s" has an invalid "safeFix"'),
+    (De: 'Regelkatalog: "%s" hat ungültige "profiles" (erlaubt "standard" und "strict", "strict" immer)';
+     En: 'Rule catalog: "%s" has invalid "profiles" (allowed "standard" and "strict", "strict" always)'),
     (De: 'Regelkatalog: Eintrag ist kein Objekt'; En: 'Rule catalog: entry is not an object'),
     (De: 'Regelkatalog: Eintrag ohne "id"'; En: 'Rule catalog: entry without "id"'),
     (De: 'Regelkatalog: "%s" doppelt'; En: 'Rule catalog: "%s" is duplicated'));
@@ -176,6 +192,9 @@ const
     'robustness', 'migration', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
   cOptionKinds: array[0..6] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list',
     'json');
+  // Mitgelieferte Profile ohne Kategorie-Profile ("profiles", #145); strict schaltet alle Regeln ein.
+  cProfileStandard = 'standard';
+  cProfileStrict = 'strict';
 
 var
   SharedLock: TCriticalSection;
@@ -416,6 +435,44 @@ begin
   end;
 end;
 
+/// <summary>"profiles" eines Eintrags; nil ohne das Feld. ERuleCatalog bei leerer Liste, unbekanntem Profil oder
+/// ohne strict (strict schaltet jede Regel ein).</summary>
+function ProfilesOf(AItem: TJSONObject; const AId: string): TArray<string>;
+var
+  mValue, mItem: TJSONValue;
+  mName: string;
+  mStrict: Boolean;
+begin
+  Result := nil;
+  mValue := AItem.GetValue('profiles');
+  if mValue = nil then
+  begin
+    Exit;
+  end;
+  mStrict := False;
+  if mValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONString) or (mItem is TJSONNumber) then
+      begin
+        raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadProfiles].Text, [AId]);
+      end;
+      mName := LowerCase(TJSONString(mItem).Value);
+      if (mName <> cProfileStandard) and (mName <> cProfileStrict) then
+      begin
+        raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadProfiles].Text, [AId]);
+      end;
+      mStrict := mStrict or (mName = cProfileStrict);
+      Result := Result + [mName];
+    end;
+  end;
+  if not mStrict then
+  begin
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadProfiles].Text, [AId]);
+  end;
+end;
+
 /// <summary>Ein Eintrag des Grundkatalogs; ERuleCatalog bei ungültigen Angaben.</summary>
 function EntryOf(AItem: TJSONValue): TRuleCatalogEntry;
 var
@@ -441,6 +498,7 @@ begin
   Result.CompilerCodes := CompilerCodesOf(mObject, Result.Id);
   Result.OverriddenBy := OverriddenByOf(mObject, Result.Id);
   ReadLevelAndSafeFix(mObject, Result);
+  Result.Profiles := ProfilesOf(mObject, Result.Id);
 end;
 
 /// <summary>Setzt die Beschreibung der Option AName (Groß-/Kleinschreibung egal).</summary>
@@ -496,6 +554,35 @@ begin
     AEntry.Description := mText;
   end;
   TranslateOptions(AItem.GetValue('options'), AEntry.Options);
+end;
+
+{ TRuleCatalogEntry }
+
+function TRuleCatalogEntry.InProfile(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  if not SameText(AName, cProfileStandard) and not SameText(AName, cProfileStrict) then
+  begin
+    Exit(False);
+  end;
+  if Profiles = nil then
+  begin
+    Exit(True);
+  end;
+  for mName in Profiles do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TRuleCatalogEntry.Experimental: Boolean;
+begin
+  Result := not InProfile(cProfileStandard);
 end;
 
 { TRuleCatalog }

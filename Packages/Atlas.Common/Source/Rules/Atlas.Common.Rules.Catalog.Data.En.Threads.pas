@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnThreads: array[0..211] of string = (
+  cCatalogLinesEnThreads: array[0..225] of string = (
     '{',
     '      "id": "thread-vcl-access",',
     '      "name": "VCL access from a thread",',
@@ -16,7 +16,8 @@ const
     '      "description": "TThread.Execute, TThread.CreateAnonymousThread or TTask accesses the VCL (Application, Screen, ShowMessage, MessageDlg …) outside Synchronize or Queue. The VCL is not thread-safe' +
     '.",',
     '      "bad": "procedure TWorker.Execute;\nbegin\n  Application.Title := ''Done'';\nend;",',
-    '      "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := ''Done'' end);\nend;"',
+    '      "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := ''Done'' end);\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "lock-without-finally",',
@@ -35,7 +36,8 @@ const
     '          "default": [],',
     '          "description": "Additional lock pairs as [[\"Lock\", \"Release\"]]."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "thread-use-after-free-on-terminate",',
@@ -45,7 +47,8 @@ const
     '      "group": "threads",',
     '      "description": "A thread with FreeOnTerminate := True may free itself as soon as it is started; using the variable afterwards can access a freed object.",',
     '      "bad": "T.FreeOnTerminate := True;\nT.Start;\nLog(T.ThreadID);",',
-    '      "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;"',
+    '      "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "thread-free-with-free-on-terminate",',
@@ -55,7 +58,8 @@ const
     '      "group": "threads",',
     '      "description": "Free on a thread with FreeOnTerminate := True frees it twice.",',
     '      "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.Free;",',
-    '      "good": "T.FreeOnTerminate := True;\nT.Start;"',
+    '      "good": "T.FreeOnTerminate := True;\nT.Start;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "synchronize-in-destructor",',
@@ -65,7 +69,8 @@ const
     '      "group": "threads",',
     '      "description": "Synchronize in the destructor of a TThread descendant (or a method it calls) deadlocks: the main thread waits in WaitFor while the thread waits for Synchronize.",',
     '      "bad": "destructor TWorker.Destroy;\nbegin\n  Synchronize(Notify);\n  inherited;\nend;",',
-    '      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;"',
+    '      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "thread-resume-suspend",',
@@ -89,7 +94,8 @@ const
     ' Types are resolved in the file and in the index. High confidence. No quick fix: release the value at the end of the thread (for example set it to '''' or nil in TThread.Execute), or store a pointer or ' +
     'a fixed-size buffer instead.",',
     '      "bad": "threadvar\n  LetzteMeldung: string;",',
-    '      "good": "threadvar\n  LetzteMeldung: PChar;"',
+    '      "good": "threadvar\n  LetzteMeldung: PChar;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "processmessages-in-loop",',
@@ -109,7 +115,8 @@ const
     '          "default": [],',
     '          "description": "Methods in which ProcessMessages is allowed, as Name or Class.Name."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "queue-nil-in-package",',
@@ -137,7 +144,8 @@ const
     '          "default": "mainthread-ok",',
     '          "description": "Comment that exempts a line."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "blocking-call-in-main-thread",',
@@ -172,7 +180,8 @@ const
     '          ],',
     '          "description": "Calls that block. Other names are reported regardless of their arguments."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "thread-loop-without-terminated",',
@@ -186,7 +195,8 @@ const
     'dex. Bounded loops, for loops, anonymous methods and classes that override TerminatedSet (they end their loops another way) stay silent. High confidence. Quick fix: add Terminated to the loop conditio' +
     'n (while True → while not Terminated, otherwise and not Terminated; until False → until Terminated, otherwise or Terminated).",',
     '      "bad": "procedure TPoller.Execute;\nbegin\n  while True do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;",',
-    '      "good": "procedure TPoller.Execute;\nbegin\n  while not Terminated do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;"',
+    '      "good": "procedure TPoller.Execute;\nbegin\n  while not Terminated do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "anonymous-thread-not-started",',
@@ -199,7 +209,8 @@ const
     'd). Setting properties such as FreeOnTerminate or OnTerminate does not count as passing on. High confidence. Quick fix: append .Start; for a variable, T.Start; after the last statement of the same blo' +
     'ck that mentions it.",',
     '      "bad": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end);",',
-    '      "good": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end).Start;"',
+    '      "good": "TThread.CreateAnonymousThread(\n  procedure\n  begin\n    Synchronisieren;\n  end).Start;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "task-exception-unobserved",',
@@ -213,7 +224,8 @@ const
     ' Vcl.Dialogs, or FMX.Dialogs in FireMonkey units, and System.SysUtils to the uses clause when missing); only when begin and end of the anonymous method stand on their own lines.",',
     '      "bad": "TTask.Run(\n  procedure\n  begin\n    Importieren(Datei);\n  end);",',
     '      "good": "TTask.Run(\n  procedure\n  begin\n    try\n      Importieren(Datei);\n    except\n      on E: Exception do\n      begin\n        var Fehler := E.Message;\n        TThread.Queue(nil,\n  ' +
-    '        procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);"',
+    '        procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "parallel-for-shared-write",',
@@ -238,7 +250,8 @@ const
     '          ],',
     '          "description": "Types that count as thread-safe; their collection calls stay silent."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "thread-unsafe-increment",',
@@ -252,7 +265,8 @@ const
     'Lock, LockList, BeginWrite, TInterlocked) and nested anonymous methods (Synchronize, Queue). Tasks inside loops and TParallel.For are reported by parallel-for-shared-write. Medium confidence. Quick fi' +
     'x: TInterlocked.Increment/Decrement/Add for Integer, Int64 and Cardinal (adds System.SyncObjs).",',
     '      "bad": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then Inc(GVerarbeitet);\nend;",',
-    '      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;"',
+    '      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;",',
+    '      "safeFix": false',
     '    }');
 
 implementation

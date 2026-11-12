@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnMigration: array[0..59] of string = (
+  cCatalogLinesEnMigration: array[0..65] of string = (
     '{',
     '      "id": "pointer-integer-cast",',
     '      "name": "Pointer in a 32-bit integer",',
@@ -19,7 +19,8 @@ const
     'ive branches and in branches by platform ({$IFDEF CPUX86}, {$IFDEF WIN32}, {$IF SizeOf(Pointer) = 4} and their {$ELSE}) are silent, as are Delphi versions before XE2. Quick fix: NativeInt or NativeUIn' +
     't instead of the 32-bit type.",',
     '      "bad": "Liste.Add(IntToStr(Integer(Kunde)));",',
-    '      "good": "Liste.Add(IntToStr(NativeInt(Kunde)));"',
+    '      "good": "Liste.Add(IntToStr(NativeInt(Kunde)));",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "handle-as-integer",',
@@ -32,7 +33,8 @@ const
     'e; the type comes from the declaration of the source, so it also works without the Windows sources. NativeInt to Integer is reported by narrowing-assignment. Silent in inactive branches, in branches b' +
     'y platform and before Delphi XE2. Quick fixes: WPARAM, LPARAM or LRESULT as the type; for a local variable declared alone, take over the type of the source.",',
     '      "bad": "function FensterProc(Wnd: HWND; Msg: UINT; wParam: Longint; lParam: Longint): Longint; stdcall;",',
-    '      "good": "function FensterProc(Wnd: HWND; Msg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;"',
+    '      "good": "function FensterProc(Wnd: HWND; Msg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "window-long-ptr",',
@@ -45,7 +47,8 @@ const
     ' and write only 32 bits. Indices with 32-bit values (GWL_STYLE, GWL_EXSTYLE, GWL_ID) are not reported. Silent in inactive branches, in branches by platform and before Delphi XE2. Quick fix: ...LongPtr' +
     ' with the GWLP_, DWLP_ or GCLP_ index; a 32-bit cast of the new value becomes LONG_PTR.",',
     '      "bad": "SetWindowLong(Handle, GWL_WNDPROC, Integer(@NeueProc));",',
-    '      "good": "SetWindowLongPtr(Handle, GWLP_WNDPROC, LONG_PTR(@NeueProc));"',
+    '      "good": "SetWindowLongPtr(Handle, GWLP_WNDPROC, LONG_PTR(@NeueProc));",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "asm-without-win64",',
@@ -57,7 +60,8 @@ const
     'begin ... end (E1025). Routines whose asm uses 64-bit registers (rax, r8 ...) are already Win64 code and are not reported. Files for Free Pascal ({$MODE ...}, {$ASMMODE ...}) and Delphi versions befor' +
     'e XE2 are silent. No quick fix: the Pascal variant has to be written by hand.",',
     '      "bad": "function Tausche(Wert: Cardinal): Cardinal;\nasm\n  bswap eax\nend;",',
-    '      "good": "function Tausche(Wert: Cardinal): Cardinal;\n{$IFDEF CPUX86}\nasm\n  bswap eax\nend;\n{$ELSE}\nbegin\n  Result := Swap(Wert shr 16) or (Cardinal(Swap(Wert)) shl 16);\nend;\n{$ENDIF}"',
+    '      "good": "function Tausche(Wert: Cardinal): Cardinal;\n{$IFDEF CPUX86}\nasm\n  bswap eax\nend;\n{$ELSE}\nbegin\n  Result := Swap(Wert shr 16) or (Cardinal(Swap(Wert)) shl 16);\nend;\n{$ENDIF}",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "char-count-as-bytes",',
@@ -71,7 +75,8 @@ const
     'ay be shifted by a number with + or -. Silent in inactive branches, with {$H-} and before Delphi 2009. Quick fix: multiply by SizeOf(Char); not safe, because a target buffer of AnsiChar then overflows' +
     ' and needs a conversion instead.",',
     '      "bad": "Move(S[1], Puffer, Length(S));",',
-    '      "good": "Move(S[1], Puffer, Length(S) * SizeOf(Char));"',
+    '      "good": "Move(S[1], Puffer, Length(S) * SizeOf(Char));",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "ansi-api-call",',
@@ -84,7 +89,8 @@ const
     ' rules. Silent in inactive branches, with {$H-} and before Delphi 2009. Quick fix: the function without A with PChar(S); offered when the function is not resolved or comes from a Winapi unit and no ot' +
     'her argument is an Ansi type for sure.",',
     '      "bad": "MessageBoxA(0, PAnsiChar(AnsiString(Text)), ''Atlas'', MB_OK);",',
-    '      "good": "MessageBox(0, PChar(Text), ''Atlas'', MB_OK);"',
+    '      "good": "MessageBox(0, PChar(Text), ''Atlas'', MB_OK);",',
+    '      "safeFix": false',
     '    }');
 
 implementation

@@ -819,8 +819,7 @@ end;
 function TLegacyTListRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cLegacyTListRuleId, TRuleSeverity.Information,
-    cTexts[TCollectionsText.ListTitle].Text,
-    True);
+    cTexts[TCollectionsText.ListTitle].Text);
 end;
 
 function TLegacyTListRule.CollectionTypes: TArray<TLegacyCollectionType>;
@@ -856,7 +855,7 @@ end;
 function TLegacyStackQueueRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cLegacyStackQueueRuleId, TRuleSeverity.Information,
-    cTexts[TCollectionsText.StackTitle].Text, True);
+    cTexts[TCollectionsText.StackTitle].Text);
 end;
 
 function TLegacyStackQueueRule.CollectionTypes: TArray<TLegacyCollectionType>;

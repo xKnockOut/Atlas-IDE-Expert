@@ -61,8 +61,9 @@ var
 begin
   TRuleAssert.Silent(TMemberHidesAncestorRule.Create,
     cBase + '  TAbleitung = class(TBasis, IFoo)'#10 + cMembers);
+  // Methoden meldet die Regel mit niedriger Konfidenz.
   mFindings := TRuleAssert.Findings(TMemberHidesAncestorRule.Create,
-    cBase + '  TAbleitung = class(TBasis)'#10 + cMembers);
+    cBase + '  TAbleitung = class(TBasis)'#10 + cMembers, '{"minConfidence": "low"}', 'U.pas');
   Assert.AreEqual(2, Integer(Length(mFindings)));
 end;
 

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnComponents: array[0..89] of string = (
+  cCatalogLinesEnComponents: array[0..98] of string = (
     '{',
     '      "id": "component-create-without-override",',
     '      "name": "Component constructor without override",',
@@ -16,7 +16,8 @@ const
     '      "description": "A TComponent descendant declares constructor Create(AOwner: TComponent) without override. Components created from a form file are built through the virtual constructor and skip t' +
     'his one.",',
     '      "bad": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent);\n  end;",',
-    '      "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;"',
+    '      "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-missing-inherited",',
@@ -29,7 +30,8 @@ const
     're OnPaint at run time, so a Paint without inherited is reported there only if the unit uses OnPaint or has a form file; TCustomControl.Paint and TGraphicControl.Paint are empty, so leaving out inheri' +
     'ted there is normal.",',
     '      "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",',
-    '      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"',
+    '      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-default-mismatch",',
@@ -40,7 +42,8 @@ const
     '      "description": "A property declares a default value, but the constructor sets its field to a different literal. The streaming system does not store values equal to default, so the property is lo' +
     'aded wrongly from the DFM.",',
     '      "bad": "property Size: Integer read FSize write FSize default 5;\n...\nFSize := 10;",',
-    '      "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;"',
+    '      "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-missing-free-notification",',
@@ -51,7 +54,8 @@ const
     '      "description": "A component property refers to another component, but its setter does not call FreeNotification. When the other component is freed, a dangling pointer remains. Subcomponents crea' +
     'ted in the constructor are ignored.",',
     '      "bad": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\nend;",',
-    '      "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;"',
+    '      "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-setter-without-invalidate",',
@@ -61,7 +65,8 @@ const
     '      "group": "components",',
     '      "description": "A property setter changes a field that Paint reads, but does not call Invalidate (or Repaint, Refresh, Changed). The control keeps showing the old state.",',
     '      "bad": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\nend;",',
-    '      "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;"',
+    '      "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-fixed-pixels",',
@@ -72,7 +77,8 @@ const
     '      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv or through a method of the class that scales itself (calls Sca' +
     'leValue, MulDiv or a Scale... routine), 0, 1 and -1, and factors of multiplications and divisions are not reported.",',
     '      "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",',
-    '      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"',
+    '      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "control-fixed-bounds",',
@@ -85,7 +91,8 @@ const
     'ultiplications and divisions, values from 10000 on (order for Align), Pen.Width, Font.Height and assignments in Paint or Resize of a component (component-fixed-pixels) are not reported. The fix scales' +
     ' with ScaleValue of the control itself (for Margins, Padding and Constraints of the control they belong to): it is right whether the control is already parented or is scaled along when it is.",',
     '      "bad": "mEdit.Width := 240;",',
-    '      "good": "mEdit.Width := ScaleValue(240);"',
+    '      "good": "mEdit.Width := ScaleValue(240);",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-hardcoded-color",',
@@ -95,7 +102,8 @@ const
     '      "group": "components",',
     '      "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",',
     '      "bad": "Canvas.Brush.Color := $00FF8000;",',
-    '      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"',
+    '      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "component-palette-icon",',
@@ -106,7 +114,8 @@ const
     '      "description": "Every class passed to RegisterComponents needs a bitmap named after the class in upper case in a .dcr or .res included with {$R}. From Delphi 11 the sizes 16, 24 and 32 px (NAME1' +
     '6, NAME24, NAME32) are expected as well. Silent when the unit includes no readable resource file.",',
     '      "bad": "{$R *.dcr} // without TMYBUTTON\nRegisterComponents(''Samples'', [TMyButton]);",',
-    '      "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents(''Samples'', [TMyButton]);"',
+    '      "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents(''Samples'', [TMyButton]);",',
+    '      "safeFix": false',
     '    }');
 
 implementation

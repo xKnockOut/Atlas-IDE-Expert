@@ -38,6 +38,10 @@ type
     procedure ResultAsVarArgumentIsSilent;
     [Test]
     procedure RaiseAndExitWithValueAreSilent;
+    /// <summary>Ein Aufruf einer noreturn-Routine beendet den Weg wie raise; ohne noreturn meldet die Regel.
+    /// </summary>
+    [Test]
+    procedure NoReturnCallEndsPath;
     [Test]
     procedure FunctionNameAssignmentIsSilent;
     [Test]
@@ -199,6 +203,18 @@ procedure TFlowRulesTests.RaiseAndExitWithValueAreSilent;
 begin
   TRuleAssert.Silent(TResultNotSetRule.Create,
     Routine('  if A then'#10'    Exit(1);'#10'  raise Exception.Create(''x'');'));
+end;
+
+procedure TFlowRulesTests.NoReturnCallEndsPath;
+const
+  cSource = 'unit U;'#10'interface'#10'procedure Fehler(const AText: string);%s'#10 +
+    'function F(A: Integer): Integer;'#10'implementation'#10 +
+    'procedure Fehler(const AText: string);'#10'begin'#10'  raise Exception.Create(AText);'#10'end;'#10 +
+    'function F(A: Integer): Integer;'#10'begin'#10'  if A > 0 then'#10'    Exit(A);'#10'  Fehler(''x'');'#10 +
+    'end;'#10'end.';
+begin
+  TRuleAssert.Silent(TResultNotSetRule.Create, Format(cSource, [' noreturn;']));
+  TRuleAssert.Reports(TResultNotSetRule.Create, Format(cSource, ['']));
 end;
 
 procedure TFlowRulesTests.FunctionNameAssignmentIsSilent;

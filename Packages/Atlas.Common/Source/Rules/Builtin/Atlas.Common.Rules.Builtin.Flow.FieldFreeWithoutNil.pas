@@ -2,7 +2,8 @@
 
 // Regel field-free-without-nil aus Atlas.Common.Rules.Builtin.Flow (#269): Ein Feld wird mit X.Free freigegeben,
 // und ein Weg erreicht das Ende der Methode, ohne das Feld neu zu setzen. Ausgenommen sind Destruktoren, Methoden
-// aus ignoreMethods, DUnitX-Methoden mit [TearDown] und Methoden, die nur aus solchen aufgerufen werden.
+// aus ignoreMethods, DUnitX-Methoden mit [TearDown], TearDown aus DUnit, OnDestroy-Behandlungen
+// (FormDestroy(Sender: TObject)) und Methoden, die nur aus solchen aufgerufen werden.
 // Korrektur: FreeAndNil(X).
 
 interface
@@ -152,11 +153,28 @@ begin
   Result := SourceText(FContext.Text, ANode);
 end;
 
-/// <summary>Destruktor, Methode aus ignoreMethods oder mit [TearDown].</summary>
-function TFieldFreeCheck.Releasing(ARoutine: TSyntaxNode): Boolean;
+/// <summary>Ereignisbehandlung OnDestroy eines Formulars, Frames oder Datenmoduls: FormDestroy(Sender: TObject)
+/// wie von der IDE angelegt (FP-Prüfung 28.10.2026).</summary>
+function IsDestroyHandler(const AName, AText: string): Boolean;
+var
+  mHead: string;
 begin
-  Result := MatchText(MethodOf(ARoutine), FIgnore) or StartsText('destructor', Trim(Text(ARoutine))) or
-    MatchText(MethodOf(ARoutine), FTearDowns);
+  mHead := LowerCase(Copy(AText, 1, Pos(')', AText))).Replace(' ', '').Replace(#9, '').Replace(#13, '')
+    .Replace(#10, '');
+  Result := EndsText('Destroy', AName) and (Length(AName) > Length('Destroy')) and
+    mHead.EndsWith('(sender:tobject)');
+end;
+
+/// <summary>Destruktor, Methode aus ignoreMethods, mit [TearDown], TearDown aus DUnit (override) oder
+/// OnDestroy-Behandlung.</summary>
+function TFieldFreeCheck.Releasing(ARoutine: TSyntaxNode): Boolean;
+var
+  mText: string;
+begin
+  mText := Trim(Text(ARoutine));
+  Result := MatchText(MethodOf(ARoutine), FIgnore) or StartsText('destructor', mText) or
+    MatchText(MethodOf(ARoutine), FTearDowns) or SameText(MethodOf(ARoutine), 'TearDown') or
+    IsDestroyHandler(MethodOf(ARoutine), mText);
 end;
 
 /// <summary>Wird die Methode nur aus freigebenden Methoden der Klasse aufgerufen (FreeFeatures aus Destroy)?

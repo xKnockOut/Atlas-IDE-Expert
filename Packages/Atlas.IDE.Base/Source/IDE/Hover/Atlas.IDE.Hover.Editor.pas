@@ -167,7 +167,6 @@ uses
   Atlas.Core.Completion.Word,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.Layout,
-  Atlas.Core.Outline.StickyScroll,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -381,20 +380,20 @@ end;
 /// wo der Kopf keinen zeigt; sonst bleibt APos, wie es ist.</summary>
 function StickyPos(var APos: TAtlasHoverMousePos; AX, AY: Integer): Boolean;
 var
-  mRow: TAtlasStickyRow;
+  mLine, mIndex: Integer;
 begin
-  Result := True;
-  if not TAtlasIdeStickyScroll.HeaderAt(APos.View.Buffer.FileName, APos.View.TopRow, AX, AY, mRow) then
-  begin
-    Exit;
-  end;
-  Result := mRow.Line >= 0;
-  if Result then
-  begin
-    // Der Kopf zeigt die Zeile ab ihrer Einrückung in Spalte Indent + 1, Zeichen für Zeichen wie im Editor.
-    APos.Line := mRow.Line + 1;
-    APos.Text := TAtlasEditorBuffer.LineText(APos.View, APos.Line);
-    Result := TAtlasStickyScroll.SourceIndex(mRow, APos.Text, APos.Column - mRow.Indent - 1, APos.Index);
+  case TAtlasIdeStickyScroll.SourceAt(APos.View, AX, AY, APos.Column, mLine, mIndex) of
+    TAtlasStickyHit.Source:
+      begin
+        APos.Line := mLine;
+        APos.Text := TAtlasEditorBuffer.LineText(APos.View, mLine);
+        APos.Index := mIndex;
+        Result := True;
+      end;
+    TAtlasStickyHit.Covered:
+      Result := False;
+  else
+    Result := True;
   end;
 end;
 

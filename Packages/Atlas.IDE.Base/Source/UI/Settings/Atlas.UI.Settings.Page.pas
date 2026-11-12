@@ -130,12 +130,22 @@ uses
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Style.Symbol;
+  Atlas.Core.Style.Symbol,
+  Atlas.Core.Diagnostics.Hangs;
+
+const
+  /// <summary>Aktionen für den Einfrier-Wächter (Protokollnamen, nicht übersetzt).</summary>
+  cBuildActivity = 'Settings page: build';
+  cWindowActivity = 'Settings page: window';
 
 { TAtlasSettingsPage }
 
 constructor TAtlasSettingsPage.Create(AOwner: TComponent);
+var
+  mActivity: IInterface;
 begin
+  // Die IDE legt die Seite selbst an (auch für IDE Insight): ohne Aktion hieße ein Hänger hier im Bericht nur „–“.
+  mActivity := TAtlasActivity.Scope(cBuildActivity);
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := ScaleValue(480);
@@ -474,7 +484,9 @@ procedure TAtlasSettingsPage.CreateWnd;
 var
   mPage: TAtlasSettingsNodePage;
   mPart: TAtlasSettingsPagePart;
+  mActivity: IInterface;
 begin
+  mActivity := TAtlasActivity.Scope(cWindowActivity);
   inherited CreateWnd;
   // Je Knoten ein Reiter, in der Reihenfolge des Baums.
   for mPage in FNodePages do

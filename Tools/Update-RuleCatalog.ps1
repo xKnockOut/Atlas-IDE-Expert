@@ -15,8 +15,11 @@
     und die RuleId-Konstanten) im Katalog steht, jede Katalogregel implementiert ist
     und jede Regel Name, Beschreibung, beide Beispiele und eine bekannte Gruppe
     (#909) hat. Optionen (options) brauchen Name, bekannten Typ und Beschreibung.
-    "safeFix" (#1352) muss ein Wahrheitswert sein; Regeln.md nennt die Regeln
-    mit Sammelkorrektur.
+    "safeFix" (#1352) ist Pflicht und muss ein Wahrheitswert sein; Regeln.md
+    nennt die Regeln mit Sammelkorrektur. "profiles" (#145) nennt die
+    mitgelieferten Profile ohne Kategorie-Profile ("standard", "strict"), in
+    denen die Regel läuft; "strict" muss dabei sein. Ohne "standard" ist die
+    Regel experimentell, Regeln.md sagt das.
     Regeln.md listet die Regeln nach Gruppen und je Regel ihre Optionen.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn die erzeugten Dateien
@@ -111,9 +114,21 @@ foreach ($Rule in $Base.rules) {
     if (($Rule.PSObject.Properties.Name -contains 'level') -and (@('A', 'B', 'T') -cnotcontains [string]$Rule.level)) {
         $Problems.Add("Regel '$($Rule.id)': ungültige Stufe '$($Rule.level)' (erlaubt A, B, T)")
     }
-    # Sammelkorrektur (#1352): "safeFix" ist ein Wahrheitswert.
-    if (($Rule.PSObject.Properties.Name -contains 'safeFix') -and -not ($Rule.safeFix -is [bool])) {
+    # Sammelkorrektur (#1352): "safeFix" ist Pflicht (#145) und ein Wahrheitswert.
+    if (-not ($Rule.PSObject.Properties.Name -contains 'safeFix')) {
+        $Problems.Add("Regel '$($Rule.id)': Feld 'safeFix' fehlt")
+    }
+    elseif (-not ($Rule.safeFix -is [bool])) {
         $Problems.Add("Regel '$($Rule.id)': 'safeFix' muss true oder false sein")
+    }
+    # Profile (#145, #146): nur standard und strict, strict immer (es schaltet alle Regeln ein).
+    if ($Rule.PSObject.Properties.Name -contains 'profiles') {
+        $RuleProfiles = @($Rule.profiles)
+        if (-not ($Rule.profiles -is [array]) -or $RuleProfiles.Count -eq 0 -or
+            @($RuleProfiles | Where-Object { @('standard', 'strict') -notcontains [string]$_ }).Count -gt 0 -or
+            @($RuleProfiles | Where-Object { [string]$_ -eq 'strict' }).Count -eq 0) {
+            $Problems.Add("Regel '$($Rule.id)': 'profiles' erlaubt nur ""standard"" und ""strict"", ""strict"" immer")
+        }
     }
     # Gegenregeln (#1025): Ist eine davon an, meldet die Regel nichts.
     if ($Rule.PSObject.Properties.Name -contains 'overriddenBy') {
@@ -328,6 +343,7 @@ $DocTexts = @{
         Groups = 'Gruppen'; Group = 'Gruppe'; RulesHead = 'Regeln'; RuleCol = 'Regel'; NameCol = 'Name'; CategoryCol = 'Kategorie'; SeverityCol = 'Schweregrad'
         Anchor = 'gruppe'; InGroup = 'Gruppe'; Compiler = 'Entspricht der Compilermeldung {0}.'; Level = 'Stufe {0}.'
         SafeFix = 'Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix {0}`, MCP `fix_findings`, Befehl ' + [char]0x201E + 'Alle sicheren Treffer korrigieren ' + [char]0x2026 + [char]0x201C + ').'
+        Experimental = 'Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.'
         Overridden = 'Schweigt, solange {0} an ist.'; Or = ' oder '
         OptionHead = '| Option | Typ | Vorgabe | Bedeutung |'; Bad = 'Mit Treffer:'; Good = 'Richtig:'
         Categories = @{ 'bug' = 'Bug'; 'vulnerability' = 'Schwachstelle'; 'code-smell' = 'Code Smell'; 'security-hotspot' = 'Sicherheits-Hotspot' }
@@ -340,6 +356,7 @@ $DocTexts = @{
         Groups = 'Groups'; Group = 'Group'; RulesHead = 'Rules'; RuleCol = 'Rule'; NameCol = 'Name'; CategoryCol = 'Category'; SeverityCol = 'Severity'
         Anchor = 'group'; InGroup = 'Group'; Compiler = 'Matches the compiler message {0}.'; Level = 'Level {0}.'
         SafeFix = 'Bulk fix: the safe fix can be applied project-wide (`--fix {0}`, MCP `fix_findings`, command "Fix all safe findings ' + [char]0x2026 + '").'
+        Experimental = 'Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.'
         Overridden = 'Silent while {0} is on.'; Or = ' or '
         OptionHead = '| Option | Type | Default | Meaning |'; Bad = 'Flagged:'; Good = 'Correct:'
         Categories = @{ 'bug' = 'Bug'; 'vulnerability' = 'Vulnerability'; 'code-smell' = 'Code smell'; 'security-hotspot' = 'Security hotspot' }
@@ -413,6 +430,9 @@ function New-RulesDoc([string] $Language) {
         }
         if (($Row.Rule.PSObject.Properties.Name -contains 'safeFix') -and $Row.Rule.safeFix) {
             [void]$Doc.Append(($T.SafeFix -f $Row.Rule.id) + "`r`n`r`n")
+        }
+        if (($Row.Rule.PSObject.Properties.Name -contains 'profiles') -and (@($Row.Rule.profiles) -notcontains 'standard')) {
+            [void]$Doc.Append($T.Experimental + "`r`n`r`n")
         }
         if ($Row.Rule.PSObject.Properties.Name -contains 'overriddenBy') {
             [void]$Doc.Append(($T.Overridden -f ((@($Row.Rule.overriddenBy) | ForEach-Object { '[`' + $_ + '`](#' + $_ + ')' }) -join $T.Or)) + "`r`n`r`n")

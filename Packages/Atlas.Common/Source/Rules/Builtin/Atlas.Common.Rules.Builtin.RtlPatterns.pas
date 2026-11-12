@@ -301,6 +301,9 @@ type
     /// <summary>Name := Name, wenn ein Parameter oder eine lokale Variable das gleichnamige Feld verdeckt: gemeint
     /// ist fast immer Self.Name := Name.</summary>
     procedure AddShadowFix(AStart: Integer; const AName: string; var AMessage: string; var AFixes: TArray<TRuleFix>);
+    /// <summary>Ist AStart..ALast (Name oder Kette A.B.C) eine Property, die über eine Methode schreibt? Dann ruft
+    /// "Top := Top" den Setter auf und ist gewollt.</summary>
+    function WritesThroughSetter(AStart, ALast: Integer): Boolean;
     procedure CheckAssign(AAssign: Integer);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -350,6 +353,67 @@ begin
   AFixes := [TRuleFix.Create(cTexts[TRtlPatternsText.AddSelf].Text, [TRuleEdit.Create(mInsert, 'Self.')])] + AFixes;
 end;
 
+/// <summary>Name hinter "write" in der Property-Signatur ASignature; '' ohne.</summary>
+function PropertyWriter(const ASignature: string): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mWords := ASignature.Replace(';', ' ').Split([' ', #9, #10, #13], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
+  begin
+    if SameText(mWords[mIndex], 'write') then
+    begin
+      Result := mWords[mIndex + 1];
+      Exit;
+    end;
+  end;
+end;
+
+function TSelfAssignmentScan.WritesThroughSetter(AStart, ALast: Integer): Boolean;
+var
+  mChain: TArray<string>;
+  mIndex: Integer;
+  mProperty, mWriter: TResolvedSymbol;
+  mWriterName: string;
+begin
+  Result := False;
+  mChain := nil;
+  mIndex := AStart;
+  while mIndex <= ALast do
+  begin
+    if FTokens[mIndex].Kind = TPascalTokenKind.Identifier then
+    begin
+      mChain := mChain + [FTokens[mIndex].Text];
+    end
+    else if not FTokens[mIndex].IsSymbol('.') then
+    begin
+      Exit;
+    end;
+    mIndex := NextCode(FTokens, mIndex + 1);
+  end;
+  if mChain = nil then
+  begin
+    Exit;
+  end;
+  mProperty := Resolver.ResolveChain(FContext.Tree, FContext.RelativePath, mChain, FTokens[AStart].Offset, False);
+  if (mProperty.Kind <> TResolvedKind.Symbol) or (mProperty.SymbolKind <> TIndexSymbolKind.Property_) then
+  begin
+    Exit;
+  end;
+  mWriterName := PropertyWriter(mProperty.Signature);
+  if mWriterName = '' then
+  begin
+    Exit;
+  end;
+  // Der Setter gehört zum Typ der Property: in der Kette den letzten Namen durch ihn ersetzen.
+  mChain[High(mChain)] := mWriterName;
+  mWriter := Resolver.ResolveChain(FContext.Tree, FContext.RelativePath, mChain, FTokens[AStart].Offset, False);
+  // Nur ein Feld als Ziel macht die Zuweisung wirkungslos; einen unbekannten Schreiber wertet die Regel als Setter.
+  Result := (mWriter.Kind <> TResolvedKind.Symbol) or (mWriter.SymbolKind <> TIndexSymbolKind.Field);
+end;
+
 procedure TSelfAssignmentScan.CheckAssign(AAssign: Integer);
 var
   mStart, mStop, mLeftEnd: Integer;
@@ -375,6 +439,10 @@ begin
     mRemoval := RangeOf(FTokens, mStart, PreviousCode(FTokens, mStop));
   end;
   mLeftEnd := PreviousCode(FTokens, AAssign);
+  if (FContext.Index <> nil) and WritesThroughSetter(mStart, mLeftEnd) then
+  begin
+    Exit;
+  end;
   mName := SourceText(FContext.Text, FTokens, mStart, mLeftEnd);
   mMessage := cTexts[TRtlPatternsText.SelfAssign].Fmt([mName]);
   mFixes := [TRuleFix.Create(cTexts[TRtlPatternsText.RemoveStatement].Text, [TRuleEdit.Create(mRemoval, '')])];
@@ -991,8 +1059,7 @@ end;
 function TRandomWithoutRandomizeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('random-without-randomize', TRuleSeverity.Hint,
-    cTexts[TRtlPatternsText.RandomTitle].Text,
-    True);
+    cTexts[TRtlPatternsText.RandomTitle].Text);
 end;
 
 /// <summary>Steht AOffset in der Deklaration eines Aufzählungstyps? Ein Wert Random dort ist kein Aufruf

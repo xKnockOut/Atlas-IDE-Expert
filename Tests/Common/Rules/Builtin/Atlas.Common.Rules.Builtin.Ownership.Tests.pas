@@ -49,6 +49,8 @@ type
     [Test]
     procedure CreateSelfRegisteringOption;
     [Test]
+    procedure CreateOutParameterAndWillRaiseAreSilent;
+    [Test]
     procedure CreateOffAndExclude;
     [Test]
     procedure CreateNames;
@@ -485,6 +487,49 @@ begin
   Assert.AreEqual(2, Integer(Length(Findings)));
   Assert.AreEqual(24, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(25, Findings[1].Range.StartPos.Line);
+end;
+
+procedure TOwnershipRulesTests.CreateOutParameterAndWillRaiseAreSilent;
+const
+  Source =
+    'unit Knoten;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKnoten = class'#10 +
+    '    constructor Create(out AKnoten: TKnoten); overload;'#10 +
+    '    constructor Create(A: Integer); overload;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TKnoten.Create(out AKnoten: TKnoten);'#10 +
+    'begin'#10 +
+    '  AKnoten := Self;'#10 +
+    'end;'#10 +
+    'constructor TKnoten.Create(A: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure Anlegen;'#10 +
+    'var'#10 +
+    '  mKnoten: TKnoten;'#10 +
+    'begin'#10 +
+    '  TKnoten.Create(mKnoten);'#10 +
+    '  mKnoten.Free;'#10 +
+    '  Assert.WillRaise('#10 +
+    '    procedure'#10 +
+    '    begin'#10 +
+    '      TStringListe.Create;'#10 +
+    '    end, EArgumentException);'#10 +
+    '  TStringListe.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // FP-Prüfung 28.10.2026: Ein Konstruktor mit out-Parameter gibt das Objekt selbst weiter; in Assert.WillRaise
+  // soll Create scheitern. Gemeldet bleibt nur das letzte TStringListe.Create.
+  mFindings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(26, mFindings[0].Range.StartPos.Line);
+  mFindings := nil;
 end;
 
 procedure TOwnershipRulesTests.CreateSelfRegisteringOption;

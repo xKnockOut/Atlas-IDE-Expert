@@ -61,7 +61,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 const
   Enabled = '{"rules": {"todo-comment": "hint"}}';
@@ -107,7 +108,7 @@ var
 begin
   TRuleAssert.Silent(TTodoRule.Create, Source);
   Rule := TTodoRule.Create;
-  Assert.IsTrue(Rule.Descriptor.Experimental, 'nur eingeschaltet');
+  Assert.IsTrue(TRuleProfiles.IsExperimental(Rule.Descriptor.Id), 'nur eingeschaltet');
 end;
 
 procedure TTodoRulesTests.ReportsOpenEntriesAsHint;
@@ -205,7 +206,7 @@ begin
   Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
   Assert.AreEqual(9, Findings[0].Range.EndPos.Line);
-  Assert.IsFalse((TCommentedOutCodeRule.Create as IRule).Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse(TRuleProfiles.IsExperimental((TCommentedOutCodeRule.Create as IRule).Descriptor.Id), 'Standard an');
 end;
 
 procedure TTodoRulesTests.CommentedCodeFixRemovesLines;

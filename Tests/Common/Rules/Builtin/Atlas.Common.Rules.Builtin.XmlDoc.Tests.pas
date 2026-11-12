@@ -60,7 +60,8 @@ uses
   Atlas.Common.Rules.Builtin.XmlDoc.Scanner,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Profiles;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers.</summary>
 function Kunden(const AMembers: string): string;
@@ -139,7 +140,7 @@ var
   Source, Expected: string;
   Found: TRuleFinding;
 begin
-  Assert.IsFalse((TXmlDocMismatchRule.Create as IRule).Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse(TRuleProfiles.IsExperimental((TXmlDocMismatchRule.Create as IRule).Descriptor.Id), 'Standard an');
   Source := Kunden('    /// <summary>Sucht einen Kunden.</summary>'#10 +
     '    /// <param name="Nummer">Kundennummer</param>'#10 +
     '    function Suchen(const Id: Integer; Aktive: Boolean): TKunde;'#10);

@@ -47,30 +47,31 @@ uses
   Atlas.Tests.RuleAssert;
 
 type
-  /// <summary>Beispielregel: ein Treffer je Datei mit fester Konfidenz.</summary>
+  /// <summary>Beispielregel: ein Treffer je Datei mit fester Konfidenz. AId wählt die Kennung; ob die Regel
+  /// experimentell ist, sagt allein der Regelkatalog (#145), etwa für magic-number.</summary>
   TFixedRule = class(TInterfacedObject, IRule)
   private
     FConfidence: TRuleConfidence;
     FSeverity: TRuleSeverity;
-    FExperimental: Boolean;
+    FId: string;
   public
     constructor Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity = TRuleSeverity.Error;
-      AExperimental: Boolean = False);
+      const AId: string = 'fixed');
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
-constructor TFixedRule.Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity; AExperimental: Boolean);
+constructor TFixedRule.Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity; const AId: string);
 begin
   inherited Create;
   FConfidence := AConfidence;
   FSeverity := ASeverity;
-  FExperimental := AExperimental;
+  FId := AId;
 end;
 
 function TFixedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('fixed', FSeverity, 'Ein Treffer je Datei', FExperimental);
+  Result := TRuleDescriptor.Create(FId, FSeverity, 'Ein Treffer je Datei');
 end;
 
 procedure TFixedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -132,13 +133,17 @@ end;
 
 procedure TRuleConfidenceTests.ExperimentalRuleNeedsExplicitConfiguration;
 begin
-  TRuleAssert.Silent(TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, True), Source);
+  // magic-number ist laut Katalog nur im Profil strict aktiv ("profiles": ["strict"]).
+  TRuleAssert.Silent(TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(
-    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, True), Source,
-    '{ "rules": { "fixed": "off" } }'))));
+    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source,
+    '{ "rules": { "magic-number": "off" } }'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(
-    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, True), Source,
-    '{ "rules": { "fixed": "warning" } }'))));
+    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source,
+    '{ "rules": { "magic-number": "warning" } }'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(
+    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source,
+    '{ "profile": "strict" }'))));
 end;
 
 procedure TRuleConfidenceTests.ConfidenceNamesForTextAndMachines;
