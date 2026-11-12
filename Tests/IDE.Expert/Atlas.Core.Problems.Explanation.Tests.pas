@@ -22,6 +22,9 @@ type
     procedure MessageCodeFromCodeOrText;
     [Test]
     procedure KeyPrefersMessageCodeThenRule;
+    /// <summary>#145: Beispiele für den Hover ohne Leerzeilen am Ende, lange gekürzt.</summary>
+    [Test]
+    procedure ExampleLinesShortenLongExamples;
   end;
 
 implementation
@@ -132,6 +135,24 @@ begin
   Assert.AreEqual('E2003', TAtlasRuleExplanation.Key(Problem('dcc', 'E2003', '')));
   Assert.AreEqual('empty-except', TAtlasRuleExplanation.Key(Problem('Atlas', 'empty-except', '')));
   Assert.AreEqual('', TAtlasRuleExplanation.Key(Problem('dcc', '', 'Fatal: kein Code')));
+end;
+
+procedure TAtlasRuleExplanationTests.ExampleLinesShortenLongExamples;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TAtlasRuleExplanation.ExampleLines('a' + #13#10 + 'b' + #9 + 'c' + #10 + #10, 8);
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.AreEqual('a', mLines[0]);
+  Assert.AreEqual('b  c', mLines[1]);
+  mLines := TAtlasRuleExplanation.ExampleLines('1' + #10 + '2' + #10 + '3' + #10 + '4' + #10 + '5' + #10 + '6' + #10 +
+    '7' + #10 + '8' + #10 + '9' + #10 + '10', 8);
+  Assert.AreEqual(8, Integer(Length(mLines)));
+  Assert.AreEqual('7', mLines[6]);
+  Assert.AreEqual('…', mLines[7]);
+  Assert.AreEqual(0, Integer(Length(TAtlasRuleExplanation.ExampleLines('', 8))));
+  mLines := TAtlasRuleExplanation.ExampleLines('a' + #10 + #10 + 'b', 2);
+  Assert.AreEqual('…', mLines[1]);
 end;
 
 initialization

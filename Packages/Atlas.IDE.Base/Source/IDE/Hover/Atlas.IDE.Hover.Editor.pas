@@ -543,6 +543,7 @@ begin
       Exit;
     end;
     FProblems := nil;
+    FExamples := nil;
     if Assigned(FProblemsAt) then
     begin
       FProblems := FProblemsAt(FView.Buffer.FileName, FLine - 1, FMouseCharacter);

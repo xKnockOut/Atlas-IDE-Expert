@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Navigation;
 
 // Ergebnisfenster (#400), Editorbefehle (#399) mit ihren Haken, Auswirkungsanalyse (#1120), Testunit-Lens (#189),
-// Aktionen und Werte im Tooltip (#621, #835, #909) und das Erzeugen-Menü (#719). Teil „Commands“; die Haken
-// verbinden Features, die einander nicht importieren.
+// Aktionen, Beispiele aus dem Regelkatalog und Werte im Tooltip (#621, #145, #835, #909) und das Erzeugen-Menü
+// (#719). Teil „Commands“; die Haken verbinden Features, die einander nicht importieren.
 
 interface
 
@@ -17,6 +17,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.JSON,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.TextChanges,
@@ -113,6 +114,26 @@ begin
   end;
 end;
 
+/// <summary>„Beispiel zeigen“ im Tooltip (#145): Katalogtext aus demselben Katalog wie „Regel erklären“; ohne
+/// Eintrag oder Server mit Id = ''.</summary>
+procedure RuleExample(const ARule: string; const ADone: TAtlasRuleExplanationEvent);
+var
+  mRule: string;
+  mDone: TAtlasRuleExplanationEvent;
+begin
+  mRule := ARule;
+  mDone := ADone;
+  TAtlasIdeProblems.WithCatalog(
+    procedure(ACatalog: TJSONValue)
+    var
+      mExplanation: TAtlasRuleExplanation;
+    begin
+      // Find setzt ohne Eintrag den leeren Text.
+      TAtlasRuleExplanation.Find(ACatalog, mRule, mExplanation);
+      mDone(mExplanation);
+    end);
+end;
+
 /// <summary>Werte im Tooltip (#835, #854): Beiträge der Module (IAtlasHoverValueSource, z. B. Darstellungen und
 /// Visualisierer des Debuggers); '' ohne. Der Tooltip kennt die Module nicht (#1455).</summary>
 function HoverValue(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string;
@@ -201,6 +222,7 @@ begin
   // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht.
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := SwitchTestUnit;
   TAtlasEditorHover.OnProblemAction := ProblemAction;
+  TAtlasEditorHover.OnRuleExample := RuleExample;
   TAtlasEditorHover.OnVisualize := HoverValue;
   TAtlasEditorHover.OnExplanation := HoverExplanation;
   InstallEditorCommandHooks;
@@ -212,6 +234,7 @@ begin
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
   TAtlasEditorHover.OnProblemAction := nil;
+  TAtlasEditorHover.OnRuleExample := nil;
   TAtlasEditorHover.OnVisualize := nil;
   TAtlasEditorHover.OnExplanation := nil;
   TAtlasIdeEditorCommands.Uninstall;

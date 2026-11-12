@@ -46,6 +46,12 @@ type
     DocWiki: string;
     Cause: string;
     Stale: string;
+    /// <summary>Beispiel aus dem Regelkatalog (#145): Link zum Auf- und Zuklappen, Überschriften falsch/richtig.
+    /// </summary>
+    ShowExample: string;
+    HideExample: string;
+    ExampleBad: string;
+    ExampleGood: string;
     /// <summary>Zusatz eines vom Build bestätigten Befunds (#1024): „vom Compiler bestätigt“; mit Code
     /// „vom Compiler bestätigt (%s)“.</summary>
     Confirmed: string;

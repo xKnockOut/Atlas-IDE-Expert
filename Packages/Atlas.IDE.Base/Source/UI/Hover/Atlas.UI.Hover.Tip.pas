@@ -49,6 +49,7 @@ uses
   Vcl.Controls,
   Atlas.Core.Style.Color,
   Atlas.Core.Hover.Contract,
+  Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.View,
@@ -72,6 +73,8 @@ type
     ProblemActions: Boolean;
     HideCompilerCode: Boolean;
     SignatureParams: Boolean;
+    /// <summary>Link „Beispiel zeigen“ unter Regelbefunden (hover.ruleExamples, #145).</summary>
+    RuleExamples: Boolean;
   end;
 
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
@@ -135,6 +138,9 @@ type
     property ProblemActions: Boolean read FOptions.ProblemActions write SetProblemActions;
     /// <summary>problems.showCompilerCode aus (#1024).</summary>
     property HideCompilerCode: Boolean read FOptions.HideCompilerCode write SetHideCompilerCode;
+    /// <summary>hover.ruleExamples (#145): Link „Beispiel zeigen“ in der Aktionszeile; der Satz folgt beim nächsten
+    /// Zeichnen (LayoutKey).</summary>
+    property RuleExamples: Boolean read FOptions.RuleExamples write FOptions.RuleExamples;
     /// <summary>hover.membersMaxLines: Zeilen der Mitgliedertabellen ohne Scrollen, 0 = bis zur Bildschirmhöhe.
     /// </summary>
     property MembersMaxLines: Integer read FMembers.MaxLines write FMembers.MaxLines;
@@ -178,6 +184,10 @@ type
     function ActivateProblemAction: Boolean;
     /// <summary>Alt+Enter: Schnellkorrektur des ersten Befunds mit Korrektur; False ohne.</summary>
     function ApplyFix: Boolean;
+    /// <summary>Beschreibung und Beispiel unter Problem AProblem auf- (AExample.Id gesetzt) bzw. zuklappen (#145);
+    /// APinned: Zustand „angeheftet“. Breite bleibt, die Höhe folgt dem Inhalt, eine per Tab markierte Aktion
+    /// bleibt markiert.</summary>
+    procedure SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation; APinned: Boolean);
     function HasProblemActions: Boolean;
     function HasFix: Boolean;
     function ProblemActionMarked: Boolean;
@@ -276,6 +286,10 @@ begin
   ATexts.DocWiki := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsDocWiki);
   ATexts.Cause := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsCause);
   ATexts.Stale := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsStale);
+  ATexts.ShowExample := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverShowExample);
+  ATexts.HideExample := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverHideExample);
+  ATexts.ExampleBad := TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad);
+  ATexts.ExampleGood := TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood);
 end;
 
 /// <summary>published-Mitglieder (#110).</summary>
@@ -473,6 +487,29 @@ begin
   Refit;
 end;
 
+procedure TAtlasHoverTip.SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation;
+  APinned: Boolean);
+begin
+  if (AProblem < 0) or (AProblem > High(FView.Problems)) then
+  begin
+    Exit;
+  end;
+  if Length(FView.Examples) <> Length(FView.Problems) then
+  begin
+    SetLength(FView.Examples, Length(FView.Problems));
+  end;
+  FView.Examples[AProblem] := AExample;
+  // Ohne Katalogtext zur Regel steht der Hinweis als Beschreibung da.
+  if (AExample.Id <> '') and (AExample.Description = '') and (AExample.Bad = '') and (AExample.Good = '') then
+  begin
+    FView.Examples[AProblem].Description := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverNoExample);
+  end;
+  FView.Pinned := APinned;
+  // Die Klickflächen der Aktionszeile behalten ihren Index: Beschreibung und Beispiel haben keine.
+  FLayoutKey := '';
+  Refit;
+end;
+
 procedure TAtlasHoverTip.TogglePublished(AToggle: TAtlasHoverPublishedToggle);
 begin
   FView.Toggle(AToggle);
@@ -623,7 +660,7 @@ begin
   Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
     Ord(FDoc.HasSelection), Ord(FOptions.ProblemActions), Ord(FOptions.HideCompilerCode), PPI, Font.Height,
     UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembers.MaxLines,
-    FMembers.Limit, FMembers.Scroll]);
+    FMembers.Limit, FMembers.Scroll]) + '|' + IntToStr(Ord(FOptions.RuleExamples));
 end;
 
 procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);
@@ -642,6 +679,7 @@ begin
   mInput.HasSelection := FDoc.HasSelection;
   mInput.ProblemActions := FOptions.ProblemActions;
   mInput.HideCompilerCode := FOptions.HideCompilerCode;
+  mInput.RuleExamples := FOptions.RuleExamples;
   mInput.Members := FMembers;
   FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
@@ -1016,7 +1054,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, mProblemIndex, mProblemAction, mItem);
+  TAtlasHoverProblemActionCode.Decode(FLayout.Hits[AHit].Index, mProblemIndex, mProblemAction, mItem);
   FOnProblemAction(Self, mProblemIndex, mProblemAction, mItem);
 end;
 

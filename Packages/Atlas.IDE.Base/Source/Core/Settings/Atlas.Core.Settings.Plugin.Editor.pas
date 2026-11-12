@@ -234,6 +234,9 @@ type
     /// <summary>Compilermeldungen im Hover erklären (#54, hover.explainMessages): typische Ursache, Links
     /// „Erklären“ und „DocWiki“.</summary>
     HoverExplainMessages: Boolean;
+    /// <summary>Link „Beispiel zeigen“ in der Aktionszeile des Befund-Hovers (#145, hover.ruleExamples): klappt
+    /// Beschreibung und Beispiel falsch/richtig aus dem Regelkatalog auf.</summary>
+    HoverRuleExamples: Boolean;
     /// <summary>Zeilen der published-Mitglieder im Hover ohne Scrollen (#1841, hover.membersMaxLines);
     /// 0 = bis zur Bildschirmhöhe.</summary>
     HoverMembersMaxLines: Integer;
@@ -1037,6 +1040,7 @@ begin
   Result.Problems := True;
   Result.HoverProblemActions := True;
   Result.HoverExplainMessages := True;
+  Result.HoverRuleExamples := True;
   Result.HoverMembersMaxLines := 15;
   Result.HoverSignatureParams := True;
   Result.ProblemsStatusCounter := True;
@@ -1102,6 +1106,7 @@ begin
   AIo.Flag('Problems', Problems);
   AIo.Flag('HoverProblemActions', HoverProblemActions);
   AIo.Flag('HoverExplainMessages', HoverExplainMessages);
+  AIo.Flag('HoverRuleExamples', HoverRuleExamples);
   AIo.Number('HoverMembersMaxLines', HoverMembersMaxLines);
   AIo.Flag('HoverSignatureParams', HoverSignatureParams);
   AIo.Flag('ProblemsStatusCounter', ProblemsStatusCounter);

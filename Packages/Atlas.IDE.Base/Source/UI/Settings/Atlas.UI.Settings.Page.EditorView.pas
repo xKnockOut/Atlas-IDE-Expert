@@ -139,6 +139,9 @@ begin
   // Compilermeldungen erklären (#54).
   BindCheck('HoverExplainMessages',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverExplainMessages)));
+  // Beispiel falsch/richtig aus dem Regelkatalog im Befund-Hover (#145).
+  BindCheck('HoverRuleExamples',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverRuleExamples)));
   // Rollbereich der published-Mitglieder (#1841).
   BindText('HoverMembersMaxLines',
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHoverMembersMaxLines)));
