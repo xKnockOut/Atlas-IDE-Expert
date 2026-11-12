@@ -18,7 +18,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Designer.InsertSpace;
+  Atlas.Core.Designer.InsertSpace,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasSpaceOptions = record
@@ -27,7 +28,7 @@ type
     Snap: Boolean;
   end;
 
-  TAtlasSpaceDialog = class(TForm)
+  TAtlasSpaceDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 360;
     cMaxAmount = 2000;
@@ -70,17 +71,12 @@ var
   mGroup: TPanel;
   mLabel: TLabel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertTitle);
+  inherited CreateDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertTitle),
+    cDialogWidth);
   if ARemove then
   begin
     Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRemoveTitle);
   end;
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   Canvas.Font := Font;
 
   // Beide Optionen in einem Container, damit sie sich gegenseitig ausschließen.
@@ -158,7 +154,7 @@ begin
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasSpaceDialog.Options: TAtlasSpaceOptions;

@@ -510,15 +510,99 @@ begin
   end;
 end;
 
+/// <summary>Zeichenkette ab AIndex (auf dem Hochkomma) bis hinter das schließende Hochkomma ('' ist ein Hochkomma
+/// darin) oder bis zum Zeilenende.</summary>
+procedure SkipString(const AText: string; var AIndex: Integer);
+begin
+  Inc(AIndex);
+  while (AIndex <= Length(AText)) and (AText[AIndex] <> '''') and (AText[AIndex] <> #10) do
+  begin
+    Inc(AIndex);
+  end;
+  if (AIndex <= Length(AText)) and (AText[AIndex] = '''') then
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Zeilenkommentar ab AIndex bis vor das Zeilenende.</summary>
+procedure SkipLineComment(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and (AText[AIndex] <> #10) do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Folgt auf AIndex das Zeichen AChar?</summary>
+function NextIs(const AText: string; AIndex: Integer; AChar: Char): Boolean;
+begin
+  Result := (AIndex < Length(AText)) and (AText[AIndex + 1] = AChar);
+end;
+
+/// <summary>Zeilenende, Zeichenkette oder Kommentar ab AIndex überspringen; False, wenn dort Code steht.</summary>
+function SkipNonCode(const AText: string; var AIndex, ALine, ALineStart: Integer): Boolean;
+var
+  mChar: Char;
+begin
+  Result := True;
+  mChar := AText[AIndex];
+  if mChar = #10 then
+  begin
+    Inc(ALine);
+    ALineStart := AIndex + 1;
+    Inc(AIndex);
+  end
+  else if mChar = '''' then
+  begin
+    SkipString(AText, AIndex);
+  end
+  else if (mChar = '/') and NextIs(AText, AIndex, '/') then
+  begin
+    SkipLineComment(AText, AIndex);
+  end
+  else if mChar = '{' then
+  begin
+    SkipComment(AText, '}', AIndex, ALine, ALineStart);
+  end
+  else if (mChar = '(') and NextIs(AText, AIndex, '*') then
+  begin
+    Inc(AIndex);
+    SkipComment(AText, '*)', AIndex, ALine, ALineStart);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Steht ab AIndex der ganze Bezeichner AName (ohne Groß-/Kleinschreibung)?</summary>
+function IsNameAt(const AText, AName: string; AIndex: Integer): Boolean;
+var
+  mEnd: Integer;
+begin
+  mEnd := AIndex + Length(AName);
+  Result := ((AIndex = 1) or not TTextChars.IsAsciiIdentChar(AText[AIndex - 1])) and
+    SameText(Copy(AText, AIndex, Length(AName)), AName) and
+    ((mEnd > Length(AText)) or not TTextChars.IsAsciiIdentChar(AText[mEnd]));
+end;
+
+/// <summary>Bezeichner ab AIndex überspringen.</summary>
+procedure SkipWord(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
 class function TAtlasNameSuggest.Places(const AText, AName: string): TArray<TAtlasNamePlace>;
 var
-  mIndex, mLine, mLineStart, mLength: Integer;
-  mChar: Char;
+  mIndex, mLine, mLineStart: Integer;
   mPlace: TAtlasNamePlace;
 begin
   Result := nil;
-  mLength := Length(AName);
-  if mLength = 0 then
+  if AName = '' then
   begin
     Exit;
   end;
@@ -527,63 +611,24 @@ begin
   mLineStart := 1;
   while mIndex <= Length(AText) do
   begin
-    mChar := AText[mIndex];
-    if mChar = #10 then
+    if SkipNonCode(AText, mIndex, mLine, mLineStart) then
     begin
-      Inc(mLine);
-      mLineStart := mIndex + 1;
-      Inc(mIndex);
-    end
-    else if mChar = '''' then
-    begin
-      // Zeichenkette bis zum schließenden Hochkomma ('' ist ein Hochkomma darin) oder Zeilenende.
-      Inc(mIndex);
-      while (mIndex <= Length(AText)) and (AText[mIndex] <> '''') and (AText[mIndex] <> #10) do
-      begin
-        Inc(mIndex);
-      end;
-      if (mIndex <= Length(AText)) and (AText[mIndex] = '''') then
-      begin
-        Inc(mIndex);
-      end;
-    end
-    else if (mChar = '/') and (mIndex < Length(AText)) and (AText[mIndex + 1] = '/') then
-    begin
-      while (mIndex <= Length(AText)) and (AText[mIndex] <> #10) do
-      begin
-        Inc(mIndex);
-      end;
-    end
-    else if mChar = '{' then
-    begin
-      SkipComment(AText, '}', mIndex, mLine, mLineStart);
-    end
-    else if (mChar = '(') and (mIndex < Length(AText)) and (AText[mIndex + 1] = '*') then
+      Continue;
+    end;
+    if not TTextChars.IsAsciiIdentChar(AText[mIndex]) then
     begin
       Inc(mIndex);
-      SkipComment(AText, '*)', mIndex, mLine, mLineStart);
     end
-    else if TTextChars.IsAsciiIdentChar(mChar) then
+    else if IsNameAt(AText, AName, mIndex) then
     begin
-      if ((mIndex = 1) or not TTextChars.IsAsciiIdentChar(AText[mIndex - 1])) and SameText(Copy(AText, mIndex, mLength), AName) and
-        ((mIndex + mLength > Length(AText)) or not TTextChars.IsAsciiIdentChar(AText[mIndex + mLength])) then
-      begin
-        mPlace.Line := mLine;
-        mPlace.Character := mIndex - mLineStart;
-        Result := Result + [mPlace];
-        Inc(mIndex, mLength);
-      end
-      else
-      begin
-        while (mIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[mIndex]) do
-        begin
-          Inc(mIndex);
-        end;
-      end;
+      mPlace.Line := mLine;
+      mPlace.Character := mIndex - mLineStart;
+      Result := Result + [mPlace];
+      Inc(mIndex, Length(AName));
     end
     else
     begin
-      Inc(mIndex);
+      SkipWord(AText, mIndex);
     end;
   end;
 end;

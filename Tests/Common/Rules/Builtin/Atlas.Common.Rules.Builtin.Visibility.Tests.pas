@@ -29,6 +29,10 @@ type
     [Test]
     procedure DescendantsAndLocalClassesSeeProtected;
     [Test]
+    procedure ProtectedPropertyThroughCast;
+    [Test]
+    procedure ProtectedConstInDescendantDeclaration;
+    [Test]
     procedure StrictPrivateInSameUnit;
     /// <summary>Überladung mit public-Variante neben einer strict private (wie System.TMonitor.Enter).</summary>
     [Test]
@@ -185,6 +189,50 @@ begin
   Assert.AreEqual('TBasis.Schuetzen ist protected und hier nicht sichtbar (wie E2362).', Found[1].Message);
   Assert.AreEqual('TBasis.StrengSchuetzen ist strict protected und hier nicht sichtbar (wie E2362).',
     Found[2].Message);
+end;
+
+procedure TInaccessibleMemberTests.ProtectedPropertyThroughCast;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+  mText: string;
+  mFinding: TRuleFinding;
+begin
+  // TCustomTreeView(x).Items: Items ist dort protected, erst TTreeView veröffentlicht es (#1345, wie E2362).
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Baum;'#10'interface'#10'type'#10'  TCustomBaum = class'#10 +
+    '  private'#10'    FItems: Integer;'#10'  protected'#10'    property Items: Integer read FItems;'#10'  end;'#10 +
+    '  TBaum = class(TCustomBaum)'#10'  public'#10'    property Items;'#10'  end;'#10'implementation'#10'end.',
+    'C:\Projekt\Baum.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Baum;'#10'implementation'#10'procedure Arbeiten(O: TObject; B: TBaum);'#10'var'#10'  X: Integer;'#10 +
+    'begin'#10'  X := TCustomBaum(O).Items;'#10'  X := (O as TCustomBaum).Items;'#10'  X := TBaum(O).Items;'#10 +
+    '  X := B.Items;'#10'end;'#10'end.', mIndex, '', 'Kunden.pas');
+  mText := '';
+  for mFinding in mFound do
+  begin
+    mText := mText + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
+  end;
+  Assert.AreEqual('9: TCustomBaum.Items ist protected und hier nicht sichtbar (wie E2362).|' +
+    '10: TCustomBaum.Items ist protected und hier nicht sichtbar (wie E2362).|', mText);
+end;
+
+procedure TInaccessibleMemberTests.ProtectedConstInDescendantDeclaration;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  // cRand = 2 * TDialogBasis.cAbstand in der Deklaration eines Nachfahren: dcc übersetzt das (Delphi 13,
+  // Atlas.UI.Designer.PropertyDialog); in einer Routine außerhalb der Klasse bleibt es E2362.
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Dialog;'#10'interface'#10'type'#10'  TDialogBasis = class'#10 +
+    '  protected const'#10'    cAbstand = 10;'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Dialog.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Dialog;'#10'type'#10'  TMein = class(TDialogBasis)'#10'  private const'#10 +
+    '    cRand = 2 * TDialogBasis.cAbstand;'#10'  end;'#10'implementation'#10'procedure Arbeiten;'#10'var'#10 +
+    '  X: Integer;'#10'begin'#10'  X := TDialogBasis.cAbstand;'#10'end;'#10'end.', mIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(14, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TInaccessibleMemberTests.DescendantsAndLocalClassesSeeProtected;

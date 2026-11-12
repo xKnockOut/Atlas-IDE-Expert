@@ -98,7 +98,7 @@ var
   mEntry: TSyntaxPostOrderEntry;
   mIndex: Integer;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1); die innerste Klasse gewinnt, also die Kinder vor dem Knoten.
+  // Eigener Stapel statt Rekursion; die innerste Klasse gewinnt, also die Kinder vor dem Knoten.
   Result := nil;
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try

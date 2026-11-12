@@ -49,6 +49,7 @@ uses
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.Core.Product.Version,
@@ -96,49 +97,52 @@ var
 begin
   // Abgesicherter Start nach einem Absturz (#722).
   AddTitle(TAtlasTextId.SettingsSafeTitle);
-  BindCheck('SafeAskAfterCrash', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk)));
-  BindCheck('SafeAutoAfterRepeatedCrash', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto)));
+  BindCheck('SafeAskAfterCrash', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeAsk)));
+  BindCheck('SafeAutoAfterRepeatedCrash', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeAuto)));
   mPanel := AddPanel(26);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := mPanel;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
+  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKey);
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   FSafeKey := TAtlasChoiceBox.Create(FPage);
   FSafeKey.Parent := mPanel;
   FSafeKey.Left := cFieldLeft;
   FSafeKey.Top := 1;
-  FSafeKey.Width := 120;
+  FSafeKey.Width := FSafeKey.ScaleValue(120);
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
-  FSafeKey.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyShift),
-    TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyCtrl), TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyNone)]);
-  BindText('SafeStartupTimeoutMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeTimeout)));
-  BindText('SafeKeepSettingsHistory', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory)));
+  FSafeKey.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyShift),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyCtrl),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyNone)]);
+  BindText('SafeStartupTimeoutMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeTimeout)));
+  BindText('SafeKeepSettingsHistory', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeHistory)));
 end;
 
 procedure TAtlasSettingsStartupPart.AddQuickOpenSection;
 begin
   // Datei und Symbol schnell öffnen (#503); die Units-Suche baut ihr Modul als Abschnitt in diesen Reiter (#1455).
   AddTitle(TAtlasTextId.QuickOpenTitle);
-  BindCheck('QuickOpen', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen)));
-  BindCheck('QuickOpenLibrary', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary)));
-  BindKey('QuickOpenKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey)));
+  BindCheck('QuickOpen', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpen)));
+  BindCheck('QuickOpenLibrary', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenLibrary)));
+  BindKey('QuickOpenKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenKey)));
 end;
 
 procedure TAtlasSettingsStartupPart.AddUndoSection;
 begin
   // Atlas-Änderungen über mehrere Dateien zurücknehmen (#721).
   AddTitle(TAtlasTextId.SettingsUndoTitle);
-  BindCheck('UndoMultiFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoEnabled)));
-  BindText('UndoMultiFileDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoDepth)));
-  BindCheck('UndoMultiFilePersist', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoPersist)));
-  BindText('UndoMultiFileMaxSizeMb', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoMaxSize)));
+  BindCheck('UndoMultiFile', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoEnabled)));
+  BindText('UndoMultiFileDepth', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoDepth)));
+  BindCheck('UndoMultiFilePersist', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoPersist)));
+  BindText('UndoMultiFileMaxSizeMb', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoMaxSize)));
   // Reihenfolge wie TAtlasUndoConflictMode und TAtlasNewFilesMode.
-  FUndoOnConflict := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUndoOnConflict),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsUndoPartial), TAtlasStrings.Text(TAtlasTextId.SettingsUndoAbort)]);
-  FUndoNewFiles := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUndoNewFiles),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsUndoRecycle), TAtlasStrings.Text(TAtlasTextId.SettingsUndoDelete),
-    TAtlasStrings.Text(TAtlasTextId.SettingsUndoKeep)]);
+  FUndoOnConflict := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoOnConflict),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoPartial),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoAbort)]);
+  FUndoNewFiles := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoNewFiles),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoRecycle),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoDelete),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoKeep)]);
 end;
 
 procedure TAtlasSettingsStartupPart.AddUpdatesSection;
@@ -150,11 +154,11 @@ begin
   mPanel := AddPanel(20);
   FVersion := TLabel.Create(FPage);
   FVersion.Parent := mPanel;
-  FVersion.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
+  FVersion.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
     TAtlasUpdates.IdeVersion]);
   FVersion.Left := 0;
-  FVersion.Top := 2;
-  BindCheck('UpdatesCheck', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesCheck)));
+  FVersion.Top := FVersion.ScaleValue(2);
+  BindCheck('UpdatesCheck', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUpdatesCheck)));
   // Update installieren (#1519): anbieten, ohne Frage vorbereiten oder nur melden; Kanal und neue Module.
   FUpdatesInstall := AddChoice(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstall),
     [TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstallAsk),
@@ -173,9 +177,10 @@ procedure TAtlasSettingsStartupPart.AddBugReportSection;
 begin
   // Fehlerbericht (#108).
   AddTitle(TAtlasTextId.SettingsBugReportTitle);
-  BindCheck('BugReportAnonymize', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize)));
+  BindCheck('BugReportAnonymize',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBugReportAnonymize)));
   // Protokoll des Plugins mit Klarnamen (#1478, diagnostics.log.names); Vorgabe anonym.
-  BindCheck('LogNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLogNames)));
+  BindCheck('LogNames', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsLogNames)));
   // Kommandozeilen-Compiler prüfen (#1822, diagnostics.editionCheck).
   BindCheck('DiagnosticsEditionCheck',
     AddCheck(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SettingsEditionCheck)));

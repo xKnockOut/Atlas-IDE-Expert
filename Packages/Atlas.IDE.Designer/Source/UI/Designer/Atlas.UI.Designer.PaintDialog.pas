@@ -22,10 +22,11 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.CheckLst,
-  Atlas.Core.Designer.PropertyPainter;
+  Atlas.Core.Designer.PropertyPainter,
+  Atlas.UI.Designer.Dialog;
 
 type
-  TAtlasPaintDialog = class(TForm)
+  TAtlasPaintDialog = class(TAtlasDesignerDialog)
   public const
     cDialogWidth = 360;
     cListHeight = 360;
@@ -50,7 +51,6 @@ uses
   Atlas.UI.Designer.Strings;
 
 const
-  cGap = 10;
   cIndent = '    ';
 
 function GroupCaption(AGroup: TAtlasPaintGroup): string;
@@ -63,6 +63,23 @@ begin
   Result := TAtlasDesignerStrings.Text(cIds[AGroup]);
 end;
 
+/// <summary>Text einer Zeile: Überschrift der Gruppe, sonst der Pfad, Kinder eines Knotens tiefer eingerückt.</summary>
+function RowCaption(const ARow: TAtlasPaintRow): string;
+begin
+  case ARow.Kind of
+    TAtlasPaintRowKind.Header:
+      Result := GroupCaption(ARow.Group);
+    TAtlasPaintRowKind.Node:
+      Result := cIndent + ARow.Path;
+  else
+    Result := cIndent + ARow.Path;
+    if ARow.Parent >= 0 then
+    begin
+      Result := cIndent + Result;
+    end;
+  end;
+end;
+
 { TAtlasPaintDialog }
 
 constructor TAtlasPaintDialog.CreateDialog(AOwner: TComponent; const ASource: string;
@@ -73,12 +90,7 @@ var
 begin
   inherited CreateNew(AOwner);
   FRows := ARows;
-  Caption := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPaintTitle, [ASource]);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  InitDialog(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPaintTitle, [ASource]), cDialogWidth, bsDialog);
   FList := TCheckListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alTop;
@@ -86,23 +98,17 @@ begin
   FList.Margins.SetBounds(cGap, cGap, cGap, 0);
   FList.Height := ScaleValue(cListHeight);
   FList.OnClickCheck := ListClickCheck;
-  for mIndex := 0 to High(ARows) do
-  begin
-    case ARows[mIndex].Kind of
-      TAtlasPaintRowKind.Header:
-        mCaption := GroupCaption(ARows[mIndex].Group);
-      TAtlasPaintRowKind.Node:
-        mCaption := cIndent + ARows[mIndex].Path;
-    else
-      mCaption := cIndent + ARows[mIndex].Path;
-      if ARows[mIndex].Parent >= 0 then
-      begin
-        mCaption := cIndent + mCaption;
-      end;
+  FList.Items.BeginUpdate;
+  try
+    for mIndex := 0 to High(ARows) do
+    begin
+      mCaption := RowCaption(ARows[mIndex]);
+      FList.Items.Add(mCaption);
+      FList.Header[mIndex] := ARows[mIndex].Kind = TAtlasPaintRowKind.Header;
+      FList.Checked[mIndex] := (mIndex <= High(AChecked)) and AChecked[mIndex];
     end;
-    FList.Items.Add(mCaption);
-    FList.Header[mIndex] := ARows[mIndex].Kind = TAtlasPaintRowKind.Header;
-    FList.Checked[mIndex] := (mIndex <= High(AChecked)) and AChecked[mIndex];
+  finally
+    FList.Items.EndUpdate;
   end;
   AddButtons;
   ActiveControl := FList;
@@ -151,7 +157,7 @@ begin
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasPaintDialog.Checked: TArray<Boolean>;

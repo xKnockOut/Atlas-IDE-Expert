@@ -14,10 +14,11 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasSetupPreviewDialog = class(TForm)
+  TAtlasSetupPreviewDialog = class(TAtlasDialog)
   public const
     cDialogWidth = 560;
     cContentHeight = 300;
@@ -56,13 +57,8 @@ constructor TAtlasSetupPreviewDialog.CreateDialog(AOwner: TComponent; const ACon
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateNew(AOwner);
-  Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewTitle, [AConfigName]);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewTitle, [AConfigName]),
+    cDialogWidth);
 
   FIntro := TLabel.Create(Self);
   FIntro.Parent := Self;
@@ -102,7 +98,7 @@ begin
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   ActiveControl := FCreate;
-  ClientHeight := mButtons.Top + mButtons.Height + cGap;
+  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
 function TAtlasSetupPreviewDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;

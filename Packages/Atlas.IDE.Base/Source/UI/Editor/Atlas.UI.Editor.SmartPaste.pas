@@ -75,7 +75,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -90,7 +90,7 @@ constructor TAtlasSmartPasteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.SmartPaste;
-  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.SmartPasteName));
+  SetAccessible(cUiaToolTipControlType, TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteName));
 end;
 
 function TAtlasSmartPasteWindow.Title: string;
@@ -100,15 +100,16 @@ begin
   mUnits := TAtlasSmartPaste.Selected(FAnalysis);
   if Length(mUnits) = 0 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SmartPasteNone);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteNone);
   end
   else if Length(mUnits) = 1 then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SmartPasteOne, [mUnits[0]]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SmartPasteOne, [mUnits[0]]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SmartPasteTitle, [Length(mUnits), TAtlasSmartPaste.Named(mUnits)]);
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SmartPasteTitle, [Length(mUnits),
+      TAtlasSmartPaste.Named(mUnits)]);
   end;
 end;
 
@@ -179,7 +180,7 @@ begin
   mRects := nil;
   for mOption := -1 to High(mChoice.Units) do
   begin
-    mText := TAtlasStrings.Text(TAtlasTextId.SmartPasteNoUnit);
+    mText := TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteNoUnit);
     if mOption >= 0 then
     begin
       PutText(Canvas, ADraw, Result, AY, cSeparator, ToColor(Colors.Muted));
@@ -207,8 +208,8 @@ function TAtlasSmartPasteWindow.LayoutFooter(ADraw: Boolean; AY, ATextHeight: In
 var
   mAccept, mCancel: string;
 begin
-  mAccept := TAtlasStrings.Text(TAtlasTextId.SmartPasteAccept);
-  mCancel := TAtlasStrings.Text(TAtlasTextId.SmartPasteCancel);
+  mAccept := TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteAccept);
+  mCancel := TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteCancel);
   Result := Scale(cPad);
   FAcceptRect := Rect(Result, AY, Result + Canvas.TextWidth(mAccept), AY + ATextHeight);
   PutText(Canvas, ADraw, Result, AY, mAccept, ToColor(Colors.Accent));

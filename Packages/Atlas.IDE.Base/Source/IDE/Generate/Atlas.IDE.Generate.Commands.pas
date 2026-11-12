@@ -40,7 +40,7 @@ type
     FApplyAction: TProc<TLspCodeAction>;
     FRecent: TAtlasGenerateRecent;
     FRecentLoaded: Boolean;
-    /// <summary>Verlauf war beim Lesen gesperrt: Remember überschreibt ihn nicht (Bericht N3).</summary>
+    /// <summary>Verlauf war beim Lesen gesperrt: Remember überschreibt ihn nicht.</summary>
     FRecentKept: Boolean;
   private
     class function Session: TLspSession; static;
@@ -51,7 +51,7 @@ type
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht; ASnippets: alle
     /// Code-Vorlagen der Vervollständigung (leer, wenn sie aus sind); AInsertSnippet setzt eine Vorlage mit
     /// Platzhaltern am Cursor ein; AApplyAction wendet eine Code-Aktion an (Editorbefehle; als Haken, damit das
-    /// Erzeugen-Menü sie nicht importiert, A-09).</summary>
+    /// Erzeugen-Menü sie nicht importiert).</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
       const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
       const AApplyAction: TProc<TLspCodeAction>); static;
@@ -82,6 +82,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Generate.Protocol,
   Atlas.UI.Strings,
+  Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -262,7 +263,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      ASay(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [E.Message]));
+      ASay(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateFailed, [E.Message]));
       Exit;
     end;
   end;
@@ -273,7 +274,7 @@ begin
   end;
   if not mDone then
   begin
-    ASay(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [mReason]));
+    ASay(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateFailed, [mReason]));
     Exit;
   end;
   mEdit := Default(TLspWorkspaceEdit);
@@ -306,7 +307,7 @@ begin
   ASession := nil;
   if not TAtlasIdeSettings.Current.GenerateMenu then
   begin
-    TAtlasIdeGenerate.Say(TAtlasStrings.Text(TAtlasTextId.GenerateMenuOff));
+    TAtlasIdeGenerate.Say(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateMenuOff));
     Exit;
   end;
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
@@ -353,7 +354,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      TAtlasIdeGenerate.Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [E.Message]));
+      TAtlasIdeGenerate.Say(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateFailed, [E.Message]));
       Exit(False);
     end;
   end;
@@ -452,7 +453,7 @@ begin
   mNext := TAtlasIdeSettings.Stored;
   mNext.GenerateMenuHidden := TAtlasGenerateOptions.AddHidden(mNext.GenerateMenuHidden, AEntry.Id);
   TAtlasIdeSettings.Update(mNext);
-  TAtlasIdeGenerate.Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
+  TAtlasIdeGenerate.Say(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateHiddenSaved, [AEntry.Caption]));
 end;
 
 /// <summary>Gewählten Eintrag ausführen: Schnellbefehl, Vorlage oder Code-Aktion.</summary>

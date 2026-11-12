@@ -24,7 +24,7 @@
 // die Schätzung für das Fenster „Atlas-Server“ (#1356) in Projekt, Bibliothek
 // und Verwendungen; die Anteile laufen beim Hinzufügen und Entfernen mit.
 //
-// Heißer Pfad (Code-Review P-13): Units liefert einen Schnappschuss, der bis zur nächsten Änderung gilt,
+// Heißer Pfad: Units liefert einen Schnappschuss, der bis zur nächsten Änderung gilt,
 // statt bei jedem Aufruf alle Units zu kopieren; UnavailableUnits nur die Units mit nicht geltenden
 // Zweigen. Das Einordnen der Zeichenketten in den Pool läuft außerhalb der Index-Sperre unter einer
 // eigenen, damit Leser nicht auf das Einlesen großer Units warten.
@@ -574,7 +574,7 @@ begin
   mKey := AnsiUpperCase(AUnit.FileName);
   mPooled := AUnit;
   // Eigene Kopie der Arrays, damit der Pool die Einträge des Aufrufers nicht ändert. Kopieren und Einordnen
-  // in den Pool außerhalb von FLock (Code-Review P-13): Leser warten sonst auf jede große Unit. Zwei
+  // in den Pool außerhalb von FLock: Leser warten sonst auf jede große Unit. Zwei
   // gleichzeitige Aufrufe für dieselbe Datei können sich dadurch überholen; das Ergebnis ist dann wie bei
   // umgekehrter Aufrufreihenfolge. Der Index-Builder liest jede Datei nur aus einem Thread.
   mPooled.InterfaceUses := Copy(AUnit.InterfaceUses);
@@ -687,7 +687,7 @@ function TSymbolIndex.Units: TArray<TUnitIndex>;
 begin
   FLock.Enter;
   try
-    // Schnappschuss bis zur nächsten Änderung (Code-Review P-13); dynamische Arrays sind referenzgezählt.
+    // Schnappschuss bis zur nächsten Änderung; dynamische Arrays sind referenzgezählt.
     if FUnitsSnapshot = nil then
     begin
       FUnitsSnapshot := FFiles.Values.ToArray;

@@ -92,6 +92,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.Dialogs,
+  Vcl.Forms,
   Atlas.Core.Designer.Anchors,
   Atlas.Core.Designer.Wrap,
   Atlas.Core.Settings.Plugin,

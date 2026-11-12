@@ -110,6 +110,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
@@ -256,7 +257,7 @@ begin
     Exit;
   end;
   FInstance.FWhere := CaretPoint;
-  FInstance.Refused(TAtlasStrings.Text(TAtlasTextId.HideNoElement));
+  FInstance.Refused(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNoElement));
 end;
 
 class procedure TAtlasIdeHide.ShowSetting(const AKey: string);
@@ -301,11 +302,11 @@ class function TAtlasIdeHide.RefusalText(ARefusal: TAtlasHideRefusal): string;
 begin
   case ARefusal of
     TAtlasHideRefusal.NoProjectFolder:
-      Result := TAtlasStrings.Text(TAtlasTextId.HideRefusedNoProject);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedNoProject);
     TAtlasHideRefusal.OutsideProject:
-      Result := TAtlasStrings.Text(TAtlasTextId.HideRefusedOutside);
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedOutside);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.HideRefusedAlready);
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready);
   end;
 end;
 
@@ -399,7 +400,7 @@ begin
     mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
   end;
   mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
+  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
@@ -415,7 +416,7 @@ begin
   mView := TopView;
   if (mView = nil) or not AnsiSameText(mView.Buffer.FileName, APlan.Target.FileName) or mView.Buffer.IsReadOnly then
   begin
-    ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideFailed, [ExtractFileName(APlan.Target.FileName)]);
+    ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideFailed, [ExtractFileName(APlan.Target.FileName)]);
     Exit;
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
@@ -431,7 +432,7 @@ begin
   ADetail := '';
   if (APlan.Insert.Line >= 0) and (APlan.Insert.Line <= High(mLines)) then
   begin
-    ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideDoneLineComment, [Trim(mLines[APlan.Insert.Line])]);
+    ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideDoneLineComment, [Trim(mLines[APlan.Insert.Line])]);
   end;
   Result := True;
 end;
@@ -451,7 +452,7 @@ begin
   AStep.Kind := TAtlasHideKind.TeamFile;
   AStep.FileName := mFileName;
   AStep.Place := APlan.Place;
-  ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideDoneTeamFile,
+  ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideDoneTeamFile,
     [TAtlasHideMenu.ElementName(APlan.Target.Element, False), APlan.Place.FileName]);
 end;
 
@@ -472,7 +473,7 @@ begin
   AStep.Changed := TAtlasHide.SwitchOff(mStored, AKey, AStep.OldValue);
   if not AStep.Changed and not AStep.HadSession then
   begin
-    ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedAlready);
+    ADetail := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready);
     Exit(False);
   end;
   if AStep.Changed then
@@ -487,7 +488,7 @@ begin
   end;
   Applied;
   AStep.Valid := True;
-  ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideDoneSetting, [SettingCaption(AKey)]);
+  ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideDoneSetting, [SettingCaption(AKey)]);
   Result := True;
 end;
 
@@ -569,11 +570,11 @@ begin
       end;
       if Ok then
       begin
-        Notice('', TAtlasStrings.Text(TAtlasTextId.HideUndone), False);
+        Notice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndone), False);
       end
       else
       begin
-        Notice('', TAtlasStrings.Text(TAtlasTextId.HideUndoFailed), False);
+        Notice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndoFailed), False);
       end;
     end);
 end;
@@ -607,7 +608,7 @@ var
   mAction: TAtlasNotificationAction;
 begin
   FStep := AStep;
-  mAction.Caption := TAtlasStrings.Text(TAtlasTextId.HideUndo);
+  mAction.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndo);
   mAction.Run :=
     procedure
     begin
@@ -616,10 +617,10 @@ begin
   // Anonym: kein Dateiname, kein Quelltext.
   TAtlasGuard.Log('Element ausgeblendet (#628)');
   mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
-    TAtlasStrings.Text(TAtlasTextId.HideNotice), ADetail, [mAction]);
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice), ADetail, [mAction]);
   if mMode = TAtlasNotificationMode.Show then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.HideNotice), ADetail, True);
+    Notice(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice), ADetail, True);
   end;
 end;
 

@@ -94,6 +94,10 @@ type
 
   TUsesActions = class
   public
+    /// <summary>Beginnt der Quelltext mit program, library oder package? Dessen uses zählt die Units des
+    /// Projekts auf (in-Pfade, Testunits, Formulare): Ein Eintrag dort ist Mitgliedschaft, nicht Abhängigkeit,
+    /// und damit nie ungenutzt.</summary>
+    class function ListsProjectUnits(const ATokens: TArray<TPascalToken>): Boolean; static;
     /// <summary>Auffällige Einträge der uses-Listen in Quelltextreihenfolge (#621). Token in AInactive
     /// (inaktive Zweige) zählen nicht: weder ihre Einträge noch ihre Bezeichner. Unbekannte Units entfallen,
     /// ebenso benutzte, die richtig stehen.</summary>
@@ -165,6 +169,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Math,
   System.Generics.Collections,
   Atlas.Common.Pascal.Lexer,
@@ -189,20 +194,6 @@ begin
   begin
     Result := AIdentifier;
   end;
-end;
-
-function ContainsText_(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>Folgt auf das Token AIndex (Kommentare übersprungen) ein Punkt?</summary>
@@ -247,6 +238,23 @@ begin
     mMask := 0;
   end;
   AMap.AddOrSetValue(AKey, mMask or APart);
+end;
+
+class function TUsesActions.ListsProjectUnits(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  Result := False;
+  for mToken in ATokens do
+  begin
+    if mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Continue;
+    end;
+    Result := mToken.IsKeyword('program') or mToken.IsKeyword('library') or
+      ((mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'package'));
+    Exit;
+  end;
 end;
 
 class function TUsesActions.DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
@@ -432,7 +440,7 @@ begin
   Result := True;
   if AUsage = 0 then
   begin
-    if ContainsText_(AKeep, AName) then
+    if MatchText(AName, AKeep) then
     begin
       AState := TUsesEntryState.KeptByAllowlist;
     end
@@ -472,7 +480,7 @@ var
   mEntry: TUsesEntry;
 begin
   Result := nil;
-  if not Assigned(AInfo) then
+  if not Assigned(AInfo) or ListsProjectUnits(ATokens) then
   begin
     Exit;
   end;
@@ -488,7 +496,7 @@ begin
       for mReference in mReferences do
       begin
         // Doppelte Einträge räumt "uses aufräumen" auf, nicht das Abblenden.
-        if not InClause(mActive, mClause, mReference.Range) or ContainsText_(mSeen, mReference.Name) then
+        if not InClause(mActive, mClause, mReference.Range) or MatchText(mReference.Name, mSeen) then
         begin
           Continue;
         end;
@@ -864,12 +872,16 @@ var
   mName: string;
 begin
   Result := nil;
+  if ListsProjectUnits(ATokens) then
+  begin
+    Exit;
+  end;
   mClauses := TUsesClauses.Clauses(ATokens);
   mIdentifiers := CollectIdentifiers(ATokens, mClauses, AResolution);
   try
     for mName in PlainNames(mClauses, False) do
     begin
-      if not (ContainsText_(AKeep, mName) or ContainsText_(Result, mName)) and
+      if not (MatchText(mName, AKeep) or MatchText(mName, Result)) and
         IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, 0, AResolution) then
       begin
         Result := Result + [mName];
@@ -1096,7 +1108,7 @@ var
   mName: string;
 begin
   mName := AName;
-  // Search statt Rekursion (Bericht M1).
+  // Search statt Rekursion.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     var
@@ -1180,7 +1192,7 @@ begin
   Result := nil;
   for mName in ANames do
   begin
-    if not ContainsText_(Result, mName) then
+    if not MatchText(mName, Result) then
     begin
       Result := Result + [mName];
     end;
@@ -1259,7 +1271,7 @@ var
 begin
   for mName in ADeclared do
   begin
-    if ContainsText_(AUnits, mName) and not ContainsText_(ANeeds, mName) then
+    if MatchText(mName, AUnits) and not MatchText(mName, ANeeds) then
     begin
       ANeeds := ANeeds + [mName];
     end;
@@ -1299,7 +1311,7 @@ begin
   mOwn := TUsesClauses.OwnName(ATokens);
   for mName in AUnits do
   begin
-    if not ((Trim(mName) = '') or SameText(mName, mOwn) or ContainsText_(Result, mName) or
+    if not ((Trim(mName) = '') or SameText(mName, mOwn) or MatchText(mName, Result) or
       TUsesClauses.IsUsed(mUsed, mName, ANamespaces)) then
     begin
       Result := Result + [mName];
@@ -1311,7 +1323,7 @@ end;
 function ToInterface(ATarget: TUsesAddTarget; const ANeeds: TArray<string>; const AName: string): Boolean;
 begin
   Result := (ATarget = TUsesAddTarget.Interface_) or
-    ((ATarget = TUsesAddTarget.Auto) and ContainsText_(ANeeds, AName));
+    ((ATarget = TUsesAddTarget.Auto) and MatchText(AName, ANeeds));
 end;
 
 /// <summary>Hängt an AEdits ein Edit, das AUnits ins uses des Abschnitts an AOffset schreibt.</summary>

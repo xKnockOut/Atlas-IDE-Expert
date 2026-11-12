@@ -42,28 +42,10 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.LineMove,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot;
-
-/// <summary>Ersetzt in ABuffer (Text AText) ab Zeichen AStart AOldLength Zeichen durch AInsert; ein
-/// Rückgängig-Schritt.</summary>
-procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
-  const AInsert: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
-  if AInsert <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
 
 function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
 var
@@ -147,7 +129,7 @@ begin
   if TAtlasLineMover.Difference(ASource.Text, string.Join(ASource.LineBreak, AToggled.Lines), mStart, mOldLength,
     mInsert) then
   begin
-    WriteBuffer(mView.Buffer, ASource.Text, mStart, mOldLength, mInsert);
+    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, ASource.Text, mStart, mOldLength, mInsert);
   end;
   if ASource.HasSelection then
   begin
@@ -214,7 +196,7 @@ begin
   begin
     if Assigned(FMessage) then
     begin
-      FMessage(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefused));
+      FMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.ToggleBlockCommentRefused));
     end;
   end
   else if mToggled.Kind <> TAtlasBlockCommentKind.None then

@@ -45,7 +45,7 @@ begin
   begin
     FUsage := TAtlasUsage.Create;
     // Fehlt, unbrauchbar oder gesperrt: leer beginnen; TAtlasDataFile legt Unbrauchbares beiseite und
-    // protokolliert, eine gesperrte Datei schreibt Save nicht (Bericht N3).
+    // protokolliert, eine gesperrte Datei schreibt Save nicht.
     FUsage.LoadFromFile(FileName);
   end;
   Result := FUsage;

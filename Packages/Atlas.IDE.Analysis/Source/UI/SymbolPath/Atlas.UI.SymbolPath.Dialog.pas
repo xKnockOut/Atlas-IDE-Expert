@@ -20,7 +20,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Vorschläge zu einem Teil eines Namens; leer = keine.</summary>
@@ -33,7 +34,7 @@ type
     All: Boolean;
   end;
 
-  TAtlasSymbolPathDialog = class(TForm)
+  TAtlasSymbolPathDialog = class(TAtlasDialog)
   private
     FFrom: TEdit;
     FTo: TEdit;
@@ -88,7 +89,9 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Pause nach dem letzten Tastendruck, bevor Vorschläge geholt werden.</summary>
@@ -117,8 +120,9 @@ begin
   Result.Spacing := MulDiv(8, ADialog.CurrentPPI, 96);
 end;
 
-function AddLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string; ATop: Integer;
-  AFocus: TWinControl): TLabel;
+// Nicht "AddLabel": Im Konstruktor verdeckt die geerbte Methode AddLabel des Dialogs den Namen (E2010/E2034).
+function AddFieldLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string;
+  ATop: Integer; AFocus: TWinControl): TLabel;
 begin
   Result := TLabel.Create(ADialog);
   Result.Parent := ADialog;
@@ -157,7 +161,7 @@ begin
   ADialog.FStepsUpDown.Min := 1;
   ADialog.FStepsUpDown.Max := cMaxSteps;
   ADialog.FStepsUpDown.Position := cDefaultSteps;
-  AddLabel(ADialog, ALayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), AY,
+  AddFieldLabel(ADialog, ALayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), AY,
     ADialog.FSteps);
   Inc(AY, ADialog.FSteps.Height + ALayout.Spacing);
   ADialog.FAll := TCheckBox.Create(ADialog);
@@ -177,7 +181,9 @@ begin
   ADialog.FMessage.Parent := ADialog;
   ADialog.FMessage.Left := ALayout.Gap;
   ADialog.FMessage.Top := AY;
-  ADialog.FMessage.Font.Color := clRed;
+  ADialog.FMessage.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  ADialog.FMessage.StyleElements := ADialog.FMessage.StyleElements - [seFont];
   ADialog.FMessage.ShowAccelChar := False;
   Inc(AY, ADialog.FMessage.Height + ALayout.Spacing);
   ADialog.FCancel := TButton.Create(ADialog);
@@ -218,19 +224,17 @@ var
   mLayout: TDialogLayout;
   mY: Integer;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FSuggest := ASuggest;
   Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCaption);
-  BorderStyle := bsDialog;
-  Position := poMainFormCenter;
   mLayout := LayoutOf(Self);
   ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
   mY := mLayout.Gap;
   FFrom := NewEdit(Self, mLayout, mY);
-  AddLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), mY, FFrom);
+  AddFieldLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), mY, FFrom);
   Inc(mY, FFrom.Height + mLayout.Spacing);
   FTo := NewEdit(Self, mLayout, mY);
-  AddLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), mY, FTo);
+  AddFieldLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), mY, FTo);
   Inc(mY, FTo.Height + mLayout.Spacing);
   BuildOptions(Self, mLayout, mY);
   BuildButtons(Self, mLayout, mY);

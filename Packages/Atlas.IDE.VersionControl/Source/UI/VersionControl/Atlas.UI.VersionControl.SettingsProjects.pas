@@ -311,7 +311,7 @@ begin
   mPanel := AddPanel(18);
   FVcsProjectNote := TLabel.Create(FPage);
   FVcsProjectNote.Parent := mPanel;
-  FVcsProjectNote.Left := 90;
+  FVcsProjectNote.Left := FVcsProjectNote.ScaleValue(90);
   FVcsProjectNote.Top := 1;
   FVcsProjectNote.Font.Color := clRed;
   Attach(mPanel, FVcsProjectList);

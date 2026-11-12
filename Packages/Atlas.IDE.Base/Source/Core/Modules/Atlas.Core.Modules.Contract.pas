@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Modules.Contract;
 
 // Allgemeine Verträge zwischen Base und den Modulen des Plugins (#1455,
-// ADR 0017, Regeln 1–9 in docs/Architektur.md „Module und Verträge des
+// Modulregeln 1–9 in docs/Architektur.md „Module und Verträge des
 // Plugins“). Nur Interfaces mit GUID, Records und Konstanten; Base versteht
 // nicht, was ein Modul anbietet, und kennt keine Modulnamen (Regel 9).
 // - IAtlasModule: Deskriptor, den ein Modul in seinem Register anmeldet;
@@ -27,7 +27,10 @@ const
   /// 4 (#1906): IAtlasBuildRequests.Forget.
   /// 5 (#1817): TAtlasMenuPlace.ProjectContext.
   /// 6 (#1821): TAtlasMenuPlace.Gallery.
-  cAtlasCoreContractVersion = 6;
+  /// 7 (#1819): IAtlasIdeErrors (Atlas.IDE.Contracts.Rules), TAtlasIdeError (Atlas.Core.Problems.Contract),
+  /// TAtlasProblem.IdeConfirmed.
+  /// 8 (#2052): IAtlasIssueWork und IAtlasIssueWorkSource, welcomePage.continue.issues(.count).
+  cAtlasCoreContractVersion = 8;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

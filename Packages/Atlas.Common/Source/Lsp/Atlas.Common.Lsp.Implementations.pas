@@ -32,7 +32,7 @@ type
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -211,7 +211,7 @@ var
   mIndex: Integer;
   mNode, mChild: TSyntaxNode;
 begin
-  // Äußerste Routine: bei verschachtelten Routinen gilt die Methode. Schleife statt Rekursion (Bericht M1):
+  // Äußerste Routine: bei verschachtelten Routinen gilt die Methode. Schleife statt Rekursion:
   // dem ersten Kind folgen, das AOffset enthält.
   mNode := ANode;
   while mNode <> nil do

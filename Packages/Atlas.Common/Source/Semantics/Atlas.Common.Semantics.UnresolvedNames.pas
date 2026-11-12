@@ -283,7 +283,7 @@ var
     mNode: TSyntaxNode;
     mIndex: Integer;
   begin
-    // Iterativ mit eigenem Stapel (Bericht M1).
+    // Iterativ mit eigenem Stapel.
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -452,7 +452,7 @@ var
     mInStatements: Boolean;
     mIndex: Integer;
   begin
-    // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit Reihenfolge und Grenze
+    // Iterativ mit eigenem Stapel; die Kinder rückwärts darauf, damit Reihenfolge und Grenze
     // MaxNames dieselben bleiben wie in der früheren Rekursion.
     mPending := TStack<TUnresolvedEntry>.Create;
     try

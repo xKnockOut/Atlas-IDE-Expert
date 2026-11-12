@@ -63,14 +63,14 @@ begin
   ParentColor := True;
   Padding.SetBounds(6, 4, 6, 6);
   AlignWithMargins := True;
-  Height := 40;
+  Height := ScaleValue(40);
   FNextTop := 100;
   FReason := TLabel.Create(Self);
   FReason.Parent := Self;
   FReason.Align := alTop;
   FReason.AlignWithMargins := True;
-  FReason.Margins.Left := 3 + cIndent;
-  FReason.Top := 2;
+  FReason.Margins.Left := FReason.ScaleValue(3) + FReason.ScaleValue(cIndent);
+  FReason.Top := FReason.ScaleValue(2);
   FReason.ShowAccelChar := False;
   FReason.WordWrap := True;
   FReason.Font.Style := [fsItalic];
@@ -92,7 +92,7 @@ begin
   AControl.Parent := Self;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
-  AControl.Margins.Left := AControl.Margins.Left + cIndent;
+  AControl.Margins.Left := AControl.Margins.Left + AControl.ScaleValue(cIndent);
   // alTop ordnet nach Top: jede Zeile unter die vorige.
   AControl.Top := FNextTop;
   Inc(FNextTop, 100);

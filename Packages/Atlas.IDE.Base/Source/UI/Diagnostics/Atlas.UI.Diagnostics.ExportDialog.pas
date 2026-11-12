@@ -16,7 +16,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Dialogs,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Vorbereitung vor dem Zeigen, etwa das Thema der IDE (die UI-Schicht kennt es nicht).</summary>
@@ -36,7 +37,7 @@ type
     class function Diagnostic(const AHint, APreview: string): TAtlasExportDialogTexts; static;
   end;
 
-  TAtlasDiagnosticExportDialog = class(TForm)
+  TAtlasDiagnosticExportDialog = class(TAtlasDialog)
   private
     FHint: TLabel;
     FFileName: string;
@@ -65,7 +66,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 const
   cGap = 8;
@@ -83,8 +85,9 @@ end;
 
 class function TAtlasExportDialogTexts.Diagnostic(const AHint, APreview: string): TAtlasExportDialogTexts;
 begin
-  Result := Create(TAtlasStrings.Text(TAtlasTextId.DiagExportTitle), AHint, APreview,
-    'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip', TAtlasStrings.Text(TAtlasTextId.DiagExportFilter),
+  Result := Create(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportTitle), AHint, APreview,
+    'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip',
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportFilter),
     'zip');
 end;
 
@@ -100,15 +103,14 @@ var
   mHint: TLabel;
   mMemo: TMemo;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FDefaultName := ATexts.DefaultName;
   FFilter := ATexts.Filter;
   FDefaultExt := ATexts.DefaultExt;
   Caption := ATexts.Title;
   BorderStyle := bsSizeable;
-  Position := poMainFormCenter;
-  Width := 900;
-  Height := 600;
+  Width := ScaleValue(900);
+  Height := ScaleValue(600);
 
   mHint := TLabel.Create(Self);
   mHint.Parent := Self;
@@ -126,13 +128,13 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
   mButton.SetBounds(mBottom.Width - 2 * (100 + cGap), 8, 100, 28);
   mButton.Anchors := [akTop, akRight];
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportSave);
+  mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportSave);
   mButton.Default := True;
   mButton.OnClick := SaveClick;
   mButton := TButton.Create(Self);

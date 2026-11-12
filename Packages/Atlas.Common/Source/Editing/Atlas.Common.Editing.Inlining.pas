@@ -295,7 +295,7 @@ var
   mNode: TSyntaxNode;
   mIndex, mFirst: Integer;
 begin
-  // Eigener Stapel statt Rekursion (Bericht M1); jeder Knoten muss passen, die Reihenfolge ist gleich.
+  // Eigener Stapel statt Rekursion; jeder Knoten muss passen, die Reihenfolge ist gleich.
   Result := True;
   mPending := TStack<TSyntaxNode>.Create;
   try

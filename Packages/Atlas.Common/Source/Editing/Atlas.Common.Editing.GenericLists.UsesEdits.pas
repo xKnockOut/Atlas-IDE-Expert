@@ -29,8 +29,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.GenericLists.Syntax,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -223,7 +223,7 @@ begin
     begin
       Result.Name := Result.Name + mToken.Text;
     end;
-    if not TGenericListSyntax.IsTrivia(mToken) then
+    if not IsTrivia(mToken) then
     begin
       Result.LastToken := ACursor;
     end;
@@ -242,7 +242,7 @@ begin
   mCursor := AClause.UsesIndex + 1;
   while mCursor < AClause.Semicolon do
   begin
-    while (mCursor < AClause.Semicolon) and TGenericListSyntax.IsTrivia(FTokens[mCursor]) do
+    while (mCursor < AClause.Semicolon) and IsTrivia(FTokens[mCursor]) do
     begin
       Inc(mCursor);
     end;

@@ -60,8 +60,8 @@
 // - editor.breadcrumbsHideIdeToolbar: Die Navigationsleiste der IDE („Typ
 //   suchen“/„Methode suchen“) ist ausgeblendet, solange die Leiste an ist;
 //   aus oder beim Entladen kommt sie zurück. Ausgeblendet wird über die
-//   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption,
-//   Bericht M3). Nur wenn die IDE keine solche Option hat, hängt
+//   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption).
+//   Nur wenn die IDE keine solche Option hat, hängt
 //   TAtlasNavigationToolbar die Leiste um (Netz).
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
 //   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
@@ -132,7 +132,7 @@ uses
   Atlas.Core.Outline.Overloads,
   Atlas.Core.Outline.Interfaces,
   Atlas.Core.Editor.CrumbCard,
-  Atlas.UI.Strings,
+  Atlas.UI.Outline.Strings,
   Atlas.UI.Popup.CrumbCard,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
@@ -166,7 +166,9 @@ type
     FNodes: TAtlasOutlineNodes;
     FInterfaces: TAtlasInterfaceMethods;
     FWithInterfaces: Boolean;
-    FLines: TArray<string>;
+    /// <summary>Für den Pfad ausgewerteter Text mit seinen Zeilen, je Stand der Gliederung einmal (Remember).
+    /// </summary>
+    FText: TAtlasCrumbText;
     FLine: Integer;
     FCharacter: Integer;
     FShowUnit: Boolean;
@@ -281,7 +283,7 @@ begin
   FLine := -1;
   FCharacter := -1;
   // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
-  // Option aus (Bericht M3); umgehängt wird nur ohne diese Option (Netz).
+  // Option aus; umgehängt wird nur ohne diese Option (Netz).
   ApplyTheme;
   mHide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
   FToolbarByIde := TAtlasIdeNavigationOption.Apply(mHide);
@@ -345,13 +347,13 @@ begin
   mBar := TAtlasBreadcrumbBar.Create(nil);
   mHost := FHost;
   mBar.SetColors(TAtlasIdeStyle.BarColors);
-  mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
-  mBar.CrumbHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCrumbHint);
-  mBar.SeparatorHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsChildrenHint);
-  mBar.MarkHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMarkHint);
-  mBar.OverloadHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsOverloadsHint);
-  mBar.InterfaceHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesHint);
-  mBar.InterfaceKeyHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesKey);
+  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
+  mBar.CrumbHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCrumbHint);
+  mBar.SeparatorHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsChildrenHint);
+  mBar.MarkHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMarkHint);
+  mBar.OverloadHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsHint);
+  mBar.InterfaceHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesHint);
+  mBar.InterfaceKeyHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesKey);
   mBar.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     var
@@ -479,7 +481,7 @@ begin
   Result := APlace.Text;
   if Result = '' then
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsRegionUnnamed), [APlace.Line + 1]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsRegionUnnamed), [APlace.Line + 1]);
   end;
 end;
 
@@ -544,6 +546,7 @@ function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: 
 var
   mShowUnit, mWithInterfaces: Boolean;
   mParts: TAtlasCrumbParts;
+  mLines: TArray<string>;
 begin
   mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
   mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
@@ -551,9 +554,14 @@ begin
   Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FStatus) or
     not SameText(ASnapshot.FileName, FFileName) or (ASnapshot.Stamp <> FStamp) or (mShowUnit <> FShowUnit) or
     (mParts <> FParts) or (mWithInterfaces <> FWithInterfaces);
-  if Result and (ASnapshot.Stamp <> FStamp) then
+  if (ASnapshot.Stamp <> FStamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FNodes)) then
   begin
-    FLines := TTextLines.SplitLines(ASnapshot.Text);
+    mLines := FText.Lines;
+    if ASnapshot.Stamp <> FStamp then
+    begin
+      mLines := TTextLines.SplitLines(ASnapshot.Text);
+    end;
+    FText := TAtlasBreadcrumbs.Prepare(ASnapshot.Nodes, mLines);
   end;
   FShown := True;
   FActiveBar := ABar;
@@ -575,12 +583,12 @@ begin
   case AStatus of
     TAtlasOutlineStatus.NoFile:
       begin
-        ABar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
+        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
         ABar.SetCrumbs(nil);
       end;
     TAtlasOutlineStatus.NoServer:
       begin
-        ABar.EmptyText := TAtlasStrings.Text(TAtlasTextId.OutlineNoServer);
+        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoServer);
         ABar.SetCrumbs(nil);
       end;
     TAtlasOutlineStatus.Waiting:
@@ -636,8 +644,8 @@ begin
   end;
   FLine := mLine;
   FCharacter := mCharacter;
-  mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
-  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FNodes, FLines, FLine, FCharacter,
+  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
+  mBar.SetCrumbs(MarkInterfaces(NamedRegions(TAtlasBreadcrumbs.Path(FText, FLine, FCharacter,
     ChangeFileExt(ExtractFileName(FFileName), ''), FShowUnit, FParts))));
 end;
 
@@ -680,12 +688,12 @@ begin
     end;
     if AOverloads then
     begin
-      mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly),
+      mCommand.Path := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly),
         [ANodes[mNode].NameLine + 1]);
     end;
     if mNode = ACurrent then
     begin
-      mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
+      mCommand.ShortCut := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCurrent);
     end;
     Result := Result + [mCommand];
   end;
@@ -718,7 +726,7 @@ begin
     Exit;
   end;
   mCrumb := ABar.Crumbs[AIndex];
-  OpenList(ABar, Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsOverloadsPrompt), [mCrumb.Text]),
+  OpenList(ABar, Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsPrompt), [mCrumb.Text]),
     mCrumb.Overloads, mCrumb.Node, APoint, True);
 end;
 
@@ -739,7 +747,7 @@ begin
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mIndex);
     mCommand.Caption := ATargets[mIndex].Name;
-    mCommand.Path := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesPath),
+    mCommand.Path := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesPath),
       [ExtractFileName(ATargets[mIndex].FileName), ATargets[mIndex].Line + 1]);
     Result := Result + [mCommand];
   end;
@@ -765,7 +773,7 @@ begin
   end;
   mCommands := InterfaceCommands(mTargets, '');
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsInterfacesPrompt);
+  mWindow.Prompt := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesPrompt);
   mWindow.Presorted := True;
   mWindow.QueryDelay := 0;
   mWindow.OnQuery :=
@@ -828,7 +836,7 @@ begin
   // Kopien: Das Menü lebt länger als der aktuelle Stand.
   mItems := AItems;
   mNodes := FNodes;
-  mLines := FLines;
+  mLines := FText.Lines;
   mFileName := FFileName;
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, CommandsOf(mNodes, mLines, mItems, ACurrent,
     AOverloads), nil, TAtlasIdeStyle.Colors);
@@ -875,20 +883,22 @@ begin
   begin
     if APlace.Count = 1 then
     begin
-      Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
+      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
     end
     else
     begin
-      Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCount), [APlace.Count, APlace.Line + 1]);
+      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCount), [APlace.Count,
+        APlace.Line + 1]);
     end;
   end
   else if APlace.Group <> '' then
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLine), [APlace.Group, APlace.Line + 1]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLine), [APlace.Group,
+      APlace.Line + 1]);
   end
   else
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
   end;
 end;
 
@@ -919,7 +929,7 @@ begin
     mCommand.Path := PlacePath(APlaces[mIndex], ACounts);
     if mIndex = ACurrent then
     begin
-      mCommand.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
+      mCommand.ShortCut := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCurrent);
     end;
     Result := Result + [mCommand];
   end;
@@ -941,7 +951,8 @@ begin
     begin
       mCommand := Default(TAtlasCommand);
       mCommand.Id := cAppendId + IntToStr(mIndex);
-      mCommand.Caption := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionAppend), [APlaces[mIndex].Text]);
+      mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionAppend),
+        [APlaces[mIndex].Text]);
       if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
       begin
         Result := Result + [mCommand];
@@ -954,7 +965,7 @@ begin
     begin
       mCommand := Default(TAtlasCommand);
       mCommand.Id := cCreateId + mKeyword;
-      mCommand.Caption := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsSectionCreate), [mKeyword]);
+      mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCreate), [mKeyword]);
       if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
       begin
         Result := Result + [mCommand];
@@ -996,7 +1007,7 @@ begin
   mCurrent := ACrumb.Current;
   mFileName := FFileName;
   mNodes := FNodes;
-  mLines := FLines;
+  mLines := FText.Lines;
   mLine := FLine;
   mCharacter := FCharacter;
   mCounts := TAtlasIdeSettings.Current.BreadcrumbsSectionCounts;
@@ -1089,7 +1100,8 @@ begin
   begin
     Exit;
   end;
-  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FLines, ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
+  TAtlasIdeCrumbMenu.Show(APoint, FFileName, FNodes, FText.Lines, ABar.Crumbs, AIndex,
+    TAtlasIdeBreadcrumbs.FMenuHooks);
 end;
 
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
@@ -1145,7 +1157,8 @@ begin
     FCard := TAtlasCrumbCardTip.Create(nil);
   end;
   FCard.Colors := TAtlasIdeStyle.Colors;
-  FCard.ShowCard(TAtlasCrumbCards.Build(FNodes, FLines, ABar.Crumbs[AIndex].Node, mHasMetrics, mMetrics), APoint);
+  FCard.ShowCard(TAtlasCrumbCards.Build(FNodes, FText.Lines, ABar.Crumbs[AIndex].Node, mHasMetrics, mMetrics),
+    APoint);
 end;
 
 procedure TBreadcrumbsState.HideCard;
@@ -1198,7 +1211,7 @@ begin
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasBreadcrumbBar(ABar).EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsDisabled);
+      TAtlasBreadcrumbBar(ABar).EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsDisabled);
       TAtlasBreadcrumbBar(ABar).SetCrumbs(nil);
     end);
 end;
@@ -1314,7 +1327,7 @@ begin
   end;
 end;
 
-/// <summary>Diagnose, warum die Leiste keine Maus bekommt (Bericht M2). Die Ursache am Fenster der Leiste
+/// <summary>Diagnose, warum die Leiste keine Maus bekommt. Die Ursache am Fenster der Leiste
 /// (WindowProblem: anderer Thread, falsches Elternfenster, gesperrt, ausgeblendet) prüft jeder Takt, nicht erst
 /// das Überfahren; landet die Maus über der Leiste bei einem anderen Fenster desselben Formulars, nennt HitProblem
 /// die Ursache am Mauspunkt (Region, HTTRANSPARENT, Geschwister darüber). Beides einmal je Wechsel mit Eltern-

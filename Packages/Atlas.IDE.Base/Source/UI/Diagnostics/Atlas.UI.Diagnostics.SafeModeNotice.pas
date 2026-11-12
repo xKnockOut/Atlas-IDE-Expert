@@ -22,14 +22,15 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasSafeNoticeKind = (Ask, Safe);
 {$SCOPEDENUMS OFF}
 
-  TAtlasSafeModeNotice = class(TForm)
+  TAtlasSafeModeNotice = class(TAtlasDialog)
   private type
     /// <summary>Steuerelemente des Fensters.</summary>
     TParts = record
@@ -76,7 +77,7 @@ type
     procedure BugClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     /// <summary>Höhe nach dem tatsächlichen Umbruch von Text und Knöpfen (erst mit Fenster bekannt).</summary>
-    procedure FitHeight;
+    procedure FitNoticeHeight;
   public
     /// <summary>ARestore: Beschriftung von „Einstellungen auf den Stand vor … zurücksetzen“; '' blendet den Knopf
     /// aus (nur im abgesicherten Fenster). ADetails: Zeilen für „Details“.</summary>
@@ -114,7 +115,8 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings;
 
 const
   cGap = 8;
@@ -126,20 +128,17 @@ const
 constructor TAtlasSafeModeNotice.CreateNotice(AOwner: TComponent; AKind: TAtlasSafeNoticeKind; const AText,
   ASuggestion, ARestore: string; const ADetails: TArray<string>);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cNoticeWidth);
   FKind := AKind;
-  Caption := TAtlasStrings.Text(TAtlasTextId.SafeTitle);
+  Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeTitle);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := cNoticeWidth;
   OnClose := FormClose;
   CreateTexts(AText, ASuggestion);
   CreateButtons(ARestore, Length(ADetails) > 0);
   CreateDetails(ADetails);
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + cGap;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + ScaleValue(cGap);
 end;
 
 procedure TAtlasSafeModeNotice.CreateTexts(const AText, ASuggestion: string);
@@ -178,18 +177,23 @@ begin
   FParts.Buttons := mButtons;
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    FParts.PrimaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskSafe), PrimaryClick);
-    FParts.SecondaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskNormal), SecondaryClick);
+    FParts.PrimaryButton := AddButton(mButtons, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskSafe),
+      PrimaryClick);
+    FParts.SecondaryButton := AddButton(mButtons, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskNormal),
+      SecondaryClick);
   end
   else
   begin
-    FParts.PrimaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeContinueNormal), PrimaryClick);
-    FParts.SecondaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeOpenToggles),
+    FParts.PrimaryButton := AddButton(mButtons,
+      TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeContinueNormal), PrimaryClick);
+    FParts.SecondaryButton := AddButton(mButtons,
+      TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeOpenToggles),
       SecondaryClick);
   end;
   FParts.RestoreButton := AddButton(mButtons, ARestore, RestoreClick);
   FParts.RestoreButton.Visible := (FKind = TAtlasSafeNoticeKind.Safe) and (ARestore <> '');
-  FParts.DetailsButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeDetails), DetailsClick);
+  FParts.DetailsButton := AddButton(mButtons, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeDetails),
+    DetailsClick);
   FParts.DetailsButton.Visible := AHasDetails;
 end;
 
@@ -228,7 +232,7 @@ begin
   FParts.ExportButton.Align := alBottom;
   FParts.ExportButton.AlignWithMargins := True;
   FParts.ExportButton.Margins.SetBounds(cGap, cGap, cGap, cGap);
-  FParts.BugButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.SafeBugReport), BugClick);
+  FParts.BugButton := AddButton(mPanel, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeBugReport), BugClick);
   FParts.BugButton.Align := alBottom;
   FParts.BugButton.AlignWithMargins := True;
   FParts.BugButton.Margins.SetBounds(cGap, 0, cGap, 0);
@@ -248,7 +252,7 @@ begin
   Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
-procedure TAtlasSafeModeNotice.FitHeight;
+procedure TAtlasSafeModeNotice.FitNoticeHeight;
 var
   mIndex, mBottom, mExtra: Integer;
   mControl: TControl;
@@ -280,20 +284,20 @@ begin
   begin
     mExtra := ScaleValue(cDetailsHeight);
   end;
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + cGap + mExtra;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + ScaleValue(cGap) + mExtra;
 end;
 
 procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
 begin
-  FitHeight;
-  Left := AArea.Right - Width - cGap;
-  Top := AArea.Bottom - Height - cGap;
+  FitNoticeHeight;
+  Left := AArea.Right - Width - ScaleValue(cGap);
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
   // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
   Show;
   // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
   // unten bleibt unten.
-  FitHeight;
-  Top := AArea.Bottom - Height - cGap;
+  FitNoticeHeight;
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
 end;
 
 procedure TAtlasSafeModeNotice.Run(const AProc: TProc);
@@ -378,7 +382,7 @@ begin
   FParts.BugButton.Visible := Assigned(FHandlers.OnBugReport);
   FParts.ExportButton.Visible := Assigned(FHandlers.OnExportLog);
   FParts.DetailsPanel.Visible := not FParts.DetailsPanel.Visible;
-  FitHeight;
+  FitNoticeHeight;
   // Unten bleibt unten: das Fenster wächst nach oben.
   if Visible then
   begin

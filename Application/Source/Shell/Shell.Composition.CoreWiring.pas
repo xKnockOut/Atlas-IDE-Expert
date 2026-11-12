@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.CoreWiring;
 
-// Verdrahtung von Kern, Index und Sitzung (S-02): Arbeitsbereiche, Indexplanung und Konfiguration mit den
+// Verdrahtung von Kern, Index und Sitzung: Arbeitsbereiche, Indexplanung und Konfiguration mit den
 // Ereignissen des Dokumentspeichers; Teilwurzel Index und Teilwurzel Sitzung mit dem Diagnoselog am Verteiler.
 // Closures fragen die Teile erst beim Aufruf, weil Code, Analyse und IDE später entstehen.
 
@@ -41,6 +41,7 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WatchedFiles,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -195,7 +196,7 @@ begin
   AServices.IndexEvent :=
     procedure(AText: string)
     begin
-      // Absicherung: Beim Beenden ist das Diagnoselog schon fort (Code-Review A-05).
+      // Absicherung: Beim Beenden ist das Diagnoselog schon fort.
       if AParts.Session <> nil then
       begin
         AParts.Session.Diagnostics.Log.LogEvent(AText);
@@ -206,6 +207,8 @@ begin
     begin
       AParts.Protocol.Dispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
       AParts.Session.ApplySettings(ASettings);
+      // server.statusFile (#1901) gilt serverweit.
+      TServerActivity.Shared.Enabled := ASettings.ServerStatusFile;
       // server.crashCases und server.crashSkip (#1355) gelten serverweit; beim Nachstellen bleiben beide aus.
       if not AParts.Replay then
       begin

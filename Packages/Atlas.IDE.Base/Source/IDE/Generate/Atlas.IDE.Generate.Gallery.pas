@@ -58,7 +58,7 @@ type
     function GetAuthor: string;
     function GetComment: string;
     function GetPage: string;
-    function GetGlyph: Cardinal;
+    function GetGlyph: THandle;
     { IOTARepositoryWizard60 }
     function GetDesigner: string;
     { IOTARepositoryWizard80 }
@@ -209,7 +209,7 @@ begin
   Result := TAtlasGallery.cCategoryName;
 end;
 
-function TGalleryWizard.GetGlyph: Cardinal;
+function TGalleryWizard.GetGlyph: THandle;
 begin
   // 0: Symbol der IDE für Assistenten.
   Result := 0;

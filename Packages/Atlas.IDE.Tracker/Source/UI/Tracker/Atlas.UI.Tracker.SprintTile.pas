@@ -138,7 +138,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings;
 
 const
   cFullPercent = 100;
@@ -351,7 +352,7 @@ end;
 
 class function TAtlasTrackerSprintView.TitleText: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintTitle);
+  Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintTitle);
 end;
 
 procedure TAtlasTrackerSprintView.SetSource(const AValue: IAtlasSprintSource);
@@ -495,19 +496,19 @@ begin
   mNow := TTimeZone.Local.ToUniversalTime(Now);
   if mNow < ATile.Sprint.Start then
   begin
-    mDays := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintNotStarted, [LocalDay(ATile.Sprint.Start)]);
+    mDays := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeSprintNotStarted, [LocalDay(ATile.Sprint.Start)]);
   end
   else if ATile.Sprint.DaysLeft <= 0 then
   begin
-    mDays := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintEnded);
+    mDays := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintEnded);
   end
   else if ATile.Sprint.DaysLeft = 1 then
   begin
-    mDays := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintDayLeft);
+    mDays := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintDayLeft);
   end
   else
   begin
-    mDays := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDaysLeft, [ATile.Sprint.DaysLeft]);
+    mDays := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeSprintDaysLeft, [ATile.Sprint.DaysLeft]);
   end;
   // Ende ist exklusiv (Mitternacht danach): als letzten Tag den davor zeigen.
   Result := ATile.Sprint.Name + cPartSeparator + LocalDay(ATile.Sprint.Start) + cRangeSeparator +
@@ -518,13 +519,13 @@ class function TAtlasTrackerSprintView.ErrorText(AError: TAtlasCiFetchError): st
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -532,15 +533,15 @@ class function TAtlasTrackerSprintView.NoticeText(const ATile: TAtlasSprintTile)
 begin
   case ATile.Status of
     TAtlasSprintTileStatus.NoProject:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintNoProject);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintNoProject);
     TAtlasSprintTileStatus.NoTracker:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintNoBoard);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintNoBoard);
     TAtlasSprintTileStatus.NoBoard:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintNoBoardFound);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintNoBoardFound);
     TAtlasSprintTileStatus.NoSprint:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintNoSprint);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintNoSprint);
     TAtlasSprintTileStatus.Loading:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintLoading);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintLoading);
     // Noch nie geladen und keine Antwort: der Grund statt „lädt …“.
     TAtlasSprintTileStatus.Failed:
       Result := ErrorText(ATile.Error);
@@ -554,11 +555,11 @@ begin
   Result := '';
   if ATile.Loading and (ATile.Status = TAtlasSprintTileStatus.Ready) then
   begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeSprintLoading));
+    Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintLoading));
   end;
   if ATile.Stale and (ATile.Sprint.Fetched > 0) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintStale, [FormatDateTime(cStaleFormat,
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeSprintStale, [FormatDateTime(cStaleFormat,
       TTimeZone.Local.ToLocalTime(ATile.Sprint.Fetched), FormatSettings), ErrorText(ATile.Error)]);
   end
   else if ATile.Stale and not (ATile.Status in [TAtlasSprintTileStatus.Loading, TAtlasSprintTileStatus.Failed]) then
@@ -590,7 +591,7 @@ begin
   begin
     mArrow := cDownMark + NumberText(-mDelta);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintCompare, [NumberText(ATile.Sprint.DoneToday),
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeSprintCompare, [NumberText(ATile.Sprint.DoneToday),
     NumberText(ATile.Sprint.PreviousDone), mArrow]);
 end;
 
@@ -598,11 +599,11 @@ class function TAtlasTrackerSprintView.NumberCaption(AIndex: Integer): string;
 begin
   case AIndex of
     0:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintMineOpen);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintMineOpen);
     1:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintMineDone);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintMineDone);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintTeamLeft);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintTeamLeft);
   end;
 end;
 
@@ -630,11 +631,11 @@ begin
       Result := NumberText(ATile.Sprint.TeamLeft) + ' ';
       if ATile.Sprint.UsesPoints then
       begin
-        Result := Result + TAtlasStrings.Text(TAtlasTextId.WelcomeSprintPoints);
+        Result := Result + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintPoints);
       end
       else
       begin
-        Result := Result + TAtlasStrings.Text(TAtlasTextId.WelcomeSprintIssues);
+        Result := Result + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintIssues);
       end;
     end;
   end;
@@ -660,11 +661,11 @@ begin
   begin
     mDate := FormatDateTime(cDayFormat, ATile.Sprint.Dates[ADay - 1], FormatSettings);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHint, [ADay, mDate, mLeft,
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeSprintDayHint, [ADay, mDate, mLeft,
     NumberText(ATile.Sprint.Ideal[ADay])]);
   if ATile.Compare and ATile.Sprint.HasPrevious and (ADay <= High(ATile.Sprint.Previous)) then
   begin
-    Result := Result + cPartSeparator + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHintPrevious,
+    Result := Result + cPartSeparator + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeSprintDayHintPrevious,
       [NumberText(ATile.Sprint.Previous[ADay])]);
   end;
 end;
@@ -911,7 +912,7 @@ begin
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
-  mCaption := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintVelocity);
+  mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintVelocity);
   mBar := ScaleValue(cVelocityBarWidth);
   mLeft := ARect.Right - Length(FTile.Sprint.Velocity) * (mBar + ScaleValue(cVelocityBarGap));
   ACanvas.TextOut(mLeft - ACanvas.TextWidth(mCaption) - ScaleValue(cVelocityCaptionGap), ARect.Top + ScaleValue(2),
@@ -1049,13 +1050,13 @@ begin
   FHintKey := mKey;
   case mHit of
     TAtlasSprintHitKind.Title:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintBrowse);
+      FBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintHintBrowse);
     TAtlasSprintHitKind.MineOpen:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintOpen);
+      FBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintHintOpen);
     TAtlasSprintHitKind.MineDone:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintDone);
+      FBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintHintDone);
     TAtlasSprintHitKind.TeamLeft:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintBoard);
+      FBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintHintBoard);
     TAtlasSprintHitKind.Chart:
       if mDay >= 0 then
       begin
@@ -1063,10 +1064,10 @@ begin
       end
       else
       begin
-        FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintBoard);
+        FBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintHintBoard);
       end;
     TAtlasSprintHitKind.Assign:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintAssign);
+      FBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeSprintHintAssign);
   else
     FBox.Hint := '';
   end;

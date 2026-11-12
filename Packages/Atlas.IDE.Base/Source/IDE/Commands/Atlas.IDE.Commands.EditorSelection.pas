@@ -48,6 +48,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Selection,
@@ -61,6 +62,7 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.Text.Defines,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.IDE.Build.Target,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
@@ -249,7 +251,7 @@ class procedure TAtlasEditorSelectionCommands.ToggleMethod;
 begin
   if not TryToggleMethod then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorMethodToggleNone));
   end;
 end;
 
@@ -296,7 +298,7 @@ begin
   end;
   if not TAtlasInlineDiagnostics.Next(mProblems, mCaret.Row, mCaret.Character, AForward, mTarget) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ProblemNoneInFile));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemNoneInFile));
     Exit;
   end;
   MoveCaret(mCaret, TLspTextPosition.Create(mTarget.StartLine, mTarget.StartCharacter));

@@ -21,6 +21,7 @@
     "generic-exception-raised": {"exclude": ["Tests/**"]},
     "format-without-settings": {"exclude": ["Tests/**"]},
     "security-insecure-http": {"exclude": ["Tests/**"]},
+    "control-fixed-bounds": {"exclude": ["Tests/**"]},
     "unused-unit": {"exclude": ["Tests/**/*Golden.pas"]},
     "loop-runs-at-most-once": {
       "allowFirstElement": true

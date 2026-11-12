@@ -11,7 +11,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 ## Extract and introduce
 
-- **Extract method**
+- **Extract method**, optionally with equal places of the unit (#2054): the second action "Extract method and replace equal places" finds textually equal statement sequences (comments, whitespace and case do not count) where the same method would result and replaces them with the same call; single places can be deselected beforehand. Switch `refactoring.extractMethodDuplicates`.
 - **Introduce variable**
 - **Extract condition to function**
 

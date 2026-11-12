@@ -166,6 +166,10 @@
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Wrap.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Scaling.pas"/>
+        <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Listeners.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Theme.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Symbol.pas"/>
         <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Symbol.pas"/>
         <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Canvas.pas"/>
@@ -180,6 +184,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas"/>
         <DCCReference Include="Source\IDE\Projects\Atlas.IDE.Projects.Context.pas"/>
@@ -409,6 +414,24 @@
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Favorites.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Favorites.pas"/>
         <DCCReference Include="Source\UI\Atlas.UI.Strings.pas"/>
+        <DCCReference Include="Source\UI\CodeInsight\Atlas.UI.CodeInsight.Strings.pas"/>
+        <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.Strings.pas"/>
+        <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Strings.pas"/>
+        <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Strings.pas"/>
+        <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Strings.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Strings.pas"/>
+        <DCCReference Include="Source\UI\Generate\Atlas.UI.Generate.Strings.pas"/>
+        <DCCReference Include="Source\UI\Hover\Atlas.UI.Hover.Strings.pas"/>
+        <DCCReference Include="Source\UI\Notifications\Atlas.UI.Notifications.Strings.pas"/>
+        <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Strings.pas"/>
+        <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Strings.pas"/>
+        <DCCReference Include="Source\UI\Results\Atlas.UI.Results.Strings.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Strings.pas"/>
+        <DCCReference Include="Source\UI\Setup\Atlas.UI.Setup.Strings.pas"/>
+        <DCCReference Include="Source\UI\Status\Atlas.UI.Status.Strings.pas"/>
+        <DCCReference Include="Source\UI\StatusBar\Atlas.UI.StatusBar.Strings.pas"/>
+        <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Strings.pas"/>
+        <DCCReference Include="Source\UI\Undo\Atlas.UI.Undo.Strings.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.ServerPlaceholders.pas"/>
@@ -512,6 +535,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Findings.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
@@ -552,6 +576,7 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
@@ -697,6 +722,7 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Files.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Service.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.RuleActions.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.IdeErrors.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Explanation.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.MessageView.pas"/>
@@ -758,6 +784,7 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.RegionFolds.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ExtractMembers.pas"/>
+        <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ActionChoices.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.HideTeamFile.pas"/>

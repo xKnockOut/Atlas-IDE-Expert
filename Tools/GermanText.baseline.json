@@ -109,6 +109,7 @@
   "Packages/Atlas.IDE.Base/Source/UI/Outline/Atlas.UI.Outline.Breadcrumbs.pas": 10,
   "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.Page.Robustness.pas": 1,
   "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.Page.Sections.pas": 2,
+  "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.Strings.pas": 1,
   "Packages/Atlas.IDE.Bookmarks/Source/IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas": 2,
   "Packages/Atlas.IDE.Bookmarks/Source/IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickColumn.pas": 7,
   "Packages/Atlas.IDE.Build/Source/IDE/Build/Atlas.IDE.Build.OpenBuild.pas": 1,

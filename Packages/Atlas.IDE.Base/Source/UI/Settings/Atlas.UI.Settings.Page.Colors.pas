@@ -48,7 +48,8 @@ uses
   Vcl.StdCtrls,
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsColorsPart }
 
@@ -60,24 +61,24 @@ var
 begin
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
-  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsLight), FLightSwatches);
-  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsDark), FDarkSwatches);
-  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineColorLight), FNestedLight);
-  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineColorDark), FNestedDark);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsLight), FLightSwatches);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsDark), FDarkSwatches);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorLight), FNestedLight);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorDark), FNestedDark);
   mPanel := AddPanel(22);
   mTitle := TLabel.Create(FPage);
   mTitle.Parent := mPanel;
-  mTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsHint);
+  mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsHint);
   mTitle.Left := 0;
-  mTitle.Top := 3;
+  mTitle.Top := mTitle.ScaleValue(3);
   mTitle.Font.Color := clGrayText;
   mPanel := AddPanel(32);
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsReset);
+  mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset);
   mButton.Left := 0;
-  mButton.Top := 3;
-  mButton.Width := 150;
+  mButton.Top := mButton.ScaleValue(3);
+  mButton.Width := mButton.ScaleValue(150);
   mButton.OnClick := ResetColorsClick;
   Attach(mPanel, FLightSwatches[0]);
 end;
@@ -101,7 +102,7 @@ begin
   mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   for mIndex := 0 to High(ASwatches) do
   begin
     ASwatches[mIndex] := TShape.Create(FPage);

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Architecture.Tests;
 
 // Tests für die Architekturregeln forbidden-uses (#183), architecture-role-import
-// und architecture-contract-content (Code-Review A-12). Die Matrix prüft
+// und architecture-contract-content. Die Matrix prüft
 // MatrixCasesFromFile gegen Tests/Data/Architecture/role-imports.json, dieselbe
 // Fallliste wie Tools/Check-PackageDependencies.ps1 -SelfTest.
 

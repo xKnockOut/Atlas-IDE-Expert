@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Designer.SettingsSection;
 
-// Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
+// Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456; vorher im Teil
 // „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
 // Gleiche auswählen (#738), Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen
 // (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und
@@ -22,9 +22,11 @@ type
     procedure BuildArrangeRows;
     /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
     procedure BuildViewRows;
-    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728) und Label und Feld (#729).</summary>
+    /// <summary>Zeilen von Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars
+    /// (#728) und Label und Feld (#729).</summary>
     procedure BuildToolRows;
-    /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731), Einpacken (#733) und Schriften und Farben (#741).</summary>
+    /// <summary>Zeilen von Label und Feld (#729), Formularraster (#731), Einpacken (#733) und Schriften und Farben
+    /// (#741).</summary>
     procedure BuildPairRows;
     /// <summary>Zeilen der Werkzeuge mit eigenem Knopf in der Designer-Leiste (#734 ff.).</summary>
     procedure BuildButtonRows;
@@ -64,6 +66,7 @@ begin
     [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchWindow),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSearchPopup)],
     [TAtlasPluginSettings.cDesignerSearchWindow, TAtlasPluginSettings.cDesignerSearchPopup]);
+  Switch('designer.fuzzySearch', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerFuzzySearch));
   Switch('editor.designerBar.tabOrderClick', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderClick));
   Switch('designer.tabOrderOverlay',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerTabOrderOverlay));
@@ -91,6 +94,16 @@ begin
   Key('designer.showInDesigner.key', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerShowKey));
   Switch('designer.propertySearch',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerPropertySearch));
+  Switch('designer.usages', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsages));
+  Switch('designer.usages.statusCount',
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesStatusCount));
+  Choice('designer.usages.scope', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesScope),
+    [TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesUnit),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesProject),
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesGroup)],
+    [TAtlasPluginSettings.cDesignerUsagesUnit, TAtlasPluginSettings.cDesignerUsagesProject,
+    TAtlasPluginSettings.cDesignerUsagesGroup]);
+  Key('designer.usages.key', TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerUsagesKey));
   Switch('designer.spatialNavigation',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSpatialNavigation));
   Switch('designer.spatialNavigation.crossContainers',
@@ -122,6 +135,11 @@ begin
   Switch('designer.nameSuggestRenameHandlers',
     TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameHandlers));
   Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
+  Switch('designer.structure', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStructure));
+  Switch('designer.structureHideOnForm', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStHide));
+  Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
+  Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
+  Switch('designer.eventMap', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsEventMap));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

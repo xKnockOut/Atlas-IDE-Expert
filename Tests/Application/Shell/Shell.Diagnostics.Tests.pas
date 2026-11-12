@@ -43,7 +43,7 @@ type
     procedure PreviousRunsWithoutEndAreCounted;
     [Test]
     procedure EveryEndReasonHasText;
-    /// <summary>Gemeinsame Logdatei für LSP und MCP (D-08): ohne Namen nichts, nicht anlegbar ein Fehler im
+    /// <summary>Gemeinsame Logdatei für LSP und MCP: ohne Namen nichts, nicht anlegbar ein Fehler im
     /// Log.</summary>
     [Test]
     procedure AddLogFile_EmptyName_DoesNothing;
@@ -412,9 +412,13 @@ begin
   for mReason := Low(TDiagnosticEndReason) to High(TDiagnosticEndReason) do
   begin
     Assert.AreNotEqual('', TShellDiagnostics.EndReasonText(mReason));
-    for mOther := Succ(mReason) to High(TDiagnosticEndReason) do
+    // Succ(High(...)) läge außerhalb des Bereichs (#1980 prüft das): Vergleich über alle, ohne sich selbst.
+    for mOther := Low(TDiagnosticEndReason) to High(TDiagnosticEndReason) do
     begin
-      Assert.AreNotEqual(TShellDiagnostics.EndReasonText(mReason), TShellDiagnostics.EndReasonText(mOther));
+      if mOther <> mReason then
+      begin
+        Assert.AreNotEqual(TShellDiagnostics.EndReasonText(mReason), TShellDiagnostics.EndReasonText(mOther));
+      end;
     end;
   end;
   Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');

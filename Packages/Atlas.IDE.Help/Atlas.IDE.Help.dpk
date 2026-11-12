@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Hilfe (#1886, ADR 0017): F1 auf Atlas-Befunden, Einstellungen und Atlas-Fenstern öffnet die passende Stelle
+// Modul Hilfe (#1886): F1 auf Atlas-Befunden, Einstellungen und Atlas-Fenstern öffnet die passende Stelle
 // der Atlas-Doku. Meldet sich in der Unit-Initialisierung von Atlas.IDE.Help.Composition über die Registry des
 // Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen (Regeln 1 bis 4).
 // Requiret nur das Kern-Package (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).

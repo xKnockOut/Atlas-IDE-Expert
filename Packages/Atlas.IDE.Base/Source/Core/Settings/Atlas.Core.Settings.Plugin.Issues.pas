@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.Plugin.Issues;
 
-// Einstellungen des IDE-Plugins, Bereich Issue-Tracker (issues.*) (#227, ADR 0017):
+// Einstellungen des IDE-Plugins, Bereich Issue-Tracker (issues.*) (#227):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
 
@@ -24,6 +24,10 @@ const
   cMinIssuesBlameMaxRevisions = 1;
   cMaxIssuesBlameMaxRevisions = 5000;
   cDefaultIssuesBlameMaxRevisions = 200;
+  /// <summary>Zeilen je Gruppe in „Alle Tracker-Projekte“ (#1928, issues.allProjects.perGroup).</summary>
+  cMinIssuesAllProjectsPerGroup = 1;
+  cMaxIssuesAllProjectsPerGroup = 20;
+  cDefaultIssuesAllProjectsPerGroup = 5;
   /// <summary>Vorgaben für Zustand und Kommentar (#1266); wie TAtlasTrackerWorkflow.</summary>
   cDefaultIssuesStateField = 'State';
   cDefaultIssuesAssigneeField = 'Assignee';
@@ -91,6 +95,19 @@ type
     /// <summary>Klappliste der Abfragen im Bereich „Meine Issues“ (#1262, issues.queryPicker); aus = keine
     /// Klappliste, es gilt die erste passende Abfrage.</summary>
     IssuesQueryPicker: Boolean;
+    /// <summary>Klappliste „Tracker-Projekt“ im Bereich „Meine Issues“ (#1927, issues.projectPicker); aus = keine
+    /// Klappliste, das Tracker-Projekt folgt dem Delphi-Projekt wie vorher.</summary>
+    IssuesProjectPicker: Boolean;
+    /// <summary>In „Meine Issues“ gewähltes Tracker-Projekt (#1927, issues.welcomeProject): '' = automatisch nach
+    /// dem Delphi-Projekt, „projekt@verbindung“ = fest, "*" = alle (#1928).</summary>
+    IssuesWelcomeProject: string;
+    /// <summary>Eintrag „Alle Tracker-Projekte“ in der Klappliste (#1928, issues.allProjects).</summary>
+    IssuesAllProjects: Boolean;
+    /// <summary>Zeilen je Gruppe in „Alle Tracker-Projekte“ (#1928, issues.allProjects.perGroup, 1–20).</summary>
+    IssuesAllProjectsPerGroup: Integer;
+    /// <summary>Knopf „Vorschlagen …“ bei den Arbeitskopien eines Tracker-Projekts (#1929, issues.suggestPaths).
+    /// </summary>
+    IssuesSuggestPaths: Boolean;
     /// <summary>Tracker beim Beginnen und Beenden nachführen (#1266, issues.syncState): Zustand, Zuweisung und
     /// Kommentar beim Beginnen, Dialog „… beenden“ mit Zielzustand und Kommentar, Kommentarfeld in der Vorschau;
     /// aus = „Beginnen“ und „Beenden“ ändern im Tracker nichts.</summary>
@@ -298,6 +315,11 @@ begin
   Result.IssuesProjects := '[]';
   Result.IssuesQueries := '[]';
   Result.IssuesQueryPicker := True;
+  Result.IssuesProjectPicker := True;
+  Result.IssuesWelcomeProject := '';
+  Result.IssuesAllProjects := True;
+  Result.IssuesAllProjectsPerGroup := cDefaultIssuesAllProjectsPerGroup;
+  Result.IssuesSuggestPaths := True;
   Result.IssuesSyncState := True;
   Result.IssuesStateField := cDefaultIssuesStateField;
   Result.IssuesAssigneeField := cDefaultIssuesAssigneeField;
@@ -331,6 +353,9 @@ begin
   begin
     IssuesQueries := '[]';
   end;
+  IssuesWelcomeProject := Trim(IssuesWelcomeProject);
+  IssuesAllProjectsPerGroup := EnsureRange(IssuesAllProjectsPerGroup, cMinIssuesAllProjectsPerGroup,
+    cMaxIssuesAllProjectsPerGroup);
   IssuesStateField := NormalizedIssuesText(IssuesStateField, True);
   if IssuesStateField = '' then
   begin
@@ -360,6 +385,11 @@ begin
   AIo.Text('IssuesProjects', IssuesProjects);
   AIo.Text('IssuesQueries', IssuesQueries);
   AIo.Flag('IssuesQueryPicker', IssuesQueryPicker);
+  AIo.Flag('IssuesProjectPicker', IssuesProjectPicker);
+  AIo.Text('IssuesWelcomeProject', IssuesWelcomeProject);
+  AIo.Flag('IssuesAllProjects', IssuesAllProjects);
+  AIo.Number('IssuesAllProjectsPerGroup', IssuesAllProjectsPerGroup);
+  AIo.Flag('IssuesSuggestPaths', IssuesSuggestPaths);
   AIo.Flag('IssuesSyncState', IssuesSyncState);
   AIo.Text('IssuesStateField', IssuesStateField);
   AIo.Text('IssuesAssigneeField', IssuesAssigneeField);

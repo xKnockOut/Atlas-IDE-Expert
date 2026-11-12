@@ -35,7 +35,7 @@ type
     ReadText: TReadTextFunc;
     /// <summary>Kann der Client applyEdit (#397)?</summary>
     ClientAppliesEdits: TFunc<Boolean>;
-    /// <summary>Neu laden nur im Thread der Nachrichtenschleife (Code-Review A-03).</summary>
+    /// <summary>Neu laden nur im Thread der Nachrichtenschleife.</summary>
     RunInLoop: TJsonRpcScheduler;
     /// <summary>Wirksame Einstellungen zur Datei, ohne Ordner die losen.</summary>
     SettingsFor: TShellSlashSettingsFunc;

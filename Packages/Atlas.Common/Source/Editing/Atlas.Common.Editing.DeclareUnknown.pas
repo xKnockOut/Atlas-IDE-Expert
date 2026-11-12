@@ -63,7 +63,8 @@ implementation
 
 uses
   System.StrUtils,
-  System.Math;
+  System.Math,
+  Atlas.Common.Pascal.TokenCursor;
 
 function Compare(const A, B: TTextPosition): Integer;
 begin
@@ -72,11 +73,6 @@ begin
   begin
     Result := A.Character - B.Character;
   end;
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -94,24 +90,6 @@ begin
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
   begin
     Inc(Result);
-  end;
-end;
-
-function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  Result := False;
-  if AToken.Kind <> TPascalTokenKind.Keyword then
-  begin
-    Exit;
-  end;
-  for mWord in AWords do
-  begin
-    if AToken.IsKeyword(mWord) then
-    begin
-      Exit(True);
-    end;
   end;
 end;
 

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Statements.Tokens;
 
 // Gemeinsame Hilfen der Anweisungsregeln (Statements, Statements.Loops, Statements.Cases, Statements.Datasets,
-// Statements.Properties): Code-Token suchen, Klammern und Schlüsselwörter auf Klammerebene 0, Anweisungen im
+// Statements.Properties): Schlüsselwörter auf Klammerebene 0, Anweisungen im
 // Syntaxbaum, Quelltext der Token und Dateiname des Kontexts.
 
 interface
@@ -15,12 +15,6 @@ type
   TTokens = TArray<TPascalToken>;
   TSyntaxKinds = set of TSyntaxKind;
 
-/// <summary>Kommentar oder Compileranweisung?</summary>
-function IsTrivia(const AToken: TPascalToken): Boolean;
-/// <summary>Erstes Code-Token ab AIndex (AIndex eingeschlossen); High + 1 ohne.</summary>
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
-/// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
-function TokenFrom(const ATokens: TTokens; AOffset: Integer): Integer;
 /// <summary>Knotenarten, die eine Anweisung sind.</summary>
 function StatementKinds: TSyntaxKinds;
 /// <summary>Erste Anweisung unter ANode, die nach AOffset beginnt; nil ohne.</summary>
@@ -29,10 +23,6 @@ function StatementAfter(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 function SourceText(const AText: string; const ATokens: TTokens; AFirst, ALast: Integer): string;
 /// <summary>Code-Token AFirst..ALast ohne Leerraum und Kommentare, kleingeschrieben (zum Vergleichen).</summary>
 function CodeKey(const ATokens: TTokens; AFirst, ALast: Integer): string;
-/// <summary>Letztes Code-Token vor AIndex (AIndex selbst ausgeschlossen).</summary>
-function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
-/// <summary>Index der schließenden Klammer zu AOpen, -1 ohne.</summary>
-function Closing(const ATokens: TTokens; AOpen, AStop: Integer): Integer;
 /// <summary>Erstes Token AText (Schlüsselwort bzw. Symbol) in AFrom..AStop-1 auf Klammerebene 0; -1 ohne.</summary>
 function DepthZero(const ATokens: TTokens; AFrom, AStop: Integer; const AText: string; AKeyword: Boolean): Integer;
 /// <summary>Bilden die ABaseCount Code-Token vor AIndex die Basis ABaseKey (CodeKey), ohne Punkt davor?</summary>
@@ -46,43 +36,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-end;
-
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-/// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
-function TokenFrom(const ATokens: TTokens; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 function StatementKinds: TSyntaxKinds;
 begin
@@ -128,40 +83,6 @@ begin
       Result := Result + LowerCase(ATokens[mIndex].Text);
     end;
   end;
-end;
-
-/// <summary>Letztes Code-Token vor AIndex (AIndex selbst ausgeschlossen).</summary>
-function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
-/// <summary>Index der schließenden Klammer zu AOpen, -1 ohne.</summary>
-function Closing(const ATokens: TTokens; AOpen, AStop: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  for Result := AOpen to AStop - 1 do
-  begin
-    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Erstes Token AText (Schlüsselwort bzw. Symbol) in AFrom..AStop-1 auf Klammerebene 0; -1 ohne.</summary>

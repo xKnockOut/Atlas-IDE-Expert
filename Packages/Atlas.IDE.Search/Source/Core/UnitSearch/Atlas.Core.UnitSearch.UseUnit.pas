@@ -94,6 +94,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 const
   cArrow = ' → ';
 
@@ -109,15 +112,6 @@ begin
     Result := mItems.ToJSON;
   finally
     mItems.Free;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AName) is TJSONString then
-  begin
-    Result := AObject.GetValue(AName).Value;
   end;
 end;
 
@@ -155,10 +149,10 @@ begin
     if mItem is TJSONObject then
     begin
       mCycle := Default(TAtlasUseUnitCycle);
-      mCycle.Name := TextOf(TJSONObject(mItem), 'name');
-      mCycle.FileName := TextOf(TJSONObject(mItem), 'file');
-      mCycle.InterfacePath := TextOf(TJSONObject(mItem), 'interfacePath');
-      mCycle.Path := TextOf(TJSONObject(mItem), 'path');
+      mCycle.Name := TJsonRead.Text(TJSONObject(mItem), 'name');
+      mCycle.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
+      mCycle.InterfacePath := TJsonRead.Text(TJSONObject(mItem), 'interfacePath');
+      mCycle.Path := TJsonRead.Text(TJSONObject(mItem), 'path');
       if (mCycle.Name <> '') and (mCycle.Path <> '') then
       begin
         Result := Result + [mCycle];
@@ -186,8 +180,8 @@ begin
     end;
     mRoot := TJSONObject(mValue);
     AInfo.Found := TJSONBool(mRoot.GetValue('found')).AsBoolean;
-    AInfo.UnitName := TextOf(mRoot, 'unit');
-    AInfo.FileName := TextOf(mRoot, 'file');
+    AInfo.UnitName := TJsonRead.Text(mRoot, 'unit');
+    AInfo.FileName := TJsonRead.Text(mRoot, 'file');
     AInfo.InUses := TextsOf(mRoot, 'inUses');
     AInfo.Cycles := CyclesOf(mRoot);
     if mRoot.GetValue('generation') is TJSONNumber then

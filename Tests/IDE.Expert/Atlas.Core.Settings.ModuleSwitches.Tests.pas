@@ -174,8 +174,8 @@ end;
 
 procedure TAtlasModuleSwitchesTests.RealCatalogKnowsAllModules;
 const
-  cModules: array[0..12] of string = ('debug', 'issues', 'analysis', 'tests', 'buildTools', 'buildPipeline',
-    'bookmarks', 'designer', 'ruleChecks', 'search', 'welcome', 'vcs', 'assistants');
+  cModules: array[0..13] of string = ('debug', 'issues', 'analysis', 'tests', 'buildTools', 'buildPipeline',
+    'bookmarks', 'designer', 'ruleChecks', 'search', 'welcome', 'vcs', 'assistants', 'help');
 var
   mCatalog: TAtlasSettingsCatalog;
   mSwitches: TArray<TAtlasModuleSwitch>;
@@ -198,7 +198,8 @@ begin
       if mSwitch.Module = mModule then
       begin
         mFound := True;
-        Assert.IsTrue(Length(mSwitch.Members) > 0, mModule + ' ohne Einstellungen');
+        // Hilfe (#1886) hat nur den Modulschalter selbst.
+        Assert.IsTrue((Length(mSwitch.Members) > 0) or (mModule = 'help'), mModule + ' ohne Einstellungen');
       end;
     end;
     Assert.IsTrue(mFound, mModule);

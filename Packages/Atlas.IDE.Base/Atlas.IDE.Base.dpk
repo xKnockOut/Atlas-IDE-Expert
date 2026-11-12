@@ -31,14 +31,14 @@
 // Atlas-Symbol (#751): Symbole und PNG je Größe, erzeugt mit Resources\Symbol\Quellen\Erzeuge-Res.py.
 {$R 'Resources\Symbol\Atlas.Symbol.res'}
 
-// Design-Time-Package für RAD Studio (ADR 0006): meldet Atlas als
+// Design-Time-Package für RAD Studio: meldet Atlas als
 // Code Insight-Manager für Delphi an und spricht über eine eigene LSP-Sitzung
 // mit dem Server. Win32 für die klassische IDE, Win64 für die 64-Bit-IDE
-// (ADR 0008, #281). LIBSUFFIX AUTO hängt die Package-Version an
+// (#281). LIBSUFFIX AUTO hängt die Package-Version an
 // (Atlas.IDE.Base290.bpl für Delphi 12, …370.bpl für Delphi 13), damit die
 // BPLs beider IDE-Versionen nebeneinander liegen können.
 // Bewusst ohne Atlas.Common/Atlas.Windows: ein einzelnes Package, das die IDE
-// ohne weitere BPLs laden kann (ADR 0012). Gemeinsamen Textcode mit dem Server
+// ohne weitere BPLs laden kann. Gemeinsamen Textcode mit dem Server
 // (Atlas.Text) und den gemeinsamen Windows-Code (Atlas.WinBase) übersetzt das
 // Plugin als Quelltext mit; die Liste unten muss alle Units von Atlas.Text.dpk
 // und Atlas.WinBase.dpk enthalten (Tools\Check-PackageDependencies.ps1).
@@ -124,6 +124,10 @@ contains
   Atlas.Core.Style.Syntax in 'Source\Core\Style\Atlas.Core.Style.Syntax.pas',
   Atlas.Core.Style.Wrap in 'Source\Core\Style\Atlas.Core.Style.Wrap.pas',
   Atlas.Core.Style.Scaling in 'Source\Core\Style\Atlas.Core.Style.Scaling.pas',
+  Atlas.Core.Style.Listeners in 'Source\Core\Style\Atlas.Core.Style.Listeners.pas',
+  Atlas.UI.Foundation.Theme in 'Source\UI\Foundation\Atlas.UI.Foundation.Theme.pas',
+  Atlas.UI.Foundation.Dialog in 'Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas',
+  Atlas.UI.Foundation.ListView in 'Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas',
   Atlas.Core.Style.Symbol in 'Source\Core\Style\Atlas.Core.Style.Symbol.pas',
   Atlas.UI.Style.Symbol in 'Source\UI\Style\Atlas.UI.Style.Symbol.pas',
   Atlas.UI.Style.Canvas in 'Source\UI\Style\Atlas.UI.Style.Canvas.pas',
@@ -138,6 +142,7 @@ contains
   Atlas.IDE.Foundation.GutterColumns in 'Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas',
   Atlas.IDE.Foundation.EditorRefresh in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas',
   Atlas.IDE.Foundation.Files in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas',
+  Atlas.IDE.Foundation.EditorFiles in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas',
   Atlas.IDE.Foundation.Navigation in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas',
   Atlas.IDE.Editor.WorkspaceEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas',
   Atlas.IDE.Projects.Context in 'Source\IDE\Projects\Atlas.IDE.Projects.Context.pas',
@@ -349,6 +354,24 @@ contains
   Atlas.Core.Completion.Favorites in 'Source\Core\Completion\Atlas.Core.Completion.Favorites.pas',
   Atlas.IDE.Completion.Favorites in 'Source\IDE\Completion\Atlas.IDE.Completion.Favorites.pas',
   Atlas.UI.Strings in 'Source\UI\Atlas.UI.Strings.pas',
+  Atlas.UI.CodeInsight.Strings in 'Source\UI\CodeInsight\Atlas.UI.CodeInsight.Strings.pas',
+  Atlas.UI.Commands.Strings in 'Source\UI\Commands\Atlas.UI.Commands.Strings.pas',
+  Atlas.UI.Completion.Strings in 'Source\UI\Completion\Atlas.UI.Completion.Strings.pas',
+  Atlas.UI.Editor.Strings in 'Source\UI\Editor\Atlas.UI.Editor.Strings.pas',
+  Atlas.UI.EditorToolbar.Strings in 'Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Strings.pas',
+  Atlas.UI.Foundation.Strings in 'Source\UI\Foundation\Atlas.UI.Foundation.Strings.pas',
+  Atlas.UI.Generate.Strings in 'Source\UI\Generate\Atlas.UI.Generate.Strings.pas',
+  Atlas.UI.Hover.Strings in 'Source\UI\Hover\Atlas.UI.Hover.Strings.pas',
+  Atlas.UI.Notifications.Strings in 'Source\UI\Notifications\Atlas.UI.Notifications.Strings.pas',
+  Atlas.UI.Outline.Strings in 'Source\UI\Outline\Atlas.UI.Outline.Strings.pas',
+  Atlas.UI.Problems.Strings in 'Source\UI\Problems\Atlas.UI.Problems.Strings.pas',
+  Atlas.UI.Results.Strings in 'Source\UI\Results\Atlas.UI.Results.Strings.pas',
+  Atlas.UI.Settings.Strings in 'Source\UI\Settings\Atlas.UI.Settings.Strings.pas',
+  Atlas.UI.Setup.Strings in 'Source\UI\Setup\Atlas.UI.Setup.Strings.pas',
+  Atlas.UI.Status.Strings in 'Source\UI\Status\Atlas.UI.Status.Strings.pas',
+  Atlas.UI.StatusBar.Strings in 'Source\UI\StatusBar\Atlas.UI.StatusBar.Strings.pas',
+  Atlas.UI.SymbolPath.Strings in 'Source\UI\SymbolPath\Atlas.UI.SymbolPath.Strings.pas',
+  Atlas.UI.Undo.Strings in 'Source\UI\Undo\Atlas.UI.Undo.Strings.pas',
   Atlas.Core.Completion.Providers.XmlDoc in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas',
   Atlas.Core.Completion.Snippets in 'Source\Core\Completion\Atlas.Core.Completion.Snippets.pas',
   Atlas.Core.Completion.ServerPlaceholders in 'Source\Core\Completion\Atlas.Core.Completion.ServerPlaceholders.pas',
@@ -451,6 +474,7 @@ contains
   Atlas.Core.Problems.Findings in 'Source\Core\Problems\Atlas.Core.Problems.Findings.pas',
   Atlas.Core.Problems.ScopeProjects in 'Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas',
   Atlas.Core.Problems.FindingsCache in 'Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas',
+  Atlas.Core.Problems.IdeErrors in 'Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas',
   Atlas.IDE.Editor.Pairs in 'Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas',
   Atlas.IDE.Foundation.StructureSwitch in 'Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas',
   Atlas.Core.Status.Contract in 'Source\Core\Status\Atlas.Core.Status.Contract.pas',
@@ -489,6 +513,7 @@ contains
   Atlas.IDE.Contracts.BuildPipeline in 'Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas',
   Atlas.IDE.Contracts.WelcomeTiles in 'Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas',
   Atlas.IDE.Contracts.LineChanges in 'Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas',
+  Atlas.IDE.Contracts.IssueWork in 'Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas',
   Atlas.IDE.Contracts.MouseHistory in 'Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas',
   Atlas.IDE.Contracts.VersionControl in 'Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas',
   Atlas.Core.Build.Requests in 'Source\Core\Build\Atlas.Core.Build.Requests.pas',
@@ -616,6 +641,7 @@ contains
   Atlas.IDE.Problems.Files in 'Source\IDE\Problems\Atlas.IDE.Problems.Files.pas',
   Atlas.IDE.Problems.Service in 'Source\IDE\Problems\Atlas.IDE.Problems.Service.pas',
   Atlas.IDE.Problems.RuleActions in 'Source\IDE\Problems\Atlas.IDE.Problems.RuleActions.pas',
+  Atlas.IDE.Problems.IdeErrors in 'Source\IDE\Problems\Atlas.IDE.Problems.IdeErrors.pas',
   Atlas.IDE.Problems.Caret in 'Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas',
   Atlas.Core.Problems.Explanation in 'Source\Core\Problems\Atlas.Core.Problems.Explanation.pas',
   Atlas.IDE.Build.MessageView in 'Source\IDE\Build\Atlas.IDE.Build.MessageView.pas',
@@ -677,6 +703,7 @@ contains
   Atlas.UI.Editor.RegionFolds in 'Source\UI\Editor\Atlas.UI.Editor.RegionFolds.pas',
   Atlas.UI.Editor.ChangeSignature in 'Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas',
   Atlas.UI.Editor.ExtractMembers in 'Source\UI\Editor\Atlas.UI.Editor.ExtractMembers.pas',
+  Atlas.UI.Editor.ActionChoices in 'Source\UI\Editor\Atlas.UI.Editor.ActionChoices.pas',
   Atlas.IDE.Foundation.Elements in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas',
   Atlas.IDE.Editor.Hide in 'Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas',
   Atlas.IDE.Editor.HideTeamFile in 'Source\IDE\Editor\Atlas.IDE.Editor.HideTeamFile.pas',

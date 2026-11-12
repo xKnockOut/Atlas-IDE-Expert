@@ -54,6 +54,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -64,6 +65,7 @@ uses
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
   Atlas.IDE.Tracker.IssuesContext,
+  Atlas.IDE.Tracker.IssueWork,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.TestResults,
@@ -93,6 +95,8 @@ var
   GCiAccess: IAtlasCiAccess;
   /// <summary>Kacheln der Willkommensseite und „Issue anlegen“ für Base, solange MyIssues läuft.</summary>
   GTiles: TArray<IAtlasRegistration>;
+  /// <summary>Aktives Issue und Zustand für den Arbeitsstand je Issue (#2052), solange MyIssues läuft.</summary>
+  GIssueWork: TAtlasTrackerIssueWork;
   /// <summary>„Testergebnisse“ (#763) mit eigener Verbindung zur Willkommensseite, solange TestResults läuft.
   /// </summary>
   GTestsWelcome: TAtlasTrackerWelcomeLink;
@@ -322,6 +326,8 @@ begin
   GTiles := [GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerIssuesTile.Create(GIssues) as IAtlasWelcomeTile),
     GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerSprintTile.Create(GIssues) as IAtlasWelcomeTile),
     GScope.Provide(IAtlasIssueCreation, TAtlasIdeIssueCreation.Create as IAtlasIssueCreation)];
+  GIssueWork := TAtlasTrackerIssueWork.Create(GIssues.Context, GIssues.Services);
+  GTiles := GTiles + [GScope.Provide(IAtlasIssueWorkSource, GIssueWork as IAtlasIssueWorkSource)];
 end;
 
 procedure StopMyIssues;
@@ -334,6 +340,12 @@ begin
     GTiles[mIndex].Revoke;
   end;
   GTiles := nil;
+  // Die Registry kann die Quelle noch halten: Danach antwortet sie leer.
+  if GIssueWork <> nil then
+  begin
+    GIssueWork.Detach;
+  end;
+  GIssueWork := nil;
   // Vor „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   if GIssues <> nil then
@@ -585,7 +597,7 @@ begin
   mCreate.Key := CreateIssueKey;
   Result := [
     // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
-    Command('Atlas.TrackerLogin', TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand),
+    Command('Atlas.TrackerLogin', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginCommand),
       EnterCredentials, TrackerLoginVisible),
     mCreate,
     // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
@@ -603,7 +615,7 @@ begin
     Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
       AttachVisible),
     // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit ci.login und der Kachel.
-    Command('Atlas.CiLogin', TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible)];
+    Command('Atlas.CiLogin', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible)];
 end;
 
 class procedure TAtlasTrackerParts.ApplySettings;

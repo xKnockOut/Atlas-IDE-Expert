@@ -37,8 +37,6 @@ type
 function ComparePositions(const A, B: TTextPosition): Integer;
 /// <summary>Name ohne führendes &amp;.</summary>
 function CleanName(const AText: string): string;
-/// <summary>Kommentar oder Direktive.</summary>
-function IsTrivia(const AToken: TPascalToken): Boolean;
 /// <summary>Index des Tokens vor AIndex ohne Kommentare und Direktiven; -1 am Anfang.</summary>
 function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Index der öffnenden Klammer zu ")" an AIndex; -1, wenn sie fehlt.</summary>
@@ -56,7 +54,8 @@ uses
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Lsp.CompletionAttributes,
-  Atlas.Common.Lsp.CompletionExceptions;
+  Atlas.Common.Lsp.CompletionExceptions,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   // Schlüsselwörter je Stelle (#31).
@@ -94,11 +93,6 @@ begin
   begin
     Result := AText;
   end;
-end;
-
-function IsTrivia(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
 function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;

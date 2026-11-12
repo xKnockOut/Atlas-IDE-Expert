@@ -97,6 +97,13 @@ begin
   Result.Filled := AFilled;
 end;
 
+/// <summary>Kreisumriss (nicht gefüllt); nur Zahlen als Argumente, damit die Glyphen reine Punktdaten bleiben.
+/// </summary>
+function Ring(ACX, ACY, AR: Single): TAtlasGlyphShape;
+begin
+  Result := Circle(ACX, ACY, AR, False);
+end;
+
 /// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
 /// 8Z"): vier kubische Bögen, je acht Strecken.</summary>
 function EyeOutline: TAtlasGlyphShape;
@@ -286,13 +293,12 @@ begin
       // Namensschild.
       Result := [Outline([P(1.5, 4), P(10, 4), P(14.5, 8), P(10, 12), P(1.5, 12)]),
         Shape([P(9, 7), P(11, 7), P(11, 9), P(9, 9)], True, True)];
-    TAtlasToolbarIcon.NonVisualTray:
-      // Formular mit einer Ablage unten, darin drei Symbole.
-      Result := [Stroke([P(1.5, 7.5), P(1.5, 1.5), P(14.5, 1.5), P(14.5, 7.5)]),
-        Outline([P(1.5, 9.5), P(14.5, 9.5), P(14.5, 14.5), P(1.5, 14.5)]),
-        Shape([P(3.5, 11), P(5.5, 11), P(5.5, 13), P(3.5, 13)], True, True),
-        Shape([P(7, 11), P(9, 11), P(9, 13), P(7, 13)], True, True),
-        Shape([P(10.5, 11), P(12.5, 11), P(12.5, 13), P(10.5, 13)], True, True)];
+    TAtlasToolbarIcon.Structure:
+      // Baum: Wurzel oben links, zwei Zweige mit je einem Eintrag.
+      Result := [Shape([P(1.5, 1.5), P(5, 1.5), P(5, 4.5), P(1.5, 4.5)], True, True),
+        Stroke([P(3.25, 4.5), P(3.25, 12.5), P(7, 12.5)]), Stroke([P(3.25, 8), P(7, 8)]),
+        Outline([P(7, 6.5), P(14.5, 6.5), P(14.5, 9.5), P(7, 9.5)]),
+        Outline([P(7, 11), P(14.5, 11), P(14.5, 14), P(7, 14)])];
     TAtlasToolbarIcon.DataBindings:
       // Drei verbundene Knoten: Steuerelement, DataSource, DataSet.
       Result := [Outline([P(1.5, 1.5), P(6, 1.5), P(6, 6), P(1.5, 6)]),
@@ -366,12 +372,17 @@ begin
         Outline([P(9, 8.5), P(14.5, 8.5), P(14.5, 14.5), P(9, 14.5)])];
     TAtlasToolbarIcon.Magnifier:
       // Lupe: Glas mit Pixelkreuz, Griff nach rechts unten.
-      Result := [Circle(6.5, 6.5, 4.5, False), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
+      Result := [Ring(6.5, 6.5, 4.5), Stroke([P(6.5, 4.5), P(6.5, 8.5)]), Stroke([P(4.5, 6.5), P(8.5, 6.5)]),
         Stroke([P(9.75, 9.75), P(14, 14)])];
     TAtlasToolbarIcon.PropertySearch:
       // Gleichheitszeichen (Eigenschaft = Wert) mit Lupe.
-      Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Circle(10.5, 10, 2.5, False),
+      Result := [Stroke([P(2, 4.5), P(8, 4.5)]), Stroke([P(2, 7.5), P(8, 7.5)]), Ring(10.5, 10, 2.5),
         Stroke([P(12.3, 11.8), P(14.5, 14)])];
+    TAtlasToolbarIcon.Usages:
+      // Kästchen (Komponente), Pfeil nach rechts auf drei Codezeilen.
+      Result := [Outline([P(1.5, 5.5), P(5.5, 5.5), P(5.5, 10.5), P(1.5, 10.5)]), Stroke([P(6.5, 8), P(8.5, 8)]),
+        Stroke([P(7.5, 7), P(8.5, 8), P(7.5, 9)]), Stroke([P(10, 4), P(14.5, 4)]), Stroke([P(10, 8), P(14.5, 8)]),
+        Stroke([P(10, 12), P(14.5, 12)])];
   else
     Result := ToolButtonShapes(AIcon);
   end;

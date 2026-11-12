@@ -58,7 +58,7 @@ type
     class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
     class procedure Silent(ARule: IRule; const ASource: string); static;
-    /// <summary>Treffer aller ARules in einem Lauf der Engine (gemeinsamer Ableitungscache, Review P-03).</summary>
+    /// <summary>Treffer aller ARules in einem Lauf der Engine (gemeinsamer Ableitungscache).</summary>
     class function FindingsOfAll(const ARules: TArray<IRule>; const ASource, AConfigJson: string):
       TArray<TRuleFinding>; static;
     /// <summary>

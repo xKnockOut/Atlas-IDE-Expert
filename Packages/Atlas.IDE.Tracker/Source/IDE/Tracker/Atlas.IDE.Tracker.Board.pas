@@ -129,7 +129,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.MoveDialog,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -412,17 +412,17 @@ function TAtlasIdeBoard.ErrorText(AError: TAtlasCiFetchError): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoBoard);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoTracker);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   end;
 end;
 

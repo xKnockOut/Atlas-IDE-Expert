@@ -20,7 +20,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -43,7 +44,7 @@ type
   TAtlasImageMarkup = record
   public const
     cLineWidth = 3;
-    cMarkColor = clRed;
+    cMarkColor = clRed; // window-ok: Markierung im Bildschirmfoto, keine Textfarbe
     /// <summary>Länge der Pfeilspitze in Pixeln.</summary>
     cHeadLength = 16;
     cMinSize = 3;
@@ -54,7 +55,7 @@ type
     class procedure Apply(ABitmap: TBitmap; const AShapes: TAtlasMarkupShapes); static;
   end;
 
-  TAtlasImageMarkupForm = class(TForm)
+  TAtlasImageMarkupForm = class(TAtlasDialog)
   private
     FBitmap: TBitmap;
     FShapes: TAtlasMarkupShapes;
@@ -188,16 +189,15 @@ end;
 
 constructor TAtlasImageMarkupForm.CreateFor(AOwner: TComponent; ABitmap: TBitmap);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', 0);
   FBitmap := TBitmap.Create;
   FBitmap.Assign(ABitmap);
   FTool := TAtlasMarkupTool.Rectangle;
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupCaption);
   BorderStyle := bsSizeable;
-  Position := poMainFormCenter;
   KeyPreview := True;
-  Width := 1000;
-  Height := 720;
+  Width := ScaleValue(1000);
+  Height := ScaleValue(720);
 
   AddToolBar;
   AddBottomButtons;
@@ -228,7 +228,7 @@ begin
   mTop := TPanel.Create(Self);
   mTop.Parent := Self;
   mTop.Align := alTop;
-  mTop.Height := 40;
+  mTop.Height := mTop.ScaleValue(40);
   mTop.BevelOuter := bvNone;
   mLeft := cGap;
   for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
@@ -257,7 +257,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := 44;
+  mBottom.Height := mBottom.ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;

@@ -19,6 +19,9 @@ type
     class procedure Apply(const AAction: TLspCodeAction); static;
     /// <summary>Vorschau der Änderungen mit AAction.Preview als Hinweis; True, wenn übernommen werden soll.</summary>
     class function ConfirmPreview(const AAction: TLspCodeAction): Boolean; static;
+    /// <summary>Abwählbare Teile (#2054) im Dialog wählen und abgewählte Edits entfernen; False bei Abbrechen.
+    /// </summary>
+    class function ChooseParts(var AAction: TLspCodeAction): Boolean; static;
     class procedure RunCommand(const ACommand, AArgumentsJson: string); static;
     /// <summary>Code-Aktionen des Servers für ARange; False mit Meldung bei einem Fehler.</summary>
     class function FetchActions(const AFileName: string; const ARange: TLspRange;
@@ -52,28 +55,31 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
+  Atlas.UI.Editor.ActionChoices,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Commands.ClientCommands;
+  Atlas.IDE.Commands.ClientCommands,
+  Atlas.IDE.Foundation.Host;
 
 function KindCaption(const AKind: string): string;
 begin
   if AKind.StartsWith('quickfix') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindFix);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorKindFix);
   end
   else if AKind.StartsWith('refactor') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindRefactor);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorKindRefactor);
   end
   else if AKind.StartsWith('source') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindSource);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorKindSource);
   end
   else
   begin
@@ -132,30 +138,13 @@ begin
     mCommand.Path := KindCaption(AUsable[mIndex].Kind);
     if AUsable[mIndex].Disabled <> '' then
     begin
-      mCommand.Path := TAtlasStrings.Text(TAtlasTextId.EditorActionNote);
+      mCommand.Path := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorActionNote);
     end;
     if AUsable[mIndex].Preferred then
     begin
       mCommand.ShortCut := '★';
     end;
     Result := Result + [mCommand];
-  end;
-end;
-
-/// <summary>Fläche, über der das Fenster erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
-function PaletteArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
   end;
 end;
 
@@ -203,7 +192,7 @@ begin
           end);
       end;
     end;
-  mWindow.ShowOver(PaletteArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 class procedure TAtlasEditorActionCommands.CodeActions;
@@ -221,7 +210,7 @@ begin
   mUsable := OrderedActions(mFound);
   if Length(mUsable) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.EditorNoActions));
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorNoActions));
     Exit;
   end;
   ShowActions(mUsable);
@@ -263,7 +252,30 @@ begin
       Exit;
     end;
   end;
-  Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
+  Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.UsesActionMissing));
+end;
+
+class function TAtlasEditorActionCommands.ChooseParts(var AAction: TLspCodeAction): Boolean;
+var
+  mTitles: TArray<string>;
+  mChoice: TLspCodeActionChoice;
+  mChosen: TArray<Boolean>;
+begin
+  Result := True;
+  if AAction.Choices = nil then
+  begin
+    Exit;
+  end;
+  mTitles := nil;
+  for mChoice in AAction.Choices do
+  begin
+    mTitles := mTitles + [mChoice.Title];
+  end;
+  Result := TAtlasActionChoicesDialog.Choose(AAction.Title, AAction.Preview, mTitles, mChosen);
+  if Result then
+  begin
+    AAction := AAction.WithChoices(mChosen);
+  end;
 end;
 
 class function TAtlasEditorActionCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
@@ -287,22 +299,29 @@ end;
 class procedure TAtlasEditorActionCommands.Apply(const AAction: TLspCodeAction);
 var
   mOutcome: TAtlasWorkspaceEditResult;
+  mAction: TLspCodeAction;
 begin
-  if AAction.Disabled <> '' then
+  mAction := AAction;
+  if mAction.Disabled <> '' then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
+    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorActionDisabled, [mAction.Title, mAction.Disabled]));
+    Exit;
+  end;
+  // Abwählbare Teile (#2054): erst wählen, dann die gewohnte Vorschau der übrigen Änderungen.
+  if not ChooseParts(mAction) then
+  begin
     Exit;
   end;
   // LSP: erst die Änderung, dann der Befehl.
-  if not AAction.Edit.IsEmpty then
+  if not mAction.Edit.IsEmpty then
   begin
-    if (AAction.Preview <> '') and not ConfirmPreview(AAction) then
+    if (mAction.Preview <> '') and not ConfirmPreview(mAction) then
     begin
       Exit;
     end;
-    mOutcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mAction.Edit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-      AAction.Title);
+      mAction.Title);
     if mOutcome.Error <> '' then
     begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
@@ -313,13 +332,13 @@ begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
     end;
   end;
-  if AAction.Edit.Unsupported > 0 then
+  if mAction.Edit.Unsupported > 0 then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [AAction.Edit.Unsupported]));
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [mAction.Edit.Unsupported]));
   end;
-  if AAction.Command <> '' then
+  if mAction.Command <> '' then
   begin
-    RunCommand(AAction.Command, AAction.ArgumentsJson);
+    RunCommand(mAction.Command, mAction.ArgumentsJson);
   end;
 end;
 

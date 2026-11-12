@@ -27,6 +27,13 @@ type
     Confidence: TAtlasConfidence;
   end;
 
+  /// <summary>Abwählbarer Teil einer Code-Aktion aus data.choices (#2054).</summary>
+  TLspCodeActionChoice = record
+    Title: string;
+    /// <summary>0-basiert.</summary>
+    Line: Integer;
+  end;
+
   /// <summary>Code-Aktion oder Befehl aus textDocument/codeAction (#399).</summary>
   TLspCodeAction = record
     Title: string;
@@ -46,8 +53,15 @@ type
     Preview: string;
     /// <summary>Regel des behobenen Treffers aus diagnostics[0].code (#909); '' ohne.</summary>
     Rule: string;
+    /// <summary>Abwählbare Teile aus data.choices (#2054); nil ohne.</summary>
+    Choices: TArray<TLspCodeActionChoice>;
+    /// <summary>Je Edit der einen Datei die Teile, die alle gewählt sein müssen (data.editChoices).</summary>
+    EditChoices: TArray<TArray<Integer>>;
     /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
     class function FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean; static;
+    /// <summary>Die Aktion nur mit den Edits, deren Teile alle in AChosen gewählt sind (#2054). Ohne Teile oder
+    /// bei mehr als einer Datei unverändert.</summary>
+    function WithChoices(const AChosen: TArray<Boolean>): TLspCodeAction;
   end;
 
   /// <summary>Teile eines Hovers für den Atlas-Tooltip (#442).</summary>
@@ -179,6 +193,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Lsp.Uris;
 
 class function TLspSessionJson.PathToUri(const APath: string): string;
@@ -760,20 +775,6 @@ begin
   end;
 end;
 
-function ContainsText_(const AValues: TArray<string>; const AValue: string): Boolean;
-var
-  mValue: string;
-begin
-  for mValue in AValues do
-  begin
-    if SameText(mValue, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class procedure TLspSessionJson.ProjectChanges(const AOld, ANew: TArray<string>; out AAdded, ARemoved: TArray<string>);
 var
   mProject: string;
@@ -782,14 +783,14 @@ begin
   ARemoved := nil;
   for mProject in ANew do
   begin
-    if not ContainsText_(AOld, mProject) and not ContainsText_(AAdded, mProject) then
+    if not MatchText(mProject, AOld) and not MatchText(mProject, AAdded) then
     begin
       AAdded := AAdded + [mProject];
     end;
   end;
   for mProject in AOld do
   begin
-    if not ContainsText_(ANew, mProject) and not ContainsText_(ARemoved, mProject) then
+    if not MatchText(mProject, ANew) and not MatchText(mProject, ARemoved) then
     begin
       ARemoved := ARemoved + [mProject];
     end;
@@ -797,6 +798,90 @@ begin
 end;
 
 { TLspCodeAction }
+
+/// <summary>Ganzzahl aus AValue; -1, wenn es keine Zahl ist.</summary>
+function NumberOf(AValue: TJSONValue): Integer;
+begin
+  Result := -1;
+  if AValue is TJSONNumber then
+  begin
+    Result := TJSONNumber(AValue).AsInt;
+  end;
+end;
+
+/// <summary>data.choices und data.editChoices (#2054).</summary>
+procedure ReadChoices(AItem: TJSONObject; var AAction: TLspCodeAction);
+var
+  mChoices, mEditChoices: TJSONArray;
+  mIndex, mInner: Integer;
+  mChoice: TLspCodeActionChoice;
+  mValue: TJSONValue;
+  mNeeded: TArray<Integer>;
+begin
+  if not AItem.TryGetValue<TJSONArray>('data.choices', mChoices) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mChoices.Count - 1 do
+  begin
+    mChoice.Title := mChoices.Items[mIndex].GetValue<string>('title', '');
+    mChoice.Line := mChoices.Items[mIndex].GetValue<Integer>('range.start.line', 0);
+    AAction.Choices := AAction.Choices + [mChoice];
+  end;
+  if not AItem.TryGetValue<TJSONArray>('data.editChoices', mEditChoices) then
+  begin
+    Exit;
+  end;
+  SetLength(AAction.EditChoices, mEditChoices.Count);
+  for mIndex := 0 to mEditChoices.Count - 1 do
+  begin
+    mNeeded := nil;
+    mValue := mEditChoices.Items[mIndex];
+    if mValue is TJSONArray then
+    begin
+      for mInner := 0 to TJSONArray(mValue).Count - 1 do
+      begin
+        mNeeded := mNeeded + [NumberOf(TJSONArray(mValue).Items[mInner])];
+      end;
+    end;
+    AAction.EditChoices[mIndex] := mNeeded;
+  end;
+end;
+
+/// <summary>Sind alle Teile in ANeeded in AChosen gewählt?</summary>
+function AllChosen(const ANeeded: TArray<Integer>; const AChosen: TArray<Boolean>): Boolean;
+var
+  mChoice: Integer;
+begin
+  Result := True;
+  for mChoice in ANeeded do
+  begin
+    Result := Result and (mChoice >= 0) and (mChoice <= High(AChosen)) and AChosen[mChoice];
+  end;
+end;
+
+function TLspCodeAction.WithChoices(const AChosen: TArray<Boolean>): TLspCodeAction;
+var
+  mIndex: Integer;
+  mKept: TArray<TLspTextEdit>;
+begin
+  Result := Self;
+  if (Choices = nil) or (Length(Edit.Files) <> 1) then
+  begin
+    Exit;
+  end;
+  mKept := nil;
+  for mIndex := 0 to High(Edit.Files[0].Edits) do
+  begin
+    if (mIndex > High(EditChoices)) or AllChosen(EditChoices[mIndex], AChosen) then
+    begin
+      mKept := mKept + [Edit.Files[0].Edits[mIndex]];
+    end;
+  end;
+  // Eigene Kopie des Arrays: Result teilt sonst die Dateiliste mit Self.
+  Result.Edit.Files := Copy(Edit.Files);
+  Result.Edit.Files[0].Edits := mKept;
+end;
 
 class function TLspCodeAction.FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean;
 var
@@ -844,6 +929,7 @@ begin
   AAction.Edit := TLspWorkspaceEdit.FromJson(mItem.GetValue('edit'));
   AAction.Tag := mItem.GetValue<string>('data.tag', '');
   AAction.Preview := mItem.GetValue<string>('data.preview', '');
+  ReadChoices(mItem, AAction);
   if mItem.TryGetValue<TJSONArray>('diagnostics', mArguments) and (mArguments.Count > 0) and
     (mArguments.Items[0] is TJSONObject) then
   begin

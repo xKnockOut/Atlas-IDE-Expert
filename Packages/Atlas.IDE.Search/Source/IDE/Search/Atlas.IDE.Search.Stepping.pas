@@ -2,9 +2,13 @@
 
 // Atlas-Suche im Editor (#877, #878, #893, #1242):
 // - Sync übernimmt die Suche der Leiste: Treffer hervorheben, auf Wunsch zum nächsten ab dem Ursprung springen,
-//   bei Bereichen über Dateien die Suche im Hintergrund planen. Ungültiger Regex färbt das Feld rot.
+//   bei Bereichen über Dateien die Suche im Hintergrund planen. Ungültiger Regex färbt das Feld rot. Findet der
+//   Suchtext beim Tippen nichts, geht der Cursor ohne Markierung zurück an den Ursprung; die Markierung eines
+//   kürzeren Suchtexts bliebe sonst stehen und sähe aus wie ein Treffer.
 // - TryNext (F3/Umschalt+F3) springt mit Umlauf, über Dateien mit den Ergebnissen im Hintergrund. Ist ein anderer
-//   Text einzeilig markiert als zuletzt gesucht, sucht F3 nach der Markierung.
+//   Text einzeilig markiert als zuletzt gesucht, sucht F3 im Editor nach der Markierung. Aus der Leiste (Enter,
+//   F3, Pfeile, Ersetzen) gilt immer der Text der Leiste: Die Markierung stammt dort meist vom Springen beim
+//   Tippen, etwa „acMem“ beim Tippen von „acmemmo“, und Enter suchte sonst nach ihr statt nach dem Feld.
 // - List (Enter bzw. „In Meldungen“) listet alle Treffer im Reiter „Atlas-Suche“; dieselbe Suche wird nicht
 //   erneut aufgebaut.
 // Nur im Hauptthread.
@@ -16,8 +20,10 @@ type
   public
     /// <summary>Suche der Leiste übernehmen; AJump: zum nächsten Treffer ab dem Ursprung springen.</summary>
     class procedure Sync(AJump: Boolean); static;
-    /// <summary>F3/Umschalt+F3: False ohne letzte Atlas-Suche oder ohne Editor.</summary>
-    class function TryNext(ABackward: Boolean): Boolean; static;
+    /// <summary>F3/Umschalt+F3: False ohne letzte Atlas-Suche oder ohne Editor. AFollowMarked: Ein anderer
+    /// einzeilig markierter Text wird der Suchtext (F3 im Editor); aus der Leiste False, dort gilt ihr Text.
+    /// </summary>
+    class function TryNext(ABackward, AFollowMarked: Boolean): Boolean; static;
     /// <summary>Alle Treffer der Leiste in den Reiter „Atlas-Suche“.</summary>
     class procedure List; static;
   end;
@@ -90,30 +96,30 @@ begin
   end;
 end;
 
-/// <summary>Erster Treffer oder nächster ab der Stelle beim Öffnen (#1242, search.fromFirstHit).</summary>
+/// <summary>Erster Treffer oder nächster ab der Stelle beim Öffnen (#1242, search.fromFirstHit); ohne Treffer
+/// zurück an die Stelle beim Öffnen, ohne Markierung.</summary>
 procedure JumpFromOrigin(const AView: IOTAEditView; const ALines: TArray<string>);
 var
   mHits: TArray<TAtlasSearchHit>;
   mIndex: Integer;
-  mWrapped: Boolean;
 begin
   mHits := TAtlasTextSearch.FindAll(ALines, TAtlasIdeSearchSession.Last.Text, TAtlasIdeSearchSession.Last.Options,
     TAtlasIdeSearchSession.Last.Area);
-  if Length(mHits) = 0 then
+  mIndex := TAtlasSearchResults.TypingTarget(mHits, TAtlasIdeSearchSession.Origin,
+    TAtlasIdeSettings.Current.SearchFromFirstHit);
+  if mIndex < 0 then
   begin
+    TAtlasIdeSearchEditor.PlaceCursor(AView, ALines, TAtlasIdeSearchSession.Origin);
     Exit;
-  end;
-  mIndex := 0;
-  if not TAtlasIdeSettings.Current.SearchFromFirstHit then
-  begin
-    mIndex := TAtlasTextSearch.Next(mHits, TAtlasIdeSearchSession.Origin, False, mWrapped);
   end;
   TAtlasIdeSearchEditor.SelectHit(AView, ALines, mHits[mIndex]);
 end;
 
-/// <summary>Anderer Text einzeilig markiert als zuletzt gesucht: nach der Markierung suchen. Liefert die Stelle,
-/// ab der F3 springt: vorwärts ab dem Ende der Markierung (dem Cursor), rückwärts ab ihrem Anfang.</summary>
-function FollowMarked(const AView: IOTAEditView; const ALines: TArray<string>; ABackward: Boolean): TAtlasSearchPos;
+/// <summary>Mit AFollow: anderer Text einzeilig markiert als zuletzt gesucht, nach der Markierung suchen. Liefert
+/// die Stelle, ab der F3 springt: vorwärts ab dem Ende der Markierung (dem Cursor), rückwärts ab ihrem Anfang.
+/// </summary>
+function FollowMarked(const AView: IOTAEditView; const ALines: TArray<string>;
+  ABackward, AFollow: Boolean): TAtlasSearchPos;
 var
   mSelection: TAtlasSearchArea;
   mHasSelection, mChanged: Boolean;
@@ -122,7 +128,7 @@ begin
   Result := TAtlasIdeSearchEditor.CursorOf(AView, ALines);
   mHasSelection := TAtlasIdeSearchEditor.SelectionOf(AView, ALines, mSelection);
   mMarked := TAtlasIdeSearchEditor.LineSelection(ALines, mSelection, mHasSelection);
-  if mMarked <> '' then
+  if AFollow and (mMarked <> '') then
   begin
     TAtlasIdeSearchSession.Last := TAtlasSearchResults.FollowSelection(TAtlasIdeSearchSession.Last, mMarked,
       mChanged);
@@ -294,7 +300,7 @@ begin
   TAtlasIdeSearchCounter.Update;
 end;
 
-class function TAtlasIdeSearchSteps.TryNext(ABackward: Boolean): Boolean;
+class function TAtlasIdeSearchSteps.TryNext(ABackward, AFollowMarked: Boolean): Boolean;
 var
   mView: IOTAEditView;
   mText: string;
@@ -321,7 +327,7 @@ begin
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
   mLines := TTextLines.SplitLines(mText);
-  mFrom := FollowMarked(mView, mLines, ABackward);
+  mFrom := FollowMarked(mView, mLines, ABackward, AFollowMarked);
   Result := True;
   if StepArea(mText, mLines, mFrom, mArea) then
   begin

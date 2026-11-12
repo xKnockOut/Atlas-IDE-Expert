@@ -100,6 +100,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Shell.Platform;
 
@@ -107,6 +108,8 @@ destructor TShellParts.Destroy;
 var
   mUnfinished: Boolean;
 begin
+  // Vor allem anderen: Der Takt der Statusdatei fragt sonst Teile ab, die gleich freigegeben werden (#1901).
+  TServerActivity.Shared.SetDetails(nil);
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   if IdeArea <> nil then
@@ -122,7 +125,7 @@ begin
   begin
     Session.StopWatchingParent;
   end;
-  // Code-Review A-06: Liefen beim Ende noch Handler, die ihr Abbruchsignal nicht prüfen, nutzen sie
+  // Liefen beim Ende noch Handler, die ihr Abbruchsignal nicht prüfen, nutzen sie
   // Features und Ordner weiter.
   mUnfinished := (Connection <> nil) and Connection.UnfinishedWork;
   FreeAndNil(Connection);
@@ -130,7 +133,7 @@ begin
   begin
     Protocol.Dispatcher.Watchdog := nil;
   end;
-  // Compiler und Index-Threads anhalten, solange Diagnoselog und Syntaxprüfung noch leben (Code-Review A-05):
+  // Compiler und Index-Threads anhalten, solange Diagnoselog und Syntaxprüfung noch leben:
   // Ein abgebrochener Aufbau meldet sich über OnIndexEvent im Diagnoselog, ein Compilerlauf über die
   // Syntaxprüfung.
   if Compile <> nil then

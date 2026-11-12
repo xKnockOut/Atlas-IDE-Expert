@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Willkommensseite (#1456, ADR 0017): Fenster „Atlas-Start“ und Bereiche auf der Willkommensseite
+// Modul Willkommensseite (#1456): Fenster „Atlas-Start“ und Bereiche auf der Willkommensseite
 // der IDE, Weiterarbeiten, Projekte, Projektverlauf, Schnellaktionen, Atlas entdecken, Hilfe, Einrichten
 // und ihr Abschnitt im Optionsdialog. Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Welcome.Composition über die Registry des Kern-Packages Atlas.IDE.Base an und lässt sich
@@ -61,6 +61,7 @@ contains
   Atlas.Core.Welcome.Trends in 'Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas',
   Atlas.Core.Welcome.Unsaved in 'Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas',
   Atlas.Core.Welcome.Continue in 'Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas',
+  Atlas.Core.Welcome.ContinueIssues in 'Source\Core\Welcome\Atlas.Core.Welcome.ContinueIssues.pas',
   Atlas.Core.Welcome.QuickActions in 'Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas',
   Atlas.Core.Welcome.Saved in 'Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas',
   Atlas.Core.Welcome.State in 'Source\Core\Welcome\Atlas.Core.Welcome.State.pas',
@@ -77,6 +78,7 @@ contains
   Atlas.UI.Welcome.Trends in 'Source\UI\Welcome\Atlas.UI.Welcome.Trends.pas',
   Atlas.UI.Welcome.Unsaved in 'Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas',
   Atlas.UI.Welcome.Continue in 'Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas',
+  Atlas.UI.Welcome.ContinueIssues in 'Source\UI\Welcome\Atlas.UI.Welcome.ContinueIssues.pas',
   Atlas.UI.Welcome.QuickActions in 'Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas',
   Atlas.UI.Welcome.SettingsLayouts in 'Source\UI\Welcome\Atlas.UI.Welcome.SettingsLayouts.pas',
   Atlas.UI.Welcome.SettingsSection in 'Source\UI\Welcome\Atlas.UI.Welcome.SettingsSection.pas',
@@ -97,6 +99,8 @@ contains
   Atlas.IDE.Welcome.Continue in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas',
   Atlas.IDE.Welcome.Continue.Editor in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Editor.pas',
   Atlas.IDE.Welcome.Continue.Saved in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Saved.pas',
+  Atlas.IDE.Welcome.ContinueIssues in 'Source\IDE\Welcome\Atlas.IDE.Welcome.ContinueIssues.pas',
+  Atlas.IDE.Welcome.IssueWork in 'Source\IDE\Welcome\Atlas.IDE.Welcome.IssueWork.pas',
   Atlas.IDE.Welcome.QuickActions in 'Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.pas',
   Atlas.IDE.Welcome.State in 'Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas',
   Atlas.IDE.Welcome.Discover in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas',

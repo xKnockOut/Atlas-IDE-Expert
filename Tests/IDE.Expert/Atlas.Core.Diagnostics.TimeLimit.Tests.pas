@@ -109,7 +109,7 @@ type
       const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   end;
 
-  /// <summary>Wie eine Zeitüberschreitung in Composite: Cancel kommt, während Prepare noch läuft (A-13).</summary>
+  /// <summary>Wie eine Zeitüberschreitung in Composite: Cancel kommt, während Prepare noch läuft.</summary>
   TCancelInPrepareProvider = class(TAtlasAsyncCompletionProvider)
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
@@ -119,7 +119,7 @@ type
     Fetches: Integer;
   end;
 
-  /// <summary>Merkt sich, in welchem Thread Prepare läuft (A-01, K-03).</summary>
+  /// <summary>Merkt sich, in welchem Thread Prepare läuft.</summary>
   TThreadRecordingProvider = class(TAtlasAsyncCompletionProvider)
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
@@ -350,7 +350,7 @@ begin
 end;
 
 /// <summary>Löst nach 50 ms das Signal zum Beenden aus. Der Test wartet am Ende auf den Thread, statt dass er
-/// sich irgendwann selbst freigibt (Bericht N2).</summary>
+/// sich irgendwann selbst freigibt.</summary>
 function SignalShutdownSoon: TThread;
 begin
   Result := TThread.CreateAnonymousThread(
@@ -619,7 +619,7 @@ begin
   Provider.Query(Context, SinkRef);
   Assert.IsTrue(Sink.WaitDone(1000), 'die Senke schließt trotzdem ab');
   Stale.Shutdown;
-  Assert.AreEqual(0, Stale.Fetches, 'eine nach Prepare überholte Anfrage fragt nicht mehr an (A-13)');
+  Assert.AreEqual(0, Stale.Fetches, 'eine nach Prepare überholte Anfrage fragt nicht mehr an');
 end;
 
 procedure TAtlasTimeLimitTests.PrepareRunsInWorkerThread;
@@ -640,7 +640,7 @@ begin
   Assert.IsTrue(Sink.WaitDone(3000));
   Assert.IsTrue(Recording.PrepareThread <> 0, 'Prepare lief');
   Assert.IsTrue(Recording.PrepareThread <> MainThreadID,
-    'Prepare läuft im Zeitlimit-Arbeiter: weder VCL noch Open Tools API, kein Serverstart (A-01, K-03)');
+    'Prepare läuft im Zeitlimit-Arbeiter: weder VCL noch Open Tools API, kein Serverstart');
 end;
 
 procedure TAtlasTimeLimitTests.ServerSessionFuncRunsInWorker;
@@ -666,7 +666,7 @@ begin
   Assert.IsTrue(Sink.WaitDone(3000));
   Assert.IsTrue(SessionThread <> 0, 'Sitzungsfunktion gerufen');
   Assert.IsTrue(SessionThread <> MainThreadID,
-    'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten (A-01)');
+    'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten');
 end;
 
 procedure TAtlasTimeLimitTests.SignatureSyncsInCallingThread;

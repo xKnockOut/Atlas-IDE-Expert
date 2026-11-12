@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Contract;
 
-// Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden (A-09): Probleme
+// Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden: Probleme
 // (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
 // Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120) und Bezeichner für
 // Werte beim Debuggen (#508).
@@ -33,6 +33,8 @@ type
     cCompilerSource = 'dcc';
     /// <summary>Herkunft eines vom Build bestätigten Atlas-Befunds (#1024).</summary>
     cConfirmedSource = 'Atlas + dcc';
+    /// <summary>Herkunft eines Fehlers aus Error Insight der IDE (#1819).</summary>
+    cIdeSource = 'IDE';
     /// <summary>Regel der Syntaxfehler des Servers (#1022); lässt sich nicht per Kommentar unterdrücken.</summary>
     cSyntaxCode = 'syntax';
     /// <summary>Sprachmerkmal einer neueren Delphi-Version (#1126); ebenfalls ohne Unterdrückung per Kommentar.
@@ -92,9 +94,14 @@ type
     /// Setzt der Problemspeicher; ConfirmedCode ist der Code des Compilers.</summary>
     Confirmed: Boolean;
     ConfirmedCode: string;
+    /// <summary>Error Insight der IDE meldet an derselben Stelle einen Fehler derselben Art (#1819): Quelle
+    /// „Atlas + IDE“. Setzt der Problemspeicher.</summary>
+    IdeConfirmed: Boolean;
     /// <summary>Weitere Stellen aus relatedInformation (#896); im Befund-Hover anklickbar. nil ohne.</summary>
     Related: TArray<TAtlasProblemRelated>;
     function IsCompiler: Boolean;
+    /// <summary>Fehler aus Error Insight der IDE (#1819), nicht von Atlas.</summary>
+    function IsIde: Boolean;
     /// <summary>Text der Spalte „Compiler“ (#1024): bestätigter Code, Code einer Compilermeldung bzw. die Codes
     /// der Regel ("E2034, E2035"); '' ohne.</summary>
     function CompilerCodeText: string;
@@ -373,6 +380,11 @@ end;
 function TAtlasProblem.IsCompiler: Boolean;
 begin
   Result := SameText(Source, cCompilerSource);
+end;
+
+function TAtlasProblem.IsIde: Boolean;
+begin
+  Result := SameText(Source, cIdeSource);
 end;
 
 class function TAtlasProblem.WithoutCompilerCode(const AMessage: string): string;

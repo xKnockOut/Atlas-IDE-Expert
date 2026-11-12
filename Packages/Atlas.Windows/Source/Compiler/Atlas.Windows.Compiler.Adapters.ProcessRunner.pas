@@ -4,7 +4,7 @@
 // (#40). Der Server spricht über die eigenen Standardkanäle mit dem Editor;
 // der Kindprozess bekommt deshalb keine Eingabe und schreibt nur in die Pipe.
 // Die Ausgabe von dcc32/dcc64 ist im ANSI-Zeichensatz des Systems kodiert.
-// Cancel beendet laufende Prozesse per TerminateProcess (Code-Review A-05):
+// Cancel beendet laufende Prozesse per TerminateProcess:
 // Damit schließt sich das Schreibende der Pipe, ReadFile endet, und Run löst
 // ECompilerCancelled aus.
 

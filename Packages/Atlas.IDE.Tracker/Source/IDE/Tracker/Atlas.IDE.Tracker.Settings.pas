@@ -16,6 +16,8 @@
 //   und Zustand, nie Adresse, Abfrage oder Token.
 // - Verbindung und Projekt aus der .atlas des aktiven Projekts (#486, #1261)
 //   über TAtlasIdeTeamFile von Base.
+// - Arbeitskopien einer Zeile „Prüfen“ (#1926) und „Vorschlagen …“ (#1929,
+//   nur mit issues.suggestPaths) über TAtlasIdeTrackerPathSuggestions.
 
 interface
 
@@ -51,7 +53,9 @@ uses
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Workflow,
   Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Tracker.PathSuggestions,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.QueryDialog,
   Atlas.UI.Tracker.SettingsSection,
@@ -123,6 +127,8 @@ type
   public
     /// <summary>Verbindung und Projekt aus der .atlas; ohne Zugang.</summary>
     class procedure WireTeam(ASection: TAtlasTrackerSettingsSection); static;
+    /// <summary>„Prüfen“ und „Vorschlagen …“ der Arbeitskopien; ohne Zugang.</summary>
+    class procedure WirePaths(ASection: TAtlasTrackerSettingsSection); static;
     class procedure WireProviders(ASection: TAtlasTrackerSettingsSection; const AAccess: IAtlasTrackerAccess);
       static;
     /// <summary>Zustand, Token hinterlegen und entfernen.</summary>
@@ -412,7 +418,7 @@ var
   mTeam: TAtlasTeamSettings;
 begin
   ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  AProject := TAtlasIdeTeamFile.ActiveProject;
+  AProject := TAtlasIdeFiles.ActiveProjectFile;
   Result := False;
   if AProject <> '' then
   begin
@@ -532,6 +538,25 @@ begin
     end;
 end;
 
+class procedure TAtlasTrackerSettingsWiring.WirePaths(ASection: TAtlasTrackerSettingsSection);
+begin
+  // Das Feld prüft selbst, ob es noch offen ist.
+  ASection.Hooks.OnCheckPaths :=
+    procedure(const AFolders: TArray<string>; const ADone: TProc<TArray<string>>)
+    begin
+      TAtlasIdeTrackerPathSuggestions.Check(AFolders, ADone);
+    end;
+  if not TAtlasIdeSettings.Current.IssuesSuggestPaths then
+  begin
+    Exit;
+  end;
+  ASection.Hooks.OnSuggestPaths :=
+    function(const AMapping: TAtlasTrackerProjectMapping; out APaths: TArray<string>): Boolean
+    begin
+      Result := TAtlasIdeTrackerPathSuggestions.Suggest(AMapping, APaths);
+    end;
+end;
+
 class procedure TAtlasTrackerSettingsWiring.WireProviders(ASection: TAtlasTrackerSettingsSection;
   const AAccess: IAtlasTrackerAccess);
 var
@@ -627,6 +652,7 @@ begin
   Result := mSection;
   // Verbindung und Projekt aus der .atlas immer, Token und Prüfung nur mit dem Zugang der Kompositionswurzel.
   TAtlasTrackerSettingsWiring.WireTeam(mSection);
+  TAtlasTrackerSettingsWiring.WirePaths(mSection);
   mAccess := Access;
   if mAccess <> nil then
   begin

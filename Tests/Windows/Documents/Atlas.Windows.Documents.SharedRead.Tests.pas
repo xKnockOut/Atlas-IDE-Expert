@@ -1,6 +1,6 @@
 ﻿unit Atlas.Windows.Documents.SharedRead.Tests;
 
-// Tests für TWindowsSharedRead (Bericht M5): lesen, ohne einen Schreiber oder
+// Tests für TWindowsSharedRead: lesen, ohne einen Schreiber oder
 // das atomare Ersetzen durch einen anderen Prozess zu blockieren.
 
 interface

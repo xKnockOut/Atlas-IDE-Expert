@@ -30,12 +30,13 @@ uses
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.EditorToolbar.ReturnPoint,
-  Atlas.UI.Strings,
+  Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Outline.Cache;
+  Atlas.IDE.Outline.Cache,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Ein Eintrag je Routine: Kennung ist der Knoten, Text der qualifizierte Name.</summary>
 function RoutineCommands(const ANodes: TAtlasOutlineNodes; const ARoutines: TArray<Integer>): TArray<TAtlasCommand>;
@@ -73,23 +74,6 @@ begin
         TAtlasIdeNavigation.GoToLocation(AFileName, ANodes[mTarget].NameLine, ANodes[mTarget].NameCharacter);
       end;
     end;
-end;
-
-/// <summary>Fläche, über der das Popup steht: aktives Fenster, Hauptfenster oder Arbeitsbereich.</summary>
-function PopupArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
 end;
 
 class function TAtlasIdeFindMethod.CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
@@ -138,7 +122,7 @@ begin
   end;
   if Length(mRoutines) = 0 then
   begin
-    ASay(TAtlasStrings.Text(TAtlasTextId.FindMethodNoOutline));
+    ASay(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.FindMethodNoOutline));
     Exit;
   end;
   // Kopien: Das Popup lebt länger als der aktuelle Stand.
@@ -149,7 +133,8 @@ begin
   end;
   mCommands := RoutineCommands(mSnapshot.Nodes, mRoutines);
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
-  mWindow.Prompt := Format(TAtlasStrings.Text(TAtlasTextId.FindMethodPrompt), [ExtractFileName(mSnapshot.FileName)]);
+  mWindow.Prompt := Format(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.FindMethodPrompt),
+    [ExtractFileName(mSnapshot.FileName)]);
   // Ohne Eingabe in Quelltextreihenfolge, die Methode am Caret vorgewählt.
   mWindow.KeepOrder := True;
   for mCommand in mCommands do
@@ -160,7 +145,7 @@ begin
     end;
   end;
   mWindow.OnExecuteShift := GoToRoutine(mSnapshot.FileName, mSnapshot.Nodes);
-  mWindow.ShowOver(PopupArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 end.

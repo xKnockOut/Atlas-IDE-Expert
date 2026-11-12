@@ -33,8 +33,10 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.ServerEdit;
+  Atlas.IDE.Editor.ServerEdit,
+  Atlas.Text.Json;
 
 const
   cApplyCommand = 'atlas.server.inlineAccessor';
@@ -60,24 +62,26 @@ begin
     TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson, cTimeoutMs, TAtlasTextId.InlineAccessorFailed),
     procedure(const AReply: TJSONObject)
     begin
-      mAccessors := TAtlasIdeServerEdit.NumberOf(AReply, 'accessors');
+      mAccessors := TJsonRead.Int(AReply, 'accessors');
     end, AMessage, mReply) then
   begin
     Exit;
   end;
   if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.InlineAccessorNothing));
+    AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.InlineAccessorNothing));
     Exit;
   end;
-  mHint := TAtlasStrings.Fmt(TAtlasTextId.InlineAccessorPreviewHint, [mAccessors, mReply.Edit.EditCount,
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.InlineAccessorPreviewHint, [mAccessors, mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.InlineAccessorWarning);
-  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.InlineAccessorTitle), mHint,
-    TAtlasStrings.Text(TAtlasTextId.InlineAccessorApply), mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.InlineAccessorTitle), AMessage,
+  if TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(TAtlasEditorTextId.InlineAccessorTitle), mHint,
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.InlineAccessorApply), mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(TAtlasEditorTextId.InlineAccessorTitle),
+    AMessage,
     mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.InlineAccessorDone, [mAccessors, mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.InlineAccessorDone, [mAccessors, mOutcome.Edits,
+      mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.InlineAccessorWarning, AMessage);
   end;
 end;

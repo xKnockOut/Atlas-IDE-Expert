@@ -28,6 +28,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.Grid;
 
 type
@@ -177,15 +178,15 @@ class function TAtlasDiagnosticTabs.Caption(APage: TAtlasDiagnosticPage): string
 begin
   case APage of
     TAtlasDiagnosticPage.MainThread:
-      Result := TAtlasStrings.Text(TAtlasTextId.DiagTabMainThread);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabMainThread);
     TAtlasDiagnosticPage.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.DiagTabServer);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabServer);
     TAtlasDiagnosticPage.Background:
-      Result := TAtlasStrings.Text(TAtlasTextId.DiagTabBackground);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabBackground);
     TAtlasDiagnosticPage.Hangs:
-      Result := TAtlasStrings.Text(TAtlasTextId.DiagTabHangs);
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabHangs);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.DiagTabCompletion);
+    Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabCompletion);
   end;
 end;
 
@@ -439,13 +440,13 @@ procedure TAtlasDiagnosticBar.SetSnapshot(const ASnapshot: TAtlasPluginSnapshot)
 begin
   FSpark.SetValues(ASnapshot.Busy);
   FPaused := ASnapshot.Paused;
-  FBusy.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagBusy, [Length(ASnapshot.Busy),
+  FBusy.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagBusy, [Length(ASnapshot.Busy),
     TAtlasPluginRows.Percent(ASnapshot.BusyPercent)]);
-  FThreshold.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagThreshold, [ASnapshot.ThresholdMs]);
+  FThreshold.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagThreshold, [ASnapshot.ThresholdMs]);
   FPause.Caption := TAtlasStrings.Text(TAtlasTextId.DiagPause);
   if FPaused then
   begin
-    FPause.Caption := TAtlasStrings.Text(TAtlasTextId.DiagResume);
+    FPause.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagResume);
   end;
   // Längere Angaben (Prozent, Sprache) können die zweite Zeile nötig machen.
   Arrange;
@@ -504,7 +505,7 @@ begin
   FGrid := TAtlasDiagnosticGrid.Create(Self);
   FGrid.Parent := Self;
   FGrid.Align := alClient;
-  FGrid.EmptyText := TAtlasStrings.Text(TAtlasTextId.DiagEmpty);
+  FGrid.EmptyText := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagEmpty);
 end;
 
 { TAtlasFeatureMenu }
@@ -516,12 +517,12 @@ begin
   inherited Create(AOwner);
   FOnly := NewItem;
   FAll := NewItem;
-  FAll.Caption := TAtlasStrings.Text(TAtlasTextId.DiagMenuAll);
+  FAll.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagMenuAll);
   FDisable := NewItem;
   mLine := NewItem;
   mLine.Caption := '-';
   FCopyRow := NewItem;
-  FCopyRow.Caption := TAtlasStrings.Text(TAtlasTextId.DiagMenuCopyRow);
+  FCopyRow.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagMenuCopyRow);
   Prepare('', False);
 end;
 
@@ -533,10 +534,10 @@ end;
 
 procedure TAtlasFeatureMenu.Prepare(const AName: string; AFiltered: Boolean);
 begin
-  FOnly.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagMenuOnly, [AName]);
+  FOnly.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagMenuOnly, [AName]);
   FOnly.Visible := AName <> '';
   FAll.Visible := AFiltered;
-  FDisable.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagMenuDisable, [AName]);
+  FDisable.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagMenuDisable, [AName]);
   FDisable.Visible := AName <> '';
   FCopyRow.Visible := AName <> '';
 end;

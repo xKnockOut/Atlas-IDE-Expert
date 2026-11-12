@@ -64,6 +64,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Editor.RegionFolds,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Problems.InlineHints;
@@ -73,115 +74,134 @@ uses
 procedure TAtlasSettingsEditorCodePart.Build;
 begin
   // Austrittspunkte hervorheben (#698).
-  BindCheck('ExitPoints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPoints)));
-  BindCheck('ExitPointsExceptions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsExceptions)));
-  BindCheck('ExitPointsLoops', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsLoops)));
-  BindCheck('ExitPointsBadge', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsBadge)));
+  BindCheck('ExitPoints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExitPoints)));
+  BindCheck('ExitPointsExceptions',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExitPointsExceptions)));
+  BindCheck('ExitPointsLoops', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExitPointsLoops)));
+  BindCheck('ExitPointsBadge', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExitPointsBadge)));
   // Neu zugewiesene Variablen (#712): an/aus, je Art ein Häkchen, Linie und Farbe.
-  BindCheck('Reassigned', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassigned)));
+  BindCheck('Reassigned', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassigned)));
   FReassignedTargets[TAtlasReassignedTarget.Locals] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLocals));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedLocals));
   FReassignedTargets[TAtlasReassignedTarget.LoopVars] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLoopVars));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedLoopVars));
   FReassignedTargets[TAtlasReassignedTarget.ValueParams] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedValueParams));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedValueParams));
   FReassignedTargets[TAtlasReassignedTarget.VarParams] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedVarParams));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedVarParams));
   FReassignedTargets[TAtlasReassignedTarget.Fields] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedFields));
-  FReassignedStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyle),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleDotted),
-    TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleSolid),
-    TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleWavy)]);
-  FReassignedColor := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedColor));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedFields));
+  FReassignedStyle := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedStyle),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedStyleDotted),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedStyleSolid),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedStyleWavy)]);
+  FReassignedColor := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReassignedColor));
   // Typ des markierten Ausdrucks (#689): an/aus, Umwandlungen, Wert und Kürzel.
-  BindCheck('ExpressionType', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionType)));
-  BindCheck('ExpressionTypeConversions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConversions)));
-  BindCheck('ExpressionTypeConstValue', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConstValue)));
+  BindCheck('ExpressionType', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExpressionType)));
+  BindCheck('ExpressionTypeConversions',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExpressionTypeConversions)));
+  BindCheck('ExpressionTypeConstValue',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExpressionTypeConstValue)));
   BindKey('ExpressionTypeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand)));
   // Methodenrümpfe in Deklarationsreihenfolge (#660): wie die Deklaration, alphabetisch oder aus.
-  FMethodPlacement := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacement),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementGrouped),
-    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
-    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementAlphabetical),
-    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementOff)]);
+  FMethodPlacement := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacement),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacementGrouped),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacementDeclaration),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacementAlphabetical),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacementOff)]);
   // Regionen beim Öffnen (#1814).
   FRegionFolds := AddChoice(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.Setting), TAtlasRegionFoldsTexts.Choices);
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
-  BindCheck('OverviewRuler', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler)));
+  BindCheck('OverviewRuler', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewRuler)));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewDiagnostics));
-  FOverviewKinds[TAtlasOverviewKind.Search] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewSearch));
-  FOverviewKinds[TAtlasOverviewKind.Changes] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewChanges));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewDiagnostics));
+  FOverviewKinds[TAtlasOverviewKind.Search] := AddCheck(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsOverviewSearch));
+  FOverviewKinds[TAtlasOverviewKind.Changes] := AddCheck(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsOverviewChanges));
   FOverviewKinds[TAtlasOverviewKind.Breakpoints] :=
-    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBreakpoints));
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewBreakpoints));
   // Kommentar beim Enter fortsetzen (#696).
-  BindCheck('ContinueComments', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueComments)));
-  BindCheck('ContinueCommentsLineComments', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLineComments)));
-  BindCheck('ContinueCommentsLists', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLists)));
-  FContinueCommentsBlockPrefix := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsBlockPrefix));
+  BindCheck('ContinueComments', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsContinueComments)));
+  BindCheck('ContinueCommentsLineComments',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsContinueCommentsLineComments)));
+  BindCheck('ContinueCommentsLists',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsContinueCommentsLists)));
+  FContinueCommentsBlockPrefix := AddTextLine(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsContinueCommentsBlockPrefix));
   // Markierung beim Tippen umschließen (#672).
-  BindCheck('WrapSelection', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelection)));
-  BindText('WrapSelectionChars', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelectionChars)));
-  // Anweisung vervollständigen (#697).
-  BindCheck('CompleteStatement', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatement)));
-  BindKey('CompleteStatementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand)));
-  FCompleteStatementBeginEnd := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementBeginEnd),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndAlways),
-    TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndMultiLine),
-      TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndNever)]);
+  BindCheck('WrapSelection', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsWrapSelection)));
+  BindText('WrapSelectionChars',
+    AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsWrapSelectionChars)));
 end;
 
 procedure TAtlasSettingsEditorCodePart.Build2;
 begin
-  FCompleteStatementTryKind := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementTryKind),
+  // Anweisung vervollständigen (#697).
+  BindCheck('CompleteStatement', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCompleteStatement)));
+  BindKey('CompleteStatementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand)));
+  FCompleteStatementBeginEnd := AddChoice(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsCompleteStatementBeginEnd),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBeginEndAlways),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBeginEndMultiLine),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBeginEndNever)]);
+  FCompleteStatementTryKind := AddChoice(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsCompleteStatementTryKind),
     [TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally),
-    TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept), TAtlasStrings.Text(TAtlasTextId.SettingsTryKindAsk)]);
-  BindCheck('CompleteStatementMethodBody', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementMethodBody)));
+    TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTryKindAsk)]);
+  BindCheck('CompleteStatementMethodBody',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCompleteStatementMethodBody)));
   // Formatieren (#43).
-  BindCheck('FormatCode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatCode)));
+  BindCheck('FormatCode', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFormatCode)));
   BindKey('FormatCodeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand)));
   // Muster fortsetzen (#671).
-  BindCheck('ContinuePattern', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePattern)));
-  BindText('ContinuePatternMinLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePatternMinLines)));
+  BindCheck('ContinuePattern', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsContinuePattern)));
+  BindText('ContinuePatternMinLines',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsContinuePatternMinLines)));
   // Mehrere Einfügemarken (#589, experimentell).
-  BindCheck('MultiCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursor)));
-  FMultiCursorModifier := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorModifier),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAlt),
-    TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorCtrl)]);
-  BindKey('MultiCursorNextKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorNext)));
-  BindKey('MultiCursorSkipKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorSkip)));
-  BindKey('MultiCursorLineEndsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorLineEnds)));
-  BindKey('MultiCursorAboveKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAbove)));
-  BindKey('MultiCursorBelowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorBelow)));
+  BindCheck('MultiCursor', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursor)));
+  FMultiCursorModifier := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorModifier),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorAlt),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorCtrl)]);
+  BindKey('MultiCursorNextKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorNext)));
+  BindKey('MultiCursorSkipKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorSkip)));
+  BindKey('MultiCursorLineEndsKey',
+    AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorLineEnds)));
+  BindKey('MultiCursorAboveKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorAbove)));
+  BindKey('MultiCursorBelowKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMultiCursorBelow)));
   // Bezeichner live mitziehen (#658, experimentell).
-  BindCheck('LinkedEditing', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLinkedEditing)));
+  BindCheck('LinkedEditing', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsLinkedEditing)));
   // Einfügen mit uses-Ergänzung (#515, experimentell).
-  FSmartPaste := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsSmartPaste),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteOff), TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteUses),
-    TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteIndent),
-    TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteBoth)]);
-  FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
-  FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
+  FSmartPaste := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSmartPaste),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSmartPasteOff),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSmartPasteUses),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSmartPasteIndent),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSmartPasteBoth)]);
+  FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsOverviewBookmarks));
+  FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasSettingsStrings.Text(
+    TAtlasSettingsTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
-  BindCheck('RecursionMarkers', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers)));
-  BindText('RecursionMarkersDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth)));
+  BindCheck('RecursionMarkers', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsRecursionMarkers)));
+  BindText('RecursionMarkersDepth',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsRecursionMarkersDepth)));
   // Fehlertext am Zeilenende (#509); die Reihenfolge folgt TAtlasInlineDiagnosticsMode.
-  FInlineDiagnostics := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnostics),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsOff),
-    TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsErrors),
-    TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsWarnings),
-    TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsAll)]);
+  FInlineDiagnostics := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlineDiagnostics),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlineDiagnosticsOff),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlineDiagnosticsErrors),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlineDiagnosticsWarnings),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsInlineDiagnosticsAll)]);
   // Marken folgen ihrer Zeile sofort (#1818).
-  BindCheck('TrackLines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackLines)));
+  BindCheck('TrackLines', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTrackLines)));
 end;
 
 procedure TAtlasSettingsEditorCodePart.Build3;
 begin
-  BindCheck('CodeLensTestUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit)));
-  BindCheck('Metrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll)));
-  BindCheck('TodoList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList)));
-  BindCheck('MetricsReport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport)));
+  BindCheck('CodeLensTestUnit', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCodeLensTestUnit)));
+  BindCheck('Metrics', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMetricsAll)));
+  BindCheck('TodoList', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTodoList)));
+  BindCheck('MetricsReport', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMetricsReport)));
 end;
 
 function TAtlasSettingsEditorCodePart.ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;

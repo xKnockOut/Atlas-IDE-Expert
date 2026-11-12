@@ -8,7 +8,7 @@
 //   Prozess nicht mehr läuft, heißt: Die Sitzung ist abgestürzt.
 // - Zustand zwischen den Sitzungen: Anzahl der Abstürze hintereinander, Zeit
 //   des letzten und Marke der abgestürzten Sitzung (für „Details“).
-// - Ein langsamer Start ist kein Absturz (Bericht N4): Er schaltet beim
+// - Ein langsamer Start ist kein Absturz: Er schaltet beim
 //   nächsten Start nichts ab. Atlas misst stattdessen seine Startanteile
 //   (TAtlasStartTimes) und nennt sie, damit sich die Ursache beheben lässt.
 // - Entscheidung beim Start: Umschalt/Strg beim Laden, Kommandozeile
@@ -87,7 +87,7 @@ type
   TAtlasSafeDecision = record
     Level: TAtlasSafeLevel;
     Reason: TAtlasSafeReason;
-    /// <summary>Letzte Sitzung abgestürzt (ein langsamer Start zählt nicht, Bericht N4).</summary>
+    /// <summary>Letzte Sitzung abgestürzt (ein langsamer Start zählt nicht).</summary>
     Crashed: Boolean;
     /// <summary>Rückfrage zeigen („Abgesichert starten“, „Normal starten“, „Details“).</summary>
     Ask: Boolean;
@@ -177,6 +177,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Math,
   System.Classes,
   System.IOUtils,
@@ -226,20 +227,6 @@ begin
     end;
   end;
   Result := TAtlasSafeLevel.Normal;
-end;
-
-function ContainsText_(const AList: TArray<string>; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 { TAtlasSessionMarker }
@@ -474,7 +461,7 @@ begin
         on EConvertError do
           Result.LastCrashAt := 0;
       end;
-    // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz (Bericht N4).
+    // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz.
     mValue := TJSONObject(mRoot).GetValue('crashed');
     if mValue is TJSONObject then
     begin
@@ -633,7 +620,7 @@ begin
   // Zuerst, was zuletzt geändert wurde: das ist am ehesten die Ursache.
   for mKey in AChangedKeys do
   begin
-    if TAtlasQuickToggles.Find(AToggles, mKey, mToggle) and not ContainsText_(Result, mToggle.Key) then
+    if TAtlasQuickToggles.Find(AToggles, mKey, mToggle) and not MatchText(mToggle.Key, Result) then
     begin
       Result := Result + [mToggle.Key];
     end;
@@ -643,7 +630,7 @@ begin
   for mToggle in AToggles do
   begin
     if (mToggle.Feature <> '') and (ACrashed.FailureCount(mToggle.Feature) > 0) and
-      not ContainsText_(Result, mToggle.Key) then
+      not MatchText(mToggle.Key, Result) then
     begin
       mCandidates := mCandidates + [TPair<string, Integer>.Create(mToggle.Key, ACrashed.FailureCount(mToggle.Feature))];
     end;
@@ -748,7 +735,7 @@ const
   cMarkerPrefix = 'session-';
 
 /// <summary>
-/// Ersetzt AFileName in einem Schritt (Bericht N3): erst vollständig daneben schreiben, dann TFile.Replace
+/// Ersetzt AFileName in einem Schritt: erst vollständig daneben schreiben, dann TFile.Replace
 /// (unter Windows ReplaceFile). Früher erst löschen, dann umbenennen: Ein Absturz dazwischen ließ keine Marke
 /// bzw. keinen Zustand zurück. Ohne TAtlasDataFile, weil das über TAtlasGuard protokolliert und Core.Diagnostics
 /// Core.Files nicht verwenden darf (Feature-Zyklus). EInOutError, wenn die Datei nicht ersetzt wurde; sie bleibt

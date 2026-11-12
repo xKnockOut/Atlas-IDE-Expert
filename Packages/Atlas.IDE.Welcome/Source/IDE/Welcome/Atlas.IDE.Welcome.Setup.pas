@@ -360,7 +360,7 @@ begin
   end;
 end;
 
-/// <summary>atlas.json schreiben: UTF-8 ohne BOM, wie atlas.json im Repository; atomar (Bericht N3).</summary>
+/// <summary>atlas.json schreiben: UTF-8 ohne BOM, wie atlas.json im Repository; atomar.</summary>
 function WriteConfig(ASelf: TAtlasIdeSetup; const AConfigFile, AText: string): Boolean;
 begin
   Result := True;

@@ -43,7 +43,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings;
 
 { TAtlasResultsTexts }
 
@@ -56,27 +57,27 @@ begin
   end;
   if AConfidence.Reason = 'interface' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonInterface);
   end
   else if AConfidence.Reason = 'virtual' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonVirtual);
   end
   else if AConfidence.Reason = 'ambiguous' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonAmbiguous);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonAmbiguous);
   end
   else if AConfidence.Reason = 'unresolved' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonUnresolved);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonUnresolved);
   end
   else if AConfidence.Reason = 'inactiveBranch' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInactiveBranch);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonInactiveBranch);
   end
   else if AConfidence.Reason = 'text' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonText);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonText);
   end
   else
   begin
@@ -121,7 +122,7 @@ var
 begin
   if APlace.Terminal then
   begin
-    Result := APlace.Item.Name + ' · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) +
+    Result := APlace.Item.Name + ' · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactUnitLevel) +
       Format('  (%s:%d)', [ExtractFileName(APlace.Item.FileName), APlace.UseLine + 1]);
   end
   else
@@ -131,23 +132,23 @@ begin
   mEdge := '';
   if APlace.Edge = 'reference' then
   begin
-    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference);
+    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeReference);
   end
   else if APlace.Edge = 'override' then
   begin
-    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride);
+    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeOverride);
   end
   else if APlace.Edge = 'baseMethod' then
   begin
-    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase);
+    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeBase);
   end
   else if APlace.Edge = 'interfaceMethod' then
   begin
-    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface);
+    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeInterface);
   end
   else if APlace.Edge = 'implementation' then
   begin
-    mEdge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeImplementation);
+    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeImplementation);
   end;
   if mEdge <> '' then
   begin
@@ -165,7 +166,8 @@ end;
 
 class function TAtlasResultsTexts.ImpactFormText(const AForm: TAtlasImpactForm): string;
 begin
-  Result := Format(TAtlasStrings.Text(TAtlasTextId.ImpactForm), [AForm.Text, ExtractFileName(AForm.FileName),
+  Result := Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactForm), [AForm.Text,
+    ExtractFileName(AForm.FileName),
     AForm.Line + 1]);
 end;
 
@@ -174,16 +176,16 @@ begin
   Result := nil;
   if AImpact.DepthReached then
   begin
-    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitDepth), [AImpact.Depth,
+    Result := Result + [Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactLimitDepth), [AImpact.Depth,
       AImpact.Unexpanded])];
   end;
   if AImpact.CountReached then
   begin
-    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitCount), [AImpact.MaxPlaces])];
+    Result := Result + [Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactLimitCount), [AImpact.MaxPlaces])];
   end;
   if AImpact.TimeReached then
   begin
-    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitTime), [AImpact.TimeoutMs])];
+    Result := Result + [Format(TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactLimitTime), [AImpact.TimeoutMs])];
   end;
 end;
 
@@ -218,11 +220,11 @@ function UnsafeText(const AReason: string): string;
 begin
   if AReason = 'pointer' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafePointer);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowUnsafePointer);
   end
   else if AReason = 'address' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafeAddress);
+    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowUnsafeAddress);
   end
   else if AReason = 'move' then
   begin
@@ -254,28 +256,29 @@ begin
   end;
   if ANode.Via <> '' then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, [ANode.Via]);
+    Result := Result + ' · ' + TAtlasResultsStrings.Fmt(TAtlasResultsTextId.DataFlowVia, [ANode.Via]);
   end;
   // Herkunft eines Blatts nur, wo die Art sie nicht schon nennt.
   mOrigin := TAtlasDataFlowTree.Origin(ANode);
   case mOrigin of
     TAtlasDataFlowOrigin.Literal:
-      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginLiteral);
+      Result := Result + ' — ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginLiteral);
     TAtlasDataFlowOrigin.Open:
-      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOpen);
+      Result := Result + ' — ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginOpen);
     TAtlasDataFlowOrigin.Outside:
       if ANode.Kind <> TAtlasDataFlowKind.Outside then
       begin
-        Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOutside);
+        Result := Result + ' — ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginOutside);
       end;
     TAtlasDataFlowOrigin.Address:
-      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginAddress);
+      Result := Result + ' — ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginAddress);
     TAtlasDataFlowOrigin.None, TAtlasDataFlowOrigin.Input, TAtlasDataFlowOrigin.Output, TAtlasDataFlowOrigin.Use,
     TAtlasDataFlowOrigin.Constant: ;
   end;
   if ANode.Unsafe then
   begin
-    Result := Result + '  ⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe, [UnsafeText(ANode.UnsafeReason)]);
+    Result := Result + '  ⚠ ' + TAtlasResultsStrings.Fmt(TAtlasResultsTextId.DataFlowUnsafe,
+      [UnsafeText(ANode.UnsafeReason)]);
   end;
   if Length(ANode.Places) = 1 then
   begin
@@ -301,15 +304,15 @@ begin
   end;
   case AChild.Source.Leaf of
     TAtlasDataFlowLeaf.Constant:
-      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant);
+      Result := Result + ' · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafConstant);
     TAtlasDataFlowLeaf.Outside:
-      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafOutside);
+      Result := Result + ' · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafOutside);
     TAtlasDataFlowLeaf.Cycle:
-      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle);
+      Result := Result + ' · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafCycle);
   else
     if AChild.DepthReached then
     begin
-      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth);
+      Result := Result + ' · ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowLeafDepth);
     end;
   end;
 end;

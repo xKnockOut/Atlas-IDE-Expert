@@ -12,6 +12,14 @@
 //   Fenster mit Skalierung, Bildschirm und langen Texten.
 // - Sprechende Namen (#608, designer.nameSuggest, TAtlasIdeNameSuggest):
 //   Dialog mit Vorschlägen für Standardnamen.
+// - Atlas-Struktur (#609, designer.structure, TAtlasIdeStructure):
+//   andockbares Fenster mit Baum, Gruppen und Verknüpfungen.
+// - Datenbindung (#610, designer.dataBindings, TAtlasIdeDataBindings):
+//   Brotkrumenleiste mit dem Datenkonstrukt der Auswahl unter dem Designer.
+// - In Frame auslagern (#611, designer.extractFrame, TAtlasIdeExtractFrame):
+//   Dialog mit Vorschau je Datei.
+// - Ereignis-Karte (#612, designer.eventMap, TAtlasIdeEventMap): andockbares
+//   Fenster mit allen Ereignissen des Formulars.
 // Nur im Hauptthread.
 
 interface
@@ -22,6 +30,10 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Designer.Measure,
   Atlas.IDE.Designer.NameSuggest,
+  Atlas.IDE.Designer.Structure,
+  Atlas.IDE.Designer.DataBindings,
+  Atlas.IDE.Designer.ExtractFrame,
+  Atlas.IDE.Designer.EventMap,
   Atlas.IDE.Designer.ResizePreview,
   Atlas.IDE.Designer.ScalePreview;
 
@@ -32,6 +44,10 @@ type
     FResize: TAtlasIdeResizePreview;
     FScale: TAtlasIdeScalePreview;
     FNames: TAtlasIdeNameSuggest;
+    FStructure: TAtlasIdeStructure;
+    FBindings: TAtlasIdeDataBindings;
+    FExtract: TAtlasIdeExtractFrame;
+    FEvents: TAtlasIdeEventMap;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -54,10 +70,18 @@ begin
   FResize := TAtlasIdeResizePreview.Create(AOnMessage);
   FScale := TAtlasIdeScalePreview.Create(AOnMessage);
   FNames := TAtlasIdeNameSuggest.Create(AOnMessage);
+  FStructure := TAtlasIdeStructure.Create(AOnMessage);
+  FBindings := TAtlasIdeDataBindings.Create;
+  FExtract := TAtlasIdeExtractFrame.Create(AOnMessage);
+  FEvents := TAtlasIdeEventMap.Create(AOnMessage);
 end;
 
 destructor TAtlasIdeDesignerViews.Destroy;
 begin
+  FEvents.Free;
+  FExtract.Free;
+  FBindings.Free;
+  FStructure.Free;
   FNames.Free;
   FScale.Free;
   FResize.Free;
@@ -72,7 +96,8 @@ var
 begin
   Result := nil;
   mAll := [FMeasure.Button(ASettings), FResize.Button(ASettings), FScale.Button(ASettings),
-    FNames.Button(ASettings)];
+    FNames.Button(ASettings), FStructure.Button(ASettings), FBindings.Button(ASettings),
+    FExtract.Button(ASettings), FEvents.Button(ASettings)];
   for mButton in mAll do
   begin
     if mButton.Id <> '' then
@@ -101,6 +126,22 @@ begin
   begin
     FNames.Run;
   end
+  else if SameText(AId, TAtlasIdeStructure.cId) then
+  begin
+    FStructure.Toggle;
+  end
+  else if SameText(AId, TAtlasIdeDataBindings.cId) then
+  begin
+    FBindings.Toggle;
+  end
+  else if SameText(AId, TAtlasIdeExtractFrame.cId) then
+  begin
+    FExtract.Run;
+  end
+  else if SameText(AId, TAtlasIdeEventMap.cId) then
+  begin
+    FEvents.Toggle;
+  end
   else
   begin
     Result := False;
@@ -112,6 +153,9 @@ begin
   FMeasure.ApplyTheme;
   FResize.ApplyTheme;
   FScale.ApplyTheme;
+  FStructure.ApplyTheme;
+  FBindings.ApplyTheme;
+  FEvents.ApplyTheme;
 end;
 
 end.

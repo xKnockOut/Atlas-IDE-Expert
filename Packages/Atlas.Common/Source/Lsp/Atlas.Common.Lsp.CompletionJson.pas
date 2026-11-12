@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.CompletionJson;
 
-// CompletionItem des LSP aus TCompletionItem (Code-Review S-01, Konzept 4.2 Schritt 5): die Felder unter
+// CompletionItem des LSP aus TCompletionItem: die Felder unter
 // data stehen als Tabelle von Schreibern in fester Reihenfolge statt als 30 if-Zweige. Das Gate NeedsData
 // entscheidet wie bisher, ob data überhaupt geschrieben wird; Felder wie container oder depth allein reichen
 // dafür nicht (heutiges Verhalten, siehe ToJsonOmitsDataBelowGate).

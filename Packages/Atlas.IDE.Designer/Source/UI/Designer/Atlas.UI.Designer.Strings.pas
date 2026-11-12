@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Designer.Strings;
 
-// Oberflächentexte des Moduls Formulardesigner auf Deutsch und Englisch (ADR 0017, #1455). Die Sprache
+// Oberflächentexte des Moduls Formulardesigner auf Deutsch und Englisch (#1455). Die Sprache
 // bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
 // daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
 
@@ -118,7 +118,13 @@ type
     SettingsDesignerShowKey, PropertySearchCommand, PropertySearchHint, PropertySearchTitle,
     PropertySearchCondition, PropertySearchExamples, PropertySearchScopeForm, PropertySearchScopeProject,
     PropertySearchScopeGroup, PropertySearchRun, PropertySearchInvalid, PropertySearchResults,
-    PropertySearchInherited, PropertySearchNoForms, PropertySearchSkipped, SettingsDesignerPropertySearch);
+    PropertySearchInherited, PropertySearchNoForms, PropertySearchSkipped, SettingsDesignerPropertySearch,
+    DesignerSearchAdd, SettingsDesignerFuzzySearch,
+    UsagesCommand, UsagesHint, UsagesTitle, UsagesEventsGroup, UsagesKindReads, UsagesKindWrites, UsagesKindPasses,
+    UsagesKindEvent, UsagesNoSelection, UsagesNoField, UsagesNone, UsagesOne, UsagesMany, UsagesEventOne,
+    UsagesEventMany, UsagesStatusHint, UsagesOutside, SettingsDesignerUsages, SettingsDesignerUsagesStatusCount,
+    SettingsDesignerUsagesScope, SettingsDesignerUsagesUnit, SettingsDesignerUsagesProject,
+    SettingsDesignerUsagesGroup, SettingsDesignerUsagesKey, UsagesNoServer, UsagesFailed);
 
   TAtlasDesignerStrings = class
   public
@@ -177,8 +183,9 @@ const
      'Zum Ereignis',
      'Name kopieren',
      '%d von %d',
-     '↑↓ wählen · Enter auswählen · Strg+Enter zum Ereignis · Strg+C Name kopieren · F4 Vorschau · Esc schließen',
-     '↑↓ wählen · Enter auswählen · Esc schließen',
+     '↑↓ wählen · Enter auswählen · Strg+Enter zur Auswahl · Umschalt+Enter zum Ereignis · ' +
+       'Strg+C Name kopieren · F4 Vorschau · Esc schließen',
+     '↑↓ wählen · Enter auswählen · Strg+Enter zur Auswahl · Esc schließen',
      'Lage',
      'Eigenschaften',
      'Ereignisse',
@@ -585,7 +592,35 @@ const
      'geerbt',
      'Kein Formular im gewählten Bereich.',
      '%d Formulare übersprungen (binär gespeichert oder nicht lesbar).',
-     '„Eigenschaften suchen“ in Formular, Projekt oder Projektgruppe'),
+     '„Eigenschaften suchen“ in Formular, Projekt oder Projektgruppe',
+     'Zur Auswahl hinzufügen',
+     '„Komponenten suchen“ auch unscharf (Zeichen in ihrer Reihenfolge)',
+     'Verwendungen im Code',
+     'Verwendungen der markierten Komponenten im Code',
+     'Verwendungen: %s (%d)',
+     'Ereignisse (DFM)',
+     'liest',
+     'schreibt',
+     'übergibt',
+     'Ereignis',
+     'Keine Komponente im Designer markiert.',
+     '%s hat kein Feld in der Formular-Klasse.',
+     'keine Verwendung, keine Ereignisse',
+     '1 Verwendung',
+     '%d Verwendungen',
+     '1 Ereignis',
+     '%d Ereignisse',
+     'Verwendungen im Code; Klick öffnet die Liste',
+     'außerhalb einer Methode',
+     '„Verwendungen im Code“ aus dem Designer',
+     'Zähler der Verwendungen im Atlas-Statusfeld',
+     'Suchbereich der Verwendungen',
+     'Unit des Formulars',
+     'Projekt',
+     'Projektgruppe',
+     'Taste für „Verwendungen im Code“ (nur im Designer)',
+     'Verwendungen im Code: Der Atlas-Server läuft nicht.',
+     'Verwendungen im Code fehlgeschlagen: %s'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -625,8 +660,9 @@ const
      'Go to event',
      'Copy name',
      '%d of %d',
-     '↑↓ move · Enter select · Ctrl+Enter go to event · Ctrl+C copy name · F4 preview · Esc close',
-     '↑↓ move · Enter select · Esc close',
+     '↑↓ move · Enter select · Ctrl+Enter add to selection · Shift+Enter go to event · ' +
+       'Ctrl+C copy name · F4 preview · Esc close',
+     '↑↓ move · Enter select · Ctrl+Enter add to selection · Esc close',
      'Position',
      'Properties',
      'Events',
@@ -1033,7 +1069,35 @@ const
      'inherited',
      'No form in the chosen scope.',
      '%d forms skipped (stored as binary or not readable).',
-     '“Search properties” in form, project or project group'));
+     '“Search properties” in form, project or project group',
+     'Add to selection',
+     '“Search components” also fuzzy (characters in order)',
+     'Usages in code',
+     'Usages of the selected components in code',
+     'Usages: %s (%d)',
+     'Events (DFM)',
+     'reads',
+     'writes',
+     'passes',
+     'event',
+     'No component selected in the designer.',
+     '%s has no field in the form class.',
+     'no usage, no events',
+     '1 usage',
+     '%d usages',
+     '1 event',
+     '%d events',
+     'Usages in code; click opens the list',
+     'outside a method',
+     '“Usages in code” from the designer',
+     'Usage count in the Atlas status field',
+     'Search scope for usages',
+     'Form unit',
+     'Project',
+     'Project group',
+     'Key for “Usages in code” (designer only)',
+     'Usages in code: the Atlas server is not running.',
+     'Usages in code failed: %s'));
 
 { TAtlasDesignerStrings }
 

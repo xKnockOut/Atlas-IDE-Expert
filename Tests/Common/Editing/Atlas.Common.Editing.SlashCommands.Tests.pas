@@ -20,7 +20,7 @@ type
     procedure UsesRunsThroughRegistry;
     [Test]
     procedure UnknownCommandStaysWithHint;
-    /// <summary>Gemischte Zeilenenden: Zeilen werden an jedem Umbruch getrennt (TTextLines.SplitLines, D-03).</summary>
+    /// <summary>Gemischte Zeilenenden: Zeilen werden an jedem Umbruch getrennt (TTextLines.SplitLines).</summary>
     [Test]
     procedure MixedLineBreaksKeepLineNumbers;
     [Test]

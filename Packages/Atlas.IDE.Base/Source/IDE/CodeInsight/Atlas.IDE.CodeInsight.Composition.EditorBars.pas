@@ -17,6 +17,7 @@ function CommandsStarted: Boolean;
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Core.Editor.Metrics,
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Editor.MouseButtons,

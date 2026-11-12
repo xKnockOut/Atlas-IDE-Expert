@@ -60,12 +60,13 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.QuickOpen,
-  Atlas.UI.Strings,
+  Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Projects.Context;
+  Atlas.IDE.Projects.Context,
+  Atlas.IDE.Foundation.Host;
 
 const
   cSymbolTimeoutMs = 1500;
@@ -326,11 +327,11 @@ function OriginText(AOrigin: TAtlasQuickOpenOrigin): string;
 begin
   case AOrigin of
     TAtlasQuickOpenOrigin.Project:
-      Result := TAtlasStrings.Text(TAtlasTextId.QuickOpenOriginProject);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenOriginProject);
     TAtlasQuickOpenOrigin.SearchPath:
-      Result := TAtlasStrings.Text(TAtlasTextId.QuickOpenOriginSearchPath);
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenOriginSearchPath);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.QuickOpenOriginLibrary);
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenOriginLibrary);
   end;
 end;
 
@@ -356,7 +357,7 @@ begin
   mFiles := State.List.Files;
   if (Length(mFiles) = 0) and State.List.Building then
   begin
-    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenBuilding), '', '')];
+    Result := [Command('', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenBuilding), '', '')];
     Exit;
   end;
   mLine := -1;
@@ -376,16 +377,17 @@ function LineResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery)
 begin
   if AWindow.Top = '' then
   begin
-    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
+    Result := [Command('', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenNoEditor), '', '')];
   end
   else if AParsed.Line = 0 then
   begin
-    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenLineHint), ExtractFileName(AWindow.Top), '')];
+    Result := [Command('', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenLineHint),
+      ExtractFileName(AWindow.Top), '')];
   end
   else
   begin
     Result := [Target(AWindow.Top, AParsed.Line - 1, 0,
-      TAtlasStrings.Fmt(TAtlasTextId.QuickOpenLine, [AParsed.Line]), ExtractFileName(AWindow.Top), '')];
+      TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.QuickOpenLine, [AParsed.Line]), ExtractFileName(AWindow.Top), '')];
   end;
 end;
 
@@ -422,7 +424,7 @@ begin
   Result := nil;
   if AWindow.Top = '' then
   begin
-    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
+    Result := [Command('', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenNoEditor), '', '')];
     Exit;
   end;
   ReadFileSymbols(AWindow);
@@ -554,7 +556,7 @@ begin
   mOwner := TQuickOpenState.Create;
   FState := mOwner;
   // Fehlt, unbrauchbar oder gesperrt: leer weiter; TAtlasDataFile legt Unbrauchbares als quickopen.json.defekt
-  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht.
   mOwner.Recent.Kind := 'Verlauf von Schnell öffnen';
   mOwner.Recent.LoadFromFile(RecentFile);
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
@@ -624,7 +626,7 @@ begin
   mWindow.Window := mPalette;
   mWindow.Top := TopFile;
   mWindow.Open := OpenFiles;
-  mPalette.Prompt := TAtlasStrings.Text(TAtlasTextId.QuickOpenPrompt);
+  mPalette.Prompt := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenPrompt);
   mPalette.Presorted := True;
   mPalette.QueryDelay := 0;
   mPalette.OnHighlight :=
@@ -647,18 +649,7 @@ begin
       OpenTarget(ACommand);
     end;
   mPalette.SetCommands(Query(mWindow, ''));
-  if Screen.ActiveForm <> nil then
-  begin
-    mArea := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    mArea := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    mArea := Screen.WorkAreaRect;
-  end;
+  mArea := TAtlasIdeHost.PopupArea;
   mPalette.ShowOver(mArea);
 end;
 

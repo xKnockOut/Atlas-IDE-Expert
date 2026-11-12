@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.StartTimes;
 
-// Startanteile (Bericht N4, zum Einfrier-Wächter #501), ohne Windows und Open
+// Startanteile (zum Einfrier-Wächter #501), ohne Windows und Open
 // Tools API: Wie lange hat Atlas selbst den Start der IDE aufgehalten, und
 // womit? Ein langsamer Start ist kein Absturz; früher schaltete er beim
 // nächsten Start alle Funktionen ab (#722), ohne dass man erfuhr, woran es

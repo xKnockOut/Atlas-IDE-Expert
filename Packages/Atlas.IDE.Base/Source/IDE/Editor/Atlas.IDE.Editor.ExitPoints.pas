@@ -126,7 +126,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -446,7 +446,7 @@ begin
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): keine Hervorhebung, der Editor bleibt frei.
         mFound := Default(TAtlasExitPointSet);
       end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.ExitPoints,
         procedure
         begin
@@ -608,8 +608,9 @@ var
   mSize: TSize;
   mBrush: HBRUSH;
 begin
-  mCaption := TAtlasExitPoints.BadgeText(FSet, TAtlasStrings.Text(TAtlasTextId.ExitPointsOne),
-    TAtlasStrings.Text(TAtlasTextId.ExitPointsCount), TAtlasStrings.Text(TAtlasTextId.ExitPointsResultMissing));
+  mCaption := TAtlasExitPoints.BadgeText(FSet, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExitPointsOne),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.ExitPointsCount),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.ExitPointsResultMissing));
   mCell := AContext.EditorState.GetCharacterPosPx(
     TLspSession.IndexToColumn(AText, Length(TrimRight(AText)), FTabWidth) + 2, AContext.EditorLineNum);
   mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);

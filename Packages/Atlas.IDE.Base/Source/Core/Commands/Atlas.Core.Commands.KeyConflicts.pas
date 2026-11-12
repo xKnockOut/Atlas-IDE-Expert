@@ -59,7 +59,8 @@ type
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent);
+    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent,
+    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -90,6 +91,10 @@ type
     /// <summary>Zweiter Teil von AllFromSettings ab dem Navigationsverlauf; AShared ist der gemeinsame Vorrang
     /// der Editorbefehle.</summary>
     class function MoreFromSettings(const ASettings: TAtlasPluginSettings;
+      AShared: Boolean): TArray<TAtlasKeyEntry>; static;
+    /// <summary>Dritter Teil von AllFromSettings ab „Komponenten suchen“ (Designer, Datei prüfen); AShared wie
+    /// bei MoreFromSettings.</summary>
+    class function RestFromSettings(const ASettings: TAtlasPluginSettings;
       AShared: Boolean): TArray<TAtlasKeyEntry>; static;
     /// <summary>Tasten und Vorrang zurück in die Einstellungen; Disabled und die feste Taste Strg+F12 nicht (dafür
     /// gibt es eigene Schalter).</summary>
@@ -337,7 +342,14 @@ begin
     Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), AShared, ASettings.SafeDelete),
     // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
     Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), AShared,
-      ASettings.WelcomePage and ASettings.IssuesCreate),
+      ASettings.WelcomePage and ASettings.IssuesCreate)];
+  Result := Result + RestFromSettings(ASettings, AShared);
+end;
+
+class function TAtlasKeyEntry.RestFromSettings(const ASettings: TAtlasPluginSettings;
+  AShared: Boolean): TArray<TAtlasKeyEntry>;
+begin
+  Result := [
     // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
     // Willkommensseite).
     Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar),
@@ -351,7 +363,18 @@ begin
       ASettings.EditorDesignerBar and ASettings.DesignerSelectionSets),
     // Im Designer zeigen (#511): Editorbefehl; Umschalt+F12 ist in der IDE „Formulare anzeigen“.
     Create(TAtlasKeyFunction.DesignerShowComponent, Word(ASettings.DesignerShowInDesignerKey), AShared,
-      ASettings.DesignerShowInDesigner)];
+      ASettings.DesignerShowInDesigner),
+    // Text im Designer bearbeiten (#748): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    Create(TAtlasKeyFunction.DesignerInlineCaption, Word(ASettings.DesignerInlineCaptionKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerInlineCaption),
+    // Auswahlleiste und Lupe im Designer: nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    Create(TAtlasKeyFunction.DesignerSelectionBar, Word(ASettings.DesignerSelectionBarKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerSelectionBar),
+    Create(TAtlasKeyFunction.DesignerMagnifier, Word(ASettings.DesignerMagnifierKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerMagnifier),
+    // Verwendungen im Code (#750): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
+    Create(TAtlasKeyFunction.DesignerUsages, Word(ASettings.DesignerUsagesKey), True,
+      ASettings.EditorDesignerBar and ASettings.DesignerUsages)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -588,6 +611,14 @@ begin
       ASettings.DesignerSelectionSetsSaveKey := AEntry.Key;
     TAtlasKeyFunction.DesignerShowComponent:
       ASettings.DesignerShowInDesignerKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerInlineCaption:
+      ASettings.DesignerInlineCaptionKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerSelectionBar:
+      ASettings.DesignerSelectionBarKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerMagnifier:
+      ASettings.DesignerMagnifierKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerUsages:
+      ASettings.DesignerUsagesKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;

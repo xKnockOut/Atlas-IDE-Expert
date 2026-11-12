@@ -5,6 +5,14 @@ Erzeugt von `Tools/Update-ThirdPartyNotices.ps1`; nicht von Hand ändern.
 Atlas selbst steht unter der MIT-Lizenz (`LICENSE`). Es enthält keine Quelltexte von Embarcadero;
 RTL- und VCL-Quellen werden nur lokal aus der Delphi-Installation gelesen und nie weitergegeben.
 
+## In Releases enthalten
+
+### WebView2Loader.dll (Microsoft Edge WebView2)
+
+- Zweck: eingebetteter Browser im Reiter „Bericht“ von AtlasMonitor.exe (#1900)
+- Quelle: Ordner `Redist` von RAD Studio (weitergebbare Datei), ursprünglich aus dem WebView2-SDK von Microsoft
+- Lizenz: https://www.nuget.org/packages/Microsoft.Web.WebView2 (Lizenz des SDK)
+
 ## Nur zum Testen (nicht in Releases enthalten)
 
 ### DUnitX

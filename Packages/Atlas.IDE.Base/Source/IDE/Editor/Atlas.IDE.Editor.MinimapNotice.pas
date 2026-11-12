@@ -49,6 +49,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Editor.Minimap,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Window,
   Atlas.UI.Editor.Minimap,
   Atlas.IDE.Foundation.EditorStyle,
@@ -160,11 +161,11 @@ var
   mTitle, mText: string;
 begin
   mTitle := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeTitle);
-  mText := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeText);
-  mAction.Caption := TAtlasStrings.Text(TAtlasTextId.MinimapHideIde);
+  mText := TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapNoticeText);
+  mAction.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapHideIde);
   mAction.Run := FOnHideIde;
   mActions := [mAction];
-  mAction.Caption := TAtlasStrings.Text(TAtlasTextId.MinimapTurnOff);
+  mAction.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapTurnOff);
   mAction.Run := FOnTurnOff;
   mActions := mActions + [mAction];
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cMinimap, TAtlasNotificationSeverity.Info,
@@ -201,8 +202,8 @@ begin
   end;
   FNotice.Colors := TAtlasIdeStyle.Colors;
   FNotice.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
-  FNotice.ShowNotice(ATitle, AText, [TAtlasStrings.Text(TAtlasTextId.MinimapHideIde),
-    TAtlasStrings.Text(TAtlasTextId.MinimapTurnOff)], mArea);
+  FNotice.ShowNotice(ATitle, AText, [TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapHideIde),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapTurnOff)], mArea);
 end;
 
 end.

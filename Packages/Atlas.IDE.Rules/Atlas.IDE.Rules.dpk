@@ -29,7 +29,7 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul Prüfregeln (#1456, ADR 0017): Prüfbefunde der atlas.json im Editor, Schnellkorrekturen und Regelfenster.
+// Modul Prüfregeln (#1456): Prüfbefunde der atlas.json im Editor, Schnellkorrekturen und Regelfenster.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Rules.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package
@@ -56,6 +56,7 @@ contains
   Atlas.UI.Rules.Editor in 'Source\UI\Rules\Atlas.UI.Rules.Editor.pas',
   Atlas.UI.Rules.SettingsDialog in 'Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas',
   Atlas.IDE.Rules.FindingActions in 'Source\IDE\Rules\Atlas.IDE.Rules.FindingActions.pas',
+  Atlas.IDE.Rules.IdeErrors in 'Source\IDE\Rules\Atlas.IDE.Rules.IdeErrors.pas',
   Atlas.IDE.Rules.Maintenance in 'Source\IDE\Rules\Atlas.IDE.Rules.Maintenance.pas',
   Atlas.IDE.Rules.Settings in 'Source\IDE\Rules\Atlas.IDE.Rules.Settings.pas';
 

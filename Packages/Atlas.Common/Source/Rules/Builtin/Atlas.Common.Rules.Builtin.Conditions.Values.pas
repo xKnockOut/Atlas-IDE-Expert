@@ -223,7 +223,7 @@ var
   mNode: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
   mPending := TStack<TSyntaxNode>.Create;
   try
     for mIndex := ANode.ChildCount - 1 downto 0 do
@@ -254,7 +254,7 @@ var
   mChild: TSyntaxNode;
   mPending: TStack<TSyntaxNode>;
 begin
-  // ConstDecl mit dem Namen, die APosition enthält. Iterativ (Bericht M1).
+  // ConstDecl mit dem Namen, die APosition enthält. Iterativ (tiefe Bäume sprengen den Stapel nicht).
   Result := nil;
   mPending := TStack<TSyntaxNode>.Create;
   try
@@ -528,7 +528,7 @@ var
   mValues: TStack<TConstantValue>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Iterativ (Bericht M1): Nachordnung mit Wertestapel; lange Ketten wie 1 - 1 - … - 1 sind tiefe Bäume.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; lange Ketten wie 1 - 1 - … - 1 sind tiefe Bäume.
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   mValues := TStack<TConstantValue>.Create;
   try

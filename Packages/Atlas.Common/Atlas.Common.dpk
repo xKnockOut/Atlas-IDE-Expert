@@ -30,7 +30,7 @@
 
 // Platform-Package ohne Abhängigkeit zu Windows und VCL.
 // Erlaubt sind die plattformunabhängige RTL (System.*) und Atlas.Text
-// (gemeinsamer Textcode mit dem Plugin, ADR 0012).
+// (gemeinsamer Textcode mit dem Plugin).
 // Geprüft durch Tools\Check-PackageDependencies.ps1.
 
 requires
@@ -356,6 +356,7 @@ contains
   Atlas.Common.Editing.Extract in 'Source\Editing\Atlas.Common.Editing.Extract.pas',
   Atlas.Common.Editing.Extract.Shared in 'Source\Editing\Atlas.Common.Editing.Extract.Shared.pas',
   Atlas.Common.Editing.Extract.Method in 'Source\Editing\Atlas.Common.Editing.Extract.Method.pas',
+  Atlas.Common.Editing.Extract.Duplicates in 'Source\Editing\Atlas.Common.Editing.Extract.Duplicates.pas',
   Atlas.Common.Editing.Inlining in 'Source\Editing\Atlas.Common.Editing.Inlining.pas',
   Atlas.Common.Editing.Inlining.Types in 'Source\Editing\Atlas.Common.Editing.Inlining.Types.pas',
   Atlas.Common.Editing.Inlining.Syntax in 'Source\Editing\Atlas.Common.Editing.Inlining.Syntax.pas',
@@ -611,6 +612,7 @@ contains
   Atlas.Common.Mcp.Paths in 'Source\Mcp\Atlas.Common.Mcp.Paths.pas',
   Atlas.Common.Mcp.Freshness in 'Source\Mcp\Atlas.Common.Mcp.Freshness.pas',
   Atlas.Common.Mcp.EditTools in 'Source\Mcp\Atlas.Common.Mcp.EditTools.pas',
+  Atlas.Common.Mcp.ExtractTools in 'Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas',
   Atlas.Common.Mcp.IdeEdits in 'Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas',
   Atlas.Common.Mcp.IdeBuilds in 'Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas',
   Atlas.Common.Mcp.TestTools in 'Source\Mcp\Atlas.Common.Mcp.TestTools.pas',
@@ -699,6 +701,7 @@ contains
   Atlas.Common.Rules.Builtin.Packages in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas',
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',
+  Atlas.Common.Rules.Builtin.Testing.AreEqual in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.pas',
   Atlas.Common.Rules.Builtin.Events in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas',
   Atlas.Common.Rules.Builtin.Ownership in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas',
   Atlas.Common.Rules.Builtin.Ownership.RawMemory in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.RawMemory.pas',
@@ -748,6 +751,8 @@ contains
   Atlas.Common.Lsp.PullDiagnostics in 'Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas',
   Atlas.Common.Lsp.PullDiagnostics.Cache in 'Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas',
   Atlas.Common.Lsp.StatusFile in 'Source\Lsp\Atlas.Common.Lsp.StatusFile.pas',
+  Atlas.Common.Lsp.ServerActivity in 'Source\Lsp\Atlas.Common.Lsp.ServerActivity.pas',
+  Atlas.Common.Lsp.StatusHeartbeat in 'Source\Lsp\Atlas.Common.Lsp.StatusHeartbeat.pas',
   Atlas.Common.Lsp.WorkspaceCheck in 'Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas',
   Atlas.Common.Lsp.CompactJson in 'Source\Lsp\Atlas.Common.Lsp.CompactJson.pas',
   Atlas.Common.Lsp.TextDocumentSync in 'Source\Lsp\Atlas.Common.Lsp.TextDocumentSync.pas',
@@ -787,6 +792,13 @@ contains
   Atlas.Common.Updates.SourceBuild in 'Source\Updates\Atlas.Common.Updates.SourceBuild.pas',
   Atlas.Common.Updates.Prepare in 'Source\Updates\Atlas.Common.Updates.Prepare.pas',
   Atlas.Common.Updates.FileSwap in 'Source\Updates\Atlas.Common.Updates.FileSwap.pas',
-  Atlas.Common.Updates.Apply in 'Source\Updates\Atlas.Common.Updates.Apply.pas';
+  Atlas.Common.Updates.Apply in 'Source\Updates\Atlas.Common.Updates.Apply.pas',
+  Atlas.Common.Monitor.Servers in 'Source\Monitor\Atlas.Common.Monitor.Servers.pas',
+  Atlas.Common.Monitor.Settings in 'Source\Monitor\Atlas.Common.Monitor.Settings.pas',
+  Atlas.Common.Monitor.Texts in 'Source\Monitor\Atlas.Common.Monitor.Texts.pas',
+  Atlas.Common.Monitor.Commands in 'Source\Monitor\Atlas.Common.Monitor.Commands.pas',
+  Atlas.Common.Monitor.Results in 'Source\Monitor\Atlas.Common.Monitor.Results.pas',
+  Atlas.Common.Monitor.Runs in 'Source\Monitor\Atlas.Common.Monitor.Runs.pas',
+  Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas';
 
 end.

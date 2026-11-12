@@ -46,7 +46,7 @@ uses
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
   TAtlasLogProc = Atlas.IDE.Completion.EditorState.TAtlasLogProc;
-  /// <summary>Quellen der Vervollständigung aus dem Kern; setzt die Kompositionswurzel ein (A-09).</summary>
+  /// <summary>Quellen der Vervollständigung aus dem Kern; setzt die Kompositionswurzel ein.</summary>
   TAtlasCompletionSources = Atlas.IDE.Completion.EditorState.TAtlasCompletionSources;
   TAtlasCompletionSourcesFactory = Atlas.IDE.Completion.EditorState.TAtlasCompletionSourcesFactory;
 
@@ -117,7 +117,7 @@ uses
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
-  Atlas.UI.Strings;
+  Atlas.UI.Completion.Strings;
 
 const
   /// <summary>Ruhe nach einem Wechsel der Auswahl, bevor die Details nachgefragt werden (#424).</summary>
@@ -407,21 +407,21 @@ begin
     TAtlasFavoriteToggle.Added:
       begin
         TAtlasIdeFavorites.Save;
-        FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritePinned, [mItem.Name]));
+        FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoritePinned, [mItem.Name]));
       end;
     TAtlasFavoriteToggle.Removed:
       begin
         TAtlasIdeFavorites.Save;
-        FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoriteUnpinned, [mItem.Name]));
+        FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoriteUnpinned, [mItem.Name]));
       end;
     // Ein sechster Favorit ersetzt keinen (#458).
     TAtlasFavoriteToggle.Full:
-      FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritesFull, [TAtlasFavorites.cMaxPerType,
+      FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoritesFull, [TAtlasFavorites.cMaxPerType,
         TAtlasFavorites.TypeNameOf(mItem)]));
   else
     if FController.Favorites <> nil then
     begin
-      FPopup.ShowNotice(TAtlasStrings.Text(TAtlasTextId.FavoriteNotAllowed));
+      FPopup.ShowNotice(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FavoriteNotAllowed));
     end;
   end;
   ActiveChanged;
@@ -593,7 +593,8 @@ begin
   mAvailability := '';
   if mItem.Unavailable and (mItem.Condition <> '') and not SameText(mItem.Condition, 'platform') then
   begin
-    mAvailability := TAtlasStrings.Fmt(TAtlasTextId.UnavailableHint, [mItem.Condition, FPopup.Target]);
+    mAvailability := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.UnavailableHint, [mItem.Condition,
+      FPopup.Target]);
   end;
   if Supports(FSources.Server, IAtlasCompletionResolver, mResolver) and mResolver.Resolve(mItem,
     procedure(const ADetails: TAtlasItemDetails)

@@ -5,11 +5,12 @@
 
 .DESCRIPTION
     Erwartet die Release-Builds wie im Release-Workflow:
-    - Output\Win64\Release\Bin: AtlasServer.exe, AtlasServer.map, AtlasUpdate.exe
+    - Output\Win64\Release\Bin: AtlasServer.exe, AtlasServer.map, AtlasUpdate.exe,
+      AtlasMonitor.exe und WebView2Loader.dll (Nachbau-Schritt von AtlasMonitor)
     - Output\Win32\Release\Bpl und Output\Win64\Release\Bpl: Kern und jedes
       Modul-Package (Packages\Atlas.IDE.*), je mit Map-Datei.
 
-    Aufbau wie der Zielordner (ADR 0016): Server, Updater und Daten oben, die
+    Aufbau wie der Zielordner: Server, Updater und Daten oben, die
     BPLs je Plattform darunter. Der Release-Workflow ruft das Skript auf dem
     Delphi-Runner auf; ohne Runner baut man lokal und hängt das Paket mit
     Publish-ReleasePackage.ps1 an das Release.
@@ -72,11 +73,13 @@ if ($Packages.Count -eq 0) {
 }
 
 $Built = [System.Collections.Generic.List[IO.FileInfo]]::new()
-foreach ($Name in 'AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe') {
+$BinFiles = @('AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'AtlasMonitor.exe', 'WebView2Loader.dll')
+foreach ($Name in $BinFiles) {
     Assert-File (Join-Path $Bin $Name)
 }
-$Built.Add((Get-Item -LiteralPath (Join-Path $Bin 'AtlasServer.exe')))
-$Built.Add((Get-Item -LiteralPath (Join-Path $Bin 'AtlasUpdate.exe')))
+foreach ($Name in 'AtlasServer.exe', 'AtlasUpdate.exe', 'AtlasMonitor.exe') {
+    $Built.Add((Get-Item -LiteralPath (Join-Path $Bin $Name)))
+}
 
 $Bpls = @{}
 foreach ($Platform in 'Win32', 'Win64') {
@@ -115,7 +118,8 @@ $Dist = Join-Path ([IO.Path]::GetTempPath()) ('atlas-ide-expert-' + [Guid]::NewG
 try {
     New-Item -ItemType Directory -Force (Join-Path $Dist 'Win32'), (Join-Path $Dist 'Win64') | Out-Null
     # AtlasUpdate.exe (#1519): Erstinstallation („install“) und Updates aus dem Plugin.
-    Copy-Item (Join-Path $Bin 'AtlasServer.exe'), (Join-Path $Bin 'AtlasUpdate.exe'), (Join-Path $Bin 'AtlasServer.map') $Dist
+    # AtlasMonitor.exe (#1900, #1901): Server im Blick und Prüfläufe ohne IDE; WebView2Loader.dll für seinen Bericht.
+    Copy-Item ($BinFiles | ForEach-Object { Join-Path $Bin $_ }) $Dist
     Copy-Item (Join-Path $Root 'LICENSE'), (Join-Path $Root 'EULA.txt'), (Join-Path $Root 'THIRD-PARTY-NOTICES.md') $Dist
     # Karte „Neu in Atlas“ (#756): whatsnew.json aus den markierten Einträgen des Changelogs, dazu die Beispiele.
     & (Join-Path $PSScriptRoot 'Update-WhatsNew.ps1') -Root $Root -OutFile (Join-Path $Dist 'whatsnew.json') | Out-Null

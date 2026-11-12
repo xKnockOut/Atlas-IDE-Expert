@@ -32,9 +32,8 @@ type
   public
     /// <summary>Komponente unter dem Cursor des aktiven Code-Editors im Designer zeigen.</summary>
     class procedure Run; static;
-    /// <summary>AComponent im Designer von AEditor zeigen und auswählen; AAdd ergänzt die Auswahl.</summary>
-    class function Show(const AEditor: IOTAFormEditor; AComponent: TComponent; AAdd: Boolean = False): Boolean;
-      static;
+    /// <summary>AComponent im Designer von AEditor zeigen und als einzige auswählen.</summary>
+    class function Show(const AEditor: IOTAFormEditor; AComponent: TComponent): Boolean; static;
     /// <summary>Registerseiten auf dem Weg zu AComponent aktivieren; True, wenn sich eine geändert hat.</summary>
     class function Reveal(AComponent: TComponent): Boolean; static;
     /// <summary>Komponente AName im Formular ARoot, auch in eingebetteten Frames; nil ohne.</summary>
@@ -96,8 +95,13 @@ end;
 function ItemsWithRoot(ARoot: TComponent; const ADesigner: IDesigner): TArray<TAtlasDesignerItem>;
 begin
   // Das Formular als eigener Eintrag: ItemsOf liefert nur, was ihm gehört.
-  Result := [TAtlasDesignerSearchItems.RootItem(ARoot, ADesigner)] + TAtlasDesignerSearchItems.ItemsOf(ARoot, ADesigner);
+  Result := [TAtlasDesignerSearchItems.RootItem(ARoot, ADesigner)] +
+    TAtlasDesignerSearchItems.ItemsOf(ARoot, ADesigner);
 end;
+
+const
+  /// <summary>Abstand unter der Oberkante der Schreibmarke: unter die Zeile, nicht in sie hinein.</summary>
+  cBelowCaret = 18;
 
 /// <summary>Bildschirmpunkt unter dem Cursor des Editors (Caret), sonst die Maus.</summary>
 function CaretPoint: TPoint;
@@ -108,7 +112,7 @@ begin
   if (mFocus <> 0) and GetCaretPos(Result) then
   begin
     Winapi.Windows.ClientToScreen(mFocus, Result);
-    Inc(Result.Y, 18);
+    Inc(Result.Y, cBelowCaret);
   end
   else
   begin
@@ -198,12 +202,10 @@ begin
   end;
 end;
 
-class function TAtlasIdeShowComponent.Show(const AEditor: IOTAFormEditor; AComponent: TComponent;
-  AAdd: Boolean): Boolean;
+class function TAtlasIdeShowComponent.Show(const AEditor: IOTAFormEditor; AComponent: TComponent): Boolean;
 var
   mDesigner: IDesigner;
   mRoot: TComponent;
-  mList: TArray<TComponent>;
 begin
   Result := False;
   if (AEditor = nil) or (AComponent = nil) then
@@ -222,15 +224,7 @@ begin
   begin
     mDesigner.Modified;
   end;
-  if AAdd then
-  begin
-    mList := TAtlasDesignerAccess.Selection(AEditor, mRoot);
-    TAtlasDesignerAccess.Select(mDesigner, mRoot, mList + [AComponent]);
-  end
-  else
-  begin
-    mDesigner.SelectComponent(AComponent);
-  end;
+  mDesigner.SelectComponent(AComponent);
   Result := True;
 end;
 

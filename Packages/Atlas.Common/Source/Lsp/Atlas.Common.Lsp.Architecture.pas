@@ -90,7 +90,8 @@ uses
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -116,38 +117,6 @@ const
     (De: 'Vergleichsdaten'; En: 'Comparison data'));
 
 {$SCOPEDENUMS OFF}
-
-function StringOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := Trim(mValue.Value);
-  end;
-end;
-
-function FlagOf(const AObject: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONBool then
-  begin
-    Result := TJSONBool(mValue).AsBoolean;
-  end;
-end;
 
 /// <summary>Feinheit γ aus "resolution" (#1366); AFound False ohne Angabe. Außerhalb 0,2–5,0 oder keine Zahl:
 /// Fehler InvalidParams.</summary>
@@ -245,9 +214,9 @@ begin
   Result := Default(TArchitectureOverview);
   ARoot := '';
   AEnabled := False;
-  mFileName := StringOf(AParams, 'uri');
+  mFileName := TJsonRead.TrimmedText(AParams, 'uri');
   mFileName := PathOf(mFileName);
-  mScope := StringOf(AParams, 'scope');
+  mScope := TJsonRead.TrimmedText(AParams, 'scope');
   if (mScope <> '') and (mScope <> 'project') and (mScope <> 'projectGroup') then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
@@ -264,13 +233,13 @@ begin
     Exit;
   end;
   ARoot := mRequest.Root;
-  mRequest.IncludeLibrary := FlagOf(AParams, 'includeLibraryUnits', mRequest.IncludeLibrary);
+  mRequest.IncludeLibrary := TJsonRead.FlagOr(AParams, 'includeLibraryUnits', mRequest.IncludeLibrary);
   // Nur für diesen Aufruf; die Einstellung bleibt (#1366).
   if mFound then
   begin
     mRequest.Grouping.Resolution := mResolution;
   end;
-  mRequest.Rename := FlagOf(AParams, 'renameSubsystems', False);
+  mRequest.Rename := TJsonRead.FlagOr(AParams, 'renameSubsystems', False);
   Result := FService.Overview(mRequest);
 end;
 
@@ -278,8 +247,8 @@ end;
 /// '' ohne Vergleich. Relativ zum Projekt.</summary>
 function BaselineFile(const AParams: TJSONObject; const ARoot: string; const ASettings: TServerSettings): string;
 begin
-  Result := PathOf(StringOf(AParams, 'compareWith'));
-  if (Result = '') and FlagOf(AParams, 'compare', True) then
+  Result := PathOf(TJsonRead.TrimmedText(AParams, 'compareWith'));
+  if (Result = '') and TJsonRead.FlagOr(AParams, 'compare', True) then
   begin
     Result := ASettings.ArchitectureBaseline;
   end;
@@ -363,7 +332,7 @@ function PlainText(const AParams: TJSONObject; const AState: TArchitectureState;
 var
   mUnitName: string;
 begin
-  mUnitName := StringOf(AParams, 'unit');
+  mUnitName := TJsonRead.TrimmedText(AParams, 'unit');
   if mUnitName <> '' then
   begin
     Result := TArchitectureReport.UnitText(AState.Overview, mUnitName);
@@ -453,12 +422,12 @@ begin
   begin
     mParams := TJSONObject(AParams);
   end;
-  if not TryParseFormat(StringOf(mParams, 'format'), mFormat) then
+  if not TryParseFormat(TJsonRead.TrimmedText(mParams, 'format'), mFormat) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TArchitectureText.FormatIsJsonMarkdownHtml].Text);
   end;
-  if not TArchitectureReport.ParseSection(StringOf(mParams, 'section'), mSection) then
+  if not TArchitectureReport.ParseSection(TJsonRead.TrimmedText(mParams, 'section'), mSection) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TArchitectureText.SectionIsOverviewCentralSubsystems].Text);
@@ -504,16 +473,16 @@ var
 begin
   for mName in TArray<string>.Create('scope', 'compareWith') do
   begin
-    if StringOf(AOptions, mName) <> '' then
+    if TJsonRead.TrimmedText(AOptions, mName) <> '' then
     begin
-      AParams.AddPair(mName, StringOf(AOptions, mName));
+      AParams.AddPair(mName, TJsonRead.TrimmedText(AOptions, mName));
     end;
   end;
   for mName in TArray<string>.Create('includeLibraryUnits', 'compare') do
   begin
     if AOptions.GetValue(mName) is TJSONBool then
     begin
-      AParams.AddPair(mName, TJSONBool.Create(FlagOf(AOptions, mName, False)));
+      AParams.AddPair(mName, TJSONBool.Create(TJsonRead.FlagOr(AOptions, mName, False)));
     end;
   end;
   if AOptions.GetValue('resolution') <> nil then

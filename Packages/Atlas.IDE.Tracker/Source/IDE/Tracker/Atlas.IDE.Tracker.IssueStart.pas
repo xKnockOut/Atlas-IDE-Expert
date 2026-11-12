@@ -33,6 +33,8 @@ type
   /// <summary>Ein „Beginnen“ vom Prüfen der Arbeitskopie bis zum Ergebnis.</summary>
   TAtlasIssueStartJob = record
     Project: string;
+    /// <summary>Haupt-Arbeitskopie (#1926): erster Pfad aus issues.projects, sonst Ordner des Projekts.</summary>
+    Folder: string;
     Issue: TAtlasTrackerIssue;
     Plan: TAtlasIssueStartPlan;
     /// <summary>Lokale Änderungen der Arbeitskopie.</summary>
@@ -107,11 +109,14 @@ uses
   Atlas.Core.Tracker.Links,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.LinkDialogs,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.Workflow;
+  Atlas.IDE.Tracker.IssueWork,
+  Atlas.IDE.Tracker.Workflow,
+  Atlas.IDE.Tracker.WorkingCopies;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung bei „Beginnen“.</summary>
@@ -131,7 +136,7 @@ var
   mBranching: IAtlasVcsBranching;
   mExists: Boolean;
 begin
-  mVcs := TAtlasIdeVcs.ForFolder(ExtractFileDir(Project), TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
+  mVcs := TAtlasIdeVcs.ForFolder(Folder, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
   mKind := TAtlasVcsKind.None;
   if mVcs <> nil then
   begin
@@ -161,7 +166,7 @@ var
   mVcs: IAtlasVersionControl;
   mBranching: IAtlasVcsBranching;
 begin
-  mDir := ExtractFileDir(Project);
+  mDir := Folder;
   if UseRequest then
   begin
     Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), Plan,
@@ -237,18 +242,20 @@ begin
       end
       else
       begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesCreated, [AJob.Outcome.Branch, AJob.Outcome.Base]);
+        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesCreated,
+          [AJob.Outcome.Branch, AJob.Outcome.Base]);
       end;
     TAtlasIssueStartOutcome.Switched:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSwitched, [AJob.Outcome.Branch]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesSwitched, [AJob.Outcome.Branch]);
   else
     if AJob.Plan.Prefix <> '' then
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesRememberedPrefix, [AJob.Issue.Key, AJob.Plan.Prefix]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesRememberedPrefix,
+        [AJob.Issue.Key, AJob.Plan.Prefix]);
     end
     else
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesRemembered, [AJob.Issue.Key]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesRemembered, [AJob.Issue.Key]);
     end;
   end;
 end;
@@ -306,12 +313,12 @@ begin
   mKeep := FContext.Actions;
   mOwner := Self;
   mIssue := AIssue;
-  mProject := FContext.CurrentProject;
+  mProject := FContext.Selection.CurrentProject;
   mTarget := FContext.TargetOf(mProject);
   // Sperrt ein zweites „Beginnen“, solange die Prüfung läuft.
   FContext.StartProject := mProject;
-  FContext.Notice := TAtlasIssuesNotice.Create(mProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting,
-    [mIssue.Key]), False);
+  FContext.Notice := TAtlasIssuesNotice.Create(mProject,
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStarting, [mIssue.Key]), False);
   FContext.Changed;
   FServices.Preview.LinkWrites.CheckBlocked(mTarget, mIssue.Key,
     procedure(AKnown: Boolean; const ADetails: TAtlasTrackerDetails)
@@ -361,13 +368,16 @@ begin
   begin
     Exit;
   end;
+  // Arbeitsstand je Issue (#2052): den des bisher aktiven Issues sichern, bevor der Branch wechselt.
+  TAtlasTrackerIssueWorkLink.BeforeStart(FContext, FContext.Selection.CurrentProject, AIssue.Key);
   mJob := Default(TAtlasIssueStartJob);
-  mJob.Project := FContext.CurrentProject;
+  mJob.Project := FContext.Selection.CurrentProject;
+  mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Issue := AIssue;
   mJob.Facts := TAtlasVcsBranchFacts.Empty;
   FContext.StartProject := mJob.Project;
-  FContext.Notice := TAtlasIssuesNotice.Create(mJob.Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting,
-    [AIssue.Key]), False);
+  FContext.Notice := TAtlasIssuesNotice.Create(mJob.Project,
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStarting, [AIssue.Key]), False);
   FContext.Changed;
   Inspect(mJob, StartOptions(FServices, mJob.Project, AMode));
 end;
@@ -405,8 +415,8 @@ end;
 procedure TAtlasIdeIssueStart.NotStarted(const AJob: TAtlasIssueStartJob);
 begin
   FContext.StartProject := '';
-  FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesNotStarted,
-    [AJob.Issue.Key]), True);
+  FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project,
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesNotStarted, [AJob.Issue.Key]), True);
   FContext.Changed;
 end;
 
@@ -474,7 +484,7 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasIdeVcs.Dialogs.AskBranch(ExtractFileDir(AJob.Project), AJob.Facts, AJob.Plan.Branch,
+  Result := TAtlasIdeVcs.Dialogs.AskBranch(AJob.Folder, AJob.Facts, AJob.Plan.Branch,
     AJob.Plan.Message, AJob.Issue.Key, AJob.Plan.Svn, True, AJob.Request, mNeverAsk);
   if not Result then
   begin
@@ -493,8 +503,9 @@ function TAtlasIdeIssueStart.ConfirmChanges(const AJob: TAtlasIssueStartJob; AAs
 begin
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren). Nicht, wenn sie schon
   // entschieden sind: im Dialog (Git), bei stash oder worktree (#1289).
-  Result := not AJob.ChangesOpen(AAsked) or (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesLocalChanges,
-    [AJob.Changes, AJob.Plan.Branch, sLineBreak + sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) = mrYes);
+  Result := not AJob.ChangesOpen(AAsked) or (MessageDlg(TAtlasTrackerStrings.Fmt(
+    TAtlasTrackerTextId.WelcomeIssuesLocalChanges, [AJob.Changes, AJob.Plan.Branch, sLineBreak + sLineBreak]),
+    mtConfirmation, [mbYes, mbNo], 0) = mrYes);
 end;
 
 procedure TAtlasIdeIssueStart.Run(const AJob: TAtlasIssueStartJob);
@@ -553,12 +564,13 @@ begin
   Result := mResult.Outcome in [TAtlasIssueStartOutcome.InvalidName, TAtlasIssueStartOutcome.Failed];
   if mResult.Outcome = TAtlasIssueStartOutcome.InvalidName then
   begin
-    FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesInvalidName,
-      [AJob.Issue.Key]), True);
+    FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project,
+      TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesInvalidName, [AJob.Issue.Key]), True);
   end
   else if mResult.Outcome = TAtlasIssueStartOutcome.Failed then
   begin
-    FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStartFailed,
+    FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project,
+      TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStartFailed,
       [mResult.Branch, AtlasVcsOutcomeName(mResult.Reason)]), True);
     // Mit Plan (#1288): Schritt, Grund und was schon auf dem Server liegt; worktree-Ordner belegt (#1289).
     if mResult.FolderTaken then
@@ -623,6 +635,7 @@ begin
   begin
     FContext.Welcome.Refresh(AJob.Project);
   end;
+  FContext.Selection.ForgetHead(AJob.Folder);
   FContext.Changed;
   // Nur der Push danach scheiterte (#1289): der lokale Branch bleibt, die Meldung nennt den Grund.
   if AJob.Outcome.PushFailed then
@@ -636,8 +649,13 @@ procedure TAtlasIdeIssueStart.OpenAfter(const AJob: TAtlasIssueStartJob);
 var
   mOpen: string;
 begin
-  // Danach das Projekt öffnen (ein offenes bleibt offen); im worktree nur nach Rückfrage das dortige.
-  if (FContext.Welcome <> nil) and (AJob.Outcome.Folder = '') then
+  // Danach das Projekt öffnen (ein offenes bleibt offen); im worktree nur nach Rückfrage das dortige. Ein Ordner
+  // als gewähltes Tracker-Projekt (#1927) lässt sich nicht öffnen.
+  if not TAtlasIdeFiles.IsProjectFile(AJob.Project) then
+  begin
+    // Nichts zu öffnen.
+  end
+  else if (FContext.Welcome <> nil) and (AJob.Outcome.Folder = '') then
   begin
     FContext.Welcome.Open(AJob.Project);
   end
@@ -676,6 +694,11 @@ begin
   FStatus.Update;
   Track(AJob);
   OpenAfter(AJob);
+  // Arbeitsstand je Issue (#2052): gemerkte Reiter anbieten; im neuen worktree gelten die alten Pfade nicht.
+  if AJob.Outcome.Folder = '' then
+  begin
+    TAtlasTrackerIssueWorkLink.AfterStart(AJob.Project, AJob.Issue.Key);
+  end;
 end;
 
 procedure TAtlasIdeIssueStart.AskHook(var AState: TAtlasIssuesState; const AHooks: string);
@@ -689,7 +712,7 @@ begin
   begin
     AState.Hook := TAtlasMyIssues.cHookYes;
   end
-  else if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesHookPrompt, [sLineBreak + sLineBreak]),
+  else if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesHookPrompt, [sLineBreak + sLineBreak]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
   begin
     AState.Hook := TAtlasMyIssues.cHookNo;
@@ -697,7 +720,7 @@ begin
   else if TAtlasCommitHook.State(AHooks) = TAtlasCommitHookState.Foreign then
   begin
     AState.Hook := TAtlasMyIssues.cHookForeign;
-    FContext.Report(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHookForeign));
+    FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHookForeign));
   end
   else if TAtlasCommitHook.Install(AHooks, TAtlasStrings.Language = TAtlasLanguage.English) then
   begin
@@ -706,7 +729,7 @@ begin
   end
   else
   begin
-    FContext.Report(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHookFailed));
+    FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHookFailed));
   end;
 end;
 
@@ -721,7 +744,7 @@ begin
       mCurrent: TAtlasActiveIssue;
       mProvider: IAtlasTrackerProvider;
     begin
-      mProject := FContext.CurrentProject;
+      mProject := FContext.Selection.CurrentProject;
       if not FContext.Started or (mProject = '') then
       begin
         Exit;
@@ -734,14 +757,16 @@ begin
       begin
         Exit;
       end;
+      // Arbeitsstand je Issue (#2052) vor dem Beenden sichern.
+      TAtlasTrackerIssueWorkLink.BeforeEnd(mProject, mBranch, mCurrent);
       // Tracker nachführen (#1266): Dialog statt Rückfrage; ohne issues.syncState wie bisher.
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (FServices.Sync <> nil) and FServices.Sync.Enabled(mProvider, mTarget) then
       begin
         EndWithTracker(mProject, mBranch, mCurrent.Key, mProvider, mTarget, mState);
       end
-      else if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesEndConfirm, [mCurrent.Key]), mtConfirmation,
-        [mbYes, mbNo], 0) = mrYes then
+      else if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesEndConfirm, [mCurrent.Key]),
+        mtConfirmation, [mbYes, mbNo], 0) = mrYes then
       begin
         EndedLocally(mProject, mBranch, mCurrent.Key);
       end;
@@ -762,10 +787,12 @@ begin
   // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits).
   if FServices.Time <> nil then
   begin
-    FServices.Time.Ended(FServices.TimeIssueOf(AProject, AKey), ExtractFileDir(AProject), ABranch,
+    FServices.Time.Ended(FServices.TimeIssueOf(AProject, AKey), TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
+      ABranch,
       TAtlasIdeSettings.Current.IssuesBranchBase);
   end;
-  FContext.Notice := TAtlasIssuesNotice.Create(AProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesEnded, [AKey]),
+  FContext.Notice := TAtlasIssuesNotice.Create(AProject,
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesEnded, [AKey]),
     False);
   TAtlasGuard.Log(cLogEnded);
   FStatus.Update;
@@ -792,7 +819,8 @@ begin
   begin
     mPullRequest := AProvider.PullRequestPage(ATarget, mIssue.PullRequest.Number);
   end;
-  FServices.Sync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch, ExtractFileDir(AProject),
+  FServices.Sync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch,
+    TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
     TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest),
     procedure(AChange: TAtlasTrackerWrite)
     begin

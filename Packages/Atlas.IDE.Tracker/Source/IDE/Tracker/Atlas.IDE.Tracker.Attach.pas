@@ -106,7 +106,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.Capture,
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Tracker.AttachDialog,
@@ -430,7 +430,7 @@ begin
       end;
       if (mProvider = nil) or (mTarget.Server = '') then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
         Exit;
       end;
       DropTemp;

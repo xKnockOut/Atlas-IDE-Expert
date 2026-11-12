@@ -56,6 +56,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.UI.Strings,
+  Atlas.UI.StatusBar.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
@@ -65,23 +66,23 @@ uses
 
 function LiveTexts: TAtlasStatusLiveTexts;
 begin
-  Result.Live := TAtlasStrings.Text(TAtlasTextId.StatusBarLive);
-  Result.Manual := TAtlasStrings.Text(TAtlasTextId.StatusBarManual);
-  Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint);
-  Result.OnSaveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
-  Result.ManualHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveManualHint);
-  Result.RecheckClick := TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
-  Result.CheckFileClick := TAtlasStrings.Text(TAtlasTextId.StatusBarCheckFileClick);
-  Result.OnSave := TAtlasStrings.Text(TAtlasTextId.StatusBarOnSave);
-  Result.Checking := TAtlasStrings.Text(TAtlasTextId.StatusBarChecking);
-  Result.CheckedAgo := TAtlasStrings.Text(TAtlasTextId.StatusBarCheckedAgo);
-  Result.Seconds := TAtlasStrings.Text(TAtlasTextId.StatusBarSeconds);
-  Result.Minutes := TAtlasStrings.Text(TAtlasTextId.StatusBarMinutes);
-  Result.Hours := TAtlasStrings.Text(TAtlasTextId.StatusBarHours);
+  Result.Live := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLive);
+  Result.Manual := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarManual);
+  Result.LiveHint := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLiveOnHint);
+  Result.OnSaveHint := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLiveOffHint);
+  Result.ManualHint := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLiveManualHint);
+  Result.RecheckClick := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarRecheckClick);
+  Result.CheckFileClick := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarCheckFileClick);
+  Result.OnSave := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarOnSave);
+  Result.Checking := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarChecking);
+  Result.CheckedAgo := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarCheckedAgo);
+  Result.Seconds := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarSeconds);
+  Result.Minutes := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarMinutes);
+  Result.Hours := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarHours);
   Result.Separator := TAtlasStatusSummary.cSeparator;
-  Result.ProjectProgress := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectProgress);
-  Result.ProjectDone := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectDone);
-  Result.ProjectPaused := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectPaused);
+  Result.ProjectProgress := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarProjectProgress);
+  Result.ProjectDone := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarProjectDone);
+  Result.ProjectPaused := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarProjectPaused);
 end;
 
 /// <summary>Zähler der Befunde von AFileName.</summary>
@@ -97,7 +98,7 @@ begin
     mProblems := TAtlasProblemsController.Current.ForFile(AFileName);
   end;
   AView.Counts := TAtlasStatusBarContent.CountsOf(mProblems, ASettings.ProblemsWindowCompiler);
-  AView.FindingsHint := TAtlasStrings.Fmt(TAtlasTextId.StatusBarFindingsHint,
+  AView.FindingsHint := TAtlasStatusBarStrings.Fmt(TAtlasStatusBarTextId.StatusBarFindingsHint,
     [AView.Counts[TAtlasFindingKind.Error], AView.Counts[TAtlasFindingKind.Warning],
     AView.Counts[TAtlasFindingKind.Info]]);
 end;
@@ -115,7 +116,7 @@ begin
   begin
     // Während des Debuggens ruht die Prüfung (#1241).
     AView.LiveBusy := False;
-    AView.LiveText := TAtlasStrings.Text(TAtlasTextId.StatusBarPausedDebugger);
+    AView.LiveText := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarPausedDebugger);
   end
   else if TAtlasProblemsController.ProjectRun(mRun, mFinishedAgo) then
   begin
@@ -140,7 +141,7 @@ begin
     LiveTexts);
   if ACheck.FileName <> '' then
   begin
-    Result := Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.StatusBarLastCheck,
+    Result := Result + sLineBreak + TAtlasStatusBarStrings.Fmt(TAtlasStatusBarTextId.StatusBarLastCheck,
       [ExtractFileName(ACheck.FileName), ACheck.DurationMs, FormatDateTime('hh":"nn":"ss', ACheck.At)]);
   end;
   if ATotal > 0 then
@@ -207,18 +208,20 @@ begin
   AView.MethodFound := AMethod.Found;
   if not AMethod.Found then
   begin
-    AView.MethodName := TAtlasStrings.Text(TAtlasTextId.StatusBarNoMethod);
+    AView.MethodName := TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarNoMethod);
     Exit;
   end;
   AView.MethodName := AMethod.Name;
   AView.MethodDetail := TAtlasStatusBarContent.MethodDetail(AMethod,
-    TAtlasStrings.Text(TAtlasTextId.StatusBarLines), TAtlasStrings.Text(TAtlasTextId.StatusBarCyclomatic),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLines),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarCyclomatic),
     TAtlasStatusSummary.cSeparator);
   AView.MethodOver := AMethod.Over;
   AView.MethodHint := AMethod.Name + sLineBreak + TAtlasStatusBarContent.MethodLimits(AMethod,
-    TAtlasStrings.Text(TAtlasTextId.StatusBarLines), TAtlasStrings.Text(TAtlasTextId.StatusBarCyclomatic),
-    TAtlasStrings.Text(TAtlasTextId.StatusBarLimit), TAtlasStatusSummary.cSeparator) + sLineBreak +
-    TAtlasStrings.Text(TAtlasTextId.StatusBarMethodJump);
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLines),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarCyclomatic),
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarLimit), TAtlasStatusSummary.cSeparator) + sLineBreak +
+    TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarMethodJump);
 end;
 
 /// <summary>Zusatzfelder des Atlas-Felds, solange es umgezogen ist (TAtlasStatusField.Relocated); sonst stehen sie
@@ -293,13 +296,15 @@ begin
   // Mehr Platz als in der Statuszeile: „Atlas · bereit“ statt nur „Atlas“.
   if (AField.State = TAtlasStatusState.Green) and SameText(mText, TAtlasStatusSummary.cFieldCaption) then
   begin
-    mText := mText + TAtlasStatusSummary.cSeparator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
+    mText := mText + TAtlasStatusSummary.cSeparator + TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarReady);
   end;
   AView.StatusText := mText;
-  AView.StatusHint := AField.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
+  AView.StatusHint := AField.Tooltip + sLineBreak + TAtlasStatusBarStrings.Text(
+    TAtlasStatusBarTextId.StatusBarStatusClicks);
   if TAtlasIdeServerWindow.Enabled then
   begin
-    AView.StatusHint := AView.StatusHint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusServer);
+    AView.StatusHint := AView.StatusHint + sLineBreak + TAtlasStatusBarStrings.Text(
+      TAtlasStatusBarTextId.StatusBarStatusServer);
   end;
   AView.StatusState := AField.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.

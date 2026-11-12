@@ -158,6 +158,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
@@ -1186,7 +1187,7 @@ var
 
   function FirstToken(ANode: TSyntaxNode): Integer;
   begin
-    Result := TokenAtOffset(mTokens, ANode.StartOffset);
+    Result := TokenFrom(mTokens, ANode.StartOffset);
   end;
 
   function PathOf(ANode: TSyntaxNode): string;
@@ -1363,7 +1364,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

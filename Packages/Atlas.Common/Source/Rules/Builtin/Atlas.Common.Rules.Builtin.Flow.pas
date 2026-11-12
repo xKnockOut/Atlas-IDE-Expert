@@ -166,6 +166,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
@@ -218,7 +219,7 @@ begin
   begin
     Exit;
   end;
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   mCache := TRuleDerived.Open(AContext);
   mRoutines := TRuleDerived.Routines(mCache, AContext);
   for mRoutine in mRoutines do
@@ -305,7 +306,7 @@ var
     Result := False;
   end;
 
-  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (Bericht M1): von den
+  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (tiefe Bäume sprengen den Stapel nicht): von den
   // unerreichbaren Anweisungen aufwärts statt rekursiv durch ANode.
   function HasDead(ANode: TSyntaxNode): Boolean;
   var
@@ -364,7 +365,7 @@ begin
   begin
     Exit;
   end;
-  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   mCache := TRuleDerived.Open(AContext);
   mRoutines := TRuleDerived.Routines(mCache, AContext);
   for mRoutine in mRoutines do
@@ -400,31 +401,6 @@ type
   /// <summary>Was ein Aufruf für den Weg einer noreturn-Routine bedeutet.</summary>
   TNoreturnCallEffect = (Returns, Ends, Unknown);
 
-/// <summary>AName ohne Typparameter (TListe&lt;T&gt;.Fehler -&gt; TListe.Fehler), klein geschrieben.</summary>
-function WithoutTypeParams(const AName: string): string;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := '';
-  mDepth := 0;
-  for mIndex := 1 to Length(AName) do
-  begin
-    if AName[mIndex] = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if AName[mIndex] = '>' then
-    begin
-      Dec(mDepth);
-    end
-    else if mDepth = 0 then
-    begin
-      Result := Result + AName[mIndex];
-    end;
-  end;
-  Result := LowerCase(Result);
-end;
-
 function HasNoreturn(AHeader: TSyntaxNode): Boolean;
 var
   mIndex: Integer;
@@ -450,7 +426,7 @@ var
 begin
   if (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) then
   begin
-    Exit(WithoutTypeParams(AHeader.Parent.Name));
+    Exit(LowerCase(TRoutineSignatures.WithoutTypeParams(AHeader.Parent.Name)));
   end;
   mParent := AHeader.Parent;
   while (mParent <> nil) and (mParent.Kind <> TSyntaxKind.TypeDecl) do
@@ -459,11 +435,11 @@ begin
   end;
   if mParent = nil then
   begin
-    Result := WithoutTypeParams(AHeader.Name);
+    Result := LowerCase(TRoutineSignatures.WithoutTypeParams(AHeader.Name));
   end
   else
   begin
-    Result := WithoutTypeParams(mParent.Name + '.' + AHeader.Name);
+    Result := LowerCase(TRoutineSignatures.WithoutTypeParams(mParent.Name + '.' + AHeader.Name));
   end;
 end;
 
@@ -668,7 +644,7 @@ begin
     for mRoutine in TRuleDerived.Routines(mCache, AContext) do
     begin
       if not (HasNoreturn(mRoutine.FindChild(TSyntaxKind.RoutineHeader)) or
-        mNoreturnFull.ContainsKey(WithoutTypeParams(mRoutine.Name))) then
+        mNoreturnFull.ContainsKey(LowerCase(TRoutineSignatures.WithoutTypeParams(mRoutine.Name)))) then
       begin
         Continue;
       end;

@@ -41,7 +41,7 @@ type
     ['{0E3D3F59-6A51-4E0B-9C2A-8B7F1D4E6A20}']
     /// <summary>Wartet auf das Ende und liefert den Exit-Code. AOnLine erhält stdout und stderr.</summary>
     function Run(const ARequest: TCompilerRequest; const AOnLine: TCompilerLineEvent): Integer;
-    /// <summary>Beendet alle laufenden Prozesse dieses Läufers (beim Beenden des Servers, Code-Review A-05);
+    /// <summary>Beendet alle laufenden Prozesse dieses Läufers (beim Beenden des Servers);
     /// deren Run und alle späteren Run-Aufrufe lösen ECompilerCancelled aus. Threadsicher.</summary>
     procedure Cancel;
   end;

@@ -110,6 +110,7 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
+  Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.QuickToggles,
@@ -246,9 +247,10 @@ begin
     end);
   FLineRef := FLine;
   // Gelb: Der Modus misst und schreibt Diagnosedaten (#754).
-  FLine.Update(TAtlasStrings.Text(TAtlasTextId.DiagnosticStatusLine), TAtlasStatusState.Yellow,
-    TAtlasStrings.Text(TAtlasTextId.DiagnosticStatusSummary), TAtlasStrings.Text(TAtlasTextId.WelcomeStateDiagnosticOn),
-    TAtlasStrings.Text(TAtlasTextId.WelcomeStateDiagnosticDetail));
+  FLine.Update(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticStatusLine), TAtlasStatusState.Yellow,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticStatusSummary),
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.WelcomeStateDiagnosticOn),
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.WelcomeStateDiagnosticDetail));
   FRegistry.Add(FLineRef);
 end;
 
@@ -371,14 +373,15 @@ begin
   mFrame := TAtlasIdeTimingWindow.ExistingFrame;
   if mFrame <> nil then
   begin
-    mFrame.Completion.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
-    mFrame.Bar.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
+    mFrame.Completion.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
+    mFrame.Bar.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
   end;
 end;
 
 procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
-  ARegistry.RegisterCommand('Atlas.DiagnosticWindow', TAtlasStrings.Text(TAtlasTextId.DiagnosticPaletteShow), '',
+  ARegistry.RegisterCommand('Atlas.DiagnosticWindow',
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticPaletteShow), '',
     procedure
     begin
       if FInstance = nil then

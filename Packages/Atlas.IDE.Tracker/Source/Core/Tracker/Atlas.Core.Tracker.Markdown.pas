@@ -923,7 +923,7 @@ end;
 
 class function TAtlasTrackerMarkdown.DecodeHtml(const AText: string): string;
 begin
-  // &nbsp; kennt nur HTML; alles Übrige wie in XML über Atlas.Text (ADR 0012).
+  // &nbsp; kennt nur HTML; alles Übrige wie in XML über Atlas.Text.
   Result := TTextEntities.Decode(StringReplace(AText, '&nbsp;', ' ', [rfReplaceAll]));
 end;
 

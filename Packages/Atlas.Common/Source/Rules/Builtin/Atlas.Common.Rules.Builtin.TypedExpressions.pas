@@ -118,6 +118,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.UsesClause,
@@ -488,7 +489,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -643,7 +644,7 @@ var
     mName: string;
   begin
     Result := False;
-    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
@@ -670,7 +671,7 @@ var
       mNode: TSyntaxNode;
       mPending: TStack<TSyntaxNode>;
     begin
-      // Iterativ (Bericht M1).
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht).
       mPending := TStack<TSyntaxNode>.Create;
       try
         mPending.Push(ARoot);
@@ -831,7 +832,7 @@ var
     mName, mOuterName: string;
     mSeen: TList<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1): benannte Typen dieser Datei (TIndex = TBereich) werden in einer Schleife aufgelöst;
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): benannte Typen dieser Datei (TIndex = TBereich) werden in einer Schleife aufgelöst;
     // die Meldung nennt den äußersten Namen. mSeen schützt vor Zyklen wie TA = TB; TB = TA.
     AInfo := Default(TIndexInfo);
     Result := False;
@@ -1154,7 +1155,7 @@ var
       mFixes);
   end;
 
-  // CheckArray und CheckValue rufen sich gegenseitig auf; die Rekursion bleibt (Bericht M1): jede Ebene ist eine
+  // CheckArray und CheckValue rufen sich gegenseitig auf; die Rekursion bleibt: jede Ebene ist eine
   // Dimension bzw. ein Elementtyp des deklarierten Arraytyps und ein Klammerpaar der Konstanten, keine Kette.
   procedure CheckArray(AArray: TSyntaxNode; ADimension: Integer; AValue: TSyntaxNode);
   var
@@ -1225,7 +1226,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1394,7 +1395,7 @@ var
   var
     mIndex: Integer;
   begin
-    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    mIndex := TokenFrom(mTokens, ANode.StartOffset);
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) do
     begin
       Inc(mIndex);
@@ -1580,7 +1581,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);
@@ -1798,7 +1799,7 @@ var
     mNode: TSyntaxNode;
     mPending: TStack<TSyntaxNode>;
   begin
-    // Iterativ (Bericht M1).
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(ARoot);

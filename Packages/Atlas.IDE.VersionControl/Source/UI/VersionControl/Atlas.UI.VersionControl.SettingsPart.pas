@@ -168,9 +168,9 @@ begin
   mCaption.Parent := Result;
   mCaption.Caption := ACaption + ':';
   mCaption.Left := 0;
-  mCaption.Top := 5;
+  mCaption.Top := mCaption.ScaleValue(5);
   AControl.Parent := Result;
-  AControl.Left := 90;
+  AControl.Left := AControl.ScaleValue(90);
   AControl.Top := 1;
   AControl.Width := AWidth;
 end;
@@ -194,7 +194,7 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.Left := ALeft;
-  Result.Top := cRowButtonTop;
+  Result.Top := Result.ScaleValue(cRowButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;

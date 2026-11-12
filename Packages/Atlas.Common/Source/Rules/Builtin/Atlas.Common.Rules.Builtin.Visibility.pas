@@ -41,7 +41,8 @@
 // Aufruf als erreichbar, sobald eine Überladung eine Klassenmethode ist (IM5).
 // protected-Mitglieder eines generischen Empfängers (TKnoten<T>) übersetzt
 // dcc aus generischem Code fremder Units (Spring4D, IM1, IM2); aus nicht
-// generischem Code (SG3) und bei strict protected meldet es E2362.
+// generischem Code (SG3) und bei strict protected meldet es E2362. In der
+// Deklaration einer Klasse (cRand = 2 * TBasis.cAbstand) bleibt protected still.
 
 interface
 
@@ -180,6 +181,28 @@ begin
     end;
     mNode := mNode.Parent;
   end;
+end;
+
+/// <summary>Steht ANode in der Deklaration einer Klasse (Konstante, Vorgabe), nicht in einer Routine? Dort
+/// sieht ein Nachfahre protected-Mitglieder des Vorfahren (cRand = 2 * TBasis.cAbstand).</summary>
+function InClassDeclaration(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := ANode.Parent;
+  while mNode <> nil do
+  begin
+    if mNode.Kind = TSyntaxKind.RoutineDecl then
+    begin
+      Exit(False);
+    end;
+    if mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType] then
+    begin
+      Exit(True);
+    end;
+    mNode := mNode.Parent;
+  end;
+  Result := False;
 end;
 
 /// <summary>Steht ANode in generischem Code, also in einer Routine oder Methode mit Typparametern im Kopf
@@ -534,6 +557,9 @@ begin
   // class constructor Create verdeckt den geerbten Konstruktor nicht (Spring4D, IM4).
   Result := (AMember.SymbolKind = TIndexSymbolKind.Constructor_) and HasDirective(AMember.Directives, 'class');
   Result := Result or ((AMember.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)));
+  // In der Klassendeklaration ohne bekannte Vorfahrenkette: wie dcc bei einem Nachfahren still (nie private).
+  Result := Result or ((AMember.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected]) and
+    InClassDeclaration(ANode));
   // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc aus generischem Code
   // einer anderen Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1, IM2); aus nicht generischem Code
   // meldet es E2362 (SG3, dcc-Lauf vom 29.10.2026, #1328).
@@ -637,7 +663,7 @@ begin
   end;
 end;
 
-// Iterativ (Bericht M1).
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
 procedure TInaccessibleMemberCheck.Visit(ARoot: TSyntaxNode);
 var
   mPending: TVisibilityPending;

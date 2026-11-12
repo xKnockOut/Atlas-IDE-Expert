@@ -65,7 +65,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.IOUtils,
-  Atlas.Core.Files.DataFile;
+  Atlas.Core.Files.DataFile,
+  Atlas.Text.Json;
 
 function SamePath(const ALeft, ARight: string): Boolean;
 begin
@@ -226,36 +227,6 @@ begin
   end;
 end;
 
-function StringOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-function IntegerOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else
-  begin
-    Result := 0;
-  end;
-end;
-
 class function TAtlasDebugIgnoreList.Parse(const AText: string; out AValid: Boolean): TAtlasDebugIgnoreList;
 var
   mRoot: TJSONValue;
@@ -291,8 +262,8 @@ begin
         if mItem is TJSONObject then
         begin
           mLocation := TJSONObject(mItem);
-          Result.AddLocation(StringOf(mLocation, 'project'), StringOf(mLocation, 'class'),
-            StringOf(mLocation, 'file'), IntegerOf(mLocation, 'line'));
+          Result.AddLocation(TJsonRead.Text(mLocation, 'project'), TJsonRead.Text(mLocation, 'class'),
+            TJsonRead.Text(mLocation, 'file'), TJsonRead.Int(mLocation, 'line'));
         end;
       end;
     end;

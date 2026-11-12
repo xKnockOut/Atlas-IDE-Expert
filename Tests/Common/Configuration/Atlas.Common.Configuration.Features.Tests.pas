@@ -767,6 +767,14 @@ begin
   Settings := Parse('{"refactoring": {"safeDeleteCascade": "manchmal"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
+  // #2054: Methode extrahieren mit gleichen Stellen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.ExtractMethodDuplicates);
+  Settings := Parse('{"refactoring": {"extractMethodDuplicates": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Refactoring.ExtractMethodDuplicates);
+  Parse('{"refactoring": {"extractMethodDuplicates": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 /// <summary>Einstellungen ab „Speicherbudget (#185)“.</summary>
 procedure ReadsBudgetAndTimeLimits;
@@ -798,6 +806,10 @@ begin
   Settings := Parse('{"server": {"crashSkip": 1, "gibts": true}}', Issues);
   Assert.IsTrue(Settings.ServerCrashSkip);
   Assert.AreEqual(2, Integer(Length(Issues)), 'kein Wahrheitswert und unbekannter Schlüssel');
+  // Statusdatei je Server (#1901)
+  Assert.IsTrue(Parse('{}', Issues).ServerStatusFile);
+  Assert.IsFalse(Parse('{"server": {"statusFile": false}}', Issues).ServerStatusFile);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Diagnoselog (#647)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.DiagnosticsLog);
@@ -1188,6 +1200,12 @@ begin
   Assert.AreEqual(7, Integer(Length(Issues)));
   Parse('{"issues": {"projects": {"match": "C:\\A"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  // Arbeitskopien (#1926): Liste von Ordnern; anderes meldet der Server einmal.
+  Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma", ' +
+    '"paths": ["D:\\SVN\\A\\trunk", "D:\\SVN\\B"]}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'paths als Liste ohne Meldung');
+  Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma", "paths": "D:\\SVN"}]}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'paths keine Liste');
   Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"projects": [{"match": "C:\\B", ' +
     '"connection": "Firma"}]}}', Issues);
   Assert.IsTrue(Settings.IssueProjects.Contains('Firma'), 'Datei vor Editor');

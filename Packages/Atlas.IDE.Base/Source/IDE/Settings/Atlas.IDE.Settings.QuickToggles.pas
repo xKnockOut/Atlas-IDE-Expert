@@ -75,12 +75,14 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Settings.Options;
+  Atlas.IDE.Settings.Options,
+  Atlas.IDE.Foundation.Host;
 
 const
   cAnswerSession = 100;
@@ -178,14 +180,14 @@ begin
   try
     mDialog.Caption := 'Atlas';
     mDialog.Title := AItem.Toggle.Caption;
-    mDialog.Text := TAtlasStrings.Fmt(TAtlasTextId.QuickToggleAskText, [AItem.Toggle.Caption]);
+    mDialog.Text := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.QuickToggleAskText, [AItem.Toggle.Caption]);
     mDialog.CommonButtons := [tcbCancel];
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickToggleAskSession);
+    mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickToggleAskSession);
     mButton.ModalResult := cAnswerSession;
     mButton.Default := True;
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickToggleAskProject);
+    mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickToggleAskProject);
     mButton.ModalResult := cAnswerProject;
     Result := mDialog.Execute;
     if not Result then
@@ -231,8 +233,9 @@ begin
     except
       on E: Exception do
       begin
-        TAtlasGuard.Log(TAtlasStrings.Fmt(TAtlasTextId.QuickToggleWriteFailed, [E.ClassName]));
-        MessageBox(Application.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.QuickToggleWriteFailed, [E.Message])),
+        TAtlasGuard.Log(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.QuickToggleWriteFailed, [E.ClassName]));
+        MessageBox(Application.Handle, PChar(TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.QuickToggleWriteFailed,
+          [E.Message])),
           'Atlas', MB_ICONWARNING or MB_OK);
         Exit;
       end;
@@ -348,18 +351,7 @@ begin
   if mAnchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
-    if Screen.ActiveForm <> nil then
-    begin
-      mArea := Screen.ActiveForm.BoundsRect;
-    end
-    else if Application.MainForm <> nil then
-    begin
-      mArea := Application.MainForm.BoundsRect;
-    end
-    else
-    begin
-      mArea := Screen.WorkAreaRect;
-    end;
+    mArea := TAtlasIdeHost.PopupArea;
     mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
   end;
   Show(mAnchor);
@@ -383,13 +375,15 @@ procedure TAtlasIdeQuickToggles.RegisterCommands(const ARegistry: IAtlasCommandR
 var
   mToggle: TAtlasQuickToggle;
 begin
-  ARegistry.RegisterCommand('Atlas.QuickToggles', TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteOpen), '',
+  ARegistry.RegisterCommand('Atlas.QuickToggles',
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglePaletteOpen), '',
     procedure
     begin
       Show;
     end);
-  ARegistry.RegisterCommand('Atlas.QuickToggles.AllOff', TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff),
-    TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint),
+  ARegistry.RegisterCommand('Atlas.QuickToggles.AllOff',
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglePaletteHint),
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -401,8 +395,8 @@ begin
   for mToggle in TAtlasIdeSettings.QuickToggles do
   begin
     ARegistry.RegisterCommand('Atlas.QuickToggles.' + mToggle.Key,
-      TAtlasStrings.Fmt(TAtlasTextId.QuickTogglePalette, [mToggle.Caption]),
-      TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint), SwitchCommand(mToggle.Key));
+      TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.QuickTogglePalette, [mToggle.Caption]),
+      TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglePaletteHint), SwitchCommand(mToggle.Key));
   end;
 end;
 

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Session;
 
-// LSP-Sitzung des IDE-Plugins (ADR 0006): initialize, Dokumentabgleich und die
+// LSP-Sitzung des IDE-Plugins: initialize, Dokumentabgleich und die
 // Anfragen, die die IDE über den Code Insight-Manager stellt.
 // Abgleich: Vor jeder Anfrage wird der aktuelle Editortext geschickt, beim
 // ersten Mal als didOpen, danach als didChange mit dem geänderten Bereich
@@ -24,7 +24,7 @@
 // an; die Anfrage geht im Lese-Thread an OnApplyEdit, das später über AReply
 // antwortet ({applied, failureReason}). Antwortet der Empfänger nicht (Sitzung
 // beendet, Eintrag beim Entladen verworfen), gibt die Sitzung die Id frei
-// (Code-Review S-07); nur die erste Antwort zählt.
+//; nur die erste Antwort zählt.
 // Ergebnisfenster (#400): Implementierungen, workspace/symbol sowie Typ- und
 // Aufrufhierarchie; der Aufrufer gleicht die Puffer vorher ab.
 // Bedienung im Editor (#399): Code-Aktionen, Befehle mit Argumenten,
@@ -56,6 +56,7 @@ type
   // Aliase: Die Typen stehen in Atlas.Core.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
   TLspLocation = Atlas.Core.Lsp.Session.Json.TLspLocation;
   TLspCodeAction = Atlas.Core.Lsp.Session.Json.TLspCodeAction;
+  TLspCodeActionChoice = Atlas.Core.Lsp.Session.Json.TLspCodeActionChoice;
   TLspHoverParts = Atlas.Core.Lsp.Session.Json.TLspHoverParts;
   TLspDiagnosticReport = Atlas.Core.Lsp.Session.Json.TLspDiagnosticReport;
   TLspWorkspaceRun = Atlas.Core.Lsp.Session.Json.TLspWorkspaceRun;
@@ -143,9 +144,9 @@ type
       overload;
   end;
 
-  /// <summary>Laufende Sitzung oder nil; startet nie einen Server (Code-Review A-01). Aus beliebigem Thread
+  /// <summary>Laufende Sitzung oder nil; startet nie einen Server. Aus beliebigem Thread
   /// aufgerufen, meist im Zeitlimit-Arbeiter. Steht hier, damit Anbieter verschiedener Features sie ohne
-  /// gegenseitigen Import teilen (Code-Review A-10).</summary>
+  /// gegenseitigen Import teilen.</summary>
   TAtlasSessionFunc = reference to function: TLspSession;
 
 implementation

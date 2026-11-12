@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Contracts.Rules;
 
-// Vertrag zwischen Modulen (#1455, ADR 0017 Regel 6): Das Modul Prüfregeln
+// Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Prüfregeln
 // stellt über seinen Scope eine IAtlasBaselineSource bereit (Baseline des
 // Projekts über den Server aktualisieren, #97); die Einrichtung der
 // Willkommensseite (#759) fragt sie über die Registry und kommt ohne das
@@ -12,9 +12,17 @@
 // unterdrücken“ und „Regel abschalten“ setzt das Modul um (IAtlasRuleActions);
 // Fenster „Atlas-Prüfung“, Befund-Hover und Serverfenster fragen danach. Ohne
 // Modul fehlen die Einträge (ohne Prüfregeln gibt es auch keine Regeltreffer).
+// Fehler der IDE (#1819, Error Insight): Das Modul liest sie über die Open
+// Tools API (IAtlasIdeErrors); der Problem-Controller von Base fragt nach jeder
+// Prüfung einer Datei danach (problems.ideErrors) und stellt sie neben die
+// Atlas-Befunde. Die Werte kommen roh wie von der IDE, umgerechnet wird in Base
+// (Atlas.Core.Problems.IdeErrors). Ohne Modul gibt es keine Fehler der IDE.
 // Nur Interfaces und Typen, kein Code. Liegt in Base (Source/Contracts, #1456, Entscheidung 04.11.2026).
 
 interface
+
+uses
+  Atlas.Core.Problems.Contract;
 
 type
   /// <summary>Ergebnis des Aktualisierens im Hauptthread: ASucceeded mit Treffern ATotal in AFiles Dateien, sonst
@@ -51,6 +59,18 @@ type
     /// <summary>„Regel abschalten“: rules.&lt;ARule&gt; = "off" in atlas.json, ohne Projekt in der globalen Datei.
     /// </summary>
     procedure Disable(const ARule: string);
+  end;
+
+  /// <summary>Ein Fehler aus Error Insight (#1819); liegt bei den Problemen im Kern (Atlas.Core.Problems.Contract).
+  /// </summary>
+  TAtlasIdeError = Atlas.Core.Problems.Contract.TAtlasIdeError;
+
+  /// <summary>Fehler der IDE zu einer Datei (#1819). Aufruf im Hauptthread der IDE.</summary>
+  IAtlasIdeErrors = interface
+    ['{656AF5CE-FBD4-47A0-9473-D671E142D0B2}']
+    /// <summary>Error Insight der IDE für AFileName; False, wenn die IDE die Datei nicht als Modul kennt oder
+    /// keine Fehler anbietet (dann ist AErrors nil).</summary>
+    function ErrorsOf(const AFileName: string; out AErrors: TArray<TAtlasIdeError>): Boolean;
   end;
 
 implementation

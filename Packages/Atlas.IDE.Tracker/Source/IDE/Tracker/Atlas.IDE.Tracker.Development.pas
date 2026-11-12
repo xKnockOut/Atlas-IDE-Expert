@@ -125,11 +125,12 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Tracker.WorkingCopies;
 
 { TAtlasIdeIssueDevelopment }
 
@@ -417,15 +418,15 @@ begin
   end;
   case ADevelopment.TrackerError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server, TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -447,6 +448,8 @@ type
   TLoadJob = record
     Generation: Integer;
     Project: string;
+    /// <summary>Haupt-Arbeitskopie (#1926), im Hauptthread bestimmt.</summary>
+    Folder: string;
     Request: TAtlasIssueDevelopmentRequest;
     Target: TAtlasTrackerTarget;
     Provider: IAtlasTrackerProvider;
@@ -459,7 +462,7 @@ begin
   try
     if AJob.Project <> '' then
     begin
-      TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(ExtractFileDir(AJob.Project),
+      TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(AJob.Folder,
         TAtlasIdeIssueDevelopment.cVcsTimeoutMs), AJob.Request, AResult);
     end;
   except
@@ -570,6 +573,7 @@ begin
   mJob := Default(TLoadJob);
   mJob.Generation := FGeneration;
   mJob.Project := ProjectFile;
+  mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Target := FTarget;
   mJob.Request := TAtlasIssueDevelopmentRequest.Create(FTarget.Provider, FTarget.Project, FKey,
     Bases(TAtlasIdeSettings.Current.IssuesBranchBase), GroupProjects);
@@ -679,7 +683,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if not FStarted or (mFolder = '') then
   begin
     Exit;
@@ -746,7 +750,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if not FStarted or (mFolder = '') then
   begin
     Exit;
@@ -813,7 +817,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if not FStarted or (mFolder = '') or ABranch.Current then
   begin
     Exit;
@@ -858,7 +862,7 @@ begin
   begin
     Exit;
   end;
-  mFolder := ExtractFileDir(ProjectFile);
+  mFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(ProjectFile);
   if mFolder = '' then
   begin
     Exit;

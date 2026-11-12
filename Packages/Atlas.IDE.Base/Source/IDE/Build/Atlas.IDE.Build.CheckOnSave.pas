@@ -65,7 +65,6 @@ type
     procedure Run(const AProject: string; AManual: Boolean);
     class function ActiveProject: IOTAProject; static;
     class function Debugging: Boolean; static;
-    class procedure AddMessage(const AText: string); static;
   public
     /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
     constructor Create(AEvents: TAtlasCompileEvents; const AReport: TProc<string>);
@@ -99,7 +98,8 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.IDE.Foundation.Host;
 
 {$SCOPEDENUMS ON}
 
@@ -292,23 +292,6 @@ begin
   Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
 end;
 
-class procedure TAtlasIdeCheckOnSave.AddMessage(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
-begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    Exit;
-  end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
-  end;
-  mMessages.AddTitleMessage(AText, mGroup);
-end;
-
 class procedure TAtlasIdeCheckOnSave.PressProgressOk;
 var
   mIndex, mChild: Integer;
@@ -455,7 +438,7 @@ begin
     if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cCheck, TAtlasNotificationSeverity.Warning,
       TAtlasStrings.Text(TAtlasTextId.NotificationsCheckDisabled), mText) = TAtlasNotificationMode.Show then
     begin
-      AddMessage(mText);
+      TAtlasIdeHost.Message(mText);
     end;
   end;
 end;

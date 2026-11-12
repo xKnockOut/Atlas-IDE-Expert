@@ -63,7 +63,7 @@ implementation
 
 uses
   Vcl.ComCtrls,
-  Atlas.UI.Strings,
+  Atlas.UI.Results.Strings,
   Atlas.UI.Undo.Messages;
 
 { TAtlasResultsChangesPart }
@@ -72,9 +72,12 @@ constructor TAtlasResultsChangesPart.Create(AView: TAtlasResultsView);
 begin
   inherited Create(AView);
   // Kontextmenü der Liste „Atlas-Änderungen“ (#721); in anderen Listen verborgen.
-  FItems.Undo := TAtlasResultsControls.MenuItem(AView.Menu, TAtlasStrings.Text(TAtlasTextId.UndoActionUndo), UndoClick);
-  FItems.Redo := TAtlasResultsControls.MenuItem(AView.Menu, TAtlasStrings.Text(TAtlasTextId.UndoActionRedo), RedoClick);
-  FItems.Diff := TAtlasResultsControls.MenuItem(AView.Menu, TAtlasStrings.Text(TAtlasTextId.UndoActionDiff), DiffClick);
+  FItems.Undo := TAtlasResultsControls.MenuItem(AView.Menu,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.UndoActionUndo), UndoClick);
+  FItems.Redo := TAtlasResultsControls.MenuItem(AView.Menu,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.UndoActionRedo), RedoClick);
+  FItems.Diff := TAtlasResultsControls.MenuItem(AView.Menu,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.UndoActionDiff), DiffClick);
 end;
 
 procedure TAtlasResultsChangesPart.Reset;

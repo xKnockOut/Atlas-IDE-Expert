@@ -51,6 +51,7 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Atlas.UI.Strings,
+  Atlas.UI.Outline.Strings,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
@@ -171,7 +172,7 @@ begin
   Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Missing,Make', Names(FFrame));
   Assert.AreEqual(Integer(Length(FFrame.Rows)), FFrame.List.Count);
   Assert.AreEqual('◆ Button1', FFrame.RowText(RowOf(FFrame, 'Button1')));
-  Assert.AreEqual('− Missing · ' + TAtlasStrings.Text(TAtlasTextId.OutlineUnimplemented),
+  Assert.AreEqual('− Missing · ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented),
     FFrame.RowText(RowOf(FFrame, 'Missing')));
   Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
   Assert.IsTrue(FFrame.List.Visible);
@@ -193,8 +194,8 @@ begin
   MenuItem(FFrame.KindMenu, TAtlasStrings.Text(TAtlasTextId.OutlineKindFields)).Click;
   Assert.AreEqual('interface,TForm1,Button1', Names(FFrame));
   // „Alle zeigen“ hebt den Filter auf.
-  MenuItem(FFrame.VisibilityMenu, TAtlasStrings.Text(TAtlasTextId.OutlineShowAll)).Click;
-  MenuItem(FFrame.KindMenu, TAtlasStrings.Text(TAtlasTextId.OutlineShowAll)).Click;
+  MenuItem(FFrame.VisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll)).Click;
+  MenuItem(FFrame.KindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll)).Click;
   Assert.IsTrue(FFrame.Filter.AllVisibilities);
   Assert.IsTrue(FFrame.Filter.AllCategories);
   // Suchtext.
@@ -263,7 +264,8 @@ begin
   // Kontextmenü: „Zur Implementierung“ nur mit Rumpf.
   FFrame.SelectRow(RowOf(FFrame, 'Missing'));
   FFrame.ListMenu.OnPopup(FFrame.ListMenu);
-  Assert.IsFalse(MenuItem(FFrame.ListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineGoToImplementation)).Enabled);
+  Assert.IsFalse(MenuItem(FFrame.ListMenu,
+    TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation)).Enabled);
 end;
 
 procedure TAtlasOutlineFrameTests.ShowsConditionUnlessSwitchedOff;
@@ -305,7 +307,7 @@ begin
     end;
   FFrame.Alphabetical := True;
   Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Make,Missing', Names(FFrame));
-  MenuItem(FFrame.ListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineFollowCursor)).Click;
+  MenuItem(FFrame.ListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor)).Click;
   Assert.IsFalse(Follow);
   Assert.IsFalse(FFrame.FollowCursor);
   Assert.IsFalse(Sorted);

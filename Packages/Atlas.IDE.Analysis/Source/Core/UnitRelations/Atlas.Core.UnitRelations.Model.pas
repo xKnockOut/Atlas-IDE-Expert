@@ -122,43 +122,8 @@ type
 
 implementation
 
-function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function IntOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end
-  else
-  begin
-    Result := ADefault;
-  end;
-end;
-
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
+uses
+  Atlas.Text.Json;
 
 function RelationsOf(AValue: TJSONValue): TAtlasUnitRelationList; forward;
 
@@ -167,23 +132,23 @@ var
   mLocation: TJSONValue;
 begin
   Result := Default(TAtlasUnitRelation);
-  Result.Name := TextOf(AObject, 'name');
-  Result.FileName := TextOf(AObject, 'file');
-  Result.InInterface := SameText(TextOf(AObject, 'section'), 'interface');
-  Result.Library_ := BoolOf(AObject, 'library');
-  Result.Cycle := BoolOf(AObject, 'cycle');
-  Result.CyclePath := TextOf(AObject, 'cyclePath');
-  Result.Unused := BoolOf(AObject, 'unused');
-  Result.OnlyImplementation := BoolOf(AObject, 'onlyImplementation');
-  Result.Repeated := BoolOf(AObject, 'repeated');
+  Result.Name := TJsonRead.Text(AObject, 'name');
+  Result.FileName := TJsonRead.Text(AObject, 'file');
+  Result.InInterface := SameText(TJsonRead.Text(AObject, 'section'), 'interface');
+  Result.Library_ := TJsonRead.Flag(AObject, 'library');
+  Result.Cycle := TJsonRead.Flag(AObject, 'cycle');
+  Result.CyclePath := TJsonRead.Text(AObject, 'cyclePath');
+  Result.Unused := TJsonRead.Flag(AObject, 'unused');
+  Result.OnlyImplementation := TJsonRead.Flag(AObject, 'onlyImplementation');
+  Result.Repeated := TJsonRead.Flag(AObject, 'repeated');
   Result.Line := -1;
   Result.Character := -1;
   mLocation := AObject.GetValue('location');
   if mLocation is TJSONObject then
   begin
-    Result.LocationFile := TextOf(TJSONObject(mLocation), 'file');
-    Result.Line := IntOf(TJSONObject(mLocation), 'line', -1);
-    Result.Character := IntOf(TJSONObject(mLocation), 'character', -1);
+    Result.LocationFile := TJsonRead.Text(TJSONObject(mLocation), 'file');
+    Result.Line := TJsonRead.IntOr(TJSONObject(mLocation), 'line', -1);
+    Result.Character := TJsonRead.IntOr(TJSONObject(mLocation), 'character', -1);
   end;
   Result.Children := RelationsOf(AObject.GetValue('children'));
 end;
@@ -231,17 +196,17 @@ begin
     begin
       Exit;
     end;
-    ARelations.Found := BoolOf(mRoot, 'found');
-    ARelations.UnitName := TextOf(mRoot, 'unit');
-    ARelations.FileName := TextOf(mRoot, 'file');
-    ARelations.RecompileCount := IntOf(mRoot, 'recompileCount', 0);
-    ARelations.DependencyCount := IntOf(mRoot, 'dependencies', 0);
-    ARelations.DependentCount := IntOf(mRoot, 'dependents', 0);
-    ARelations.InCycle := BoolOf(mRoot, 'inCycle');
-    ARelations.CyclePath := TextOf(mRoot, 'cyclePath');
+    ARelations.Found := TJsonRead.Flag(mRoot, 'found');
+    ARelations.UnitName := TJsonRead.Text(mRoot, 'unit');
+    ARelations.FileName := TJsonRead.Text(mRoot, 'file');
+    ARelations.RecompileCount := TJsonRead.IntOr(mRoot, 'recompileCount', 0);
+    ARelations.DependencyCount := TJsonRead.IntOr(mRoot, 'dependencies', 0);
+    ARelations.DependentCount := TJsonRead.IntOr(mRoot, 'dependents', 0);
+    ARelations.InCycle := TJsonRead.Flag(mRoot, 'inCycle');
+    ARelations.CyclePath := TJsonRead.Text(mRoot, 'cyclePath');
     ARelations.Uses_ := RelationsOf(mRoot.GetValue('uses'));
     ARelations.UsedBy := RelationsOf(mRoot.GetValue('usedBy'));
-    ARelations.Depth := IntOf(mRoot, 'depth', 1);
+    ARelations.Depth := TJsonRead.IntOr(mRoot, 'depth', 1);
     mGeneration := mRoot.GetValue('generation');
     if mGeneration is TJSONNumber then
     begin

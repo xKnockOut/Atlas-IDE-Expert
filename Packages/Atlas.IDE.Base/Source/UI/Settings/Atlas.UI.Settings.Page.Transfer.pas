@@ -72,7 +72,17 @@ uses
   System.Classes,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.Core.Settings.Transfer;
+
+const
+  // Lage der Knöpfe in der Leiste: erste Zeile Export, Import, Profil; zweite Zeile Zurücksetzen.
+  cRow1 = 4;
+  cButtonWidth = 120;
+  cImportLeft = 126;
+  cProfileLeft = 252;
+  cResetWidth = 150;
+  cResetAllLeft = 156;
 
 { TAtlasSettingsTransferPart }
 
@@ -99,27 +109,33 @@ const
 
 begin
   AddTitle(TAtlasTextId.SettingsTransferTitle);
-  FSettingsExportImport := BindCheck('SettingsExportImport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExportImport)));
-  FSettingsMarkModified := BindCheck('SettingsMarkModified', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMarkModified)));
+  FSettingsExportImport := BindCheck('SettingsExportImport',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportImport)));
+  FSettingsMarkModified := BindCheck('SettingsMarkModified',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMarkModified)));
   // Suche über die Einstellungen (#1884).
-  BindCheck('SettingsSearch', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchEnabled)));
-  BindCheck('SettingsBackupBeforeImport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBackupBeforeImport)));
-  FSettingsExportSecrets := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),
-    TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder)]);
+  BindCheck('SettingsSearch', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSearchEnabled)));
+  BindCheck('SettingsBackupBeforeImport',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBackupBeforeImport)));
+  FSettingsExportSecrets := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecrets),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecretsOmit),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportSecretsPlaceholder)]);
   // Knöpfe unten über die ganze Seite; ohne settings.exportImport ausgeblendet (RefreshMarks).
   FTransferBar := TAtlasSettingsRow.Create(FPage);
   FTransferBar.Parent := FPage;
   FTransferBar.Align := alBottom;
   FTransferBar.AlignWithMargins := True;
   FTransferBar.Height := cBarHeight;
-  FExportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsExportButton), 0, 4, 120, ExportClick);
-  FImportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsImportButton), 126, 4, 120, ImportClick);
-  FProfileButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsProfileButton), 252, 4, 120, ProfileClick);
-  FResetPageButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetPageButton), 0, cRow2, 150,
-    ResetPageClick);
-  FResetAllButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllButton), 156, cRow2, 150,
-    ResetAllClick);
+  FExportButton := AddButton(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportButton), 0, cRow1,
+    cButtonWidth, ExportClick);
+  FImportButton := AddButton(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportButton), cImportLeft, cRow1,
+    cButtonWidth, ImportClick);
+  FProfileButton := AddButton(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProfileButton), cProfileLeft,
+    cRow1, cButtonWidth, ProfileClick);
+  FResetPageButton := AddButton(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetPageButton), 0, cRow2,
+    cResetWidth, ResetPageClick);
+  FResetAllButton := AddButton(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetAllButton), cResetAllLeft,
+    cRow2, cResetWidth, ResetAllClick);
 end;
 
 procedure TAtlasSettingsTransferPart.BindMarks;

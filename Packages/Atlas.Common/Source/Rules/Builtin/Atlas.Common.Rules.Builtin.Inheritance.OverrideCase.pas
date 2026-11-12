@@ -30,6 +30,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Editing.CodeActions,
@@ -119,7 +120,6 @@ type
     FChain: TArray<TSymbolLocation>;
     FObjectMissing: Boolean;
     function TokenRange(AIndex: Integer): TTextRange;
-    function TokenFrom(AOffset: Integer): Integer;
     function IsBodyHead(AIndex: Integer; const AOld: string): Boolean;
     function BodyHeadEdits(const AOld, ANew: string): TArray<TRuleEdit>;
     procedure PropertyTokens(const AProperty: TIndexSymbol; out AFirst, ALast: Integer);
@@ -266,28 +266,6 @@ end;
 function TOverrideCaseCheck.TokenRange(AIndex: Integer): TTextRange;
 begin
   Result := TTextRange.Create(FTokens[AIndex].StartPos, FTokens[AIndex].EndPos);
-end;
-
-/// <summary>Erstes Token ab AOffset; Length(FTokens) ohne.</summary>
-function TOverrideCaseCheck.TokenFrom(AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(FTokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if FTokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
 end;
 
 /// <summary>Ab AIndex steht der Rumpfkopf "procedure Klasse.AOld" der geprüften Klasse (AIndex zeigt auf den
@@ -584,7 +562,7 @@ begin
   begin
     Exit;
   end;
-  mLevel := TokenFrom(ABody.StartOffset);
+  mLevel := TokenFrom(FTokens, ABody.StartOffset);
   while (mLevel <= High(FTokens)) and (FTokens[mLevel].Offset < ABody.EndOffset) do
   begin
     if IsMemberToken(mLevel, mLocals, AReported) and

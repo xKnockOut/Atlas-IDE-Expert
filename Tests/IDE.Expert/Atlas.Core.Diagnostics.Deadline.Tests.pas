@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.Deadline.Tests;
 
-// Fristen auf dem 64-Bit-Tickzähler (Code-Review F-101): Eine Frist, die kurz
+// Fristen auf dem 64-Bit-Tickzähler: Eine Frist, die kurz
 // vor dem Überlauf des 32-Bit-Zählers gesetzt wird, muss danach erreicht werden.
 
 interface

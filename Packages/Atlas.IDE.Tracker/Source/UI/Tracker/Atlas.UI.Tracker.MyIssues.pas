@@ -24,7 +24,10 @@
 // (3) ▾“ mit den passenden Abfragen samt Trefferzahl der letzten Abfrage und
 // „Abfragen bearbeiten …“ (issues.queryPicker aus: keine Klappliste). Unter
 // der Fußzeile eine Zeile mit Verbindung, Tracker-Projekt und der gesendeten
-// Abfrage.
+// Abfrage. Links in derselben Zeile die Klappliste „Projekt: … ▾“ (#1927,
+// TAtlasTrackerProjectPicker). Bei „Alle Tracker-Projekte“ (#1928) steht vor
+// jeder Gruppe eine Kopfzeile „YouTrack · KASSE (7)“ mit „+ N weitere“ bzw.
+// dem Hinweis der Gruppe (kein Zugang, Fehler, keine Issues).
 // Daten und Aktionen kommen über IAtlasIssuesSource aus der IDE-Schicht;
 // Aktionen gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -45,6 +48,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Style.Canvas,
+  Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.TileView;
 
 type
@@ -75,6 +79,11 @@ type
     procedure EditQueries;
     /// <summary>Filter der Sprint-Kachel aufheben (#1277): wieder alle meine Issues.</summary>
     procedure ClearFilter;
+    /// <summary>Tracker-Projekt wählen (#1927): '' = automatisch, "*" = alle (#1928), sonst
+    /// „projekt@verbindung“.</summary>
+    procedure SelectProject(const AKey: string);
+    /// <summary>„Tracker-Projekte bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
+    procedure EditProjects;
   end;
 
 {$SCOPEDENUMS ON}
@@ -116,6 +125,11 @@ type
     /// <summary>Klappliste sichtbar: eingeschaltet und Tracker mit Abfragen.</summary>
     class function ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean; static;
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
+    /// <summary>Kopf einer Gruppe bei „Alle“ (#1928): „YouTrack · KASSE (7)“.</summary>
+    class function GroupCaption(const AGroup: TAtlasIssuesGroup): string; static;
+    /// <summary>Rechts im Kopf: „+ N weitere“, wird abgefragt, kein Zugang, Fehler bzw. keine Issues; '' sonst.
+    /// </summary>
+    class function GroupNote(const AGroup: TAtlasIssuesGroup): string; static;
     /// <summary>„PR #760 · CI grün“, „PR #760 (Entwurf)“; '' ohne Pull Request.</summary>
     class function PullRequestText(const APull: TAtlasTrackerPullRequest): string; static;
     class function ChecksColor(AChecks: TAtlasTrackerChecks): TColor; static;
@@ -166,6 +180,10 @@ type
     procedure PaintFilter(ACanvas: TCanvas);
     procedure PaintSource(ACanvas: TCanvas);
     procedure PaintFooter(ACanvas: TCanvas);
+    /// <summary>Kopfzeilen der Gruppen bei „Alle“ (#1928).</summary>
+    procedure PaintGroups(ACanvas: TCanvas);
+    /// <summary>Kopfzeilen über Zeile AIndex und davor (Gruppen mit First höchstens AIndex).</summary>
+    function GroupsAbove(AIndex: Integer): Integer;
     function HitRow(AIndex: Integer; const APoint: TPoint): TAtlasIssuesHit;
   public
     constructor Create(AOwner: TAtlasTrackerIssuesView);
@@ -229,11 +247,13 @@ type
     FBar: TPanel;
     FLabel: TLabel;
     FMenu: TPopupMenu;
+    FProjects: TAtlasTrackerProjectPicker;
     procedure LabelClick(Sender: TObject);
     procedure ItemClick(Sender: TObject);
     procedure EditClick(Sender: TObject);
   public
     constructor Create(AOwner: TAtlasTrackerIssuesView);
+    destructor Destroy; override;
     /// <summary>Sichtbarkeit und Beschriftung nach dem Stand der Ansicht.</summary>
     procedure Update;
     /// <summary>Klappliste füllen (auch für Tests): passende Abfragen, die gewählte mit Haken, dann
@@ -242,6 +262,8 @@ type
     property Bar: TPanel read FBar;
     property QueryLabel: TLabel read FLabel;
     property QueryMenu: TPopupMenu read FMenu;
+    /// <summary>Klappliste „Tracker-Projekt“ (#1927) links in derselben Zeile.</summary>
+    property Projects: TAtlasTrackerProjectPicker read FProjects;
   end;
 
   /// <summary>Aktion der Quelle, nach dem eigenen Ereignis ausgeführt.</summary>
@@ -321,7 +343,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 const
   cSeparator = ' · ';
@@ -333,6 +355,7 @@ const
   cHintKeyFormat = '%d:%d';
   /// <summary>Ränder der Klappliste (links, oben, rechts).</summary>
   cQueryMargin = 4;
+  cGroupTextOffset = 3;
   cQueryMarginRight = 6;
   // Dieselben Töne wie „Testergebnisse“ und „Projekte“: lesbar im hellen und im dunklen Thema.
   cGreenColor = TColor($0043A02E);
@@ -379,11 +402,11 @@ class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string): st
 begin
   if AProjectName = '' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesTitle);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesTitle);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesTitleProject, [AProjectName]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesTitleProject, [AProjectName]);
   end;
 end;
 
@@ -400,23 +423,59 @@ class function TAtlasTrackerIssuesText.ErrorText(AError: TAtlasCiFetchError): st
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesUnauthorized);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesUnauthorized);
     TAtlasCiFetchError.NoCredentials:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNoToken);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNoToken);
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNotFound);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNotFound);
     TAtlasCiFetchError.Invalid:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesInvalid);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesInvalid);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiTimeout);
     TAtlasCiFetchError.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiServerError);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiServerError);
     TAtlasCiFetchError.UnknownProvider, TAtlasCiFetchError.NotConfigured:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiUnknownProvider);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiUnknownProvider);
     TAtlasCiFetchError.None:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotQueried);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiNotQueried);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiUnreachable);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiUnreachable);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.GroupCaption(const AGroup: TAtlasIssuesGroup): string;
+begin
+  Result := Format(cQueryCaptionCount, [AGroup.Caption, AGroup.Total], TFormatSettings.Invariant);
+end;
+
+class function TAtlasTrackerIssuesText.GroupNote(const AGroup: TAtlasIssuesGroup): string;
+begin
+  Result := '';
+  if AGroup.Querying then
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupQuerying);
+  end
+  else if (AGroup.Status = TAtlasIssuesStatus.NotConfigured) or ((AGroup.Status in [TAtlasIssuesStatus.Failed,
+    TAtlasIssuesStatus.Stale]) and (AGroup.Error in [TAtlasCiFetchError.NoCredentials,
+    TAtlasCiFetchError.Unauthorized])) then
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupNoAccess);
+  end
+  else if AGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale] then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesGroupFailed, [ErrorText(AGroup.Error)]);
+  end
+  else if AGroup.Status = TAtlasIssuesStatus.Waiting then
+  begin
+    Result := ErrorText(TAtlasCiFetchError.None);
+  end
+  else if AGroup.Total = 0 then
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupEmpty);
+  end
+  else if AGroup.More > 0 then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesGroupMore, [AGroup.More]);
   end;
 end;
 
@@ -431,30 +490,30 @@ begin
     TAtlasIssuesStatus.Waiting:
       if AView.Querying then
       begin
-        mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
+        mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQuerying)];
       end
       else
       begin
-        mParts := [AView.Tracker, TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotQueried)];
+        mParts := [AView.Tracker, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiNotQueried)];
       end;
     TAtlasIssuesStatus.Failed:
       mParts := [AView.Tracker, ErrorText(AView.Error)];
     TAtlasIssuesStatus.Stale:
-      mParts := [AView.Tracker, ErrorText(AView.Error), TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsStale,
+      mParts := [AView.Tracker, ErrorText(AView.Error), TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeTestsStale,
         [FormatDateTime(cStaleTimeFormat, TTimeZone.Local.ToLocalTime(AView.At), FormatSettings)])];
   else
     if AView.Querying then
     begin
-      mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
+      mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQuerying)];
     end
-    else if Length(AView.Items) = 0 then
+    else if (Length(AView.Items) = 0) and (Length(AView.Groups) = 0) then
     begin
-      mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEmpty)];
+      mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesEmpty)];
     end;
   end;
   if AView.Querying and (AView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale]) then
   begin
-    mParts := mParts + [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
+    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQuerying)];
   end;
   Result := JoinParts(mParts);
 end;
@@ -463,16 +522,16 @@ class function TAtlasTrackerIssuesText.NotConfiguredFooter(const AView: TAtlasIs
 begin
   if AView.Project = '' then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNoProject);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNoProject);
   end
   else if FooterIsAssign(AView) then
   begin
     // Weder .atlas noch persönliche Zuordnung: gleich zuordnen lassen (#1261).
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesAssign);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesAssign);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNotConfigured);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNotConfigured);
   end;
 end;
 
@@ -489,7 +548,7 @@ begin
   end;
   if Result then
   begin
-    AText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesActiveFooter,
+    AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesActiveFooter,
       [Trim(AView.Active.Key + ' ' + AView.Active.Title)]);
   end;
 end;
@@ -519,11 +578,11 @@ begin
   else if (AView.Options.Start = TAtlasIssueStart.Remember) or
     ((AView.VcsKind <> TAtlasVcsKind.Git) and (AView.VcsKind <> TAtlasVcsKind.Svn)) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesFooterRemember);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesFooterRemember);
   end
   else
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesFooter);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesFooter);
   end;
 end;
 
@@ -539,7 +598,7 @@ begin
   if (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryText <> '') then
   begin
     Result := JoinParts([AView.Connection, AView.TrackerProject,
-      TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSource, [AView.QueryText])]);
+      TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesSource, [AView.QueryText])]);
   end;
 end;
 
@@ -575,15 +634,15 @@ begin
   Result := cPullRequestPrefix + IntToStr(APull.Number);
   if APull.Draft then
   begin
-    Result := Result + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesDraft);
+    Result := Result + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesDraft);
   end;
   case APull.Checks of
     TAtlasTrackerChecks.Success:
-      Result := Result + cSeparator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksSuccess);
+      Result := Result + cSeparator + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesChecksSuccess);
     TAtlasTrackerChecks.Failure:
-      Result := Result + cSeparator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksFailure);
+      Result := Result + cSeparator + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesChecksFailure);
     TAtlasTrackerChecks.Pending:
-      Result := Result + cSeparator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksPending);
+      Result := Result + cSeparator + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesChecksPending);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -614,9 +673,9 @@ begin
   end;
   if mHead = '' then
   begin
-    mHead := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesTitle);
+    mHead := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesTitle);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusTile, [mHead, AView.OpenCount]);
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStatusTile, [mHead, AView.OpenCount]);
 end;
 
 class function TAtlasTrackerIssuesText.StartHint(const AView: TAtlasIssuesView;
@@ -627,11 +686,11 @@ begin
   mPlan := TAtlasMyIssues.PlanStart(AView.VcsKind, AView.Options, AIssue);
   if (mPlan.Mode = TAtlasIssueStart.Branch) and mPlan.Valid then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesHintStart, [mPlan.Branch]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesHintStart, [mPlan.Branch]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesHintRemember, [AIssue.Key]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesHintRemember, [AIssue.Key]);
   end;
 end;
 
@@ -641,14 +700,14 @@ begin
     TAtlasIssuesHitKind.Key:
       if AView.Options.Preview then
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKeyPreview);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintKeyPreview);
       end
       else
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKey);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintKey);
       end;
     TAtlasIssuesHitKind.PullRequest:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintPullRequest);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintPullRequest);
     TAtlasIssuesHitKind.Start:
       Result := StartHint(AView, AView.Items[AHit.Index]);
     TAtlasIssuesHitKind.Row:
@@ -656,13 +715,13 @@ begin
         Result := AView.Items[AHit.Index].Key + ' ' + AView.Items[AHit.Index].Title;
         if AView.IsUnseen(AView.Items[AHit.Index].Key) then
         begin
-          Result := Result + sLineBreak + TAtlasStrings.Text(TAtlasTextId.IssueNotifyUnseenHint);
+          Result := Result + sLineBreak + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyUnseenHint);
         end;
       end;
     TAtlasIssuesHitKind.Assign:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintAssign);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintAssign);
     TAtlasIssuesHitKind.Filter:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintFilter);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintFilter);
   else
     Result := '';
   end;
@@ -673,7 +732,7 @@ begin
   Result := '';
   if AView.Filter <> '' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilter, [AView.Filter]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilter, [AView.Filter]);
   end;
 end;
 
@@ -756,11 +815,25 @@ begin
   end;
 end;
 
+function TAtlasTrackerIssuesPainter.GroupsAbove(AIndex: Integer): Integer;
+var
+  mGroup: TAtlasIssuesGroup;
+begin
+  Result := 0;
+  for mGroup in FOwner.View.Groups do
+  begin
+    if mGroup.First <= AIndex then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 function TAtlasTrackerIssuesPainter.RowTop(AIndex: Integer): Integer;
 var
   mIndex: Integer;
 begin
-  Result := ListTop;
+  Result := ListTop + GroupsAbove(AIndex) * Scaled(TAtlasTrackerIssuesView.cStatusHeight);
   for mIndex := 0 to AIndex - 1 do
   begin
     Inc(Result, RowHeight(mIndex));
@@ -829,7 +902,7 @@ var
   mTop, mWidth, mHeight, mRadius: Integer;
 begin
   ACanvas.Font.Assign(FOwner.Font);
-  mText := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStart);
+  mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStart);
   mWidth := ACanvas.TextWidth(mText) + 2 * Scaled(TAtlasTrackerIssuesView.cButtonPadding);
   mHeight := Scaled(TAtlasTrackerIssuesView.cButtonHeight);
   // Über beide Zeilen der Zeile mittig (Mockup).
@@ -895,7 +968,8 @@ begin
   FPullRects[AIndex] := TRect.Empty;
   if SameText(mItem.Key, FOwner.View.Active.Key) then
   begin
-    PaintChip(mLine, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesActive), Color(clHighlight), True, mChip);
+    PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesActive), Color(clHighlight), True,
+      mChip);
   end;
   for mField in TAtlasMyIssues.Fields(mItem) do
   begin
@@ -976,6 +1050,45 @@ begin
   mTop := Scaled(TAtlasTrackerIssuesView.cIndent) div 2;
   ACanvas.TextRect(TextArea(mTop, Scaled(TAtlasTrackerIssuesView.cStatusHeight)),
     Scaled(TAtlasTrackerIssuesView.cIndent), mTop + Scaled(2), mText);
+  ACanvas.Font.Assign(FOwner.Font);
+end;
+
+procedure TAtlasTrackerIssuesPainter.PaintGroups(ACanvas: TCanvas);
+var
+  mIndex, mTop, mHeight, mRow: Integer;
+  mGroup: TAtlasIssuesGroup;
+  mArea: TRect;
+  mNote: string;
+begin
+  mHeight := Scaled(TAtlasTrackerIssuesView.cStatusHeight);
+  for mIndex := 0 to High(FOwner.View.Groups) do
+  begin
+    mGroup := FOwner.View.Groups[mIndex];
+    // Über der ersten Zeile der Gruppe, unter den Köpfen davor.
+    mTop := ListTop + mIndex * mHeight;
+    for mRow := 0 to mGroup.First - 1 do
+    begin
+      Inc(mTop, RowHeight(mRow));
+    end;
+    mArea := TextArea(mTop, mHeight);
+    ACanvas.Font.Assign(FOwner.Font);
+    ACanvas.Font.Size := FOwner.Font.Size - 1;
+    ACanvas.Font.Style := [fsBold];
+    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.TextRect(mArea, mArea.Left, mTop + Scaled(cGroupTextOffset),
+      TAtlasTrackerIssuesText.GroupCaption(mGroup));
+    mNote := TAtlasTrackerIssuesText.GroupNote(mGroup);
+    ACanvas.Font.Style := [];
+    if mNote <> '' then
+    begin
+      if mGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale, TAtlasIssuesStatus.NotConfigured] then
+      begin
+        ACanvas.Font.Color := cYellowColor;
+      end;
+      ACanvas.TextOut(Max(mArea.Left, mArea.Right - ACanvas.TextWidth(mNote)), mTop + Scaled(cGroupTextOffset),
+        mNote);
+    end;
+  end;
   ACanvas.Font.Assign(FOwner.Font);
 end;
 
@@ -1065,6 +1178,7 @@ begin
     begin
       PaintRow(ACanvas, mIndex);
     end;
+    PaintGroups(ACanvas);
     PaintSource(ACanvas);
     PaintFooter(ACanvas);
   end;
@@ -1107,14 +1221,14 @@ begin
   end
   else
   begin
-    mTop := ListTop;
     for mIndex := 0 to High(FOwner.View.Items) do
     begin
+      // RowTop zählt die Köpfe der Gruppen (#1928) mit.
+      mTop := RowTop(mIndex);
       if (Result.Kind = TAtlasIssuesHitKind.None) and (AY >= mTop) and (AY < mTop + RowHeight(mIndex)) then
       begin
         Result := HitRow(mIndex, mPoint);
       end;
-      Inc(mTop, RowHeight(mIndex));
     end;
   end;
 end;
@@ -1130,17 +1244,20 @@ begin
   FMenuRow := -1;
   FMenu := TPopupMenu.Create(AOwner);
   FMenu.OnPopup := MenuPopup;
-  FPreviewItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesPreview), PreviewClick);
-  FBrowseItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowse), BrowseClick);
-  FBrowsePullItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowsePullRequest), BrowsePullClick);
-  FStartBranchItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStartBranch), StartBranchClick);
-  FStartRememberItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStartRemember), StartRememberClick);
+  FPreviewItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesPreview), PreviewClick);
+  FBrowseItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowse), BrowseClick);
+  FBrowsePullItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowsePullRequest),
+    BrowsePullClick);
+  FStartBranchItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartBranch),
+    StartBranchClick);
+  FStartRememberItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartRemember),
+    StartRememberClick);
   mLine := TMenuItem.Create(AOwner);
   mLine.Caption := cMenuLine;
   FMenu.Items.Add(mLine);
-  FQueryItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryNow), QueryClick);
-  FCredentialsItem := AddItem(TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand), CredentialsClick);
-  FEndItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEnd), EndClick);
+  FQueryItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryNow), QueryClick);
+  FCredentialsItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginCommand), CredentialsClick);
+  FEndItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesEnd), EndClick);
 end;
 
 function TAtlasTrackerIssuesMenu.AddItem(const ACaption: string; const AClick: TNotifyEvent): TMenuItem;
@@ -1279,10 +1396,34 @@ begin
   FLabel.Margins.SetBounds(cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
-  FLabel.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryHint);
+  FLabel.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryHint);
   FLabel.Font.Color := clHotLight;
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
+  FProjects := TAtlasTrackerProjectPicker.Create(AOwner, FBar,
+    procedure(AKey: string)
+    begin
+      FOwner.Send(
+        procedure(const ASource: IAtlasIssuesSource)
+        begin
+          ASource.SelectProject(AKey);
+        end);
+    end,
+    procedure
+    begin
+      FOwner.Send(
+        procedure(const ASource: IAtlasIssuesSource)
+        begin
+          ASource.EditProjects;
+        end);
+    end);
+end;
+
+destructor TAtlasTrackerIssuesQueries.Destroy;
+begin
+  // Beschriftung und Menü gehören der Ansicht (Owner).
+  FProjects.Free;
+  inherited Destroy;
 end;
 
 procedure TAtlasTrackerIssuesQueries.Update;
@@ -1292,7 +1433,8 @@ var
 begin
   mView := FOwner.View;
   FLabel.Visible := TAtlasTrackerIssuesText.ShowsQueryPicker(mView);
-  FBar.Visible := FLabel.Visible;
+  FProjects.Update(mView, FOwner.HasWindow);
+  FBar.Visible := FLabel.Visible or FProjects.Visible;
   // Die Beschriftung misst ihren Text: erst mit Fenster (CreateWnd holt UpdateContent nach).
   if FLabel.Visible and FOwner.HasWindow then
   begin
@@ -1333,7 +1475,7 @@ begin
   mItem.Caption := cMenuLine;
   FMenu.Items.Add(mItem);
   mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueriesEdit);
+  mItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueriesEdit);
   mItem.OnClick := EditClick;
   FMenu.Items.Add(mItem);
 end;

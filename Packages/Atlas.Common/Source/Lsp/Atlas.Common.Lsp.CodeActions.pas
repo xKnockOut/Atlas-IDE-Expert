@@ -12,6 +12,8 @@
 // "fehlende Unit ergänzen" und "ins implementation verschieben" kommen mit den
 // übrigen Korrekturen, sobald UsesContextFor gesetzt ist. Weitere Aktionen
 // mit Dateioperationen (Testunit anlegen, #274) kommen über ExtraActions.
+// Abwählbare Teile einer Aktion (#2054) stehen in data.choices ([{title, range}]) und data.editChoices (je Edit
+// des Dokuments die Indizes der Teile, die alle gewählt sein müssen; [] gilt immer).
 
 interface
 
@@ -224,11 +226,53 @@ begin
   Result.AddPair('arguments', mArguments);
 end;
 
-/// <summary>Kennung für Clients, die eine bestimmte Aktion suchen (#621), Vorschau vor dem Übernehmen (#663).
-/// </summary>
+/// <summary>Abwählbare Teile (#2054): {"title", "range"} je Teil.</summary>
+function ChoicesJson(const AAction: TCodeAction): TJSONArray;
+var
+  mChoice: TCodeActionChoice;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mChoice in AAction.Choices do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('title', mChoice.Title);
+    mItem.AddPair('range', TLspPositions.RangeToJson(mChoice.Range));
+    Result.AddElement(mItem);
+  end;
+end;
+
+/// <summary>Je Edit des Dokuments die Teile, die alle gewählt sein müssen (#2054); [] gilt immer.</summary>
+function EditChoicesJson(const AAction: TCodeAction): TJSONArray;
+var
+  mIndex, mChoice: Integer;
+  mItem: TJSONArray;
+begin
+  Result := TJSONArray.Create;
+  for mIndex := 0 to High(AAction.Edits) do
+  begin
+    mItem := TJSONArray.Create;
+    if mIndex <= High(AAction.EditChoices) then
+    begin
+      for mChoice in AAction.EditChoices[mIndex] do
+      begin
+        mItem.Add(mChoice);
+      end;
+    end;
+    Result.AddElement(mItem);
+  end;
+end;
+
+/// <summary>Kennung für Clients, die eine bestimmte Aktion suchen (#621), Vorschau vor dem Übernehmen (#663),
+/// abwählbare Teile (#2054).</summary>
 function DataJson(const AAction: TCodeAction): TJSONObject;
 begin
   Result := TJSONObject.Create;
+  if AAction.Choices <> nil then
+  begin
+    Result.AddPair('choices', ChoicesJson(AAction));
+    Result.AddPair('editChoices', EditChoicesJson(AAction));
+  end;
   if AAction.Tag <> '' then
   begin
     Result.AddPair('tag', AAction.Tag);
@@ -285,7 +329,7 @@ begin
   begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
   end;
-  if (AAction.Tag <> '') or (AAction.Preview <> '') then
+  if (AAction.Tag <> '') or (AAction.Preview <> '') or (AAction.Choices <> nil) then
   begin
     Result.AddPair('data', DataJson(AAction));
   end;
@@ -403,16 +447,25 @@ var
   mPrevious: Pointer;
 begin
   // Die Treffer der Diagnose am selben Text wiederverwenden (2.0-stable): Die Glühbirne fragt bei jeder
-  // Cursorbewegung, und ein eigener Lauf aller Regeln stand hinter dem Prüflauf an. Läuft die Diagnose
-  // gerade, wartet die Glühbirne höchstens RuleWaitMs auf sie, statt daneben noch einmal zu rechnen (#1761);
-  // danach zeigt sie die übrigen Aktionen ohne die der Regeln, statt ins Zeitlimit zu laufen. Rechnet sie selbst,
-  // läuft der Lauf über das Zeitlimit hinaus zu Ende und legt ab; auch tiefe Aufrufe (EnsureUnit) brechen dann nicht
-  // ab.
+  // Cursorbewegung. Läuft die Diagnose gerade, wartet die Glühbirne höchstens RuleWaitMs auf sie (#1761); danach
+  // zeigt sie die übrigen Aktionen ohne die der Regeln, statt ins Zeitlimit zu laufen. Einen eigenen Lauf aller
+  // Regeln startet sie nicht (#2008): Er dauerte in großen Units Sekunden (27.000 Zeilen rund 9 s), und die Diagnose
+  // prüft nach jeder Änderung ohnehin und legt ab. Nur source.fixAll, ausdrücklich angefragt (Speichern), rechnet
+  // selbst; der Lauf läuft dann über das Zeitlimit hinaus zu Ende und legt ab, auch tiefe Aufrufe (EnsureUnit)
+  // brechen nicht ab.
   mPastTimeout := TJsonRpcPastTimeout.Create(FCancellation);
   mPrevious := TJsonRpcCurrentRequest.Enter(mPastTimeout);
   try
     try
-      Result := TLspSyntaxDiagnostics.SharedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation));
+      if FWantsFixAll then
+      begin
+        Result := TLspSyntaxDiagnostics.SharedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation));
+      end
+      else if not TLspSyntaxDiagnostics.CachedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation),
+        Result) then
+      begin
+        Result := nil;
+      end;
     except
       on ERuleCheckCancelled do
       begin

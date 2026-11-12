@@ -92,10 +92,11 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
-  Atlas.UI.Strings,
+  Atlas.UI.Notifications.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.Host;
 
 { TAtlasIdeNotifications }
 
@@ -271,18 +272,7 @@ begin
   if mAnchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
-    if Screen.ActiveForm <> nil then
-    begin
-      mArea := Screen.ActiveForm.BoundsRect;
-    end
-    else if Application.MainForm <> nil then
-    begin
-      mArea := Application.MainForm.BoundsRect;
-    end
-    else
-    begin
-      mArea := Screen.WorkAreaRect;
-    end;
+    mArea := TAtlasIdeHost.PopupArea;
     mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
   end;
   Show(mAnchor);
@@ -322,6 +312,44 @@ begin
   end;
 end;
 
+/// <summary>Titel der Benachrichtigung zu ANotice und Text ihrer Aktion; '' bei einer Art ohne Meldung.</summary>
+function NoticeTitle(const ANotice: TAtlasBuildNotice; out AAction: string): string;
+begin
+  AAction := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsGoToError);
+  case ANotice.Kind of
+    TAtlasBuildNoticeKind.Errors:
+      Result := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsBuildErrors,
+        [ANotice.Errors]);
+    TAtlasBuildNoticeKind.Warnings:
+      Result := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsBuildWarnings,
+        [ANotice.Warnings]);
+    TAtlasBuildNoticeKind.Succeeded:
+      Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsBuildSucceeded);
+    TAtlasBuildNoticeKind.Failed:
+      Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsBuildFailed);
+    TAtlasBuildNoticeKind.CheckErrors:
+      Result := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsCheckErrors,
+        [ANotice.Errors]);
+    TAtlasBuildNoticeKind.CheckClean:
+      Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsCheckClean);
+    TAtlasBuildNoticeKind.Rejected:
+      begin
+        if ANotice.Reason = TAtlasBuildVerdictReason.WarningsAsErrors then
+        begin
+          Result := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsBuildRejectedCodes,
+            [ANotice.PromotedCode]);
+        end
+        else
+        begin
+          Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsBuildRejected);
+        end;
+        AAction := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsGoToMessage);
+      end;
+  else
+    Result := '';
+  end;
+end;
+
 procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
 var
   mNotice: TAtlasBuildNotice;
@@ -331,40 +359,17 @@ var
 begin
   mNotice := ANotice;
   mProject := ChangeFileExt(ExtractFileName(AProject.FileName), '');
-  mAction := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToError);
-  case mNotice.Kind of
-    TAtlasBuildNoticeKind.Errors:
-      mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildErrors, [mNotice.Errors]);
-    TAtlasBuildNoticeKind.Warnings:
-      mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildWarnings, [mNotice.Warnings]);
-    TAtlasBuildNoticeKind.Succeeded:
-      mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildSucceeded);
-    TAtlasBuildNoticeKind.Failed:
-      mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildFailed);
-    TAtlasBuildNoticeKind.CheckErrors:
-      mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsCheckErrors, [mNotice.Errors]);
-    TAtlasBuildNoticeKind.CheckClean:
-      mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsCheckClean);
-    TAtlasBuildNoticeKind.Rejected:
-      begin
-        if mNotice.Reason = TAtlasBuildVerdictReason.WarningsAsErrors then
-        begin
-          mTitle := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildRejectedCodes, [mNotice.PromotedCode]);
-        end
-        else
-        begin
-          mTitle := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildRejected);
-        end;
-        mAction := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToMessage);
-      end;
-  else
+  mTitle := NoticeTitle(mNotice, mAction);
+  if mTitle = '' then
+  begin
     Exit;
   end;
-  mText := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildText, [mProject, mNotice.Errors, mNotice.Warnings,
-    mNotice.Hints]);
+  mText := TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsBuildText,
+    [mProject, mNotice.Errors, mNotice.Warnings, mNotice.Hints]);
   if mNotice.Baselined > 0 then
   begin
-    mText := mText + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildBaselined, [mNotice.Baselined]);
+    mText := mText + ' ' + TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsBuildBaselined,
+      [mNotice.Baselined]);
   end;
   mActions := nil;
   if mNotice.HasTarget then
