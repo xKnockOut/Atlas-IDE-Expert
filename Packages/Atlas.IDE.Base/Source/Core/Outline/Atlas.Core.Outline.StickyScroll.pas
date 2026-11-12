@@ -24,6 +24,9 @@
 //   der Kopfzeile ihres Elements. Hat das Element keine Kopfzeile (Art aus,
 //   zu kurz oder zusammengefasst), blendet sie in der letzten Kopfzeile von
 //   oben ein (FadeWeight), statt ohne Anfang unter der Trennlinie aufzutauchen.
+// - Hover über dem Kopf: SourceIndex ordnet ein Zeichen der Kopfzeile dem
+//   Quelltext zu, den sie zeigt; der Hover meint dann diesen statt der
+//   verdeckten Zeile darunter.
 
 interface
 
@@ -114,6 +117,12 @@ type
     class function Scopes(const ANodes: TAtlasOutlineNodes; ATopLine, AMaxLines: Integer): TArray<Integer>; static;
     /// <summary>Kopfzeile des Blocks ohne Einrückung; mehrzeilige Parameterlisten als „(…)“.</summary>
     class function Header(const ALines: TArray<string>; const ANode: TAtlasOutlineNode): string; static;
+    /// <summary>Zeichenindex (0-basiert) in der Quellzeile ALine, den die Kopfzeile ARow an ihrem Zeichen AOffset
+    /// (0-basiert, ohne Einrückung) zeigt. False, wo der Kopf nicht Zeichen für Zeichen die Zeile zeigt:
+    /// Zusammenfassung, vor oder hinter dem Text, gekürzte Parameterliste „(…)“, Tabulator, geänderte Zeile.
+    /// </summary>
+    class function SourceIndex(const ARow: TAtlasStickyRow; const ALine: string; AOffset: Integer;
+      out AIndex: Integer): Boolean; static;
     /// <summary>Breite der Einrückung in Spalten (Tabulatoren bis zum nächsten Vielfachen von ATabWidth).</summary>
     class function IndentColumns(const ALine: string; ATabWidth: Integer): Integer; static;
     /// <summary>Zeilen des Kopfs, höchstens AMaxLines (mindestens eine).</summary>
@@ -355,6 +364,31 @@ begin
     end;
   end;
   Result := Result + ')';
+end;
+
+class function TAtlasStickyScroll.SourceIndex(const ARow: TAtlasStickyRow; const ALine: string; AOffset: Integer;
+  out AIndex: Integer): Boolean;
+var
+  mIndent, mPos: Integer;
+begin
+  AIndex := -1;
+  Result := False;
+  if ARow.Summary or (AOffset < 0) or (AOffset >= Length(ARow.Text)) then
+  begin
+    Exit;
+  end;
+  // Der Kopf ist die Zeile ohne Einrückung (Header, BlockText): bis einschließlich AOffset muss er ihr gleichen.
+  // Ein Tabulator im Text stünde im Kopf schmaler als im Editor, danach passten die Spalten nicht mehr.
+  mIndent := Length(ALine) - Length(TrimLeft(ALine));
+  for mPos := 1 to AOffset + 1 do
+  begin
+    if (mIndent + mPos > Length(ALine)) or (ARow.Text[mPos] <> ALine[mIndent + mPos]) or (ARow.Text[mPos] = #9) then
+    begin
+      Exit;
+    end;
+  end;
+  AIndex := mIndent + AOffset;
+  Result := True;
 end;
 
 class function TAtlasStickyScroll.IndentColumns(const ALine: string; ATabWidth: Integer): Integer;
