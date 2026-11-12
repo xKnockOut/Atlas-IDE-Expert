@@ -87,6 +87,10 @@ type
     /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche AFace und Text AText aus dem
     /// IDE-Thema, Gedämpftes, Linien und Auswahl daraus gemischt; Badges und Akzent wie ForBackground(AFace).</summary>
     class function ForChrome(AFace, AText: TAtlasColor): TAtlasColors; static;
+    /// <summary>Farben für andockbare Fenster mit Inhalt (Issue, Board): Fläche AWindow und Text AText aus dem
+    /// IDE-Thema (clWindow/clWindowText) wie ForChrome; Gutter leicht zum Text hin abgesetzt, damit Spalten und
+    /// Abzeichen sich von der Fläche abheben.</summary>
+    class function ForWindow(AWindow, AText: TAtlasColor): TAtlasColors; static;
     /// <summary>Farben der Inlay-Hint-Marken auf dem Editorhintergrund ABack: Text deutlich
     /// lesbar, Fläche leicht im Akzent abgesetzt.</summary>
     class function InlayHint(ABack: TAtlasColor): TAtlasHintColors; static;
@@ -105,6 +109,8 @@ const
   /// <summary>Leisten im Rahmen der IDE: Anteile des Textes über der Fläche für gedämpften Text und Linien.</summary>
   cAtlasMixChromeMuted = 0.7;
   cAtlasMixChromeLine = 0.18;
+  /// <summary>Fenster im Rahmen der IDE: Anteil des Textes über der Fläche für Gutter (Spalten, Abzeichen).</summary>
+  cAtlasMixWindowGutter = 0.06;
   /// <summary>Chips und Tags: Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
   cAtlasChipPad = 12;
   cAtlasChipRadius = 4;
@@ -341,6 +347,12 @@ begin
   begin
     Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.15);
   end;
+end;
+
+class function TAtlasColors.ForWindow(AWindow, AText: TAtlasColor): TAtlasColors;
+begin
+  Result := ForChrome(AWindow, AText);
+  Result.Gutter := TAtlasColorMath.Mix(AText, AWindow, cAtlasMixWindowGutter);
 end;
 
 class function TAtlasColors.InlayHint(ABack: TAtlasColor): TAtlasHintColors;

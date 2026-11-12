@@ -8655,6 +8655,16 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#1272"
     },
+    "IssuesIdeColors": {
+      "type": "boolean",
+      "default": true,
+      "description": "Issue-Fenster und Board nehmen Fläche und Schrift aus dem IDE-Thema (wie Listen und Eingabefelder der IDE); Linien, gedämpfte Schrift und Karten mischt Atlas daraus. Aus: feste Atlas-Palette, im dunklen Thema deutlich dunkler als die IDE.",
+      "x-key": "issues.ideColors",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2131"
+    },
     "IssuesSprintBurndown": {
       "type": "boolean",
       "default": true,

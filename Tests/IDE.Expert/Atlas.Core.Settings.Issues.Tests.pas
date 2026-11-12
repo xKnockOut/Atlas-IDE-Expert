@@ -351,6 +351,7 @@ begin
   Assert.IsTrue(ASettings.IssuesBoard, 'Board (#1272) an');
   Assert.IsTrue(ASettings.IssuesBoardConfirmMove, 'Rückfrage beim Ziehen an');
   Assert.IsTrue(ASettings.IssuesBoardOnlyMine, 'Board öffnet mit „Nur meine“');
+  Assert.IsTrue(ASettings.IssuesIdeColors, 'Farben des IDE-Themas');
   Assert.IsTrue(ASettings.WelcomePageSprint, 'Sprint-Kachel (#1277) an');
   Assert.IsTrue(ASettings.IssuesSprintBurndown, 'Burndown an');
   Assert.IsTrue(ASettings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
@@ -452,6 +453,7 @@ begin
   ASettings.IssuesBoard := False;
   ASettings.IssuesBoardConfirmMove := False;
   ASettings.IssuesBoardOnlyMine := False;
+  ASettings.IssuesIdeColors := False;
   ASettings.WelcomePageSprint := False;
   ASettings.IssuesSprintBurndown := False;
   ASettings.IssuesSprintCompare := False;
@@ -498,6 +500,7 @@ begin
   Assert.IsFalse(ALoaded.IssuesBoard);
   Assert.IsFalse(ALoaded.IssuesBoardConfirmMove);
   Assert.IsFalse(ALoaded.IssuesBoardOnlyMine);
+  Assert.IsFalse(ALoaded.IssuesIdeColors);
   Assert.IsFalse(ALoaded.WelcomePageSprint);
   Assert.IsFalse(ALoaded.IssuesSprintBurndown);
   Assert.IsFalse(ALoaded.IssuesSprintCompare);

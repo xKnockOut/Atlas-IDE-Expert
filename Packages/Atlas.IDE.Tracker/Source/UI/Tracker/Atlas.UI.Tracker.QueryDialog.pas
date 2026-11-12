@@ -161,6 +161,8 @@ begin
   BuildFields;
   BuildTest;
   BuildButtons;
+  // Größer ziehen: Felder werden breiter, das Ergebnis des Tests nimmt die Höhe auf.
+  AllowResize(FView.Result);
   FillConnections(AQuery.Connection);
   FView.Name.Text := AQuery.Name;
   FView.Project.Text := AQuery.Project;

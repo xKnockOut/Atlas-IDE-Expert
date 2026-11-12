@@ -912,6 +912,7 @@ begin
   Assert.IsTrue(ASection.General.View.Board.Checked);
   Assert.IsTrue(ASection.General.View.BoardConfirmMove.Checked);
   Assert.IsTrue(ASection.General.View.BoardOnlyMine.Checked);
+  Assert.IsTrue(ASection.General.View.IdeColors.Checked);
   Assert.IsTrue(ASection.General.View.SprintBurndown.Checked);
   Assert.IsTrue(ASection.General.View.SprintCompare.Checked);
   Assert.IsTrue(ASection.General.View.PaletteSearch.Checked);
@@ -943,6 +944,7 @@ begin
   ASection.General.View.Board.Checked := False;
   ASection.General.View.BoardConfirmMove.Checked := False;
   ASection.General.View.BoardOnlyMine.Checked := False;
+  ASection.General.View.IdeColors.Checked := False;
   ASection.General.View.SprintBurndown.Checked := False;
   ASection.General.View.SprintCompare.Checked := False;
   ASection.General.View.PaletteSearch.Checked := False;
@@ -972,6 +974,7 @@ begin
   Assert.IsFalse(ASaved.IssuesBoard);
   Assert.IsFalse(ASaved.IssuesBoardConfirmMove);
   Assert.IsFalse(ASaved.IssuesBoardOnlyMine);
+  Assert.IsFalse(ASaved.IssuesIdeColors);
   Assert.IsFalse(ASaved.IssuesSprintBurndown);
   Assert.IsFalse(ASaved.IssuesSprintCompare);
   Assert.IsFalse(ASaved.IssuesPaletteSearch);
@@ -997,6 +1000,7 @@ begin
   Assert.IsFalse(ASection.General.View.Board.Checked);
   Assert.IsFalse(ASection.General.View.BoardConfirmMove.Checked);
   Assert.IsFalse(ASection.General.View.BoardOnlyMine.Checked);
+  Assert.IsFalse(ASection.General.View.IdeColors.Checked);
   Assert.IsFalse(ASection.General.View.SprintBurndown.Checked);
   Assert.IsFalse(ASection.General.View.SprintCompare.Checked);
   Assert.IsFalse(ASection.General.View.PaletteSearch.Checked);

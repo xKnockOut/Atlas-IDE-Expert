@@ -181,7 +181,8 @@ type
     WelcomeIssuesReopenedState, WelcomeIssuesContinueOn, WelcomeIssuesContinue, WelcomeIssuesReopenedRead,
     WelcomeIssuesContinueHint, WelcomeIssuesReopenedReadHint, WelcomeIssuesReopenedCommentHint,
     WelcomeIssuesContinueBranchGone, SettingsIssuesReopened, SettingsIssuesReviewStates,
-    SettingsIssuesConnectionReviewStates);
+    SettingsIssuesConnectionReviewStates,
+    IssuePreviewDescription, SettingsIssuesIdeColors);
 
   TAtlasTrackerStrings = class
   public
@@ -970,7 +971,9 @@ const
      'Der Branch %s ist nicht mehr da (gemergt oder gelöscht). Neu von der Basis anlegen?',
      'Wieder geöffnete Issues hervorheben (Marke, Grund, Weiterarbeiten)',
      'Prüfzustände (mit Komma getrennt)',
-     'Prüfzustände'),
+     'Prüfzustände',
+     'Beschreibung',
+     'Issue-Fenster und Board in den Farben des IDE-Themas'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1738,7 +1741,9 @@ const
      'The branch %s no longer exists (merged or deleted). Create it again from the base?',
      'Highlight reopened issues (mark, reason, continue)',
      'Review states (comma separated)',
-     'Review states'));
+     'Review states',
+     'Description',
+     'Issue window and board in the colors of the IDE theme'));
 
 { TAtlasTrackerStrings }
 

@@ -63,6 +63,41 @@ type
     property Hints: TArray<string> read FHints;
   end;
 
+  /// <summary>Überschrift eines Abschnitts (Beschreibung, Kommentare, Anhänge …): gedämpfter Text, dahinter
+  /// eine Linie bis zum rechten Rand.</summary>
+  TAtlasIssueSectionHead = class(TCustomControl)
+  public const
+    /// <summary>Höhe bei 96 dpi und Abstand des Texts zur Linie.</summary>
+    cHeight = 26;
+    cLineGap = 8;
+  private
+    FColors: TAtlasColors;
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure SetColors(const AColors: TAtlasColors);
+    property Caption;
+  end;
+
+  /// <summary>Abgesetzte Fläche mit Rahmen (Kopf des Issues, ein Kommentar); wächst mit ihrem Inhalt.
+  /// Die Kinder erben die Füllfarbe über Color.</summary>
+  TAtlasIssueCard = class(TCustomControl)
+  public const
+    /// <summary>Innenabstand bei 96 dpi: seitlich und oben/unten.</summary>
+    cPadSide = 6;
+    cPadEnd = 4;
+  private
+    FFill: TAtlasColor;
+    FBorder: TAtlasColor;
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure SetColors(AFill, ABorder: TAtlasColor);
+    property Fill: TAtlasColor read FFill;
+  end;
+
   /// <summary>Vergrößertes Bild; gibt sich beim Schließen selbst frei.</summary>
   TAtlasIssueImageWindow = class(TForm)
   protected
@@ -307,6 +342,82 @@ begin
     Hint := '';
   end;
   Application.CancelHint;
+end;
+
+{ TAtlasIssueSectionHead }
+
+constructor TAtlasIssueSectionHead.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FColors := TAtlasColors.Light;
+  Height := ScaleValue(cHeight);
+end;
+
+procedure TAtlasIssueSectionHead.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+procedure TAtlasIssueSectionHead.Paint;
+var
+  mRect: TRect;
+  mText: string;
+  mLineY: Integer;
+begin
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  Canvas.Font := Font;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(FColors.Muted);
+  mText := Caption;
+  mRect := ClientRect;
+  // Text unten bündig, damit der Abstand zum Abschnitt davor größer ist als zum eigenen Inhalt.
+  mRect.Top := mRect.Bottom - Canvas.TextHeight('Wg') - MulDiv(2, CurrentPPI, 96);
+  DrawText(Canvas.Handle, PChar(mText), Length(mText), mRect,
+    DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS or DT_CALCRECT);
+  mRect.Right := Min(mRect.Right, ClientWidth);
+  Canvas.Brush.Style := bsClear;
+  DrawText(Canvas.Handle, PChar(mText), Length(mText), mRect,
+    DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  Canvas.Brush.Style := bsSolid;
+  mLineY := (mRect.Top + mRect.Bottom) div 2;
+  if mRect.Right + MulDiv(cLineGap, CurrentPPI, 96) < ClientWidth then
+  begin
+    Canvas.Pen.Color := ToColor(FColors.Line);
+    Canvas.Pen.Width := 1;
+    Canvas.MoveTo(mRect.Right + MulDiv(cLineGap, CurrentPPI, 96), mLineY);
+    Canvas.LineTo(ClientWidth, mLineY);
+  end;
+end;
+
+{ TAtlasIssueCard }
+
+constructor TAtlasIssueCard.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FFill := TAtlasColors.Light.Surface;
+  FBorder := TAtlasColors.Light.Line;
+  ParentColor := False;
+  ParentBackground := False;
+  AutoSize := True;
+  Padding.SetBounds(ScaleValue(cPadSide), ScaleValue(cPadEnd), ScaleValue(cPadSide), ScaleValue(cPadEnd));
+end;
+
+procedure TAtlasIssueCard.SetColors(AFill, ABorder: TAtlasColor);
+begin
+  FFill := AFill;
+  FBorder := ABorder;
+  Color := ToColor(AFill);
+  Invalidate;
+end;
+
+procedure TAtlasIssueCard.Paint;
+begin
+  Canvas.Brush.Color := ToColor(FFill);
+  Canvas.Pen.Color := ToColor(FBorder);
+  Canvas.Pen.Width := 1;
+  Canvas.Rectangle(ClientRect);
 end;
 
 { TAtlasIssueImageWindow }
