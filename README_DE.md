@@ -4,13 +4,13 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 321 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und elf Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 321 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
 ## Schnellstart
 
-Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Die Releases 1.0.0 bis 1.2.0 enthalten das Plugin nur für Delphi 13. Was mit 1.2.0 und der Vorabversion 2.0.0-beta.1 neu ist, steht im [Changelog](CHANGELOG.md), eine kurze zweisprachige Fassung zu 2.0.0-beta.1 in [docs/Release-Notizen/2.0.0-beta.1.md](docs/Release-Notizen/2.0.0-beta.1.md).
+Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); die Releases 1.0.0 bis 1.2.0 enthalten das Plugin nur für Delphi 13. Was in jeder Version neu ist, steht im [Changelog](CHANGELOG.md), eine kurze zweisprachige Fassung zu 2.1.0 in [docs/Release-Notizen/2.1.0.md](docs/Release-Notizen/2.1.0.md).
 
 **Weg A – Release-Paket von Hand einbinden:**
 
@@ -29,6 +29,28 @@ Ab 2.0 erledigt `AtlasUpdate.exe install` aus dem Paket diese Schritte im Konsol
 4. Delphi einmal neu starten.
 
 Ausführlich: [Installation](#installation).
+
+## Packages des IDE-Plugins
+
+Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert Base und dazu nur die Module, die man braucht; jedes Modul lässt sich auch in den Optionen mit seinem Schalter abschalten. Die Zahl der Units nennt den groben Umfang (Stand 2.1).
+
+| Package | Umfang | Units | Schalter |
+|---|---|--:|---|
+| `Atlas.IDE.Base` | Kern, immer nötig: Serversitzung und Code Insight (Vervollständigung, Hover mit Parametern und Unit-Inhalt, Parameter-Hint, gelernte Vorschläge als Schattentext), Editor (Brotkrumenleiste, mitlaufender Kopf, Minimap, Inlay-Hints, Editorleiste, Befund-Marken), Navigation und Ergebnisfenster, Refactorings und Glühbirne, Befunde und Fenster „Atlas-Prüfung“, Compilermeldungen erklärt, Optionen mit Suche, Befehlspalette, Diagnosemodus; Registry und alle Verträge zwischen den Modulen | 759 | – |
+| `Atlas.IDE.Designer` | Designer-Leiste: „Anordnen“ (Breite nach Text, Knopfleiste, Formularraster, In Reihe duplizieren, Platz einfügen, An Inhalt anpassen, Ebenen, Einpacken, Schriften und Farben, Anchors vorschlagen, Format-Pinsel, Gruppen), Abstände messen und per Griff setzen, gemeinsame Größengriffe, Schnellleiste, Lupe, Tab-Reihenfolge, Größe und Skalierung ausprobieren, sprechende Namen, Fenster „Atlas-Struktur“ und „Ereignis-Karte“, Datenbindung, In Frame auslagern, Verwendungen im Code, Komponenten und Eigenschaften suchen, Rückgängig (experimentell) | 121 | `designer.enabled` |
+| `Atlas.IDE.Tracker` | Issue-Tracker (YouTrack, GitHub u. a.): „Meine Issues“ mit Projektwahl, Beginnen, Beenden und Prüfen entlang der Workflow-Übergänge, Zeiterfassung, Zustand im Statusfeld, Board mit Swimlanes, Sprint-Kachel, Ablauf-Karte, „An Issue anhängen“, Issue-Kennungen im Code | 143 | `issues.enabled` |
+| `Atlas.IDE.Welcome` | Willkommensseite mit Projekten, „Weiterarbeiten“ samt Arbeitsstand je Issue, „Neu in Atlas“, „Atlas entdecken“ und „Atlas-Einrichtung“ mit Indexaufbau je Projekt; „Atlas-Start“ | 75 | `welcomePage.enabled` |
+| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären | 59 | `debug.enabled` |
+| `Atlas.IDE.Search` | Atlas-Suche mit Ersetzen, Regex und Projektbereich, Units suchen, Code-Abfragen | 38 | `search.enabled` |
+| `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken, „Unit-Beziehungen“ und „Abhängige Units“ auch aus der Projektverwaltung | 30 | `analysis.enabled` |
+| `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Änderungsmarken mit Inline-Diff, Zeilenhistorie, Branch beim Beginnen, Arbeitskopien, Projektzustand | 26 | `vcs.enabled` |
+| `Atlas.IDE.Bookmarks` | Notizen, benannte und schnelle Lesezeichen, TODO-Liste | 24 | `bookmarks.enabled` |
+| `Atlas.IDE.Build` | Build-Werkzeuge: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter | 24 | `buildTools.enabled` |
+| `Atlas.IDE.Rules` | Prüfregeln: Regel-Editor, Baseline und Unterdrückungen, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur, Fehler der IDE (Error Insight) neben den Befunden; Regel am Befund unterdrücken, einstellen, abschalten (ohne das Modul bleiben nur die Befunde und „Regel erklären“) | 16 | `ruleChecks.enabled` |
+| `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, betroffene Tests, Assistent „DUnitX-Testunit zu Unit …“ | 15 | `tests.enabled` |
+| `Atlas.IDE.BuildPipeline` | Builds auf Auftrag (auch für MCP), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung und Build-Zusammenfassung | 9 | `buildPipeline.enabled` |
+| `Atlas.IDE.Assistants` | KI-Assistenten: Builds über `build_project` und Änderungen an offenen Dateien durch MCP-Clients, eigene Optionsseite | 10 | `assistants.enabled` |
+| `Atlas.IDE.Help` | F1-Hilfe: Seiten zu Regeln, Einstellungen und Fenstern der Doku | 5 | `help.enabled` |
 
 ## Funktionen
 
@@ -123,10 +145,12 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### Geplant
 
-Noch nicht in `main`, als Issues angelegt:
+Als Issues angelegt, Reihenfolge in [docs/Roadmap-Entwurf.md](docs/Roadmap-Entwurf.md):
 
-- Weitere Prüfregeln (Unter-Issues von #1086)
-- Debuggen (#614) und Designer-Funktionen für spätere Versionen
+- 2.2: Debuggen, Testen und Lecks
+- 2.3: KI-Assistenten im Debugger, Team, Versionsverwaltung und CI
+- 3.0: Plattform, darunter AtlasServer unter Linux
+- laufend: weitere Prüfregeln (Unter-Issues von #1086)
 
 ## Installation
 
@@ -186,27 +210,11 @@ Englisch gibt es dieselben Seiten unter [docs/en](docs/en/) und [docs/features/e
 | `Packages/Atlas.IDE.*` | Das IDE-Plugin: ein Kern-Package und Modul-Packages (unten) |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 
-### Packages des IDE-Plugins (2.0)
+### Packages des IDE-Plugins im Aufbau
 
 Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) mit den Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Jedes Modul requiret nur `Atlas.IDE.Base`, nie ein anderes Modul; Base kennt kein Modul. Seine Einstellungen im Optionsdialog bringt jedes Modul als Abschnitt selbst mit, samt Modulschalter: Ist nur `Atlas.IDE.Base` installiert, zeigt *Tools › Optionen › Atlas* nur die Einstellungen von Base.
 
-| Package | Inhalt | Schalter |
-|---|---|---|
-| `Atlas.IDE.Base` | Kern: Serversitzung, Code Insight (Vervollständigung, Hover, Parameter-Hint), Editor, Navigation, Refactorings, Befunde und Fenster „Atlas-Prüfung“, Compilermeldungen und Prüfen beim Speichern, Einstellungen, Benachrichtigungen, Versionsverwaltung; Registry und alle Verträge zwischen den Modulen (`Source/Contracts`) | – |
-| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, Fenster „Auswerten“, Exceptions, Schrittfilter, Zugriffsverletzungen erklären | `debug.enabled` |
-| `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, betroffene Tests | `tests.enabled` |
-| `Atlas.IDE.Build` | Build-Werkzeuge: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter | `buildTools.enabled` |
-| `Atlas.IDE.BuildPipeline` | Builds auf Auftrag (auch für MCP), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung und Build-Zusammenfassung | `buildPipeline.enabled` |
-| `Atlas.IDE.Rules` | Prüfregeln: Regel-Editor, Baseline und Unterdrückungen, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur; Regel am Befund unterdrücken, einstellen, abschalten (ohne das Modul bleiben nur die Befunde und „Regel erklären“) | `ruleChecks.enabled` |
-| `Atlas.IDE.Bookmarks` | Notizen, benannte und schnelle Lesezeichen, TODO-Liste | `bookmarks.enabled` |
-| `Atlas.IDE.Search` | Atlas-Suche, Units suchen, Code-Abfragen | `search.enabled` |
-| `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken | `analysis.enabled` |
-| `Atlas.IDE.Designer` | Designer-Leiste | `designer.enabled` |
-| `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Branch beim Beginnen, Arbeitskopien, Projektzustand, Zeilenhistorie | `vcs.enabled` |
-| `Atlas.IDE.Assistants` | KI-Assistenten: Builds über `build_project` und Änderungen an offenen Dateien durch MCP-Clients | `assistants.enabled` |
-| `Atlas.IDE.Tracker` | Issue-Tracker: Issue-Kennungen im Code, Zeilenhistorie, Board, „An Issue anhängen“, Kacheln „Meine Issues“ und Sprint | `issues.enabled` |
-| `Atlas.IDE.Help` | F1-Hilfe: Seiten zu Regeln, Einstellungen und Fenstern der Doku | `help.enabled` |
-| `Atlas.IDE.Welcome` | Willkommensseite und „Atlas-Start“ | `welcomePage.enabled` |
+Die Liste der Packages mit Umfang und Schalter steht oben unter [Packages des IDE-Plugins](#packages-des-ide-plugins).
 
 `TAtlasMainThread` führt die Einträge je Modul: Meldet sich ein Modul ab oder wird sein Package entladen, verfallen seine noch wartenden Einträge in den Hauptthread, statt danach in nicht mehr geladenem Code zu laufen.
 

@@ -4,13 +4,13 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 321 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and eleven module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 321 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
 ## Quick start
 
-You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in 1.2.0 and in the pre-release 2.0.0-beta.1 is listed in the [changelog](CHANGELOG.md) (German); a short bilingual summary of 2.0.0-beta.1 is in [docs/Release-Notizen/2.0.0-beta.1.md](docs/Release-Notizen/2.0.0-beta.1.md).
+You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in each version is listed in the [changelog](CHANGELOG.md) (German); a short bilingual summary of 2.1.0 is in [docs/Release-Notizen/2.1.0.md](docs/Release-Notizen/2.1.0.md).
 
 **Option A – add the release package by hand:**
 
@@ -29,6 +29,28 @@ From 2.0, `AtlasUpdate.exe install` from the package does these steps in a conso
 4. Restart Delphi once.
 
 More: [Installation](#installation).
+
+## Packages of the IDE plugin
+
+The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base plus only the modules you need; each module can also be switched off in the options. The number of units gives the rough size (as of 2.1).
+
+| Package | Scope | Units | Switch |
+|---|---|--:|---|
+| `Atlas.IDE.Base` | Core, always needed: server session and code insight (completion, hover with parameters and unit contents, parameter hint, learned suggestions as ghost text), editor (breadcrumb bar, sticky header, minimap, inlay hints, editor bar, finding marks), navigation and result window, refactorings and light bulb, findings and the “Atlas Findings” window, compiler messages explained, options with search, command palette, diagnostic mode; registry and all contracts between the modules | 759 | – |
+| `Atlas.IDE.Designer` | Designer bar: “Arrange” (width to text, button bar, form grid, duplicate in a row, insert space, fit to content, layers, wrap in container, fonts and colors, suggest anchors, format painter, groups), measure spacing and set it by handle, shared size handles, quick bar, magnifier, tab order, try sizes and scaling, meaningful names, “Atlas Structure” and “Event map” windows, data binding, extract to frame, usages in code, find components and properties, undo (experimental) | 121 | `designer.enabled` |
+| `Atlas.IDE.Tracker` | Issue tracker (YouTrack, GitHub and others): “My issues” with project choice, start, finish and review along the workflow transitions, time tracking, state in the status bar, board with swimlanes, sprint tile, activity map, “Attach to issue”, issue ids in code | 143 | `issues.enabled` |
+| `Atlas.IDE.Welcome` | Welcome page with projects, “Continue” with the work state per issue, “What's new in Atlas”, “Discover Atlas” and “Atlas setup” with index progress per project; “Atlas Start” | 75 | `welcomePage.enabled` |
+| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations | 59 | `debug.enabled` |
+| `Atlas.IDE.Search` | Atlas search with replace, regex and project scope, unit search, code queries | 38 | `search.enabled` |
+| `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics, “Unit relations” and “Dependent units” also from the project manager | 30 | `analysis.enabled` |
+| `Atlas.IDE.VersionControl` | Version control: Git and SVN, change marks with inline diff, line history, branch when starting an issue, working copies, project state | 26 | `vcs.enabled` |
+| `Atlas.IDE.Bookmarks` | Notes, named and quick bookmarks, TODO list | 24 | `bookmarks.enabled` |
+| `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | 24 | `buildTools.enabled` |
+| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix, IDE errors (Error Insight) next to the findings; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | 16 | `ruleChecks.enabled` |
+| `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, affected tests, wizard “DUnitX test unit for unit …” | 15 | `tests.enabled` |
+| `Atlas.IDE.BuildPipeline` | Builds on request (also for MCP), check before compiling, release guard, verdict and build summary | 9 | `buildPipeline.enabled` |
+| `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients, own options page | 10 | `assistants.enabled` |
+| `Atlas.IDE.Help` | F1 help: rule, setting and window pages of the documentation | 5 | `help.enabled` |
 
 ## Features
 
@@ -123,10 +145,12 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### Planned
 
-Not yet in `main`, tracked as issues:
+Tracked as issues, order in [docs/Roadmap-Entwurf.md](docs/Roadmap-Entwurf.md) (German):
 
-- Further check rules (sub-issues of #1086)
-- Debugging (#614) and designer features for later versions
+- 2.2: debugging, testing and leaks
+- 2.3: AI assistants in the debugger, team, version control and CI
+- 3.0: platform, including AtlasServer on Linux
+- ongoing: further check rules (sub-issues of #1086)
 
 ## Installation
 
@@ -187,27 +211,11 @@ Every English page links its German original and vice versa.
 | `Packages/Atlas.IDE.*` | The IDE plugin: a core package and module packages (below) |
 | `Tests/Atlas.Tests` | DUnitX tests |
 
-### Packages of the IDE plugin (2.0)
+### Packages of the IDE plugin in the structure
 
 All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3), with layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Every module requires only `Atlas.IDE.Base`, never another module; Base knows no module. Each module brings its settings in the options dialog as its own section, module switch included: with only `Atlas.IDE.Base` installed, *Tools › Options › Atlas* shows only the settings of Base.
 
-| Package | Content | Switch |
-|---|---|---|
-| `Atlas.IDE.Base` | Core: server session, code insight (completion, hover, parameter hint), editor, navigation, refactorings, findings and the "Atlas Findings" window, compiler messages and check on save, settings, notifications, version control; registry and all contracts between the modules (`Source/Contracts`) | – |
-| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, explain access violations | `debug.enabled` |
-| `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, affected tests | `tests.enabled` |
-| `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | `buildTools.enabled` |
-| `Atlas.IDE.BuildPipeline` | Builds on request (also for MCP), check before compiling, release guard, verdict and build summary | `buildPipeline.enabled` |
-| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | `ruleChecks.enabled` |
-| `Atlas.IDE.Bookmarks` | Notes, named and quick bookmarks, TODO list | `bookmarks.enabled` |
-| `Atlas.IDE.Search` | Atlas search, unit search, code queries | `search.enabled` |
-| `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics | `analysis.enabled` |
-| `Atlas.IDE.Designer` | Designer bar | `designer.enabled` |
-| `Atlas.IDE.VersionControl` | Version control: Git and SVN, branch when starting an issue, working copies, project state, line history | `vcs.enabled` |
-| `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients | `assistants.enabled` |
-| `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
-| `Atlas.IDE.Help` | F1 help: rule, setting and window pages of the documentation | `help.enabled` |
-| `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
+The list of packages with scope and switch is above under [Packages of the IDE plugin](#packages-of-the-ide-plugin).
 
 `TAtlasMainThread` tracks queued main thread entries per module: when a module unregisters or its package is unloaded, its waiting entries are dropped instead of running later in unloaded code.
 
