@@ -32,6 +32,8 @@ type
     StartComment: TEdit;
     EndStates: TEdit;
     EndComment: TEdit;
+    EndFields: TEdit;
+    EndTime: TCheckBox;
     ReviewStates: TEdit;
     ReviewBuild: TCheckBox;
     ReviewComment: TEdit;
@@ -48,6 +50,7 @@ type
     cStartCommentKey = 'issues.startComment';
     cEndStatesKey = 'issues.endStates';
     cEndCommentKey = 'issues.endComment';
+    cEndFieldsKey = 'issues.endFields';
     cReviewStatesKey = 'issues.reviewStates';
     cReviewCommentKey = 'issues.reviewComment';
   private
@@ -122,6 +125,11 @@ begin
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndStates));
   FView.EndComment := FRows.AddText(cEndCommentKey,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndComment));
+  // Beenden in der Reihenfolge des Ablaufs (#2123): Felder und Zeit im Dialog.
+  FView.EndFields := FRows.AddText(cEndFieldsKey,
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndFields));
+  FView.EndTime := FRows.AddCheck('issues.endTime',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndTime));
   FView.ReviewStates := FRows.AddText(cReviewStatesKey,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewStates));
   FView.ReviewBuild := FRows.AddCheck('issues.reviewBuild',
@@ -167,6 +175,8 @@ begin
   AValues.WriteString(cReviewCommentKey, FView.ReviewComment.Text);
   AValues.WriteString(cEndStatesKey,
     TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndStates.Text)));
+  AValues.WriteString(cEndFieldsKey,
+    TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndFields.Text)));
   AValues.WriteString(cReviewStatesKey,
     TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.ReviewStates.Text)));
   AValues.WriteString(cStateFieldKey, FView.StateField.Value);

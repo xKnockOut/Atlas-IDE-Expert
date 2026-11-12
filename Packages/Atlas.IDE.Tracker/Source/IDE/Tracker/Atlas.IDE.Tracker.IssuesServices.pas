@@ -451,7 +451,25 @@ begin
       Result := '';
       if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
       begin
-        Result := mLink.Services.FTime.TimeText(AKey);
+        Result := TAtlasIdeTrackerIssueTime.Text(mLink.Services.FTime, AKey);
+      end;
+    end;
+  // Zeit im Beenden-Dialog (#2123).
+  ALink.Services.FSync.TimeSeconds :=
+    function(const AKey: string): Int64
+    begin
+      Result := 0;
+      if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
+      begin
+        Result := TAtlasIdeTrackerIssueTime.Seconds(mLink.Services.FTime, AKey);
+      end;
+    end;
+  ALink.Services.FSync.TimeBooked :=
+    procedure(const AKey: string; ASeconds: Int64)
+    begin
+      if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
+      begin
+        TAtlasIdeTrackerIssueTime.Booked(mLink.Services.FTime, AKey, ASeconds);
       end;
     end;
 end;

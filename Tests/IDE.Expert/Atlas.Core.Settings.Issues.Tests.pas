@@ -553,6 +553,8 @@ begin
   Assert.IsTrue(mSettings.IssuesReviewBuild, '#2126: Vorgabe an');
   Assert.AreEqual('Geprüft: {build}, {tests}.', mSettings.IssuesReviewComment);
   Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
+  Assert.AreEqual('', mSettings.IssuesEndFields, 'ab Werk keine Felder beim Beenden');
+  Assert.IsTrue(mSettings.IssuesEndTime, 'erfasste Zeit beim Beenden anbieten');
   // Normalisieren: Felder ohne Leerraum außen, leer = Vorgabe; Vorlagen einzeilig mit \n.
   mSettings.IssuesStateField := '  Status ';
   mSettings.IssuesAssigneeField := '';
@@ -564,6 +566,9 @@ begin
   mSettings.IssuesReviewComment := 'Geprüft'#13#10'{build}';
   mSettings.Normalize;
   Assert.AreEqual('Geprüft\n{build}', mSettings.IssuesReviewComment, 'einzeilig mit \n');
+  mSettings.IssuesEndFields := ' Behoben in Version, Ursache ';
+  mSettings.Normalize;
+  Assert.AreEqual('Behoben in Version, Ursache', mSettings.IssuesEndFields);
   Assert.AreEqual('Status', mSettings.IssuesStateField);
   Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField, 'leer = Vorgabe');
   Assert.AreEqual('In Arbeit', mSettings.IssuesStartState);
@@ -575,6 +580,7 @@ begin
   mSettings.IssuesSyncState := False;
   mSettings.IssuesAssignOnStart := True;
   mSettings.IssuesEndComment := 'Fertig: {pr}';
+  mSettings.IssuesEndTime := False;
   mSettings.IssuesReopened := False;
   mSettings.IssuesReviewBuild := False;
   mStore := TMemoryStore.Create;
@@ -593,6 +599,8 @@ begin
   Assert.IsFalse(mLoaded.IssuesReviewBuild);
   Assert.AreEqual('Geprüft\n{build}', mLoaded.IssuesReviewComment);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
+  Assert.AreEqual('Behoben in Version, Ursache', mLoaded.IssuesEndFields);
+  Assert.IsFalse(mLoaded.IssuesEndTime);
 end;
 procedure TAtlasIssueSettingsTests.IssuesTimeOptions;
 var

@@ -28,6 +28,10 @@ type
     /// /api/admin/customFieldSettings/customFields; False bei ungültigem JSON.</summary>
     class function ParseFieldValues(const AJson, AProject: string; AKind: TAtlasTrackerValueKind; const AField: string;
       out AValues: TArray<string>): Boolean; static;
+    /// <summary>Felder des Projekts AProject aus /api/admin/projects (#2123): AField '' = Namen aller Felder,
+    /// sonst die nicht archivierten Werte von AField. False bei ungültigem JSON.</summary>
+    class function ParseProjectFields(const AJson, AProject, AField: string; out AValues: TArray<string>): Boolean;
+      static;
     /// <summary>Anmeldenamen aus /api/users; False bei ungültigem JSON.</summary>
     class function ParseUsers(const AJson: string; out AValues: TArray<string>): Boolean; static;
     /// <summary>Antwort von /api/users mit login und fullName, ohne gesperrte (#1278); False bei ungültigem JSON.
@@ -621,6 +625,64 @@ begin
       if mEntry is TJSONObject then
       begin
         AddFieldEntry(TJSONObject(mEntry), AProject, AKind, AField, AValues);
+      end;
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+/// <summary>Namen bzw. Werte der Felder eines Projekteintrags ({"shortName", "customFields": [...]}).</summary>
+procedure AddProjectFields(AProject: TJSONObject; const AField: string; var AValues: TArray<string>);
+var
+  mEntry, mField: TJSONValue;
+  mName: string;
+begin
+  if not (AProject.Values['customFields'] is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mEntry in TJSONArray(AProject.Values['customFields']) do
+  begin
+    if not (mEntry is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mField := TJSONObject(mEntry).Values['field'];
+    if not (mField is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mName := TJsonRead.Text(TJSONObject(mField), 'name');
+    if AField = '' then
+    begin
+      AddValue(AValues, mName);
+    end
+    else if SameText(mName, AField) then
+    begin
+      AddBundleValues(TJSONObject(mEntry).Values['bundle'], AValues);
+    end;
+  end;
+end;
+
+class function TAtlasYouTrackParse.ParseProjectFields(const AJson, AProject, AField: string;
+  out AValues: TArray<string>): Boolean;
+var
+  mValue, mEntry: TJSONValue;
+begin
+  AValues := nil;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := mValue is TJSONArray;
+    if not Result then
+    begin
+      Exit;
+    end;
+    for mEntry in TJSONArray(mValue) do
+    begin
+      if (mEntry is TJSONObject) and SameText(TJsonRead.Text(TJSONObject(mEntry), 'shortName'), AProject) then
+      begin
+        AddProjectFields(TJSONObject(mEntry), Trim(AField), AValues);
       end;
     end;
   finally

@@ -1193,6 +1193,8 @@ type
     property IssuesReviewStates: string read FIssues.IssuesReviewStates write FIssues.IssuesReviewStates;
     property IssuesEndComment: string read FIssues.IssuesEndComment write FIssues.IssuesEndComment;
     property IssuesReviewComment: string read FIssues.IssuesReviewComment write FIssues.IssuesReviewComment;
+    property IssuesEndFields: string read FIssues.IssuesEndFields write FIssues.IssuesEndFields;
+    property IssuesEndTime: Boolean read FIssues.IssuesEndTime write FIssues.IssuesEndTime;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;

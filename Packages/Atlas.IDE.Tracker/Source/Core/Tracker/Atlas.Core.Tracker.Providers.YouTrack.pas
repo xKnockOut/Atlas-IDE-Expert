@@ -37,6 +37,10 @@
 //   Issues (GET <url>/api/issues/<Kennung>?fields=customFields(name,id,
 //   value(name),possibleEvents(id,presentation))); Apply löst einen Übergang
 //   statt eines Befehls mit dem Wert aus (TAtlasYouTrackApi.ApplyChange).
+// - Felder beim Beenden (#2123, IAtlasTrackerFields): Namen und Werte aus
+//   /api/admin/projects (Projekt aus .atlas, sonst aus der Kennung); ein Feld
+//   setzt ein Befehl „Feld Wert“ über /api/commands. Lehnt eine Regel des
+//   Ablaufs ab (400), steht ihr Text in der Antwort.
 // - Zeit buchen (#1267, IAtlasTrackerTimeWriter): POST
 //   <url>/api/issues/<Kennung>/timeTracking/workItems mit
 //   {"duration": {"presentation": "1h 25m"}, "date": <ms>, "type": {"name":
@@ -94,7 +98,7 @@ uses
 type
   TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
     IAtlasTrackerTimeWriter, IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards,
-    IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach, IAtlasTrackerStateRules)
+    IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach, IAtlasTrackerStateRules, IAtlasTrackerFields)
   public const
     cProviderName = TAtlasYouTrackApi.cProviderName;
     cQuery = TAtlasYouTrackApi.cDefaultQuery;
@@ -125,6 +129,11 @@ type
     { IAtlasTrackerStateRules (#2122): über TAtlasYouTrackWorkflow }
     function StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
       AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
+    { IAtlasTrackerFields (#2123) }
+    function FieldValues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey,
+      AField: string; ATimeoutMs: Integer; out AValues: TArray<string>): TAtlasTrackerWriteResult;
+    function SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey, AField,
+      AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
     { IAtlasTrackerTimeWriter }
     function TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out ASettings: TAtlasTrackerTimeSettings): TAtlasTrackerWriteResult;
@@ -196,6 +205,40 @@ function TAtlasYouTrackTracker.StateRules(const ATarget: TAtlasTrackerTarget; co
   const AKey, AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
 begin
   Result := TAtlasYouTrackWorkflow.Read(ATarget, ATransport, AKey, AField, ATimeoutMs, ARules);
+end;
+
+function TAtlasYouTrackTracker.FieldValues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField: string; ATimeoutMs: Integer; out AValues: TArray<string>): TAtlasTrackerWriteResult;
+var
+  mProject, mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  AValues := nil;
+  mProject := Trim(ATarget.Project);
+  if mProject = '' then
+  begin
+    mProject := TAtlasYouTrackApi.ProjectOfKey(AKey);
+  end;
+  if (mProject = '') or (ATransport = nil) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  if not TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.ProjectFieldsUrl(ATarget), ATimeoutMs, mText,
+    mError) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
+  Result := TAtlasTrackerWriteResult.Ok;
+  if not TAtlasYouTrackParse.ParseProjectFields(mText, mProject, AField, AValues) then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
+  end;
+end;
+
+function TAtlasYouTrackTracker.SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField, AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+begin
+  Result := TAtlasYouTrackApi.SetField(ATarget, ATransport, AKey, AField, AValue, ATimeoutMs);
 end;
 
 function TAtlasYouTrackTracker.Name: string;
@@ -348,7 +391,7 @@ begin
   end
   else
   begin
-    mUrl := ATarget.Url + '/api/admin/projects?fields=' + TTextUris.PercentEncode(TAtlasYouTrackApi.cProjectFields) + '&$top=500';
+    mUrl := TAtlasYouTrackApi.ProjectFieldsUrl(ATarget);
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
   begin

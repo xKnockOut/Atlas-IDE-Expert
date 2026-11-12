@@ -28,7 +28,6 @@ uses
   Atlas.Core.Tracker.Review,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.CommentEditor,
-  Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Foundation.Dialog;
 
 type
@@ -124,6 +123,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.EndDialog,
   Atlas.Core.Style.Signal,
   Atlas.Core.Tracker.Transitions,
   Atlas.UI.Tracker.Strings;
