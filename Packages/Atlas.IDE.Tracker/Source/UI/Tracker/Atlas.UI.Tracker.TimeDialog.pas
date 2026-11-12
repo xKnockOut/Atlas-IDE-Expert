@@ -81,8 +81,6 @@ type
     FDecision: TAtlasTimeDecision;
     FItem: TAtlasTrackerWorkItem;
     FSent: Boolean;
-    function AddRow(AHeight: Integer): TPanel;
-    function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddDuration(AMinutes: Integer);
     procedure AddKind;
@@ -268,40 +266,6 @@ begin
   FParts.Discard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
   FParts.Discard.OnClick := DiscardClick;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
-end;
-
-function TAtlasTrackerTimeDialog.AddRow(AHeight: Integer): TPanel;
-var
-  mTop: Integer;
-  mIndex: Integer;
-begin
-  // Unter das bisher unterste Element (alTop stapelt nach Top).
-  mTop := 0;
-  for mIndex := 0 to ControlCount - 1 do
-  begin
-    if Controls[mIndex].Top + Controls[mIndex].Height + 1 > mTop then
-    begin
-      mTop := Controls[mIndex].Top + Controls[mIndex].Height + 1;
-    end;
-  end;
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  Result.BevelOuter := bvNone;
-  Result.Caption := '';
-  Result.Top := mTop;
-  Result.Height := ScaleValue(AHeight);
-end;
-
-function TAtlasTrackerTimeDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
-begin
-  Result := TLabel.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Left := 0;
-  Result.Top := ScaleValue(4);
 end;
 
 function TAtlasTrackerTimeDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;

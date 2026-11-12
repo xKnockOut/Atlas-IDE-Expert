@@ -121,37 +121,55 @@ begin
   end;
 end;
 
-/// <summary>Dateien und Build-Eingänge beendeter Prozesse unter AFolder entfernen.</summary>
-procedure RemoveLeftovers(const AFolder: string);
+/// <summary>Exportierte Dateien in AFolder mit der Prozessnummer im Namen.</summary>
+function DirtyFiles(const AFolder: string): TArray<TAtlasLeftover>;
 var
-  mEntries: TArray<TAtlasLeftover>;
+  mPath: string;
+  mPid: Cardinal;
+begin
+  Result := nil;
+  if not TDirectory.Exists(AFolder) then
+  begin
+    Exit;
+  end;
+  for mPath in TDirectory.GetFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix + '*') do
+  begin
+    if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), TAtlasProcessLeftovers.cDirtyPrefix,
+      TAtlasProcessLeftovers.cDirtySuffix, mPid) then
+    begin
+      Result := Result + [TAtlasLeftover.Create(mPath, mPid, TFile.GetLastWriteTime(mPath))];
+    end;
+  end;
+end;
+
+/// <summary>Build-Ordner unter AFolder, je Prozessnummer einer.</summary>
+function BuildFolders(const AFolder: string): TArray<TAtlasLeftover>;
+var
   mPath, mBuilds: string;
   mPid: Cardinal;
 begin
-  mEntries := nil;
-  if TDirectory.Exists(AFolder) then
-  begin
-    for mPath in TDirectory.GetFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix + '*') do
-    begin
-      if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), TAtlasProcessLeftovers.cDirtyPrefix,
-        TAtlasProcessLeftovers.cDirtySuffix, mPid) then
-      begin
-        mEntries := mEntries + [TAtlasLeftover.Create(mPath, mPid, TFile.GetLastWriteTime(mPath))];
-      end;
-    end;
-  end;
+  Result := nil;
   mBuilds := TPath.Combine(AFolder, TAtlasProcessLeftovers.cBuildsFolder);
-  if TDirectory.Exists(mBuilds) then
+  if not TDirectory.Exists(mBuilds) then
   begin
-    for mPath in TDirectory.GetDirectories(mBuilds) do
+    Exit;
+  end;
+  for mPath in TDirectory.GetDirectories(mBuilds) do
+  begin
+    if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), '', '', mPid) then
     begin
-      if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), '', '', mPid) then
-      begin
-        mEntries := mEntries + [TAtlasLeftover.Create(mPath, mPid, TDirectory.GetLastWriteTime(mPath))];
-      end;
+      Result := Result + [TAtlasLeftover.Create(mPath, mPid, TDirectory.GetLastWriteTime(mPath))];
     end;
   end;
-  for mPath in TAtlasProcessLeftovers.Stale(mEntries, GetCurrentProcessId, ProcessAlive) do
+end;
+
+/// <summary>Dateien und Build-Eingänge beendeter Prozesse unter AFolder entfernen.</summary>
+procedure RemoveLeftovers(const AFolder: string);
+var
+  mPath: string;
+begin
+  for mPath in TAtlasProcessLeftovers.Stale(DirtyFiles(AFolder) + BuildFolders(AFolder), GetCurrentProcessId,
+    ProcessAlive) do
   begin
     try
       if TDirectory.Exists(mPath) then

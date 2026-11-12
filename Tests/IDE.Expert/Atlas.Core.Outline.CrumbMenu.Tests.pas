@@ -108,7 +108,8 @@ end;
 
 function CrumbsAt(ALine, ACharacter: Integer): TAtlasCrumbs;
 begin
-  Result := TAtlasBreadcrumbs.Path(Nodes, Lines, ALine, ACharacter, 'Kunden', True, [TAtlasCrumbPart.Visibility]);
+  Result := TAtlasBreadcrumbs.Path(Nodes, Lines,
+    TAtlasCrumbRequest.Create(ALine, ACharacter, 'Kunden', True, [TAtlasCrumbPart.Visibility]));
 end;
 
 procedure TAtlasCrumbMenuTests.ActionsFitTheCrumb;

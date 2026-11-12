@@ -53,10 +53,10 @@ type
     FCancel: TButton;
     FLoading: Boolean;
     FOnChange: TProc<TAtlasDuplicateOptions>;
-    function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
+    function AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddEdit(AParent: TWinControl; AWidth: Integer; ANumbers: Boolean): TEdit;
     function AddCheck(AParent: TWinControl; const ACaption: string): TCheckBox;
-    function AddRow: TFlowPanel;
+    function AddFlowRow: TFlowPanel;
     procedure AddButtons;
     procedure Changed(Sender: TObject);
     procedure Load(const AOptions: TAtlasDuplicateOptions);
@@ -102,8 +102,8 @@ begin
   inherited CreateDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateTitle), cDialogWidth);
   Canvas.Font := Font;
 
-  mRow := AddRow;
-  AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateDirection));
+  mRow := AddFlowRow;
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateDirection));
   FDirection := TComboBox.Create(Self);
   FDirection.Parent := mRow;
   FDirection.Style := csDropDownList;
@@ -112,27 +112,27 @@ begin
   FDirection.Margins.SetBounds(0, 0, cGap * 2, 0);
   FDirection.Items.Add(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateDown));
   FDirection.Items.Add(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateRight));
-  AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateGap));
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateGap));
   FGap := AddEdit(mRow, cNumberWidth, True);
   FGap.Margins.Right := cGap * 2;
-  AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCount));
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCount));
   FCount := AddEdit(mRow, cNumberWidth, True);
 
-  mRow := AddRow;
-  AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateList));
-  mRow := AddRow;
+  mRow := AddFlowRow;
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateList));
+  mRow := AddFlowRow;
   FList := AddEdit(mRow, cDialogWidth - cGap * 2, False);
 
-  mRow := AddRow;
+  mRow := AddFlowRow;
   FShare := AddCheck(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateShare));
   FDataFields := AddCheck(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateDataField));
-  mRow := AddRow;
+  mRow := AddFlowRow;
   FPush := AddCheck(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicatePush));
 
-  mRow := AddRow;
-  FPreview := AddLabel(mRow, '');
-  mRow := AddRow;
-  FBad := AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateBad));
+  mRow := AddFlowRow;
+  FPreview := AddFlowLabel(mRow, '');
+  mRow := AddFlowRow;
+  FBad := AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateBad));
   FBad.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   // Mit seFont übergeht der Stil Font.Color.
   FBad.StyleElements := FBad.StyleElements - [seFont];
@@ -143,7 +143,7 @@ begin
   ActiveControl := FList;
 end;
 
-function TAtlasDuplicateDialog.AddRow: TFlowPanel;
+function TAtlasDuplicateDialog.AddFlowRow: TFlowPanel;
 begin
   Result := TFlowPanel.Create(Self);
   Result.Parent := Self;
@@ -156,7 +156,7 @@ begin
   Result.Top := ScaleValue(2000) + ComponentCount;
 end;
 
-function TAtlasDuplicateDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
+function TAtlasDuplicateDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(Self);
   Result.Parent := AParent;
@@ -202,7 +202,7 @@ var
   end;
 
 begin
-  mButtons := AddRow;
+  mButtons := AddFlowRow;
   mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   FOk := AddButton(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateOk));
   FOk.Default := True;

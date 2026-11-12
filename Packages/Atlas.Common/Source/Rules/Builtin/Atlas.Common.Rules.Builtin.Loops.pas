@@ -696,7 +696,8 @@ var
       mPending: TStack<TSyntaxNode>;
       mPendingInWith: TStack<Boolean>;
     begin
-      // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in einer with-Anweisung liegt.
+      // Iterativ (tiefe Bäume sprengen den Stapel nicht): zu jedem Knoten auf dem Stapel, ob er in einer with-Anweisung
+      // liegt.
       mPending := TStack<TSyntaxNode>.Create;
       mPendingInWith := TStack<Boolean>.Create;
       try

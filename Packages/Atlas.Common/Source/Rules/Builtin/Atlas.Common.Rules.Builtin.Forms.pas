@@ -123,7 +123,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
-/// <summary>Klasse ATypeName der Unit (Interface oder Implementation), sonst nil. Iterativ (tiefe Bäume sprengen den Stapel nicht).
+/// <summary>Klasse ATypeName der Unit (Interface oder Implementation), sonst nil. Iterativ (tiefe Bäume sprengen den
+/// Stapel nicht).
 /// </summary>
 function FindClassDecl(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var

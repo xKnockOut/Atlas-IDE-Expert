@@ -148,7 +148,8 @@ begin
   if not TAtlasIdeVcsCore.Run(
     procedure
     begin
-      mList := TAtlasVcsWorkingCopies.Collect(TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)));
+      mList := TAtlasVcsWorkingCopies.Collect(
+        TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)));
     end,
     procedure
     begin
@@ -208,8 +209,8 @@ begin
       end
       else
       begin
-        if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnWorkingCopy,
-          mSvn) then
+        if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)),
+          IAtlasVcsSvnWorkingCopy, mSvn) then
         begin
           mSvn := nil;
         end;
@@ -270,8 +271,8 @@ begin
     var
       mExternals: IAtlasVcsSvnExternals;
     begin
-      if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cServerTimeoutMs)), IAtlasVcsSvnExternals,
-        mExternals) then
+      if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cServerTimeoutMs)),
+        IAtlasVcsSvnExternals, mExternals) then
       begin
         mExternals := nil;
       end;
@@ -324,7 +325,8 @@ begin
     end
     else
     begin
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateFailed, [AName, AtlasVcsOutcomeName(AReason)]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateFailed,
+        [AName, AtlasVcsOutcomeName(AReason)]);
     end;
   end;
 end;
@@ -422,8 +424,8 @@ begin
     var
       mExternals: IAtlasVcsSvnExternals;
     begin
-      if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)), IAtlasVcsSvnExternals,
-        mExternals) then
+      if not Supports(TAtlasIdeVcsCore.ForFolder(mRoot, TAtlasIdeVcsCore.AtLeast(cLocalTimeoutMs)),
+        IAtlasVcsSvnExternals, mExternals) then
       begin
         mExternals := nil;
       end;

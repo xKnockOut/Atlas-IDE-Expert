@@ -296,9 +296,8 @@ const
   cBelowAll = 10000;
   cExternalRow = 26;
   cExternalRowsVisible = 5;
-  // Höhe von Überschrift (mit Rand) und Hinweiszeile im Rahmen „Externals“.
-  cExternalsHeader = 44;
-  cExternalsHint = 20;
+  /// <summary>Höhe der Gruppe für die Externals ohne ihre Zeilen: Rahmen mit Titel und Kopfzeile.</summary>
+  cExternalsFrame = 44 + 20;
   cFolderWidth = 150;
   cChoiceWidth = 200;
 
@@ -453,7 +452,8 @@ function ExternalCaption(const AExternal: TAtlasVcsSvnExternal; AAction: TAtlasV
 begin
   case AAction of
     TAtlasVcsExternalAction.Pin:
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalPin, [TAtlasVcsBranchPlan.ExternalRevision(AExternal)]);
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalPin,
+        [TAtlasVcsBranchPlan.ExternalRevision(AExternal)]);
     TAtlasVcsExternalAction.Branch:
       Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalBranch);
   else
@@ -1116,8 +1116,8 @@ begin
   FHint.StyleElements := FHint.StyleElements - [seFont];
   FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
   FHint.Visible := False;
-  FBox.Height := FBox.ScaleValue(cExternalsHeader + cExternalsHint +
-    Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) * cExternalRow);
+  FBox.Height := FBox.ScaleValue(cExternalsFrame + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) *
+    cExternalRow);
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
   mWidth := FDialog.Width - 4 * cGap - 20;
   AddHeader(mWidth);
@@ -1147,7 +1147,8 @@ begin
   mHeader.Align := alTop;
   mHeader.Height := mHeader.ScaleValue(20);
   mHeader.BevelOuter := bvNone;
-  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
+  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth,
+    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
   mLabel.Font.Color := clGrayText;
   mLabel := CellLabel(FDialog, mHeader, cGap + cFolderWidth + cGap, 200,
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsSource));

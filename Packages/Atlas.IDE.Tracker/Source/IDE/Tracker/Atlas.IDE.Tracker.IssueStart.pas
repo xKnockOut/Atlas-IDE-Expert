@@ -477,6 +477,7 @@ end;
 function TAtlasIdeIssueStart.DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
 var
   mNeverAsk: Boolean;
+  mAsk: TAtlasVcsBranchAsk;
 begin
   Result := True;
   if not TAtlasIdeSettings.Current.VcsBranchConfirm and
@@ -484,8 +485,14 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasIdeVcs.Dialogs.AskBranch(AJob.Folder, AJob.Facts, AJob.Plan.Branch,
-    AJob.Plan.Message, AJob.Issue.Key, AJob.Plan.Svn, True, AJob.Request, mNeverAsk);
+  mAsk.Folder := AJob.Folder;
+  mAsk.Facts := AJob.Facts;
+  mAsk.Name := AJob.Plan.Branch;
+  mAsk.Message := AJob.Plan.Message;
+  mAsk.Key := AJob.Issue.Key;
+  mAsk.Svn := AJob.Plan.Svn;
+  mAsk.OfferNeverAsk := True;
+  Result := TAtlasIdeVcs.Dialogs.AskBranch(mAsk, AJob.Request, mNeverAsk);
   if not Result then
   begin
     Exit;

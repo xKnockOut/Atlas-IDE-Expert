@@ -93,7 +93,7 @@ function AffectedQueryOf(const ARoot: string; const AArguments: TJSONObject): TS
 begin
   Result := Default(TShellAffectedQuery);
   Result.WorkingDir := ARoot;
-  Result.Base := TMcpServer.OptionalString(AArguments, 'base');
+  Result.Base := TMcpArgs.OptionalString(AArguments, 'base');
   if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('includeUncommitted', Result.IncludeUncommitted) then
   begin
     Result.IncludeUncommitted := True;
@@ -188,7 +188,7 @@ begin
   begin
     raise EMcpToolError.Create(TShellAffectedTests.OffMessage);
   end;
-  if not TAffectedTests.TryParseFormat(TMcpServer.OptionalString(AArguments, 'format'), mFormat) then
+  if not TAffectedTests.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
@@ -230,7 +230,7 @@ end;
 /// <summary>Format von get_hotspots: text, markdown oder json ('' = text).</summary>
 function HotspotFormatOf(const AArguments: TJSONObject): string;
 begin
-  Result := TMcpServer.OptionalString(AArguments, 'format');
+  Result := TMcpArgs.OptionalString(AArguments, 'format');
   if (Result <> '') and not SameText(Result, 'text') and not SameText(Result, 'markdown') and
     not SameText(Result, 'json') then
   begin
@@ -312,7 +312,7 @@ begin
   begin
     raise EMcpToolError.Create(cTexts[TMcpChangeText.HotspotsOff].Text);
   end;
-  if not THotspotReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
+  if not THotspotReport.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('section', ['hotspots', 'coupling']));
   end;

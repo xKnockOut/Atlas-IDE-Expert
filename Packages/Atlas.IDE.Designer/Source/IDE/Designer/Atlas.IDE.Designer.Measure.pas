@@ -42,6 +42,8 @@ type
     FHoldUntil: UInt64;
     procedure Tick(Sender: TObject);
     procedure Update;
+    /// <summary>Linien beim Ziehen; False, wenn weder gezogen wird noch die Maustaste unten ist.</summary>
+    function UpdateDrag(ARoot: TWinControl; const AControls: TArray<TControl>): Boolean;
     procedure Hide;
     procedure Show(ARoot: TWinControl; const AMarks: TArray<TAtlasMeasureMark>);
     function DragMarks(ARoot: TWinControl; const AControls: TArray<TControl>; ALeftDown: Boolean;
@@ -433,35 +435,52 @@ begin
     mScale.ToDesign(mTargetRect), mTarget.Name), mScale);
 end;
 
+/// <summary>Formular sichtbar auf dem Bildschirm?</summary>
+function RootVisible(ARoot: TComponent): Boolean;
+begin
+  Result := (ARoot is TWinControl) and TWinControl(ARoot).HandleAllocated and
+    IsWindowVisible(TWinControl(ARoot).Handle);
+end;
+
+function TAtlasIdeDesignerMeasure.UpdateDrag(ARoot: TWinControl; const AControls: TArray<TControl>): Boolean;
+var
+  mLeft: Boolean;
+  mMarks: TArray<TAtlasMeasureMark>;
+begin
+  mLeft := GetAsyncKeyState(VK_LBUTTON) < 0;
+  Result := mLeft or FDragging;
+  if not Result then
+  begin
+    Exit;
+  end;
+  if DragMarks(ARoot, AControls, mLeft, mMarks) then
+  begin
+    Show(ARoot, mMarks);
+    FHoldUntil := GetTickCount64 + cHoldMs;
+  end;
+  // Losgelassen: Die letzten Linien bleiben bis FHoldUntil stehen.
+  FDragging := FDragging and mLeft;
+end;
+
 procedure TAtlasIdeDesignerMeasure.Update;
 var
   mSettings: TAtlasPluginSettings;
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mControls: TArray<TControl>;
-  mLeft: Boolean;
-  mMarks: TArray<TAtlasMeasureMark>;
 begin
   mSettings := TAtlasIdeSettings.Current;
   if not FActive or not mSettings.EditorDesignerBar or not Application.Active or
-    not TAtlasDesignerAccess.Current(mEditor, mRoot) or not (mRoot is TWinControl) or
-    not TWinControl(mRoot).HandleAllocated or not IsWindowVisible(TWinControl(mRoot).Handle) then
+    not TAtlasDesignerAccess.Current(mEditor, mRoot) or not RootVisible(mRoot) then
   begin
     FDragging := False;
     Hide;
     Exit;
   end;
   mControls := SelectedControls(mEditor, mRoot);
-  mLeft := GetAsyncKeyState(VK_LBUTTON) < 0;
-  if (Length(mControls) > 0) and mSettings.DesignerMeasureDistances and (mLeft or FDragging) then
+  if (Length(mControls) > 0) and mSettings.DesignerMeasureDistances and
+    UpdateDrag(TWinControl(mRoot), mControls) then
   begin
-    if DragMarks(TWinControl(mRoot), mControls, mLeft, mMarks) then
-    begin
-      Show(TWinControl(mRoot), mMarks);
-      FHoldUntil := GetTickCount64 + cHoldMs;
-    end;
-    // Losgelassen: Die letzten Linien bleiben bis FHoldUntil stehen.
-    FDragging := FDragging and mLeft;
     Exit;
   end;
   if (Length(mControls) > 0) and mSettings.DesignerMeasureAltKey and (GetAsyncKeyState(VK_MENU) < 0) then

@@ -434,9 +434,9 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die Kette lang; rekursiv
-  // kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge auf den Stapel,
-  // damit die Reihenfolge der Besuche die der Rekursion bleibt.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die
+  // Kette lang; rekursiv kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge
+  // auf den Stapel, damit die Reihenfolge der Besuche die der Rekursion bleibt.
   if not AVisit(Self) or (ChildCount = 0) then
   begin
     Exit;

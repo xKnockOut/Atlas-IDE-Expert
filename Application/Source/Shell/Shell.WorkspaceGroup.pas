@@ -29,6 +29,12 @@ uses
   Shell.Workspace;
 
 type
+  /// <summary>Gemerkte Projekte der Gruppe für projektweite Regeln (#1102); Valid bis Invalidate.</summary>
+  TShellRuleProjectCache = record
+    Items: TArray<TRuleProject>;
+    Valid: Boolean;
+  end;
+
   TShellWorkspaceGroup = class
   private
     FRoot: string;
@@ -47,8 +53,7 @@ type
     FFinishedEvent: TEvent;
     FLock: TObject;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
-    FRuleProjects: TArray<TRuleProject>;
-    FHasRuleProjects: Boolean;
+    FRuleProjects: TShellRuleProjectCache;
     /// <summary>Uses-Graph über FIndex für projektweite Regeln (#64) und die MCP-Werkzeuge; einer für die Gruppe,
     /// statt je Prüfung einen eigenen aufzubauen.</summary>
     FUsesGraph: TUsesGraphService;
@@ -187,7 +192,7 @@ begin
         begin
           FFinished.Add(AWorkspace);
         end;
-        FHasRuleProjects := False;
+        FRuleProjects.Valid := False;
       finally
         System.TMonitor.Exit(FLock);
       end;
@@ -358,7 +363,7 @@ procedure TShellWorkspaceGroup.Invalidate;
 begin
   System.TMonitor.Enter(FLock);
   try
-    FHasRuleProjects := False;
+    FRuleProjects.Valid := False;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -372,9 +377,9 @@ var
 begin
   System.TMonitor.Enter(FLock);
   try
-    if FHasRuleProjects then
+    if FRuleProjects.Valid then
     begin
-      Exit(FRuleProjects);
+      Exit(FRuleProjects.Items);
     end;
   finally
     System.TMonitor.Exit(FLock);
@@ -389,8 +394,8 @@ begin
   end;
   System.TMonitor.Enter(FLock);
   try
-    FRuleProjects := Result;
-    FHasRuleProjects := True;
+    FRuleProjects.Items := Result;
+    FRuleProjects.Valid := True;
   finally
     System.TMonitor.Exit(FLock);
   end;

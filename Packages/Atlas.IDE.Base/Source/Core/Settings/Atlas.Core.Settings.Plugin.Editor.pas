@@ -103,10 +103,6 @@ const
   /// <summary>Werte von designer.selectionBar.mode (#735).</summary>
   cSelectionBarAuto = 'auto';
   cSelectionBarShortcut = 'shortcut';
-  /// <summary>Vorgabe von designer.selectionBar.items (#735).</summary>
-  cSelectionBarDefaultItems = 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
-    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
-    'alignCenter, alignRight, transfer';
   cMaxSelectionBarDelay = 5000;
   /// <summary>Werte von designer.buttonBar.position (#732).</summary>
   cButtonBarBottomRight = 'bottomRight';
@@ -666,7 +662,8 @@ type
     DesignerFitContainerAlignTopLeft: Boolean;
     /// <summary>Fast bündige Kanten (#746, designer.nearAlignment).</summary>
     DesignerNearAlignment: Boolean;
-    /// <summary>Höchster Versatz in Pixeln, der als fast bündig gilt (#746, designer.nearAlignment.tolerance).</summary>
+    /// <summary>Höchster Versatz in Pixeln, der als fast bündig gilt (#746,
+    /// designer.nearAlignment.tolerance).</summary>
     DesignerNearAlignmentTolerance: Integer;
     /// <summary>Auch Textgrundlinien vergleichen (#746, designer.nearAlignment.baseline).</summary>
     DesignerNearAlignmentBaseline: Boolean;
@@ -880,6 +877,10 @@ uses
   Atlas.Core.Settings.ToolbarItems;
 
 const
+  /// <summary>Knöpfe der Schnellleiste im Designer ab Werk, in dieser Reihenfolge (Kennungen, kein Text).</summary>
+  cSelectionBarItems = 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
+    'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
+    'alignCenter, alignRight, transfer';
   /// <summary>Vorgabe von designer.selectionSets.saveKey: Strg+Umschalt+S (scShift + scCtrl + Ord('S')).</summary>
   cDefaultSelectionSetsSaveKey = $2000 + $4000 + Ord('S');
   /// <summary>Vorgabeabstand der Designer-Werkzeuge in Pixel (Zeilen, Beschriftungen, Innenrand).</summary>
@@ -1557,7 +1558,7 @@ begin
   DesignerSelectionBar := True;
   DesignerSelectionBarMode := cSelectionBarAuto;
   DesignerSelectionBarDelayMs := 400;
-  DesignerSelectionBarItems := cSelectionBarDefaultItems;
+  DesignerSelectionBarItems := cSelectionBarItems;
   // Strg+Umschalt+Leer.
   DesignerSelectionBarKey := 24608;
   DesignerMagnifier := True;

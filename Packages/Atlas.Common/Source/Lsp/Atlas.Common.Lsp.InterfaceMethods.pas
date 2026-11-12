@@ -99,6 +99,9 @@ type
     FSeen: TDictionary<string, Boolean>;
     FMarks: TDictionary<Integer, TInterfaceMethodMark>;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+    /// <summary>Die Methoden des Interfaces AIntf aus AUnit, ohne seine Vorfahren.</summary>
+    procedure AddMembers(const AIntf: TResolvedSymbol; const AUnit: TUnitIndex; AInherited: Boolean;
+      AResolutions: TDictionary<string, string>);
     procedure AddInterface(const AText: string; const AFromUnit: TUnitIndex; AInherited: Boolean;
       AResolutions: TDictionary<string, string>);
     procedure AddInterfacesOf(const AType: TResolvedSymbol; const AUnit: TUnitIndex; AInherited: Boolean);
@@ -173,13 +176,34 @@ begin
   Result := FResolver.DeclaringUnit(AResolved, AUnit);
 end;
 
+procedure TInterfaceScan.AddMembers(const AIntf: TResolvedSymbol; const AUnit: TUnitIndex; AInherited: Boolean;
+  AResolutions: TDictionary<string, string>);
+var
+  mSymbol: TIndexSymbol;
+  mMember: TInterfaceMember;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, AIntf.QualifiedName) then
+    begin
+      mMember.Owner := AIntf;
+      mMember.Symbol := mSymbol;
+      mMember.Inherited_ := AInherited;
+      if not AResolutions.TryGetValue(LowerCase(TResolverText.BareTypeName(AIntf.Name) + '.' + mSymbol.Name),
+        mMember.Implementer) then
+      begin
+        mMember.Implementer := mSymbol.Name;
+      end;
+      FMembers.Add(mMember);
+    end;
+  end;
+end;
+
 procedure TInterfaceScan.AddInterface(const AText: string; const AFromUnit: TUnitIndex; AInherited: Boolean;
   AResolutions: TDictionary<string, string>);
 var
   mIntf, mParent: TResolvedSymbol;
   mUnit: TUnitIndex;
-  mSymbol: TIndexSymbol;
-  mMember: TInterfaceMember;
   mDepth: Integer;
 begin
   if not FResolver.ResolveTypeTextFrom(AFromUnit, AText, mIntf) or
@@ -195,21 +219,7 @@ begin
       Exit;
     end;
     FSeen.Add(UpperCase(mIntf.QualifiedName), True);
-    for mSymbol in mUnit.Symbols do
-    begin
-      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, mIntf.QualifiedName) then
-      begin
-        mMember.Owner := mIntf;
-        mMember.Symbol := mSymbol;
-        mMember.Inherited_ := AInherited;
-        if not AResolutions.TryGetValue(LowerCase(TResolverText.BareTypeName(mIntf.Name) + '.' + mSymbol.Name),
-          mMember.Implementer) then
-        begin
-          mMember.Implementer := mSymbol.Name;
-        end;
-        FMembers.Add(mMember);
-      end;
-    end;
+    AddMembers(mIntf, mUnit, AInherited, AResolutions);
     if not FResolver.AncestorOf(mIntf, mParent) or (mParent.SymbolKind <> TIndexSymbolKind.InterfaceType) then
     begin
       Exit;

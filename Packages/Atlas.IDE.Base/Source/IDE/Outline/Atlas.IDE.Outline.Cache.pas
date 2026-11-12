@@ -111,6 +111,18 @@ type
     Used: UInt64;
   end;
 
+  /// <summary>Antwort eines Abrufs für den Eintrag Key in der Version Version; Ok ohne Zeitgrenze und Fehler.
+  /// </summary>
+  TLoadAnswer = record
+    Key: string;
+    Text: string;
+    Version: Cardinal;
+    Ok: Boolean;
+    Nodes: TAtlasOutlineNodes;
+    Interfaces: TAtlasInterfaceMethods;
+    WithInterfaces: Boolean;
+  end;
+
 var
   SessionOf: TFunc<TLspSession>;
   Entries: TObjectDictionary<string, TEntry>;
@@ -147,16 +159,15 @@ end;
 
 /// <summary>Antwort auf Load im Hauptthread: gilt nur, solange der Eintrag besteht und noch dieselbe Version hat.
 /// </summary>
-procedure Loaded(const AKey, AText: string; AVersion: Cardinal; AOk: Boolean; const ANodes: TAtlasOutlineNodes;
-  const AInterfaces: TAtlasInterfaceMethods; AWithInterfaces: Boolean);
+procedure Loaded(const AAnswer: TLoadAnswer);
 var
   mEntry: TEntry;
 begin
-  if (Entries = nil) or not Entries.TryGetValue(AKey, mEntry) or (mEntry.Version <> AVersion) then
+  if (Entries = nil) or not Entries.TryGetValue(AAnswer.Key, mEntry) or (mEntry.Version <> AAnswer.Version) then
   begin
     Exit;
   end;
-  if not AOk then
+  if not AAnswer.Ok then
   begin
     // Zeitgrenze oder Fehler: der alte Stand bleibt, später neu versuchen.
     mEntry.Loaded := False;
@@ -165,15 +176,15 @@ begin
   end;
   mEntry.Loaded := True;
   // Auch beim Syntaxfehler gemerkt: sonst fragte jeder Takt erneut nach den Interface-Methoden.
-  mEntry.WithInterfaces := AWithInterfaces;
+  mEntry.WithInterfaces := AAnswer.WithInterfaces;
   // Syntaxfehler: Ohne Knoten bleibt der letzte gültige Stand.
-  if (Length(ANodes) = 0) and (Length(mEntry.Nodes) > 0) then
+  if (Length(AAnswer.Nodes) = 0) and (Length(mEntry.Nodes) > 0) then
   begin
     Exit;
   end;
-  mEntry.Nodes := ANodes;
-  mEntry.Text := AText;
-  mEntry.Interfaces := AInterfaces;
+  mEntry.Nodes := AAnswer.Nodes;
+  mEntry.Text := AAnswer.Text;
+  mEntry.Interfaces := AAnswer.Interfaces;
   Inc(LastStamp);
   mEntry.Stamp := LastStamp;
 end;
@@ -210,11 +221,8 @@ end;
 procedure Load(AEntry: TEntry; const ASnapshot: TAtlasEditorSnapshot);
 var
   mSession: TLspSession;
-  mFileName, mKey, mText: string;
-  mVersion: Cardinal;
-  mNodes: TAtlasOutlineNodes;
-  mInterfaces: TAtlasInterfaceMethods;
-  mAnswered, mWithInterfaces: Boolean;
+  mFileName: string;
+  mAnswer: TLoadAnswer;
 begin
   AEntry.Version := ASnapshot.Version;
   AEntry.PendingVersion := ASnapshot.Version;
@@ -235,13 +243,11 @@ begin
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(AEntry.FileName, ASnapshot.Text);
   mFileName := AEntry.FileName;
-  mKey := Key(mFileName);
-  mText := ASnapshot.Text;
-  mVersion := ASnapshot.Version;
-  mNodes := nil;
-  mInterfaces := nil;
-  mAnswered := False;
-  mWithInterfaces := TAtlasIdeOutlineCache.WithInterfaces;
+  mAnswer := Default(TLoadAnswer);
+  mAnswer.Key := Key(mFileName);
+  mAnswer.Text := ASnapshot.Text;
+  mAnswer.Version := ASnapshot.Version;
+  mAnswer.WithInterfaces := TAtlasIdeOutlineCache.WithInterfaces;
   Request.Start(
     procedure
     var
@@ -249,17 +255,17 @@ begin
     begin
       mResponse := mSession.DocumentSymbolTree(mFileName, cRequestTimeoutMs);
       try
-        mAnswered := mResponse <> nil;
-        if mAnswered then
+        mAnswer.Ok := mResponse <> nil;
+        if mAnswer.Ok then
         begin
-          mNodes := TAtlasOutline.FromJson(mResponse);
+          mAnswer.Nodes := TAtlasOutline.FromJson(mResponse);
         end;
       finally
         mResponse.Free;
       end;
-      if mAnswered and mWithInterfaces then
+      if mAnswer.Ok and mAnswer.WithInterfaces then
       begin
-        mInterfaces := FetchInterfaces(mSession, mFileName);
+        mAnswer.Interfaces := FetchInterfaces(mSession, mFileName);
       end;
     end,
     procedure(AOk: Boolean; const AError: string)
@@ -270,7 +276,8 @@ begin
         TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.MessageText(AError) +
           '); alter Stand bleibt');
       end;
-      Loaded(mKey, mText, mVersion, AOk and mAnswered, mNodes, mInterfaces, mWithInterfaces);
+      mAnswer.Ok := AOk and mAnswer.Ok;
+      Loaded(mAnswer);
     end);
 end;
 

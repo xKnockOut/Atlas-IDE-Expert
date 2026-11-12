@@ -45,6 +45,9 @@ type
     procedure ClassOverloadInClassMethodIsReachable;
     [Test]
     procedure ProtectedThroughGenericReceiverIsVisible;
+    /// <summary>Konstante eines Nachfahren aus der protected-Konstante des Vorfahren (TBasis.cAbstand).</summary>
+    [Test]
+    procedure ProtectedConstantInDescendantDeclaration;
     [Test]
     procedure OffAndExclude;
   end;
@@ -108,6 +111,15 @@ begin
     '  private'#10'    class constructor Create;'#10'  end;'#10'  TVersteckt = class'#10'  private'#10 +
     '    constructor Create;'#10'  end;'#10'implementation'#10'class constructor TInspektor.Create;'#10'begin'#10 +
     'end;'#10'constructor TVersteckt.Create;'#10'begin'#10'end;'#10'end.', 'C:\Projekt\Inspektor.pas', nil));
+end;
+
+/// <summary>BasisIndex und Unit Rahmen mit TRahmen (Konstanten protected und strict protected).</summary>
+function RahmenIndex: ISymbolIndex;
+begin
+  Result := BasisIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Rahmen;'#10'interface'#10'type'#10'  TRahmen = class'#10 +
+    '  protected const'#10'    cAbstand = 8;'#10'  strict protected const'#10'    cRand = 2;'#10'  end;'#10 +
+    'implementation'#10'end.', 'C:\Projekt\Rahmen.pas', nil));
 end;
 
 function Findings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -376,6 +388,21 @@ begin
   Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual('TKnoten.FGeheim ist strict protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
   Assert.AreEqual('TEinfach.FWert ist protected und hier nicht sichtbar (wie E2362).', mFound[1].Message);
+end;
+
+procedure TInaccessibleMemberTests.ProtectedConstantInDescendantDeclaration;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // dcc übersetzt TKind (Nachfahr); TFremd ohne Vorfahren TRahmen meldet es (E2362).
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Rahmen;'#10'type'#10'  TKind = class(TRahmen)'#10'  private const'#10 +
+    '    cDoppelt = 2 * TRahmen.cAbstand;'#10'    cInnen = TRahmen.cRand + 1;'#10'  end;'#10 +
+    '  TFremd = class'#10'  private const'#10'    cFremd = 2 * TRahmen.cAbstand;'#10'  end;'#10 +
+    'implementation'#10'end.', RahmenIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TRahmen.cAbstand ist protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
+  Assert.AreEqual(12, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TInaccessibleMemberTests.OffAndExclude;

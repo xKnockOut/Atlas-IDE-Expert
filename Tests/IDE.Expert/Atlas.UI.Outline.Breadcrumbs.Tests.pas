@@ -171,15 +171,17 @@ end;
 
 procedure TAtlasBreadcrumbBarTests.HitTestAndMenuOnlyWithSiblings;
 var
+  Setup: TAtlasCrumbBarSetup;
   Opened: Integer;
   Area: TRect;
 begin
   Opened := -1;
-  FBar.OnOpenMenu :=
+  Setup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
       Opened := AIndex;
     end;
+  FBar.Setup := Setup;
   FBar.SetCrumbs(Path);
   Area := FBar.CrumbRect(2);
   Assert.IsFalse(Area.IsEmpty);
@@ -195,22 +197,24 @@ end;
 
 procedure TAtlasBreadcrumbBarTests.KeyboardMovesAndOpens;
 var
+  Setup: TAtlasCrumbBarSetup;
   Opened: Integer;
   Left: Boolean;
   Key: Word;
 begin
   Opened := -1;
   Left := False;
-  FBar.OnOpenMenu :=
+  Setup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
       Opened := AIndex;
     end;
-  FBar.OnLeave :=
+  Setup.OnLeave :=
     procedure
     begin
       Left := True;
     end;
+  FBar.Setup := Setup;
   FBar.SetCrumbs(Path);
   Assert.AreEqual(3, FBar.Selected, 'letztes Glied');
   Key := VK_LEFT;
@@ -301,6 +305,7 @@ end;
 
 procedure TAtlasBreadcrumbBarTests.SeparatorOpensChildren;
 var
+  Setup: TAtlasCrumbBarSetup;
   Opened, Menu: Integer;
   Crumbs: TAtlasCrumbs;
   Area: TRect;
@@ -308,16 +313,17 @@ var
 begin
   Opened := -1;
   Menu := -1;
-  FBar.OnOpenChildren :=
+  Setup.OnOpenChildren :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
       Opened := AIndex;
     end;
-  FBar.OnOpenMenu :=
+  Setup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
       Menu := AIndex;
     end;
+  FBar.Setup := Setup;
   FBar.SetCrumbs(PathWithChildren);
   // „›“ zwischen den Gliedern; das letzte Glied hat keine Kinder, also kein „›“ dahinter.
   Area := FBar.SeparatorRect(0);
@@ -351,6 +357,7 @@ end;
 
 procedure TAtlasBreadcrumbBarTests.CtrlClickAndCtrlEnterJump;
 var
+  Setup: TAtlasCrumbBarSetup;
   Jumped, Menu: Integer;
   Declaration: Boolean;
   Crumbs: TAtlasCrumbs;
@@ -360,17 +367,18 @@ begin
   Jumped := -1;
   Menu := -1;
   Declaration := False;
-  FBar.OnJump :=
+  Setup.OnJump :=
     procedure(AIndex: Integer; ADeclaration: Boolean)
     begin
       Jumped := AIndex;
       Declaration := ADeclaration;
     end;
-  FBar.OnOpenMenu :=
+  Setup.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
     begin
       Menu := AIndex;
     end;
+  FBar.Setup := Setup;
   FBar.SetCrumbs(PathWithChildren);
   Area := FBar.CrumbRect(1);
   TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl], Area.CenterPoint.X, Area.CenterPoint.Y);

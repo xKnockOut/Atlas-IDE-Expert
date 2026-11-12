@@ -76,7 +76,8 @@ type
     /// </summary>
     class function Arrange(const ANodes: TArray<TAtlasLayoutNode>; const AOldClient, ANewClient: TSize): TArray<TRect>;
       static;
-    /// <summary>Befunde in den neuen Lagen ANew (aus Arrange); Bezug für Überlappung sind die Lagen der Knoten.</summary>
+    /// <summary>Befunde in den neuen Lagen ANew (aus Arrange); Bezug für Überlappung sind die Lagen der
+    /// Knoten.</summary>
     class function Problems(const ANodes: TArray<TAtlasLayoutNode>; const ANew: TArray<TRect>;
       const ANewClient: TSize): TArray<TAtlasLayoutFinding>; static;
     /// <summary>Client des Formulars nach den Constraints des Formulars (AMin*, AMax*; 0 = ohne Grenze), bezogen auf

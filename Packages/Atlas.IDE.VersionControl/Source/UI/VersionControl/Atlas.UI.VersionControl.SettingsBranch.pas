@@ -162,7 +162,8 @@ begin
   end
   else
   begin
-    FVcsExternalsRulesError.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
+    FVcsExternalsRulesError.Caption :=
+      TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
   end;
   FPage.RefreshMarks;
 end;

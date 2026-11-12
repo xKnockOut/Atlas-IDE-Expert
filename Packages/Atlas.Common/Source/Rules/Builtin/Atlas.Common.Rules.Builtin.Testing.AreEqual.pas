@@ -184,7 +184,8 @@ var
 begin
   // Mit Typargument (AreEqual<Integer>) ist T bekannt.
   if (ACall.ChildCount < 3) or not (ACall[0].Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Identifier]) or
-    not MatchText(StringReplace(FScope.Text(ACall[0]), ' ', '', [rfReplaceAll]), cAssertMethods) or (ACall[0].FindChild(TSyntaxKind.GenericArgs) <> nil) or
+    not MatchText(StringReplace(FScope.Text(ACall[0]), ' ', '', [rfReplaceAll]), cAssertMethods) or
+    (ACall[0].FindChild(TSyntaxKind.GenericArgs) <> nil) or
     (ACall.FindChild(TSyntaxKind.GenericArgs) <> nil) then
   begin
     Exit;

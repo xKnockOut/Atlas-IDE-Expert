@@ -95,6 +95,22 @@ begin
   Result := TAtlasBreadcrumbs.QualifiedName(ANodes, ANode);
 end;
 
+/// <summary>AChar an AText anhängen; Leerraum zählt einmal als Leerzeichen, nur zwischen Zeichen.</summary>
+procedure AddCollapsed(var AText: string; var ASpace: Boolean; AChar: Char);
+begin
+  if CharInSet(AChar, [' ', #9]) then
+  begin
+    ASpace := True;
+    Exit;
+  end;
+  if ASpace and (AText <> '') then
+  begin
+    AText := AText + ' ';
+  end;
+  ASpace := False;
+  AText := AText + AChar;
+end;
+
 /// <summary>Text ab ALine/ACharacter bis vor das erste Semikolon außerhalb von Klammern; Leerraum
 /// zusammengezogen.</summary>
 function HeaderFrom(const ALines: TArray<string>; ALine, ACharacter: Integer): string;
@@ -116,31 +132,18 @@ begin
     while mIndex <= Length(ALines[mLine]) do
     begin
       mChar := ALines[mLine][mIndex];
-      if mChar = '(' then
-      begin
-        Inc(mDepth);
-      end
-      else if mChar = ')' then
-      begin
-        Dec(mDepth);
-      end
-      else if (mChar = ';') and (mDepth <= 0) then
-      begin
-        Exit(Trim(Result));
+      case mChar of
+        '(':
+          Inc(mDepth);
+        ')':
+          Dec(mDepth);
+        ';':
+          if mDepth <= 0 then
+          begin
+            Exit(Trim(Result));
+          end;
       end;
-      if CharInSet(mChar, [' ', #9]) then
-      begin
-        mSpace := True;
-      end
-      else
-      begin
-        if mSpace and (Result <> '') then
-        begin
-          Result := Result + ' ';
-        end;
-        mSpace := False;
-        Result := Result + mChar;
-      end;
+      AddCollapsed(Result, mSpace, mChar);
       Inc(mIndex);
     end;
     // Zeilenende zählt als Leerraum.

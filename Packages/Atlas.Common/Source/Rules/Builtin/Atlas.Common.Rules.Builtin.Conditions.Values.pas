@@ -528,7 +528,8 @@ var
   mValues: TStack<TConstantValue>;
   mEntry: TSyntaxPostOrderEntry;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; lange Ketten wie 1 - 1 - … - 1 sind tiefe Bäume.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung mit Wertestapel; lange Ketten wie 1 - 1 - … - 1 sind
+  // tiefe Bäume.
   mPending := TStack<TSyntaxPostOrderEntry>.Create;
   mValues := TStack<TConstantValue>.Create;
   try

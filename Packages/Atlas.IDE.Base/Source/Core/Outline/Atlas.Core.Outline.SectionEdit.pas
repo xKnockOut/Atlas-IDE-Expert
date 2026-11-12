@@ -46,7 +46,8 @@ type
     class function Append(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       const APlace: TAtlasVisibilityPlace; ASection, AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean;
       static;
-    /// <summary>Abschnitte, die der Typ APlace.TypeNode haben darf und nicht hat, in der üblichen Reihenfolge.</summary>
+    /// <summary>Abschnitte, die der Typ APlace.TypeNode haben darf und nicht hat, in der üblichen
+    /// Reihenfolge.</summary>
     class function Missing(const ANodes: TAtlasOutlineNodes; const APlace: TAtlasVisibilityPlace): TArray<string>;
       static;
     /// <summary>Abschnitt AKeyword im Typ APlace.TypeNode anlegen, mit eingerückter Zeile darunter.</summary>

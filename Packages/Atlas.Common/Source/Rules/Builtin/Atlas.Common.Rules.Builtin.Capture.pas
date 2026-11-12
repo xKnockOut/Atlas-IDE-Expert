@@ -219,7 +219,8 @@ procedure CollectAnonymous(ANode: TSyntaxNode; var AMethods: TArray<TSyntaxNode>
 var
   mMethods: TArray<TSyntaxNode>;
 begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); var-Parameter lassen sich nicht in der anonymen Methode
+  // verwenden.
   mMethods := AMethods;
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean

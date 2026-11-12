@@ -82,7 +82,7 @@ begin
   end;
 end;
 
-function Row(AMetric: TAtlasCardMetric; AValue, ALimit: Integer; AAtLeast: Boolean = False): TAtlasCardRow;
+function Row(AMetric: TAtlasCardMetric; AValue, ALimit: Integer; AAtLeast: Boolean): TAtlasCardRow;
 begin
   Result.Metric := AMetric;
   Result.Value := AValue;
@@ -128,7 +128,7 @@ begin
   for mRow := 0 to High(cMethodRows) do
   begin
     ACard.Rows := ACard.Rows + [Row(cMethodRows[mRow], AMetrics.Methods[mIndex].Values[cMethodMetrics[mRow]],
-      AMetrics.Limits[cMethodMetrics[mRow]])];
+      AMetrics.Limits[cMethodMetrics[mRow]], False)];
   end;
 end;
 
@@ -152,7 +152,7 @@ begin
   begin
     case mItem.Kind of
       TAtlasStructureMetric.ClassSize:
-        ACard.Rows := ACard.Rows + [Row(TAtlasCardMetric.Members, mItem.Value, mItem.Limit)];
+        ACard.Rows := ACard.Rows + [Row(TAtlasCardMetric.Members, mItem.Value, mItem.Limit, False)];
       TAtlasStructureMetric.InheritanceDepth:
         ACard.Rows := ACard.Rows + [Row(TAtlasCardMetric.InheritanceDepth, mItem.Value, mItem.Limit,
           mItem.AtLeast)];
@@ -165,7 +165,7 @@ begin
   if ACard.Available then
   begin
     // Zeilen der Deklaration aus der Gliederung, ohne Grenze.
-    ACard.Rows := [Row(TAtlasCardMetric.Lines, mNode.EndLine - mNode.StartLine + 1, MaxInt)] + ACard.Rows;
+    ACard.Rows := [Row(TAtlasCardMetric.Lines, mNode.EndLine - mNode.StartLine + 1, MaxInt, False)] + ACard.Rows;
   end;
 end;
 

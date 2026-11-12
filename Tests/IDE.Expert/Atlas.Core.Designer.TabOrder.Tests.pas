@@ -134,9 +134,9 @@ end;
 
 procedure TAtlasTabOrderTests.ReadingOrder;
 begin
-  Assert.IsTrue(TAtlasTabOrder.ReadsBefore(Rect(0, 0, 50, 20), Rect(100, 4, 150, 24)), 'gleiche Zeile: links zuerst');
-  Assert.IsFalse(TAtlasTabOrder.ReadsBefore(Rect(100, 0, 150, 20), Rect(0, 4, 50, 24)));
-  Assert.IsTrue(TAtlasTabOrder.ReadsBefore(Rect(300, 0, 350, 20), Rect(0, 40, 50, 60)), 'obere Zeile zuerst');
+  Assert.IsTrue(TAtlasTabOrder.ReadsBefore(Rect(0, 0, 50, 20), Rect(100, 4, 150, 24), False), 'gleiche Zeile: links zuerst');
+  Assert.IsFalse(TAtlasTabOrder.ReadsBefore(Rect(100, 0, 150, 20), Rect(0, 4, 50, 24), False));
+  Assert.IsTrue(TAtlasTabOrder.ReadsBefore(Rect(300, 0, 350, 20), Rect(0, 40, 50, 60), False), 'obere Zeile zuerst');
 end;
 
 procedure TAtlasTabOrderTests.RightToLeftReadsRightFirst;
@@ -160,14 +160,14 @@ begin
     Stop('btnOK', '', 2, Rect(236, 150, 320, 178)),
     Stop('btnAbbrechen', '', 4, Rect(330, 150, 414, 178)),
     Stop('edtInnen', 'pnlTop', 0, Rect(0, 0, 50, 20)));
-  mOut := TAtlasTabOrder.OutOfOrder(mStops);
+  mOut := TAtlasTabOrder.OutOfOrder(mStops, False);
   Assert.IsFalse(mOut[0]);
   Assert.IsFalse(mOut[1]);
   Assert.IsTrue(mOut[2], 'edtPLZ nach OK springt nach oben');
   Assert.IsFalse(mOut[3]);
   Assert.IsFalse(mOut[4], 'Abbrechen liegt in der Lesereihenfolge nach edtPLZ');
   Assert.IsFalse(mOut[5], 'anderes Elternelement zählt für sich');
-  mIssues := TAtlasTabOrder.Issues(mStops);
+  mIssues := TAtlasTabOrder.Issues(mStops, False);
   Assert.AreEqual(Ord(TAtlasTabIssue.Jump), Ord(mIssues[2]));
   Assert.AreEqual(Ord(TAtlasTabIssue.None), Ord(mIssues[0]));
   Assert.AreEqual(Ord(TAtlasTabIssue.None), Ord(mIssues[5]));
@@ -184,7 +184,7 @@ begin
     Stop('pbxBild', '', 1, Rect(0, 100, 50, 120)),
     Stop('edtB', '', 2, Rect(0, 40, 50, 60)));
   mStops[1].Focusable := False;
-  mOut := TAtlasTabOrder.OutOfOrder(mStops);
+  mOut := TAtlasTabOrder.OutOfOrder(mStops, False);
   Assert.IsFalse(mOut[1], 'ohne TabStop keine Warnung');
   Assert.IsFalse(mOut[2], 'edtB folgt auf edtA, nicht auf pbxBild');
 end;
@@ -200,7 +200,7 @@ begin
     Stop('edtC', '', 1, Rect(0, 80, 50, 100)),
     Stop('edtD', '', 4, Rect(0, 120, 50, 140)),
     Stop('edtE', 'pnl', 2, Rect(0, 0, 50, 20)));
-  mIssues := TAtlasTabOrder.Issues(mStops);
+  mIssues := TAtlasTabOrder.Issues(mStops, False);
   Assert.AreEqual(Ord(TAtlasTabIssue.None), Ord(mIssues[0]));
   Assert.AreEqual(Ord(TAtlasTabIssue.Duplicate), Ord(mIssues[1]), 'beide Doppelten');
   Assert.AreEqual(Ord(TAtlasTabIssue.Duplicate), Ord(mIssues[2]));
@@ -239,7 +239,7 @@ begin
     Stop('edtName', '', 2, Rect(16, 16, 196, 39)),
     Stop('edtOrt', '', 3, Rect(16, 48, 196, 71)),
     Stop('edtInnen', 'pnl', 5, Rect(0, 0, 50, 20)));
-  mOrders := TAtlasTabOrder.ReadingOrder(mStops);
+  mOrders := TAtlasTabOrder.ReadingOrder(mStops, False);
   Assert.AreEqual(3, mOrders[0], 'OK zuletzt');
   Assert.AreEqual(1, mOrders[1], 'Plz rechts neben Name');
   Assert.AreEqual(0, mOrders[2]);
@@ -298,12 +298,12 @@ var
   mOrders: TArray<Integer>;
 begin
   mStops := TAtlasTabOrder.FromForm(TAtlasFormModel.Parse(cAdresse));
-  mIssues := TAtlasTabOrder.Issues(mStops);
+  mIssues := TAtlasTabOrder.Issues(mStops, False);
   // Das Panel mit edtPlz (4) liegt oben rechts, vor dem OK-Button (3).
   Assert.AreEqual(Ord(TAtlasTabIssue.Jump), Ord(mIssues[TAtlasTabOrder.IndexOf(mStops, 'pnlPlz')]));
   Assert.AreEqual(Ord(TAtlasTabIssue.None), Ord(mIssues[TAtlasTabOrder.IndexOf(mStops, 'btnOK')]));
   Assert.AreEqual(Ord(TAtlasTabIssue.None), Ord(mIssues[TAtlasTabOrder.IndexOf(mStops, 'btnAbbrechen')]));
-  mOrders := TAtlasTabOrder.ReadingOrder(mStops);
+  mOrders := TAtlasTabOrder.ReadingOrder(mStops, False);
   // Das hohe Panel steht in der Zeile von edtName und edtOrt, rechts von beiden.
   Assert.AreEqual(2, mOrders[TAtlasTabOrder.IndexOf(mStops, 'pnlPlz')], 'sortiert: Panel nach edtName und edtOrt');
   Assert.AreEqual(4, mOrders[TAtlasTabOrder.IndexOf(mStops, 'btnOK')]);

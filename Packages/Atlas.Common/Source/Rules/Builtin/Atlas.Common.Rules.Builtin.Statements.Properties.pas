@@ -290,7 +290,8 @@ var
     mName: string;
     mFixes: TArray<TRuleFix>;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): statt sich mit dem Empfänger erneut aufzurufen, geht die Schleife zum Empfänger weiter.
+    // Iterativ (tiefe Bäume sprengen den Stapel nicht): statt sich mit dem Empfänger erneut aufzurufen, geht die
+    // Schleife zum Empfänger weiter.
     mTarget := ATarget;
     mStep := TMemberStep.Next;
     mFixes := nil;

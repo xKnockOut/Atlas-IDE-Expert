@@ -10,7 +10,8 @@
 //   tools/call                 {name, arguments} → {content:[{type:"text"}], isError}
 //   resources/list, resources/read  Ressourcen als Text (#272), auch über Vorlagen
 //   resources/templates/list   Ressourcenvorlagen wie delphi://unit/{name} (#1357)
-//   prompts/list, prompts/get  fertige Arbeitsabläufe, in MCP-Clients Befehle, in Claude Code Schrägstrich-Befehle (#1357)
+//   prompts/list, prompts/get  fertige Arbeitsabläufe, in MCP-Clients Befehle, in Claude Code Schrägstrich-Befehle
+//   (#1357)
 //
 // Prompts, Vorlagen und Ressourcen, die zu ihnen gehören (AddPromptResource),
 // gibt es nur, solange OnPromptsEnabled True liefert (mcp.prompts);
@@ -129,6 +130,20 @@ type
     OnClientInfo: TProc<string>;
   end;
 
+  /// <summary>Eingabeschema und Argumente der Werkzeuge; gebraucht von den Werkzeug-Units, nicht vom Protokoll.
+  /// </summary>
+  TMcpArgs = record
+    /// <summary>Schema mit Pflichtparametern vom Typ string, z. B. StringSchema(['name'], ['Symbolname']).</summary>
+    class function StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
+      overload; static;
+    /// <summary>Wie oben mit ARequired = -1.</summary>
+    class function StringSchema(const ANames, ADescriptions: array of string): string; overload; static;
+    /// <summary>Pflichtargument als Text; EMcpToolError wenn es fehlt oder leer ist.</summary>
+    class function RequiredString(const AArguments: TJSONObject; const AName: string): string; static;
+    /// <summary>Optionales Argument als Text; '' wenn es fehlt.</summary>
+    class function OptionalString(const AArguments: TJSONObject; const AName: string): string; static;
+  end;
+
   TMcpServer = class
   public const
     cDefaultProtocolVersion = '2025-06-18';
@@ -187,15 +202,6 @@ type
     function ListTools: TJSONObject;
     /// <summary>EJsonRpcError(InvalidParams) bei unbekanntem Werkzeug.</summary>
     function CallTool(const AParams: TJSONValue): TJSONObject;
-    /// <summary>Schema mit Pflichtparametern vom Typ string, z. B. StringSchema(['name'], ['Symbolname']).</summary>
-    class function StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
-      overload; static;
-    /// <summary>Wie oben mit ARequired = -1.</summary>
-    class function StringSchema(const ANames, ADescriptions: array of string): string; overload; static;
-    /// <summary>Pflichtargument als Text; EMcpToolError wenn es fehlt oder leer ist.</summary>
-    class function RequiredString(const AArguments: TJSONObject; const AName: string): string; static;
-    /// <summary>Optionales Argument als Text; '' wenn es fehlt.</summary>
-    class function OptionalString(const AArguments: TJSONObject; const AName: string): string; static;
     /// <summary>Hinweis an das Modell in der Antwort auf initialize.</summary>
     property Instructions: string read FInfo.Instructions write FInfo.Instructions;
     /// <summary>Läuft vor jedem Werkzeugaufruf, z. B. um den Index aktuell zu halten (#48).</summary>
@@ -1028,12 +1034,12 @@ begin
   end;
 end;
 
-class function TMcpServer.StringSchema(const ANames, ADescriptions: array of string): string;
+class function TMcpArgs.StringSchema(const ANames, ADescriptions: array of string): string;
 begin
   Result := StringSchema(ANames, ADescriptions, -1);
 end;
 
-class function TMcpServer.StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
+class function TMcpArgs.StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
 var
   mIndex, mCount: Integer;
   mProperties, mRequired: string;
@@ -1066,7 +1072,7 @@ begin
   Result := '{"type":"object","properties":{' + mProperties + '},"required":[' + mRequired + ']}';
 end;
 
-class function TMcpServer.OptionalString(const AArguments: TJSONObject; const AName: string): string;
+class function TMcpArgs.OptionalString(const AArguments: TJSONObject; const AName: string): string;
 var
   mValue: TJSONValue;
 begin
@@ -1082,7 +1088,7 @@ begin
   end;
 end;
 
-class function TMcpServer.RequiredString(const AArguments: TJSONObject; const AName: string): string;
+class function TMcpArgs.RequiredString(const AArguments: TJSONObject; const AName: string): string;
 begin
   Result := OptionalString(AArguments, AName);
   if Result = '' then

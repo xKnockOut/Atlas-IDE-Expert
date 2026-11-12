@@ -64,6 +64,7 @@ contains
   Atlas.UI.VersionControl.SettingsSection in 'Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsSection.pas',
   Atlas.IDE.VersionControl.Settings in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Settings.pas',
   Atlas.IDE.VersionControl.LineChangesData in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChangesData.pas',
+  Atlas.IDE.VersionControl.LineChangesPaint in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChangesPaint.pas',
   Atlas.IDE.VersionControl.LineChanges in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChanges.pas',
   Atlas.IDE.VersionControl.Commands in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Commands.pas',
   Atlas.IDE.VersionControl.Composition in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Composition.pas';
