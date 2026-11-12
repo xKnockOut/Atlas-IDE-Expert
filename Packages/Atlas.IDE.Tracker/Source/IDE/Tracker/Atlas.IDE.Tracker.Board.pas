@@ -342,7 +342,7 @@ end;
 
 procedure TAtlasIdeBoard.Wire(AFrame: TAtlasBoardFrame);
 begin
-  AFrame.ApplyColors(TAtlasIdeStyle.Colors);
+  AFrame.ApplyColors(TAtlasIdeStyle.WindowColorsIf(TAtlasIdeSettings.Current.IssuesIdeColors));
   if not FOnlyMineSet then
   begin
     FOnlyMine := TAtlasIdeSettings.Current.IssuesBoardOnlyMine;

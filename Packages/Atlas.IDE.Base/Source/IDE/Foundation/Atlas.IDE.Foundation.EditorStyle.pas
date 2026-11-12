@@ -28,6 +28,13 @@ type
     /// <summary>Farben der Leisten im Editorfenster (Brotkrumen, Werkzeugleiste, Designer): ChromeColors mit
     /// breadcrumbs.ideColors, sonst Colors.</summary>
     class function BarColors: TAtlasColors; static;
+    /// <summary>Farben für andockbare Fenster mit Inhalt (Issue, Board): Fläche und Schrift wie Listen und
+    /// Eingabefelder des IDE-Themas (clWindow/clWindowText), ohne Thema Colors. Colors nimmt vom Thema nur
+    /// hell oder dunkel und setzt die feste Palette ein; deren dunkle Fläche liegt weit unter der des Themas.
+    /// </summary>
+    class function WindowColors: TAtlasColors; static;
+    /// <summary>WindowColors mit AIdeColors (Schalter des Moduls, z. B. issues.ideColors), sonst Colors.</summary>
+    class function WindowColorsIf(AIdeColors: Boolean): TAtlasColors; static;
     /// <summary>Farben, Editorschrift und Skalierung auf AWindow übertragen. ACaret: Caret-Rechteck in
     /// Bildschirmkoordinaten (Monitor und Zoom). Liefert eine Zeile für das Diagnoseprotokoll.</summary>
     class function Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string; static;
@@ -155,6 +162,30 @@ begin
       TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnText)))));
   end;
   Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
+end;
+
+class function TAtlasIdeStyle.WindowColors: TAtlasColors;
+var
+  mTheming: IOTAIDEThemingServices;
+begin
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
+  begin
+    Exit(TAtlasColors.ForWindow(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow))),
+      TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindowText)))));
+  end;
+  Result := Colors;
+end;
+
+class function TAtlasIdeStyle.WindowColorsIf(AIdeColors: Boolean): TAtlasColors;
+begin
+  if AIdeColors then
+  begin
+    Result := WindowColors;
+  end
+  else
+  begin
+    Result := Colors;
+  end;
 end;
 
 class function TAtlasIdeStyle.BarColors: TAtlasColors;

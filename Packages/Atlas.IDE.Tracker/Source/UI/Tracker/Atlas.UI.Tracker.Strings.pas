@@ -174,7 +174,7 @@ type
     SettingsIssuesPathsFound, SettingsIssuesPathsNone, SettingsIssuesPathsHint, SuggestTitle, SuggestIntro,
     SuggestColumnPath, SuggestColumnKind, SuggestColumnWhy, SuggestWhyProject, SuggestWhyExternal, SuggestWhySubmodule,
     SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing, SuggestApply, SuggestSearching,
-    IssuePreviewDescription);
+    IssuePreviewDescription, SettingsIssuesIdeColors);
 
   TAtlasTrackerStrings = class
   public
@@ -941,7 +941,8 @@ const
      'Nichts gefunden – Ordner selbst wählen …',
      'Übernehmen',
      'Suche Arbeitskopien …',
-     'Beschreibung'),
+     'Beschreibung',
+     'Issue-Fenster und Board in den Farben des IDE-Themas'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1687,7 +1688,8 @@ const
      'Nothing found – choose folder…',
      'Apply',
      'Searching working copies…',
-     'Description'));
+     'Description',
+     'Issue window and board in the colors of the IDE theme'));
 
 { TAtlasTrackerStrings }
 
