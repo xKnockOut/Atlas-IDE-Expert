@@ -712,6 +712,22 @@ begin
     end;
 end;
 
+/// <summary>Wieder geöffnet (#2127): Erkennung an der Benachrichtigung über Services.Reopened.</summary>
+function NotifyReopenedHook(const ALink: TAtlasIssuesLink): TAtlasIssueNotifyReopenedHook;
+var
+  mLink: TAtlasIssuesLink;
+begin
+  mLink := ALink;
+  Result :=
+    function(const ATarget: TAtlasTrackerTarget; const ANotice: TAtlasTrackerNotice;
+      out AReopen: TAtlasTrackerReopen): Boolean
+    begin
+      AReopen := Default(TAtlasTrackerReopen);
+      Result := (mLink.Keep <> nil) and (mLink.Services.FReopened <> nil) and
+        mLink.Services.FReopened.FromNotice(ATarget, ANotice, AReopen);
+    end;
+end;
+
 function NotifyHooks(const ALink: TAtlasIssuesLink): TAtlasIssueNotifyHooks;
 var
   mLink: TAtlasIssuesLink;
@@ -764,14 +780,7 @@ begin
     begin
       mLink.Updated;
     end;
-  Result.Reopened :=
-    function(const ATarget: TAtlasTrackerTarget; const ANotice: TAtlasTrackerNotice;
-      out AReopen: TAtlasTrackerReopen): Boolean
-    begin
-      AReopen := Default(TAtlasTrackerReopen);
-      Result := (mLink.Keep <> nil) and (mLink.Services.FReopened <> nil) and
-        mLink.Services.FReopened.FromNotice(ATarget, ANotice, AReopen);
-    end;
+  Result.Reopened := NotifyReopenedHook(ALink);
 end;
 
 function ReopenedHooks(const ALink: TAtlasIssuesLink): TAtlasIssueReopenedHooks;

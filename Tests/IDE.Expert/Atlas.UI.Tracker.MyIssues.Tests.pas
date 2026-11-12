@@ -102,9 +102,7 @@ type
     procedure ClearFilter;
     procedure SelectProject(const AKey: string);
     procedure EditProjects;
-    procedure ContinueReopened(const AIssue: TAtlasTrackerIssue);
-    procedure DismissReopened(const AIssue: TAtlasTrackerIssue);
-    procedure ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
+    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
   end;
 
 function NowUtc0: TDateTime;
@@ -227,19 +225,11 @@ begin
   Calls := Calls + ['editProjects'];
 end;
 
-procedure TFakeIssues.ContinueReopened(const AIssue: TAtlasTrackerIssue);
+procedure TFakeIssues.Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
+const
+  cNames: array[TAtlasIssueReopenedAction] of string = ('continue ', 'read ', 'reason ');
 begin
-  Calls := Calls + ['continue ' + AIssue.Key];
-end;
-
-procedure TFakeIssues.DismissReopened(const AIssue: TAtlasTrackerIssue);
-begin
-  Calls := Calls + ['read ' + AIssue.Key];
-end;
-
-procedure TFakeIssues.ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
-begin
-  Calls := Calls + ['reason ' + AIssue.Key];
+  Calls := Calls + [cNames[AAction] + AIssue.Key];
 end;
 
 { TAtlasTrackerIssuesViewTests }

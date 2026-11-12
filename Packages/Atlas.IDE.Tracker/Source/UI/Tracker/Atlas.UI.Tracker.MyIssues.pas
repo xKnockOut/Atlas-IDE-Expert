@@ -60,6 +60,10 @@ uses
   Atlas.UI.Tracker.TileView;
 
 type
+  /// <summary>Knöpfe an einem wieder geöffneten Issue (#2127): Weiterarbeiten auf dem alten Branch, Marke
+  /// ausblenden, Grund in der Vorschau am Kommentar zeigen.</summary>
+  TAtlasIssueReopenedAction = (Continue, Dismiss, Reason);
+
   IAtlasIssuesSource = interface
     ['{8D3F6A21-5C4B-4E97-A1D8-2B7E9C05F364}']
     function View: TAtlasIssuesView;
@@ -92,12 +96,8 @@ type
     procedure SelectProject(const AKey: string);
     /// <summary>„Tracker-Projekte bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
     procedure EditProjects;
-    /// <summary>„Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): auf seinen alten Branch.</summary>
-    procedure ContinueReopened(const AIssue: TAtlasTrackerIssue);
-    /// <summary>„Gelesen“: Marke „wieder offen“ entfernen (#2127).</summary>
-    procedure DismissReopened(const AIssue: TAtlasTrackerIssue);
-    /// <summary>Grund der Rückkehr in der Vorschau am Kommentar zeigen (#2127).</summary>
-    procedure ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
+    /// <summary>Knopf AAction an einem wieder geöffneten Issue (#2127).</summary>
+    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
   end;
 
 {$SCOPEDENUMS ON}
@@ -1891,32 +1891,29 @@ begin
 end;
 
 procedure TAtlasTrackerIssuesView.ClickReopened(const AHit: TAtlasIssuesHit);
+var
+  mAction: TAtlasIssueReopenedAction;
 begin
   // Wieder geöffnet (#2127): Weiterarbeiten, Gelesen, Grund in der Vorschau.
-  if (AHit.Kind = TAtlasIssuesHitKind.Continue) and CanStart then
-  begin
-    SendIssue(AHit.Index,
-      procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
-      begin
-        ASource.ContinueReopened(AIssue);
-      end);
-  end
-  else if AHit.Kind = TAtlasIssuesHitKind.Dismiss then
-  begin
-    SendIssue(AHit.Index,
-      procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
-      begin
-        ASource.DismissReopened(AIssue);
-      end);
-  end
-  else if AHit.Kind = TAtlasIssuesHitKind.Reason then
-  begin
-    SendIssue(AHit.Index,
-      procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
-      begin
-        ASource.ShowReopenedComment(AIssue);
-      end);
+  case AHit.Kind of
+    TAtlasIssuesHitKind.Continue:
+      mAction := TAtlasIssueReopenedAction.Continue;
+    TAtlasIssuesHitKind.Dismiss:
+      mAction := TAtlasIssueReopenedAction.Dismiss;
+    TAtlasIssuesHitKind.Reason:
+      mAction := TAtlasIssueReopenedAction.Reason;
+  else
+    Exit;
   end;
+  if (mAction = TAtlasIssueReopenedAction.Continue) and not CanStart then
+  begin
+    Exit;
+  end;
+  SendIssue(AHit.Index,
+    procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
+    begin
+      ASource.Reopened(AIssue, mAction);
+    end);
 end;
 
 procedure TAtlasTrackerIssuesView.BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);

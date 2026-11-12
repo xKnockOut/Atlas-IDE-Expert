@@ -557,12 +557,51 @@ begin
   Result.Comment := TJsonRead.Text(AObject, 'comment');
 end;
 
+/// <summary>Beendete Einträge aus der Liste AList (ohne Kennung übersprungen).</summary>
+function EndedListOf(AList: TJSONValue): TArray<TAtlasTrackerEnded>;
+var
+  mItem: TJSONValue;
+  mEnded: TAtlasTrackerEnded;
+begin
+  Result := nil;
+  if not (AList is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AList) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mEnded := EndedOf(TJSONObject(mItem));
+      if mEnded.Key <> '' then
+      begin
+        TAtlasTrackerReopened.AddEnded(Result, mEnded);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Marken „wieder offen“ aus der Liste AList.</summary>
+function ReopenListOf(AList: TJSONValue): TArray<TAtlasTrackerReopen>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if not (AList is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AList) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      TAtlasTrackerReopened.Mark(Result, ReopenOf(TJSONObject(mItem)));
+    end;
+  end;
+end;
+
 class procedure TAtlasTrackerReopened.ReadJson(ASection: TJSONObject; out AEnded: TArray<TAtlasTrackerEnded>;
   out AReopened: TArray<TAtlasTrackerReopen>);
-var
-  mList, mItem: TJSONValue;
-  mEnded: TAtlasTrackerEnded;
-  mReopen: TAtlasTrackerReopen;
 begin
   AEnded := nil;
   AReopened := nil;
@@ -570,33 +609,8 @@ begin
   begin
     Exit;
   end;
-  mList := ASection.Values[cEndedName];
-  if mList is TJSONArray then
-  begin
-    for mItem in TJSONArray(mList) do
-    begin
-      if mItem is TJSONObject then
-      begin
-        mEnded := EndedOf(TJSONObject(mItem));
-        if mEnded.Key <> '' then
-        begin
-          AddEnded(AEnded, mEnded);
-        end;
-      end;
-    end;
-  end;
-  mList := ASection.Values[cReopenedName];
-  if mList is TJSONArray then
-  begin
-    for mItem in TJSONArray(mList) do
-    begin
-      if mItem is TJSONObject then
-      begin
-        mReopen := ReopenOf(TJSONObject(mItem));
-        Mark(AReopened, mReopen);
-      end;
-    end;
-  end;
+  AEnded := EndedListOf(ASection.Values[cEndedName]);
+  AReopened := ReopenListOf(ASection.Values[cReopenedName]);
 end;
 
 end.

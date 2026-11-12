@@ -142,8 +142,6 @@ type
     FQuery: TAtlasIdeIssuesQuery;
     FStarter: TAtlasIdeIssueStart;
     FTitle: TAtlasIdeIssuesTitle;
-    /// <summary>„Alle Tracker-Projekte“ (#1928): Gruppen aus der Ansicht ABase des gezeigten Projekts.</summary>
-    function AllView(const ABase: TAtlasIssuesView): TAtlasIssuesView;
     /// <summary>Bei „Alle“: das Projekt der Gruppe mit AIssue gilt für die folgende Aktion.</summary>
     procedure FocusIssue(const AIssue: TAtlasTrackerIssue);
   public
@@ -183,9 +181,7 @@ type
     procedure ClearFilter;
     procedure SelectProject(const AKey: string);
     procedure EditProjects;
-    procedure ContinueReopened(const AIssue: TAtlasTrackerIssue);
-    procedure DismissReopened(const AIssue: TAtlasTrackerIssue);
-    procedure ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
+    procedure Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
     /// <summary>Projekt, Tracker, Zustand und Hooks der Komposition.</summary>
     property Context: TAtlasIdeIssuesContext read FContext;
     /// <summary>Vorschau, Board, Sprint, Zeiterfassung, Palettensuche, Meldungen, Anhängen.</summary>
@@ -396,7 +392,8 @@ begin
   end;
 end;
 
-function TAtlasIdeIssues.AllView(const ABase: TAtlasIssuesView): TAtlasIssuesView;
+/// <summary>„Alle Tracker-Projekte“ (#1928): Gruppen aus der Ansicht ABase des gezeigten Projekts.</summary>
+function AllView(AIssues: TAtlasIdeIssues; const ABase: TAtlasIssuesView): TAtlasIssuesView;
 var
   mChoice: TAtlasTrackerChoice;
   mGroup: TAtlasIssuesView;
@@ -417,9 +414,9 @@ begin
     mSelected := ABase.Queries[ABase.QueryIndex].Name;
   end;
   mPerGroup := TAtlasIdeSettings.Current.IssuesAllProjectsPerGroup;
-  for mChoice in FContext.Selection.Choices do
+  for mChoice in AIssues.Context.Selection.Choices do
   begin
-    mGroup := ViewOf(mChoice.Match);
+    mGroup := AIssues.ViewOf(mChoice.Match);
     TAtlasMyIssues.AddGroup(Result, mChoice.Caption, mChoice.Match, mGroup, mPerGroup);
     Result.Querying := Result.Querying or mGroup.Querying;
     Result.Status := TAtlasIssuesStatus.Ready;
@@ -487,7 +484,7 @@ begin
   Result := ViewOf(FContext.Selection.CurrentProject);
   if FContext.Selection.AllMode then
   begin
-    Result := AllView(Result);
+    Result := AllView(Self, Result);
   end;
   FContext.Selection.AddChoices(Result);
   // Anderes Projekt oder Punkt (#1271): Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
@@ -514,37 +511,33 @@ begin
   FStarter.Start(AIssue, AMode);
 end;
 
-procedure TAtlasIdeIssues.ContinueReopened(const AIssue: TAtlasTrackerIssue);
+procedure TAtlasIdeIssues.Reopened(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueReopenedAction);
 var
   mReopen: TAtlasTrackerReopen;
+  mProject: string;
 begin
   FocusIssue(AIssue);
-  if (FServices.Reopened <> nil) and
-    FServices.Reopened.Find(FContext.Selection.CurrentProject, AIssue.Key, mReopen) then
+  mProject := FContext.Selection.CurrentProject;
+  if AAction = TAtlasIssueReopenedAction.Continue then
   begin
+    // Ohne Marke (schon ausgeblendet): Weiterarbeiten ohne gemerkten Branch, wie „Beginnen“.
+    if (FServices.Reopened = nil) or not FServices.Reopened.Find(mProject, AIssue.Key, mReopen) then
+    begin
+      mReopen := Default(TAtlasTrackerReopen);
+    end;
     FStarter.Resume(AIssue, mReopen.Branch);
+  end
+  else if FServices.Reopened = nil then
+  begin
+    Exit;
+  end
+  else if AAction = TAtlasIssueReopenedAction.Dismiss then
+  begin
+    FServices.Reopened.Dismiss(mProject, AIssue.Key);
   end
   else
   begin
-    FStarter.Resume(AIssue, '');
-  end;
-end;
-
-procedure TAtlasIdeIssues.DismissReopened(const AIssue: TAtlasTrackerIssue);
-begin
-  FocusIssue(AIssue);
-  if FServices.Reopened <> nil then
-  begin
-    FServices.Reopened.Dismiss(FContext.Selection.CurrentProject, AIssue.Key);
-  end;
-end;
-
-procedure TAtlasIdeIssues.ShowReopenedComment(const AIssue: TAtlasTrackerIssue);
-begin
-  FocusIssue(AIssue);
-  if FServices.Reopened <> nil then
-  begin
-    FServices.Reopened.ShowComment(FContext.Selection.CurrentProject, AIssue.Key);
+    FServices.Reopened.ShowComment(mProject, AIssue.Key);
   end;
 end;
 
