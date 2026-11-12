@@ -152,6 +152,8 @@ begin
   Assert.AreEqual('5', ASection.Tiles.ContinueCount.Text);
   Assert.IsTrue(ASection.Tiles.ContinueIncoming.Checked);
   Assert.IsFalse(ASection.Tiles.ContinueFetch.Checked);
+  Assert.IsTrue(ASection.Tiles.ContinueIssues.Checked);
+  Assert.AreEqual('10', ASection.Tiles.ContinueIssuesCount.Text);
   Assert.IsTrue(ASection.Tiles.Saved.Checked);
   Assert.IsTrue(ASection.Tiles.Projects.Checked);
   Assert.AreEqual('8', ASection.Tiles.MaxProjects.Text);
@@ -214,6 +216,8 @@ begin
   ASection.Tiles.ContinueCount.Text := '50';
   ASection.Tiles.ContinueIncoming.Checked := False;
   ASection.Tiles.ContinueFetch.Checked := True;
+  ASection.Tiles.ContinueIssues.Checked := False;
+  ASection.Tiles.ContinueIssuesCount.Text := '99';
   ASection.Tiles.Saved.Checked := False;
   ASection.Tiles.Projects.Checked := False;
   ASection.Tiles.MaxProjects.Text := '99';
@@ -272,6 +276,8 @@ begin
   Assert.AreEqual(20, ASaved.WelcomePageContinueCount, 'auf 1–20 begrenzt');
   Assert.IsFalse(ASaved.WelcomePageContinueIncoming);
   Assert.IsTrue(ASaved.WelcomePageContinueFetch);
+  Assert.IsFalse(ASaved.WelcomePageContinueIssues);
+  Assert.AreEqual(30, ASaved.WelcomePageContinueIssuesCount, 'auf 1–30 begrenzt');
   Assert.IsFalse(ASaved.WelcomePageSaved);
   Assert.IsFalse(ASaved.WelcomePageProjectStatus);
   Assert.AreEqual(30, ASaved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');

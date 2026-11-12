@@ -42,8 +42,7 @@
 // protected-Mitglieder eines generischen Empfängers (TKnoten<T>) übersetzt
 // dcc aus generischem Code fremder Units (Spring4D, IM1, IM2); aus nicht
 // generischem Code (SG3) und bei strict protected meldet es E2362. In der
-// Deklaration eines Nachfahren (Konstante aus TBasis.cAbstand) sind protected
-// und strict protected des Vorfahren sichtbar.
+// Deklaration einer Klasse (cRand = 2 * TBasis.cAbstand) bleibt protected still.
 
 interface
 
@@ -184,6 +183,28 @@ begin
   end;
 end;
 
+/// <summary>Steht ANode in der Deklaration einer Klasse (Konstante, Vorgabe), nicht in einer Routine? Dort
+/// sieht ein Nachfahre protected-Mitglieder des Vorfahren (cRand = 2 * TBasis.cAbstand).</summary>
+function InClassDeclaration(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := ANode.Parent;
+  while mNode <> nil do
+  begin
+    if mNode.Kind = TSyntaxKind.RoutineDecl then
+    begin
+      Exit(False);
+    end;
+    if mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType] then
+    begin
+      Exit(True);
+    end;
+    mNode := mNode.Parent;
+  end;
+  Result := False;
+end;
+
 /// <summary>Steht ANode in generischem Code, also in einer Routine oder Methode mit Typparametern im Kopf
 /// (TListe&lt;T&gt;.Zweiter, Sortiere&lt;T&gt;)?</summary>
 function InGenericCode(ANode: TSyntaxNode): Boolean;
@@ -288,7 +309,6 @@ type
     function NestedSomewhere(const AName: string): Boolean;
     function ReceiverTyped(ANode: TSyntaxNode; out AReceiverType: TResolvedSymbol): Boolean;
     function Tolerated(ANode: TSyntaxNode; const AReceiverType, AMember: TResolvedSymbol): Boolean;
-    function InDescendantDeclaration(ANode: TSyntaxNode; const AMember: TResolvedSymbol): Boolean;
     procedure CheckMemberAccess(ANode: TSyntaxNode);
     function HasClassOverload(ANode: TSyntaxNode): Boolean;
     function InstanceMember(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
@@ -529,47 +549,6 @@ begin
   Result := Result and (AMember.Visibility in cRestricted) and (AMember.Condition = '');
 end;
 
-/// <summary>Steht ANode außerhalb von Methoden in der Deklaration eines Nachfahren der Klasse von AMember
-/// (private const cRand = 2 * TBasis.cAbstand)? Dort sieht der Nachfahr protected und strict protected; die
-/// Auflösung kennt an der Stelle nur die Sichtbarkeit der Unit.</summary>
-function TInaccessibleMemberCheck.InDescendantDeclaration(ANode: TSyntaxNode; const AMember: TResolvedSymbol): Boolean;
-var
-  mNode: TSyntaxNode;
-  mAncestry: TAncestry;
-  mChain: TArray<TSymbolLocation>;
-  mComplete, mObjectMissing: Boolean;
-  mLevel: Integer;
-begin
-  Result := False;
-  if not (AMember.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected]) or
-    (EnclosingMethod(ANode) <> nil) then
-  begin
-    Exit;
-  end;
-  mNode := ANode.Parent;
-  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.TypeDecl) do
-  begin
-    mNode := mNode.Parent;
-  end;
-  if (mNode = nil) or (mNode.Name = '') then
-  begin
-    Exit;
-  end;
-  mAncestry := TAncestry.Create(FContext.Index, FLocal);
-  try
-    mChain := mAncestry.Ancestors(mNode.Name, mComplete, mObjectMissing);
-    for mLevel := 0 to High(mChain) do
-    begin
-      if SameText(mChain[mLevel].Symbol.Name, AMember.Container) then
-      begin
-        Exit(True);
-      end;
-    end;
-  finally
-    mAncestry.Free;
-  end;
-end;
-
 /// <summary>Fälle, die dcc trotz unsichtbarem Mitglied übersetzt oder die die Regel nicht sicher beurteilt.
 /// </summary>
 function TInaccessibleMemberCheck.Tolerated(ANode: TSyntaxNode; const AReceiverType,
@@ -578,12 +557,14 @@ begin
   // class constructor Create verdeckt den geerbten Konstruktor nicht (Spring4D, IM4).
   Result := (AMember.SymbolKind = TIndexSymbolKind.Constructor_) and HasDirective(AMember.Directives, 'class');
   Result := Result or ((AMember.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)));
+  // In der Klassendeklaration ohne bekannte Vorfahrenkette: wie dcc bei einem Nachfahren still (nie private).
+  Result := Result or ((AMember.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected]) and
+    InClassDeclaration(ANode));
   // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc aus generischem Code
   // einer anderen Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1, IM2); aus nicht generischem Code
   // meldet es E2362 (SG3, dcc-Lauf vom 29.10.2026, #1328).
   Result := Result or ((AMember.Visibility = TIndexVisibility.Protected) and (AReceiverType.TypeParams <> '') and
     InGenericCode(ANode));
-  Result := Result or InDescendantDeclaration(ANode, AMember);
 end;
 
 procedure TInaccessibleMemberCheck.CheckMemberAccess(ANode: TSyntaxNode);

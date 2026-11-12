@@ -113,6 +113,8 @@ type
     cMaxSearchHistory = Atlas.Core.Settings.Plugin.Editor.cMaxSearchHistory;
     cMinContinueCount = Atlas.Core.Settings.Plugin.Welcome.cMinContinueCount;
     cMaxContinueCount = Atlas.Core.Settings.Plugin.Welcome.cMaxContinueCount;
+    cMinContinueIssuesCount = Atlas.Core.Settings.Plugin.Welcome.cMinContinueIssuesCount;
+    cMaxContinueIssuesCount = Atlas.Core.Settings.Plugin.Welcome.cMaxContinueIssuesCount;
     cMinTrendPoints = Atlas.Core.Settings.Plugin.Welcome.cMinTrendPoints;
     cMaxTrendPoints = Atlas.Core.Settings.Plugin.Welcome.cMaxTrendPoints;
     cMinTestFailures = Atlas.Core.Settings.Plugin.Welcome.cMinTestFailures;
@@ -223,6 +225,12 @@ type
       write FCompletion.CompletionVariantBranch;
     property CompletionListMode: string read FCompletion.CompletionListMode write FCompletion.CompletionListMode;
     property CompletionListScope: string read FCompletion.CompletionListScope write FCompletion.CompletionListScope;
+    property SuggestionsLearned: Boolean read FCompletion.SuggestionsLearned write FCompletion.SuggestionsLearned;
+    property SuggestionsDelayMs: Integer read FCompletion.SuggestionsDelayMs write FCompletion.SuggestionsDelayMs;
+    property SuggestionsMinShare: Integer read FCompletion.SuggestionsMinShare write FCompletion.SuggestionsMinShare;
+    property SuggestionsMinCount: Integer read FCompletion.SuggestionsMinCount write FCompletion.SuggestionsMinCount;
+    property SuggestionsLearnFromUsage: Boolean read FCompletion.SuggestionsLearnFromUsage
+      write FCompletion.SuggestionsLearnFromUsage;
     property Preview: Boolean read FCompletion.Preview write FCompletion.Preview;
     property HoverTooltip: Boolean read FEditorTyping.HoverTooltip write FEditorTyping.HoverTooltip;
     property HangThresholdMs: Integer read FGeneralServer.HangThresholdMs write FGeneralServer.HangThresholdMs;
@@ -299,6 +307,7 @@ type
     property ProblemsCompilerMerge: string read FRules.ProblemsCompilerMerge write FRules.ProblemsCompilerMerge;
     property ProblemsShowCompilerCode: Boolean read FRules.ProblemsShowCompilerCode
       write FRules.ProblemsShowCompilerCode;
+    property ProblemsIdeErrors: Boolean read FRules.ProblemsIdeErrors write FRules.ProblemsIdeErrors;
     property ProblemsWindowKey: Integer read FNavigationKeys.ProblemsWindowKey write FNavigationKeys.ProblemsWindowKey;
     property CheckFileKey: Integer read FNavigationKeys.CheckFileKey write FNavigationKeys.CheckFileKey;
     property CreateIssueKey: Integer read FEditingKeys.CreateIssueKey write FEditingKeys.CreateIssueKey;
@@ -859,6 +868,8 @@ type
       write FEditorView.DesignerMagnifierEdges;
     property DesignerMagnifierKey: Integer read FEditorView.DesignerMagnifierKey
       write FEditorView.DesignerMagnifierKey;
+    property DesignerUndo: Boolean read FEditorView.DesignerUndo write FEditorView.DesignerUndo;
+    property DesignerUndoSteps: Integer read FEditorView.DesignerUndoSteps write FEditorView.DesignerUndoSteps;
     property QuickBookmarks: Boolean read FBookmarks.QuickBookmarks write FBookmarks.QuickBookmarks;
     property QuickBookmarksGutter: Boolean read FBookmarks.QuickBookmarksGutter write FBookmarks.QuickBookmarksGutter;
     property QuickBookmarksGutterClick: Boolean read FBookmarks.QuickBookmarksGutterClick
@@ -1080,6 +1091,10 @@ type
       write FWelcomeTiles.WelcomePageContinueIncoming;
     property WelcomePageContinueFetch: Boolean read FWelcomeTiles.WelcomePageContinueFetch
       write FWelcomeTiles.WelcomePageContinueFetch;
+    property WelcomePageContinueIssues: Boolean read FWelcomeTiles.WelcomePageContinueIssues
+      write FWelcomeTiles.WelcomePageContinueIssues;
+    property WelcomePageContinueIssuesCount: Integer read FWelcomeTiles.WelcomePageContinueIssuesCount
+      write FWelcomeTiles.WelcomePageContinueIssuesCount;
     property WelcomePageSaved: Boolean read FWelcomeTiles.WelcomePageSaved write FWelcomeTiles.WelcomePageSaved;
     property WelcomePageTrends: Boolean read FWelcomeTiles.WelcomePageTrends write FWelcomeTiles.WelcomePageTrends;
     property WelcomePageTrendsPoints: Integer read FWelcomeTiles.WelcomePageTrendsPoints
@@ -1126,6 +1141,12 @@ type
     property IssuesProjects: string read FIssues.IssuesProjects write FIssues.IssuesProjects;
     property IssuesQueries: string read FIssues.IssuesQueries write FIssues.IssuesQueries;
     property IssuesQueryPicker: Boolean read FIssues.IssuesQueryPicker write FIssues.IssuesQueryPicker;
+    property IssuesProjectPicker: Boolean read FIssues.IssuesProjectPicker write FIssues.IssuesProjectPicker;
+    property IssuesWelcomeProject: string read FIssues.IssuesWelcomeProject write FIssues.IssuesWelcomeProject;
+    property IssuesAllProjects: Boolean read FIssues.IssuesAllProjects write FIssues.IssuesAllProjects;
+    property IssuesAllProjectsPerGroup: Integer read FIssues.IssuesAllProjectsPerGroup
+      write FIssues.IssuesAllProjectsPerGroup;
+    property IssuesSuggestPaths: Boolean read FIssues.IssuesSuggestPaths write FIssues.IssuesSuggestPaths;
     property IssuesCreate: Boolean read FIssueWork.IssuesCreate write FIssueWork.IssuesCreate;
     property IssuesCreateIncludeCode: Boolean read FIssueWork.IssuesCreateIncludeCode
       write FIssueWork.IssuesCreateIncludeCode;

@@ -31,6 +31,10 @@ type
     Remove: TButton;
     Edit: TButton;
     Picker: TCheckBox;
+    /// <summary>Klappliste „Tracker-Projekt“ (#1927), „Alle“ (#1928) mit Zeilen je Gruppe.</summary>
+    ProjectPicker: TCheckBox;
+    AllProjects: TCheckBox;
+    AllProjectsPerGroup: TEdit;
     CreateIssue: TCheckBox;
     CreateIncludeCode: TCheckBox;
   end;
@@ -176,6 +180,13 @@ procedure TAtlasTrackerQueriesPart.BuildSwitches;
 begin
   FView.Picker := FRows.AddCheck('issues.queryPicker',
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryPicker));
+  // Tracker-Projekt frei wählen (#1927) und alle zusammen (#1928).
+  FView.ProjectPicker := FRows.AddCheck('issues.projectPicker',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectPicker));
+  FView.AllProjects := FRows.AddCheck('issues.allProjects',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesAllProjects));
+  FView.AllProjectsPerGroup := FRows.AddNumber('issues.allProjects.perGroup',
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesAllProjectsPerGroup));
   // „Issue anlegen …“ im Editor und bei Befunden (#1268).
   FView.CreateIssue := FRows.AddCheck('issues.create',
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesCreate));

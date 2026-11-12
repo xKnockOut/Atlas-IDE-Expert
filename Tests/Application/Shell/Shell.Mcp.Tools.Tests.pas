@@ -183,7 +183,7 @@ begin
   Assert.AreEqual(' get_last_build build_project run_tests ', Joined(NamesOf(RegisterBuildTestTools)));
   Assert.AreEqual(7, Integer(Length(NamesOf(RegisterCheckTools))));
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));
-  Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code ',
+  Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method ',
     Joined(NamesOf(RegisterEditingTools)));
   Assert.AreEqual(' query_code ', Joined(NamesOf(RegisterQueryTools)));
   Assert.AreEqual(' find_unused_code get_unit_dependencies ', Joined(NamesOf(RegisterDeadCodeTools)));
@@ -198,7 +198,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(32, Integer(Length(mNames)));
+  Assert.AreEqual(33, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do

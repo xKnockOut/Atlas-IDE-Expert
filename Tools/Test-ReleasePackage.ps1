@@ -37,7 +37,7 @@ $Packages = @(Get-ChildItem (Join-Path $Root 'Packages') -Directory -Filter 'Atl
 function New-Builds([string] $Output) {
     $Bin = Join-Path $Output 'Win64/Release/Bin'
     New-Item -ItemType Directory -Force $Bin | Out-Null
-    foreach ($Name in 'AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe') {
+    foreach ($Name in 'AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'AtlasMonitor.exe', 'WebView2Loader.dll') {
         Set-Content -LiteralPath (Join-Path $Bin $Name) -Value $Name
     }
     foreach ($Platform in 'Win32', 'Win64') {
@@ -80,7 +80,8 @@ try {
     } finally {
         $Archive.Dispose()
     }
-    $Expected = @('AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'LICENSE', 'whatsnew.json', 'tips.json')
+    $Expected = @('AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'AtlasMonitor.exe', 'WebView2Loader.dll',
+        'LICENSE', 'whatsnew.json', 'tips.json')
     foreach ($Platform in 'Win32', 'Win64') {
         foreach ($Name in $Packages) {
             $Expected += "$Platform/${Name}370.bpl", "$Platform/${Name}370.map"
@@ -126,6 +127,8 @@ try {
 
 $Last = $Packages[-1]
 Expect-Failure 'Updater fehlt' 'AtlasUpdate\.exe' { param($O) Remove-Item (Join-Path $O 'Win64/Release/Bin/AtlasUpdate.exe') }
+Expect-Failure 'Monitor fehlt' 'AtlasMonitor\.exe' { param($O) Remove-Item (Join-Path $O 'Win64/Release/Bin/AtlasMonitor.exe') }
+Expect-Failure 'WebView2-Lader fehlt' 'WebView2Loader\.dll' { param($O) Remove-Item (Join-Path $O 'Win64/Release/Bin/WebView2Loader.dll') }
 Expect-Failure 'Win64-BPL fehlt' "Win64-BPL von $([regex]::Escape($Last))" {
     param($O) Remove-Item (Join-Path $O "Win64/Release/Bpl/${Last}370.bpl")
 }

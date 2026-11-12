@@ -88,9 +88,21 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SmartIndent,
+  Atlas.Common.Editing.LearnedSuggestions,
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
+  Atlas.Common.Lsp.ServerActivity,
   Shell.Composition.DfmPropertyRules;
+
+/// <summary>Ausführlicher Status von AReports als Funktion für die Aktivität des Servers.</summary>
+function DetailsOf(AReports: TShellStatusReports): TServerDetailsFunc;
+begin
+  Result :=
+    function: TServerDetails
+    begin
+      Result := AReports.FileDetails;
+    end;
+end;
 
 constructor TShellCommandArea.Create(ACore: TShellCore; ACode: TShellCodeArea; AAnalysis: TShellAnalysisArea;
   AEditing: TShellEditing; const AServices: TShellCommandAreaServices);
@@ -103,6 +115,8 @@ begin
   FServices := AServices;
   FCommands := TLspCommands.Create;
   FStatusReports := TShellStatusReports.Create(StatusServices);
+  // Ausführlicher Status in der Statusdatei (#1901); TShellParts meldet ihn beim Beenden zuerst ab.
+  TServerActivity.Shared.SetDetails(DetailsOf(FStatusReports));
   FServerCommands := TShellServerCommands.Create(ServerServices);
   FServerCommands.RegisterConvertCommand(FCommands);
   RegisterDfmPropertyRules;
@@ -124,6 +138,7 @@ end;
 
 destructor TShellCommandArea.Destroy;
 begin
+  TServerActivity.Shared.SetDetails(nil);
   FreeAndNil(FEditorCommands);
   FreeAndNil(FServerCommands);
   FreeAndNil(FStatusReports);
@@ -257,6 +272,11 @@ begin
     function(const AUri: string): TMethodOrderOptions
     begin
       Result := mCore.FileOptions.MethodOrderFor(AUri);
+    end;
+  Result.LearnedOptionsFor :=
+    function(const AUri: string; const AEditorOptions: TJSONValue): TLearnedOptions
+    begin
+      Result := mCore.FileOptions.LearnedOptionsFor(AUri, AEditorOptions);
     end;
 end;
 

@@ -90,6 +90,8 @@ type
     procedure SelectionBarRoundTrip;
     [Test]
     procedure MagnifierRoundTrip;
+    [Test]
+    procedure UndoRoundTrip;
   end;
 
 implementation
@@ -917,6 +919,30 @@ begin
     Assert.AreEqual(8, mSaved.DesignerMagnifierZoom);
     Assert.IsFalse(mSaved.DesignerMagnifierGrid);
     Assert.IsTrue(mSaved.DesignerMagnifierEdges);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TDesignerSettingsSectionTests.UndoRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'DesignerUndo').Checked, 'experimentell: Vorgabe aus');
+    Assert.AreEqual('50', EditOf(mPage, 'DesignerUndoSteps').Text);
+    CheckOf(mPage, 'DesignerUndo').Checked := True;
+    EditOf(mPage, 'DesignerUndoSteps').Text := '20';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.DesignerUndo);
+    Assert.AreEqual(20, mSaved.DesignerUndoSteps);
+    mSaved.DesignerUndoSteps := 1000;
+    mSaved.Normalize;
+    Assert.AreEqual(200, mSaved.DesignerUndoSteps, 'Obergrenze');
   finally
     mPage.Free;
   end;

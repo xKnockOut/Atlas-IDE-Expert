@@ -99,6 +99,8 @@ const
   cDebounceMs = 400;
   cCountTimeoutMs = 10000;
   cStatusField = 'designer.usages';
+  // Trenner in „OnClick = btnOkClick“ (Ereignisliste des Designers).
+  cEventAssign = ' = ';
 
 type
   TUsagesKeys = class(TAtlasKeyClient)

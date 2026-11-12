@@ -1867,6 +1867,13 @@
           "x-description-en": "Code actions \"Extract method\" (selected statements become a new method or routine; parameters by data flow: only read const, written and then read var or out, only inside local variable), \"Introduce variable\" (also for all textually equal occurrences in the block) and \"Extract constant\" (in the routine or in the unit). Inline variable or var section according to inlineVar.",
           "x-issue": "#50"
         },
+        "extractMethodDuplicates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Zu „Methode extrahieren“ die zweite Aktion „Methode extrahieren und gleiche Stellen ersetzen“: Sie sucht in allen Routinen der Unit Anweisungsfolgen, die der Auswahl textgleich sind (Kommentare, Leerraum und Groß-/Kleinschreibung zählen nicht), und ersetzt sie durch denselben Aufruf. Angeboten wird eine Stelle nur, wenn dort dieselbe neue Methode entstünde: gleiche Klasse bzw. Ebene, gleiche Bedeutung der Namen, gleiche Parameterliste nach Datenfluss; nicht in with-Rümpfen. Die Vorschau listet die Stellen zum Abwählen.",
+          "x-description-en": "For \"Extract method\" the second action \"Extract method and replace equal places\": it searches all routines of the unit for statement sequences that are textually equal to the selection (comments, whitespace and case do not count) and replaces them with the same call. A place is only offered if the same new method would result there: same class or level, same meaning of the names, same parameter list by data flow; not in with bodies. The preview lists the places for deselecting.",
+          "x-issue": "#2054"
+        },
         "completeCase": {
           "type": "boolean",
           "default": true,
@@ -2586,13 +2593,19 @@
           "default": true,
           "description": "Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, bis sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an.",
           "x-description-en": "Safety net, in addition to the fix: the server answers a request that crashed twice on the same unchanged file with \"Skipped after crash\" until the file changes or \"Try again\" is chosen. Status bar and check window show this."
+        },
+        "statusFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Jeder Server (IDE, MCP, Kommandozeile) schreibt alle 5 s seinen Zustand nach %LOCALAPPDATA%\\Atlas\\Status\\server-<pid>.json (Art, Ziel, Version, Speicher, laufende Anfrage, Fortschritt, Zeitüberschreitungen, Fehler) und löscht die Datei beim Beenden. AtlasMonitor und das MCP-Werkzeug get_server_status lesen sie. Nur lokal, kein Netzzugriff.",
+          "x-description-en": "Every server (IDE, MCP, command line) writes its state every 5 s to %LOCALAPPDATA%\\Atlas\\Status\\server-<pid>.json (kind, target, version, memory, running request, progress, timeouts, errors) and deletes the file on exit. AtlasMonitor and the MCP tool get_server_status read it. Local only, no network access."
         }
       },
       "x-scope": "global",
       "x-area": "general",
       "x-page": "Robustheit",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#1355"
+      "x-issue": "#1355, #1901"
     },
     "diagnostics": {
       "type": "object",
@@ -2815,6 +2828,60 @@
       "x-page": "Eingabehilfen",
       "x-control": "Kontrollkästchen, Auswahl",
       "x-issue": "#1827, #1828, #1829, #1831"
+    },
+    "suggestions": {
+      "type": "object",
+      "description": "Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams.",
+      "x-description-en": "Learned suggestions (#1890): after a trigger such as X := TFoo.Create; or L.BeginUpdate; the plugin suggests as grey ghost text what usually follows in the project (try … finally X.Free; end;). The switches and thresholds live in the plugin settings (suggestions.*). This holds the team's house rules.",
+      "additionalProperties": false,
+      "properties": {
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["after", "insert"],
+            "properties": {
+              "after": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Auslöser: die Anweisung ohne Semikolon, mit $S für das Objekt und $A für das erste Argument (\"Log.Enter\", \"$S := TQuery.Create\", \"EnterCriticalSection($A)\") oder nur der Name des Aufrufs.",
+                "x-description-en": "Trigger: the statement without semicolon, with $S for the object and $A for the first argument (\"Log.Enter\", \"$S := TQuery.Create\", \"EnterCriticalSection($A)\") or just the name of the call."
+              },
+              "insert": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                },
+                "description": "Eingefügte Zeilen; zwei Leerzeichen am Anfang sind eine Ebene, $| ist die Zeile der Schreibmarke, $S und $A wie im Auslöser.",
+                "x-description-en": "Inserted lines; two leading spaces are one level, $| is the line of the cursor, $S and $A as in the trigger."
+              }
+            }
+          },
+          "default": [],
+          "description": "Eigene Muster des Teams; sie gehen den gelernten vor und brauchen keine Mindestzahl.",
+          "x-description-en": "The team's own patterns; they take precedence over learned ones and need no minimum count.",
+          "x-scope": "project",
+          "x-page": "Vervollständigung",
+          "x-control": "JSON in atlas.json (Liste der Muster)",
+          "x-issue": "#1890"
+        }
+      },
+      "x-scope": "project",
+      "x-page": "Vervollständigung",
+      "x-control": "JSON in atlas.json (Liste der Muster)",
+      "x-issue": "#1890",
+      "examples": [
+        {
+          "patterns": [
+            {
+              "after": "Log.Enter",
+              "insert": ["try", "  $|", "finally", "  Log.Leave;", "end;"]
+            }
+          ]
+        }
+      ]
     },
     "classCompletion": {
       "type": "object",
@@ -3655,6 +3722,14 @@
                 "examples": ["KASSE", "owner/repo"],
                 "description": "Tracker-Projekt: YouTrack-Projekt-ID, bei GitHub owner/repo.",
                 "x-description-en": "Tracker project: YouTrack project id, for GitHub owner/repo."
+              },
+              "paths": {
+                "type": "array",
+                "default": [],
+                "items": { "type": "string", "minLength": 1 },
+                "examples": [["D:\\SVN\\Kasse\\trunk", "D:\\SVN\\Basis\\Packages\\trunk"]],
+                "description": "Arbeitskopien des Tracker-Projekts in Git bzw. SVN (#1926); die erste ist die Haupt-Arbeitskopie („Beginnen“ legt dort den Branch an, Branch und Reiter „Entwicklung“ lesen dort), weitere gehen mit vcs.externals.branch beim Branch mit. Leer = Ordner aus match.",
+                "x-description-en": "Working copies of the tracker project in Git or SVN (#1926); the first is the main working copy (“Start” creates the branch there, branch and the “Development” tab read there), further ones follow the branch with vcs.externals.branch. Empty = folder from match."
               }
             }
           }

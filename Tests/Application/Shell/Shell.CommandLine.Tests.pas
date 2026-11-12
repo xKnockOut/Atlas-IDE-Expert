@@ -66,6 +66,16 @@ type
     /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
     [Test]
     procedure ReadsFormatterArguments;
+    /// <summary>#1901: Befehl des Laufs für die Statusdatei.</summary>
+    [Test]
+    procedure NamesRunCommand;
+    /// <summary>#1900: AtlasMonitor bietet jeden Schalter an oder lässt ihn bewusst aus; keiner ist veraltet.
+    /// </summary>
+    [Test]
+    procedure MonitorKnowsEverySwitch;
+    /// <summary>#1900: Jeder Aufruf aus AtlasMonitor liest sich ohne Warnung und wählt den richtigen Befehl.</summary>
+    [Test]
+    procedure MonitorCallsParse;
   end;
 
 implementation
@@ -76,6 +86,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Output,
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Monitor.Commands,
   Shell.CommandLine;
 
 { TCommandLineOptionsTests }
@@ -458,6 +469,95 @@ begin
   Assert.IsFalse(mOptions.FormatDiff);
   Assert.IsTrue(mOptions.CheckFormat = TFindingsFormat.Json);
   Assert.IsFalse(TCommandLineOptions.Parse([]).FormatCheck);
+end;
+
+procedure TCommandLineOptionsTests.NamesRunCommand;
+begin
+  Assert.AreEqual('', TCommandLineOptions.Parse([]).RunCommand);
+  Assert.AreEqual('', TCommandLineOptions.Parse(['--mcp', '--root', 'Src']).RunCommand);
+  Assert.AreEqual('check', TCommandLineOptions.Parse(['--check', 'Src']).RunCommand);
+  Assert.AreEqual('fix', TCommandLineOptions.Parse(['--check', 'Src', '--fix', 'all']).RunCommand);
+  Assert.AreEqual('format-check', TCommandLineOptions.Parse(['--check', 'Src', '--format-check']).RunCommand);
+  Assert.AreEqual('format-write', TCommandLineOptions.Parse(['--check', 'Src', '--format-write']).RunCommand);
+  Assert.AreEqual('metrics', TCommandLineOptions.Parse(['--check', 'Src', '--metrics']).RunCommand);
+  Assert.AreEqual('todos', TCommandLineOptions.Parse(['--check', 'Src', '--todos']).RunCommand);
+  Assert.AreEqual('architecture', TCommandLineOptions.Parse(['--check', 'Src', '--architecture', 'a.md']).RunCommand);
+  Assert.AreEqual('affected-tests', TCommandLineOptions.Parse(['--check', 'T.dproj', '--affected-tests']).RunCommand);
+  Assert.AreEqual('query', TCommandLineOptions.Parse(['--query', 'classes']).RunCommand);
+  Assert.AreEqual('hotspots', TCommandLineOptions.Parse(['--hotspots', 'h.html']).RunCommand);
+end;
+
+function Contains(const AList: TArray<string>; const AValue: string): Boolean;
+var
+  mItem: string;
+begin
+  for mItem in AList do
+  begin
+    if mItem = AValue then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TCommandLineOptionsTests.MonitorKnowsEverySwitch;
+var
+  mSwitch: string;
+  mKnown, mMonitor: TArray<string>;
+begin
+  mKnown := TCommandLineOptions.Switches;
+  mMonitor := TMonitorCommands.CoveredSwitches + TMonitorCommands.SkippedSwitches;
+  for mSwitch in mKnown do
+  begin
+    Assert.IsTrue(Contains(mMonitor, mSwitch), mSwitch + ' fehlt in TMonitorCommands (CoveredSwitches oder ' +
+      'SkippedSwitches)');
+  end;
+  for mSwitch in mMonitor do
+  begin
+    Assert.IsTrue(Contains(mKnown, mSwitch), mSwitch + ' kennt der Server nicht');
+  end;
+  mKnown := nil;
+  mMonitor := nil;
+end;
+
+procedure TCommandLineOptionsTests.MonitorCallsParse;
+const
+  cNames: array[TMonitorCommand] of string = ('check', 'metrics', 'todos', 'format-check', 'format-write', 'fix',
+    'fix', 'affected-tests', 'architecture', 'architecture', 'architecture', 'hotspots', 'query', '');
+var
+  mCommand: TMonitorCommand;
+  mOptions: TMonitorOptions;
+  mParsed: TCommandLineOptions;
+begin
+  mOptions := Default(TMonitorOptions);
+  mOptions.MinSeverity := 'warning';
+  mOptions.Rules := 'a,b';
+  mOptions.Changed := True;
+  mOptions.ChangedBase := 'dev';
+  mOptions.ChangedLines := True;
+  mOptions.Timings := True;
+  mOptions.Query := 'classes';
+  mOptions.ArchitectureFile := 'alt.json';
+  mOptions.ReplayFile := 'anfrage.json';
+  mOptions.AffectedBase := 'main';
+  for mCommand := Low(TMonitorCommand) to High(TMonitorCommand) do
+  begin
+    mParsed := TCommandLineOptions.Parse(TMonitorCommands.Arguments(mCommand, 'C:\Src', mOptions,
+      'C:\Temp\out' + TMonitorCommands.OutputExtension(mCommand), 'de'));
+    Assert.AreEqual(0, Integer(Length(mParsed.Warnings)), TMonitorCommands.Text(mCommand));
+    Assert.AreEqual(cNames[mCommand], mParsed.RunCommand, TMonitorCommands.Text(mCommand));
+  end;
+  mParsed := TCommandLineOptions.Parse(TMonitorCommands.Arguments(TMonitorCommand.Check, 'C:\Src', mOptions,
+    'C:\Temp\out.sarif', 'de'));
+  Assert.AreEqual('dev', mParsed.ChangedRef);
+  Assert.IsTrue(mParsed.CheckFormat = TFindingsFormat.Sarif);
+  Assert.IsTrue(mParsed.FailOn = TFailOn.Never);
+  Assert.AreEqual('C:\Temp\out.timings.md', mParsed.TimingsFile);
+  Assert.AreEqual('anfrage.json', TCommandLineOptions.Parse(TMonitorCommands.Arguments(TMonitorCommand.Replay, '',
+    mOptions, '', '')).ReplayFile);
+  mOptions := Default(TMonitorOptions);
+  mParsed := Default(TCommandLineOptions);
 end;
 
 initialization

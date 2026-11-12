@@ -124,6 +124,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueWork.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
@@ -163,11 +164,18 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesContext.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.WorkingCopies.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsPaths.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PathSuggestions.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PathSuggestions.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SuggestDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ProjectPicker.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesServices.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueCommands.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesStatus.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesQuery.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueStart.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWork.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Notify.pas"/>

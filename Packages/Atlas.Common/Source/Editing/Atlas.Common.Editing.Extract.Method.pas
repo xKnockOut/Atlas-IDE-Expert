@@ -7,6 +7,10 @@
 // Wertparameter bzw. lokale Variable; nur innen verwendet → lokale Variable der neuen Methode (aus dem alten
 // var-Abschnitt entfernt). Lokale Konstanten werden mitkopiert. Liegt die Auswahl in einer Schleife, gelten
 // Zugriffe in der Schleife vor der Auswahl als „danach“.
+// Für gleiche Stellen (#2054) nimmt TMethodExtraction weitere Stellen derselben Routine entgegen, die später
+// ebenfalls durch den Aufruf ersetzt werden: Ihre Vorkommen zählen nicht als Code, sondern als Aufruf mit den
+// angenommenen Parameterarten. Der Plan (TMethodPlan) nennt Schlüssel, Parameter, Aufruf und die Edits, die
+// lokale Variablen aus dem var-Abschnitt entfernen.
 
 interface
 
@@ -49,9 +53,47 @@ type
     Mode: TParameterMode;
   end;
 
+  /// <summary>Parameterart eines Namens der neuen Methode (#2054).</summary>
+  TExtractParameter = record
+    Name: string;
+    Mode: TParameterMode;
+  end;
+
+  /// <summary>Anweisungsfolge als Offsets (Anfang, Ende ausgeschlossen).</summary>
+  TExtractWindow = record
+    Start: Integer;
+    Finish: Integer;
+    class function Create(AStart, AFinish: Integer): TExtractWindow; static;
+  end;
+
+  /// <summary>Weitere Stellen derselben Routine, die ebenfalls durch den Aufruf ersetzt werden (#2054).</summary>
+  TExtractContext = record
+    /// <summary>Ihre Vorkommen zählen nicht als Code.</summary>
+    Others: TArray<TExtractWindow>;
+    /// <summary>Stattdessen greift an jeder Stelle ein Aufruf mit diesen Parameterarten zu; nil: gar nicht.
+    /// </summary>
+    Assumed: TArray<TExtractParameter>;
+  end;
+
+  /// <summary>Ergebnis einer geplanten Extraktion (#2054).</summary>
+  TMethodPlan = record
+    /// <summary>Kopf, var- und const-Abschnitt der neuen Methode: gleicher Schlüssel, gleiche Methode.</summary>
+    Key: string;
+    Parameters: TArray<TExtractParameter>;
+    /// <summary>Ersetzte Anweisungen und der Aufruf an ihrer Stelle.</summary>
+    CallRange: TTextRange;
+    CallText: string;
+    /// <summary>Entfernt lokale Variablen, die nur noch die neue Methode braucht.</summary>
+    LocalEdits: TArray<TTextEdit>;
+    /// <summary>Umgebende Routine.</summary>
+    Routine: TSyntaxNode;
+  end;
+
   /// <summary>Plant „Methode extrahieren“ für eine Auswahl.</summary>
   TMethodExtraction = class
   private
+    FContext: TExtractContext;
+    FPlan: TMethodPlan;
     FText: string;
     FTree: TSyntaxTree;
     FOptions: TExtractOptions;
@@ -77,6 +119,13 @@ type
     /// <summary>Schleife um die Auswahl: Zugriffe darin vor der Auswahl laufen auch danach.</summary>
     procedure FindLoop;
     function CollectOccurrences: Boolean;
+    /// <summary>Liegt AOffset in einer der weiteren Stellen aus FContext?</summary>
+    function InOther(AOffset: Integer): Boolean;
+    /// <summary>Zugriff außerhalb der Auswahl an AStart..AEnd: davor bzw. danach.</summary>
+    procedure MarkOutside(ALocal, AStart, AEnd: Integer);
+    /// <summary>Weitere Stellen als Aufruf mit den angenommenen Parameterarten.</summary>
+    procedure MarkAssumed;
+    function Parameters: TArray<TExtractParameter>;
     /// <summary>False mit Grund, wenn ANode in der Auswahl auf Result oder nur in der Routine Sichtbares zeigt.
     /// </summary>
     function VisibleOutside(ANode: TSyntaxNode; ALocal: Integer): Boolean;
@@ -102,7 +151,16 @@ type
     destructor Destroy; override;
     /// <summary>Aktion für die Anweisungen in ARange; False mit Grund in AReason.</summary>
     function Run(const ARange: TTextRange; out AAction: TCodeAction; out AReason: string): Boolean;
+    /// <summary>Weitere Stellen derselben Routine (#2054); vor Run setzen.</summary>
+    property Context: TExtractContext read FContext write FContext;
+    /// <summary>Plan des letzten erfolgreichen Run.</summary>
+    property Plan: TMethodPlan read FPlan;
+    /// <summary>Oberste Anweisungen der Auswahl nach Run.</summary>
+    property Statements: TArray<TSyntaxNode> read FStatements;
   end;
+
+/// <summary>Gleiche Parameter in gleicher Reihenfolge und Art.</summary>
+function SameParameters(const ALeft, ARight: TArray<TExtractParameter>): Boolean;
 
 implementation
 
@@ -433,6 +491,33 @@ begin
   Result := (AReason = '') and GotosInside(ABody, AStart, AEnd, AReason);
 end;
 
+function SameParameters(const ALeft, ARight: TArray<TExtractParameter>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(ALeft) = Length(ARight);
+  mIndex := 0;
+  while Result and (mIndex <= High(ALeft)) do
+  begin
+    Result := SameText(ALeft[mIndex].Name, ARight[mIndex].Name) and (ALeft[mIndex].Mode = ARight[mIndex].Mode);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Der Aufruf greift mit dieser Parameterart überhaupt auf den Namen zu.</summary>
+function Accesses(AMode: TParameterMode): Boolean;
+begin
+  Result := AMode in [TParameterMode.Const_, TParameterMode.Var_, TParameterMode.Out_, TParameterMode.Value];
+end;
+
+{ TExtractWindow }
+
+class function TExtractWindow.Create(AStart, AFinish: Integer): TExtractWindow;
+begin
+  Result.Start := AStart;
+  Result.Finish := AFinish;
+end;
+
 { TMethodExtraction }
 
 constructor TMethodExtraction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
@@ -518,6 +603,10 @@ begin
     TRoutineLocals.CollectKind(FBody, TSyntaxKind.Identifier, mNodes);
     for mNode in mNodes do
     begin
+      if InOther(mNode.StartOffset) then
+      begin
+        Continue;
+      end;
       mOccurrence.Node := mNode;
       mOccurrence.Local := TRoutineLocals.IndexOf(FLocals, mNode.Name, mNode.StartOffset);
       if TExtractSupport.InSelection(mNode, FStart, FEnd) and not VisibleOutside(mNode, mOccurrence.Local) then
@@ -551,7 +640,7 @@ begin
       begin
         mIndex := TRoutineLocals.IndexOf(FLocals, mNode.Name, mNode.StartOffset);
       end;
-      if mIndex < 0 then
+      if (mIndex < 0) or InOther(mNode.StartOffset) then
       begin
         Continue;
       end;
@@ -612,17 +701,73 @@ begin
   begin
     MarkInside(AOccurrence);
   end
-  else if mNode.StartOffset < FStart then
+  else
   begin
-    FUses[AOccurrence.Local].Before := True;
-    if (mNode.StartOffset >= FLoopStart) and (mNode.EndOffset <= FLoopEnd) and (FLoopStart < FStart) then
+    MarkOutside(AOccurrence.Local, mNode.StartOffset, mNode.EndOffset);
+  end;
+end;
+
+procedure TMethodExtraction.MarkOutside(ALocal, AStart, AEnd: Integer);
+begin
+  if AStart < FStart then
+  begin
+    FUses[ALocal].Before := True;
+    if (AStart >= FLoopStart) and (AEnd <= FLoopEnd) and (FLoopStart < FStart) then
     begin
-      FUses[AOccurrence.Local].After := True;
+      FUses[ALocal].After := True;
     end;
   end
   else
   begin
-    FUses[AOccurrence.Local].After := True;
+    FUses[ALocal].After := True;
+  end;
+end;
+
+function TMethodExtraction.InOther(AOffset: Integer): Boolean;
+var
+  mWindow: TExtractWindow;
+begin
+  Result := False;
+  for mWindow in FContext.Others do
+  begin
+    Result := Result or ((AOffset >= mWindow.Start) and (AOffset < mWindow.Finish));
+  end;
+end;
+
+procedure TMethodExtraction.MarkAssumed;
+var
+  mWindow: TExtractWindow;
+  mParameter: TExtractParameter;
+  mIndex: Integer;
+begin
+  for mWindow in FContext.Others do
+  begin
+    for mParameter in FContext.Assumed do
+    begin
+      mIndex := -1;
+      if Accesses(mParameter.Mode) then
+      begin
+        mIndex := TRoutineLocals.IndexOf(FLocals, mParameter.Name, mWindow.Start);
+      end;
+      if mIndex >= 0 then
+      begin
+        MarkOutside(mIndex, mWindow.Start, mWindow.Finish);
+      end;
+    end;
+  end;
+end;
+
+function TMethodExtraction.Parameters: TArray<TExtractParameter>;
+var
+  mIndex: Integer;
+  mParameter: TExtractParameter;
+begin
+  Result := nil;
+  for mIndex in SortedOrder do
+  begin
+    mParameter.Name := FLocals[mIndex].Name;
+    mParameter.Mode := FUses[mIndex].Mode;
+    Result := Result + [mParameter];
   end;
 end;
 
@@ -729,6 +874,7 @@ begin
     begin
       MarkOccurrence(mOccurrence);
     end;
+    MarkAssumed;
     Result := ChooseModes and CheckCaptures;
   end;
 end;
@@ -820,6 +966,10 @@ begin
   mRequest.Routine := FRoutine;
   mRequest.Body := FBody;
   mRequest.BaseName := cExtractedMethodName;
+  if FOptions.MethodName <> '' then
+  begin
+    mRequest.BaseName := FOptions.MethodName;
+  end;
   mRequest.Kind := 'procedure';
   mRequest.Params := ASignature.ParamsText;
   mRequest.Style := FOptions.Style;
@@ -838,9 +988,12 @@ begin
   mLine := TRoutineBody.RoutineInsertLine(FText, FRoutine);
   AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), ASignature.RoutineText(mHead.Text,
     mBody, TTextLines.IndentOf(FText, FStatements[0].StartPos.Line)))];
-  RemoveLocals(AEdits);
-  AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(FStatements[0].StartPos,
-    FStatements[High(FStatements)].EndPos), mHead.ShortName + ASignature.ArgsText)];
+  FPlan.Key := ASignature.Key(mHead.Text);
+  FPlan.LocalEdits := nil;
+  RemoveLocals(FPlan.LocalEdits);
+  FPlan.CallRange := TTextRange.Create(FStatements[0].StartPos, FStatements[High(FStatements)].EndPos);
+  FPlan.CallText := mHead.ShortName + ASignature.ArgsText;
+  AEdits := AEdits + FPlan.LocalEdits + [TTextEdit.Create(FPlan.CallRange, FPlan.CallText)];
 end;
 
 function TMethodExtraction.Run(const ARange: TTextRange; out AAction: TCodeAction; out AReason: string): Boolean;
@@ -849,6 +1002,7 @@ var
   mEdits: TArray<TTextEdit>;
 begin
   AAction := Default(TCodeAction);
+  FPlan := Default(TMethodPlan);
   FReason := '';
   Result := Prepare(ARange) and Analyze;
   if Result then
@@ -865,6 +1019,8 @@ begin
     AAction.Title := cTexts[TExtractMethodText.ExtractMethod].Text;
     AAction.Kind := cExtractKind;
     AAction.Edits := mEdits;
+    FPlan.Parameters := Parameters;
+    FPlan.Routine := FRoutine;
   end;
   AReason := FReason;
 end;

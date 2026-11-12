@@ -54,6 +54,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -64,6 +65,7 @@ uses
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
   Atlas.IDE.Tracker.IssuesContext,
+  Atlas.IDE.Tracker.IssueWork,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.TestResults,
@@ -93,6 +95,8 @@ var
   GCiAccess: IAtlasCiAccess;
   /// <summary>Kacheln der Willkommensseite und „Issue anlegen“ für Base, solange MyIssues läuft.</summary>
   GTiles: TArray<IAtlasRegistration>;
+  /// <summary>Aktives Issue und Zustand für den Arbeitsstand je Issue (#2052), solange MyIssues läuft.</summary>
+  GIssueWork: TAtlasTrackerIssueWork;
   /// <summary>„Testergebnisse“ (#763) mit eigener Verbindung zur Willkommensseite, solange TestResults läuft.
   /// </summary>
   GTestsWelcome: TAtlasTrackerWelcomeLink;
@@ -322,6 +326,8 @@ begin
   GTiles := [GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerIssuesTile.Create(GIssues) as IAtlasWelcomeTile),
     GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerSprintTile.Create(GIssues) as IAtlasWelcomeTile),
     GScope.Provide(IAtlasIssueCreation, TAtlasIdeIssueCreation.Create as IAtlasIssueCreation)];
+  GIssueWork := TAtlasTrackerIssueWork.Create(GIssues.Context, GIssues.Services);
+  GTiles := GTiles + [GScope.Provide(IAtlasIssueWorkSource, GIssueWork as IAtlasIssueWorkSource)];
 end;
 
 procedure StopMyIssues;
@@ -334,6 +340,12 @@ begin
     GTiles[mIndex].Revoke;
   end;
   GTiles := nil;
+  // Die Registry kann die Quelle noch halten: Danach antwortet sie leer.
+  if GIssueWork <> nil then
+  begin
+    GIssueWork.Detach;
+  end;
+  GIssueWork := nil;
   // Vor „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   if GIssues <> nil then

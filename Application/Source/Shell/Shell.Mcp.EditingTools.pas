@@ -1,14 +1,14 @@
 ﻿unit Shell.Mcp.EditingTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
-// fix_findings, format_code); mit dryRun nur der Diff.
+// fix_findings, format_code, extract_method); mit dryRun nur der Diff.
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet rename_symbol, apply_code_action, fix_findings und format_code an.</summary>
+/// <summary>Meldet rename_symbol, apply_code_action, fix_findings, format_code und extract_method an.</summary>
 procedure RegisterEditingTools(const AContext: TMcpToolContext);
 
 implementation
@@ -21,6 +21,7 @@ uses
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Mcp.ExtractTools,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Shell.Texts;
@@ -31,7 +32,8 @@ type
     RenameSymbolDryRun, ApplyCodeActionTool, ApplyCodeActionFile, ApplyCodeActionLine, ApplyCodeActionTitle,
     ApplyCodeActionDryRun, FixFindingsTool, FixFindingsRules, FixFindingsFile, FixFindingsMinConfidence,
     FixFindingsDryRun, FormatCodeTool, FormatCodeFile, FormatCodeText, FormatCodeStartLine, FormatCodeEndLine,
-    FormatCodeDryRun, LineRange);
+    FormatCodeDryRun, LineRange, ExtractMethodTool, ExtractMethodFile, ExtractMethodStartLine, ExtractMethodEndLine,
+    ExtractMethodName, ExtractMethodDuplicates, ExtractMethodDryRun);
 {$SCOPEDENUMS OFF}
 
 const
@@ -92,7 +94,24 @@ const
     En: 'First line to format (from 1); without it the whole unit'),
     (De: 'Letzte zu formatierende Zeile; Vorgabe startLine'; En: 'Last line to format; default startLine'),
     (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'),
-    (De: '"startLine" ab 1 und "endLine" nicht davor'; En: '"startLine" from 1 and "endLine" not before it'));
+    (De: '"startLine" ab 1 und "endLine" nicht davor'; En: '"startLine" from 1 and "endLine" not before it'),
+    (De: 'Methode extrahieren (#50, #2054): Die ganzen Anweisungen in startLine..endLine werden eine neue Methode ' +
+    'der Klasse bzw. eine Routine davor (Parameter nach Datenfluss), an ihrer Stelle steht der Aufruf. Mit ' +
+    'replaceDuplicates (Vorgabe refactoring.extractMethodDuplicates, sonst true) ersetzt derselbe Aufruf auch ' +
+    'textgleiche Stellen der Unit, an denen dieselbe Methode entstünde. dryRun (Vorgabe true) zeigt nur den Diff; ' +
+    'dryRun=false schreibt wie apply_code_action.';
+    En: 'Extract method (#50, #2054): the whole statements in startLine..endLine become a new method of the class ' +
+    'or a routine before it (parameters by data flow), the call takes their place. With replaceDuplicates ' +
+    '(default refactoring.extractMethodDuplicates, otherwise true) the same call also replaces textually equal ' +
+    'places of the unit where the same method would result. dryRun (default true) only shows the diff; ' +
+    'dryRun=false writes like apply_code_action.'),
+    (De: 'Pfad der Unit (relativ zum Projekt oder absolut)';
+    En: 'Path of the unit (relative to the project or absolute)'),
+    (De: 'Erste Zeile der Anweisungen (ab 1)'; En: 'First line of the statements (from 1)'),
+    (De: 'Letzte Zeile der Anweisungen; Vorgabe startLine'; En: 'Last line of the statements; default startLine'),
+    (De: 'Name der neuen Methode; Vorgabe ExtractedMethod'; En: 'Name of the new method; default ExtractedMethod'),
+    (De: 'Auch gleiche Stellen der Unit ersetzen'; En: 'Also replace equal places of the unit'),
+    (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'));
 
 function ToolRenameSymbol(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
@@ -212,6 +231,17 @@ begin
     ContextTool(AContext, ToolFixFindings), TMcpToolKind.Write);
 end;
 
+/// <summary>Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben.</summary>
+function StyleFor(const AContext: TMcpToolContext; const AFileName: string): TFormatStyle;
+begin
+  Result := TLspFormatting.Resolve(nil, AFileName,
+    AContext.Group.WorkspaceOf(AFileName).Configuration.Settings.Formatting,
+    function(const AConfigFile: string; out AConfigText: string): Boolean
+    begin
+      Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
+    end);
+end;
+
 function ToolFormatCode(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
   mFileName, mText: string;
@@ -233,13 +263,7 @@ begin
     end;
     mScope := TFormatScope.Lines([TFormatLineSpan.Create(mStartLine - 1, mEndLine - 1)]);
   end;
-  // Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben (TLspFormatting.Resolve).
-  mStyle := TLspFormatting.Resolve(nil, mFileName,
-    AContext.Group.WorkspaceOf(mFileName).Configuration.Settings.Formatting,
-    function(const AConfigFile: string; out AConfigText: string): Boolean
-    begin
-      Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
-    end);
+  mStyle := StyleFor(AContext, mFileName);
   if AArguments.TryGetValue<string>('text', mText) then
   begin
     Result := AContext.Edit.FormatCode(mStyle, mFileName, mText, mScope);
@@ -268,12 +292,60 @@ begin
     ContextTool(AContext, ToolFormatCode), TMcpToolKind.Write);
 end;
 
+function ToolExtractMethod(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mRequest: TMcpExtractRequest;
+  mRefactoring: TRefactoringSettings;
+begin
+  mRequest := Default(TMcpExtractRequest);
+  mRequest.FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+  if not AArguments.TryGetValue<Integer>('startLine', mRequest.StartLine) then
+  begin
+    raise EMcpToolError.Create(TShellTexts.Missing(['startLine']));
+  end;
+  if not AArguments.TryGetValue<Integer>('endLine', mRequest.EndLine) then
+  begin
+    mRequest.EndLine := mRequest.StartLine;
+  end;
+  mRefactoring := AContext.Group.WorkspaceOf(mRequest.FileName).Configuration.Settings.Refactoring;
+  mRequest.Name := TMcpServer.OptionalString(AArguments, 'name');
+  if not AArguments.TryGetValue<Boolean>('replaceDuplicates', mRequest.ReplaceDuplicates) then
+  begin
+    mRequest.ReplaceDuplicates := mRefactoring.ExtractMethodDuplicates;
+  end;
+  mRequest.DryRun := DryRunOf(AArguments);
+  mRequest.InlineVar := mRefactoring.InlineVar;
+  mRequest.Style := StyleFor(AContext, mRequest.FileName);
+  Result := TMcpExtractTools.ExtractMethod(AContext.Edit, mRequest);
+end;
+
+procedure AddExtractMethod(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('extract_method', cTexts[TMcpEditingText.ExtractMethodTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"file":{"type":"string","description":%s},' +
+      '"startLine":{"type":"integer","minimum":1,"description":%s},' +
+      '"endLine":{"type":"integer","minimum":1,"description":%s},' +
+      '"name":{"type":"string","description":%s},' +
+      '"replaceDuplicates":{"type":"boolean","description":%s},' +
+      '"dryRun":{"type":"boolean","default":true,"description":%s}},' +
+      '"required":["file","startLine"]}',
+      [cTexts[TMcpEditingText.ExtractMethodFile].Text,
+      cTexts[TMcpEditingText.ExtractMethodStartLine].Text,
+      cTexts[TMcpEditingText.ExtractMethodEndLine].Text,
+      cTexts[TMcpEditingText.ExtractMethodName].Text,
+      cTexts[TMcpEditingText.ExtractMethodDuplicates].Text,
+      cTexts[TMcpEditingText.ExtractMethodDryRun].Text]),
+    ContextTool(AContext, ToolExtractMethod), TMcpToolKind.Write);
+end;
+
 procedure RegisterEditingTools(const AContext: TMcpToolContext);
 begin
   AddRenameSymbol(AContext);
   AddApplyCodeAction(AContext);
   AddFixFindings(AContext);
   AddFormatCode(AContext);
+  AddExtractMethod(AContext);
 end;
 
 initialization

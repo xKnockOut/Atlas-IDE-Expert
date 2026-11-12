@@ -54,7 +54,8 @@ uses
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
-  Atlas.Common.Lsp.SmartIndent;
+  Atlas.Common.Lsp.SmartIndent,
+  Atlas.Common.Lsp.LearnedSuggestions;
 
 procedure TShellEditorCommandsTests.Setup;
 begin
@@ -97,7 +98,8 @@ begin
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand, TLspExpressionType.cCommand,
       TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
       TEnumValueCommands.cCommand, TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
-      TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand) do
+      TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand, TLspLearnedSuggestions.cSuggestCommand,
+      TLspLearnedSuggestions.cListCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -175,7 +177,8 @@ begin
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
       TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
       TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
-      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand) do
+      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
+      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;

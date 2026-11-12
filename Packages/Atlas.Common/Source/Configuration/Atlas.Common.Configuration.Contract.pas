@@ -124,6 +124,22 @@ type
     class function Default: TClassCompletionSettings; static;
   end;
 
+  /// <summary>Eigenes Muster für die gelernten Vorschläge ("suggestions.patterns", #1890), etwa eine Hausregel
+  /// für das Logging.</summary>
+  TSuggestionPattern = record
+    /// <summary>Auslöser: "$S.Enter" (Methode an beliebigem Subjekt), "Log.Enter" (genau dieser Aufruf),
+    /// "$S := $T.Create" oder "EnterCriticalSection($A)".</summary>
+    After: string;
+    /// <summary>Folgende Zeilen; je zwei Leerzeichen am Anfang eine Ebene, "$|" für die Schreibmarke, $S und $A für
+    /// Subjekt und Argument des Auslösers.</summary>
+    Insert: TArray<string>;
+  end;
+
+  /// <summary>Gelernte Vorschläge ("suggestions", #1890); die Schalter liegen im Plugin.</summary>
+  TSuggestionSettings = record
+    Patterns: TArray<TSuggestionPattern>;
+  end;
+
   /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
   TReferenceSettings = record
     /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
@@ -474,6 +490,9 @@ type
     DisableWarningReason: Boolean;
     /// <summary>Code-Aktionen „Methode extrahieren“, „Variable einführen“ und „Konstante extrahieren“ (#50).</summary>
     Extract: Boolean;
+    /// <summary>Zu „Methode extrahieren“ eine zweite Aktion, die auch gleiche Stellen der Unit ersetzt (#2054).
+    /// </summary>
+    ExtractMethodDuplicates: Boolean;
     /// <summary>Code-Aktion „case vervollständigen“ (#50).</summary>
     CompleteCase: Boolean;
     /// <summary>Code-Aktion „with auflösen“ (#50).</summary>
@@ -684,6 +703,7 @@ type
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
     SmartIndent: TSmartIndentSettings;
+    Suggestions: TSuggestionSettings;
     ClassCompletion: TClassCompletionSettings;
     References: TReferenceSettings;
     Navigation: TNavigationSettings;
@@ -758,6 +778,9 @@ type
     /// <summary>Sicherheitsnetz: Anfrage nach zwei Abstürzen an derselben Datei überspringen (#1355,
     /// server.crashSkip).</summary>
     ServerCrashSkip: Boolean;
+    /// <summary>Statusdatei je Server für AtlasMonitor und get_server_status schreiben (#1901,
+    /// server.statusFile).</summary>
+    ServerStatusFile: Boolean;
     /// <summary>Anonymisiertes Diagnoselog (#647): schreiben, Aufbewahrung in Tagen und lokale
     /// Zuordnung Kurz-ID → Name (nur für die eigene Analyse).</summary>
     DiagnosticsLog: Boolean;
@@ -1289,6 +1312,7 @@ begin
   ASettings.DisableWarning := True;
   ASettings.DisableWarningReason := True;
   ASettings.Extract := True;
+  ASettings.ExtractMethodDuplicates := True;
   ASettings.CompleteCase := True;
   ASettings.ResolveWith := True;
   ASettings.InlineCode := False;
@@ -1415,6 +1439,7 @@ begin
   ASettings.InlayHints := TInlayHintSettings.Default;
   ASettings.CodeLens := TCodeLensSettings.Default;
   ASettings.SmartIndent := TSmartIndentSettings.Default;
+  ASettings.Suggestions := Default(TSuggestionSettings);
   ASettings.ClassCompletion := TClassCompletionSettings.Default;
   ASettings.References := TReferenceSettings.Default;
   ASettings.Navigation := TNavigationSettings.Default;
@@ -1463,6 +1488,7 @@ begin
   ASettings.RequestTimeoutMs := 10000;
   ASettings.ServerCrashCases := True;
   ASettings.ServerCrashSkip := True;
+  ASettings.ServerStatusFile := True;
   ASettings.DiagnosticsLog := True;
   ASettings.DiagnosticsLogDays := 7;
   ASettings.DiagnosticsLogMapFile := False;

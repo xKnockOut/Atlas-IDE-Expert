@@ -1032,6 +1032,69 @@
       "x-captionEn": "Preview in the editor",
       "x-issue": "#434"
     },
+    "SuggestionsLearned": {
+      "description": "Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; und Enter schlägt Atlas als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Tab übernimmt den ganzen Block, Strg+→ wortweise, Esc verwirft. Ohne KI und ohne Netz, gelernt aus dem Index des Projekts und aus suggestions.patterns in atlas.json.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "suggestions.learned",
+      "x-area": "completion",
+      "x-feature": "LearnedSuggestions",
+      "x-page": "Vervollständigung",
+      "x-parent": "completion.enabled",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Gelernte Vorschläge",
+      "x-captionEn": "Learned suggestions",
+      "x-issue": "#1890"
+    },
+    "SuggestionsDelayMs": {
+      "description": "Tipp-Pause in Millisekunden, bevor ein gelernter Vorschlag erscheint (100 bis 2000).",
+      "type": "integer",
+      "default": 300,
+      "x-key": "suggestions.delayMs",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-parent": "suggestions.learned",
+      "x-caption": "Pause bis zum Vorschlag (ms)",
+      "x-captionEn": "Pause before the suggestion (ms)",
+      "x-issue": "#1890"
+    },
+    "SuggestionsMinShare": {
+      "description": "Mindestanteil in Prozent: So oft muss die Folge unter allen Stellen mit demselben Auslöser vorkommen (50 bis 100).",
+      "type": "integer",
+      "default": 70,
+      "x-key": "suggestions.minShare",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-parent": "suggestions.learned",
+      "x-caption": "Mindestanteil (%)",
+      "x-captionEn": "Minimum share (%)",
+      "x-issue": "#1890"
+    },
+    "SuggestionsMinCount": {
+      "description": "Mindestzahl der Stellen im Projekt, an denen die Folge vorkommt (2 bis 100).",
+      "type": "integer",
+      "default": 5,
+      "x-key": "suggestions.minCount",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-parent": "suggestions.learned",
+      "x-caption": "Mindestzahl der Stellen",
+      "x-captionEn": "Minimum number of places",
+      "x-issue": "#1890"
+    },
+    "SuggestionsLearnFromUsage": {
+      "description": "Annehmen und Verwerfen je Muster zählen (%LOCALAPPDATA%\\Atlas, je Projektgruppe): verworfene Muster erscheinen seltener, angenommene eher.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "suggestions.learnFromUsage",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-parent": "suggestions.learned",
+      "x-caption": "Aus der Nutzung lernen",
+      "x-captionEn": "Learn from usage",
+      "x-issue": "#1890"
+    },
     "GroupInherited": {
       "type": "boolean",
       "default": true,
@@ -2887,6 +2950,19 @@
       "x-page": "Prüfregeln",
       "x-node": "rules.window",
       "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus."
+    },
+    "ProblemsIdeErrors": {
+      "type": "boolean",
+      "default": false,
+      "description": "Nach jeder Prüfung einer Datei die Fehler der IDE (Error Insight) abfragen und im Fenster „Atlas-Prüfung“ neben die Atlas-Befunde stellen: Spalte und Filter „Quelle“ (Atlas und IDE, nur Atlas, nur IDE). Befunde „nur Atlas“ der Regeln für undeklarierte Bezeichner und unbekannte Typen gehen ohne Namen ins Protokoll. Braucht das Modul Prüfregeln.",
+      "x-key": "problems.ideErrors",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-node": "rules.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Fehler der IDE (Error Insight) neben die Atlas-Befunde stellen",
+      "x-captionEn": "Show IDE errors (Error Insight) next to the Atlas findings",
+      "x-issue": "#1819"
     },
     "HoverProblemActions": {
       "type": "boolean",
@@ -6376,6 +6452,40 @@
       "x-node": "editor.designerBar",
       "x-issue": "#743"
     },
+    "DesignerUndo": {
+      "description": "Rückgängig im Formular-Designer (experimentell): Nach jeder abgeschlossenen Änderung (Verschieben, Größe, Eigenschaft, Ereignis, Einfügen, Löschen, Umbenennen) merkt sich Atlas den Formularstand im Speicher. Strg+Z und Strg+Umschalt+Z gehen zurück und vor, solange der Designer den Fokus hat; der Knopf „Rückgängig im Designer“ der Designer-Leiste nimmt den letzten Schritt zurück, sein Menü listet die Schritte lesbar („Panel1.Align: alNone → alClient“), ein Klick springt auf diesen Stand. Zurückgeladen wird Eigenschaft für Eigenschaft (auch Kollektionen, Listen und Bilder); gelöschte Komponenten legt Atlas neu an, ihr Ereignis-Handler muss im Code noch stehen. Geerbte Komponenten und Komponenten eingebetteter Frames lassen sich nur ändern, nicht neu anlegen oder löschen. Der Code bleibt unangetastet. Speichern leert die Liste nicht, Schließen des Formulars schon. Aus: Strg+Z bleibt beim Designer der IDE.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "designer.undo",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.designerBar",
+      "x-node": "editor.designerBar",
+      "x-experimental": true,
+      "x-caption": "Rückgängig im Designer",
+      "x-captionEn": "Undo in the designer",
+      "x-keywords": [
+        "undo",
+        "redo",
+        "Strg+Z",
+        "Ctrl+Z",
+        "Wiederherstellen"
+      ],
+      "x-issue": "#1887"
+    },
+    "DesignerUndoSteps": {
+      "description": "Höchstzahl der Schritte für „Rückgängig im Designer“ je Formular (5 bis 200); ältere fallen weg.",
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 200,
+      "default": 50,
+      "x-key": "designer.undoSteps",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "designer.undo",
+      "x-node": "editor.designerBar",
+      "x-issue": "#1887"
+    },
     "EditorStatusBarItems": {
       "type": "string",
       "default": "status,findings,liveCheck,method",
@@ -7353,6 +7463,24 @@
       "x-area": "welcome",
       "x-page": "Willkommensseite"
     },
+    "WelcomePageContinueIssues": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.continue.issues",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
+    "WelcomePageContinueIssuesCount": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 30,
+      "x-key": "welcomePage.continue.issues.count",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#2052"
+    },
     "WelcomePageSaved": {
       "type": "boolean",
       "default": true,
@@ -7857,6 +7985,59 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1262"
+    },
+    "IssuesProjectPicker": {
+      "type": "boolean",
+      "default": true,
+      "description": "Klappliste „Tracker-Projekt“ vor der Abfrage im Kopf von „Meine Issues“ (#1927): „Automatisch“ (nach dem Delphi-Projekt wie bisher) oder ein Tracker-Projekt aus der Tabelle Projekte, unabhängig vom Ordner; aus = keine Klappliste, das Tracker-Projekt folgt dem Delphi-Projekt.",
+      "x-key": "issues.projectPicker",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1927"
+    },
+    "IssuesWelcomeProject": {
+      "type": "string",
+      "default": "",
+      "examples": ["KASSE@YouTrack", "*"],
+      "description": "In „Meine Issues“ gewähltes Tracker-Projekt (#1927), von der Klappliste geschrieben: leer = automatisch nach dem Delphi-Projekt, \"<projekt>@<verbindung>\" = fest, \"*\" = alle Tracker-Projekte (#1928). Gibt es die Zeile nicht mehr, gilt automatisch.",
+      "x-key": "issues.welcomeProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste in „Meine Issues“",
+      "x-issue": "#1927"
+    },
+    "IssuesAllProjects": {
+      "type": "boolean",
+      "default": true,
+      "description": "Eintrag „Alle Tracker-Projekte“ in der Klappliste „Tracker-Projekt“ (#1928): eine Gruppe je Tracker-Projekt mit Trefferzahl; aus = kein Eintrag.",
+      "x-key": "issues.allProjects",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1928"
+    },
+    "IssuesAllProjectsPerGroup": {
+      "type": "integer",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 20,
+      "description": "Zeilen je Gruppe in „Alle Tracker-Projekte“ (#1928); der Rest steht hinter „+ N weitere“.",
+      "x-key": "issues.allProjects.perGroup",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Zahl (1–20)",
+      "x-issue": "#1928"
+    },
+    "IssuesSuggestPaths": {
+      "type": "boolean",
+      "default": true,
+      "description": "Knopf „Vorschlagen …“ bei den Arbeitskopien eines Tracker-Projekts (#1929): Funde aus der Projektdatei, deren Externals bzw. Submodulen, der .groupproj und bei GitHub den zuletzt geöffneten Projekten mit passendem origin; aus = kein Knopf.",
+      "x-key": "issues.suggestPaths",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1929"
     },
     "IssuesCreate": {
       "type": "boolean",

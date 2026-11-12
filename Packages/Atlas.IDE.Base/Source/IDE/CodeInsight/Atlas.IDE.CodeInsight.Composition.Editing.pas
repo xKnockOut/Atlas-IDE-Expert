@@ -2,6 +2,7 @@
 
 // Bearbeitungshilfen im Editor: Änderungsmarken (#507), Zeilen verschieben (#634), Blockkommentar (#703),
 // Anweisung vervollständigen (#697), Kommentar und Muster fortsetzen (#696, #671), Einrückung beim Tippen (#1827),
+// gelernte Vorschläge (#1890),
 // mehrere Einfügemarken (#589), Bezeichner mitziehen (#658), Markierung umschließen (#672), Einfügen mit uses
 // (#515), Umschließung entfernen (#657), Ausdruckstyp (#689) und Methodenrümpfe in Deklarationsreihenfolge (#660).
 // Teil „Commands“.
@@ -16,6 +17,8 @@ procedure UninstallEditing;
 implementation
 
 uses
+  System.SysUtils,
+  System.Types,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.LineMove,
@@ -24,6 +27,8 @@ uses
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.SmartIndent,
   Atlas.IDE.Editor.PatternContinuation,
+  Atlas.IDE.Editor.GhostSuggestions,
+  Atlas.IDE.Editor.LearnedSuggestions,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.WrapSelection,
@@ -77,6 +82,11 @@ begin
   SetStatusExtra('linkedEditing', AText, AHint, nil);
 end;
 
+procedure GhostStatus(const AText, AHint: string; const AOnClick: TProc<TPoint>);
+begin
+  SetStatusExtra('ghostSuggestion', AText, AHint, AOnClick);
+end;
+
 function UnopenedPolicy: TAtlasUnopenedPolicy;
 begin
   Result := TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits);
@@ -100,6 +110,10 @@ begin
   TAtlasIdeSmartIndent.Install(RunningSession, TypingBusy);
   // Muster fortsetzen (#671): nach dem Kommentar, nie bei offener Vervollständigung.
   TAtlasIdePatternContinuation.Install(RunningSession, CompletionVisible);
+  // Gelernte Vorschläge (#1890): nach dem Muster, nur wenn es nichts vorschlägt; nie neben Vervollständigung,
+  // Platzhaltern, mehreren Einfügemarken und dem Mitziehen von Bezeichnern.
+  TAtlasIdeLearnedSuggestions.Install(RunningSession, MessageLines());
+  TAtlasIdeGhostSuggestions.Install(TypingBusy, GhostStatus);
 end;
 
 procedure InstallEditing;
@@ -132,6 +146,8 @@ begin
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
   TAtlasIdeMultiCursor.Uninstall;
+  TAtlasIdeGhostSuggestions.Uninstall;
+  TAtlasIdeLearnedSuggestions.Uninstall;
   TAtlasIdePatternContinuation.Uninstall;
   TAtlasIdeSmartIndent.Uninstall;
   TAtlasIdeCommentContinuation.Uninstall;

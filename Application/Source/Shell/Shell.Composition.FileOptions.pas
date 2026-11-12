@@ -2,7 +2,8 @@
 
 // Internals-Rolle Shell: Vorgaben je Datei für Editor, Vervollständigung, Code-Aktionen und Refactorings. Delphi-
 // Version (#47) und Sprachstand (#1126), Schnellbefehle (#293), Doku-Kommentare (#88), Formatstil mit
-// .editorconfig (#43), Einrückung beim Tippen (#1827) und Präfixe neuer Namen der Namensregel.
+// .editorconfig (#43), Einrückung beim Tippen (#1827), gelernte Vorschläge (#1890) und Präfixe neuer Namen der
+// Namensregel.
 
 interface
 
@@ -13,6 +14,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SmartIndent,
   Atlas.Common.Editing.MethodOrder,
+  Atlas.Common.Editing.LearnedSuggestions,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -51,6 +53,9 @@ type
     /// <summary>Methoden ordnen (#1834): Lebenszyklus zuerst und Form des Typkommentars aus "classCompletion",
     /// Zeilenlänge aus dem Formatstil; die Ordnung selbst setzt der Befehl.</summary>
     function MethodOrderFor(const AUri: string): TMethodOrderOptions;
+    /// <summary>Gelernte Vorschläge (#1890): Einrückung aus dem Formatstil samt Editor-Optionen, Muster aus
+    /// "suggestions.patterns"; die Schwellen setzt der Befehl aus den Einstellungen des Plugins.</summary>
+    function LearnedOptionsFor(const AUri: string; const AEditorOptions: TJSONValue): TLearnedOptions;
     /// <summary>Präfixe neuer Namen für Refactorings: die der Namensregel, wenn sie für die Datei läuft (dieselbe
     /// Entscheidung wie in der Prüfung, TRuleEngine.NewNames).</summary>
     function NewNamesFor(const AUri: string): TPascalNamePrefixes;
@@ -153,6 +158,17 @@ begin
   Result.LifecycleFirst := mSettings.LifecycleFirst;
   Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
   Result.LineLength := FormatStyleFor(AUri).MaxLineLength;
+end;
+
+function TShellFileOptions.LearnedOptionsFor(const AUri: string; const AEditorOptions: TJSONValue): TLearnedOptions;
+var
+  mStyle: TFormatStyle;
+begin
+  Result := TLearnedOptions.Default;
+  mStyle := ResolvedFormatStyleWith(AUri, AEditorOptions);
+  Result.IndentSize := mStyle.IndentSize;
+  Result.UseTabs := mStyle.UseTabs;
+  Result.Team := FSettings.SettingsFor(AUri).Suggestions.Patterns;
 end;
 
 function TShellFileOptions.ResolvedFormatStyleWith(const AUri: string; const AEditorOptions: TJSONValue): TFormatStyle;
