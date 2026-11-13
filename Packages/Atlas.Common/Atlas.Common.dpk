@@ -579,6 +579,7 @@ contains
   Atlas.Common.Lsp.RuntimeReport in 'Source\Lsp\Atlas.Common.Lsp.RuntimeReport.pas',
   Atlas.Common.Lsp.TestCases in 'Source\Lsp\Atlas.Common.Lsp.TestCases.pas',
   Atlas.Common.Lsp.BoundaryCases in 'Source\Lsp\Atlas.Common.Lsp.BoundaryCases.pas',
+  Atlas.Common.Lsp.BoundaryTests in 'Source\Lsp\Atlas.Common.Lsp.BoundaryTests.pas',
   Atlas.Common.Lsp.UnitSearch in 'Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas',
   Atlas.Common.Semantics.ControlFlow in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas',
   Atlas.Common.Semantics.ControlFlow.Signatures in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.Signatures.pas',

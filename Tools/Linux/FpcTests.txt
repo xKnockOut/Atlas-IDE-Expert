@@ -23,6 +23,8 @@ Atlas.Text.LeakReport.Tests
 Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
+Atlas.Text.Xml.Tests
+Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
 Atlas.Text.Updates.Tests
 Atlas.Text.Uris.Tests
@@ -207,6 +209,7 @@ Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests
 Atlas.Common.Lsp.BoundaryCases.Tests
+Atlas.Common.Lsp.BoundaryTests.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
@@ -473,11 +476,13 @@ Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.FromDebugStop.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Tests.Coverage.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests
+Atlas.Core.Tests.BoundaryCases.Tests
 Atlas.Core.Tests.Untested.Tests
 Atlas.Core.Tests.Lists.Tests
 Atlas.Core.Tests.ListText.Tests

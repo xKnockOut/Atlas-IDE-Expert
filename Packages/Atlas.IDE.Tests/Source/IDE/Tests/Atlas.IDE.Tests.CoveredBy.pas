@@ -722,7 +722,7 @@ begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
-        mTests.RunTests(mFileName, mNames);
+        mTests.RunTests(mFileName, mNames, False);
       end);
   end;
 end;
