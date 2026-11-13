@@ -563,6 +563,8 @@ begin
       FFiles := AFiles;
     end;
     Dec(FBuilding);
+    // Weckt WaitIdle.
+    System.TMonitor.PulseAll(FLock);
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -610,11 +612,11 @@ begin
   mThread := TThread.CreateAnonymousThread(
     procedure
     var
-      Files: TAtlasQuickOpenFiles;
+      mFiles: TAtlasQuickOpenFiles;
     begin
-      Files := nil;
+      mFiles := nil;
       try
-        Files := TAtlasQuickOpen.Collect(mSources, mLister,
+        mFiles := TAtlasQuickOpen.Collect(mSources, mLister,
           function: Boolean
           begin
             System.TMonitor.Enter(FLock);
@@ -629,7 +631,7 @@ begin
         on Exception do
           mGeneration := -1;
       end;
-      Store(mGeneration, Files);
+      Store(mGeneration, mFiles);
     end);
   mThread.FreeOnTerminate := False;
   FThreads.Add(mThread);
@@ -659,17 +661,25 @@ end;
 function TAtlasQuickOpenList.WaitIdle(ATimeoutMs: Cardinal): Boolean;
 var
   mWatch: TStopwatch;
+  mElapsed: Int64;
 begin
   mWatch := TStopwatch.StartNew;
-  while Building do
-  begin
-    if mWatch.ElapsedMilliseconds >= ATimeoutMs then
+  System.TMonitor.Enter(FLock);
+  try
+    // Store meldet jedes Ende eines Aufbaus über PulseAll; kein Abfragen im Takt.
+    while FBuilding > 0 do
     begin
-      Exit(False);
+      mElapsed := mWatch.ElapsedMilliseconds;
+      if mElapsed >= ATimeoutMs then
+      begin
+        Exit(False);
+      end;
+      System.TMonitor.Wait(FLock, Cardinal(ATimeoutMs - mElapsed));
     end;
-    TThread.Sleep(5);
+    Result := True;
+  finally
+    System.TMonitor.Exit(FLock);
   end;
-  Result := True;
 end;
 
 end.

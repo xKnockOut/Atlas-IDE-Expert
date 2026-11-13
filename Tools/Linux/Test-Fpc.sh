@@ -37,10 +37,26 @@ python3 -I "$REPO/Tools/Linux/New-FpcTestProgram.py" "$REPO" "$OUT/AtlasFpcTests
 python3 -I "$REPO/Tools/Linux/Convert-ForFpc.py" "$REPO" "$OUT/Src" --root "$OUT/AtlasFpcTests.dpr" --tests >&2 || exit 2
 cp "$REPO"/Tools/Linux/Compat/*.pas "$REPO"/Tools/Linux/Compat/Regex/*.pp "$REPO"/Tools/Linux/Compat/DUnitX/*.pas "$OUT/Src/"
 
+COMMON_FLAGS=(-n -Mdelphi -Sh -dUSEWIDESTRING -O1 -g -gl -Cs8388608 -l- -vew
+  -FU"$OUT/Units" -Fu"$OUT/Src" -Fu"$F/units/x86_64-linux/*" -Fi"$OUT/Src" -FE"$OUT/Bin")
+
+# Die Regex-Units aus Compat/Regex sind unveränderte Kopien der FPC-RTL und werden wie die RTL ohne Bereichs- und
+# Überlaufprüfung übersetzt (eine nicht belegte Gruppe hat dort den Versatz SIZE_MAX, +1 läuft über). Das
+# folgende Übersetzen findet die fertigen .ppu und übersetzt sie nicht erneut.
+log "Übersetze Regex-Units der RTL ohne Prüfungen"
+for mUnit in system.regularexpressionsconsts system.regularexpressionscore system.regularexpressions; do
+  if ! "$F/ppcx64" "${COMMON_FLAGS[@]}" "$OUT/Src/$mUnit.pp" >>"$OUT/build.log" 2>&1; then
+    grep -E "Error|Fatal" "$OUT/build.log" | head -20 >&2
+    log "Übersetzen gescheitert, Protokoll: $OUT/build.log"
+    exit 3
+  fi
+done
+
 log "Übersetze AtlasFpcTests"
-if ! "$F/ppcx64" -n -Mdelphi -Sh -dUSEWIDESTRING -O1 -g -gl -Cs8388608 -l- -vew \
-  -FU"$OUT/Units" -Fu"$OUT/Src" -Fu"$F/units/x86_64-linux/*" -Fi"$OUT/Src" -FE"$OUT/Bin" \
-  -o"$OUT/Bin/AtlasFpcTests" "$OUT/Src/AtlasFpcTests.pas" >"$OUT/build.log" 2>&1; then
+# -Cr -Co: Bereichs- und Überlaufprüfung wie im Delphi-Debug-Build der Tests (#1980). Nur hier, nicht im Bau
+# des ausgelieferten Servers (Build-AtlasServer.sh). Gewollte Überläufe (Hashes) stehen in {$Q-}-Inseln.
+if ! "$F/ppcx64" "${COMMON_FLAGS[@]}" -Cr -Co \
+  -o"$OUT/Bin/AtlasFpcTests" "$OUT/Src/AtlasFpcTests.pas" >>"$OUT/build.log" 2>&1; then
   grep -E "Error|Fatal" "$OUT/build.log" | head -20 >&2
   log "Übersetzen gescheitert, Protokoll: $OUT/build.log"
   exit 3

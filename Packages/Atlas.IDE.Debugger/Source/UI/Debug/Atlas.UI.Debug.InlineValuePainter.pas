@@ -32,6 +32,9 @@ type
     procedure Ensure(ABack: COLORREF; const AEditorFont: TFont);
     /// <summary>AItems ab AX in ARect zeichnen; Ergebnis: rechte Kante.</summary>
     function Draw(ADC: HDC; const ARect: TRect; AX: Integer; const AItems: TAtlasInlineValueItems): Integer;
+    /// <summary>AText gedimmt ab AX in ARect zeichnen („Warum bin ich hier?“, #1878); Ergebnis: rechte Kante.
+    /// </summary>
+    function DrawText(ADC: HDC; const ARect: TRect; AX: Integer; const AText: string): Integer;
   end;
 
 implementation
@@ -110,6 +113,30 @@ begin
       GetTextExtentPoint32W(ADC, PChar(mPart), Length(mPart), mSize);
       Inc(Result, mSize.cx);
     end;
+  finally
+    RestoreDC(ADC, mSaved);
+  end;
+end;
+
+function TAtlasInlineValuePainter.DrawText(ADC: HDC; const ARect: TRect; AX: Integer; const AText: string): Integer;
+var
+  mSaved, mTop: Integer;
+  mSize: TSize;
+begin
+  Result := AX;
+  if AText = '' then
+  begin
+    Exit;
+  end;
+  mSaved := SaveDC(ADC);
+  try
+    SelectObject(ADC, FFont.Handle);
+    SetBkMode(ADC, TRANSPARENT);
+    SetTextColor(ADC, FTextColor);
+    GetTextExtentPoint32W(ADC, PChar(AText), Length(AText), mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    TextOutW(ADC, AX, mTop, PChar(AText), Length(AText));
+    Inc(Result, mSize.cx);
   finally
     RestoreDC(ADC, mSaved);
   end;

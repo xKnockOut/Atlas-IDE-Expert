@@ -137,6 +137,7 @@ Atlas.Common.Index.Extractor.InlineRefs.Tests
 Atlas.Common.Index.Extractor.Tokens.Tests
 Atlas.Common.Index.Extractor.TypeText.Tests
 Atlas.Common.Index.Processes.Tests
+Atlas.Common.Index.UsageCounts.Tests
 Atlas.Common.JsonRpc.CurrentRequest.Tests
 Atlas.Common.JsonRpc.Messages.Tests
 Atlas.Common.JsonRpc.PendingRequests.Tests
@@ -144,6 +145,8 @@ Atlas.Common.JsonRpc.StreamTransport.Tests
 Atlas.Common.JsonRpc.TracingTransport.Tests
 Atlas.Common.JsonRpc.WorkerPool.Tests
 Atlas.Common.Leaks.Setup.Tests
+Atlas.Common.Leaks.Candidates.Tests
+Atlas.Common.Lsp.LeakCandidates.Tests
 Atlas.Common.Localization.Texts.Tests
 Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
@@ -159,11 +162,13 @@ Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeConversions.Tests
+Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.CoveredBy.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
+Atlas.Common.Lsp.EnclosingConditions.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
 Atlas.Common.Lsp.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests
@@ -340,6 +345,7 @@ Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
+Atlas.Core.Debug.WhyHere.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
@@ -358,8 +364,14 @@ Atlas.Core.Debug.InstanceBreakpoint.Tests
 Atlas.Core.Debug.ParallelStacks.Tests
 Atlas.Core.Debug.ThreadMarks.Tests
 Atlas.UI.Debug.ThreadMarks.Tests
+Atlas.Core.Debug.AsyncOrigin.Tests
+Atlas.UI.Debug.AsyncOrigin.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
+Atlas.Core.Debug.EventLog.Tests
+Atlas.Core.Debug.Logpoint.Tests
+Atlas.Core.Debug.NoSource.Tests
+Atlas.Core.Debug.Restart.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
@@ -409,4 +421,6 @@ Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
+Atlas.Core.Tests.CaseTable.Tests

@@ -178,7 +178,14 @@ For exports, reports, generated code or JSON a test checks the result against a 
 - Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
 - Messages are German, English with `TApproval.English := True`.
 
-Setting: `tests.approvalFolder` (atlas.json)
+In the IDE (Tests module, `tests.approvalFiles`):
+
+- If a test fails with this message, its test mark shows “Difference · Compare”, without an approved file “New · Compare”. The same “Compare” button appears in the hover of the failure and on the *Test results* card.
+- The comparison shows the approved file on the left and the received file on the right (lines matched as for expected and actual, #1779). *Accept as new expectation* replaces the approved file with the received file and deletes it; the next run is green. *Go to test* jumps to the method header.
+- *Delete leftover .received files* (Atlas menu, command palette) looks in the approval folder of the test project that ran last (without a run, the active project), deletes all `*.received.*` there after asking and offers to add `*.received.*` to the nearest `.gitignore` if it has no line for them yet.
+- `tests.approvalFiles` off: no special mark, no command; the helper unit keeps working, its failures show as ordinary failures.
+
+Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
 
 ### Test duration and slow tests (#1772)
 
@@ -286,6 +293,15 @@ Settings: `debug.displayRules`
 - In small time slices so F8 stays fast
 
 Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
+
+### Why am I here?
+
+- When stopped, the end of the header lines of the enclosing `if`, `while`, `repeat … until`, `for` and `case` shows the values of their conditions, dimmed like the inline values: `(1200 > 1000) and True → True`, `I = 3 of 7`, `Art = paRabatt → paRabatt`, in an `else` branch `(4 = 0) → False, else branch`
+- Short-circuit as in the program: if `A = False` already decides `A and B`, B shows “not needed”
+- Calls and getters are not evaluated on their own (`‹call›`); a click on the text of the line asks and then runs them
+- Only in files with source, up to the routine, at most `debug.whyHere.depth` blocks (default 3); the values disappear with the next step
+
+Settings: `debug.whyHere`, `debug.whyHere.depth`
 
 ### "No access to value" explained
 
@@ -410,6 +426,50 @@ Atlas menu and command palette. When you work on several bugs, switch between na
 
 Settings: `debug.breakpointSetPerBranch`
 
+## Debug: event log
+
+<a id="window-atlasdebugeventlog"></a>
+- Dockable window “Atlas: Event log” with debug output (`OutputDebugString`), breakpoint messages, modules, threads, logpoints and start and end of the session
+- Columns time (relative to the start), kind, thread, text
+- Filter by kind and text: words (each must occur) or `/regular expression/`; “Remember filter” keeps it per project in the list
+- Colors by pattern, for example `[FEHLER]` red, `[WARN]` yellow
+- Double-click or Enter jumps to `File.pas(123)`, `File.pas:123` or `Unit.Routine`
+- Context menu: copy line, save as text file, clear
+
+Settings: `debug.eventLog`, `debug.eventLogColors`
+
+## Debug: logpoints
+
+- Shift+F5 or “Atlas: Set logpoint” (Atlas menu, editor context menu) at the cursor line, or after a right-click in the gutter at that line
+- Text with placeholders: `x={x}`, `total {Total:0.00}`; formats `d` (integer), `x` (hexadecimal), patterns with `0` or `#` (`FormatFloat`), otherwise as in `Format` (`.2f`); `{{` and `}}` are literal braces
+- Condition (`{Total} > 1000`) and “only the first N hits”; the dialog shows errors in the text with their position
+- An ordinary breakpoint on the line becomes a logpoint; “Remove” deletes it
+- One line of kind logpoint in the event log with prefix and place, for example `[LOG] x=42 · Unit1.pas:12`; double-click jumps to the line
+- Diamond in the gutter with text and condition in the tooltip
+- “Disable/Enable/Delete all logpoints” only touch the breakpoint group `Atlas.Logpunkte`
+
+Settings: `debug.logpoints`, `debug.logpointPrefix`
+
+## Debug: no source
+
+- When the debugger stops in a routine without source (the IDE shows the CPU window), a small window without focus appears at the top right: routine, module, address, unit and reason
+- Reasons: debug DCUs off (Delphi library), unit compiled with `{$D-}`, only DCU/BPL available, source not in the search path, system code (Windows)
+- Ways out depending on the reason: “Turn on debug DCUs and rebuild” (only in the Debug configuration, with confirmation; the session ends, then Atlas builds and starts), “Back to my code” (runs until it returns to own code), “Find source …” (the folder is remembered for the project, the unit opens), “Keep CPU window”
+- “Do not show for this unit again” extends `debug.noSourcePage.ignoredUnits`
+- With “Just my code” (`debug.justMyCode`) the window only appears for exceptions
+
+Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
+## Debug: restart
+
+- “Atlas: Restart” with Ctrl+Shift+F2, in the Atlas menu or in the command palette
+- Steps: stop (only while the program runs), build (only when something changed since the last build), start, back to the place in the editor
+- A small bar without focus at the top right shows the steps and their duration, for example “Stop 0.3 s ✓ · Build 2.1 s ✓ · Start …”
+- If a step fails, the run stops and the bar names the reason
+- With `debug.restart.reenableBreakpoints` Atlas turns breakpoints back on before the start that were on when the last session started
+
+Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
@@ -506,3 +566,13 @@ Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - Experimental (`debug.threadFreeze`, default off): “Freeze thread”, “Thaw thread” and “Thaw all threads”. A frozen thread does not run when you continue; its mark is gray and the Atlas status bar shows “2 threads frozen” (click thaws all). Atlas holds the thread with `SuspendThread`, which only works for programs on this computer. At the end of the session and when switched off Atlas thaws all threads.
 
 Settings: `debug.threadsInSource`, `debug.threadFreeze`
+
+### Origin of queued methods *(experimental)*
+
+- When the program stops in an anonymous method started with `TThread.Queue`, `TThread.Synchronize`, `TThread.ForceQueue`, `TTask.Run`, `TTask.Create` or `TParallel.For`, the IDE call stack only shows `CheckSynchronize` or the thread pool. Atlas then shows “Queued with TThread.Queue from thread 4120” in the results window with the call stack of the place that queued it; library frames are collapsed (“5 library frames”), double click jumps to the line.
+- For this Atlas sets a breakpoint of group Atlas.Herkunft on every call site in the project when the session starts. When the program stops there, Atlas records thread and stack and continues at once. A breakpoint of your own on the same line stays and stops as usual.
+- Matching follows the order: a stop in the method of a call site gets the oldest open call of that site. Atlas keeps the last `debug.asyncOrigin.maxPerSite` per call site (default 20).
+- Only calls with the class name (`TThread.Queue(…)`) count, a plain `Synchronize(…)` inside a thread method does not.
+- Stopping at every call site slows the program down; the Atlas status bar shows “Origin: 12 call sites” in yellow while the breakpoints are set.
+
+Settings: `debug.asyncOrigin`, `debug.asyncOrigin.maxPerSite`
