@@ -98,7 +98,7 @@ begin
   Assert.AreEqual(3, Integer(Length(Lines.Lines)));
   Assert.EndsWith('Zeile 3', Lines.Lines[0]);
   Assert.EndsWith('Zeile 5', Lines.Lines[2]);
-  Assert.AreEqual(TRecentLogSink.cDefaultCapacity, 200);
+  Assert.AreEqual(200, TRecentLogSink.cDefaultCapacity);
 end;
 
 procedure TBugReportTests.ReportHasNoDocumentContent;
