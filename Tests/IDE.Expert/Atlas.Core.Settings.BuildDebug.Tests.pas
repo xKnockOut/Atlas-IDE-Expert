@@ -50,6 +50,9 @@ type
     /// </summary>
     [Test]
     procedure EventLogOptions;
+    /// <summary>Logpunkte (#583): an, Präfix getrimmt, gespeichert und geladen.</summary>
+    [Test]
+    procedure LogpointOptions;
   end;
 
 implementation
@@ -140,6 +143,26 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugEventLog);
   Assert.AreEqual('[X]=#00FF00', Loaded.DebugEventLogColors);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.LogpointOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugLogpoints, 'standardmäßig an');
+  Assert.AreEqual(cDefaultLogpointPrefix, Settings.DebugLogpointPrefix);
+  Settings.DebugLogpoints := False;
+  Settings.DebugLogpointPrefix := ' >> ';
+  Settings.Normalize;
+  Assert.AreEqual('>>', Settings.DebugLogpointPrefix);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugLogpoints);
+  Assert.AreEqual('>>', Loaded.DebugLogpointPrefix);
 end;
 
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;

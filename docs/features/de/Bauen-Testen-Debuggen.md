@@ -392,6 +392,18 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
 Einstellungen: `debug.eventLog`, `debug.eventLogColors`
 
+### Logpunkte
+
+- Umschalt+F5 oder „Atlas: Logpunkt setzen“ (Atlas-Menü, Kontextmenü des Editors) an der Cursorzeile bzw. nach Rechtsklick in die Rinne an deren Zeile
+- Text mit Platzhaltern: `x={x}`, `Summe {Summe:0.00}`; Formatangaben `d` (ganze Zahl), `x` (hexadezimal), Muster mit `0` oder `#` (`FormatFloat`), sonst wie in `Format` (`.2f`); `{{` und `}}` sind Klammern im Text
+- Bedingung (`{Summe} > 1000`) und „nur die ersten N Treffer“; Fehler im Text zeigt der Dialog mit Stelle
+- ein gewöhnlicher Haltepunkt an der Zeile wird zum Logpunkt; „Entfernen“ löscht ihn
+- im Ereignisprotokoll eine Zeile der Art Logpunkt mit Präfix und Ort, etwa `[LOG] x=42 · Unit1.pas:12`; Doppelklick springt zur Zeile
+- Raute in der Rinne mit Text und Bedingung im Tooltip
+- „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
+
+Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>
