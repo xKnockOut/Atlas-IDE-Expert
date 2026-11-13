@@ -11,3 +11,7 @@ Quellen mit `-dUSEWIDESTRING` (UnicodeString, pcre2-16) wie Delphi. Zur Laufzeit
 `libpcre2-16.so.0` (Paket `libpcre2-16-0`).
 
 Bei einem neuen `FPC_COMMIT` diese drei Dateien aus demselben Stand neu holen.
+
+Eigene Korrekturen gegenüber FPC (bei einem neuen Stand prüfen, ob sie noch nötig sind): Neuversuch nach leerem
+Treffer in `MatchAgain` wie in pcre2demo.c; `Replace` übernimmt den ganzen Text zwischen zwei Treffern (vorher nur
+dessen erstes Zeichen, etwa `TRegEx.Replace(S, '\s+', ' ')` bei mehreren Lücken).

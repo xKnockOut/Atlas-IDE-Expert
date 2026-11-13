@@ -68,6 +68,7 @@ Atlas.Common.Editing.CompilerFixes.Tests
 Atlas.Common.Editing.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests
 Atlas.Common.Editing.CreateMethod.Tests
+Atlas.Common.Editing.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Editing.DocComments.Tests

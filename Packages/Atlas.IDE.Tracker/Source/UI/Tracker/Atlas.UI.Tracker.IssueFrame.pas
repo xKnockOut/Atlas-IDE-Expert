@@ -982,7 +982,6 @@ begin
   AFrame.FContent.LinkTree.Height := (mRows + 1) * MulDiv(20, AFrame.CurrentPPI, 96);
 end;
 
-/// <summary>Gruppen und Zeilen des Baums.</summary>
 /// <summary>Verknüpfungen als Baum (#1279); mit CanWriteLinks die Knöpfe darüber.</summary>
 procedure AddLinkTree(AFrame: TAtlasIssueFrame);
 var
