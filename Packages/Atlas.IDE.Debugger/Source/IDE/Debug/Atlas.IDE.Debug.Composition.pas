@@ -7,7 +7,7 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“; die Teile
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“, Speicherverlauf; die Teile
 //   für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
 //   Exceptions und Threads in Atlas.IDE.Debug.Composition.Session),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
@@ -242,7 +242,9 @@ begin
     Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
       TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
     Command('Atlas.DebugVariables', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCommand),
-      ShowVariablesWindow, VariablesWindowVisible)];
+      ShowVariablesWindow, VariablesWindowVisible),
+    // Speicherverlauf (#858); nur sichtbar, solange debug.memoryTimeline an ist.
+    Command('Atlas.DebugMemory', DebugMemoryCommandText, ShowDebugMemory, DebugMemoryVisible)];
 end;
 
 { TAtlasDebugModule }
@@ -390,6 +392,7 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugMemory', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugVariables', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
@@ -447,7 +450,8 @@ begin
   TAtlasIdeDebugExceptions.ApplySettings;
   // debug.exceptionBanner* (#783).
   TAtlasIdeDebugExceptionBar.ApplySettings;
-  // debug.explainUnavailable (#840), debug.completionInDialogs (#538), debug.evaluateWindow.replaceCtrlF7 (#784).
+  // debug.explainUnavailable (#840), debug.completionInDialogs (#538), debug.evaluateWindow.replaceCtrlF7 (#784),
+  // debug.memoryTimeline* (#858).
   ApplyValueSettings;
   // debug.stepFilters* (#850): Fenster mit dem gespeicherten Stand, Treffer neuer Muster zählen.
   TAtlasIdeDebugStepFilter.ApplySettings;
@@ -463,7 +467,7 @@ procedure TAtlasDebugModule.ThemeChanged;
 begin
   TAtlasIdeDebugExceptions.ThemeChanged;
   TAtlasIdeDebugExceptionBar.ThemeChanged;
-  // Fenster „Auswerten“ (#784) und „Variablen“ (#853).
+  // Fenster „Auswerten“ (#784), „Variablen“ (#853) und „Atlas: Speicher“ (#858).
   ValueThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
   RunThemeChanged;
@@ -542,7 +546,7 @@ function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
   Result := Result + [StepFilterPart] + DebugThreadParts(GScope) + DebugLeakParts(GScope) +
-    BreakpointParts + RunParts;
+    BreakpointParts + RunParts + DebugMemoryParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;
@@ -584,7 +588,7 @@ end;
 
 class procedure TAtlasDebugModule.UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, nil);
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
 end;
 
 initialization

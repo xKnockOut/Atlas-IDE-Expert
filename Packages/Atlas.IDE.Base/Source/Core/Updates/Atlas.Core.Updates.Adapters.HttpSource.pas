@@ -3,8 +3,11 @@
 // Versionsdatei über HTTPS lesen (#495), aus einem Hintergrund-Thread. Jede
 // Abfrage läuft asynchron und wird abgebrochen, sobald das Abbruchsignal des
 // Plugins kommt (TAtlasShutdown, Entladen in unter 1 s) oder die Zeit
-// abgelaufen ist. Weiterleitungen folgt Atlas selbst, höchstens fünf und nur
-// auf https; gesendet wird außer der Adresse nichts (keine Cookies).
+// abgelaufen ist; Client und Antwort-Stream werden erst nach dem Ende der
+// abgebrochenen Anfrage freigegeben (TAtlasAsyncWait.AwaitSettled). Die
+// Antwort liest ein Stream mit Größengrenze (cMaxBytes). Weiterleitungen folgt
+// Atlas selbst, höchstens fünf und nur auf https; gesendet wird außer der
+// Adresse nichts (keine Cookies).
 
 interface
 
@@ -27,10 +30,11 @@ uses
   System.Net.HttpClient,
   System.Net.URLClient,
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.AsyncWait;
+  Atlas.Core.Diagnostics.AsyncWait,
+  Atlas.Core.Diagnostics.BoundedStream;
 
 const
-  // Die Versionsdatei ist ein paar Byte groß; mehr wird nicht gelesen.
+  // Die Versionsdatei ist ein paar Byte groß; mehr nimmt der Antwort-Stream nicht an.
   cMaxBytes = 64 * 1024;
   cMaxRedirects = 5;
 
@@ -40,15 +44,16 @@ begin
 end;
 
 /// <summary>Holt AUrl in AContent; False, wenn das Abbruchsignal kommt oder ADeadline erreicht ist.</summary>
-function AwaitGet(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; const ADeadline: TAtlasDeadline;
-  out AResponse: IHTTPResponse): Boolean;
+function AwaitGet(AClient: THTTPClient; const AUrl: string; AContent: TAtlasBoundedStream;
+  const ADeadline: TAtlasDeadline; out AResponse: IHTTPResponse): Boolean;
 var
   mAsync: IAsyncResult;
 begin
   AResponse := nil;
   AContent.Clear;
   mAsync := AClient.BeginGet(AUrl, AContent);
-  Result := TAtlasAsyncWait.Await(
+  // Bei einem Abbruch erst nach dem Ende der Anfrage zurück: Bis dahin schreibt der Task der RTL in AContent.
+  Result := TAtlasAsyncWait.AwaitSettled(
     function: Boolean
     begin
       Result := mAsync.IsCompleted;
@@ -64,8 +69,8 @@ begin
 end;
 
 /// <summary>Holt AUrl und folgt Weiterleitungen (höchstens MaxRedirects, nur auf https); AError sonst.</summary>
-function FollowRedirects(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; ATimeoutMs: Integer;
-  out AResponse: IHTTPResponse; out AError: string): Boolean;
+function FollowRedirects(AClient: THTTPClient; const AUrl: string; AContent: TAtlasBoundedStream;
+  ATimeoutMs: Integer; out AResponse: IHTTPResponse; out AError: string): Boolean;
 var
   mDeadline: TAtlasDeadline;
   mUrl: string;
@@ -101,16 +106,17 @@ function TAtlasHttpVersionSource.Fetch(const AUrl: string; ATimeoutMs: Integer; 
   AError: string): Boolean;
 var
   mClient: THTTPClient;
-  mContent: TBytesStream;
+  mContent: TAtlasBoundedStream;
   mResponse: IHTTPResponse;
 begin
   Result := False;
   AText := '';
   AError := '';
   mClient := THTTPClient.Create;
-  mContent := TBytesStream.Create;
+  mContent := TAtlasBoundedStream.Create(cMaxBytes);
   try
-    mClient.ConnectionTimeout := ATimeoutMs;
+    // Kurz: Ein Abbruch während des Verbindungsaufbaus wirkt erst, wenn dieser endet.
+    mClient.ConnectionTimeout := TAtlasAsyncWait.ConnectTimeout(ATimeoutMs);
     mClient.ResponseTimeout := ATimeoutMs;
     mClient.HandleRedirects := False;
     mClient.AllowCookies := False;
@@ -124,10 +130,6 @@ begin
       begin
         AError := Format('HTTP %d', [mResponse.StatusCode]);
       end
-      else if mContent.Size > cMaxBytes then
-      begin
-        AError := 'Antwort zu groß';
-      end
       else
       begin
         AText := TEncoding.UTF8.GetString(mContent.Bytes, 0, mContent.Size);
@@ -135,7 +137,13 @@ begin
       end;
     except
       on E: Exception do
+      begin
         AError := E.ClassName;
+        if mContent.Exceeded then
+        begin
+          AError := 'Antwort zu groß';
+        end;
+      end;
     end;
   finally
     // Erst die Schnittstelle lösen, sie verweist auf den Client.

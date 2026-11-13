@@ -9,6 +9,10 @@
 // entlädt es scheinbar, sein Code bleibt aber erreichbar. Das kostet nur
 // Speicher; die Warnung bittet um einen Neustart der IDE, bevor das Package
 // erneut geladen wird.
+// Wirksam ist das nur vor FreeLibrary (beim Aushängen, beim Abmelden des
+// Moduls): Aus DLL_PROCESS_DETACH heraus, etwa in einem Rückruf von
+// AddModuleUnloadProc, entlädt Windows das Modul schon, und die Warnung riefe
+// Oberflächencode unter der Ladersperre (Code-Review T-103).
 
 interface
 

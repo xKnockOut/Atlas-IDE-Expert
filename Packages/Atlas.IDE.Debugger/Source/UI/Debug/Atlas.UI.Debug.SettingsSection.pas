@@ -32,6 +32,7 @@ type
     procedure BuildVisualizers;
     procedure BuildStepping;
     procedure BuildMore;
+    procedure BuildRestartRows;
     /// <summary>Werte beim Halt: Fenster „Variablen“, Vorhersage, Werte ändern, Debug-Hover.</summary>
     procedure BuildStopValues;
   protected
@@ -59,7 +60,8 @@ uses
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Strings,
-  Atlas.UI.Debug.VariablesStrings;
+  Atlas.UI.Debug.VariablesStrings,
+  Atlas.UI.Debug.Memory.Strings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -90,6 +92,7 @@ begin
   BuildVisualizers;
   BuildStepping;
   BuildMore;
+  BuildRestartRows;
 end;
 
 procedure TAtlasDebugSettingsSection.BuildVisualizers;
@@ -233,6 +236,11 @@ begin
   Line('debug.logpointPrefix', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLogpointPrefix));
   Switch('debug.noSourcePage', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourcePage));
   Line('debug.noSourcePage.ignoredUnits', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourceIgnored));
+end;
+
+procedure TAtlasDebugSettingsSection.BuildRestartRows;
+begin
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858).
   Switch('debug.restart', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestartReenable));
   // Erneut anhängen (#2171).
@@ -242,6 +250,10 @@ begin
   // Startverbünde (#867).
   Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
   Switch('debug.pinnedValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPinnedValues));
+  // Speicherverlauf (#858).
+  Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
+  Number('debug.memoryTimeline.intervalMs',
+    TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineInterval));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;

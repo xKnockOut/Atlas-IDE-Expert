@@ -13,6 +13,10 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Abstand der Messungen des Speicherverlaufs (#858) in Millisekunden.</summary>
+  cMinMemoryTimelineIntervalMs = 250;
+  cMaxMemoryTimelineIntervalMs = 10000;
+  cDefaultMemoryTimelineIntervalMs = 1000;
   /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
   cMinWhyHereDepth = 1;
   cMaxWhyHereDepth = 10;
@@ -257,6 +261,12 @@ type
     DebugInlineValues: Boolean;
     /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
     DebugInlineValuesPerLine: Integer;
+    /// <summary>Speicherverlauf beim Debuggen (#858, debug.memoryTimeline): Fenster „Atlas: Speicher“ mit privatem
+    /// Speicher, Arbeitssatz, Handles, GDI- und USER-Objekten des Programms, Marken bei Halt, Exception und per
+    /// Knopf, Zuwachs im gewählten Bereich, CSV. Aus = nichts wird gemessen.</summary>
+    DebugMemoryTimeline: Boolean;
+    /// <summary>Abstand der Messungen in Millisekunden (#858, debug.memoryTimeline.intervalMs).</summary>
+    DebugMemoryTimelineIntervalMs: Integer;
     /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
     /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
     /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
@@ -443,6 +453,8 @@ begin
     cMaxAsyncOriginPerSite);
   DebugNoSourceIgnoredUnits := Trim(DebugNoSourceIgnoredUnits);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
+  DebugMemoryTimelineIntervalMs := EnsureRange(DebugMemoryTimelineIntervalMs, cMinMemoryTimelineIntervalMs,
+    cMaxMemoryTimelineIntervalMs);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugVariablesSearchDepth := EnsureRange(DebugVariablesSearchDepth, cMinVariablesSearchDepth,
     cMaxVariablesSearchDepth);
@@ -545,6 +557,8 @@ begin
   DebugHoverChanges := True;
   DebugHoverMaxChildren := cDefaultHoverMaxChildren;
   DebugPinnedValues := True;
+  DebugMemoryTimeline := True;
+  DebugMemoryTimelineIntervalMs := cDefaultMemoryTimelineIntervalMs;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
@@ -580,6 +594,8 @@ begin
   AIo.Flag('DebugHoverChanges', DebugHoverChanges);
   AIo.Number('DebugHoverMaxChildren', DebugHoverMaxChildren);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
+  AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
+  AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);

@@ -125,6 +125,8 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugExceptionBannerIgnoreAtLocation').Checked, 'ignoreAtLocation (#783)');
   Assert.IsTrue(CheckOf(APage, 'DebugInlineValues').Checked, 'debug.inlineValues (#508)');
   Assert.AreEqual('5', EditOf(APage, 'DebugInlineValuesPerLine').Text, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsTrue(CheckOf(APage, 'DebugMemoryTimeline').Checked, 'debug.memoryTimeline (#858)');
+  Assert.AreEqual('1000', EditOf(APage, 'DebugMemoryTimelineIntervalMs').Text, 'intervalMs (#858)');
 end;
 
 /// <summary>Alle Schalter des Abschnitts umstellen.</summary>
@@ -154,6 +156,8 @@ begin
   CheckOf(APage, 'DebugExceptionBannerIgnoreAtLocation').Checked := False;
   CheckOf(APage, 'DebugInlineValues').Checked := False;
   EditOf(APage, 'DebugInlineValuesPerLine').Text := '3';
+  CheckOf(APage, 'DebugMemoryTimeline').Checked := False;
+  EditOf(APage, 'DebugMemoryTimelineIntervalMs').Text := '2500';
   ASection.OwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
 end;
 
@@ -185,6 +189,8 @@ begin
   Assert.IsFalse(ASaved.DebugExceptionBannerIgnoreAtLocation);
   Assert.IsFalse(ASaved.DebugInlineValues);
   Assert.AreEqual(3, ASaved.DebugInlineValuesPerLine);
+  Assert.IsFalse(ASaved.DebugMemoryTimeline);
+  Assert.AreEqual(2500, ASaved.DebugMemoryTimelineIntervalMs);
   Assert.AreEqual('C:\Komponenten', ASaved.DebugOwnCodeFolders, 'bereinigt (#578)');
 end;
 

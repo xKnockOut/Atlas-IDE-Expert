@@ -888,6 +888,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.BoundedStream.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas"/>
@@ -938,6 +939,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.TimeLimit.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Deadline.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.AsyncWait.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.BoundedStream.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.UserIdle.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.UnloadSafety.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.WorkerSlot.Tests.pas"/>
@@ -972,6 +974,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Analysis\Atlas.UI.Analysis.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Memory.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Strings.Tests.pas"/>
@@ -1021,6 +1024,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Analysis.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Strings.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Memory.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.ToolStrings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.ToolStrings.Tests.pas"/>
@@ -2303,6 +2307,11 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.CallStackFrame.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.LeaksFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.MemoryTimeline.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.MemoryTimeline.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MemoryChart.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MemoryFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.MemoryFrame.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventLog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.LeakCapture.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.LeakView.Tests.pas"/>

@@ -687,7 +687,7 @@ end;
 
 class procedure TAtlasBuildModule.UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, nil);
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
 end;
 
 initialization

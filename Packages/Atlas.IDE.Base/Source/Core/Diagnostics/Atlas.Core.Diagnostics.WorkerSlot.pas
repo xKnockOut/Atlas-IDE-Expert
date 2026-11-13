@@ -11,10 +11,15 @@
 //   läuft, geht an TAtlasOverdueThreads, zusammen mit dem Package seines
 //   Codes (im Package: HInstance).
 // - TAtlasOverdueThreads gibt überfällige Threads frei, sobald sie enden.
-//   Wird ein Package entladen (AddModuleUnloadProc, sein Code ist dann noch
-//   geladen), wartet es auf dessen überfällige Threads noch bis
-//   cUnloadGraceMs; läuft dann noch einer, hält TAtlasUnloadSafety das
-//   Package im Speicher und bittet um einen Neustart.
+//   SettleBeforeUnload wartet beim Abmelden eines Moduls (Finalisierung
+//   seiner Kompositions-Unit, für Base deren Abbau) noch bis cUnloadGraceMs
+//   auf die überfälligen Threads seines Packages; läuft dann noch einer, hält
+//   TAtlasUnloadSafety das Package im Speicher und bittet um einen Neustart.
+//   Das muss vor FreeLibrary geschehen (Code-Review T-103): Die Rückrufe von
+//   AddModuleUnloadProc ruft die RTL erst aus DLL_PROCESS_DETACH
+//   (SysInit.UninitializeModule); dann entlädt Windows das Modul schon, ein
+//   Festhalten wirkt nicht mehr, und Warten unter der Ladersperre hindert die
+//   Threads am Enden. Der Rückruf protokolliert deshalb nur noch.
 // Gewartet wird auf Finished wie in TAtlasShutdown.WaitForThreads.
 
 interface
@@ -41,6 +46,9 @@ type
     /// <summary>Beendete Threads (nur von AModule, 0 = alle) aus der Liste nehmen und freigeben.</summary>
     class procedure Prune(AModule: HMODULE); static;
     class function ThreadsOf(AModule: HMODULE): TArray<TThread>; static;
+    /// <summary>Überfällige Threads von AModule, die noch laufen, ohne beendete freizugeben (Rückruf aus
+    /// DLL_PROCESS_DETACH: Freigeben wartet dort auf das Thread-Handle und damit auf die Ladersperre).</summary>
+    class function RunningOf(AModule: HMODULE): Integer; static;
   public
     class constructor Create;
     class destructor Destroy;
@@ -52,6 +60,15 @@ type
     /// <summary>Bis AMs auf die überfälligen Threads von AModule warten und beendete freigeben; True, wenn keiner
     /// mehr läuft. Sonst ist AModule als unsicher gekennzeichnet (TAtlasUnloadSafety).</summary>
     class function Settle(AModule: HMODULE; AMs: Cardinal): Boolean; static;
+    /// <summary>Beim Abmelden des Moduls in AModule, solange sein Package noch regulär geladen ist (Finalisierung
+    /// der Kompositions-Unit, vor FreeLibrary): Laufen dort noch überfällige Threads, bis AGraceMs warten, sonst
+    /// das Package festhalten (Settle). True, wenn keiner mehr läuft.</summary>
+    class function SettleBeforeUnload(AModule: HMODULE; AGraceMs: Cardinal): Boolean; overload; static;
+    /// <summary>Wie oben mit AGraceMs = cUnloadGraceMs.</summary>
+    class function SettleBeforeUnload(AModule: HMODULE): Boolean; overload; static;
+    /// <summary>Rückruf beim Entladen von AModule (AddModuleUnloadProc, aus DLL_PROCESS_DETACH): protokolliert nur,
+    /// wenn dort noch überfällige Threads laufen. Wartet nicht, hält nicht fest, ruft keine Oberfläche.</summary>
+    class procedure NoteModuleUnload(AModule: HMODULE); static;
   end;
 
   /// <summary>Hält die Arbeiter-Threads eines Objekts; Stop wartet bis zur Zeitgrenze und übergibt überfällige an
@@ -115,13 +132,10 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
-/// <summary>Beim Entladen jedes Packages (AddModuleUnloadProc), solange sein Code noch geladen ist.</summary>
+/// <summary>Beim Entladen jedes Packages (AddModuleUnloadProc), schon aus DLL_PROCESS_DETACH.</summary>
 procedure AtlasOverdueModuleUnload(AInstance: NativeInt);
 begin
-  if TAtlasOverdueThreads.Pending(HMODULE(AInstance)) > 0 then
-  begin
-    TAtlasOverdueThreads.Settle(HMODULE(AInstance), TAtlasOverdueThreads.cUnloadGraceMs);
-  end;
+  TAtlasOverdueThreads.NoteModuleUnload(HMODULE(AInstance));
 end;
 
 { TAtlasOverdueThreads }
@@ -140,8 +154,8 @@ class destructor TAtlasOverdueThreads.Destroy;
 begin
   RemoveModuleUnloadProc(AtlasOverdueModuleUnload);
   Prune(0);
-  // Was jetzt noch läuft, hat beim Entladen von Base AtlasOverdueModuleUnload schon festgehalten; die Objekte
-  // bleiben bewusst liegen (ein Freigeben beendet den Thread nicht).
+  // Was jetzt noch läuft, hat SettleBeforeUnload beim Abmelden seines Moduls bzw. im Abbau von Base schon
+  // festgehalten; die Objekte bleiben bewusst liegen (ein Freigeben beendet den Thread nicht).
   FreeAndNil(FEntries);
   FreeAndNil(FLock);
 end;
@@ -226,6 +240,20 @@ begin
   end;
 end;
 
+class function TAtlasOverdueThreads.RunningOf(AModule: HMODULE): Integer;
+var
+  mThread: TThread;
+begin
+  Result := 0;
+  for mThread in ThreadsOf(AModule) do
+  begin
+    if not mThread.Finished then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 class function TAtlasOverdueThreads.Pending(AModule: HMODULE): Integer;
 begin
   Prune(AModule);
@@ -243,6 +271,29 @@ begin
   begin
     TAtlasUnloadSafety.MarkUnsafe(AModule, Format(UiText(TWorkerSlotText.OverdueThreads),
       [Length(ThreadsOf(AModule))]));
+  end;
+end;
+
+class function TAtlasOverdueThreads.SettleBeforeUnload(AModule: HMODULE; AGraceMs: Cardinal): Boolean;
+begin
+  // Vor FreeLibrary: Hier wirkt das Festhalten noch, und die Ladersperre ist frei.
+  Result := (Pending(AModule) = 0) or Settle(AModule, AGraceMs);
+end;
+
+class function TAtlasOverdueThreads.SettleBeforeUnload(AModule: HMODULE): Boolean;
+begin
+  Result := SettleBeforeUnload(AModule, cUnloadGraceMs);
+end;
+
+class procedure TAtlasOverdueThreads.NoteModuleUnload(AModule: HMODULE);
+var
+  mRunning: Integer;
+begin
+  mRunning := RunningOf(AModule);
+  if mRunning > 0 then
+  begin
+    TAtlasGuard.Log(Format('Atlas: %d overdue worker thread(s) still running while package $%x unloads',
+      [mRunning, AModule]));
   end;
 end;
 
