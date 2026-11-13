@@ -258,6 +258,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.Forms.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CoveredBy.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas"/>

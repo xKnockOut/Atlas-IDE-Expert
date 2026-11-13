@@ -149,6 +149,7 @@ Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
+Atlas.Common.Lsp.CoveredBy.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests

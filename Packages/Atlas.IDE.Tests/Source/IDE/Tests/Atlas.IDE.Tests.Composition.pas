@@ -14,6 +14,7 @@
 //   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
 //   angelegt wie „Zur Testunit wechseln“ von Base),
+// - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
@@ -89,6 +90,7 @@ uses
   Atlas.IDE.Tests.Composition.Hooks,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
+  Atlas.IDE.Tests.CoveredBy,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
@@ -100,6 +102,7 @@ var
   GTests: TAtlasIdeTests;
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
+  GCoveredBy: TAtlasIdeCoveredByLens;
   GStale: TAtlasIdeStaleTests;
 
 { Sichtbarkeit }
@@ -200,6 +203,12 @@ end;
 
 { Teil Tests }
 
+/// <summary>Scope des Moduls für die Anfragen der Marke „getestet von“ (#1778).</summary>
+function ModuleScope: IAtlasModuleScope;
+begin
+  Result := GScope;
+end;
+
 procedure StartTests;
 begin
   GTests := TAtlasIdeTests.Create(TestsProcess());
@@ -213,6 +222,8 @@ begin
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
+  // Marke „getestet von“ an Methoden normaler Units (#1778).
+  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
 end;
 
@@ -227,6 +238,7 @@ begin
   TAtlasIdeAffectedTests.Uninstall;
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann die Stände der veralteten Ergebnisse (#1770), dann der Läufer; seine Probleme verschwinden mit ihm.
+  FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   FreeAndNil(GDebugger);
   if GTests <> nil then

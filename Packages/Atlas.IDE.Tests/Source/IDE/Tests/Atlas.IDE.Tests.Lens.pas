@@ -40,6 +40,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.ExtCtrls,
+  Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
@@ -51,6 +52,30 @@ uses
   Atlas.IDE.Tests.Debug;
 
 type
+  /// <summary>Zeichnen der Marken hinter dem Zeilenende (Test-Lens und „getestet von“, #1778).</summary>
+  TAtlasIdeLensPill = class
+  public const
+    /// <summary>Abstand zwischen zwei Marken einer Zeile in Pixeln.</summary>
+    cSpacing = 6;
+  private const
+    /// <summary>Abstand der Marke vom Zeilenende in Zeichen.</summary>
+    cGapColumns = 3;
+    cMinFontSize = 6;
+  public
+    /// <summary>Schrift der Marke: einen Punkt kleiner, unterstrichen; AItalic für einen veralteten Stand.</summary>
+    class procedure Prepare(ACanvas: TCanvas; AItalic: Boolean); static;
+    /// <summary>Eine Marke ab ALeft in der Farbe ATone auf dem Hintergrund ABack; liefert ihr Rechteck.</summary>
+    class function Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone, ABack: TAtlasColor;
+      ALeft: Integer): TRect; static;
+    /// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
+    class function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
+    /// <summary>Linker Rand der Marke hinter dem Text der Zeile ALine (Pixel des Editors).</summary>
+    class function LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer; static;
+    /// <summary>APaint mit gesichertem Stift, Pinsel und Schrift der Leinwand; Ausnahmen meldet die Sicherung
+    /// (Zeichnen darf die IDE nie stören).</summary>
+    class procedure Guarded(ACanvas: TCanvas; const APaint: TProc); static;
+  end;
+
   TAtlasIdeTestsLens = class
   private type
     TEvents = class(TNTACodeEditorNotifier)
@@ -118,6 +143,10 @@ type
     function LineItem(const AContext: INTACodeEditorPaintContext; out ALine: string): Integer;
     procedure PaintMarks(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
       ALeft: Integer; ABack: TAtlasColor);
+    /// <summary>Marke AIndex in der Zeile ALine zeichnen; eigene Routine, damit die Methodenreferenz nur ihre
+    /// Werte einfängt.</summary>
+    procedure PaintAt(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
+      const ALine: string);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     /// <summary>Marke unter (X, Y); ADebug für „Debuggen“. -1 ohne.</summary>
     function HitAt(AX, AY: Integer; out ADebug: Boolean): Integer;
@@ -139,7 +168,6 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Vcl.Graphics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Style.Palette,
@@ -437,9 +465,10 @@ begin
   end;
 end;
 
-/// <summary>Eine Marke ab ALeft in der Farbe ATone auf dem Hintergrund ABack; liefert ihr Rechteck.</summary>
-function DrawPill(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone, ABack: TAtlasColor;
-  ALeft: Integer): TRect;
+{ TAtlasIdeLensPill }
+
+class function TAtlasIdeLensPill.Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone,
+  ABack: TAtlasColor; ALeft: Integer): TRect;
 var
   mWidth, mHeight, mTop: Integer;
 begin
@@ -456,8 +485,7 @@ begin
   ACanvas.TextOut(Result.Left + 5, Result.Top + 1, ACaption);
 end;
 
-/// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
-function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
+class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
 var
   mSample: COLORREF;
 begin
@@ -469,6 +497,55 @@ begin
   else
   begin
     Result := TAtlasColor(mSample);
+  end;
+end;
+
+class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer;
+var
+  mColumn: Integer;
+begin
+  mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) +
+    1;
+  Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapColumns, AContext.EditorLineNum).Left;
+end;
+
+class procedure TAtlasIdeLensPill.Prepare(ACanvas: TCanvas; AItalic: Boolean);
+begin
+  ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
+  ACanvas.Font.Style := [fsUnderline];
+  if AItalic then
+  begin
+    ACanvas.Font.Style := [fsUnderline, fsItalic];
+  end;
+end;
+
+class procedure TAtlasIdeLensPill.Guarded(ACanvas: TCanvas; const APaint: TProc);
+var
+  mOldFont: TFont;
+  mOldBrush: TBrush;
+  mOldPen: TPen;
+begin
+  try
+    mOldFont := TFont.Create;
+    mOldBrush := TBrush.Create;
+    mOldPen := TPen.Create;
+    try
+      mOldFont.Assign(ACanvas.Font);
+      mOldBrush.Assign(ACanvas.Brush);
+      mOldPen.Assign(ACanvas.Pen);
+      APaint();
+    finally
+      ACanvas.Font.Assign(mOldFont);
+      ACanvas.Brush.Assign(mOldBrush);
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+      mOldBrush.Free;
+      mOldFont.Free;
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -529,22 +606,21 @@ begin
     // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
     mTone := mColors.Warn;
   end;
-  mCanvas.Font.Size := Max(6, mCanvas.Font.Size - 1);
-  mCanvas.Font.Style := [fsUnderline];
+  // Veraltet (#1770): alter Stand grau und kursiv.
+  TAtlasIdeLensPill.Prepare(mCanvas, mStale);
   if mStale then
   begin
-    // Veraltet (#1770): alter Stand grau und kursiv.
     mTone := mColors.Muted;
-    mCanvas.Font.Style := [fsUnderline, fsItalic];
   end;
-  mPill := DrawPill(mCanvas, ARow, mText, mTone, ABack, ALeft);
+  mPill := TAtlasIdeLensPill.Draw(mCanvas, ARow, mText, mTone, ABack, ALeft);
   FItems[AIndex].RunRect := mPill;
   FItems[AIndex].DebugRect := TRect.Empty;
   // „Debuggen“ (#585) rechts daneben; nicht während eines Laufs.
   if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) and not FTests.Busy then
   begin
-    FItems[AIndex].DebugRect := DrawPill(mCanvas, ARow, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug),
-      mColors.Accent, ABack, mPill.Right + 6);
+    FItems[AIndex].DebugRect := TAtlasIdeLensPill.Draw(mCanvas, ARow,
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug), mColors.Accent, ABack,
+      mPill.Right + TAtlasIdeLensPill.cSpacing);
   end;
   FItems[AIndex].TopRow := AContext.EditView.TopRow;
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
@@ -561,48 +637,35 @@ procedure TAtlasIdeTestsLens.PaintLine(const Rect: TRect; const Stage: TPaintLin
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   mLine: string;
-  mIndex, mColumn: Integer;
-  mCanvas: TCanvas;
-  mCell: TRect;
-  mOldFont: TFont;
-  mOldBrush: TBrush;
-  mOldPen: TPen;
+  mIndex: Integer;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
   begin
     Exit;
   end;
-  try
-    mIndex := LineItem(Context, mLine);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(mLine, TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer)))) +
-      1;
-    mCell := Context.EditorState.GetCharacterPosPx(mColumn + 3, Context.EditorLineNum);
-    mCanvas := Context.Canvas;
-    mOldFont := TFont.Create;
-    mOldBrush := TBrush.Create;
-    mOldPen := TPen.Create;
-    try
-      mOldFont.Assign(mCanvas.Font);
-      mOldBrush.Assign(mCanvas.Brush);
-      mOldPen.Assign(mCanvas.Pen);
-      PaintMarks(mIndex, Rect, Context, mCell.Left, BackgroundAt(mCanvas, mCell.Left, Rect.Top + 1));
-    finally
-      mCanvas.Font.Assign(mOldFont);
-      mCanvas.Brush.Assign(mOldBrush);
-      mCanvas.Pen.Assign(mOldPen);
-      mOldPen.Free;
-      mOldBrush.Free;
-      mOldFont.Free;
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
+  mIndex := LineItem(Context, mLine);
+  if mIndex >= 0 then
+  begin
+    PaintAt(mIndex, Rect, Context, mLine);
   end;
+end;
+
+procedure TAtlasIdeTestsLens.PaintAt(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
+  const ALine: string);
+var
+  mIndex, mLeft: Integer;
+  mRow: TRect;
+  mContext: INTACodeEditorPaintContext;
+begin
+  mIndex := AIndex;
+  mRow := ARow;
+  mContext := AContext;
+  mLeft := TAtlasIdeLensPill.LeftOf(AContext, ALine);
+  TAtlasIdeLensPill.Guarded(AContext.Canvas,
+    procedure
+    begin
+      PaintMarks(mIndex, mRow, mContext, mLeft, TAtlasIdeLensPill.BackgroundAt(mContext.Canvas, mLeft, mRow.Top + 1));
+    end);
 end;
 
 function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out ADebug: Boolean): Integer;

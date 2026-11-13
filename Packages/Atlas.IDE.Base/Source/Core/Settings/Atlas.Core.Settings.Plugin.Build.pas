@@ -17,6 +17,9 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
+  cMinTestsCoveredByDepth = 1;
+  cMaxTestsCoveredByDepth = 5;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -84,6 +87,12 @@ type
     /// <summary>Auch Änderungen an den Units, die die Testunit verwendet und die im Testprojekt liegen, machen das
     /// Ergebnis veraltet (#1770, tests.stale.units).</summary>
     TestsStaleUnits: Boolean;
+    /// <summary>Ebenen vom Test bis zur Methode für die Marke „getestet von“ (#1778, tests.coveredBy.depth);
+    /// 1 = nur Tests, die die Methode direkt aufrufen.</summary>
+    TestsCoveredByDepth: Integer;
+    /// <summary>Marke „getestet von“ auch an privaten und geschützten Methoden (#1778, tests.coveredBy.private).
+    /// </summary>
+    TestsCoveredByPrivate: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -213,6 +222,8 @@ begin
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
   Result.TestsStaleUnits := False;
+  Result.TestsCoveredByDepth := 1;
+  Result.TestsCoveredByPrivate := False;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -259,6 +270,7 @@ begin
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
+  TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -285,6 +297,8 @@ begin
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);
   AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Number('TestsCoveredByDepth', TestsCoveredByDepth);
+  AIo.Flag('TestsCoveredByPrivate', TestsCoveredByPrivate);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);
