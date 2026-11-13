@@ -29,14 +29,15 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   DesignIntf,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasPairsCommand = (AlignLabels, CreateLabels, Release, Join, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasIdeLabelPairs = class
+  TAtlasIdeLabelPairs = class(TAtlasIdeDesignerTool)
   private type
     TNotification = class(TInterfacedObject, IDesignNotification)
     private
@@ -54,7 +55,6 @@ type
   private class var
     FCurrent: TAtlasIdeLabelPairs;
   private
-    FOnMessage: TProc<string>;
     FSnapshot: TAtlasDesignerSnapshot;
     FCreated: TArray<string>;
     FCreatedFile: string;
@@ -64,7 +64,6 @@ type
     FBounds: TDictionary<string, TRect>;
     FBusy: Boolean;
     FQueued: Boolean;
-    procedure Say(const AText: string);
     procedure Changed;
     procedure Follow;
     procedure Remember(ARoot: TComponent);
@@ -309,8 +308,7 @@ end;
 
 constructor TAtlasIdeLabelPairs.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
   FBounds := TDictionary<string, TRect>.Create;
   FNotification := TNotification.Create;
@@ -335,14 +333,6 @@ begin
   FBounds.Free;
   FSnapshot.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeLabelPairs.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeLabelPairs.Remember(ARoot: TComponent);

@@ -4,7 +4,8 @@
 // Zeit → Felder → Kommentar → Übergang gegen einen Anbieter, der jeden Aufruf
 // mitschreibt; Anhalten beim ersten Fehler und Wiederaufnahme ohne doppelte
 // Zeitbuchung oder zweiten Kommentar; Stand je Schritt; Feldsuche im Text
-// einer Ablehnung; Felder beim Beenden je Verbindung (endFields).
+// einer Ablehnung; Felder beim Beenden je Verbindung (endFields); Prüfung
+// des Originals eines Duplikats vor dem ersten Schreiben (#2135).
 
 interface
 
@@ -32,6 +33,10 @@ type
     procedure MentionedFieldFindsWholeNames;
     [Test]
     procedure EndFieldsPerConnection;
+    [Test]
+    procedure DuplicateCheckedBeforeWriting;
+    [Test]
+    procedure CloseGoesWithTransitionPart;
   end;
 
 implementation
@@ -43,6 +48,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.EndSteps,
+  Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Workflow;
 
 type
@@ -55,6 +61,8 @@ type
     Calls: TArray<string>;
     FailOn: string;
     FailMessage: string;
+    /// <summary>Schließen gelingt nur über den Ersatzweg (Ergebnis mit Fallback).</summary>
+    CloseFallback: Boolean;
     function Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -92,7 +100,37 @@ begin
   begin
     Exit(Logged('state ' + AChange.State));
   end;
+  if AChange.Close <> TAtlasTrackerClose.ByState then
+  begin
+    Result := Logged('close ' + IntToStr(Ord(AChange.Close)) + ' ' + AChange.DuplicateOf);
+    Result.Fallback := Result.Succeeded and CloseFallback;
+    Exit;
+  end;
   Exit(Logged('comment ' + AChange.Comment));
+end;
+
+type
+  /// <summary>Nur GET: Issue #418 gibt es, alle anderen nicht.</summary>
+  TFakeLookupTransport = class(TInterfacedObject, IAtlasCiTransport)
+  public
+    Calls: Integer;
+    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+      out AError: TAtlasCiFetchError): Boolean;
+  end;
+
+function TFakeLookupTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+  out AError: TAtlasCiFetchError): Boolean;
+begin
+  Inc(Calls);
+  AError := TAtlasCiFetchError.None;
+  AStatus := 404;
+  AText := '{"message":"Not Found"}';
+  if AUrl = 'https://api.github.com/repos/beispiel/atlas/issues/418' then
+  begin
+    AStatus := 200;
+    AText := '{"id":9418,"number":418,"title":"Original","state":"open","labels":[],"assignees":[]}';
+  end;
+  Result := True;
 end;
 
 function TFakeEndWriter.Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -333,6 +371,92 @@ begin
   mOptions := TAtlasTrackerWorkflow.ForConnection(mOptions, mItems,
     TAtlasTrackerTarget.Create('youtrack', 'https://yt.beispiel.de', 'ATL', ''));
   Assert.AreEqual('Behoben in Version|Ursache', string.Join('|', mOptions.EndFields), 'Verbindung vor global');
+end;
+
+/// <summary>Beenden von #2109 als Duplikat von ADuplicateOf mit Kommentar.</summary>
+function DuplicatePlan(const ADuplicateOf: string): TAtlasTrackerEndPlan;
+var
+  mChange: TAtlasTrackerWrite;
+begin
+  mChange := TAtlasTrackerWrite.CommentOnly('Steckt schon in #418.');
+  mChange := TAtlasTrackerWorkflow.WithClose(mChange, TAtlasTrackerClose.Duplicate, ADuplicateOf, 'Duplikat von #418.');
+  Result := TAtlasTrackerEndPlan.Create(mChange);
+end;
+
+procedure TAtlasTrackerEndStepsTests.DuplicateCheckedBeforeWriting;
+var
+  mWriter: TFakeEndWriter;
+  mKeep: IAtlasTrackerWriter;
+  mTransport: TFakeLookupTransport;
+  mTransportKeep: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mCall: TAtlasTrackerEndCall;
+  mProgress: TAtlasTrackerEndProgress;
+begin
+  mWriter := TFakeEndWriter.Create;
+  mKeep := mWriter;
+  mTransport := TFakeLookupTransport.Create;
+  mTransportKeep := mTransport;
+  mProvider := TAtlasGitHubTracker.Create;
+  mCall := CallOf(mWriter);
+  mCall.Provider := mProvider;
+  mCall.Target := TAtlasTrackerTarget.Create('github', '', 'beispiel/atlas', '');
+  mCall.Transport := mTransportKeep;
+  mCall.Key := '#2109';
+  // Duplikat von sich selbst: nichts gefragt, nichts geschrieben.
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, DuplicatePlan('#2109'), mProgress);
+  Assert.IsTrue(mProgress.Failed and mProgress.DuplicateMissing);
+  Assert.AreEqual(0, mTransport.Calls);
+  Assert.AreEqual(0, Integer(Length(mWriter.Calls)));
+  // Unbekanntes Issue: eine Abfrage, nichts geschrieben.
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, DuplicatePlan('#999'), mProgress);
+  Assert.IsTrue(mProgress.DuplicateMissing);
+  Assert.IsTrue(mProgress.Outcome.Error = TAtlasCiFetchError.NotFound);
+  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.Comment, 'erster offener Schritt');
+  Assert.AreEqual(1, mTransport.Calls);
+  Assert.AreEqual(0, Integer(Length(mWriter.Calls)));
+  // Vorhanden: Kommentar, dann Schließen als Duplikat (der Kommentar nennt #418, kein Ersatzkommentar).
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, DuplicatePlan('#418'), mProgress);
+  Assert.IsFalse(mProgress.Failed);
+  Assert.IsFalse(mProgress.DuplicateMissing);
+  Assert.AreEqual('comment Steckt schon in #418.|close 3 #418', string.Join('|', mWriter.Calls));
+  Assert.IsFalse(mProgress.Fallback);
+  // Nach dem Schließen nicht noch einmal prüfen.
+  mTransport.Calls := 0;
+  TAtlasTrackerEndSteps.Run(mCall, DuplicatePlan('#418'), mProgress);
+  Assert.AreEqual(0, mTransport.Calls);
+end;
+
+procedure TAtlasTrackerEndStepsTests.CloseGoesWithTransitionPart;
+var
+  mPlan: TAtlasTrackerEndPlan;
+  mWriter: TFakeEndWriter;
+  mKeep: IAtlasTrackerWriter;
+  mProgress: TAtlasTrackerEndProgress;
+  mChange: TAtlasTrackerWrite;
+begin
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('Wird nicht umgesetzt.'),
+    TAtlasTrackerClose.NotPlanned, '#5', 'x');
+  Assert.AreEqual('', mChange.DuplicateOf, 'Original nur beim Duplikat');
+  mPlan := TAtlasTrackerEndPlan.Create(mChange);
+  Assert.IsTrue(mPlan.CommentPart.Close = TAtlasTrackerClose.ByState, 'Kommentar schließt nicht');
+  Assert.IsTrue(mPlan.TransitionPart.Close = TAtlasTrackerClose.NotPlanned);
+  Assert.IsTrue(mPlan.Has(TAtlasTrackerEndStep.Transition), 'Schließen ist ein Schritt');
+  mPlan := DuplicatePlan('#418');
+  Assert.AreEqual('#418', mPlan.TransitionPart.DuplicateOf);
+  Assert.AreEqual('', mPlan.TransitionPart.DuplicateNote, 'Kommentar nennt #418 schon');
+  Assert.AreEqual('', mPlan.CommentPart.DuplicateOf);
+  // Ersatzweg des Anbieters kommt im Fortschritt an.
+  mWriter := TFakeEndWriter.Create;
+  mKeep := mWriter;
+  mWriter.CloseFallback := True;
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(CallOf(mWriter), TAtlasTrackerEndPlan.Create(mChange), mProgress);
+  Assert.IsTrue(mProgress.Finished(TAtlasTrackerEndPlan.Create(mChange)));
+  Assert.IsTrue(mProgress.Fallback);
 end;
 
 initialization

@@ -605,6 +605,7 @@ contains
   Atlas.Core.Projects.Summary.Sections in 'Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas',
   Atlas.Core.Projects.Matching in 'Source\Core\Projects\Atlas.Core.Projects.Matching.pas',
   Atlas.Core.Projects.VersionControl in 'Source\Core\Projects\Atlas.Core.Projects.VersionControl.pas',
+  Atlas.Core.Projects.VcsSettings in 'Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas',
   Atlas.Core.InlayHints.Store in 'Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
   Atlas.Core.Results.Model in 'Source\Core\Results\Atlas.Core.Results.Model.pas',
   Atlas.Core.Results.CallDiagramTemplate in 'Source\Core\Results\Atlas.Core.Results.CallDiagramTemplate.pas',

@@ -48,7 +48,7 @@ Einstellungen: `fix.bulk`
 
 ## Prüfregeln
 
-**331 Prüfregeln** in vier Kategorien: 218 Fehler, 102 Code-Smells, 6 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
+**333 Prüfregeln** in vier Kategorien: 220 Fehler, 102 Code-Smells, 6 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
 
 ### Korrektheit
 
@@ -351,6 +351,7 @@ Compilerfehler schon beim Tippen, ohne Build.
 - Message-Handler (`message WM_SIZE`) ohne `inherited`
 - IDE-Notifier ohne `RemoveNotifier` (die Korrektur merkt den Index und meldet beim Entladen ab)
 - DUnitX-Tests ohne Prüfung
+- `[TestCase]`-Werte, die nicht zu den Parametern der Methode passen; nie registrierte Testklassen, Testunits in keinem Testprojekt
 - `inherited` an der falschen Stelle (im Destruktor vor dem Freigeben eigener Felder, im Konstruktor nach dem Zugriff auf geerbte Properties; die Korrektur verschiebt es)
 - `inherited Laden` im überschriebenen `Speichern` (die Korrektur setzt den eigenen Namen, Option `allowed`)
 - Getter, die den Zustand ihres Objekts ändern (`Inc(FAbrufe)` in `GetWert`, Lazy-Initialisierung erlaubt)

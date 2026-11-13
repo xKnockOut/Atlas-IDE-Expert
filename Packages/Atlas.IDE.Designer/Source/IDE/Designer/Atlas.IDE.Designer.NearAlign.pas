@@ -25,23 +25,21 @@ uses
   Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.UI.Designer.Outlines,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasNearCommand = (Show, FixAll, MarkSelection, RemoveSelection, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasIdeNearAlign = class
+  TAtlasIdeNearAlign = class(TAtlasIdeDesignerTool)
   public const
     cFileName = '.atlas-nearalign.json';
     cShowMilliseconds = 8000;
   private
-    FOnMessage: TProc<string>;
     FSnapshot: TAtlasDesignerSnapshot;
-    FOutlines: TAtlasDesignerOutlines;
     FTimer: TTimer;
-    procedure Say(const AText: string);
     procedure TimerTick(Sender: TObject);
     procedure ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
     procedure HideOutlines;
@@ -54,7 +52,6 @@ type
     destructor Destroy; override;
     procedure Execute(ACommand: TAtlasNearCommand);
     function CanUndo: Boolean;
-    procedure ApplyTheme;
     /// <summary>Grundlinie von AControl im Parent aus der Schrift genähert; -1 ohne einzeiligen Text.</summary>
     class function Baseline(AControl: TControl; ACanvas: TCanvas): Integer; static;
   end;
@@ -65,13 +62,11 @@ uses
   System.Types,
   System.IOUtils,
   Vcl.StdCtrls,
-  Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Designer.NearAlign,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -316,8 +311,7 @@ end;
 
 constructor TAtlasIdeNearAlign.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -328,17 +322,8 @@ end;
 destructor TAtlasIdeNearAlign.Destroy;
 begin
   FTimer.Free;
-  FOutlines.Free;
   FSnapshot.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeNearAlign.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeNearAlign.TimerTick(Sender: TObject);
@@ -347,16 +332,8 @@ begin
 end;
 
 procedure TAtlasIdeNearAlign.ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
-var
-  mArea: TRect;
 begin
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
-  mArea := ARoot.ClientRect;
-  mArea.Offset(ARoot.ClientOrigin);
-  FOutlines.ShowOutlines(mArea, AOutlines);
+  ShowOutlinesIn(ARoot, AOutlines);
   FTimer.Enabled := False;
   FTimer.Enabled := True;
 end;
@@ -364,17 +341,9 @@ end;
 procedure TAtlasIdeNearAlign.HideOutlines;
 begin
   FTimer.Enabled := False;
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
-  end;
-end;
-
-procedure TAtlasIdeNearAlign.ApplyTheme;
-begin
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
+    Outlines.HideOutlines;
   end;
 end;
 

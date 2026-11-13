@@ -678,6 +678,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.VersionControl.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagramTemplate.pas"/>

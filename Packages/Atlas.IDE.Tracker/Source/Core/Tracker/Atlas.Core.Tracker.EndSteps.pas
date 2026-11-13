@@ -12,6 +12,9 @@
 //   geschrieben ist; ein zweiter Lauf mit demselben Fortschritt überspringt
 //   es (keine doppelte Zeitbuchung, kein zweiter Kommentar). Ein Feld zählt
 //   mit Namen und Wert: Wer den Wert ändert, schreibt es neu.
+// - Schließgrund „Duplikat“ (#2135): Vor dem ersten Schritt prüft Run, dass
+//   das Original nicht das Issue selbst ist und es gibt (Lookup des
+//   Anbieters); sonst wird nichts geschrieben (DuplicateMissing).
 // - MentionedField sucht im Text einer Ablehnung den Namen eines Feldes
 //   (ganzes Wort, ohne Groß-/Kleinschreibung; der längste gewinnt), damit der
 //   Dialog die Zeile markieren bzw. „Feld hinzufügen“ anbieten kann. Ob eine
@@ -76,6 +79,11 @@ type
     FailedField: string;
     /// <summary>Ergebnis des letzten Laufs (Ok oder der Fehler mit dem Text des Trackers).</summary>
     Outcome: TAtlasTrackerWriteResult;
+    /// <summary>Der letzte Lauf hielt vor dem Schreiben an: Das Original eines Duplikats ist ungültig, das Issue
+    /// selbst oder unbekannt (#2135).</summary>
+    DuplicateMissing: Boolean;
+    /// <summary>Zustand bzw. Schließen ging über einen Ersatzweg (#2135, „Duplikat“ als „nicht geplant“).</summary>
+    Fallback: Boolean;
     class function Empty: TAtlasTrackerEndProgress; static;
     function FieldDone(const AField: TAtlasTrackerFieldValue): Boolean;
     /// <summary>Stand von AStep für APlan.</summary>
@@ -92,6 +100,8 @@ type
   /// <summary>Wohin geschrieben wird: Schreibzugriffe des Anbieters (Zeit und Felder dürfen nil sein, dann
   /// scheitert der Schritt mit UnknownProvider), Ziel, Transport, Kennung, Zeitgrenze je Schritt.</summary>
   TAtlasTrackerEndCall = record
+    /// <summary>Für die Prüfung des Originals eines Duplikats (#2135, Lookup); nil = ohne Prüfung.</summary>
+    Provider: IAtlasTrackerProvider;
     Writer: IAtlasTrackerWriter;
     Time: IAtlasTrackerTimeWriter;
     Fields: IAtlasTrackerFields;
@@ -152,6 +162,9 @@ begin
   Result.PreviousState := '';
   Result.Transition := TAtlasTrackerTransition.Create('', '');
   Result.FieldId := '';
+  Result.Close := TAtlasTrackerClose.ByState;
+  Result.DuplicateOf := '';
+  Result.DuplicateNote := '';
 end;
 
 function TAtlasTrackerEndPlan.TransitionPart: TAtlasTrackerWrite;
@@ -163,6 +176,9 @@ begin
   Result.AssigneeField := Change.AssigneeField;
   Result.Transition := Change.Transition;
   Result.FieldId := Change.FieldId;
+  Result.Close := Change.Close;
+  Result.DuplicateOf := Change.DuplicateOf;
+  Result.DuplicateNote := Change.DuplicateNote;
 end;
 
 function TAtlasTrackerEndPlan.Has(AStep: TAtlasTrackerEndStep): Boolean;
@@ -292,6 +308,7 @@ begin
   Failed := True;
   FailedField := '';
   Outcome := AResult;
+  DuplicateMissing := False;
 end;
 
 { TAtlasTrackerEndSteps }
@@ -388,7 +405,46 @@ begin
   begin
     Stopped(AProgress, AStep, mResult);
   end;
+  AProgress.Fallback := AProgress.Fallback or mResult.Fallback;
   Result := mResult.Succeeded;
+end;
+
+/// <summary>Original eines Duplikats prüfen, bevor etwas geschrieben wird (#2135): nicht leer, nicht das Issue
+/// selbst und beim Tracker vorhanden. False hält den Lauf an.</summary>
+function CheckDuplicate(const ACall: TAtlasTrackerEndCall; const APlan: TAtlasTrackerEndPlan;
+  var AProgress: TAtlasTrackerEndProgress): Boolean;
+var
+  mOther: string;
+  mIssue: TAtlasTrackerIssue;
+  mError: TAtlasCiFetchError;
+begin
+  Result := True;
+  if (APlan.Change.Close <> TAtlasTrackerClose.Duplicate) or AProgress.TransitionDone then
+  begin
+    Exit;
+  end;
+  mOther := Trim(APlan.Change.DuplicateOf);
+  mError := TAtlasCiFetchError.None;
+  if (mOther = '') or SameText(mOther, Trim(ACall.Key)) then
+  begin
+    mError := TAtlasCiFetchError.Invalid;
+  end
+  else if (ACall.Provider <> nil) and not ACall.Provider.Lookup(ACall.Target, ACall.Transport, mOther,
+    ACall.TimeoutMs, mIssue, mError) then
+  begin
+    // Lookup meldet False immer mit Grund; ohne Grund gilt das Issue als unbekannt.
+    if mError = TAtlasCiFetchError.None then
+    begin
+      mError := TAtlasCiFetchError.NotFound;
+    end;
+  end;
+  if mError = TAtlasCiFetchError.None then
+  begin
+    Exit;
+  end;
+  AProgress.Fail(APlan, TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  AProgress.DuplicateMissing := mError in [TAtlasCiFetchError.Invalid, TAtlasCiFetchError.NotFound];
+  Result := False;
 end;
 
 class procedure TAtlasTrackerEndSteps.Run(const ACall: TAtlasTrackerEndCall; const APlan: TAtlasTrackerEndPlan;
@@ -399,12 +455,14 @@ begin
   AProgress.Failed := False;
   AProgress.FailedField := '';
   AProgress.Outcome := TAtlasTrackerWriteResult.Ok;
+  AProgress.DuplicateMissing := False;
   if ACall.Writer = nil then
   begin
     AProgress.Fail(APlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, ''));
     Exit;
   end;
-  if not RunTime(ACall, APlan, AProgress) or not RunFields(ACall, APlan, AProgress) then
+  if not CheckDuplicate(ACall, APlan, AProgress) or not RunTime(ACall, APlan, AProgress) or
+    not RunFields(ACall, APlan, AProgress) then
   begin
     Exit;
   end;
