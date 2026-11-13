@@ -54,6 +54,8 @@ uses
 
 const
   cImageSize = 16;
+  /// <summary>Farbkanäle eines BGRA-Pixels ohne Alpha; der Grund der Bitmap trägt kein Alpha.</summary>
+  cColorMask = $00FFFFFF;
 
 /// <summary>Modul mit einer Bitmap-Ressource AName: zuerst das Package der Klasse, sonst jedes geladene Modul.
 /// Die Palettensymbole der VCL-Komponenten (TPanel, TComboBox …) liegen nicht in vcl370.bpl, sondern in den
@@ -156,7 +158,7 @@ begin
       mRow := mBitmap.ScanLine[mY];
       for mX := 0 to cImageSize - 1 do
       begin
-        Result[mY * cImageSize + mX] := mRow^ and $00FFFFFF;
+        Result[mY * cImageSize + mX] := mRow^ and cColorMask;
         Inc(mRow);
       end;
     end;
