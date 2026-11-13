@@ -307,6 +307,7 @@ Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
 Atlas.Common.Rules.Builtin.Testing.Asserts.Tests
 Atlas.Common.Rules.Builtin.Testing.LeakMonitor.Tests
 Atlas.Common.Rules.Builtin.Testing.Registration.Tests
+Atlas.Common.Rules.Builtin.Testing.TearDown.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
