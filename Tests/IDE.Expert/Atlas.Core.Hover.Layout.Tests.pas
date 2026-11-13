@@ -52,6 +52,9 @@ type
     procedure UnavailableValueShowsCauseAndFixes;
     [Test]
     procedure UnavailableValuePendingAndChecked;
+    /// <summary>#526: Aktionen unter dem Wert als Links mit Klickfläche DebugAction.</summary>
+    [Test]
+    procedure DebugValueActionsAreLinks;
     [Test]
     procedure PathChipsProduceHits;
     [Test]
@@ -374,6 +377,44 @@ begin
     end;
   end;
   Assert.AreEqual(2, Fixes);
+end;
+
+procedure THoverLayoutTests.DebugValueActionsAreLinks;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Hit: TAtlasHoverHit;
+  Actions: Integer;
+  Found: Boolean;
+  Item: TAtlasHoverItem;
+begin
+  HoverView := View('');
+  HoverView.DebugValue := TAtlasDebugValue.Evaluated('Summe', '42');
+  HoverView.DebugValue.Actions := [TAtlasDebugValueFix.Create(7, 'Anheften')];
+  Layout := Build(HoverView, 300);
+  Actions := 0;
+  for Hit in Layout.Hits do
+  begin
+    if Hit.Kind = TAtlasHoverHitKind.DebugAction then
+    begin
+      Assert.AreEqual(0, Hit.Index, 'Index in DebugValue.Actions');
+      Inc(Actions);
+    end;
+  end;
+  Assert.AreEqual(1, Actions);
+  Found := False;
+  for Item in Layout.Items do
+  begin
+    Found := Found or (Item.Text = 'Anheften');
+  end;
+  Assert.IsTrue(Found, 'Beschriftung der Aktion');
+  // Ohne Aktionen keine Klickfläche.
+  HoverView.DebugValue.Actions := nil;
+  Layout := Build(HoverView, 300);
+  for Hit in Layout.Hits do
+  begin
+    Assert.IsFalse(Hit.Kind = TAtlasHoverHitKind.DebugAction);
+  end;
 end;
 
 procedure THoverLayoutTests.UnavailableValuePendingAndChecked;

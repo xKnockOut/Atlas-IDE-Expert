@@ -502,6 +502,7 @@ type
     property DebugReattachWaitIntervalMs: Integer read FDebug.DebugReattachWaitIntervalMs
       write FDebug.DebugReattachWaitIntervalMs;
     property DebugLaunchGroups: Boolean read FDebug.DebugLaunchGroups write FDebug.DebugLaunchGroups;
+    property DebugPinnedValues: Boolean read FDebug.DebugPinnedValues write FDebug.DebugPinnedValues;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;
