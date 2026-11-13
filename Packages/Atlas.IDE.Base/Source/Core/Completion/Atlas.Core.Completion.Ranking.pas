@@ -91,6 +91,8 @@ type
     /// <summary>Höchster Zuschlag aus der Verwendung im Projekt (#2109): unter dem kleinsten Lernzuschlag (15 für
     /// eine Übernahme, TAtlasUsage.Boost), damit die eigene Gewichtung immer vorgeht.</summary>
     cMaxProjectBoost = 14;
+    /// <summary>Steigung des Zuschlags je Verdopplung der Stellen im Projekt (#2109).</summary>
+    cProjectBoostPerDoubling = 1.5;
     /// <summary>Markiert in der Reihenfolge eine Gruppenüberschrift vor dem nächsten Eintrag.</summary>
     cHeader = -1;
     /// <summary>Überschrift „Meintest du“ vor den Tippfehler-Treffern (#485).</summary>
@@ -1023,7 +1025,7 @@ begin
   Result := 0;
   if ACount > 0 then
   begin
-    Result := Min(cMaxProjectBoost, 1 + Trunc(1.5 * Log2(ACount)));
+    Result := Min(cMaxProjectBoost, 1 + Trunc(cProjectBoostPerDoubling * Log2(ACount)));
   end;
 end;
 
