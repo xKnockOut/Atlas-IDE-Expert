@@ -179,6 +179,10 @@ begin
   Switch('debug.threadsInSource', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadsInSource));
   // Threads einfrieren (#852, experimentell).
   Switch('debug.threadFreeze', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadFreeze));
+  // Herkunft eingereihter Methoden (#859, experimentell).
+  Switch('debug.asyncOrigin', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOrigin));
+  Number('debug.asyncOrigin.maxPerSite',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOriginMaxPerSite));
   Line('debug.parallelStacks.waitRoutines',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksWaitRoutines));
   Number('debug.parallelStacks.maxThreads',
