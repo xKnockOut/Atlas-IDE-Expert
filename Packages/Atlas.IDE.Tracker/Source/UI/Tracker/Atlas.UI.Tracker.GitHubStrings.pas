@@ -2,8 +2,9 @@
 
 // Oberflächentexte des GitHub-Anbieters im Tracker auf Deutsch und Englisch:
 // Abschnitt „Abschluss“ im Beenden-Dialog mit Schließgrund (#2135), Status
-// im Projekt und seine Einstellungen (#2134). Wie die übrigen Texttabellen des
-// Trackers (Atlas.UI.Tracker.<Feature>.Strings) bestimmt Base die Sprache
+// im Projekt und seine Einstellungen (#2134), verknüpfter Branch beim
+// Beginnen und im Reiter „Entwicklung“ (#2138). Wie die übrigen Texttabellen
+// des Trackers (Atlas.UI.Tracker.<Feature>.Strings) bestimmt Base die Sprache
 // (`TAtlasStrings.Language`).
 
 interface
@@ -20,7 +21,8 @@ type
     EndDuplicateMissing, EndDuplicateUnknown, EndDuplicateComment, EndSendDuplicate, EndSendNotPlanned, PartClosed,
     PartClosedNotPlanned, PartClosedDuplicate, PartDuplicateFallback, ProjectStatus, ProjectStatusNew,
     ProjectStatusSame, ProjectAdded, ProjectSeveral, ProjectDenied, ProjectMissingOption, SettingsStateTarget,
-    SettingsStateTargetProject, SettingsStateTargetLabel, SettingsProject, SettingsAddToProject);
+    SettingsStateTargetProject, SettingsStateTargetLabel, SettingsProject, SettingsAddToProject, SettingsLinkBranch,
+    LinkCreated, LinkFound, LinkExists, LinkForeign, LinkDenied, LinkFailed, LinkFetchFailed, DevelopmentLinked);
 
 {$SCOPEDENUMS OFF}
 
@@ -33,6 +35,11 @@ type
     /// </summary>
     class function ProjectLines(const AKey: string; const AStatus: TAtlasTrackerProjectStatus): TArray<string>;
       static;
+    /// <summary>Zeile der Meldung zum verknüpften Branch (#2138) für AKey; '' bei None. ARepository: "owner/repo"
+    /// (Foreign), AReason: Grund bei Failed bzw. wenn Abruf oder Auschecken scheiterten (AFetched False).
+    /// </summary>
+    class function LinkLine(const AKey, ARepository, AReason: string; const ALink: TAtlasTrackerBranchLink;
+      AFetched: Boolean): string; static;
   end;
 
 implementation
@@ -69,7 +76,16 @@ const
      'Projektfeld „Status“, sonst Label',
      'Label',
      'Projekt (GitHub):',
-     'Issues ohne Projekt beim Beginnen in das Projekt aufnehmen'),
+     'Issues ohne Projekt beim Beginnen in das Projekt aufnehmen',
+     'Branch beim Beginnen auf GitHub anlegen und mit dem Issue verknüpfen',
+     '%s: Branch %s auf GitHub angelegt und mit dem Issue verknüpft',
+     '%s: mit dem Issue verknüpften Branch %s von GitHub ausgecheckt',
+     '%s: Branch %s gibt es schon; nicht mit dem Issue verknüpft',
+     '%s: origin ist nicht das Repository %s; Branch nur lokal angelegt',
+     '%s: Das Token darf keine Branches anlegen (Recht „Contents: write“); Branch nur lokal angelegt',
+     '%s: Branch nicht auf GitHub angelegt (%s); Branch nur lokal angelegt',
+     '%s: Branch %s liegt auf GitHub, Abruf oder Auschecken scheiterte (%s); Branch nur lokal angelegt',
+     'mit dem Issue verknüpft (GitHub)'),
     ('Close as:',
      'Completed',
      'Not planned',
@@ -96,7 +112,16 @@ const
      'Project field "Status", else label',
      'Label',
      'Project (GitHub):',
-     'Add issues without a project to the project when starting'));
+     'Add issues without a project to the project when starting',
+     'Create the branch on GitHub when starting and link it to the issue',
+     '%s: branch %s created on GitHub and linked to the issue',
+     '%s: checked out branch %s linked to the issue from GitHub',
+     '%s: branch %s already exists; not linked to the issue',
+     '%s: origin is not the repository %s; branch created locally only',
+     '%s: the token may not create branches ("Contents: write" permission); branch created locally only',
+     '%s: branch not created on GitHub (%s); branch created locally only',
+     '%s: branch %s is on GitHub, fetch or checkout failed (%s); branch created locally only',
+     'linked to the issue (GitHub)'));
 
 { TAtlasGitHubStrings }
 
@@ -146,6 +171,36 @@ begin
   begin
     Result := Result + [Fmt(TAtlasGitHubTextId.ProjectStatus, [AKey, AStatus.Project, AStatus.Before,
       AStatus.After])];
+  end;
+end;
+
+class function TAtlasGitHubStrings.LinkLine(const AKey, ARepository, AReason: string;
+  const ALink: TAtlasTrackerBranchLink; AFetched: Boolean): string;
+begin
+  case ALink.Outcome of
+    TAtlasTrackerBranchLinkOutcome.Created, TAtlasTrackerBranchLinkOutcome.Found:
+      if not AFetched then
+      begin
+        Result := Fmt(TAtlasGitHubTextId.LinkFetchFailed, [AKey, ALink.Branch, AReason]);
+      end
+      else if ALink.Outcome = TAtlasTrackerBranchLinkOutcome.Created then
+      begin
+        Result := Fmt(TAtlasGitHubTextId.LinkCreated, [AKey, ALink.Branch]);
+      end
+      else
+      begin
+        Result := Fmt(TAtlasGitHubTextId.LinkFound, [AKey, ALink.Branch]);
+      end;
+    TAtlasTrackerBranchLinkOutcome.Exists:
+      Result := Fmt(TAtlasGitHubTextId.LinkExists, [AKey, ALink.Branch]);
+    TAtlasTrackerBranchLinkOutcome.Foreign:
+      Result := Fmt(TAtlasGitHubTextId.LinkForeign, [AKey, ARepository]);
+    TAtlasTrackerBranchLinkOutcome.Denied:
+      Result := Fmt(TAtlasGitHubTextId.LinkDenied, [AKey]);
+    TAtlasTrackerBranchLinkOutcome.Failed:
+      Result := Fmt(TAtlasGitHubTextId.LinkFailed, [AKey, AReason]);
+  else
+    Result := '';
   end;
 end;
 

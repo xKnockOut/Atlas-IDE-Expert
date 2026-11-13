@@ -9115,6 +9115,16 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#2134"
     },
+    "IssuesGitHubLinkBranch": {
+      "type": "boolean",
+      "default": false,
+      "description": "„Beginnen“ legt bei GitHub und Git einen neuen Branch auf GitHub an (createLinkedBranch, Name aus issues.branchPattern, vom Kopf von issues.branchBase auf dem Server, sonst vom Standard-Branch) und verknüpft ihn mit dem Issue (Bereich „Development“); danach Abruf und Auschecken mit Upstream. Hat das Issue schon einen verknüpften Branch, wird dieser ausgecheckt. Gibt es den Branch schon, fehlt dem Token das Recht „Contents: write“ oder zeigt origin auf ein anderes Repository, legt Atlas den Branch lokal an wie bisher und nennt den Grund. Je Verbindung überschreibbar (githubLinkBranch).",
+      "x-key": "issues.github.linkBranch",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2138"
+    },
     "IssuesTimeTracking": {
       "type": "boolean",
       "default": false,

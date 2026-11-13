@@ -76,6 +76,8 @@ type
     /// <summary>Kopie mit dem Ziel des Zustands bei GitHub (#2134): AStateTarget "label" = Label, sonst Projektfeld.
     /// </summary>
     function WithGitHub(const AStateTarget, AProject: string; AAddToProject: Boolean): TAtlasTrackerSyncOptions;
+    /// <summary>Mit issues.github.linkBranch (#2138).</summary>
+    function WithLinkBranch(ALinkBranch: Boolean): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
     function HasStartWork: Boolean;
   end;
@@ -268,6 +270,12 @@ begin
   Result.GitHub.AddToProject := AAddToProject;
 end;
 
+function TAtlasTrackerSyncOptions.WithLinkBranch(ALinkBranch: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.GitHub.LinkBranch := ALinkBranch;
+end;
+
 function TAtlasTrackerSyncOptions.HasStartWork: Boolean;
 begin
   Result := SyncState and ((StartState <> '') or AssignOnStart or (Trim(StartComment) <> ''));
@@ -384,6 +392,10 @@ begin
         Result.GitHub.ToProject := StateInProject(mConnection.GitHubStateTarget);
       end;
       Result.GitHub.Project := TextOr(mConnection.GitHubProject, Result.GitHub.Project);
+      if mConnection.GitHubLinkBranch <> '' then
+      begin
+        Result.GitHub.LinkBranch := mConnection.GitHubLinkBranch = TAtlasTrackerConnection.cOn;
+      end;
       Exit;
     end;
   end;

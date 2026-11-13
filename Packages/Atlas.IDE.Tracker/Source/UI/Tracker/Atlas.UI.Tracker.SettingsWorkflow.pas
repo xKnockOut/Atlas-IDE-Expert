@@ -36,6 +36,7 @@ type
     StartState: TAtlasValueBox;
     AssignOnStart: TCheckBox;
     AddToProject: TCheckBox;
+    LinkBranch: TCheckBox;
     StartComment: TEdit;
     EndStates: TEdit;
     EndComment: TEdit;
@@ -141,6 +142,8 @@ begin
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAssignOnStart));
   FView.AddToProject := FRows.AddCheck('issues.github.addToProject',
     TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsAddToProject));
+  FView.LinkBranch := FRows.AddCheck('issues.github.linkBranch',
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsLinkBranch));
   FView.StartComment := FRows.AddText(cStartCommentKey,
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartComment));
   FView.EndStates := FRows.AddText(cEndStatesKey,
