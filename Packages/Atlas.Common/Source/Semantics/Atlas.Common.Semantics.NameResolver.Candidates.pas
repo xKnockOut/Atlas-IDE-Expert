@@ -3,7 +3,8 @@
 // Kandidaten der Namensauflösung für die Vervollständigung: alle Namen, die an einer Stelle sichtbar sind, vom
 // innersten Gültigkeitsbereich nach außen (with, lokal, Parameter, Self, eigene Unit, uses, System), dazu die
 // Mitglieder hinter einem Punkt und die Methoden für inherited. Gleichnamige weiter außen verdeckt der nähere
-// Eintrag; er nennt sie aber (#488).
+// Eintrag; er nennt sie aber (#488). Auf Wunsch merkt MemberCandidates die Mitglieder, die nur wegen ihrer
+// Sichtbarkeit fehlen (#2108).
 
 interface
 
@@ -20,6 +21,13 @@ type
   /// </summary>
   TCandidateStage = (Other, Local, OwnClass);
 
+  /// <summary>Mitglied, das an der Stelle nur wegen seiner Sichtbarkeit fehlt (#2108).</summary>
+  THiddenMember = record
+    Symbol: TResolvedSymbol;
+    /// <summary>Die deklarierende Unit gehört nicht zum Projekt (RTL, VCL, Drittanbieter).</summary>
+    External: Boolean;
+  end;
+
   /// <summary>Gesammelte Kandidaten: je Name ein Eintrag, Überladungen und verdeckte Namen daran vermerkt.</summary>
   TResolverCandidateList = class
   private
@@ -27,6 +35,9 @@ type
     FSeen: TDictionary<string, Boolean>;
     FOwnedSeen: TDictionary<string, Boolean>;
     FStage: TCandidateStage;
+    FHidden: TList<THiddenMember>;
+    // Namen, die nur MarkSeen vermerkt hat (unsichtbare Deklaration, kein Eintrag).
+    FMarked: TDictionary<string, Boolean>;
     function IndexOfName(const AName: string): Integer;
     procedure Merge(AIndex: Integer; const ASymbol: TResolvedSymbol);
   public
@@ -41,11 +52,22 @@ type
     procedure Append(const ASymbol: TResolvedSymbol);
     /// <summary>Vermerkt AName als gesehen, ohne Eintrag (unsichtbare Deklaration).</summary>
     procedure MarkSeen(const AName: string);
+    /// <summary>Wie Add für eine Deklaration im Typ: Hat MarkSeen den Namen nur wegen einer unsichtbaren
+    /// Deklaration vermerkt (andere Überladung, verdecktes Mitglied eines Nachfahren), kommt die sichtbare doch
+    /// in die Liste. Rümpfe gehen weiter über Add und bleiben verborgen.</summary>
+    procedure AddDeclared(const ASymbol: TResolvedSymbol);
     function IsSeen(const AName: string): Boolean;
     /// <summary>Ist der letzte Eintrag das eingebaute AName, steigt seine Höchstzahl an Argumenten auf AMaxArgs.
     /// </summary>
     procedure WidenLast(const AName: string; AMaxArgs: Integer);
     function ToArray: TArray<TResolvedSymbol>;
+    /// <summary>Ab jetzt auch nicht sichtbare Mitglieder über AddHidden merken.</summary>
+    procedure KeepHidden;
+    function KeepsHidden: Boolean;
+    procedure AddHidden(const AMember: THiddenMember);
+    /// <summary>Gemerkte nicht sichtbare Mitglieder, je Name einmal, ohne Namen, die sichtbar in der Liste stehen
+    /// (sichtbare Überladung oder Vorfahr).</summary>
+    function HiddenToArray: TArray<THiddenMember>;
     property Stage: TCandidateStage read FStage write FStage;
   end;
 
@@ -60,7 +82,10 @@ type
     FScopeUnit: TUnitIndex;
     FScopeInImplementation: Boolean;
     FScopeOpen: Boolean;
+    FKeepHidden: Boolean;
+    FHidden: TArray<THiddenMember>;
     function NameWanted(const AName: string): Boolean;
+    procedure NoteHidden(const AUnit: TUnitIndex; APosition, ADepth: Integer; AList: TResolverCandidateList);
     procedure CollectNames(ANode: TSyntaxNode; AKind: TIndexSymbolKind; AIsParameter: Boolean;
       AList: TResolverCandidateList);
     procedure CollectHelperLevel(const AHelper: TResolvedSymbol; ADepth: Integer; AList: TResolverCandidateList);
@@ -104,6 +129,11 @@ type
     /// <summary>Überladungen der lokalen Routine ASymbol in ihrer umgebenden Routine (#881).</summary>
     function LocalOverloads(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
     property NameFilter: TCandidateNameFilter read FNameFilter write FNameFilter;
+    /// <summary>MemberCandidates merkt auch die Mitglieder, die nur wegen der Sichtbarkeit fehlen und NameFilter
+    /// durchlässt (#2108); sie stehen danach in Hidden.</summary>
+    property KeepHidden: Boolean read FKeepHidden write FKeepHidden;
+    /// <summary>Die nicht sichtbaren Mitglieder des letzten MemberCandidates mit KeepHidden; sonst leer.</summary>
+    property Hidden: TArray<THiddenMember> read FHidden;
   end;
 
 implementation
@@ -111,6 +141,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Semantics.SystemIntrinsics;
 
 /// <summary>Bezeichner von System ohne Quelltext als Kandidat (#880); Überladungen erscheinen einmal.</summary>
@@ -170,11 +201,14 @@ constructor TResolverCandidateList.Create(ASeen: TDictionary<string, Boolean>);
 begin
   inherited Create;
   FList := TList<TResolvedSymbol>.Create;
+  FMarked := TDictionary<string, Boolean>.Create;
   FSeen := ASeen;
 end;
 
 destructor TResolverCandidateList.Destroy;
 begin
+  FHidden.Free;
+  FMarked.Free;
   FList.Free;
   FOwnedSeen.Free;
   inherited;
@@ -258,12 +292,73 @@ end;
 
 procedure TResolverCandidateList.MarkSeen(const AName: string);
 begin
+  if IndexOfName(AName) < 0 then
+  begin
+    FMarked.AddOrSetValue(UpperCase(AName), True);
+  end;
   FSeen.AddOrSetValue(UpperCase(AName), True);
+end;
+
+procedure TResolverCandidateList.AddDeclared(const ASymbol: TResolvedSymbol);
+begin
+  if FMarked.ContainsKey(UpperCase(ASymbol.Name)) and (IndexOfName(ASymbol.Name) < 0) then
+  begin
+    FMarked.Remove(UpperCase(ASymbol.Name));
+    FList.Add(ASymbol);
+    Exit;
+  end;
+  Add(ASymbol);
 end;
 
 function TResolverCandidateList.IsSeen(const AName: string): Boolean;
 begin
   Result := FSeen.ContainsKey(UpperCase(AName));
+end;
+
+procedure TResolverCandidateList.KeepHidden;
+begin
+  if FHidden = nil then
+  begin
+    FHidden := TList<THiddenMember>.Create;
+  end;
+end;
+
+function TResolverCandidateList.KeepsHidden: Boolean;
+begin
+  Result := FHidden <> nil;
+end;
+
+procedure TResolverCandidateList.AddHidden(const AMember: THiddenMember);
+begin
+  if FHidden <> nil then
+  begin
+    FHidden.Add(AMember);
+  end;
+end;
+
+function TResolverCandidateList.HiddenToArray: TArray<THiddenMember>;
+var
+  mNames: TDictionary<string, Boolean>;
+  mMember: THiddenMember;
+begin
+  Result := nil;
+  if FHidden = nil then
+  begin
+    Exit;
+  end;
+  mNames := TDictionary<string, Boolean>.Create;
+  try
+    for mMember in FHidden do
+    begin
+      if not mNames.ContainsKey(UpperCase(mMember.Symbol.Name)) and (IndexOfName(mMember.Symbol.Name) < 0) then
+      begin
+        mNames.Add(UpperCase(mMember.Symbol.Name), True);
+        Result := Result + [mMember];
+      end;
+    end;
+  finally
+    mNames.Free;
+  end;
 end;
 
 procedure TResolverCandidateList.WidenLast(const AName: string; AMaxArgs: Integer);
@@ -367,6 +462,19 @@ begin
   end;
 end;
 
+/// <summary>Liegt A vor B oder an derselben Stelle?</summary>
+function NotAfter(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
+end;
+
+/// <summary>Steht ASymbol in der Deklaration des Typs AType (kein Rumpf aus implementation)?</summary>
+function DeclaredIn(const AType: TResolvedSymbol; const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := not NotAfter(AType.Range.EndPos, AType.Range.StartPos) and NotAfter(AType.Range.StartPos,
+    ASymbol.Range.StartPos) and NotAfter(ASymbol.Range.EndPos, AType.Range.EndPos);
+end;
+
 procedure TResolverCandidates.CollectOwnMembers(const AType: TResolvedSymbol; const AUnit: TUnitIndex;
   ADepth: Integer; ALocalChain: Boolean; AList: TResolverCandidateList);
 var
@@ -385,15 +493,39 @@ begin
     begin
       // Unsichtbare Deklaration: auch ihren Rumpf aus implementation nicht anbieten.
       AList.MarkSeen(AUnit.Symbols[mPosition].Name);
+      NoteHidden(AUnit, mPosition, ADepth, AList);
     end
     else if NameWanted(AUnit.Symbols[mPosition].Name) then
     begin
       // Gebundene Typparameter des Typs (#450): Mitglieder von TObjectList<TKunde> kennen T=TKunde.
       mMember := TResolvedSymbol.FromIndex(AUnit, AUnit.Symbols[mPosition]).AsMember(ADepth, False);
       mMember.Bindings := AType.Bindings;
-      AList.Add(mMember);
+      if DeclaredIn(AType, AUnit.Symbols[mPosition]) then
+      begin
+        AList.AddDeclared(mMember);
+      end
+      else
+      begin
+        AList.Add(mMember);
+      end;
     end;
   end;
+end;
+
+procedure TResolverCandidates.NoteHidden(const AUnit: TUnitIndex; APosition, ADepth: Integer;
+  AList: TResolverCandidateList);
+var
+  mMember: THiddenMember;
+begin
+  // Rümpfe aus dem implementation-Teil fremder Units sind keine verdeckten Mitglieder (#2108).
+  if not AList.KeepsHidden or not (AUnit.Symbols[APosition].InInterface or
+    FParts.Place.IsCurrentFile(AUnit.FileName)) or not NameWanted(AUnit.Symbols[APosition].Name) then
+  begin
+    Exit;
+  end;
+  mMember.Symbol := TResolvedSymbol.FromIndex(AUnit, AUnit.Symbols[APosition]).AsMember(ADepth, False);
+  mMember.External := AUnit.Library_;
+  AList.AddHidden(mMember);
 end;
 
 procedure TResolverCandidates.CollectMembers(const AType: TResolvedSymbol; AList: TResolverCandidateList);
@@ -715,6 +847,7 @@ var
   mList: TResolverCandidateList;
 begin
   Result := nil;
+  FHidden := nil;
   // ResolveChain bereitet die Stelle (aktuelle Unit, Abschnitt) vor.
   mOwner := FChains.ResolveChain(ATree, AFileName, ANames, AOffset, False);
   if not mOwner.Found then
@@ -725,6 +858,10 @@ begin
   try
     if mOwner.Kind <> TResolvedKind.UnitName then
     begin
+      if FKeepHidden then
+      begin
+        mList.KeepHidden;
+      end;
       if FParts.Typing.TypeOf(mOwner, mType) then
       begin
         CollectMembers(mType, mList);
@@ -735,6 +872,7 @@ begin
       CollectUnit(mOwnerUnit, not FParts.Place.IsCurrentFile(mOwnerUnit.FileName), mList);
     end;
     Result := mList.ToArray;
+    FHidden := mList.HiddenToArray;
   finally
     mList.Free;
   end;

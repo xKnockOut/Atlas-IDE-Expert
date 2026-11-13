@@ -151,6 +151,8 @@ begin
   Assert.IsTrue(ASettings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsTrue(ASettings.TestsStale, 'veraltete Testergebnisse standardmäßig an (#1770)');
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
+  Assert.IsFalse(ASettings.TestsOnSave, 'Tests beim Speichern standardmäßig aus (#1775)');
+  Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
@@ -176,6 +178,7 @@ begin
   Assert.IsTrue(ASettings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsTrue(ASettings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(ASettings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(ASettings.DebugJustMyCode, 'debug.justMyCode (#578)');
@@ -303,6 +306,8 @@ begin
   ASettings.TestsBuildFirst := False;
   ASettings.TestsStale := False;
   ASettings.TestsStaleUnits := True;
+  ASettings.TestsOnSave := True;
+  ASettings.TestsOnSaveMax := 12;
   ASettings.TestsFailureAtAssert := False;
   ASettings.TestsFailureInline := False;
   ASettings.TestsCompare := False;
@@ -329,6 +334,7 @@ begin
   ASettings.DebugExplainAccessViolation := False;
   ASettings.DebugExplainAccessViolationAllowCalls := True;
   ASettings.DebugModuleOfAddress := False;
+  ASettings.DebugDeadlocks := False;
   ASettings.DebugExceptionHistory := False;
   ASettings.DebugJustMyCode := False;
   ASettings.DebugExceptionBanner := True;
@@ -432,6 +438,8 @@ begin
   Assert.IsFalse(ALoaded.TestsBuildFirst);
   Assert.IsFalse(ALoaded.TestsStale, 'tests.stale (#1770)');
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
+  Assert.IsTrue(ALoaded.TestsOnSave, 'tests.onSave (#1775)');
+  Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
   Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
   Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
@@ -457,6 +465,7 @@ begin
   Assert.IsFalse(ALoaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsFalse(ALoaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
 
   Assert.IsFalse(ALoaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
@@ -925,6 +934,13 @@ begin
   Settings.TestsAffectedDepth := 7;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, Settings.TestsAffectedDepth);
+  // tests.onSave.max (#1775): 1 bis 1000.
+  Settings.TestsOnSaveMax := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsOnSaveMax, Settings.TestsOnSaveMax);
+  Settings.TestsOnSaveMax := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsOnSaveMax, Settings.TestsOnSaveMax);
   // tests.slowMs (#1772): 50 bis 60000.
   Settings.TestsSlowMs := 10;
   Settings.Normalize;
