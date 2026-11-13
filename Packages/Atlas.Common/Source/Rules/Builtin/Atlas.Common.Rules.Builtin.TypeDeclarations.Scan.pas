@@ -70,13 +70,11 @@ implementation
 
 uses
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Text.Lines;
 

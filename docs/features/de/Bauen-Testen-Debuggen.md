@@ -321,6 +321,15 @@ Einstellungen: `debug.displayRules`
 
 Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
+#### „Warum bin ich hier?“
+
+- Beim Halt stehen am Ende der Kopfzeilen der umgebenden `if`, `while`, `repeat … until`, `for` und `case` die Werte ihrer Bedingungen, gedimmt wie die Werte im Editor: `(1200 > 1000) and True → True`, `I = 3 von 7`, `Art = paRabatt → paRabatt`, im `else`-Zweig `(4 = 0) → False, else-Zweig`.
+- Kurzschluss wie im Programm: Entscheidet bei `A and B` schon `A = False`, steht bei B „nicht nötig“.
+- Aufrufe und Getter wertet Atlas nicht von selbst aus (`‹Aufruf›`); ein Klick auf den Text der Zeile fragt nach und führt sie dann aus.
+- Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
 #### „kein Zugriff auf Wert“ erklärt
 
 - Liefert der Debugger für eine Variable nur „Inaccessible value“ oder „… wegen der Optimierung nicht …“, steht im Hover und in den Werten im Editor `‹kein Zugriff›`.
@@ -363,6 +372,30 @@ Einstellungen: `debug.completionInDialogs`
 | Umschalttaste oder Befehl „Auswerten/Ändern (IDE-Dialog)“ | der Dialog der IDE kommt |
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
+
+### Ereignisprotokoll
+
+<a id="window-atlasdebugeventlog"></a>
+- andockbares Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (`OutputDebugString`), Haltepunkt-Meldungen, Modulen, Threads, Logpunkten sowie Start und Ende der Sitzung
+- Spalten Zeit (relativ zum Start), Art, Thread, Text
+- Filter nach Art und Text: Wörter (jedes muss vorkommen) oder `/regulärer Ausdruck/`; „Filter merken“ hält ihn je Projekt in der Auswahl
+- Farben nach Muster, etwa `[FEHLER]` rot, `[WARN]` gelb
+- Doppelklick oder Enter springt zu `Datei.pas(123)`, `Datei.pas:123` oder `Unit.Routine`
+- Kontextmenü: Zeile kopieren, als Textdatei speichern, leeren
+
+Einstellungen: `debug.eventLog`, `debug.eventLogColors`
+
+### Logpunkte
+
+- Umschalt+F5 oder „Atlas: Logpunkt setzen“ (Atlas-Menü, Kontextmenü des Editors) an der Cursorzeile bzw. nach Rechtsklick in die Rinne an deren Zeile
+- Text mit Platzhaltern: `x={x}`, `Summe {Summe:0.00}`; Formatangaben `d` (ganze Zahl), `x` (hexadezimal), Muster mit `0` oder `#` (`FormatFloat`), sonst wie in `Format` (`.2f`); `{{` und `}}` sind Klammern im Text
+- Bedingung (`{Summe} > 1000`) und „nur die ersten N Treffer“; Fehler im Text zeigt der Dialog mit Stelle
+- ein gewöhnlicher Haltepunkt an der Zeile wird zum Logpunkt; „Entfernen“ löscht ihn
+- im Ereignisprotokoll eine Zeile der Art Logpunkt mit Präfix und Ort, etwa `[LOG] x=42 · Unit1.pas:12`; Doppelklick springt zur Zeile
+- Raute in der Rinne mit Text und Bedingung im Tooltip
+- „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
+
+Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
 ### Exceptions
 
@@ -451,3 +484,13 @@ Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - Experimentell (`debug.threadFreeze`, Vorgabe aus): „Thread einfrieren“, „Thread auftauen“ und „Alle Threads auftauen“. Ein eingefrorener Thread läuft beim Fortsetzen nicht weiter; sein Zeichen ist grau, die Statusleiste von Atlas zeigt „2 Threads eingefroren“ (Klick taut alle auf). Atlas hält den Thread mit `SuspendThread` an; das geht nur bei Programmen auf diesem Rechner. Am Ende der Sitzung und beim Abschalten taut Atlas alle auf.
 
 Schalter: `debug.threadsInSource`, `debug.threadFreeze`.
+
+#### Herkunft eingereihter Methoden *(experimentell)*
+
+- Hält das Programm in einer anonymen Methode, die mit `TThread.Queue`, `TThread.Synchronize`, `TThread.ForceQueue`, `TTask.Run`, `TTask.Create` oder `TParallel.For` gestartet wurde, zeigt der Aufrufstapel der IDE nur `CheckSynchronize` bzw. den Thread-Pool. Atlas zeigt dann im Ergebnisfenster „Eingereiht mit TThread.Queue von Thread 4120“ und darunter den Stapel der Einreihung; Rahmen der Bibliothek stehen zusammengefasst („5 Rahmen der Bibliothek“), Doppelklick springt zur Zeile.
+- Dafür setzt Atlas beim Start der Sitzung auf jede Aufrufstelle im Projekt einen Haltepunkt der Gruppe Atlas.Herkunft. Hält das Programm dort, merkt Atlas Thread und Stapel und setzt sofort fort. Ein Haltepunkt des Benutzers an derselben Zeile bleibt und hält wie gewohnt.
+- Zugeordnet wird der Reihe nach: Der Halt in der Methode einer Aufrufstelle bekommt die älteste noch offene Einreihung dieser Stelle. Je Aufrufstelle merkt Atlas die letzten `debug.asyncOrigin.maxPerSite` (Vorgabe 20).
+- Erfasst werden nur Aufrufe mit Klassennamen (`TThread.Queue(…)`), ein `Synchronize(…)` in einer Methode eines Threads nicht.
+- Das Anhalten an jeder Aufrufstelle bremst das Programm; die Statusleiste von Atlas zeigt „Herkunft: 12 Aufrufstellen“ in Gelb, solange die Haltepunkte stehen.
+
+Schalter: `debug.asyncOrigin`, `debug.asyncOrigin.maxPerSite`.

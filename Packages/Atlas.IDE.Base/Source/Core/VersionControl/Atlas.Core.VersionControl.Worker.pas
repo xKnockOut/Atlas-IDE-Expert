@@ -98,7 +98,7 @@ begin
   mThread := TThread.CreateAnonymousThread(
     procedure
     var
-      Current: TThread;
+      mCurrent: TThread;
     begin
       try
         mWork();
@@ -111,8 +111,8 @@ begin
       begin
         Exit;
       end;
-      Current := TThread.Current;
-      TThread.Queue(Current,
+      mCurrent := TThread.Current;
+      TThread.Queue(mCurrent,
         procedure
         begin
           try
@@ -121,7 +121,7 @@ begin
               mDone();
             end;
           finally
-            Finished(Current);
+            Finished(mCurrent);
           end;
         end);
     end);

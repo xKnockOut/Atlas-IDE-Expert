@@ -287,6 +287,15 @@ Settings: `debug.displayRules`
 
 Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
+### Why am I here?
+
+- When stopped, the end of the header lines of the enclosing `if`, `while`, `repeat … until`, `for` and `case` shows the values of their conditions, dimmed like the inline values: `(1200 > 1000) and True → True`, `I = 3 of 7`, `Art = paRabatt → paRabatt`, in an `else` branch `(4 = 0) → False, else branch`
+- Short-circuit as in the program: if `A = False` already decides `A and B`, B shows “not needed”
+- Calls and getters are not evaluated on their own (`‹call›`); a click on the text of the line asks and then runs them
+- Only in files with source, up to the routine, at most `debug.whyHere.depth` blocks (default 3); the values disappear with the next step
+
+Settings: `debug.whyHere`, `debug.whyHere.depth`
+
 ### "No access to value" explained
 
 - When the debugger only says "Inaccessible value" or "... inaccessible here due to optimization" for a variable, the hover and the inline values show `‹no access›`.
@@ -410,6 +419,30 @@ Atlas menu and command palette. When you work on several bugs, switch between na
 
 Settings: `debug.breakpointSetPerBranch`
 
+## Debug: event log
+
+<a id="window-atlasdebugeventlog"></a>
+- Dockable window “Atlas: Event log” with debug output (`OutputDebugString`), breakpoint messages, modules, threads, logpoints and start and end of the session
+- Columns time (relative to the start), kind, thread, text
+- Filter by kind and text: words (each must occur) or `/regular expression/`; “Remember filter” keeps it per project in the list
+- Colors by pattern, for example `[FEHLER]` red, `[WARN]` yellow
+- Double-click or Enter jumps to `File.pas(123)`, `File.pas:123` or `Unit.Routine`
+- Context menu: copy line, save as text file, clear
+
+Settings: `debug.eventLog`, `debug.eventLogColors`
+
+## Debug: logpoints
+
+- Shift+F5 or “Atlas: Set logpoint” (Atlas menu, editor context menu) at the cursor line, or after a right-click in the gutter at that line
+- Text with placeholders: `x={x}`, `total {Total:0.00}`; formats `d` (integer), `x` (hexadecimal), patterns with `0` or `#` (`FormatFloat`), otherwise as in `Format` (`.2f`); `{{` and `}}` are literal braces
+- Condition (`{Total} > 1000`) and “only the first N hits”; the dialog shows errors in the text with their position
+- An ordinary breakpoint on the line becomes a logpoint; “Remove” deletes it
+- One line of kind logpoint in the event log with prefix and place, for example `[LOG] x=42 · Unit1.pas:12`; double-click jumps to the line
+- Diamond in the gutter with text and condition in the tooltip
+- “Disable/Enable/Delete all logpoints” only touch the breakpoint group `Atlas.Logpunkte`
+
+Settings: `debug.logpoints`, `debug.logpointPrefix`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
@@ -506,3 +539,13 @@ Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - Experimental (`debug.threadFreeze`, default off): “Freeze thread”, “Thaw thread” and “Thaw all threads”. A frozen thread does not run when you continue; its mark is gray and the Atlas status bar shows “2 threads frozen” (click thaws all). Atlas holds the thread with `SuspendThread`, which only works for programs on this computer. At the end of the session and when switched off Atlas thaws all threads.
 
 Settings: `debug.threadsInSource`, `debug.threadFreeze`
+
+### Origin of queued methods *(experimental)*
+
+- When the program stops in an anonymous method started with `TThread.Queue`, `TThread.Synchronize`, `TThread.ForceQueue`, `TTask.Run`, `TTask.Create` or `TParallel.For`, the IDE call stack only shows `CheckSynchronize` or the thread pool. Atlas then shows “Queued with TThread.Queue from thread 4120” in the results window with the call stack of the place that queued it; library frames are collapsed (“5 library frames”), double click jumps to the line.
+- For this Atlas sets a breakpoint of group Atlas.Herkunft on every call site in the project when the session starts. When the program stops there, Atlas records thread and stack and continues at once. A breakpoint of your own on the same line stays and stops as usual.
+- Matching follows the order: a stop in the method of a call site gets the oldest open call of that site. Atlas keeps the last `debug.asyncOrigin.maxPerSite` per call site (default 20).
+- Only calls with the class name (`TThread.Queue(…)`) count, a plain `Synchronize(…)` inside a thread method does not.
+- Stopping at every call site slows the program down; the Atlas status bar shows “Origin: 12 call sites” in yellow while the breakpoints are set.
+
+Settings: `debug.asyncOrigin`, `debug.asyncOrigin.maxPerSite`

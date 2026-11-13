@@ -1560,6 +1560,18 @@
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
     },
+    "TestsCaseTable": {
+      "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.testCaseTable",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "[TestCase]-Fälle als Tabelle",
+      "x-captionEn": "[TestCase] cases as a table",
+      "x-issue": "#1879"
+    },
     "TestsLeaks": {
       "description": "Lecks je Test zeigen: Mit Leckmonitor (DUnitX.MemoryLeakMonitor.FastMM4/FastMM5) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag. Atlas zeigt ihn dann als bestanden mit Leck: Marke gelb „bestanden · Leck: 40 Bytes“, Warnung in Atlas-Probleme am Methodenkopf (Quelle DUnitX), eine Zeile in der Meldungsansicht. Aus = wie im Bericht (Fehlschlag).",
       "type": "boolean",
@@ -1759,6 +1771,28 @@
       "x-captionEn": "Freeze and thaw threads",
       "x-issue": "#852"
     },
+    "DebugAsyncOrigin": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.asyncOrigin",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Herkunft eingereihter Methoden merken",
+      "x-captionEn": "Remember the origin of queued methods",
+      "x-issue": "#859"
+    },
+    "DebugAsyncOriginMaxPerSite": {
+      "type": "integer",
+      "default": 20,
+      "description": "So viele Einreihungen merkt Atlas je Aufrufstelle; ältere fallen heraus (1 bis 1000).",
+      "x-key": "debug.asyncOrigin.maxPerSite",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.asyncOrigin",
+      "x-issue": "#859"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",
@@ -1852,6 +1886,29 @@
       "x-parent": "debug.inlineValues",
       "x-issue": "#508"
     },
+    "DebugWhyHere": {
+      "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.whyHere",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Warum bin ich hier? Werte der umgebenden Bedingungen",
+      "x-captionEn": "Why am I here? Values of the enclosing conditions",
+      "x-issue": "#1878"
+    },
+    "DebugWhyHereDepth": {
+      "type": "integer",
+      "default": 3,
+      "description": "So viele umgebende Blöcke (1 bis 10) zeigt „Warum bin ich hier?“.",
+      "x-key": "debug.whyHere.depth",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.whyHere",
+      "x-issue": "#1878"
+    },
     "DebugOwnCodeFolders": {
       "type": "string",
       "default": "",
@@ -1863,6 +1920,58 @@
       "x-caption": "Weitere Ordner mit eigenem Code",
       "x-captionEn": "More folders with own code",
       "x-issue": "#578"
+    },
+    "DebugEventLog": {
+      "description": "Ereignisprotokoll beim Debuggen: Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (OutputDebugString), Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, regulärem Ausdruck und Art, Farben nach Muster und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.eventLog",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ereignisprotokoll beim Debuggen",
+      "x-captionEn": "Event log while debugging",
+      "x-issue": "#580"
+    },
+    "DebugEventLogColors": {
+      "description": "Farben im Ereignisprotokoll: „Muster=Farbe“, durch „;“ getrennt; Farbe als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Das erste passende Muster gewinnt.",
+      "type": "string",
+      "default": "[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00",
+      "x-key": "debug.eventLogColors",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.eventLog",
+      "x-control": "Textfeld",
+      "x-caption": "Farben im Ereignisprotokoll",
+      "x-captionEn": "Event log colors",
+      "x-issue": "#580"
+    },
+    "DebugLogpoints": {
+      "description": "Logpunkte: „Logpunkt setzen“ (Umschalt+F5, Kontextmenü am Rand) nimmt einen Text mit Platzhaltern wie „x={x}“ an und legt einen Haltepunkt der IDE ohne Anhalten an, der den Text mit den Werten ins Ereignisprotokoll schreibt; Raute in der Rinne; Befehle „Alle Logpunkte aus/an/löschen“. Aus = keine Befehle, keine Raute.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Logpunkte",
+      "x-captionEn": "Logpoints",
+      "x-issue": "#583"
+    },
+    "DebugLogpointPrefix": {
+      "description": "Präfix vor jeder Logpunkt-Ausgabe im Ereignisprotokoll.",
+      "type": "string",
+      "default": "[LOG]",
+      "x-key": "debug.logpointPrefix",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-control": "Textfeld",
+      "x-caption": "Präfix der Logpunkte",
+      "x-captionEn": "Logpoint prefix",
+      "x-issue": "#583"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
