@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 78 |
+| [Fehler finden](#gruppe-find-bugs) | 82 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -88,6 +88,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
 | [`local-object-not-freed`](#local-object-not-freed) | Lokales Objekt nie freigegeben | Bug | Warnung |
 | [`created-result-not-freed`](#created-result-not-freed) | Neues Objekt aus einer Funktion nie freigegeben | Bug | Warnung |
+| [`anonymous-method-self-cycle`](#anonymous-method-self-cycle) | Anonyme Methode hält ihren eigenen Rahmen fest | Bug | Warnung |
+| [`event-handler-not-unhooked`](#event-handler-not-unhooked) | Ereignis eines fremden Objekts nicht zurückgesetzt | Bug | Hinweis |
+| [`interface-object-mixed`](#interface-object-mixed) | Objekt mit Referenzzählung als Objekt und als Interface benutzt | Bug | Warnung |
+| [`interface-cycle-without-weak`](#interface-cycle-without-weak) | Interfaces halten sich gegenseitig ohne [weak] | Bug | Hinweis |
 | [`stringlist-objects-leak`](#stringlist-objects-leak) | Objekte in einer TStringList ohne Besitz | Bug | Warnung |
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
@@ -4921,6 +4925,124 @@ Richtig:
   finally
     Lines.Free;
   end;
+```
+
+<a id="anonymous-method-self-cycle"></a>
+### anonymous-method-self-cycle
+
+**Anonyme Methode hält ihren eigenen Rahmen fest** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Variable (auch Inline-Variable) erhält eine anonyme Methode der Routine, und eine anonyme Methode derselben Routine fängt diese Variable ein (auch die anonyme Methode selbst, bei Rekursion). Alle anonymen Methoden einer Routine teilen einen Rahmen, der die eingefangenen Variablen hält; über die Variable verweist der Rahmen dann auf sich selbst und wird nie freigegeben, samt allem, was er eingefangen hat. Still, wenn die Variable in der Routine auf nil gesetzt wird. Konfidenz hoch. Keine Schnellkorrektur: die Methodenreferenz in einer eigenen Routine bauen (deren Rahmen hält die Variable nicht) oder die Variable vor dem Ende der Routine auf nil setzen.
+
+Mit Treffer:
+
+```pascal
+var
+  Step: TProc;
+begin
+  Step := procedure
+    begin
+    end;
+  TThread.Queue(nil,
+    procedure
+    begin
+      Step();
+    end);
+end;
+```
+
+Richtig:
+
+```pascal
+function MakeStep: TProc;
+begin
+  Result := procedure
+    begin
+    end;
+end;
+…
+  Step := MakeStep;
+  TThread.Queue(nil, Step);
+```
+
+<a id="event-handler-not-unhooked"></a>
+### event-handler-not-unhooked
+
+**Ereignis eines fremden Objekts nicht zurückgesetzt** · Bug · Hinweis · Gruppe Fehler finden
+
+Eine Methode weist eine Methode der eigenen Klasse einem Ereignis OnXyz eines fremden Objekts zu (Fremd.OnChange := Handler oder Self.Handler), und weder Destroy noch BeforeDestruction oder Notification der Klasse setzen dieses Ereignis zurück. Fremd heißt: Parameter der Methode oder Feld, das eine Methode der Klasse aus einem Parameter übernimmt (FFeld := AQuelle), das die Klasse nie selbst erzeugt und das nicht im published-Teil steht (Komponenten der Formulardatei gehören dem Formular). Lebt das fremde Objekt länger, ruft es die Methode eines freigegebenen Objekts auf. Still bei eigenen Ereignissen (OnChange := …), Handlern, die keine Methoden der Klasse sind, und Anweisungen in with-Blöcken oder anonymen Methoden. Konfidenz mittel. Schnellkorrektur bei Feldern: if Assigned(FFeld) then FFeld.OnXyz := nil; am Anfang des Destruktors der Datei einfügen.
+
+Mit Treffer:
+
+```pascal
+constructor TObserver.Create(ASource: TStringList);
+begin
+  FSource := ASource;
+  FSource.OnChange := SourceChanged;
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TObserver.Destroy;
+begin
+  if Assigned(FSource) then
+    FSource.OnChange := nil;
+  inherited;
+end;
+```
+
+<a id="interface-object-mixed"></a>
+### interface-object-mixed
+
+**Objekt mit Referenzzählung als Objekt und als Interface benutzt** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Objektvariable einer Klasse mit Referenzzählung (Nachfahre von TInterfacedObject, keine Klasse der Kette deklariert _AddRef oder _Release selbst) wird als Interface weitergegeben und zusätzlich mit Free, FreeAndNil, Destroy oder DisposeOf freigegeben: Der letzte Interface-Verweis gibt das Objekt ein zweites Mal frei. Oder sie wird nur vorübergehend als Interface weitergegeben (X as IFoo oder IFoo(X) als Argument einer Routine; eine Methode eines anderen Objekts wie Liste.Add(X as IFoo) behält den Verweis meist und zählt wie eine Interface-Variable) und danach wieder über die Objektvariable benutzt: Fällt der vorübergehende Verweis weg, sinkt der Zähler auf 0, und das Objekt ist schon freigegeben. Als Interface weitergegeben heißt: einer Interface-Variablen der Routine oder Result einer Funktion mit Interface-Ergebnis zugewiesen, oder mit as bzw. einer Typumwandlung zu einem Interface gemacht. Still, wenn eine Interface-Variable das Objekt für die Routine hält, und nachdem die Variable ein neues Objekt erhalten hat. Inline-Variablen und stille Umwandlungen an Interface-Parameter prüft die Regel nicht. Konfidenz mittel. Keine Schnellkorrektur: das Objekt nur in einer Interface-Variablen halten.
+
+Mit Treffer:
+
+```pascal
+Counter := TCounter.Create;
+Use(Counter as ICounter);
+Counter.Increment;
+```
+
+Richtig:
+
+```pascal
+var Counter: ICounter := TCounter.Create;
+Use(Counter);
+Counter.Increment;
+```
+
+<a id="interface-cycle-without-weak"></a>
+### interface-cycle-without-weak
+
+**Interfaces halten sich gegenseitig ohne [weak]** · Bug · Hinweis · Gruppe Fehler finden
+
+Zwei Klassen der Datei halten sich über Interface-Felder gegenseitig fest: Ein Feld der Klasse X zeigt auf ein Interface, das die Klasse Y implementiert (direkt, als TList<IFoo>, IList<IFoo>, TArray<IFoo> oder array of IFoo), und ein Feld von Y auf ein Interface von X. Innerhalb einer Klasse (Baum mit Rückverweis) muss eine Seite eine Liste und die andere ein einzelnes Feld sein; einzelne Felder derselben Klasse allein (verkettete Liste) bleiben still. Keines der Felder darf [weak] oder [unsafe] sein. Dann wird keines der Objekte freigegeben, weil jedes den Zähler des anderen über 0 hält. Gemeldet an beiden Feldern. Experimentell: nur im Profil strict oder wenn in rules eingeschaltet. Klassen anderer Units bleiben außen vor. Konfidenz mittel. Schnellkorrektur: [weak] am einzelnen Feld, wenn die andere Seite eine Liste ist (Rückverweis des Kinds).
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+Mit Treffer:
+
+```pascal
+TNode = class(TInterfacedObject, INode)
+private
+  FParent: INode;
+  FChildren: TList<INode>;
+end;
+```
+
+Richtig:
+
+```pascal
+TNode = class(TInterfacedObject, INode)
+private
+  [weak] FParent: INode;
+  FChildren: TList<INode>;
+end;
 ```
 
 <a id="stringlist-objects-leak"></a>

@@ -1287,6 +1287,26 @@
       ]
     },
     {
+      "id": "anonymous-method-self-cycle",
+      "name": "Anonyme Methode hält ihren eigenen Rahmen fest",
+      "description": "Eine lokale Variable (auch Inline-Variable) erhält eine anonyme Methode der Routine, und eine anonyme Methode derselben Routine fängt diese Variable ein (auch die anonyme Methode selbst, bei Rekursion). Alle anonymen Methoden einer Routine teilen einen Rahmen, der die eingefangenen Variablen hält; über die Variable verweist der Rahmen dann auf sich selbst und wird nie freigegeben, samt allem, was er eingefangen hat. Still, wenn die Variable in der Routine auf nil gesetzt wird. Konfidenz hoch. Keine Schnellkorrektur: die Methodenreferenz in einer eigenen Routine bauen (deren Rahmen hält die Variable nicht) oder die Variable vor dem Ende der Routine auf nil setzen."
+    },
+    {
+      "id": "event-handler-not-unhooked",
+      "name": "Ereignis eines fremden Objekts nicht zurückgesetzt",
+      "description": "Eine Methode weist eine Methode der eigenen Klasse einem Ereignis OnXyz eines fremden Objekts zu (Fremd.OnChange := Handler oder Self.Handler), und weder Destroy noch BeforeDestruction oder Notification der Klasse setzen dieses Ereignis zurück. Fremd heißt: Parameter der Methode oder Feld, das eine Methode der Klasse aus einem Parameter übernimmt (FFeld := AQuelle), das die Klasse nie selbst erzeugt und das nicht im published-Teil steht (Komponenten der Formulardatei gehören dem Formular). Lebt das fremde Objekt länger, ruft es die Methode eines freigegebenen Objekts auf. Still bei eigenen Ereignissen (OnChange := …), Handlern, die keine Methoden der Klasse sind, und Anweisungen in with-Blöcken oder anonymen Methoden. Konfidenz mittel. Schnellkorrektur bei Feldern: if Assigned(FFeld) then FFeld.OnXyz := nil; am Anfang des Destruktors der Datei einfügen."
+    },
+    {
+      "id": "interface-object-mixed",
+      "name": "Objekt mit Referenzzählung als Objekt und als Interface benutzt",
+      "description": "Eine lokale Objektvariable einer Klasse mit Referenzzählung (Nachfahre von TInterfacedObject, keine Klasse der Kette deklariert _AddRef oder _Release selbst) wird als Interface weitergegeben und zusätzlich mit Free, FreeAndNil, Destroy oder DisposeOf freigegeben: Der letzte Interface-Verweis gibt das Objekt ein zweites Mal frei. Oder sie wird nur vorübergehend als Interface weitergegeben (X as IFoo oder IFoo(X) als Argument einer Routine; eine Methode eines anderen Objekts wie Liste.Add(X as IFoo) behält den Verweis meist und zählt wie eine Interface-Variable) und danach wieder über die Objektvariable benutzt: Fällt der vorübergehende Verweis weg, sinkt der Zähler auf 0, und das Objekt ist schon freigegeben. Als Interface weitergegeben heißt: einer Interface-Variablen der Routine oder Result einer Funktion mit Interface-Ergebnis zugewiesen, oder mit as bzw. einer Typumwandlung zu einem Interface gemacht. Still, wenn eine Interface-Variable das Objekt für die Routine hält, und nachdem die Variable ein neues Objekt erhalten hat. Inline-Variablen und stille Umwandlungen an Interface-Parameter prüft die Regel nicht. Konfidenz mittel. Keine Schnellkorrektur: das Objekt nur in einer Interface-Variablen halten."
+    },
+    {
+      "id": "interface-cycle-without-weak",
+      "name": "Interfaces halten sich gegenseitig ohne [weak]",
+      "description": "Zwei Klassen der Datei halten sich über Interface-Felder gegenseitig fest: Ein Feld der Klasse X zeigt auf ein Interface, das die Klasse Y implementiert (direkt, als TList<IFoo>, IList<IFoo>, TArray<IFoo> oder array of IFoo), und ein Feld von Y auf ein Interface von X. Innerhalb einer Klasse (Baum mit Rückverweis) muss eine Seite eine Liste und die andere ein einzelnes Feld sein; einzelne Felder derselben Klasse allein (verkettete Liste) bleiben still. Keines der Felder darf [weak] oder [unsafe] sein. Dann wird keines der Objekte freigegeben, weil jedes den Zähler des anderen über 0 hält. Gemeldet an beiden Feldern. Experimentell: nur im Profil strict oder wenn in rules eingeschaltet. Klassen anderer Units bleiben außen vor. Konfidenz mittel. Schnellkorrektur: [weak] am einzelnen Feld, wenn die andere Seite eine Liste ist (Rückverweis des Kinds)."
+    },
+    {
       "id": "stringlist-objects-leak",
       "name": "Objekte in einer TStringList ohne Besitz",
       "description": "AddObject oder InsertObject legt ein neu erzeugtes Objekt (T.Create(…) direkt oder eine so erzeugte lokale Variable, die sonst nur gelesen wird) in eine TStringList (oder THashedStringList), die die Unit ohne OwnsObjects erzeugt, oder in die Items eines Felds vom Typ TListBox, TComboBox, TCheckListBox, TComboBoxEx oder TColorListBox; niemand gibt diese Objekte frei. Besitzend ist eine Liste mit TStringList.Create(True) oder OwnsObjects := True. Still, wenn eine Routine der Unit Liste.Objects[…] liest und etwas freigibt, wenn die Liste weitergegeben wird (ObjekteFreigeben(Liste), anderswo zugewiesen), wenn das Objekt einen Owner hat (Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit Argument) und bei Listen, die nicht in der Unit erzeugt werden. Konfidenz mittel. Schnellkorrektur: TStringList.Create(True) (auch statt Create(False)), bei anderen Konstruktoren OwnsObjects := True nach der Erzeugung; für Items von Steuerelementen keine."
