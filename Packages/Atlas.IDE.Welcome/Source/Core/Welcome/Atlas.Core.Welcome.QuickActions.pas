@@ -48,6 +48,9 @@ type
   TAtlasQuickActionPhase = (Idle, Running, Succeeded, Failed, Refused);
   /// <summary>Grund, aus dem „Pull“ gesperrt ist.</summary>
   TAtlasPullBlock = (None, LocalChanges, NoWorkingCopy, Busy);
+  /// <summary>Text, den die IDE nach einem Pull in Detail und als Meldung setzt: keiner, lokale Änderungen
+  /// (mit Meldung), keine Arbeitskopie, Anmeldung fehlt (mit Meldung), sonst fehlgeschlagen (mit Meldung).</summary>
+  TAtlasPullNote = (None, LocalChanges, NoWorkingCopy, Login, Failed);
 {$SCOPEDENUMS OFF}
   TAtlasQuickActions = set of TAtlasQuickAction;
 
@@ -84,6 +87,12 @@ type
     function Running: Boolean;
     /// <summary>Ganze Sekunden seit dem Beginn; 0 vor dem Beginn.</summary>
     function ElapsedSeconds(ANowMs: UInt64): Integer;
+    /// <summary>Stand nach einem Pull mit Ergebnis AOutcome; AReason ist der Grund eines Fehlschlags. ANote sagt,
+    /// welchen Text die IDE noch setzt; bei Failed steht der Name von AReason schon in Detail.</summary>
+    function AfterPull(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome;
+      out ANote: TAtlasPullNote): TAtlasQuickActionState;
+    /// <summary>Ein Testlauf endete ohne Ergebnis: läuft nicht mehr oder die Schonzeit AGraceMs ist um.</summary>
+    function TestEnded(ANowMs, AGraceMs: UInt64): Boolean;
   end;
 
   /// <summary>Konfigurationen (ohne „Base“) und eingeschaltete Plattformen einer .dproj in Dateireihenfolge.</summary>
@@ -328,6 +337,41 @@ begin
     Exit;
   end;
   Result := Integer((ANowMs - StartedMs) div 1000);
+end;
+
+function TAtlasQuickActionState.AfterPull(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome;
+  out ANote: TAtlasPullNote): TAtlasQuickActionState;
+begin
+  Result := Self;
+  Result.Action := TAtlasQuickAction.Pull;
+  Result.Pull := AOutcome;
+  Result.Detail := '';
+  Result.Phase := TAtlasQuickActionPhase.Failed;
+  ANote := TAtlasPullNote.None;
+  case AOutcome of
+    TAtlasPullOutcome.Updated, TAtlasPullOutcome.UpToDate:
+      Result.Phase := TAtlasQuickActionPhase.Succeeded;
+    TAtlasPullOutcome.Blocked:
+      ANote := TAtlasPullNote.LocalChanges;
+    TAtlasPullOutcome.NoWorkingCopy:
+      ANote := TAtlasPullNote.NoWorkingCopy;
+  else
+    // Fehlende Anmeldung (#1287): Ursache und Weg zur Seite Versionsverwaltung statt eines Codes.
+    if AReason = TAtlasVcsOutcome.LoginNeeded then
+    begin
+      ANote := TAtlasPullNote.Login;
+    end
+    else
+    begin
+      ANote := TAtlasPullNote.Failed;
+      Result.Detail := AtlasVcsOutcomeName(AReason);
+    end;
+  end;
+end;
+
+function TAtlasQuickActionState.TestEnded(ANowMs, AGraceMs: UInt64): Boolean;
+begin
+  Result := not Running or (ANowMs >= StartedMs + AGraceMs);
 end;
 
 { TAtlasProjectTargets }

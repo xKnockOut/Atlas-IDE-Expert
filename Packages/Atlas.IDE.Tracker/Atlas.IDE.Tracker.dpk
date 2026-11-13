@@ -133,6 +133,7 @@ contains
   Atlas.UI.Tracker.TestResults.Strings in 'Source\UI\Tracker\Atlas.UI.Tracker.TestResults.Strings.pas',
   Atlas.UI.Tracker.Time.Strings in 'Source\UI\Tracker\Atlas.UI.Tracker.Time.Strings.pas',
   Atlas.UI.Tracker.Workflow.Strings in 'Source\UI\Tracker\Atlas.UI.Tracker.Workflow.Strings.pas',
+  Atlas.UI.Tracker.GitHubStrings in 'Source\UI\Tracker\Atlas.UI.Tracker.GitHubStrings.pas',
   Atlas.UI.Tracker.BoardFrame in 'Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas' {AtlasBoardFrame: TFrame},
   Atlas.UI.Tracker.FlowFrame in 'Source\UI\Tracker\Atlas.UI.Tracker.FlowFrame.pas' {AtlasFlowFrame: TFrame},
   Atlas.UI.Tracker.MoveDialog in 'Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas',

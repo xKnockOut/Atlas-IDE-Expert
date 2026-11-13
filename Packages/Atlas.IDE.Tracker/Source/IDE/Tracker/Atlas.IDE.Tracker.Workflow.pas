@@ -27,6 +27,9 @@
 //   Hook TimeBooked an die Zeiterfassung (auch nach Abbrechen), damit sie
 //   nicht noch einmal angeboten wird. Ohne Zeitbuchung des Anbieters bzw.
 //   ohne Felder (GitHub) bleiben die Abschnitte weg.
+// - Schließgrund (#2135): Unter GitHub zeigt der Dialog den Abschnitt
+//   „Abschluss“ (Request.CloseReasons); das Original eines Duplikats prüft
+//   der Lauf über den Anbieter (TAtlasTrackerEndCall.Provider).
 // - Kommentar aus der Vorschau (SendComment).
 // - Zustände und Übergänge eines Issues für „Prüfen“ (#2126, ReadStates).
 // - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
@@ -796,6 +799,7 @@ begin
   end;
   Result := TAtlasTrackerEndRequest.Create(AInput.Key, mOptions,
     TAtlasTrackerWorkflow.Fill(AOptions.EndComment, mValues));
+  Result.CloseReasons := (AProvider <> nil) and TAtlasTrackerWorkflow.ClosesWithReason(AProvider.Name);
   mSeconds := 0;
   if AOptions.EndTime and (TimeWriterOf(AProvider) <> nil) and Assigned(FTimeSeconds) then
   begin
@@ -896,6 +900,8 @@ begin
   mCall.Writer := WriterOf(AProvider);
   mCall.Time := TimeWriterOf(AProvider);
   mCall.Fields := FieldsOf(AProvider);
+  // Original eines Duplikats vor dem ersten Schreiben prüfen (#2135).
+  mCall.Provider := AProvider;
   mCall.Target := ATarget;
   mCall.Key := AKey;
   mCall.TimeoutMs := TAtlasTrackerWorkflow.cWriteTimeoutMs;

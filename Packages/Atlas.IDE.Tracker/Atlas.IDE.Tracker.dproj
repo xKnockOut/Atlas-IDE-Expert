@@ -262,6 +262,7 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TestResults.Strings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Time.Strings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Workflow.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.GitHubStrings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TestResults.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TileView.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>

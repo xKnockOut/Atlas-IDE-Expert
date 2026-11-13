@@ -3,11 +3,15 @@
 // Zugriffsverletzung erklären (#865), Texte: aus dem Ergebnis von TAtlasAvAnalysis die Erklärung für die
 // Exception-Leiste (Ergebniszeile, Feld bzw. Füllmuster, geprüfte Glieder mit ✓/✗), den Text für „Erklärung
 // kopieren“ und die Zeilen für die Meldungen, wenn keine Leiste steht (debug.exceptionBanner aus).
+// Modul der Fehleradresse (#1820): „Adresse liegt in vcl290.bpl (RTL/VCL)“ als Zusatz zur Erklärung bzw. als
+// eigene Erklärung, wenn der Fehler nicht in eigenem Code liegt, dann mit der letzten eigenen Stelle.
 
 interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.Modules,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner;
 
@@ -31,6 +35,19 @@ type
       const APlace: string): TArray<string>; static;
     /// <summary>Versatz kurz: $1C, $08.</summary>
     class function OffsetText(AOffset: Integer): string; static;
+    /// <summary>„Adresse liegt in …“ zum Modul der Fehleradresse (#1820); '' ohne bekanntes Modul.</summary>
+    class function ModuleText(const AModule: TAtlasDebugFaultModule): string; static;
+    /// <summary>„zuletzt in deinem Code: Unit1.pas:42 (TForm1.Button1Click)“ bzw. „kein eigener Code …“.</summary>
+    class function OwnFrameText(const AModule: TAtlasDebugFaultModule; const AFrames: TAtlasDebugFrames): string;
+      static;
+    /// <summary>Erklärung nur mit dem Modul, wenn der Halt nicht in eigenem Code steht (#1820): Modul als
+    /// Ergebniszeile, die letzte eigene Stelle dahinter; Active = False ohne bekanntes Modul.</summary>
+    class function ModuleOnly(const AModule: TAtlasDebugFaultModule; const AFrames: TAtlasDebugFrames;
+      const AHeader: string): TAtlasDebugBannerExplanation; static;
+    /// <summary>Fertige Erklärung um den Text zum Modul (ModuleText) ergänzen: hinter dem Detail und im kopierten
+    /// Text; '' lässt sie unverändert.</summary>
+    class function WithModule(const AExplanation: TAtlasDebugBannerExplanation;
+      const AModuleText: string): TAtlasDebugBannerExplanation; static;
   end;
 
 implementation
@@ -268,7 +285,89 @@ begin
   Result.CopyText := CopyTextOf(Result, AHeader);
 end;
 
+class function TAtlasAvTexts.ModuleText(const AModule: TAtlasDebugFaultModule): string;
+begin
+  Result := '';
+  if not AModule.Known then
+  begin
+    Exit;
+  end;
+  case AModule.Kind of
+    TAtlasDebugModuleKind.ProgramFile:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleProgram, [AModule.Name]);
+    TAtlasDebugModuleKind.Runtime:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleRuntime, [AModule.Name]);
+    TAtlasDebugModuleKind.OperatingSystem:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleSystem, [AModule.Name]);
+    TAtlasDebugModuleKind.Foreign:
+      if AModule.NoDebugInfo then
+      begin
+        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleNoDebugInfo, [AModule.Name]);
+      end
+      else
+      begin
+        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleForeign, [AModule.Name]);
+      end;
+    TAtlasDebugModuleKind.Unknown:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleForeign, [AModule.Name]);
+  end;
+end;
+
+class function TAtlasAvTexts.OwnFrameText(const AModule: TAtlasDebugFaultModule;
+  const AFrames: TAtlasDebugFrames): string;
+var
+  mFrame: TAtlasDebugFrame;
+begin
+  if (AModule.OwnFrame < 0) or (AModule.OwnFrame > High(AFrames)) then
+  begin
+    Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvModuleNoOwnFrame));
+  end;
+  mFrame := AFrames[AModule.OwnFrame];
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleOwnFrame, [ExtractFileName(mFrame.FileName),
+    mFrame.Line, mFrame.Routine]);
+end;
+
+class function TAtlasAvTexts.ModuleOnly(const AModule: TAtlasDebugFaultModule; const AFrames: TAtlasDebugFrames;
+  const AHeader: string): TAtlasDebugBannerExplanation;
+begin
+  Result := Default(TAtlasDebugBannerExplanation);
+  Result.Headline := ModuleText(AModule);
+  if Result.Headline = '' then
+  begin
+    Exit;
+  end;
+  Result.Active := True;
+  Result.HeadlineMark := TAtlasDebugBannerMark.Neutral;
+  // Im eigenen Programm, aber ohne Quelltext am Halt: die letzte eigene Stelle hilft genauso.
+  Result.Detail := OwnFrameText(AModule, AFrames);
+  Result.CopyText := CopyTextOf(Result, AHeader);
+end;
+
+class function TAtlasAvTexts.WithModule(const AExplanation: TAtlasDebugBannerExplanation;
+  const AModuleText: string): TAtlasDebugBannerExplanation;
+begin
+  Result := AExplanation;
+  if (AModuleText = '') or not Result.Active or Result.Busy then
+  begin
+    Exit;
+  end;
+  if Result.Detail <> '' then
+  begin
+    Result.Detail := Result.Detail + ' ' + #$00B7 + ' ' + AModuleText;
+  end
+  else
+  begin
+    Result.Detail := AModuleText;
+  end;
+  if Result.CopyText <> '' then
+  begin
+    Result.CopyText := Result.CopyText + sLineBreak + AModuleText;
+  end;
+end;
+
+
 class function TAtlasAvTexts.MessageLines(const AExplanation: TAtlasDebugBannerExplanation;
+
   const APlace: string): TArray<string>;
 var
   mText: string;
