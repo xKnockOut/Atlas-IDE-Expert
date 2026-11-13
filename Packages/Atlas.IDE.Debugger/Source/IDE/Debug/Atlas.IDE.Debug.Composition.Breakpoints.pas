@@ -4,7 +4,8 @@
 // Feature-Tabelle, Befehle, Menüeinträge und Einstellungen für „Beim nächsten
 // Ereignis anhalten“ (#856), „Haltepunkte prüfen“ (#577), „Haltepunkt auf
 // Methoden“ (#855), Haltepunkt-Sätze (#586), „Bis hier ausführen“ (#851), das
-// Haltepunktfenster (#863) und „Haltepunkt nur für ein Objekt“ (#857).
+// Haltepunktfenster (#863), „Haltepunkt nur für ein Objekt“ (#857), Haltepunkte,
+// die mit dem Code wandern (#841), und Haltepunkt-Regeln (#864).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -47,6 +48,8 @@ uses
   Atlas.IDE.Debug.RunToColumn,
   Atlas.IDE.Debug.BreakpointList,
   Atlas.IDE.Debug.InstanceBreakpoint,
+  Atlas.IDE.Debug.BreakpointAnchors,
+  Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.Strings;
 
 const
@@ -103,6 +106,26 @@ procedure ReleaseRunTo;
 begin
   TAtlasIdeRunToColumn.Uninstall;
   TAtlasIdeRunTo.Release;
+end;
+
+function BreakpointAnchorsVisible: Boolean;
+begin
+  Result := TAtlasIdeBreakpointAnchors.Enabled;
+end;
+
+procedure StartBreakpointAnchors;
+begin
+  TAtlasIdeBreakpointAnchors.Start(MessageLine);
+end;
+
+function BreakpointRulesVisible: Boolean;
+begin
+  Result := TAtlasIdeBreakpointRules.Enabled;
+end;
+
+procedure StartBreakpointRules;
+begin
+  TAtlasIdeBreakpointRules.Start(MessageLine);
 end;
 
 procedure StartBreakpointCheck;
@@ -229,10 +252,38 @@ begin
     end, TAtlasIdeDebugBreakpointList.Start, TAtlasIdeDebugBreakpointList.Release);
 end;
 
+/// <summary>Haltepunkte wandern mit dem Code (#841): Anker und Nachziehen nach Änderungen von außen.</summary>
+function BreakpointAnchorsPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugBreakpointAnchors',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugBreakpointAnchors;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBreakpointAnchors.Started;
+    end, StartBreakpointAnchors, TAtlasIdeBreakpointAnchors.Release);
+end;
+
+/// <summary>Abhängige Haltepunkte und Trefferbedingungen (#864): Befehl und Zuhörer der Sitzung.</summary>
+function BreakpointRulesPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugBreakpointRules',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugBreakpointRules;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBreakpointRules.Started;
+    end, StartBreakpointRules, TAtlasIdeBreakpointRules.Release);
+end;
+
 function BreakpointParts: TArray<IAtlasFeaturePart>;
 begin
   Result := [BreakpointCheckPart, MethodBreakpointsPart, BreakpointSetsPart, RunToPart, BreakpointsWindowPart,
-    InstanceBreakpointPart];
+    InstanceBreakpointPart, BreakpointAnchorsPart, BreakpointRulesPart];
 end;
 
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
@@ -283,7 +334,16 @@ begin
     Command('Atlas.BreakpointOnlyForObject', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceObjectCommand),
       TAtlasIdeInstanceBreakpoint.RestrictToObject, InstanceBreakpointVisible),
     Command('Atlas.BreakpointOnlyIf', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceFieldCommand),
-      TAtlasIdeInstanceBreakpoint.RestrictToField, InstanceBreakpointVisible)];
+      TAtlasIdeInstanceBreakpoint.RestrictToField, InstanceBreakpointVisible),
+    // Haltepunkte wandern mit dem Code (#841); nur sichtbar, solange debug.breakpointAnchors an ist.
+    Command('Atlas.BreakpointAnchorsUndo', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsUndoCommand),
+      TAtlasIdeBreakpointAnchors.Undo, BreakpointAnchorsVisible),
+    Command('Atlas.BreakpointAnchorsOrphans',
+      TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsOrphansCommand),
+      TAtlasIdeBreakpointAnchors.ShowOrphans, BreakpointAnchorsVisible),
+    // Haltepunkt-Regeln (#864); nur sichtbar, solange debug.breakpointRules an ist.
+    Command('Atlas.BreakpointRules', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesCommand),
+      TAtlasIdeBreakpointRules.Edit, BreakpointRulesVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -317,6 +377,9 @@ begin
     MenuEntry('Atlas.BreakpointSetSave', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.BreakpointSetSwitch', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.BreakpointsWindow', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.BreakpointAnchorsOrphans', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.BreakpointAnchorsUndo', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.BreakpointRules', TAtlasMenuPlace.AtlasMenu),
     // Bis hier ausführen (#851): die ersten beiden nur in einer Debug-Sitzung, der einmalige Haltepunkt immer.
     ContextEntry('Atlas.RunToHere', WhileDebugging),
     ContextEntry('Atlas.RunToHereSkip', WhileDebugging),
@@ -324,7 +387,8 @@ begin
     // Haltepunkt auf Methoden (#855): ohne Sitzung, das Wort am Cursor wird zum Startmuster.
     ContextEntry('Atlas.MethodBreakpoints', nil),
     ContextEntry('Atlas.BreakpointOnlyForObject', WhileDebugging),
-    ContextEntry('Atlas.BreakpointOnlyIf', WhileDebugging)];
+    ContextEntry('Atlas.BreakpointOnlyIf', WhileDebugging),
+    ContextEntry('Atlas.BreakpointRules', nil)];
 end;
 
 /// <summary>„Bis hier, Haltepunkte überspringen“ unter der Sicherung des Debuggers: nur im angehaltenen Zustand;
