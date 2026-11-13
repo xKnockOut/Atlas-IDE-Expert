@@ -1,10 +1,13 @@
 ﻿unit Atlas.Common.Lsp.BoundaryTests;
 
 // Grenzfälle als [TestCase] in die Testunit übernehmen (#2173). Befehl atlas.server.boundaryTests
-// [uri, zeile, fälle, kommentar?]:
+// [uri, zeile, fälle, kommentar?, platzhalter?]:
 //   uri, zeile: die Routine in der Unit (zeile 0-basiert, irgendwo in der Routine);
 //   fälle: [{name, values: [..Werte aller Parameter..], expected}], expected '' bei Prozeduren;
-//   kommentar (optional): Zeile über den Fällen ohne //, etwa „heutiges Verhalten, nicht geprüft“.
+//   kommentar (optional): Zeile über den Fällen ohne //, etwa „heutiges Verhalten, nicht geprüft“;
+//   platzhalter (optional, true): fehlendes expected bekommt den Platzhalter des Ergebnistyps (für „Heutiges
+//   Ergebnis übernehmen“, das danach die Werte des Laufs einträgt); sonst ist ein fehlendes expected ein Grund.
+// Bei Prozeduren entfällt expected.
 // Gibt es in der Testunit schon die Testmethode Test<Routine>Cases mit [TestCase], kommen die Fälle als neue
 // Zeilen dazu (wie die TestCase-Tabelle, #1879); sonst entsteht sie mit Parametern der Routine und AExpected.
 // Antwort: { uri, method, appended, edit: WorkspaceEdit | null, reason }. Ein Edit für die ganze Testunit: ein
@@ -54,6 +57,10 @@ type
     /// <summary>Übernimmt die Fälle für ADraft in die Testunit ATestText; False mit Reason im Plan.</summary>
     class function Plan(const ADraft: TTestDraft; const ACases: TArray<TLspBoundaryTestCase>;
       const ATestText, AComment: string): TLspBoundaryPlan; static;
+    /// <summary>Erwartete Werte passend zur Routine: bei Prozeduren keine, bei Funktionen fehlende mit dem
+    /// Platzhalter (APlaceholders) bzw. False mit AReason.</summary>
+    class function Completed(const ADraft: TTestDraft; var ACases: TArray<TLspBoundaryTestCase>;
+      APlaceholders: Boolean; out AReason: string): Boolean; static;
     /// <summary>Fälle aus dem JSON der Anfrage.</summary>
     class function CasesFromJson(AArray: TJSONArray): TArray<TLspBoundaryTestCase>; static;
     class function Execute(ATestUnits: TLspTestUnits; const AArguments: TJSONArray): TJSONValue; static;
@@ -76,7 +83,7 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TLspBoundaryTestsText = (NeedsArguments, NoCases, NoSeparator, NotTestCase);
+  TLspBoundaryTestsText = (NeedsArguments, NoCases, NoSeparator, NotTestCase, NoExpected);
 
 const
   cTexts: array[TLspBoundaryTestsText] of TAtlasText = (
@@ -85,7 +92,8 @@ const
     (De: 'Jeder Wert enthält eines der Trennzeichen , ; | #; DUnitX kann die Werte nicht übergeben';
      En: 'The values contain each of the separators , ; | #; DUnitX cannot pass them'),
     (De: '%s hat var- oder out-Parameter oder einen ohne Typ; [TestCase] kann sie nicht füllen';
-     En: '%s has var or out parameters or one without a type; [TestCase] cannot fill them'));
+     En: '%s has var or out parameters or one without a type; [TestCase] cannot fill them'),
+    (De: 'Fall „%s“: erwartetes Ergebnis fehlt'; En: 'Case “%s”: expected result is missing'));
 
 {$SCOPEDENUMS OFF}
 
@@ -311,6 +319,41 @@ begin
   end;
 end;
 
+/// <summary>Platzhalter des Typs als Wert für [TestCase]: '' statt des Literals '' und für Default(T).</summary>
+function PlaceholderValue(const ATypeName: string): string;
+begin
+  Result := TTestDrafts.Placeholder(ATypeName);
+  if (Result = '''''') or StartsText('Default(', Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+class function TLspBoundaryTests.Completed(const ADraft: TTestDraft; var ACases: TArray<TLspBoundaryTestCase>;
+  APlaceholders: Boolean; out AReason: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  AReason := '';
+  for mIndex := 0 to High(ACases) do
+  begin
+    if ADraft.ResultType = '' then
+    begin
+      ACases[mIndex].Expected := '';
+    end
+    else if (ACases[mIndex].Expected = '') and APlaceholders then
+    begin
+      ACases[mIndex].Expected := PlaceholderValue(ADraft.ResultType);
+    end
+    else if Trim(ACases[mIndex].Expected) = '' then
+    begin
+      AReason := cTexts[TLspBoundaryTestsText.NoExpected].Fmt([ACases[mIndex].Name]);
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
 function StringsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mArray: TJSONArray;
@@ -377,6 +420,8 @@ var
   mDraft: TTestDraft;
   mFile, mText, mReason, mComment: string;
   mPlan: TLspBoundaryPlan;
+  mCases: TArray<TLspBoundaryTestCase>;
+  mPlaceholders: Boolean;
 begin
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONNumber) or not (AArguments.Items[2] is TJSONArray) then
@@ -389,11 +434,21 @@ begin
   begin
     mComment := Trim(AArguments.Items[3].Value);
   end;
+  mPlaceholders := (AArguments.Count > 4) and (AArguments.Items[4] is TJSONBool) and
+    TJSONBool(AArguments.Items[4]).AsBoolean;
+  mCases := CasesFromJson(TJSONArray(AArguments.Items[2]));
   mPlan := Default(TLspBoundaryPlan);
   if ATestUnits.DraftWithTestUnit(AArguments.Items[0].Value, TJSONNumber(AArguments.Items[1]).AsInt, mDraft, mFile,
     mText, mReason) then
   begin
-    mPlan := Plan(mDraft, CasesFromJson(TJSONArray(AArguments.Items[2])), mText, mComment);
+    if Completed(mDraft, mCases, mPlaceholders, mReason) then
+    begin
+      mPlan := Plan(mDraft, mCases, mText, mComment);
+    end
+    else
+    begin
+      mPlan.Reason := mReason;
+    end;
   end
   else
   begin

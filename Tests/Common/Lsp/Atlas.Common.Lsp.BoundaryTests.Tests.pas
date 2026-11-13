@@ -36,6 +36,8 @@ type
     procedure CommandAnswersWithEdit;
     [Test]
     procedure CommandWithoutTestUnitNamesReason;
+    [Test]
+    procedure ExpectedCompletedOrRefused;
   end;
 
 implementation
@@ -254,6 +256,22 @@ begin
   finally
     mResult.Free;
   end;
+end;
+
+procedure TLspBoundaryTestsTests.ExpectedCompletedOrRefused;
+var
+  mCases: TArray<TLspBoundaryTestCase>;
+  mReason: string;
+begin
+  mCases := [Case_('A', ['1', 'x'], '')];
+  Assert.IsFalse(TLspBoundaryTests.Completed(DraftAt(10), mCases, False, mReason));
+  Assert.IsTrue(ContainsStr(mReason, 'A'), mReason);
+  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(10), mCases, True, mReason), mReason);
+  Assert.AreEqual('0', mCases[0].Expected, 'Platzhalter von Integer');
+  // Prozedur: kein erwartetes Ergebnis.
+  mCases := [Case_('B', ['x'], '5')];
+  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(14), mCases, False, mReason), mReason);
+  Assert.AreEqual('', mCases[0].Expected);
 end;
 
 procedure TLspBoundaryTestsTests.CommandWithoutTestUnitNamesReason;
