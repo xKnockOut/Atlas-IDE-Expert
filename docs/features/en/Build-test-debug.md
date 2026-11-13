@@ -237,6 +237,23 @@ A test is flaky when it is sometimes green and sometimes red without a change to
 
 Settings: `tests.flaky`, `tests.flaky.runs`
 
+### Test status in the status bar (#1777)
+- The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
+- Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
+- Click: run the failed tests again; when all are green, all tests. Right-click: *Run all*, *Run failed again*, *Run affected*, *“Atlas Tests” window*, *Results on the welcome page*.
+- Tooltip: test project, time and duration of the last run, passed, failed, skipped and outdated.
+- Without the *Status* item in the bar the field appears as text in the IDE status line (without dot and right-click).
+Setting: `editor.statusBar.tests`
+### Log per test (#2168)
+What a test writes while it runs (DUnitX `Log`/`Status`, `WriteLn` in the test class, `WriteLn` of the classes under test) appears in the “Atlas Tests” window on the *Log (n)* tab next to *Details*, for exactly the selected test.
+- The DUnitX XML report holds no log lines. That is what the helper unit `Atlas.Testing.Log` in `Setup\Vorlagen` is for (MIT license, RTL and DUnitX only): add it to the test project and insert `runner.AddLogger(TAtlasTestLogger.Create);` after `TDUnitX.CreateRunner`. The logger only works in runs started by Atlas: before the start Atlas puts an empty side file next to the report; only then does the logger write to it and put marks around every test into the console output.
+- Every line shows the time since the test started (`01.190`), then the text; warnings and errors with “Warning:” or “Error:”, console lines with “Console:” (without a time, at the place between the log messages where they came). Start and end of the test are listed too.
+- Fixture setup and teardown belong to no test: their lines are shown on the fixture. Lines between two tests (from a thread that outlives its test, for example) go to the previous test, marked “(after the test ended)”. A test with `[TestCase]` shows the lines of all cases, each headed by the case name.
+- References like `Kunden.pas:42`, `Kunden.pas(42)`, stack trace lines and `Unit.Class.Method` open on double-click or Enter when the unit belongs to the test project.
+- Also available for passed tests; *Copy* or Ctrl+C puts the whole log on the clipboard.
+- Without the logger the tab explains how to turn it on and shows the output of the whole run below.
+- At most `tests.log.maxLines` lines per test (default 2000); the rest is cut off with a note. `tests.log` off: no tab, no side file.
+Settings: `tests.log`, `tests.log.maxLines`
 ### Leaks per test (#1774)
 
 - With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.

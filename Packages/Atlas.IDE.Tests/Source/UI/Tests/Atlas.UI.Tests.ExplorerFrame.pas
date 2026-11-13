@@ -9,8 +9,8 @@
 //   Zeile (grün, rot, gelb, grau, grauer Ring für veraltet), Mehrfachauswahl
 //   mit Strg und Umschalt,
 // - unten die Einzelheiten zum gewählten Test (Meldung, erwartet, erhalten,
-//   Stacktrace; Zeilen mit Fundstelle öffnen sich per Doppelklick bzw.
-//   Enter) und der Tastenhinweis.
+//   Stacktrace) und daneben als Reiter sein Protokoll (#2168), beides in
+//   Atlas.UI.Tests.ExplorerDetails, und der Tastenhinweis.
 // Tasten im Baum: Enter springt zum Test, Strg+R führt die Auswahl aus,
 // Strg+D debuggt sie. Die IDE-Schicht (Atlas.IDE.Tests.Explorer) setzt die
 // Zeilen und die Ereignisse (SetHandlers). Die DFM ist leer; aufgebaut wird
@@ -29,7 +29,8 @@ uses
   Vcl.ComCtrls,
   Vcl.ImgList,
   Vcl.Forms,
-  Atlas.Core.Tests.Explorer;
+  Atlas.Core.Tests.Explorer,
+  Atlas.UI.Tests.ExplorerDetails;
 
 type
   /// <summary>Ereignisse des Fensters; nil = keins.</summary>
@@ -97,11 +98,10 @@ type
   private
     FBar: TAtlasTestsExplorerBar;
     FTree: TTreeView;
-    FDetails: TListBox;
+    FDetails: TAtlasTestsExplorerDetails;
     FFooter: TLabel;
     FImages: TImageList;
     FRows: TArray<TAtlasTestRow>;
-    FDetailLines: TArray<TAtlasTestStackLine>;
     FFilled: Boolean;
     FHandlers: TAtlasTestsExplorerHandlers;
     procedure BuildImages;
@@ -111,13 +111,9 @@ type
     procedure AddItems(AFocused: Integer; out AItems: TArray<TTreeNode>; out AFocusItem: TTreeNode);
     /// <summary>Testunits und Fixtures aufklappen, die früher gewählten Knoten wieder wählen.</summary>
     procedure Restore(const AItems: TArray<TTreeNode>; const AWasSelected: TArray<Integer>);
-    procedure FillDetails;
     procedure TreeDblClick(Sender: TObject);
     procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeChange(Sender: TObject; Node: TTreeNode);
-    procedure DetailsDblClick(Sender: TObject);
-    procedure DetailsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure OpenDetail;
   protected
     procedure CreateWnd; override;
   public
@@ -132,6 +128,8 @@ type
     procedure SetStatus(const AStatus: string);
     /// <summary>Einzelheiten zum gewählten Test.</summary>
     procedure SetDetails(const ALines: TArray<TAtlasTestStackLine>);
+    /// <summary>Protokoll zum gewählten Test (#2168), ACount für den Reiter; AEnabled False = kein Reiter.</summary>
+    procedure SetLog(const ALines: TArray<TAtlasTestStackLine>; ACount: Integer; AEnabled: Boolean);
     /// <summary>Knöpfe zum Ausführen sperren, solange ein Lauf im Gange ist.</summary>
     procedure SetBusy(ABusy: Boolean);
     function Filters: TAtlasTestFilters;
@@ -142,7 +140,7 @@ type
     function FocusedNode: Integer;
     property Bar: TAtlasTestsExplorerBar read FBar;
     property Tree: TTreeView read FTree;
-    property Details: TListBox read FDetails;
+    property Details: TAtlasTestsExplorerDetails read FDetails;
   end;
 
 implementation
@@ -414,12 +412,7 @@ begin
   FFooter.Caption := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerFooter);
   FFooter.Align := alBottom;
   FFooter.Parent := Self;
-  FDetails := TListBox.Create(Self);
-  FDetails.Height := MulDiv(cDetailsHeight, CurrentPPI, cBasePpi);
-  FDetails.Align := alBottom;
-  FDetails.OnDblClick := DetailsDblClick;
-  FDetails.OnKeyDown := DetailsKeyDown;
-  FDetails.Parent := Self;
+  FDetails := TAtlasTestsExplorerDetails.Create(Self, cDetailsHeight);
   mSplitter := TSplitter.Create(Self);
   mSplitter.Align := alBottom;
   mSplitter.Parent := Self;
@@ -483,6 +476,7 @@ procedure TAtlasTestsExplorerFrame.SetHandlers(const AHandlers: TAtlasTestsExplo
 begin
   FHandlers := AHandlers;
   FBar.Handlers := AHandlers;
+  FDetails.OnOpenLine := AHandlers.OnOpenLine;
 end;
 
 procedure TAtlasTestsExplorerFrame.SetProjects(const ANames: TArray<string>; AIndex: Integer);
@@ -508,11 +502,13 @@ end;
 
 procedure TAtlasTestsExplorerFrame.SetDetails(const ALines: TArray<TAtlasTestStackLine>);
 begin
-  FDetailLines := ALines;
-  if HandleAllocated then
-  begin
-    FillDetails;
-  end;
+  FDetails.SetDetails(ALines);
+end;
+
+procedure TAtlasTestsExplorerFrame.SetLog(const ALines: TArray<TAtlasTestStackLine>; ACount: Integer;
+  AEnabled: Boolean);
+begin
+  FDetails.SetLog(ALines, ACount, AEnabled);
 end;
 
 procedure TAtlasTestsExplorerFrame.SetBusy(ABusy: Boolean);
@@ -606,24 +602,7 @@ begin
   finally
     FTree.Items.EndUpdate;
   end;
-  FillDetails;
-end;
-
-procedure TAtlasTestsExplorerFrame.FillDetails;
-var
-  mLine: TAtlasTestStackLine;
-begin
-  FDetails.HandleNeeded;
-  FDetails.Items.BeginUpdate;
-  try
-    FDetails.Items.Clear;
-    for mLine in FDetailLines do
-    begin
-      FDetails.Items.Add(mLine.Text);
-    end;
-  finally
-    FDetails.Items.EndUpdate;
-  end;
+  FDetails.Fill;
 end;
 
 /// <summary>Zeile in ARows zu ANode (Data = Zeile); -1 ohne.</summary>
@@ -702,35 +681,6 @@ begin
   if Assigned(FHandlers.OnSelect) then
   begin
     FHandlers.OnSelect(FocusedNode);
-  end;
-end;
-
-procedure TAtlasTestsExplorerFrame.OpenDetail;
-var
-  mIndex: Integer;
-begin
-  mIndex := FDetails.ItemIndex;
-  if (mIndex < 0) or (mIndex > High(FDetailLines)) or (FDetailLines[mIndex].FileName = '') then
-  begin
-    Exit;
-  end;
-  if Assigned(FHandlers.OnOpenLine) then
-  begin
-    FHandlers.OnOpenLine(FDetailLines[mIndex].FileName, FDetailLines[mIndex].Line);
-  end;
-end;
-
-procedure TAtlasTestsExplorerFrame.DetailsDblClick(Sender: TObject);
-begin
-  OpenDetail;
-end;
-
-procedure TAtlasTestsExplorerFrame.DetailsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenDetail;
   end;
 end;
 

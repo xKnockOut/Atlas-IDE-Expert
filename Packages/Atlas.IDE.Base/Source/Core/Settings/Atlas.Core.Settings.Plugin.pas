@@ -93,6 +93,8 @@ type
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
     cMinTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMinTestsFlakyRuns;
     cMaxTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMaxTestsFlakyRuns;
+    cMinTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMinTestsLogMaxLines;
+    cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -420,6 +422,8 @@ type
     property TestsApprovalFiles: Boolean read FBuild.TestsApprovalFiles write FBuild.TestsApprovalFiles;
     property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
     property TestsWindow: Boolean read FBuild.TestsWindow write FBuild.TestsWindow;
+    property TestsLog: Boolean read FBuild.TestsLog write FBuild.TestsLog;
+    property TestsLogMaxLines: Integer read FBuild.TestsLogMaxLines write FBuild.TestsLogMaxLines;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
@@ -755,6 +759,7 @@ type
     property EditorToolbarLabels: Boolean read FEditorView.EditorToolbarLabels write FEditorView.EditorToolbarLabels;
     property EditorStatusBar: Boolean read FEditorView.EditorStatusBar write FEditorView.EditorStatusBar;
     property EditorStatusBarItems: string read FEditorView.EditorStatusBarItems write FEditorView.EditorStatusBarItems;
+    property EditorStatusBarTests: Boolean read FEditorView.EditorStatusBarTests write FEditorView.EditorStatusBarTests;
     property EditorDesignerBar: Boolean read FEditorView.EditorDesignerBar write FEditorView.EditorDesignerBar;
     property DesignerSearchKey: Integer read FEditorView.DesignerSearchKey write FEditorView.DesignerSearchKey;
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;

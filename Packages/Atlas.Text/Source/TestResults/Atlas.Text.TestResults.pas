@@ -70,6 +70,10 @@ type
     /// <summary>Dauer des Laufs laut Bericht, sonst Summe der Tests.</summary>
     DurationMs: Int64;
     Cases: TArray<TTestCaseResult>;
+    /// <summary>Konsolenausgabe des Laufs und Inhalt der Seitendatei des Atlas-Loggers (Protokoll je Test,
+    /// #2168); '' ohne bzw. wenn der Läufer sie nicht liest. Parse setzt sie nicht.</summary>
+    Output: string;
+    LogFile: string;
     function Count(AOutcome: TTestOutcome): Integer;
     function Total: Integer;
     /// <summary>Fehlgeschlagene und abgebrochene Tests in Berichtsreihenfolge.</summary>
