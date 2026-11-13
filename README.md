@@ -58,7 +58,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Writing](docs/features/en/Writing.md)
 - **Code completion** in its own popup with detail panel, fuzzy matching, favourites and `+ Unit` for missing uses; after `X.` the members your project uses most come first (“in project 214×”)
-- **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons, after `if X is T then` the members of `T` with the cast, and in the footer the matches that are only missing because they are private or protected
+- **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons, after `if X is T then` the members of `T` with the cast, and in the footer the matches that are only missing because they are private or protected; Enter on one offers to raise its visibility or create a property
 - **Parameter hint** with overload choice and `Format` placeholder checks
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
