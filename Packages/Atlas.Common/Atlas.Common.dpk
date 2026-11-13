@@ -664,6 +664,7 @@ contains
   Atlas.Common.Rules.Builtin.Directives in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.pas',
   Atlas.Common.Rules.Builtin.Units in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Units.pas',
   Atlas.Common.Rules.Builtin.Properties in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.pas',
+  Atlas.Common.Rules.Builtin.Properties.Shapes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.Shapes.pas',
   Atlas.Common.Rules.Builtin.Calls in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Calls.pas',
   Atlas.Common.Rules.Builtin.Jumps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Jumps.pas',
   Atlas.Common.Rules.Builtin.Loops in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Loops.pas',

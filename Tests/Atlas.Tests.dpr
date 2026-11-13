@@ -239,6 +239,7 @@ uses
   Atlas.Common.Rules.Builtin.Directives.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.Tests.pas',
   Atlas.Common.Rules.Builtin.Units.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Units.Tests.pas',
   Atlas.Common.Rules.Builtin.Properties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.Tests.pas',
+  Atlas.Common.Rules.Builtin.Properties.Shapes.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.Shapes.Tests.pas',
   Atlas.Common.Rules.Builtin.Calls.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Calls.Tests.pas',
   Atlas.Common.Rules.Builtin.Jumps.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Jumps.Tests.pas',
   Atlas.Common.Rules.Builtin.Loops.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Loops.Tests.pas',

@@ -261,6 +261,7 @@ Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests
 Atlas.Common.Rules.Builtin.Performance.StringResets.Tests
+Atlas.Common.Rules.Builtin.Properties.Shapes.Tests
 Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests
 Atlas.Common.Rules.Builtin.Security.Tests
 Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
