@@ -63,7 +63,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `stringLiteral` | project (atlas.json) | object | – |  | Code actions "As string literal" and "Copy as plain text". |
 | `memberOrder` | project (atlas.json) | object | – |  | Code action "Order class members": order of the visibility sections and of the members in them. |
 | `testUnits` | project (atlas.json) | object | – |  | Create test units and switch between unit and test unit: name pattern, folder of new test units and test project. |
-| `tests` | global (settings.json) | object | – |  | Affected tests of a change: determine the changed routines, types and constants from the difference to the base (Git or SVN), follow their impact and only name the DUnitX tests that reach them (command line --affected-tests, MCP tool get_affected_tests, plugin command "Run affected tests"). |
+| `tests` | mixed, see below | object | – |  | Affected tests of a change: determine the changed routines, types and constants from the difference to the base (Git or SVN), follow their impact and only name the DUnitX tests that reach them (command line --affected-tests, MCP tool get_affected_tests, plugin command "Run affected tests"). |
 | `minConfidence` | project (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Hide rule hits below this confidence. |
 | `fix` | project (atlas.json) | object | – |  | Bulk fix (--fix, MCP fix_findings, "Fix all safe hits …" in the window "Atlas Check"): only applies safe fixes of rules with safeFix in the catalog. |
 | `exclude` | project (atlas.json) | array<string> | – | e.g. `["ThirdParty/**","Generated/*.pas"]` | Folders and files that are not checked (glob patterns relative to this folder: *, **, ?). |
@@ -414,6 +414,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 |---|---|---|---|---|---|
 | `tests.affected` | global (settings.json) | boolean | `true` |  | Determine affected tests; off: plugin command and MCP tool are missing, --affected-tests ends with exit code 3. |
 | `tests.affectedDepth` | global (settings.json) | integer | `3` | 1…5 | Levels of the impact analysis from the change to the test: 1 = only tests that use the changed symbol directly. |
+| `tests.approvalFolder` | project (atlas.json) | string | `"Tests\Erwartet"` |  | Folder of the approval files (*.approved.*, *.received.*) of the helper unit Atlas.Testing.Approval (#1881), relative to the folder of atlas.json or absolute. The helper unit looks for the nearest atlas.json above the test program; the plugin cleans up leftover .received files here. |
 
 ## fix
 

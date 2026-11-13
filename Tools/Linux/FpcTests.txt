@@ -346,6 +346,8 @@ Atlas.Core.Debug.Threads.Tests
 Atlas.Core.Debug.Deadlocks.Tests
 Atlas.Core.Debug.InstanceBreakpoint.Tests
 Atlas.Core.Debug.ParallelStacks.Tests
+Atlas.Core.Debug.ThreadMarks.Tests
+Atlas.UI.Debug.ThreadMarks.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Settings.BuildDebug.Tests

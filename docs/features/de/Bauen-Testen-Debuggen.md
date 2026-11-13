@@ -143,6 +143,19 @@ Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Vergleichsdateien für Tests (#1881)
+
+Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis gegen eine gespeicherte Datei statt mit einem Assert je Zeile („Approval“). Die Hilfs-Unit `Atlas.Testing.Approval` liegt unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX); ins Testprojekt kopieren oder ihren Ordner in den Suchpfad aufnehmen. Beispiel: [approval-tests.pas](../../Beispiele/approval-tests.pas).
+
+- `TApproval.Verify(Ergebnis, 'TFixture.Methode')` vergleicht mit `TFixture.Methode.approved.txt`; eine eigene Endung (`'.json'`) und ein Normalisierer für Datum oder GUID sind möglich.
+- Zeilenenden (CRLF, LF, CR) zählen nicht als Abweichung; Dateien sind UTF-8.
+- Weicht das Ergebnis ab, liegt daneben `….received.txt` und der Test schlägt fehl mit „Approval: Abweichung ab Zeile 3, siehe …“; ohne approved-Datei mit „neu, bitte prüfen“.
+- Übernehmen heißt: received in approved umbenennen und die approved-Datei einchecken; `.received.*` gehört in die Ignorierliste.
+- Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
+- Meldungen deutsch, mit `TApproval.English := True` englisch.
+
+Einstellung: `tests.approvalFolder` (atlas.json)
+
 ### Dauer der Tests und langsame Tests (#1772)
 
 - Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
@@ -405,3 +418,12 @@ Schalter: `debug.deadlocks`.
 - Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
+
+#### Threads im Quelltext
+
+- Beim Halt steht im Rand an jeder Zeile, an der ein anderer Thread mit seinem obersten eigenen Rahmen steht, ein Zeichen mit der Anzahl; bei acht wartenden Workern an derselben Zeile also „8“. Den aktuellen Thread zeigt die IDE wie bisher.
+- Der Tooltip nennt je Thread Kennung, Name und Wartepunkt („⚑ 4120 „Worker“ · wartet in TEvent.WaitFor“); die Links darunter wechseln zum Thread und springen auf seine Zeile.
+- Rechtsklick in den Rand, dann Atlas > Debuggen > „Thread markieren“: Markierte Threads tragen ⚑ und stehen im Tooltip, in Auswahllisten und in den parallelen Aufrufstapeln (Kontextmenü „Thread markieren“) oben. Die Markierung gilt für die Sitzung und folgt der Thread-ID. Stehen an der Zeile mehrere Threads, wählt man aus einer Liste; ohne Thread an der Zeile gilt der aktuelle.
+- Experimentell (`debug.threadFreeze`, Vorgabe aus): „Thread einfrieren“, „Thread auftauen“ und „Alle Threads auftauen“. Ein eingefrorener Thread läuft beim Fortsetzen nicht weiter; sein Zeichen ist grau, die Statusleiste von Atlas zeigt „2 Threads eingefroren“ (Klick taut alle auf). Atlas hält den Thread mit `SuspendThread` an; das geht nur bei Programmen auf diesem Rechner. Am Ende der Sitzung und beim Abschalten taut Atlas alle auf.
+
+Schalter: `debug.threadsInSource`, `debug.threadFreeze`.
