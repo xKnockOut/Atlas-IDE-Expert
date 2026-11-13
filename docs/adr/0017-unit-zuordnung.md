@@ -891,6 +891,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionDialog` | `Core/Debug/Atlas.Core.Debug.ExceptionDialog.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Modules` | `Core/Debug/Atlas.Core.Debug.Modules.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.Threads` | `Core/Debug/Atlas.Core.Debug.Threads.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.Deadlocks` | `Core/Debug/Atlas.Core.Debug.Deadlocks.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Exceptions` | `Core/Debug/Atlas.Core.Debug.Exceptions.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.IgnoreList` | `Core/Debug/Atlas.Core.Debug.IgnoreList.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.InlineValues` | `Core/Debug/Atlas.Core.Debug.InlineValues.pas` | Ordner `Core/Debug` |
@@ -905,6 +907,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
 | `Atlas.IDE.Debug.Composition.Values` | `IDE/Debug/Atlas.IDE.Debug.Composition.Values.pas` | Teile für Werte und Ausdrücke des Moduls `atlas.debugger`, #1455 |
+| `Atlas.IDE.Debug.Composition.Session` | `IDE/Debug/Atlas.IDE.Debug.Composition.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DialogCompletion` | `IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DisplayRules` | `IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Evaluate` | `IDE/Debug/Atlas.IDE.Debug.Evaluate.pas` | Ordner `IDE/Debug` |
@@ -914,6 +917,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Evaluator` | `IDE/Debug/Atlas.IDE.Debug.Evaluator.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.EventBreak` | `IDE/Debug/Atlas.IDE.Debug.EventBreak.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Modules` | `IDE/Debug/Atlas.IDE.Debug.Modules.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Deadlocks` | `IDE/Debug/Atlas.IDE.Debug.Deadlocks.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Exceptions` | `IDE/Debug/Atlas.IDE.Debug.Exceptions.pas` | Ordner `IDE/Debug` |
@@ -931,6 +935,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.UnavailableFixes` | `IDE/Debug/Atlas.IDE.Debug.UnavailableFixes.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.Deadlocks` | `UI/Debug/Atlas.UI.Debug.Deadlocks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateTree` | `UI/Debug/Atlas.UI.Debug.EvaluateTree.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventBreak` | `UI/Debug/Atlas.UI.Debug.EventBreak.pas` | Ordner `UI/Debug` |
@@ -1428,17 +1433,20 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Stale` | `Core/Tests/Atlas.Core.Tests.Stale.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.AssertLine` | `Core/Tests/Atlas.Core.Tests.AssertLine.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Stale` | `IDE/Tests/Atlas.IDE.Tests.Stale.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Compare` | `IDE/Tests/Atlas.IDE.Tests.Compare.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.SettingsSection` | `UI/Tests/Atlas.UI.Tests.SettingsSection.pas` | Ordner `UI/Tests`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.UI.Tests.Compare` | `UI/Tests/Atlas.UI.Tests.Compare.pas` | Ordner `UI/Tests` |
+| `Atlas.UI.Tests.Slowest` | `UI/Tests/Atlas.UI.Tests.Slowest.pas` | Ordner `UI/Tests` |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 | `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 

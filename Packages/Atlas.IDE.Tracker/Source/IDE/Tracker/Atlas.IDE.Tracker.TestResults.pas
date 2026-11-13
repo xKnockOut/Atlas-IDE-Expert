@@ -546,6 +546,11 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   Result := TAtlasTestResults.View(FData.Projects(mSettings.WelcomePageTestsCi), FData.Selected,
     mSettings.WelcomePageTestsMaxFailures, mSettings.WelcomePageTestsCi);
+  // Langsamste Tests nur mit tests.showDuration (#1772).
+  if not mSettings.TestsShowDuration then
+  begin
+    Result.Slowest := nil;
+  end;
 end;
 
 procedure TAtlasIdeTestResults.Shown;
