@@ -126,7 +126,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings;
 
 const
   cGap = 8;
@@ -156,7 +157,7 @@ begin
   FLink := TAtlasQueryDialogLink.Create;
   FLink.Dialog := Self;
   FLinkRef := FLink;
-  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTitle);
+  Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTitle);
   BorderIcons := [biSystemMenu];
   BuildFields;
   BuildTest;
@@ -180,15 +181,15 @@ end;
 procedure TAtlasTrackerQueryDialog.BuildFields;
 begin
   FView.Name := TEdit.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryName), FView.Name);
+  AddRow(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryName), FView.Name);
   FView.Connection := TAtlasChoiceBox.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection), FView.Connection);
+  AddRow(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectConnection), FView.Connection);
   FView.Project := TEdit.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject), FView.Project);
+  AddRow(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectProject), FView.Project);
   FView.Template := TAtlasChoiceBox.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTemplate), FView.Template);
+  AddRow(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTemplate), FView.Template);
   FView.Query := TEdit.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQuery), FView.Query);
+  AddRow(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQuery), FView.Query);
 end;
 
 procedure TAtlasTrackerQueryDialog.BuildTest;
@@ -201,7 +202,7 @@ begin
   mTestRow.Top := ClientHeight;
   mTestRow.Height := ScaleValue(cTestRowHeight);
   mTestRow.BevelOuter := bvNone;
-  FView.Test := AddButton(mTestRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTest), TestClick);
+  FView.Test := AddButton(mTestRow, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTest), TestClick);
   FView.Test.Left := ScaleValue(cGap + cLabelWidth);
   FView.Test.Anchors := [akTop, akLeft];
   FView.Result := TMemo.Create(Self);
@@ -226,10 +227,10 @@ begin
   mBottom.Align := alBottom;
   mBottom.Height := ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
-  FView.Cancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogCancel), CancelClick);
+  FView.Cancel := AddButton(mBottom, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogCancel), CancelClick);
   FView.Cancel.Cancel := True;
   FView.Cancel.Left := mBottom.ClientWidth - FView.Cancel.Width - ScaleValue(cGap);
-  FView.Ok := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogOk), OkClick);
+  FView.Ok := AddButton(mBottom, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogOk), OkClick);
   FView.Ok.Default := True;
   FView.Ok.Left := FView.Cancel.Left - FView.Ok.Width - ScaleValue(cGap);
   ClientHeight := FView.Result.Top + FView.Result.Height + ScaleValue(cGap) + mBottom.Height;
@@ -242,7 +243,7 @@ var
   mIndex: Integer;
 begin
   // Auswahl: „(alle)“, dann die Verbindungen (wie die Tabelle).
-  mNames := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryAny));
+  mNames := TArray<string>.Create(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryAny));
   mChoice := 0;
   for mIndex := 0 to High(FConnections) do
   begin
@@ -394,13 +395,13 @@ begin
   end;
   case ATemplate.Kind of
     TAtlasTrackerTemplateKind.CurrentSprint:
-      mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateCurrentSprint);
+      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCurrentSprint);
     TAtlasTrackerTemplateKind.CreatedByMe:
-      mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateCreatedByMe);
+      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCreatedByMe);
     TAtlasTrackerTemplateKind.RecentlyChanged:
-      mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateRecentlyChanged);
+      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateRecentlyChanged);
   else
-    mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault);
+    mKind := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryDefault);
   end;
   Result := mProvider + ' · ' + mKind;
   // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.
@@ -410,11 +411,11 @@ begin
   end;
   if ATemplate.Language = TAtlasTrackerTemplates.cGerman then
   begin
-    Result := Result + ' (' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')';
+    Result := Result + ' (' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageGerman) + ')';
   end
   else
   begin
-    Result := Result + ' (' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageEnglish) + ')';
+    Result := Result + ' (' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageEnglish) + ')';
   end;
 end;
 
@@ -424,7 +425,7 @@ var
   mTemplate: TAtlasTrackerTemplate;
 begin
   FTemplates := TemplatesFor(FConnections, FView.Connection.Choice);
-  mCaptions := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTemplatePick));
+  mCaptions := TArray<string>.Create(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTemplatePick));
   for mTemplate in FTemplates do
   begin
     mCaptions := mCaptions + [TemplateCaption(mTemplate)];
@@ -497,7 +498,7 @@ begin
   FView.Test.Enabled := not FTesting and Assigned(FOnTest) and TestConnection(mConnection);
   if mTaken then
   begin
-    FView.Result.Text := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken);
+    FView.Result.Text := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken);
   end;
 end;
 
@@ -548,7 +549,7 @@ begin
   mTarget := TAtlasTrackerTarget.Create(mConnection.Provider, mConnection.Url, mQuery.Project, mQuery.Query);
   mTarget.Language := mConnection.Language;
   FTesting := True;
-  FView.Result.Text := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTesting);
+  FView.Result.Text := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTesting);
   Changed(Sender);
   mLinkRef := FLinkRef;
   mLink := FLink;
@@ -580,41 +581,41 @@ begin
     TAtlasTrackerQueryOutcome.Found:
       if AResult.More then
       begin
-        mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestFoundMore, [AResult.Count, AResult.ElapsedMs,
+        mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestFoundMore, [AResult.Count, AResult.ElapsedMs,
           string.Join(', ', AResult.Keys)])];
       end
       else
       begin
-        mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestFound, [AResult.Count, AResult.ElapsedMs,
+        mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestFound, [AResult.Count, AResult.ElapsedMs,
           string.Join(', ', AResult.Keys)])];
       end;
     TAtlasTrackerQueryOutcome.Empty:
-      mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [AResult.ElapsedMs])];
+      mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestEmpty, [AResult.ElapsedMs])];
     TAtlasTrackerQueryOutcome.NoToken:
-      mLines := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryTestNoToken)];
+      mLines := [TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryTestNoToken)];
     TAtlasTrackerQueryOutcome.NotConfigured:
-      mLines := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryTestNotConfigured)];
+      mLines := [TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryTestNotConfigured)];
     TAtlasTrackerQueryOutcome.Rejected:
-      mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestRejected, [AResult.HttpStatus])];
+      mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestRejected, [AResult.HttpStatus])];
     TAtlasTrackerQueryOutcome.ProjectUnknown:
-      mLines := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryTestProjectUnknown)];
+      mLines := [TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryTestProjectUnknown)];
     TAtlasTrackerQueryOutcome.QueryRejected:
-      mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestQueryRejected, [AResult.HttpStatus,
+      mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestQueryRejected, [AResult.HttpStatus,
         AResult.TrackerMessage])];
     TAtlasTrackerQueryOutcome.Unreadable:
-      mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestUnreadable, [AResult.HttpStatus])];
+      mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestUnreadable, [AResult.HttpStatus])];
     TAtlasTrackerQueryOutcome.ServerError:
-      mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestServerError, [AResult.HttpStatus])];
+      mLines := [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestServerError, [AResult.HttpStatus])];
   else
-    mLines := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryTestUnreachable)];
+    mLines := [TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryTestUnreachable)];
   end;
   if AResult.SuggestedQuery <> '' then
   begin
-    mLines := mLines + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestTipGerman, [AResult.SuggestedQuery])];
+    mLines := mLines + [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestTipGerman, [AResult.SuggestedQuery])];
   end;
   if AResult.SentQuery <> '' then
   begin
-    mLines := mLines + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent,
+    mLines := mLines + [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestSent,
       [AConnectionName, AResult.SentQuery])];
   end;
   Result := string.Join(sLineBreak, mLines);

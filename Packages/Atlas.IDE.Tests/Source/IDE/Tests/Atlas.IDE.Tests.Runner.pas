@@ -31,6 +31,10 @@
 //   dem XML-Bericht des Laufs im Debugger (ReportRun).
 // - Nach jedem gemeldeten Lauf ruft der Läufer den Haken OnReported (Stand
 //   der Tests für veraltete Ergebnisse, #1770, Atlas.IDE.Tests.Stale).
+// - Lecks je Test (tests.leaks, #1774): Ein Test, den der Bericht nur wegen
+//   eines Lecks als fehlgeschlagen nennt, gilt als bestanden mit Leck
+//   (Atlas.Core.Tests.Leaks); Warnung am Methodenkopf und eine Zeile mit
+//   Anzahl und Bytes in der Meldungsansicht.
 // - RunQuiet (#1775, Tests beim Speichern): Lauf im Hintergrund ohne Frage
 //   nach dem Testprojekt und ohne Zeilen in der Meldungsansicht; die Ausgabe
 //   (Atlas.IDE.Tests.Output) merkt sie und meldet das Ende.
@@ -173,6 +177,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Core.Tests.Leaks,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -722,7 +727,7 @@ begin
       TAtlasTestRun.cTimeoutMs div 1000]));
     Exit;
   end;
-  mRun := TTestResults.Parse(AXml);
+  mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AXml), TAtlasIdeSettings.Current.TestsLeaks);
   if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
   begin
     FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
@@ -734,6 +739,27 @@ begin
     Exit;
   end;
   Report(ATarget, mRun);
+end;
+
+/// <summary>Warnungen am Methodenkopf für die bestandenen Tests mit Leck in ACases (#1774).</summary>
+function LeakWarnings(const ACases: TArray<TTestCaseResult>;
+  const AUnitFile: TAtlasTestUnitFile): TArray<TPair<string, TAtlasProblem>>;
+begin
+  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile, ReadLines),
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLeakProblem));
+end;
+
+/// <summary>Zeile mit Anzahl und Bytes der bestandenen Tests mit Leck in ACases; nichts ohne (#1774).</summary>
+procedure TellLeaks(AOutput: TAtlasIdeTestsOutput; const ACases: TArray<TTestCaseResult>);
+var
+  mLeaked: TArray<TTestCaseResult>;
+begin
+  mLeaked := TAtlasTestLeaks.Leaked(ACases);
+  if Length(mLeaked) > 0 then
+  begin
+    AOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLeaksFinished, [Length(mLeaked),
+      TAtlasTestLeaks.TotalBytes(mLeaked)]));
+  end;
 end;
 
 procedure TAtlasIdeTests.Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
@@ -763,7 +789,8 @@ begin
   begin
     FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines,
       mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline));
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline) +
+      LeakWarnings(mAll.Cases, UnitFileFunc(ATarget.Project)));
   end;
   FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
     0).FailedTests);
@@ -778,6 +805,7 @@ begin
       ARun.Count(TTestOutcome.Passed), ARun.Count(TTestOutcome.Failed), ARun.Count(TTestOutcome.Error),
       ARun.Count(TTestOutcome.Skipped), SecondsText(ARun.DurationMs)]));
   end;
+  TellLeaks(FOutput, ARun.Cases);
   FOutput.Failures(mFailures);
   if Assigned(FHooks.OnFinished) then
   begin

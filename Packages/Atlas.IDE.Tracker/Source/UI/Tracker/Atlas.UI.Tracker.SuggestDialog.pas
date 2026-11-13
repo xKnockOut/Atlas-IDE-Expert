@@ -90,7 +90,8 @@ implementation
 
 uses
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.NewIssue.Strings;
 
 const
   cGap = 10;
@@ -118,7 +119,7 @@ end;
 
 constructor TAtlasTrackerSuggestDialog.CreateDialog(AOwner: TComponent; const ATitle: string);
 begin
-  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SuggestTitle, [ATitle]),
+  inherited CreateDialog(AOwner, TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.SuggestTitle, [ATitle]),
     cDialogWidth);
 
   FIntro := TAtlasWrapLabel.Create(Self);
@@ -128,7 +129,7 @@ begin
   FIntro.AlignWithMargins := True;
   FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
   FIntro.WordWrap := True;
-  FIntro.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestIntro);
+  FIntro.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestIntro);
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
@@ -141,9 +142,9 @@ begin
   FList.Checkboxes := True;
   FList.ReadOnly := True;
   FList.RowSelect := True;
-  AddColumn(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestColumnPath), cPathWidth);
-  AddColumn(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestColumnKind), cKindWidth);
-  AddColumn(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestColumnWhy), cWhyWidth);
+  AddColumn(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestColumnPath), cPathWidth);
+  AddColumn(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestColumnKind), cKindWidth);
+  AddColumn(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestColumnWhy), cWhyWidth);
 
   FNote := TLabel.Create(Self);
   FNote.Parent := Self;
@@ -151,7 +152,7 @@ begin
   FNote.Align := alTop;
   FNote.AlignWithMargins := True;
   FNote.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  FNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestSearching);
+  FNote.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestSearching);
 
   AddButtons;
   // Größer ziehen: Die Liste nimmt die Höhe auf.
@@ -172,26 +173,26 @@ var
   mButtons: TAtlasButtonRow;
 begin
   mButtons := AddButtonRow;
-  FBrowse := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestNothing));
+  FBrowse := mButtons.AddButton(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestNothing));
   FBrowse.ModalResult := cBrowseResult;
   FBrowse.Visible := False;
-  FApply := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SuggestApply),
+  FApply := mButtons.AddButton(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestApply),
     TAtlasButtonKind.Default);
   FApply.ModalResult := mrOk;
   FApply.Enabled := False;
-  FCancel := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel),
+  FCancel := mButtons.AddButton(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueDialogCancel),
     TAtlasButtonKind.Cancel);
   FitHeight;
 end;
 
 class function TAtlasTrackerSuggestDialog.WhyText(const AItem: TAtlasTrackerPathSuggestion): string;
 const
-  cIds: array[TAtlasTrackerPathReason] of TAtlasTrackerTextId = (TAtlasTrackerTextId.SuggestWhyProject,
-    TAtlasTrackerTextId.SuggestWhyExternal, TAtlasTrackerTextId.SuggestWhySubmodule,
-    TAtlasTrackerTextId.SuggestWhyGroup, TAtlasTrackerTextId.SuggestWhyRemote,
-    TAtlasTrackerTextId.SuggestWhyWorktree);
+  cIds: array[TAtlasTrackerPathReason] of TAtlasNewIssueTextId = (TAtlasNewIssueTextId.SuggestWhyProject,
+    TAtlasNewIssueTextId.SuggestWhyExternal, TAtlasNewIssueTextId.SuggestWhySubmodule,
+    TAtlasNewIssueTextId.SuggestWhyGroup, TAtlasNewIssueTextId.SuggestWhyRemote,
+    TAtlasNewIssueTextId.SuggestWhyWorktree);
 begin
-  Result := TAtlasTrackerStrings.Fmt(cIds[AItem.Reason], [AItem.Detail]);
+  Result := TAtlasNewIssueStrings.Fmt(cIds[AItem.Reason], [AItem.Detail]);
 end;
 
 procedure TAtlasTrackerSuggestDialog.Fill(const AItems: TArray<TAtlasTrackerPathSuggestion>);

@@ -92,6 +92,16 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Getestet von (#1778)
+
+- Hinter dem Kopf jeder öffentlichen Methode einer normalen Unit steht, welche DUnitX-Tests sie prüfen, z. B. „3 Tests · bestanden“.
+- Farben wie bei der Code Lens der Tests: grün erst, wenn jeder dieser Tests bestand, gelb bei Teilstand („3 Tests · 1/3 bestanden“), rot bei einem Fehlschlag. Wurde ein Test seit seinem Lauf geändert, steht der alte Stand grau und kursiv mit „(veraltet)“. Ohne Test steht grau „kein Test · Test anlegen“.
+- Atlas sucht die Tests im Hintergrund rückwärts wie „Betroffene Tests ausführen“: mit Tiefe 1 nur Tests, die die Methode direkt aufrufen, mit größerer Tiefe auch über Zwischenstufen. Stößt die Suche an eine Grenze, steht „(unvollständig)“ dabei.
+- Klick führt genau diese Tests aus; Strg+Klick listet sie, ein Eintrag springt zum Test. Ohne Test öffnet bzw. legt der Klick die Testunit an.
+- Testunits selbst bekommen keine Marken; private und geschützte Methoden nur auf Wunsch. Ausblenden je Methode oder Datei über das Menü „Ausblenden“.
+
+Einstellungen: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
+
 ### Betroffene Tests beim Speichern (#1775)
 
 - Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
@@ -133,6 +143,19 @@ Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Vergleichsdateien für Tests (#1881)
+
+Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis gegen eine gespeicherte Datei statt mit einem Assert je Zeile („Approval“). Die Hilfs-Unit `Atlas.Testing.Approval` liegt unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX); ins Testprojekt kopieren oder ihren Ordner in den Suchpfad aufnehmen. Beispiel: [approval-tests.pas](../../Beispiele/approval-tests.pas).
+
+- `TApproval.Verify(Ergebnis, 'TFixture.Methode')` vergleicht mit `TFixture.Methode.approved.txt`; eine eigene Endung (`'.json'`) und ein Normalisierer für Datum oder GUID sind möglich.
+- Zeilenenden (CRLF, LF, CR) zählen nicht als Abweichung; Dateien sind UTF-8.
+- Weicht das Ergebnis ab, liegt daneben `….received.txt` und der Test schlägt fehl mit „Approval: Abweichung ab Zeile 3, siehe …“; ohne approved-Datei mit „neu, bitte prüfen“.
+- Übernehmen heißt: received in approved umbenennen und die approved-Datei einchecken; `.received.*` gehört in die Ignorierliste.
+- Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
+- Meldungen deutsch, mit `TApproval.English := True` englisch.
+
+Einstellung: `tests.approvalFolder` (atlas.json)
+
 ### Dauer der Tests und langsame Tests (#1772)
 
 - Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
@@ -142,6 +165,16 @@ Einstellungen: `tests.compare`, `tests.compare.format`
 - `tests.showDuration` aus: keine Dauer, keine Färbung, keine Liste auf der Willkommensseite, kein Befehl.
 
 Einstellungen: `tests.showDuration`, `tests.slowMs`
+
+### Lecks je Test (#1774)
+
+- Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
+- In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
+- Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
+- Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+
+Einstellung: `tests.leaks`
 
 ### Testfall aus der Unit anlegen (#1226)
 
@@ -236,6 +269,20 @@ Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie 
 
 Einstellungen: `debug.checkBreakpoints`
 
+#### Haltepunkt-Sätze
+
+Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechselt zwischen benannten Sätzen von Haltepunkten, statt sie zu löschen und neu zu setzen.
+
+- „Haltepunkte als Satz speichern …“ nimmt alle Quelltext-Haltepunkte mit Bedingung, Durchlaufzahl, Gruppe, Aktionen und an/aus auf; auf Wunsch an den aktuellen Branch gekoppelt.
+- „Haltepunkt-Satz wechseln …“ legt fehlende Haltepunkte des Satzes an und schaltet die Haltepunkte anderer Sätze aus (gelöscht wird nichts). Haltepunkte, die zu keinem Satz gehören, bleiben, wie sie sind.
+- „Haltepunkt-Satz hinzufügen …“ ergänzt die Haltepunkte eines Satzes, ohne andere auszuschalten; „Haltepunkt-Satz löschen …“ entfernt nur den Satz.
+- Atlas findet die Zeile beim Laden über Methode und Zeilentext wieder, auch wenn darüber Zeilen eingefügt wurden; nicht mehr auffindbare Haltepunkte nennt eine Zeile in den Meldungen.
+- Sätze liegen je Projekt in `.atlas/breakpoints/<Name>.json` und lassen sich im Repository teilen.
+- Mit `debug.breakpointSetPerBranch` wird ein gekoppelter Satz aktiv, sobald die Arbeitskopie auf seinen Branch wechselt (Git und SVN).
+- Die Haltepunktgruppen der IDE bleiben unberührt: Sie schalten Haltepunkte über Aktionen, hängen aber an Zeilennummern in der `.dsk`; ein Satz merkt sich die Gruppe jedes Haltepunkts mit.
+
+Einstellungen: `debug.breakpointSetPerBranch`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))
@@ -273,6 +320,15 @@ Einstellungen: `debug.displayRules`
 - Ausgewertet werden nur schlichte Namen, nie Aufrufe oder Eigenschaften, in kleinen Zeitscheiben, damit F8 schnell bleibt.
 
 Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
+
+#### „Warum bin ich hier?“
+
+- Beim Halt stehen am Ende der Kopfzeilen der umgebenden `if`, `while`, `repeat … until`, `for` und `case` die Werte ihrer Bedingungen, gedimmt wie die Werte im Editor: `(1200 > 1000) and True → True`, `I = 3 von 7`, `Art = paRabatt → paRabatt`, im `else`-Zweig `(4 = 0) → False, else-Zweig`.
+- Kurzschluss wie im Programm: Entscheidet bei `A and B` schon `A = False`, steht bei B „nicht nötig“.
+- Aufrufe und Getter wertet Atlas nicht von selbst aus (`‹Aufruf›`); ein Klick auf den Text der Zeile fragt nach und führt sie dann aus.
+- Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
 #### „kein Zugriff auf Wert“ erklärt
 
@@ -316,6 +372,30 @@ Einstellungen: `debug.completionInDialogs`
 | Umschalttaste oder Befehl „Auswerten/Ändern (IDE-Dialog)“ | der Dialog der IDE kommt |
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
+
+### Ereignisprotokoll
+
+<a id="window-atlasdebugeventlog"></a>
+- andockbares Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (`OutputDebugString`), Haltepunkt-Meldungen, Modulen, Threads, Logpunkten sowie Start und Ende der Sitzung
+- Spalten Zeit (relativ zum Start), Art, Thread, Text
+- Filter nach Art und Text: Wörter (jedes muss vorkommen) oder `/regulärer Ausdruck/`; „Filter merken“ hält ihn je Projekt in der Auswahl
+- Farben nach Muster, etwa `[FEHLER]` rot, `[WARN]` gelb
+- Doppelklick oder Enter springt zu `Datei.pas(123)`, `Datei.pas:123` oder `Unit.Routine`
+- Kontextmenü: Zeile kopieren, als Textdatei speichern, leeren
+
+Einstellungen: `debug.eventLog`, `debug.eventLogColors`
+
+### Logpunkte
+
+- Umschalt+F5 oder „Atlas: Logpunkt setzen“ (Atlas-Menü, Kontextmenü des Editors) an der Cursorzeile bzw. nach Rechtsklick in die Rinne an deren Zeile
+- Text mit Platzhaltern: `x={x}`, `Summe {Summe:0.00}`; Formatangaben `d` (ganze Zahl), `x` (hexadezimal), Muster mit `0` oder `#` (`FormatFloat`), sonst wie in `Format` (`.2f`); `{{` und `}}` sind Klammern im Text
+- Bedingung (`{Summe} > 1000`) und „nur die ersten N Treffer“; Fehler im Text zeigt der Dialog mit Stelle
+- ein gewöhnlicher Haltepunkt an der Zeile wird zum Logpunkt; „Entfernen“ löscht ihn
+- im Ereignisprotokoll eine Zeile der Art Logpunkt mit Präfix und Ort, etwa `[LOG] x=42 · Unit1.pas:12`; Doppelklick springt zur Zeile
+- Raute in der Rinne mit Text und Bedingung im Tooltip
+- „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
+
+Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
 ### Exceptions
 
@@ -395,3 +475,22 @@ Schalter: `debug.deadlocks`.
 - Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
+
+#### Threads im Quelltext
+
+- Beim Halt steht im Rand an jeder Zeile, an der ein anderer Thread mit seinem obersten eigenen Rahmen steht, ein Zeichen mit der Anzahl; bei acht wartenden Workern an derselben Zeile also „8“. Den aktuellen Thread zeigt die IDE wie bisher.
+- Der Tooltip nennt je Thread Kennung, Name und Wartepunkt („⚑ 4120 „Worker“ · wartet in TEvent.WaitFor“); die Links darunter wechseln zum Thread und springen auf seine Zeile.
+- Rechtsklick in den Rand, dann Atlas > Debuggen > „Thread markieren“: Markierte Threads tragen ⚑ und stehen im Tooltip, in Auswahllisten und in den parallelen Aufrufstapeln (Kontextmenü „Thread markieren“) oben. Die Markierung gilt für die Sitzung und folgt der Thread-ID. Stehen an der Zeile mehrere Threads, wählt man aus einer Liste; ohne Thread an der Zeile gilt der aktuelle.
+- Experimentell (`debug.threadFreeze`, Vorgabe aus): „Thread einfrieren“, „Thread auftauen“ und „Alle Threads auftauen“. Ein eingefrorener Thread läuft beim Fortsetzen nicht weiter; sein Zeichen ist grau, die Statusleiste von Atlas zeigt „2 Threads eingefroren“ (Klick taut alle auf). Atlas hält den Thread mit `SuspendThread` an; das geht nur bei Programmen auf diesem Rechner. Am Ende der Sitzung und beim Abschalten taut Atlas alle auf.
+
+Schalter: `debug.threadsInSource`, `debug.threadFreeze`.
+
+#### Herkunft eingereihter Methoden *(experimentell)*
+
+- Hält das Programm in einer anonymen Methode, die mit `TThread.Queue`, `TThread.Synchronize`, `TThread.ForceQueue`, `TTask.Run`, `TTask.Create` oder `TParallel.For` gestartet wurde, zeigt der Aufrufstapel der IDE nur `CheckSynchronize` bzw. den Thread-Pool. Atlas zeigt dann im Ergebnisfenster „Eingereiht mit TThread.Queue von Thread 4120“ und darunter den Stapel der Einreihung; Rahmen der Bibliothek stehen zusammengefasst („5 Rahmen der Bibliothek“), Doppelklick springt zur Zeile.
+- Dafür setzt Atlas beim Start der Sitzung auf jede Aufrufstelle im Projekt einen Haltepunkt der Gruppe Atlas.Herkunft. Hält das Programm dort, merkt Atlas Thread und Stapel und setzt sofort fort. Ein Haltepunkt des Benutzers an derselben Zeile bleibt und hält wie gewohnt.
+- Zugeordnet wird der Reihe nach: Der Halt in der Methode einer Aufrufstelle bekommt die älteste noch offene Einreihung dieser Stelle. Je Aufrufstelle merkt Atlas die letzten `debug.asyncOrigin.maxPerSite` (Vorgabe 20).
+- Erfasst werden nur Aufrufe mit Klassennamen (`TThread.Queue(…)`), ein `Synchronize(…)` in einer Methode eines Threads nicht.
+- Das Anhalten an jeder Aufrufstelle bremst das Programm; die Statusleiste von Atlas zeigt „Herkunft: 12 Aufrufstellen“ in Gelb, solange die Haltepunkte stehen.
+
+Schalter: `debug.asyncOrigin`, `debug.asyncOrigin.maxPerSite`.

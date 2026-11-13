@@ -3276,13 +3276,20 @@
           "maximum": 5,
           "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test: 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
           "x-description-en": "Levels of the impact analysis from the change to the test: 1 = only tests that use the changed symbol directly."
+        },
+        "approvalFolder": {
+          "type": "string",
+          "default": "Tests\\Erwartet",
+          "description": "Ordner der Vergleichsdateien (*.approved.*, *.received.*) der Hilfs-Unit Atlas.Testing.Approval (#1881), relativ zum Ordner der atlas.json oder absolut. Die Hilfs-Unit sucht die nächste atlas.json über dem Testprogramm; das Plugin räumt hier liegengebliebene .received-Dateien auf.",
+          "x-description-en": "Folder of the approval files (*.approved.*, *.received.*) of the helper unit Atlas.Testing.Approval (#1881), relative to the folder of atlas.json or absolute. The helper unit looks for the nearest atlas.json above the test program; the plugin cleans up leftover .received files here.",
+          "x-scope": "project"
         }
       },
       "x-scope": "global",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-control": "Kontrollkästchen, Zahlenfeld",
-      "x-issue": "#1353"
+      "x-control": "Kontrollkästchen, Zahlenfeld, Textfeld",
+      "x-issue": "#1353, #1881"
     },
     "minConfidence": {
       "type": "string",

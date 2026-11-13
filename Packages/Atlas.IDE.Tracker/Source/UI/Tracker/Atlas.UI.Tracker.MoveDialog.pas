@@ -55,7 +55,8 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Board.Strings;
 
 const
   cGap = 10;
@@ -66,7 +67,7 @@ constructor TAtlasBoardMoveDialog.CreateDialog(AOwner: TComponent; const AKey, A
 var
   mLabel: TLabel;
 begin
-  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveTitle), cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveTitle), cDialogWidth);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
 
@@ -77,7 +78,7 @@ begin
   FQuestion.Margins.SetBounds(cGap, cGap, cGap, 0);
   FQuestion.Font.Style := [fsBold];
   FQuestion.WordWrap := True;
-  FQuestion.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveQuestion, [AKey, AColumn]);
+  FQuestion.Caption := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveQuestion, [AKey, AColumn]);
 
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
@@ -85,7 +86,7 @@ begin
   mLabel.AlignWithMargins := True;
   mLabel.Margins.SetBounds(cGap, cGap, cGap, 0);
   mLabel.Top := FQuestion.Top + FQuestion.Height + 1;
-  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveComment);
+  mLabel.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveComment);
 
   FComment := TMemo.Create(Self);
   FComment.Parent := Self;
@@ -103,7 +104,7 @@ begin
   FDontAsk.AlignWithMargins := True;
   FDontAsk.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FDontAsk.Top := FComment.Top + FComment.Height + 1;
-  FDontAsk.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveDontAsk);
+  FDontAsk.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveDontAsk);
 
   AddButtons(FDontAsk.Top + FDontAsk.Height + 1);
   // Größer ziehen: Der Kommentar nimmt die Höhe auf.
@@ -134,10 +135,10 @@ begin
   mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := ATop;
   Canvas.Font := Font;
-  FMove := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveOk));
+  FMove := AddButton(mButtons, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveOk));
   FMove.Default := True;
   FMove.ModalResult := mrOk;
-  FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel));
+  FCancel := AddButton(mButtons, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueDialogCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);

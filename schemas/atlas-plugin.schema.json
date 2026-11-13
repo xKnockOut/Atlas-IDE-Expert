@@ -915,6 +915,51 @@
       "x-captionEn": "Changes in used units count too",
       "x-issue": "#1770"
     },
+    "CodeLensCoveredBy": {
+      "description": "Marke „getestet von“ an den Methoden normaler Units: „3 Tests · bestanden“ mit dem Stand der Tests, die die Methode aufrufen (grün, rot, gelb bei Teilstand, grau veraltet); „kein Test“ ohne. Klick führt genau diese Tests aus, Strg+Klick listet sie zum Springen; „kein Test“ öffnet bzw. legt die Testunit an. Die Zuordnung fragt Atlas im Hintergrund beim Server ab (Auswirkungsanalyse rückwärts wie bei den betroffenen Tests).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.coveredBy",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.run",
+      "x-node": "editor.codeLens",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „getestet von“ an Methoden",
+      "x-captionEn": "“Tested by” mark on methods",
+      "x-issue": "#1778"
+    },
+    "TestsCoveredByDepth": {
+      "description": "Ebenen vom Test bis zur Methode für die Marke „getestet von“ (1 bis 5); 1 = nur Tests, die die Methode direkt aufrufen.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5,
+      "x-key": "tests.coveredBy.depth",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.coveredBy",
+      "x-control": "Zahl",
+      "x-caption": "Tiefe der Zuordnung",
+      "x-captionEn": "Depth of the mapping",
+      "x-issue": "#1778"
+    },
+    "TestsCoveredByPrivate": {
+      "description": "Marke „getestet von“ auch an privaten und geschützten Methoden und an Routinen, die nur im implementation-Teil stehen. Aus = nur öffentliche und published Methoden und Routinen aus dem interface-Teil.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.coveredBy.private",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.coveredBy",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Auch private Methoden",
+      "x-captionEn": "Private methods too",
+      "x-issue": "#1778"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
@@ -1380,6 +1425,19 @@
       "x-captionEn": "Run affected tests",
       "x-issue": "#1353"
     },
+    "TestsLeakSetup": {
+      "description": "Befehl „Leckprüfung einrichten …“ im Kontextmenü der Projektverwaltung und in der Befehlspalette: erkennt FastMM4/FastMM5 und die DLL für FullDebugMode und richtet ReportMemoryLeaksOnShutdown bzw. FastMM nur für Debug ein. Aus = Befehl fehlt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leakSetup",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.enabled",
+      "x-caption": "Leckprüfung einrichten",
+      "x-captionEn": "Set up leak check",
+      "x-issue": "#1880"
+    },
     "TestsAffectedDepth": {
       "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test (1 bis 5); 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
       "type": "integer",
@@ -1501,6 +1559,30 @@
       "x-caption": "Langsam ab (ms)",
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
+    },
+    "TestsCaseTable": {
+      "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.testCaseTable",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "[TestCase]-Fälle als Tabelle",
+      "x-captionEn": "[TestCase] cases as a table",
+      "x-issue": "#1879"
+    },
+    "TestsLeaks": {
+      "description": "Lecks je Test zeigen: Mit Leckmonitor (DUnitX.MemoryLeakMonitor.FastMM4/FastMM5) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag. Atlas zeigt ihn dann als bestanden mit Leck: Marke gelb „bestanden · Leck: 40 Bytes“, Warnung in Atlas-Probleme am Methodenkopf (Quelle DUnitX), eine Zeile in der Meldungsansicht. Aus = wie im Bericht (Fehlschlag).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leaks",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Lecks je Test als Warnung zeigen",
+      "x-captionEn": "Show leaks per test as warnings",
+      "x-issue": "#1774"
     },
     "TestDebug": {
       "type": "boolean",
@@ -1663,6 +1745,54 @@
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
     },
+    "DebugThreadsInSource": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.threadsInSource",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Threads im Quelltext",
+      "x-captionEn": "Threads in source",
+      "x-issue": "#852"
+    },
+    "DebugThreadFreeze": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.threadFreeze",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-parent": "debug.threadsInSource",
+      "x-caption": "Threads einfrieren und auftauen",
+      "x-captionEn": "Freeze and thaw threads",
+      "x-issue": "#852"
+    },
+    "DebugAsyncOrigin": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.asyncOrigin",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Herkunft eingereihter Methoden merken",
+      "x-captionEn": "Remember the origin of queued methods",
+      "x-issue": "#859"
+    },
+    "DebugAsyncOriginMaxPerSite": {
+      "type": "integer",
+      "default": 20,
+      "description": "So viele Einreihungen merkt Atlas je Aufrufstelle; ältere fallen heraus (1 bis 1000).",
+      "x-key": "debug.asyncOrigin.maxPerSite",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.asyncOrigin",
+      "x-issue": "#859"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",
@@ -1756,6 +1886,29 @@
       "x-parent": "debug.inlineValues",
       "x-issue": "#508"
     },
+    "DebugWhyHere": {
+      "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.whyHere",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Warum bin ich hier? Werte der umgebenden Bedingungen",
+      "x-captionEn": "Why am I here? Values of the enclosing conditions",
+      "x-issue": "#1878"
+    },
+    "DebugWhyHereDepth": {
+      "type": "integer",
+      "default": 3,
+      "description": "So viele umgebende Blöcke (1 bis 10) zeigt „Warum bin ich hier?“.",
+      "x-key": "debug.whyHere.depth",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.whyHere",
+      "x-issue": "#1878"
+    },
     "DebugOwnCodeFolders": {
       "type": "string",
       "default": "",
@@ -1767,6 +1920,58 @@
       "x-caption": "Weitere Ordner mit eigenem Code",
       "x-captionEn": "More folders with own code",
       "x-issue": "#578"
+    },
+    "DebugEventLog": {
+      "description": "Ereignisprotokoll beim Debuggen: Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (OutputDebugString), Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, regulärem Ausdruck und Art, Farben nach Muster und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.eventLog",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ereignisprotokoll beim Debuggen",
+      "x-captionEn": "Event log while debugging",
+      "x-issue": "#580"
+    },
+    "DebugEventLogColors": {
+      "description": "Farben im Ereignisprotokoll: „Muster=Farbe“, durch „;“ getrennt; Farbe als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Das erste passende Muster gewinnt.",
+      "type": "string",
+      "default": "[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00",
+      "x-key": "debug.eventLogColors",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.eventLog",
+      "x-control": "Textfeld",
+      "x-caption": "Farben im Ereignisprotokoll",
+      "x-captionEn": "Event log colors",
+      "x-issue": "#580"
+    },
+    "DebugLogpoints": {
+      "description": "Logpunkte: „Logpunkt setzen“ (Umschalt+F5, Kontextmenü am Rand) nimmt einen Text mit Platzhaltern wie „x={x}“ an und legt einen Haltepunkt der IDE ohne Anhalten an, der den Text mit den Werten ins Ereignisprotokoll schreibt; Raute in der Rinne; Befehle „Alle Logpunkte aus/an/löschen“. Aus = keine Befehle, keine Raute.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Logpunkte",
+      "x-captionEn": "Logpoints",
+      "x-issue": "#583"
+    },
+    "DebugLogpointPrefix": {
+      "description": "Präfix vor jeder Logpunkt-Ausgabe im Ereignisprotokoll.",
+      "type": "string",
+      "default": "[LOG]",
+      "x-key": "debug.logpointPrefix",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-control": "Textfeld",
+      "x-caption": "Präfix der Logpunkte",
+      "x-captionEn": "Logpoint prefix",
+      "x-issue": "#583"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
@@ -1977,6 +2182,18 @@
       "x-captionEn": "Check breakpoints before starting",
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
+    },
+    "DebugBreakpointSetPerBranch": {
+      "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointSetPerBranch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt-Satz beim Branch-Wechsel mitwechseln",
+      "x-captionEn": "Switch the breakpoint set together with the branch",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#586"
     },
     "TestsBuildFirst": {
       "type": "boolean",

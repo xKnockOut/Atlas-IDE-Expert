@@ -80,8 +80,9 @@ uses
   Atlas.Core.Tracker.Reopened,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.ProjectPicker,
-  Atlas.UI.Tracker.Strings,
-  Atlas.UI.Tracker.MyIssues;
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Tracker.MyIssues,
+  Atlas.UI.Tracker.MyIssues.Text;
 
 type
   /// <summary>Quelle des Bereichs für die Tests; merkt sich die Aufrufe.</summary>
@@ -862,7 +863,7 @@ begin
     mFrame.Width := 600;
     mFrame.Source := mSource;
     mFrame.UpdateContent;
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewHint),
+    Assert.AreEqual(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewHint),
       TAtlasTrackerIssuesText.HintAt(mFake.FView, TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 1)));
     mFake.Calls := nil;
     mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, 0));

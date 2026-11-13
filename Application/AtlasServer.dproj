@@ -91,8 +91,10 @@
         <DCCReference Include="Source\Shell\Shell.Composition.CompileSetup.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AffectedTests.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.CoveredBy.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.LeakSetup.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.LeakCandidates.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Core.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AnalysisArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CodeArea.pas"/>

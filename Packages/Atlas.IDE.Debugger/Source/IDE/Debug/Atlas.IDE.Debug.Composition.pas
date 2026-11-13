@@ -83,6 +83,7 @@ uses
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
   Atlas.IDE.Debug.Composition.Breakpoints,
+  Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
   Atlas.UI.Debug.Strings;
 
@@ -324,6 +325,10 @@ begin
     // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
     Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
       ShowDebugParallelStacks, DebugParallelStacksVisible)];
+  // Threads im Quelltext (#852): markieren, einfrieren, auftauen.
+  Result := Result + DebugThreadCommands;
+  // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
+  Result := Result + RunCommands;
   // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
   for mCommand in BreakpointCommands do
   begin
@@ -364,7 +369,12 @@ begin
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
-    ContextEntry('Atlas.StepFilterUnskip')];
+    ContextEntry('Atlas.StepFilterUnskip'),
+    // Threads im Quelltext (#852): für die Threads an der Zeile des Rechtsklicks in die Rinne.
+    ContextEntry('Atlas.DebugThreadFlag'),
+    ContextEntry('Atlas.DebugThreadFreeze'),
+    ContextEntry('Atlas.DebugThreadThaw'),
+    ContextEntry('Atlas.DebugThreadsThawAll')];
   Result := Result + BreakpointMenuEntries;
 end;
 
@@ -383,6 +393,7 @@ begin
       Result := TryStepInto;
     end;
   Result := [mKey];
+  Result := Result + RunKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;
@@ -407,6 +418,8 @@ begin
   TAtlasIdeVisualizers.ApplySettings;
   // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
   TAtlasIdeDisplayRules.ApplySettings;
+  // debug.eventLog* (#580).
+  ApplyRunSettings;
 end;
 
 procedure TAtlasDebugModule.ThemeChanged;
@@ -415,6 +428,7 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
+  RunThemeChanged;
   DebugThreadsThemeChanged;
 end;
 
@@ -487,8 +501,8 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts;
+  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
+  Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts + RunParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;
@@ -520,6 +534,9 @@ begin
   GScope.Provide(IAtlasHoverValueSource, mRef);
   // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
   GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
+  ProvideDebugThreadLayers(GScope);
+  // Logpunkte in der Rinne (#583).
+  ProvideRun(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

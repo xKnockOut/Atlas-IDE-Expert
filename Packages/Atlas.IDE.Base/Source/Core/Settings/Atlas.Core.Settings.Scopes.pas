@@ -153,6 +153,8 @@ begin
     // Betroffene Tests (#1353): Plugin-Befehl und Server (--affected-tests, get_affected_tests) lesen denselben Wert.
     Setting('TestsAffected', 'tests.affected', True),
     Setting('TestsAffectedDepth', 'tests.affectedDepth', False),
+    // Leckprüfung einrichten (#1880).
+    Setting('TestsLeakSetup', 'tests.leakSetup', True),
     // Tracker-Verbindungen (#1260): persönlich, der Server prüft sie nur.
     JsonSetting('IssuesConnections', 'issues.connections'),
     // Zuordnung Delphi-Projekt → Tracker-Projekt (#1261): persönlich wie die Verbindungen.
