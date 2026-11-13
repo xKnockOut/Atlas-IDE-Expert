@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{6E1B3C52-7F0A-4C1D-9B8E-2A5D4F7C9E31}</ProjectGuid>
         <MainSource>Atlas.IDE.Base.dpk</MainSource>
@@ -141,6 +141,9 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Items.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Contract.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Painter.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Members.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>

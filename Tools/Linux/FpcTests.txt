@@ -160,6 +160,7 @@ Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.Completion.FormProposals.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeConversions.Tests
 Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
