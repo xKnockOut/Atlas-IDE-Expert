@@ -136,7 +136,11 @@ type
     ReattachCommand, ReattachCommandPlain, ReattachWaitCommand, ReattachWaitMenu, ReattachPid, ReattachStarted,
     ReattachCommandLine, ReattachAttach, ReattachCancel, ReattachNothing, ReattachOfferWait, ReattachWaiting,
     ReattachWaitingSummary, ReattachAttached, ReattachFailed, ReattachEnded, ReattachStopped, ReattachExeFilter,
-    ReattachChooseExe, SettingsDebugReattach, SettingsDebugReattachKey, SettingsDebugReattachWait);
+    ReattachChooseExe, SettingsDebugReattach, SettingsDebugReattachKey, SettingsDebugReattachWait,
+    RuntimeReportPasteCommand, RuntimeReportClearCommand, RuntimeReportNoProject, RuntimeReportEmpty,
+    RuntimeReportNoServer, RuntimeReportNone, RuntimeReportCrashTitle, RuntimeReportLeakTitle, RuntimeReportMapMissing,
+    RuntimeReportMapDiffers, RuntimeReportGroup, RuntimeReportCrashedThread, RuntimeReportThread, RuntimeReportMore,
+    RuntimeReportLine, RuntimeReportCrashSite, RuntimeReportLeakSite, RuntimeReportMarked, RuntimeReportCleared);
 
   TAtlasDebugStrings = class
   public
@@ -692,7 +696,28 @@ const
      'Programm wählen, an das Atlas sich beim Start hängt',
      'Erneut an Prozess anhängen',
      'Erneut anhängen',
-     'Abstand der Abfragen beim Warten (ms)'),
+     'Abstand der Abfragen beim Warten (ms)',
+     'Absturz- oder Leckbericht einfügen …',
+     'Markierungen des Laufzeitberichts entfernen',
+     'Atlas: Kein Projekt geöffnet; der Bericht braucht das Projekt für Map-Datei und Quelltexte.',
+     'Atlas: Die Zwischenablage enthält keinen Text. Bericht kopieren und den Befehl noch einmal wählen.',
+     'Atlas: Der Server antwortet nicht; der Bericht wurde nicht ausgewertet.',
+     'Atlas: Kein Leck- oder Absturzbericht erkannt (FastMM, ReportMemoryLeaksOnShutdown, madExcept, EurekaLog, ' +
+     'JclDebug oder Meldung einer Exception).',
+     'Atlas: Absturz (%s): %s',
+     'Atlas: Lecks (%s): %s',
+     'Atlas: Map-Datei %s fehlt; Zeilen ohne Debug-Informationen bleiben offen (Linker-Option „Map-Datei: ' +
+     'Detailliert“).',
+     'Atlas: Map-Datei %s gehört nicht zur EXE; Zeilen können falsch sein.',
+     '  %s × %d (%d Bytes)',
+     '  Thread der Exception: %s',
+     '  Thread: %s',
+     '  … %d weitere',
+     ', Zeile %d',
+     '  ← Absturzstelle',
+     '  ← Erzeugungsstelle',
+     'Atlas: %d Stellen im Editor markiert.',
+     'Atlas: Markierungen des Laufzeitberichts entfernt.'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1228,7 +1253,28 @@ const
      'Choose the program to attach to when it starts',
      'Reattach to process',
      'Reattach',
-     'Polling interval while waiting (ms)'));
+     'Polling interval while waiting (ms)',
+     'Paste crash or leak report …',
+     'Remove runtime report markers',
+     'Atlas: No project is open; the report needs the project for the map file and sources.',
+     'Atlas: The clipboard holds no text. Copy the report and choose the command again.',
+     'Atlas: The server does not answer; the report was not analyzed.',
+     'Atlas: No leak or crash report recognized (FastMM, ReportMemoryLeaksOnShutdown, madExcept, EurekaLog, ' +
+     'JclDebug or an exception message).',
+     'Atlas: Crash (%s): %s',
+     'Atlas: Leaks (%s): %s',
+     'Atlas: Map file %s is missing; lines without debug information stay open (linker option "Map file: ' +
+     'Detailed").',
+     'Atlas: Map file %s does not belong to the EXE; lines may be wrong.',
+     '  %s × %d (%d bytes)',
+     '  Thread of the exception: %s',
+     '  Thread: %s',
+     '  … %d more',
+     ', line %d',
+     '  ← crash site',
+     '  ← creation site',
+     'Atlas: %d locations marked in the editor.',
+     'Atlas: Runtime report markers removed.'));
 
 { TAtlasDebugStrings }
 

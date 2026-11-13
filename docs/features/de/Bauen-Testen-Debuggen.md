@@ -426,6 +426,15 @@ Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+### Leck- und Absturzberichte (#74)
+
+- Bericht kopieren, dann Atlas > „Absturz- oder Leckbericht einfügen …“ (auch in der Befehlspalette): Atlas liest FastMM-Logs (FullDebugMode), die Meldung von `ReportMemoryLeaksOnShutdown`, Berichte von madExcept, EurekaLog 6/7 und JclDebug und die Meldung einer Exception allein („Zugriffsverletzung bei Adresse … in Modul …“)
+- Die Meldungsansicht zeigt den Aufrufstapel des Absturz-Threads und der übrigen Threads bzw. je Leckgruppe (gleiche Klasse, gleicher Stapel) den Stapel; Zeilen im Projekt springen per Doppelklick in den Quelltext
+- Im Editor stehen Diagnosen an den Stellen: je Leckgruppe eine Warnung an der Erzeugungsstelle („Leck: TStringList × 2 (40 Bytes) wird hier erzeugt“), beim Absturz eine Warnung an der Absturzstelle und Hinweise an den übrigen eigenen Zeilen des Stapels; Quelle ist das Werkzeug (FastMM, madExcept, …)
+- Stapelzeilen ohne Debug-Informationen löst Atlas über die Map-Datei neben der EXE der Konfiguration Debug auf (Linker-Option „Map-Datei: Detailliert“); passt die Map nicht zur EXE (anderer Einsprungpunkt oder andere Codelänge), sagt Atlas es
+- „Markierungen des Laufzeitberichts entfernen“ nimmt die Diagnosen wieder weg; ein neuer Bericht ersetzt den alten
+- Für KI-Assistenten gibt es dieselbe Auswertung als MCP-Werkzeuge `analyze_report` und `resolve_address`
+
 ### Erneut an Prozess anhängen
 
 - Hängt sich die IDE an einen laufenden Prozess (Start › An Prozess anhängen …), merkt Atlas Pfad und Name der EXE für die Projektgruppe

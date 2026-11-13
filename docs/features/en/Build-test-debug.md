@@ -472,6 +472,15 @@ Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+## Debug: leak and crash reports (#74)
+
+- Copy a report, then Atlas > “Paste crash or leak report …” (also in the command palette): Atlas reads FastMM logs (FullDebugMode), the `ReportMemoryLeaksOnShutdown` message, reports from madExcept, EurekaLog 6/7 and JclDebug, and an exception message on its own (“Access violation at address … in module …”)
+- The message view shows the call stack of the crashed thread and the other threads, or the stack of each leak group (same class, same stack); lines in the project jump to the source on double-click
+- The editor shows diagnostics at the locations: a warning at the creation site of each leak group (“Leak: TStringList × 2 (40 bytes) is created here”), for a crash a warning at the crash site and hints at the other own lines of the stack; the source is the tool (FastMM, madExcept, …)
+- Stack lines without debug information are resolved through the map file next to the EXE of the Debug configuration (linker option “Map file: Detailed”); if the map does not match the EXE (different entry point or code size), Atlas says so
+- “Remove runtime report markers” removes the diagnostics again; a new report replaces the old one
+- AI assistants get the same analysis as the MCP tools `analyze_report` and `resolve_address`
+
 ## Debug: reattach to process
 
 - When the IDE attaches to a running process (Run › Attach to Process …), Atlas remembers path and name of the EXE for the project group

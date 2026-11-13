@@ -156,6 +156,8 @@ contains
   Atlas.IDE.Debug.Processes in 'Source\IDE\Debug\Atlas.IDE.Debug.Processes.pas',
   Atlas.IDE.Debug.ReattachWait in 'Source\IDE\Debug\Atlas.IDE.Debug.ReattachWait.pas',
   Atlas.UI.Debug.ProcessChoice in 'Source\UI\Debug\Atlas.UI.Debug.ProcessChoice.pas',
-  Atlas.IDE.Debug.Reattach in 'Source\IDE\Debug\Atlas.IDE.Debug.Reattach.pas';
+  Atlas.IDE.Debug.Reattach in 'Source\IDE\Debug\Atlas.IDE.Debug.Reattach.pas',
+  Atlas.Core.Debug.RuntimeReport in 'Source\Core\Debug\Atlas.Core.Debug.RuntimeReport.pas',
+  Atlas.IDE.Debug.RuntimeReport in 'Source\IDE\Debug\Atlas.IDE.Debug.RuntimeReport.pas';
 
 end.

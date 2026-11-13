@@ -36,6 +36,8 @@ type
     /// <summary>AJson als JSON-Objekt; nil bei leerem, ungültigem Text oder anderem Wert. Der Aufrufer gibt das
     /// Objekt frei.</summary>
     class function ParseObject(const AJson: string): TJSONObject; static;
+    /// <summary>Wie ParseObject, aber ein leeres Objekt statt nil. Der Aufrufer gibt das Objekt frei.</summary>
+    class function ParseObjectOrEmpty(const AJson: string): TJSONObject; static;
     /// <summary>AValue als Objekt, sonst nil.</summary>
     class function AsObject(AValue: TJSONValue): TJSONObject; static;
     /// <summary>Der Wert AName in AObject; nil, wenn AObject nil ist oder den Namen nicht hat.</summary>
@@ -150,6 +152,15 @@ begin
   else
   begin
     mValue.Free;
+  end;
+end;
+
+class function TJsonRead.ParseObjectOrEmpty(const AJson: string): TJSONObject;
+begin
+  Result := ParseObject(AJson);
+  if Result = nil then
+  begin
+    Result := TJSONObject.Create;
   end;
 end;
 

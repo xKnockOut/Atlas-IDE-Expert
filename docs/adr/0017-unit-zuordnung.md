@@ -997,6 +997,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.ReattachWait` | `IDE/Debug/Atlas.IDE.Debug.ReattachWait.pas` | Warten auf den Start eines Programms im Hintergrund, #2171 |
 | `Atlas.UI.Debug.ProcessChoice` | `UI/Debug/Atlas.UI.Debug.ProcessChoice.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.Reattach` | `IDE/Debug/Atlas.IDE.Debug.Reattach.pas` | Erneut an Prozess anhängen, auf Start warten, #2171 |
+| `Atlas.Core.Debug.RuntimeReport` | `Core/Debug/Atlas.Core.Debug.RuntimeReport.pas` | Argumente und Antwort von atlas.server.runtimeReport ohne IDE, #74 |
+| `Atlas.IDE.Debug.RuntimeReport` | `IDE/Debug/Atlas.IDE.Debug.RuntimeReport.pas` | Leck- oder Absturzbericht einfügen, Stapel in der Meldungsansicht, #74 |
 
 ## Atlas.IDE.Tracker
 

@@ -61,6 +61,12 @@ begin
     begin
       Result := AParts.CompilerProcess;
     end;
+  mServices.RuntimeReport.Results := AParts.RuntimeReports;
+  mServices.RuntimeReport.Publish :=
+    procedure(const AFiles: TArray<string>)
+    begin
+      AParts.DiagnosticsArea.Syntax.RefreshFiles(AFiles);
+    end;
   AParts.CommandArea := TShellCommandArea.Create(AParts.Core, AParts.CodeArea, AParts.AnalysisArea,
     AParts.EditingArea.Editing, mServices);
 end;

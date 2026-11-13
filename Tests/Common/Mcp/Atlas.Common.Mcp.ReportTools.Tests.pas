@@ -51,6 +51,7 @@ uses
   Atlas.Text.PeImage,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.ReportTools,
+  Atlas.Common.Diagnostics.RuntimeReport,
   Atlas.Common.Localization.Texts;
 
 const
@@ -122,9 +123,9 @@ begin
   end;
 end;
 
-function Symbols(AMap: TMapFile; AMatch: TMapImageMatch): TMcpSymbols;
+function Symbols(AMap: TMapFile; AMatch: TMapImageMatch): TReportSymbols;
 begin
-  Result := Default(TMcpSymbols);
+  Result := Default(TReportSymbols);
   Result.Map := AMap;
   Result.MapName := 'Kunden.map';
   Result.Module := 'Kunden.exe';
@@ -221,7 +222,7 @@ begin
       .Contains('DOES NOT BELONG TO THE EXE: different entry point'));
     Assert.IsTrue(TMcpReportTools.MapStatus(Symbols(mMap, TMapImageMatch.CodeSizeDiffers))
       .Contains('different code size'));
-    Assert.AreEqual('', TMcpReportTools.MapStatus(Default(TMcpSymbols)));
+    Assert.AreEqual('', TMcpReportTools.MapStatus(Default(TReportSymbols)));
   finally
     mMap.Free;
     end;
@@ -232,7 +233,7 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      TMcpReportTools.ResolveAddresses(TMcpReportTools.ParseAddresses('00401112'), Default(TMcpSymbols), nil);
+      TMcpReportTools.ResolveAddresses(TMcpReportTools.ParseAddresses('00401112'), Default(TReportSymbols), nil);
     end, EMcpToolError);
 end;
 
@@ -240,7 +241,7 @@ procedure TMcpReportToolsTests.AnalyzesMadExceptWithProjectSite;
 var
   mText: string;
 begin
-  mText := TMcpReportTools.AnalyzeReport(cMadExcept, Default(TMcpSymbols), ProjectFile);
+  mText := TMcpReportTools.AnalyzeReport(cMadExcept, Default(TReportSymbols), ProjectFile);
   Assert.IsTrue(mText.Contains('Absturzbericht (madExcept): EAccessViolation'), mText);
   Assert.IsTrue(mText.Contains('Absturzadresse: 00401112 (Kunden.exe)'), mText);
   Assert.IsTrue(mText.Contains('System.SysUtils.RaiseIt, Zeile 900'), mText);
@@ -257,7 +258,7 @@ end;
 procedure TMcpReportToolsTests.AnalyzesFramesWithoutDebugInfoViaMap;
 var
   mMap: TMapFile;
-  mSymbols: TMcpSymbols;
+  mSymbols: TReportSymbols;
   mText: string;
 begin
   mMap := TMapFile.Create(cMap);
@@ -299,7 +300,7 @@ procedure TMcpReportToolsTests.AnalyzesFastMMLeaks;
 var
   mText: string;
 begin
-  mText := TMcpReportTools.AnalyzeReport(cFastMM, Default(TMcpSymbols), ProjectFile);
+  mText := TMcpReportTools.AnalyzeReport(cFastMM, Default(TReportSymbols), ProjectFile);
   Assert.IsTrue(mText.Contains('Leckbericht: 1 Lecks (1 Arten)'), mText);
   Assert.IsTrue(mText.Contains('1. TStringList × 1 (20 Bytes)'), mText);
   Assert.IsTrue(mText.Contains(
@@ -310,7 +311,7 @@ procedure TMcpReportToolsTests.AnalyzesRtlLeakDialog;
 var
   mText: string;
 begin
-  mText := TMcpReportTools.AnalyzeReport(cRtlDialog, Default(TMcpSymbols), nil);
+  mText := TMcpReportTools.AnalyzeReport(cRtlDialog, Default(TReportSymbols), nil);
   Assert.IsTrue(mText.Contains('Leckbericht: 9 Lecks (2 Arten)'), mText);
   Assert.IsTrue(mText.Contains('Ohne Aufrufstapel'), mText);
   Assert.IsTrue(mText.Contains('- UnicodeString × 5'), mText);
@@ -322,7 +323,7 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      TMcpReportTools.AnalyzeReport('unit Main; interface end.', Default(TMcpSymbols), nil);
+      TMcpReportTools.AnalyzeReport('unit Main; interface end.', Default(TReportSymbols), nil);
     end, EMcpToolError);
 end;
 
