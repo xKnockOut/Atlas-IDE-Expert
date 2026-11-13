@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Modules.pas"/>
