@@ -275,6 +275,7 @@ Atlas.Common.Rules.Builtin.Style.Tests
 Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
+Atlas.Common.Rules.Builtin.Testing.Asserts.Tests
 Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
