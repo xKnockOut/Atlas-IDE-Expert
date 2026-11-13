@@ -874,6 +874,16 @@ Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 
 Settings: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`
 
+### Who frees this?
+
+- Every line with `T.Create(…)` ends with a mark that answers it: green "freed in Destroy, line 48", "freed in finally, line 30", "owner Self", "owned by FList" (list with OwnsObjects) or "reference counted"; yellow "freed in Clear, line 70" (another method), "returned to the caller", "passed to Registry.Add" or "unclear"; red "never freed".
+- Red appears only where one of the leak rules (`field-not-freed`, `create-without-assignment`, `local-object-not-freed`, `created-result-not-freed`) reports with the settings of the file, so mark and problem never disagree. With the rule off, the same place reads "unclear".
+- Lists also carry "owns its elements" (`TObjectList` with OwnsObjects) or "elements owned by FList" when a second list of the same class owns the elements.
+- A click on the mark jumps to the releasing line; the tooltip explains how Atlas reached the rating, for red with the message of the rule.
+- The marks come from the server (`atlas.server.ownership`) and are fetched again together with the normal check of the file; only visible lines are drawn. Hide per line or per file with a right-click on the mark.
+
+Settings: `editor.ownershipHints` (off by default, module Rule checks), `editor.ownershipHints.onlyProblems` (yellow and red marks only)
+
 ### Threads in source
 
 - At a stop the gutter shows a mark with the count at every line where another thread stands with its topmost own frame; with eight waiting workers at the same line that is “8”. The IDE shows the current thread as before.
