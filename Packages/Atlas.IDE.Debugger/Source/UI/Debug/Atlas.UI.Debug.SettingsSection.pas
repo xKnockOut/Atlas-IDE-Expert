@@ -222,6 +222,8 @@ begin
   Switch('debug.predictConditions', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictDim));
   Number('debug.predictConditions.lines', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictLines));
+  // Werte ändern (#868).
+  Switch('debug.editValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEditValues));
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));
