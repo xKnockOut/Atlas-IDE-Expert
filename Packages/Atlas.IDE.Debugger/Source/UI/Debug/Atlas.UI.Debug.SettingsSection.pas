@@ -153,6 +153,8 @@ begin
   Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
   // Haltepunkte auf Methoden nach Muster (#855).
   Switch('debug.methodBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMethodBreakpoints));
+  // Haltepunkt nur für ein Objekt (#857).
+  Switch('debug.instanceBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInstanceBreakpoints));
   // Haltepunkt-Sätze (#586).
   Switch('debug.breakpointSetPerBranch',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
@@ -223,6 +225,7 @@ begin
   Number('debug.reattach.waitIntervalMs', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachWait));
   // Startverbünde (#867).
   Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
+  Switch('debug.pinnedValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPinnedValues));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;

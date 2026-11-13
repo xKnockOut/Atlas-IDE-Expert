@@ -305,6 +305,15 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
 
+### Pinned values
+
+- The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values
+- Values changed since the previous stop are shown in the warning colour
+- Pinned expressions belong to the project and survive debug sessions; a click on ✕ unpins them for good
+- Evaluation has no side effects: expressions with calls stay `?`. At most 100 per project
+
+Setting: `debug.pinnedValues`
+
 ### "No access to value" explained
 
 - When the debugger only says "Inaccessible value" or "... inaccessible here due to optimization" for a variable, the hover and the inline values show `‹no access›`.
@@ -441,6 +450,16 @@ The command “Breakpoint on methods …” (Atlas menu, command palette, editor
 The preview lists the matches with file and line to deselect, methods without source greyed out. “Set” places the breakpoints on the first executable statement of each method, in the breakpoint group named after the pattern, optionally with a condition or “Do not break, log only”. With “Grow”, Atlas adds breakpoints for new matching methods at the next debug start and names them in the messages. “Method breakpoint groups …” enables, disables or removes the groups of the project together with their breakpoints. Atlas keeps the groups personally per project.
 
 Settings: `debug.methodBreakpoints`
+### Breakpoint only for one object
+
+A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:
+
+- “Breakpoint only for this object”: Atlas evaluates `Pointer(Self)` and writes `Pointer(Self) = Pointer($0A3F1C20)` into the condition. The address is only valid in this session.
+- “Breakpoint only if …”: choose one of the fields of `Self` with a simple value, such as `FNr = 4711`; the condition also holds in later sessions.
+
+An existing condition is kept and combined with `and`. Both are available only in methods, not in plain routines or class methods. Before the next start, Atlas asks about address conditions from the last session: remove them, replace them with a field condition, or keep them.
+
+Settings: `debug.instanceBreakpoints`
 ### Breakpoint sets
 
 Atlas menu and command palette. When you work on several bugs, switch between named sets of breakpoints instead of deleting and setting them again.

@@ -305,6 +305,16 @@ Der Befehl „Haltepunkt auf Methoden …“ (Menü Atlas, Befehlspalette, Konte
 Die Vorschau zeigt die Treffer mit Datei und Zeile zum Abwählen, Methoden ohne Quelltext grau. „Setzen“ legt die Haltepunkte am ersten ausführbaren Befehl jeder Methode an, in der Haltepunktgruppe mit dem Muster als Namen, auf Wunsch mit Bedingung oder „Nicht anhalten, nur protokollieren“. Mit „Mitwachsen“ ergänzt Atlas beim nächsten Debug-Start Haltepunkte für neue passende Methoden und nennt sie in den Meldungen. „Haltepunktgruppen der Methoden …“ schaltet die Gruppen des Projekts ein und aus oder entfernt sie samt Haltepunkten. Die Gruppen merkt sich Atlas persönlich je Projekt.
 
 Einstellungen: `debug.methodBreakpoints`
+#### Haltepunkt nur für ein Objekt
+
+Ein Haltepunkt in `TKunde.Speichere` hält bei 500 Kunden 500 Mal. Im angehaltenen Programm, mit der Schreibmarke auf der Zeile des Haltepunkts, bietet das Kontextmenü des Editors unter Debuggen:
+
+- „Haltepunkt nur für dieses Objekt“: Atlas wertet `Pointer(Self)` aus und schreibt `Pointer(Self) = Pointer($0A3F1C20)` in die Bedingung. Die Adresse gilt nur in dieser Sitzung.
+- „Haltepunkt nur wenn …“: Auswahl aus den Feldern von `Self` mit einfachem Wert, etwa `FNr = 4711`; die Bedingung gilt auch in späteren Sitzungen.
+
+Eine vorhandene Bedingung bleibt erhalten und wird mit `and` verknüpft. Beides gibt es nur in Methoden, nicht in freien Routinen und Klassenmethoden. Vor dem nächsten Start fragt Atlas nach Adressbedingungen der letzten Sitzung: entfernen, durch eine Feldbedingung ersetzen oder behalten.
+
+Einstellungen: `debug.instanceBreakpoints`
 #### Haltepunkt-Sätze
 
 Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechselt zwischen benannten Sätzen von Haltepunkten, statt sie zu löschen und neu zu setzen.
@@ -365,6 +375,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 - Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
+#### Werte anheften
+
+- Im Debug-Hover steht unter dem Wert „Anheften“. Der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Summe = 125 ✕` am Ende seiner Zeile, hinter den Werten im Editor.
+- Seit dem vorigen Halt geänderte Werte stehen in der Warnfarbe.
+- Angeheftete Ausdrücke gelten je Projekt und bleiben über Debug-Sitzungen erhalten; ein Klick auf ✕ löst sie dauerhaft.
+- Ausgewertet wird ohne Nebenwirkungen: Ausdrücke mit Aufrufen bleiben `?`. Höchstens 100 je Projekt.
+
+Einstellung: `debug.pinnedValues`
 
 #### „kein Zugriff auf Wert“ erklärt
 

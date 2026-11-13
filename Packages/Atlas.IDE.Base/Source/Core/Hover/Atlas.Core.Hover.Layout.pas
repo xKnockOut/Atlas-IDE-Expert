@@ -8,6 +8,7 @@
 // Aufbau wie bisher: Pfadzeile (angeheftet), Wert im Debugger (#891), Probleme, Kopfzeile, Deklaration mit
 // Verweisen, Beschreibung mit Platz für die XMLDoc, Vererbung bzw. Zieltyp und Aktionsleiste auf Randflächen; die
 // letzte Randfläche sitzt beim Zeichnen am unteren Fensterrand (Anchor).
+// Unter dem Wert im Debugger stehen seine Aktionen (Anheften #526) als Links mit der Klickfläche DebugAction.
 // Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als Links: Entfernen, Alle ungenutzten
 // entfernen (ab zwei), In implementation-uses verschieben; ihre Klickfläche trägt Problem und Aktion
 // (TAtlasHoverProblemActionCode).
@@ -149,6 +150,8 @@ type
     procedure Navigation;
     procedure DebugValue;
     procedure DebugNote(const ANote: TAtlasDebugValueNote);
+    /// <summary>Zeile kleiner Links (Korrekturen #840, Aktionen #526) mit Klickflächen AKind je Index.</summary>
+    procedure LinkRow(const ALinks: TArray<TAtlasDebugValueFix>; AKind: TAtlasHoverHitKind);
     procedure Problems;
     procedure Header;
     /// <summary>Index des nächsten Verweises, der in [APos, ATill) hineinreicht; -1 ohne.</summary>
@@ -878,6 +881,7 @@ begin
   else
   begin
     Block(mValue.Text, FColors.Text, 6);
+    LinkRow(mValue.Actions, TAtlasHoverHitKind.DebugAction);
   end;
   SideBar(mStart, FColors.Accent);
 end;
@@ -885,8 +889,6 @@ end;
 procedure TBuilder.DebugNote(const ANote: TAtlasDebugValueNote);
 var
   mLine: string;
-  mIndex: Integer;
-  mOldFont: TAtlasHoverFont;
 begin
   // „kein Zugriff“ (#840): Kennzeichen, Ursache, Herkunft des Schalters, geprüfte Punkte, Korrekturen.
   Block(ANote.Caption, FColors.Warn, 1);
@@ -905,18 +907,28 @@ begin
       Block('• ' + mLine, FColors.Muted, 2);
     end;
   end;
-  if Length(ANote.Fixes) = 0 then
+  LinkRow(ANote.Fixes, TAtlasHoverHitKind.DebugFix);
+end;
+
+procedure TBuilder.LinkRow(const ALinks: TArray<TAtlasDebugValueFix>; AKind: TAtlasHoverHitKind);
+const
+  cLinkGap = 12;
+var
+  mIndex: Integer;
+  mOldFont: TAtlasHoverFont;
+begin
+  if Length(ALinks) = 0 then
   begin
     Exit;
   end;
   mOldFont := BeginLinkRow;
-  for mIndex := 0 to High(ANote.Fixes) do
+  for mIndex := 0 to High(ALinks) do
   begin
     if FX > FLeft then
     begin
-      Inc(FX, Scale(12));
+      Inc(FX, Scale(cLinkGap));
     end;
-    FlowLink(ANote.Fixes[mIndex].Caption, FColors.Accent, TAtlasHoverHitKind.DebugFix, mIndex);
+    FlowLink(ALinks[mIndex].Caption, FColors.Accent, AKind, mIndex);
   end;
   EndLinkRow(mOldFont);
 end;

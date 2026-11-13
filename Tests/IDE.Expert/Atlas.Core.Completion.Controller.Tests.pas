@@ -56,6 +56,10 @@ type
     procedure InaccessibleNamedThenRevealed;
     [Test]
     procedure InaccessibleOnlyShowsEmptyStateWithNotice;
+    /// <summary>#2108: Enter auf einem nicht sichtbaren Mitglied mit Befehl schließt die Liste und meldet es
+    /// über OnInaccessible statt OnCommit.</summary>
+    [Test]
+    procedure InaccessibleWithCommandOffersActions;
   end;
 
   /// <summary>Diagnosemodus (#479) über den ganzen Ablauf: Quellen, Filtern, erste Liste.</summary>
@@ -81,7 +85,6 @@ uses
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
-  Atlas.Core.Completion.Usage,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Diagnostics.Timing;
@@ -317,6 +320,50 @@ begin
     mController.HandleKey(TAtlasNavigationKey.Accept);
     Assert.AreEqual('', mCommitted);
     Assert.IsTrue(mController.Active);
+  finally
+    mController.Free;
+  end;
+end;
+
+procedure TAtlasCompletionControllerTests.InaccessibleWithCommandOffersActions;
+var
+  mItems: TAtlasCompletionItems;
+  mView: TFakeHiddenView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted, mOffered: string;
+begin
+  mItems := HiddenItems;
+  mItems[1].Command := 'atlas.server.memberActions';
+  mView := TFakeHiddenView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(mItems) as IAtlasCompletionProvider, mViewRef);
+  try
+    mCommitted := '';
+    mOffered := '';
+    mController.OnCommit :=
+      procedure(const AItem: TAtlasCompletionItem)
+      begin
+        mCommitted := AItem.Name;
+      end;
+    mController.OnInaccessible :=
+      procedure(const AItem: TAtlasCompletionItem)
+      begin
+        mOffered := AItem.Name;
+      end;
+    mController.Start(Context('FE'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not mController.Loading;
+      end));
+    Assert.IsTrue(mController.RevealInaccessible);
+    mController.HandleKey(TAtlasNavigationKey.Last);
+    mController.HandleKey(TAtlasNavigationKey.Accept);
+    Assert.AreEqual('', mCommitted);
+    Assert.AreEqual('FEintraege', mOffered);
+    Assert.IsFalse(mController.Active);
   finally
     mController.Free;
   end;

@@ -32,6 +32,9 @@ type
     /// <summary>Code-Aktionen an der Schreibmarke öffnen wie Strg+. (Klick auf die Marke „braucht kein Self“,
     /// #686); nil = nur der Sprung.</summary>
     OpenCodeActions: TProc;
+    /// <summary>Code-Aktionen zur Wahl wie Strg+., etwa für ein nicht sichtbares Mitglied der Vervollständigung
+    /// (#2108); nil = Enter darauf tut nichts.</summary>
+    OfferActions: TAtlasOfferActionsProc;
   end;
 
   /// <summary>Phase des Servers für das Statusfeld (#591) mit Beginn (Ortszeit) und „von Atlas beendet“ (#754).
