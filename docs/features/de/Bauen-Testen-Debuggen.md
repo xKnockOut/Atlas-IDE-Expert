@@ -327,3 +327,20 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
 Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
+
+### Threads
+
+#### Was wartet worauf?
+
+- Hängt ein Programm, hält man es an (Start > Programm Pause) und wählt Atlas > „Was wartet worauf?“.
+- Atlas liest die Aufrufstapel aller Threads und zeigt im Ergebnisfenster je Thread Kennung, Namen (`TThread.NameThreadForDebugging`), Wartepunkt und die erste eigene Codezeile, etwa „Thread 7 „Worker“: wartet in TThread.Synchronize, bei TWorker.Execute (Unit2.pas:30)“.
+- Als Wartepunkt gilt die Warte-Routine über der ersten eigenen Zeile: `TThread.WaitFor`, `TThread.Synchronize`, `TMonitor.Enter`/`Wait`, Critical Section, Ereignis (`TEvent.WaitFor`), `Sleep` oder ein Handle (`WaitForSingleObject`, `WaitForMultipleObjects`); die Nachrichtenschleife zählt als „wartet auf Nachrichten“.
+- Darüber stehen erkannte Muster:
+  - Der Hauptthread wartet in `TThread.WaitFor` (etwa im Destruktor eines Threads), ein Thread wartet in `Synchronize` auf ihn: Verklemmung, siehe Regel `synchronize-in-destructor`.
+  - Ein Thread wartet in `Synchronize`, der Hauptthread hängt an einer Sperre.
+  - Mehrere Threads warten an derselben Stelle auf eine Sperre.
+  - Alle Threads warten, keiner läuft.
+- Doppelklick wechselt zum Thread und springt auf seine erste eigene Codezeile.
+- Wer eine Sperre (`TMonitor`, Critical Section) hält, liefert der Debugger nicht; Atlas nennt nur die Wartenden.
+
+Schalter: `debug.deadlocks`.
