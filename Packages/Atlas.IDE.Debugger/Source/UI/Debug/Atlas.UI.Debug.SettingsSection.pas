@@ -58,7 +58,8 @@ uses
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.VariablesStrings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -246,11 +247,11 @@ end;
 procedure TAtlasDebugSettingsSection.BuildStopValues;
 begin
   // Fenster „Variablen“ (#853).
-  Switch('debug.variablesWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVariablesWindow));
+  Switch('debug.variablesWindow', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesWindow));
   Number('debug.variablesWindow.searchDepth',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVariablesSearchDepth));
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchDepth));
   Number('debug.variablesWindow.searchLimit',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVariablesSearchLimit));
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictDim));

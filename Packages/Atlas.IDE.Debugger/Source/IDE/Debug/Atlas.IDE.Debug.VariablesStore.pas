@@ -39,12 +39,12 @@ implementation
 uses
   System.SysUtils,
   Atlas.IDE.Debug.EvaluateStore,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.VariablesStrings;
 
 /// <summary>Was in der Datei steht, für die Meldung, wenn sie sich nicht schreiben lässt.</summary>
 function What: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesWatchesKind);
+  Result := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesWatchesKind);
 end;
 
 { TAtlasIdeVariablesStore }

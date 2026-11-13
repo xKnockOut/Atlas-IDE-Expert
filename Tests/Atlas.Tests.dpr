@@ -2389,6 +2389,8 @@ uses
   Atlas.UI.Debug.EvaluateFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas',
   Atlas.UI.Debug.VariablesFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas',
   Atlas.UI.Debug.VariablesFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.VariablesFrame.Tests.pas',
+  Atlas.UI.Debug.VariablesStrings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.VariablesStrings.pas',
+  Atlas.UI.Debug.VariablesStrings.Tests in 'IDE.Expert\Atlas.UI.Debug.VariablesStrings.Tests.pas',
   Atlas.Common.Lsp.DataFlow.Tests in 'Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas',
   Atlas.Common.Lsp.DataFlow.Parts.Tests in 'Common\Lsp\Atlas.Common.Lsp.DataFlow.Parts.Tests.pas',
   Atlas.Core.Lsp.DataFlow in '..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas',

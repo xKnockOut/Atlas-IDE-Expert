@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TVariablesDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesCaption);
+  Result := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCaption);
 end;
 
 function TVariablesDock.GetIdentifier: string;

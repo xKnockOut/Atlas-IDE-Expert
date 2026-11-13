@@ -136,7 +136,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.VariablesStrings;
 
 {$R *.dfm}
 
@@ -148,8 +149,8 @@ const
   /// <summary>Abstand der Lage vor dem Ausrichten: Sie bestimmt die Reihenfolge gleich ausgerichteter Teile.
   /// </summary>
   cOrderStep = 1000;
-  cTabTexts: array[TAtlasVariablesTab] of TAtlasDebugTextId = (TAtlasDebugTextId.VariablesTabAutos,
-    TAtlasDebugTextId.VariablesTabLocals, TAtlasDebugTextId.VariablesTabWatch);
+  cTabTexts: array[TAtlasVariablesTab] of TAtlasVariablesTextId = (TAtlasVariablesTextId.VariablesTabAutos,
+    TAtlasVariablesTextId.VariablesTabLocals, TAtlasVariablesTextId.VariablesTabWatch);
 
 type
   {$SCOPEDENUMS ON}
@@ -177,7 +178,7 @@ begin
   Result.Parent := ASelf;
 end;
 
-function AddCheck(ASelf: TAtlasDebugVariablesFrame; AParent: TWinControl; AText: TAtlasDebugTextId;
+function AddCheck(ASelf: TAtlasDebugVariablesFrame; AParent: TWinControl; AText: TAtlasVariablesTextId;
   AOrder: Integer): TCheckBox;
 begin
   Result := TCheckBox.Create(ASelf);
@@ -187,7 +188,7 @@ begin
   Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := Px(ASelf, cCheckWidth);
-  Result.Caption := TAtlasDebugStrings.Text(AText);
+  Result.Caption := TAtlasVariablesStrings.Text(AText);
   Result.OnClick := ASelf.SearchChange;
 end;
 
@@ -209,7 +210,7 @@ begin
     mButton.Height := Px(ASelf, cButtonHeight);
     mButton.GroupIndex := 1;
     mButton.AllowAllUp := False;
-    mButton.Caption := TAtlasDebugStrings.Text(cTabTexts[mTab]);
+    mButton.Caption := TAtlasVariablesStrings.Text(cTabTexts[mTab]);
     mButton.Tag := Ord(mTab);
     mButton.Down := mTab = ASelf.FTab;
     mButton.OnClick := ASelf.TabClick;
@@ -220,13 +221,15 @@ end;
 procedure BuildSearch(ASelf: TAtlasDebugVariablesFrame);
 begin
   ASelf.FParts.SearchBar := AddBar(ASelf, 1);
-  ASelf.FParts.ValuesCheck := AddCheck(ASelf, ASelf.FParts.SearchBar, TAtlasDebugTextId.VariablesSearchValues, 1);
-  ASelf.FParts.DeepCheck := AddCheck(ASelf, ASelf.FParts.SearchBar, TAtlasDebugTextId.VariablesSearchDeep, 2);
+  ASelf.FParts.ValuesCheck := AddCheck(ASelf, ASelf.FParts.SearchBar,
+    TAtlasVariablesTextId.VariablesSearchValues, 1);
+  ASelf.FParts.DeepCheck := AddCheck(ASelf, ASelf.FParts.SearchBar,
+    TAtlasVariablesTextId.VariablesSearchDeep, 2);
   ASelf.FParts.SearchEdit := TEdit.Create(ASelf);
   ASelf.FParts.SearchEdit.Parent := ASelf.FParts.SearchBar;
   ASelf.FParts.SearchEdit.Align := alClient;
   ASelf.FParts.SearchEdit.AlignWithMargins := True;
-  ASelf.FParts.SearchEdit.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesSearchHint);
+  ASelf.FParts.SearchEdit.TextHint := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesSearchHint);
   ASelf.FParts.SearchEdit.OnChange := ASelf.SearchChange;
   ASelf.FParts.SearchEdit.OnKeyDown := ASelf.SearchKeyDown;
   ASelf.FParts.SearchTimer := TTimer.Create(ASelf);
@@ -243,7 +246,7 @@ begin
   ASelf.FParts.WatchEdit.Parent := ASelf.FParts.WatchBar;
   ASelf.FParts.WatchEdit.Align := alClient;
   ASelf.FParts.WatchEdit.AlignWithMargins := True;
-  ASelf.FParts.WatchEdit.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesWatchHint);
+  ASelf.FParts.WatchEdit.TextHint := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesWatchHint);
   ASelf.FParts.WatchEdit.OnKeyDown := ASelf.WatchKeyDown;
 end;
 
@@ -259,13 +262,13 @@ begin
   Result.Parent := ASelf;
 end;
 
-procedure AddMenuItem(ASelf: TAtlasDebugVariablesFrame; AText: TAtlasDebugTextId; AAction: TRowAction;
+procedure AddMenuItem(ASelf: TAtlasDebugVariablesFrame; const AText: string; AAction: TRowAction;
   AShortCut: TShortCut);
 var
   mItem: TMenuItem;
 begin
   mItem := TMenuItem.Create(ASelf.FParts.Menu);
-  mItem.Caption := TAtlasDebugStrings.Text(AText);
+  mItem.Caption := AText;
   mItem.Tag := Ord(AAction);
   mItem.ShortCut := AShortCut;
   mItem.OnClick := ASelf.MenuClick;
@@ -276,12 +279,16 @@ procedure BuildTree(ASelf: TAtlasDebugVariablesFrame);
 begin
   ASelf.FParts.Menu := TPopupMenu.Create(ASelf);
   ASelf.FParts.Menu.OnPopup := ASelf.MenuPopup;
-  AddMenuItem(ASelf, TAtlasDebugTextId.VariablesAddWatch, TRowAction.AddWatch, ShortCut(Ord('W'), [ssCtrl]));
-  AddMenuItem(ASelf, TAtlasDebugTextId.VariablesCopyValue, TRowAction.CopyValue, ShortCut(Ord('C'), [ssCtrl]));
-  AddMenuItem(ASelf, TAtlasDebugTextId.VariablesCopyExpression, TRowAction.CopyExpression,
-    ShortCut(Ord('C'), [ssCtrl, ssShift]));
-  AddMenuItem(ASelf, TAtlasDebugTextId.EditValueAction, TRowAction.EditValue, ShortCut(VK_F2, []));
-  AddMenuItem(ASelf, TAtlasDebugTextId.VariablesRemoveWatch, TRowAction.RemoveWatch, ShortCut(VK_DELETE, []));
+  AddMenuItem(ASelf, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesAddWatch), TRowAction.AddWatch,
+    ShortCut(Ord('W'), [ssCtrl]));
+  AddMenuItem(ASelf, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCopyValue), TRowAction.CopyValue,
+    ShortCut(Ord('C'), [ssCtrl]));
+  AddMenuItem(ASelf, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCopyExpression),
+    TRowAction.CopyExpression, ShortCut(Ord('C'), [ssCtrl, ssShift]));
+  AddMenuItem(ASelf, TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueAction), TRowAction.EditValue,
+    ShortCut(VK_F2, []));
+  AddMenuItem(ASelf, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesRemoveWatch), TRowAction.RemoveWatch,
+    ShortCut(VK_DELETE, []));
 
   ASelf.FParts.Tree := TTreeView.Create(ASelf);
   ASelf.FParts.Tree.Parent := ASelf;
@@ -413,7 +420,7 @@ begin
   BuildTabs(Self);
   BuildSearch(Self);
   BuildWatch(Self);
-  FParts.Keys := AddFooter(Self, 2, TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesKeys));
+  FParts.Keys := AddFooter(Self, 2, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesKeys));
   FParts.Status := AddFooter(Self, 1, '');
   BuildTree(Self);
   FSync := TAtlasEvalTreeSync.Create(FParts.Tree);

@@ -147,7 +147,7 @@ uses
   Atlas.IDE.Debug.EditValue,
   Atlas.IDE.Debug.VariablesWindow,
   Atlas.UI.Debug.VariablesFrame,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.VariablesStrings;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
 function Frame: TAtlasDebugVariablesFrame;
@@ -176,23 +176,24 @@ begin
   mSearch := ALists.Search;
   if not AHasServer and (ATab <> TAtlasVariablesTab.Watch) then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesNoServer);
+    Result := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesNoServer);
   end
   else if not mSearch.Active then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.VariablesCount, [ALists[ATab].Count]);
+    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesCount, [ALists[ATab].Count]);
   end
   else if not ASearchDone then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.VariablesSearching, [mSearch.Evaluations]);
+    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesSearching, [mSearch.Evaluations]);
   end
   else if mSearch.Truncated then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.VariablesTruncated, [mSearch.HitCount, mSearch.Evaluations]);
+    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesTruncated,
+      [mSearch.HitCount, mSearch.Evaluations]);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.VariablesHits, [mSearch.HitCount]);
+    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesHits, [mSearch.HitCount]);
   end;
 end;
 

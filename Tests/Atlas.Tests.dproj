@@ -2353,6 +2353,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.VariablesFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.VariablesStrings.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.VariablesStrings.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Parts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>

@@ -132,6 +132,7 @@ contains
   Atlas.Core.Debug.Variables in 'Source\Core\Debug\Atlas.Core.Debug.Variables.pas',
   Atlas.IDE.Debug.FieldRequests in 'Source\IDE\Debug\Atlas.IDE.Debug.FieldRequests.pas',
   Atlas.UI.Debug.VariablesFrame in 'Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas' {AtlasDebugVariablesFrame: TFrame},
+  Atlas.UI.Debug.VariablesStrings in 'Source\UI\Debug\Atlas.UI.Debug.VariablesStrings.pas',
   Atlas.IDE.Debug.VariablesWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.VariablesWindow.pas',
   Atlas.IDE.Debug.VariablesStore in 'Source\IDE\Debug\Atlas.IDE.Debug.VariablesStore.pas',
   Atlas.IDE.Debug.VariablesLists in 'Source\IDE\Debug\Atlas.IDE.Debug.VariablesLists.pas',

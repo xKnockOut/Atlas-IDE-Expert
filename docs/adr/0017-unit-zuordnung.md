@@ -1032,6 +1032,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
 | `Atlas.UI.Debug.VariablesFrame` | `UI/Debug/Atlas.UI.Debug.VariablesFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.VariablesStrings` | `UI/Debug/Atlas.UI.Debug.VariablesStrings.pas` | Texte des Fensters „Variablen“ (Debugger), Sprache von Base, #853 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
 | `Atlas.Core.Debug.EventLog` | `Core/Debug/Atlas.Core.Debug.EventLog.pas` | Ereignisprotokoll ohne IDE: Arten, Filter, Farben, Sprungziele, #580 |
 | `Atlas.Core.Debug.LeakCapture` | `Core/Debug/Atlas.Core.Debug.LeakCapture.pas` | Leckbericht am Ende einer Debug-Sitzung ohne IDE: Meldungsfenster, FastMM-Logdatei, Wahl, Vergleich mit dem letzten Lauf, #1875 |

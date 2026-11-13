@@ -86,7 +86,8 @@ uses
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.VariablesStrings;
 
 var
   GScope: IAtlasModuleScope;
@@ -240,7 +241,7 @@ begin
       DebugEvaluateVisible),
     Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
       TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
-    Command('Atlas.DebugVariables', TAtlasDebugStrings.Text(TAtlasDebugTextId.VariablesCommand),
+    Command('Atlas.DebugVariables', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCommand),
       ShowVariablesWindow, VariablesWindowVisible)];
 end;
 
