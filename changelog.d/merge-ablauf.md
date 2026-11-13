@@ -1,0 +1,2 @@
+### Geändert
+- Zusammenführen paralleler Pull Requests: Einträge für dieses Changelog stehen je Pull Request als Fragment in `changelog.d/` und kommen beim Release (`Tools/Set-Version.ps1`) hierher. Die Vertragsversion von Base steigt höchstens einmal je Release (`Tools/Check-ContractVersion.ps1`). `Tools/Merge-Integration.py` mergt den Integrationsbranch ein, erzeugt Einstellungs- und Regeldoku neu und behält reine Ergänzungen beider Seiten (Unit-Listen, Tabellen). Die Spalte Units der Pakettabelle im README erneuert der Release. Ablauf in `docs/Zusammenfuehren.md`.

@@ -373,6 +373,7 @@ Atlas.Core.Hover.View.Tests
 Atlas.Core.Debug.WhyHere.Tests
 Atlas.Core.Debug.Forecast.Tests
 Atlas.Core.Debug.EditValue.Tests
+Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
@@ -389,6 +390,7 @@ Atlas.Core.Debug.Modules.Tests
 Atlas.Core.Debug.Threads.Tests
 Atlas.Core.Debug.Deadlocks.Tests
 Atlas.Core.Debug.InstanceBreakpoint.Tests
+Atlas.Core.Debug.DataBreakpoint.Tests
 Atlas.Core.Debug.ParallelStacks.Tests
 Atlas.Core.Debug.ThreadMarks.Tests
 Atlas.UI.Debug.ThreadMarks.Tests
@@ -445,6 +447,7 @@ Atlas.UI.Welcome.Strings.Tests
 Atlas.Core.Hover.Layout.Tests
 Atlas.Core.Hover.Layout.Painter.Tests
 Atlas.Core.Hover.Layout.Members.Tests
+Atlas.Core.Hover.Layout.DebugTree.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests

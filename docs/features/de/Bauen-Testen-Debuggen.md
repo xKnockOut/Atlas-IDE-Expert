@@ -470,6 +470,18 @@ Einstellungen: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, 
 - Geänderte Werte stehen bis zum nächsten Schritt am Zeilenende in der Warnfarbe mit dem alten Wert: `Betrag = 150 (vorher 125)`. „Rückgängig (vorher 125)“ im Hover oder „Atlas: Geänderten Wert zurücksetzen“ setzt den alten Wert, solange nicht weitergelaufen wurde.
 
 Einstellungen: `debug.editValues`
+
+#### Debug-Hover aufklappen
+
+- Objekte, Records und Arrays tragen im Debug-Hover ▸ vor dem Ausdruck; ein Klick klappt sie auf. Die Zeilen stehen eingerückt als `Name = Wert` (Felder, Elemente mit Index `[0]`), zusammengesetzte Kinder und Objekte klappen weiter auf. Jede Ebene wird erst beim Aufklappen ausgewertet; antwortet der Debugger verzögert (Win64), steht dort „wird ausgewertet …“, bis der Wert kommt, die IDE bleibt bedienbar.
+- Eigenschaften aus dem Atlas-Index stehen als „auswerten“: Getter können Nebenwirkungen haben und laufen erst nach dem Klick.
+- Höchstens 100 Kinder je Ebene (`debug.hoverMaxChildren`), dann „weitere 100 …“. Ist ein Array zu lang für eine Antwort des Debuggers, wertet Atlas die sichtbaren Elemente einzeln aus.
+- Seit dem vorigen Halt (gleicher Thread, gleiche Methode) geänderte Werte sind hinterlegt, der alte Wert steht gedimmt dahinter: `Umsatz = 1250,00 ← 980,00`. Das gilt auch für aufgeklappte Kinder; das Ende der Debug-Sitzung leert den Speicher.
+- Mit der Maus über dem Tooltip wählen ↑ und ↓ eine Zeile, → klappt auf, ← zu. Die Aktionen unter dem Wert (Kopieren, mit Umschalt `Ausdruck = Wert`; Anheften; Ändern …; Beobachten öffnet „Auswerten“ mit dem Ausdruck) wirken auf die gewählte Zeile; ein Rechtsklick auf eine Zeile bietet sie als Menü an.
+- Mehr als 12 Zeilen scrollen im Tooltip.
+
+Einstellungen: `debug.hoverExpand`, `debug.hoverMaxChildren`, `debug.hoverChanges`
+
 #### Werte anheften
 
 - Im Debug-Hover steht unter dem Wert „Anheften“. Der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Summe = 125 ✕` am Ende seiner Zeile, hinter den Werten im Editor.

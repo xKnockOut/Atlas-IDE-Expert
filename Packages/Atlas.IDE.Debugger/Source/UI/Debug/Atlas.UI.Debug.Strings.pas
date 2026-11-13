@@ -24,6 +24,9 @@ type
     EventBreakNoHandlers, EventBreakFailed, EventBreakMany, EventBreakWatching, EventBreakUnresolved,
     EventBreakStopped, EventBreakElsewhere, EventBreakEnded, EventBreakCancelled, EventBreakContinue,
     EventBreakClose, EventBreakVisibleUnknown,
+    DataCommand, DataCommandFor, DataOff, DataNotStopped, DataNoExpression, DataNoSlot, DataNoAddress, DataNoSize,
+    DataPartialQuestion, DataRejected, DataSet, DataTextHint, DataSessionHint, DataReassigned, DataChanged, DataStatus,
+    DataRemoved, SettingsDebugDataBreakpoints,
     MethodBreakpointsCommand, MethodBreakpointsGroupsCommand, MethodBreakpointsTitle, MethodBreakpointsPattern,
     MethodBreakpointsPatternHint, MethodBreakpointsSearch, MethodBreakpointsOverrides, MethodBreakpointsOverloads,
     MethodBreakpointsGrow, MethodBreakpointsCondition, MethodBreakpointsLogOnly, MethodBreakpointsSet,
@@ -196,7 +199,8 @@ type
     LeaksNoPlaces, LeaksFollowsFromObjects, LeaksPlaceLine, LeaksGroupLine, LeaksGroupNoSite, LeaksRatingNeverFreed,
     LeaksRatingReturned, LeaksRatingPassed, LeaksRatingFieldFreed, LeaksRatingOwned, LeaksRatingLocalFreed,
     LeaksRatingNotInProgram, LeaksFooter, LeaksFound,
-    DebugBannerCreateTest);
+    DebugBannerCreateTest, SettingsDebugHoverExpand, SettingsDebugHoverChanges, SettingsDebugHoverMaxChildren,
+    HoverTreeEvaluate, HoverTreePending, HoverTreeMore, HoverTreeCopy, HoverTreeWatch);
 
   TAtlasDebugStrings = class
   public
@@ -281,6 +285,29 @@ const
      'Weiter beobachten',
      'Schließen',
      'Beim nächsten Ereignis anhalten: Die sichtbaren Formulare ließen sich nicht ermitteln; beobachtet werden alle.',
+     'Anhalten, wenn sich das Feld ändert',
+     'Anhalten, wenn sich %s ändert',
+     'Anhalten, wenn sich ein Feld ändert, ist aus (debug.dataBreakpoints).',
+     'Anhalten, wenn sich ein Feld ändert: Das Programm ist nicht angehalten.',
+     'Anhalten, wenn sich ein Feld ändert: Unter der Schreibmarke steht kein Feld und keine Variable.',
+     'Anhalten, wenn sich ein Feld ändert: Alle %d Plätze für Datenhaltepunkte sind belegt (Debugregister). ' +
+       'Bitte erst einen Datenhaltepunkt in der Haltepunktliste entfernen oder ausschalten.',
+     'Anhalten, wenn sich ein Feld ändert: Die Adresse von %s ließ sich nicht ermitteln (%s). Eigenschaften und ' +
+       'Funktionen haben keine Adresse.',
+     'Anhalten, wenn sich ein Feld ändert: Die Größe von %s ließ sich nicht ermitteln (%s).',
+     '%s ist %d Byte groß, ein Datenhaltepunkt überwacht höchstens %2:d Byte. Nur die ersten %2:d Byte überwachen?',
+     'Anhalten, wenn sich ein Feld ändert: Die IDE hat den Datenhaltepunkt für %s nicht angelegt (alle %d Plätze ' +
+       'belegt oder vom Debugger nicht unterstützt).',
+     'Anhalten, wenn sich %s ändert: %d Byte an %s überwacht, Wert jetzt %s.',
+     'Bei Strings überwacht der Datenhaltepunkt den Zeiger: Er hält bei einer neuen Zuweisung, nicht beim Ändern ' +
+       'einzelner Zeichen.',
+     'Der Datenhaltepunkt gilt nur für dieses eine Objekt. Atlas entfernt ihn am Ende der Sitzung, weil die ' +
+       'Adresse beim nächsten Lauf nicht mehr stimmt.',
+     '(neu zugewiesen)',
+     'Datenhaltepunkt: %s geändert: %s → %s',
+     '%s: %s → %s',
+     'Datenhaltepunkte: %d am Ende der Sitzung entfernt.',
+     'Anhalten, wenn sich ein Feld ändert (Kontextmenü des Editors)',
      'Haltepunkt auf Methoden …',
      'Haltepunktgruppen der Methoden …',
      'Haltepunkt auf Methoden',
@@ -1038,7 +1065,15 @@ const
      'nicht im Programm',
      'Enter oder Doppelklick springt zur Stelle',
      'Atlas: Leckbericht mit %d Lecks (Fenster „Atlas-Lecks“).',
-     'Test daraus anlegen …'),
+     'Test daraus anlegen …',
+     'Werte im Debug-Hover aufklappbar',
+     'Seit dem letzten Halt geänderte Werte markieren',
+     'Höchstzahl Kinder je Ebene',
+     'auswerten',
+     'wird ausgewertet …',
+     'weitere %d …',
+     'Kopieren',
+     'Beobachten'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1104,6 +1139,28 @@ const
      'Keep watching',
      'Close',
      'Break on next event: the visible forms could not be determined; watching all.',
+     'Break when the field changes',
+     'Break when %s changes',
+     'Break when a field changes is off (debug.dataBreakpoints).',
+     'Break when a field changes: the program is not paused.',
+     'Break when a field changes: there is no field or variable under the caret.',
+     'Break when a field changes: all %d data breakpoint slots are in use (debug registers). ' +
+       'Remove or disable a data breakpoint in the breakpoint list first.',
+     'Break when a field changes: could not get the address of %s (%s). Properties and functions have no address.',
+     'Break when a field changes: could not get the size of %s (%s).',
+     '%s is %d bytes, a data breakpoint watches at most %2:d bytes. Watch only the first %2:d bytes?',
+     'Break when a field changes: the IDE did not create the data breakpoint for %s (all %d slots in use or not ' +
+       'supported by the debugger).',
+     'Break when %s changes: watching %d bytes at %s, value now %s.',
+     'For strings the data breakpoint watches the pointer: it stops on a new assignment, not when single ' +
+       'characters change.',
+     'The data breakpoint applies to this one object only. Atlas removes it when the session ends because the ' +
+       'address will be different on the next run.',
+     '(reassigned)',
+     'Data breakpoint: %s changed: %s → %s',
+     '%s: %s → %s',
+     'Data breakpoints: %d removed at the end of the session.',
+     'Break when a field changes (editor context menu)',
      'Breakpoint on methods …',
      'Method breakpoint groups …',
      'Breakpoint on methods',
@@ -1859,7 +1916,15 @@ const
      'not in the program',
      'Enter or double-click jumps to the site',
      'Atlas: Leak report with %d leaks (window “Atlas Leaks”).',
-     'Create test …'));
+     'Create test …',
+     'Expandable values in the debug hover',
+     'Mark values changed since the last stop',
+     'Maximum children per level',
+     'evaluate',
+     'evaluating …',
+     '%d more …',
+     'Copy',
+     'Watch'));
 
 { TAtlasDebugStrings }
 

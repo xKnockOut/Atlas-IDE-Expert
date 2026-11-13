@@ -359,6 +359,18 @@ Settings: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debu
 - Changed values stay at the end of the line in the warning colour with the old value until the next step: `Betrag = 150 (was 125)`. “Undo (was 125)” in the hover or “Atlas: Reset changed value” sets the old value as long as the program has not continued
 
 Settings: `debug.editValues`
+
+### Expandable debug hover
+
+- Objects, records and arrays show ▸ before the expression in the debug hover; a click expands them. The rows are indented as `Name = value` (fields, elements with index `[0]`); structured children and objects expand further. Each level is evaluated only when expanded; if the debugger answers late (Win64), the row says “evaluating …” until the value arrives and the IDE stays responsive
+- Properties from the Atlas index show “evaluate”: getters may have side effects and run only after the click
+- At most 100 children per level (`debug.hoverMaxChildren`), then “100 more …”. If an array is too long for one debugger answer, Atlas evaluates the visible elements one by one
+- Values changed since the previous stop (same thread, same method) are highlighted with the old value dimmed behind: `Umsatz = 1250,00 ← 980,00`. This applies to expanded children too; the end of the debug session clears the memory
+- With the mouse over the tooltip, ↑ and ↓ select a row, → expands, ← collapses. The actions below the value (Copy, with Shift `expression = value`; Pin; Change …; Watch opens “Evaluate” with the expression) apply to the selected row; a right click on a row offers them as a menu
+- More than 12 rows scroll inside the tooltip
+
+Settings: `debug.hoverExpand`, `debug.hoverMaxChildren`, `debug.hoverChanges`
+
 ### Pinned values
 
 - The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values

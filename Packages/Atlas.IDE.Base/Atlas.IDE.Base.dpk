@@ -104,6 +104,7 @@ contains
   Atlas.Core.Hover.Layout.Contract in 'Source\Core\Hover\Atlas.Core.Hover.Layout.Contract.pas',
   Atlas.Core.Hover.Layout.Painter in 'Source\Core\Hover\Atlas.Core.Hover.Layout.Painter.pas',
   Atlas.Core.Hover.Layout.Members in 'Source\Core\Hover\Atlas.Core.Hover.Layout.Members.pas',
+  Atlas.Core.Hover.Layout.DebugTree in 'Source\Core\Hover\Atlas.Core.Hover.Layout.DebugTree.pas',
   Atlas.Core.Hover.Texts in 'Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.View in 'Source\Core\Hover\Atlas.Core.Hover.View.pas',
   Atlas.Core.Hover.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',

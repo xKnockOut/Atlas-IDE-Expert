@@ -5,7 +5,8 @@
 //   - TAtlasEditorHoverContent: Tooltip, Verlauf der angeklickten Typen (#588), Sitzung, Probleme an der
 //     Mausposition (#398) und das Wort unter der Maus.
 //   - TAtlasEditorHoverDebug: Wert im angehaltenen Debugger (#891), Erklärung „kein Zugriff“ (#840) und
-//     Ersatztext der Visualisierer (#835).
+//     Ersatztext der Visualisierer (#835); Zeilen und Änderungen des aufgeklappten Werts (#895) kommen über
+//     OnDebugTree, die Aktionen wirken auf die gewählte Zeile.
 //   - TAtlasEditorHoverActions: Klicks im Tooltip (Typen, Pfad, Zurück, Aktionsleiste, Aktionen unter
 //     Problemen #621/#909, Links der XMLDoc #654). „Beispiel zeigen“ (#145) holt den Katalogtext über
 //     OnRuleExample, klappt ihn im Tooltip auf und heftet ihn an; ein neuer Hover beginnt zugeklappt.
@@ -17,6 +18,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
+  Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
@@ -52,6 +54,14 @@ type
   /// <summary>Aktion mit Id AAction für AValue an der Stelle AFileName, ALine (1-basiert) ausführen (#526).</summary>
   TAtlasHoverDebugActionProc = reference to procedure(const AValue: TAtlasDebugValue; const AFileName: string;
     ALine, AAction: Integer);
+  /// <summary>Aufklappen und Änderungen (#895): AValue an AFileName, ALine (1-basiert) mit Zeilen, altem Wert und
+  /// Aufklappzustand; unverändert, wenn abgeschaltet. ARefresh im Hauptthread, sobald ausstehende Kinder da sind.
+  /// </summary>
+  TAtlasHoverDebugTreeFunc = reference to function(const AValue: TAtlasDebugValue; const AFileName: string;
+    ALine: Integer; const ARefresh: TProc): TAtlasDebugValue;
+  /// <summary>Zeile ARow (Index in AValue.Rows, -1 der Wert selbst) auf- bzw. zuklappen, „weitere …“ laden
+  /// oder den Getter auswerten (#895).</summary>
+  TAtlasHoverDebugRowProc = reference to procedure(const AValue: TAtlasDebugValue; ARow: Integer);
   /// <summary>Ersatztext für den Wert AExpression (eigene Regel #854, sonst Visualisierer #835); ATypeChain ist der
   /// Typ, dann seine Vorfahren, AText der Text der IDE. '' = den Text der IDE lassen.</summary>
   TAtlasHoverVisualizeFunc = reference to function(const AExpression: string; const ATypeChain: TArray<string>;
@@ -134,8 +144,12 @@ type
     FOnVisualize: TAtlasHoverVisualizeFunc;
     FOnDebugActions: TAtlasHoverDebugActionsFunc;
     FOnDebugAction: TAtlasHoverDebugActionProc;
+    FOnDebugTree: TAtlasHoverDebugTreeFunc;
+    FOnDebugRow: TAtlasHoverDebugRowProc;
   private
     FDebug: TAtlasIdeDebugValues;
+    /// <summary>Kontextmenü einer Zeile des aufgeklappten Werts (#895), beim ersten Rechtsklick angelegt.</summary>
+    FMenu: TPopupMenu;
     /// <summary>Ersatztext der Visualisierer (#835) zu FDebugValue und Deklaration; Schlüssel des letzten Aufrufs.
     /// </summary>
     FVisualizedKey: string;
@@ -148,6 +162,15 @@ type
     function VisualizedDebugValue: TAtlasDebugValue;
     procedure TipDebugFix(Sender: TObject; AIndex: Integer);
     procedure TipDebugAction(Sender: TObject; AIndex: Integer);
+    procedure TipDebugRow(Sender: TObject; AIndex: Integer; AMenu: Boolean);
+    /// <summary>Aktionen der gewählten Zeile als Kontextmenü (#895).</summary>
+    procedure DebugRowMenu;
+    procedure DebugMenuClick(Sender: TObject);
+    /// <summary>Refresh, solange derselbe Bezeichner im Tooltip steht (nachgereichte Kinder, #895).</summary>
+    function DebugTreeRefresh: TProc;
+    /// <summary>Wert, auf den die Aktionen wirken: die gewählte Zeile des aufgeklappten Werts (#895), sonst AValue.
+    /// </summary>
+    class function Subject(const AValue: TAtlasDebugValue; ARow: Integer): TAtlasDebugValue; static;
   protected
     // Ausdruck unter der Maus ('' ohne angehaltenen Prozess) und sein Wert.
     FDebugExpression: string;
@@ -167,6 +190,9 @@ type
     /// <summary>Aktionen unter dem Wert und ihre Ausführung (#526); setzt die Kompositionswurzel.</summary>
     class property OnDebugActions: TAtlasHoverDebugActionsFunc read FOnDebugActions write FOnDebugActions;
     class property OnDebugAction: TAtlasHoverDebugActionProc read FOnDebugAction write FOnDebugAction;
+    /// <summary>Aufklappen und Änderungen (#895); setzt die Kompositionswurzel.</summary>
+    class property OnDebugTree: TAtlasHoverDebugTreeFunc read FOnDebugTree write FOnDebugTree;
+    class property OnDebugRow: TAtlasHoverDebugRowProc read FOnDebugRow write FOnDebugRow;
   end;
 
   /// <summary>Klicks und Aktionen im Tooltip.</summary>
@@ -423,10 +449,12 @@ begin
   FDebug := TAtlasIdeDebugValues.Create;
   FTip.OnDebugFix := TipDebugFix;
   FTip.OnDebugAction := TipDebugAction;
+  FTip.OnDebugRow := TipDebugRow;
 end;
 
 destructor TAtlasEditorHoverDebug.Destroy;
 begin
+  FMenu.Free;
   FDebug.Free;
   inherited Destroy;
 end;
@@ -438,11 +466,61 @@ begin
   if FHistory.Count <= 1 then
   begin
     Result.DebugValue := VisualizedDebugValue;
-    if (Result.DebugValue.State = TAtlasDebugValueState.Value) and Assigned(FOnDebugActions) then
+    if Result.DebugValue.State <> TAtlasDebugValueState.Value then
     begin
-      Result.DebugValue.Actions := FOnDebugActions(Result.DebugValue);
+      Exit;
+    end;
+    if Assigned(FOnDebugTree) and (FView <> nil) then
+    begin
+      Result.DebugValue := FOnDebugTree(Result.DebugValue, FView.Buffer.FileName, FLine, DebugTreeRefresh);
+    end;
+    // Aktionen wirken auf die gewählte Zeile (#895).
+    if Assigned(FOnDebugActions) then
+    begin
+      Result.DebugValue.Actions := FOnDebugActions(Subject(Result.DebugValue, FTip.DebugSelectedIndex));
     end;
   end;
+end;
+
+class function TAtlasEditorHoverDebug.Subject(const AValue: TAtlasDebugValue; ARow: Integer): TAtlasDebugValue;
+begin
+  Result := AValue;
+  if (ARow < 0) or (ARow > High(AValue.Rows)) or AValue.Rows[ARow].More then
+  begin
+    Exit;
+  end;
+  Result.Expression := AValue.Rows[ARow].Expression;
+  Result.Text := AValue.Rows[ARow].Text;
+  Result.OldText := AValue.Rows[ARow].OldText;
+  Result.Expandable := AValue.Rows[ARow].Expandable;
+  Result.Expanded := AValue.Rows[ARow].Expanded;
+  Result.Rows := nil;
+  // Ausstehender Wert oder nicht ausgewerteter Getter: noch nichts zum Kopieren, Anheften oder Ändern.
+  if AValue.Rows[ARow].Pending or AValue.Rows[ARow].Lazy then
+  begin
+    Result.State := TAtlasDebugValueState.Pending;
+  end;
+end;
+
+function TAtlasEditorHoverDebug.DebugTreeRefresh: TProc;
+var
+  mOwner: TAtlasEditorHoverDebug;
+  mAlive: TAtlasHoverAlive;
+  mAliveRef: IInterface;
+  mKey: string;
+begin
+  mOwner := Self;
+  mAlive := FAlive;
+  mAliveRef := FAliveRef;
+  mKey := FKey;
+  Result :=
+    procedure
+    begin
+      if mAlive.Alive and (mAliveRef <> nil) and (mOwner.FShownKey = mKey) and mOwner.FTip.IsShown then
+      begin
+        mOwner.Refresh;
+      end;
+    end;
 end;
 
 /// <summary>Typ der Deklaration, dann seine Vorfahren (für die Visualisierer, #835).</summary>
@@ -589,7 +667,7 @@ var
   mLine: Integer;
 begin
   try
-    mValue := FTip.View.DebugValue;
+    mValue := Subject(FTip.View.DebugValue, FTip.DebugSelectedIndex);
     if not Assigned(FOnDebugAction) or (FView = nil) or (AIndex < 0) or (AIndex > High(mValue.Actions)) then
     begin
       Exit;
@@ -603,6 +681,61 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
   end;
+end;
+
+procedure TAtlasEditorHoverDebug.TipDebugRow(Sender: TObject; AIndex: Integer; AMenu: Boolean);
+begin
+  try
+    if AMenu then
+    begin
+      DebugRowMenu;
+      Exit;
+    end;
+    // Klick wählt die Zeile; aufklappbare klappen, Getter und „weitere …“ werten aus. Refresh holt die neuen
+    // Zeilen und die Aktionen der gewählten.
+    if Assigned(FOnDebugRow) then
+    begin
+      FOnDebugRow(FTip.View.DebugValue, AIndex);
+    end;
+    Refresh;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHoverDebug.DebugRowMenu;
+var
+  mActions: TArray<TAtlasDebugValueFix>;
+  mItem: TMenuItem;
+  mIndex: Integer;
+begin
+  // Aktionen der eben gewählten Zeile (Refresh rechnet sie neu) als Kontextmenü.
+  Refresh;
+  mActions := FTip.View.DebugValue.Actions;
+  if Length(mActions) = 0 then
+  begin
+    Exit;
+  end;
+  if FMenu = nil then
+  begin
+    FMenu := TPopupMenu.Create(nil);
+  end;
+  FMenu.Items.Clear;
+  for mIndex := 0 to High(mActions) do
+  begin
+    mItem := TMenuItem.Create(FMenu);
+    mItem.Caption := mActions[mIndex].Caption;
+    mItem.Tag := mIndex;
+    mItem.OnClick := DebugMenuClick;
+    FMenu.Items.Add(mItem);
+  end;
+  FMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+end;
+
+procedure TAtlasEditorHoverDebug.DebugMenuClick(Sender: TObject);
+begin
+  TipDebugAction(Sender, TMenuItem(Sender).Tag);
 end;
 
 { TAtlasEditorHoverActions }

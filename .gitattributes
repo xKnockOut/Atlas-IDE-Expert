@@ -14,3 +14,17 @@ EULA.txt   text eol=crlf
 *.sh       text eol=lf
 # UTF-32 mit BOM: Fall F2438, darf nicht umkodiert werden
 Tests/Compilermeldungen/Faelle/Cm.F2438.pas binary
+
+# Erzeugte Dateien (Tools/Update-ConfigDoc.ps1, Tools/Update-RuleCatalog.ps1): nie von Hand mergen,
+# Tools/Merge-Integration.py erzeugt sie nach einem Merge neu (docs/Zusammenfuehren.md).
+docs/Konfiguration.md linguist-generated=true
+docs/en/Configuration.md linguist-generated=true
+docs/Einstellungen.md linguist-generated=true
+docs/en/Settings.md linguist-generated=true
+docs/Regeln.md linguist-generated=true
+docs/en/Rules.md linguist-generated=true
+Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.SchemaData.pas linguist-generated=true
+Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas linguist-generated=true
+Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.ProfileData.pas linguist-generated=true
+Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas linguist-generated=true
+Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data*.pas linguist-generated=true
