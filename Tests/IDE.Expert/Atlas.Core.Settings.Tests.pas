@@ -178,6 +178,9 @@ begin
   Assert.IsTrue(ASettings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsTrue(ASettings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.AreEqual('', ASettings.DebugParallelStacksWaitRoutines, 'debug.parallelStacks.waitRoutines (#837)');
+  Assert.AreEqual(64, ASettings.DebugParallelStacksMaxThreads, 'debug.parallelStacks.maxThreads (#837)');
+  Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(ASettings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
@@ -335,6 +338,9 @@ begin
   ASettings.DebugExplainAccessViolationAllowCalls := True;
   ASettings.DebugModuleOfAddress := False;
   ASettings.DebugDeadlocks := False;
+  ASettings.DebugParallelStacks := False;
+  ASettings.DebugParallelStacksWaitRoutines := 'TMonitor.Enter;MyLock.Acquire';
+  ASettings.DebugParallelStacksMaxThreads := 16;
   ASettings.DebugExceptionHistory := False;
   ASettings.DebugJustMyCode := False;
   ASettings.DebugExceptionBanner := True;
@@ -465,6 +471,9 @@ begin
   Assert.IsFalse(ALoaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsFalse(ALoaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.AreEqual('TMonitor.Enter;MyLock.Acquire', ALoaded.DebugParallelStacksWaitRoutines);
+  Assert.AreEqual(16, ALoaded.DebugParallelStacksMaxThreads);
+  Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
 

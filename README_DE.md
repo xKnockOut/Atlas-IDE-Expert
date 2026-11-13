@@ -40,7 +40,7 @@ Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert
 | `Atlas.IDE.Designer` | Designer-Leiste: „Anordnen“ (Breite nach Text, Knopfleiste, Formularraster, In Reihe duplizieren, Platz einfügen, An Inhalt anpassen, Ebenen, Einpacken, Schriften und Farben, Anchors vorschlagen, Format-Pinsel, Gruppen), Abstände messen und per Griff setzen, gemeinsame Größengriffe, Schnellleiste, Lupe, Tab-Reihenfolge, Größe und Skalierung ausprobieren, sprechende Namen, Fenster „Atlas-Struktur“ und „Ereignis-Karte“, Datenbindung, In Frame auslagern, Verwendungen im Code, Komponenten und Eigenschaften suchen, Rückgängig (experimentell) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue-Tracker (YouTrack, GitHub u. a.): „Meine Issues“ mit Projektwahl, Beginnen, Beenden und Prüfen entlang der Workflow-Übergänge, Zeiterfassung, Zustand im Statusfeld, Board mit Swimlanes, Sprint-Kachel, Ablauf-Karte, „An Issue anhängen“, Issue-Kennungen im Code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite mit Projekten, „Weiterarbeiten“ samt Arbeitsstand je Issue, „Neu in Atlas“, „Atlas entdecken“ und „Atlas-Einrichtung“ mit Indexaufbau je Projekt; „Atlas-Start“ | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten | 66 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten, Haltepunkte vor dem Start prüfen, parallele Aufrufstapel | 76 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas-Suche mit Ersetzen, Regex und Projektbereich, Units suchen, Code-Abfragen | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken, „Unit-Beziehungen“ und „Abhängige Units“ auch aus der Projektverwaltung | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Änderungsmarken mit Inline-Diff, Zeilenhistorie, Branch beim Beginnen, Arbeitskopien, Projektzustand | 26 | `vcs.enabled` |
@@ -122,7 +122,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt, Modul der Fehleradresse (Programm, RTL/VCL, Windows, Fremd-DLL)
-- **Threads:** Was wartet worauf? (Wartepunkt jedes Threads, Muster von Verklemmungen wie `WaitFor` gegen `Synchronize`)
+- **Threads:** Was wartet worauf? (Wartepunkt jedes Threads, Muster von Verklemmungen wie `WaitFor` gegen `Synchronize`), parallele Aufrufstapel aller Threads als Baum
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten; „Weiterarbeiten“ merkt sich den Arbeitsstand je Issue (Reiter „Issues“) und setzt ihn mit „Fortsetzen“ auf dem Branch des Issues fort

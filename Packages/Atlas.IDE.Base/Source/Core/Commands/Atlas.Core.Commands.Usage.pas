@@ -247,33 +247,6 @@ begin
   end;
 end;
 
-/// <summary>JSON-Objekt aus AJson; nil bei kaputtem Text oder anderem Wert. Gehört dem Aufrufer.</summary>
-function ParseObject(const AJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  // Kein Objekt: gar nicht erst parsen.
-  if Copy(TrimLeft(AJson), 1, 1) <> '{' then
-  begin
-    Exit;
-  end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 /// <summary>Format in einer vorhandenen Datei ist höher als diese Fassung kennt.</summary>
 function NewerFormat(const AFileName: string): Boolean;
 var
@@ -284,7 +257,7 @@ begin
   begin
     Exit;
   end;
-  mRoot := ParseObject(ReadText(AFileName));
+  mRoot := TJsonRead.ParseObject(ReadText(AFileName));
   try
     Result := (mRoot <> nil) and (Max(0, TJsonRead.Int(mRoot, 'format')) > TAtlasCommandUsage.cFormatVersion);
   finally
@@ -491,7 +464,7 @@ var
 begin
   Clear;
   Result := False;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     if mRoot = nil then
     begin
@@ -522,7 +495,7 @@ var
   mPair: TJSONPair;
 begin
   // Leer oder kein Objekt: nichts anzuhängen.
-  mExtra := ParseObject(AExtra);
+  mExtra := TJsonRead.ParseObject(AExtra);
   if mExtra = nil then
   begin
     Exit;
@@ -582,7 +555,7 @@ var
   mEntry: TAtlasCommandUsageEntry;
 begin
   Result := False;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     if mRoot = nil then
     begin
@@ -886,7 +859,7 @@ begin
   begin
     Exit;
   end;
-  mExtra := ParseObject(FExtra);
+  mExtra := TJsonRead.ParseObject(FExtra);
   try
     if mExtra = nil then
     begin
@@ -930,7 +903,7 @@ begin
   mExtra := nil;
   if FExtra <> '' then
   begin
-    mExtra := ParseObject(FExtra);
+    mExtra := TJsonRead.ParseObject(FExtra);
   end;
   if mExtra = nil then
   begin

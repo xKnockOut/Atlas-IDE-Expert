@@ -555,31 +555,6 @@ begin
   end;
 end;
 
-function ParseObject(const AJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AJson = '' then
-  begin
-    Exit;
-  end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 function NoteOf(AObject: TJSONObject; out ANote: TAtlasNote): Boolean;
 begin
   ANote := Default(TAtlasNote);
@@ -630,7 +605,7 @@ begin
   begin
     Result.AddPair('orphaned', TJSONBool.Create(True));
   end;
-  mExtra := ParseObject(ANote.Extra);
+  mExtra := TJsonRead.ParseObject(ANote.Extra);
   try
     KeepUnknown(Result, mExtra, cNoteKeys);
   finally
@@ -661,7 +636,7 @@ class function TAtlasNotes.FormatOf(const AJson: string): Integer;
 var
   mRoot: TJSONObject;
 begin
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     Result := TJsonRead.IntOr(mRoot, 'format', 0);
   finally
@@ -679,7 +654,7 @@ var
 begin
   ABook := TAtlasNoteBook.Create('');
   Result := False;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     if mRoot = nil then
     begin
@@ -716,7 +691,7 @@ var
   mList: TJSONArray;
   mNote: TAtlasNote;
 begin
-  mOriginal := ParseObject(ABook.Raw);
+  mOriginal := TJsonRead.ParseObject(ABook.Raw);
   mRoot := TJSONObject.Create;
   try
     mRoot.AddPair('format', TJSONNumber.Create(cFormat));
