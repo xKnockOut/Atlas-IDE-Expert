@@ -97,6 +97,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.LeaksWindow,
+  Atlas.IDE.Debug.RuntimeReport,
   Atlas.UI.Debug.LeaksFrame,
   Atlas.UI.Debug.Leaks,
   Atlas.UI.Debug.Strings;
@@ -459,7 +460,12 @@ begin
     TAtlasIdeDebugLeaksWindow.Show;
   end;
   Refresh;
-  if not FCapture.Report.HasStacks then
+  if FCapture.Report.HasStacks then
+  begin
+    // Mit Stapeln markiert der Server die Erzeugungsstellen im Editor (#74); Kandidaten braucht es nicht.
+    TAtlasIdeRuntimeReport.Mark(FScope, FProject, FCapture.Text);
+  end
+  else
   begin
     RequestCandidates;
   end;
