@@ -52,18 +52,26 @@ type
   private
     FMenu: TComponent;
     FOptions: TBindingOptions;
+    FComputed: TComponent;
+    function GetComputed: TComponent;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property Menu: TComponent read FMenu write FMenu;
     property Options: TBindingOptions read FOptions;
+    property Computed: TComponent read GetComputed write FComputed;
   end;
 
 constructor TBindingHost.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FOptions := TBindingOptions.Create;
+end;
+
+function TBindingHost.GetComputed: TComponent;
+begin
+  Result := FComputed;
 end;
 
 destructor TBindingHost.Destroy;
@@ -205,13 +213,14 @@ begin
     mPanel.Menu := mPopup;
     mGrid := TBindingHost.Create(mRoot);
     mGrid.Name := 'Grid1';
+    // Unterobjekte und Lesemethoden zählen nicht (in der IDE nicht sicher lesbar).
     mGrid.Options.Link := mPopup;
+    mGrid.Computed := mPopup;
     mRoot.Menu := mPopup;
     mBindings := TAtlasDesignerUsages.Bindings(mRoot, mPopup);
-    Assert.AreEqual(3, Integer(Length(mBindings)));
+    Assert.AreEqual(2, Integer(Length(mBindings)));
     Assert.AreEqual('Form1.Menu', mBindings[0]);
     Assert.AreEqual('Panel1.Menu', mBindings[1]);
-    Assert.AreEqual('Grid1.Options.Link', mBindings[2]);
     Assert.AreEqual(0, Integer(Length(TAtlasDesignerUsages.Bindings(mRoot, mPanel))));
   finally
     mRoot.Free;

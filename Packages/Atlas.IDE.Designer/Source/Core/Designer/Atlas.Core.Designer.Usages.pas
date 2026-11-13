@@ -53,7 +53,7 @@ type
     /// <summary>Nach Komponente, Datei und Zeile geordnet.</summary>
     class function Sorted(const AUsages: TArray<TAtlasUsage>): TArray<TAtlasUsage>; static;
     /// <summary>Bindungen aus der DFM: Eigenschaften von ARoot und seinen Komponenten, die auf ATarget zeigen
-    /// („Panel1.PopupMenu“, „Form1.Menu“, auch in Unterobjekten wie „Grid1.Options.X“).</summary>
+    /// („Panel1.PopupMenu“, „Form1.Menu“); nur Eigenschaften, die direkt ein Feld lesen.</summary>
     class function Bindings(ARoot, ATarget: TComponent): TArray<string>; static;
   end;
 
@@ -68,8 +68,6 @@ uses
   Atlas.Text.Chars;
 
 const
-  /// <summary>So tief werden Unterobjekte ohne Namen nach Bindungen durchsucht.</summary>
-  cBindingDepth = 2;
   /// <summary>Vorsilbe eines Ereignisnamens.</summary>
   cEventPrefix = 'On';
 
@@ -335,15 +333,17 @@ begin
     end));
 end;
 
-/// <summary>Veröffentlichte Objekt-Eigenschaften von AObject, die auf ATarget zeigen, als „APrefix.Name“;
-/// Unterobjekte ohne eigenen Namen (TPersistent, keine Komponente) werden bis ADepth mit durchsucht.</summary>
-procedure CollectBindings(AObject: TObject; ATarget: TComponent; const APrefix: string; ADepth: Integer;
+/// <summary>Veröffentlichte Objekt-Eigenschaften von AObject, die auf ATarget zeigen, als „APrefix.Name“.
+/// Nur Eigenschaften, die direkt ein Feld lesen (PopupMenu, Images, DataSource …): Lesemethoden können im
+/// Designer Nebenwirkungen haben oder auf freigegebene Objekte zeigen (Zugriffsverletzung in der IDE). Der Wert
+/// wird nur als Zeiger verglichen, nie angefasst.</summary>
+procedure CollectBindings(AObject: TObject; ATarget: TComponent; const APrefix: string;
   var AResult: TArray<string>);
 var
   mList: PPropList;
   mCount, i: Integer;
-  mValue: TObject;
-  mName: string;
+  mGetter: NativeUInt;
+  mValue: Pointer;
 begin
   mCount := GetPropList(AObject, mList);
   try
@@ -353,19 +353,15 @@ begin
       begin
         Continue;
       end;
-      mValue := GetObjectProp(AObject, mList[i]);
-      if mValue = nil then
+      mGetter := NativeUInt(mList[i].GetProc);
+      if (mGetter and PROPSLOT_MASK) <> PROPSLOT_FIELD then
       begin
         Continue;
       end;
-      mName := APrefix + '.' + string(mList[i].Name);
-      if mValue = ATarget then
+      mValue := PPointer(PByte(AObject) + (mGetter and not PROPSLOT_MASK))^;
+      if mValue = Pointer(ATarget) then
       begin
-        AResult := AResult + [mName];
-      end
-      else if (ADepth > 0) and (mValue is TPersistent) and not (mValue is TComponent) then
-      begin
-        CollectBindings(mValue, ATarget, mName, ADepth - 1, AResult);
+        AResult := AResult + [APrefix + '.' + string(mList[i].Name)];
       end;
     end;
   finally
@@ -384,13 +380,13 @@ begin
   end;
   if ARoot <> ATarget then
   begin
-    CollectBindings(ARoot, ATarget, ARoot.Name, cBindingDepth, Result);
+    CollectBindings(ARoot, ATarget, ARoot.Name, Result);
   end;
   for i := 0 to ARoot.ComponentCount - 1 do
   begin
     if ARoot.Components[i] <> ATarget then
     begin
-      CollectBindings(ARoot.Components[i], ATarget, ARoot.Components[i].Name, cBindingDepth, Result);
+      CollectBindings(ARoot.Components[i], ATarget, ARoot.Components[i].Name, Result);
     end;
   end;
 end;
