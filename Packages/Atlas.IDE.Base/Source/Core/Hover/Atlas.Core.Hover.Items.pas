@@ -17,8 +17,9 @@ type
   {$SCOPEDENUMS ON}
   /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
   TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
-  /// <summary>DebugFix: Korrektur unter „kein Zugriff“ (#840), Index in View.DebugValue.Note.Fixes.</summary>
-  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published, DebugFix);
+  /// <summary>DebugFix: Korrektur unter „kein Zugriff“ (#840), Index in View.DebugValue.Note.Fixes.
+  /// DebugAction: Aktion unter dem Wert (Anheften #526), Index in View.DebugValue.Actions.</summary>
+  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published, DebugFix, DebugAction);
   /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
   /// Rect; Frame: umrandetes Rechteck mit Fläche Back; RoundFill: gefülltes Rechteck mit Radius; Block:
   /// umbrechender Text in Rect (UI-Schrift, Ellipse); Styled: eingefärbte Deklaration From..Till; Doc: XMLDoc

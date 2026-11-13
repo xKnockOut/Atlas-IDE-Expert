@@ -199,6 +199,7 @@ begin
   Result.NewCompletionSources := FAdapters.NewCompletionSources;
   Result.NewSignatureSource := FAdapters.NewSignatureSource;
   Result.OpenCodeActions := FAdapters.OpenCodeActions;
+  Result.OfferActions := FAdapters.OfferActions;
 end;
 
 procedure TAtlasCodeInsightManager.Shutdown;

@@ -474,6 +474,13 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugCheckBreakpoints);
+  // #857: Haltepunkt nur für ein Objekt ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugInstanceBreakpoints);
+  Settings.DebugInstanceBreakpoints := False;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugInstanceBreakpoints);
   Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
   Assert.IsFalse(Loaded.DebugRunToClick);
   Assert.IsFalse(Loaded.DebugBreakpointsWindow);

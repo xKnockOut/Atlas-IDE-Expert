@@ -3,7 +3,8 @@
 // Modul Debugger, Teil der Komposition: Anhalten und Haltepunkte. Teile der
 // Feature-Tabelle, Befehle, Menüeinträge und Einstellungen für „Beim nächsten
 // Ereignis anhalten“ (#856), „Haltepunkte prüfen“ (#577), Haltepunkt-Sätze
-// (#586), „Bis hier ausführen“ (#851) und das Haltepunktfenster (#863).
+// (#586), „Bis hier ausführen“ (#851), das Haltepunktfenster (#863) und „Haltepunkt nur für ein Objekt“
+// (#857).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -44,6 +45,7 @@ uses
   Atlas.IDE.Debug.RunTo,
   Atlas.IDE.Debug.RunToColumn,
   Atlas.IDE.Debug.BreakpointList,
+  Atlas.IDE.Debug.InstanceBreakpoint,
   Atlas.UI.Debug.Strings;
 
 const
@@ -125,6 +127,31 @@ begin
     end, StartBreakpointCheck, TAtlasIdeBreakpointCheck.Release);
 end;
 
+function InstanceBreakpointVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugInstanceBreakpoints;
+end;
+
+procedure StartInstanceBreakpoints;
+begin
+  TAtlasIdeInstanceBreakpoint.Start(MessageLine);
+end;
+
+/// <summary>Haltepunkt nur für ein Objekt (#857): Frage zu Adressbedingungen vor dem Start; aus = kein Zuhörer.
+/// </summary>
+function InstanceBreakpointPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugInstanceBreakpoints',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugInstanceBreakpoints;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeInstanceBreakpoint.Started;
+    end, StartInstanceBreakpoints, TAtlasIdeInstanceBreakpoint.Release);
+end;
+
 /// <summary>Haltepunkt-Sätze (#586): Befehle und Beobachtung des Branchs.</summary>
 function BreakpointSetsPart: IAtlasFeaturePart;
 begin
@@ -174,7 +201,7 @@ end;
 
 function BreakpointParts: TArray<IAtlasFeaturePart>;
 begin
-  Result := [BreakpointCheckPart, BreakpointSetsPart, RunToPart, BreakpointsWindowPart];
+  Result := [BreakpointCheckPart, BreakpointSetsPart, RunToPart, BreakpointsWindowPart, InstanceBreakpointPart];
 end;
 
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
@@ -214,7 +241,12 @@ begin
       TAtlasIdeRunTo.SetOnce, RunToVisible),
     // Haltepunktfenster (#863); nur sichtbar, solange debug.breakpointsWindow an ist.
     Command('Atlas.BreakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsWindowCommand),
-      TAtlasIdeDebugBreakpointList.ShowWindow, BreakpointsWindowVisible)];
+      TAtlasIdeDebugBreakpointList.ShowWindow, BreakpointsWindowVisible),
+    // Haltepunkt nur für ein Objekt (#857); nur sichtbar, solange debug.instanceBreakpoints an ist.
+    Command('Atlas.BreakpointOnlyForObject', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceObjectCommand),
+      TAtlasIdeInstanceBreakpoint.RestrictToObject, InstanceBreakpointVisible),
+    Command('Atlas.BreakpointOnlyIf', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceFieldCommand),
+      TAtlasIdeInstanceBreakpoint.RestrictToField, InstanceBreakpointVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -224,7 +256,7 @@ begin
   Result.Place := APlace;
 end;
 
-/// <summary>Läuft eine Debug-Sitzung?</summary>
+/// <summary>Läuft eine Debug-Sitzung? Für „nur für ein Objekt“ (#857) muss das Programm angehalten sein.</summary>
 function WhileDebugging(const AContext: TAtlasMenuContext): Boolean;
 begin
   Result := AContext.Debugging;
@@ -249,7 +281,9 @@ begin
     // Bis hier ausführen (#851): die ersten beiden nur in einer Debug-Sitzung, der einmalige Haltepunkt immer.
     ContextEntry('Atlas.RunToHere', WhileDebugging),
     ContextEntry('Atlas.RunToHereSkip', WhileDebugging),
-    ContextEntry('Atlas.OnceBreakpoint', nil)];
+    ContextEntry('Atlas.OnceBreakpoint', nil),
+    ContextEntry('Atlas.BreakpointOnlyForObject', WhileDebugging),
+    ContextEntry('Atlas.BreakpointOnlyIf', WhileDebugging)];
 end;
 
 /// <summary>„Bis hier, Haltepunkte überspringen“ unter der Sicherung des Debuggers: nur im angehaltenen Zustand;

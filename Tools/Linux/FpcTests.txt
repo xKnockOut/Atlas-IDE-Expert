@@ -363,6 +363,7 @@ Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Debug.WhyHere.Tests
+Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
