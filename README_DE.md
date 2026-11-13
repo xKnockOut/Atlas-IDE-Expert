@@ -97,7 +97,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Umbauen und Code-Aktionen](docs/features/de/Umbauen.md)
 - **Umbenennen** projektweit samt Formularen, **Signatur ändern**, **sicheres Löschen**
 - **Methode extrahieren, Variable einführen, `if` ⇄ `case`** und viele weitere Umwandlungen; *Methode extrahieren* ersetzt auf Wunsch auch gleiche Stellen der Unit, jede in der Vorschau abwählbar
-- **Klassenaktionen:** Interface implementieren, Interface oder Basisklasse herauslösen, Properties erzeugen
+- **Klassenaktionen:** Interface implementieren, Interface oder Basisklasse herauslösen, Properties erzeugen, Sichtbarkeit eines Mitglieds anheben
 - **uses:** fehlende Units ergänzen, sortieren, ungenutzte entfernen; eine Unit gilt nur als benutzt, wenn ein Name wirklich zu ihr aufgelöst wird, so wie dcc entscheidet (Mitglieder ihrer Klassen und später verdeckte Namen zählen nicht, Aufzählungswerte, Helper, Attribute und inline-Rümpfe schon)
 - **Schnellkorrekturen** für viele Regeln (Alt+Enter) und **Atlas-Änderungen rückgängig** über Dateien hinweg
 

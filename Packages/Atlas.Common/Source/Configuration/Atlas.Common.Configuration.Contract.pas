@@ -614,6 +614,8 @@ type
     InlineAccessorBulk: Boolean;
     /// <summary>Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (#717).</summary>
     InlineAccessorDiagnostic: Boolean;
+    /// <summary>Code-Aktion „Sichtbarkeit anheben“ auf der Deklaration eines Mitglieds (#2108).</summary>
+    RaiseVisibility: Boolean;
     /// <summary>„Sicher löschen“ (#716).</summary>
     SafeDelete: Boolean;
     /// <summary>Auch ohne Verwendungen erst die Vorschau zeigen (#716).</summary>
@@ -1385,6 +1387,7 @@ begin
   ASettings.InlineAccessorEqualityCheck := True;
   ASettings.InlineAccessorBulk := True;
   ASettings.InlineAccessorDiagnostic := False;
+  ASettings.RaiseVisibility := True;
   ASettings.SafeDelete := True;
   ASettings.SafeDeletePreviewWhenUnused := False;
   ASettings.SafeDeleteCascade := 'ask';
