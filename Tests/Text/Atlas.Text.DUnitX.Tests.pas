@@ -6,7 +6,8 @@
 // [Test(False)], Zeilen von Attribut, Deklaration und Rumpf, Befehlszeile;
 // für #585 Rumpf bis end (lokale Routinen, Typen), Zeilen der Testfälle,
 // Test an einer Zeile, Marken und Namen für --run je Fall; für #1770 die
-// Prüfsumme ohne Kommentare und Leerraum und die Units der uses-Klauseln.
+// Prüfsumme ohne Kommentare und Leerraum und die Units der uses-Klauseln;
+// für #2167 die Kategorien an Fixture und Test und Optionen in den Argumenten.
 
 interface
 
@@ -55,6 +56,10 @@ type
     procedure FingerprintSeesCodeStringsAndDirectives;
     [Test]
     procedure UsedUnitsOfBothClauses;
+    [Test]
+    procedure CategoriesOfFixtureAndTest;
+    [Test]
+    procedure OptionsGoBesideRun;
   end;
 
 implementation
@@ -589,6 +594,48 @@ begin
   Assert.AreEqual('System.SysUtils', mUnits[2]);
   Assert.AreEqual('Type.Helfer', mUnits[3]);
   Assert.AreEqual(0, Integer(Length(TDUnitXSource.UsedUnits(['unit X;', 'interface', 'implementation', 'end.']))));
+end;
+
+procedure TDUnitXSourceTests.CategoriesOfFixtureAndTest;
+var
+  mFound: TDUnitXUnit;
+begin
+  mFound := TDUnitXSource.Scan([
+    'unit U;', 'interface', 'type',
+    '  [TestFixture]',
+    '  [Category(''Modul, Langsam'')]',
+    '  TT = class',
+    '  public',
+    '    [Test]',
+    '    [Category(''Benchmark'')]',
+    '    [Category(''Benchmark,,Netz'')]',
+    '    procedure Messen;',
+    '    [Test]',
+    '    [Category(cKonstante)]',
+    '    procedure Ohne;',
+    '  end;',
+    'implementation', 'end.']);
+  Assert.AreEqual(2, Integer(Length(mFound.Fixtures[0].Categories)));
+  Assert.AreEqual('Modul', mFound.Fixtures[0].Categories[0]);
+  Assert.AreEqual('Langsam', mFound.Fixtures[0].Categories[1], 'getrimmt');
+  Assert.AreEqual(2, mFound.TestCount);
+  Assert.AreEqual(2, Integer(Length(mFound.Fixtures[0].Tests[0].Categories)), 'ohne doppelte und leere');
+  Assert.AreEqual('Benchmark', mFound.Fixtures[0].Tests[0].Categories[0]);
+  Assert.AreEqual('Netz', mFound.Fixtures[0].Tests[0].Categories[1]);
+  Assert.AreEqual(0, Integer(Length(mFound.Fixtures[0].Tests[1].Categories)), 'Konstante: nicht erkannt');
+end;
+
+procedure TDUnitXSourceTests.OptionsGoBesideRun;
+var
+  mArguments: TArray<string>;
+begin
+  mArguments := TDUnitXCommandLine.Arguments('r.xml', ['--exclude:Benchmark', 'A.T']);
+  Assert.AreEqual(4, Integer(Length(mArguments)));
+  Assert.AreEqual('--exclude:Benchmark', mArguments[2]);
+  Assert.AreEqual('--run:A.T', mArguments[3]);
+  mArguments := TDUnitXCommandLine.Arguments('r.xml', ['--include:Netz']);
+  Assert.AreEqual(3, Integer(Length(mArguments)), 'nur Option: alle Tests der Kategorie, kein --run');
+  Assert.AreEqual('--include:Netz', mArguments[2]);
 end;
 
 initialization

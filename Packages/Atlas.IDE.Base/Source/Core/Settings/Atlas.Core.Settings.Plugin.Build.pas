@@ -37,6 +37,8 @@ const
   cMinTestsBoundaryMax = 1;
   cMaxTestsBoundaryMax = 200;
   cDefaultTestsBoundaryMax = 20;
+  /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
+  cDefaultTestsListsRunKey = $C052;
   /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
   cMinTestsLogMaxLines = 100;
   cMaxTestsLogMaxLines = 100000;
@@ -147,6 +149,10 @@ type
     TestsShowDuration: Boolean;
     /// <summary>Andockbares Fenster „Atlas-Tests“ mit allen Tests des Testprojekts (#1776, tests.window).</summary>
     TestsWindow: Boolean;
+    /// <summary>Testlisten im Fenster „Atlas-Tests“ (#2167, tests.lists).</summary>
+    TestsLists: Boolean;
+    /// <summary>Taste für die zuletzt benutzte Testliste (#2167, tests.lists.runKey; TShortCut, 0 = keine).</summary>
+    TestsListsRunKey: Integer;
     /// <summary>Protokoll je Test im Fenster „Atlas-Tests“ (#2168, tests.log): Seitendatei für den Atlas-Logger.
     /// </summary>
     TestsLog: Boolean;
@@ -348,6 +354,7 @@ begin
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
+  TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
 end;
 
@@ -414,6 +421,8 @@ begin
   TestsApprovalFiles := True;
   TestsShowDuration := True;
   TestsWindow := True;
+  TestsLists := True;
+  TestsListsRunKey := cDefaultTestsListsRunKey;
   TestsLog := True;
   TestsLogMaxLines := cDefaultTestsLogMaxLines;
   TestsSlowMs := cDefaultTestsSlowMs;
@@ -446,6 +455,8 @@ begin
   AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Flag('TestsWindow', TestsWindow);
+  AIo.Flag('TestsLists', TestsLists);
+  AIo.Number('TestsListsRunKey', TestsListsRunKey);
   AIo.Flag('TestsLog', TestsLog);
   AIo.Number('TestsLogMaxLines', TestsLogMaxLines);
   AIo.Number('TestsSlowMs', TestsSlowMs);
