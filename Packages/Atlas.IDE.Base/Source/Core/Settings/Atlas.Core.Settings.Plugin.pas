@@ -447,6 +447,8 @@ type
     property DebugBreakOnNextEventExcluded: string read FDebug.DebugBreakOnNextEventExcluded
       write FDebug.DebugBreakOnNextEventExcluded;
     property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
+    property DebugInstanceBreakpoints: Boolean read FDebug.DebugInstanceBreakpoints
+      write FDebug.DebugInstanceBreakpoints;
     property DebugBreakpointSetPerBranch: Boolean read FDebug.DebugBreakpointSetPerBranch
       write FDebug.DebugBreakpointSetPerBranch;
     property DebugBreakpointsWindow: Boolean read FDebug.DebugBreakpointsWindow write FDebug.DebugBreakpointsWindow;

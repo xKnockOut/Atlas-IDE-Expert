@@ -925,6 +925,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.BreakpointList` | `IDE/Debug/Atlas.IDE.Debug.BreakpointList.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointsWindow` | `IDE/Debug/Atlas.IDE.Debug.BreakpointsWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointCheck` | `IDE/Debug/Atlas.IDE.Debug.BreakpointCheck.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.InstanceBreakpoint` | `IDE/Debug/Atlas.IDE.Debug.InstanceBreakpoint.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointSets` | `IDE/Debug/Atlas.IDE.Debug.BreakpointSets.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
@@ -973,6 +974,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointsFrame` | `UI/Debug/Atlas.UI.Debug.BreakpointsFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointCheck` | `UI/Debug/Atlas.UI.Debug.BreakpointCheck.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.InstanceBreakpoint` | `UI/Debug/Atlas.UI.Debug.InstanceBreakpoint.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Deadlocks` | `UI/Debug/Atlas.UI.Debug.Deadlocks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ParallelStacks` | `UI/Debug/Atlas.UI.Debug.ParallelStacks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Leaks` | `UI/Debug/Atlas.UI.Debug.Leaks.pas` | Texte des Fensters „Atlas-Lecks“, #1875 |
