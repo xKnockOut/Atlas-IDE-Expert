@@ -1,9 +1,9 @@
 ﻿unit Shell.Composition.Stepping;
 
 // Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter
-// (#850), „Warum bin ich hier?“ (#1878), Haltepunkte, die nicht greifen werden (#577), und die Parameter einer
-// Routine für das Fenster „Aufrufstapel“ (#843). Sie lesen nur;
-// Code-Aktionen gibt es hier keine.
+// (#850), „Warum bin ich hier?“ (#1878), kommende Bedingungen (#2169), Haltepunkte, die nicht greifen werden
+// (#577), und die Parameter einer Routine für das Fenster „Aufrufstapel“ (#843). Sie lesen nur; Code-Aktionen
+// gibt es hier keine.
 
 interface
 
@@ -11,10 +11,17 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Lsp.Commands,
+  Atlas.Common.Lsp.EnclosingConditions,
   Shell.Composition.Refactorings.Services;
 
 type
+  /// <summary>Baut die Antwort eines Bedingungsbefehls aus Baum, Text, Aufrufstellen, Zeile und drittem Argument.
+  /// </summary>
+  TShellConditionBuild = reference to function(ATree: TSyntaxTree; const AText: string;
+    const ACallsAt: TLspCallsAt; ALine, AExtra: Integer): TJSONObject;
+
   TShellStepping = class(TShellRefactoringPart)
   private
     function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -22,8 +29,10 @@ type
     function StepFilter(const AArguments: TJSONArray): TJSONValue;
     function StepFilterOfFile(const AUri: string; ALine: Integer): TJSONObject;
     function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
+    function ConditionAnswer(const AArguments: TJSONArray; const ABuild: TShellConditionBuild): TJSONObject;
     function EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
     function RoutineParameters(const AArguments: TJSONArray): TJSONValue;
+    function UpcomingConditions(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheck(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheckFile(const AUri: string; const ALines: TArray<Integer>): TJSONObject;
   public
@@ -38,14 +47,13 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
-  Atlas.Common.Lsp.EnclosingConditions,
   Atlas.Common.Lsp.RoutineParameters,
+  Atlas.Common.Lsp.UpcomingConditions,
   Atlas.Common.Lsp.BreakpointCheck,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.CompilerSwitches,
@@ -79,6 +87,7 @@ begin
   ACommands.Register(TLspStepFilter.cCountsCommand, StepFilterCounts);
   ACommands.Register(TLspEnclosingConditions.cCommand, EnclosingConditions);
   ACommands.Register(TLspRoutineParameters.cCommand, RoutineParameters);
+  ACommands.Register(TLspUpcomingConditions.cCommand, UpcomingConditions);
   ACommands.Register(TLspBreakpointCheck.cCommand, BreakpointCheck);
 end;
 
@@ -198,24 +207,23 @@ begin
   Result := TLspStepFilter.CountsToJson(mCounts);
 end;
 
-function TShellStepping.EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
+function TShellStepping.ConditionAnswer(const AArguments: TJSONArray;
+  const ABuild: TShellConditionBuild): TJSONObject;
 var
   mUri: string;
-  mLine, mDepth: Integer;
+  mLine, mExtra: Integer;
   mDocument: ITextDocument;
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
   mTargets: TLspStepTargets;
-  mConditions: TLspEnclosingConditions;
-  mAnswer: TJSONObject;
 begin
-  // Argumente: URI, Zeile (ab 0) des Halts und Tiefe (#1878).
+  // Argumente: URI, Zeile (ab 0) des Halts und eine Zahl (Tiefe bzw. Zeilen voraus).
   mLine := LineOf(AArguments);
   mUri := AArguments.Items[0].Value;
-  mDepth := 0;
+  mExtra := 0;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONNumber) then
   begin
-    mDepth := TJSONNumber(AArguments.Items[2]).AsInt;
+    mExtra := TJSONNumber(AArguments.Items[2]).AsInt;
   end;
   mDocument := Open(mUri);
   mTree := TSyntaxTreeCache.Get(mDocument, nil).Tree;
@@ -224,22 +232,51 @@ begin
     // Getter und Aufrufe ohne Klammern erkennt die Namensauflösung von „Gezielt hineinspringen“.
     mTargets := TLspStepTargets.Create(mResolver, Index, mTree, mDocument.Text, TDocumentUris.ToPath(mUri), ReadFile);
     try
-      mConditions := TLspEnclosingConditions.Create(mTree, mDocument.Text,
+      Result := ABuild(mTree, mDocument.Text,
         function(ALine: Integer): TArray<TTextPosition>
         begin
           Result := mTargets.CallPositions(ALine);
-        end);
-      try
-        mAnswer := mConditions.Execute(mLine, mDepth);
-      finally
-        mConditions.Free;
-      end;
+        end, mLine, mExtra);
     finally
       mTargets.Free;
     end;
   finally
     mResolver.Free;
   end;
+end;
+
+function BuildEnclosing(ATree: TSyntaxTree; const AText: string; const ACallsAt: TLspCallsAt;
+  ALine, AExtra: Integer): TJSONObject;
+var
+  mConditions: TLspEnclosingConditions;
+begin
+  mConditions := TLspEnclosingConditions.Create(ATree, AText, ACallsAt);
+  try
+    Result := mConditions.Execute(ALine, AExtra);
+  finally
+    mConditions.Free;
+  end;
+end;
+
+function BuildUpcoming(ATree: TSyntaxTree; const AText: string; const ACallsAt: TLspCallsAt;
+  ALine, AExtra: Integer): TJSONObject;
+var
+  mConditions: TLspUpcomingConditions;
+begin
+  mConditions := TLspUpcomingConditions.Create(ATree, AText, ACallsAt);
+  try
+    Result := mConditions.Execute(ALine, AExtra);
+  finally
+    mConditions.Free;
+  end;
+end;
+
+function TShellStepping.EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
+var
+  mAnswer: TJSONObject;
+begin
+  // „Warum bin ich hier?“ (#1878): drittes Argument ist die Tiefe.
+  mAnswer := ConditionAnswer(AArguments, BuildEnclosing);
   Log(Format(TLspEnclosingConditions.cCommand + ': %d', [Count(mAnswer, 'blocks')]));
   Result := mAnswer;
 end;
@@ -261,6 +298,16 @@ begin
     mParameters.Free;
   end;
   Log(Format(TLspRoutineParameters.cCommand + ': %d', [Count(mAnswer, 'parameters')]));
+  Result := mAnswer;
+end;
+
+function TShellStepping.UpcomingConditions(const AArguments: TJSONArray): TJSONValue;
+var
+  mAnswer: TJSONObject;
+begin
+  // Bedingungen vorausschauen (#2169): drittes Argument ist die Zahl der Zeilen voraus.
+  mAnswer := ConditionAnswer(AArguments, BuildUpcoming);
+  Log(Format(TLspUpcomingConditions.cCommand + ': %d', [Count(mAnswer, 'blocks')]));
   Result := mAnswer;
 end;
 

@@ -1,6 +1,7 @@
 ﻿unit Shell.Composition.CoveredBy.Tests;
 
-// atlas/coveredBy der Komposition (#1778): fehlende URI, Tiefe und private Methoden aus der Anfrage.
+// atlas/coveredBy der Komposition (#1778): fehlende URI, Tiefe und private Methoden aus der Anfrage;
+// atlas/untestedMethods (#1783): fehlende URI, Projekt ohne Dateien.
 
 interface
 
@@ -34,6 +35,12 @@ type
     /// <summary>Tiefe und private Methoden aus der Anfrage.</summary>
     [Test]
     procedure DepthAndPrivateFromParams;
+    /// <summary>atlas/untestedMethods ohne textDocument.uri: Fehler InvalidParams.</summary>
+    [Test]
+    procedure ProjectMissingUriInvalidParams;
+    /// <summary>atlas/untestedMethods ohne Projektdateien: keine Units, nichts ausgelassen.</summary>
+    [Test]
+    procedure ProjectWithoutFilesIsEmpty;
   end;
 
 implementation
@@ -81,6 +88,11 @@ function NoContext(const AUri: string; out AContext: TTestUnitContext): Boolean;
 begin
   AContext := Default(TTestUnitContext);
   Result := False;
+end;
+
+function NoNames: TArray<string>;
+begin
+  Result := nil;
 end;
 
 function DefaultImpact(const AUri: string): TImpactOptions;
@@ -180,6 +192,47 @@ begin
     mRequest := TShellCoveredByRequest.RequestFor(FServices, cUri, mParams);
     Assert.AreEqual(3, mRequest.Options.Depth);
     Assert.IsTrue(mRequest.IncludePrivate);
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TShellCoveredByRequestTests.ProjectMissingUriInvalidParams;
+var
+  mParams: TJSONObject;
+  mCode: Integer;
+begin
+  mParams := TJSONObject.Create;
+  try
+    mCode := 0;
+    try
+      TShellCoveredByRequest.HandleProject(FServices, mParams, nil).Free;
+    except
+      on E: EJsonRpcError do
+        mCode := E.Code;
+    end;
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TShellCoveredByRequestTests.ProjectWithoutFilesIsEmpty;
+var
+  mParams: TJSONObject;
+  mResult: TJSONValue;
+begin
+  FServices.Namespaces := NoNames;
+  mParams := TJSONObject.Create;
+  try
+    mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', cUri)));
+    mResult := TShellCoveredByRequest.HandleProject(FServices, mParams, nil);
+    try
+      Assert.AreEqual(0, mResult.GetValue<TJSONArray>('units').Count);
+      Assert.AreEqual(0, mResult.GetValue<Integer>('skipped'));
+    finally
+      mResult.Free;
+    end;
   finally
     mParams.Free;
   end;

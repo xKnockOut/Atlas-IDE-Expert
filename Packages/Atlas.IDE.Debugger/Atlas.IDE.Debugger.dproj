@@ -130,6 +130,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointList.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointsWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Values.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Contracts.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Breakpoints.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Session.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.CallStack.pas"/>
@@ -164,10 +165,13 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Pins.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Pins.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.WhyHere.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Forecast.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ValueRequest.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LineEnd.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.OwnCode.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Session.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Sources.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
@@ -178,6 +182,12 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.RunTo.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.RunTo.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.RunToColumn.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointAnchors.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.BreakpointAnchors.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointAnchors.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointRules.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.BreakpointRules.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointRules.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepInto.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas"/>

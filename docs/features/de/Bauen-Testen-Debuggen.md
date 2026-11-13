@@ -102,6 +102,16 @@ Einstellungen: `tests.stale`, `tests.stale.units`
 
 Einstellungen: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
 
+### Ungetestete Methoden (#1783)
+
+- An der unit-Zeile einer normalen Unit mit Testunit steht „7 von 12 Methoden getestet“: wie viele ihrer Methoden mindestens ein Test aufruft (Tiefe und private Methoden wie bei „getestet von“). Unter `tests.untested.warnPercent` Prozent (Vorgabe 50) ist die Marke gelb, sonst grau. Units ohne Testunit bekommen keine Marke.
+- Klick zeigt ein Menü mit den ungetesteten Methoden; ein Eintrag springt zum Kopf der Methode, „Test anlegen“ öffnet bzw. legt die Testunit an.
+- Gezählt werden Aufrufe aus Tests, das ersetzt keine Abdeckungsmessung; das Menü sagt es dazu.
+- Befehl „Ungetestete Methoden des Projekts“ (Atlas-Menü und Befehlspalette, `Atlas.ListUntestedMethods`): für das Projekt der Unit im Editor je Unit eine Zeile in der Meldungsansicht, die mit den meisten ungetesteten Methoden zuerst, darunter je Methode eine Zeile, die per Doppelklick hinspringt. Units ohne Testunit stehen mit allen Methoden darin. Der Server begrenzt sich auf 60 s; was er nicht mehr erreicht, nennt eine Zeile am Ende.
+- Ausblenden je Datei über das Menü „Ausblenden“.
+
+Einstellungen: `codeLens.untested`, `tests.untested.warnPercent`
+
 ### Betroffene Tests beim Speichern (#1775)
 
 - Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
@@ -194,6 +204,17 @@ Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an 
 - Ein `Assert.Fail` am Ende hält den Entwurf rot, bis die erwarteten Werte stimmen.
 - Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
 - Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
+
+### Test aus dem Debug-Halt anlegen (#1873)
+
+Aufruf: Knopf *Test daraus anlegen …* in der Exception-Leiste, Kontextmenü des Editors › Atlas › Tests beim Debuggen oder Befehlspalette (*Test aus dem Debug-Halt anlegen …*). Einstellungen unter Debuggen: `tests.fromDebugStop` (Vorgabe an), `tests.fromDebugStop.fields` (an), `tests.fromDebugStop.properties` (aus), `tests.fromDebugStop.maxArray` (20).
+
+- Atlas nimmt den Rahmen des Halts: bei einer Exception in RTL oder VCL den ersten Rahmen in eigenem Code, sonst den obersten mit Quelltext.
+- Steht der Rahmen oben, wertet der Debugger die Parameter und die Felder der Klasse aus (`Self.FEinheit`), ohne Nebenwirkungen; Getter nur mit `tests.fromDebugStop.properties`. In einem tieferen Rahmen kommen die Parameter aus der Kopfzeile des Aufrufstacks.
+- Aus den Texten des Debuggers werden Delphi-Literale: Zahlen (Dezimalkomma wird Punkt), Strings mit `''` und `#nn`, Boolean, Aufzählungswerte, Mengen und dynamische Arrays bis `tests.fromDebugStop.maxArray` Elemente. Objekte, Zeiger, Interfaces, Records und alles Unklare rät Atlas nicht: Der Test bekommt dort ein TODO.
+- Der Dialog zeigt die Werte zum Abwählen (abgewählte bleiben Platzhalter; private Felder und Objekte sind abgewählt), die Art (*Soll funktionieren* bzw. *Soll EConvertError werfen*, wenn das Programm an einer Exception steht), bei Funktionen das erwartete Ergebnis und den Namen (`ParseMit12_5Kg`, `ParseMit12_5KgWirftConvertError`).
+- *Test anlegen* trägt den Test wie *Testfall aus der Unit anlegen* in die Testunit ein (legt sie bei Bedarf samt `.dpr`/`.dproj` an), mit einer Kommentarzeile „Aus Debug-Halt 2026-11-13 10:42, EConvertError“; eine Exception prüft `Assert.WillRaise`. Ohne erwartetes Ergebnis bleibt der Test mit `Assert.Fail` rot. Alles ist ein Rückgängig-Schritt, danach springt Atlas zum Test.
+- Ohne das Modul Debugger fehlen Knopf und Befehl.
 
 ### Schnellbefehle für Tests und Fehlersuche (#305)
 
@@ -330,6 +351,32 @@ Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechse
 
 Einstellungen: `debug.breakpointSetPerBranch`
 
+#### Haltepunkte wandern mit dem Code
+
+Läuft von selbst; Befehle im Menü Atlas und in der Befehlspalette. Nach `git pull`, Branchwechsel oder Formatierer stehen Haltepunkte der IDE sonst auf falschen Zeilen, weil sie an Zeilennummern hängen.
+
+- Atlas merkt sich zu jedem Quelltext-Haltepunkt einen Anker: Routine, Abstand zum Routinenanfang, Zeilentext und Nachbarzeilen (dieselbe Suche wie bei den Haltepunkt-Sätzen).
+- Ändert sich eine Datei von außen (neu geladen, Branchwechsel, beim letzten Schließen der IDE anders, oder fünf und mehr Zeilen auf einmal wie bei Formatierer und Code-Aktionen), setzt Atlas jeden Haltepunkt auf die passende Zeile, mit Bedingung, Durchlaufzähler, Gruppe, Aktionen und an/aus. Beim normalen Tippen nimmt die IDE ihre Haltepunkte selbst mit; Atlas merkt sich nur den neuen Anker.
+- Eine Zeile in den Meldungen nennt jede Verschiebung und „3 verschoben, 1 verwaist“.
+- Nicht eindeutig zuzuordnende Haltepunkte bleiben stehen und kommen in die Liste „Verwaiste Haltepunkte …“ mit Vorschlag (gleicher Abstand in der Routine) und den Knöpfen „Vorschlag übernehmen“ und „Löschen“. Gelöscht wird nichts von selbst.
+- „Haltepunkte zurück an alte Zeilen“ nimmt das letzte Nachziehen zurück.
+- Die Anker liegen in `%LOCALAPPDATA%\Atlas\breakpoint-anchors.json`.
+
+Einstellungen: `debug.breakpointAnchors`
+
+#### Haltepunkt-Regeln: abhängig, Treffer, Thread
+
+Aufruf: Kontextmenü des Editors (Atlas › Debuggen › „Haltepunkt-Regeln …“, auch im Rand), Menü Atlas, Befehlspalette; auf der Zeile eines Haltepunkts. Ein Haltepunkt in einer viel benutzten Routine hält sonst hundertmal, bevor man an der Stelle ist, um die es geht.
+
+- „Erst aktiv nach“: Der Haltepunkt ist zu Beginn jeder Debug-Sitzung aus und wird eingeschaltet, sobald der gewählte andere Haltepunkt gehalten hat. „bis zum Ende der Sitzung“ lässt ihn danach an, „nur einmal“ schaltet ihn nach seinem Halt wieder aus, bis der auslösende erneut hält. Nach der Sitzung ist er wieder an.
+- „Anhalten“: bei jedem, genau beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer; gezählt wird je Sitzung.
+- „Thread“: alle, Name enthält (aus `TThread.NameThreadForDebugging`), eine Thread-ID oder nur der Hauptthread. Ein Halt in einem anderen Thread zählt nicht als Treffer.
+- Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Für Treffer und Thread hält der Debugger kurz an, Atlas zählt und setzt sofort fort; in heißen Schleifen kostet das Zeit.
+- Fehlt der auslösende Haltepunkt beim Start, bleibt der abhängige normal an, und eine Zeile in den Meldungen sagt es.
+- Regeln liegen in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` und ziehen mit, wenn „Haltepunkte wandern mit dem Code“ einen Haltepunkt verschiebt.
+
+Einstellungen: `debug.breakpointRules`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))
@@ -377,6 +424,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
+#### Bedingungen vorausschauen
+
+- Beim Halt stehen an den kommenden `if`, `while` und `case` derselben Routine (bis `debug.predictConditions.lines` Zeilen voraus, Vorgabe 20) die vorhergesagten Ergebnisse, als Vorhersage gekennzeichnet: `⟨= False · FOnline⟩` (der entscheidende Teil), bei `case` `⟨→ smManual⟩`.
+- Der Zweig, der übersprungen wird, ist blass gezeichnet, bei `case` alle anderen Zweige; der Text bleibt lesbar (`debug.predictConditions.dimSkipped`).
+- Vorhergesagt wird nur, was sich aus dem jetzigen Zustand ergibt: keine Zuweisung an eine beteiligte Variable dazwischen (auch `var`/`out`-Argumente, `Inc`/`Dec`), kein Aufruf dazwischen bei Feldern und globalen Variablen, kein `Exit`, `raise`, `goto`, `Break` oder `Continue`.
+- Aufrufe und Getter in der Bedingung wertet die Vorhersage nie aus; sie zählt nur, wenn der Kurzschluss ohne den Aufruf entscheidet.
+- Ein Klick auf einen Hinweis öffnet das Menü „Vorhersage für diese Sitzung aus“. Hinweise und Blässe verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
 #### Werte anheften
 
 - Im Debug-Hover steht unter dem Wert „Anheften“. Der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Summe = 125 ✕` am Ende seiner Zeile, hinter den Werten im Editor.

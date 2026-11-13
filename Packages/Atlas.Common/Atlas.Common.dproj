@@ -502,6 +502,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestDrafts.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestFromDebug.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
@@ -602,6 +603,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestFromDebug.pas"/>
         <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas"/>
         <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Setup.pas"/>
         <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.CreateScan.pas"/>
@@ -909,6 +911,7 @@
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Targets.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RoutineParameters.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UpcomingConditions.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
