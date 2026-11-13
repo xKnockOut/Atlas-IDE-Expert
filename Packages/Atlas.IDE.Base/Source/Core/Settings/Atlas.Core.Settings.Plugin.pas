@@ -418,6 +418,8 @@ type
     property TestsApprovalFiles: Boolean read FBuild.TestsApprovalFiles write FBuild.TestsApprovalFiles;
     property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
     property TestsWindow: Boolean read FBuild.TestsWindow write FBuild.TestsWindow;
+    property TestsLists: Boolean read FBuild.TestsLists write FBuild.TestsLists;
+    property TestsListsRunKey: Integer read FBuild.TestsListsRunKey write FBuild.TestsListsRunKey;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;

@@ -222,6 +222,27 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 
 Setting: `tests.window`
 
+### Test lists in the “Atlas Tests” window (#2167)
+
+Open them with the tabs at the top of the “Atlas Tests” window; “+” creates a list.
+
+- Next to “All” there is a tab per list. On a list's tab the tree shows only its tests; filters and search still apply. The header shows the rules, “12 of 340 tests” and the storage, next to it *Run list*.
+- **Fixed lists** name tests, fixtures or whole test units: select them in the tree, context menu *Add to list ▸* (a fixed list or *New list …*); on the tab of a fixed list *Remove from “…”* removes the selection again.
+- **Dynamic lists** consist of rules that must all apply: *category is / is not* (on the fixture or the test), *unit/fixture matches / does not match* a pattern with `*` and `?` (e.g. `*.Slow.*`), *state is / is not* failed, not run or outdated. New tests that match belong to the list without further steps.
+- Right-click a tab: *Rename …*, *Edit rules …* (dynamic lists), *Duplicate*, *Delete*.
+- Storage per list: **in the project** it is kept in `atlas.json` next to the .dproj under `testLists` and applies to the team (tab marked with ◆); **only for me** it is kept in `%LOCALAPPDATA%\Atlas\test-lists.json`. Atlas changes only this key in `atlas.json`; comments and order stay.
+- Running: *Run list* on the tab, “Run test list: <name>” in the command palette, Ctrl+Alt+R (`tests.lists.runKey`) for the last used list. Category rules go to DUnitX as `--include`/`--exclude`, Atlas evaluates all other rules and names the tests with `--run`, combined into fixtures and namespaces where possible. If the list does not fit on one command line, the messages view says so.
+- `tests.lists` off: no tabs, no context menu, no command; `testLists` in `atlas.json` is not read.
+
+```json
+"testLists": [
+  {"name": "Before commit", "rules": [{"category": "Benchmark", "exclude": true}, {"unit": "*.Slow.*", "exclude": true}]},
+  {"name": "Parser", "tests": ["Atlas.Common.Pascal.Tests"]}
+]
+```
+
+Settings: `tests.lists`, `tests.lists.runKey`
+
 ### Leaks per test (#1774)
 
 - With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.

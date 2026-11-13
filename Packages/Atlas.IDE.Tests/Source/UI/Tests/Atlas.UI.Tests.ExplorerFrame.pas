@@ -11,6 +11,7 @@
 // - unten die Einzelheiten zum gewählten Test (Meldung, erwartet, erhalten,
 //   Stacktrace; Zeilen mit Fundstelle öffnen sich per Doppelklick bzw.
 //   Enter) und der Tastenhinweis.
+// Unter den Leisten die Testlisten (#2167, Atlas.UI.Tests.ListBar).
 // Tasten im Baum: Enter springt zum Test, Strg+R führt die Auswahl aus,
 // Strg+D debuggt sie. Die IDE-Schicht (Atlas.IDE.Tests.Explorer) setzt die
 // Zeilen und die Ereignisse (SetHandlers). Die DFM ist leer; aufgebaut wird
@@ -29,7 +30,8 @@ uses
   Vcl.ComCtrls,
   Vcl.ImgList,
   Vcl.Forms,
-  Atlas.Core.Tests.Explorer;
+  Atlas.Core.Tests.Explorer,
+  Atlas.UI.Tests.ListBar;
 
 type
   /// <summary>Ereignisse des Fensters; nil = keins.</summary>
@@ -93,6 +95,7 @@ type
   TAtlasTestsExplorerFrame = class(TFrame)
   private
     FBar: TAtlasTestsExplorerBar;
+    FListBar: TAtlasTestsListBar;
     FTree: TTreeView;
     FDetails: TListBox;
     FFooter: TLabel;
@@ -138,6 +141,7 @@ type
     /// <summary>Knoten der fokussierten Zeile; -1 ohne.</summary>
     function FocusedNode: Integer;
     property Bar: TAtlasTestsExplorerBar read FBar;
+    property ListBar: TAtlasTestsListBar read FListBar;
     property Tree: TTreeView read FTree;
     property Details: TListBox read FDetails;
   end;
@@ -415,6 +419,7 @@ begin
   FTree.OnKeyDown := TreeKeyDown;
   FTree.OnChange := TreeChange;
   FTree.Parent := Self;
+  FListBar := TAtlasTestsListBar.Create(Self, FTree);
 end;
 
 procedure TAtlasTestsExplorerFrame.BuildImages;
@@ -498,6 +503,7 @@ end;
 procedure TAtlasTestsExplorerFrame.SetBusy(ABusy: Boolean);
 begin
   FBar.SetBusy(ABusy);
+  FListBar.SetBusy(ABusy);
 end;
 
 function TAtlasTestsExplorerFrame.Filters: TAtlasTestFilters;
@@ -570,6 +576,7 @@ var
 begin
   FFilled := True;
   FBar.FillProjects;
+  FListBar.FillTabs;
   FTree.HandleNeeded;
   // Auswahl und Fokus über die Knoten des Modells behalten.
   mWasSelected := SelectedNodes;

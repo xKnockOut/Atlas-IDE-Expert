@@ -198,6 +198,27 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 
 Einstellung: `tests.window`
 
+### Testlisten im Fenster „Atlas-Tests“ (#2167)
+
+Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
+
+- Neben „Alle“ steht je Liste ein Reiter. Im Reiter einer Liste zeigt der Baum nur ihre Tests; Filter und Suche gelten weiter. Die Kopfzeile nennt die Regeln, „12 von 340 Tests“ und die Ablage, daneben *Liste ausführen*.
+- **Feste Listen** nennen Tests, Fixtures oder ganze Testunits: im Baum auswählen, Kontextmenü *Zu Liste hinzufügen ▸* (eine feste Liste oder *Neue Liste …*); im Reiter einer festen Liste entfernt *Aus „…“ entfernen* die Auswahl wieder.
+- **Dynamische Listen** bestehen aus Regeln, die alle gelten müssen: *Kategorie ist / ist nicht* (an der Fixture oder am Test), *Unit/Fixture passt / passt nicht* auf ein Muster mit `*` und `?` (z. B. `*.Slow.*`), *Stand ist / ist nicht* fehlgeschlagen, nicht gelaufen oder veraltet. Neue Tests, die passen, gehören ohne Zutun dazu.
+- Rechtsklick auf einen Reiter: *Umbenennen …*, *Regeln bearbeiten …* (dynamische Listen), *Duplizieren*, *Löschen*.
+- Ablage je Liste: **im Projekt** steht sie in `atlas.json` neben der .dproj unter `testLists` und gilt für das Team (Reiter mit ◆); **nur für mich** steht sie in `%LOCALAPPDATA%\Atlas\test-lists.json`. Atlas ändert in `atlas.json` nur diesen Schlüssel; Kommentare und Reihenfolge bleiben.
+- Ausführen: *Liste ausführen* im Reiter, in der Befehlspalette „Testliste ausführen: <Name>“, mit Strg+Alt+R (`tests.lists.runKey`) die zuletzt benutzte Liste. Kategorie-Regeln gehen als `--include`/`--exclude` an DUnitX, alle übrigen wertet Atlas aus und nennt die Tests über `--run`, zusammengefasst zu Fixtures und Namensräumen, wo es geht. Passt die Liste nicht in eine Befehlszeile, sagt es die Meldungsansicht.
+- `tests.lists` aus: keine Reiter, kein Kontextmenü, kein Befehl; `testLists` in `atlas.json` wird nicht gelesen.
+
+```json
+"testLists": [
+  {"name": "Vor dem Commit", "rules": [{"category": "Benchmark", "exclude": true}, {"unit": "*.Slow.*", "exclude": true}]},
+  {"name": "Parser", "tests": ["Atlas.Common.Pascal.Tests"]}
+]
+```
+
+Einstellungen: `tests.lists`, `tests.lists.runKey`
+
 ### Lecks je Test (#1774)
 
 - Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.

@@ -1574,6 +1574,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Approval` | `Core/Tests/Atlas.Core.Tests.Approval.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Explorer` | `Core/Tests/Atlas.Core.Tests.Explorer.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Lists` | `Core/Tests/Atlas.Core.Tests.Lists.pas` | Ordner `Core/Tests`; Testlisten: Regeln, Mitglieder, Argumente eines Laufs, JSON (#2167) |
+| `Atlas.Core.Tests.ListText` | `Core/Tests/Atlas.Core.Tests.ListText.pas` | Ordner `Core/Tests`; Beschreibung und Prüfung einer Testliste (#2167) |
+| `Atlas.Core.Tests.ListFile` | `Core/Tests/Atlas.Core.Tests.ListFile.pas` | Ordner `Core/Tests`; Ablage „nur für mich“ der Testlisten (#2167) |
+| `Atlas.Core.Tests.ListView` | `Core/Tests/Atlas.Core.Tests.ListView.pas` | Ordner `Core/Tests`; Testlisten im Baum des Fensters „Atlas-Tests“ (#2167) |
 | `Atlas.Core.Tests.CaseTable` | `Core/Tests/Atlas.Core.Tests.CaseTable.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Untested` | `Core/Tests/Atlas.Core.Tests.Untested.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
@@ -1589,6 +1593,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Explorer` | `IDE/Tests/Atlas.IDE.Tests.Explorer.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.ExplorerWindow` | `IDE/Tests/Atlas.IDE.Tests.ExplorerWindow.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Lists` | `IDE/Tests/Atlas.IDE.Tests.Lists.pas` | Ordner `IDE/Tests`; Testlisten laden, speichern, ausführen (#2167) |
 | `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.LeakSetup` | `IDE/Tests/Atlas.IDE.Tests.LeakSetup.pas` | Ordner `IDE/Tests`; Befehl „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
@@ -1604,6 +1609,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tests.Compare` | `UI/Tests/Atlas.UI.Tests.Compare.pas` | Ordner `UI/Tests` |
 | `Atlas.UI.Tests.Slowest` | `UI/Tests/Atlas.UI.Tests.Slowest.pas` | Ordner `UI/Tests` |
 | `Atlas.UI.Tests.ExplorerFrame` | `UI/Tests/Atlas.UI.Tests.ExplorerFrame.pas` | Ordner `UI/Tests` |
+| `Atlas.UI.Tests.ListBar` | `UI/Tests/Atlas.UI.Tests.ListBar.pas` | Ordner `UI/Tests`; Reiter und Menüs der Testlisten (#2167) |
+| `Atlas.UI.Tests.ListDialog` | `UI/Tests/Atlas.UI.Tests.ListDialog.pas` | Ordner `UI/Tests`; Dialog einer Testliste (#2167) |
 | `Atlas.UI.Tests.CaseTable` | `UI/Tests/Atlas.UI.Tests.CaseTable.pas` | Ordner `UI/Tests` |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 | `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |

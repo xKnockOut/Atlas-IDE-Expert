@@ -47,6 +47,7 @@ uses
   Atlas.Common.Configuration.Internals.AnalysisOptions,
   Atlas.Common.Configuration.Internals.ProjectOptions,
   Atlas.Common.Configuration.Internals.SuggestionOptions,
+  Atlas.Common.Configuration.Internals.TestListOptions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -72,7 +73,7 @@ const
 function AllSections: TArray<TConfigurationSection>;
 begin
   Result := GeneralSections + RuleSections + McpSections + EditorSections + RefactoringSections + WorkflowSections +
-    AnalysisSections + ProjectSections + SuggestionSections;
+    AnalysisSections + ProjectSections + SuggestionSections + TestListSections;
 end;
 
 /// <summary>Abschnitt zum Schlüssel AKey; False, wenn es keinen gibt.</summary>

@@ -1617,6 +1617,31 @@
       "x-captionEn": "“Atlas Tests” window",
       "x-issue": "#1776"
     },
+    "TestsLists": {
+      "description": "Testlisten im Fenster „Atlas-Tests“: Reiter neben „Alle“ mit festen Listen (Tests, Fixtures oder Units über „Zu Liste hinzufügen“) und dynamischen (Regeln mit „und“: Kategorie, Muster für Unit bzw. Fixture, Stand), „Liste ausführen“ im Reiter, in der Befehlspalette und mit Taste. Ablage je Liste in atlas.json (testLists, für das Team) oder nur für mich. Aus: keine Reiter, kein Eintrag in der Palette, testLists wird nicht gelesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.lists",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Testlisten im Fenster „Atlas-Tests“",
+      "x-captionEn": "Test lists in the “Atlas Tests” window",
+      "x-issue": "#2167"
+    },
+    "TestsListsRunKey": {
+      "description": "Tastenkürzel „Zuletzt benutzte Testliste ausführen“ (0 = keins; Vorgabe Strg+Alt+R).",
+      "type": "integer",
+      "default": 49234,
+      "x-key": "tests.lists.runKey",
+      "x-area": "build",
+      "x-format": "shortcut",
+      "x-page": "Compiler",
+      "x-parent": "tests.lists",
+      "x-control": "Tastenkürzel",
+      "x-issue": "#2167"
+    },
     "TestsCaseTable": {
       "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
       "type": "boolean",

@@ -840,6 +840,7 @@
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.WorkflowOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.AnalysisOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ProjectOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.TestListOptions.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Scopes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Configuration.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SettingsCommands.pas"/>

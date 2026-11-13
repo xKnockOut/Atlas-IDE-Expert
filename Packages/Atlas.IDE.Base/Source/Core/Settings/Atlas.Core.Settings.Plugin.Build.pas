@@ -33,6 +33,8 @@ const
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
   cDefaultTestsSlowMs = 500;
+  /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
+  cDefaultTestsListsRunKey = $C052;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -139,6 +141,10 @@ type
     TestsShowDuration: Boolean;
     /// <summary>Andockbares Fenster „Atlas-Tests“ mit allen Tests des Testprojekts (#1776, tests.window).</summary>
     TestsWindow: Boolean;
+    /// <summary>Testlisten im Fenster „Atlas-Tests“ (#2167, tests.lists).</summary>
+    TestsLists: Boolean;
+    /// <summary>Taste für die zuletzt benutzte Testliste (#2167, tests.lists.runKey; TShortCut, 0 = keine).</summary>
+    TestsListsRunKey: Integer;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
@@ -327,6 +333,7 @@ begin
     cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -392,6 +399,8 @@ begin
   TestsApprovalFiles := True;
   TestsShowDuration := True;
   TestsWindow := True;
+  TestsLists := True;
+  TestsListsRunKey := cDefaultTestsListsRunKey;
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
   TestsLeaks := True;
@@ -420,6 +429,8 @@ begin
   AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Flag('TestsWindow', TestsWindow);
+  AIo.Flag('TestsLists', TestsLists);
+  AIo.Number('TestsListsRunKey', TestsListsRunKey);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);

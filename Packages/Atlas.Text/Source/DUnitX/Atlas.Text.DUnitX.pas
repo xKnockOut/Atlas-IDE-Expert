@@ -28,6 +28,9 @@
 // darum nicht. TDUnitXCommandLine.RunNames bildet die passenden Namen.
 // Für „veraltete“ Testergebnisse (#1770) liefert die Unit eine Prüfsumme
 // über Zeilen ohne Kommentare und Leerraum und die Units der uses-Klauseln.
+// Kategorien aus [Category('A,B')] an Fixture und Test (Testlisten, #2167):
+// nur als Zeichenkette geschrieben; eine Konstante als Argument erkennt das
+// Lesen ohne Namensauflösung nicht.
 
 interface
 
@@ -56,6 +59,8 @@ type
     CaseLines: TArray<Integer>;
     /// <summary>[Ignore] steht am Test.</summary>
     Ignored: Boolean;
+    /// <summary>Kategorien aus [Category('A,B')] am Test (ohne die der Fixture), getrimmt, ohne leere.</summary>
+    Categories: TArray<string>;
   end;
 
   TDUnitXFixture = record
@@ -66,6 +71,9 @@ type
     /// <summary>Zeile des ersten Attributs davor ([TestFixture]); ohne Attribut = Line.</summary>
     AttributeLine: Integer;
     Tests: TArray<TDUnitXTest>;
+    /// <summary>Kategorien aus [Category('A,B')] an der Klasse; DUnitX-Fassungen ab 2025 geben sie an jeden ihrer
+    /// Tests weiter, ältere nicht.</summary>
+    Categories: TArray<string>;
   end;
 
   TDUnitXUnit = record
@@ -134,7 +142,8 @@ type
     class function RunNames(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
       ACaseIndex: Integer): TArray<string>; static;
     /// <summary>Argumente eines Laufs: XML-Bericht nach AResultFile, ohne Warten am Ende, mit --run, wenn ATests
-    /// Namen enthält (sonst alle Tests).</summary>
+    /// Namen enthält (sonst alle Tests). Einträge, die mit „--“ beginnen (--include:Kat, --exclude:Kat der
+    /// Testlisten, #2167), gehen als eigene Option an das Programm, nicht in --run.</summary>
     class function Arguments(const AResultFile: string; const ATests: TArray<string>): TArray<string>; static;
   end;
 
@@ -159,6 +168,8 @@ type
     Line: Integer;
     /// <summary>Erstes Argument als Text (Zeichenkette ohne Anführungszeichen, sonst das Token).</summary>
     FirstArgument: string;
+    /// <summary>Das erste Argument ist eine Zeichenkette (keine Konstante).</summary>
+    FirstIsText: Boolean;
   end;
 
 type
@@ -702,6 +713,38 @@ begin
   Result := IsWord(AToken, 'begin') or IsWord(AToken, 'try') or IsWord(AToken, 'case') or IsWord(AToken, 'asm');
 end;
 
+/// <summary>Kategorien aus den Attributen [Category('A,B')] von APending (nur als Zeichenkette geschrieben).
+/// </summary>
+function CategoriesOf(const APending: TArray<TPendingAttribute>): TArray<string>;
+var
+  mAttribute: TPendingAttribute;
+  mPart, mName: string;
+  mKnown: Boolean;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mAttribute in APending do
+  begin
+    if (mAttribute.Kind <> TDUnitXAttribute.Category) or not mAttribute.FirstIsText then
+    begin
+      Continue;
+    end;
+    for mPart in mAttribute.FirstArgument.Split([',']) do
+    begin
+      mName := Trim(mPart);
+      mKnown := mName = '';
+      for mIndex := 0 to High(Result) do
+      begin
+        mKnown := mKnown or SameText(Result[mIndex], mName);
+      end;
+      if not mKnown then
+      begin
+        Result := Result + [mName];
+      end;
+    end;
+  end;
+end;
+
 // Attribute vor einer Methode auf ATest anwenden. AIsTest: [Test] oder [TestCase]; ANotTest: [Test(False)],
 // [Setup], [TearDown], [SetupFixture] oder [TearDownFixture].
 procedure ApplyAttributes(const APending: TArray<TPendingAttribute>; var ATest: TDUnitXTest; out AIsTest,
@@ -880,6 +923,7 @@ begin
     if IsSym(Token, '(') then
     begin
       mAttribute.FirstArgument := Peek(1).Text;
+      mAttribute.FirstIsText := Peek(1).Kind = TTokenKind.Str;
       SkipGroup('(', ')');
     end;
     FPending := FPending + [mAttribute];
@@ -953,6 +997,7 @@ begin
   mTest.Method := Token.Text;
   Inc(FIndex);
   ApplyAttributes(FPending, mTest, mIsTest, mNotTest);
+  mTest.Categories := CategoriesOf(FPending);
   if APublished and (Length(FPending) = 0) then
   begin
     mIsTest := True;
@@ -1058,6 +1103,7 @@ begin
   mCandidate.Fixture.Line := Token.Line;
   mCandidate.Fixture.AttributeLine := FirstPendingLine(mCandidate.Fixture.Line);
   mCandidate.HasFixtureAttribute := HasPending(TDUnitXAttribute.TestFixture);
+  mCandidate.Fixture.Categories := CategoriesOf(FPending);
   FPending := nil;
   Inc(FIndex, 2);
   if not SkipClassHead then
@@ -1757,7 +1803,11 @@ begin
   mRun := '';
   for mTest in ATests do
   begin
-    if mTest <> '' then
+    if Copy(mTest, 1, 2) = '--' then
+    begin
+      Result := Result + [mTest];
+    end
+    else if mTest <> '' then
     begin
       if mRun <> '' then
       begin
