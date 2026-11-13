@@ -690,6 +690,20 @@ Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
 
 Schalter: `debug.deadlocks`.
 
+<a id="window-atlasdebugcallstack"></a>
+#### Atlas-Aufrufstapel
+
+- Atlas > „Atlas-Aufrufstapel“ öffnet ein andockbares Fenster, das bei jedem Halt den Aufrufstapel des aktuellen Threads zeigt: je Rahmen Routine mit Parametern und `Unit.pas:Zeile`.
+- Aufeinanderfolgende Rahmen aus RTL, VCL und Bibliotheken stehen zugeklappt als „▸ 7 Aufrufe in VCL“, daneben erste und letzte Routine; Klick, Enter oder Doppelklick klappt auf.
+- Parameter heißen wie in der Deklaration (der Server liest die Routine an der Zeile des Rahmens). Atlas wertet sie aus und zeigt Ersatztexte der Visualisierer, Strings in Anführungszeichen und Objekte mit Klasse und `Name`-Feld, etwa `AKunde = TKunde 'Meier'`.
+- Die Suche (Strg+F) findet Routine, Unit oder Wert, auch in zugeklappten Gruppen („▸ 7 Aufrufe in VCL · 1 Treffer“); Treffer stehen fett.
+- Klick bzw. Enter auf einem Rahmen springt zur Zeile.
+- „Kopieren“ (Strg+C) gibt den Stapel als Text oder als Markdown-Liste (`` `Unit.pas:Zeile` ``) in die Zwischenablage, wahlweise nur eigener Code.
+- „Mit letztem Halt vergleichen“ stellt den Stapel des letzten Halts an derselben Stelle daneben und markiert geänderte Rahmen und Werte mit „≠“. Atlas merkt sich je Debug-Sitzung höchstens 20 Stellen, solange das Fenster offen ist.
+- Grenzen: Die Werte tieferer Rahmen wertet Atlas über die Adresse aus (Objekte und Zeiger); einfache Werte zeigt der Rahmentext der IDE schon. Rahmen anonymer Methoden und Routinen ohne Parameterliste im Implementierungsteil bekommen keine Namen.
+
+Schalter: `debug.callStackWindow` (aus: der Aufrufstack der IDE bleibt, wie er ist), `debug.callStackWindow.evaluateParams`.
+
 <a id="window-atlasdebugparallelstacks"></a>
 #### Parallele Aufrufstapel
 

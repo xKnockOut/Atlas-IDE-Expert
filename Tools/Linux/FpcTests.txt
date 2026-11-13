@@ -196,6 +196,7 @@ Atlas.Common.Lsp.Processes.Tests
 Atlas.Common.Lsp.RaiseVisibility.Tests
 Atlas.Common.Lsp.Rationale.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
+Atlas.Common.Lsp.RoutineParameters.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
 Atlas.Common.Lsp.SmartIndent.Tests
 Atlas.Common.Lsp.SmartPaste.Tests
@@ -393,6 +394,8 @@ Atlas.Core.Debug.Deadlocks.Tests
 Atlas.Core.Debug.InstanceBreakpoint.Tests
 Atlas.Core.Debug.DataBreakpoint.Tests
 Atlas.Core.Debug.ParallelStacks.Tests
+Atlas.Core.Debug.CallStackParams.Tests
+Atlas.Core.Debug.CallStackView.Tests
 Atlas.Core.Debug.ThreadMarks.Tests
 Atlas.UI.Debug.ThreadMarks.Tests
 Atlas.Core.Debug.AsyncOrigin.Tests
