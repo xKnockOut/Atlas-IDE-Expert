@@ -900,6 +900,8 @@ begin
 end;
 
 procedure TBuilder.LinkRow(const ALinks: TArray<TAtlasDebugValueFix>; AKind: TAtlasHoverHitKind);
+const
+  cLinkGap = 12;
 var
   mIndex: Integer;
   mOldFont: TAtlasHoverFont;
@@ -913,7 +915,7 @@ begin
   begin
     if FX > FLeft then
     begin
-      Inc(FX, Scale(12));
+      Inc(FX, Scale(cLinkGap));
     end;
     FlowLink(ALinks[mIndex].Caption, FColors.Accent, AKind, mIndex);
   end;

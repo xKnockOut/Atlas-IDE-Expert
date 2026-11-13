@@ -78,12 +78,13 @@ type
     /// <summary>Rollbereich der published-Mitglieder (#1841); der Satz übernimmt ihn ins Ergebnis.</summary>
     FMembers: TAtlasHoverScroll;
     function Scale(AValue: Integer): Integer;
-    function Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace;
+    class function Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace; static;
     function Height(const AFace: TAtlasHoverFace): Integer;
     function Width(const AFace: TAtlasHoverFace; const AText: string): Integer;
     /// <summary>AText, auf AMax Pixel gekürzt (mit „…“); '' ohne Platz.</summary>
     function Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
-    function NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect; AColor: TAtlasColor): TAtlasHoverItem;
+    class function NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect; AColor: TAtlasColor): TAtlasHoverItem;
+      static;
     procedure Add(const AItem: TAtlasHoverItem);
     procedure Insert(AAt: Integer; const AItem: TAtlasHoverItem);
     procedure AddHit(AKind: TAtlasHoverHitKind; AIndex: Integer; const ARect: TRect);
@@ -120,6 +121,18 @@ implementation
 
 uses
   System.Math;
+
+const
+  cDesignPpi = 96;
+  /// <summary>Vorrat beim Vergrößern der Listen von Bausteinen und Klickflächen.</summary>
+  cItemReserve = 16;
+  cHitReserve = 8;
+  /// <summary>Abstände in Pixeln bei 96 dpi: Seitenleiste und Abstand nach Blöcken und Zeilen.</summary>
+  cBarLeft = 11;
+  cBarWidth = 3;
+  cBarBottomInset = 7;
+  cBlockGap = 6;
+  cFlowRowGap = 4;
 
 function HoverNoHot: TAtlasHoverHotSpot;
 begin
@@ -161,10 +174,10 @@ end;
 function TAtlasHoverPainter.Scale(AValue: Integer): Integer;
 begin
   // Wie MulDiv(AValue, PPI, 96): auf ganze Pixel gerundet.
-  Result := (AValue * FInput.PPI + 48) div 96;
+  Result := (AValue * FInput.PPI + cDesignPpi div 2) div cDesignPpi;
 end;
 
-function TAtlasHoverPainter.Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace;
+class function TAtlasHoverPainter.Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace;
 begin
   Result := TAtlasHoverFace.Create(AFont, ABold, False);
 end;
@@ -201,7 +214,7 @@ begin
   Result := '';
 end;
 
-function TAtlasHoverPainter.NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect;
+class function TAtlasHoverPainter.NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect;
   AColor: TAtlasColor): TAtlasHoverItem;
 begin
   Result := Default(TAtlasHoverItem);
@@ -219,7 +232,7 @@ procedure TAtlasHoverPainter.Add(const AItem: TAtlasHoverItem);
 begin
   if FItemCount = Length(FItems) then
   begin
-    SetLength(FItems, 2 * FItemCount + 16);
+    SetLength(FItems, 2 * FItemCount + cItemReserve);
   end;
   FItems[FItemCount] := AItem;
   Inc(FItemCount);
@@ -241,7 +254,7 @@ procedure TAtlasHoverPainter.AddHit(AKind: TAtlasHoverHitKind; AIndex: Integer; 
 begin
   if FHitCount = Length(FHits) then
   begin
-    SetLength(FHits, 2 * FHitCount + 8);
+    SetLength(FHits, 2 * FHitCount + cHitReserve);
   end;
   FHits[FHitCount].Kind := AKind;
   FHits[FHitCount].Index := AIndex;
@@ -287,9 +300,9 @@ procedure TAtlasHoverPainter.SideBar(ATop: Integer; AColor: TAtlasColor);
 var
   mBar: TAtlasHoverItem;
 begin
-  FLeft := Scale(11);
-  mBar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, ATop + Scale(1), FLeft + Scale(3), FY - Scale(7)),
-    AColor);
+  FLeft := Scale(cBarLeft);
+  mBar := NewItem(TAtlasHoverItemKind.RoundFill,
+    Rect(FLeft, ATop + Scale(1), FLeft + Scale(cBarWidth), FY - Scale(cBarBottomInset)), AColor);
   mBar.Radius := 1;
   Add(mBar);
 end;
@@ -311,7 +324,7 @@ begin
   mItem := NewItem(TAtlasHoverItemKind.Block, Rect(FLeft, FY, FRight, mBottom), AColor);
   mItem.Text := AText;
   Add(mItem);
-  FY := mBottom + Scale(6);
+  FY := mBottom + Scale(cBlockGap);
 end;
 
 procedure TAtlasHoverPainter.Flow(const AText: string; AColor: TAtlasColor; ABold: Boolean;
@@ -329,7 +342,7 @@ begin
   if not FNoWrap and (FX + mTextWidth > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
-    Inc(FY, FRowHeight + Scale(4));
+    Inc(FY, FRowHeight + Scale(cFlowRowGap));
     FRowHeight := 0;
   end;
   mCell := Rect(FX, FY, FX + mTextWidth, FY + mTextHeight);
@@ -383,7 +396,7 @@ end;
 procedure TAtlasHoverPainter.EndLinkRow(AOldFont: TAtlasHoverFont);
 begin
   EndFlow;
-  Inc(FY, Scale(6));
+  Inc(FY, Scale(cBlockGap));
   FFlowFont := AOldFont;
 end;
 

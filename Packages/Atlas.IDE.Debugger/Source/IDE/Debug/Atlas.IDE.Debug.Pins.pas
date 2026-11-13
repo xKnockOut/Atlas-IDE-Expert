@@ -7,12 +7,12 @@
 //     %LOCALAPPDATA%\Atlas\debug-pinned-values.json. Ist die Datei gesperrt,
 //     beginnt Atlas leer und überschreibt sie nicht (TAtlasDataFile).
 //   - Beim Halt wertet Atlas die Einträge in geöffneten Dateien über
-//     TAtlasIdeDebugValues ohne Nebenwirkungen aus (eseNone, Kontext ist Datei
+//     TAtlasIdeDebugValueRequest ohne Nebenwirkungen aus (eseNone, Kontext ist Datei
 //     und Zeile des Eintrags), im Hauptthread in Zeitscheiben wie die Werte im
 //     Editor (#508); auf verzögerte Antworten (LLDB) wartet es höchstens
 //     cDeferredTimeoutMs.
 //   - Zeichnen: gerahmtes Feld „Ausdruck = Wert ✕“ am Ende der Zeile, hinter
-//     den Werten im Editor (TAtlasLineTail); seit dem vorigen Halt geänderte
+//     den Werten im Editor (TAtlasDebugLineEnd); seit dem vorigen Halt geänderte
 //     Werte in der Warnfarbe. Klick auf ✕ löst den Eintrag dauerhaft.
 //   - Fortsetzen lässt die Felder mit den alten Werten stehen; das Ende der
 //     Sitzung blendet sie aus und vergisst die Werte, nicht die Einträge.
@@ -25,25 +25,18 @@ uses
   System.Types,
   System.Classes,
   System.Generics.Collections,
-  Winapi.Windows,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Vcl.Graphics,
-  ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Pins,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Hover.DebugValue,
+  Atlas.IDE.Debug.ValueRequest,
   Atlas.UI.Debug.InlineValuePainter;
 
 type
   TAtlasIdeDebugPins = class
   public const
-    cSliceMs = 30;
-    cTickMs = 10;
-    cDeferredTimeoutMs = 500;
-    cFileName = 'debug-pinned-values.json';
     /// <summary>Id der Aktion „Anheften“ im Debug-Hover.</summary>
     cPinAction = 526;
   private type
@@ -68,7 +61,7 @@ type
     FPins: TAtlasDebugPins;
     FKept: Boolean;
     FMessage: TProc<string>;
-    FEvaluator: TAtlasIdeDebugValues;
+    FValues: TAtlasIdeDebugValueRequest;
     FListener: IAtlasIdeDebugListener;
     FTimer: TTimer;
     FEvents: TEvents;
@@ -79,10 +72,6 @@ type
     FVisible: Boolean;
     FProject: string;
     FQueue: TList<TAtlasDebugPin>;
-    FWaiting: Boolean;
-    FDeferred: TAtlasDebugPin;
-    FDeferredSince: UInt64;
-    FInternal: Boolean;
     FHits: TList<THit>;
     FStyle: TAtlasInlineValuePainter;
     constructor Create(const AMessage: TProc<string>);
@@ -93,9 +82,7 @@ type
     procedure Tick(Sender: TObject);
     procedure EvaluateSlice;
     function EvaluateOne(const APin: TAtlasDebugPin): Boolean;
-    procedure DeferredDone(const AValue: TAtlasDebugValue);
-    function DeferredPending: Boolean;
-    procedure EndInternal;
+    procedure ValueArrived(const APin: TAtlasDebugPin; const AText: string; AOk: Boolean);
     function StillStopped: Boolean;
     procedure Pin(const APin: TAtlasDebugPin);
     procedure Unpin(const APin: TAtlasDebugPin);
@@ -103,7 +90,7 @@ type
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure RememberHit(const APin: TAtlasDebugPin; const ARect: TRect);
-    class procedure Invalidate; static;
+    function CanPaint(const AContext: INTACodeEditorPaintContext): Boolean;
   public
     destructor Destroy; override;
     class procedure Start(const AMessage: TProc<string>); static;
@@ -120,29 +107,32 @@ type
 implementation
 
 uses
-  System.Math,
   System.IOUtils,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Editor.LineTail,
-  Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Debug.EvaluateStore,
+  Atlas.IDE.Debug.LineEnd,
   Atlas.UI.Debug.Strings;
 
 const
   cWhat = 'Angeheftete Werte';
+  cFileName = 'debug-pinned-values.json';
+  cSliceMs = 30;
+  cTickMs = 10;
+  cDeferredTimeoutMs = 500;
+  /// <summary>Abstand in Pixeln zwischen zwei Feldern einer Zeile.</summary>
+  cFieldGap = 6;
 
 function StoreFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasIdeDebugPins.cFileName);
+    cFileName);
 end;
 
 { TAtlasIdeDebugPins.TListener }
@@ -185,7 +175,7 @@ begin
   FMessage := AMessage;
   FIndex := -1;
   FPins := TAtlasDebugPins.Create;
-  FEvaluator := TAtlasIdeDebugValues.Create;
+  FValues := TAtlasIdeDebugValueRequest.Create(cDeferredTimeoutMs);
   FQueue := TList<TAtlasDebugPin>.Create;
   FHits := TList<THit>.Create;
   FStyle := TAtlasInlineValuePainter.Create;
@@ -220,9 +210,7 @@ begin
   end;
   FEventsRef := nil;
   FreeAndNil(FTimer);
-  FEvaluator.Cancel;
-  EndInternal;
-  FreeAndNil(FEvaluator);
+  FreeAndNil(FValues);
   FreeAndNil(FQueue);
   FreeAndNil(FHits);
   FreeAndNil(FStyle);
@@ -263,7 +251,7 @@ begin
   end;
   mInstance.FListener := nil;
   mInstance.Free;
-  Invalidate;
+  TAtlasDebugLineEnd.Invalidate;
 end;
 
 class function TAtlasIdeDebugPins.Started: Boolean;
@@ -296,16 +284,6 @@ begin
   begin
     FInstance.Pin(TAtlasDebugPin.Create(TAtlasIdeEvaluateStore.CurrentProject, AFileName, ALine,
       AValue.Expression));
-  end;
-end;
-
-class procedure TAtlasIdeDebugPins.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -345,7 +323,7 @@ begin
       FTimer.Interval := cTickMs;
       FTimer.Enabled := True;
     end;
-    Invalidate;
+    TAtlasDebugLineEnd.Invalidate;
   end
   else if (Length(FPins.All(APin.Project)) >= TAtlasDebugPins.cLimit) and Assigned(FMessage) then
   begin
@@ -369,16 +347,7 @@ begin
     end;
   end;
   Save;
-  Invalidate;
-end;
-
-procedure TAtlasIdeDebugPins.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
-  end;
+  TAtlasDebugLineEnd.Invalidate;
 end;
 
 function TAtlasIdeDebugPins.StillStopped: Boolean;
@@ -390,9 +359,7 @@ procedure TAtlasIdeDebugPins.Stopped;
 var
   mPin: TAtlasDebugPin;
 begin
-  FEvaluator.Cancel;
-  EndInternal;
-  FWaiting := False;
+  FValues.Cancel;
   FQueue.Clear;
   FPins.NewStop;
   FStop := TAtlasIdeDebugSession.StopCount;
@@ -412,7 +379,7 @@ begin
   end;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := FQueue.Count > 0;
-  Invalidate;
+  TAtlasDebugLineEnd.Invalidate;
 end;
 
 procedure TAtlasIdeDebugPins.Ended;
@@ -421,16 +388,14 @@ begin
   begin
     FTimer.Enabled := False;
   end;
-  FEvaluator.Cancel;
-  EndInternal;
-  FWaiting := False;
+  FValues.Cancel;
   FQueue.Clear;
   FHits.Clear;
   FPins.EndSession;
   if FVisible then
   begin
     FVisible := False;
-    Invalidate;
+    TAtlasDebugLineEnd.Invalidate;
   end;
 end;
 
@@ -452,23 +417,6 @@ begin
   end;
 end;
 
-function TAtlasIdeDebugPins.DeferredPending: Boolean;
-begin
-  Result := False;
-  if not FWaiting then
-  begin
-    Exit;
-  end;
-  Result := TAtlasTicks.Since(FDeferredSince) < cDeferredTimeoutMs;
-  if not Result then
-  begin
-    FEvaluator.Cancel;
-    EndInternal;
-    FPins.Put(FDeferred, '', False);
-    FWaiting := False;
-  end;
-end;
-
 procedure TAtlasIdeDebugPins.EvaluateSlice;
 var
   mStartedAt: UInt64;
@@ -481,7 +429,7 @@ begin
     FQueue.Clear;
     Exit;
   end;
-  if DeferredPending then
+  if FValues.Busy then
   begin
     Exit;
   end;
@@ -495,62 +443,47 @@ begin
     mGoOn := EvaluateOne(mPin);
     mChanged := True;
   end;
-  if not FWaiting and (FQueue.Count = 0) then
+  if not FValues.Busy and (FQueue.Count = 0) then
   begin
     FTimer.Enabled := False;
   end;
   if mChanged then
   begin
-    Invalidate;
+    TAtlasDebugLineEnd.Invalidate;
   end;
 end;
 
 function TAtlasIdeDebugPins.EvaluateOne(const APin: TAtlasDebugPin): Boolean;
 var
-  mValue: TAtlasDebugValue;
+  mPin: TAtlasDebugPin;
 begin
-  Result := True;
-  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
-  mValue := Default(TAtlasDebugValue);
-  TAtlasIdeDebugSession.BeginInternal;
-  FInternal := True;
-  try
-    mValue := FEvaluator.Evaluate(APin.Expression, APin.FileName, APin.Line, False, DeferredDone);
-  finally
-    if mValue.State <> TAtlasDebugValueState.Pending then
+  mPin := APin;
+  case FValues.Evaluate(mPin.Expression, mPin.FileName, mPin.Line, False,
+    procedure(const AText: string; AOk: Boolean)
     begin
-      EndInternal;
-    end;
-  end;
-  case mValue.State of
-    TAtlasDebugValueState.Pending:
+      if FInstance <> nil then
       begin
-        FDeferred := APin;
-        FDeferredSince := TAtlasTicks.Now;
-        FWaiting := True;
+        FInstance.ValueArrived(mPin, AText, AOk);
+      end;
+    end) of
+    TAtlasDebugRequestState.Waiting:
+      Result := False;
+    TAtlasDebugRequestState.NoProcess:
+      begin
+        // Kein angehaltener Prozess mehr.
+        FQueue.Clear;
         Result := False;
       end;
-    TAtlasDebugValueState.Value:
-      FPins.Put(APin, mValue.Text, True);
-    TAtlasDebugValueState.Failed:
-      FPins.Put(APin, '', False);
   else
-    // Kein angehaltener Prozess mehr.
-    FQueue.Clear;
-    Result := False;
+    Result := True;
   end;
 end;
 
-procedure TAtlasIdeDebugPins.DeferredDone(const AValue: TAtlasDebugValue);
+procedure TAtlasIdeDebugPins.ValueArrived(const APin: TAtlasDebugPin; const AText: string; AOk: Boolean);
 begin
-  if not FWaiting then
-  begin
-    Exit;
-  end;
-  EndInternal;
-  FPins.Put(FDeferred, AValue.Text, AValue.State = TAtlasDebugValueState.Value);
-  FWaiting := False;
-  Invalidate;
+  FPins.Put(APin, AText, AOk);
+  // Verzögerte Antworten kommen außerhalb einer Zeitscheibe: neu zeichnen.
+  TAtlasDebugLineEnd.Invalidate;
 end;
 
 procedure TAtlasIdeDebugPins.RememberHit(const APin: TAtlasDebugPin; const ARect: TRect);
@@ -570,41 +503,26 @@ begin
   FHits.Add(mHit);
 end;
 
-/// <summary>Tabweite des Puffers im Zeichenkontext; 0 ohne.</summary>
-function TabWidth(const AContext: INTACodeEditorPaintContext): Integer;
+function TAtlasIdeDebugPins.CanPaint(const AContext: INTACodeEditorPaintContext): Boolean;
 begin
-  Result := 0;
-  if (AContext.EditView <> nil) and (AContext.EditView.Buffer <> nil) then
-  begin
-    Result := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
-  end;
+  Result := FVisible and (AContext <> nil) and (AContext.LineState <> nil) and
+    not TAtlasGuard.Disabled(TAtlasFeature.Debugger);
 end;
 
 procedure TAtlasIdeDebugPins.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   mPin: TAtlasDebugPin;
-  mLineState: INTACodeEditorLineState;
-  mCell, mClose: TRect;
+  mClose: TRect;
   mTailKey: string;
   mX: Integer;
-  mSample: COLORREF;
-  mDC: HDC;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or
-    not FVisible then
+  if BeforeEvent or (Stage <> plsEndPaint) or not CanPaint(Context) then
   begin
     Exit;
   end;
   try
-    mLineState := Context.LineState;
-    if mLineState = nil then
-    begin
-      Exit;
-    end;
-    mTailKey := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
     mX := -1;
-    mDC := Context.Canvas.Handle;
     for mPin in FPins.InFile(FProject, Context.FileName) do
     begin
       if mPin.Line <> Context.LogicalLineNum then
@@ -613,23 +531,15 @@ begin
       end;
       if mX < 0 then
       begin
-        // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile bzw. hinter den Werten im Editor.
-        mCell := Context.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(TrimRight(mLineState.Text),
-          TabWidth(Context))) + 3, Context.EditorLineNum);
-        mX := TAtlasLineTail.Start(Self, mTailKey, mCell.Left);
-        mSample := GetPixel(mDC, mX, Rect.Top + 1);
-        if mSample = CLR_INVALID then
-        begin
-          mSample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
-        end;
-        FStyle.Ensure(mSample, Context.Canvas.Font);
+        // Hinter dem letzten Zeichen der Zeile bzw. hinter den Werten im Editor.
+        mX := TAtlasDebugLineEnd.Start(Self, Context, Rect, Context.LineState.Text, FStyle, mTailKey);
       end;
-      mX := FStyle.DrawPin(mDC, Rect, mX, FPins.ValueOf(mPin), mClose) + 6;
+      mX := FStyle.DrawPin(Context.Canvas.Handle, Rect, mX, FPins.ValueOf(mPin), mClose) + cFieldGap;
       RememberHit(mPin, mClose);
     end;
     if mX >= 0 then
     begin
-      TAtlasLineTail.Finish(Self, mTailKey, mX);
+      TAtlasDebugLineEnd.Finish(Self, mTailKey, mX);
     end;
   except
     // Zeichnen darf die IDE nie stören.
@@ -652,7 +562,7 @@ begin
   mFound := False;
   for mHit in FHits do
   begin
-    if PtInRect(mHit.Rect, Point(X, Y)) then
+    if mHit.Rect.Contains(Point(X, Y)) then
     begin
       mPin := mHit.Pin;
       mFound := True;

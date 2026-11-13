@@ -151,6 +151,7 @@ function TAtlasInlineValuePainter.DrawPin(ADC: HDC; const ARect: TRect; AX: Inte
   const AItem: TAtlasInlineValueItem; out AClose: TRect): Integer;
 const
   cPad = 4;
+  cCorner = 4;
   cClose = ' ✕';
 var
   mSaved, mTop, mRight: Integer;
@@ -172,7 +173,7 @@ begin
     try
       SelectObject(ADC, mPen);
       SelectObject(ADC, GetStockObject(NULL_BRUSH));
-      RoundRect(ADC, AX, ARect.Top + 1, mRight, ARect.Bottom - 1, 4, 4);
+      RoundRect(ADC, AX, ARect.Top + 1, mRight, ARect.Bottom - 1, cCorner, cCorner);
     finally
       SelectObject(ADC, GetStockObject(BLACK_PEN));
       DeleteObject(mPen);
