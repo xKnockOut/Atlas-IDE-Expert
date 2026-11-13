@@ -391,3 +391,20 @@ Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
 - Without the exception bar the result goes to the messages.
 
 Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`
+
+## Debug: threads
+
+### What is waiting for what?
+
+- When a program hangs, pause it (Run > Program Pause) and choose Atlas > "What is waiting for what?".
+- Atlas reads the call stacks of all threads and lists per thread its id, name (`TThread.NameThreadForDebugging`), wait point and first line of your own code in the results window, for example "Thread 7 "Worker": waiting in TThread.Synchronize, at TWorker.Execute (Unit2.pas:30)".
+- The wait point is the wait routine above the first line of your own code: `TThread.WaitFor`, `TThread.Synchronize`, `TMonitor.Enter`/`Wait`, critical section, event (`TEvent.WaitFor`), `Sleep` or a handle (`WaitForSingleObject`, `WaitForMultipleObjects`); the message loop counts as "waiting for messages".
+- Above them are the detected patterns:
+  - The main thread waits in `TThread.WaitFor` (for example in the destructor of a thread) while a thread waits in `Synchronize` for it: a deadlock, see rule `synchronize-in-destructor`.
+  - A thread waits in `Synchronize` while the main thread hangs on a lock.
+  - Several threads wait for a lock at the same place.
+  - All threads are waiting and none is running.
+- A double click switches to the thread and jumps to its first line of your own code.
+- The debugger does not tell who holds a lock (`TMonitor`, critical section); Atlas names only the waiting threads.
+
+Settings: `debug.deadlocks`
