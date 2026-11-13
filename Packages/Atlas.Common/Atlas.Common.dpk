@@ -340,6 +340,7 @@ contains
   Atlas.Common.Editing.StatementText in 'Source\Editing\Atlas.Common.Editing.StatementText.pas',
   Atlas.Common.Editing.IfCase in 'Source\Editing\Atlas.Common.Editing.IfCase.pas',
   Atlas.Common.Editing.Conditions in 'Source\Editing\Atlas.Common.Editing.Conditions.pas',
+  Atlas.Common.Editing.BoundaryCases in 'Source\Editing\Atlas.Common.Editing.BoundaryCases.pas',
   Atlas.Common.Editing.ConditionalExpression in 'Source\Editing\Atlas.Common.Editing.ConditionalExpression.pas',
   Atlas.Common.Editing.NestedRoutines in 'Source\Editing\Atlas.Common.Editing.NestedRoutines.pas',
   Atlas.Common.Editing.RoutineParts in 'Source\Editing\Atlas.Common.Editing.RoutineParts.pas',

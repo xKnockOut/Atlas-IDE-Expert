@@ -216,6 +216,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.BoundaryCases.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ConditionalExpression.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.NestedRoutines.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RoutineParts.Tests.pas"/>

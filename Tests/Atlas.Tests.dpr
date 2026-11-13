@@ -350,6 +350,7 @@ uses
   Atlas.Common.Editing.StatementText.Tests in 'Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas',
   Atlas.Common.Editing.IfCase.Tests in 'Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas',
   Atlas.Common.Editing.Conditions.Tests in 'Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas',
+  Atlas.Common.Editing.BoundaryCases.Tests in 'Common\Editing\Atlas.Common.Editing.BoundaryCases.Tests.pas',
   Atlas.Common.Editing.ConditionalExpression.Tests in 'Common\Editing\Atlas.Common.Editing.ConditionalExpression.Tests.pas',
   Atlas.Common.Editing.NestedRoutines.Tests in 'Common\Editing\Atlas.Common.Editing.NestedRoutines.Tests.pas',
   Atlas.Common.Editing.RoutineParts.Tests in 'Common\Editing\Atlas.Common.Editing.RoutineParts.Tests.pas',
