@@ -2258,6 +2258,8 @@ uses
   Atlas.Core.Debug.BreakpointCheck.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointCheck.Tests.pas',
   Atlas.UI.Debug.BreakpointCheck in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas',
   Atlas.UI.Debug.BreakpointCheck.Tests in 'IDE.Expert\Atlas.UI.Debug.BreakpointCheck.Tests.pas',
+  Atlas.UI.Debug.InstanceBreakpoint in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.InstanceBreakpoint.pas',
+  Atlas.UI.Debug.InstanceBreakpoint.Tests in 'IDE.Expert\Atlas.UI.Debug.InstanceBreakpoint.Tests.pas',
   Atlas.Tests.UpdateFakes in 'Support\Atlas.Tests.UpdateFakes.pas',
   Atlas.Tests.EditorFilesFake in 'Support\Atlas.Tests.EditorFilesFake.pas',
   Atlas.Text.Updates.Tests in 'Text\Atlas.Text.Updates.Tests.pas',

@@ -1978,6 +1978,19 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
     },
+    "DebugInstanceBreakpoints": {
+      "description": "Haltepunkt nur für ein Objekt: Im angehaltenen Programm schränkt „Haltepunkt nur für dieses Objekt“ (Kontextmenü des Editors, Schreibmarke auf der Zeile des Haltepunkts) den Haltepunkt mit der Bedingung „Pointer(Self) = Pointer($…)“ auf das aktuelle Self ein; „Haltepunkt nur wenn …“ setzt eine Bedingung aus einem aktuellen Feldwert von Self („Nr = 4711“), die auch in der nächsten Sitzung gilt. Eine vorhandene Bedingung bleibt erhalten und wird mit „and“ verknüpft. Nur in Methoden. Vor dem nächsten Start fragt Atlas, ob Adressbedingungen der letzten Sitzung entfernt oder durch eine Feldbedingung ersetzt werden sollen. Aus = keine Befehle, keine Frage.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.instanceBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt nur für ein Objekt",
+      "x-captionEn": "Breakpoint only for one object",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#857"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,

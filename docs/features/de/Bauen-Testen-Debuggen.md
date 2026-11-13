@@ -236,6 +236,17 @@ Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie 
 
 Einstellungen: `debug.checkBreakpoints`
 
+#### Haltepunkt nur für ein Objekt
+
+Ein Haltepunkt in `TKunde.Speichere` hält bei 500 Kunden 500 Mal. Im angehaltenen Programm, mit der Schreibmarke auf der Zeile des Haltepunkts, bietet das Kontextmenü des Editors unter Debuggen:
+
+- „Haltepunkt nur für dieses Objekt“: Atlas wertet `Pointer(Self)` aus und schreibt `Pointer(Self) = Pointer($0A3F1C20)` in die Bedingung. Die Adresse gilt nur in dieser Sitzung.
+- „Haltepunkt nur wenn …“: Auswahl aus den Feldern von `Self` mit einfachem Wert, etwa `FNr = 4711`; die Bedingung gilt auch in späteren Sitzungen.
+
+Eine vorhandene Bedingung bleibt erhalten und wird mit `and` verknüpft. Beides gibt es nur in Methoden, nicht in freien Routinen und Klassenmethoden. Vor dem nächsten Start fragt Atlas nach Adressbedingungen der letzten Sitzung: entfernen, durch eine Feldbedingung ersetzen oder behalten.
+
+Einstellungen: `debug.instanceBreakpoints`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))
