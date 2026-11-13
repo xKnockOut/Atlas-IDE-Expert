@@ -166,6 +166,8 @@ const
   cRefreshWidth = 110;
   cRebuildWidth = 140;
   cPackageWidth = 170;
+  /// <summary>Abstand oben des Hinweises in der Leiste bei 96 dpi, mittig zu den Knöpfen.</summary>
+  cNoteTop = 7;
 
 {$R *.dfm}
 
@@ -528,7 +530,7 @@ begin
   FNote.Parent := Self;
   FNote.AlignWithMargins := True;
   FNote.AutoSize := True;
-  FNote.Margins.Top := FNote.ScaleValue(7);
+  FNote.Margins.Top := FNote.ScaleValue(cNoteTop);
   FNote.ShowAccelChar := False;
   FNote.Font.Color := clGrayText;
   FNote.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint);

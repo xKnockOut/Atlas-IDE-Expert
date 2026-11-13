@@ -1,14 +1,15 @@
 ﻿unit Shell.Mcp.BuildTestTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge für Builds in der IDE und DUnitX-Testläufe
-// (get_last_build, build_project, run_tests) und die Mutanten einer Unit (get_mutants, #1460).
+// (get_last_build, build_project, run_tests), das Profil aus „Mit Profil ausführen“ (get_profile, #2057) und die
+// Mutanten einer Unit (get_mutants, #1460).
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet get_last_build, build_project, run_tests und get_mutants an.</summary>
+/// <summary>Meldet get_last_build, build_project, run_tests, get_profile und get_mutants an.</summary>
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 
 implementation
@@ -26,6 +27,8 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Mcp.ProfileTools,
+  Atlas.Common.Profiling.Profile,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
@@ -46,7 +49,9 @@ type
   TMcpBuildTestText = (GetLastBuildTool, GetLastBuildProject, BuildProjectTool, BuildProjectProject, BuildProjectMode,
     BuildProjectConfiguration, BuildProjectPlatform, RunTestsTool, RunTestsProject, RunTestsTests, RunTestsBuild,
     RunTestsConfiguration, RunTestsPlatform, RunTestsTimeoutSeconds, ProjectUnreadable, BuildFailed, TimedOut,
-    ExeMissing, GetMutantsTool, GetMutantsFile, GetMutantsRoutine, GetMutantsOperators, GetMutantsFirstLine,
+    ExeMissing, GetProfileTool, GetProfileTop, GetProfileUnit, GetProfileRun, GetProfileCompareWith,
+    GetProfileFormat, GetProfileOwnCode,
+    GetMutantsTool, GetMutantsFile, GetMutantsRoutine, GetMutantsOperators, GetMutantsFirstLine,
     GetMutantsLastLine, GetMutantsFormat, UnknownOperators, SourceUnreadable);
 {$SCOPEDENUMS OFF}
 
@@ -100,6 +105,23 @@ const
     (De: 'Testlauf nach %d s abgebrochen (timeoutSeconds).'; En: 'Test run aborted after %d s (timeoutSeconds).'),
     (De: 'Test-EXE fehlt: %s. Mit "build": true bauen oder das Projekt in der IDE für %s/%s bauen.';
     En: 'Test EXE missing: %s. Build with "build": true or build the project in the IDE for %s/%s.'),
+    (De: 'Profil eines Laufs mit „Mit Profil ausführen“ in der IDE (#2057): die teuersten Methoden nach ' +
+    'Eigenanteil (Proben, in denen sie gerade rechnete) und Gesamtanteil (irgendwo im Aufrufstapel) mit Datei ' +
+    'und heißester Zeile; RTL und VCL zusammengefasst, solange ownCode an ist. Mit compareWith der Vergleich ' +
+    'zweier Läufe. Gespeichert bleiben die letzten fünf Läufe. Lesend.';
+    En: 'Profile of a run with "Run with profile" in the IDE (#2057): the most expensive methods by self share ' +
+    '(samples in which they were computing) and total share (anywhere in the call stack) with file and hottest ' +
+    'line; RTL and VCL summarized while ownCode is on. With compareWith the comparison of two runs. The last ' +
+    'five runs are kept. Read-only.'),
+    (De: 'Anzahl Methoden; Vorgabe 10, höchstens 100'; En: 'Number of methods; default 10, at most 100'),
+    (De: 'Nur Methoden dieser Unit bzw. Datei (Teil des Namens)'; En: 'Only methods of this unit or file (part ' +
+    'of the name)'),
+    (De: 'Lauf: leer = neuester, 2 = zweitneuester, oder Dateiname'; En: 'Run: empty = newest, 2 = second newest, ' +
+    'or file name'),
+    (De: 'Zweiter Lauf zum Vergleich (wie run)'; En: 'Second run to compare with (like run)'),
+    (De: 'text (Vorgabe) oder json'; En: 'text (default) or json'),
+    (De: 'RTL, VCL und andere Bibliotheken zu ihrem Aufruf aus eigenem Code zusammenfassen; Vorgabe true';
+    En: 'Summarize RTL, VCL and other libraries into their call from own code; default true'),
     (De: 'Mutanten einer Unit für Mutationstests (#1460): kleine Fehler, die die DUnitX-Tests bemerken sollten ' +
     '(Vergleich < und <=, = und <>, and und or, not entfernen, + und -, +1 entfernen, True und False, 0 und 1, ' +
     'Anweisung entfernen, Exit(x) durch Exit(Default(Typ))). Erzeugt aus dem Syntaxbaum, nur in aktiven Zweigen, ' +
@@ -417,6 +439,61 @@ begin
     ContextTool(AContext, ToolRunTests), TMcpToolKind.Process);
 end;
 
+/// <summary>Gespeicherte Läufe unter AFolder, neueste zuerst; unlesbare Dateien bleiben weg.</summary>
+function LoadProfileRuns(const AFolder: string): TArray<TMcpProfileRun>;
+var
+  mFile: string;
+  mRun: TMcpProfileRun;
+begin
+  Result := nil;
+  if not TDirectory.Exists(AFolder) then
+  begin
+    Exit;
+  end;
+  for mFile in TAtlasProfileStore.Newest(TDirectory.GetFiles(AFolder, TAtlasProfileStore.cPrefix + '*.json')) do
+  begin
+    mRun := Default(TMcpProfileRun);
+    mRun.Name := ExtractFileName(mFile);
+    if TAtlasProfileJson.TryParse(TFile.ReadAllText(mFile, TEncoding.UTF8), mRun.Profile) then
+    begin
+      Result := Result + [mRun];
+    end;
+  end;
+end;
+
+function ToolGetProfile(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mFolder: string;
+  mRuns: TArray<TMcpProfileRun>;
+begin
+  mFolder := TAtlasProfileStore.Folder(TIndexCacheDirectory.DefaultRoot);
+  mRuns := LoadProfileRuns(mFolder);
+  if Length(mRuns) = 0 then
+  begin
+    Exit(TMcpProfileTools.NoRuns(mFolder));
+  end;
+  Result := TMcpProfileTools.Report(mRuns, TMcpProfileRequest.FromArguments(AArguments));
+end;
+
+procedure AddGetProfile(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('get_profile', cTexts[TMcpBuildTestText.GetProfileTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"top":{"type":"integer","default":10,"description":%s},' +
+      '"unit":{"type":"string","description":%s},' +
+      '"run":{"type":"string","description":%s},' +
+      '"compareWith":{"type":"string","description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"default":"text","description":%s},' +
+      '"ownCode":{"type":"boolean","default":true,"description":%s}}}',
+      [cTexts[TMcpBuildTestText.GetProfileTop].Text,
+      cTexts[TMcpBuildTestText.GetProfileUnit].Text,
+      cTexts[TMcpBuildTestText.GetProfileRun].Text,
+      cTexts[TMcpBuildTestText.GetProfileCompareWith].Text,
+      cTexts[TMcpBuildTestText.GetProfileFormat].Text,
+      cTexts[TMcpBuildTestText.GetProfileOwnCode].Text]),
+    ContextTool(AContext, ToolGetProfile));
+end;
+
 /// <summary>Kennungen aus "operators": Liste oder Text mit Kommas; nil = alle.</summary>
 function OperatorIdsOf(const AArguments: TJSONObject): TArray<string>;
 var
@@ -514,6 +591,7 @@ begin
   AddGetLastBuild(AContext);
   AddBuildProject(AContext);
   AddRunTests(AContext);
+  AddGetProfile(AContext);
   AddGetMutants(AContext);
 end;
 
