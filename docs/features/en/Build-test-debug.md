@@ -472,6 +472,29 @@ Settings: `debug.completionInDialogs`
 
 Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
+<a id="window-atlasvariables"></a>
+### Variables window
+
+- A dockable window "Atlas: Variables" (Atlas menu) with three tabs, evaluated again at every stop:
+  - **Autos:** variables, fields and simple expressions of the current statement and, after a step, of the previous one, taken from the syntax tree. Calls (also functions and getters without parentheses) are left out, only their arguments and the object in front remain: for `Betrag := LeseBetrag(S);` these are `Betrag` and `S`.
+  - **Locals:** `Self`, parameters, `Result`, local variables and inline variables already declared at the line.
+  - **Watch:** your own expressions, stored per project; they come back with the project.
+- Values are evaluated without side effects, expand into their fields like in the evaluate window, and values that changed since the last step are highlighted.
+- Search in the shown tab by name or (with "In values") by value. With "Children" Atlas expands nodes itself up to `debug.variablesWindow.searchDepth` levels and stops after `debug.variablesWindow.searchLimit` evaluations. It shows the matches (bold), their path and their children; the footer shows the number of matches. Only simple values count: searching for "Berlin" matches `Kunde.Adressen[1].Ort`, not `Kunde`.
+- Autos and Locals need the Atlas server; Watch works without it.
+
+| Key / command | Action |
+|---|---|
+| Ctrl+F | go to the search field |
+| Ctrl+W | add the row's expression as a watch |
+| Ctrl+C | copy value |
+| Ctrl+Shift+C | copy expression |
+| F2 | change the value (with `debug.editValues`, like “Change …” in the debug hover) |
+| Del (Watch tab) | remove the watch |
+| Enter in the field of the Watch tab | watch the expression |
+
+Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+
 ## Debug: stepping and breaking
 
 ### Smart step into

@@ -53,7 +53,8 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.EvaluateHook,
-  Atlas.IDE.Debug.EvaluateStore;
+  Atlas.IDE.Debug.EvaluateStore,
+  Atlas.IDE.Debug.FieldRequests;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -65,7 +66,6 @@ type
     cTickMs = 10;
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
     cDeferredTimeoutMs = 2000;
-    cRequestTimeoutMs = 3000;
     /// <summary>Versuche, bis der Aufrufstapel da ist (je TickMs * 5).</summary>
     cLocationRetries = 20;
   private type
@@ -141,16 +141,6 @@ type
     public
       procedure Fetch(ANode: TAtlasEvalNode; const APlace: TPlace; ASideEffects: Boolean);
     end;
-    /// <summary>Feldanfragen an den Server im Hintergrund.</summary>
-    TWorkers = class(TList<TThread>)
-    public
-      /// <summary>Beendete Anfragen freigeben; mit AWait auch laufende (abwarten).</summary>
-      procedure Reap(AWait: Boolean);
-      /// <summary>Felder von AExpression („Ausdruck.“) über ASession holen; die Antwort geht an AcceptFields.
-      /// </summary>
-      procedure StartFields(ASession: TLspSession; const APlace: TPlace; const AExpression: string;
-        AWithProperties: Boolean; ARequest: Integer; const AKey: string);
-    end;
   private class var
     FInstance: TAtlasIdeDebugEvaluate;
   private
@@ -161,7 +151,7 @@ type
     FListener: IAtlasIdeDebugListener;
     FTimer: TTimer;
     FHook: TAtlasIdeEvaluateHook;
-    FWorkers: TWorkers;
+    FWorkers: TAtlasIdeDebugFieldRequests;
     FProgress: TProgress;
     FPlace: TPlace;
     FSideEffects: Boolean;
@@ -209,7 +199,6 @@ implementation
 
 uses
   Atlas.UI.Debug.EvaluateFrame,
-  System.JSON,
   Vcl.Controls,
   Vcl.Dialogs,
   ToolsAPI,
@@ -314,42 +303,20 @@ begin
     TAtlasIdeSettings.Current.DebugEvaluateReplaceCtrlF7;
 end;
 
-/// <summary>Felder von AExpression aus dem Atlas-Index; nil, wenn der Server langsam oder weg ist.</summary>
-function QueryFields(ASession: TLspSession; const AFileName: string; ALine: Integer; const AExpression: string;
-  AWithProperties: Boolean): TArray<string>;
+/// <summary>Felder für AKey an AcceptFields, solange das Fenster angemeldet ist.</summary>
+function FieldsArrived(ARequest: Integer; const AKey: string): TAtlasDebugFieldsArrived;
 var
-  mResponse: TJSONValue;
+  mKey: string;
 begin
-  Result := nil;
-  try
-    mResponse := ASession.ExpressionCompletion(AFileName, ALine, AExpression, Length(AExpression),
-      TAtlasIdeDebugEvaluate.cRequestTimeoutMs);
-    try
-      Result := TAtlasEvalText.FieldsOf(mResponse, AWithProperties);
-    finally
-      mResponse.Free;
-    end;
-  except
-    // Server langsam oder weg: Teile des Ergebnis-Strings.
-    Result := nil;
-  end;
-end;
-
-/// <summary>AFields im Hauptthread an AcceptFields, solange das Fenster angemeldet ist.</summary>
-procedure DeliverFields(ARequest: Integer; const AKey: string; const AFields: TArray<string>);
-begin
-  TAtlasMainThread.Queue(TAtlasFeature.Debugger,
-    procedure
+  mKey := AKey;
+  Result :=
+    procedure(const AFields: TArray<string>)
     begin
-      TAtlasGuard.Run(TAtlasFeature.Debugger,
-        procedure
-        begin
-          if TAtlasIdeDebugEvaluate.FInstance <> nil then
-          begin
-            TAtlasIdeDebugEvaluate.FInstance.AcceptFields(ARequest, AKey, AFields);
-          end;
-        end);
-    end);
+      if TAtlasIdeDebugEvaluate.FInstance <> nil then
+      begin
+        TAtlasIdeDebugEvaluate.FInstance.AcceptFields(ARequest, mKey, AFields);
+      end;
+    end;
 end;
 
 /// <summary>ANode und seine Felder neu auswerten; Teile entstehen aus dem neuen Wert.</summary>
@@ -703,43 +670,6 @@ begin
   end;
 end;
 
-{ TAtlasIdeDebugEvaluate.TWorkers }
-
-procedure TAtlasIdeDebugEvaluate.TWorkers.Reap(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  for mIndex := Count - 1 downto 0 do
-  begin
-    if AWait or Items[mIndex].Finished then
-    begin
-      Items[mIndex].WaitFor;
-      Items[mIndex].Free;
-      Self.Delete(mIndex);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeDebugEvaluate.TWorkers.StartFields(ASession: TLspSession; const APlace: TPlace;
-  const AExpression: string; AWithProperties: Boolean; ARequest: Integer; const AKey: string);
-var
-  mFileName: string;
-  mLine: Integer;
-  mWorker: TThread;
-begin
-  Reap(False);
-  mFileName := APlace.FileName;
-  mLine := APlace.Line;
-  mWorker := TThread.CreateAnonymousThread(
-    procedure
-    begin
-      DeliverFields(ARequest, AKey, QueryFields(ASession, mFileName, mLine, AExpression, AWithProperties));
-    end);
-  mWorker.FreeOnTerminate := False;
-  Self.Add(mWorker);
-  mWorker.Start;
-end;
-
 { TAtlasIdeDebugEvaluate }
 
 constructor TAtlasIdeDebugEvaluate.Create(const ASession: TAtlasEvaluateSessionFunc);
@@ -750,7 +680,7 @@ begin
   FList := TAtlasEvalList.Create;
   FEvaluation := TEvaluation.Create(FList);
   FLines := TLines.Create;
-  FWorkers := TWorkers.Create;
+  FWorkers := TAtlasIdeDebugFieldRequests.Create;
   FStore := TAtlasIdeEvaluateStore.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -1230,7 +1160,8 @@ begin
   end;
   // Im Hauptthread abgleichen: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(FPlace.FileName, mSource);
-  FWorkers.StartFields(mSession, FPlace, mNode.Expression + '.', FSideEffects, FProgress.Request, AKey);
+  FWorkers.Start(mSession, FPlace.FileName, FPlace.Line, mNode.Expression + '.', FSideEffects,
+    FieldsArrived(FProgress.Request, AKey));
 end;
 
 procedure TAtlasIdeDebugEvaluate.AcceptFields(ARequest: Integer; const AKey: string; const AFields: TArray<string>);

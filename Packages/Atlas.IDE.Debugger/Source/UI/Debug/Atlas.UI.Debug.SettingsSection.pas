@@ -32,6 +32,8 @@ type
     procedure BuildVisualizers;
     procedure BuildStepping;
     procedure BuildMore;
+    /// <summary>Werte beim Halt: Fenster „Variablen“, Vorhersage, Werte ändern, Debug-Hover.</summary>
+    procedure BuildStopValues;
   protected
     procedure BuildRows; override;
   public
@@ -56,7 +58,8 @@ uses
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.VariablesStrings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -222,16 +225,7 @@ begin
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHereDepth));
-  // Bedingungen vorausschauen (#2169).
-  Switch('debug.predictConditions', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredict));
-  Switch('debug.predictConditions.dimSkipped', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictDim));
-  Number('debug.predictConditions.lines', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictLines));
-  // Werte ändern (#868).
-  Switch('debug.editValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEditValues));
-  // Debug-Hover aufklappen und Änderungen markieren (#895).
-  Switch('debug.hoverExpand', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverExpand));
-  Number('debug.hoverMaxChildren', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverMaxChildren));
-  Switch('debug.hoverChanges', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverChanges));
+  BuildStopValues;
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));
@@ -248,6 +242,26 @@ begin
   // Startverbünde (#867).
   Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
   Switch('debug.pinnedValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPinnedValues));
+end;
+
+procedure TAtlasDebugSettingsSection.BuildStopValues;
+begin
+  // Fenster „Variablen“ (#853).
+  Switch('debug.variablesWindow', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesWindow));
+  Number('debug.variablesWindow.searchDepth',
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchDepth));
+  Number('debug.variablesWindow.searchLimit',
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
+  // Bedingungen vorausschauen (#2169).
+  Switch('debug.predictConditions', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredict));
+  Switch('debug.predictConditions.dimSkipped', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictDim));
+  Number('debug.predictConditions.lines', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictLines));
+  // Werte ändern (#868).
+  Switch('debug.editValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEditValues));
+  // Debug-Hover aufklappen und Änderungen markieren (#895).
+  Switch('debug.hoverExpand', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverExpand));
+  Number('debug.hoverMaxChildren', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverMaxChildren));
+  Switch('debug.hoverChanges', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverChanges));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;

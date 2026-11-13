@@ -128,6 +128,10 @@ type
     /// <summary>Neue Zeile mit AExpression (getrimmt) am Ende; nil bei leerem Ausdruck.</summary>
     function Add(const AExpression: string): TAtlasEvalNode;
     procedure Delete(AIndex: Integer);
+    /// <summary>Wurzeln auf AExpressions bringen, in deren Reihenfolge und ohne Doppelte: gleiche Ausdrücke behalten
+    /// ihren Knoten samt Wert und Aufklappzustand, übrige fallen weg, neue kommen offen dazu. Für Listen, die Atlas
+    /// selbst füllt (Fenster „Variablen“, #853).</summary>
+    procedure Replace(const AExpressions: TArray<string>);
     function IndexOf(ANode: TAtlasEvalNode): Integer;
     /// <summary>Neuer Halt: Werte dieses Halts werden die vorigen, alle Knoten mit Ausdruck sind wieder offen.
     /// Kinder aus Teilen fallen weg und entstehen mit dem neuen Wert des Elternknotens.</summary>
@@ -857,6 +861,59 @@ end;
 procedure TAtlasEvalList.Delete(AIndex: Integer);
 begin
   FRoots.Delete(AIndex);
+end;
+
+procedure TAtlasEvalList.Replace(const AExpressions: TArray<string>);
+var
+  mOld: TDictionary<string, TAtlasEvalNode>;
+  mPrevious: TArray<TAtlasEvalNode>;
+  mNode: TAtlasEvalNode;
+  mExpression: string;
+begin
+  mOld := TDictionary<string, TAtlasEvalNode>.Create;
+  try
+    // Bisherige Wurzeln lösen, ohne sie freizugeben; Schlüssel ist der Ausdruck.
+    mPrevious := FRoots.ToArray;
+    FRoots.OwnsObjects := False;
+    try
+      FRoots.Clear;
+    finally
+      FRoots.OwnsObjects := True;
+    end;
+    for mNode in mPrevious do
+    begin
+      if mOld.ContainsKey(mNode.Key) then
+      begin
+        mNode.Free;
+      end
+      else
+      begin
+        mOld.Add(mNode.Key, mNode);
+      end;
+    end;
+    for mExpression in AExpressions do
+    begin
+      if (Trim(mExpression) = '') or (Find(Trim(mExpression)) <> nil) then
+      begin
+        Continue;
+      end;
+      if mOld.TryGetValue(Trim(mExpression), mNode) then
+      begin
+        mOld.Remove(mNode.Key);
+        FRoots.Add(mNode);
+      end
+      else
+      begin
+        Add(mExpression);
+      end;
+    end;
+  finally
+    for mNode in mOld.Values do
+    begin
+      mNode.Free;
+    end;
+    mOld.Free;
+  end;
 end;
 
 function TAtlasEvalList.IndexOf(ANode: TAtlasEvalNode): Integer;
