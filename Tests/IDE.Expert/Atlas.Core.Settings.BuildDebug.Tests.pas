@@ -63,6 +63,9 @@ type
     /// </summary>
     [Test]
     procedure ReattachOptions;
+    /// <summary>Startverbünde (#867): an, gespeichert und geladen.</summary>
+    [Test]
+    procedure LaunchGroupOptions;
   end;
 
 implementation
@@ -232,6 +235,21 @@ begin
   Assert.IsFalse(Loaded.DebugReattach);
   Assert.AreEqual(Integer(0), Loaded.DebugReattachKey);
   Assert.AreEqual(Integer(2000), Loaded.DebugReattachWaitIntervalMs, 'höchstens 2000 ms');
+end;
+
+procedure TAtlasBuildDebugSettingsTests.LaunchGroupOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugLaunchGroups, 'standardmäßig an');
+  Settings.DebugLaunchGroups := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugLaunchGroups);
 end;
 
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;

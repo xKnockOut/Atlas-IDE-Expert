@@ -2073,6 +2073,19 @@
       "x-control": "Zahl",
       "x-issue": "#2171"
     },
+    "DebugLaunchGroups": {
+      "description": "Startverbünde: mehrere Programme der Projektgruppe gemeinsam starten und debuggen. Die Verbünde stehen in der Projektdatei .atlas unter launchGroups (für alle im Team): je Projekt Startprofil, mit oder ohne Debugger und eine Wartebedingung vor dem nächsten (feste Sekunden, bis ein TCP-Port offen ist, bis das Hauptfenster da ist). Fenster „Atlas: Startverbünde …“ wählt den aktiven Verbund; F9 baut geänderte Projekte und startet alle in Reihenfolge, Strg+F2 beendet alle. Scheitert ein Start oder läuft eine Wartebedingung ab, hält der Verbund an und fragt „Trotzdem weiter“ oder „Alle beenden“. Das Statusfeld zeigt je Programm den Zustand, ein Klick wechselt den aktiven Prozess. Aus = F9 startet nur das aktive Projekt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.launchGroups",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Startverbünde",
+      "x-captionEn": "Launch groups",
+      "x-issue": "#867"
+    },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
       "type": "boolean",
