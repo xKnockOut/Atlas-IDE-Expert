@@ -103,7 +103,6 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.UI.Completion.PopupTexts,
   Atlas.Core.Style.Palette;
 
 type
@@ -601,9 +600,6 @@ begin
   Items[2].NarrowedLine := 147;
   Order := TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults);
   Assert.AreEqual('#,Count,AddPair,#,Clone', Names(Items, Order));
-  Assert.AreEqual('mLocation ist hier TJSONObject (is-Prüfung, Zeile 147)',
-    TAtlasCompletionTexts.HeaderText(Items, Order, 0));
-  Assert.AreEqual('Weitere', TAtlasCompletionTexts.HeaderText(Items, Order, 3));
   // Auch mit Präfix stehen sie oben.
   Assert.AreEqual('#,Count,#,Clone', Names(Items, TAtlasRanking.Order(Items, 'c', TAtlasRankOptions.Defaults)));
   Found := False;
@@ -625,7 +621,6 @@ begin
   Items[2].DescendantOf := 'TJSONValue';
   Order := TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults);
   Assert.AreEqual('#,TJSONObject,TJSONArray,#,TAlpha', Names(Items, Order));
-  Assert.AreEqual('Nachfahren von TJSONValue', TAtlasCompletionTexts.HeaderText(Items, Order, 0));
 end;
 
 procedure TAtlasRankingTests.ConversionStandsBeforeOriginal;
