@@ -760,6 +760,7 @@ contains
   Atlas.Common.Rules.Builtin.Testing.Classes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Classes.pas',
   Atlas.Common.Rules.Builtin.Testing.Registration in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.pas',
   Atlas.Common.Rules.Builtin.Testing.TearDown in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TearDown.pas',
+  Atlas.Common.Rules.Builtin.Testing.Attributes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Attributes.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCases in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCaseTable in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas',

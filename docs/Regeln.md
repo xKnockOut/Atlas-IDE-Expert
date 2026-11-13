@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 56 |
-| [Packages und Tests](#gruppe-packages) | 9 |
+| [Packages und Tests](#gruppe-packages) | 13 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -440,6 +440,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dunitx-swapped-expected`](#dunitx-swapped-expected) | Erwarteter und erhaltener Wert vertauscht | Code Smell | Hinweis |
 | [`dunitx-setup-not-torn-down`](#dunitx-setup-not-torn-down) | Feld im Setup erzeugt, im TearDown nicht freigegeben | Bug | Warnung |
 | [`dunitx-leak-monitor`](#dunitx-leak-monitor) | DUnitX-Testprogramm ohne Leckmonitor | Code Smell | Hinweis |
+| [`dunitx-ignore-without-reason`](#dunitx-ignore-without-reason) | [Ignore] ohne Begründung | Code Smell | Hinweis |
+| [`dunitx-category-empty`](#dunitx-category-empty) | [Category] ohne Namen | Bug | Warnung |
+| [`dunitx-fixture-without-test`](#dunitx-fixture-without-test) | [TestFixture] ohne Test | Bug | Warnung |
+| [`dunitx-duplicate-attribute`](#dunitx-duplicate-attribute) | Attribut doppelt | Code Smell | Hinweis |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -4840,6 +4844,100 @@ Richtig:
 
 ```pascal
 uses DUnitX.TestFramework, DUnitX.MemoryLeakMonitor.FastMM4, Fall.Tests;
+```
+
+<a id="dunitx-ignore-without-reason"></a>
+### dunitx-ignore-without-reason
+
+**[Ignore] ohne Begründung** · Code Smell · Hinweis · Gruppe Packages und Tests
+
+[Ignore] ohne Argument oder mit leerer Begründung ([Ignore('')]): Der Testbericht sagt nicht, warum der Test nicht läuft, und später weiß niemand, ob er wieder an darf. Begründungen, die kein String-Literal sind (eine Konstante), gelten als vorhanden. Die Attribute werden über ihren Namen erkannt (mit oder ohne Unit und Endung Attribute), die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Den Grund kennt nur, wer den Test abgeschaltet hat.
+
+Mit Treffer:
+
+```pascal
+[Test, Ignore]
+procedure Export;
+```
+
+Richtig:
+
+```pascal
+[Test, Ignore('Waits for the new export format (#812)')]
+procedure Export;
+```
+
+<a id="dunitx-category-empty"></a>
+### dunitx-category-empty
+
+**[Category] ohne Namen** · Bug · Warnung · Gruppe Packages und Tests
+
+[Category('')] oder ein Kategorietext nur aus Kommas und Leerzeichen ([Category(' , ')]): Der Test landet in keiner Kategorie, ein Filter wie --include findet ihn nie. Namen, die kein String-Literal sind, gelten als vorhanden. Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Die gemeinte Kategorie ist unbekannt.
+
+Mit Treffer:
+
+```pascal
+[Test, Category('')]
+procedure Import;
+```
+
+Richtig:
+
+```pascal
+[Test, Category('Slow')]
+procedure Import;
+```
+
+<a id="dunitx-fixture-without-test"></a>
+### dunitx-fixture-without-test
+
+**[TestFixture] ohne Test** · Bug · Warnung · Gruppe Packages und Tests
+
+Eine Klasse mit [TestFixture], die keine Methode mit [Test], [TestCase], [NamedTestCase] oder [RepeatTest] und keine published-Methode hat (DUnitX nimmt published-Methoden ohne Attribut als Tests): Die Klasse läuft leer, der Bericht sieht grün aus. Klassen, deren Vorfahr (außer TObject) nicht in derselben Datei steht, bleiben still, ebenso Klassen, deren Vorfahr in der Datei Tests hat (geerbte Tests). Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit mittel. Keine Schnellkorrektur.
+
+Mit Treffer:
+
+```pascal
+[TestFixture]
+TKundeTests = class
+public
+  procedure PruefeName;
+end;
+```
+
+Richtig:
+
+```pascal
+[TestFixture]
+TKundeTests = class
+public
+  [Test]
+  procedure PruefeName;
+end;
+```
+
+<a id="dunitx-duplicate-attribute"></a>
+### dunitx-duplicate-attribute
+
+**Attribut doppelt** · Code Smell · Hinweis · Gruppe Packages und Tests
+
+Dasselbe DUnitX-Attribut zweimal an derselben Klasse oder Methode: [Test] [Test], [Ignore] zweimal, [TestFixture] zweimal usw. TestCase, NamedTestCase und Category dürfen mehrfach stehen und werden nur bei gleichen Argumenten gemeldet (der Fall liefe doppelt). Unbekannte Attribute bleiben still. Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Korrektur (sicher): das zweite entfernen, allein auf seiner Zeile samt Zeile, in einer Liste samt Komma.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix dunitx-duplicate-attribute`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+[Test]
+[Test]
+procedure Speichern;
+```
+
+Richtig:
+
+```pascal
+[Test]
+procedure Speichern;
 ```
 
 <a id="event-call-without-assigned"></a>
