@@ -134,6 +134,7 @@ uses
   Shell.Mcp.Tools in 'Source\Shell\Shell.Mcp.Tools.pas',
   Shell.Mcp.NavigationTools in 'Source\Shell\Shell.Mcp.NavigationTools.pas',
   Shell.Mcp.BuildTestTools in 'Source\Shell\Shell.Mcp.BuildTestTools.pas',
+  Shell.Mcp.ReportTools in 'Source\Shell\Shell.Mcp.ReportTools.pas',
   Shell.Mcp.CheckTools in 'Source\Shell\Shell.Mcp.CheckTools.pas',
   Shell.Mcp.ArchitectureTools in 'Source\Shell\Shell.Mcp.ArchitectureTools.pas',
   Shell.Mcp.EditingTools in 'Source\Shell\Shell.Mcp.EditingTools.pas',
