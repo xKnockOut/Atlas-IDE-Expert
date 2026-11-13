@@ -101,6 +101,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Untested.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.OnSave.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Leaks.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
@@ -117,6 +118,8 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CoveredBy.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CoveredByList.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.UntestedMark.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.UntestedProject.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Stale.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Output.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas"/>

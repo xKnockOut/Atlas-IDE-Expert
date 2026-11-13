@@ -103,6 +103,8 @@ contains
   Atlas.Core.Debug.Pins in 'Source\Core\Debug\Atlas.Core.Debug.Pins.pas',
   Atlas.IDE.Debug.Pins in 'Source\IDE\Debug\Atlas.IDE.Debug.Pins.pas',
   Atlas.IDE.Debug.WhyHere in 'Source\IDE\Debug\Atlas.IDE.Debug.WhyHere.pas',
+  Atlas.IDE.Debug.Forecast in 'Source\IDE\Debug\Atlas.IDE.Debug.Forecast.pas',
+  Atlas.Core.Debug.Forecast in 'Source\Core\Debug\Atlas.Core.Debug.Forecast.pas',
   Atlas.IDE.Debug.ValueRequest in 'Source\IDE\Debug\Atlas.IDE.Debug.ValueRequest.pas',
   Atlas.IDE.Debug.LineEnd in 'Source\IDE\Debug\Atlas.IDE.Debug.LineEnd.pas',
   Atlas.Core.Debug.Unavailable in 'Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas',

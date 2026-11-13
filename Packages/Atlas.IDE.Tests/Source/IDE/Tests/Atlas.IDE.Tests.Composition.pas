@@ -105,6 +105,7 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.CoveredBy,
+  Atlas.IDE.Tests.UntestedProject,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.ApprovalFiles,
@@ -123,6 +124,7 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GCoveredBy: TAtlasIdeCoveredByLens;
+  GUntested: TAtlasIdeUntestedProject;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
@@ -260,6 +262,8 @@ begin
   // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens.
   GCaseTable := TAtlasIdeTestCaseTable.Create(GScope, GTests, GDebugger);
   GLens.OnTable := OpenCaseTable;
+  // Ungetestete Methoden des Projekts (#1783).
+  GUntested := TAtlasIdeUntestedProject.Create(GOutput, ModuleScope);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -279,6 +283,7 @@ begin
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
   // der Läufer; seine Probleme verschwinden mit ihm.
+  FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   FreeAndNil(GCaseTable);
@@ -423,6 +428,16 @@ begin
   end;
 end;
 
+{ Ungetestete Methoden des Projekts (#1783) }
+
+procedure ListUntested;
+begin
+  if GUntested <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GUntested.Run);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -504,6 +519,9 @@ begin
     // Vergleichsdateien (#1881): sichtbar mit tests.approvalFiles.
     Command('Atlas.CleanApprovalFiles', TAtlasTestsTextId.TestsApprovalCleanCommand,
       Guarded(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
+    // Ungetestete Methoden des Projekts (#1783): sichtbar mit TestRun.
+    Described(Command('Atlas.ListUntestedMethods', TAtlasTestsTextId.UntestedProjectCommand, ListUntested,
+      TestsVisible), TAtlasTestsTextId.UntestedProjectHint),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -565,6 +583,7 @@ begin
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ListUntestedMethods', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
