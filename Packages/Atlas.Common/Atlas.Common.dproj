@@ -235,6 +235,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Postfix.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Slash.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Lists.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Hooks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Cases.pas"/>
@@ -277,6 +278,9 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Contract.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Generator.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Report.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Contract.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.References.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Scanner.pas"/>
@@ -481,6 +485,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CollectionCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestDrafts.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>
@@ -579,6 +584,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
+        <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas"/>
+        <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Setup.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.Statements.pas"/>
@@ -660,6 +668,9 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas"/>
+        <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Profile.pas"/>
+        <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Report.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatusTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>
@@ -755,6 +766,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.RawMemory.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.StringListObjects.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.ComponentInterface.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.pas"/>

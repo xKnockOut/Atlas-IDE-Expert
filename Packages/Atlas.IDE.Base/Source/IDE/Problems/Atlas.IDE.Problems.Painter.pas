@@ -13,7 +13,8 @@
 // Fehlertext am Zeilenende (#509, editor.inlineDiagnostics): hinter dem
 // letzten Zeichen der Text der schwersten Diagnose, die in der Zeile beginnt,
 // gekürzt und mit „(+n)“ für weitere, in ihrer Farbe gedimmt zum Hintergrund
-// des Editors. Den Platz hinter dem Zeilenende teilt er mit Inlay-Hints und
+// des Editors; ein Testfehlschlag an der Assert-Zeile kurz und grau (#1771).
+// Den Platz hinter dem Zeilenende teilt er mit Inlay-Hints und
 // Blockende-Beschriftungen (TAtlasLineTail). In der Cursorzeile erscheint der
 // Text erst eine Sekunde nach dem letzten Tastendruck; ein Zeitgeber zeichnet
 // danach neu.
@@ -242,7 +243,13 @@ begin
   begin
     mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
   end;
-  mFront := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, mFound.Problem), TAtlasColor(mSample), cStrength);
+  mFront := ProblemColor(TAtlasIdeStyle.Colors, mFound.Problem);
+  if TAtlasInlineDiagnostics.IsShortTest(mFound.Problem) then
+  begin
+    // „erwartet 4, erhalten 3“ hinter der Assert-Zeile grau wie Inlay-Hinweise (#1771).
+    mFront := TAtlasIdeStyle.Colors.Muted;
+  end;
+  mFront := TAtlasColorMath.Mix(mFront, TAtlasColor(mSample), cStrength);
   FFont.Follow(AContext.Canvas.Font);
   mSaved := SaveDC(mDC);
   try

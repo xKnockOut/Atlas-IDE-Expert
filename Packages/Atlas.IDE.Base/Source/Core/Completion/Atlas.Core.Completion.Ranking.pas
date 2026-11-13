@@ -25,6 +25,8 @@
 //     übrigen Bezeichnern. Passt eine nur über ihren Typ ("button" → btnSave: TButton), hat der Server sie schon
 //     gefiltert; sie bleibt sichtbar und steht hinter den Namenstreffern.
 //   - Sender mit Typumwandlung (#480): eine Überschrift „Sender ist TButton · btnSave, btnLoad“ über der Liste.
+//   - Typprüfungen (#2107): Mitglieder des geprüften Typs bzw. Nachfahren des Typs vor is stehen wie die
+//     Formularkomponenten als eigene Gruppe mit Überschrift oben, die übrigen darunter unter „Weitere“.
 //   - uses-Abschnitt (#469, Item.UsesGroup): Projekt-Units vor RTL/VCL vor Drittanbietern, je Gruppe eine
 //     Überschrift.
 //   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
@@ -328,6 +330,12 @@ begin
   end;
 end;
 
+/// <summary>Eintrag der Gruppe oben nach einer Typprüfung (#2107)?</summary>
+function IsGuarded(const AItem: TAtlasCompletionItem): Boolean;
+begin
+  Result := (AItem.Narrowed <> '') or (AItem.DescendantOf <> '');
+end;
+
 /// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
@@ -595,6 +603,10 @@ begin
   end;
   if Result = 0 then
   begin
+    Result := Ord(IsGuarded(FItems[B])) - Ord(IsGuarded(FItems[A]));
+  end;
+  if Result = 0 then
+  begin
     Result := Ord(FItems[B].Pinned and FNoPattern) - Ord(FItems[A].Pinned and FNoPattern);
   end;
   if Result = 0 then
@@ -721,6 +733,10 @@ begin
   begin
     Result := AIsFirst or (APrevious.Form = '');
   end
+  else if IsGuarded(AItem) then
+  begin
+    Result := AIsFirst or not IsGuarded(APrevious);
+  end
   // Sender (#480) und Typargumente (#450): eine Überschrift über der Liste.
   else if AIsFirst and ((AItem.Sender <> '') or (AItem.TypeParam <> '')) then
   begin
@@ -739,8 +755,9 @@ end;
 
 function TRanker.FollowingHeader(const AItem, APrevious: TAtlasCompletionItem; const AState: TArrangeState): Boolean;
 begin
-  // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
-  if APrevious.Form <> '' then
+  // Nach der Formulargruppe bzw. der Gruppe einer Typprüfung (#2107) eine Überschrift über dem Rest („Weitere“
+  // bzw. die Gruppe zum erwarteten Typ).
+  if (APrevious.Form <> '') or IsGuarded(APrevious) then
   begin
     Result := True;
   end

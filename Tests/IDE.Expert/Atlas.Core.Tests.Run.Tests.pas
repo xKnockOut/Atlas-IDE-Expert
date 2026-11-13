@@ -3,7 +3,8 @@
 // Tests des Testlaufs aus der IDE (#69) ohne IDE: Testprogramm und Plattform,
 // Lauf nach dem Build (mit build.zeroHints #530), Zuordnung fehlgeschlagener
 // Tests zur Testmethode, Probleme mit erwartetem und tatsächlichem Wert,
-// Abschnitt "tests" der Projekt-Zusammenfassung und Stand für die Code Lens.
+// Abschnitt "tests" der Projekt-Zusammenfassung und Stand für die Code Lens
+// (veraltete Ergebnisse #1770).
 
 interface
 
@@ -39,6 +40,10 @@ type
     procedure CasesOfMethodCountSeparately;
     [Test]
     procedure TallyStatus;
+    [Test]
+    procedure StaleResultsAreNotCountedAsPassed;
+    [Test]
+    procedure FailureAtAssertWithShortText;
   end;
 
 implementation
@@ -404,6 +409,117 @@ begin
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial);
   mTally.Failed := 1;
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Failed);
+end;
+
+/// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>
+function StaleOnly(const AMethod: string): TAtlasTestStaleFunc;
+var
+  mMethod: string;
+begin
+  mMethod := AMethod;
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := SameText(AName, mMethod);
+    end;
+end;
+
+procedure TAtlasTestRunTests.FailureAtAssertWithShortText;
+const
+  cAssertReport =
+    '<test-results total="2">' +
+    '<test-suite type="Namespace" name="Rechner"><results>' +
+    '<test-suite type="TestFixture" name="TRechnerTests"><results>' +
+    '<test-case name="Rechner.Tests.TRechnerTests.Addiert" executed="True" result="Failure" time="0.01">' +
+      '<failure><message>Expected 4 but got 3</message></failure></test-case>' +
+    '<test-case name="Rechner.Tests.TRechnerTests.Teilt" executed="True" result="Error" time="0.01">' +
+      '<failure><message>EZeroDivide</message><stack-trace>' +
+      '[004C1234] Rechner.Tests.TRechnerTests.Teilt (Line 15, "Rechner.Tests.pas" + 1) + $12' +
+      '</stack-trace></failure></test-case>' +
+    '</results></test-suite></results></test-suite></test-results>';
+var
+  mLines: TArray<string>;
+  mFound: TArray<TAtlasTestFailure>;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+  mUnitFile: TAtlasTestUnitFile;
+  mReadLines: TAtlasTestReadLines;
+begin
+  mLines := TArray<string>.Create('unit Rechner.Tests;', 'interface', 'uses DUnitX.TestFramework;', 'type',
+    '  [TestFixture]', '  TRechnerTests = class', '    [Test]', '    procedure Addiert;', '    [Test]',
+    '    procedure Teilt;', '  end;', 'implementation',                    // 9..11
+    'procedure TRechnerTests.Teilt;', 'begin', '  Rechne(1, 0);', 'end;', // 12..15
+    'procedure TRechnerTests.Addiert;', 'begin',                          // 16, 17
+    '  Assert.AreEqual(2, Summe(1, 1));', '  Assert.AreEqual(4, Summe(2, 2)); // zweiter', 'end;', 'end.');
+  mUnitFile :=
+    function(const AUnitName: string): string
+    begin
+      Result := cUnitFile;
+    end;
+  mReadLines :=
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := mLines;
+      Result := True;
+    end;
+  mFound := TAtlasTestRun.Failures(TTestResults.Parse(cAssertReport), mUnitFile, mReadLines, True);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(19, mFound[0].Line, 'Assert mit erwartetem Wert 4');
+  Assert.IsTrue(mFound[0].AtAssert);
+  Assert.AreEqual(2, mFound[0].StartCharacter);
+  Assert.AreEqual(Integer(Length('  Assert.AreEqual(4, Summe(2, 2));')), mFound[0].EndCharacter, 'ohne Kommentar');
+  Assert.AreEqual(14, mFound[1].Line, 'Ausnahme: Zeile aus dem Stacktrace');
+  mItems := TAtlasTestRun.Problems(mFound, '%s: %s', '%s: erwartet %s, erhalten %s', 'erwartet %s, erhalten %s');
+  Assert.AreEqual('erwartet 4, erhalten 3', mItems[0].Value.Details, 'kurzer Text');
+  Assert.AreEqual('', mItems[1].Value.Details, 'ohne Werte kein kurzer Text');
+  Assert.AreEqual('', TAtlasTestRun.Problems(mFound, '%s: %s', '%s: erwartet %s, erhalten %s')[0].Value.Details,
+    'tests.failureInline aus');
+  mFound := TAtlasTestRun.Failures(TTestResults.Parse(cAssertReport), mUnitFile, mReadLines, False);
+  Assert.AreEqual(16, mFound[0].Line, 'tests.failureAtAssert aus: Methodenkopf');
+  Assert.IsFalse(mFound[0].AtAssert);
+  mLines := nil;
+end;
+
+procedure TAtlasTestRunTests.StaleResultsAreNotCountedAsPassed;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+begin
+  mCases := WelcomeCases(['IsReported=Success', 'Lookup.Kurz=Success', 'Lookup.Lang=Success',
+    'NothingAfterFree=Success']);
+  // Fixture: vier bestanden, einer davon seit dem Lauf geändert (#1770).
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, -1, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.IsStale);
+  Assert.AreEqual(1, mTally.Stale);
+  Assert.AreEqual(4, mTally.Passed, 'Stand des Laufs');
+  Assert.AreEqual(3, mTally.FreshPassed, 'die Zählung nimmt den veralteten nicht als bestanden');
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed, 'alter Stand');
+  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Partial, 'die Marke zeigt 3/4');
+  // Der veraltete Test selbst: alter Stand „bestanden“ mit Zusatz.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.IsStale);
+  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Passed);
+  // Ein anderer Test ist nicht betroffen.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 3, -1), StaleOnly('IsReported'));
+  Assert.IsFalse(mTally.IsStale);
+  // Veralteter Fehlschlag bleibt Fehlschlag (alter Stand), ist aber veraltet.
+  mCases := WelcomeCases(['IsReported=Failure']);
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Failed);
+  Assert.IsTrue(mTally.IsStale);
+  // Schlüssel aus TAtlasTestStamps.StaleIn als Abfrage für die Marke.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), TAtlasTestRun.StaleOf(['welcome.tests.tnametests.isreported'],
+    'Welcome.Tests', 'TNameTests'));
+  Assert.IsTrue(mTally.IsStale, 'StaleOf');
+  Assert.IsFalse(Assigned(TAtlasTestRun.StaleOf(nil, 'Welcome.Tests', 'TNameTests')), 'ohne veraltete Tests nil');
+  // Ohne Angabe (tests.stale aus): wie bisher.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), nil);
+  Assert.IsFalse(mTally.IsStale);
 end;
 
 initialization

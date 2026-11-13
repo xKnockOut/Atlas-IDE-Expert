@@ -35,6 +35,9 @@
 //   zurück (TAtlasTrackerWriteResult). Unter einer Zustandsmaschine
 //   (#2122) trägt die Änderung statt des Zielwerts einen Übergang;
 //   IAtlasTrackerStateRules liest die erlaubten Übergänge eines Issues.
+//   Beim Beenden kann die Änderung einen Schließgrund tragen (#2135,
+//   TAtlasTrackerClose: erledigt, nicht geplant, Duplikat, offen lassen);
+//   nur GitHub wertet ihn aus.
 // - IAtlasTrackerFields (#2123): Felder des Projekts mit ihren Werten lesen
 //   und einzelne Felder eines Issues setzen (Beenden-Dialog, issues.endFields);
 //   nur Anbieter mit benannten Feldern (YouTrack) setzen es um.
@@ -114,6 +117,18 @@ type
     AssignedOrCreated,
     /// <summary>Dazu die beobachteten (YouTrack „Abonniert“/Stern, GitHub „subscribed“).</summary>
     Watched);
+  /// <summary>Abschluss beim Beenden (#2135, GitHub-Schließgründe).</summary>
+  TAtlasTrackerClose = (
+    /// <summary>Wie bisher: ein Erledigt-Zustand schließt als „completed“, sonst bleibt das Issue offen.</summary>
+    ByState,
+    /// <summary>Schließen als erledigt ("completed").</summary>
+    Completed,
+    /// <summary>Schließen als „nicht geplant“ ("not_planned").</summary>
+    NotPlanned,
+    /// <summary>Schließen als Duplikat ("duplicate") von TAtlasTrackerWrite.DuplicateOf.</summary>
+    Duplicate,
+    /// <summary>Offen lassen, auch bei einem Erledigt-Zustand.</summary>
+    KeepOpen);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Höchstlängen der Texte, die die Parser aus Tracker-Antworten übernehmen (Zeichen).</summary>
@@ -571,11 +586,20 @@ type
     /// <summary>In diesen Sprint aufnehmen (#2128); nicht gesetzt = keiner. Geht mit Zuständigkeit und Kommentar
     /// hinaus.</summary>
     Sprint: TAtlasTrackerSprintRef;
+    /// <summary>Abschluss beim Beenden (#2135, GitHub); ByState = wie bisher nach State.</summary>
+    Close: TAtlasTrackerClose;
+    /// <summary>Close = Duplicate: Kennung des Issues, von dem dieses ein Duplikat ist ("#418").</summary>
+    DuplicateOf: string;
+    /// <summary>Close = Duplicate: Kommentar, falls der Tracker „Duplikat“ nicht annimmt und als „nicht geplant“
+    /// schließt (ältere GitHub-Enterprise-Server); '' = der Kommentar nennt das Duplikat schon.</summary>
+    DuplicateNote: string;
     class function Empty: TAtlasTrackerWrite; static;
     /// <summary>Nur ein Kommentar.</summary>
     class function CommentOnly(const AText: string): TAtlasTrackerWrite; static;
     /// <summary>Es gibt etwas zu schreiben.</summary>
     function HasWork: Boolean;
+    /// <summary>Close schließt das Issue ausdrücklich (erledigt, nicht geplant, Duplikat).</summary>
+    function Closes: Boolean;
   end;
 
   /// <summary>Ergebnis eines Schreibzugriffs (#1266).</summary>
@@ -586,6 +610,9 @@ type
     Status: Integer;
     /// <summary>Fehlertext des Trackers ("error_description", "message"), gekürzt; '' ohne.</summary>
     Message: string;
+    /// <summary>Geschrieben, aber auf einem Ersatzweg (#2135: „Duplikat“ abgelehnt, als „nicht geplant“ mit
+    /// Kommentar geschlossen).</summary>
+    Fallback: Boolean;
     class function Ok: TAtlasTrackerWriteResult; static;
     class function Failed(AError: TAtlasCiFetchError; AStatus: Integer;
       const AMessage: string): TAtlasTrackerWriteResult; static;
@@ -962,7 +989,12 @@ end;
 function TAtlasTrackerWrite.HasWork: Boolean;
 begin
   Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '') or
-    (Transition.Id <> '') or Sprint.IsSet;
+    (Transition.Id <> '') or Sprint.IsSet or Closes;
+end;
+
+function TAtlasTrackerWrite.Closes: Boolean;
+begin
+  Result := Close in [TAtlasTrackerClose.Completed, TAtlasTrackerClose.NotPlanned, TAtlasTrackerClose.Duplicate];
 end;
 
 { TAtlasTrackerTransition }
@@ -1020,6 +1052,7 @@ begin
   Result.Error := TAtlasCiFetchError.None;
   Result.Status := 0;
   Result.Message := '';
+  Result.Fallback := False;
 end;
 
 class function TAtlasTrackerWriteResult.Failed(AError: TAtlasCiFetchError; AStatus: Integer;
@@ -1028,6 +1061,7 @@ begin
   Result.Error := AError;
   Result.Status := AStatus;
   Result.Message := AMessage;
+  Result.Fallback := False;
 end;
 
 function TAtlasTrackerWriteResult.Succeeded: Boolean;

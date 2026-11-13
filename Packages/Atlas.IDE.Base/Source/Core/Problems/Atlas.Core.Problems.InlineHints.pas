@@ -6,7 +6,10 @@
 //   beginnt und zum Modus passt; die übrigen passenden zählen als „(+n)“.
 //   Abblendungen (inaktive Zweige, uses-Hinweise) sind keine Befunde.
 // - Caption: erste Zeile der Meldung, auf MaxChars gekürzt („…“), dahinter
-//   „(+n)“.
+//   „(+n)“. Ein fehlgeschlagener Test mit Details (Quelle DUnitX, an der
+//   Assert-Zeile, #1771) zeigt stattdessen den kurzen Text daraus
+//   („erwartet 4, erhalten 3“).
+// - IsShortTest: solche Testmeldung; der Maler zeigt sie grau.
 // - Counts: Fehler, Warnungen und Hinweise (Info zählt als Hinweis) wie in der
 //   Liste „Atlas-Probleme“ (ohne Compilermeldungen) für die Statusleiste.
 // - Next: nächster bzw. vorheriger Befund in der Datei ab der Cursorstelle,
@@ -53,6 +56,8 @@ type
     /// <summary>Schwerste passende Diagnose, die in ALine (0-basiert) beginnt; False ohne.</summary>
     class function Pick(const AProblems: TArray<TAtlasProblem>; ALine: Integer; AMode: TAtlasInlineDiagnosticsMode;
       out AResult: TAtlasInlineDiagnostic): Boolean; static;
+    /// <summary>Fehlgeschlagener Test mit kurzem Text in Details (#1771, tests.failureInline)?</summary>
+    class function IsShortTest(const AProblem: TAtlasProblem): Boolean; static;
     /// <summary>Text am Zeilenende, z. B. "Undeklarierter Bezeichner: 'X' (+2)".</summary>
     class function Caption(const ADiagnostic: TAtlasInlineDiagnostic): string; static;
     /// <summary>Zähler über alle Dateien; ohne Compilermeldungen und Abblendungen.</summary>
@@ -66,6 +71,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Problems.Store;
 
 function Rank(ASeverity: TAtlasProblemSeverity): Integer;
 begin
@@ -162,6 +170,10 @@ var
   mCut: Integer;
 begin
   Result := ADiagnostic.Problem.Message;
+  if IsShortTest(ADiagnostic.Problem) then
+  begin
+    Result := ADiagnostic.Problem.Details;
+  end;
   mCut := Pos(#10, Result);
   if mCut > 0 then
   begin
@@ -176,6 +188,11 @@ begin
   begin
     Result := Result + ' (+' + IntToStr(ADiagnostic.More) + ')';
   end;
+end;
+
+class function TAtlasInlineDiagnostics.IsShortTest(const AProblem: TAtlasProblem): Boolean;
+begin
+  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and (AProblem.Details <> '');
 end;
 
 class function TAtlasInlineDiagnostics.Counts(const AProblems: TArray<TAtlasProblem>): TAtlasProblemCounts;

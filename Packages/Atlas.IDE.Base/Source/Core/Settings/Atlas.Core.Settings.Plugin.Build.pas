@@ -60,6 +60,9 @@ type
     /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
     /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
     BuildOnOpenPlatform: string;
+    /// <summary>Laufendes Programm vor dem Build beenden (build.stopRunningProgram, #551): ask (Rückfrage), always
+    /// (ohne Rückfrage beenden) oder never (nichts tun). Programme im Debugger der IDE bleiben unberührt.</summary>
+    BuildStopRunningProgram: string;
     /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
     /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
     TestRun: Boolean;
@@ -77,6 +80,24 @@ type
     /// <summary>Vor jedem git commit die betroffenen Tests anbieten (#1353): Atlas legt dafür einen
     /// pre-commit-Hook an (Atlas.Core.Tests.AffectedHook).</summary>
     TestsAffectedBeforeCommit: Boolean;
+    /// <summary>Veraltete Testergebnisse (#1770, tests.stale): Wurde der Rumpf eines Tests seit dem Lauf geändert
+    /// (ohne Leerraum und Kommentare), zeigt die Code Lens den alten Stand grau „(veraltet)“ und die Zählung nimmt ihn
+    /// nicht als bestanden; dazu der Befehl „Veraltete Tests ausführen“. Aus = Stand wie nach dem Lauf.</summary>
+    TestsStale: Boolean;
+    /// <summary>Auch Änderungen an den Units, die die Testunit verwendet und die im Testprojekt liegen, machen das
+    /// Ergebnis veraltet (#1770, tests.stale.units).</summary>
+    TestsStaleUnits: Boolean;
+    /// <summary>Fehlschlag an der Anweisung statt am Methodenkopf (#1771, tests.failureAtAssert): Zeile aus dem
+    /// Stacktrace des Berichts, sonst der eine Assert, dessen erwarteter Wert passt.</summary>
+    TestsFailureAtAssert: Boolean;
+    /// <summary>Hinter der Assert-Zeile kurz „erwartet 4, erhalten 3“ statt der ganzen Meldung (#1771,
+    /// tests.failureInline).</summary>
+    TestsFailureInline: Boolean;
+    /// <summary>Befehl „Erwartet und erhalten vergleichen“ (#1779, tests.compare): Fenster mit beiden Werten in zwei
+    /// Spalten, Unterschiede zeichengenau.</summary>
+    TestsCompare: Boolean;
+    /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
+    TestsCompareFormat: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -164,19 +185,19 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.Verdict;
 
-/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
-function NormalizedTasksBeforeBuild(const AText: string): string;
+/// <summary>Bekannter Wert aus ANames klein (tasks.beforeBuild, build.stopRunningProgram), sonst der erste.</summary>
+function NormalizedName(const AText: string; const ANames: array of string): string;
 var
   mName: string;
 begin
-  for mName in cTasksBeforeBuildNames do
+  for mName in ANames do
   begin
     if SameText(Trim(AText), mName) then
     begin
       Exit(mName);
     end;
   end;
-  Result := cTasksBeforeBuildNames[0];
+  Result := ANames[0];
 end;
 
 { TAtlasPluginBuildSettings }
@@ -198,12 +219,19 @@ begin
   Result.BuildOnOpenExclude := '';
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
+  Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
   Result.TestRun := True;
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.TestsAffected := True;
   Result.TestsAffectedDepth := 3;
   Result.TestsAffectedBeforeCommit := False;
+  Result.TestsStale := True;
+  Result.TestsStaleUnits := False;
+  Result.TestsFailureAtAssert := True;
+  Result.TestsFailureInline := True;
+  Result.TestsCompare := True;
+  Result.TestsCompareFormat := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -237,13 +265,14 @@ begin
   BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
   BuildOnOpenConfig := Trim(BuildOnOpenConfig);
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
+  BuildStopRunningProgram := NormalizedName(BuildStopRunningProgram, cStopRunningProgramNames);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
   begin
     CompileOnSave := False;
   end;
   BuildGate := TAtlasBuildPipelineSettings.cGateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
-  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  TasksBeforeBuild := NormalizedName(TasksBeforeBuild, cTasksBeforeBuildNames);
   BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.cGateMinTimeoutMs,
     TAtlasBuildPipelineSettings.cGateMaxTimeoutMs);
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
@@ -268,12 +297,19 @@ begin
   AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
   AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
   AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
+  AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
   AIo.Flag('TestRun', TestRun);
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
   AIo.Flag('TestsAffected', TestsAffected);
   AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
+  AIo.Flag('TestsStale', TestsStale);
+  AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
+  AIo.Flag('TestsFailureInline', TestsFailureInline);
+  AIo.Flag('TestsCompare', TestsCompare);
+  AIo.Flag('TestsCompareFormat', TestsCompareFormat);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);

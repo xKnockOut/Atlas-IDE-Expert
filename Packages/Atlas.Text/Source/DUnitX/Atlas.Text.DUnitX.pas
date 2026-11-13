@@ -26,6 +26,8 @@
 // wenn ein Name ein Anfang des vollen Namens seiner Fixture oder genau sein
 // voller Name ist; Unit.Fixture.Methode trifft die Fälle eines [TestCase]
 // darum nicht. TDUnitXCommandLine.RunNames bildet die passenden Namen.
+// Für „veraltete“ Testergebnisse (#1770) liefert die Unit eine Prüfsumme
+// über Zeilen ohne Kommentare und Leerraum und die Units der uses-Klauseln.
 
 interface
 
@@ -104,6 +106,13 @@ type
     /// <summary>Verwendet der Quelltext (Programm oder Unit) DUnitX.TestFramework? Kennzeichen eines
     /// DUnitX-Testprogramms (.dpr).</summary>
     class function UsesDUnitX(const ALines: TArray<string>): Boolean; static;
+    /// <summary>Prüfsumme der Zeilen AFirstLine bis ALastLine (0-basiert) ohne Kommentare und Leerraum (#1770):
+    /// Leerraum zählt nur zwischen zwei Wortzeichen, Direktiven ({$…}) und Zeichenketten zählen mit. Eine Änderung
+    /// nur an Einrückung, Zeilenumbrüchen oder Kommentaren ändert sie nicht. '' ohne gültige Zeilen.</summary>
+    class function Fingerprint(const ALines: TArray<string>; AFirstLine, ALastLine: Integer): string; static;
+    /// <summary>Units aller uses-Klauseln (interface und implementation) wie geschrieben, ohne „in '…'“
+    /// (#1770).</summary>
+    class function UsedUnits(const ALines: TArray<string>): TArray<string>; static;
   end;
 
   TDUnitXCommandLine = class
@@ -1375,6 +1384,245 @@ begin
     Result := mScanner.Run(ALines);
   finally
     mScanner.Free;
+  end;
+end;
+
+type
+  /// <summary>Prüfsumme über den Text ohne Kommentare und Leerraum (FNV-1a, 64 Bit); Kommentare und Direktiven
+  /// über Zeilen hinweg merkt es in InBrace, InParen und InDirective.</summary>
+  TFingerprinter = record
+    Hash: UInt64;
+    /// <summary>Zuletzt eingerechnetes Zeichen; #0 vor dem ersten.</summary>
+    Last: Char;
+    /// <summary>Seit Last stand Leerraum.</summary>
+    Spaced: Boolean;
+    InBrace: Boolean;
+    InParen: Boolean;
+    InDirective: Boolean;
+    Line: string;
+    Index: Integer;
+    procedure Mix(AChar: Char);
+    /// <summary>Zeichen außerhalb von Zeichenketten: Leerraum davor nur zwischen zwei Wortzeichen.</summary>
+    procedure Emit(AChar: Char);
+    function NextIs(AChar: Char): Boolean;
+    /// <summary>Innerhalb eines Kommentars oder einer Direktive: ein Zeichen weiter und True.</summary>
+    function SkipOpen: Boolean;
+    procedure ReadString;
+    procedure ReadChar;
+    procedure Feed(const ALine: string);
+  end;
+
+const
+  /// <summary>FNV-1a 64 Bit: Startwert und Primzahl.</summary>
+  cFnvOffsetBasis = UInt64($CBF29CE484222325);
+  cFnvPrime = UInt64($00000100000001B3);
+  /// <summary>Stellen des Fingerabdrucks als Hex (64 Bit).</summary>
+  cFingerprintDigits = 16;
+
+// FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher.
+{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
+procedure TFingerprinter.Mix(AChar: Char);
+begin
+  Hash := Hash xor UInt64(Ord(AChar));
+  Hash := Hash * cFnvPrime;
+  Last := AChar;
+end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
+
+procedure TFingerprinter.Emit(AChar: Char);
+begin
+  if Spaced and TTextChars.IsIdentChar(Last) and TTextChars.IsIdentChar(AChar) then
+  begin
+    Mix(' ');
+  end;
+  Spaced := False;
+  Mix(AChar);
+end;
+
+function TFingerprinter.NextIs(AChar: Char): Boolean;
+begin
+  Result := (Index < Length(Line)) and (Line[Index + 1] = AChar);
+end;
+
+function TFingerprinter.SkipOpen: Boolean;
+begin
+  Result := InBrace or InParen or InDirective;
+  if InDirective then
+  begin
+    // Direktiven zählen mit: {$IFDEF X} gegen {$IFNDEF X} ist eine Änderung.
+    InDirective := Line[Index] <> '}';
+    Mix(Line[Index]);
+  end
+  else if InBrace then
+  begin
+    InBrace := Line[Index] <> '}';
+  end
+  else if InParen and (Line[Index] = '*') and NextIs(')') then
+  begin
+    InParen := False;
+    Inc(Index);
+  end;
+  if Result then
+  begin
+    Inc(Index);
+  end;
+end;
+
+procedure TFingerprinter.ReadString;
+begin
+  Emit('''');
+  Inc(Index);
+  while Index <= Length(Line) do
+  begin
+    Mix(Line[Index]);
+    Inc(Index);
+    if Last <> '''' then
+    begin
+      Continue;
+    end;
+    if (Index <= Length(Line)) and (Line[Index] = '''') then
+    begin
+      // Verdoppeltes Anführungszeichen: bleibt in der Zeichenkette.
+      Mix('''');
+      Inc(Index);
+    end
+    else
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+procedure TFingerprinter.ReadChar;
+begin
+  case Line[Index] of
+    ' ', #9, #13, #10, #12:
+      begin
+        Spaced := True;
+        Inc(Index);
+      end;
+    '{':
+      begin
+        InDirective := NextIs('$');
+        InBrace := not InDirective;
+        if InDirective then
+        begin
+          Emit('{');
+        end;
+        Inc(Index);
+      end;
+    '''':
+      ReadString;
+  else
+    if (Line[Index] = '/') and NextIs('/') then
+    begin
+      Index := Length(Line) + 1;
+    end
+    else if (Line[Index] = '(') and NextIs('*') then
+    begin
+      InParen := True;
+      Inc(Index, 2);
+    end
+    else
+    begin
+      Emit(Line[Index]);
+      Inc(Index);
+    end;
+  end;
+end;
+
+procedure TFingerprinter.Feed(const ALine: string);
+begin
+  Line := ALine;
+  Index := 1;
+  while Index <= Length(Line) do
+  begin
+    if not SkipOpen then
+    begin
+      ReadChar;
+    end;
+  end;
+  // Das Zeilenende ist Leerraum.
+  Spaced := True;
+end;
+
+class function TDUnitXSource.Fingerprint(const ALines: TArray<string>; AFirstLine, ALastLine: Integer): string;
+var
+  mPrinter: TFingerprinter;
+  mLine, mLast: Integer;
+begin
+  if (AFirstLine < 0) or (ALastLine < AFirstLine) or (AFirstLine > High(ALines)) then
+  begin
+    Exit('');
+  end;
+  mLast := ALastLine;
+  if mLast > High(ALines) then
+  begin
+    mLast := High(ALines);
+  end;
+  mPrinter := Default(TFingerprinter);
+  mPrinter.Hash := cFnvOffsetBasis;
+  for mLine := AFirstLine to mLast do
+  begin
+    mPrinter.Feed(ALines[mLine]);
+  end;
+  Result := IntToHex(Int64(mPrinter.Hash), cFingerprintDigits);
+end;
+
+/// <summary>Namen einer uses-Klausel ab dem Token nach „uses“ bis „;“ an AUnits anhängen; AIndex steht danach auf
+/// dem „;“.</summary>
+procedure ReadUsesList(const ATokens: TArray<TToken>; var AIndex: Integer; var AUnits: TArray<string>);
+var
+  mName: TStringBuilder;
+begin
+  mName := TStringBuilder.Create;
+  try
+    Inc(AIndex);
+    while AIndex <= High(ATokens) do
+    begin
+      if IsSym(ATokens[AIndex], ';') or IsSym(ATokens[AIndex], ',') then
+      begin
+        if mName.Length > 0 then
+        begin
+          AUnits := AUnits + [mName.ToString];
+        end;
+        mName.Clear;
+        if IsSym(ATokens[AIndex], ';') then
+        begin
+          Exit;
+        end;
+      end
+      else if IsWord(ATokens[AIndex], 'in') then
+      begin
+        // „in 'Pfad'“: der Pfad gehört nicht zum Namen.
+        Inc(AIndex);
+      end
+      else if (ATokens[AIndex].Kind = TTokenKind.Ident) or IsSym(ATokens[AIndex], '.') then
+      begin
+        mName.Append(ATokens[AIndex].Text);
+      end;
+      Inc(AIndex);
+    end;
+  finally
+    mName.Free;
+  end;
+end;
+
+class function TDUnitXSource.UsedUnits(const ALines: TArray<string>): TArray<string>;
+var
+  mTokens: TArray<TToken>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mTokens := Tokenize(ALines);
+  mIndex := 0;
+  while mIndex <= High(mTokens) do
+  begin
+    if IsWord(mTokens[mIndex], 'uses') then
+    begin
+      ReadUsesList(mTokens, mIndex, Result);
+    end;
+    Inc(mIndex);
   end;
 end;
 

@@ -114,6 +114,7 @@ Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
 Atlas.Common.Editing.StringLiterals.Tests
 Atlas.Common.Editing.SuggestConst.Tests
+Atlas.Common.Editing.TestDrafts.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
 Atlas.Common.Editing.TypeComments.Tests
@@ -138,6 +139,7 @@ Atlas.Common.JsonRpc.PendingRequests.Tests
 Atlas.Common.JsonRpc.StreamTransport.Tests
 Atlas.Common.JsonRpc.TracingTransport.Tests
 Atlas.Common.JsonRpc.WorkerPool.Tests
+Atlas.Common.Leaks.Setup.Tests
 Atlas.Common.Localization.Texts.Tests
 Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
@@ -148,6 +150,7 @@ Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
@@ -177,15 +180,20 @@ Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
+Atlas.Common.Mcp.ProfileTools.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
+Atlas.Common.Profiling.Profile.Tests
+Atlas.Common.Profiling.Report.Tests
 Atlas.Common.Monitor.Settings.Tests
 Atlas.Common.Monitor.Texts.Tests
 Atlas.Common.Monitor.Commands.Tests
 Atlas.Common.Monitor.Results.Tests
 Atlas.Common.Monitor.Runs.Tests
 Atlas.Common.Monitor.Targets.Tests
+Atlas.Common.Mutation.Generator.Tests
+Atlas.Common.Mutation.Report.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
@@ -257,6 +265,7 @@ Atlas.Common.Rules.Builtin.Migration.Win64.Tests
 Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
+Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests
@@ -304,6 +313,8 @@ Atlas.Common.Updates.Tests
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Problems.IdeErrors.Tests
+Atlas.Core.Problems.AtCaret.Tests
+Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Style.Listeners.Tests
@@ -317,6 +328,10 @@ Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
+Atlas.Core.Debug.Modules.Tests
+Atlas.UI.Debug.AccessViolation.Tests
+Atlas.Core.Build.RunningProgram.Tests
+Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests
@@ -348,6 +363,7 @@ Atlas.UI.Strings.Tests
 Atlas.UI.SymbolPath.Strings.Tests
 Atlas.UI.Tests.Strings.Tests
 Atlas.UI.Tracker.Strings.Tests
+Atlas.UI.Tracker.GitHubStrings.Tests
 Atlas.UI.Undo.Strings.Tests
 Atlas.UI.VersionControl.Strings.Tests
 Atlas.UI.Welcome.Strings.Tests
@@ -357,3 +373,6 @@ Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
+Atlas.Core.Tests.Stale.Tests
+Atlas.Core.Tests.AssertLine.Tests
+Atlas.Core.Tests.Compare.Tests

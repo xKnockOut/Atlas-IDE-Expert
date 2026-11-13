@@ -1,14 +1,15 @@
 ﻿unit Shell.Mcp.BuildTestTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge für Builds in der IDE und DUnitX-Testläufe
-// (get_last_build, build_project, run_tests).
+// (get_last_build, build_project, run_tests), das Profil aus „Mit Profil ausführen“ (get_profile, #2057) und die
+// Mutanten einer Unit (get_mutants, #1460).
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet get_last_build, build_project und run_tests an.</summary>
+/// <summary>Meldet get_last_build, build_project, run_tests, get_profile und get_mutants an.</summary>
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 
 implementation
@@ -26,6 +27,8 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Mcp.ProfileTools,
+  Atlas.Common.Profiling.Profile,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
@@ -33,7 +36,11 @@ uses
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Mutation.Contract,
+  Atlas.Common.Mutation.Report,
+  Atlas.Common.Rules.Checker,
   Shell.Platform,
+  Shell.Texts,
   Shell.Mcp.Ide,
   Atlas.Common.Localization.Texts;
 
@@ -42,7 +49,10 @@ type
   TMcpBuildTestText = (GetLastBuildTool, GetLastBuildProject, BuildProjectTool, BuildProjectProject, BuildProjectMode,
     BuildProjectConfiguration, BuildProjectPlatform, RunTestsTool, RunTestsProject, RunTestsTests, RunTestsBuild,
     RunTestsConfiguration, RunTestsPlatform, RunTestsTimeoutSeconds, ProjectUnreadable, BuildFailed, TimedOut,
-    ExeMissing);
+    ExeMissing, GetProfileTool, GetProfileTop, GetProfileUnit, GetProfileRun, GetProfileCompareWith,
+    GetProfileFormat, GetProfileOwnCode,
+    GetMutantsTool, GetMutantsFile, GetMutantsRoutine, GetMutantsOperators, GetMutantsFirstLine,
+    GetMutantsLastLine, GetMutantsFormat, UnknownOperators, SourceUnreadable);
 {$SCOPEDENUMS OFF}
 
 const
@@ -94,7 +104,50 @@ const
     (De: 'Build fehlgeschlagen; Tests nicht ausgeführt.'; En: 'Build failed; tests not run.'),
     (De: 'Testlauf nach %d s abgebrochen (timeoutSeconds).'; En: 'Test run aborted after %d s (timeoutSeconds).'),
     (De: 'Test-EXE fehlt: %s. Mit "build": true bauen oder das Projekt in der IDE für %s/%s bauen.';
-    En: 'Test EXE missing: %s. Build with "build": true or build the project in the IDE for %s/%s.'));
+    En: 'Test EXE missing: %s. Build with "build": true or build the project in the IDE for %s/%s.'),
+    (De: 'Profil eines Laufs mit „Mit Profil ausführen“ in der IDE (#2057): die teuersten Methoden nach ' +
+    'Eigenanteil (Proben, in denen sie gerade rechnete) und Gesamtanteil (irgendwo im Aufrufstapel) mit Datei ' +
+    'und heißester Zeile; RTL und VCL zusammengefasst, solange ownCode an ist. Mit compareWith der Vergleich ' +
+    'zweier Läufe. Gespeichert bleiben die letzten fünf Läufe. Lesend.';
+    En: 'Profile of a run with "Run with profile" in the IDE (#2057): the most expensive methods by self share ' +
+    '(samples in which they were computing) and total share (anywhere in the call stack) with file and hottest ' +
+    'line; RTL and VCL summarized while ownCode is on. With compareWith the comparison of two runs. The last ' +
+    'five runs are kept. Read-only.'),
+    (De: 'Anzahl Methoden; Vorgabe 10, höchstens 100'; En: 'Number of methods; default 10, at most 100'),
+    (De: 'Nur Methoden dieser Unit bzw. Datei (Teil des Namens)'; En: 'Only methods of this unit or file (part ' +
+    'of the name)'),
+    (De: 'Lauf: leer = neuester, 2 = zweitneuester, oder Dateiname'; En: 'Run: empty = newest, 2 = second newest, ' +
+    'or file name'),
+    (De: 'Zweiter Lauf zum Vergleich (wie run)'; En: 'Second run to compare with (like run)'),
+    (De: 'text (Vorgabe) oder json'; En: 'text (default) or json'),
+    (De: 'RTL, VCL und andere Bibliotheken zu ihrem Aufruf aus eigenem Code zusammenfassen; Vorgabe true';
+    En: 'Summarize RTL, VCL and other libraries into their call from own code; default true'),
+    (De: 'Mutanten einer Unit für Mutationstests (#1460): kleine Fehler, die die DUnitX-Tests bemerken sollten ' +
+    '(Vergleich < und <=, = und <>, and und or, not entfernen, + und -, +1 entfernen, True und False, 0 und 1, ' +
+    'Anweisung entfernen, Exit(x) durch Exit(Default(Typ))). Erzeugt aus dem Syntaxbaum, nur in aktiven Zweigen, ' +
+    'ohne Assert, Protokollaufrufe und Zeilen mit // atlas-ignore: mutation. Baut und testet nicht: Je Mutant ' +
+    'die Datei ändern, das Testprojekt bauen (build_project) und die Tests laufen lassen (run_tests); bleiben alle ' +
+    'grün, fehlt an der Stelle ein Test. Dieselben Mutanten wie --mutate.';
+    En: 'Mutants of a unit for mutation testing (#1460): small faults the DUnitX tests should notice (comparison ' +
+    '< and <=, = and <>, and and or, remove not, + and -, remove +1, True and False, 0 and 1, remove statement, ' +
+    'Exit(x) by Exit(Default(Type))). Generated from the syntax tree, only in active branches, without Assert, ' +
+    'logging calls and lines with // atlas-ignore: mutation. Does not build or test: for each mutant change the ' +
+    'file, build the test project (build_project) and run the tests (run_tests); if all stay green, a test is ' +
+    'missing at that place. The same mutants as --mutate.'),
+    (De: 'Pfad der Unit (relativ zum Projekt oder absolut)';
+    En: 'Path of the unit (relative to the project or absolute)'),
+    (De: 'Nur diese Routine: "TFoo.Bar" oder "Bar"; leer = alle'; En: 'Only this routine: "TFoo.Bar" or "Bar"; ' +
+    'empty = all'),
+    (De: 'Nur diese Operatoren: boundary, equality, logical, not, arithmetic, increment, boolean, number, ' +
+    'statement, exit; leer = alle';
+    En: 'Only these operators: boundary, equality, logical, not, arithmetic, increment, boolean, number, ' +
+    'statement, exit; empty = all'),
+    (De: 'Nur Stellen ab dieser Zeile (ab 1)'; En: 'Only places from this line on (from 1)'),
+    (De: 'Nur Stellen bis zu dieser Zeile'; En: 'Only places up to this line'),
+    (De: 'markdown (Vorgabe), json (mit Offsets für eigene Änderungen) oder diff (je Mutant ein Patch)';
+    En: 'markdown (default), json (with offsets for own changes) or diff (one patch per mutant)'),
+    (De: 'Unbekannte Operatoren: %s'; En: 'Unknown operators: %s'),
+    (De: '%s ist nicht lesbar'; En: '%s is not readable'));
 
 function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
@@ -386,11 +439,160 @@ begin
     ContextTool(AContext, ToolRunTests), TMcpToolKind.Process);
 end;
 
+/// <summary>Gespeicherte Läufe unter AFolder, neueste zuerst; unlesbare Dateien bleiben weg.</summary>
+function LoadProfileRuns(const AFolder: string): TArray<TMcpProfileRun>;
+var
+  mFile: string;
+  mRun: TMcpProfileRun;
+begin
+  Result := nil;
+  if not TDirectory.Exists(AFolder) then
+  begin
+    Exit;
+  end;
+  for mFile in TAtlasProfileStore.Newest(TDirectory.GetFiles(AFolder, TAtlasProfileStore.cPrefix + '*.json')) do
+  begin
+    mRun := Default(TMcpProfileRun);
+    mRun.Name := ExtractFileName(mFile);
+    if TAtlasProfileJson.TryParse(TFile.ReadAllText(mFile, TEncoding.UTF8), mRun.Profile) then
+    begin
+      Result := Result + [mRun];
+    end;
+  end;
+end;
+
+function ToolGetProfile(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mFolder: string;
+  mRuns: TArray<TMcpProfileRun>;
+begin
+  mFolder := TAtlasProfileStore.Folder(TIndexCacheDirectory.DefaultRoot);
+  mRuns := LoadProfileRuns(mFolder);
+  if Length(mRuns) = 0 then
+  begin
+    Exit(TMcpProfileTools.NoRuns(mFolder));
+  end;
+  Result := TMcpProfileTools.Report(mRuns, TMcpProfileRequest.FromArguments(AArguments));
+end;
+
+procedure AddGetProfile(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('get_profile', cTexts[TMcpBuildTestText.GetProfileTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"top":{"type":"integer","default":10,"description":%s},' +
+      '"unit":{"type":"string","description":%s},' +
+      '"run":{"type":"string","description":%s},' +
+      '"compareWith":{"type":"string","description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"default":"text","description":%s},' +
+      '"ownCode":{"type":"boolean","default":true,"description":%s}}}',
+      [cTexts[TMcpBuildTestText.GetProfileTop].Text,
+      cTexts[TMcpBuildTestText.GetProfileUnit].Text,
+      cTexts[TMcpBuildTestText.GetProfileRun].Text,
+      cTexts[TMcpBuildTestText.GetProfileCompareWith].Text,
+      cTexts[TMcpBuildTestText.GetProfileFormat].Text,
+      cTexts[TMcpBuildTestText.GetProfileOwnCode].Text]),
+    ContextTool(AContext, ToolGetProfile));
+end;
+
+/// <summary>Kennungen aus "operators": Liste oder Text mit Kommas; nil = alle.</summary>
+function OperatorIdsOf(const AArguments: TJSONObject): TArray<string>;
+var
+  mArray: TJSONArray;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if AArguments = nil then
+  begin
+    Exit;
+  end;
+  if AArguments.GetValue('operators') is TJSONArray then
+  begin
+    mArray := TJSONArray(AArguments.GetValue('operators'));
+    for mIndex := 0 to mArray.Count - 1 do
+    begin
+      Result := Result + [mArray.Items[mIndex].Value];
+    end;
+  end
+  else
+  begin
+    Result := TMcpArgs.OptionalString(AArguments, 'operators').Split([',', ';']);
+  end;
+end;
+
+/// <summary>Zeile ab 1 aus AName als Zeile ab 0; -1 ohne Angabe.</summary>
+function LineOf(const AArguments: TJSONObject; const AName: string): Integer;
+var
+  mLine: Integer;
+begin
+  Result := -1;
+  if (AArguments <> nil) and AArguments.TryGetValue<Integer>(AName, mLine) and (mLine > 0) then
+  begin
+    Result := mLine - 1;
+  end;
+end;
+
+function ToolGetMutants(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mFileName, mText: string;
+  mFormat: TMutationOutputFormat;
+  mOptions: TMutationOptions;
+  mIds, mUnknown: TArray<string>;
+begin
+  mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
+  if not TMutationReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
+  begin
+    raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json', 'diff']));
+  end;
+  mOptions := TMutationOptions.Default;
+  mOptions.Routine := Trim(TMcpArgs.OptionalString(AArguments, 'routine'));
+  mOptions.FirstLine := LineOf(AArguments, 'firstLine');
+  mOptions.LastLine := LineOf(AArguments, 'lastLine');
+  mIds := OperatorIdsOf(AArguments);
+  if Length(mIds) > 0 then
+  begin
+    mOptions.Operators := TMutation.ParseOperators(mIds, mUnknown);
+    if Length(mUnknown) > 0 then
+    begin
+      raise EMcpToolError.Create(cTexts[TMcpBuildTestText.UnknownOperators].Fmt([string.Join(', ', mUnknown)]));
+    end;
+  end;
+  if not ReadSourceText(mFileName, mText) then
+  begin
+    raise EMcpToolError.Create(cTexts[TMcpBuildTestText.SourceUnreadable].Fmt([mFileName]));
+  end;
+  // Aktive Zweige wie beim Prüfen: Symbole des Projekts, zu dem die Datei gehört.
+  mOptions.Defines := AContext.CheckSource(mFileName).Defines;
+  Result := TMutationReport.Render(ExtractRelativePath(IncludeTrailingPathDelimiter(AContext.Root), mFileName)
+    .Replace('\', '/'), mText, mOptions, mFormat);
+end;
+
+procedure AddGetMutants(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('get_mutants', cTexts[TMcpBuildTestText.GetMutantsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"file":{"type":"string","description":%s},' +
+      '"routine":{"type":"string","description":%s},' +
+      '"operators":{"type":"array","items":{"type":"string","enum":["boundary","equality","logical","not",' +
+      '"arithmetic","increment","boolean","number","statement","exit"]},"description":%s},' +
+      '"firstLine":{"type":"integer","minimum":1,"description":%s},' +
+      '"lastLine":{"type":"integer","minimum":1,"description":%s},' +
+      '"format":{"type":"string","enum":["markdown","json","diff"],"description":%s}},"required":["file"]}',
+      [cTexts[TMcpBuildTestText.GetMutantsFile].Text,
+      cTexts[TMcpBuildTestText.GetMutantsRoutine].Text,
+      cTexts[TMcpBuildTestText.GetMutantsOperators].Text,
+      cTexts[TMcpBuildTestText.GetMutantsFirstLine].Text,
+      cTexts[TMcpBuildTestText.GetMutantsLastLine].Text,
+      cTexts[TMcpBuildTestText.GetMutantsFormat].Text]),
+    ContextTool(AContext, ToolGetMutants));
+end;
+
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 begin
   AddGetLastBuild(AContext);
   AddBuildProject(AContext);
   AddRunTests(AContext);
+  AddGetProfile(AContext);
+  AddGetMutants(AContext);
 end;
 
 initialization
