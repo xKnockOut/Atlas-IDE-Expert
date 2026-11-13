@@ -154,7 +154,14 @@ Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis ge
 - Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
 - Meldungen deutsch, mit `TApproval.English := True` englisch.
 
-Einstellung: `tests.approvalFolder` (atlas.json)
+In der IDE (Modul Tests, `tests.approvalFiles`):
+
+- Schlägt ein Test mit dieser Meldung fehl, zeigt seine Testmarke „Abweichung · Vergleich“, ohne approved-Datei „Neu · Vergleich“. Derselbe Knopf „Vergleichen“ steht im Hover des Fehlschlags und auf der Kachel *Testergebnisse*.
+- Der Vergleich zeigt links die approved-, rechts die received-Datei (Zeilen einander zugeordnet wie bei erwartet und erhalten, #1779). *Als neue Erwartung übernehmen* ersetzt die approved-Datei durch die received-Datei und löscht diese; der nächste Lauf ist grün. *Zum Test* springt zum Methodenkopf.
+- *Liegengebliebene .received-Dateien löschen* (Atlas-Menü, Befehlspalette) sucht im Ordner der Vergleichsdateien des zuletzt gelaufenen Testprojekts (ohne Lauf des aktiven Projekts), löscht nach Rückfrage alle `*.received.*` darin und bietet an, `*.received.*` in die nächste `.gitignore` einzutragen, wenn dort noch keine Zeile dafür steht.
+- `tests.approvalFiles` aus: keine eigene Marke, kein Befehl; die Hilfs-Unit arbeitet weiter, ihre Fehlschläge erscheinen als gewöhnliche Fehlschläge.
+
+Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugin)
 
 ### Dauer der Tests und langsame Tests (#1772)
 
@@ -384,6 +391,38 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Kontextmenü: Zeile kopieren, als Textdatei speichern, leeren
 
 Einstellungen: `debug.eventLog`, `debug.eventLogColors`
+
+### Logpunkte
+
+- Umschalt+F5 oder „Atlas: Logpunkt setzen“ (Atlas-Menü, Kontextmenü des Editors) an der Cursorzeile bzw. nach Rechtsklick in die Rinne an deren Zeile
+- Text mit Platzhaltern: `x={x}`, `Summe {Summe:0.00}`; Formatangaben `d` (ganze Zahl), `x` (hexadezimal), Muster mit `0` oder `#` (`FormatFloat`), sonst wie in `Format` (`.2f`); `{{` und `}}` sind Klammern im Text
+- Bedingung (`{Summe} > 1000`) und „nur die ersten N Treffer“; Fehler im Text zeigt der Dialog mit Stelle
+- ein gewöhnlicher Haltepunkt an der Zeile wird zum Logpunkt; „Entfernen“ löscht ihn
+- im Ereignisprotokoll eine Zeile der Art Logpunkt mit Präfix und Ort, etwa `[LOG] x=42 · Unit1.pas:12`; Doppelklick springt zur Zeile
+- Raute in der Rinne mit Text und Bedingung im Tooltip
+- „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
+
+Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
+
+### Kein Quelltext
+
+- Hält der Debugger in einer Routine ohne Quelltext (die IDE zeigt das CPU-Fenster), erscheint oben rechts ein kleines Fenster ohne Fokus: Routine, Modul, Adresse, Unit und Grund
+- Gründe: Debug-DCUs aus (Bibliothek von Delphi), Unit mit `{$D-}` übersetzt, nur DCU/BPL vorhanden, Quelltext nicht im Suchpfad, Systemcode (Windows)
+- Auswege je nach Grund: „Debug-DCUs einschalten und neu bauen“ (nur in der Konfiguration Debug, mit Rückfrage; die Sitzung endet, danach baut und startet Atlas), „Zurück zum eigenen Code“ (bis zur Rückkehr in eigenen Code), „Quelltext suchen …“ (Ordner wird für das Projekt gemerkt, die Unit öffnet sich), „CPU-Fenster behalten“
+- „Für diese Unit nicht mehr zeigen“ ergänzt `debug.noSourcePage.ignoredUnits`
+- Mit „Nur eigener Code“ (`debug.justMyCode`) erscheint das Fenster nur bei Exceptions
+
+Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
+### Neu starten
+
+- „Atlas: Neu starten“ mit Strg+Umschalt+F2, im Atlas-Menü oder in der Befehlspalette
+- Schritte: Beenden (nur bei laufendem Programm), Bauen (nur bei Änderungen seit dem letzten Bau), Starten, zurück an die Stelle im Editor
+- Oben rechts eine kleine Leiste ohne Fokus mit den Schritten und ihrer Dauer, etwa „Beenden 0,3 s ✓ · Bauen 2,1 s ✓ · Starten …“
+- Scheitert ein Schritt, bricht der Ablauf ab und die Leiste nennt den Grund
+- Mit `debug.restart.reenableBreakpoints` schaltet Atlas vor dem Start Haltepunkte wieder ein, die beim Start der letzten Sitzung an waren
+
+Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
 ### Exceptions
 
