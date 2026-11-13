@@ -42,6 +42,14 @@ type
     procedure TallyStatus;
     [Test]
     procedure StaleResultsAreNotCountedAsPassed;
+    [Test]
+    procedure FailureAtAssertWithShortText;
+    [Test]
+    procedure SummaryKeepsSlowestTests;
+    [Test]
+    procedure TallySumsDurations;
+    [Test]
+    procedure TallyAndProblemsOfLeaks;
   end;
 
 implementation
@@ -263,6 +271,36 @@ begin
   Assert.AreEqual(2, Integer(Length(mTests.FailedTests)));
 end;
 
+procedure TAtlasTestRunTests.SummaryKeepsSlowestTests;
+var
+  mRun: TTestRunResult;
+  mSlow: TArray<TAtlasTestFailure>;
+  mTests: TAtlasProjectTests;
+begin
+  mRun := TTestResults.Parse(cReport);
+  mSlow := TAtlasTestRun.Locate(TTestResults.Slowest(mRun.Cases, 10),
+    function(const AUnitName: string): string
+    begin
+      Result := cUnitFile;
+    end,
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := Source;
+      Result := True;
+    end);
+  Assert.AreEqual(3, Integer(Length(mSlow)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mSlow[0].Test.FullName, 'langsamster zuerst');
+  Assert.AreEqual(cUnitFile, mSlow[0].FileName);
+  Assert.AreEqual(18, mSlow[0].Line, 'Methodenkopf, 0-basiert');
+  mTests := TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, mSlow, EncodeDate(2026, 11, 13));
+  Assert.AreEqual(3, Integer(Length(mTests.Slowest)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mTests.Slowest[0].Test);
+  Assert.AreEqual(20, mTests.Slowest[0].DurationMs);
+  Assert.AreEqual(19, mTests.Slowest[0].Line, '1-basiert');
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, 0).Slowest)),
+    'ohne Liste keine langsamsten');
+end;
+
 procedure TAtlasTestRunTests.StatusForLens;
 var
   mCases: TArray<TTestCaseResult>;
@@ -409,6 +447,58 @@ begin
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Failed);
 end;
 
+procedure TAtlasTestRunTests.TallySumsDurations;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+  mKey, mOther: TAtlasTestKey;
+begin
+  mCases := TTestResults.Parse(cReport).Cases;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.AreEqual(Int64(10), mTally.DurationMs);
+  Assert.AreEqual(Int64(10), mTally.SlowestMs);
+  // Klassenmarke: Summe; der langsamste Test ist die Methode mit Fällen (Summe ihrer Fälle).
+  mOther := mKey;
+  mOther.Method := 'Summe';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey, mOther]);
+  Assert.AreEqual(Int64(30), mTally.DurationMs);
+  Assert.AreEqual(Int64(20), mTally.SlowestMs);
+end;
+
+procedure TAtlasTestRunTests.TallyAndProblemsOfLeaks;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+  mKey: TAtlasTestKey;
+  mLeak: TAtlasTestFailure;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+begin
+  // Bestanden mit Leck (#1774): zählt als bestanden, Leaked und LeakBytes tragen das Leck.
+  mCases := TTestResults.Parse(cReport).Cases;
+  mCases[0].LeakBytes := 40;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed);
+  Assert.AreEqual(1, mTally.Leaked);
+  Assert.AreEqual(Int64(40), mTally.LeakBytes);
+  mLeak := Default(TAtlasTestFailure);
+  mLeak.Test := mCases[0];
+  mLeak.FileName := cUnitFile;
+  mLeak.Line := 15;
+  mItems := TAtlasTestRun.LeakProblems([mLeak], 'Leck in %s: %d Bytes');
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('Leck in TRechnerTests.Addiert: 40 Bytes', mItems[0].Value.Message);
+  Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Warning);
+  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
+  Assert.AreEqual(15, mItems[0].Value.StartLine);
+  // Ohne Fundstelle keine Warnung.
+  mLeak.Line := -1;
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LeakProblems([mLeak], '%s %d'))));
+end;
+
 /// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>
 function StaleOnly(const AMethod: string): TAtlasTestStaleFunc;
 var
@@ -420,6 +510,61 @@ begin
     begin
       Result := SameText(AName, mMethod);
     end;
+end;
+
+procedure TAtlasTestRunTests.FailureAtAssertWithShortText;
+const
+  cAssertReport =
+    '<test-results total="2">' +
+    '<test-suite type="Namespace" name="Rechner"><results>' +
+    '<test-suite type="TestFixture" name="TRechnerTests"><results>' +
+    '<test-case name="Rechner.Tests.TRechnerTests.Addiert" executed="True" result="Failure" time="0.01">' +
+      '<failure><message>Expected 4 but got 3</message></failure></test-case>' +
+    '<test-case name="Rechner.Tests.TRechnerTests.Teilt" executed="True" result="Error" time="0.01">' +
+      '<failure><message>EZeroDivide</message><stack-trace>' +
+      '[004C1234] Rechner.Tests.TRechnerTests.Teilt (Line 15, "Rechner.Tests.pas" + 1) + $12' +
+      '</stack-trace></failure></test-case>' +
+    '</results></test-suite></results></test-suite></test-results>';
+var
+  mLines: TArray<string>;
+  mFound: TArray<TAtlasTestFailure>;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+  mUnitFile: TAtlasTestUnitFile;
+  mReadLines: TAtlasTestReadLines;
+begin
+  mLines := TArray<string>.Create('unit Rechner.Tests;', 'interface', 'uses DUnitX.TestFramework;', 'type',
+    '  [TestFixture]', '  TRechnerTests = class', '    [Test]', '    procedure Addiert;', '    [Test]',
+    '    procedure Teilt;', '  end;', 'implementation',                    // 9..11
+    'procedure TRechnerTests.Teilt;', 'begin', '  Rechne(1, 0);', 'end;', // 12..15
+    'procedure TRechnerTests.Addiert;', 'begin',                          // 16, 17
+    '  Assert.AreEqual(2, Summe(1, 1));', '  Assert.AreEqual(4, Summe(2, 2)); // zweiter', 'end;', 'end.');
+  mUnitFile :=
+    function(const AUnitName: string): string
+    begin
+      Result := cUnitFile;
+    end;
+  mReadLines :=
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := mLines;
+      Result := True;
+    end;
+  mFound := TAtlasTestRun.Failures(TTestResults.Parse(cAssertReport), mUnitFile, mReadLines, True);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(19, mFound[0].Line, 'Assert mit erwartetem Wert 4');
+  Assert.IsTrue(mFound[0].AtAssert);
+  Assert.AreEqual(2, mFound[0].StartCharacter);
+  Assert.AreEqual(Integer(Length('  Assert.AreEqual(4, Summe(2, 2));')), mFound[0].EndCharacter, 'ohne Kommentar');
+  Assert.AreEqual(14, mFound[1].Line, 'Ausnahme: Zeile aus dem Stacktrace');
+  mItems := TAtlasTestRun.Problems(mFound, '%s: %s', '%s: erwartet %s, erhalten %s', 'erwartet %s, erhalten %s');
+  Assert.AreEqual('erwartet 4, erhalten 3', mItems[0].Value.Details, 'kurzer Text');
+  Assert.AreEqual('', mItems[1].Value.Details, 'ohne Werte kein kurzer Text');
+  Assert.AreEqual('', TAtlasTestRun.Problems(mFound, '%s: %s', '%s: erwartet %s, erhalten %s')[0].Value.Details,
+    'tests.failureInline aus');
+  mFound := TAtlasTestRun.Failures(TTestResults.Parse(cAssertReport), mUnitFile, mReadLines, False);
+  Assert.AreEqual(16, mFound[0].Line, 'tests.failureAtAssert aus: Methodenkopf');
+  Assert.IsFalse(mFound[0].AtAssert);
+  mLines := nil;
 end;
 
 procedure TAtlasTestRunTests.StaleResultsAreNotCountedAsPassed;

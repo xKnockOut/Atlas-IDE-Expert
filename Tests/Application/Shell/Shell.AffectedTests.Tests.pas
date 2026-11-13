@@ -19,6 +19,12 @@ type
     procedure TestScopeJoinsAllPrograms;
     [Test]
     procedure SwitchedOffRaises;
+    /// <summary>#1775: Tests beim Speichern zählen nur die gespeicherten Dateien.</summary>
+    [Test]
+    procedure OnlyFilesKeepsTheSavedOnes;
+    /// <summary>#1775: SinceCommit vergleicht ohne eigene Basis mit HEAD; eine eigene Basis gilt weiter.</summary>
+    [Test]
+    procedure SinceCommitComparesWithHead;
   end;
 
 implementation
@@ -28,7 +34,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
-  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Shell.AffectedTests;
 
 const
@@ -120,6 +126,40 @@ begin
       mMessage := E.Message;
   end;
   Assert.AreEqual(TShellAffectedTests.OffMessage, mMessage);
+end;
+
+function Input(const AFileName: string): TAffectedInput;
+begin
+  Result := Default(TAffectedInput);
+  Result.FileName := AFileName;
+end;
+
+procedure TShellAffectedTestsTests.OnlyFilesKeepsTheSavedOnes;
+var
+  mInputs, mKept: TArray<TAffectedInput>;
+begin
+  mInputs := [Input('C:\Src\Kasse.pas'), Input('C:\Src\Lager.pas'), Input('C:\Src\Kasse.dfm')];
+  mKept := TShellAffectedTests.OnlyFiles(mInputs, ['c:/src/kasse.pas', 'C:\Src\Kasse.dfm']);
+  Assert.AreEqual(2, Integer(Length(mKept)));
+  Assert.AreEqual('C:\Src\Kasse.pas', mKept[0].FileName);
+  Assert.AreEqual('C:\Src\Kasse.dfm', mKept[1].FileName);
+  Assert.AreEqual(3, Integer(Length(TShellAffectedTests.OnlyFiles(mInputs, nil))), 'ohne Dateien alle');
+  Assert.AreEqual(0, Integer(Length(TShellAffectedTests.OnlyFiles(mInputs, ['C:\Src\Neu.pas']))),
+    'ungeändert: nichts');
+  mInputs := nil;
+  mKept := nil;
+end;
+
+procedure TShellAffectedTestsTests.SinceCommitComparesWithHead;
+var
+  mQuery: TShellAffectedQuery;
+begin
+  mQuery := Default(TShellAffectedQuery);
+  Assert.AreEqual('main', TShellAffectedTests.RefOf(mQuery), 'Vorgabe: Merge-Base mit main');
+  mQuery.SinceCommit := True;
+  Assert.AreEqual('HEAD', TShellAffectedTests.RefOf(mQuery));
+  mQuery.Base := 'develop';
+  Assert.AreEqual('develop', TShellAffectedTests.RefOf(mQuery), 'eigene Basis gilt');
 end;
 
 initialization

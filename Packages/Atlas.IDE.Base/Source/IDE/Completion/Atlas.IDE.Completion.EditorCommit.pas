@@ -2,7 +2,8 @@
 
 // Vervollständigung im Editor (#410), Stufe Übernehmen: ein Undo-Schritt (CreateUndoableWriter) für Name,
 // uses-Ergänzung und weitere Änderungen des Eintrags, Klammern (#430), Befehl des Eintrags (#473); Code-Vorlagen
-// (#51) mit Einrückung der Zeile und Platzhalter-Modus (Atlas.IDE.Completion.Placeholders). Kette:
+// (#51) mit Einrückung der Zeile und Platzhalter-Modus (Atlas.IDE.Completion.Placeholders). Ein nicht sichtbares
+// Mitglied (#2108) setzt nichts ein, sondern bietet die Aktionen seines Befehls an. Kette:
 // Atlas.IDE.Completion.EditorState.
 
 interface
@@ -11,10 +12,16 @@ uses
   ToolsAPI,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Snippets,
+  Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.EditorOpen;
 
 type
+  /// <summary>Code-Aktionen zur Wahl anbieten wie bei der Glühbirne; setzt die Kompositionswurzel ein.</summary>
+  TAtlasOfferActionsProc = reference to procedure(const AActions: TArray<TLspCodeAction>);
+
   TAtlasEditorCompletionCommit = class(TAtlasEditorCompletionOpen)
+  private
+    FOnOfferActions: TAtlasOfferActionsProc;
   protected
     procedure Commit(const AItem: TAtlasCompletionItem);
     /// <summary>Setzt die Vorlage von AItem statt des Worts bis AEnd (0-basiert) ein.</summary>
@@ -23,6 +30,9 @@ type
     /// <summary>Befehl des Eintrags nach dem Übernehmen (#473): workspace/executeCommand; die Änderungen des
     /// Servers kommen danach über workspace/applyEdit.</summary>
     procedure RunCommand(const AItem: TAtlasCompletionItem);
+    /// <summary>Nicht sichtbares Mitglied (#2108): die Code-Aktionen seines Befehls (Sichtbarkeit anheben,
+    /// Eigenschaft anlegen) zur Wahl wie bei der Glühbirne; ohne Antwort die Meldung „keine Aktionen“.</summary>
+    procedure OfferActions(const AItem: TAtlasCompletionItem);
     /// <summary>Die automatische ")" (#430) an ARemoveAt (Zeichen in ihrer Zeile) entfernen.</summary>
     procedure SkipAutoParen(const AView: IOTAEditView; ARemoveAt: Integer);
   private
@@ -32,6 +42,9 @@ type
     /// <summary>Die ")" steht direkt hinter dem Cursor (#430): ihre Lage verfolgen und den Hint öffnen.</summary>
     procedure WatchAutoParen(const AView: IOTAEditView);
   public
+    /// <summary>Zeigt die Aktionen für ein nicht sichtbares Mitglied (#2108); nil = Enter darauf tut nichts.
+    /// </summary>
+    property OnOfferActions: TAtlasOfferActionsProc read FOnOfferActions write FOnOfferActions;
     /// <summary>Setzt ASnippet am Cursor von AView ein, mit Einrückung der Zeile und Platzhaltern (#719).</summary>
     procedure InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
     /// <summary>Platzhalter-Modus für schon eingesetzten Text, etwa ein ///-Gerüst (#88). ABefore: Puffertext vor
@@ -54,7 +67,7 @@ uses
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Placeholders,
-  Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.Client,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.Text.Lines;
@@ -541,6 +554,36 @@ begin
   finally
     mAnswer.Free;
   end;
+end;
+
+procedure TAtlasEditorCompletionCommit.OfferActions(const AItem: TAtlasCompletionItem);
+var
+  mSession: TLspSession;
+  mFound: TArray<TLspCodeAction>;
+begin
+  if (AItem.Command = '') or not Assigned(FSession) or not Assigned(FOnOfferActions) then
+  begin
+    Exit;
+  end;
+  // Ohne Sitzung, bei nicht lesbarer Datei der Deklaration oder Zeitlimit sagt die Meldung „keine Aktionen“ genug.
+  mFound := nil;
+  mSession := FSession();
+  try
+    if (mSession <> nil) and mSession.Initialized then
+    begin
+      mFound := mSession.CommandActions(AItem.Command, AItem.CommandArguments, cCommandTimeoutMs);
+    end;
+  except
+    on ELspClientError do
+    begin
+      mFound := nil;
+    end;
+  end;
+  if Length(mFound) = 0 then
+  begin
+    Log('Aktionen des Eintrags: keine (Sitzung oder Server)'); // german-ok Protokoll
+  end;
+  FOnOfferActions(mFound);
 end;
 
 procedure TAtlasEditorCompletionCommit.CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;

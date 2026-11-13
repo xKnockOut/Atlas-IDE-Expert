@@ -25,7 +25,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.UsesLocator,
-  Atlas.Common.Architecture.Overview;
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping;
 
 type
   TArchitectureRequest = record

@@ -113,18 +113,19 @@ const
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  cBooleanRuleOptions: array[0..24] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  cBooleanRuleOptions: array[0..25] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
-    'checkReturns', 'checkFree', 'allowFirstElement', 'implementation');
+    'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  cStringListRuleOptions: array[0..35] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  cStringListRuleOptions: array[0..37] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
-    'formatMethods', 'unitKinds', 'keep', 'pureFunctions');
+    'formatMethods', 'unitKinds', 'keep', 'pureFunctions', 'factories',
+    'registrationCalls');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   cDeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>

@@ -74,8 +74,11 @@ type
     class procedure UpdateIcon(AHost: TAtlasIdeDockWindow); static;
     /// <summary>Aus INTACustomDockableForm.FrameCreated aufrufen: merkt Frame und Form.</summary>
     procedure FrameCreated(AFrame: TCustomFrame);
-    /// <summary>Fenster zeigen, bei Bedarf (neu) anlegen; ACreated: neu angelegt. False ohne Frame.</summary>
+    /// <summary>Fenster zeigen, bei Bedarf (neu) anlegen, ein neues mit Atlas-Symbol; ACreated: neu angelegt.
+    /// False ohne Frame.</summary>
     function Show(out ACreated: Boolean): Boolean;
+    /// <summary>Wie Show, ohne zu fragen, ob neu angelegt.</summary>
+    procedure Present;
     /// <summary>Lebende Form oder nil.</summary>
     function Form: TCustomForm;
     /// <summary>Lebender Frame oder nil (nil auch, wenn die Form schon weg ist).</summary>
@@ -83,6 +86,10 @@ type
     /// <summary>Wirklich zu sehen: Form und alle Gastgeber sichtbar, Reiterseite aktiv.</summary>
     function Shown: Boolean;
     procedure Hide;
+    /// <summary>Shown von AHost; False ohne AHost (Fenster nie angelegt).</summary>
+    class function IsShown(AHost: TAtlasIdeDockWindow): Boolean; static;
+    /// <summary>AHost verstecken; nichts ohne AHost.</summary>
+    class procedure HideIfAny(AHost: TAtlasIdeDockWindow); static;
     /// <summary>Thema der IDE auf AControl anwenden (beim Anlegen und bei jedem Themenwechsel).</summary>
     class procedure ApplyIdeTheme(AControl: TWinControl); static;
     /// <summary>Rückruf für jeden neuen Frame (Kennung des Fensters, Frame); nur im Hauptthread.</summary>
@@ -301,6 +308,7 @@ begin
     end;
     SetForm(mCreated);
     ACreated := True;
+    UpdateIcon(Self);
   end;
   Reveal;
   Result := Frame <> nil;
@@ -370,11 +378,32 @@ begin
   Result := TAtlasDockPlan.Shown(FForm.Visible, mHosts);
 end;
 
+procedure TAtlasIdeDockWindow.Present;
+var
+  mCreated: Boolean;
+begin
+  Show(mCreated);
+end;
+
 procedure TAtlasIdeDockWindow.Hide;
 begin
   if FForm <> nil then
   begin
     FForm.Hide;
+  end;
+end;
+
+class function TAtlasIdeDockWindow.IsShown(AHost: TAtlasIdeDockWindow): Boolean;
+begin
+  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
+  Result := (AHost <> nil) and AHost.Shown;
+end;
+
+class procedure TAtlasIdeDockWindow.HideIfAny(AHost: TAtlasIdeDockWindow);
+begin
+  if AHost <> nil then
+  begin
+    AHost.Hide;
   end;
 end;
 

@@ -96,6 +96,10 @@ type
     /// Änderungskopplung als Markdown, HTML oder JSON nach der Endung der Datei. Exit-Code 0; 3 ohne
     /// Versionsverwaltung, mit hotspots.enabled = false und bei Fehlern.</summary>
     class function Hotspots(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--mutate (#1460): Mutanten einer Unit als Markdown, JSON oder Patch (--format text, json, diff),
+    /// ohne zu bauen; Auswahl mit --routine und --operators, Symbole aus dem Projekt in --check. Exit-Code 0; 3 bei
+    /// Aufruffehlern.</summary>
+    class function Mutate(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--format-check bzw. --format-write (#1358), siehe Kopf der Unit.</summary>
     class function Formatting(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
@@ -118,6 +122,7 @@ uses
   Shell.Linter.Architecture,
   Shell.Linter.Query,
   Shell.Linter.Hotspots,
+  Shell.Linter.Mutation,
   Shell.Linter.Formatting,
   Shell.Linter.AffectedTests,
   Atlas.Common.Localization.Texts;
@@ -165,6 +170,11 @@ end;
 class function TLinterShell.Hotspots(const AOptions: TCommandLineOptions): Integer;
 begin
   Result := TLinterHotspots.Run(AOptions);
+end;
+
+class function TLinterShell.Mutate(const AOptions: TCommandLineOptions): Integer;
+begin
+  Result := TLinterMutation.Run(AOptions);
 end;
 
 class function TLinterShell.Formatting(const AOptions: TCommandLineOptions): Integer;

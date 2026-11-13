@@ -17,6 +17,10 @@
 //     als Zeilen in den Meldungen. Das schuldige Glied unterstreicht Atlas im Editor, bis weitergelaufen wird.
 //   - Knöpfe der Leiste: „Wo wird X zugewiesen?“ (OnWhereAssigned, #690), „Ausdruck auswerten“ (OnEvaluate,
 //     #784), „Erklärung kopieren“. Was die ersten beiden tun, setzt die Zusammensetzung.
+//   - Modul der Fehleradresse (#1820, debug.moduleOfAddress): beim Halt die geladenen Module lesen
+//     (TAtlasIdeDebugModules) und das Modul der Adresse hinter der Erklärung nennen. Liegt der Halt nicht in
+//     eigenem Code, ist das Modul die ganze Erklärung („Adresse liegt in vcl290.bpl (RTL/VCL)“ mit der letzten
+//     eigenen Stelle); gezeigt wird sie wie sonst erst, wenn der Dialog der IDE zu ist.
 //   - Fortsetzen, neuer Halt, Ende der Sitzung verwerfen Ergebnis, Unterstreichung und laufende Arbeit.
 // Ohne debug.explainAccessViolation ist nichts angemeldet. Nur im Hauptthread verwenden.
 
@@ -39,6 +43,7 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.AccessViolationUnderline,
+  Atlas.IDE.Debug.Modules,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Debug.ExceptionBar;
 
@@ -100,6 +105,10 @@ type
       Line: Integer;
       PointerSize: Integer;
       Lines: TArray<string>;
+      /// <summary>Modul der Fehleradresse (#1820; Known = False ohne).</summary>
+      Note: TAtlasDebugModuleNote;
+      /// <summary>Halt nicht in eigenem Code: nur das Modul nennen, nichts auswerten.</summary>
+      ModuleOnly: Boolean;
       /// <summary>„Datei:Zeile“ (1-basiert).</summary>
       function Place: string;
       /// <summary>Klasse, Meldung und Ort für die Überschrift.</summary>
@@ -129,6 +138,7 @@ type
     constructor Create(const ASession: TAtlasAvSessionFunc; const AMessage: TProc<string>);
     procedure ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
     procedure Drop;
+
     procedure Tick(Sender: TObject);
     procedure CheckWait;
     procedure Ask;
@@ -162,7 +172,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Debug.CallStack,
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
@@ -300,7 +309,9 @@ begin
   TAtlasIdeAvUnderline.Invalidate;
 end;
 
-class function TAtlasIdeDebugAccessViolation.Started: Boolean;
+class function
+ TAtlasIdeDebugAccessViolation.Started: Boolean;
+
 begin
   Result := FInstance <> nil;
 end;
@@ -360,6 +371,8 @@ begin
   FOutcome.Culprit := Default(TAtlasAvLink);
   FOutcome.HasCulprit := False;
   FFacts.Lines := nil;
+  FFacts.Note := Default(TAtlasDebugModuleNote);
+  FFacts.ModuleOnly := False;
   ReapWorkers(False);
   if (FUnderline <> nil) and FUnderline.Clear then
   begin
@@ -367,9 +380,13 @@ begin
   end;
 end;
 
+/// <summary>debug.moduleOfAddress (#1820) zusätzlich zu debug.explainAccessViolation?</summary>
+function ModuleOfAddressEnabled: Boolean;
+begin
+  Result := TAtlasIdeDebugAccessViolation.Enabled and TAtlasIdeSettings.Current.DebugModuleOfAddress;
+end;
+
 procedure TAtlasIdeDebugAccessViolation.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
-var
-  mFrames: TAtlasDebugFrames;
 begin
   Drop;
   if AStop.Continued or not Enabled then
@@ -381,22 +398,36 @@ begin
   begin
     Exit;
   end;
-  mFrames := AStop.Frames;
+  if ModuleOfAddressEnabled then
+  begin
+    FFacts.Note := TAtlasIdeDebugModules.Note(AStop.Exception.Message, AStop.Frames);
+  end;
   // Der Debugger wertet im obersten Rahmen aus: Nur wenn der eigener Code mit Quelltext ist, passt die Zeile.
-  if (Length(mFrames) = 0) or not mFrames[0].HasSource or not mFrames[0].Own then
+  // Sonst nennt Atlas nur das Modul der Fehleradresse (#1820), falls bekannt.
+  FFacts.ModuleOnly := (Length(AStop.Frames) = 0) or not AStop.Frames[0].HasSource or not AStop.Frames[0].Own;
+  if FFacts.ModuleOnly and not FFacts.Note.Known then
   begin
     TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
     Exit;
   end;
   FFacts.Exception := AStop.Exception;
   FProgress.Stop := AStop.Stop;
-  FFacts.FileName := mFrames[0].FileName;
-  FFacts.Line := mFrames[0].Line - 1;
-  FFacts.PointerSize := TAtlasAvJson.PointerSize(TAtlasIdeDebugSession.LaunchPlatform);
+  if FFacts.ModuleOnly then
+  begin
+    // Ort für Kopf und Meldungen: die letzte eigene Stelle, sonst das Modul.
+    FFacts.FileName := FFacts.Note.FileName;
+    FFacts.Line := FFacts.Note.Line;
+  end
+  else
+  begin
+    FFacts.FileName := AStop.Frames[0].FileName;
+    FFacts.Line := AStop.Frames[0].Line - 1;
+    FFacts.PointerSize := TAtlasAvJson.PointerSize(TAtlasIdeDebugSession.LaunchPlatform);
+    TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, TAtlasAvTexts.Busy);
+  end;
   FProgress.Since := TThread.GetTickCount64;
   FProgress.Quiet := 0;
   FProgress.Phase := TPhase.Wait;
-  TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, TAtlasAvTexts.Busy);
   FTimer.Interval := cWaitMs;
   FTimer.Enabled := True;
 end;
@@ -446,6 +477,11 @@ begin
     Exit;
   end;
   FTimer.Enabled := False;
+  if FFacts.ModuleOnly then
+  begin
+    Publish(FFacts.Note.Explanation(FFacts.Header));
+    Exit;
+  end;
   Ask;
 end;
 
@@ -652,6 +688,11 @@ end;
 
 function TAtlasIdeDebugAccessViolation.TStopFacts.Place: string;
 begin
+  // Ohne Zeile (nur das Modul bekannt, #1820) nur der Name.
+  if Line < 0 then
+  begin
+    Exit(ExtractFileName(FileName));
+  end;
   Result := Format('%s:%d', [ExtractFileName(FileName), Line + 1]);
 end;
 
@@ -701,17 +742,26 @@ var
 begin
   FTimer.Enabled := False;
   FProgress.Phase := TPhase.Idle;
-  FOutcome.Explanation := AExplanation;
-  TAtlasGuard.Log('Zugriffsverletzung erklären: ' + TLogMarks.Text(AExplanation.Headline) + ' ' +
-    TLogMarks.Text(AExplanation.Detail));
+  // Modul der Fehleradresse hinter der Erklärung der Auswertung (#1820); die Erklärung nur aus dem Modul hat es
+  // schon als Ergebniszeile.
+  if FFacts.ModuleOnly then
+  begin
+    FOutcome.Explanation := AExplanation;
+  end
+  else
+  begin
+    FOutcome.Explanation := TAtlasAvTexts.WithModule(AExplanation, FFacts.Note.Text);
+  end;
+  TAtlasGuard.Log('Zugriffsverletzung erklären: ' + TLogMarks.Text(FOutcome.Explanation.Headline) + ' ' +
+    TLogMarks.Text(FOutcome.Explanation.Detail));
   // Steht (oder kommt) die Leiste für diesen Halt, zeigt sie die Erklärung; sonst die Meldungen.
   if TAtlasIdeDebugExceptionBar.Covers(FProgress.Stop) then
   begin
-    TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, AExplanation);
+    TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, FOutcome.Explanation);
   end
   else if Assigned(FHooks.Message) then
   begin
-    for mLine in TAtlasAvTexts.MessageLines(AExplanation, FFacts.Place) do
+    for mLine in TAtlasAvTexts.MessageLines(FOutcome.Explanation, FFacts.Place) do
     begin
       FHooks.Message(mLine);
     end;
@@ -743,7 +793,7 @@ begin
       end;
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
   end;
 end;
 

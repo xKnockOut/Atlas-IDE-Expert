@@ -48,7 +48,7 @@ uses
   System.UITypes,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Workflow.Strings;
 
 const
   cDialogWidth = 480;
@@ -64,22 +64,22 @@ var
   mRow: TPanel;
   mButtons: TAtlasButtonRow;
 begin
-  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.StatusDialogTitle, [AKey]),
+  inherited CreateDialog(AOwner, TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.StatusDialogTitle, [AKey]),
     cDialogWidth);
   mRow := AddRow(cRowHeight);
-  AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.StatusDialogChoice));
+  AddLabel(mRow, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusDialogChoice));
   FChoice := TAtlasChoiceBox.Create(Self);
   FChoice.Parent := mRow;
   FChoice.Left := ScaleValue(cLabelWidth);
   FChoice.Top := 0;
   FChoice.Width := ScaleValue(cDialogWidth - cLabelWidth);
-  FChoice.SetChoices(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.StatusDialogKeep)) +
+  FChoice.SetChoices(TArray<string>.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusDialogKeep)) +
     AChoices);
   FChoice.Choice := APreselect + 1;
   FitRight(FChoice);
 
   mRow := AddRow(cRowHeight);
-  AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndComment));
+  AddLabel(mRow, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndComment));
   FEditor := TAtlasCommentEditor.Create(Self);
   // Lage vor Align und Parent wie bei AddRow.
   FEditor.Top := NextTop;
@@ -91,10 +91,10 @@ begin
   FEditor.Events := TAtlasCommentEditorEvents.Create(EditorSend, EditorCancel);
 
   mButtons := AddButtonRow;
-  FSend := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend),
+  FSend := mButtons.AddButton(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSend),
     TAtlasButtonKind.Default);
   FSend.ModalResult := mrOk;
-  mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndCancel), TAtlasButtonKind.Cancel);
   FitHeight;
   // Größer ziehen: Der Kommentar nimmt die Höhe auf.
   AllowResize(FEditor);

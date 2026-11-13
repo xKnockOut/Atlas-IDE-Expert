@@ -71,10 +71,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.DocBox,
-  Atlas.UI.Tracker.CommentEditor,
-  Atlas.UI.Tracker.DevelopmentView,
-  Atlas.UI.Tracker.IssueBoxes;
+  Atlas.UI.Tracker.IssueFrame.Contract;
 
 const
   /// <summary>Nachricht an den Frame: Inhalt neu bzw. verknüpftes Issue öffnen, nach dem auslösenden Klick (das
@@ -82,176 +79,6 @@ const
   cWM_ATLAS_ISSUE_DEFERRED = WM_APP + 1264;
 
 type
-  {$SCOPEDENUMS ON}
-  /// <summary>Schalter des Frames (SetFlag).</summary>
-  TAtlasIssueFlag = (
-    /// <summary>„Beginnen“ möglich.</summary>
-    CanStart,
-    /// <summary>Der Tracker kann schreiben und issues.syncState ist an (#1266): Kommentarfeld und „Beenden …“.
-    /// </summary>
-    CanWrite,
-    /// <summary>Das gezeigte Issue ist das aktuelle: „Beenden …“ geht.</summary>
-    CanEnd,
-    /// <summary>Das gezeigte Issue steht in einem Prüfzustand (#2126): „Prüfen …“ zeigen.</summary>
-    CanReview,
-    /// <summary>„Anhängen …“ zeigen (issues.attach, #1276).</summary>
-    CanAttach,
-    /// <summary>issues.preview.checklists (#1273): Häkchen und Zurückschreiben; aus = Text wie geschrieben.</summary>
-    Checklists,
-    /// <summary>Keine Schreibrechte: Kästchen nur lesend mit Tooltip, kein „Punkt hinzufügen …“.</summary>
-    ChecklistReadOnly,
-    /// <summary>Zurückschreiben läuft (#1273): Zeile „Wird gespeichert …“, Klicks auf Kästchen ruhen.</summary>
-    ChecklistBusy,
-    /// <summary>Kommentar wird gesendet (#1266): Feld und Knopf gesperrt.</summary>
-    CommentSending,
-    /// <summary>Laden läuft (Leiste, „Aktualisieren“ wird „Abbrechen“); der bisherige Inhalt bleibt.</summary>
-    Loading,
-    /// <summary>Verknüpfungen als Baum statt Liste (issues.preview.links, #1279); gilt ab dem nächsten
-    /// ShowDetails.</summary>
-    LinksAsTree,
-    /// <summary>Der Tracker kann Unteraufgaben anlegen und verknüpfen: Knöpfe über dem Baum.</summary>
-    CanWriteLinks,
-    /// <summary>issues.preview.development: Reiter „Entwicklung“ zeigen.</summary>
-    Development);
-  {$SCOPEDENUMS OFF}
-  TAtlasIssueFlags = set of TAtlasIssueFlag;
-
-  /// <summary>Feste Steuerelemente des Frames; sie gehören dem Frame.</summary>
-  TAtlasIssueFrameParts = record
-    /// <summary>Werkzeugleiste; bricht bei schmalem Fenster in eine zweite Zeile um.</summary>
-    Tools: TFlowPanel;
-    Back: TButton;
-    Forward: TButton;
-    Start: TButton;
-    /// <summary>„Beenden …“ (#1266).</summary>
-    Finish: TButton;
-    /// <summary>„Prüfen …“ (#2126) für ein Issue im Prüfzustand.</summary>
-    Review: TButton;
-    Browse: TButton;
-    CopyKey: TButton;
-    Attach: TButton;
-    Menu: TPopupMenu;
-    AttachItem: TMenuItem;
-    Refresh: TButton;
-    CommentPanel: TPanel;
-    CommentHint: TLabel;
-    /// <summary>Kommentar-Editor (#1278); CommentEdit ist sein Memo.</summary>
-    Comment: TAtlasCommentEditor;
-    CommentEdit: TMemo;
-    CommentSend: TButton;
-    CommentNote: TLabel;
-    Progress: TProgressBar;
-    Status: TPanel;
-    StatusLabel: TLabel;
-    Fix: TButton;
-    Pages: TPageControl;
-    DetailsSheet: TTabSheet;
-    DevelopmentSheet: TTabSheet;
-    /// <summary>Inhalt des Reiters „Entwicklung“ (#1269).</summary>
-    Development: TAtlasIssueDevelopmentView;
-    Scroll: TScrollBox;
-    Empty: TLabel;
-    Actions: TActionList;
-    BackAction: TAction;
-    ForwardAction: TAction;
-  end;
-
-  /// <summary>Inhalt des gezeigten Issues; entsteht bei jedem Neuaufbau, nil ohne den Teil.</summary>
-  TAtlasIssueFrameContent = record
-    /// <summary>Alle Teile des Inhalts (für das Aufräumen).</summary>
-    Controls: TList<TControl>;
-    Images: TList<TAtlasIssueImageBox>;
-    Docs: TList<TAtlasIssueDocBox>;
-    /// <summary>Behälter für Place: nil = Bildlauf, sonst eine Karte (Kopf, Kommentar).</summary>
-    Target: TAtlasIssueCard;
-    /// <summary>Kopf mit Kennung, Titel und Abzeichen.</summary>
-    Head: TAtlasIssueCard;
-    KeyLabel: TLabel;
-    TitleLabel: TLabel;
-    Badges: TAtlasIssueBadgeBar;
-    Attachments: TListView;
-    Links: TListView;
-    /// <summary>Verknüpfungen als Baum (#1279): Node.Data = Index + 1 in TreeLinks, Gruppen nil.</summary>
-    LinkTree: TTreeView;
-    TreeLinks: TArray<TAtlasTrackerLink>;
-    CreateSubtask: TButton;
-    AddLink: TButton;
-    /// <summary>„n ältere Kommentare“.</summary>
-    Older: TLabel;
-    /// <summary>Doku-Fläche mit dem ersten Kästchen; nil ohne.</summary>
-    TaskBox: TAtlasIssueDocBox;
-    /// <summary>„Punkt hinzufügen …“; nil ohne Checkliste, ohne Schreibrecht oder ohne Checklists.</summary>
-    AddTask: TLabel;
-    /// <summary>Kopf des hervorgehobenen Kommentars (#1271).</summary>
-    AnchorLabel: TLabel;
-    /// <summary>Hervorgehobener Kommentar (Index in Details.Comments); -1 ohne.</summary>
-    AnchorComment: Integer;
-    /// <summary>Fortschritt in der Kopfzeile ("3/5"; '' ohne Checkliste oder ohne Checklists).</summary>
-    ProgressText: string;
-    NextTop: Integer;
-  end;
-
-  /// <summary>Zustand des Frames zwischen den Aufrufen.</summary>
-  TAtlasIssueFrameState = record
-    Details: TAtlasTrackerDetails;
-    HasDetails: Boolean;
-    /// <summary>Jetzt (UTC) für relative Zeiten.</summary>
-    Now: TDateTime;
-    CommentsExpanded: Boolean;
-    CommentsOff: Boolean;
-    FixKind: TAtlasIssueFix;
-    /// <summary>Anker einer Meldung (#1271): Zeit des ersten neuen Kommentars (UTC); 0 = oben.</summary>
-    Anchor: TDateTime;
-    /// <summary>Nach dem auslösenden Klick (cWM_ATLAS_ISSUE_DEFERRED): neu aufbauen, Link öffnen, Kästchen
-    /// melden, „Punkt hinzufügen …“ melden.</summary>
-    PendingRebuild: Boolean;
-    PendingLink: TAtlasTrackerLink;
-    HasPendingLink: Boolean;
-    PendingTask: Integer;
-    PendingAdd: Boolean;
-    /// <summary>Zur Checkliste blättern, sobald sie zu sehen ist.</summary>
-    RevealTasks: Boolean;
-  end;
-
-  /// <summary>Wünsche des Frames an die IDE-Schicht; nil = nichts.</summary>
-  TAtlasIssueFrameEvents = record
-    Back: TProc;
-    Forward: TProc;
-    Start: TProc;
-    /// <summary>„Beenden …“ (#1266) für das gezeigte, aktuelle Issue.</summary>
-    Finish: TProc;
-    /// <summary>„Prüfen …“ (#2126) für das gezeigte Issue.</summary>
-    Review: TProc;
-    /// <summary>Kommentar senden (#1266); Ergebnis über CommentDone.</summary>
-    Comment: TProc<string>;
-    Browse: TProc;
-    CopyKey: TProc;
-    /// <summary>„Anhängen …“ für das gezeigte Issue (#1276).</summary>
-    Attach: TProc;
-    Refresh: TProc;
-    Cancel: TProc;
-    Fix: TProc<TAtlasIssueFix>;
-    OpenLink: TProc<TAtlasTrackerLink>;
-    OpenAttachment: TProc<TAtlasTrackerAttachment>;
-    /// <summary>Link aus Beschreibung oder Kommentar bzw. Titel; die IDE-Schicht prüft und öffnet.</summary>
-    OpenUrl: TProc<string>;
-    /// <summary>Adressen der Bilder, die geladen werden sollen (nach ShowDetails).</summary>
-    Images: TProc<TArray<string>>;
-    /// <summary>Fenster geschlossen bzw. Frame freigegeben: laufendes Laden abbrechen.</summary>
-    Hidden: TProc;
-    /// <summary>Kästchen Nummer N (ab 0, TAtlasTrackerChecklist) der Beschreibung angeklickt (#1273); nach dem
-    /// Klick gemeldet.</summary>
-    ToggleTask: TProc<Integer>;
-    /// <summary>„Punkt hinzufügen …“ angeklickt (#1273); nach dem Klick gemeldet.</summary>
-    AddTask: TProc;
-    /// <summary>„Unteraufgabe anlegen …“ bzw. „Verknüpfen …“ (#1279); Dialog und Senden in der IDE-Schicht.
-    /// </summary>
-    CreateSubtask: TProc;
-    AddLink: TProc;
-    /// <summary>Reiter „Entwicklung“ wurde gewählt: suchen, wenn noch nicht geschehen.</summary>
-    DevelopmentShown: TProc;
-  end;
-
   TAtlasIssueFrame = class(TFrame)
   private
     FParts: TAtlasIssueFrameParts;
@@ -319,15 +146,18 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.IssueBoxes,
+  Atlas.UI.Tracker.DevelopmentView,
+  Atlas.UI.Tracker.CommentEditor,
+  Atlas.UI.Tracker.DocBox,
   Atlas.Core.Tracker.Markdown,
   Winapi.Windows,
   System.Math,
   System.UITypes,
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Checklist,
-  Atlas.Core.Tracker.Links,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Issue.Strings;
 
 {$R *.dfm}
 
@@ -406,7 +236,7 @@ procedure AddMenu(AFrame: TAtlasIssueFrame);
 begin
   AFrame.FParts.Menu := TPopupMenu.Create(AFrame);
   AFrame.FParts.AttachItem := TMenuItem.Create(AFrame.FParts.Menu);
-  AFrame.FParts.AttachItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand);
+  AFrame.FParts.AttachItem.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachMenu);
   AFrame.FParts.AttachItem.Tag := cToolTag + Ord(TIssueTool.Attach);
   AFrame.FParts.AttachItem.OnClick := AFrame.ControlClick;
   AFrame.FParts.AttachItem.Visible := False;
@@ -427,31 +257,31 @@ begin
   // Schmales Fenster: Knöpfe in die nächste Zeile statt abgeschnitten.
   AFrame.FParts.Tools.AutoSize := True;
   AFrame.FParts.Back := AddTool(AFrame, '◀', TIssueTool.Back);
-  AFrame.FParts.Back.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBack);
+  AFrame.FParts.Back.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBack);
   AFrame.FParts.Back.Width := AFrame.FParts.Back.ScaleValue(32);
   AFrame.FParts.Forward := AddTool(AFrame, '▶', TIssueTool.Forward);
-  AFrame.FParts.Forward.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewForward);
+  AFrame.FParts.Forward.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewForward);
   AFrame.FParts.Forward.Width := AFrame.FParts.Forward.ScaleValue(32);
-  AFrame.FParts.Start := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart),
+  AFrame.FParts.Start := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewStart),
     TIssueTool.Start);
-  AFrame.FParts.Finish := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEnd),
+  AFrame.FParts.Finish := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEnd),
     TIssueTool.Finish);
-  AFrame.FParts.Finish.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEndHint);
+  AFrame.FParts.Finish.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEndHint);
   AFrame.FParts.Finish.Visible := False;
-  AFrame.FParts.Review := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand),
+  AFrame.FParts.Review := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewReview),
     TIssueTool.Review);
-  AFrame.FParts.Review.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewHint);
+  AFrame.FParts.Review.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewReviewHint);
   AFrame.FParts.Review.Visible := False;
-  AFrame.FParts.Browse := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse),
+  AFrame.FParts.Browse := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse),
     TIssueTool.Browse);
-  AFrame.FParts.CopyKey := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey),
+  AFrame.FParts.CopyKey := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey),
     TIssueTool.CopyKey);
-  AFrame.FParts.Attach := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachPreviewButton),
+  AFrame.FParts.Attach := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttach),
     TIssueTool.Attach);
-  AFrame.FParts.Attach.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachStatusHint);
+  AFrame.FParts.Attach.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachHint);
   AFrame.FParts.Attach.Visible := False;
   AddMenu(AFrame);
-  AFrame.FParts.Refresh := AddTool(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRefresh),
+  AFrame.FParts.Refresh := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRefresh),
     TIssueTool.Refresh);
 end;
 
@@ -510,14 +340,14 @@ begin
   AFrame.FParts.CommentPanel.ShowCaption := False;
   AFrame.FParts.CommentPanel.Visible := False;
   AFrame.FParts.CommentHint := AddCommentLabel(AFrame, alTop,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentHint));
+    TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCommentHint));
   AFrame.FParts.CommentNote := AddCommentLabel(AFrame, alBottom, '');
   AFrame.FParts.CommentSend := TButton.Create(AFrame);
   AFrame.FParts.CommentSend.Parent := AFrame.FParts.CommentPanel;
   AFrame.FParts.CommentSend.Align := alRight;
   AFrame.FParts.CommentSend.AlignWithMargins := True;
   AFrame.FParts.CommentSend.Width := AFrame.FParts.CommentSend.ScaleValue(90);
-  AFrame.FParts.CommentSend.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentSend);
+  AFrame.FParts.CommentSend.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCommentSend);
   AFrame.FParts.CommentSend.Tag := cToolTag + Ord(TIssueTool.CommentSend);
   AFrame.FParts.CommentSend.OnClick := AFrame.ControlClick;
   // Kommentar-Editor (#1278): Strg+Enter sendet; Vorschläge, Textbausteine und Entwurf, sobald die IDE ihn bindet.
@@ -530,12 +360,12 @@ begin
   AFrame.FParts.CommentEdit := AFrame.FParts.Comment.Memo;
 end;
 
-function AddSheet(AFrame: TAtlasIssueFrame; AText: TAtlasTrackerTextId): TTabSheet;
+function AddSheet(AFrame: TAtlasIssueFrame; AText: TAtlasIssueTextId): TTabSheet;
 begin
   Result := TTabSheet.Create(AFrame);
   Result.TabVisible := False;
   Result.PageControl := AFrame.FParts.Pages;
-  Result.Caption := TAtlasTrackerStrings.Text(AText);
+  Result.Caption := TAtlasIssueStrings.Text(AText);
 end;
 
 /// <summary>Reiter „Details“ (Bildlauf mit dem Inhalt) und „Entwicklung“ (#1269).</summary>
@@ -545,8 +375,8 @@ begin
   AFrame.FParts.Pages.Parent := AFrame;
   AFrame.FParts.Pages.Align := alClient;
   // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (ApplyTabs in CreateWnd).
-  AFrame.FParts.DetailsSheet := AddSheet(AFrame, TAtlasTrackerTextId.IssuePreviewTabDetails);
-  AFrame.FParts.DevelopmentSheet := AddSheet(AFrame, TAtlasTrackerTextId.IssuePreviewTabDevelopment);
+  AFrame.FParts.DetailsSheet := AddSheet(AFrame, TAtlasIssueTextId.IssuePreviewTabDetails);
+  AFrame.FParts.DevelopmentSheet := AddSheet(AFrame, TAtlasIssueTextId.IssuePreviewTabDevelopment);
   AFrame.FParts.Pages.Tag := cToolTag + Ord(TIssueTool.Pages);
   AFrame.FParts.Pages.OnChange := AFrame.ControlClick;
   AFrame.FParts.Development := TAtlasIssueDevelopmentView.Create(AFrame);
@@ -566,7 +396,7 @@ begin
   AFrame.FParts.Empty.AlignWithMargins := True;
   AFrame.FParts.Empty.WordWrap := True;
   AFrame.FParts.Empty.ShowAccelChar := False;
-  AFrame.FParts.Empty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEmpty);
+  AFrame.FParts.Empty.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEmpty);
 end;
 
 function AddAction(AFrame: TAtlasIssueFrame; AKey: Word; ATool: TIssueTool): TAction;
@@ -731,11 +561,11 @@ begin
   ADoc.TasksLocked := mReadOnly;
   if mReadOnly then
   begin
-    ADoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly);
+    ADoc.TaskHint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistReadOnly);
   end
   else
   begin
-    ADoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistToggleHint);
+    ADoc.TaskHint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistToggleHint);
   end;
   if (AFrame.FContent.TaskBox = nil) and ADoc.HasTasks then
   begin
@@ -817,17 +647,17 @@ function BadgeHint(AKind: TAtlasIssueBadgeKind): string;
 begin
   case AKind of
     TAtlasIssueBadgeKind.State:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldState);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFieldState);
     TAtlasIssueBadgeKind.Priority:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldPriority);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFieldPriority);
     TAtlasIssueBadgeKind.Kind:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldKind);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFieldKind);
     TAtlasIssueBadgeKind.Assignee:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldAssignee);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFieldAssignee);
     TAtlasIssueBadgeKind.Sprint:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldSprint);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFieldSprint);
     TAtlasIssueBadgeKind.LabelName:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldLabel);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFieldLabel);
   else
     Result := '';
   end;
@@ -840,12 +670,12 @@ begin
   AHint := BadgeHint(ABadge.Kind) + ': ' + ABadge.Text;
   if ABadge.Kind = TAtlasIssueBadgeKind.Created then
   begin
-    AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeCreated, [AgeText(AFrame, ABadge.Time)]);
+    AText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewBadgeCreated, [AgeText(AFrame, ABadge.Time)]);
     AHint := TAtlasIssueTimeText.Absolute(ABadge.Time);
   end
   else if ABadge.Kind = TAtlasIssueBadgeKind.Updated then
   begin
-    AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated, [AgeText(AFrame, ABadge.Time)]);
+    AText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewBadgeUpdated, [AgeText(AFrame, ABadge.Time)]);
     AHint := TAtlasIssueTimeText.Absolute(ABadge.Time);
   end;
 end;
@@ -880,9 +710,9 @@ begin
   AFrame.FContent.ProgressText := AProgress.Text;
   if AFrame.FContent.ProgressText <> '' then
   begin
-    mKey := AddLabel(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistStatusLine, [mDetails.Key,
+    mKey := AddLabel(AFrame, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueChecklistStatusLine, [mDetails.Key,
       AFrame.FContent.ProgressText]), False);
-    mKey.Hint := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress,
+    mKey.Hint := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueChecklistProgress,
       [AProgress.Done, AProgress.Total]);
     mKey.ShowHint := True;
   end
@@ -911,10 +741,10 @@ begin
   begin
     mTasks := TAtlasMarkdownTasks.Clickable;
   end;
-  AddSection(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewDescription));
+  AddSection(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewDescription));
   if Trim(AFrame.FState.Details.Description) = '' then
   begin
-    AddMuted(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoDescription), False);
+    AddMuted(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoDescription), False);
   end
   else
   begin
@@ -922,7 +752,7 @@ begin
   end;
   if AProgress.Any and not HasFlag(AFrame, TAtlasIssueFlag.ChecklistReadOnly) then
   begin
-    AFrame.FContent.AddTask := AddLinkLabel(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd),
+    AFrame.FContent.AddTask := AddLinkLabel(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistAdd),
       TIssueContent.AddTask);
   end;
 end;
@@ -938,11 +768,11 @@ begin
   end;
   if ACollapsed = 1 then
   begin
-    mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment);
+    mText := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewOlderComment);
   end
   else
   begin
-    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewOlderComments, [ACollapsed]);
+    mText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewOlderComments, [ACollapsed]);
   end;
   AFrame.FContent.Older := AddLinkLabel(AFrame, mText, TIssueContent.Older);
 end;
@@ -979,14 +809,14 @@ begin
   mComments := AFrame.FState.Details.Comments;
   if AFrame.FState.CommentsOff then
   begin
-    AddMuted(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentsOff), False);
+    AddMuted(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCommentsOff), False);
     Exit;
   end;
   if Length(mComments) = 0 then
   begin
     Exit;
   end;
-  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewComments, [Length(mComments)]));
+  AddSection(AFrame, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewComments, [Length(mComments)]));
   mAnchor := TAtlasIssuePreview.CommentAt(mComments, AFrame.FState.Anchor);
   // Der neue Kommentar einer Meldung liegt bei den eingeklappten: aufklappen.
   if (mAnchor >= 0) and
@@ -1027,9 +857,9 @@ begin
   begin
     Exit;
   end;
-  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachments, [Length(mAttachments)]));
-  mList := AddList(AFrame, TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnSize)), TIssueContent.Attachment);
+  AddSection(AFrame, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewAttachments, [Length(mAttachments)]));
+  mList := AddList(AFrame, TArray<string>.Create(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnName),
+    TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnSize)), TIssueContent.Attachment);
   mList.Items.BeginUpdate;
   try
     for mAttachment in mAttachments do
@@ -1052,11 +882,11 @@ begin
   Result := ALink.Relation;
   if ALink.Relation = 'cross-referenced' then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationMentioned);
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRelationMentioned);
   end
   else if ALink.Relation = 'pull request' then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationPull);
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRelationPull);
   end;
 end;
 
@@ -1073,10 +903,10 @@ begin
   begin
     Exit;
   end;
-  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewLinks, [Length(mLinks)]));
-  mList := AddList(AFrame, TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnKey),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnTitle),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnRelation)), TIssueContent.Link);
+  AddSection(AFrame, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewLinks, [Length(mLinks)]));
+  mList := AddList(AFrame, TArray<string>.Create(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnKey),
+    TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnTitle),
+    TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnRelation)), TIssueContent.Link);
   mList.Items.BeginUpdate;
   try
     for mLink in mLinks do
@@ -1094,7 +924,7 @@ begin
   AFrame.FContent.Links := mList;
 end;
 
-function AddLinkButton(AFrame: TAtlasIssueFrame; AParent: TWinControl; AText: TAtlasTrackerTextId;
+function AddLinkButton(AFrame: TAtlasIssueFrame; AParent: TWinControl; AText: TAtlasIssueTextId;
   AMinWidth: Integer; AContent: TIssueContent): TButton;
 begin
   Result := TButton.Create(AFrame);
@@ -1102,7 +932,7 @@ begin
   Result.Align := alLeft;
   Result.AlignWithMargins := True;
   Result.Left := AParent.ControlCount * 200;
-  Result.Caption := TAtlasTrackerStrings.Text(AText);
+  Result.Caption := TAtlasIssueStrings.Text(AText);
   Result.Width := Max(AMinWidth, Length(Result.Caption) * 8);
   Result.Tag := cContentTag + Ord(AContent);
   Result.OnClick := AFrame.ControlClick;
@@ -1110,6 +940,10 @@ end;
 
 /// <summary>[Unteraufgabe anlegen …] [Verknüpfen …] über dem Baum (#1279).</summary>
 procedure AddLinkTools(AFrame: TAtlasIssueFrame);
+const
+  // Mindestbreiten der beiden Schaltflächen.
+  cSubtaskWidth = 120;
+  cLinkWidth = 100;
 var
   mTools: TPanel;
 begin
@@ -1118,9 +952,9 @@ begin
   mTools.BevelOuter := bvNone;
   mTools.ShowCaption := False;
   mTools.Height := MulDiv(30, AFrame.CurrentPPI, 96);
-  AFrame.FContent.CreateSubtask := AddLinkButton(AFrame, mTools, TAtlasTrackerTextId.IssueLinksCreateSubtask, 120,
-    TIssueContent.CreateSubtask);
-  AFrame.FContent.AddLink := AddLinkButton(AFrame, mTools, TAtlasTrackerTextId.IssueLinksAddLink, 100,
+  AFrame.FContent.CreateSubtask := AddLinkButton(AFrame, mTools, TAtlasIssueTextId.IssueLinksCreateSubtask,
+    cSubtaskWidth, TIssueContent.CreateSubtask);
+  AFrame.FContent.AddLink := AddLinkButton(AFrame, mTools, TAtlasIssueTextId.IssueLinksAddLink, cLinkWidth,
     TIssueContent.AddLink);
 end;
 
@@ -1148,53 +982,26 @@ begin
   AFrame.FContent.LinkTree.Height := (mRows + 1) * MulDiv(20, AFrame.CurrentPPI, 96);
 end;
 
-/// <summary>Gruppen und Zeilen des Baums.</summary>
-procedure FillLinkTree(AFrame: TAtlasIssueFrame; ATree: TTreeView; const AGroups: TArray<TAtlasTrackerLinkGroup>);
-var
-  mGroup: TAtlasTrackerLinkGroup;
-  mLink: TAtlasTrackerLink;
-  mNode, mChild: TTreeNode;
-begin
-  ATree.Items.BeginUpdate;
-  try
-    for mGroup in AGroups do
-    begin
-      mNode := ATree.Items.AddChild(nil, TAtlasIssueLinkText.Group(mGroup));
-      mNode.Data := nil;
-      for mLink in mGroup.Links do
-      begin
-        AFrame.FContent.TreeLinks := AFrame.FContent.TreeLinks + [mLink];
-        mChild := ATree.Items.AddChild(mNode, TAtlasIssueLinkText.Row(mLink));
-        mChild.Data := Pointer(NativeInt(Length(AFrame.FContent.TreeLinks)));
-      end;
-      // Duplikate, „bezieht sich auf“ und Erwähnungen bleiben eingeklappt.
-      mNode.Expanded := not mGroup.Collapsed;
-    end;
-  finally
-    ATree.Items.EndUpdate;
-  end;
-end;
-
 /// <summary>Verknüpfungen als Baum (#1279); mit CanWriteLinks die Knöpfe darüber.</summary>
 procedure AddLinkTree(AFrame: TAtlasIssueFrame);
 var
-  mGroups: TArray<TAtlasTrackerLinkGroup>;
+  mHasGroups: Boolean;
   mTree: TTreeView;
   mWrite: Boolean;
 begin
-  mGroups := TAtlasTrackerLinks.Groups(AFrame.FState.Details.Links);
+  mHasGroups := TAtlasIssueLinkText.HasGroups(AFrame.FState.Details.Links);
   mWrite := HasFlag(AFrame, TAtlasIssueFlag.CanWriteLinks);
-  if (Length(mGroups) = 0) and not mWrite then
+  if not mHasGroups and not mWrite then
   begin
     Exit;
   end;
-  AddSection(AFrame, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksCaption,
+  AddSection(AFrame, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinksCaption,
     [Length(AFrame.FState.Details.Links)]));
   if mWrite then
   begin
     AddLinkTools(AFrame);
   end;
-  if Length(mGroups) = 0 then
+  if not mHasGroups then
   begin
     Exit;
   end;
@@ -1207,7 +1014,7 @@ begin
   mTree.Color := ToColor(AFrame.FColors.Surface);
   mTree.Font.Color := ToColor(AFrame.FColors.Text);
   AFrame.FContent.LinkTree := mTree;
-  FillLinkTree(AFrame, mTree, mGroups);
+  TAtlasIssueLinkText.FillTree(mTree, AFrame.FState.Details.Links, AFrame.FContent.TreeLinks);
   mTree.Tag := cContentTag + Ord(TIssueContent.LinkTree);
   mTree.OnClick := AFrame.ControlClick;
   mTree.OnKeyDown := AFrame.ControlKeyDown;
@@ -1301,10 +1108,10 @@ begin
   mParts.AttachItem.Visible := mAttach;
   mParts.AttachItem.Enabled := mHas;
   mParts.Refresh.Enabled := mHas or mLoading;
-  mParts.Refresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRefresh);
+  mParts.Refresh.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRefresh);
   if mLoading then
   begin
-    mParts.Refresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel);
+    mParts.Refresh.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCancel);
   end;
   mParts.BackAction.Enabled := mParts.Back.Enabled;
   mParts.ForwardAction.Enabled := mParts.Forward.Enabled;
@@ -1323,7 +1130,7 @@ begin
   AFrame.FParts.Progress.Visible := AValue;
   if AValue then
   begin
-    ShowStatusLine(AFrame, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading),
+    ShowStatusLine(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewLoading),
       not AFrame.FState.HasDetails);
   end;
 end;
@@ -1332,7 +1139,7 @@ procedure BusyChanged(AFrame: TAtlasIssueFrame; AValue: Boolean);
 var
   mSaving: string;
 begin
-  mSaving := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistSaving);
+  mSaving := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistSaving);
   if AValue then
   begin
     ShowStatusLine(AFrame, mSaving, True);
@@ -1348,7 +1155,7 @@ begin
   AFrame.FParts.CommentEdit.ReadOnly := AValue;
   if AValue then
   begin
-    AFrame.FParts.CommentNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentSending);
+    AFrame.FParts.CommentNote.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCommentSending);
   end;
 end;
 
@@ -1808,13 +1615,13 @@ begin
   Result := '';
   case AFix of
     TAtlasIssueFix.EnterToken:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixToken);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixToken);
     TAtlasIssueFix.Settings:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixSettings);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixSettings);
     TAtlasIssueFix.Browser:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse);
     TAtlasIssueFix.Retry:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixRetry);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixRetry);
     TAtlasIssueFix.None:
       begin
         // Kein Knopf.

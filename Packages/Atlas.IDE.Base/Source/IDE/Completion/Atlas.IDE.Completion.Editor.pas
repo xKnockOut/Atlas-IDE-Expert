@@ -49,6 +49,9 @@ type
   /// <summary>Quellen der Vervollständigung aus dem Kern; setzt die Kompositionswurzel ein.</summary>
   TAtlasCompletionSources = Atlas.IDE.Completion.EditorState.TAtlasCompletionSources;
   TAtlasCompletionSourcesFactory = Atlas.IDE.Completion.EditorState.TAtlasCompletionSourcesFactory;
+  /// <summary>Aktionen für ein nicht sichtbares Mitglied anbieten (#2108); setzt die Kompositionswurzel ein.
+  /// </summary>
+  TAtlasOfferActionsProc = Atlas.IDE.Completion.EditorCommit.TAtlasOfferActionsProc;
 
   TAtlasEditorCompletion = class(TAtlasEditorCompletionCommit)
   private
@@ -294,6 +297,19 @@ begin
         TAtlasIdeHistory.Committed;
       end;
     end;
+  // Enter auf einem nicht sichtbaren Mitglied (#2108): erst nach dem Schließen der Liste, nicht im Tastenaufruf.
+  FController.OnInaccessible :=
+    procedure(const AItem: TAtlasCompletionItem)
+    var
+      mItem: TAtlasCompletionItem;
+    begin
+      mItem := AItem;
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
+        procedure
+        begin
+          OfferActions(mItem);
+        end);
+    end;
   FPopup.OnOverload :=
     procedure(ADelta: Integer)
     begin
@@ -359,7 +375,9 @@ begin
     ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
     (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(mItem) and
       (mItem.OverloadCount > 1)) or
-    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt])));
+    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt]))) or
+    // Zweites Strg+Leertaste (#2108): nicht sichtbare Treffer zeigen, auch im leeren Zustand.
+    ((AKey = VK_SPACE) and (AShift = [ssCtrl]) and FController.CanRevealInaccessible);
 end;
 
 procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
@@ -387,6 +405,10 @@ begin
   else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
   begin
     FController.SelectChipAt(AKey - Ord('1'));
+  end
+  else if AKey = VK_SPACE then
+  begin
+    FController.RevealInaccessible;
   end;
 end;
 

@@ -2630,6 +2630,132 @@
       "safeFix": false
     },
     {
+      "id": "dunitx-testcase-mismatch",
+      "name": "TestCase does not match the method",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A [TestCase] whose values DUnitX cannot pass to the method, which only shows when the tests run: the number of values differs from the number of parameters (DUnitX calls through RTTI, default values do not count), a value does not fit the type of its parameter, or the method has no parameters at all. Values are split like DUnitX does: at every character of the separator (third argument, default comma; no quotes), an empty text gives no value. Checked types: integers (decimal or hex, $FF, 0xFF), floating point (point or comma as decimal separator, DUnitX turns a comma into a point), Boolean (True or False) and enumerations declared in the same file (by name); other types are not checked, nor are values that are not a string literal (a constant, 'a' + 'b'). Besides TestCase('Name', 'Values'[, 'Separator']) the newer forms TestCase('Values'[, 'Separator'[, Trim]]) and NamedTestCase('Name', 'Values') are recognized. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.",
+      "bad": "[Test]\n[TestCase('Rest', '7,2')]\nprocedure Teile(A, B, Rest: Integer);",
+      "good": "[Test]\n[TestCase('Rest', '7,2,1')]\nprocedure Teile(A, B, Rest: Integer);",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-fixture-not-registered",
+      "name": "DUnitX fixture never registered",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A test class DUnitX never sees, so its tests are silently missing. DUnitX finds test classes through RegisterTestFixture or, when the runner in the .dpr sets UseRTTI := True (DUnitX project template), through the [TestFixture] attribute. 1. Not registered: a class with [Test] or [TestCase] methods that neither the initialization section of the unit nor a routine of the unit called from there names (TDUnitX.RegisterTestFixture(TClass), own helpers such as Register([TA, TB])) and no other unit of its projects names, and that either has no [TestFixture] or belongs to a project whose .dpr creates a runner (TDUnitX.CreateRunner) without UseRTTI := True. A call from the option registrationCalls in initialization (an own registration function that finds all classes) counts for all classes of the unit. Generic and abstract classes and ancestors of other classes in the file stay silent. Quick fixes: add TDUnitX.RegisterTestFixture(TClass); to initialization, creating the section if needed; with an RTTI runner also add [TestFixture] in front of the class. 2. Unit in no test project: the group has test projects, but none contains the unit. Quick fix with exactly one test project: add the unit to the uses of the .dpr and as DCCReference to the .dproj. Only in test units and only with the projects of the group known; without them the rule stays silent. Medium confidence.",
+      "bad": "[TestFixture]\nTImportTests = class\n  …\nend;\n…\nend.",
+      "good": "[TestFixture]\nTImportTests = class\n  …\nend;\n…\ninitialization\n  TDUnitX.RegisterTestFixture(TImportTests);\nend.",
+      "options": [
+        {
+          "name": "registrationCalls",
+          "type": "string-list",
+          "default": [],
+          "description": "Own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."
+        }
+      ],
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-istrue-equality",
+      "name": "Assert.IsTrue with a comparison instead of AreEqual",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil), Assert.IsTrue(Assigned(X)) and the same with not: when the test fails, DUnitX only reports that the condition does not hold, without the compared values. Assert.AreEqual or AreNotEqual shows expected and actual, IsNull and IsNotNull say what was found. Quick fix (safe): AreEqual or AreNotEqual with the constant or literal first as the expected value, IsNull or IsNotNull for nil and Assigned; a message argument is kept. It is offered only when an overload certainly fits: both sides string, Boolean or an integer up to Integer, for nil and Assigned a class, an interface or a pointer. Floating point (AreEqual needs a tolerance), Cardinal, Int64, NativeInt (Length of a dynamic array), enumerations, sets, records, method pointers and unknown types get the hint without a fix. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",
+      "bad": "Assert.IsTrue(FFake.Calls = 1, 'Aufrufe');",
+      "good": "Assert.AreEqual(1, FFake.Calls, 'Aufrufe');",
+      "safeFix": true
+    },
+    {
+      "id": "dunitx-swapped-expected",
+      "name": "Expected and actual value swapped",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "Assert.AreEqual, AreNotEqual, AreSame or AreNotSame whose first argument is neither a literal nor a constant while the second one is: DUnitX takes the expected value first, so the failure message reports the constant as the actual value and the computed value as the expected one, which misleads. Constants are literals, True, False, nil, declared constants and enumeration values, also with a sign or combined with operators. Quick fix (safe): swap the two arguments; further arguments (message, tolerance) stay. Calls with two constants or two computed values stay silent. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",
+      "bad": "Assert.AreEqual(FList.Count, 4);",
+      "good": "Assert.AreEqual(4, FList.Count);",
+      "safeFix": true
+    },
+    {
+      "id": "dunitx-setup-not-torn-down",
+      "name": "Field created in Setup, not freed in TearDown",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A field of a test class that the [Setup] method (or [SetupFixture]) assigns a new object (TFake.Create …) and the matching [TearDown] method (or [TearDownFixture]) neither frees with Free, FreeAndNil, DisposeOf or Destroy nor sets to nil: every single test leaks the object. Methods of the same class that TearDown calls directly count as well (one level). Fields of an interface type (reference counting) and objects with an owner (TButton.Create(FForm)) stay silent. With the option managedFields (default on) also string and dynamic array fields that Setup fills and TearDown does not clear: the DUnitX leak monitor counts their memory against each test. Without a TearDown method there is one finding on Setup for all fields. Quick fix (safe): FreeAndNil(FField); (without SysUtils FField.Free; FField := nil;) or FField := ''; / FField := nil; at the end of TearDown; without TearDown it creates the method with its attribute and declaration. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Medium confidence: frees in deeper helper methods are not followed.",
+      "bad": "[Setup]\nprocedure Setup;\n…\nprocedure TFallTests.Setup;\nbegin\n  FFake := TFakeLookup.Create;\nend;",
+      "good": "[TearDown]\nprocedure TearDown;\n…\nprocedure TFallTests.TearDown;\nbegin\n  FreeAndNil(FFake);\nend;",
+      "options": [
+        {
+          "name": "managedFields",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report string and dynamic array fields that Setup fills and TearDown does not clear."
+        }
+      ],
+      "safeFix": true
+    },
+    {
+      "id": "dunitx-leak-monitor",
+      "name": "DUnitX test program without leak monitor",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "A program (.dpr) that uses DUnitX.TestFramework but no leak monitor of DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 or .FastMM5): without one DUnitX measures no leaks per test, so the test marks in the editor never show them. DUnitX.MemoryLeakMonitor.Default does not count, it measures nothing. Reported at the DUnitX.TestFramework entry. Quick fix (safe): add the monitor to uses, DUnitX.MemoryLeakMonitor.FastMM5 when the program uses FastMM5, otherwise DUnitX.MemoryLeakMonitor.FastMM4, which also works with the memory manager of the RTL without FastMM4.pas. Units stay silent. High confidence.",
+      "bad": "uses DUnitX.TestFramework, Fall.Tests;",
+      "good": "uses DUnitX.TestFramework, DUnitX.MemoryLeakMonitor.FastMM4, Fall.Tests;",
+      "safeFix": true
+    },
+    {
+      "id": "dunitx-ignore-without-reason",
+      "name": "[Ignore] without a reason",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "[Ignore] without an argument or with an empty reason ([Ignore('')]): the test report does not say why the test does not run, and later nobody knows whether it may run again. Reasons that are not a string literal (a constant) count as given. Attributes are recognized by name (with or without unit and suffix Attribute), so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: only the author knows the reason.",
+      "bad": "[Test, Ignore]\nprocedure Export;",
+      "good": "[Test, Ignore('Waits for the new export format (#812)')]\nprocedure Export;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-category-empty",
+      "name": "[Category] without a name",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "[Category('')] or a category text that holds only commas and blanks ([Category(' , ')]): the test ends up in no category, a filter such as --include never finds it. Names that are not a string literal count as given. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: the intended category is unknown.",
+      "bad": "[Test, Category('')]\nprocedure Import;",
+      "good": "[Test, Category('Slow')]\nprocedure Import;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-fixture-without-test",
+      "name": "[TestFixture] without a test",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A class with [TestFixture] that has no method with [Test], [TestCase], [NamedTestCase] or [RepeatTest] and no published method (DUnitX takes published methods without attributes as tests): the class runs empty and the report looks green. Classes whose ancestor (other than TObject) is not declared in the same file stay silent, as do classes whose ancestor in the file has tests (inherited tests). Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Medium confidence. No quick fix.",
+      "bad": "[TestFixture]\nTKundeTests = class\npublic\n  procedure PruefeName;\nend;",
+      "good": "[TestFixture]\nTKundeTests = class\npublic\n  [Test]\n  procedure PruefeName;\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-duplicate-attribute",
+      "name": "Duplicate attribute",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "The same DUnitX attribute twice on the same class or method: [Test] [Test], [Ignore] twice, [TestFixture] twice and so on. TestCase, NamedTestCase and Category may appear several times and are only reported when the arguments are the same (the case would run twice). Unknown attributes stay silent. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. Quick fix (safe): remove the second one, alone on its line together with the line, in a list together with its comma.",
+      "bad": "[Test]\n[Test]\nprocedure Speichern;",
+      "good": "[Test]\nprocedure Speichern;",
+      "safeFix": true
+    },
+    {
       "id": "event-call-without-assigned",
       "name": "Event called without Assigned check",
       "category": "bug",
@@ -2679,6 +2805,83 @@
       "description": "A local variable receives memory from GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc or StrNew, but the routine never releases it with FreeMem, FreeMemory, Dispose, StrDispose or ReallocMem(P, 0), and the pointer neither leaves the routine nor is stored: not returned (Result, Exit), not assigned to another variable or field, not passed by address (@P), not handed to a method that keeps it (Add, Insert, Push …), not captured by an anonymous method and not used in a local routine. Passing the pointer to read or fill it (Checksum(P, N), Stream.ReadBuffer(P^, N)) is fine; a routine whose name contains Free, Frei, Release, Dispose, Destroy or Dealloc counts as the release. A release without try/finally is reported by pair-without-finally. Medium confidence. Quick fix: wrap the following statements of the block in try … finally with the matching release.",
       "bad": "GetMem(Puffer, Groesse);\nStrom.ReadBuffer(Puffer^, Groesse);\nErgebnis := Pruefsumme(Puffer, Groesse);",
       "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "local-object-not-freed",
+      "name": "Local object never released",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A local variable (also an inline variable) receives T.Create(…) of a class without an owner, but the routine never releases it, and the object does not leave the routine: not returned (Result, Exit), not assigned to anything else (field, other variable, list element), not passed as an argument (except to routines that only read it: Assign, AddStrings, CopyFrom, LoadFromStream, SaveToStream, IndexOf, Contains, Equals), not raised, not converted with as, not used with @, in a set or array constructor or with with, not given a Parent or Owner, not captured by an anonymous method and not used in a local routine. Free, Destroy, DisposeOf, Release, FreeAndNil and routines with Free, Release, Destroy, Dispose or Frei in their name count as the release; Show, Close, Start, Resume, Run and Execute count as handing the object over (a form with caFree, a thread). Silent for interface variables, records and dynamic arrays (TPoint.Create, TArray<string>.Create), threads, components with an owner and unknown classes with arguments (like create-without-assignment); routines with asm or with stay silent. High confidence when the ancestors of the class are known up to TObject, otherwise medium. Quick fix: wrap the following statements of the block in try … finally with Free.",
+      "bad": "var\n  Lines: TStringList;\nbegin\n  Lines := TStringList.Create;\n  Lines.Add('a');\n  Memo.Text := Lines.Text;\nend;",
+      "good": "var\n  Lines: TStringList;\nbegin\n  Lines := TStringList.Create;\n  try\n    Lines.Add('a');\n    Memo.Text := Lines.Text;\n  finally\n    Lines.Free;\n  end;\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "created-result-not-freed",
+      "name": "New object from a function never released",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A local variable receives the result of a function that always returns a new object, and the routine neither releases nor passes on that object (same rules as local-object-not-freed). A function of the same file counts when every assignment to Result is T.Create(…) without an owner, Result is otherwise only used through its members or released (cleanup in except) and never passed on, and every Exit(…) creates an object as well; overloads of the same name must all qualify. It is matched when called without qualification, through Self or through a type name; methods of other objects are only known from the option factories. Medium confidence. Quick fix: wrap the following statements of the block in try … finally with Free.",
+      "bad": "function NewList: TStringList;\nbegin\n  Result := TStringList.Create;\nend;\n…\n  Lines := NewList;\n  Memo.Lines.Assign(Lines);",
+      "good": "  Lines := NewList;\n  try\n    Memo.Lines.Assign(Lines);\n  finally\n    Lines.Free;\n  end;",
+      "options": [
+        {
+          "name": "factories",
+          "type": "string-list",
+          "default": [],
+          "description": "Further functions that always return a new object owned by the caller, as Name, Class.Name, Object.Name or Unit.Name."
+        }
+      ],
+      "safeFix": false
+    },
+    {
+      "id": "anonymous-method-self-cycle",
+      "name": "Anonymous method keeps its own frame alive",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A local variable (also an inline variable) receives an anonymous method of the routine, and an anonymous method of the same routine captures that variable (also the anonymous method itself, for recursion). All anonymous methods of a routine share one frame object that holds the captured variables; through the variable the frame then references itself and is never released, together with everything it captured. Silent when the variable is set to nil in the routine. High confidence. No quick fix: build the method reference in a routine of its own (its frame then does not hold the variable) or set the variable to nil before the routine ends.",
+      "bad": "var\n  Step: TProc;\nbegin\n  Step := procedure\n    begin\n    end;\n  TThread.Queue(nil,\n    procedure\n    begin\n      Step();\n    end);\nend;",
+      "good": "function MakeStep: TProc;\nbegin\n  Result := procedure\n    begin\n    end;\nend;\n…\n  Step := MakeStep;\n  TThread.Queue(nil, Step);",
+      "safeFix": false
+    },
+    {
+      "id": "event-handler-not-unhooked",
+      "name": "Event of a foreign object not unhooked",
+      "category": "bug",
+      "severity": "hint",
+      "group": "find-bugs",
+      "description": "A method assigns a method of its own class to an event OnXyz of a foreign object (Foreign.OnChange := Handler or Self.Handler), and neither Destroy, BeforeDestruction nor Notification of the class resets that event. Foreign means a parameter of the method or a field that a method of the class takes over from a parameter (FField := ASource), that the class never creates itself and that is not in the published part (components of the form file belong to the form). If the foreign object lives longer, it calls the method of a released object. Silent for own events (OnChange := …), handlers that are not methods of the class and statements in with blocks or anonymous methods. Medium confidence. Quick fix for fields: insert if Assigned(FField) then FField.OnXyz := nil; at the start of the destructor in the file.",
+      "bad": "constructor TObserver.Create(ASource: TStringList);\nbegin\n  FSource := ASource;\n  FSource.OnChange := SourceChanged;\nend;",
+      "good": "destructor TObserver.Destroy;\nbegin\n  if Assigned(FSource) then\n    FSource.OnChange := nil;\n  inherited;\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "interface-object-mixed",
+      "name": "Reference-counted object used as object and as interface",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A local object variable of a class with reference counting (descendant of TInterfacedObject, and no class in the chain declares _AddRef or _Release itself) is passed on as an interface and also released with Free, FreeAndNil, Destroy or DisposeOf: the last interface reference releases the object a second time. Or it is passed on only temporarily as an interface (X as IFoo or IFoo(X) as an argument of a routine; a method of another object such as List.Add(X as IFoo) usually keeps the reference and counts like an interface variable) and then used again through the object variable: when the temporary reference goes away, the counter drops to 0 and the object is already released. Passed on as interface means: assigned to an interface variable of the routine or to Result of a function with an interface result, or converted with as or a cast to an interface. Silent when an interface variable keeps the object for the routine, and after the variable receives a new object. Inline variables and implicit conversions to interface parameters are not checked. Medium confidence. No quick fix: keep the object in an interface variable only.",
+      "bad": "Counter := TCounter.Create;\nUse(Counter as ICounter);\nCounter.Increment;",
+      "good": "var Counter: ICounter := TCounter.Create;\nUse(Counter);\nCounter.Increment;",
+      "safeFix": false
+    },
+    {
+      "id": "interface-cycle-without-weak",
+      "name": "Interfaces reference each other without [weak]",
+      "category": "bug",
+      "severity": "hint",
+      "group": "find-bugs",
+      "description": "Two classes of the file keep each other alive through interface fields: a field of class X points to an interface that class Y implements (directly, as TList<IFoo>, IList<IFoo>, TArray<IFoo> or array of IFoo), and a field of Y points to an interface of X. Within one class (tree with a back reference) one side must be a list and the other a single field; single fields of the same class alone (linked list) stay silent. None of the fields may be [weak] or [unsafe]. Then neither object is released, because each one holds the counter of the other above 0. Reported at both fields. Experimental: only in the profile strict or when switched on in rules. Classes in other units are not considered. Medium confidence. Quick fix: [weak] on the single field when the other side is a list (the back reference of the child).",
+      "bad": "TNode = class(TInterfacedObject, INode)\nprivate\n  FParent: INode;\n  FChildren: TList<INode>;\nend;",
+      "good": "TNode = class(TInterfacedObject, INode)\nprivate\n  [weak] FParent: INode;\n  FChildren: TList<INode>;\nend;",
+      "profiles": [
+        "strict"
+      ],
       "safeFix": false
     },
     {

@@ -219,7 +219,7 @@ begin
   Result := AIndex;
   if ATokens[AIndex].IsSymbol('(') and (Compare(ATokens[AIndex].EndPos, APosition) = 0) then
   begin
-    Result := TRoutineBody.PreviousToken(ATokens, AIndex);
+    Result := PreviousCode(ATokens, AIndex);
   end
   else if Compare(ATokens[AIndex].EndPos, APosition) < 0 then
   begin
@@ -284,20 +284,20 @@ var
 begin
   Result := True;
   Site.CallStart := Site.NameIndex;
-  Before := TRoutineBody.PreviousToken(Tokens, Site.NameIndex);
+  Before := PreviousCode(Tokens, Site.NameIndex);
   while Result and (Before >= 1) and Tokens[Before].IsSymbol('.') do
   begin
-    mScan := TRoutineBody.PreviousToken(Tokens, Before);
+    mScan := PreviousCode(Tokens, Before);
     Result := (mScan >= 0) and (Tokens[mScan].Kind = TPascalTokenKind.Identifier);
     if Result then
     begin
       Site.CallStart := mScan;
-      Before := TRoutineBody.PreviousToken(Tokens, mScan);
+      Before := PreviousCode(Tokens, mScan);
     end;
   end;
   if Site.CallStart < Site.NameIndex then
   begin
-    Site.Qualifier := TokensText(Tokens, Site.CallStart, TRoutineBody.PreviousToken(Tokens, Site.NameIndex) - 1);
+    Site.Qualifier := TokensText(Tokens, Site.CallStart, PreviousCode(Tokens, Site.NameIndex) - 1);
   end;
 end;
 
@@ -314,7 +314,7 @@ begin
   if AStart < AScan then
   begin
     mArgument.First := AStart;
-    mArgument.Last := TRoutineBody.PreviousToken(Tokens, AScan);
+    mArgument.Last := PreviousCode(Tokens, AScan);
     mArgument.Text := TokensText(Tokens, mArgument.First, mArgument.Last);
     Site.Arguments := Site.Arguments + [mArgument];
   end;
@@ -367,16 +367,16 @@ procedure TCallSiteScan.ReadAssignmentTarget;
 var
   mTarget, mPrior: Integer;
 begin
-  mTarget := TRoutineBody.PreviousToken(Tokens, Before);
-  mPrior := TRoutineBody.PreviousToken(Tokens, mTarget);
+  mTarget := PreviousCode(Tokens, Before);
+  mPrior := PreviousCode(Tokens, mTarget);
   while (mPrior >= 0) and not StartsStatementAfter(Tokens[mPrior]) do
   begin
     mTarget := mPrior;
-    mPrior := TRoutineBody.PreviousToken(Tokens, mTarget);
+    mPrior := PreviousCode(Tokens, mTarget);
   end;
   if mTarget >= 0 then
   begin
-    Site.Target := TokensText(Tokens, mTarget, TRoutineBody.PreviousToken(Tokens, Before));
+    Site.Target := TokensText(Tokens, mTarget, PreviousCode(Tokens, Before));
   end;
 end;
 
@@ -426,7 +426,7 @@ begin
   mDone := False;
   while not mDone do
   begin
-    mBefore := TRoutineBody.PreviousToken(Tokens, Result);
+    mBefore := PreviousCode(Tokens, Result);
     if mBefore < 0 then
     begin
       mDone := True;
@@ -583,7 +583,7 @@ var
   mLast: Integer;
 begin
   Result := '';
-  mLast := TRoutineBody.PreviousToken(ATokens, OpeningParen(ATokens, AFirst, ALast));
+  mLast := PreviousCode(ATokens, OpeningParen(ATokens, AFirst, ALast));
   if (mLast < AFirst) or (ATokens[mLast].Kind <> TPascalTokenKind.Identifier) then
   begin
     Exit;
@@ -627,7 +627,7 @@ begin
   mLast := ALast;
   if ATokens[mLast].IsSymbol('^') then
   begin
-    mLast := TRoutineBody.PreviousToken(ATokens, mLast);
+    mLast := PreviousCode(ATokens, mLast);
   end;
   if (mLast < AFirst) or not IsNamingIdentifier(ATokens[mLast]) then
   begin

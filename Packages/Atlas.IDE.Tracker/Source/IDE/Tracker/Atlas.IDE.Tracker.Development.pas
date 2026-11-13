@@ -115,6 +115,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Preview,
   ToolsAPI,
@@ -125,7 +126,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -418,15 +420,15 @@ begin
   end;
   case ADevelopment.TrackerError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server, TAtlasCiFetchError.NotFound:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -526,8 +528,10 @@ begin
     begin
       mResult := TAtlasIssueDevelopment.Empty;
       mResult.Key := mJob.Request.Key;
-      CollectVcs(mJob, mResult);
+      // Erst der Tracker: Seine verknüpften Branches (#2138) zählen in der Versionsverwaltung mit.
       CollectTracker(mJob, mResult);
+      mJob.Request.Linked := mResult.Tracker.LinkedBranches;
+      CollectVcs(mJob, mResult);
       mJob.Transport := nil;
       mJob.Provider := nil;
       if TAtlasShutdown.Signalled then
@@ -620,7 +624,7 @@ begin
     begin
       FShown := True;
       mView.ShowDevelopment(mDevelopment, TrackerNote(mDevelopment),
-        TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject));
+        TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoProject));
     end;
     Exit;
   end;
@@ -728,16 +732,16 @@ begin
   end;
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
-    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDiffFailed, [mShort, AtlasVcsOutcomeName(AOutcome)]));
+    Notice(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevDiffFailed, [mShort, AtlasVcsOutcomeName(AOutcome)]));
     Exit;
   end;
   mLines := TAtlasIssueDevelopmentQuery.DiffLines(AFiles);
   if Length(mLines) = 0 then
   begin
-    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevDiffEmpty));
+    Notice(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevDiffEmpty));
     Exit;
   end;
-  TAtlasUndoDiffView.Execute(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDiffTitle,
+  TAtlasUndoDiffView.Execute(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevDiffTitle,
     [mShort, AEntry.Summary]), mLines);
 end;
 
@@ -757,12 +761,12 @@ begin
   end;
   if not TAtlasIssueDevelopmentQuery.OpenTarget(AEntry, mFile) then
   begin
-    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevDiffEmpty));
+    Notice(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevDiffEmpty));
     Exit;
   end;
   if not FileExists(mFile.Path) then
   begin
-    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevUnitMissing, [ExtractFileName(mFile.Path)]));
+    Notice(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevUnitMissing, [ExtractFileName(mFile.Path)]));
     Exit;
   end;
   mEntry := AEntry;
@@ -803,7 +807,7 @@ begin
   end;
   if not FileExists(AUnit.Path) then
   begin
-    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevUnitMissing, [ExtractFileName(AUnit.Path)]));
+    Notice(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevUnitMissing, [ExtractFileName(AUnit.Path)]));
     Exit;
   end;
   TAtlasIdeNavigation.GoToLocation(AUnit.Path, 0, 0);
@@ -856,7 +860,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  if (AChanges > 0) and (MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevSwitchAsk,
+  if (AChanges > 0) and (MessageDlg(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevSwitchAsk,
     [AChanges, ABranch.Name]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
@@ -899,11 +903,11 @@ begin
   TAtlasGuard.Log('Issue-Entwicklung: Wechseln ' + AtlasVcsOutcomeName(AOutcome));
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
-    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevSwitchFailed,
+    Notice(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevSwitchFailed,
       [ABranch.Name, AtlasVcsOutcomeName(AOutcome)]));
     Exit;
   end;
-  Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevSwitched, [ABranch.Name]));
+  Notice(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevSwitched, [ABranch.Name]));
   // Aktueller Branch und Abstand haben sich geändert.
   FShown := False;
   Load(True);

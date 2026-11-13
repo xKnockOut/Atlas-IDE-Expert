@@ -40,6 +40,7 @@ uses
   System.SysUtils,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.VersionControl.ExternalRules,
   Atlas.UI.VersionControl.BranchDialog;
 
 type

@@ -74,6 +74,8 @@ type
     /// <summary>Knopf „Nur an dieser Stelle ignorieren“: Einstellung an, Projekt, Datei und Zeile bekannt.
     /// </summary>
     CanIgnoreLocation: Boolean;
+    /// <summary>Knopf „Test daraus anlegen …“ (#1873): Ein Modul bietet den Befehl an.</summary>
+    CanCreateTest: Boolean;
     function HasLocation: Boolean;
     /// <summary>„Unit1.pas:42“; '' ohne Datei.</summary>
     function LocationText: string;

@@ -204,6 +204,23 @@ type
     Sender: string;
     /// <summary>Komponenten, denen der Ereignisbehandler zugewiesen ist: "btnSave, btnLoad".</summary>
     SenderOf: string;
+    /// <summary>Mitglied nach einer Typprüfung (#2107): geprüfter Typ („als TJSONObject“); '' sonst. Die Gruppe
+    /// steht oben unter „mLocation ist hier TJSONObject (is-Prüfung, Zeile 147)“.</summary>
+    Narrowed: string;
+    /// <summary>Bei Narrowed: der geprüfte Name und die Zeile der Prüfung (ab 1).</summary>
+    NarrowedName: string;
+    NarrowedLine: Integer;
+    /// <summary>Nach "X is " (#2107): Typ von X, wenn dieser Typ von ihm abstammt; die Gruppe „Nachfahren von …“
+    /// steht oben. '' sonst.</summary>
+    DescendantOf: string;
+    /// <summary>Mitglied, das an der Stelle nur wegen seiner Sichtbarkeit fehlt (#2108): die Sichtbarkeit
+    /// ("private", "strict protected" …); '' bei allen übrigen. Klasse und Unit stehen in DeclaringClass und
+    /// DeclaringUnit. Die Liste zeigt solche Einträge erst nach einem zweiten Strg+Leertaste, ausgegraut; sie
+    /// werden nicht eingesetzt.</summary>
+    Inaccessible: string;
+    /// <summary>Rangfolge aus der Verwendung im Projekt (#2109): Stellen, an denen der Name in den Units des
+    /// Projekts vorkommt; 0 ohne Zählung. Ordnet nach der eigenen Gewichtung, Marke „im Projekt n×“.</summary>
+    ProjectUses: Integer;
     /// <summary>Typkonvertierung (#490): Umwandlung in diesen Typ („→ string“), Name ist der Ausdruck
     /// (Count.ToString); ConvertFrom ist der Name des Originals, vor dem der Eintrag steht und nach dem er
     /// filtert. '' bei anderen Einträgen.</summary>

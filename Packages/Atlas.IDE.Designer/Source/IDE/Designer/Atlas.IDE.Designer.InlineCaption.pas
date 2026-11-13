@@ -28,8 +28,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
   Atlas.UI.Designer.CaptionEditor,
-  Atlas.UI.Designer.Outlines,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
   TAtlasIdeInlineCaption = class;
@@ -61,21 +61,18 @@ type
     Armed: Boolean;
   end;
 
-  TAtlasIdeInlineCaption = class
+  TAtlasIdeInlineCaption = class(TAtlasIdeDesignerTool)
   private class var
     FCurrent: TAtlasIdeInlineCaption;
   private
-    FOnMessage: TProc<string>;
     FKeys: TAtlasCaptionKeys;
     FEvents: TApplicationEvents;
     FEditor: TAtlasCaptionEditor;
-    FOutlines: TAtlasDesignerOutlines;
     FClickTimer: TTimer;
     FHideTimer: TTimer;
     FClick: TAtlasCaptionSpot;
     FEdit: TAtlasCaptionSpot;
     FUndo: TArray<TAtlasCaptionChange>;
-    procedure Say(const AText: string);
     function Target(out AComponent: TComponent; out APath: string): Boolean;
     procedure OpenFor(AComponent: TComponent; const APath: string; const APoint: TPoint);
     procedure Queue(AEnd: TAtlasCaptionEnd; const AText: string);
@@ -102,7 +99,7 @@ type
     procedure Undo;
     /// <summary>Taste an- oder abmelden (Einstellungen, Designer gezeigt).</summary>
     procedure UpdateKeys(AWanted: Boolean);
-    procedure ApplyTheme;
+    procedure ApplyTheme; override;
   end;
 
 implementation
@@ -115,7 +112,6 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Designer.InlineCaption,
@@ -127,7 +123,8 @@ uses
   Atlas.IDE.Designer.FitText,
   Atlas.IDE.Designer.FormTextProps,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Designer.Outlines;
 
 const
   cKeyPriority = 50;
@@ -396,8 +393,7 @@ end;
 
 constructor TAtlasIdeInlineCaption.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FKeys := TAtlasCaptionKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
   FClickTimer := TTimer.Create(nil);
@@ -429,18 +425,9 @@ begin
   FEvents.Free;
   FHideTimer.Free;
   FClickTimer.Free;
-  FOutlines.Free;
   FEditor.Free;
   FKeys.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeInlineCaption.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 function TAtlasIdeInlineCaption.Target(out AComponent: TComponent; out APath: string): Boolean;
@@ -496,7 +483,7 @@ begin
   mHolder := HolderOf(TControl(AComponent), APath);
   if FEditor = nil then
   begin
-    FEditor := TAtlasCaptionEditor.CreateEditor(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
+    FEditor := TAtlasCaptionEditor.CreateEditor(nil, OwnerWindow, TAtlasIdeStyle.Colors);
   end;
   mSelf := Self;
   FEditor.Open(EditorRect(mHolder, APath, APoint), FontOf(mHolder, APath), AlignmentOf(mHolder), mText,
@@ -652,12 +639,8 @@ begin
   begin
     mOutlines[mIndex].Bounds.Offset(-mArea.Left, -mArea.Top);
   end;
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
   mArea.SetLocation(AControl.Parent.ClientToScreen(mArea.TopLeft));
-  FOutlines.ShowOutlines(mArea, mOutlines);
+  Outlines.ShowOutlines(mArea, mOutlines);
   FHideTimer.Enabled := False;
   FHideTimer.Enabled := True;
 end;
@@ -768,9 +751,9 @@ end;
 procedure TAtlasIdeInlineCaption.HideTick(Sender: TObject);
 begin
   FHideTimer.Enabled := False;
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -829,10 +812,7 @@ begin
   begin
     FEditor.ApplyColors(TAtlasIdeStyle.Colors);
   end;
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  inherited ApplyTheme;
 end;
 
 end.

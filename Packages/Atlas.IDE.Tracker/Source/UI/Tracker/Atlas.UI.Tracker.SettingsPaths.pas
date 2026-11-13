@@ -69,7 +69,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings;
 
 const
   cLineBreak = #13#10;
@@ -103,11 +103,11 @@ class function TAtlasTrackerPathsPart.Caption(const ARow: TAtlasTrackerProjectMa
 begin
   case Length(ARow.Paths) of
     0:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPathsOwnFolder);
+      Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsOwnFolder);
     1:
       Result := ARow.Paths[0];
   else
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesPathsMore,
+    Result := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesPathsMore,
       [ARow.Paths[0], Length(ARow.Paths) - 1]);
   end;
 end;
@@ -127,23 +127,23 @@ begin
   FView.Paths.WantReturns := True;
   FView.Paths.WordWrap := False;
   FView.Paths.OnChange := PathsChange;
-  FRows.Attach(FRows.AddTallLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPaths), FView.Paths,
+  FRows.Attach(FRows.AddTallLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPaths), FView.Paths,
     cPathsRow), FAnchor);
   mPanel := FRows.AddPanel(TRows.cButtonRow);
   mLeft := TRows.cFieldLeft;
   FView.Add := FRows.AddButton(mPanel, mLeft, cAddWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPathsAdd), AddClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsAdd), AddClick);
   Inc(mLeft, cAddWidth + TRows.cButtonGap);
   FView.Check := FRows.AddButton(mPanel, mLeft, TRows.cButtonWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPathsCheck), CheckClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsCheck), CheckClick);
   Inc(mLeft, TRows.cButtonWidth + TRows.cButtonGap);
   FView.Suggest := FRows.AddButton(mPanel, mLeft, TRows.cButtonWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPathsSuggest), SuggestClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsSuggest), SuggestClick);
   // Ohne Haken (issues.suggestPaths aus) gibt es den Knopf nicht.
   FView.Suggest.Visible := Assigned(FHooks.OnSuggestPaths);
   FRows.Attach(mPanel, FAnchor);
   FView.Note := FRows.AddNote(FAnchor);
-  FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPathsHint), FAnchor);
+  FRows.AddHint(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsHint), FAnchor);
 end;
 
 procedure TAtlasTrackerPathsPart.Show(const ARow: TAtlasTrackerProjectMapping; AEditable: Boolean);
@@ -219,7 +219,7 @@ begin
   mGeneration := FGeneration;
   mOwner := Self;
   mAlive := FAlive;
-  FView.Note.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPathsChecking);
+  FView.Note.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsChecking);
   FHooks.OnCheckPaths(FRow.Folders,
     procedure(ALines: TArray<string>)
     begin

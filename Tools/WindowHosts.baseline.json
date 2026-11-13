@@ -28,7 +28,7 @@
     "create-new": 1,
     "segoe-font": 1
   },
-  "Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.Visualizers.pas": {
+  "Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas": {
     "cl-red": 1
   },
   "Packages/Atlas.IDE.Debugger/Source/UI/Debug/Atlas.UI.Debug.EventBreak.pas": {

@@ -17,27 +17,21 @@ uses
   System.Classes,
   Vcl.Controls,
   Atlas.Core.Designer.Anchors,
-  Atlas.UI.Designer.Outlines;
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeAnchors = class
+  TAtlasIdeAnchors = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
-    FOutlines: TAtlasDesignerOutlines;
     FUndoFile: string;
     FUndoNames: TArray<string>;
     FUndoAnchors: TArray<TAnchors>;
-    procedure Say(const AText: string);
-    procedure ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
     procedure HideOutlines;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
-    destructor Destroy; override;
     procedure Execute;
     function CanUndo: Boolean;
     procedure Undo;
-    procedure ApplyTheme;
     class function ToSet(AAnchors: TAnchors): TAtlasAnchorSet; static;
     class function ToAnchors(ASet: TAtlasAnchorSet): TAnchors; static;
   end;
@@ -47,14 +41,13 @@ implementation
 uses
   System.Types,
   System.TypInfo,
-  Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.AnchorDialog,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Designer.Outlines;
 
 type
   /// <summary>Eine Komponente mit Vorschlag.</summary>
@@ -281,50 +274,14 @@ end;
 
 constructor TAtlasIdeAnchors.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
-end;
-
-destructor TAtlasIdeAnchors.Destroy;
-begin
-  FOutlines.Free;
-  inherited Destroy;
-end;
-
-procedure TAtlasIdeAnchors.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeAnchors.ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
-var
-  mArea: TRect;
-begin
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
-  mArea := ARoot.ClientRect;
-  mArea.Offset(ARoot.ClientOrigin);
-  FOutlines.ShowOutlines(mArea, AOutlines);
+  inherited Create(AOnMessage);
 end;
 
 procedure TAtlasIdeAnchors.HideOutlines;
 begin
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
-  end;
-end;
-
-procedure TAtlasIdeAnchors.ApplyTheme;
-begin
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -349,7 +306,7 @@ begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsNone));
     Exit;
   end;
-  ShowOutlines(TWinControl(mRoot), OutlinesOf(mPlans, TWinControl(mRoot)));
+  ShowOutlinesIn(TWinControl(mRoot), OutlinesOf(mPlans, TWinControl(mRoot)));
   try
     // TProc<string> hat keinen const-Parameter, SelectByName schon: Delphi weist sie nicht direkt zu (E2010).
     mSelect :=

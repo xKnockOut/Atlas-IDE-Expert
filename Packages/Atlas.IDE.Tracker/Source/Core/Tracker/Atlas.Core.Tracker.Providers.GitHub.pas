@@ -29,6 +29,10 @@
 //   …/issues/<n>/comments, danach Labels, Zuständige und Zustand in einem
 //   PATCH …/issues/<n> (Zustand = Label; das Label aus „Beginnen“ entfällt;
 //   ein Erledigt-Zustand schließt das Issue mit state_reason "completed").
+//   Schließgrund beim Beenden (#2135): "completed", "not_planned" oder
+//   "duplicate" mit duplicate_issue_id (die interne ID des Originals aus
+//   …/issues/<m>, vor jedem Schreiben gelesen); lehnt der Server
+//   "duplicate" ab (422), schließt Atlas als "not_planned" mit Kommentar.
 //   „Mir zuweisen“ fragt vorher /user. Werte für die Klapplisten: Labels
 //   (…/labels) und mögliche Zuständige (…/assignees).
 // - Checklisten (#1273, IAtlasTrackerDescriptions): Beschreibung ungekürzt aus
@@ -69,6 +73,8 @@
 //   Exception-Verlauf) gehen als Kommentar POST /repos/<owner/repo>/issues/
 //   <n>/comments mit {"body": …}, Protokolle als Codeblock; Bilder legt die
 //   IDE-Schicht in die Zwischenablage und öffnet das Issue im Browser.
+// - Pull Request beim Beenden (#2136, IAtlasTrackerPullRequests): siehe
+//   Atlas.Core.Tracker.Internals.GitHubPulls.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -87,7 +93,8 @@ uses
 
 type
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
-    IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach)
+    IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach,
+    IAtlasTrackerBranchLinker, IAtlasTrackerPullRequests)
   public const
     cProviderName = TAtlasGitHubApi.cProviderName;
     cQuery = TAtlasGitHubApi.cDefaultQuery;
@@ -160,6 +167,12 @@ type
     function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey,
       AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
     function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
+    { IAtlasTrackerBranchLinker (#2138): über TAtlasGitHubLinkedBranches }
+    function SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
+    function LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch, ABase: string): TAtlasTrackerBranchLink;
+    { IAtlasTrackerPullRequests (#2136): über TAtlasGitHubPulls; SameRepository wie oben }
+    function CreatePull(const ACall: TAtlasTrackerCall; const AKey: string;
+      const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
   end;
 
 implementation
@@ -174,8 +187,16 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Internals.GitHubJson,
+  Atlas.Core.Tracker.Internals.GitHubProjects,
+  Atlas.Core.Tracker.Internals.GitHubLinkedBranches,
+  Atlas.Core.Tracker.Internals.GitHubPulls,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Text.Json;
+
+const
+  /// <summary>„Unprocessable Entity“: GitHub lehnt den Inhalt ab, z. B. den Schließgrund „duplicate“ auf einem
+  /// älteren Server (#2135).</summary>
+  cUnprocessable = 422;
 
 function TAtlasGitHubTracker.Name: string;
 begin
@@ -527,6 +548,30 @@ begin
   ADetails.Attachments := TAtlasGitHubParse.FileAttachments(ADetails);
 end;
 
+/// <summary>Interne ID des Issues AKey über GET; 0 mit AError.</summary>
+function IssueId(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Int64;
+var
+  mStatus: Integer;
+  mText: string;
+begin
+  Result := 0;
+  if not ATransport.Get(TAtlasGitHubApi.IssueApiUrl(ATarget, AKey), ATimeoutMs, mStatus, mText, AError) then
+  begin
+    Exit;
+  end;
+  if mStatus <> 200 then
+  begin
+    AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  Result := TAtlasGitHubParse.ParseIssueId(mText);
+  if Result = 0 then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+  end;
+end;
+
 /// <summary>GET für einen Schreibzugriff: Fehler ohne Antwort oder mit anderem Status als 200, sonst Ok.
 /// </summary>
 function GetForWrite(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer; out AText: string;
@@ -575,30 +620,149 @@ begin
   end;
 end;
 
-/// <summary>Labels, Zuständige und Zustand in einem PATCH nach AChange; nichts, wenn sich nichts ändert.</summary>
-function PatchAssignment(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AUrl: string;
-  const AChange: TAtlasTrackerWrite; const AMe: string): TAtlasTrackerWriteResult;
+/// <summary>Zustand im Projektfeld statt als Label (#2134): nach issues.github.stateTarget, nur mit Zustand und nicht
+/// beim Schließen als „nicht geplant“ oder „Duplikat“.</summary>
+function UsesProject(const AChange: TAtlasTrackerWrite): Boolean;
+begin
+  Result := AChange.GitHub.ToProject and (Trim(AChange.State) <> '') and
+    not (AChange.Close in [TAtlasTrackerClose.NotPlanned, TAtlasTrackerClose.Duplicate]);
+end;
+
+/// <summary>AChange ohne Label für den Zustand (der steht im Projekt); ein Erledigt-Zustand schließt weiter.</summary>
+function WithoutStateLabel(const AChange: TAtlasTrackerWrite): TAtlasTrackerWrite;
+begin
+  Result := AChange;
+  if (Result.Close = TAtlasTrackerClose.ByState) and TAtlasGitHubApi.ClosesIssue(Result.State) then
+  begin
+    Result.Close := TAtlasTrackerClose.Completed;
+  end;
+  Result.State := '';
+end;
+
+/// <summary>"node_id" des Issues aus seiner REST-Antwort (für GraphQL); '' ohne.</summary>
+function NodeIdOf(const AText: string): string;
 var
-  mSend: IAtlasCiSend;
-  mText, mBody: string;
-  mStatus: Integer;
-  mLabels, mAssignees: TArray<string>;
+  mValue: TJSONValue;
+begin
+  Result := '';
+  mValue := TJSONObject.ParseJSONValue(AText);
+  try
+    if mValue is TJSONObject then
+    begin
+      Result := TJsonRead.Text(TJSONObject(mValue), 'node_id');
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+type
+  /// <summary>Was ein PATCH außer der Änderung braucht: Issue, eigener Login, Original eines Duplikats und die
+  /// gelesenen Labels und Zuständigen.</summary>
+  TGitHubPatch = record
+    Key: string;
+    Me: string;
+    DuplicateId: Int64;
+    Labels: TArray<string>;
+    Assignees: TArray<string>;
+  end;
+
+/// <summary>PATCH mit Labels, Zuständigen und Zustand; lehnt der Server „Duplikat“ ab (422, ältere
+/// GitHub-Enterprise-Server), schließt er als „nicht geplant“ und schreibt AChange.DuplicateNote als Kommentar
+/// (#2135, Ergebnis mit Fallback).</summary>
+function SendPatch(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const ASend: IAtlasCiSend;
+  const AChange: TAtlasTrackerWrite; const APatch: TGitHubPatch): TAtlasTrackerWriteResult;
+var
+  mBody, mUrl: string;
   mResponse: TAtlasCiResponse;
 begin
-  Result := GetForWrite(ACall.Transport, AUrl, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mText, mStatus);
-  if not Result.Succeeded then
+  Result := TAtlasTrackerWriteResult.Ok;
+  mUrl := TAtlasGitHubApi.IssueApiUrl(ACall.Target, APatch.Key);
+  mBody := TAtlasGitHubApi.PatchJson(APatch.Labels, APatch.Assignees, AChange, APatch.Me, APatch.DuplicateId);
+  if mBody = '' then
   begin
     Exit;
   end;
-  if not TAtlasGitHubParse.ParseAssignment(mText, mLabels, mAssignees) then
+  Result := TAtlasGitHubApi.WriteResult(ASend.Send('PATCH', mUrl, mBody,
+    TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mResponse), mResponse);
+  if (Result.Status <> cUnprocessable) or (AChange.Close <> TAtlasTrackerClose.Duplicate) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasGitHubApi.WriteResult(ASend.Send('PATCH', mUrl, TAtlasGitHubApi.PatchJson(APatch.Labels,
+    APatch.Assignees, AChange, APatch.Me, 0), TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mResponse),
+    mResponse);
+  if Result.Succeeded and (Trim(AChange.DuplicateNote) <> '') then
+  begin
+    Result := TAtlasGitHubApi.PostComment(ACall.Target, ASend, APatch.Key,
+      AChange.DuplicateNote, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs));
+  end;
+  Result.Fallback := Result.Succeeded;
+end;
+
+/// <summary>Labels, Zuständige und Zustand nach AChange; nichts, wenn sich nichts ändert. Mit Projektstatus (#2134)
+/// geht der Zustand zuerst ins Projektfeld „Status“, vor dem Schließen.</summary>
+function PatchAssignment(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AKey: string;
+  const AChange: TAtlasTrackerWrite; const AMe: string; ADuplicateId: Int64): TAtlasTrackerWriteResult;
+var
+  mSend: IAtlasCiSend;
+  mText: string;
+  mStatus: Integer;
+  mPatch: TGitHubPatch;
+  mChange: TAtlasTrackerWrite;
+  mStep: TAtlasGitHubStatusStep;
+begin
+  Result := GetForWrite(ACall.Transport, TAtlasGitHubApi.IssueApiUrl(ACall.Target, AKey),
+    TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mText, mStatus);
+  if not Result.Succeeded or not Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  begin
+    Exit;
+  end;
+  mPatch.Key := AKey;
+  mPatch.Me := AMe;
+  mPatch.DuplicateId := ADuplicateId;
+  if not TAtlasGitHubParse.ParseAssignment(mText, mPatch.Labels, mPatch.Assignees) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, ''));
   end;
-  mBody := TAtlasGitHubApi.PatchJson(mLabels, mAssignees, AChange, AMe);
-  if (mBody <> '') and Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  mChange := AChange;
+  mStep := Default(TAtlasGitHubStatusStep);
+  if UsesProject(AChange) then
   begin
-    Result := TAtlasGitHubApi.WriteResult(mSend.Send('PATCH', AUrl, mBody,
-      TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mResponse), mResponse);
+    mStep := TAtlasGitHubProjects.Run(ACall, AWatch, mSend, NodeIdOf(mText), AChange);
+    if not mStep.Outcome.Succeeded then
+    begin
+      Result := mStep.Outcome;
+      Result.Project := mStep.Status;
+      Exit;
+    end;
+    if mStep.Handled then
+    begin
+      mChange := WithoutStateLabel(AChange);
+    end;
+  end;
+  Result := SendPatch(ACall, AWatch, mSend, mChange, mPatch);
+  Result.Project := mStep.Status;
+end;
+
+/// <summary>Interne ID des Originals eines Duplikats (#2135); vor jedem Schreiben, damit ein ungültiges, unbekanntes
+/// oder dasselbe Issue nichts ändert.</summary>
+function DuplicateIdOf(const ACall: TAtlasTrackerCall; const AKey, ADuplicateOf: string;
+  out AId: Int64): TAtlasTrackerWriteResult;
+var
+  mError: TAtlasCiFetchError;
+begin
+  AId := 0;
+  if (TAtlasGitHubApi.NumberOfKey(ADuplicateOf) = 0) or
+    (TAtlasGitHubApi.NumberOfKey(ADuplicateOf) = TAtlasGitHubApi.NumberOfKey(AKey)) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+  end;
+  AId := IssueId(ACall.Target, ACall.Transport, ADuplicateOf, ACall.TimeoutMs, mError);
+  Result := TAtlasTrackerWriteResult.Ok;
+  if AId = 0 then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(mError, 0, '');
   end;
 end;
 
@@ -609,6 +773,7 @@ var
   mSend: IAtlasCiSend;
   mCall: TAtlasTrackerCall;
   mUrl, mMe: string;
+  mDuplicateId: Int64;
 begin
   Result := TAtlasTrackerWriteResult.Ok;
   if not AChange.HasWork then
@@ -623,7 +788,13 @@ begin
   mCall := TAtlasTrackerCall.Create(ATarget, ATransport, ATimeoutMs);
   mWatch := TStopwatch.StartNew;
   mMe := '';
-  if AChange.Assign = TAtlasTrackerAssign.Me then
+  mDuplicateId := 0;
+  // Duplikat (#2135): Original zuerst auflösen; ein ungültiges, unbekanntes oder dasselbe Issue schreibt nichts.
+  if AChange.Close = TAtlasTrackerClose.Duplicate then
+  begin
+    Result := DuplicateIdOf(mCall, AKey, AChange.DuplicateOf, mDuplicateId);
+  end;
+  if Result.Succeeded and (AChange.Assign = TAtlasTrackerAssign.Me) then
   begin
     Result := ReadMe(mCall, mMe);
   end;
@@ -633,9 +804,10 @@ begin
     Result := TAtlasGitHubApi.PostComment(ATarget, mSend, AKey, AChange.Comment,
       TAtlasGitHubApi.Remaining(mWatch, ATimeoutMs));
   end;
-  if Result.Succeeded and ((Trim(AChange.State) <> '') or (AChange.Assign <> TAtlasTrackerAssign.Keep)) then
+  if Result.Succeeded and ((Trim(AChange.State) <> '') or (AChange.Assign <> TAtlasTrackerAssign.Keep) or
+    AChange.Closes) then
   begin
-    Result := PatchAssignment(mCall, mWatch, mUrl, AChange, mMe);
+    Result := PatchAssignment(mCall, mWatch, AKey, AChange, mMe, mDuplicateId);
   end;
 end;
 
@@ -649,8 +821,15 @@ var
 begin
   AValues := nil;
   Result := TAtlasTrackerWriteResult.Ok;
-  // GitHub kennt keine Felder: Zustände sind Labels, zuständig sind Benutzer.
-  if (AKind = TAtlasTrackerValueKind.StateFields) or (AKind = TAtlasTrackerValueKind.UserFields) then
+  // Projekte und Optionen ihres Statusfeldes (#2134) über GraphQL.
+  if AKind in [TAtlasTrackerValueKind.Projects, TAtlasTrackerValueKind.ProjectStates] then
+  begin
+    Result := TAtlasGitHubProjects.Values(TAtlasTrackerCall.Create(ATarget, ATransport, ATimeoutMs), AField,
+      AKind = TAtlasTrackerValueKind.ProjectStates, AValues);
+  end;
+  // GitHub kennt sonst keine Felder: Zustände sind Labels, zuständig sind Benutzer.
+  if AKind in [TAtlasTrackerValueKind.StateFields, TAtlasTrackerValueKind.UserFields,
+    TAtlasTrackerValueKind.Projects, TAtlasTrackerValueKind.ProjectStates] then
   begin
     Exit;
   end;
@@ -750,30 +929,6 @@ begin
     Exit;
   end;
   Result := True;
-end;
-
-/// <summary>Interne ID des Issues AKey über GET; 0 mit AError.</summary>
-function IssueId(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Int64;
-var
-  mStatus: Integer;
-  mText: string;
-begin
-  Result := 0;
-  if not ATransport.Get(TAtlasGitHubApi.IssueApiUrl(ATarget, AKey), ATimeoutMs, mStatus, mText, AError) then
-  begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  Result := TAtlasGitHubParse.ParseIssueId(mText);
-  if Result = 0 then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-  end;
 end;
 
 /// <summary>POST mit AStatus 200/201 als Erfolg.</summary>
@@ -1032,6 +1187,21 @@ begin
   Result.Checks := TAtlasTrackerChecks.Unknown;
 end;
 
+/// <summary>Verknüpfte Branches von AKey (#2138); leer ohne Schreibweg oder bei einem Fehler.</summary>
+function LinkedBranchesOf(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AKey: string): TArray<string>;
+var
+  mSend: IAtlasCiSend;
+  mError: TAtlasCiFetchError;
+begin
+  Result := nil;
+  if Supports(ACall.Transport, IAtlasCiSend, mSend) and not TAtlasGitHubLinkedBranches.Linked(
+    TAtlasTrackerCall.Create(ACall.Target, ACall.Transport, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs)), mSend,
+    AKey, Result, mError) then
+  begin
+    Result := nil;
+  end;
+end;
+
 function TAtlasGitHubTracker.Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const AKey: string; ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment;
   out AError: TAtlasCiFetchError): Boolean;
@@ -1085,6 +1255,9 @@ begin
       ADevelopment.Pulls := ADevelopment.Pulls + [mPull];
     end;
   end;
+  // Verknüpfte Branches (#2138) in der restlichen Zeit; ein Fehler dabei (z. B. Enterprise ohne die Abfrage) lässt
+  // nur die Liste leer.
+  ADevelopment.LinkedBranches := LinkedBranchesOf(mCall, mWatch, AKey);
 end;
 
 /// <summary>Benachrichtigungen seit APoll.Since, bedingt mit If-Modified-Since, wenn der Transport es kann;
@@ -1253,6 +1426,35 @@ end;
 function TAtlasGitHubTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
 begin
   Result := TAtlasAttachComment.WithTexts(AComment, AFiles, TAtlasAttachComment.cMaxTextsLength);
+end;
+
+function TAtlasGitHubTracker.SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
+begin
+  Result := TAtlasGitHubLinkedBranches.SameRepository(ATarget, AOriginUrl);
+end;
+
+function TAtlasGitHubTracker.LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch,
+  ABase: string): TAtlasTrackerBranchLink;
+var
+  mSend: IAtlasCiSend;
+begin
+  if not Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  begin
+    Exit(TAtlasTrackerBranchLink.Failure(TAtlasCiFetchError.NotConfigured, ''));
+  end;
+  Result := TAtlasGitHubLinkedBranches.Link(ACall, mSend, AKey, ABranch, ABase);
+end;
+
+function TAtlasGitHubTracker.CreatePull(const ACall: TAtlasTrackerCall; const AKey: string;
+  const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
+var
+  mSend: IAtlasCiSend;
+begin
+  if not Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  begin
+    Exit(TAtlasTrackerPullResult.Failure(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  Result := TAtlasGitHubPulls.Create(ACall, mSend, AKey, ASpec);
 end;
 
 end.

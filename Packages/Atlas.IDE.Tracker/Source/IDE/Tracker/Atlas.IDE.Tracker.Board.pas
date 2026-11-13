@@ -132,7 +132,9 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Board.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MoveDialog,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -423,17 +425,17 @@ function TAtlasIdeBoard.ErrorText(AError: TAtlasCiFetchError): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoBoard);
+      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoBoard);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoTracker);
+      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoTracker);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -507,7 +509,7 @@ begin
   Result := (AJob.Target.Server <> '') and (mProvider <> nil) and (AJob.Boards <> nil);
   if not Result then
   begin
-    AFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoTracker));
+    AFrame.ShowNotice(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoTracker));
     AFrame.SetStatus('');
   end
   else
@@ -602,11 +604,11 @@ begin
   mNames := TAtlasBoardTransitions.Names(mCard);
   if mNames = '' then
   begin
-    AFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveNoTransition, [mCard.Key, mCard.State]));
+    AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveNoTransition, [mCard.Key, mCard.State]));
   end
   else
   begin
-    AFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveNotAllowed, [mCard.Key,
+    AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveNotAllowed, [mCard.Key,
       AFrame.ColumnCaption(AColumn), mCard.State, mNames]));
   end;
 end;
@@ -620,7 +622,7 @@ begin
   Result := False;
   if not AOwner.FOnline or not AOwner.FCanWrite then
   begin
-    AFrame.SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveLocked));
+    AFrame.SetStatus(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveLocked));
   end
   else
   begin
@@ -672,8 +674,8 @@ begin
   Result := (AJob.Boards <> nil) and (AJob.Transport <> nil);
   if not Result then
   begin
-    AFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [AJob.Card.Key,
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNotConfigured)]));
+    AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveFailed, [AJob.Card.Key,
+      TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerWriteNotConfigured)]));
   end;
 end;
 
@@ -767,7 +769,7 @@ begin
     // GitHub: Ohne Recht auf Projekte zeigt das Board Offen/Geschlossen und sagt warum.
     if mSnapshot.ProjectsDenied then
     begin
-      mFrame.SetSnapshot(mSnapshot, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardErrorScopes));
+      mFrame.SetSnapshot(mSnapshot, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardErrorScopes));
     end
     else
     begin
@@ -783,7 +785,7 @@ begin
   if TAtlasTrackerBoard.Load(FCacheFolder, ATarget, mCached) and (AError <> TAtlasCiFetchError.NotFound) then
   begin
     mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
-    mFrame.SetSnapshot(mCached, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardOffline, [mWhen, ErrorText(AError)]));
+    mFrame.SetSnapshot(mCached, TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardOffline, [mWhen, ErrorText(AError)]));
     UpdateActive;
   end
   else if AError <> TAtlasCiFetchError.Cancelled then
@@ -796,13 +798,13 @@ end;
 /// <summary>Text der Statuszeile, wenn das Verschieben scheiterte.</summary>
 function MoveFailedText(const ACard: TAtlasBoardCard; const AResult: TAtlasTrackerWriteResult): string;
 begin
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [ACard.Key,
+  Result := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveFailed, [ACard.Key,
     TAtlasTrackerEndDialog.ErrorText(ACard.Key, AResult)]);
   // Abgelehnt (400) unter einer Zustandsmaschine: die erlaubten Übergänge dazu.
   if (AResult.Error = TAtlasCiFetchError.Invalid) and ACard.Workflow.StateMachine and
     (TAtlasBoardTransitions.Names(ACard) <> '') then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveTransitions, [Result, ACard.State,
+    Result := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveTransitions, [Result, ACard.State,
       TAtlasBoardTransitions.Names(ACard)]);
   end;
 end;
@@ -821,7 +823,7 @@ begin
   begin
     // Sofort in der Zielspalte; bei einem Fehler springt die Karte zurück.
     mJob.Old := mFrame.MoveCard(ACard, AColumn);
-    mFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoving, [mJob.Card.Key]));
+    mFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoving, [mJob.Card.Key]));
     FMoving := True;
     RunMove(Self, mJob);
   end;
@@ -845,7 +847,7 @@ begin
     mFrame.SetStatus(MoveFailedText(ACard, AResult));
     Exit;
   end;
-  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoved, [ACard.Key, AColumn]));
+  Report(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoved, [ACard.Key, AColumn]));
   // Der Tracker kann mehr geändert haben (Workflow-Regeln): neu laden.
   Load(FBoardId, FSprintId);
 end;
@@ -957,12 +959,12 @@ begin
       mCurrent := mOwner.Frame;
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardAssigned, [mKey]));
+        mOwner.Report(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardAssigned, [mKey]));
         mOwner.Load(mOwner.FBoardId, mOwner.FSprintId);
       end
       else if mCurrent <> nil then
       begin
-        mCurrent.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardAssignFailed, [mKey,
+        mCurrent.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardAssignFailed, [mKey,
           TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
       end;
     end);

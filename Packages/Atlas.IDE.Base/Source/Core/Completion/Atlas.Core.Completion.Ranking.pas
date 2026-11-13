@@ -25,6 +25,10 @@
 //     übrigen Bezeichnern. Passt eine nur über ihren Typ ("button" → btnSave: TButton), hat der Server sie schon
 //     gefiltert; sie bleibt sichtbar und steht hinter den Namenstreffern.
 //   - Sender mit Typumwandlung (#480): eine Überschrift „Sender ist TButton · btnSave, btnLoad“ über der Liste.
+//   - Typprüfungen (#2107): Mitglieder des geprüften Typs bzw. Nachfahren des Typs vor is stehen wie die
+//     Formularkomponenten als eigene Gruppe mit Überschrift oben, die übrigen darunter unter „Weitere“.
+//   - Nicht sichtbare Mitglieder (#2108, Item.Inaccessible) fehlen, bis ShowInaccessible sie zeigt; dann stehen sie
+//     ganz am Ende mit einer Überschrift. Inaccessible nennt die passenden für die Fußzeile.
 //   - uses-Abschnitt (#469, Item.UsesGroup): Projekt-Units vor RTL/VCL vor Drittanbietern, je Gruppe eine
 //     Überschrift.
 //   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
@@ -77,11 +81,18 @@ type
     Boost: TAtlasBoostFunc;
     /// <summary>Übrige Einträge mit Präfix (#497); Filter = nur Treffer.</summary>
     ListMode: TAtlasListMode;
+    /// <summary>Nur wegen der Sichtbarkeit fehlende Mitglieder zeigen (#2108, zweites Strg+Leertaste).</summary>
+    ShowInaccessible: Boolean;
     class function Defaults: TAtlasRankOptions; static;
   end;
 
   TAtlasRanking = class
   public const
+    /// <summary>Höchster Zuschlag aus der Verwendung im Projekt (#2109): unter dem kleinsten Lernzuschlag (15 für
+    /// eine Übernahme, TAtlasUsage.Boost), damit die eigene Gewichtung immer vorgeht.</summary>
+    cMaxProjectBoost = 14;
+    /// <summary>Steigung des Zuschlags je Verdopplung der Stellen im Projekt (#2109).</summary>
+    cProjectBoostPerDoubling = 1.5;
     /// <summary>Markiert in der Reihenfolge eine Gruppenüberschrift vor dem nächsten Eintrag.</summary>
     cHeader = -1;
     /// <summary>Überschrift „Meintest du“ vor den Tippfehler-Treffern (#485).</summary>
@@ -115,6 +126,13 @@ type
     /// <summary>Nur „Meintest du“-Einträge, kein regulärer Treffer (#485): Die Fußzeile nennt dann
     /// „Keine Treffer für ‚…‘“.</summary>
     class function OnlyTypos(const AOrder: TArray<Integer>): Boolean; static;
+    /// <summary>Indizes der Einträge mit Inaccessible (#2108), deren Name auf APattern passt, nach Namen; leer
+    /// ohne Präfix.</summary>
+    class function Inaccessible(const AItems: TAtlasCompletionItems; const APattern: string): TArray<Integer>;
+      static;
+    /// <summary>Zuschlag für ACount Stellen im Projekt (#2109): 0 ohne, sonst 1 bis cMaxProjectBoost, logarithmisch
+    /// (1 → 1, 8 → 5, 200 → 12).</summary>
+    class function ProjectBoost(ACount: Integer): Integer; static;
   end;
 
 implementation
@@ -133,6 +151,7 @@ begin
   Result.Chip := TAtlasChip.All;
   Result.Boost := nil;
   Result.ListMode := TAtlasListMode.Filter;
+  Result.ShowInaccessible := False;
 end;
 
 { TAtlasListModes }
@@ -328,6 +347,12 @@ begin
   end;
 end;
 
+/// <summary>Eintrag der Gruppe oben nach einer Typprüfung (#2107)?</summary>
+function IsGuarded(const AItem: TAtlasCompletionItem): Boolean;
+begin
+  Result := (AItem.Narrowed <> '') or (AItem.DescendantOf <> '');
+end;
+
 /// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
@@ -358,7 +383,7 @@ end;
 /// <summary>Weder Hinweis noch angeheftet noch Deklaration eines unbekannten Namens.</summary>
 function IsPlainItem(const AItem: TAtlasCompletionItem): Boolean;
 begin
-  Result := not AItem.Hint and not AItem.Pinned and (AItem.Unknown = '');
+  Result := not AItem.Hint and not AItem.Pinned and (AItem.Unknown = '') and (AItem.Inaccessible = '');
 end;
 
 /// <summary>Gehört AItem ohne Treffer (AScore) in den Rest der Liste (#497)?</summary>
@@ -558,8 +583,10 @@ begin
   for mIndex := 0 to High(FItems) do
   begin
     FScores[mIndex] := TAtlasCompletionMatcher.cNoMatch;
-    // Umwandlungen (#490) setzt WithConversions vor ihr Original.
-    if not TAtlasRanking.Matches(FItems[mIndex], FOptions.Chip) or (FItems[mIndex].Conversion <> '') then
+    // Umwandlungen (#490) setzt WithConversions vor ihr Original; nicht sichtbare Mitglieder (#2108) erst auf
+    // Wunsch.
+    if not TAtlasRanking.Matches(FItems[mIndex], FOptions.Chip) or (FItems[mIndex].Conversion <> '') or
+      ((FItems[mIndex].Inaccessible <> '') and not FOptions.ShowInaccessible) then
     begin
       Continue;
     end;
@@ -572,6 +599,11 @@ begin
     begin
       FBoosts[mIndex] := EnsureRange(FOptions.Boost(mIndex), 0, 99);
     end;
+    // Ohne eigene Gewichtung ordnet die Verwendung im Projekt (#2109).
+    if FBoosts[mIndex] = 0 then
+    begin
+      FBoosts[mIndex] := TAtlasRanking.ProjectBoost(FItems[mIndex].ProjectUses);
+    end;
     AFound.Add(mIndex);
   end;
 end;
@@ -579,8 +611,12 @@ end;
 /// <summary>Art des Eintrags: Favoriten, Hinweise, Formular, Angeheftetes, Aktionen, Postfix, Verfügbarkeit.</summary>
 function TRanker.CompareKind(A, B: Integer): Integer;
 begin
-  // Angeheftete Favoriten (#458) vor allem anderen.
-  Result := Ord(FItems[B].Favorite) - Ord(FItems[A].Favorite);
+  // Nicht sichtbare Mitglieder (#2108) ganz ans Ende, angeheftete Favoriten (#458) vor allem anderen.
+  Result := Ord(FItems[A].Inaccessible <> '') - Ord(FItems[B].Inaccessible <> '');
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[B].Favorite) - Ord(FItems[A].Favorite);
+  end;
   if Result = 0 then
   begin
     Result := Ord(FItems[B].Hint) - Ord(FItems[A].Hint);
@@ -592,6 +628,10 @@ begin
   if (Result = 0) and (FItems[A].Form <> '') then
   begin
     Result := Ord(FItems[A].ByType) - Ord(FItems[B].ByType);
+  end;
+  if Result = 0 then
+  begin
+    Result := Ord(IsGuarded(FItems[B])) - Ord(IsGuarded(FItems[A]));
   end;
   if Result = 0 then
   begin
@@ -713,13 +753,21 @@ end;
 function TRanker.NeedsHeader(const AItem, APrevious: TAtlasCompletionItem; AIsFirst: Boolean;
   const AState: TArrangeState): Boolean;
 begin
-  if AItem.Unknown <> '' then
+  if AItem.Inaccessible <> '' then
+  begin
+    Result := AIsFirst or (APrevious.Inaccessible = '');
+  end
+  else if AItem.Unknown <> '' then
   begin
     Result := AIsFirst or (APrevious.Unknown = '');
   end
   else if AItem.Form <> '' then
   begin
     Result := AIsFirst or (APrevious.Form = '');
+  end
+  else if IsGuarded(AItem) then
+  begin
+    Result := AIsFirst or not IsGuarded(APrevious);
   end
   // Sender (#480) und Typargumente (#450): eine Überschrift über der Liste.
   else if AIsFirst and ((AItem.Sender <> '') or (AItem.TypeParam <> '')) then
@@ -739,8 +787,9 @@ end;
 
 function TRanker.FollowingHeader(const AItem, APrevious: TAtlasCompletionItem; const AState: TArrangeState): Boolean;
 begin
-  // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
-  if APrevious.Form <> '' then
+  // Nach der Formulargruppe bzw. der Gruppe einer Typprüfung (#2107) eine Überschrift über dem Rest („Weitere“
+  // bzw. die Gruppe zum erwarteten Typ).
+  if (APrevious.Form <> '') or IsGuarded(APrevious) then
   begin
     Result := True;
   end
@@ -909,7 +958,7 @@ begin
     begin
       // Nur, was nicht schon regulär passt; keine Aktionen.
       if mItems[mIndex].IsAction or not Matches(mItems[mIndex], AOptions.Chip) or (mItems[mIndex].Conversion <> '') or
-        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) then
+        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) or (mItems[mIndex].Inaccessible <> '') then
       begin
         Continue;
       end;
@@ -959,8 +1008,8 @@ begin
   // Umwandlungen (#490) zählen nicht doppelt.
   for mItem in AItems do
   begin
-    if (mItem.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(mItem)) <>
-      TAtlasCompletionMatcher.cNoMatch) then
+    if (mItem.Conversion = '') and (mItem.Inaccessible = '') and (TAtlasCompletionMatcher.Score(APattern,
+      NameOf(mItem)) <> TAtlasCompletionMatcher.cNoMatch) then
     begin
       Inc(Result[TAtlasChip.All]);
       if ChipOf(mItem) <> TAtlasChip.All then
@@ -968,6 +1017,54 @@ begin
         Inc(Result[ChipOf(mItem)]);
       end;
     end;
+  end;
+end;
+
+class function TAtlasRanking.ProjectBoost(ACount: Integer): Integer;
+begin
+  Result := 0;
+  if ACount > 0 then
+  begin
+    Result := Min(cMaxProjectBoost, 1 + Trunc(cProjectBoostPerDoubling * Log2(ACount)));
+  end;
+end;
+
+class function TAtlasRanking.Inaccessible(const AItems: TAtlasCompletionItems;
+  const APattern: string): TArray<Integer>;
+var
+  mItems: TAtlasCompletionItems;
+  mFound: TList<Integer>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if APattern = '' then
+  begin
+    Exit;
+  end;
+  mItems := AItems;
+  mFound := TList<Integer>.Create;
+  try
+    for mIndex := 0 to High(mItems) do
+    begin
+      if (mItems[mIndex].Inaccessible <> '') and (TAtlasCompletionMatcher.Score(APattern, mItems[mIndex].Name) <>
+        TAtlasCompletionMatcher.cNoMatch) then
+      begin
+        mFound.Add(mIndex);
+      end;
+    end;
+    // Eindeutig: bei gleichem Namen nach Index.
+    mFound.Sort(TComparer<Integer>.Construct(
+      function(const A, B: Integer): Integer
+      begin
+        Result := CompareText(mItems[A].Name, mItems[B].Name);
+        if Result = 0 then
+        begin
+          Result := A - B;
+        end;
+      end));
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
   end;
 end;
 

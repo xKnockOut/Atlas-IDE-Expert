@@ -8,7 +8,9 @@
 //   anlegt (#765, TAtlasTrackerNaming.KeyOfBranch); lokal und entfernt
 //   gleichen Namens sind eine Zeile. Vorsprung und Rückstand gegenüber der
 //   Basis (issues.branchBase, sonst main bzw. master; lokal vor origin/…);
-//   SVN kennt das nicht (-1).
+//   SVN kennt das nicht (-1). Mit dem Issue verknüpfte Branches (GitHub,
+//   #2138, Request.Linked) gehören dazu, auch wenn ihr Name dem Muster nicht
+//   folgt, und sind als solche gekennzeichnet.
 // - Commits: Suche nach der Kennung in den Nachrichten über alle Branches
 //   (git log --all --grep, svn log --search); danach zählt nur, was die
 //   Kennung als eigenes Stück trägt („#12“ nicht in „#123“, „ATL-1“ nicht in
@@ -54,6 +56,8 @@ type
     Behind: Integer;
     /// <summary>Letzter Commit (UTC); 0 unbekannt.</summary>
     TipDate: TDateTime;
+    /// <summary>Beim Tracker mit dem Issue verknüpft (#2138).</summary>
+    Linked: Boolean;
   end;
 
   /// <summary>Geänderte Datei in der Vereinigung aller Commits.</summary>
@@ -104,6 +108,8 @@ type
     Bases: TArray<string>;
     Projects: TArray<TAtlasIssueProject>;
     MaxCommits: Integer;
+    /// <summary>Beim Tracker mit dem Issue verknüpfte Branches (#2138), Namen ohne Remote; leer ohne.</summary>
+    Linked: TArray<string>;
     class function Create(const AProvider, AProject, AKey: string; const ABases: TArray<string>;
       const AProjects: TArray<TAtlasIssueProject>): TAtlasIssueDevelopmentRequest; static;
   end;
@@ -146,7 +152,8 @@ type
     /// <summary>AText trägt AKey als eigenes Stück: kein Buchstabe und keine Ziffer davor, keine Ziffer danach; ohne
     /// Groß-/Kleinschreibung.</summary>
     class function MentionsKey(const AKey, AText: string): Boolean; static;
-    /// <summary>Der Branch-Name trägt die Kennung (wie „Beginnen“ ihn anlegt).</summary>
+    /// <summary>Der Branch-Name trägt die Kennung (wie „Beginnen“ ihn anlegt) bzw. der Branch ist mit dem Issue
+    /// verknüpft (ARequest.Linked, #2138).</summary>
     class function BranchMatches(const ARequest: TAtlasIssueDevelopmentRequest; const ABranch: string): Boolean;
       static;
     /// <summary>Branches, Commits und geänderte Units über AVcs (IAtlasVcsHistory); Tracker bleibt leer. Liefert
@@ -197,6 +204,7 @@ implementation
 uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
+  System.StrUtils,
   Atlas.Core.Files.TextDiff,
   Atlas.Core.Tracker.Naming;
 
@@ -242,6 +250,7 @@ begin
   Result.Bases := ABases;
   Result.Projects := AProjects;
   Result.MaxCommits := cDefaultMaxCommits;
+  Result.Linked := nil;
 end;
 
 { TAtlasIssueDevelopment }
@@ -334,8 +343,9 @@ begin
   begin
     mProject := ARequest.Project;
   end;
-  Result := (ARequest.Key <> '') and
-    SameText(TAtlasTrackerNaming.KeyOfBranch(ARequest.Provider, mProject, ABranch), ARequest.Key);
+  Result := ((ARequest.Key <> '') and
+    SameText(TAtlasTrackerNaming.KeyOfBranch(ARequest.Provider, mProject, ABranch), ARequest.Key)) or
+    MatchText(ABranch, ARequest.Linked);
 end;
 
 class function TAtlasIssueDevelopmentQuery.Matching(const AKey: string;
@@ -462,6 +472,7 @@ begin
     if mFound >= 0 then
     begin
       MergeRef(Result[mFound], mRef);
+      Result[mFound].Linked := MatchText(mRef.LocalName, ARequest.Linked);
     end;
   end;
 end;

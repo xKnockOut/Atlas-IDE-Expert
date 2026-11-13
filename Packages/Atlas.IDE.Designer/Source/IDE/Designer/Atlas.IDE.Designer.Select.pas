@@ -22,15 +22,15 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.Similar,
-  Atlas.IDE.Designer.SelectionSets;
+  Atlas.IDE.Designer.SelectionSets,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeDesignerSelect = class
+  TAtlasIdeDesignerSelect = class(TAtlasIdeDesignerTool)
   private
     FMenu: TPopupMenu;
     /// <summary>Treffer je Menüeintrag (Tag) als Komponentennamen.</summary>
     FHits: TArray<TArray<string>>;
-    FOnMessage: TProc<string>;
     FSets: TAtlasIdeSelectionSets;
     procedure Add(AParent: TMenuItem; const ACaption: string; const AItems: TArray<TAtlasSimilarItem>;
       const AQuery: TAtlasSimilarQuery);
@@ -40,7 +40,6 @@ type
     procedure AddSimilar(const AItems: TArray<TAtlasSimilarItem>; AReference: Integer;
       const ASettings: TAtlasPluginSettings);
     procedure AddNote;
-    procedure Say(const AText: string);
     procedure ItemClick(Sender: TObject);
     procedure Apply(const ANames: TArray<string>; AExtend: Boolean);
   public
@@ -140,8 +139,7 @@ end;
 
 constructor TAtlasIdeDesignerSelect.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FMenu := TPopupMenu.Create(nil);
   FSets := TAtlasIdeSelectionSets.Create(AOnMessage);
 end;
@@ -340,14 +338,6 @@ end;
 procedure TAtlasIdeDesignerSelect.UpdateKeys(AWanted: Boolean);
 begin
   FSets.UpdateKeys(AWanted);
-end;
-
-procedure TAtlasIdeDesignerSelect.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeDesignerSelect.ItemClick(Sender: TObject);

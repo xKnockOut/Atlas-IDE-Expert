@@ -72,7 +72,7 @@ uses
   Atlas.Core.Tracker.CommentEditor,
   Atlas.UI.Settings.Page,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings;
 
 type
   /// <summary>Anbieter der Tests: liefert den vorbereiteten Abschnitt.</summary>
@@ -229,10 +229,10 @@ begin
   Assert.AreEqual('Firma', AList.Items[0].Caption);
   Assert.AreEqual('YouTrack', AList.Items[0].SubItems[0]);
   Assert.AreEqual('https://youtrack.firma.local', AList.Items[0].SubItems[1]);
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerTokenVerified, ['10:18']),
+  Assert.AreEqual(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.TrackerTokenVerified, ['10:18']),
     AList.Items[0].SubItems[2]);
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTokenMissing), AList.Items[1].SubItems[2]);
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesConnectionTeam, ['Atlas']),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTokenMissing), AList.Items[1].SubItems[2]);
+  Assert.AreEqual(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesConnectionTeam, ['Atlas']),
     AList.Items[2].Caption);
 end;
 
@@ -244,25 +244,25 @@ begin
   // Neue Verbindung: erst mit gültiger Adresse gespeichert; http wird abgewiesen.
   ASection.Connections.View.Add.Click;
   Assert.AreEqual(4, AList.Items.Count);
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionNew),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesConnectionNew),
     ASection.Connections.View.Name.Text);
   APage.SaveTo(ASaved);
   Assert.AreEqual(2, Integer(Length(TAtlasTrackerConnections.Read(ASaved.IssuesConnections))), 'ohne Adresse');
   // Absicht: Die Seite soll eine Adresse ohne https ablehnen.
   // lsp-ignore: security-insecure-http
   ASection.Connections.View.Url.Text := 'http://yt2.firma.local';
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionUrlHttps),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesConnectionUrlHttps),
     ASection.Connections.View.Note.Caption);
   Assert.AreEqual('', ASection.Tables.Connections.Items[2].Url);
   ASection.Connections.View.Url.Text := 'https://marco@yt2.firma.local';
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionUrlUser),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesConnectionUrlUser),
     ASection.Connections.View.Note.Caption);
   ASection.Connections.View.Url.Text := 'https://yt2.firma.local/';
   Assert.AreEqual('', ASection.Connections.View.Note.Caption);
   Assert.AreEqual('https://yt2.firma.local', ASection.Tables.Connections.Items[2].Url);
   // Vergebener Name wird nicht übernommen.
   ASection.Connections.View.Name.Text := 'firma';
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionNameTaken),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesConnectionNameTaken),
     ASection.Connections.View.Note.Caption);
   ASection.Connections.View.Name.Text := 'Lager';
   Assert.AreEqual('Lager', ASection.Tables.Connections.Items[2].Name);
@@ -356,9 +356,9 @@ begin
     mList.Items[0].Selected := True;
     FSection.Connections.View.Check.Click;
     Assert.AreEqual('Firma', mProbe.FChecked);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTokenChecking), mList.Items[0].SubItems[2]);
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTokenChecking), mList.Items[0].SubItems[2]);
     FSection.TrackerCheckDone(FSection.Tables.Connections.Items[0]);
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerTokenVerified, ['10:18']),
+    Assert.AreEqual(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.TrackerTokenVerified, ['10:18']),
       mList.Items[0].SubItems[2]);
     mSaved := mSettings;
     AddConnectionLager(mPage, FSection, mList, mSaved);
@@ -401,7 +401,7 @@ begin
   // Spalte 2 sind die Arbeitskopien (#1926), die Herkunft steht in Spalte 3.
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), AList.Items[0].SubItems[3]);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), AList.Items[1].SubItems[3]);
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectCoveredHint),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectCoveredHint),
     ASection.Projects.View.Note.Caption);
   Assert.IsTrue(ASection.Projects.View.Match.Enabled);
   Assert.IsTrue(ASection.Projects.View.AddCurrent.Enabled);
@@ -605,7 +605,7 @@ begin
     mPage.LoadFrom(mSettings);
     // Ohne eigene Abfragen: Hinweis auf die Vorgabe je Anbieter.
     Assert.AreEqual(0, FSection.Queries.View.List.Items.Count);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueriesNone),
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueriesNone),
       FSection.Queries.View.Note.Caption);
     Assert.IsFalse(FSection.Queries.View.Name.Enabled);
     mSettings.IssuesQueries := '[{"name": "Standard", "query": "assignee: meine #Ungelöst"},' +
@@ -615,7 +615,7 @@ begin
     AssertQueryRows(FSection, mList);
     // Doppelter Name wird nicht übernommen.
     FSection.Queries.View.Name.Text := 'standard';
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken),
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken),
       FSection.Queries.View.Note.Caption);
     Assert.AreEqual('Sprint', FSection.Tables.Queries.Items[1].Name);
     FSection.Queries.View.Name.Text := 'Aktueller Sprint';
@@ -623,9 +623,9 @@ begin
     // Neue Zeile: ohne Abfrage nicht gespeichert; Leerraum außen fällt weg.
     FSection.Queries.View.Add.Click;
     Assert.AreEqual(3, mList.Items.Count);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNew),
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNew),
       FSection.Queries.View.Name.Text);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryEmpty),
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryEmpty),
       FSection.Queries.View.Note.Caption);
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
@@ -647,7 +647,7 @@ begin
     Assert.AreEqual('Aktueller Sprint', mQueries[0].Name);
     Assert.AreEqual('Werk', mQueries[0].Connection);
     Assert.AreEqual('KASSE', mQueries[0].Project);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNew), mQueries[1].Name);
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNew), mQueries[1].Name);
     Assert.IsFalse(mSaved.IssuesQueryPicker);
   finally
     mHost.Free;
@@ -718,10 +718,10 @@ begin
   Assert.AreEqual('Zuständig', ASection.Workflow.View.AssigneeField.Values[0]);
   Assert.AreEqual('Status', ASection.Connections.View.StateField.Values[0]);
   Assert.AreEqual('Status', ASection.Workflow.View.StateField.Value, 'eingegebener Text bleibt');
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesLoaded, [2, 2]),
+  Assert.AreEqual(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesValuesLoaded, [2, 2]),
     ASection.Workflow.View.ValuesNote.Caption);
   ASection.TrackerValuesDone(Default(TAtlasTrackerValueSet), 'Keine Rechte');
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesFailed, ['Keine Rechte']),
+  Assert.AreEqual(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesValuesFailed, ['Keine Rechte']),
     ASection.Workflow.View.ValuesNote.Caption);
   Assert.AreEqual(2, Integer(Length(ASection.Workflow.View.StartState.Values)), 'Fehler lässt die Vorschläge');
 end;
@@ -779,7 +779,7 @@ begin
     Assert.AreEqual('Firma', mAsked);
     Assert.AreEqual('Status', mField);
     Assert.IsFalse(FSection.Workflow.View.LoadValues.Enabled, 'bis zur Antwort');
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesValuesLoading),
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesLoading),
       FSection.Workflow.View.ValuesNote.Caption);
     AssertTrackerValuesDone(FSection);
   finally

@@ -87,7 +87,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Workflow.Strings;
 
 { TAtlasTrackerSettingsSection }
 
@@ -96,7 +96,7 @@ begin
   inherited Create;
   FHooks := TAtlasTrackerSettingsHooks.Create;
   FTables := TAtlasTrackerSettingsTables.Create;
-  FTables.Snippets.English := TAtlasTrackerStrings.English;
+  FTables.Snippets.English := TAtlasWorkflowStrings.English;
 end;
 
 destructor TAtlasTrackerSettingsSection.Destroy;

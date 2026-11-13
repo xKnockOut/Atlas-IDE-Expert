@@ -117,6 +117,11 @@ type
     Written: TIndexCacheWrittenEvent;
   end;
 
+  /// <summary>Wartet höchstens AMs oder bis der Aufbau abgebrochen wird; True bei Abbruch. Für das Warten auf
+  /// eine andere Instanz (Schreibsperre, Cache-Datei): Dafür gibt es kein Signal über Prozessgrenzen, also wird
+  /// nachgesehen; der Abbruch aber wirkt sofort und nicht erst nach dem nächsten Takt.</summary>
+  TIndexPause = reference to function(AMs: Cardinal): Boolean;
+
   /// <summary>Caches eines Aufbaus (#647): liest beim Start Projekt-, Suchpfad- und Bibliotheks-Cache und schreibt
   /// sie nach der Projektstufe und am Ende getrennt zurück. Hält die gemeinsam gelesenen Kopien (TSharedCacheHold)
   /// bis zur Freigabe.</summary>
@@ -127,6 +132,7 @@ type
     FEvents: TIndexCacheEvents;
     FRequest: TIndexRequest;
     FCancelled: TFunc<Boolean>;
+    FPause: TIndexPause;
     FCached: TArray<TIndexCacheEntry>;
     FLibraryCached: TArray<TIndexCacheEntry>;
     FSearchCached: TArray<TIndexCacheEntry>;
@@ -149,7 +155,8 @@ type
     procedure WriteSplit(AParsed: Integer);
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem;
-      const AEvents: TIndexCacheEvents; const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
+      const AEvents: TIndexCacheEvents; const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>;
+      const APause: TIndexPause);
     /// <summary>Liest die Caches; Ergebnis für TIndexBuilder.UseCache.</summary>
     function Load: TArray<TIndexCacheEntry>;
     /// <summary>Schreibt Projekt-, Suchpfad- und Bibliotheks-Cache; AParsedTotal = im ganzen Aufbau bisher neu
@@ -180,11 +187,11 @@ type
     FCacheEvents: TIndexCacheEvents;
     /// <summary>Cache-Datei des letzten Aufbaus; nur unter FLock.</summary>
     FCacheFile: string;
-    procedure Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
+    procedure Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>; const APause: TIndexPause);
     /// <summary>Neuer Builder mit gelesenem Cache; noch nicht veröffentlicht.</summary>
-    function PrepareBuilder(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>;
+    function PrepareBuilder(const ARequest: TIndexRequest; const APause: TIndexPause;
       ACaches: TIndexCacheWriter): TIndexBuilder;
-    procedure WaitForOtherWriter(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
+    procedure WaitForOtherWriter(const ARequest: TIndexRequest; const APause: TIndexPause);
     function AcquireBuilder: TIndexBuilder;
     procedure ReleaseBuilder;
     procedure ReplaceBuilder(ABuilder: TIndexBuilder);
@@ -231,6 +238,7 @@ implementation
 
 uses
   System.Diagnostics,
+  System.SyncObjs,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -524,7 +532,10 @@ type
     /// <summary>Abgebrochener Vorgänger; Execute wartet auf ihn und gibt ihn frei.</summary>
     FPrevious: TThread;
     FCancelled: Boolean;
+    /// <summary>Gesetzt von Cancel; weckt Pause.</summary>
+    FCancelEvent: TEvent;
     function IsCancelled: Boolean;
+    function Pause(AMs: Cardinal): Boolean;
   protected
     procedure Execute; override;
   public
@@ -541,6 +552,7 @@ begin
   FService := AService;
   FRequest := ARequest;
   FPrevious := APrevious;
+  FCancelEvent := TEvent.Create(nil, True, False, '');
   inherited Create(False);
   // Niedrige Priorität (#1236): Der Aufbau läuft im Hintergrund; IDE, Editor und Anfragen gehen vor. Der Thread
   // startet erst nach dem Konstruktor. Nicht jede Plattform erlaubt das.
@@ -556,11 +568,19 @@ begin
   // Wartet selbst, falls Execute nicht bis zum Vorgänger kam.
   FreeAndNil(FPrevious);
   inherited Destroy;
+  // Nach inherited: Das wartet auf Execute, das Pause noch rufen kann.
+  FCancelEvent.Free;
 end;
 
 procedure TIndexThread.Cancel;
 begin
   FCancelled := True;
+  FCancelEvent.SetEvent;
+end;
+
+function TIndexThread.Pause(AMs: Cardinal): Boolean;
+begin
+  Result := FCancelled or (FCancelEvent.WaitFor(AMs) = wrSignaled);
 end;
 
 function TIndexThread.IsCancelled: Boolean;
@@ -579,7 +599,7 @@ begin
   end;
   if not FCancelled then
   begin
-    FService.Run(FRequest, IsCancelled);
+    FService.Run(FRequest, IsCancelled, Pause);
   end;
 end;
 
@@ -770,7 +790,8 @@ end;
 { TIndexCacheWriter }
 
 constructor TIndexCacheWriter.Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem;
-  const AEvents: TIndexCacheEvents; const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
+  const AEvents: TIndexCacheEvents; const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>;
+  const APause: TIndexPause);
 begin
   inherited Create;
   FIndex := AIndex;
@@ -778,6 +799,7 @@ begin
   FEvents := AEvents;
   FRequest := ARequest;
   FCancelled := ACancelled;
+  FPause := APause;
 end;
 
 function TIndexCacheWriter.ReadCache(const AFileName: string): TArray<TIndexCacheEntry>;
@@ -817,6 +839,8 @@ const
   /// <summary>So lange wartet ein Aufbau höchstens darauf, den Bibliotheks-Cache schreiben zu dürfen; ein
   /// anderer Schreiber braucht für Lesen, Ergänzen und Schreiben wenige Sekunden.</summary>
   cLibraryLockWaitMs = 30000;
+  /// <summary>Abstand, in dem nach der Sperre einer anderen Instanz gesehen wird (kein Signal über
+  /// Prozesse).</summary>
   cLockPollMs = 100;
 
 function TIndexCacheWriter.LockForWrite(const AFileName: string): IInterface;
@@ -825,9 +849,12 @@ var
 begin
   mWatch := TStopwatch.StartNew;
   Result := FFileSystem.TryLockWrite(AFileName);
-  while (Result = nil) and not FCancelled() and (mWatch.ElapsedMilliseconds < cLibraryLockWaitMs) do
+  while (Result = nil) and (mWatch.ElapsedMilliseconds < cLibraryLockWaitMs) do
   begin
-    TThread.Sleep(cLockPollMs);
+    if FPause(cLockPollMs) then
+    begin
+      Exit;
+    end;
     Result := FFileSystem.TryLockWrite(AFileName);
   end;
 end;
@@ -992,7 +1019,7 @@ begin
     end;
 end;
 
-function TIndexService.PrepareBuilder(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>;
+function TIndexService.PrepareBuilder(const ARequest: TIndexRequest; const APause: TIndexPause;
   ACaches: TIndexCacheWriter): TIndexBuilder;
 begin
   Result := TIndexBuilder.Create(FIndex, FFileSystem, ARequest.Defines, ARequest.ResolveUnit);
@@ -1005,7 +1032,7 @@ begin
     begin
       ARequest.Prepare();
     end;
-    WaitForOtherWriter(ARequest, ACancelled);
+    WaitForOtherWriter(ARequest, APause);
     TMonitor.Enter(FLock);
     try
       FCacheFile := ARequest.CacheFile;
@@ -1020,7 +1047,8 @@ begin
   end;
 end;
 
-procedure TIndexService.Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
+procedure TIndexService.Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>;
+  const APause: TIndexPause);
 var
   mCaches: TIndexCacheWriter;
   mBuilder: TIndexBuilder;
@@ -1028,11 +1056,11 @@ var
   mResult: TIndexBuildResult;
   mTurn: IIndexTurn;
 begin
-  mCaches := TIndexCacheWriter.Create(FIndex, FFileSystem, FCacheEvents, ARequest, ACancelled);
+  mCaches := TIndexCacheWriter.Create(FIndex, FFileSystem, FCacheEvents, ARequest, ACancelled, APause);
   try
     try
       mWatch := TStopwatch.StartNew;
-      mBuilder := PrepareBuilder(ARequest, ACancelled, mCaches);
+      mBuilder := PrepareBuilder(ARequest, APause, mCaches);
       // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
       // Ab hier gehört der Builder dem Dienst.
       ReplaceBuilder(mBuilder);
@@ -1092,7 +1120,11 @@ begin
   end;
 end;
 
-procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
+const
+  /// <summary>Abstand, in dem nach dem Cache einer anderen Instanz gesehen wird (kein Signal über Prozesse).</summary>
+  cOtherWriterPollMs = 200;
+
+procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest; const APause: TIndexPause);
 var
   mWatch: TStopwatch;
   mBefore, mStamp: Int64;
@@ -1108,13 +1140,16 @@ begin
   mWatch := TStopwatch.StartNew;
   // Bis die andere Instanz einen neuen Stand geschrieben oder die Sperre freigegeben hat,
   // nie länger als CacheWaitMs.
-  while not ACancelled() and (mWatch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
+  while (mWatch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
   begin
     if FFileSystem.FileStamp(ARequest.CacheFile, mStamp) and (mStamp <> mBefore) then
     begin
       Exit;
     end;
-    TThread.Sleep(200);
+    if APause(cOtherWriterPollMs) then
+    begin
+      Exit;
+    end;
   end;
 end;
 

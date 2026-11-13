@@ -244,6 +244,8 @@ begin
     AView.Extras[mIndex].Text := mItems[mIndex].Text;
     AView.Extras[mIndex].Hint := mItems[mIndex].Hint;
     AView.Extras[mIndex].Clickable := mItems[mIndex].Clickable;
+    AView.Extras[mIndex].State := mItems[mIndex].State;
+    AView.Extras[mIndex].HasContext := mItems[mIndex].HasContext;
   end;
 end;
 

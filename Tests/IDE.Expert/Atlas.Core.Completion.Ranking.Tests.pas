@@ -29,6 +29,18 @@ type
     procedure FormComponentsComeFirst;
     [Test]
     procedure SenderItemsGetHeaderAndTag;
+    /// <summary>#2107: Mitglieder nach einer is-Prüfung oben mit Überschrift, die übrigen unter „Weitere“.
+    /// </summary>
+    [Test]
+    procedure NarrowedMembersComeFirstWithHeader;
+    /// <summary>#2107: Nachfahren des Typs vor is oben unter „Nachfahren von …“.</summary>
+    [Test]
+    procedure DescendantsComeFirstWithHeader;
+    /// <summary>#2108: Nur wegen der Sichtbarkeit fehlende Mitglieder erst auf Wunsch, dann am Ende.</summary>
+    [Test]
+    procedure InaccessibleOnlyWhenShown;
+    [Test]
+    procedure ProjectUsesOrderBelowLearned;
     [Test]
     procedure VariantFieldsGetBranchTag;
     [Test]
@@ -567,6 +579,123 @@ begin
   // Ohne Sender keine Überschrift.
   Items[0].Sender := '';
   Assert.AreEqual('Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
+end;
+
+procedure TAtlasRankingTests.NarrowedMembersComeFirstWithHeader;
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  Found: Boolean;
+  Tag: TAtlasTag;
+begin
+  Json := TJSONObject.ParseJSONValue('{"label":"Count","kind":10,"detail":"Integer","data":{"narrowed":' +
+    '"TJSONObject","narrowedName":"mLocation","narrowedLine":147}}') as TJSONObject;
+  try
+    Items := [Member('Clone', 'TJSONValue', 0, 0), TAtlasServerCompletionProvider.ItemFromLsp(Json, 1),
+      Member('AddPair', '', 0, 2)];
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('TJSONObject', Items[1].Narrowed);
+  Assert.AreEqual('mLocation', Items[1].NarrowedName);
+  Assert.AreEqual(147, Items[1].NarrowedLine);
+  Items[2].Narrowed := 'TJSONObject';
+  Items[2].NarrowedName := 'mLocation';
+  Items[2].NarrowedLine := 147;
+  Order := TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults);
+  Assert.AreEqual('#,Count,AddPair,#,Clone', Names(Items, Order));
+  // Auch mit Präfix stehen sie oben.
+  Assert.AreEqual('#,Count,#,Clone', Names(Items, TAtlasRanking.Order(Items, 'c', TAtlasRankOptions.Defaults)));
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[1]) do
+  begin
+    Found := Found or (Tag.Text = 'als TJSONObject');
+  end;
+  Assert.IsTrue(Found);
+end;
+
+procedure TAtlasRankingTests.InaccessibleOnlyWhenShown;
+var
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
+  mFound: Boolean;
+  mTag: TAtlasTag;
+begin
+  mItems := [Member('FEintraege', 'TZaehler', 0, 0, TAtlasItemKind.Field), Member('FEnde', 'TZaehler', 0, 1,
+    TAtlasItemKind.Field), Member('FAlt', 'TZaehler', 0, 2, TAtlasItemKind.Field)];
+  mItems[0].Inaccessible := 'private';
+  mItems[2].Inaccessible := 'strict private';
+  mOptions := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('FEnde', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual(1, Integer(Length(TAtlasRanking.Inaccessible(mItems, 'FE'))));
+  Assert.AreEqual(0, TAtlasRanking.Inaccessible(mItems, 'FE')[0]);
+  Assert.AreEqual(0, Integer(Length(TAtlasRanking.Inaccessible(mItems, ''))));
+  mOptions.ShowInaccessible := True;
+  Assert.AreEqual('FEnde,#,FEintraege', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  // Nicht im Rest der Liste (#497) und nicht unter den Chips.
+  mOptions.ShowInaccessible := False;
+  mOptions.ListMode := TAtlasListMode.All;
+  Assert.AreEqual('FEnde', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual(1, TAtlasRanking.ChipCounts(mItems, 'FE')[TAtlasChip.All]);
+  mFound := False;
+  for mTag in TAtlasItemPresentation.Tags(mItems[0]) do
+  begin
+    mFound := mFound or (mTag.Text = 'private · TZaehler');
+  end;
+  Assert.IsTrue(mFound);
+end;
+
+procedure TAtlasRankingTests.ProjectUsesOrderBelowLearned;
+var
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
+  mFound: Boolean;
+  mTag: TAtlasTag;
+begin
+  // #2109: Ohne eigene Gewichtung ordnet die Zahl im Projekt; Gelerntes und bessere Treffer gehen vor.
+  mItems := [Member('Add', '', 0, 0), Member('Clear', '', 0, 1), Member('Delete', '', 0, 2),
+    Member('GetValue', '', 0, 3)];
+  mItems[1].ProjectUses := 3;
+  mItems[3].ProjectUses := 214;
+  mOptions := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('GetValue,Clear,Add,Delete', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  mOptions.Boost :=
+    function(AIndex: Integer): Integer
+    begin
+      // Eine einzige Übernahme von Delete (kleinster Lernzuschlag).
+      Result := 0;
+      if AIndex = 2 then
+      begin
+        Result := 15;
+      end;
+    end;
+  Assert.AreEqual('Delete,GetValue,Clear,Add', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  mItems := [Member('Clear', '', 0, 0), Member('ClearAll', '', 0, 1)];
+  mItems[1].ProjectUses := 50;
+  Assert.AreEqual('Clear,ClearAll', Names(mItems, TAtlasRanking.Order(mItems, 'Clear', TAtlasRankOptions.Defaults)));
+  Assert.AreEqual(0, TAtlasRanking.ProjectBoost(0));
+  Assert.AreEqual(1, TAtlasRanking.ProjectBoost(1));
+  Assert.AreEqual(TAtlasRanking.cMaxProjectBoost, TAtlasRanking.ProjectBoost(1000000));
+  mFound := False;
+  for mTag in TAtlasItemPresentation.Tags(mItems[1]) do
+  begin
+    mFound := mFound or mTag.Text.EndsWith(' 50×');
+  end;
+  Assert.IsTrue(mFound);
+end;
+
+procedure TAtlasRankingTests.DescendantsComeFirstWithHeader;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+begin
+  Items := [Member('TAlpha', '', 0, 0, TAtlasItemKind.Class_), Member('TJSONObject', '', 0, 1,
+    TAtlasItemKind.Class_), Member('TJSONArray', '', 0, 2, TAtlasItemKind.Class_)];
+  Items[1].DescendantOf := 'TJSONValue';
+  Items[2].DescendantOf := 'TJSONValue';
+  Order := TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults);
+  Assert.AreEqual('#,TJSONObject,TJSONArray,#,TAlpha', Names(Items, Order));
 end;
 
 procedure TAtlasRankingTests.ConversionStandsBeforeOriginal;

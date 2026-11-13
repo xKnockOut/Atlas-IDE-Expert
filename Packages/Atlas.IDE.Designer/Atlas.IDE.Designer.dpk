@@ -143,6 +143,7 @@ contains
   Atlas.IDE.Designer.Preview in 'Source\IDE\Designer\Atlas.IDE.Designer.Preview.pas',
   Atlas.IDE.Designer.ResizePreview in 'Source\IDE\Designer\Atlas.IDE.Designer.ResizePreview.pas',
   Atlas.IDE.Designer.Model in 'Source\IDE\Designer\Atlas.IDE.Designer.Model.pas',
+  Atlas.IDE.Designer.Tool in 'Source\IDE\Designer\Atlas.IDE.Designer.Tool.pas',
   Atlas.IDE.Designer.HandleTool in 'Source\IDE\Designer\Atlas.IDE.Designer.HandleTool.pas',
   Atlas.IDE.Designer.GapHandles in 'Source\IDE\Designer\Atlas.IDE.Designer.GapHandles.pas',
   Atlas.IDE.Designer.MultiResize in 'Source\IDE\Designer\Atlas.IDE.Designer.MultiResize.pas',

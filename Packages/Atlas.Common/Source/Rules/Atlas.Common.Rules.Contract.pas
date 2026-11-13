@@ -221,7 +221,7 @@ type
     /// 214 Units)"), und projektweite Regeln schweigen.</summary>
     function Complete(out AReason: string): Boolean;
     /// <summary>Projekte, zu denen AFileName gehört, zuerst; mit AWholeGroup danach alle übrigen der Gruppe.
-    /// </summary>
+    /// AFileName '' liefert alle Projekte der Gruppe.</summary>
     function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
     /// <summary>Kommt AName als Bezeichner in AFileName vor (ohne Groß-/Kleinschreibung)? Unknown, wenn die
     /// Datei nicht gelesen werden kann.</summary>

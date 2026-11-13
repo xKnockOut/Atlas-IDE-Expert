@@ -135,6 +135,7 @@ uses
   Atlas.Common.Editing.WinApiCommands,
   Atlas.Common.Editing.TaskCommands,
   Atlas.Common.Editing.RecordCommands,
+  Atlas.Common.Editing.TestCommands,
   Atlas.Common.Editing.ErrorCommands,
   Atlas.Text.Lines;
 
@@ -281,6 +282,7 @@ begin
     RegisterWinApiCommands(mRegister);
     RegisterTaskCommands(mRegister);
     RegisterRecordCommands(mRegister);
+    RegisterTestCommands(mRegister);
     if AtomicCmpExchange(Pointer(FShared[mLanguage]), Pointer(mCreated), nil) <> nil then
     begin
       mCreated.Free;

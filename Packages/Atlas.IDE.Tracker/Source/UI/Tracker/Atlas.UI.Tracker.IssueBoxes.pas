@@ -12,6 +12,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
+  Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
@@ -115,6 +116,13 @@ type
     class function Row(const ALink: TAtlasTrackerLink): string; static;
     /// <summary>Überschrift einer Gruppe, bei Unteraufgaben mit Fortschritt „2/3“.</summary>
     class function Group(const AGroup: TAtlasTrackerLinkGroup): string; static;
+    /// <summary>ALinks ergeben mindestens eine Gruppe des Baums.</summary>
+    class function HasGroups(const ALinks: TArray<TAtlasTrackerLink>): Boolean; static;
+    /// <summary>Baum aus den Gruppen von ALinks füllen: Gruppen mit Node.Data = nil, Verknüpfungen mit
+    /// Node.Data = Index + 1 in ATreeLinks (dort angehängt). Duplikate, „bezieht sich auf“ und Erwähnungen bleiben
+    /// eingeklappt.</summary>
+    class procedure FillTree(ATree: TTreeView; const ALinks: TArray<TAtlasTrackerLink>;
+      var ATreeLinks: TArray<TAtlasTrackerLink>); static;
   end;
 
   /// <summary>Zeiten im Fenster: relativ im Text, absolut im Tooltip.</summary>
@@ -133,7 +141,7 @@ uses
   System.Math,
   System.DateUtils,
   Vcl.ExtCtrls,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip;
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -161,7 +169,7 @@ procedure TAtlasIssueImageBox.SetGraphic(AGraphic: TGraphic);
 begin
   FreeAndNil(FGraphic);
   FGraphic := AGraphic;
-  Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewImageHint);
+  Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewImageHint);
   ShowHint := True;
   Fit;
   Invalidate;
@@ -207,7 +215,7 @@ begin
     // Noch nicht geladen bzw. nicht ladbar: Alternativtext gedämpft.
     Canvas.Font := Font;
     Canvas.Font.Color := ToColor(FColors.Muted);
-    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewImageLink, [FAlt]);
+    mText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewImageLink, [FAlt]);
     Canvas.TextOut(0, ScaleValue(2), mText);
     Exit;
   end;
@@ -474,7 +482,7 @@ begin
   // Zustand wie im Tracker, sonst offen bzw. erledigt; dazu, ob es dieses Issue blockiert.
   if not ALink.StateKnown then
   begin
-    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksUnknown);
+    mState := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinksUnknown);
   end
   else if ALink.State <> '' then
   begin
@@ -482,15 +490,15 @@ begin
   end
   else if ALink.Resolved then
   begin
-    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksDone);
+    mState := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinksDone);
   end
   else
   begin
-    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksOpen);
+    mState := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinksOpen);
   end;
   if ALink.Blocking then
   begin
-    mState := mState + ' · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksBlocking);
+    mState := mState + ' · ' + TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinksBlocking);
   end;
   Result := mSymbol + '  ' + ALink.Key;
   if ALink.Title <> '' then
@@ -502,34 +510,65 @@ end;
 
 class function TAtlasIssueLinkText.Group(const AGroup: TAtlasTrackerLinkGroup): string;
 var
-  mId: TAtlasTrackerTextId;
+  mId: TAtlasIssueTextId;
 begin
   if AGroup.Kind = TAtlasTrackerLinkKind.Subtask then
   begin
-    Exit(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksSubtasks, [TAtlasTrackerLinks.ProgressText(AGroup.Done,
+    Exit(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinksSubtasks, [TAtlasTrackerLinks.ProgressText(AGroup.Done,
       AGroup.Total)]));
   end;
   case AGroup.Kind of
     TAtlasTrackerLinkKind.DependsOn:
-      mId := TAtlasTrackerTextId.IssueLinksDependsOn;
+      mId := TAtlasIssueTextId.IssueLinksDependsOn;
     TAtlasTrackerLinkKind.Blocks:
-      mId := TAtlasTrackerTextId.IssueLinksBlocks;
+      mId := TAtlasIssueTextId.IssueLinksBlocks;
     TAtlasTrackerLinkKind.Parent:
-      mId := TAtlasTrackerTextId.IssueLinksParent;
+      mId := TAtlasIssueTextId.IssueLinksParent;
     TAtlasTrackerLinkKind.Duplicates:
-      mId := TAtlasTrackerTextId.IssueLinksDuplicates;
+      mId := TAtlasIssueTextId.IssueLinksDuplicates;
     TAtlasTrackerLinkKind.DuplicatedBy:
-      mId := TAtlasTrackerTextId.IssueLinksDuplicatedBy;
+      mId := TAtlasIssueTextId.IssueLinksDuplicatedBy;
     TAtlasTrackerLinkKind.Relates:
-      mId := TAtlasTrackerTextId.IssueLinksRelates;
+      mId := TAtlasIssueTextId.IssueLinksRelates;
     TAtlasTrackerLinkKind.Mentioned:
-      mId := TAtlasTrackerTextId.IssueLinksMentioned;
+      mId := TAtlasIssueTextId.IssueLinksMentioned;
     TAtlasTrackerLinkKind.PullRequest:
-      mId := TAtlasTrackerTextId.IssueLinksPulls;
+      mId := TAtlasIssueTextId.IssueLinksPulls;
   else
-    mId := TAtlasTrackerTextId.IssueLinksOther;
+    mId := TAtlasIssueTextId.IssueLinksOther;
   end;
-  Result := TAtlasTrackerStrings.Text(mId) + ' (' + IntToStr(AGroup.Total) + ')';
+  Result := TAtlasIssueStrings.Text(mId) + ' (' + IntToStr(AGroup.Total) + ')';
+end;
+
+class function TAtlasIssueLinkText.HasGroups(const ALinks: TArray<TAtlasTrackerLink>): Boolean;
+begin
+  Result := Length(TAtlasTrackerLinks.Groups(ALinks)) > 0;
+end;
+
+class procedure TAtlasIssueLinkText.FillTree(ATree: TTreeView; const ALinks: TArray<TAtlasTrackerLink>;
+  var ATreeLinks: TArray<TAtlasTrackerLink>);
+var
+  mGroup: TAtlasTrackerLinkGroup;
+  mLink: TAtlasTrackerLink;
+  mNode, mChild: TTreeNode;
+begin
+  ATree.Items.BeginUpdate;
+  try
+    for mGroup in TAtlasTrackerLinks.Groups(ALinks) do
+    begin
+      mNode := ATree.Items.AddChild(nil, Group(mGroup));
+      mNode.Data := nil;
+      for mLink in mGroup.Links do
+      begin
+        ATreeLinks := ATreeLinks + [mLink];
+        mChild := ATree.Items.AddChild(mNode, Row(mLink));
+        mChild.Data := Pointer(NativeInt(Length(ATreeLinks)));
+      end;
+      mNode.Expanded := not mGroup.Collapsed;
+    end;
+  finally
+    ATree.Items.EndUpdate;
+  end;
 end;
 
 { TAtlasIssueTimeText }

@@ -21,7 +21,8 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
 {$SCOPEDENUMS ON}
@@ -47,16 +48,14 @@ type
     BreakBefore: Boolean;
   end;
 
-  TAtlasIdeDesignerLayers = class
+  TAtlasIdeDesignerLayers = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FKeys: TAtlasDesignerLayerKeys;
     /// <summary>Stand vor dem letzten Schritt: Datei, Parent (leer = Formular) und Namen von unten nach oben.
     /// </summary>
     FUndoFile: string;
     FUndoParent: string;
     FUndoOrder: TArray<string>;
-    procedure Say(const AText: string);
     procedure Reorder(ACommand: TAtlasLayersCommand);
     procedure Restore;
   public
@@ -191,8 +190,7 @@ end;
 
 constructor TAtlasIdeDesignerLayers.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FKeys := TAtlasDesignerLayerKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
 end;
@@ -205,14 +203,6 @@ begin
     FKeys.Free;
   end;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeDesignerLayers.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeDesignerLayers.UpdateKeys(AWanted: Boolean);

@@ -27,7 +27,7 @@
 
     Ohne Markierung kommt ein Eintrag nicht auf die Karte. Markdown (`code`,
     *kursiv*, **fett**, Links) wird zu Text. Mit -Unreleased zählt der
-    Abschnitt [Unveröffentlicht] als Version -Unreleased (für Testbauten).
+    Abschnitt [Unveröffentlicht] samt den Fragmenten in changelog.d/ als Version -Unreleased (für Testbauten).
     Get-ChangelogSection.ps1 entfernt die Markierungen aus den Release-Notizen.
 
 .EXAMPLE
@@ -106,7 +106,16 @@ function ConvertTo-WhatsNewItem([string] $Line) {
 $Versions = [System.Collections.Generic.List[object]]::new()
 $Current = $null
 $InExperimental = $false
-foreach ($Line in Get-Content -Encoding utf8 (Join-Path $Root 'CHANGELOG.md')) {
+# Testbauten (-Unreleased) zeigen auch die Einträge, die noch als Fragment in changelog.d/ liegen.
+if ($Unreleased) {
+    $ChangelogText = & (Join-Path $PSScriptRoot 'Update-Changelog.ps1') -Root $Root -Preview | Out-String
+    if ($LASTEXITCODE -ne 0) { throw 'Changelog-Fragmente fehlerhaft: pwsh Tools/Update-Changelog.ps1 -Check' }
+    $ChangelogLines = $ChangelogText -split '\r?\n'
+}
+else {
+    $ChangelogLines = Get-Content -Encoding utf8 (Join-Path $Root 'CHANGELOG.md')
+}
+foreach ($Line in $ChangelogLines) {
     if ($Line -match '^###\s+(.*?)\s*$') {
         $InExperimental = $Matches[1] -eq 'Experimentell'
         continue

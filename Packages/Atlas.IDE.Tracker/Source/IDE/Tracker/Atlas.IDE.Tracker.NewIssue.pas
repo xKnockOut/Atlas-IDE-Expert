@@ -21,6 +21,14 @@
 // - Aus einem Absturzfall des Servers (#1355): Titel und Text (Stapel,
 //   Version) vom Plugin-Kern; nach dem Anlegen öffnet „An Issue anhängen“
 //   (#1276) mit den Dateien des Falls für das neue Issue.
+// - GitHub-Vorlagen (#2137, abschaltbar mit issues.create.templates): Ist der
+//   gewählte Tracker der des Projekts, liest Atlas .github/ISSUE_TEMPLATE aus
+//   der Arbeitskopie (im Hintergrund), sonst lädt der Kern sie aus dem
+//   Repository. Vorbelegung: Version des Plugins, Delphi-Version und IDE,
+//   Code und Fundstelle; Zuordnung aus issues.github.templateFields, ergänzt
+//   und überschrieben von tracker.templateFields der .atlas. „Im Browser
+//   fortsetzen“ öffnet nur https-Adressen. Was GitHub nicht übernahm
+//   (Meilenstein, Typ, Projekte), nennt die Benachrichtigung.
 // Anbieter, Transport und „Beginnen“ kommen von TAtlasIdeIssues (Start).
 // Base erreicht „Issue anlegen“ über IAtlasIssueCreation (TAtlasIdeIssueCreation,
 // bereitgestellt von der Komposition des Moduls, #1455).
@@ -71,6 +79,8 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.IssueForms,
+  Atlas.Core.Tracker.NewIssueGitHub,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
@@ -81,12 +91,13 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -96,6 +107,12 @@ const
   cLogAborted = 'Issue anlegen: Anfrage mit %s abgebrochen';
   cLogClipboard = 'Issue anlegen: Zwischenablage belegt';
   cLogOutcome = 'Issue anlegen: %s, %s';
+  /// <summary>Bitbreite der IDE für die Vorbelegung „Delphi 13 (64-Bit-IDE)“.</summary>
+{$IFDEF WIN64}
+  cIdeBits = 64;
+{$ELSE}
+  cIdeBits = 32;
+{$ENDIF}
 
 var
   Issues: TAtlasIdeIssues;
@@ -104,16 +121,19 @@ var
   Threads: TList<TThread>;
   /// <summary>Tracker der letzten Sendung (Send): Dorthin gehen danach die Dateien eines Absturzfalls.</summary>
   LastTarget: TAtlasTrackerTarget;
+  /// <summary>Projekt des offenen Dialogs (NewSetup): Nur für dessen Tracker gelten die Vorlagen der Arbeitskopie.
+  /// </summary>
+  DialogProject: string;
 
 function Labels: TAtlasNewIssueLabels;
 begin
-  Result.Location := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelLocation);
-  Result.Line := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelLine);
-  Result.Method := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelMethod);
-  Result.Branch := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelBranch);
-  Result.Commit := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelCommit);
-  Result.Findings := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLabelFindings);
-  Result.FindingsTitle := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueFindingsTitle);
+  Result.Location := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLabelLocation);
+  Result.Line := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLabelLine);
+  Result.Method := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLabelMethod);
+  Result.Branch := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLabelBranch);
+  Result.Commit := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLabelCommit);
+  Result.Findings := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLabelFindings);
+  Result.FindingsTitle := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueFindingsTitle);
 end;
 
 procedure Say(const AText: string);
@@ -243,10 +263,11 @@ begin
       TAtlasGuard.Log(cLogClipboard);
   end;
   mPage := AResult.Page;
-  mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueCreated, [AResult.Key]);
+  // Mit dem, was GitHub nicht übernahm (#2137).
+  mText := TAtlasNewIssueDialog.ResultText(AResult, '', '');
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cNewIssue, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle), mText,
-    [TAtlasNotificationCenter.Action(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueOpen),
+    [TAtlasNotificationCenter.Action(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueOpen),
     procedure
     begin
       OpenPage(mPage);
@@ -264,13 +285,34 @@ begin
   end;
 end;
 
+function SameTracker(const A, B: TAtlasTrackerTarget): Boolean;
+begin
+  Result := SameText(A.Provider, B.Provider) and SameText(A.Server, B.Server) and SameText(A.Project, B.Project);
+end;
+
+/// <summary>Ordner, ab dem die Vorlagen der Arbeitskopie gesucht werden: der des Projekts, wenn ATarget dessen
+/// Tracker ist; sonst '' (Vorlagen aus dem Repository).</summary>
+function TemplateStart(const ATarget: TAtlasTrackerTarget): string;
+var
+  mConnection: string;
+begin
+  Result := '';
+  if (DialogProject <> '') and SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) and
+    TAtlasIdeSettings.Current.IssuesCreateTemplates and
+    SameTracker(TAtlasIdeIssuesTargets.TrackerOf(DialogProject, mConnection), ATarget) then
+  begin
+    Result := ExtractFileDir(DialogProject);
+  end;
+end;
+
 procedure LoadFields(const ATarget: TAtlasTrackerTarget; const ADone: TAtlasNewIssueFieldsDone);
 var
   mProvider: IAtlasTrackerProvider;
   mTarget: TAtlasTrackerTarget;
   mFields: TAtlasNewIssueFields;
-  mLoaded: Boolean;
+  mLoaded, mTemplates: Boolean;
   mDone: TAtlasNewIssueFieldsDone;
+  mStart: string;
 begin
   if Issues = nil then
   begin
@@ -281,11 +323,20 @@ begin
   mFields := TAtlasNewIssueFields.Empty;
   mLoaded := False;
   mDone := ADone;
+  mTemplates := TAtlasIdeSettings.Current.IssuesCreateTemplates;
+  mStart := TemplateStart(ATarget);
   RunInBackground(
     procedure
+    var
+      mLocal: TArray<TAtlasIssueFormFile>;
     begin
+      mLocal := nil;
+      if mStart <> '' then
+      begin
+        mLocal := TAtlasGitHubNewIssue.LocalFiles(TAtlasTrackerFiles.Files, mStart);
+      end;
       mLoaded := TAtlasNewIssues.LoadFields(mProvider, mTarget, Issues.Context.TransportOf(mProvider, mTarget),
-        mFields);
+        TAtlasGitHubMetaRequest.Create(mTemplates, mLocal), mFields);
     end,
     procedure
     begin
@@ -392,12 +443,39 @@ begin
   end;
 end;
 
+/// <summary>issues.github.templateFields, ergänzt und überschrieben von tracker.templateFields der .atlas.
+/// </summary>
+function MappingsOf(const AProject: string): TAtlasIssueFormMappings;
+var
+  mTeam: TAtlasIssueFormMappings;
+  mIndex: Integer;
+  mSettings: TAtlasTeamSettings;
+begin
+  Result := TAtlasIssueForms.ParseMapping(TAtlasIdeSettings.Current.IssuesGitHubTemplateFields);
+  mSettings := TAtlasIdeTeamFile.ForProject(AProject);
+  SetLength(mTeam, Length(mSettings.Tracker.TemplateFields));
+  for mIndex := 0 to High(mTeam) do
+  begin
+    mTeam[mIndex] := TAtlasIssueFormMapping.Create(mSettings.Tracker.TemplateFields[mIndex].Name,
+      mSettings.Tracker.TemplateFields[mIndex].Value);
+  end;
+  Result := TAtlasIssueForms.Merge(Result, mTeam);
+end;
+
 function NewSetup(const AProject: string): TAtlasNewIssueSetup;
 begin
   Result := TAtlasNewIssueSetup.Empty;
+  DialogProject := AProject;
   Result.Trackers := TrackersOf(AProject, Result.TrackerIndex);
   Result.IncludeCode := TAtlasIdeSettings.Current.IssuesCreateIncludeCode;
   Result.CanStart := (Issues <> nil) and Issues.Context.CanStart;
+  Result.Facts := TAtlasIssueFormFacts.Create(CompilerVersion, cIdeBits);
+  Result.Mappings := MappingsOf(AProject);
+  Result.OnBrowse :=
+    procedure(AUrl: string)
+    begin
+      OpenPage(AUrl);
+    end;
 end;
 
 { TAtlasIdeNewIssue }
@@ -427,6 +505,7 @@ begin
   IssuesRef := nil;
   Report := nil;
   LastTarget := Default(TAtlasTrackerTarget);
+  DialogProject := '';
 end;
 
 class function TAtlasIdeNewIssue.Enabled: Boolean;
@@ -446,7 +525,7 @@ begin
   end;
   if not TAtlasNewIssuePlace.Capture(mPlace, mContext) then
   begin
-    Say(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoEditor));
+    Say(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoEditor));
     Exit;
   end;
   mProject := TAtlasIdeFiles.ActiveProjectFile;
