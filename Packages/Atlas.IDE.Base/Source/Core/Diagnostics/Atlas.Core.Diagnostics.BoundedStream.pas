@@ -49,7 +49,7 @@ begin
     // Die Meldung ist die Grenze; was sie bedeutet, sagt die Klasse.
     raise EAtlasStreamLimit.Create(IntToStr(FMaxBytes));
   end;
-  Result := inherited Write(ABuffer, ACount);
+  Result := inherited Write(ABuffer, ACount); // console-ok: TBytesStream.Write, nicht System.Write
 end;
 
 end.
