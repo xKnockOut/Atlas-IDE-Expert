@@ -278,6 +278,9 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Contract.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Generator.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Report.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Contract.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.References.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Scanner.pas"/>
