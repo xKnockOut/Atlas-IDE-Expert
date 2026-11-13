@@ -100,6 +100,36 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 - Run from the editor
 - A single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 
+### Outdated test results (#1770)
+
+- If a test was changed since its run, its code lens mark shows the old result grey and italic with “(outdated)”, e.g. “Run test · passed (outdated)”.
+- Only whitespace or comments changed: not outdated. Undoing the change makes the result current again.
+- The class mark is outdated as soon as one of its tests is; the count “3/4 passed” does not count outdated results as passed.
+- Optionally changes in the units the test unit uses (and that belong to the test project) make the result outdated too.
+- “Run outdated tests” (*Atlas* menu, command palette) runs exactly these tests.
+
+Settings: `tests.stale`, `tests.stale.units`
+
+### Failure at the assert line (#1771)
+
+- A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.
+- The line comes from the stack trace in the report (DUnitX with JclDebug or madExcept). If the test stops with an exception, it is the statement that raised it.
+- Without lines in the stack trace Atlas looks for the one assert in the body whose expected value matches the report (`Assert.AreEqual(4, …)` for “Expected 4 but got 3”); if the body has only one assert, that one counts. If several match, the method header stays.
+- The entry moves with inserted lines like any finding; the line in the messages view jumps to the statement.
+- The short text appears like the error text at the end of the line (`editor.inlineDiagnostics`).
+
+Settings: `tests.failureAtAssert`, `tests.failureInline`
+
+### Create a test case from the unit (#1226)
+
+Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
+
+- Atlas finds the test unit (pattern `testUnits.pattern`) and adds a draft test method to the test class; the tested unit goes into the uses clause.
+- The draft prepares a variable with a placeholder per parameter (`0`, `''`, `False`, `nil`, `Default(T)`), calls the method on the test class's object (a field of the class type), on the class (class methods) or on a local object with `try … finally`, and checks the result and `var`/`out` parameters with placeholders that fit the type (`Assert.AreEqual`, with a tolerance for floating point, `Assert.IsTrue`, `Assert.IsNotNull`).
+- An `Assert.Fail` at the end keeps the draft red until the expected values are right.
+- Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
+- Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
+
 ### Run affected tests (#1353)
 
 Available from the *Atlas* menu and the command palette.

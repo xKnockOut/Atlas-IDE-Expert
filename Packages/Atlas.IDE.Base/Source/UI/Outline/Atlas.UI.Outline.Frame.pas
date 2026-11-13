@@ -182,6 +182,10 @@ const
   cIndentPx = 14;
   cExpanderPx = 14;
   cRowPx = 20;
+  /// <summary>Feste Breite des Suchfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
+  cSearchWidth = 200;
+  /// <summary>Höhe der Knöpfe der Leiste bei 96 dpi.</summary>
+  cButtonHeight = 24;
   /// <summary>Tag der Menüeinträge „Alle zeigen“.</summary>
   cTagAll = -1;
   cKindTexts: array[0..7] of TAtlasTextId = (TAtlasTextId.OutlineKindTypes, TAtlasTextId.OutlineKindFields,
@@ -243,7 +247,7 @@ begin
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTop;
   FSearch.AlignWithMargins := True;
-  FSearch.Width := Scale(200);
+  FSearch.Width := Scale(cSearchWidth);
   FSearch.TextHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSearchHint);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
@@ -352,7 +356,7 @@ begin
   Result.Parent := FTop;
   Result.AlignWithMargins := True;
   Result.Width := Scale(92);
-  Result.Height := Scale(24);
+  Result.Height := Scale(cButtonHeight);
 end;
 
 function TAtlasOutlineFrameParts.AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer;

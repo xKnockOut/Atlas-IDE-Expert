@@ -12,8 +12,12 @@
 //   implementation-Teil (Atlas.Text.DUnitX, gemeinsam mit dem MCP-Werkzeug
 //   run_tests und #154).
 // - Daraus Probleme im Editor (Quelle "DUnitX", erwarteter und tatsächlicher
-//   Wert), den Abschnitt "tests" der Projekt-Zusammenfassung (#592, Karte
-//   Tests #763) und den Stand je Test für die Code Lens.
+//   Wert; mit tests.failureAtAssert an der Assert-Zeile, #1771,
+//   Atlas.Core.Tests.AssertLine, und mit tests.failureInline dahinter kurz
+//   „erwartet 4, erhalten 3“ in Details), den Abschnitt "tests" der
+//   Projekt-Zusammenfassung (#592, Karte
+//   Tests #763) und den Stand je Test für die Code Lens; veraltete Ergebnisse
+//   (#1770, Atlas.Core.Tests.Stale) zählt die Marke nicht als bestanden.
 // Dateien liest der Aufrufer (Puffer der IDE oder Platte); Zeilen sind hier
 // 0-basiert, in der Zusammenfassung 1-basiert.
 
@@ -26,7 +30,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Text.DUnitX,
-  Atlas.Text.TestResults;
+  Atlas.Text.TestResults,
+  Atlas.Core.Tests.Stale;
 
 type
 {$SCOPEDENUMS ON}
@@ -49,15 +54,33 @@ type
     Ran: Integer;
     Passed: Integer;
     Failed: Integer;
+    /// <summary>Davon mit veraltetem Ergebnis: Der Test wurde seit dem Lauf geändert (#1770).</summary>
+    Stale: Integer;
+    /// <summary>Davon bestanden, aber veraltet.</summary>
+    StalePassed: Integer;
     /// <summary>Failed bei einem Fehlschlag; Passed erst, wenn jeder Test ein Ergebnis hat und mindestens einer
-    /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown.</summary>
+    /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown. Stand des letzten Laufs, auch wenn er veraltet
+    /// ist.</summary>
     function Status: TAtlasTestStatus;
+    /// <summary>Mindestens ein Ergebnis ist veraltet (#1770).</summary>
+    function IsStale: Boolean;
+    /// <summary>Bestandene Tests ohne die veralteten: die Zählung „3/4 bestanden“.</summary>
+    function FreshPassed: Integer;
+    /// <summary>Stand für die Marke: wie Status, nur gilt eine Marke über mehrere Tests mit veraltetem bestandenem
+    /// Ergebnis als Partial (die Zählung nimmt es nicht als bestanden).</summary>
+    function Shown: TAtlasTestStatus;
   end;
 
-  /// <summary>Datei der Unit AUnitName im Testprojekt; '' ohne.</summary>
-  TAtlasTestUnitFile = reference to function(const AUnitName: string): string;
+  /// <summary>Ist das Ergebnis des Tests AMethod (der Fixture der Marke) veraltet (#1770)?</summary>
+  TAtlasTestStaleFunc = Atlas.Core.Tests.Stale.TAtlasTestStaleFunc;
+  /// <summary>Tests einer Unit mit veraltetem Ergebnis (#1770).</summary>
+  TAtlasTestStaleKeys = Atlas.Core.Tests.Stale.TAtlasTestStaleKeys;
+
+  /// <summary>Datei der Unit AUnitName im Testprojekt; '' ohne. Deklariert in Atlas.Core.Tests.Stale (ohne
+  /// Windows-Abhängigkeiten, auch unter FPC prüfbar).</summary>
+  TAtlasTestUnitFile = Atlas.Core.Tests.Stale.TAtlasTestUnitFile;
   /// <summary>Zeilen einer Datei (ohne Zeilenende); False, wenn sie nicht lesbar ist.</summary>
-  TAtlasTestReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+  TAtlasTestReadLines = Atlas.Core.Tests.Stale.TAtlasTestReadLines;
 
   /// <summary>Was läuft: Testprojekt, Ziel und Filter.</summary>
   TAtlasTestTarget = record
@@ -76,8 +99,11 @@ type
     Test: TTestCaseResult;
     /// <summary>Datei der Testunit; '' ohne Fundstelle.</summary>
     FileName: string;
-    /// <summary>Zeile des Methodenkopfs (0-basiert); -1 ohne.</summary>
+    /// <summary>Zeile des Methodenkopfs bzw. der fehlgeschlagenen Anweisung (AtAssert, 0-basiert); -1 ohne.
+    /// </summary>
     Line: Integer;
+    /// <summary>Line ist die Anweisung, an der der Test fehlschlug (#1771), nicht der Methodenkopf.</summary>
+    AtAssert: Boolean;
     /// <summary>Erstes und letztes Zeichen des Texts in der Zeile (0-basiert) für die Markierung.</summary>
     StartCharacter: Integer;
     EndCharacter: Integer;
@@ -102,7 +128,11 @@ type
       const ARequestedBy: string; AIsTestProgram: Boolean): Boolean; static;
     /// <summary>Fehlgeschlagene Tests mit Fundstelle; liest jede Testunit höchstens einmal.</summary>
     class function Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
-      const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>; static;
+      const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>; overload; static;
+    /// <summary>Wie oben; mit AAtAssert an der Zeile der fehlgeschlagenen Anweisung, wenn sie sich bestimmen lässt
+    /// (Stacktrace, eindeutiger Assert; #1771, tests.failureAtAssert).</summary>
+    class function Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
+      const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>; overload; static;
     /// <summary>Kurzer Name eines Tests für Meldungen: Fixture.Methode[.Fall].</summary>
     class function ShortName(const ACase: TTestCaseResult): string; static;
     /// <summary>Text des Problems: AValuesFormat (%s Name, %s erwartet, %s erhalten) mit erwartetem und
@@ -110,7 +140,11 @@ type
     class function ProblemText(const ACase: TTestCaseResult; const AFormat, AValuesFormat: string): string; static;
     /// <summary>Probleme je Datei (nur Tests mit Fundstelle) für den Problem-Speicher.</summary>
     class function Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat,
-      AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>; static;
+      AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>; overload; static;
+    /// <summary>Wie oben; an der Assert-Zeile mit Werten steht AInlineFormat (%s erwartet, %s erhalten) in Details,
+    /// der kurze Text hinter der Zeile (#1771, tests.failureInline); '' = ohne.</summary>
+    class function Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat, AValuesFormat,
+      AInlineFormat: string): TArray<TPair<string, TAtlasProblem>>; overload; static;
     /// <summary>Abschnitt "tests" der Projekt-Zusammenfassung; höchstens TAtlasProjectTests.cMaxFailures Tests.
     /// </summary>
     class function SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
@@ -128,13 +162,21 @@ type
       ACaseIndex: Integer): TArray<TAtlasTestKey>; static;
     /// <summary>Stand der Tests AKeys der Fixture AFixture in den Ergebnissen.</summary>
     class function TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
-      const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally; static;
+      const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally; overload; static;
+    /// <summary>Wie oben; AStale nennt Tests, deren Ergebnis veraltet ist (#1770), nil = keine.</summary>
+    class function TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+      const AKeys: TArray<TAtlasTestKey>; const AStale: TAtlasTestStaleFunc): TAtlasTestTally; overload; static;
+    /// <summary>Für TallyOf: Ist das Ergebnis eines Tests der Fixture AFixture in Unit AUnitName veraltet? AKeys
+    /// sind die Schlüssel der veralteten Tests (TAtlasTestStamps.StaleIn, #1770); nil ohne.</summary>
+    class function StaleOf(const AKeys: TArray<string>; const AUnitName, AFixture: string): TAtlasTestStaleFunc;
+      static;
   end;
 
 implementation
 
 uses
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.Core.Tests.AssertLine;
 
 { TAtlasTestTally }
 
@@ -150,6 +192,25 @@ begin
     Result := TAtlasTestStatus.Passed;
   end
   else if (Ran > 0) and (Ran < Total) then
+  begin
+    Result := TAtlasTestStatus.Partial;
+  end;
+end;
+
+function TAtlasTestTally.IsStale: Boolean;
+begin
+  Result := Stale > 0;
+end;
+
+function TAtlasTestTally.FreshPassed: Integer;
+begin
+  Result := Passed - StalePassed;
+end;
+
+function TAtlasTestTally.Shown: TAtlasTestStatus;
+begin
+  Result := Status;
+  if (Result = TAtlasTestStatus.Passed) and (StalePassed > 0) and (Total > 1) then
   begin
     Result := TAtlasTestStatus.Partial;
   end;
@@ -176,12 +237,24 @@ begin
     not ABackground and (ARequestedBy = '') and AIsTestProgram;
 end;
 
-/// <summary>Zeile und Spalten des Tests in ALines eintragen; ohne Fundstelle Zeile -1.</summary>
-procedure PlaceFailure(var AFailure: TAtlasTestFailure; const AFound: TDUnitXUnit; const ALines: TArray<string>);
+/// <summary>Zeile und Spalten des Tests in ALines eintragen; ohne Fundstelle Zeile -1. AAtAssert: an der
+/// fehlgeschlagenen Anweisung, wenn sie sich bestimmen lässt (#1771).</summary>
+procedure PlaceFailure(var AFailure: TAtlasTestFailure; const AFound: TDUnitXUnit; const ALines: TArray<string>;
+  AAtAssert: Boolean);
 var
   mText: string;
   mIndex: Integer;
 begin
+  if AAtAssert then
+  begin
+    AFailure.Line := TAtlasAssertLine.Find(AFailure.Test, AFound, ALines, AFailure.FileName);
+    if AFailure.Line >= 0 then
+    begin
+      AFailure.AtAssert := True;
+      TAtlasAssertLine.Statement(ALines[AFailure.Line], AFailure.StartCharacter, AFailure.EndCharacter);
+      Exit;
+    end;
+  end;
   AFailure.Line := AFound.LineOf(AFailure.Test.Fixture, AFailure.Test.Method);
   if (AFailure.Line < 0) or (AFailure.Line > High(ALines)) then
   begin
@@ -221,6 +294,12 @@ end;
 
 class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
   const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
+begin
+  Result := Failures(ARun, AUnitFile, AReadLines, False);
+end;
+
+class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
 var
   mUnits: TDictionary<string, TDUnitXUnit>;
   mTexts: TDictionary<string, TArray<string>>;
@@ -252,7 +331,7 @@ begin
         end
         else
         begin
-          PlaceFailure(mFailure, mFound, mLines);
+          PlaceFailure(mFailure, mFound, mLines, AAtAssert);
         end;
       end;
       Result := Result + [mFailure];
@@ -301,6 +380,12 @@ end;
 
 class function TAtlasTestRun.Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat,
   AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>;
+begin
+  Result := Problems(AFailures, AFormat, AValuesFormat, '');
+end;
+
+class function TAtlasTestRun.Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat, AValuesFormat,
+  AInlineFormat: string): TArray<TPair<string, TAtlasProblem>>;
 var
   mFailure: TAtlasTestFailure;
   mProblem: TAtlasProblem;
@@ -322,6 +407,11 @@ begin
     mProblem.Code := '';
     mProblem.Source := TAtlasProblemStore.cTestSource;
     mProblem.Message := ProblemText(mFailure.Test, AFormat, AValuesFormat);
+    // Kurzer Text hinter der Assert-Zeile (#1771); der Fehlertext am Zeilenende zeigt ihn statt der Meldung.
+    if mFailure.AtAssert and mFailure.Test.HasValues and (AInlineFormat <> '') then
+    begin
+      mProblem.Details := Format(AInlineFormat, [mFailure.Test.Expected, mFailure.Test.Actual]);
+    end;
     Result := Result + [TPair<string, TAtlasProblem>.Create(mFailure.FileName, mProblem)];
   end;
 end;
@@ -475,9 +565,16 @@ end;
 
 class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
   const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
+begin
+  Result := TallyOf(ACases, AUnitName, AFixture, AKeys, nil);
+end;
+
+class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKeys: TArray<TAtlasTestKey>; const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
 var
   mKey: TAtlasTestKey;
   mStatus: TAtlasTestStatus;
+  mStale: Boolean;
 begin
   Result := Default(TAtlasTestTally);
   Result.Total := Length(AKeys);
@@ -489,6 +586,11 @@ begin
     end;
     Inc(Result.Ran);
     mStatus := StatusOf(ACases, AUnitName, AFixture, mKey.Method, mKey.CaseName);
+    mStale := Assigned(AStale) and AStale(mKey.Method);
+    if mStale then
+    begin
+      Inc(Result.Stale);
+    end;
     if mStatus = TAtlasTestStatus.Failed then
     begin
       Inc(Result.Failed);
@@ -496,8 +598,33 @@ begin
     else if mStatus = TAtlasTestStatus.Passed then
     begin
       Inc(Result.Passed);
+      if mStale then
+      begin
+        Inc(Result.StalePassed);
+      end;
     end;
   end;
+end;
+
+class function TAtlasTestRun.StaleOf(const AKeys: TArray<string>; const AUnitName,
+  AFixture: string): TAtlasTestStaleFunc;
+var
+  mKeys: TArray<string>;
+  mUnitName, mFixture: string;
+begin
+  Result := nil;
+  if Length(AKeys) = 0 then
+  begin
+    Exit;
+  end;
+  mKeys := AKeys;
+  mUnitName := AUnitName;
+  mFixture := AFixture;
+  Result :=
+    function(const AMethod: string): Boolean
+    begin
+      Result := TAtlasTestStamps.Listed(mKeys, TAtlasTestStamps.KeyOf(mUnitName, mFixture, AMethod));
+    end;
 end;
 
 end.

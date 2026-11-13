@@ -81,6 +81,36 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 
+### Veraltete Testergebnisse (#1770)
+
+- Wurde ein Test seit seinem Lauf geändert, zeigt seine Marke der Code Lens den alten Stand grau und kursiv mit „(veraltet)“, z. B. „Test ausführen · bestanden (veraltet)“.
+- Nur Leerraum oder Kommentare geändert: nicht veraltet. Wird die Änderung zurückgenommen, gilt das Ergebnis wieder.
+- Die Klassenmarke ist veraltet, sobald einer ihrer Tests es ist; die Zählung „3/4 bestanden“ nimmt veraltete Ergebnisse nicht als bestanden.
+- Auf Wunsch machen auch Änderungen in den Units, die die Testunit verwendet (und die zum Testprojekt gehören), das Ergebnis veraltet.
+- „Veraltete Tests ausführen“ (*Atlas*-Menü, Befehlspalette) führt genau diese Tests aus.
+
+Einstellungen: `tests.stale`, `tests.stale.units`
+
+### Fehlschlag an der Assert-Zeile (#1771)
+
+- Ein fehlgeschlagener Test steht nicht mehr am Methodenkopf, sondern an der Anweisung, die fehlschlug: Wellenlinie über der Anweisung, dahinter grau „erwartet 4, erhalten 3“.
+- Die Zeile kommt aus dem Stacktrace des Berichts (DUnitX mit JclDebug oder madExcept). Bricht der Test mit einer Ausnahme ab, ist es die auslösende Anweisung.
+- Ohne Zeilen im Stacktrace sucht Atlas im Rumpf den einen Assert, dessen erwarteter Wert zum Bericht passt (`Assert.AreEqual(4, …)` bei „Expected 4 but got 3“); hat der Rumpf nur einen Assert, gilt dieser. Passen mehrere, bleibt es beim Methodenkopf.
+- Eingefügte Zeilen nimmt der Eintrag mit wie jeder Befund; die Zeile in der Meldungsansicht springt zur Anweisung.
+- Der kurze Text erscheint wie der Fehlertext am Zeilenende (`editor.inlineDiagnostics`).
+
+Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
+
+### Testfall aus der Unit anlegen (#1226)
+
+Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
+
+- Atlas findet die Testunit (Muster `testUnits.pattern`) und trägt einen Entwurf der Testmethode in die Testklasse ein, die getestete Unit kommt ins uses.
+- Der Entwurf bereitet je Parameter eine Variable mit Platzhalter vor (`0`, `''`, `False`, `nil`, `Default(T)`), ruft die Methode über das Objekt der Testklasse (ein Feld vom Typ der Klasse), über die Klasse (Klassenmethoden) oder über ein lokales Objekt mit `try … finally` auf und prüft Ergebnis und `var`/`out`-Parameter mit Platzhaltern passend zum Typ (`Assert.AreEqual`, mit Toleranz bei Gleitkomma, `Assert.IsTrue`, `Assert.IsNotNull`).
+- Ein `Assert.Fail` am Ende hält den Entwurf rot, bis die erwarteten Werte stimmen.
+- Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
+- Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
+
 ### Betroffene Tests ausführen (#1353)
 
 Aufruf: *Atlas*-Menü, Befehlspalette.
