@@ -44,11 +44,13 @@ Scheitert „Package-Abhängigkeiten“ oder „AtlasServer für Linux“ nach e
 
 ## Prüfzeit
 
+„AtlasServer für Linux“ teilt sich in zwei parallele Jobs: `bauen` (Server übersetzen, Startprobe, Selbstprüfung je Plugin-Package, die Packages gleichzeitig) und `fpc-tests` (DUnitX-Tests unter FPC). Beide holen FPC trunk aus dem Zwischenspeicher; die Paketquellen für den Startcompiler werden bei einem Aussetzer bis zu viermal angefragt.
+
 Der Selbsttest der Modulgrenzen (`Tools/Test-PackageDependencies.ps1`, etwa sechs Minuten) läuft in Pull Requests nur, wenn sich die Prüfung selbst, die Verträge in Base oder der Workflow ändern oder Units unter `Packages` gelöscht oder verschoben werden. Nach jedem Merge auf `main-merging` läuft er immer.
 
 ## Einstellungen des Repositorys
 
-- Branch-Schutz für `main-merging`: Pflichtprüfung `check` (Workflow „Package-Abhängigkeiten“), „Require branches to be up to date before merging“ aus. Mit dieser Einstellung an verlangte GitHub nach jedem Merge von allen anderen Pull Requests einen neuen Merge und einen neuen CI-Lauf.
+- Branch-Schutz für `main-merging`: Pflichtprüfungen `check` (Workflow „Package-Abhängigkeiten“) sowie `bauen` und `fpc-tests` (Workflow „AtlasServer für Linux“), „Require branches to be up to date before merging“ aus. Nur `bauen` und `fpc-tests` übersetzen den Quelltext; ohne sie als Pflicht führt Auto-Merge auch Pull Requests zusammen, die unter FPC nicht übersetzen, und `main-merging` wird rot. Mit dieser Einstellung an verlangte GitHub nach jedem Merge von allen anderen Pull Requests einen neuen Merge und einen neuen CI-Lauf.
 - „Allow auto-merge“ an (Settings › General › Pull Requests), damit Schritt 4 möglich ist.
 - Eine Merge Queue gibt es auf GitHub nur für Repositorys von Organisationen; für dieses Repository übernimmt das automatische Zusammenführen ihre Rolle.
 - Secret `ABGLEICH_TOKEN` (empfohlen): fein granuliertes Personal Access Token nur für dieses Repository mit den Rechten Contents, Pull requests und Workflows, jeweils „Read and write“. Damit startet der Push des Abgleichs die CI wie ein normaler Push und darf auch Änderungen an `.github/workflows` mitnehmen. Ohne das Secret pusht der Workflow mit `GITHUB_TOKEN`; GitHub startet danach keine Workflows, deshalb startet der Abgleich die Prüfungen per `workflow_dispatch`, und Abgleiche, die Workflow-Dateien ändern, meldet er nur am Pull Request.
