@@ -52,6 +52,10 @@ type
     procedure SyntaxNoticeReachesView;
     [Test]
     procedure PartialResultsReplaceThenAppend;
+    [Test]
+    procedure InaccessibleNamedThenRevealed;
+    [Test]
+    procedure InaccessibleOnlyShowsEmptyStateWithNotice;
   end;
 
   /// <summary>Diagnosemodus (#479) über den ganzen Ablauf: Quellen, Filtern, erste Liste.</summary>
@@ -159,6 +163,43 @@ begin
 end;
 
 type
+  /// <summary>Ansicht, die auch die nicht sichtbaren Treffer (#2108) mitschreibt.</summary>
+  TFakeHiddenView = class(TFakeView, IAtlasCompletionHiddenView)
+  public
+    HiddenNames: string;
+    procedure ShowInaccessible(const AItems: TAtlasCompletionItems);
+  end;
+
+procedure TFakeHiddenView.ShowInaccessible(const AItems: TAtlasCompletionItems);
+var
+  mItem: TAtlasCompletionItem;
+begin
+  HiddenNames := '';
+  for mItem in AItems do
+  begin
+    if HiddenNames <> '' then
+    begin
+      HiddenNames := HiddenNames + ',';
+    end;
+    HiddenNames := HiddenNames + mItem.Name;
+  end;
+end;
+
+/// <summary>FEnde sichtbar, FEintraege nur wegen der Sichtbarkeit (private) nicht.</summary>
+function HiddenItems: TAtlasCompletionItems;
+var
+  mHidden: TAtlasCompletionItem;
+begin
+  mHidden := Default(TAtlasCompletionItem);
+  mHidden.Name := 'FEintraege';
+  mHidden.Inaccessible := 'private';
+  mHidden.DeclaringClass := 'TZaehler';
+  mHidden.Rank := 1;
+  Result := [Default(TAtlasCompletionItem), mHidden];
+  Result[0].Name := 'FEnde';
+end;
+
+type
   /// <summary>Liefert sofort zwei Einträge aus dem Präfix und meldet die Liste als gekürzt.</summary>
   TPrefixProvider = class(TInterfacedObject, IAtlasCompletionProvider)
   public
@@ -237,6 +278,79 @@ begin
 end;
 
 { TAtlasCompletionMatcherTests }
+
+procedure TAtlasCompletionControllerTests.InaccessibleNamedThenRevealed;
+var
+  mView: TFakeHiddenView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: string;
+begin
+  mView := TFakeHiddenView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(HiddenItems) as IAtlasCompletionProvider, mViewRef);
+  try
+    mCommitted := '';
+    mController.OnCommit :=
+      procedure(const AItem: TAtlasCompletionItem)
+      begin
+        mCommitted := AItem.Name;
+      end;
+    mController.Start(Context('FE'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not mController.Loading;
+      end));
+    // #2108: Die Liste zeigt nur FEnde, die Fußzeile nennt FEintraege.
+    Assert.AreEqual('FEnde', mView.Names);
+    Assert.AreEqual('FEintraege', mView.HiddenNames);
+    Assert.IsTrue(mController.CanRevealInaccessible);
+    // Zweites Strg+Leertaste: ausgegraut am Ende, mit Überschrift; die Fußzeile nennt sie nicht mehr.
+    Assert.IsTrue(mController.RevealInaccessible);
+    Assert.AreEqual('FEnde,#,FEintraege', mView.Names);
+    Assert.AreEqual('', mView.HiddenNames);
+    Assert.IsFalse(mController.CanRevealInaccessible);
+    // Enter auf dem nicht sichtbaren Mitglied setzt nichts ein; die Liste bleibt offen.
+    mController.HandleKey(TAtlasNavigationKey.Last);
+    mController.HandleKey(TAtlasNavigationKey.Accept);
+    Assert.AreEqual('', mCommitted);
+    Assert.IsTrue(mController.Active);
+  finally
+    mController.Free;
+  end;
+end;
+
+procedure TAtlasCompletionControllerTests.InaccessibleOnlyShowsEmptyStateWithNotice;
+var
+  mView: TFakeHiddenView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+begin
+  mView := TFakeHiddenView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(HiddenItems) as IAtlasCompletionProvider, mViewRef);
+  try
+    mController.Start(Context('FEi'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not mController.Loading;
+      end));
+    Assert.IsTrue(mView.Empty);
+    Assert.AreEqual('FEintraege', mView.HiddenNames);
+    Assert.IsTrue(mController.RevealInaccessible);
+    Assert.IsTrue(mView.Shown);
+    Assert.AreEqual('#,FEintraege', mView.Names);
+    // Ohne Präfix nennt die Fußzeile nichts.
+    mController.UpdatePrefix('');
+    Assert.AreEqual('', mView.HiddenNames);
+  finally
+    mController.Free;
+  end;
+end;
 
 procedure TAtlasCompletionMatcherTests.RanksExactBeforePrefixBeforeWordStarts;
 begin

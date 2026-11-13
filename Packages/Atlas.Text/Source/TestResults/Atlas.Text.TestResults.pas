@@ -18,7 +18,8 @@
 // „Expected 3 but got 4“ (DUnitX) und „Expected: 3 But was: 4“ (NUnit)
 // werden erwarteter und tatsächlicher Wert gelesen.
 // Zeiten: Sekunden mit Punkt oder Komma (DUnitX schreibt je nach Fassung im
-// Format des Gebietsschemas).
+// Format des Gebietsschemas). Dauer eines Tests als Text („12 ms“, „1,2 s“)
+// und die langsamsten Tests eines Laufs (#1772).
 
 interface
 
@@ -78,6 +79,12 @@ type
       ACaseName: string); static;
     /// <summary>Sekunden ("0.012", "0,012") in Millisekunden; 0 bei ungültigem Text.</summary>
     class function SecondsToMs(const AText: string): Int64; static;
+    /// <summary>Dauer als Text (#1772): unter einer Sekunde „12 ms“, sonst Sekunden mit einer Nachkommastelle
+    /// („1,2 s“ mit ADecimalSeparator ',').</summary>
+    class function DurationText(AMs: Int64; ADecimalSeparator: Char): string; static;
+    /// <summary>Höchstens ACount Tests mit Dauer, die langsamsten zuerst, bei gleicher Dauer nach Namen;
+    /// übersprungene zählen nicht (#1772).</summary>
+    class function Slowest(const ACases: TArray<TTestCaseResult>; ACount: Integer): TArray<TTestCaseResult>; static;
   end;
 
 implementation
@@ -85,6 +92,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   Atlas.Text.Entities;
 
 type
@@ -359,6 +367,61 @@ begin
     Exit(0);
   end;
   Result := Round(mValue * 1000);
+end;
+
+class function TTestResults.DurationText(AMs: Int64; ADecimalSeparator: Char): string;
+const
+  cMsPerSecond = 1000;
+  cMsPerTenth = 100;
+  cTenthsPerSecond = 10;
+var
+  mTenths: Int64;
+begin
+  if AMs < cMsPerSecond then
+  begin
+    Exit(IntToStr(Max(AMs, 0)) + ' ms');
+  end;
+  // Auf Zehntel runden: 1250 ms ergibt „1,3 s“.
+  mTenths := (AMs + cMsPerTenth div 2) div cMsPerTenth;
+  Result := IntToStr(mTenths div cTenthsPerSecond) + ADecimalSeparator + IntToStr(mTenths mod cTenthsPerSecond) +
+    ' s';
+end;
+
+/// <summary>Kommt AA in der Liste der langsamsten vor AB?</summary>
+function SlowerFirst(const AA, AB: TTestCaseResult): Boolean;
+begin
+  Result := (AA.DurationMs > AB.DurationMs) or ((AA.DurationMs = AB.DurationMs) and
+    (CompareText(AA.FullName, AB.FullName) < 0));
+end;
+
+class function TTestResults.Slowest(const ACases: TArray<TTestCaseResult>;
+  ACount: Integer): TArray<TTestCaseResult>;
+var
+  mCase: TTestCaseResult;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mCase in ACases do
+  begin
+    if (mCase.DurationMs <= 0) or (mCase.Outcome = TTestOutcome.Skipped) then
+    begin
+      Continue;
+    end;
+    // Einfügen an der richtigen Stelle: stabil und ohne Sortierung der ganzen Liste.
+    mIndex := Length(Result);
+    while (mIndex > 0) and SlowerFirst(mCase, Result[mIndex - 1]) do
+    begin
+      Dec(mIndex);
+    end;
+    if mIndex < ACount then
+    begin
+      Insert(mCase, Result, mIndex);
+      if Length(Result) > ACount then
+      begin
+        SetLength(Result, ACount);
+      end;
+    end;
+  end;
 end;
 
 class function TTestResults.SplitValues(const AMessage: string; out AExpected, AActual: string): Boolean;

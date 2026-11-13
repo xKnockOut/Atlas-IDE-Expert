@@ -38,6 +38,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.CodeInsight.Strings,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Watchdog,
@@ -129,8 +132,11 @@ begin
 end;
 
 /// <summary>Gespeichert: Prüfung des Servers mit dcc (#40), Prüfung in der IDE nur, wenn eingeschaltet (#548), und
-/// gewählte Kodierung und Zeilenenden schreiben (#591).</summary>
+/// gewählte Kodierung und Zeilenenden schreiben (#591), danach die Module (#1775, z. B. Tests im Hintergrund).
+/// </summary>
 procedure FileSaved(const AFileName: string);
+var
+  mFailure: string;
 begin
   if Manager <> nil then
   begin
@@ -143,6 +149,10 @@ begin
   if StatusLines <> nil then
   begin
     StatusLines.Saved(AFileName);
+  end;
+  for mFailure in TAtlasModuleContributions.FileSaved(AtlasModuleRegistry, AFileName) do
+  begin
+    TAtlasGuard.Log('Speichern im Modul nicht verarbeitet: ' + mFailure); // german-ok: Protokollzeile
   end;
 end;
 

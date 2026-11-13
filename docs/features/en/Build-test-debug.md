@@ -1,4 +1,4 @@
-# Build, test, debug
+﻿# Build, test, debug
 
 Back to the [README](../../../README.md)
 
@@ -76,6 +76,12 @@ Settings: `build.gate`
 - Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
 - Afterwards the project is back as it was
 
+### Stop the running program before the build
+
+- If the exe is still running outside the debugger, Atlas asks before compiling “AtlasDemo.exe is still running. Stop it and build?” (Yes, No, Always) instead of letting the build fail with F2039 at the end
+- Stops politely first, after 2 s forcibly; programs in the debugger stay untouched
+- For a package, a notice names the programs that still have the BPL loaded (`build.stopRunningProgram`: ask, always, never)
+
 <a id="window-atlascompilerswitches"></a>
 ### Compiler switches at the cursor
 
@@ -110,6 +116,17 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Affected tests on save (#1775)
+
+- After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
+- No window pops up: the Atlas status field shows “Tests: 3 affected · running …”, then “Tests: 3/3 passed” or red “Tests: 1 of 3 failed”. Clicking the line in the status window shows the output of the run in the message view.
+- Code lens and Atlas problems follow the run as after “Run tests”.
+- Saving during a run does not cancel it; afterwards at most one more run follows with all files saved until then.
+- No run during a debug session, a build or another test run. More affected tests than `tests.onSave.max` or all tests needed: no run, only a hint in the status field.
+- If a test unit belongs to several test projects, the background run takes the choice made once with “Run tests”.
+
+Settings: `tests.onSave` (default off, quick toggle), `tests.onSave.max`
+
 ### Failure at the assert line (#1771)
 
 - A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.
@@ -122,7 +139,13 @@ Settings: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Compare expected and actual (#1779)
 
-Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*).
+Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*), and with the “Compare” button:
+
+- in the hover over the failure (before “Explain”),
+- on the test mark of a failed test (after “Debug”),
+- on the “Test results” tile of the welcome page for the selected failure of the local run.
+
+The button only appears when the failure has an expected and an actual value.
 
 - Shows the failure of the test at the cursor (for a `[TestCase]` the first failed case), otherwise the last one reported, in two columns: expected on the left, actual on the right.
 - Differing characters have a red or green background; lines that exist on one side only are marked as a whole, with a grey gap opposite.
@@ -134,6 +157,16 @@ Available from the *Atlas* menu, the command palette and the context menu of a t
 
 Settings: `tests.compare`, `tests.compare.format`
 
+### Test duration and slow tests (#1772)
+
+- After a run every mark of the test lens shows the duration: “Run test · passed · 12 ms”, from one second on in seconds with one decimal (“1.2 s”). The class mark shows the sum of its tests, a `[TestCase]` method the sum of its cases.
+- If the slowest test of a mark takes longer than `tests.slowMs` (default 500 ms), “· slow” follows and the mark turns yellow, even if the test passed. Failed stays red, outdated grey.
+- The *Test results* card on the welcome page lists the five slowest tests of the last run below the failures; double-click opens the test.
+- *Show slowest tests* (Atlas menu, command palette): all tests of this session with their duration, slowest first (at most 50); double-click or Enter jumps to the test.
+- `tests.showDuration` off: no duration, no colour, no list on the welcome page, no command.
+
+Settings: `tests.showDuration`, `tests.slowMs`
+
 ### Create a test case from the unit (#1226)
 
 Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
@@ -143,6 +176,15 @@ Available as a code action (Alt+Enter) on a method or routine, in its body or at
 - An `Assert.Fail` at the end keeps the draft red until the expected values are right.
 - Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
 - Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
+
+### Slash commands for tests and debugging (#305)
+
+Type the command on an empty line and press Enter.
+
+- `/mock IKundenRepo` at unit level creates `TKundenRepoMock = class(TInterfacedObject, IKundenRepo)` with every method of the interface (inherited ones too): each method counts its calls (`LadenCalls`), functions return a settable field (`LadenResult`). Inside a routine of a unit that uses `Delphi.Mocks` you get a local `TMock<IKundenRepo>` variable with its `Create` instead.
+- `/testcase 'a', 2, True` above a test method writes `[TestCase('Case1', 'a,2,True')]`, numbered consecutively; if a value contains a comma, `;` separates. The number of values must match the parameters of the method below.
+- `/dump` inside a routine prints all parameters and local variables of simple types on one line (`OutputDebugString` or the routine from `slashCommands.logCall`).
+- `/assert` below an assignment checks the assigned variable to fit its type (`Assigned`, not empty, not negative, `True`); in test units with `Assert.IsNotNull`, `Assert.AreNotEqual` and `Assert.IsTrue` from DUnitX.
 
 ### Run affected tests (#1353)
 
@@ -362,6 +404,36 @@ Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
 - Without a clear cause it says "Cause not clear".
 - The culprit is underlined in the editor until you continue.
 - Getters and function calls are not evaluated unless `debug.explainAccessViolation.allowCalls` is on.
+- After it the bar names the module of the fault address: "your program", "vcl290.bpl (RTL/VCL)", "ntdll.dll (Windows)" or "Foreign.dll (no debug information)". If the debugger did not stop in your own code, Atlas names only the module and the last place in your code from the call stack (`debug.moduleOfAddress`).
 - Without the exception bar the result goes to the messages.
 
-Settings: `debug.explainAccessViolation`
+Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`
+
+## Debug: threads
+
+### What is waiting for what?
+
+- When a program hangs, pause it (Run > Program Pause) and choose Atlas > "What is waiting for what?".
+- Atlas reads the call stacks of all threads and lists per thread its id, name (`TThread.NameThreadForDebugging`), wait point and first line of your own code in the results window, for example "Thread 7 "Worker": waiting in TThread.Synchronize, at TWorker.Execute (Unit2.pas:30)".
+- The wait point is the wait routine above the first line of your own code: `TThread.WaitFor`, `TThread.Synchronize`, `TMonitor.Enter`/`Wait`, critical section, event (`TEvent.WaitFor`), `Sleep` or a handle (`WaitForSingleObject`, `WaitForMultipleObjects`); the message loop counts as "waiting for messages".
+- Above them are the detected patterns:
+  - The main thread waits in `TThread.WaitFor` (for example in the destructor of a thread) while a thread waits in `Synchronize` for it: a deadlock, see rule `synchronize-in-destructor`.
+  - A thread waits in `Synchronize` while the main thread hangs on a lock.
+  - Several threads wait for a lock at the same place.
+  - All threads are waiting and none is running.
+- A double click switches to the thread and jumps to its first line of your own code.
+- The debugger does not tell who holds a lock (`TMonitor`, critical section); Atlas names only the waiting threads.
+
+Settings: `debug.deadlocks`
+
+<a id="window-atlasdebugparallelstacks"></a>
+### Parallel stacks
+
+- Atlas > "Parallel stacks" opens a dockable window that shows the call stacks of all threads as a tree at every stop, from the thread start (root) to the top frame.
+- Equal frames (same routine at the same place) appear once with the number of threads, for example "TWorker.Execute (Unit2.pas:30) · 10 threads"; the tree branches where the stacks part.
+- Nodes of the current thread are bold. If all threads of a node stand in a wait routine (`TMonitor.Enter`, `WaitForSingleObject`, `Sleep` …), the node says "waiting" in the warning colour; the list of routines is configurable (`debug.parallelStacks.waitRoutines`).
+- The filter "Just my code" hides frames from the RTL, VCL and libraries, "Waiting" shows only waiting threads.
+- Below the tree are the threads of the selected node. Enter or a double click switches to the thread (from a list if there are several) and jumps to the line.
+- From `debug.parallelStacks.maxThreads` threads (default 64) Atlas reads the stacks in portions and shows the tree in between so the IDE stays responsive.
+
+Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
