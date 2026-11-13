@@ -176,7 +176,8 @@ type
     LeaksFromLogFile, LeaksSearching, LeaksNoServer, LeaksNameLine, LeaksNew, LeaksMore, LeaksKnownMark,
     LeaksNoPlaces, LeaksFollowsFromObjects, LeaksPlaceLine, LeaksGroupLine, LeaksGroupNoSite, LeaksRatingNeverFreed,
     LeaksRatingReturned, LeaksRatingPassed, LeaksRatingFieldFreed, LeaksRatingOwned, LeaksRatingLocalFreed,
-    LeaksRatingNotInProgram, LeaksFooter, LeaksFound);
+    LeaksRatingNotInProgram, LeaksFooter, LeaksFound,
+    DebugBannerCreateTest);
 
   TAtlasDebugStrings = class
   public
@@ -933,7 +934,8 @@ const
      'lokal freigegeben',
      'nicht im Programm',
      'Enter oder Doppelklick springt zur Stelle',
-     'Atlas: Leckbericht mit %d Lecks (Fenster „Atlas-Lecks“).'),
+     'Atlas: Leckbericht mit %d Lecks (Fenster „Atlas-Lecks“).',
+     'Test daraus anlegen …'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1670,7 +1672,8 @@ const
      'freed locally',
      'not in the program',
      'Enter or double-click jumps to the site',
-     'Atlas: Leak report with %d leaks (window “Atlas Leaks”).'));
+     'Atlas: Leak report with %d leaks (window “Atlas Leaks”).',
+     'Create test …'));
 
 { TAtlasDebugStrings }
 

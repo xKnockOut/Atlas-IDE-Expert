@@ -793,7 +793,7 @@ begin
       end;
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
   end;
 end;
 
