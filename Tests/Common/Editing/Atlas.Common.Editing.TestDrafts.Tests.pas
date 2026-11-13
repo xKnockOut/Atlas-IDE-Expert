@@ -37,6 +37,8 @@ type
     procedure AddToTestUnitNumbersAndUsesSubjectField;
     [Test]
     procedure AddToTestUnitWithoutFixtureFails;
+    [Test]
+    procedure ParameterizedWithTestCases;
   end;
 
 implementation
@@ -359,6 +361,29 @@ begin
   Assert.IsFalse(TTestDrafts.AddToTestUnit('unit Leer;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10,
     Draft, False, NewText, Name, Reason));
   Assert.AreNotEqual('', Reason);
+end;
+
+procedure TTestDraftsTests.ParameterizedWithTestCases;
+var
+  Draft: TTestDraft;
+  Text, NewText, Name, Reason: string;
+begin
+  // Grenzfälle (#2173): Werte als Parameter, Prüfung gegen AExpected, Attribute über der Deklaration.
+  Assert.IsTrue(DraftAt(31, Draft));
+  Draft.Parameterized := True;
+  Draft.TestName := 'TestSummeGrenzen';
+  Draft.Attributes := ['[TestCase(''Eins'', ''1,2,3'')]', '[TestCase(''Null'', ''0,0,0'')]'];
+  Assert.AreEqual('(const A: Integer; const B: Integer; const AExpected: Integer)',
+    TTestDrafts.ParameterList(Draft));
+  Text := TTestDrafts.MethodText(Draft, #13#10);
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.AreEqual('procedure TKundeTests.TestSummeGrenzen(const A: Integer; const B: Integer; ' +
+    'const AExpected: Integer);'#13#10'var'#13#10'  Actual: Integer;'#13#10'begin'#13#10 +
+    '  Actual := Summe(A, B);'#13#10'  Assert.AreEqual(AExpected, Actual);'#13#10'end;', Text);
+  Assert.IsTrue(TTestDrafts.AddToTestUnit(TestUnitText, Draft, False, NewText, Name, Reason), Reason);
+  Assert.IsTrue(ContainsStr(NewText, '    procedure TestBerechne;'#13#10'    [TestCase(''Eins'', ''1,2,3'')]'#13#10 +
+    '    [TestCase(''Null'', ''0,0,0'')]'#13#10'    procedure TestSummeGrenzen(const A: Integer; ' +
+    'const B: Integer; const AExpected: Integer);'#13#10'  end;'), NewText);
 end;
 
 initialization

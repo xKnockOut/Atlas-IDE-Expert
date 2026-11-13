@@ -134,6 +134,8 @@ begin
   Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
+  Assert.IsTrue(ASettings.TestsBoundaryCases, 'Grenzfälle standardmäßig an (#2173)');
+  Assert.AreEqual(20, ASettings.TestsBoundaryMax, 'höchstens 20 Grenzfälle (#2173)');
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
@@ -170,6 +172,7 @@ begin
   Assert.IsTrue(ASettings.Impact, 'Auswirkungen anzeigen standardmäßig an (#1120)');
   Assert.AreEqual(2, ASettings.ImpactDepth, 'Tiefe der Auswirkungsanalyse standardmäßig 2 (#1120)');
   Assert.IsTrue(ASettings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
+  Assert.IsTrue(ASettings.TestCoverage, 'Testabdeckung in der Rinne standardmäßig an (#275)');
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
@@ -345,6 +348,8 @@ begin
   ASettings.TestsCompare := False;
   ASettings.TestsCompareFormat := False;
   ASettings.TestsCaseTable := False;
+  ASettings.TestsBoundaryCases := False;
+  ASettings.TestsBoundaryMax := 7;
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsWindow := False;
@@ -383,6 +388,7 @@ begin
   ASettings.CodeLensTestUnit := False;
   ASettings.CodeLensMetrics := False;
   ASettings.CodeLensTests := False;
+  ASettings.TestCoverage := False;
   ASettings.TestRun := False;
   ASettings.TestsAfterBuild := True;
   ASettings.TestsBuildFirst := False;
@@ -524,6 +530,8 @@ begin
   Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
   Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
   Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
+  Assert.IsFalse(ALoaded.TestsBoundaryCases, 'tests.boundaryCases (#2173)');
+  Assert.AreEqual(7, ALoaded.TestsBoundaryMax, 'tests.boundaryCases.maxCases (#2173)');
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
@@ -563,6 +571,7 @@ begin
   Assert.IsFalse(ALoaded.CodeLensTestUnit);
   Assert.IsFalse(ALoaded.CodeLensMetrics);
   Assert.IsFalse(ALoaded.CodeLensTests);
+  Assert.IsFalse(ALoaded.TestCoverage, 'tests.coverage (#275)');
   Assert.IsFalse(ALoaded.TestRun);
   Assert.IsTrue(ALoaded.TestsAfterBuild);
   Assert.IsFalse(ALoaded.TestsBuildFirst);
@@ -1164,6 +1173,13 @@ begin
   Settings.TestsFlakyRuns := 500;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, Settings.TestsFlakyRuns);
+  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
+  Settings.TestsBoundaryMax := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, Settings.TestsBoundaryMax);
+  Settings.TestsBoundaryMax := 500;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, Settings.TestsBoundaryMax);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;
