@@ -58,11 +58,13 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Compile.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Services.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Structure.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Visibility.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Conversions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Types.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Fixes.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Editing.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Stepping.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.MethodBreakpoints.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Baselines.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Overviews.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Analysis.pas"/>
@@ -91,8 +93,11 @@
         <DCCReference Include="Source\Shell\Shell.Composition.CompileSetup.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AffectedTests.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.CoveredBy.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.LeakSetup.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.LeakCandidates.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.RuntimeReport.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Core.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AnalysisArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CodeArea.pas"/>
@@ -137,6 +142,7 @@
         <DCCReference Include="Source\Shell\Shell.Linter.Architecture.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Query.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Hotspots.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Linter.Mutation.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Formatting.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Fix.pas"/>
@@ -172,6 +178,7 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.Tools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.NavigationTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.BuildTestTools.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.ReportTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ArchitectureTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.EditingTools.pas"/>

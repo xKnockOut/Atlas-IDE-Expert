@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..61] of string = (
+  cCatalogLinesEnPackages: array[0..187] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -76,6 +76,169 @@ const
     '        }',
     '      ],',
     '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-testcase-mismatch",',
+    '      "name": "TestCase does not match the method",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A [TestCase] whose values DUnitX cannot pass to the method, which only shows when the tests run: the number of values differs from the number of parameters (DUnitX calls through ' +
+    'RTTI, default values do not count), a value does not fit the type of its parameter, or the method has no parameters at all. Values are split like DUnitX does: at every character of the separator (thir' +
+    'd argument, default comma; no quotes), an empty text gives no value. Checked types: integers (decimal or hex, $FF, 0xFF), floating point (point or comma as decimal separator, DUnitX turns a comma into' +
+    ' a point), Boolean (True or False) and enumerations declared in the same file (by name); other types are not checked, nor are values that are not a string literal (a constant, ''a'' + ''b''). Besides Test' +
+    'Case(''Name'', ''Values''[, ''Separator'']) the newer forms TestCase(''Values''[, ''Separator''[, Trim]]) and NamedTestCase(''Name'', ''Values'') are recognized. Only in test units (uses DUnitX.TestFramework, TestF' +
+    'ramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.",',
+    '      "bad": "[Test]\n[TestCase(''Rest'', ''7,2'')]\nprocedure Teile(A, B, Rest: Integer);",',
+    '      "good": "[Test]\n[TestCase(''Rest'', ''7,2,1'')]\nprocedure Teile(A, B, Rest: Integer);",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-fixture-not-registered",',
+    '      "name": "DUnitX fixture never registered",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A test class DUnitX never sees, so its tests are silently missing. DUnitX finds test classes through RegisterTestFixture or, when the runner in the .dpr sets UseRTTI := True (DUn' +
+    'itX project template), through the [TestFixture] attribute. 1. Not registered: a class with [Test] or [TestCase] methods that neither the initialization section of the unit nor a routine of the unit c' +
+    'alled from there names (TDUnitX.RegisterTestFixture(TClass), own helpers such as Register([TA, TB])) and no other unit of its projects names, and that either has no [TestFixture] or belongs to a proje' +
+    'ct whose .dpr creates a runner (TDUnitX.CreateRunner) without UseRTTI := True. A call from the option registrationCalls in initialization (an own registration function that finds all classes) counts f' +
+    'or all classes of the unit. Generic and abstract classes and ancestors of other classes in the file stay silent. Quick fixes: add TDUnitX.RegisterTestFixture(TClass); to initialization, creating the s' +
+    'ection if needed; with an RTTI runner also add [TestFixture] in front of the class. 2. Unit in no test project: the group has test projects, but none contains the unit. Quick fix with exactly one test' +
+    ' project: add the unit to the uses of the .dpr and as DCCReference to the .dproj. Only in test units and only with the projects of the group known; without them the rule stays silent. Medium confidenc' +
+    'e.",',
+    '      "bad": "[TestFixture]\nTImportTests = class\n  …\nend;\n…\nend.",',
+    '      "good": "[TestFixture]\nTImportTests = class\n  …\nend;\n…\ninitialization\n  TDUnitX.RegisterTestFixture(TImportTests);\nend.",',
+    '      "options": [',
+    '        {',
+    '          "name": "registrationCalls",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."',
+    '        }',
+    '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-istrue-equality",',
+    '      "name": "Assert.IsTrue with a comparison instead of AreEqual",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil), Assert.IsTrue(Assigned(X)) and the same with not: when the test fails, DUnitX only reports that the conditio' +
+    'n does not hold, without the compared values. Assert.AreEqual or AreNotEqual shows expected and actual, IsNull and IsNotNull say what was found. Quick fix (safe): AreEqual or AreNotEqual with the cons' +
+    'tant or literal first as the expected value, IsNull or IsNotNull for nil and Assigned; a message argument is kept. It is offered only when an overload certainly fits: both sides string, Boolean or an ' +
+    'integer up to Integer, for nil and Assigned a class, an interface or a pointer. Floating point (AreEqual needs a tolerance), Cardinal, Int64, NativeInt (Length of a dynamic array), enumerations, sets,' +
+    ' records, method pointers and unknown types get the hint without a fix. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
+    '      "bad": "Assert.IsTrue(FFake.Calls = 1, ''Aufrufe'');",',
+    '      "good": "Assert.AreEqual(1, FFake.Calls, ''Aufrufe'');",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-swapped-expected",',
+    '      "name": "Expected and actual value swapped",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "Assert.AreEqual, AreNotEqual, AreSame or AreNotSame whose first argument is neither a literal nor a constant while the second one is: DUnitX takes the expected value first, so th' +
+    'e failure message reports the constant as the actual value and the computed value as the expected one, which misleads. Constants are literals, True, False, nil, declared constants and enumeration valu' +
+    'es, also with a sign or combined with operators. Quick fix (safe): swap the two arguments; further arguments (message, tolerance) stay. Calls with two constants or two computed values stay silent. Onl' +
+    'y in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
+    '      "bad": "Assert.AreEqual(FList.Count, 4);",',
+    '      "good": "Assert.AreEqual(4, FList.Count);",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-setup-not-torn-down",',
+    '      "name": "Field created in Setup, not freed in TearDown",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A field of a test class that the [Setup] method (or [SetupFixture]) assigns a new object (TFake.Create …) and the matching [TearDown] method (or [TearDownFixture]) neither frees ' +
+    'with Free, FreeAndNil, DisposeOf or Destroy nor sets to nil: every single test leaks the object. Methods of the same class that TearDown calls directly count as well (one level). Fields of an interfac' +
+    'e type (reference counting) and objects with an owner (TButton.Create(FForm)) stay silent. With the option managedFields (default on) also string and dynamic array fields that Setup fills and TearDown' +
+    ' does not clear: the DUnitX leak monitor counts their memory against each test. Without a TearDown method there is one finding on Setup for all fields. Quick fix (safe): FreeAndNil(FField); (without S' +
+    'ysUtils FField.Free; FField := nil;) or FField := ''''; / FField := nil; at the end of TearDown; without TearDown it creates the method with its attribute and declaration. Only in test units (uses DUnit' +
+    'X.TestFramework, TestFramework or TestInsight.*). Medium confidence: frees in deeper helper methods are not followed.",',
+    '      "bad": "[Setup]\nprocedure Setup;\n…\nprocedure TFallTests.Setup;\nbegin\n  FFake := TFakeLookup.Create;\nend;",',
+    '      "good": "[TearDown]\nprocedure TearDown;\n…\nprocedure TFallTests.TearDown;\nbegin\n  FreeAndNil(FFake);\nend;",',
+    '      "options": [',
+    '        {',
+    '          "name": "managedFields",',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Also report string and dynamic array fields that Setup fills and TearDown does not clear."',
+    '        }',
+    '      ],',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-leak-monitor",',
+    '      "name": "DUnitX test program without leak monitor",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "A program (.dpr) that uses DUnitX.TestFramework but no leak monitor of DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 or .FastMM5): without one DUnitX measures no leaks per test, so th' +
+    'e test marks in the editor never show them. DUnitX.MemoryLeakMonitor.Default does not count, it measures nothing. Reported at the DUnitX.TestFramework entry. Quick fix (safe): add the monitor to uses,' +
+    ' DUnitX.MemoryLeakMonitor.FastMM5 when the program uses FastMM5, otherwise DUnitX.MemoryLeakMonitor.FastMM4, which also works with the memory manager of the RTL without FastMM4.pas. Units stay silent.' +
+    ' High confidence.",',
+    '      "bad": "uses DUnitX.TestFramework, Fall.Tests;",',
+    '      "good": "uses DUnitX.TestFramework, DUnitX.MemoryLeakMonitor.FastMM4, Fall.Tests;",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-ignore-without-reason",',
+    '      "name": "[Ignore] without a reason",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "[Ignore] without an argument or with an empty reason ([Ignore('''')]): the test report does not say why the test does not run, and later nobody knows whether it may run again. Reas' +
+    'ons that are not a string literal (a constant) count as given. Attributes are recognized by name (with or without unit and suffix Attribute), so the rule also works without DUnitX in the search path. ' +
+    'Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: only the author knows the reason.",',
+    '      "bad": "[Test, Ignore]\nprocedure Export;",',
+    '      "good": "[Test, Ignore(''Waits for the new export format (#812)'')]\nprocedure Export;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-category-empty",',
+    '      "name": "[Category] without a name",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "[Category('''')] or a category text that holds only commas and blanks ([Category('' , '')]): the test ends up in no category, a filter such as --include never finds it. Names that ar' +
+    'e not a string literal count as given. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or Test' +
+    'Insight.*). High confidence. No quick fix: the intended category is unknown.",',
+    '      "bad": "[Test, Category('''')]\nprocedure Import;",',
+    '      "good": "[Test, Category(''Slow'')]\nprocedure Import;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-fixture-without-test",',
+    '      "name": "[TestFixture] without a test",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A class with [TestFixture] that has no method with [Test], [TestCase], [NamedTestCase] or [RepeatTest] and no published method (DUnitX takes published methods without attributes ' +
+    'as tests): the class runs empty and the report looks green. Classes whose ancestor (other than TObject) is not declared in the same file stay silent, as do classes whose ancestor in the file has tests' +
+    ' (inherited tests). Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Medium ' +
+    'confidence. No quick fix.",',
+    '      "bad": "[TestFixture]\nTKundeTests = class\npublic\n  procedure PruefeName;\nend;",',
+    '      "good": "[TestFixture]\nTKundeTests = class\npublic\n  [Test]\n  procedure PruefeName;\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-duplicate-attribute",',
+    '      "name": "Duplicate attribute",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "The same DUnitX attribute twice on the same class or method: [Test] [Test], [Ignore] twice, [TestFixture] twice and so on. TestCase, NamedTestCase and Category may appear several' +
+    ' times and are only reported when the arguments are the same (the case would run twice). Unknown attributes stay silent. Attributes are recognized by name, so the rule also works without DUnitX in the' +
+    ' search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. Quick fix (safe): remove the second one, alone on its line together with the line, in a l' +
+    'ist together with its comma.",',
+    '      "bad": "[Test]\n[Test]\nprocedure Speichern;",',
+    '      "good": "[Test]\nprocedure Speichern;",',
+    '      "safeFix": true',
     '    }');
 
 implementation

@@ -8,6 +8,10 @@
 // - "Line numbers for Unit(Datei.pas) segment .text".
 // Adressen in der Map sind relativ zum Segmentanfang; im Stacktrace stehen
 // Offsets relativ zur Modulbasis, das Codesegment beginnt dort bei $1000.
+// Absolute Adressen (Absturzberichte, #74) gehen über die Basisadresse des
+// Moduls; Kopf und Einsprungpunkt („Program entry point at …“) liefern
+// Vorzugsbasis, Länge des Codes und Einsprungpunkt für den Vergleich mit der
+// EXE (Atlas.Text.PeImage).
 // In Atlas.Text, weil Server (Atlas.Windows.Diagnostics.StackTrace) und
 // IDE-Plugin (Atlas.IDE.Diagnostics.StackCapture) dieselbe Auflösung nutzen.
 
@@ -45,6 +49,9 @@ type
     end;
   private
     FCodeStart: UInt64;
+    FImageBase: UInt64;
+    FCodeSize: UInt64;
+    FEntryPoint: UInt64;
     FSymbols: TList<TSymbol>;
     FLines: TList<TLineEntry>;
     // Zustand nur während Parse.
@@ -56,6 +63,7 @@ type
     /// <summary>True, wenn ALine einen Abschnitt beginnt (und FSection umstellt).</summary>
     function StartsSection(const ALine: string): Boolean;
     procedure StartLineSection(const ALine: string);
+    procedure ReadEntryPoint(const ALine: string);
     procedure ReadHeader(const AParts: TArray<string>);
     procedure ReadPublic(const AParts: TArray<string>);
     procedure ReadLineNumbers(const AParts: TArray<string>);
@@ -64,12 +72,22 @@ type
   public
     constructor Create(const AText: string);
     destructor Destroy; override;
-    /// <summary>Offset relativ zur Modulbasis wie in "Modul+$Offset".</summary>
+    /// <summary>Offset relativ zur Modulbasis wie in "Modul+$Offset"; nicht gefunden außerhalb des Codes.</summary>
     function Resolve(AModuleOffset: UInt64): TMapLocation;
+    /// <summary>Absolute Adresse eines Moduls mit Basisadresse ABase; nicht gefunden unterhalb von ABase.</summary>
+    function ResolveAddress(AAddress, ABase: UInt64): TMapLocation;
     /// <summary>Ersetzt in AStackTrace jede Zeile "AModule+$Offset" durch die aufgelöste Stelle dahinter.</summary>
     function Symbolize(const AStackTrace, AModule: string): string;
     /// <summary>Anzahl der Routinen; 0, wenn der Text keine Map war.</summary>
     property SymbolCount: Integer read GetSymbolCount;
+    /// <summary>Vorzugsbasis des Moduls aus dem Kopf (z. B. $400000); 0, wenn der Kopf keine nennt.</summary>
+    property ImageBase: UInt64 read FImageBase;
+    /// <summary>Anfang des Codesegments relativ zur Modulbasis (meist $1000).</summary>
+    property CodeStart: UInt64 read FCodeStart;
+    /// <summary>Länge des Codesegments laut Kopf; 0 unbekannt.</summary>
+    property CodeSize: UInt64 read FCodeSize;
+    /// <summary>Einsprungpunkt relativ zur Modulbasis (wie AddressOfEntryPoint der EXE); 0 unbekannt.</summary>
+    property EntryPoint: UInt64 read FEntryPoint;
   end;
 
 implementation
@@ -81,7 +99,10 @@ uses
 const
   // Linker legt das Codesegment an die Modulbasis + $1000.
   cDefaultCodeOffset = $1000;
-  cDefaultImageBase = $400000;
+  // Modulbasen sind auf 64 KB ausgerichtet: die unteren 16 Bit gehören zum Abstand des Segments.
+  cImageBaseAlignment = $10000;
+  cLengthSuffix = 'H';
+  cEntryPointText = 'Program entry point at';
 
 function TMapLocation.ToString: string;
 begin
@@ -236,8 +257,12 @@ begin
   begin
     FSection := TSection.Publics;
   end
-  else if ContainsText(ALine, 'Publics by Name') or StartsText('Bound resource files', mTrimmed) or
-    StartsText('Program entry point', mTrimmed) then
+  else if StartsText(cEntryPointText, mTrimmed) then
+  begin
+    ReadEntryPoint(mTrimmed);
+    FSection := TSection.Other;
+  end
+  else if ContainsText(ALine, 'Publics by Name') or StartsText('Bound resource files', mTrimmed) then
   begin
     FSection := TSection.Other;
   end
@@ -251,6 +276,20 @@ begin
   end;
 end;
 
+/// <summary>Länge „0000A000H“ aus dem Kopf; False bei anderem Text.</summary>
+function ReadLength(const AText: string; out ALength: UInt64): Boolean;
+var
+  mValue: Int64;
+begin
+  Result := EndsText(cLengthSuffix, AText) and
+    TryStrToInt64('$' + Copy(AText, 1, Length(AText) - Length(cLengthSuffix)), mValue) and (mValue >= 0);
+  ALength := 0;
+  if Result then
+  begin
+    ALength := UInt64(mValue);
+  end;
+end;
+
 procedure TMapFile.ReadHeader(const AParts: TArray<string>);
 var
   mAddress: UInt64;
@@ -260,15 +299,28 @@ begin
   begin
     Exit;
   end;
-  if mAddress >= cDefaultImageBase then
+  // Die Vorzugsbasis ist auf 64 KB ausgerichtet, der Rest ist der Abstand des Codesegments ($401000 → $400000
+  // und $1000, bei Packages z. B. $50001000 → $50000000).
+  FImageBase := mAddress - mAddress mod cImageBaseAlignment;
+  if mAddress mod cImageBaseAlignment > 0 then
   begin
-    FCodeStart := mAddress - cDefaultImageBase;
-  end
-  else if mAddress > 0 then
-  begin
-    FCodeStart := mAddress;
+    FCodeStart := mAddress mod cImageBaseAlignment;
   end;
+  ReadLength(AParts[1], FCodeSize);
   FHeaderDone := True;
+end;
+
+procedure TMapFile.ReadEntryPoint(const ALine: string);
+var
+  mParts: TArray<string>;
+  mAddress: UInt64;
+begin
+  // Program entry point at 0001:00000180 (relativ zum Codesegment); erst nach dem Kopf bekannt.
+  mParts := Words(ALine);
+  if (Length(mParts) > 0) and ReadCodeAddress(mParts[High(mParts)], mAddress) then
+  begin
+    FEntryPoint := mAddress;
+  end;
 end;
 
 procedure TMapFile.ReadPublic(const AParts: TArray<string>);
@@ -340,6 +392,10 @@ begin
   end;
   FCurrentUnit := '';
   FCurrentFile := '';
+  if FEntryPoint > 0 then
+  begin
+    FEntryPoint := FEntryPoint + FCodeStart;
+  end;
   SortEntries;
 end;
 
@@ -354,6 +410,11 @@ begin
     Exit;
   end;
   mAddress := AModuleOffset - FCodeStart;
+  // Hinter dem Code liegt nichts aus dieser Map (Adressen anderer Module, Daten).
+  if (FCodeSize > 0) and (mAddress >= FCodeSize) then
+  begin
+    Exit;
+  end;
   mFound := LastAtOrBefore(FSymbols.Count,
     function(AIndex: Integer): UInt64
     begin
@@ -381,6 +442,15 @@ begin
     Result.Line := FLines[mFound].Line;
     Result.FileName := FLines[mFound].FileName;
     Result.UnitName := FLines[mFound].UnitName;
+  end;
+end;
+
+function TMapFile.ResolveAddress(AAddress, ABase: UInt64): TMapLocation;
+begin
+  Result := Default(TMapLocation);
+  if AAddress >= ABase then
+  begin
+    Result := Resolve(AAddress - ABase);
   end;
 end;
 

@@ -25,7 +25,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.RoutineLocals;
 
 type
@@ -95,6 +95,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Pascal.TreeCache,
   System.SysUtils,
   System.StrUtils,
@@ -105,7 +106,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -570,7 +572,7 @@ function IsClassVar(const ATokens: TArray<TPascalToken>; AField: TSyntaxNode): B
 var
   mPrevious: Integer;
 begin
-  mPrevious := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, AField.StartOffset));
+  mPrevious := PreviousCode(ATokens, TRoutineBody.TokenAt(ATokens, AField.StartOffset));
   Result := (mPrevious >= 0) and ATokens[mPrevious].IsKeyword('var');
 end;
 

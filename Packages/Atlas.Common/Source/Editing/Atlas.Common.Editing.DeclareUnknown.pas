@@ -75,15 +75,6 @@ begin
   end;
 end;
 
-function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
@@ -156,7 +147,7 @@ begin
     not IsKeywordIn(ATokens[mScan], ['begin', 'then', 'do', 'try', 'repeat', 'of']) do
   begin
     Result := IsKeywordIn(ATokens[mScan], ['var', 'const', 'type', 'procedure', 'function', 'property', 'threadvar']);
-    mScan := Prev(ATokens, mScan);
+    mScan := PreviousCode(ATokens, mScan);
   end;
 end;
 
@@ -226,7 +217,7 @@ begin
     Exit;
   end;
   mName := ATokens[ASlot.NameIndex];
-  mBefore := Prev(ATokens, ASlot.NameIndex);
+  mBefore := PreviousCode(ATokens, ASlot.NameIndex);
   mAfter := Next(ATokens, ASlot.NameIndex);
   Result := not IsLinked(ATokens, mBefore, mAfter) and not InDeclaration(ATokens, mBefore) and
     not StartsText('&', mName.Text);
@@ -287,7 +278,7 @@ begin
   Result := ATokens[AIndex].IsSymbol('(');
   if Result and (AIndex <> AFirst) then
   begin
-    mBefore := Prev(ATokens, AIndex);
+    mBefore := PreviousCode(ATokens, AIndex);
     Result := not ((ATokens[mBefore].Kind = TPascalTokenKind.Identifier) or IsSymbolIn(ATokens[mBefore], [')', ']']));
   end;
 end;
@@ -298,7 +289,7 @@ var
   mTermFirst, mTermLast: Integer;
 begin
   Result := IsGroupOpen(ATokens, AFirst, AIndex) and (TDeclareUnknown.Shape(ATokens, Next(ATokens, AIndex),
-    Prev(ATokens, Closing(ATokens, AIndex, ALast)), mTermFirst, mTermLast) = 'Boolean');
+    PreviousCode(ATokens, Closing(ATokens, AIndex, ALast)), mTermFirst, mTermLast) = 'Boolean');
 end;
 
 type
@@ -493,9 +484,9 @@ begin
           Break;
         end;
       end;
-      ALast := Prev(ATokens, ALast);
+      ALast := PreviousCode(ATokens, ALast);
     end;
-    ALast := Prev(ATokens, ALast);
+    ALast := PreviousCode(ATokens, ALast);
   end;
   if (ALast >= AFirst) and (ATokens[ALast].Kind = TPascalTokenKind.Identifier) then
   begin

@@ -24,6 +24,7 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Shell.VersionControlChanges;
 
 type
@@ -38,6 +39,12 @@ type
     IncludeUncommitted: Boolean;
     /// <summary>1–5; 0 = tests.affectedDepth.</summary>
     Depth: Integer;
+    /// <summary>Nur diese Dateien zählen (volle Pfade); leer = alle geänderten (#1775, Tests beim Speichern).
+    /// </summary>
+    Files: TArray<string>;
+    /// <summary>Ohne eigene Basis mit dem letzten Commit vergleichen statt mit der Merge-Base (Git: HEAD, SVN wie
+    /// immer BASE; #1775).</summary>
+    SinceCommit: Boolean;
   end;
 
   /// <summary>Woraus die Analyse liest: Namensauflösung, Symbolindex und Dateitexte.</summary>
@@ -52,6 +59,8 @@ type
   TShellAffectedTests = class
   public const
     cDefaultGitBase = 'main';
+    /// <summary>Basis für SinceCommit unter Git (#1775).</summary>
+    cHeadRef = 'HEAD';
     cSvnBase = 'BASE';
   public
     /// <summary>Meldung, wenn tests.affected aus ist.</summary>
@@ -60,6 +69,12 @@ type
     class function TooManyForRun: string; static;
     /// <summary>Geänderte Dateien samt Zeilen aus AChanges.</summary>
     class function Inputs(AChanges: TVcsChanges): TArray<TAffectedInput>; static;
+    /// <summary>Nur die Eingaben, deren Datei unter AFiles steht (ohne Groß-/Kleinschreibung, / und \ gleich);
+    /// AFiles leer = alle (#1775).</summary>
+    class function OnlyFiles(const AInputs: TArray<TAffectedInput>;
+      const AFiles: TArray<string>): TArray<TAffectedInput>; static;
+    /// <summary>Vergleichsbasis: AQuery.Base, sonst HEAD mit SinceCommit, sonst main (#1775).</summary>
+    class function RefOf(const AQuery: TShellAffectedQuery): string; static;
     /// <summary>Hauptdateien (.dpr) unter AFiles, die DUnitX verwenden.</summary>
     class function TestPrograms(const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<string>;
       static;
@@ -128,6 +143,54 @@ begin
   end;
 end;
 
+/// <summary>Pfad zum Vergleichen: Trenner vereinheitlicht.</summary>
+function SamePath(const AFileName: string): string;
+begin
+  Result := StringReplace(AFileName, '/', '\', [rfReplaceAll]);
+end;
+
+class function TShellAffectedTests.OnlyFiles(const AInputs: TArray<TAffectedInput>;
+  const AFiles: TArray<string>): TArray<TAffectedInput>;
+var
+  mInput: TAffectedInput;
+  mFile: string;
+begin
+  if Length(AFiles) = 0 then
+  begin
+    Result := AInputs;
+    Exit;
+  end;
+  Result := nil;
+  for mInput in AInputs do
+  begin
+    for mFile in AFiles do
+    begin
+      if SameText(SamePath(mInput.FileName), SamePath(mFile)) then
+      begin
+        Result := Result + [mInput];
+        Break;
+      end;
+    end;
+  end;
+end;
+
+class function TShellAffectedTests.RefOf(const AQuery: TShellAffectedQuery): string;
+begin
+  Result := AQuery.Base;
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  if AQuery.SinceCommit then
+  begin
+    Result := cHeadRef;
+  end
+  else
+  begin
+    Result := cDefaultGitBase;
+  end;
+end;
+
 class function TShellAffectedTests.TestPrograms(const AFiles: TArray<string>;
   const AReadText: TReferenceReadText): TArray<string>;
 var
@@ -183,12 +246,9 @@ begin
   mChanges := TVcsChanges.Detect(AProcess, AQuery.WorkingDir, ASettings.VcsProvider, ASettings.VcsGitPath,
     ASettings.VcsSvnPath, ASettings.VcsTimeoutSeconds);
   try
-    mRef := AQuery.Base;
-    if mRef = '' then
-    begin
-      mRef := cDefaultGitBase;
-    end;
-    // Wie --changed: ohne eigene Basis vergleicht SVN mit BASE (svn status), Git mit der Merge-Base.
+    mRef := RefOf(AQuery);
+    // Wie --changed: ohne eigene Basis vergleicht SVN mit BASE (svn status), Git mit der Merge-Base (mit
+    // SinceCommit mit HEAD).
     mChanges.Load(mRef, True, AQuery.Base = '', AQuery.IncludeUncommitted, True);
     if (AQuery.Base = '') and (mChanges is TSvnChanges) then
     begin
@@ -198,7 +258,8 @@ begin
     begin
       mRequest.Base := mRef;
     end;
-    Result := TAffectedTests.Determine(ASources.Resolver, ASources.Index, Inputs(mChanges), mRequest,
+    Result := TAffectedTests.Determine(ASources.Resolver, ASources.Index, OnlyFiles(Inputs(mChanges), AQuery.Files),
+      mRequest,
       ASources.ReadText, ACancellation);
   finally
     mChanges.Free;

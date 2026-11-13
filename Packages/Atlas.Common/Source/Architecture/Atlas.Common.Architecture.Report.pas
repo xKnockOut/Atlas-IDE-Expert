@@ -57,6 +57,7 @@ interface
 
 uses
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Comparison;
 

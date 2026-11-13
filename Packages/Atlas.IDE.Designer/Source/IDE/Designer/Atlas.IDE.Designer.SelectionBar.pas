@@ -32,7 +32,8 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.SelectionBar,
   Atlas.IDE.Foundation.KeyHook,
-  Atlas.IDE.Designer.PropertyPainter;
+  Atlas.IDE.Designer.PropertyPainter,
+  Atlas.IDE.Designer.Tool;
 
 type
   TAtlasIdeSelectionBar = class;
@@ -76,11 +77,10 @@ type
     ColorMenu: TPopupMenu;
   end;
 
-  TAtlasIdeSelectionBar = class
+  TAtlasIdeSelectionBar = class(TAtlasIdeDesignerTool)
   public const
     cId = 'selectionBar';
   private
-    FOnMessage: TProc<string>;
     FPainter: TAtlasIdePropertyPainter;
     FActive: Boolean;
     FWindow: TAtlasSelectionBarWindow;
@@ -88,7 +88,6 @@ type
     FKeys: TAtlasSelectionBarKeys;
     FSteps: TArray<TAtlasBarStep>;
     FSelection: TAtlasBarSelection;
-    procedure Say(const AText: string);
     procedure EnsureWindow;
     function FindControls: Boolean;
     function Wanted: Boolean;
@@ -132,7 +131,7 @@ type
     /// <summary>Takt der Leiste: Auswahl verfolgen, ein- und ausblenden.</summary>
     procedure Tick;
     procedure Hide;
-    procedure ApplyTheme;
+    procedure ApplyTheme; override;
   end;
 
 implementation
@@ -305,8 +304,7 @@ end;
 
 constructor TAtlasIdeSelectionBar.Create(const AOnMessage: TProc<string>; APainter: TAtlasIdePropertyPainter);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FPainter := APainter;
   FActive := True;
   FMenus.Menu := TPopupMenu.Create(nil);
@@ -336,14 +334,6 @@ begin
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarHint));
   Result.Pressed := FActive;
   Result.Menu := True;
-end;
-
-procedure TAtlasIdeSelectionBar.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeSelectionBar.EnsureWindow;
@@ -655,6 +645,7 @@ end;
 
 procedure TAtlasIdeSelectionBar.ApplyTheme;
 begin
+  inherited ApplyTheme;
   if FWindow <> nil then
   begin
     FWindow.ApplyColors(TAtlasIdeStyle.Colors);
@@ -715,7 +706,7 @@ begin
     TAtlasBarItem.AlignLeft..TAtlasBarItem.AlignRight:
       ChangeTo(cPaths[AItem], cTypes[AItem], cElements[AItem], mLabel);
     TAtlasBarItem.FitText:
-      TAtlasIdeFitText.Execute(FOnMessage);
+      TAtlasIdeFitText.Execute(OnMessage);
     TAtlasBarItem.Transfer:
       FPainter.Execute(TAtlasPaintCommand.Apply);
   end;

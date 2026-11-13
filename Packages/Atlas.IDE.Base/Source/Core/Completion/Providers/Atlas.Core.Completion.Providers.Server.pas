@@ -33,6 +33,9 @@ type
   TAtlasServerCompletionProvider = class(TAtlasAsyncCompletionProvider, IAtlasCompletionResolver)
   public const
     cDefaultTimeoutMs = 2000;
+    /// <summary>Serverbefehl mit den Aktionen für ein nicht sichtbares Mitglied (#2108): Sichtbarkeit
+    /// anheben, Eigenschaft anlegen. Steht in Command der Einträge aus HiddenMembersOf.</summary>
+    cMemberActionsCommand = 'atlas.server.memberActions';
   public
     /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
     /// </summary>
@@ -64,6 +67,9 @@ type
     class function ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems; overload; static;
     /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51); Postfix-Vorlagen bleiben.</summary>
     class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
+    /// <summary>Mitglieder, die nur wegen ihrer Sichtbarkeit fehlen (#2108), aus "hiddenMembers" der
+    /// CompletionList, als Einträge mit Inaccessible; ARank für den ersten.</summary>
+    class function HiddenMembersOf(AResponse: TJSONValue; AFirstRank: Integer): TAtlasCompletionItems; static;
     /// <summary>Hinweis bei unvollständigem Code (#457) aus "syntaxNotice" der CompletionList; Sure ohne.</summary>
     class function SyntaxNoticeOf(AResponse: TJSONValue): TAtlasSyntaxNotice; static;
     /// <summary>AItem ohne Platzhalter: Vorgabetexte eingesetzt, auch in verknüpften Zusatzänderungen.</summary>
@@ -291,6 +297,13 @@ begin
   // Sender mit Typumwandlung (#480).
   AResult.Sender := AData.GetValue<string>('sender', '');
   AResult.SenderOf := AData.GetValue<string>('senderOf', '');
+  // Typprüfungen (#2107).
+  AResult.Narrowed := AData.GetValue<string>('narrowed', '');
+  AResult.NarrowedName := AData.GetValue<string>('narrowedName', '');
+  AResult.NarrowedLine := AData.GetValue<Integer>('narrowedLine', 0);
+  AResult.DescendantOf := AData.GetValue<string>('descendantOf', '');
+  // Rangfolge aus der Verwendung im Projekt (#2109).
+  AResult.ProjectUses := AData.GetValue<Integer>('projectUses', 0);
   // Typkonvertierung (#490): filtert nach dem Namen des Originals, nicht nach dem Ausdruck.
   AResult.Conversion := AData.GetValue<string>('conversion', '');
   AResult.ConvertFrom := AData.GetValue<string>('convertFrom', '');
@@ -548,6 +561,79 @@ begin
   Result.LinkedEdits := False;
 end;
 
+/// <summary>Befehl für die Aktionen eines nicht sichtbaren Mitglieds (#2108), nur mit Datei der Deklaration
+/// und nicht aus fremdem Code (external): Argumente [uri, position, name] für atlas.server.memberActions.
+/// </summary>
+procedure ReadMemberActions(AMember: TJSONObject; var AItem: TAtlasCompletionItem);
+var
+  mArguments: TJSONArray;
+  mPosition: TJSONObject;
+begin
+  if (TJsonRead.Text(AMember, 'uri') = '') or AMember.GetValue<Boolean>('external', False) then
+  begin
+    Exit;
+  end;
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(TJsonRead.Text(AMember, 'uri'));
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(AMember.GetValue<Integer>('line', 0)));
+    mPosition.AddPair('character', TJSONNumber.Create(AMember.GetValue<Integer>('character', 0)));
+    mArguments.AddElement(mPosition);
+    mArguments.Add(AItem.Name);
+    AItem.Command := TAtlasServerCompletionProvider.cMemberActionsCommand;
+    AItem.CommandArguments := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+class function TAtlasServerCompletionProvider.HiddenMembersOf(AResponse: TJSONValue;
+  AFirstRank: Integer): TAtlasCompletionItems;
+var
+  mHidden, mItems: TJSONValue;
+  mMember: TJSONObject;
+  mItem: TAtlasCompletionItem;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not (AResponse is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mHidden := TJSONObject(AResponse).GetValue('hiddenMembers');
+  if not (mHidden is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mItems := TJSONObject(mHidden).GetValue('items');
+  if not (mItems is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to TJSONArray(mItems).Count - 1 do
+  begin
+    if not (TJSONArray(mItems).Items[mIndex] is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mMember := TJSONObject(TJSONArray(mItems).Items[mIndex]);
+    mItem := Default(TAtlasCompletionItem);
+    mItem.Name := TJsonRead.Text(mMember, 'name');
+    mItem.Kind := KindOf(mMember.GetValue<Integer>('kind', 0));
+    mItem.Inaccessible := TJsonRead.Text(mMember, 'visibility');
+    mItem.DeclaringClass := TJsonRead.Text(mMember, 'container');
+    mItem.DeclaringUnit := TJsonRead.Text(mMember, 'unit');
+    mItem.Signature := TJsonRead.Text(mMember, 'detail');
+    mItem.Rank := AFirstRank + mIndex;
+    ReadMemberActions(mMember, mItem);
+    if (mItem.Name <> '') and (mItem.Inaccessible <> '') then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+end;
+
 class function TAtlasServerCompletionProvider.SyntaxNoticeOf(AResponse: TJSONValue): TAtlasSyntaxNotice;
 var
   mNotice: TJSONValue;
@@ -736,6 +822,8 @@ begin
     begin
       Result := WithoutSnippets(Result);
     end;
+    // Nur wegen der Sichtbarkeit fehlende Mitglieder (#2108): die Liste blendet sie bis Strg+Leertaste aus.
+    Result := Result + HiddenMembersOf(mResponse, mNextRank + Length(Result));
   finally
     mResponse.Free;
   end;

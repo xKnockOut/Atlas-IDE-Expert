@@ -87,7 +87,8 @@ uses
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -474,16 +475,6 @@ type
     Params: TJSONValue;
   end;
 
-/// <summary>JSON aus AText; nil bei '' oder ungültigem Text.</summary>
-function ParseOrNilText(const AText: string): TJSONValue;
-begin
-  Result := nil;
-  if AText <> '' then
-  begin
-    Result := TCrashCases.ParseOrNil(AText);
-  end;
-end;
-
 function NewReplayFolder: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'Atlas' + PathDelim + 'replay' + PathDelim +
@@ -630,8 +621,8 @@ begin
     mLogger := TLogger.Create;
   end;
   mSetup := Default(TReplaySetup);
-  mSetup.Initialize := ParseOrNilText(ACase.Initialize);
-  mSetup.Params := ParseOrNilText(ACase.Params);
+  mSetup.Initialize := TJsonRead.Parse(ACase.Initialize);
+  mSetup.Params := TJsonRead.Parse(ACase.Params);
   mSetup.Folder := NewReplayFolder;
   try
     TDirectory.CreateDirectory(mSetup.Folder);

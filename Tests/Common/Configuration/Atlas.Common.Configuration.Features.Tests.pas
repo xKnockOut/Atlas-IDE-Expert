@@ -30,6 +30,9 @@ type
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
+    /// <summary>#2167: Abschnitt "testLists" (Testlisten des Plugins) wird geprüft, nicht gemeldet.</summary>
+    [Test]
+    procedure ChecksTestLists;
     /// <summary>#1260: issues.connections (Tracker-Verbindungen des Plugins) wird geprüft: nur https, ohne
     /// Benutzer, eindeutige Namen.</summary>
     [Test]
@@ -463,6 +466,20 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"sameNameInsert": "move"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Typprüfungen (#2107)
+  Assert.IsTrue(Parse('{}', Issues).Completion.TypeGuards);
+  Assert.IsFalse(Parse('{"completion": {"typeGuards": false}}', Issues).Completion.TypeGuards);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"typeGuards": "aus"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Nicht sichtbare Mitglieder (#2108)
+  Assert.IsTrue(Parse('{}', Issues).Completion.HiddenMembers);
+  Assert.IsFalse(Parse('{"completion": {"hiddenMembers": false}}', Issues).Completion.HiddenMembers);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  // Rangfolge aus der Verwendung im Projekt (#2109)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ProjectFrequency);
+  Assert.IsFalse(Parse('{"completion": {"projectFrequency": false}}', Issues).Completion.ProjectFrequency);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
@@ -707,6 +724,39 @@ begin
   Parse('{"refactoring": {"extractInterface": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
 end;
+/// <summary>Einstellungen der Umbauten an Mitgliedern: verschieben (#675), Zugriffsmethode durch Feld ersetzen (#717),
+/// Sichtbarkeit anheben (#2108).</summary>
+procedure ReadsMemberRefactorings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // #675: Mitglied verschieben.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MoveMember);
+  Assert.IsFalse(Parse('{"refactoring": {"moveMember": false}}', Issues).Refactoring.MoveMember);
+  Parse('{"refactoring": {"moveMember": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #717: Zugriffsmethode durch Feld ersetzen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessor);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorDiagnostic);
+  Settings := Parse('{"refactoring": {"inlineAccessor": false, "inlineAccessorEqualityCheck": false, ' +
+    '"inlineAccessorBulk": false, "inlineAccessorDiagnostic": true}}', Issues);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessor);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
+  Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #2108: Sichtbarkeit anheben.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.RaiseVisibility);
+  Assert.IsFalse(Parse('{"refactoring": {"raiseVisibility": false}}', Issues).Refactoring.RaiseVisibility);
+  Parse('{"refactoring": {"raiseVisibility": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
 /// <summary>Einstellungen ab „#713: Basisklasse herauslösen“.</summary>
 procedure ReadsExtractBaseClassAndDelete;
 var
@@ -732,25 +782,6 @@ begin
   Parse('{"refactoring": {"extractSuperclassTarget": "otherUnit", "extractSuperclassNameSuffix": "1x", ' +
     '"extractSuperclassMethodMode": "copy", "extractSuperclassRaiseVisibility": "public"}}', Issues);
   Assert.AreEqual(4, Integer(Length(Issues)));
-  // #675: Mitglied verschieben.
-  Assert.IsTrue(Parse('{}', Issues).Refactoring.MoveMember);
-  Assert.IsFalse(Parse('{"refactoring": {"moveMember": false}}', Issues).Refactoring.MoveMember);
-  Parse('{"refactoring": {"moveMember": 1}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  // #717: Zugriffsmethode durch Feld ersetzen.
-  Settings := Parse('{}', Issues);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessor);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessorEqualityCheck);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessorBulk);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessorDiagnostic);
-  Settings := Parse('{"refactoring": {"inlineAccessor": false, "inlineAccessorEqualityCheck": false, ' +
-    '"inlineAccessorBulk": false, "inlineAccessorDiagnostic": true}}', Issues);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessor);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessorEqualityCheck);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessorBulk);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
-  Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
   // #716: Sicher löschen.
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Refactoring.SafeDelete);
@@ -931,6 +962,7 @@ begin
   ReadsFreeFieldsAndConditions;
   ReadsMethodWithoutSelfAndTypes;
   ReadsExtractBaseClassAndDelete;
+  ReadsMemberRefactorings;
   ReadsBudgetAndTimeLimits;
   ReadsIndexScope;
   ReadsProtocolSettings;
@@ -1153,6 +1185,24 @@ begin
     Issues);
   Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
 end;
+procedure TConfigurationFeatureTests.ChecksTestLists;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Parse('{"testLists": [{"name": "Vor dem Commit", "rules": [{"category": "Benchmark", "exclude": true},' +
+    ' {"unit": "*.Slow.*", "exclude": true}, {"state": "failed"}]}, {"name": "Parser",' +
+    ' "tests": ["Atlas.Common.Pascal.Tests"]}]}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Beispiel aus dem Issue ohne Meldung');
+  Parse('{"testLists": [{"name": "A", "rules": [{"state": "gelb"}, {"category": "K", "unit": "U"}, {},' +
+    ' {"category": 3, "exclude": "ja", "foo": 1}, 7], "tests": [1], "bar": true}, {"name": "a"}, {"tests": []},' +
+    ' 3]}', mIssues);
+  // state; zwei Arten; keine Art; category kein Text, exclude kein Wahrheitswert, foo unbekannt; 7; tests mit Zahl;
+  // bar unbekannt; Doppelname a; ohne name; 3.
+  Assert.AreEqual(12, Integer(Length(mIssues)));
+  Parse('{"testLists": {"name": "A"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+end;
+
 procedure TConfigurationFeatureTests.ChecksIssueConnections;
 var
   Settings: TServerSettings;
@@ -1251,6 +1301,12 @@ begin
     ' "reviewStates": "QA"}]}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.IsTrue(mIssues[0].Message.Contains('reviewStates'), mIssues[0].Message);
+  // #2134: githubStateTarget nur project oder label, githubProject ein Text.
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "github", "url": "https://github.com",' +
+    ' "githubStateTarget": "label", "githubProject": "beispiel/4"}, {"name": "B", "provider": "github",' +
+    ' "url": "https://github.example.com", "githubStateTarget": "beides", "githubProject": 4}]}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].Message.Contains('githubStateTarget'), mIssues[0].Message);
 end;
 procedure TConfigurationFeatureTests.ReadsMcpDisabledTools;
 var

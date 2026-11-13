@@ -137,6 +137,8 @@ type
     FNameTable : PCRE2_SPTR;
     FNameEntrySize : cuint32;
     FLastModifiedEnd: SizeInt;
+    // Ende (0-basiert, im unveraenderten Subject) des zuletzt ersetzten Treffers.
+    FReplacedTill: SizeInt;
     FReplacement : TREString;
     FStoredGroups: array of TREString;
     FCrLFIsNewLine,
@@ -620,6 +622,7 @@ begin
   FResultCount:=0;
   FResultVector:=Nil;
   FLastModifiedEnd:=0;
+  FReplacedTill:=0;
 end;
 
 procedure TPerlRegEx.ClearStoredGroups;
@@ -1070,10 +1073,12 @@ begin
   if Assigned(OnReplace) then
     OnReplace(Self, Result);
   Tmp:=Result;
-  if FLastModifiedEnd=0 then
-    FLastModifiedEnd:=GetMatchedOffset-1;
-  NewSubject:=Copy(FModifiedSubject,1,FLastModifiedEnd)+Tmp;
-  FLastModifiedEnd:=Length(NewSubject)+1;
+  // Bisher ersetzter Teil, dann der unveraenderte Text zwischen dem letzten und diesem Treffer, dann der Ersatz.
+  // (Vorher kam von diesem Zwischenstueck nur das erste Zeichen mit: aus 'a  bc  d' mit '\s+' wurde 'a b d'.)
+  NewSubject:=Copy(FModifiedSubject,1,FLastModifiedEnd)+
+    Copy(FSubject,FReplacedTill+1,GetMatchedOffset-1-FReplacedTill)+Tmp;
+  FLastModifiedEnd:=Length(NewSubject);
+  FReplacedTill:=FResultVector[1];
   tmp:=GetSubjectRight;
   FModifiedSubject:=NewSubject+tmp;
   ClearStoredGroups;

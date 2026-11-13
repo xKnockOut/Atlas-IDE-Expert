@@ -31,6 +31,8 @@ type
     Body: TArray<TCompletionItem>;
     Tail: TArray<TCompletionItem>;
     Incomplete: Boolean;
+    /// <summary>Passende Mitglieder, die nur wegen der Sichtbarkeit fehlen (#2108).</summary>
+    Hidden: TArray<TCompletionHiddenMember>;
     Exclusive: TCompletionItems;
     /// <summary>Postfix-Vorlagen des Dokuments (#188), gesetzt vor der allgemeinen Liste.</summary>
     Postfix: TPostfixOptions;
@@ -93,6 +95,7 @@ uses
   Atlas.Common.Lsp.Completion.Methods,
   Atlas.Common.Lsp.Completion.Guard,
   Atlas.Common.Lsp.Completion.Slash,
+  Atlas.Common.Lsp.Completion.TypeGuards,
   Atlas.Common.Lsp.Completion.Lists;
 
 type
@@ -554,6 +557,41 @@ begin
   end;
 end;
 
+/// <summary>Nach einer Typprüfung (#2107): die Mitglieder, die nur der geprüfte Typ hat, wie die
+/// Aufzählungswerte vorab und vor der übrigen Liste.</summary>
+function TypeGuardCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+var
+  mItems: TArray<TCompletionItem>;
+begin
+  Result := TCompletionOutcome.Next;
+  if TCompletionTypeGuards.MemberItems(ARequest, mItems) then
+  begin
+    AAnswer.Prefetched := AAnswer.Prefetched + mItems;
+  end;
+end;
+
+/// <summary>Nach "X is " bzw. "X as " (#2107): die Typen, Nachfahren des Typs von X markiert. Exklusiv, weil
+/// erst die ganze Liste geprüft wird.</summary>
+function DescendantCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+begin
+  Result := AnsweredIf(TCompletionTypeGuards.DescendantItems(ARequest, AAnswer.Exclusive));
+end;
+
+/// <summary>Enthält AItems Mitglieder nach einer Typprüfung?</summary>
+function HasNarrowed(const AItems: TArray<TCompletionItem>): Boolean;
+var
+  mItem: TCompletionItem;
+begin
+  for mItem in AItems do
+  begin
+    if mItem.Narrowed <> '' then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Postfix-Vorlagen je Dokument; gestaffelt (#616), wenn der Client einen partialResultToken
 /// mitschickt: Teilergebnisse als $/progress mit CompletionItem[], die vorab bestimmten Einträge zuerst, der
 /// Rest in der Antwort.</summary>
@@ -576,6 +614,11 @@ end;
 /// Komponententyps.</summary>
 function SenderCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
 begin
+  // Eine is-Prüfung auf Sender (#2107) sagt mehr als das Formular.
+  if HasNarrowed(AAnswer.Prefetched) then
+  begin
+    Exit(TCompletionOutcome.Next);
+  end;
   Result := AnsweredIf(TCompletionCases.SenderItems(ARequest, AAnswer.Forms, AAnswer.Exclusive));
 end;
 
@@ -593,6 +636,7 @@ begin
     AAnswer.Body := WithoutKeywords(AAnswer.Body);
   end;
   AAnswer.Incomplete := mCollected.Incomplete;
+  AAnswer.Hidden := mCollected.Hidden;
 end;
 
 /// <summary>Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.</summary>
@@ -653,6 +697,8 @@ begin
   AddCase(Result, InterfaceCase);
   AddCase(Result, EnumCase);
   AddCase(Result, ComponentCase);
+  AddCase(Result, TypeGuardCase);
+  AddCase(Result, DescendantCase);
   AddCase(Result, PostfixCase);
   AddCase(Result, SenderCase);
   AddCase(Result, ListCase);

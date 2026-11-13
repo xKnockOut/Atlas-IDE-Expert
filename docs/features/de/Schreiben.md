@@ -8,6 +8,7 @@ Zurück zum [README](../../../README_DE.md)
 
 - Detailpanel mit eingefärbter Deklaration und Doku
 - Filter-Chips, unscharfe Suche, lernende Reihenfolge
+- Rangfolge aus der Verwendung im Projekt (#2109, `completion.projectFrequency`): Solange die eigene Gewichtung leer ist, stehen nach `X.` die Mitglieder oben, deren Name in den Units des Projekts am häufigsten vorkommt, mit der Marke „im Projekt 214×“. Eigene Übernahmen („zuletzt“, „häufig“) und bessere Treffer gehen vor. Gezählt wird aus den Verwendungen des Index nach Namen; Bibliotheken zählen nicht, nach einer Änderung stimmt die Zahl ohne Neuaufbau.
 - Favoriten (Strg+D)
 - Tippfehler-Vorschläge („Meintest du“)
 - Vorschau im Editor
@@ -33,6 +34,17 @@ Zurück zum [README](../../../README_DE.md)
 - Feld- und Parameternamen in `FieldByName('`
 - Komponenten des Formulars
 - `Sender` mit passender Typumwandlung
+- nach einer Typprüfung die Mitglieder des geprüften Typs (#2107, `completion.typeGuards`):
+  - im then-Zweig von `if X is T then` (auch in `and`-Ketten) und nach `if not (X is T) then Exit;` bis zum Blockende stehen nach `X.` die Mitglieder, die nur `T` hat, oben unter „X ist hier T (is-Prüfung, Zeile n)“
+  - Übernehmen schreibt `T(X).Name` bzw. `(X as T).Name` nach `completion.senderCast`
+  - nicht nach einer Zuweisung an `X`, nach Übergabe an einen `var`- oder `out`-Parameter, im else-Zweig und bei Feldern nach jeder weiteren Anweisung
+  - nach `X is ` und `X as ` stehen die Nachfahren des Typs von `X` oben
+- Treffer, die nur wegen ihrer Sichtbarkeit fehlen (#2108, `completion.hiddenMembers`):
+  - nach `X.Pr` nennt die Fußzeile private, protected und strict protected Mitglieder, die zum Getippten passen, etwa „1 Treffer nicht sichtbar: FPrivat (private in TZaehler) · Strg+Leertaste zeigt ihn“
+  - ein zweites Strg+Leertaste zeigt sie ausgegraut am Ende der Liste unter „Nicht sichtbar · Enter bietet Aktionen an“ mit der Marke „private · TZaehler“
+  - Enter setzt sie nicht ein, sondern bietet „Sichtbarkeit von FPrivat auf protected/public anheben“ und bei Feldern „Eigenschaft Privat in TZaehler anlegen“ an (nur lesen oder lesen und schreiben); die Änderung trifft die Datei der Deklaration, auch wenn sie nicht offen ist. Für Mitglieder aus fremdem Code (Bibliothek, `$(BDS)`) gibt es keine Aktionen
+  - ohne sichtbare Treffer nennt der leere Zustand sie
+  - nur mit getipptem Präfix; ein gleichnamiges sichtbares Mitglied (Überladung) unterdrückt den Hinweis
 - gleichnamige Symbole aus verschiedenen Units
 - Helper-Methoden
 - uses-Liste mit Gruppen
@@ -70,7 +82,7 @@ Einstellungen: `completion.formatPlaceholders`
   - die Live Templates der IDE
   - klassenbewusste Vorlagen (`prop`, `create`, `free`)
   - Postfix-Vorlagen (`Liste.forin`, `Obj.notnil`, `Obj.free`)
-- **Schnellbefehle** nach Enter, etwa `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+- **Schnellbefehle** nach Enter, etwa `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
 - **Erzeugen-Menü** (Alt+Einfg): Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen
 - **Freigabe absichern:** nach `X := TFoo.Create;` ein Angebot für `try … finally X.Free; end;`
 

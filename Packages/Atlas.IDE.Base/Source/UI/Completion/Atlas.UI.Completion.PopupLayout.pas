@@ -542,6 +542,7 @@ begin
   Result.Limited := FOptions.Limited;
   Result.Target := FOptions.Target;
   Result.Notice := FNotice;
+  Result.Inaccessible := FInaccessible;
 end;
 
 end.

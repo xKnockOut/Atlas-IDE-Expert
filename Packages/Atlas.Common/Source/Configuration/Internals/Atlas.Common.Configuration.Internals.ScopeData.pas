@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  cGlobalSettingPaths: array[0..70] of string = (
+  cGlobalSettingPaths: array[0..74] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -36,6 +36,9 @@ const
     'completion.sameNameInsert',
     'completion.showFmxUnits',
     'completion.nameSuggestions',
+    'completion.typeGuards',
+    'completion.hiddenMembers',
+    'completion.projectFrequency',
     'usesCommand',
     'completeBlocks',
     'metrics',
@@ -72,7 +75,8 @@ const
     'navigation',
     'hints',
     'directives',
-    'tests',
+    'tests.affected',
+    'tests.affectedDepth',
     'mcp.disabledTools',
     'mcp.prompts',
     'mcp.promptLanguage',
@@ -82,7 +86,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  cProjectSettingPaths: array[0..39] of string = (
+  cProjectSettingPaths: array[0..41] of string = (
     'minDelphiVersion',
     'encoding',
     'project',
@@ -116,6 +120,8 @@ const
     'stringLiteral',
     'memberOrder',
     'testUnits',
+    'tests.approvalFolder',
+    'testLists',
     'minConfidence',
     'fix',
     'exclude',

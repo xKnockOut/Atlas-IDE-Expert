@@ -35,7 +35,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Core.Settings.JsonText,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -360,26 +361,6 @@ begin
   end;
 end;
 
-function ParsedRoot(const AText: string): TJSONObject;
-begin
-  try
-    Result := TAtlasJsonText.Parse(AText);
-  except
-    on Exception do
-      Result := nil;
-  end;
-end;
-
-function ParsedSchema(const ASchemaJson: string): TJSONValue;
-begin
-  try
-    Result := TJSONObject.ParseJSONValue(ASchemaJson);
-  except
-    on Exception do
-      Result := nil;
-  end;
-end;
-
 { TAtlasSchemaCheck }
 
 class procedure TAtlasSchemaCheck.Check(AValue: TJSONValue; ASchema: TJSONObject; const APath: string;
@@ -425,7 +406,7 @@ var
   mSchema: TJSONValue;
 begin
   AIssues := nil;
-  mRoot := ParsedRoot(AText);
+  mRoot := TAtlasJsonText.Parse(AText);
   mSchema := nil;
   try
     if mRoot = nil then
@@ -434,7 +415,7 @@ begin
     end
     else
     begin
-      mSchema := ParsedSchema(ASchemaJson);
+      mSchema := TJsonRead.Parse(ASchemaJson);
       if mSchema is TJSONObject then
       begin
         Check(mRoot, TJSONObject(mSchema), '', AIssues);

@@ -13,6 +13,10 @@ interface
 uses
   SysUtils, Classes, SyncObjs;
 
+const
+  /// <summary>In Delphi Konstante der Unit System (Delphi 13 = 37.0); FPC kennt sie nicht.</summary>
+  CompilerVersion = 37.0;
+
 type
   TProc = reference to procedure;
   TProc<T> = reference to procedure(AArg1: T);

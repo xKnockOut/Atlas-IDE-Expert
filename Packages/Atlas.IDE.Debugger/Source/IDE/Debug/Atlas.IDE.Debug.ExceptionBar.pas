@@ -143,7 +143,21 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Contracts.DebugStop,
   Atlas.UI.Debug.Strings;
+
+/// <summary>Bietet ein Modul „Test daraus anlegen …“ an (#1873)?</summary>
+function CreateTestOffered: Boolean;
+var
+  mCommand: TAtlasModuleCommand;
+begin
+  Result := TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, cAtlasTestFromDebugStopCommand, mCommand) and
+    TAtlasModuleContributions.IsVisible(mCommand);
+end;
 
 { TAtlasIdeDebugExceptionBar.TListener }
 
@@ -340,6 +354,7 @@ begin
     // debug.exceptionBanner.ignoreAtLocation: Knopf an oder aus.
     FShownInfo.CanIgnoreLocation := TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation and
       (TAtlasIdeDebugSession.LaunchProject <> '') and FShownInfo.HasLocation;
+    FShownInfo.CanCreateTest := CreateTestOffered;
     FBar.SetInfo(FShownInfo);
   end;
   UpdateStatus;
@@ -506,6 +521,7 @@ begin
   FShownInfo := TAtlasDebugBannerRules.Info(FShown, TAtlasIdeSettings.Current.DebugJustMyCode,
     TAtlasIdeDebugSession.LaunchProject, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread),
     TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation);
+  FShownInfo.CanCreateTest := CreateTestOffered;
   // Zur gezeigten Zeile und markieren; öffnet die Unit im obersten Editorfenster.
   if FShownInfo.HasLocation then
   begin
@@ -589,6 +605,8 @@ begin
       begin
         FExplanationHandler(AAction);
       end;
+    TAtlasDebugBarAction.CreateTest:
+      TAtlasIdeHost.ExecuteCommand(cAtlasTestFromDebugStopCommand);
     TAtlasDebugBarAction.None: ;
   end;
 end;

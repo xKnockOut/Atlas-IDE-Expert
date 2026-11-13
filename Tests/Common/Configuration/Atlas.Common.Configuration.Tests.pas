@@ -65,6 +65,8 @@ type
     [Test]
     procedure ChecksMetricLimitOption;
     [Test]
+    procedure ChecksFactoriesOption;
+    [Test]
     procedure ChecksTodoKeywordsOption;
     [Test]
     procedure ChecksForbiddenSymbolsOption;
@@ -687,6 +689,15 @@ begin
   Assert.AreEqual(1, Integer(Length(mIssues)));
   mSettings := TConfigurationParser.ParseLayered('{"tests": {"affected": false}}', '{}', mIssues);
   Assert.IsFalse(mSettings.Tests.Affected);
+  // Ordner der Vergleichsdateien (#1881): Vorgabe Tests\Erwartet, leer ist ein Fehler und lässt die Vorgabe.
+  Assert.AreEqual(TTestsSettings.cDefaultApprovalFolder, mSettings.Tests.ApprovalFolder);
+  mSettings := Parse('{"tests": {"approvalFolder": "Golden"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Golden', mSettings.Tests.ApprovalFolder);
+  mSettings := Parse('{"tests": {"approvalFolder": " "}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.AreEqual(TTestsSettings.cDefaultApprovalFolder, mSettings.Tests.ApprovalFolder);
 end;
 procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;
 var
@@ -753,6 +764,18 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // registrationCalls von dunitx-fixture-not-registered (#1882).
+  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": ["RegistriereAlle"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": "RegistriereAlle"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"registrationCalls"');
+  // managedFields von dunitx-setup-not-torn-down (#1781).
+  Parse('{"rules": {"dunitx-setup-not-torn-down": {"managedFields": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"dunitx-setup-not-torn-down": {"managedFields": "nein"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"managedFields"');
   // pureFunctions von ignored-result (#624).
   Parse('{"rules": {"ignored-result": {"pureFunctions": ["Bereinigt", "TText.Clean"]}}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
@@ -778,6 +801,18 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowFirstElement"');
 end;
+procedure TConfigurationParserTests.ChecksFactoriesOption;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // factories von created-result-not-freed (#1876).
+  Parse('{"rules": {"created-result-not-freed": {"factories": ["NeueListe", "TBau.Neu"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"created-result-not-freed": {"factories": "NeueListe"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"factories"');
+end;
+
 procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
 var
   mIssues: TArray<TConfigurationIssue>;

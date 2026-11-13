@@ -55,6 +55,17 @@ type
     procedure UnitRenameFollowUpOff;
     [Test]
     procedure StepFilterFindsRoutineOfOpenDocument;
+    [Test]
+    procedure MethodBreakpointsFindRoutineOfOpenDocument;
+    [Test]
+    procedure MethodBreakpointsReportInvalidPattern;
+    /// <summary>refactoring.raiseVisibility schaltet die Code-Aktion auf der Deklaration (#2108).</summary>
+    [Test]
+    procedure RaiseVisibilityOnDeclaration;
+    /// <summary>Der Befehl für die Vervollständigung braucht eine lesbare Datei, nicht ein offenes Dokument.
+    /// </summary>
+    [Test]
+    procedure MemberActionsNeedReadableFile;
   end;
 
 implementation
@@ -75,13 +86,19 @@ uses
   Atlas.Common.Lsp.TypeAlias,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.StepFilter,
+  Atlas.Common.Lsp.MethodBreakpoints,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.UnitRename,
+  Atlas.Common.Lsp.RaiseVisibility,
   Shell.Composition.Refactorings.Structure,
+  Shell.Composition.Refactorings.Visibility,
   Shell.Composition.Refactorings.Conversions,
   Shell.Composition.Refactorings.Types,
   Shell.Composition.Refactorings.Fixes,
   Shell.Composition.Refactorings.Editing,
-  Shell.Composition.Stepping;
+  Shell.Composition.Stepping,
+  Shell.Composition.MethodBreakpoints;
 
 const
   cUri = 'file:///tmp/Kunden.pas';
@@ -251,6 +268,10 @@ begin
   Assert.IsTrue(Pos(TLspUnitRename.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
     'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, CommandsOf(TShellStepping.Create(FServices))) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, CommandsOf(TShellMethodBreakpoints.Create(FServices))) > 0,
+    'Methodenhaltepunkte');
+  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, CommandsOf(TShellVisibilityRefactorings.Create(FServices))) > 0,
+    'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;
@@ -270,6 +291,8 @@ begin
   Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
   Assert.IsTrue(Pos(TLspUnitRename.cCommand, mText) > 0, 'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, mText) > 0, 'Methodenhaltepunkte');
+  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, mText) > 0, 'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.DisabledRefactoringsOfferNoActions;
@@ -300,6 +323,8 @@ begin
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   ErrorOf(TLspStepFilter.cCommand, '["' + cUri + '", "eins"]', mCode);
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Zeile keine Zahl');
+  ErrorOf(TLspMethodBreakpoints.cCommand, '[{"muster": "Laden"}]', mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Muster fehlt');
 end;
 
 procedure TShellRefactoringsTests.ClosedDocumentIsRefused;
@@ -329,6 +354,76 @@ begin
   finally
     mAnswer.Free;
   end;
+end;
+
+procedure TShellRefactoringsTests.MethodBreakpointsFindRoutineOfOpenDocument;
+var
+  mPath: string;
+  mAnswer: TJSONObject;
+  mHits: TJSONArray;
+begin
+  // Index und Editor kennen dieselbe Datei; der Rumpf kommt aus dem offenen Dokument.
+  mPath := TDocumentUris.ToPath(cUri);
+  FServices.Index.AddUnit(TIndexExtractor.ExtractText(cSource, mPath, nil));
+  FDocuments.Open(TDocumentUris.FromPath(mPath), 'pascal', 1, cSource);
+  mAnswer := TJSONObject.ParseJSONValue(Run(TLspMethodBreakpoints.cCommand, '[{"pattern": "Kunden.*"}]')) as TJSONObject;
+  try
+    mHits := mAnswer.GetValue('hits') as TJSONArray;
+    Assert.AreEqual(1, mHits.Count);
+    Assert.AreEqual('Laden', (mHits.Items[0] as TJSONObject).GetValue('name').Value);
+    // Leerer Rumpf: Zeile des end.
+    Assert.AreEqual(5, ((mHits.Items[0] as TJSONObject).GetValue('line') as TJSONNumber).AsInt);
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TShellRefactoringsTests.MethodBreakpointsReportInvalidPattern;
+var
+  mAnswer: TJSONObject;
+begin
+  mAnswer := TJSONObject.ParseJSONValue(Run(TLspMethodBreakpoints.cCommand, '[{"pattern": "a..b"}]')) as TJSONObject;
+  try
+    Assert.IsTrue(Pos('a..b', mAnswer.GetValue('error').Value) > 0, mAnswer.ToJSON);
+    Assert.IsNull(mAnswer.GetValue('hits'));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TShellRefactoringsTests.RaiseVisibilityOnDeclaration;
+const
+  cClass = 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  private'#10'    FName: string;'#10 +
+    '  end;'#10'implementation'#10'end.'#10;
+var
+  mRange: TTextRange;
+  mActions: TArray<TJSONObject>;
+  mItem: TJSONObject;
+begin
+  FDocuments.Open(cUri, 'pascal', 1, cClass);
+  mRange := TTextRange.Create(TTextPosition.Create(5, 6), TTextPosition.Create(5, 6));
+  Assert.AreEqual(0, Integer(Length(FRefactorings.Actions(cUri, mRange))), 'abgeschaltet');
+  FSettings.RaiseVisibility := True;
+  mActions := FRefactorings.Actions(cUri, mRange);
+  try
+    Assert.AreEqual(2, Integer(Length(mActions)));
+    Assert.AreEqual('Sichtbarkeit von FName auf protected anheben', mActions[0].GetValue<string>('title'));
+  finally
+    for mItem in mActions do
+    begin
+      mItem.Free;
+    end;
+  end;
+end;
+
+procedure TShellRefactoringsTests.MemberActionsNeedReadableFile;
+var
+  mCode: Integer;
+begin
+  ErrorOf(TLspRaiseVisibility.cCommand, '["' + cUri + '", {"line": 5, "character": 4}]', mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Name fehlt');
+  ErrorOf(TLspRaiseVisibility.cCommand, '["' + cUri + '", {"line": 5, "character": 4}, "FName"]', mCode);
+  Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode, 'nicht lesbar');
 end;
 
 initialization

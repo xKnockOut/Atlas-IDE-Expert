@@ -57,7 +57,8 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Semantics.ExpressionTypes;
+  Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 const
   // Art als Satzteil („ist eine Menge“), deutsch und englisch (#1458).

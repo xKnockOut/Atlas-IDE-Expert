@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TBoardDock.GetCaption: string;
 begin
-  Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardCaption);
+  Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardCaption);
 end;
 
 function TBoardDock.GetIdentifier: string;
@@ -171,16 +171,10 @@ end;
 { TAtlasIdeBoardWindow }
 
 class function TAtlasIdeBoardWindow.Show: TAtlasBoardFrame;
-var
-  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(mCreated);
-  if mCreated then
-  begin
-    TAtlasIdeDockWindow.UpdateIcon(Host);
-  end;
+  Host.Present;
   Result := ExistingFrame;
 end;
 
@@ -195,16 +189,12 @@ end;
 
 class function TAtlasIdeBoardWindow.Visible: Boolean;
 begin
-  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
-  Result := (Host <> nil) and Host.Shown;
+  Result := TAtlasIdeDockWindow.IsShown(Host);
 end;
 
 class procedure TAtlasIdeBoardWindow.Hide;
 begin
-  if Host <> nil then
-  begin
-    Host.Hide;
-  end;
+  TAtlasIdeDockWindow.HideIfAny(Host);
 end;
 
 class procedure TAtlasIdeBoardWindow.ApplyTheme;

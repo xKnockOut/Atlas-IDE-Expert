@@ -158,6 +158,18 @@ type
     Sender: string;
     /// <summary>Komponenten, denen die Methode im Designer zugewiesen ist: "btnSave, btnLoad".</summary>
     SenderOf: string;
+    /// <summary>Mitglied nach einer Typprüfung (#2107): Typ T aus "if X is T then", den nur dieser Eintrag
+    /// braucht; '' sonst. Dann ersetzt TextEdit "X.Na" durch die Umwandlung nach completion.senderCast.</summary>
+    Narrowed: string;
+    /// <summary>Bei Narrowed: der geprüfte Name ("mLocation") und die Zeile der Prüfung (ab 1).</summary>
+    NarrowedName: string;
+    NarrowedLine: Integer;
+    /// <summary>Nach "X is " bzw. "X as " (#2107): deklarierter Typ von X, wenn dieser Typ von ihm abstammt; ''
+    /// sonst.</summary>
+    DescendantOf: string;
+    /// <summary>Nach "X." (#2109): Stellen, an denen der Name in den Units des Projekts vorkommt; 0 ohne Zählung.
+    /// </summary>
+    ProjectUses: Integer;
     /// <summary>Feld- oder Parametername (#461): Datenmenge, aus der der Name stammt; '' sonst.</summary>
     DataSet: string;
     /// <summary>Kurzform der SQL-Anweisung als Quellenangabe für die Fußzeile; '' ohne Anweisung.</summary>
@@ -237,10 +249,31 @@ type
     Unreachable: string;
   end;
 
+  /// <summary>Mitglied, das nach "X." nur wegen seiner Sichtbarkeit fehlt (#2108); Zeile und Spalte der
+  /// Deklaration ab 0.</summary>
+  TCompletionHiddenMember = record
+    Name: string;
+    /// <summary>CompletionItemKind des LSP.</summary>
+    Kind: Integer;
+    /// <summary>"private", "strict private", "protected" oder "strict protected".</summary>
+    Visibility: string;
+    /// <summary>Deklarierende Klasse ohne Unit.</summary>
+    Container: string;
+    Detail: string;
+    UnitName: string;
+    FileName: string;
+    Line: Integer;
+    Character: Integer;
+    /// <summary>Unit außerhalb des Projekts: keine Aktionen.</summary>
+    External: Boolean;
+  end;
+
   TCompletionItems = record
     Items: TArray<TCompletionItem>;
     /// <summary>Liste wurde gekürzt; der Editor fragt beim Weitertippen neu.</summary>
     Incomplete: Boolean;
+    /// <summary>Passende Mitglieder, die nur wegen der Sichtbarkeit fehlen (#2108); leer ohne.</summary>
+    Hidden: TArray<TCompletionHiddenMember>;
   end;
 
   /// <summary>Teilergebnis einer gestaffelten Vervollständigung (#616), in Anzeigereihenfolge.</summary>

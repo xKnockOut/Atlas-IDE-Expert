@@ -12,6 +12,7 @@ Code completion in its own popup:
 - filter chips
 - fuzzy matching
 - learning order
+- ranking from usage in the project (#2109, `completion.projectFrequency`): while your own weighting is empty, `X.` lists the members whose name occurs most often in the project's units first, tagged “in project 214×”. Your own picks (“recent”, “frequent”) and better matches come first. Counted by name from the index usages; libraries do not count, and the number is right after a change without a rebuild.
 - favourites (Ctrl+D)
 - typo suggestions ("did you mean")
 - in-editor preview
@@ -41,6 +42,17 @@ Code completion in its own popup:
 - Field and parameter names in `FieldByName('`
 - The form's components
 - `Sender` with the matching typecast
+- After a type check the members of the checked type (#2107, `completion.typeGuards`)
+  - in the then branch of `if X is T then` (also in `and` chains) and after `if not (X is T) then Exit;` up to the end of the block, `X.` lists the members only `T` has at the top under “X is T here (is check, line n)”
+  - accepting writes `T(X).Name` or `(X as T).Name` according to `completion.senderCast`
+  - not after an assignment to `X`, after passing it to a `var` or `out` parameter, in the else branch, and for fields after any further statement
+  - after `X is ` and `X as ` the descendants of the type of `X` come first
+- Matches that are only missing because of their visibility (#2108, `completion.hiddenMembers`)
+  - after `X.Pr` the footer names private, protected and strict protected members that match what was typed, such as “1 match not visible: FPrivate (private in TCounter) · Ctrl+Space shows it”
+  - a second Ctrl+Space shows them dimmed at the end of the list under “Not visible · Enter offers actions” with the tag “private · TCounter”
+  - Enter does not insert them but offers “Raise visibility of FPrivate to protected/public” and, for fields, “Create property Private in TCounter” (read-only or read and write); the change goes to the file of the declaration, even if it is not open. Members from external code (libraries, `$(BDS)`) get no actions
+  - without visible matches the empty state names them
+  - only with a typed prefix; a visible member of the same name (overload) suppresses the notice
 - Same names from different units
 - Helper methods
 - `uses` list with groups
@@ -74,7 +86,7 @@ Code completion in its own popup:
   - the IDE's Live Templates
   - class-aware templates (`prop`, `create`, `free`)
   - postfix templates (`List.forin`, `Obj.notnil`, `Obj.free`)
-- **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+- **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
 - **Generate menu** (Alt+Ins): constructor, properties, overridden methods, interface methods, surround, templates
 - **Guard the free:** after `X := TFoo.Create;` an offer for `try … finally X.Free; end;`
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders

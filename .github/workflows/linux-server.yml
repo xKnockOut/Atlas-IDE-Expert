@@ -17,7 +17,7 @@ name: AtlasServer für Linux
 
 on:
   push:
-    branches: [main]
+    branches: [main, main-merging]
     paths:
       - 'Application/**'
       - 'Packages/**'
@@ -106,3 +106,21 @@ jobs:
               --notes "Wird bei jedem Push auf main ersetzt (linux-server.yml). Kein ausgeliefertes Produkt; nur für Tools/Linux/Build-AtlasServer.sh in Cloud-Sitzungen."
           fi
           gh release upload cloud-linux "$RUNNER_TEMP"/cloud-linux/* --clobber
+
+  # Rot auf main-merging sofort sichtbar machen (wie in package-dependencies.yml).
+  melden:
+    needs: bauen
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main-merging'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: Tools/CI
+      - name: Stand von main-merging melden
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 Tools/CI/Melde-Integrationsstand.py --workflow "${{ github.workflow }}" --ergebnis "${{ needs.bauen.result }}"

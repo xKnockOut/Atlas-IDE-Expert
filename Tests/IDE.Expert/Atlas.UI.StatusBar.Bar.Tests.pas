@@ -40,6 +40,8 @@ type
     /// mit eigenem Tooltip; ein Klick meldet Kennung und Ecke, nur bei Feldern mit Klick.</summary>
     [Test]
     procedure ExtrasFollowTheStatus;
+    [Test]
+    procedure ExtraWithStateHasDot;
   end;
 
 implementation
@@ -49,6 +51,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Menus,
+  Atlas.Core.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Settings.StatusBarItems;
 
@@ -342,6 +345,7 @@ end;
 
 function Extra(const AId, AText, AHint: string; AClickable: Boolean): TAtlasStatusBarExtra;
 begin
+  Result := Default(TAtlasStatusBarExtra);
   Result.Id := AId;
   Result.Text := AText;
   Result.Hint := AHint;
@@ -353,14 +357,17 @@ var
   mView: TAtlasStatusBarView;
   mClickedId: string;
   mClickedAt, mPoint: TPoint;
+  mContext: Boolean;
 begin
   mClickedId := '';
   mClickedAt := Point(-1, -1);
+  mContext := True;
   FBar.OnExtra :=
-    procedure(const AId: string; const APoint: TPoint)
+    procedure(const AId: string; const APoint: TPoint; AContext: Boolean)
     begin
       mClickedId := AId;
       mClickedAt := APoint;
+      mContext := AContext;
     end;
   mView := Sample;
   mView.BadgeShown := True;
@@ -378,6 +385,7 @@ begin
   FBar.ClickAt(mPoint.X, mPoint.Y);
   Assert.AreEqual('interfaceCost', mClickedId);
   Assert.AreEqual(FBar.ClientToScreen(FBar.ExtraRect(0).TopLeft).X, mClickedAt.X);
+  Assert.IsFalse(mContext, 'Linksklick');
   // Ohne Klick meldet das Feld nichts.
   mClickedId := '';
   mPoint := Middle(FBar.ExtraRect(1));
@@ -388,6 +396,22 @@ begin
   mView.Items := TArray<string>.Create(TAtlasStatusBarItems.cMethod);
   FBar.SetView(mView);
   Assert.IsTrue(FBar.ExtraRect(0).IsEmpty);
+end;
+
+procedure TAtlasEditorStatusBarTests.ExtraWithStateHasDot;
+var
+  mView: TAtlasStatusBarView;
+  mPlain: Integer;
+begin
+  // Teststand (#1777): Mit Zustand steht ein Punkt vor dem Text, das Feld wird breiter.
+  mView := Sample;
+  mView.Extras := [Extra('atlas.tests', 'Tests 41/42', '', True)];
+  FBar.SetView(mView);
+  mPlain := FBar.ExtraRect(0).Width;
+  mView.Extras[0].State := TAtlasStatusState.Red;
+  mView.Extras[0].HasContext := True;
+  FBar.SetView(mView);
+  Assert.IsTrue(FBar.ExtraRect(0).Width > mPlain, 'Punkt braucht Platz');
 end;
 
 initialization

@@ -74,7 +74,8 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.TestUnits;
+  Atlas.Common.Lsp.TestUnits,
+  Shell.Composition.CoveredBy;
 
 constructor TShellAnalysisArea.Create(ACore: TShellCore; const AServices: TShellAnalysisAreaServices);
 begin
@@ -84,6 +85,7 @@ begin
   FAnalysis := TShellAnalysis.Create(AnalysisServices);
   FAnalysis.Attach(FServices.Dispatcher);
   TShellAffectedTestsRequest.Attach(FServices.Dispatcher, AffectedTestsServices);
+  TShellCoveredByRequest.Attach(FServices.Dispatcher, AffectedTestsServices);
   FOverviews := TShellOverviews.Create(OverviewServices);
   FOverviews.Attach(FServices.Dispatcher);
   FBaselines := TShellBaselines.Create(BaselineServices);

@@ -231,6 +231,30 @@ begin
   AData.AddPair('senderOf', AItem.SenderOf);
 end;
 
+// Typprüfungen (#2107): Mitglied des geprüften Typs bzw. Nachfahr des Typs vor is/as.
+procedure WriteNarrowed(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.Narrowed <> '' then
+  begin
+    AData.AddPair('narrowed', AItem.Narrowed);
+    AData.AddPair('narrowedName', AItem.NarrowedName);
+    AData.AddPair('narrowedLine', TJSONNumber.Create(AItem.NarrowedLine));
+  end;
+  if AItem.DescendantOf <> '' then
+  begin
+    AData.AddPair('descendantOf', AItem.DescendantOf);
+  end;
+end;
+
+// Rangfolge aus der Verwendung im Projekt (#2109).
+procedure WriteProjectUses(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.ProjectUses > 0 then
+  begin
+    AData.AddPair('projectUses', TJSONNumber.Create(AItem.ProjectUses));
+  end;
+end;
+
 // Typkonvertierung (#490): Umwandlungseintrag und Hinweis bei Gleitkomma nach Ganzzahl.
 procedure WriteConversion(const AItem: TCompletionItem; AData: TJSONObject);
 begin
@@ -523,10 +547,10 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  cDataWriters: array[0..37] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  cDataWriters: array[0..39] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteVariant, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType,
-      WriteSender,
+      WriteSender, WriteNarrowed, WriteProjectUses,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
     WriteBindings, WriteUses, WriteInherited, WriteSameName, WriteAttribute,
     WriteMethodRef, WriteWith, WriteException);
@@ -535,8 +559,9 @@ function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
   Result := (AItem.SourceFile <> '') or (AItem.Expected <> '') or (AItem.Action <> '') or (AItem.Condition <> '') or
     (AItem.VariantBranch <> '') or (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or
-    AItem.Hint or (AItem.Form <> '') or
-    (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
+    AItem.Hint or (AItem.Form <> '') or (AItem.Narrowed <> '') or (AItem.DescendantOf <> '') or
+    (AItem.ProjectUses > 0) or (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or
+    (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
     (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '') or (AItem.InheritedMatch <> '') or
     (Length(AItem.InheritedAbstract) > 0) or (Length(AItem.SameNameUnits) > 0) or AItem.Attribute or

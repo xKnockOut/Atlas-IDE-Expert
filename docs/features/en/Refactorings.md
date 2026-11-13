@@ -126,6 +126,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - Extract superclass
 - Pull members up or push them down
 - Replace trivial accessors with their field (one at a time or for a unit or project)
+- Raise the visibility of a member to protected or public (the declaration moves with its doc comment, the section is created if needed)
 - Create method from a call
 - Add forward declaration
 

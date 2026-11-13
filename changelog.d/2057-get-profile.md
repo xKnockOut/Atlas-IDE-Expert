@@ -1,0 +1,2 @@
+### Neu
+- MCP-Werkzeug `get_profile` (#2057, Teil 2): wertet die Profildateien des Profilers aus (`profile-*.json` im Datenordner, die letzten fünf Läufe): teuerste Methoden mit Eigen- und Gesamtanteil und heißester Zeile, nur eigener Code (Bibliotheksrahmen fallen auf die aufrufende eigene Routine), Filter nach Unit, Vergleich zweier Läufe, Text oder JSON. Die Läufe selbst nimmt der Profiler im Plugin auf (folgt).

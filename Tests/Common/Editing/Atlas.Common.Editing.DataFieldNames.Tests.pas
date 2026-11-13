@@ -271,6 +271,9 @@ var
   Found: Boolean;
 begin
   Assert.AreEqual('select A from T', TDataFieldNames.ShortSql('select A'#13#10'  from T'));
+  // Mehrere Lücken: Der Text zwischen den Treffern bleibt ganz.
+  Assert.AreEqual('select O.ID, O.TOTAL from ORDERS',
+    TDataFieldNames.ShortSql('select  O.ID,'#13#10'  O.TOTAL  from  ORDERS'));
   Assert.AreEqual('select A, B…', TDataFieldNames.ShortSql('select A, B, C from T', 12));
   Assert.IsTrue(TDataFieldNames.Contains(TDataFieldNames.FromForm(Form, 'qryOrders', TDataNameKind.Field,
     Sql, Found), 'customer_id'));

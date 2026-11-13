@@ -2,7 +2,7 @@
 
 // Anmeldung der eingebauten Prüfregeln für Anweisungen und Ausdrücke (Ablauf, Aufrufe, Sprünge, Schleifen,
 // Bedingungen, Typprüfungen, Casts, Zeichenketten, Migration nach Win64 und Unicode, Performance, unsicherer
-// Code). Atlas.Common.Rules.Builtin ruft die drei Registration-Units nacheinander auf; nach Themen aufgeteilt,
+// Code). Atlas.Common.Rules.Builtin ruft die Registration-Units nacheinander auf; nach Themen aufgeteilt,
 // damit keine Unit zu viele Units einbindet (metric-uses-count).
 
 interface

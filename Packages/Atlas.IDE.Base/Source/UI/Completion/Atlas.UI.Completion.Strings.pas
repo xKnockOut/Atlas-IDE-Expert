@@ -21,7 +21,7 @@ type
     UsesInImplementation, UsesCycleTag, UsesTypesHeading, InheritedSameTag, InheritedOverloadTag, SameNameActiveTag,
     SameNameDeclaredIn, SameNameRoleActive, SameNameRoleThis, SameNameRoleHidden, SameNameNotActive,
     SameNameInsertPrefix, SameNameInsertPrefixAdd, SameNameInsertMove, SameNameInsertAdd, SameNameHiddenFooter,
-    TagVariantBranch);
+    TagVariantBranch, NarrowedHeader, DescendantsHeader, InaccessibleOne, InaccessibleMany, InaccessibleHeader);
 
   TAtlasCompletionStrings = class
   public
@@ -110,7 +110,12 @@ const
      'Enter verschiebt %s in den uses nach hinten; andere Stellen können ihre Bedeutung ändern',
      'Enter ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
      '%s ausgeblendet',
-     'Zweig %s'),
+     'Zweig %s',
+     '%s ist hier %s (is-Prüfung, Zeile %d)',
+     'Nachfahren von %s',
+     '1 Treffer nicht sichtbar: %s (%s in %s) · Strg+Leertaste zeigt ihn',
+     '%d Treffer nicht sichtbar: %s · Strg+Leertaste zeigt sie',
+     'Nicht sichtbar · Enter bietet Aktionen an'),
     ('Enter to accept · Esc to close',
      '%d of %d',
      'No matches for “%s”',
@@ -183,7 +188,12 @@ const
      'Enter moves %s to the end of uses; other places may change their meaning',
      'Enter adds %s to uses; other places may change their meaning',
      '%s hidden',
-     'branch %s'));
+     'branch %s',
+     '%s is %s here (is check, line %d)',
+     'Descendants of %s',
+     '1 match not visible: %s (%s in %s) · Ctrl+Space shows it',
+     '%d matches not visible: %s · Ctrl+Space shows them',
+     'Not visible · Enter offers actions'));
 
 { TAtlasCompletionStrings }
 

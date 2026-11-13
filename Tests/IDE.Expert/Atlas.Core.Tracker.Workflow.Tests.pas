@@ -4,7 +4,8 @@
 // Kommentarvorlagen, Listen, Werte je Verbindung, Commits für {commits},
 // Aufbau des YouTrack-Befehls (Namen mit Leerzeichen in {}), PATCH für
 // GitHub, Schreiben gegen einen Transport mit festen Antworten (POST/PATCH
-// über IAtlasCiSend) und die Abbildung der Fehler 400/403/404.
+// über IAtlasCiSend) und die Abbildung der Fehler 400/403/404; Schließgründe
+// bei GitHub (#2135): erledigt, nicht geplant, Duplikat samt Ersatzweg.
 
 interface
 
@@ -47,6 +48,8 @@ type
     /// <summary>Zustandsfeld und Benutzerfeld nur bei Anbietern mit Feldern (YouTrack), nicht bei GitHub.</summary>
     [Test]
     procedure UsesFieldsOnlyWithoutGitHub;
+    [Test]
+    procedure CloseHelpers;
   end;
 
   [TestFixture]
@@ -77,6 +80,14 @@ type
     procedure LoadValuesStopsAtFirstError;
     [Test]
     procedure WithoutSendIsNotConfigured;
+    [Test]
+    procedure GitHubCloseReasons;
+    [Test]
+    procedure GitHubDuplicateResolvesOriginalFirst;
+    [Test]
+    procedure GitHubDuplicateRejectsSelfAndUnknown;
+    [Test]
+    procedure GitHubDuplicateFallsBackToNotPlanned;
   end;
 
 implementation
@@ -106,10 +117,14 @@ type
     FPrefixes: TArray<string>;
     FStatus: TArray<Integer>;
     FTexts: TArray<string>;
+    // Antworten nur einmal (danach gilt die nächste passende); False = beliebig oft.
+    FOnce: TArray<Boolean>;
   public
     Calls: TArray<string>;
     Bodies: TArray<string>;
     procedure Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
+    /// <summary>Wie Answer, aber nur für den nächsten passenden Aufruf.</summary>
+    procedure AnswerOnce(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
     function Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
@@ -149,6 +164,13 @@ begin
   FPrefixes := FPrefixes + [APrefix];
   FStatus := FStatus + [AStatus];
   FTexts := FTexts + [AText];
+  FOnce := FOnce + [False];
+end;
+
+procedure TFakeSendTransport.AnswerOnce(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
+begin
+  Answer(AMethod, APrefix, AStatus, AText);
+  FOnce[High(FOnce)] := True;
 end;
 
 function TFakeSendTransport.Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
@@ -165,6 +187,11 @@ begin
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
+      if FOnce[mIndex] then
+      begin
+        // Verbraucht: der nächste Aufruf bekommt die nächste passende Antwort.
+        FMethods[mIndex] := '';
+      end;
       Exit;
     end;
   end;
@@ -317,6 +344,45 @@ begin
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.cGitHub), 'GitHub');
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
   Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
+end;
+
+procedure TAtlasTrackerWorkflowTests.CloseHelpers;
+var
+  mChange: TAtlasTrackerWrite;
+  mKey: string;
+begin
+  Assert.IsTrue(TAtlasTrackerWorkflow.DuplicateKey('#7', ' 418 ', mKey));
+  Assert.AreEqual('#418', mKey);
+  Assert.IsTrue(TAtlasTrackerWorkflow.DuplicateKey('#7', '#418', mKey));
+  Assert.AreEqual('#418', mKey);
+  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', '7', mKey), 'nicht das Issue selbst');
+  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', '', mKey));
+  Assert.IsFalse(TAtlasTrackerWorkflow.DuplicateKey('#7', 'abc', mKey));
+  // Offen lassen nimmt einen Erledigt-Zustand zurück, sonst würde das Issue doch geschlossen.
+  mChange := TAtlasTrackerWrite.CommentOnly('Fertig.');
+  mChange.State := 'Erledigt';
+  mChange := TAtlasTrackerWorkflow.WithClose(mChange, TAtlasTrackerClose.KeepOpen, '', '');
+  Assert.AreEqual('', mChange.State);
+  Assert.AreEqual('Fertig.', mChange.Comment);
+  Assert.IsTrue(TAtlasTrackerWorkflow.ClosesWithReason('GitHub'));
+  Assert.IsFalse(TAtlasTrackerWorkflow.ClosesWithReason('youtrack'));
+  Assert.IsTrue(TAtlasTrackerWorkflow.DefaultClose('Erledigt') = TAtlasTrackerClose.Completed);
+  Assert.IsTrue(TAtlasTrackerWorkflow.DefaultClose('Zur Prüfung') = TAtlasTrackerClose.KeepOpen);
+  Assert.IsTrue(TAtlasTrackerWorkflow.DefaultClose('') = TAtlasTrackerClose.KeepOpen);
+  // Kommentar ohne Verweis: Ersatzkommentar für den Fall, dass der Server „Duplikat“ ablehnt.
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('Gibt es schon.'),
+    TAtlasTrackerClose.Duplicate, ' #418 ', 'Duplikat von #418.');
+  Assert.AreEqual('#418', mChange.DuplicateOf);
+  Assert.AreEqual('Duplikat von #418.', mChange.DuplicateNote);
+  Assert.IsTrue(TAtlasTrackerWorkflow.Abandons(mChange));
+  Assert.IsTrue(mChange.HasWork and mChange.Closes);
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.KeepOpen, '#418', 'x');
+  Assert.IsFalse(mChange.HasWork, 'offen lassen allein schreibt nichts');
+  Assert.IsFalse(TAtlasTrackerWorkflow.Abandons(mChange));
+  Assert.IsFalse(TAtlasTrackerWorkflow.Abandons(TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty,
+    TAtlasTrackerClose.Completed, '', '')));
+  Assert.IsTrue(TAtlasTrackerWorkflow.Abandons(TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty,
+    TAtlasTrackerClose.NotPlanned, '', '')));
 end;
 
 procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
@@ -671,13 +737,13 @@ begin
   mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
-  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna');
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna', 0);
   Assert.AreEqual('["bug","in arbeit"]', JsonText(mJson, 'labels'));
   Assert.AreEqual('["bert","anna"]', JsonText(mJson, 'assignees'));
   Assert.AreEqual('', JsonText(mJson, 'state'));
   // Schon so: nichts zu ändern.
   Assert.AreEqual('', TAtlasGitHubApi.PatchJson(TArray<string>.Create('in arbeit'), TArray<string>.Create('anna'),
-    mChange, 'anna'));
+    mChange, 'anna', 0));
   // Beenden: Label aus „Beginnen“ weg, „Erledigt“ schließt (ohne Label), übergeben ersetzt die Zuständigen.
   mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'Erledigt';
@@ -685,7 +751,7 @@ begin
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'carl';
   mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug', 'In Arbeit'), TArray<string>.Create('anna',
-    'bert'), mChange, '');
+    'bert'), mChange, '', 0);
   Assert.AreEqual('["bug"]', JsonText(mJson, 'labels'));
   Assert.AreEqual('["carl"]', JsonText(mJson, 'assignees'));
   Assert.AreEqual('closed', JsonText(mJson, 'state'));
@@ -798,11 +864,11 @@ begin
   mTransport := TFakeSendTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/projects', 403, '{"error":"Forbidden"}');
-  mValues := TAtlasTrackerWorkflow.LoadValues(mWriter, YouTrackTarget, mKeep, '');
+  mValues := TAtlasTrackerWorkflow.LoadValues(mWriter, YouTrackTarget, mKeep, '', '');
   Assert.IsFalse(mValues.Outcome.Succeeded);
   Assert.AreEqual(403, mValues.Outcome.Status);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'nach dem ersten Fehler keine weitere Abfrage');
-  mValues := TAtlasTrackerWorkflow.LoadValues(nil, YouTrackTarget, mKeep, '');
+  mValues := TAtlasTrackerWorkflow.LoadValues(nil, YouTrackTarget, mKeep, '', '');
   Assert.AreEqual(Ord(TAtlasCiFetchError.UnknownProvider), Ord(mValues.Outcome.Error), 'Anbieter ohne Schreiben');
 end;
 
@@ -819,6 +885,133 @@ begin
   mResult := (TAtlasGitHubTracker.Create as IAtlasTrackerWriter).Apply(GitHubTarget, mKeep, '#1',
     TAtlasTrackerWrite.CommentOnly('x'), 5000);
   Assert.AreEqual(Ord(TAtlasCiFetchError.NotConfigured), Ord(mResult.Error));
+end;
+
+procedure TAtlasTrackerWriterTests.GitHubCloseReasons;
+var
+  mChange: TAtlasTrackerWrite;
+  mJson: string;
+begin
+  // Nicht geplant ohne Zustand: Label aus „Beginnen“ weg, geschlossen mit not_planned.
+  mChange := TAtlasTrackerWrite.Empty;
+  mChange.PreviousState := 'In Arbeit';
+  mChange.Close := TAtlasTrackerClose.NotPlanned;
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug', 'In Arbeit'), nil, mChange, '', 0);
+  Assert.AreEqual('["bug"]', JsonText(mJson, 'labels'));
+  Assert.AreEqual('closed', JsonText(mJson, 'state'));
+  Assert.AreEqual('not_planned', JsonText(mJson, 'state_reason'));
+  Assert.AreEqual('', JsonText(mJson, 'duplicate_issue_id'));
+  // Duplikat mit bekanntem Original.
+  mChange.Close := TAtlasTrackerClose.Duplicate;
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug'), nil, mChange, '', 9418);
+  Assert.AreEqual('duplicate', JsonText(mJson, 'state_reason'));
+  Assert.AreEqual('9418', JsonText(mJson, 'duplicate_issue_id'));
+  Assert.AreEqual('', JsonText(mJson, 'labels'), 'Labels unverändert');
+  // Duplikat ohne Original (Ersatzweg): nicht geplant.
+  mJson := TAtlasGitHubApi.PatchJson(nil, nil, mChange, '', 0);
+  Assert.AreEqual('not_planned', JsonText(mJson, 'state_reason'));
+  // Erledigt ohne Zustand schließt; offen lassen mit Erledigt-Zustand setzt nur das Label.
+  mChange := TAtlasTrackerWrite.Empty;
+  mChange.Close := TAtlasTrackerClose.Completed;
+  Assert.AreEqual('completed', JsonText(TAtlasGitHubApi.PatchJson(nil, nil, mChange, '', 0), 'state_reason'));
+  mChange.Close := TAtlasTrackerClose.KeepOpen;
+  mChange.State := 'Erledigt';
+  mJson := TAtlasGitHubApi.PatchJson(nil, nil, mChange, '', 0);
+  Assert.AreEqual('["Erledigt"]', JsonText(mJson, 'labels'));
+  Assert.AreEqual('', JsonText(mJson, 'state'));
+  Assert.AreEqual('', TAtlasGitHubApi.CloseReason(mChange));
+  mChange.Close := TAtlasTrackerClose.ByState;
+  Assert.AreEqual('completed', TAtlasGitHubApi.CloseReason(mChange), 'wie bisher');
+end;
+
+procedure TAtlasTrackerWriterTests.GitHubDuplicateResolvesOriginalFirst;
+var
+  mTransport: TFakeSendTransport;
+  mKeep: IAtlasCiTransport;
+  mWriter: IAtlasTrackerWriter;
+  mChange: TAtlasTrackerWrite;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mWriter := TAtlasGitHubTracker.Create;
+  mTransport := TFakeSendTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('GET', 'https://api.github.com/repos/beispiel/atlas/issues/418', 200, '{"id":9418,"number":418}');
+  mTransport.Answer('POST', 'https://api.github.com/repos/beispiel/atlas/issues/7/comments', 201, '{"id":1}');
+  mTransport.Answer('GET', 'https://api.github.com/repos/beispiel/atlas/issues/7', 200,
+    '{"number":7,"labels":[{"name":"In Arbeit"}],"assignees":[]}');
+  mTransport.Answer('PATCH', 'https://api.github.com/repos/beispiel/atlas/issues/7', 200, '{"number":7}');
+  mChange := TAtlasTrackerWrite.CommentOnly('Steckt schon in #418.');
+  mChange.PreviousState := 'In Arbeit';
+  mChange := TAtlasTrackerWorkflow.WithClose(mChange, TAtlasTrackerClose.Duplicate, '#418', 'Duplikat von #418.');
+  mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
+  Assert.IsTrue(mResult.Succeeded);
+  Assert.IsFalse(mResult.Fallback);
+  Assert.AreEqual('GET https://api.github.com/repos/beispiel/atlas/issues/418|' +
+    'POST https://api.github.com/repos/beispiel/atlas/issues/7/comments|' +
+    'GET https://api.github.com/repos/beispiel/atlas/issues/7|' +
+    'PATCH https://api.github.com/repos/beispiel/atlas/issues/7', string.Join('|', mTransport.Calls),
+    'Original zuerst');
+  Assert.AreEqual('duplicate', JsonText(mTransport.Bodies[1], 'state_reason'));
+  Assert.AreEqual('9418', JsonText(mTransport.Bodies[1], 'duplicate_issue_id'));
+  Assert.AreEqual('[]', JsonText(mTransport.Bodies[1], 'labels'), 'Label aus „Beginnen“ weg');
+  mTransport.Calls := nil;
+  mTransport.Bodies := nil;
+end;
+
+procedure TAtlasTrackerWriterTests.GitHubDuplicateRejectsSelfAndUnknown;
+var
+  mTransport: TFakeSendTransport;
+  mKeep: IAtlasCiTransport;
+  mWriter: IAtlasTrackerWriter;
+  mChange: TAtlasTrackerWrite;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mWriter := TAtlasGitHubTracker.Create;
+  mTransport := TFakeSendTransport.Create;
+  mKeep := mTransport;
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('x'), TAtlasTrackerClose.Duplicate,
+    '#7', '');
+  mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
+  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid, 'Duplikat von sich selbst');
+  Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('x'), TAtlasTrackerClose.Duplicate,
+    '#999', '');
+  mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
+  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.NotFound, 'unbekanntes Original');
+  Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'kein Kommentar, kein PATCH');
+  mTransport.Calls := nil;
+end;
+
+procedure TAtlasTrackerWriterTests.GitHubDuplicateFallsBackToNotPlanned;
+var
+  mTransport: TFakeSendTransport;
+  mKeep: IAtlasCiTransport;
+  mWriter: IAtlasTrackerWriter;
+  mChange: TAtlasTrackerWrite;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mWriter := TAtlasGitHubTracker.Create;
+  mTransport := TFakeSendTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('GET', 'https://api.github.com/repos/beispiel/atlas/issues/418', 200, '{"id":9418,"number":418}');
+  mTransport.Answer('GET', 'https://api.github.com/repos/beispiel/atlas/issues/7', 200,
+    '{"number":7,"labels":[],"assignees":[]}');
+  mTransport.AnswerOnce('PATCH', 'https://api.github.com/repos/beispiel/atlas/issues/7', 422,
+    '{"message":"Validation Failed"}');
+  mTransport.Answer('PATCH', 'https://api.github.com/repos/beispiel/atlas/issues/7', 200, '{"number":7}');
+  mTransport.Answer('POST', 'https://api.github.com/repos/beispiel/atlas/issues/7/comments', 201, '{"id":1}');
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.Duplicate, '#418',
+    'Duplikat von #418.');
+  mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
+  Assert.IsTrue(mResult.Succeeded);
+  Assert.IsTrue(mResult.Fallback, 'Ersatzweg gemeldet');
+  Assert.AreEqual(3, Integer(Length(mTransport.Bodies)), 'zweimal PATCH, dann Kommentar');
+  Assert.AreEqual('duplicate', JsonText(mTransport.Bodies[0], 'state_reason'));
+  Assert.AreEqual('not_planned', JsonText(mTransport.Bodies[1], 'state_reason'));
+  Assert.AreEqual('', JsonText(mTransport.Bodies[1], 'duplicate_issue_id'));
+  Assert.AreEqual('Duplikat von #418.', JsonText(mTransport.Bodies[2], 'body'));
+  mTransport.Calls := nil;
+  mTransport.Bodies := nil;
 end;
 
 initialization
