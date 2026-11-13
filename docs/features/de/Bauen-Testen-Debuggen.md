@@ -259,6 +259,20 @@ Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie 
 
 Einstellungen: `debug.checkBreakpoints`
 
+#### Haltepunkt-Sätze
+
+Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechselt zwischen benannten Sätzen von Haltepunkten, statt sie zu löschen und neu zu setzen.
+
+- „Haltepunkte als Satz speichern …“ nimmt alle Quelltext-Haltepunkte mit Bedingung, Durchlaufzahl, Gruppe, Aktionen und an/aus auf; auf Wunsch an den aktuellen Branch gekoppelt.
+- „Haltepunkt-Satz wechseln …“ legt fehlende Haltepunkte des Satzes an und schaltet die Haltepunkte anderer Sätze aus (gelöscht wird nichts). Haltepunkte, die zu keinem Satz gehören, bleiben, wie sie sind.
+- „Haltepunkt-Satz hinzufügen …“ ergänzt die Haltepunkte eines Satzes, ohne andere auszuschalten; „Haltepunkt-Satz löschen …“ entfernt nur den Satz.
+- Atlas findet die Zeile beim Laden über Methode und Zeilentext wieder, auch wenn darüber Zeilen eingefügt wurden; nicht mehr auffindbare Haltepunkte nennt eine Zeile in den Meldungen.
+- Sätze liegen je Projekt in `.atlas/breakpoints/<Name>.json` und lassen sich im Repository teilen.
+- Mit `debug.breakpointSetPerBranch` wird ein gekoppelter Satz aktiv, sobald die Arbeitskopie auf seinen Branch wechselt (Git und SVN).
+- Die Haltepunktgruppen der IDE bleiben unberührt: Sie schalten Haltepunkte über Aktionen, hängen aber an Zeilennummern in der `.dsk`; ein Satz merkt sich die Gruppe jedes Haltepunkts mit.
+
+Einstellungen: `debug.breakpointSetPerBranch`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))

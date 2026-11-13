@@ -2049,6 +2049,18 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
     },
+    "DebugBreakpointSetPerBranch": {
+      "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointSetPerBranch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt-Satz beim Branch-Wechsel mitwechseln",
+      "x-captionEn": "Switch the breakpoint set together with the branch",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#586"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
