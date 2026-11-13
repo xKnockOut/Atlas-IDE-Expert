@@ -33,6 +33,10 @@ const
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
   cDefaultTestsSlowMs = 500;
+  /// <summary>Grenzen und Vorgabe für tests.flaky.runs (#1773).</summary>
+  cMinTestsFlakyRuns = 3;
+  cMaxTestsFlakyRuns = 50;
+  cDefaultTestsFlakyRuns = 10;
   /// <summary>Grenzen und Vorgabe für tests.boundaryCases.maxCases (#2173).</summary>
   cMinTestsBoundaryMax = 1;
   cMaxTestsBoundaryMax = 200;
@@ -174,6 +178,12 @@ type
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
+    /// <summary>Wackelnde Tests erkennen (#1773, tests.flaky): Verlauf der letzten Läufe je Test, Marke „wackelt“
+    /// an der Testlinse und Filter im Fenster „Atlas-Tests“. Aus = kein Verlauf, keine Marke.</summary>
+    TestsFlaky: Boolean;
+    /// <summary>So viele Läufe merkt sich der Verlauf je Test (#1773, tests.flaky.runs), cMinTestsFlakyRuns bis
+    /// cMaxTestsFlakyRuns.</summary>
+    TestsFlakyRuns: Integer;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -353,6 +363,7 @@ begin
     cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsFlakyRuns := EnsureRange(TestsFlakyRuns, cMinTestsFlakyRuns, cMaxTestsFlakyRuns);
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
@@ -430,6 +441,8 @@ begin
   TestsBoundaryCases := True;
   TestsBoundaryMax := cDefaultTestsBoundaryMax;
   TestsLeaks := True;
+  TestsFlaky := True;
+  TestsFlakyRuns := cDefaultTestsFlakyRuns;
 end;
 
 procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
@@ -464,6 +477,8 @@ begin
   AIo.Flag('TestsBoundaryCases', TestsBoundaryCases);
   AIo.Number('TestsBoundaryMax', TestsBoundaryMax);
   AIo.Flag('TestsLeaks', TestsLeaks);
+  AIo.Flag('TestsFlaky', TestsFlaky);
+  AIo.Number('TestsFlakyRuns', TestsFlakyRuns);
 end;
 
 end.

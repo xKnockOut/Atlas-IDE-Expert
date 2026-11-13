@@ -110,6 +110,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Coverage.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Lists.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ListText.pas"/>
@@ -136,6 +137,7 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Coverage.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Flaky.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerWindow.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerLog.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas"/>

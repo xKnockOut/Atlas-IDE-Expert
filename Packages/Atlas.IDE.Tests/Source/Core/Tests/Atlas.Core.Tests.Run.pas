@@ -33,7 +33,8 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Stale,
-  Atlas.Core.Tests.Durations;
+  Atlas.Core.Tests.Durations,
+  Atlas.Core.Tests.Flaky;
 
 type
 {$SCOPEDENUMS ON}
@@ -92,6 +93,10 @@ type
   TAtlasTestStaleFunc = Atlas.Core.Tests.Stale.TAtlasTestStaleFunc;
   /// <summary>Tests einer Unit mit veraltetem Ergebnis (#1770).</summary>
   TAtlasTestStaleKeys = Atlas.Core.Tests.Stale.TAtlasTestStaleKeys;
+  /// <summary>Stand der Tests einer Unit und seine Abfragen (#1770, #1773); deklariert in
+  /// Atlas.Core.Tests.Flaky.</summary>
+  TAtlasTestUnitState = Atlas.Core.Tests.Flaky.TAtlasTestUnitState;
+  TAtlasTestStateQueries = Atlas.Core.Tests.Flaky.TAtlasTestStateQueries;
 
   /// <summary>Datei der Unit AUnitName im Testprojekt; '' ohne. Deklariert in Atlas.Core.Tests.Stale (ohne
   /// Windows-Abhängigkeiten, auch unter FPC prüfbar).</summary>
