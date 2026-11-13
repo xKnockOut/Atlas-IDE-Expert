@@ -46,7 +46,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Attach.Strings,
   System.SysUtils,
   System.Classes,
   System.IOUtils,
@@ -130,16 +130,16 @@ begin
       Assert.IsFalse(mDialog.Parts.Screenshot.Enabled, 'kein Programm');
       Assert.IsFalse(mDialog.Parts.WindowBox.Enabled);
       // Kurz in der schmalen Liste, die Erklärung als Hinweis.
-      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgram),
+      Assert.AreEqual(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoProgram),
         mDialog.Parts.WindowBox.Items[0]);
-      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgramHint),
+      Assert.AreEqual(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoProgramHint),
         mDialog.Parts.WindowBox.Hint);
       Assert.IsFalse(mDialog.Parts.FormCheck.Enabled, 'kein Formular');
       Assert.IsFalse(mDialog.Parts.DebugNote.Enabled, 'nicht angehalten');
       Assert.IsFalse(mDialog.Parts.Exceptions.Enabled, 'leerer Verlauf');
       Assert.AreEqual(0, mDialog.Parts.List.Items.Count);
       Assert.IsFalse(mDialog.Parts.Send.Enabled, 'nichts zu senden');
-      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint, ['YouTrack']),
+      Assert.AreEqual(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachUploadHint, ['YouTrack']),
         mDialog.Parts.Hint.Caption);
     finally
       mDialog.Free;
@@ -168,9 +168,9 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFallbackHint, ['GitHub']),
+      Assert.AreEqual(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFallbackHint, ['GitHub']),
         mDialog.Parts.Hint.Caption);
-      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachExceptions, [3]),
+      Assert.AreEqual(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachExceptions, [3]),
         mDialog.Parts.Exceptions.Caption);
       mDialog.Parts.DebugNote.Checked := True;
       mDialog.Parts.Exceptions.Checked := True;
@@ -216,7 +216,7 @@ begin
     try
       mDialog.HandleNeeded;
       Assert.IsTrue(mDialog.Parts.FormCheck.Enabled);
-      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachForm, ['Form1']),
+      Assert.AreEqual(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachForm, ['Form1']),
         mDialog.Parts.FormCheck.Caption);
       mDialog.SetScreenshot(mShot);
       Assert.IsTrue(mDialog.Parts.Screenshot.Checked, 'aufgenommen = angehakt');
@@ -336,7 +336,7 @@ begin
       mDialog.Parts.CommentMemo.Lines.Text := 'Siehe Anhang';
       Assert.IsTrue(mDialog.CanSend);
       Assert.AreEqual('Siehe Anhang', mDialog.CommentText);
-      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommentOnly),
+      Assert.AreEqual(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCommentOnly),
         mDialog.Parts.List.Items[0].Caption);
       mDialog.Parts.Issue.Text := 'kaputt';
       Assert.AreEqual('', mDialog.Key);

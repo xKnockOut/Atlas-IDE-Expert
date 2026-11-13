@@ -149,6 +149,9 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEventExcluded));
   // Haltepunkte, die nicht greifen werden (#577).
   Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
+  // Haltepunkt-Sätze (#586).
+  Switch('debug.breakpointSetPerBranch',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;
@@ -170,6 +173,10 @@ begin
   Switch('debug.deadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDeadlocks));
   // Parallele Aufrufstapel (#837).
   Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
+  // Threads im Quelltext (#852).
+  Switch('debug.threadsInSource', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadsInSource));
+  // Threads einfrieren (#852, experimentell).
+  Switch('debug.threadFreeze', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadFreeze));
   Line('debug.parallelStacks.waitRoutines',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksWaitRoutines));
   Number('debug.parallelStacks.maxThreads',

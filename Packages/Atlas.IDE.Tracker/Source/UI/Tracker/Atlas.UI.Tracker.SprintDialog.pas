@@ -54,7 +54,7 @@ uses
   System.DateUtils,
   System.UITypes,
   Vcl.Controls,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Sprint.Strings;
 
 { TAtlasTrackerSprintDialog }
 
@@ -63,7 +63,7 @@ constructor TAtlasTrackerSprintDialog.CreateDialog(AOwner: TComponent; const AKe
 var
   mButtons: TAtlasButtonRow;
 begin
-  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SprintStartTitle, [AKey]),
+  inherited CreateDialog(AOwner, TAtlasSprintStrings.Fmt(TAtlasSprintTextId.SprintStartTitle, [AKey]),
     cDialogWidth);
   FQuestion := TAtlasWrapLabel.Create(Self);
   // Lage vor Align und Parent wie bei AddRow.
@@ -81,15 +81,15 @@ begin
   FDontAsk.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap), ScaleValue(cRowGap), 0);
   FDontAsk.Align := alTop;
   FDontAsk.Parent := Self;
-  FDontAsk.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SprintStartDontAsk);
+  FDontAsk.Caption := TAtlasSprintStrings.Text(TAtlasSprintTextId.SprintStartDontAsk);
 
   mButtons := AddButtonRow;
-  FWithout := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SprintStartWithout));
+  FWithout := mButtons.AddButton(TAtlasSprintStrings.Text(TAtlasSprintTextId.SprintStartWithout));
   FWithout.ModalResult := mrNo;
-  FAdd := mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SprintStartAccept),
+  FAdd := mButtons.AddButton(TAtlasSprintStrings.Text(TAtlasSprintTextId.SprintStartAccept),
     TAtlasButtonKind.Default);
   FAdd.ModalResult := mrYes;
-  mButtons.AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SprintStartCancel), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasSprintStrings.Text(TAtlasSprintTextId.SprintStartCancel), TAtlasButtonKind.Cancel);
   FitHeight;
   AllowResize(nil);
   ActiveControl := FAdd;
@@ -102,15 +102,15 @@ var
 begin
   if ASprint.Finish > 0 then
   begin
-    mAdd := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SprintStartAdd, [ASprint.Sprint,
-      FormatDateTime(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SprintStartDate),
+    mAdd := TAtlasSprintStrings.Fmt(TAtlasSprintTextId.SprintStartAdd, [ASprint.Sprint,
+      FormatDateTime(TAtlasSprintStrings.Text(TAtlasSprintTextId.SprintStartDate),
       TTimeZone.Local.ToLocalTime(ASprint.Finish), TFormatSettings.Invariant)]);
   end
   else
   begin
-    mAdd := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SprintStartAddOpen, [ASprint.Sprint]);
+    mAdd := TAtlasSprintStrings.Fmt(TAtlasSprintTextId.SprintStartAddOpen, [ASprint.Sprint]);
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SprintStartQuestion, [AKey, ATitle, ASprint.Board]) +
+  Result := TAtlasSprintStrings.Fmt(TAtlasSprintTextId.SprintStartQuestion, [AKey, ATitle, ASprint.Board]) +
     sLineBreak + mAdd;
 end;
 

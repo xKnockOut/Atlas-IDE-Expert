@@ -59,7 +59,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.MyIssues.Strings;
 
 const
   cMenuLine = '-';
@@ -82,7 +82,7 @@ begin
   FLabel.Margins.SetBounds(cMargin, cMargin, cMargin, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
-  FLabel.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectHint);
+  FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectHint);
   FLabel.Font.Color := clHotLight;
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
@@ -98,7 +98,7 @@ var
   mName: string;
   mIndex: Integer;
 begin
-  mName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAuto);
+  mName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAuto);
   mIndex := TAtlasTrackerProjects.IndexOfChoice(AView.ProjectChoices, AView.ProjectKey);
   if mIndex >= 0 then
   begin
@@ -106,9 +106,9 @@ begin
   end
   else if AView.ProjectKey = TAtlasTrackerProjects.cAllKey then
   begin
-    mName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAll);
+    mName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAll);
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesProjectLabel, [mName]);
+  Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesProjectLabel, [mName]);
 end;
 
 function TAtlasTrackerProjectPicker.Visible: Boolean;
@@ -148,10 +148,10 @@ var
 begin
   FMenu.Items.Clear;
   FKeys := nil;
-  mAuto := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAutoNone);
+  mAuto := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAutoNone);
   if FView.AutomaticName <> '' then
   begin
-    mAuto := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesProjectAutoItem, [FView.AutomaticName]);
+    mAuto := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesProjectAutoItem, [FView.AutomaticName]);
   end;
   AddItem(mAuto, '', FView.ProjectKey = '');
   for mChoice in FView.ProjectChoices do
@@ -160,14 +160,14 @@ begin
   end;
   if FView.AllProjects and (Length(FView.ProjectChoices) > 1) then
   begin
-    AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAll), TAtlasTrackerProjects.cAllKey,
+    AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAll), TAtlasTrackerProjects.cAllKey,
       FView.ProjectKey = TAtlasTrackerProjects.cAllKey);
   end;
   mItem := TMenuItem.Create(FMenu);
   mItem.Caption := cMenuLine;
   FMenu.Items.Add(mItem);
   mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectEdit);
+  mItem.Caption := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectEdit);
   mItem.OnClick := EditClick;
   FMenu.Items.Add(mItem);
 end;

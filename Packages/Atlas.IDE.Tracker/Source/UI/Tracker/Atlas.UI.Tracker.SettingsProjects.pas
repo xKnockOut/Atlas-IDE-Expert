@@ -89,7 +89,7 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings;
 
 const
   cMatchColumn = 230;
@@ -148,17 +148,17 @@ end;
 
 procedure TAtlasTrackerProjectsPart.BuildList;
 begin
-  FRows.AddTitle(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjects));
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjects));
   FAnchor := FRows.AddKeyedPanel(TRows.cListRow, TAtlasTrackerSettingsTables.cProjectsKey);
   // Wie die Verbindungen: die Zeilen erst mit Fenster (Refresh, auch aus WindowReady).
   FView.List := FRows.AddList(FAnchor, SelectItem);
   FView.List.OnCustomDrawItem := DrawItem;
   FRows.AddColumn(FView.List, TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatch), cMatchColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection),
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectConnection),
     cConnectionColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject),
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectProject),
     cProjectColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesPaths), cPathsColumn);
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPaths), cPathsColumn);
   FRows.AddColumn(FView.List, TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectSource), cSourceColumn);
 end;
 
@@ -169,10 +169,10 @@ begin
     TRows.cWideWidth), FAnchor);
   FView.Connection := TAtlasChoiceBox.Create(FRows.Owner);
   FView.Connection.OnChange := ConnectionChange;
-  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection),
+  FRows.Attach(FRows.AddLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectConnection),
     FView.Connection, TRows.cFieldWidth), FAnchor);
   FView.Project := FRows.NewEdit(ProjectChange);
-  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject),
+  FRows.Attach(FRows.AddLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectProject),
     FView.Project, TRows.cFieldWidth), FAnchor);
   // Arbeitskopien (#1926).
   FPaths := TAtlasTrackerPathsPart.Create(FRows, FHooks, FAnchor,
@@ -217,7 +217,7 @@ begin
   FView.AddMenu := TPopupMenu.Create(FRows.Owner);
   AddMenuItem(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectAddFile), AddFileClick);
   AddMenuItem(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectAddFolder), AddFolderClick);
-  FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectsHint), FAnchor);
+  FRows.AddHint(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectsHint), FAnchor);
 end;
 
 function TAtlasTrackerProjectsPart.SourceText(const AMapping: TAtlasTrackerProjectMapping): string;
@@ -234,12 +234,12 @@ begin
     TAtlasTrackerProjectNote.ReadOnly:
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly);
     TAtlasTrackerProjectNote.NoConnection:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectNoConnection);
+      Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectNoConnection);
     TAtlasTrackerProjectNote.ConnectionMissing:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesProjectConnectionMissing,
+      Result := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesProjectConnectionMissing,
         [AMapping.Connection]);
     TAtlasTrackerProjectNote.Covered:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectCoveredHint);
+      Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectCoveredHint);
   else
     Result := '';
   end;
