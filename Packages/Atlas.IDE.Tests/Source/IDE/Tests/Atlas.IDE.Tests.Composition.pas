@@ -177,7 +177,7 @@ procedure AffectedRunTests(const AFileName: string; const ATests: TArray<string>
 begin
   if GTests <> nil then
   begin
-    GTests.RunTests(AFileName, ATests);
+    GTests.RunTests(AFileName, ATests, False);
   end;
 end;
 
@@ -580,7 +580,7 @@ procedure TAtlasTestsModule.RunTests(const AFileName: string; const ATests: TArr
 begin
   if GTests <> nil then
   begin
-    GTests.RunTests(AFileName, ATests);
+    GTests.RunTests(AFileName, ATests, False);
   end
   else
   begin

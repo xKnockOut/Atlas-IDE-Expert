@@ -16,6 +16,7 @@ const
   cMaxCheckMax = 20000;
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
+  cDefaultTestsAffectedDepth = 3;
   cMaxTestsAffectedDepth = 5;
   /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
   cMinTestsCoveredByDepth = 1;
@@ -304,7 +305,7 @@ begin
   TestsBuildFirst := True;
   TestsAffected := True;
   TestsLeakSetup := True;
-  TestsAffectedDepth := 3;
+  TestsAffectedDepth := cDefaultTestsAffectedDepth;
   TestsAffectedBeforeCommit := False;
   TestsStale := True;
   TestsStaleUnits := False;

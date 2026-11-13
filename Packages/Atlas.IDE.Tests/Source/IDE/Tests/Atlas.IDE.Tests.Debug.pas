@@ -273,7 +273,7 @@ begin
   begin
     Exit;
   end;
-  FTests.RunTests(AFileName, ASelection.Names);
+  FTests.RunTests(AFileName, ASelection.Names, False);
 end;
 
 procedure TAtlasIdeTestDebugger.Debug(const AFileName: string; const ASelection: TAtlasTestSelection);

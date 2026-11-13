@@ -45,7 +45,7 @@ type
     FLine: Integer;
     FToday: TToday;
     function Ask(const ACommand, AArgumentsJson: string; const ADone: TProc<string>): Boolean;
-    function TodayLock: string;
+    class function TodayLock: string; static;
     procedure Show(const ASuggestion: TAtlasBoundarySuggestion);
     procedure Apply(const ACases: TArray<TAtlasBoundaryCase>; AToday: Boolean);
     procedure Applied(const AJson: string; const ACases: TArray<TAtlasBoundaryCase>; AToday: Boolean);
@@ -155,7 +155,7 @@ begin
   end;
 end;
 
-function TAtlasIdeBoundaryCases.TodayLock: string;
+class function TAtlasIdeBoundaryCases.TodayLock: string;
 begin
   Result := '';
   if TAtlasIdeTestProjects.TestProjects('') = nil then
