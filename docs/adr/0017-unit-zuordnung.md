@@ -143,6 +143,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.LogRedaction` | `Core/Diagnostics/Atlas.Core.Diagnostics.LogRedaction.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.ModuleHost` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas` | gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455 |
 | `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
 | `Atlas.Core.Diagnostics.Package` | `Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.PluginReport` | `Core/Diagnostics/Atlas.Core.Diagnostics.PluginReport.pas` | Ordner `Core/Diagnostics` |
