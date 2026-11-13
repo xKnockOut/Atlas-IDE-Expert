@@ -38,7 +38,8 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Impact,
-  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Report,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Shell.Platform,
   Shell.Bootstrap,
   Shell.AffectedTests,
@@ -159,16 +160,16 @@ function Finish(const AOptions: TCommandLineOptions; var AFound: TAffectedResult
 var
   mOutput, mArgument: string;
 begin
-  if (AFormat = TAffectedFormat.DUnitX) and not TAffectedTests.DUnitXArgument(AFound, mArgument) then
+  if (AFormat = TAffectedFormat.DUnitX) and not TAffectedReport.DUnitXArgument(AFound, mArgument) then
   begin
     // Zu viele Namen für eine Befehlszeile: dann ohne --run alle.
     AFound.All := True;
     AFound.AllReason := TShellAffectedTests.TooManyForRun;
   end;
-  mOutput := TAffectedTests.Render(AFound, AFormat);
+  mOutput := TAffectedReport.Render(AFound, AFormat);
   if AFormat = TAffectedFormat.DUnitX then
   begin
-    TLinterOutput.Error(TrimRight(TAffectedTests.ToText(AFound)));
+    TLinterOutput.Error(TrimRight(TAffectedReport.ToText(AFound)));
     if mOutput <> '' then
     begin
       mOutput := mOutput + sLineBreak;
@@ -215,7 +216,7 @@ var
   mTarget: TLinterTarget;
 begin
   TLinterOutput.Warnings(AOptions);
-  if not TAffectedTests.TryParseFormat(AOptions.FormatText, mFormat) then
+  if not TAffectedReport.TryParseFormat(AOptions.FormatText, mFormat) then
   begin
     TLinterOutput.Error(cTexts[TLinterAffectedText.FormatInvalid].Fmt([AOptions.FormatText]));
     Exit(TFindingsOutput.cExitFailure);

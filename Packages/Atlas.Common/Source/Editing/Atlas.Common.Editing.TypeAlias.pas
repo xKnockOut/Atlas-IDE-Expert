@@ -155,7 +155,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.TypeAlias.Texts;
+  Atlas.Common.Editing.TypeAlias.Texts,
+  Atlas.Common.Editing.TypeAlias.Names;
 
 class function TTypeAlias.IntroduceTitle: string;
 begin
@@ -193,14 +194,9 @@ begin
 end;
 
 const
-  cTypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType, TSyntaxKind.ProcedureType,
-    TSyntaxKind.PointerType, TSyntaxKind.ClassOfType, TSyntaxKind.SubrangeType, TSyntaxKind.FileType];
   /// <summary>Stellen, an denen ein Typausdruck ohne Typnamen stehen darf.</summary>
   cAnonymousContexts = [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
     TSyntaxKind.InlineConst, TSyntaxKind.TypeDecl, TSyntaxKind.ArrayType];
-  /// <summary>Deklarationen, deren Typ einen Alias bekommen kann.</summary>
-  cDeclarationContexts = [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
-    TSyntaxKind.InlineConst, TSyntaxKind.Parameter, TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl];
 
 function Fail(const AReason: string; out AOut: string): Boolean;
 begin
@@ -211,40 +207,6 @@ end;
 function Where(const AFileName: string; ALine: Integer): string;
 begin
   Result := cTexts[TEditingTypeAliasText.Line].Fmt([ExtractFileName(AFileName), ALine + 1]);
-end;
-
-function LastPart(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
-
-function Capitalized(const AName: string): string;
-begin
-  Result := AName;
-  if Result <> '' then
-  begin
-    Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
-  end;
-end;
-
-function IsUpper(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z']);
-end;
-
-/// <summary>TKunde -> Kunde, FGroups -> Groups; eingebaute Namen groß geschrieben.</summary>
-function Bare(const AName: string): string;
-begin
-  Result := LastPart(Trim(AName));
-  if (Length(Result) >= 2) and CharInSet(Result[1], ['T', 'F', 'L', 'A', 'G', 'I']) and IsUpper(Result[2]) then
-  begin
-    Result := Copy(Result, 2, MaxInt);
-  end;
-  Result := Capitalized(Result);
 end;
 
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
@@ -273,11 +235,6 @@ begin
   until not mFound;
 end;
 
-function IsTypeNode(ANode: TSyntaxNode): Boolean;
-begin
-  Result := (ANode <> nil) and (ANode.Kind in cTypeKinds);
-end;
-
 /// <summary>Lohnt ein Alias für ANode?</summary>
 function Worth(ANode: TSyntaxNode): Boolean;
 begin
@@ -302,7 +259,7 @@ begin
     TSyntaxKind.Parameter:
       Result := (ANode.Parent <> nil) and InTypeChain(ANode.Parent);
   else
-    Result := ANode.Kind in cTypeKinds;
+    Result := ANode.Kind in TTypeAliasNames.cTypeKinds;
   end;
 end;
 
@@ -329,9 +286,9 @@ begin
   mParent := ANode.Parent;
   Result := (mParent <> nil) and (mParent.Kind <> TSyntaxKind.TypeDecl) and
     not ((ANode.Kind = TSyntaxKind.ArrayType) and (mParent.Kind = TSyntaxKind.Parameter));
-  if Result and not IsTypeNode(mParent) and (mParent.Kind <> TSyntaxKind.GenericArgs) then
+  if Result and not TTypeAliasNames.IsTypeNode(mParent) and (mParent.Kind <> TSyntaxKind.GenericArgs) then
   begin
-    Result := mParent.Kind in cDeclarationContexts;
+    Result := mParent.Kind in TTypeAliasNames.cDeclarationContexts;
   end;
 end;
 
@@ -401,167 +358,6 @@ begin
   end;
 end;
 
-/// <summary>Innerster benannter Typ: letztes Typargument bzw. Element, sonst der Name selbst.</summary>
-function ElementName(ANode: TSyntaxNode): string;
-var
-  mArgs: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := '';
-  case ANode.Kind of
-    TSyntaxKind.TypeReference:
-      begin
-        mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
-        if (mArgs <> nil) and (mArgs.ChildCount > 0) then
-        begin
-          Exit(ElementName(mArgs[mArgs.ChildCount - 1]));
-        end;
-        Result := Bare(ANode.Name);
-      end;
-    TSyntaxKind.ArrayType, TSyntaxKind.SetType:
-      for mIndex := ANode.ChildCount - 1 downto 0 do
-      begin
-        if IsTypeNode(ANode[mIndex]) and (ANode[mIndex].Kind <> TSyntaxKind.SubrangeType) then
-        begin
-          Exit(ElementName(ANode[mIndex]));
-        end;
-      end;
-  else
-    // Übrige Arten: nichts zu tun.
-  end;
-end;
-
-function ArrayDepth(ANode: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := 0;
-  while (ANode <> nil) and (ANode.Kind = TSyntaxKind.ArrayType) do
-  begin
-    Inc(Result);
-    mIndex := ANode.ChildCount - 1;
-    if mIndex < 0 then
-    begin
-      Break;
-    end;
-    ANode := ANode[mIndex];
-  end;
-end;
-
-/// <summary>Name aus der Deklaration um ANode: Feld, Variable, Parameter, Property, Routine; '' ohne.</summary>
-function ContextName(ANode: TSyntaxNode): string;
-var
-  mOwner: TSyntaxNode;
-begin
-  Result := '';
-  mOwner := ANode.Parent;
-  if (mOwner = nil) or not (mOwner.Kind in cDeclarationContexts) then
-  begin
-    Exit;
-  end;
-  Result := Trim(mOwner.Name);
-  if Pos(',', Result) > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, Pos(',', Result) - 1));
-  end;
-  Result := Bare(Result);
-  // Kurze Namen (A, I, LX) sagen nichts über den Typ.
-  if Length(Result) < 3 then
-  begin
-    Result := '';
-  end;
-end;
-
-/// <summary>Name für einen prozeduralen Typ: TBaseFunc bzw. TBaseProc, ohne Base TCallback….</summary>
-function ProcedureTypeName(const ABase: string; ANode: TSyntaxNode): string;
-var
-  mBase: string;
-begin
-  mBase := ABase;
-  if mBase = '' then
-  begin
-    mBase := 'Callback';
-  end;
-  if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
-  begin
-    Result := 'T' + mBase + 'Func';
-  end
-  else
-  begin
-    Result := 'T' + mBase + 'Proc';
-  end;
-  if EndsText('FuncFunc', Result) or EndsText('ProcProc', Result) then
-  begin
-    Result := Copy(Result, 1, Length(Result) - 4);
-  end;
-end;
-
-/// <summary>Name für einen generischen Typ: aus Element und Kontext bzw. eigenem Namen.</summary>
-function ReferenceTypeName(const ABase, AElement: string; ANode: TSyntaxNode): string;
-begin
-  if ABase = '' then
-  begin
-    Result := 'T' + AElement + Bare(ANode.Name);
-  end
-  else if ContainsText(ABase, AElement) then
-  begin
-    Result := 'T' + ABase;
-  end
-  else
-  begin
-    Result := 'T' + AElement + ABase;
-  end;
-end;
-
-/// <summary>Name für ein Array: aus dem Kontext, sonst Element mit Array, Matrix oder ArraynD.</summary>
-function ArrayTypeName(const ABase, AElement: string; ANode: TSyntaxNode): string;
-var
-  mDepth: Integer;
-begin
-  if ABase <> '' then
-  begin
-    Exit('T' + ABase);
-  end;
-  mDepth := ArrayDepth(ANode);
-  if mDepth = 2 then
-  begin
-    Result := 'T' + AElement + 'Matrix';
-  end
-  else if mDepth > 2 then
-  begin
-    Result := Format('T%sArray%dD', [AElement, mDepth]);
-  end
-  else
-  begin
-    Result := 'T' + AElement + 'Array';
-  end;
-end;
-
-function Suggest(ANode: TSyntaxNode): string;
-var
-  mBase, mElement: string;
-begin
-  mBase := ContextName(ANode);
-  mElement := ElementName(ANode);
-  case ANode.Kind of
-    TSyntaxKind.ProcedureType:
-      Result := ProcedureTypeName(mBase, ANode);
-    TSyntaxKind.TypeReference:
-      Result := ReferenceTypeName(mBase, mElement, ANode);
-    TSyntaxKind.ArrayType:
-      Result := ArrayTypeName(mBase, mElement, ANode);
-  else
-    if mBase <> '' then
-    begin
-      Result := 'T' + mBase;
-    end
-    else
-    begin
-      Result := 'T' + mElement + 'Set';
-    end;
-  end;
-end;
-
 function IsIdentifier(const AName: string): Boolean;
 var
   mIndex: Integer;
@@ -624,7 +420,7 @@ begin
         begin
           if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl,
             TSyntaxKind.RoutineDecl, TSyntaxKind.Field, TSyntaxKind.PropertyDecl]) and
-            SameText(LastPart(ANode.Name), AName) then
+            SameText(TTypeAliasNames.LastPart(ANode.Name), AName) then
           begin
             Taken := True;
           end;
@@ -719,7 +515,7 @@ begin
   end;
   if mName = '' then
   begin
-    mName := LastPart(ANode.Name);
+    mName := TTypeAliasNames.LastPart(ANode.Name);
   end;
   Result := LowerCase(mName);
   mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
@@ -847,7 +643,7 @@ begin
   Result.TypeText := NodeText(AText, ANode);
   Result.Kind := ANode.Kind;
   Result.OpenParams := UsedParams(ANode, GenericParamsAround(ANode));
-  Result.Suggestion := FreeName(ATree, AFileName, Suggest(ANode), ANode.StartOffset, ALookup);
+  Result.Suggestion := FreeName(ATree, AFileName, TTypeAliasNames.Suggest(ANode), ANode.StartOffset, ALookup);
 end;
 
 class function TTypeAlias.Targets(const AText: string; ATree: TSyntaxTree; const AFileName: string;
@@ -867,7 +663,7 @@ begin
   mInner := nil;
   while (mNode <> nil) and InTypeChain(mNode) do
   begin
-    if (mNode.Kind in cTypeKinds) and Worth(mNode) and Allowed(mNode) then
+    if (mNode.Kind in TTypeAliasNames.cTypeKinds) and Worth(mNode) and Allowed(mNode) then
     begin
       if mInner = nil then
       begin
@@ -1098,7 +894,7 @@ begin
   Result := True;
   for mNameNode in NamesIn(ANode) do
   begin
-    mLocal := LocalType(ATree, LastPart(mNameNode.Name), mForwardEnd);
+    mLocal := LocalType(ATree, TTypeAliasNames.LastPart(mNameNode.Name), mForwardEnd);
     if (mLocal <> nil) and not InInterface(mLocal) then
     begin
       Result := False;
@@ -1389,7 +1185,7 @@ begin
   Result := '';
   for mNameNode in NamesIn(Node) do
   begin
-    mLocal := LocalType(Declaring.Tree, LastPart(mNameNode.Name), mForwardEnd);
+    mLocal := LocalType(Declaring.Tree, TTypeAliasNames.LastPart(mNameNode.Name), mForwardEnd);
     if (mLocal = nil) or (mLocal.EndOffset <= Insert) or (mForwardEnd >= 0) and (mForwardEnd <= Insert) then
     begin
       Continue;
@@ -1570,7 +1366,7 @@ begin
   Result := nil;
   for mIndex := 0 to ADecl.ChildCount - 1 do
   begin
-    if ADecl[mIndex].Kind in cTypeKinds then
+    if ADecl[mIndex].Kind in TTypeAliasNames.cTypeKinds then
     begin
       Result := ADecl[mIndex];
     end;

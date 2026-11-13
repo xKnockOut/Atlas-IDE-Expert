@@ -21,7 +21,7 @@
 interface
 
 uses
-  Atlas.Common.Semantics.ExpressionTypes;
+  Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -72,6 +72,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpressionTypes,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Semantics.TypeIdentity;

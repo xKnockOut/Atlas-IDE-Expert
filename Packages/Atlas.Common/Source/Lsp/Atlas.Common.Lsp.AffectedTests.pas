@@ -39,99 +39,14 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Lsp.AffectedTests.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Was sich geändert hat: ein Symbol oder die Unit als Ganzes (uses, initialization).</summary>
-  TAffectedChangeKind = (Symbol, WholeUnit);
-  /// <summary>Ausgabe von --affected-tests und get_affected_tests.</summary>
-  TAffectedFormat = (Text, Json, DUnitX);
-{$SCOPEDENUMS OFF}
-
-  TAffectedChange = record
-    Kind: TAffectedChangeKind;
-    /// <summary>Das geänderte Symbol; bei WholeUnit Name und UnitName = Unit, FileName = ihre Datei.</summary>
-    Item: THierarchyItem;
-    /// <summary>Geänderte Datei (bei .dfm und .inc diese, sonst die Unit).</summary>
-    Source: string;
-    /// <summary>Wo die Änderung liegt: interface, implementation, initialization, Formular, Include.</summary>
-    Place: string;
-    /// <summary>"TBaseline.Match" bzw. "Unit Atlas.Foo".</summary>
-    function Text: string;
-  end;
-
-  /// <summary>Geänderte Datei, die keine Tests betrifft, mit Grund.</summary>
-  TAffectedSkipped = record
-    FileName: string;
-    Reason: string;
-  end;
-
-  TAffectedReason = record
-    /// <summary>Text der geänderten Stelle (TAffectedChange.Text).</summary>
-    Change: string;
-    /// <summary>Weg von der geänderten Stelle bis zum Test, beide eingeschlossen.</summary>
-    Path: TArray<string>;
-    /// <summary>Ein Schritt des Wegs ist erschlossen (#1119), nicht sicher.</summary>
-    Inferred: Boolean;
-    /// <summary>"TBaseline.Match → TFoo.Bar → TFooTests.Test" mit „(erschlossen)“.</summary>
-    function Text: string;
-  end;
-
-  TAffectedTest = record
-    /// <summary>Unit.Fixture.Methode, bei einer ganzen Fixture Unit.Fixture.</summary>
-    Name: string;
-    /// <summary>Namen für --run bzw. run_tests (bei [TestCase] je Fall).</summary>
-    RunNames: TArray<string>;
-    UnitName: string;
-    Fixture: string;
-    /// <summary>'' = die ganze Fixture.</summary>
-    Method: string;
-    FileName: string;
-    /// <summary>0-basiert: Kopf der Testmethode bzw. Deklaration der Fixture.</summary>
-    Line: Integer;
-    Reasons: TArray<TAffectedReason>;
-  end;
-
-  /// <summary>Geänderte Datei mit ihren Zeilen; ohne Zeilen (HasLines = False) gilt sie als ganz geändert.</summary>
-  TAffectedInput = record
-    FileName: string;
-    Lines: TChangedLines;
-    HasLines: Boolean;
-  end;
-
-  TAffectedRequest = record
-    /// <summary>Projektdateien aller Projekte (Referenzsuche).</summary>
-    Files: TArray<string>;
-    /// <summary>Hauptdateien der Testprogramme (.dpr); ihre Änderung betrifft alle Tests.</summary>
-    TestPrograms: TArray<string>;
-    /// <summary>Tiefe, Treffersicherheit, Testunits und Zeitlimit je Symbol.</summary>
-    Options: TImpactOptions;
-    /// <summary>Nur für die Ausgabe: Ref, Revision oder BASE.</summary>
-    Base: string;
-  end;
-
-  TAffectedResult = record
-    Base: string;
-    Depth: Integer;
-    /// <summary>Alle Tests sind nötig (AllReason sagt warum).</summary>
-    All: Boolean;
-    AllReason: string;
-    Changes: TArray<TAffectedChange>;
-    Skipped: TArray<TAffectedSkipped>;
-    Tests: TArray<TAffectedTest>;
-    Limits: TImpactLimits;
-    /// <summary>Alle Namen für --run bzw. run_tests, ohne Doppelte, in Reihenfolge der Tests.</summary>
-    function RunNames: TArray<string>;
-  end;
-
   TAffectedTests = class
   public const
     cMethod = 'atlas/affectedTests';
@@ -161,18 +76,6 @@ type
       TArray<TAffectedTest>; static;
     /// <summary>Tests nach Name (ohne Groß-/Kleinschreibung, bei Gleichstand ordinal), Gründe nach Text.</summary>
     class procedure Sort(var ATests: TArray<TAffectedTest>); static;
-    class function TryParseFormat(const AText: string; out AFormat: TAffectedFormat): Boolean; static;
-    class function Render(const AResult: TAffectedResult; AFormat: TAffectedFormat): string; static;
-    /// <summary>Bericht für Menschen.</summary>
-    class function ToText(const AResult: TAffectedResult): string; static;
-    /// <summary>Antwort von atlas/affectedTests und get_affected_tests mit format json; der Aufrufer übernimmt das
-    /// Objekt.</summary>
-    class function ToJson(const AResult: TAffectedResult): TJSONObject; static;
-    /// <summary>Argument --run:… für die Test-exe; '' bei allen Tests, ohne Tests oder wenn es zu lang wird
-    /// (dann False).</summary>
-    class function DUnitXArgument(const AResult: TAffectedResult; out AArgument: string): Boolean; static;
-    /// <summary>Gelesenes Ergebnis von atlas/affectedTests (Plugin, Tests).</summary>
-    class function FromJson(const AValue: TJSONValue): TAffectedResult; static;
   end;
 
 implementation
@@ -183,13 +86,14 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Lsp.Impact,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Common.Localization.Texts;
@@ -200,9 +104,7 @@ type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TAffectedTestsText = (TestProgramChanged, NotInTheProjects, NotReadable, OnlyBlankLinesOrComments,
     UnitNotInTheProjects, FormClassOfNotFound, NotUsedByAnyUnit, NoDelphiSource, TimeLimitOfTheAnalysis,
-    AllTestsNeeded, NoAffectedTestsComparedWith, AffectedTestsComparedWithDepth, Changed,
-    LimitsReachedCheckWithGreater, ProjectFileOfAnotherProject, MoreThanAffectedPlaces, WithoutInfluenceOnTestsFiles,
-    Inferred, Form);
+    ProjectFileOfAnotherProject, MoreThanAffectedPlaces, Form);
 
 const
   cTexts: array[TAffectedTestsText] of TAtlasText = (
@@ -215,83 +117,11 @@ const
     (De: 'von keiner Unit der Projekte eingebunden'; En: 'not used by any unit of the projects'),
     (De: 'keine Delphi-Quelle'; En: 'no Delphi source'),
     (De: 'Zeitlimit der Analyse erreicht'; En: 'Time limit of the analysis reached'),
-    (De: 'Alle Tests nötig: %s.'; En: 'All tests needed: %s.'),
-    (De: 'Keine betroffenen Tests gegenüber %s (Tiefe %d).'; En: 'No affected tests compared with %s (depth %d).'),
-    (De: '%d betroffene Tests gegenüber %s (Tiefe %d), davon %d ganze Fixtures:';
-     En: '%d affected tests compared with %s (depth %d), %d of them whole fixtures:'),
-    (De: 'Geändert (%d):'; En: 'Changed (%d):'),
-    (De: 'Grenzen erreicht: %s; mit größerer Tiefe oder allen Tests prüfen.';
-     En: 'Limits reached: %s; check with greater depth or all tests.'),
     (De: 'Projektdatei eines anderen Projekts'; En: 'project file of another project'),
     (De: 'mehr als %d betroffene Stellen'; En: 'more than %d affected places'),
-    (De: 'Ohne Einfluss auf Tests: %d Dateien.'; En: 'Without influence on tests: %d files.'),
-    (De: ' (erschlossen)'; En: ' (inferred)'),
     (De: 'Formular'; En: 'form'));
 
 {$SCOPEDENUMS OFF}
-
-const
-  cArrow = ' → ';
-
-{ TAffectedChange }
-
-function TAffectedChange.Text: string;
-begin
-  if Kind = TAffectedChangeKind.WholeUnit then
-  begin
-    Result := 'Unit ' + Item.Name;
-  end
-  else if Item.Container <> '' then
-  begin
-    Result := Item.Container + '.' + Item.Name;
-  end
-  else
-  begin
-    Result := Item.Name;
-  end;
-end;
-
-{ TAffectedReason }
-
-function TAffectedReason.Text: string;
-begin
-  Result := string.Join(cArrow, Path);
-  if Result = '' then
-  begin
-    Result := Change;
-  end;
-  if Inferred then
-  begin
-    Result := Result + cTexts[TAffectedTestsText.Inferred].Text;
-  end;
-end;
-
-{ TAffectedResult }
-
-function TAffectedResult.RunNames: TArray<string>;
-var
-  mTest: TAffectedTest;
-  mName: string;
-  mSeen: TDictionary<string, Boolean>;
-begin
-  Result := nil;
-  mSeen := TDictionary<string, Boolean>.Create;
-  try
-    for mTest in Tests do
-    begin
-      for mName in mTest.RunNames do
-      begin
-        if not mSeen.ContainsKey(UpperCase(mName)) then
-        begin
-          mSeen.Add(UpperCase(mName), True);
-          Result := Result + [mName];
-        end;
-      end;
-    end;
-  finally
-    mSeen.Free;
-  end;
-end;
 
 type
   /// <summary>Eine Pascal-Datei für die Zuordnung geänderter Zeilen: Baum, Symbole, Zeilen mit Code, Abschnitte.
@@ -1565,371 +1395,6 @@ begin
     Result := mRun.Run(AResolver, AInputs, ACancellation);
   finally
     mRun.Free;
-  end;
-end;
-
-class function TAffectedTests.TryParseFormat(const AText: string; out AFormat: TAffectedFormat): Boolean;
-begin
-  Result := True;
-  if (AText = '') or SameText(AText, 'text') then
-  begin
-    AFormat := TAffectedFormat.Text;
-  end
-  else if SameText(AText, 'json') then
-  begin
-    AFormat := TAffectedFormat.Json;
-  end
-  else if SameText(AText, 'dunitx') then
-  begin
-    AFormat := TAffectedFormat.DUnitX;
-  end
-  else
-  begin
-    AFormat := TAffectedFormat.Text;
-    Result := False;
-  end;
-end;
-
-class function TAffectedTests.Render(const AResult: TAffectedResult; AFormat: TAffectedFormat): string;
-var
-  mJson: TJSONObject;
-begin
-  case AFormat of
-    TAffectedFormat.Json:
-      begin
-        mJson := ToJson(AResult);
-        try
-          Result := mJson.ToJSON([]);
-        finally
-          mJson.Free;
-        end;
-      end;
-    TAffectedFormat.DUnitX:
-      if not DUnitXArgument(AResult, Result) then
-      begin
-        Result := '';
-      end;
-  else
-    Result := ToText(AResult);
-  end;
-end;
-
-class function TAffectedTests.DUnitXArgument(const AResult: TAffectedResult; out AArgument: string): Boolean;
-var
-  mRun: string;
-begin
-  AArgument := '';
-  Result := True;
-  if AResult.All or (Length(AResult.Tests) = 0) then
-  begin
-    Exit;
-  end;
-  mRun := string.Join(',', AResult.RunNames);
-  if Length(mRun) > TDUnitXCommandLine.cMaxRunLength then
-  begin
-    Exit(False);
-  end;
-  AArgument := '--run:' + mRun;
-end;
-
-/// <summary>Kopf und Tests mit Gründen.</summary>
-function TestLines(const AResult: TAffectedResult): TArray<string>;
-var
-  mTest: TAffectedTest;
-  mReason: TAffectedReason;
-  mFixtures: Integer;
-begin
-  if AResult.All then
-  begin
-    Exit(TArray<string>.Create(cTexts[TAffectedTestsText.AllTestsNeeded].Fmt([AResult.AllReason])));
-  end;
-  if Length(AResult.Tests) = 0 then
-  begin
-    Exit(TArray<string>.Create(cTexts[TAffectedTestsText.NoAffectedTestsComparedWith].Fmt([AResult.Base,
-      AResult.Depth])));
-  end;
-  mFixtures := 0;
-  for mTest in AResult.Tests do
-  begin
-    if mTest.Method = '' then
-    begin
-      Inc(mFixtures);
-    end;
-  end;
-  Result := TArray<string>.Create(cTexts[TAffectedTestsText.AffectedTestsComparedWithDepth].Fmt([Length(AResult.Tests),
-    AResult.Base, AResult.Depth, mFixtures]));
-  for mTest in AResult.Tests do
-  begin
-    Result := Result + ['  ' + mTest.Name];
-    for mReason in mTest.Reasons do
-    begin
-      Result := Result + ['    ← ' + mReason.Text];
-    end;
-  end;
-end;
-
-function ChangeLines(const AResult: TAffectedResult): TArray<string>;
-var
-  mChange: TAffectedChange;
-begin
-  Result := nil;
-  if Length(AResult.Changes) = 0 then
-  begin
-    Exit;
-  end;
-  Result := TArray<string>.Create('', cTexts[TAffectedTestsText.Changed].Fmt([Length(AResult.Changes)]));
-  for mChange in AResult.Changes do
-  begin
-    Result := Result + [Format('  %s (%s, %s)', [mChange.Text, mChange.Place, ExtractFileName(mChange.Source)])];
-  end;
-end;
-
-function LimitNames(ALimits: TImpactLimits): TArray<string>;
-var
-  mLimit: TImpactLimit;
-begin
-  Result := nil;
-  for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
-  begin
-    if mLimit in ALimits then
-    begin
-      Result := Result + [TImpactAnalysis.LimitName(mLimit)];
-    end;
-  end;
-end;
-
-class function TAffectedTests.ToText(const AResult: TAffectedResult): string;
-var
-  mLines, mLimitNames: TArray<string>;
-begin
-  mLines := TestLines(AResult) + ChangeLines(AResult);
-  if Length(AResult.Skipped) > 0 then
-  begin
-    mLines := mLines + ['', cTexts[TAffectedTestsText.WithoutInfluenceOnTestsFiles].Fmt([Length(AResult.Skipped)])];
-  end;
-  mLimitNames := LimitNames(AResult.Limits);
-  if mLimitNames <> nil then
-  begin
-    mLines := mLines + ['', cTexts[TAffectedTestsText.LimitsReachedCheckWithGreater].Fmt([string.Join(', ',
-      mLimitNames)])];
-  end;
-  if not AResult.All and (Length(AResult.Tests) > 0) then
-  begin
-    mLines := mLines + ['', 'run_tests tests: ' + string.Join(', ', AResult.RunNames)];
-  end;
-  Result := string.Join(sLineBreak, mLines) + sLineBreak;
-end;
-
-function StringsJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
-function ReasonJson(const AReason: TAffectedReason): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('change', AReason.Change);
-  Result.AddPair('path', StringsJson(AReason.Path));
-  Result.AddPair('inferred', TJSONBool.Create(AReason.Inferred));
-end;
-
-function TestJson(const ATest: TAffectedTest): TJSONObject;
-var
-  mReasons: TJSONArray;
-  mReason: TAffectedReason;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('name', ATest.Name);
-  Result.AddPair('unit', ATest.UnitName);
-  Result.AddPair('fixture', ATest.Fixture);
-  Result.AddPair('method', ATest.Method);
-  Result.AddPair('run', StringsJson(ATest.RunNames));
-  Result.AddPair('uri', TDocumentUris.FromPath(ATest.FileName));
-  Result.AddPair('line', TJSONNumber.Create(ATest.Line));
-  mReasons := TJSONArray.Create;
-  Result.AddPair('reasons', mReasons);
-  for mReason in ATest.Reasons do
-  begin
-    mReasons.AddElement(ReasonJson(mReason));
-  end;
-end;
-
-function ChangeJson(const AChange: TAffectedChange): TJSONObject;
-const
-  cKinds: array[TAffectedChangeKind] of string = ('symbol', 'unit');
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('kind', cKinds[AChange.Kind]);
-  Result.AddPair('name', AChange.Text);
-  Result.AddPair('place', AChange.Place);
-  Result.AddPair('uri', TDocumentUris.FromPath(AChange.Source));
-end;
-
-function SkippedJson(const ASkipped: TArray<TAffectedSkipped>): TJSONArray;
-var
-  mSkip: TAffectedSkipped;
-  mEntry: TJSONObject;
-begin
-  Result := TJSONArray.Create;
-  for mSkip in ASkipped do
-  begin
-    mEntry := TJSONObject.Create;
-    Result.AddElement(mEntry);
-    mEntry.AddPair('uri', TDocumentUris.FromPath(mSkip.FileName));
-    mEntry.AddPair('reason', mSkip.Reason);
-  end;
-end;
-
-function LimitsJson(ALimits: TImpactLimits): TJSONObject;
-var
-  mLimit: TImpactLimit;
-begin
-  Result := TJSONObject.Create;
-  for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
-  begin
-    Result.AddPair(TImpactAnalysis.LimitName(mLimit), TJSONBool.Create(mLimit in ALimits));
-  end;
-end;
-
-class function TAffectedTests.ToJson(const AResult: TAffectedResult): TJSONObject;
-var
-  mTests, mChanges: TJSONArray;
-  mTest: TAffectedTest;
-  mChange: TAffectedChange;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('base', AResult.Base);
-  Result.AddPair('depth', TJSONNumber.Create(AResult.Depth));
-  Result.AddPair('all', TJSONBool.Create(AResult.All));
-  Result.AddPair('reason', AResult.AllReason);
-  if AResult.All then
-  begin
-    Result.AddPair('run', TJSONArray.Create);
-  end
-  else
-  begin
-    Result.AddPair('run', StringsJson(AResult.RunNames));
-  end;
-  mTests := TJSONArray.Create;
-  Result.AddPair('tests', mTests);
-  for mTest in AResult.Tests do
-  begin
-    mTests.AddElement(TestJson(mTest));
-  end;
-  mChanges := TJSONArray.Create;
-  Result.AddPair('changes', mChanges);
-  for mChange in AResult.Changes do
-  begin
-    mChanges.AddElement(ChangeJson(mChange));
-  end;
-  Result.AddPair('skipped', SkippedJson(AResult.Skipped));
-  Result.AddPair('limits', LimitsJson(AResult.Limits));
-end;
-
-/// <summary>Werte des Arrays AName in AEntry; nil ohne.</summary>
-function StringsIn(AEntry: TJSONObject; const AName: string): TArray<string>;
-var
-  mArray: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AEntry.TryGetValue<TJSONArray>(AName, mArray) then
-  begin
-    for mItem in mArray do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
-function ReasonOf(AEntry: TJSONObject): TAffectedReason;
-begin
-  Result := Default(TAffectedReason);
-  AEntry.TryGetValue<string>('change', Result.Change);
-  AEntry.TryGetValue<Boolean>('inferred', Result.Inferred);
-  Result.Path := StringsIn(AEntry, 'path');
-end;
-
-function TestOf(AEntry: TJSONObject): TAffectedTest;
-var
-  mUri: string;
-  mReasons: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := Default(TAffectedTest);
-  AEntry.TryGetValue<string>('name', Result.Name);
-  AEntry.TryGetValue<string>('unit', Result.UnitName);
-  AEntry.TryGetValue<string>('fixture', Result.Fixture);
-  AEntry.TryGetValue<string>('method', Result.Method);
-  AEntry.TryGetValue<Integer>('line', Result.Line);
-  if AEntry.TryGetValue<string>('uri', mUri) then
-  begin
-    Result.FileName := TDocumentUris.ToPath(mUri);
-  end;
-  Result.RunNames := StringsIn(AEntry, 'run');
-  if not AEntry.TryGetValue<TJSONArray>('reasons', mReasons) then
-  begin
-    Exit;
-  end;
-  for mItem in mReasons do
-  begin
-    if mItem is TJSONObject then
-    begin
-      Result.Reasons := Result.Reasons + [ReasonOf(TJSONObject(mItem))];
-    end;
-  end;
-end;
-
-function LimitsOf(ALimits: TJSONObject): TImpactLimits;
-var
-  mLimit: TImpactLimit;
-  mFlag: Boolean;
-begin
-  Result := [];
-  for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
-  begin
-    if ALimits.TryGetValue<Boolean>(TImpactAnalysis.LimitName(mLimit), mFlag) and mFlag then
-    begin
-      Include(Result, mLimit);
-    end;
-  end;
-end;
-
-class function TAffectedTests.FromJson(const AValue: TJSONValue): TAffectedResult;
-var
-  mRoot, mLimits: TJSONObject;
-  mArray: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := Default(TAffectedResult);
-  if not (AValue is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mRoot := TJSONObject(AValue);
-  mRoot.TryGetValue<string>('base', Result.Base);
-  mRoot.TryGetValue<Integer>('depth', Result.Depth);
-  mRoot.TryGetValue<Boolean>('all', Result.All);
-  mRoot.TryGetValue<string>('reason', Result.AllReason);
-  if mRoot.TryGetValue<TJSONArray>('tests', mArray) then
-  begin
-    for mItem in mArray do
-    begin
-      if mItem is TJSONObject then
-      begin
-        Result.Tests := Result.Tests + [TestOf(TJSONObject(mItem))];
-      end;
-    end;
-  end;
-  if mRoot.TryGetValue<TJSONObject>('limits', mLimits) then
-  begin
-    Result.Limits := LimitsOf(mLimits);
   end;
 end;
 

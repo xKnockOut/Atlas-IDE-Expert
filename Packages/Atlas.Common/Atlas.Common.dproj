@@ -254,6 +254,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionCollector.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionJson.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
@@ -262,6 +263,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.Forms.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Contract.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Report.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CoveredBy.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
@@ -391,6 +394,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Names.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EnumTables.pas"/>
@@ -608,6 +612,8 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExitPoints.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Reassigned.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.Contract.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.Operators.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ResolvedSignatures.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SuggestConst.pas"/>
@@ -711,6 +717,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.VarArguments.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Types.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Conversions.pas"/>
@@ -793,6 +800,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.StringListObjects.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.ComponentInterface.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TokenScan.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>
