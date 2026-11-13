@@ -7,7 +7,10 @@
 // Zielzustände werden geordnet. Dazu die Prüfzustände (#2126,
 // issues.reviewStates), „Prüfen“ mit Build und Tests und die Vorlage seines
 // Kommentars (#2126, issues.reviewBuild, issues.reviewComment) und der
-// Schalter für wieder geöffnete Issues (#2127, issues.reopened).
+// Schalter für wieder geöffnete Issues (#2127, issues.reopened). Bei GitHub
+// das Ziel des Zustands, das Projekt und die Aufnahme ins Projekt (#2134,
+// issues.github.*); mit Projektfeld bietet „Beginnen setzt“ die Optionen des
+// Statusfeldes statt der Labels an.
 
 interface
 
@@ -18,6 +21,7 @@ uses
   Atlas.Core.Settings.Contract,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.SettingsTables,
+  Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.SettingsRows;
 
@@ -27,8 +31,12 @@ type
     SyncState: TCheckBox;
     StateField: TAtlasValueBox;
     AssigneeField: TAtlasValueBox;
+    StateTarget: TAtlasChoiceBox;
+    Project: TAtlasValueBox;
     StartState: TAtlasValueBox;
     AssignOnStart: TCheckBox;
+    AddToProject: TCheckBox;
+    LinkBranch: TCheckBox;
     StartComment: TEdit;
     EndStates: TEdit;
     EndComment: TEdit;
@@ -53,6 +61,7 @@ type
     cEndFieldsKey = 'issues.endFields';
     cReviewStatesKey = 'issues.reviewStates';
     cReviewCommentKey = 'issues.reviewComment';
+    cProjectKey = 'issues.github.project';
   private
     FRows: TAtlasTrackerSettingsRows;
     FHooks: TAtlasTrackerSettingsHooks;
@@ -71,6 +80,9 @@ type
     procedure Save(const AValues: IAtlasSettingsValues);
     /// <summary>Antwort auf „Werte vom Tracker laden“; AError leer bei Erfolg.</summary>
     procedure ValuesDone(const AValues: TAtlasTrackerValueSet; const AError: string);
+    /// <summary>Vorschläge für „Beginnen setzt“ (#2134): mit Projektfeld und geladenen Optionen des Statusfeldes
+    /// diese, sonst die Zustände (GitHub: Labels).</summary>
+    class function StartValues(const AValues: TAtlasTrackerValueSet; AInProject: Boolean): TArray<string>; static;
     property View: TAtlasTrackerWorkflowView read FView;
   end;
 
@@ -80,6 +92,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Review,
   Vcl.Graphics,
+  Atlas.UI.Tracker.GitHubStrings,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.Settings.Strings;
 
@@ -116,10 +129,21 @@ begin
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStateField), cValueLeft);
   FView.AssigneeField := FRows.AddValueBox(cAssigneeFieldKey,
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAssigneeField), cValueLeft);
+  FView.StateTarget := FRows.AddChoice('issues.github.stateTarget',
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsStateTarget),
+    TArray<string>.Create(TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsStateTargetProject),
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsStateTargetLabel)),
+    TArray<string>.Create(TAtlasTrackerWorkflow.cStateTargetProject, TAtlasTrackerWorkflow.cStateTargetLabel));
+  FView.Project := FRows.AddValueBox(cProjectKey, TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsProject),
+    cValueLeft);
   FView.StartState := FRows.AddValueBox(cStartStateKey,
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartState), cValueLeft);
   FView.AssignOnStart := FRows.AddCheck('issues.assignOnStart',
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAssignOnStart));
+  FView.AddToProject := FRows.AddCheck('issues.github.addToProject',
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsAddToProject));
+  FView.LinkBranch := FRows.AddCheck('issues.github.linkBranch',
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsLinkBranch));
   FView.StartComment := FRows.AddText(cStartCommentKey,
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartComment));
   FView.EndStates := FRows.AddText(cEndStatesKey,
@@ -161,6 +185,7 @@ begin
   FView.StateField.Value := AValues.ReadString(cStateFieldKey);
   FView.AssigneeField.Value := AValues.ReadString(cAssigneeFieldKey);
   FView.StartState.Value := AValues.ReadString(cStartStateKey);
+  FView.Project.Value := AValues.ReadString(cProjectKey);
   // Die unveränderte Vorgabe in der Sprache der Oberfläche (#1458); die Seite hat den gespeicherten Text geladen.
   FView.EndComment.Text := TAtlasTrackerWorkflow.EndCommentFor(AValues.ReadString(cEndCommentKey),
     TAtlasWorkflowStrings.English);
@@ -183,6 +208,7 @@ begin
   AValues.WriteString(cStateFieldKey, FView.StateField.Value);
   AValues.WriteString(cAssigneeFieldKey, FView.AssigneeField.Value);
   AValues.WriteString(cStartStateKey, FView.StartState.Value);
+  AValues.WriteString(cProjectKey, Trim(FView.Project.Value));
 end;
 
 procedure TAtlasTrackerWorkflowPart.LoadValuesClick(Sender: TObject);
@@ -205,9 +231,24 @@ begin
   begin
     mField := FView.StateField.Value;
   end;
+  // Optionen des Statusfeldes zum Projekt der Verbindung, sonst zum globalen (#2134).
+  if mConnection.GitHubProject = '' then
+  begin
+    mConnection.GitHubProject := Trim(FView.Project.Value);
+  end;
   FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesLoading);
   FView.LoadValues.Enabled := False;
   FHooks.OnValues(mConnection, mField);
+end;
+
+class function TAtlasTrackerWorkflowPart.StartValues(const AValues: TAtlasTrackerValueSet;
+  AInProject: Boolean): TArray<string>;
+begin
+  Result := AValues.States;
+  if AInProject and (Length(AValues.ProjectStates) > 0) then
+  begin
+    Result := AValues.ProjectStates;
+  end;
 end;
 
 procedure TAtlasTrackerWorkflowPart.ValuesDone(const AValues: TAtlasTrackerValueSet; const AError: string);
@@ -221,7 +262,8 @@ begin
   // Vorschläge für die globalen Felder; eingegebene Texte bleiben.
   FView.StateField.SetValues(AValues.StateFields);
   FView.AssigneeField.SetValues(AValues.UserFields);
-  FView.StartState.SetValues(AValues.States);
+  FView.Project.SetValues(AValues.Projects);
+  FView.StartState.SetValues(StartValues(AValues, FView.StateTarget.Choice = 0));
   FView.ValuesNote.Caption := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesValuesLoaded,
     [Length(AValues.States), Length(AValues.StateFields) + Length(AValues.UserFields)]);
 end;

@@ -146,6 +146,8 @@ type
     cIssuesSprintAsk = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAsk;
     cIssuesSprintAlways = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAlways;
     cIssuesSprintNever = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintNever;
+    cIssuesGitHubStateProject = Atlas.Core.Settings.Plugin.Issues.cIssuesGitHubStateProject;
+    cIssuesGitHubStateLabel = Atlas.Core.Settings.Plugin.Issues.cIssuesGitHubStateLabel;
     cBeginEndAlways = Atlas.Core.Settings.Plugin.Editor.cBeginEndAlways;
     cBeginEndMultiLine = Atlas.Core.Settings.Plugin.Editor.cBeginEndMultiLine;
     cBeginEndNever = Atlas.Core.Settings.Plugin.Editor.cBeginEndNever;
@@ -1259,6 +1261,13 @@ type
     property IssuesReviewComment: string read FIssues.IssuesReviewComment write FIssues.IssuesReviewComment;
     property IssuesEndFields: string read FIssues.IssuesEndFields write FIssues.IssuesEndFields;
     property IssuesEndTime: Boolean read FIssues.IssuesEndTime write FIssues.IssuesEndTime;
+    property IssuesGitHubStateTarget: string read FIssues.IssuesGitHubStateTarget
+      write FIssues.IssuesGitHubStateTarget;
+    property IssuesGitHubProject: string read FIssues.IssuesGitHubProject write FIssues.IssuesGitHubProject;
+    property IssuesGitHubAddToProject: Boolean read FIssues.IssuesGitHubAddToProject
+      write FIssues.IssuesGitHubAddToProject;
+    property IssuesGitHubLinkBranch: Boolean read FIssues.IssuesGitHubLinkBranch
+      write FIssues.IssuesGitHubLinkBranch;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;
