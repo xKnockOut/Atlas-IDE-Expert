@@ -450,6 +450,16 @@ Settings: `debug.eventLog`, `debug.eventLogColors`
 
 Settings: `debug.logpoints`, `debug.logpointPrefix`
 
+## Debug: no source
+
+- When the debugger stops in a routine without source (the IDE shows the CPU window), a small window without focus appears at the top right: routine, module, address, unit and reason
+- Reasons: debug DCUs off (Delphi library), unit compiled with `{$D-}`, only DCU/BPL available, source not in the search path, system code (Windows)
+- Ways out depending on the reason: “Turn on debug DCUs and rebuild” (only in the Debug configuration, with confirmation; the session ends, then Atlas builds and starts), “Back to my code” (runs until it returns to own code), “Find source …” (the folder is remembered for the project, the unit opens), “Keep CPU window”
+- “Do not show for this unit again” extends `debug.noSourcePage.ignoredUnits`
+- With “Just my code” (`debug.justMyCode`) the window only appears for exceptions
+
+Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

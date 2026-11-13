@@ -404,6 +404,16 @@ Einstellungen: `debug.eventLog`, `debug.eventLogColors`
 
 Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
+### Kein Quelltext
+
+- Hält der Debugger in einer Routine ohne Quelltext (die IDE zeigt das CPU-Fenster), erscheint oben rechts ein kleines Fenster ohne Fokus: Routine, Modul, Adresse, Unit und Grund
+- Gründe: Debug-DCUs aus (Bibliothek von Delphi), Unit mit `{$D-}` übersetzt, nur DCU/BPL vorhanden, Quelltext nicht im Suchpfad, Systemcode (Windows)
+- Auswege je nach Grund: „Debug-DCUs einschalten und neu bauen“ (nur in der Konfiguration Debug, mit Rückfrage; die Sitzung endet, danach baut und startet Atlas), „Zurück zum eigenen Code“ (bis zur Rückkehr in eigenen Code), „Quelltext suchen …“ (Ordner wird für das Projekt gemerkt, die Unit öffnet sich), „CPU-Fenster behalten“
+- „Für diese Unit nicht mehr zeigen“ ergänzt `debug.noSourcePage.ignoredUnits`
+- Mit „Nur eigener Code“ (`debug.justMyCode`) erscheint das Fenster nur bei Exceptions
+
+Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>
