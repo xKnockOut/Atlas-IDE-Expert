@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..124] of string = (
+  cCatalogLinesEnPackages: array[0..143] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -146,6 +146,30 @@ const
     'y in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
     '      "bad": "Assert.AreEqual(FList.Count, 4);",',
     '      "good": "Assert.AreEqual(4, FList.Count);",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-setup-not-torn-down",',
+    '      "name": "Field created in Setup, not freed in TearDown",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A field of a test class that the [Setup] method (or [SetupFixture]) assigns a new object (TFake.Create …) and the matching [TearDown] method (or [TearDownFixture]) neither frees ' +
+    'with Free, FreeAndNil, DisposeOf or Destroy nor sets to nil: every single test leaks the object. Methods of the same class that TearDown calls directly count as well (one level). Fields of an interfac' +
+    'e type (reference counting) and objects with an owner (TButton.Create(FForm)) stay silent. With the option managedFields (default on) also string and dynamic array fields that Setup fills and TearDown' +
+    ' does not clear: the DUnitX leak monitor counts their memory against each test. Without a TearDown method there is one finding on Setup for all fields. Quick fix (safe): FreeAndNil(FField); (without S' +
+    'ysUtils FField.Free; FField := nil;) or FField := ''''; / FField := nil; at the end of TearDown; without TearDown it creates the method with its attribute and declaration. Only in test units (uses DUnit' +
+    'X.TestFramework, TestFramework or TestInsight.*). Medium confidence: frees in deeper helper methods are not followed.",',
+    '      "bad": "[Setup]\nprocedure Setup;\n…\nprocedure TFallTests.Setup;\nbegin\n  FFake := TFakeLookup.Create;\nend;",',
+    '      "good": "[TearDown]\nprocedure TearDown;\n…\nprocedure TFallTests.TearDown;\nbegin\n  FreeAndNil(FFake);\nend;",',
+    '      "options": [',
+    '        {',
+    '          "name": "managedFields",',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Also report string and dynamic array fields that Setup fills and TearDown does not clear."',
+    '        }',
+    '      ],',
     '      "safeFix": true',
     '    },',
     '{',

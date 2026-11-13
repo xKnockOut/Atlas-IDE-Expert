@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 56 |
-| [Packages und Tests](#gruppe-packages) | 8 |
+| [Packages und Tests](#gruppe-packages) | 9 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -438,6 +438,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
 | [`dunitx-istrue-equality`](#dunitx-istrue-equality) | Assert.IsTrue mit Vergleich statt AreEqual | Code Smell | Hinweis |
 | [`dunitx-swapped-expected`](#dunitx-swapped-expected) | Erwarteter und erhaltener Wert vertauscht | Code Smell | Hinweis |
+| [`dunitx-setup-not-torn-down`](#dunitx-setup-not-torn-down) | Feld im Setup erzeugt, im TearDown nicht freigegeben | Bug | Warnung |
 | [`dunitx-leak-monitor`](#dunitx-leak-monitor) | DUnitX-Testprogramm ohne Leckmonitor | Code Smell | Hinweis |
 
 <a id="gruppe-internal"></a>
@@ -4781,6 +4782,43 @@ Richtig:
 
 ```pascal
 Assert.AreEqual(4, FList.Count);
+```
+
+<a id="dunitx-setup-not-torn-down"></a>
+### dunitx-setup-not-torn-down
+
+**Feld im Setup erzeugt, im TearDown nicht freigegeben** · Bug · Warnung · Gruppe Packages und Tests
+
+Ein Feld einer Testklasse, dem die [Setup]-Methode (bzw. [SetupFixture]) ein neues Objekt zuweist (TFake.Create …) und das die passende [TearDown]-Methode (bzw. [TearDownFixture]) weder mit Free, FreeAndNil, DisposeOf oder Destroy freigibt noch auf nil setzt: Jeder einzelne Test leckt das Objekt. Methoden derselben Klasse, die TearDown direkt aufruft, zählen mit (eine Ebene). Felder vom Interfacetyp (Referenzzählung) und Objekte mit Besitzer (TButton.Create(FForm)) bleiben still. Mit der Option managedFields (Vorgabe an) auch string- und dynamische Array-Felder, die Setup belegt und TearDown nicht leert: Der Leckmonitor von DUnitX zählt ihren Speicher jedem Test zu. Ohne TearDown-Methode gibt es eine Meldung am Setup für alle Felder. Korrektur (sicher): FreeAndNil(FFeld); (ohne SysUtils FFeld.Free; FFeld := nil;) bzw. FFeld := ''; oder FFeld := nil; am Ende von TearDown; ohne TearDown legt sie die Methode samt Attribut und Deklaration an. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit mittel: Freigaben in tiefer liegenden Hilfsmethoden verfolgt die Regel nicht.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix dunitx-setup-not-torn-down`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `managedFields` | boolean | `true` | Auch string- und dynamische Array-Felder melden, die Setup belegt und TearDown nicht leert. |
+
+Mit Treffer:
+
+```pascal
+[Setup]
+procedure Setup;
+…
+procedure TFallTests.Setup;
+begin
+  FFake := TFakeLookup.Create;
+end;
+```
+
+Richtig:
+
+```pascal
+[TearDown]
+procedure TearDown;
+…
+procedure TFallTests.TearDown;
+begin
+  FreeAndNil(FFake);
+end;
 ```
 
 <a id="dunitx-leak-monitor"></a>

@@ -24,7 +24,8 @@
 // - Zustand beim Beginnen und Beenden (#1266): je Verbindung optional
 //   stateField, assigneeField, startState, endStates und endFields (#2123),
 //   dazu reviewStates (#2126, #2127) und für GitHub githubStateTarget,
-//   githubProject (#2134) und githubLinkBranch (#2138); leer gelten die globalen Einstellungen issues.*
+//   githubProject (#2134), githubLinkBranch (#2138) und githubPrBase (#2136);
+//   leer gelten die globalen Einstellungen issues.*
 //   (TAtlasTrackerWorkflow.ForConnection).
 
 interface
@@ -76,6 +77,8 @@ type
     /// <summary>GitHub: Branch beim Beginnen anlegen und verknüpfen (#2138): cOn, cOff; '' =
     /// issues.github.linkBranch.</summary>
     GitHubLinkBranch: string;
+    /// <summary>GitHub: Ziel-Branch des Pull Requests beim Beenden (#2136); '' = issues.github.prBase.</summary>
+    GitHubPrBase: string;
     class function Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection; static;
     /// <summary>Verbindung aus dem Abschnitt tracker der .atlas (schreibgeschützt); Name = AName.</summary>
     class function FromTeamFile(const AName: string; const ATarget: TAtlasTrackerTarget): TAtlasTrackerConnection;
@@ -192,6 +195,7 @@ begin
   Result.GitHubStateTarget := '';
   Result.GitHubProject := '';
   Result.GitHubLinkBranch := '';
+  Result.GitHubPrBase := '';
 end;
 
 class function TAtlasTrackerConnection.FromTeamFile(const AName: string;
@@ -325,7 +329,7 @@ begin
   Result := Result + StatesJson('endStates', AItem.EndStates) + StatesJson('reviewStates', AItem.ReviewStates) +
     StatesJson('endFields', AItem.EndFields);
   Result := Result + TextJson('githubStateTarget', AItem.GitHubStateTarget) +
-    TextJson('githubProject', AItem.GitHubProject);
+    TextJson('githubProject', AItem.GitHubProject) + TextJson('githubPrBase', AItem.GitHubPrBase);
   // JSON-Wahrheitswert, nicht Text (#2138).
   if AItem.GitHubLinkBranch <> '' then
   begin
@@ -390,6 +394,7 @@ begin
       mConnection.GitHubStateTarget := LowerCase(Trim(TJsonRead.Text(TJSONObject(mItem), 'githubStateTarget')));
       mConnection.GitHubProject := Trim(TJsonRead.Text(TJSONObject(mItem), 'githubProject'));
       mConnection.GitHubLinkBranch := FlagText(TJSONObject(mItem), 'githubLinkBranch');
+      mConnection.GitHubPrBase := Trim(TJsonRead.Text(TJSONObject(mItem), 'githubPrBase'));
       Result := Result + [mConnection];
     end;
   finally

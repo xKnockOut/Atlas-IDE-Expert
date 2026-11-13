@@ -307,6 +307,7 @@ Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
 Atlas.Common.Rules.Builtin.Testing.Asserts.Tests
 Atlas.Common.Rules.Builtin.Testing.LeakMonitor.Tests
 Atlas.Common.Rules.Builtin.Testing.Registration.Tests
+Atlas.Common.Rules.Builtin.Testing.TearDown.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
@@ -434,6 +435,8 @@ Atlas.Core.Tracker.LinkedStart.Tests
 Atlas.Core.Tracker.Internals.FormYaml.Tests
 Atlas.Core.Tracker.IssueForms.Tests
 Atlas.Core.Tracker.NewIssueGitHub.Tests
+Atlas.Core.Tracker.Internals.GitHubPulls.Tests
+Atlas.Core.Tracker.EndPull.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests

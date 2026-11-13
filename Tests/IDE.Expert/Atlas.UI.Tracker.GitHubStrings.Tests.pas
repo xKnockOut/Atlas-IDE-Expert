@@ -1,6 +1,7 @@
 ﻿unit Atlas.UI.Tracker.GitHubStrings.Tests;
 
-// Texte des GitHub-Anbieters im Tracker (#2135): jede Id in beiden Sprachen, gleiche Platzhalter.
+// Texte des GitHub-Anbieters im Tracker (#2135): jede Id in beiden Sprachen, gleiche Platzhalter; Meldungen zu
+// Status im Projekt (#2134), verknüpftem Branch (#2138) und Pull Request beim Beenden (#2136).
 
 interface
 
@@ -22,6 +23,9 @@ type
     /// <summary>Zeile zum verknüpften Branch (#2138).</summary>
     [Test]
     procedure LinkLine;
+    /// <summary>Meldung und Hinderungsgrund zum Pull Request beim Beenden (#2136).</summary>
+    [Test]
+    procedure PullLinesAndProblem;
   end;
 
 implementation
@@ -149,6 +153,43 @@ begin
   finally
     TAtlasStrings.Language := mSaved;
   end;
+end;
+
+procedure TAtlasGitHubStringsTests.PullLinesAndProblem;
+var
+  mPull: TAtlasTrackerPullResult;
+  mLines: TArray<string>;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mPull := TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Dirty);
+    Assert.AreEqual(0, Integer(Length(TAtlasGitHubStrings.PullLines('#7', mPull))));
+    Assert.AreNotEqual('', TAtlasGitHubStrings.PullProblem(mPull, 'f/7-x', 'beispiel/atlas'));
+    mPull.Outcome := TAtlasTrackerPullOutcome.Foreign;
+    Assert.IsTrue(Pos('beispiel/atlas', TAtlasGitHubStrings.PullProblem(mPull, 'f/7-x', 'beispiel/atlas')) > 0);
+    mPull := TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Created);
+    mPull.Number := 42;
+    mPull.Base := 'main';
+    mPull.Url := 'https://github.com/beispiel/atlas/pull/42';
+    mPull.ReviewersFailed := True;
+    mLines := TAtlasGitHubStrings.PullLines('#7', mPull);
+    Assert.AreEqual(2, Integer(Length(mLines)));
+    Assert.IsTrue(Pos('#42', mLines[0]) > 0, mLines[0]);
+    Assert.IsTrue(Pos('main', mLines[0]) > 0, mLines[0]);
+    Assert.IsTrue(Pos(mPull.Url, mLines[0]) > 0, mLines[0]);
+    Assert.AreEqual('', TAtlasGitHubStrings.PullProblem(mPull, 'f/7-x', 'beispiel/atlas'));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    mPull.Outcome := TAtlasTrackerPullOutcome.Existing;
+    mPull.ReviewersFailed := False;
+    mLines := TAtlasGitHubStrings.PullLines('#7', mPull);
+    Assert.AreEqual(1, Integer(Length(mLines)));
+    Assert.IsTrue(Pos('#42', mLines[0]) > 0, mLines[0]);
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+  mLines := nil;
 end;
 
 initialization

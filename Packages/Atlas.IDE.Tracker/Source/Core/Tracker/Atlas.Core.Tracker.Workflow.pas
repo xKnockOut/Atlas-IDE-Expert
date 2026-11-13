@@ -8,7 +8,8 @@
 //   demselben Server darüber (Liste issues.connections, #1260).
 // - Platzhalter der Kommentarvorlagen: {branch}, {commits} (Kurz-Hash und
 //   Betreff der Commits mit der Kennung, älteste zuerst), {pr} (Adresse des
-//   Pull Requests), {time} (erfasste Zeit, #1267) und {kennung}; "\n" in
+//   Pull Requests), {time} (erfasste Zeit, #1267), {closes} („Closes #n“,
+//   #2136) und {kennung}; "\n" in
 //   der Vorlage wird ein Zeilenumbruch (die Einstellung ist einzeilig).
 // - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerWrite), die
 //   der Anbieter (IAtlasTrackerWriter) schreibt. Geschrieben wird nur nach
@@ -78,6 +79,9 @@ type
     function WithGitHub(const AStateTarget, AProject: string; AAddToProject: Boolean): TAtlasTrackerSyncOptions;
     /// <summary>Mit issues.github.linkBranch (#2138).</summary>
     function WithLinkBranch(ALinkBranch: Boolean): TAtlasTrackerSyncOptions;
+    /// <summary>Mit issues.github.createPr, prBase, prBody und prDraft (#2136).</summary>
+    function WithPullRequest(ACreatePr: Boolean; const APrBase, APrBody: string;
+      APrDraft: Boolean): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
     function HasStartWork: Boolean;
   end;
@@ -118,6 +122,9 @@ type
     /// <summary>Vorgabe von issues.endComment (wie im Schema) und ihre englische Fassung (#1458).</summary>
     cDefaultEndComment = 'Erledigt in {branch}.\n{commits}';
     cDefaultEndCommentEn = 'Done in {branch}.\n{commits}';
+    /// <summary>Vorgabe von issues.github.prBody (#2136) und das Schlüsselwort von {closes}.</summary>
+    cDefaultPrBody = '{closes}\n\n{commits}';
+    cClosesWord = 'Closes';
     /// <summary>Werte von issues.github.stateTarget (#2134), wie im Schema.</summary>
     cStateTargetProject = 'project';
     cStateTargetLabel = 'label';
@@ -276,6 +283,16 @@ begin
   Result.GitHub.LinkBranch := ALinkBranch;
 end;
 
+function TAtlasTrackerSyncOptions.WithPullRequest(ACreatePr: Boolean; const APrBase, APrBody: string;
+  APrDraft: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.GitHub.CreatePr := ACreatePr;
+  Result.GitHub.PrBase := Trim(APrBase);
+  Result.GitHub.PrBody := APrBody;
+  Result.GitHub.PrDraft := APrDraft;
+end;
+
 function TAtlasTrackerSyncOptions.HasStartWork: Boolean;
 begin
   Result := SyncState and ((StartState <> '') or AssignOnStart or (Trim(StartComment) <> ''));
@@ -396,6 +413,7 @@ begin
       begin
         Result.GitHub.LinkBranch := mConnection.GitHubLinkBranch = TAtlasTrackerConnection.cOn;
       end;
+      Result.GitHub.PrBase := TextOr(mConnection.GitHubPrBase, Result.GitHub.PrBase);
       Exit;
     end;
   end;
@@ -414,6 +432,8 @@ begin
   Result := StringReplace(Result, '{time}', AValues.Time, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{kennung}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{key}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
+  // „Closes #n“ schließt das Issue beim Merge des Pull Requests (#2136).
+  Result := StringReplace(Result, '{closes}', cClosesWord + ' ' + AValues.Key, [rfReplaceAll, rfIgnoreCase]);
   // Leere Platzhalter am Ende lassen keine Leerzeilen zurück.
   while (Result <> '') and CharInSet(Result[Length(Result)], [#10, ' ', #9]) do
   begin

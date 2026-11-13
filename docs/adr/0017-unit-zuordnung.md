@@ -1062,6 +1062,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Internals.GitHubLinkedBranches` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubLinkedBranches.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.LinkedStart` | `Core/Tracker/Atlas.Core.Tracker.LinkedStart.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Internals.FormYaml` | `Core/Tracker/Atlas.Core.Tracker.Internals.FormYaml.pas` | Ordner `Core/Tracker`, YAML-Teilmenge der Issue-Formulare, #2137 |
+| `Atlas.Core.Tracker.Internals.GitHubPulls` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubPulls.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.EndPull` | `Core/Tracker/Atlas.Core.Tracker.EndPull.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Internals.YouTrackJson` | `Core/Tracker/Atlas.Core.Tracker.Internals.YouTrackJson.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.YouTrackApi` | `Core/Tracker/Atlas.Core.Tracker.YouTrackApi.pas` | Ordner `Core/Tracker` |
@@ -1116,6 +1118,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssueStart` | `IDE/Tracker/Atlas.IDE.Tracker.IssueStart.pas` | Ordner `IDE/Tracker`, „Beginnen“ und „Beenden“, #1455 |
 | `Atlas.IDE.Tracker.LinkedStart` | `IDE/Tracker/Atlas.IDE.Tracker.LinkedStart.pas` | Ordner `IDE/Tracker`, verknüpfter Branch beim „Beginnen“, #2138 |
+| `Atlas.IDE.Tracker.EndPull` | `IDE/Tracker/Atlas.IDE.Tracker.EndPull.pas` | Ordner `IDE/Tracker`, Pull Request beim „Beenden“, #2136 |
 | `Atlas.IDE.Tracker.IssueWork` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWork.pas` | Ordner `IDE/Tracker`, Arbeitsstand je Issue über den Vertrag, #2052 |
 | `Atlas.IDE.Tracker.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssue.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.NewIssuePlace` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssuePlace.pas` | Ordner `IDE/Tracker`, Editorseite von „Issue anlegen“, #1455 |
@@ -1143,6 +1146,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.CommentEditor` | `UI/Tracker/Atlas.UI.Tracker.CommentEditor.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.DevelopmentView` | `UI/Tracker/Atlas.UI.Tracker.DevelopmentView.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.DocBox` | `UI/Tracker/Atlas.UI.Tracker.DocBox.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.EndPullRows` | `UI/Tracker/Atlas.UI.Tracker.EndPullRows.pas` | Ordner `UI/Tracker`, Abschnitt „Pull Request anlegen“ im Beenden-Dialog, #2136 |
 | `Atlas.UI.Tracker.EndDialog` | `UI/Tracker/Atlas.UI.Tracker.EndDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.ReviewDialog` | `UI/Tracker/Atlas.UI.Tracker.ReviewDialog.pas` | Ordner `UI/Tracker`, „Prüfen“, #2126 |
 | `Atlas.UI.Tracker.StateDialog` | `UI/Tracker/Atlas.UI.Tracker.StateDialog.pas` | Ordner `UI/Tracker` |

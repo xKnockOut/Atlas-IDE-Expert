@@ -42,6 +42,8 @@ type
     [Test]
     procedure IssuesGitHubStateOptions;
     [Test]
+    procedure IssuesGitHubPullRequestOptions;
+    [Test]
     procedure IssuesTimeOptions;
     /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
     [Test]
@@ -665,6 +667,31 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateLabel, mLoaded.IssuesGitHubStateTarget);
   Assert.AreEqual('beispiel/4', mLoaded.IssuesGitHubProject);
   Assert.IsTrue(mLoaded.IssuesGitHubAddToProject);
+end;
+
+procedure TAtlasIssueSettingsTests.IssuesGitHubPullRequestOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  // #2136: Pull Request beim Beenden vorab angehakt, Ziel = Standard-Branch, kein Entwurf.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesGitHubCreatePr);
+  Assert.AreEqual('', mSettings.IssuesGitHubPrBase);
+  Assert.AreEqual('{closes}\n\n{commits}', mSettings.IssuesGitHubPrBody);
+  Assert.IsFalse(mSettings.IssuesGitHubPrDraft);
+  mSettings.IssuesGitHubCreatePr := False;
+  mSettings.IssuesGitHubPrBase := 'develop';
+  mSettings.IssuesGitHubPrBody := '{closes}';
+  mSettings.IssuesGitHubPrDraft := True;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesGitHubCreatePr);
+  Assert.AreEqual('develop', mLoaded.IssuesGitHubPrBase);
+  Assert.AreEqual('{closes}', mLoaded.IssuesGitHubPrBody);
+  Assert.IsTrue(mLoaded.IssuesGitHubPrDraft);
 end;
 
 procedure TAtlasIssueSettingsTests.IssuesTimeOptions;

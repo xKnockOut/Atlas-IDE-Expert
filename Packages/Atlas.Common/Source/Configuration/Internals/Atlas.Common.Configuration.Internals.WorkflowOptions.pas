@@ -489,7 +489,7 @@ begin
     CheckAllowed(AReader, AValue, 'language', ['de', 'en'], cTexts[TWorkflowOptionsText.LanguageIsDeOrEn].Text);
   end
   // Zustand beim Beginnen und Beenden je Verbindung (#1266).
-  else if MatchStr(AKey, ['stateField', 'assigneeField', 'startState', 'githubProject']) then
+  else if MatchStr(AKey, ['stateField', 'assigneeField', 'startState', 'githubProject', 'githubPrBase']) then
   begin
     AReader.ExpectString(AValue, AKey, mText);
   end
