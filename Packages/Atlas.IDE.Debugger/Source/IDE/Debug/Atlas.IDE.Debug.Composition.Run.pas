@@ -3,7 +3,8 @@
 // Modul Debugger, Teil der Komposition: Werkzeuge rund um den Lauf des
 // Programms: das Ereignisprotokoll (#580), die Logpunkte (#583, mit Taste
 // Umschalt+F5 und Schicht in der Rinne), das Fenster „Kein Quelltext“
-// (#869) und „Neu starten“ (#872, Strg+Umschalt+F2). Liefert Teile der
+// (#869), „Neu starten“ (#872, Strg+Umschalt+F2) und Leck- und
+// Absturzberichte aus der Zwischenablage (#74). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
 // Scope des Moduls bereit, die Schicht der Rinne stellt ProvideRun bereit.
@@ -11,11 +12,13 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Core.Modules.Contract;
 
 /// <summary>Teile in ihrer Startreihenfolge.</summary>
 function RunParts: TArray<IAtlasFeaturePart>;
-function RunCommands: TArray<TAtlasModuleCommand>;
+/// <summary>AScope liefert den Scope des Moduls für Antworten des Servers.</summary>
+function RunCommands(const AScope: TFunc<IAtlasModuleScope>): TArray<TAtlasModuleCommand>;
 function RunMenuEntries: TArray<TAtlasMenuEntry>;
 function RunKeys: TArray<TAtlasModuleKey>;
 /// <summary>Schicht der Logpunkte in der Rinne (#583) über AScope bereitstellen.</summary>
@@ -26,7 +29,6 @@ procedure RunThemeChanged;
 implementation
 
 uses
-  System.SysUtils,
   System.Classes,
   Winapi.Windows,
   Vcl.Menus,
@@ -42,11 +44,13 @@ uses
   Atlas.IDE.Debug.LogpointGutter,
   Atlas.IDE.Debug.NoSource,
   Atlas.IDE.Debug.Restart,
+  Atlas.IDE.Debug.RuntimeReport,
   Atlas.UI.Debug.Strings;
 
 const
   cLogpointCommand = 'Atlas.Logpoint';
   cRestartCommand = 'Atlas.DebugRestart';
+  cRuntimeReportCommand = 'Atlas.RuntimeReportPaste';
 
 { Dienste von Base }
 
@@ -183,7 +187,26 @@ begin
       end, StartRestart, TAtlasIdeDebugRestart.Release)];
 end;
 
-function RunCommands: TArray<TAtlasModuleCommand>;
+/// <summary>Leck- oder Absturzbericht aus der Zwischenablage (#74).</summary>
+function PasteRuntimeReport(const AScope: TFunc<IAtlasModuleScope>): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeRuntimeReport.Paste(AScope());
+    end;
+end;
+
+function ClearRuntimeReport(const AScope: TFunc<IAtlasModuleScope>): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeRuntimeReport.Clear(AScope());
+    end;
+end;
+
+function RunCommands(const AScope: TFunc<IAtlasModuleScope>): TArray<TAtlasModuleCommand>;
 begin
   Result := [
     RunCommand('Atlas.DebugEventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogCommand),
@@ -197,7 +220,12 @@ begin
     RunCommand('Atlas.LogpointsDelete', TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointDeleteAll),
       TAtlasIdeLogpoints.DeleteAll, LogpointsVisible),
     RunCommand(cRestartCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartCommand),
-      TAtlasIdeDebugRestart.Execute, RestartVisible)];
+      TAtlasIdeDebugRestart.Execute, RestartVisible),
+    // Befehle auf Abruf ohne eigene Oberfläche: keine Einstellung.
+    RunCommand(cRuntimeReportCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportPasteCommand),
+      PasteRuntimeReport(AScope), nil),
+    RunCommand('Atlas.RuntimeReportClear', TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportClearCommand),
+      ClearRuntimeReport(AScope), nil)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -212,7 +240,8 @@ begin
   Result := [MenuEntry('Atlas.DebugEventLog', TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cLogpointCommand, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cLogpointCommand, TAtlasMenuPlace.EditorContext),
-    MenuEntry(cRestartCommand, TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry(cRestartCommand, TAtlasMenuPlace.AtlasMenu),
+    MenuEntry(cRuntimeReportCommand, TAtlasMenuPlace.AtlasMenu)];
 end;
 
 /// <summary>Umschalt+F5 setzt einen Logpunkt, solange debug.logpoints an ist; sonst geht die Taste an die IDE.

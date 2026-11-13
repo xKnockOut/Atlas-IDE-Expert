@@ -126,6 +126,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Threads:** Was wartet worauf? (Wartepunkt jedes Threads, Muster von Verklemmungen wie `WaitFor` gegen `Synchronize`), parallele Aufrufstapel aller Threads als Baum, andere Threads im Rand (markieren, experimentell: einfrieren), experimentell: woher eine mit `TThread.Queue`, `Synchronize` oder `TTask.Run` eingereihte Methode kam
 - **Ereignisprotokoll beim Debuggen:** Ausgaben, Module und Threads mit Filter (auch regulärer Ausdruck), Farben nach Muster und Sprung zu `Datei.pas(123)`
 - **Logpunkte:** Haltepunkte, die nicht anhalten, sondern Text mit Platzhaltern wie `x={x}, Summe {Summe:0.00}` ins Ereignisprotokoll schreiben (Umschalt+F5, Raute in der Rinne)
+- **Leck- und Absturzberichte:** FastMM-Log, madExcept-, EurekaLog- oder JclDebug-Bericht einfügen; der Stapel steht anklickbar in der Meldungsansicht, die Erzeugungs- bzw. Absturzstelle als Diagnose im Editor, Adressen ohne Debug-Informationen löst die Map-Datei auf
 - **Fenster „Kein Quelltext“:** Hält der Debugger in Code ohne Quelltext, nennt ein kleines Fenster Routine, Modul, Grund (Debug-DCUs aus, `{$D-}`, nur DCU, nicht im Suchpfad, Systemcode) und Auswege
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
