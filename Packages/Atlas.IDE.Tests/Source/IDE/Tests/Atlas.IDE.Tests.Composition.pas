@@ -303,7 +303,8 @@ begin
   // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die wackelnden Tests weiter.
   // Testlisten (#2167): vor dem Fenster, das sie über TAtlasIdeTestLists.Instance findet, und nach ihm frei.
   GLists := TAtlasIdeTestLists.Create(GTests);
-  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GSeries, GFlaky.QueriesWith(GStale.StaleIn), GFlaky.Remember);
+  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GSeries, GFlaky.QueriesWith(GStale.StaleIn),
+    GFlaky.Remember);
   GTests.OnReported := GExplorer.Remember;
   GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), CompareHooks);
