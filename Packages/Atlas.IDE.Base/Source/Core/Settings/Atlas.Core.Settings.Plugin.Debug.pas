@@ -125,6 +125,10 @@ type
     /// <summary>Haltepunkt-Sätze (#586, debug.breakpointSetPerBranch): Ein Satz mit Branch wird beim Wechsel der
     /// Arbeitskopie auf diesen Branch aktiv. Aus = Sätze nur über die Befehle.</summary>
     DebugBreakpointSetPerBranch: Boolean;
+    /// <summary>Bis hier ausführen per Klick (#851, debug.runToClick): Im angehaltenen Zustand zeigt eine schmale
+    /// Spalte im Rand an ausführbaren Zeilen unter der Maus ▶; Klick führt bis dorthin aus, Strg+Klick ohne Halt an
+    /// anderen Haltepunkten; dazu die Befehle „Bis hier“ und „Einmaliger Haltepunkt“. Aus = nichts davon.</summary>
+    DebugRunToClick: Boolean;
     /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
     /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
     DebugBreakpointsWindow: Boolean;
@@ -327,6 +331,7 @@ begin
   Result.DebugCheckBreakpoints := True;
   Result.DebugInstanceBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
+  Result.DebugRunToClick := True;
   Result.DebugBreakpointsWindow := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
@@ -416,6 +421,7 @@ begin
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
+  AIo.Flag('DebugRunToClick', DebugRunToClick);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
