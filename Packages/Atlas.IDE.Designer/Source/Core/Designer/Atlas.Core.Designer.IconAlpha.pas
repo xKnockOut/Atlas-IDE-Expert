@@ -21,6 +21,10 @@ implementation
 const
   /// <summary>Verschiebung der Farbkanäle Blau, Grün, Rot im Pixel.</summary>
   cShifts: array[0..2] of Integer = (0, 8, 16);
+  /// <summary>Verschiebung des Alphakanals im Pixel.</summary>
+  cAlphaShift = 24;
+  /// <summary>Höchstwert eines Kanals (deckend bzw. volle Farbe).</summary>
+  cChannelMax = 255;
 
 function Channel(APixel: Cardinal; AShift: Integer): Integer;
 begin
@@ -34,9 +38,9 @@ begin
   begin
     Result := 0;
   end
-  else if Result > 255 then
+  else if Result > cChannelMax then
   begin
-    Result := 255;
+    Result := cChannelMax;
   end;
 end;
 
@@ -59,13 +63,14 @@ begin
     begin
       mSpread := mSpread + Channel(AWhite[i], mShift) - Channel(ABlack[i], mShift);
     end;
-    mAlpha := Clamp(255 - mSpread div 3);
-    mPixel := Cardinal(mAlpha) shl 24;
+    mAlpha := Clamp(cChannelMax - mSpread div Length(cShifts));
+    mPixel := Cardinal(mAlpha) shl cAlphaShift;
     if mAlpha > 0 then
     begin
       for mShift in cShifts do
       begin
-        mPixel := mPixel or (Cardinal(Clamp((Channel(ABlack[i], mShift) * 255 + mAlpha div 2) div mAlpha)) shl mShift);
+        mPixel := mPixel or
+          (Cardinal(Clamp((Channel(ABlack[i], mShift) * cChannelMax + mAlpha div 2) div mAlpha)) shl mShift);
       end;
     end;
     Result[i] := mPixel;

@@ -194,6 +194,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkDoneProgress.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Documentation.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestUnits.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.LeakSetup.Tests.pas"/>
+        <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
@@ -1206,6 +1208,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.VersionControl.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
@@ -1746,6 +1750,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.IdeErrors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.ScopeProjects.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.AtCaret.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.AtCaret.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterColumn.Tests.pas"/>
@@ -1908,6 +1914,9 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ProfileTools.Tests.pas"/>
+        <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Profile.Tests.pas"/>
+        <DCCReference Include="Common\Profiling\Atlas.Common.Profiling.Report.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas"/>
@@ -1974,6 +1983,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AffectedTests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.LeakSetup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Core.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AnalysisArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CodeArea.pas"/>
@@ -2021,6 +2031,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.Stdio.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.AffectedTests.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.DfmPropertyRules.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.LeakSetup.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Core.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.AnalysisArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.CodeArea.Tests.pas"/>

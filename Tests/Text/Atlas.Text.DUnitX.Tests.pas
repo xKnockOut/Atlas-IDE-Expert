@@ -5,7 +5,8 @@
 // über [Test], [TestCase] und published, keine Tests bei [Setup] und
 // [Test(False)], Zeilen von Attribut, Deklaration und Rumpf, Befehlszeile;
 // für #585 Rumpf bis end (lokale Routinen, Typen), Zeilen der Testfälle,
-// Test an einer Zeile, Marken und Namen für --run je Fall.
+// Test an einer Zeile, Marken und Namen für --run je Fall; für #1770 die
+// Prüfsumme ohne Kommentare und Leerraum und die Units der uses-Klauseln.
 
 interface
 
@@ -48,6 +49,12 @@ type
     procedure TestAtFindsCaseTestFixtureAndBody;
     [Test]
     procedure RunNamesPerCaseAndFixture;
+    [Test]
+    procedure FingerprintIgnoresWhitespaceAndComments;
+    [Test]
+    procedure FingerprintSeesCodeStringsAndDirectives;
+    [Test]
+    procedure UsedUnitsOfBothClauses;
   end;
 
 implementation
@@ -532,6 +539,56 @@ begin
   mNames := TDUnitXCommandLine.RunNames(mFound, 1, -1, -1);
   Assert.AreEqual(1, Integer(Length(mNames)));
   Assert.AreEqual('U.TTMehr', mNames[0]);
+end;
+
+procedure TDUnitXSourceTests.FingerprintIgnoresWhitespaceAndComments;
+var
+  mBase: string;
+begin
+  mBase := TDUnitXSource.Fingerprint(['begin', '  Assert.AreEqual(4, Summe(2, 2));', 'end;'], 0, 2);
+  Assert.AreNotEqual('', mBase);
+  Assert.AreEqual(mBase, TDUnitXSource.Fingerprint(['begin Assert.AreEqual( 4,Summe(2,2) ) ;', 'end;'], 0, 1),
+    'nur Leerraum und Zeilenumbrüche');
+  Assert.AreEqual(mBase, TDUnitXSource.Fingerprint(['begin', '  // Prüft die Summe', '  { alt }',
+    '  Assert.AreEqual(4, Summe(2, 2)); (* mehrzeilig', '  noch Kommentar *)', 'end;'], 0, 5), 'Kommentare');
+  Assert.AreEqual(mBase, TDUnitXSource.Fingerprint(['unit X;', 'begin', 'Assert.AreEqual(4, Summe(2, 2));',
+    'end;', 'end.'], 1, 3), 'nur die Zeilen des Bereichs');
+  Assert.AreEqual('', TDUnitXSource.Fingerprint(['begin'], -1, 0), 'ungültiger Bereich');
+  Assert.AreEqual('', TDUnitXSource.Fingerprint(['begin'], 2, 3), 'hinter dem Ende');
+end;
+
+procedure TDUnitXSourceTests.FingerprintSeesCodeStringsAndDirectives;
+var
+  mBase: string;
+begin
+  mBase := TDUnitXSource.Fingerprint(['begin', '  X := ''a b'';', 'end;'], 0, 2);
+  Assert.AreNotEqual(mBase, TDUnitXSource.Fingerprint(['begin', '  X := ''ab'';', 'end;'], 0, 2),
+    'Leerraum in Zeichenketten zählt');
+  Assert.AreNotEqual(mBase, TDUnitXSource.Fingerprint(['begin', '  X := ''a b'';', '  Y := 1;', 'end;'], 0, 3),
+    'neue Anweisung');
+  Assert.AreNotEqual(TDUnitXSource.Fingerprint(['if A or B then'], 0, 0),
+    TDUnitXSource.Fingerprint(['if AorB then'], 0, 0), 'Leerraum zwischen Wörtern trennt');
+  Assert.AreNotEqual(TDUnitXSource.Fingerprint(['{$IFDEF X}', 'Y;', '{$ENDIF}'], 0, 2),
+    TDUnitXSource.Fingerprint(['{$IFNDEF X}', 'Y;', '{$ENDIF}'], 0, 2), 'Direktiven zählen');
+  Assert.AreEqual(TDUnitXSource.Fingerprint(['X := ''it''''s'';'], 0, 0),
+    TDUnitXSource.Fingerprint(['X  :=  ''it''''s'' ;'], 0, 0), 'verdoppeltes Anführungszeichen');
+  Assert.AreNotEqual(TDUnitXSource.Fingerprint(['X := ''{a}'';'], 0, 0),
+    TDUnitXSource.Fingerprint(['X := ''{b}'';'], 0, 0), 'Klammern in Zeichenketten sind kein Kommentar');
+end;
+
+procedure TDUnitXSourceTests.UsedUnitsOfBothClauses;
+var
+  mUnits: TArray<string>;
+begin
+  mUnits := TDUnitXSource.UsedUnits(['unit Rechner.Tests;', 'interface', 'uses',
+    '  DUnitX.TestFramework, // Kommentar', '  Rechner in ''..\Src\Rechner.pas'';', 'implementation',
+    'uses System.SysUtils, { Liste } &Type.Helfer;', 'end.']);
+  Assert.AreEqual(4, Integer(Length(mUnits)));
+  Assert.AreEqual('DUnitX.TestFramework', mUnits[0]);
+  Assert.AreEqual('Rechner', mUnits[1]);
+  Assert.AreEqual('System.SysUtils', mUnits[2]);
+  Assert.AreEqual('Type.Helfer', mUnits[3]);
+  Assert.AreEqual(0, Integer(Length(TDUnitXSource.UsedUnits(['unit X;', 'interface', 'implementation', 'end.']))));
 end;
 
 initialization
