@@ -879,6 +879,7 @@
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Results.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Runs.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Targets.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
