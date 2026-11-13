@@ -146,6 +146,7 @@ begin
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
+  Assert.IsTrue(ASettings.TestsLeakSetup, 'Leckprüfung einrichten standardmäßig an (#1880)');
   Assert.AreEqual(3, ASettings.TestsAffectedDepth, 'Tiefe der betroffenen Tests standardmäßig 3 (#1353)');
   Assert.IsFalse(ASettings.TestsAffectedBeforeCommit, 'Angebot vor dem Commit standardmäßig aus (#1353)');
   Assert.IsTrue(ASettings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');

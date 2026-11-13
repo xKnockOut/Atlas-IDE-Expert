@@ -66,6 +66,7 @@ begin
   Switch('tests.affected', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffected));
   Number('tests.affectedDepth', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedDepth));
   Switch('tests.affectedBeforeCommit', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedBeforeCommit));
+  Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;
 
 { TAtlasTestsDebugSection }

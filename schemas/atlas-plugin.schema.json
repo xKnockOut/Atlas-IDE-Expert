@@ -1356,6 +1356,19 @@
       "x-captionEn": "Run affected tests",
       "x-issue": "#1353"
     },
+    "TestsLeakSetup": {
+      "description": "Befehl „Leckprüfung einrichten …“ im Kontextmenü der Projektverwaltung und in der Befehlspalette: erkennt FastMM4/FastMM5 und die DLL für FullDebugMode und richtet ReportMemoryLeaksOnShutdown bzw. FastMM nur für Debug ein. Aus = Befehl fehlt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leakSetup",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.enabled",
+      "x-caption": "Leckprüfung einrichten",
+      "x-captionEn": "Set up leak check",
+      "x-issue": "#1880"
+    },
     "TestsAffectedDepth": {
       "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test (1 bis 5); 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
       "type": "integer",

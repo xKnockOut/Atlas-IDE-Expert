@@ -97,14 +97,17 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.LeakSetup.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.UnitCommands.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.LeakSetup.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Hooks.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>

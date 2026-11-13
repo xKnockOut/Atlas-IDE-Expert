@@ -1415,14 +1415,17 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Debug` | `Core/Tests/Atlas.Core.Tests.Debug.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.ProjectChoice` | `Core/Tests/Atlas.Core.Tests.ProjectChoice.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.UnitMatch` | `Core/Tests/Atlas.Core.Tests.UnitMatch.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.LeakSetup` | `Core/Tests/Atlas.Core.Tests.LeakSetup.pas` | Ordner `Core/Tests`; Stand und Plan von „Leckprüfung einrichten …“ ohne VCL (#1880) |
 | `Atlas.Core.Tests.Run` | `Core/Tests/Atlas.Core.Tests.Run.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.LeakSetup` | `IDE/Tests/Atlas.IDE.Tests.LeakSetup.pas` | Ordner `IDE/Tests`; Befehl „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.SettingsSection` | `UI/Tests/Atlas.UI.Tests.SettingsSection.pas` | Ordner `UI/Tests`; Einstellungen des Moduls als Abschnitte (#1456) |
+| `Atlas.UI.Tests.LeakSetup` | `UI/Tests/Atlas.UI.Tests.LeakSetup.pas` | Ordner `UI/Tests`; Dialog „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 | `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |

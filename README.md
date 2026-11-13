@@ -47,7 +47,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 | `Atlas.IDE.Bookmarks` | Notes, named and quick bookmarks, TODO list | 24 | `bookmarks.enabled` |
 | `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | 24 | `buildTools.enabled` |
 | `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix, IDE errors (Error Insight) next to the findings; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | 16 | `ruleChecks.enabled` |
-| `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, affected tests, wizard “DUnitX test unit for unit …” | 15 | `tests.enabled` |
+| `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, affected tests, wizard “DUnitX test unit for unit …”, leak check setup | 15 | `tests.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds on request (also for MCP), check before compiling, release guard, verdict and build summary | 9 | `buildPipeline.enabled` |
 | `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients, own options page | 10 | `assistants.enabled` |
 | `Atlas.IDE.Help` | F1 help: rule, setting and window pages of the documentation | 5 | `help.enabled` |
@@ -117,6 +117,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
 - **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
 - **DUnitX tests** from the editor, including **only the tests affected** by a change
+- **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained
 

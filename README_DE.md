@@ -47,7 +47,7 @@ Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert
 | `Atlas.IDE.Bookmarks` | Notizen, benannte und schnelle Lesezeichen, TODO-Liste | 24 | `bookmarks.enabled` |
 | `Atlas.IDE.Build` | Build-Werkzeuge: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter | 24 | `buildTools.enabled` |
 | `Atlas.IDE.Rules` | Prüfregeln: Regel-Editor, Baseline und Unterdrückungen, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur, Fehler der IDE (Error Insight) neben den Befunden; Regel am Befund unterdrücken, einstellen, abschalten (ohne das Modul bleiben nur die Befunde und „Regel erklären“) | 16 | `ruleChecks.enabled` |
-| `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, betroffene Tests, Assistent „DUnitX-Testunit zu Unit …“ | 15 | `tests.enabled` |
+| `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, betroffene Tests, Assistent „DUnitX-Testunit zu Unit …“, Leckprüfung einrichten | 15 | `tests.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds auf Auftrag (auch für MCP), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung und Build-Zusammenfassung | 9 | `buildPipeline.enabled` |
 | `Atlas.IDE.Assistants` | KI-Assistenten: Builds über `build_project` und Änderungen an offenen Dateien durch MCP-Clients, eigene Optionsseite | 10 | `assistants.enabled` |
 | `Atlas.IDE.Help` | F1-Hilfe: Seiten zu Regeln, Einstellungen und Fenstern der Doku | 5 | `help.enabled` |
@@ -117,6 +117,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build
 - **Ohne Kommandozeilen-Compiler** (Starter, Community): Atlas erkennt das beim Start, sagt es einmal, und Projektaufgaben mit dcc oder MSBuild nennen den Grund, statt zu scheitern (`diagnostics.editionCheck`)
 - **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**
+- **Leckprüfung einrichten …** im Kontextmenü eines Projekts: zeigt, was für die Lecksuche fehlt (FastMM4/FastMM5 gefunden, erste Unit im uses, Meldung beim Beenden, Symbole und DLL der Konfiguration Debug), und richtet die gewählte Variante mit Vorschau ein, nur im Debug-Build (`tests.leakSetup`)
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt
 

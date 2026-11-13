@@ -13,7 +13,9 @@
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
 //   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
-//   angelegt wie „Zur Testunit wechseln“ von Base),
+//   angelegt wie „Zur Testunit wechseln“ von Base) und „Leckprüfung
+//   einrichten …“ im Kontextmenü der Projektverwaltung und in der Palette
+//   (#1880, Atlas.IDE.Tests.LeakSetup),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
@@ -91,6 +93,7 @@ uses
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
+  Atlas.IDE.Tests.LeakSetup,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings;
 
@@ -288,6 +291,18 @@ begin
   TAtlasIdeTestUnitCommands.RunProjectUnits(GTests);
 end;
 
+{ Leckprüfung einrichten (#1880) }
+
+function LeakSetupVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestsLeakSetup;
+end;
+
+procedure RunLeakSetup;
+begin
+  TAtlasIdeLeakSetup.Run(GScope);
+end;
+
 function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasTestsTextId): TAtlasModuleCommand;
 begin
   Result := ACommand;
@@ -341,7 +356,10 @@ begin
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
-      TAtlasTestsTextId.TestsGalleryTestUnitHint)];
+      TAtlasTestsTextId.TestsGalleryTestUnitHint),
+    // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
+    Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
+      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -375,6 +393,7 @@ begin
     ContextEntry('Atlas.DebugTest'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.LeakSetup', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.NewTestUnitFor', TAtlasMenuPlace.Gallery)];
 end;
 

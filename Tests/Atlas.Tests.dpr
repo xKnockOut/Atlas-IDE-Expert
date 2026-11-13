@@ -1090,6 +1090,8 @@ uses
   Atlas.Core.Tests.ProjectChoice.Tests in 'IDE.Expert\Atlas.Core.Tests.ProjectChoice.Tests.pas',
   Atlas.Core.Tests.UnitMatch in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas',
   Atlas.Core.Tests.UnitMatch.Tests in 'IDE.Expert\Atlas.Core.Tests.UnitMatch.Tests.pas',
+  Atlas.Core.Tests.LeakSetup in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.LeakSetup.pas',
+  Atlas.Core.Tests.LeakSetup.Tests in 'IDE.Expert\Atlas.Core.Tests.LeakSetup.Tests.pas',
   Atlas.Core.Editor.LineAnchor in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas',
   Atlas.Core.Editor.LineAnchor.Tests in 'IDE.Expert\Atlas.Core.Editor.LineAnchor.Tests.pas',
   Atlas.Core.Editor.LineTracking in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTracking.pas',

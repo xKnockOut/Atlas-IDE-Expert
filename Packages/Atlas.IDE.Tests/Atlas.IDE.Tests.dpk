@@ -44,11 +44,13 @@ requires
 
 contains
   Atlas.UI.Tests.Strings in 'Source\UI\Tests\Atlas.UI.Tests.Strings.pas',
+  Atlas.UI.Tests.LeakSetup in 'Source\UI\Tests\Atlas.UI.Tests.LeakSetup.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.AffectedHook in 'Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',
   Atlas.Core.Tests.UnitMatch in 'Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas',
+  Atlas.Core.Tests.LeakSetup in 'Source\Core\Tests\Atlas.Core.Tests.LeakSetup.pas',
   Atlas.IDE.Tests.Projects in 'Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas',
   Atlas.IDE.Tests.Runner in 'Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas',
   Atlas.IDE.Tests.Composition in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas',
@@ -57,6 +59,7 @@ contains
   Atlas.IDE.Tests.UnitCommands in 'Source\IDE\Tests\Atlas.IDE.Tests.UnitCommands.pas',
   Atlas.IDE.Tests.Debug in 'Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas',
   Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas',
+  Atlas.IDE.Tests.LeakSetup in 'Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';
 
 end.

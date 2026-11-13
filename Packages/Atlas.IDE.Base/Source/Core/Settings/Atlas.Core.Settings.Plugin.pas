@@ -370,6 +370,7 @@ type
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
     property TestsAffected: Boolean read FBuild.TestsAffected write FBuild.TestsAffected;
+    property TestsLeakSetup: Boolean read FBuild.TestsLeakSetup write FBuild.TestsLeakSetup;
     property TestsAffectedDepth: Integer read FBuild.TestsAffectedDepth write FBuild.TestsAffectedDepth;
     property TestsAffectedBeforeCommit: Boolean read FBuild.TestsAffectedBeforeCommit
       write FBuild.TestsAffectedBeforeCommit;
