@@ -296,6 +296,15 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
 
+### Pinned values
+
+- The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values
+- Values changed since the previous stop are shown in the warning colour
+- Pinned expressions belong to the project and survive debug sessions; a click on ✕ unpins them for good
+- Evaluation has no side effects: expressions with calls stay `?`. At most 100 per project
+
+Setting: `debug.pinnedValues`
+
 ### "No access to value" explained
 
 - When the debugger only says "Inaccessible value" or "... inaccessible here due to optimization" for a variable, the hover and the inline values show `‹no access›`.

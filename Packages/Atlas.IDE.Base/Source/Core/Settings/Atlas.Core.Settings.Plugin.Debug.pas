@@ -183,6 +183,9 @@ type
     DebugWhyHere: Boolean;
     /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
     DebugWhyHereDepth: Integer;
+    /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
+    /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
+    DebugPinnedValues: Boolean;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -269,6 +272,7 @@ begin
   Result.DebugInlineValuesPerLine := 5;
   Result.DebugWhyHere := True;
   Result.DebugWhyHereDepth := cDefaultWhyHereDepth;
+  Result.DebugPinnedValues := True;
   Result.DebugOwnCodeFolders := '';
   Result.DebugEventLog := True;
   Result.DebugEventLogColors := cDefaultEventLogColors;
@@ -351,6 +355,7 @@ begin
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);

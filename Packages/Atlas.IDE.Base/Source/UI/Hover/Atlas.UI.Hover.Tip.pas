@@ -158,6 +158,7 @@ type
     FOnUrl: TAtlasHoverUrlEvent;
     FOnProblemAction: TAtlasHoverProblemActionEvent;
     FOnDebugFix: TAtlasHoverIndexEvent;
+    FOnDebugAction: TAtlasHoverIndexEvent;
     /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
     procedure DocMouseDown(AShift: TShiftState; AX, AY: Integer);
     /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
@@ -202,6 +203,8 @@ type
     /// <summary>Klick auf eine Korrektur unter „kein Zugriff“ (#840); AIndex in View.DebugValue.Note.Fixes.
     /// </summary>
     property OnDebugFix: TAtlasHoverIndexEvent read FOnDebugFix write FOnDebugFix;
+    /// <summary>Klick auf eine Aktion unter dem Wert (#526); AIndex in View.DebugValue.Actions.</summary>
+    property OnDebugAction: TAtlasHoverIndexEvent read FOnDebugAction write FOnDebugAction;
   end;
 
 implementation
@@ -997,6 +1000,11 @@ begin
       if Assigned(FOnDebugFix) then
       begin
         FOnDebugFix(Self, mHit.Index);
+      end;
+    TAtlasHoverHitKind.DebugAction:
+      if Assigned(FOnDebugAction) then
+      begin
+        FOnDebugAction(Self, mHit.Index);
       end;
   end;
 end;

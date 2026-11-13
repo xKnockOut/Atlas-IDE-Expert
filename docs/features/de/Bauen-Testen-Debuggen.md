@@ -330,6 +330,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
+#### Werte anheften
+
+- Im Debug-Hover steht unter dem Wert „Anheften“. Der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Summe = 125 ✕` am Ende seiner Zeile, hinter den Werten im Editor.
+- Seit dem vorigen Halt geänderte Werte stehen in der Warnfarbe.
+- Angeheftete Ausdrücke gelten je Projekt und bleiben über Debug-Sitzungen erhalten; ein Klick auf ✕ löst sie dauerhaft.
+- Ausgewertet wird ohne Nebenwirkungen: Ausdrücke mit Aufrufen bleiben `?`. Höchstens 100 je Projekt.
+
+Einstellung: `debug.pinnedValues`
+
 #### „kein Zugriff auf Wert“ erklärt
 
 - Liefert der Debugger für eine Variable nur „Inaccessible value“ oder „… wegen der Optimierung nicht …“, steht im Hover und in den Werten im Editor `‹kein Zugriff›`.

@@ -121,7 +121,7 @@ type
     DebugEventLogForgetFilter, DebugEventLogEmpty, DebugEventLogSummary, DebugEventLogInvalidRegex,
     DebugEventLogNotFound, DebugEventLogFileTypes, DebugEventLogSessionStarted, DebugEventLogSessionEnded,
     DebugEventLogModuleLoaded, DebugEventLogModuleUnloaded, DebugEventLogThreadStarted, DebugEventLogThreadEnded,
-    DebugEventLogSaved, SettingsDebugEventLog, SettingsDebugEventLogColors);
+    DebugEventLogSaved, SettingsDebugEventLog, SettingsDebugEventLogColors, SettingsDebugPinnedValues, PinAction, PinLimit);
 
   TAtlasDebugStrings = class
   public
@@ -593,7 +593,10 @@ const
      'Thread beendet',
      'Atlas: Ereignisprotokoll gespeichert: %s',
      'Ereignisprotokoll beim Debuggen',
-     'Farben im Ereignisprotokoll (Muster=Farbe; …)'),
+     'Farben im Ereignisprotokoll (Muster=Farbe; …)',
+     'Werte aus dem Hover anheften',
+     'Anheften',
+     'Höchstens %d angeheftete Werte je Projekt.'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1045,7 +1048,10 @@ const
      'Thread ended',
      'Atlas: Event log saved: %s',
      'Event log while debugging',
-     'Event log colors (pattern=color; …)'));
+     'Event log colors (pattern=color; …)',
+     'Pin values from the hover',
+     'Pin',
+     'At most %d pinned values per project.'));
 
 { TAtlasDebugStrings }
 

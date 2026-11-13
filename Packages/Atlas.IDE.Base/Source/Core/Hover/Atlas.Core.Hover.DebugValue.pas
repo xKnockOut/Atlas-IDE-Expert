@@ -48,6 +48,8 @@ type
     Text: string;
     /// <summary>Erklärung eines Fehlers „kein Zugriff“ (#840).</summary>
     Note: TAtlasDebugValueNote;
+    /// <summary>Aktionen unter dem Wert (Anheften #526); Id und Beschriftung setzt die Debug-Schicht.</summary>
+    Actions: TArray<TAtlasDebugValueFix>;
     class function Pending(const AExpression: string): TAtlasDebugValue; static;
     /// <summary>Ausgewerteter Wert, auf TAtlasDebugExpression.cMaxValueLength gekürzt.</summary>
     class function Evaluated(const AExpression, AText: string): TAtlasDebugValue; static;
