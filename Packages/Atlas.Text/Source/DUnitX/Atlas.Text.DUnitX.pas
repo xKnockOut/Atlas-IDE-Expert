@@ -144,6 +144,12 @@ uses
   System.SysUtils,
   Atlas.Text.Chars;
 
+const
+  /// <summary>FNV-1a mit 64 Bit: Startwert, Faktor und Stellen des Fingerabdrucks in Hex.</summary>
+  cFnvOffset = UInt64($CBF29CE484222325);
+  cFnvPrime = UInt64($00000100000001B3);
+  cFingerprintDigits = 16;
+
 type
   TTokenKind = (Ident, Str, Sym, Num);
 
@@ -1417,7 +1423,7 @@ type
 procedure TFingerprinter.Mix(AChar: Char);
 begin
   Hash := Hash xor UInt64(Ord(AChar));
-  Hash := Hash * UInt64($00000100000001B3);
+  Hash := Hash * cFnvPrime;
   Last := AChar;
 end;
 {$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
@@ -1554,31 +1560,31 @@ begin
     mLast := High(ALines);
   end;
   mPrinter := Default(TFingerprinter);
-  mPrinter.Hash := UInt64($CBF29CE484222325);
+  mPrinter.Hash := cFnvOffset;
   for mLine := AFirstLine to mLast do
   begin
     mPrinter.Feed(ALines[mLine]);
   end;
-  Result := IntToHex(Int64(mPrinter.Hash), 16);
+  Result := IntToHex(Int64(mPrinter.Hash), cFingerprintDigits);
 end;
 
 /// <summary>Namen einer uses-Klausel ab dem Token nach „uses“ bis „;“ an AUnits anhängen; AIndex steht danach auf
 /// dem „;“.</summary>
 procedure ReadUsesList(const ATokens: TArray<TToken>; var AIndex: Integer; var AUnits: TArray<string>);
 var
-  mName: string;
+  mParts: TArray<string>;
 begin
-  mName := '';
+  mParts := nil;
   Inc(AIndex);
   while AIndex <= High(ATokens) do
   begin
     if IsSym(ATokens[AIndex], ';') or IsSym(ATokens[AIndex], ',') then
     begin
-      if mName <> '' then
+      if mParts <> nil then
       begin
-        AUnits := AUnits + [mName];
+        AUnits := AUnits + [string.Join('', mParts)];
       end;
-      mName := '';
+      mParts := nil;
       if IsSym(ATokens[AIndex], ';') then
       begin
         Exit;
@@ -1591,7 +1597,7 @@ begin
     end
     else if (ATokens[AIndex].Kind = TTokenKind.Ident) or IsSym(ATokens[AIndex], '.') then
     begin
-      mName := mName + ATokens[AIndex].Text;
+      mParts := mParts + [ATokens[AIndex].Text];
     end;
     Inc(AIndex);
   end;

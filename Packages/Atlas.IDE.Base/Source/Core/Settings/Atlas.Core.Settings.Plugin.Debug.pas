@@ -16,6 +16,7 @@ const
   /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
   cMinTestsFromDebugStopMaxArray = 0;
   cMaxTestsFromDebugStopMaxArray = 1000;
+  cDefaultTestsFromDebugStopMaxArray = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -183,7 +184,7 @@ begin
   Result.TestsFromDebugStop := True;
   Result.TestsFromDebugStopFields := True;
   Result.TestsFromDebugStopProperties := False;
-  Result.TestsFromDebugStopMaxArray := 20;
+  Result.TestsFromDebugStopMaxArray := cDefaultTestsFromDebugStopMaxArray;
   Result.DebugHoverValues := True;
   Result.DebugVisualizers := True;
   Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.cAllKinds);

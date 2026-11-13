@@ -83,6 +83,10 @@ const
   cLabelWidth = 150;
   cListRows = 6;
   cListRowHeight = 20;
+  cRadioHeight = 18;
+  cEditHeight = 22;
+  /// <summary>„Soll … werfen“ rechts neben „Soll funktionieren“.</summary>
+  cRaisesLeft = cLabelWidth + 2 * TAtlasDialog.cRowGap;
 
 { TAtlasTestFromDebugDialog }
 
@@ -137,14 +141,15 @@ begin
   FWorks := TRadioButton.Create(Self);
   FWorks.Parent := mRow;
   FWorks.Caption := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsFromDebugWorks);
-  FWorks.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowLabelTop), ScaleValue(cLabelWidth), ScaleValue(18));
+  FWorks.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowLabelTop), ScaleValue(cLabelWidth),
+    ScaleValue(cRadioHeight));
   FWorks.Checked := not FChoice.Raises;
   FWorks.OnClick := KindClick;
   FRaises := TRadioButton.Create(Self);
   FRaises.Parent := mRow;
   FRaises.Caption := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFromDebugRaises, [FChoice.ExceptionClass]);
-  FRaises.SetBounds(ScaleValue(cRowGap + cLabelWidth + cRowGap), ScaleValue(cRowLabelTop),
-    ScaleValue(cDialogWidth - cLabelWidth - 3 * cRowGap), ScaleValue(18));
+  FRaises.SetBounds(ScaleValue(cRaisesLeft), ScaleValue(cRowLabelTop), ScaleValue(cDialogWidth - cRaisesLeft),
+    ScaleValue(cRadioHeight));
   FRaises.Checked := FChoice.Raises;
   FRaises.Enabled := FChoice.ExceptionClass <> '';
   FRaises.Visible := FChoice.ExceptionClass <> '';
@@ -158,7 +163,7 @@ begin
   AddLabel(mRow, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFromDebugExpected, [FDescription.ResultType]));
   mRow := AddRow(cRowHeight);
   FExpected.Parent := mRow;
-  FExpected.SetBounds(ScaleValue(cRowGap), 0, ScaleValue(cDialogWidth - 2 * cRowGap), ScaleValue(22));
+  FExpected.SetBounds(ScaleValue(cRowGap), 0, ScaleValue(cDialogWidth - 2 * cRowGap), ScaleValue(cEditHeight));
   FExpected.Text := FChoice.Expected;
   FitRight(FExpected);
 end;
@@ -173,7 +178,8 @@ begin
   AddLabel(mRow, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsFromDebugName));
   FName := TEdit.Create(Self);
   FName.Parent := mRow;
-  FName.SetBounds(ScaleValue(cLabelWidth), 0, ScaleValue(cDialogWidth - cLabelWidth - cRowGap), ScaleValue(22));
+  FName.SetBounds(ScaleValue(cLabelWidth), 0, ScaleValue(cDialogWidth - cLabelWidth - cRowGap),
+    ScaleValue(cEditHeight));
   FName.Text := FDescription.TestName;
   FitRight(FName);
   mUnit := TAtlasTestsTextId.TestsFromDebugNewUnit;
