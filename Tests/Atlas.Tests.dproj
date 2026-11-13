@@ -420,6 +420,8 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.MethodReferences.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Interfaces.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
@@ -648,6 +650,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MoveMember.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InlineAccessor.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlineAccessor.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.RaiseVisibility.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RaiseVisibility.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SafeDelete.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SafeDelete.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceChanges.Tests.pas"/>
@@ -2075,6 +2079,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.Compile.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.Services.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.Structure.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.Visibility.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.Conversions.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.Types.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.Fixes.pas"/>
