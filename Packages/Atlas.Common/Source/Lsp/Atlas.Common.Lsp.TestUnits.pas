@@ -26,7 +26,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.TestUnits;
+  Atlas.Common.Editing.TestUnits,
+  Atlas.Common.Editing.TestDrafts;
 
 type
   /// <summary>Datei zu einem Unit-Namen (Index, Suchpfad); '' wenn unbekannt.</summary>
@@ -86,6 +87,8 @@ type
     function TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
     function DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
       const ATarget: TTestUnitTarget): TJSONObject;
+    function PreparedDraft(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+      const ATarget: TTestUnitTarget; out ADraft: TTestDraft): Boolean;
   public
     constructor Create(const AStore: IDocumentStore; const AContextFor: TTestUnitContextProvider);
     /// <summary>Gegenstück der Unit AFileName mit Text AText; ALine 0-basiert, -1 = ohne Zeile.</summary>
@@ -107,6 +110,13 @@ type
       const ADrafts: TArray<TTestUnitMethod>): TJSONObject; overload; static;
     /// <summary>Code-Aktionen zu AUri an ALine. Der Aufrufer übernimmt die Objekte.</summary>
     function Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
+    /// <summary>Entwurf zur Methode bzw. Routine an ALine (0-basiert) samt Datei und Text der vorhandenen
+    /// Testunit (#2173); False mit AReason ohne testbare Routine oder ohne Testunit.</summary>
+    function DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
+      out ATestFile, ATestText, AReason: string): Boolean;
+    /// <summary>WorkspaceEdit mit den Änderungen von AOld nach ANew in AFileName. Der Aufrufer übernimmt es.
+    /// </summary>
+    class function ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject; static;
     /// <summary>atlas.server.testUnit [uri, zeile?]: Gegenstück als Objekt (unit, isTest,
     /// counterpart, uri, canCreate, newUri, reason, edit).</summary>
     function Execute(const AArguments: TJSONArray): TJSONValue;
@@ -125,7 +135,6 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.UnitTemplates,
-  Atlas.Common.Editing.TestDrafts,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts;
@@ -135,7 +144,8 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TLspTestUnitsText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
-    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines, CreateTestCase);
+    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines, CreateTestCase, NoTestableRoutine,
+    NoTestUnitYet);
 
 const
   cTexts: array[TLspTestUnitsText] of TAtlasText = (
@@ -150,7 +160,11 @@ const
     (De: 'Datei gehört zu keinem Arbeitsbereich'; En: 'File belongs to no workspace'),
     (De: '%s hat weder Klassen noch Routinen im interface';
      En: '%s has neither classes nor routines in the interface'),
-    (De: 'Testfall für %s anlegen'; En: 'Create a test case for %s'));
+    (De: 'Testfall für %s anlegen'; En: 'Create a test case for %s'),
+    (De: 'An dieser Stelle steht keine Methode oder Routine, die sich von der Testunit aus aufrufen lässt';
+     En: 'There is no method or routine here that can be called from the test unit'),
+    (De: 'Die Testunit %s fehlt noch: zuerst über „Testfall anlegen“ oder „Testunit anlegen“ erzeugen';
+     En: 'The test unit %s does not exist yet: create it first via “Create a test case” or “Create test unit”'));
 
 {$SCOPEDENUMS OFF}
 
@@ -487,25 +501,72 @@ begin
   Result := TLspTestUnits.CreateEdit(ATarget, AContext, [mMethod]);
 end;
 
+function TLspTestUnits.PreparedDraft(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+  const ATarget: TTestUnitTarget; out ADraft: TTestDraft): Boolean;
+var
+  mText: string;
+  mTokens: TArray<TPascalToken>;
+begin
+  Result := CanDraft(ATarget, ALine) and SourceOf(AUri, AContext, mText, mTokens) and
+    TTestDrafts.DraftAt(mText, mTokens, ATarget.Source, ALine, ADraft);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ADraft.Fixture := TTestUnits.FixtureName(ADraft.ClassName, ATarget.UnitName);
+  ADraft.UnitName := ATarget.UnitName;
+  if not ADraft.ClassMethod and (ADraft.ClassName <> '') then
+  begin
+    ADraft.CreateText := TTestUnits.CreateExpression(ATarget.Source, ADraft.ClassName);
+  end;
+end;
+
+function TLspTestUnits.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
+  out ATestFile, ATestText, AReason: string): Boolean;
+var
+  mContext: TTestUnitContext;
+  mTarget: TTestUnitTarget;
+begin
+  ADraft := Default(TTestDraft);
+  ATestFile := '';
+  ATestText := '';
+  AReason := cTexts[TLspTestUnitsText.NoTestableRoutine].Text;
+  if not Assigned(FContextFor) or not FContextFor(AUri, mContext) then
+  begin
+    Exit(False);
+  end;
+  mTarget := ResolveUri(AUri, ALine, mContext);
+  if (mTarget.UnitName = '') or not PreparedDraft(AUri, ALine, mContext, mTarget, ADraft) or ADraft.Bare then
+  begin
+    Exit(False);
+  end;
+  if mTarget.CounterpartFile = '' then
+  begin
+    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mTarget.Counterpart]);
+    Exit(False);
+  end;
+  ATestFile := mTarget.CounterpartFile;
+  ATestText := TextOf(ATestFile, mContext);
+  AReason := '';
+  Result := True;
+end;
+
+class function TLspTestUnits.ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject;
+begin
+  Result := ChangeEdit(AFileName, AOld, ANew);
+end;
+
 function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
   const ATarget: TTestUnitTarget): TJSONObject;
 var
-  mText, mOld, mNew, mName, mReason, mFile, mTitle: string;
-  mTokens: TArray<TPascalToken>;
+  mOld, mNew, mName, mReason, mFile, mTitle: string;
   mDraft: TTestDraft;
   mEdit: TJSONObject;
 begin
   Result := nil;
-  if not CanDraft(ATarget, ALine) or not SourceOf(AUri, AContext, mText, mTokens) or
-    not TTestDrafts.DraftAt(mText, mTokens, ATarget.Source, ALine, mDraft) then
+  if not PreparedDraft(AUri, ALine, AContext, ATarget, mDraft) then
   begin
     Exit;
-  end;
-  mDraft.Fixture := TTestUnits.FixtureName(mDraft.ClassName, ATarget.UnitName);
-  mDraft.UnitName := ATarget.UnitName;
-  if not mDraft.ClassMethod and (mDraft.ClassName <> '') then
-  begin
-    mDraft.CreateText := TTestUnits.CreateExpression(ATarget.Source, mDraft.ClassName);
   end;
   if ATarget.CounterpartFile <> '' then
   begin

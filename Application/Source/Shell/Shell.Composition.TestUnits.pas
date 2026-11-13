@@ -56,7 +56,7 @@ type
     function ContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Code-Aktionen der Testunits in Zeile ALine.</summary>
     function Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
-    /// <summary>Befehl atlas.server.testUnit.</summary>
+    /// <summary>Befehle atlas.server.testUnit und atlas.server.boundaryTests (#2173).</summary>
     procedure RegisterCommand(ACommands: TLspCommands);
   end;
 
@@ -69,6 +69,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.TestUnits,
+  Atlas.Common.Lsp.BoundaryTests,
   Atlas.Text.LogMarks;
 
 const
@@ -104,6 +105,7 @@ begin
     begin
       Result := FTestUnits.Execute(AArguments);
     end);
+  TLspBoundaryTests.Attach(ACommands, FTestUnits);
 end;
 
 function TShellTestUnits.ContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;

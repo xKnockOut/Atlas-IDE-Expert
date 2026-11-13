@@ -345,6 +345,7 @@ uses
   Atlas.Common.Lsp.LeakCandidates.Tests in 'Common\Lsp\Atlas.Common.Lsp.LeakCandidates.Tests.pas',
   Atlas.Common.Lsp.TestCases.Tests in 'Common\Lsp\Atlas.Common.Lsp.TestCases.Tests.pas',
   Atlas.Common.Lsp.BoundaryCases.Tests in 'Common\Lsp\Atlas.Common.Lsp.BoundaryCases.Tests.pas',
+  Atlas.Common.Lsp.BoundaryTests.Tests in 'Common\Lsp\Atlas.Common.Lsp.BoundaryTests.Tests.pas',
   Atlas.Common.Leaks.Setup.Tests in 'Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas',
   Atlas.Common.Leaks.Candidates.Tests in 'Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas',
   Atlas.Common.Lsp.SlashMenu.Tests in 'Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas',
