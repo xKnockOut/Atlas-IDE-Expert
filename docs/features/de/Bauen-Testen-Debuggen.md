@@ -341,6 +341,32 @@ Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechse
 
 Einstellungen: `debug.breakpointSetPerBranch`
 
+#### Haltepunkte wandern mit dem Code
+
+Läuft von selbst; Befehle im Menü Atlas und in der Befehlspalette. Nach `git pull`, Branchwechsel oder Formatierer stehen Haltepunkte der IDE sonst auf falschen Zeilen, weil sie an Zeilennummern hängen.
+
+- Atlas merkt sich zu jedem Quelltext-Haltepunkt einen Anker: Routine, Abstand zum Routinenanfang, Zeilentext und Nachbarzeilen (dieselbe Suche wie bei den Haltepunkt-Sätzen).
+- Ändert sich eine Datei von außen (neu geladen, Branchwechsel, beim letzten Schließen der IDE anders, oder fünf und mehr Zeilen auf einmal wie bei Formatierer und Code-Aktionen), setzt Atlas jeden Haltepunkt auf die passende Zeile, mit Bedingung, Durchlaufzähler, Gruppe, Aktionen und an/aus. Beim normalen Tippen nimmt die IDE ihre Haltepunkte selbst mit; Atlas merkt sich nur den neuen Anker.
+- Eine Zeile in den Meldungen nennt jede Verschiebung und „3 verschoben, 1 verwaist“.
+- Nicht eindeutig zuzuordnende Haltepunkte bleiben stehen und kommen in die Liste „Verwaiste Haltepunkte …“ mit Vorschlag (gleicher Abstand in der Routine) und den Knöpfen „Vorschlag übernehmen“ und „Löschen“. Gelöscht wird nichts von selbst.
+- „Haltepunkte zurück an alte Zeilen“ nimmt das letzte Nachziehen zurück.
+- Die Anker liegen in `%LOCALAPPDATA%\Atlas\breakpoint-anchors.json`.
+
+Einstellungen: `debug.breakpointAnchors`
+
+#### Haltepunkt-Regeln: abhängig, Treffer, Thread
+
+Aufruf: Kontextmenü des Editors (Atlas › Debuggen › „Haltepunkt-Regeln …“, auch im Rand), Menü Atlas, Befehlspalette; auf der Zeile eines Haltepunkts. Ein Haltepunkt in einer viel benutzten Routine hält sonst hundertmal, bevor man an der Stelle ist, um die es geht.
+
+- „Erst aktiv nach“: Der Haltepunkt ist zu Beginn jeder Debug-Sitzung aus und wird eingeschaltet, sobald der gewählte andere Haltepunkt gehalten hat. „bis zum Ende der Sitzung“ lässt ihn danach an, „nur einmal“ schaltet ihn nach seinem Halt wieder aus, bis der auslösende erneut hält. Nach der Sitzung ist er wieder an.
+- „Anhalten“: bei jedem, genau beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer; gezählt wird je Sitzung.
+- „Thread“: alle, Name enthält (aus `TThread.NameThreadForDebugging`), eine Thread-ID oder nur der Hauptthread. Ein Halt in einem anderen Thread zählt nicht als Treffer.
+- Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Für Treffer und Thread hält der Debugger kurz an, Atlas zählt und setzt sofort fort; in heißen Schleifen kostet das Zeit.
+- Fehlt der auslösende Haltepunkt beim Start, bleibt der abhängige normal an, und eine Zeile in den Meldungen sagt es.
+- Regeln liegen in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` und ziehen mit, wenn „Haltepunkte wandern mit dem Code“ einen Haltepunkt verschiebt.
+
+Einstellungen: `debug.breakpointRules`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))

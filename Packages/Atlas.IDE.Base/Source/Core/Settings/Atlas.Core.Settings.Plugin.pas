@@ -462,6 +462,8 @@ type
       write FDebug.DebugBreakpointSetPerBranch;
     property DebugRunToClick: Boolean read FDebug.DebugRunToClick write FDebug.DebugRunToClick;
     property DebugBreakpointsWindow: Boolean read FDebug.DebugBreakpointsWindow write FDebug.DebugBreakpointsWindow;
+    property DebugBreakpointAnchors: Boolean read FDebug.DebugBreakpointAnchors write FDebug.DebugBreakpointAnchors;
+    property DebugBreakpointRules: Boolean read FDebug.DebugBreakpointRules write FDebug.DebugBreakpointRules;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;

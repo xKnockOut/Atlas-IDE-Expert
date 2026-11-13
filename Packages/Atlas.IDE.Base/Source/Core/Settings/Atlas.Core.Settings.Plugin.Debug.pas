@@ -132,6 +132,14 @@ type
     /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
     /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
     DebugBreakpointsWindow: Boolean;
+    /// <summary>Haltepunkte wandern mit dem Code (#841, debug.breakpointAnchors): Nach Änderungen von außen
+    /// (neu geladen, Branchwechsel, viele Zeilen auf einmal) setzt Atlas die Haltepunkte über ihren Anker auf die
+    /// passende Zeile; nicht zuordenbare kommen in die Liste „Verwaist“. Aus = die IDE lässt sie, wo sie sind.
+    /// </summary>
+    DebugBreakpointAnchors: Boolean;
+    /// <summary>Abhängige Haltepunkte und Trefferbedingungen (#864, debug.breakpointRules): erst aktiv nach einem
+    /// anderen Haltepunkt, Trefferbedingung und Thread-Filter je Haltepunkt. Aus = wie in der IDE.</summary>
+    DebugBreakpointRules: Boolean;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
     /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
@@ -333,6 +341,8 @@ begin
   Result.DebugBreakpointSetPerBranch := True;
   Result.DebugRunToClick := True;
   Result.DebugBreakpointsWindow := True;
+  Result.DebugBreakpointAnchors := True;
+  Result.DebugBreakpointRules := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -423,6 +433,8 @@ begin
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
+  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
+  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
