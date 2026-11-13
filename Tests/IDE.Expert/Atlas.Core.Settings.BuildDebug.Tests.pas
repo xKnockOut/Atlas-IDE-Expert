@@ -469,6 +469,9 @@ begin
   // #863: Haltepunktfenster ist an; der Wert überlebt Speichern und Laden.
   Assert.IsTrue(Settings.DebugBreakpointsWindow);
   Settings.DebugBreakpointsWindow := False;
+  // #841: Haltepunkte nachziehen ist an.
+  Assert.IsTrue(Settings.DebugBreakpointAnchors);
+  Settings.DebugBreakpointAnchors := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -484,6 +487,7 @@ begin
   Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
   Assert.IsFalse(Loaded.DebugRunToClick);
   Assert.IsFalse(Loaded.DebugBreakpointsWindow);
+  Assert.IsFalse(Loaded.DebugBreakpointAnchors);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var

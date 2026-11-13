@@ -160,6 +160,8 @@ begin
   Switch('debug.runToClick', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRunToClick));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
   Switch('debug.breakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointsWindow));
+  // Haltepunkte wandern mit dem Code (#841).
+  Switch('debug.breakpointAnchors', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointAnchors));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;

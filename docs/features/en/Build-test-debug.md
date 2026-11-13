@@ -563,6 +563,18 @@ Settings: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs
 - Limits: programs started with the debugger use the parameters of the launch profile, but working folder and environment from the IDE's run options; only projects of the open project group
 
 Settings: `debug.launchGroups`
+### Breakpoints move with the code
+
+Runs on its own; commands in the Atlas menu and the command palette. After `git pull`, a branch switch or a formatter, the IDE's breakpoints otherwise sit on wrong lines because they are tied to line numbers.
+
+- Atlas remembers an anchor for each source breakpoint: routine, distance from the start of the routine, line text and neighbouring lines (the same search as for breakpoint sets).
+- When a file changes from outside (reloaded, branch switch, different from when the IDE was last closed, or five or more lines at once as with a formatter or code action), Atlas moves each breakpoint to the matching line, with condition, pass count, group, actions and on/off. While you type, the IDE moves its breakpoints itself; Atlas only remembers the new anchor.
+- A line in the messages names each move and “3 moved, 1 orphaned”.
+- Breakpoints that cannot be matched stay where they are and go to the list “Orphaned breakpoints …” with a suggestion (same distance within the routine) and the buttons “Apply suggestion” and “Delete”. Nothing is deleted on its own.
+- “Move breakpoints back to their old lines” undoes the last move.
+- Anchors are stored in `%LOCALAPPDATA%\Atlas\breakpoint-anchors.json`.
+
+Settings: `debug.breakpointAnchors`
 
 ## Debug: exceptions
 

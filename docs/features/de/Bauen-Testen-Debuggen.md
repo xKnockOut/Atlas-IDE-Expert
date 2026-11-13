@@ -330,6 +330,19 @@ Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechse
 
 Einstellungen: `debug.breakpointSetPerBranch`
 
+#### Haltepunkte wandern mit dem Code
+
+Läuft von selbst; Befehle im Menü Atlas und in der Befehlspalette. Nach `git pull`, Branchwechsel oder Formatierer stehen Haltepunkte der IDE sonst auf falschen Zeilen, weil sie an Zeilennummern hängen.
+
+- Atlas merkt sich zu jedem Quelltext-Haltepunkt einen Anker: Routine, Abstand zum Routinenanfang, Zeilentext und Nachbarzeilen (dieselbe Suche wie bei den Haltepunkt-Sätzen).
+- Ändert sich eine Datei von außen (neu geladen, Branchwechsel, beim letzten Schließen der IDE anders, oder fünf und mehr Zeilen auf einmal wie bei Formatierer und Code-Aktionen), setzt Atlas jeden Haltepunkt auf die passende Zeile, mit Bedingung, Durchlaufzähler, Gruppe, Aktionen und an/aus. Beim normalen Tippen nimmt die IDE ihre Haltepunkte selbst mit; Atlas merkt sich nur den neuen Anker.
+- Eine Zeile in den Meldungen nennt jede Verschiebung und „3 verschoben, 1 verwaist“.
+- Nicht eindeutig zuzuordnende Haltepunkte bleiben stehen und kommen in die Liste „Verwaiste Haltepunkte …“ mit Vorschlag (gleicher Abstand in der Routine) und den Knöpfen „Vorschlag übernehmen“ und „Löschen“. Gelöscht wird nichts von selbst.
+- „Haltepunkte zurück an alte Zeilen“ nimmt das letzte Nachziehen zurück.
+- Die Anker liegen in `%LOCALAPPDATA%\Atlas\breakpoint-anchors.json`.
+
+Einstellungen: `debug.breakpointAnchors`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))
