@@ -21,7 +21,8 @@ uses
   Shell.Composition.Status,
   Shell.Composition.ServerCommands,
   Shell.Composition.EditorCommands,
-  Shell.Composition.UnitSearch;
+  Shell.Composition.UnitSearch,
+  Shell.Composition.RuntimeReport;
 
 type
   /// <summary>Was die Teilwurzel Befehle von der Komposition braucht. In Status, Server, Editor und UnitSearch
@@ -33,6 +34,8 @@ type
     Server: TShellServerCommandServices;
     Editor: TShellEditorCommandServices;
     UnitSearch: TShellUnitSearchServices;
+    /// <summary>Speicher und Neumeldung der Diagnosen aus Laufzeitberichten (#74).</summary>
+    RuntimeReport: TShellRuntimeReportServices;
   end;
 
   /// <summary>Hält die Befehle und ihre Teile; meldet alle Befehle am Verteiler an.</summary>
@@ -320,6 +323,7 @@ begin
   mServices.ReadText := ReadText;
   TShellLeakSetup.Attach(FCommands, mServices);
   TShellLeakCandidates.Attach(FCommands, mServices);
+  TShellRuntimeReport.Attach(FCommands, mServices, FServices.RuntimeReport);
 end;
 
 procedure TShellCommandArea.RegisterTestCases;

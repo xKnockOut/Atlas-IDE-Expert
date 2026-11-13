@@ -16,8 +16,6 @@ implementation
 
 uses
   System.SysUtils,
-  System.Classes,
-  System.IOUtils,
   System.JSON,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Paths,
@@ -26,8 +24,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.MapFile,
-  Atlas.Text.PeImage,
+  Atlas.Common.Diagnostics.RuntimeReport,
   Atlas.Text.CrashReport,
   Shell.WorkspaceGroup;
 
@@ -38,9 +35,6 @@ type
 {$SCOPEDENUMS OFF}
 
 const
-  // Der PE-Kopf samt Abschnittstabelle steht in den ersten Kilobytes der Datei.
-  cImageHeadBytes = 64 * 1024;
-
   cTexts: array[TMcpReportText] of TAtlasText = (
     (De: 'Löst Adressen aus Absturzberichten über die Map-Datei des Linkers (DCC_MapFile=3) in Unit, Routine, ' +
       'Zeile und Datei im Projekt auf. Absolute Adressen gehen über die Basisadresse des Moduls (aus der EXE, sonst ' +
@@ -75,39 +69,6 @@ const
     (De: 'Projekt %s ist nicht lesbar'; En: 'Project %s cannot be read'),
     (De: '"base" ist keine Hexzahl: %s'; En: '"base" is not a hex number: %s'),
     (De: 'text oder file angeben'; En: 'Pass text or file'));
-
-/// <summary>Erste Bytes einer Datei; nil, wenn sie fehlt oder nicht lesbar ist.</summary>
-function ReadHead(const AFileName: string): TBytes;
-var
-  mStream: TFileStream;
-begin
-  Result := nil;
-  if not FileExists(AFileName) then
-  begin
-    Exit;
-  end;
-  try
-    mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-    try
-      SetLength(Result, mStream.Size);
-      if mStream.Size > cImageHeadBytes then
-      begin
-        SetLength(Result, cImageHeadBytes);
-      end;
-      if Length(Result) > 0 then
-      begin
-        mStream.ReadBuffer(Result[0], Length(Result));
-      end;
-    finally
-      mStream.Free;
-    end;
-  except
-    on EStreamError do
-    begin
-      Result := nil;
-    end;
-  end;
-end;
 
 /// <summary>EXE aus exe bzw. project; '' ohne beide.</summary>
 function ExecutableOf(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
@@ -145,50 +106,27 @@ begin
   end;
 end;
 
-/// <summary>Map und EXE aus den Argumenten; ASymbols.Map = nil, wenn keine Map da ist. Der Aufrufer gibt
+/// <summary>Map und EXE aus den Argumenten; ASymbols.Map = nil, wenn keine angegeben ist. Der Aufrufer gibt
 /// ASymbols.Map frei.</summary>
-procedure LoadSymbols(const AContext: TMcpToolContext; const AArguments: TJSONObject; out ASymbols: TMcpSymbols);
+procedure LoadSymbols(const AContext: TMcpToolContext; const AArguments: TJSONObject; out ASymbols: TReportSymbols);
 var
-  mMapName, mExe: string;
-  mImage: TPeImage;
+  mMapName: string;
 begin
-  ASymbols := Default(TMcpSymbols);
-  ASymbols.Base := BaseOf(AArguments);
-  mExe := ExecutableOf(AContext, AArguments);
   mMapName := TMcpArgs.OptionalString(AArguments, 'map');
   if mMapName <> '' then
   begin
     mMapName := AContext.Guard.Resolve(mMapName);
-  end
-  else if mExe <> '' then
-  begin
-    mMapName := ChangeFileExt(mExe, '.map');
   end;
-  if mMapName = '' then
+  TRuntimeReports.LoadSymbols(mMapName, ExecutableOf(AContext, AArguments), BaseOf(AArguments), ASymbols);
+  if ASymbols.MapState = TReportMapState.Missing then
   begin
-    Exit;
-  end;
-  if not FileExists(mMapName) then
-  begin
-    raise EMcpToolError.Create(cTexts[TMcpReportText.MapMissing].Fmt([mMapName]));
-  end;
-  ASymbols.Map := TMapFile.Create(TFile.ReadAllText(mMapName, TEncoding.UTF8));
-  ASymbols.MapName := mMapName;
-  mImage := TPeImage.Read(ReadHead(mExe));
-  ASymbols.Match := TMapImageCheck.Compare(ASymbols.Map, mImage);
-  if mImage.Valid then
-  begin
-    ASymbols.Module := ExtractFileName(mExe);
-  end;
-  if (ASymbols.Base = 0) and mImage.Valid then
-  begin
-    ASymbols.Base := mImage.ImageBase;
+    raise EMcpToolError.Create(cTexts[TMcpReportText.MapMissing].Fmt([ASymbols.MapName]));
   end;
 end;
 
 /// <summary>Datei einer Unit im Arbeitsordner über den Symbolindex (lädt sie über die Suchpfade nach); '' für
 /// Bibliotheken und Unbekanntes.</summary>
-function UnitFileOf(const AContext: TMcpToolContext): TMcpUnitFileFunc;
+function UnitFileOf(const AContext: TMcpToolContext): TReportUnitFileFunc;
 var
   mIndex: ISymbolIndex;
   mGroup: TShellWorkspaceGroup;
@@ -222,7 +160,7 @@ end;
 function ToolResolveAddress(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
   mAddresses: TArray<TMcpAddress>;
-  mSymbols: TMcpSymbols;
+  mSymbols: TReportSymbols;
 begin
   mAddresses := TMcpReportTools.ParseAddresses(TMcpArgs.RequiredString(AArguments, 'addresses'));
   LoadSymbols(AContext, AArguments, mSymbols);
@@ -253,7 +191,7 @@ end;
 function ToolAnalyzeReport(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
   mText: string;
-  mSymbols: TMcpSymbols;
+  mSymbols: TReportSymbols;
 begin
   mText := ReportTextOf(AContext, AArguments);
   LoadSymbols(AContext, AArguments, mSymbols);

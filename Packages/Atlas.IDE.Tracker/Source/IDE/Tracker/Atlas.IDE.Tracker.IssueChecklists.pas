@@ -62,6 +62,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Vcl.Dialogs,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,

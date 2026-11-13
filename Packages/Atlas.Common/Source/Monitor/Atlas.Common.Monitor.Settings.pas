@@ -51,27 +51,6 @@ const
   cStartWithWindows = 'startWithWindows';
   cCheck = 'check';
 
-/// <summary>JSON-Objekt aus AText; ein leeres, wenn der Text kein Objekt ist. Gehört dem Aufrufer.</summary>
-function ObjectOf(const AText: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  mValue := nil;
-  if Trim(AText) <> '' then
-  begin
-    mValue := TJSONObject.ParseJSONValue(AText);
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-    Result := TJSONObject.Create;
-  end;
-end;
-
 class function TMonitorSettings.Defaults: TMonitorSettings;
 begin
   Result := Default(TMonitorSettings);
@@ -85,7 +64,7 @@ var
   mRoot, mSection: TJSONObject;
 begin
   Result := Defaults;
-  mRoot := ObjectOf(AText);
+  mRoot := TJsonRead.ParseObjectOrEmpty(AText);
   try
     mSection := TJsonRead.Obj(mRoot, cSection);
     Result.TrayIcon := TJsonRead.FlagOr(mSection, cTrayIcon, Result.TrayIcon);
@@ -107,7 +86,7 @@ function TMonitorSettings.ToText(const AOldText: string): string;
 var
   mRoot, mSection: TJSONObject;
 begin
-  mRoot := ObjectOf(AOldText);
+  mRoot := TJsonRead.ParseObjectOrEmpty(AOldText);
   try
     mSection := TJsonRead.Obj(mRoot, cSection);
     if mSection = nil then
@@ -191,7 +170,7 @@ begin
   begin
     Exit;
   end;
-  mRoot := ObjectOf(AGlobalText);
+  mRoot := TJsonRead.ParseObjectOrEmpty(AGlobalText);
   try
     mSetting := TJsonRead.Text(mRoot, 'language');
   finally

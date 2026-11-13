@@ -426,6 +426,30 @@ Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+### Leck- und Absturzberichte (#74)
+
+- Bericht kopieren, dann Atlas > „Absturz- oder Leckbericht einfügen …“ (auch in der Befehlspalette): Atlas liest FastMM-Logs (FullDebugMode), die Meldung von `ReportMemoryLeaksOnShutdown`, Berichte von madExcept, EurekaLog 6/7 und JclDebug und die Meldung einer Exception allein („Zugriffsverletzung bei Adresse … in Modul …“)
+- Die Meldungsansicht zeigt den Aufrufstapel des Absturz-Threads und der übrigen Threads bzw. je Leckgruppe (gleiche Klasse, gleicher Stapel) den Stapel; Zeilen im Projekt springen per Doppelklick in den Quelltext
+- Im Editor stehen Diagnosen an den Stellen: je Leckgruppe eine Warnung an der Erzeugungsstelle („Leck: TStringList × 2 (40 Bytes) wird hier erzeugt“), beim Absturz eine Warnung an der Absturzstelle und Hinweise an den übrigen eigenen Zeilen des Stapels; Quelle ist das Werkzeug (FastMM, madExcept, …)
+- Stapelzeilen ohne Debug-Informationen löst Atlas über die Map-Datei neben der EXE der Konfiguration Debug auf (Linker-Option „Map-Datei: Detailliert“); passt die Map nicht zur EXE (anderer Einsprungpunkt oder andere Codelänge), sagt Atlas es
+- „Markierungen des Laufzeitberichts entfernen“ nimmt die Diagnosen wieder weg; ein neuer Bericht ersetzt den alten
+- Für KI-Assistenten gibt es dieselbe Auswertung als MCP-Werkzeuge `analyze_report` und `resolve_address`
+
+### Erneut an Prozess anhängen
+
+- Hängt sich die IDE an einen laufenden Prozess (Start › An Prozess anhängen …), merkt Atlas Pfad und Name der EXE für die Projektgruppe
+- „Erneut an <Name> anhängen“ im Menü Start, in der Befehlspalette und mit Umschalt+Alt+P:
+  - genau ein laufender Prozess mit gleichem Pfad: sofort angehängt, ohne Dialog
+  - mehrere, oder nur gleicher Name an anderem Ort (andere Version): Auswahl mit PID, Startzeit und Befehlszeile
+  - keiner: Angebot, auf den Start zu warten
+- „Anhängen, sobald gestartet …“ im Menü Start und in der Befehlspalette: EXE wählen (Vorgabe: zuletzt gemerkte, sonst Ausgabedatei des aktiven Projekts); Atlas fragt die Prozessliste im Hintergrund ab und hängt sich beim Start sofort an
+- Während des Wartens zeigt das Statusfeld „Warte auf … (Abbrechen)“; ein Klick bricht ab, ebenso das Schließen oder Wechseln der Projektgruppe
+- Endet ein angehängter Prozess, bietet das Statusfeld an, sich beim nächsten Start wieder anzuhängen
+- Die ersten Millisekunden des Programms (Initialisierung) verpasst das Warten; wer sie braucht, startet über die Startparameter des Projekts oder eine Host-Anwendung
+- Nur lokale Prozesse; Prozesse anderer Benutzer und Dienste brauchen eine IDE mit Administratorrechten
+
+Einstellungen: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>
