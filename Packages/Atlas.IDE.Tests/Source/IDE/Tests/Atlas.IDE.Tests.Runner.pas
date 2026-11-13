@@ -126,8 +126,10 @@ type
     function RunProject(const AProject: string; out AReason: string): Boolean;
     /// <summary>Tests ATests im Testprojekt der Datei AFileName im Hintergrund (#1775): ohne Frage nach dem
     /// Testprojekt (eines bzw. die gemerkte Wahl) und ohne Zeilen in der Meldungsansicht; gebaut wie mit „Vor den
-    /// Tests bauen“. Das Ende meldet die Ausgabe (OnQuietEnded). False mit AReason, wenn nichts startet.</summary>
-    function RunQuiet(const AFileName: string; const ATests: TArray<string>; out AReason: string): Boolean;
+    /// Tests bauen“ (mit ABuildFirst; ohne läuft die vorhandene EXE, Folgeläufe einer Serie #1782). Das Ende meldet
+    /// die Ausgabe (OnQuietEnded). False mit AReason, wenn nichts startet.</summary>
+    function RunQuiet(const AFileName: string; const ATests: TArray<string>; out AReason: string;
+      ABuildFirst: Boolean): Boolean;
     /// <summary>Ein Build ist fertig und bewertet (#530): mit „Tests nach dem Build“ laufen die Tests, wenn er als
     /// erfolgreich gilt (ASucceeded = TAtlasBuildVerdict.Effective).</summary>
     procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
@@ -427,8 +429,8 @@ begin
   Result := True;
 end;
 
-function TAtlasIdeTests.RunQuiet(const AFileName: string; const ATests: TArray<string>;
-  out AReason: string): Boolean;
+function TAtlasIdeTests.RunQuiet(const AFileName: string; const ATests: TArray<string>; out AReason: string;
+  ABuildFirst: Boolean): Boolean;
 var
   mProject: IOTAProject;
 begin
@@ -447,7 +449,7 @@ begin
   begin
     // Das Ende meldet die Ausgabe, auch wenn Start sofort abbricht (Plattform, Build abgelehnt).
     FOutput.BeginQuiet;
-    Start(mProject, ATests, TAtlasIdeSettings.Current.TestsBuildFirst);
+    Start(mProject, ATests, ABuildFirst and TAtlasIdeSettings.Current.TestsBuildFirst);
     Result := True;
   end;
 end;
@@ -727,6 +729,8 @@ begin
   Inc(FVersion);
   if AOutcome = TAtlasVcsOutcome.Cancelled then
   begin
+    // Abgebrochen (Serie, #1782): Ein Lauf im Hintergrund endet ohne Bericht.
+    FOutput.EndQuiet(False, Default(TTestRunResult));
     Exit;
   end;
   if AOutcome = TAtlasVcsOutcome.TimedOut then

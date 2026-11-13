@@ -175,6 +175,7 @@ begin
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
+  Assert.AreEqual(20, ASettings.TestsRepeatCount, 'N-mal ausführen: Vorgabe 20 (#1782)');
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -363,6 +364,7 @@ begin
   ASettings.TestsWindow := False;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
+  ASettings.TestsRepeatCount := 50;
   ASettings.BuildZeroHints := True;
   ASettings.ShowInterfaceCost := False;
   ASettings.BuildCompilerSwitches := False;
@@ -528,6 +530,7 @@ begin
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
+  Assert.AreEqual(50, ALoaded.TestsRepeatCount, 'tests.repeat.count (#1782)');
   Assert.IsTrue(ALoaded.BuildZeroHints);
   Assert.IsFalse(ALoaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(ALoaded.BuildCompilerSwitches);
@@ -1076,6 +1079,13 @@ begin
   Settings.TestsSlowMs := 100000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
+  // tests.repeat.count (#1782): 2 bis 1000.
+  Settings.TestsRepeatCount := 1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsRepeatCount, Settings.TestsRepeatCount);
+  Settings.TestsRepeatCount := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsRepeatCount, Settings.TestsRepeatCount);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

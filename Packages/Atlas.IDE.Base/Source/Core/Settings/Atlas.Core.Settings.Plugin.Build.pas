@@ -33,6 +33,10 @@ const
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
   cDefaultTestsSlowMs = 500;
+  /// <summary>Grenzen und Vorgabe für tests.repeat.count (#1782).</summary>
+  cMinTestsRepeatCount = 2;
+  cMaxTestsRepeatCount = 1000;
+  cDefaultTestsRepeatCount = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -148,6 +152,9 @@ type
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
+    /// <summary>Vorgabe für „N-mal ausführen …“ (#1782, tests.repeat.count), cMinTestsRepeatCount bis
+    /// cMaxTestsRepeatCount.</summary>
+    TestsRepeatCount: Integer;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -327,6 +334,7 @@ begin
     cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsRepeatCount := EnsureRange(TestsRepeatCount, cMinTestsRepeatCount, cMaxTestsRepeatCount);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -395,6 +403,7 @@ begin
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
   TestsLeaks := True;
+  TestsRepeatCount := cDefaultTestsRepeatCount;
 end;
 
 procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
@@ -423,6 +432,7 @@ begin
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);
+  AIo.Number('TestsRepeatCount', TestsRepeatCount);
 end;
 
 end.

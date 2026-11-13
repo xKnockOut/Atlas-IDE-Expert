@@ -198,6 +198,18 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 
 Einstellung: `tests.window`
 
+### Tests mehrfach oder in zufälliger Reihenfolge ausführen (#1782)
+
+Aufruf: Kontextmenü einer Testunit (*Atlas › Tests*), Befehlspalette, im Fenster „Atlas-Tests“ Rechtsklick auf die Auswahl.
+
+- *Test am Cursor N-mal ausführen …* fragt nach der Anzahl (vorbelegt mit `tests.repeat.count`, 2 bis 1000) und startet das Testprogramm so oft nacheinander mit denselben Tests. Der erste Start baut wie „Vor den Tests bauen“, die übrigen nehmen dieselbe EXE. An der Marke steht danach „20× ausgeführt · 18 bestanden, 2 rot“, gelb bei gemischtem Ergebnis; während der Serie „Tests laufen … 7/20“.
+- *Tests der Klasse in zufälliger Reihenfolge ausführen* mischt die Tests der Fixture am Cursor mit einem Startwert und startet je Test bzw. Fall das Programm einmal in dieser Reihenfolge. So fällt ein Test auf, der nur nach einem anderen besteht oder an Dateien, Datenbank oder Registry hängt, die ein anderer hinterlässt. Die Meldungsansicht nennt Startwert und Reihenfolge („Reihenfolge 48213“); *Mit dieser Reihenfolge erneut ausführen* wiederholt genau diese Reihenfolge.
+- Warum mehrere Starts: DUnitX führt bei `--run` einen wiederholten Namen nur einmal aus und hält sich nicht an die Reihenfolge der Namen (Fixtures sortiert, Tests in der Reihenfolge der Deklaration).
+- *Testserie abbrechen* beendet den laufenden Prozess sofort; die Meldungsansicht nennt, wie viele Starts gelaufen sind.
+- Am Ende: eine Zeile mit den Zahlen, je Test mit Fehlschlag „2 von 20 rot“ und die letzte Meldung. Jeder Start meldet sich wie ein normaler Lauf (Probleme, Testlinse, Fenster). Das Ergebnis der Serie steht an der Marke bis zum nächsten Lauf.
+
+Einstellung: `tests.repeat.count`
+
 ### Lecks je Test (#1774)
 
 - Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.

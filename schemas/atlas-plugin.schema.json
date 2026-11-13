@@ -1641,6 +1641,21 @@
       "x-captionEn": "Show leaks per test as warnings",
       "x-issue": "#1774"
     },
+    "TestsRepeatCount": {
+      "description": "Vorgabe für „N-mal ausführen …“ im Kontextmenü einer Testunit und im Fenster „Atlas-Tests“ (2 bis 1000): Atlas startet das Testprogramm so oft nacheinander mit denselben Tests und zeigt an der Marke „20× ausgeführt · 18 bestanden, 2 rot“ (gelb bei gemischtem Ergebnis). Die Zahl lässt sich vor jedem Lauf ändern.",
+      "type": "integer",
+      "default": 20,
+      "minimum": 2,
+      "maximum": 1000,
+      "x-key": "tests.repeat.count",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Zahl (2–1000)",
+      "x-caption": "Vorgabe für „N-mal ausführen“",
+      "x-captionEn": "Default for “Run N times”",
+      "x-issue": "#1782"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,

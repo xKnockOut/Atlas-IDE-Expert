@@ -21,6 +21,10 @@
 //   er bestand (fehlgeschlagen bleibt rot, veraltet grau).
 //   Bestanden mit Leck (tests.leaks, #1774): „· Leck: 40 Bytes“ und gelb wie
 //   langsam (Atlas.Core.Tests.Leaks).
+//   Nach „N-mal ausführen“ bzw. „In zufälliger Reihenfolge ausführen“
+//   (#1782, Atlas.IDE.Tests.Series) steht an der Marke der Serie ihr Ergebnis
+//   („20× ausgeführt · 18 bestanden, 2 rot“, gemischt gelb), während der Serie
+//   „Tests laufen … 7/20“, bis zum nächsten Lauf.
 //   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -473,6 +477,35 @@ begin
   Result := ATally.WithDuration(ACaption, mSlowMs, mTexts, ASlow);
 end;
 
+/// <summary>Ergebnis einer Serie an der Marke (#1782, Haken Series): Beschriftung und Stand (gemischt gelb wie
+/// Partial); False ohne Serie für diese Marke.</summary>
+function SeriesCaption(const AHooks: TAtlasTestCompareHooks; const ASelection: TAtlasTestSelection;
+  out ACaption: string; out AStatus: TAtlasTestStatus): Boolean;
+var
+  mMark: TAtlasTestSeriesMark;
+begin
+  AStatus := TAtlasTestStatus.Unknown;
+  mMark := Default(TAtlasTestSeriesMark);
+  Result := Assigned(AHooks.Series) and AHooks.Series(ASelection, mMark);
+  ACaption := mMark.Caption;
+  if not Result or mMark.Running then
+  begin
+    Exit;
+  end;
+  if mMark.AnyPassed and mMark.AnyFailed then
+  begin
+    AStatus := TAtlasTestStatus.Partial;
+  end
+  else if mMark.AnyFailed then
+  begin
+    AStatus := TAtlasTestStatus.Failed;
+  end
+  else
+  begin
+    AStatus := TAtlasTestStatus.Passed;
+  end;
+end;
+
 function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus;
   out AStale, AWarn: Boolean): string;
 var
@@ -481,6 +514,11 @@ begin
   AStatus := TAtlasTestStatus.Unknown;
   AStale := False;
   AWarn := False;
+  // Serie (#1782): während und nach ihr steht ihr Ergebnis an der Marke, bis zum nächsten Lauf.
+  if SeriesCaption(FCompare, AItem.Selection, Result, AStatus) then
+  begin
+    Exit;
+  end;
   if FTests.Busy then
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));

@@ -222,6 +222,18 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 
 Setting: `tests.window`
 
+### Run tests repeatedly or in random order (#1782)
+
+Open it from the context menu of a test unit (*Atlas › Tests*), the command palette, or in the “Atlas Tests” window by right-clicking the selection.
+
+- *Run test at cursor N times …* asks for the count (preset from `tests.repeat.count`, 2 to 1000) and starts the test program that many times in a row with the same tests. The first start builds like “Build before tests”, the others reuse the same EXE. The mark then reads “run 20× · 18 passed, 2 failed”, yellow for a mixed result; during the series “Tests running … 7/20”.
+- *Run class tests in random order* shuffles the tests of the fixture at the cursor with a seed and starts the program once per test or case in that order. This reveals a test that only passes after another one, or that depends on files, a database or the registry left behind by another. The message view names seed and order (“order 48213”); *Run again in the same order* repeats exactly that order.
+- Why several starts: with `--run`, DUnitX runs a repeated name only once and ignores the order of the names (fixtures sorted, tests in declaration order).
+- *Cancel test series* stops the running process at once; the message view says how many starts ran.
+- At the end: one line with the counts, for each failing test “2 of 20 failed” and the last message. Every start reports like a normal run (problems, test lens, window). The mark shows the series result until the next run.
+
+Setting: `tests.repeat.count`
+
 ### Leaks per test (#1774)
 
 - With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.

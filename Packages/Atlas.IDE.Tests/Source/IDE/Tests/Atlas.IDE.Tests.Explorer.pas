@@ -16,7 +16,9 @@
 // - Ausführen über den Läufer (#69): „Alle ausführen“ baut das Testprojekt
 //   und startet alle Tests, „Ausgewählte ausführen“ genau die gewählten
 //   (--run mit ihren Namen), „Ausgewählte debuggen“ startet sie im Debugger
-//   (#585; Haltepunkt am Anfang nur bei einem einzelnen Test).
+//   (#585; Haltepunkt am Anfang nur bei einem einzelnen Test). Das
+//   Kontextmenü des Baums führt die Auswahl N-mal bzw. einzeln in zufälliger
+//   Reihenfolge aus (#1782, Atlas.IDE.Tests.Series, Atlas.UI.Tests.SeriesMenu).
 // - Ein Zeitgeber folgt dem Läufer (Lauf beginnt bzw. endet), solange das
 //   Fenster zu sehen ist; er lebt nur so lange wie dieses Objekt.
 // Nur im Hauptthread.
@@ -33,6 +35,7 @@ uses
   Atlas.Core.Tests.Explorer,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
+  Atlas.IDE.Tests.Series,
   Atlas.UI.Tests.ExplorerFrame;
 
 type
@@ -50,6 +53,7 @@ type
   private
     FTests: TAtlasIdeTests;
     FDebugger: TAtlasIdeTestDebugger;
+    FSeries: TAtlasIdeTestSeries;
     FStaleKeys: TAtlasTestStaleKeys;
     FNext: TAtlasTestsReportedProc;
     FTimer: TTimer;
@@ -80,17 +84,16 @@ type
     procedure ChooseProject(AIndex: Integer);
     procedure Selected(ANode: Integer);
     procedure OpenNode(ANode: Integer);
-    procedure OpenLine(const AFileName: string; ALine: Integer);
     procedure RunAll;
     procedure RunSelected;
     procedure DebugSelected;
     /// <summary>Gewählte Knoten; ohne Auswahl eine Meldung und leer.</summary>
     function Chosen: TArray<Integer>;
   public
-    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger; AStaleKeys nennt veraltete Tests
-    /// (#1770, nil = keine); ANext bekommt jeden Lauf danach (nil = keiner).</summary>
-    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AStaleKeys: TAtlasTestStaleKeys;
-      const ANext: TAtlasTestsReportedProc);
+    /// <summary>ATests, ADebugger und ASeries gehören dem Aufrufer und leben länger; AStaleKeys nennt veraltete
+    /// Tests (#1770, nil = keine); ANext bekommt jeden Lauf danach (nil = keiner).</summary>
+    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; ASeries: TAtlasIdeTestSeries;
+      const AStaleKeys: TAtlasTestStaleKeys; const ANext: TAtlasTestsReportedProc);
     destructor Destroy; override;
     /// <summary>Fenster „Atlas-Tests“ gewünscht (tests.run und tests.window)?</summary>
     class function Wanted: Boolean; static;
@@ -119,6 +122,8 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Tests.Projects,
   Atlas.IDE.Tests.ExplorerWindow,
+  Atlas.Core.Tests.Series,
+  Atlas.UI.Tests.SeriesMenu,
   Atlas.UI.Tests.Strings;
 
 function KeyOf(const AFileName: string): string;
@@ -131,14 +136,127 @@ begin
   Result := ChangeFileExt(ExtractFileName(AFileName), '');
 end;
 
+/// <summary>Datei an Zeile ALine (0-basiert) öffnen.</summary>
+procedure OpenAt(const AFileName: string; ALine: Integer);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeResults.Open(AFileName, ALine, 0);
+    end);
+end;
+
+{ Serien (#1782): freie Routinen, weil TAtlasIdeTestExplorer keine weiteren Mitglieder aufnimmt. }
+
+/// <summary>Gegenstand der Serie: der erste gewählte Knoten.</summary>
+function SubjectOfNode(const AUnit: TDUnitXUnit; const ANode: TAtlasTestNode): TAtlasTestSeriesSubject;
+var
+  mFixture: TDUnitXFixture;
+begin
+  Result := TAtlasTestSeriesSubject.Make(AUnit.UnitName, '', '', '');
+  if (ANode.FixtureIndex < 0) or (ANode.FixtureIndex > High(AUnit.Fixtures)) then
+  begin
+    Exit;
+  end;
+  mFixture := AUnit.Fixtures[ANode.FixtureIndex];
+  Result.Fixture := mFixture.Name;
+  if (ANode.TestIndex >= 0) and (ANode.TestIndex <= High(mFixture.Tests)) then
+  begin
+    Result.Method := mFixture.Tests[ANode.TestIndex].Method;
+    if (ANode.CaseIndex >= 0) and (ANode.CaseIndex <= High(mFixture.Tests[ANode.TestIndex].Cases)) then
+    begin
+      Result.CaseName := mFixture.Tests[ANode.TestIndex].Cases[ANode.CaseIndex];
+    end;
+  end;
+end;
+
+/// <summary>Gewählte Knoten des Fensters als Serie: Datei, Gegenstand und Namen (AShuffle: je Test bzw. Fall ein
+/// Name). False ohne Auswahl.</summary>
+function SeriesChoice(AExplorer: TAtlasIdeTestExplorer; AShuffle: Boolean; out AFileName: string;
+  out ASubject: TAtlasTestSeriesSubject; out ANames: TArray<string>): Boolean;
+var
+  mChosen: TArray<Integer>;
+  mIndex: Integer;
+  mNode: TAtlasTestNode;
+begin
+  AFileName := '';
+  ASubject := Default(TAtlasTestSeriesSubject);
+  ANames := nil;
+  mChosen := AExplorer.Chosen;
+  Result := Length(mChosen) > 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mNode := AExplorer.FNodes[mChosen[0]];
+  AFileName := mNode.FileName;
+  ASubject := SubjectOfNode(AExplorer.FUnits[mNode.UnitIndex].Found, mNode);
+  if not AShuffle then
+  begin
+    ANames := TAtlasTestExplorer.RunNames(AExplorer.FUnits, AExplorer.FNodes, mChosen);
+    Exit;
+  end;
+  for mIndex in mChosen do
+  begin
+    mNode := AExplorer.FNodes[mIndex];
+    ANames := ANames + TAtlasTestShuffle.SingleNames(AExplorer.FUnits[mNode.UnitIndex].Found, mNode.FixtureIndex,
+      mNode.TestIndex, mNode.CaseIndex);
+  end;
+end;
+
+function SeriesHandlers(AExplorer: TAtlasIdeTestExplorer): TAtlasTestsSeriesHandlers;
+var
+  mExplorer: TAtlasIdeTestExplorer;
+begin
+  mExplorer := AExplorer;
+  Result := Default(TAtlasTestsSeriesHandlers);
+  Result.OnRepeat :=
+    procedure
+    var
+      mFileName: string;
+      mSubject: TAtlasTestSeriesSubject;
+      mNames: TArray<string>;
+    begin
+      if SeriesChoice(mExplorer, False, mFileName, mSubject, mNames) then
+      begin
+        mExplorer.FSeries.RepeatNames(mFileName, mSubject, mNames);
+      end;
+    end;
+  Result.OnShuffle :=
+    procedure
+    var
+      mFileName: string;
+      mSubject: TAtlasTestSeriesSubject;
+      mNames: TArray<string>;
+    begin
+      if SeriesChoice(mExplorer, True, mFileName, mSubject, mNames) then
+      begin
+        mExplorer.FSeries.ShuffleNames(mFileName, mSubject, mNames);
+      end;
+    end;
+  Result.OnShuffleAgain := mExplorer.FSeries.ShuffleAgain;
+  Result.OnCancel := mExplorer.FSeries.Cancel;
+  Result.Running :=
+    function: Boolean
+    begin
+      Result := mExplorer.FSeries.Running;
+    end;
+  Result.CanShuffleAgain :=
+    function: Boolean
+    begin
+      Result := mExplorer.FSeries.CanShuffleAgain;
+    end;
+end;
+
 { TAtlasIdeTestExplorer }
 
 constructor TAtlasIdeTestExplorer.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
-  const AStaleKeys: TAtlasTestStaleKeys; const ANext: TAtlasTestsReportedProc);
+  ASeries: TAtlasIdeTestSeries; const AStaleKeys: TAtlasTestStaleKeys; const ANext: TAtlasTestsReportedProc);
 begin
   inherited Create;
   FTests := ATests;
   FDebugger := ADebugger;
+  FSeries := ASeries;
   FStaleKeys := AStaleKeys;
   FNext := ANext;
   FResults := TDictionary<string, TArray<TTestCaseResult>>.Create;
@@ -168,6 +286,7 @@ begin
   if TAtlasIdeTestsExplorerWindow.ExistingFrame <> nil then
   begin
     TAtlasIdeTestsExplorerWindow.ExistingFrame.SetHandlers(Default(TAtlasTestsExplorerHandlers));
+    TAtlasTestsSeriesMenu.Detach(TAtlasIdeTestsExplorerWindow.ExistingFrame.Tree);
   end;
   TAtlasIdeTestsExplorerWindow.Release;
   FResults.Free;
@@ -204,9 +323,12 @@ begin
   mHandlers.OnOpenLine :=
     procedure(AFileName: string; ALine: Integer)
     begin
-      OpenLine(AFileName, ALine);
+      OpenAt(AFileName, ALine);
     end;
   AFrame.SetHandlers(mHandlers);
+  // Serien (#1782) im Kontextmenü des Baums.
+  TAtlasTestsSeriesMenu.Detach(AFrame.Tree);
+  TAtlasTestsSeriesMenu.Attach(AFrame.Tree, SeriesHandlers(Self));
   FTimer.Enabled := True;
   Reload;
 end;
@@ -515,17 +637,8 @@ procedure TAtlasIdeTestExplorer.OpenNode(ANode: Integer);
 begin
   if (ANode >= 0) and (ANode <= High(FNodes)) and (FNodes[ANode].FileName <> '') then
   begin
-    OpenLine(FNodes[ANode].FileName, Max(FNodes[ANode].Line, 0));
+    OpenAt(FNodes[ANode].FileName, Max(FNodes[ANode].Line, 0));
   end;
-end;
-
-procedure TAtlasIdeTestExplorer.OpenLine(const AFileName: string; ALine: Integer);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Build,
-    procedure
-    begin
-      TAtlasIdeResults.Open(AFileName, ALine, 0);
-    end);
 end;
 
 function TAtlasIdeTestExplorer.Chosen: TArray<Integer>;

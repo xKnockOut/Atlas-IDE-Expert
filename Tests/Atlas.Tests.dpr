@@ -1194,6 +1194,8 @@ uses
   Atlas.Core.Tests.Approval.Tests in 'IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas',
   Atlas.Core.Tests.Durations in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas',
   Atlas.Core.Tests.Durations.Tests in 'IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas',
+  Atlas.Core.Tests.Series in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Series.pas',
+  Atlas.Core.Tests.Series.Tests in 'IDE.Expert\Atlas.Core.Tests.Series.Tests.pas',
   Atlas.Core.Tests.Explorer in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas',
   Atlas.Core.Tests.Explorer.Tests in 'IDE.Expert\Atlas.Core.Tests.Explorer.Tests.pas',
   Atlas.Core.Tests.CaseTable in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas',
