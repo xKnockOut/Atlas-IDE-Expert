@@ -85,6 +85,9 @@ type
     procedure SetStatus(const AStatus: string);
     procedure SetBusy(ABusy: Boolean);
     function Filters: TAtlasTestFilters;
+    /// <summary>Genau die Filter AFilters ankreuzen (Befehl „Wackelnde Tests zeigen“, #1773); meldet OnFilter
+    /// einmal.</summary>
+    procedure SetFilters(AFilters: TAtlasTestFilters);
     function SearchText: string;
     property Handlers: TAtlasTestsExplorerHandlers read FHandlers write FHandlers;
     property StatusLabel: TLabel read FStatus;
@@ -261,7 +264,7 @@ function TAtlasTestsExplorerBar.BuildFilterRow(ATop: Integer): Integer;
 const
   cFilterTexts: array[TAtlasTestFilter] of TAtlasTestsTextId = (TAtlasTestsTextId.ExplorerFilterFailed,
     TAtlasTestsTextId.ExplorerFilterNotRun, TAtlasTestsTextId.ExplorerFilterStale,
-    TAtlasTestsTextId.ExplorerFilterSlow);
+    TAtlasTestsTextId.ExplorerFilterSlow, TAtlasTestsTextId.ExplorerFilterFlaky);
 var
   mBar: TPanel;
   mLeft: Integer;
@@ -340,6 +343,23 @@ begin
       Include(Result, mFilter);
     end;
   end;
+end;
+
+procedure TAtlasTestsExplorerBar.SetFilters(AFilters: TAtlasTestFilters);
+var
+  mFilter: TAtlasTestFilter;
+begin
+  for mFilter := Low(TAtlasTestFilter) to High(TAtlasTestFilter) do
+  begin
+    // Ohne OnClick: Jedes Kästchen meldete sonst einzeln.
+    FFilterChecks[mFilter].OnClick := nil;
+    try
+      FFilterChecks[mFilter].Checked := mFilter in AFilters;
+    finally
+      FFilterChecks[mFilter].OnClick := FilterChange;
+    end;
+  end;
+  Fire(FHandlers.OnFilter);
 end;
 
 function TAtlasTestsExplorerBar.SearchText: string;

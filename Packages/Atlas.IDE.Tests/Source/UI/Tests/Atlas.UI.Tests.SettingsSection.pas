@@ -78,6 +78,8 @@ begin
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
   Switch('tests.window', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsWindow));
+  Switch('tests.flaky', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFlaky));
+  Number('tests.flaky.runs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFlakyRuns));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;

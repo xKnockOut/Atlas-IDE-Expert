@@ -175,6 +175,8 @@ begin
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
+  Assert.IsTrue(ASettings.TestsFlaky, 'wackelnde Tests standardmäßig an (#1773)');
+  Assert.AreEqual(10, ASettings.TestsFlakyRuns, 'zehn Läufe je Test (#1773)');
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -363,6 +365,8 @@ begin
   ASettings.TestsWindow := False;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
+  ASettings.TestsFlaky := False;
+  ASettings.TestsFlakyRuns := 20;
   ASettings.BuildZeroHints := True;
   ASettings.ShowInterfaceCost := False;
   ASettings.BuildCompilerSwitches := False;
@@ -528,6 +532,8 @@ begin
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
+  Assert.IsFalse(ALoaded.TestsFlaky, 'tests.flaky (#1773)');
+  Assert.AreEqual(20, ALoaded.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
   Assert.IsTrue(ALoaded.BuildZeroHints);
   Assert.IsFalse(ALoaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(ALoaded.BuildCompilerSwitches);
@@ -1076,6 +1082,13 @@ begin
   Settings.TestsSlowMs := 100000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
+  // tests.flaky.runs (#1773): 3 bis 50.
+  Settings.TestsFlakyRuns := 1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, Settings.TestsFlakyRuns);
+  Settings.TestsFlakyRuns := 500;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, Settings.TestsFlakyRuns);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

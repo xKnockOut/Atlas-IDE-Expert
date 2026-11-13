@@ -91,6 +91,8 @@ type
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
+    cMinTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMinTestsFlakyRuns;
+    cMaxTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMaxTestsFlakyRuns;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -421,6 +423,8 @@ type
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
+    property TestsFlaky: Boolean read FBuild.TestsFlaky write FBuild.TestsFlaky;
+    property TestsFlakyRuns: Integer read FBuild.TestsFlakyRuns write FBuild.TestsFlakyRuns;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;

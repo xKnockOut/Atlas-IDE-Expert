@@ -92,7 +92,11 @@ type
     ExplorerRefresh, ExplorerFilterFailed, ExplorerFilterNotRun, ExplorerFilterStale, ExplorerFilterSlow,
     ExplorerSearchHint, ExplorerSummary, ExplorerNoProject, ExplorerNoTests, ExplorerNothingSelected,
     ExplorerIgnored, ExplorerDetailPassed, ExplorerDetailNotRun, ExplorerDetailSkipped, ExplorerDetailMessage,
-    ExplorerDetailExpected, ExplorerDetailActual, ExplorerDetailStack, ExplorerFooter, SettingsTestsWindow);
+    ExplorerDetailExpected, ExplorerDetailActual, ExplorerDetailStack, ExplorerFooter, SettingsTestsWindow,
+    // Wackelnde Tests (#1773).
+    ExplorerFilterFlaky, ExplorerFlakyMark, ExplorerDetailFlaky, ExplorerDetailFlakySince, ExplorerDetailFlakyMessage,
+    TestsLensFlaky, TestsLensFlakyFixture, TestsFlakyPassed, TestsFlakyCommand, TestsFlakyHint, SettingsTestsFlaky,
+    SettingsTestsFlakyRuns);
 
   TAtlasTestsStrings = class
   public
@@ -407,7 +411,19 @@ const
      'Erhalten: %s',
      'Stacktrace (Doppelklick öffnet die Zeile):',
      'Enter: zum Test · Strg+R: ausführen · Strg+D: debuggen',
-     'Fenster „Atlas-Tests“'),
+     'Fenster „Atlas-Tests“',
+     'wackelt',
+     '%s · wackelt',
+     'Wackelt: %s (%d von %d rot)',
+     'Rumpf unverändert seit %s',
+     'Letzte Fehlermeldung: %s',
+     '%s · wackelt (%d von %d rot)',
+     '%s · %d wackeln',
+     'Test %s bestanden, wackelt aber (%d von %d Läufen rot).',
+     'Wackelnde Tests zeigen',
+     'Fenster „Atlas-Tests“ mit dem Filter „wackelt“: Tests, die bei unverändertem Rumpf mal grün, mal rot waren.',
+     'Wackelnde Tests erkennen',
+     'Gemerkte Läufe je Test'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -706,7 +722,19 @@ const
      'Actual: %s',
      'Stack trace (double-click opens the line):',
      'Enter: go to test · Ctrl+R: run · Ctrl+D: debug',
-     '“Atlas Tests” window'));
+     '“Atlas Tests” window',
+     'flaky',
+     '%s · flaky',
+     'Flaky: %s (%d of %d red)',
+     'Body unchanged since %s',
+     'Last failure: %s',
+     '%s · flaky (%d of %d red)',
+     '%s · %d flaky',
+     'Test %s passed, but it is flaky (%d of %d runs red).',
+     'Show flaky tests',
+     '“Atlas Tests” window filtered to “flaky”: tests that were green and red with an unchanged body.',
+     'Detect flaky tests',
+     'Runs kept per test'));
 
 { TAtlasTestsStrings }
 

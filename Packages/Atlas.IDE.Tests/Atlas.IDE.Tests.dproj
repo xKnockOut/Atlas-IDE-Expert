@@ -109,6 +109,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
@@ -127,6 +128,7 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Flaky.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerWindow.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas"/>

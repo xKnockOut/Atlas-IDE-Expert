@@ -215,12 +215,27 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 - At the top the test project (a choice when the project group has several, the active one preselected), below it the tree of all tests: test unit › fixture › test › case. Atlas reads the test units of the test project like the test lens does, without the server; again after every run, after saving a test unit and with *Reload*.
 - Every row has a dot with its state: green passed, red failed, yellow only partly run, grey not run, grey ring passed but outdated (#1770). After it the counter “passed/all” (outdated results do not count as passed) and the duration. Tests with `[Ignore]` are listed with “(ignored)” and do not count.
 - *Run all* builds the test project and runs all tests. *Run selected* (Ctrl+R) runs exactly the selected rows (multiple selection with Ctrl and Shift, also whole fixtures or test units) with `--run` and their names. *Debug selected* (Ctrl+D) starts them in the debugger like “Debug test”; the one-time breakpoint at the start applies only to a single test.
-- The filters *Failed*, *Not run*, *Outdated* and *Slow* (above `tests.slowMs`) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
+- The filters *Failed*, *Not run*, *Outdated*, *Slow* (above `tests.slowMs`) and *flaky* (#1773) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
 - Double-click or Enter goes to the test, for a case to its `[TestCase]`. Below, the selected test shows message, expected and actual value and the stack trace; lines naming a unit of the test project open on double-click.
 - Results are kept for this session, per test project; changes to a test unit show up after saving.
 - `tests.window` off: no menu entry, the window is not restored.
 
 Setting: `tests.window`
+
+### Flaky tests (#1773)
+
+A test is flaky when it is sometimes green and sometimes red without a change to its body (time, threads, order, files).
+
+- After every run from the IDE, Atlas keeps the last results of each test (`tests.flaky.runs`, default 10) with the checksum of the method body, as for “outdated” (#1770). A test with `[TestCase]` counts as red in a run if one of its cases was red; skipped only does not count.
+- “Flaky”: among the results with the current body there is green, then red, then green again. Red, then fixed in the body and green, is not flaky.
+- The mark of the test lens turns yellow: “Run test · passed · flaky (3 of 10 red)”; the class mark gives the number of its flaky tests (“· 2 flaky”).
+- In the *Atlas Tests* window the test shows “· flaky”, and the filter *flaky* shows only these tests. The details show the history as a row (✓ green, ✗ red, oldest first) with “2 of 10 red”, since when the body is unchanged and the last failure message.
+- *Show flaky tests* (Atlas menu, command palette) opens the window with exactly this filter.
+- If a test that was red in the run before is green now but flaky (for example after *Run failed tests again*), the messages view says “Test TRechnerTests.Summe passed, but it is flaky (3 of 10 runs red).”
+- The history is kept per test project in `%LOCALAPPDATA%\Atlas\projects\tests-history\<key>.json` (same key as the project summary) and survives a restart of the IDE.
+- `tests.flaky` off: Atlas writes no history, no mark, no command.
+
+Settings: `tests.flaky`, `tests.flaky.runs`
 
 ### Leaks per test (#1774)
 

@@ -10,7 +10,10 @@
 //   aus dem Zwischenspeicher (Änderungszeit).
 // - Ergebnisse: Nach jedem gemeldeten Lauf (Haken OnReported des Läufers)
 //   merkt sich das Fenster die Ergebnisse je Testprojekt dieser Sitzung und
-//   reicht den Lauf an ANext weiter; veraltete Tests (#1770) über AStaleKeys.
+//   reicht den Lauf an ANext weiter; veraltete (#1770) und wackelnde Tests
+//   (#1773) über AQueries. Die Einzelheiten eines wackelnden Tests zeigen
+//   seinen Verlauf; „Wackelnde Tests zeigen“ öffnet das Fenster mit genau dem
+//   Filter „wackelt“ (Show mit AFlakyOnly).
 // - Baum, Filter, Suche und Auswahl: Atlas.Core.Tests.Explorer; Darstellung:
 //   Atlas.UI.Tests.ExplorerFrame im Dockfenster Atlas.IDE.Tests.ExplorerWindow.
 // - Ausführen über den Läufer (#69): „Alle ausführen“ baut das Testprojekt
@@ -50,7 +53,7 @@ type
   private
     FTests: TAtlasIdeTests;
     FDebugger: TAtlasIdeTestDebugger;
-    FStaleKeys: TAtlasTestStaleKeys;
+    FQueries: TAtlasTestStateQueries;
     FNext: TAtlasTestsReportedProc;
     FTimer: TTimer;
     /// <summary>Ergebnisse je Testprojekt (Schlüssel klein) dieser Sitzung.</summary>
@@ -87,10 +90,10 @@ type
     /// <summary>Gewählte Knoten; ohne Auswahl eine Meldung und leer.</summary>
     function Chosen: TArray<Integer>;
   public
-    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger; AStaleKeys nennt veraltete Tests
-    /// (#1770, nil = keine); ANext bekommt jeden Lauf danach (nil = keiner).</summary>
-    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AStaleKeys: TAtlasTestStaleKeys;
-      const ANext: TAtlasTestsReportedProc);
+    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger; AQueries nennt veraltete (#1770) und
+    /// wackelnde Tests (#1773, je nil = keine); ANext bekommt jeden Lauf danach (nil = keiner).</summary>
+    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
+      const AQueries: TAtlasTestStateQueries; const ANext: TAtlasTestsReportedProc);
     destructor Destroy; override;
     /// <summary>Fenster „Atlas-Tests“ gewünscht (tests.run und tests.window)?</summary>
     class function Wanted: Boolean; static;
@@ -98,8 +101,9 @@ type
     procedure Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
     /// <summary>Eine Datei wurde gespeichert: gehört sie zum Testprojekt, neu lesen.</summary>
     procedure FileSaved(const AFileName: string);
-    /// <summary>Befehl „Atlas-Tests“: Fenster zeigen und füllen.</summary>
-    procedure Show;
+    /// <summary>Befehl „Atlas-Tests“: Fenster zeigen und füllen; mit AFlakyOnly („Wackelnde Tests zeigen“, #1773)
+    /// mit genau dem Filter „wackelt“.</summary>
+    procedure Show(AFlakyOnly: Boolean);
     /// <summary>tests.window aus: Fenster verstecken.</summary>
     procedure ApplySettings;
     class procedure ThemeChanged; static;
@@ -110,10 +114,12 @@ implementation
 uses
   System.IOUtils,
   System.Math,
+  System.DateUtils,
   System.StrUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tests.Debug,
+  Atlas.Core.Tests.Flaky,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
@@ -134,12 +140,12 @@ end;
 { TAtlasIdeTestExplorer }
 
 constructor TAtlasIdeTestExplorer.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
-  const AStaleKeys: TAtlasTestStaleKeys; const ANext: TAtlasTestsReportedProc);
+  const AQueries: TAtlasTestStateQueries; const ANext: TAtlasTestsReportedProc);
 begin
   inherited Create;
   FTests := ATests;
   FDebugger := ADebugger;
-  FStaleKeys := AStaleKeys;
+  FQueries := AQueries;
   FNext := ANext;
   FResults := TDictionary<string, TArray<TTestCaseResult>>.Create;
   FScanned := TDictionary<string, TScanned>.Create;
@@ -172,7 +178,7 @@ begin
   TAtlasIdeTestsExplorerWindow.Release;
   FResults.Free;
   FScanned.Free;
-  FStaleKeys := nil;
+  FQueries := Default(TAtlasTestStateQueries);
   FNext := nil;
   inherited;
 end;
@@ -270,7 +276,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeTestExplorer.Show;
+procedure TAtlasIdeTestExplorer.Show(AFlakyOnly: Boolean);
 var
   mFrame: TAtlasTestsExplorerFrame;
 begin
@@ -284,6 +290,10 @@ begin
   begin
     FTimer.Enabled := True;
     Reload;
+    if AFlakyOnly then
+    begin
+      mFrame.Bar.SetFilters([TAtlasTestFilter.Flaky]);
+    end;
   end;
 end;
 
@@ -366,6 +376,7 @@ var
   mScanned: TScanned;
   mInput: TAtlasTestUnitInput;
   mRef: TAtlasTestUnitRef;
+  mState: TAtlasTestUnitState;
 begin
   FUnits := nil;
   FRefs := nil;
@@ -392,10 +403,9 @@ begin
     mInput := Default(TAtlasTestUnitInput);
     mInput.FileName := mFileName;
     mInput.Found := mScanned.Found;
-    if Assigned(FStaleKeys) then
-    begin
-      mInput.StaleKeys := FStaleKeys(mScanned.Found, mScanned.Lines);
-    end;
+    mState := FQueries.StateOf(mScanned.Found, mScanned.Lines);
+    mInput.StaleKeys := mState.StaleKeys;
+    mInput.Flaky := mState.Flaky;
     FUnits := FUnits + [mInput];
   end;
 end;
@@ -467,6 +477,7 @@ begin
     Exit;
   end;
   mTexts.Ignored := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerIgnored);
+  mTexts.Flaky := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerFlakyMark);
   mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
   mVisible := TAtlasTestExplorer.Visible(FNodes, mFrame.Filters, mFrame.SearchText,
     TAtlasIdeSettings.Current.TestsSlowMs);
@@ -482,6 +493,35 @@ begin
   end;
   FProject := FProjects[AIndex];
   Reload;
+end;
+
+/// <summary>Verlauf des wackelnden Tests ANode (#1773) vor den Einzelheiten; leer, wenn er nicht wackelt.
+/// </summary>
+function FlakyDetails(const ANode: TAtlasTestNode;
+  const AUnits: TArray<TAtlasTestUnitInput>): TArray<TAtlasTestStackLine>;
+var
+  mFlaky: TAtlasFlakyTest;
+  mTexts: TAtlasTestFlakyTexts;
+  mSince: string;
+begin
+  Result := nil;
+  if not TAtlasTestExplorer.FlakyOf(ANode, AUnits, mFlaky) then
+  begin
+    Exit;
+  end;
+  mTexts := Default(TAtlasTestFlakyTexts);
+  mTexts.Summary := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerDetailFlaky);
+  mTexts.Since := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerDetailFlakySince);
+  mTexts.Message := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerDetailFlakyMessage);
+  // Grün und rot als Häkchen und Kreuz: Die Liste der Einzelheiten kennt keine Farben.
+  mTexts.PassedDot := #$2713;
+  mTexts.FailedDot := #$2717;
+  mSince := '';
+  if mFlaky.SinceUtc > 0 then
+  begin
+    mSince := DateTimeToStr(TTimeZone.Local.ToLocalTime(mFlaky.SinceUtc), FormatSettings);
+  end;
+  Result := TAtlasTestExplorer.FlakyLines(mFlaky, mSince, mTexts);
 end;
 
 procedure TAtlasIdeTestExplorer.Selected(ANode: Integer);
@@ -507,8 +547,8 @@ begin
   mTexts.Actual := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerDetailActual);
   mTexts.Stack := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerDetailStack);
   mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
-  mFrame.SetDetails(TAtlasTestExplorer.DetailLines(TAtlasTestExplorer.ResultsOf(FNodes[ANode], FUnits,
-    ResultsOfProject), FRefs, mTexts));
+  mFrame.SetDetails(FlakyDetails(FNodes[ANode], FUnits) + TAtlasTestExplorer.DetailLines(
+    TAtlasTestExplorer.ResultsOf(FNodes[ANode], FUnits, ResultsOfProject), FRefs, mTexts));
 end;
 
 procedure TAtlasIdeTestExplorer.OpenNode(ANode: Integer);

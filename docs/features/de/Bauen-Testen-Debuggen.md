@@ -191,12 +191,27 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 - Oben das Testprojekt (bei mehreren in der Projektgruppe zur Wahl, vorgewählt das aktive), darunter der Baum aller Tests: Testunit › Fixture › Test › Fall. Gelesen werden die Testunits des Testprojekts wie von der Testlinse, ohne Server; neu nach jedem Lauf, nach dem Speichern einer Testunit und mit *Neu einlesen*.
 - Je Zeile ein Punkt mit dem Stand: grün bestanden, rot fehlgeschlagen, gelb nur zum Teil gelaufen, grau nicht gelaufen, grauer Ring bestanden, aber veraltet (#1770). Dahinter der Zähler „bestanden/alle“ (veraltete zählen nicht als bestanden) und die Dauer. Tests mit `[Ignore]` stehen mit „(ignoriert)“ da und zählen nicht.
 - *Alle ausführen* baut das Testprojekt und startet alle Tests. *Ausgewählte ausführen* (Strg+R) startet genau die gewählten Zeilen (Mehrfachauswahl mit Strg und Umschalt, auch ganze Fixtures oder Testunits) mit `--run` und ihren Namen. *Ausgewählte debuggen* (Strg+D) startet sie im Debugger wie „Test debuggen“; der einmalige Haltepunkt am Anfang gilt nur bei einem einzelnen Test.
-- Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet* und *Langsam* (über `tests.slowMs`) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
+- Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet*, *Langsam* (über `tests.slowMs`) und *wackelt* (#1773) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
 - Doppelklick oder Enter springt zum Test, bei einem Fall zu seinem `[TestCase]`. Unten stehen zum gewählten Test Meldung, erwarteter und erhaltener Wert und der Stacktrace; Zeilen, die eine Unit des Testprojekts nennen, öffnen sich per Doppelklick.
 - Die Ergebnisse gelten für diese Sitzung, je Testprojekt; Änderungen an einer Testunit zeigt das Fenster nach dem Speichern.
 - `tests.window` aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.
 
 Einstellung: `tests.window`
+
+### Wackelnde Tests (#1773)
+
+Ein Test wackelt, wenn er ohne Änderung an seinem Rumpf mal grün und mal rot ist (Zeit, Threads, Reihenfolge, Dateien).
+
+- Atlas merkt sich nach jedem Lauf aus der IDE je Test die letzten Ergebnisse (`tests.flaky.runs`, Vorgabe 10) mit der Prüfsumme des Methodenrumpfs wie bei „veraltet“ (#1770). Ein Test mit `[TestCase]` gilt in einem Lauf als rot, wenn einer seiner Fälle rot war; nur übersprungen zählt nicht.
+- „Wackelt“: Unter den Ergebnissen mit dem Rumpf von jetzt gibt es grün, danach rot, danach wieder grün. Rot, dann am Rumpf repariert und grün, wackelt nicht.
+- Die Marke der Testlinse wird gelb: „Test ausführen · bestanden · wackelt (3 von 10 rot)“; die Klassenmarke nennt die Zahl ihrer wackelnden Tests („· 2 wackeln“).
+- Im Fenster *Atlas-Tests* steht hinter dem Test „· wackelt“, der Filter *wackelt* zeigt nur diese Tests. Die Einzelheiten zeigen den Verlauf als Reihe (✓ grün, ✗ rot, ältester zuerst) mit „2 von 10 rot“, seit wann der Rumpf unverändert ist und die letzte Fehlermeldung.
+- *Wackelnde Tests zeigen* (Atlas-Menü, Befehlspalette) öffnet das Fenster mit genau diesem Filter.
+- Ist ein Test, der beim Lauf davor rot war, jetzt grün, wackelt aber (etwa nach *Fehlgeschlagene Tests erneut ausführen*), meldet die Meldungsansicht „Test TRechnerTests.Summe bestanden, wackelt aber (3 von 10 Läufen rot).“
+- Der Verlauf liegt je Testprojekt in `%LOCALAPPDATA%\Atlas\projects\tests-history\<Schlüssel>.json` (Schlüssel wie die Projekt-Zusammenfassung) und übersteht einen Neustart der IDE.
+- `tests.flaky` aus: Atlas schreibt keinen Verlauf, keine Marke, kein Befehl.
+
+Einstellungen: `tests.flaky`, `tests.flaky.runs`
 
 ### Lecks je Test (#1774)
 
