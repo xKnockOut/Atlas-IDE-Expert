@@ -1708,6 +1708,32 @@
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
     },
+    "DebugThreadsInSource": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.threadsInSource",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Threads im Quelltext",
+      "x-captionEn": "Threads in source",
+      "x-issue": "#852"
+    },
+    "DebugThreadFreeze": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.threadFreeze",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-parent": "debug.threadsInSource",
+      "x-caption": "Threads einfrieren und auftauen",
+      "x-captionEn": "Freeze and thaw threads",
+      "x-issue": "#852"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",
@@ -2048,6 +2074,18 @@
       "x-captionEn": "Check breakpoints before starting",
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
+    },
+    "DebugBreakpointSetPerBranch": {
+      "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointSetPerBranch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt-Satz beim Branch-Wechsel mitwechseln",
+      "x-captionEn": "Switch the breakpoint set together with the branch",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#586"
     },
     "TestsBuildFirst": {
       "type": "boolean",
