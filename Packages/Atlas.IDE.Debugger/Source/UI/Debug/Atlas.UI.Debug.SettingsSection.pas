@@ -54,6 +54,7 @@ implementation
 uses
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Core.Settings.FolderList,
+  Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Strings;
 
@@ -64,6 +65,7 @@ const
   cStepFilterPatternsKey = 'debug.stepFilters.patterns';
   cBreakExcludedKey = 'debug.breakOnNextEvent.excluded';
   cOwnCodeFoldersKey = 'debug.ownCodeFolders';
+  cEventLogColorsKey = 'debug.eventLogColors';
 
 { TAtlasDebugSettingsSection }
 
@@ -179,6 +181,10 @@ begin
   Switch('debug.threadsInSource', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadsInSource));
   // Threads einfrieren (#852, experimentell).
   Switch('debug.threadFreeze', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadFreeze));
+  // Herkunft eingereihter Methoden (#859, experimentell).
+  Switch('debug.asyncOrigin', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOrigin));
+  Number('debug.asyncOrigin.maxPerSite',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOriginMaxPerSite));
   Line('debug.parallelStacks.waitRoutines',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksWaitRoutines));
   Number('debug.parallelStacks.maxThreads',
@@ -193,6 +199,9 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
   Switch('debug.inlineValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValues));
   Number('debug.inlineValuesPerLine', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValuesPerLine));
+  // Ereignisprotokoll (#580).
+  Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
+  Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
@@ -265,6 +274,7 @@ begin
   AValues.WriteString(cBreakExcludedKey,
     TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
   AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));
+  AValues.WriteString(cEventLogColorsKey, TAtlasEventColors.Normalize(AValues.ReadString(cEventLogColorsKey)));
 end;
 
 procedure TAtlasDebugSettingsSection.Close;
