@@ -158,6 +158,8 @@ begin
   // Haltepunkt-Sätze (#586).
   Switch('debug.breakpointSetPerBranch',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
+  // Bis hier ausführen per Klick (#851).
+  Switch('debug.runToClick', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRunToClick));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
   Switch('debug.breakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointsWindow));
 end;

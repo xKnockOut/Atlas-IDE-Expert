@@ -450,6 +450,19 @@ The command “Breakpoint on methods …” (Atlas menu, command palette, editor
 The preview lists the matches with file and line to deselect, methods without source greyed out. “Set” places the breakpoints on the first executable statement of each method, in the breakpoint group named after the pattern, optionally with a condition or “Do not break, log only”. With “Grow”, Atlas adds breakpoints for new matching methods at the next debug start and names them in the messages. “Method breakpoint groups …” enables, disables or removes the groups of the project together with their breakpoints. Atlas keeps the groups personally per project.
 
 Settings: `debug.methodBreakpoints`
+
+### Run to here by clicking
+
+Editor margin while paused, context menu Atlas › Debug, command palette. Instead of placing the cursor and pressing F4, click next to the line.
+
+- When the program is paused, a narrow column appears to the right of the line numbers; on executable lines it shows ▶ under the mouse pointer, with a tooltip.
+- Clicking ▶ runs to that line (like F4); Ctrl+click does so without stopping at other breakpoints.
+- Skipped breakpoints are back in their old state after the next stop, even if the program ends first. If the IDE crashes in between, Atlas restores them when the next debug session starts.
+- Right-click in the margin: “Run to here”, “Run to here, skip breakpoints” (also Ctrl+F4, only while paused) and “One-time breakpoint”. The one-time breakpoint is in the group `Atlas.Einmalig` and disappears after its first stop; it can also be set while no program is running.
+- Executable lines are those between `begin` and `end` of a body, without blank and comment lines and without lines that only contain `begin`, `end`, `try`, `finally`, `except` or `else`.
+
+Settings: `debug.runToClick`
+
 ### Breakpoint only for one object
 
 A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:
