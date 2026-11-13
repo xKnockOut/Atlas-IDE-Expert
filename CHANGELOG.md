@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Laufendes Programm vor dem Build beenden (#551, `build.stopRunningProgram`, Vorgabe `ask`): Läuft die Ausgabe-exe eines Projekts noch außerhalb des Debuggers (Vergleich des vollständigen Pfads), fragt Atlas vor dem Compile „AtlasDemo.exe läuft noch“ mit „Beenden und bauen“, „Nicht beenden“ und „Immer beenden, ohne zu fragen“ (stellt die Einstellung auf `always`), statt den Build erst am Ende mit F2039 scheitern zu lassen. Beendet wird erst freundlich (`WM_CLOSE` an die Hauptfenster), nach 2 s hart; gelingt das nicht, bricht der Compile mit Grund ab. `never` lässt die IDE wie bisher. Programme im Debugger der IDE, Syntaxprüfung, Bereinigen und Hintergrundprüfungen von Atlas bleiben unberührt; Builds eines KI-Assistenten fragen nicht. Ist bei einem Package die BPL in einem anderen Programm geladen, nennt ein Hinweis in der Gruppe Atlas des Meldungsfensters das Programm, beendet wird nichts. Seite Compiler.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

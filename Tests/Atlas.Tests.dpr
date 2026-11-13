@@ -1733,6 +1733,8 @@ uses
   Atlas.Core.Build.OpenBuildSettings in '..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.OpenBuildSettings.pas',
   Atlas.Core.Build.OpenBuild.Tests in 'IDE.Expert\Atlas.Core.Build.OpenBuild.Tests.pas',
   Atlas.Core.Build.OpenBuildSettings.Tests in 'IDE.Expert\Atlas.Core.Build.OpenBuildSettings.Tests.pas',
+  Atlas.Core.Build.RunningProgram in '..\Packages\Atlas.IDE.Build\Source\Core\Build\Atlas.Core.Build.RunningProgram.pas',
+  Atlas.Core.Build.RunningProgram.Tests in 'IDE.Expert\Atlas.Core.Build.RunningProgram.Tests.pas',
   Atlas.Core.Build.IdleGate in '..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.IdleGate.pas',
   Atlas.Core.Build.IdleGate.Tests in 'IDE.Expert\Atlas.Core.Build.IdleGate.Tests.pas',
   Atlas.Core.Dock.Plan in '..\Packages\Atlas.IDE.Base\Source\Core\Dock\Atlas.Core.Dock.Plan.pas',

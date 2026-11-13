@@ -1455,6 +1455,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Build.Strings` | `UI/Build/Atlas.UI.Build.Strings.pas` | Texte des Moduls (Build-Werkzeuge), Sprache von Base, #1455 |
 | `Atlas.UI.Build.SwitchesFrame` | `UI/Build/Atlas.UI.Build.SwitchesFrame.pas` | Ordner `UI/Build` |
 | `Atlas.UI.Tasks.Texts` | `UI/Tasks/Atlas.UI.Tasks.Texts.pas` | Ordner `UI/Tasks` |
+| `Atlas.Core.Build.RunningProgram` | `Core/Build/Atlas.Core.Build.RunningProgram.pas` | Ordner `Core/Build`; laufendes Programm vor dem Build beenden (#551) |
+| `Atlas.IDE.Build.RunningProcesses` | `IDE/Build/Atlas.IDE.Build.RunningProcesses.pas` | Ordner `IDE/Build`; Prozesse für #551 (Windows) |
+| `Atlas.IDE.Build.RunningProgram` | `IDE/Build/Atlas.IDE.Build.RunningProgram.pas` | Ordner `IDE/Build`; Teilnehmer an den Compile-Ereignissen (#551) |
+| `Atlas.UI.Build.RunningPrompt` | `UI/Build/Atlas.UI.Build.RunningPrompt.pas` | Ordner `UI/Build`; Rückfrage vor dem Build (#551) |
 
 ## Atlas.IDE.BuildPipeline
 

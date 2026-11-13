@@ -76,6 +76,12 @@ Settings: `build.gate`
 - Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
 - Afterwards the project is back as it was
 
+### Stop the running program before the build
+
+- If the exe is still running outside the debugger, Atlas asks before compiling “AtlasDemo.exe is still running. Stop it and build?” (Yes, No, Always) instead of letting the build fail with F2039 at the end
+- Stops politely first, after 2 s forcibly; programs in the debugger stay untouched
+- For a package, a notice names the programs that still have the BPL loaded (`build.stopRunningProgram`: ask, always, never)
+
 <a id="window-atlascompilerswitches"></a>
 ### Compiler switches at the cursor
 

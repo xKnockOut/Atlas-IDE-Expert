@@ -115,6 +115,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
+- **Stop the running program before the build** instead of F2039 at the end of the build
 - **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
 - **DUnitX tests** from the editor, including **only the tests affected** by a change
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into

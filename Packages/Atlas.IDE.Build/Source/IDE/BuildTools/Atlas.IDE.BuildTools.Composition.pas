@@ -13,6 +13,8 @@
 // - für andere Module Startprofile und Projektaufgaben
 //   (IAtlasBuildToolsSource, Atlas.IDE.Contracts.BuildTools); das Ende einer Aufgabe
 //   geht an jeden IAtlasTaskListener.
+// Dazu der Teilnehmer „Laufendes Programm vor dem Build beenden“ (#551,
+// build.stopRunningProgram) an den Compile-Ereignissen.
 // Die Build-Pipeline selbst (Läufer der Builds auf Auftrag, Prüfung vor dem
 // Kompilieren, Release-Wächter, Bewertung) ist ein eigenes Modul
 // (atlas.buildpipeline); dieses Modul erreicht die Builds auf Auftrag über
@@ -71,6 +73,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Events,
   Atlas.Core.StartProfiles.Store,
+  Atlas.Core.Build.RunningProgram,
   Atlas.Core.Tasks.Adapters.Process,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tasks.Runs,
@@ -78,6 +81,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Build.CompilerSwitches,
+  Atlas.IDE.Build.RunningProgram,
   Atlas.IDE.StartProfiles.Service,
   Atlas.IDE.Tasks.Projects,
   Atlas.IDE.Tasks.Runner,
@@ -97,6 +101,8 @@ var
   GTasks: TAtlasIdeTasks;
   /// <summary>Teilnehmer der Projektaufgaben an den Compile-Ereignissen (#900, tasks.beforeBuild).</summary>
   GTasksParticipant: TAtlasCompileParticipant;
+  /// <summary>Teilnehmer „Laufendes Programm vor dem Build beenden“ (#551).</summary>
+  GRunningParticipant: TAtlasCompileParticipant;
 
 { Sichtbarkeit }
 
@@ -296,6 +302,37 @@ begin
           end);
       end;
     end;
+end;
+
+{ Laufendes Programm vor dem Build beenden (#551) }
+
+procedure StartRunningProgram;
+var
+  mEvents: TAtlasCompileEvents;
+begin
+  mEvents := TAtlasIdeHost.CompileEvents;
+  if mEvents <> nil then
+  begin
+    GRunningParticipant := TAtlasIdeRunningProgram.CreateParticipant;
+    mEvents.Add(GRunningParticipant);
+  end;
+end;
+
+procedure StopRunningProgram;
+var
+  mEvents: TAtlasCompileEvents;
+begin
+  mEvents := TAtlasIdeHost.CompileEvents;
+  if (mEvents <> nil) and (GRunningParticipant <> nil) then
+  begin
+    mEvents.Remove(GRunningParticipant);
+  end;
+  GRunningParticipant := nil;
+end;
+
+function RunningProgramStarted: Boolean;
+begin
+  Result := GRunningParticipant <> nil;
 end;
 
 { Startprofile (#575) }
@@ -600,6 +637,15 @@ begin
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TasksEnabled;
       end, TasksStarted, StartTasks, StopTasks),
+    // Laufendes Programm vor dem Build beenden (#551): nur im normalen Start, mit den Compile-Ereignissen und solange
+    // build.stopRunningProgram nicht never ist (Modul aus: wirksam never).
+    TAtlasFeaturePart.When('StopRunningProgram',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and (TAtlasIdeHost.CompileEvents <> nil) and
+          (TAtlasRunningProgram.ModeOf(TAtlasIdeSettings.Current.BuildStopRunningProgram) <>
+          TAtlasStopRunningMode.Never);
+      end, RunningProgramStarted, StartRunningProgram, StopRunningProgram),
     // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
     TAtlasFeaturePart.When('StartProfiles',
       function(ALevel: TAtlasSafeLevel): Boolean
