@@ -130,7 +130,9 @@ type
     NoSourceTitle, NoSourcePlace, NoSourceUnit, NoSourceUnknown, NoSourceDebugDcusOff, NoSourceNoDebugInfo,
     NoSourceDcuOnly, NoSourceNotInPath, NoSourceSystem, NoSourceEnableDcus, NoSourceReturn, NoSourceFind,
     NoSourceKeepCpu, NoSourceIgnore, NoSourceFindTitle, NoSourceFound, NoSourceNotFound, NoSourceIgnored,
-    NoSourceReturning, SettingsDebugNoSourcePage, SettingsDebugNoSourceIgnored);
+    NoSourceReturning, SettingsDebugNoSourcePage, SettingsDebugNoSourceIgnored, RestartCommand, RestartStop,
+    RestartBuild, RestartStart, RestartReturn, RestartTitle, RestartFailedStop, RestartFailedBuild,
+    RestartFailedStart, RestartReenabled, RestartNoProject, SettingsDebugRestart, SettingsDebugRestartReenable);
 
   TAtlasDebugStrings = class
   public
@@ -651,7 +653,20 @@ const
      'Atlas: Fenster „Kein Quelltext“ für %s abgeschaltet (Liste unter debug.noSourcePage.ignoredUnits).',
      'Atlas: Läuft bis zur Rückkehr in eigenen Code …',
      'Fenster „Kein Quelltext“',
-     'Units ohne Fenster „Kein Quelltext“'),
+     'Units ohne Fenster „Kein Quelltext“',
+     'Atlas: Neu starten',
+     'Beenden',
+     'Bauen',
+     'Starten',
+     'Zurück zur Stelle',
+     'Neu starten',
+     'Atlas: Neu starten abgebrochen: Das Programm hat sich nicht beendet.',
+     'Atlas: Neu starten abgebrochen: Bauen fehlgeschlagen (siehe Meldungen).',
+     'Atlas: Neu starten abgebrochen: Das Programm ist nicht gestartet.',
+     'Atlas: %d Haltepunkte wieder eingeschaltet.',
+     'Atlas: Kein Projekt zum Starten.',
+     'Neu starten (Strg+Umschalt+F2)',
+     'Abgeschaltete Haltepunkte wieder einschalten'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1152,7 +1167,20 @@ const
      'Atlas: “No source” window turned off for %s (list under debug.noSourcePage.ignoredUnits).',
      'Atlas: Running until it returns to my code …',
      '“No source” window',
-     'Units without “No source” window'));
+     'Units without “No source” window',
+     'Atlas: Restart',
+     'Stop',
+     'Build',
+     'Start',
+     'Back to the place',
+     'Restart',
+     'Atlas: Restart cancelled: the program did not stop.',
+     'Atlas: Restart cancelled: build failed (see messages).',
+     'Atlas: Restart cancelled: the program did not start.',
+     'Atlas: %d breakpoints turned on again.',
+     'Atlas: No project to start.',
+     'Restart (Ctrl+Shift+F2)',
+     'Turn disabled breakpoints on again'));
 
 { TAtlasDebugStrings }
 

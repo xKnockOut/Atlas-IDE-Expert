@@ -207,6 +207,12 @@ type
     /// <summary>Units ohne Fenster „Kein Quelltext“ (#869, debug.noSourcePage.ignoredUnits), durch „;“ getrennt.
     /// </summary>
     DebugNoSourceIgnoredUnits: string;
+    /// <summary>Neu starten (#872, debug.restart): Befehl „Neu starten“ (Strg+Umschalt+F2) beendet das Programm, baut
+    /// nur nach Änderungen, startet und kehrt an die Stelle im Editor zurück. Aus = kein Befehl, keine Taste.</summary>
+    DebugRestart: Boolean;
+    /// <summary>Beim Neustart Haltepunkte wieder einschalten, die in der Sitzung abgeschaltet wurden (#872,
+    /// debug.restart.reenableBreakpoints).</summary>
+    DebugRestartReenableBreakpoints: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -290,6 +296,8 @@ begin
   Result.DebugLogpointPrefix := cDefaultLogpointPrefix;
   Result.DebugNoSourcePage := True;
   Result.DebugNoSourceIgnoredUnits := '';
+  Result.DebugRestart := True;
+  Result.DebugRestartReenableBreakpoints := False;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.DebugEnabled := True;
@@ -378,6 +386,8 @@ begin
   AIo.Text('DebugLogpointPrefix', DebugLogpointPrefix);
   AIo.Flag('DebugNoSourcePage', DebugNoSourcePage);
   AIo.Text('DebugNoSourceIgnoredUnits', DebugNoSourceIgnoredUnits);
+  AIo.Flag('DebugRestart', DebugRestart);
+  AIo.Flag('DebugRestartReenableBreakpoints', DebugRestartReenableBreakpoints);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

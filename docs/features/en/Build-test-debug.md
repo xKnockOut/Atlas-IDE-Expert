@@ -460,6 +460,16 @@ Settings: `debug.logpoints`, `debug.logpointPrefix`
 
 Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
+## Debug: restart
+
+- “Atlas: Restart” with Ctrl+Shift+F2, in the Atlas menu or in the command palette
+- Steps: stop (only while the program runs), build (only when something changed since the last build), start, back to the place in the editor
+- A small bar without focus at the top right shows the steps and their duration, for example “Stop 0.3 s ✓ · Build 2.1 s ✓ · Start …”
+- If a step fails, the run stops and the bar names the reason
+- With `debug.restart.reenableBreakpoints` Atlas turns breakpoints back on before the start that were on when the last session started
+
+Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

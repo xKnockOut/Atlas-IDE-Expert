@@ -989,6 +989,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.NoSourcePopup` | `UI/Debug/Atlas.UI.Debug.NoSourcePopup.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.NoSourceFacts` | `IDE/Debug/Atlas.IDE.Debug.NoSourceFacts.pas` | Tatsachen für „Kein Quelltext“ aus Pfaden und Optionen, #869 |
 | `Atlas.IDE.Debug.NoSource` | `IDE/Debug/Atlas.IDE.Debug.NoSource.pas` | Fenster „Kein Quelltext“ beim Halt, #869 |
+| `Atlas.UI.Debug.StepsBar` | `UI/Debug/Atlas.UI.Debug.StepsBar.pas` | Ordner `UI/Debug` |
+| `Atlas.Core.Debug.Restart` | `Core/Debug/Atlas.Core.Debug.Restart.pas` | Ablauf von „Neu starten“ ohne IDE, #872 |
+| `Atlas.IDE.Debug.Restart` | `IDE/Debug/Atlas.IDE.Debug.Restart.pas` | Neu starten mit einem Griff, #872 |
 
 ## Atlas.IDE.Tracker
 
