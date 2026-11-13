@@ -153,26 +153,34 @@ Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Testabdeckung im Editor (#275)
+
+- „Testabdeckung laden …“ (*Atlas*-Menü, Befehlspalette) liest einen Bericht von [DelphiCodeCoverage](https://github.com/DelphiCodeCoverage/DelphiCodeCoverage) ein, ohne neu zu bauen: `CodeCoverage_Summary.xml` (mit `-xml -xmllines`) oder `jacoco.xml` neuerer Fassungen.
+- In der Rinne steht dann an jeder Zeile mit Code ein schmaler Balken: grün durchlaufen, rot nicht durchlaufen. Der Tooltip nennt die Treffer, die Abdeckung der Datei und den Bericht.
+- Wurde die Datei nach dem Bericht gespeichert, sagt der Tooltip, dass die Zeilen verschoben sein können.
+- Ein neuer Lauf überschreibt den Bericht: Atlas liest ihn beim nächsten Wechsel bzw. nach einer Tipp-Pause neu. „Testabdeckung ausblenden“ vergisst ihn.
+- Beispiel (Testprogramm mit Map-Datei, „Detailliert“; volle Pfade bei `-e` und `-m`, `-ife` vor `-u` bei Unitnamen mit Punkten):
+
+  ```
+  CodeCoverage.exe -ife -e C:\Projekt\Bin\Tests.exe -m C:\Projekt\Bin\Tests.map -u Rechner.Kern Rechner.Hilfen -sp C:\Projekt\Source -od C:\Projekt\Coverage -xml -xmllines -a ^-^-exit:Continue
+  ```
+
+Einstellung: `tests.coverage`
+
 ### Vergleichsdateien für Tests (#1881)
-
 Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis gegen eine gespeicherte Datei statt mit einem Assert je Zeile („Approval“). Die Hilfs-Unit `Atlas.Testing.Approval` liegt unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX); ins Testprojekt kopieren oder ihren Ordner in den Suchpfad aufnehmen. Beispiel: [approval-tests.pas](../../Beispiele/approval-tests.pas).
-
 - `TApproval.Verify(Ergebnis, 'TFixture.Methode')` vergleicht mit `TFixture.Methode.approved.txt`; eine eigene Endung (`'.json'`) und ein Normalisierer für Datum oder GUID sind möglich.
 - Zeilenenden (CRLF, LF, CR) zählen nicht als Abweichung; Dateien sind UTF-8.
 - Weicht das Ergebnis ab, liegt daneben `….received.txt` und der Test schlägt fehl mit „Approval: Abweichung ab Zeile 3, siehe …“; ohne approved-Datei mit „neu, bitte prüfen“.
 - Übernehmen heißt: received in approved umbenennen und die approved-Datei einchecken; `.received.*` gehört in die Ignorierliste.
 - Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
 - Meldungen deutsch, mit `TApproval.English := True` englisch.
-
 In der IDE (Modul Tests, `tests.approvalFiles`):
-
 - Schlägt ein Test mit dieser Meldung fehl, zeigt seine Testmarke „Abweichung · Vergleich“, ohne approved-Datei „Neu · Vergleich“. Derselbe Knopf „Vergleichen“ steht im Hover des Fehlschlags und auf der Kachel *Testergebnisse*.
 - Der Vergleich zeigt links die approved-, rechts die received-Datei (Zeilen einander zugeordnet wie bei erwartet und erhalten, #1779). *Als neue Erwartung übernehmen* ersetzt die approved-Datei durch die received-Datei und löscht diese; der nächste Lauf ist grün. *Zum Test* springt zum Methodenkopf.
 - *Liegengebliebene .received-Dateien löschen* (Atlas-Menü, Befehlspalette) sucht im Ordner der Vergleichsdateien des zuletzt gelaufenen Testprojekts (ohne Lauf des aktiven Projekts), löscht nach Rückfrage alle `*.received.*` darin und bietet an, `*.received.*` in die nächste `.gitignore` einzutragen, wenn dort noch keine Zeile dafür steht.
 - `tests.approvalFiles` aus: keine eigene Marke, kein Befehl; die Hilfs-Unit arbeitet weiter, ihre Fehlschläge erscheinen als gewöhnliche Fehlschläge.
-
 Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugin)
-
 ### Dauer der Tests und langsame Tests (#1772)
 
 - Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
@@ -583,6 +591,29 @@ Einstellungen: `debug.completionInDialogs`
 | Umschalttaste oder Befehl „Auswerten/Ändern (IDE-Dialog)“ | der Dialog der IDE kommt |
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
+
+<a id="window-atlasvariables"></a>
+#### Fenster „Variablen“
+
+- Andockbares Fenster „Atlas: Variablen“ (Atlas-Menü) mit drei Reitern, bei jedem Halt neu ausgewertet:
+  - **Autos:** Variablen, Felder und einfache Ausdrücke der aktuellen Anweisung und nach einem Schritt auch der vorigen, aus dem Syntaxbaum. Aufrufe (auch Funktionen und Getter ohne Klammern) stehen nicht darin, nur ihre Argumente und das Objekt davor: Bei `Betrag := LeseBetrag(S);` sind es `Betrag` und `S`.
+  - **Lokal:** `Self`, Parameter, `Result`, lokale Variablen und Inline-Variablen, die an der Zeile schon gelten.
+  - **Überwachung:** eigene Ausdrücke, je Projekt gespeichert; sie kommen mit dem Projekt wieder.
+- Ausgewertet wird ohne Nebenwirkungen; Werte klappen zu ihren Feldern auf wie im Fenster „Auswerten“, seit dem letzten Schritt geänderte Werte sind hervorgehoben.
+- Suche im gezeigten Reiter nach Name oder (mit „In Werten“) nach Wert. Mit „Unterelemente“ klappt Atlas Knoten bis `debug.variablesWindow.searchDepth` Ebenen selbst auf und hört nach `debug.variablesWindow.searchLimit` Auswertungen auf. Gezeigt werden Treffer (fett), ihr Pfad und ihre Unterelemente; unten steht die Zahl der Treffer. Ein Wert zählt nur bei einfachen Werten: Bei einer Suche nach „Berlin“ ist `Kunde.Adressen[1].Ort` der Treffer, nicht `Kunde`.
+- Autos und Lokal brauchen den Atlas-Server; die Überwachung geht ohne.
+
+| Bedienung | Wirkung |
+|---|---|
+| Strg+F | ins Suchfeld |
+| Strg+W | Ausdruck der Zeile als Überwachung hinzufügen |
+| Strg+C | Wert kopieren |
+| Strg+Umschalt+C | Ausdruck kopieren |
+| F2 | Wert ändern (mit `debug.editValues`, wie „Ändern …“ im Debug-Hover) |
+| Entf (Reiter Überwachung) | Überwachung entfernen |
+| Enter im Eingabefeld des Reiters Überwachung | Ausdruck überwachen |
+
+Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
 
 ### Ereignisprotokoll
 

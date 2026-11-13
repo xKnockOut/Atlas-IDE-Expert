@@ -1,0 +1,48 @@
+name: PRs abgleichen
+
+# Nach jedem Push auf main-merging: offene Pull Requests mit Konflikt (oder mit geänderten Quellen erzeugter Dateien
+# auf beiden Seiten) mit Tools/Merge-Integration.py abgleichen und den Abgleich auf ihren Branch pushen. Bleibt ein
+# echter Konflikt, setzt Tools/CI/Abgleich-PRs.py das Label „Konflikt mit main-merging“ und kommentiert die Dateien.
+# Ohne Konflikt bleibt ein Pull Request unangetastet; Auto-Merge braucht keinen aktuellen Stand (docs/Zusammenfuehren.md).
+#
+# Token: Mit dem Secret ABGLEICH_TOKEN (fein granuliertes PAT, Rechte Contents, Pull requests, Workflows: Read and
+# write) startet der Push die CI des Pull Requests wie ein normaler Push. Ohne das Secret pusht GITHUB_TOKEN; davon
+# ausgelöste Pushes starten keine Workflows, deshalb startet das Skript die Prüfungen dann per workflow_dispatch.
+# GITHUB_TOKEN darf außerdem keine Änderungen an .github/workflows pushen; solche Abgleiche meldet das Skript am PR.
+#
+# Der Zeitplan wirkt erst, wenn der Workflow auf main liegt (GitHub plant nur Workflows des Standardbranches).
+
+on:
+  push:
+    branches: [main-merging]
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: pr-abgleich
+  cancel-in-progress: true
+
+jobs:
+  abgleichen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main-merging
+          fetch-depth: 0
+          token: ${{ secrets.ABGLEICH_TOKEN || github.token }}
+      - name: Offene Pull Requests abgleichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_STARTEN: ${{ secrets.ABGLEICH_TOKEN == '' && '1' || '0' }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 Tools/CI/Abgleich-PRs.py

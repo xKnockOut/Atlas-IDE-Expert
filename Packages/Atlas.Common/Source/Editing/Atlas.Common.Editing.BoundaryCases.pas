@@ -56,6 +56,8 @@ type
 
   TBoundaryResult = record
     Routine: string;
+    /// <summary>Ergebnistyp bei Funktionen wie geschrieben; '' bei Prozeduren.</summary>
+    ResultType: string;
     Parameters: TArray<TBoundaryParameter>;
     Cases: TArray<TBoundaryCase>;
     /// <summary>Gab es mehr Fälle als erlaubt?</summary>
@@ -1291,6 +1293,10 @@ begin
   mCollector.Constants := mUnit.Names;
   mCollector.ConstValues := mUnit.Values;
   mCollector.Found.Routine := ARoutine;
+  if AHeader.FindChild(TSyntaxKind.TypeReference) <> nil then
+  begin
+    mCollector.Found.ResultType := AHeader.FindChild(TSyntaxKind.TypeReference).Name;
+  end;
   mCollector.Found.Parameters := ParametersOf(AHeader, mUnit);
   SetLength(mCollector.TextHits, Length(mCollector.Found.Parameters));
   SetLength(mCollector.TextInsensitive, Length(mCollector.Found.Parameters));

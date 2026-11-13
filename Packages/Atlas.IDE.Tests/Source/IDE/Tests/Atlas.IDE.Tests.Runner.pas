@@ -130,8 +130,10 @@ type
     procedure RunAll;
     /// <summary>Die fehlgeschlagenen Tests des letzten Laufs (auch nach einem Neustart über OnLastFailed).</summary>
     procedure RunFailed;
-    /// <summary>Tests ATests (Namen für --run) im Testprojekt der Datei AFileName (Code Lens).</summary>
-    procedure RunTests(const AFileName: string; const ATests: TArray<string>);
+    /// <summary>Tests ATests (Namen für --run) im Testprojekt der Datei AFileName (Code Lens); mit AAlwaysBuild
+    /// vorher gebaut, auch ohne „Vor den Tests bauen“ (Grenzfälle mit heutigem Ergebnis, #2173: die neuen Fälle
+    /// stehen nur im Editor).</summary>
+    procedure RunTests(const AFileName: string; const ATests: TArray<string>; AAlwaysBuild: Boolean);
     /// <summary>Alle Tests des geöffneten Testprojekts AProject (Schnellaktion „Tests“, #764), vorher gebaut.
     /// False mit AReason, wenn „Tests ausführen“ aus ist, schon ein Lauf läuft oder AProject nicht offen ist.
     /// </summary>
@@ -400,19 +402,21 @@ begin
     end);
 end;
 
-procedure TAtlasIdeTests.RunTests(const AFileName: string; const ATests: TArray<string>);
+procedure TAtlasIdeTests.RunTests(const AFileName: string; const ATests: TArray<string>; AAlwaysBuild: Boolean);
 var
   mTests: TArray<string>;
+  mBuildFirst: Boolean;
 begin
   if not TAtlasIdeSettings.Current.TestRun then
   begin
     Exit;
   end;
   mTests := ATests;
+  mBuildFirst := AAlwaysBuild or TAtlasIdeSettings.Current.TestsBuildFirst;
   ResolveProject(AFileName,
     procedure(const AProject: IOTAProject)
     begin
-      Start(AProject, mTests, TAtlasIdeSettings.Current.TestsBuildFirst);
+      Start(AProject, mTests, mBuildFirst);
     end);
 end;
 

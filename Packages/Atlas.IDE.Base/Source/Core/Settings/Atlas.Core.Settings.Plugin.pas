@@ -93,6 +93,8 @@ type
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
     cMinTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMinTestsRepeatCount;
     cMaxTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMaxTestsRepeatCount;
+    cMinTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMinTestsBoundaryMax;
+    cMaxTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsBoundaryMax;
     cMinTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMinTestsLogMaxLines;
     cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
@@ -115,6 +117,10 @@ type
     cMinInlineValuesPerLine = Atlas.Core.Settings.Plugin.Debug.cMinInlineValuesPerLine;
     cMinWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMinWhyHereDepth;
     cMaxWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMaxWhyHereDepth;
+    cMinVariablesSearchDepth = Atlas.Core.Settings.Plugin.Debug.cMinVariablesSearchDepth;
+    cMaxVariablesSearchDepth = Atlas.Core.Settings.Plugin.Debug.cMaxVariablesSearchDepth;
+    cMinVariablesSearchLimit = Atlas.Core.Settings.Plugin.Debug.cMinVariablesSearchLimit;
+    cMaxVariablesSearchLimit = Atlas.Core.Settings.Plugin.Debug.cMaxVariablesSearchLimit;
     cMinPredictLines = Atlas.Core.Settings.Plugin.Debug.cMinPredictLines;
     cMaxPredictLines = Atlas.Core.Settings.Plugin.Debug.cMaxPredictLines;
     cMinHoverMaxChildren = Atlas.Core.Settings.Plugin.Debug.cMinHoverMaxChildren;
@@ -392,6 +398,7 @@ type
     property CodeLensTests: Boolean read FEditorInsight.CodeLensTests write FEditorInsight.CodeLensTests;
     property CodeLensCoveredBy: Boolean read FEditorInsight.CodeLensCoveredBy write FEditorInsight.CodeLensCoveredBy;
     property CodeLensUntested: Boolean read FEditorInsight.CodeLensUntested write FEditorInsight.CodeLensUntested;
+    property TestCoverage: Boolean read FEditorInsight.TestCoverage write FEditorInsight.TestCoverage;
     property TestRun: Boolean read FBuild.TestRun write FBuild.TestRun;
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
@@ -428,6 +435,8 @@ type
     property TestsLogMaxLines: Integer read FBuild.TestsLogMaxLines write FBuild.TestsLogMaxLines;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
+    property TestsBoundaryCases: Boolean read FBuild.TestsBoundaryCases write FBuild.TestsBoundaryCases;
+    property TestsBoundaryMax: Integer read FBuild.TestsBoundaryMax write FBuild.TestsBoundaryMax;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
     property TestsRepeatCount: Integer read FBuild.TestsRepeatCount write FBuild.TestsRepeatCount;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
@@ -526,6 +535,11 @@ type
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugVariablesWindow: Boolean read FDebug.DebugVariablesWindow write FDebug.DebugVariablesWindow;
+    property DebugVariablesSearchDepth: Integer read FDebug.DebugVariablesSearchDepth
+      write FDebug.DebugVariablesSearchDepth;
+    property DebugVariablesSearchLimit: Integer read FDebug.DebugVariablesSearchLimit
+      write FDebug.DebugVariablesSearchLimit;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
