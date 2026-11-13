@@ -85,7 +85,6 @@ uses
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
-  Atlas.IDE.Debug.Composition.Leaks,
   Atlas.UI.Debug.Strings;
 
 var
@@ -443,7 +442,6 @@ begin
   TAtlasIdeDebugStepFilter.ThemeChanged;
   RunThemeChanged;
   DebugThreadsThemeChanged;
-  DebugLeaksThemeChanged;
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;

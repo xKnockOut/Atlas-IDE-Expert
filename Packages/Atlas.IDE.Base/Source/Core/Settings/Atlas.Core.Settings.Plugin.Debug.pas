@@ -238,6 +238,11 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+  private
+    /// <summary>Vorgaben für Exceptions, Werte im Editor, Ereignisse, Neustart und Startprofile.</summary>
+    procedure SetSessionDefaults;
+    /// <summary>Exchange für dieselben Werte wie SetSessionDefaults.</summary>
+    procedure ExchangeSession(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -292,26 +297,31 @@ begin
   Result.DebugLeakReportCompare := True;
   Result.DebugLeakReportWindow := True;
   Result.DebugModuleOfAddress := True;
-  Result.DebugExceptionHistory := True;
-  Result.DebugJustMyCode := True;
-  Result.DebugExceptionBanner := False;
-  Result.DebugExceptionBannerIgnoreAtLocation := True;
-  Result.DebugInlineValues := True;
-  Result.DebugInlineValuesPerLine := 5;
-  Result.DebugWhyHere := True;
-  Result.DebugWhyHereDepth := cDefaultWhyHereDepth;
-  Result.DebugOwnCodeFolders := '';
-  Result.DebugEventLog := True;
-  Result.DebugEventLogColors := cDefaultEventLogColors;
-  Result.DebugLogpoints := True;
-  Result.DebugLogpointPrefix := cDefaultLogpointPrefix;
-  Result.DebugNoSourcePage := True;
-  Result.DebugNoSourceIgnoredUnits := '';
-  Result.DebugRestart := True;
-  Result.DebugRestartReenableBreakpoints := False;
-  Result.StartProfiles := True;
-  Result.StartProfilesStatusField := True;
-  Result.DebugEnabled := True;
+  Result.SetSessionDefaults;
+end;
+
+procedure TAtlasPluginDebugSettings.SetSessionDefaults;
+begin
+  DebugExceptionHistory := True;
+  DebugJustMyCode := True;
+  DebugExceptionBanner := False;
+  DebugExceptionBannerIgnoreAtLocation := True;
+  DebugInlineValues := True;
+  DebugInlineValuesPerLine := 5;
+  DebugWhyHere := True;
+  DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugOwnCodeFolders := '';
+  DebugEventLog := True;
+  DebugEventLogColors := cDefaultEventLogColors;
+  DebugLogpoints := True;
+  DebugLogpointPrefix := cDefaultLogpointPrefix;
+  DebugNoSourcePage := True;
+  DebugNoSourceIgnoredUnits := '';
+  DebugRestart := True;
+  DebugRestartReenableBreakpoints := False;
+  StartProfiles := True;
+  StartProfilesStatusField := True;
+  DebugEnabled := True;
 end;
 
 procedure TAtlasPluginDebugSettings.Normalize;
@@ -384,7 +394,11 @@ begin
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
   AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
+  ExchangeSession(AIo);
+end;
 
+procedure TAtlasPluginDebugSettings.ExchangeSession(const AIo: TAtlasSettingsExchange);
+begin
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);

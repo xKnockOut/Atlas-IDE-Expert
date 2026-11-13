@@ -353,7 +353,7 @@ begin
     Exit;
   end;
   try
-    TAtlasLeakCaptures.FromLogFile(mFile, TFile.ReadAllText(mFile), mWritten, FStarted, Result);
+    TAtlasLeakCaptures.FromLogFile(mFile, TFile.ReadAllText(mFile, TEncoding.ANSI), mWritten, FStarted, Result);
   except
     on EInOutError do
     begin
@@ -398,7 +398,7 @@ begin
   if (AFileName <> '') and FileExists(AFileName) then
   begin
     try
-      Result := TAtlasLeakCaptures.HistoryFromText(TFile.ReadAllText(AFileName));
+      Result := TAtlasLeakCaptures.HistoryFromText(TFile.ReadAllText(AFileName, TEncoding.UTF8));
     except
       on EInOutError do
       begin
@@ -420,7 +420,7 @@ begin
   end;
   try
     ForceDirectories(ExtractFileDir(AFileName));
-    TFile.WriteAllText(AFileName, TAtlasLeakCaptures.HistoryToText(AHistory));
+    TFile.WriteAllText(AFileName, TAtlasLeakCaptures.HistoryToText(AHistory), TEncoding.UTF8);
   except
     // Ohne schreibbaren Ordner gibt es keinen Vergleich; der Bericht bleibt sichtbar.
     on EInOutError do

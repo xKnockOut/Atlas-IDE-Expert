@@ -66,7 +66,6 @@ contains
   Atlas.IDE.Debug.ParallelStacksWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.ParallelStacksWindow.pas',
   Atlas.IDE.Debug.LeaksWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.LeaksWindow.pas',
   Atlas.IDE.Debug.Leaks in 'Source\IDE\Debug\Atlas.IDE.Debug.Leaks.pas',
-  Atlas.IDE.Debug.Composition.Leaks in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Leaks.pas',
   Atlas.UI.Debug.Viewer in 'Source\UI\Debug\Atlas.UI.Debug.Viewer.pas',
   Atlas.UI.Debug.StepInto in 'Source\UI\Debug\Atlas.UI.Debug.StepInto.pas',
   Atlas.UI.Debug.InlineValuePainter in 'Source\UI\Debug\Atlas.UI.Debug.InlineValuePainter.pas',
