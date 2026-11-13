@@ -572,6 +572,8 @@ contains
   Atlas.Common.Semantics.ExitPoints in 'Source\Semantics\Atlas.Common.Semantics.ExitPoints.pas',
   Atlas.Common.Semantics.Reassigned in 'Source\Semantics\Atlas.Common.Semantics.Reassigned.pas',
   Atlas.Common.Semantics.ExpressionTypes in 'Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.pas',
+  Atlas.Common.Semantics.ExpressionTypes.Contract in 'Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.Contract.pas',
+  Atlas.Common.Semantics.ExpressionTypes.Operators in 'Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.Operators.pas',
   Atlas.Common.Semantics.ExpressionTypes.RecordSizes in 'Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.pas',
   Atlas.Common.Semantics.ResolvedSignatures in 'Source\Semantics\Atlas.Common.Semantics.ResolvedSignatures.pas',
   Atlas.Common.Editing.SuggestConst in 'Source\Editing\Atlas.Common.Editing.SuggestConst.pas',

@@ -75,6 +75,7 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Semantics.TypeCompatibility,
   Atlas.Common.Semantics.TypeIdentity,
   Atlas.Common.Editing.ChangeSignature,

@@ -21,7 +21,8 @@
 interface
 
 uses
-  Atlas.Common.Semantics.ExpressionTypes;
+  Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 type
 {$SCOPEDENUMS ON}
