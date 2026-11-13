@@ -58,7 +58,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Writing](docs/features/en/Writing.md)
 - **Code completion** in its own popup with detail panel, fuzzy matching, favourites and `+ Unit` for missing uses
-- **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons
+- **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons, after `if X is T then` the members of `T` with the cast
 - **Parameter hint** with overload choice and `Format` placeholder checks
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
@@ -116,7 +116,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
 - **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
-- **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**; check rules find `[TestCase]` values that do not fit the method, and test classes that are never registered or whose unit is in no test project
+- **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**, failures sit at the **failing assert** with “expected 4, got 3” and can be **compared side by side** (JSON/XML indented); check rules find `[TestCase]` values that do not fit the method, and test classes that are never registered or whose unit is in no test project
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained

@@ -12,7 +12,10 @@
 //   implementation-Teil (Atlas.Text.DUnitX, gemeinsam mit dem MCP-Werkzeug
 //   run_tests und #154).
 // - Daraus Probleme im Editor (Quelle "DUnitX", erwarteter und tatsächlicher
-//   Wert), den Abschnitt "tests" der Projekt-Zusammenfassung (#592, Karte
+//   Wert; mit tests.failureAtAssert an der Assert-Zeile, #1771,
+//   Atlas.Core.Tests.AssertLine, und mit tests.failureInline dahinter kurz
+//   „erwartet 4, erhalten 3“ in Details), den Abschnitt "tests" der
+//   Projekt-Zusammenfassung (#592, Karte
 //   Tests #763) und den Stand je Test für die Code Lens; veraltete Ergebnisse
 //   (#1770, Atlas.Core.Tests.Stale) zählt die Marke nicht als bestanden.
 // Dateien liest der Aufrufer (Puffer der IDE oder Platte); Zeilen sind hier
@@ -96,8 +99,11 @@ type
     Test: TTestCaseResult;
     /// <summary>Datei der Testunit; '' ohne Fundstelle.</summary>
     FileName: string;
-    /// <summary>Zeile des Methodenkopfs (0-basiert); -1 ohne.</summary>
+    /// <summary>Zeile des Methodenkopfs bzw. der fehlgeschlagenen Anweisung (AtAssert, 0-basiert); -1 ohne.
+    /// </summary>
     Line: Integer;
+    /// <summary>Line ist die Anweisung, an der der Test fehlschlug (#1771), nicht der Methodenkopf.</summary>
+    AtAssert: Boolean;
     /// <summary>Erstes und letztes Zeichen des Texts in der Zeile (0-basiert) für die Markierung.</summary>
     StartCharacter: Integer;
     EndCharacter: Integer;
@@ -122,7 +128,11 @@ type
       const ARequestedBy: string; AIsTestProgram: Boolean): Boolean; static;
     /// <summary>Fehlgeschlagene Tests mit Fundstelle; liest jede Testunit höchstens einmal.</summary>
     class function Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
-      const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>; static;
+      const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>; overload; static;
+    /// <summary>Wie oben; mit AAtAssert an der Zeile der fehlgeschlagenen Anweisung, wenn sie sich bestimmen lässt
+    /// (Stacktrace, eindeutiger Assert; #1771, tests.failureAtAssert).</summary>
+    class function Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
+      const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>; overload; static;
     /// <summary>Kurzer Name eines Tests für Meldungen: Fixture.Methode[.Fall].</summary>
     class function ShortName(const ACase: TTestCaseResult): string; static;
     /// <summary>Text des Problems: AValuesFormat (%s Name, %s erwartet, %s erhalten) mit erwartetem und
@@ -130,7 +140,11 @@ type
     class function ProblemText(const ACase: TTestCaseResult; const AFormat, AValuesFormat: string): string; static;
     /// <summary>Probleme je Datei (nur Tests mit Fundstelle) für den Problem-Speicher.</summary>
     class function Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat,
-      AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>; static;
+      AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>; overload; static;
+    /// <summary>Wie oben; an der Assert-Zeile mit Werten steht AInlineFormat (%s erwartet, %s erhalten) in Details,
+    /// der kurze Text hinter der Zeile (#1771, tests.failureInline); '' = ohne.</summary>
+    class function Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat, AValuesFormat,
+      AInlineFormat: string): TArray<TPair<string, TAtlasProblem>>; overload; static;
     /// <summary>Abschnitt "tests" der Projekt-Zusammenfassung; höchstens TAtlasProjectTests.cMaxFailures Tests.
     /// </summary>
     class function SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
@@ -161,7 +175,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.Core.Tests.AssertLine;
 
 { TAtlasTestTally }
 
@@ -222,12 +237,24 @@ begin
     not ABackground and (ARequestedBy = '') and AIsTestProgram;
 end;
 
-/// <summary>Zeile und Spalten des Tests in ALines eintragen; ohne Fundstelle Zeile -1.</summary>
-procedure PlaceFailure(var AFailure: TAtlasTestFailure; const AFound: TDUnitXUnit; const ALines: TArray<string>);
+/// <summary>Zeile und Spalten des Tests in ALines eintragen; ohne Fundstelle Zeile -1. AAtAssert: an der
+/// fehlgeschlagenen Anweisung, wenn sie sich bestimmen lässt (#1771).</summary>
+procedure PlaceFailure(var AFailure: TAtlasTestFailure; const AFound: TDUnitXUnit; const ALines: TArray<string>;
+  AAtAssert: Boolean);
 var
   mText: string;
   mIndex: Integer;
 begin
+  if AAtAssert then
+  begin
+    AFailure.Line := TAtlasAssertLine.Find(AFailure.Test, AFound, ALines, AFailure.FileName);
+    if AFailure.Line >= 0 then
+    begin
+      AFailure.AtAssert := True;
+      TAtlasAssertLine.Statement(ALines[AFailure.Line], AFailure.StartCharacter, AFailure.EndCharacter);
+      Exit;
+    end;
+  end;
   AFailure.Line := AFound.LineOf(AFailure.Test.Fixture, AFailure.Test.Method);
   if (AFailure.Line < 0) or (AFailure.Line > High(ALines)) then
   begin
@@ -267,6 +294,12 @@ end;
 
 class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
   const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
+begin
+  Result := Failures(ARun, AUnitFile, AReadLines, False);
+end;
+
+class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
 var
   mUnits: TDictionary<string, TDUnitXUnit>;
   mTexts: TDictionary<string, TArray<string>>;
@@ -298,7 +331,7 @@ begin
         end
         else
         begin
-          PlaceFailure(mFailure, mFound, mLines);
+          PlaceFailure(mFailure, mFound, mLines, AAtAssert);
         end;
       end;
       Result := Result + [mFailure];
@@ -347,6 +380,12 @@ end;
 
 class function TAtlasTestRun.Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat,
   AValuesFormat: string): TArray<TPair<string, TAtlasProblem>>;
+begin
+  Result := Problems(AFailures, AFormat, AValuesFormat, '');
+end;
+
+class function TAtlasTestRun.Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat, AValuesFormat,
+  AInlineFormat: string): TArray<TPair<string, TAtlasProblem>>;
 var
   mFailure: TAtlasTestFailure;
   mProblem: TAtlasProblem;
@@ -368,6 +407,11 @@ begin
     mProblem.Code := '';
     mProblem.Source := TAtlasProblemStore.cTestSource;
     mProblem.Message := ProblemText(mFailure.Test, AFormat, AValuesFormat);
+    // Kurzer Text hinter der Assert-Zeile (#1771); der Fehlertext am Zeilenende zeigt ihn statt der Meldung.
+    if mFailure.AtAssert and mFailure.Test.HasValues and (AInlineFormat <> '') then
+    begin
+      mProblem.Details := Format(AInlineFormat, [mFailure.Test.Expected, mFailure.Test.Actual]);
+    end;
     Result := Result + [TPair<string, TAtlasProblem>.Create(mFailure.FileName, mProblem)];
   end;
 end;

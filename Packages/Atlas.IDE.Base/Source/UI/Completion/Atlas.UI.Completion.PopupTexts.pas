@@ -44,7 +44,8 @@ type
     class function MarkedGroupText(const AItem: TAtlasCompletionItem): string; static;
     /// <summary>Menge (#448), erwarteter Typ (#417, #444), nach dem Formular, geerbt (#419).</summary>
     class function TypedGroupText(const AItem: TAtlasCompletionItem; AAfterForm: Boolean): string; static;
-    /// <summary>Steht vor APosition eine Komponente des Formulars (#455)?</summary>
+    /// <summary>Steht vor APosition eine Komponente des Formulars (#455) oder ein Eintrag einer Typprüfung (#2107)?
+    /// </summary>
     class function AfterForm(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
       APosition: Integer): Boolean; static;
     /// <summary>Ausgeblendete Units, abstrakte Methoden, gleichnamige Bezeichner; '' ohne.</summary>
@@ -195,6 +196,16 @@ begin
     // Überschriften darin sind die der geerbten Gruppen.
     Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SenderHeader, [mItem.Sender, mItem.SenderOf]);
   end
+  else if mItem.Narrowed <> '' then
+  begin
+    // Typprüfung (#2107): „mLocation ist hier TJSONObject (is-Prüfung, Zeile 147)“.
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.NarrowedHeader, [mItem.NarrowedName,
+      mItem.Narrowed, mItem.NarrowedLine]);
+  end
+  else if mItem.DescendantOf <> '' then
+  begin
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.DescendantsHeader, [mItem.DescendantOf]);
+  end
   else if mItem.TypeParam <> '' then
   begin
     // Typargumente (#450): „T: class · nur Klassen“.
@@ -310,7 +321,8 @@ end;
 class function TAtlasCompletionTexts.AfterForm(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   APosition: Integer): Boolean;
 begin
-  Result := (APosition > 0) and (AOrder[APosition - 1] >= 0) and (AItems[AOrder[APosition - 1]].Form <> '');
+  Result := (APosition > 0) and (AOrder[APosition - 1] >= 0) and ((AItems[AOrder[APosition - 1]].Form <> '') or
+    (AItems[AOrder[APosition - 1]].Narrowed <> '') or (AItems[AOrder[APosition - 1]].DescendantOf <> ''));
 end;
 
 class function TAtlasCompletionTexts.HiddenText(const AItems: TAtlasCompletionItems): string;
