@@ -9,7 +9,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Leaks.Ownership;
 
 type
@@ -52,6 +51,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Ownership,

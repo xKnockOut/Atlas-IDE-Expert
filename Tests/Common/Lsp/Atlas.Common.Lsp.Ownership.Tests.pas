@@ -149,7 +149,7 @@ var
   mAnswer: TJSONObject;
   mSites: TJSONArray;
 begin
-  mAnswer := Run(NoFile, mSites);
+  mAnswer := Run(NoFile(), mSites);
   try
     Assert.AreEqual(0, mSites.Count);
   finally
@@ -166,7 +166,7 @@ begin
   mArguments := TJSONArray.Create;
   try
     try
-      TLspOwnership.Execute(mArguments, NoFile).Free;
+      TLspOwnership.Execute(mArguments, NoFile()).Free;
     except
       on E: EJsonRpcError do
       begin
@@ -185,7 +185,7 @@ var
 begin
   mCommands := TLspCommands.Create;
   try
-    TLspOwnership.Attach(mCommands, NoFile);
+    TLspOwnership.Attach(mCommands, NoFile());
     Assert.IsTrue(mCommands.IsConcurrentCommand(TLspOwnership.cCommand));
   finally
     mCommands.Free;
