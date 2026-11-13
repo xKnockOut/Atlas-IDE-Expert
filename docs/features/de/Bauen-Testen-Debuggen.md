@@ -147,6 +147,15 @@ Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an 
 - Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
 - Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
 
+### Schnellbefehle für Tests und Fehlersuche (#305)
+
+Aufruf: Befehl in eine leere Zeile schreiben und Enter drücken.
+
+- `/mock IKundenRepo` auf Unit-Ebene legt `TKundenRepoMock = class(TInterfacedObject, IKundenRepo)` mit allen Methoden des Interfaces an (auch geerbten): Jede Methode zählt ihre Aufrufe (`LadenCalls`), Funktionen liefern ein einstellbares Feld (`LadenResult`). In einer Routine einer Unit, die `Delphi.Mocks` verwendet, entsteht stattdessen eine lokale Variable `TMock<IKundenRepo>` samt `Create`.
+- `/testcase 'a', 2, True` über einer Testmethode schreibt `[TestCase('Fall1', 'a,2,True')]`, fortlaufend nummeriert; enthält ein Wert ein Komma, trennt `;`. Die Zahl der Werte muss zu den Parametern der Methode darunter passen.
+- `/dump` in einer Routine gibt alle Parameter und lokalen Variablen einfacher Typen in einer Zeile aus (`OutputDebugString` bzw. die Routine aus `slashCommands.logCall`).
+- `/assert` unter einer Zuweisung prüft die zugewiesene Variable passend zum Typ (`Assigned`, nicht leer, nicht negativ, `True`); in Testunits mit `Assert.IsNotNull`, `Assert.AreNotEqual` und `Assert.IsTrue` aus DUnitX.
+
 ### Betroffene Tests ausführen (#1353)
 
 Aufruf: *Atlas*-Menü, Befehlspalette.
@@ -338,3 +347,20 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
 Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
+
+### Threads
+
+#### Was wartet worauf?
+
+- Hängt ein Programm, hält man es an (Start > Programm Pause) und wählt Atlas > „Was wartet worauf?“.
+- Atlas liest die Aufrufstapel aller Threads und zeigt im Ergebnisfenster je Thread Kennung, Namen (`TThread.NameThreadForDebugging`), Wartepunkt und die erste eigene Codezeile, etwa „Thread 7 „Worker“: wartet in TThread.Synchronize, bei TWorker.Execute (Unit2.pas:30)“.
+- Als Wartepunkt gilt die Warte-Routine über der ersten eigenen Zeile: `TThread.WaitFor`, `TThread.Synchronize`, `TMonitor.Enter`/`Wait`, Critical Section, Ereignis (`TEvent.WaitFor`), `Sleep` oder ein Handle (`WaitForSingleObject`, `WaitForMultipleObjects`); die Nachrichtenschleife zählt als „wartet auf Nachrichten“.
+- Darüber stehen erkannte Muster:
+  - Der Hauptthread wartet in `TThread.WaitFor` (etwa im Destruktor eines Threads), ein Thread wartet in `Synchronize` auf ihn: Verklemmung, siehe Regel `synchronize-in-destructor`.
+  - Ein Thread wartet in `Synchronize`, der Hauptthread hängt an einer Sperre.
+  - Mehrere Threads warten an derselben Stelle auf eine Sperre.
+  - Alle Threads warten, keiner läuft.
+- Doppelklick wechselt zum Thread und springt auf seine erste eigene Codezeile.
+- Wer eine Sperre (`TMonitor`, Critical Section) hält, liefert der Debugger nicht; Atlas nennt nur die Wartenden.
+
+Schalter: `debug.deadlocks`.

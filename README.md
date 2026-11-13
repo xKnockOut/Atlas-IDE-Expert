@@ -40,7 +40,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 | `Atlas.IDE.Designer` | Designer bar: “Arrange” (width to text, button bar, form grid, duplicate in a row, insert space, fit to content, layers, wrap in container, fonts and colors, suggest anchors, format painter, groups), measure spacing and set it by handle, shared size handles, quick bar, magnifier, tab order, try sizes and scaling, meaningful names, “Atlas Structure” and “Event map” windows, data binding, extract to frame, usages in code, find components and properties, undo (experimental) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker (YouTrack, GitHub and others): “My issues” with project choice, start, finish and review along the workflow transitions, time tracking, state in the status bar, board with swimlanes, sprint tile, flow map, “Attach to issue”, issue ids in code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page with projects, “Continue” with the work state per issue, “What's new in Atlas”, “Discover Atlas” and “Atlas setup” with index progress per project; “Atlas Start” | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations including the module of the fault address | 61 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations including the module of the fault address, what threads wait for | 66 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas search with replace, regex and project scope, unit search, code queries | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics, “Unit relations” and “Dependent units” also from the project manager | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, change marks with inline diff, line history, branch when starting an issue, working copies, project state | 26 | `vcs.enabled` |
@@ -58,7 +58,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Writing](docs/features/en/Writing.md)
 - **Code completion** in its own popup with detail panel, fuzzy matching, favourites and `+ Unit` for missing uses
-- **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons, after `if X is T then` the members of `T` with the cast
+- **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons, after `if X is T then` the members of `T` with the cast, and in the footer the matches that are only missing because they are private or protected
 - **Parameter hint** with overload choice and `Format` placeholder checks
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
@@ -118,9 +118,11 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Stop the running program before the build** instead of F2039 at the end of the build
 - **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
 - **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**, failures sit at the **failing assert** with “expected 4, got 3” and can be **compared side by side** (JSON/XML indented); check rules find `[TestCase]` values that do not fit the method, and test classes that are never registered or whose unit is in no test project; every test mark shows its **duration**, **slow tests** turn yellow; optionally the affected tests **run in the background on every save**
+- **Slash commands for tests:** `/mock`, `/testcase`, `/dump` and `/assert` create mock classes, test cases, variable dumps and asserts that fit the type
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained, module of the fault address (program, RTL/VCL, Windows, third-party DLL)
+- **Threads:** what is waiting for what (wait point of every thread, deadlock patterns such as `WaitFor` against `Synchronize`)
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
 - **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue

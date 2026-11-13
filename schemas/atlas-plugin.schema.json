@@ -1641,6 +1641,17 @@
       "x-captionEn": "Name the module of the fault address",
       "x-issue": "#1820"
     },
+    "DebugDeadlocks": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.deadlocks",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Befehl „Was wartet worauf?“",
+      "x-captionEn": "Command “What is waiting for what?”",
+      "x-issue": "#587"
+    },
 
     "DebugExceptionHistory": {
       "type": "boolean",
