@@ -258,6 +258,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Hover.Layout.Contract` | `Core/Hover/Atlas.Core.Hover.Layout.Contract.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout.Painter` | `Core/Hover/Atlas.Core.Hover.Layout.Painter.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout.Members` | `Core/Hover/Atlas.Core.Hover.Layout.Members.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Layout.DebugTree` | `Core/Hover/Atlas.Core.Hover.Layout.DebugTree.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Texts` | `Core/Hover/Atlas.Core.Hover.Texts.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.View` | `Core/Hover/Atlas.Core.Hover.View.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
@@ -918,6 +919,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.WhyHere` | `Core/Debug/Atlas.Core.Debug.WhyHere.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Forecast` | `Core/Debug/Atlas.Core.Debug.Forecast.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EditValue` | `Core/Debug/Atlas.Core.Debug.EditValue.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.HoverTree` | `Core/Debug/Atlas.Core.Debug.HoverTree.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Pins` | `Core/Debug/Atlas.Core.Debug.Pins.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Note` | `Core/Debug/Atlas.Core.Debug.Note.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.OwnCode` | `Core/Debug/Atlas.Core.Debug.OwnCode.pas` | Ordner `Core/Debug` |
@@ -970,6 +972,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.WhyHere` | `IDE/Debug/Atlas.IDE.Debug.WhyHere.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Forecast` | `IDE/Debug/Atlas.IDE.Debug.Forecast.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.EditValue` | `IDE/Debug/Atlas.IDE.Debug.EditValue.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.HoverTree` | `IDE/Debug/Atlas.IDE.Debug.HoverTree.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ValueRequest` | `IDE/Debug/Atlas.IDE.Debug.ValueRequest.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.LineEnd` | `IDE/Debug/Atlas.IDE.Debug.LineEnd.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Pins` | `IDE/Debug/Atlas.IDE.Debug.Pins.pas` | Ordner `IDE/Debug` |

@@ -61,6 +61,9 @@ type
 
   TAtlasHoverRefEvent = procedure(Sender: TObject; const ARef: TAtlasHoverTypeRef; AControl: Boolean) of object;
   TAtlasHoverIndexEvent = procedure(Sender: TObject; AIndex: Integer) of object;
+  /// <summary>Zeile AIndex des aufgeklappten Debug-Werts (#895), -1 der Wert selbst; AMenu: Rechtsklick (Aktionen
+  /// anbieten), sonst Klick bzw. Pfeil (auf- oder zuklappen).</summary>
+  TAtlasHoverDebugRowEvent = procedure(Sender: TObject; AIndex: Integer; AMenu: Boolean) of object;
   TAtlasHoverActionEvent = procedure(Sender: TObject; AAction: TAtlasHoverAction) of object;
   TAtlasHoverUrlEvent = procedure(Sender: TObject; const AUrl: string) of object;
   /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.
@@ -90,6 +93,10 @@ type
     /// <summary>Rollbereich der published-Mitglieder: Zeilen aus hover.membersMaxLines, Grenze aus dem Platz auf
     /// dem Bildschirm (0 = keine) und Versatz.</summary>
     FMembers: TAtlasHoverScrollRequest;
+    /// <summary>Aufgeklappter Debug-Wert (#895): Rollbereich (höchstens cDebugRows Zeilen) und gewählte Zeile
+    /// (1-basiert, 0 ohne).</summary>
+    FDebugRows: TAtlasHoverScrollRequest;
+    FDebugSelectedRow: Integer;
     /// <summary>Setzt die Doku für die Fensterbreite AWidth (volle Höhe).</summary>
     procedure PrepareDoc(AWidth: Integer);
     /// <summary>Höhe für AWidth mit höchstens AAvailable Pixeln: begrenzt die Doku (scrollt dann).</summary>
@@ -104,6 +111,7 @@ type
     procedure PaintCenterText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace; AColor: TAtlasColor);
     procedure PaintBlock(const AItem: TAtlasHoverItem; AColor: TAtlasColor);
     procedure PaintItem(const AItem: TAtlasHoverItem);
+    procedure ClipScroll(const AScroll: TAtlasHoverScroll; AIndex: Integer);
     function PreferredWidth: Integer;
   protected
     FView: TAtlasHoverView;
@@ -128,7 +136,8 @@ type
     /// <summary>Scrollt die Doku um ASteps Rasterstufen des Mausrads (negativ nach oben).</summary>
     function ScrollDoc(ASteps: Integer): Boolean;
     /// <summary>Scrollt die published-Mitglieder um ASteps Rasterstufen des Mausrads (je drei Zeilen).</summary>
-    function ScrollMembers(ASteps: Integer): Boolean;
+    /// <summary>Ebenso die Zeilen des aufgeklappten Debug-Werts (#895); ADebugRows wählt den Bereich.</summary>
+    function ScrollRegion(ADebugRows: Boolean; ASteps: Integer): Boolean;
     /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
     procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
     /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
@@ -159,6 +168,7 @@ type
     FOnProblemAction: TAtlasHoverProblemActionEvent;
     FOnDebugFix: TAtlasHoverIndexEvent;
     FOnDebugAction: TAtlasHoverIndexEvent;
+    FOnDebugRow: TAtlasHoverDebugRowEvent;
     /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
     procedure DocMouseDown(AShift: TShiftState; AX, AY: Integer);
     /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
@@ -193,6 +203,13 @@ type
     function HasProblemActions: Boolean;
     function HasFix: Boolean;
     function ProblemActionMarked: Boolean;
+    /// <summary>Aufklappbarer Debug-Wert (#895), wenn View.DebugValue.Expandable: Pfeile wählen Zeilen, → klappt
+    /// auf, ← zu. Gewählte Zeile um ADelta verschieben (-1 = der Wert selbst); False ohne Zeilen.</summary>
+    function MoveDebugSelection(ADelta: Integer): Boolean;
+    /// <summary>→ (AExpand) bzw. ←: gewählte Zeile auf- bzw. zuklappen; False, wenn es nichts zu tun gibt.</summary>
+    function ToggleDebugSelection(AExpand: Boolean): Boolean;
+    /// <summary>Index der gewählten Zeile in View.DebugValue.Rows; -1: der Wert selbst.</summary>
+    function DebugSelectedIndex: Integer;
     property OnLink: TAtlasHoverRefEvent read FOnLink write FOnLink;
     property OnPath: TAtlasHoverIndexEvent read FOnPath write FOnPath;
     property OnBack: TNotifyEvent read FOnBack write FOnBack;
@@ -206,6 +223,9 @@ type
     property OnDebugFix: TAtlasHoverIndexEvent read FOnDebugFix write FOnDebugFix;
     /// <summary>Klick auf eine Aktion unter dem Wert (#526); AIndex in View.DebugValue.Actions.</summary>
     property OnDebugAction: TAtlasHoverIndexEvent read FOnDebugAction write FOnDebugAction;
+    /// <summary>Klick oder Rechtsklick auf eine Zeile des aufgeklappten Werts (#895); AIndex in
+    /// View.DebugValue.Rows, -1 der Wert.</summary>
+    property OnDebugRow: TAtlasHoverDebugRowEvent read FOnDebugRow write FOnDebugRow;
   end;
 
 implementation
@@ -224,6 +244,12 @@ uses
   Atlas.UI.Hover.Strings,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Popup.Accessibility;
+
+const
+  /// <summary>So viele Zeilen des aufgeklappten Debug-Werts (#895) ohne Scrollen.</summary>
+  cDebugRows = 12;
+  /// <summary>Zeilen je Rasterstufe des Mausrads in den Rollbereichen.</summary>
+  cWheelRows = 3;
 
 function HoverKindCaption(const AKind: string): string;
 const
@@ -452,6 +478,7 @@ begin
   GuardFeature := TAtlasFeature.Hover;
   FHot := -1;
   FDoc := TAtlasDocView.Create;
+  FDebugRows.MaxLines := cDebugRows;
 end;
 
 destructor TAtlasHoverTipView.Destroy;
@@ -645,15 +672,28 @@ begin
   end;
 end;
 
-function TAtlasHoverTipView.ScrollMembers(ASteps: Integer): Boolean;
+function TAtlasHoverTipView.ScrollRegion(ADebugRows: Boolean; ASteps: Integer): Boolean;
 var
+  mRegion: TAtlasHoverScroll;
   mScroll: Integer;
 begin
-  mScroll := EnsureRange(FLayout.Members.Scroll + ASteps * 3 * FLayout.Members.Row, 0, FLayout.Members.MaxScroll);
-  Result := mScroll <> FLayout.Members.Scroll;
-  if Result then
+  mRegion := FLayout.Members;
+  if ADebugRows then
+  begin
+    mRegion := FLayout.DebugRows;
+  end;
+  mScroll := EnsureRange(mRegion.Scroll + ASteps * cWheelRows * mRegion.Row, 0, mRegion.MaxScroll);
+  Result := mScroll <> mRegion.Scroll;
+  if Result and ADebugRows then
+  begin
+    FDebugRows.Scroll := mScroll;
+  end
+  else if Result then
   begin
     FMembers.Scroll := mScroll;
+  end;
+  if Result then
+  begin
     // Sofort neu setzen: Klickflächen unter der Maus gelten schon vor dem nächsten Paint.
     BuildLayout(ClientWidth);
     FLayout.Anchor(ClientHeight);
@@ -666,7 +706,8 @@ begin
   Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
     Ord(FDoc.HasSelection), Ord(FOptions.ProblemActions), Ord(FOptions.HideCompilerCode), PPI, Font.Height,
     UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembers.MaxLines,
-    FMembers.Limit, FMembers.Scroll]) + '|' + IntToStr(Ord(FOptions.RuleExamples));
+    FMembers.Limit, FMembers.Scroll]) + '|' + IntToStr(Ord(FOptions.RuleExamples)) + '|' +
+    IntToStr(FDebugRows.Scroll) + '|' + IntToStr(FDebugSelectedRow);
 end;
 
 procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);
@@ -687,9 +728,12 @@ begin
   mInput.HideCompilerCode := FOptions.HideCompilerCode;
   mInput.RuleExamples := FOptions.RuleExamples;
   mInput.Members := FMembers;
+  mInput.DebugRows := FDebugRows;
+  mInput.DebugSelectedRow := FDebugSelectedRow;
   FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
   FMembers.Scroll := FLayout.Members.Scroll;
+  FDebugRows.Scroll := FLayout.DebugRows.Scroll;
   FLayoutKey := LayoutKey(AWidth);
 end;
 
@@ -828,6 +872,8 @@ begin
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
   FMembers.Scroll := 0;
+  FDebugRows.Scroll := 0;
+  FDebugSelectedRow := 0;
   mWidth := PreferredWidth;
   PrepareDoc(mWidth);
   mArea := WorkAreaAt(AWord.TopLeft);
@@ -864,6 +910,13 @@ begin
   begin
     Exit;
   end;
+  // Auf- und Zuklappen (#895) tauscht nur die Zeilen: Versatz und Auswahl bleiben beim selben Ausdruck.
+  if AView.DebugValue.Expression <> FView.DebugValue.Expression then
+  begin
+    FDebugRows.Scroll := 0;
+    FDebugSelectedRow := 0;
+  end;
+  FDebugSelectedRow := Min(FDebugSelectedRow, Length(AView.DebugValue.Rows));
   FView := AView;
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
@@ -924,13 +977,17 @@ end;
 
 procedure TAtlasHoverTip.Wheel(ASteps: Integer; const AClientPos: TPoint);
 begin
-  if FLayout.Members.Scrollable and FLayout.Members.View.Contains(AClientPos) then
+  if FLayout.DebugRows.Scrollable and FLayout.DebugRows.View.Contains(AClientPos) then
   begin
-    ScrollMembers(ASteps);
+    ScrollRegion(True, ASteps);
+  end
+  else if FLayout.Members.Scrollable and FLayout.Members.View.Contains(AClientPos) then
+  begin
+    ScrollRegion(False, ASteps);
   end
   else if not ScrollDoc(ASteps) and FLayout.Members.Scrollable then
   begin
-    ScrollMembers(ASteps);
+    ScrollRegion(False, ASteps);
   end;
 end;
 
@@ -998,7 +1055,7 @@ begin
     // Schalter und Abschnitte der published-Mitglieder (#110).
     TAtlasHoverHitKind.Published:
       TogglePublished(TAtlasHoverPublishedToggle(mHit.Index));
-    TAtlasHoverHitKind.DebugFix, TAtlasHoverHitKind.DebugAction:
+    TAtlasHoverHitKind.DebugFix, TAtlasHoverHitKind.DebugAction, TAtlasHoverHitKind.DebugRow:
       FireDebugHit(mHit);
   end;
 end;
@@ -1013,6 +1070,67 @@ begin
   else if (AHit.Kind = TAtlasHoverHitKind.DebugAction) and Assigned(FOnDebugAction) then
   begin
     FOnDebugAction(Self, AHit.Index);
+  end
+  else if AHit.Kind = TAtlasHoverHitKind.DebugRow then
+  begin
+    // Zeile wählen, dann auf- bzw. zuklappen, „auswerten“ oder „weitere …“ (#895).
+    FDebugSelectedRow := AHit.Index + 1;
+    Invalidate;
+    if Assigned(FOnDebugRow) then
+    begin
+      FOnDebugRow(Self, AHit.Index, False);
+    end;
+  end;
+end;
+
+function TAtlasHoverTip.DebugSelectedIndex: Integer;
+begin
+  Result := FDebugSelectedRow - 1;
+end;
+
+function TAtlasHoverTip.MoveDebugSelection(ADelta: Integer): Boolean;
+var
+  mRow: Integer;
+begin
+  Result := FView.DebugValue.Expandable;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mRow := EnsureRange(FDebugSelectedRow + ADelta, 0, Length(FView.DebugValue.Rows));
+  if mRow <> FDebugSelectedRow then
+  begin
+    FDebugSelectedRow := mRow;
+    // Gewählte Zeile sichtbar halten.
+    if FLayout.DebugRows.Scrollable and (mRow > 0) then
+    begin
+      FDebugRows.Scroll := EnsureRange(FDebugRows.Scroll, (mRow - FDebugRows.MaxLines) * FLayout.DebugRows.Row,
+        (mRow - 1) * FLayout.DebugRows.Row);
+    end;
+    Invalidate;
+  end;
+end;
+
+function TAtlasHoverTip.ToggleDebugSelection(AExpand: Boolean): Boolean;
+var
+  mIndex: Integer;
+  mExpandable, mExpanded: Boolean;
+begin
+  mIndex := DebugSelectedIndex;
+  if mIndex < 0 then
+  begin
+    mExpandable := FView.DebugValue.Expandable;
+    mExpanded := FView.DebugValue.Expanded;
+  end
+  else
+  begin
+    mExpandable := FView.DebugValue.Rows[mIndex].Expandable;
+    mExpanded := FView.DebugValue.Rows[mIndex].Expanded;
+  end;
+  Result := mExpandable and (mExpanded <> AExpand) and Assigned(FOnDebugRow);
+  if Result then
+  begin
+    FOnDebugRow(Self, mIndex, False);
   end;
 end;
 
@@ -1021,11 +1139,20 @@ var
   mIndex: Integer;
 begin
   inherited;
+  mIndex := FLayout.HitAt(Point(X, Y));
+  // Rechtsklick auf eine Zeile des Debug-Werts (#895): wählen und ihre Aktionen anbieten.
+  if (Button = mbRight) and (mIndex >= 0) and (FLayout.Hits[mIndex].Kind = TAtlasHoverHitKind.DebugRow) and
+    Assigned(FOnDebugRow) then
+  begin
+    FDebugSelectedRow := FLayout.Hits[mIndex].Index + 1;
+    Invalidate;
+    FOnDebugRow(Self, FLayout.Hits[mIndex].Index, True);
+    Exit;
+  end;
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  mIndex := FLayout.HitAt(Point(X, Y));
   if mIndex < 0 then
   begin
     DocMouseDown(Shift, X, Y);
@@ -1117,10 +1244,22 @@ begin
   end;
 end;
 
+/// <summary>Beim Baustein AIndex die Clip-Region für den Rollbereich AScroll setzen bzw. aufheben.</summary>
+procedure TAtlasHoverTipView.ClipScroll(const AScroll: TAtlasHoverScroll; AIndex: Integer);
+begin
+  if AIndex = AScroll.ClipFrom then
+  begin
+    IntersectClipRect(Canvas.Handle, AScroll.View.Left, AScroll.View.Top, AScroll.View.Right, AScroll.View.Bottom);
+  end
+  else if (AIndex = AScroll.ClipTill) and (AScroll.ClipFrom >= 0) then
+  begin
+    SelectClipRgn(Canvas.Handle, 0);
+  end;
+end;
+
 procedure TAtlasHoverTipView.Paint;
 var
   mIndex: Integer;
-  mView: TRect;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -1132,18 +1271,12 @@ begin
   end;
   // Letzte Randfläche am unteren Fensterrand.
   FLayout.Anchor(ClientHeight);
-  mView := FLayout.Members.View;
   for mIndex := 0 to High(FLayout.Items) do
   begin
-    // Rollbereich der Mitglieder (#1841) über die Clip-Region beschneiden; die gewählten Objekte bleiben.
-    if mIndex = FLayout.Members.ClipFrom then
-    begin
-      IntersectClipRect(Canvas.Handle, mView.Left, mView.Top, mView.Right, mView.Bottom);
-    end
-    else if (mIndex = FLayout.Members.ClipTill) and (FLayout.Members.ClipFrom >= 0) then
-    begin
-      SelectClipRgn(Canvas.Handle, 0);
-    end;
+    // Rollbereiche der Mitglieder (#1841) und des Debug-Werts (#895) über die Clip-Region beschneiden.
+    // Erst den oberen Bereich (Debug-Wert) beenden, dann den der Mitglieder beginnen.
+    ClipScroll(FLayout.DebugRows, mIndex);
+    ClipScroll(FLayout.Members, mIndex);
     PaintItem(FLayout.Items[mIndex]);
   end;
   SelectClipRgn(Canvas.Handle, 0);
