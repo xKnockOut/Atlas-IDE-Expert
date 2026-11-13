@@ -32,6 +32,8 @@ const
   cDefaultIssuesStateField = 'State';
   cDefaultIssuesAssigneeField = 'Assignee';
   cDefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+  /// <summary>Vorgabe von issues.github.prBody (#2136).</summary>
+  cDefaultIssuesGitHubPrBody = '{closes}\n\n{commits}';
   /// <summary>Vorgabe der Kommentarvorlage beim Prüfen (#2126); wie TAtlasTrackerReview.</summary>
   cDefaultIssuesReviewComment = 'Geprüft: {build}, {tests}.'; // german-ok: Vorgabe der Einstellung
   /// <summary>Vorgabe von issues.commentSnippets (#1278), wie TAtlasCommentSnippets.Defaults.</summary>
@@ -169,6 +171,15 @@ type
     /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138,
     /// issues.github.linkBranch).</summary>
     IssuesGitHubLinkBranch: Boolean;
+    /// <summary>Beenden-Dialog: Abschnitt „Pull Request anlegen“ vorab angehakt (#2136, issues.github.createPr).
+    /// </summary>
+    IssuesGitHubCreatePr: Boolean;
+    /// <summary>Ziel-Branch des Pull Requests (#2136, issues.github.prBase); '' = Standard-Branch.</summary>
+    IssuesGitHubPrBase: string;
+    /// <summary>Textvorlage des Pull Requests (#2136, issues.github.prBody).</summary>
+    IssuesGitHubPrBody: string;
+    /// <summary>Pull Request als Entwurf vorbelegen (#2136, issues.github.prDraft).</summary>
+    IssuesGitHubPrDraft: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -427,6 +438,10 @@ begin
   Result.IssuesGitHubProject := '';
   Result.IssuesGitHubAddToProject := False;
   Result.IssuesGitHubLinkBranch := False;
+  Result.IssuesGitHubCreatePr := True;
+  Result.IssuesGitHubPrBase := '';
+  Result.IssuesGitHubPrBody := cDefaultIssuesGitHubPrBody;
+  Result.IssuesGitHubPrDraft := False;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -510,6 +525,10 @@ begin
   AIo.Text('IssuesGitHubProject', IssuesGitHubProject);
   AIo.Flag('IssuesGitHubAddToProject', IssuesGitHubAddToProject);
   AIo.Flag('IssuesGitHubLinkBranch', IssuesGitHubLinkBranch);
+  AIo.Flag('IssuesGitHubCreatePr', IssuesGitHubCreatePr);
+  AIo.Text('IssuesGitHubPrBase', IssuesGitHubPrBase);
+  AIo.Text('IssuesGitHubPrBody', IssuesGitHubPrBody);
+  AIo.Flag('IssuesGitHubPrDraft', IssuesGitHubPrDraft);
 end;
 
 { TAtlasPluginIssueWorkSettings }
