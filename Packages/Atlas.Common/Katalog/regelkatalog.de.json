@@ -1229,6 +1229,22 @@
       ]
     },
     {
+      "id": "dunitx-testcase-mismatch",
+      "name": "TestCase passt nicht zur Methode",
+      "description": "Ein [TestCase], dessen Werte DUnitX der Methode nicht übergeben kann, was erst beim Testlauf auffällt: Die Zahl der Werte weicht von der Zahl der Parameter ab (DUnitX ruft über RTTI auf, Vorgabewerte zählen nicht), ein Wert passt nicht zum Typ seines Parameters, oder die Methode hat gar keine Parameter. Geteilt wird wie bei DUnitX: an jedem Zeichen des Trennzeichens (drittes Argument, Vorgabe Komma; keine Anführungszeichen), ein leerer Text ergibt keinen Wert. Geprüfte Typen: Ganzzahlen (dezimal oder hex, $FF, 0xFF), Gleitkomma (Punkt oder Komma als Dezimaltrenner, DUnitX macht aus dem Komma einen Punkt), Boolean (True oder False) und Aufzählungen derselben Datei (über ihre Namen); andere Typen prüft die Regel nicht, ebenso Werte, die kein String-Literal sind (eine Konstante, 'a' + 'b'). Neben TestCase('Name', 'Werte'[, 'Trenner']) kennt sie die neueren Formen TestCase('Werte'[, 'Trenner'[, Trim]]) und NamedTestCase('Name', 'Werte'). Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Was gemeint war, ist offen."
+    },
+    {
+      "id": "dunitx-fixture-not-registered",
+      "name": "DUnitX-Testklasse nie registriert",
+      "description": "Eine Testklasse, die DUnitX nie zu sehen bekommt: Ihre Tests fehlen still. DUnitX findet Testklassen über RegisterTestFixture oder, wenn der Runner der .dpr UseRTTI := True setzt (Projektvorlage von DUnitX), über das Attribut [TestFixture]. 1. Nicht registriert: eine Klasse mit [Test]- bzw. [TestCase]-Methoden, die weder der initialization-Abschnitt der Unit noch eine Routine der Unit, die von dort aufgerufen wird, nennt (TDUnitX.RegisterTestFixture(TKlasse), eigene Helfer wie Registriere([TA, TB])) und keine andere Unit ihrer Projekte nennt, und die außerdem kein [TestFixture] hat oder zu einem Projekt gehört, dessen .dpr einen Runner (TDUnitX.CreateRunner) ohne UseRTTI := True anlegt. Ein Aufruf aus der Option registrationCalls in initialization (eigene Registrierfunktion, die alle Klassen findet) zählt für alle Klassen der Unit. Generische und abstrakte Klassen sowie Vorfahren anderer Klassen der Datei bleiben still. Schnellkorrekturen: TDUnitX.RegisterTestFixture(TKlasse); in initialization ergänzen, den Abschnitt bei Bedarf anlegen; bei einem Runner mit RTTI auch [TestFixture] vor die Klasse setzen. 2. Unit in keinem Testprojekt: Die Gruppe hat Testprojekte, aber keines enthält die Unit. Schnellkorrektur bei genau einem Testprojekt: Unit in uses der .dpr und als DCCReference in die .dproj eintragen. Nur in Testunits und nur mit bekannten Projekten der Gruppe; ohne sie schweigt die Regel. Sicherheit mittel.",
+      "options": [
+        {
+          "name": "registrationCalls",
+          "description": "Eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name."
+        }
+      ]
+    },
+    {
       "id": "event-call-without-assigned",
       "name": "Ereignis ohne Assigned-Prüfung aufgerufen",
       "description": "FOnChange(Self) oder OnChange(Self) wird in einer Methode der Klasse aufgerufen, ohne dass Assigned(FOnChange) oder FOnChange <> nil den Aufruf schützt: Ohne Handler folgt eine Zugriffsverletzung. Ereignisse sind Felder und Properties der Klasse mit Methodenzeiger- oder Referenztyp (procedure … of object, reference to …, TNotifyEvent, TProc/TFunc, Typen auf Event, prozedurale Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, \"Assigned(F) and\" vor dem Aufruf oder \"if not Assigned(F) then Exit/raise\" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert belegt (eingereichte Abhängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in \"if Assigned(F) then\" einschließen, wenn er als eigene Anweisung in einem Block steht."
@@ -1253,6 +1269,22 @@
       "id": "raw-memory-leak",
       "name": "GetMem oder New ohne Freigabe",
       "description": "Eine lokale Variable erhält Speicher über GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, die Routine gibt ihn aber nie mit FreeMem, FreeMemory, Dispose, StrDispose oder ReallocMem(P, 0) frei, und der Zeiger verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch einer anderen Variablen oder einem Feld zugewiesen, nicht über seine Adresse (@P) weitergegeben, keiner Methode übergeben, die ihn behält (Add, Insert, Push …), nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Zum Lesen oder Füllen weitergeben (Pruefsumme(P, N), Strom.ReadBuffer(P^, N)) ist erlaubt; eine Routine mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen gilt als Freigabe. Eine Freigabe ohne try/finally meldet pair-without-finally. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit der passenden Freigabe einschließen."
+    },
+    {
+      "id": "local-object-not-freed",
+      "name": "Lokales Objekt nie freigegeben",
+      "description": "Eine lokale Variable (auch Inline-Variable) erhält T.Create(…) einer Klasse ohne Owner, die Routine gibt das Objekt aber nie frei, und es verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch etwas anderem zugewiesen (Feld, andere Variable, Listenelement), nicht als Argument weitergegeben (außer an Routinen, die nur lesen: Assign, AddStrings, CopyFrom, LoadFromStream, SaveToStream, IndexOf, Contains, Equals), nicht mit raise ausgelöst, nicht mit as umgewandelt, nicht mit @, in einem Mengen- oder Array-Konstruktor oder mit with benutzt, kein Parent oder Owner gesetzt, nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Free, Destroy, DisposeOf, Release, FreeAndNil und Routinen mit Free, Release, Destroy, Dispose oder Frei im Namen gelten als Freigabe; Show, Close, Start, Resume, Run und Execute als Übergabe (Formular mit caFree, Thread). Still bleiben Interface-Variablen, Records und dynamische Arrays (TPoint.Create, TArray<string>.Create), Threads, Komponenten mit Owner und unbekannte Klassen mit Argumenten (wie create-without-assignment); Routinen mit asm oder with bleiben still. Konfidenz hoch, wenn die Vorfahren der Klasse bis TObject bekannt sind, sonst mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen."
+    },
+    {
+      "id": "created-result-not-freed",
+      "name": "Neues Objekt aus einer Funktion nie freigegeben",
+      "description": "Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-freed). Eine Funktion derselben Datei zählt, wenn jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methoden anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.",
+      "options": [
+        {
+          "name": "factories",
+          "description": "Weitere Funktionen, die immer ein neues Objekt liefern, das dem Aufrufer gehört, als Name, Klasse.Name, Objekt.Name oder Unit.Name."
+        }
+      ]
     },
     {
       "id": "stringlist-objects-leak",

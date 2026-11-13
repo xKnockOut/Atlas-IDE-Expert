@@ -163,15 +163,6 @@ begin
   end;
 end;
 
-function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function IsSymbolAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ASymbol: string): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex <= High(ATokens)) and ATokens[AIndex].IsSymbol(ASymbol);
@@ -283,7 +274,7 @@ begin
       Exit;
     end;
     // Name vor der Klammer (Aufruf, Index); ohne Name ist die Klammer der Anfang.
-    mBefore := PreviousToken(ATokens, Result);
+    mBefore := PreviousCode(ATokens, Result);
     if ((mBefore >= 0) and (ATokens[mBefore].Kind = TPascalTokenKind.Identifier)) or
       IsSymbolAt(ATokens, mBefore, ')') or IsSymbolAt(ATokens, mBefore, ']') then
     begin
@@ -302,16 +293,16 @@ var
   mDot, mPart: Integer;
 begin
   Result := ANameToken;
-  mDot := PreviousToken(ATokens, Result);
+  mDot := PreviousCode(ATokens, Result);
   while IsSymbolAt(ATokens, mDot, '.') do
   begin
-    mPart := PartStart(ATokens, PreviousToken(ATokens, mDot));
+    mPart := PartStart(ATokens, PreviousCode(ATokens, mDot));
     if mPart < 0 then
     begin
       Exit;
     end;
     Result := mPart;
-    mDot := PreviousToken(ATokens, Result);
+    mDot := PreviousCode(ATokens, Result);
   end;
 end;
 
@@ -1566,7 +1557,7 @@ class function TPropertyFromAccessors.IsHeaderName(const ATokens: TArray<TPascal
 var
   mBefore: Integer;
 begin
-  mBefore := PreviousToken(ATokens, ChainStart(ATokens, ANameToken));
+  mBefore := PreviousCode(ATokens, ChainStart(ATokens, ANameToken));
   Result := IsWordAt(ATokens, mBefore, ['function', 'procedure', 'constructor', 'destructor']);
 end;
 
@@ -1637,7 +1628,7 @@ begin
   begin
     Exit;
   end;
-  Result := PreviousToken(ATokens, AAssign);
+  Result := PreviousCode(ATokens, AAssign);
   if (Result >= 0) and (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
   begin
     Result := -1;
@@ -1688,7 +1679,7 @@ begin
   mOpen := ArgumentOpen(ATokens, ABefore, AArgument);
   if IsSymbolAt(ATokens, mOpen, '(') then
   begin
-    mCallee := PreviousToken(ATokens, mOpen);
+    mCallee := PreviousCode(ATokens, mOpen);
     if (mCallee >= 0) and (ATokens[mCallee].Kind = TPascalTokenKind.Identifier) then
     begin
       Result := mCallee;
@@ -1795,7 +1786,7 @@ begin
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mNameStart, ATokens[mValue].StartPos),
       AProperty.Name + ' := ')];
   end;
-  AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ATokens[PreviousToken(ATokens, ACall.Close)].EndPos,
+  AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ATokens[PreviousCode(ATokens, ACall.Close)].EndPos,
     ATokens[ACall.Close].EndPos), '')];
 end;
 
@@ -1804,7 +1795,7 @@ class function TPropertyFromAccessors.UseOf(const ATokens: TArray<TPascalToken>;
 var
   mBefore: Integer;
 begin
-  mBefore := PreviousToken(ATokens, ChainStart(ATokens, ANameToken));
+  mBefore := PreviousCode(ATokens, ChainStart(ATokens, ANameToken));
   if IsWordAt(ATokens, mBefore, ['read', 'write', 'stored', 'inherited', 'function', 'procedure']) then
   begin
     Result := TAccessorUse.Keep;
@@ -1830,7 +1821,7 @@ var
 begin
   AArgument := -1;
   Result := -1;
-  mBefore := PreviousToken(ATokens, ChainStart(ATokens, ANameToken));
+  mBefore := PreviousCode(ATokens, ChainStart(ATokens, ANameToken));
   // Der Getter muss der ganze Ausdruck sein: nach ihm ";" bzw. "," oder ")".
   mAfter := SkipGenericArgs(ATokens, NextToken(ATokens, ANameToken));
   if IsSymbolAt(ATokens, mBefore, ':=') then

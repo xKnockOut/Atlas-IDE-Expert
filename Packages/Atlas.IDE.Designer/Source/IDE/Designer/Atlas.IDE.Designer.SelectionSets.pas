@@ -27,7 +27,8 @@ uses
   System.Generics.Collections,
   Vcl.Menus,
   Atlas.Core.Designer.SelectionSets,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
   TAtlasIdeSelectionSets = class;
@@ -49,9 +50,8 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   end;
 
-  TAtlasIdeSelectionSets = class
+  TAtlasIdeSelectionSets = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     /// <summary>Ablagedatei → Sätze.</summary>
     FStores: TObjectDictionary<string, TAtlasSelectionSets>;
     /// <summary>Ablagedateien, die nicht lesbar waren und nicht überschrieben werden.</summary>
@@ -60,7 +60,6 @@ type
     FSeen: TDictionary<TComponent, TPair<string, string>>;
     FWatch: TAtlasSelectionSetWatch;
     FKeys: TAtlasSelectionSetKeys;
-    procedure Say(const AText: string);
     function StoreFile(const AFormFile: string): string;
     function FormKey(const AFormFile: string): string;
     function Store(const AFormFile: string): TAtlasSelectionSets;
@@ -235,8 +234,7 @@ end;
 
 constructor TAtlasIdeSelectionSets.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FStores := TObjectDictionary<string, TAtlasSelectionSets>.Create([doOwnsValues]);
   FKept := TDictionary<string, Boolean>.Create;
   FSeen := TDictionary<TComponent, TPair<string, string>>.Create;
@@ -265,14 +263,6 @@ begin
   FKept.Free;
   FStores.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeSelectionSets.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeSelectionSets.UpdateKeys(AWanted: Boolean);

@@ -30,6 +30,8 @@ type
     procedure StoppedModuleContributesNothing;
     [Test]
     procedure MenuEntriesWithoutCommand;
+    [Test]
+    procedure SaveListenersGetTheFile;
   end;
 
 implementation
@@ -54,7 +56,7 @@ type
   end;
 
   TSource = class(TInterfacedObject, IAtlasCommandSource, IAtlasMenuSource, IAtlasAppliesSettings,
-    IAtlasFollowsTheme, IAtlasHoverValueSource, IAtlasKeySource, IAtlasFollowsEditorView)
+    IAtlasFollowsTheme, IAtlasHoverValueSource, IAtlasKeySource, IAtlasFollowsEditorView, IAtlasFollowsSaves)
   private
     FPrefix: string;
     FFail: Boolean;
@@ -69,6 +71,7 @@ type
     function HoverValue(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string;
     function Keys: TArray<TAtlasModuleKey>;
     procedure EditorViewActivated;
+    procedure FileSaved(const AFileName: string);
   end;
 
 constructor TFakeModule.Create(const AId: string);
@@ -177,6 +180,15 @@ begin
   end;
 end;
 
+procedure TSource.FileSaved(const AFileName: string);
+begin
+  Log := Log + 'saved ' + AFileName + ';';
+  if FFail then
+  begin
+    raise EInvalidOp.Create('kaputt');
+  end;
+end;
+
 procedure TSource.ApplySettings;
 begin
   Log := Log + 'settings;';
@@ -209,6 +221,7 @@ begin
   AScope.Provide(IAtlasHoverValueSource, mRef);
   AScope.Provide(IAtlasKeySource, mRef);
   AScope.Provide(IAtlasFollowsEditorView, mRef);
+  AScope.Provide(IAtlasFollowsSaves, mRef);
 end;
 
 procedure TModuleContributionsTests.CommandsFollowTheModule;
@@ -434,12 +447,36 @@ begin
   TAtlasModuleContributions.ApplySettings(mRegistry);
   TAtlasModuleContributions.ThemeChanged(mRegistry);
   TAtlasModuleContributions.EditorViewActivated(mRegistry);
+  TAtlasModuleContributions.FileSaved(mRegistry, 'C:\A.pas');
   Assert.AreEqual('', mSource.Log, 'gestoppt hört nichts');
   mModule.Start;
   Assert.AreEqual(1, Integer(Length(TAtlasModuleContributions.Commands(mRegistry))), 'wieder da');
   mRef := nil;
   mScope := nil;
   mModule := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
+end;
+
+procedure TModuleContributionsTests.SaveListenersGetTheFile;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mFailing, mGood: TSource;
+  mFailures: TArray<string>;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mFailing := Provide(mScope, TSource.Create('A', True, ''));
+  mGood := Provide(mScope, TSource.Create('B', False, ''));
+  mFailures := TAtlasModuleContributions.FileSaved(mRegistry, 'C:\Src\Main.pas');
+  Assert.AreEqual(1, Integer(Length(mFailures)));
+  Assert.IsTrue(mFailures[0].StartsWith('IAtlasFollowsSaves: EInvalidOp'));
+  Assert.AreEqual('saved C:\Src\Main.pas;', mFailing.Log);
+  Assert.AreEqual('saved C:\Src\Main.pas;', mGood.Log, 'der zweite hört trotzdem');
+  Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.FileSaved(nil, 'C:\A.pas'))), 'ohne Registry');
+  mFailures := nil;
+  mScope := nil;
   mRegistry.UnregisterModule('atlas.a');
   mRegistry := nil;
 end;

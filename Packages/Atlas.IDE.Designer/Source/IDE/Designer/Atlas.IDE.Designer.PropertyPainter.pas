@@ -23,7 +23,8 @@ uses
   System.Classes,
   System.TypInfo,
   Atlas.Core.Designer.PropertyPainter,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
 {$SCOPEDENUMS ON}
@@ -53,9 +54,8 @@ type
     Reference: TObject;
   end;
 
-  TAtlasIdePropertyPainter = class
+  TAtlasIdePropertyPainter = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FKeys: TAtlasPaintKeys;
     FSourceFile: string;
     FSourceName: string;
@@ -63,7 +63,6 @@ type
     FChosen: TArray<string>;
     FUndoFile: string;
     FUndo: TArray<TAtlasPaintOld>;
-    procedure Say(const AText: string);
     procedure PickUp;
     procedure Apply;
     procedure Undo;
@@ -343,8 +342,7 @@ end;
 
 constructor TAtlasIdePropertyPainter.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FKeys := TAtlasPaintKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
 end;
@@ -357,14 +355,6 @@ begin
     FKeys.Free;
   end;
   inherited Destroy;
-end;
-
-procedure TAtlasIdePropertyPainter.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdePropertyPainter.UpdateKeys(AWanted: Boolean);

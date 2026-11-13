@@ -9,13 +9,17 @@
 //   ┃ Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations
 //   ┃ Erwartet 3 Deklarationen, gefunden 0 · Atlas.Core.Index.Tests.pas:214
 //   ┃ Atlas.Server.Tests.TServerTests.Startet                       [Server]
-//   [Fehlgeschlagene erneut ausführen] [Im Debugger] [Im Browser]
+//   Langsamste Tests
+//     2,4 s  Atlas.Core.Index.Tests.TIndexTests.Builds
+//   [Fehlgeschlagene erneut ausführen] [Im Debugger] [Vergleichen] [Im Browser]
 // Je Projekt eine Zeile mit Ampel und Marke (lokaler Lauf), darunter bei
 // eingetragenem Build-Server die Zeile des letzten Builds; „Stand vom …“, wenn
 // der letzte Abruf fehlschlug. Unter den Zeilen die Fehlschläge des gewählten
 // Projekts (Klick auf eine Zeile wählt), Server-Fehlschläge mit Marke
-// „Server“. Klick wählt einen Fehlschlag (für „Im Debugger“), Doppelklick
-// öffnet den Test. Kontextmenü: Build-Server jetzt abfragen, Zugang zum
+// „Server“. Klick wählt einen Fehlschlag (für „Im Debugger“ und „Vergleichen“; diesen Knopf gibt es nur,
+// wenn der Fehlschlag erwarteten und erhaltenen Wert hat, #1779), Doppelklick
+// öffnet den Test. Darunter die langsamsten Tests des lokalen Laufs (#1772,
+// mit tests.showDuration); Doppelklick öffnet den Test. Kontextmenü: Build-Server jetzt abfragen, Zugang zum
 // Build-Server hinterlegen, Projekt öffnen.
 // Texte (TAtlasTrackerTestResultsText), Raster und Zeichnen
 // (TAtlasTrackerTestResultsPainter) und Kontextmenü
@@ -33,6 +37,7 @@ uses
   Vcl.Menus,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
   Atlas.UI.Style.Canvas,
   Atlas.UI.Tracker.TileView;
@@ -49,6 +54,10 @@ type
     procedure RerunFailed(const ARow: TAtlasTestRow; const ATests: TArray<string>);
     /// <summary>„Im Debugger“ (#585): den Test unter dem Debugger starten.</summary>
     procedure Debug(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
+    /// <summary>„Vergleichen“ (#1779): Hat der Fehlschlag erwarteten und erhaltenen Wert?</summary>
+    function CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
+    /// <summary>„Vergleichen“: Fenster „Erwartet und erhalten“ des Fehlschlags.</summary>
+    procedure Compare(const AFailure: TAtlasTestFailureItem);
     /// <summary>„Im Browser“: Seite des Builds auf dem Server.</summary>
     procedure Browse(const ARow: TAtlasTestRow);
     /// <summary>Build-Server jetzt abfragen (ohne auf den Abstand zu warten).</summary>
@@ -63,8 +72,8 @@ type
   end;
 
 {$SCOPEDENUMS ON}
-  TAtlasTestResultsHitKind = (None, Row, Failure, Rerun, Debug, Browse, More);
-  TAtlasTestResultsButton = (Rerun, Debug, Browse);
+  TAtlasTestResultsHitKind = (None, Row, Failure, Rerun, Debug, Browse, More, Slow, Compare);
+  TAtlasTestResultsButton = (Rerun, Debug, Compare, Browse);
 {$SCOPEDENUMS OFF}
 
   TAtlasTestResultsHit = record
@@ -119,6 +128,12 @@ type
     class function FailureHint(const AItem: TAtlasTestFailureItem): string; static;
     class function EmptyText: string; static;
     class function MoreText(ACount: Integer): string; static;
+    /// <summary>„Langsamste Tests“ (#1772).</summary>
+    class function SlowestTitle: string; static;
+    /// <summary>Dauer eines der langsamsten Tests: „180 ms“, „2,4 s“.</summary>
+    class function SlowDuration(const ASlow: TAtlasProjectSlowTest): string; static;
+    /// <summary>Eintrag für „Test öffnen“ (lokal, mit Fundstelle, sofern bekannt).</summary>
+    class function SlowItem(const ASlow: TAtlasProjectSlowTest): TAtlasTestFailureItem; static;
     class function ServerTag: string; static;
     class function ButtonText(AButton: TAtlasTestResultsButton): string; static;
     class function LevelColor(ALevel: TAtlasTestLevel): TColor; static;
@@ -138,6 +153,9 @@ type
     cListGap = 6;
     cFailureHeight = 38;
     cMoreHeight = 20;
+    /// <summary>Zeile eines der langsamsten Tests und Breite der Spalte mit der Dauer (#1772).</summary>
+    cSlowHeight = 20;
+    cSlowDurationWidth = 64;
     cButtonsHeight = 30;
     cButtonHeight = 24;
     cButtonPadding = 10;
@@ -176,7 +194,11 @@ type
     procedure PaintButtons(ACanvas: TCanvas);
     procedure PaintEmpty(ACanvas: TCanvas);
     procedure PaintMore(ACanvas: TCanvas);
+    /// <summary>Überschrift „Langsamste Tests“ und je Test Dauer und Name (#1772).</summary>
+    procedure PaintSlowest(ACanvas: TCanvas);
     function ButtonHit(const APoint: TPoint): TAtlasTestResultsHit;
+    /// <summary>Zeile, Fehlschlag, langsamer Test oder „… weitere“ auf der Höhe AY; sonst None.</summary>
+    function ListHit(AY: Integer): TAtlasTestResultsHit;
   public
     constructor Create(AOwner: TAtlasTrackerTestResultsView);
     procedure Paint(ACanvas: TCanvas);
@@ -185,6 +207,8 @@ type
     function RowTop(AIndex: Integer): Integer;
     function ListTop: Integer;
     function FailureTop(AIndex: Integer): Integer;
+    /// <summary>Oberkante der Zeile AIndex der langsamsten Tests; die Überschrift steht darüber (#1772).</summary>
+    function SlowTop(AIndex: Integer): Integer;
     function ButtonsTop: Integer;
     /// <summary>Höhe der Kachel ohne Titelzeile.</summary>
     function Height: Integer;
@@ -272,6 +296,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Text.TestResults,
+  Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
 const
@@ -646,6 +672,25 @@ begin
   Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeTestsMore, [ACount]);
 end;
 
+class function TAtlasTrackerTestResultsText.SlowestTitle: string;
+begin
+  Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsSlowest);
+end;
+
+class function TAtlasTrackerTestResultsText.SlowDuration(const ASlow: TAtlasProjectSlowTest): string;
+begin
+  Result := TTestResults.DurationText(ASlow.DurationMs, FormatSettings.DecimalSeparator);
+end;
+
+class function TAtlasTrackerTestResultsText.SlowItem(const ASlow: TAtlasProjectSlowTest): TAtlasTestFailureItem;
+begin
+  Result := Default(TAtlasTestFailureItem);
+  Result.Test := ASlow.Test;
+  Result.FileName := ASlow.FileName;
+  Result.Line := ASlow.Line;
+  Result.Local := True;
+end;
+
 class function TAtlasTrackerTestResultsText.ServerTag: string;
 begin
   Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsServerTag);
@@ -661,6 +706,10 @@ begin
     TAtlasTestResultsButton.Debug:
       begin
         Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsDebug);
+      end;
+    TAtlasTestResultsButton.Compare:
+      begin
+        Result := TAtlasStrings.Text(TAtlasTextId.TestsCompareValues);
       end;
   else
     Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsBrowse);
@@ -784,13 +833,23 @@ begin
   Result := ListTop + AIndex * Scaled(cFailureHeight);
 end;
 
-function TAtlasTrackerTestResultsPainter.ButtonsTop: Integer;
+function TAtlasTrackerTestResultsPainter.SlowTop(AIndex: Integer): Integer;
 begin
   Result := FailureTop(Length(FOwner.View.Failures));
   if FOwner.View.More > 0 then
   begin
     Inc(Result, Scaled(cMoreHeight));
   end;
+  if Length(FOwner.View.Slowest) > 0 then
+  begin
+    Inc(Result, Scaled(cMoreHeight));
+  end;
+  Inc(Result, AIndex * Scaled(cSlowHeight));
+end;
+
+function TAtlasTrackerTestResultsPainter.ButtonsTop: Integer;
+begin
+  Result := SlowTop(Length(FOwner.View.Slowest));
 end;
 
 function TAtlasTrackerTestResultsPainter.Height: Integer;
@@ -1055,6 +1114,33 @@ begin
   end;
 end;
 
+procedure TAtlasTrackerTestResultsPainter.PaintSlowest(ACanvas: TCanvas);
+var
+  mIndex, mLeft, mTop: Integer;
+begin
+  if Length(FOwner.View.Slowest) = 0 then
+  begin
+    Exit;
+  end;
+  mLeft := Scaled(cIndent) + Scaled(cBarWidth) + Scaled(cGap);
+  ACanvas.Font.Assign(FOwner.Font);
+  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.TextOut(Scaled(cIndent), SlowTop(0) - Scaled(cMoreHeight) + Scaled(1),
+    TAtlasTrackerTestResultsText.SlowestTitle);
+  for mIndex := 0 to High(FOwner.View.Slowest) do
+  begin
+    mTop := SlowTop(mIndex) + Scaled(1);
+    ACanvas.Font.Assign(FOwner.Font);
+    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.TextOut(mLeft, mTop, TAtlasTrackerTestResultsText.SlowDuration(FOwner.View.Slowest[mIndex]));
+    ACanvas.Font.Name := cMonoFont;
+    ACanvas.Font.Color := Color(clWindowText);
+    ACanvas.TextRect(Rect(mLeft + Scaled(cSlowDurationWidth), mTop, Limit, mTop + Scaled(cSlowHeight)),
+      mLeft + Scaled(cSlowDurationWidth), mTop, FOwner.View.Slowest[mIndex].Test);
+  end;
+  ACanvas.Font.Assign(FOwner.Font);
+end;
+
 procedure TAtlasTrackerTestResultsPainter.Paint(ACanvas: TCanvas);
 var
   mIndex: Integer;
@@ -1078,13 +1164,14 @@ begin
     PaintFailure(ACanvas, mIndex);
   end;
   PaintMore(ACanvas);
+  PaintSlowest(ACanvas);
   PaintButtons(ACanvas);
 end;
 
 function TAtlasTrackerTestResultsPainter.ButtonHit(const APoint: TPoint): TAtlasTestResultsHit;
 const
   cKinds: array[TAtlasTestResultsButton] of TAtlasTestResultsHitKind = (TAtlasTestResultsHitKind.Rerun,
-    TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse);
+    TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Compare, TAtlasTestResultsHitKind.Browse);
 var
   mButton: TAtlasTestResultsButton;
 begin
@@ -1099,14 +1186,23 @@ begin
 end;
 
 function TAtlasTrackerTestResultsPainter.HitTest(AX, AY: Integer): TAtlasTestResultsHit;
+begin
+  Result := TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.None, -1);
+  if not FOwner.View.Empty then
+  begin
+    Result := ListHit(AY);
+  end;
+  if (Result.Kind = TAtlasTestResultsHitKind.None) and not FOwner.View.Empty then
+  begin
+    Result := ButtonHit(Point(AX, AY));
+  end;
+end;
+
+function TAtlasTrackerTestResultsPainter.ListHit(AY: Integer): TAtlasTestResultsHit;
 var
   mIndex: Integer;
 begin
   Result := TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.None, -1);
-  if FOwner.View.Empty then
-  begin
-    Exit;
-  end;
   for mIndex := 0 to High(FOwner.View.Rows) do
   begin
     if (AY >= RowTop(mIndex)) and (AY < RowTop(mIndex) + RowHeight(mIndex)) then
@@ -1121,11 +1217,17 @@ begin
       Exit(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Failure, mIndex));
     end;
   end;
-  if (FOwner.View.More > 0) and (AY >= FailureTop(Length(FOwner.View.Failures))) and (AY < ButtonsTop) then
+  for mIndex := 0 to High(FOwner.View.Slowest) do
   begin
-    Exit(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.More, -1));
+    if (AY >= SlowTop(mIndex)) and (AY < SlowTop(mIndex + 1)) then
+    begin
+      Exit(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Slow, mIndex));
+    end;
   end;
-  Result := ButtonHit(Point(AX, AY));
+  if (FOwner.View.More > 0) and (AY >= FailureTop(Length(FOwner.View.Failures))) and (AY < SlowTop(0)) then
+  begin
+    Result := TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.More, -1);
+  end;
 end;
 
 { TAtlasTrackerTestResultsMenu }
@@ -1323,11 +1425,17 @@ end;
 function TAtlasTrackerTestResultsView.ButtonVisible(AButton: TAtlasTestResultsButton): Boolean;
 var
   mRow: TAtlasTestRow;
+  mItem: TAtlasTestFailureItem;
 begin
   Result := FView.SelectedRow(mRow);
   if Result and (AButton = TAtlasTestResultsButton.Browse) then
   begin
     Result := mRow.HasCi;
+  end
+  else if Result and (AButton = TAtlasTestResultsButton.Compare) then
+  begin
+    // Nur, wenn das Modul Tests erwartet und erhalten des gewählten Fehlschlags kennt (#1779).
+    Result := (FSource <> nil) and SelectedFailure(mItem) and FSource.CanCompare(mItem);
   end;
 end;
 
@@ -1344,7 +1452,7 @@ begin
         begin
           Result := Length(FView.Rerun) > 0;
         end;
-      TAtlasTestResultsButton.Debug:
+      TAtlasTestResultsButton.Debug, TAtlasTestResultsButton.Compare:
         begin
           Result := SelectedFailure(mItem);
         end;
@@ -1400,6 +1508,7 @@ end;
 
 procedure TAtlasTrackerTestResultsView.ClickButton(AKind: TAtlasTestResultsHitKind; const ARow: TAtlasTestRow);
 var
+  mSource: IAtlasTestResultsSource;
   mItem: TAtlasTestFailureItem;
   mTests: TArray<string>;
 begin
@@ -1419,6 +1528,16 @@ begin
       procedure(const ASource: IAtlasTestResultsSource; const ARow: TAtlasTestRow)
       begin
         ASource.Debug(ARow, mItem);
+      end);
+  end
+  else if (AKind = TAtlasTestResultsHitKind.Compare) and ButtonEnabled(TAtlasTestResultsButton.Compare) and
+    SelectedFailure(mItem) then
+  begin
+    mSource := FSource;
+    Post(
+      procedure
+      begin
+        mSource.Compare(mItem);
       end);
   end
   else if (AKind = TAtlasTestResultsHitKind.Browse) and ButtonEnabled(TAtlasTestResultsButton.Browse) then
@@ -1452,13 +1571,14 @@ begin
           FBox.Invalidate;
         end;
       end;
-    TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse:
+    TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse,
+    TAtlasTestResultsHitKind.Compare:
       begin
         ClickButton(AHit.Kind, mRow);
       end;
-    TAtlasTestResultsHitKind.None, TAtlasTestResultsHitKind.More:
+    TAtlasTestResultsHitKind.None, TAtlasTestResultsHitKind.More, TAtlasTestResultsHitKind.Slow:
       begin
-        // Leerraum und die Zeile „… weitere“ sind keine Schaltflächen.
+        // Leerraum, die Zeile „… weitere“ und die langsamsten Tests (nur Doppelklick) sind keine Schaltflächen.
       end;
   end;
 end;
@@ -1472,7 +1592,17 @@ begin
   begin
     Exit;
   end;
-  if (AHit.Kind = TAtlasTestResultsHitKind.Failure) and (AHit.Index >= 0) and (AHit.Index <= High(FView.Failures)) then
+  if (AHit.Kind = TAtlasTestResultsHitKind.Slow) and (AHit.Index >= 0) and (AHit.Index <= High(FView.Slowest)) then
+  begin
+    mItem := TAtlasTrackerTestResultsText.SlowItem(FView.Slowest[AHit.Index]);
+    SendRow(mRow,
+      procedure(const ASource: IAtlasTestResultsSource; const ARow: TAtlasTestRow)
+      begin
+        ASource.OpenTest(ARow, mItem);
+      end);
+  end
+  else if (AHit.Kind = TAtlasTestResultsHitKind.Failure) and (AHit.Index >= 0) and
+    (AHit.Index <= High(FView.Failures)) then
   begin
     FFailure := AHit.Index;
     mItem := FView.Failures[AHit.Index];
@@ -1503,6 +1633,10 @@ begin
       begin
         Result := TAtlasTrackerTestResultsText.FailureHint(FView.Failures[AHit.Index]);
       end;
+    TAtlasTestResultsHitKind.Slow:
+      begin
+        Result := FView.Slowest[AHit.Index].Test;
+      end;
   else
     Result := '';
   end;
@@ -1516,7 +1650,7 @@ begin
   mHit := HitTest(AX, AY);
   FBox.Cursor := crDefault;
   if mHit.Kind in [TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse,
-    TAtlasTestResultsHitKind.Row, TAtlasTestResultsHitKind.Failure] then
+    TAtlasTestResultsHitKind.Compare, TAtlasTestResultsHitKind.Row, TAtlasTestResultsHitKind.Failure] then
   begin
     FBox.Cursor := crHandPoint;
   end;

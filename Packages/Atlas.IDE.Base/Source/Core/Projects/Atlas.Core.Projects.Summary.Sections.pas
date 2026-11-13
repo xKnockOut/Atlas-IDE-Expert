@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Projects.Summary.Sections;
 
-// Abschnitte "setup" (#759), "tests" (#69), "release" (#533) und "ci" (#763)
+// Abschnitte "setup" (#759), "tests" (#69, mit den langsamsten Tests #1772),
+// "release" (#533) und "ci" (#763)
 // der Projekt-Zusammenfassung (#592), ohne VCL und Open Tools API: Typen,
 // Lesen aus und Schreiben nach JSON. Unbekannte Felder bleiben beim Schreiben
 // erhalten. Atlas.Core.Projects.Summary gibt die Typen unter gleichem Namen
@@ -73,11 +74,24 @@ type
     Line: Integer;
   end;
 
+  /// <summary>Einer der langsamsten Tests des letzten Laufs (#1772).</summary>
+  TAtlasProjectSlowTest = record
+    /// <summary>Voller Name aus dem Bericht von DUnitX (Unit.Fixture.Methode[.Fall]).</summary>
+    Test: string;
+    /// <summary>Datei des Tests (absolut); '' ohne Fundstelle.</summary>
+    FileName: string;
+    /// <summary>Zeile ab 1; 0 = ohne.</summary>
+    Line: Integer;
+    DurationMs: Integer;
+  end;
+
   /// <summary>Letzter DUnitX-Lauf aus der IDE (#69), Grundlage der Karte Tests (#763).</summary>
   TAtlasProjectTests = record
   public const
     /// <summary>Höchstens so viele fehlgeschlagene Tests stehen in der Datei.</summary>
     cMaxFailures = 50;
+    /// <summary>So viele langsamste Tests stehen in der Datei (#1772).</summary>
+    cMaxSlowest = 5;
   public
     Known: Boolean;
     /// <summary>Ende des Laufs (UTC).</summary>
@@ -92,6 +106,8 @@ type
     Skipped: Integer;
     DurationMs: Integer;
     Failures: TArray<TAtlasProjectTestFailure>;
+    /// <summary>Die langsamsten Tests, der langsamste zuerst; höchstens cMaxSlowest (#1772).</summary>
+    Slowest: TArray<TAtlasProjectSlowTest>;
     class function Empty: TAtlasProjectTests; static;
     /// <summary>Namen der gespeicherten fehlgeschlagenen Tests ohne Doppelte, für --run.</summary>
     function FailedTests: TArray<string>;
@@ -159,6 +175,10 @@ type
   /// <summary>Lesen und Schreiben der Abschnitte; AOriginal ist der Abschnitt der gelesenen Datei (darf nil sein),
   /// seine unbekannten Felder bleiben erhalten.</summary>
   TAtlasSummarySections = class
+  private
+    /// <summary>Liste "slowest" des Abschnitts "tests" (#1772).</summary>
+    class function SlowestOf(ASection: TJSONObject): TArray<TAtlasProjectSlowTest>; static;
+    class function SlowestJson(const ASlowest: TArray<TAtlasProjectSlowTest>): TJSONArray; static;
   public
     /// <summary>Abschnitt "setup"; Empty ohne Abschnitt.</summary>
     class function SetupOf(ASection: TJSONObject): TAtlasProjectSetup; static;
@@ -185,8 +205,8 @@ uses
 
 const
   cSetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
-  cTestsKeys: array[0..9] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
-    'skipped', 'durationMs', 'failures');
+  cTestsKeys: array[0..10] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
+    'skipped', 'durationMs', 'failures', 'slowest');
   cReleaseKeys: array[0..6] of string = ('checkedAt', 'configuration', 'platform', 'findings', 'blocked', 'rules',
     'builds');
   cCiKeys: array[0..14] of string = ('provider', 'server', 'job', 'branch', 'attempt', 'error', 'at', 'number',
@@ -405,6 +425,7 @@ class function TAtlasProjectTests.Empty: TAtlasProjectTests;
 begin
   Result := Default(TAtlasProjectTests);
   Result.Failures := nil;
+  Result.Slowest := nil;
 end;
 
 function TAtlasProjectTests.FailedTests: TArray<string>;
@@ -461,6 +482,7 @@ begin
   Result.Errors := TJsonRead.IntOr(ASection, 'errors', 0);
   Result.Skipped := TJsonRead.IntOr(ASection, 'skipped', 0);
   Result.DurationMs := TJsonRead.IntOr(ASection, 'durationMs', 0);
+  Result.Slowest := SlowestOf(ASection);
   mItems := ASection.GetValue('failures');
   if not (mItems is TJSONArray) then
   begin
@@ -530,7 +552,64 @@ begin
       mItem.AddPair('line', TJSONNumber.Create(ATests.Failures[mIndex].Line));
     end;
   end;
+  if Length(ATests.Slowest) > 0 then
+  begin
+    Result.AddPair('slowest', SlowestJson(ATests.Slowest));
+  end;
   KeepUnknown(Result, AOriginal, cTestsKeys);
+end;
+
+class function TAtlasSummarySections.SlowestOf(ASection: TJSONObject): TArray<TAtlasProjectSlowTest>;
+var
+  mItems: TJSONValue;
+  mItem: TJSONValue;
+  mSlow: TAtlasProjectSlowTest;
+begin
+  Result := nil;
+  mItems := ASection.GetValue('slowest');
+  if not (mItems is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(mItems) do
+  begin
+    if not (mItem is TJSONObject) or (Length(Result) >= TAtlasProjectTests.cMaxSlowest) then
+    begin
+      Continue;
+    end;
+    mSlow := Default(TAtlasProjectSlowTest);
+    mSlow.Test := TJsonRead.Text(TJSONObject(mItem), 'test');
+    mSlow.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
+    mSlow.Line := TJsonRead.IntOr(TJSONObject(mItem), 'line', 0);
+    mSlow.DurationMs := TJsonRead.IntOr(TJSONObject(mItem), 'durationMs', 0);
+    if mSlow.Test <> '' then
+    begin
+      Result := Result + [mSlow];
+    end;
+  end;
+end;
+
+class function TAtlasSummarySections.SlowestJson(const ASlowest: TArray<TAtlasProjectSlowTest>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mIndex: Integer;
+begin
+  Result := TJSONArray.Create;
+  for mIndex := 0 to Min(High(ASlowest), TAtlasProjectTests.cMaxSlowest - 1) do
+  begin
+    mItem := TJSONObject.Create;
+    Result.AddElement(mItem);
+    mItem.AddPair('test', ASlowest[mIndex].Test);
+    if ASlowest[mIndex].FileName <> '' then
+    begin
+      mItem.AddPair('file', ASlowest[mIndex].FileName);
+    end;
+    if ASlowest[mIndex].Line > 0 then
+    begin
+      mItem.AddPair('line', TJSONNumber.Create(ASlowest[mIndex].Line));
+    end;
+    mItem.AddPair('durationMs', TJSONNumber.Create(ASlowest[mIndex].DurationMs));
+  end;
 end;
 
 { TAtlasProjectRelease }
