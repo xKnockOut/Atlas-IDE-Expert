@@ -94,6 +94,14 @@ type
     class function WithSource(const AHits: TAtlasMethodHits): Integer; static;
     /// <summary>Name der Haltepunktgruppe in der IDE: das Muster selbst.</summary>
     class function GroupName(const APattern: string): string; static;
+    /// <summary>Startmuster aus dem Ausdruck unter dem Cursor (AExpression, z. B. „FKunde.Speichere“) und seiner
+    /// Zeile: im Kopf einer Methode der Name samt Typ („TKunde.Speichere“), vor dem Namen ein Typ („TKunde.Create“)
+    /// ebenso, sonst nur der Name („Speichere“, auch freie Routinen); ein Typ allein ergibt „TKunde.*“. '' ohne
+    /// Bezeichner.</summary>
+    class function StartPattern(const AExpression, ALine: string): string; static;
+    /// <summary>Gehört ein Formular der IDE mit Namen AName und Klasse AClassName zur Haltepunktliste? Sucht
+    /// „Breakpoint“ im Namen oder in der Klasse, ohne eigene Fenster von Atlas und ohne Dialoge.</summary>
+    class function IsBreakpointList(const AName, AClassName: string): Boolean; static;
   end;
 
   /// <summary>Gruppen je Projekt (Schlüssel: Projektdatei ohne Groß-/Kleinschreibung); als JSON ablegbar.</summary>
@@ -314,6 +322,80 @@ end;
 class function TAtlasMethodBreakpoints.GroupName(const APattern: string): string;
 begin
   Result := Trim(APattern);
+end;
+
+/// <summary>Sieht AName wie ein Typ aus: „TKunde“, „IAuftrag“ (Präfix und dann ein Großbuchstabe)?</summary>
+function LooksLikeType(const AName: string): Boolean;
+begin
+  Result := (Length(AName) >= 2) and CharInSet(AName[1], ['T', 'I']) and CharInSet(AName[2], ['A' .. 'Z']);
+end;
+
+/// <summary>Kopf einer Routine: „procedure TKunde.Speichere“, „class function …“, „constructor …“.</summary>
+function IsRoutineHeader(const ALine: string): Boolean;
+const
+  cStarts: array [0 .. 6] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
+    'class procedure ', 'class function ');
+var
+  mLine, mStart: string;
+begin
+  mLine := LowerCase(TrimLeft(ALine));
+  for mStart in cStarts do
+  begin
+    if mLine.StartsWith(mStart) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasMethodBreakpoints.StartPattern(const AExpression, ALine: string): string;
+var
+  mParts: TArray<string>;
+  mLast, mBefore: string;
+begin
+  Result := '';
+  mParts := AExpression.Replace('^', '').Replace('&', '').Split(['.'], TStringSplitOptions.ExcludeEmpty);
+  if mParts = nil then
+  begin
+    Exit;
+  end;
+  mLast := mParts[High(mParts)];
+  mBefore := '';
+  if Length(mParts) > 1 then
+  begin
+    mBefore := mParts[High(mParts) - 1];
+  end;
+  if Length(mParts) = 1 then
+  begin
+    Result := mLast;
+    if LooksLikeType(mLast) then
+    begin
+      Result := mLast + '.*';
+    end;
+  end
+  else if IsRoutineHeader(ALine) then
+  begin
+    Result := string.Join('.', mParts);
+  end
+  else if LooksLikeType(mBefore) then
+  begin
+    Result := mBefore + '.' + mLast;
+  end
+  else
+  begin
+    Result := mLast;
+  end;
+end;
+
+class function TAtlasMethodBreakpoints.IsBreakpointList(const AName, AClassName: string): Boolean;
+var
+  mName, mClass: string;
+begin
+  mName := UpperCase(AName);
+  mClass := UpperCase(AClassName);
+  Result := ((Pos('BREAKPOINT', mName) > 0) or (Pos('BREAKPOINT', mClass) > 0)) and
+    not mClass.StartsWith('TATLAS') and (Pos('DIALOG', mClass) = 0) and (Pos('PROPERT', mClass) = 0);
 end;
 
 { TAtlasMethodGroupStore }

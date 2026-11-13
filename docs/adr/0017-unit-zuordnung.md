@@ -942,6 +942,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.ExceptionsWindow` | `IDE/Debug/Atlas.IDE.Debug.ExceptionsWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.InlineValues` | `IDE/Debug/Atlas.IDE.Debug.InlineValues.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.MethodBreakpoints` | `IDE/Debug/Atlas.IDE.Debug.MethodBreakpoints.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.BreakpointListMenu` | `IDE/Debug/Atlas.IDE.Debug.BreakpointListMenu.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Report` | `IDE/Debug/Atlas.IDE.Debug.Report.pas` | Bericht über die Debug-Sitzung (IAtlasDebugReportSource), #1455 |
 | `Atlas.IDE.Debug.Session` | `IDE/Debug/Atlas.IDE.Debug.Session.pas` | Ordner `IDE/Debug` |

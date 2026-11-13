@@ -398,7 +398,7 @@ Settings: `debug.checkBreakpoints`
 
 ### Breakpoints on methods by pattern
 
-The command “Breakpoint on methods …” (Atlas menu, command palette) sets breakpoints on all methods that match a name or pattern, without opening each one:
+The command “Breakpoint on methods …” (Atlas menu, command palette, editor context menu under “Debug” and the context menu of the breakpoint list) sets breakpoints on all methods that match a name or pattern, without opening each one. The starting pattern comes from the word at the cursor: in a method header `TCustomer.Save`, on a type `TCustomer.*`, on a call `FCustomer.Save` the name `Save`; a single-line selection is taken as is. Without a word, the last pattern is shown.
 
 - `TCustomer.Save`, `TCustomer.*` (all methods of the class), `*.Validate*` (all matching methods and routines), `Customer.Import.*` (whole unit), `IOrder.Check` (all classes implementing the interface member, also through method resolution clauses)
 - with parameter types, only one overload: `TCustomer.Save(Integer)`

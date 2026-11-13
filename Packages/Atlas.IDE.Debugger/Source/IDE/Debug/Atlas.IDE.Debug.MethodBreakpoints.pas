@@ -11,6 +11,8 @@
 //   für jede Gruppe des gestarteten Projekts mit „Mitwachsen“ den Server erneut und ergänzt Haltepunkte für
 //   Methoden, die die Gruppe noch nicht kennt; eine Zeile in den Meldungen nennt sie. Antwortet der Server nicht
 //   rechtzeitig (3 s), startet die IDE wie bisher.
+// - Startmuster: das Wort am Cursor im Editor (oder eine einzeilige Markierung), sonst das zuletzt benutzte.
+// - Beide Befehle auch im Kontextmenü des Editors und der Haltepunktliste (TAtlasIdeBreakpointListMenu).
 // - Die Gruppen liegen persönlich in %LOCALAPPDATA%\Atlas\debug-method-breakpoints.json, je Projektdatei.
 // Ein Teil der Feature-Tabelle (debug.methodBreakpoints): aus = kein Zuhörer, keine Befehle. Nur im Hauptthread.
 
@@ -22,7 +24,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.MethodBreakpoints,
   Atlas.UI.Debug.MethodBreakpoints,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.BreakpointListMenu;
 
 type
   TAtlasMethodBreakpointSessionFunc = reference to function: TLspSession;
@@ -37,6 +40,7 @@ type
     TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
     public
       function AllowLaunch(const AProject: IOTAProject): Boolean;
+      procedure DebugStarted; override;
     end;
   private class var
     FSession: TAtlasMethodBreakpointSessionFunc;
@@ -45,6 +49,11 @@ type
     FStore: TAtlasMethodGroupStore;
     FStoreKept: Boolean;
     FLastGroup: TAtlasMethodGroup;
+    FListMenu: TAtlasIdeBreakpointListMenu;
+    /// <summary>Einträge im Kontextmenü der Haltepunktliste anhängen, sobald es sie gibt.</summary>
+    class procedure AttachListMenu; static;
+    /// <summary>Startmuster aus Markierung oder Wort am Cursor des aktiven Editors; '' ohne.</summary>
+    class function CursorPattern: string; static;
     class procedure Report(const AText: string); static;
     class function StoreFile: string; static;
     class procedure LoadStore; static;
@@ -82,7 +91,9 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Debug.Strings,
+  Atlas.Core.Debug.Evaluate,
   Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Breakpoints;
 
 { TAtlasIdeMethodBreakpoints.TListener }
@@ -95,6 +106,28 @@ begin
   begin
     TAtlasIdeMethodBreakpoints.Grow(AProject.FileName);
   end;
+end;
+
+procedure TAtlasIdeMethodBreakpoints.TListener.DebugStarted;
+begin
+  TAtlasIdeMethodBreakpoints.AttachListMenu;
+end;
+
+/// <summary>Einträge des Kontextmenüs der Haltepunktliste: die beiden Befehle.</summary>
+function NewListMenu: TAtlasIdeBreakpointListMenu;
+begin
+  Result := TAtlasIdeBreakpointListMenu.CreateMenu(
+    TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsCommand),
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsGroupsCommand)),
+    TArray<TProc>.Create(
+    procedure
+    begin
+      TAtlasIdeMethodBreakpoints.Run;
+    end,
+    procedure
+    begin
+      TAtlasIdeMethodBreakpoints.RunGroups;
+    end));
 end;
 
 { TAtlasIdeMethodBreakpoints }
@@ -115,10 +148,52 @@ begin
     TAtlasIdeDebugSession.AddListener(FListener);
     TAtlasIdeDebugSession.Start;
   end;
+  if FListMenu = nil then
+  begin
+    FListMenu := NewListMenu;
+  end;
+  AttachListMenu;
+end;
+
+class procedure TAtlasIdeMethodBreakpoints.AttachListMenu;
+begin
+  if FListMenu <> nil then
+  begin
+    FListMenu.Attach;
+  end;
+end;
+
+class function TAtlasIdeMethodBreakpoints.CursorPattern: string;
+var
+  mView: IOTAEditView;
+  mBlock: IOTAEditBlock;
+  mCursor: TOTAEditPos;
+  mLine: string;
+begin
+  Result := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  if mView = nil then
+  begin
+    Exit;
+  end;
+  mBlock := mView.Block;
+  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) and (mBlock.StartingRow = mBlock.EndingRow) then
+  begin
+    Result := Trim(mBlock.Text);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+  mCursor := mView.CursorPos;
+  mLine := TAtlasEditorBuffer.LineText(mView, mCursor.Line);
+  Result := TAtlasMethodBreakpoints.StartPattern(TAtlasEvalText.ExpressionAt(mLine, TLspSession.ColumnToIndex(mLine,
+    mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer))), mLine);
 end;
 
 class procedure TAtlasIdeMethodBreakpoints.Release;
 begin
+  FreeAndNil(FListMenu);
   if FListener <> nil then
   begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
@@ -350,16 +425,21 @@ class procedure TAtlasIdeMethodBreakpoints.Run;
 var
   mGroup, mKnown: TAtlasMethodGroup;
   mSelected: TAtlasMethodHits;
-  mProject, mKey: string;
+  mProject, mKey, mStart: string;
 begin
   if not Started then
   begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsOff));
     Exit;
   end;
+  AttachListMenu;
+  // Das Wort am Cursor gibt das Muster vor; ein neues Muster beginnt ohne Bedingung und Mitwachsen.
+  mStart := CursorPattern;
   mGroup := FLastGroup;
-  if mGroup.Pattern = '' then
+  if (mGroup.Pattern = '') or (mStart <> '') and not SameText(mStart, FLastGroup.Pattern) then
   begin
+    mGroup := Default(TAtlasMethodGroup);
+    mGroup.Pattern := mStart;
     mGroup.Overrides := True;
     mGroup.Overloads := True;
   end;
@@ -520,6 +600,7 @@ begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsOff));
     Exit;
   end;
+  AttachListMenu;
   TAtlasMethodGroupsDialog.Execute(StatesFunc(), ToggleFunc(), RemoveFunc());
 end;
 

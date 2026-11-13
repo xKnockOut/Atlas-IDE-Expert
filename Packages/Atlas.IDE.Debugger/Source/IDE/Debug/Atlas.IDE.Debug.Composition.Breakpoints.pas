@@ -188,6 +188,15 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Haltepunkt auf Methoden (#855) auch im Kontextmenü des Editors, Untermenü „Debuggen“, ohne laufende
+/// Sitzung: Das Wort am Cursor wird zum Startmuster.</summary>
+function MethodBreakpointsContextEntry: TAtlasMenuEntry;
+begin
+  Result := MenuEntry('Atlas.MethodBreakpoints', TAtlasMenuPlace.EditorContext);
+  Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+  Result.Group := 'debug';
+end;
+
 function BreakpointMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
@@ -195,7 +204,8 @@ begin
     MenuEntry('Atlas.MethodBreakpoints', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.MethodBreakpointGroups', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.BreakpointSetSave', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointSetSwitch', TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry('Atlas.BreakpointSetSwitch', TAtlasMenuPlace.AtlasMenu),
+    MethodBreakpointsContextEntry];
 end;
 
 procedure InstallBreakCommands;

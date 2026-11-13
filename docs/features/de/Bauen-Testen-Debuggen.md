@@ -271,7 +271,7 @@ Einstellungen: `debug.checkBreakpoints`
 
 #### Haltepunkte auf Methoden nach Muster
 
-Der Befehl „Haltepunkt auf Methoden …“ (Menü Atlas, Befehlspalette) setzt Haltepunkte auf alle Methoden, die zu einem Namen oder Muster passen, ohne jede einzeln zu öffnen:
+Der Befehl „Haltepunkt auf Methoden …“ (Menü Atlas, Befehlspalette, Kontextmenü des Editors unter „Debuggen“ und Kontextmenü der Haltepunktliste) setzt Haltepunkte auf alle Methoden, die zu einem Namen oder Muster passen, ohne jede einzeln zu öffnen. Das Startmuster kommt aus dem Wort am Cursor: im Kopf einer Methode `TKunde.Speichere`, auf einem Typ `TKunde.*`, auf einem Aufruf `FKunde.Speichere` der Name `Speichere`; eine einzeilige Markierung wird übernommen. Ohne Wort steht das zuletzt benutzte Muster da.
 
 - `TKunde.Speichere`, `TKunde.*` (alle Methoden der Klasse), `*.Validiere*` (alle passenden Methoden und Routinen), `Kunde.Import.*` (ganze Unit), `IAuftrag.Pruefe` (alle Klassen, die den Interface-Member umsetzen, auch über Methodenzuordnungen)
 - mit Parametertypen nur eine Überladung: `TKunde.Speichere(Integer)`

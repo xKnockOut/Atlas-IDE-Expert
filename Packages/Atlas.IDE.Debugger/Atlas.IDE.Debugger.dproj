@@ -157,6 +157,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MethodBreakpoints.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointListMenu.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointSets.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepInto.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas"/>

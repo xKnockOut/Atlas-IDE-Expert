@@ -125,6 +125,7 @@ contains
   Atlas.Core.Debug.MethodBreakpoints in 'Source\Core\Debug\Atlas.Core.Debug.MethodBreakpoints.pas',
   Atlas.UI.Debug.MethodBreakpoints in 'Source\UI\Debug\Atlas.UI.Debug.MethodBreakpoints.pas',
   Atlas.IDE.Debug.MethodBreakpoints in 'Source\IDE\Debug\Atlas.IDE.Debug.MethodBreakpoints.pas',
+  Atlas.IDE.Debug.BreakpointListMenu in 'Source\IDE\Debug\Atlas.IDE.Debug.BreakpointListMenu.pas',
   Atlas.Core.Debug.BreakpointSets in 'Source\Core\Debug\Atlas.Core.Debug.BreakpointSets.pas',
   Atlas.UI.Debug.BreakpointSets in 'Source\UI\Debug\Atlas.UI.Debug.BreakpointSets.pas',
   Atlas.IDE.Debug.BreakpointSets in 'Source\IDE\Debug\Atlas.IDE.Debug.BreakpointSets.pas',

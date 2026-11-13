@@ -34,6 +34,10 @@ type
     procedure StoreRoundTrip;
     [Test]
     procedure StoreRejectsForeignText;
+    [Test]
+    procedure StartPatternFromCursor;
+    [Test]
+    procedure FindsBreakpointList;
   end;
 
 implementation
@@ -243,6 +247,28 @@ begin
   finally
     mStore.Free;
   end;
+end;
+
+procedure TAtlasMethodBreakpointsTests.StartPatternFromCursor;
+begin
+  Assert.AreEqual('TKunde.Speichere', TAtlasMethodBreakpoints.StartPattern('TKunde.Speichere',
+    'procedure TKunde.Speichere(AWert: Integer);'));
+  Assert.AreEqual('TKunde.Lade', TAtlasMethodBreakpoints.StartPattern('TKunde.Lade', '  class function TKunde.Lade;'));
+  Assert.AreEqual('Speichere', TAtlasMethodBreakpoints.StartPattern('FKunde.Speichere', '  FKunde.Speichere(3);'));
+  Assert.AreEqual('TKunde.Create', TAtlasMethodBreakpoints.StartPattern('TKunde.Create', '  m := TKunde.Create;'));
+  Assert.AreEqual('TKunde.*', TAtlasMethodBreakpoints.StartPattern('TKunde', '  m: TKunde;'));
+  Assert.AreEqual('Pruefe', TAtlasMethodBreakpoints.StartPattern('Pruefe', '  Pruefe;'));
+  Assert.AreEqual('Next', TAtlasMethodBreakpoints.StartPattern('mListe^.Next', '  mListe^.Next;'));
+  Assert.AreEqual('', TAtlasMethodBreakpoints.StartPattern('', '  ;'));
+end;
+
+procedure TAtlasMethodBreakpointsTests.FindsBreakpointList;
+begin
+  Assert.IsTrue(TAtlasMethodBreakpoints.IsBreakpointList('BreakpointWindow', 'TBreakpointWindow'));
+  Assert.IsTrue(TAtlasMethodBreakpoints.IsBreakpointList('', 'TBreakPointListView'));
+  Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('', 'TAtlasMethodBreakpointsDialog'));
+  Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('', 'TSourceBreakpointPropertiesDlg'));
+  Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('EventLogView', 'TEventLogView'));
 end;
 
 initialization
