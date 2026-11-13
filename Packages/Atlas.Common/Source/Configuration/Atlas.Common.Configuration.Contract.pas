@@ -459,6 +459,10 @@ type
     /// <summary>Nach "if X is T then" die Mitglieder von T mit Umwandlung oben in der Liste, nach "X is " die
     /// Nachfahren des Typs von X (#2107). Aus: wie ohne Prüfung.</summary>
     TypeGuards: Boolean;
+    /// <summary>Nach "X.Pr" die Mitglieder nennen, die auf das Getippte passen, aber an der Stelle nicht sichtbar
+    /// sind (private, strict, protected außerhalb von Nachfahren; #2108). Aus: wie bisher still weggelassen.
+    /// </summary>
+    HiddenMembers: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -1413,6 +1417,7 @@ begin
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;
   Result.TypeGuards := True;
+  Result.HiddenMembers := True;
 end;
 
 { TServerSettings }

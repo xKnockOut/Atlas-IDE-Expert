@@ -48,6 +48,7 @@ contains
   Atlas.UI.Tests.Slowest in 'Source\UI\Tests\Atlas.UI.Tests.Slowest.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
+  Atlas.Core.Tests.OnSave in 'Source\Core\Tests\Atlas.Core.Tests.OnSave.pas',
   Atlas.Core.Tests.AssertLine in 'Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.Compare in 'Source\Core\Tests\Atlas.Core.Tests.Compare.pas',
   Atlas.Core.Tests.Durations in 'Source\Core\Tests\Atlas.Core.Tests.Durations.pas',
@@ -64,6 +65,8 @@ contains
   Atlas.IDE.Tests.Debug in 'Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas',
   Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas',
   Atlas.IDE.Tests.Stale in 'Source\IDE\Tests\Atlas.IDE.Tests.Stale.pas',
+  Atlas.IDE.Tests.Output in 'Source\IDE\Tests\Atlas.IDE.Tests.Output.pas',
+  Atlas.IDE.Tests.OnSave in 'Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas',
   Atlas.IDE.Tests.Compare in 'Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas',
   Atlas.IDE.Tests.Slowest in 'Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';

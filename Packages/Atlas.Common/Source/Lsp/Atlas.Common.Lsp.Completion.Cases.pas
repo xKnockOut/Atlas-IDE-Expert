@@ -31,6 +31,8 @@ type
     Body: TArray<TCompletionItem>;
     Tail: TArray<TCompletionItem>;
     Incomplete: Boolean;
+    /// <summary>Passende Mitglieder, die nur wegen der Sichtbarkeit fehlen (#2108).</summary>
+    Hidden: TArray<TCompletionHiddenMember>;
     Exclusive: TCompletionItems;
     /// <summary>Postfix-Vorlagen des Dokuments (#188), gesetzt vor der allgemeinen Liste.</summary>
     Postfix: TPostfixOptions;
@@ -634,6 +636,7 @@ begin
     AAnswer.Body := WithoutKeywords(AAnswer.Body);
   end;
   AAnswer.Incomplete := mCollected.Incomplete;
+  AAnswer.Hidden := mCollected.Hidden;
 end;
 
 /// <summary>Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.</summary>

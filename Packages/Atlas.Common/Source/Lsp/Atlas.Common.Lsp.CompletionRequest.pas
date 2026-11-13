@@ -246,10 +246,31 @@ type
     Unreachable: string;
   end;
 
+  /// <summary>Mitglied, das nach "X." nur wegen seiner Sichtbarkeit fehlt (#2108); Zeile und Spalte der
+  /// Deklaration ab 0.</summary>
+  TCompletionHiddenMember = record
+    Name: string;
+    /// <summary>CompletionItemKind des LSP.</summary>
+    Kind: Integer;
+    /// <summary>"private", "strict private", "protected" oder "strict protected".</summary>
+    Visibility: string;
+    /// <summary>Deklarierende Klasse ohne Unit.</summary>
+    Container: string;
+    Detail: string;
+    UnitName: string;
+    FileName: string;
+    Line: Integer;
+    Character: Integer;
+    /// <summary>Unit außerhalb des Projekts: keine Aktionen.</summary>
+    External: Boolean;
+  end;
+
   TCompletionItems = record
     Items: TArray<TCompletionItem>;
     /// <summary>Liste wurde gekürzt; der Editor fragt beim Weitertippen neu.</summary>
     Incomplete: Boolean;
+    /// <summary>Passende Mitglieder, die nur wegen der Sichtbarkeit fehlen (#2108); leer ohne.</summary>
+    Hidden: TArray<TCompletionHiddenMember>;
   end;
 
   /// <summary>Teilergebnis einer gestaffelten Vervollständigung (#616), in Anzeigereihenfolge.</summary>

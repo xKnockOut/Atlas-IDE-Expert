@@ -1443,6 +1443,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.UnitMatch` | `Core/Tests/Atlas.Core.Tests.UnitMatch.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Run` | `Core/Tests/Atlas.Core.Tests.Run.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Stale` | `Core/Tests/Atlas.Core.Tests.Stale.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.OnSave` | `Core/Tests/Atlas.Core.Tests.OnSave.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.AssertLine` | `Core/Tests/Atlas.Core.Tests.AssertLine.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
@@ -1450,6 +1451,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Stale` | `IDE/Tests/Atlas.IDE.Tests.Stale.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Output` | `IDE/Tests/Atlas.IDE.Tests.Output.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.OnSave` | `IDE/Tests/Atlas.IDE.Tests.OnSave.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Compare` | `IDE/Tests/Atlas.IDE.Tests.Compare.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
