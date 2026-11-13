@@ -1332,6 +1332,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.StatusField.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Explorer.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Lists.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Lists.Tests.pas"/>
@@ -1341,6 +1342,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.ListFile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.ListView.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.ListView.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.StatusField.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Log.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Log.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>

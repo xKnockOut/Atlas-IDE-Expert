@@ -145,7 +145,9 @@ type
     // Compilermeldungen im Hover erklären (#54).
     SettingsHoverExplainMessages,
     // Beispiel falsch/richtig im Befund-Hover (#145).
-    SettingsHoverRuleExamples);
+    SettingsHoverRuleExamples,
+    // Teststand in der Statusleiste (#1777).
+    SettingsEditorStatusBarTests);
 
   TAtlasSettingsStrings = class
   public
@@ -704,7 +706,8 @@ const
      'Tests',
      'Notizen und Lesezeichen',
      'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“',
-     'Link „Beispiel zeigen“ unter Befunden im Hover (Beschreibung und Beispiel aus dem Regelkatalog)'),
+     'Link „Beispiel zeigen“ unter Befunden im Hover (Beschreibung und Beispiel aus dem Regelkatalog)',
+     'Teststand in der Statusleiste („Tests 41/42“ mit Ampel für das Testprojekt der aktuellen Datei)'),
     ('Completion, parameter hint and tooltip by Atlas',
      'Code Insight by Atlas (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:',
@@ -1246,7 +1249,8 @@ const
      'Tests',
      'Notes and bookmarks',
      'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"',
-     'Link "Show example" below findings in the hover (description and example from the rule catalog)'));
+     'Link "Show example" below findings in the hover (description and example from the rule catalog)',
+     'Test status in the status bar ("Tests 41/42" with a traffic light for the test project of the current file)'));
 
 { TAtlasSettingsStrings }
 

@@ -11,6 +11,7 @@
 // - Ergebnisse: Nach jedem gemeldeten Lauf (Haken OnReported des Läufers)
 //   merkt sich das Fenster die Ergebnisse je Testprojekt dieser Sitzung und
 //   reicht den Lauf an ANext weiter; veraltete Tests (#1770) über AStaleKeys.
+//   Der Teststand in der Statusleiste (#1777) liest sie über StatusInput.
 // - Baum, Filter, Suche und Auswahl: Atlas.Core.Tests.Explorer; Darstellung:
 //   Atlas.UI.Tests.ExplorerFrame im Dockfenster Atlas.IDE.Tests.ExplorerWindow.
 // - Ausführen über den Läufer (#69): „Alle ausführen“ baut das Testprojekt
@@ -37,6 +38,7 @@ uses
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Explorer,
+  Atlas.Core.Tests.StatusField,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lists,
@@ -56,6 +58,12 @@ type
       Lines: TArray<string>;
       Found: TDUnitXUnit;
     end;
+    /// <summary>Ergebnisse eines Testprojekts dieser Sitzung und Ende und Dauer des letzten Laufs.</summary>
+    TProjectRun = record
+      Cases: TArray<TTestCaseResult>;
+      At: TDateTime;
+      DurationMs: Int64;
+    end;
   private const
     cTickMs = 500;
   private
@@ -65,7 +73,7 @@ type
     FNext: TAtlasTestsReportedProc;
     FTimer: TTimer;
     /// <summary>Ergebnisse je Testprojekt (Schlüssel klein) dieser Sitzung.</summary>
-    FResults: TDictionary<string, TArray<TTestCaseResult>>;
+    FResults: TDictionary<string, TProjectRun>;
     /// <summary>Protokoll je Test (#2168) je Testprojekt dieser Sitzung.</summary>
     FLogs: TAtlasIdeTestLogs;
     /// <summary>Gelesene Units je Datei (Schlüssel klein).</summary>
@@ -89,7 +97,6 @@ type
     /// <summary>Baum mit den aktuellen Filtern zeigen.</summary>
     procedure ShowRows;
     function StatusText: string;
-    function ResultsOfProject: TArray<TTestCaseResult>;
     procedure ChooseProject(AIndex: Integer);
     procedure Selected(ANode: Integer);
     procedure OpenNode(ANode: Integer);
@@ -115,6 +122,10 @@ type
     /// <summary>tests.window aus: Fenster verstecken.</summary>
     procedure ApplySettings;
     class procedure ThemeChanged; static;
+    /// <summary>Stand für den Teststand in der Statusleiste (#1777): Ergebnisse, letzter Lauf und, wenn das
+    /// Fenster gerade dieses Testprojekt zeigt, die Zahl der veralteten Tests (sonst -1). Project bleibt leer;
+    /// der Aufrufer setzt den Namen.</summary>
+    function StatusInput(const AProject: string): TAtlasTestStatusInput;
   end;
 
 implementation
@@ -169,7 +180,7 @@ begin
   FDebugger := ADebugger;
   FStaleKeys := AStaleKeys;
   FNext := ANext;
-  FResults := TDictionary<string, TArray<TTestCaseResult>>.Create;
+  FResults := TDictionary<string, TProjectRun>.Create;
   FScanned := TDictionary<string, TScanned>.Create;
   FLogs := TAtlasIdeTestLogs.Create;
   FDirty := True;
@@ -303,14 +314,17 @@ end;
 procedure TAtlasIdeTestExplorer.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
 var
   mKey: string;
-  mCases: TArray<TTestCaseResult>;
+  mRun: TProjectRun;
 begin
   mKey := KeyOf(ATarget.Project);
-  if not FResults.TryGetValue(mKey, mCases) then
+  if not FResults.TryGetValue(mKey, mRun) then
   begin
-    mCases := nil;
+    mRun := Default(TProjectRun);
   end;
-  FResults.AddOrSetValue(mKey, TAtlasTestRun.Merged(mCases, ARun.Cases));
+  mRun.Cases := TAtlasTestRun.Merged(mRun.Cases, ARun.Cases);
+  mRun.At := Now;
+  mRun.DurationMs := ARun.DurationMs;
+  FResults.AddOrSetValue(mKey, mRun);
   FLogs.Remember(ATarget.Project, ARun);
   // Der Lauf kann Testunits geändert haben (Vergleichsdateien, Fälle aus der Tabelle): beim nächsten Takt neu.
   FDirty := True;
@@ -459,11 +473,31 @@ begin
   end;
 end;
 
-function TAtlasIdeTestExplorer.ResultsOfProject: TArray<TTestCaseResult>;
+function TAtlasIdeTestExplorer.StatusInput(const AProject: string): TAtlasTestStatusInput;
+var
+  mRun: TProjectRun;
+  mNode: TAtlasTestNode;
 begin
-  if not FResults.TryGetValue(KeyOf(FProject), Result) then
+  Result := Default(TAtlasTestStatusInput);
+  Result.Busy := FTests.Busy;
+  Result.Stale := -1;
+  if FResults.TryGetValue(KeyOf(AProject), mRun) then
   begin
-    Result := nil;
+    Result.Cases := mRun.Cases;
+    Result.LastRun := mRun.At;
+    Result.DurationMs := mRun.DurationMs;
+  end;
+  if (KeyOf(AProject) <> KeyOf(FProject)) or (Length(FNodes) = 0) then
+  begin
+    Exit;
+  end;
+  Result.Stale := 0;
+  for mNode in FNodes do
+  begin
+    if (mNode.Kind = TAtlasTestNodeKind.Test) and (TAtlasTestExplorer.StateOf(mNode) = TAtlasTestNodeState.Stale) then
+    begin
+      Inc(Result.Stale);
+    end;
   end;
 end;
 
@@ -481,7 +515,7 @@ begin
   end;
   ReadProjects;
   ReadUnits;
-  FNodes := TAtlasTestExplorer.Build(FUnits, ResultsOfProject);
+  FNodes := TAtlasTestExplorer.Build(FUnits, StatusInput(FProject).Cases);
   mNames := nil;
   for mProject in FProjects do
   begin
@@ -584,7 +618,7 @@ begin
   mTexts.Stack := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerDetailStack);
   mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
   mFrame.SetDetails(TAtlasTestExplorer.DetailLines(TAtlasTestExplorer.ResultsOf(FNodes[ANode], FUnits,
-    ResultsOfProject), FRefs, mTexts));
+    StatusInput(FProject).Cases), FRefs, mTexts));
 end;
 
 procedure TAtlasIdeTestExplorer.OpenNode(ANode: Integer);

@@ -219,6 +219,13 @@ Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
 
 Einstellungen: `tests.lists`, `tests.lists.runKey`
 
+### Teststand in der Statusleiste (#1777)
+- In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
+- Ampel: rot bei Fehlschlägen, gelb während eines Laufs und bei veralteten Ergebnissen (wenn das Fenster „Atlas-Tests“ dieses Testprojekt zeigt), grün, wenn alles bestand.
+- Klick: fehlgeschlagene Tests erneut ausführen; sind alle grün, alle. Rechtsklick: *Alle ausführen*, *Fehlgeschlagene erneut ausführen*, *Betroffene ausführen*, *Fenster „Atlas-Tests“*, *Ergebnisse auf der Willkommensseite*.
+- Tooltip: Testprojekt, Uhrzeit und Dauer des letzten Laufs, bestanden, fehlgeschlagen, übersprungen und veraltet.
+- Ohne das Element *Status* in der Leiste steht das Feld als Text in der Statuszeile der IDE (ohne Punkt und Rechtsklick).
+Einstellung: `editor.statusBar.tests`
 ### Protokoll je Test (#2168)
 Was ein Test unterwegs ausgibt (`Log`/`Status` von DUnitX, `WriteLn` in der Testklasse, `WriteLn` der getesteten Klassen), zeigt das Fenster „Atlas-Tests“ im Reiter *Protokoll (n)* neben *Einzelheiten*, genau für den gewählten Test.
 - Der XML-Bericht von DUnitX enthält keine Log-Zeilen. Deshalb gibt es die Hilfs-Unit `Atlas.Testing.Log` unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX): ins Testprojekt aufnehmen und nach `TDUnitX.CreateRunner` die Zeile `runner.AddLogger(TAtlasTestLogger.Create);` einfügen. Der Logger arbeitet nur in Läufen aus Atlas: Atlas legt vor dem Start eine leere Seitendatei neben den Bericht, nur dann schreibt er hinein und setzt Marken um jeden Test in die Konsolenausgabe.

@@ -14,7 +14,8 @@
 //   Kontextmenü einer Testunit, das Fenster „Atlas-Tests“ (#1776, Ansicht,
 //   Atlas-Menü, Palette; Atlas.IDE.Tests.Explorer) mit Testlisten (#2167,
 //   Atlas.IDE.Tests.Lists; „Testliste ausführen: <Name>“ in der Palette, Taste
-//   tests.lists.runKey für die zuletzt benutzte), „Test ausführen“/„Test debuggen“ im
+//   tests.lists.runKey für die zuletzt benutzte), der Teststand in der
+//   Statusleiste (#1777, Atlas.IDE.Tests.StatusField), „Test ausführen“/„Test debuggen“ im
 //   Kontextmenü und „Tests dieser Unit ausführen“ im Kontextmenü der
 //   Projektverwaltung (#1817: Testunits der gewählten Units nach Namen in der
 //   Projektgruppe, nur solche
@@ -120,6 +121,7 @@ uses
   Atlas.IDE.Tests.UnitCommands,
   Atlas.IDE.Tests.FromDebugStop,
   Atlas.IDE.Tests.Explorer,
+  Atlas.IDE.Tests.StatusField,
   Atlas.UI.Tests.Strings;
 
 var
@@ -137,6 +139,7 @@ var
   GCaseTable: TAtlasIdeTestCaseTable;
   GExplorer: TAtlasIdeTestExplorer;
   GLists: TAtlasIdeTestLists;
+  GStatusField: TAtlasIdeTestStatusField;
 
 { Sichtbarkeit }
 
@@ -268,6 +271,7 @@ begin
   GLists := TAtlasIdeTestLists.Create(GTests);
   GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GStale.StaleIn, GSlowest.Remember);
   GTests.OnReported := GExplorer.Remember;
+  GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
@@ -299,7 +303,9 @@ begin
   begin
     GTests.OnReported := nil;
   end;
-  // Das Fenster „Atlas-Tests“ (#1776) zeigt auf Läufer und Debugger-Teil: vor beiden.
+  // Der Teststand (#1777) liest aus dem Fenster „Atlas-Tests“ (#1776), das auf Läufer und Debugger-Teil zeigt:
+  // vor allen.
+  FreeAndNil(GStatusField);
   FreeAndNil(GExplorer);
   FreeAndNil(GLists);
   FreeAndNil(GUntested);
@@ -718,6 +724,11 @@ begin
   if GLists <> nil then
   begin
     GLists.ApplySettings;
+  end;
+  // editor.statusBar.tests (#1777): Feld neu bzw. weg.
+  if GStatusField <> nil then
+  begin
+    GStatusField.ApplySettings;
   end;
 end;
 

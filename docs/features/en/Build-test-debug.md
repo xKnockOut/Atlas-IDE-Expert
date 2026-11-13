@@ -243,6 +243,13 @@ Open them with the tabs at the top of the “Atlas Tests” window; “+” crea
 
 Settings: `tests.lists`, `tests.lists.runKey`
 
+### Test status in the status bar (#1777)
+- The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
+- Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
+- Click: run the failed tests again; when all are green, all tests. Right-click: *Run all*, *Run failed again*, *Run affected*, *“Atlas Tests” window*, *Results on the welcome page*.
+- Tooltip: test project, time and duration of the last run, passed, failed, skipped and outdated.
+- Without the *Status* item in the bar the field appears as text in the IDE status line (without dot and right-click).
+Setting: `editor.statusBar.tests`
 ### Log per test (#2168)
 What a test writes while it runs (DUnitX `Log`/`Status`, `WriteLn` in the test class, `WriteLn` of the classes under test) appears in the “Atlas Tests” window on the *Log (n)* tab next to *Details*, for exactly the selected test.
 - The DUnitX XML report holds no log lines. That is what the helper unit `Atlas.Testing.Log` in `Setup\Vorlagen` is for (MIT license, RTL and DUnitX only): add it to the test project and insert `runner.AddLogger(TAtlasTestLogger.Create);` after `TDUnitX.CreateRunner`. The logger only works in runs started by Atlas: before the start Atlas puts an empty side file next to the report; only then does the logger write to it and put marks around every test into the console output.
