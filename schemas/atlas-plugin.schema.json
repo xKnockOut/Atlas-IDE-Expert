@@ -1771,6 +1771,28 @@
       "x-captionEn": "Freeze and thaw threads",
       "x-issue": "#852"
     },
+    "DebugAsyncOrigin": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.asyncOrigin",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Herkunft eingereihter Methoden merken",
+      "x-captionEn": "Remember the origin of queued methods",
+      "x-issue": "#859"
+    },
+    "DebugAsyncOriginMaxPerSite": {
+      "type": "integer",
+      "default": 20,
+      "description": "So viele Einreihungen merkt Atlas je Aufrufstelle; ältere fallen heraus (1 bis 1000).",
+      "x-key": "debug.asyncOrigin.maxPerSite",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.asyncOrigin",
+      "x-issue": "#859"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",
@@ -1875,6 +1897,32 @@
       "x-caption": "Weitere Ordner mit eigenem Code",
       "x-captionEn": "More folders with own code",
       "x-issue": "#578"
+    },
+    "DebugEventLog": {
+      "description": "Ereignisprotokoll beim Debuggen: Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (OutputDebugString), Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, regulärem Ausdruck und Art, Farben nach Muster und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.eventLog",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ereignisprotokoll beim Debuggen",
+      "x-captionEn": "Event log while debugging",
+      "x-issue": "#580"
+    },
+    "DebugEventLogColors": {
+      "description": "Farben im Ereignisprotokoll: „Muster=Farbe“, durch „;“ getrennt; Farbe als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Das erste passende Muster gewinnt.",
+      "type": "string",
+      "default": "[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00",
+      "x-key": "debug.eventLogColors",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.eventLog",
+      "x-control": "Textfeld",
+      "x-caption": "Farben im Ereignisprotokoll",
+      "x-captionEn": "Event log colors",
+      "x-issue": "#580"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",

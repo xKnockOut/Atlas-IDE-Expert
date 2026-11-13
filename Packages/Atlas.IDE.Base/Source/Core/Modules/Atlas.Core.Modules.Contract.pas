@@ -42,7 +42,8 @@ const
   /// 17 (#837): debug.parallelStacks(.waitRoutines, .maxThreads).
   /// 18 (#852): TAtlasDrawnElement.ThreadsInSource, debug.threadsInSource, debug.threadFreeze.
   /// 19 (#1774): tests.leaks.
-  cAtlasCoreContractVersion = 19;
+  /// 20 (#859): debug.asyncOrigin, debug.asyncOrigin.maxPerSite.
+  cAtlasCoreContractVersion = 20;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
