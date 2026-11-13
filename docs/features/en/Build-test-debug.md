@@ -496,6 +496,27 @@ Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 
 Settings: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
 
+## Debug: several programs together
+
+- Launch groups are stored in the project file `.atlas` under `launchGroups`, paths from its folder:
+
+```json
+"launchGroups": [{"name": "Server + Client", "items": [
+  {"project": "Server\\Server.dproj", "profile": "Local", "wait": "port", "value": 8080, "timeout": 20},
+  {"project": "Client\\Client.dproj", "debug": false}]}]
+```
+
+- per project: launch profile (`profile`, otherwise the project's run options), with debugger (`debug`, default yes) and the wait condition before the next one (`wait`: `seconds` for `value` seconds, `port` until `localhost:value` accepts connections, `window` until the program shows a main window; at most `timeout` seconds, default 30)
+- “Atlas: Launch groups …” in the Atlas menu and in the command palette shows the groups with their projects, sets the active group (per project group, personal) and starts it; “Edit in .atlas” opens the project file
+- F9 without a running session starts the active group, otherwise the IDE starts as usual
+- Atlas first builds the changed projects and then starts one after the other; a bar at the top right shows the run, for example “Server ✓ · Client starting …”
+- If a build or start fails or a wait times out, the run halts and asks “Continue anyway” or “Stop all”
+- Ctrl+F2 or “Atlas: Stop launch group” ends all programs of the group
+- The status field shows “running”, “paused” or “ended” per program; a click makes the next process of the group the IDE's current one; when the debugger pauses, the message names the process
+- Limits: programs started with the debugger use the parameters of the launch profile, but working folder and environment from the IDE's run options; only projects of the open project group
+
+Settings: `debug.launchGroups`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

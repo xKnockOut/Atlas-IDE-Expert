@@ -42,6 +42,11 @@
 //   „Duplikat von #n.“ in den Kommentar, solange er nicht von Hand geändert
 //   ist. Ohne gültiges Original wird nicht gesendet; ob es das Original gibt,
 //   prüft der Lauf vor dem ersten Schreiben (Progress.DuplicateMissing).
+// - Pull Request (#2136, nur GitHub mit Git, Request.Pull; TAtlasEndPullRows):
+//   Abschnitt „Pull Request anlegen“ nach dem Abschluss; angehakt heißt
+//   „Offen lassen“ „Schließt der Merge“ und ist vorbelegt (das Issue schließt
+//   „Closes #n“ beim Merge), „Senden“ heißt „Pushen und PR anlegen“. Bei
+//   „Nicht geplant“ und „Duplikat“ entfällt der Pull Request.
 // SummaryText bildet die Zeile für die Meldungsansicht („Zustand „Erledigt“,
 // Kommentar“), ErrorText auch für „Beginnen“ und die Vorschau;
 // TAtlasTrackerEndTexts.EndSummary nennt nach dem Beenden alle geschriebenen
@@ -61,6 +66,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.CommentEditor,
+  Atlas.UI.Tracker.EndPullRows,
   Atlas.UI.Foundation.Dialog;
 
 type
@@ -94,6 +100,8 @@ type
     Time: TAtlasTrackerEndTime;
     /// <summary>Abschnitt „Abschluss“ mit Schließgrund zeigen (#2135, GitHub).</summary>
     CloseReasons: Boolean;
+    /// <summary>Abschnitt „Pull Request anlegen“ (#2136, GitHub).</summary>
+    Pull: TAtlasEndPullOffer;
     class function Create(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
       const AComment: string): TAtlasTrackerEndRequest; static;
   end;
@@ -132,6 +140,8 @@ type
     CloseDuplicate: TRadioButton;
     CloseKeepOpen: TRadioButton;
     DuplicateOf: TEdit;
+    /// <summary>Abschnitt „Pull Request anlegen“ (#2136); ohne Steuerelemente ohne Request.Pull.Offered.</summary>
+    Pull: TAtlasEndPullRows;
     Editor: TAtlasCommentEditor;
     Comment: TMemo;
     HandOver: TCheckBox;
@@ -201,6 +211,9 @@ type
     procedure DuplicateChange(Sender: TObject);
     function CommentText: string;
     procedure Show(AClose: TAtlasTrackerClose);
+    /// <summary>Vorbelegung: mit Pull Request „Offen lassen“ (schließt der Merge), sonst nach dem Zielzustand.
+    /// </summary>
+    function Preset: TAtlasTrackerClose;
   public
     constructor CreateRows(ADialog: TAtlasTrackerEndDialog; AShow: Boolean);
     /// <summary>Nach dem Aufbau des Dialogs: Vorbelegung nach dem Zielzustand, Kommentar merken.</summary>
@@ -213,6 +226,8 @@ type
     function Apply(const AChange: TAtlasTrackerWrite): TAtlasTrackerWrite;
     /// <summary>„Duplikat von“ ohne gültiges Original: Hinweis zeigen; dann nicht senden.</summary>
     function Blocked(const AProgress: TAtlasTrackerEndProgress): Boolean;
+    /// <summary>Häkchen „Pull Request anlegen“ geändert (#2136): Vorbelegung und Beschriftungen neu.</summary>
+    procedure PullChanged(Sender: TObject);
     /// <summary>Knöpfe sperren (ABusy) bzw. freigeben; nach dem Schreiben des Zustands bleibt der Abschluss.</summary>
     procedure Lock(ABusy: Boolean; const AProgress: TAtlasTrackerEndProgress);
   end;
@@ -373,6 +388,7 @@ begin
   Result.Comment := AComment;
   Result.Time := TAtlasTrackerEndTime.None;
   Result.CloseReasons := False;
+  Result.Pull := TAtlasEndPullOffer.None;
 end;
 
 /// <summary>Breite von AButton nach seiner Beschriftung.</summary>
@@ -718,7 +734,7 @@ begin
   FFilled := CommentText;
   if FDialog.FParts.CloseCompleted <> nil then
   begin
-    Show(TAtlasTrackerWorkflow.DefaultClose(FDialog.FParts.State.Value));
+    Show(Preset);
   end;
 end;
 
@@ -733,7 +749,35 @@ begin
   // Vorbelegung folgt dem Zielzustand, bis der Benutzer den Abschluss selbst wählt.
   if not FTouched then
   begin
-    Show(TAtlasTrackerWorkflow.DefaultClose(FDialog.FParts.State.Value));
+    Show(Preset);
+  end;
+end;
+
+function TAtlasEndCloseRows.Preset: TAtlasTrackerClose;
+begin
+  if FDialog.FParts.Pull.Wanted then
+  begin
+    Result := TAtlasTrackerClose.KeepOpen;
+  end
+  else
+  begin
+    Result := TAtlasTrackerWorkflow.DefaultClose(FDialog.FParts.State.Value);
+  end;
+end;
+
+procedure TAtlasEndCloseRows.PullChanged(Sender: TObject);
+begin
+  if FDialog.FParts.CloseCompleted = nil then
+  begin
+    Exit;
+  end;
+  if FTouched then
+  begin
+    Show(Chosen);
+  end
+  else
+  begin
+    Show(Preset);
   end;
 end;
 
@@ -800,6 +844,16 @@ begin
       mParts.Send.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndSendNotPlanned);
   else
     mParts.Send.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSend);
+    if mParts.Pull.Wanted then
+    begin
+      mParts.Send.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndSendPull);
+    end;
+  end;
+  // Mit Pull Request schließt der Merge das Issue („Closes #n“).
+  mParts.CloseKeepOpen.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndCloseKeepOpen);
+  if mParts.Pull.Wanted then
+  begin
+    mParts.CloseKeepOpen.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndCloseByMerge);
   end;
   FitButton(FDialog, mParts.Send);
 end;
@@ -902,6 +956,8 @@ begin
   FRows := TAtlasEndStepRows.CreateRows(Self, ARequest.Time, FOptions.EndFields);
   AddState;
   FParts.Close := TAtlasEndCloseRows.CreateRows(Self, ARequest.CloseReasons);
+  FParts.Pull := TAtlasEndPullRows.CreateRows(Self, ARequest.Pull);
+  FParts.Pull.OnToggle := FParts.Close.PullChanged;
   AddComment(ARequest.Comment);
   AddHandOver;
   mSteps := AddRow(cTextRowHeight);
@@ -1144,6 +1200,7 @@ end;
 procedure TAtlasTrackerEndDialog.SetUsers(const AUsers: TArray<string>);
 begin
   FParts.Assignee.SetValues(AUsers);
+  FParts.Pull.SetUsers(AUsers);
 end;
 
 procedure TAtlasTrackerEndDialog.AssigneeChange(Sender: TObject);
@@ -1198,6 +1255,7 @@ begin
   FParts.Send.Enabled := not AValue;
   FParts.Cancel.Enabled := not AValue;
   FParts.Close.Lock(AValue, FProgress);
+  FParts.Pull.Lock(AValue, FProgress.Pull.Stands);
 end;
 
 function TAtlasTrackerEndDialog.Plan(out APlan: TAtlasTrackerEndPlan): Boolean;
@@ -1207,6 +1265,11 @@ begin
   // Vor dem Überschreiben merken: SendClick plant in FPlan selbst.
   mBooked := FPlan.Time;
   APlan := TAtlasTrackerEndPlan.Create(Change);
+  // Bei „Nicht geplant“ und „Duplikat“ kein Pull Request (#2136).
+  if not (APlan.Change.Close in [TAtlasTrackerClose.NotPlanned, TAtlasTrackerClose.Duplicate]) then
+  begin
+    APlan.Pull := FParts.Pull.Spec;
+  end;
   Result := FRows.Fill(APlan, mBooked, FProgress.TimeBooked);
 end;
 
@@ -1270,6 +1333,16 @@ begin
     Exit;
   end;
   ShowErrorNote(FParts.Note, ErrorText(FKey, FProgress.Outcome));
+  if FProgress.FailedStep = TAtlasTrackerEndStep.PullRequest then
+  begin
+    // Kein Pull Request: ungesicherte Änderungen, Fork bzw. Push gescheitert (#2136).
+    mField := TAtlasGitHubStrings.PullProblem(FProgress.Pull, FPlan.Pull.Head, FParts.Pull.Offer.Repository);
+    if mField <> '' then
+    begin
+      ShowErrorNote(FParts.Note, mField);
+    end;
+    Exit;
+  end;
   mField := FRows.MarkRejected(FProgress);
   if mField <> '' then
   begin
@@ -1286,6 +1359,8 @@ begin
       Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepTime);
     TAtlasTrackerEndStep.Fields:
       Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepFields);
+    TAtlasTrackerEndStep.PullRequest:
+      Result := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndPullStep);
     TAtlasTrackerEndStep.Comment:
       Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepComment);
   else
@@ -1348,6 +1423,10 @@ begin
   if Length(mNames) > 0 then
   begin
     mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartFields, [string.Join(', ', mNames)])];
+  end;
+  if AProgress.Pull.Stands then
+  begin
+    mParts := mParts + [TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.PartPull, [AProgress.Pull.Number])];
   end;
   if AProgress.TransitionDone and APlan.TransitionPart.HasWork then
   begin

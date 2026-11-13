@@ -3,7 +3,8 @@
 // Oberflächentexte des GitHub-Anbieters im Tracker auf Deutsch und Englisch:
 // Abschnitt „Abschluss“ im Beenden-Dialog mit Schließgrund (#2135), Status
 // im Projekt und seine Einstellungen (#2134), verknüpfter Branch beim
-// Beginnen und im Reiter „Entwicklung“ (#2138). Wie die übrigen Texttabellen
+// Beginnen und im Reiter „Entwicklung“ (#2138), Pull Request beim Beenden
+// und seine Einstellungen (#2136). Wie die übrigen Texttabellen
 // des Trackers (Atlas.UI.Tracker.<Feature>.Strings) bestimmt Base die Sprache
 // (`TAtlasStrings.Language`).
 
@@ -22,7 +23,11 @@ type
     PartClosedNotPlanned, PartClosedDuplicate, PartDuplicateFallback, ProjectStatus, ProjectStatusNew,
     ProjectStatusSame, ProjectAdded, ProjectSeveral, ProjectDenied, ProjectMissingOption, SettingsStateTarget,
     SettingsStateTargetProject, SettingsStateTargetLabel, SettingsProject, SettingsAddToProject, SettingsLinkBranch,
-    LinkCreated, LinkFound, LinkExists, LinkForeign, LinkDenied, LinkFailed, LinkFetchFailed, DevelopmentLinked);
+    LinkCreated, LinkFound, LinkExists, LinkForeign, LinkDenied, LinkFailed, LinkFetchFailed, DevelopmentLinked,
+    EndPull, EndPullRoute, EndPullDefaultBase, EndPullTitle, EndPullBody, EndPullCopyIssue, EndPullReviewer,
+    EndPullDraft, EndPullExisting, EndPullStep, EndPullDirty, EndPullForeign, EndPullPushFailed, EndSendPull,
+    EndCloseByMerge, PullCreated, PullExisting, PullDecorateFailed, PullReviewersFailed, PullDraftYes, PullDraftNo,
+    PartPull, SettingsCreatePr, SettingsPrBase, SettingsPrBody, SettingsPrDraft);
 
 {$SCOPEDENUMS OFF}
 
@@ -40,6 +45,14 @@ type
     /// </summary>
     class function LinkLine(const AKey, ARepository, AReason: string; const ALink: TAtlasTrackerBranchLink;
       AFetched: Boolean): string; static;
+    /// <summary>Zeilen der Meldung zum Pull Request beim Beenden (#2136) für AKey; leer, wenn keiner steht.
+    /// </summary>
+    class function PullLines(const AKey: string; const APull: TAtlasTrackerPullResult): TArray<string>;
+      static;
+    /// <summary>Grund, warum kein Pull Request angelegt wurde (Dirty, Foreign, PushFailed); '' sonst. AHead:
+    /// Branch, ARepository: "owner/repo".</summary>
+    class function PullProblem(const APull: TAtlasTrackerPullResult; const AHead, ARepository: string): string;
+      static;
   end;
 
 implementation
@@ -85,7 +98,33 @@ const
      '%s: Das Token darf keine Branches anlegen (Recht „Contents: write“); Branch nur lokal angelegt',
      '%s: Branch nicht auf GitHub angelegt (%s); Branch nur lokal angelegt',
      '%s: Branch %s liegt auf GitHub, Abruf oder Auschecken scheiterte (%s); Branch nur lokal angelegt',
-     'mit dem Issue verknüpft (GitHub)'),
+     'mit dem Issue verknüpft (GitHub)',
+     'Pull Request anlegen',
+     'Von → nach:',
+     'Standard-Branch',
+     'Titel:',
+     'Text:',
+     'Labels und Meilenstein des Issues übernehmen',
+     'Prüfer:',
+     'als Entwurf',
+     'Offener Pull Request: %s',
+     'Pull Request',
+     'Die Arbeitskopie hat ungesicherte Änderungen: erst committen, dann erneut senden.',
+     'origin zeigt nicht auf %s (Fork?); den Pull Request bitte im Browser anlegen.',
+     'Push von %s gescheitert (%s); nichts angelegt.',
+     'Pushen und PR anlegen',
+     'Schließt der Merge',
+     '%s: Pull Request #%d angelegt → %s (Entwurf: %s) %s',
+     '%s: Branch gepusht; Pull Request #%d ist schon offen %s',
+     '%s: Labels und Meilenstein nicht in den Pull Request übernommen',
+     '%s: Prüfer nicht angefragt (Benutzer ohne Zugriff auf das Repository?)',
+     'ja',
+     'nein',
+     'Pull Request #%d',
+     'Beim Beenden einen Pull Request anlegen (vorab angehakt)',
+     'Ziel-Branch des Pull Requests:',
+     'Text des Pull Requests:',
+     'Pull Request als Entwurf vorbelegen'),
     ('Close as:',
      'Completed',
      'Not planned',
@@ -121,7 +160,33 @@ const
      '%s: the token may not create branches ("Contents: write" permission); branch created locally only',
      '%s: branch not created on GitHub (%s); branch created locally only',
      '%s: branch %s is on GitHub, fetch or checkout failed (%s); branch created locally only',
-     'linked to the issue (GitHub)'));
+     'linked to the issue (GitHub)',
+     'Create pull request',
+     'From → to:',
+     'default branch',
+     'Title:',
+     'Text:',
+     'Copy labels and milestone of the issue',
+     'Reviewer:',
+     'as draft',
+     'Open pull request: %s',
+     'Pull request',
+     'The working copy has uncommitted changes: commit first, then send again.',
+     'origin does not point to %s (fork?); please create the pull request in the browser.',
+     'Push of %s failed (%s); nothing created.',
+     'Push and create PR',
+     'Closed by the merge',
+     '%s: pull request #%d created → %s (draft: %s) %s',
+     '%s: branch pushed; pull request #%d is already open %s',
+     '%s: labels and milestone not copied to the pull request',
+     '%s: reviewer not requested (user without access to the repository?)',
+     'yes',
+     'no',
+     'pull request #%d',
+     'Create a pull request when finishing (checked in advance)',
+     'Target branch of the pull request:',
+     'Text of the pull request:',
+     'Mark the pull request as draft in advance'));
 
 { TAtlasGitHubStrings }
 
@@ -171,6 +236,46 @@ begin
   begin
     Result := Result + [Fmt(TAtlasGitHubTextId.ProjectStatus, [AKey, AStatus.Project, AStatus.Before,
       AStatus.After])];
+  end;
+end;
+
+class function TAtlasGitHubStrings.PullLines(const AKey: string;
+  const APull: TAtlasTrackerPullResult): TArray<string>;
+const
+  cDraft: array[Boolean] of TAtlasGitHubTextId = (TAtlasGitHubTextId.PullDraftNo, TAtlasGitHubTextId.PullDraftYes);
+begin
+  Result := nil;
+  case APull.Outcome of
+    TAtlasTrackerPullOutcome.Created:
+      Result := Result + [Fmt(TAtlasGitHubTextId.PullCreated, [AKey, APull.Number, APull.Base,
+        Text(cDraft[APull.Draft]), APull.Url])];
+    TAtlasTrackerPullOutcome.Existing:
+      Result := Result + [Fmt(TAtlasGitHubTextId.PullExisting, [AKey, APull.Number, APull.Url])];
+  else
+    Exit;
+  end;
+  if APull.DecorateFailed then
+  begin
+    Result := Result + [Fmt(TAtlasGitHubTextId.PullDecorateFailed, [AKey])];
+  end;
+  if APull.ReviewersFailed then
+  begin
+    Result := Result + [Fmt(TAtlasGitHubTextId.PullReviewersFailed, [AKey])];
+  end;
+end;
+
+class function TAtlasGitHubStrings.PullProblem(const APull: TAtlasTrackerPullResult; const AHead,
+  ARepository: string): string;
+begin
+  case APull.Outcome of
+    TAtlasTrackerPullOutcome.Dirty:
+      Result := Text(TAtlasGitHubTextId.EndPullDirty);
+    TAtlasTrackerPullOutcome.Foreign:
+      Result := Fmt(TAtlasGitHubTextId.EndPullForeign, [ARepository]);
+    TAtlasTrackerPullOutcome.PushFailed:
+      Result := Fmt(TAtlasGitHubTextId.EndPullPushFailed, [AHead, APull.Message]);
+  else
+    Result := '';
   end;
 end;
 

@@ -32,8 +32,12 @@ const
   cDefaultIssuesStateField = 'State';
   cDefaultIssuesAssigneeField = 'Assignee';
   cDefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+  /// <summary>Vorgabe von issues.github.prBody (#2136).</summary>
+  cDefaultIssuesGitHubPrBody = '{closes}\n\n{commits}';
   /// <summary>Vorgabe der Kommentarvorlage beim Prüfen (#2126); wie TAtlasTrackerReview.</summary>
   cDefaultIssuesReviewComment = 'Geprüft: {build}, {tests}.'; // german-ok: Vorgabe der Einstellung
+  /// <summary>Vorgabe von issues.github.templateFields (#2137): Felder der Issue-Vorlagen von Atlas.</summary>
+  cDefaultIssuesGitHubTemplateFields = 'version={version}; ide={ide}; log={log}';
   /// <summary>Vorgabe von issues.commentSnippets (#1278), wie TAtlasCommentSnippets.Defaults.</summary>
   cDefaultIssuesCommentSnippets = '[{"name":"Bitte mit aktuellem Build prüfen","text":"Bitte mit dem aktuellen Build ' +
     'prüfen."},{"name":"Behoben in {commit}","text":"Behoben in {commit}."}]';
@@ -169,6 +173,18 @@ type
     /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138,
     /// issues.github.linkBranch).</summary>
     IssuesGitHubLinkBranch: Boolean;
+    /// <summary>Vorbelegung der Felder einer Issue-Vorlage (#2137, issues.github.templateFields): "id=Text mit
+    /// {version}, {ide}, {code}, {finding}, {log}; …"; .atlas tracker.templateFields geht vor.</summary>
+    IssuesGitHubTemplateFields: string;
+    /// <summary>Beenden-Dialog: Abschnitt „Pull Request anlegen“ vorab angehakt (#2136, issues.github.createPr).
+    /// </summary>
+    IssuesGitHubCreatePr: Boolean;
+    /// <summary>Ziel-Branch des Pull Requests (#2136, issues.github.prBase); '' = Standard-Branch.</summary>
+    IssuesGitHubPrBase: string;
+    /// <summary>Textvorlage des Pull Requests (#2136, issues.github.prBody).</summary>
+    IssuesGitHubPrBody: string;
+    /// <summary>Pull Request als Entwurf vorbelegen (#2136, issues.github.prDraft).</summary>
+    IssuesGitHubPrDraft: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -200,6 +216,8 @@ type
     IssuesCreate: Boolean;
     /// <summary>Codeausschnitt in der Beschreibung vorschlagen (#1268, issues.create.includeCode).</summary>
     IssuesCreateIncludeCode: Boolean;
+    /// <summary>Issue-Vorlagen des Repositorys im Dialog anbieten (#2137, issues.create.templates).</summary>
+    IssuesCreateTemplates: Boolean;
     /// <summary>Zeit für das aktuelle Issue erfassen und Buchen anbieten (#1267, issues.timeTracking); aus = weder
     /// Anzeige noch Datei noch Dialog.</summary>
     IssuesTimeTracking: Boolean;
@@ -427,6 +445,11 @@ begin
   Result.IssuesGitHubProject := '';
   Result.IssuesGitHubAddToProject := False;
   Result.IssuesGitHubLinkBranch := False;
+  Result.IssuesGitHubTemplateFields := cDefaultIssuesGitHubTemplateFields;
+  Result.IssuesGitHubCreatePr := True;
+  Result.IssuesGitHubPrBase := '';
+  Result.IssuesGitHubPrBody := cDefaultIssuesGitHubPrBody;
+  Result.IssuesGitHubPrDraft := False;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -474,6 +497,7 @@ begin
   IssuesEndFields := NormalizedIssuesTemplate(IssuesEndFields);
   IssuesGitHubStateTarget := NormalizedIssuesGitHubStateTarget(IssuesGitHubStateTarget);
   IssuesGitHubProject := NormalizedIssuesText(IssuesGitHubProject, True);
+  IssuesGitHubTemplateFields := NormalizedIssuesTemplate(IssuesGitHubTemplateFields);
 end;
 
 procedure TAtlasPluginIssuesSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -510,6 +534,11 @@ begin
   AIo.Text('IssuesGitHubProject', IssuesGitHubProject);
   AIo.Flag('IssuesGitHubAddToProject', IssuesGitHubAddToProject);
   AIo.Flag('IssuesGitHubLinkBranch', IssuesGitHubLinkBranch);
+  AIo.Text('IssuesGitHubTemplateFields', IssuesGitHubTemplateFields);
+  AIo.Flag('IssuesGitHubCreatePr', IssuesGitHubCreatePr);
+  AIo.Text('IssuesGitHubPrBase', IssuesGitHubPrBase);
+  AIo.Text('IssuesGitHubPrBody', IssuesGitHubPrBody);
+  AIo.Flag('IssuesGitHubPrDraft', IssuesGitHubPrDraft);
 end;
 
 { TAtlasPluginIssueWorkSettings }
@@ -523,6 +552,7 @@ begin
   Result.IssuesBlameMaxRevisions := cDefaultIssuesBlameMaxRevisions;
   Result.IssuesCreate := True;
   Result.IssuesCreateIncludeCode := True;
+  Result.IssuesCreateTemplates := True;
   Result.IssuesTimeTracking := False;
   Result.IssuesIdleMinutes := cDefaultIssuesIdleMinutes;
   Result.IssuesTimeRounding := cDefaultIssuesTimeRounding;
@@ -588,6 +618,7 @@ begin
   AIo.Number('IssuesBlameMaxRevisions', IssuesBlameMaxRevisions);
   AIo.Flag('IssuesCreate', IssuesCreate);
   AIo.Flag('IssuesCreateIncludeCode', IssuesCreateIncludeCode);
+  AIo.Flag('IssuesCreateTemplates', IssuesCreateTemplates);
   AIo.Flag('IssuesTimeTracking', IssuesTimeTracking);
   AIo.Number('IssuesIdleMinutes', IssuesIdleMinutes);
   AIo.Number('IssuesTimeRounding', IssuesTimeRounding);
