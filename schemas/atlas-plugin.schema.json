@@ -1973,6 +1973,32 @@
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
     },
+    "DebugNoSourcePage": {
+      "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.noSourcePage",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Fenster „Kein Quelltext“",
+      "x-captionEn": "“No source” window",
+      "x-issue": "#869"
+    },
+    "DebugNoSourceIgnoredUnits": {
+      "description": "Units, für die das Fenster „Kein Quelltext“ nicht erscheint, durch „;“ getrennt; „Für diese Unit nicht mehr zeigen“ ergänzt die Liste.",
+      "type": "string",
+      "default": "",
+      "x-key": "debug.noSourcePage.ignoredUnits",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.noSourcePage",
+      "x-control": "Textfeld",
+      "x-caption": "Units ohne Fenster „Kein Quelltext“",
+      "x-captionEn": "Units without “No source” window",
+      "x-issue": "#869"
+    },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
       "type": "boolean",
