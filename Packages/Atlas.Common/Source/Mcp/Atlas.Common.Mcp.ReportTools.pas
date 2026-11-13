@@ -13,29 +13,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Text.MapFile,
-  Atlas.Text.PeImage,
-  Atlas.Text.CrashReport;
+  Atlas.Common.Diagnostics.RuntimeReport;
 
 type
-  /// <summary>Datei im Projekt zu Unit bzw. Dateiname aus einem Bericht; '' unbekannt.</summary>
-  TMcpUnitFileFunc = reference to function(const AUnitName, AFileName: string): string;
-
-  /// <summary>Map eines Moduls für die Auflösung; Map = nil ohne Map-Datei.</summary>
-  TMcpSymbols = record
-    Map: TMapFile;
-    /// <summary>Pfad der Map-Datei (für die Ausgabe).</summary>
-    MapName: string;
-    /// <summary>Dateiname des Moduls (EXE, DLL, BPL) ohne Ordner; '' unbekannt.</summary>
-    Module: string;
-    /// <summary>Basisadresse für absolute Adressen; 0 = Vorzugsbasis aus der Map.</summary>
-    Base: UInt64;
-    /// <summary>Ergebnis des Vergleichs mit der EXE; Unknown ohne EXE.</summary>
-    Match: TMapImageMatch;
-    /// <summary>Basis, mit der Adressen von AModule aufgelöst werden; False für fremde Module.</summary>
-    function TryBaseFor(const AModule: string; out ABase: UInt64): Boolean;
-  end;
-
   /// <summary>Eine Adresse aus resolve_address.</summary>
   TMcpAddress = record
     Text: string;
@@ -56,24 +36,24 @@ type
     /// unlesbaren Einträgen oder ohne Adresse.</summary>
     class function ParseAddresses(const AText: string): TArray<TMcpAddress>; static;
     /// <summary>Antwort von resolve_address.</summary>
-    class function ResolveAddresses(const AAddresses: TArray<TMcpAddress>; const ASymbols: TMcpSymbols;
-      const AFileOf: TMcpUnitFileFunc): string; static;
+    class function ResolveAddresses(const AAddresses: TArray<TMcpAddress>; const ASymbols: TReportSymbols;
+      const AFileOf: TReportUnitFileFunc): string; static;
     /// <summary>Antwort von analyze_report; EMcpToolError, wenn der Text weder Leck- noch Absturzbericht ist.
     /// </summary>
-    class function AnalyzeReport(const AText: string; const ASymbols: TMcpSymbols;
-      const AFileOf: TMcpUnitFileFunc): string; static;
+    class function AnalyzeReport(const AText: string; const ASymbols: TReportSymbols;
+      const AFileOf: TReportUnitFileFunc): string; static;
     /// <summary>Zeile zur Map: Pfad und ob sie zur EXE passt; '' ohne Map.</summary>
-    class function MapStatus(const ASymbols: TMcpSymbols): string; static;
-    /// <summary>Stapelzeilen ohne Ort über die Map ergänzen (nur Zeilen des Moduls der Map).</summary>
-    class procedure Symbolize(var AFrames: TArray<TCrashFrame>; const AReport: TCrashReport;
-      const ASymbols: TMcpSymbols); static;
+    class function MapStatus(const ASymbols: TReportSymbols): string; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
+  Atlas.Text.MapFile,
+  Atlas.Text.PeImage,
   Atlas.Text.LeakReport,
+  Atlas.Text.CrashReport,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts;
 
@@ -131,26 +111,11 @@ const
     (De: 'Mittlere und große Blöcke: %s Bytes'; En: 'Medium and large blocks: %s bytes'),
     (De: '… %d weitere Gruppen'; En: '… %d more groups'));
 
-  cKindNames: array[TCrashReportKind] of string = ('', 'madExcept', 'EurekaLog', 'JclDebug', 'Exception');
-
 {$SCOPEDENUMS OFF}
 
 function Hex(AValue: UInt64): string;
 begin
   Result := IntToHex(Int64(AValue), 8);
-end;
-
-{ TMcpSymbols }
-
-function TMcpSymbols.TryBaseFor(const AModule: string; out ABase: UInt64): Boolean;
-begin
-  ABase := Base;
-  if (ABase = 0) and (Map <> nil) then
-  begin
-    ABase := Map.ImageBase;
-  end;
-  Result := (Map <> nil) and ((AModule = '') or (Module = '') or
-    SameText(ExtractFileName(AModule), ExtractFileName(Module)));
 end;
 
 { Adressen }
@@ -193,7 +158,7 @@ end;
 
 /// <summary>„Unit.Routine, Zeile 42 (Pfad)“ zu einer aufgelösten Stelle.</summary>
 function LocationText(const ARoutine, AUnitName, AFileName: string; ALine: Integer;
-  const AFileOf: TMcpUnitFileFunc): string;
+  const AFileOf: TReportUnitFileFunc): string;
 var
   mPath: string;
 begin
@@ -217,18 +182,18 @@ begin
   end;
 end;
 
-function FrameText(const AFrame: TCrashFrame; const AFileOf: TMcpUnitFileFunc): string;
+function FrameText(const AFrame: TCrashFrame; const AFileOf: TReportUnitFileFunc): string;
 begin
   Result := LocationText(AFrame.Routine, AFrame.UnitName, AFrame.FileName, AFrame.Line, AFileOf);
 end;
 
-function MapLocationText(const ALocation: TMapLocation; const AFileOf: TMcpUnitFileFunc): string;
+function MapLocationText(const ALocation: TMapLocation; const AFileOf: TReportUnitFileFunc): string;
 begin
   Result := LocationText(ALocation.Routine, ALocation.UnitName, ALocation.FileName, ALocation.Line, AFileOf);
 end;
 
-function ResolveOne(const AAddress: TMcpAddress; const ASymbols: TMcpSymbols;
-  const AFileOf: TMcpUnitFileFunc): string;
+function ResolveOne(const AAddress: TMcpAddress; const ASymbols: TReportSymbols;
+  const AFileOf: TReportUnitFileFunc): string;
 var
   mBase: UInt64;
   mLocation: TMapLocation;
@@ -252,7 +217,7 @@ begin
   end;
 end;
 
-class function TMcpReportTools.MapStatus(const ASymbols: TMcpSymbols): string;
+class function TMcpReportTools.MapStatus(const ASymbols: TReportSymbols): string;
 const
   cMatchTexts: array[TMapImageMatch] of TReportToolsText = (TReportToolsText.MapUnchecked,
     TReportToolsText.MapMatches, TReportToolsText.MapEntryDiffers, TReportToolsText.MapSizeDiffers);
@@ -264,8 +229,8 @@ begin
   end;
 end;
 
-class function TMcpReportTools.ResolveAddresses(const AAddresses: TArray<TMcpAddress>; const ASymbols: TMcpSymbols;
-  const AFileOf: TMcpUnitFileFunc): string;
+class function TMcpReportTools.ResolveAddresses(const AAddresses: TArray<TMcpAddress>; const ASymbols: TReportSymbols;
+  const AFileOf: TReportUnitFileFunc): string;
 var
   mAddress: TMcpAddress;
   mBuilder: TStringBuilder;
@@ -290,55 +255,7 @@ end;
 
 { Absturzbericht }
 
-class procedure TMcpReportTools.Symbolize(var AFrames: TArray<TCrashFrame>; const AReport: TCrashReport;
-  const ASymbols: TMcpSymbols);
-var
-  mIndex: Integer;
-  mBase, mLoaded: UInt64;
-  mLocation: TMapLocation;
-begin
-  for mIndex := 0 to High(AFrames) do
-  begin
-    if (AFrames[mIndex].Line > 0) or not ASymbols.TryBaseFor(AFrames[mIndex].Module, mBase) then
-    begin
-      Continue;
-    end;
-    // Die Modulliste des Berichts kennt die Basis, mit der das Modul tatsächlich geladen war.
-    if (ASymbols.Base = 0) and AReport.TryBaseOf(AFrames[mIndex].Module, mLoaded) then
-    begin
-      mBase := mLoaded;
-    end;
-    mLocation := ASymbols.Map.ResolveAddress(AFrames[mIndex].Address, mBase);
-    if mLocation.Found then
-    begin
-      AFrames[mIndex].UnitName := mLocation.UnitName;
-      AFrames[mIndex].Routine := mLocation.Routine;
-      AFrames[mIndex].FileName := mLocation.FileName;
-      AFrames[mIndex].Line := mLocation.Line;
-    end;
-  end;
-end;
-
-/// <summary>Erste Zeile mit Zeilennummer, deren Datei im Projekt liegt; sonst die erste außerhalb der
-/// Bibliotheken; -1 ohne.</summary>
-function SiteIndex(const AFrames: TArray<TCrashFrame>; const AFileOf: TMcpUnitFileFunc): Integer;
-var
-  mIndex: Integer;
-begin
-  if Assigned(AFileOf) then
-  begin
-    for mIndex := 0 to High(AFrames) do
-    begin
-      if (AFrames[mIndex].Line > 0) and (AFileOf(AFrames[mIndex].UnitName, AFrames[mIndex].FileName) <> '') then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-  Result := TCrashReports.SiteOf(AFrames);
-end;
-
-function StackLine(AIndex: Integer; const AFrame: TCrashFrame; const AFileOf: TMcpUnitFileFunc): string;
+function StackLine(AIndex: Integer; const AFrame: TCrashFrame; const AFileOf: TReportUnitFileFunc): string;
 begin
   Result := Format('  %d. %s %s', [AIndex + 1, Hex(AFrame.Address), AFrame.Module]).TrimRight;
   if AFrame.HasLocation then
@@ -348,7 +265,7 @@ begin
 end;
 
 procedure AppendStack(ABuilder: TStringBuilder; const AThreadName: string; const AFrames: TArray<TCrashFrame>;
-  const AFileOf: TMcpUnitFileFunc);
+  const AFileOf: TReportUnitFileFunc);
 var
   mIndex: Integer;
   mName: string;
@@ -421,7 +338,7 @@ begin
   begin
     mTitle := AReport.ExceptionMessage;
   end;
-  ABuilder.AppendLine(cTexts[TReportToolsText.CrashTitle].Fmt([cKindNames[AReport.Kind], mTitle]));
+  ABuilder.AppendLine(cTexts[TReportToolsText.CrashTitle].Fmt([TRuntimeReports.SourceOf(AReport.Kind), mTitle]));
   if (AReport.ExceptionMessage <> '') and (AReport.ExceptionMessage <> mTitle) then
   begin
     ABuilder.AppendLine(cTexts[TReportToolsText.MessageLine].Fmt([AReport.ExceptionMessage]));
@@ -432,30 +349,15 @@ begin
   end;
 end;
 
-/// <summary>Nur eine Meldung ohne Stapel: die Absturzadresse als Stapel mit einer Zeile.</summary>
-function FramesOf(const AReport: TCrashReport): TArray<TCrashFrame>;
-var
-  mFrame: TCrashFrame;
-begin
-  Result := Copy(AReport.CrashFrames);
-  if (Result = nil) and (AReport.Address <> 0) then
-  begin
-    mFrame := Default(TCrashFrame);
-    mFrame.Address := AReport.Address;
-    mFrame.Module := AReport.Module;
-    Result := Result + [mFrame];
-  end;
-end;
-
-function CrashText(const AReport: TCrashReport; const ASymbols: TMcpSymbols; const AFileOf: TMcpUnitFileFunc): string;
+function CrashText(const AReport: TCrashReport; const ASymbols: TReportSymbols; const AFileOf: TReportUnitFileFunc): string;
 var
   mFrames: TArray<TCrashFrame>;
   mSite: Integer;
   mBuilder: TStringBuilder;
 begin
-  mFrames := FramesOf(AReport);
-  TMcpReportTools.Symbolize(mFrames, AReport, ASymbols);
-  mSite := SiteIndex(mFrames, AFileOf);
+  mFrames := TRuntimeReports.CrashFramesOf(AReport);
+  TRuntimeReports.Symbolize(mFrames, AReport, ASymbols);
+  mSite := TRuntimeReports.SiteIndex(mFrames, AFileOf);
   mBuilder := TStringBuilder.Create;
   try
     AppendCrashHead(mBuilder, AReport, mFrames);
@@ -511,7 +413,7 @@ begin
 end;
 
 procedure AppendGroup(ABuilder: TStringBuilder; AIndex: Integer; const AGroup: TLeakGroup;
-  const AFileOf: TMcpUnitFileFunc);
+  const AFileOf: TReportUnitFileFunc);
 var
   mFrame: TLeakFrame;
 begin
@@ -527,7 +429,7 @@ begin
     mFrame.FileName, mFrame.Line, AFileOf)]));
 end;
 
-procedure AppendGroups(ABuilder: TStringBuilder; const AReport: TLeakReport; const AFileOf: TMcpUnitFileFunc);
+procedure AppendGroups(ABuilder: TStringBuilder; const AReport: TLeakReport; const AFileOf: TReportUnitFileFunc);
 var
   mGroups: TArray<TLeakGroup>;
   mIndex: Integer;
@@ -556,7 +458,7 @@ begin
   end;
 end;
 
-function LeakText(const AReport: TLeakReport; const AFileOf: TMcpUnitFileFunc): string;
+function LeakText(const AReport: TLeakReport; const AFileOf: TReportUnitFileFunc): string;
 var
   mBuilder: TStringBuilder;
 begin
@@ -581,8 +483,8 @@ begin
   end;
 end;
 
-class function TMcpReportTools.AnalyzeReport(const AText: string; const ASymbols: TMcpSymbols;
-  const AFileOf: TMcpUnitFileFunc): string;
+class function TMcpReportTools.AnalyzeReport(const AText: string; const ASymbols: TReportSymbols;
+  const AFileOf: TReportUnitFileFunc): string;
 var
   mLeaks: TLeakReport;
   mCrash: TCrashReport;
