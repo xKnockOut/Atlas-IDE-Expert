@@ -470,6 +470,9 @@ type
       write FDebug.DebugExplainAccessViolationAllowCalls;
     property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
     property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
+    property DebugLeakReport: Boolean read FDebug.DebugLeakReport write FDebug.DebugLeakReport;
+    property DebugLeakReportCompare: Boolean read FDebug.DebugLeakReportCompare write FDebug.DebugLeakReportCompare;
+    property DebugLeakReportWindow: Boolean read FDebug.DebugLeakReportWindow write FDebug.DebugLeakReportWindow;
     property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
     property DebugThreadsInSource: Boolean read FDebug.DebugThreadsInSource write FDebug.DebugThreadsInSource;
     property DebugThreadFreeze: Boolean read FDebug.DebugThreadFreeze write FDebug.DebugThreadFreeze;
