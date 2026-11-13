@@ -363,6 +363,7 @@ Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Debug.EventLog.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
+Atlas.Core.Debug.Restart.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests

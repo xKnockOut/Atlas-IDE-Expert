@@ -414,6 +414,16 @@ Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
 Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
+### Neu starten
+
+- „Atlas: Neu starten“ mit Strg+Umschalt+F2, im Atlas-Menü oder in der Befehlspalette
+- Schritte: Beenden (nur bei laufendem Programm), Bauen (nur bei Änderungen seit dem letzten Bau), Starten, zurück an die Stelle im Editor
+- Oben rechts eine kleine Leiste ohne Fokus mit den Schritten und ihrer Dauer, etwa „Beenden 0,3 s ✓ · Bauen 2,1 s ✓ · Starten …“
+- Scheitert ein Schritt, bricht der Ablauf ab und die Leiste nennt den Grund
+- Mit `debug.restart.reenableBreakpoints` schaltet Atlas vor dem Start Haltepunkte wieder ein, die beim Start der letzten Sitzung an waren
+
+Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>

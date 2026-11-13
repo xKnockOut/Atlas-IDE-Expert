@@ -84,7 +84,6 @@ implementation
 uses
   System.Types,
   System.IOUtils,
-  Vcl.Forms,
   Vcl.FileCtrl,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
@@ -98,13 +97,11 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.NoSourceFacts,
   Atlas.IDE.Debug.UnavailableFixes,
+  Atlas.UI.Debug.StepsBar,
   Atlas.UI.Debug.Strings;
 
 const
   cDebugConfiguration = 'Debug';
-  /// <summary>Abstand des Fensters vom rechten bzw. oberen Rand des aktiven Fensters (in cPad).</summary>
-  cCornerRight = 3;
-  cCornerTop = 8;
 
 { TAtlasIdeDebugNoSource.TTicker }
 
@@ -300,26 +297,6 @@ begin
   end;
 end;
 
-/// <summary>Rechte obere Ecke im aktiven Fenster der IDE (Bildschirm).</summary>
-function Corner: TPoint;
-var
-  mForm: TCustomForm;
-  mRect: TRect;
-begin
-  mForm := Screen.ActiveCustomForm;
-  if mForm = nil then
-  begin
-    mForm := Application.MainForm;
-  end;
-  if mForm = nil then
-  begin
-    Exit(Mouse.CursorPos);
-  end;
-  mRect := mForm.BoundsRect;
-  Result := TPoint.Create(mRect.Right - mForm.ScaleValue(TAtlasNoSourcePopup.cPad * cCornerRight),
-    mRect.Top + mForm.ScaleValue(TAtlasNoSourcePopup.cPad * cCornerTop));
-end;
-
 /// <summary>„Modul … · Adresse … · Unit …“; Unbekanntes als „unbekannt“.</summary>
 function PlaceText(const AFacts: TAtlasNoSourceFacts): string;
 var
@@ -367,7 +344,7 @@ begin
         TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugNoSource.Ignore);
       end;
   end;
-  mPoint := Corner;
+  mPoint := TAtlasStepsBar.ActiveCorner;
   FPopup.Colors := TAtlasIdeStyle.Colors;
   FPopup.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FPopup.ShowFor(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceTitle, [AFacts.Place.Routine]), PlaceText(AFacts),
