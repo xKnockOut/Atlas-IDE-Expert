@@ -72,7 +72,7 @@ type
     TestsLensApproval, TestsLensApprovalNew, TestsApprovalAccept, TestsApprovalGoTo, TestsApprovalAccepted,
     TestsApprovalMissing, TestsApprovalFailed, TestsApprovalCleanCommand, TestsApprovalCleanNone,
     TestsApprovalCleanAsk, TestsApprovalCleaned, TestsApprovalIgnoreAsk, TestsApprovalNoProject,
-    SettingsTestsApprovalFiles);
+    SettingsTestsApprovalFiles, TestsShutdownLeaks);
 
   TAtlasTestsStrings = class
   public
@@ -317,7 +317,8 @@ const
      'Tests: %d von %d .received-Dateien gelöscht.',
      '„%s“ in %s eintragen, damit .received-Dateien nicht ins Repository geraten?',
      'Tests: Kein Testprojekt aktiv; Ordner der Vergleichsdateien unbekannt.',
-     'Vergleichsdateien erkennen (Abweichung an der Testmarke, übernehmen, aufräumen)'),
+     'Vergleichsdateien erkennen (Abweichung an der Testmarke, übernehmen, aufräumen)',
+     'Tests: Lecks am Programmende, keinem Test zuzuordnen: %d Blöcke (%s).'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -546,7 +547,8 @@ const
      'Tests: Deleted %d of %d .received files.',
      'Add “%s” to %s so that .received files stay out of the repository?',
      'Tests: No active test project; folder of the approval files unknown.',
-     'Recognize approval files (difference on the test mark, accept, clean up)'));
+     'Recognize approval files (difference on the test mark, accept, clean up)',
+     'Tests: Leaks at program end, not tied to a test: %d blocks (%s).'));
 
 { TAtlasTestsStrings }
 

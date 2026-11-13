@@ -203,6 +203,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Tracker.GitHubStrings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 
@@ -463,7 +464,8 @@ begin
     mSettings.IssuesAssigneeField).WithStart(mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
     mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates,
     TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasWorkflowStrings.English)).WithReview(
-    mSettings.IssuesReviewStates).WithEndSteps(mSettings.IssuesEndFields, mSettings.IssuesEndTime);
+    mSettings.IssuesReviewStates).WithEndSteps(mSettings.IssuesEndFields, mSettings.IssuesEndTime).WithGitHub(
+    mSettings.IssuesGitHubStateTarget, mSettings.IssuesGitHubProject, mSettings.IssuesGitHubAddToProject);
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);
 end;
@@ -619,12 +621,16 @@ begin
   mWritten := AWritten;
   Apply(AProvider, ATarget, AKey, mChange,
     procedure(const AResult: TAtlasTrackerWriteResult)
+    var
+      mLine: string;
     begin
       Logged(mProvider, 'Beginnen', AResult);
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
-          [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+        for mLine in TAtlasTrackerEndTexts.StartLines(mKey, mChange, AResult) do
+        begin
+          mOwner.Report(mLine);
+        end;
         if Assigned(mWritten) then
         begin
           mWritten();
@@ -839,7 +845,7 @@ end;
 procedure TAtlasIdeTrackerSync.Finished(const AKey: string; const AOutcome: TAtlasTrackerEndOutcome;
   const AEnded: TProc<TAtlasTrackerWrite>);
 var
-  mSummary: string;
+  mSummary, mLine: string;
 begin
   if AOutcome.Progress.TimeBooked and Assigned(FTimeBooked) then
   begin
@@ -858,6 +864,11 @@ begin
   if mSummary <> '' then
   begin
     Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndSent, [AKey, mSummary]));
+  end;
+  // Status im Projekt (#2134) in eigenen Zeilen.
+  for mLine in TAtlasGitHubStrings.ProjectLines(AKey, AOutcome.Progress.Project) do
+  begin
+    Report(mLine);
   end;
   AEnded(AOutcome.Plan.Change);
 end;

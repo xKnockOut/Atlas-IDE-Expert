@@ -32,7 +32,7 @@ implementation
 uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Atlas.Common.Localization.Texts;
 
 type

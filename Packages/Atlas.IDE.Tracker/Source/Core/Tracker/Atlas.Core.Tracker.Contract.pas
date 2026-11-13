@@ -86,8 +86,10 @@ type
   /// </summary>
   TAtlasTrackerAssign = (Keep, Me, User);
   /// <summary>Werte für die Klapplisten (#1266): Zustände des Zustandsfeldes (GitHub: Labels), Namen der
-  /// Zustandsfelder, Namen der Benutzerfelder (YouTrack) und Benutzer, an die übergeben werden kann.</summary>
-  TAtlasTrackerValueKind = (States, StateFields, UserFields, Users);
+  /// Zustandsfelder, Namen der Benutzerfelder (YouTrack) und Benutzer, an die übergeben werden kann. Dazu bei GitHub
+  /// (#2134) die Projekte des Repositorys („owner/nummer“) und die Optionen des Statusfeldes des Projekts
+  /// AField ('' = erstes); andere Anbieter liefern dafür nichts.</summary>
+  TAtlasTrackerValueKind = (States, StateFields, UserFields, Users, Projects, ProjectStates);
   /// <summary>Art einer Verknüpfung aus Sicht des gezeigten Issues (#1279). DependsOn: dieses hängt vom anderen
   /// ab (das andere blockiert dieses); Blocks: das andere hängt von diesem ab; Subtask: das andere ist
   /// Unteraufgabe; Parent: das andere ist übergeordnet; Duplicates: dieses ist Duplikat des anderen; DuplicatedBy:
@@ -561,6 +563,32 @@ type
     Transitions: TArray<TAtlasTrackerTransition>;
   end;
 
+  /// <summary>Wo GitHub den Zustand führt (#2134, issues.github.*): ToProject = im Projektfeld „Status“ (Projects
+  /// v2), wenn das Issue in einem Projekt liegt, sonst als Label.</summary>
+  TAtlasTrackerGitHubState = record
+    ToProject: Boolean;
+    /// <summary>Projekt „owner/nummer“ bei mehreren Projekten und für die Aufnahme; '' = erstes.</summary>
+    Project: string;
+    /// <summary>Issues ohne Projekt in Project aufnehmen.</summary>
+    AddToProject: Boolean;
+  end;
+
+  /// <summary>Zustand im Projekt (#2134) nach einem Schreibzugriff, für die Meldung: Projekt '' = kein Projekt
+  /// berührt.</summary>
+  TAtlasTrackerProjectStatus = record
+    Project: string;
+    Before: string;
+    After: string;
+    /// <summary>Das Issue liegt in mehreren Projekten; Project ist das gewählte.</summary>
+    Several: Boolean;
+    /// <summary>Das Issue wurde erst ins Projekt aufgenommen.</summary>
+    Added: Boolean;
+    /// <summary>Projekte nicht lesbar (Berechtigung „project“ fehlt); der Zustand ging als Label.</summary>
+    Denied: Boolean;
+    /// <summary>Zustand ohne passende Option im Statusfeld; '' sonst.</summary>
+    MissingOption: string;
+  end;
+
   /// <summary>Eine Änderung an einem Issue (#1266): Zustand, Zuständigkeit und Kommentar in einem Schritt.</summary>
   TAtlasTrackerWrite = record
     /// <summary>Name des Zustandsfeldes (YouTrack, z. B. "State" oder "Status"); GitHub ohne Bedeutung.</summary>
@@ -593,6 +621,8 @@ type
     /// <summary>Close = Duplicate: Kommentar, falls der Tracker „Duplikat“ nicht annimmt und als „nicht geplant“
     /// schließt (ältere GitHub-Enterprise-Server); '' = der Kommentar nennt das Duplikat schon.</summary>
     DuplicateNote: string;
+    /// <summary>Wo GitHub den Zustand führt (#2134).</summary>
+    GitHub: TAtlasTrackerGitHubState;
     class function Empty: TAtlasTrackerWrite; static;
     /// <summary>Nur ein Kommentar.</summary>
     class function CommentOnly(const AText: string): TAtlasTrackerWrite; static;
@@ -613,6 +643,8 @@ type
     /// <summary>Geschrieben, aber auf einem Ersatzweg (#2135: „Duplikat“ abgelehnt, als „nicht geplant“ mit
     /// Kommentar geschlossen).</summary>
     Fallback: Boolean;
+    /// <summary>Zustand im Projekt (#2134, GitHub).</summary>
+    Project: TAtlasTrackerProjectStatus;
     class function Ok: TAtlasTrackerWriteResult; static;
     class function Failed(AError: TAtlasCiFetchError; AStatus: Integer;
       const AMessage: string): TAtlasTrackerWriteResult; static;
@@ -1053,6 +1085,7 @@ begin
   Result.Status := 0;
   Result.Message := '';
   Result.Fallback := False;
+  Result.Project := Default(TAtlasTrackerProjectStatus);
 end;
 
 class function TAtlasTrackerWriteResult.Failed(AError: TAtlasCiFetchError; AStatus: Integer;
@@ -1062,6 +1095,7 @@ begin
   Result.Status := AStatus;
   Result.Message := AMessage;
   Result.Fallback := False;
+  Result.Project := Default(TAtlasTrackerProjectStatus);
 end;
 
 function TAtlasTrackerWriteResult.Succeeded: Boolean;

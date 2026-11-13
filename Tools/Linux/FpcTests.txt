@@ -122,6 +122,7 @@ Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
+Atlas.Common.Editing.TypeAlias.Names.Tests
 Atlas.Common.Editing.TypeComments.Tests
 Atlas.Common.Editing.UnitRename.Tests
 Atlas.Common.Editing.UnitTemplates.Tests
@@ -154,6 +155,7 @@ Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
 Atlas.Common.Logging.Providers.StreamSink.Tests
 Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
+Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
@@ -162,6 +164,7 @@ Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
+Atlas.Common.Lsp.Completion.TypeConversions.Tests
 Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
@@ -285,6 +288,7 @@ Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
 Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
+Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests
 Atlas.Common.Rules.Builtin.Performance.StringResets.Tests
@@ -297,12 +301,14 @@ Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
 Atlas.Common.Rules.Builtin.Testing.Asserts.Tests
+Atlas.Common.Rules.Builtin.Testing.LeakMonitor.Tests
 Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
+Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
 Atlas.Common.Rules.Builtin.Units.Tests
@@ -325,6 +331,7 @@ Atlas.Common.Rules.WarnSwitches.Tests
 Atlas.Common.Semantics.ControlFlow.Tests
 Atlas.Common.Semantics.ControlFlow.Signatures.Tests
 Atlas.Common.Semantics.ExitPoints.Tests
+Atlas.Common.Semantics.ExpressionTypes.Operators.Tests
 Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests
 Atlas.Common.Semantics.OrdinalConstants.Tests
 Atlas.Common.Semantics.Reassigned.Tests
@@ -413,6 +420,7 @@ Atlas.Core.Hover.Layout.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
+Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests

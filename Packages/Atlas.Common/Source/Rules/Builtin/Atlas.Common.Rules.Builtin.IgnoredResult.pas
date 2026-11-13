@@ -48,6 +48,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts;

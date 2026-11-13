@@ -16,11 +16,15 @@ type
     procedure EveryTextExistsInBothLanguages;
     [Test]
     procedure FollowsLanguageOfBase;
+    /// <summary>Zeilen zum Status im Projekt (#2134).</summary>
+    [Test]
+    procedure ProjectLines;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Tracker.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests,
   Atlas.UI.Tracker.GitHubStrings;
@@ -70,6 +74,48 @@ begin
     TAtlasStrings.Language := mSaved;
   end;
   Assert.IsTrue(mDiffers > 0, 'kein Text folgt der Sprache von Base');
+end;
+
+procedure TAtlasGitHubStringsTests.ProjectLines;
+var
+  mStatus: TAtlasTrackerProjectStatus;
+  mSaved: TAtlasLanguage;
+  mLines: TArray<string>;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mStatus := Default(TAtlasTrackerProjectStatus);
+    Assert.AreEqual(0, Integer(Length(TAtlasGitHubStrings.ProjectLines('#7', mStatus))), 'kein Projekt berührt');
+    mStatus.Project := 'Atlas 2.1';
+    mStatus.After := 'In Progress';
+    mStatus.Added := True;
+    mStatus.Several := True;
+    mLines := TAtlasGitHubStrings.ProjectLines('#7', mStatus);
+    Assert.AreEqual(3, Integer(Length(mLines)));
+    Assert.AreEqual('#7: in das Projekt „Atlas 2.1“ aufgenommen', mLines[0]);
+    Assert.IsTrue(Pos('issues.github.project', mLines[1]) > 0, mLines[1]);
+    Assert.AreEqual('#7: Status im Projekt „Atlas 2.1“ auf In Progress gesetzt', mLines[2]);
+    mStatus := Default(TAtlasTrackerProjectStatus);
+    mStatus.Project := 'Atlas 2.1';
+    mStatus.Before := 'todo';
+    mStatus.After := 'Todo';
+    mLines := TAtlasGitHubStrings.ProjectLines('#7', mStatus);
+    Assert.AreEqual('#7: Status im Projekt „Atlas 2.1“ ist schon Todo', mLines[0]);
+    mStatus := Default(TAtlasTrackerProjectStatus);
+    mStatus.Denied := True;
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    mLines := TAtlasGitHubStrings.ProjectLines('#7', mStatus);
+    Assert.AreEqual('#7: projects not readable (token without "project" scope), state set as a label', mLines[0]);
+    // Fehlende Option: der Fehler sagt es, keine Zeile.
+    mStatus := Default(TAtlasTrackerProjectStatus);
+    mStatus.Project := 'Atlas 2.1';
+    mStatus.MissingOption := 'In Arbeit';
+    Assert.AreEqual(0, Integer(Length(TAtlasGitHubStrings.ProjectLines('#7', mStatus))));
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+  mLines := nil;
 end;
 
 initialization
