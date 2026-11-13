@@ -355,6 +355,7 @@ uses
   Atlas.Common.Lsp.AnonymousMethods.Tests in 'Common\Lsp\Atlas.Common.Lsp.AnonymousMethods.Tests.pas',
   Atlas.Common.Editing.MethodWithoutSelf.Tests in 'Common\Editing\Atlas.Common.Editing.MethodWithoutSelf.Tests.pas',
   Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests in 'Common\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests.pas',
+  Atlas.Common.Editing.MethodWithoutSelf.Analysis.Tests in 'Common\Editing\Atlas.Common.Editing.MethodWithoutSelf.Analysis.Tests.pas',
   Atlas.Common.Lsp.MethodWithoutSelf.Tests in 'Common\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.Tests.pas',
   Atlas.Common.Editing.TypeAlias.Tests in 'Common\Editing\Atlas.Common.Editing.TypeAlias.Tests.pas',
   Atlas.Common.Lsp.TypeAlias.Tests in 'Common\Lsp\Atlas.Common.Lsp.TypeAlias.Tests.pas',

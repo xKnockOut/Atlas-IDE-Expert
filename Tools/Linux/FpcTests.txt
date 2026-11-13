@@ -96,6 +96,7 @@ Atlas.Common.Editing.MemberOrder.Tests
 Atlas.Common.Editing.MemberTransfer.Tests
 Atlas.Common.Editing.MethodOrder.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests
+Atlas.Common.Editing.MethodWithoutSelf.Analysis.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Tests
 Atlas.Common.Editing.Modernizer.Tests
 Atlas.Common.Editing.MoveClass.Tests
