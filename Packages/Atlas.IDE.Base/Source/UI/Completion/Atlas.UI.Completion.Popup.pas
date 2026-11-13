@@ -61,7 +61,7 @@ uses
 
 type
   TAtlasCompletionPopup = class(TAtlasCompletionPopupPainter, IAtlasCompletionView, IAtlasCompletionSyntaxView,
-    IAtlasAccessibleItems)
+    IAtlasCompletionHiddenView, IAtlasAccessibleItems)
   private
     /// <summary>Breite ziehen (#416): Bildschirmkoordinaten, weil das Fenster beim Ziehen mitwächst.</summary>
     procedure DragTo;
@@ -99,6 +99,8 @@ type
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
     { IAtlasCompletionSyntaxView }
     procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
+    { IAtlasCompletionHiddenView }
+    procedure ShowInaccessible(const AItems: TAtlasCompletionItems);
     property OnSelect: TAtlasPositionEvent read FEvents.OnSelect write FEvents.OnSelect;
     property OnAccept: TAtlasPositionEvent read FEvents.OnAccept write FEvents.OnAccept;
     property OnChip: TAtlasChipEvent read FEvents.OnChip write FEvents.OnChip;
@@ -436,6 +438,31 @@ begin
     TAtlasCompletionStrings.Text(TAtlasCompletionTextId.AccessPosition), FSelected + 1, Length(FOrder)));
 end;
 
+procedure TAtlasCompletionPopup.ShowInaccessible(const AItems: TAtlasCompletionItems);
+var
+  mText: string;
+begin
+  mText := TAtlasCompletionTexts.InaccessibleText(AItems);
+  // Nur bei neuem Text ansagen, nicht bei jedem getippten Zeichen.
+  if mText = TAtlasCompletionTexts.InaccessibleText(FInaccessible) then
+  begin
+    mText := '';
+  end;
+  FInaccessible := AItems;
+  if mText <> '' then
+  begin
+    // Der Hinweis soll ganz lesbar sein (#2108): Breite wächst wie beim leeren Zustand.
+    Canvas.Font := UIFont;
+    FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(mText) + Scale(cNoMatchesPadding));
+    Canvas.Font := Font;
+    Announce(mText);
+  end;
+  if IsShown then
+  begin
+    Invalidate;
+  end;
+end;
+
 procedure TAtlasCompletionPopup.ShowNotice(const AText: string);
 begin
   FNotice := AText;
@@ -451,6 +478,7 @@ begin
   HideTip;
   HidePopup;
   FNotice := '';
+  FInaccessible := nil;
   FItems := nil;
   FOrder := nil;
   FSelected := -1;

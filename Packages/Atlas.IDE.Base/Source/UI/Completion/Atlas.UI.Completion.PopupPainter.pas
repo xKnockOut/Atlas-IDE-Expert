@@ -250,6 +250,7 @@ end;
 procedure TAtlasCompletionPopupPainter.PaintEmpty;
 var
   mLine: TRect;
+  mLeft: string;
 
   procedure DrawLine(AIndex: Integer; const AText: string; AColor: TAtlasColor);
   begin
@@ -281,8 +282,13 @@ begin
     DrawLine(1, TAtlasCompletionStrings.Text(TAtlasCompletionTextId.BackspaceWidens), Colors.Muted);
   end;
   Canvas.Brush.Style := bsSolid;
-  DrawFooter(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.EscCloses),
-    TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [0, FEmpty.Total]));
+  // Nur wegen der Sichtbarkeit fehlende Treffer (#2108) statt des Tipps zu Esc.
+  mLeft := TAtlasCompletionTexts.InaccessibleText(FInaccessible);
+  if mLeft = '' then
+  begin
+    mLeft := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.EscCloses);
+  end;
+  DrawFooter(mLeft, TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.CountOf, [0, FEmpty.Total]));
 end;
 
 procedure TAtlasCompletionPopupPainter.DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem;
@@ -495,8 +501,9 @@ begin
   // Geerbte Member mit 62 % Deckkraft (#419); die gewählte Zeile bleibt voll lesbar.
   // Geerbt (#419) bzw. in der aktiven Konfiguration nicht vorhanden (#476): 62 % Deckkraft.
   // Rest ohne Treffer (#497) ebenso.
-  FDimRow := ((FOptions.DimInherited and (mItem.Depth > 0)) or mItem.Unavailable or ((FRestFrom >= 0) and
-    (APosition > FRestFrom))) and (APosition <> FSelected);
+  // Nicht sichtbare Mitglieder (#2108) ebenso.
+  FDimRow := ((FOptions.DimInherited and (mItem.Depth > 0)) or mItem.Unavailable or (mItem.Inaccessible <> '') or
+    ((FRestFrom >= 0) and (APosition > FRestFrom))) and (APosition <> FSelected);
   DrawRowMarks(mRow, mItem, APosition);
   DrawBadge(mRow, mItem, mNameLeft);
   Inc(mNameLeft, Scale(9));

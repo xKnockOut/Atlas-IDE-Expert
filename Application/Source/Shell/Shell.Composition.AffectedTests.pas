@@ -61,6 +61,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
@@ -84,6 +85,29 @@ const
 function DiskSourceText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+end;
+
+/// <summary>Pfade aus dem Feld files (URIs) der Anfrage; leer ohne.</summary>
+function FilesOf(AParams: TJSONObject): TArray<string>;
+var
+  mValue: TJSONValue;
+  mFiles: TJSONArray;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mValue := AParams.GetValue('files');
+  if not (mValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  mFiles := TJSONArray(mValue);
+  for mIndex := 0 to mFiles.Count - 1 do
+  begin
+    if mFiles.Items[mIndex] is TJSONString then
+    begin
+      Result := Result + [TDocumentUris.ToPath(mFiles.Items[mIndex].Value)];
+    end;
+  end;
 end;
 
 class procedure TShellAffectedTestsRequest.Attach(ADispatcher: TJsonRpcDispatcher;
@@ -171,6 +195,12 @@ begin
   begin
     Result.Depth := 0;
   end;
+  // Tests beim Speichern (#1775): nur die gespeicherten Dateien, verglichen mit dem letzten Commit.
+  if not AParams.TryGetValue<Boolean>('sinceCommit', Result.SinceCommit) then
+  begin
+    Result.SinceCommit := False;
+  end;
+  Result.Files := FilesOf(AParams);
 end;
 
 class function TShellAffectedTestsRequest.RequestFor(const AServices: TShellAffectedTestsServices;
