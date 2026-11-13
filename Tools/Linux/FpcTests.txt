@@ -257,6 +257,7 @@ Atlas.Common.Rules.Builtin.Migration.Win64.Tests
 Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
+Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests

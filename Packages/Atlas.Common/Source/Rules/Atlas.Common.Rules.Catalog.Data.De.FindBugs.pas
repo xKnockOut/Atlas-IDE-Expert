@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..545] of string = (
+  cCatalogLinesDeFindBugs: array[0..561] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -533,6 +533,31 @@ const
     'weitergegeben, keiner Methode übergeben, die ihn behält (Add, Insert, Push …), nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Zum Lesen oder Füllen weitergebe' +
     'n (Pruefsumme(P, N), Strom.ReadBuffer(P^, N)) ist erlaubt; eine Routine mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen gilt als Freigabe. Eine Freigabe ohne try/finally meldet pair-wi' +
     'thout-finally. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit der passenden Freigabe einschließen."',
+    '    },',
+    '{',
+    '      "id": "local-object-not-freed",',
+    '      "name": "Lokales Objekt nie freigegeben",',
+    '      "description": "Eine lokale Variable (auch Inline-Variable) erhält T.Create(…) einer Klasse ohne Owner, die Routine gibt das Objekt aber nie frei, und es verlässt die Routine nicht: weder zurück' +
+    'gegeben (Result, Exit) noch etwas anderem zugewiesen (Feld, andere Variable, Listenelement), nicht als Argument weitergegeben (außer an Routinen, die nur lesen: Assign, AddStrings, CopyFrom, LoadFromS' +
+    'tream, SaveToStream, IndexOf, Contains, Equals), nicht mit raise ausgelöst, nicht mit as umgewandelt, nicht mit @, in einem Mengen- oder Array-Konstruktor oder mit with benutzt, kein Parent oder Owner' +
+    ' gesetzt, nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Free, Destroy, DisposeOf, Release, FreeAndNil und Routinen mit Free, Release, Destroy, Dispose oder F' +
+    'rei im Namen gelten als Freigabe; Show, Close, Start, Resume, Run und Execute als Übergabe (Formular mit caFree, Thread). Still bleiben Interface-Variablen, Records und dynamische Arrays (TPoint.Creat' +
+    'e, TArray<string>.Create), Threads, Komponenten mit Owner und unbekannte Klassen mit Argumenten (wie create-without-assignment); Routinen mit asm oder with bleiben still. Konfidenz hoch, wenn die Vorf' +
+    'ahren der Klasse bis TObject bekannt sind, sonst mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen."',
+    '    },',
+    '{',
+    '      "id": "created-result-not-freed",',
+    '      "name": "Neues Objekt aus einer Funktion nie freigegeben",',
+    '      "description": "Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-f' +
+    'reed). Eine Funktion derselben Datei zählt, wenn jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie' +
+    ' weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methode' +
+    'n anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.",',
+    '      "options": [',
+    '        {',
+    '          "name": "factories",',
+    '          "description": "Weitere Funktionen, die immer ein neues Objekt liefern, das dem Aufrufer gehört, als Name, Klasse.Name, Objekt.Name oder Unit.Name."',
+    '        }',
+    '      ]',
     '    },',
     '{',
     '      "id": "stringlist-objects-leak",',
