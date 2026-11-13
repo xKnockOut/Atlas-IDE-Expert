@@ -1608,6 +1608,55 @@
       "x-captionEn": "Debug test",
       "x-issue": "#585"
     },
+    "TestsFromDebugStop": {
+      "description": "„Test daraus anlegen …“ beim Debug-Halt (Haltepunkt oder Exception): Exception-Leiste, Kontextmenü des Editors und Befehlspalette. Der Dialog zeigt die Methode des Halts in eigenem Code mit Argumenten und einfachen Feldern; daraus entsteht ein DUnitX-Test, der den Fall nachstellt (soll funktionieren mit erwartetem Ergebnis oder soll die Exception werfen). Aus = Eintrag und Knopf fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Test aus dem Debug-Halt anlegen",
+      "x-captionEn": "Create a test from the debug stop",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopFields": {
+      "description": "Einfache Felder des Objekts (Zahlen, Strings, Boolean, Aufzählungen, Mengen) im Dialog anbieten; öffentliche werden im Test gesetzt, andere als Kommentar notiert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop.fields",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Felder des Objekts anbieten",
+      "x-captionEn": "Offer the object's fields",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopProperties": {
+      "description": "Eigenschaften mit Getter auswerten. Getter können Nebenwirkungen haben; aus = nur Felder und Argumente, ausgewertet ohne Nebenwirkungen.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.fromDebugStop.properties",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Eigenschaften mit Getter auswerten",
+      "x-captionEn": "Evaluate properties with getters",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopMaxArray": {
+      "description": "Höchstens so viele Elemente je Array werden als Literal übernommen; längere Arrays bekommen im Test ein TODO. 0 = keine Arrays.",
+      "type": "integer",
+      "default": 20,
+      "minimum": 0,
+      "maximum": 1000,
+      "x-key": "tests.fromDebugStop.maxArray",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Elemente je Array höchstens",
+      "x-captionEn": "Elements per array at most",
+      "x-issue": "#1873"
+    },
     "TestBreakAtStart": {
       "type": "boolean",
       "default": true,
@@ -2432,6 +2481,31 @@
       "x-captionEn": "Breakpoints window with search and tags",
       "x-control": "Kontrollkästchen",
       "x-issue": "#863"
+    },
+    "DebugBreakpointAnchors": {
+      "description": "Haltepunkte wandern mit dem Code (#841): Atlas merkt sich zu jedem Quelltext-Haltepunkt einen Anker (Routine, Abstand zum Routinenanfang, Zeilentext und Nachbarzeilen). Ändert sich eine Datei von außen (neu geladen, Branchwechsel, Formatierer oder Code-Aktion mit vielen Zeilen), setzt Atlas die Haltepunkte samt Bedingung, Durchlaufzähler, Gruppe und Aktiv-Zustand auf die passende Zeile. Nicht eindeutig zuzuordnende kommen in die Liste „Verwaiste Haltepunkte“ mit Vorschlag; gelöscht wird nichts. „Haltepunkte zurück an alte Zeilen“ nimmt das letzte Nachziehen zurück. Aus = die IDE lässt die Haltepunkte, wo sie sind.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointAnchors",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte nach Änderungen von außen nachziehen",
+      "x-captionEn": "Move breakpoints along after outside changes",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#841"
+    },
+    "DebugBreakpointRules": {
+      "description": "Abhängige Haltepunkte und Trefferbedingungen (#864): „Haltepunkt-Regeln …“ im Kontextmenü des Editors (Atlas › Debuggen), im Menü Atlas und in der Befehlspalette. Ein Haltepunkt kann erst aktiv werden, nachdem ein anderer gehalten hat (bis zum Ende der Sitzung oder nur einmal), nur beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer halten und nur in bestimmten Threads (Name enthält, Thread-ID, nur Hauptthread). Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Aus = keine Regeln, die Haltepunkte verhalten sich wie in der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointRules",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Abhängige Haltepunkte, Trefferbedingungen und Thread-Filter",
+      "x-captionEn": "Dependent breakpoints, hit conditions and thread filters",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#864"
     },
     "TestsBuildFirst": {
       "type": "boolean",
