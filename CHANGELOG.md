@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Testfall aus der Unit anlegen (#1226): Die Code-Aktion „Testfall für TKunde.Berechne anlegen“ an einer Methode oder Routine (im Rumpf oder an der Deklaration) trägt einen Entwurf der Testmethode in die Testunit ein: je Parameter eine Variable mit Platzhalter, der Aufruf über das Objekt der Testklasse, die Klasse oder ein lokales Objekt mit try … finally, Platzhalter-Prüfungen für Ergebnis und var/out-Parameter passend zum Typ und ein abschließendes `Assert.Fail`, das den Entwurf rot hält, bis die Werte stimmen. Fehlt die Testunit, entsteht sie wie bei „DUnitX-Testunit anlegen“ samt Einträgen in .dpr und .dproj, mit dem Entwurf statt des leeren Tests. `/test` im Rumpf erzeugt denselben Entwurf. Private, geschützte und nur im implementation-Teil deklarierte Routinen bekommen nur den Test mit `Assert.Fail`.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

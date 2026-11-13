@@ -22,6 +22,9 @@ type
     Name: string;
     /// <summary>Geprüfte Methode bzw. Routine, z. B. TKunde.Berechne.</summary>
     Target: string;
+    /// <summary>Fertiger Rumpf samt Kopf (Entwurf aus #1226); '' = Assert.Fail, bis der Test geschrieben ist.
+    /// </summary>
+    Draft: string;
   end;
 
   /// <summary>Text einer Datei; '' wenn sie fehlt.</summary>
@@ -47,12 +50,18 @@ type
     /// <summary>Tests zu den public- und published-Methoden von AClassName (ohne Konstruktoren und
     /// Destroy); bei leerem AClassName zu den Routinen im interface.</summary>
     class function TestMethods(const AUnit: TUnitIndex; const AClassName: string): TArray<TTestUnitMethod>; static;
+    /// <summary>Bekommt das Gerüst zur Klasse ein Feld FSubject (nicht generisch)?</summary>
+    class function HasSubject(const AUnit: TUnitIndex; const AClassName: string): Boolean; static;
     /// <summary>Ausdruck, der ein Objekt der Klasse erzeugt (TKunde.Create, TForm1.Create(nil));
     /// '' wenn der Konstruktor Argumente braucht oder die Klasse generisch ist.</summary>
     class function CreateExpression(const AUnit: TUnitIndex; const AClassName: string): string; static;
     /// <summary>Text der Testunit. AClassName leer: Tests für die Routinen der Unit.</summary>
     class function UnitText(const ATestUnitName: string; const AUnit: TUnitIndex; const AClassName: string;
-      const ALineBreak: string): string; static;
+      const ALineBreak: string): string; overload; static;
+    /// <summary>Wie oben; ADrafts ersetzen gleichnamige Tests des Gerüsts, die übrigen kommen dazu (#1226).
+    /// </summary>
+    class function UnitText(const ATestUnitName: string; const AUnit: TUnitIndex; const AClassName: string;
+      const ALineBreak: string; const ADrafts: TArray<TTestUnitMethod>): string; overload; static;
     /// <summary>Bindet die Programmdatei DUnitX oder DUnit ein?</summary>
     class function IsTestProgram(const AText: string): Boolean; static;
     /// <summary>Erstes Testprogramm (.dpr) unter ACandidates; '' ohne.</summary>
@@ -67,6 +76,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
@@ -313,6 +323,13 @@ begin
   end;
 end;
 
+class function TTestUnits.HasSubject(const AUnit: TUnitIndex; const AClassName: string): Boolean;
+var
+  mComponent: Boolean;
+begin
+  Result := (AClassName <> '') and not ClassTraits(AUnit, AClassName, mComponent);
+end;
+
 class function TTestUnits.CreateExpression(const AUnit: TUnitIndex; const AClassName: string): string;
 var
   mSymbol: TIndexSymbol;
@@ -453,6 +470,11 @@ begin
   for mMethod in Methods do
   begin
     Line('');
+    if mMethod.Draft <> '' then
+    begin
+      Line(mMethod.Draft);
+      Continue;
+    end;
     Line('procedure ' + Fixture + '.' + mMethod.Name + ';');
     Line('begin');
     Line('  Assert.Fail(' + QuotedStr(cTexts[TEditingTestUnitsText.TestForStillMissing].Fmt([mMethod.Target])) + ');');
@@ -462,6 +484,45 @@ end;
 
 class function TTestUnits.UnitText(const ATestUnitName: string; const AUnit: TUnitIndex;
   const AClassName: string; const ALineBreak: string): string;
+begin
+  Result := UnitText(ATestUnitName, AUnit, AClassName, ALineBreak, nil);
+end;
+
+/// <summary>AMethods mit ADrafts: gleichnamige ersetzt, die übrigen angehängt.</summary>
+function WithDrafts(const AMethods, ADrafts: TArray<TTestUnitMethod>): TArray<TTestUnitMethod>;
+var
+  mList: TList<TTestUnitMethod>;
+  mDraft: TTestUnitMethod;
+  mIndex: Integer;
+  mFound: Boolean;
+begin
+  mList := TList<TTestUnitMethod>.Create;
+  try
+    mList.AddRange(AMethods);
+    for mDraft in ADrafts do
+    begin
+      mFound := False;
+      for mIndex := 0 to mList.Count - 1 do
+      begin
+        if SameText(mList[mIndex].Name, mDraft.Name) then
+        begin
+          mList[mIndex] := mDraft;
+          mFound := True;
+        end;
+      end;
+      if not mFound then
+      begin
+        mList.Add(mDraft);
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+  end;
+end;
+
+class function TTestUnits.UnitText(const ATestUnitName: string; const AUnit: TUnitIndex;
+  const AClassName: string; const ALineBreak: string; const ADrafts: TArray<TTestUnitMethod>): string;
 var
   mWriter: TTestUnitWriter;
   mComponent: Boolean;
@@ -470,7 +531,7 @@ begin
   mWriter.LineBreak := ALineBreak;
   mWriter.Fixture := FixtureName(AClassName, AUnit.UnitName);
   mWriter.ClassName := AClassName;
-  mWriter.Methods := TestMethods(AUnit, AClassName);
+  mWriter.Methods := WithDrafts(TestMethods(AUnit, AClassName), ADrafts);
   mWriter.Generic := ClassTraits(AUnit, AClassName, mComponent);
   if AClassName <> '' then
   begin
