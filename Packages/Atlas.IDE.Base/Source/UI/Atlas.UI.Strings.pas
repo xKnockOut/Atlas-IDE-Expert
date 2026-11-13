@@ -224,7 +224,7 @@ type
     // Texte von Smart Paste und Editorleiste, deren Units schon an der Grenze der uses-Liste stehen.
     SmartPasteDone, SmartPasteFailed, SmartPasteImplementation, SmartPasteUsesTitle, CommandPaletteCommand,
     EditorToolbarFindings, EditorToolbarMore, EditorToolbarNoParts, EditorToolbarNoReturn, EditorToolbarNoSection,
-    EditorToolbarReturnLine, EditorToolbarReturnLineIn, GotoUsesToward, TestsCompareValues);
+    EditorToolbarReturnLine, EditorToolbarReturnLineIn, GotoUsesToward);
 
   TAtlasStrings = class
   private
@@ -758,8 +758,7 @@ const
      'Atlas: „%s“ – diese Datei hat keinen solchen Abschnitt.',
      'Zurück zu Zeile %d',
      'Zurück zu Zeile %d · %s',
-     'Zur uses-Klausel (%s)',
-     'Vergleichen'),
+     'Zur uses-Klausel (%s)'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
@@ -1232,8 +1231,7 @@ const
      'Atlas: “%s” – this file has no such section.',
      'Back to line %d',
      'Back to line %d · %s',
-     'Go to uses clause (%s)',
-     'Compare'));
+     'Go to uses clause (%s)'));
 
 { TAtlasStrings }
 

@@ -8,10 +8,6 @@
 // Base, weil auch Base (Auswirkungsanalyse #1120) Tests startet. Wer das
 // Ergebnis eines Laufs wissen will, stellt einen IAtlasTestsListener bereit;
 // den ganzen Lauf schreibt das Modul in die Projekt-Zusammenfassung (Base).
-// Erwartet und erhalten eines Fehlschlags (#1779) vergleicht das Modul
-// (IAtlasTestValues): Befund-Hover (Base) und Kachel „Testergebnisse“ der
-// Willkommensseite fragen, ob es zu einem Test Werte gibt, und zeigen dann
-// „Vergleichen“. Ohne Modul fehlt der Eintrag.
 // Nur Interfaces, kein Code. Liegt in Base (Source/Contracts, #1456, Entscheidung 04.11.2026).
 
 interface
@@ -32,21 +28,6 @@ type
     function LocateByName(const AProject, AFullName: string; out AFileName: string; out ALine: Integer): Boolean;
     /// <summary>Läuft gerade ein Testlauf oder eine Debug-Sitzung eines Tests?</summary>
     function Busy: Boolean;
-  end;
-
-  /// <summary>Erwartet und erhalten eines fehlgeschlagenen Tests vergleichen (#1779, tests.compare). Aufrufe im
-  /// Hauptthread der IDE.</summary>
-  IAtlasTestValues = interface
-    ['{44E95396-83E2-4D63-B2AA-68E3F5E31689}']
-    /// <summary>Hat der Test an ALine (0-basiert) der Testunit im oberen Editor einen Fehlschlag mit erwartetem und
-    /// erhaltenem Wert? False auch mit tests.compare aus.</summary>
-    function HasValuesAt(ALine: Integer): Boolean;
-    /// <summary>Fenster „Erwartet und erhalten“ für den Test an ALine im oberen Editor; ohne Werte nichts.</summary>
-    procedure CompareAt(ALine: Integer);
-    /// <summary>Wie HasValuesAt für den Test AFullName (Unit.Fixture.Methode[.Fall]).</summary>
-    function HasValues(const AFullName: string): Boolean;
-    /// <summary>Wie CompareAt für den Test AFullName.</summary>
-    procedure Compare(const AFullName: string);
   end;
 
   /// <summary>Hört auf das Ende eines Testlaufs (Hauptthread).</summary>

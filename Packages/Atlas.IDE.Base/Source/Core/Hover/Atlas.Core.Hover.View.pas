@@ -26,10 +26,9 @@ type
   TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
   /// <summary>Aktion unter einem Problem im Tooltip (#621). Related: Sprung zu einer weiteren Stelle (#896),
   /// ShowGraph: Unit-Beziehungen zeigen (#896), Explain: Erklärung im Dialog, DocWiki: Seite im Browser (#54),
-  /// Example: Beschreibung und Beispiel auf- bzw. zuklappen (#145), Compare: erwartet und erhalten eines
-  /// fehlgeschlagenen Tests vergleichen (#1779).</summary>
+  /// Example: Beschreibung und Beispiel auf- bzw. zuklappen (#145).</summary>
   TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure, Related, ShowGraph,
-    Explain, DocWiki, Example, Compare);
+    Explain, DocWiki, Example);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Index der Klickfläche ProblemAction (#621): Problem in View.Problems, Aktion und Stelle AItem in
@@ -73,9 +72,6 @@ type
     /// <summary>Katalogtext je Problem (#145), gleicher Index wie Problems; aufgeklappt, wenn Id gesetzt ist.
     /// </summary>
     Examples: TArray<TAtlasRuleExplanation>;
-    /// <summary>Je Problem: fehlgeschlagener Test mit erwartetem und erhaltenem Wert (#1779), gleicher Index wie
-    /// Problems; nil ohne.</summary>
-    Comparisons: TArray<Boolean>;
     /// <summary>Wert des Ausdrucks unter der Maus im angehaltenen Debugger (#891).</summary>
     DebugValue: TAtlasDebugValue;
     /// <summary>Anzeige der XMLDoc (#654): Angabe des Servers bzw. Einstellungen des Plugins.</summary>
@@ -93,8 +89,6 @@ type
     procedure Toggle(AToggle: TAtlasHoverPublishedToggle);
     /// <summary>Ist Beschreibung und Beispiel unter Problem AProblem aufgeklappt (#145)?</summary>
     function ExampleShown(AProblem: Integer): Boolean;
-    /// <summary>Lässt sich unter Problem AProblem erwartet und erhalten vergleichen (#1779)?</summary>
-    function CanCompare(AProblem: Integer): Boolean;
     /// <summary>Reihenfolge der Probleme im Hover (Indizes in Problems): Fehler zuerst, sonst wie geliefert (#909).
     /// </summary>
     function ProblemOrder: TArray<Integer>;
@@ -160,12 +154,6 @@ function TAtlasHoverView.ExampleShown(AProblem: Integer): Boolean;
 begin
   Result := (AProblem >= 0) and (AProblem <= High(Examples)) and (AProblem <= High(Problems)) and
     (Examples[AProblem].Id <> '');
-end;
-
-function TAtlasHoverView.CanCompare(AProblem: Integer): Boolean;
-begin
-  Result := (AProblem >= 0) and (AProblem <= High(Comparisons)) and (AProblem <= High(Problems)) and
-    Comparisons[AProblem];
 end;
 
 function TAtlasHoverView.ProblemOrder: TArray<Integer>;

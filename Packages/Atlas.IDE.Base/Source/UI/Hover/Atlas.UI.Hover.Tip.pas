@@ -284,7 +284,6 @@ begin
   ATexts.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
   ATexts.Explain := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsExplain);
   ATexts.DocWiki := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsDocWiki);
-  ATexts.Compare := TAtlasStrings.Text(TAtlasTextId.TestsCompareValues);
   ATexts.Cause := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsCause);
   ATexts.Stale := TAtlasHoverStrings.Text(TAtlasHoverTextId.ProblemsStale);
   ATexts.ShowExample := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverShowExample);

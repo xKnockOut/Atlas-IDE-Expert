@@ -332,16 +332,9 @@ begin
       TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
     // Was wartet worauf? (#587); nur sichtbar, solange debug.deadlocks an ist.
     Command('Atlas.DebugDeadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsCommand),
-<<<<<<< HEAD
       RunDebugDeadlocks, DebugDeadlocksVisible)];
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
   Result := Result + RunCommands;
-=======
-      RunDebugDeadlocks, DebugDeadlocksVisible),
-    // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
-    Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
-      ShowDebugParallelStacks, DebugParallelStacksVisible)];
->>>>>>> origin/main-merging
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -373,7 +366,6 @@ begin
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
@@ -430,11 +422,7 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
-<<<<<<< HEAD
   RunThemeChanged;
-=======
-  DebugThreadsThemeChanged;
->>>>>>> origin/main-merging
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;

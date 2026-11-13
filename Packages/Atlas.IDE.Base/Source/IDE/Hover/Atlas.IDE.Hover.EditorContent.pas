@@ -53,9 +53,6 @@ type
     const AText: string): string;
   /// <summary>Erklärung eines Problems aus dem Katalog (#54); Known False ohne Eintrag.</summary>
   TAtlasHoverExplanationFunc = reference to function(const AProblem: TAtlasProblem): TAtlasHoverExplanation;
-  /// <summary>Lässt sich unter AProblem erwartet und erhalten eines fehlgeschlagenen Tests vergleichen (#1779)?
-  /// </summary>
-  TAtlasHoverComparableFunc = reference to function(const AProblem: TAtlasProblem): Boolean;
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
@@ -67,7 +64,6 @@ type
   TAtlasEditorHoverContent = class
   private class var
     FOnExplanation: TAtlasHoverExplanationFunc;
-    FOnComparable: TAtlasHoverComparableFunc;
   protected
     FTip: TAtlasHoverTip;
     FHistory: TAtlasHoverHistory;
@@ -101,8 +97,6 @@ type
     function CurrentView: TAtlasHoverView; virtual;
     /// <summary>Erklärungen zu AProblems (#54); nil, wenn abgeschaltet.</summary>
     class function Explanations(const AProblems: TArray<TAtlasProblem>): TArray<TAtlasHoverExplanation>; static;
-    /// <summary>„Vergleichen“ je Problem (#1779); nil ohne Zuweisung.</summary>
-    class function Comparisons(const AProblems: TArray<TAtlasProblem>): TArray<Boolean>; static;
     procedure Refresh;
     function MouseOverTip: Boolean;
     /// <summary>Liegt der Editor unter der Maus (kein anderes Fenster davor)?</summary>
@@ -116,9 +110,6 @@ type
     /// <summary>Erklärungen zu Compilermeldungen und Regeln (#54, hover.explainMessages); setzt die
     /// Kompositionswurzel, ohne Zuweisung keine.</summary>
     class property OnExplanation: TAtlasHoverExplanationFunc read FOnExplanation write FOnExplanation;
-    /// <summary>Fehlgeschlagene Tests mit erwartetem und erhaltenem Wert (#1779); setzt die Kompositionswurzel.
-    /// </summary>
-    class property OnComparable: TAtlasHoverComparableFunc read FOnComparable write FOnComparable;
   end;
 
   /// <summary>Wert im angehaltenen Debugger (#891) samt Erklärung (#840) und Visualisierern (#835).</summary>
@@ -317,7 +308,6 @@ begin
   begin
     Result.Problems := FProblems;
     Result.Explanations := Explanations(FProblems);
-    Result.Comparisons := Comparisons(FProblems);
     Result.Examples := FExamples;
   end;
 end;
@@ -336,22 +326,6 @@ begin
   for mIndex := 0 to High(AProblems) do
   begin
     Result[mIndex] := FOnExplanation(AProblems[mIndex]);
-  end;
-end;
-
-class function TAtlasEditorHoverContent.Comparisons(const AProblems: TArray<TAtlasProblem>): TArray<Boolean>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Assigned(FOnComparable) then
-  begin
-    Exit;
-  end;
-  SetLength(Result, Length(AProblems));
-  for mIndex := 0 to High(AProblems) do
-  begin
-    Result[mIndex] := FOnComparable(AProblems[mIndex]);
   end;
 end;
 
@@ -650,9 +624,9 @@ procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: I
 const
   // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
   // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst; Example (#145) bleibt im
-  // Tooltip und hat keine Kennung; Compare (#1779) zeigt erwartet und erhalten des Tests.
+  // Tooltip und hat keine Kennung.
   cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
-    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '', '', 'test.compare');
+    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '', '');
 var
   mProblem: TAtlasProblem;
   mTag: string;

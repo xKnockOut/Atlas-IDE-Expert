@@ -25,8 +25,7 @@
 //   Benachrichtigungszentrale (#601, Quelle buildServer) mit „Im Browser“,
 //   abschaltbar mit welcomePage.tests.ci.notify.
 // - Aktionen (Atlas.IDE.Tracker.TestActions): Projekt und Test öffnen,
-//   „Fehlgeschlagene erneut ausführen“, „Im Debugger“, „Vergleichen“ (#1779)
-//   und „Im Browser“.
+//   „Fehlgeschlagene erneut ausführen“, „Im Debugger“ und „Im Browser“.
 // - Geänderte Zusammenfassungen (Testlauf, Branch) meldet Base über
 //   IAtlasProjectSummaryListener; die Kachel liest dann neu.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse, Job,
@@ -168,8 +167,6 @@ type
     procedure OpenTest(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
     procedure RerunFailed(const ARow: TAtlasTestRow; const ATests: TArray<string>);
     procedure Debug(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
-    function CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
-    procedure Compare(const AFailure: TAtlasTestFailureItem);
     procedure Browse(const ARow: TAtlasTestRow);
     procedure QueryNow(const ARow: TAtlasTestRow);
     procedure Credentials(const ARow: TAtlasTestRow);
@@ -780,23 +777,6 @@ begin
     procedure
     begin
       FActions.Debug(mRow, mItem);
-    end);
-end;
-
-function TAtlasIdeTestResults.CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
-begin
-  Result := TAtlasTestResultsActions.CanCompare(AFailure);
-end;
-
-procedure TAtlasIdeTestResults.Compare(const AFailure: TAtlasTestFailureItem);
-var
-  mItem: TAtlasTestFailureItem;
-begin
-  mItem := AFailure;
-  Guarded(
-    procedure
-    begin
-      TAtlasTestResultsActions.Compare(mItem);
     end);
 end;
 

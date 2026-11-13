@@ -4,8 +4,7 @@
 // Moduls Tracker): Projekt öffnen (Willkommensseite), Test öffnen (für
 // Fehlschläge vom Server über die Testunit im Projekt gesucht),
 // „Fehlgeschlagene erneut ausführen“ (#69) und „Im Debugger“ (#585) über das
-// Modul Tests aus der Registry (IAtlasTestRunner, IAtlasTestsSource),
-// „Vergleichen“ (#1779) über IAtlasTestValues desselben Moduls, „Im
+// Modul Tests aus der Registry (IAtlasTestRunner, IAtlasTestsSource), „Im
 // Browser“ die Seite des Builds. Ohne Modul Tests meldet „erneut ausführen“,
 // dass die Tests aus sind. Hauptthread.
 
@@ -39,11 +38,6 @@ type
     procedure OpenTest(const ARow: TAtlasTestRow; const AItem: TAtlasTestFailureItem);
     procedure RerunFailed(const ARow: TAtlasTestRow; const ATests: TArray<string>);
     procedure Debug(const ARow: TAtlasTestRow; const AItem: TAtlasTestFailureItem);
-    /// <summary>„Vergleichen“ (#1779): Kennt das Modul Tests erwartet und erhalten des Fehlschlags AItem? Nur
-    /// lokale Fehlschläge; False ohne Modul.</summary>
-    class function CanCompare(const AItem: TAtlasTestFailureItem): Boolean; static;
-    /// <summary>Fenster „Erwartet und erhalten“ des Fehlschlags AItem über das Modul Tests.</summary>
-    class procedure Compare(const AItem: TAtlasTestFailureItem); static;
     procedure OpenProject(const ARow: TAtlasTestRow);
     /// <summary>Seite des Builds ANumber; nur Web-Adressen aus der eingetragenen Adresse.</summary>
     procedure OpenBuildPage(const AJob: TAtlasCiJob; ANumber: Integer);
@@ -241,39 +235,6 @@ begin
       end;
       Exit;
     end;
-  end;
-end;
-
-/// <summary>Vergleich des ersten laufenden Moduls (#1779); False ohne. Jedes Mal neu gefragt (Regel 3).</summary>
-function FindTestValues(out AValues: IAtlasTestValues): Boolean;
-var
-  mItem: IInterface;
-begin
-  AValues := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestValues) do
-  begin
-    if Supports(mItem, IAtlasTestValues, AValues) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TAtlasTestResultsActions.CanCompare(const AItem: TAtlasTestFailureItem): Boolean;
-var
-  mValues: IAtlasTestValues;
-begin
-  Result := AItem.Local and (AItem.Test <> '') and FindTestValues(mValues) and mValues.HasValues(AItem.Test);
-end;
-
-class procedure TAtlasTestResultsActions.Compare(const AItem: TAtlasTestFailureItem);
-var
-  mValues: IAtlasTestValues;
-begin
-  if (AItem.Test <> '') and FindTestValues(mValues) then
-  begin
-    mValues.Compare(AItem.Test);
   end;
 end;
 

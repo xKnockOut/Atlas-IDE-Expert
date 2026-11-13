@@ -1,37 +1,45 @@
 ﻿unit Atlas.Core.Hover.Layout;
 
-// Satz des Hover-Tooltips ohne VCL: Build rechnet aus dem Inhalt (TAtlasHoverView), der Breite und einem
-// Mess-Rückruf alle Positionen, Klickflächen und Zeichenbausteine aus; das Fenster (Atlas.UI.Hover.Tip) zeichnet
-// nur noch die Bausteine in Reihenfolge. Gebaut wird je Inhalt, Breite und Doku-Höhe, nicht je Paint oder
-// Mausbewegung. Der Hot-Zustand (Maus über Link, Kette, Pfad, Aktion) ändert nur Farben, Unterstreichung und
+// Satz des Hover-Tooltips ohne VCL: Build rechnet aus dem Inhalt
+// (TAtlasHoverView), der Breite und einem Mess-Rückruf alle Positionen,
+// Klickflächen und Zeichenbausteine aus; das Fenster (Atlas.UI.Hover.Tip)
+// zeichnet nur noch die Bausteine in Reihenfolge. Gebaut wird je Inhalt,
+// Breite und Doku-Höhe, nicht je Paint oder Mausbewegung. Der Hot-Zustand
+// (Maus über Link, Kette, Pfad, Aktion) ändert nur Farben, Unterstreichung und
 // Linienstärke; dafür trägt ein Baustein Art und Index der Klickfläche.
-// Aufbau wie bisher: Pfadzeile (angeheftet), Wert im Debugger (#891), Probleme, Kopfzeile, Deklaration mit
-// Verweisen, Beschreibung mit Platz für die XMLDoc, Vererbung bzw. Zieltyp und Aktionsleiste auf Randflächen; die
-// letzte Randfläche sitzt beim Zeichnen am unteren Fensterrand (Anchor).
-// Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als Links: Entfernen, Alle ungenutzten
-// entfernen (ab zwei), In implementation-uses verschieben; ihre Klickfläche trägt Problem und Aktion
-// (TAtlasHoverProblemActionCode).
-// Befund-Hover (#909): Fehler zuerst, je Befund eine Schweregrad-Pille (Error, Warnung, Info) vor der Meldung,
-// darunter klein „Atlas · Regel-ID“ bzw. „dcc · W1036“, die Konfidenz, wenn sie nicht hoch ist, und mit
-// Input.ProblemActions die Aktionszeile „Alt+Enter: <Korrektur>“ (nur mit Korrektur), „Für diese Zeile
-// unterdrücken“, „Regel einstellen…“.
-// Erklärungen (#54): Zu einer Compilermeldung mit Katalogeintrag (View.Explanations) steht klein „Typische
-// Ursache: …“ unter der Meldung, darunter die Links „Erklären“ (Dialog mit Beispiel) und „DocWiki“; Regelbefunde
-// bekommen „Erklären“ in ihrer Aktionszeile. Ein fehlgeschlagener Test mit erwartetem und erhaltenem Wert
-// (View.Comparisons, #1779) bekommt davor „Vergleichen“.
-// Weitere Stellen eines Befunds (relatedInformation, #896) stehen darunter als Links, beim Unit-Zyklus als Pfad
-// „uC → uA → uB → uC“ und mit „Graph zeigen“; ihre Klickfläche trägt Problem, Aktion Related und die Stelle.
+// Aufbau wie bisher: Pfadzeile (angeheftet), Wert im Debugger (#891), Probleme, Kopfzeile, Deklaration
+// mit Verweisen, Beschreibung mit Platz für die XMLDoc, Vererbung bzw.
+// Zieltyp und Aktionsleiste auf Randflächen; die letzte Randfläche sitzt beim
+// Zeichnen am unteren Fensterrand (Anchor).
+// Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als
+// Links: Entfernen, Alle ungenutzten entfernen (ab zwei), In implementation-uses
+// verschieben; ihre Klickfläche trägt Problem und Aktion (TAtlasHoverProblemActionCode).
+// Befund-Hover (#909): Fehler zuerst, je Befund eine Schweregrad-Pille (Error,
+// Warnung, Info) vor der Meldung, darunter klein „Atlas · Regel-ID“ bzw.
+// „dcc · W1036“, die Konfidenz, wenn sie nicht hoch ist, und mit
+// Input.ProblemActions die Aktionszeile „Alt+Enter: <Korrektur>“ (nur mit
+// Korrektur), „Für diese Zeile unterdrücken“, „Regel einstellen…“.
+// Erklärungen (#54): Zu einer Compilermeldung mit Katalogeintrag (View.Explanations)
+// steht klein „Typische Ursache: …“ unter der Meldung, darunter die Links
+// „Erklären“ (Dialog mit Beispiel) und „DocWiki“; Regelbefunde bekommen
+// „Erklären“ in ihrer Aktionszeile.
+// Weitere Stellen eines Befunds (relatedInformation, #896) stehen darunter als
+// Links, beim Unit-Zyklus als Pfad „uC → uA → uB → uC“ und mit „Graph
+// zeigen“; ihre Klickfläche trägt Problem, Aktion Related und die Stelle.
 // Mit Input.RuleExamples (hover.ruleExamples, #145) steht in der Aktionszeile „Beispiel zeigen“; ist
 // View.Examples für das Problem gesetzt, folgen über der Aktionszeile Beschreibung und Beispiel falsch/richtig
 // aus dem Regelkatalog (je Beispiel höchstens cExampleMaxLines Zeilen) und der Link heißt „Beispiel ausblenden“.
-// Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n Properties · m Ereignisse“ mit den
-// Schaltern „geerbte“ und „nur mit default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in) und
-// EREIGNISSE, je auf- und zuklappbar und auf die ersten Zeilen gekürzt („+ n weitere …“ zeigt alle), und die
-// Standard-Property einer Array-Property. Die Schalter tragen die Klickfläche Published mit
-// Ord(TAtlasHoverPublishedToggle); TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
-// Die Tabellen und die Standard-Property bilden einen Rollbereich: Ist er höher als Input.Members.MaxLines
-// Tabellenzeilen (hover.membersMaxLines) bzw. als Input.Members.Limit (Platz auf dem Bildschirm), zeigt der
-// Tooltip nur Members.View mit einem Daumen am rechten Rand (TAtlasHoverScroll, Atlas.Core.Hover.Items, #1841).
+// Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n
+// Properties · m Ereignisse“ mit den Schaltern „geerbte“ und „nur mit
+// default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in)
+// und EREIGNISSE, je auf- und zuklappbar und auf die ersten Zeilen gekürzt
+// („+ n weitere …“ zeigt alle), und die Standard-Property einer Array-Property.
+// Die Schalter tragen die Klickfläche Published mit Ord(TAtlasHoverPublishedToggle);
+// TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
+// Die Tabellen und die Standard-Property bilden einen Rollbereich: Ist er höher als
+// Input.Members.MaxLines Tabellenzeilen (hover.membersMaxLines) bzw. als Input.Members.Limit
+// (Platz auf dem Bildschirm), zeigt der Tooltip nur Members.View mit einem Daumen am rechten
+// Rand (TAtlasHoverScroll, Atlas.Core.Hover.Items, #1841).
 
 interface
 
@@ -1182,20 +1190,12 @@ var
   mOldFont: TAtlasHoverFont;
   mExplanation: TAtlasHoverExplanation;
 begin
-  if not Explanation(AIndex, mExplanation) and not FInput.View.CanCompare(AIndex) then
+  if not Explanation(AIndex, mExplanation) then
   begin
     Exit;
   end;
   mOldFont := BeginLinkRow;
-  // Fehlgeschlagener Test mit erwartetem und erhaltenem Wert (#1779).
-  if FInput.View.CanCompare(AIndex) then
-  begin
-    ProblemLink(FInput.Texts.Compare, AIndex, TAtlasHoverProblemAction.Compare);
-  end;
-  if mExplanation.Known then
-  begin
-    ProblemLink(FInput.Texts.Explain, AIndex, TAtlasHoverProblemAction.Explain);
-  end;
+  ProblemLink(FInput.Texts.Explain, AIndex, TAtlasHoverProblemAction.Explain);
   if mExplanation.DocWiki <> '' then
   begin
     ProblemLink(FInput.Texts.DocWiki, AIndex, TAtlasHoverProblemAction.DocWiki);

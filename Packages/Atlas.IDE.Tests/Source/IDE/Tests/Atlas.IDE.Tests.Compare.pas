@@ -11,17 +11,12 @@
 //   sonst der zuletzt gemeldete; zeigt das Fenster Atlas.UI.Tests.Compare,
 //   mit tests.compare.format JSON und XML eingerückt.
 // - Ohne Fehlschlag mit Werten eine Zeile in der Meldungsansicht.
-// - Knöpfe „Vergleichen“: an der Testmarke (CanCompare/Show mit der Auswahl
-//   der Marke), im Befund-Hover (HasValuesAt/CompareAt, Zeile im oberen
-//   Editor) und auf der Kachel „Testergebnisse“ (HasValues/CompareTest mit
-//   dem vollen Namen); die beiden letzten über IAtlasTestValues des Moduls.
 
 interface
 
 uses
   System.Generics.Collections,
   Atlas.Text.TestResults,
-  Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Run,
   Atlas.IDE.Tests.Runner;
 
@@ -34,13 +29,8 @@ type
     FFailures: TDictionary<string, TTestCaseResult>;
     /// <summary>Schlüssel des zuletzt gemeldeten Fehlschlags mit Werten; '' ohne.</summary>
     FLast: string;
-    /// <summary>Fehlschlag des Tests an ALine (0-basiert) im oberen Editor; False ohne.</summary>
-    function AtLine(ALine: Integer; out ACase: TTestCaseResult): Boolean;
-    /// <summary>Fehlschlag mit Werten zu ASelection (bei einer [TestCase]-Methode ohne Fall der erste); False
-    /// ohne.</summary>
-    function Find(const ASelection: TAtlasTestSelection; out ACase: TTestCaseResult): Boolean;
-    /// <summary>Fenster „Erwartet und erhalten“ für ACase.</summary>
-    class procedure Open(const ACase: TTestCaseResult); static;
+    /// <summary>Fehlschlag des Tests am Cursor; False ohne.</summary>
+    function AtCursor(out ACase: TTestCaseResult): Boolean;
   public
     /// <summary>ATests gehört dem Aufrufer und lebt länger; ANext bekommt jeden Lauf danach (nil = keiner).
     /// </summary>
@@ -52,15 +42,6 @@ type
     class function KeyOf(const AUnitName, AFixture, AMethod, ACaseName: string): string; static;
     /// <summary>Befehl „Erwartet und erhalten vergleichen“.</summary>
     procedure Run;
-    /// <summary>Knopf der Testmarke: tests.compare an und ein Fehlschlag mit Werten zu ASelection.</summary>
-    function CanCompare(const ASelection: TAtlasTestSelection): Boolean;
-    procedure Show(const ASelection: TAtlasTestSelection);
-    /// <summary>Befund-Hover: Test an ALine (0-basiert) der Testunit im oberen Editor.</summary>
-    function HasValuesAt(ALine: Integer): Boolean;
-    procedure CompareAt(ALine: Integer);
-    /// <summary>Willkommensseite: Test AFullName (Unit.Fixture.Methode[.Fall]).</summary>
-    function HasValues(const AFullName: string): Boolean;
-    procedure CompareTest(const AFullName: string);
   end;
 
 implementation
@@ -70,6 +51,7 @@ uses
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tests.Compare,
@@ -129,20 +111,33 @@ begin
   end;
 end;
 
-function TAtlasIdeTestCompare.Find(const ASelection: TAtlasTestSelection; out ACase: TTestCaseResult): Boolean;
+function TAtlasIdeTestCompare.AtCursor(out ACase: TTestCaseResult): Boolean;
 var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mSelection: TAtlasTestSelection;
   mPrefix: string;
   mPair: TPair<string, TTestCaseResult>;
 begin
   ACase := Default(TTestCaseResult);
-  Result := (ASelection.Method <> '') and FFailures.TryGetValue(KeyOf(ASelection.UnitName, ASelection.Fixture,
-    ASelection.Method, ASelection.CaseName), ACase);
-  if Result or (ASelection.Method = '') or (ASelection.CaseName <> '') then
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Exit;
+    mView := mEditors.TopView;
   end;
-  // Methode mit [TestCase] ohne gewählten Fall: der erste Fall mit Fehlschlag.
-  mPrefix := KeyOf(ASelection.UnitName, ASelection.Fixture, ASelection.Method, '') + '.';
+  if (mView = nil) or (mView.Buffer = nil) or not TAtlasTestDebug.SelectAt(
+    TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer))), mView.CursorPos.Line - 1,
+    mSelection) or (mSelection.Method = '') then
+  begin
+    Exit(False);
+  end;
+  if FFailures.TryGetValue(KeyOf(mSelection.UnitName, mSelection.Fixture, mSelection.Method, mSelection.CaseName),
+    ACase) then
+  begin
+    Exit(True);
+  end;
+  // Methode mit [TestCase] am Cursor: der erste Fall mit Fehlschlag.
+  mPrefix := KeyOf(mSelection.UnitName, mSelection.Fixture, mSelection.Method, '') + '.';
   for mPair in FFailures do
   begin
     if mPair.Key.StartsWith(mPrefix) then
@@ -154,100 +149,21 @@ begin
   Result := False;
 end;
 
-function TAtlasIdeTestCompare.AtLine(ALine: Integer; out ACase: TTestCaseResult): Boolean;
-var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
-  mSelection: TAtlasTestSelection;
-begin
-  ACase := Default(TTestCaseResult);
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    mView := mEditors.TopView;
-  end;
-  Result := (FFailures.Count > 0) and (mView <> nil) and (mView.Buffer <> nil) and TAtlasTestDebug.SelectAt(
-    TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer))), ALine, mSelection) and
-    Find(mSelection, ACase);
-end;
-
-class procedure TAtlasIdeTestCompare.Open(const ACase: TTestCaseResult);
-begin
-  TAtlasTestsCompareDialog.Execute(TAtlasTestRun.ShortName(ACase), ACase.Expected, ACase.Actual,
-    TAtlasIdeSettings.Current.TestsCompareFormat);
-end;
-
 procedure TAtlasIdeTestCompare.Run;
 var
-  mEditors: IOTAEditorServices;
-  mLine: Integer;
   mCase: TTestCaseResult;
 begin
   if not TAtlasIdeSettings.Current.TestsCompare then
   begin
     Exit;
   end;
-  mLine := -1;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopView <> nil) then
-  begin
-    mLine := mEditors.TopView.CursorPos.Line - 1;
-  end;
-  if not AtLine(mLine, mCase) and not FFailures.TryGetValue(FLast, mCase) then
+  if not AtCursor(mCase) and not FFailures.TryGetValue(FLast, mCase) then
   begin
     FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCompareNone));
     Exit;
   end;
-  Open(mCase);
-end;
-
-function TAtlasIdeTestCompare.CanCompare(const ASelection: TAtlasTestSelection): Boolean;
-var
-  mCase: TTestCaseResult;
-begin
-  Result := TAtlasIdeSettings.Current.TestsCompare and Find(ASelection, mCase);
-end;
-
-procedure TAtlasIdeTestCompare.Show(const ASelection: TAtlasTestSelection);
-var
-  mCase: TTestCaseResult;
-begin
-  if CanCompare(ASelection) and Find(ASelection, mCase) then
-  begin
-    Open(mCase);
-  end;
-end;
-
-function TAtlasIdeTestCompare.HasValuesAt(ALine: Integer): Boolean;
-var
-  mCase: TTestCaseResult;
-begin
-  Result := TAtlasIdeSettings.Current.TestsCompare and AtLine(ALine, mCase);
-end;
-
-procedure TAtlasIdeTestCompare.CompareAt(ALine: Integer);
-var
-  mCase: TTestCaseResult;
-begin
-  if TAtlasIdeSettings.Current.TestsCompare and AtLine(ALine, mCase) then
-  begin
-    Open(mCase);
-  end;
-end;
-
-function TAtlasIdeTestCompare.HasValues(const AFullName: string): Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestsCompare and FFailures.ContainsKey(AnsiLowerCase(AFullName));
-end;
-
-procedure TAtlasIdeTestCompare.CompareTest(const AFullName: string);
-var
-  mCase: TTestCaseResult;
-begin
-  // Schlüssel wie KeyOf: der volle Name ist Unit.Fixture.Methode[.Fall].
-  if TAtlasIdeSettings.Current.TestsCompare and FFailures.TryGetValue(AnsiLowerCase(AFullName), mCase) then
-  begin
-    Open(mCase);
-  end;
+  TAtlasTestsCompareDialog.Execute(TAtlasTestRun.ShortName(mCase), mCase.Expected, mCase.Actual,
+    TAtlasIdeSettings.Current.TestsCompareFormat);
 end;
 
 end.

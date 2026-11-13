@@ -2,8 +2,7 @@
 
 // Ergebnisfenster (#400), Editorbefehle (#399) mit ihren Haken, Auswirkungsanalyse (#1120), Testunit-Lens (#189),
 // Aktionen, Beispiele aus dem Regelkatalog und Werte im Tooltip (#621, #145, #835, #909) und das Erzeugen-Menü
-// (#719). Teil „Commands“; die Haken verbinden Features, die einander nicht importieren. „Vergleichen“ unter einem
-// fehlgeschlagenen Test (#1779) übernimmt das Modul Tests (IAtlasTestValues); ohne Modul fehlt der Link.
+// (#719). Teil „Commands“; die Haken verbinden Features, die einander nicht importieren.
 
 interface
 
@@ -28,8 +27,6 @@ uses
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.Core.Problems.Store,
-  Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
@@ -51,8 +48,6 @@ const
   cSuppressLineTag = 'rule.suppressLine';
   /// <summary>„Erklären“ im Tooltip (#54): Dialog mit Erklärung, Ursache und Beispiel.</summary>
   cExplainTag = 'problem.explain';
-  /// <summary>„Vergleichen“ im Tooltip (#1779): erwartet und erhalten des fehlgeschlagenen Tests.</summary>
-  cCompareTag = 'test.compare';
 
 procedure SwitchTestUnit;
 begin
@@ -72,41 +67,6 @@ begin
   end;
 end;
 
-/// <summary>Vergleich des ersten laufenden Moduls (#1779); False ohne. Jedes Mal neu gefragt (Regel 3).</summary>
-function FindTestValues(out AValues: IAtlasTestValues): Boolean;
-var
-  mItem: IInterface;
-begin
-  AValues := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestValues) do
-  begin
-    if Supports(mItem, IAtlasTestValues, AValues) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>„Vergleichen“ unter AProblem (#1779): fehlgeschlagener Test im oberen Editor mit Werten.</summary>
-function HoverComparable(const AProblem: TAtlasProblem): Boolean;
-var
-  mValues: IAtlasTestValues;
-begin
-  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and FindTestValues(mValues) and
-    mValues.HasValuesAt(AProblem.StartLine);
-end;
-
-procedure CompareTestValues(const AProblem: TAtlasProblem);
-var
-  mValues: IAtlasTestValues;
-begin
-  if FindTestValues(mValues) then
-  begin
-    mValues.CompareAt(AProblem.StartLine);
-  end;
-end;
-
 /// <summary>Aktionen unter uses-Hinweisen (#621) und Regelbefunden (#909) im Tooltip: über die Code-Aktionen mit
 /// Kennung; „Regel einstellen…“ und „Für diese Zeile unterdrücken“ übernimmt das Modul Prüfregeln (#1755),
 /// „Graph zeigen“ zeigt die Unit-Beziehungen der Unit im Editor.</summary>
@@ -119,10 +79,6 @@ begin
   else if ATag = cExplainTag then
   begin
     TAtlasIdeProblems.Explain(AProblem);
-  end
-  else if ATag = cCompareTag then
-  begin
-    CompareTestValues(AProblem);
   end
   else if ATag = cSuppressLineTag then
   begin
@@ -269,7 +225,6 @@ begin
   TAtlasEditorHover.OnRuleExample := RuleExample;
   TAtlasEditorHover.OnVisualize := HoverValue;
   TAtlasEditorHover.OnExplanation := HoverExplanation;
-  TAtlasEditorHover.OnComparable := HoverComparable;
   InstallEditorCommandHooks;
   InstallGenerate;
 end;
@@ -282,7 +237,6 @@ begin
   TAtlasEditorHover.OnRuleExample := nil;
   TAtlasEditorHover.OnVisualize := nil;
   TAtlasEditorHover.OnExplanation := nil;
-  TAtlasEditorHover.OnComparable := nil;
   TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeImpact.Uninstall;
   TAtlasIdeResults.Uninstall;

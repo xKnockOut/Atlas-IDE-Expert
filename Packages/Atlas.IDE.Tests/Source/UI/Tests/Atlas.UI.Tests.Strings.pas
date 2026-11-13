@@ -44,8 +44,7 @@ type
     SettingsTestsCompare, SettingsTestsCompareFormat,
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
-    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
-    TestsLensCompare);
+    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs);
 
   TAtlasTestsStrings = class
   public
@@ -186,8 +185,7 @@ const
      'Doppelklick springt zum Test. Langsam ab %d ms.',
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
-     'Langsam ab (ms)',
-     'Vergleichen'),
+     'Langsam ab (ms)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -312,8 +310,7 @@ const
      'Double-click jumps to the test. Slow from %d ms.',
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
-     'Slow from (ms)',
-     'Compare'));
+     'Slow from (ms)'));
 
 { TAtlasTestsStrings }
 

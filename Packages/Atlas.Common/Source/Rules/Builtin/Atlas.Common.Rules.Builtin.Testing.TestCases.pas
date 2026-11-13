@@ -33,8 +33,6 @@ type
     CaseName: string;
     Values: TArray<string>;
     Separator: string;
-    /// <summary>Stelle des Werte-Arguments: 0 bei TestCase('Werte'…), sonst 1.</summary>
-    ValuesAt: Integer;
   end;
 
   /// <summary>Ein Parameter einer Testmethode.</summary>
@@ -271,7 +269,6 @@ begin
     Exit(False);
   end;
   mValuesAt := ValuesIndex(mName, mArgs);
-  ACase.ValuesAt := mValuesAt;
   if (mValuesAt = 1) and not LiteralText(mArgs[0], ACase.CaseName) then
   begin
     ACase.CaseName := '';

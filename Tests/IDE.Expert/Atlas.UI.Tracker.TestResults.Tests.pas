@@ -30,9 +30,6 @@ type
     procedure ClicksReachSource;
     [Test]
     procedure BrowseOnlyWithServer;
-    /// <summary>„Vergleichen“ (#1779) nur, wenn die Quelle Werte zum gewählten Fehlschlag kennt.</summary>
-    [Test]
-    procedure CompareOnlyWithValues;
   end;
 
 implementation
@@ -58,15 +55,11 @@ type
     FView: TAtlasTestResultsView;
     Calls: TArray<string>;
     Login: Boolean;
-    /// <summary>Test, zu dem es erwartet und erhalten gibt (#1779); '' = keiner.</summary>
-    Comparable: string;
     function View: TAtlasTestResultsView;
     procedure Select(const AProject: string);
     procedure OpenTest(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
     procedure RerunFailed(const ARow: TAtlasTestRow; const ATests: TArray<string>);
     procedure Debug(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
-    function CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
-    procedure Compare(const AFailure: TAtlasTestFailureItem);
     procedure Browse(const ARow: TAtlasTestRow);
     procedure QueryNow(const ARow: TAtlasTestRow);
     procedure Credentials(const ARow: TAtlasTestRow);
@@ -194,16 +187,6 @@ end;
 procedure TFakeTestResults.Debug(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
 begin
   Calls := Calls + ['debug ' + ARow.Name + ' ' + AFailure.Test];
-end;
-
-function TFakeTestResults.CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
-begin
-  Result := (Comparable <> '') and SameText(AFailure.Test, Comparable);
-end;
-
-procedure TFakeTestResults.Compare(const AFailure: TAtlasTestFailureItem);
-begin
-  Calls := Calls + ['compare ' + AFailure.Test];
 end;
 
 procedure TFakeTestResults.Browse(const ARow: TAtlasTestRow);
@@ -460,42 +443,6 @@ begin
     Assert.IsTrue(mFrame.HitTest(20, 10).Kind = TAtlasTestResultsHitKind.None, 'leerer Bereich');
   finally
     mHost.Free;
-  end;
-end;
-
-procedure TAtlasTrackerTestResultsViewTests.CompareOnlyWithValues;
-var
-  mHost: TForm;
-  mFake: TFakeTestResults;
-  mSource: IAtlasTestResultsSource;
-  mFrame: TAtlasTrackerTestResultsView;
-  mItem: TAtlasTestFailureItem;
-begin
-  mFake := TFakeTestResults.Create;
-  mSource := mFake;
-  mFake.FView := SampleView(False);
-  mHost := TForm.CreateNew(nil);
-  try
-    mFrame := TAtlasTrackerTestResultsView.Create(mHost);
-    mFrame.Parent := mHost;
-    mFrame.Source := mSource;
-    Assert.IsFalse(mFrame.ButtonVisible(TAtlasTestResultsButton.Compare), 'ohne Werte kein „Vergleichen“');
-    mFrame.ClickAt(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Compare, -1));
-    CheckSynchronize;
-    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'unsichtbarer Knopf tut nichts');
-    Assert.IsTrue(mFrame.SelectedFailure(mItem));
-    mFake.Comparable := mItem.Test;
-    Assert.IsTrue(mFrame.ButtonVisible(TAtlasTestResultsButton.Compare));
-    Assert.IsTrue(mFrame.ButtonEnabled(TAtlasTestResultsButton.Compare));
-    mFrame.ClickAt(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Compare, -1));
-    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'über die Nachrichtenschleife');
-    CheckSynchronize;
-    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
-    Assert.AreEqual('compare ' + mItem.Test, mFake.Calls[0]);
-  finally
-    mHost.Free;
-    mFake.Comparable := '';
-    mFake.Calls := nil;
   end;
 end;
 
