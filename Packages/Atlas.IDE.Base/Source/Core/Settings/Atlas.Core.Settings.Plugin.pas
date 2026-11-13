@@ -471,6 +471,7 @@ type
       write FDebug.DebugMethodBreakpoints;
     property DebugInstanceBreakpoints: Boolean read FDebug.DebugInstanceBreakpoints
       write FDebug.DebugInstanceBreakpoints;
+    property DebugDataBreakpoints: Boolean read FDebug.DebugDataBreakpoints write FDebug.DebugDataBreakpoints;
     property DebugBreakpointSetPerBranch: Boolean read FDebug.DebugBreakpointSetPerBranch
       write FDebug.DebugBreakpointSetPerBranch;
     property DebugRunToClick: Boolean read FDebug.DebugRunToClick write FDebug.DebugRunToClick;
