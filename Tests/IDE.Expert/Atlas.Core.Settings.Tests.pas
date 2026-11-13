@@ -202,6 +202,8 @@ begin
   Assert.AreEqual(20, ASettings.DebugAsyncOriginMaxPerSite, 'debug.asyncOrigin.maxPerSite (#859)');
   Assert.IsTrue(ASettings.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
+  Assert.IsTrue(ASettings.DebugCallStackWindow, 'debug.callStackWindow (#843)');
+  Assert.IsTrue(ASettings.DebugCallStackWindowEvaluateParams, 'debug.callStackWindow.evaluateParams (#843)');
   Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsTrue(ASettings.DebugLeakReport, 'debug.leakReport (#1875)');
   Assert.IsTrue(ASettings.DebugLeakReportCompare, 'debug.leakReport.compare (#1875)');
@@ -390,6 +392,8 @@ begin
   ASettings.DebugLeakReportCompare := False;
   ASettings.DebugLeakReportWindow := False;
   ASettings.DebugParallelStacks := False;
+  ASettings.DebugCallStackWindow := False;
+  ASettings.DebugCallStackWindowEvaluateParams := False;
   ASettings.DebugThreadsInSource := False;
   ASettings.DebugThreadFreeze := True;
   ASettings.DebugAsyncOrigin := True;
@@ -557,6 +561,8 @@ begin
   Assert.AreEqual(5, ALoaded.DebugAsyncOriginMaxPerSite);
   Assert.IsFalse(ALoaded.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
+  Assert.IsFalse(ALoaded.DebugCallStackWindow, 'debug.callStackWindow (#843)');
+  Assert.IsFalse(ALoaded.DebugCallStackWindowEvaluateParams, 'debug.callStackWindow.evaluateParams (#843)');
   Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsFalse(ALoaded.DebugLeakReport, 'debug.leakReport (#1875)');
   Assert.IsFalse(ALoaded.DebugLeakReportCompare, 'debug.leakReport.compare (#1875)');
