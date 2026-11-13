@@ -23,10 +23,6 @@ type
     FImages: TImageList;
     FLoaded: TStringList;
     FClasses: TDictionary<string, TClass>;
-    /// <summary>Einträge der Komponentenpalette je Klassenname (klein); einmal aus der Palette gelesen.</summary>
-    FPaletteItems: TDictionary<string, IInterface>;
-    FPaletteRead: Boolean;
-    procedure ReadPalette;
     /// <summary>Symbol aus der Palette selbst (INTAPalettePaintIcon); -1, wenn die Palette die Klasse nicht kennt.
     /// </summary>
     function PaintedIndex(const AClassName: string): Integer;
@@ -96,7 +92,6 @@ begin
   inherited Create;
   FLoaded := TStringList.Create;
   FClasses := TDictionary<string, TClass>.Create;
-  FPaletteItems := TDictionary<string, IInterface>.Create;
   FImages := TImageList.Create(nil);
   FImages.ColorDepth := cd32Bit;
   FImages.SetSize(cImageSize, cImageSize);
@@ -105,44 +100,38 @@ end;
 destructor TAtlasPaletteImages.Destroy;
 begin
   FImages.Free;
-  FPaletteItems.Free;
   FClasses.Free;
   FLoaded.Free;
   inherited Destroy;
 end;
 
-/// <summary>Alle Komponenten-Einträge unter AGroup (rekursiv) in AItems, Schlüssel Klassenname klein.</summary>
-procedure CollectPalette(const AGroup: IOTAPaletteGroup; AItems: TDictionary<string, IInterface>);
+/// <summary>Eintrag der Komponente AClassName unter AGroup (rekursiv); nil ohne.</summary>
+/// <remarks>Nur für den Moment des Malens: Ein Eintrag gehört dem Package der Komponente. Festgehalten zeigte er nach
+/// dem Entladen des Packages (oder nach dem Abbau der Palette beim Beenden) in fremden Speicher (Review 2.1.0, M1).
+/// </remarks>
+function FindPaletteItem(const AGroup: IOTAPaletteGroup; const AClassName: string): IOTABasePaletteItem;
 var
   mIndex: Integer;
   mItem: IOTABasePaletteItem;
   mGroup: IOTAPaletteGroup;
   mComponent: IOTAComponentPaletteItem;
 begin
+  Result := nil;
   for mIndex := 0 to AGroup.Count - 1 do
   begin
     mItem := AGroup.Items[mIndex];
     if Supports(mItem, IOTAPaletteGroup, mGroup) then
     begin
-      CollectPalette(mGroup, AItems);
+      Result := FindPaletteItem(mGroup, AClassName);
     end
-    else if Supports(mItem, IOTAComponentPaletteItem, mComponent) and (mComponent.ClassName <> '') then
+    else if Supports(mItem, IOTAComponentPaletteItem, mComponent) and SameText(mComponent.ClassName, AClassName) then
     begin
-      AItems.AddOrSetValue(mComponent.ClassName.ToLower, mItem);
+      Result := mItem;
     end;
-  end;
-end;
-
-procedure TAtlasPaletteImages.ReadPalette;
-var
-  mPalette: IOTAPaletteServices;
-begin
-  FPaletteRead := True;
-  // Ohne IDE (Tests) gibt es keine Palette; dann nur die Ressourcen.
-  if (BorlandIDEServices <> nil) and Supports(BorlandIDEServices, IOTAPaletteServices, mPalette) and
-    (mPalette.BaseGroup <> nil) then
-  begin
-    CollectPalette(mPalette.BaseGroup, FPaletteItems);
+    if Result <> nil then
+    begin
+      Exit;
+    end;
   end;
 end;
 
@@ -151,16 +140,21 @@ const
   // Schlüsselfarbe für den durchsichtigen Hintergrund des gemalten Symbols.
   cKeyColor = TColor($FF00FF);
 var
-  mItem: IInterface;
+  mPalette: IOTAPaletteServices;
+  mItem: IOTABasePaletteItem;
   mPaint: INTAPalettePaintIcon;
   mBitmap: TBitmap;
 begin
   Result := -1;
-  if not FPaletteRead then
+  // Ohne IDE (Tests) gibt es keine Palette; dann nur die Ressourcen. Die Palette jedes Mal neu durchsuchen (nur für
+  // Klassen ohne gemerktes Bild): So bekommen auch danach installierte Komponenten ihr Symbol.
+  if (BorlandIDEServices = nil) or not Supports(BorlandIDEServices, IOTAPaletteServices, mPalette) or
+    (mPalette.BaseGroup = nil) then
   begin
-    ReadPalette;
+    Exit;
   end;
-  if not FPaletteItems.TryGetValue(AClassName.ToLower, mItem) or not Supports(mItem, INTAPalettePaintIcon, mPaint) then
+  mItem := FindPaletteItem(mPalette.BaseGroup, AClassName);
+  if (mItem = nil) or not Supports(mItem, INTAPalettePaintIcon, mPaint) then
   begin
     Exit;
   end;
