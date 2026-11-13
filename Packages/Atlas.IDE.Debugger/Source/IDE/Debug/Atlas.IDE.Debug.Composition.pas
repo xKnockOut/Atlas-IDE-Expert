@@ -344,6 +344,11 @@ begin
   begin
     Result := Result + [Command(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible)];
   end;
+  // Werte ändern (#868) aus Atlas.IDE.Debug.Composition.Values, unter der Sicherung.
+  for mCommand in ValueCommands do
+  begin
+    Result := Result + [CommandWithKey(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible, mCommand.Key)];
+  end;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -390,6 +395,8 @@ begin
   // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
   Result := Result + RunMenuEntries;
   Result := Result + BreakpointMenuEntries;
+  // Werte ändern (#868).
+  Result := Result + ValueMenuEntries;
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -410,6 +417,8 @@ begin
   Result := Result + RunKeys;
   // Bis hier, Haltepunkte überspringen (#851).
   Result := Result + BreakpointKeys;
+  // Wert ändern mit F2 (#868).
+  Result := Result + ValueKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;

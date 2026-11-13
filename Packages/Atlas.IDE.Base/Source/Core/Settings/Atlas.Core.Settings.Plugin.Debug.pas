@@ -21,6 +21,10 @@ const
   cMinPredictLines = 1;
   cMaxPredictLines = 200;
   cDefaultPredictLines = 20;
+  /// <summary>Grenzen und Vorgabe für debug.hoverMaxChildren (#895).</summary>
+  cMinHoverMaxChildren = 10;
+  cMaxHoverMaxChildren = 1000;
+  cDefaultHoverMaxChildren = 100;
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
@@ -130,6 +134,11 @@ type
     /// des Editors; vor dem nächsten Start die Frage zu Adressbedingungen der letzten Sitzung. Aus = keine Befehle,
     /// keine Frage.</summary>
     DebugInstanceBreakpoints: Boolean;
+    /// <summary>Anhalten, wenn sich ein Feld ändert (#584, debug.dataBreakpoints): Befehl „Anhalten, wenn sich …
+    /// ändert“ im Kontextmenü des Editors setzt im angehaltenen Programm einen Datenhaltepunkt auf das Feld unter der
+    /// Schreibmarke; Atlas zeigt beim Halt alten und neuen Wert und entfernt seine Datenhaltepunkte am Ende der
+    /// Sitzung. Aus = kein Befehl.</summary>
+    DebugDataBreakpoints: Boolean;
     /// <summary>Haltepunkt-Sätze (#586, debug.breakpointSetPerBranch): Ein Satz mit Branch wird beim Wechsel der
     /// Arbeitskopie auf diesen Branch aktiv. Aus = Sätze nur über die Befehle.</summary>
     DebugBreakpointSetPerBranch: Boolean;
@@ -255,6 +264,17 @@ type
     DebugPredictDimSkipped: Boolean;
     /// <summary>So viele Zeilen voraus (#2169, debug.predictConditions.lines, 1 bis 200).</summary>
     DebugPredictLines: Integer;
+    /// <summary>Werte ändern (#868, debug.editValues): „Ändern …“ und Umschalten im Debug-Hover, F2 auf einem Wert im
+    /// Editor; Eingabe nach Typ geprüft, „Rückgängig“ bis zum nächsten Schritt. Aus = Werte nur lesbar.</summary>
+    DebugEditValues: Boolean;
+    /// <summary>Debug-Hover aufklappen (#895, debug.hoverExpand): Objekte, Records und Arrays im Debug-Hover als
+    /// Baum, Getter erst auf Klick. Aus = Wert wie bisher in einer Zeile.</summary>
+    DebugHoverExpand: Boolean;
+    /// <summary>Geänderte Werte markieren (#895, debug.hoverChanges): seit dem vorigen Halt geänderte Werte im
+    /// Debug-Hover hinterlegt, alter Wert gedimmt dahinter.</summary>
+    DebugHoverChanges: Boolean;
+    /// <summary>Höchstzahl Kinder je Ebene vor „weitere …“ (#895, debug.hoverMaxChildren, 10 bis 1000).</summary>
+    DebugHoverMaxChildren: Integer;
     /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
     /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
     DebugPinnedValues: Boolean;
@@ -361,6 +381,7 @@ begin
   Result.DebugCheckBreakpoints := True;
   Result.DebugMethodBreakpoints := True;
   Result.DebugInstanceBreakpoints := True;
+  Result.DebugDataBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
   Result.DebugRunToClick := True;
   Result.DebugBreakpointsWindow := True;
@@ -408,6 +429,7 @@ begin
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugPredictLines := EnsureRange(DebugPredictLines, cMinPredictLines, cMaxPredictLines);
+  DebugHoverMaxChildren := EnsureRange(DebugHoverMaxChildren, cMinHoverMaxChildren, cMaxHoverMaxChildren);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
   DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
@@ -455,6 +477,7 @@ begin
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
+  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
@@ -494,6 +517,10 @@ begin
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
+  DebugEditValues := True;
+  DebugHoverExpand := True;
+  DebugHoverChanges := True;
+  DebugHoverMaxChildren := cDefaultHoverMaxChildren;
   DebugPinnedValues := True;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
@@ -522,6 +549,10 @@ begin
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
+  AIo.Flag('DebugEditValues', DebugEditValues);
+  AIo.Flag('DebugHoverExpand', DebugHoverExpand);
+  AIo.Flag('DebugHoverChanges', DebugHoverChanges);
+  AIo.Number('DebugHoverMaxChildren', DebugHoverMaxChildren);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
