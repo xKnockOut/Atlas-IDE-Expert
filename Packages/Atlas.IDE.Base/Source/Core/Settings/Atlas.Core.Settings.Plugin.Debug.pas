@@ -17,6 +17,10 @@ const
   cMinWhyHereDepth = 1;
   cMaxWhyHereDepth = 10;
   cDefaultWhyHereDepth = 3;
+  /// <summary>Grenzen und Vorgabe für debug.predictConditions.lines (#2169).</summary>
+  cMinPredictLines = 1;
+  cMaxPredictLines = 200;
+  cDefaultPredictLines = 20;
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
@@ -202,6 +206,14 @@ type
     DebugWhyHere: Boolean;
     /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
     DebugWhyHereDepth: Integer;
+    /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
+    /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
+    /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
+    DebugPredictConditions: Boolean;
+    /// <summary>Übersprungene Zweige blass zeichnen (#2169, debug.predictConditions.dimSkipped).</summary>
+    DebugPredictDimSkipped: Boolean;
+    /// <summary>So viele Zeilen voraus (#2169, debug.predictConditions.lines, 1 bis 200).</summary>
+    DebugPredictLines: Integer;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -342,6 +354,7 @@ begin
   DebugNoSourceIgnoredUnits := Trim(DebugNoSourceIgnoredUnits);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
+  DebugPredictLines := EnsureRange(DebugPredictLines, cMinPredictLines, cMaxPredictLines);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
   DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
@@ -414,6 +427,9 @@ procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
 begin
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugPredictConditions := True;
+  DebugPredictDimSkipped := True;
+  DebugPredictLines := cDefaultPredictLines;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
   DebugEventLogColors := cDefaultEventLogColors;
@@ -436,6 +452,9 @@ procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSetti
 begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugPredictConditions', DebugPredictConditions);
+  AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
+  AIo.Number('DebugPredictLines', DebugPredictLines);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);

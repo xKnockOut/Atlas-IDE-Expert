@@ -355,6 +355,16 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
+#### Bedingungen vorausschauen
+
+- Beim Halt stehen an den kommenden `if`, `while` und `case` derselben Routine (bis `debug.predictConditions.lines` Zeilen voraus, Vorgabe 20) die vorhergesagten Ergebnisse, als Vorhersage gekennzeichnet: `⟨= False · FOnline⟩` (der entscheidende Teil), bei `case` `⟨→ smManual⟩`.
+- Der Zweig, der übersprungen wird, ist blass gezeichnet, bei `case` alle anderen Zweige; der Text bleibt lesbar (`debug.predictConditions.dimSkipped`).
+- Vorhergesagt wird nur, was sich aus dem jetzigen Zustand ergibt: keine Zuweisung an eine beteiligte Variable dazwischen (auch `var`/`out`-Argumente, `Inc`/`Dec`), kein Aufruf dazwischen bei Feldern und globalen Variablen, kein `Exit`, `raise`, `goto`, `Break` oder `Continue`.
+- Aufrufe und Getter in der Bedingung wertet die Vorhersage nie aus; sie zählt nur, wenn der Kurzschluss ohne den Aufruf entscheidet.
+- Ein Klick auf einen Hinweis öffnet das Menü „Vorhersage für diese Sitzung aus“. Hinweise und Blässe verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
+
 #### „kein Zugriff auf Wert“ erklärt
 
 - Liefert der Debugger für eine Variable nur „Inaccessible value“ oder „… wegen der Optimierung nicht …“, steht im Hover und in den Werten im Editor `‹kein Zugriff›`.

@@ -2330,6 +2330,8 @@ uses
   Atlas.Core.Debug.InlineValues.Tests in 'IDE.Expert\Atlas.Core.Debug.InlineValues.Tests.pas',
   Atlas.Core.Debug.WhyHere in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas',
   Atlas.Core.Debug.WhyHere.Tests in 'IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas',
+  Atlas.Core.Debug.Forecast in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas',
+  Atlas.Core.Debug.Forecast.Tests in 'IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas',
   Atlas.Common.Pascal.CompilerSwitches.Tests in 'Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas',
   Atlas.Common.Lsp.CompilerSwitches.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompilerSwitches.Tests.pas',
   Atlas.Core.Build.CompilerSwitches in '..\Packages\Atlas.IDE.Build\Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas',

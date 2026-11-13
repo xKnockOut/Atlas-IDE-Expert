@@ -100,6 +100,8 @@ contains
   Atlas.IDE.Debug.InlineValues in 'Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas',
   Atlas.Core.Debug.WhyHere in 'Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas',
   Atlas.IDE.Debug.WhyHere in 'Source\IDE\Debug\Atlas.IDE.Debug.WhyHere.pas',
+  Atlas.IDE.Debug.Forecast in 'Source\IDE\Debug\Atlas.IDE.Debug.Forecast.pas',
+  Atlas.Core.Debug.Forecast in 'Source\Core\Debug\Atlas.Core.Debug.Forecast.pas',
   Atlas.IDE.Debug.ValueRequest in 'Source\IDE\Debug\Atlas.IDE.Debug.ValueRequest.pas',
   Atlas.IDE.Debug.LineEnd in 'Source\IDE\Debug\Atlas.IDE.Debug.LineEnd.pas',
   Atlas.Core.Debug.Unavailable in 'Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas',
