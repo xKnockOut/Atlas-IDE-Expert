@@ -7,8 +7,9 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter; die Teile für Werte
-//   und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values),
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“; die Teile
+//   für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
+//   Exceptions und Threads in Atlas.IDE.Debug.Composition.Session),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
 //   die Taste von „Gezielt hineinspringen“,
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
@@ -61,8 +62,7 @@ uses
   System.JSON,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Handshake,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Contract,
@@ -84,6 +84,7 @@ uses
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
   Atlas.IDE.Debug.Composition.Run,
+  Atlas.IDE.Debug.Composition.Session,
   Atlas.UI.Debug.Strings;
 
 var
@@ -176,16 +177,6 @@ begin
     end);
 end;
 
-procedure StartDebugExceptions;
-begin
-  TAtlasIdeDebugExceptions.Start(MessageLine);
-end;
-
-procedure StartDebugOwnCode;
-begin
-  TAtlasIdeDebugOwnCode.Start(MessageLine);
-end;
-
 function ExpressionProvider(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider;
 var
   mProvider: TAtlasExpressionCompletionProvider;
@@ -241,14 +232,9 @@ end;
 
 function TAtlasDebugModule.Info: TAtlasModuleInfo;
 begin
-  Result := Default(TAtlasModuleInfo);
-  Result.Id := cModuleId;
-  Result.Name := 'Debugger';
-  Result.Version := TAtlasVersion.cVersion;
-  Result.Handle := HInstance;
   // „Gezielt hineinspringen“ und die Befehle des Schrittfilters gab es schon im abgesicherten Start.
-  Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := cSwitch;
+  Result := TAtlasModuleHost.Info(cModuleId, 'Debugger', TAtlasVersion.cVersion, HInstance,
+    TAtlasSafeLevel.Safe, cSwitch);
 end;
 
 procedure InstallCommands;
@@ -343,7 +329,10 @@ begin
       ToggleDebugJustMyCode, nil),
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
     Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
-      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible)];
+      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
+    // Was wartet worauf? (#587); nur sichtbar, solange debug.deadlocks an ist.
+    Command('Atlas.DebugDeadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsCommand),
+      RunDebugDeadlocks, DebugDeadlocksVisible)];
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
   Result := Result + RunCommands;
 end;
@@ -376,6 +365,7 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
@@ -479,42 +469,6 @@ begin
       end, StartDisplayRules, TAtlasIdeDisplayRules.Stop)]
 end;
 
-/// <summary>Exception-Verlauf, nur eigener Code und Exception-Leiste.</summary>
-function ExceptionParts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Exception-Verlauf (#517): Zuhörer der Debug-Sitzung; aus = kein Notifier beim Debugger.
-    TAtlasFeaturePart.When('DebugExceptions',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugExceptionHistory;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugExceptions.Started;
-      end, StartDebugExceptions, TAtlasIdeDebugExceptions.Release),
-    // Nur eigener Code (#578): Zuhörer der Debug-Sitzung und Haken an „Einzelne Anweisung“ (F7).
-    TAtlasFeaturePart.When('DebugOwnCode',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugJustMyCode;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugOwnCode.Started;
-      end, StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release),
-    // Exception-Leiste (#783): baut auf dem Exception-Verlauf auf; aus = Dialog der IDE unverändert.
-    TAtlasFeaturePart.When('DebugExceptionBar',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and DebugExceptionBarVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugExceptionBar.Started;
-      end, StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release)]
-end;
-
 /// <summary>Schrittfilter (#850): Zuhörer der Debug-Sitzung und Empfänger von F7; aus = F7 wie bisher.</summary>
 function StepFilterPart: IAtlasFeaturePart;
 begin
@@ -540,8 +494,8 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart] + RunParts;
+  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider);
+  Result := Result + [StepFilterPart] + DebugThreadParts + RunParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;
@@ -552,16 +506,9 @@ var
   mPart: IAtlasFeaturePart;
 begin
   Result := False;
-  mRegistry := AtlasModuleRegistry;
-  if (mRegistry = nil) or (GScope <> nil) then
+  // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
   begin
-    Exit;
-  end;
-  // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
-  if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
-    ccMatch then
-  begin
-    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasDebugModule.Create;
@@ -585,24 +532,8 @@ begin
 end;
 
 class procedure TAtlasDebugModule.UnregisterModule;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mFailure: string;
 begin
-  if GScope = nil then
-  begin
-    Exit;
-  end;
-  GScope := nil;
-  // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
-  mRegistry := AtlasModuleRegistry;
-  if mRegistry <> nil then
-  begin
-    for mFailure in mRegistry.UnregisterModule(cModuleId) do
-    begin
-      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
-    end;
-  end;
+  TAtlasModuleHost.Unregister(GScope, cModuleId, nil);
 end;
 
 initialization

@@ -7,8 +7,9 @@
 // der Registry von Base an und stellt über dessen Scope bereit:
 // - den Teil Tests der Feature-Tabelle,
 // - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
-//   „Veraltete Tests ausführen“ (#1770) und „Erwartet und erhalten
-//   vergleichen“ (#1779) im Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
+//   „Veraltete Tests ausführen“ (#1770), „Erwartet und erhalten
+//   vergleichen“ (#1779) und „Langsamste Tests zeigen“ (#1772) im
+//   Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
 //   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
 //   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
@@ -76,8 +77,7 @@ uses
   ToolsAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Handshake,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
@@ -92,6 +92,7 @@ uses
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
+  Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.UI.Strings,
@@ -104,6 +105,7 @@ var
   GLens: TAtlasIdeTestsLens;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
+  GSlowest: TAtlasIdeTestSlowest;
 
 { Sichtbarkeit }
 
@@ -214,7 +216,9 @@ begin
   GStale := TAtlasIdeStaleTests.Create(GTests);
   // Erwartet und erhalten vergleichen (#1779): Fehlschläge mit Werten; reicht den Lauf an die Stände weiter.
   GCompare := TAtlasIdeTestCompare.Create(GTests, GStale.Remember);
-  GTests.OnReported := GCompare.Remember;
+  // Langsamste Tests (#1772): Ergebnisse des Testprojekts; reicht den Lauf an den Vergleich weiter.
+  GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
+  GTests.OnReported := GSlowest.Remember;
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
@@ -231,14 +235,15 @@ begin
   end;
   TAtlasIdeAffectedTests.Uninstall;
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
-  // zurück), dann Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann der Läufer; seine Probleme
-  // verschwinden mit ihm.
+  // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
+  // der Läufer; seine Probleme verschwinden mit ihm.
   FreeAndNil(GLens);
   FreeAndNil(GDebugger);
   if GTests <> nil then
   begin
     GTests.OnReported := nil;
   end;
+  FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
   FreeAndNil(GStale);
   try
@@ -323,6 +328,21 @@ begin
   end;
 end;
 
+{ Langsamste Tests (#1772) }
+
+function SlowestVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeSettings.Current.TestsShowDuration;
+end;
+
+procedure ShowSlowest;
+begin
+  if GSlowest <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GSlowest.Run);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -345,14 +365,9 @@ end;
 
 function TAtlasTestsModule.Info: TAtlasModuleInfo;
 begin
-  Result := Default(TAtlasModuleInfo);
-  Result.Id := cModuleId;
-  Result.Name := 'Tests';
-  Result.Version := TAtlasVersion.cVersion;
-  Result.Handle := HInstance;
   // Der Läufer baut und startet Programme: nur im normalen Start.
-  Result.MinLevel := TAtlasSafeLevel.Normal;
-  Result.Switch := cSwitch;
+  Result := TAtlasModuleHost.Info(cModuleId, 'Tests', TAtlasVersion.cVersion, HInstance,
+    TAtlasSafeLevel.Normal, cSwitch);
 end;
 
 procedure TAtlasTestsModule.Start;
@@ -383,6 +398,8 @@ begin
     Command('Atlas.RunStaleTests', TAtlasTestsTextId.TestsRunStaleCommand, RunStale, StaleTestsVisible),
     // Erwartet und erhalten eines Fehlschlags (#1779): sichtbar mit tests.compare.
     Command('Atlas.CompareTestValues', TAtlasTestsTextId.TestsCompareCommand, CompareValues, CompareVisible),
+    // Langsamste Tests (#1772): sichtbar mit tests.showDuration.
+    Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -423,6 +440,7 @@ begin
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
@@ -522,16 +540,9 @@ var
   mPart: IAtlasFeaturePart;
 begin
   Result := False;
-  mRegistry := AtlasModuleRegistry;
-  if (mRegistry = nil) or (GScope <> nil) then
+  // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
   begin
-    Exit;
-  end;
-  // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
-  if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
-    ccMatch then
-  begin
-    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasTestsModule.Create;
@@ -553,24 +564,8 @@ begin
 end;
 
 class procedure TAtlasTestsModule.UnregisterModule;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mFailure: string;
 begin
-  if GScope = nil then
-  begin
-    Exit;
-  end;
-  GScope := nil;
-  // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
-  mRegistry := AtlasModuleRegistry;
-  if mRegistry <> nil then
-  begin
-    for mFailure in mRegistry.UnregisterModule(cModuleId) do
-    begin
-      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
-    end;
-  end;
+  TAtlasModuleHost.Unregister(GScope, cModuleId, nil);
 end;
 
 initialization

@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Debug.AccessViolation.Tests;
 
 // Zugriffsverletzung erklären (#865), Texte: Ergebniszeile, Feld und Versatz, geprüfte Glieder mit ✓/✗,
-// Knöpfe, kopierter Text und Zeilen für die Meldungen.
+// Knöpfe, kopierter Text und Zeilen für die Meldungen. Modul der Fehleradresse (#1820).
 
 interface
 
@@ -46,12 +46,21 @@ type
     procedure CopyTextAndMessageLines;
     [Test]
     procedure BusyAndFailed;
+    [Test]
+    procedure ModuleTextPerKind;
+    [Test]
+    procedure ModuleOnlyNamesLastOwnFrame;
+    [Test]
+    procedure WithModuleAppendsToDetail;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.Modules,
   Atlas.UI.Debug.Strings,
+
   Atlas.Core.Debug.ExceptionBanner,
   System.SysUtils;
 
@@ -356,5 +365,75 @@ begin
   Assert.AreEqual('$1C', TAtlasAvTexts.OffsetText($1C));
   Assert.AreEqual('$08', TAtlasAvTexts.OffsetText(8));
 end;
+
+function FaultModule(const AName: string; AKind: TAtlasDebugModuleKind; ANoDebugInfo: Boolean;
+  AOwnFrame: Integer): TAtlasDebugFaultModule;
+begin
+  Result := Default(TAtlasDebugFaultModule);
+  Result.Known := True;
+  Result.Name := AName;
+  Result.Kind := AKind;
+  Result.NoDebugInfo := ANoDebugInfo;
+  Result.OwnFrame := AOwnFrame;
+end;
+
+procedure TAtlasAvTextsTests.ModuleTextPerKind;
+begin
+  Assert.AreEqual('Adresse liegt in deinem Programm (Demo.exe)',
+    TAtlasAvTexts.ModuleText(FaultModule('Demo.exe', TAtlasDebugModuleKind.ProgramFile, False, 0)));
+  Assert.AreEqual('Adresse liegt in vcl370.bpl (RTL/VCL)',
+    TAtlasAvTexts.ModuleText(FaultModule('vcl370.bpl', TAtlasDebugModuleKind.Runtime, False, -1)));
+  Assert.AreEqual('Adresse liegt in ntdll.dll (Windows)',
+    TAtlasAvTexts.ModuleText(FaultModule('ntdll.dll', TAtlasDebugModuleKind.OperatingSystem, False, -1)));
+  Assert.AreEqual('Adresse liegt in Fremd.dll (keine Debug-Infos)',
+    TAtlasAvTexts.ModuleText(FaultModule('Fremd.dll', TAtlasDebugModuleKind.Foreign, True, -1)));
+  Assert.AreEqual('Adresse liegt in Fremd.dll',
+    TAtlasAvTexts.ModuleText(FaultModule('Fremd.dll', TAtlasDebugModuleKind.Foreign, False, -1)));
+  Assert.AreEqual('', TAtlasAvTexts.ModuleText(Default(TAtlasDebugFaultModule)), 'ohne Modul kein Text');
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('The address lies in vcl370.bpl (RTL/VCL)',
+    TAtlasAvTexts.ModuleText(FaultModule('vcl370.bpl', TAtlasDebugModuleKind.Runtime, False, -1)));
+end;
+
+procedure TAtlasAvTextsTests.ModuleOnlyNamesLastOwnFrame;
+var
+  mFrames: TAtlasDebugFrames;
+  mExplanation: TAtlasDebugBannerExplanation;
+begin
+  mFrames := [TAtlasDebugFrame.Create(':50001000 Vcl.Controls.TControl.GetText', '', 0),
+    TAtlasDebugFrame.Create('Unit1.TForm1.Button1Click(Self=$02A3F2C0)', 'C:\Projekte\Demo\Unit1.pas', 42)];
+  mExplanation := TAtlasAvTexts.ModuleOnly(FaultModule('vcl370.bpl', TAtlasDebugModuleKind.Runtime, False, 1),
+    mFrames, 'EAccessViolation (Unit1.pas:42)');
+  Assert.IsTrue(mExplanation.Active);
+  Assert.IsFalse(mExplanation.Busy);
+  Assert.AreEqual('Adresse liegt in vcl370.bpl (RTL/VCL)', mExplanation.Headline);
+  Assert.AreEqual('zuletzt in deinem Code: Unit1.pas:42 (Unit1.TForm1.Button1Click)', mExplanation.Detail);
+  Assert.AreEqual(0, Integer(Length(mExplanation.Lines)), 'nichts geprüft');
+  Assert.AreEqual('', mExplanation.WhereName);
+  Assert.AreEqual('', mExplanation.EvaluateExpression);
+  Assert.IsTrue(mExplanation.CopyText.Contains('vcl370.bpl'));
+  Assert.IsTrue(mExplanation.CopyText.Contains('EAccessViolation (Unit1.pas:42)'));
+  mExplanation := TAtlasAvTexts.ModuleOnly(FaultModule('Fremd.dll', TAtlasDebugModuleKind.Foreign, True, -1), nil,
+    '');
+  Assert.AreEqual('kein eigener Code im Aufrufstapel', mExplanation.Detail);
+  mExplanation := TAtlasAvTexts.ModuleOnly(Default(TAtlasDebugFaultModule), nil, '');
+  Assert.IsFalse(mExplanation.Active, 'ohne Modul keine Erklärung');
+end;
+
+procedure TAtlasAvTextsTests.WithModuleAppendsToDetail;
+var
+  mExplanation: TAtlasDebugBannerExplanation;
+begin
+  mExplanation := TAtlasAvTexts.Failed('Grund', 'EAccessViolation');
+  mExplanation := TAtlasAvTexts.WithModule(mExplanation, TAtlasAvTexts.ModuleText(FaultModule('Demo.exe',
+    TAtlasDebugModuleKind.ProgramFile, False, 0)));
+  Assert.AreEqual('Grund ' + #$00B7 + ' Adresse liegt in deinem Programm (Demo.exe)', mExplanation.Detail);
+  Assert.IsTrue(mExplanation.CopyText.EndsWith('Adresse liegt in deinem Programm (Demo.exe)'));
+  mExplanation := TAtlasAvTexts.WithModule(TAtlasAvTexts.Busy, 'Adresse liegt in deinem Programm (Demo.exe)');
+  Assert.AreEqual('', mExplanation.Detail, 'nicht während der Prüfung');
+  mExplanation := TAtlasAvTexts.WithModule(TAtlasAvTexts.Failed('Grund', ''), '');
+  Assert.AreEqual('Grund', mExplanation.Detail, 'ohne Modul unverändert');
+end;
+
 
 end.

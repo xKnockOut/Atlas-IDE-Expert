@@ -363,6 +363,11 @@ var
   mMember: Boolean;
   mOthers: TArray<TRuleProject>;
 begin
+  // '' liefert alle Projekte der Gruppe, z. B. für eine Unit, die in keinem Projekt steht (#1882).
+  if AFileName = '' then
+  begin
+    Exit(FProjects);
+  end;
   Result := nil;
   mOthers := nil;
   for mProject in FProjects do

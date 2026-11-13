@@ -149,6 +149,7 @@ uses
   Atlas.Common.Lsp.CompletionSyntax,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.Completion.Details,
+  Atlas.Common.Lsp.Completion.HiddenMembers,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Localization.Texts;
 
@@ -422,6 +423,8 @@ begin
       // Vorab als $/progress gesendete Einträge zählen mit (#616).
       mCount := AAnswer.SentCount + Length(mItems);
       Result := CompletionListToJson(mItems, AAnswer.Incomplete, AAnswer.SentCount);
+      // Passende, nur wegen der Sichtbarkeit fehlende Mitglieder (#2108) als Zusatz zur Liste.
+      TCompletionHiddenMembers.WriteJson(Result as TJSONObject, AAnswer.Hidden);
       // Hinweis bei unvollständigem Code (#457): Syntaxfehler vor dem Cursor in der aktuellen Routine.
       if ARequest.Settings.SyntaxNotice then
       begin

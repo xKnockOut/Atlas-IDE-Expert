@@ -1,8 +1,7 @@
 ﻿unit Atlas.IDE.Debug.Composition.Run;
 
 // Modul Debugger, Teil der Komposition: Werkzeuge rund um den Lauf des
-// Programms: Start der Exception-Leiste (#783, mit dem Feld in der
-// Statusleiste) und das Ereignisprotokoll (#580). Liefert Teile der
+// Programms: das Ereignisprotokoll (#580). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
 // Scope des Moduls bereit.
@@ -12,8 +11,6 @@ interface
 uses
   Atlas.Core.Modules.Contract;
 
-/// <summary>Exception-Leiste starten (#783); Teil DebugExceptionBar der Komposition.</summary>
-procedure StartDebugExceptionBar;
 /// <summary>Teile in ihrer Startreihenfolge.</summary>
 function RunParts: TArray<IAtlasFeaturePart>;
 function RunCommands: TArray<TAtlasModuleCommand>;
@@ -31,7 +28,6 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Debug.EventLog,
   Atlas.UI.Debug.Strings;
 
@@ -66,15 +62,6 @@ end;
 function EventLogVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugEventLog;
-end;
-
-procedure StartDebugExceptionBar;
-begin
-  TAtlasIdeDebugExceptionBar.Start(
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Message(AText);
-    end, TAtlasStatusRegistry.Default);
 end;
 
 procedure StartEventLog;

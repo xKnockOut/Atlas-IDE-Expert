@@ -103,6 +103,12 @@ type
     /// <summary>debug.explainAccessViolation.allowCalls (#865): Glieder mit Getter oder Funktionsaufruf auswerten;
     /// aus bleiben sie „nicht ausgewertet“.</summary>
     DebugExplainAccessViolationAllowCalls: Boolean;
+    /// <summary>debug.moduleOfAddress (#1820): Modul der Fehleradresse (Programm, RTL/VCL, Windows, Fremdmodul) in
+    /// der Erklärung einer Zugriffsverletzung nennen, bei Fremdmodulen mit der letzten eigenen Stelle.</summary>
+    DebugModuleOfAddress: Boolean;
+    /// <summary>debug.deadlocks (#587): Befehl „Was wartet worauf?“: Wartepunkte aller Threads eines
+    /// angehaltenen Programms und bekannte Muster von Verklemmungen im Ergebnisfenster.</summary>
+    DebugDeadlocks: Boolean;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -199,6 +205,8 @@ begin
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugDeadlocks := True;
+  Result.DebugModuleOfAddress := True;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
   Result.DebugExceptionBanner := False;
@@ -261,6 +269,9 @@ begin
   AIo.Flag('DebugEvaluateReplaceCtrlF7', DebugEvaluateReplaceCtrlF7);
   AIo.Flag('DebugExplainAccessViolation', DebugExplainAccessViolation);
   AIo.Flag('DebugExplainAccessViolationAllowCalls', DebugExplainAccessViolationAllowCalls);
+  AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);
+  AIo.Flag('DebugDeadlocks', DebugDeadlocks);
+
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);
