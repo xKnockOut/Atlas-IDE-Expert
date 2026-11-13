@@ -90,7 +90,7 @@ type
     class function CheckStatus(const AAccess: IAtlasTrackerAccess; const AProvider: IAtlasTrackerProvider;
       const ATarget: TAtlasTrackerTarget): TAtlasTrackerTokenStatus; static;
     class function ValuesOf(const AAccess: IAtlasTrackerAccess; const AProvider: IAtlasTrackerProvider;
-      const ATarget: TAtlasTrackerTarget; const AStateField: string): TAtlasTrackerValueSet; static;
+      const ATarget: TAtlasTrackerTarget; const AStateField, AProject: string): TAtlasTrackerValueSet; static;
     class function QueryResult(const AAccess: IAtlasTrackerAccess; const AProvider: IAtlasTrackerProvider;
       const ATarget: TAtlasTrackerTarget): TAtlasTrackerQueryTestResult; static;
     class procedure Checked(const AKey: string; const AStatus: TAtlasTrackerTokenStatus); static;
@@ -114,9 +114,10 @@ type
     class procedure StartQueryTest(const AAccess: IAtlasTrackerAccess; const AConnection: TAtlasTrackerConnection;
       const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone); static;
     /// <summary>„Werte vom Tracker laden“ (#1266) für ATarget im Hintergrund; ADone danach im Hauptthread mit den
-    /// Werten und dem Grund eines Fehlers ('' = geladen).</summary>
+    /// Werten und dem Grund eines Fehlers ('' = geladen). AProject: GitHub-Projekt für die Optionen des
+    /// Statusfeldes (#2134).</summary>
     class procedure Values(const AAccess: IAtlasTrackerAccess; const AProviderName: string;
-      const ATarget: TAtlasTrackerTarget; const AStateField: string;
+      const ATarget: TAtlasTrackerTarget; const AStateField, AProject: string;
       const ADone: TProc<TAtlasTrackerValueSet, string>); static;
     /// <summary>Beim Entladen: auf laufende Prüfungen warten, Ergebnisse freigeben.</summary>
     class procedure Release; static;
@@ -274,7 +275,7 @@ end;
 
 class function TAtlasTrackerChecks.ValuesOf(const AAccess: IAtlasTrackerAccess;
   const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-  const AStateField: string): TAtlasTrackerValueSet;
+  const AStateField, AProject: string): TAtlasTrackerValueSet;
 var
   mWriter: IAtlasTrackerWriter;
   mTransport: IAtlasCiTransport;
@@ -293,7 +294,7 @@ begin
     Exit;
   end;
   try
-    Result := TAtlasTrackerWorkflow.LoadValues(mWriter, ATarget, mTransport, AStateField);
+    Result := TAtlasTrackerWorkflow.LoadValues(mWriter, ATarget, mTransport, AStateField, AProject);
   except
     on E: Exception do
     begin
@@ -322,23 +323,25 @@ begin
 end;
 
 class procedure TAtlasTrackerChecks.Values(const AAccess: IAtlasTrackerAccess; const AProviderName: string;
-  const ATarget: TAtlasTrackerTarget; const AStateField: string; const ADone: TProc<TAtlasTrackerValueSet, string>);
+  const ATarget: TAtlasTrackerTarget; const AStateField, AProject: string;
+  const ADone: TProc<TAtlasTrackerValueSet, string>);
 var
   mAccess: IAtlasTrackerAccess;
   mTarget: TAtlasTrackerTarget;
   mProvider: IAtlasTrackerProvider;
-  mField: string;
+  mField, mProject: string;
   mDone: TProc<TAtlasTrackerValueSet, string>;
 begin
   mAccess := AAccess;
   mTarget := ATarget;
   mProvider := AAccess.Provider(AProviderName);
   mField := AStateField;
+  mProject := AProject;
   mDone := ADone;
   Launch(
     procedure(AThread: TThread)
     begin
-      Deliver(AThread, ValuesDelivered(ValuesOf(mAccess, mProvider, mTarget, mField), mDone));
+      Deliver(AThread, ValuesDelivered(ValuesOf(mAccess, mProvider, mTarget, mField, mProject), mDone));
     end);
 end;
 
@@ -632,7 +635,7 @@ begin
     procedure(const AConnection: TAtlasTrackerConnection; const AStateField: string)
     begin
       TAtlasTrackerChecks.Values(mAccess, AConnection.Provider, TrackerValuesTarget(AConnection), AStateField,
-        ValuesDone(mSection, mSection));
+        AConnection.GitHubProject, ValuesDone(mSection, mSection));
     end;
 end;
 

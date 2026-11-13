@@ -18,6 +18,8 @@
 //   dunitx-istrue-equality      Assert.IsTrue(A = B) statt AreEqual bzw. IsNull (#1780), in
 //                               Atlas.Common.Rules.Builtin.Testing.Asserts.
 //   dunitx-swapped-expected     Erwarteter und erhaltener Wert vertauscht (#1780), ebenda.
+//   dunitx-leak-monitor         Testprogramm ohne Leckmonitor von DUnitX (#1774), in
+//                               Atlas.Common.Rules.Builtin.Testing.LeakMonitor.
 
 interface
 
@@ -58,6 +60,7 @@ uses
   Atlas.Common.Rules.Builtin.Testing.Asserts,
   Atlas.Common.Rules.Builtin.Testing.TestCases,
   Atlas.Common.Rules.Builtin.Testing.Registration,
+  Atlas.Common.Rules.Builtin.Testing.LeakMonitor,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -618,6 +621,7 @@ begin
   ARegistry.Register(TDUnitXFixtureNotRegisteredRule.Create);
   ARegistry.Register(TDUnitXIsTrueEqualityRule.Create);
   ARegistry.Register(TDUnitXSwappedExpectedRule.Create);
+  ARegistry.Register(TDUnitXLeakMonitorRule.Create);
 end;
 
 initialization

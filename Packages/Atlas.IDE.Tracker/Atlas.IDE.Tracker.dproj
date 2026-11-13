@@ -133,6 +133,8 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubGraphQl.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubProjects.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>

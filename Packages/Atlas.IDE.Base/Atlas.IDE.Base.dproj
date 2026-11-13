@@ -111,6 +111,7 @@
         <DCCReference Include="..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\LeakReport\Atlas.Text.LeakReport.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\CrashReport\Atlas.Text.CrashReport.pas"/>
         <DCCReference Include="Source\Core\Localization\Atlas.Core.Localization.Language.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Crashes.pas"/>

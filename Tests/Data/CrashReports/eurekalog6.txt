@@ -1,0 +1,20 @@
+﻿EurekaLog 6.1.04
+
+Exception:
+-------------------------------------------------------------------------------------
+  2.1 Date   : Fri, 13 Nov 2026 10:12:44 +0100
+  2.2 Address: 0045A1B2
+  2.3 Module Name: Kunden.exe
+  2.5 Type   : EAccessViolation
+  2.6 Message: Zugriffsverletzung bei Adresse 0045A1B2 in Modul 'Kunden.exe'. Lesen von Adresse 00000000.
+
+Call Stack Information:
+-------------------------------------------------------------------------------------
+|Address |Module     |Unit           |Class       |Procedure/Method |Line    |
+-------------------------------------------------------------------------------------
+|Running Thread: ID=6708; Priority=0; Class=; [Main]                                |
+|-----------------------------------------------------------------------------------|
+|0045A1B2|Kunden.exe |KundenListe.pas|TKundenListe|Lade             |42[3]   |
+|0045B3C4|Kunden.exe |Main.pas       |TMainForm   |FormCreate       |17[1]   |
+|00512345|Kunden.exe |Forms.pas      |TCustomForm |DoCreate         |        |
+-------------------------------------------------------------------------------------

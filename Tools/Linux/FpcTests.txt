@@ -19,6 +19,7 @@ Atlas.Text.Jsonc.Tests
 Atlas.Text.LogMarks.Tests
 Atlas.Text.MapFile.Tests
 Atlas.Text.LeakReport.Tests
+Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
 Atlas.Text.UpdateRun.Tests
@@ -297,6 +298,7 @@ Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
 Atlas.Common.Rules.Builtin.Testing.Asserts.Tests
+Atlas.Common.Rules.Builtin.Testing.LeakMonitor.Tests
 Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
@@ -417,6 +419,7 @@ Atlas.Core.Hover.Layout.Members.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
+Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
