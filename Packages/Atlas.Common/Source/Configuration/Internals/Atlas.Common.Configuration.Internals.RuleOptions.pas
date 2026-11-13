@@ -119,12 +119,13 @@ const
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  cStringListRuleOptions: array[0..36] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  cStringListRuleOptions: array[0..37] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
-    'formatMethods', 'unitKinds', 'keep', 'pureFunctions', 'registrationCalls');
+    'formatMethods', 'unitKinds', 'keep', 'pureFunctions', 'factories',
+    'registrationCalls');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   cDeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>

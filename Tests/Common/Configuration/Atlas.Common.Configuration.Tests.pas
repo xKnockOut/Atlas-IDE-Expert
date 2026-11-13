@@ -65,6 +65,8 @@ type
     [Test]
     procedure ChecksMetricLimitOption;
     [Test]
+    procedure ChecksFactoriesOption;
+    [Test]
     procedure ChecksTodoKeywordsOption;
     [Test]
     procedure ChecksForbiddenSymbolsOption;
@@ -784,6 +786,18 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowFirstElement"');
 end;
+procedure TConfigurationParserTests.ChecksFactoriesOption;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // factories von created-result-not-freed (#1876).
+  Parse('{"rules": {"created-result-not-freed": {"factories": ["NeueListe", "TBau.Neu"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"created-result-not-freed": {"factories": "NeueListe"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"factories"');
+end;
+
 procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
 var
   mIssues: TArray<TConfigurationIssue>;

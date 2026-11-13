@@ -143,6 +143,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.LogRedaction` | `Core/Diagnostics/Atlas.Core.Diagnostics.LogRedaction.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.ModuleHost` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas` | gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455 |
 | `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
 | `Atlas.Core.Diagnostics.Package` | `Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.PluginReport` | `Core/Diagnostics/Atlas.Core.Diagnostics.PluginReport.pas` | Ordner `Core/Diagnostics` |
@@ -344,6 +345,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.Trends` | `Core/Projects/Atlas.Core.Projects.Trends.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.UnitRename` | `Core/Projects/Atlas.Core.Projects.UnitRename.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.VersionControl` | `Core/Projects/Atlas.Core.Projects.VersionControl.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.VcsSettings` | `Core/Projects/Atlas.Core.Projects.VcsSettings.pas` | Ordner `Core/Projects`: vcs.* aus den Einstellungen für das Plugin, ohne IDE testbar (#1967) |
 | `Atlas.Core.Results.CallDiagram` | `Core/Results/Atlas.Core.Results.CallDiagram.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.CallDiagramTemplate` | `Core/Results/Atlas.Core.Results.CallDiagramTemplate.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.DataFlow` | `Core/Results/Atlas.Core.Results.DataFlow.pas` | Ordner `Core/Results` |
