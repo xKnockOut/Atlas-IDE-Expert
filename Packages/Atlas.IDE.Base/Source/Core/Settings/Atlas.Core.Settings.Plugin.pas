@@ -117,6 +117,8 @@ type
     cMaxVariablesSearchLimit = Atlas.Core.Settings.Plugin.Debug.cMaxVariablesSearchLimit;
     cMinPredictLines = Atlas.Core.Settings.Plugin.Debug.cMinPredictLines;
     cMaxPredictLines = Atlas.Core.Settings.Plugin.Debug.cMaxPredictLines;
+    cMinHoverMaxChildren = Atlas.Core.Settings.Plugin.Debug.cMinHoverMaxChildren;
+    cMaxHoverMaxChildren = Atlas.Core.Settings.Plugin.Debug.cMaxHoverMaxChildren;
     cMaxQuickChordWait = Atlas.Core.Settings.Plugin.Bookmarks.cMaxQuickChordWait;
     cMinRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMinRecursionDepth;
     cMaxRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMaxRecursionDepth;
@@ -524,6 +526,9 @@ type
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
     property DebugEditValues: Boolean read FDebug.DebugEditValues write FDebug.DebugEditValues;
+    property DebugHoverExpand: Boolean read FDebug.DebugHoverExpand write FDebug.DebugHoverExpand;
+    property DebugHoverChanges: Boolean read FDebug.DebugHoverChanges write FDebug.DebugHoverChanges;
+    property DebugHoverMaxChildren: Integer read FDebug.DebugHoverMaxChildren write FDebug.DebugHoverMaxChildren;
     property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;

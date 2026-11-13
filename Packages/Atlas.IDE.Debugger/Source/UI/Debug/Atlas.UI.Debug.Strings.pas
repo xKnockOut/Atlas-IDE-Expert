@@ -206,7 +206,8 @@ type
     LeaksNoPlaces, LeaksFollowsFromObjects, LeaksPlaceLine, LeaksGroupLine, LeaksGroupNoSite, LeaksRatingNeverFreed,
     LeaksRatingReturned, LeaksRatingPassed, LeaksRatingFieldFreed, LeaksRatingOwned, LeaksRatingLocalFreed,
     LeaksRatingNotInProgram, LeaksFooter, LeaksFound,
-    DebugBannerCreateTest);
+    DebugBannerCreateTest, SettingsDebugHoverExpand, SettingsDebugHoverChanges, SettingsDebugHoverMaxChildren,
+    HoverTreeEvaluate, HoverTreePending, HoverTreeMore, HoverTreeCopy, HoverTreeWatch);
 
   TAtlasDebugStrings = class
   public
@@ -1094,7 +1095,15 @@ const
      'nicht im Programm',
      'Enter oder Doppelklick springt zur Stelle',
      'Atlas: Leckbericht mit %d Lecks (Fenster „Atlas-Lecks“).',
-     'Test daraus anlegen …'),
+     'Test daraus anlegen …',
+     'Werte im Debug-Hover aufklappbar',
+     'Seit dem letzten Halt geänderte Werte markieren',
+     'Höchstzahl Kinder je Ebene',
+     'auswerten',
+     'wird ausgewertet …',
+     'weitere %d …',
+     'Kopieren',
+     'Beobachten'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1960,7 +1969,15 @@ const
      'not in the program',
      'Enter or double-click jumps to the site',
      'Atlas: Leak report with %d leaks (window “Atlas Leaks”).',
-     'Create test …'));
+     'Create test …',
+     'Expandable values in the debug hover',
+     'Mark values changed since the last stop',
+     'Maximum children per level',
+     'evaluate',
+     'evaluating …',
+     '%d more …',
+     'Copy',
+     'Watch'));
 
 { TAtlasDebugStrings }
 

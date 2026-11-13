@@ -2122,6 +2122,44 @@
       "x-parent": "debug.variablesWindow",
       "x-issue": "#853"
     },
+    "DebugHoverExpand": {
+      "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.hoverExpand",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Werte im Debug-Hover aufklappbar",
+      "x-captionEn": "Expandable values in the debug hover",
+      "x-issue": "#895"
+    },
+    "DebugHoverChanges": {
+      "description": "Seit dem vorigen Halt (gleicher Thread, gleiche Methode) geänderte Werte im Debug-Hover hinterlegt, der alte Wert gedimmt dahinter; gilt auch für aufgeklappte Kinder.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.hoverChanges",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Seit dem letzten Halt geänderte Werte markieren",
+      "x-captionEn": "Mark values changed since the last stop",
+      "x-issue": "#895"
+    },
+    "DebugHoverMaxChildren": {
+      "type": "integer",
+      "default": 100,
+      "minimum": 10,
+      "maximum": 1000,
+      "description": "So viele Kinder (10 bis 1000) zeigt eine Ebene im Debug-Hover, danach „weitere …“.",
+      "x-key": "debug.hoverMaxChildren",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.hoverExpand",
+      "x-issue": "#895"
+    },
     "DebugPinnedValues": {
       "description": "Angeheftete Werte: Im Debug-Hover steht „Anheften“; angeheftete Ausdrücke stehen beim Halt als Feld am Ende ihrer Zeile und bleiben über Debug-Sitzungen erhalten.",
       "type": "boolean",

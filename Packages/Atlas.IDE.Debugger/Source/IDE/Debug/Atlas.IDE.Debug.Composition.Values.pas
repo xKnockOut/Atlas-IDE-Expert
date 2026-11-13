@@ -3,8 +3,8 @@
 // Modul Debugger (#1455), Teil der Komposition: die Teile der
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, angeheftete Werte, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern und Fenster
-// „Variablen“. Sie fragen
+// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern, Debug-Hover aufklappen und
+// Fenster „Variablen“. Sie fragen
 // den Server nur, wenn er ohnehin läuft. Atlas.IDE.Debug.Composition stellt sie
 // über den Scope des Moduls bereit.
 
@@ -52,6 +52,7 @@ uses
   Atlas.IDE.Debug.InlineValues,
   Atlas.IDE.Debug.Pins,
   Atlas.IDE.Debug.EditValue,
+  Atlas.IDE.Debug.HoverTree,
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Debug.AccessViolation,
@@ -63,6 +64,8 @@ const
   /// <summary>F2 (VK_F2): nur im angehaltenen Zustand mit Bezeichner an der Schreibmarke, sonst geht sie an die IDE.
   /// </summary>
   cEditValueKey = $71;
+  /// <summary>Wartezeit auf die Eigenschaften aus dem Index (#895); danach nur die Felder aus dem Debugger.</summary>
+  cHoverTreeTimeoutMs = 3000;
 
 var
   GProvider: TAtlasDialogProviderFactory;
@@ -211,11 +214,12 @@ begin
     end;
 end;
 
-/// <summary>Aktionen im Debug-Hover: „Ändern …“ (#868) und „Anheften“ (#526) teilen sich die Haken des Tooltips,
-/// der die Debug-Schicht nicht kennt. Angehängt, solange einer der beiden Teile läuft.</summary>
+/// <summary>Aktionen im Debug-Hover: „Ändern …“ (#868), „Anheften“ (#526), Kopieren und Beobachten (#895) teilen sich
+/// die Haken des Tooltips, der die Debug-Schicht nicht kennt. Angehängt, solange einer der Teile läuft.</summary>
 procedure HookHoverActions;
 begin
-  if not TAtlasIdeDebugPins.Started and not TAtlasIdeDebugEditValue.Started then
+  if not TAtlasIdeDebugPins.Started and not TAtlasIdeDebugEditValue.Started and
+    not TAtlasIdeDebugHoverTree.Started then
   begin
     TAtlasEditorHover.OnDebugActions := nil;
     TAtlasEditorHover.OnDebugAction := nil;
@@ -224,12 +228,14 @@ begin
   TAtlasEditorHover.OnDebugActions :=
     function(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>
     begin
-      Result := TAtlasIdeDebugEditValue.Actions(AValue) + TAtlasIdeDebugPins.Actions(AValue);
+      Result := TAtlasIdeDebugHoverTree.Actions(AValue) + TAtlasIdeDebugPins.Actions(AValue) +
+        TAtlasIdeDebugEditValue.Actions(AValue);
     end;
   TAtlasEditorHover.OnDebugAction :=
     procedure(const AValue: TAtlasDebugValue; const AFileName: string; ALine, AAction: Integer)
     begin
-      if not TAtlasIdeDebugEditValue.Act(AValue, AFileName, ALine, AAction) then
+      if not TAtlasIdeDebugEditValue.Act(AValue, AFileName, ALine, AAction) and
+        not TAtlasIdeDebugHoverTree.Act(AValue, AAction) then
       begin
         TAtlasIdeDebugPins.Act(AValue, AFileName, ALine, AAction);
       end;
@@ -278,6 +284,47 @@ end;
 procedure ReleaseDebugEditValue;
 begin
   TAtlasIdeDebugEditValue.Release;
+  HookHoverActions;
+end;
+
+/// <summary>Start von „Debug-Hover aufklappen“ (#895): Zeilen und alter Wert über die Haken des Tooltips,
+/// Eigenschaften über Base und den Scope AScope.</summary>
+function HoverTreeStarter(const AScope: IAtlasModuleScope): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeDebugHoverTree.Start(
+        function(const AMethod, AParamsJson: string; const ADone: TProc<string>): Boolean
+        begin
+          Result := TAtlasIdeHost.RunRequestAsync(AScope, TAtlasFeature.Debugger,
+            TAtlasServerRequest.Create(AMethod, AParamsJson, cHoverTreeTimeoutMs,
+            function: Boolean
+            begin
+              // Anfragen verfallen mit dem Teil.
+              Result := not TAtlasIdeDebugHoverTree.Started;
+            end), ADone);
+        end);
+      TAtlasEditorHover.OnDebugTree :=
+        function(const AValue: TAtlasDebugValue; const AFileName: string; ALine: Integer;
+          const ARefresh: TProc): TAtlasDebugValue
+        begin
+          Result := TAtlasIdeDebugHoverTree.Decorate(AValue, AFileName, ALine, ARefresh);
+        end;
+      TAtlasEditorHover.OnDebugRow :=
+        procedure(const AValue: TAtlasDebugValue; ARow: Integer)
+        begin
+          TAtlasIdeDebugHoverTree.Row(ARow);
+        end;
+      HookHoverActions;
+    end;
+end;
+
+procedure ReleaseDebugHoverTree;
+begin
+  TAtlasEditorHover.OnDebugTree := nil;
+  TAtlasEditorHover.OnDebugRow := nil;
+  TAtlasIdeDebugHoverTree.Release;
   HookHoverActions;
 end;
 
@@ -401,11 +448,28 @@ begin
     end, EditValueStarter(AScope), ReleaseDebugEditValue);
 end;
 
+/// <summary>Debug-Hover aufklappen und Änderungen markieren (#895): Haken des Tooltips und Zuhörer der Sitzung;
+/// beide Schalter aus = nichts angemeldet, der Hover zeigt den Wert wie bisher.</summary>
+function HoverTreePart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugHoverTree',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and (TAtlasIdeSettings.Current.DebugHoverExpand or
+        TAtlasIdeSettings.Current.DebugHoverChanges);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugHoverTree.Started;
+    end, HoverTreeStarter(AScope), ReleaseDebugHoverTree);
+end;
+
 function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 begin
   GProvider := AProvider;
-  Result := EditorParts + DialogParts + [WhyHerePart(AScope), EditValuePart(AScope), VariablesPart(AScope)];
+  Result := EditorParts + DialogParts + [WhyHerePart(AScope), EditValuePart(AScope), HoverTreePart(AScope),
+    VariablesPart(AScope)];
 end;
 
 function EditValueVisible: Boolean;

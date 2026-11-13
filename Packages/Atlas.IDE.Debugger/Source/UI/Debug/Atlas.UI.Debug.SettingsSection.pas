@@ -230,6 +230,10 @@ begin
   Number('debug.predictConditions.lines', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictLines));
   // Werte ändern (#868).
   Switch('debug.editValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEditValues));
+  // Debug-Hover aufklappen und Änderungen markieren (#895).
+  Switch('debug.hoverExpand', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverExpand));
+  Number('debug.hoverMaxChildren', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverMaxChildren));
+  Switch('debug.hoverChanges', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverChanges));
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));
