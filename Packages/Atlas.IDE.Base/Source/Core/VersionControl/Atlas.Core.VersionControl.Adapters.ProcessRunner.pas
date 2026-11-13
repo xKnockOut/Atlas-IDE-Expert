@@ -42,8 +42,6 @@ type
     constructor Create(AAllowMainThread: Boolean; const ACancelled: TFunc<Boolean>); overload;
     function Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
       ATimeoutMs: Cardinal): TAtlasVcsRunResult;
-    /// <summary>Argument nach den Regeln von CommandLineToArgvW.</summary>
-    class function QuoteArgument(const AArgument: string): string; static;
   end;
 
 implementation
@@ -54,6 +52,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.WinBase.Process,
+  Atlas.Text.CommandLine,
   Atlas.Core.VersionControl.ServerAccess;
 
 const
@@ -227,35 +226,6 @@ begin
   Result := AOutcome <> TAtlasVcsOutcome.Ok;
 end;
 
-class function TAtlasVcsProcessRunner.QuoteArgument(const AArgument: string): string;
-var
-  mIndex, mBackslashes: Integer;
-begin
-  if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
-  begin
-    Exit(AArgument);
-  end;
-  Result := '"';
-  mBackslashes := 0;
-  for mIndex := 1 to Length(AArgument) do
-  begin
-    if AArgument[mIndex] = '\' then
-    begin
-      Inc(mBackslashes);
-    end
-    else
-    begin
-      if AArgument[mIndex] = '"' then
-      begin
-        Result := Result + StringOfChar('\', mBackslashes + 1);
-      end;
-      mBackslashes := 0;
-    end;
-    Result := Result + AArgument[mIndex];
-  end;
-  Result := Result + StringOfChar('\', mBackslashes) + '"';
-end;
-
 type
   /// <summary>Ein Kindprozess mit seinen Pipes; der Destruktor schließt alle Handles.</summary>
   TChildProcess = class
@@ -290,14 +260,8 @@ begin
 end;
 
 function CommandLineOf(const AExecutable: string; const AArguments: TArray<string>): string;
-var
-  mArgument: string;
 begin
-  Result := TAtlasVcsProcessRunner.QuoteArgument(AExecutable);
-  for mArgument in AArguments do
-  begin
-    Result := Result + ' ' + TAtlasVcsProcessRunner.QuoteArgument(mArgument);
-  end;
+  Result := TTextCommandLine.Join(AExecutable, AArguments);
 end;
 
 /// <summary>Abbruch oder Zeitlimit während der Prozess läuft; sonst Ok.</summary>

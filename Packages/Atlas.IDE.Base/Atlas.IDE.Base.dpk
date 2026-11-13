@@ -64,6 +64,7 @@ contains
   Atlas.Text.Entities in '..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas',
   Atlas.Text.Defines in '..\Atlas.Text\Source\Defines\Atlas.Text.Defines.pas',
   Atlas.Text.Checkin in '..\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas',
+  Atlas.Text.CommandLine in '..\Atlas.Text\Source\CommandLine\Atlas.Text.CommandLine.pas',
   Atlas.Text.DebugDisplay in '..\Atlas.Text\Source\DebugDisplay\Atlas.Text.DebugDisplay.pas',
   Atlas.Text.DUnitX in '..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas',
@@ -862,6 +863,7 @@ contains
   Atlas.Text.Updates in '..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas',
   Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas',
   Atlas.WinBase.Process in '..\Atlas.WinBase\Source\Process\Atlas.WinBase.Process.pas',
+  Atlas.WinBase.Files in '..\Atlas.WinBase\Source\Files\Atlas.WinBase.Files.pas',
   Atlas.UI.Settings.Overview in 'Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
   Atlas.UI.Settings.Page.Search in 'Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas',
   Atlas.UI.Settings.Section in 'Source\UI\Settings\Atlas.UI.Settings.Section.pas';

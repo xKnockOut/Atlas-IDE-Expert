@@ -17,8 +17,6 @@ type
     [Test]
     procedure ArgumentsRoundTrip;
     [Test]
-    procedure QuotesLikeCommandLineToArgv;
-    [Test]
     procedure StageRoundTrip;
     [Test]
     procedure BrokenStateIsFailed;
@@ -72,16 +70,6 @@ begin
   Assert.AreEqual('2.0.0', mCopy.Previous);
   Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Install, mCopy.NewModules);
   Assert.IsTrue(mArgs.CommandLine.StartsWith('prepare '));
-end;
-
-procedure TTextUpdateRunTests.QuotesLikeCommandLineToArgv;
-begin
-  Assert.AreEqual('abc', TUpdateNames.QuoteArgument('abc'));
-  Assert.AreEqual('"a b"', TUpdateNames.QuoteArgument('a b'));
-  Assert.AreEqual('""', TUpdateNames.QuoteArgument(''));
-  // Schrägstriche vor dem schließenden Anführungszeichen verdoppeln.
-  Assert.AreEqual('"C:\Program Files\\"', TUpdateNames.QuoteArgument('C:\Program Files\'));
-  Assert.AreEqual('"a\"b"', TUpdateNames.QuoteArgument('a"b'));
 end;
 
 procedure TTextUpdateRunTests.StageRoundTrip;

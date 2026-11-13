@@ -68,6 +68,7 @@ implementation
 
 uses
   System.IOUtils,
+  Atlas.Text.CommandLine,
   Atlas.WinBase.Process,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
@@ -245,8 +246,9 @@ end;
 /// Löst bei einem Fehler EOSError aus.</summary>
 function LaunchProcess(const AExeName, AArguments: string; AInput, AOutput, AError: THandle): TProcessInformation;
 begin
-  if not TAtlasProcessLauncher.Launch(TAtlasProcessLaunch.Create('', '"' + AExeName + '" ' + AArguments,
-    ExtractFileDir(AExeName), AInput, AOutput, AError), Result) then
+  if not TAtlasProcessLauncher.Launch(TAtlasProcessLaunch.Create('',
+    TTextCommandLine.Quote(AExeName) + ' ' + AArguments, ExtractFileDir(AExeName), AInput, AOutput, AError),
+    Result) then
   begin
     RaiseLastOSError;
   end;
