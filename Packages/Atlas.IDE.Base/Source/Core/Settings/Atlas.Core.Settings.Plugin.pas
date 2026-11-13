@@ -573,6 +573,9 @@ type
     property BaselineUpdate: Boolean read FEditorInsight.BaselineUpdate write FEditorInsight.BaselineUpdate;
     property MetricsReport: Boolean read FEditorInsight.MetricsReport write FEditorInsight.MetricsReport;
     property DfmPropertyRules: Boolean read FEditorInsight.DfmPropertyRules write FEditorInsight.DfmPropertyRules;
+    property OwnershipHints: Boolean read FEditorInsight.OwnershipHints write FEditorInsight.OwnershipHints;
+    property OwnershipHintsOnlyProblems: Boolean read FEditorInsight.OwnershipHintsOnlyProblems
+      write FEditorInsight.OwnershipHintsOnlyProblems;
     property TeamFile: Boolean read FGeneralServer.TeamFile write FGeneralServer.TeamFile;
     property EditorKeysPriority: Boolean read FKeyPriorities.EditorKeysPriority write FKeyPriorities.EditorKeysPriority;
     property SlashCommands: Boolean read FCodeActions.SlashCommands write FCodeActions.SlashCommands;

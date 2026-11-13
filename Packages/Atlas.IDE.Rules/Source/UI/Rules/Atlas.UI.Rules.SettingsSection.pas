@@ -8,7 +8,8 @@
 //   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147; seit #1755 hier statt in Base und
 //   auf der Seite „Atlas.Server“). Was dafür Dateien oder den Server braucht, kommt über Hooks
 //   (Atlas.IDE.Rules.Settings).
-// - „Editor“: Basislinie aktualisieren und DFM-Eigenschaftsregeln anwenden.
+// - „Editor“: Basislinie aktualisieren, DFM-Eigenschaftsregeln anwenden und die Marke „Wer gibt das frei?“
+//   (#1877) samt „nur Problemfälle“.
 
 interface
 
@@ -309,6 +310,9 @@ procedure TAtlasRulesEditorSection.BuildRows;
 begin
   Switch('baseline.update', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsBaselineUpdate));
   Switch('dfmRules.apply', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsDfmPropertyRules));
+  Switch('editor.ownershipHints', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsOwnershipHints));
+  Switch('editor.ownershipHints.onlyProblems',
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsOwnershipHintsOnlyProblems));
 end;
 
 end.

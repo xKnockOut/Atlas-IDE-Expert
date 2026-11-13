@@ -125,7 +125,11 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'FixBulk').Checked, 'Sammelkorrektur standardmäßig an');
     Assert.IsTrue(CheckOf(mPage, 'BaselineUpdate').Checked);
     Assert.IsTrue(CheckOf(mPage, 'DfmPropertyRules').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'OwnershipHints').Checked, '„Wer gibt das frei?“ standardmäßig aus (#1877)');
+    Assert.IsFalse(CheckOf(mPage, 'OwnershipHintsOnlyProblems').Checked);
     CheckOf(mPage, 'FixBulk').Checked := False;
+    CheckOf(mPage, 'OwnershipHints').Checked := True;
+    CheckOf(mPage, 'OwnershipHintsOnlyProblems').Checked := True;
     CheckOf(mPage, 'BaselineUpdate').Checked := False;
     CheckOf(mPage, 'DfmPropertyRules').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
@@ -133,11 +137,16 @@ begin
     Assert.IsFalse(mSaved.FixBulk, 'Sammelkorrektur gespeichert');
     Assert.IsFalse(mSaved.BaselineUpdate);
     Assert.IsFalse(mSaved.DfmPropertyRules);
+    Assert.IsTrue(mSaved.OwnershipHints, 'editor.ownershipHints gespeichert');
+    Assert.IsTrue(mSaved.OwnershipHintsOnlyProblems, 'editor.ownershipHints.onlyProblems gespeichert');
     mSaved.DfmPropertyRules := True;
+    mSaved.OwnershipHintsOnlyProblems := False;
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'FixBulk').Checked, 'Sammelkorrektur geladen');
     Assert.IsFalse(CheckOf(mPage, 'BaselineUpdate').Checked);
     Assert.IsTrue(CheckOf(mPage, 'DfmPropertyRules').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'OwnershipHints').Checked, 'editor.ownershipHints geladen');
+    Assert.IsFalse(CheckOf(mPage, 'OwnershipHintsOnlyProblems').Checked);
   finally
     mPage.Free;
   end;
@@ -156,6 +165,8 @@ begin
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'FixBulk')) = mPage.NodeSheet('rules.window'));
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'BaselineUpdate')) = mPage.NodeSheet('editor.codeLens'));
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'DfmPropertyRules')) = mPage.NodeSheet('editor.codeLens'));
+    Assert.IsTrue(SheetOf(CheckOf(mPage, 'OwnershipHints')) = mPage.NodeSheet('editor.ownershipHints'));
+    Assert.IsTrue(SheetOf(CheckOf(mPage, 'OwnershipHintsOnlyProblems')) = mPage.NodeSheet('editor.ownershipHints'));
   finally
     mHost.Free;
   end;
