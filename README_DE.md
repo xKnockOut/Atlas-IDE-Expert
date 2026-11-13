@@ -116,7 +116,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Bauen, Testen, Debuggen](docs/features/de/Bauen-Testen-Debuggen.md)
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build
 - **Ohne Kommandozeilen-Compiler** (Starter, Community): Atlas erkennt das beim Start, sagt es einmal, und Projektaufgaben mit dcc oder MSBuild nennen den Grund, statt zu scheitern (`diagnostics.editionCheck`)
-- **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**, Fehlschläge stehen am **fehlgeschlagenen Assert** mit „erwartet 4, erhalten 3“; auf Wunsch laufen die betroffenen Tests **bei jedem Speichern im Hintergrund**
+- **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**, Fehlschläge stehen am **fehlgeschlagenen Assert** mit „erwartet 4, erhalten 3“ und lassen sich **nebeneinander vergleichen** (JSON/XML eingerückt); auf Wunsch laufen die betroffenen Tests **bei jedem Speichern im Hintergrund**
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt

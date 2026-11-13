@@ -1089,6 +1089,8 @@ uses
   Atlas.Core.Tests.OnSave.Tests in 'IDE.Expert\Atlas.Core.Tests.OnSave.Tests.pas',
   Atlas.Core.Tests.AssertLine in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.AssertLine.Tests in 'IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas',
+  Atlas.Core.Tests.Compare in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas',
+  Atlas.Core.Tests.Compare.Tests in 'IDE.Expert\Atlas.Core.Tests.Compare.Tests.pas',
   Atlas.Core.Tests.AffectedHook in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.AffectedHook.Tests in 'IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas',
   Atlas.Core.Tests.Debug in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas',

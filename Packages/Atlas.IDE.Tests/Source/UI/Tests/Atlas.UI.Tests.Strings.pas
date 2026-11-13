@@ -37,7 +37,11 @@ type
     TestsOnSaveBuilding, TestsOnSaveBusy, TestsOnSaveNoProject, TestsOnSaveNotFound, TestsOnSaveNoServer,
     TestsOnSaveSummaryRunning, TestsOnSaveSummaryFailed, TestsOnSaveSummarySkipped, TestsOnSaveNoResults,
     // Fehlschlag an der Assert-Zeile (#1771).
-    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline);
+    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline,
+    // Erwartet und erhalten vergleichen (#1779).
+    TestsCompareCommand, TestsCompareTitle, TestsCompareExpected, TestsCompareActual, TestsCompareTruncated,
+    TestsCompareSummary, TestsCompareJson, TestsCompareXml, TestsCompareCopyActual, TestsCompareClose, TestsCompareNone,
+    SettingsTestsCompare, SettingsTestsCompareFormat);
 
   TAtlasTestsStrings = class
   public
@@ -154,7 +158,20 @@ const
      'Tests: Noch kein Lauf im Hintergrund.',
      'erwartet %s, erhalten %s',
      'Fehlschlag an der Assert-Zeile zeigen (Stacktrace bzw. eindeutiger Assert), sonst am Methodenkopf',
-     'Dahinter kurz „erwartet …, erhalten …“'),
+     'Dahinter kurz „erwartet …, erhalten …“',
+     'Erwartet und erhalten vergleichen',
+     'Erwartet und erhalten: %s',
+     'Erwartet',
+     'Erhalten',
+     '(gekürzt)',
+     '%d abweichende Zeilen',
+     '(JSON eingerückt)',
+     '(XML eingerückt)',
+     'Erhalten kopieren',
+     'Schließen',
+     'Tests: Kein Fehlschlag mit erwartetem und erhaltenem Wert am Cursor oder aus dem letzten Lauf.',
+     'Befehl „Erwartet und erhalten vergleichen“ (zwei Spalten, Unterschiede zeichengenau)',
+     'JSON und XML vor dem Vergleich gleich einrücken'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -255,7 +272,20 @@ const
      'Tests: No background run yet.',
      'expected %s, got %s',
      'Show a failure at the assert line (stack trace or unique assert), otherwise at the method header',
-     'Short “expected …, got …” after it'));
+     'Short “expected …, got …” after it',
+     'Compare expected and actual',
+     'Expected and actual: %s',
+     'Expected',
+     'Actual',
+     '(truncated)',
+     '%d differing lines',
+     '(JSON indented)',
+     '(XML indented)',
+     'Copy actual',
+     'Close',
+     'Tests: No failure with expected and actual value at the cursor or from the last run.',
+     'Command “Compare expected and actual” (two columns, differences per character)',
+     'Indent JSON and XML the same way before comparing'));
 
 { TAtlasTestsStrings }
 

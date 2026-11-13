@@ -100,6 +100,11 @@ type
     /// <summary>Hinter der Assert-Zeile kurz „erwartet 4, erhalten 3“ statt der ganzen Meldung (#1771,
     /// tests.failureInline).</summary>
     TestsFailureInline: Boolean;
+    /// <summary>Befehl „Erwartet und erhalten vergleichen“ (#1779, tests.compare): Fenster mit beiden Werten in zwei
+    /// Spalten, Unterschiede zeichengenau.</summary>
+    TestsCompare: Boolean;
+    /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
+    TestsCompareFormat: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -233,6 +238,8 @@ begin
   Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
   Result.TestsFailureAtAssert := True;
   Result.TestsFailureInline := True;
+  Result.TestsCompare := True;
+  Result.TestsCompareFormat := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -310,6 +317,8 @@ begin
   AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
   AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
   AIo.Flag('TestsFailureInline', TestsFailureInline);
+  AIo.Flag('TestsCompare', TestsCompare);
+  AIo.Flag('TestsCompareFormat', TestsCompareFormat);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);

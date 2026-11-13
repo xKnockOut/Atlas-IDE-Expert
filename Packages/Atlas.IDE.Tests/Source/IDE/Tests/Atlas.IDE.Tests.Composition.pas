@@ -6,8 +6,9 @@
 // Initialisierung das Modul „atlas.tests“ (Modulschalter tests, #1454) bei
 // der Registry von Base an und stellt über dessen Scope bereit:
 // - den Teil Tests der Feature-Tabelle,
-// - Befehle (Palette), die Einträge „Betroffene Tests ausführen“ und
-//   „Veraltete Tests ausführen“ (#1770) im Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
+// - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
+//   „Veraltete Tests ausführen“ (#1770) und „Erwartet und erhalten
+//   vergleichen“ (#1779) im Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
 //   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
 //   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
@@ -94,6 +95,7 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Stale,
+  Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.UI.Strings,
@@ -107,6 +109,7 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GStale: TAtlasIdeStaleTests;
+  GCompare: TAtlasIdeTestCompare;
 
 { Sichtbarkeit }
 
@@ -216,7 +219,9 @@ begin
   GTests.OnLastFailed := LastFailed;
   // Veraltete Ergebnisse (#1770): Stand je Test nach jedem Lauf.
   GStale := TAtlasIdeStaleTests.Create(GTests);
-  GTests.OnReported := GStale.Remember;
+  // Erwartet und erhalten vergleichen (#1779): Fehlschläge mit Werten; reicht den Lauf an die Stände weiter.
+  GCompare := TAtlasIdeTestCompare.Create(GTests, GStale.Remember);
+  GTests.OnReported := GCompare.Remember;
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
@@ -237,13 +242,15 @@ begin
   // Tests beim Speichern (#1775) vor dem Läufer: Uninstall hat ihre offenen Anfragen schon verworfen.
   FreeAndNil(GOnSave);
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
-  // zurück), dann die Stände der veralteten Ergebnisse (#1770), dann der Läufer; seine Probleme verschwinden mit ihm.
+  // zurück), dann Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann der Läufer; seine Probleme
+  // verschwinden mit ihm.
   FreeAndNil(GLens);
   FreeAndNil(GDebugger);
   if GTests <> nil then
   begin
     GTests.OnReported := nil;
   end;
+  FreeAndNil(GCompare);
   FreeAndNil(GStale);
   try
     FreeAndNil(GTests);
@@ -313,6 +320,21 @@ begin
   end;
 end;
 
+{ Erwartet und erhalten vergleichen (#1779) }
+
+function CompareVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeSettings.Current.TestsCompare;
+end;
+
+procedure CompareValues;
+begin
+  if GCompare <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GCompare.Run);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -371,6 +393,8 @@ begin
     Command('Atlas.RunFailedTests', TAtlasTestsTextId.TestsRunFailedCommand, RunFailed, TestsVisible),
     // Veraltete Ergebnisse (#1770): sichtbar mit tests.stale.
     Command('Atlas.RunStaleTests', TAtlasTestsTextId.TestsRunStaleCommand, RunStale, StaleTestsVisible),
+    // Erwartet und erhalten eines Fehlschlags (#1779): sichtbar mit tests.compare.
+    Command('Atlas.CompareTestValues', TAtlasTestsTextId.TestsCompareCommand, CompareValues, CompareVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -410,9 +434,11 @@ begin
   Result := [
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
+    ContextEntry('Atlas.CompareTestValues'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.NewTestUnitFor', TAtlasMenuPlace.Gallery)];
