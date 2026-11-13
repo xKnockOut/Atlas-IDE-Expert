@@ -8,6 +8,8 @@
 //   - Projekt: beim Debuggen das gestartete, sonst das aktive.
 //   - Beide Dateien werden beim ersten Zugriff gelesen. Ist eine gesperrt,
 //     beginnt Atlas leer und überschreibt sie nicht (TAtlasDataFile).
+//   - LoadFile und SaveFile nutzt auch die Überwachungsliste des Fensters
+//     „Variablen“ (#853).
 // Nur im Hauptthread verwenden.
 
 interface
@@ -36,6 +38,13 @@ type
     destructor Destroy; override;
     /// <summary>Beim Debuggen das gestartete Projekt, sonst das aktive; '' ohne.</summary>
     class function CurrentProject: string; static;
+    /// <summary>AStore aus %LOCALAPPDATA%\Atlas\AFileName lesen (AWhat für das Protokoll); False: Datei gesperrt,
+    /// nicht überschreiben.</summary>
+    class function LoadFile(AStore: TAtlasExpressionHistory; const AFileName, AWhat: string): Boolean; static;
+    /// <summary>AStore nach AFileName schreiben, außer die Datei war beim Lesen gesperrt (AWritable = False).
+    /// </summary>
+    class procedure SaveFile(AStore: TAtlasExpressionHistory; const AFileName, AWhat: string;
+      AWritable: Boolean); static;
     /// <summary>Verlauf des aktuellen Projekts, jüngster zuerst.</summary>
     function HistoryItems: TArray<string>;
     /// <summary>Festgeheftete Ausdrücke von AProject, jüngster zuerst.</summary>
@@ -64,21 +73,6 @@ const
 function StoreFile(const AName: string): string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), AName);
-end;
-
-/// <summary>AStore nach AFileName schreiben; AKept: Datei gesperrt, nicht überschreiben.</summary>
-procedure SaveStore(AStore: TAtlasExpressionHistory; const AFileName, AWhat: string; AKept: Boolean);
-begin
-  if AKept then
-  begin
-    Exit;
-  end;
-  try
-    TAtlasDataFile.Write(StoreFile(AFileName), AStore.ToText);
-  except
-    on E: Exception do
-      TAtlasDataFile.ReportNotWritten(AWhat, E);
-  end;
 end;
 
 { TAtlasIdeEvaluateStore }
@@ -121,22 +115,39 @@ begin
     Exit;
   end;
   FLoaded := True;
+  FHistoryKept := not LoadFile(FHistory, cHistoryFileName, cHistoryWhat);
+  FPinnedKept := not LoadFile(FPinned, cPinnedFileName, cPinnedWhat);
+end;
+
+class function TAtlasIdeEvaluateStore.LoadFile(AStore: TAtlasExpressionHistory; const AFileName,
+  AWhat: string): Boolean;
+begin
   // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert ohne Pfad.
-  FHistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(cHistoryFileName), cHistoryWhat,
+  Result := TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(AFileName), AWhat,
     function(const AText: string): Boolean
     begin
-      Result := FHistory.LoadFromText(AText);
+      Result := AStore.LoadFromText(AText);
     end));
-  FPinnedKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(cPinnedFileName), cPinnedWhat,
-    function(const AText: string): Boolean
-    begin
-      Result := FPinned.LoadFromText(AText);
-    end));
+end;
+
+class procedure TAtlasIdeEvaluateStore.SaveFile(AStore: TAtlasExpressionHistory; const AFileName, AWhat: string;
+  AWritable: Boolean);
+begin
+  if not AWritable then
+  begin
+    Exit;
+  end;
+  try
+    TAtlasDataFile.Write(StoreFile(AFileName), AStore.ToText);
+  except
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten(AWhat, E);
+  end;
 end;
 
 procedure TAtlasIdeEvaluateStore.SavePinned;
 begin
-  SaveStore(FPinned, cPinnedFileName, cPinnedWhat, FPinnedKept);
+  SaveFile(FPinned, cPinnedFileName, cPinnedWhat, not FPinnedKept);
 end;
 
 function TAtlasIdeEvaluateStore.HistoryItems: TArray<string>;
@@ -164,7 +175,7 @@ begin
   Load;
   if FHistory.Add(CurrentProject, AExpression) then
   begin
-    SaveStore(FHistory, cHistoryFileName, cHistoryWhat, FHistoryKept);
+    SaveFile(FHistory, cHistoryFileName, cHistoryWhat, not FHistoryKept);
   end;
 end;
 

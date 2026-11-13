@@ -20,6 +20,9 @@
 //   - Platzhalter für das Aufklappzeichen: auch während ein Wert neu
 //     ausgewertet wird, solange der alte aufklappbar war (kein Flackern des
 //     Zeichens bei jedem Schritt).
+//   - Visible blendet Knoten aus (Suche im Fenster „Variablen“, #853),
+//     Emphasis bestimmt, was fett steht (dort: Treffer). Zugeklappte Knoten
+//     der Liste klappt Sync auch im Baum zu.
 
 interface
 
@@ -42,6 +45,9 @@ type
     Bold: Boolean;
   end;
 
+  /// <summary>Prüft einen Knoten der Liste.</summary>
+  TAtlasEvalNodeTest = reference to function(ANode: TAtlasEvalNode): Boolean;
+
   TAtlasEvalTreeSync = class
   public const
     /// <summary>Höchstens so viele Zeichen eines Werts im Baum; der ganze steht unten.</summary>
@@ -52,6 +58,9 @@ type
     FInfoCount: Integer;
     FUpdating: Boolean;
     FRepaint: Boolean;
+    FVisible: TAtlasEvalNodeTest;
+    FEmphasis: TAtlasEvalNodeTest;
+    function Filtered(const ANodes: TArray<TAtlasEvalNode>): TArray<TAtlasEvalNode>;
     function InfoIndex(AItem: TTreeNode): Integer;
     function NewInfo(const AKey: string): Pointer;
     procedure Structure;
@@ -79,6 +88,10 @@ type
     /// <summary>Zeigt das Aufklappzeichen ohne geholte Kinder: aufklappbarer Wert oder, solange neu ausgewertet
     /// wird, aufklappbarer Wert des letzten Halts.</summary>
     class function ShowsExpander(ANode: TAtlasEvalNode): Boolean; static;
+    /// <summary>Zeigt der Baum den Knoten? nil: alle.</summary>
+    property Visible: TAtlasEvalNodeTest read FVisible write FVisible;
+    /// <summary>Steht der Knoten fett? nil: festgeheftete Zeilen.</summary>
+    property Emphasis: TAtlasEvalNodeTest read FEmphasis write FEmphasis;
   end;
 
 implementation
@@ -132,6 +145,29 @@ constructor TAtlasEvalTreeSync.Create(ATree: TTreeView);
 begin
   inherited Create;
   FTree := ATree;
+end;
+
+function TAtlasEvalTreeSync.Filtered(const ANodes: TArray<TAtlasEvalNode>): TArray<TAtlasEvalNode>;
+var
+  mNode: TAtlasEvalNode;
+  mCount: Integer;
+begin
+  if not Assigned(FVisible) then
+  begin
+    Result := ANodes;
+    Exit;
+  end;
+  SetLength(Result, Length(ANodes));
+  mCount := 0;
+  for mNode in ANodes do
+  begin
+    if FVisible(mNode) then
+    begin
+      Result[mCount] := mNode;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
 end;
 
 function TAtlasEvalTreeSync.InfoIndex(AItem: TTreeNode): Integer;
@@ -311,7 +347,7 @@ begin
   end
   else if ANode.ChildrenLoaded then
   begin
-    SyncLevel(AItem, ChildrenOf(ANode));
+    SyncLevel(AItem, Filtered(ChildrenOf(ANode)));
   end
   else if ShowsExpander(ANode) then
   begin
@@ -338,7 +374,14 @@ begin
   end;
   mIndex := InfoIndex(AItem);
   mLook := LookOf(ANode);
-  mBold := (ANode.Parent = nil) and ANode.Pinned;
+  if Assigned(FEmphasis) then
+  begin
+    mBold := FEmphasis(ANode);
+  end
+  else
+  begin
+    mBold := (ANode.Parent = nil) and ANode.Pinned;
+  end;
   if (FInfos[mIndex].Look <> mLook) or (FInfos[mIndex].Bold <> mBold) then
   begin
     // Farben hängen nicht am Text: neu zeichnen.
@@ -350,6 +393,10 @@ begin
   if ANode.Expanded and ANode.ChildrenLoaded and not AItem.Expanded then
   begin
     AItem.Expand(False);
+  end
+  else if not ANode.Expanded and AItem.Expanded then
+  begin
+    AItem.Collapse(False);
   end;
 end;
 
@@ -387,7 +434,7 @@ begin
   FUpdating := False;
   FRepaint := False;
   try
-    SyncLevel(nil, RootsOf(AList));
+    SyncLevel(nil, Filtered(RootsOf(AList)));
   finally
     if FUpdating then
     begin
