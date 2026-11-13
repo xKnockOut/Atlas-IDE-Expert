@@ -46,6 +46,11 @@ Code completion in its own popup:
   - accepting writes `T(X).Name` or `(X as T).Name` according to `completion.senderCast`
   - not after an assignment to `X`, after passing it to a `var` or `out` parameter, in the else branch, and for fields after any further statement
   - after `X is ` and `X as ` the descendants of the type of `X` come first
+- Matches that are only missing because of their visibility (#2108, `completion.hiddenMembers`)
+  - after `X.Pr` the footer names private, protected and strict protected members that match what was typed, such as “1 match not visible: FPrivate (private in TCounter) · Ctrl+Space shows it”
+  - a second Ctrl+Space shows them dimmed at the end of the list under “Not visible · cannot be inserted here” with the tag “private · TCounter”; Enter does not insert them
+  - without visible matches the empty state names them
+  - only with a typed prefix; a visible member of the same name (overload) suppresses the notice
 - Same names from different units
 - Helper methods
 - `uses` list with groups
