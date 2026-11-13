@@ -405,3 +405,12 @@ Schalter: `debug.deadlocks`.
 - Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
+
+#### Threads im Quelltext
+
+- Beim Halt steht im Rand an jeder Zeile, an der ein anderer Thread mit seinem obersten eigenen Rahmen steht, ein Zeichen mit der Anzahl; bei acht wartenden Workern an derselben Zeile also „8“. Den aktuellen Thread zeigt die IDE wie bisher.
+- Der Tooltip nennt je Thread Kennung, Name und Wartepunkt („⚑ 4120 „Worker“ · wartet in TEvent.WaitFor“); die Links darunter wechseln zum Thread und springen auf seine Zeile.
+- Rechtsklick in den Rand, dann Atlas > Debuggen > „Thread markieren“: Markierte Threads tragen ⚑ und stehen im Tooltip, in Auswahllisten und in den parallelen Aufrufstapeln (Kontextmenü „Thread markieren“) oben. Die Markierung gilt für die Sitzung und folgt der Thread-ID. Stehen an der Zeile mehrere Threads, wählt man aus einer Liste; ohne Thread an der Zeile gilt der aktuelle.
+- Experimentell (`debug.threadFreeze`, Vorgabe aus): „Thread einfrieren“, „Thread auftauen“ und „Alle Threads auftauen“. Ein eingefrorener Thread läuft beim Fortsetzen nicht weiter; sein Zeichen ist grau, die Statusleiste von Atlas zeigt „2 Threads eingefroren“ (Klick taut alle auf). Atlas hält den Thread mit `SuspendThread` an; das geht nur bei Programmen auf diesem Rechner. Am Ende der Sitzung und beim Abschalten taut Atlas alle auf.
+
+Schalter: `debug.threadsInSource`, `debug.threadFreeze`.

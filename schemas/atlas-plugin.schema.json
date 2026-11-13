@@ -1708,6 +1708,32 @@
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
     },
+    "DebugThreadsInSource": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.threadsInSource",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Threads im Quelltext",
+      "x-captionEn": "Threads in source",
+      "x-issue": "#852"
+    },
+    "DebugThreadFreeze": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.threadFreeze",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-parent": "debug.threadsInSource",
+      "x-caption": "Threads einfrieren und auftauen",
+      "x-captionEn": "Freeze and thaw threads",
+      "x-issue": "#852"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",

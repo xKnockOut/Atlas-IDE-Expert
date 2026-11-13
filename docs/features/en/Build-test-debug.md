@@ -460,3 +460,12 @@ Settings: `debug.deadlocks`
 - From `debug.parallelStacks.maxThreads` threads (default 64) Atlas reads the stacks in portions and shows the tree in between so the IDE stays responsive.
 
 Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
+
+### Threads in source
+
+- At a stop the gutter shows a mark with the count at every line where another thread stands with its topmost own frame; with eight waiting workers at the same line that is “8”. The IDE shows the current thread as before.
+- The tooltip lists id, name and wait point per thread (“⚑ 4120 “Worker” · waiting in TEvent.WaitFor”); the links below switch to the thread and jump to its line.
+- Right-click the gutter, then Atlas > Debugging > “Flag thread”: flagged threads carry ⚑ and come first in tooltips, pick lists and the parallel stacks (context menu “Flag thread”). The flag lasts for the session and follows the thread id. With several threads at the line you pick from a list; with none the current thread counts.
+- Experimental (`debug.threadFreeze`, default off): “Freeze thread”, “Thaw thread” and “Thaw all threads”. A frozen thread does not run when you continue; its mark is gray and the Atlas status bar shows “2 threads frozen” (click thaws all). Atlas holds the thread with `SuspendThread`, which only works for programs on this computer. At the end of the session and when switched off Atlas thaws all threads.
+
+Settings: `debug.threadsInSource`, `debug.threadFreeze`
