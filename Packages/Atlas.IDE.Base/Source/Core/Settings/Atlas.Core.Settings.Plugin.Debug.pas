@@ -13,6 +13,11 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
+  cMinParallelStacksThreads = 1;
+  cMaxParallelStacksThreads = 1024;
+  /// <summary>Vorgabe von debug.parallelStacks.maxThreads.</summary>
+  cDefaultParallelStacksThreads = 64;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -107,6 +112,13 @@ type
     /// <summary>debug.deadlocks (#587): Befehl „Was wartet worauf?“: Wartepunkte aller Threads eines
     /// angehaltenen Programms und bekannte Muster von Verklemmungen im Ergebnisfenster.</summary>
     DebugDeadlocks: Boolean;
+    /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
+    /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
+    DebugParallelStacks: Boolean;
+    /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
+    DebugParallelStacksWaitRoutines: string;
+    /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
+    DebugParallelStacksMaxThreads: Integer;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -196,6 +208,9 @@ begin
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugParallelStacks := True;
+  Result.DebugParallelStacksWaitRoutines := '';
+  Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
   Result.DebugDeadlocks := True;
   Result.DebugModuleOfAddress := True;
   Result.DebugExceptionHistory := True;
@@ -214,6 +229,9 @@ procedure TAtlasPluginDebugSettings.Normalize;
 begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
+  DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
+  DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
+    cMaxParallelStacksThreads);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
@@ -259,6 +277,9 @@ begin
   AIo.Flag('DebugExplainAccessViolationAllowCalls', DebugExplainAccessViolationAllowCalls);
   AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);
   AIo.Flag('DebugDeadlocks', DebugDeadlocks);
+  AIo.Flag('DebugParallelStacks', DebugParallelStacks);
+  AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
+  AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
 
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
