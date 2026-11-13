@@ -60,6 +60,7 @@ type
     function RunInterfaceMethods(const AArguments: TJSONArray): TJSONValue;
     function RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
     function RunEnumValue(const AArguments: TJSONArray): TJSONValue;
+    function RunValueEdit(const AArguments: TJSONArray): TJSONValue;
     function RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
     function RunPlainText(const AArguments: TJSONArray): TJSONValue;
     function RunToLiteral(const AArguments: TJSONArray): TJSONValue;
@@ -87,6 +88,7 @@ uses
   Atlas.Common.Lsp.InterfaceMethods,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
+  Atlas.Common.Lsp.ValueEdit,
   Atlas.Common.Lsp.StringLiteralCommands;
 
 constructor TShellEditorCommands.Create(const AServices: TShellEditorCommandServices);
@@ -122,6 +124,8 @@ begin
   // Nebenläufig bis auf den Ressourcenstring, der die Datei schreibt.
   ACommands.RegisterConcurrent(TQualifiedNames.cCommand, RunQualifiedNames);
   ACommands.RegisterConcurrent(TEnumValueCommands.cCommand, RunEnumValue);
+  // Werte ändern beim Debuggen (#868): Typ und Art der Eingabe.
+  ACommands.RegisterConcurrent(TLspValueEdit.cCommand, RunValueEdit);
   ACommands.Register(TResourceStringCommands.cAddCommand, RunAddResourceString);
   ACommands.RegisterConcurrent(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
   ACommands.RegisterConcurrent(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
@@ -175,6 +179,12 @@ end;
 function TShellEditorCommands.RunEnumValue(const AArguments: TJSONArray): TJSONValue;
 begin
   Result := TEnumValueCommands.Execute(FServices.Documents, FServices.Index, FServices.EnsureUnit,
+    FServices.Namespaces(), ReadText, AArguments);
+end;
+
+function TShellEditorCommands.RunValueEdit(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspValueEdit.Execute(FServices.Documents, FServices.Index, FServices.EnsureUnit,
     FServices.Namespaces(), ReadText, AArguments);
 end;
 

@@ -249,6 +249,9 @@ type
     DebugPredictDimSkipped: Boolean;
     /// <summary>So viele Zeilen voraus (#2169, debug.predictConditions.lines, 1 bis 200).</summary>
     DebugPredictLines: Integer;
+    /// <summary>Werte ändern (#868, debug.editValues): „Ändern …“ und Umschalten im Debug-Hover, F2 auf einem Wert im
+    /// Editor; Eingabe nach Typ geprüft, „Rückgängig“ bis zum nächsten Schritt. Aus = Werte nur lesbar.</summary>
+    DebugEditValues: Boolean;
     /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
     /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
     DebugPinnedValues: Boolean;
@@ -488,6 +491,7 @@ begin
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
+  DebugEditValues := True;
   DebugPinnedValues := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
@@ -514,6 +518,7 @@ begin
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
+  AIo.Flag('DebugEditValues', DebugEditValues);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
