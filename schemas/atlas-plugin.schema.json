@@ -1914,6 +1914,31 @@
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
     },
+    "DebugCallStackWindow": {
+      "type": "boolean",
+      "default": true,
+      "description": "Andockbares Fenster „Aufrufstapel“ für den aktuellen Thread: Rahmen mit Routine, benannten Parametern und Unit:Zeile, Bibliotheksrahmen als zugeklappte Gruppe, Suche nach Routine, Unit oder Wert, Kopieren als Text oder Markdown (wahlweise nur eigener Code) und Vergleich mit dem Stapel beim letzten Halt an derselben Stelle. Aus: kein Fenster und kein Menüpunkt, der Aufrufstapel der IDE bleibt unverändert.",
+      "x-key": "debug.callStackWindow",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Fenster „Aufrufstapel“",
+      "x-captionEn": "Window “Call Stack”",
+      "x-issue": "#843"
+    },
+    "DebugCallStackWindowEvaluateParams": {
+      "type": "boolean",
+      "default": true,
+      "description": "Parameter im Fenster „Aufrufstapel“ einzeln auswerten (lesbare Werte, Ersatztexte der Visualisierer, Objekte mit Klasse und Namensfeld), nur für sichtbare Rahmen und mit Zeitlimit. Aus: die Werte aus dem Rahmentext der IDE.",
+      "x-key": "debug.callStackWindow.evaluateParams",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.callStackWindow",
+      "x-caption": "Parameter einzeln auswerten",
+      "x-captionEn": "Evaluate parameters one by one",
+      "x-issue": "#843"
+    },
     "DebugThreadsInSource": {
       "type": "boolean",
       "default": true,
