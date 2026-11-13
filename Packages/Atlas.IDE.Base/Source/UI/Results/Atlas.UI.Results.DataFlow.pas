@@ -26,7 +26,7 @@ type
   TAtlasResultsFlowPart = class(TAtlasResultsPart)
   private type
     TParts = record
-      Bar: TPanel;
+      Bar: TFlowPanel;
       OnlyProject: TCheckBox;
       ExcludeTests: TCheckBox;
     end;
@@ -77,12 +77,12 @@ constructor TAtlasResultsFlowPart.Create(AView: TAtlasResultsView);
 begin
   inherited Create(AView);
   // Filter; nur sichtbar, solange ein Datenfluss gezeigt wird.
-  FParts.Bar := TAtlasResultsControls.Bar(AView.Host, AView, 24);
-  FParts.OnlyProject := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alLeft, 150,
+  // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge, bei schmalem Fenster Umbruch.
+  FParts.Bar := TAtlasResultsControls.Bar(AView.Host, AView);
+  FParts.OnlyProject := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alNone, 150,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOnlyProject), FilterClick);
-  FParts.ExcludeTests := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alLeft, 150,
+  FParts.ExcludeTests := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alNone, 150,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowExcludeTests), FilterClick);
-  TAtlasResultsControls.Follow(FParts.ExcludeTests, FParts.OnlyProject);
 end;
 
 procedure TAtlasResultsFlowPart.Reset;

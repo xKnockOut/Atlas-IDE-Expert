@@ -64,7 +64,7 @@ type
     Tree: TTreeView;
     Splitter: TSplitter;
     Bottom: TPanel;
-    Bar: TPanel;
+    Bar: TFlowPanel;
     ViewButtons: array[TAtlasEvalView] of TSpeedButton;
     ModifyButton: TButton;
     PinButton: TButton;
@@ -182,23 +182,15 @@ begin
   Result.Height := Scaled(ASelf, AHeight);
 end;
 
-/// <summary>Reihenfolge nebeneinander ausgerichteter Teile: Die VCL ordnet sie nach Left. Neue Teile haben alle
-/// Left 0; ohne eigene Werte hängt die Reihenfolge davon ab, wie die VCL Gleichstände auflöst (vorher standen die
-/// Ansichten verkehrt herum und „IDE-Dialog“ links statt rechts).</summary>
-function OrderLeft(APosition: Integer): Integer;
-begin
-  Result := 10000 + APosition;
-end;
-
+/// <summary>Knopf der fließenden Leiste; die Reihenfolge ist die der Erzeugung.</summary>
 function AddButton(ASelf: TAtlasDebugEvaluateFrame; AParent: TWinControl; AText: TAtlasDebugTextId;
-  AClick: TNotifyEvent; APosition: Integer): TButton;
+  AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(ASelf);
   Result.Parent := AParent;
-  Result.Left := OrderLeft(APosition);
-  Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 86);
+  Result.Height := Scaled(ASelf, 24);
   Result.Caption := TAtlasDebugStrings.Text(AText);
   Result.OnClick := AClick;
 end;
@@ -273,10 +265,9 @@ function AddViewButton(ASelf: TAtlasDebugEvaluateFrame; AKind: TAtlasEvalView): 
 begin
   Result := TSpeedButton.Create(ASelf);
   Result.Parent := ASelf.FParts.Bar;
-  Result.Left := OrderLeft(Ord(AKind));
-  Result.Align := alLeft;
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 54);
+  Result.Height := Scaled(ASelf, 24);
   Result.GroupIndex := 1;
   Result.AllowAllUp := False;
   Result.Caption := TAtlasDebugStrings.Text(cViewTexts[AKind]);
@@ -285,21 +276,29 @@ begin
   Result.OnClick := ASelf.ViewClick;
 end;
 
-/// <summary>Leiste über der Ansicht: von rechts IDE-Dialog, Festheften, Ändern; links die Ansichten.</summary>
+/// <summary>Leiste über der Ansicht: erst die Ansichten, dann Ändern, Festheften, IDE-Dialog. Fließend: Bei
+/// schmalem Fenster brechen die Knöpfe in weitere Zeilen um; TFlowPanel ordnet nach Erzeugungsreihenfolge.</summary>
 procedure BuildBar(ASelf: TAtlasDebugEvaluateFrame);
 var
   mKind: TAtlasEvalView;
 begin
-  ASelf.FParts.Bar := AddPanel(ASelf, ASelf.FParts.Bottom, alTop, 28);
-  ASelf.FParts.ModifyButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateModify,
-    ASelf.ModifyClick, 0);
-  ASelf.FParts.PinButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluatePin, ASelf.PinClick, 1);
-  ASelf.FParts.IdeDialogButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateIdeDialog,
-    ASelf.IdeDialogClick, 2);
+  ASelf.FParts.Bar := TFlowPanel.Create(ASelf);
+  ASelf.FParts.Bar.Parent := ASelf.FParts.Bottom;
+  ASelf.FParts.Bar.Align := alTop;
+  ASelf.FParts.Bar.BevelOuter := bvNone;
+  ASelf.FParts.Bar.ShowCaption := False;
+  ASelf.FParts.Bar.ParentBackground := True;
+  ASelf.FParts.Bar.AutoWrap := True;
+  ASelf.FParts.Bar.AutoSize := True;
   for mKind := Low(TAtlasEvalView) to High(TAtlasEvalView) do
   begin
     ASelf.FParts.ViewButtons[mKind] := AddViewButton(ASelf, mKind);
   end;
+  ASelf.FParts.ModifyButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateModify,
+    ASelf.ModifyClick);
+  ASelf.FParts.PinButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluatePin, ASelf.PinClick);
+  ASelf.FParts.IdeDialogButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateIdeDialog,
+    ASelf.IdeDialogClick);
 end;
 
 /// <summary>Unten die Leiste und die Ansicht des gewählten Werts, darüber der Teiler.</summary>

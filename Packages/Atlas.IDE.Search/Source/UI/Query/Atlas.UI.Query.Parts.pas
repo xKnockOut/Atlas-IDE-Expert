@@ -45,7 +45,7 @@ type
   end;
 
   /// <summary>Obere Leiste: Auswahl gespeicherter Abfragen und die Knöpfe; die Klicks setzt der Frame.</summary>
-  TAtlasQueryToolbar = class(TPanel)
+  TAtlasQueryToolbar = class(TFlowPanel)
   private
     FSaved: TComboBox;
     FRun: TButton;
@@ -183,12 +183,13 @@ begin
   Align := alTop;
   BevelOuter := bvNone;
   ShowCaption := False;
+  // Fließende Leiste: bei schmalem Fenster brechen die Knöpfe in weitere Zeilen um.
+  AutoWrap := True;
   AutoSize := True;
   Padding.SetBounds(2, 2, 2, 0);
 
   FSaved := TComboBox.Create(Self);
   FSaved.Parent := Self;
-  FSaved.Align := alLeft;
   FSaved.AlignWithMargins := True;
   FSaved.Style := csDropDownList;
   FSaved.Width := FSaved.ScaleValue(220);
@@ -203,21 +204,11 @@ begin
 end;
 
 function TAtlasQueryToolbar.NewButton(const ACaption: string; AWidth: Integer): TButton;
-var
-  mLeft: Integer;
-  mIndex: Integer;
 begin
-  // Rechts an die bisherigen Steuerelemente anhängen (alLeft ordnet nach Left).
-  mLeft := 0;
-  for mIndex := 0 to ControlCount - 1 do
-  begin
-    mLeft := Max(mLeft, Controls[mIndex].Left + Controls[mIndex].Width + 1);
-  end;
+  // TFlowPanel hängt in Erzeugungsreihenfolge an.
   Result := TButton.Create(Self);
   Result.Parent := Self;
-  Result.Align := alLeft;
   Result.AlignWithMargins := True;
-  Result.Left := mLeft;
   Result.Caption := ACaption;
   Result.Width := AWidth;
 end;

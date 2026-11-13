@@ -108,7 +108,7 @@ type
   TAtlasProblemsFrameParts = class(TAtlasProblemsFrameEvents)
   private
     FView: TAtlasFindingsView;
-    FBar: TPanel;
+    FBar: TFlowPanel;
     FScope: TComboBox;
     /// <summary>Einträge und Wahl der Bereichsliste samt Einzelprojekten (#1843).</summary>
     FScopeBox: TAtlasProblemsScopeBox;
@@ -391,12 +391,15 @@ var
   mButton: TSpeedButton;
   mLeft: Integer;
 begin
-  FBar := TPanel.Create(Self);
+  // Fließende Leiste: Ist das Fenster schmal, brechen die Bedienelemente in weitere Zeilen um, statt
+  // abgeschnitten zu werden (vorher feste Left-Positionen in einem Panel fester Höhe).
+  FBar := TFlowPanel.Create(Self);
   FBar.Parent := Self;
   FBar.Align := alTop;
   FBar.BevelOuter := bvNone;
   FBar.ShowCaption := False;
-  FBar.Height := MulDiv(28, CurrentPPI, 96);
+  FBar.AutoWrap := True;
+  FBar.AutoSize := True;
   FBar.ParentBackground := True;
 
   FScope := AddCombo(cScopeWidth);
@@ -409,6 +412,7 @@ begin
   begin
     mButton := TSpeedButton.Create(Self);
     mButton.Parent := FBar;
+    mButton.AlignWithMargins := True;
     mButton.Top := MulDiv(2, CurrentPPI, 96);
     mButton.Height := MulDiv(22, CurrentPPI, 96);
     mButton.Width := MulDiv(78, CurrentPPI, 96);
@@ -442,6 +446,7 @@ begin
   // Offene Units zuerst (#1108): gedrückt = an; eigene Gruppe, damit er allein an und aus geht.
   FOpenFirst := TSpeedButton.Create(Self);
   FOpenFirst.Parent := FBar;
+  FOpenFirst.AlignWithMargins := True;
   FOpenFirst.Top := MulDiv(2, CurrentPPI, 96);
   FOpenFirst.Height := MulDiv(22, CurrentPPI, 96);
   FOpenFirst.Width := MulDiv(110, CurrentPPI, 96);
@@ -455,6 +460,7 @@ begin
   FOpenFirst.OnClick := OpenFirstClick;
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FBar;
+  FFilter.AlignWithMargins := True;
   FFilter.Top := MulDiv(3, CurrentPPI, 96);
   FFilter.Left := FOpenFirst.Left + FOpenFirst.Width + MulDiv(4, CurrentPPI, 96);
   FFilter.Width := MulDiv(200, CurrentPPI, 96);
@@ -471,9 +477,10 @@ begin
   FOrigin.OnChange := ControlsChanged;
   FLive := TLabel.Create(Self);
   FLive.Parent := FBar;
-  FLive.Align := alRight;
   FLive.AlignWithMargins := True;
-  FLive.Layout := tlCenter;
+  // Breite nach dem Text (live, beim Speichern, manuell): AutoSize, in der Leiste vertikal etwas abgesetzt.
+  FLive.AutoSize := True;
+  FLive.Margins.Top := MulDiv(6, CurrentPPI, 96);
   FLive.ShowAccelChar := False;
   FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsLive);
 end;
@@ -624,6 +631,7 @@ function TAtlasProblemsFrameParts.AddCombo(AWidth: Integer): TComboBox;
 begin
   Result := TComboBox.Create(Self);
   Result.Parent := FBar;
+  Result.AlignWithMargins := True;
   Result.Style := csDropDownList;
   Result.Top := MulDiv(3, CurrentPPI, 96);
   Result.Left := MulDiv(4, CurrentPPI, 96);

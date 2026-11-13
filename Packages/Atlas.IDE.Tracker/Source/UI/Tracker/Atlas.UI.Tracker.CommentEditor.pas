@@ -55,7 +55,7 @@ type
   /// <summary>Steuerelemente des Kommentarfelds; sie gehören dem Feld.</summary>
   TAtlasCommentEditorParts = record
     Memo: TMemo;
-    Bar: TPanel;
+    Bar: TFlowPanel;
     PreviewButton: TButton;
     SnippetButton: TButton;
     DraftNote: TLabel;
@@ -860,44 +860,42 @@ end;
 
 { TAtlasCommentEditor }
 
-function AddBarButton(AEditor: TAtlasCommentEditor; AAlign: TAlign; AWidth: Integer;
-  const ACaption: string): TButton;
+function AddBarButton(AEditor: TAtlasCommentEditor; AWidth: Integer; const ACaption: string): TButton;
 begin
   Result := TButton.Create(AEditor);
   Result.Parent := AEditor.FParts.Bar;
-  Result.Align := AAlign;
   Result.AlignWithMargins := True;
   Result.Width := AWidth;
   Result.Caption := ACaption;
 end;
 
-/// <summary>Leiste unten: Vorschau, Textbaustein, Hinweis und Knopf zum Entwurf.</summary>
+/// <summary>Leiste unten: Vorschau, Textbaustein, Hinweis und Knopf zum Entwurf. Fließend: Reihenfolge =
+/// Erzeugungsreihenfolge, bei schmalem Fenster Umbruch in weitere Zeilen.</summary>
 procedure AddBar(AEditor: TAtlasCommentEditor);
 begin
-  AEditor.FParts.Bar := TPanel.Create(AEditor);
+  AEditor.FParts.Bar := TFlowPanel.Create(AEditor);
   AEditor.FParts.Bar.Parent := AEditor;
   AEditor.FParts.Bar.Align := alBottom;
   AEditor.FParts.Bar.BevelOuter := bvNone;
   AEditor.FParts.Bar.ShowCaption := False;
-  AEditor.FParts.Bar.Height := AEditor.FParts.Bar.ScaleValue(30);
-  AEditor.FParts.PreviewButton := AddBarButton(AEditor, alLeft, 90,
+  AEditor.FParts.Bar.AutoWrap := True;
+  AEditor.FParts.Bar.AutoSize := True;
+  AEditor.FParts.PreviewButton := AddBarButton(AEditor, 90,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview));
   AEditor.FParts.PreviewButton.OnClick := AEditor.ButtonClick;
-  AEditor.FParts.SnippetButton := AddBarButton(AEditor, alLeft, 120,
+  AEditor.FParts.SnippetButton := AddBarButton(AEditor, 120,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorSnippets));
-  AEditor.FParts.SnippetButton.Left := AEditor.FParts.SnippetButton.ScaleValue(100);
   AEditor.FParts.SnippetButton.OnClick := AEditor.ButtonClick;
-  AEditor.FParts.DraftButton := AddBarButton(AEditor, alRight, 100, '');
-  AEditor.FParts.DraftButton.Visible := False;
   AEditor.FParts.DraftNote := TLabel.Create(AEditor);
   AEditor.FParts.DraftNote.Parent := AEditor.FParts.Bar;
-  AEditor.FParts.DraftNote.Align := alClient;
   AEditor.FParts.DraftNote.AlignWithMargins := True;
+  AEditor.FParts.DraftNote.AutoSize := True;
   AEditor.FParts.DraftNote.Margins.Top := AEditor.FParts.DraftNote.ScaleValue(7);
-  AEditor.FParts.DraftNote.Alignment := taRightJustify;
   AEditor.FParts.DraftNote.ShowAccelChar := False;
   AEditor.FParts.DraftNote.Font.Color := clGrayText;
   AEditor.FParts.DraftNote.Caption := '';
+  AEditor.FParts.DraftButton := AddBarButton(AEditor, 100, '');
+  AEditor.FParts.DraftButton.Visible := False;
 end;
 
 /// <summary>Memo, Vorschaukasten und Menü der Textbausteine.</summary>

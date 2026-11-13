@@ -42,7 +42,7 @@ type
   private type
     /// <summary>Steuerelemente des Frames.</summary>
     TParts = record
-      Top: TPanel;
+      Top: TFlowPanel;
       Refresh: TButton;
       Save: TButton;
       Level: TComboBox;
@@ -529,43 +529,41 @@ end;
 /// <summary>Neu berechnen, Bericht speichern, Ebene und Filter.</summary>
 procedure BuildTop(AFrame: THotspotsFrame; AEvents: THotspotsFrame.TEvents);
 var
-  mTop: TPanel;
+  mTop: TFlowPanel;
 begin
-  mTop := TPanel.Create(AFrame);
+  // Fließende Leiste: bei schmalem Fenster brechen die Bedienelemente in weitere Zeilen um.
+  mTop := TFlowPanel.Create(AFrame);
   mTop.Parent := AFrame;
   mTop.Align := alTop;
   mTop.BevelOuter := bvNone;
   mTop.ShowCaption := False;
+  mTop.AutoWrap := True;
   mTop.AutoSize := True;
   mTop.Padding.SetBounds(2, 2, 2, 2);
   AFrame.FParts.Top := mTop;
   AFrame.FParts.Refresh := TButton.Create(AFrame);
   AFrame.FParts.Refresh.Parent := mTop;
-  AFrame.FParts.Refresh.Align := alLeft;
   AFrame.FParts.Refresh.AlignWithMargins := True;
   AFrame.FParts.Refresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsRefresh);
   AFrame.FParts.Refresh.Width := AFrame.FParts.Refresh.ScaleValue(110);
   AFrame.FParts.Refresh.OnClick := AEvents.RefreshClick;
   AFrame.FParts.Save := TButton.Create(AFrame);
   AFrame.FParts.Save.Parent := mTop;
-  AFrame.FParts.Save.Align := alLeft;
   AFrame.FParts.Save.AlignWithMargins := True;
-  AFrame.FParts.Save.Left := AFrame.FParts.Refresh.Left + AFrame.FParts.Refresh.Width + 1;
   AFrame.FParts.Save.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveReport);
   AFrame.FParts.Save.Width := AFrame.FParts.Save.ScaleValue(130);
   AFrame.FParts.Save.OnClick := AEvents.SaveClick;
   AFrame.FParts.Level := TComboBox.Create(AFrame);
   AFrame.FParts.Level.Parent := mTop;
-  AFrame.FParts.Level.Align := alLeft;
   AFrame.FParts.Level.AlignWithMargins := True;
-  AFrame.FParts.Level.Left := AFrame.FParts.Save.Left + AFrame.FParts.Save.Width + 1;
   AFrame.FParts.Level.Style := csDropDownList;
   AFrame.FParts.Level.Width := AFrame.FParts.Level.ScaleValue(110);
   AFrame.FParts.Level.OnChange := AEvents.LevelChange;
   AFrame.FParts.Filter := TEdit.Create(AFrame);
   AFrame.FParts.Filter.Parent := mTop;
-  AFrame.FParts.Filter.Align := alClient;
   AFrame.FParts.Filter.AlignWithMargins := True;
+  // Feste Breite statt alClient, damit das Feld in der fließenden Leiste umbrechen kann.
+  AFrame.FParts.Filter.Width := AFrame.FParts.Filter.ScaleValue(200);
   AFrame.FParts.Filter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFilterHint);
   AFrame.FParts.Filter.OnChange := AEvents.FilterChange;
 end;

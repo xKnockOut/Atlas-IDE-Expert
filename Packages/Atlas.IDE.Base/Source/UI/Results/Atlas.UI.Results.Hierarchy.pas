@@ -25,7 +25,7 @@ type
   /// <summary>Steuerelemente des Aufrufdiagramms (#1122).</summary>
   TAtlasResultsDiagramControls = record
     Toggle: TCheckBox;
-    Bar: TPanel;
+    Bar: TFlowPanel;
     Outgoing: TRadioButton;
     Incoming: TRadioButton;
     ProjectOnly: TCheckBox;
@@ -118,21 +118,20 @@ var
 begin
   // Leiste des Diagramms: Richtung, Filter, Einpassen, HTML.
   mOwner := View.Host;
-  FControls.Bar := TAtlasResultsControls.Bar(mOwner, View, 26);
+  // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge, bei schmalem Fenster Umbruch.
+  FControls.Bar := TAtlasResultsControls.Bar(mOwner, View);
   FControls.Outgoing := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 160,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramOutgoing), DirectionClick);
   FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 150,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramIncoming), DirectionClick);
-  TAtlasResultsControls.Follow(FControls.Incoming, FControls.Outgoing);
-  FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alLeft, 140,
+  FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alNone, 140,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramProjectOnly), nil);
-  TAtlasResultsControls.Follow(FControls.ProjectOnly, FControls.Incoming);
   FControls.ProjectOnly.Checked := True;
   FControls.ProjectOnly.OnClick := ProjectOnlyClick;
-  FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alRight, 150,
-    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveHtml), SaveClick);
-  FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alRight, 90,
+  FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, 90,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramFit), FitClick);
+  FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, 150,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveHtml), SaveClick);
 end;
 
 procedure TAtlasResultsHierarchyPart.CreateDiagram;

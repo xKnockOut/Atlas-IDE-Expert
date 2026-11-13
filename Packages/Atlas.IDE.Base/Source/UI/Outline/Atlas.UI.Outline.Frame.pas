@@ -37,7 +37,7 @@ type
   /// <summary>Steuerelemente des Seitenfensters „Gliederung“; Grundlage von TAtlasOutlineFrame.</summary>
   TAtlasOutlineFrameParts = class(TFrame)
   private
-    FTop: TPanel;
+    FTop: TFlowPanel;
     FSearch: TEdit;
     FVisibilityButton: TButton;
     FKindButton: TButton;
@@ -226,34 +226,37 @@ begin
   UpdateMessage;
 end;
 
-/// <summary>Obere Leiste: Knöpfe Sortierung, Art, Sichtbarkeit (von rechts) und das Suchfeld.</summary>
+/// <summary>Obere Leiste: Suchfeld und die Knöpfe Sichtbarkeit, Art, Sortierung (fließend).</summary>
 procedure TAtlasOutlineFrame.BuildBar;
 begin
-  FTop := TPanel.Create(Self);
+  // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge (Suche, Sichtbarkeit, Art, Sortierung wie bisher von
+  // links nach rechts); bei schmalem Fenster brechen die Knöpfe in weitere Zeilen um.
+  FTop := TFlowPanel.Create(Self);
   FTop.Parent := Self;
   FTop.Align := alTop;
   FTop.BevelOuter := bvNone;
   FTop.ShowCaption := False;
   FTop.ParentBackground := True;
-  FTop.Height := Scale(28);
-
-  FSortButton := NewButton;
-  FSortButton.OnClick := SortClick;
-  FKindButton := NewButton;
-  FKindButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineKindButton) + ' ▾';
-  FKindButton.OnClick := KindClick;
-  FVisibilityButton := NewButton;
-  FVisibilityButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineVisibilityButton) + ' ▾';
-  FVisibilityButton.OnClick := VisibilityClick;
+  FTop.AutoWrap := True;
+  FTop.AutoSize := True;
 
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTop;
-  FSearch.Align := alClient;
   FSearch.AlignWithMargins := True;
+  FSearch.Width := Scale(200);
   FSearch.TextHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSearchHint);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
   FSearch.OnKeyPress := SearchKeyPress;
+
+  FVisibilityButton := NewButton;
+  FVisibilityButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineVisibilityButton) + ' ▾';
+  FVisibilityButton.OnClick := VisibilityClick;
+  FKindButton := NewButton;
+  FKindButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineKindButton) + ' ▾';
+  FKindButton.OnClick := KindClick;
+  FSortButton := NewButton;
+  FSortButton.OnClick := SortClick;
 end;
 
 /// <summary>Menüs der Knöpfe Sichtbarkeit und Art und das Kontextmenü der Liste.</summary>
@@ -347,9 +350,9 @@ function TAtlasOutlineFrameParts.NewButton: TButton;
 begin
   Result := TButton.Create(Self);
   Result.Parent := FTop;
-  Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := Scale(92);
+  Result.Height := Scale(24);
 end;
 
 function TAtlasOutlineFrameParts.AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer;

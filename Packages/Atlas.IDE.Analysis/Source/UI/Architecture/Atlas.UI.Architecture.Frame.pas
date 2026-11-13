@@ -73,7 +73,7 @@ type
   public type
     /// <summary>Steuerelemente des Frames (für die IDE-Schicht, Tests und Bildschirmleser).</summary>
     TParts = record
-      Top: TPanel;
+      Top: TFlowPanel;
       Refresh: TButton;
       Save: TButton;
       SaveState: TButton;
@@ -323,8 +323,13 @@ end;
 procedure PlaceLeft(AControl: TControl; AParent: TWinControl; AAfter: TControl);
 begin
   AControl.Parent := AParent;
-  AControl.Align := alLeft;
   AControl.AlignWithMargins := True;
+  // In einer fließenden Leiste ordnet TFlowPanel nach Erzeugungsreihenfolge an; Align störte dort.
+  if AParent is TFlowPanel then
+  begin
+    Exit;
+  end;
+  AControl.Align := alLeft;
   if AAfter <> nil then
   begin
     AControl.Left := AAfter.Left + AAfter.Width + 1;
@@ -373,6 +378,26 @@ begin
   Result.AutoSize := True;
 end;
 
+/// <summary>Obere Leiste, die bei schmalem Fenster in weitere Zeilen umbricht.</summary>
+function NewFlowBar(AFrame: TArchFrame; AParent: TWinControl): TFlowPanel;
+begin
+  Result := TFlowPanel.Create(AFrame);
+  Result.Parent := AParent;
+  Result.Align := alTop;
+  Result.BevelOuter := bvNone;
+  Result.ShowCaption := False;
+  Result.AutoWrap := True;
+  Result.AutoSize := True;
+end;
+
+/// <summary>Beschriftung einer fließenden Leiste, etwa mittig zu den Knöpfen.</summary>
+function NewFlowLabel(AFrame: TArchFrame; AParent: TFlowPanel): TLabel;
+begin
+  Result := NewLabel(AFrame, AParent, alNone);
+  Result.AutoSize := True;
+  Result.Margins.Top := AFrame.ScaleValue(7);
+end;
+
 procedure UpdateResolutionInfo(AFrame: TArchFrame; AValue: Double);
 var
   mText: string;
@@ -417,7 +442,7 @@ var
   mEvents: TArchEvents;
 begin
   mEvents := AFrame.FState.Events;
-  AFrame.FParts.Top := NewBar(AFrame, AFrame);
+  AFrame.FParts.Top := NewFlowBar(AFrame, AFrame);
   AFrame.FParts.Top.Padding.SetBounds(2, 2, 2, 2);
   AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh, 110,
     mEvents.RefreshClick);
@@ -444,9 +469,7 @@ var
   mCaption, mInfo: TLabel;
   mSlider: TAtlasResolutionSlider;
 begin
-  mCaption := NewLabel(AFrame, AFrame.FParts.Top, alLeft);
-  mCaption.Left := AFrame.FParts.LibraryUnits.Left + AFrame.FParts.LibraryUnits.Width + 1;
-  mCaption.Layout := tlCenter;
+  mCaption := NewFlowLabel(AFrame, AFrame.FParts.Top);
   mCaption.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionCaption);
   mSlider := TAtlasResolutionSlider.Create(AFrame);
   PlaceLeft(mSlider, AFrame.FParts.Top, mCaption);
@@ -455,9 +478,7 @@ begin
   mSlider.ShowHint := True;
   mSlider.OnTracking := ResolutionTracking(AFrame);
   mSlider.OnChange := ResolutionChange(AFrame);
-  mInfo := NewLabel(AFrame, AFrame.FParts.Top, alLeft);
-  mInfo.Left := mSlider.Left + mSlider.Width + 1;
-  mInfo.Layout := tlCenter;
+  mInfo := NewFlowLabel(AFrame, AFrame.FParts.Top);
   AFrame.FParts.ResolutionCaption := mCaption;
   AFrame.FParts.Resolution := mSlider;
   AFrame.FParts.ResolutionInfo := mInfo;
@@ -468,8 +489,9 @@ procedure BuildFilterAndStatus(AFrame: TArchFrame);
 begin
   AFrame.FParts.Filter := TEdit.Create(AFrame);
   AFrame.FParts.Filter.Parent := AFrame.FParts.Top;
-  AFrame.FParts.Filter.Align := alClient;
   AFrame.FParts.Filter.AlignWithMargins := True;
+  // Feste Breite statt alClient: in der fließenden Leiste bricht das Feld bei Bedarf um.
+  AFrame.FParts.Filter.Width := AFrame.ScaleValue(200);
   AFrame.FParts.Filter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFilterHint);
   AFrame.FParts.Filter.OnChange := AFrame.FState.Events.FilterChange;
   AFrame.FParts.Status := NewLabel(AFrame, AFrame, alBottom);

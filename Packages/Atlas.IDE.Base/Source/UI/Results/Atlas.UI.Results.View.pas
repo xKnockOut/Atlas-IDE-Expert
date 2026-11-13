@@ -142,10 +142,8 @@ type
       AOnClick: TNotifyEvent): TRadioButton; static;
     /// <summary>Eintrag am Ende von AMenu.</summary>
     class function MenuItem(AMenu: TPopupMenu; const ACaption: string; AOnClick: TNotifyEvent): TMenuItem; static;
-    /// <summary>Unsichtbare Leiste unter der Titelzeile.</summary>
-    class function Bar(AOwner: TComponent; AView: TAtlasResultsView; AHeight: Integer): TPanel; static;
-    /// <summary>Links ausgerichtete Steuerelemente rechts neben AAfter setzen, damit die Reihenfolge bleibt.</summary>
-    class procedure Follow(AControl, AAfter: TControl); static;
+    /// <summary>Unsichtbare, fließende Leiste unter der Titelzeile; Reihenfolge = Erzeugungsreihenfolge.</summary>
+    class function Bar(AOwner: TComponent; AView: TAtlasResultsView): TFlowPanel; static;
   end;
 
 implementation
@@ -423,9 +421,9 @@ end;
 class function TAtlasResultsControls.Radio(AOwner: TComponent; AParent: TWinControl; AWidth: Integer;
   const ACaption: string; AOnClick: TNotifyEvent): TRadioButton;
 begin
+  // Ohne Align: die Leisten sind fließend (TFlowPanel) und ordnen nach Erzeugungsreihenfolge.
   Result := TRadioButton.Create(AOwner);
   Result.Parent := AParent;
-  Result.Align := alLeft;
   Result.AlignWithMargins := True;
   Result.Width := AWidth;
   Result.Caption := ACaption;
@@ -441,21 +439,19 @@ begin
   AMenu.Items.Add(Result);
 end;
 
-class function TAtlasResultsControls.Bar(AOwner: TComponent; AView: TAtlasResultsView; AHeight: Integer): TPanel;
+class function TAtlasResultsControls.Bar(AOwner: TComponent; AView: TAtlasResultsView): TFlowPanel;
 begin
-  Result := TPanel.Create(AOwner);
-  Result.Parent := AView.Host;
-  Result.Align := alTop;
-  Result.Top := AView.Header.Top + AView.Header.Height;
-  Result.BevelOuter := bvNone;
-  Result.ParentBackground := True;
-  Result.Height := AHeight;
+  // Fließende Leiste: bei schmalem Fenster brechen die Bedienelemente in weitere Zeilen um.
+  Result := TFlowPanel.Create(AOwner);
   Result.Visible := False;
-end;
-
-class procedure TAtlasResultsControls.Follow(AControl, AAfter: TControl);
-begin
-  AControl.Left := AAfter.Left + AAfter.Width + 1;
+  Result.Top := AView.Header.Top + AView.Header.Height;
+  Result.Align := alTop;
+  Result.Parent := AView.Host;
+  Result.BevelOuter := bvNone;
+  Result.ShowCaption := False;
+  Result.ParentBackground := True;
+  Result.AutoWrap := True;
+  Result.AutoSize := True;
 end;
 
 end.

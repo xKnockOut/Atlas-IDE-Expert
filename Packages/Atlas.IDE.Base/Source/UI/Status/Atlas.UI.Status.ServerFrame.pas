@@ -93,7 +93,7 @@ type
   end;
 
   /// <summary>[Aktualisieren] [Index neu aufbauen] [Diagnosepaket erstellen …]  Hinweis</summary>
-  TAtlasServerButtons = class(TPanel)
+  TAtlasServerButtons = class(TFlowPanel)
   private
     FRefresh: TButton;
     FRebuild: TButton;
@@ -102,7 +102,7 @@ type
     FOnRefresh: TProc;
     FOnRebuild: TProc;
     FOnPackage: TProc;
-    function NewButton(const ACaption: string; ALeft, AWidth: Integer): TButton;
+    function NewButton(const ACaption: string; AWidth: Integer): TButton;
     procedure ButtonClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
@@ -160,14 +160,11 @@ uses
   Atlas.UI.Status.Strings;
 
 const
-  // Breiten der Spalten Regel, ms und Aufrufe; Lage und Breite der Knöpfe der Leiste.
+  // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
   cRuleWidth = 260;
   cNumberWidth = 80;
-  cRefreshLeft = 4;
   cRefreshWidth = 110;
-  cRebuildLeft = 120;
   cRebuildWidth = 140;
-  cPackageLeft = 266;
   cPackageWidth = 170;
 
 {$R *.dfm}
@@ -518,26 +515,30 @@ constructor TAtlasServerButtons.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
+  ShowCaption := False;
   ParentBackground := True;
-  Height := ScaleValue(36);
-  FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshLeft, cRefreshWidth);
-  FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildLeft, cRebuildWidth);
-  FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageLeft, cPackageWidth);
+  // Fließende Leiste: bei schmalem Fenster brechen Knöpfe und Hinweis in weitere Zeilen um.
+  AutoWrap := True;
+  AutoSize := True;
+  Padding.SetBounds(2, 2, 2, 2);
+  FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshWidth);
+  FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildWidth);
+  FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageWidth);
   FNote := TLabel.Create(Self);
   FNote.Parent := Self;
-  FNote.Left := FNote.ScaleValue(444);
-  FNote.Top := FNote.ScaleValue(11);
+  FNote.AlignWithMargins := True;
+  FNote.AutoSize := True;
+  FNote.Margins.Top := FNote.ScaleValue(7);
   FNote.ShowAccelChar := False;
   FNote.Font.Color := clGrayText;
   FNote.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint);
 end;
 
-function TAtlasServerButtons.NewButton(const ACaption: string; ALeft, AWidth: Integer): TButton;
+function TAtlasServerButtons.NewButton(const ACaption: string; AWidth: Integer): TButton;
 begin
   Result := TButton.Create(Self);
   Result.Parent := Self;
-  Result.Left := ALeft;
-  Result.Top := Result.ScaleValue(6);
+  Result.AlignWithMargins := True;
   Result.Width := AWidth;
   Result.Caption := ACaption;
   Result.OnClick := ButtonClick;
