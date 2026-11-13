@@ -161,14 +161,14 @@ var
 begin
   mNodes := DemoNodes;
   Assert.AreEqual(7, Integer(Length(mNodes)), 'Unit, Fixture, Addiert, Teilt, zwei Fälle, Spaeter');
-  Assert.IsTrue(mNodes[cUnitNode].Kind = TAtlasTestNodeKind.TestUnit);
+  Assert.AreEqual<TAtlasTestNodeKind>(TAtlasTestNodeKind.TestUnit, mNodes[cUnitNode].Kind);
   Assert.AreEqual(-1, mNodes[cUnitNode].Parent);
   Assert.AreEqual('Demo.Tests', mNodes[cUnitNode].Caption);
   Assert.AreEqual(cUnitNode, mNodes[cFixtureNode].Parent);
   Assert.AreEqual('TRechnerTests', mNodes[cFixtureNode].Caption);
   Assert.AreEqual(cFixtureNode, mNodes[cTeilt].Parent);
   Assert.AreEqual(cTeilt, mNodes[cZwei].Parent);
-  Assert.IsTrue(mNodes[cZwei].Kind = TAtlasTestNodeKind.TestCase);
+  Assert.AreEqual<TAtlasTestNodeKind>(TAtlasTestNodeKind.TestCase, mNodes[cZwei].Kind);
   Assert.AreEqual('Demo.Tests.TRechnerTests.Teilt.Zwei', mNodes[cZwei].FullName);
   Assert.AreEqual(18, mNodes[cAddiert].Line, 'Sprung zum Methodenkopf im implementation-Teil');
   Assert.AreEqual(11, mNodes[cZwei].Line, 'Sprung zum [TestCase] des Falls');
@@ -187,11 +187,11 @@ var
   mTotal, mPassed, mFailed, mNotRun: Integer;
 begin
   mNodes := DemoNodes;
-  Assert.IsTrue(TAtlasTestExplorer.StateOf(mNodes[cAddiert]) = TAtlasTestNodeState.Passed);
-  Assert.IsTrue(TAtlasTestExplorer.StateOf(mNodes[cEins]) = TAtlasTestNodeState.Failed);
-  Assert.IsTrue(TAtlasTestExplorer.StateOf(mNodes[cZwei]) = TAtlasTestNodeState.NotRun);
-  Assert.IsTrue(TAtlasTestExplorer.StateOf(mNodes[cTeilt]) = TAtlasTestNodeState.Failed, 'ein Fall rot');
-  Assert.IsTrue(TAtlasTestExplorer.StateOf(mNodes[cFixtureNode]) = TAtlasTestNodeState.Failed);
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.Passed, TAtlasTestExplorer.StateOf(mNodes[cAddiert]));
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.Failed, TAtlasTestExplorer.StateOf(mNodes[cEins]));
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.NotRun, TAtlasTestExplorer.StateOf(mNodes[cZwei]));
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.Failed, TAtlasTestExplorer.StateOf(mNodes[cTeilt]), 'ein Fall rot');
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.Failed, TAtlasTestExplorer.StateOf(mNodes[cFixtureNode]));
   Assert.AreEqual('1/3', TAtlasTestExplorer.Counter(mNodes[cFixtureNode]));
   Assert.AreEqual('TRechnerTests · 1/3 · 15 ms', TAtlasTestExplorer.RowText(mNodes[cFixtureNode], RowTexts));
   Assert.AreEqual('Addiert · 12 ms', TAtlasTestExplorer.RowText(mNodes[cAddiert], RowTexts),
@@ -222,7 +222,7 @@ var
 begin
   mNodes := TAtlasTestExplorer.Build(TArray<TAtlasTestUnitInput>.Create(DemoUnit(
     TArray<string>.Create(TAtlasTestStamps.KeyOf('Demo.Tests', 'TRechnerTests', 'Addiert')))), DemoResults);
-  Assert.IsTrue(TAtlasTestExplorer.StateOf(mNodes[cAddiert]) = TAtlasTestNodeState.Stale, 'bestanden, aber veraltet');
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.Stale, TAtlasTestExplorer.StateOf(mNodes[cAddiert]), 'bestanden, aber veraltet');
   Assert.AreEqual('0/3', TAtlasTestExplorer.Counter(mNodes[cFixtureNode]), 'veraltet zählt nicht als bestanden');
 end;
 
@@ -282,7 +282,7 @@ begin
   Assert.AreEqual(1, mRows[2].Parent);
   Assert.AreEqual(2, mRows[3].Parent);
   Assert.AreEqual(cEins, mRows[3].Node);
-  Assert.IsTrue(mRows[3].State = TAtlasTestNodeState.Failed);
+  Assert.AreEqual<TAtlasTestNodeState>(TAtlasTestNodeState.Failed, mRows[3].State);
   Assert.AreEqual('Eins · 3 ms', mRows[3].Text);
 end;
 
@@ -405,7 +405,7 @@ begin
   mMerged := TAtlasTestRun.Merged(mOld, mFresh);
   Assert.AreEqual(2, Integer(Length(mMerged)), 'Fall ersetzt, nicht doppelt');
   Assert.AreEqual('Addiert', mMerged[0].Method);
-  Assert.IsTrue(mMerged[1].Outcome = TTestOutcome.Passed, 'neues Ergebnis hinten');
+  Assert.AreEqual<TTestOutcome>(TTestOutcome.Passed, mMerged[1].Outcome, 'neues Ergebnis hinten');
 end;
 
 end.
