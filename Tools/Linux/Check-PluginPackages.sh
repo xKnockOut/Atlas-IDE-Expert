@@ -8,6 +8,8 @@
 #   <AtlasServer>  Programm (Standard: Output/Linux64/Bin/AtlasServer, sonst AtlasServer aus PATH)
 #   <Package>      nur diese Packages, z. B. Atlas.IDE.Designer (Standard: alle)
 #
+#   Umgebung: ATLAS_CHECK_JOBS (gleichzeitige Prüfläufe, Standard: Zahl der Kerne)
+#
 # Neue Treffer beheben. Nur wenn sich die Konfiguration ändert (Tools/Update-PackageConfigs.ps1), die Baseline des
 # Packages neu erzeugen: AtlasServer --check Packages/<Package>/<Package>.dproj --update-baseline
 #
@@ -35,15 +37,17 @@ fi
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-FAILED=0
-for NAME in "${PACKAGES[@]}"; do
-  PROJECT="$ROOT/Packages/$NAME/$NAME.dproj"
+
+# Ein Package prüfen; Ausgabe nach $WORK/<Package>.log, Exit-Code 0/1/3 wie das Skript.
+check_package() {
+  local NAME="$1"
+  local PROJECT="$ROOT/Packages/$NAME/$NAME.dproj"
   if ! "$SERVER" --check "$PROJECT" --format json --fail-on never --output "$WORK/$NAME.json" 2> "$WORK/$NAME.err"; then
-    cat "$WORK/$NAME.err" >&2
-    echo "$NAME: Prüflauf gescheitert" >&2
-    exit 3
+    cat "$WORK/$NAME.err"
+    echo "$NAME: Prüflauf gescheitert"
+    return 3
   fi
-  if ! python3 - "$WORK/$NAME.json" "$NAME" <<'PY'
+  python3 - "$WORK/$NAME.json" "$NAME" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1], encoding='utf-8'))
 name = sys.argv[2]
@@ -52,12 +56,31 @@ for item in data['files']:
     for finding in item['findings']:
         count += 1
         line = finding['range']['start']['line'] + 1
-        print(f"::error file=Packages/{name}/{item['path']},line={line}::{finding['rule']}: {finding['message']}",
-              file=sys.stderr)
-print(f"{name}: {count} neue Treffer in {data['summary']['files']} Dateien", file=sys.stderr)
+        print(f"::error file=Packages/{name}/{item['path']},line={line}::{finding['rule']}: {finding['message']}")
+print(f"{name}: {count} neue Treffer in {data['summary']['files']} Dateien")
 sys.exit(1 if count else 0)
 PY
-  then
+}
+
+# Die Packages laufen parallel (so viele wie Kerne); die Ausgaben erscheinen danach in fester Reihenfolge.
+JOBS="${ATLAS_CHECK_JOBS:-$(nproc 2>/dev/null || echo 2)}"
+declare -A PIDS=()
+for NAME in "${PACKAGES[@]}"; do
+  while [[ "$(jobs -rp | wc -l)" -ge "$JOBS" ]]; do
+    wait -n || true
+  done
+  check_package "$NAME" > "$WORK/$NAME.log" 2>&1 &
+  PIDS[$NAME]=$!
+done
+
+FAILED=0
+for NAME in "${PACKAGES[@]}"; do
+  CODE=0
+  wait "${PIDS[$NAME]}" || CODE=$?
+  cat "$WORK/$NAME.log" >&2
+  if [[ "$CODE" -eq 3 ]]; then
+    exit 3
+  elif [[ "$CODE" -ne 0 ]]; then
     FAILED=1
   fi
 done
