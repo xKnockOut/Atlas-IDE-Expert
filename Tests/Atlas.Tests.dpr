@@ -558,6 +558,8 @@ uses
   Atlas.Core.Debug.EventBreak in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas',
   Atlas.Core.Debug.StepInto.Tests in 'IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas',
   Atlas.Core.Debug.EventBreak.Tests in 'IDE.Expert\Atlas.Core.Debug.EventBreak.Tests.pas',
+  Atlas.Core.Debug.InstanceBreakpoint in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas',
+  Atlas.Core.Debug.InstanceBreakpoint.Tests in 'IDE.Expert\Atlas.Core.Debug.InstanceBreakpoint.Tests.pas',
   Atlas.Core.Hover.Tests in 'IDE.Expert\Atlas.Core.Hover.Tests.pas',
   Atlas.Core.Documentation.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in '..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',

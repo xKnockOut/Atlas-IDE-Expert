@@ -47,6 +47,7 @@ contains
   Atlas.Core.Debug.DisplayRules in 'Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas',
   Atlas.Core.Debug.StepInto in 'Source\Core\Debug\Atlas.Core.Debug.StepInto.pas',
   Atlas.Core.Debug.EventBreak in 'Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas',
+  Atlas.Core.Debug.InstanceBreakpoint in 'Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas',
   Atlas.UI.Debug.Strings in 'Source\UI\Debug\Atlas.UI.Debug.Strings.pas',
   Atlas.IDE.Debug.Evaluator in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluator.pas',
   Atlas.IDE.Debug.Visualizers in 'Source\IDE\Debug\Atlas.IDE.Debug.Visualizers.pas',
