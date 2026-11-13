@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 341 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 345 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -40,7 +40,7 @@ Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert
 | `Atlas.IDE.Designer` | Designer-Leiste: „Anordnen“ (Breite nach Text, Knopfleiste, Formularraster, In Reihe duplizieren, Platz einfügen, An Inhalt anpassen, Ebenen, Einpacken, Schriften und Farben, Anchors vorschlagen, Format-Pinsel, Gruppen), Abstände messen und per Griff setzen, gemeinsame Größengriffe, Schnellleiste, Lupe, Tab-Reihenfolge, Größe und Skalierung ausprobieren, sprechende Namen, Fenster „Atlas-Struktur“ und „Ereignis-Karte“, Datenbindung, In Frame auslagern, Verwendungen im Code, Komponenten und Eigenschaften suchen, Rückgängig (experimentell) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue-Tracker (YouTrack, GitHub u. a.): „Meine Issues“ mit Projektwahl, Beginnen, Beenden und Prüfen entlang der Workflow-Übergänge, Zeiterfassung, Zustand im Statusfeld, Board mit Swimlanes, Sprint-Kachel, Ablauf-Karte, „An Issue anhängen“, Issue-Kennungen im Code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite mit Projekten, „Weiterarbeiten“ samt Arbeitsstand je Issue, „Neu in Atlas“, „Atlas entdecken“ und „Atlas-Einrichtung“ mit Indexaufbau je Projekt; „Atlas-Start“ | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, „Warum bin ich hier?“, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten, Haltepunkte vor dem Start prüfen, Haltepunkte nur für ein Objekt, parallele Aufrufstapel, Haltepunkt-Sätze, Threads im Quelltext, Ereignisprotokoll, Herkunft eingereihter Methoden, Logpunkte, Fenster „Kein Quelltext“, Neu starten, erneut an Prozess anhängen, Startverbünde, Leckbericht am Programmende (Fenster „Atlas-Lecks“) | 129 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, „Warum bin ich hier?“, angeheftete Werte, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten, Haltepunkte vor dem Start prüfen, Haltepunkte nur für ein Objekt, parallele Aufrufstapel, Haltepunkt-Sätze, Haltepunktfenster mit Suche, Etiketten und Trefferzahlen, Threads im Quelltext, Ereignisprotokoll, Herkunft eingereihter Methoden, Logpunkte, Fenster „Kein Quelltext“, Neu starten, erneut an Prozess anhängen, Startverbünde, Leckbericht am Programmende (Fenster „Atlas-Lecks“) | 136 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas-Suche mit Ersetzen, Regex und Projektbereich, Units suchen, Code-Abfragen | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken, „Unit-Beziehungen“ und „Abhängige Units“ auch aus der Projektverwaltung | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Änderungsmarken mit Inline-Diff, Zeilenhistorie, Branch beim Beginnen, Arbeitskopien, Projektzustand | 26 | `vcs.enabled` |
@@ -84,7 +84,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **341 Prüfregeln** schon beim Tippen: 223 Fehler, 107 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
+- **345 Prüfregeln** schon beim Tippen: 227 Fehler, 107 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
@@ -97,7 +97,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Umbauen und Code-Aktionen](docs/features/de/Umbauen.md)
 - **Umbenennen** projektweit samt Formularen, **Signatur ändern**, **sicheres Löschen**
 - **Methode extrahieren, Variable einführen, `if` ⇄ `case`** und viele weitere Umwandlungen; *Methode extrahieren* ersetzt auf Wunsch auch gleiche Stellen der Unit, jede in der Vorschau abwählbar
-- **Klassenaktionen:** Interface implementieren, Interface oder Basisklasse herauslösen, Properties erzeugen
+- **Klassenaktionen:** Interface implementieren, Interface oder Basisklasse herauslösen, Properties erzeugen, Sichtbarkeit eines Mitglieds anheben
 - **uses:** fehlende Units ergänzen, sortieren, ungenutzte entfernen; eine Unit gilt nur als benutzt, wenn ein Name wirklich zu ihr aufgelöst wird, so wie dcc entscheidet (Mitglieder ihrer Klassen und später verdeckte Namen zählen nicht, Aufzählungswerte, Helper, Attribute und inline-Rümpfe schon)
 - **Schnellkorrekturen** für viele Regeln (Alt+Enter) und **Atlas-Änderungen rückgängig** über Dateien hinweg
 

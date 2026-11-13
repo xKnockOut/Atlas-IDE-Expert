@@ -110,6 +110,7 @@ Atlas.Common.Editing.Overloads.Tests
 Atlas.Common.Editing.PostfixTemplates.Tests
 Atlas.Common.Editing.PromoteVariable.Tests
 Atlas.Common.Editing.PropertyFromAccessors.Tests
+Atlas.Common.Editing.RaiseVisibility.Tests
 Atlas.Common.Editing.ResourceStrings.Tests
 Atlas.Common.Editing.RoutineLocals.Tests
 Atlas.Common.Editing.RoutineParts.Tests
@@ -183,6 +184,7 @@ Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
 Atlas.Common.Lsp.Processes.Tests
+Atlas.Common.Lsp.RaiseVisibility.Tests
 Atlas.Common.Lsp.Rationale.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
@@ -291,6 +293,8 @@ Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
 Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
+Atlas.Common.Rules.Builtin.Ownership.MethodReferences.Tests
+Atlas.Common.Rules.Builtin.Ownership.Interfaces.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
@@ -358,6 +362,7 @@ Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Debug.WhyHere.Tests
+Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
@@ -449,4 +454,5 @@ Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
+Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests

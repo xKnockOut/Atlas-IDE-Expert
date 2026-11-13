@@ -1849,6 +1849,13 @@
           "x-description-en": "Hint diagnostic trivial-accessor on trivial accessor methods (severity adjustable via the rule); the light bulb on the message replaces them.",
           "x-issue": "#717"
         },
+        "raiseVisibility": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktion „Sichtbarkeit von X auf protected/public anheben“ auf der Deklaration eines Felds, einer Methode oder einer Property: Die Deklaration wandert samt Doku-Kommentar in den Abschnitt protected bzw. public, der bei Bedarf entsteht; die Implementierung bleibt. Nicht bei published und nicht im ersten Abschnitt ohne Schlüsselwort (Formularfelder). Die Vervollständigung bietet die Aktion bei nicht sichtbaren Treffern unabhängig davon an.",
+          "x-description-en": "Code action \"Raise visibility of X to protected/public\" on the declaration of a field, method or property: the declaration moves with its doc comment into the protected or public section, which is created if needed; the implementation stays. Not for published and not in the first section without keyword (form fields). Code completion offers the action for members that are not visible regardless of this setting.",
+          "x-issue": "#2108"
+        },
         "safeDelete": {
           "type": "boolean",
           "default": true,

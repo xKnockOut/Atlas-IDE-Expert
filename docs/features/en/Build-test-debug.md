@@ -305,6 +305,15 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
 
+### Pinned values
+
+- The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values
+- Values changed since the previous stop are shown in the warning colour
+- Pinned expressions belong to the project and survive debug sessions; a click on ✕ unpins them for good
+- Evaluation has no side effects: expressions with calls stay `?`. At most 100 per project
+
+Setting: `debug.pinnedValues`
+
 ### "No access to value" explained
 
 - When the debugger only says "Inaccessible value" or "... inaccessible here due to optimization" for a variable, the hover and the inline values show `‹no access›`.
@@ -400,6 +409,22 @@ Settings: `debug.breakOnNextEvent`
 - The dockable window “Step filters” shows how many routines of the project each kind and pattern matches.
 
 Settings: `debug.stepFilters`
+
+<a id="window-atlasbreakpoints"></a>
+### Breakpoints window
+
+The dockable window “Breakpoints” (Atlas menu, “Breakpoints (Atlas)”) shows the same breakpoints as the IDE’s list, plus:
+
+- search across file name, method, condition and tag; several words must all match
+- filter chips “active”, “with condition”, “never hit” (in this session) and “not effective”
+- hit count of this debug session; “Reset hit counts” sets it to 0
+- tags such as `Import` or `Bug 4711`, several per breakpoint, completed from the ones already used; they are personal and survive a restart
+- grouping by tag, file or group, with collapsible groups
+- enable, disable, tag or delete several breakpoints at once (undo with Ctrl+Z)
+- double-click goes to the location, Enter opens the IDE’s properties
+- show and hide columns from the context menu; the window remembers width and order
+
+Settings: `debug.breakpointsWindow`
 
 ### Breakpoints that will not be hit
 
