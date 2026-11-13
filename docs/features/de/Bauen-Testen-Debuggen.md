@@ -287,6 +287,7 @@ Das andockbare Fenster „Haltepunkte“ (Atlas-Menü, „Haltepunkte (Atlas)“
 - Etiketten wie `Import` oder `Bug 4711`, mehrere je Haltepunkt, mit Vervollständigung der schon benutzten; sie sind persönlich und bleiben nach einem Neustart erhalten
 - Gruppieren nach Etikett, Datei oder Gruppe, Gruppen auf- und zuklappbar
 - mehrere Haltepunkte gemeinsam ein- und ausschalten, mit Etikett versehen oder löschen (Rückgängig mit Strg+Z)
+- Spalten „Satz“ (Haltepunkt-Sätze) und „Regeln“ (Trefferbedingung, Thread-Filter, abhängig von einem anderen Haltepunkt), etwa „ab 3. Treffer · Hauptthread“
 - Doppelklick springt zur Stelle, Enter öffnet die Eigenschaften der IDE
 - Spalten über das Kontextmenü ein- und ausblenden, Breite und Reihenfolge merkt sich das Fenster
 

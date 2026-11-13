@@ -432,6 +432,7 @@ The dockable window “Breakpoints” (Atlas menu, “Breakpoints (Atlas)”) sh
 - tags such as `Import` or `Bug 4711`, several per breakpoint, completed from the ones already used; they are personal and survive a restart
 - grouping by tag, file or group, with collapsible groups
 - enable, disable, tag or delete several breakpoints at once (undo with Ctrl+Z)
+- columns “Set” (breakpoint sets) and “Rules” (hit condition, thread filter, dependent on another breakpoint), such as “from hit 3 · main thread”
 - double-click goes to the location, Enter opens the IDE’s properties
 - show and hide columns from the context menu; the window remembers width and order
 
