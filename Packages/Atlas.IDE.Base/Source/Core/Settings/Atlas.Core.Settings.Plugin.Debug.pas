@@ -539,8 +539,6 @@ begin
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
-  AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
-  AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
   ExchangeStopAndLaunch(AIo);
 end;
 
@@ -596,6 +594,8 @@ begin
   AIo.Flag('DebugHoverChanges', DebugHoverChanges);
   AIo.Number('DebugHoverMaxChildren', DebugHoverMaxChildren);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
+  AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
+  AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);

@@ -161,6 +161,8 @@ begin
 end;
 
 class procedure TAtlasIdeDebugMemoryTimeline.Release;
+var
+  mFrame: TAtlasDebugMemoryFrame;
 begin
   if FListener <> nil then
   begin
@@ -170,6 +172,16 @@ begin
   // Zuerst der Zeitgeber: Nach dem Abmelden darf keine Messung mehr kommen.
   FreeAndNil(FTimer);
   FreeAndNil(FTicker);
+  // Der Frame kann das Abmelden überleben (angedocktes Fenster): Ereignisse und Messreihe lösen.
+  mFrame := TAtlasIdeDebugMemoryWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.OnMark := nil;
+    mFrame.OnCopyCsv := nil;
+    mFrame.OnClear := nil;
+    mFrame.SetTimeline(nil);
+  end;
+  TAtlasIdeDebugMemoryWindow.OnFrame := nil;
   TAtlasIdeDebugMemoryWindow.Release;
   FreeAndNil(FCounters);
   FreeAndNil(FTimeline);

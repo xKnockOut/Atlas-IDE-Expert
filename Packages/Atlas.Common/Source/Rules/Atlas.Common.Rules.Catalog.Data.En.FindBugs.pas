@@ -1014,11 +1014,11 @@ const
     '      "category": "bug",',
     '      "severity": "hint",',
     '      "group": "find-bugs",',
-    '      "description": "A method assigns a method of its own class to an event OnXyz of a foreign object (Foreign.OnChange := Handler or Self.Handler), and neither Destroy, BeforeDestruction nor Notific' +
-    'ation of the class resets that event. Foreign means a parameter of the method or a field that a method of the class takes over from a parameter (FField := ASource), that the class never creates itself' +
-    ' and that is not in the published part (components of the form file belong to the form). If the foreign object lives longer, it calls the method of a released object. Silent for own events (OnChange :' +
-    '= …), handlers that are not methods of the class and statements in with blocks or anonymous methods. Medium confidence. Quick fix for fields: insert if Assigned(FField) then FField.OnXyz := nil; at th' +
-    'e start of the destructor in the file.",',
+    '      "description": "A method assigns a method of its own class to an event OnXyz of a foreign object (Foreign.OnChange := Handler or Self.Handler), and neither Destroy, BeforeDestruction, Notificati' +
+    'on nor Release (teardown of a class with class methods) of the class resets that event. Foreign means a parameter of the method or a field that a method of the class takes over from a parameter (FFiel' +
+    'd := ASource), that the class never creates itself and that is not in the published part (components of the form file belong to the form). If the foreign object lives longer, it calls the method of a ' +
+    'released object. Silent for own events (OnChange := …), handlers that are not methods of the class and statements in with blocks or anonymous methods. Medium confidence. Quick fix for fields: insert i' +
+    'f Assigned(FField) then FField.OnXyz := nil; at the start of the destructor in the file.",',
     '      "bad": "constructor TObserver.Create(ASource: TStringList);\nbegin\n  FSource := ASource;\n  FSource.OnChange := SourceChanged;\nend;",',
     '      "good": "destructor TObserver.Destroy;\nbegin\n  if Assigned(FSource) then\n    FSource.OnChange := nil;\n  inherited;\nend;",',
     '      "safeFix": false',
