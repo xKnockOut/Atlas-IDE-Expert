@@ -77,6 +77,8 @@ contains
   Atlas.IDE.Debug.ExceptionBar in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas',
   Atlas.Core.Debug.InlineValues in 'Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas',
   Atlas.IDE.Debug.InlineValues in 'Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas',
+  Atlas.Core.Debug.WhyHere in 'Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas',
+  Atlas.IDE.Debug.WhyHere in 'Source\IDE\Debug\Atlas.IDE.Debug.WhyHere.pas',
   Atlas.Core.Debug.Unavailable in 'Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas',
   Atlas.IDE.Debug.Unavailable in 'Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas',
   Atlas.IDE.Debug.UnavailableFixes in 'Source\IDE\Debug\Atlas.IDE.Debug.UnavailableFixes.pas',

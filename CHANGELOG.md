@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- „Warum bin ich hier?“ beim Debug-Halt (#1878, `debug.whyHere`, Vorgabe an; `debug.whyHere.depth`, Vorgabe 3, 1 bis 10): Am Ende der Kopfzeilen der umgebenden `if`/`else if`, `while`, `repeat … until`, `for`, `for … in` und `case` stehen gedimmt die Werte ihrer Bedingungen: `(1200 > 1000) and True → True`, `I = 3 von 7`, `Art = paRabatt → paRabatt`, im `else`-Zweig mit „else-Zweig“; `with` nennt seine Ausdrücke. Ausgewertet wird ohne Nebenwirkungen und mit Kurzschluss (bei `A and B` mit `A = False` bleibt B „nicht nötig“); Aufrufe und Getter bleiben `‹Aufruf›`, bis ein Klick auf den Text nach Rückfrage sie ausführt. Der Server liefert die Blöcke (`atlas.server.enclosingConditions`, Getter über die Namensauflösung von „Gezielt hineinspringen“). Neue Units `Atlas.Common.Lsp.EnclosingConditions`, `Atlas.Core.Debug.WhyHere`, `Atlas.IDE.Debug.WhyHere`.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

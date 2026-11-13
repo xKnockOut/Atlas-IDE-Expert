@@ -171,6 +171,9 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
   Switch('debug.inlineValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValues));
   Number('debug.inlineValuesPerLine', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValuesPerLine));
+  // „Warum bin ich hier?“ (#1878).
+  Switch('debug.whyHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHere));
+  Number('debug.whyHere.depth', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHereDepth));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;

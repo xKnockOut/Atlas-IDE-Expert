@@ -13,6 +13,9 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
+  cMinWhyHereDepth = 1;
+  cMaxWhyHereDepth = 10;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -130,6 +133,12 @@ type
     DebugInlineValues: Boolean;
     /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
     DebugInlineValuesPerLine: Integer;
+    /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
+    /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
+    /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
+    DebugWhyHere: Boolean;
+    /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
+    DebugWhyHereDepth: Integer;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -196,6 +205,8 @@ begin
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
+  Result.DebugWhyHere := True;
+  Result.DebugWhyHereDepth := 3;
   Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
@@ -207,6 +218,7 @@ begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
+  DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
@@ -255,6 +267,8 @@ begin
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AIo.Flag('DebugWhyHere', DebugWhyHere);
+  AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);

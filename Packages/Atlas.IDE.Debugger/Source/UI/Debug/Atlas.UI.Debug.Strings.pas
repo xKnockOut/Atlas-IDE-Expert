@@ -76,7 +76,8 @@ type
     SettingsDebugInlineValuesPerLine, SettingsDebugExplainUnavailable, SettingsDebugCompletionInDialogs,
     SettingsDebugEvaluateWindow, SettingsDebugEvaluateReplaceCtrlF7, SettingsDebugExplainAccessViolation,
     SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns,
-    DebugEditorMenuGroup);
+    DebugEditorMenuGroup, SettingsDebugWhyHere, SettingsDebugWhyHereDepth, WhyHereNotNeeded, WhyHereNotEvaluated,
+    WhyHereElseBranch, WhyHereOf, WhyHereConfirmCalls);
 
   TAtlasDebugStrings = class
   public
@@ -383,7 +384,14 @@ const
      'Getter und Funktionsaufrufe bei der Auswertung erlauben',
      'Schrittfilter beim Hineinspringen (F7)',
      'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):',
-     'Debuggen'),
+     'Debuggen',
+     '„Warum bin ich hier?“: Werte der umgebenden Bedingungen beim Halt',
+     'Umgebende Blöcke (1 bis 10)',
+     'nicht nötig',
+     '‹Aufruf›',
+     'else-Zweig',
+     'von',
+     'Diese Aufrufe im Programm ausführen, um die Bedingung zu zeigen?'#13#10#13#10'%s'#13#10#13#10'Sie können Nebenwirkungen haben.'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -670,7 +678,14 @@ const
      'Allow getters and function calls during evaluation',
      'Step filters when stepping into (F7)',
      'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):',
-     'Debugging'));
+     'Debugging',
+     '“Why am I here?”: values of the enclosing conditions when stopped',
+     'Enclosing blocks (1 to 10)',
+     'not needed',
+     '‹call›',
+     'else branch',
+     'of',
+     'Run these calls in the program to show the condition?'#13#10#13#10'%s'#13#10#13#10'They may have side effects.'));
 
 { TAtlasDebugStrings }
 
