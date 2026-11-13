@@ -115,7 +115,7 @@ const
      'Nachfahren von %s',
      '1 Treffer nicht sichtbar: %s (%s in %s) · Strg+Leertaste zeigt ihn',
      '%d Treffer nicht sichtbar: %s · Strg+Leertaste zeigt sie',
-     'Nicht sichtbar · lässt sich hier nicht einsetzen'),
+     'Nicht sichtbar · Enter bietet Aktionen an'),
     ('Enter to accept · Esc to close',
      '%d of %d',
      'No matches for “%s”',
@@ -193,7 +193,7 @@ const
      'Descendants of %s',
      '1 match not visible: %s (%s in %s) · Ctrl+Space shows it',
      '%d matches not visible: %s · Ctrl+Space shows them',
-     'Not visible · cannot be inserted here'));
+     'Not visible · Enter offers actions'));
 
 { TAtlasCompletionStrings }
 

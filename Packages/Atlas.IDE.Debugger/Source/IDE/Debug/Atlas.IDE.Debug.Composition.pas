@@ -443,6 +443,7 @@ begin
   TAtlasIdeDebugStepFilter.ThemeChanged;
   RunThemeChanged;
   DebugThreadsThemeChanged;
+  BreakpointsThemeChanged;
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;

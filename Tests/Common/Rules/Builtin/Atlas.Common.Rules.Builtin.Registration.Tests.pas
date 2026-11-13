@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Registration.Tests;
 
-// Tests der Anmeldung eingebauter Regeln in drei Themen (Atlas.Common.Rules.Builtin.Registration.Declarations,
-// .Statements und .Frameworks):
+// Tests der Anmeldung eingebauter Regeln nach Themen (Atlas.Common.Rules.Builtin.Registration.Declarations,
+// .Statements, .Frameworks und .Ownership):
 // jede Gruppe meldet Regeln an, keine Regel steht doppelt, und BuiltinRules liefert genau die Regeln aller
 // Gruppen in derselben Reihenfolge.
 
@@ -32,7 +32,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Registration.Declarations,
   Atlas.Common.Rules.Builtin.Registration.Statements,
-  Atlas.Common.Rules.Builtin.Registration.Frameworks;
+  Atlas.Common.Rules.Builtin.Registration.Frameworks,
+  Atlas.Common.Rules.Builtin.Registration.Ownership;
 
 type
   TRegisterProc = reference to procedure(const ARegistry: TRuleRegistry);
@@ -82,6 +83,15 @@ begin
     end);
 end;
 
+function OwnershipGroup: TArray<string>;
+begin
+  Result := GroupIds(
+    procedure(const ARegistry: TRuleRegistry)
+    begin
+      RegisterBuiltinOwnershipRules(ARegistry);
+    end);
+end;
+
 function AllIds: TArray<string>;
 var
   mRule: IRule;
@@ -98,6 +108,7 @@ begin
   Assert.IsTrue(Length(DeclarationsGroup) > 0, 'Declarations');
   Assert.IsTrue(Length(StatementsGroup) > 0, 'Statements');
   Assert.IsTrue(Length(FrameworksGroup) > 0, 'Frameworks');
+  Assert.IsTrue(Length(OwnershipGroup) > 0, 'Ownership');
 end;
 
 procedure TBuiltinRegistrationTests.RuleIdsAreUnique;
@@ -121,7 +132,7 @@ procedure TBuiltinRegistrationTests.BuiltinRulesKeepsGroupOrder;
 var
   mExpected, mActual: TArray<string>;
 begin
-  mExpected := DeclarationsGroup + StatementsGroup + FrameworksGroup;
+  mExpected := DeclarationsGroup + StatementsGroup + FrameworksGroup + OwnershipGroup;
   mActual := AllIds;
   Assert.AreEqual(string.Join(',', mExpected), string.Join(',', mActual));
 end;

@@ -47,6 +47,11 @@ type
     const ADone: TAtlasDebugValueEvent): TAtlasDebugValue;
   /// <summary>Korrektur AFix (Index in AValue.Note.Fixes) ausführen (#840).</summary>
   TAtlasHoverDebugFixProc = reference to procedure(const AValue: TAtlasDebugValue; AFix: Integer);
+  /// <summary>Aktionen unter dem Wert AValue (Anheften #526); leer ohne.</summary>
+  TAtlasHoverDebugActionsFunc = reference to function(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>;
+  /// <summary>Aktion mit Id AAction für AValue an der Stelle AFileName, ALine (1-basiert) ausführen (#526).</summary>
+  TAtlasHoverDebugActionProc = reference to procedure(const AValue: TAtlasDebugValue; const AFileName: string;
+    ALine, AAction: Integer);
   /// <summary>Ersatztext für den Wert AExpression (eigene Regel #854, sonst Visualisierer #835); ATypeChain ist der
   /// Typ, dann seine Vorfahren, AText der Text der IDE. '' = den Text der IDE lassen.</summary>
   TAtlasHoverVisualizeFunc = reference to function(const AExpression: string; const ATypeChain: TArray<string>;
@@ -127,6 +132,8 @@ type
     FOnExplain: TAtlasHoverExplainFunc;
     FOnDebugFix: TAtlasHoverDebugFixProc;
     FOnVisualize: TAtlasHoverVisualizeFunc;
+    FOnDebugActions: TAtlasHoverDebugActionsFunc;
+    FOnDebugAction: TAtlasHoverDebugActionProc;
   private
     FDebug: TAtlasIdeDebugValues;
     /// <summary>Ersatztext der Visualisierer (#835) zu FDebugValue und Deklaration; Schlüssel des letzten Aufrufs.
@@ -140,6 +147,7 @@ type
     /// <summary>FDebugValue, aufbereitet von den Visualisierern (#835), sobald Wert und Typ bekannt sind.</summary>
     function VisualizedDebugValue: TAtlasDebugValue;
     procedure TipDebugFix(Sender: TObject; AIndex: Integer);
+    procedure TipDebugAction(Sender: TObject; AIndex: Integer);
   protected
     // Ausdruck unter der Maus ('' ohne angehaltenen Prozess) und sein Wert.
     FDebugExpression: string;
@@ -156,6 +164,9 @@ type
     class property OnExplain: TAtlasHoverExplainFunc read FOnExplain write FOnExplain;
     class property OnDebugFix: TAtlasHoverDebugFixProc read FOnDebugFix write FOnDebugFix;
     class property OnVisualize: TAtlasHoverVisualizeFunc read FOnVisualize write FOnVisualize;
+    /// <summary>Aktionen unter dem Wert und ihre Ausführung (#526); setzt die Kompositionswurzel.</summary>
+    class property OnDebugActions: TAtlasHoverDebugActionsFunc read FOnDebugActions write FOnDebugActions;
+    class property OnDebugAction: TAtlasHoverDebugActionProc read FOnDebugAction write FOnDebugAction;
   end;
 
   /// <summary>Klicks und Aktionen im Tooltip.</summary>
@@ -411,6 +422,7 @@ begin
   inherited Create(ASession, ALog, AProblemsAt, AHandles);
   FDebug := TAtlasIdeDebugValues.Create;
   FTip.OnDebugFix := TipDebugFix;
+  FTip.OnDebugAction := TipDebugAction;
 end;
 
 destructor TAtlasEditorHoverDebug.Destroy;
@@ -426,6 +438,10 @@ begin
   if FHistory.Count <= 1 then
   begin
     Result.DebugValue := VisualizedDebugValue;
+    if (Result.DebugValue.State = TAtlasDebugValueState.Value) and Assigned(FOnDebugActions) then
+    begin
+      Result.DebugValue.Actions := FOnDebugActions(Result.DebugValue);
+    end;
   end;
 end;
 
@@ -560,6 +576,29 @@ begin
     end;
     Hide;
     FOnDebugFix(mValue, AIndex);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHoverDebug.TipDebugAction(Sender: TObject; AIndex: Integer);
+var
+  mValue: TAtlasDebugValue;
+  mFileName: string;
+  mLine: Integer;
+begin
+  try
+    mValue := FTip.View.DebugValue;
+    if not Assigned(FOnDebugAction) or (FView = nil) or (AIndex < 0) or (AIndex > High(mValue.Actions)) then
+    begin
+      Exit;
+    end;
+    // Stelle vor Hide sichern: Hide vergisst den Bezeichner unter der Maus.
+    mFileName := FView.Buffer.FileName;
+    mLine := FLine;
+    Hide;
+    FOnDebugAction(mValue, mFileName, mLine, mValue.Actions[AIndex].Id);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);

@@ -107,6 +107,7 @@ type
   TAtlasCompletionSettings = class
   private
     FOnCommit: TAtlasCommitEvent;
+    FOnInaccessible: TAtlasCommitEvent;
     FGroupInherited: Boolean;
     FChipsEnabled: Boolean;
     FListMode: TAtlasListMode;
@@ -123,6 +124,10 @@ type
       const AItems: TAtlasCompletionItems): TAtlasRankOptions;
   public
     property OnCommit: TAtlasCommitEvent read FOnCommit write FOnCommit;
+    /// <summary>Enter auf einem nicht sichtbaren Mitglied mit Befehl (#2108): Statt einzusetzen schließt die
+    /// Liste, der Aufrufer bietet die Aktionen des Befehls an (Sichtbarkeit anheben, Eigenschaft anlegen).
+    /// </summary>
+    property OnInaccessible: TAtlasCommitEvent read FOnInaccessible write FOnInaccessible;
     /// <summary>Geerbte Member gruppieren (#419).</summary>
     property GroupInherited: Boolean read FGroupInherited write FGroupInherited;
     property ChipsEnabled: Boolean read FChipsEnabled write FChipsEnabled;
@@ -1203,9 +1208,19 @@ procedure TAtlasCompletionController.CommitSelected;
 var
   mItem: TAtlasCompletionItem;
 begin
-  // Nicht sichtbare Mitglieder (#2108) lassen sich nicht einsetzen; die Liste bleibt offen.
-  if not SelectedItem(mItem) or (mItem.Inaccessible <> '') then
+  if not SelectedItem(mItem) then
   begin
+    Exit;
+  end;
+  // Nicht sichtbare Mitglieder (#2108) lassen sich nicht einsetzen. Mit Befehl bietet der Aufrufer die
+  // Aktionen dafür an, sonst (fremder Code, Datei unbekannt) bleibt die Liste offen.
+  if mItem.Inaccessible <> '' then
+  begin
+    if (mItem.Command <> '') and Assigned(FOnInaccessible) then
+    begin
+      Close;
+      FOnInaccessible(mItem);
+    end;
     Exit;
   end;
   // Alle Felder zuweisen mit vielen Feldern (#491): erst die Liste mit Kontrollkästchen, Enter übernimmt.

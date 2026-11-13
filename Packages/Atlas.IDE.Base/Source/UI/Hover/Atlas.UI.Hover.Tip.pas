@@ -158,6 +158,7 @@ type
     FOnUrl: TAtlasHoverUrlEvent;
     FOnProblemAction: TAtlasHoverProblemActionEvent;
     FOnDebugFix: TAtlasHoverIndexEvent;
+    FOnDebugAction: TAtlasHoverIndexEvent;
     /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
     procedure DocMouseDown(AShift: TShiftState; AX, AY: Integer);
     /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
@@ -167,6 +168,7 @@ type
     function FireProblemAction(AHit: Integer): Boolean;
     /// <summary>Klick auf die Klickfläche AHit (Index in FLayout.Hits).</summary>
     procedure FireHit(AHit: Integer; AShift: TShiftState);
+    procedure FireDebugHit(const AHit: TAtlasHoverHit);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -202,6 +204,8 @@ type
     /// <summary>Klick auf eine Korrektur unter „kein Zugriff“ (#840); AIndex in View.DebugValue.Note.Fixes.
     /// </summary>
     property OnDebugFix: TAtlasHoverIndexEvent read FOnDebugFix write FOnDebugFix;
+    /// <summary>Klick auf eine Aktion unter dem Wert (#526); AIndex in View.DebugValue.Actions.</summary>
+    property OnDebugAction: TAtlasHoverIndexEvent read FOnDebugAction write FOnDebugAction;
   end;
 
 implementation
@@ -994,11 +998,21 @@ begin
     // Schalter und Abschnitte der published-Mitglieder (#110).
     TAtlasHoverHitKind.Published:
       TogglePublished(TAtlasHoverPublishedToggle(mHit.Index));
-    TAtlasHoverHitKind.DebugFix:
-      if Assigned(FOnDebugFix) then
-      begin
-        FOnDebugFix(Self, mHit.Index);
-      end;
+    TAtlasHoverHitKind.DebugFix, TAtlasHoverHitKind.DebugAction:
+      FireDebugHit(mHit);
+  end;
+end;
+
+procedure TAtlasHoverTip.FireDebugHit(const AHit: TAtlasHoverHit);
+begin
+  // Vorschläge und Aktionen am Debug-Wert.
+  if (AHit.Kind = TAtlasHoverHitKind.DebugFix) and Assigned(FOnDebugFix) then
+  begin
+    FOnDebugFix(Self, AHit.Index);
+  end
+  else if (AHit.Kind = TAtlasHoverHitKind.DebugAction) and Assigned(FOnDebugAction) then
+  begin
+    FOnDebugAction(Self, AHit.Index);
   end;
 end;
 

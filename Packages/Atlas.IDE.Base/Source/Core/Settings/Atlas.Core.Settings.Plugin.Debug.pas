@@ -120,6 +120,9 @@ type
     /// <summary>Haltepunkt-Sätze (#586, debug.breakpointSetPerBranch): Ein Satz mit Branch wird beim Wechsel der
     /// Arbeitskopie auf diesen Branch aktiv. Aus = Sätze nur über die Befehle.</summary>
     DebugBreakpointSetPerBranch: Boolean;
+    /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
+    /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
+    DebugBreakpointsWindow: Boolean;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
     /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
@@ -213,6 +216,9 @@ type
     DebugWhyHere: Boolean;
     /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
     DebugWhyHereDepth: Integer;
+    /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
+    /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
+    DebugPinnedValues: Boolean;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -315,6 +321,7 @@ begin
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugCheckBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
+  Result.DebugBreakpointsWindow := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -402,6 +409,7 @@ begin
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
+  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
@@ -433,6 +441,7 @@ procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
 begin
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugPinnedValues := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
   DebugEventLogColors := cDefaultEventLogColors;
@@ -455,6 +464,7 @@ procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSetti
 begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);

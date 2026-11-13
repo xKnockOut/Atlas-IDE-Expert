@@ -458,6 +458,7 @@ type
     property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
     property DebugBreakpointSetPerBranch: Boolean read FDebug.DebugBreakpointSetPerBranch
       write FDebug.DebugBreakpointSetPerBranch;
+    property DebugBreakpointsWindow: Boolean read FDebug.DebugBreakpointsWindow write FDebug.DebugBreakpointsWindow;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;
@@ -510,6 +511,7 @@ type
     property DebugReattachWaitIntervalMs: Integer read FDebug.DebugReattachWaitIntervalMs
       write FDebug.DebugReattachWaitIntervalMs;
     property DebugLaunchGroups: Boolean read FDebug.DebugLaunchGroups write FDebug.DebugLaunchGroups;
+    property DebugPinnedValues: Boolean read FDebug.DebugPinnedValues write FDebug.DebugPinnedValues;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;
