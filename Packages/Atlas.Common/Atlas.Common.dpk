@@ -391,6 +391,7 @@ contains
   Atlas.Common.Editing.ResourceStrings in 'Source\Editing\Atlas.Common.Editing.ResourceStrings.pas',
   Atlas.Common.Lsp.ResourceStringCommands in 'Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas',
   Atlas.Common.Lsp.EnumValueCommands in 'Source\Lsp\Atlas.Common.Lsp.EnumValueCommands.pas',
+  Atlas.Common.Lsp.ValueEdit in 'Source\Lsp\Atlas.Common.Lsp.ValueEdit.pas',
   Atlas.Common.Lsp.Refactorings in 'Source\Lsp\Atlas.Common.Lsp.Refactorings.pas',
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.ForwardDeclarations in 'Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas',
@@ -467,6 +468,7 @@ contains
   Atlas.Common.Editing.UnitTemplates in 'Source\Editing\Atlas.Common.Editing.UnitTemplates.pas',
   Atlas.Common.Editing.TestUnits in 'Source\Editing\Atlas.Common.Editing.TestUnits.pas',
   Atlas.Common.Editing.TestDrafts in 'Source\Editing\Atlas.Common.Editing.TestDrafts.pas',
+  Atlas.Common.Editing.TestFromDebug in 'Source\Editing\Atlas.Common.Editing.TestFromDebug.pas',
   Atlas.Common.Editing.TestCommands in 'Source\Editing\Atlas.Common.Editing.TestCommands.pas',
   Atlas.Common.Editing.ErrorCommands in 'Source\Editing\Atlas.Common.Editing.ErrorCommands.pas',
   Atlas.Common.Semantics.UnresolvedNames in 'Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas',
@@ -567,6 +569,7 @@ contains
   Atlas.Common.Editing.FormatCheck in 'Source\Editing\Atlas.Common.Editing.FormatCheck.pas',
   Atlas.Common.Lsp.CodeActions in 'Source\Lsp\Atlas.Common.Lsp.CodeActions.pas',
   Atlas.Common.Lsp.TestUnits in 'Source\Lsp\Atlas.Common.Lsp.TestUnits.pas',
+  Atlas.Common.Lsp.TestFromDebug in 'Source\Lsp\Atlas.Common.Lsp.TestFromDebug.pas',
   Atlas.Common.Leaks.Internals.MainScan in 'Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas',
   Atlas.Common.Leaks.Setup in 'Source\Leaks\Atlas.Common.Leaks.Setup.pas',
   Atlas.Common.Leaks.Internals.CreateScan in 'Source\Leaks\Internals\Atlas.Common.Leaks.Internals.CreateScan.pas',
@@ -859,6 +862,7 @@ contains
   Atlas.Common.Lsp.AccessChains in 'Source\Lsp\Atlas.Common.Lsp.AccessChains.pas',
   Atlas.Common.Lsp.StepFilter in 'Source\Lsp\Atlas.Common.Lsp.StepFilter.pas',
   Atlas.Common.Lsp.BreakpointCheck in 'Source\Lsp\Atlas.Common.Lsp.BreakpointCheck.pas',
+  Atlas.Common.Lsp.MethodBreakpoints in 'Source\Lsp\Atlas.Common.Lsp.MethodBreakpoints.pas',
   Atlas.Common.Updates.Contract in 'Source\Updates\Atlas.Common.Updates.Contract.pas',
   Atlas.Common.Updates.Ides in 'Source\Updates\Atlas.Common.Updates.Ides.pas',
   Atlas.Common.Updates.KnownPackages in 'Source\Updates\Atlas.Common.Updates.KnownPackages.pas',
@@ -875,6 +879,7 @@ contains
   Atlas.Common.Monitor.Results in 'Source\Monitor\Atlas.Common.Monitor.Results.pas',
   Atlas.Common.Monitor.Runs in 'Source\Monitor\Atlas.Common.Monitor.Runs.pas',
   Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas',
-  Atlas.Common.Lsp.EnclosingConditions in 'Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas';
+  Atlas.Common.Lsp.EnclosingConditions in 'Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas',
+  Atlas.Common.Lsp.UpcomingConditions in 'Source\Lsp\Atlas.Common.Lsp.UpcomingConditions.pas';
 
 end.

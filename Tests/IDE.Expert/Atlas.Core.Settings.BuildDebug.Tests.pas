@@ -463,14 +463,31 @@ begin
   // #586: Haltepunkt-Satz mit dem Branch wechseln ist an.
   Assert.IsTrue(Settings.DebugBreakpointSetPerBranch);
   Settings.DebugBreakpointSetPerBranch := False;
+  // #851: Bis hier ausführen per Klick ist an.
+  Assert.IsTrue(Settings.DebugRunToClick);
+  Settings.DebugRunToClick := False;
   // #863: Haltepunktfenster ist an; der Wert überlebt Speichern und Laden.
   Assert.IsTrue(Settings.DebugBreakpointsWindow);
   Settings.DebugBreakpointsWindow := False;
+  // #841: Haltepunkte nachziehen ist an.
+  Assert.IsTrue(Settings.DebugBreakpointAnchors);
+  Settings.DebugBreakpointAnchors := False;
+  // #864: Haltepunkt-Regeln sind an.
+  Assert.IsTrue(Settings.DebugBreakpointRules);
+  Settings.DebugBreakpointRules := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugCheckBreakpoints);
+  // #855: Haltepunkte auf Methoden nach Muster ist an und überlebt Speichern und Laden ebenso.
+  Assert.IsTrue(TAtlasPluginSettings.Defaults.DebugMethodBreakpoints);
+  Settings.DebugMethodBreakpoints := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugMethodBreakpoints);
   // #857: Haltepunkt nur für ein Objekt ist an; der Wert überlebt Speichern und Laden.
   Assert.IsTrue(Settings.DebugInstanceBreakpoints);
   Settings.DebugInstanceBreakpoints := False;
@@ -478,8 +495,18 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugInstanceBreakpoints);
+  // #584: Anhalten, wenn sich ein Feld ändert, ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugDataBreakpoints);
+  Settings.DebugDataBreakpoints := False;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugDataBreakpoints);
   Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
+  Assert.IsFalse(Loaded.DebugRunToClick);
   Assert.IsFalse(Loaded.DebugBreakpointsWindow);
+  Assert.IsFalse(Loaded.DebugBreakpointAnchors);
+  Assert.IsFalse(Loaded.DebugBreakpointRules);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var

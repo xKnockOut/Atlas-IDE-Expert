@@ -18,9 +18,11 @@
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
 //   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
-//   angelegt wie „Zur Testunit wechseln“ von Base) und „Leckprüfung
+//   angelegt wie „Zur Testunit wechseln“ von Base), „Leckprüfung
 //   einrichten …“ im Kontextmenü der Projektverwaltung und in der Palette
-//   (#1880, Atlas.IDE.Tests.LeakSetup über Composition.Hooks),
+//   (#1880, Atlas.IDE.Tests.LeakSetup über Composition.Hooks) und „Test aus
+//   dem Debug-Halt anlegen …“ (#1873, Atlas.IDE.Tests.FromDebugStop; Palette,
+//   Kontextmenü beim Debuggen, Knopf der Exception-Leiste über die Kennung),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
@@ -95,8 +97,6 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
-  Atlas.Core.Tests.Debug,
-  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner,
@@ -105,6 +105,7 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.CoveredBy,
+  Atlas.IDE.Tests.UntestedProject,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.ApprovalFiles,
@@ -112,6 +113,7 @@ uses
   Atlas.IDE.Tests.CaseTable,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
+  Atlas.IDE.Tests.FromDebugStop,
   Atlas.UI.Tests.Strings;
 
 var
@@ -122,6 +124,7 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GCoveredBy: TAtlasIdeCoveredByLens;
+  GUntested: TAtlasIdeUntestedProject;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
@@ -141,7 +144,7 @@ end;
 
 function TestDebugVisible: Boolean;
 begin
-  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) and (GDebugger <> nil);
+  Result := DebugWanted and (GDebugger <> nil);
 end;
 
 { Läufer }
@@ -259,6 +262,8 @@ begin
   // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens.
   GCaseTable := TAtlasIdeTestCaseTable.Create(GScope, GTests, GDebugger);
   GLens.OnTable := OpenCaseTable;
+  // Ungetestete Methoden des Projekts (#1783).
+  GUntested := TAtlasIdeUntestedProject.Create(GOutput, ModuleScope);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -278,6 +283,7 @@ begin
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
   // der Läufer; seine Probleme verschwinden mit ihm.
+  FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   FreeAndNil(GCaseTable);
@@ -422,6 +428,16 @@ begin
   end;
 end;
 
+{ Ungetestete Methoden des Projekts (#1783) }
+
+procedure ListUntested;
+begin
+  if GUntested <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GUntested.Run);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -432,6 +448,13 @@ end;
 procedure RunProjectUnitTests;
 begin
   TAtlasIdeTestUnitCommands.RunProjectUnits(GTests);
+end;
+
+{ Test aus dem Debug-Halt (#1873) }
+
+procedure TestFromDebugStop;
+begin
+  TAtlasIdeTestFromDebug.Run(GScope);
 end;
 
 { Leckprüfung einrichten (#1880) }
@@ -496,6 +519,9 @@ begin
     // Vergleichsdateien (#1881): sichtbar mit tests.approvalFiles.
     Command('Atlas.CleanApprovalFiles', TAtlasTestsTextId.TestsApprovalCleanCommand,
       Guarded(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
+    // Ungetestete Methoden des Projekts (#1783): sichtbar mit TestRun.
+    Described(Command('Atlas.ListUntestedMethods', TAtlasTestsTextId.UntestedProjectCommand, ListUntested,
+      TestsVisible), TAtlasTestsTextId.UntestedProjectHint),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -506,6 +532,9 @@ begin
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
       TAtlasTestsTextId.TestsGalleryTestUnitHint),
+    // Test aus dem Debug-Halt (#1873): sichtbar mit tests.fromDebugStop und einem Modul, das den Halt liefert.
+    Command(TAtlasIdeTestFromDebug.cCommand, TAtlasTestsTextId.TestsFromDebugCommand,
+      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TAtlasIdeTestFromDebug.Visible),
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
       Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
@@ -524,6 +553,12 @@ begin
   Result := AContext.TestUnit;
 end;
 
+/// <summary>Läuft eine Debug-Sitzung?</summary>
+function WhileDebugging(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.Debugging;
+end;
+
 /// <summary>Eintrag im Untermenü „Tests“ von Atlas im Kontextmenü des Editors; nur in einer Testunit.</summary>
 function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
@@ -531,6 +566,13 @@ begin
   Result.Section := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsEditorMenuGroup);
   Result.Group := 'tests';
   Result.When := InTestUnit;
+end;
+
+/// <summary>Eintrag im Untermenü „Tests“ des Kontextmenüs, nur beim Debuggen (#1873).</summary>
+function DebugContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := ContextEntry(ACommandId);
+  Result.When := WhileDebugging;
 end;
 
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -541,9 +583,11 @@ begin
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ListUntestedMethods', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
+    DebugContextEntry(TAtlasIdeTestFromDebug.cCommand),
     ContextEntry('Atlas.CompareTestValues'),
     ContextEntry('Atlas.EditTestCases'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
@@ -584,7 +628,7 @@ begin
   end
   else
   begin
-    TAtlasIdeHost.Warning(TestsOffText);
+    WarnTestsOff;
   end;
 end;
 

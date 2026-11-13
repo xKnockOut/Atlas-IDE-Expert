@@ -151,13 +151,23 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEventExcluded));
   // Haltepunkte, die nicht greifen werden (#577).
   Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
+  // Haltepunkte auf Methoden nach Muster (#855).
+  Switch('debug.methodBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMethodBreakpoints));
   // Haltepunkt nur für ein Objekt (#857).
   Switch('debug.instanceBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInstanceBreakpoints));
+  // Anhalten, wenn sich ein Feld ändert (#584).
+  Switch('debug.dataBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDataBreakpoints));
   // Haltepunkt-Sätze (#586).
   Switch('debug.breakpointSetPerBranch',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
+  // Bis hier ausführen per Klick (#851).
+  Switch('debug.runToClick', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRunToClick));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
   Switch('debug.breakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointsWindow));
+  // Haltepunkte wandern mit dem Code (#841).
+  Switch('debug.breakpointAnchors', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointAnchors));
+  // Abhängige Haltepunkte und Trefferbedingungen (#864).
+  Switch('debug.breakpointRules', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointRules));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;
@@ -208,6 +218,16 @@ begin
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHereDepth));
+  // Bedingungen vorausschauen (#2169).
+  Switch('debug.predictConditions', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredict));
+  Switch('debug.predictConditions.dimSkipped', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictDim));
+  Number('debug.predictConditions.lines', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictLines));
+  // Werte ändern (#868).
+  Switch('debug.editValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEditValues));
+  // Debug-Hover aufklappen und Änderungen markieren (#895).
+  Switch('debug.hoverExpand', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverExpand));
+  Number('debug.hoverMaxChildren', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverMaxChildren));
+  Switch('debug.hoverChanges', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverChanges));
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));

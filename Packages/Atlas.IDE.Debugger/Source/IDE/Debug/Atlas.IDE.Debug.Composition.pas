@@ -15,7 +15,9 @@
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
 //   Tooltip,
 // - für andere Module den Bericht über die Debug-Sitzung
-//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport).
+//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport) und den Halt
+//   für „Test daraus anlegen …“ (IAtlasDebugStopSource, #1873); beide stellt
+//   Atlas.IDE.Debug.Composition.Contracts bereit.
 // Das erste Teil („DebugCommands“, ab dem abgesicherten Start) installiert
 // „Gezielt hineinspringen“, „Beim nächsten Ereignis anhalten“ und die Befehle
 // des Schrittfilters; es stoppt als letztes, nimmt sie zurück und hängt F7 ab
@@ -79,8 +81,7 @@ uses
   Atlas.IDE.Debug.StepInto,
   Atlas.IDE.Debug.Trace,
   Atlas.IDE.Debug.StepFilter,
-  Atlas.IDE.Debug.Report,
-  Atlas.IDE.Contracts.DebugReport,
+  Atlas.IDE.Debug.Composition.Contracts,
   Atlas.IDE.Debug.Composition.Values,
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
@@ -343,6 +344,11 @@ begin
   begin
     Result := Result + [Command(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible)];
   end;
+  // Werte ändern (#868) aus Atlas.IDE.Debug.Composition.Values, unter der Sicherung.
+  for mCommand in ValueCommands do
+  begin
+    Result := Result + [CommandWithKey(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible, mCommand.Key)];
+  end;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -388,6 +394,8 @@ begin
   // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
   Result := Result + RunMenuEntries;
   Result := Result + BreakpointMenuEntries;
+  // Werte ändern (#868).
+  Result := Result + ValueMenuEntries;
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -406,6 +414,10 @@ begin
     end;
   Result := [mKey];
   Result := Result + RunKeys;
+  // Bis hier, Haltepunkte überspringen (#851).
+  Result := Result + BreakpointKeys;
+  // Wert ändern mit F2 (#868).
+  Result := Result + ValueKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;
@@ -545,8 +557,9 @@ begin
   GScope.Provide(IAtlasFollowsTheme, mRef);
   GScope.Provide(IAtlasFollowsEditorView, mRef);
   GScope.Provide(IAtlasHoverValueSource, mRef);
-  // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
-  GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
+  // Verträge zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276), Halt für
+  // „Test daraus anlegen …“ (#1873).
+  ProvideDebugContracts(GScope);
   ProvideDebugThreadLayers(GScope);
   // Logpunkte in der Rinne (#583).
   ProvideRun(GScope);

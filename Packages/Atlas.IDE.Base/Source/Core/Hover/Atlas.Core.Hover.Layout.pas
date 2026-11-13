@@ -9,6 +9,8 @@
 // Verweisen, Beschreibung mit Platz für die XMLDoc, Vererbung bzw. Zieltyp und Aktionsleiste auf Randflächen; die
 // letzte Randfläche sitzt beim Zeichnen am unteren Fensterrand (Anchor).
 // Unter dem Wert im Debugger stehen seine Aktionen (Anheften #526) als Links mit der Klickfläche DebugAction.
+// Ein aufklappbarer Wert (#895) trägt ▸/▾ vor dem Ausdruck (Klickfläche DebugRow -1), aufgeklappt folgen seine
+// Zeilen (Atlas.Core.Hover.Layout.DebugTree); ein geänderter Wert ist hinterlegt, der alte steht gedimmt darunter.
 // Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als Links: Entfernen, Alle ungenutzten
 // entfernen (ab zwei), In implementation-uses verschieben; ihre Klickfläche trägt Problem und Aktion
 // (TAtlasHoverProblemActionCode).
@@ -59,6 +61,8 @@ type
     FixProblem: Integer;
     /// <summary>Rollbereich der published-Mitglieder (#1841).</summary>
     Members: TAtlasHoverScroll;
+    /// <summary>Rollbereich der Zeilen des aufgeklappten Debug-Werts (#895).</summary>
+    DebugRows: TAtlasHoverScroll;
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
     /// <summary>Nächste (AForward) bzw. vorige Klickfläche ProblemAction nach AHot (Index in Hits, -1 vor der
@@ -92,7 +96,7 @@ uses
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Hover.Layout.Painter,
-  Atlas.Core.Hover.Layout.Members;
+  Atlas.Core.Hover.Layout.DebugTree;
 
 const
   cBandChain = 0;
@@ -110,7 +114,7 @@ const
 
 type
   /// <summary>Abschnitte des Tooltips der Reihe nach.</summary>
-  TBuilder = class(TAtlasHoverMembersPainter)
+  TBuilder = class(TAtlasHoverDebugPainter)
   private
     FLayout: TAtlasHoverLayout;
     procedure Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
@@ -859,7 +863,7 @@ end;
 procedure TBuilder.DebugValue;
 var
   mValue: TAtlasDebugValue;
-  mStart: Integer;
+  mStart, mValueTop, mValueItem: Integer;
   mMonoFace: TAtlasHoverFace;
 begin
   // Wert im angehaltenen Debugger (#891): Akzentbalken, Ausdruck in der Editorschrift, darunter der Wert
@@ -868,7 +872,12 @@ begin
   mStart := FY;
   FLeft := Scale(20);
   mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, True, False);
-  AddText(FLeft, FY, mValue.Expression, mMonoFace, FColors.Accent);
+  AddText(FLeft, FY, ToggleGlyph(mValue.Expandable, mValue.Expanded) + mValue.Expression, mMonoFace, FColors.Accent);
+  if mValue.Expandable then
+  begin
+    // Klick auf den Ausdruck klappt auf bzw. zu (#895).
+    AddHit(TAtlasHoverHitKind.DebugRow, -1, Rect(FLeft, FY, FRight, FY + Height(mMonoFace)));
+  end;
   Inc(FY, Height(mMonoFace) + Scale(3));
   if mValue.State = TAtlasDebugValueState.Pending then
   begin
@@ -880,7 +889,17 @@ begin
   end
   else
   begin
+    mValueTop := FY;
+    mValueItem := FItemCount;
     Block(mValue.Text, FColors.Text, 6);
+    if mValue.OldText <> '' then
+    begin
+      // Seit dem vorigen Halt geändert (#895): hinterlegt, alter Wert gedimmt darunter.
+      OldValue(mValue.OldText);
+      Insert(mValueItem, NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft - Scale(2), mValueTop, FRight, FY),
+        FColors.WarnSoft));
+    end;
+    DebugRows(mValue);
     LinkRow(mValue.Actions, TAtlasHoverHitKind.DebugAction);
   end;
   SideBar(mStart, FColors.Accent);
@@ -1159,6 +1178,7 @@ begin
   SetLength(FHits, FHitCount);
   Result := FLayout;
   Result.Members := FMembers;
+  Result.DebugRows := FDebugRows;
   Result.Items := FItems;
   Result.Hits := FHits;
   Result.Height := FY;

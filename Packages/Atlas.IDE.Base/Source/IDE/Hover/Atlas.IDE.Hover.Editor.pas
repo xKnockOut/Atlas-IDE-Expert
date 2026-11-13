@@ -36,6 +36,9 @@
 // (#835) den Wert auf, sobald der Server den Typ gemeldet hat; das gilt auch
 // unter Win64, wo die Visualisierer der IDE nicht laufen. Den Ersatztext gibt
 // OnVisualize (die Debug-Schicht setzt es, der Tooltip kennt sie nicht).
+// Aufklappen (#895): OnDebugTree liefert Zeilen und alten Wert, OnDebugRow
+// klappt eine Zeile; mit der Maus über dem Tooltip wählen ↑/↓ eine Zeile,
+// → klappt auf, ← zu; Rechtsklick bietet die Aktionen der Zeile an.
 // debug.hoverValues (DebugHoverValues). Scheitert die Auswertung mit „kein
 // Zugriff“, erklärt OnExplain die Ursache (#840; die Debug-Schicht setzt es,
 // der Tooltip kennt sie nicht), Klicks auf ihre Korrekturen gehen an
@@ -141,6 +144,8 @@ type
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     /// <summary>Kürzel, die nur gelten, wenn der Tooltip gemeint ist (angeheftet oder Maus darüber).</summary>
     function WantsTipKey(AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Pfeile im aufgeklappten Debug-Wert (#895): wählen, → auf-, ← zuklappen; False sonst.</summary>
+    function DebugTreeKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word; AShift: TShiftState);
   public
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
@@ -222,6 +227,12 @@ end;
 function IsBackKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   Result := ((AKey = VK_BACK) and (AShift = [])) or ((AKey = VK_LEFT) and (AShift = [ssAlt]));
+end;
+
+/// <summary>Pfeiltaste ohne Umschalter: bewegt im aufgeklappten Debug-Wert (#895).</summary>
+function IsTreeKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := (AShift = []) and ((AKey = VK_UP) or (AKey = VK_DOWN) or (AKey = VK_LEFT) or (AKey = VK_RIGHT));
 end;
 
 function NoneOrShift(AShift: TShiftState): Boolean;
@@ -737,6 +748,7 @@ begin
   Result := Result or ((AKey = VK_RETURN) and (AShift = [ssAlt]) and FTip.HasFix);
   Result := Result or ((AKey = VK_TAB) and NoneOrShift(AShift) and FTip.HasProblemActions);
   Result := Result or ((AKey = VK_RETURN) and (AShift = []) and FTip.ProblemActionMarked);
+  Result := Result or (FTip.View.DebugValue.Expandable and IsTreeKey(AKey, AShift));
   if Result then
   begin
     Exit;
@@ -745,8 +757,33 @@ begin
   Result := mData.Location.HasLocation and ActionKey(AKey, AShift, mData.DocWiki <> '');
 end;
 
+function TAtlasEditorHover.DebugTreeKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := FTip.View.DebugValue.Expandable and IsTreeKey(AKey, AShift);
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AKey of
+    VK_UP:
+      FTip.MoveDebugSelection(-1);
+    VK_DOWN:
+      FTip.MoveDebugSelection(1);
+    VK_RIGHT:
+      FTip.ToggleDebugSelection(True);
+  else
+    FTip.ToggleDebugSelection(False);
+  end;
+  // Aktionen gelten der gewählten Zeile: neu berechnen.
+  Refresh;
+end;
+
 procedure TAtlasEditorHover.HandleKey(AKey: Word; AShift: TShiftState);
 begin
+  if DebugTreeKey(AKey, AShift) then
+  begin
+    Exit;
+  end;
   case AKey of
     VK_ESCAPE:
       Hide;

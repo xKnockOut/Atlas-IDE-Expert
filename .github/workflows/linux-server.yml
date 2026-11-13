@@ -17,7 +17,7 @@ name: AtlasServer für Linux
 
 on:
   push:
-    branches: [main]
+    branches: [main, main-merging]
     paths:
       - 'Application/**'
       - 'Packages/**'
