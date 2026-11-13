@@ -383,7 +383,9 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Review,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.UI.Tracker.TestResults.Strings,
   Atlas.UI.Tracker.TestResults;
 
 const
@@ -443,11 +445,11 @@ class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string): st
 begin
   if AProjectName = '' then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesTitle);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesTitle);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesTitleProject, [AProjectName]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesTitleProject, [AProjectName]);
   end;
 end;
 
@@ -464,23 +466,23 @@ class function TAtlasTrackerIssuesText.ErrorText(AError: TAtlasCiFetchError): st
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesUnauthorized);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesUnauthorized);
     TAtlasCiFetchError.NoCredentials:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNoToken);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNoToken);
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNotFound);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNotFound);
     TAtlasCiFetchError.Invalid:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesInvalid);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesInvalid);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiTimeout);
+      Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiTimeout);
     TAtlasCiFetchError.Server:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiServerError);
+      Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiServerError);
     TAtlasCiFetchError.UnknownProvider, TAtlasCiFetchError.NotConfigured:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiUnknownProvider);
+      Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiUnknownProvider);
     TAtlasCiFetchError.None:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiNotQueried);
+      Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiNotQueried);
   else
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiUnreachable);
+    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiUnreachable);
   end;
 end;
 
@@ -494,17 +496,17 @@ begin
   Result := '';
   if AGroup.Querying then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupQuerying);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesGroupQuerying);
   end
   else if (AGroup.Status = TAtlasIssuesStatus.NotConfigured) or ((AGroup.Status in [TAtlasIssuesStatus.Failed,
     TAtlasIssuesStatus.Stale]) and (AGroup.Error in [TAtlasCiFetchError.NoCredentials,
     TAtlasCiFetchError.Unauthorized])) then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupNoAccess);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesGroupNoAccess);
   end
   else if AGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale] then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesGroupFailed, [ErrorText(AGroup.Error)]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesGroupFailed, [ErrorText(AGroup.Error)]);
   end
   else if AGroup.Status = TAtlasIssuesStatus.Waiting then
   begin
@@ -512,11 +514,11 @@ begin
   end
   else if AGroup.Total = 0 then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesGroupEmpty);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesGroupEmpty);
   end
   else if AGroup.More > 0 then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuesGroupMore, [AGroup.More]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesGroupMore, [AGroup.More]);
   end;
 end;
 
@@ -531,30 +533,31 @@ begin
     TAtlasIssuesStatus.Waiting:
       if AView.Querying then
       begin
-        mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQuerying)];
+        mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
       end
       else
       begin
-        mParts := [AView.Tracker, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsCiNotQueried)];
+        mParts := [AView.Tracker, TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiNotQueried)];
       end;
     TAtlasIssuesStatus.Failed:
       mParts := [AView.Tracker, ErrorText(AView.Error)];
     TAtlasIssuesStatus.Stale:
-      mParts := [AView.Tracker, ErrorText(AView.Error), TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeTestsStale,
+      mParts := [AView.Tracker, ErrorText(AView.Error),
+        TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsStale,
         [FormatDateTime(cStaleTimeFormat, TTimeZone.Local.ToLocalTime(AView.At), FormatSettings)])];
   else
     if AView.Querying then
     begin
-      mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQuerying)];
+      mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
     end
     else if (Length(AView.Items) = 0) and (Length(AView.Groups) = 0) then
     begin
-      mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesEmpty)];
+      mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesEmpty)];
     end;
   end;
   if AView.Querying and (AView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale]) then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQuerying)];
+    mParts := mParts + [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
   end;
   Result := JoinParts(mParts);
 end;
@@ -563,16 +566,16 @@ class function TAtlasTrackerIssuesText.NotConfiguredFooter(const AView: TAtlasIs
 begin
   if AView.Project = '' then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNoProject);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNoProject);
   end
   else if FooterIsAssign(AView) then
   begin
     // Weder .atlas noch persönliche Zuordnung: gleich zuordnen lassen (#1261).
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesAssign);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesAssign);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesNotConfigured);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNotConfigured);
   end;
 end;
 
@@ -589,7 +592,7 @@ begin
   end;
   if Result then
   begin
-    AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesActiveFooter,
+    AText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesActiveFooter,
       [Trim(AView.Active.Key + ' ' + AView.Active.Title)]);
   end;
 end;
@@ -619,11 +622,11 @@ begin
   else if (AView.Options.Start = TAtlasIssueStart.Remember) or
     ((AView.VcsKind <> TAtlasVcsKind.Git) and (AView.VcsKind <> TAtlasVcsKind.Svn)) then
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesFooterRemember);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesFooterRemember);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesFooter);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesFooter);
   end;
 end;
 
@@ -639,7 +642,7 @@ begin
   if (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryText <> '') then
   begin
     Result := JoinParts([AView.Connection, AView.TrackerProject,
-      TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesSource, [AView.QueryText])]);
+      TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesSource, [AView.QueryText])]);
   end;
 end;
 
@@ -675,15 +678,15 @@ begin
   Result := cPullRequestPrefix + IntToStr(APull.Number);
   if APull.Draft then
   begin
-    Result := Result + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesDraft);
+    Result := Result + TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesDraft);
   end;
   case APull.Checks of
     TAtlasTrackerChecks.Success:
-      Result := Result + cSeparator + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesChecksSuccess);
+      Result := Result + cSeparator + TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesChecksSuccess);
     TAtlasTrackerChecks.Failure:
-      Result := Result + cSeparator + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesChecksFailure);
+      Result := Result + cSeparator + TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesChecksFailure);
     TAtlasTrackerChecks.Pending:
-      Result := Result + cSeparator + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesChecksPending);
+      Result := Result + cSeparator + TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesChecksPending);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -714,9 +717,9 @@ begin
   end;
   if mHead = '' then
   begin
-    mHead := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesTitle);
+    mHead := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesTitle);
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStatusTile, [mHead, AView.OpenCount]);
+  Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStatusTile, [mHead, AView.OpenCount]);
 end;
 
 class function TAtlasTrackerIssuesText.StartHint(const AView: TAtlasIssuesView;
@@ -727,16 +730,16 @@ begin
   // Im Prüfzustand (#2126) steht dort „Prüfen …“.
   if TAtlasTrackerReview.Reviews(AView, AIssue) then
   begin
-    Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewHint));
+    Exit(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewHint));
   end;
   mPlan := TAtlasMyIssues.PlanStart(AView.VcsKind, AView.Options, AIssue);
   if (mPlan.Mode = TAtlasIssueStart.Branch) and mPlan.Valid then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesHintStart, [mPlan.Branch]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesHintStart, [mPlan.Branch]);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesHintRemember, [AIssue.Key]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesHintRemember, [AIssue.Key]);
   end;
 end;
 
@@ -746,14 +749,14 @@ begin
     TAtlasIssuesHitKind.Key:
       if AView.Options.Preview then
       begin
-        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintKeyPreview);
+        Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHintKeyPreview);
       end
       else
       begin
-        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintKey);
+        Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHintKey);
       end;
     TAtlasIssuesHitKind.PullRequest:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintPullRequest);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHintPullRequest);
     TAtlasIssuesHitKind.Start:
       Result := StartHint(AView, AView.Items[AHit.Index]);
     TAtlasIssuesHitKind.Row:
@@ -761,20 +764,20 @@ begin
         Result := AView.Items[AHit.Index].Key + ' ' + AView.Items[AHit.Index].Title;
         if AView.IsUnseen(AView.Items[AHit.Index].Key) then
         begin
-          Result := Result + sLineBreak + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyUnseenHint);
+          Result := Result + sLineBreak + TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyUnseenHint);
         end;
       end;
     TAtlasIssuesHitKind.Assign:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintAssign);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHintAssign);
     TAtlasIssuesHitKind.Filter:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesHintFilter);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHintFilter);
     TAtlasIssuesHitKind.Continue:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesContinueHint,
+      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesContinueHint,
         [AView.Items[AHit.Index].Key]);
     TAtlasIssuesHitKind.Dismiss:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopenedReadHint);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesReopenedReadHint);
     TAtlasIssuesHitKind.Reason:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopenedCommentHint);
+      Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesReopenedCommentHint);
   else
     Result := '';
   end;
@@ -791,12 +794,12 @@ begin
     begin
       mWho := '?';
     end;
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesReopenedComment, [mWho,
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesReopenedComment, [mWho,
       TAtlasTrackerTestResultsText.AgoText(AReopen.CommentAt, ANowUtc), AReopen.Comment]);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesReopenedState, [AReopen.Previous,
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesReopenedState, [AReopen.Previous,
       AReopen.State]);
   end;
 end;
@@ -805,11 +808,11 @@ class function TAtlasTrackerIssuesText.ContinueText(const AReopen: TAtlasTracker
 begin
   if AReopen.Branch <> '' then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesContinueOn, [AReopen.Branch]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesContinueOn, [AReopen.Branch]);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesContinue);
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesContinue);
   end;
 end;
 
@@ -818,7 +821,7 @@ begin
   Result := '';
   if AView.Filter <> '' then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesFilter, [AView.Filter]);
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesFilter, [AView.Filter]);
   end;
 end;
 
@@ -1002,10 +1005,10 @@ var
   mTop, mWidth, mHeight, mRadius: Integer;
 begin
   ACanvas.Font.Assign(FOwner.Font);
-  mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStart);
+  mText := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesStart);
   if TAtlasTrackerReview.Reviews(FOwner.View, FOwner.View.Items[AIndex]) then
   begin
-    mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand);
+    mText := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewCommand);
   end;
   mWidth := ACanvas.TextWidth(mText) + 2 * Scaled(TAtlasTrackerIssuesView.cButtonPadding);
   mHeight := Scaled(TAtlasTrackerIssuesView.cButtonHeight);
@@ -1074,11 +1077,11 @@ begin
   // Wieder geöffnet (#2127): Marke zuerst.
   if FOwner.View.ReopenOf(mItem.Key, mReopen) then
   begin
-    PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopened), cYellowColor, True, mChip);
+    PaintChip(mLine, TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesReopened), cYellowColor, True, mChip);
   end;
   if SameText(mItem.Key, FOwner.View.Active.Key) then
   begin
-    PaintChip(mLine, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesActive), Color(clHighlight), True,
+    PaintChip(mLine, TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesActive), Color(clHighlight), True,
       mChip);
   end;
   for mField in TAtlasMyIssues.Fields(mItem) do
@@ -1201,7 +1204,7 @@ begin
   if not FContinueRects[AIndex].IsEmpty then
   begin
     FDismissRects[AIndex] := PaintButton(ACanvas,
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesReopenedRead), FContinueRects[AIndex].Right + mGap,
+      TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesReopenedRead), FContinueRects[AIndex].Right + mGap,
       ATop + mLine, ALimit);
   end;
   ACanvas.Font.Assign(FOwner.Font);
@@ -1435,21 +1438,21 @@ begin
   FMenuRow := -1;
   FMenu := TPopupMenu.Create(AOwner);
   FMenu.OnPopup := MenuPopup;
-  FPreviewItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesPreview), PreviewClick);
-  FBrowseItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowse), BrowseClick);
-  FBrowsePullItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesBrowsePullRequest),
+  FPreviewItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesPreview), PreviewClick);
+  FBrowseItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesBrowse), BrowseClick);
+  FBrowsePullItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesBrowsePullRequest),
     BrowsePullClick);
-  FStartBranchItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartBranch),
+  FStartBranchItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesStartBranch),
     StartBranchClick);
-  FStartRememberItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStartRemember),
+  FStartRememberItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesStartRemember),
     StartRememberClick);
-  FReviewItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand), ReviewClick);
+  FReviewItem := AddItem(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewCommand), ReviewClick);
   mLine := TMenuItem.Create(AOwner);
   mLine.Caption := cMenuLine;
   FMenu.Items.Add(mLine);
-  FQueryItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryNow), QueryClick);
-  FCredentialsItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginCommand), CredentialsClick);
-  FEndItem := AddItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesEnd), EndClick);
+  FQueryItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryNow), QueryClick);
+  FCredentialsItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginCommand), CredentialsClick);
+  FEndItem := AddItem(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesEnd), EndClick);
 end;
 
 function TAtlasTrackerIssuesMenu.AddItem(const ACaption: string; const AClick: TNotifyEvent): TMenuItem;
@@ -1604,7 +1607,7 @@ begin
   FLabel.Margins.SetBounds(cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
-  FLabel.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryHint);
+  FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryHint);
   FLabel.Font.Color := clHotLight;
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
@@ -1683,7 +1686,7 @@ begin
   mItem.Caption := cMenuLine;
   FMenu.Items.Add(mItem);
   mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueriesEdit);
+  mItem.Caption := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueriesEdit);
   mItem.OnClick := EditClick;
   FMenu.Items.Add(mItem);
 end;

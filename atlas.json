@@ -13,7 +13,7 @@
     "metric-local-count": "off",
     "metric-exit-points": "off",
     "metric-class-size": "off",
-    "metric-unit-length": "off",
+    "metric-unit-length": {"severity": "warning", "max": 2000},
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
     "catch-all-without-raise": {"severity": "warning", "exclude": ["Tests/**", "Tools/**", "Application/**", "Packages/Atlas.IDE.*/**"]},

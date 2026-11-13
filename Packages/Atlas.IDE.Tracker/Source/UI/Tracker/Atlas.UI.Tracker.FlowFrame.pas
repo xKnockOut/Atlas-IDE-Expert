@@ -181,7 +181,7 @@ implementation
 uses
   System.Math,
   Winapi.Windows,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Flow.Strings;
 
 {$R *.dfm}
 
@@ -368,9 +368,9 @@ class function TAtlasFlowTexts.Average(const AState: TAtlasFlowState): string;
 begin
   if AState.AverageDays < 0 then
   begin
-    Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowNoAverage));
+    Exit(TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoAverage));
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowAverage,
+  Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowAverage,
     [FormatFloat('0.0', AState.AverageDays, FormatSettings)]);
 end;
 
@@ -378,26 +378,26 @@ class function TAtlasFlowTexts.Counts(const AState: TAtlasFlowState): string;
 begin
   if AState.Resolved then
   begin
-    Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowEnd));
+    Exit(TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowEnd));
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowOpen, [AState.OpenCount]);
+  Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowOpen, [AState.OpenCount]);
   if AState.MineCount > 0 then
   begin
-    Result := Result + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowMine, [AState.MineCount]);
+    Result := Result + TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowMine, [AState.MineCount]);
   end;
   if AState.StuckCount > 0 then
   begin
-    Result := Result + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowStuckMark, [AState.StuckCount]);
+    Result := Result + TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckMark, [AState.StuckCount]);
   end;
 end;
 
 class function TAtlasFlowTexts.Summary(const AMap: TAtlasFlowMap; const AProject: string): string;
 begin
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowSummary, [AProject, AMap.Days, AMap.IssueCount,
+  Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowSummary, [AProject, AMap.Days, AMap.IssueCount,
     AMap.ChangeCount]);
   if AMap.Truncated then
   begin
-    Result := Result + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowTruncated);
+    Result := Result + TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowTruncated);
   end;
 end;
 
@@ -405,9 +405,9 @@ class function TAtlasFlowTexts.Since(const AStuck: TAtlasFlowStuck): string;
 begin
   if AStuck.Before then
   begin
-    Exit(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowDaysBefore, [AStuck.Days]));
+    Exit(TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowDaysBefore, [AStuck.Days]));
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowDays, [AStuck.Days]);
+  Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowDays, [AStuck.Days]);
 end;
 
 { TAtlasFlowView }
@@ -623,7 +623,7 @@ begin
   AFrame.FParts.Head.ParentBackground := True;
   AFrame.FParts.Refresh := TButton.Create(AFrame);
   AFrame.FParts.Refresh.Parent := AFrame.FParts.Head;
-  AFrame.FParts.Refresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowRefresh);
+  AFrame.FParts.Refresh.Caption := TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowRefresh);
   AFrame.FParts.Refresh.Width := AFrame.ScaleValue(cRefreshWidth);
   AFrame.FParts.Refresh.Align := alRight;
   AFrame.FParts.Refresh.AlignWithMargins := True;
@@ -642,8 +642,8 @@ end;
 procedure AddList(AFrame: TAtlasFlowFrame);
 var
   mColumn: TListColumn;
-  mId: TAtlasTrackerTextId;
-  mIds: TArray<TAtlasTrackerTextId>;
+  mId: TAtlasFlowTextId;
+  mIds: TArray<TAtlasFlowTextId>;
   mIndex: Integer;
 begin
   AFrame.FParts.Bottom := TPanel.Create(AFrame);
@@ -670,13 +670,13 @@ begin
   AFrame.FParts.List.HideSelection := False;
   AFrame.FParts.List.BorderStyle := bsNone;
   AFrame.FParts.List.OnDblClick := AFrame.ListDblClick;
-  mIds := TArray<TAtlasTrackerTextId>.Create(TAtlasTrackerTextId.FlowColumnKey, TAtlasTrackerTextId.FlowColumnTitle,
-    TAtlasTrackerTextId.FlowColumnState, TAtlasTrackerTextId.FlowColumnSince, TAtlasTrackerTextId.FlowColumnAssignee);
+  mIds := TArray<TAtlasFlowTextId>.Create(TAtlasFlowTextId.FlowColumnKey, TAtlasFlowTextId.FlowColumnTitle,
+    TAtlasFlowTextId.FlowColumnState, TAtlasFlowTextId.FlowColumnSince, TAtlasFlowTextId.FlowColumnAssignee);
   for mIndex := 0 to High(mIds) do
   begin
     mId := mIds[mIndex];
     mColumn := AFrame.FParts.List.Columns.Add;
-    mColumn.Caption := TAtlasTrackerStrings.Text(mId);
+    mColumn.Caption := TAtlasFlowStrings.Text(mId);
     mColumn.Width := AFrame.ScaleValue(cColumnWidths[mIndex]);
   end;
 end;
@@ -777,15 +777,15 @@ function TAtlasFlowFrame.ListCaption: string;
 begin
   if FParts.View.Selected = '' then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowStuckTitle, [FStuckDays]);
+    Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckTitle, [FStuckDays]);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowStuckFilter, [FParts.View.Selected, FStuckDays]);
+    Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckFilter, [FParts.View.Selected, FStuckDays]);
   end;
   if FHasMap and (Length(VisibleRows) = 0) then
   begin
-    Result := Result + ' · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowNoStuck);
+    Result := Result + ' · ' + TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoStuck);
   end;
 end;
 
@@ -837,7 +837,7 @@ begin
   FParts.View.Visible := Length(AMap.States) > 0;
   FParts.View.Relayout;
   FParts.Empty.Visible := Length(AMap.States) = 0;
-  FParts.Empty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowEmpty);
+  FParts.Empty.Caption := TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowEmpty);
   FParts.Empty.Width := Max(FParts.Scroll.Width, ScaleValue(cMinEmptyWidth));
   SetStatus(AStatus);
   FillList;
@@ -877,7 +877,7 @@ begin
   FParts.Refresh.Enabled := not AValue;
   if AValue then
   begin
-    SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowLoading));
+    SetStatus(TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowLoading));
   end;
 end;
 

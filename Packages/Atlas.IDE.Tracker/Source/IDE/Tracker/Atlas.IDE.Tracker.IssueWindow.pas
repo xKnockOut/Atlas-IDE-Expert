@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TIssueDock.GetCaption: string;
 begin
-  Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCaption);
+  Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCaption);
 end;
 
 function TIssueDock.GetIdentifier: string;

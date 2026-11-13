@@ -1084,7 +1084,19 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SprintTile` | `UI/Tracker/Atlas.UI.Tracker.SprintTile.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
-| `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
+| `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Gemeinsames der Texte des Moduls (Tracker), Sprache von Base, #1455 |
+| `Atlas.UI.Tracker.Attach.Strings` | `UI/Tracker/Atlas.UI.Tracker.Attach.Strings.pas` | Texte des Features Attach (Tracker) |
+| `Atlas.UI.Tracker.Board.Strings` | `UI/Tracker/Atlas.UI.Tracker.Board.Strings.pas` | Texte des Features Board (Tracker) |
+| `Atlas.UI.Tracker.Development.Strings` | `UI/Tracker/Atlas.UI.Tracker.Development.Strings.pas` | Texte des Features Development (Tracker) |
+| `Atlas.UI.Tracker.Flow.Strings` | `UI/Tracker/Atlas.UI.Tracker.Flow.Strings.pas` | Texte des Features Flow (Tracker) |
+| `Atlas.UI.Tracker.Issue.Strings` | `UI/Tracker/Atlas.UI.Tracker.Issue.Strings.pas` | Texte des Features Issue (Tracker) |
+| `Atlas.UI.Tracker.MyIssues.Strings` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.Strings.pas` | Texte des Features MyIssues (Tracker) |
+| `Atlas.UI.Tracker.NewIssue.Strings` | `UI/Tracker/Atlas.UI.Tracker.NewIssue.Strings.pas` | Texte des Features NewIssue (Tracker) |
+| `Atlas.UI.Tracker.Settings.Strings` | `UI/Tracker/Atlas.UI.Tracker.Settings.Strings.pas` | Texte des Features Settings (Tracker) |
+| `Atlas.UI.Tracker.Sprint.Strings` | `UI/Tracker/Atlas.UI.Tracker.Sprint.Strings.pas` | Texte des Features Sprint (Tracker) |
+| `Atlas.UI.Tracker.TestResults.Strings` | `UI/Tracker/Atlas.UI.Tracker.TestResults.Strings.pas` | Texte des Features TestResults (Tracker) |
+| `Atlas.UI.Tracker.Time.Strings` | `UI/Tracker/Atlas.UI.Tracker.Time.Strings.pas` | Texte des Features Time (Tracker) |
+| `Atlas.UI.Tracker.Workflow.Strings` | `UI/Tracker/Atlas.UI.Tracker.Workflow.Strings.pas` | Texte des Features Workflow (Tracker) |
 | `Atlas.UI.Tracker.TestResults` | `UI/Tracker/Atlas.UI.Tracker.TestResults.pas` | Ordner `UI/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.TileView` | `UI/Tracker/Atlas.UI.Tracker.TileView.pas` | Grundlage der Kachel-Ansichten (`IAtlasWelcomeTileView`), #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |

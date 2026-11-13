@@ -16,7 +16,7 @@ interface
 uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.PromoteVariable;
 

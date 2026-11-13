@@ -63,7 +63,7 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Results.Commands,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.TestResults.Strings;
 
 const
   cHttps = 'https://';
@@ -130,7 +130,7 @@ begin
   Result := False;
   if not FileExists(AProject) then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeProjectsMissing, [AProject]));
+    Report(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeProjectsMissing, [AProject]));
   end
   else if ProjectIsOpen(AProject) then
   begin
@@ -182,7 +182,7 @@ begin
     end;
     if not Locate(ARow, AItem, mFileName, mLine) then
     begin
-      Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeTestsNotFound, [AItem.Test]));
+      Report(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsNotFound, [AItem.Test]));
       Exit;
     end;
   end

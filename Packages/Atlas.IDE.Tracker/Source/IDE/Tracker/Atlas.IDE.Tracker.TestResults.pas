@@ -192,7 +192,7 @@ uses
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.TestResults.Strings,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -463,7 +463,7 @@ end;
 
 class function TAtlasIdeTestResults.Title: string;
 begin
-  Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsTitle);
+  Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsTitle);
 end;
 
 procedure TAtlasIdeTestResults.Start;
@@ -709,7 +709,7 @@ begin
   begin
     Exit;
   end;
-  mTitle := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NotificationsBuildServerRed,
+  mTitle := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.NotificationsBuildServerRed,
     [TAtlasTestResults.ProviderCaption(AJob.Provider), ABuild.Number, ChangeFileExt(ExtractFileName(AProject), '')]);
   mText := TAtlasTrackerTestResultsText.BuildText(ABuild);
   if AJob.JobBranch <> '' then
@@ -718,7 +718,7 @@ begin
   end;
   mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cBuildServer,
     TAtlasNotificationSeverity.Error, mTitle, mText,
-    [TAtlasNotificationCenter.Action(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsBrowse),
+    [TAtlasNotificationCenter.Action(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsBrowse),
     BrowseAction(Self, FActions, AJob, ABuild.Number))]);
   // „Einblenden“ (oder Zentrale aus): auch eine Zeile in der Meldungsansicht.
   if mMode = TAtlasNotificationMode.Show then
@@ -821,7 +821,7 @@ begin
       end;
       if mJob.Server = '' then
       begin
-        Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginNoServer));
+        Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
       end
       else if FAccess.EnterCredentials(mJob) then
       begin
@@ -843,7 +843,7 @@ begin
   mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
-    Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginNoServer));
+    Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
   end
   else
   begin

@@ -200,6 +200,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 
@@ -620,7 +621,7 @@ begin
       Logged(mProvider, 'Beginnen', AResult);
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
+        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
           [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]));
         if Assigned(mWritten) then
         begin
@@ -629,7 +630,7 @@ begin
       end
       else
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
+        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
           [mKey, TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
       end;
     end);
@@ -693,13 +694,13 @@ var
 begin
   if not AStarted.Outcome.Succeeded then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
       [AKey, TAtlasTrackerEndDialog.ErrorText(AKey, AStarted.Outcome)]));
     Exit;
   end;
   if AStarted.Change.HasWork then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
       [AKey, TAtlasTrackerEndDialog.SummaryText(AStarted.Change, AStarted.NewState)]));
   end;
   if not AStarted.Blocked then
@@ -710,15 +711,15 @@ begin
   mNames := TAtlasTrackerTransitions.Captions(AStarted.Rules);
   if Length(mNames) = 0 then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartNoTransitionNone, [AKey,
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransitionNone, [AKey,
       AStarted.Rules.Current]));
     Exit;
   end;
   for mIndex := 0 to High(mNames) do
   begin
-    mNames[mIndex] := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerQuoted, [mNames[mIndex]]);
+    mNames[mIndex] := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerQuoted, [mNames[mIndex]]);
   end;
-  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartNoTransition,
+  Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransition,
     [AKey, AStarted.Rules.Current, string.Join(', ', mNames)]));
 end;
 
@@ -847,13 +848,13 @@ begin
     // Abgebrochen nach einem Teilerfolg: sagen, was schon im Tracker steht.
     if AOutcome.Progress.Wrote then
     begin
-      Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndPartial, [AKey, mSummary]));
+      Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndPartial, [AKey, mSummary]));
     end;
     Exit;
   end;
   if mSummary <> '' then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndSent, [AKey, mSummary]));
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndSent, [AKey, mSummary]));
   end;
   AEnded(AOutcome.Plan.Change);
 end;
@@ -1213,7 +1214,7 @@ begin
       Logged(mProvider, 'Kommentar', AResult);
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerCommentSent, [mKey]));
+        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerCommentSent, [mKey]));
       end;
       mDone(AResult);
     end);
