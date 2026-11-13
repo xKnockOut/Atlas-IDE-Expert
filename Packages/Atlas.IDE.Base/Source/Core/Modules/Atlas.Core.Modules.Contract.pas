@@ -33,8 +33,9 @@ const
   /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).
   /// 10 (#2127): IAtlasIssueWork.Restore, issues.reopened, issues.reviewStates.
   /// 11 (#2126): issues.reviewBuild, issues.reviewComment.
-  /// 12 (#1775): IAtlasFollowsSaves, tests.onSave und tests.onSave.max.
-  cAtlasCoreContractVersion = 12;
+  /// 12 (#2135): IAtlasIssueWork.Forget.
+  /// 13 (#1775): IAtlasFollowsSaves, tests.onSave und tests.onSave.max.
+  cAtlasCoreContractVersion = 13;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

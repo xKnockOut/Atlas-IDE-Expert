@@ -31,6 +31,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeMismatch,
   Atlas.Common.Rules.Builtin.CompilerTraps,
   Atlas.Common.Rules.Builtin.IgnoredResult,
+  Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
@@ -62,6 +63,7 @@ begin
   RegisterTypeMismatchRules(ARegistry);
   RegisterCompilerTrapRules(ARegistry);
   RegisterIgnoredResultRules(ARegistry);
+  RegisterOwnershipLocalObjectRules(ARegistry);
   RegisterConditionRules(ARegistry);
   RegisterIdiomRules(ARegistry);
   RegisterInliningRules(ARegistry);

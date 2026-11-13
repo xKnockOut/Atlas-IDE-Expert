@@ -263,6 +263,7 @@ Atlas.Common.Rules.Builtin.Migration.Win64.Tests
 Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
+Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests
@@ -311,6 +312,7 @@ Atlas.Common.Updates.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
+Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Style.Listeners.Tests
@@ -355,6 +357,7 @@ Atlas.UI.Strings.Tests
 Atlas.UI.SymbolPath.Strings.Tests
 Atlas.UI.Tests.Strings.Tests
 Atlas.UI.Tracker.Strings.Tests
+Atlas.UI.Tracker.GitHubStrings.Tests
 Atlas.UI.Undo.Strings.Tests
 Atlas.UI.VersionControl.Strings.Tests
 Atlas.UI.Welcome.Strings.Tests

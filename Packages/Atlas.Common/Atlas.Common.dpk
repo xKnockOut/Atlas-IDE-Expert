@@ -728,6 +728,7 @@ contains
   Atlas.Common.Rules.Builtin.Events in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas',
   Atlas.Common.Rules.Builtin.Ownership in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas',
   Atlas.Common.Rules.Builtin.Ownership.RawMemory in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.RawMemory.pas',
+  Atlas.Common.Rules.Builtin.Ownership.LocalObjects in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.pas',
   Atlas.Common.Rules.Builtin.Ownership.StringListObjects in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.StringListObjects.pas',
   Atlas.Common.Rules.Builtin.Ownership.ComponentInterface in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.ComponentInterface.pas',
   Atlas.Common.Rules.Builtin.Ownership.TryFinally in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.pas',

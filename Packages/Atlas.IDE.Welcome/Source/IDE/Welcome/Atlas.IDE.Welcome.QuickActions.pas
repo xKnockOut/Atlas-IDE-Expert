@@ -397,13 +397,11 @@ end;
 function EndedTests(ASelf: TAtlasIdeQuickActions): TArray<string>;
 var
   mPair: TPair<string, string>;
-  mValue: TAtlasQuickActionState;
 begin
   Result := nil;
   for mPair in ASelf.FRuns.Tests do
   begin
-    mValue := ASelf.State(mPair.Value);
-    if not mValue.Running or (ASelf.NowMs - mValue.StartedMs >= TAtlasIdeQuickActions.cWatchGraceMs) then
+    if ASelf.State(mPair.Value).TestEnded(ASelf.NowMs, TAtlasIdeQuickActions.cWatchGraceMs) then
     begin
       Result := Result + [mPair.Key];
     end;
@@ -413,34 +411,28 @@ end;
 /// <summary>Stand nach einem Pull mit Meldung bei Fehlern; AUpdate: SVN („Aktualisieren“).</summary>
 function PullResult(ASelf: TAtlasIdeQuickActions; const AProject: string; AOutcome: TAtlasPullOutcome;
   AReason: TAtlasVcsOutcome; AUpdate: Boolean): TAtlasQuickActionState;
+var
+  mNote: TAtlasPullNote;
 begin
-  Result := ASelf.State(AProject);
-  Result.Action := TAtlasQuickAction.Pull;
-  Result.Pull := AOutcome;
-  Result.Detail := '';
-  Result.Phase := TAtlasQuickActionPhase.Failed;
-  case AOutcome of
-    TAtlasPullOutcome.Updated, TAtlasPullOutcome.UpToDate:
-      Result.Phase := TAtlasQuickActionPhase.Succeeded;
-    TAtlasPullOutcome.Blocked:
+  // Was gilt, entscheidet Core (AfterPull); hier nur die Texte.
+  Result := ASelf.State(AProject).AfterPull(AOutcome, AReason, mNote);
+  case mNote of
+    TAtlasPullNote.None:
+      ;
+    TAtlasPullNote.LocalChanges:
       begin
         Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLocalChanges);
         ASelf.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
       end;
-    TAtlasPullOutcome.NoWorkingCopy:
+    TAtlasPullNote.NoWorkingCopy:
       Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullNoWorkingCopy);
-  else
-    // Fehlende Anmeldung (#1287): Ursache und Weg zur Seite Versionsverwaltung statt eines Codes.
-    if AReason = TAtlasVcsOutcome.LoginNeeded then
-    begin
-      Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLogin);
-      ASelf.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(AProject)]));
-    end
-    else
-    begin
-      Result.Detail := AtlasVcsOutcomeName(AReason);
+    TAtlasPullNote.Login:
+      begin
+        Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLogin);
+        ASelf.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(AProject)]));
+      end;
+    TAtlasPullNote.Failed:
       ASelf.Report(PullFailedText(AProject, AReason, AUpdate));
-    end;
   end;
 end;
 
