@@ -63,7 +63,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Rules.Builtin.Performance.SetLengthInLoop,
   Atlas.Common.Localization.Texts;

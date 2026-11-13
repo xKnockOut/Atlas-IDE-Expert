@@ -332,6 +332,15 @@ Einstellungen: `debug.displayRules`
 
 Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
+#### „Warum bin ich hier?“
+
+- Beim Halt stehen am Ende der Kopfzeilen der umgebenden `if`, `while`, `repeat … until`, `for` und `case` die Werte ihrer Bedingungen, gedimmt wie die Werte im Editor: `(1200 > 1000) and True → True`, `I = 3 von 7`, `Art = paRabatt → paRabatt`, im `else`-Zweig `(4 = 0) → False, else-Zweig`.
+- Kurzschluss wie im Programm: Entscheidet bei `A and B` schon `A = False`, steht bei B „nicht nötig“.
+- Aufrufe und Getter wertet Atlas nicht von selbst aus (`‹Aufruf›`); ein Klick auf den Text der Zeile fragt nach und führt sie dann aus.
+- Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
 #### „kein Zugriff auf Wert“ erklärt
 
 - Liefert der Debugger für eine Variable nur „Inaccessible value“ oder „… wegen der Optimierung nicht …“, steht im Hover und in den Werten im Editor `‹kein Zugriff›`.
@@ -386,6 +395,18 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Kontextmenü: Zeile kopieren, als Textdatei speichern, leeren
 
 Einstellungen: `debug.eventLog`, `debug.eventLogColors`
+
+### Logpunkte
+
+- Umschalt+F5 oder „Atlas: Logpunkt setzen“ (Atlas-Menü, Kontextmenü des Editors) an der Cursorzeile bzw. nach Rechtsklick in die Rinne an deren Zeile
+- Text mit Platzhaltern: `x={x}`, `Summe {Summe:0.00}`; Formatangaben `d` (ganze Zahl), `x` (hexadezimal), Muster mit `0` oder `#` (`FormatFloat`), sonst wie in `Format` (`.2f`); `{{` und `}}` sind Klammern im Text
+- Bedingung (`{Summe} > 1000`) und „nur die ersten N Treffer“; Fehler im Text zeigt der Dialog mit Stelle
+- ein gewöhnlicher Haltepunkt an der Zeile wird zum Logpunkt; „Entfernen“ löscht ihn
+- im Ereignisprotokoll eine Zeile der Art Logpunkt mit Präfix und Ort, etwa `[LOG] x=42 · Unit1.pas:12`; Doppelklick springt zur Zeile
+- Raute in der Rinne mit Text und Bedingung im Tooltip
+- „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
+
+Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
 ### Exceptions
 
