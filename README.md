@@ -97,7 +97,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Refactorings and code actions](docs/features/en/Refactorings.md)
 - **Rename** project-wide including forms, **change signature**, **safe delete**
 - **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions; *Extract method* also replaces equal places in the unit on request, each one deselectable in the preview
-- **Class actions:** implement interface, extract interface or superclass, generate properties
+- **Class actions:** implement interface, extract interface or superclass, generate properties, raise the visibility of a member
 - **uses:** add missing units, sort, remove unused ones; a unit counts as used only when a name really resolves to it, as dcc decides (members of its classes and names shadowed later do not count; enum values, helpers, attributes and inline bodies do)
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 

@@ -96,6 +96,7 @@ begin
     TFlagOption.Create('inlineAccessorEqualityCheck', ARefactoring.InlineAccessorEqualityCheck),
     TFlagOption.Create('inlineAccessorBulk', ARefactoring.InlineAccessorBulk),
     TFlagOption.Create('inlineAccessorDiagnostic', ARefactoring.InlineAccessorDiagnostic),
+    TFlagOption.Create('raiseVisibility', ARefactoring.RaiseVisibility),
     TFlagOption.Create('safeDelete', ARefactoring.SafeDelete),
     TFlagOption.Create('safeDeletePreviewWhenUnused', ARefactoring.SafeDeletePreviewWhenUnused)];
 end;
