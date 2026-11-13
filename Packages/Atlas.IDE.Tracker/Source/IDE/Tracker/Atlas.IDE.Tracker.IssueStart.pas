@@ -115,7 +115,7 @@ type
     procedure OpenAfter(const AJob: TAtlasIssueStartJob);
     procedure AskHook(var AState: TAtlasIssuesState; const AHooks: string);
     /// <summary>Beendet: AWritten ist der in den Tracker geschriebene Zustand ('' = nicht geändert).</summary>
-    procedure EndedLocally(const AProject, ABranch, AKey, AWritten: string);
+    procedure EndedLocally(const AProject, ABranch, AKey, AWritten: string; AAbandoned: Boolean);
     procedure EndWithTracker(const AProject, ABranch, AKey: string; const AProvider: IAtlasTrackerProvider;
       const ATarget: TAtlasTrackerTarget; const AState: TAtlasIssuesState);
   public
@@ -141,6 +141,7 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.SprintStart,
+  Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings,
@@ -947,12 +948,12 @@ begin
       else if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesEndConfirm, [mCurrent.Key]),
         mtConfirmation, [mbYes, mbNo], 0) = mrYes then
       begin
-        EndedLocally(mProject, mBranch, mCurrent.Key, '');
+        EndedLocally(mProject, mBranch, mCurrent.Key, '', False);
       end;
     end);
 end;
 
-procedure TAtlasIdeIssueStart.EndedLocally(const AProject, ABranch, AKey, AWritten: string);
+procedure TAtlasIdeIssueStart.EndedLocally(const AProject, ABranch, AKey, AWritten: string; AAbandoned: Boolean);
 var
   mState: TAtlasIssuesState;
 begin
@@ -968,12 +969,17 @@ begin
     FServices.Reopened.EndedIssue(AProject, mState, AKey, ABranch, AWritten);
   end;
   FContext.SaveState(AProject, mState);
-  // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits).
+  // „Nicht geplant“ oder „Duplikat“ (#2135): Arbeitsstand verwerfen, keine Zeit anbieten.
+  if AAbandoned then
+  begin
+    TAtlasTrackerIssueWorkLink.Forget(AProject, AKey);
+  end;
+  // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits), nicht nach
+  // „nicht geplant“ oder „Duplikat“.
   if FServices.Time <> nil then
   begin
     FServices.Time.Ended(FServices.TimeIssueOf(AProject, AKey), TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
-      ABranch,
-      TAtlasIdeSettings.Current.IssuesBranchBase);
+      ABranch, TAtlasIdeSettings.Current.IssuesBranchBase, not AAbandoned);
   end;
   FContext.Notice := TAtlasIssuesNotice.Create(AProject,
     TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesEnded, [AKey]),
@@ -1010,7 +1016,7 @@ begin
     begin
       if mKeep <> nil then
       begin
-        mOwner.EndedLocally(mProject, mBranch, mKey, AChange.State);
+        mOwner.EndedLocally(mProject, mBranch, mKey, AChange.State, TAtlasTrackerWorkflow.Abandons(AChange));
       end;
     end);
 end;

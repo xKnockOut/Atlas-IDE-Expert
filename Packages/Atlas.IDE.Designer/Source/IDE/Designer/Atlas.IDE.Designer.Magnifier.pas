@@ -30,7 +30,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Magnifier,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
   /// <summary>Zustand der Lupe: Zoomstufe, Raster, Kanten, eingefroren und Mitte des Ausschnitts.</summary>
@@ -53,11 +54,10 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
-  TAtlasIdeMagnifier = class
+  TAtlasIdeMagnifier = class(TAtlasIdeDesignerTool)
   public const
     cId = 'magnifier';
   private
-    FOnMessage: TProc<string>;
     FWindow: TAtlasMagnifierWindow;
     FMenu: TPopupMenu;
     FTimer: TTimer;
@@ -67,7 +67,6 @@ type
     FLastCapture: UInt64;
     FCoordinates: string;
     FColorText: string;
-    procedure Say(const AText: string);
     procedure EnsureWindow;
     function Open: Boolean;
     /// <summary>Ausschnitt holen, wenn sich die Maus bewegt hat, AForce gilt oder cRefresh vergangen ist.</summary>
@@ -101,7 +100,7 @@ type
     /// <summary>Takt der Leiste: Tasten an- und abmelden.</summary>
     procedure Tick;
     procedure Hide;
-    procedure ApplyTheme;
+    procedure ApplyTheme; override;
     function Shown: Boolean;
     property Frozen: Boolean read FState.Frozen;
   end;
@@ -218,8 +217,7 @@ constructor TAtlasIdeMagnifier.Create(const AOnMessage: TProc<string>);
 var
   mCollector: TAtlasColorCollector;
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FMenu := TPopupMenu.Create(nil);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -257,14 +255,6 @@ begin
     TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagHint));
   Result.Pressed := Shown;
   Result.Menu := True;
-end;
-
-procedure TAtlasIdeMagnifier.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 function TAtlasIdeMagnifier.Shown: Boolean;
@@ -391,6 +381,7 @@ end;
 
 procedure TAtlasIdeMagnifier.ApplyTheme;
 begin
+  inherited ApplyTheme;
   if FWindow <> nil then
   begin
     FWindow.ApplyColors(TAtlasIdeStyle.Colors);
