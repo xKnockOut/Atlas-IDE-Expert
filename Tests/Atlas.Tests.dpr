@@ -1124,6 +1124,8 @@ uses
   Atlas.Core.Tests.CoveredBy.Tests in 'IDE.Expert\Atlas.Core.Tests.CoveredBy.Tests.pas',
   Atlas.Core.Tests.OnSave in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.OnSave.pas',
   Atlas.Core.Tests.OnSave.Tests in 'IDE.Expert\Atlas.Core.Tests.OnSave.Tests.pas',
+  Atlas.Core.Tests.Leaks in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Leaks.pas',
+  Atlas.Core.Tests.Leaks.Tests in 'IDE.Expert\Atlas.Core.Tests.Leaks.Tests.pas',
   Atlas.Core.Tests.AssertLine in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.AssertLine.Tests in 'IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas',
   Atlas.Core.Tests.Compare in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas',
