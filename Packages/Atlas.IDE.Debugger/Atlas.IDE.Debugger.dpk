@@ -99,6 +99,8 @@ contains
   Atlas.Core.Debug.InlineValues in 'Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas',
   Atlas.IDE.Debug.InlineValues in 'Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas',
   Atlas.Core.Debug.WhyHere in 'Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas',
+  Atlas.Core.Debug.Pins in 'Source\Core\Debug\Atlas.Core.Debug.Pins.pas',
+  Atlas.IDE.Debug.Pins in 'Source\IDE\Debug\Atlas.IDE.Debug.Pins.pas',
   Atlas.IDE.Debug.WhyHere in 'Source\IDE\Debug\Atlas.IDE.Debug.WhyHere.pas',
   Atlas.IDE.Debug.ValueRequest in 'Source\IDE\Debug\Atlas.IDE.Debug.ValueRequest.pas',
   Atlas.IDE.Debug.LineEnd in 'Source\IDE\Debug\Atlas.IDE.Debug.LineEnd.pas',

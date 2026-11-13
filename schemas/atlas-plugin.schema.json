@@ -1956,6 +1956,19 @@
       "x-parent": "debug.whyHere",
       "x-issue": "#1878"
     },
+    "DebugPinnedValues": {
+      "description": "Angeheftete Werte: Im Debug-Hover steht „Anheften“; angeheftete Ausdrücke stehen beim Halt als Feld am Ende ihrer Zeile und bleiben über Debug-Sitzungen erhalten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.pinnedValues",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Werte aus dem Hover anheften",
+      "x-captionEn": "Pin values from the hover",
+      "x-issue": "#526"
+    },
     "DebugOwnCodeFolders": {
       "type": "string",
       "default": "",
