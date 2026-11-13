@@ -150,6 +150,7 @@ Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
@@ -366,3 +367,5 @@ Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
+Atlas.Core.Tests.AssertLine.Tests
+Atlas.Core.Tests.Compare.Tests

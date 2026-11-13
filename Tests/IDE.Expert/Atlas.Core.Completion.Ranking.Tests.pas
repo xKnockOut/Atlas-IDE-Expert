@@ -29,6 +29,13 @@ type
     procedure FormComponentsComeFirst;
     [Test]
     procedure SenderItemsGetHeaderAndTag;
+    /// <summary>#2107: Mitglieder nach einer is-Prüfung oben mit Überschrift, die übrigen unter „Weitere“.
+    /// </summary>
+    [Test]
+    procedure NarrowedMembersComeFirstWithHeader;
+    /// <summary>#2107: Nachfahren des Typs vor is oben unter „Nachfahren von …“.</summary>
+    [Test]
+    procedure DescendantsComeFirstWithHeader;
     [Test]
     procedure VariantFieldsGetBranchTag;
     [Test]
@@ -567,6 +574,53 @@ begin
   // Ohne Sender keine Überschrift.
   Items[0].Sender := '';
   Assert.AreEqual('Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
+end;
+
+procedure TAtlasRankingTests.NarrowedMembersComeFirstWithHeader;
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  Found: Boolean;
+  Tag: TAtlasTag;
+begin
+  Json := TJSONObject.ParseJSONValue('{"label":"Count","kind":10,"detail":"Integer","data":{"narrowed":' +
+    '"TJSONObject","narrowedName":"mLocation","narrowedLine":147}}') as TJSONObject;
+  try
+    Items := [Member('Clone', 'TJSONValue', 0, 0), TAtlasServerCompletionProvider.ItemFromLsp(Json, 1),
+      Member('AddPair', '', 0, 2)];
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('TJSONObject', Items[1].Narrowed);
+  Assert.AreEqual('mLocation', Items[1].NarrowedName);
+  Assert.AreEqual(147, Items[1].NarrowedLine);
+  Items[2].Narrowed := 'TJSONObject';
+  Items[2].NarrowedName := 'mLocation';
+  Items[2].NarrowedLine := 147;
+  Order := TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults);
+  Assert.AreEqual('#,Count,AddPair,#,Clone', Names(Items, Order));
+  // Auch mit Präfix stehen sie oben.
+  Assert.AreEqual('#,Count,#,Clone', Names(Items, TAtlasRanking.Order(Items, 'c', TAtlasRankOptions.Defaults)));
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[1]) do
+  begin
+    Found := Found or (Tag.Text = 'als TJSONObject');
+  end;
+  Assert.IsTrue(Found);
+end;
+
+procedure TAtlasRankingTests.DescendantsComeFirstWithHeader;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+begin
+  Items := [Member('TAlpha', '', 0, 0, TAtlasItemKind.Class_), Member('TJSONObject', '', 0, 1,
+    TAtlasItemKind.Class_), Member('TJSONArray', '', 0, 2, TAtlasItemKind.Class_)];
+  Items[1].DescendantOf := 'TJSONValue';
+  Items[2].DescendantOf := 'TJSONValue';
+  Order := TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults);
+  Assert.AreEqual('#,TJSONObject,TJSONArray,#,TAlpha', Names(Items, Order));
 end;
 
 procedure TAtlasRankingTests.ConversionStandsBeforeOriginal;
