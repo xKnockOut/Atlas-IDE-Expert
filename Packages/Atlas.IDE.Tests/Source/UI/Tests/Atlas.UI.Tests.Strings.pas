@@ -60,7 +60,7 @@ type
     LeakDefinesFailed, LeakNoDebugConfig, LeakCopyDllAsk, LeakCopyDllDone, LeakCopyDllFailed, LeakDone,
     SettingsLeakSetup,
     // Lecks je Test (#1774).
-    TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks);
+    TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks, TestsShutdownLeaks);
 
   TAtlasTestsStrings = class
   public
@@ -264,7 +264,8 @@ const
      '%s · Leck: %d Bytes',
      'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
      'Tests: %d bestanden mit Leck, zusammen %d Bytes nicht freigegeben (Warnungen in Atlas-Probleme).',
-     'Lecks je Test als Warnung zeigen (bestanden mit Leck, gelbe Marke)'),
+     'Lecks je Test als Warnung zeigen (bestanden mit Leck, gelbe Marke)',
+     'Tests: Lecks am Programmende, keinem Test zuzuordnen: %d Blöcke (%s).'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -452,7 +453,8 @@ const
      '%s · leak: %d bytes',
      'Test %s does not free memory: %d bytes (leak)',
      'Tests: %d passed with a leak, %d bytes not freed in total (warnings in Atlas problems).',
-     'Show leaks per test as warnings (passed with leak, yellow mark)'));
+     'Show leaks per test as warnings (passed with leak, yellow mark)',
+     'Tests: Leaks at program end, not tied to a test: %d blocks (%s).'));
 
 { TAtlasTestsStrings }
 

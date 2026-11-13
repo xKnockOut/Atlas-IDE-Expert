@@ -172,7 +172,9 @@ Einstellungen: `tests.showDuration`, `tests.slowMs`
 - In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
 - Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
 - Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
-- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+- Lecks am Programmende, die keinem Test gehören (Objekte, die das Testprogramm erst beim Beenden als nicht freigegeben meldet), nennt die Meldungsansicht in einer Zeile: „Tests: Lecks am Programmende, keinem Test zuzuordnen: 3 Blöcke (TStringList x 2, TKonto x 1).“ Gelesen wird der Bericht von FastMM (`<Programm>_MemoryManager_EventLog.txt` neben der EXE, wenn der Lauf ihn geschrieben hat), sonst die Ausgabe des Programms.
+- Fehlt dem Testprogramm der Leckmonitor, meldet die Regel `dunitx-leak-monitor` einen Hinweis am Eintrag `DUnitX.TestFramework` der .dpr. Die Korrektur trägt `DUnitX.MemoryLeakMonitor.FastMM4` ein (er arbeitet auch mit dem Speichermanager der RTL, ohne `FastMM4.pas`), bei FastMM5 `DUnitX.MemoryLeakMonitor.FastMM5`. Den Speichermanager selbst richtet „Leckprüfung einrichten …“ ein.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot), die Zeile zu Lecks am Programmende entfällt.
 
 Einstellung: `tests.leaks`
 

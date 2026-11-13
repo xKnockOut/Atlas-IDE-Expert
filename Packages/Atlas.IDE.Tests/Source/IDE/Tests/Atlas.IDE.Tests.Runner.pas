@@ -34,7 +34,9 @@
 // - Lecks je Test (tests.leaks, #1774): Ein Test, den der Bericht nur wegen
 //   eines Lecks als fehlgeschlagen nennt, gilt als bestanden mit Leck
 //   (Atlas.Core.Tests.Leaks); Warnung am Methodenkopf und eine Zeile mit
-//   Anzahl und Bytes in der Meldungsansicht.
+//   Anzahl und Bytes in der Meldungsansicht. Lecks am Programmende aus dem
+//   Bericht von FastMM (Datei neben der EXE, wenn der Lauf sie schrieb) bzw.
+//   der Ausgabe des Programms: eine Zeile mit Namen und Anzahl.
 // - RunQuiet (#1775, Tests beim Speichern): Lauf im Hintergrund ohne Frage
 //   nach dem Testprojekt und ohne Zeilen in der Meldungsansicht; die Ausgabe
 //   (Atlas.IDE.Tests.Output) merkt sie und meldet das Ende.
@@ -102,10 +104,12 @@ type
     procedure SetDebugging(AValue: Boolean);
     procedure Start(const AProject: IOTAProject; const ATests: TArray<string>; ABuildFirst: Boolean);
     procedure Execute(const ATarget: TAtlasTestTarget);
+    /// <summary>ALeakText: Leckbericht am Programmende (FastMM-Datei oder Ausgabe); '' ohne.</summary>
     procedure Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
-      const AXml: string; const AOutput: TArray<string>);
-    /// <summary>Meldet ATarget (gültiger Bericht ARun): Probleme, Meldungsansicht, Zusammenfassung.</summary>
-    procedure Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+      const AXml: string; const AOutput: TArray<string>; const ALeakText: string);
+    /// <summary>Meldet ATarget (gültiger Bericht ARun): Probleme, Meldungsansicht, Zusammenfassung; ALeakText wie
+    /// bei Finish.</summary>
+    procedure Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult; const ALeakText: string);
   public
     /// <summary>AOutput gehört dem Aufrufer und lebt länger.</summary>
     constructor Create(const ANewRunner: TAtlasTestsRunnerFactory; AOutput: TAtlasIdeTestsOutput);
@@ -183,6 +187,8 @@ uses
 const
   /// <summary>So viele letzte Zeilen der Ausgabe zeigt die Meldung „kein Bericht“.</summary>
   cOutputLines = 5;
+  /// <summary>Höchstens so viele Namen in der Zeile der Lecks am Programmende (#1774).</summary>
+  cShutdownLeakNames = 5;
 
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
@@ -524,7 +530,7 @@ begin
   begin
     Exit;
   end;
-  Finish(ATarget, TAtlasVcsOutcome.Ok, 0, AXml, nil);
+  Finish(ATarget, TAtlasVcsOutcome.Ok, 0, AXml, nil, '');
 end;
 
 function TAtlasIdeTests.Busy: Boolean;
@@ -598,18 +604,43 @@ begin
   end;
 end;
 
+/// <summary>Zeitpunkt der letzten Änderung von AFileName; 0 ohne Datei.</summary>
+function WrittenAt(const AFileName: string): TDateTime;
+begin
+  Result := 0;
+  if (AFileName <> '') and FileExists(AFileName) then
+  begin
+    Result := TFile.GetLastWriteTimeUtc(AFileName);
+  end;
+end;
+
+/// <summary>Leckbericht am Programmende (#1774): die Datei von FastMM, wenn der Lauf sie seit ABefore geschrieben
+/// hat, sonst die Ausgabe AOutput des Programms.</summary>
+function ShutdownLeakText(const ALogFile: string; ABefore: TDateTime; const AOutput: string): string;
+begin
+  Result := AOutput;
+  if WrittenAt(ALogFile) > ABefore then
+  begin
+    Result := TFile.ReadAllText(ALogFile, TEncoding.ANSI);
+  end;
+end;
+
 /// <summary>Test-EXE von ATarget mit Bericht in einer Temp-Datei ausführen (im Thread des Laufs); AXml ist der
-/// Bericht, AOutput die letzten Zeilen der Ausgabe.</summary>
+/// Bericht, AOutput die letzten Zeilen der Ausgabe, ALeakText der Leckbericht am Programmende.</summary>
 function RunTestExe(const AFactory: TAtlasTestsRunnerFactory; const ATarget: TAtlasTestTarget; out AXml: string;
-  out AOutput: TArray<string>): TAtlasVcsRunResult;
+  out AOutput: TArray<string>; out ALeakText: string): TAtlasVcsRunResult;
 var
   mRunner: IAtlasVcsRunner;
-  mResultFile: string;
+  mResultFile, mLogFile, mText: string;
+  mLogBefore: TDateTime;
   mLines: TArray<string>;
   mIndex: Integer;
 begin
   AXml := '';
   AOutput := nil;
+  ALeakText := '';
+  mLogFile := TAtlasTestLeaks.LogFileOf(ATarget.Executable);
+  mLogBefore := WrittenAt(mLogFile);
   mResultFile := TPath.Combine(TPath.GetTempPath, 'atlas-tests-' +
     TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '') + '.xml');
   try
@@ -624,7 +655,9 @@ begin
     begin
       AXml := TFile.ReadAllText(mResultFile, TEncoding.UTF8);
     end;
-    mLines := TTextLines.SplitLines(TrimRight(TEncoding.ANSI.GetString(Result.Output)));
+    mText := TrimRight(TEncoding.ANSI.GetString(Result.Output));
+    mLines := TTextLines.SplitLines(mText);
+    ALeakText := ShutdownLeakText(mLogFile, mLogBefore, mText);
     for mIndex := Max(0, Length(mLines) - cOutputLines) to High(mLines) do
     begin
       AOutput := AOutput + [mLines[mIndex]];
@@ -674,10 +707,10 @@ begin
     procedure
     var
       mRun: TAtlasVcsRunResult;
-      mXml: string;
+      mXml, mLeakText: string;
       mOutput: TArray<string>;
     begin
-      mRun := RunTestExe(mFactory, mTarget, mXml, mOutput);
+      mRun := RunTestExe(mFactory, mTarget, mXml, mOutput, mLeakText);
       TAtlasMainThread.Queue(TAtlasFeature.Build,
         procedure
         begin
@@ -688,7 +721,7 @@ begin
           TAtlasGuard.Run(TAtlasFeature.Build,
             procedure
             begin
-              Finish(mTarget, mRun.Outcome, mRun.ExitCode, mXml, mOutput);
+              Finish(mTarget, mRun.Outcome, mRun.ExitCode, mXml, mOutput, mLeakText);
             end);
         end);
     end);
@@ -710,7 +743,7 @@ begin
 end;
 
 procedure TAtlasIdeTests.Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
-  const AXml: string; const AOutput: TArray<string>);
+  const AXml: string; const AOutput: TArray<string>; const ALeakText: string);
 var
   mRun: TTestRunResult;
   mLine: string;
@@ -738,7 +771,7 @@ begin
     FOutput.EndQuiet(False, mRun);
     Exit;
   end;
-  Report(ATarget, mRun);
+  Report(ATarget, mRun, ALeakText);
 end;
 
 /// <summary>Warnungen am Methodenkopf für die bestandenen Tests mit Leck in ACases (#1774).</summary>
@@ -750,9 +783,12 @@ begin
 end;
 
 /// <summary>Zeile mit Anzahl und Bytes der bestandenen Tests mit Leck in ACases; nichts ohne (#1774).</summary>
-procedure TellLeaks(AOutput: TAtlasIdeTestsOutput; const ACases: TArray<TTestCaseResult>);
+procedure TellLeaks(AOutput: TAtlasIdeTestsOutput; const ACases: TArray<TTestCaseResult>;
+  const ALeakText: string);
 var
   mLeaked: TArray<TTestCaseResult>;
+  mSummary: string;
+  mBlocks: Integer;
 begin
   mLeaked := TAtlasTestLeaks.Leaked(ACases);
   if Length(mLeaked) > 0 then
@@ -760,9 +796,20 @@ begin
     AOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLeaksFinished, [Length(mLeaked),
       TAtlasTestLeaks.TotalBytes(mLeaked)]));
   end;
+  // Lecks am Programmende (#1774): keinem Test zuzuordnen, nur mit tests.leaks.
+  if (ALeakText = '') or not TAtlasIdeSettings.Current.TestsLeaks then
+  begin
+    Exit;
+  end;
+  mSummary := TAtlasTestLeaks.ShutdownSummary(ALeakText, cShutdownLeakNames, mBlocks);
+  if mSummary <> '' then
+  begin
+    AOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsShutdownLeaks, [mBlocks, mSummary]));
+  end;
 end;
 
-procedure TAtlasIdeTests.Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+procedure TAtlasIdeTests.Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
+  const ALeakText: string);
 var
   mAll: TTestRunResult;
   mFailures: TArray<TAtlasTestFailure>;
@@ -805,7 +852,7 @@ begin
       ARun.Count(TTestOutcome.Passed), ARun.Count(TTestOutcome.Failed), ARun.Count(TTestOutcome.Error),
       ARun.Count(TTestOutcome.Skipped), SecondsText(ARun.DurationMs)]));
   end;
-  TellLeaks(FOutput, ARun.Cases);
+  TellLeaks(FOutput, ARun.Cases, ALeakText);
   FOutput.Failures(mFailures);
   if Assigned(FHooks.OnFinished) then
   begin
