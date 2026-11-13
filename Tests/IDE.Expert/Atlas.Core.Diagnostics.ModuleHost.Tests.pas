@@ -2,7 +2,7 @@
 
 // Tests zu TAtlasModuleHost (#1455): Beschreibung eines Moduls, Zulassung und die
 // gemeinsame Abmeldung mit ihrer Reihenfolge (stoppen und Anmeldungen lösen,
-// dann die Schritte des Moduls).
+// dann die Schritte des Moduls, zuletzt überfällige Threads des Packages).
 
 interface
 
@@ -27,12 +27,20 @@ type
     procedure UnregisterWithoutRegistryStillReleases;
     [Test]
     procedure UnregisterLogsFailures;
+    /// <summary>Auch ohne Scope: Läuft im Package des Moduls noch ein überfälliger Thread, hält die Abmeldung das
+    /// Package fest, bevor es entladen wird (Code-Review T-103).</summary>
+    [Test]
+    procedure UnregisterPinsPackageWithOverdueThread;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  System.SyncObjs,
+  Atlas.Core.Diagnostics.UnloadSafety,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
@@ -60,6 +68,8 @@ type
 
 const
   cId = 'test.host';
+  /// <summary>Erfundenes Package: Der Test entlädt nichts und hält nichts im Speicher fest.</summary>
+  cInstance = $5A5B0000;
 
 procedure TLog.Add(AEntry: string);
 begin
@@ -181,7 +191,7 @@ begin
     mScope := RegisterActive(mRegistry, mLog, False);
     Assert.IsFalse(TAtlasModuleHost.AdmitTo(mRegistry, cId, ccMatch, mScope, LogSink(mLog)));
     Assert.AreEqual('', mLog.Text);
-    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, nil, LogSink(mLog));
+    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, 0, nil, LogSink(mLog));
   finally
     mLog.Free;
   end;
@@ -198,7 +208,7 @@ begin
   try
     mRegistry := TAtlasModuleRegistry.Create;
     mScope := RegisterActive(mRegistry, mLog, False);
-    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, Logged(mLog, 'release'), LogSink(mLog));
+    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, 0, Logged(mLog, 'release'), LogSink(mLog));
     Assert.IsNull(mScope);
     Assert.AreEqual('stop,release', mLog.Text);
     Assert.IsFalse(mRegistry.FindModule(cId, mModule));
@@ -219,7 +229,7 @@ begin
     mRegistry := TAtlasModuleRegistry.Create;
     RegisterActive(mRegistry, mLog, False);
     mScope := nil;
-    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, Logged(mLog, 'release'), LogSink(mLog));
+    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, 0, Logged(mLog, 'release'), LogSink(mLog));
     Assert.AreEqual('', mLog.Text);
     Assert.IsTrue(mRegistry.FindModule(cId, mModule));
     mModule := nil;
@@ -242,7 +252,7 @@ begin
     // Regel 5: Base hat das Modul schon abgemeldet und die Registry abgebaut.
     mRegistry.UnregisterModule(cId);
     mLog.Text := '';
-    TAtlasModuleHost.UnregisterFrom(nil, mScope, cId, Logged(mLog, 'release'), LogSink(mLog));
+    TAtlasModuleHost.UnregisterFrom(nil, mScope, cId, 0, Logged(mLog, 'release'), LogSink(mLog));
     Assert.IsNull(mScope);
     Assert.AreEqual('release', mLog.Text);
   finally
@@ -260,11 +270,51 @@ begin
   try
     mRegistry := TAtlasModuleRegistry.Create;
     mScope := RegisterActive(mRegistry, mLog, True);
-    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, nil, LogSink(mLog));
+    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, 0, nil, LogSink(mLog));
     Assert.StartsWith('stop,log:Module ' + cId + ' not unregistered cleanly: ', mLog.Text);
     Assert.Contains(mLog.Text, 'Stop gescheitert');
   finally
     mLog.Free;
+  end;
+end;
+
+procedure TModuleHostTests.UnregisterPinsPackageWithOverdueThread;
+var
+  mRelease: TEvent;
+  mPinned: TArray<HMODULE>;
+  mSlot: TAtlasWorkerSlot;
+  mScope: IAtlasModuleScope;
+  mLog: TLog;
+begin
+  mPinned := nil;
+  mScope := nil;
+  mLog := TLog.Create;
+  mRelease := TEvent.Create(nil, True, False, '');
+  mSlot := TAtlasWorkerSlot.Create(cInstance);
+  try
+    TAtlasUnloadSafety.ResetForTests(
+      procedure(AModule: HMODULE)
+      begin
+        mPinned := mPinned + [AModule];
+      end);
+    mSlot.Start(TThread.CreateAnonymousThread(
+      procedure
+      begin
+        mRelease.WaitFor(10000);
+      end));
+    mSlot.Stop(20);
+    TAtlasModuleHost.UnregisterFrom(nil, mScope, cId, cInstance, Logged(mLog, 'release'), LogSink(mLog));
+    Assert.AreEqual('', mLog.Text, 'Ohne Scope keine Schritte 1 bis 3');
+    Assert.IsFalse(TAtlasUnloadSafety.IsSafe(cInstance));
+    Assert.AreEqual(1, Integer(Length(mPinned)));
+  finally
+    mRelease.SetEvent;
+    TAtlasOverdueThreads.Settle(cInstance, 2000);
+    TAtlasUnloadSafety.ResetForTests(nil);
+    mSlot.Free;
+    mRelease.Free;
+    mLog.Free;
+    mPinned := nil;
   end;
 end;
 
