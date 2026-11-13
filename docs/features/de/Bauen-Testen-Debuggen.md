@@ -115,6 +115,16 @@ Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › T
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Dauer der Tests und langsame Tests (#1772)
+
+- Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
+- Liegt der langsamste Test einer Marke über `tests.slowMs` (Vorgabe 500 ms), folgt „· langsam“ und die Marke wird gelb, auch wenn er bestanden hat. Fehlgeschlagen bleibt rot, veraltet grau.
+- Die Karte *Testergebnisse* der Willkommensseite listet unter den Fehlschlägen die fünf langsamsten Tests des letzten Laufs; Doppelklick öffnet den Test.
+- *Langsamste Tests zeigen* (Atlas-Menü, Befehlspalette): alle Tests dieser Sitzung mit Dauer, der langsamste zuerst (höchstens 50); Doppelklick oder Eingabetaste springt zum Test.
+- `tests.showDuration` aus: keine Dauer, keine Färbung, keine Liste auf der Willkommensseite, kein Befehl.
+
+Einstellungen: `tests.showDuration`, `tests.slowMs`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
