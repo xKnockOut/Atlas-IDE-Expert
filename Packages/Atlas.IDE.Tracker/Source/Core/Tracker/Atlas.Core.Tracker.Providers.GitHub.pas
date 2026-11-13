@@ -29,6 +29,10 @@
 //   …/issues/<n>/comments, danach Labels, Zuständige und Zustand in einem
 //   PATCH …/issues/<n> (Zustand = Label; das Label aus „Beginnen“ entfällt;
 //   ein Erledigt-Zustand schließt das Issue mit state_reason "completed").
+//   Schließgrund beim Beenden (#2135): "completed", "not_planned" oder
+//   "duplicate" mit duplicate_issue_id (die interne ID des Originals aus
+//   …/issues/<m>, vor jedem Schreiben gelesen); lehnt der Server
+//   "duplicate" ab (422), schließt Atlas als "not_planned" mit Kommentar.
 //   „Mir zuweisen“ fragt vorher /user. Werte für die Klapplisten: Labels
 //   (…/labels) und mögliche Zuständige (…/assignees).
 // - Checklisten (#1273, IAtlasTrackerDescriptions): Beschreibung ungekürzt aus
@@ -176,6 +180,11 @@ uses
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Text.Json;
+
+const
+  /// <summary>„Unprocessable Entity“: GitHub lehnt den Inhalt ab, z. B. den Schließgrund „duplicate“ auf einem
+  /// älteren Server (#2135).</summary>
+  cUnprocessable = 422;
 
 function TAtlasGitHubTracker.Name: string;
 begin
@@ -527,6 +536,30 @@ begin
   ADetails.Attachments := TAtlasGitHubParse.FileAttachments(ADetails);
 end;
 
+/// <summary>Interne ID des Issues AKey über GET; 0 mit AError.</summary>
+function IssueId(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Int64;
+var
+  mStatus: Integer;
+  mText: string;
+begin
+  Result := 0;
+  if not ATransport.Get(TAtlasGitHubApi.IssueApiUrl(ATarget, AKey), ATimeoutMs, mStatus, mText, AError) then
+  begin
+    Exit;
+  end;
+  if mStatus <> 200 then
+  begin
+    AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  Result := TAtlasGitHubParse.ParseIssueId(mText);
+  if Result = 0 then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+  end;
+end;
+
 /// <summary>GET für einen Schreibzugriff: Fehler ohne Antwort oder mit anderem Status als 200, sonst Ok.
 /// </summary>
 function GetForWrite(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer; out AText: string;
@@ -575,17 +608,20 @@ begin
   end;
 end;
 
-/// <summary>Labels, Zuständige und Zustand in einem PATCH nach AChange; nichts, wenn sich nichts ändert.</summary>
-function PatchAssignment(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AUrl: string;
-  const AChange: TAtlasTrackerWrite; const AMe: string): TAtlasTrackerWriteResult;
+/// <summary>Labels, Zuständige und Zustand in einem PATCH nach AChange; nichts, wenn sich nichts ändert. Lehnt der
+/// Server „Duplikat“ ab (422, ältere GitHub-Enterprise-Server), schließt er als „nicht geplant“ und schreibt
+/// AChange.DuplicateNote als Kommentar (#2135, Ergebnis mit Fallback).</summary>
+function PatchAssignment(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AKey: string;
+  const AChange: TAtlasTrackerWrite; const AMe: string; ADuplicateId: Int64): TAtlasTrackerWriteResult;
 var
   mSend: IAtlasCiSend;
-  mText, mBody: string;
+  mText, mBody, mUrl: string;
   mStatus: Integer;
   mLabels, mAssignees: TArray<string>;
   mResponse: TAtlasCiResponse;
 begin
-  Result := GetForWrite(ACall.Transport, AUrl, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mText, mStatus);
+  mUrl := TAtlasGitHubApi.IssueApiUrl(ACall.Target, AKey);
+  Result := GetForWrite(ACall.Transport, mUrl, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mText, mStatus);
   if not Result.Succeeded then
   begin
     Exit;
@@ -594,11 +630,45 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, ''));
   end;
-  mBody := TAtlasGitHubApi.PatchJson(mLabels, mAssignees, AChange, AMe);
-  if (mBody <> '') and Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  mBody := TAtlasGitHubApi.PatchJson(mLabels, mAssignees, AChange, AMe, ADuplicateId);
+  if (mBody = '') or not Supports(ACall.Transport, IAtlasCiSend, mSend) then
   begin
-    Result := TAtlasGitHubApi.WriteResult(mSend.Send('PATCH', AUrl, mBody,
-      TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mResponse), mResponse);
+    Exit;
+  end;
+  Result := TAtlasGitHubApi.WriteResult(mSend.Send('PATCH', mUrl, mBody,
+    TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mResponse), mResponse);
+  if (Result.Status <> cUnprocessable) or (AChange.Close <> TAtlasTrackerClose.Duplicate) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasGitHubApi.WriteResult(mSend.Send('PATCH', mUrl, TAtlasGitHubApi.PatchJson(mLabels, mAssignees,
+    AChange, AMe, 0), TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs), mResponse), mResponse);
+  if Result.Succeeded and (Trim(AChange.DuplicateNote) <> '') then
+  begin
+    Result := TAtlasGitHubApi.PostComment(ACall.Target, mSend, AKey,
+      AChange.DuplicateNote, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs));
+  end;
+  Result.Fallback := Result.Succeeded;
+end;
+
+/// <summary>Interne ID des Originals eines Duplikats (#2135); vor jedem Schreiben, damit ein ungültiges, unbekanntes
+/// oder dasselbe Issue nichts ändert.</summary>
+function DuplicateIdOf(const ACall: TAtlasTrackerCall; const AKey, ADuplicateOf: string;
+  out AId: Int64): TAtlasTrackerWriteResult;
+var
+  mError: TAtlasCiFetchError;
+begin
+  AId := 0;
+  if (TAtlasGitHubApi.NumberOfKey(ADuplicateOf) = 0) or
+    (TAtlasGitHubApi.NumberOfKey(ADuplicateOf) = TAtlasGitHubApi.NumberOfKey(AKey)) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+  end;
+  AId := IssueId(ACall.Target, ACall.Transport, ADuplicateOf, ACall.TimeoutMs, mError);
+  Result := TAtlasTrackerWriteResult.Ok;
+  if AId = 0 then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(mError, 0, '');
   end;
 end;
 
@@ -609,6 +679,7 @@ var
   mSend: IAtlasCiSend;
   mCall: TAtlasTrackerCall;
   mUrl, mMe: string;
+  mDuplicateId: Int64;
 begin
   Result := TAtlasTrackerWriteResult.Ok;
   if not AChange.HasWork then
@@ -623,7 +694,13 @@ begin
   mCall := TAtlasTrackerCall.Create(ATarget, ATransport, ATimeoutMs);
   mWatch := TStopwatch.StartNew;
   mMe := '';
-  if AChange.Assign = TAtlasTrackerAssign.Me then
+  mDuplicateId := 0;
+  // Duplikat (#2135): Original zuerst auflösen; ein ungültiges, unbekanntes oder dasselbe Issue schreibt nichts.
+  if AChange.Close = TAtlasTrackerClose.Duplicate then
+  begin
+    Result := DuplicateIdOf(mCall, AKey, AChange.DuplicateOf, mDuplicateId);
+  end;
+  if Result.Succeeded and (AChange.Assign = TAtlasTrackerAssign.Me) then
   begin
     Result := ReadMe(mCall, mMe);
   end;
@@ -633,9 +710,10 @@ begin
     Result := TAtlasGitHubApi.PostComment(ATarget, mSend, AKey, AChange.Comment,
       TAtlasGitHubApi.Remaining(mWatch, ATimeoutMs));
   end;
-  if Result.Succeeded and ((Trim(AChange.State) <> '') or (AChange.Assign <> TAtlasTrackerAssign.Keep)) then
+  if Result.Succeeded and ((Trim(AChange.State) <> '') or (AChange.Assign <> TAtlasTrackerAssign.Keep) or
+    AChange.Closes) then
   begin
-    Result := PatchAssignment(mCall, mWatch, mUrl, AChange, mMe);
+    Result := PatchAssignment(mCall, mWatch, AKey, AChange, mMe, mDuplicateId);
   end;
 end;
 
@@ -750,30 +828,6 @@ begin
     Exit;
   end;
   Result := True;
-end;
-
-/// <summary>Interne ID des Issues AKey über GET; 0 mit AError.</summary>
-function IssueId(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Int64;
-var
-  mStatus: Integer;
-  mText: string;
-begin
-  Result := 0;
-  if not ATransport.Get(TAtlasGitHubApi.IssueApiUrl(ATarget, AKey), ATimeoutMs, mStatus, mText, AError) then
-  begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  Result := TAtlasGitHubParse.ParseIssueId(mText);
-  if Result = 0 then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-  end;
 end;
 
 /// <summary>POST mit AStatus 200/201 als Erfolg.</summary>

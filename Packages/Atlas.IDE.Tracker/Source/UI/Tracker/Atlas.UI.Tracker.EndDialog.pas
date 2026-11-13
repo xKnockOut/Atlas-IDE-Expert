@@ -34,6 +34,14 @@
 //   (Rows.SetKnownFields), bietet „Feld „…“ hinzufügen“ eine Zeile dafür an (nur
 //   für dieses Mal). Abbrechen nach einem Teilerfolg liefert den Fortschritt
 //   trotzdem (Execute), damit gebuchte Zeit nicht noch einmal angeboten wird.
+// - Abschluss (#2135, nur GitHub, Request.CloseReasons; TAtlasEndCloseRows):
+//   „Erledigt“, „Nicht geplant“, „Duplikat von [#123]“ oder „Offen lassen“.
+//   Vorbelegt nach dem Zielzustand (TAtlasTrackerWorkflow.DefaultClose), bis
+//   der Benutzer selbst wählt; „Senden“ heißt dann „Als Duplikat schließen“
+//   bzw. „Als nicht geplant schließen“. Ein gültiges Original setzt
+//   „Duplikat von #n.“ in den Kommentar, solange er nicht von Hand geändert
+//   ist. Ohne gültiges Original wird nicht gesendet; ob es das Original gibt,
+//   prüft der Lauf vor dem ersten Schreiben (Progress.DuplicateMissing).
 // SummaryText bildet die Zeile für die Meldungsansicht („Zustand „Erledigt“,
 // Kommentar“), ErrorText auch für „Beginnen“ und die Vorschau;
 // TAtlasTrackerEndTexts.EndSummary nennt nach dem Beenden alle geschriebenen
@@ -84,6 +92,8 @@ type
     Options: TAtlasTrackerSyncOptions;
     Comment: string;
     Time: TAtlasTrackerEndTime;
+    /// <summary>Abschnitt „Abschluss“ mit Schließgrund zeigen (#2135, GitHub).</summary>
+    CloseReasons: Boolean;
     class function Create(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
       const AComment: string): TAtlasTrackerEndRequest; static;
   end;
@@ -104,6 +114,8 @@ type
     Box: TAtlasValueBox;
   end;
 
+  TAtlasEndCloseRows = class;
+
   /// <summary>Die Steuerelemente des Dialogs (für Tests und APrepare). Comment ist das Memo des Editors.</summary>
   TAtlasEndDialogParts = record
     /// <summary>Abschnitt „Zeit“ (#2123); nil ohne erfasste Zeit.</summary>
@@ -113,6 +125,13 @@ type
     Fields: TArray<TAtlasEndFieldRow>;
     StateLabel: TLabel;
     State: TAtlasValueBox;
+    /// <summary>Abschnitt „Abschluss“ (#2135); die Knöpfe sind nil ohne Request.CloseReasons.</summary>
+    Close: TAtlasEndCloseRows;
+    CloseCompleted: TRadioButton;
+    CloseNotPlanned: TRadioButton;
+    CloseDuplicate: TRadioButton;
+    CloseKeepOpen: TRadioButton;
+    DuplicateOf: TEdit;
     Editor: TAtlasCommentEditor;
     Comment: TMemo;
     HandOver: TCheckBox;
@@ -164,6 +183,38 @@ type
     /// <summary>Ablehnung: genanntes Feld markieren bzw. „Feld hinzufügen“ anbieten; liefert den Namen des Feldes
     /// für die Hinweiszeile ('' ohne).</summary>
     function MarkRejected(const AProgress: TAtlasTrackerEndProgress): string;
+  end;
+
+  /// <summary>Abschnitt „Abschluss“ des Beenden-Dialogs (#2135, GitHub): Schließgrund, Original eines Duplikats,
+  /// Beschriftung von „Senden“. Ohne Request.CloseReasons ohne Steuerelemente; Apply lässt die Änderung dann, wie
+  /// sie ist. Gehört dem Dialog.</summary>
+  TAtlasEndCloseRows = class(TComponent)
+  private
+    FDialog: TAtlasTrackerEndDialog;
+    FTouched: Boolean;
+    FUpdating: Boolean;
+    /// <summary>Kommentar, den der Dialog zuletzt selbst eingesetzt hat (Vorlage bzw. „Duplikat von #n.“).</summary>
+    FFilled: string;
+    procedure AddRadios;
+    procedure StateChange(Sender: TObject);
+    procedure RadioClick(Sender: TObject);
+    procedure DuplicateChange(Sender: TObject);
+    function CommentText: string;
+    procedure Show(AClose: TAtlasTrackerClose);
+  public
+    constructor CreateRows(ADialog: TAtlasTrackerEndDialog; AShow: Boolean);
+    /// <summary>Nach dem Aufbau des Dialogs: Vorbelegung nach dem Zielzustand, Kommentar merken.</summary>
+    procedure Start;
+    /// <summary>Gewählter Abschluss; ByState ohne Abschnitt.</summary>
+    function Chosen: TAtlasTrackerClose;
+    /// <summary>Abschluss wählen wie mit der Maus (auch für Tests).</summary>
+    procedure Choose(AClose: TAtlasTrackerClose);
+    /// <summary>AChange mit dem gewählten Abschluss.</summary>
+    function Apply(const AChange: TAtlasTrackerWrite): TAtlasTrackerWrite;
+    /// <summary>„Duplikat von“ ohne gültiges Original: Hinweis zeigen; dann nicht senden.</summary>
+    function Blocked(const AProgress: TAtlasTrackerEndProgress): Boolean;
+    /// <summary>Knöpfe sperren (ABusy) bzw. freigeben; nach dem Schreiben des Zustands bleibt der Abschluss.</summary>
+    procedure Lock(ABusy: Boolean; const AProgress: TAtlasTrackerEndProgress);
   end;
 
   TAtlasTrackerEndDialog = class(TAtlasDialog)
@@ -256,6 +307,7 @@ uses
   Atlas.Core.Tracker.Transitions,
   Atlas.Core.Tracker.TimeLog,
   Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.GitHubStrings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
@@ -278,6 +330,11 @@ const
   cFieldWidth = 240;
   cDurationWidth = 80;
   cRowHeight = 26;
+  /// <summary>Oberkante der Beschriftung in einer Zeile mit Klappliste.</summary>
+  cLabelTop = 4;
+  /// <summary>Breite eines Auswahlknopfs über seiner Beschriftung.</summary>
+  cRadioPadding = 24;
+  cDuplicateWidth = 110;
   cDoneMark = '✓ ';
   cFailedMark = '✗ ';
 
@@ -306,6 +363,7 @@ begin
   Result.Options := AOptions;
   Result.Comment := AComment;
   Result.Time := TAtlasTrackerEndTime.None;
+  Result.CloseReasons := False;
 end;
 
 /// <summary>Breite von AButton nach seiner Beschriftung.</summary>
@@ -584,6 +642,237 @@ begin
   end;
 end;
 
+{ TAtlasEndCloseRows }
+
+constructor TAtlasEndCloseRows.CreateRows(ADialog: TAtlasTrackerEndDialog; AShow: Boolean);
+begin
+  inherited Create(ADialog);
+  FDialog := ADialog;
+  if AShow then
+  begin
+    AddRadios;
+  end;
+end;
+
+/// <summary>Auswahlknopf ACaption an ALeft/ATop in ARow, so breit wie seine Beschriftung.</summary>
+function NewRadio(ADialog: TAtlasTrackerEndDialog; ARow: TWinControl; const ACaption: string;
+  ALeft, ATop: Integer): TRadioButton;
+begin
+  Result := TRadioButton.Create(ADialog);
+  Result.Parent := ARow;
+  Result.Caption := ACaption;
+  ADialog.Canvas.Font := ADialog.Font;
+  Result.SetBounds(ALeft, ATop, ADialog.Canvas.TextWidth(ACaption) + ADialog.ScaleValue(cRadioPadding),
+    ADialog.ScaleValue(cRowHeight - cCheckTop));
+end;
+
+/// <summary>Zwei Zeilen in einem Feld, damit die Knöpfe eine Gruppe bilden: „Erledigt“, „Nicht geplant“, „Offen
+/// lassen“, darunter „Duplikat von“ mit dem Original.</summary>
+procedure TAtlasEndCloseRows.AddRadios;
+var
+  mRow: TPanel;
+  mDialog: TAtlasTrackerEndDialog;
+  mTop, mSecond: Integer;
+begin
+  mDialog := FDialog;
+  mRow := mDialog.AddRow(2 * cRowHeight);
+  mDialog.AddLabel(mRow, TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndClose)).Top :=
+    mDialog.ScaleValue(cLabelTop);
+  mTop := mDialog.ScaleValue(cCheckTop);
+  mSecond := mDialog.ScaleValue(cRowHeight + cCheckTop);
+  mDialog.FParts.CloseCompleted := NewRadio(mDialog, mRow,
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndCloseCompleted), mDialog.ScaleValue(cFieldLeft), mTop);
+  mDialog.FParts.CloseNotPlanned := NewRadio(mDialog, mRow,
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndCloseNotPlanned),
+    mDialog.FParts.CloseCompleted.BoundsRect.Right + mDialog.ScaleValue(cGap), mTop);
+  mDialog.FParts.CloseKeepOpen := NewRadio(mDialog, mRow,
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndCloseKeepOpen),
+    mDialog.FParts.CloseNotPlanned.BoundsRect.Right + mDialog.ScaleValue(cGap), mTop);
+  mDialog.FParts.CloseDuplicate := NewRadio(mDialog, mRow,
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndCloseDuplicate), mDialog.ScaleValue(cFieldLeft),
+    mSecond);
+  mDialog.FParts.DuplicateOf := TEdit.Create(mDialog);
+  mDialog.FParts.DuplicateOf.Parent := mRow;
+  mDialog.FParts.DuplicateOf.SetBounds(mDialog.FParts.CloseDuplicate.BoundsRect.Right + mDialog.ScaleValue(cGap),
+    mDialog.ScaleValue(cRowHeight), mDialog.ScaleValue(cDuplicateWidth), mDialog.FParts.DuplicateOf.Height);
+  mDialog.FParts.DuplicateOf.TextHint := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndDuplicateHint);
+  mDialog.FParts.DuplicateOf.OnChange := DuplicateChange;
+  mDialog.FParts.CloseCompleted.OnClick := RadioClick;
+  mDialog.FParts.CloseNotPlanned.OnClick := RadioClick;
+  mDialog.FParts.CloseKeepOpen.OnClick := RadioClick;
+  mDialog.FParts.CloseDuplicate.OnClick := RadioClick;
+  mDialog.FParts.State.OnChange := StateChange;
+end;
+
+procedure TAtlasEndCloseRows.Start;
+begin
+  FFilled := CommentText;
+  if FDialog.FParts.CloseCompleted <> nil then
+  begin
+    Show(TAtlasTrackerWorkflow.DefaultClose(FDialog.FParts.State.Value));
+  end;
+end;
+
+/// <summary>Kommentar mit #10 als Zeilenende.</summary>
+function TAtlasEndCloseRows.CommentText: string;
+begin
+  Result := StringReplace(FDialog.FParts.Comment.Text, #13#10, #10, [rfReplaceAll]);
+end;
+
+procedure TAtlasEndCloseRows.StateChange(Sender: TObject);
+begin
+  // Vorbelegung folgt dem Zielzustand, bis der Benutzer den Abschluss selbst wählt.
+  if not FTouched then
+  begin
+    Show(TAtlasTrackerWorkflow.DefaultClose(FDialog.FParts.State.Value));
+  end;
+end;
+
+procedure TAtlasEndCloseRows.RadioClick(Sender: TObject);
+begin
+  // Checked := True im Code klickt auch: nur echte Wahl zählt.
+  if FUpdating then
+  begin
+    Exit;
+  end;
+  FTouched := True;
+  Show(Chosen);
+  if (Sender = FDialog.FParts.CloseDuplicate) and FDialog.FParts.DuplicateOf.CanFocus and FDialog.Showing then
+  begin
+    FDialog.FParts.DuplicateOf.SetFocus;
+  end;
+end;
+
+procedure TAtlasEndCloseRows.DuplicateChange(Sender: TObject);
+var
+  mKey, mText: string;
+begin
+  // „Duplikat von #n.“ in den Kommentar, solange der Benutzer ihn nicht selbst geändert hat.
+  if not TAtlasTrackerWorkflow.DuplicateKey(FDialog.FKey, FDialog.FParts.DuplicateOf.Text, mKey) or
+    (CommentText <> FFilled) then
+  begin
+    Exit;
+  end;
+  mText := TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.EndDuplicateComment, [mKey]);
+  FDialog.FParts.Comment.Text := mText;
+  FFilled := mText;
+end;
+
+procedure TAtlasEndCloseRows.Choose(AClose: TAtlasTrackerClose);
+begin
+  if FDialog.FParts.CloseCompleted = nil then
+  begin
+    Exit;
+  end;
+  FTouched := True;
+  Show(AClose);
+end;
+
+/// <summary>Knöpfe, Feld „Duplikat von“ und Beschriftung von „Senden“ nach AClose.</summary>
+procedure TAtlasEndCloseRows.Show(AClose: TAtlasTrackerClose);
+var
+  mParts: TAtlasEndDialogParts;
+begin
+  mParts := FDialog.FParts;
+  FUpdating := True;
+  try
+    mParts.CloseCompleted.Checked := AClose = TAtlasTrackerClose.Completed;
+    mParts.CloseNotPlanned.Checked := AClose = TAtlasTrackerClose.NotPlanned;
+    mParts.CloseDuplicate.Checked := AClose = TAtlasTrackerClose.Duplicate;
+    mParts.CloseKeepOpen.Checked := AClose = TAtlasTrackerClose.KeepOpen;
+  finally
+    FUpdating := False;
+  end;
+  mParts.DuplicateOf.Enabled := mParts.CloseDuplicate.Checked and mParts.CloseDuplicate.Enabled;
+  case AClose of
+    TAtlasTrackerClose.Duplicate:
+      mParts.Send.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndSendDuplicate);
+    TAtlasTrackerClose.NotPlanned:
+      mParts.Send.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndSendNotPlanned);
+  else
+    mParts.Send.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend);
+  end;
+  FitButton(FDialog, mParts.Send);
+end;
+
+function TAtlasEndCloseRows.Chosen: TAtlasTrackerClose;
+var
+  mParts: TAtlasEndDialogParts;
+begin
+  Result := TAtlasTrackerClose.ByState;
+  mParts := FDialog.FParts;
+  if mParts.CloseCompleted = nil then
+  begin
+    Exit;
+  end;
+  if mParts.CloseCompleted.Checked then
+  begin
+    Result := TAtlasTrackerClose.Completed;
+  end
+  else if mParts.CloseNotPlanned.Checked then
+  begin
+    Result := TAtlasTrackerClose.NotPlanned;
+  end
+  else if mParts.CloseDuplicate.Checked then
+  begin
+    Result := TAtlasTrackerClose.Duplicate;
+  end
+  else if mParts.CloseKeepOpen.Checked then
+  begin
+    Result := TAtlasTrackerClose.KeepOpen;
+  end;
+end;
+
+function TAtlasEndCloseRows.Apply(const AChange: TAtlasTrackerWrite): TAtlasTrackerWrite;
+var
+  mClose: TAtlasTrackerClose;
+  mKey: string;
+begin
+  Result := AChange;
+  mClose := Chosen;
+  if mClose = TAtlasTrackerClose.ByState then
+  begin
+    Exit;
+  end;
+  if not TAtlasTrackerWorkflow.DuplicateKey(FDialog.FKey, FDialog.FParts.DuplicateOf.Text, mKey) then
+  begin
+    mKey := Trim(FDialog.FParts.DuplicateOf.Text);
+  end;
+  Result := TAtlasTrackerWorkflow.WithClose(AChange, mClose, mKey,
+    TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.EndDuplicateComment, [mKey]));
+end;
+
+function TAtlasEndCloseRows.Blocked(const AProgress: TAtlasTrackerEndProgress): Boolean;
+var
+  mKey: string;
+begin
+  Result := (Chosen = TAtlasTrackerClose.Duplicate) and not AProgress.TransitionDone and
+    not TAtlasTrackerWorkflow.DuplicateKey(FDialog.FKey, FDialog.FParts.DuplicateOf.Text, mKey);
+  if Result then
+  begin
+    ShowErrorNote(FDialog.FParts.Note, TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndDuplicateMissing));
+  end;
+end;
+
+procedure TAtlasEndCloseRows.Lock(ABusy: Boolean; const AProgress: TAtlasTrackerEndProgress);
+var
+  mParts: TAtlasEndDialogParts;
+  mOpen: Boolean;
+begin
+  mParts := FDialog.FParts;
+  if mParts.CloseCompleted = nil then
+  begin
+    Exit;
+  end;
+  // Der Abschluss geht mit dem Zustand hinaus; danach bleibt er.
+  mOpen := not ABusy and not AProgress.TransitionDone;
+  mParts.CloseCompleted.Enabled := mOpen;
+  mParts.CloseNotPlanned.Enabled := mOpen;
+  mParts.CloseDuplicate.Enabled := mOpen;
+  mParts.CloseKeepOpen.Enabled := mOpen;
+  mParts.DuplicateOf.Enabled := mOpen and mParts.CloseDuplicate.Checked;
+end;
+
 { TAtlasTrackerEndDialog }
 
 constructor TAtlasTrackerEndDialog.CreateDialog(AOwner: TComponent; const ARequest: TAtlasTrackerEndRequest);
@@ -603,6 +892,7 @@ begin
   // Reihenfolge wie beim Schreiben: Zeit, Felder, Übergang; Kommentar darunter.
   FRows := TAtlasEndStepRows.CreateRows(Self, ARequest.Time, FOptions.EndFields);
   AddState;
+  FParts.Close := TAtlasEndCloseRows.CreateRows(Self, ARequest.CloseReasons);
   AddComment(ARequest.Comment);
   AddHandOver;
   mSteps := AddRow(cTextRowHeight);
@@ -624,6 +914,7 @@ begin
   end;
   AllowResize(FParts.Editor);
   ActiveControl := FParts.Comment;
+  FParts.Close.Start;
 end;
 
 /// <summary>Zielzustand; Vorgabe ist der erste angebotene, ohne Liste „Zustand nicht ändern“.</summary>
@@ -638,7 +929,7 @@ begin
   mLabel.Parent := mRow;
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndState);
   mLabel.Left := 0;
-  mLabel.Top := ScaleValue(4);
+  mLabel.Top := ScaleValue(cLabelTop);
   // Lange Beschriftung „Übergang (ab „…“)“ endet mit „…“ vor der Klappliste, voll im Hinweis.
   mLabel.AutoSize := False;
   mLabel.Width := ScaleValue(cLabelWidth);
@@ -869,18 +1160,18 @@ begin
     // Ohne passenden Übergang geht der Text als Wert hinaus; YouTrack begründet die Ablehnung.
     if mTransition >= 0 then
     begin
-      Exit(TAtlasTrackerWorkflow.EndTransition(FOptions, FRules, mTransition,
+      Exit(FParts.Close.Apply(TAtlasTrackerWorkflow.EndTransition(FOptions, FRules, mTransition,
         StringReplace(FParts.Comment.Text, #13#10, #10, [rfReplaceAll]), FParts.HandOver.Checked,
-        FParts.Assignee.Value));
+        FParts.Assignee.Value)));
     end;
   end;
   if SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState)) then
   begin
     mState := '';
   end;
-  Result := TAtlasTrackerWorkflow.EndChange(FOptions, mState,
+  Result := FParts.Close.Apply(TAtlasTrackerWorkflow.EndChange(FOptions, mState,
     StringReplace(FParts.Comment.Text, #13#10, #10, [rfReplaceAll]), FParts.HandOver.Checked,
-    FParts.Assignee.Value);
+    FParts.Assignee.Value));
 end;
 
 procedure TAtlasTrackerEndDialog.SetBusy(AValue: Boolean);
@@ -897,6 +1188,7 @@ begin
   FParts.Assignee.Enabled := mOpen;
   FParts.Send.Enabled := not AValue;
   FParts.Cancel.Enabled := not AValue;
+  FParts.Close.Lock(AValue, FProgress);
 end;
 
 function TAtlasTrackerEndDialog.Plan(out APlan: TAtlasTrackerEndPlan): Boolean;
@@ -920,6 +1212,10 @@ begin
   if not Plan(FPlan) then
   begin
     ShowErrorNote(FParts.Note, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid));
+    Exit;
+  end;
+  if FParts.Close.Blocked(FProgress) then
+  begin
     Exit;
   end;
   // Nichts (mehr) zu schreiben: nur beenden.
@@ -958,6 +1254,12 @@ begin
     Exit;
   end;
   // Kein neuer Versuch von selbst: Der Benutzer ändert und sendet erneut oder bricht ab.
+  if FProgress.DuplicateMissing then
+  begin
+    ShowErrorNote(FParts.Note, TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.EndDuplicateUnknown,
+      [FPlan.Change.DuplicateOf]));
+    Exit;
+  end;
   ShowErrorNote(FParts.Note, ErrorText(FKey, FProgress.Outcome));
   mField := FRows.MarkRejected(FProgress);
   if mField <> '' then
@@ -1046,6 +1348,10 @@ begin
   begin
     mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(APlan.CommentPart)];
   end;
+  if AProgress.Fallback then
+  begin
+    mParts := mParts + [TAtlasGitHubStrings.Text(TAtlasGitHubTextId.PartDuplicateFallback)];
+  end;
   Result := string.Join(', ', mParts);
 end;
 
@@ -1118,6 +1424,26 @@ begin
   Result := SummaryText(AChange, '');
 end;
 
+/// <summary>Abschluss für die Meldung (#2135); leer, wenn der Zustand ihn schon nennt oder nichts schließt.
+/// </summary>
+function ClosePart(const AChange: TAtlasTrackerWrite): TArray<string>;
+begin
+  Result := nil;
+  case AChange.Close of
+    TAtlasTrackerClose.Completed:
+      if AChange.State = '' then
+      begin
+        Result := [TAtlasGitHubStrings.Text(TAtlasGitHubTextId.PartClosed)];
+      end;
+    TAtlasTrackerClose.NotPlanned:
+      Result := [TAtlasGitHubStrings.Text(TAtlasGitHubTextId.PartClosedNotPlanned)];
+    TAtlasTrackerClose.Duplicate:
+      Result := [TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.PartClosedDuplicate, [AChange.DuplicateOf])];
+  else
+    // ByState, KeepOpen: der Zustand sagt es.
+  end;
+end;
+
 class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerWrite; const ANewState: string): string;
 var
   mParts: TArray<string>;
@@ -1137,6 +1463,7 @@ begin
   begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartState, [AChange.State])];
   end;
+  mParts := mParts + ClosePart(AChange);
   case AChange.Assign of
     TAtlasTrackerAssign.Me:
       mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartAssigned)];
