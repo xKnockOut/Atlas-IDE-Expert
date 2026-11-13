@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Modul der Fehleradresse (#1820, `debug.moduleOfAddress`, Vorgabe an, Kind von `debug.explainAccessViolation`): Bei einer Zugriffsverletzung liest Atlas die geladenen Module des Programms und nennt in der Exception-Leiste bzw. den Meldungen, wo die Adresse liegt: „Adresse liegt in deinem Programm (Projekt1.exe)“, „… in vcl290.bpl (RTL/VCL)“, „… in ntdll.dll (Windows)“ oder „… in Fremd.dll (keine Debug-Infos)“. Liegt der Halt nicht in eigenem Code, ist das die ganze Erklärung, dahinter die letzte eigene Stelle aus dem Aufrufstapel. Mit LoadLibrary nachgeladene DLLs zählen mit; kann die IDE die Module nicht lesen (32-Bit-IDE, 64-Bit-Programm), nimmt Atlas den Modulnamen aus der Meldung der RTL bzw. dem obersten Rahmen.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

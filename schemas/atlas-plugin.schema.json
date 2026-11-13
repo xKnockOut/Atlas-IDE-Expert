@@ -1505,6 +1505,19 @@
       "x-captionEn": "Allow getters and function calls",
       "x-issue": "#865"
     },
+    "DebugModuleOfAddress": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.moduleOfAddress",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.explainAccessViolation",
+      "x-caption": "Modul der Fehleradresse nennen",
+      "x-captionEn": "Name the module of the fault address",
+      "x-issue": "#1820"
+    },
+
     "DebugExceptionHistory": {
       "type": "boolean",
       "default": true,

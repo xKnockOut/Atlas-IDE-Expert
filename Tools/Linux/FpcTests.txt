@@ -317,6 +317,8 @@ Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
+Atlas.Core.Debug.Modules.Tests
+Atlas.UI.Debug.AccessViolation.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests
