@@ -1,4 +1,4 @@
-# Bauen, Testen, Debuggen
+﻿# Bauen, Testen, Debuggen
 
 Zurück zum [README](../../../README_DE.md)
 
@@ -115,7 +115,13 @@ Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Erwartet und erhalten vergleichen (#1779)
 
-Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*).
+Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*), außerdem der Knopf „Vergleichen“:
+
+- im Hover über dem Fehlschlag (vor „Erklären“),
+- an der Testmarke eines fehlgeschlagenen Tests (hinter „Debuggen“),
+- auf der Kachel „Testergebnisse“ der Willkommensseite für den gewählten Fehlschlag des lokalen Laufs.
+
+Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 - Zeigt den Fehlschlag des Tests am Cursor (bei einem `[TestCase]` den ersten fehlgeschlagenen Fall), sonst den zuletzt gemeldeten, in zwei Spalten: links erwartet, rechts erhalten.
 - Abweichende Zeichen sind rot bzw. grün hinterlegt; Zeilen, die es nur auf einer Seite gibt, ganz, gegenüber eine graue Lücke.
@@ -376,3 +382,15 @@ Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
 - Wer eine Sperre (`TMonitor`, Critical Section) hält, liefert der Debugger nicht; Atlas nennt nur die Wartenden.
 
 Schalter: `debug.deadlocks`.
+
+<a id="window-atlasdebugparallelstacks"></a>
+#### Parallele Aufrufstapel
+
+- Atlas > „Parallele Aufrufstapel“ öffnet ein andockbares Fenster, das bei jedem Halt die Aufrufstapel aller Threads als Baum zeigt, vom Thread-Start (Wurzel) bis zum obersten Rahmen.
+- Gleiche Rahmen (gleiche Routine an gleicher Stelle) stehen einmal da mit der Zahl der Threads, etwa „TWorker.Execute (Unit2.pas:30) · 10 Threads“; der Baum verzweigt dort, wo sich die Stapel trennen.
+- Knoten des aktuellen Threads stehen fett. Stehen alle Threads eines Knotens in einer Warte-Routine (`TMonitor.Enter`, `WaitForSingleObject`, `Sleep` …), steht „wartend“ dahinter, in der Warnfarbe; die Liste der Routinen ist einstellbar (`debug.parallelStacks.waitRoutines`).
+- Filter „Nur eigener Code“ blendet Rahmen aus RTL, VCL und Bibliotheken aus, „Wartend“ zeigt nur wartende Threads.
+- Unten stehen die Threads des gewählten Knotens. Enter oder Doppelklick wechselt zum Thread (bei mehreren über eine Auswahlliste) und springt zur Zeile.
+- Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
+
+Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.

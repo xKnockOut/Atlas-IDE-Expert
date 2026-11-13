@@ -80,6 +80,9 @@ type
     /// <summary>#54: Compilermeldung mit Katalogeintrag zeigt die Ursache und „Erklären“/„DocWiki“.</summary>
     [Test]
     procedure ExplainedMessagesShowCauseAndLinks;
+    /// <summary>#1779: Fehlgeschlagener Test mit Werten bekommt „Vergleichen“ vor „Erklären“.</summary>
+    [Test]
+    procedure FailedTestOffersCompare;
     /// <summary>#909: Tab wandert reihum über die Aktionen unter den Befunden.</summary>
     [Test]
     procedure NextProblemHitCycles;
@@ -998,6 +1001,41 @@ begin
   // Die Ursache ist ein umbrochener Absatz (Block), keine einzelne Textzeile.
   Assert.IsTrue(Pos('Typische Ursache: Unit fehlt in uses|', TextsOf(Layout, TAtlasHoverItemKind.Block)) > 0,
     TextsOf(Layout, TAtlasHoverItemKind.Block));
+end;
+
+procedure THoverLayoutTests.FailedTestOffersCompare;
+var
+  HoverView: TAtlasHoverView;
+  HoverInput: TAtlasHoverInput;
+  Layout: TAtlasHoverLayout;
+  Explanations: TArray<TAtlasHoverExplanation>;
+begin
+  HoverView := View('');
+  HoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'DUnitX', '', 'Expected 3 but got 0', '')];
+  HoverInput := Input(HoverView, 460);
+  HoverInput.Texts.Explain := 'Erklären';
+  HoverInput.Texts.Compare := 'Vergleichen';
+  HoverInput.ProblemActions := True;
+  // Ohne Werte (kein Modul Tests, tests.compare aus): keine Links.
+  Layout := Build(HoverInput);
+  Assert.AreEqual('', ActionCodes(Layout));
+  HoverView.Comparisons := [True];
+  HoverInput.View := HoverView;
+  Layout := Build(HoverInput);
+  // Compare ist die Aktion 11.
+  Assert.AreEqual('0:11|', ActionCodes(Layout));
+  Assert.IsTrue(Pos('Vergleichen', TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0,
+    TextsOf(Layout, TAtlasHoverItemKind.Text));
+  SetLength(Explanations, 1);
+  Explanations[0] := Default(TAtlasHoverExplanation);
+  Explanations[0].Known := True;
+  HoverView.Explanations := Explanations;
+  HoverInput.View := HoverView;
+  Layout := Build(HoverInput);
+  Assert.AreEqual('0:11|0:8|', ActionCodes(Layout));
+  // Mehr Werte als Probleme oder ein negativer Index zählen nicht.
+  Assert.IsFalse(HoverView.CanCompare(1));
+  Assert.IsFalse(HoverView.CanCompare(-1));
 end;
 
 procedure THoverLayoutTests.NextProblemHitCycles;
