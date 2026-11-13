@@ -1,4 +1,4 @@
-﻿# Atlas IDE Expert
+# Atlas IDE Expert
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
