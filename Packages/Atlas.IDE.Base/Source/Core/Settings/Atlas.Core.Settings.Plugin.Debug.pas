@@ -13,6 +13,9 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
+  cMinTestsFromDebugStopMaxArray = 0;
+  cMaxTestsFromDebugStopMaxArray = 1000;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -24,6 +27,16 @@ type
     /// <summary>Beim Test-Debuggen am Anfang der Methode anhalten (#585, debug.testBreakAtStart): einmaliger
     /// Haltepunkt an der ersten Anweisung, nach dem Halt entfernt.</summary>
     TestBreakAtStart: Boolean;
+    /// <summary>„Test daraus anlegen …“ beim Debug-Halt (#1873, tests.fromDebugStop): Werte des Halts in einen
+    /// DUnitX-Test übernehmen; aus = Eintrag und Knopf der Exception-Leiste fehlen.</summary>
+    TestsFromDebugStop: Boolean;
+    /// <summary>Einfache Felder des Objekts anbieten (#1873, tests.fromDebugStop.fields).</summary>
+    TestsFromDebugStopFields: Boolean;
+    /// <summary>Eigenschaften mit Getter auswerten (#1873, tests.fromDebugStop.properties); aus = nur Felder und
+    /// Argumente ohne Nebenwirkungen.</summary>
+    TestsFromDebugStopProperties: Boolean;
+    /// <summary>Elemente je Array höchstens (#1873, tests.fromDebugStop.maxArray); längere werden TODO.</summary>
+    TestsFromDebugStopMaxArray: Integer;
     /// <summary>Variablenwerte im Hover beim Debuggen (#891, debug.hoverValues): Bei angehaltenem Prozess wertet
     /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
     /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
@@ -167,6 +180,10 @@ class function TAtlasPluginDebugSettings.Defaults: TAtlasPluginDebugSettings;
 begin
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
+  Result.TestsFromDebugStop := True;
+  Result.TestsFromDebugStopFields := True;
+  Result.TestsFromDebugStopProperties := False;
+  Result.TestsFromDebugStopMaxArray := 20;
   Result.DebugHoverValues := True;
   Result.DebugVisualizers := True;
   Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.cAllKinds);
@@ -220,12 +237,18 @@ begin
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
     TAtlasVisualizerSettings.cMinMaxImagePixels, TAtlasVisualizerSettings.cMaxMaxImagePixels);
   DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.cEvaluationNames);
+  TestsFromDebugStopMaxArray := EnsureRange(TestsFromDebugStopMaxArray, cMinTestsFromDebugStopMaxArray,
+    cMaxTestsFromDebugStopMaxArray);
 end;
 
 procedure TAtlasPluginDebugSettings.Exchange(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('TestDebug', TestDebug);
   AIo.Flag('TestBreakAtStart', TestBreakAtStart);
+  AIo.Flag('TestsFromDebugStop', TestsFromDebugStop);
+  AIo.Flag('TestsFromDebugStopFields', TestsFromDebugStopFields);
+  AIo.Flag('TestsFromDebugStopProperties', TestsFromDebugStopProperties);
+  AIo.Number('TestsFromDebugStopMaxArray', TestsFromDebugStopMaxArray);
   AIo.Flag('DebugHoverValues', DebugHoverValues);
   AIo.Flag('DebugVisualizers', DebugVisualizers);
   AIo.Text('DebugVisualizerTypes', DebugVisualizerTypes);

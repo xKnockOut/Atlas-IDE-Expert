@@ -368,3 +368,4 @@ Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.AssertLine.Tests
+Atlas.Core.Tests.FromDebugStop.Tests

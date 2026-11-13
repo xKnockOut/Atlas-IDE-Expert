@@ -14,7 +14,9 @@
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
 //   Tooltip,
 // - für andere Module den Bericht über die Debug-Sitzung
-//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport).
+//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport) und den Halt
+//   für „Test daraus anlegen …“ (IAtlasDebugStopSource, #1873); beide stellt
+//   Atlas.IDE.Debug.Composition.Contracts bereit.
 // Das erste Teil („DebugCommands“, ab dem abgesicherten Start) installiert
 // „Gezielt hineinspringen“, „Beim nächsten Ereignis anhalten“ und die Befehle
 // des Schrittfilters; es stoppt als letztes, nimmt sie zurück und hängt F7 ab
@@ -81,8 +83,7 @@ uses
   Atlas.IDE.Debug.EventBreak,
   Atlas.IDE.Debug.Trace,
   Atlas.IDE.Debug.StepFilter,
-  Atlas.IDE.Debug.Report,
-  Atlas.IDE.Contracts.DebugReport,
+  Atlas.IDE.Debug.Composition.Contracts,
   Atlas.IDE.Debug.Composition.Values,
   Atlas.UI.Debug.Strings;
 
@@ -577,8 +578,9 @@ begin
   GScope.Provide(IAtlasFollowsTheme, mRef);
   GScope.Provide(IAtlasFollowsEditorView, mRef);
   GScope.Provide(IAtlasHoverValueSource, mRef);
-  // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
-  GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
+  // Verträge zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276), Halt für
+  // „Test daraus anlegen …“ (#1873).
+  ProvideDebugContracts(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

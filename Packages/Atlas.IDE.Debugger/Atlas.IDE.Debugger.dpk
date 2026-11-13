@@ -99,7 +99,9 @@ contains
   Atlas.IDE.Debug.StepFilterWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas',
   Atlas.IDE.Debug.StepFilter in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas',
   Atlas.IDE.Debug.Report in 'Source\IDE\Debug\Atlas.IDE.Debug.Report.pas',
+  Atlas.IDE.Debug.StopSource in 'Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas',
   Atlas.IDE.Debug.Composition.Values in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Values.pas',
+  Atlas.IDE.Debug.Composition.Contracts in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Contracts.pas',
   Atlas.IDE.Debug.Composition in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas',
   Atlas.UI.Debug.SettingsSection in 'Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas';
 

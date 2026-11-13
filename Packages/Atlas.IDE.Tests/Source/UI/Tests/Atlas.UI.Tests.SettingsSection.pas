@@ -86,6 +86,12 @@ procedure TAtlasTestsDebugSection.BuildRows;
 begin
   Switch('tests.debug', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestDebug));
   Switch('debug.testBreakAtStart', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestBreakAtStart));
+  Switch('tests.fromDebugStop', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStop));
+  Switch('tests.fromDebugStop.fields', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopFields));
+  Switch('tests.fromDebugStop.properties',
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopProperties));
+  Number('tests.fromDebugStop.maxArray',
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopMaxArray));
 end;
 
 { TAtlasTestsEditorSection }

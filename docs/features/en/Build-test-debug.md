@@ -130,6 +130,17 @@ Available as a code action (Alt+Enter) on a method or routine, in its body or at
 - Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
 - Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
 
+### Create a test from a debug stop (#1873)
+
+Use: button *Create test …* in the exception bar, editor context menu › Atlas › Tests while debugging, or the command palette (*Create test from debug stop …*). Settings on the Debugging page: `tests.fromDebugStop` (default on), `tests.fromDebugStop.fields` (on), `tests.fromDebugStop.properties` (off), `tests.fromDebugStop.maxArray` (20).
+
+- Atlas takes the frame of the stop: for an exception in the RTL or VCL the first frame in your own code, otherwise the topmost frame with source.
+- If that frame is the current one, the debugger evaluates the parameters and the fields of the class (`Self.FUnit`) without side effects; getters only with `tests.fromDebugStop.properties`. In a deeper frame the parameters come from the call stack line.
+- The debugger texts become Delphi literals: numbers (decimal comma becomes a point), strings with `''` and `#nn`, Boolean, enumeration values, sets and dynamic arrays up to `tests.fromDebugStop.maxArray` elements. Atlas does not guess objects, pointers, interfaces, records or anything unclear: the test gets a TODO there.
+- The dialog lists the values to uncheck (unchecked ones stay placeholders; private fields and objects start unchecked), the kind (*Should work* or *Should raise EConvertError* when the program stopped at an exception), the expected result for functions and the name (`ParseWith12_5Kg`, `ParseWith12_5KgRaisesConvertError`).
+- *Create test* adds the test to the test unit like *Create a test case from the unit* (creating the unit with its `.dpr`/`.dproj` entries if needed), with a comment line "From debug stop 2026-11-13 10:42, EConvertError"; an exception is checked with `Assert.WillRaise`. Without an expected result the test stays red with `Assert.Fail`. Everything is one undo step, then Atlas jumps to the test.
+- Without the Debugger module the button and the command are missing.
+
 ### Slash commands for tests and debugging (#305)
 
 Type the command on an empty line and press Enter.

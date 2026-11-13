@@ -1090,6 +1090,8 @@ uses
   Atlas.Core.Tests.Stale.Tests in 'IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas',
   Atlas.Core.Tests.AssertLine in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.AssertLine.Tests in 'IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas',
+  Atlas.Core.Tests.FromDebugStop in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.FromDebugStop.pas',
+  Atlas.Core.Tests.FromDebugStop.Tests in 'IDE.Expert\Atlas.Core.Tests.FromDebugStop.Tests.pas',
   Atlas.Core.Tests.AffectedHook in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.AffectedHook.Tests in 'IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas',
   Atlas.Core.Tests.Debug in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas',

@@ -119,6 +119,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**, failures sit at the **failing assert** with “expected 4, got 3”
 - **Slash commands for tests:** `/mock`, `/testcase`, `/dump` and `/assert` create mock classes, test cases, variable dumps and asserts that fit the type
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
+- **Test from a debug stop:** "Create test …" in the exception bar turns the values of the stop into a DUnitX test that works or expects the exception
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained
 

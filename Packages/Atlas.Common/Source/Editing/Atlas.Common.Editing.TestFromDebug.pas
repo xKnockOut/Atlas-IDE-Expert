@@ -57,7 +57,7 @@ type
     class function Literal(const AText, ATypeName: string; AMaxArray: Integer; out ALiteral: string): Boolean;
       static;
     /// <summary>Testname aus Methode und Hauptargument (erster String, sonst erster Wert), bei Raises mit der
-    /// Exception: ParseMit12_5Kg, ParseMitLeerWirftConvertError.</summary>
+    /// Exception: ParseMit12_5Kg, ParseMit12_5KgWirftConvertError.</summary>
     class function SuggestName(const AMethodName: string; const AValues: TDebugStopValues;
       AKind: TTestDraftKind; const AExceptionClass: string): string; static;
     /// <summary>Felder der Klasse AClassName in AUnit (ohne geerbte); Accessible bei public und published.

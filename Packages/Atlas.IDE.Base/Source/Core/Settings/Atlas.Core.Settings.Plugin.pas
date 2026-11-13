@@ -81,6 +81,8 @@ type
     cMaxImpactDepth = Atlas.Core.Settings.Plugin.Editor.cMaxImpactDepth;
     cMinTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsAffectedDepth;
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
+    cMinTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMinTestsFromDebugStopMaxArray;
+    cMaxTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMaxTestsFromDebugStopMaxArray;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -377,6 +379,13 @@ type
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
     property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
+    property TestsFromDebugStop: Boolean read FDebug.TestsFromDebugStop write FDebug.TestsFromDebugStop;
+    property TestsFromDebugStopFields: Boolean read FDebug.TestsFromDebugStopFields
+      write FDebug.TestsFromDebugStopFields;
+    property TestsFromDebugStopProperties: Boolean read FDebug.TestsFromDebugStopProperties
+      write FDebug.TestsFromDebugStopProperties;
+    property TestsFromDebugStopMaxArray: Integer read FDebug.TestsFromDebugStopMaxArray
+      write FDebug.TestsFromDebugStopMaxArray;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;

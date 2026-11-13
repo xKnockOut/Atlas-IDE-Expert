@@ -119,6 +119,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**, Fehlschläge stehen am **fehlgeschlagenen Assert** mit „erwartet 4, erhalten 3“
 - **Schnellbefehle für Tests:** `/mock`, `/testcase`, `/dump` und `/assert` legen Mock-Klassen, Testfälle, Variablenausgaben und Asserts passend zum Typ an
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
+- **Test aus dem Debug-Halt:** „Test daraus anlegen …“ in der Exception-Leiste macht aus den Werten des Halts einen DUnitX-Test, der funktionieren oder die Exception werfen soll
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt
 

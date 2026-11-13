@@ -76,7 +76,7 @@ type
     SettingsDebugInlineValuesPerLine, SettingsDebugExplainUnavailable, SettingsDebugCompletionInDialogs,
     SettingsDebugEvaluateWindow, SettingsDebugEvaluateReplaceCtrlF7, SettingsDebugExplainAccessViolation,
     SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns,
-    DebugEditorMenuGroup);
+    DebugEditorMenuGroup, DebugBannerCreateTest);
 
   TAtlasDebugStrings = class
   public
@@ -383,7 +383,8 @@ const
      'Getter und Funktionsaufrufe bei der Auswertung erlauben',
      'Schrittfilter beim Hineinspringen (F7)',
      'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):',
-     'Debuggen'),
+     'Debuggen',
+     'Test daraus anlegen …'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -670,7 +671,8 @@ const
      'Allow getters and function calls during evaluation',
      'Step filters when stepping into (F7)',
      'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):',
-     'Debugging'));
+     'Debugging',
+     'Create test …'));
 
 { TAtlasDebugStrings }
 

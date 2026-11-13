@@ -30,6 +30,8 @@ type
     [Test]
     procedure ClampsOutOfRangeValues;
     [Test]
+    procedure NormalizeClampsDepthsAndScopes;
+    [Test]
     procedure NormalizesUpdateChoices;
     [Test]
     procedure IndexOptionsGoToGlobalFile;
@@ -153,6 +155,10 @@ begin
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
+  Assert.IsTrue(ASettings.TestsFromDebugStop, 'Test aus dem Debug-Halt standardmäßig an (#1873)');
+  Assert.IsTrue(ASettings.TestsFromDebugStopFields, 'Felder anbieten standardmäßig an (#1873)');
+  Assert.IsFalse(ASettings.TestsFromDebugStopProperties, 'Getter standardmäßig aus (#1873)');
+  Assert.AreEqual(20, ASettings.TestsFromDebugStopMaxArray, 'Array-Grenze standardmäßig 20 (#1873)');
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -300,6 +306,10 @@ begin
   ASettings.TestsStaleUnits := True;
   ASettings.TestsFailureAtAssert := False;
   ASettings.TestsFailureInline := False;
+  ASettings.TestsFromDebugStop := False;
+  ASettings.TestsFromDebugStopFields := False;
+  ASettings.TestsFromDebugStopProperties := True;
+  ASettings.TestsFromDebugStopMaxArray := 7;
   ASettings.BuildZeroHints := True;
   ASettings.ShowInterfaceCost := False;
   ASettings.BuildCompilerSwitches := False;
@@ -424,6 +434,10 @@ begin
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
   Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
+  Assert.IsFalse(ALoaded.TestsFromDebugStop, 'tests.fromDebugStop (#1873)');
+  Assert.IsFalse(ALoaded.TestsFromDebugStopFields, 'tests.fromDebugStop.fields (#1873)');
+  Assert.IsTrue(ALoaded.TestsFromDebugStopProperties, 'tests.fromDebugStop.properties (#1873)');
+  Assert.AreEqual(7, ALoaded.TestsFromDebugStopMaxArray, 'tests.fromDebugStop.maxArray (#1873)');
   Assert.IsTrue(ALoaded.BuildZeroHints);
   Assert.IsFalse(ALoaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(ALoaded.BuildCompilerSwitches);
@@ -892,6 +906,13 @@ begin
   Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
   // shortcutTips.scope (#600): nur atlas oder all.
   Assert.AreEqual('atlas', Settings.ShortcutTipsScope);
+end;
+
+procedure TAtlasPluginSettingsTests.NormalizeClampsDepthsAndScopes;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
   Settings.ShortcutTipsScope := 'ide';
   Settings.Normalize;
   Assert.AreEqual('all', Settings.ShortcutTipsScope, 'unbekannt: all');
@@ -909,6 +930,13 @@ begin
   Settings.TestsAffectedDepth := 7;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, Settings.TestsAffectedDepth);
+  // tests.fromDebugStop.maxArray (#1873): 0 bis 1000.
+  Settings.TestsFromDebugStopMaxArray := -1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFromDebugStopMaxArray, Settings.TestsFromDebugStopMaxArray);
+  Settings.TestsFromDebugStopMaxArray := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFromDebugStopMaxArray, Settings.TestsFromDebugStopMaxArray);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;
