@@ -235,6 +235,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Postfix.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Slash.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.HiddenMembers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Lists.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Hooks.pas"/>
@@ -278,6 +279,9 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Contract.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Generator.pas"/>
+        <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Report.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Contract.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.References.pas"/>
         <DCCReference Include="Source\Rationale\Atlas.Common.Rationale.Scanner.pas"/>
@@ -483,6 +487,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestDrafts.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>

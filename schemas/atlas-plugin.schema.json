@@ -1402,6 +1402,32 @@
       "x-parent": "tests.affected",
       "x-issue": "#1353"
     },
+    "TestsOnSave": {
+      "description": "Nach dem Speichern einer Unit die betroffenen Tests der gespeicherten Datei (seit dem letzten Commit, Tiefe tests.affectedDepth) im Hintergrund ausführen, gebaut wie mit „Vor den Tests bauen“. Kein Fenster springt auf: Fortschritt und Ergebnis im Atlas-Statusfeld, Klick zeigt die Ergebnisse. Speichern während eines Laufs ergibt höchstens einen Folgelauf mit allen bis dahin gespeicherten Dateien. Nicht während einer Debug-Sitzung oder eines Builds.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.onSave",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.affected",
+      "x-quickToggle": true,
+      "x-caption": "Betroffene Tests beim Speichern",
+      "x-captionEn": "Affected tests on save",
+      "x-issue": "#1775"
+    },
+    "TestsOnSaveMax": {
+      "description": "Mehr betroffene Tests als diese (oder alle Tests nötig): kein Lauf im Hintergrund, nur ein Hinweis im Statusfeld.",
+      "type": "integer",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000,
+      "x-key": "tests.onSave.max",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.onSave",
+      "x-issue": "#1775"
+    },
     "TestsFailureAtAssert": {
       "description": "Fehlgeschlagenen Test an der Anweisung melden, die fehlschlug, statt am Methodenkopf: Zeile aus dem Stacktrace des Berichts (JclDebug, madExcept); ohne Zeilen der eine Assert im Rumpf, dessen erwarteter Wert zum Bericht passt. Wellenlinie über der Anweisung; ist die Zeile nicht eindeutig, bleibt es beim Methodenkopf.",
       "type": "boolean",
@@ -1449,6 +1475,32 @@
       "x-caption": "JSON und XML einrücken",
       "x-captionEn": "Indent JSON and XML",
       "x-issue": "#1779"
+    },
+    "TestsShowDuration": {
+      "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.showDuration",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Dauer an der Testmarke zeigen",
+      "x-captionEn": "Show duration on the test mark",
+      "x-issue": "#1772"
+    },
+    "TestsSlowMs": {
+      "description": "Ab dieser Dauer in Millisekunden gilt ein Test als langsam (50 bis 60000). Bei einer Klassenmarke zählt der langsamste ihrer Tests, nicht die Summe.",
+      "type": "integer",
+      "default": 500,
+      "minimum": 50,
+      "maximum": 60000,
+      "x-key": "tests.slowMs",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.showDuration",
+      "x-caption": "Langsam ab (ms)",
+      "x-captionEn": "Slow from (ms)",
+      "x-issue": "#1772"
     },
     "TestDebug": {
       "type": "boolean",
@@ -1577,6 +1629,30 @@
       "x-captionEn": "Allow getters and function calls",
       "x-issue": "#865"
     },
+    "DebugModuleOfAddress": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.moduleOfAddress",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.explainAccessViolation",
+      "x-caption": "Modul der Fehleradresse nennen",
+      "x-captionEn": "Name the module of the fault address",
+      "x-issue": "#1820"
+    },
+    "DebugDeadlocks": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.deadlocks",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Befehl „Was wartet worauf?“",
+      "x-captionEn": "Command “What is waiting for what?”",
+      "x-issue": "#587"
+    },
+
     "DebugExceptionHistory": {
       "type": "boolean",
       "default": true,
@@ -3188,6 +3264,25 @@
       "x-page": "Compiler",
       "x-parent": "build.onOpen",
       "x-issue": "#1293"
+    },
+    "BuildStopRunningProgram": {
+      "type": "string",
+      "enum": [
+        "ask",
+        "always",
+        "never"
+      ],
+      "default": "ask",
+      "description": "Läuft die Ausgabe-exe eines Projekts noch außerhalb des Debuggers, scheitert der Build erst am Ende mit F2039. Atlas erkennt das vor dem Compile (Vergleich des vollständigen Pfads): ask fragt „… läuft noch. Beenden und bauen?“ mit Ja, Nein und Immer; always beendet ohne Rückfrage (erst WM_CLOSE an die Hauptfenster, nach 2 s TerminateProcess); never tut nichts. Programme im Debugger der IDE bleiben unberührt. Bei einem Package nennt ein Hinweis im Meldungsfenster die Programme, die die BPL geladen haben; beendet wird dann nichts.",
+      "x-key": "build.stopRunningProgram",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "buildTools.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "Laufendes Programm vor dem Build beenden",
+      "x-captionEn": "Stop the running program before the build",
+      "x-issue": "#551",
+      "x-offValue": "never"
     },
     "CompileOnSave": {
       "type": "boolean",

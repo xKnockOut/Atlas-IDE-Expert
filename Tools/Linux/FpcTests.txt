@@ -114,6 +114,7 @@ Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
 Atlas.Common.Editing.StringLiterals.Tests
 Atlas.Common.Editing.SuggestConst.Tests
+Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
@@ -150,6 +151,7 @@ Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
@@ -192,6 +194,8 @@ Atlas.Common.Monitor.Commands.Tests
 Atlas.Common.Monitor.Results.Tests
 Atlas.Common.Monitor.Runs.Tests
 Atlas.Common.Monitor.Targets.Tests
+Atlas.Common.Mutation.Generator.Tests
+Atlas.Common.Mutation.Report.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
@@ -331,6 +335,13 @@ Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
+Atlas.Core.Debug.Modules.Tests
+Atlas.Core.Debug.Threads.Tests
+Atlas.Core.Debug.Deadlocks.Tests
+Atlas.UI.Debug.AccessViolation.Tests
+Atlas.Core.Build.RunningProgram.Tests
+Atlas.Core.Settings.BuildDebug.Tests
+Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests
@@ -362,6 +373,7 @@ Atlas.UI.Strings.Tests
 Atlas.UI.SymbolPath.Strings.Tests
 Atlas.UI.Tests.Strings.Tests
 Atlas.UI.Tracker.Strings.Tests
+Atlas.UI.Tracker.GitHubStrings.Tests
 Atlas.UI.Undo.Strings.Tests
 Atlas.UI.VersionControl.Strings.Tests
 Atlas.UI.Welcome.Strings.Tests
@@ -372,5 +384,7 @@ Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
+Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Tests.Durations.Tests

@@ -28,6 +28,8 @@ type
     /// <summary>Abnahme: 412 bestanden, 2 fehlgeschlagen → beide mit Meldung und Zeile.</summary>
     [Test]
     procedure ViewShowsLocalFailures;
+    [Test]
+    procedure ViewShowsSlowestOfLocalRun;
     /// <summary>Abnahme: „Fehlgeschlagene erneut ausführen“ startet genau diese zwei.</summary>
     [Test]
     procedure RerunExactlyTheFailed;
@@ -301,6 +303,25 @@ begin
   Assert.IsFalse(mView.Failures[0].Server);
   Assert.AreEqual(88, mView.Failures[1].Line);
   Assert.AreEqual(0, mView.More);
+end;
+
+procedure TAtlasTestResultsTests.ViewShowsSlowestOfLocalRun;
+var
+  mRun: TAtlasProjectTests;
+  mSlow: TAtlasProjectSlowTest;
+  mView: TAtlasTestResultsView;
+begin
+  mRun := LocalRun;
+  mSlow := Default(TAtlasProjectSlowTest);
+  mSlow.Test := 'Atlas.Core.Index.Tests.TIndexTests.Builds';
+  mSlow.DurationMs := 2400;
+  mRun.Slowest := [mSlow];
+  mView := TAtlasTestResults.View([Project(cTestProject, mRun, NoJob, TAtlasProjectCi.Empty)], '', 5, True);
+  Assert.AreEqual(1, Integer(Length(mView.Slowest)));
+  Assert.AreEqual('Atlas.Core.Index.Tests.TIndexTests.Builds', mView.Slowest[0].Test);
+  Assert.AreEqual(2400, mView.Slowest[0].DurationMs);
+  mView := TAtlasTestResults.View([Project(cTestProject, LocalRun, NoJob, TAtlasProjectCi.Empty)], '', 5, True);
+  Assert.AreEqual(0, Integer(Length(mView.Slowest)), 'ohne Dauer keine Liste');
 end;
 
 procedure TAtlasTestResultsTests.RerunExactlyTheFailed;

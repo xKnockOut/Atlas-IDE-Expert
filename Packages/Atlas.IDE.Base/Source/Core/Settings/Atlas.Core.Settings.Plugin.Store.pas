@@ -19,6 +19,9 @@ const
   /// im Optionsdialog; die Einstellungen kennen die Projektaufgaben nicht (sonst Feature-Zyklus, und Base
   /// nicht das Modul Build, #1455), der Test hält beide gleich.</summary>
   cTasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
+  /// <summary>Werte von build.stopRunningProgram (#551) wie TAtlasRunningProgram.cModeNames, in der Reihenfolge der
+  /// Auswahl im Optionsdialog; Base kennt das Modul Build nicht (#1455), der Test hält beide gleich.</summary>
+  cStopRunningProgramNames: array[0..2] of string = ('ask', 'always', 'never');
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>

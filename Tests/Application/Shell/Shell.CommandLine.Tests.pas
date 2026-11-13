@@ -258,6 +258,13 @@ begin
   Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
   Assert.AreEqual('hotspots.html', mOptions.HotspotsFile, '--hotspots (#1354)');
   Assert.AreEqual('App.dproj', mOptions.CheckTarget);
+  // Mutanten (#1460): Datei, Routine und Operatoren ohne Warnung.
+  mOptions := TCommandLineOptions.Parse(['--mutate', 'Preise.pas', '--routine', 'TPreise.Satz', '--operators',
+    'boundary,not', '--format', 'json']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.AreEqual('Preise.pas', mOptions.MutateFile, '--mutate (#1460)');
+  Assert.AreEqual('TPreise.Satz', mOptions.MutateRoutine);
+  Assert.AreEqual('boundary,not', mOptions.MutateOperators);
   mOptions := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
   Assert.AreEqual('', mOptions.CheckTarget);
   // Vergleich (#1121): Abweichungsarten bei --fail-on ohne Warnung, der Wert bleibt für den Bericht.
@@ -485,6 +492,7 @@ begin
   Assert.AreEqual('affected-tests', TCommandLineOptions.Parse(['--check', 'T.dproj', '--affected-tests']).RunCommand);
   Assert.AreEqual('query', TCommandLineOptions.Parse(['--query', 'classes']).RunCommand);
   Assert.AreEqual('hotspots', TCommandLineOptions.Parse(['--hotspots', 'h.html']).RunCommand);
+  Assert.AreEqual('mutate', TCommandLineOptions.Parse(['--mutate', 'Preise.pas', '--routine', 'Satz']).RunCommand);
 end;
 
 function Contains(const AList: TArray<string>; const AValue: string): Boolean;
