@@ -179,6 +179,10 @@ begin
     'debug.predictConditions.lines unten begrenzt (#2169)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMaxChildren, Settings.DebugHoverMaxChildren,
     'debug.hoverMaxChildren oben begrenzt (#895)');
+  Settings.DebugMemoryTimelineIntervalMs := 60000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxMemoryTimelineIntervalMs, Settings.DebugMemoryTimelineIntervalMs,
+    'debug.memoryTimeline.intervalMs oben begrenzt (#858)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(Settings);
   Store := TMemoryStore.Create;

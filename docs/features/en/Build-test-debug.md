@@ -560,6 +560,20 @@ Settings: `debug.breakOnNextEvent`
 
 Settings: `debug.stepFilters`
 
+<a id="window-atlasmemorytimeline"></a>
+### Memory timeline
+
+Open it from the Atlas menu › Memory timeline or with the command `Atlas.DebugMemory`.
+
+- The window “Atlas: Memory” shows the program's private bytes, working set, handles, GDI and USER objects as a line over the debug session.
+- Atlas samples from outside at a fixed interval (default 1 s); the program does not stop for it.
+- Every stop adds a mark, an exception a red one; “Add mark” adds your own.
+- Drag a range with the mouse to see the growth of every value below, e.g. `Private bytes +38.0 MB · Handles +12`. Double-click clears the range.
+- “Copy CSV” puts the timeline with its marks on the clipboard, “Clear” starts over.
+- Limit: in the 32-bit IDE, Windows caps memory values of a 64-bit program above 4 GB.
+
+Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+
 <a id="window-atlasbreakpoints"></a>
 ### Breakpoints window
 

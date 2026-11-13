@@ -384,6 +384,7 @@ Atlas.Core.Debug.EditValue.Tests
 Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
+Atlas.Core.Debug.MemoryTimeline.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
 Atlas.Core.Editor.BarDock.Tests
@@ -429,6 +430,7 @@ Atlas.UI.CodeInsight.Strings.Tests
 Atlas.UI.Commands.Strings.Tests
 Atlas.UI.Completion.Strings.Tests
 Atlas.UI.Debug.Strings.Tests
+Atlas.UI.Debug.Memory.Strings.Tests
 Atlas.UI.Debug.VariablesStrings.Tests
 Atlas.UI.Designer.Strings.Tests
 Atlas.UI.Diagnostics.Strings.Tests

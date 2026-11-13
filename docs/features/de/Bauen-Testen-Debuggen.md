@@ -362,6 +362,20 @@ Einstellungen: `debug.breakOnNextEvent`
 
 Einstellungen: `debug.stepFilters`
 
+<a id="window-atlasmemorytimeline"></a>
+#### Speicherverlauf
+
+Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
+
+- Das Fenster „Atlas: Speicher“ zeigt während einer Debug-Sitzung privaten Speicher, Arbeitssatz, Handles, GDI- und USER-Objekte des Programms als Linie über die Zeit.
+- Gemessen wird von außen im Takt (Vorgabe 1 s), das Programm hält dafür nicht an.
+- Jeder Halt setzt eine Marke, eine Exception eine rote; „Marke setzen“ setzt eine eigene.
+- Mit der Maus einen Bereich ziehen: Darunter steht der Zuwachs aller Werte, etwa `Privater Speicher +38,0 MB · Handles +12`. Doppelklick hebt die Wahl auf.
+- „CSV kopieren“ legt den Verlauf samt Marken in die Zwischenablage, „Leeren“ beginnt neu.
+- Grenze: In der 32-Bit-IDE kappt Windows Speicherwerte eines 64-Bit-Programms über 4 GB.
+
+Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+
 <a id="window-atlasbreakpoints"></a>
 #### Haltepunktfenster
 

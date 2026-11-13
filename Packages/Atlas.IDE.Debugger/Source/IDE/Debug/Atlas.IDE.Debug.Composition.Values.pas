@@ -4,9 +4,9 @@
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, angeheftete Werte, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
 // Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern, Debug-Hover aufklappen und
-// Fenster „Variablen“. Sie fragen
-// den Server nur, wenn er ohnehin läuft. Atlas.IDE.Debug.Composition stellt sie
-// über den Scope des Moduls bereit.
+// Fenster „Variablen“. Sie fragen den Server nur, wenn er ohnehin läuft. Dazu der Speicherverlauf (#858, Werte
+// des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter startet. Atlas.IDE.Debug.Composition
+// stellt sie über den Scope des Moduls bereit.
 
 interface
 
@@ -19,15 +19,22 @@ uses
 /// </summary>
 function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
-/// <summary>Einstellungen an „kein Zugriff“, Vervollständigung in Dialogen und die Fenster „Auswerten“ und
-/// „Variablen“.</summary>
+/// <summary>Speicherverlauf (#858): Zuhörer der Debug-Sitzung und Zeitgeber; aus = keine Messung.</summary>
+function DebugMemoryParts: TArray<IAtlasFeaturePart>;
+/// <summary>Einstellungen an „kein Zugriff“, Vervollständigung in Dialogen, die Fenster „Auswerten“ und
+/// „Variablen“ und der Speicherverlauf.</summary>
 procedure ApplyValueSettings;
-/// <summary>Thema der Fenster „Auswerten“ und „Variablen“.</summary>
+/// <summary>Thema der Fenster „Auswerten“, „Variablen“ und „Atlas: Speicher“.</summary>
 procedure ValueThemeChanged;
 /// <summary>Fenster „Variablen“ zeigen (#853).</summary>
 procedure ShowVariablesWindow;
 /// <summary>Befehl „Variablen“ sichtbar: debug.variablesWindow an.</summary>
 function VariablesWindowVisible: Boolean;
+/// <summary>Befehl Atlas.DebugMemory: Fenster „Atlas: Speicher“.</summary>
+procedure ShowDebugMemory;
+function DebugMemoryVisible: Boolean;
+/// <summary>Menütext des Befehls Atlas.DebugMemory.</summary>
+function DebugMemoryCommandText: string;
 /// <summary>Befehle „Wert ändern“ und „Geänderten Wert zurücksetzen“ (#868), noch ohne Sicherung.</summary>
 function ValueCommands: TArray<TAtlasModuleCommand>;
 /// <summary>Einträge im Kontextmenü des Editors für Werte ändern (#868).</summary>
@@ -58,7 +65,9 @@ uses
   Atlas.IDE.Debug.AccessViolation,
   Atlas.IDE.Debug.WhyHere,
   Atlas.IDE.Debug.Variables,
-  Atlas.UI.Debug.Strings;
+  Atlas.IDE.Debug.MemoryTimeline,
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Memory.Strings;
 
 const
   /// <summary>F2 (VK_F2): nur im angehaltenen Zustand mit Bezeichner an der Schreibmarke, sonst geht sie an die IDE.
@@ -172,6 +181,12 @@ begin
     end, MessageLine);
   TAtlasIdeDebugAccessViolation.SetWhereAssigned(ShowWhereAssigned);
   TAtlasIdeDebugAccessViolation.SetEvaluate(EvaluateExpression);
+end;
+
+/// <summary>Speicherverlauf (#858): misst ohne Server.</summary>
+procedure StartDebugMemoryTimeline;
+begin
+  TAtlasIdeDebugMemoryTimeline.Start(MessageLine);
 end;
 
 /// <summary>Start von „Warum bin ich hier?“ mit Serverbefehlen im Hintergrund über Base und den Scope AScope; die
@@ -559,6 +574,35 @@ begin
   Result := [mKey];
 end;
 
+function DebugMemoryParts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    TAtlasFeaturePart.When('DebugMemoryTimeline',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugMemoryTimeline;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugMemoryTimeline.Started;
+      end, StartDebugMemoryTimeline, TAtlasIdeDebugMemoryTimeline.Release)];
+end;
+
+procedure ShowDebugMemory;
+begin
+  TAtlasIdeDebugMemoryTimeline.ShowWindow;
+end;
+
+function DebugMemoryCommandText: string;
+begin
+  Result := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryCommand);
+end;
+
+function DebugMemoryVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugMemoryTimeline;
+end;
+
 procedure ApplyValueSettings;
 begin
   // debug.explainUnavailable (#840): Ergänzungen der Fehlertexte neu lesen.
@@ -567,6 +611,8 @@ begin
   TAtlasIdeDebugDialogCompletion.ApplySettings;
   // debug.evaluateWindow.replaceCtrlF7 (#784): Strg+F7 an- bzw. abhängen.
   TAtlasIdeDebugEvaluate.ApplySettings;
+  // debug.memoryTimeline.intervalMs (#858); aus: Fenster zu.
+  TAtlasIdeDebugMemoryTimeline.ApplySettings;
   // debug.variablesWindow (#853): ausgeschaltet verschwindet das Fenster.
   TAtlasIdeDebugVariables.ApplySettings;
 end;
@@ -575,6 +621,7 @@ procedure ValueThemeChanged;
 begin
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugVariables.ThemeChanged;
+  TAtlasIdeDebugMemoryTimeline.ThemeChanged;
 end;
 
 procedure ShowVariablesWindow;
