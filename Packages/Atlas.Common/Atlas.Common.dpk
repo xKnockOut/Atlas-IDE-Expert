@@ -730,6 +730,7 @@ contains
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
   Atlas.Common.Rules.Builtin.Testing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas',
   Atlas.Common.Rules.Builtin.Testing.AreEqual in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.pas',
+  Atlas.Common.Rules.Builtin.Testing.Asserts in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Asserts.pas',
   Atlas.Common.Rules.Builtin.Testing.Classes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Classes.pas',
   Atlas.Common.Rules.Builtin.Testing.Registration in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCases in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas',
