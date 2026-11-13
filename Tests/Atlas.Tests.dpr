@@ -1542,6 +1542,8 @@ uses
   Atlas.Core.VersionControl.Providers.Svn in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas',
   Atlas.Core.VersionControl.Providers.Null in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas',
   Atlas.Core.VersionControl.Detection in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas',
+  Atlas.Core.VersionControl.Settings in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Settings.pas',
+  Atlas.Core.VersionControl.Settings.Tests in 'IDE.Expert\Atlas.Core.VersionControl.Settings.Tests.pas',
   Atlas.Core.VersionControl.Composition in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas',
   Atlas.Core.VersionControl.Switches in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Switches.pas',
   Atlas.Core.VersionControl.Worker in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Worker.pas',

@@ -48,6 +48,7 @@ contains
   Atlas.Core.VersionControl.Providers.Git in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Git.pas',
   Atlas.Core.VersionControl.Providers.Svn in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas',
   Atlas.Core.VersionControl.Detection in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas',
+  Atlas.Core.VersionControl.Settings in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Settings.pas',
   Atlas.Core.VersionControl.Composition in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas',
   Atlas.IDE.VersionControl.Service in 'Source\IDE\VersionControl\Atlas.IDE.VersionControl.Service.pas',
   Atlas.UI.VersionControl.Strings in 'Source\UI\VersionControl\Atlas.UI.VersionControl.Strings.pas',
