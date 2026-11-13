@@ -109,6 +109,8 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Threads.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Deadlocks.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ParallelStacks.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.CallStackParams.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.CallStackView.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ThreadMarks.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
@@ -133,6 +135,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Contracts.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Breakpoints.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Session.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.CallStack.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DisplayRules.pas"/>
@@ -151,6 +154,8 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ThreadsGutter.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ParallelStacksWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.CallStack.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.CallStackWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LeaksWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Leaks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
@@ -230,6 +235,11 @@
         </DCCReference>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ParallelStacksFrame.pas">
             <Form>AtlasDebugParallelStacksFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.CallStackFrame.pas">
+            <Form>AtlasDebugCallStackFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>

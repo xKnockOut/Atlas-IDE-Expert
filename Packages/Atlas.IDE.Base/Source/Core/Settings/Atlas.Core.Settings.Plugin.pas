@@ -493,6 +493,9 @@ type
     property DebugLeakReportCompare: Boolean read FDebug.DebugLeakReportCompare write FDebug.DebugLeakReportCompare;
     property DebugLeakReportWindow: Boolean read FDebug.DebugLeakReportWindow write FDebug.DebugLeakReportWindow;
     property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
+    property DebugCallStackWindow: Boolean read FDebug.DebugCallStackWindow write FDebug.DebugCallStackWindow;
+    property DebugCallStackWindowEvaluateParams: Boolean read FDebug.DebugCallStackWindowEvaluateParams
+      write FDebug.DebugCallStackWindowEvaluateParams;
     property DebugThreadsInSource: Boolean read FDebug.DebugThreadsInSource write FDebug.DebugThreadsInSource;
     property DebugThreadFreeze: Boolean read FDebug.DebugThreadFreeze write FDebug.DebugThreadFreeze;
     property DebugAsyncOrigin: Boolean read FDebug.DebugAsyncOrigin write FDebug.DebugAsyncOrigin;
