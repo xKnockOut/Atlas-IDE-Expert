@@ -69,6 +69,11 @@ type
     Bare: Boolean;
     /// <summary>Getestete Unit; kommt beim Eintragen ins uses der Testunit.</summary>
     UnitName: string;
+    /// <summary>Fertige Attribute über der Deklaration ([TestCase('…', '…')]); leer: nur [Test].</summary>
+    Attributes: TArray<string>;
+    /// <summary>Werte als Parameter der Testmethode (#2173): die Parameter der Routine und bei Funktionen
+    /// AExpected; der Rumpf ruft nur auf und prüft das Ergebnis.</summary>
+    Parameterized: Boolean;
     /// <summary>Klasse.Methode bzw. Routine für Texte.</summary>
     function Target: string;
   end;
@@ -78,6 +83,7 @@ type
     cActualName = 'Actual';
     cSubjectName = 'Subject';
     cFloatTolerance = '1E-9';
+    cExpectedName = 'AExpected';
   public
     /// <summary>Methode oder Routine an der Zeile (0-basiert), im Rumpf oder an der Deklaration; liefert die
     /// Deklaration (bei Methoden die in der Klasse). False ohne, bei Konstruktoren, Destruktoren und Methoden
@@ -99,6 +105,8 @@ type
     /// <summary>Name der lokalen Variablen zum Parameter: AMenge wird Menge, wenn das frei und kein reserviertes
     /// Wort ist.</summary>
     class function LocalName(const AParameter: string; const ATaken: TArray<string>): string; static;
+    /// <summary>Parameterliste der Testmethode mit Klammern ('' ohne Parameter); nur bei Parameterized.</summary>
+    class function ParameterList(const ADraft: TTestDraft): string; static;
     /// <summary>Rumpf der Testmethode samt Kopf "procedure Fixture.TestName;", ohne Zeilenumbruch am Ende.
     /// </summary>
     class function MethodText(const ADraft: TTestDraft; const ALineBreak: string): string; static;
@@ -473,6 +481,8 @@ type
     procedure WriteVariables;
     procedure WriteArrange(const AIndent: string);
     procedure WriteWorks(const AIndent: string);
+    /// <summary>Aufruf und Prüfung gegen AExpected einer Testmethode mit Parametern.</summary>
+    procedure WriteCall(const AIndent: string);
     procedure WriteRaises(const AIndent: string);
     procedure Prepare(const ADraft: TTestDraft);
     procedure WriteBare;
@@ -590,6 +600,10 @@ begin
   end;
   for mIndex := 0 to High(Draft.Parameters) do
   begin
+    if Draft.Parameterized then
+    begin
+      Break;
+    end;
     mType := Draft.Parameters[mIndex].TypeName;
     if mType = '' then
     begin
@@ -622,7 +636,7 @@ var
   mValue: TTestDraftValue;
   mText: string;
 begin
-  if (Length(Draft.Parameters) = 0) and (Length(Draft.Fields) = 0) then
+  if Draft.Parameterized or ((Length(Draft.Parameters) = 0) and (Length(Draft.Fields) = 0)) then
   begin
     Exit;
   end;
@@ -658,12 +672,32 @@ begin
   end;
 end;
 
+/// <summary>Prüfung des Ergebnisses gegen den Parameter AExpected.</summary>
+function ExpectedCheck(const ATypeName: string): string;
+begin
+  case ValueKindOf(ATypeName) of
+    TValueKind.Float:
+      Result := 'Assert.AreEqual(' + TTestDrafts.cExpectedName + ', ' + TTestDrafts.cActualName + ', ' +
+        TTestDrafts.cFloatTolerance + ');';
+    TValueKind.Integer_, TValueKind.Text, TValueKind.Char_:
+      Result := 'Assert.AreEqual(' + TTestDrafts.cExpectedName + ', ' + TTestDrafts.cActualName + ');';
+  else
+    Result := 'Assert.AreEqual<' + Trim(ATypeName) + '>(' + TTestDrafts.cExpectedName + ', ' +
+      TTestDrafts.cActualName + ');';
+  end;
+end;
+
 procedure TDraftWriter.WriteWorks(const AIndent: string);
 var
   mIndex: Integer;
   mChecks: TArray<string>;
   mCheck: string;
 begin
+  if Draft.Parameterized then
+  begin
+    WriteCall(AIndent);
+    Exit;
+  end;
   Line(AIndent + cTexts[TTestDraftsText.Act].Text);
   if Draft.ResultType <> '' then
   begin
@@ -700,6 +734,17 @@ begin
   begin
     Line(AIndent + mCheck);
   end;
+end;
+
+procedure TDraftWriter.WriteCall(const AIndent: string);
+begin
+  if Draft.ResultType = '' then
+  begin
+    Line(AIndent + CallText + ';');
+    Exit;
+  end;
+  Line(AIndent + TTestDrafts.cActualName + ' := ' + CallText + ';');
+  Line(AIndent + ExpectedCheck(Draft.ResultType));
 end;
 
 procedure TDraftWriter.WriteRaises(const AIndent: string);
@@ -740,6 +785,14 @@ begin
     Locals := Locals + [TTestDrafts.LocalName(mValue.Name, Locals)];
   end;
   Locals := Copy(Locals, 3, MaxInt);
+  if ADraft.Parameterized then
+  begin
+    Locals := nil;
+    for mValue in ADraft.Parameters do
+    begin
+      Locals := Locals + [mValue.Name];
+    end;
+  end;
 end;
 
 procedure TDraftWriter.WriteBare;
@@ -806,7 +859,7 @@ begin
   try
     mWriter.LineBreak := ALineBreak;
     mWriter.Prepare(ADraft);
-    mWriter.Builder.Append('procedure ' + ADraft.Fixture + '.' + ADraft.TestName + ';');
+    mWriter.Builder.Append('procedure ' + ADraft.Fixture + '.' + ADraft.TestName + ParameterList(ADraft) + ';');
     if ADraft.Bare then
     begin
       mWriter.WriteBare;
@@ -818,6 +871,31 @@ begin
     Result := mWriter.Builder.ToString;
   finally
     mWriter.Builder.Free;
+  end;
+end;
+
+class function TTestDrafts.ParameterList(const ADraft: TTestDraft): string;
+var
+  mParts: TArray<string>;
+  mValue: TTestDraftValue;
+begin
+  Result := '';
+  if not ADraft.Parameterized then
+  begin
+    Exit;
+  end;
+  mParts := nil;
+  for mValue in ADraft.Parameters do
+  begin
+    mParts := mParts + ['const ' + mValue.Name + ': ' + mValue.TypeName];
+  end;
+  if ADraft.ResultType <> '' then
+  begin
+    mParts := mParts + ['const ' + cExpectedName + ': ' + ADraft.ResultType];
+  end;
+  if Length(mParts) > 0 then
+  begin
+    Result := '(' + string.Join('; ', mParts) + ')';
   end;
 end;
 
@@ -955,13 +1033,26 @@ begin
   Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
-/// <summary>Deklaration des Tests AName vor der Zeile AEndLine ("end" der Klasse), eine Ebene tiefer.</summary>
-function DeclarationText(const AName, ALineBreak, AEndLine: string): string;
+/// <summary>Deklaration des Tests ADraft vor der Zeile AEndLine ("end" der Klasse), eine Ebene tiefer, mit
+/// [Test] bzw. seinen Attributen.</summary>
+function DeclarationText(const ADraft: TTestDraft; const ALineBreak, AEndLine: string): string;
 var
-  mIndent: string;
+  mIndent, mAttribute: string;
+  mAttributes: TArray<string>;
 begin
   mIndent := Copy(AEndLine, 1, Length(AEndLine) - Length(TrimLeft(AEndLine))) + '  ';
-  Result := mIndent + '[Test]' + ALineBreak + mIndent + 'procedure ' + AName + ';' + ALineBreak + AEndLine;
+  mAttributes := ADraft.Attributes;
+  if Length(mAttributes) = 0 then
+  begin
+    mAttributes := ['[Test]'];
+  end;
+  Result := '';
+  for mAttribute in mAttributes do
+  begin
+    Result := Result + mIndent + mAttribute + ALineBreak;
+  end;
+  Result := Result + mIndent + 'procedure ' + ADraft.TestName + TTestDrafts.ParameterList(ADraft) + ';' +
+    ALineBreak + AEndLine;
 end;
 
 class function TTestDrafts.AddToTestUnit(const AText: string; const ADraft: TTestDraft; AOnlyIfMissing: Boolean;
@@ -1010,7 +1101,7 @@ begin
   end;
   mNeedsUses := UsesEditFor(AText, mFixture, ADraft.UnitName, mLineBreak, mUsesEdit);
   mLines[mBody] := MethodText(mDraft, mLineBreak) + mLineBreak + mLineBreak + mLines[mBody];
-  mLines[mEndLine] := DeclarationText(mDraft.TestName, mLineBreak, mLines[mEndLine]);
+  mLines[mEndLine] := DeclarationText(mDraft, mLineBreak, mLines[mEndLine]);
   ANewText := string.Join(mLineBreak, mLines);
   if mNeedsUses then
   begin

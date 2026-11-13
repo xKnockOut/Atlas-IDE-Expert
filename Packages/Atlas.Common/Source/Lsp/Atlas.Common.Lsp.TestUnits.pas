@@ -125,6 +125,13 @@ type
     function DraftEdit(const APlace: TTestDraftPlace; out AFile, AName: string): TJSONObject;
     /// <summary>Code-Aktionen zu AUri an ALine. Der Aufrufer übernimmt die Objekte.</summary>
     function Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
+    /// <summary>Entwurf zur Methode bzw. Routine an ALine (0-basiert) samt Datei und Text der vorhandenen
+    /// Testunit (#2173); False mit AReason ohne testbare Routine oder ohne Testunit.</summary>
+    function DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
+      out ATestFile, ATestText, AReason: string): Boolean;
+    /// <summary>WorkspaceEdit mit den Änderungen von AOld nach ANew in AFileName. Der Aufrufer übernimmt es.
+    /// </summary>
+    class function ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject; static;
     /// <summary>atlas.server.testUnit [uri, zeile?]: Gegenstück als Objekt (unit, isTest,
     /// counterpart, uri, canCreate, newUri, reason, edit).</summary>
     function Execute(const AArguments: TJSONArray): TJSONValue;
@@ -152,7 +159,8 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TLspTestUnitsText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
-    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines, CreateTestCase);
+    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines, CreateTestCase, NoTestableRoutine,
+    NoTestUnitYet);
 
 const
   cTexts: array[TLspTestUnitsText] of TAtlasText = (
@@ -167,7 +175,11 @@ const
     (De: 'Datei gehört zu keinem Arbeitsbereich'; En: 'File belongs to no workspace'),
     (De: '%s hat weder Klassen noch Routinen im interface';
      En: '%s has neither classes nor routines in the interface'),
-    (De: 'Testfall für %s anlegen'; En: 'Create a test case for %s'));
+    (De: 'Testfall für %s anlegen'; En: 'Create a test case for %s'),
+    (De: 'An dieser Stelle steht keine Methode oder Routine, die sich von der Testunit aus aufrufen lässt';
+     En: 'There is no method or routine here that can be called from the test unit'),
+    (De: 'Die Testunit %s fehlt noch: zuerst über „Testfall anlegen“ oder „Testunit anlegen“ erzeugen';
+     En: 'The test unit %s does not exist yet: create it first via “Create a test case” or “Create test unit”'));
 
 {$SCOPEDENUMS OFF}
 
@@ -559,6 +571,36 @@ begin
     AFile := APlace.Target.NewFile;
     Result := NewUnitDraftEdit(APlace.Target, APlace.Context, APlace.Draft);
   end;
+end;
+
+function TLspTestUnits.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
+  out ATestFile, ATestText, AReason: string): Boolean;
+var
+  mPlace: TTestDraftPlace;
+begin
+  ADraft := Default(TTestDraft);
+  ATestFile := '';
+  ATestText := '';
+  AReason := cTexts[TLspTestUnitsText.NoTestableRoutine].Text;
+  if not DraftPlace(AUri, ALine, mPlace) or mPlace.Draft.Bare then
+  begin
+    Exit(False);
+  end;
+  ADraft := mPlace.Draft;
+  if mPlace.Target.CounterpartFile = '' then
+  begin
+    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mPlace.Target.Counterpart]);
+    Exit(False);
+  end;
+  ATestFile := mPlace.Target.CounterpartFile;
+  ATestText := TextOf(ATestFile, mPlace.Context);
+  AReason := '';
+  Result := True;
+end;
+
+class function TLspTestUnits.ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject;
+begin
+  Result := ChangeEdit(AFileName, AOld, ANew);
 end;
 
 function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
