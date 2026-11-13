@@ -227,7 +227,7 @@ begin
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
-  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope);
+  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
 end;
 

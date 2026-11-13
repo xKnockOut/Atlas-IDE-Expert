@@ -31,6 +31,8 @@ type
     procedure WantedNeedsTestRunAndSwitch;
     [Test]
     procedure TestUnitHasFixtures;
+    [Test]
+    procedure StaleKeysReadEachFileOnce;
   end;
 
 implementation
@@ -39,6 +41,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Settings.Plugin,
+  Atlas.Text.DUnitX,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.CoveredBy;
 
@@ -204,6 +207,35 @@ const
 begin
   Assert.IsTrue(TAtlasCoveredBy.IsTestUnit(cTestUnit));
   Assert.IsFalse(TAtlasCoveredBy.IsTestUnit('unit Basis;'#13#10'interface'#13#10'implementation'#13#10'end.'));
+end;
+
+procedure TAtlasCoveredByTests.StaleKeysReadEachFileOnce;
+var
+  mTests: TArray<TAtlasCoveredTest>;
+  mKeys: TArray<string>;
+  mReads: Integer;
+begin
+  mTests := TArray<TAtlasCoveredTest>.Create(Covered('U.F.Eins'), Covered('U.F.Zwei'), Covered('V.G.Drei'));
+  mTests[0].FileName := 'U.pas';
+  mTests[1].FileName := 'U.pas';
+  mTests[2].FileName := 'V.pas';
+  mReads := 0;
+  mKeys := TAtlasCoveredBy.StaleKeysOf(mTests,
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      Inc(mReads);
+      ALines := TArray<string>.Create(AFileName);
+      Result := True;
+    end,
+    function(const AUnit: TDUnitXUnit; const ALines: TArray<string>): TArray<string>
+    begin
+      Result := TArray<string>.Create('stale:' + ALines[0]);
+    end);
+  Assert.AreEqual(2, mReads, 'jede Testunit einmal');
+  Assert.AreEqual(2, Integer(Length(mKeys)));
+  Assert.AreEqual('stale:U.pas', mKeys[0]);
+  Assert.AreEqual('stale:V.pas', mKeys[1]);
+  Assert.AreEqual(0, Integer(Length(TAtlasCoveredBy.StaleKeysOf(mTests, nil, nil))));
 end;
 
 initialization

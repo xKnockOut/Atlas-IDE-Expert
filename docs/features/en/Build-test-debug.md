@@ -113,7 +113,7 @@ Settings: `tests.stale`, `tests.stale.units`
 ### Tested by (#1778)
 
 - Behind the header of every public method of a normal unit Atlas shows which DUnitX tests cover it, e.g. “3 tests · passed”.
-- Colours as in the test code lens: green only once every one of these tests passed, yellow for a partial result (“3 tests · 1/3 passed”), red on a failure. Without a test it shows a grey “no test · create test”.
+- Colours as in the test code lens: green only once every one of these tests passed, yellow for a partial result (“3 tests · 1/3 passed”), red on a failure. If a test was changed since its run, the old result shows grey and italic with “(outdated)”. Without a test it shows a grey “no test · create test”.
 - Atlas looks for the tests in the background, backwards like “Run affected tests”: depth 1 finds only tests that call the method directly, a larger depth also goes through intermediate callers. If the search hits a limit, “(incomplete)” is added.
 - A click runs exactly these tests; Ctrl+click lists them and an entry jumps to the test. Without a test the click opens or creates the test unit.
 - Test units themselves get no marks; private and protected methods only on request. Hide per method or file via the “Hide” menu.

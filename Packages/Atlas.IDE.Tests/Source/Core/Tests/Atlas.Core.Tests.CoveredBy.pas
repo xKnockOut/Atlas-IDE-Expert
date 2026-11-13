@@ -78,6 +78,10 @@ type
       TAtlasTestTally; static;
     /// <summary>Alle Namen für --run ohne Doppelte, in Reihenfolge der Tests.</summary>
     class function RunNames(const ATests: TArray<TAtlasCoveredTest>): TArray<string>; static;
+    /// <summary>Schlüssel der veralteten Ergebnisse (#1770) in den Testunits der Tests ATests: jede Datei einmal
+    /// gelesen (AReadLines) und nach AStaleKeys gefragt; nil ohne AStaleKeys.</summary>
+    class function StaleKeysOf(const ATests: TArray<TAtlasCoveredTest>; const AReadLines: TAtlasTestReadLines;
+      const AStaleKeys: TAtlasTestStaleKeys): TArray<string>; static;
   end;
 
 implementation
@@ -307,6 +311,33 @@ begin
       begin
         Inc(Result.StalePassed);
       end;
+    end;
+  end;
+end;
+
+class function TAtlasCoveredBy.StaleKeysOf(const ATests: TArray<TAtlasCoveredTest>;
+  const AReadLines: TAtlasTestReadLines; const AStaleKeys: TAtlasTestStaleKeys): TArray<string>;
+var
+  mTest: TAtlasCoveredTest;
+  mRead: TArray<string>;
+  mLines: TArray<string>;
+begin
+  Result := nil;
+  if not (Assigned(AStaleKeys) and Assigned(AReadLines)) then
+  begin
+    Exit;
+  end;
+  mRead := nil;
+  for mTest in ATests do
+  begin
+    if (mTest.FileName = '') or (IndexText(mTest.FileName, mRead) >= 0) then
+    begin
+      Continue;
+    end;
+    mRead := mRead + [mTest.FileName];
+    if AReadLines(mTest.FileName, mLines) then
+    begin
+      Result := Result + AStaleKeys(TDUnitXSource.Scan(mLines), mLines);
     end;
   end;
 end;
