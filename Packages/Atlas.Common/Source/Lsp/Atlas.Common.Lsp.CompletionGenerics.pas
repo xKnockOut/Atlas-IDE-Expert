@@ -87,15 +87,6 @@ uses
 const
   cMaxAncestorDepth = 32;
 
-function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Name ohne Typargumente und ohne Unit davor: "Generics.IComparer&lt;T&gt;" → "IComparer".</summary>
 function PlainName(const AName: string): string;
 begin
@@ -119,7 +110,7 @@ var
   mBefore: Integer;
 begin
   Result := Default(TGenericArgSite);
-  mBefore := PreviousIndex(ATokens, AOpen);
+  mBefore := PreviousCode(ATokens, AOpen);
   if (mBefore >= 0) and (ATokens[mBefore].Kind = TPascalTokenKind.Identifier) then
   begin
     Result.Found := True;
@@ -140,7 +131,7 @@ begin
   mIndex := ALast;
   if (mIndex >= 0) and IsTrivia(ATokens[mIndex]) then
   begin
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
   while mIndex >= 0 do
   begin
@@ -164,7 +155,7 @@ begin
     begin
       Exit;
     end;
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
 end;
 

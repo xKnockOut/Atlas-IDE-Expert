@@ -89,15 +89,6 @@ begin
   end;
 end;
 
-function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
@@ -164,7 +155,7 @@ var
 begin
   Result := -1;
   mParens := 0;
-  AIndex := Prev(ATokens, AIndex);
+  AIndex := PreviousCode(ATokens, AIndex);
   while AIndex >= 0 do
   begin
     if IsCloseBracket(ATokens[AIndex]) then
@@ -186,7 +177,7 @@ begin
         Exit;
       end;
     end;
-    AIndex := Prev(ATokens, AIndex);
+    AIndex := PreviousCode(ATokens, AIndex);
   end;
 end;
 
@@ -251,7 +242,7 @@ begin
   Result := -1;
   mDepth := 0;
   mParens := 0;
-  AIndex := Prev(ATokens, AIndex);
+  AIndex := PreviousCode(ATokens, AIndex);
   while (AIndex >= 0) and (Result < 0) do
   begin
     case BranchSearchStep(ATokens[AIndex], mDepth, mParens) of
@@ -260,7 +251,7 @@ begin
       TCaseSearchStep.Stop:
         Break;
     else
-      AIndex := Prev(ATokens, AIndex);
+      AIndex := PreviousCode(ATokens, AIndex);
     end;
   end;
 end;
@@ -298,7 +289,7 @@ begin
   AIndex := ABefore;
   if IsTrivia(ATokens[AIndex]) then
   begin
-    AIndex := Prev(ATokens, AIndex);
+    AIndex := PreviousCode(ATokens, AIndex);
   end;
   Result := (AIndex >= 0) and (ATokens[AIndex].IsKeyword('of') or ATokens[AIndex].IsSymbol(';'));
 end;
@@ -334,7 +325,7 @@ function AfterAssignment(const ATokens: TArray<TPascalToken>; AIndex: Integer): 
 var
   mPrev: Integer;
 begin
-  mPrev := Prev(ATokens, AIndex);
+  mPrev := PreviousCode(ATokens, AIndex);
   Result := (mPrev >= 0) and ATokens[mPrev].IsSymbol(':=');
 end;
 
@@ -353,7 +344,7 @@ function IsCaseElse(const ATokens: TArray<TPascalToken>; AIndex, AOfIndex: Integ
 var
   mPrev: Integer;
 begin
-  mPrev := Prev(ATokens, AIndex);
+  mPrev := PreviousCode(ATokens, AIndex);
   Result := ATokens[AIndex].IsKeyword('else') and (mPrev >= 0) and
     (ATokens[mPrev].IsSymbol(';') or (mPrev = AOfIndex));
 end;
@@ -363,7 +354,7 @@ function StartsLine(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boole
 var
   mPrev: Integer;
 begin
-  mPrev := Prev(ATokens, AIndex);
+  mPrev := PreviousCode(ATokens, AIndex);
   Result := (mPrev >= 0) and (ATokens[mPrev].EndPos.Line < ATokens[AIndex].StartPos.Line);
 end;
 
@@ -825,7 +816,7 @@ begin
     mAnchor := CaseAnchor(mTokens, ACase, AResult.HasElse);
     if mAnchor >= 0 then
     begin
-      mBefore := Prev(mTokens, mAnchor);
+      mBefore := PreviousCode(mTokens, mAnchor);
     end;
   end;
   if mBefore < 0 then

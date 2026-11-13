@@ -35,7 +35,8 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Editor.LineTracking;
+  Atlas.Core.Editor.LineTracking,
+  Atlas.UI.Foundation.EditorFont;
 
 type
   TAtlasProblemsPainter = class
@@ -51,8 +52,7 @@ type
     FIndex: Integer;
     FStore: TAtlasProblemStore;
     // Fehlertext am Zeilenende (#509).
-    FFont: TFont;
-    FFontKey: string;
+    FFont: TAtlasEditorFont;
     FTimer: TTimer;
     FCursorKey: string;
     FCursorText: string;
@@ -60,7 +60,6 @@ type
     /// <summary>Merkt Tastendrücke in der Cursorzeile; True, solange die Pause nicht um ist.</summary>
     function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
     procedure TimerTick(Sender: TObject);
-    procedure EnsureFont(const AEditorFont: TFont);
     procedure PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
     /// <summary>Text der Zeile aus dem Speicher, wenn er dem Editor entspricht und gezeichnet werden soll; ABusy
@@ -128,7 +127,7 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  FFont := TFont.Create;
+  FFont := TAtlasEditorFont.Create([fsItalic]);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := TAtlasInlineDiagnostics.cPauseMs;
@@ -185,20 +184,6 @@ begin
     FTimer.Enabled := True;
   end;
   Result := not TAtlasInlineDiagnostics.PauseOver(FTypedAt, TAtlasTicks.Now);
-end;
-
-procedure TAtlasProblemsPainter.EnsureFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FFont.Assign(AEditorFont);
-  FFont.Style := [fsItalic];
-  FFontKey := mKey;
 end;
 
 class procedure TAtlasProblemsPainter.Invalidate;
@@ -258,10 +243,10 @@ begin
     mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
   end;
   mFront := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, mFound.Problem), TAtlasColor(mSample), cStrength);
-  EnsureFont(AContext.Canvas.Font);
+  FFont.Follow(AContext.Canvas.Font);
   mSaved := SaveDC(mDC);
   try
-    SelectObject(mDC, FFont.Handle);
+    SelectObject(mDC, FFont.Font.Handle);
     SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mFront))));
     SetBkMode(mDC, TRANSPARENT);
     GetTextExtentPoint32W(mDC, PChar(mCaption), Length(mCaption), mSize);

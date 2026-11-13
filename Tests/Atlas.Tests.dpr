@@ -574,6 +574,8 @@ uses
   Atlas.UI.Foundation.ListView.Tests in 'IDE.Expert\Atlas.UI.Foundation.ListView.Tests.pas',
   Atlas.UI.Foundation.WrapLabel in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.WrapLabel.pas',
   Atlas.UI.Foundation.WrapLabel.Tests in 'IDE.Expert\Atlas.UI.Foundation.WrapLabel.Tests.pas',
+  Atlas.UI.Foundation.EditorFont in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.EditorFont.pas',
+  Atlas.UI.Foundation.EditorFont.Tests in 'IDE.Expert\Atlas.UI.Foundation.EditorFont.Tests.pas',
   Atlas.Core.Style.Symbol in '..\Packages\Atlas.IDE.Base\Source\Core\Style\Atlas.Core.Style.Symbol.pas',
   Atlas.UI.Style.Symbol in '..\Packages\Atlas.IDE.Base\Source\UI\Style\Atlas.UI.Style.Symbol.pas',
   Atlas.UI.Style.Canvas in '..\Packages\Atlas.IDE.Base\Source\UI\Style\Atlas.UI.Style.Canvas.pas',
