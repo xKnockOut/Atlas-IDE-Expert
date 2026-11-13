@@ -111,6 +111,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Series.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.StatusField.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Log.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
@@ -134,6 +135,7 @@
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.SeriesMenu.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerLog.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.StatusField.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>

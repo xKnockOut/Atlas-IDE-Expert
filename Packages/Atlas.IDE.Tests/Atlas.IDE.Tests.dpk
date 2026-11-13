@@ -63,6 +63,7 @@ contains
   Atlas.Core.Tests.Durations in 'Source\Core\Tests\Atlas.Core.Tests.Durations.pas',
   Atlas.Core.Tests.Explorer in 'Source\Core\Tests\Atlas.Core.Tests.Explorer.pas',
   Atlas.Core.Tests.Series in 'Source\Core\Tests\Atlas.Core.Tests.Series.pas',
+  Atlas.Core.Tests.StatusField in 'Source\Core\Tests\Atlas.Core.Tests.StatusField.pas',
   Atlas.Core.Tests.Log in 'Source\Core\Tests\Atlas.Core.Tests.Log.pas',
   Atlas.Core.Tests.CaseTable in 'Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas',
   Atlas.Core.Tests.AffectedHook in 'Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
@@ -95,6 +96,7 @@ contains
   Atlas.IDE.Tests.Explorer in 'Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas',
   Atlas.IDE.Tests.Series in 'Source\IDE\Tests\Atlas.IDE.Tests.Series.pas',
   Atlas.UI.Tests.SeriesMenu in 'Source\UI\Tests\Atlas.UI.Tests.SeriesMenu.pas',
+  Atlas.IDE.Tests.StatusField in 'Source\IDE\Tests\Atlas.IDE.Tests.StatusField.pas',
   Atlas.IDE.Tests.CaseTable in 'Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas',
   Atlas.IDE.Tests.LeakSetup in 'Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';

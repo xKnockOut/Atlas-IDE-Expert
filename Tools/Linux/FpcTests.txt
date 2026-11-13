@@ -473,6 +473,7 @@ Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.Series.Tests
+Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests
 Atlas.Core.Tests.Untested.Tests

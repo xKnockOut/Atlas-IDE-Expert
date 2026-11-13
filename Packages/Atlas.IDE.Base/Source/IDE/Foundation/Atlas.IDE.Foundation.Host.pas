@@ -26,6 +26,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Status.Contract,
   Atlas.Core.Status.Lines,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Completion.Snippets;
@@ -43,8 +44,8 @@ type
   TAtlasHostRequestRunner = reference to function(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
     const ACancelled: TFunc<Boolean>; const ADone: TProc<string>): Boolean;
 
-  /// <summary>Feld AId im Atlas-Statusfeld: Text, Hinweis, Klick (nil = keiner); leerer Text entfernt es.</summary>
-  TAtlasHostStatusExtra = reference to procedure(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+  /// <summary>Zusatzfeld im Atlas-Statusfeld setzen (TAtlasStatusExtra); leerer Text entfernt es.</summary>
+  TAtlasHostStatusExtra = reference to procedure(const AExtra: TAtlasStatusExtra);
 
   /// <summary>Indiziert der Server gerade? APercent -1 = unbekannt.</summary>
   TAtlasHostIndexing = reference to function(out APercent: Integer): Boolean;
@@ -133,6 +134,9 @@ type
     /// <summary>Wie SetStatusExtra mit Hinweis und Klick. Das Modul entfernt sein Feld beim Stoppen (leerer
     /// Text), damit Base keinen Klick des Moduls mehr hält (Regel 3).</summary>
     class procedure SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>); static;
+    /// <summary>Zusatzfeld mit Zustand (Punkt in der Atlas-Statusleiste) und Rechtsklick (#1777); leerer Text
+    /// entfernt es. Wie bei SetStatusField entfernt das Modul sein Feld beim Stoppen.</summary>
+    class procedure SetStatusItem(const AExtra: TAtlasStatusExtra); static;
     /// <summary>Compile-Ereignisse von Base (#527); nil vor Install und nach Uninstall.</summary>
     class function CompileEvents: TAtlasCompileEvents; static;
     /// <summary>Befehl im Hintergrund an den laufenden Server. ADone läuft im Hauptthread, gesichert über AFeature,
@@ -287,10 +291,22 @@ begin
 end;
 
 class procedure TAtlasIdeHost.SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+var
+  mExtra: TAtlasStatusExtra;
+begin
+  mExtra := Default(TAtlasStatusExtra);
+  mExtra.Id := AId;
+  mExtra.Text := AText;
+  mExtra.Hint := AHint;
+  mExtra.OnClick := AOnClick;
+  SetStatusItem(mExtra);
+end;
+
+class procedure TAtlasIdeHost.SetStatusItem(const AExtra: TAtlasStatusExtra);
 begin
   if Assigned(FServices.StatusExtra) then
   begin
-    FServices.StatusExtra(AId, AText, AHint, AOnClick);
+    FServices.StatusExtra(AExtra);
   end;
 end;
 

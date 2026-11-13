@@ -26,7 +26,8 @@
 //   Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
 //   Dahinter stehen die Zusatzfelder des Atlas-Felds (z. B. „interface-Änderung“
 //   der Unit-Beziehungen); ein Klick ruft dort ihren Klick, in der Statuszeile
-//   stehen sie dann nicht.
+//   stehen sie dann nicht. Rechtsklick auf ein Zusatzfeld mit eigenem
+//   Rechtsklick ruft diesen (#1777).
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
 //   Unit (Umlauf), Doppelklick öffnet „Atlas-Prüfung“ für die Unit, Klick auf
 //   die Live-Prüfung prüft alle Units neu (Hook Recheck, atlas.server.recheck,
@@ -137,7 +138,8 @@ type
     /// <summary>Klick auf ein Element des Atlas-Felds: AAction mit dem Feld nach dem Klick; ALog ins Protokoll.
     /// </summary>
     function FieldClick(const ALog: string; const AAction: TFieldAction): TProc<TPoint>;
-    /// <summary>Klick auf ein Zusatzfeld: dessen Klick am Atlas-Feld nach dem Klick.</summary>
+    /// <summary>Klick (AContext: Rechtsklick, #1777) auf ein Zusatzfeld: dessen Klick am Atlas-Feld nach dem
+    /// Klick.</summary>
     function ExtraClick: TAtlasStatusBarExtraEvent;
     /// <summary>AAction nach dem Klick; ALog ('' = nichts) ins Protokoll.</summary>
     function Deferred(const ALog: string; const AAction: TProc): TProc;
@@ -493,17 +495,19 @@ var
 begin
   mOwner := Self;
   Result :=
-    procedure(const AId: string; const APoint: TPoint)
+    procedure(const AId: string; const APoint: TPoint; AContext: Boolean)
     var
       mId: string;
+      mContext: Boolean;
       mClick: TProc<TPoint>;
     begin
       mId := AId;
+      mContext := AContext;
       TAtlasGuard.Log(cLogPrefix + 'Klick auf Zusatzfeld ' + mId);
       mClick := mOwner.FieldClick('',
         procedure(AField: TAtlasStatusField; const ACorner: TPoint)
         begin
-          AField.ClickExtra(mId, ACorner);
+          AField.ClickExtra(mId, ACorner, mContext);
         end);
       mClick(APoint);
     end;

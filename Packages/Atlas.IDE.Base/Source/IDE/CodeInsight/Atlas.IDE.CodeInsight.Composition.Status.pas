@@ -10,6 +10,7 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Status.Contract,
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
@@ -39,6 +40,8 @@ procedure StopQuickToggles;
 procedure RequestStatusRefresh;
 /// <summary>Zusatzfeld im Statusfeld setzen; ohne Feld nichts.</summary>
 procedure SetStatusExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+/// <summary>Zusatzfeld mit Zustand und Rechtsklick setzen (#1777); ohne Feld nichts.</summary>
+procedure SetStatusItem(const AExtra: TAtlasStatusExtra);
 /// <summary>Letzte Antwort von atlas.server.status; '' ohne Zeilen.</summary>
 function StatusJson: string;
 /// <summary>Fenster „Atlas-Server“ (#1356) zeigen; abgeschaltet nichts.</summary>
@@ -59,7 +62,6 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Status.Server,
@@ -117,10 +119,22 @@ begin
 end;
 
 procedure SetStatusExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+var
+  mExtra: TAtlasStatusExtra;
+begin
+  mExtra := Default(TAtlasStatusExtra);
+  mExtra.Id := AId;
+  mExtra.Text := AText;
+  mExtra.Hint := AHint;
+  mExtra.OnClick := AOnClick;
+  SetStatusItem(mExtra);
+end;
+
+procedure SetStatusItem(const AExtra: TAtlasStatusExtra);
 begin
   if StatusFieldInstance <> nil then
   begin
-    StatusFieldInstance.SetExtra(AId, AText, AHint, AOnClick);
+    StatusFieldInstance.SetExtra(AExtra);
   end;
 end;
 
@@ -253,10 +267,10 @@ begin
   end;
   if not AShow then
   begin
-    StatusFieldInstance.SetExtra(cProblemCountsExtra, '', '', nil);
+    SetStatusExtra(cProblemCountsExtra, '', '', nil);
     Exit;
   end;
-  StatusFieldInstance.SetExtra(cProblemCountsExtra,
+  SetStatusExtra(cProblemCountsExtra,
     TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ProblemCounterText,
     [ACounts.Errors, ACounts.Warnings, ACounts.Hints]),
     TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.ProblemCounterHint,

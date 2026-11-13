@@ -210,6 +210,9 @@ begin
   // Atlas-Statusleiste unten im Editorfenster (#1155).
   BindCheck('EditorStatusBar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorStatusBar)));
   FEditorStatusBarItems := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorStatusBarItems));
+  // Teststand in der Statusleiste (#1777).
+  BindCheck('EditorStatusBarTests',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorStatusBarTests)));
   // Aufrufdiagramm (#1122).
   BindCheck('CallHierarchyDiagram',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCallHierarchyDiagram)));
