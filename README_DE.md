@@ -40,7 +40,7 @@ Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert
 | `Atlas.IDE.Designer` | Designer-Leiste: „Anordnen“ (Breite nach Text, Knopfleiste, Formularraster, In Reihe duplizieren, Platz einfügen, An Inhalt anpassen, Ebenen, Einpacken, Schriften und Farben, Anchors vorschlagen, Format-Pinsel, Gruppen), Abstände messen und per Griff setzen, gemeinsame Größengriffe, Schnellleiste, Lupe, Tab-Reihenfolge, Größe und Skalierung ausprobieren, sprechende Namen, Fenster „Atlas-Struktur“ und „Ereignis-Karte“, Datenbindung, In Frame auslagern, Verwendungen im Code, Komponenten und Eigenschaften suchen, Rückgängig (experimentell) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue-Tracker (YouTrack, GitHub u. a.): „Meine Issues“ mit Projektwahl, Beginnen, Beenden und Prüfen entlang der Workflow-Übergänge, Zeiterfassung, Zustand im Statusfeld, Board mit Swimlanes, Sprint-Kachel, Ablauf-Karte, „An Issue anhängen“, Issue-Kennungen im Code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite mit Projekten, „Weiterarbeiten“ samt Arbeitsstand je Issue, „Neu in Atlas“, „Atlas entdecken“ und „Atlas-Einrichtung“ mit Indexaufbau je Projekt; „Atlas-Start“ | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, „Warum bin ich hier?“, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten, Haltepunkte vor dem Start prüfen, parallele Aufrufstapel, Haltepunkt-Sätze, Threads im Quelltext, Ereignisprotokoll, Herkunft eingereihter Methoden, Logpunkte, Fenster „Kein Quelltext“, Neu starten | 109 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, „Warum bin ich hier?“, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten, Haltepunkte vor dem Start prüfen, parallele Aufrufstapel, Haltepunkt-Sätze, Threads im Quelltext, Ereignisprotokoll, Herkunft eingereihter Methoden, Logpunkte, Fenster „Kein Quelltext“, Neu starten, erneut an Prozess anhängen | 116 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas-Suche mit Ersetzen, Regex und Projektbereich, Units suchen, Code-Abfragen | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken, „Unit-Beziehungen“ und „Abhängige Units“ auch aus der Projektverwaltung | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Änderungsmarken mit Inline-Diff, Zeilenhistorie, Branch beim Beginnen, Arbeitskopien, Projektzustand | 26 | `vcs.enabled` |
@@ -126,6 +126,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Threads:** Was wartet worauf? (Wartepunkt jedes Threads, Muster von Verklemmungen wie `WaitFor` gegen `Synchronize`), parallele Aufrufstapel aller Threads als Baum, andere Threads im Rand (markieren, experimentell: einfrieren), experimentell: woher eine mit `TThread.Queue`, `Synchronize` oder `TTask.Run` eingereihte Methode kam
 - **Ereignisprotokoll beim Debuggen:** Ausgaben, Module und Threads mit Filter (auch regulärer Ausdruck), Farben nach Muster und Sprung zu `Datei.pas(123)`
 - **Logpunkte:** Haltepunkte, die nicht anhalten, sondern Text mit Platzhaltern wie `x={x}, Summe {Summe:0.00}` ins Ereignisprotokoll schreiben (Umschalt+F5, Raute in der Rinne)
+- **Leck- und Absturzberichte:** FastMM-Log, madExcept-, EurekaLog- oder JclDebug-Bericht einfügen; der Stapel steht anklickbar in der Meldungsansicht, die Erzeugungs- bzw. Absturzstelle als Diagnose im Editor, Adressen ohne Debug-Informationen löst die Map-Datei auf
 - **Fenster „Kein Quelltext“:** Hält der Debugger in Code ohne Quelltext, nennt ein kleines Fenster Routine, Modul, Grund (Debug-DCUs aus, `{$D-}`, nur DCU, nicht im Suchpfad, Systemcode) und Auswege
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
@@ -148,6 +149,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
+- **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

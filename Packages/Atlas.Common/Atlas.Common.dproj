@@ -130,6 +130,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.StackGuard.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashCase.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashSkip.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RuntimeReport.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashReserve.pas"/>
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
         <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
@@ -380,6 +381,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StatementText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.IfCase.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Conditions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.BoundaryCases.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ConditionalExpression.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NestedRoutines.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineParts.pas"/>
@@ -603,7 +605,9 @@
         <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Candidates.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakCandidates.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RuntimeReport.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestCases.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BoundaryCases.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.Signatures.pas"/>

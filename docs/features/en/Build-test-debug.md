@@ -472,6 +472,30 @@ Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+## Debug: leak and crash reports (#74)
+
+- Copy a report, then Atlas > “Paste crash or leak report …” (also in the command palette): Atlas reads FastMM logs (FullDebugMode), the `ReportMemoryLeaksOnShutdown` message, reports from madExcept, EurekaLog 6/7 and JclDebug, and an exception message on its own (“Access violation at address … in module …”)
+- The message view shows the call stack of the crashed thread and the other threads, or the stack of each leak group (same class, same stack); lines in the project jump to the source on double-click
+- The editor shows diagnostics at the locations: a warning at the creation site of each leak group (“Leak: TStringList × 2 (40 bytes) is created here”), for a crash a warning at the crash site and hints at the other own lines of the stack; the source is the tool (FastMM, madExcept, …)
+- Stack lines without debug information are resolved through the map file next to the EXE of the Debug configuration (linker option “Map file: Detailed”); if the map does not match the EXE (different entry point or code size), Atlas says so
+- “Remove runtime report markers” removes the diagnostics again; a new report replaces the old one
+- AI assistants get the same analysis as the MCP tools `analyze_report` and `resolve_address`
+
+## Debug: reattach to process
+
+- When the IDE attaches to a running process (Run › Attach to Process …), Atlas remembers path and name of the EXE for the project group
+- “Reattach to <name>” in the Run menu, in the command palette and with Shift+Alt+P:
+  - exactly one running process with the same path: attached at once, without a dialog
+  - several, or only the same name in another place (another version): choice with PID, start time and command line
+  - none: offer to wait for the start
+- “Attach when started …” in the Run menu and in the command palette: choose the EXE (default: the last remembered one, otherwise the output file of the active project); Atlas polls the process list in the background and attaches as soon as it starts
+- While waiting the status field shows “Waiting for … (Cancel)”; a click cancels, so does closing or switching the project group
+- When an attached process ends, the status field offers to reattach on its next start
+- Waiting misses the first milliseconds of the program (initialization); start it via the project's run parameters or a host application if you need them
+- Local processes only; processes of other users and services need an IDE with administrator rights
+
+Settings: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

@@ -74,7 +74,8 @@ uses
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueBoxes,
-  Atlas.UI.Tracker.IssueFrame;
+  Atlas.UI.Tracker.IssueFrame,
+  Atlas.UI.Tracker.IssueFrame.Contract;
 
 const
   cNow = 46323.5;

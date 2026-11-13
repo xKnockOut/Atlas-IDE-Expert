@@ -41,7 +41,8 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Text.Jsonc,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -498,23 +499,8 @@ begin
 end;
 
 class function TAtlasJsonText.Parse(const AText: string): TJSONObject;
-var
-  mValue: TJSONValue;
 begin
-  Result := nil;
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(StripComments(AText));
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
+  Result := TJsonRead.ParseObject(StripComments(AText));
 end;
 
 class function TAtlasJsonText.ValueAt(ARoot: TJSONObject; const APath: string): string;

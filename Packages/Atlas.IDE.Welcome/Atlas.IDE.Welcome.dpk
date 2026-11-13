@@ -80,6 +80,7 @@ contains
   Atlas.UI.Welcome.Continue in 'Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas',
   Atlas.UI.Welcome.ContinueIssues in 'Source\UI\Welcome\Atlas.UI.Welcome.ContinueIssues.pas',
   Atlas.UI.Welcome.QuickActions in 'Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas',
+  Atlas.UI.Welcome.QuickActions.Texts in 'Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.Texts.pas',
   Atlas.UI.Welcome.SettingsLayouts in 'Source\UI\Welcome\Atlas.UI.Welcome.SettingsLayouts.pas',
   Atlas.UI.Welcome.SettingsSection in 'Source\UI\Welcome\Atlas.UI.Welcome.SettingsSection.pas',
   Atlas.UI.Welcome.State in 'Source\UI\Welcome\Atlas.UI.Welcome.State.pas',
