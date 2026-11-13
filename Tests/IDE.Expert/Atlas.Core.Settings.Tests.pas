@@ -176,6 +176,8 @@ begin
   Assert.IsTrue(ASettings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsTrue(ASettings.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsTrue(ASettings.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
+  Assert.AreEqual(1000, ASettings.DebugMemoryTimelineIntervalMs, 'debug.memoryTimeline.intervalMs (#858)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
@@ -321,6 +323,8 @@ begin
   ASettings.DebugExceptionBannerIgnoreAtLocation := False;
   ASettings.DebugInlineValues := False;
   ASettings.DebugInlineValuesPerLine := 7;
+  ASettings.DebugMemoryTimeline := False;
+  ASettings.DebugMemoryTimelineIntervalMs := 2500;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
   ASettings.MetricsReport := False;
@@ -443,6 +447,8 @@ begin
   Assert.IsFalse(ALoaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsFalse(ALoaded.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsFalse(ALoaded.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
+  Assert.AreEqual(2500, ALoaded.DebugMemoryTimelineIntervalMs, 'debug.memoryTimeline.intervalMs (#858)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);
   Assert.IsFalse(ALoaded.MetricsReport);

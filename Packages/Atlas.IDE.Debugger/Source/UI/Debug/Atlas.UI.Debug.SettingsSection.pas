@@ -171,6 +171,10 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
   Switch('debug.inlineValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValues));
   Number('debug.inlineValuesPerLine', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValuesPerLine));
+  // Speicherverlauf (#858).
+  Switch('debug.memoryTimeline', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMemoryTimeline));
+  Number('debug.memoryTimeline.intervalMs',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMemoryTimelineInterval));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;

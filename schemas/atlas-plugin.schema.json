@@ -1600,6 +1600,37 @@
       "x-parent": "debug.inlineValues",
       "x-issue": "#508"
     },
+    "DebugMemoryTimeline": {
+      "description": "Speicherverlauf beim Debuggen: Fenster „Atlas: Speicher“ mit privatem Speicher, Arbeitssatz, Handles, GDI- und USER-Objekten des Programms über die Sitzung, ohne es anzuhalten; Marken bei jedem Halt, jeder Exception und per Knopf; ein gezogener Bereich zeigt den Zuwachs; als CSV kopierbar. Aus = nichts wird gemessen, kein Fenster.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.memoryTimeline",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Speicherverlauf beim Debuggen",
+      "x-captionEn": "Memory timeline while debugging",
+      "x-keywords": [
+        "Speicher",
+        "Leck",
+        "Handles",
+        "GDI",
+        "memory",
+        "leak"
+      ],
+      "x-issue": "#858"
+    },
+    "DebugMemoryTimelineIntervalMs": {
+      "type": "integer",
+      "default": 1000,
+      "description": "Abstand der Messungen in Millisekunden (250 bis 10000).",
+      "x-key": "debug.memoryTimeline.intervalMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.memoryTimeline",
+      "x-issue": "#858"
+    },
     "DebugOwnCodeFolders": {
       "type": "string",
       "default": "",

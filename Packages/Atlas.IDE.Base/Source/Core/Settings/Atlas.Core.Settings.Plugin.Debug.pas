@@ -13,6 +13,9 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Abstand der Messungen des Speicherverlaufs (#858) in Millisekunden.</summary>
+  cMinMemoryTimelineIntervalMs = 250;
+  cMaxMemoryTimelineIntervalMs = 10000;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -130,6 +133,12 @@ type
     DebugInlineValues: Boolean;
     /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
     DebugInlineValuesPerLine: Integer;
+    /// <summary>Speicherverlauf beim Debuggen (#858, debug.memoryTimeline): Fenster „Atlas: Speicher“ mit privatem
+    /// Speicher, Arbeitssatz, Handles, GDI- und USER-Objekten des Programms, Marken bei Halt, Exception und per
+    /// Knopf, Zuwachs im gewählten Bereich, CSV. Aus = nichts wird gemessen.</summary>
+    DebugMemoryTimeline: Boolean;
+    /// <summary>Abstand der Messungen in Millisekunden (#858, debug.memoryTimeline.intervalMs).</summary>
+    DebugMemoryTimelineIntervalMs: Integer;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -196,6 +205,8 @@ begin
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
+  Result.DebugMemoryTimeline := True;
+  Result.DebugMemoryTimelineIntervalMs := 1000;
   Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
@@ -207,6 +218,8 @@ begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
+  DebugMemoryTimelineIntervalMs := EnsureRange(DebugMemoryTimelineIntervalMs, cMinMemoryTimelineIntervalMs,
+    cMaxMemoryTimelineIntervalMs);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
@@ -255,6 +268,8 @@ begin
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
+  AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);

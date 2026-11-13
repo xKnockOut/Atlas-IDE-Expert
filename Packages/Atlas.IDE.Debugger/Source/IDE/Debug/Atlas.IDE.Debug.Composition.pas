@@ -7,7 +7,7 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter; die Teile für Werte
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, Speicherverlauf; die Teile für Werte
 //   und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
 //   die Taste von „Gezielt hineinspringen“,
@@ -343,6 +343,9 @@ begin
       DebugEvaluateVisible),
     Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
       TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
+    // Speicherverlauf (#858); nur sichtbar, solange debug.memoryTimeline an ist.
+    Command('Atlas.DebugMemory', TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryCommand),
+      ShowDebugMemory, DebugMemoryVisible),
     // Nur eigener Code (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
     Command('Atlas.DebugJustMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeCommand),
       ToggleDebugJustMyCode, nil),
@@ -379,6 +382,7 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugMemory', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
@@ -416,7 +420,8 @@ begin
   TAtlasIdeDebugExceptions.ApplySettings;
   // debug.exceptionBanner* (#783).
   TAtlasIdeDebugExceptionBar.ApplySettings;
-  // debug.explainUnavailable (#840), debug.completionInDialogs (#538), debug.evaluateWindow.replaceCtrlF7 (#784).
+  // debug.explainUnavailable (#840), debug.completionInDialogs (#538), debug.evaluateWindow.replaceCtrlF7 (#784),
+  // debug.memoryTimeline* (#858).
   ApplyValueSettings;
   // debug.stepFilters* (#850): Fenster mit dem gespeicherten Stand, Treffer neuer Muster zählen.
   TAtlasIdeDebugStepFilter.ApplySettings;
@@ -432,6 +437,7 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
+  ValueThemeChanged;
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;
@@ -540,7 +546,7 @@ end;
 function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart];
+  Result := Result + [StepFilterPart] + DebugMemoryParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

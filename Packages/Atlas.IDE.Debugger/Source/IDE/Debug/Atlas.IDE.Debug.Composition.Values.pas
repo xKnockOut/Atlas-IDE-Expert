@@ -4,8 +4,9 @@
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
 // Debugger-Dialogen und Fenster „Auswerten“. Sie fragen den Server nur, wenn
-// er ohnehin läuft. Atlas.IDE.Debug.Composition stellt sie über den Scope des
-// Moduls bereit.
+// er ohnehin läuft. Dazu der Speicherverlauf (#858, Werte des Prozesses über
+// die Sitzung; ohne Server), der nach dem Schrittfilter startet.
+// Atlas.IDE.Debug.Composition stellt sie über den Scope des Moduls bereit.
 
 interface
 
@@ -16,8 +17,16 @@ uses
 /// <summary>Teile für Werte und Ausdrücke in ihrer Startreihenfolge; AProvider liefert die Vervollständigung in
 /// Debugger-Dialogen (erzeugt in Atlas.IDE.Debug.Composition).</summary>
 function DebugValueParts(const AProvider: TAtlasDialogProviderFactory): TArray<IAtlasFeaturePart>;
-/// <summary>Einstellungen an „kein Zugriff“, Vervollständigung in Dialogen und Fenster „Auswerten“.</summary>
+/// <summary>Speicherverlauf (#858): Zuhörer der Debug-Sitzung und Zeitgeber; aus = keine Messung.</summary>
+function DebugMemoryParts: TArray<IAtlasFeaturePart>;
+/// <summary>Einstellungen an „kein Zugriff“, Vervollständigung in Dialogen, Fenster „Auswerten“ und Speicherverlauf.
+/// </summary>
 procedure ApplyValueSettings;
+/// <summary>Thema der Fenster dieser Teile, die nicht Atlas.IDE.Debug.Composition selbst nachführt.</summary>
+procedure ValueThemeChanged;
+/// <summary>Befehl Atlas.DebugMemory: Fenster „Atlas: Speicher“.</summary>
+procedure ShowDebugMemory;
+function DebugMemoryVisible: Boolean;
 
 implementation
 
@@ -35,7 +44,8 @@ uses
   Atlas.IDE.Debug.InlineValues,
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.Evaluate,
-  Atlas.IDE.Debug.AccessViolation;
+  Atlas.IDE.Debug.AccessViolation,
+  Atlas.IDE.Debug.MemoryTimeline;
 
 var
   GProvider: TAtlasDialogProviderFactory;
@@ -144,6 +154,12 @@ begin
   TAtlasIdeDebugAccessViolation.SetEvaluate(EvaluateExpression);
 end;
 
+/// <summary>Speicherverlauf (#858): misst ohne Server.</summary>
+procedure StartDebugMemoryTimeline;
+begin
+  TAtlasIdeDebugMemoryTimeline.Start(MessageLine);
+end;
+
 { Teile }
 
 /// <summary>Werte im Editor, „kein Zugriff“ und Zugriffsverletzung.</summary>
@@ -214,6 +230,35 @@ begin
   Result := EditorParts + DialogParts;
 end;
 
+function DebugMemoryParts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    TAtlasFeaturePart.When('DebugMemoryTimeline',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugMemoryTimeline;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugMemoryTimeline.Started;
+      end, StartDebugMemoryTimeline, TAtlasIdeDebugMemoryTimeline.Release)];
+end;
+
+procedure ValueThemeChanged;
+begin
+  TAtlasIdeDebugMemoryTimeline.ThemeChanged;
+end;
+
+procedure ShowDebugMemory;
+begin
+  TAtlasIdeDebugMemoryTimeline.ShowWindow;
+end;
+
+function DebugMemoryVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugMemoryTimeline;
+end;
+
 procedure ApplyValueSettings;
 begin
   // debug.explainUnavailable (#840): Ergänzungen der Fehlertexte neu lesen.
@@ -222,6 +267,8 @@ begin
   TAtlasIdeDebugDialogCompletion.ApplySettings;
   // debug.evaluateWindow.replaceCtrlF7 (#784): Strg+F7 an- bzw. abhängen.
   TAtlasIdeDebugEvaluate.ApplySettings;
+  // debug.memoryTimeline.intervalMs (#858); aus: Fenster zu.
+  TAtlasIdeDebugMemoryTimeline.ApplySettings;
 end;
 
 end.
