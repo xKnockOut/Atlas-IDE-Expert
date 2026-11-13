@@ -49,6 +49,7 @@ contains
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
   Atlas.Core.Tests.OnSave in 'Source\Core\Tests\Atlas.Core.Tests.OnSave.pas',
+  Atlas.Core.Tests.Leaks in 'Source\Core\Tests\Atlas.Core.Tests.Leaks.pas',
   Atlas.Core.Tests.AssertLine in 'Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.Compare in 'Source\Core\Tests\Atlas.Core.Tests.Compare.pas',
   Atlas.Core.Tests.Durations in 'Source\Core\Tests\Atlas.Core.Tests.Durations.pas',

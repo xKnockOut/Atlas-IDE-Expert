@@ -44,7 +44,9 @@ type
     SettingsTestsCompare, SettingsTestsCompareFormat,
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
-    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs);
+    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
+    // Lecks je Test (#1774).
+    TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks);
 
   TAtlasTestsStrings = class
   public
@@ -185,7 +187,11 @@ const
      'Doppelklick springt zum Test. Langsam ab %d ms.',
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
-     'Langsam ab (ms)'),
+     'Langsam ab (ms)',
+     '%s · Leck: %d Bytes',
+     'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
+     'Tests: %d bestanden mit Leck, zusammen %d Bytes nicht freigegeben (Warnungen in Atlas-Probleme).',
+     'Lecks je Test als Warnung zeigen (bestanden mit Leck, gelbe Marke)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -310,7 +316,11 @@ const
      'Double-click jumps to the test. Slow from %d ms.',
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
-     'Slow from (ms)'));
+     'Slow from (ms)',
+     '%s · leak: %d bytes',
+     'Test %s does not free memory: %d bytes (leak)',
+     'Tests: %d passed with a leak, %d bytes not freed in total (warnings in Atlas problems).',
+     'Show leaks per test as warnings (passed with leak, yellow mark)'));
 
 { TAtlasTestsStrings }
 

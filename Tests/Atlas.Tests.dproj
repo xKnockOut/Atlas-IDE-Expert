@@ -1224,6 +1224,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.OnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.OnSave.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Leaks.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Leaks.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>

@@ -48,6 +48,8 @@ type
     procedure SummaryKeepsSlowestTests;
     [Test]
     procedure TallySumsDurations;
+    [Test]
+    procedure TallyAndProblemsOfLeaks;
   end;
 
 implementation
@@ -463,6 +465,38 @@ begin
   mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey, mOther]);
   Assert.AreEqual(Int64(30), mTally.DurationMs);
   Assert.AreEqual(Int64(20), mTally.SlowestMs);
+end;
+
+procedure TAtlasTestRunTests.TallyAndProblemsOfLeaks;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+  mKey: TAtlasTestKey;
+  mLeak: TAtlasTestFailure;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+begin
+  // Bestanden mit Leck (#1774): zählt als bestanden, Leaked und LeakBytes tragen das Leck.
+  mCases := TTestResults.Parse(cReport).Cases;
+  mCases[0].LeakBytes := 40;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed);
+  Assert.AreEqual(1, mTally.Leaked);
+  Assert.AreEqual(Int64(40), mTally.LeakBytes);
+  mLeak := Default(TAtlasTestFailure);
+  mLeak.Test := mCases[0];
+  mLeak.FileName := cUnitFile;
+  mLeak.Line := 15;
+  mItems := TAtlasTestRun.LeakProblems([mLeak], 'Leck in %s: %d Bytes');
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('Leck in TRechnerTests.Addiert: 40 Bytes', mItems[0].Value.Message);
+  Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Warning);
+  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
+  Assert.AreEqual(15, mItems[0].Value.StartLine);
+  // Ohne Fundstelle keine Warnung.
+  mLeak.Line := -1;
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LeakProblems([mLeak], '%s %d'))));
 end;
 
 /// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>
