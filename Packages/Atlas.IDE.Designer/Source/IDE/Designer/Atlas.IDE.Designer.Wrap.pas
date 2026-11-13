@@ -23,7 +23,8 @@ uses
   System.Types,
   Vcl.Controls,
   ToolsAPI,
-  DesignIntf;
+  DesignIntf,
+  Atlas.IDE.Designer.Tool;
 
 type
   TAtlasWrapStep = (None, Wrapped, Unwrapped);
@@ -46,13 +47,11 @@ type
     Stack: TArray<string>;
   end;
 
-  TAtlasIdeWrap = class
+  TAtlasIdeWrap = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FState: TAtlasWrapState;
     FTemplate: TComponent;
     FSheetTemplate: TComponent;
-    procedure Say(const AText: string);
     /// <summary>Auswahl und Klasse prüfen; sonst Hinweis und False.</summary>
     function Ready(const AEditor: IOTAFormEditor; ARoot: TComponent; const AClassName: string;
       out AControls: TArray<TControl>; out AClass: TComponentClass): Boolean;
@@ -504,22 +503,13 @@ end;
 
 constructor TAtlasIdeWrap.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
 end;
 
 destructor TAtlasIdeWrap.Destroy;
 begin
   ClearState;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeWrap.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeWrap.ClearState;

@@ -76,6 +76,12 @@ Settings: `build.gate`
 - Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
 - Afterwards the project is back as it was
 
+### Stop the running program before the build
+
+- If the exe is still running outside the debugger, Atlas asks before compiling “AtlasDemo.exe is still running. Stop it and build?” (Yes, No, Always) instead of letting the build fail with F2039 at the end
+- Stops politely first, after 2 s forcibly; programs in the debugger stay untouched
+- For a package, a notice names the programs that still have the BPL loaded (`build.stopRunningProgram`: ask, always, never)
+
 <a id="window-atlascompilerswitches"></a>
 ### Compiler switches at the cursor
 
@@ -109,6 +115,40 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 - “Run outdated tests” (*Atlas* menu, command palette) runs exactly these tests.
 
 Settings: `tests.stale`, `tests.stale.units`
+
+### Failure at the assert line (#1771)
+
+- A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.
+- The line comes from the stack trace in the report (DUnitX with JclDebug or madExcept). If the test stops with an exception, it is the statement that raised it.
+- Without lines in the stack trace Atlas looks for the one assert in the body whose expected value matches the report (`Assert.AreEqual(4, …)` for “Expected 4 but got 3”); if the body has only one assert, that one counts. If several match, the method header stays.
+- The entry moves with inserted lines like any finding; the line in the messages view jumps to the statement.
+- The short text appears like the error text at the end of the line (`editor.inlineDiagnostics`).
+
+Settings: `tests.failureAtAssert`, `tests.failureInline`
+
+### Compare expected and actual (#1779)
+
+Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*).
+
+- Shows the failure of the test at the cursor (for a `[TestCase]` the first failed case), otherwise the last one reported, in two columns: expected on the left, actual on the right.
+- Differing characters have a red or green background; lines that exist on one side only are marked as a whole, with a grey gap opposite.
+- Line ends (`↵`, `␍↵`, `␍`), tabs (`→`) and trailing spaces (`·`) are visible, so a difference only there stands out.
+- If both values are JSON or XML, Atlas indents them the same way first; the difference then sits in a line of its own.
+- Values ending in “...” show “(truncated)” in the column header.
+- “Copy actual” puts the actual value on the clipboard, e.g. to update the expected value in the test; Esc closes.
+- Only for failures whose report names an expected and an actual value.
+
+Settings: `tests.compare`, `tests.compare.format`
+
+### Create a test case from the unit (#1226)
+
+Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
+
+- Atlas finds the test unit (pattern `testUnits.pattern`) and adds a draft test method to the test class; the tested unit goes into the uses clause.
+- The draft prepares a variable with a placeholder per parameter (`0`, `''`, `False`, `nil`, `Default(T)`), calls the method on the test class's object (a field of the class type), on the class (class methods) or on a local object with `try … finally`, and checks the result and `var`/`out` parameters with placeholders that fit the type (`Assert.AreEqual`, with a tolerance for floating point, `Assert.IsTrue`, `Assert.IsNotNull`).
+- An `Assert.Fail` at the end keeps the draft red until the expected values are right.
+- Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
+- Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
 
 ### Run affected tests (#1353)
 
@@ -337,6 +377,7 @@ Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
 - Without a clear cause it says "Cause not clear".
 - The culprit is underlined in the editor until you continue.
 - Getters and function calls are not evaluated unless `debug.explainAccessViolation.allowCalls` is on.
+- After it the bar names the module of the fault address: "your program", "vcl290.bpl (RTL/VCL)", "ntdll.dll (Windows)" or "Foreign.dll (no debug information)". If the debugger did not stop in your own code, Atlas names only the module and the last place in your code from the call stack (`debug.moduleOfAddress`).
 - Without the exception bar the result goes to the messages.
 
-Settings: `debug.explainAccessViolation`
+Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`

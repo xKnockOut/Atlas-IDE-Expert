@@ -271,6 +271,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
+        <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Generator.Tests.pas"/>
+        <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Report.Tests.pas"/>
         <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.References.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesGraph.Tests.pas"/>
@@ -382,10 +384,13 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BulkFix.Tests.pas"/>
@@ -498,6 +503,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestDrafts.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UsesUsage.Tests.pas"/>
@@ -628,6 +634,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Slash.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
@@ -684,6 +691,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Watch.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Answer.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ModuleHost.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.KnownPackages.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ModuleHosting.Tests.pas"/>
@@ -942,6 +950,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Search.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Build.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Strings.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.GitHubStrings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.BuildPipeline.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.Strings.Tests.pas"/>
@@ -1178,6 +1187,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.GitHubStrings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.TimeDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.CommentEditor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.CommentEditor.Tests.pas"/>
@@ -1211,6 +1221,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Compare.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
@@ -1583,6 +1597,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHost.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.FeatureParts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Contributions.pas"/>
@@ -1673,6 +1688,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.VcsSettings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Switches.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Worker.pas"/>
@@ -1870,6 +1887,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.OpenBuildSettings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.OpenBuild.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.OpenBuildSettings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Build\Atlas.Core.Build.RunningProgram.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.RunningProgram.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.IdleGate.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.IdleGate.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas"/>
@@ -2064,6 +2083,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Architecture.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Query.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Hotspots.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Mutation.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Formatting.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.AffectedTests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Fix.pas"/>
@@ -2109,6 +2129,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Modules.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
@@ -2117,6 +2138,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Modules.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.FolderList.pas"/>

@@ -57,7 +57,7 @@ Marks move along while typing.
 
 ## Check rules
 
-**329 check rules** in four categories: 216 bugs, 102 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
+**333 check rules** in four categories: 220 bugs, 102 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
 
 ### Correctness
 
@@ -437,6 +437,7 @@ Compiler errors while typing, without a build.
 - Message handlers (`message WM_SIZE`) without `inherited`
 - IDE notifiers without `RemoveNotifier` (quick fix keeps the index and removes it on unload)
 - DUnitX tests without any assert
+- `[TestCase]` values that do not fit the parameters of the method; test classes never registered, test units in no test project
 - `inherited` in the wrong place
   - before freeing own fields in the destructor, after using inherited properties in the constructor
   - quick fix moves it
