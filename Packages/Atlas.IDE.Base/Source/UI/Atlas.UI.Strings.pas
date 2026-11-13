@@ -178,6 +178,8 @@ type
     ElementReassigned, ElementReassignedPlural,
     // Gelernte Vorschläge (#1890): Element zum Ausblenden.
     ElementLearnedSuggestions, ElementLearnedSuggestionsPlural,
+    // Testabdeckung (#275): Element zum Ausblenden.
+    ElementTestCoverage, ElementTestCoveragePlural,
     // Typ des markierten Ausdrucks (#689): Befehl, Optionsseite, Tooltip.
     ExpressionTypeCommand,
     // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
@@ -686,6 +688,7 @@ const
      'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte', 'Unterstreichung einer neu zugewiesenen Variablen',
      'Unterstreichungen neu zugewiesener Variablen',
      'gelernter Vorschlag', 'gelernte Vorschläge',
+     'Balken der Testabdeckung', 'Balken der Testabdeckung',
      'Typ des Ausdrucks',
      'implementation wie Klasse ordnen',
      'Interface herauslösen fehlgeschlagen: %s',
@@ -1163,6 +1166,7 @@ const
      'exit point highlight', 'exit point highlights', 'reassigned variable underline',
      'reassigned variable underlines',
      'learned suggestion', 'learned suggestions',
+     'test coverage bar', 'test coverage bars',
      'Expression type',
      'Order implementation like class',
      'Extract interface failed: %s',

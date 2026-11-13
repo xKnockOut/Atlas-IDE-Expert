@@ -992,6 +992,28 @@
       "x-captionEn": "Yellow below percent tested",
       "x-issue": "#1783"
     },
+    "TestCoverage": {
+      "description": "Testabdeckung in der Rinne: Nach „Testabdeckung laden …“ (Bericht von DelphiCodeCoverage, CodeCoverage_Summary.xml mit -xml -xmllines, oder jacoco.xml neuerer Fassungen) zeigt jede Zeile mit Code einen schmalen Balken, grün durchlaufen, rot nicht durchlaufen; der Tooltip nennt Treffer und Abdeckung der Datei. Ändert sich der Bericht auf der Platte, liest Atlas ihn neu. Aus = keine Balken, keine Befehle.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.coverage",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.enabled",
+      "x-node": "",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Testabdeckung",
+      "x-captionEn": "Test coverage",
+      "x-keywords": [
+        "Coverage",
+        "DelphiCodeCoverage",
+        "Abdeckung",
+        "JaCoCo"
+      ],
+      "x-issue": "#275"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
@@ -1681,6 +1703,32 @@
       "x-caption": "[TestCase]-Fälle als Tabelle",
       "x-captionEn": "[TestCase] cases as a table",
       "x-issue": "#1879"
+    },
+    "TestsBoundaryCases": {
+      "description": "An einer Methode oder Routine einer normalen Unit schlägt der Befehl „Grenzfälle vorschlagen …“ (Kontextmenü des Editors, Befehlspalette) Testfälle aus ihren Bedingungen vor: Vergleiche mit Konstanten (Wert davor, darauf, dahinter), case-Marken samt einem nicht genannten Wert, Textvergleiche (Treffer, andere Schreibung, knapp daneben, leer), Längen und Boolean. Erwartet trägt man selbst ein oder übernimmt mit „Heutiges Ergebnis übernehmen“ das Ergebnis eines Laufs (markiert als heutiges Verhalten, nicht geprüft). Übernehmen schreibt die Fälle als [TestCase] in die Testunit, in einem Rückgängig-Schritt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.boundaryCases",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Grenzfälle als Testfälle vorschlagen",
+      "x-captionEn": "Suggest boundary cases as test cases",
+      "x-issue": "#2173"
+    },
+    "TestsBoundaryMax": {
+      "description": "Höchstens so viele Grenzfälle je Routine (1 bis 200); weitere fallen weg, die Liste sagt es.",
+      "type": "integer",
+      "default": 20,
+      "minimum": 1,
+      "maximum": 200,
+      "x-key": "tests.boundaryCases.maxCases",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.boundaryCases",
+      "x-caption": "Höchstens Grenzfälle",
+      "x-captionEn": "Maximum boundary cases",
+      "x-issue": "#2173"
     },
     "TestsLeaks": {
       "description": "Lecks je Test zeigen: Mit Leckmonitor (DUnitX.MemoryLeakMonitor.FastMM4/FastMM5) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag. Atlas zeigt ihn dann als bestanden mit Leck: Marke gelb „bestanden · Leck: 40 Bytes“, Warnung in Atlas-Probleme am Methodenkopf (Quelle DUnitX), eine Zeile in der Meldungsansicht. Aus = wie im Bericht (Fehlschlag).",

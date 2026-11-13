@@ -33,6 +33,10 @@ const
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
   cDefaultTestsSlowMs = 500;
+  /// <summary>Grenzen und Vorgabe für tests.boundaryCases.maxCases (#2173).</summary>
+  cMinTestsBoundaryMax = 1;
+  cMaxTestsBoundaryMax = 200;
+  cDefaultTestsBoundaryMax = 20;
   /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
   cDefaultTestsListsRunKey = $C052;
   /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
@@ -161,6 +165,12 @@ type
     /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
     /// </summary>
     TestsCaseTable: Boolean;
+    /// <summary>Grenzfälle als Testfälle vorschlagen: Befehl im Kontextmenü und in der Palette (#2173,
+    /// tests.boundaryCases).</summary>
+    TestsBoundaryCases: Boolean;
+    /// <summary>Höchstens so viele Grenzfälle je Routine (#2173, tests.boundaryCases.maxCases),
+    /// cMinTestsBoundaryMax bis cMaxTestsBoundaryMax.</summary>
+    TestsBoundaryMax: Integer;
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
@@ -343,6 +353,7 @@ begin
     cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
 end;
@@ -416,6 +427,8 @@ begin
   TestsLogMaxLines := cDefaultTestsLogMaxLines;
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
+  TestsBoundaryCases := True;
+  TestsBoundaryMax := cDefaultTestsBoundaryMax;
   TestsLeaks := True;
 end;
 
@@ -448,6 +461,8 @@ begin
   AIo.Number('TestsLogMaxLines', TestsLogMaxLines);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
+  AIo.Flag('TestsBoundaryCases', TestsBoundaryCases);
+  AIo.Number('TestsBoundaryMax', TestsBoundaryMax);
   AIo.Flag('TestsLeaks', TestsLeaks);
 end;
 
