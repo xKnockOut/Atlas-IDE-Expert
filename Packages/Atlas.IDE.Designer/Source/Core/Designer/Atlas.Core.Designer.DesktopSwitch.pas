@@ -86,6 +86,13 @@ type
   public
     /// <summary>Gibt es AName in ALayouts (ohne Groß-/Kleinschreibung)?</summary>
     class function Contains(const ALayouts: TArray<string>; const AName: string): Boolean; static;
+    /// <summary>Echte Layouts aus den Einträgen des Desktop-Auswahlfelds: ohne leere und ohne „<kein>“.</summary>
+    class function Usable(const AItems: TArray<string>): TArray<string>; static;
+    /// <summary>Anzeigename in ALayouts zum gespeicherten Namen AStored (Registry Session\DefaultDesktopName).
+    /// Die mitgelieferten Layouts stehen dort englisch (Default Layout), das Auswahlfeld zeigt sie in der Sprache
+    /// der IDE (Standard-Layout); verglichen wird zuerst genau, dann ohne Leer- und Bindestriche, dann über die
+    /// bekannten Übersetzungen. Leer, wenn nichts passt.</summary>
+    class function DisplayName(const ALayouts: TArray<string>; const AStored: string): string; static;
   end;
 
 implementation
@@ -131,6 +138,85 @@ begin
     if SameText(mLayout, AName) then
     begin
       Exit(True);
+    end;
+  end;
+end;
+
+class function TAtlasDesktopLayouts.Usable(const AItems: TArray<string>): TArray<string>;
+var
+  mItem: string;
+  mCount: Integer;
+begin
+  SetLength(Result, Length(AItems));
+  mCount := 0;
+  for mItem in AItems do
+  begin
+    if (Trim(mItem) <> '') and not mItem.StartsWith('<') then
+    begin
+      Result[mCount] := mItem;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+/// <summary>Name ohne Leer- und Bindestriche, klein.</summary>
+function Compact(const AName: string): string;
+begin
+  Result := AName.Replace(' ', '').Replace('-', '').ToLower;
+end;
+
+/// <summary>Bekannte Anzeigenamen des mitgelieferten Layouts AStored (englischer Name) in anderen Sprachen der IDE.
+/// </summary>
+function Translations(const AStored: string): TArray<string>;
+begin
+  Result := nil;
+  if SameText(Compact(AStored), 'defaultlayout') then
+  begin
+    Result := TArray<string>.Create('Standard-Layout', 'Disposition par défaut');
+  end
+  else if SameText(Compact(AStored), 'startuplayout') then
+  begin
+    Result := TArray<string>.Create('Start-Layout', 'Disposition de démarrage');
+  end
+  else if SameText(Compact(AStored), 'debuglayout') then
+  begin
+    Result := TArray<string>.Create('Debug-Layout', 'Disposition de débogage');
+  end;
+end;
+
+class function TAtlasDesktopLayouts.DisplayName(const ALayouts: TArray<string>; const AStored: string): string;
+var
+  mLayout: string;
+  mTranslation: string;
+begin
+  Result := '';
+  if Trim(AStored) = '' then
+  begin
+    Exit;
+  end;
+  for mLayout in ALayouts do
+  begin
+    if SameText(mLayout, AStored) then
+    begin
+      Exit(mLayout);
+    end;
+  end;
+  for mLayout in ALayouts do
+  begin
+    if Compact(mLayout) = Compact(AStored) then
+    begin
+      Exit(mLayout);
+    end;
+  end;
+  for mTranslation in Translations(AStored) do
+  begin
+    for mLayout in ALayouts do
+    begin
+      if Compact(mLayout) = Compact(mTranslation) then
+      begin
+        Exit(mLayout);
+      end;
     end;
   end;
 end;

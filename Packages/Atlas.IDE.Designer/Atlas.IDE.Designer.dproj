@@ -171,6 +171,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ShowComponent.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.PropertySearch.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Usages.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.DesktopLayout.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.UndoApply.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>

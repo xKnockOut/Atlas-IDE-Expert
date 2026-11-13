@@ -3,7 +3,8 @@
 // Tests für das eigene Desktop-Layout im Designer (#2079): Entprellen,
 // Wechsel in den Designer und zurück (vorheriges bzw. Standard-Layout),
 // schon aktives und fehlendes Layout, im Designer selbst gewähltes Layout,
-// Debug-Sitzung, ladendes Projekt und Ausschalten.
+// Debug-Sitzung, ladendes Projekt und Ausschalten; Layoutnamen des
+// Auswahlfelds und der Registry.
 
 interface
 
@@ -48,6 +49,10 @@ type
     procedure DisabledForgets;
     [Test]
     procedure EmptyNameDoesNothing;
+    [Test]
+    procedure UsableSkipsNone;
+    [Test]
+    procedure DisplayNameOfStoredLayout;
   end;
 
 implementation
@@ -270,5 +275,31 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasDesktopSwitchTests);
+
+procedure TAtlasDesktopSwitchTests.UsableSkipsNone;
+var
+  mLayouts: TArray<string>;
+begin
+  mLayouts := TAtlasDesktopLayouts.Usable(TArray<string>.Create('<kein>', 'Debug-Layout', '', 'Standard-Layout'));
+  Assert.AreEqual(2, Integer(Length(mLayouts)));
+  Assert.AreEqual('Debug-Layout', mLayouts[0]);
+  Assert.AreEqual('Standard-Layout', mLayouts[1]);
+end;
+
+procedure TAtlasDesktopSwitchTests.DisplayNameOfStoredLayout;
+var
+  mGerman: TArray<string>;
+  mEnglish: TArray<string>;
+begin
+  mGerman := TArray<string>.Create('Debug-Layout', 'Designer', 'Standard-Layout', 'Start-Layout');
+  mEnglish := TArray<string>.Create('Debug Layout', 'Default Layout', 'Startup Layout');
+  Assert.AreEqual('Standard-Layout', TAtlasDesktopLayouts.DisplayName(mGerman, 'Default Layout'));
+  Assert.AreEqual('Start-Layout', TAtlasDesktopLayouts.DisplayName(mGerman, 'Startup Layout'));
+  Assert.AreEqual('Debug-Layout', TAtlasDesktopLayouts.DisplayName(mGerman, 'Debug Layout'));
+  Assert.AreEqual('Designer', TAtlasDesktopLayouts.DisplayName(mGerman, 'designer'));
+  Assert.AreEqual('Default Layout', TAtlasDesktopLayouts.DisplayName(mEnglish, 'Default Layout'));
+  Assert.AreEqual('', TAtlasDesktopLayouts.DisplayName(mEnglish, 'Fehlt'));
+  Assert.AreEqual('', TAtlasDesktopLayouts.DisplayName(mGerman, ''));
+end;
 
 end.

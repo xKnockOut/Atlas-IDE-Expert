@@ -161,6 +161,7 @@ contains
   Atlas.IDE.Designer.ShowComponent in 'Source\IDE\Designer\Atlas.IDE.Designer.ShowComponent.pas',
   Atlas.IDE.Designer.PropertySearch in 'Source\IDE\Designer\Atlas.IDE.Designer.PropertySearch.pas',
   Atlas.IDE.Designer.Usages in 'Source\IDE\Designer\Atlas.IDE.Designer.Usages.pas',
+  Atlas.IDE.Designer.DesktopLayout in 'Source\IDE\Designer\Atlas.IDE.Designer.DesktopLayout.pas',
   Atlas.IDE.Designer.UndoApply in 'Source\IDE\Designer\Atlas.IDE.Designer.UndoApply.pas',
   Atlas.IDE.Designer.Undo in 'Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas',

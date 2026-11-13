@@ -3,7 +3,7 @@
 // Oberflächentexte der eigenen Knöpfe der Designer-Leiste (#605 ff.: Abstände
 // messen, Probegröße, Vorschau in Skalierungen, sprechende Namen, Atlas-Struktur,
 // Datenbindungen, In Frame auslagern,
-// Ereignis-Karte) auf Deutsch und Englisch. Eigene Tabelle neben
+// Ereignis-Karte, eigenes Desktop-Layout im Designer #2079) auf Deutsch und Englisch. Eigene Tabelle neben
 // Atlas.UI.Designer.Strings, damit die Befehle im Menü „Anordnen“ und diese
 // Funktionen sich nicht in die Quere kommen. Die Sprache bestimmt Base
 // (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
@@ -39,7 +39,8 @@ type
     SettingsExtractFrame, EmHint, EmCaption, EmColComponent, EmColClass, EmColEvent, EmColHandler, EmColLines,
     EmColFinding, EmGroupComponent, EmGroupEvent, EmGroupHandler, EmAllEvents, EmOnlyFindings, EmShow, EmRename,
     EmRemove, EmEmpty, EmUnassigned, EmMissing, EmNoBody, EmRenameTitle, EmRenamePrompt, EmRenameFailed, EmRemoved,
-    EmRemoveFailed, EmAction, SettingsEventMap);
+    EmRemoveFailed, EmAction, SettingsEventMap, SettingsDesktopLayout, SettingsDesktopName, SettingsDesktopReturn,
+    SettingsDesktopPrevious, SettingsDesktopDefault, SettingsDesktopSkipDebug, DesktopMissing, DesktopSaveCommand);
 
 {$SCOPEDENUMS OFF}
 
@@ -229,7 +230,15 @@ const
      'Handler %s entfernt (%d Zuweisungen).',
      'Handler %s nicht entfernt: %s',
      'Ereignis-Karte',
-     'Knopf „Ereignis-Karte“ (alle Ereignisse des Formulars in einem Fenster)'),
+     'Knopf „Ereignis-Karte“ (alle Ereignisse des Formulars in einem Fenster)',
+     'Eigenes Desktop-Layout im Formular-Designer laden',
+     'Name des Layouts für den Designer (Desktop und Layout der IDE)',
+     'Beim Wechsel zurück in den Code',
+     'vorheriges Layout laden',
+     'Standard-Layout der IDE laden',
+     'Während des Debuggens nicht umschalten',
+     'Desktop-Layout „%s“ für den Designer gibt es nicht. Mit „Aktuelles Layout als Designer-Layout speichern …“ im Atlas-Menü anlegen oder unter Atlas › Optionen › Editor einen anderen Namen eintragen.',
+     'Aktuelles Layout als Designer-Layout speichern …'),
     ('Measure distances: guide lines while dragging, with Alt to the component under the mouse',
      'as above',
      'as below',
@@ -398,7 +407,15 @@ const
      'Handler %s removed (%d assignments).',
      'Handler %s not removed: %s',
      'Event map',
-     '“Event map” button (all events of the form in one window)'));
+     '“Event map” button (all events of the form in one window)',
+     'Load an own desktop layout in the form designer',
+     'Name of the layout for the designer (IDE desktop and layout)',
+     'When switching back to the code',
+     'load the previous layout',
+     'load the IDE default layout',
+     'Do not switch while debugging',
+     'There is no desktop layout “%s” for the designer. Create it with “Save current layout as designer layout …” in the Atlas menu or enter another name under Atlas › Options › Editor.',
+     'Save current layout as designer layout …'));
 
 { TAtlasDesignerViewStrings }
 
