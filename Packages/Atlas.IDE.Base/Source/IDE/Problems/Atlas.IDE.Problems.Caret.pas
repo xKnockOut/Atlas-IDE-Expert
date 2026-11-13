@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.Problems.Caret;
 
 // Atlas-Befund unter der Einfügemarke des oberen Editors (#1886, F1 im Editor): Regel aus demselben Speicher wie
-// Wellenlinien und Hover (TAtlasProblemsController.Current). Meldungen des Compilers zählen nicht, sie haben keine
-// Regelseite. Nur im Hauptthread verwenden.
+// Wellenlinien und Hover (TAtlasProblemsController.Current). Die Entscheidung trifft
+// Atlas.Core.Problems.AtCaret (#1967); hier nur der obere Editor und der Speicher. Nur im Hauptthread verwenden.
 
 interface
 
@@ -16,54 +16,17 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  ToolsAPI,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Problems.Store,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Core.Files.Contract,
+  Atlas.Core.Problems.AtCaret,
+  Atlas.IDE.Foundation.ActiveEditor,
   Atlas.IDE.Problems.Controller;
-
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-  if (Result <> nil) and ((Result.Buffer = nil) or (Result.CursorPos.Line < 1)) then
-  begin
-    Result := nil;
-  end;
-end;
 
 class function TAtlasIdeProblemAtCaret.Rule(out ARule: string): Boolean;
 var
-  mView: IOTAEditView;
-  mStore: TAtlasProblemStore;
-  mCharacter: Integer;
-  mProblem: TAtlasProblem;
+  mEditor: IAtlasActiveEditor;
 begin
-  Result := False;
-  ARule := '';
-  mView := TopView;
-  mStore := TAtlasProblemsController.Current;
-  if (mView = nil) or (mStore = nil) then
-  begin
-    Exit;
-  end;
-  mCharacter := TLspSessionJson.ColumnToIndex(TAtlasEditorBuffer.LineText(mView, mView.CursorPos.Line),
-    mView.CursorPos.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer));
-  for mProblem in mStore.At(mView.Buffer.FileName, mView.CursorPos.Line - 1, mCharacter) do
-  begin
-    if (mProblem.Source <> TAtlasProblem.cCompilerSource) and (mProblem.Code <> '') then
-    begin
-      ARule := mProblem.Code;
-      Exit(True);
-    end;
-  end;
+  mEditor := TAtlasIdeActiveEditor.Create;
+  Result := TAtlasProblemAtCaret.Rule(mEditor, TAtlasProblemsController.Current, ARule);
 end;
 
 end.

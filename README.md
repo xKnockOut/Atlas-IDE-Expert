@@ -116,7 +116,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
 - **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
-- **DUnitX tests** from the editor, including **only the tests affected** by a change
+- **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**
 - **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained

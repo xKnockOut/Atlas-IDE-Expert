@@ -29,6 +29,8 @@ type
     TestsProjectRunUnit, TestsProjectNoTestUnit,
     // Assistent der Objektgalerie (#1821).
     TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits,
+    // Veraltete Ergebnisse (#1770).
+    TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
     // Leckprüfung einrichten (#1880).
     LeakSetupCommand, LeakSetupHint, LeakSetupTitle, LeakSetupNoProject, LeakSetupNoServer, LeakStatusCaption,
     LeakPackage, LeakSource4Found, LeakSource4Missing, LeakSource5Found, LeakSource5Missing, LeakUsesFound,
@@ -128,6 +130,11 @@ const
      'und trägt sie ins Testprojekt ein; gibt es sie schon, öffnet Atlas sie.',
      'Unit, zu der die Testunit entsteht:',
      'Tests: Keine Unit in der Projektgruppe.',
+     '%s (veraltet)',
+     'Veraltete Tests ausführen',
+     'Tests: Keine veralteten Tests (seit dem Lauf nichts geändert).',
+     'Geänderte Tests als veraltet zeigen (grau „(veraltet)“, Befehl „Veraltete Tests ausführen“)',
+     'Auch Änderungen in verwendeten Units des Testprojekts zählen',
      'Leckprüfung einrichten …',
      'FastMM erkennen und ReportMemoryLeaksOnShutdown bzw. FastMM4/5 mit FullDebugMode nur für Debug einrichten.',
      'Leckprüfung einrichten – %s',
@@ -248,6 +255,11 @@ const
      'adds it to the test project; if it already exists, Atlas opens it.',
      'Unit to create the test unit for:',
      'Tests: No unit in the project group.',
+     '%s (outdated)',
+     'Run outdated tests',
+     'Tests: No outdated tests (nothing changed since the run).',
+     'Show changed tests as outdated (grey “(outdated)”, command “Run outdated tests”)',
+     'Changes in used units of the test project count too',
      'Set up leak check…',
      'Detect FastMM and set up ReportMemoryLeaksOnShutdown or FastMM4/5 with FullDebugMode for Debug only.',
      'Set up leak check – %s',
