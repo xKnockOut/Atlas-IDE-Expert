@@ -1072,6 +1072,7 @@ var
   mOwner: TAtlasIdeIssueStart;
   mIssue: TAtlasTrackerIssue;
   mPullRequest, mProject, mBranch, mKey: string;
+  mInput: TAtlasIdeTrackerEnd;
 begin
   // Eigene Routine: Die Methodenreferenz hält nur diese Werte.
   mKeep := FContext.Actions;
@@ -1084,9 +1085,11 @@ begin
   begin
     mPullRequest := AProvider.PullRequestPage(ATarget, mIssue.PullRequest.Number);
   end;
-  FServices.Sync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch,
-    TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
-    TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest),
+  mInput := TAtlasIdeTrackerEnd.Create(AKey, ABranch, TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
+    TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest);
+  // Titel des Issues für den Pull Request (#2136).
+  mInput.Title := mIssue.Title;
+  FServices.Sync.EndIssue(AProvider, ATarget, mInput,
     procedure(AChange: TAtlasTrackerWrite)
     begin
       if mKeep <> nil then

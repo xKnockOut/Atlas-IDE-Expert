@@ -3908,6 +3908,11 @@
                 "type": "boolean",
                 "description": "GitHub: Branch beim Beginnen auf GitHub anlegen und mit dem Issue verknüpfen (#2138); fehlt es, gilt issues.github.linkBranch.",
                 "x-description-en": "GitHub: create the branch on GitHub when starting and link it to the issue (#2138); if missing, issues.github.linkBranch applies."
+              },
+              "githubPrBase": {
+                "type": "string",
+                "description": "GitHub: Ziel-Branch des Pull Requests beim Beenden (#2136); fehlt es, gilt issues.github.prBase.",
+                "x-description-en": "GitHub: target branch of the pull request when finishing (#2136); if missing, issues.github.prBase applies."
               }
             }
           }

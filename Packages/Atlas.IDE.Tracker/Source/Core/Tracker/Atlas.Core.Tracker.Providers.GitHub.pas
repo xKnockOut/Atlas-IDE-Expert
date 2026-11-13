@@ -73,6 +73,8 @@
 //   Exception-Verlauf) gehen als Kommentar POST /repos/<owner/repo>/issues/
 //   <n>/comments mit {"body": …}, Protokolle als Codeblock; Bilder legt die
 //   IDE-Schicht in die Zwischenablage und öffnet das Issue im Browser.
+// - Pull Request beim Beenden (#2136, IAtlasTrackerPullRequests): siehe
+//   Atlas.Core.Tracker.Internals.GitHubPulls.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -92,7 +94,7 @@ uses
 type
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
     IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach,
-    IAtlasTrackerBranchLinker)
+    IAtlasTrackerBranchLinker, IAtlasTrackerPullRequests)
   public const
     cProviderName = TAtlasGitHubApi.cProviderName;
     cQuery = TAtlasGitHubApi.cDefaultQuery;
@@ -168,6 +170,9 @@ type
     { IAtlasTrackerBranchLinker (#2138): über TAtlasGitHubLinkedBranches }
     function SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
     function LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch, ABase: string): TAtlasTrackerBranchLink;
+    { IAtlasTrackerPullRequests (#2136): über TAtlasGitHubPulls; SameRepository wie oben }
+    function CreatePull(const ACall: TAtlasTrackerCall; const AKey: string;
+      const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
   end;
 
 implementation
@@ -184,6 +189,7 @@ uses
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Core.Tracker.Internals.GitHubProjects,
   Atlas.Core.Tracker.Internals.GitHubLinkedBranches,
+  Atlas.Core.Tracker.Internals.GitHubPulls,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Text.Json;
 
@@ -1437,6 +1443,18 @@ begin
     Exit(TAtlasTrackerBranchLink.Failure(TAtlasCiFetchError.NotConfigured, ''));
   end;
   Result := TAtlasGitHubLinkedBranches.Link(ACall, mSend, AKey, ABranch, ABase);
+end;
+
+function TAtlasGitHubTracker.CreatePull(const ACall: TAtlasTrackerCall; const AKey: string;
+  const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
+var
+  mSend: IAtlasCiSend;
+begin
+  if not Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  begin
+    Exit(TAtlasTrackerPullResult.Failure(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  Result := TAtlasGitHubPulls.Create(ACall, mSend, AKey, ASpec);
 end;
 
 end.

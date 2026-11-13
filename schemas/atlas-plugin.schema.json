@@ -9175,6 +9175,46 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#2138"
     },
+    "IssuesGitHubCreatePr": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beenden-Dialog bei GitHub: Abschnitt „Pull Request anlegen“ ist vorab angehakt. „Senden“ pusht dann den Branch des Issues (git push --set-upstream origin), legt den Pull Request gegen issues.github.prBase an (Titel = Issue-Titel, Text aus issues.github.prBody, Labels und Meilenstein des Issues, Prüfer, Entwurf) und lässt das Issue offen, damit der Merge es über „Closes #n“ schließt. Gibt es schon einen offenen Pull Request für den Branch, zeigt Atlas ihn statt eines zweiten. Ohne Wirkung bei „Nicht geplant“ und „Duplikat“.",
+      "x-key": "issues.github.createPr",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrBase": {
+      "type": "string",
+      "default": "",
+      "description": "Ziel-Branch des Pull Requests beim Beenden (z. B. „main-merging“). Leer = Standard-Branch des Repositorys. Je Verbindung überschreibbar (githubPrBase).",
+      "x-key": "issues.github.prBase",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrBody": {
+      "type": "string",
+      "default": "{closes}\\n\\n{commits}",
+      "description": "Textvorlage des Pull Requests mit {closes} („Closes #n“), {branch}, {commits}, {time} und {kennung}; \\n = neue Zeile.",
+      "x-key": "issues.github.prBody",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrDraft": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pull Request beim Beenden als Entwurf vorbelegen.",
+      "x-key": "issues.github.prDraft",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2136"
+    },
     "IssuesTimeTracking": {
       "type": "boolean",
       "default": false,

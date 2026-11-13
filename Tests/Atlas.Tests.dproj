@@ -1145,6 +1145,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubProjects.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubLinkedBranches.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.LinkedStart.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubPulls.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.EndPull.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>
@@ -1209,6 +1211,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.NewIssue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.EndPullRows.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.EndDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.StateDialog.pas"/>
@@ -1221,6 +1224,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.GitHubProjects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.GitHubLinkedBranches.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.LinkedStart.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.GitHubPulls.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.EndPull.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Transitions.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.EndSteps.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas"/>

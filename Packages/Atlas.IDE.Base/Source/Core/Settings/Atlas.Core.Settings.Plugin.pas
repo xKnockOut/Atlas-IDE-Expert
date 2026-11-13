@@ -1269,6 +1269,10 @@ type
       write FIssues.IssuesGitHubAddToProject;
     property IssuesGitHubLinkBranch: Boolean read FIssues.IssuesGitHubLinkBranch
       write FIssues.IssuesGitHubLinkBranch;
+    property IssuesGitHubCreatePr: Boolean read FIssues.IssuesGitHubCreatePr write FIssues.IssuesGitHubCreatePr;
+    property IssuesGitHubPrBase: string read FIssues.IssuesGitHubPrBase write FIssues.IssuesGitHubPrBase;
+    property IssuesGitHubPrBody: string read FIssues.IssuesGitHubPrBody write FIssues.IssuesGitHubPrBody;
+    property IssuesGitHubPrDraft: Boolean read FIssues.IssuesGitHubPrDraft write FIssues.IssuesGitHubPrDraft;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;
