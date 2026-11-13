@@ -16,6 +16,7 @@
 //   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
 //   angelegt wie „Zur Testunit wechseln“ von Base),
+// - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
@@ -101,6 +102,7 @@ uses
   Atlas.IDE.Tests.Composition.Hooks,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
+  Atlas.IDE.Tests.CoveredBy,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.Slowest,
@@ -116,6 +118,7 @@ var
   GOnSave: TAtlasIdeTestsOnSave;
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
+  GCoveredBy: TAtlasIdeCoveredByLens;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
@@ -218,6 +221,12 @@ end;
 
 { Teil Tests }
 
+/// <summary>Scope des Moduls für die Anfragen der Marke „getestet von“ (#1778).</summary>
+function ModuleScope: IAtlasModuleScope;
+begin
+  Result := GScope;
+end;
+
 /// <summary>Knopf „Vergleichen“ der Testmarke (#1779); die Lens lebt kürzer als der Vergleich.</summary>
 function CompareHooks: TAtlasTestCompareHooks;
 begin
@@ -244,6 +253,8 @@ begin
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
+  // Marke „getestet von“ an Methoden normaler Units (#1778).
+  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -263,6 +274,7 @@ begin
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
   // der Läufer; seine Probleme verschwinden mit ihm.
+  FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   FreeAndNil(GDebugger);
   if GTests <> nil then
