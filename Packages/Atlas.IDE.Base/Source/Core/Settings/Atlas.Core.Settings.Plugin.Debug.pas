@@ -20,6 +20,10 @@ const
   cMaxParallelStacksThreads = 1024;
   /// <summary>Vorgabe von debug.parallelStacks.maxThreads.</summary>
   cDefaultParallelStacksThreads = 64;
+  /// <summary>Grenzen und Vorgabe für debug.asyncOrigin.maxPerSite (#859).</summary>
+  cMinAsyncOriginPerSite = 1;
+  cMaxAsyncOriginPerSite = 1000;
+  cDefaultAsyncOriginPerSite = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -131,6 +135,11 @@ type
     /// <summary>debug.threadFreeze (#852, experimentell): Threads einfrieren und auftauen
     /// (SuspendThread/ResumeThread).</summary>
     DebugThreadFreeze: Boolean;
+    /// <summary>debug.asyncOrigin (#859, experimentell): Herkunft von TThread.Queue, Synchronize und TTask merken und
+    /// beim Halt in der eingereihten Methode zeigen.</summary>
+    DebugAsyncOrigin: Boolean;
+    /// <summary>debug.asyncOrigin.maxPerSite (#859): gemerkte Einreihungen je Aufrufstelle.</summary>
+    DebugAsyncOriginMaxPerSite: Integer;
     /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
     DebugParallelStacksWaitRoutines: string;
     /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
@@ -233,6 +242,8 @@ begin
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugAsyncOrigin := False;
+  Result.DebugAsyncOriginMaxPerSite := cDefaultAsyncOriginPerSite;
   Result.DebugThreadFreeze := False;
   Result.DebugThreadsInSource := True;
   Result.DebugParallelStacks := True;
@@ -262,6 +273,8 @@ begin
   DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
   DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
     cMaxParallelStacksThreads);
+  DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
+    cMaxAsyncOriginPerSite);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
@@ -312,8 +325,10 @@ begin
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
   AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
   AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
+  AIo.Flag('DebugAsyncOrigin', DebugAsyncOrigin);
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
+  AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
 
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
