@@ -42,7 +42,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Development.Strings,
   System.SysUtils,
   Vcl.Forms,
   Atlas.Core.Tracker.Contract,
@@ -174,15 +174,15 @@ begin
     mView := TAtlasIssueDevelopmentView.Create(mHost);
     mView.Parent := mHost;
     mView.ShowLoading;
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLoading),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevLoading),
       TAtlasIssueDevelopmentProbe.StatusText(mView));
     Assert.IsFalse(mView.HasDevelopment);
     Assert.IsNull(mView.Parts.Commits);
     mView.ShowDevelopment(Sample, '');
     Assert.IsTrue(mView.HasDevelopment);
     Assert.AreEqual('', TAtlasIssueDevelopmentProbe.StatusText(mView));
-    mView.ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject));
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject),
+    mView.ShowNote(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoProject));
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoProject),
       TAtlasIssueDevelopmentProbe.StatusText(mView));
     Assert.IsNull(mView.Parts.Branches, 'alter Inhalt weg');
   finally
@@ -205,12 +205,12 @@ begin
     mView.ShowDevelopment(Sample, '');
     Assert.AreEqual(2, mView.Parts.Branches.Items.Count);
     Assert.AreEqual('feature/753-atlas-bereiche', mView.Parts.Branches.Items[0].Caption);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocalRemote),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevLocalRemote),
       mView.Parts.Branches.Items[0].SubItems[0]);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevCurrent) + ', ' +
-      TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevAheadBehind, [3, 1, 'main']),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevCurrent) + ', ' +
+      TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevAheadBehind, [3, 1, 'main']),
         mView.Parts.Branches.Items[0].SubItems[1]);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevRemote),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevRemote),
       mView.Parts.Branches.Items[1].SubItems[0]);
     Assert.AreEqual('', mView.Parts.Branches.Items[1].SubItems[1], 'ohne Vergleich kein Stand');
     Assert.AreEqual(2, mView.Parts.Commits.Items.Count);
@@ -219,9 +219,9 @@ begin
     Assert.AreEqual('Marco', mView.Parts.Commits.Items[0].SubItems[1]);
     Assert.AreEqual(1, mView.Parts.Pulls.Items.Count);
     Assert.AreEqual('#760', mView.Parts.Pulls.Items[0].Caption);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevPullMerged),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevPullMerged),
       mView.Parts.Pulls.Items[0].SubItems[1]);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevChecksSuccess),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevChecksSuccess),
       mView.Parts.Pulls.Items[0].SubItems[2]);
     Assert.IsNull(mView.Parts.Changes, 'GitHub ohne VCS-Änderungen');
     mLines := TAtlasIssueDevelopmentProbe.UnitLines(mView);
@@ -229,8 +229,8 @@ begin
     Assert.AreEqual('Kasse (2)', mLines[0]);
     Assert.AreEqual('  ' + 'app' + PathDelim + 'Main.pas', mLines[1], 'relativ zum Projekt');
     Assert.AreEqual('  '
-      + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDeleted, ['app' + PathDelim + 'Alt.pas']), mLines[2]);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevOtherFiles) + ' (1)', mLines[3]);
+      + TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevDeleted, ['app' + PathDelim + 'Alt.pas']), mLines[2]);
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevOtherFiles) + ' (1)', mLines[3]);
     Assert.AreEqual('  ' + Under('README.md'), mLines[4], 'ohne Projekt vollständig');
   finally
     mHost.Free;
@@ -377,7 +377,7 @@ begin
     mDevelopment := Sample;
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.NoWorkingCopy;
     mView.ShowDevelopment(mDevelopment, '');
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoVcs),
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoVcs),
       TAtlasIssueDevelopmentProbe.StatusText(mView));
     Assert.IsNull(mView.Parts.Branches);
     Assert.IsNull(mView.Parts.Commits);
@@ -385,11 +385,12 @@ begin
     Assert.IsNotNull(mView.Parts.Pulls, 'der Tracker bleibt');
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.ToolMissing;
     mView.ShowDevelopment(mDevelopment, '');
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevToolMissing, ['Git']),
+    Assert.AreEqual(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevToolMissing, ['Git']),
       TAtlasIssueDevelopmentProbe.StatusText(mView));
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.Ok;
-    mView.ShowDevelopment(mDevelopment, 'kein Netz', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject));
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject),
+    mView.ShowDevelopment(mDevelopment, 'kein Netz',
+      TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoProject));
+    Assert.AreEqual(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoProject),
       TAtlasIssueDevelopmentProbe.StatusText(mView), 'ohne Projekt');
     Assert.IsNull(mView.Parts.Commits);
     Assert.IsNull(mView.Parts.Pulls, 'Fehler des Trackers statt der Liste');

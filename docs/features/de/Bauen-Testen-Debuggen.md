@@ -166,6 +166,16 @@ Einstellung: `tests.approvalFolder` (atlas.json)
 
 Einstellungen: `tests.showDuration`, `tests.slowMs`
 
+### Lecks je Test (#1774)
+
+- Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
+- In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
+- Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
+- Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+
+Einstellung: `tests.leaks`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
@@ -354,6 +364,18 @@ Einstellungen: `debug.completionInDialogs`
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
+### Ereignisprotokoll
+
+<a id="window-atlasdebugeventlog"></a>
+- andockbares Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (`OutputDebugString`), Haltepunkt-Meldungen, Modulen, Threads, Logpunkten sowie Start und Ende der Sitzung
+- Spalten Zeit (relativ zum Start), Art, Thread, Text
+- Filter nach Art und Text: Wörter (jedes muss vorkommen) oder `/regulärer Ausdruck/`; „Filter merken“ hält ihn je Projekt in der Auswahl
+- Farben nach Muster, etwa `[FEHLER]` rot, `[WARN]` gelb
+- Doppelklick oder Enter springt zu `Datei.pas(123)`, `Datei.pas:123` oder `Unit.Routine`
+- Kontextmenü: Zeile kopieren, als Textdatei speichern, leeren
+
+Einstellungen: `debug.eventLog`, `debug.eventLogColors`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>
@@ -441,3 +463,13 @@ Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - Experimentell (`debug.threadFreeze`, Vorgabe aus): „Thread einfrieren“, „Thread auftauen“ und „Alle Threads auftauen“. Ein eingefrorener Thread läuft beim Fortsetzen nicht weiter; sein Zeichen ist grau, die Statusleiste von Atlas zeigt „2 Threads eingefroren“ (Klick taut alle auf). Atlas hält den Thread mit `SuspendThread` an; das geht nur bei Programmen auf diesem Rechner. Am Ende der Sitzung und beim Abschalten taut Atlas alle auf.
 
 Schalter: `debug.threadsInSource`, `debug.threadFreeze`.
+
+#### Herkunft eingereihter Methoden *(experimentell)*
+
+- Hält das Programm in einer anonymen Methode, die mit `TThread.Queue`, `TThread.Synchronize`, `TThread.ForceQueue`, `TTask.Run`, `TTask.Create` oder `TParallel.For` gestartet wurde, zeigt der Aufrufstapel der IDE nur `CheckSynchronize` bzw. den Thread-Pool. Atlas zeigt dann im Ergebnisfenster „Eingereiht mit TThread.Queue von Thread 4120“ und darunter den Stapel der Einreihung; Rahmen der Bibliothek stehen zusammengefasst („5 Rahmen der Bibliothek“), Doppelklick springt zur Zeile.
+- Dafür setzt Atlas beim Start der Sitzung auf jede Aufrufstelle im Projekt einen Haltepunkt der Gruppe Atlas.Herkunft. Hält das Programm dort, merkt Atlas Thread und Stapel und setzt sofort fort. Ein Haltepunkt des Benutzers an derselben Zeile bleibt und hält wie gewohnt.
+- Zugeordnet wird der Reihe nach: Der Halt in der Methode einer Aufrufstelle bekommt die älteste noch offene Einreihung dieser Stelle. Je Aufrufstelle merkt Atlas die letzten `debug.asyncOrigin.maxPerSite` (Vorgabe 20).
+- Erfasst werden nur Aufrufe mit Klassennamen (`TThread.Queue(…)`), ein `Synchronize(…)` in einer Methode eines Threads nicht.
+- Das Anhalten an jeder Aufrufstelle bremst das Programm; die Statusleiste von Atlas zeigt „Herkunft: 12 Aufrufstellen“ in Gelb, solange die Haltepunkte stehen.
+
+Schalter: `debug.asyncOrigin`, `debug.asyncOrigin.maxPerSite`.

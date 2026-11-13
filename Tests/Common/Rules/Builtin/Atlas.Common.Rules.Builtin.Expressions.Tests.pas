@@ -88,6 +88,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Expressions,
+  Atlas.Common.Rules.Builtin.Expressions.DuplicateConditions,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Tests.RuleAssert;

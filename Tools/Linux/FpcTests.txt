@@ -279,6 +279,7 @@ Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
 Atlas.Common.Rules.Builtin.Performance.DynamicArrays.Tests
 Atlas.Common.Rules.Builtin.Performance.StringResets.Tests
+Atlas.Common.Rules.Builtin.Properties.Shapes.Tests
 Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests
 Atlas.Common.Rules.Builtin.Security.Tests
 Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
@@ -292,6 +293,7 @@ Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
+Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
 Atlas.Common.Rules.Builtin.Units.Tests
@@ -312,6 +314,7 @@ Atlas.Common.Rules.Scopes.Tests
 Atlas.Common.Rules.SuppressionStats.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
 Atlas.Common.Semantics.ControlFlow.Tests
+Atlas.Common.Semantics.ControlFlow.Signatures.Tests
 Atlas.Common.Semantics.ExitPoints.Tests
 Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests
 Atlas.Common.Semantics.OrdinalConstants.Tests
@@ -350,8 +353,11 @@ Atlas.Core.Debug.InstanceBreakpoint.Tests
 Atlas.Core.Debug.ParallelStacks.Tests
 Atlas.Core.Debug.ThreadMarks.Tests
 Atlas.UI.Debug.ThreadMarks.Tests
+Atlas.Core.Debug.AsyncOrigin.Tests
+Atlas.UI.Debug.AsyncOrigin.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
+Atlas.Core.Debug.EventLog.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
@@ -398,6 +404,7 @@ Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.OnSave.Tests
+Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Tests.Durations.Tests

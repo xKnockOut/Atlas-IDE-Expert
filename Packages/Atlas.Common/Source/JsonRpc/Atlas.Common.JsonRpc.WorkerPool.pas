@@ -20,6 +20,12 @@
 // angenommenen zu Ende laufen und wartet höchstens ATimeoutMs auf die Threads.
 // Die Threads halten den Pool über eine Interface-Referenz; endet Close vor
 // ihnen, bleibt er bis zu ihrem Ende gültig.
+//
+// Freigabe: Wer einen Thread freigibt, entscheidet der Thread selbst unter der
+// Sperre, wenn er Execute verlässt. Endet er nach IdleMs oder nachdem Close
+// aufgegeben hat, gibt er sich selbst frei (FreeOnTerminate); sonst gibt ihn
+// Close frei. So hält FWorkers nie einen Zeiger auf ein Objekt, das sich selbst
+// freigibt, und ein zweites Close ist harmlos.
 
 interface
 
@@ -37,7 +43,8 @@ type
     /// <summary>Keine neuen Aufträge; wartet höchstens ATimeoutMs, bis alle Threads geendet haben.
     /// False, wenn danach noch Threads laufen.</summary>
     function Close(ATimeoutMs: Cardinal): Boolean;
-    /// <summary>Zahl der Threads, die gerade bestehen (arbeitend oder wartend).</summary>
+    /// <summary>Zahl der Threads, die gerade laufen (arbeitend oder wartend), auch nach einem Close mit
+    /// False.</summary>
     function ThreadCount: Integer;
   end;
 
@@ -51,6 +58,8 @@ type
     TWorker = class(TThread)
     private
       FPool: TJsonRpcWorkerPool;
+      // Unter FLock: Execute ist verlassen, Close gibt den Thread frei.
+      FDone: Boolean;
       // Hält den Pool am Leben, solange der Thread läuft.
       FKeep: IInterface;
     protected
@@ -61,16 +70,21 @@ type
   private
     FLock: TObject;
     FQueue: TQueue<TProc>;
-    // Threads, die Close freigibt; ein Thread, der nach IdleMs endet, nimmt sich heraus und gibt sich selbst frei.
+    // Threads, die Close freigibt; wer sich selbst freigibt, steht nicht (mehr) darin.
     FWorkers: TList<TWorker>;
+    // Threads, die Execute noch nicht verlassen haben.
+    FAlive: Integer;
     FWaiting: Integer;
     FClosed: Boolean;
+
     FMaxThreads: Integer;
     FIdleMs: Cardinal;
     /// <summary>Nächster Auftrag für AWorker; False, wenn der Thread enden soll.</summary>
     function Take(AWorker: TWorker; out AWork: TProc): Boolean;
-    /// <summary>Wartet bis ADue (Ticks), bis alle AWorkers geendet haben.</summary>
-    class function AllFinished(const AWorkers: TArray<TWorker>; ADue: UInt64): Boolean; static;
+    /// <summary>Ende von Execute: Zählt AWorker ab und legt fest, wer ihn freigibt.</summary>
+    procedure Leave(AWorker: TWorker);
+    /// <summary>Wartet unter FLock bis ADue (Ticks), bis kein Thread mehr läuft; weckt Leave.</summary>
+    function WaitAllLeft(ADue: UInt64): Boolean;
   public
     constructor Create; overload;
     constructor Create(AMaxThreads: Integer; AIdleMs: Cardinal); overload;
@@ -111,6 +125,7 @@ begin
       mWork := nil;
     end;
   finally
+    FPool.Leave(Self);
     // Letzte Referenz: Der Pool kann mit dem Thread enden, wenn Close nicht mehr auf ihn wartet.
     FKeep := nil;
   end;
@@ -156,16 +171,25 @@ begin
     begin
       Exit(False);
     end;
-    FQueue.Enqueue(AWork);
     // Mehr Aufträge als wartende Threads: sofort einen weiteren starten, nicht auf einen freien warten.
-    if (FQueue.Count > FWaiting) and (FWorkers.Count < FMaxThreads) then
+    if (FQueue.Count >= FWaiting) and (FAlive < FMaxThreads) then
     begin
+      // Erst den Thread, dann den Auftrag: Scheitert der Start, sieht der Aufrufer die Ausnahme und der
+      // Auftrag läuft nicht. Der neue Thread wartet in Take auf die Sperre, bis der Auftrag eingereiht ist.
       mWorker := TWorker.Create(Self);
+      try
+        mWorker.Start;
+      except
+        mWorker.Free;
+        raise;
+      end;
       FWorkers.Add(mWorker);
-      mWorker.Start;
+      Inc(FAlive);
+      FQueue.Enqueue(AWork);
     end
     else
     begin
+      FQueue.Enqueue(AWork);
       System.TMonitor.Pulse(FLock);
     end;
     Result := True;
@@ -202,9 +226,8 @@ begin
       end;
       if not mSignaled and (FQueue.Count = 0) and not FClosed then
       begin
-        // Lange nichts zu tun: Der Thread endet und gibt sich selbst frei; Close wartet nicht mehr auf ihn.
+        // Lange nichts zu tun: Der Thread endet und gibt sich selbst frei (Leave); Close gibt ihn nicht frei.
         FWorkers.Remove(AWorker);
-        AWorker.FreeOnTerminate := True;
         Exit(False);
       end;
     end;
@@ -213,62 +236,81 @@ begin
   end;
 end;
 
-class function TJsonRpcWorkerPool.AllFinished(const AWorkers: TArray<TWorker>; ADue: UInt64): Boolean;
-var
-  mWorker: TWorker;
+procedure TJsonRpcWorkerPool.Leave(AWorker: TWorker);
 begin
-  for mWorker in AWorkers do
-  begin
-    while not mWorker.Finished do
+  System.TMonitor.Enter(FLock);
+  try
+    Dec(FAlive);
+    if FWorkers.Contains(AWorker) then
     begin
-      if TThread.GetTickCount64 >= ADue then
-      begin
-        Exit(False);
-      end;
-      TThread.Sleep(5);
+      // Close wartet auf den Thread oder kommt noch: Close gibt ihn frei.
+      AWorker.FDone := True;
+    end
+    else
+    begin
+      // Nach IdleMs beendet oder von Close aufgegeben: Niemand sonst kennt den Thread mehr.
+      AWorker.FreeOnTerminate := True;
     end;
+    if FClosed then
+    begin
+      // Weckt Close; Threads warten nach Close nicht mehr auf Arbeit (Take), anderen schadet der Weckruf nicht.
+      System.TMonitor.PulseAll(FLock);
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TJsonRpcWorkerPool.WaitAllLeft(ADue: UInt64): Boolean;
+var
+  mNow: UInt64;
+begin
+  while FAlive > 0 do
+  begin
+    mNow := TThread.GetTickCount64;
+    if mNow >= ADue then
+    begin
+      Exit(False);
+    end;
+    System.TMonitor.Wait(FLock, Cardinal(ADue - mNow));
   end;
   Result := True;
 end;
 
 function TJsonRpcWorkerPool.Close(ATimeoutMs: Cardinal): Boolean;
 var
-  mWorkers: TArray<TWorker>;
+  mFree: TList<TWorker>;
   mWorker: TWorker;
 begin
   // Der Aufrufer hält den Pool über sein Interface; enden alle Threads, bleibt er trotzdem gültig.
-  System.TMonitor.Enter(FLock);
+  mFree := TList<TWorker>.Create;
   try
-    FClosed := True;
-    System.TMonitor.PulseAll(FLock);
-    mWorkers := FWorkers.ToArray;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-  Result := AllFinished(mWorkers, TThread.GetTickCount64 + ATimeoutMs);
-  if not Result then
-  begin
-    // Noch beschäftigte Threads halten den Pool bis zu ihrem Ende und geben sich dann selbst frei. Endet einer
-    // genau jetzt, sieht er das vielleicht nicht mehr: höchstens ein Leck, nie ein doppeltes Free.
-    for mWorker in mWorkers do
-    begin
-      if not mWorker.Finished then
+    System.TMonitor.Enter(FLock);
+    try
+      FClosed := True;
+      System.TMonitor.PulseAll(FLock);
+      Result := WaitAllLeft(TThread.GetTickCount64 + ATimeoutMs);
+      // Beendete Threads gibt Close frei. Die noch laufenden geben sich beim Ende selbst frei (Leave sieht sie
+      // nicht mehr in FWorkers) und halten den Pool bis dahin über FKeep.
+      for mWorker in FWorkers do
       begin
-        mWorker.FreeOnTerminate := True;
+        if mWorker.FDone then
+        begin
+          mFree.Add(mWorker);
+        end;
       end;
+      FWorkers.Clear;
+    finally
+      System.TMonitor.Exit(FLock);
     end;
-    Exit;
-  end;
-  System.TMonitor.Enter(FLock);
-  try
-    FWorkers.Clear;
+    // Außerhalb der Sperre: Execute ist verlassen, WaitFor wartet nur auf das Ende des Threads selbst.
+    for mWorker in mFree do
+    begin
+      mWorker.WaitFor;
+      mWorker.Free;
+    end;
   finally
-    System.TMonitor.Exit(FLock);
-  end;
-  for mWorker in mWorkers do
-  begin
-    mWorker.WaitFor;
-    mWorker.Free;
+    mFree.Free;
   end;
 end;
 
@@ -276,7 +318,7 @@ function TJsonRpcWorkerPool.ThreadCount: Integer;
 begin
   System.TMonitor.Enter(FLock);
   try
-    Result := FWorkers.Count;
+    Result := FAlive;
   finally
     System.TMonitor.Exit(FLock);
   end;
