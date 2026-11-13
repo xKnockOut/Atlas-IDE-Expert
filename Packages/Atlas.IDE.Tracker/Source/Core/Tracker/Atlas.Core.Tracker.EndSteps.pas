@@ -84,6 +84,8 @@ type
     DuplicateMissing: Boolean;
     /// <summary>Zustand bzw. Schließen ging über einen Ersatzweg (#2135, „Duplikat“ als „nicht geplant“).</summary>
     Fallback: Boolean;
+    /// <summary>Zustand im Projekt (#2134, GitHub) aus dem Schreiben des Zustands; Project '' ohne.</summary>
+    Project: TAtlasTrackerProjectStatus;
     class function Empty: TAtlasTrackerEndProgress; static;
     function FieldDone(const AField: TAtlasTrackerFieldValue): Boolean;
     /// <summary>Stand von AStep für APlan.</summary>
@@ -179,6 +181,7 @@ begin
   Result.Close := Change.Close;
   Result.DuplicateOf := Change.DuplicateOf;
   Result.DuplicateNote := Change.DuplicateNote;
+  Result.GitHub := Change.GitHub;
 end;
 
 function TAtlasTrackerEndPlan.Has(AStep: TAtlasTrackerEndStep): Boolean;
@@ -406,6 +409,10 @@ begin
     Stopped(AProgress, AStep, mResult);
   end;
   AProgress.Fallback := AProgress.Fallback or mResult.Fallback;
+  if (mResult.Project.Project <> '') or mResult.Project.Denied then
+  begin
+    AProgress.Project := mResult.Project;
+  end;
   Result := mResult.Succeeded;
 end;
 

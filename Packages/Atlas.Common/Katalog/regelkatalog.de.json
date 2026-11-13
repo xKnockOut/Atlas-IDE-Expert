@@ -1266,6 +1266,11 @@
       ]
     },
     {
+      "id": "dunitx-leak-monitor",
+      "name": "DUnitX-Testprogramm ohne Leckmonitor",
+      "description": "Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintragen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben still. Sicherheit hoch."
+    },
+    {
       "id": "dunitx-ignore-without-reason",
       "name": "[Ignore] ohne Begründung",
       "description": "[Ignore] ohne Argument oder mit leerer Begründung ([Ignore('')]): Der Testbericht sagt nicht, warum der Test nicht läuft, und später weiß niemand, ob er wieder an darf. Begründungen, die kein String-Literal sind (eine Konstante), gelten als vorhanden. Die Attribute werden über ihren Namen erkannt (mit oder ohne Unit und Endung Attribute), die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Den Grund kennt nur, wer den Test abgeschaltet hat."

@@ -85,7 +85,8 @@ implementation
 uses
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Flow.Strings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.FlowWindow;
@@ -246,15 +247,15 @@ class function TAtlasIdeFlowMap.ErrorText(AError: TAtlasCiFetchError): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorTimeout);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider, TAtlasCiFetchError.NotFound:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowNoTracker);
+      Result := TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoTracker);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorInvalid);
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
   else
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork);
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -286,7 +287,7 @@ begin
     Supports(mProvider, IAtlasTrackerFlow, AJob.Flow);
   if not Result then
   begin
-    AFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowNoTracker));
+    AFrame.ShowNotice(TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoTracker));
     AFrame.SetStatus('');
     Exit;
   end;
@@ -441,7 +442,7 @@ begin
   if mHasCache then
   begin
     mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
-    Present(mFrame, mCached, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.FlowOffline, [mWhen, ErrorText(AError)]));
+    Present(mFrame, mCached, TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowOffline, [mWhen, ErrorText(AError)]));
   end
   else if AError <> TAtlasCiFetchError.Cancelled then
   begin

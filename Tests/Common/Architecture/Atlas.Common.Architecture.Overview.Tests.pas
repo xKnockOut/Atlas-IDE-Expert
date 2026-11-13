@@ -96,6 +96,7 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.UsesGraph.Tests;
 

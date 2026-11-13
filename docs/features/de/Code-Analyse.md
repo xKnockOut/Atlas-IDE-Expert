@@ -48,7 +48,7 @@ Einstellungen: `fix.bulk`
 
 ## Prüfregeln
 
-**340 Prüfregeln** in vier Kategorien: 223 Fehler, 106 Code-Smells, 6 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
+**341 Prüfregeln** in vier Kategorien: 223 Fehler, 107 Code-Smells, 6 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
 
 ### Korrektheit
 

@@ -121,9 +121,6 @@ type
     /// <summary>JSON-Text (auch mit Kommentaren) ohne Zugangsdaten, kompakt; '' wenn er nicht lesbar ist.
     /// </summary>
     class function Redact(const AJsonText: string): string; static;
-    /// <summary>JSON aus AText; nil, wenn es nicht lesbar ist. Unter FPC leitet Convert-ForFpc den Aufruf auf
-    /// AtlasJsonCompat um, das ebenfalls nil liefert (#1356).</summary>
-    class function ParseOrNil(const AText: string): TJSONValue; static;
     /// <summary>Entfernt Zugangsdaten in AValue selbst.</summary>
     class procedure RedactValue(const AValue: TJSONValue); static;
     /// <summary>textDocument.uri und Zeile (position.line bzw. range.start.line) der Parameter; False ohne
@@ -306,11 +303,6 @@ begin
   end;
 end;
 
-class function TCrashCases.ParseOrNil(const AText: string): TJSONValue;
-begin
-  Result := TJSONValue.ParseJSONValue(AText);
-end;
-
 /// <summary>Entfernt geheime Schlüssel aus dem Paar AIndex von AObject und Benutzerangaben aus Adressen darin.
 /// </summary>
 procedure RedactPair(AObject: TJSONObject; AIndex: Integer);
@@ -372,7 +364,7 @@ begin
   begin
     Exit;
   end;
-  mValue := ParseOrNil(TJsoncScanner.StripComments(AJsonText));
+  mValue := TJsonRead.Parse(TJsoncScanner.StripComments(AJsonText));
   if mValue = nil then
   begin
     Exit;
@@ -437,7 +429,7 @@ begin
   Result := nil;
   if AText <> '' then
   begin
-    Result := TCrashCases.ParseOrNil(TCrashCases.Redact(AText));
+    Result := TJsonRead.Parse(TCrashCases.Redact(AText));
   end;
 end;
 
@@ -451,7 +443,7 @@ begin
   mValue := nil;
   if ACase.Id <> '' then
   begin
-    mValue := TCrashCases.ParseOrNil(ACase.Id);
+    mValue := TJsonRead.Parse(ACase.Id);
   end;
   if mValue <> nil then
   begin
@@ -515,7 +507,7 @@ begin
   for mText in ACase.Recent do
   begin
     // TJsonRpcRecentMessages kürzt zu gültigem JSON; anderes (etwa von Hand bearbeitet) als Text, ohne Adressdaten.
-    mValue := TCrashCases.ParseOrNil(mText);
+    mValue := TJsonRead.Parse(mText);
     if mValue <> nil then
     begin
       TCrashCases.RedactValue(mValue);
@@ -819,7 +811,7 @@ begin
     AError := cTexts[TCrashCaseText.FileNotFound].Text + AFileName;
     Exit;
   end;
-  mRoot := ParseOrNil(TFile.ReadAllText(AFileName, TEncoding.UTF8));
+  mRoot := TJsonRead.Parse(TFile.ReadAllText(AFileName, TEncoding.UTF8));
   try
     if not (mRoot is TJSONObject) then
     begin

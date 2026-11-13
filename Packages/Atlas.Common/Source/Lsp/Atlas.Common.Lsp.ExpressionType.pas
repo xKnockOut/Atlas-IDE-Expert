@@ -31,7 +31,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ExpressionTypes;
+  Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 type
   /// <summary>Gefragter Bereich samt Schaltern einer Typabfrage.</summary>
@@ -67,6 +67,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpressionTypes,
   System.Generics.Collections,
   Atlas.Text.Json,
   Atlas.Text.Lines,

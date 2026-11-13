@@ -295,6 +295,14 @@ type
     /// „Zur Prüfung geben“, Kommentar“).</summary>
     class function EndSummary(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress): string;
       static;
+    /// <summary>AChange ohne Zustand, wenn ihn das Projekt führte (#2134, AStatus.After): Den nennt die eigene Zeile
+    /// zum Status im Projekt.</summary>
+    class function WithoutProjectState(const AChange: TAtlasTrackerWrite;
+      const AStatus: TAtlasTrackerProjectStatus): TAtlasTrackerWrite; static;
+    /// <summary>Zeilen nach „Beginnen“ ohne Zustandsmaschine: was geschrieben wurde, dann der Status im Projekt
+    /// (#2134) in eigenen Zeilen.</summary>
+    class function StartLines(const AKey: string; const AChange: TAtlasTrackerWrite;
+      const AResult: TAtlasTrackerWriteResult): TArray<string>; static;
   end;
 
 implementation
@@ -306,7 +314,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Transitions,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
@@ -424,7 +433,7 @@ begin
   mRow := mDialog.AddRow(cRowHeight);
   mDialog.FParts.BookTime := TCheckBox.Create(mDialog);
   mDialog.FParts.BookTime.Parent := mRow;
-  mDialog.FParts.BookTime.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndTime);
+  mDialog.FParts.BookTime.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndTime);
   mDialog.FParts.BookTime.Left := 0;
   mDialog.FParts.BookTime.Top := mDialog.ScaleValue(cCheckTop);
   mDialog.FParts.BookTime.Width := mDialog.ScaleValue(cLabelWidth);
@@ -515,7 +524,7 @@ begin
   FTimeOff := True;
   mParts.BookTime.Checked := False;
   mParts.BookTime.Enabled := False;
-  mParts.BookTime.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff);
+  mParts.BookTime.Hint := TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookOff);
   mParts.BookTime.ShowHint := True;
   mParts.Duration.Enabled := False;
   mParts.WorkType.Enabled := False;
@@ -620,7 +629,7 @@ begin
   mParts.AddField.Visible := FMissingField <> '';
   if FMissingField <> '' then
   begin
-    mParts.AddField.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndAddField, [FMissingField]);
+    mParts.AddField.Caption := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndAddField, [FMissingField]);
     FitButton(FDialog, mParts.AddField);
   end;
 end;
@@ -790,7 +799,7 @@ begin
     TAtlasTrackerClose.NotPlanned:
       mParts.Send.Caption := TAtlasGitHubStrings.Text(TAtlasGitHubTextId.EndSendNotPlanned);
   else
-    mParts.Send.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend);
+    mParts.Send.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSend);
   end;
   FitButton(FDialog, mParts.Send);
 end;
@@ -885,7 +894,7 @@ begin
   FOptions := ARequest.Options;
   FPlan := TAtlasTrackerEndPlan.Create(TAtlasTrackerWrite.Empty);
   FProgress := TAtlasTrackerEndProgress.Empty;
-  Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndCaption, [FKey]);
+  Caption := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndCaption, [FKey]);
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
   OnCloseQuery := DialogCloseQuery;
@@ -927,7 +936,7 @@ begin
   mRow := AddRow(cRowHeight);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
-  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndState);
+  mLabel.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndState);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(cLabelTop);
   // Lange Beschriftung „Übergang (ab „…“)“ endet mit „…“ vor der Klappliste, voll im Hinweis.
@@ -955,7 +964,7 @@ begin
   mRow := AddRow(cTextRowHeight);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
-  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndComment);
+  mLabel.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndComment);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(2);
   FParts.Editor := TAtlasCommentEditor.Create(Self);
@@ -979,7 +988,7 @@ begin
   mRow.Top := FParts.Editor.Top + FParts.Editor.Height + 1;
   FParts.HandOver := TCheckBox.Create(Self);
   FParts.HandOver.Parent := mRow;
-  FParts.HandOver.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndHandOver);
+  FParts.HandOver.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndHandOver);
   FParts.HandOver.Left := 0;
   FParts.HandOver.Top := ScaleValue(cCheckTop);
   FParts.HandOver.Width := ScaleValue(cLabelWidth);
@@ -1013,10 +1022,10 @@ begin
   FParts.AddField := NewButton(Self, mButtons, '');
   FParts.AddField.Visible := False;
   FParts.AddField.OnClick := FRows.AddFieldClick;
-  FParts.Send := NewButton(Self, mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
+  FParts.Send := NewButton(Self, mButtons, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSend));
   FParts.Send.OnClick := SendClick;
   FParts.Send.Default := True;
-  FParts.Cancel := NewButton(Self, mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
+  FParts.Cancel := NewButton(Self, mButtons, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndCancel));
   FParts.Cancel.ModalResult := mrCancel;
   FParts.Cancel.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
@@ -1024,7 +1033,7 @@ end;
 
 class function TAtlasTrackerEndTexts.StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>;
 begin
-  Result := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState))
+  Result := TArray<string>.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndKeepState))
     + Copy(AOptions.EndStates);
 end;
 
@@ -1065,7 +1074,7 @@ class function TAtlasTrackerEndTexts.TransitionChoices(const ARules: TAtlasTrack
 var
   mTransition: TAtlasTrackerTransition;
 begin
-  Result := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState));
+  Result := TArray<string>.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndKeepState));
   for mTransition in ARules.Transitions do
   begin
     Result := Result + [TAtlasTrackerTransitions.ChoiceText(mTransition, AStates)];
@@ -1091,12 +1100,12 @@ var
 begin
   if FRules.Current <> '' then
   begin
-    FParts.StateLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndTransitionFrom,
+    FParts.StateLabel.Caption := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndTransitionFrom,
       [FRules.Current]);
   end
   else
   begin
-    FParts.StateLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndTransition);
+    FParts.StateLabel.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndTransition);
   end;
   FParts.StateLabel.Hint := FParts.StateLabel.Caption;
   mKnown := FOptions.EndStates + FStates;
@@ -1108,7 +1117,7 @@ begin
   if (Length(FOptions.EndStates) > 0) and (FRules.Current <> '') and
     (TAtlasTrackerTransitions.Into(FRules, TArray<string>.Create(FOptions.EndStates[0])) < 0) then
   begin
-    FParts.Note.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndNotAllowed,
+    FParts.Note.Caption := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndNotAllowed,
       [FOptions.EndStates[0], FRules.Current]);
   end;
 end;
@@ -1153,7 +1162,7 @@ var
   mKeep: Boolean;
 begin
   mState := FParts.State.Value;
-  mKeep := SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState));
+  mKeep := SameText(mState, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndKeepState));
   if FRules.StateMachine and not mKeep then
   begin
     mTransition := ChosenTransition;
@@ -1165,7 +1174,7 @@ begin
         FParts.Assignee.Value)));
     end;
   end;
-  if SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState)) then
+  if SameText(mState, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndKeepState)) then
   begin
     mState := '';
   end;
@@ -1211,7 +1220,7 @@ begin
   end;
   if not Plan(FPlan) then
   begin
-    ShowErrorNote(FParts.Note, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid));
+    ShowErrorNote(FParts.Note, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookInvalid));
     Exit;
   end;
   if FParts.Close.Blocked(FProgress) then
@@ -1227,7 +1236,7 @@ begin
     Exit;
   end;
   FParts.Note.Font.Color := clWindowText;
-  FParts.Note.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSending);
+  FParts.Note.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSending);
   SetBusy(True);
   mDialog := Self;
   FOnSend(FPlan, FProgress,
@@ -1264,7 +1273,7 @@ begin
   mField := FRows.MarkRejected(FProgress);
   if mField <> '' then
   begin
-    FParts.Note.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndFixField,
+    FParts.Note.Caption := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndFixField,
       [FParts.Note.Caption, mField]);
   end;
 end;
@@ -1274,19 +1283,19 @@ function StepName(const APlan: TAtlasTrackerEndPlan; AStep: TAtlasTrackerEndStep
 begin
   case AStep of
     TAtlasTrackerEndStep.Time:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepTime);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepTime);
     TAtlasTrackerEndStep.Fields:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepFields);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepFields);
     TAtlasTrackerEndStep.Comment:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepComment);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepComment);
   else
     if APlan.Change.Transition.Id <> '' then
     begin
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepTransition);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepTransition);
     end
     else
     begin
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerStepState);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerStepState);
     end;
   end;
 end;
@@ -1325,7 +1334,7 @@ begin
   mParts := nil;
   if AProgress.TimeBooked and (APlan.Time.Minutes > 0) then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartTime,
+    mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartTime,
       [TAtlasTrackerWorkflow.DurationText(APlan.Time.Minutes)])];
   end;
   mNames := nil;
@@ -1338,11 +1347,12 @@ begin
   end;
   if Length(mNames) > 0 then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartFields, [string.Join(', ', mNames)])];
+    mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartFields, [string.Join(', ', mNames)])];
   end;
   if AProgress.TransitionDone and APlan.TransitionPart.HasWork then
   begin
-    mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(APlan.TransitionPart)];
+    mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(TAtlasTrackerEndTexts.WithoutProjectState(
+      APlan.TransitionPart, AProgress.Project))];
   end;
   if AProgress.CommentDone and APlan.CommentPart.HasWork then
   begin
@@ -1353,6 +1363,31 @@ begin
     mParts := mParts + [TAtlasGitHubStrings.Text(TAtlasGitHubTextId.PartDuplicateFallback)];
   end;
   Result := string.Join(', ', mParts);
+end;
+
+class function TAtlasTrackerEndTexts.WithoutProjectState(const AChange: TAtlasTrackerWrite;
+  const AStatus: TAtlasTrackerProjectStatus): TAtlasTrackerWrite;
+begin
+  Result := AChange;
+  if AStatus.After <> '' then
+  begin
+    Result.State := '';
+  end;
+end;
+
+class function TAtlasTrackerEndTexts.StartLines(const AKey: string; const AChange: TAtlasTrackerWrite;
+  const AResult: TAtlasTrackerWriteResult): TArray<string>;
+var
+  mShown: TAtlasTrackerWrite;
+begin
+  Result := nil;
+  mShown := WithoutProjectState(AChange, AResult.Project);
+  if mShown.HasWork then
+  begin
+    Result := Result + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
+      [AKey, TAtlasTrackerEndDialog.SummaryText(mShown)])];
+  end;
+  Result := Result + TAtlasGitHubStrings.ProjectLines(AKey, AResult.Project);
 end;
 
 procedure TAtlasTrackerEndDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -1386,36 +1421,42 @@ end;
 
 class function TAtlasTrackerEndDialog.ErrorText(const AKey: string; const AResult: TAtlasTrackerWriteResult): string;
 begin
+  // Zustand ohne Option im Statusfeld des Projekts (#2134): der Grund statt „ungültige Antwort“.
+  if AResult.Project.MissingOption <> '' then
+  begin
+    Exit(TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.ProjectMissingOption, [AKey, AResult.Project.Project,
+      AResult.Project.MissingOption]));
+  end;
   case AResult.Error of
     TAtlasCiFetchError.None:
       Exit('');
     TAtlasCiFetchError.Unauthorized:
       if AResult.Status = 403 then
       begin
-        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteForbidden, [AKey, AResult.Status]);
+        Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteForbidden, [AKey, AResult.Status]);
       end
       else
       begin
-        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteUnauthorized, [AKey, AResult.Status]);
+        Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteUnauthorized, [AKey, AResult.Status]);
       end;
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteNotFound, [AKey, AResult.Status]);
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteNotFound, [AKey, AResult.Status]);
     TAtlasCiFetchError.Invalid:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteInvalid, [AKey, AResult.Status]);
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteInvalid, [AKey, AResult.Status]);
     TAtlasCiFetchError.Server:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteServer, [AKey, AResult.Status]);
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteServer, [AKey, AResult.Status]);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteTimeout);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerWriteTimeout);
     TAtlasCiFetchError.NotConfigured:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNotConfigured);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerWriteNotConfigured);
     TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteUnsupported);
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerWriteUnsupported);
   else
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNetwork);
+    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerWriteNetwork);
   end;
   if AResult.Message <> '' then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteReason, [Result, AResult.Message]);
+    Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteReason, [Result, AResult.Message]);
   end;
 end;
 
@@ -1451,34 +1492,34 @@ begin
   mParts := nil;
   if (AChange.Transition.Id <> '') and (Trim(ANewState) <> '') then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartTransitionTo,
+    mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartTransitionTo,
       [AChange.Transition.Caption, Trim(ANewState)])];
   end
   else if AChange.Transition.Id <> '' then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartTransition,
+    mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartTransition,
       [AChange.Transition.Caption])];
   end
   else if AChange.State <> '' then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartState, [AChange.State])];
+    mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartState, [AChange.State])];
   end;
   mParts := mParts + ClosePart(AChange);
   case AChange.Assign of
     TAtlasTrackerAssign.Me:
-      mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartAssigned)];
+      mParts := mParts + [TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerPartAssigned)];
     TAtlasTrackerAssign.User:
-      mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartHandedOver, [AChange.Assignee])];
+      mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartHandedOver, [AChange.Assignee])];
   else
     // Keep: Zuständigkeit bleibt.
   end;
   if AChange.Comment <> '' then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartComment)];
+    mParts := mParts + [TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerPartComment)];
   end;
   if AChange.Sprint.IsSet then
   begin
-    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartSprint, [AChange.Sprint.Sprint])];
+    mParts := mParts + [TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerPartSprint, [AChange.Sprint.Sprint])];
   end;
   Result := string.Join(', ', mParts);
 end;

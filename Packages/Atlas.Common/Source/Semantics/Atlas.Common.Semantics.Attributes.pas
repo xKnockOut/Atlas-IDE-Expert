@@ -198,15 +198,6 @@ const
   /// <summary>Tiefe für Ketten wie [A] [B] [C] am Zeilenanfang.</summary>
   cMaxChainedBrackets = 16;
 
-function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Öffnende Klammer zu der schließenden an AClose ("(" zu ")", "[" zu "]"); -1 ohne.</summary>
 function OpeningOf(const ATokens: TArray<TPascalToken>; AClose: Integer): Integer;
 var
@@ -238,10 +229,10 @@ function OpensParameters(const ATokens: TArray<TPascalToken>; AOpen: Integer): B
 var
   mIndex: Integer;
 begin
-  mIndex := PreviousIndex(ATokens, AOpen);
+  mIndex := PreviousCode(ATokens, AOpen);
   while (mIndex >= 0) and ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or ATokens[mIndex].IsSymbol('.')) do
   begin
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
   Result := (mIndex >= 0) and (ATokens[mIndex].IsKeyword('procedure') or ATokens[mIndex].IsKeyword('function') or
     ATokens[mIndex].IsKeyword('constructor') or ATokens[mIndex].IsKeyword('destructor') or
@@ -253,7 +244,7 @@ function OpensAncestors(const ATokens: TArray<TPascalToken>; AOpen: Integer): Bo
 var
   mIndex: Integer;
 begin
-  mIndex := PreviousIndex(ATokens, AOpen);
+  mIndex := PreviousCode(ATokens, AOpen);
   Result := (mIndex >= 0) and (ATokens[mIndex].IsKeyword('class') or ATokens[mIndex].IsKeyword('object'));
 end;
 
@@ -280,7 +271,7 @@ begin
   // "IFoo = interface [" ist die GUID; "interface" als Abschnitt steht hinter "unit X;".
   if ATokens[APrev].IsKeyword('interface') or ATokens[APrev].IsKeyword('dispinterface') then
   begin
-    mBefore := PreviousIndex(ATokens, APrev);
+    mBefore := PreviousCode(ATokens, APrev);
     Exit((mBefore < 0) or not ATokens[mBefore].IsSymbol('='));
   end;
   for mKeyword in cAttributeKeywords do
@@ -345,7 +336,7 @@ begin
   begin
     Exit;
   end;
-  mPrev := PreviousIndex(ATokens, AOpen);
+  mPrev := PreviousCode(ATokens, AOpen);
   if mPrev < 0 then
   begin
     Result := True;
@@ -395,7 +386,7 @@ var
   mOpen: Boolean;
 begin
   mDepth := 0;
-  Result := PreviousIndex(ATokens, ALast);
+  Result := PreviousCode(ATokens, ALast);
   while Result >= 0 do
   begin
     if BracketScanStops(ATokens[Result], mDepth, mOpen) then
@@ -406,7 +397,7 @@ begin
       end;
       Exit;
     end;
-    Result := PreviousIndex(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
 end;
 

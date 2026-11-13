@@ -16,6 +16,8 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Report,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Shell.AffectedTests,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
@@ -162,7 +164,7 @@ begin
   finally
     mResolver.Free;
   end;
-  Result := TAffectedTests.ToJson(mFound);
+  Result := TAffectedReport.ToJson(mFound);
 end;
 
 class function TShellAffectedTestsRequest.QueryFor(const AServices: TShellAffectedTestsServices;

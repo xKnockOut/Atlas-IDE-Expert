@@ -30,6 +30,9 @@ type
     /// <summary>„Vorschlagen …“ für AMapping; Ergebnis wie TAtlasTrackerPathsSuggestEvent.</summary>
     class function Suggest(const AMapping: TAtlasTrackerProjectMapping; out APaths: TArray<string>): Boolean;
       static;
+    /// <summary>URL von origin der Git-Arbeitskopie, in der AFolder liegt (#2138); '' ohne. Liest nur .git/config.
+    /// </summary>
+    class function OriginOfFolder(const AFolder: string): string; static;
   end;
 
 implementation
@@ -45,7 +48,7 @@ uses
   Atlas.Core.VersionControl.WorkingCopies,
   Atlas.Core.Tracker.PathSuggestions,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.SuggestDialog;
 
 const
@@ -82,7 +85,7 @@ begin
   mVcs := VcsOf(AFolder);
   if mVcs = nil then
   begin
-    Exit(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesPathsNone, [AFolder]));
+    Exit(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesPathsNone, [AFolder]));
   end;
   mBranch := '';
   if mVcs.Head(mHead) = TAtlasVcsOutcome.Ok then
@@ -93,7 +96,7 @@ begin
       mBranch := mHead.ShortRevision(mVcs.Kind);
     end;
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesPathsFound,
+  Result := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesPathsFound,
     [AFolder, AtlasVcsKindName(mVcs.Kind), mBranch]);
 end;
 
@@ -306,7 +309,7 @@ begin
     // Ohne Versionsverwaltung: jeder Ordner ohne Arbeitskopie.
     for mMissing in mFolders do
     begin
-      mLines := mLines + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesPathsNone, [mMissing])];
+      mLines := mLines + [TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesPathsNone, [mMissing])];
     end;
     ADone(mLines);
   end;
@@ -357,6 +360,19 @@ begin
         AFill(nil);
       end;
     end, APaths) <> TAtlasTrackerSuggestAnswer.Cancel;
+end;
+
+class function TAtlasIdeTrackerPathSuggestions.OriginOfFolder(const AFolder: string): string;
+var
+  mRoot: string;
+  mWorktree: Boolean;
+begin
+  Result := '';
+  mRoot := GitRootOf(AFolder);
+  if mRoot <> '' then
+  begin
+    Result := OriginOf(mRoot, mWorktree);
+  end;
 end;
 
 end.

@@ -133,6 +133,10 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubGraphQl.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubProjects.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubLinkedBranches.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.LinkedStart.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>
@@ -189,6 +193,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesStatus.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesQuery.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueStart.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.LinkedStart.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWork.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas"/>
@@ -227,6 +232,7 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ReviewDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ImageMarkup.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueBoxes.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.Contract.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas">
             <Form>AtlasIssueFrame</Form>
             <FormType>dfm</FormType>
@@ -236,6 +242,7 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.Text.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.NewIssueDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.QueryDialog.pas"/>
@@ -248,7 +255,19 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsSnippets.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsWorkflow.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SprintTile.pas"/>
-        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Attach.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Board.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Commands.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Development.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Flow.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Issue.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.NewIssue.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Settings.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Sprint.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TestResults.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Time.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Workflow.Strings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.GitHubStrings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TestResults.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TileView.pas"/>

@@ -141,7 +141,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -649,12 +649,12 @@ procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: TAtlasCodeLinkHit; const APoin
 begin
   FMenu.Items.Clear;
   FMenuHit := AHit;
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow), cMenuShow,
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow), cMenuShow,
     MenuClick).Default := True;
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), cMenuBrowse, MenuClick);
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), cMenuCopy, MenuClick);
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse), cMenuBrowse, MenuClick);
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey), cMenuCopy, MenuClick);
   AddMenuItem(FMenu, '-', 0, nil);
-  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), cMenuStart,
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewStart), cMenuStart,
     MenuClick).Enabled := CanStart(FHooks);
   FMenu.Popup(APoint.X, APoint.Y);
 end;

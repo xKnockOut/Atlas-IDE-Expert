@@ -195,7 +195,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.NewIssue.Strings;
 
 const
   cGap = 8;
@@ -358,17 +358,17 @@ end;
 
 procedure TAtlasNewIssueParts.CreateRows;
 begin
-  FTracker := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueTracker), csDropDownList);
+  FTracker := AddBox(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueTracker), csDropDownList);
   FProject := TEdit.Create(FForm);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueProject), FProject, cRowHeight);
+  AddRow(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueProject), FProject, cRowHeight);
   FTitle := TEdit.Create(FForm);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueSummary), FTitle, cRowHeight);
+  AddRow(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueSummary), FTitle, cRowHeight);
   FDescription := TMemo.Create(FForm);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueDescription), FDescription, cMemoHeight);
+  AddRow(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDescription), FDescription, cMemoHeight);
   FIncludeCode := TCheckBox.Create(FForm);
-  FIncludeCode.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueIncludeCode);
+  FIncludeCode.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueIncludeCode);
   AddRow('', FIncludeCode, cCheckHeight);
   FCode := TMemo.Create(FForm);
   FCode.ScrollBars := ssBoth;
@@ -376,9 +376,9 @@ begin
   FCode.WantReturns := True;
   FCode.Font.Name := cCodeFontName;
   AddRow('', FCode, cMemoHeight);
-  FType := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueType), csDropDown);
-  FPriority := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssuePriority), csDropDown);
-  FAssignee := AddBox(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueAssignee), csDropDown);
+  FType := AddBox(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueType), csDropDown);
+  FPriority := AddBox(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssuePriority), csDropDown);
+  FAssignee := AddBox(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueAssignee), csDropDown);
 end;
 
 procedure TAtlasNewIssueParts.CreateOptions;
@@ -396,13 +396,13 @@ begin
   FAssignToMe.Left := Scaled(cGap + cLabelWidth);
   FAssignToMe.Top := Scaled(cControlTop);
   FAssignToMe.Width := Scaled(cAssignToMeWidth);
-  FAssignToMe.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueAssignToMe);
+  FAssignToMe.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueAssignToMe);
   FStartNow := TCheckBox.Create(FForm);
   FStartNow.Parent := mOptions;
   FStartNow.Left := FAssignToMe.Left + FAssignToMe.Width + Scaled(cGap);
   FStartNow.Top := Scaled(cControlTop);
   FStartNow.Width := Scaled(cStartNowWidth);
-  FStartNow.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueStartNow);
+  FStartNow.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueStartNow);
 end;
 
 procedure TAtlasNewIssueParts.CreateStatus;
@@ -427,10 +427,10 @@ begin
   mBottom.Align := alBottom;
   mBottom.Height := Scaled(cBottomHeight);
   mBottom.BevelOuter := bvNone;
-  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueCancel));
+  FCancel := AddButton(mBottom, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueCancel));
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - Scaled(cGap);
-  FCreate := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueCreate));
+  FCreate := AddButton(mBottom, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueCreate));
   FCreate.Left := FCancel.Left - FCreate.Width - Scaled(cGap);
   // Kein Default-Knopf: Enter in der Beschreibung ist ein Zeilenumbruch, nie ein Senden.
   FForm.ClientHeight := FStatus.Top + Scaled(cStatusSpace) + mBottom.Height;
@@ -499,7 +499,7 @@ begin
   FLink := TAtlasNewIssueLink.Create;
   FLink.Dialog := Self;
   FLinkRef := FLink;
-  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueDialogTitle);
+  Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDialogTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   OnCloseQuery := FormCloseQuery;
@@ -628,7 +628,7 @@ begin
   FParts.AssigneeBox.Enabled := not FParts.AssignToMeBox.Checked;
   if not FSending and (Length(FSetup.Trackers) = 0) then
   begin
-    FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoTracker);
+    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTracker);
   end;
 end;
 
@@ -660,7 +660,7 @@ begin
   mTicket := FLoadTicket;
   mLinkRef := FLinkRef;
   mLink := FLink;
-  FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLoading);
+  FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLoading);
   FOnLoad(mTarget,
     procedure(const AFields: TAtlasNewIssueFields; ALoaded: Boolean)
     begin
@@ -687,7 +687,7 @@ begin
   end
   else
   begin
-    FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLoadFailed);
+    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLoadFailed);
   end;
 end;
 
@@ -703,11 +703,11 @@ begin
   end;
   if Trim(FParts.TitleEdit.Text) = '' then
   begin
-    FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoTitle);
+    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTitle);
     Exit;
   end;
   FSending := True;
-  FParts.StatusLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueSending);
+  FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueSending);
   Changed(Sender);
   mLinkRef := FLinkRef;
   mLink := FLink;
@@ -742,23 +742,23 @@ class function TAtlasNewIssueDialog.ResultText(const AResult: TAtlasNewIssueResu
 begin
   case AResult.Outcome of
     TAtlasNewIssueOutcome.Created:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueCreated, [AResult.Key]);
+      Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueCreated, [AResult.Key]);
     TAtlasNewIssueOutcome.NoToken:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueNoToken, [AServer]);
+      Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueNoToken, [AServer]);
     TAtlasNewIssueOutcome.NotConfigured:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNotConfigured);
+      Result := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNotConfigured);
     TAtlasNewIssueOutcome.Rejected:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueRejected, [AResult.HttpStatus]);
+      Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRejected, [AResult.HttpStatus]);
     TAtlasNewIssueOutcome.ProjectUnknown:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueProjectUnknown, [AProject]);
+      Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueProjectUnknown, [AProject]);
     TAtlasNewIssueOutcome.Invalid:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueInvalid, [AResult.TrackerMessage]);
+      Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueInvalid, [AResult.TrackerMessage]);
     TAtlasNewIssueOutcome.Unreadable:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueUnreadable);
+      Result := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnreadable);
     TAtlasNewIssueOutcome.ServerError:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueServerError, [AResult.HttpStatus]);
+      Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueServerError, [AResult.HttpStatus]);
   else
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueUnreachable);
+    Result := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnreachable);
   end;
 end;
 

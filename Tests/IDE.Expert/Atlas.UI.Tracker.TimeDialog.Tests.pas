@@ -51,7 +51,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeDialog,
   Atlas.UI.Tracker.TimeList;
@@ -129,7 +129,7 @@ begin
     mDialog.Parts.Duration.Text := 'viel';
     mDialog.Parts.Book.Click;
     Assert.AreEqual(0, mCalls);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid), mDialog.Parts.Note.Caption);
+    Assert.AreEqual(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookInvalid), mDialog.Parts.Note.Caption);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult));
   finally
     mDialog.Free;
@@ -203,7 +203,7 @@ begin
     mPending(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 400, 'Time tracking is disabled'));
     Assert.IsTrue(mDialog.TrackingOff);
     Assert.IsFalse(mDialog.Parts.Book.Enabled);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff), mDialog.Parts.Note.Caption);
+    Assert.AreEqual(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookOff), mDialog.Parts.Note.Caption);
     Assert.IsTrue(mDialog.Parts.Later.Enabled, 'Später bleibt');
     Assert.IsTrue(mDialog.Parts.Discard.Enabled, 'Verwerfen bleibt');
   finally

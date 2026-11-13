@@ -299,6 +299,8 @@ begin
   AResult.NarrowedName := AData.GetValue<string>('narrowedName', '');
   AResult.NarrowedLine := AData.GetValue<Integer>('narrowedLine', 0);
   AResult.DescendantOf := AData.GetValue<string>('descendantOf', '');
+  // Rangfolge aus der Verwendung im Projekt (#2109).
+  AResult.ProjectUses := AData.GetValue<Integer>('projectUses', 0);
   // Typkonvertierung (#490): filtert nach dem Namen des Originals, nicht nach dem Ausdruck.
   AResult.Conversion := AData.GetValue<string>('conversion', '');
   AResult.ConvertFrom := AData.GetValue<string>('convertFrom', '');

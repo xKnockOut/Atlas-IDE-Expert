@@ -21,7 +21,8 @@ uses
   Shell.Composition.Status,
   Shell.Composition.ServerCommands,
   Shell.Composition.EditorCommands,
-  Shell.Composition.UnitSearch;
+  Shell.Composition.UnitSearch,
+  Shell.Composition.RuntimeReport;
 
 type
   /// <summary>Was die Teilwurzel Befehle von der Komposition braucht. In Status, Server, Editor und UnitSearch
@@ -33,6 +34,8 @@ type
     Server: TShellServerCommandServices;
     Editor: TShellEditorCommandServices;
     UnitSearch: TShellUnitSearchServices;
+    /// <summary>Speicher und Neumeldung der Diagnosen aus Laufzeitberichten (#74).</summary>
+    RuntimeReport: TShellRuntimeReportServices;
   end;
 
   /// <summary>Hält die Befehle und ihre Teile; meldet alle Befehle am Verteiler an.</summary>
@@ -64,9 +67,9 @@ type
     function UnitSearchServices: TShellUnitSearchServices;
     /// <summary>Eigenschaftsregeln anwenden in Formularen.</summary>
     procedure RegisterDfmPropertyRules;
-    /// <summary>Leckprüfung einrichten (#1880).</summary>
+    /// <summary>Leckprüfung einrichten (#1880) und Kandidaten zu einem Leckbericht (#1875).</summary>
     procedure RegisterLeakSetup;
-    /// <summary>Befehl atlas.server.testCases (#1879).</summary>
+    /// <summary>Befehle atlas.server.testCases (#1879) und atlas.server.boundaryCases (#2173).</summary>
     procedure RegisterTestCases;
     /// <summary>Befehle der Schnellbefehle: Einordnen, Erzeugen-Menü, Testunit, Unit-Suche.</summary>
     procedure RegisterSlashCommands;
@@ -97,8 +100,10 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.TestCases,
+  Atlas.Common.Lsp.BoundaryCases,
   Shell.Composition.DfmPropertyRules,
-  Shell.Composition.LeakSetup;
+  Shell.Composition.LeakSetup,
+  Shell.Composition.LeakCandidates;
 
 /// <summary>Ausführlicher Status von AReports als Funktion für die Aktivität des Servers.</summary>
 function DetailsOf(AReports: TShellStatusReports): TServerDetailsFunc;
@@ -317,16 +322,22 @@ begin
   mServices.Workspaces := FCore.Workspaces;
   mServices.ReadText := ReadText;
   TShellLeakSetup.Attach(FCommands, mServices);
+  TShellLeakCandidates.Attach(FCommands, mServices);
+  TShellRuntimeReport.Attach(FCommands, mServices, FServices.RuntimeReport);
 end;
 
 procedure TShellCommandArea.RegisterTestCases;
+var
+  mReadText: TLspTestCasesReadText;
 begin
   // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  TLspTestCases.Attach(FCommands,
+  mReadText :=
     function(const AUri: string; out AText: string): Boolean
     begin
       Result := ReadText(TDocumentUris.ToPath(AUri), AText);
-    end);
+    end;
+  TLspTestCases.Attach(FCommands, mReadText);
+  TLspBoundaryCases.Attach(FCommands, mReadText);
 end;
 
 procedure TShellCommandArea.RegisterSlashCommands;
