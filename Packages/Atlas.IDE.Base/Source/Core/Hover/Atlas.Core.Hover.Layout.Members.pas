@@ -51,11 +51,13 @@ type
     procedure MemberSection(AEvents: Boolean);
     procedure PublishedSummary;
     procedure DefaultPropertyRow;
-    /// <summary>Rollbereich ab ATop (Bausteine ab AFirstItem, Klickflächen ab AFirstHit) begrenzen.</summary>
-    procedure ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
   protected
     /// <summary>Rollbereich der published-Mitglieder (#1841).</summary>
     FMembers: TAtlasHoverScroll;
+    /// <summary>Rollbereich AScroll nach ARequest ab ATop (Bausteine ab AFirstItem, Klickflächen ab AFirstHit)
+    /// begrenzen: Zeilen in der Editorschrift, Daumen am rechten Rand.</summary>
+    procedure ClipScroll(var AScroll: TAtlasHoverScroll; const ARequest: TAtlasHoverScrollRequest;
+      ATop, AFirstItem, AFirstHit: Integer);
     /// <summary>published-Mitglieder mit Übersicht, Tabellen und Standard-Property.</summary>
     procedure PublishedMembers;
   public
@@ -75,6 +77,12 @@ const
   /// </summary>
   cPropertyRows = 7;
   cEventRows = 4;
+  /// <summary>Rollbereiche bei 96 dpi: Abstand der Zeilen, Daumen mindestens so hoch, sein Abstand vom rechten
+  /// Rand (innen, außen).</summary>
+  cScrollRowGap = 3;
+  cThumbMinHeight = 16;
+  cThumbInset = 7;
+  cThumbEdge = 3;
 
 constructor TAtlasHoverMembersPainter.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
 begin
@@ -395,22 +403,24 @@ begin
   Inc(FY, Height(mMonoFace) + Scale(8));
 end;
 
-procedure TAtlasHoverMembersPainter.ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
+procedure TAtlasHoverMembersPainter.ClipScroll(var AScroll: TAtlasHoverScroll; const ARequest: TAtlasHoverScrollRequest;
+  ATop, AFirstItem, AFirstHit: Integer);
 var
   mItem: TAtlasHoverItem;
 begin
-  // Rollbereich (#1841): Grenze aus Zeilen und Platz, Bausteine verschieben, verdeckte Klickflächen streichen.
-  if not FMembers.Fit(FInput.Members, ATop, FY, FInput.Width,
-    Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False)) + Scale(3)) then
+  // Rollbereich (#1841, #895): Grenze aus Zeilen und Platz, Bausteine verschieben, verdeckte Klickflächen
+  // streichen.
+  if not AScroll.Fit(ARequest, ATop, FY, FInput.Width,
+    Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False)) + Scale(cScrollRowGap)) then
   begin
     Exit;
   end;
-  FMembers.Shift(FItems, AFirstItem, FItemCount, FHits, AFirstHit, FHitCount);
-  mItem := NewItem(TAtlasHoverItemKind.RoundFill, FMembers.Thumb(Scale(16), Scale(7), Scale(3)),
-    FColors.Muted);
+  AScroll.Shift(FItems, AFirstItem, FItemCount, FHits, AFirstHit, FHitCount);
+  mItem := NewItem(TAtlasHoverItemKind.RoundFill, AScroll.Thumb(Scale(cThumbMinHeight), Scale(cThumbInset),
+    Scale(cThumbEdge)), FColors.Muted);
   mItem.Radius := 2;
   Add(mItem);
-  FY := FMembers.View.Bottom;
+  FY := AScroll.View.Bottom;
 end;
 
 procedure TAtlasHoverMembersPainter.PublishedMembers;
@@ -441,7 +451,7 @@ begin
   begin
     DefaultPropertyRow;
   end;
-  ClipMembers(mTop, mFirstItem, mFirstHit);
+  ClipScroll(FMembers, FInput.Members, mTop, mFirstItem, mFirstHit);
   FX := FLeft;
 end;
 

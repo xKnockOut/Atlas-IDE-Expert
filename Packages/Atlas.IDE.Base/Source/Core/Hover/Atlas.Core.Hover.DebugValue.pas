@@ -12,6 +12,10 @@
 //     Schalters, geprüfte Punkte und Korrekturen als Verweise. Die Erklärung
 //     setzt die Debug-Schicht; hier stehen nur die fertigen Texte.
 //   - Lange Werte werden für den Tooltip gekürzt.
+//   - Aufklappen und Änderungen (#895): Rows sind die sichtbaren Zeilen des
+//     aufgeklappten Werts in Anzeigereihenfolge (Tiefe, Name, Wert, alter Wert),
+//     OldText der Wert beim vorigen Halt, wenn er sich geändert hat. Beides
+//     setzt die Debug-Schicht; der Tooltip zeichnet nur.
 
 interface
 
@@ -41,6 +45,22 @@ type
     Fixes: TArray<TAtlasDebugValueFix>;
   end;
 
+  /// <summary>Zeile des aufgeklappten Werts (#895). Expandable: lässt sich auf- bzw. zuklappen (Expanded);
+  /// Lazy: Getter, erst nach Klick ausgewertet; More: „weitere …“; OldText: Wert beim vorigen Halt, '' wenn
+  /// unverändert.</summary>
+  TAtlasDebugValueRow = record
+    Expression: string;
+    Name: string;
+    Text: string;
+    OldText: string;
+    Depth: Integer;
+    Expandable: Boolean;
+    Expanded: Boolean;
+    Pending: Boolean;
+    Lazy: Boolean;
+    More: Boolean;
+  end;
+
   /// <summary>Wert eines Ausdrucks im angehaltenen Debugger.</summary>
   TAtlasDebugValue = record
     State: TAtlasDebugValueState;
@@ -50,6 +70,12 @@ type
     Note: TAtlasDebugValueNote;
     /// <summary>Aktionen unter dem Wert (Anheften #526); Id und Beschriftung setzt die Debug-Schicht.</summary>
     Actions: TArray<TAtlasDebugValueFix>;
+    /// <summary>Wert beim vorigen Halt, wenn er sich geändert hat (#895); '' sonst.</summary>
+    OldText: string;
+    /// <summary>Lässt sich aufklappen (#895); Rows sind dann die sichtbaren Kinder.</summary>
+    Expandable: Boolean;
+    Expanded: Boolean;
+    Rows: TArray<TAtlasDebugValueRow>;
     class function Pending(const AExpression: string): TAtlasDebugValue; static;
     /// <summary>Ausgewerteter Wert, auf TAtlasDebugExpression.cMaxValueLength gekürzt.</summary>
     class function Evaluated(const AExpression, AText: string): TAtlasDebugValue; static;

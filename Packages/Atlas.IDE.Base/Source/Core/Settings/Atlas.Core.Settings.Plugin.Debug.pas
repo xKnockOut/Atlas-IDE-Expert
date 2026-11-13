@@ -21,6 +21,10 @@ const
   cMinPredictLines = 1;
   cMaxPredictLines = 200;
   cDefaultPredictLines = 20;
+  /// <summary>Grenzen und Vorgabe für debug.hoverMaxChildren (#895).</summary>
+  cMinHoverMaxChildren = 10;
+  cMaxHoverMaxChildren = 1000;
+  cDefaultHoverMaxChildren = 100;
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
@@ -257,6 +261,14 @@ type
     /// <summary>Werte ändern (#868, debug.editValues): „Ändern …“ und Umschalten im Debug-Hover, F2 auf einem Wert im
     /// Editor; Eingabe nach Typ geprüft, „Rückgängig“ bis zum nächsten Schritt. Aus = Werte nur lesbar.</summary>
     DebugEditValues: Boolean;
+    /// <summary>Debug-Hover aufklappen (#895, debug.hoverExpand): Objekte, Records und Arrays im Debug-Hover als
+    /// Baum, Getter erst auf Klick. Aus = Wert wie bisher in einer Zeile.</summary>
+    DebugHoverExpand: Boolean;
+    /// <summary>Geänderte Werte markieren (#895, debug.hoverChanges): seit dem vorigen Halt geänderte Werte im
+    /// Debug-Hover hinterlegt, alter Wert gedimmt dahinter.</summary>
+    DebugHoverChanges: Boolean;
+    /// <summary>Höchstzahl Kinder je Ebene vor „weitere …“ (#895, debug.hoverMaxChildren, 10 bis 1000).</summary>
+    DebugHoverMaxChildren: Integer;
     /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
     /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
     DebugPinnedValues: Boolean;
@@ -411,6 +423,7 @@ begin
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugPredictLines := EnsureRange(DebugPredictLines, cMinPredictLines, cMaxPredictLines);
+  DebugHoverMaxChildren := EnsureRange(DebugHoverMaxChildren, cMinHoverMaxChildren, cMaxHoverMaxChildren);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
   DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
@@ -499,6 +512,9 @@ begin
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
   DebugEditValues := True;
+  DebugHoverExpand := True;
+  DebugHoverChanges := True;
+  DebugHoverMaxChildren := cDefaultHoverMaxChildren;
   DebugPinnedValues := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
@@ -526,6 +542,9 @@ begin
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
   AIo.Flag('DebugEditValues', DebugEditValues);
+  AIo.Flag('DebugHoverExpand', DebugHoverExpand);
+  AIo.Flag('DebugHoverChanges', DebugHoverChanges);
+  AIo.Number('DebugHoverMaxChildren', DebugHoverMaxChildren);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
