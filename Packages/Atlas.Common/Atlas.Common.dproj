@@ -389,6 +389,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Names.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EnumTables.pas"/>
@@ -706,6 +707,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.VarArguments.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Types.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Conversions.pas"/>
