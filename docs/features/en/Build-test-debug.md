@@ -160,6 +160,15 @@ Available as a code action (Alt+Enter) on a method or routine, in its body or at
 - Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
 - Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
 
+### Slash commands for tests and debugging (#305)
+
+Type the command on an empty line and press Enter.
+
+- `/mock IKundenRepo` at unit level creates `TKundenRepoMock = class(TInterfacedObject, IKundenRepo)` with every method of the interface (inherited ones too): each method counts its calls (`LadenCalls`), functions return a settable field (`LadenResult`). Inside a routine of a unit that uses `Delphi.Mocks` you get a local `TMock<IKundenRepo>` variable with its `Create` instead.
+- `/testcase 'a', 2, True` above a test method writes `[TestCase('Case1', 'a,2,True')]`, numbered consecutively; if a value contains a comma, `;` separates. The number of values must match the parameters of the method below.
+- `/dump` inside a routine prints all parameters and local variables of simple types on one line (`OutputDebugString` or the routine from `slashCommands.logCall`).
+- `/assert` below an assignment checks the assigned variable to fit its type (`Assigned`, not empty, not negative, `True`); in test units with `Assert.IsNotNull`, `Assert.AreNotEqual` and `Assert.IsTrue` from DUnitX.
+
 ### Run affected tests (#1353)
 
 Available from the *Atlas* menu and the command palette.

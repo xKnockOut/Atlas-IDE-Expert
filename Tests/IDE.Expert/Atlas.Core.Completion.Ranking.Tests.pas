@@ -36,6 +36,9 @@ type
     /// <summary>#2107: Nachfahren des Typs vor is oben unter „Nachfahren von …“.</summary>
     [Test]
     procedure DescendantsComeFirstWithHeader;
+    /// <summary>#2108: Nur wegen der Sichtbarkeit fehlende Mitglieder erst auf Wunsch, dann am Ende.</summary>
+    [Test]
+    procedure InaccessibleOnlyWhenShown;
     [Test]
     procedure VariantFieldsGetBranchTag;
     [Test]
@@ -608,6 +611,37 @@ begin
     Found := Found or (Tag.Text = 'als TJSONObject');
   end;
   Assert.IsTrue(Found);
+end;
+
+procedure TAtlasRankingTests.InaccessibleOnlyWhenShown;
+var
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
+  mFound: Boolean;
+  mTag: TAtlasTag;
+begin
+  mItems := [Member('FEintraege', 'TZaehler', 0, 0, TAtlasItemKind.Field), Member('FEnde', 'TZaehler', 0, 1,
+    TAtlasItemKind.Field), Member('FAlt', 'TZaehler', 0, 2, TAtlasItemKind.Field)];
+  mItems[0].Inaccessible := 'private';
+  mItems[2].Inaccessible := 'strict private';
+  mOptions := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('FEnde', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual(1, Integer(Length(TAtlasRanking.Inaccessible(mItems, 'FE'))));
+  Assert.AreEqual(0, TAtlasRanking.Inaccessible(mItems, 'FE')[0]);
+  Assert.AreEqual(0, Integer(Length(TAtlasRanking.Inaccessible(mItems, ''))));
+  mOptions.ShowInaccessible := True;
+  Assert.AreEqual('FEnde,#,FEintraege', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  // Nicht im Rest der Liste (#497) und nicht unter den Chips.
+  mOptions.ShowInaccessible := False;
+  mOptions.ListMode := TAtlasListMode.All;
+  Assert.AreEqual('FEnde', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual(1, TAtlasRanking.ChipCounts(mItems, 'FE')[TAtlasChip.All]);
+  mFound := False;
+  for mTag in TAtlasItemPresentation.Tags(mItems[0]) do
+  begin
+    mFound := mFound or (mTag.Text = 'private · TZaehler');
+  end;
+  Assert.IsTrue(mFound);
 end;
 
 procedure TAtlasRankingTests.DescendantsComeFirstWithHeader;

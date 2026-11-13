@@ -359,7 +359,9 @@ begin
     ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
     (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(mItem) and
       (mItem.OverloadCount > 1)) or
-    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt])));
+    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt]))) or
+    // Zweites Strg+Leertaste (#2108): nicht sichtbare Treffer zeigen, auch im leeren Zustand.
+    ((AKey = VK_SPACE) and (AShift = [ssCtrl]) and FController.CanRevealInaccessible);
 end;
 
 procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
@@ -387,6 +389,10 @@ begin
   else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
   begin
     FController.SelectChipAt(AKey - Ord('1'));
+  end
+  else if AKey = VK_SPACE then
+  begin
+    FController.RevealInaccessible;
   end;
 end;
 
