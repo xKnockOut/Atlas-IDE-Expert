@@ -238,31 +238,6 @@ begin
     end;
 end;
 
-/// <summary>Ergebnisse ACases, ersetzt bzw. ergänzt um AFresh (voller Name, ohne Groß-/Kleinschreibung).</summary>
-function Merged(const ACases, AFresh: TArray<TTestCaseResult>): TArray<TTestCaseResult>;
-var
-  mItem, mNew: TTestCaseResult;
-  mReplaced: Boolean;
-begin
-  Result := nil;
-  for mItem in ACases do
-  begin
-    mReplaced := False;
-    for mNew in AFresh do
-    begin
-      if SameText(mNew.FullName, mItem.FullName) then
-      begin
-        mReplaced := True;
-      end;
-    end;
-    if not mReplaced then
-    begin
-      Result := Result + [mItem];
-    end;
-  end;
-  Result := Result + AFresh;
-end;
-
 /// <summary>Ein Lauf startet nicht bzw. endet ohne Bericht: Grund AText melden, Lauf im Hintergrund beenden.
 /// </summary>
 procedure Refuse(AOutput: TAtlasIdeTestsOutput; const AText: string);
@@ -823,7 +798,7 @@ begin
   begin
     mInline := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsInlineValues);
   end;
-  FCases := Merged(FCases, ARun.Cases);
+  FCases := TAtlasTestRun.Merged(FCases, ARun.Cases);
   if Assigned(FHooks.OnReported) then
   begin
     FHooks.OnReported(ATarget, ARun);
