@@ -91,7 +91,8 @@ uses
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.Rename,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -266,16 +267,6 @@ end;
 function IsBooleanType(const ATypeName: string): Boolean;
 begin
   Result := IndexText(Trim(ATypeName), cBooleanTypes) >= 0;
-end;
-
-/// <summary>Vorheriges Token ohne Kommentare; -1 am Anfang.</summary>
-function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
 end;
 
 function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -815,7 +806,7 @@ var
   mPrevious: Integer;
 begin
   mTokens := AUnit.Tree.Tokens;
-  mPrevious := PreviousToken(mTokens, AToken);
+  mPrevious := PreviousCode(mTokens, AToken);
   if (mPrevious >= 0) and MatchText(mTokens[mPrevious].Text, ['read', 'write']) then
   begin
     raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfA].Fmt([Where(ALocation.FileName, ALocation.Range.StartPos),

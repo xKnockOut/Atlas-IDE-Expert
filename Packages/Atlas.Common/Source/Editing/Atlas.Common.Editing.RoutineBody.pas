@@ -50,7 +50,6 @@ type
     class function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer; static;
     /// <summary>Nächstes bzw. vorheriges Token ohne Kommentare und Direktiven; -1 bzw. Length ohne.</summary>
     class function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer; static;
-    class function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer; static;
     /// <summary>Text vor die Anweisung AStatement setzen: ALine, Umbruch und die Einrückung der Anweisung.</summary>
     class function InsertBefore(const AText: string; AStatement: TSyntaxNode; const ALine: string): TTextEdit;
       static;
@@ -273,7 +272,7 @@ class function TRoutineBody.UniqueName(const ATokens: TArray<TPascalToken>; cons
     begin
       if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AName) then
       begin
-        mBefore := PreviousToken(ATokens, mIndex);
+        mBefore := PreviousCode(ATokens, mIndex);
         if (mBefore < 0) or not ATokens[mBefore].IsSymbol('.') then
         begin
           Exit(True);
@@ -306,15 +305,6 @@ begin
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
   begin
     Inc(Result);
-  end;
-end;
-
-class function TRoutineBody.PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
   end;
 end;
 
@@ -538,7 +528,7 @@ begin
   mLineBreak := TTextLines.LineBreakOf(AText);
   mVisibility := SectionOf(ABody, AMember.Section, mNext);
   mTokens := ATree.Tokens;
-  mEndToken := PreviousToken(mTokens, TokenAt(mTokens, ABody.EndOffset));
+  mEndToken := PreviousCode(mTokens, TokenAt(mTokens, ABody.EndOffset));
   if (mEndToken < 0) or not mTokens[mEndToken].IsKeyword('end') then
   begin
     Exit(False);

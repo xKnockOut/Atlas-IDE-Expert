@@ -123,6 +123,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.FindingsView,
   Atlas.Core.Problems.FindingsCache,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,

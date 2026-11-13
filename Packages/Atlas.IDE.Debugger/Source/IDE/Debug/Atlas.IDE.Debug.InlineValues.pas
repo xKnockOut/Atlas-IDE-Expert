@@ -141,6 +141,10 @@ type
     class function Enabled: Boolean; static;
   end;
 
+/// <summary>Werte im Editor im selben Halt neu auswerten, etwa nach dem Ändern eines Werts (#868); geänderte Werte
+/// stehen dann in der Warnfarbe. Ohne laufenden Teil nichts.</summary>
+procedure ReevaluateInlineValues;
+
 implementation
 
 uses
@@ -355,6 +359,14 @@ begin
   if mHad then
   begin
     Invalidate;
+  end;
+end;
+
+procedure ReevaluateInlineValues;
+begin
+  if (TAtlasIdeDebugInlineValues.FInstance <> nil) and (TAtlasIdeDebugSession.StoppedThread <> nil) then
+  begin
+    TAtlasIdeDebugInlineValues.FInstance.Stopped;
   end;
 end;
 

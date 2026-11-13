@@ -113,6 +113,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - Basisklasse herauslösen
 - Mitglied in Vorfahr oder Nachfahren verschieben
 - triviale Zugriffsmethode durch Feld ersetzen (einzeln oder für Unit und Projekt)
+- Sichtbarkeit eines Mitglieds auf protected oder public anheben (Deklaration samt Doku-Kommentar wandert, der Abschnitt entsteht bei Bedarf)
 - Methode aus einem Aufruf anlegen
 - Forward-Deklaration ergänzen
 

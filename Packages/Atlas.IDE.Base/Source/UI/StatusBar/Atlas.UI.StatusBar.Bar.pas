@@ -8,7 +8,8 @@
 //   eingeschalteten Benachrichtigungen immer deren Plakette mit der Zahl der
 //   ungelesenen, auch 0 (#1234, Klick: OnBadge), und die Zusatzfelder der
 //   Module (View.Extras, z. B. „interface-Änderung“ der Unit-Beziehungen;
-//   Klick: OnExtra mit ihrer Kennung);
+//   Klick: OnExtra mit ihrer Kennung; mit Zustand ein Punkt in dessen Farbe
+//   davor, #1777);
 //   findings: Zähler je Art mit den Symbolen aus „Atlas-Prüfung“;
 //   liveCheck: „live · geprüft vor 2 s“, „prüft …“, „beim Speichern“;
 //   method: „ƒ TFoo.Bar · 4 Zeilen · CC 2“, über der Grenze in Warnfarbe.
@@ -23,7 +24,8 @@
 //   Zahnrad öffnet das Menü „Leiste anpassen“. Doppelklick auf
 //   die Zähler meldet OnFindingsOpen, auf den Status OnStatusOpen (Fenster
 //   „Atlas-Server“, #1356). Rechtsklick auf den Status meldet
-//   OnStatusContext, sonst öffnet er das Menü. WM_CONTEXTMENU behandelt die
+//   OnStatusContext, auf ein Zusatzfeld mit HasContext OnExtra mit AContext (#1777),
+//   sonst öffnet er das Menü. WM_CONTEXTMENU behandelt die
 //   Leiste selbst; es geht nicht an das Editorfenster der IDE weiter.
 // - Menü „Leiste anpassen“: jedes Element mit Haken (OnToggleItem), darunter
 //   „Statusleiste ausblenden“ (OnHide).
@@ -61,6 +63,10 @@ type
     Text: string;
     Hint: string;
     Clickable: Boolean;
+    /// <summary>Punkt vor dem Text in der Farbe des Zustands; Neutral = ohne Punkt (#1777).</summary>
+    State: TAtlasStatusState;
+    /// <summary>Rechtsklick ruft OnExtraContext statt des Menüs „Leiste anpassen“.</summary>
+    HasContext: Boolean;
   end;
 
   TAtlasStatusBarView = record
@@ -101,8 +107,9 @@ type
 
   TAtlasStatusBarKindEvent = reference to procedure(AKind: TAtlasFindingKind);
   TAtlasStatusBarItemEvent = reference to procedure(const AId: string);
-  /// <summary>Klick auf ein Zusatzfeld: Kennung und linke Oberkante des Felds (Bildschirm).</summary>
-  TAtlasStatusBarExtraEvent = reference to procedure(const AId: string; const APoint: TPoint);
+  /// <summary>Klick auf ein Zusatzfeld: Kennung und linke Oberkante des Felds (Bildschirm); AContext: Rechtsklick
+  /// (#1777).</summary>
+  TAtlasStatusBarExtraEvent = reference to procedure(const AId: string; const APoint: TPoint; AContext: Boolean);
 
   /// <summary>Lage nach dem Layout: Elemente in Reihenfolge mit ihren Spannen, die Zähler und das Zahnrad.
   /// </summary>
@@ -202,7 +209,8 @@ type
     property OnStatusContext: TProc<TPoint> read FEvents.StatusContext write FEvents.StatusContext;
     /// <summary>Klick auf die Plakette (#1234): linke Oberkante der Plakette (Bildschirm).</summary>
     property OnBadge: TProc<TPoint> read FEvents.Badge write FEvents.Badge;
-    /// <summary>Klick auf ein Zusatzfeld mit Klick: Kennung und linke Oberkante des Felds (Bildschirm).</summary>
+    /// <summary>Klick auf ein Zusatzfeld (Kennung, linke Oberkante); Rechtsklick nur bei HasContext (AContext).
+    /// </summary>
     property OnExtra: TAtlasStatusBarExtraEvent read FEvents.Extra write FEvents.Extra;
     property OnFinding: TAtlasStatusBarKindEvent read FEvents.Finding write FEvents.Finding;
     property OnFindingsOpen: TProc read FEvents.FindingsOpen write FEvents.FindingsOpen;
@@ -239,6 +247,8 @@ const
   /// <summary>Innenabstand je Feld; eigener Name, weil TControl.Padding in den Methoden die Konstante
   /// verdeckt.</summary>
   cSlotPadding = 4;
+  /// <summary>Abstand zwischen Punkt und Text.</summary>
+  cDotGap = 5;
   /// <summary>Kürzstufen: die Methode zuerst, die Zähler nie.</summary>
   cShrinkMethod = 1;
   cShrinkLive = 2;
@@ -294,7 +304,9 @@ begin
     end;
     Result := (Extras[mIndex].Id = AOther.Extras[mIndex].Id) and (Extras[mIndex].Text = AOther.Extras[mIndex].Text)
       and (Extras[mIndex].Hint = AOther.Extras[mIndex].Hint) and
-      (Extras[mIndex].Clickable = AOther.Extras[mIndex].Clickable);
+      (Extras[mIndex].Clickable = AOther.Extras[mIndex].Clickable) and
+      (Extras[mIndex].State = AOther.Extras[mIndex].State) and
+      (Extras[mIndex].HasContext = AOther.Extras[mIndex].HasContext);
   end;
 end;
 
@@ -431,6 +443,8 @@ type
     function KindWidths: TArray<Integer>;
     /// <summary>Feld mit Symbol bzw. Punkt der Breite AMark und kürzbarem Text.</summary>
     function TextSlot(AMark: Integer; const AText: string; AShrink: Integer): TAtlasStatusSlot;
+    /// <summary>Breite des Punkts vor dem Zusatzfeld AIndex samt Abstand; 0 ohne Zustand.</summary>
+    function ExtraMark(AIndex: Integer): Integer;
     function MethodSlot: TAtlasStatusSlot;
     function SlotOf(APart: TAtlasStatusBarPart; ASub: Integer): TAtlasStatusSlot;
     /// <summary>Elemente der Ansicht in Reihenfolge und je Element der Index in View.Extras (-1 sonst).</summary>
@@ -447,6 +461,8 @@ type
     function HotElement: TAtlasStatusBarPart;
     function HotKind: Integer;
     procedure Hot(const ARect: TRect);
+    /// <summary>Punkt in der Signalfarbe von AState (#1255), links bei ALeft, senkrecht mittig um ACenter.</summary>
+    procedure Dot(ALeft, ACenter: Integer; AState: TAtlasStatusState);
     procedure Status(const ARect: TRect);
     procedure Badge(const ARect: TRect);
     procedure Findings(const ARect: TRect);
@@ -493,6 +509,15 @@ end;
 function TAtlasStatusBarMeasure.DotSize: Integer;
 begin
   Result := Bar.Scale(8);
+end;
+
+function TAtlasStatusBarMeasure.ExtraMark(AIndex: Integer): Integer;
+begin
+  Result := 0;
+  if Bar.FView.Extras[AIndex].State <> TAtlasStatusState.Neutral then
+  begin
+    Result := DotSize + Bar.Scale(cDotGap);
+  end;
 end;
 
 function TAtlasStatusBarMeasure.IconSize: Integer;
@@ -575,7 +600,7 @@ begin
     TAtlasStatusBarPart.LiveCheck:
       Result := TextSlot(IconSize + Bar.Scale(4), Bar.FView.LiveText, cShrinkLive);
     TAtlasStatusBarPart.Extra:
-      Result := TextSlot(0, Bar.FView.Extras[ASub].Text, cShrinkExtra);
+      Result := TextSlot(ExtraMark(ASub), Bar.FView.Extras[ASub].Text, cShrinkExtra);
   else
     Result := MethodSlot;
   end;
@@ -677,19 +702,26 @@ begin
     Bar.Scale(4));
 end;
 
-procedure TAtlasStatusBarPainter.Status(const ARect: TRect);
+procedure TAtlasStatusBarPainter.Dot(ALeft, ACenter: Integer; AState: TAtlasStatusState);
 var
-  mCenter, mLeft, mDot: Integer;
-  mPart: TRect;
+  mDot: Integer;
 begin
-  mCenter := (ARect.Top + ARect.Bottom) div 2;
-  mLeft := ARect.Left + Bar.Scale(cSlotPadding);
   mDot := Measure.DotSize;
   Canvas.Brush.Style := bsSolid;
   // Signalfarbe der Leistenfläche mit Rand (#1255).
-  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(Bar.FView.StatusState).Fill);
-  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(Bar.FView.StatusState).Ring);
-  Canvas.Ellipse(mLeft, mCenter - mDot div 2, mLeft + mDot, mCenter - mDot div 2 + mDot);
+  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(AState).Fill);
+  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(AState).Ring);
+  Canvas.Ellipse(ALeft, ACenter - mDot div 2, ALeft + mDot, ACenter - mDot div 2 + mDot);
+end;
+
+procedure TAtlasStatusBarPainter.Status(const ARect: TRect);
+var
+  mLeft, mDot: Integer;
+  mPart: TRect;
+begin
+  mLeft := ARect.Left + Bar.Scale(cSlotPadding);
+  mDot := Measure.DotSize;
+  Dot(mLeft, (ARect.Top + ARect.Bottom) div 2, Bar.FView.StatusState);
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
@@ -859,16 +891,22 @@ end;
 
 procedure TAtlasStatusBarPainter.Extra(const ARect: TRect; AIndex: Integer);
 var
+  mLeft: Integer;
   mPart: TRect;
 begin
   if (HotElement = TAtlasStatusBarPart.Extra) and (HotKind = AIndex) and Bar.FView.Extras[AIndex].Clickable then
   begin
     Hot(ARect);
   end;
+  mLeft := ARect.Left + Bar.Scale(cSlotPadding);
+  if Bar.FView.Extras[AIndex].State <> TAtlasStatusState.Neutral then
+  begin
+    Dot(mLeft, (ARect.Top + ARect.Bottom) div 2, Bar.FView.Extras[AIndex].State);
+  end;
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mPart := Rect(ARect.Left + Bar.Scale(cSlotPadding), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
+  mPart := Rect(mLeft + Measure.ExtraMark(AIndex), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.Extras[AIndex].Text), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -1184,7 +1222,16 @@ end;
 procedure TAtlasEditorStatusBar.ContextMenu(const APoint: TPoint; APart: Integer);
 var
   mArea: TRect;
+  mSub: Integer;
 begin
+  mSub := FPlaces.SubAt(APoint, ClientHeight);
+  if (ElementAt(APoint.X, APoint.Y) = TAtlasStatusBarPart.Extra) and (mSub >= 0) and (mSub <= High(FView.Extras)) and
+    FView.Extras[mSub].HasContext and Assigned(FEvents.Extra) then
+  begin
+    mArea := ExtraRect(mSub);
+    FEvents.Extra(FView.Extras[mSub].Id, ClientToScreen(Point(mArea.Left, mArea.Top)), True);
+    Exit;
+  end;
   if ElementAt(APoint.X, APoint.Y) = TAtlasStatusBarPart.Status then
   begin
     mArea := PartRect(TAtlasStatusBarPart.Status);
@@ -1277,7 +1324,7 @@ procedure TAtlasStatusBarClick.Extra(ASub: Integer);
 begin
   if (ASub >= 0) and Bar.FView.Extras[ASub].Clickable and Assigned(Bar.FEvents.Extra) then
   begin
-    Bar.FEvents.Extra(Bar.FView.Extras[ASub].Id, ScreenCorner(Bar, Bar.ExtraRect(ASub)));
+    Bar.FEvents.Extra(Bar.FView.Extras[ASub].Id, ScreenCorner(Bar, Bar.ExtraRect(ASub)), False);
   end;
 end;
 

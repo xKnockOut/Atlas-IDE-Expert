@@ -257,6 +257,12 @@ type
     /// <summary>Code Lens „Test ausführen“ an Fixtures und Tests von DUnitX (#69, codeLens.tests; gemeinsamer
     /// Schlüssel mit „Test debuggen“ #585).</summary>
     CodeLensTests: Boolean;
+    /// <summary>Marke „getestet von“ an den Methoden normaler Units (#1778, codeLens.coveredBy): Zahl und Stand der
+    /// Tests, die die Methode aufrufen; Klick führt genau diese aus.</summary>
+    CodeLensCoveredBy: Boolean;
+    /// <summary>Marke „n von m Methoden getestet“ an der unit-Zeile normaler Units mit Testunit (#1783,
+    /// codeLens.untested); Klick listet die ungetesteten Methoden.</summary>
+    CodeLensUntested: Boolean;
     /// <summary>Testabdeckung aus einem Bericht von DelphiCodeCoverage in der Rinne (#275, tests.coverage): je
     /// Zeile mit Code ein Balken, grün durchlaufen, rot nicht; dazu die Befehle „Testabdeckung laden …“ und
     /// „Testabdeckung ausblenden“.</summary>
@@ -533,6 +539,9 @@ type
     /// <summary>Sichtbare Elemente in Reihenfolge: status, findings, liveCheck, method, durch Komma getrennt (#1155,
     /// editor.statusBar.items); leer = keine.</summary>
     EditorStatusBarItems: string;
+    /// <summary>Feld „Tests 41/42“ mit Ampelpunkt für das Testprojekt der aktuellen Datei (#1777,
+    /// editor.statusBar.tests).</summary>
+    EditorStatusBarTests: Boolean;
     /// <summary>Designer-Leiste im Formular-Designer statt Brotkrumen und Editorleiste (#1442,
     /// editor.designerBar): Komponenten suchen, Nichtvisuelle (Strg+H der IDE), Elternelement, Tab-Reihenfolge,
     /// Ausrichten.</summary>
@@ -1055,6 +1064,8 @@ begin
   Result.CodeLensMetrics := True;
   Result.Metrics := True;
   Result.CodeLensTests := True;
+  Result.CodeLensCoveredBy := True;
+  Result.CodeLensUntested := True;
   Result.TestCoverage := True;
   Result.TodoList := True;
   Result.BaselineUpdate := True;
@@ -1122,6 +1133,8 @@ begin
   AIo.Flag('CodeLensMetrics', CodeLensMetrics);
   AIo.Flag('Metrics', Metrics);
   AIo.Flag('CodeLensTests', CodeLensTests);
+  AIo.Flag('CodeLensCoveredBy', CodeLensCoveredBy);
+  AIo.Flag('CodeLensUntested', CodeLensUntested);
   AIo.Flag('TestCoverage', TestCoverage);
   AIo.Flag('TodoList', TodoList);
   AIo.Flag('BaselineUpdate', BaselineUpdate);
@@ -1358,6 +1371,7 @@ begin
   Result.EditorToolbarLabels := False;
   Result.EditorStatusBar := True;
   Result.EditorStatusBarItems := TAtlasStatusBarItems.DefaultText;
+  Result.EditorStatusBarTests := True;
   Result.EditorDesignerBar := True;
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
@@ -1694,6 +1708,7 @@ begin
   AIo.Flag('EditorToolbarLabels', EditorToolbarLabels);
   AIo.Flag('EditorStatusBar', EditorStatusBar);
   AIo.Text('EditorStatusBarItems', EditorStatusBarItems);
+  AIo.Flag('EditorStatusBarTests', EditorStatusBarTests);
   AIo.Flag('EditorDesignerBar', EditorDesignerBar);
   AIo.Number('DesignerSearchKey', DesignerSearchKey);
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);

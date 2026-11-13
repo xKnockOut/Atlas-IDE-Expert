@@ -53,7 +53,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.VersionControl.ExternalRules,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings;
 

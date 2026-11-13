@@ -3,7 +3,8 @@
 // Tests des Lesens von DUnitX-Berichten (#69): NUnit 2 (Logger der Vorlage
 // von RAD Studio) mit Namensräumen, Fixtures, Testfällen, Fehlschlag, Fehler
 // und Ignoriert; NUnit 3; JUnit; erwarteter und tatsächlicher Wert; Zeiten mit
-// Komma; kein Bericht; Dauer als Text und die langsamsten Tests (#1772).
+// Komma; kein Bericht; Dauer als Text und die langsamsten Tests (#1772);
+// Leckmeldungen des Leckmonitors (#1774).
 
 interface
 
@@ -32,6 +33,10 @@ type
     procedure DurationTextInMsAndSeconds;
     [Test]
     procedure SlowestSortedAndLimited;
+    [Test]
+    procedure ReadsLeaksFromNUnitAndJUnit;
+    [Test]
+    procedure LeakBytesOnlyFromTheLeakMessage;
   end;
 
 implementation
@@ -246,6 +251,48 @@ begin
   mSlowest := TTestResults.Slowest(mCases, 10);
   Assert.AreEqual(4, Integer(Length(mSlowest)), 'ohne Dauer und übersprungene nicht');
   Assert.AreEqual(0, Integer(Length(TTestResults.Slowest(mCases, 0))));
+end;
+
+procedure TTestResultsTests.ReadsLeaksFromNUnitAndJUnit;
+var
+  mRun: TTestRunResult;
+begin
+  // NUnit 2, wie TDUnitXXMLNUnitFileLogger ein Leck schreibt: result="Failure", Meldung mit Leerzeichen im CDATA.
+  mRun := TTestResults.Parse(
+    '<test-results total="3" failures="2">' +
+    '<test-suite type="TestFixture" name="TKontoTests"><results>' +
+    '<test-case name="Konto.Tests.TKontoTests.Bucht" executed="True" result="Failure" success="False" ' +
+      'time="0.001"><failure><message><![CDATA[ 40 bytes were leaked in the test method ]]></message>' +
+      '</failure></test-case>' +
+    '<test-case name="Konto.Tests.TKontoTests.Leert" executed="True" result="Failure" success="False" ' +
+      'time="0.001"><failure><message><![CDATA[ 16 bytes were leaked in the setup/teardown methods' + #13#10 +
+      'TStringList x 1 ]]></message></failure></test-case>' +
+    '<test-case name="Konto.Tests.TKontoTests.Rechnet" executed="True" result="Failure" success="False" ' +
+      'time="0.001"><failure><message><![CDATA[Expected 3 but got 4]]></message></failure></test-case>' +
+    '</results></test-suite></test-results>');
+  Assert.IsTrue(mRun.Valid);
+  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Failed, 'das Ergebnis bleibt, wie der Bericht es nennt');
+  Assert.AreEqual(Int64(40), mRun.Cases[0].LeakBytes);
+  Assert.IsTrue(mRun.Cases[0].IsLeak);
+  Assert.AreEqual(Int64(16), mRun.Cases[1].LeakBytes, 'Leck in Setup oder TearDown');
+  Assert.IsFalse(mRun.Cases[2].IsLeak, 'gewöhnlicher Fehlschlag');
+  // JUnit: Leck als <error>.
+  mRun := TTestResults.Parse('<testsuites><testsuite name="Konto.Tests.TKontoTests">' +
+    '<testcase classname="Konto.Tests.TKontoTests" name="Bucht"><error message="' +
+    '24 bytes were leaked in the setup/test/teardown methods"/></testcase></testsuite></testsuites>');
+  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Error);
+  Assert.AreEqual(Int64(24), mRun.Cases[0].LeakBytes);
+end;
+
+procedure TTestResultsTests.LeakBytesOnlyFromTheLeakMessage;
+begin
+  Assert.AreEqual(Int64(40), TTestResults.LeakBytesOf('40 bytes were leaked in the test method'));
+  Assert.AreEqual(Int64(7), TTestResults.LeakBytesOf('  7 Bytes Were Leaked In The test method'));
+  Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf('Expected 40 bytes were leaked in the test method'),
+    'Zahl nicht allein vor dem Text');
+  Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf('bytes were leaked in the test method'));
+  Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf('-5 bytes were leaked in the test method'));
+  Assert.AreEqual(Int64(0), TTestResults.LeakBytesOf(''));
 end;
 
 procedure TTestResultsTests.NotAReport;

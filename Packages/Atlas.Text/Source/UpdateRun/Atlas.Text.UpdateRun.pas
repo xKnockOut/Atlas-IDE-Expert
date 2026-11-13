@@ -351,30 +351,6 @@ begin
   end;
 end;
 
-/// <summary>Wurzelobjekt von AJson oder nil (auch bei kaputtem Text); der Aufrufer gibt es frei.</summary>
-function ParseObject(const AJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on EJSONException do
-    begin
-      Exit;
-    end;
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 { TUpdateStage }
 
 function CandidateJson(const ACandidate: TUpdateCandidate): string;
@@ -460,7 +436,7 @@ var
 begin
   Result := Default(TUpdateStage);
   Result.Phase := TUpdatePhase.Failed;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   if mRoot = nil then
   begin
     Result.Error := TUpdateErrors.cManifest;
@@ -519,7 +495,7 @@ var
 begin
   Result := Default(TUpdateOutcome);
   Result.Kind := TUpdateOutcomeKind.Failed;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   if mRoot = nil then
   begin
     Exit;

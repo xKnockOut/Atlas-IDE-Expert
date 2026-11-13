@@ -59,6 +59,9 @@ type
     EditChoices: TArray<TArray<Integer>>;
     /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
     class function FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean; static;
+    /// <summary>Alle Einträge eines Arrays aus CodeAction oder Command, in seiner Reihenfolge; leer, wenn AValue
+    /// kein Array ist.</summary>
+    class function ListFromJson(const AValue: TJSONValue): TArray<TLspCodeAction>; static;
     /// <summary>Die Aktion nur mit den Edits, deren Teile alle in AChosen gewählt sind (#2054). Ohne Teile oder
     /// bei mehr als einer Datei unverändert.</summary>
     function WithChoices(const AChosen: TArray<Boolean>): TLspCodeAction;
@@ -194,7 +197,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Lsp.Uris;
+  Atlas.Core.Lsp.Uris,
+  Atlas.Text.Json;
 
 class function TLspSessionJson.PathToUri(const APath: string): string;
 begin
@@ -754,12 +758,7 @@ class function TLspSessionJson.SettingsParams(const AJson: string): TJSONObject;
 var
   mValue: TJSONValue;
 begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  if not (mValue is TJSONObject) then
-  begin
-    mValue.Free;
-    mValue := TJSONObject.Create;
-  end;
+  mValue := TJsonRead.ParseObjectOrEmpty(AJson);
   Result := TJSONObject.Create(TJSONPair.Create('settings', TJSONObject.Create(TJSONPair.Create('atlas', mValue))));
 end;
 
@@ -881,6 +880,24 @@ begin
   // Eigene Kopie des Arrays: Result teilt sonst die Dateiliste mit Self.
   Result.Edit.Files := Copy(Edit.Files);
   Result.Edit.Files[0].Edits := mKept;
+end;
+
+class function TLspCodeAction.ListFromJson(const AValue: TJSONValue): TArray<TLspCodeAction>;
+var
+  mItem: TJSONValue;
+  mAction: TLspCodeAction;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      if FromJson(mItem, mAction) then
+      begin
+        Result := Result + [mAction];
+      end;
+    end;
+  end;
 end;
 
 class function TLspCodeAction.FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean;

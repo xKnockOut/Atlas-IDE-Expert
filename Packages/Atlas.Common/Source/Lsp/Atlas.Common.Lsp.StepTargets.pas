@@ -124,6 +124,8 @@ type
     function Answer(ALine: Integer; out AAnswer: TLspStepAnswer): Boolean;
     /// <summary>Der Befehl: Antwort als JSON (format 1). Ohne Anweisung bleibt calls leer.</summary>
     function Execute(ALine: Integer): TJSONObject;
+    /// <summary>Positionen der Aufrufe der Anweisung an ALine (ab 0), für „Warum bin ich hier?“ (#1878).</summary>
+    function CallPositions(ALine: Integer): TArray<TTextPosition>;
     class function ToJson(const AAnswer: TLspStepAnswer): TJSONObject; static;
     /// <summary>Name hinter read bzw. write im Kopf einer Eigenschaft; '' ohne.</summary>
     class function Accessor(const ASignature: string; AWrite: Boolean): string; static;
@@ -809,6 +811,19 @@ var
 begin
   Answer(ALine, mAnswer);
   Result := ToJson(mAnswer);
+end;
+
+function TLspStepTargets.CallPositions(ALine: Integer): TArray<TTextPosition>;
+var
+  mAnswer: TLspStepAnswer;
+  mCall: TLspStepCall;
+begin
+  Result := nil;
+  Answer(ALine, mAnswer);
+  for mCall in mAnswer.Calls do
+  begin
+    Result := Result + [mCall.Position];
+  end;
 end;
 
 class function TLspStepTargets.ToJson(const AAnswer: TLspStepAnswer): TJSONObject;

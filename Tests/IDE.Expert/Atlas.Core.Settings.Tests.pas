@@ -30,6 +30,8 @@ type
     [Test]
     procedure ClampsOutOfRangeValues;
     [Test]
+    procedure ClampsNormalizedRanges;
+    [Test]
     procedure NormalizesUpdateChoices;
     [Test]
     procedure IndexOptionsGoToGlobalFile;
@@ -38,6 +40,9 @@ type
     /// <summary>#1841: hover.membersMaxLines mit Vorgabe 15 und Grenzen 0..100.</summary>
     [Test]
     procedure HoverMembersMaxLinesRoundTrip;
+    /// <summary>#2168: tests.log an, tests.log.maxLines mit Vorgabe 2000 und Grenzen 100..100000.</summary>
+    [Test]
+    procedure TestsLogRoundTrip;
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
@@ -119,7 +124,27 @@ uses
 
 { TAtlasPluginSettingsTests }
 
-/// <summary>Vorgaben für Editor, Code Lens, Tests und Build.</summary>
+/// <summary>Vorgaben für Test aus dem Debug-Halt, Vergleich, Fenster „Atlas-Tests“ und Testlisten.</summary>
+procedure AssertTestWindowDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsTrue(ASettings.TestsFromDebugStop, 'Test aus dem Debug-Halt standardmäßig an (#1873)');
+  Assert.IsTrue(ASettings.TestsFromDebugStopFields, 'Felder anbieten standardmäßig an (#1873)');
+  Assert.IsFalse(ASettings.TestsFromDebugStopProperties, 'Getter standardmäßig aus (#1873)');
+  Assert.AreEqual(20, ASettings.TestsFromDebugStopMaxArray, 'Array-Grenze standardmäßig 20 (#1873)');
+  Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
+  Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
+  Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
+  Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
+  Assert.IsTrue(ASettings.TestsLists, 'Testlisten standardmäßig an (#2167)');
+  Assert.AreEqual($C052, ASettings.TestsListsRunKey, 'Testliste mit Strg+Alt+R (#2167)');
+  Assert.IsTrue(ASettings.EditorStatusBarTests, 'Teststand in der Statusleiste standardmäßig an (#1777)');
+  Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
+  Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
+end;
+
+/// <summary>Vorgaben für Editor, Code Lens und Tests.</summary>
 procedure AssertEditorDefaults(const ASettings: TAtlasPluginSettings);
 begin
   Assert.IsTrue(ASettings.Enabled);
@@ -147,17 +172,27 @@ begin
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
+  Assert.IsTrue(ASettings.TestsLeakSetup, 'Leckprüfung einrichten standardmäßig an (#1880)');
   Assert.AreEqual(3, ASettings.TestsAffectedDepth, 'Tiefe der betroffenen Tests standardmäßig 3 (#1353)');
   Assert.IsFalse(ASettings.TestsAffectedBeforeCommit, 'Angebot vor dem Commit standardmäßig aus (#1353)');
   Assert.IsTrue(ASettings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsTrue(ASettings.TestsStale, 'veraltete Testergebnisse standardmäßig an (#1770)');
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
+  Assert.IsTrue(ASettings.CodeLensCoveredBy, 'Marke „getestet von“ standardmäßig an (#1778)');
+  Assert.AreEqual(1, ASettings.TestsCoveredByDepth, 'Tiefe „getestet von“ standardmäßig 1 (#1778)');
+  Assert.IsFalse(ASettings.TestsCoveredByPrivate, '„getestet von“ an privaten Methoden standardmäßig aus (#1778)');
+  Assert.IsTrue(ASettings.CodeLensUntested, 'Marke „n von m Methoden getestet“ standardmäßig an (#1783)');
+  Assert.AreEqual(50, ASettings.TestsUntestedWarnPercent, 'gelb unter 50 % standardmäßig (#1783)');
+  Assert.IsFalse(ASettings.TestsOnSave, 'Tests beim Speichern standardmäßig aus (#1775)');
+  Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
-  Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
-  Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
-  Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
-  Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
+  AssertTestWindowDefaults(ASettings);
+end;
+
+/// <summary>Vorgaben für Build, Startprofile und „Test debuggen“.</summary>
+procedure AssertBuildDefaults(const ASettings: TAtlasPluginSettings);
+begin
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -177,6 +212,19 @@ begin
   Assert.IsTrue(ASettings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsTrue(ASettings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.AreEqual('', ASettings.DebugParallelStacksWaitRoutines, 'debug.parallelStacks.waitRoutines (#837)');
+  Assert.AreEqual(64, ASettings.DebugParallelStacksMaxThreads, 'debug.parallelStacks.maxThreads (#837)');
+  Assert.IsFalse(ASettings.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsFalse(ASettings.DebugAsyncOrigin, 'debug.asyncOrigin (#859)');
+  Assert.AreEqual(20, ASettings.DebugAsyncOriginMaxPerSite, 'debug.asyncOrigin.maxPerSite (#859)');
+  Assert.IsTrue(ASettings.DebugThreadsInSource, 'debug.threadsInSource (#852)');
+  Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
+  Assert.IsTrue(ASettings.DebugCallStackWindow, 'debug.callStackWindow (#843)');
+  Assert.IsTrue(ASettings.DebugCallStackWindowEvaluateParams, 'debug.callStackWindow.evaluateParams (#843)');
+  Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
+  Assert.IsTrue(ASettings.DebugLeakReport, 'debug.leakReport (#1875)');
+  Assert.IsTrue(ASettings.DebugLeakReportCompare, 'debug.leakReport.compare (#1875)');
+  Assert.IsTrue(ASettings.DebugLeakReportWindow, 'debug.leakReport.window (#1875)');
   Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(ASettings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(ASettings.DebugJustMyCode, 'debug.justMyCode (#578)');
@@ -184,6 +232,19 @@ begin
   Assert.IsTrue(ASettings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsTrue(ASettings.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
+  Assert.AreEqual(3, ASettings.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
+  Assert.AreEqual(500, ASettings.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
+  Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
+  Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
+  Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
+  Assert.IsTrue(ASettings.DebugEditValues, 'debug.editValues (#868)');
+  Assert.IsTrue(ASettings.DebugHoverExpand, 'debug.hoverExpand (#895)');
+  Assert.IsTrue(ASettings.DebugHoverChanges, 'debug.hoverChanges (#895)');
+  Assert.AreEqual(100, ASettings.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
+  Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
@@ -269,9 +330,29 @@ begin
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   AssertEditorDefaults(Settings);
+  AssertBuildDefaults(Settings);
   AssertDebugDefaults(Settings);
   AssertToolDefaults(Settings);
 end;
+/// <summary>Rundreise: Test aus dem Debug-Halt, Vergleich, Fenster „Atlas-Tests“ und Testlisten abweichend setzen.</summary>
+procedure SetRoundTripTestWindow(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.TestsFromDebugStop := False;
+  ASettings.TestsFromDebugStopFields := False;
+  ASettings.TestsFromDebugStopProperties := True;
+  ASettings.TestsFromDebugStopMaxArray := 7;
+  ASettings.TestsCompare := False;
+  ASettings.TestsCompareFormat := False;
+  ASettings.TestsCaseTable := False;
+  ASettings.TestsApprovalFiles := False;
+  ASettings.TestsShowDuration := False;
+  ASettings.TestsWindow := False;
+  ASettings.TestsLists := False;
+  ASettings.TestsListsRunKey := 0;
+  ASettings.TestsSlowMs := 1000;
+  ASettings.TestsLeaks := False;
+end;
+
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build von der Vorgabe abweichend setzen.</summary>
 procedure SetRoundTripEditor(var ASettings: TAtlasPluginSettings);
 begin
@@ -305,12 +386,16 @@ begin
   ASettings.TestsBuildFirst := False;
   ASettings.TestsStale := False;
   ASettings.TestsStaleUnits := True;
+  ASettings.CodeLensCoveredBy := False;
+  ASettings.TestsCoveredByDepth := 3;
+  ASettings.TestsCoveredByPrivate := True;
+  ASettings.CodeLensUntested := False;
+  ASettings.TestsUntestedWarnPercent := 75;
+  ASettings.TestsOnSave := True;
+  ASettings.TestsOnSaveMax := 12;
   ASettings.TestsFailureAtAssert := False;
   ASettings.TestsFailureInline := False;
-  ASettings.TestsCompare := False;
-  ASettings.TestsCompareFormat := False;
-  ASettings.TestsShowDuration := False;
-  ASettings.TestsSlowMs := 1000;
+  SetRoundTripTestWindow(ASettings);
   ASettings.BuildZeroHints := True;
   ASettings.ShowInterfaceCost := False;
   ASettings.BuildCompilerSwitches := False;
@@ -331,12 +416,38 @@ begin
   ASettings.DebugExplainAccessViolation := False;
   ASettings.DebugExplainAccessViolationAllowCalls := True;
   ASettings.DebugModuleOfAddress := False;
+  ASettings.DebugDeadlocks := False;
+  ASettings.DebugLeakReport := False;
+  ASettings.DebugLeakReportCompare := False;
+  ASettings.DebugLeakReportWindow := False;
+  ASettings.DebugParallelStacks := False;
+  ASettings.DebugCallStackWindow := False;
+  ASettings.DebugCallStackWindowEvaluateParams := False;
+  ASettings.DebugThreadsInSource := False;
+  ASettings.DebugThreadFreeze := True;
+  ASettings.DebugAsyncOrigin := True;
+  ASettings.DebugAsyncOriginMaxPerSite := 5;
+  ASettings.DebugParallelStacksWaitRoutines := 'TMonitor.Enter;MyLock.Acquire';
+  ASettings.DebugParallelStacksMaxThreads := 16;
   ASettings.DebugExceptionHistory := False;
   ASettings.DebugJustMyCode := False;
   ASettings.DebugExceptionBanner := True;
   ASettings.DebugExceptionBannerIgnoreAtLocation := False;
   ASettings.DebugInlineValues := False;
   ASettings.DebugInlineValuesPerLine := 7;
+  ASettings.DebugWhyHere := False;
+  ASettings.DebugWhyHereDepth := 6;
+  ASettings.DebugVariablesWindow := False;
+  ASettings.DebugVariablesSearchDepth := 5;
+  ASettings.DebugVariablesSearchLimit := 250;
+  ASettings.DebugPredictConditions := False;
+  ASettings.DebugPredictDimSkipped := False;
+  ASettings.DebugPredictLines := 40;
+  ASettings.DebugEditValues := False;
+  ASettings.DebugHoverExpand := False;
+  ASettings.DebugHoverChanges := False;
+  ASettings.DebugHoverMaxChildren := 250;
+  ASettings.DebugPinnedValues := False;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
   ASettings.MetricsReport := False;
@@ -355,11 +466,11 @@ begin
   ASettings.QuickToggleKey := $6051;
   ASettings.QuickToggleKeyPriority := True;
   ASettings.DiagnosticMode := True;
-  ASettings.DiagnosticModeKey := $6044;
 end;
 /// <summary>Rundreise: Diagnose, Start, Zurücknehmen und Blocklinien von der Vorgabe abweichend setzen.</summary>
 procedure SetRoundTripTools(var ASettings: TAtlasPluginSettings);
 begin
+  ASettings.DiagnosticModeKey := $6044;
   ASettings.DiagnosticModeKeyPriority := True;
   ASettings.DiagnosticsProcesses := False;
   ASettings.ServerStatusWindow := False;
@@ -401,6 +512,25 @@ begin
   ASettings.NestedRoutineBand := True;
   ASettings.NestedRoutineColorLight := ' #a85a00 ';
 end;
+/// <summary>Rundreise: Test aus dem Debug-Halt, Vergleich, Fenster „Atlas-Tests“ und Testlisten gelesen.</summary>
+procedure AssertRoundTripTestWindow(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.TestsFromDebugStop, 'tests.fromDebugStop (#1873)');
+  Assert.IsFalse(ALoaded.TestsFromDebugStopFields, 'tests.fromDebugStop.fields (#1873)');
+  Assert.IsTrue(ALoaded.TestsFromDebugStopProperties, 'tests.fromDebugStop.properties (#1873)');
+  Assert.AreEqual(7, ALoaded.TestsFromDebugStopMaxArray, 'tests.fromDebugStop.maxArray (#1873)');
+  Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
+  Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
+  Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
+  Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
+  Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
+  Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
+  Assert.IsFalse(ALoaded.TestsLists, 'tests.lists (#2167)');
+  Assert.AreEqual(0, ALoaded.TestsListsRunKey, 'tests.lists.runKey (#2167)');
+  Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
+  Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
+end;
+
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build gelesen.</summary>
 procedure AssertRoundTripEditor(const ALoaded: TAtlasPluginSettings);
 begin
@@ -435,12 +565,16 @@ begin
   Assert.IsFalse(ALoaded.TestsBuildFirst);
   Assert.IsFalse(ALoaded.TestsStale, 'tests.stale (#1770)');
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
+  Assert.IsFalse(ALoaded.CodeLensCoveredBy, 'codeLens.coveredBy (#1778)');
+  Assert.AreEqual(3, ALoaded.TestsCoveredByDepth, 'tests.coveredBy.depth (#1778)');
+  Assert.IsTrue(ALoaded.TestsCoveredByPrivate, 'tests.coveredBy.private (#1778)');
+  Assert.IsFalse(ALoaded.CodeLensUntested, 'codeLens.untested (#1783)');
+  Assert.AreEqual(75, ALoaded.TestsUntestedWarnPercent, 'tests.untested.warnPercent (#1783)');
+  Assert.IsTrue(ALoaded.TestsOnSave, 'tests.onSave (#1775)');
+  Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
   Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
-  Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
-  Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
-  Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
-  Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
+  AssertRoundTripTestWindow(ALoaded);
   Assert.IsTrue(ALoaded.BuildZeroHints);
   Assert.IsFalse(ALoaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(ALoaded.BuildCompilerSwitches);
@@ -460,6 +594,19 @@ begin
   Assert.IsFalse(ALoaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsFalse(ALoaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.AreEqual('TMonitor.Enter;MyLock.Acquire', ALoaded.DebugParallelStacksWaitRoutines);
+  Assert.AreEqual(16, ALoaded.DebugParallelStacksMaxThreads);
+  Assert.IsTrue(ALoaded.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsTrue(ALoaded.DebugAsyncOrigin, 'debug.asyncOrigin (#859)');
+  Assert.AreEqual(5, ALoaded.DebugAsyncOriginMaxPerSite);
+  Assert.IsFalse(ALoaded.DebugThreadsInSource, 'debug.threadsInSource (#852)');
+  Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
+  Assert.IsFalse(ALoaded.DebugCallStackWindow, 'debug.callStackWindow (#843)');
+  Assert.IsFalse(ALoaded.DebugCallStackWindowEvaluateParams, 'debug.callStackWindow.evaluateParams (#843)');
+  Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
+  Assert.IsFalse(ALoaded.DebugLeakReport, 'debug.leakReport (#1875)');
+  Assert.IsFalse(ALoaded.DebugLeakReportCompare, 'debug.leakReport.compare (#1875)');
+  Assert.IsFalse(ALoaded.DebugLeakReportWindow, 'debug.leakReport.window (#1875)');
   Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
 
   Assert.IsFalse(ALoaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
@@ -468,6 +615,19 @@ begin
   Assert.IsFalse(ALoaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsFalse(ALoaded.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');
+  Assert.AreEqual(5, ALoaded.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
+  Assert.AreEqual(250, ALoaded.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
+  Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
+  Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
+  Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
+  Assert.IsFalse(ALoaded.DebugEditValues, 'debug.editValues (#868)');
+  Assert.IsFalse(ALoaded.DebugHoverExpand, 'debug.hoverExpand (#895)');
+  Assert.IsFalse(ALoaded.DebugHoverChanges, 'debug.hoverChanges (#895)');
+  Assert.AreEqual(250, ALoaded.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
+  Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);
   Assert.IsFalse(ALoaded.MetricsReport);
@@ -659,6 +819,32 @@ begin
   Store.WriteInteger('HoverMembersMaxLines', -1);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.HoverMembersMaxLines);
+end;
+
+procedure TAtlasPluginSettingsTests.TestsLogRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.TestsLog);
+  Assert.AreEqual(2000, Settings.TestsLogMaxLines);
+  Store := TMemoryStore.Create;
+  Settings.TestsLog := False;
+  Settings.TestsLogMaxLines := 500;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('TestsLog', 1));
+  Assert.AreEqual(500, Store.ReadInteger('TestsLogMaxLines', 0));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.TestsLog);
+  Assert.AreEqual(500, Loaded.TestsLogMaxLines);
+  Store.WriteInteger('TestsLogMaxLines', 10);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsLogMaxLines, Loaded.TestsLogMaxLines);
+  Store.WriteInteger('TestsLogMaxLines', 1000000);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsLogMaxLines, Loaded.TestsLogMaxLines);
 end;
 
 procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;
@@ -911,9 +1097,14 @@ begin
   Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
   // shortcutTips.scope (#600): nur atlas oder all.
   Assert.AreEqual('atlas', Settings.ShortcutTipsScope);
-  Settings.ShortcutTipsScope := 'ide';
+end;
+
+procedure TAtlasPluginSettingsTests.ClampsNormalizedRanges;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := Default(TAtlasPluginSettings);
   Settings.Normalize;
-  Assert.AreEqual('all', Settings.ShortcutTipsScope, 'unbekannt: all');
   // navigation.impactDepth (#1120): 1 bis 5.
   Settings.ImpactDepth := 0;
   Settings.Normalize;
@@ -928,6 +1119,34 @@ begin
   Settings.TestsAffectedDepth := 7;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, Settings.TestsAffectedDepth);
+  // tests.coveredBy.depth (#1778): 1 bis 5.
+  Settings.TestsCoveredByDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsCoveredByDepth, Settings.TestsCoveredByDepth);
+  Settings.TestsCoveredByDepth := 7;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsCoveredByDepth, Settings.TestsCoveredByDepth);
+  // tests.fromDebugStop.maxArray (#1873): 0 bis 1000.
+  Settings.TestsFromDebugStopMaxArray := -1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFromDebugStopMaxArray, Settings.TestsFromDebugStopMaxArray);
+  Settings.TestsFromDebugStopMaxArray := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFromDebugStopMaxArray, Settings.TestsFromDebugStopMaxArray);
+  // tests.untested.warnPercent (#1783): 0 bis 100.
+  Settings.TestsUntestedWarnPercent := -5;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsUntestedWarnPercent, Settings.TestsUntestedWarnPercent);
+  Settings.TestsUntestedWarnPercent := 150;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsUntestedWarnPercent, Settings.TestsUntestedWarnPercent);
+  // tests.onSave.max (#1775): 1 bis 1000.
+  Settings.TestsOnSaveMax := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsOnSaveMax, Settings.TestsOnSaveMax);
+  Settings.TestsOnSaveMax := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsOnSaveMax, Settings.TestsOnSaveMax);
   // tests.slowMs (#1772): 50 bis 60000.
   Settings.TestsSlowMs := 10;
   Settings.Normalize;

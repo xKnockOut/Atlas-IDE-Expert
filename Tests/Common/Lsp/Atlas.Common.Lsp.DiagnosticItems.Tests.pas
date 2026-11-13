@@ -19,6 +19,8 @@ type
     [Test]
     procedure CompilerMessageWithoutTextUsesColumnOrLine;
     [Test]
+    procedure CompilerMessageKeepsOwnSource;
+    [Test]
     procedure InactiveRegionCarriesConditionAndTarget;
     [Test]
     procedure IncludeCycleIsWarning;
@@ -96,6 +98,22 @@ begin
   try
     Assert.AreEqual(0, mItem.GetValue<Integer>('range.start.line'));
     Assert.AreEqual(1, mItem.GetValue<Integer>('range.end.line'));
+  finally
+    mItem.Free;
+  end;
+end;
+
+procedure TLspDiagnosticItemsTests.CompilerMessageKeepsOwnSource;
+var
+  mMessage: TCompilerMessage;
+  mItem: TJSONObject;
+begin
+  // Meldungen aus Laufzeitberichten (#74) nennen das Werkzeug statt dcc.
+  mMessage := NewMessage(2, -1);
+  mMessage.Source := 'FastMM';
+  mItem := TLspDiagnosticItems.CompilerMessageToJson(mMessage, '  TStringList.Create;', True);
+  try
+    Assert.AreEqual('FastMM', mItem.GetValue<string>('source'));
   finally
     mItem.Free;
   end;

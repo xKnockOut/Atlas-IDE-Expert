@@ -2,7 +2,7 @@
 
 // Anmeldung der eingebauten Prüfregeln für Anweisungen und Ausdrücke (Ablauf, Aufrufe, Sprünge, Schleifen,
 // Bedingungen, Typprüfungen, Casts, Zeichenketten, Migration nach Win64 und Unicode, Performance, unsicherer
-// Code). Atlas.Common.Rules.Builtin ruft die drei Registration-Units nacheinander auf; nach Themen aufgeteilt,
+// Code). Atlas.Common.Rules.Builtin ruft die Registration-Units nacheinander auf; nach Themen aufgeteilt,
 // damit keine Unit zu viele Units einbindet (metric-uses-count).
 
 interface
@@ -31,7 +31,6 @@ uses
   Atlas.Common.Rules.Builtin.TypeMismatch,
   Atlas.Common.Rules.Builtin.CompilerTraps,
   Atlas.Common.Rules.Builtin.IgnoredResult,
-  Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
@@ -63,7 +62,6 @@ begin
   RegisterTypeMismatchRules(ARegistry);
   RegisterCompilerTrapRules(ARegistry);
   RegisterIgnoredResultRules(ARegistry);
-  RegisterOwnershipLocalObjectRules(ARegistry);
   RegisterConditionRules(ARegistry);
   RegisterIdiomRules(ARegistry);
   RegisterInliningRules(ARegistry);

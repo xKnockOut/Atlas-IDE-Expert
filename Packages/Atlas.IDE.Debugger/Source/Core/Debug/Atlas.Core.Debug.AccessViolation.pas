@@ -171,7 +171,10 @@ uses
 
 const
   cFreedPatterns32: array[0..2] of UInt64 = ($80808080, $FEEEFEEE, $DDDDDDDD);
-  cFreedPatterns64: array[0..2] of UInt64 = ($8080808080808080, $FEEEFEEEFEEEFEEE, $DDDDDDDDDDDDDDDD);
+  // UInt64(...): Free Pascal liest Hex-Literale mit gesetztem oberstem Bit als negatives Int64 und meldet mit
+  // Bereichsprüfung (-Cr) sonst einen Fehler beim Auswerten der Konstanten.
+  cFreedPatterns64: array[0..2] of UInt64 = (UInt64($8080808080808080), UInt64($FEEEFEEEFEEEFEEE),
+    UInt64($DDDDDDDDDDDDDDDD));
 
 function LowerTrim(const AText: string): string;
 begin

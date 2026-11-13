@@ -21,6 +21,8 @@ type
     [Test]
     procedure DebugBreakOnNextEventOptions;
     [Test]
+    procedure DebugBreakpointOptions;
+    [Test]
     procedure DebugStepFilterOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
@@ -44,6 +46,26 @@ type
     /// Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure StopRunningProgramOption;
+    /// <summary>Ereignisprotokoll (#580): debug.eventLog an, debug.eventLogColors mit Vorgabe, Speichern und Laden.
+    /// </summary>
+    [Test]
+    procedure EventLogOptions;
+    /// <summary>Logpunkte (#583): an, Präfix getrimmt, gespeichert und geladen.</summary>
+    [Test]
+    procedure LogpointOptions;
+    /// <summary>Fenster „Kein Quelltext“ (#869): an, Liste getrimmt, gespeichert und geladen.</summary>
+    [Test]
+    procedure NoSourceOptions;
+    /// <summary>Neu starten (#872): an, Haltepunkte wieder einschalten aus, gespeichert und geladen.</summary>
+    [Test]
+    procedure RestartOptions;
+    /// <summary>Erneut anhängen (#2171): an, Umschalt+Alt+P, 100 ms; Abstand begrenzt, gespeichert und geladen.
+    /// </summary>
+    [Test]
+    procedure ReattachOptions;
+    /// <summary>Startverbünde (#867): an, gespeichert und geladen.</summary>
+    [Test]
+    procedure LaunchGroupOptions;
   end;
 
 implementation
@@ -52,6 +74,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Settings.TestSupport;
 
 procedure TAtlasBuildDebugSettingsTests.ReleaseGuardOptions;
@@ -113,6 +136,120 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.AreEqual('never', Loaded.BuildStopRunningProgram);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.EventLogOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugEventLog, 'standardmäßig an');
+  Assert.AreEqual(cDefaultEventLogColors, Settings.DebugEventLogColors);
+  Settings.DebugEventLog := False;
+  Settings.DebugEventLogColors := ' [X]=#00FF00 ';
+  Settings.Normalize;
+  Assert.AreEqual('[X]=#00FF00', Settings.DebugEventLogColors);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugEventLog);
+  Assert.AreEqual('[X]=#00FF00', Loaded.DebugEventLogColors);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.LogpointOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugLogpoints, 'standardmäßig an');
+  Assert.AreEqual(cDefaultLogpointPrefix, Settings.DebugLogpointPrefix);
+  Settings.DebugLogpoints := False;
+  Settings.DebugLogpointPrefix := ' >> ';
+  Settings.Normalize;
+  Assert.AreEqual('>>', Settings.DebugLogpointPrefix);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugLogpoints);
+  Assert.AreEqual('>>', Loaded.DebugLogpointPrefix);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.NoSourceOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugNoSourcePage, 'standardmäßig an');
+  Assert.AreEqual('', Settings.DebugNoSourceIgnoredUnits);
+  Settings.DebugNoSourcePage := False;
+  Settings.DebugNoSourceIgnoredUnits := ' Vcl.Forms; System.SysUtils ';
+  Settings.Normalize;
+  Assert.AreEqual('Vcl.Forms; System.SysUtils', Settings.DebugNoSourceIgnoredUnits);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugNoSourcePage);
+  Assert.AreEqual('Vcl.Forms; System.SysUtils', Loaded.DebugNoSourceIgnoredUnits);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.RestartOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugRestart, 'standardmäßig an');
+  Assert.IsFalse(Settings.DebugRestartReenableBreakpoints, 'standardmäßig aus');
+  Settings.DebugRestart := False;
+  Settings.DebugRestartReenableBreakpoints := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugRestart);
+  Assert.IsTrue(Loaded.DebugRestartReenableBreakpoints);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.ReattachOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugReattach, 'standardmäßig an');
+  Assert.AreEqual(Integer($A050), Settings.DebugReattachKey, 'Umschalt+Alt+P');
+  Assert.AreEqual(Integer(100), Settings.DebugReattachWaitIntervalMs);
+  Settings.DebugReattach := False;
+  Settings.DebugReattachKey := 0;
+  Settings.DebugReattachWaitIntervalMs := 5000;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugReattach);
+  Assert.AreEqual(Integer(0), Loaded.DebugReattachKey);
+  Assert.AreEqual(Integer(2000), Loaded.DebugReattachWaitIntervalMs, 'höchstens 2000 ms');
+end;
+
+procedure TAtlasBuildDebugSettingsTests.LaunchGroupOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugLaunchGroups, 'standardmäßig an');
+  Settings.DebugLaunchGroups := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugLaunchGroups);
 end;
 
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;
@@ -313,6 +450,63 @@ begin
   Loaded.DebugBreakOnNextEventExcluded := ' OnPaint ;; OnResize,';
   Loaded.Normalize;
   Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+end;
+procedure TAtlasBuildDebugSettingsTests.DebugBreakpointOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #577: Haltepunkte vor dem Start prüfen ist an; der Wert überlebt Speichern und Laden.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugCheckBreakpoints);
+  Settings.DebugCheckBreakpoints := False;
+  // #586: Haltepunkt-Satz mit dem Branch wechseln ist an.
+  Assert.IsTrue(Settings.DebugBreakpointSetPerBranch);
+  Settings.DebugBreakpointSetPerBranch := False;
+  // #851: Bis hier ausführen per Klick ist an.
+  Assert.IsTrue(Settings.DebugRunToClick);
+  Settings.DebugRunToClick := False;
+  // #863: Haltepunktfenster ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugBreakpointsWindow);
+  Settings.DebugBreakpointsWindow := False;
+  // #841: Haltepunkte nachziehen ist an.
+  Assert.IsTrue(Settings.DebugBreakpointAnchors);
+  Settings.DebugBreakpointAnchors := False;
+  // #864: Haltepunkt-Regeln sind an.
+  Assert.IsTrue(Settings.DebugBreakpointRules);
+  Settings.DebugBreakpointRules := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugCheckBreakpoints);
+  // #855: Haltepunkte auf Methoden nach Muster ist an und überlebt Speichern und Laden ebenso.
+  Assert.IsTrue(TAtlasPluginSettings.Defaults.DebugMethodBreakpoints);
+  Settings.DebugMethodBreakpoints := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugMethodBreakpoints);
+  // #857: Haltepunkt nur für ein Objekt ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugInstanceBreakpoints);
+  Settings.DebugInstanceBreakpoints := False;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugInstanceBreakpoints);
+  // #584: Anhalten, wenn sich ein Feld ändert, ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugDataBreakpoints);
+  Settings.DebugDataBreakpoints := False;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugDataBreakpoints);
+  Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
+  Assert.IsFalse(Loaded.DebugRunToClick);
+  Assert.IsFalse(Loaded.DebugBreakpointsWindow);
+  Assert.IsFalse(Loaded.DebugBreakpointAnchors);
+  Assert.IsFalse(Loaded.DebugBreakpointRules);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var

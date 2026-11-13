@@ -43,6 +43,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.IDE.Tracker.Development,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.IssueLookups,
@@ -171,7 +172,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Editor.MouseButtons,
   Atlas.IDE.Contracts.MouseHistory,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -184,11 +185,11 @@ begin
   mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched), FormatSettings);
   if AReason = '' then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStale, [mWhen]);
+    Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewStale, [mWhen]);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
+    Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
   end;
 end;
 

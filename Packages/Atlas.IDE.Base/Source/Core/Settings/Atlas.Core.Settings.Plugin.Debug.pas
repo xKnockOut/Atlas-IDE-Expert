@@ -13,6 +13,48 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
+  cMinWhyHereDepth = 1;
+  cMaxWhyHereDepth = 10;
+  cDefaultWhyHereDepth = 3;
+  /// <summary>Grenzen und Vorgaben für debug.variablesWindow.searchDepth und .searchLimit (#853).</summary>
+  cMinVariablesSearchDepth = 1;
+  cMaxVariablesSearchDepth = 10;
+  cDefaultVariablesSearchDepth = 3;
+  cMinVariablesSearchLimit = 10;
+  cMaxVariablesSearchLimit = 10000;
+  cDefaultVariablesSearchLimit = 500;
+  /// <summary>Grenzen und Vorgabe für debug.predictConditions.lines (#2169).</summary>
+  cMinPredictLines = 1;
+  cMaxPredictLines = 200;
+  cDefaultPredictLines = 20;
+  /// <summary>Grenzen und Vorgabe für debug.hoverMaxChildren (#895).</summary>
+  cMinHoverMaxChildren = 10;
+  cMaxHoverMaxChildren = 1000;
+  cDefaultHoverMaxChildren = 100;
+  /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
+  cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
+  /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
+  cMinTestsFromDebugStopMaxArray = 0;
+  cMaxTestsFromDebugStopMaxArray = 1000;
+  cDefaultTestsFromDebugStopMaxArray = 20;
+  /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
+  cMinParallelStacksThreads = 1;
+  cMaxParallelStacksThreads = 1024;
+  /// <summary>Vorgabe von debug.parallelStacks.maxThreads.</summary>
+  cDefaultParallelStacksThreads = 64;
+  /// <summary>Vorgabe von debug.logpointPrefix (#583).</summary>
+  cDefaultLogpointPrefix = '[LOG]';
+  /// <summary>Grenzen und Vorgabe für debug.asyncOrigin.maxPerSite (#859).</summary>
+  cMinAsyncOriginPerSite = 1;
+  cMaxAsyncOriginPerSite = 1000;
+  cDefaultAsyncOriginPerSite = 20;
+  /// <summary>Vorgabe von debug.reattach.key (#2171): Umschalt+Alt+P.</summary>
+  cDefaultReattachKey = $A050;
+  /// <summary>Vorgabe und Grenzen von debug.reattach.waitIntervalMs (#2171).</summary>
+  cDefaultReattachWaitMs = 100;
+  cMinReattachWaitMs = 20;
+  cMaxReattachWaitMs = 2000;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -24,6 +66,16 @@ type
     /// <summary>Beim Test-Debuggen am Anfang der Methode anhalten (#585, debug.testBreakAtStart): einmaliger
     /// Haltepunkt an der ersten Anweisung, nach dem Halt entfernt.</summary>
     TestBreakAtStart: Boolean;
+    /// <summary>„Test daraus anlegen …“ beim Debug-Halt (#1873, tests.fromDebugStop): Werte des Halts in einen
+    /// DUnitX-Test übernehmen; aus = Eintrag und Knopf der Exception-Leiste fehlen.</summary>
+    TestsFromDebugStop: Boolean;
+    /// <summary>Einfache Felder des Objekts anbieten (#1873, tests.fromDebugStop.fields).</summary>
+    TestsFromDebugStopFields: Boolean;
+    /// <summary>Eigenschaften mit Getter auswerten (#1873, tests.fromDebugStop.properties); aus = nur Felder und
+    /// Argumente ohne Nebenwirkungen.</summary>
+    TestsFromDebugStopProperties: Boolean;
+    /// <summary>Elemente je Array höchstens (#1873, tests.fromDebugStop.maxArray); längere werden TODO.</summary>
+    TestsFromDebugStopMaxArray: Integer;
     /// <summary>Variablenwerte im Hover beim Debuggen (#891, debug.hoverValues): Bei angehaltenem Prozess wertet
     /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
     /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
@@ -75,6 +127,43 @@ type
     /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
     /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
     DebugBreakOnNextEventExcluded: string;
+    /// <summary>Haltepunkte, die nicht greifen werden (#577, debug.checkBreakpoints): Vor dem Start einer
+    /// Debug-Sitzung meldet Atlas Haltepunkte auf Zeilen ohne Code, in inaktiven Zweigen, unter {$D-} und in Units
+    /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
+    /// Aus = keine Prüfung, kein Befehl.</summary>
+    DebugCheckBreakpoints: Boolean;
+    /// <summary>Haltepunkte auf Methoden nach Name oder Muster (#855, debug.methodBreakpoints): Befehle
+    /// „Haltepunkt auf Methoden …“ und „Haltepunktgruppen der Methoden …“, Gruppen mit „Mitwachsen“ beim Debug-Start.
+    /// Aus = keine Befehle, kein Mitwachsen.</summary>
+    DebugMethodBreakpoints: Boolean;
+    /// <summary>Haltepunkt nur für ein Objekt (#857, debug.instanceBreakpoints): Befehle „Haltepunkt nur für dieses
+    /// Objekt“ (Bedingung auf die Adresse von Self) und „Haltepunkt nur wenn …“ (Feldwert von Self) im Kontextmenü
+    /// des Editors; vor dem nächsten Start die Frage zu Adressbedingungen der letzten Sitzung. Aus = keine Befehle,
+    /// keine Frage.</summary>
+    DebugInstanceBreakpoints: Boolean;
+    /// <summary>Anhalten, wenn sich ein Feld ändert (#584, debug.dataBreakpoints): Befehl „Anhalten, wenn sich …
+    /// ändert“ im Kontextmenü des Editors setzt im angehaltenen Programm einen Datenhaltepunkt auf das Feld unter der
+    /// Schreibmarke; Atlas zeigt beim Halt alten und neuen Wert und entfernt seine Datenhaltepunkte am Ende der
+    /// Sitzung. Aus = kein Befehl.</summary>
+    DebugDataBreakpoints: Boolean;
+    /// <summary>Haltepunkt-Sätze (#586, debug.breakpointSetPerBranch): Ein Satz mit Branch wird beim Wechsel der
+    /// Arbeitskopie auf diesen Branch aktiv. Aus = Sätze nur über die Befehle.</summary>
+    DebugBreakpointSetPerBranch: Boolean;
+    /// <summary>Bis hier ausführen per Klick (#851, debug.runToClick): Im angehaltenen Zustand zeigt eine schmale
+    /// Spalte im Rand an ausführbaren Zeilen unter der Maus ▶; Klick führt bis dorthin aus, Strg+Klick ohne Halt an
+    /// anderen Haltepunkten; dazu die Befehle „Bis hier“ und „Einmaliger Haltepunkt“. Aus = nichts davon.</summary>
+    DebugRunToClick: Boolean;
+    /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
+    /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
+    DebugBreakpointsWindow: Boolean;
+    /// <summary>Haltepunkte wandern mit dem Code (#841, debug.breakpointAnchors): Nach Änderungen von außen
+    /// (neu geladen, Branchwechsel, viele Zeilen auf einmal) setzt Atlas die Haltepunkte über ihren Anker auf die
+    /// passende Zeile; nicht zuordenbare kommen in die Liste „Verwaist“. Aus = die IDE lässt sie, wo sie sind.
+    /// </summary>
+    DebugBreakpointAnchors: Boolean;
+    /// <summary>Abhängige Haltepunkte und Trefferbedingungen (#864, debug.breakpointRules): erst aktiv nach einem
+    /// anderen Haltepunkt, Trefferbedingung und Thread-Filter je Haltepunkt. Aus = wie in der IDE.</summary>
+    DebugBreakpointRules: Boolean;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
     /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
@@ -104,6 +193,41 @@ type
     /// <summary>debug.moduleOfAddress (#1820): Modul der Fehleradresse (Programm, RTL/VCL, Windows, Fremdmodul) in
     /// der Erklärung einer Zugriffsverletzung nennen, bei Fremdmodulen mit der letzten eigenen Stelle.</summary>
     DebugModuleOfAddress: Boolean;
+    /// <summary>debug.deadlocks (#587): Befehl „Was wartet worauf?“: Wartepunkte aller Threads eines
+    /// angehaltenen Programms und bekannte Muster von Verklemmungen im Ergebnisfenster.</summary>
+    DebugDeadlocks: Boolean;
+    /// <summary>debug.leakReport (#1875): Leckbericht am Ende einer Debug-Sitzung einsammeln (Meldungsfenster von
+    /// ReportMemoryLeaksOnShutdown, FastMM-Logdatei) und im Fenster „Atlas-Lecks“ zeigen.</summary>
+    DebugLeakReport: Boolean;
+    /// <summary>debug.leakReport.compare (#1875): mit dem letzten Lauf je Projekt und Konfiguration vergleichen.
+    /// </summary>
+    DebugLeakReportCompare: Boolean;
+    /// <summary>debug.leakReport.window (#1875): Fenster „Atlas-Lecks“ bei Lecks öffnen.</summary>
+    DebugLeakReportWindow: Boolean;
+    /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
+    /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
+    DebugParallelStacks: Boolean;
+    /// <summary>debug.callStackWindow (#843): Fenster „Aufrufstapel“ des aktuellen Threads mit lesbaren Parametern,
+    /// zugeklappten Bibliotheksrahmen, Suche, Kopieren und Vergleich mit dem letzten Halt.</summary>
+    DebugCallStackWindow: Boolean;
+    /// <summary>debug.callStackWindow.evaluateParams (#843): Parameter einzeln auswerten statt nur den Rahmentext
+    /// der IDE zu zeigen.</summary>
+    DebugCallStackWindowEvaluateParams: Boolean;
+    /// <summary>debug.threadsInSource (#852): beim Halt im Rand jeder Zeile, an der andere Threads stehen, ein
+    /// Zeichen mit Anzahl; Threads markieren.</summary>
+    DebugThreadsInSource: Boolean;
+    /// <summary>debug.threadFreeze (#852, experimentell): Threads einfrieren und auftauen
+    /// (SuspendThread/ResumeThread).</summary>
+    DebugThreadFreeze: Boolean;
+    /// <summary>debug.asyncOrigin (#859, experimentell): Herkunft von TThread.Queue, Synchronize und TTask merken und
+    /// beim Halt in der eingereihten Methode zeigen.</summary>
+    DebugAsyncOrigin: Boolean;
+    /// <summary>debug.asyncOrigin.maxPerSite (#859): gemerkte Einreihungen je Aufrufstelle.</summary>
+    DebugAsyncOriginMaxPerSite: Integer;
+    /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
+    DebugParallelStacksWaitRoutines: string;
+    /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
+    DebugParallelStacksMaxThreads: Integer;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -133,9 +257,84 @@ type
     DebugInlineValues: Boolean;
     /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
     DebugInlineValuesPerLine: Integer;
+    /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
+    /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
+    /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
+    DebugWhyHere: Boolean;
+    /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
+    DebugWhyHereDepth: Integer;
+    /// <summary>Fenster „Variablen“ (#853, debug.variablesWindow): andockbares Fenster mit den Reitern Autos
+    /// (Ausdrücke der aktuellen und der vorigen Anweisung, ohne Aufrufe), Lokal und Überwachung, Suche nach Name
+    /// oder Wert. Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
+    DebugVariablesWindow: Boolean;
+    /// <summary>Suchtiefe in Unterelementen (#853, debug.variablesWindow.searchDepth, 1 bis 10).</summary>
+    DebugVariablesSearchDepth: Integer;
+    /// <summary>Höchstzahl der Auswertungen je Suche (#853, debug.variablesWindow.searchLimit, 10 bis 10000).
+    /// </summary>
+    DebugVariablesSearchLimit: Integer;
+    /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
+    /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
+    /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
+    DebugPredictConditions: Boolean;
+    /// <summary>Übersprungene Zweige blass zeichnen (#2169, debug.predictConditions.dimSkipped).</summary>
+    DebugPredictDimSkipped: Boolean;
+    /// <summary>So viele Zeilen voraus (#2169, debug.predictConditions.lines, 1 bis 200).</summary>
+    DebugPredictLines: Integer;
+    /// <summary>Werte ändern (#868, debug.editValues): „Ändern …“ und Umschalten im Debug-Hover, F2 auf einem Wert im
+    /// Editor; Eingabe nach Typ geprüft, „Rückgängig“ bis zum nächsten Schritt. Aus = Werte nur lesbar.</summary>
+    DebugEditValues: Boolean;
+    /// <summary>Debug-Hover aufklappen (#895, debug.hoverExpand): Objekte, Records und Arrays im Debug-Hover als
+    /// Baum, Getter erst auf Klick. Aus = Wert wie bisher in einer Zeile.</summary>
+    DebugHoverExpand: Boolean;
+    /// <summary>Geänderte Werte markieren (#895, debug.hoverChanges): seit dem vorigen Halt geänderte Werte im
+    /// Debug-Hover hinterlegt, alter Wert gedimmt dahinter.</summary>
+    DebugHoverChanges: Boolean;
+    /// <summary>Höchstzahl Kinder je Ebene vor „weitere …“ (#895, debug.hoverMaxChildren, 10 bis 1000).</summary>
+    DebugHoverMaxChildren: Integer;
+    /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
+    /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
+    DebugPinnedValues: Boolean;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
+    /// <summary>Ereignisprotokoll beim Debuggen (#580, debug.eventLog): Fenster „Atlas: Ereignisprotokoll“ (Befehl
+    /// Atlas.DebugEventLog) mit Ausgaben, Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, Ausdruck und
+    /// Art, Farben und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.</summary>
+    DebugEventLog: Boolean;
+    /// <summary>Farben im Ereignisprotokoll (#580, debug.eventLogColors): „Muster=Farbe“, durch „;“ getrennt; Farbe
+    /// als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Erstes passendes Muster gewinnt.</summary>
+    DebugEventLogColors: string;
+    /// <summary>Logpunkte (#583, debug.logpoints): Befehl „Logpunkt setzen“ (Umschalt+F5, Kontextmenü am Rand) legt
+    /// einen Haltepunkt ohne Anhalten an, der einen Text mit Werten ins Ereignisprotokoll schreibt; Raute in der
+    /// Rinne; Befehle für alle Logpunkte. Aus = keine Befehle, keine Raute.</summary>
+    DebugLogpoints: Boolean;
+    /// <summary>Präfix vor jeder Logpunkt-Ausgabe (#583, debug.logpointPrefix).</summary>
+    DebugLogpointPrefix: string;
+    /// <summary>Fenster „Kein Quelltext“ (#869, debug.noSourcePage): Hält der Debugger in Code ohne Quelltext, nennt
+    /// ein kleines Fenster Routine, Modul, Adresse, Grund und Auswege. Aus = nur das CPU-Fenster der IDE.</summary>
+    DebugNoSourcePage: Boolean;
+    /// <summary>Units ohne Fenster „Kein Quelltext“ (#869, debug.noSourcePage.ignoredUnits), durch „;“ getrennt.
+    /// </summary>
+    DebugNoSourceIgnoredUnits: string;
+    /// <summary>Neu starten (#872, debug.restart): Befehl „Neu starten“ (Strg+Umschalt+F2) beendet das Programm, baut
+    /// nur nach Änderungen, startet und kehrt an die Stelle im Editor zurück. Aus = kein Befehl, keine Taste.</summary>
+    DebugRestart: Boolean;
+    /// <summary>Beim Neustart Haltepunkte wieder einschalten, die in der Sitzung abgeschaltet wurden (#872,
+    /// debug.restart.reenableBreakpoints).</summary>
+    DebugRestartReenableBreakpoints: Boolean;
+    /// <summary>Erneut anhängen (#2171, debug.reattach): Atlas merkt den Pfad angehängter Prozesse je
+    /// Projektgruppe; Befehle „Erneut an … anhängen“ und „Anhängen, sobald gestartet …“ im Menü Start. Aus = keine
+    /// Einträge, kein Merken, kein Warten.</summary>
+    DebugReattach: Boolean;
+    /// <summary>Tastenkürzel „Erneut anhängen“ (#2171, debug.reattach.key; 0 = keins).</summary>
+    DebugReattachKey: Integer;
+    /// <summary>Abstand der Abfragen der Prozessliste beim Warten in ms (#2171, debug.reattach.waitIntervalMs).
+    /// </summary>
+    DebugReattachWaitIntervalMs: Integer;
+    /// <summary>Startverbünde (#867, debug.launchGroups): Verbünde aus der Projektdatei .atlas ("launchGroups"),
+    /// Fenster „Startverbünde“; F9 startet den aktiven Verbund, Strg+F2 beendet alle seine Programme. Aus = F9
+    /// startet nur das aktive Projekt.</summary>
+    DebugLaunchGroups: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -153,6 +352,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben ab debug.whyHere (Halt, Protokoll, Neustart, Anhängen, Start); Teil von Defaults.</summary>
+    procedure SetStopAndLaunchDefaults;
+    /// <summary>Werte ab debug.whyHere über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    procedure ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -170,6 +373,10 @@ class function TAtlasPluginDebugSettings.Defaults: TAtlasPluginDebugSettings;
 begin
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
+  Result.TestsFromDebugStop := True;
+  Result.TestsFromDebugStopFields := True;
+  Result.TestsFromDebugStopProperties := False;
+  Result.TestsFromDebugStopMaxArray := cDefaultTestsFromDebugStopMaxArray;
   Result.DebugHoverValues := True;
   Result.DebugVisualizers := True;
   Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.cAllKinds);
@@ -187,12 +394,32 @@ begin
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
+  Result.DebugCheckBreakpoints := True;
+  Result.DebugMethodBreakpoints := True;
+  Result.DebugInstanceBreakpoints := True;
+  Result.DebugDataBreakpoints := True;
+  Result.DebugBreakpointSetPerBranch := True;
+  Result.DebugRunToClick := True;
+  Result.DebugBreakpointsWindow := True;
+  Result.DebugBreakpointAnchors := True;
+  Result.DebugBreakpointRules := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugAsyncOrigin := False;
+  Result.DebugAsyncOriginMaxPerSite := cDefaultAsyncOriginPerSite;
+  Result.DebugThreadFreeze := False;
+  Result.DebugThreadsInSource := True;
+  Result.DebugParallelStacks := True;
+  Result.DebugParallelStacksWaitRoutines := '';
+  Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
+  Result.DebugDeadlocks := True;
+  Result.DebugLeakReport := True;
+  Result.DebugLeakReportCompare := True;
+  Result.DebugLeakReportWindow := True;
   Result.DebugModuleOfAddress := True;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
@@ -200,18 +427,32 @@ begin
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
-  Result.DebugOwnCodeFolders := '';
-  Result.StartProfiles := True;
-  Result.StartProfilesStatusField := True;
-  Result.DebugEnabled := True;
+  Result.SetStopAndLaunchDefaults;
 end;
 
 procedure TAtlasPluginDebugSettings.Normalize;
 begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
+  DebugEventLogColors := Trim(DebugEventLogColors);
+  DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
+  DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
+    cMaxParallelStacksThreads);
+  DebugLogpointPrefix := Trim(DebugLogpointPrefix);
+  DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
+    cMaxAsyncOriginPerSite);
+  DebugNoSourceIgnoredUnits := Trim(DebugNoSourceIgnoredUnits);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
+  DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
+  DebugVariablesSearchDepth := EnsureRange(DebugVariablesSearchDepth, cMinVariablesSearchDepth,
+    cMaxVariablesSearchDepth);
+  DebugVariablesSearchLimit := EnsureRange(DebugVariablesSearchLimit, cMinVariablesSearchLimit,
+    cMaxVariablesSearchLimit);
+  DebugPredictLines := EnsureRange(DebugPredictLines, cMinPredictLines, cMaxPredictLines);
+  DebugHoverMaxChildren := EnsureRange(DebugHoverMaxChildren, cMinHoverMaxChildren, cMaxHoverMaxChildren);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
+  DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
+  DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
   DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
@@ -224,12 +465,18 @@ begin
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
     TAtlasVisualizerSettings.cMinMaxImagePixels, TAtlasVisualizerSettings.cMaxMaxImagePixels);
   DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.cEvaluationNames);
+  TestsFromDebugStopMaxArray := EnsureRange(TestsFromDebugStopMaxArray, cMinTestsFromDebugStopMaxArray,
+    cMaxTestsFromDebugStopMaxArray);
 end;
 
 procedure TAtlasPluginDebugSettings.Exchange(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('TestDebug', TestDebug);
   AIo.Flag('TestBreakAtStart', TestBreakAtStart);
+  AIo.Flag('TestsFromDebugStop', TestsFromDebugStop);
+  AIo.Flag('TestsFromDebugStopFields', TestsFromDebugStopFields);
+  AIo.Flag('TestsFromDebugStopProperties', TestsFromDebugStopProperties);
+  AIo.Number('TestsFromDebugStopMaxArray', TestsFromDebugStopMaxArray);
   AIo.Flag('DebugHoverValues', DebugHoverValues);
   AIo.Flag('DebugVisualizers', DebugVisualizers);
   AIo.Text('DebugVisualizerTypes', DebugVisualizerTypes);
@@ -247,6 +494,15 @@ begin
   AIo.Number('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
+  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
+  AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
+  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
+  AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
+  AIo.Flag('DebugRunToClick', DebugRunToClick);
+  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
+  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
+  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
@@ -254,14 +510,91 @@ begin
   AIo.Flag('DebugExplainAccessViolation', DebugExplainAccessViolation);
   AIo.Flag('DebugExplainAccessViolationAllowCalls', DebugExplainAccessViolationAllowCalls);
   AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);
-
+  AIo.Flag('DebugDeadlocks', DebugDeadlocks);
+  AIo.Flag('DebugLeakReport', DebugLeakReport);
+  AIo.Flag('DebugLeakReportCompare', DebugLeakReportCompare);
+  AIo.Flag('DebugLeakReportWindow', DebugLeakReportWindow);
+  AIo.Flag('DebugParallelStacks', DebugParallelStacks);
+  AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
+  AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
+  AIo.Flag('DebugAsyncOrigin', DebugAsyncOrigin);
+  AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
+  AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
+  AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  ExchangeStopAndLaunch(AIo);
+end;
+
+procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
+begin
+  DebugWhyHere := True;
+  DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugVariablesWindow := True;
+  DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
+  DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
+  DebugPredictConditions := True;
+  DebugPredictDimSkipped := True;
+  DebugPredictLines := cDefaultPredictLines;
+  DebugEditValues := True;
+  DebugHoverExpand := True;
+  DebugHoverChanges := True;
+  DebugHoverMaxChildren := cDefaultHoverMaxChildren;
+  DebugPinnedValues := True;
+  DebugCallStackWindow := True;
+  DebugCallStackWindowEvaluateParams := True;
+  DebugOwnCodeFolders := '';
+  DebugEventLog := True;
+  DebugEventLogColors := cDefaultEventLogColors;
+  DebugLogpoints := True;
+  DebugLogpointPrefix := cDefaultLogpointPrefix;
+  DebugNoSourcePage := True;
+  DebugNoSourceIgnoredUnits := '';
+  DebugRestart := True;
+  DebugRestartReenableBreakpoints := False;
+  DebugReattach := True;
+  DebugReattachKey := cDefaultReattachKey;
+  DebugReattachWaitIntervalMs := cDefaultReattachWaitMs;
+  DebugLaunchGroups := True;
+  StartProfiles := True;
+  StartProfilesStatusField := True;
+  DebugEnabled := True;
+end;
+
+procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DebugWhyHere', DebugWhyHere);
+  AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
+  AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
+  AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
+  AIo.Flag('DebugPredictConditions', DebugPredictConditions);
+  AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
+  AIo.Number('DebugPredictLines', DebugPredictLines);
+  AIo.Flag('DebugEditValues', DebugEditValues);
+  AIo.Flag('DebugHoverExpand', DebugHoverExpand);
+  AIo.Flag('DebugHoverChanges', DebugHoverChanges);
+  AIo.Number('DebugHoverMaxChildren', DebugHoverMaxChildren);
+  AIo.Flag('DebugPinnedValues', DebugPinnedValues);
+  AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
+  AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
+  AIo.Flag('DebugEventLog', DebugEventLog);
+  AIo.Text('DebugEventLogColors', DebugEventLogColors);
+  AIo.Flag('DebugLogpoints', DebugLogpoints);
+  AIo.Text('DebugLogpointPrefix', DebugLogpointPrefix);
+  AIo.Flag('DebugNoSourcePage', DebugNoSourcePage);
+  AIo.Text('DebugNoSourceIgnoredUnits', DebugNoSourceIgnoredUnits);
+  AIo.Flag('DebugRestart', DebugRestart);
+  AIo.Flag('DebugRestartReenableBreakpoints', DebugRestartReenableBreakpoints);
+  AIo.Flag('DebugReattach', DebugReattach);
+  AIo.Number('DebugReattachKey', DebugReattachKey);
+  AIo.Number('DebugReattachWaitIntervalMs', DebugReattachWaitIntervalMs);
+  AIo.Flag('DebugLaunchGroups', DebugLaunchGroups);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

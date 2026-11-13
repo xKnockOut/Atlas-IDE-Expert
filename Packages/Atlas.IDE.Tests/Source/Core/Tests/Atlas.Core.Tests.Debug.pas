@@ -39,6 +39,20 @@ type
     function Caption: string;
   end;
 
+  /// <summary>Gilt etwas für die Auswahl ASelection?</summary>
+  TAtlasTestSelectionCheck = reference to function(const ASelection: TAtlasTestSelection): Boolean;
+  TAtlasTestSelectionAction = reference to procedure(const ASelection: TAtlasTestSelection);
+  TAtlasTestSelectionText = reference to function(const ASelection: TAtlasTestSelection): string;
+
+  /// <summary>Knopf „Vergleichen“ der Testmarke (#1779): Gibt es erwartet und erhalten zur Auswahl, Fenster
+  /// zeigen. Ohne Zuweisung kein Knopf. Caption: Text des Knopfs (Vergleichsdateien #1881); nil = „Vergleichen“.
+  /// </summary>
+  TAtlasTestCompareHooks = record
+    CanCompare: TAtlasTestSelectionCheck;
+    Show: TAtlasTestSelectionAction;
+    Caption: TAtlasTestSelectionText;
+  end;
+
   TAtlasTestDebug = class
   public const
     /// <summary>So lange wartet Atlas nach „Start“ auf den Prozess, bevor es die Startparameter zurückstellt.

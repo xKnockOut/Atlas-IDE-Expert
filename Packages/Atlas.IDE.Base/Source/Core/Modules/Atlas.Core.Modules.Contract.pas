@@ -11,8 +11,8 @@
 //   (Regel 3).
 // - IAtlasModuleRegistry: Modulliste aus Anmeldungen, Objekte nach
 //   Interface-GUID (Provide/FindAll) und Änderungsmeldung (Regel 2).
-// - cAtlasCoreContractVersion: Versions-Handschlag (Regel 7); jede Änderung an
-//   einem Vertrag im interface-Teil von Base erhöht sie.
+// - cAtlasCoreContractVersion: Versions-Handschlag (Regel 7); steigt höchstens
+//   einmal je Release (Tools/Check-ContractVersion.ps1).
 
 interface
 
@@ -20,8 +20,11 @@ uses
   System.SysUtils;
 
 const
-  /// <summary>Vertragsversion von Base (Regel 7). Erhöhen, sobald sich ein Vertrag von Base ändert, den Module
-  /// übersetzen (Interface, Record, Konstante): Delphi prüft die Binärschnittstelle zwischen Packages nicht.</summary>
+  /// <summary>Vertragsversion von Base (Regel 7). Delphi prüft die Binärschnittstelle zwischen Packages nicht.
+  /// Base und Module kommen immer aus demselben Bau; die Nummer steigt deshalb höchstens einmal je Release:
+  /// Ändert sich ein Vertrag (Interface, Record, Konstante) und steht sie noch auf dem Wert des letzten
+  /// Release-Tags, auf diesen Wert + 1 setzen, sonst nicht anfassen (Tools/Check-ContractVersion.ps1). Was sich
+  /// geändert hat, steht im Changelog; die Liste unten wird nicht weitergeführt.</summary>
   /// 2 (#1903): IAtlasSettingsContribution, TAtlasWelcomeTileInfo.SwitchKey/SettingsKey, neue Texte.
   /// 3 (#1905): IAtlasLineChanges und TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges).
   /// 4 (#1906): IAtlasBuildRequests.Forget.
@@ -36,8 +39,26 @@ const
   /// 12 (#2135): IAtlasIssueWork.Forget.
   /// 13 (#1772): TAtlasProjectTests.Slowest, tests.showDuration, tests.slowMs; dazu die Einstellungen tests.stale
   /// (#1770), tests.failureAtAssert, tests.failureInline (#1771), tests.compare (#1779).
-  /// 14 (#275): tests.coverage, TAtlasDrawnElement.TestCoverage.
-  cAtlasCoreContractVersion = 14;
+  /// 14 (#1820, #587): debug.moduleOfAddress, debug.deadlocks.
+  /// 15 (#1775): IAtlasFollowsSaves, tests.onSave und tests.onSave.max.
+  /// 16 (#1779): IAtlasTestValues (Atlas.IDE.Contracts.Tests), „Vergleichen“ im Hover und auf der Willkommensseite.
+  /// 17 (#837): debug.parallelStacks(.waitRoutines, .maxThreads).
+  /// 18 (#852): TAtlasDrawnElement.ThreadsInSource, debug.threadsInSource, debug.threadFreeze.
+  /// 19 (#1774): tests.leaks.
+  /// 20 (#859): debug.asyncOrigin, debug.asyncOrigin.maxPerSite.
+  /// 21 (#2134): issues.github.stateTarget, issues.github.project, issues.github.addToProject.
+  /// 22 (#2138): issues.github.linkBranch.
+  /// 23 (#2136): issues.github.createPr, issues.github.prBase, issues.github.prBody, issues.github.prDraft.
+  /// 24 (#2137): issues.create.templates, issues.github.templateFields, .atlas tracker.templateFields.
+  /// 25 (#1873): IAtlasDebugStopSource (Atlas.IDE.Contracts.DebugStop), tests.fromDebugStop(.fields, .properties,
+  /// .maxArray).
+  /// 26 (#1783): TAtlasDrawnElement.CodeLensUntested, codeLens.untested, tests.untested.warnPercent.
+  /// 27 (#526, #1878, #2169, #868): TAtlasDebugValue.Actions, TAtlasEditorHover.OnDebugActions/OnDebugAction,
+  /// debug.pinnedValues, debug.whyHere(.depth), debug.predictConditions(.dimSkipped, .lines), debug.editValues.
+  /// 28 (#584): debug.dataBreakpoints.
+  /// 29 (#895): TAtlasDebugValue.OldText/Expandable/Expanded/Rows, TAtlasEditorHover.OnDebugTree/OnDebugRow,
+  /// debug.hoverExpand, debug.hoverChanges, debug.hoverMaxChildren.
+  cAtlasCoreContractVersion = 29;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
@@ -222,6 +243,14 @@ type
   IAtlasFollowsTheme = interface
     ['{E6B8302D-4F17-49A5-B3C1-82D0A7F5E946}']
     procedure ThemeChanged;
+  end;
+
+  /// <summary>Wird nach dem Speichern einer Datei in der IDE gerufen (Hauptthread), z. B. für Tests im Hintergrund
+  /// (#1775).</summary>
+  IAtlasFollowsSaves = interface
+    ['{F0748BBB-E71A-40E5-B507-196F749659F7}']
+    /// <summary>AFileName: voller Pfad der gespeicherten Datei.</summary>
+    procedure FileSaved(const AFileName: string);
   end;
 
   /// <summary>Führt DUnitX-Tests aus (Modul Tests, #69). Base fragt ihn für „Betroffene Tests ausführen“ der

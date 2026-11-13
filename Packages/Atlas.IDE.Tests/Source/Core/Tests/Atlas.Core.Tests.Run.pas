@@ -68,6 +68,9 @@ type
     /// <summary>Dauer des langsamsten Tests der Marke; ein Test mit Fällen zählt als Summe seiner Fälle (#1772).
     /// </summary>
     SlowestMs: Int64;
+    /// <summary>Davon bestanden mit Leck und die Summe ihrer nicht freigegebenen Bytes (#1774).</summary>
+    Leaked: Integer;
+    LeakBytes: Int64;
     /// <summary>Failed bei einem Fehlschlag; Passed erst, wenn jeder Test ein Ergebnis hat und mindestens einer
     /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown. Stand des letzten Laufs, auch wenn er veraltet
     /// ist.</summary>
@@ -166,6 +169,10 @@ type
     /// der kurze Text hinter der Zeile (#1771, tests.failureInline); '' = ohne.</summary>
     class function Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat, AValuesFormat,
       AInlineFormat: string): TArray<TPair<string, TAtlasProblem>>; overload; static;
+    /// <summary>Warnungen je Datei für bestandene Tests mit Leck ALeaks (Locate, am Methodenkopf; #1774); AFormat:
+    /// %s Name, %d Bytes.</summary>
+    class function LeakProblems(const ALeaks: TArray<TAtlasTestFailure>;
+      const AFormat: string): TArray<TPair<string, TAtlasProblem>>; static;
     /// <summary>Abschnitt "tests" der Projekt-Zusammenfassung; höchstens TAtlasProjectTests.cMaxFailures Tests.
     /// </summary>
     class function SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
@@ -196,6 +203,13 @@ type
     /// sind die Schlüssel der veralteten Tests (TAtlasTestStamps.StaleIn, #1770); nil ohne.</summary>
     class function StaleOf(const AKeys: TArray<string>; const AUnitName, AFixture: string): TAtlasTestStaleFunc;
       static;
+    /// <summary>Ergebnisse ACases, ersetzt bzw. ergänzt um AFresh (voller Name, ohne Groß-/Kleinschreibung): der
+    /// Stand nach einem weiteren Lauf.</summary>
+    class function Merged(const ACases, AFresh: TArray<TTestCaseResult>): TArray<TTestCaseResult>; static;
+    /// <summary>Ergebnisse zu Unit AUnitName, Fixture AFixture, Methode AMethod ('' = alle) und Fall ACaseName
+    /// ('' = alle) in Berichtsreihenfolge (Fenster „Atlas-Tests“, #1776).</summary>
+    class function ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+      ACaseName: string): TArray<TTestCaseResult>; static;
   end;
 
 implementation
@@ -429,6 +443,22 @@ begin
   Result := Problems(AFailures, AFormat, AValuesFormat, '');
 end;
 
+/// <summary>Problem an der Fundstelle von ATest (Quelle DUnitX, ohne Code: kein Regeltreffer für
+/// Projekt-Zusammenfassung und Baseline).</summary>
+function ProblemAt(const ATest: TAtlasTestFailure; ASeverity: TAtlasProblemSeverity;
+  const AMessage: string): TAtlasProblem;
+begin
+  Result := Default(TAtlasProblem);
+  Result.StartLine := ATest.Line;
+  Result.EndLine := ATest.Line;
+  Result.StartCharacter := ATest.StartCharacter;
+  Result.EndCharacter := ATest.EndCharacter;
+  Result.Severity := ASeverity;
+  Result.Code := '';
+  Result.Source := TAtlasProblemStore.cTestSource;
+  Result.Message := AMessage;
+end;
+
 class function TAtlasTestRun.Problems(const AFailures: TArray<TAtlasTestFailure>; const AFormat, AValuesFormat,
   AInlineFormat: string): TArray<TPair<string, TAtlasProblem>>;
 var
@@ -442,22 +472,31 @@ begin
     begin
       Continue;
     end;
-    mProblem := Default(TAtlasProblem);
-    mProblem.StartLine := mFailure.Line;
-    mProblem.EndLine := mFailure.Line;
-    mProblem.StartCharacter := mFailure.StartCharacter;
-    mProblem.EndCharacter := mFailure.EndCharacter;
-    mProblem.Severity := TAtlasProblemSeverity.Error;
-    // Ohne Code: kein Regeltreffer (Projekt-Zusammenfassung, Baseline).
-    mProblem.Code := '';
-    mProblem.Source := TAtlasProblemStore.cTestSource;
-    mProblem.Message := ProblemText(mFailure.Test, AFormat, AValuesFormat);
+    mProblem := ProblemAt(mFailure, TAtlasProblemSeverity.Error, ProblemText(mFailure.Test, AFormat,
+      AValuesFormat));
     // Kurzer Text hinter der Assert-Zeile (#1771); der Fehlertext am Zeilenende zeigt ihn statt der Meldung.
     if mFailure.AtAssert and mFailure.Test.HasValues and (AInlineFormat <> '') then
     begin
       mProblem.Details := Format(AInlineFormat, [mFailure.Test.Expected, mFailure.Test.Actual]);
     end;
     Result := Result + [TPair<string, TAtlasProblem>.Create(mFailure.FileName, mProblem)];
+  end;
+end;
+
+class function TAtlasTestRun.LeakProblems(const ALeaks: TArray<TAtlasTestFailure>;
+  const AFormat: string): TArray<TPair<string, TAtlasProblem>>;
+var
+  mLeak: TAtlasTestFailure;
+begin
+  Result := nil;
+  for mLeak in ALeaks do
+  begin
+    if (mLeak.FileName = '') or (mLeak.Line < 0) then
+    begin
+      Continue;
+    end;
+    Result := Result + [TPair<string, TAtlasProblem>.Create(mLeak.FileName, ProblemAt(mLeak,
+      TAtlasProblemSeverity.Warning, Format(AFormat, [ShortName(mLeak.Test), mLeak.Test.LeakBytes])))];
   end;
 end;
 
@@ -526,6 +565,21 @@ begin
   Result := SameText(AItem.Fixture, AFixture) and ((AUnitName = '') or (AItem.UnitName = '') or
     SameText(AItem.UnitName, AUnitName)) and ((AMethod = '') or SameText(AItem.Method, AMethod)) and
     ((ACaseName = '') or SameText(AItem.CaseName, ACaseName));
+end;
+
+class function TAtlasTestRun.ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+  ACaseName: string): TArray<TTestCaseResult>;
+var
+  mItem: TTestCaseResult;
+begin
+  Result := nil;
+  for mItem in ACases do
+  begin
+    if Matches(mItem, AUnitName, AFixture, AMethod, ACaseName) then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
 end;
 
 class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
@@ -632,6 +686,24 @@ begin
   end;
 end;
 
+/// <summary>Nicht freigegebene Bytes der bestandenen Ergebnisse zum Test AKey (alle Fälle ohne CaseName, #1774).
+/// </summary>
+function LeakOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKey: TAtlasTestKey): Int64;
+var
+  mItem: TTestCaseResult;
+begin
+  Result := 0;
+  for mItem in ACases do
+  begin
+    if (mItem.Outcome = TTestOutcome.Passed) and
+      Matches(mItem, AUnitName, AFixture, AKey.Method, AKey.CaseName) then
+    begin
+      Inc(Result, mItem.LeakBytes);
+    end;
+  end;
+end;
+
 /// <summary>Dauer des Tests AKey: Summe aller passenden Ergebnisse (alle Fälle ohne CaseName, #1772).</summary>
 function DurationOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
   const AKey: TAtlasTestKey): Int64;
@@ -660,7 +732,7 @@ var
   mKey: TAtlasTestKey;
   mStatus: TAtlasTestStatus;
   mStale: Boolean;
-  mDuration: Int64;
+  mDuration, mLeak: Int64;
 begin
   Result := Default(TAtlasTestTally);
   Result.Total := Length(AKeys);
@@ -691,6 +763,12 @@ begin
       begin
         Inc(Result.StalePassed);
       end;
+      mLeak := LeakOf(ACases, AUnitName, AFixture, mKey);
+      if mLeak > 0 then
+      begin
+        Inc(Result.Leaked);
+        Inc(Result.LeakBytes, mLeak);
+      end;
     end;
   end;
 end;
@@ -714,6 +792,27 @@ begin
     begin
       Result := TAtlasTestStamps.Listed(mKeys, TAtlasTestStamps.KeyOf(mUnitName, mFixture, AMethod));
     end;
+end;
+
+class function TAtlasTestRun.Merged(const ACases, AFresh: TArray<TTestCaseResult>): TArray<TTestCaseResult>;
+var
+  mItem, mNew: TTestCaseResult;
+  mReplaced: Boolean;
+begin
+  Result := nil;
+  for mItem in ACases do
+  begin
+    mReplaced := False;
+    for mNew in AFresh do
+    begin
+      mReplaced := mReplaced or SameText(mNew.FullName, mItem.FullName);
+    end;
+    if not mReplaced then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+  Result := Result + AFresh;
 end;
 
 end.
