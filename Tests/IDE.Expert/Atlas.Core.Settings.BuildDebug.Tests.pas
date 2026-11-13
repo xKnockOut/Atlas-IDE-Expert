@@ -466,6 +466,9 @@ begin
   // #851: Bis hier ausführen per Klick ist an.
   Assert.IsTrue(Settings.DebugRunToClick);
   Settings.DebugRunToClick := False;
+  // #863: Haltepunktfenster ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugBreakpointsWindow);
+  Settings.DebugBreakpointsWindow := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -473,6 +476,7 @@ begin
   Assert.IsFalse(Loaded.DebugCheckBreakpoints);
   Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
   Assert.IsFalse(Loaded.DebugRunToClick);
+  Assert.IsFalse(Loaded.DebugBreakpointsWindow);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var

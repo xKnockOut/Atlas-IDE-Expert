@@ -110,6 +110,9 @@ type
     /// Spalte im Rand an ausführbaren Zeilen unter der Maus ▶; Klick führt bis dorthin aus, Strg+Klick ohne Halt an
     /// anderen Haltepunkten; dazu die Befehle „Bis hier“ und „Einmaliger Haltepunkt“. Aus = nichts davon.</summary>
     DebugRunToClick: Boolean;
+    /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
+    /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
+    DebugBreakpointsWindow: Boolean;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
     /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
@@ -302,6 +305,7 @@ begin
   Result.DebugCheckBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
   Result.DebugRunToClick := True;
+  Result.DebugBreakpointsWindow := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -384,6 +388,7 @@ begin
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);
+  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);

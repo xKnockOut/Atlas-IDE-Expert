@@ -265,6 +265,22 @@ Einstellungen: `debug.breakOnNextEvent`
 
 Einstellungen: `debug.stepFilters`
 
+<a id="window-atlasbreakpoints"></a>
+#### Haltepunktfenster
+
+Das andockbare Fenster „Haltepunkte“ (Atlas-Menü, „Haltepunkte (Atlas)“) zeigt dieselben Haltepunkte wie die Liste der IDE, dazu:
+
+- Suche über Dateiname, Methode, Bedingung und Etikett; mehrere Wörter müssen alle passen
+- Filterchips „aktiv“, „mit Bedingung“, „nie getroffen“ (in dieser Sitzung) und „greift nicht“
+- Trefferzahl dieser Debug-Sitzung; „Zähler zurücksetzen“ setzt sie auf 0
+- Etiketten wie `Import` oder `Bug 4711`, mehrere je Haltepunkt, mit Vervollständigung der schon benutzten; sie sind persönlich und bleiben nach einem Neustart erhalten
+- Gruppieren nach Etikett, Datei oder Gruppe, Gruppen auf- und zuklappbar
+- mehrere Haltepunkte gemeinsam ein- und ausschalten, mit Etikett versehen oder löschen (Rückgängig mit Strg+Z)
+- Doppelklick springt zur Stelle, Enter öffnet die Eigenschaften der IDE
+- Spalten über das Kontextmenü ein- und ausblenden, Breite und Reihenfolge merkt sich das Fenster
+
+Einstellungen: `debug.breakpointsWindow`
+
 #### Haltepunkte, die nicht greifen werden
 
 Vor jedem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte, offene Dateien mit dem Stand im Editor:

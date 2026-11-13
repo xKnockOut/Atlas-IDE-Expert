@@ -2349,11 +2349,25 @@
       "default": true,
       "x-key": "debug.runToClick",
       "x-area": "debug",
+      "x-feature": "Debugger",
       "x-page": "Debuggen",
       "x-caption": "Bis hier ausführen per Klick im Rand",
       "x-captionEn": "Run to here by clicking the margin",
       "x-control": "Kontrollkästchen",
       "x-issue": "#851"
+    },
+    "DebugBreakpointsWindow": {
+      "description": "Haltepunktfenster: eigenes andockbares Fenster „Haltepunkte“ neben der Liste der IDE, mit Suche über Datei, Methode, Bedingung und Etikett, Filterchips (aktiv, mit Bedingung, nie getroffen, greift nicht), Trefferzahl dieser Sitzung, persönlichen Etiketten, Gruppieren nach Etikett, Datei oder Gruppe und Befehlen für mehrere Haltepunkte (ein, aus, Etikett, löschen mit Rückgängig). Aus = kein Fenster, kein Befehl.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointsWindow",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunktfenster mit Suche und Etiketten",
+      "x-captionEn": "Breakpoints window with search and tags",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#863"
     },
     "TestsBuildFirst": {
       "type": "boolean",
