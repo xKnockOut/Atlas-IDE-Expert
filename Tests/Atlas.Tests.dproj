@@ -2177,10 +2177,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Deadlocks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ParallelStacks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ThreadMarks.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ParallelStacksFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventLog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Note.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas"/>
@@ -2191,7 +2193,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Deadlocks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ParallelStacks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ThreadMarks.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.AsyncOrigin.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ThreadMarks.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.AsyncOrigin.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionsFrame.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ParallelStacksFrame.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ParallelStacks.Tests.pas"/>
@@ -2238,6 +2242,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Deadlocks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ParallelStacks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ThreadMarks.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AccessChains.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.AccessViolation.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.AccessViolation.Tests.pas"/>
@@ -2354,6 +2359,7 @@
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Targets.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventLog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\UI\Build\Atlas.UI.Build.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.SettingsSection.pas"/>

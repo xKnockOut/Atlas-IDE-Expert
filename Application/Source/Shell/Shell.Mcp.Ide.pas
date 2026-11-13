@@ -47,6 +47,10 @@ const
     En: 'Argument "mode": allowed are "make", "build" and "check"'),
     (De: 'Ergebnis der IDE nicht lesbar.'; En: 'Result of the IDE not readable.'));
 
+  /// <summary>Sicherheitsnetz beim Warten auf die Antwort des Plugins: Das Plugin legt sie per Umbenennen an, das
+  /// Ordnersignal weckt sofort; ohne Signal (verpasst, Netzlaufwerk) wird spätestens so oft nachgesehen.</summary>
+  cAnswerSafetyMs = 500;
+
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
 /// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (N3).</summary>
 function ReadPluginFile(const AFileName: string): string;
@@ -176,18 +180,16 @@ end;
 procedure WriteSourceText(const AFileName, AText: string);
 var
   mFileFormat: TFileFormat;
-  mExpected, mReason: string;
+  mExpected, mReason, mInbox: string;
   mPid: Cardinal;
 begin
   mExpected := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
   mPid := IdeWithOpenFile(AFileName);
   if mPid <> 0 then
-    case TMcpIdeEdits.Send(TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid),
-      TMcpIdeEdit.Make(AFileName, mExpected, AText),
-      procedure
-      begin
-        Sleep(TMcpIdeEdits.cPollMs);
-      end,
+  begin
+    mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
+    case TMcpIdeEdits.Send(mInbox, TMcpIdeEdit.Make(AFileName, mExpected, AText),
+      TShellPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
       function: Int64
       begin
         Result := TThread.GetTickCount64;
@@ -197,6 +199,7 @@ begin
       TMcpIdeEditOutcome.Failed:
         raise EMcpToolError.CreateFmt('IDE: %s', [mReason]);
     end;
+  end;
   TFileEncoding.SaveToFile(AFileName, AText, mFileFormat);
 end;
 
@@ -207,7 +210,7 @@ function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: str
 var
   mRequest: TMcpIdeBuildRequest;
   mPid: Cardinal;
-  mWanted, mBuildText, mReason: string;
+  mWanted, mBuildText, mReason, mInbox: string;
 begin
   mRequest := Default(TMcpIdeBuildRequest);
   mRequest.Mode := AMode;
@@ -231,12 +234,8 @@ begin
   begin
     raise EMcpToolError.Create(mReason);
   end;
-  if TMcpIdeBuilds.Send(TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    mPid), mRequest,
-    procedure
-    begin
-      Sleep(TMcpIdeBuilds.cPollMs);
-    end,
+  mInbox := TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
+  if TMcpIdeBuilds.Send(mInbox, mRequest, TShellPlatform.FolderWait(mInbox, TMcpIdeBuilds.cPollMs, cAnswerSafetyMs),
     function: Int64
     begin
       Result := TThread.GetTickCount64;

@@ -412,6 +412,18 @@ Atlas menu and command palette. When you work on several bugs, switch between na
 
 Settings: `debug.breakpointSetPerBranch`
 
+## Debug: event log
+
+<a id="window-atlasdebugeventlog"></a>
+- Dockable window “Atlas: Event log” with debug output (`OutputDebugString`), breakpoint messages, modules, threads, logpoints and start and end of the session
+- Columns time (relative to the start), kind, thread, text
+- Filter by kind and text: words (each must occur) or `/regular expression/`; “Remember filter” keeps it per project in the list
+- Colors by pattern, for example `[FEHLER]` red, `[WARN]` yellow
+- Double-click or Enter jumps to `File.pas(123)`, `File.pas:123` or `Unit.Routine`
+- Context menu: copy line, save as text file, clear
+
+Settings: `debug.eventLog`, `debug.eventLogColors`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
@@ -508,3 +520,13 @@ Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - Experimental (`debug.threadFreeze`, default off): “Freeze thread”, “Thaw thread” and “Thaw all threads”. A frozen thread does not run when you continue; its mark is gray and the Atlas status bar shows “2 threads frozen” (click thaws all). Atlas holds the thread with `SuspendThread`, which only works for programs on this computer. At the end of the session and when switched off Atlas thaws all threads.
 
 Settings: `debug.threadsInSource`, `debug.threadFreeze`
+
+### Origin of queued methods *(experimental)*
+
+- When the program stops in an anonymous method started with `TThread.Queue`, `TThread.Synchronize`, `TThread.ForceQueue`, `TTask.Run`, `TTask.Create` or `TParallel.For`, the IDE call stack only shows `CheckSynchronize` or the thread pool. Atlas then shows “Queued with TThread.Queue from thread 4120” in the results window with the call stack of the place that queued it; library frames are collapsed (“5 library frames”), double click jumps to the line.
+- For this Atlas sets a breakpoint of group Atlas.Herkunft on every call site in the project when the session starts. When the program stops there, Atlas records thread and stack and continues at once. A breakpoint of your own on the same line stays and stops as usual.
+- Matching follows the order: a stop in the method of a call site gets the oldest open call of that site. Atlas keeps the last `debug.asyncOrigin.maxPerSite` per call site (default 20).
+- Only calls with the class name (`TThread.Queue(…)`) count, a plain `Synchronize(…)` inside a thread method does not.
+- Stopping at every call site slows the program down; the Atlas status bar shows “Origin: 12 call sites” in yellow while the breakpoints are set.
+
+Settings: `debug.asyncOrigin`, `debug.asyncOrigin.maxPerSite`
