@@ -170,6 +170,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointCheck.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointSets.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepInto.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas"/>
@@ -217,6 +218,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.BreakpointSets.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.StepInto.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.InlineValuePainter.pas"/>

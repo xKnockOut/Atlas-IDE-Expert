@@ -2396,6 +2396,8 @@ uses
   Atlas.Core.Debug.BreakpointCheck.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointCheck.Tests.pas',
   Atlas.UI.Debug.BreakpointCheck in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas',
   Atlas.UI.Debug.BreakpointCheck.Tests in 'IDE.Expert\Atlas.UI.Debug.BreakpointCheck.Tests.pas',
+  Atlas.UI.Debug.InstanceBreakpoint in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.InstanceBreakpoint.pas',
+  Atlas.UI.Debug.InstanceBreakpoint.Tests in 'IDE.Expert\Atlas.UI.Debug.InstanceBreakpoint.Tests.pas',
   Atlas.Core.Debug.BreakpointSets in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointSets.pas',
   Atlas.Core.Debug.BreakpointSets.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointSets.Tests.pas',
   Atlas.UI.Debug.BreakpointSets in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointSets.pas',
