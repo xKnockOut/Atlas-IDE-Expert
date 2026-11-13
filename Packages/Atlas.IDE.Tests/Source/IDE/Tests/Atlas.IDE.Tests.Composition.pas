@@ -22,7 +22,7 @@
 //   angelegt wie „Zur Testunit wechseln“ von Base), „Leckprüfung
 //   einrichten …“ im Kontextmenü der Projektverwaltung und in der Palette
 //   (#1880, Atlas.IDE.Tests.LeakSetup über Composition.Hooks) und „Test aus
-//   dem Debug-Halt anlegen …“ (#1873, Atlas.IDE.Tests.FromDebugStop; Palette,
+//   dem Debug-Halt anlegen …“ (#1873, über Atlas.IDE.Tests.Composition.Cases; Palette,
 //   Kontextmenü beim Debuggen, Knopf der Exception-Leiste über die Kennung),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
@@ -107,7 +107,6 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.CoveredBy,
-  Atlas.IDE.Tests.UntestedProject,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.ApprovalFiles,
@@ -115,7 +114,6 @@ uses
   Atlas.IDE.Tests.Composition.Cases,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
-  Atlas.IDE.Tests.FromDebugStop,
   Atlas.IDE.Tests.Explorer,
   Atlas.UI.Tests.Strings;
 
@@ -127,7 +125,6 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GCoveredBy: TAtlasIdeCoveredByLens;
-  GUntested: TAtlasIdeUntestedProject;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
@@ -255,10 +252,9 @@ begin
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
   // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens; Grenzfälle (#2173) vorn in OnReported.
-  StartCases(GScope, GTests, GDebugger);
+  // Ungetestete Methoden des Projekts (#1783) ebenda.
+  StartCases(GScope, GTests, GDebugger, GOutput, ModuleScope);
   GLens.OnTable := OpenCaseTable;
-  // Ungetestete Methoden des Projekts (#1783).
-  GUntested := TAtlasIdeUntestedProject.Create(GOutput, ModuleScope);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -284,7 +280,6 @@ begin
   end;
   // Das Fenster „Atlas-Tests“ (#1776) zeigt auf Läufer und Debugger-Teil: vor beiden.
   FreeAndNil(GExplorer);
-  FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   StopCases(GTests);
@@ -437,16 +432,6 @@ begin
   end;
 end;
 
-{ Ungetestete Methoden des Projekts (#1783) }
-
-procedure ListUntested;
-begin
-  if GUntested <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GUntested.Run);
-  end;
-end;
-
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -463,7 +448,7 @@ end;
 
 procedure TestFromDebugStop;
 begin
-  TAtlasIdeTestFromDebug.Run(GScope);
+  RunTestFromDebug(GScope);
 end;
 
 { Leckprüfung einrichten (#1880) }
@@ -548,8 +533,8 @@ begin
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
       TAtlasTestsTextId.TestsGalleryTestUnitHint),
     // Test aus dem Debug-Halt (#1873): sichtbar mit tests.fromDebugStop und einem Modul, das den Halt liefert.
-    Command(TAtlasIdeTestFromDebug.cCommand, TAtlasTestsTextId.TestsFromDebugCommand,
-      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TAtlasIdeTestFromDebug.Visible),
+    Command(TestFromDebugCommand, TAtlasTestsTextId.TestsFromDebugCommand,
+      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TestFromDebugVisible),
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
       Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
@@ -618,7 +603,7 @@ begin
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
-    DebugContextEntry(TAtlasIdeTestFromDebug.cCommand),
+    DebugContextEntry(TestFromDebugCommand),
     ContextEntry('Atlas.CompareTestValues'),
     ContextEntry('Atlas.EditTestCases'),
     // Grenzfälle (#2173) an Routinen normaler Units.

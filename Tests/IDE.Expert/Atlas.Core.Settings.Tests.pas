@@ -121,6 +121,20 @@ uses
 
 { TAtlasPluginSettingsTests }
 
+/// <summary>Vorgaben rund um Testfälle: Debug-Halt, Vergleich, Tabelle, Grenzfälle.</summary>
+procedure AssertTestCaseDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsTrue(ASettings.TestsFromDebugStop, 'Test aus dem Debug-Halt standardmäßig an (#1873)');
+  Assert.IsTrue(ASettings.TestsFromDebugStopFields, 'Felder anbieten standardmäßig an (#1873)');
+  Assert.IsFalse(ASettings.TestsFromDebugStopProperties, 'Getter standardmäßig aus (#1873)');
+  Assert.AreEqual(20, ASettings.TestsFromDebugStopMaxArray, 'Array-Grenze standardmäßig 20 (#1873)');
+  Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
+  Assert.IsTrue(ASettings.TestsBoundaryCases, 'Grenzfälle standardmäßig an (#2173)');
+  Assert.AreEqual(20, ASettings.TestsBoundaryMax, 'höchstens 20 Grenzfälle (#2173)');
+end;
+
 /// <summary>Vorgaben für Editor, Code Lens, Tests und Build.</summary>
 procedure AssertEditorDefaults(const ASettings: TAtlasPluginSettings);
 begin
@@ -163,15 +177,7 @@ begin
   Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
-  Assert.IsTrue(ASettings.TestsFromDebugStop, 'Test aus dem Debug-Halt standardmäßig an (#1873)');
-  Assert.IsTrue(ASettings.TestsFromDebugStopFields, 'Felder anbieten standardmäßig an (#1873)');
-  Assert.IsFalse(ASettings.TestsFromDebugStopProperties, 'Getter standardmäßig aus (#1873)');
-  Assert.AreEqual(20, ASettings.TestsFromDebugStopMaxArray, 'Array-Grenze standardmäßig 20 (#1873)');
-  Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
-  Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
-  Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
-  Assert.IsTrue(ASettings.TestsBoundaryCases, 'Grenzfälle standardmäßig an (#2173)');
-  Assert.AreEqual(20, ASettings.TestsBoundaryMax, 'höchstens 20 Grenzfälle (#2173)');
+  AssertTestCaseDefaults(ASettings);
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
@@ -312,6 +318,21 @@ begin
   AssertDebugDefaults(Settings);
   AssertToolDefaults(Settings);
 end;
+
+/// <summary>Werte rund um Testfälle für den Rundweg, ungleich der Vorgabe.</summary>
+procedure SetRoundTripTestCases(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.TestsFromDebugStop := False;
+  ASettings.TestsFromDebugStopFields := False;
+  ASettings.TestsFromDebugStopProperties := True;
+  ASettings.TestsFromDebugStopMaxArray := 7;
+  ASettings.TestsCompare := False;
+  ASettings.TestsCompareFormat := False;
+  ASettings.TestsCaseTable := False;
+  ASettings.TestsBoundaryCases := False;
+  ASettings.TestsBoundaryMax := 7;
+end;
+
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build von der Vorgabe abweichend setzen.</summary>
 procedure SetRoundTripEditor(var ASettings: TAtlasPluginSettings);
 begin
@@ -353,15 +374,7 @@ begin
   ASettings.TestsOnSaveMax := 12;
   ASettings.TestsFailureAtAssert := False;
   ASettings.TestsFailureInline := False;
-  ASettings.TestsFromDebugStop := False;
-  ASettings.TestsFromDebugStopFields := False;
-  ASettings.TestsFromDebugStopProperties := True;
-  ASettings.TestsFromDebugStopMaxArray := 7;
-  ASettings.TestsCompare := False;
-  ASettings.TestsCompareFormat := False;
-  ASettings.TestsCaseTable := False;
-  ASettings.TestsBoundaryCases := False;
-  ASettings.TestsBoundaryMax := 7;
+  SetRoundTripTestCases(ASettings);
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsWindow := False;
@@ -478,6 +491,21 @@ begin
   ASettings.NestedRoutineBand := True;
   ASettings.NestedRoutineColorLight := ' #a85a00 ';
 end;
+
+/// <summary>Werte rund um Testfälle nach dem Rundweg (SetRoundTripTestCases).</summary>
+procedure AssertRoundTripTestCases(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.TestsFromDebugStop, 'tests.fromDebugStop (#1873)');
+  Assert.IsFalse(ALoaded.TestsFromDebugStopFields, 'tests.fromDebugStop.fields (#1873)');
+  Assert.IsTrue(ALoaded.TestsFromDebugStopProperties, 'tests.fromDebugStop.properties (#1873)');
+  Assert.AreEqual(7, ALoaded.TestsFromDebugStopMaxArray, 'tests.fromDebugStop.maxArray (#1873)');
+  Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
+  Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
+  Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
+  Assert.IsFalse(ALoaded.TestsBoundaryCases, 'tests.boundaryCases (#2173)');
+  Assert.AreEqual(7, ALoaded.TestsBoundaryMax, 'tests.boundaryCases.maxCases (#2173)');
+end;
+
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build gelesen.</summary>
 procedure AssertRoundTripEditor(const ALoaded: TAtlasPluginSettings);
 begin
@@ -520,15 +548,7 @@ begin
   Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
   Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
-  Assert.IsFalse(ALoaded.TestsFromDebugStop, 'tests.fromDebugStop (#1873)');
-  Assert.IsFalse(ALoaded.TestsFromDebugStopFields, 'tests.fromDebugStop.fields (#1873)');
-  Assert.IsTrue(ALoaded.TestsFromDebugStopProperties, 'tests.fromDebugStop.properties (#1873)');
-  Assert.AreEqual(7, ALoaded.TestsFromDebugStopMaxArray, 'tests.fromDebugStop.maxArray (#1873)');
-  Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
-  Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
-  Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
-  Assert.IsFalse(ALoaded.TestsBoundaryCases, 'tests.boundaryCases (#2173)');
-  Assert.AreEqual(7, ALoaded.TestsBoundaryMax, 'tests.boundaryCases.maxCases (#2173)');
+  AssertRoundTripTestCases(ALoaded);
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
