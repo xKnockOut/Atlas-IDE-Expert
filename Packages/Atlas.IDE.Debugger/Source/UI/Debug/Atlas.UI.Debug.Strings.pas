@@ -121,7 +121,8 @@ type
     DebugEventLogForgetFilter, DebugEventLogEmpty, DebugEventLogSummary, DebugEventLogInvalidRegex,
     DebugEventLogNotFound, DebugEventLogFileTypes, DebugEventLogSessionStarted, DebugEventLogSessionEnded,
     DebugEventLogModuleLoaded, DebugEventLogModuleUnloaded, DebugEventLogThreadStarted, DebugEventLogThreadEnded,
-    DebugEventLogSaved, SettingsDebugEventLog, SettingsDebugEventLogColors, SettingsDebugPinnedValues, PinAction, PinLimit);
+    DebugEventLogSaved, SettingsDebugEventLog, SettingsDebugEventLogColors,
+    SettingsDebugPinnedValues, PinAction, PinLimit);
 
   TAtlasDebugStrings = class
   public
