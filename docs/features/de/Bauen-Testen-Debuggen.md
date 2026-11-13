@@ -559,6 +559,18 @@ Schalter: `debug.deadlocks`.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
 
+<a id="window-atlasdebugleaks"></a>
+#### Atlas-Lecks
+
+- Endet ein im Debugger gestartetes Programm mit Speicherlecks, liest Atlas den Bericht ein: das Meldungsfenster von `ReportMemoryLeaksOnShutdown` (Text des Fensters, kein Klick) oder die Logdatei von FastMM4/FastMM5 neben der EXE, wenn sie nach dem Start geschrieben wurde. Eine Logdatei mit Aufrufstapeln (FullDebugMode) geht vor.
+- Das andockbare Fenster „Atlas-Lecks“ (Atlas > „Atlas-Lecks“) zeigt je Klasse die Zahl der Lecks. Neue Klassen und gestiegene Zahlen gegenüber dem letzten Lauf derselben Konfiguration stehen fett („neu“, „+2 seit dem letzten Lauf“); der Stand liegt in `.atlas-local` neben der .dproj.
+- Ohne Aufrufstapel stehen unter jeder Klasse die Stellen im Projekt, die sie erzeugen (`TKlasse.Create…`), mit Bewertung: nie freigegeben, Rückgabe an den Aufrufer, als Argument weitergereicht, Feld frei im Destruktor, Owner, lokal freigegeben, nicht im Programm (Testunits). Die dringlichsten stehen oben.
+- Mit Aufrufstapeln stehen dort die Erzeugungsstellen aus dem Bericht, gleiche Stapel zusammengefasst.
+- String- und unbekannte Lecks folgen meist aus geleakten Objekten mit solchen Feldern; das Fenster sagt es dazu.
+- „Als bekannt markieren“ merkt eine Klasse, „Bekannte ausblenden“ blendet sie aus. Enter oder Doppelklick springt zur Stelle.
+
+Schalter: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`.
+
 #### Threads im Quelltext
 
 - Beim Halt steht im Rand an jeder Zeile, an der ein anderer Thread mit seinem obersten eigenen Rahmen steht, ein Zeichen mit der Anzahl; bei acht wartenden Workern an derselben Zeile also „8“. Den aktuellen Thread zeigt die IDE wie bisher.

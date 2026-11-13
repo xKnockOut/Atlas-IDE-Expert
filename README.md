@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 341 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 345 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -40,7 +40,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 | `Atlas.IDE.Designer` | Designer bar: “Arrange” (width to text, button bar, form grid, duplicate in a row, insert space, fit to content, layers, wrap in container, fonts and colors, suggest anchors, format painter, groups), measure spacing and set it by handle, shared size handles, quick bar, magnifier, tab order, try sizes and scaling, meaningful names, “Atlas Structure” and “Event map” windows, data binding, extract to frame, usages in code, find components and properties, undo (experimental) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker (YouTrack, GitHub and others): “My issues” with project choice, start, finish and review along the workflow transitions, time tracking, state in the status bar, board with swimlanes, sprint tile, flow map, “Attach to issue”, issue ids in code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page with projects, “Continue” with the work state per issue, “What's new in Atlas”, “Discover Atlas” and “Atlas setup” with index progress per project; “Atlas Start” | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, “Why am I here?”, pinned values, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations including the module of the fault address, what threads wait for, check breakpoints before starting, parallel stacks, breakpoint sets, threads in source, event log, origin of queued methods, logpoints, “no source” window, restart, reattach to process, launch groups | 122 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, “Why am I here?”, pinned values, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations including the module of the fault address, what threads wait for, check breakpoints before starting, parallel stacks, breakpoint sets, threads in source, event log, origin of queued methods, logpoints, “no source” window, restart, reattach to process, launch groups, leak report at program end (“Atlas leaks” window) | 129 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas search with replace, regex and project scope, unit search, code queries | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics, “Unit relations” and “Dependent units” also from the project manager | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, change marks with inline diff, line history, branch when starting an issue, working copies, project state | 26 | `vcs.enabled` |
@@ -84,7 +84,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **341 check rules** while you type: 223 bugs, 107 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
+- **345 check rules** while you type: 227 bugs, 107 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
 - **Compiler messages explained:** the hover shows the typical cause of a dcc or IDE message such as E2003 or W1035 below the message, with the links "Explain" (dialog with a wrong and a right example) and "DocWiki"; about 40 messages in English and German, also without dcc (`hover.explainMessages`)
@@ -97,7 +97,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Refactorings and code actions](docs/features/en/Refactorings.md)
 - **Rename** project-wide including forms, **change signature**, **safe delete**
 - **Extract method, introduce variable, convert `if` ⇄ `case`** and many more conversions; *Extract method* also replaces equal places in the unit on request, each one deselectable in the preview
-- **Class actions:** implement interface, extract interface or superclass, generate properties
+- **Class actions:** implement interface, extract interface or superclass, generate properties, raise the visibility of a member
 - **uses:** add missing units, sort, remove unused ones; a unit counts as used only when a name really resolves to it, as dcc decides (members of its classes and names shadowed later do not count; enum values, helpers, attributes and inline bodies do)
 - **Quick fixes** for many rules (Alt+Enter) and **undo Atlas changes** across files
 
@@ -128,6 +128,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Logpoints:** breakpoints that do not stop but write text with placeholders such as `x={x}, total {Total:0.00}` to the event log (Shift+F5, diamond in the gutter)
 - **Leak and crash reports:** paste a FastMM log or a madExcept, EurekaLog or JclDebug report; the stack appears clickable in the message view, the creation or crash site as a diagnostic in the editor, and the map file resolves addresses without debug information
 - **“No source” window:** when the debugger stops in code without source, a small window names routine, module, reason (debug DCUs off, `{$D-}`, DCU only, not in search path, system code) and ways out
+- **“Atlas leaks” window:** when the program reports leaks at the end (message box of `ReportMemoryLeaksOnShutdown` or FastMM log), Atlas lists them per name compared with the last run (new, grown, known) and the places below: with call stacks the creation site, otherwise the server's rated candidates; Enter jumps there (`debug.leakReport`)
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
 - **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue

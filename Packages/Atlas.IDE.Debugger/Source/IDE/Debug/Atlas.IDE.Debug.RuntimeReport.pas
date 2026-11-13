@@ -22,6 +22,10 @@ type
     class procedure Paste(const AScope: IAtlasModuleScope); static;
     /// <summary>Diagnosen des letzten Berichts entfernen.</summary>
     class procedure Clear(const AScope: IAtlasModuleScope); static;
+    /// <summary>Leckbericht mit Aufrufstapeln vom Ende einer Debug-Sitzung an den Server geben, damit er die
+    /// Erzeugungsstellen im Editor markiert. Die Stapel zeigt das Fenster „Atlas-Lecks“; hier kommen nur der Stand
+    /// der Map und die Zahl der Markierungen.</summary>
+    class procedure Mark(const AScope: IAtlasModuleScope; const AProject, AText: string); static;
   end;
 
 implementation
@@ -186,6 +190,26 @@ begin
     end;
 end;
 
+/// <summary>Antwort auf Mark: nur Stand der Map und Zahl der Markierungen, ohne Stapel.</summary>
+function MarkAnswer: TProc<string>;
+begin
+  Result :=
+    procedure(AAnswer: string)
+    var
+      mReport: TAtlasRuntimeReport;
+    begin
+      if not TAtlasRuntimeReports.FromJson(AAnswer, mReport) or (mReport.Kind = TAtlasRuntimeReportKind.None) then
+      begin
+        Exit;
+      end;
+      SayMapStatus(mReport);
+      if mReport.Diagnostics > 0 then
+      begin
+        Say(TAtlasDebugTextId.RuntimeReportMarked, [mReport.Diagnostics]);
+      end;
+    end;
+end;
+
 function ClearAnswer: TProc<string>;
 begin
   Result :=
@@ -228,6 +252,19 @@ begin
   if (TAtlasIdeHost.RunningSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
     TAtlasRuntimeReports.cClearCommand, TAtlasRuntimeReports.ClearArgumentsJson(mProject), cTimeoutMs,
     ClearAnswer) then
+  begin
+    Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
+  end;
+end;
+
+class procedure TAtlasIdeRuntimeReport.Mark(const AScope: IAtlasModuleScope; const AProject, AText: string);
+begin
+  if (AProject = '') or (Trim(AText) = '') then
+  begin
+    Exit;
+  end;
+  if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
+    TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(AProject, AText), cTimeoutMs, MarkAnswer) then
   begin
     Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
   end;
