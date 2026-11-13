@@ -527,8 +527,10 @@ begin
     begin
       mResult := TAtlasIssueDevelopment.Empty;
       mResult.Key := mJob.Request.Key;
-      CollectVcs(mJob, mResult);
+      // Erst der Tracker: Seine verknüpften Branches (#2138) zählen in der Versionsverwaltung mit.
       CollectTracker(mJob, mResult);
+      mJob.Request.Linked := mResult.Tracker.LinkedBranches;
+      CollectVcs(mJob, mResult);
       mJob.Transport := nil;
       mJob.Provider := nil;
       if TAtlasShutdown.Signalled then
