@@ -880,6 +880,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Debug.AccessViolation` | `Core/Debug/Atlas.Core.Debug.AccessViolation.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.BreakpointList` | `Core/Debug/Atlas.Core.Debug.BreakpointList.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.BreakpointTags` | `Core/Debug/Atlas.Core.Debug.BreakpointTags.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStack` | `Core/Debug/Atlas.Core.Debug.CallStack.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DialogCompletion` | `Core/Debug/Atlas.Core.Debug.DialogCompletion.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DisplayRules` | `Core/Debug/Atlas.Core.Debug.DisplayRules.pas` | Ordner `Core/Debug` |

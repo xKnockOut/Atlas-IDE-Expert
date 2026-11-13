@@ -94,6 +94,8 @@ contains
   Atlas.IDE.Debug.AccessViolation in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas',
   Atlas.IDE.Debug.AccessViolationUnderline in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolationUnderline.pas',
   Atlas.Core.Debug.StepFilter in 'Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
+  Atlas.Core.Debug.BreakpointList in 'Source\Core\Debug\Atlas.Core.Debug.BreakpointList.pas',
+  Atlas.Core.Debug.BreakpointTags in 'Source\Core\Debug\Atlas.Core.Debug.BreakpointTags.pas',
   Atlas.IDE.Debug.Trace in 'Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas',
   Atlas.UI.Debug.StepFilterFrame in 'Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas' {AtlasDebugStepFilterFrame: TFrame},
   Atlas.IDE.Debug.StepFilterWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas',
