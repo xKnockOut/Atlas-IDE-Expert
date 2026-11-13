@@ -16,7 +16,8 @@ uses
   System.Classes,
   System.UITypes,
   ToolsAPI,
-  Atlas.Core.Designer.FontsColors;
+  Atlas.Core.Designer.FontsColors,
+  Atlas.IDE.Designer.Tool;
 
 type
   /// <summary>Stand einer Komponente vor dem Ersetzen.</summary>
@@ -31,12 +32,10 @@ type
     ParentColor: Boolean;
   end;
 
-  TAtlasIdeFontsColors = class
+  TAtlasIdeFontsColors = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FUndoFile: string;
     FUndo: TArray<TAtlasFontState>;
-    procedure Say(const AText: string);
     procedure Remember(const AEditor: IOTAFormEditor; ARoot: TComponent; const ANames: TArray<string>);
     procedure ReplaceFont(const AEditor: IOTAFormEditor; ARoot: TComponent; const AUses: TArray<TAtlasFontUse>;
       const ARow: TAtlasFontRow; const AOthers: TArray<TAtlasFontRow>);
@@ -276,16 +275,7 @@ end;
 
 constructor TAtlasIdeFontsColors.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
-end;
-
-procedure TAtlasIdeFontsColors.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
+  inherited Create(AOnMessage);
 end;
 
 procedure TAtlasIdeFontsColors.Execute;

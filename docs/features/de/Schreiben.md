@@ -33,6 +33,11 @@ Zurück zum [README](../../../README_DE.md)
 - Feld- und Parameternamen in `FieldByName('`
 - Komponenten des Formulars
 - `Sender` mit passender Typumwandlung
+- nach einer Typprüfung die Mitglieder des geprüften Typs (#2107, `completion.typeGuards`):
+  - im then-Zweig von `if X is T then` (auch in `and`-Ketten) und nach `if not (X is T) then Exit;` bis zum Blockende stehen nach `X.` die Mitglieder, die nur `T` hat, oben unter „X ist hier T (is-Prüfung, Zeile n)“
+  - Übernehmen schreibt `T(X).Name` bzw. `(X as T).Name` nach `completion.senderCast`
+  - nicht nach einer Zuweisung an `X`, nach Übergabe an einen `var`- oder `out`-Parameter, im else-Zweig und bei Feldern nach jeder weiteren Anweisung
+  - nach `X is ` und `X as ` stehen die Nachfahren des Typs von `X` oben
 - gleichnamige Symbole aus verschiedenen Units
 - Helper-Methoden
 - uses-Liste mit Gruppen

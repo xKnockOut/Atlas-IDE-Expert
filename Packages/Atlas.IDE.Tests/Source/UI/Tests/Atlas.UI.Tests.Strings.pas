@@ -32,7 +32,14 @@ type
     // Veraltete Ergebnisse (#1770).
     TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
     // Fehlschlag an der Assert-Zeile (#1771).
-    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline);
+    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline,
+    // Erwartet und erhalten vergleichen (#1779).
+    TestsCompareCommand, TestsCompareTitle, TestsCompareExpected, TestsCompareActual, TestsCompareTruncated,
+    TestsCompareSummary, TestsCompareJson, TestsCompareXml, TestsCompareCopyActual, TestsCompareClose, TestsCompareNone,
+    SettingsTestsCompare, SettingsTestsCompareFormat,
+    // Dauer und langsame Tests (#1772).
+    TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
+    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs);
 
   TAtlasTestsStrings = class
   public
@@ -129,7 +136,31 @@ const
      'Auch Änderungen in verwendeten Units des Testprojekts zählen',
      'erwartet %s, erhalten %s',
      'Fehlschlag an der Assert-Zeile zeigen (Stacktrace bzw. eindeutiger Assert), sonst am Methodenkopf',
-     'Dahinter kurz „erwartet …, erhalten …“'),
+     'Dahinter kurz „erwartet …, erhalten …“',
+     'Erwartet und erhalten vergleichen',
+     'Erwartet und erhalten: %s',
+     'Erwartet',
+     'Erhalten',
+     '(gekürzt)',
+     '%d abweichende Zeilen',
+     '(JSON eingerückt)',
+     '(XML eingerückt)',
+     'Erhalten kopieren',
+     'Schließen',
+     'Tests: Kein Fehlschlag mit erwartetem und erhaltenem Wert am Cursor oder aus dem letzten Lauf.',
+     'Befehl „Erwartet und erhalten vergleichen“ (zwei Spalten, Unterschiede zeichengenau)',
+     'JSON und XML vor dem Vergleich gleich einrücken',
+     '%s · %s',
+     '%s · langsam',
+     'Langsamste Tests zeigen',
+     'Langsamste Tests',
+     'Test',
+     'Dauer',
+     'Tests: Noch keine Testdauer bekannt; zuerst die Tests ausführen.',
+     'Doppelklick springt zum Test. Langsam ab %d ms.',
+     'Tests: %s nicht im Testprojekt gefunden.',
+     'Dauer an der Testmarke zeigen, langsame Tests gelb',
+     'Langsam ab (ms)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -210,7 +241,31 @@ const
      'Changes in used units of the test project count too',
      'expected %s, got %s',
      'Show a failure at the assert line (stack trace or unique assert), otherwise at the method header',
-     'Short “expected …, got …” after it'));
+     'Short “expected …, got …” after it',
+     'Compare expected and actual',
+     'Expected and actual: %s',
+     'Expected',
+     'Actual',
+     '(truncated)',
+     '%d differing lines',
+     '(JSON indented)',
+     '(XML indented)',
+     'Copy actual',
+     'Close',
+     'Tests: No failure with expected and actual value at the cursor or from the last run.',
+     'Command “Compare expected and actual” (two columns, differences per character)',
+     'Indent JSON and XML the same way before comparing',
+     '%s · %s',
+     '%s · slow',
+     'Show slowest tests',
+     'Slowest tests',
+     'Test',
+     'Duration',
+     'Tests: No test durations known yet; run the tests first.',
+     'Double-click jumps to the test. Slow from %d ms.',
+     'Tests: %s not found in the test project.',
+     'Show the duration on the test mark, slow tests in yellow',
+     'Slow from (ms)'));
 
 { TAtlasTestsStrings }
 

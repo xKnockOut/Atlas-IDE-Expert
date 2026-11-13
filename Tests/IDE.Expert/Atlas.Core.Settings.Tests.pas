@@ -153,6 +153,10 @@ begin
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
+  Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
+  Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -172,6 +176,7 @@ begin
   Assert.IsTrue(ASettings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsTrue(ASettings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(ASettings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(ASettings.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsFalse(ASettings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
@@ -300,6 +305,10 @@ begin
   ASettings.TestsStaleUnits := True;
   ASettings.TestsFailureAtAssert := False;
   ASettings.TestsFailureInline := False;
+  ASettings.TestsCompare := False;
+  ASettings.TestsCompareFormat := False;
+  ASettings.TestsShowDuration := False;
+  ASettings.TestsSlowMs := 1000;
   ASettings.BuildZeroHints := True;
   ASettings.ShowInterfaceCost := False;
   ASettings.BuildCompilerSwitches := False;
@@ -319,6 +328,7 @@ begin
   ASettings.DebugEvaluateReplaceCtrlF7 := False;
   ASettings.DebugExplainAccessViolation := False;
   ASettings.DebugExplainAccessViolationAllowCalls := True;
+  ASettings.DebugModuleOfAddress := False;
   ASettings.DebugExceptionHistory := False;
   ASettings.DebugJustMyCode := False;
   ASettings.DebugExceptionBanner := True;
@@ -424,6 +434,10 @@ begin
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
   Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
+  Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
+  Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
+  Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
+  Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsTrue(ALoaded.BuildZeroHints);
   Assert.IsFalse(ALoaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(ALoaded.BuildCompilerSwitches);
@@ -443,6 +457,8 @@ begin
   Assert.IsFalse(ALoaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsFalse(ALoaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
+
   Assert.IsFalse(ALoaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsFalse(ALoaded.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsTrue(ALoaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
@@ -909,6 +925,13 @@ begin
   Settings.TestsAffectedDepth := 7;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, Settings.TestsAffectedDepth);
+  // tests.slowMs (#1772): 50 bis 60000.
+  Settings.TestsSlowMs := 10;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsSlowMs, Settings.TestsSlowMs);
+  Settings.TestsSlowMs := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

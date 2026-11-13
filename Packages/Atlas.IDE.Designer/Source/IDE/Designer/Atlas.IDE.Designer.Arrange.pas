@@ -380,16 +380,16 @@ begin
   if mSettings.DesignerDuplicateRow then
   begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCmd), cDuplicate,
-      Length(TAtlasIdeDuplicateRow.Candidates(mSelected)) > 0);
+      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateUndoCmd), cDuplicateUndo,
       FDuplicate.CanUndo);
   end;
   if mSettings.DesignerInsertSpace then
   begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertCmd), cSpaceInsert,
-      Length(TAtlasIdeInsertSpace.Candidates(mSelected)) > 0);
+      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRemoveCmd), cSpaceRemove,
-      Length(TAtlasIdeInsertSpace.Candidates(mSelected)) > 0);
+      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceUndoCmd), cSpaceUndo,
       FSpace.CanUndo);
   end;

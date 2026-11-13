@@ -121,6 +121,10 @@
         </DCCReference>
         <DCCReference Include="Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
         <DCCReference Include="Source\UI\Build\Atlas.UI.Build.SettingsSection.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.RunningProgram.pas"/>
+        <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.RunningProcesses.pas"/>
+        <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.RunningProgram.pas"/>
+        <DCCReference Include="Source\UI\Build\Atlas.UI.Build.RunningPrompt.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

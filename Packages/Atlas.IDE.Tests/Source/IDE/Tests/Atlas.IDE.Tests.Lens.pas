@@ -15,6 +15,10 @@
 //   Debugger) „Tests laufen …“. Wurde ein Test seit dem Lauf geändert
 //   (tests.stale, #1770), zeigt die Marke den alten Stand grau und kursiv mit
 //   „(veraltet)“; die Zählung nimmt veraltete Ergebnisse nicht als bestanden.
+//   Mit tests.showDuration (#1772) folgt nach einem Lauf die Dauer („· 12 ms“,
+//   an der Klassenmarke die Summe); liegt der langsamste Test der Marke über
+//   tests.slowMs, steht „· langsam“ dahinter und die Marke ist gelb, auch wenn
+//   er bestand (fehlgeschlagen bleibt rot, veraltet grau).
 //   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -111,7 +115,7 @@ type
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
     /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe).</summary>
-    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale: Boolean): string;
+    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale, ASlow: Boolean): string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Marke der Zeile von AContext, -1 ohne (Lens aus, andere Datei, Leerzeile, ausgeblendet).</summary>
@@ -391,12 +395,39 @@ begin
   Result := -1;
 end;
 
-function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale: Boolean): string;
+/// <summary>Dauer und „langsam“ an der Beschriftung ACaption (#1772, tests.showDuration, tests.slowMs);
+/// fehlgeschlagen und veraltet ist nie langsam.</summary>
+function DurationCaption(const ACaption: string; const ATally: TAtlasTestTally; AStatus: TAtlasTestStatus;
+  out ASlow: Boolean): string;
+var
+  mTexts: TAtlasTestDurationTexts;
+  mSlowMs: Integer;
+begin
+  ASlow := False;
+  if not TAtlasIdeSettings.Current.TestsShowDuration or (AStatus = TAtlasTestStatus.Unknown) then
+  begin
+    Exit(ACaption);
+  end;
+  mTexts := Default(TAtlasTestDurationTexts);
+  mTexts.Duration := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDuration);
+  mTexts.Slow := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensSlow);
+  mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
+  mSlowMs := TAtlasIdeSettings.Current.TestsSlowMs;
+  if (AStatus = TAtlasTestStatus.Failed) or ATally.IsStale then
+  begin
+    mSlowMs := 0;
+  end;
+  Result := ATally.WithDuration(ACaption, mSlowMs, mTexts, ASlow);
+end;
+
+function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus;
+  out AStale, ASlow: Boolean): string;
 var
   mTally: TAtlasTestTally;
 begin
   AStatus := TAtlasTestStatus.Unknown;
   AStale := False;
+  ASlow := False;
   if FTests.Busy then
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
@@ -431,6 +462,7 @@ begin
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.FreshPassed, mTally.Total]);
   end;
+  Result := DurationCaption(Result, mTally, AStatus, ASlow);
   if AStale then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);
@@ -509,11 +541,11 @@ var
   mTone: TAtlasColor;
   mText: string;
   mStatus: TAtlasTestStatus;
-  mStale: Boolean;
+  mStale, mSlow: Boolean;
   mPill: TRect;
 begin
   mCanvas := AContext.Canvas;
-  mText := Caption(FItems[AIndex], mStatus, mStale);
+  mText := Caption(FItems[AIndex], mStatus, mStale, mSlow);
   mColors := TAtlasColors.ForBackground(ABack);
   mTone := mColors.Accent;
   if mStatus = TAtlasTestStatus.Failed then
@@ -527,6 +559,11 @@ begin
   else if mStatus = TAtlasTestStatus.Partial then
   begin
     // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
+    mTone := mColors.Warn;
+  end;
+  if mSlow then
+  begin
+    // Langsam (#1772): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
     mTone := mColors.Warn;
   end;
   mCanvas.Font.Size := Max(6, mCanvas.Font.Size - 1);

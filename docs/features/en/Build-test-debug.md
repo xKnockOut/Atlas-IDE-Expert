@@ -76,6 +76,12 @@ Settings: `build.gate`
 - Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
 - Afterwards the project is back as it was
 
+### Stop the running program before the build
+
+- If the exe is still running outside the debugger, Atlas asks before compiling “AtlasDemo.exe is still running. Stop it and build?” (Yes, No, Always) instead of letting the build fail with F2039 at the end
+- Stops politely first, after 2 s forcibly; programs in the debugger stay untouched
+- For a package, a notice names the programs that still have the BPL loaded (`build.stopRunningProgram`: ask, always, never)
+
 <a id="window-atlascompilerswitches"></a>
 ### Compiler switches at the cursor
 
@@ -119,6 +125,30 @@ Settings: `tests.stale`, `tests.stale.units`
 - The short text appears like the error text at the end of the line (`editor.inlineDiagnostics`).
 
 Settings: `tests.failureAtAssert`, `tests.failureInline`
+
+### Compare expected and actual (#1779)
+
+Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*).
+
+- Shows the failure of the test at the cursor (for a `[TestCase]` the first failed case), otherwise the last one reported, in two columns: expected on the left, actual on the right.
+- Differing characters have a red or green background; lines that exist on one side only are marked as a whole, with a grey gap opposite.
+- Line ends (`↵`, `␍↵`, `␍`), tabs (`→`) and trailing spaces (`·`) are visible, so a difference only there stands out.
+- If both values are JSON or XML, Atlas indents them the same way first; the difference then sits in a line of its own.
+- Values ending in “...” show “(truncated)” in the column header.
+- “Copy actual” puts the actual value on the clipboard, e.g. to update the expected value in the test; Esc closes.
+- Only for failures whose report names an expected and an actual value.
+
+Settings: `tests.compare`, `tests.compare.format`
+
+### Test duration and slow tests (#1772)
+
+- After a run every mark of the test lens shows the duration: “Run test · passed · 12 ms”, from one second on in seconds with one decimal (“1.2 s”). The class mark shows the sum of its tests, a `[TestCase]` method the sum of its cases.
+- If the slowest test of a mark takes longer than `tests.slowMs` (default 500 ms), “· slow” follows and the mark turns yellow, even if the test passed. Failed stays red, outdated grey.
+- The *Test results* card on the welcome page lists the five slowest tests of the last run below the failures; double-click opens the test.
+- *Show slowest tests* (Atlas menu, command palette): all tests of this session with their duration, slowest first (at most 50); double-click or Enter jumps to the test.
+- `tests.showDuration` off: no duration, no colour, no list on the welcome page, no command.
+
+Settings: `tests.showDuration`, `tests.slowMs`
 
 ### Create a test case from the unit (#1226)
 
@@ -357,6 +387,7 @@ Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
 - Without a clear cause it says "Cause not clear".
 - The culprit is underlined in the editor until you continue.
 - Getters and function calls are not evaluated unless `debug.explainAccessViolation.allowCalls` is on.
+- After it the bar names the module of the fault address: "your program", "vcl290.bpl (RTL/VCL)", "ntdll.dll (Windows)" or "Foreign.dll (no debug information)". If the debugger did not stop in your own code, Atlas names only the module and the last place in your code from the call stack (`debug.moduleOfAddress`).
 - Without the exception bar the result goes to the messages.
 
-Settings: `debug.explainAccessViolation`
+Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`

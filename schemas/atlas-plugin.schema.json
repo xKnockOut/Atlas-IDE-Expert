@@ -1426,6 +1426,56 @@
       "x-captionEn": "Expected and actual after the line",
       "x-issue": "#1771"
     },
+    "TestsCompare": {
+      "description": "Befehl „Erwartet und erhalten vergleichen“ (Atlas-Menü, Befehlspalette, Kontextmenü einer Testunit): Fehlschlag des Tests am Cursor bzw. des letzten Laufs in zwei Spalten, abweichende Zeichen markiert; Zeilenende, Tabs und nachgestellte Leerzeichen sichtbar. Nur wenn der Bericht erwarteten und erhaltenen Wert nennt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.compare",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Erwartet und erhalten vergleichen",
+      "x-captionEn": "Compare expected and actual",
+      "x-issue": "#1779"
+    },
+    "TestsCompareFormat": {
+      "description": "Sind beide Werte JSON bzw. XML, rückt der Vergleich sie vorher gleich ein (ein Wert bzw. Element je Zeile).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.compare.format",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.compare",
+      "x-caption": "JSON und XML einrücken",
+      "x-captionEn": "Indent JSON and XML",
+      "x-issue": "#1779"
+    },
+    "TestsShowDuration": {
+      "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.showDuration",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Dauer an der Testmarke zeigen",
+      "x-captionEn": "Show duration on the test mark",
+      "x-issue": "#1772"
+    },
+    "TestsSlowMs": {
+      "description": "Ab dieser Dauer in Millisekunden gilt ein Test als langsam (50 bis 60000). Bei einer Klassenmarke zählt der langsamste ihrer Tests, nicht die Summe.",
+      "type": "integer",
+      "default": 500,
+      "minimum": 50,
+      "maximum": 60000,
+      "x-key": "tests.slowMs",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.showDuration",
+      "x-caption": "Langsam ab (ms)",
+      "x-captionEn": "Slow from (ms)",
+      "x-issue": "#1772"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,
@@ -1553,6 +1603,19 @@
       "x-captionEn": "Allow getters and function calls",
       "x-issue": "#865"
     },
+    "DebugModuleOfAddress": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.moduleOfAddress",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.explainAccessViolation",
+      "x-caption": "Modul der Fehleradresse nennen",
+      "x-captionEn": "Name the module of the fault address",
+      "x-issue": "#1820"
+    },
+
     "DebugExceptionHistory": {
       "type": "boolean",
       "default": true,
@@ -3164,6 +3227,25 @@
       "x-page": "Compiler",
       "x-parent": "build.onOpen",
       "x-issue": "#1293"
+    },
+    "BuildStopRunningProgram": {
+      "type": "string",
+      "enum": [
+        "ask",
+        "always",
+        "never"
+      ],
+      "default": "ask",
+      "description": "Läuft die Ausgabe-exe eines Projekts noch außerhalb des Debuggers, scheitert der Build erst am Ende mit F2039. Atlas erkennt das vor dem Compile (Vergleich des vollständigen Pfads): ask fragt „… läuft noch. Beenden und bauen?“ mit Ja, Nein und Immer; always beendet ohne Rückfrage (erst WM_CLOSE an die Hauptfenster, nach 2 s TerminateProcess); never tut nichts. Programme im Debugger der IDE bleiben unberührt. Bei einem Package nennt ein Hinweis im Meldungsfenster die Programme, die die BPL geladen haben; beendet wird dann nichts.",
+      "x-key": "build.stopRunningProgram",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "buildTools.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "Laufendes Programm vor dem Build beenden",
+      "x-captionEn": "Stop the running program before the build",
+      "x-issue": "#551",
+      "x-offValue": "never"
     },
     "CompileOnSave": {
       "type": "boolean",

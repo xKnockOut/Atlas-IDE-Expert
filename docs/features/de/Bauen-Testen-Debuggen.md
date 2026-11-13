@@ -59,6 +59,7 @@ Einstellungen: `refactoring.missingUnit`
 - **Beim Öffnen einmal bauen**, sobald die IDE ruhig ist:
   - auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist
   - danach steht das Projekt wieder wie vorher
+- **Laufendes Programm vor dem Build beenden:** Läuft die exe noch außerhalb des Debuggers, fragt Atlas vor dem Compile „AtlasDemo.exe läuft noch. Beenden und bauen?“ (Ja, Nein, Immer), statt den Build erst am Ende mit F2039 scheitern zu lassen. Beendet wird erst freundlich, nach 2 s hart; Programme im Debugger bleiben unberührt. Bei einem Package nennt ein Hinweis die Programme, die die BPL noch geladen haben (`build.stopRunningProgram`: ask, always, never)
 
 <a id="window-atlascompilerswitches"></a>
 ### Compiler-Schalter an der Cursorposition
@@ -100,6 +101,30 @@ Einstellungen: `tests.stale`, `tests.stale.units`
 - Der kurze Text erscheint wie der Fehlertext am Zeilenende (`editor.inlineDiagnostics`).
 
 Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
+
+### Erwartet und erhalten vergleichen (#1779)
+
+Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*).
+
+- Zeigt den Fehlschlag des Tests am Cursor (bei einem `[TestCase]` den ersten fehlgeschlagenen Fall), sonst den zuletzt gemeldeten, in zwei Spalten: links erwartet, rechts erhalten.
+- Abweichende Zeichen sind rot bzw. grün hinterlegt; Zeilen, die es nur auf einer Seite gibt, ganz, gegenüber eine graue Lücke.
+- Zeilenenden (`↵`, `␍↵`, `␍`), Tabs (`→`) und Leerzeichen am Zeilenende (`·`) sind sichtbar; ein Unterschied nur darin fällt so auf.
+- Sind beide Werte JSON bzw. XML, rückt Atlas sie vorher gleich ein; der Unterschied steht dann in seiner eigenen Zeile.
+- Werte, die mit „...“ enden, tragen „(gekürzt)“ im Spaltenkopf.
+- „Erhalten kopieren“ legt den erhaltenen Wert in die Zwischenablage, etwa um den erwarteten Wert im Test zu aktualisieren; Esc schließt.
+- Nur für Fehlschläge, deren Bericht erwarteten und erhaltenen Wert nennt.
+
+Einstellungen: `tests.compare`, `tests.compare.format`
+
+### Dauer der Tests und langsame Tests (#1772)
+
+- Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
+- Liegt der langsamste Test einer Marke über `tests.slowMs` (Vorgabe 500 ms), folgt „· langsam“ und die Marke wird gelb, auch wenn er bestanden hat. Fehlgeschlagen bleibt rot, veraltet grau.
+- Die Karte *Testergebnisse* der Willkommensseite listet unter den Fehlschlägen die fünf langsamsten Tests des letzten Laufs; Doppelklick öffnet den Test.
+- *Langsamste Tests zeigen* (Atlas-Menü, Befehlspalette): alle Tests dieser Sitzung mit Dauer, der langsamste zuerst (höchstens 50); Doppelklick oder Eingabetaste springt zum Test.
+- `tests.showDuration` aus: keine Dauer, keine Färbung, keine Liste auf der Willkommensseite, kein Befehl.
+
+Einstellungen: `tests.showDuration`, `tests.slowMs`
 
 ### Testfall aus der Unit anlegen (#1226)
 
@@ -307,6 +332,7 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne eindeutige Ursache steht „Ursache nicht eindeutig“.
 - Das schuldige Glied ist im Editor unterstrichen, bis weitergelaufen wird.
 - Getter und Funktionsaufrufe wertet Atlas nur mit `debug.explainAccessViolation.allowCalls` aus.
+- Dahinter steht, in welchem Modul die Fehleradresse liegt: „in deinem Programm“, „in vcl290.bpl (RTL/VCL)“, „in ntdll.dll (Windows)“ oder „in Fremd.dll (keine Debug-Infos)“. Hält der Debugger nicht in eigenem Code, nennt Atlas nur das Modul und die letzte eigene Stelle aus dem Aufrufstapel (`debug.moduleOfAddress`).
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
-Schalter: `debug.explainAccessViolation`.
+Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
