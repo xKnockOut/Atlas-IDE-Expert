@@ -6,11 +6,16 @@
 //   ausführen …“, „Ausgewählte in zufälliger Reihenfolge ausführen“, „Mit
 //   dieser Reihenfolge erneut ausführen“ und „Testserie abbrechen“. Gesperrt
 //   ist, was gerade nicht geht: Während einer Serie bleibt nur Abbrechen.
+// - Hat der Baum schon ein Kontextmenü (Testlisten, #2167, setzen und
+//   nehmen es je nach Einstellung), hängen die Einträge unter einem Strich
+//   daran; sonst ist dieses Menü das Kontextmenü. Das entscheidet sich bei
+//   jedem Rechtsklick (OnContextPopup des Baums).
 
 interface
 
 uses
   System.SysUtils,
+  System.Types,
   System.Classes,
   Vcl.Menus,
   Vcl.ComCtrls;
@@ -35,13 +40,16 @@ type
     FShuffle: TMenuItem;
     FAgain: TMenuItem;
     FCancel: TMenuItem;
+    /// <summary>Strich vor den Einträgen, wenn sie an einem fremden Menü hängen.</summary>
+    FLine: TMenuItem;
     function NewItem(const ACaption: string): TMenuItem;
     procedure ItemClick(Sender: TObject);
-    procedure MenuShowing(Sender: TObject);
+    procedure TreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
   public
-    /// <summary>Kontextmenü an ATree mit AHandlers; es gehört ATree und lebt höchstens so lange wie er.</summary>
+    /// <summary>Einträge an das Kontextmenü von ATree mit AHandlers; das Menü gehört ATree und lebt höchstens so
+    /// lange wie er. Belegt OnContextPopup von ATree.</summary>
     class procedure Attach(ATree: TTreeView; const AHandlers: TAtlasTestsSeriesHandlers); static;
-    /// <summary>Kontextmenü von ATree entfernen (Ereignisse zeigen danach nirgends mehr hin); nichts ohne.</summary>
+    /// <summary>Einträge von ATree entfernen (Ereignisse zeigen danach nirgends mehr hin); nichts ohne.</summary>
     class procedure Detach(ATree: TTreeView); static;
     /// <summary>Anzahl für „N-mal ausführen …“ erfragen, vorbelegt mit ADefault; AMin und AMax nennt die Frage.
     /// False, wenn der Benutzer abbricht; AText ist die Eingabe (prüft der Aufrufer).</summary>
@@ -53,6 +61,9 @@ implementation
 uses
   Vcl.Dialogs,
   Atlas.UI.Tests.Strings;
+
+const
+  cLineCaption = '-';
 
 function Answer(const AFunc: TFunc<Boolean>): Boolean;
 begin
@@ -75,20 +86,26 @@ var
 begin
   mMenu := TAtlasTestsSeriesMenu.Create(ATree);
   mMenu.FHandlers := AHandlers;
+  mMenu.FLine := mMenu.NewItem(cLineCaption);
   mMenu.FRepeat := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesMenuRepeat));
   mMenu.FShuffle := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesMenuShuffle));
   mMenu.FAgain := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesShuffleAgainCommand));
   mMenu.FCancel := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesCancelCommand));
-  mMenu.OnPopup := mMenu.MenuShowing;
-  ATree.PopupMenu := mMenu;
+  ATree.OnContextPopup := mMenu.TreeContextPopup;
 end;
 
 class procedure TAtlasTestsSeriesMenu.Detach(ATree: TTreeView);
+var
+  mIndex: Integer;
 begin
-  if ATree.PopupMenu is TAtlasTestsSeriesMenu then
+  ATree.OnContextPopup := nil;
+  for mIndex := ATree.ComponentCount - 1 downto 0 do
   begin
-    // Freigeben meldet sich beim Baum ab (PopupMenu wird nil).
-    ATree.PopupMenu.Free;
+    if ATree.Components[mIndex] is TAtlasTestsSeriesMenu then
+    begin
+      // Freigeben meldet sich beim Baum ab (PopupMenu wird nil); die Einträge lösen sich aus einem fremden Menü.
+      ATree.Components[mIndex].Free;
+    end;
   end;
 end;
 
@@ -100,10 +117,31 @@ begin
   Items.Add(Result);
 end;
 
-procedure TAtlasTestsSeriesMenu.MenuShowing(Sender: TObject);
+procedure TAtlasTestsSeriesMenu.TreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
 var
+  mTree: TTreeView;
+  mTarget: TMenuItem;
+  mItem: TMenuItem;
   mRunning: Boolean;
 begin
+  mTree := Sender as TTreeView;
+  if mTree.PopupMenu = nil then
+  begin
+    mTree.PopupMenu := Self;
+  end;
+  mTarget := mTree.PopupMenu.Items;
+  for mItem in TArray<TMenuItem>.Create(FLine, FRepeat, FShuffle, FAgain, FCancel) do
+  begin
+    if mItem.Parent <> mTarget then
+    begin
+      if mItem.Parent <> nil then
+      begin
+        mItem.Parent.Remove(mItem);
+      end;
+      mTarget.Add(mItem);
+    end;
+  end;
+  FLine.Visible := mTree.PopupMenu <> Self;
   mRunning := Answer(FHandlers.Running);
   FRepeat.Enabled := not mRunning;
   FShuffle.Enabled := not mRunning;
