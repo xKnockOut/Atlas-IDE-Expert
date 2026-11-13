@@ -60,6 +60,9 @@ type
     /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
     /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
     BuildOnOpenPlatform: string;
+    /// <summary>Laufendes Programm vor dem Build beenden (build.stopRunningProgram, #551): ask (Rückfrage), always
+    /// (ohne Rückfrage beenden) oder never (nichts tun). Programme im Debugger der IDE bleiben unberührt.</summary>
+    BuildStopRunningProgram: string;
     /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
     /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
     TestRun: Boolean;
@@ -182,19 +185,19 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.Verdict;
 
-/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
-function NormalizedTasksBeforeBuild(const AText: string): string;
+/// <summary>Bekannter Wert aus ANames klein (tasks.beforeBuild, build.stopRunningProgram), sonst der erste.</summary>
+function NormalizedName(const AText: string; const ANames: array of string): string;
 var
   mName: string;
 begin
-  for mName in cTasksBeforeBuildNames do
+  for mName in ANames do
   begin
     if SameText(Trim(AText), mName) then
     begin
       Exit(mName);
     end;
   end;
-  Result := cTasksBeforeBuildNames[0];
+  Result := ANames[0];
 end;
 
 { TAtlasPluginBuildSettings }
@@ -216,6 +219,7 @@ begin
   Result.BuildOnOpenExclude := '';
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
+  Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
   Result.TestRun := True;
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
@@ -261,13 +265,14 @@ begin
   BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
   BuildOnOpenConfig := Trim(BuildOnOpenConfig);
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
+  BuildStopRunningProgram := NormalizedName(BuildStopRunningProgram, cStopRunningProgramNames);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
   begin
     CompileOnSave := False;
   end;
   BuildGate := TAtlasBuildPipelineSettings.cGateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
-  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  TasksBeforeBuild := NormalizedName(TasksBeforeBuild, cTasksBeforeBuildNames);
   BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.cGateMinTimeoutMs,
     TAtlasBuildPipelineSettings.cGateMaxTimeoutMs);
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
@@ -292,6 +297,7 @@ begin
   AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
   AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
   AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
+  AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
   AIo.Flag('TestRun', TestRun);
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);

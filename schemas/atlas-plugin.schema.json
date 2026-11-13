@@ -3189,6 +3189,25 @@
       "x-parent": "build.onOpen",
       "x-issue": "#1293"
     },
+    "BuildStopRunningProgram": {
+      "type": "string",
+      "enum": [
+        "ask",
+        "always",
+        "never"
+      ],
+      "default": "ask",
+      "description": "Läuft die Ausgabe-exe eines Projekts noch außerhalb des Debuggers, scheitert der Build erst am Ende mit F2039. Atlas erkennt das vor dem Compile (Vergleich des vollständigen Pfads): ask fragt „… läuft noch. Beenden und bauen?“ mit Ja, Nein und Immer; always beendet ohne Rückfrage (erst WM_CLOSE an die Hauptfenster, nach 2 s TerminateProcess); never tut nichts. Programme im Debugger der IDE bleiben unberührt. Bei einem Package nennt ein Hinweis im Meldungsfenster die Programme, die die BPL geladen haben; beendet wird dann nichts.",
+      "x-key": "build.stopRunningProgram",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "buildTools.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "Laufendes Programm vor dem Build beenden",
+      "x-captionEn": "Stop the running program before the build",
+      "x-issue": "#551",
+      "x-offValue": "never"
+    },
     "CompileOnSave": {
       "type": "boolean",
       "default": false,
