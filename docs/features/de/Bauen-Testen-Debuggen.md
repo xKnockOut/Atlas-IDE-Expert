@@ -91,6 +91,16 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Getestet von (#1778)
+
+- Hinter dem Kopf jeder öffentlichen Methode einer normalen Unit steht, welche DUnitX-Tests sie prüfen, z. B. „3 Tests · bestanden“.
+- Farben wie bei der Code Lens der Tests: grün erst, wenn jeder dieser Tests bestand, gelb bei Teilstand („3 Tests · 1/3 bestanden“), rot bei einem Fehlschlag. Ohne Test steht grau „kein Test · Test anlegen“.
+- Atlas sucht die Tests im Hintergrund rückwärts wie „Betroffene Tests ausführen“: mit Tiefe 1 nur Tests, die die Methode direkt aufrufen, mit größerer Tiefe auch über Zwischenstufen. Stößt die Suche an eine Grenze, steht „(unvollständig)“ dabei.
+- Klick führt genau diese Tests aus; Strg+Klick listet sie, ein Eintrag springt zum Test. Ohne Test öffnet bzw. legt der Klick die Testunit an.
+- Testunits selbst bekommen keine Marken; private und geschützte Methoden nur auf Wunsch. Ausblenden je Methode oder Datei über das Menü „Ausblenden“.
+
+Einstellungen: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
+
 ### Fehlschlag an der Assert-Zeile (#1771)
 
 - Ein fehlgeschlagener Test steht nicht mehr am Methodenkopf, sondern an der Anweisung, die fehlschlug: Wellenlinie über der Anweisung, dahinter grau „erwartet 4, erhalten 3“.
