@@ -44,6 +44,15 @@ type
     procedure KindNamesForTheProtocol;
   end;
 
+  [TestFixture]
+  TOwnershipTreeTests = class
+  public
+    [Test]
+    procedure RecognizesInterfaceNames;
+    [Test]
+    procedure ElementTypeOfGenericList;
+  end;
+
 implementation
 
 uses
@@ -55,7 +64,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Rules.Builtin.Ownership.LocalObjects;
+  Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
+  Atlas.Common.Leaks.Internals.OwnershipTree;
 
 const
   cNl = #10;
@@ -300,7 +310,27 @@ begin
   Assert.IsFalse(TOwnershipSites.IsOwnershipRule('owned-item-freed'));
 end;
 
+{ TOwnershipTreeTests }
+
+procedure TOwnershipTreeTests.RecognizesInterfaceNames;
+begin
+  Assert.IsTrue(TOwnershipTree.LooksLikeInterface('IStream'));
+  Assert.IsTrue(TOwnershipTree.LooksLikeInterface('System.Classes.IInterfaceList'));
+  Assert.IsTrue(TOwnershipTree.LooksLikeInterface('IList<TItem>'));
+  Assert.IsFalse(TOwnershipTree.LooksLikeInterface('Item'));
+  Assert.IsFalse(TOwnershipTree.LooksLikeInterface('Inventory'));
+  Assert.IsFalse(TOwnershipTree.LooksLikeInterface('I'));
+end;
+
+procedure TOwnershipTreeTests.ElementTypeOfGenericList;
+begin
+  Assert.AreEqual('TItem', TOwnershipTree.ElementType('TObjectList<TItem>'));
+  Assert.AreEqual('TList<TItem>', TOwnershipTree.ElementType('TObjectList< TList<TItem> >'));
+  Assert.AreEqual('', TOwnershipTree.ElementType('TStringList'));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOwnershipSitesTests);
+  TDUnitX.RegisterTestFixture(TOwnershipTreeTests);
 
 end.
