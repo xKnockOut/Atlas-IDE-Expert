@@ -1080,6 +1080,8 @@ uses
   Atlas.Core.Projects.VersionControl.Tests in 'IDE.Expert\Atlas.Core.Projects.VersionControl.Tests.pas',
   Atlas.Core.Tests.Run in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Run.Tests in 'IDE.Expert\Atlas.Core.Tests.Run.Tests.pas',
+  Atlas.Core.Tests.Stale in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
+  Atlas.Core.Tests.Stale.Tests in 'IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas',
   Atlas.Core.Tests.AffectedHook in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.AffectedHook.Tests in 'IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas',
   Atlas.Core.Tests.Debug in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas',

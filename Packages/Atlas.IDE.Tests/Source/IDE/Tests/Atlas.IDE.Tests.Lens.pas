@@ -12,7 +12,10 @@
 //   (Fixture, alle Fälle einer [TestCase]-Methode) gilt erst als bestanden,
 //   wenn jeder ihrer Tests ein Ergebnis hat; lief erst ein Teil, steht dort
 //   „1/4 bestanden“ in der Warnfarbe (gelb, TAtlasTestTally); während eines Laufs (auch im
-//   Debugger) „Tests laufen …“. Hat eine [TestCase]-Methode je Fall eine
+//   Debugger) „Tests laufen …“. Wurde ein Test seit dem Lauf geändert
+//   (tests.stale, #1770), zeigt die Marke den alten Stand grau und kursiv mit
+//   „(veraltet)“; die Zählung nimmt veraltete Ergebnisse nicht als bestanden.
+//   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
 //   (TestDebug, #585) folgt je Marke eine zweite: „Debuggen“. Die Rechtecke
@@ -43,6 +46,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Run,
+  Atlas.Text.DUnitX,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug;
 
@@ -92,15 +96,22 @@ type
     FScannedFile: string;
     FScannedText: string;
     FUnitName: string;
+    /// <summary>Fixtures und Tests des gelesenen Stands, Abfrage und Schlüssel der Tests mit veraltetem Ergebnis
+    /// (#1770).</summary>
+    FFound: TDUnitXUnit;
+    FStaleKeys: TAtlasTestStaleKeys;
+    FStale: TArray<string>;
     FItems: TArray<TItem>;
     FVersion: Integer;
     FShowing: Boolean;
     procedure Tick(Sender: TObject);
     procedure Scan;
+    /// <summary>Veraltete Tests des gelesenen Stands neu bestimmen (#1770).</summary>
+    procedure UpdateStale;
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
     /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe).</summary>
-    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus): string;
+    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale: Boolean): string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Marke der Zeile von AContext, -1 ohne (Lens aus, andere Datei, Leerzeile, ausgeblendet).</summary>
@@ -115,8 +126,9 @@ type
     procedure QueueClick(AIndex: Integer; ADebug: Boolean);
     class procedure Invalidate; static;
   public
-    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens.</summary>
-    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger);
+    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens; AStaleKeys nennt die Tests
+    /// mit veraltetem Ergebnis (#1770, nil = keine).</summary>
+    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AStaleKeys: TAtlasTestStaleKeys);
     destructor Destroy; override;
     /// <summary>Lens zeichnen? Einstellungen codeLens.tests und TestRun.</summary>
     class function Wanted(const ASettings: TAtlasPluginSettings): Boolean; static;
@@ -139,7 +151,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.Core.Diagnostics.Deadline;
 
@@ -157,13 +168,15 @@ end;
 
 { TAtlasIdeTestsLens }
 
-constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger);
+constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
+  const AStaleKeys: TAtlasTestStaleKeys);
 var
   mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FTests := ATests;
   FDebugger := ADebugger;
+  FStaleKeys := AStaleKeys;
   FAlive := TAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
@@ -224,6 +237,8 @@ procedure TAtlasIdeTestsLens.Clear;
 begin
   FItems := nil;
   FUnitName := '';
+  FFound := Default(TDUnitXUnit);
+  FStale := nil;
   FScannedFile := '';
   FScannedText := '';
   if FShowing then
@@ -270,6 +285,7 @@ begin
     if FShowing and (FTests.Version <> FVersion) then
     begin
       FVersion := FTests.Version;
+      UpdateStale;
       Invalidate;
     end;
   except
@@ -340,14 +356,25 @@ begin
   FScannedFile := FFileName;
   FScannedText := FText;
   FUnitName := mFound.UnitName;
+  FFound := mFound;
   if (Length(mItems) = 0) and (Length(FItems) = 0) then
   begin
     Exit;
   end;
   FItems := mItems;
+  UpdateStale;
   FShowing := Length(mItems) > 0;
   FVersion := FTests.Version;
   Invalidate;
+end;
+
+procedure TAtlasIdeTestsLens.UpdateStale;
+begin
+  FStale := nil;
+  if Assigned(FStaleKeys) and (Length(FItems) > 0) and not FTests.Busy then
+  begin
+    FStale := FStaleKeys(FFound, TTextLines.SplitLines(FScannedText));
+  end;
 end;
 
 function TAtlasIdeTestsLens.ItemAt(ALine: Integer): Integer;
@@ -364,11 +391,12 @@ begin
   Result := -1;
 end;
 
-function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus): string;
+function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale: Boolean): string;
 var
   mTally: TAtlasTestTally;
 begin
   AStatus := TAtlasTestStatus.Unknown;
+  AStale := False;
   if FTests.Busy then
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
@@ -386,8 +414,11 @@ begin
     Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRun);
   end;
   // Nur der Stand der Tests dieser Marke: Ein einzelner Test macht die Fixture nicht „bestanden“.
-  mTally := FTests.TallyOf(FUnitName, AItem.Selection.Fixture, AItem.Expected);
-  AStatus := mTally.Status;
+  // Veraltete Ergebnisse (#1770) zählen nicht als bestanden; der alte Stand bleibt mit „(veraltet)“ sichtbar.
+  mTally := FTests.TallyOf(FUnitName, AItem.Selection.Fixture, AItem.Expected,
+    TAtlasTestRun.StaleOf(FStale, FUnitName, AItem.Selection.Fixture));
+  AStatus := mTally.Shown;
+  AStale := mTally.IsStale;
   if AStatus = TAtlasTestStatus.Failed then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensFailed, [Result]);
@@ -398,7 +429,11 @@ begin
   end
   else if AStatus = TAtlasTestStatus.Partial then
   begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.Passed, mTally.Total]);
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.FreshPassed, mTally.Total]);
+  end;
+  if AStale then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);
   end;
 end;
 
@@ -474,10 +509,11 @@ var
   mTone: TAtlasColor;
   mText: string;
   mStatus: TAtlasTestStatus;
+  mStale: Boolean;
   mPill: TRect;
 begin
   mCanvas := AContext.Canvas;
-  mText := Caption(FItems[AIndex], mStatus);
+  mText := Caption(FItems[AIndex], mStatus, mStale);
   mColors := TAtlasColors.ForBackground(ABack);
   mTone := mColors.Accent;
   if mStatus = TAtlasTestStatus.Failed then
@@ -495,6 +531,12 @@ begin
   end;
   mCanvas.Font.Size := Max(6, mCanvas.Font.Size - 1);
   mCanvas.Font.Style := [fsUnderline];
+  if mStale then
+  begin
+    // Veraltet (#1770): alter Stand grau und kursiv.
+    mTone := mColors.Muted;
+    mCanvas.Font.Style := [fsUnderline, fsItalic];
+  end;
   mPill := DrawPill(mCanvas, ARow, mText, mTone, ABack, ALeft);
   FItems[AIndex].RunRect := mPill;
   FItems[AIndex].DebugRect := TRect.Empty;
