@@ -158,7 +158,8 @@ uses
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesActions,
-  Atlas.Common.Editing.MethodWithoutSelf.Texts;
+  Atlas.Common.Editing.MethodWithoutSelf.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 class function TMethodWithoutSelf.ClassMethodTitle: string;
 begin
@@ -576,7 +577,7 @@ function TMethodPlan.HasAttributes: Boolean;
 var
   mIndex: Integer;
 begin
-  mIndex := TRoutineBody.PreviousToken(Tokens, TRoutineBody.TokenAt(Tokens, Declaration.StartOffset));
+  mIndex := PreviousCode(Tokens, TRoutineBody.TokenAt(Tokens, Declaration.StartOffset));
   Result := (mIndex >= 0) and Tokens[mIndex].IsSymbol(']');
 end;
 

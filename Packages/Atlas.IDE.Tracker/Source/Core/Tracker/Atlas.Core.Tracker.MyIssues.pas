@@ -1138,21 +1138,6 @@ end;
 
 { JSON }
 
-function ParseObject(const AJson: string): TJSONValue;
-begin
-  Result := nil;
-  if Trim(AJson) = '' then
-  begin
-    Exit;
-  end;
-  try
-    Result := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      Result := nil;
-  end;
-end;
-
 procedure AddText(AObject: TJSONObject; const AName, AValue: string);
 begin
   if AValue <> '' then
@@ -1390,7 +1375,7 @@ var
   mValue: TJSONValue;
 begin
   AState := TAtlasIssuesState.Empty;
-  mValue := ParseObject(AJson);
+  mValue := TJsonRead.Parse(AJson);
   try
     Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
   finally
@@ -1403,7 +1388,7 @@ var
   mValue: TJSONValue;
 begin
   AState := TAtlasIssuesState.Empty;
-  mValue := ParseObject(ASummary.Raw);
+  mValue := TJsonRead.Parse(ASummary.Raw);
   try
     Result := (mValue is TJSONObject) and StateOf(TJsonRead.Obj(TJSONObject(mValue), cSectionName), AState);
   finally
@@ -1418,7 +1403,7 @@ var
   mIndex: Integer;
   mPair: TJSONPair;
 begin
-  mValue := ParseObject(ASummary.Raw);
+  mValue := TJsonRead.Parse(ASummary.Raw);
   mRoot := TJSONObject.Create;
   try
     // Alles außer dem Abschnitt übernehmen; ohne Datei schreibt TAtlasProjectSummaries.ToJson die übrigen

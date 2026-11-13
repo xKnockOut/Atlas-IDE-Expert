@@ -66,7 +66,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -174,7 +175,7 @@ function PrecededByClass(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode
 var
   mIndex: Integer;
 begin
-  mIndex := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
+  mIndex := PreviousCode(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
   Result := (mIndex >= 0) and (mIndex < Length(ATokens)) and SameText(ATokens[mIndex].Text, 'class');
 end;
 
@@ -213,7 +214,7 @@ var
 begin
   Result := False;
   mIndex := TRoutineBody.TokenAt(ATokens, ADirective.StartOffset);
-  mBefore := TRoutineBody.PreviousToken(ATokens, mIndex);
+  mBefore := PreviousCode(ATokens, mIndex);
   if (mIndex < 0) or (mIndex >= Length(ATokens)) or (mBefore < 0) then
   begin
     Exit;

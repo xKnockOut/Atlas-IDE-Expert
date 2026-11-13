@@ -350,6 +350,19 @@ Settings: `debug.breakOnNextEvent`
 
 Settings: `debug.stepFilters`
 
+### Breakpoints that will not be hit
+
+Before every debug session starts, Atlas checks all active source breakpoints, open files as they are in the editor:
+
+- line without code (comment, blank line, declaration), with the next code line of the same routine
+- inactive branch of conditional compilation, with its condition (`{$IFDEF RELEASE}`)
+- code without debug information (`{$D-}` in the unit or in the project options)
+- unit of another project in the group, not of the one being started
+
+If anything is found, the dialog “Breakpoints that will not be hit” lists it before the start; double-click jumps to the spot. “Move to next code line” moves the breakpoints together with condition, pass count and group and starts, “Start anyway” starts unchanged, “Cancel” does not start. The command “Check breakpoints” (Atlas menu, command palette) checks at any time. Without a server, or without an answer within 3 seconds, the IDE starts without a message.
+
+Settings: `debug.checkBreakpoints`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
