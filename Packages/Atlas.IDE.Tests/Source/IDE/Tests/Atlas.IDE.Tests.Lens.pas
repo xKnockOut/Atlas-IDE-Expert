@@ -154,10 +154,6 @@ type
     function LineItem(const AContext: INTACodeEditorPaintContext; out ALine: string): Integer;
     procedure PaintMarks(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
       ALeft: Integer; ABack: TAtlasColor);
-    /// <summary>Marke AIndex in der Zeile ALine zeichnen; eigene Routine, damit die Methodenreferenz nur ihre
-    /// Werte einfängt.</summary>
-    procedure PaintAt(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
-      const ALine: string);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     /// <summary>Marke unter (X, Y) und ihr Knopf AMark. -1 ohne.</summary>
     function HitAt(AX, AY: Integer; out AMark: TMark): Integer;
@@ -723,32 +719,27 @@ procedure TAtlasIdeTestsLens.PaintLine(const Rect: TRect; const Stage: TPaintLin
 var
   mLine: string;
   mIndex: Integer;
+  mRow: TRect;
+  mContext: INTACodeEditorPaintContext;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
   begin
     Exit;
   end;
   mIndex := LineItem(Context, mLine);
-  if mIndex >= 0 then
+  if mIndex < 0 then
   begin
-    PaintAt(mIndex, Rect, Context, mLine);
+    Exit;
   end;
-end;
-
-procedure TAtlasIdeTestsLens.PaintAt(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
-  const ALine: string);
-var
-  mIndex, mLeft: Integer;
-  mRow: TRect;
-  mContext: INTACodeEditorPaintContext;
-begin
-  mIndex := AIndex;
-  mRow := ARow;
-  mContext := AContext;
-  mLeft := TAtlasIdeLensPill.LeftOf(AContext, ALine);
-  TAtlasIdeLensPill.Guarded(AContext.Canvas,
+  mRow := Rect;
+  mContext := Context;
+  // Auch die Lage der Marke unter der Sicherung: Zeichnen darf die IDE nie stören.
+  TAtlasIdeLensPill.Guarded(Context.Canvas,
     procedure
+    var
+      mLeft: Integer;
     begin
+      mLeft := TAtlasIdeLensPill.LeftOf(mContext, mLine);
       PaintMarks(mIndex, mRow, mContext, mLeft, TAtlasIdeLensPill.BackgroundAt(mContext.Canvas, mLeft, mRow.Top + 1));
     end);
 end;
