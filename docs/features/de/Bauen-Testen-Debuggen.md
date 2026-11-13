@@ -297,6 +297,7 @@ Das andockbare Fenster „Haltepunkte“ (Atlas-Menü, „Haltepunkte (Atlas)“
 - Etiketten wie `Import` oder `Bug 4711`, mehrere je Haltepunkt, mit Vervollständigung der schon benutzten; sie sind persönlich und bleiben nach einem Neustart erhalten
 - Gruppieren nach Etikett, Datei oder Gruppe, Gruppen auf- und zuklappbar
 - mehrere Haltepunkte gemeinsam ein- und ausschalten, mit Etikett versehen oder löschen (Rückgängig mit Strg+Z)
+- Spalten „Satz“ (Haltepunkt-Sätze) und „Regeln“ (Trefferbedingung, Thread-Filter, abhängig von einem anderen Haltepunkt), etwa „ab 3. Treffer · Hauptthread“
 - Doppelklick springt zur Stelle, Enter öffnet die Eigenschaften der IDE
 - Spalten über das Kontextmenü ein- und ausblenden, Breite und Reihenfolge merkt sich das Fenster
 
@@ -314,6 +315,18 @@ Vor jedem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepun
 Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie vor dem Start; Doppelklick springt zur Stelle. „Auf nächste Codezeile verschieben“ verschiebt die Haltepunkte samt Bedingung, Durchlaufzahl und Gruppe und startet, „Trotzdem starten“ startet unverändert, „Abbrechen“ startet nicht. Der Befehl „Haltepunkte prüfen“ (Menü Atlas, Befehlspalette) prüft jederzeit. Ohne Server oder ohne Antwort in 3 Sekunden startet die IDE ohne Meldung.
 
 Einstellungen: `debug.checkBreakpoints`
+
+#### Haltepunkte auf Methoden nach Muster
+
+Der Befehl „Haltepunkt auf Methoden …“ (Menü Atlas, Befehlspalette, Kontextmenü des Editors unter „Debuggen“ und Kontextmenü der Haltepunktliste) setzt Haltepunkte auf alle Methoden, die zu einem Namen oder Muster passen, ohne jede einzeln zu öffnen. Das Startmuster kommt aus dem Wort am Cursor: im Kopf einer Methode `TKunde.Speichere`, auf einem Typ `TKunde.*`, auf einem Aufruf `FKunde.Speichere` der Name `Speichere`; eine einzeilige Markierung wird übernommen. Ohne Wort steht das zuletzt benutzte Muster da.
+
+- `TKunde.Speichere`, `TKunde.*` (alle Methoden der Klasse), `*.Validiere*` (alle passenden Methoden und Routinen), `Kunde.Import.*` (ganze Unit), `IAuftrag.Pruefe` (alle Klassen, die den Interface-Member umsetzen, auch über Methodenzuordnungen)
+- mit Parametertypen nur eine Überladung: `TKunde.Speichere(Integer)`
+- „Überschreibungen“ nimmt die override-Methoden der Nachfahren dazu, „Überladungen“ alle Überladungen eines Namens (beide Vorgabe an)
+
+Die Vorschau zeigt die Treffer mit Datei und Zeile zum Abwählen, Methoden ohne Quelltext grau. „Setzen“ legt die Haltepunkte am ersten ausführbaren Befehl jeder Methode an, in der Haltepunktgruppe mit dem Muster als Namen, auf Wunsch mit Bedingung oder „Nicht anhalten, nur protokollieren“. Mit „Mitwachsen“ ergänzt Atlas beim nächsten Debug-Start Haltepunkte für neue passende Methoden und nennt sie in den Meldungen. „Haltepunktgruppen der Methoden …“ schaltet die Gruppen des Projekts ein und aus oder entfernt sie samt Haltepunkten. Die Gruppen merkt sich Atlas persönlich je Projekt.
+
+Einstellungen: `debug.methodBreakpoints`
 
 #### Bis hier ausführen per Klick
 

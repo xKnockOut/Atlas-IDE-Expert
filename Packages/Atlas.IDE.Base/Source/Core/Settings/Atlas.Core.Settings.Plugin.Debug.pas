@@ -121,6 +121,10 @@ type
     /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
     /// Aus = keine Prüfung, kein Befehl.</summary>
     DebugCheckBreakpoints: Boolean;
+    /// <summary>Haltepunkte auf Methoden nach Name oder Muster (#855, debug.methodBreakpoints): Befehle
+    /// „Haltepunkt auf Methoden …“ und „Haltepunktgruppen der Methoden …“, Gruppen mit „Mitwachsen“ beim Debug-Start.
+    /// Aus = keine Befehle, kein Mitwachsen.</summary>
+    DebugMethodBreakpoints: Boolean;
     /// <summary>Haltepunkt nur für ein Objekt (#857, debug.instanceBreakpoints): Befehle „Haltepunkt nur für dieses
     /// Objekt“ (Bedingung auf die Adresse von Self) und „Haltepunkt nur wenn …“ (Feldwert von Self) im Kontextmenü
     /// des Editors; vor dem nächsten Start die Frage zu Adressbedingungen der letzten Sitzung. Aus = keine Befehle,
@@ -352,6 +356,7 @@ begin
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugCheckBreakpoints := True;
+  Result.DebugMethodBreakpoints := True;
   Result.DebugInstanceBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
   Result.DebugRunToClick := True;
@@ -445,6 +450,7 @@ begin
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
+  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);

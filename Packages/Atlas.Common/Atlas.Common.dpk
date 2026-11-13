@@ -859,6 +859,7 @@ contains
   Atlas.Common.Lsp.AccessChains in 'Source\Lsp\Atlas.Common.Lsp.AccessChains.pas',
   Atlas.Common.Lsp.StepFilter in 'Source\Lsp\Atlas.Common.Lsp.StepFilter.pas',
   Atlas.Common.Lsp.BreakpointCheck in 'Source\Lsp\Atlas.Common.Lsp.BreakpointCheck.pas',
+  Atlas.Common.Lsp.MethodBreakpoints in 'Source\Lsp\Atlas.Common.Lsp.MethodBreakpoints.pas',
   Atlas.Common.Updates.Contract in 'Source\Updates\Atlas.Common.Updates.Contract.pas',
   Atlas.Common.Updates.Ides in 'Source\Updates\Atlas.Common.Updates.Ides.pas',
   Atlas.Common.Updates.KnownPackages in 'Source\Updates\Atlas.Common.Updates.KnownPackages.pas',
