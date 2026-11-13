@@ -580,6 +580,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
+        <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas"/>
+        <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Setup.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.Statements.pas"/>

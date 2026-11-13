@@ -13,7 +13,8 @@
 //   run_tests und #154).
 // - Daraus Probleme im Editor (Quelle "DUnitX", erwarteter und tatsächlicher
 //   Wert), den Abschnitt "tests" der Projekt-Zusammenfassung (#592, Karte
-//   Tests #763) und den Stand je Test für die Code Lens.
+//   Tests #763) und den Stand je Test für die Code Lens; veraltete Ergebnisse
+//   (#1770, Atlas.Core.Tests.Stale) zählt die Marke nicht als bestanden.
 // Dateien liest der Aufrufer (Puffer der IDE oder Platte); Zeilen sind hier
 // 0-basiert, in der Zusammenfassung 1-basiert.
 
@@ -26,7 +27,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Text.DUnitX,
-  Atlas.Text.TestResults;
+  Atlas.Text.TestResults,
+  Atlas.Core.Tests.Stale;
 
 type
 {$SCOPEDENUMS ON}
@@ -49,15 +51,33 @@ type
     Ran: Integer;
     Passed: Integer;
     Failed: Integer;
+    /// <summary>Davon mit veraltetem Ergebnis: Der Test wurde seit dem Lauf geändert (#1770).</summary>
+    Stale: Integer;
+    /// <summary>Davon bestanden, aber veraltet.</summary>
+    StalePassed: Integer;
     /// <summary>Failed bei einem Fehlschlag; Passed erst, wenn jeder Test ein Ergebnis hat und mindestens einer
-    /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown.</summary>
+    /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown. Stand des letzten Laufs, auch wenn er veraltet
+    /// ist.</summary>
     function Status: TAtlasTestStatus;
+    /// <summary>Mindestens ein Ergebnis ist veraltet (#1770).</summary>
+    function IsStale: Boolean;
+    /// <summary>Bestandene Tests ohne die veralteten: die Zählung „3/4 bestanden“.</summary>
+    function FreshPassed: Integer;
+    /// <summary>Stand für die Marke: wie Status, nur gilt eine Marke über mehrere Tests mit veraltetem bestandenem
+    /// Ergebnis als Partial (die Zählung nimmt es nicht als bestanden).</summary>
+    function Shown: TAtlasTestStatus;
   end;
 
-  /// <summary>Datei der Unit AUnitName im Testprojekt; '' ohne.</summary>
-  TAtlasTestUnitFile = reference to function(const AUnitName: string): string;
+  /// <summary>Ist das Ergebnis des Tests AMethod (der Fixture der Marke) veraltet (#1770)?</summary>
+  TAtlasTestStaleFunc = Atlas.Core.Tests.Stale.TAtlasTestStaleFunc;
+  /// <summary>Tests einer Unit mit veraltetem Ergebnis (#1770).</summary>
+  TAtlasTestStaleKeys = Atlas.Core.Tests.Stale.TAtlasTestStaleKeys;
+
+  /// <summary>Datei der Unit AUnitName im Testprojekt; '' ohne. Deklariert in Atlas.Core.Tests.Stale (ohne
+  /// Windows-Abhängigkeiten, auch unter FPC prüfbar).</summary>
+  TAtlasTestUnitFile = Atlas.Core.Tests.Stale.TAtlasTestUnitFile;
   /// <summary>Zeilen einer Datei (ohne Zeilenende); False, wenn sie nicht lesbar ist.</summary>
-  TAtlasTestReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+  TAtlasTestReadLines = Atlas.Core.Tests.Stale.TAtlasTestReadLines;
 
   /// <summary>Was läuft: Testprojekt, Ziel und Filter.</summary>
   TAtlasTestTarget = record
@@ -128,7 +148,14 @@ type
       ACaseIndex: Integer): TArray<TAtlasTestKey>; static;
     /// <summary>Stand der Tests AKeys der Fixture AFixture in den Ergebnissen.</summary>
     class function TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
-      const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally; static;
+      const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally; overload; static;
+    /// <summary>Wie oben; AStale nennt Tests, deren Ergebnis veraltet ist (#1770), nil = keine.</summary>
+    class function TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+      const AKeys: TArray<TAtlasTestKey>; const AStale: TAtlasTestStaleFunc): TAtlasTestTally; overload; static;
+    /// <summary>Für TallyOf: Ist das Ergebnis eines Tests der Fixture AFixture in Unit AUnitName veraltet? AKeys
+    /// sind die Schlüssel der veralteten Tests (TAtlasTestStamps.StaleIn, #1770); nil ohne.</summary>
+    class function StaleOf(const AKeys: TArray<string>; const AUnitName, AFixture: string): TAtlasTestStaleFunc;
+      static;
   end;
 
 implementation
@@ -150,6 +177,25 @@ begin
     Result := TAtlasTestStatus.Passed;
   end
   else if (Ran > 0) and (Ran < Total) then
+  begin
+    Result := TAtlasTestStatus.Partial;
+  end;
+end;
+
+function TAtlasTestTally.IsStale: Boolean;
+begin
+  Result := Stale > 0;
+end;
+
+function TAtlasTestTally.FreshPassed: Integer;
+begin
+  Result := Passed - StalePassed;
+end;
+
+function TAtlasTestTally.Shown: TAtlasTestStatus;
+begin
+  Result := Status;
+  if (Result = TAtlasTestStatus.Passed) and (StalePassed > 0) and (Total > 1) then
   begin
     Result := TAtlasTestStatus.Partial;
   end;
@@ -475,9 +521,16 @@ end;
 
 class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
   const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
+begin
+  Result := TallyOf(ACases, AUnitName, AFixture, AKeys, nil);
+end;
+
+class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKeys: TArray<TAtlasTestKey>; const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
 var
   mKey: TAtlasTestKey;
   mStatus: TAtlasTestStatus;
+  mStale: Boolean;
 begin
   Result := Default(TAtlasTestTally);
   Result.Total := Length(AKeys);
@@ -489,6 +542,11 @@ begin
     end;
     Inc(Result.Ran);
     mStatus := StatusOf(ACases, AUnitName, AFixture, mKey.Method, mKey.CaseName);
+    mStale := Assigned(AStale) and AStale(mKey.Method);
+    if mStale then
+    begin
+      Inc(Result.Stale);
+    end;
     if mStatus = TAtlasTestStatus.Failed then
     begin
       Inc(Result.Failed);
@@ -496,8 +554,33 @@ begin
     else if mStatus = TAtlasTestStatus.Passed then
     begin
       Inc(Result.Passed);
+      if mStale then
+      begin
+        Inc(Result.StalePassed);
+      end;
     end;
   end;
+end;
+
+class function TAtlasTestRun.StaleOf(const AKeys: TArray<string>; const AUnitName,
+  AFixture: string): TAtlasTestStaleFunc;
+var
+  mKeys: TArray<string>;
+  mUnitName, mFixture: string;
+begin
+  Result := nil;
+  if Length(AKeys) = 0 then
+  begin
+    Exit;
+  end;
+  mKeys := AKeys;
+  mUnitName := AUnitName;
+  mFixture := AFixture;
+  Result :=
+    function(const AMethod: string): Boolean
+    begin
+      Result := TAtlasTestStamps.Listed(mKeys, TAtlasTestStamps.KeyOf(mUnitName, mFixture, AMethod));
+    end;
 end;
 
 end.
