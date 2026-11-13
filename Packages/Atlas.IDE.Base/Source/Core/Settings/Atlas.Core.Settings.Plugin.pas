@@ -115,6 +115,8 @@ type
     cMinBlockEndLines = Atlas.Core.Settings.Plugin.Editor.cMinBlockEndLines;
     cMaxBlockEndLines = Atlas.Core.Settings.Plugin.Editor.cMaxBlockEndLines;
     cMinInlineValuesPerLine = Atlas.Core.Settings.Plugin.Debug.cMinInlineValuesPerLine;
+    cMinMemoryTimelineIntervalMs = Atlas.Core.Settings.Plugin.Debug.cMinMemoryTimelineIntervalMs;
+    cMaxMemoryTimelineIntervalMs = Atlas.Core.Settings.Plugin.Debug.cMaxMemoryTimelineIntervalMs;
     cMinWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMinWhyHereDepth;
     cMaxWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMaxWhyHereDepth;
     cMinVariablesSearchDepth = Atlas.Core.Settings.Plugin.Debug.cMinVariablesSearchDepth;
@@ -533,6 +535,9 @@ type
     property DebugInlineValues: Boolean read FDebug.DebugInlineValues write FDebug.DebugInlineValues;
     property DebugInlineValuesPerLine: Integer read FDebug.DebugInlineValuesPerLine
       write FDebug.DebugInlineValuesPerLine;
+    property DebugMemoryTimeline: Boolean read FDebug.DebugMemoryTimeline write FDebug.DebugMemoryTimeline;
+    property DebugMemoryTimelineIntervalMs: Integer read FDebug.DebugMemoryTimelineIntervalMs
+      write FDebug.DebugMemoryTimelineIntervalMs;
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;

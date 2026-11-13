@@ -32,6 +32,8 @@ type
     procedure Parameter;
     [Test]
     procedure SilentCases;
+    [Test]
+    procedure ClassReleaseResets;
   end;
 
 implementation
@@ -173,6 +175,23 @@ begin
     'implementation'#10'procedure TForm1.FormCreate(Sender: TObject);'#10'begin'#10 +
     '  Button1.OnClick := Klick;'#10'end;'#10'procedure TForm1.Klick(Sender: TObject);'#10'begin'#10'end;'#10 +
     'end.');
+end;
+
+procedure TEventHandlerNotUnhookedTests.ClassReleaseResets;
+var
+  mSource: string;
+begin
+  // Klasse nur aus Klassenmethoden: Release ist ihr Abmelden; ohne Zurücksetzen dort bleibt der Befund.
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  System.Classes;'#10'type'#10'  TZaehler = class'#10 +
+    '  private'#10'    class procedure Geaendert(Sender: TObject); static;'#10'  public'#10 +
+    '    class procedure Verbinde(AQuelle: TStringList); static;'#10 +
+    '    class procedure Release(AQuelle: TStringList); static;'#10'  end;'#10'implementation'#10 +
+    'class procedure TZaehler.Verbinde(AQuelle: TStringList);'#10'begin'#10'  AQuelle.OnChange := Geaendert;'#10 +
+    'end;'#10'class procedure TZaehler.Release(AQuelle: TStringList);'#10'begin'#10'%s'#10'end;'#10 +
+    'class procedure TZaehler.Geaendert(Sender: TObject);'#10'begin'#10'end;'#10'end.';
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEventHandlerNotUnhookedRule.Create,
+    Format(mSource, ['  AQuelle.Clear;'])))));
+  TRuleAssert.Silent(TEventHandlerNotUnhookedRule.Create, Format(mSource, ['  AQuelle.OnChange := nil;']));
 end;
 
 initialization

@@ -7,8 +7,8 @@
 //                                freigegeben wird. Still, wenn die Variable in der Routine auf nil gesetzt wird.
 //   event-handler-not-unhooked   Eine Methode weist eine eigene Methode dem Ereignis OnXyz eines fremden Objekts zu
 //                                (Parameter oder Feld, das die Klasse nicht selbst erzeugt und das nicht im
-//                                published-Teil steht), und weder Destroy noch BeforeDestruction oder Notification der
-//                                Klasse setzen dieses Ereignis zurück. Lebt das fremde Objekt länger, ruft es nach
+//                                published-Teil steht), und weder Destroy, BeforeDestruction, Notification noch Release
+//                                (Abmelden einer Klasse mit Klassenmethoden) der Klasse setzen dieses Ereignis zurück. Lebt das fremde Objekt länger, ruft es nach
 //                                dem Freigeben die Methode eines toten Objekts auf. Korrektur bei Feldern: im
 //                                Destruktor der Datei "if Assigned(FFeld) then FFeld.OnXyz := nil;" einfügen.
 
@@ -78,8 +78,10 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  // Routinen, in denen eine Klasse ihre Ereignisse an fremden Objekten zurücksetzt.
-  cTeardownMethods: array[0..3] of string = ('Destroy', 'BeforeDestruction', 'Notification', 'FreeNotification');
+  // Routinen, in denen eine Klasse ihre Ereignisse an fremden Objekten zurücksetzt; Release ist das Abmelden einer
+  // Klasse, die nur aus Klassenmethoden und -feldern besteht und deshalb keinen Destruktor hat.
+  cTeardownMethods: array[0..4] of string = ('Destroy', 'BeforeDestruction', 'Notification', 'FreeNotification',
+    'Release');
 
 /// <summary>Alle Bezeichner AName unter ANode (nicht als Mitglied hinter einem Punkt), ohne lokale Routinen.
 /// </summary>
