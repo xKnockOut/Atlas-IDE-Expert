@@ -207,6 +207,7 @@ Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests
 Atlas.Common.Lsp.BoundaryCases.Tests
+Atlas.Common.Lsp.BoundaryTests.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
@@ -478,6 +479,7 @@ Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests
+Atlas.Core.Tests.BoundaryCases.Tests
 Atlas.Core.Tests.Untested.Tests
 Atlas.Core.Tests.Lists.Tests
 Atlas.Core.Tests.ListText.Tests

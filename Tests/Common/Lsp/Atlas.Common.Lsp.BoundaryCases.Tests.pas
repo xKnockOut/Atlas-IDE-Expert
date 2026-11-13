@@ -86,6 +86,7 @@ begin
   try
     mObject := mResult as TJSONObject;
     Assert.AreEqual('Rabatt', mObject.GetValue<string>('routine'));
+    Assert.AreEqual('Integer', mObject.GetValue<string>('resultType'));
     Assert.AreEqual(3, mObject.GetValue<Integer>('line'));
     Assert.AreEqual(2, Count(mObject, 'parameters'));
     Assert.AreEqual('ordinal', Entry(mObject, 'parameters', 0).GetValue<string>('kind'));

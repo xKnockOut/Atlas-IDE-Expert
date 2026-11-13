@@ -25,7 +25,7 @@
 //   angelegt wie „Zur Testunit wechseln“ von Base), „Leckprüfung
 //   einrichten …“ im Kontextmenü der Projektverwaltung und in der Palette
 //   (#1880, Atlas.IDE.Tests.LeakSetup über Composition.Hooks) und „Test aus
-//   dem Debug-Halt anlegen …“ (#1873, Atlas.IDE.Tests.FromDebugStop; Palette,
+//   dem Debug-Halt anlegen …“ (#1873, über Atlas.IDE.Tests.Composition.Cases; Palette,
 //   Kontextmenü beim Debuggen, Knopf der Exception-Leiste über die Kennung),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
@@ -111,15 +111,13 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.CoveredBy,
-  Atlas.IDE.Tests.UntestedProject,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.ApprovalFiles,
   Atlas.IDE.Tests.Slowest,
-  Atlas.IDE.Tests.CaseTable,
+  Atlas.IDE.Tests.Composition.Cases,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
-  Atlas.IDE.Tests.FromDebugStop,
   Atlas.IDE.Tests.Explorer,
   Atlas.IDE.Tests.StatusField,
   Atlas.UI.Tests.Strings;
@@ -132,11 +130,9 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GCoveredBy: TAtlasIdeCoveredByLens;
-  GUntested: TAtlasIdeUntestedProject;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
-  GCaseTable: TAtlasIdeTestCaseTable;
   GExplorer: TAtlasIdeTestExplorer;
   GLists: TAtlasIdeTestLists;
   GStatusField: TAtlasIdeTestStatusField;
@@ -193,7 +189,7 @@ procedure AffectedRunTests(const AFileName: string; const ATests: TArray<string>
 begin
   if GTests <> nil then
   begin
-    GTests.RunTests(AFileName, ATests);
+    GTests.RunTests(AFileName, ATests, False);
   end;
 end;
 
@@ -220,16 +216,6 @@ begin
   Result.RunAll := AffectedRunAll;
   Result.ResolveTarget := AffectedResolveTarget;
   Result.ServerPath := ServerPath;
-end;
-
-{ TestCase-Tabelle (#1879) }
-
-procedure OpenCaseTable(const AFileName: string; ALine: Integer);
-begin
-  if GCaseTable <> nil then
-  begin
-    GCaseTable.OpenAt(AFileName, ALine);
-  end;
 end;
 
 { Teil Tests }
@@ -275,11 +261,10 @@ begin
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
-  // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens.
-  GCaseTable := TAtlasIdeTestCaseTable.Create(GScope, GTests, GDebugger);
+  // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens; Grenzfälle (#2173) vorn in OnReported.
+  // Ungetestete Methoden des Projekts (#1783) ebenda.
+  StartCases(GScope, GTests, GDebugger, GOutput, ModuleScope);
   GLens.OnTable := OpenCaseTable;
-  // Ungetestete Methoden des Projekts (#1783).
-  GUntested := TAtlasIdeUntestedProject.Create(GOutput, ModuleScope);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -308,10 +293,9 @@ begin
   FreeAndNil(GStatusField);
   FreeAndNil(GExplorer);
   FreeAndNil(GLists);
-  FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
-  FreeAndNil(GCaseTable);
+  StopCases(GTests);
   FreeAndNil(GDebugger);
   FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
@@ -411,19 +395,16 @@ begin
   end;
 end;
 
-{ TestCase-Tabelle (#1879) }
+{ TestCase-Tabelle (#1879), Grenzfälle (#2173) }
 
 function CaseTableVisible: Boolean;
 begin
-  Result := TestsVisible and TAtlasIdeTestCaseTable.Wanted and (GCaseTable <> nil);
+  Result := TestsVisible and CaseTableWanted;
 end;
 
-procedure EditCaseTable;
+function BoundaryCasesVisible: Boolean;
 begin
-  if GCaseTable <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GCaseTable.OpenAtCursor);
-  end;
+  Result := TestsVisible and BoundaryCasesWanted;
 end;
 
 { Vergleichsdateien (#1881) }
@@ -464,16 +445,6 @@ begin
   end;
 end;
 
-{ Ungetestete Methoden des Projekts (#1783) }
-
-procedure ListUntested;
-begin
-  if GUntested <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GUntested.Run);
-  end;
-end;
-
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -490,7 +461,7 @@ end;
 
 procedure TestFromDebugStop;
 begin
-  TAtlasIdeTestFromDebug.Run(GScope);
+  RunTestFromDebug(GScope);
 end;
 
 { Leckprüfung einrichten (#1880) }
@@ -600,6 +571,9 @@ begin
     Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
     // [TestCase]-Fälle als Tabelle (#1879): sichtbar mit tests.testCaseTable.
     Command('Atlas.EditTestCases', TAtlasTestsTextId.TestsCaseTableCommand, EditCaseTable, CaseTableVisible),
+    // Grenzfälle als Testfälle (#2173): sichtbar mit tests.boundaryCases.
+    Command('Atlas.SuggestBoundaryCases', TAtlasTestsTextId.TestsBoundaryCommand, SuggestBoundaryCases,
+      BoundaryCasesVisible),
     // Vergleichsdateien (#1881): sichtbar mit tests.approvalFiles.
     Command('Atlas.CleanApprovalFiles', TAtlasTestsTextId.TestsApprovalCleanCommand,
       Guarded(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
@@ -617,8 +591,8 @@ begin
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
       TAtlasTestsTextId.TestsGalleryTestUnitHint),
     // Test aus dem Debug-Halt (#1873): sichtbar mit tests.fromDebugStop und einem Modul, das den Halt liefert.
-    Command(TAtlasIdeTestFromDebug.cCommand, TAtlasTestsTextId.TestsFromDebugCommand,
-      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TAtlasIdeTestFromDebug.Visible),
+    Command(TestFromDebugCommand, TAtlasTestsTextId.TestsFromDebugCommand,
+      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TestFromDebugVisible),
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
       Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
@@ -679,6 +653,19 @@ begin
   Result.When := WhileDebugging;
 end;
 
+/// <summary>Ist die Datei eine Unit (.pas), aber keine Testunit?</summary>
+function InCodeUnit(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := not AContext.TestUnit and SameText(ExtractFileExt(AContext.FileName), '.pas');
+end;
+
+/// <summary>Wie ContextEntry, aber nur außerhalb von Testunits.</summary>
+function CodeContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := ContextEntry(ACommandId);
+  Result.When := InCodeUnit;
+end;
+
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
@@ -694,9 +681,11 @@ begin
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
-    DebugContextEntry(TAtlasIdeTestFromDebug.cCommand),
+    DebugContextEntry(TestFromDebugCommand),
     ContextEntry('Atlas.CompareTestValues'),
     ContextEntry('Atlas.EditTestCases'),
+    // Grenzfälle (#2173) an Routinen normaler Units.
+    CodeContextEntry('Atlas.SuggestBoundaryCases'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.LeakSetup', TAtlasMenuPlace.ProjectContext),
@@ -754,7 +743,7 @@ procedure TAtlasTestsModule.RunTests(const AFileName: string; const ATests: TArr
 begin
   if GTests <> nil then
   begin
-    GTests.RunTests(AFileName, ATests);
+    GTests.RunTests(AFileName, ATests, False);
   end
   else
   begin
