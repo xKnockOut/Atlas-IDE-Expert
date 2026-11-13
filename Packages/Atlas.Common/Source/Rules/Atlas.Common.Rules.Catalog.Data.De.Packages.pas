@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDePackages: array[0..42] of string = (
+  cCatalogLinesDePackages: array[0..52] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',
@@ -69,6 +69,24 @@ const
     '          "description": "Eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "dunitx-istrue-equality",',
+    '      "name": "Assert.IsTrue mit Vergleich statt AreEqual",',
+    '      "description": "Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil), Assert.IsTrue(Assigned(X)) und dasselbe mit not: Schlägt der Test fehl, meldet DUnitX nur, dass die Bedingun' +
+    'g nicht gilt, ohne die verglichenen Werte. Assert.AreEqual bzw. AreNotEqual zeigt erwartet und erhalten, IsNull und IsNotNull sagen, was vorlag. Korrektur (sicher): AreEqual bzw. AreNotEqual mit der K' +
+    'onstante oder dem Literal vorn als erwartetem Wert, IsNull bzw. IsNotNull bei nil und Assigned; ein Meldungsargument bleibt erhalten. Angeboten nur, wenn eine Überladung sicher passt: beide Seiten str' +
+    'ing, Boolean oder eine Ganzzahl bis Integer, bei nil und Assigned eine Klasse, ein Interface oder ein Zeiger. Gleitkomma (AreEqual braucht eine Toleranz), Cardinal, Int64, NativeInt (Length eines dyna' +
+    'mischen Arrays), Aufzählungen, Mengen, Records, Methodenzeiger und unbekannte Typen bekommen den Hinweis ohne Korrektur. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*).' +
+    ' Sicherheit hoch."',
+    '    },',
+    '{',
+    '      "id": "dunitx-swapped-expected",',
+    '      "name": "Erwarteter und erhaltener Wert vertauscht",',
+    '      "description": "Assert.AreEqual, AreNotEqual, AreSame oder AreNotSame, deren erstes Argument weder Literal noch Konstante ist, das zweite aber schon: DUnitX erwartet den erwarteten Wert zuerst, ' +
+    'die Meldung beim Fehlschlag nennt deshalb die Konstante als erhaltenen und den berechneten Wert als erwarteten Wert und führt in die Irre. Als Konstante zählen Literale, True, False, nil, deklarierte ' +
+    'Konstanten und Aufzählungswerte, auch mit Vorzeichen oder über Operatoren verknüpft. Korrektur (sicher): die beiden Argumente tauschen; weitere Argumente (Meldung, Toleranz) bleiben. Aufrufe mit zwei ' +
+    'Konstanten oder zwei berechneten Werten bleiben still. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch."',
     '    }');
 
 implementation

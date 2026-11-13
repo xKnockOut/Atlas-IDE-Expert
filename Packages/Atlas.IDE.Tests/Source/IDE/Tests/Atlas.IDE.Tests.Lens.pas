@@ -22,12 +22,14 @@
 //   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
-//   (TestDebug, #585) folgt je Marke eine zweite: „Debuggen“. Die Rechtecke
-//   werden je Zeile gemerkt.
+//   (TestDebug, #585) folgt je Marke eine zweite: „Debuggen“. Ist der Test
+//   mit erwartetem und erhaltenem Wert fehlgeschlagen (tests.compare, #1779),
+//   folgt „Vergleichen“. Die Rechtecke werden je Zeile gemerkt.
 // - Klick: Linksklick in „Test ausführen“ startet den Test, den Fall bzw. alle
 //   Tests der Fixture im Testprojekt der Unit (--run mit den Namen aus
 //   Atlas.Text.DUnitX, [TestCase] je Fall); „Debuggen“ startet ihn im
-//   Debugger (Atlas.IDE.Tests.Debug).
+//   Debugger (Atlas.IDE.Tests.Debug); „Vergleichen“ zeigt erwartet und
+//   erhalten (Atlas.IDE.Tests.Compare über TAtlasTestCompareHooks).
 // - Ändert sich der Stand der Läufe (TAtlasIdeTests.Version), zeichnet der
 //   Zeitgeber den Editor neu.
 // Abschaltbar über „Code Lens „Test ausführen““ (codeLens.tests, Schlüssel
@@ -61,6 +63,27 @@ type
   /// <summary>Tabelle der Testmethode an ALine (0-basiert) von AFileName öffnen (#1879).</summary>
   TAtlasTestsLensTableProc = reference to procedure(const AFileName: string; ALine: Integer);
 
+  /// <summary>Zeichnen der Marken hinter dem Zeilenende (Test-Lens und „getestet von“, #1778).</summary>
+  TAtlasIdeLensPill = class
+  private const
+    /// <summary>Abstand der Marke vom Zeilenende in Zeichen.</summary>
+    cGapColumns = 3;
+    cMinFontSize = 6;
+  public
+    /// <summary>Schrift der Marke: einen Punkt kleiner, unterstrichen; AItalic für einen veralteten Stand.</summary>
+    class procedure Prepare(ACanvas: TCanvas; AItalic: Boolean); static;
+    /// <summary>Eine Marke ab ALeft in der Farbe ATone auf dem Hintergrund ABack; liefert ihr Rechteck.</summary>
+    class function Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone, ABack: TAtlasColor;
+      ALeft: Integer): TRect; static;
+    /// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
+    class function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
+    /// <summary>Linker Rand der Marke hinter dem Text der Zeile ALine (Pixel des Editors).</summary>
+    class function LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer; static;
+    /// <summary>APaint mit gesichertem Stift, Pinsel und Schrift der Leinwand; Ausnahmen meldet die Sicherung
+    /// (Zeichnen darf die IDE nie stören).</summary>
+    class procedure Guarded(ACanvas: TCanvas; const APaint: TProc); static;
+  end;
+
   TAtlasIdeTestsLens = class
   private type
     TEvents = class(TNTACodeEditorNotifier)
@@ -77,16 +100,19 @@ type
       /// <summary>Tests, die ein Lauf der Marke ergibt; erst wenn alle bestanden sind, gilt sie als bestanden.
       /// </summary>
       Expected: TArray<TAtlasTestKey>;
-      /// <summary>Gezeichnete Rechtecke „ausführen“ und „Debuggen“ (Koordinaten des Editors, leer ohne) und
-      /// oberste sichtbare Zeile dabei.</summary>
+      /// <summary>Gezeichnete Rechtecke „ausführen“, „Debuggen“ und „Vergleichen“ (Koordinaten des Editors, leer
+      /// ohne) und oberste sichtbare Zeile dabei.</summary>
       RunRect: TRect;
       DebugRect: TRect;
+      CompareRect: TRect;
       /// <summary>Marke „4 Fälle · Tabelle“ an einer Methode mit [TestCase] (#1879); leer ohne.</summary>
       TableRect: TRect;
       TopRow: Integer;
     end;
-    /// <summary>Getroffene Marke: „ausführen“, „Debuggen“ oder „Tabelle“ (#1879).</summary>
-    TMarkHit = (mhRun, mhDebug, mhTable);
+    /// <summary>Knopf einer Marke.</summary>
+    {$SCOPEDENUMS ON}
+    TMark = (Run, Debug, Compare, Table);
+    {$SCOPEDENUMS OFF}
     /// <summary>Lebt, solange die Lens lebt; ein eingereihter Klick prüft es.</summary>
     TAlive = class(TInterfacedObject)
     public
@@ -94,9 +120,12 @@ type
     end;
   private const
     cQuietMs = 400;
+    /// <summary>Abstand zwischen zwei Knöpfen einer Marke (Pixel).</summary>
+    cPillGap = 6;
   private
     FTests: TAtlasIdeTests;
     FDebugger: TAtlasIdeTestDebugger;
+    FCompare: TAtlasTestCompareHooks;
     FAlive: TAlive;
     FAliveRef: IInterface;
     FTimer: TTimer;
@@ -133,20 +162,23 @@ type
     function LineItem(const AContext: INTACodeEditorPaintContext; out ALine: string): Integer;
     procedure PaintMarks(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
       ALeft: Integer; ABack: TAtlasColor);
-    /// <summary>Marke „Tabelle“ (#1879) rechts neben ARight, wenn die Marke AIndex eine Methode mit Fällen ist.
-    /// </summary>
-    procedure PaintTable(AIndex: Integer; const ARow: TRect; ACanvas: TCanvas; ARight: Integer; ABack: TAtlasColor);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    /// <summary>Marke unter (X, Y) und welcher Teil getroffen ist. -1 ohne.</summary>
-    function HitAt(AX, AY: Integer; out AHit: TMarkHit): Integer;
-    /// <summary>Steht die Marke AIndex noch dort, wo sie gezeichnet wurde?</summary>
-    function StillShown(AIndex: Integer): Boolean;
-    procedure QueueClick(AIndex: Integer; AHit: TMarkHit);
-    class procedure Invalidate; static;
+    /// <summary>Marke unter (X, Y) und ihr Knopf AMark. -1 ohne.</summary>
+    function HitAt(AX, AY: Integer; out AMark: TMark): Integer;
+    /// <summary>„Debuggen“ (#585), an einer fehlgeschlagenen Marke (AFailed) „Vergleichen“ (#1779) und an einer
+    /// Methode mit [TestCase] „Tabelle“ (#1879) rechts von ALeft.</summary>
+    procedure PaintButtons(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
+      ALeft: Integer; ABack: TAtlasColor; AFailed: Boolean);
+    /// <summary>Gezeichnetes Rechteck ARect der Marke AIndex für das Ausblenden am Element (#628) melden.</summary>
+    procedure Painted(AIndex: Integer; const AContext: INTACodeEditorPaintContext; const ARect: TRect;
+      ARowHeight: Integer);
+    procedure QueueClick(AIndex: Integer; AMark: TMark);
   public
     /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens; AStaleKeys nennt die Tests
-    /// mit veraltetem Ergebnis (#1770, nil = keine).</summary>
-    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AStaleKeys: TAtlasTestStaleKeys);
+    /// mit veraltetem Ergebnis (#1770, nil = keine), ACompare den Knopf „Vergleichen“ (#1779, leer = keiner).
+    /// </summary>
+    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AStaleKeys: TAtlasTestStaleKeys;
+      const ACompare: TAtlasTestCompareHooks);
     destructor Destroy; override;
     /// <summary>Lens zeichnen? Einstellungen codeLens.tests und TestRun.</summary>
     class function Wanted(const ASettings: TAtlasPluginSettings): Boolean; static;
@@ -173,6 +205,17 @@ uses
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.Core.Diagnostics.Deadline;
 
+/// <summary>Oberen Editor neu zeichnen.</summary>
+procedure InvalidateEditor;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
 { TAtlasIdeTestsLens.TEvents }
 
 function TAtlasIdeTestsLens.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -188,7 +231,7 @@ end;
 { TAtlasIdeTestsLens }
 
 constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
-  const AStaleKeys: TAtlasTestStaleKeys);
+  const AStaleKeys: TAtlasTestStaleKeys; const ACompare: TAtlasTestCompareHooks);
 var
   mServices: INTACodeEditorServices;
 begin
@@ -196,6 +239,7 @@ begin
   FTests := ATests;
   FDebugger := ADebugger;
   FStaleKeys := AStaleKeys;
+  FCompare := ACompare;
   FAlive := TAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
@@ -230,21 +274,12 @@ begin
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
   FEventsRef := nil;
+  FCompare := Default(TAtlasTestCompareHooks);
   if FShowing then
   begin
-    Invalidate;
+    InvalidateEditor;
   end;
   inherited Destroy;
-end;
-
-class procedure TAtlasIdeTestsLens.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
 end;
 
 class function TAtlasIdeTestsLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
@@ -263,7 +298,7 @@ begin
   if FShowing then
   begin
     FShowing := False;
-    Invalidate;
+    InvalidateEditor;
   end;
 end;
 
@@ -305,7 +340,7 @@ begin
     begin
       FVersion := FTests.Version;
       UpdateStale;
-      Invalidate;
+      InvalidateEditor;
     end;
   except
     on E: Exception do
@@ -384,7 +419,7 @@ begin
   UpdateStale;
   FShowing := Length(mItems) > 0;
   FVersion := FTests.Version;
-  Invalidate;
+  InvalidateEditor;
 end;
 
 procedure TAtlasIdeTestsLens.UpdateStale;
@@ -484,9 +519,10 @@ begin
   end;
 end;
 
-/// <summary>Eine Marke ab ALeft in der Farbe ATone auf dem Hintergrund ABack; liefert ihr Rechteck.</summary>
-function DrawPill(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone, ABack: TAtlasColor;
-  ALeft: Integer): TRect;
+{ TAtlasIdeLensPill }
+
+class function TAtlasIdeLensPill.Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone,
+  ABack: TAtlasColor; ALeft: Integer): TRect;
 var
   mWidth, mHeight, mTop: Integer;
 begin
@@ -503,8 +539,7 @@ begin
   ACanvas.TextOut(Result.Left + 5, Result.Top + 1, ACaption);
 end;
 
-/// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
-function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
+class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
 var
   mSample: COLORREF;
 begin
@@ -516,6 +551,55 @@ begin
   else
   begin
     Result := TAtlasColor(mSample);
+  end;
+end;
+
+class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer;
+var
+  mColumn: Integer;
+begin
+  mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) +
+    1;
+  Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapColumns, AContext.EditorLineNum).Left;
+end;
+
+class procedure TAtlasIdeLensPill.Prepare(ACanvas: TCanvas; AItalic: Boolean);
+begin
+  ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
+  ACanvas.Font.Style := [fsUnderline];
+  if AItalic then
+  begin
+    ACanvas.Font.Style := [fsUnderline, fsItalic];
+  end;
+end;
+
+class procedure TAtlasIdeLensPill.Guarded(ACanvas: TCanvas; const APaint: TProc);
+var
+  mOldFont: TFont;
+  mOldBrush: TBrush;
+  mOldPen: TPen;
+begin
+  try
+    mOldFont := TFont.Create;
+    mOldBrush := TBrush.Create;
+    mOldPen := TPen.Create;
+    try
+      mOldFont.Assign(ACanvas.Font);
+      mOldBrush.Assign(ACanvas.Brush);
+      mOldPen.Assign(ACanvas.Pen);
+      APaint();
+    finally
+      ACanvas.Font.Assign(mOldFont);
+      ACanvas.Brush.Assign(mOldBrush);
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+      mOldBrush.Free;
+      mOldFont.Free;
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -544,8 +628,95 @@ begin
   begin
     FItems[Result].RunRect := TRect.Empty;
     FItems[Result].DebugRect := TRect.Empty;
+    FItems[Result].CompareRect := TRect.Empty;
     FItems[Result].TableRect := TRect.Empty;
     Result := -1;
+  end;
+end;
+
+/// <summary>Beschriftung „4 Fälle · 1 rot · Tabelle“ der Marke einer Methode mit [TestCase] (#1879); '' an
+/// Fixture, Fall oder Methode ohne Fälle.</summary>
+function CasesCaption(ATests: TAtlasIdeTests; const AUnitName: string; const ASelection: TAtlasTestSelection;
+  const AExpected: TArray<TAtlasTestKey>): string;
+var
+  mKey: TAtlasTestKey;
+  mCases, mFailed: Integer;
+begin
+  Result := '';
+  if (ASelection.Method = '') or (ASelection.CaseName <> '') then
+  begin
+    Exit;
+  end;
+  mCases := 0;
+  for mKey in AExpected do
+  begin
+    if mKey.CaseName <> '' then
+    begin
+      Inc(mCases);
+    end;
+  end;
+  if mCases = 0 then
+  begin
+    Exit;
+  end;
+  Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensCases, [mCases]);
+  mFailed := ATests.TallyOf(AUnitName, ASelection.Fixture, AExpected, nil).Failed;
+  if mFailed > 0 then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensCasesFailed, [Result, mFailed]);
+  end;
+  Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensTable, [Result]);
+end;
+
+procedure TAtlasIdeTestsLens.PaintButtons(AIndex: Integer; const ARow: TRect;
+  const AContext: INTACodeEditorPaintContext; ALeft: Integer; ABack: TAtlasColor; AFailed: Boolean);
+var
+  mAccent: TAtlasColor;
+  mLeft: Integer;
+  mText: string;
+begin
+  FItems[AIndex].DebugRect := TRect.Empty;
+  FItems[AIndex].CompareRect := TRect.Empty;
+  FItems[AIndex].TableRect := TRect.Empty;
+  // Nicht während eines Laufs.
+  if FTests.Busy then
+  begin
+    Exit;
+  end;
+  mAccent := TAtlasColors.ForBackground(ABack).Accent;
+  mLeft := ALeft;
+  if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) then
+  begin
+    FItems[AIndex].DebugRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug), mAccent, ABack, mLeft);
+    mLeft := FItems[AIndex].DebugRect.Right + cPillGap;
+  end;
+  // „Vergleichen“ nur, wenn der Test der Marke erwartet und erhalten hat.
+  if AFailed and Assigned(FCompare.CanCompare) and FCompare.CanCompare(FItems[AIndex].Selection) then
+  begin
+    FItems[AIndex].CompareRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensCompare), mAccent, ABack, mLeft);
+    mLeft := FItems[AIndex].CompareRect.Right + cPillGap;
+  end;
+  // „Tabelle“ (#1879) an einer Methode mit [TestCase].
+  mText := '';
+  if Assigned(FOnTable) and TAtlasIdeSettings.Current.TestsCaseTable then
+  begin
+    mText := CasesCaption(FTests, FUnitName, FItems[AIndex].Selection, FItems[AIndex].Expected);
+  end;
+  if mText <> '' then
+  begin
+    FItems[AIndex].TableRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow, mText, mAccent, ABack, mLeft);
+  end;
+end;
+
+procedure TAtlasIdeTestsLens.Painted(AIndex: Integer; const AContext: INTACodeEditorPaintContext;
+  const ARect: TRect; ARowHeight: Integer);
+begin
+  if not ARect.IsEmpty then
+  begin
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
+      FItems[AIndex].Line, FItems[AIndex].Selection.Caption), ARect, FItems[AIndex].TopRow, ARowHeight);
   end;
 end;
 
@@ -582,151 +753,87 @@ begin
     // Langsam (#1772): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
     mTone := mColors.Warn;
   end;
-  mCanvas.Font.Size := Max(6, mCanvas.Font.Size - 1);
-  mCanvas.Font.Style := [fsUnderline];
+  // Veraltet (#1770): alter Stand grau und kursiv.
+  TAtlasIdeLensPill.Prepare(mCanvas, mStale);
   if mStale then
   begin
-    // Veraltet (#1770): alter Stand grau und kursiv.
     mTone := mColors.Muted;
-    mCanvas.Font.Style := [fsUnderline, fsItalic];
   end;
-  mPill := DrawPill(mCanvas, ARow, mText, mTone, ABack, ALeft);
+  mPill := TAtlasIdeLensPill.Draw(mCanvas, ARow, mText, mTone, ABack, ALeft);
   FItems[AIndex].RunRect := mPill;
-  FItems[AIndex].DebugRect := TRect.Empty;
-  // „Debuggen“ (#585) rechts daneben; nicht während eines Laufs.
-  if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) and not FTests.Busy then
-  begin
-    FItems[AIndex].DebugRect := DrawPill(mCanvas, ARow, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug),
-      mColors.Accent, ABack, mPill.Right + 6);
-  end;
-  PaintTable(AIndex, ARow, mCanvas, Max(mPill.Right, FItems[AIndex].DebugRect.Right), ABack);
+  // „Debuggen“ (#585) und „Vergleichen“ (#1779, nur fehlgeschlagen und nicht veraltet) rechts daneben.
+  PaintButtons(AIndex, ARow, AContext, mPill.Right + cPillGap, ABack, (mStatus = TAtlasTestStatus.Failed) and
+    not mStale);
   FItems[AIndex].TopRow := AContext.EditView.TopRow;
-  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
-    FItems[AIndex].Line, FItems[AIndex].Selection.Caption), mPill, FItems[AIndex].TopRow, ARow.Height);
-  if not FItems[AIndex].DebugRect.IsEmpty then
-  begin
-    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
-      FItems[AIndex].Line, FItems[AIndex].Selection.Caption), FItems[AIndex].DebugRect, FItems[AIndex].TopRow,
-      ARow.Height);
-  end;
-end;
-
-procedure TAtlasIdeTestsLens.PaintTable(AIndex: Integer; const ARow: TRect; ACanvas: TCanvas; ARight: Integer;
-  ABack: TAtlasColor);
-var
-  mKey: TAtlasTestKey;
-  mCases: Integer;
-  mFailed: Integer;
-  mText: string;
-  mColors: TAtlasColors;
-begin
-  FItems[AIndex].TableRect := TRect.Empty;
-  if not Assigned(FOnTable) or not TAtlasIdeSettings.Current.TestsCaseTable or
-    (FItems[AIndex].Selection.Method = '') or (FItems[AIndex].Selection.CaseName <> '') or FTests.Busy then
-  begin
-    Exit;
-  end;
-  mCases := 0;
-  for mKey in FItems[AIndex].Expected do
-  begin
-    if mKey.CaseName <> '' then
-    begin
-      Inc(mCases);
-    end;
-  end;
-  if mCases = 0 then
-  begin
-    Exit;
-  end;
-  mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensCases, [mCases]);
-  mFailed := FTests.TallyOf(FUnitName, FItems[AIndex].Selection.Fixture, FItems[AIndex].Expected, nil).Failed;
-  if mFailed > 0 then
-  begin
-    mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensCasesFailed, [mText, mFailed]);
-  end;
-  mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensTable, [mText]);
-  mColors := TAtlasColors.ForBackground(ABack);
-  ACanvas.Font.Style := [fsUnderline];
-  FItems[AIndex].TableRect := DrawPill(ACanvas, ARow, mText, mColors.Accent, ABack, ARight + 6);
+  Painted(AIndex, AContext, mPill, ARow.Height);
+  Painted(AIndex, AContext, FItems[AIndex].DebugRect, ARow.Height);
+  Painted(AIndex, AContext, FItems[AIndex].CompareRect, ARow.Height);
+  Painted(AIndex, AContext, FItems[AIndex].TableRect, ARow.Height);
 end;
 
 procedure TAtlasIdeTestsLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   mLine: string;
-  mIndex, mColumn: Integer;
-  mCanvas: TCanvas;
-  mCell: TRect;
-  mOldFont: TFont;
-  mOldBrush: TBrush;
-  mOldPen: TPen;
+  mIndex: Integer;
+  mRow: TRect;
+  mContext: INTACodeEditorPaintContext;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
   begin
     Exit;
   end;
-  try
-    mIndex := LineItem(Context, mLine);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(mLine, TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer)))) +
-      1;
-    mCell := Context.EditorState.GetCharacterPosPx(mColumn + 3, Context.EditorLineNum);
-    mCanvas := Context.Canvas;
-    mOldFont := TFont.Create;
-    mOldBrush := TBrush.Create;
-    mOldPen := TPen.Create;
-    try
-      mOldFont.Assign(mCanvas.Font);
-      mOldBrush.Assign(mCanvas.Brush);
-      mOldPen.Assign(mCanvas.Pen);
-      PaintMarks(mIndex, Rect, Context, mCell.Left, BackgroundAt(mCanvas, mCell.Left, Rect.Top + 1));
-    finally
-      mCanvas.Font.Assign(mOldFont);
-      mCanvas.Brush.Assign(mOldBrush);
-      mCanvas.Pen.Assign(mOldPen);
-      mOldPen.Free;
-      mOldBrush.Free;
-      mOldFont.Free;
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
+  mIndex := LineItem(Context, mLine);
+  if mIndex < 0 then
+  begin
+    Exit;
   end;
+  mRow := Rect;
+  mContext := Context;
+  // Auch die Lage der Marke unter der Sicherung: Zeichnen darf die IDE nie stören.
+  TAtlasIdeLensPill.Guarded(Context.Canvas,
+    procedure
+    var
+      mLeft: Integer;
+    begin
+      mLeft := TAtlasIdeLensPill.LeftOf(mContext, mLine);
+      PaintMarks(mIndex, mRow, mContext, mLeft, TAtlasIdeLensPill.BackgroundAt(mContext.Canvas, mLeft, mRow.Top + 1));
+    end);
 end;
 
-function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out AHit: TMarkHit): Integer;
+function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out AMark: TMark): Integer;
 var
   mIndex: Integer;
-  mPoint: TPoint;
 begin
   Result := -1;
-  AHit := mhRun;
-  mPoint := Point(AX, AY);
+  AMark := TMark.Run;
   for mIndex := 0 to High(FItems) do
   begin
-    if PtInRect(FItems[mIndex].RunRect, mPoint) then
+    if not FItems[mIndex].RunRect.IsEmpty and PtInRect(FItems[mIndex].RunRect, Point(AX, AY)) then
     begin
       Result := mIndex;
-      AHit := mhRun;
+      AMark := TMark.Run;
     end
-    else if PtInRect(FItems[mIndex].DebugRect, mPoint) then
+    else if not FItems[mIndex].DebugRect.IsEmpty and PtInRect(FItems[mIndex].DebugRect, Point(AX, AY)) then
     begin
       Result := mIndex;
-      AHit := mhDebug;
+      AMark := TMark.Debug;
     end
-    else if PtInRect(FItems[mIndex].TableRect, mPoint) then
+    else if not FItems[mIndex].CompareRect.IsEmpty and PtInRect(FItems[mIndex].CompareRect, Point(AX, AY)) then
     begin
       Result := mIndex;
-      AHit := mhTable;
+      AMark := TMark.Compare;
+    end
+    else if not FItems[mIndex].TableRect.IsEmpty and PtInRect(FItems[mIndex].TableRect, Point(AX, AY)) then
+    begin
+      Result := mIndex;
+      AMark := TMark.Table;
     end;
   end;
 end;
 
-function TAtlasIdeTestsLens.StillShown(AIndex: Integer): Boolean;
+/// <summary>Zeigt der obere Editor noch AFileName ab der obersten Zeile ATopRow (Marke nicht verschoben)?</summary>
+function ShownAt(const AFileName: string; ATopRow: Integer): Boolean;
 var
   mEditors: IOTAEditorServices;
   mView: IOTAEditView;
@@ -736,31 +843,75 @@ begin
   begin
     mView := mEditors.TopView;
   end;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FScannedFile) and
-    (mView.TopRow = FItems[AIndex].TopRow);
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, AFileName) and
+    (mView.TopRow = ATopRow);
 end;
 
-procedure TAtlasIdeTestsLens.QueueClick(AIndex: Integer; AHit: TMarkHit);
+/// <summary>Handlung des Knopfs AMark an der Marke AItem: ausführen, debuggen, vergleichen oder Tabelle öffnen.
+/// </summary>
+function ClickAction(AMark: TAtlasIdeTestsLens.TMark; ADebugger: TAtlasIdeTestDebugger;
+  const AShow: TAtlasTestSelectionAction; const AOnTable: TAtlasTestsLensTableProc; const AFileName: string;
+  const AItem: TAtlasIdeTestsLens.TItem): TProc;
 var
-  mFileName: string;
-  mLine: Integer;
   mSelection: TAtlasTestSelection;
+  mLine: Integer;
+  mFileName: string;
   mDebugger: TAtlasIdeTestDebugger;
+  mShow: TAtlasTestSelectionAction;
   mOnTable: TAtlasTestsLensTableProc;
+begin
+  // Nur Kopien einfangen, keine Parameter.
+  mSelection := AItem.Selection;
+  mLine := AItem.Line;
+  mFileName := AFileName;
+  mDebugger := ADebugger;
+  mShow := AShow;
+  mOnTable := AOnTable;
+  case AMark of
+    TAtlasIdeTestsLens.TMark.Debug:
+      Result :=
+        procedure
+        begin
+          mDebugger.Debug(mFileName, mSelection);
+        end;
+    TAtlasIdeTestsLens.TMark.Compare:
+      Result :=
+        procedure
+        begin
+          if Assigned(mShow) then
+          begin
+            mShow(mSelection);
+          end;
+        end;
+    TAtlasIdeTestsLens.TMark.Table:
+      Result :=
+        procedure
+        begin
+          if Assigned(mOnTable) then
+          begin
+            mOnTable(mFileName, mLine);
+          end;
+        end;
+  else
+    Result :=
+      procedure
+      begin
+        mDebugger.Run(mFileName, mSelection);
+      end;
+  end;
+end;
+
+procedure TAtlasIdeTestsLens.QueueClick(AIndex: Integer; AMark: TMark);
+var
+  mAction: TProc;
   mAlive: TAlive;
   mKeep: IInterface;
-  mHit: TMarkHit;
 begin
-  mFileName := FScannedFile;
-  mLine := FItems[AIndex].Line;
-  mSelection := FItems[AIndex].Selection;
-  mDebugger := FDebugger;
-  mOnTable := FOnTable;
+  mAction := ClickAction(AMark, FDebugger, FCompare.Show, FOnTable, FScannedFile, FItems[AIndex]);
   mAlive := FAlive;
   mKeep := FAliveRef;
-  mHit := AHit;
   // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach; die Tabelle ist modal. Die Lens lebt
-  // kürzer als Läufer und Debugger-Teil: Lebt sie noch, leben auch sie.
+  // kürzer als Läufer, Debugger-Teil, Vergleich und Tabelle: Lebt sie noch, leben auch sie.
   TAtlasMainThread.ForceQueue(TAtlasFeature.CodeLens,
     procedure
     begin
@@ -768,40 +919,26 @@ begin
       begin
         Exit;
       end;
-      TAtlasGuard.Run(TAtlasFeature.Build,
-        procedure
-        begin
-          case mHit of
-            mhRun:
-              mDebugger.Run(mFileName, mSelection);
-            mhDebug:
-              mDebugger.Debug(mFileName, mSelection);
-            mhTable:
-              if Assigned(mOnTable) then
-              begin
-                mOnTable(mFileName, mLine);
-              end;
-          end;
-        end);
+      TAtlasGuard.Run(TAtlasFeature.Build, mAction);
     end);
 end;
 
 procedure TAtlasIdeTestsLens.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
-  mIndex: Integer;
-  mHit: TMarkHit;
+  mHit: Integer;
+  mMark: TMark;
 begin
   if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or (FUnitName = '') or
     not Wanted(TAtlasIdeSettings.Current) then
   begin
     Exit;
   end;
-  mIndex := HitAt(X, Y, mHit);
+  mHit := HitAt(X, Y, mMark);
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  if (mIndex >= 0) and StillShown(mIndex) then
+  if (mHit >= 0) and ShownAt(FScannedFile, FItems[mHit].TopRow) then
   begin
-    QueueClick(mIndex, mHit);
+    QueueClick(mHit, mMark);
   end;
 end;
 

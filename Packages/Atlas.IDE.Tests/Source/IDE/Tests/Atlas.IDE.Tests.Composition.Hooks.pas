@@ -7,7 +7,7 @@
 // - OnProblems: Fehlschläge ins Problemfenster von Base,
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),
-// - Pfad des Servers, Probleme leeren, Meldung ohne Läufer;
+// - Ziel und Pfad des Servers der betroffenen Tests, Probleme leeren, Meldung ohne Läufer;
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
 //   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
 
@@ -18,7 +18,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Projects.Summary,
-  Atlas.IDE.Tests.Runner;
+  Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Affected;
 
 /// <summary>Vor den Tests bauen: über die Builds auf Auftrag (#261) der Build-Pipeline, Auftraggeber "tests".
 /// </summary>
@@ -26,6 +27,8 @@ function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone
 procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 /// <summary>Fehlschläge der Tests aus dem Problemfenster nehmen.</summary>
 procedure ClearProblems;
+/// <summary>Ziel der betroffenen Tests (#1353): Testprojekt, das ATests für die aktive Unit wählen, an AThen.</summary>
+procedure ResolveTestTarget(ATests: TAtlasIdeTests; const AThen: TAtlasAffectedTargetProc);
 /// <summary>Meldung „Tests ausführen ist aus“.</summary>
 function TestsOffText: string;
 /// <summary>Pfad des Atlas-Servers (Betroffene Tests, #1353).</summary>
@@ -37,6 +40,7 @@ function LastFailed(AProject: string): TArray<string>;
 implementation
 
 uses
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -103,6 +107,18 @@ begin
   begin
     TAtlasProblemsController.Current.ClearTests;
   end;
+end;
+
+procedure ResolveTestTarget(ATests: TAtlasIdeTests; const AThen: TAtlasAffectedTargetProc);
+var
+  mThen: TAtlasAffectedTargetProc;
+begin
+  mThen := AThen;
+  ATests.ResolveProject('',
+    procedure(const AProject: IOTAProject)
+    begin
+      mThen(TAtlasIdeTests.TargetOf(AProject, nil));
+    end);
 end;
 
 function TestsOffText: string;

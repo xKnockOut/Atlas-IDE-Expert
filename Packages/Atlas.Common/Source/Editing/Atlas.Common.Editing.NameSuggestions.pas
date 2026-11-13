@@ -75,7 +75,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.CreateMethod;
+  Atlas.Common.Editing.CreateMethod,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   TSyntaxKindSet = set of TSyntaxKind;
@@ -232,20 +233,20 @@ begin
     begin
       Exit;
     end;
-    mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
   if mIndex < 0 then
   begin
     Exit;
   end;
   // Name der Routine, auch qualifiziert (TFoo.Bar), davor das Schlüsselwort.
-  mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+  mIndex := PreviousCode(ATokens, mIndex);
   while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex >= 0) and ATokens[mIndex].IsSymbol('.') then
     begin
-      mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+      mIndex := PreviousCode(ATokens, mIndex);
     end
     else
     begin
@@ -306,7 +307,7 @@ begin
         Exit;
       end;
     end;
-    mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
 end;
 
@@ -330,7 +331,7 @@ begin
     ASite.Typed := Copy(ATokens[mIndex].Text, 1, APosition.Character - ATokens[mIndex].StartPos.Character);
     ASite.Offset := ATokens[mIndex].Offset;
     ANext := TRoutineBody.NextToken(ATokens, mIndex);
-    APrev := TRoutineBody.PreviousToken(ATokens, mIndex);
+    APrev := PreviousCode(ATokens, mIndex);
     Exit;
   end;
   ASite.NameRange := TTextRange.Create(APosition, APosition);
@@ -340,7 +341,7 @@ begin
   begin
     Inc(ANext);
   end;
-  APrev := TRoutineBody.PreviousToken(ATokens, ANext);
+  APrev := PreviousCode(ATokens, ANext);
   if ANext <= High(ATokens) then
   begin
     ASite.Offset := ATokens[ANext].Offset;
