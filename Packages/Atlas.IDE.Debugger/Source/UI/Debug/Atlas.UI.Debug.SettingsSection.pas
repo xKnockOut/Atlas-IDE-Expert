@@ -193,6 +193,10 @@ begin
   Switch('debug.leakReport.window', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReportWindow));
   // Parallele Aufrufstapel (#837).
   Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
+  // Fenster „Aufrufstapel“ (#843).
+  Switch('debug.callStackWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCallStackWindow));
+  Switch('debug.callStackWindow.evaluateParams',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCallStackWindowEvaluateParams));
   // Threads im Quelltext (#852).
   Switch('debug.threadsInSource', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadsInSource));
   // Threads einfrieren (#852, experimentell).

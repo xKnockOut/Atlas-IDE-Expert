@@ -913,6 +913,7 @@
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Runs.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Targets.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RoutineParameters.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UpcomingConditions.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

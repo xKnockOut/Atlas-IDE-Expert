@@ -200,6 +200,12 @@ type
     /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
     /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
     DebugParallelStacks: Boolean;
+    /// <summary>debug.callStackWindow (#843): Fenster „Aufrufstapel“ des aktuellen Threads mit lesbaren Parametern,
+    /// zugeklappten Bibliotheksrahmen, Suche, Kopieren und Vergleich mit dem letzten Halt.</summary>
+    DebugCallStackWindow: Boolean;
+    /// <summary>debug.callStackWindow.evaluateParams (#843): Parameter einzeln auswerten statt nur den Rahmentext
+    /// der IDE zu zeigen.</summary>
+    DebugCallStackWindowEvaluateParams: Boolean;
     /// <summary>debug.threadsInSource (#852): beim Halt im Rand jeder Zeile, an der andere Threads stehen, ein
     /// Zeichen mit Anzahl; Threads markieren.</summary>
     DebugThreadsInSource: Boolean;
@@ -516,6 +522,8 @@ begin
   DebugHoverChanges := True;
   DebugHoverMaxChildren := cDefaultHoverMaxChildren;
   DebugPinnedValues := True;
+  DebugCallStackWindow := True;
+  DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
   DebugEventLogColors := cDefaultEventLogColors;
@@ -546,6 +554,8 @@ begin
   AIo.Flag('DebugHoverChanges', DebugHoverChanges);
   AIo.Number('DebugHoverMaxChildren', DebugHoverMaxChildren);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
+  AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
+  AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);
