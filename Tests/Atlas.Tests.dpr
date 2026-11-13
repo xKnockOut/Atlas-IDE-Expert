@@ -37,6 +37,7 @@ uses
   Atlas.Text.DUnitX.Tests in 'Text\Atlas.Text.DUnitX.Tests.pas',
   Atlas.Text.TestResults.Tests in 'Text\Atlas.Text.TestResults.Tests.pas',
   Atlas.Text.MapFile.Tests in 'Text\Atlas.Text.MapFile.Tests.pas',
+  Atlas.Text.LeakReport.Tests in 'Text\Atlas.Text.LeakReport.Tests.pas',
   Atlas.Common.Logging.Providers.Logger.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas',
   Atlas.Common.Logging.Providers.StreamSink.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas',
   Atlas.Common.Logging.EntryText.Tests in 'Common\Logging\Atlas.Common.Logging.EntryText.Tests.pas',

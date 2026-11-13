@@ -73,6 +73,7 @@
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.LeakReport.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.EntryText.Tests.pas"/>
