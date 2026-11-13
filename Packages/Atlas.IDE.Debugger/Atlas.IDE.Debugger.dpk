@@ -127,6 +127,9 @@ contains
   Atlas.IDE.Debug.Report in 'Source\IDE\Debug\Atlas.IDE.Debug.Report.pas',
   Atlas.IDE.Debug.Composition.Values in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Values.pas',
   Atlas.IDE.Debug.Composition.Breakpoints in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Breakpoints.pas',
+  Atlas.UI.Debug.BreakpointsFrame in 'Source\UI\Debug\Atlas.UI.Debug.BreakpointsFrame.pas' {AtlasDebugBreakpointsFrame: TFrame},
+  Atlas.IDE.Debug.BreakpointsWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.BreakpointsWindow.pas',
+  Atlas.IDE.Debug.BreakpointList in 'Source\IDE\Debug\Atlas.IDE.Debug.BreakpointList.pas',
   Atlas.IDE.Debug.Composition.Session in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Session.pas',
   Atlas.IDE.Debug.Composition in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas',
   Atlas.UI.Debug.SettingsSection in 'Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas';

@@ -13,6 +13,9 @@
 //     (Exception des Betriebssystems, etwa Zugriffsverletzung).
 //   - Fortgesetzt: psRunning nach einem Halt.
 //   - Beendet: letzter Prozess abgebaut (ProcessDestroyed).
+//   - Haltepunkte geändert (#863): Zuhörer mit IAtlasIdeDebugBreakpointListener
+//     erfahren im Notifier, dass Haltepunkte angelegt, gelöscht oder geändert
+//     wurden, und lesen später neu.
 //   - Vor dem Start: Zuhörer, die IAtlasIdeDebugLaunchCheck können, fragt
 //     BeforeProgramLaunch der Reihe nach (#577: Haltepunkte prüfen); lehnt
 //     einer ab, startet die IDE nicht. Nur hier läuft ein Zuhörer im Notifier
@@ -61,6 +64,13 @@ type
     ['{3B7E91D2-5C4A-4F08-A6E3-8D2F1B07C95E}']
     /// <summary>False verhindert den Start von AProject.</summary>
     function AllowLaunch(const AProject: IOTAProject): Boolean;
+  end;
+
+  /// <summary>Zusatz eines Zuhörers: Quelltext-Haltepunkte angelegt, gelöscht oder geändert (#863). Läuft im
+  /// Notifier; der Zuhörer merkt sich nur, dass er neu lesen muss.</summary>
+  IAtlasIdeDebugBreakpointListener = interface
+    ['{9C3D5E71-2A4B-4F86-B1E0-7D58C2A94F13}']
+    procedure BreakpointsChanged;
   end;
 
   /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
@@ -114,6 +124,7 @@ type
     class procedure NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>); static;
     class procedure StateChanged(const AProcess: IOTAProcess); static;
     class procedure Ended; static;
+    class procedure BreakpointsChanged; static;
     /// <summary>Zuhörer mit IAtlasIdeDebugLaunchCheck fragen; False, wenn einer ablehnt.</summary>
     class function AllowLaunch(const AProject: IOTAProject): Boolean; static;
   public
@@ -239,14 +250,17 @@ end;
 
 procedure TAtlasIdeDebugSession.TNotifier.BreakpointAdded(const Breakpoint: IOTABreakpoint);
 begin
+  TAtlasIdeDebugSession.BreakpointsChanged;
 end;
 
 procedure TAtlasIdeDebugSession.TNotifier.BreakpointDeleted(const Breakpoint: IOTABreakpoint);
 begin
+  TAtlasIdeDebugSession.BreakpointsChanged;
 end;
 
 procedure TAtlasIdeDebugSession.TNotifier.BreakpointChanged(const Breakpoint: IOTABreakpoint);
 begin
+  TAtlasIdeDebugSession.BreakpointsChanged;
 end;
 
 procedure TAtlasIdeDebugSession.TNotifier.CurrentProcessChanged(const Process: IOTAProcess);
@@ -435,6 +449,20 @@ begin
         end;
       end);
   end;
+end;
+
+class procedure TAtlasIdeDebugSession.BreakpointsChanged;
+begin
+  NotifyListeners(
+    procedure(AListener: IAtlasIdeDebugListener)
+    var
+      mBreakpoints: IAtlasIdeDebugBreakpointListener;
+    begin
+      if Supports(AListener, IAtlasIdeDebugBreakpointListener, mBreakpoints) then
+      begin
+        mBreakpoints.BreakpointsChanged;
+      end;
+    end);
 end;
 
 class procedure TAtlasIdeDebugSession.StateChanged(const AProcess: IOTAProcess);

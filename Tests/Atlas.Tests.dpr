@@ -2293,6 +2293,8 @@ uses
   Atlas.Core.Debug.BreakpointTags.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointTags.Tests.pas',
   Atlas.UI.Debug.StepFilterFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas',
   Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas',
+  Atlas.UI.Debug.BreakpointsFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointsFrame.pas',
+  Atlas.UI.Debug.BreakpointsFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.BreakpointsFrame.Tests.pas',
   Atlas.Core.Debug.BreakpointCheck in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointCheck.pas',
   Atlas.Core.Debug.BreakpointCheck.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointCheck.Tests.pas',
   Atlas.UI.Debug.BreakpointCheck in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas',

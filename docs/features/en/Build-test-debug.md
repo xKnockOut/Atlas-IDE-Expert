@@ -383,6 +383,22 @@ Settings: `debug.breakOnNextEvent`
 
 Settings: `debug.stepFilters`
 
+<a id="window-atlasbreakpoints"></a>
+### Breakpoints window
+
+The dockable window “Breakpoints” (Atlas menu, “Breakpoints (Atlas)”) shows the same breakpoints as the IDE’s list, plus:
+
+- search across file name, method, condition and tag; several words must all match
+- filter chips “active”, “with condition”, “never hit” (in this session) and “not effective”
+- hit count of this debug session; “Reset hit counts” sets it to 0
+- tags such as `Import` or `Bug 4711`, several per breakpoint, completed from the ones already used; they are personal and survive a restart
+- grouping by tag, file or group, with collapsible groups
+- enable, disable, tag or delete several breakpoints at once (undo with Ctrl+Z)
+- double-click goes to the location, Enter opens the IDE’s properties
+- show and hide columns from the context menu; the window remembers width and order
+
+Settings: `debug.breakpointsWindow`
+
 ### Breakpoints that will not be hit
 
 Before every debug session starts, Atlas checks all active source breakpoints, open files as they are in the editor:
