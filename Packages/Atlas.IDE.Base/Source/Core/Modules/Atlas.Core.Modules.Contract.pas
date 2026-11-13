@@ -52,8 +52,7 @@ const
   /// 26 (#1783): TAtlasDrawnElement.CodeLensUntested, codeLens.untested, tests.untested.warnPercent.
   /// 27 (#526, #1878, #2169, #868): TAtlasDebugValue.Actions, TAtlasEditorHover.OnDebugActions/OnDebugAction,
   /// debug.pinnedValues, debug.whyHere(.depth), debug.predictConditions(.dimSkipped, .lines), debug.editValues.
-  /// 28 (#1776): tests.window.
-  cAtlasCoreContractVersion = 28;
+  cAtlasCoreContractVersion = 27;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
