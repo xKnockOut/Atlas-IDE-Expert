@@ -178,7 +178,14 @@ For exports, reports, generated code or JSON a test checks the result against a 
 - Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
 - Messages are German, English with `TApproval.English := True`.
 
-Setting: `tests.approvalFolder` (atlas.json)
+In the IDE (Tests module, `tests.approvalFiles`):
+
+- If a test fails with this message, its test mark shows “Difference · Compare”, without an approved file “New · Compare”. The same “Compare” button appears in the hover of the failure and on the *Test results* card.
+- The comparison shows the approved file on the left and the received file on the right (lines matched as for expected and actual, #1779). *Accept as new expectation* replaces the approved file with the received file and deletes it; the next run is green. *Go to test* jumps to the method header.
+- *Delete leftover .received files* (Atlas menu, command palette) looks in the approval folder of the test project that ran last (without a run, the active project), deletes all `*.received.*` there after asking and offers to add `*.received.*` to the nearest `.gitignore` if it has no line for them yet.
+- `tests.approvalFiles` off: no special mark, no command; the helper unit keeps working, its failures show as ordinary failures.
+
+Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
 
 ### Test duration and slow tests (#1772)
 
@@ -444,6 +451,16 @@ Settings: `debug.eventLog`, `debug.eventLogColors`
 - “Disable/Enable/Delete all logpoints” only touch the breakpoint group `Atlas.Logpunkte`
 
 Settings: `debug.logpoints`, `debug.logpointPrefix`
+
+## Debug: no source
+
+- When the debugger stops in a routine without source (the IDE shows the CPU window), a small window without focus appears at the top right: routine, module, address, unit and reason
+- Reasons: debug DCUs off (Delphi library), unit compiled with `{$D-}`, only DCU/BPL available, source not in the search path, system code (Windows)
+- Ways out depending on the reason: “Turn on debug DCUs and rebuild” (only in the Debug configuration, with confirmation; the session ends, then Atlas builds and starts), “Back to my code” (runs until it returns to own code), “Find source …” (the folder is remembered for the project, the unit opens), “Keep CPU window”
+- “Do not show for this unit again” extends `debug.noSourcePage.ignoredUnits`
+- With “Just my code” (`debug.justMyCode`) the window only appears for exceptions
+
+Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 ## Debug: exceptions
 

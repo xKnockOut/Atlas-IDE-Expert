@@ -395,6 +395,7 @@ type
     property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
     property TestsCompare: Boolean read FBuild.TestsCompare write FBuild.TestsCompare;
     property TestsCompareFormat: Boolean read FBuild.TestsCompareFormat write FBuild.TestsCompareFormat;
+    property TestsApprovalFiles: Boolean read FBuild.TestsApprovalFiles write FBuild.TestsApprovalFiles;
     property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
@@ -484,6 +485,9 @@ type
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;
     property DebugLogpointPrefix: string read FDebug.DebugLogpointPrefix write FDebug.DebugLogpointPrefix;
+    property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
+    property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
+      write FDebug.DebugNoSourceIgnoredUnits;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;

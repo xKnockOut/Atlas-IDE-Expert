@@ -167,6 +167,9 @@ type
     /// <summary>Nach "X is " bzw. "X as " (#2107): deklarierter Typ von X, wenn dieser Typ von ihm abstammt; ''
     /// sonst.</summary>
     DescendantOf: string;
+    /// <summary>Nach "X." (#2109): Stellen, an denen der Name in den Units des Projekts vorkommt; 0 ohne Zählung.
+    /// </summary>
+    ProjectUses: Integer;
     /// <summary>Feld- oder Parametername (#461): Datenmenge, aus der der Name stammt; '' sonst.</summary>
     DataSet: string;
     /// <summary>Kurzform der SQL-Anweisung als Quellenangabe für die Fußzeile; '' ohne Anweisung.</summary>
