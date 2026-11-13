@@ -64,7 +64,7 @@ type
     function UnitSearchServices: TShellUnitSearchServices;
     /// <summary>Eigenschaftsregeln anwenden in Formularen.</summary>
     procedure RegisterDfmPropertyRules;
-    /// <summary>Leckprüfung einrichten (#1880).</summary>
+    /// <summary>Leckprüfung einrichten (#1880) und Kandidaten zu einem Leckbericht (#1875).</summary>
     procedure RegisterLeakSetup;
     /// <summary>Befehl atlas.server.testCases (#1879).</summary>
     procedure RegisterTestCases;
@@ -98,7 +98,8 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.TestCases,
   Shell.Composition.DfmPropertyRules,
-  Shell.Composition.LeakSetup;
+  Shell.Composition.LeakSetup,
+  Shell.Composition.LeakCandidates;
 
 /// <summary>Ausführlicher Status von AReports als Funktion für die Aktivität des Servers.</summary>
 function DetailsOf(AReports: TShellStatusReports): TServerDetailsFunc;
@@ -317,6 +318,7 @@ begin
   mServices.Workspaces := FCore.Workspaces;
   mServices.ReadText := ReadText;
   TShellLeakSetup.Attach(FCommands, mServices);
+  TShellLeakCandidates.Attach(FCommands, mServices);
 end;
 
 procedure TShellCommandArea.RegisterTestCases;
