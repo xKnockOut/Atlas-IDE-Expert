@@ -7,8 +7,9 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter; die Teile für Werte
-//   und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values),
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“; die Teile
+//   für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
+//   Exceptions und Threads in Atlas.IDE.Debug.Composition.Session),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
 //   die Taste von „Gezielt hineinspringen“,
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
@@ -67,7 +68,6 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Exceptions,
@@ -83,6 +83,7 @@ uses
   Atlas.IDE.Debug.Report,
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
+  Atlas.IDE.Debug.Composition.Session,
   Atlas.UI.Debug.Strings;
 
 var
@@ -173,21 +174,6 @@ begin
     begin
       Result := Session;
     end);
-end;
-
-procedure StartDebugExceptions;
-begin
-  TAtlasIdeDebugExceptions.Start(MessageLine);
-end;
-
-procedure StartDebugOwnCode;
-begin
-  TAtlasIdeDebugOwnCode.Start(MessageLine);
-end;
-
-procedure StartDebugExceptionBar;
-begin
-  TAtlasIdeDebugExceptionBar.Start(MessageLine, TAtlasStatusRegistry.Default);
 end;
 
 function ExpressionProvider(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider;
@@ -342,7 +328,10 @@ begin
       ToggleDebugJustMyCode, nil),
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
     Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
-      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible)];
+      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
+    // Was wartet worauf? (#587); nur sichtbar, solange debug.deadlocks an ist.
+    Command('Atlas.DebugDeadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsCommand),
+      RunDebugDeadlocks, DebugDeadlocksVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -373,6 +362,7 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
@@ -472,42 +462,6 @@ begin
       end, StartDisplayRules, TAtlasIdeDisplayRules.Stop)]
 end;
 
-/// <summary>Exception-Verlauf, nur eigener Code und Exception-Leiste.</summary>
-function ExceptionParts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Exception-Verlauf (#517): Zuhörer der Debug-Sitzung; aus = kein Notifier beim Debugger.
-    TAtlasFeaturePart.When('DebugExceptions',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugExceptionHistory;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugExceptions.Started;
-      end, StartDebugExceptions, TAtlasIdeDebugExceptions.Release),
-    // Nur eigener Code (#578): Zuhörer der Debug-Sitzung und Haken an „Einzelne Anweisung“ (F7).
-    TAtlasFeaturePart.When('DebugOwnCode',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugJustMyCode;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugOwnCode.Started;
-      end, StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release),
-    // Exception-Leiste (#783): baut auf dem Exception-Verlauf auf; aus = Dialog der IDE unverändert.
-    TAtlasFeaturePart.When('DebugExceptionBar',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and DebugExceptionBarVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugExceptionBar.Started;
-      end, StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release)]
-end;
-
 /// <summary>Schrittfilter (#850): Zuhörer der Debug-Sitzung und Empfänger von F7; aus = F7 wie bisher.</summary>
 function StepFilterPart: IAtlasFeaturePart;
 begin
@@ -533,8 +487,8 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart];
+  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider);
+  Result := Result + [StepFilterPart] + DebugThreadParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

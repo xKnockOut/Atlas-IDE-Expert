@@ -40,14 +40,14 @@ Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert
 | `Atlas.IDE.Designer` | Designer-Leiste: „Anordnen“ (Breite nach Text, Knopfleiste, Formularraster, In Reihe duplizieren, Platz einfügen, An Inhalt anpassen, Ebenen, Einpacken, Schriften und Farben, Anchors vorschlagen, Format-Pinsel, Gruppen), Abstände messen und per Griff setzen, gemeinsame Größengriffe, Schnellleiste, Lupe, Tab-Reihenfolge, Größe und Skalierung ausprobieren, sprechende Namen, Fenster „Atlas-Struktur“ und „Ereignis-Karte“, Datenbindung, In Frame auslagern, Verwendungen im Code, Komponenten und Eigenschaften suchen, Rückgängig (experimentell) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue-Tracker (YouTrack, GitHub u. a.): „Meine Issues“ mit Projektwahl, Beginnen, Beenden und Prüfen entlang der Workflow-Übergänge, Zeiterfassung, Zustand im Statusfeld, Board mit Swimlanes, Sprint-Kachel, Ablauf-Karte, „An Issue anhängen“, Issue-Kennungen im Code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite mit Projekten, „Weiterarbeiten“ samt Arbeitsstand je Issue, „Neu in Atlas“, „Atlas entdecken“ und „Atlas-Einrichtung“ mit Indexaufbau je Projekt; „Atlas-Start“ | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse | 61 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debuggen: Werte in Hover und Editor, Fenster „Auswerten“, Exceptions, Schrittfilter, gezielt hineinspringen, eigene Wertdarstellung je Typ, Zugriffsverletzungen erklären samt Modul der Fehleradresse, worauf Threads warten | 66 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas-Suche mit Ersetzen, Regex und Projektbereich, Units suchen, Code-Abfragen | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken, „Unit-Beziehungen“ und „Abhängige Units“ auch aus der Projektverwaltung | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Änderungsmarken mit Inline-Diff, Zeilenhistorie, Branch beim Beginnen, Arbeitskopien, Projektzustand | 26 | `vcs.enabled` |
 | `Atlas.IDE.Bookmarks` | Notizen, benannte und schnelle Lesezeichen, TODO-Liste | 24 | `bookmarks.enabled` |
 | `Atlas.IDE.Build` | Build-Werkzeuge: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter | 24 | `buildTools.enabled` |
 | `Atlas.IDE.Rules` | Prüfregeln: Regel-Editor, Baseline und Unterdrückungen, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur, Fehler der IDE (Error Insight) neben den Befunden; Regel am Befund unterdrücken, einstellen, abschalten (ohne das Modul bleiben nur die Befunde und „Regel erklären“) | 16 | `ruleChecks.enabled` |
-| `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, Marken „getestet von“, betroffene Tests, Assistent „DUnitX-Testunit zu Unit …“ | 27 | `tests.enabled` |
+| `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, Marken „getestet von“, betroffene Tests, Assistent „DUnitX-Testunit zu Unit …“ | 30 | `tests.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds auf Auftrag (auch für MCP), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung und Build-Zusammenfassung | 9 | `buildPipeline.enabled` |
 | `Atlas.IDE.Assistants` | KI-Assistenten: Builds über `build_project` und Änderungen an offenen Dateien durch MCP-Clients, eigene Optionsseite | 10 | `assistants.enabled` |
 | `Atlas.IDE.Help` | F1-Hilfe: Seiten zu Regeln, Einstellungen und Fenstern der Doku | 5 | `help.enabled` |
@@ -58,7 +58,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Schreiben](docs/features/de/Schreiben.md)
 - **Vervollständigung** im eigenen Popup mit Detailpanel, unscharfer Suche, Favoriten und `+ Unit` für fehlende uses
-- **Vorschläge nach Kontext:** Aufzählungswerte, `case`-Werte, Exception-Klassen nach `raise`, Gerüste für anonyme Methoden, nach `if X is T then` die Mitglieder von `T` mit Umwandlung
+- **Vorschläge nach Kontext:** Aufzählungswerte, `case`-Werte, Exception-Klassen nach `raise`, Gerüste für anonyme Methoden, nach `if X is T then` die Mitglieder von `T` mit Umwandlung, in der Fußzeile die Treffer, die nur fehlen, weil sie private oder protected sind
 - **Parameter-Hint** mit Wahl der Überladung und Prüfung der `Format`-Platzhalter
 - **Vorlagen:** Code-, Postfix- und klassenbezogene Vorlagen, eigene Snippets, Schrägstrich-Befehle wie `/uses` und `/extract`
 - **Generieren-Menü** (Alt+Einfg) und Bearbeitungshilfen: umschließen, Zeilen verschieben, Kommentare umschalten, var-Blöcke aufräumen
@@ -117,10 +117,12 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build
 - **Laufendes Programm vor dem Build beenden** statt F2039 am Ende des Builds
 - **Ohne Kommandozeilen-Compiler** (Starter, Community): Atlas erkennt das beim Start, sagt es einmal, und Projektaufgaben mit dcc oder MSBuild nennen den Grund, statt zu scheitern (`diagnostics.editionCheck`)
-- **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**, Methoden zeigen, **welche Tests sie prüfen** („3 Tests · bestanden“), Fehlschläge stehen am **fehlgeschlagenen Assert** mit „erwartet 4, erhalten 3“ und lassen sich **nebeneinander vergleichen** (JSON/XML eingerückt); Prüfregeln finden `[TestCase]`-Werte, die nicht zur Methode passen, und Testklassen, die nie registriert werden oder deren Unit in keinem Testprojekt steht; jede Testmarke zeigt die **Dauer**, **langsame Tests** werden gelb
+- **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**, Methoden zeigen, **welche Tests sie prüfen** („3 Tests · bestanden“), Fehlschläge stehen am **fehlgeschlagenen Assert** mit „erwartet 4, erhalten 3“ und lassen sich **nebeneinander vergleichen** (JSON/XML eingerückt); Prüfregeln finden `[TestCase]`-Werte, die nicht zur Methode passen, und Testklassen, die nie registriert werden oder deren Unit in keinem Testprojekt steht; jede Testmarke zeigt die **Dauer**, **langsame Tests** werden gelb; auf Wunsch laufen die betroffenen Tests **bei jedem Speichern im Hintergrund**
+- **Schnellbefehle für Tests:** `/mock`, `/testcase`, `/dump` und `/assert` legen Mock-Klassen, Testfälle, Variablenausgaben und Asserts passend zum Typ an
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt, Modul der Fehleradresse (Programm, RTL/VCL, Windows, Fremd-DLL)
+- **Threads:** Was wartet worauf? (Wartepunkt jedes Threads, Muster von Verklemmungen wie `WaitFor` gegen `Synchronize`)
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten; „Weiterarbeiten“ merkt sich den Arbeitsstand je Issue (Reiter „Issues“) und setzt ihn mit „Fortsetzen“ auf dem Branch des Issues fort

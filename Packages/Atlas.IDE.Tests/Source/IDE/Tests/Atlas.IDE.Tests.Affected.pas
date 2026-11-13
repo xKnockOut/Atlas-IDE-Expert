@@ -11,6 +11,8 @@
 // tests.affectedBeforeCommit: Atlas legt für das Repository des Testprojekts
 // den Git-Hook pre-commit an (Atlas.Core.Tests.AffectedHook) bzw. entfernt ihn,
 // wenn die Einstellung aus ist. git läuft dabei im Arbeiter-Thread.
+// Determine (#1775, Tests beim Speichern): betroffene Tests nur gespeicherter
+// Dateien seit dem letzten Commit im selben Arbeiter-Thread ermitteln.
 // Haken statt Imports: Testläufer und Serverpfad kommen über Install.
 
 interface
@@ -28,6 +30,8 @@ type
   TAtlasAffectedTargetProc = reference to procedure(const ATarget: TAtlasTestTarget);
   /// <summary>Löst das Testprojekt auf und ruft AThen im Hauptthread; ohne Testprojekt nie.</summary>
   TAtlasAffectedResolveTarget = reference to procedure(const AThen: TAtlasAffectedTargetProc);
+  /// <summary>Ergebnis von Determine im Hauptthread; AError nicht leer = nicht ermittelt.</summary>
+  TAtlasAffectedDone = reference to procedure(const AFound: TAtlasAffectedTests; const AError: string);
 
   /// <summary>Haken der Composition.</summary>
   TAtlasAffectedTestsHooks = record
@@ -41,6 +45,8 @@ type
   private class var
     FWorkers: TArray<TThread>;
     FRequest: Integer;
+    /// <summary>Zählt Uninstall: Antworten von Determine aus einer früheren Installation verfallen.</summary>
+    FGeneration: Integer;
     FHooks: TAtlasAffectedTestsHooks;
     /// <summary>Hook-Ordner, für die Atlas schon gemeldet hat (einmal je Sitzung).</summary>
     FReported: TArray<string>;
@@ -60,6 +66,9 @@ type
     class function Enabled: Boolean; static;
     /// <summary>Betroffene Tests ermitteln und ausführen.</summary>
     class procedure Run; static;
+    /// <summary>Betroffene Tests der Dateien AFiles (nicht leer) seit dem letzten Commit im Hintergrund ermitteln
+    /// (#1775); ADone im Hauptthread, nie nach Uninstall. False ohne Server (dann kein ADone).</summary>
+    class function Determine(const AFiles: TArray<string>; const ADone: TAtlasAffectedDone): Boolean; static;
     /// <summary>Nach dem Speichern der Optionen: Hook anlegen bzw. entfernen (tests.affectedBeforeCommit).
     /// </summary>
     class procedure ApplySettings; static;
@@ -94,6 +103,7 @@ class procedure TAtlasIdeAffectedTests.Uninstall;
 begin
   // Spätere Antworten verwerfen; beim Entladen bricht TAtlasShutdown die Anfragen ab, dann auf alle warten.
   Inc(FRequest);
+  Inc(FGeneration);
   Reap(TAtlasShutdown.Signalled);
   FHooks := Default(TAtlasAffectedTestsHooks);
   FReported := nil;
@@ -202,6 +212,48 @@ begin
         end);
     end);
   ApplySettings;
+end;
+
+class function TAtlasIdeAffectedTests.Determine(const AFiles: TArray<string>;
+  const ADone: TAtlasAffectedDone): Boolean;
+var
+  mSession: TLspSession;
+  mGeneration: Integer;
+  mFiles: TArray<string>;
+  mDone: TAtlasAffectedDone;
+begin
+  mSession := TAtlasIdeResults.Session;
+  Result := (mSession <> nil) and (Length(AFiles) > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mGeneration := FGeneration;
+  mFiles := AFiles;
+  mDone := ADone;
+  Spawn(
+    procedure
+    var
+      mFound: TAtlasAffectedTests;
+      mError: string;
+    begin
+      mFound := Default(TAtlasAffectedTests);
+      mError := '';
+      try
+        mFound := mSession.AffectedTestsOf(mFiles);
+      except
+        on E: Exception do
+          mError := E.Message;
+      end;
+      TAtlasMainThread.Queue(TAtlasFeature.Build,
+        procedure
+        begin
+          if mGeneration = FGeneration then
+          begin
+            mDone(mFound, mError);
+          end;
+        end);
+    end);
 end;
 
 class function TAtlasIdeAffectedTests.Lines(const AFound: TAtlasAffectedTests): TArray<string>;

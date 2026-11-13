@@ -83,6 +83,8 @@ type
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
     cMinTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsCoveredByDepth;
     cMaxTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsCoveredByDepth;
+    cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
+    cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
@@ -384,6 +386,8 @@ type
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
     property TestsCoveredByDepth: Integer read FBuild.TestsCoveredByDepth write FBuild.TestsCoveredByDepth;
     property TestsCoveredByPrivate: Boolean read FBuild.TestsCoveredByPrivate write FBuild.TestsCoveredByPrivate;
+    property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
+    property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
     property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
     property TestsCompare: Boolean read FBuild.TestsCompare write FBuild.TestsCompare;
@@ -445,6 +449,7 @@ type
     property DebugExplainAccessViolationAllowCalls: Boolean read FDebug.DebugExplainAccessViolationAllowCalls
       write FDebug.DebugExplainAccessViolationAllowCalls;
     property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
+    property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
 
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;

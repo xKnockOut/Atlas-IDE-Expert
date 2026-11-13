@@ -149,6 +149,8 @@ type
     FSyntaxLink: TRect;
     // Hinweis in der Fußzeile (#458).
     FNotice: string;
+    // Passende, nur wegen der Sichtbarkeit fehlende Mitglieder (#2108) für die Fußzeile.
+    FInaccessible: TAtlasCompletionItems;
     // Tooltip für gekürzte Zeilen (#420): je sichtbarer Zeile gekürzt ja/nein, Zeile unter der Maus.
     FTip: TAtlasTextTip;
     FTipTimer: TTimer;
