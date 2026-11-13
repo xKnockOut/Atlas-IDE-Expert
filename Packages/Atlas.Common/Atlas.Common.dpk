@@ -726,6 +726,7 @@ contains
   Atlas.Common.Rules.Builtin.Testing.Asserts in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Asserts.pas',
   Atlas.Common.Rules.Builtin.Testing.Classes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Classes.pas',
   Atlas.Common.Rules.Builtin.Testing.Registration in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.pas',
+  Atlas.Common.Rules.Builtin.Testing.TearDown in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TearDown.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCases in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas',
   Atlas.Common.Rules.Builtin.IgnoredResult in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas',

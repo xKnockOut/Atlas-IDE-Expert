@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDePackages: array[0..52] of string = (
+  cCatalogLinesDePackages: array[0..63] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',
@@ -87,6 +87,22 @@ const
     'die Meldung beim Fehlschlag nennt deshalb die Konstante als erhaltenen und den berechneten Wert als erwarteten Wert und führt in die Irre. Als Konstante zählen Literale, True, False, nil, deklarierte ' +
     'Konstanten und Aufzählungswerte, auch mit Vorzeichen oder über Operatoren verknüpft. Korrektur (sicher): die beiden Argumente tauschen; weitere Argumente (Meldung, Toleranz) bleiben. Aufrufe mit zwei ' +
     'Konstanten oder zwei berechneten Werten bleiben still. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch."',
+    '    },',
+    '{',
+    '      "id": "dunitx-setup-not-torn-down",',
+    '      "name": "Feld im Setup erzeugt, im TearDown nicht freigegeben",',
+    '      "description": "Ein Feld einer Testklasse, dem die [Setup]-Methode (bzw. [SetupFixture]) ein neues Objekt zuweist (TFake.Create …) und das die passende [TearDown]-Methode (bzw. [TearDownFixture]' +
+    ') weder mit Free, FreeAndNil, DisposeOf oder Destroy freigibt noch auf nil setzt: Jeder einzelne Test leckt das Objekt. Methoden derselben Klasse, die TearDown direkt aufruft, zählen mit (eine Ebene).' +
+    ' Felder vom Interfacetyp (Referenzzählung) und Objekte mit Besitzer (TButton.Create(FForm)) bleiben still. Mit der Option managedFields (Vorgabe an) auch string- und dynamische Array-Felder, die Setup' +
+    ' belegt und TearDown nicht leert: Der Leckmonitor von DUnitX zählt ihren Speicher jedem Test zu. Ohne TearDown-Methode gibt es eine Meldung am Setup für alle Felder. Korrektur (sicher): FreeAndNil(FFe' +
+    'ld); (ohne SysUtils FFeld.Free; FFeld := nil;) bzw. FFeld := ''''; oder FFeld := nil; am Ende von TearDown; ohne TearDown legt sie die Methode samt Attribut und Deklaration an. Nur in Testunits (uses DU' +
+    'nitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit mittel: Freigaben in tiefer liegenden Hilfsmethoden verfolgt die Regel nicht.",',
+    '      "options": [',
+    '        {',
+    '          "name": "managedFields",',
+    '          "description": "Auch string- und dynamische Array-Felder melden, die Setup belegt und TearDown nicht leert."',
+    '        }',
+    '      ]',
     '    }');
 
 implementation
