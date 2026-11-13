@@ -148,6 +148,7 @@ begin
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
+  Assert.IsTrue(ASettings.TestsLeakSetup, 'Leckprüfung einrichten standardmäßig an (#1880)');
   Assert.AreEqual(3, ASettings.TestsAffectedDepth, 'Tiefe der betroffenen Tests standardmäßig 3 (#1353)');
   Assert.IsFalse(ASettings.TestsAffectedBeforeCommit, 'Angebot vor dem Commit standardmäßig aus (#1353)');
   Assert.IsTrue(ASettings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
@@ -186,6 +187,8 @@ begin
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.AreEqual('', ASettings.DebugParallelStacksWaitRoutines, 'debug.parallelStacks.waitRoutines (#837)');
   Assert.AreEqual(64, ASettings.DebugParallelStacksMaxThreads, 'debug.parallelStacks.maxThreads (#837)');
+  Assert.IsFalse(ASettings.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsTrue(ASettings.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
@@ -349,6 +352,8 @@ begin
   ASettings.DebugModuleOfAddress := False;
   ASettings.DebugDeadlocks := False;
   ASettings.DebugParallelStacks := False;
+  ASettings.DebugThreadsInSource := False;
+  ASettings.DebugThreadFreeze := True;
   ASettings.DebugParallelStacksWaitRoutines := 'TMonitor.Enter;MyLock.Acquire';
   ASettings.DebugParallelStacksMaxThreads := 16;
   ASettings.DebugExceptionHistory := False;
@@ -487,6 +492,8 @@ begin
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.AreEqual('TMonitor.Enter;MyLock.Acquire', ALoaded.DebugParallelStacksWaitRoutines);
   Assert.AreEqual(16, ALoaded.DebugParallelStacksMaxThreads);
+  Assert.IsTrue(ALoaded.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsFalse(ALoaded.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');

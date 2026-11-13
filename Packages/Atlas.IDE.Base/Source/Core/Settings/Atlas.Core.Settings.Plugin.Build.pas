@@ -85,6 +85,8 @@ type
     /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
     /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
     TestsAffected: Boolean;
+    /// <summary>Befehl „Leckprüfung einrichten …“ (#1880, tests.leakSetup).</summary>
+    TestsLeakSetup: Boolean;
     /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
     /// MaxTestsAffectedDepth.</summary>
     TestsAffectedDepth: Integer;
@@ -256,6 +258,7 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.TestsAffected := True;
+  Result.TestsLeakSetup := True;
   Result.TestsAffectedDepth := 3;
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
@@ -344,6 +347,7 @@ begin
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
   AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
   AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);

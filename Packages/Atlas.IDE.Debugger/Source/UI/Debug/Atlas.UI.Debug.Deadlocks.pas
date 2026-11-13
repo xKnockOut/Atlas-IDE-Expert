@@ -13,6 +13,8 @@ type
   TAtlasDebugWaitTexts = class
   public
     class function Title(const AReport: TAtlasDebugWaitReport): string; static;
+    /// <summary>Routine ohne Unit: „System.Classes.TThread.WaitFor“ → „TThread.WaitFor“.</summary>
+    class function ShortRoutine(const ARoutine: string): string; static;
     /// <summary>„1234“, „1234 „Worker““, beim Hauptthread mit „(Hauptthread)“.</summary>
     class function ThreadLabel(const AReport: TAtlasDebugWaitReport; AIndex: Integer): string; static;
     /// <summary>„läuft“, „wartet auf Nachrichten“, „wartet in TMonitor.Enter“, „Aufrufstapel nicht lesbar“.</summary>
@@ -31,29 +33,6 @@ uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Threads,
   Atlas.UI.Debug.Strings;
-
-/// <summary>Routine ohne Unit („System.Classes.TThread.WaitFor“ → „TThread.WaitFor“, „ntdll.Sleep“ → „Sleep“).
-/// </summary>
-function ShortRoutine(const ARoutine: string): string;
-var
-  mParts: TArray<string>;
-  mCount: Integer;
-begin
-  mParts := ARoutine.Split(['.']);
-  mCount := Length(mParts);
-  if (mCount >= 2) and (mParts[mCount - 2] <> '') and CharInSet(mParts[mCount - 2][1], ['T', 'I']) then
-  begin
-    Result := mParts[mCount - 2] + '.' + mParts[mCount - 1];
-  end
-  else if mCount > 0 then
-  begin
-    Result := mParts[mCount - 1];
-  end
-  else
-  begin
-    Result := ARoutine;
-  end;
-end;
 
 /// <summary>Threads der Liste AThreads durch Komma getrennt; ASkipMain lässt den Hauptthread weg.</summary>
 function ThreadList(const AReport: TAtlasDebugWaitReport; const AThreads: TArray<Integer>;
@@ -77,6 +56,27 @@ begin
 end;
 
 { TAtlasDebugWaitTexts }
+
+class function TAtlasDebugWaitTexts.ShortRoutine(const ARoutine: string): string;
+var
+  mParts: TArray<string>;
+  mCount: Integer;
+begin
+  mParts := ARoutine.Split(['.']);
+  mCount := Length(mParts);
+  if (mCount >= 2) and (mParts[mCount - 2] <> '') and CharInSet(mParts[mCount - 2][1], ['T', 'I']) then
+  begin
+    Result := mParts[mCount - 2] + '.' + mParts[mCount - 1];
+  end
+  else if mCount > 0 then
+  begin
+    Result := mParts[mCount - 1];
+  end
+  else
+  begin
+    Result := ARoutine;
+  end;
+end;
 
 class function TAtlasDebugWaitTexts.Title(const AReport: TAtlasDebugWaitReport): string;
 begin

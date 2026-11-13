@@ -47,6 +47,7 @@ contains
   Atlas.UI.Tests.Compare in 'Source\UI\Tests\Atlas.UI.Tests.Compare.pas',
   Atlas.UI.Tests.Slowest in 'Source\UI\Tests\Atlas.UI.Tests.Slowest.pas',
   Atlas.UI.Tests.CaseTable in 'Source\UI\Tests\Atlas.UI.Tests.CaseTable.pas',
+  Atlas.UI.Tests.LeakSetup in 'Source\UI\Tests\Atlas.UI.Tests.LeakSetup.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
   Atlas.Core.Tests.CoveredBy in 'Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas',
@@ -59,6 +60,7 @@ contains
   Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',
   Atlas.Core.Tests.UnitMatch in 'Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas',
+  Atlas.Core.Tests.LeakSetup in 'Source\Core\Tests\Atlas.Core.Tests.LeakSetup.pas',
   Atlas.IDE.Tests.Projects in 'Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas',
   Atlas.IDE.Tests.Runner in 'Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas',
   Atlas.IDE.Tests.Composition in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas',
@@ -75,6 +77,7 @@ contains
   Atlas.IDE.Tests.Compare in 'Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas',
   Atlas.IDE.Tests.Slowest in 'Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas',
   Atlas.IDE.Tests.CaseTable in 'Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas',
+  Atlas.IDE.Tests.LeakSetup in 'Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';
 
 end.
