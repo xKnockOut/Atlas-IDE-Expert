@@ -135,8 +135,8 @@ type
     function HasSelection: Boolean;
     /// <summary>Scrollt die Doku um ASteps Rasterstufen des Mausrads (negativ nach oben).</summary>
     function ScrollDoc(ASteps: Integer): Boolean;
-    /// <summary>Scrollt die published-Mitglieder um ASteps Rasterstufen des Mausrads (je drei Zeilen).</summary>
-    /// <summary>Ebenso die Zeilen des aufgeklappten Debug-Werts (#895); ADebugRows wählt den Bereich.</summary>
+    /// <summary>Scrollt die published-Mitglieder oder die Zeilen des aufgeklappten Debug-Werts (#895, ADebugRows)
+    ///  um ASteps Rasterstufen des Mausrads (je drei Zeilen).</summary>
     function ScrollRegion(ADebugRows: Boolean; ASteps: Integer): Boolean;
     /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
     procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
