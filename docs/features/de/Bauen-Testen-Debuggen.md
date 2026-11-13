@@ -154,7 +154,14 @@ Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis ge
 - Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
 - Meldungen deutsch, mit `TApproval.English := True` englisch.
 
-Einstellung: `tests.approvalFolder` (atlas.json)
+In der IDE (Modul Tests, `tests.approvalFiles`):
+
+- Schlägt ein Test mit dieser Meldung fehl, zeigt seine Testmarke „Abweichung · Vergleich“, ohne approved-Datei „Neu · Vergleich“. Derselbe Knopf „Vergleichen“ steht im Hover des Fehlschlags und auf der Kachel *Testergebnisse*.
+- Der Vergleich zeigt links die approved-, rechts die received-Datei (Zeilen einander zugeordnet wie bei erwartet und erhalten, #1779). *Als neue Erwartung übernehmen* ersetzt die approved-Datei durch die received-Datei und löscht diese; der nächste Lauf ist grün. *Zum Test* springt zum Methodenkopf.
+- *Liegengebliebene .received-Dateien löschen* (Atlas-Menü, Befehlspalette) sucht im Ordner der Vergleichsdateien des zuletzt gelaufenen Testprojekts (ohne Lauf des aktiven Projekts), löscht nach Rückfrage alle `*.received.*` darin und bietet an, `*.received.*` in die nächste `.gitignore` einzutragen, wenn dort noch keine Zeile dafür steht.
+- `tests.approvalFiles` aus: keine eigene Marke, kein Befehl; die Hilfs-Unit arbeitet weiter, ihre Fehlschläge erscheinen als gewöhnliche Fehlschläge.
+
+Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugin)
 
 ### Dauer der Tests und langsame Tests (#1772)
 
@@ -172,7 +179,9 @@ Einstellungen: `tests.showDuration`, `tests.slowMs`
 - In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
 - Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
 - Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
-- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+- Lecks am Programmende, die keinem Test gehören (Objekte, die das Testprogramm erst beim Beenden als nicht freigegeben meldet), nennt die Meldungsansicht in einer Zeile: „Tests: Lecks am Programmende, keinem Test zuzuordnen: 3 Blöcke (TStringList x 2, TKonto x 1).“ Gelesen wird der Bericht von FastMM (`<Programm>_MemoryManager_EventLog.txt` neben der EXE, wenn der Lauf ihn geschrieben hat), sonst die Ausgabe des Programms.
+- Fehlt dem Testprogramm der Leckmonitor, meldet die Regel `dunitx-leak-monitor` einen Hinweis am Eintrag `DUnitX.TestFramework` der .dpr. Die Korrektur trägt `DUnitX.MemoryLeakMonitor.FastMM4` ein (er arbeitet auch mit dem Speichermanager der RTL, ohne `FastMM4.pas`), bei FastMM5 `DUnitX.MemoryLeakMonitor.FastMM5`. Den Speichermanager selbst richtet „Leckprüfung einrichten …“ ein.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot), die Zeile zu Lecks am Programmende entfällt.
 
 Einstellung: `tests.leaks`
 
@@ -396,6 +405,50 @@ Einstellungen: `debug.eventLog`, `debug.eventLogColors`
 - „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
 
 Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
+
+### Kein Quelltext
+
+- Hält der Debugger in einer Routine ohne Quelltext (die IDE zeigt das CPU-Fenster), erscheint oben rechts ein kleines Fenster ohne Fokus: Routine, Modul, Adresse, Unit und Grund
+- Gründe: Debug-DCUs aus (Bibliothek von Delphi), Unit mit `{$D-}` übersetzt, nur DCU/BPL vorhanden, Quelltext nicht im Suchpfad, Systemcode (Windows)
+- Auswege je nach Grund: „Debug-DCUs einschalten und neu bauen“ (nur in der Konfiguration Debug, mit Rückfrage; die Sitzung endet, danach baut und startet Atlas), „Zurück zum eigenen Code“ (bis zur Rückkehr in eigenen Code), „Quelltext suchen …“ (Ordner wird für das Projekt gemerkt, die Unit öffnet sich), „CPU-Fenster behalten“
+- „Für diese Unit nicht mehr zeigen“ ergänzt `debug.noSourcePage.ignoredUnits`
+- Mit „Nur eigener Code“ (`debug.justMyCode`) erscheint das Fenster nur bei Exceptions
+
+Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
+### Neu starten
+
+- „Atlas: Neu starten“ mit Strg+Umschalt+F2, im Atlas-Menü oder in der Befehlspalette
+- Schritte: Beenden (nur bei laufendem Programm), Bauen (nur bei Änderungen seit dem letzten Bau), Starten, zurück an die Stelle im Editor
+- Oben rechts eine kleine Leiste ohne Fokus mit den Schritten und ihrer Dauer, etwa „Beenden 0,3 s ✓ · Bauen 2,1 s ✓ · Starten …“
+- Scheitert ein Schritt, bricht der Ablauf ab und die Leiste nennt den Grund
+- Mit `debug.restart.reenableBreakpoints` schaltet Atlas vor dem Start Haltepunkte wieder ein, die beim Start der letzten Sitzung an waren
+
+Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
+
+### Leck- und Absturzberichte (#74)
+
+- Bericht kopieren, dann Atlas > „Absturz- oder Leckbericht einfügen …“ (auch in der Befehlspalette): Atlas liest FastMM-Logs (FullDebugMode), die Meldung von `ReportMemoryLeaksOnShutdown`, Berichte von madExcept, EurekaLog 6/7 und JclDebug und die Meldung einer Exception allein („Zugriffsverletzung bei Adresse … in Modul …“)
+- Die Meldungsansicht zeigt den Aufrufstapel des Absturz-Threads und der übrigen Threads bzw. je Leckgruppe (gleiche Klasse, gleicher Stapel) den Stapel; Zeilen im Projekt springen per Doppelklick in den Quelltext
+- Im Editor stehen Diagnosen an den Stellen: je Leckgruppe eine Warnung an der Erzeugungsstelle („Leck: TStringList × 2 (40 Bytes) wird hier erzeugt“), beim Absturz eine Warnung an der Absturzstelle und Hinweise an den übrigen eigenen Zeilen des Stapels; Quelle ist das Werkzeug (FastMM, madExcept, …)
+- Stapelzeilen ohne Debug-Informationen löst Atlas über die Map-Datei neben der EXE der Konfiguration Debug auf (Linker-Option „Map-Datei: Detailliert“); passt die Map nicht zur EXE (anderer Einsprungpunkt oder andere Codelänge), sagt Atlas es
+- „Markierungen des Laufzeitberichts entfernen“ nimmt die Diagnosen wieder weg; ein neuer Bericht ersetzt den alten
+- Für KI-Assistenten gibt es dieselbe Auswertung als MCP-Werkzeuge `analyze_report` und `resolve_address`
+
+### Erneut an Prozess anhängen
+
+- Hängt sich die IDE an einen laufenden Prozess (Start › An Prozess anhängen …), merkt Atlas Pfad und Name der EXE für die Projektgruppe
+- „Erneut an <Name> anhängen“ im Menü Start, in der Befehlspalette und mit Umschalt+Alt+P:
+  - genau ein laufender Prozess mit gleichem Pfad: sofort angehängt, ohne Dialog
+  - mehrere, oder nur gleicher Name an anderem Ort (andere Version): Auswahl mit PID, Startzeit und Befehlszeile
+  - keiner: Angebot, auf den Start zu warten
+- „Anhängen, sobald gestartet …“ im Menü Start und in der Befehlspalette: EXE wählen (Vorgabe: zuletzt gemerkte, sonst Ausgabedatei des aktiven Projekts); Atlas fragt die Prozessliste im Hintergrund ab und hängt sich beim Start sofort an
+- Während des Wartens zeigt das Statusfeld „Warte auf … (Abbrechen)“; ein Klick bricht ab, ebenso das Schließen oder Wechseln der Projektgruppe
+- Endet ein angehängter Prozess, bietet das Statusfeld an, sich beim nächsten Start wieder anzuhängen
+- Die ersten Millisekunden des Programms (Initialisierung) verpasst das Warten; wer sie braucht, startet über die Startparameter des Projekts oder eine Host-Anwendung
+- Nur lokale Prozesse; Prozesse anderer Benutzer und Dienste brauchen eine IDE mit Administratorrechten
+
+Einstellungen: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
 
 ### Exceptions
 

@@ -68,6 +68,10 @@ const
   cIssuesSprintAsk = 'ask';
   cIssuesSprintAlways = 'always';
   cIssuesSprintNever = 'never';
+  /// <summary>Werte von issues.github.stateTarget (#2134): Projektfeld „Status“ (sonst Label) oder immer Label.
+  /// </summary>
+  cIssuesGitHubStateProject = 'project';
+  cIssuesGitHubStateLabel = 'label';
 
 type
   /// <summary>Plugin-Einstellungen: Verbindungen, Abfragen und Arbeitsablauf des Issue-Trackers.</summary>
@@ -154,6 +158,17 @@ type
     /// <summary>Kommentarvorlage beim Prüfen (#2126, issues.reviewComment) mit {build}, {tests}, {branch} und
     /// {kennung}; "\n" = neue Zeile.</summary>
     IssuesReviewComment: string;
+    /// <summary>Wo GitHub den Zustand führt (#2134, issues.github.stateTarget): IssuesGitHubStateProject oder
+    /// IssuesGitHubStateLabel.</summary>
+    IssuesGitHubStateTarget: string;
+    /// <summary>GitHub-Projekt „owner/nummer“ für Zustand und Aufnahme (#2134, issues.github.project); '' =
+    /// erstes Projekt des Issues.</summary>
+    IssuesGitHubProject: string;
+    /// <summary>Issues ohne Projekt beim Beginnen aufnehmen (#2134, issues.github.addToProject).</summary>
+    IssuesGitHubAddToProject: Boolean;
+    /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138,
+    /// issues.github.linkBranch).</summary>
+    IssuesGitHubLinkBranch: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -301,6 +316,16 @@ begin
   end;
 end;
 
+/// <summary>issues.github.stateTarget (#2134): label, sonst IssuesGitHubStateProject.</summary>
+function NormalizedIssuesGitHubStateTarget(const AText: string): string;
+begin
+  Result := cIssuesGitHubStateProject;
+  if SameText(Trim(AText), cIssuesGitHubStateLabel) then
+  begin
+    Result := cIssuesGitHubStateLabel;
+  end;
+end;
+
 /// <summary>issues.sprintOnStart (#2128): bekannter Wert, sonst IssuesSprintAsk.</summary>
 function NormalizedIssuesSprintOnStart(const AText: string): string;
 begin
@@ -398,6 +423,10 @@ begin
   Result.IssuesReviewComment := cDefaultIssuesReviewComment;
   Result.IssuesEndFields := '';
   Result.IssuesEndTime := True;
+  Result.IssuesGitHubStateTarget := cIssuesGitHubStateProject;
+  Result.IssuesGitHubProject := '';
+  Result.IssuesGitHubAddToProject := False;
+  Result.IssuesGitHubLinkBranch := False;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -443,6 +472,8 @@ begin
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
   IssuesReviewComment := NormalizedIssuesTemplate(IssuesReviewComment);
   IssuesEndFields := NormalizedIssuesTemplate(IssuesEndFields);
+  IssuesGitHubStateTarget := NormalizedIssuesGitHubStateTarget(IssuesGitHubStateTarget);
+  IssuesGitHubProject := NormalizedIssuesText(IssuesGitHubProject, True);
 end;
 
 procedure TAtlasPluginIssuesSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -475,6 +506,10 @@ begin
   AIo.Flag('IssuesEndTime', IssuesEndTime);
   AIo.Text('IssuesReviewStates', IssuesReviewStates);
   AIo.Text('IssuesReviewComment', IssuesReviewComment);
+  AIo.Text('IssuesGitHubStateTarget', IssuesGitHubStateTarget);
+  AIo.Text('IssuesGitHubProject', IssuesGitHubProject);
+  AIo.Flag('IssuesGitHubAddToProject', IssuesGitHubAddToProject);
+  AIo.Flag('IssuesGitHubLinkBranch', IssuesGitHubLinkBranch);
 end;
 
 { TAtlasPluginIssueWorkSettings }

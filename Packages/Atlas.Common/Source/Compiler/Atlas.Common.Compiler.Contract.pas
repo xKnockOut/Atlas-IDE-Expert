@@ -25,6 +25,9 @@ type
     /// <summary>Meldungsnummer wie E2003; '' wenn keine erkannt wurde.</summary>
     Code: string;
     Text: string;
+    /// <summary>Quelle in den Diagnosen; '' = dcc. Meldungen aus Laufzeitberichten (#74) nennen das Werkzeug.
+    /// </summary>
+    Source: string;
   end;
 
   /// <summary>Aufruf des Compilers.</summary>

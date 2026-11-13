@@ -86,8 +86,10 @@ type
   /// </summary>
   TAtlasTrackerAssign = (Keep, Me, User);
   /// <summary>Werte für die Klapplisten (#1266): Zustände des Zustandsfeldes (GitHub: Labels), Namen der
-  /// Zustandsfelder, Namen der Benutzerfelder (YouTrack) und Benutzer, an die übergeben werden kann.</summary>
-  TAtlasTrackerValueKind = (States, StateFields, UserFields, Users);
+  /// Zustandsfelder, Namen der Benutzerfelder (YouTrack) und Benutzer, an die übergeben werden kann. Dazu bei GitHub
+  /// (#2134) die Projekte des Repositorys („owner/nummer“) und die Optionen des Statusfeldes des Projekts
+  /// AField ('' = erstes); andere Anbieter liefern dafür nichts.</summary>
+  TAtlasTrackerValueKind = (States, StateFields, UserFields, Users, Projects, ProjectStates);
   /// <summary>Art einer Verknüpfung aus Sicht des gezeigten Issues (#1279). DependsOn: dieses hängt vom anderen
   /// ab (das andere blockiert dieses); Blocks: das andere hängt von diesem ab; Subtask: das andere ist
   /// Unteraufgabe; Parent: das andere ist übergeordnet; Duplicates: dieses ist Duplikat des anderen; DuplicatedBy:
@@ -346,6 +348,9 @@ type
     Pulls: TArray<TAtlasTrackerPull>;
     /// <summary>Neueste zuerst.</summary>
     Changes: TArray<TAtlasTrackerVcsChange>;
+    /// <summary>Mit dem Issue verknüpfte Branches (GitHub „Development“, #2138), Namen ohne Remote; leer ohne.
+    /// </summary>
+    LinkedBranches: TArray<string>;
     class function Empty: TAtlasTrackerDevelopment; static;
   end;
 
@@ -446,6 +451,55 @@ type
     TimeoutMs: Integer;
     class function Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       ATimeoutMs: Integer): TAtlasTrackerCall; static;
+  end;
+
+{$SCOPEDENUMS ON}
+
+  /// <summary>Ergebnis von „Branch auf dem Tracker anlegen und verknüpfen“ (#2138).</summary>
+  TAtlasTrackerBranchLinkOutcome = (
+    /// <summary>Nicht versucht.</summary>
+    None,
+    /// <summary>Branch auf dem Server angelegt und mit dem Issue verknüpft.</summary>
+    Created,
+    /// <summary>Das Issue hat schon einen verknüpften Branch (Branch nennt ihn); nichts angelegt.</summary>
+    Found,
+    /// <summary>Den Branch gibt es schon (lokal oder auf dem Server); nichts verknüpft.</summary>
+    Exists,
+    /// <summary>Der Remote origin ist nicht das Repository des Trackers.</summary>
+    Foreign,
+    /// <summary>Dem Token fehlt das Recht, Branches anzulegen.</summary>
+    Denied,
+    /// <summary>Anfrage gescheitert (Error, Message), bzw. der Abruf danach (Fetch).</summary>
+    Failed);
+
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Branch beim Beginnen auf dem Tracker anlegen (#2138).</summary>
+  TAtlasTrackerBranchLink = record
+    Outcome: TAtlasTrackerBranchLinkOutcome;
+    /// <summary>Angelegter bzw. gefundener Branch ohne Remote; '' ohne.</summary>
+    Branch: string;
+    /// <summary>Branch, von dessen Kopf angelegt wurde; '' ohne.</summary>
+    Base: string;
+    Error: TAtlasCiFetchError;
+    /// <summary>Erster Fehlertext des Servers; '' ohne.</summary>
+    Message: string;
+    class function Make(AOutcome: TAtlasTrackerBranchLinkOutcome; const ABranch: string): TAtlasTrackerBranchLink;
+      static;
+    class function Failure(AError: TAtlasCiFetchError; const AMessage: string): TAtlasTrackerBranchLink; static;
+    /// <summary>Created oder Found: Der Branch liegt auf dem Server und gehört zum Issue.</summary>
+    function OnServer: Boolean;
+  end;
+
+  /// <summary>Branch beim Beginnen auf dem Tracker anlegen und mit dem Issue verknüpfen (#2138, GitHub
+  /// createLinkedBranch); optional, „Beginnen“ fragt mit Supports. Läuft im Hintergrund.</summary>
+  IAtlasTrackerBranchLinker = interface
+    ['{3C9E1F74-8A25-4B6D-9E13-7F42D0B8C5A6}']
+    /// <summary>AOriginUrl (Remote origin der Arbeitskopie) zeigt auf das Repository des Ziels.</summary>
+    function SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
+    /// <summary>Hat Issue AKey schon einen verknüpften Branch, diesen (Found); gibt es ABranch auf dem Server,
+    /// Exists; sonst ABranch vom Kopf von ABase (fehlt sie, vom Standard-Branch) anlegen und verknüpfen.</summary>
+    function LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch, ABase: string): TAtlasTrackerBranchLink;
   end;
 
   /// <summary>Unteraufgaben anlegen und Issues verknüpfen (#1279); optional, die Vorschau fragt mit Supports. Der
@@ -561,6 +615,34 @@ type
     Transitions: TArray<TAtlasTrackerTransition>;
   end;
 
+  /// <summary>Wo GitHub den Zustand führt (#2134, issues.github.*): ToProject = im Projektfeld „Status“ (Projects
+  /// v2), wenn das Issue in einem Projekt liegt, sonst als Label.</summary>
+  TAtlasTrackerGitHubState = record
+    ToProject: Boolean;
+    /// <summary>Projekt „owner/nummer“ bei mehreren Projekten und für die Aufnahme; '' = erstes.</summary>
+    Project: string;
+    /// <summary>Issues ohne Projekt in Project aufnehmen.</summary>
+    AddToProject: Boolean;
+    /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138).</summary>
+    LinkBranch: Boolean;
+  end;
+
+  /// <summary>Zustand im Projekt (#2134) nach einem Schreibzugriff, für die Meldung: Projekt '' = kein Projekt
+  /// berührt.</summary>
+  TAtlasTrackerProjectStatus = record
+    Project: string;
+    Before: string;
+    After: string;
+    /// <summary>Das Issue liegt in mehreren Projekten; Project ist das gewählte.</summary>
+    Several: Boolean;
+    /// <summary>Das Issue wurde erst ins Projekt aufgenommen.</summary>
+    Added: Boolean;
+    /// <summary>Projekte nicht lesbar (Berechtigung „project“ fehlt); der Zustand ging als Label.</summary>
+    Denied: Boolean;
+    /// <summary>Zustand ohne passende Option im Statusfeld; '' sonst.</summary>
+    MissingOption: string;
+  end;
+
   /// <summary>Eine Änderung an einem Issue (#1266): Zustand, Zuständigkeit und Kommentar in einem Schritt.</summary>
   TAtlasTrackerWrite = record
     /// <summary>Name des Zustandsfeldes (YouTrack, z. B. "State" oder "Status"); GitHub ohne Bedeutung.</summary>
@@ -593,6 +675,8 @@ type
     /// <summary>Close = Duplicate: Kommentar, falls der Tracker „Duplikat“ nicht annimmt und als „nicht geplant“
     /// schließt (ältere GitHub-Enterprise-Server); '' = der Kommentar nennt das Duplikat schon.</summary>
     DuplicateNote: string;
+    /// <summary>Wo GitHub den Zustand führt (#2134).</summary>
+    GitHub: TAtlasTrackerGitHubState;
     class function Empty: TAtlasTrackerWrite; static;
     /// <summary>Nur ein Kommentar.</summary>
     class function CommentOnly(const AText: string): TAtlasTrackerWrite; static;
@@ -613,6 +697,8 @@ type
     /// <summary>Geschrieben, aber auf einem Ersatzweg (#2135: „Duplikat“ abgelehnt, als „nicht geplant“ mit
     /// Kommentar geschlossen).</summary>
     Fallback: Boolean;
+    /// <summary>Zustand im Projekt (#2134, GitHub).</summary>
+    Project: TAtlasTrackerProjectStatus;
     class function Ok: TAtlasTrackerWriteResult; static;
     class function Failed(AError: TAtlasCiFetchError; AStatus: Integer;
       const AMessage: string): TAtlasTrackerWriteResult; static;
@@ -1053,6 +1139,7 @@ begin
   Result.Status := 0;
   Result.Message := '';
   Result.Fallback := False;
+  Result.Project := Default(TAtlasTrackerProjectStatus);
 end;
 
 class function TAtlasTrackerWriteResult.Failed(AError: TAtlasCiFetchError; AStatus: Integer;
@@ -1062,6 +1149,7 @@ begin
   Result.Status := AStatus;
   Result.Message := AMessage;
   Result.Fallback := False;
+  Result.Project := Default(TAtlasTrackerProjectStatus);
 end;
 
 function TAtlasTrackerWriteResult.Succeeded: Boolean;
@@ -1076,6 +1164,35 @@ begin
   Result := Default(TAtlasTrackerDevelopment);
   Result.Pulls := nil;
   Result.Changes := nil;
+  Result.LinkedBranches := nil;
+end;
+
+{ TAtlasTrackerBranchLink }
+
+class function TAtlasTrackerBranchLink.Make(AOutcome: TAtlasTrackerBranchLinkOutcome;
+  const ABranch: string): TAtlasTrackerBranchLink;
+begin
+  Result := Default(TAtlasTrackerBranchLink);
+  Result.Outcome := AOutcome;
+  Result.Branch := ABranch;
+  Result.Error := TAtlasCiFetchError.None;
+end;
+
+class function TAtlasTrackerBranchLink.Failure(AError: TAtlasCiFetchError;
+  const AMessage: string): TAtlasTrackerBranchLink;
+begin
+  Result := Make(TAtlasTrackerBranchLinkOutcome.Failed, '');
+  if AError = TAtlasCiFetchError.Unauthorized then
+  begin
+    Result.Outcome := TAtlasTrackerBranchLinkOutcome.Denied;
+  end;
+  Result.Error := AError;
+  Result.Message := AMessage;
+end;
+
+function TAtlasTrackerBranchLink.OnServer: Boolean;
+begin
+  Result := Outcome in [TAtlasTrackerBranchLinkOutcome.Created, TAtlasTrackerBranchLinkOutcome.Found];
 end;
 
 { TAtlasTrackerTarget }

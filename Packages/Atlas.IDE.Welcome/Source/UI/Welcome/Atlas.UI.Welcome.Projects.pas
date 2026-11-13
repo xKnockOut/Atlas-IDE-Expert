@@ -189,6 +189,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Welcome.QuickActions.Texts,
   System.UITypes,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Diagnostics.MainThread,

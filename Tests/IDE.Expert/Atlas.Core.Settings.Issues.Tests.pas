@@ -40,6 +40,8 @@ type
     procedure IssuesSyncOptions;
     /// <summary>Zeiterfassung (#1267): ab Werk aus, Leerlauf 10, Rundung 5, Grenzen, Speichern und Laden.</summary>
     [Test]
+    procedure IssuesGitHubStateOptions;
+    [Test]
     procedure IssuesTimeOptions;
     /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
     [Test]
@@ -628,6 +630,36 @@ begin
   Assert.AreEqual('Behoben in Version, Ursache', mLoaded.IssuesEndFields);
   Assert.IsFalse(mLoaded.IssuesEndTime);
 end;
+procedure TAtlasIssueSettingsTests.IssuesGitHubStateOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  // #2134: Zustand bei GitHub im Projektfeld, ohne Projekt und ohne Aufnahme.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateProject, mSettings.IssuesGitHubStateTarget);
+  Assert.AreEqual('', mSettings.IssuesGitHubProject);
+  Assert.IsFalse(mSettings.IssuesGitHubAddToProject);
+  mSettings.IssuesGitHubStateTarget := ' LABEL ';
+  mSettings.IssuesGitHubProject := ' beispiel/4 ';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateLabel, mSettings.IssuesGitHubStateTarget);
+  Assert.AreEqual('beispiel/4', mSettings.IssuesGitHubProject);
+  mSettings.IssuesGitHubStateTarget := 'beides';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateProject, mSettings.IssuesGitHubStateTarget,
+    'unbekannt = Vorgabe');
+  mSettings.IssuesGitHubStateTarget := TAtlasPluginSettings.cIssuesGitHubStateLabel;
+  mSettings.IssuesGitHubAddToProject := True;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateLabel, mLoaded.IssuesGitHubStateTarget);
+  Assert.AreEqual('beispiel/4', mLoaded.IssuesGitHubProject);
+  Assert.IsTrue(mLoaded.IssuesGitHubAddToProject);
+end;
+
 procedure TAtlasIssueSettingsTests.IssuesTimeOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;

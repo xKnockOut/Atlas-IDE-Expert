@@ -178,7 +178,14 @@ For exports, reports, generated code or JSON a test checks the result against a 
 - Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
 - Messages are German, English with `TApproval.English := True`.
 
-Setting: `tests.approvalFolder` (atlas.json)
+In the IDE (Tests module, `tests.approvalFiles`):
+
+- If a test fails with this message, its test mark shows “Difference · Compare”, without an approved file “New · Compare”. The same “Compare” button appears in the hover of the failure and on the *Test results* card.
+- The comparison shows the approved file on the left and the received file on the right (lines matched as for expected and actual, #1779). *Accept as new expectation* replaces the approved file with the received file and deletes it; the next run is green. *Go to test* jumps to the method header.
+- *Delete leftover .received files* (Atlas menu, command palette) looks in the approval folder of the test project that ran last (without a run, the active project), deletes all `*.received.*` there after asking and offers to add `*.received.*` to the nearest `.gitignore` if it has no line for them yet.
+- `tests.approvalFiles` off: no special mark, no command; the helper unit keeps working, its failures show as ordinary failures.
+
+Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
 
 ### Test duration and slow tests (#1772)
 
@@ -196,7 +203,9 @@ Settings: `tests.showDuration`, `tests.slowMs`
 - *Atlas problems* gets a warning at the method header, “Test TKontoTests.Bucht does not free memory: 40 bytes (leak)”, source DUnitX.
 - After the run the messages view says how many tests passed with a leak and how many bytes were not freed in total.
 - A leak in setup or teardown counts for the test in which it happened.
-- `tests.leaks` off: the result stays as DUnitX reports it (failure, red).
+- Leaks at program end that belong to no test (objects the test program only reports as not freed when it exits) get one line in the messages view: “Tests: Leaks at program end, not tied to a test: 3 blocks (TStringList x 2, TKonto x 1).” Atlas reads the FastMM report (`<program>_MemoryManager_EventLog.txt` next to the EXE, if the run wrote it), otherwise the program's output.
+- If the test program has no leak monitor, the rule `dunitx-leak-monitor` reports a hint at the `DUnitX.TestFramework` entry of the .dpr. The quick fix adds `DUnitX.MemoryLeakMonitor.FastMM4` (it also works with the RTL memory manager, without `FastMM4.pas`), or `DUnitX.MemoryLeakMonitor.FastMM5` with FastMM5. “Set up leak check…” sets up the memory manager itself.
+- `tests.leaks` off: the result stays as DUnitX reports it (failure, red), and the line about leaks at program end is left out.
 
 Setting: `tests.leaks`
 
@@ -442,6 +451,50 @@ Settings: `debug.eventLog`, `debug.eventLogColors`
 - “Disable/Enable/Delete all logpoints” only touch the breakpoint group `Atlas.Logpunkte`
 
 Settings: `debug.logpoints`, `debug.logpointPrefix`
+
+## Debug: no source
+
+- When the debugger stops in a routine without source (the IDE shows the CPU window), a small window without focus appears at the top right: routine, module, address, unit and reason
+- Reasons: debug DCUs off (Delphi library), unit compiled with `{$D-}`, only DCU/BPL available, source not in the search path, system code (Windows)
+- Ways out depending on the reason: “Turn on debug DCUs and rebuild” (only in the Debug configuration, with confirmation; the session ends, then Atlas builds and starts), “Back to my code” (runs until it returns to own code), “Find source …” (the folder is remembered for the project, the unit opens), “Keep CPU window”
+- “Do not show for this unit again” extends `debug.noSourcePage.ignoredUnits`
+- With “Just my code” (`debug.justMyCode`) the window only appears for exceptions
+
+Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
+## Debug: restart
+
+- “Atlas: Restart” with Ctrl+Shift+F2, in the Atlas menu or in the command palette
+- Steps: stop (only while the program runs), build (only when something changed since the last build), start, back to the place in the editor
+- A small bar without focus at the top right shows the steps and their duration, for example “Stop 0.3 s ✓ · Build 2.1 s ✓ · Start …”
+- If a step fails, the run stops and the bar names the reason
+- With `debug.restart.reenableBreakpoints` Atlas turns breakpoints back on before the start that were on when the last session started
+
+Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
+
+## Debug: leak and crash reports (#74)
+
+- Copy a report, then Atlas > “Paste crash or leak report …” (also in the command palette): Atlas reads FastMM logs (FullDebugMode), the `ReportMemoryLeaksOnShutdown` message, reports from madExcept, EurekaLog 6/7 and JclDebug, and an exception message on its own (“Access violation at address … in module …”)
+- The message view shows the call stack of the crashed thread and the other threads, or the stack of each leak group (same class, same stack); lines in the project jump to the source on double-click
+- The editor shows diagnostics at the locations: a warning at the creation site of each leak group (“Leak: TStringList × 2 (40 bytes) is created here”), for a crash a warning at the crash site and hints at the other own lines of the stack; the source is the tool (FastMM, madExcept, …)
+- Stack lines without debug information are resolved through the map file next to the EXE of the Debug configuration (linker option “Map file: Detailed”); if the map does not match the EXE (different entry point or code size), Atlas says so
+- “Remove runtime report markers” removes the diagnostics again; a new report replaces the old one
+- AI assistants get the same analysis as the MCP tools `analyze_report` and `resolve_address`
+
+## Debug: reattach to process
+
+- When the IDE attaches to a running process (Run › Attach to Process …), Atlas remembers path and name of the EXE for the project group
+- “Reattach to <name>” in the Run menu, in the command palette and with Shift+Alt+P:
+  - exactly one running process with the same path: attached at once, without a dialog
+  - several, or only the same name in another place (another version): choice with PID, start time and command line
+  - none: offer to wait for the start
+- “Attach when started …” in the Run menu and in the command palette: choose the EXE (default: the last remembered one, otherwise the output file of the active project); Atlas polls the process list in the background and attaches as soon as it starts
+- While waiting the status field shows “Waiting for … (Cancel)”; a click cancels, so does closing or switching the project group
+- When an attached process ends, the status field offers to reattach on its next start
+- Waiting misses the first milliseconds of the program (initialization); start it via the project's run parameters or a host application if you need them
+- Local processes only; processes of other users and services need an IDE with administrator rights
+
+Settings: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
 
 ## Debug: exceptions
 

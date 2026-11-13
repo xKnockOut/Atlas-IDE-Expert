@@ -43,6 +43,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.IDE.Tracker.Development,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.IssueLookups,
