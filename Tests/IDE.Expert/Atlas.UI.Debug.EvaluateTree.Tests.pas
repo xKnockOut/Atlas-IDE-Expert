@@ -5,7 +5,8 @@
 // auch während der neuen Auswertung, Abgleich ohne Neuaufbau (dieselben
 // Baumknoten nach neuem Wert, neuem Halt und entfernter Zeile), Darstellung je
 // Knoten (geändert, grau, fett), Platzhalter ohne Schlüssel, Suche nach
-// Schlüssel, Schlüssel bleiben nach vielen Abgleichen richtig.
+// Schlüssel, Schlüssel bleiben nach vielen Abgleichen richtig; Filter und
+// Hervorhebung der Suche im Fenster „Variablen“ (#853), Zuklappen.
 
 interface
 
@@ -40,6 +41,8 @@ type
     procedure LooksAndPlaceholders;
     [Test]
     procedure KeysSurviveManyStops;
+    [Test]
+    procedure VisibleEmphasisAndCollapse;
   end;
 
 implementation
@@ -331,6 +334,46 @@ begin
     Assert.AreEqual('P'#1'Y', mHost.Sync.KeyOf(mHost.Tree.Items[2]));
     Assert.AreEqual('Q', mHost.Sync.KeyOf(mHost.Tree.Items[3]));
     Assert.AreEqual('Y = 201', mHost.Tree.Items[2].Text);
+  finally
+    mHost.Free;
+    mList.Free;
+  end;
+end;
+
+procedure TAtlasEvalTreeSyncTests.VisibleEmphasisAndCollapse;
+var
+  mHost: TTreeHost;
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+begin
+  mList := TAtlasEvalList.Create;
+  mHost := TTreeHost.Create;
+  try
+    mNode := mList.Add('Kunde');
+    mNode.Expanded := True;
+    mList.SetResult(mNode, True, '(Name: ''Meier''; Ort: ''Berlin'')');
+    mList.SetResult(mList.Add('Summe'), True, '42');
+    mHost.Sync.Visible :=
+      function(ANode: TAtlasEvalNode): Boolean
+      begin
+        Result := ANode.Name <> 'Name';
+      end;
+    mHost.Sync.Emphasis :=
+      function(ANode: TAtlasEvalNode): Boolean
+      begin
+        Result := ANode.Name = 'Ort';
+      end;
+    mHost.Sync.Sync(mList);
+    Assert.AreEqual(3, Integer(mHost.Tree.Items.Count), 'Kunde, Ort, Summe');
+    Assert.AreEqual('Ort = ''Berlin''', mHost.Tree.Items[1].Text);
+    Assert.IsTrue(mHost.Sync.InfoOf(mHost.Tree.Items[1]).Bold, 'Treffer fett');
+    Assert.IsFalse(mHost.Sync.InfoOf(mHost.Tree.Items[0]).Bold);
+    Assert.IsTrue(mHost.Tree.Items[0].Expanded);
+    mNode.Expanded := False;
+    mHost.Sync.Visible := nil;
+    mHost.Sync.Sync(mList);
+    Assert.IsFalse(mHost.Tree.Items[0].Expanded, 'zugeklappt wie die Liste');
+    Assert.AreEqual(4, Integer(mHost.Tree.Items.Count), 'ohne Filter alle');
   finally
     mHost.Free;
     mList.Free;
