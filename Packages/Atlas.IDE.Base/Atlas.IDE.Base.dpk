@@ -656,6 +656,7 @@ contains
   Atlas.IDE.Problems.Painter in 'Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas',
   Atlas.IDE.Problems.MessageList in 'Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas',
   Atlas.IDE.Problems.Controller in 'Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas',
+  Atlas.UI.Problems.Frame.List in 'Source\UI\Problems\Atlas.UI.Problems.Frame.List.pas',
   Atlas.UI.Problems.Frame in 'Source\UI\Problems\Atlas.UI.Problems.Frame.pas' {AtlasProblemsFrame: TFrame},
   Atlas.UI.Problems.Explain in 'Source\UI\Problems\Atlas.UI.Problems.Explain.pas',
   Atlas.IDE.Problems.Window in 'Source\IDE\Problems\Atlas.IDE.Problems.Window.pas',

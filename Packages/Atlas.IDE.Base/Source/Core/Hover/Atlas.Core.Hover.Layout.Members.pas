@@ -9,7 +9,6 @@ interface
 uses
   System.Types,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.View,
@@ -66,6 +65,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Palette,
   System.SysUtils,
   System.Math,
   System.StrUtils;
@@ -82,8 +82,8 @@ begin
   FMembers := TAtlasHoverScroll.None;
 end;
 
-procedure TAtlasHoverMembersPainter.ToggleChip(const ACaption: string; AOn: Boolean; AToggle: TAtlasHoverPublishedToggle;
-  AX: Integer);
+procedure TAtlasHoverMembersPainter.ToggleChip(const ACaption: string; AOn: Boolean;
+  AToggle: TAtlasHoverPublishedToggle; AX: Integer);
 var
   mTextFace: TAtlasHoverFace;
   mCell: TRect;
@@ -91,7 +91,7 @@ var
   mLineColor, mTextColor: TAtlasColor;
 begin
   // Schalter als umrandetes Kästchen: an in Akzentfarbe, aus gedämpft.
-  mTextFace := Face(TAtlasHoverFont.SmallUi, False);
+  mTextFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mCell := Rect(AX, FY, AX + Width(mTextFace, ACaption) + Scale(cAtlasChipPad), FY + Height(mTextFace) + Scale(2));
   if AOn then
   begin
@@ -121,7 +121,7 @@ var
   mSmallFace: TAtlasHoverFace;
   mItem: TAtlasHoverItem;
 begin
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   Result := Rect(FX, FY + Scale(1), FX + Width(mSmallFace, ACaption) + Scale(cAtlasChipPad),
     FY + Height(mSmallFace) + Scale(3));
   mItem := NewItem(TAtlasHoverItemKind.Frame, Result, ALineColor);
@@ -167,7 +167,7 @@ var
   mItem: TAtlasHoverItem;
 begin
   // Abschnittstitel mit ▾ (offen) bzw. ▸ (zu); Klick klappt um.
-  mHeadFace := Face(TAtlasHoverFont.SmallMono, True);
+  mHeadFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, True, False);
   if ASection.Collapsed then
   begin
     mCaption := AnsiUpperCase(ASection.Caption) + ' ▸';
@@ -192,8 +192,8 @@ var
   mMonoFace, mSmallFace: TAtlasHoverFace;
 begin
   // Spalten nach den breitesten gezeigten Werten; „deklariert in“ rechtsbündig.
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mGap := Scale(12);
   Result.NameX := FLeft;
   Result.TypeX := Result.NameX + Width(mSmallFace, FInput.Texts.PublishedName);
@@ -215,7 +215,7 @@ var
   mMonoFace: TAtlasHoverFace;
   mTag: TRect;
 begin
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
   FX := AX;
   if AMember.DefaultKind in [hdExplicit, hdImplicit] then
   begin
@@ -245,9 +245,9 @@ procedure TAtlasHoverMembersPainter.MemberRow(const AMember: TAtlasHoverMember; 
 var
   mMonoFace, mSmallFace, mSmallMonoFace: TAtlasHoverFace;
 begin
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  mSmallMonoFace := Face(TAtlasHoverFont.SmallMono, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
+  mSmallMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
   AddText(AColumns.NameX, FY, AMember.Name, mMonoFace, FColors.Text);
   AddText(AColumns.TypeX, FY, AMember.TypeName, mMonoFace, FColors.Accent);
   if not AEvents then
@@ -320,7 +320,7 @@ begin
   mColumns := MemberColumns(mRows, mShown);
   if not AEvents then
   begin
-    mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+    mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
     AddText(mColumns.NameX, FY, FInput.Texts.PublishedName, mSmallFace, FColors.Muted);
     AddText(mColumns.TypeX, FY, FInput.Texts.PublishedType, mSmallFace, FColors.Muted);
     AddText(mColumns.DefaultX, FY, FInput.Texts.PublishedDefault, mSmallFace, FColors.Muted);
@@ -343,7 +343,7 @@ var
   mChipsWidth, mInheritedWidth: Integer;
 begin
   // „published: 38 Properties · 24 Ereignisse“, rechts die Schalter; ohne Platz darunter.
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mSummary := Format(FInput.Texts.PublishedSummary, [FData.MemberCount(False), FData.MemberCount(True)]);
   mInheritedWidth := Width(mSmallFace, FInput.Texts.PublishedInherited) + Scale(cAtlasChipPad);
   mChipsWidth := mInheritedWidth + Scale(6) + Width(mSmallFace, FInput.Texts.PublishedOnlyDefaults) +
@@ -368,9 +368,9 @@ var
   mCell: TRect;
 begin
   // Standard-Property: „default“ heißt an einer Array-Property nicht Vorgabewert.
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
-  mHeadFace := Face(TAtlasHoverFont.SmallMono, True);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
+  mHeadFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, True, False);
   AddText(FLeft, FY, AnsiUpperCase(FInput.Texts.PublishedArrayProperty), mHeadFace, FColors.Muted);
   Inc(FY, Height(mHeadFace) + Scale(5));
   mName := FData.DefaultProperty;
@@ -400,8 +400,8 @@ var
   mItem: TAtlasHoverItem;
 begin
   // Rollbereich (#1841): Grenze aus Zeilen und Platz, Bausteine verschieben, verdeckte Klickflächen streichen.
-  if not FMembers.Fit(FInput.Members, ATop, FY, FInput.Width, Height(Face(TAtlasHoverFont.Mono, False)) +
-    Scale(3)) then
+  if not FMembers.Fit(FInput.Members, ATop, FY, FInput.Width,
+    Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False)) + Scale(3)) then
   begin
     Exit;
   end;

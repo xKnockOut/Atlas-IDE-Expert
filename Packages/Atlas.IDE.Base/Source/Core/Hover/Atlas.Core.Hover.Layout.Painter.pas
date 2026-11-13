@@ -12,7 +12,6 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.View,
   Atlas.Core.Hover.Layout.Contract;
 
 type
@@ -40,10 +39,10 @@ type
     FFlowFont: TAtlasHoverFont;
     FNoWrap: Boolean;
     function Scale(AValue: Integer): Integer;
-    function Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace;
     function Height(const AFace: TAtlasHoverFace): Integer;
     function Width(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    function NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect; AColor: TAtlasColor): TAtlasHoverItem;
+    class function NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect; AColor: TAtlasColor): TAtlasHoverItem;
+      static;
     procedure Add(const AItem: TAtlasHoverItem);
     procedure Insert(AAt: Integer; const AItem: TAtlasHoverItem);
     procedure AddHit(AKind: TAtlasHoverHitKind; AIndex: Integer; const ARect: TRect);
@@ -81,6 +80,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Hover.View,
   System.SysUtils,
   System.Math;
 
@@ -128,11 +128,6 @@ begin
   Result := (AValue * FInput.PPI + 48) div 96;
 end;
 
-function TAtlasHoverPainter.Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace;
-begin
-  Result := TAtlasHoverFace.Create(AFont, ABold, False);
-end;
-
 function TAtlasHoverPainter.Height(const AFace: TAtlasHoverFace): Integer;
 begin
   Result := FMeasure.TextHeight(AFace);
@@ -143,7 +138,8 @@ begin
   Result := FMeasure.TextWidth(AFace, AText);
 end;
 
-function TAtlasHoverPainter.NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect; AColor: TAtlasColor): TAtlasHoverItem;
+class function TAtlasHoverPainter.NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect;
+  AColor: TAtlasColor): TAtlasHoverItem;
 begin
   Result := Default(TAtlasHoverItem);
   Result.Kind := AKind;
@@ -153,7 +149,7 @@ begin
   Result.PenWidth := 1;
   Result.HotPenWidth := 1;
   Result.HotIndex := -1;
-  Result.Face := Face(TAtlasHoverFont.Ui, False);
+  Result.Face := TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False);
 end;
 
 procedure TAtlasHoverPainter.Add(const AItem: TAtlasHoverItem);
@@ -209,7 +205,7 @@ begin
   begin
     Exit;
   end;
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   Inc(FY, Height(mSmallFace) + Scale(2));
   AddText(FLeft, FY, AText, mSmallFace, FColors.Muted);
 end;
@@ -247,7 +243,7 @@ begin
   mBottom := FY + FMeasure.BlockHeight(AText, FRight - FLeft);
   if AMaxLines > 0 then
   begin
-    mBottom := Min(mBottom, FY + AMaxLines * Height(Face(TAtlasHoverFont.Ui, False)));
+    mBottom := Min(mBottom, FY + AMaxLines * Height(TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False)));
   end;
   mItem := NewItem(TAtlasHoverItemKind.Block, Rect(FLeft, FY, FRight, mBottom), AColor);
   mItem.Text := AText;
@@ -255,7 +251,8 @@ begin
   FY := mBottom + Scale(6);
 end;
 
-procedure TAtlasHoverPainter.Flow(const AText: string; AColor: TAtlasColor; ABold: Boolean; const AHot: TAtlasHoverHotSpot);
+procedure TAtlasHoverPainter.Flow(const AText: string; AColor: TAtlasColor; ABold: Boolean;
+  const AHot: TAtlasHoverHotSpot);
 var
   mTextFace: TAtlasHoverFace;
   mTextWidth, mTextHeight: Integer;
@@ -263,7 +260,7 @@ var
   mItem: TAtlasHoverItem;
 begin
   // Fließtext mit Umbruch.
-  mTextFace := Face(FFlowFont, ABold);
+  mTextFace := TAtlasHoverFace.Create(FFlowFont, ABold, False);
   mTextWidth := Width(mTextFace, AText);
   mTextHeight := Height(mTextFace);
   if not FNoWrap and (FX + mTextWidth > FRight) and (FX > FLeft) then
@@ -295,7 +292,8 @@ begin
   Flow(AText, AColor, ABold, NoHot);
 end;
 
-procedure TAtlasHoverPainter.FlowLink(const AText: string; AColor: TAtlasColor; AKind: TAtlasHoverHitKind; ACode: Integer);
+procedure TAtlasHoverPainter.FlowLink(const AText: string; AColor: TAtlasColor; AKind: TAtlasHoverHitKind;
+  ACode: Integer);
 var
   mHot: TAtlasHoverHotSpot;
 begin

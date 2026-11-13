@@ -54,6 +54,7 @@ contains
   Atlas.UI.Architecture.Slider in 'Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas',
   Atlas.UI.Architecture.Assignment in 'Source\UI\Architecture\Atlas.UI.Architecture.Assignment.pas',
   Atlas.UI.Architecture.RoleUnitDialog in 'Source\UI\Architecture\Atlas.UI.Architecture.RoleUnitDialog.pas',
+  Atlas.UI.Architecture.Texts in 'Source\UI\Architecture\Atlas.UI.Architecture.Texts.pas',
   Atlas.UI.Architecture.Frame in 'Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas' {AtlasArchitectureFrame: TFrame},
   Atlas.IDE.Architecture.Window in 'Source\IDE\Architecture\Atlas.IDE.Architecture.Window.pas',
   Atlas.IDE.Architecture.Service in 'Source\IDE\Architecture\Atlas.IDE.Architecture.Service.pas',

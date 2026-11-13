@@ -764,6 +764,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Popup.Window` | `UI/Popup/Atlas.UI.Popup.Window.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Problems.Explain` | `UI/Problems/Atlas.UI.Problems.Explain.pas` | „Regel erklären“ in „Atlas-Prüfung“ (Base), #1455 |
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
+| `Atlas.UI.Problems.Frame.List` | `UI/Problems/Atlas.UI.Problems.Frame.List.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.ScopeBox` | `UI/Problems/Atlas.UI.Problems.ScopeBox.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.KindIcon` | `UI/Problems/Atlas.UI.Problems.KindIcon.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.Strings` | `UI/Problems/Atlas.UI.Problems.Strings.pas` | Ordner `UI/Problems` |
@@ -1130,6 +1131,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.ImageMarkup` | `UI/Tracker/Atlas.UI.Tracker.ImageMarkup.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueBoxes` | `UI/Tracker/Atlas.UI.Tracker.IssueBoxes.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.IssueFrame.Contract` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Contract.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueTip` | `UI/Tracker/Atlas.UI.Tracker.IssueTip.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
@@ -1276,6 +1278,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Architecture.Assignment` | `UI/Architecture/Atlas.UI.Architecture.Assignment.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.RoleUnitDialog` | `UI/Architecture/Atlas.UI.Architecture.RoleUnitDialog.pas` | Ordner `UI/Architecture`: Dialog Unit nach Architekturrolle, #1821 |
 | `Atlas.UI.Architecture.Frame` | `UI/Architecture/Atlas.UI.Architecture.Frame.pas` | Ordner `UI/Architecture` |
+| `Atlas.UI.Architecture.Texts` | `UI/Architecture/Atlas.UI.Architecture.Texts.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Map` | `UI/Architecture/Atlas.UI.Architecture.Map.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Slider` | `UI/Architecture/Atlas.UI.Architecture.Slider.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Hotspots.Chart` | `UI/Hotspots/Atlas.UI.Hotspots.Chart.pas` | Ordner `UI/Hotspots` |

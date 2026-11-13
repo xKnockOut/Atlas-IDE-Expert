@@ -52,7 +52,6 @@ uses
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
-  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
@@ -208,6 +207,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Texts,

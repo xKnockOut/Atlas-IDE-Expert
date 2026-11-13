@@ -26,8 +26,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Text.DebugDisplay,
-  Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Debug.Visualizers.Format;
+  Atlas.Core.Debug.Visualizers;
 
 type
   TAtlasDisplayRule = record
@@ -110,6 +109,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.Visualizers.Format,
   Atlas.Core.Settings.VisualizerKinds;
 
 { TAtlasDisplayRule }
