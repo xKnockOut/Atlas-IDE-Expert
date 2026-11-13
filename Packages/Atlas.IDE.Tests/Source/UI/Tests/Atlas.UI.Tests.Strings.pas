@@ -33,7 +33,9 @@ type
     TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
     // Marke „getestet von“ (#1778).
     CoveredByOne, CoveredByMany, CoveredByNone, CoveredByPassed, CoveredByFailed, CoveredByPartial, CoveredByListTitle,
-    CoveredByIncomplete, SettingsCodeLensCoveredBy, SettingsTestsCoveredByDepth, SettingsTestsCoveredByPrivate);
+    CoveredByIncomplete, SettingsCodeLensCoveredBy, SettingsTestsCoveredByDepth, SettingsTestsCoveredByPrivate,
+    // Fehlschlag an der Assert-Zeile (#1771).
+    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline);
 
   TAtlasTestsStrings = class
   public
@@ -138,7 +140,10 @@ const
      '%s (unvollständig)',
      'Marke „getestet von“ an Methoden normaler Units (Klick führt genau diese Tests aus)',
      'Ebenen vom Test bis zur Methode (1 bis 5):',
-     'Auch private und geschützte Methoden'),
+     'Auch private und geschützte Methoden',
+     'erwartet %s, erhalten %s',
+     'Fehlschlag an der Assert-Zeile zeigen (Stacktrace bzw. eindeutiger Assert), sonst am Methodenkopf',
+     'Dahinter kurz „erwartet …, erhalten …“'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -227,7 +232,10 @@ const
      '%s (incomplete)',
      '“Tested by” mark on methods of normal units (a click runs exactly these tests)',
      'Levels from the test to the method (1 to 5):',
-     'Private and protected methods too'));
+     'Private and protected methods too',
+     'expected %s, got %s',
+     'Show a failure at the assert line (stack trace or unique assert), otherwise at the method header',
+     'Short “expected …, got …” after it'));
 
 { TAtlasTestsStrings }
 

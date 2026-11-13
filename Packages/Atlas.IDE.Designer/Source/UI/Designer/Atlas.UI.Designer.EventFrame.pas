@@ -36,16 +36,21 @@ type
       Combo: TComboBox;
       Items: TArray<string>;
     end;
+
+    /// <summary>Steuerelemente: Leiste mit Filter, Ereignis, „nur Befunde“, Gruppe; Liste mit Kontextmenü.</summary>
+    TParts = record
+      Top: TFlowPanel;
+      Filter: TEdit;
+      Event: TComboBox;
+      OnlyFindings: TCheckBox;
+      Group: TComboBox;
+      List: TListView;
+      Menu: TPopupMenu;
+      RemoveItem: TMenuItem;
+    end;
   private
     FComboFills: TArray<TComboFill>;
-    FTop: TFlowPanel;
-    FFilter: TEdit;
-    FEvent: TComboBox;
-    FOnlyFindings: TCheckBox;
-    FGroup: TComboBox;
-    FList: TListView;
-    FMenu: TPopupMenu;
-    FRemoveItem: TMenuItem;
+    FParts: TParts;
     FRows: TArray<TAtlasEventRow>;
     /// <summary>Je Listeneintrag der Index in FRows; -1 für eine Gruppenüberschrift.</summary>
     FItemRows: TArray<Integer>;
@@ -143,55 +148,56 @@ begin
   FLastJump := -1;
   // Fließende Leiste: Ist das Fenster schmal, brechen Häkchen und Auswahllisten in weitere Zeilen um, statt
   // den Filter auf null zu schrumpfen.
-  FTop := TFlowPanel.Create(Self);
-  FTop.Parent := Self;
-  FTop.Align := alTop;
-  FTop.BevelOuter := bvNone;
-  FTop.ShowCaption := False;
-  FTop.AutoWrap := True;
-  FTop.AutoSize := True;
-  FFilter := TEdit.Create(Self);
-  FFilter.Parent := FTop;
-  FFilter.AlignWithMargins := True;
-  FFilter.Width := MulDiv(cFilterWidth, CurrentPPI, cBasePpi);
-  FFilter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StFilter);
-  FFilter.OnChange := OptionsChanged;
-  FOnlyFindings := TCheckBox.Create(Self);
-  FOnlyFindings.Parent := FTop;
-  FOnlyFindings.AlignWithMargins := True;
-  FOnlyFindings.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmOnlyFindings);
-  FOnlyFindings.Width := TextWidthIn(Font, FOnlyFindings.Caption) + MulDiv(cCheckBoxBox, CurrentPPI, cBasePpi);
-  FOnlyFindings.Height := FFilter.Height;
-  FOnlyFindings.OnClick := OptionsChanged;
-  FGroup := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupComponent),
+  FParts.Top := TFlowPanel.Create(Self);
+  FParts.Top.Parent := Self;
+  FParts.Top.Align := alTop;
+  FParts.Top.BevelOuter := bvNone;
+  FParts.Top.ShowCaption := False;
+  FParts.Top.AutoWrap := True;
+  FParts.Top.AutoSize := True;
+  FParts.Filter := TEdit.Create(Self);
+  FParts.Filter.Parent := FParts.Top;
+  FParts.Filter.AlignWithMargins := True;
+  FParts.Filter.Width := MulDiv(cFilterWidth, CurrentPPI, cBasePpi);
+  FParts.Filter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StFilter);
+  FParts.Filter.OnChange := OptionsChanged;
+  FParts.OnlyFindings := TCheckBox.Create(Self);
+  FParts.OnlyFindings.Parent := FParts.Top;
+  FParts.OnlyFindings.AlignWithMargins := True;
+  FParts.OnlyFindings.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmOnlyFindings);
+  FParts.OnlyFindings.Width := TextWidthIn(Font, FParts.OnlyFindings.Caption) +
+    MulDiv(cCheckBoxBox, CurrentPPI, cBasePpi);
+  FParts.OnlyFindings.Height := FParts.Filter.Height;
+  FParts.OnlyFindings.OnClick := OptionsChanged;
+  FParts.Group := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupComponent),
     TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupEvent),
     TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupHandler)]);
-  FEvent := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmAllEvents)]);
-  FMenu := TPopupMenu.Create(Self);
-  FMenu.OnPopup := MenuPopup;
+  FParts.Event := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmAllEvents)]);
+  FParts.Menu := TPopupMenu.Create(Self);
+  FParts.Menu.OnPopup := MenuPopup;
   AddMenuItem(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmShow), ShowClick);
   AddMenuItem(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmRename), RenameClick);
-  FRemoveItem := AddMenuItem(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmRemove), RemoveClick);
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.ViewStyle := vsReport;
-  FList.RowSelect := True;
-  FList.ReadOnly := True;
-  FList.HideSelection := False;
+  FParts.RemoveItem := AddMenuItem(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmRemove), RemoveClick);
+  FParts.List := TListView.Create(Self);
+  FParts.List.Parent := Self;
+  FParts.List.Align := alClient;
+  FParts.List.ViewStyle := vsReport;
+  FParts.List.RowSelect := True;
+  FParts.List.ReadOnly := True;
+  FParts.List.HideSelection := False;
   // Keine Gruppen von Windows: Deren Köpfe folgen nicht dem IDE-Thema (dunkelblau auf dunkel). Überschriften
   // sind eigene Zeilen, gezeichnet in ListCustomDrawItem.
-  FList.PopupMenu := FMenu;
+  FParts.List.PopupMenu := FParts.Menu;
   for mIndex := 0 to High(cColumnWidths) do
   begin
-    mColumn := FList.Columns.Add;
+    mColumn := FParts.List.Columns.Add;
     mColumn.Caption := TAtlasDesignerViewStrings.Text(cColumnTexts[mIndex]);
     mColumn.Width := MulDiv(cColumnWidths[mIndex], CurrentPPI, cBasePpi);
   end;
-  FList.Columns[cLinesColumn].Alignment := taRightJustify;
-  FList.OnDblClick := ListDblClick;
-  FList.OnCustomDrawItem := ListCustomDrawItem;
-  FList.OnSelectItem := ListSelectItem;
+  FParts.List.Columns[cLinesColumn].Alignment := taRightJustify;
+  FParts.List.OnDblClick := ListDblClick;
+  FParts.List.OnCustomDrawItem := ListCustomDrawItem;
+  FParts.List.OnSelectItem := ListSelectItem;
 end;
 
 procedure TAtlasEventFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -209,7 +215,7 @@ var
   mItem: string;
 begin
   Result := TComboBox.Create(Self);
-  Result.Parent := FTop;
+  Result.Parent := FParts.Top;
   Result.AlignWithMargins := True;
   Result.Style := csDropDownList;
   Result.Width := MulDiv(cComboWidth, CurrentPPI, cBasePpi);
@@ -251,10 +257,10 @@ end;
 
 function TAtlasEventFrame.AddMenuItem(const ACaption: string; const AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FMenu);
+  Result := TMenuItem.Create(FParts.Menu);
   Result.Caption := ACaption;
   Result.OnClick := AOnClick;
-  FMenu.Items.Add(Result);
+  FParts.Menu.Items.Add(Result);
 end;
 
 procedure TAtlasEventFrame.OptionsChanged(Sender: TObject);
@@ -267,26 +273,26 @@ end;
 
 function TAtlasEventFrame.FilterText: string;
 begin
-  Result := Trim(FFilter.Text);
+  Result := Trim(FParts.Filter.Text);
 end;
 
 function TAtlasEventFrame.EventFilter: string;
 begin
   Result := '';
-  if FEvent.ItemIndex > 0 then
+  if FParts.Event.ItemIndex > 0 then
   begin
-    Result := FEvent.Items[FEvent.ItemIndex];
+    Result := FParts.Event.Items[FParts.Event.ItemIndex];
   end;
 end;
 
 function TAtlasEventFrame.OnlyFindings: Boolean;
 begin
-  Result := FOnlyFindings.Checked;
+  Result := FParts.OnlyFindings.Checked;
 end;
 
 function TAtlasEventFrame.Group: TAtlasEventGroup;
 begin
-  case FGroup.ItemIndex of
+  case FParts.Group.ItemIndex of
     1:
       Result := TAtlasEventGroup.Event;
     2:
@@ -315,24 +321,45 @@ var
   mCurrent, mEvent: string;
 begin
   mCurrent := EventFilter;
-  FEvent.Items.BeginUpdate;
+  FParts.Event.Items.BeginUpdate;
   try
-    while FEvent.Items.Count > 1 do
+    while FParts.Event.Items.Count > 1 do
     begin
-      FEvent.Items.Delete(1);
+      FParts.Event.Items.Delete(1);
     end;
     for mEvent in AEvents do
     begin
-      FEvent.Items.Add(mEvent);
+      FParts.Event.Items.Add(mEvent);
     end;
-    FEvent.ItemIndex := FEvent.Items.IndexOf(mCurrent);
-    if FEvent.ItemIndex < 0 then
+    FParts.Event.ItemIndex := FParts.Event.Items.IndexOf(mCurrent);
+    if FParts.Event.ItemIndex < 0 then
     begin
-      FEvent.ItemIndex := 0;
+      FParts.Event.ItemIndex := 0;
     end;
   finally
-    FEvent.Items.EndUpdate;
+    FParts.Event.Items.EndUpdate;
   end;
+end;
+
+/// <summary>Listeneintrag für ARow: Komponente, Klasse, Ereignis, Handler, Zeilen (leer ohne), Befund.</summary>
+procedure AddRowItem(AItems: TListItems; const ARow: TAtlasEventRow; const AFinding: string);
+var
+  mItem: TListItem;
+begin
+  mItem := AItems.Add;
+  mItem.Caption := ARow.Component;
+  mItem.SubItems.Add(ARow.ClassName);
+  mItem.SubItems.Add(ARow.Event);
+  mItem.SubItems.Add(ARow.Handler);
+  if ARow.Lines > 0 then
+  begin
+    mItem.SubItems.Add(IntToStr(ARow.Lines));
+  end
+  else
+  begin
+    mItem.SubItems.Add('');
+  end;
+  mItem.SubItems.Add(AFinding);
 end;
 
 procedure TAtlasEventFrame.ShowRows(const ARows: TArray<TAtlasEventRow>; const AEvents: TArray<string>;
@@ -346,11 +373,11 @@ var
   mIndex: Integer;
 begin
   FUpdating := True;
-  FList.Items.BeginUpdate;
+  FParts.List.Items.BeginUpdate;
   mHeaders := TStringList.Create;
   try
     FillEvents(AEvents);
-    FList.Items.Clear;
+    FParts.List.Items.Clear;
     FRows := ARows;
     FItemRows := nil;
     FLastJump := -1;
@@ -365,7 +392,7 @@ begin
     end;
     for mHeader := 0 to mHeaders.Count - 1 do
     begin
-      mItem := FList.Items.Add;
+      mItem := FParts.List.Items.Add;
       mItem.Caption := mHeaders[mHeader];
       FItemRows := FItemRows + [-1];
       for mIndex := 0 to High(ARows) do
@@ -375,26 +402,13 @@ begin
         begin
           Continue;
         end;
-        mItem := FList.Items.Add;
-        mItem.Caption := mRow.Component;
-        mItem.SubItems.Add(mRow.ClassName);
-        mItem.SubItems.Add(mRow.Event);
-        mItem.SubItems.Add(mRow.Handler);
-        if mRow.Lines > 0 then
-        begin
-          mItem.SubItems.Add(IntToStr(mRow.Lines));
-        end
-        else
-        begin
-          mItem.SubItems.Add('');
-        end;
-        mItem.SubItems.Add(AFinding(mRow));
+        AddRowItem(FParts.List.Items, mRow, AFinding(mRow));
         FItemRows := FItemRows + [mIndex];
       end;
     end;
   finally
     mHeaders.Free;
-    FList.Items.EndUpdate;
+    FParts.List.Items.EndUpdate;
     FUpdating := False;
   end;
 end;
@@ -402,11 +416,11 @@ end;
 function TAtlasEventFrame.SelectedRow(out ARow: TAtlasEventRow): Boolean;
 begin
   // Überschriften (FItemRows = -1) sind keine Zeile.
-  Result := (FList.Selected <> nil) and (FList.Selected.Index <= High(FItemRows)) and
-    (FItemRows[FList.Selected.Index] >= 0);
+  Result := (FParts.List.Selected <> nil) and (FParts.List.Selected.Index <= High(FItemRows)) and
+    (FItemRows[FParts.List.Selected.Index] >= 0);
   if Result then
   begin
-    ARow := FRows[FItemRows[FList.Selected.Index]];
+    ARow := FRows[FItemRows[FParts.List.Selected.Index]];
   end;
 end;
 
@@ -419,14 +433,14 @@ begin
     Exit;
   end;
   // Zweiter Doppelklick auf dieselbe Zeile: vom Handler zur Komponente.
-  if (FList.Selected.Index = FLastJump) and (mRow.Component <> '') and Assigned(FOnShow) then
+  if (FParts.List.Selected.Index = FLastJump) and (mRow.Component <> '') and Assigned(FOnShow) then
   begin
     FLastJump := -1;
     FOnShow(mRow);
   end
   else if Assigned(FOnJump) then
   begin
-    FLastJump := FList.Selected.Index;
+    FLastJump := FParts.List.Selected.Index;
     FOnJump(mRow);
   end;
 end;
@@ -438,11 +452,11 @@ var
   mItem: Integer;
 begin
   mHas := SelectedRow(mRow);
-  for mItem := 0 to FMenu.Items.Count - 1 do
+  for mItem := 0 to FParts.Menu.Items.Count - 1 do
   begin
-    FMenu.Items[mItem].Enabled := mHas;
+    FParts.Menu.Items[mItem].Enabled := mHas;
   end;
-  FRemoveItem.Enabled := mHas and (mRow.Finding in [TAtlasEventFinding.Empty, TAtlasEventFinding.Unassigned]);
+  FParts.RemoveItem.Enabled := mHas and (mRow.Finding in [TAtlasEventFinding.Empty, TAtlasEventFinding.Unassigned]);
 end;
 
 procedure TAtlasEventFrame.ShowClick(Sender: TObject);
@@ -500,13 +514,13 @@ begin
   // bei jeder Zeile gesetzt.
   if Item.Selected then
   begin
-    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlight));
-    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlightText));
+    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FParts.List).GetSystemColor(clHighlight));
+    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FParts.List).GetSystemColor(clHighlightText));
   end
   else
   begin
-    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clWindow));
-    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clWindowText));
+    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FParts.List).GetSystemColor(clWindow));
+    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FParts.List).GetSystemColor(clWindowText));
     if (mRow >= 0) and (FRows[mRow].Finding <> TAtlasEventFinding.None) then
     begin
       Sender.Canvas.Font.Color := FErrorColor;

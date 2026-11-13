@@ -41,6 +41,11 @@ Code completion in its own popup:
 - Field and parameter names in `FieldByName('`
 - The form's components
 - `Sender` with the matching typecast
+- After a type check the members of the checked type (#2107, `completion.typeGuards`)
+  - in the then branch of `if X is T then` (also in `and` chains) and after `if not (X is T) then Exit;` up to the end of the block, `X.` lists the members only `T` has at the top under “X is T here (is check, line n)”
+  - accepting writes `T(X).Name` or `(X as T).Name` according to `completion.senderCast`
+  - not after an assignment to `X`, after passing it to a `var` or `out` parameter, in the else branch, and for fields after any further statement
+  - after `X is ` and `X as ` the descendants of the type of `X` come first
 - Same names from different units
 - Helper methods
 - `uses` list with groups

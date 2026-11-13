@@ -291,6 +291,11 @@ begin
   // Sender mit Typumwandlung (#480).
   AResult.Sender := AData.GetValue<string>('sender', '');
   AResult.SenderOf := AData.GetValue<string>('senderOf', '');
+  // Typprüfungen (#2107).
+  AResult.Narrowed := AData.GetValue<string>('narrowed', '');
+  AResult.NarrowedName := AData.GetValue<string>('narrowedName', '');
+  AResult.NarrowedLine := AData.GetValue<Integer>('narrowedLine', 0);
+  AResult.DescendantOf := AData.GetValue<string>('descendantOf', '');
   // Typkonvertierung (#490): filtert nach dem Namen des Originals, nicht nach dem Ausdruck.
   AResult.Conversion := AData.GetValue<string>('conversion', '');
   AResult.ConvertFrom := AData.GetValue<string>('convertFrom', '');

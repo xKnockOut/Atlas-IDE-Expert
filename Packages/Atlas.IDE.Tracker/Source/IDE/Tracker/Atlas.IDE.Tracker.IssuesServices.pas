@@ -53,7 +53,6 @@ type
     FReview: TAtlasIdeIssueReview;
     // Referenzgezählte Dienste: gehalten bis Stop.
     FRefs: TArray<IInterface>;
-    procedure Keep(const AService: IInterface);
   public
     constructor Create(AContext: TAtlasIdeIssuesContext);
     /// <summary>Alle Dienste anlegen und starten.</summary>
@@ -1138,9 +1137,10 @@ begin
   FContext := AContext;
 end;
 
-procedure TAtlasIdeIssuesServices.Keep(const AService: IInterface);
+/// <summary>AService in ARefs halten (bis Stop die Liste leert).</summary>
+procedure KeepRef(var ARefs: TArray<IInterface>; const AService: IInterface);
 begin
-  FRefs := FRefs + [AService];
+  ARefs := ARefs + [AService];
 end;
 
 procedure TAtlasIdeIssuesServices.Start;
@@ -1151,36 +1151,36 @@ begin
   mLink := TAtlasIssuesLink.Create(Self);
   mFolder := TAtlasIdeIssuesTargets.IssuesFolder;
   FComments := TAtlasIdeCommentService.Create(CommentHooks(mLink), mFolder);
-  Keep(FComments);
+  KeepRef(FRefs, FComments);
   FSync := CreateSync(mLink);
   FIssueState := CreateIssueState(mLink);
   FTime := CreateTime(mLink);
-  Keep(FTime);
+  KeepRef(FRefs, FTime);
   FReview := TAtlasIdeIssueReview.Create(FContext, FSync);
-  Keep(FReview);
+  KeepRef(FRefs, FReview);
   FTime.Start;
   // Anhängen vor der Vorschau: deren Knopf „Anhängen …“ ruft es.
   FAttach := TAtlasIdeIssueAttach.Create(AttachHooks(mLink));
-  Keep(FAttach);
+  KeepRef(FRefs, FAttach);
   FAttach.Start;
   FPreview := TAtlasIdeIssuePreview.Create(PreviewHooks(mLink), mFolder);
-  Keep(FPreview);
+  KeepRef(FRefs, FPreview);
   FPreview.Start;
   FBoard := TAtlasIdeBoard.Create(BoardHooks(mLink), mFolder);
-  Keep(FBoard);
+  KeepRef(FRefs, FBoard);
   FBoard.Start;
   FFlowMap := TAtlasIdeFlowMap.Create(FlowMapHooks(mLink), mFolder);
-  Keep(FFlowMap);
+  KeepRef(FRefs, FFlowMap);
   FFlowMap.Start;
   FSprint := TAtlasIdeSprint.Create(SprintHooks(mLink), mFolder);
-  Keep(FSprint);
+  KeepRef(FRefs, FSprint);
   FSprint.Start;
   FSearch := TAtlasIdeIssueSearch.Create(StateSearchHooks(mLink, SearchHooks(mLink)));
   FSearchRef := FSearch;
   // Vor den Meldungen: deren Hook fragt die Erkennung.
   FReopened := TAtlasIdeIssueReopened.Create(FContext, ReopenedHooks(mLink));
   FNotify := TAtlasIdeIssueNotify.Create(NotifyHooks(mLink), mFolder);
-  Keep(FNotify);
+  KeepRef(FRefs, FNotify);
   FNotify.Start;
 end;
 
