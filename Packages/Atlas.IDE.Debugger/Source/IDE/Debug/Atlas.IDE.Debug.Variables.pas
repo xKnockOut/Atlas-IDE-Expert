@@ -20,6 +20,8 @@
 //     und anderer Reiter starten sie neu.
 //   - Ausgewertet wird nur, solange das Fenster besteht; wird es bei einem
 //     Halt geöffnet, holt Atlas den Halt nach.
+//   - Wert ändern (F2, Kontextmenü) über TAtlasIdeDebugEditValue (#868);
+//     danach wertet das Fenster im selben Halt neu aus (Reevaluate).
 // Ohne debug.variablesWindow ist nichts angemeldet. Nur im Hauptthread verwenden.
 
 interface
@@ -97,7 +99,6 @@ type
     constructor Create(const ASession: TAtlasVariablesSessionFunc; const ARun: TAtlasVariablesRunner);
     procedure CancelWork;
     procedure Stopped;
-    procedure Ended;
     procedure Tick(Sender: TObject);
     /// <summary>Ausführungspunkt lesen; False: später noch einmal (LLDB).</summary>
     function ReadLocation: Boolean;
@@ -127,6 +128,9 @@ type
     class procedure ThemeChanged; static;
     /// <summary>Fenster zeigen (Befehl Atlas.DebugVariables).</summary>
     class procedure ShowWindow; static;
+    /// <summary>Nach „Wert ändern“ (#868): alle Zeilen im selben Halt neu auswerten; der geänderte Wert ist
+    /// danach markiert.</summary>
+    class procedure Reevaluate; static;
   end;
 
 implementation
@@ -138,7 +142,9 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Debug.Sources,
+  Atlas.IDE.Debug.EditValue,
   Atlas.IDE.Debug.VariablesWindow,
   Atlas.UI.Debug.VariablesFrame,
   Atlas.UI.Debug.Strings;
@@ -292,6 +298,30 @@ begin
     end;
 end;
 
+/// <summary>Wert ändern (#868): nur mit laufendem „Werte ändern“, im angehaltenen Programm und mit Ort.</summary>
+procedure WireEdit(AFrame: TAtlasDebugVariablesFrame);
+begin
+  AFrame.OnCanEditValue :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugEditValue.Started and StillStopped and
+        (TAtlasIdeDebugVariables.FInstance.FPlace.Line >= 0);
+    end;
+  AFrame.OnEditValue :=
+    procedure(ANode: TAtlasEvalNode)
+    var
+      mPlace: TAtlasIdeDebugVariables.TPlace;
+    begin
+      if TAtlasIdeDebugVariables.FInstance = nil then
+      begin
+        Exit;
+      end;
+      mPlace := TAtlasIdeDebugVariables.FInstance.FPlace;
+      TAtlasIdeDebugEditValue.Act(TAtlasDebugValue.Evaluated(ANode.Expression, ANode.Value), mPlace.FileName,
+        mPlace.Line + 1, TAtlasIdeDebugEditValue.cEditAction);
+    end;
+end;
+
 /// <summary>AFrame an die Instanz hängen (nach jedem Anlegen des Fensters); einen verpassten Halt nachholen.
 /// </summary>
 procedure WireFrame(AFrame: TAtlasDebugVariablesFrame);
@@ -305,6 +335,7 @@ begin
   end;
   WireView(AFrame);
   WireWatches(AFrame);
+  WireEdit(AFrame);
   AFrame.SetTab(mInstance.FTab);
   AFrame.SetList(mInstance.FLists[mInstance.FTab], mInstance.FLists.Search);
   mInstance.SyncWatches;
@@ -345,10 +376,16 @@ end;
 
 procedure TAtlasIdeDebugVariables.TListener.DebugEnded;
 begin
-  if FInstance <> nil then
+  if FInstance = nil then
   begin
-    FInstance.Ended;
+    Exit;
   end;
+  FInstance.CancelWork;
+  FInstance.FLists.Unavailable;
+  FInstance.FPlace := NoPlace;
+  FInstance.FPrevious := NoPlace;
+  FInstance.FText := '';
+  FInstance.Refresh;
 end;
 
 { TAtlasIdeDebugVariables }
@@ -471,6 +508,21 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugVariables.Reevaluate;
+var
+  mSearch: TAtlasVariableSearch;
+begin
+  if not StillStopped or (Frame = nil) then
+  begin
+    Exit;
+  end;
+  // Wie ein neuer Halt am selben Ort: Autos und Lokal bleiben, alle Werte kommen neu.
+  FInstance.CancelWork;
+  FInstance.FLists.BeginStop;
+  mSearch := FInstance.FLists.Search;
+  FInstance.Search(mSearch.Text, mSearch.Mode, mSearch.Deep);
+end;
+
 procedure TAtlasIdeDebugVariables.CancelWork;
 begin
   if FTimer <> nil then
@@ -510,16 +562,6 @@ begin
   begin
     Ask;
   end;
-end;
-
-procedure TAtlasIdeDebugVariables.Ended;
-begin
-  CancelWork;
-  FLists.Unavailable;
-  FPlace := NoPlace;
-  FPrevious := NoPlace;
-  FText := '';
-  Refresh;
 end;
 
 function TAtlasIdeDebugVariables.ReadLocation: Boolean;

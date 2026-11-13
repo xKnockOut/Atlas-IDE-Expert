@@ -232,7 +232,7 @@ end;
 
 /// <summary>Fenster „Auswerten“ (#784) und der Dialog der IDE daneben, Fenster „Variablen“ (#853); nur sichtbar,
 /// solange ihre Einstellung an ist.</summary>
-function ValueCommands: TArray<TAtlasModuleCommand>;
+function WindowCommands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     Command('Atlas.DebugEvaluate', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateCommand),
@@ -344,7 +344,7 @@ begin
     Command('Atlas.DebugLeaks', TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksCommand), ShowDebugLeaks,
       DebugLeaksVisible)];
   // Fenster „Auswerten“ (#784) mit dem Dialog der IDE daneben und Fenster „Variablen“ (#853).
-  Result := Result + ValueCommands;
+  Result := Result + WindowCommands;
   // Threads im Quelltext (#852): markieren, einfrieren, auftauen.
   Result := Result + DebugThreadCommands;
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
@@ -353,6 +353,11 @@ begin
   for mCommand in BreakpointCommands do
   begin
     Result := Result + [Command(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible)];
+  end;
+  // Werte ändern (#868) aus Atlas.IDE.Debug.Composition.Values, unter der Sicherung.
+  for mCommand in ValueCommands do
+  begin
+    Result := Result + [CommandWithKey(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible, mCommand.Key)];
   end;
 end;
 
@@ -400,6 +405,8 @@ begin
   // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
   Result := Result + RunMenuEntries;
   Result := Result + BreakpointMenuEntries;
+  // Werte ändern (#868).
+  Result := Result + ValueMenuEntries;
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -420,6 +427,8 @@ begin
   Result := Result + RunKeys;
   // Bis hier, Haltepunkte überspringen (#851).
   Result := Result + BreakpointKeys;
+  // Wert ändern mit F2 (#868).
+  Result := Result + ValueKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;

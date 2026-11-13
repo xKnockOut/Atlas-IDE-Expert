@@ -102,6 +102,8 @@ type
     class function Actions(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>; static;
     /// <summary>Aktion AAction für AValue an AFileName, ALine (1-basiert).</summary>
     class procedure Act(const AValue: TAtlasDebugValue; const AFileName: string; ALine, AAction: Integer); static;
+    /// <summary>Im selben Halt neu auswerten, etwa nach dem Ändern eines Werts (#868).</summary>
+    class procedure Reevaluate; static;
   end;
 
 implementation
@@ -348,6 +350,14 @@ begin
   end;
   Save;
   TAtlasDebugLineEnd.Invalidate;
+end;
+
+class procedure TAtlasIdeDebugPins.Reevaluate;
+begin
+  if (FInstance <> nil) and FInstance.FVisible and (TAtlasIdeDebugSession.StoppedThread <> nil) then
+  begin
+    FInstance.Stopped;
+  end;
 end;
 
 function TAtlasIdeDebugPins.StillStopped: Boolean;

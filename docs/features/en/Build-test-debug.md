@@ -335,6 +335,15 @@ Settings: `debug.whyHere`, `debug.whyHere.depth`
 - A click on a hint opens the menu “Turn off the forecast for this session”. Hints and dimming disappear with the next step
 
 Settings: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
+
+### Change values
+
+- The debug hover shows “Change …” below the value, for `True`/`False` also “Set to False” or “Set to True”. In the editor F2 (or “Atlas: Change value” in the context menu under Debugging) changes the identifier at the cursor; without a stopped program F2 goes to the IDE
+- The input fits the type: numbers with range check (`Byte` 0..255, also `$FF`), floating point with comma or dot, characters and strings without quotes, enumerations as a list (with type prefix under `{$SCOPEDENUMS ON}`), sets with one check box per value, `TColor` with “Choose colour …” (also `#RRGGBB`). Invalid input appears in red below the field and “Change” is disabled; Enter applies, Esc cancels
+- A property with a setter is changed only after confirmation (“Setter SetBetrag will be called”), by calling the setter. The dialog rejects read-only properties
+- Changed values stay at the end of the line in the warning colour with the old value until the next step: `Betrag = 150 (was 125)`. “Undo (was 125)” in the hover or “Atlas: Reset changed value” sets the old value as long as the program has not continued
+
+Settings: `debug.editValues`
 ### Pinned values
 
 - The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values
@@ -415,6 +424,7 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Ctrl+W | add the row's expression as a watch |
 | Ctrl+C | copy value |
 | Ctrl+Shift+C | copy expression |
+| F2 | change the value (with `debug.editValues`, like “Change …” in the debug hover) |
 | Del (Watch tab) | remove the watch |
 | Enter in the field of the Watch tab | watch the expression |
 

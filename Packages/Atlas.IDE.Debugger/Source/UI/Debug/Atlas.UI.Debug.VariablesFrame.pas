@@ -8,7 +8,8 @@
 // in der Warnfarbe, bei einer Suche nur Treffer, ihre Pfade und ihre
 // Unterelemente, Treffer fett. Kontextmenü und Tasten je Zeile: als
 // Überwachung hinzufügen (Strg+W), Wert kopieren (Strg+C), Ausdruck kopieren
-// (Strg+Umschalt+C), Überwachung entfernen (Entf). Unten Anzahl bzw. Treffer
+// (Strg+Umschalt+C), Wert ändern (F2, über „Werte ändern“ #868), Überwachung
+// entfernen (Entf). Unten Anzahl bzw. Treffer
 // und die Tastenhilfe. Die Suche startet kurz nach der letzten Eingabe.
 // Die DFM ist leer, weil TCustomFrame.Create für abgeleitete Frames eine
 // Ressource verlangt; aufgebaut wird im Code.
@@ -46,6 +47,10 @@ type
     Expand: TAtlasVariablesNodeProc;
     AddWatch: TProc<string>;
     RemoveWatch: TAtlasVariablesNodeProc;
+    /// <summary>Wert der Zeile ändern (#868).</summary>
+    EditValue: TAtlasVariablesNodeProc;
+    /// <summary>Lässt sich gerade ein Wert ändern (debug.editValues an, Programm angehalten)?</summary>
+    CanEditValue: TFunc<Boolean>;
   end;
 
   /// <summary>Steuerelemente des Frames; alle gehören dem Frame.</summary>
@@ -118,6 +123,8 @@ type
     property OnExpand: TAtlasVariablesNodeProc read FHooks.Expand write FHooks.Expand;
     property OnAddWatch: TProc<string> read FHooks.AddWatch write FHooks.AddWatch;
     property OnRemoveWatch: TAtlasVariablesNodeProc read FHooks.RemoveWatch write FHooks.RemoveWatch;
+    property OnEditValue: TAtlasVariablesNodeProc read FHooks.EditValue write FHooks.EditValue;
+    property OnCanEditValue: TFunc<Boolean> read FHooks.CanEditValue write FHooks.CanEditValue;
   end;
 
 implementation
@@ -147,7 +154,7 @@ const
 type
   {$SCOPEDENUMS ON}
   /// <summary>Einträge des Kontextmenüs, als Tag der Menüeinträge.</summary>
-  TRowAction = (None, AddWatch, CopyValue, CopyExpression, RemoveWatch);
+  TRowAction = (None, AddWatch, CopyValue, CopyExpression, EditValue, RemoveWatch);
   {$SCOPEDENUMS OFF}
 
 { Aufbau }
@@ -273,6 +280,7 @@ begin
   AddMenuItem(ASelf, TAtlasDebugTextId.VariablesCopyValue, TRowAction.CopyValue, ShortCut(Ord('C'), [ssCtrl]));
   AddMenuItem(ASelf, TAtlasDebugTextId.VariablesCopyExpression, TRowAction.CopyExpression,
     ShortCut(Ord('C'), [ssCtrl, ssShift]));
+  AddMenuItem(ASelf, TAtlasDebugTextId.EditValueAction, TRowAction.EditValue, ShortCut(VK_F2, []));
   AddMenuItem(ASelf, TAtlasDebugTextId.VariablesRemoveWatch, TRowAction.RemoveWatch, ShortCut(VK_DELETE, []));
 
   ASelf.FParts.Tree := TTreeView.Create(ASelf);
@@ -329,6 +337,9 @@ begin
       Result := ANode.Expression <> '';
     TRowAction.CopyValue:
       Result := ANode.State = TAtlasEvalState.Value;
+    TRowAction.EditValue:
+      Result := (ANode.State = TAtlasEvalState.Value) and Assigned(ASelf.FHooks.EditValue) and
+        Assigned(ASelf.FHooks.CanEditValue) and ASelf.FHooks.CanEditValue();
     TRowAction.RemoveWatch:
       Result := (ASelf.FTab = TAtlasVariablesTab.Watch) and (ANode.Parent = nil);
     TRowAction.None: ;
@@ -351,6 +362,8 @@ begin
       Clipboard.AsText := TAtlasDebugVariablesFrame.ValueText(ANode);
     TRowAction.CopyExpression:
       Clipboard.AsText := ANode.Expression;
+    TRowAction.EditValue:
+      ASelf.FHooks.EditValue(ANode);
     TRowAction.RemoveWatch:
       if Assigned(ASelf.FHooks.RemoveWatch) then
       begin
@@ -374,6 +387,10 @@ begin
   else if (AKey = Ord('C')) and (AShift = [ssCtrl, ssShift]) then
   begin
     Result := TRowAction.CopyExpression;
+  end
+  else if (AKey = VK_F2) and (AShift = []) then
+  begin
+    Result := TRowAction.EditValue;
   end
   else if (AKey = VK_DELETE) and (AShift = []) then
   begin

@@ -2,7 +2,8 @@
 
 // Fenster „Variablen“ (#853), Oberfläche: Suche blendet aus und hebt Treffer
 // hervor, Reiter Überwachung mit Eingabefeld (Enter fügt an), Entf entfernt
-// nur im Reiter Überwachung, Wert kopieren nur mit Wert, Text unten.
+// nur im Reiter Überwachung, Wert kopieren nur mit Wert, F2 ändert den Wert
+// nur, wenn „Werte ändern“ bereitsteht (#868), Text unten.
 
 interface
 
@@ -23,6 +24,8 @@ type
     procedure WatchTab;
     [Test]
     procedure ValueTextOnlyWithValue;
+    [Test]
+    procedure EditValueWithF2;
   end;
 
 implementation
@@ -131,6 +134,57 @@ begin
   end;
   mAdded := '';
   mRemoved := '';
+end;
+
+procedure TAtlasDebugVariablesFrameTests.EditValueWithF2;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugVariablesFrame;
+  mList: TAtlasEvalList;
+  mEdited: string;
+  mCanEdit: Boolean;
+  mKey: Word;
+begin
+  mEdited := '';
+  mCanEdit := False;
+  mList := TAtlasEvalList.Create;
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasDebugVariablesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.OnEditValue :=
+      procedure(ANode: TAtlasEvalNode)
+      begin
+        mEdited := ANode.Expression;
+      end;
+    mFrame.OnCanEditValue :=
+      function: Boolean
+      begin
+        Result := mCanEdit;
+      end;
+    mList.SetResult(mList.Add('Betrag'), True, '125');
+    mList.Add('Offen');
+    mFrame.SetList(mList, nil);
+    mFrame.Parts.Tree.Items[0].Selected := True;
+    mKey := VK_F2;
+    mFrame.Parts.Tree.OnKeyDown(mFrame.Parts.Tree, mKey, []);
+    Assert.AreEqual('', mEdited, 'ohne „Werte ändern“ nichts');
+    mCanEdit := True;
+    mKey := VK_F2;
+    mFrame.Parts.Tree.OnKeyDown(mFrame.Parts.Tree, mKey, []);
+    Assert.AreEqual('Betrag', mEdited);
+    mEdited := '';
+    mFrame.Parts.Tree.Items[1].Selected := True;
+    mKey := VK_F2;
+    mFrame.Parts.Tree.OnKeyDown(mFrame.Parts.Tree, mKey, []);
+    Assert.AreEqual('', mEdited, 'ohne Wert nichts zu ändern');
+    mFrame.SetList(nil, nil);
+  finally
+    mHost.Free;
+    mList.Free;
+  end;
+  mEdited := '';
 end;
 
 procedure TAtlasDebugVariablesFrameTests.ValueTextOnlyWithValue;
