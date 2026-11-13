@@ -44,7 +44,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow;
+  Atlas.Common.Semantics.ControlFlow.Signatures;
 
 type
 {$SCOPEDENUMS ON}

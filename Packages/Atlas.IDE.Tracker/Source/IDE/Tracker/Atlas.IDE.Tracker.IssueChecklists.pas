@@ -70,7 +70,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.IssueCache,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip;
 
 type
@@ -181,17 +181,17 @@ begin
   else if AResult.Changed then
   begin
     // Nichts angewendet: neu laden, danach der Hinweis.
-    AOwner.FPendingNotice := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistChanged);
+    AOwner.FPendingNotice := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistChanged);
     AOwner.FReload(AEntry);
   end
   else if AResult.Denied then
   begin
     AFrame.SetFlag(TAtlasIssueFlag.ChecklistReadOnly, True);
-    AFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistDenied));
+    AFrame.ShowNotice(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistDenied));
   end
   else if AResult.Error <> TAtlasCiFetchError.Cancelled then
   begin
-    AFrame.ShowNotice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistFailed,
+    AFrame.ShowNotice(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueChecklistFailed,
       [TAtlasIssueTip.ErrorText(AResult.Error, AEntry.Key)]));
   end;
 end;
@@ -447,8 +447,8 @@ begin
     Exit;
   end;
   mText := '';
-  if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAddPrompt), mText) or (Trim(mText) = '') then
+  if not InputQuery(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistAdd),
+    TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistAddPrompt), mText) or (Trim(mText) = '') then
   begin
     Exit;
   end;

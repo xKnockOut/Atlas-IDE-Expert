@@ -59,7 +59,7 @@ uses
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.QueryDialog,
   Atlas.UI.Tracker.SettingsSection,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings;
 
 const
   // Protokoll: anonym, nur Anbieter, Zustand und Anzahl.
@@ -601,8 +601,8 @@ begin
   ASection.Hooks.OnRemove :=
     procedure(const AConnection: TAtlasTrackerConnection)
     begin
-      if mAccess.HasToken(AConnection.Target) and (MessageDlg(TAtlasTrackerStrings.Fmt(
-        TAtlasTrackerTextId.SettingsIssuesConnectionRemoveToken, [AConnection.Target.Server]), mtConfirmation,
+      if mAccess.HasToken(AConnection.Target) and (MessageDlg(TAtlasOptionsStrings.Fmt(
+        TAtlasOptionsTextId.SettingsIssuesConnectionRemoveToken, [AConnection.Target.Server]), mtConfirmation,
         [mbYes, mbNo], 0) = mrYes) then
       begin
         mAccess.RemoveToken(AConnection.Target);

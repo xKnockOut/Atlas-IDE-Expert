@@ -13,11 +13,21 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
+  cMinWhyHereDepth = 1;
+  cMaxWhyHereDepth = 10;
+  cDefaultWhyHereDepth = 3;
+  /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
+  cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
   cMinParallelStacksThreads = 1;
   cMaxParallelStacksThreads = 1024;
   /// <summary>Vorgabe von debug.parallelStacks.maxThreads.</summary>
   cDefaultParallelStacksThreads = 64;
+  /// <summary>Grenzen und Vorgabe für debug.asyncOrigin.maxPerSite (#859).</summary>
+  cMinAsyncOriginPerSite = 1;
+  cMaxAsyncOriginPerSite = 1000;
+  cDefaultAsyncOriginPerSite = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -129,6 +139,11 @@ type
     /// <summary>debug.threadFreeze (#852, experimentell): Threads einfrieren und auftauen
     /// (SuspendThread/ResumeThread).</summary>
     DebugThreadFreeze: Boolean;
+    /// <summary>debug.asyncOrigin (#859, experimentell): Herkunft von TThread.Queue, Synchronize und TTask merken und
+    /// beim Halt in der eingereihten Methode zeigen.</summary>
+    DebugAsyncOrigin: Boolean;
+    /// <summary>debug.asyncOrigin.maxPerSite (#859): gemerkte Einreihungen je Aufrufstelle.</summary>
+    DebugAsyncOriginMaxPerSite: Integer;
     /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
     DebugParallelStacksWaitRoutines: string;
     /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
@@ -162,9 +177,22 @@ type
     DebugInlineValues: Boolean;
     /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
     DebugInlineValuesPerLine: Integer;
+    /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
+    /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
+    /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
+    DebugWhyHere: Boolean;
+    /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
+    DebugWhyHereDepth: Integer;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
+    /// <summary>Ereignisprotokoll beim Debuggen (#580, debug.eventLog): Fenster „Atlas: Ereignisprotokoll“ (Befehl
+    /// Atlas.DebugEventLog) mit Ausgaben, Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, Ausdruck und
+    /// Art, Farben und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.</summary>
+    DebugEventLog: Boolean;
+    /// <summary>Farben im Ereignisprotokoll (#580, debug.eventLogColors): „Muster=Farbe“, durch „;“ getrennt; Farbe
+    /// als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Erstes passendes Muster gewinnt.</summary>
+    DebugEventLogColors: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -224,6 +252,8 @@ begin
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugAsyncOrigin := False;
+  Result.DebugAsyncOriginMaxPerSite := cDefaultAsyncOriginPerSite;
   Result.DebugThreadFreeze := False;
   Result.DebugThreadsInSource := True;
   Result.DebugParallelStacks := True;
@@ -237,7 +267,11 @@ begin
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
+  Result.DebugWhyHere := True;
+  Result.DebugWhyHereDepth := cDefaultWhyHereDepth;
   Result.DebugOwnCodeFolders := '';
+  Result.DebugEventLog := True;
+  Result.DebugEventLogColors := cDefaultEventLogColors;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.DebugEnabled := True;
@@ -247,10 +281,14 @@ procedure TAtlasPluginDebugSettings.Normalize;
 begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
+  DebugEventLogColors := Trim(DebugEventLogColors);
   DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
   DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
     cMaxParallelStacksThreads);
+  DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
+    cMaxAsyncOriginPerSite);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
+  DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
@@ -300,8 +338,10 @@ begin
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
   AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
   AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
+  AIo.Flag('DebugAsyncOrigin', DebugAsyncOrigin);
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
+  AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
 
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
@@ -309,7 +349,11 @@ begin
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AIo.Flag('DebugWhyHere', DebugWhyHere);
+  AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
+  AIo.Flag('DebugEventLog', DebugEventLog);
+  AIo.Text('DebugEventLogColors', DebugEventLogColors);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

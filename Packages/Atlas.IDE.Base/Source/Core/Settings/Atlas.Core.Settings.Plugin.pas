@@ -105,6 +105,8 @@ type
     cMinBlockEndLines = Atlas.Core.Settings.Plugin.Editor.cMinBlockEndLines;
     cMaxBlockEndLines = Atlas.Core.Settings.Plugin.Editor.cMaxBlockEndLines;
     cMinInlineValuesPerLine = Atlas.Core.Settings.Plugin.Debug.cMinInlineValuesPerLine;
+    cMinWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMinWhyHereDepth;
+    cMaxWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMaxWhyHereDepth;
     cMaxQuickChordWait = Atlas.Core.Settings.Plugin.Bookmarks.cMaxQuickChordWait;
     cMinRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMinRecursionDepth;
     cMaxRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMaxRecursionDepth;
@@ -397,6 +399,7 @@ type
     property TestsCompareFormat: Boolean read FBuild.TestsCompareFormat write FBuild.TestsCompareFormat;
     property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
+    property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;
@@ -459,6 +462,9 @@ type
     property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
     property DebugThreadsInSource: Boolean read FDebug.DebugThreadsInSource write FDebug.DebugThreadsInSource;
     property DebugThreadFreeze: Boolean read FDebug.DebugThreadFreeze write FDebug.DebugThreadFreeze;
+    property DebugAsyncOrigin: Boolean read FDebug.DebugAsyncOrigin write FDebug.DebugAsyncOrigin;
+    property DebugAsyncOriginMaxPerSite: Integer read FDebug.DebugAsyncOriginMaxPerSite
+      write FDebug.DebugAsyncOriginMaxPerSite;
     property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
       write FDebug.DebugParallelStacksWaitRoutines;
     property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
@@ -473,6 +479,10 @@ type
     property DebugInlineValuesPerLine: Integer read FDebug.DebugInlineValuesPerLine
       write FDebug.DebugInlineValuesPerLine;
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
+    property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
+    property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
+    property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;

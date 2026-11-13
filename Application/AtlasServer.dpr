@@ -53,6 +53,7 @@ uses
   Shell.Composition.CoveredBy in 'Source\Shell\Shell.Composition.CoveredBy.pas',
   Shell.Composition.DfmPropertyRules in 'Source\Shell\Shell.Composition.DfmPropertyRules.pas',
   Shell.Composition.LeakSetup in 'Source\Shell\Shell.Composition.LeakSetup.pas',
+  Shell.Composition.LeakCandidates in 'Source\Shell\Shell.Composition.LeakCandidates.pas',
   Shell.Composition.Core in 'Source\Shell\Shell.Composition.Core.pas',
   Shell.Composition.AnalysisArea in 'Source\Shell\Shell.Composition.AnalysisArea.pas',
   Shell.Composition.CodeArea in 'Source\Shell\Shell.Composition.CodeArea.pas',

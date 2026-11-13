@@ -41,8 +41,10 @@ const
   /// 16 (#1779): IAtlasTestValues (Atlas.IDE.Contracts.Tests), „Vergleichen“ im Hover und auf der Willkommensseite.
   /// 17 (#837): debug.parallelStacks(.waitRoutines, .maxThreads).
   /// 18 (#852): TAtlasDrawnElement.ThreadsInSource, debug.threadsInSource, debug.threadFreeze.
-  /// 19 (#2134): issues.github.stateTarget, issues.github.project, issues.github.addToProject.
-  cAtlasCoreContractVersion = 19;
+  /// 19 (#1774): tests.leaks.
+  /// 20 (#859): debug.asyncOrigin, debug.asyncOrigin.maxPerSite.
+  /// 21 (#2134): issues.github.stateTarget, issues.github.project, issues.github.addToProject.
+  cAtlasCoreContractVersion = 21;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

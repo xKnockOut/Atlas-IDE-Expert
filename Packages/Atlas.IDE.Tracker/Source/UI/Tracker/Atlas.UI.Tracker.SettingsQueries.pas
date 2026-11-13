@@ -78,7 +78,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.QueryDialog;
 
 const
@@ -122,32 +122,32 @@ end;
 
 procedure TAtlasTrackerQueriesPart.BuildList;
 begin
-  FRows.AddTitle(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueries));
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueries));
   FAnchor := FRows.AddKeyedPanel(cQueriesRow, TAtlasTrackerSettingsTables.cQueriesKey);
   // Wie die Verbindungen: die Zeilen erst mit Fenster (Refresh, auch aus WindowReady).
   FView.List := FRows.AddList(FAnchor, SelectItem);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryName), cNameColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQuery), cQueryColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection),
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryName), cNameColumn);
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQuery), cQueryColumn);
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectConnection),
     cConnectionColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject),
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectProject),
     cProjectColumn);
 end;
 
 procedure TAtlasTrackerQueriesPart.BuildFields;
 begin
   FView.Name := FRows.NewEdit(NameChange);
-  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryName), FView.Name,
+  FRows.Attach(FRows.AddLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryName), FView.Name,
     TRows.cFieldWidth), FAnchor);
   FView.Text := FRows.NewEdit(TextChange);
-  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQuery), FView.Text,
+  FRows.Attach(FRows.AddLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQuery), FView.Text,
     TRows.cWideWidth), FAnchor);
   FView.Connection := TAtlasChoiceBox.Create(FRows.Owner);
   FView.Connection.OnChange := ConnectionChange;
-  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection),
+  FRows.Attach(FRows.AddLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectConnection),
     FView.Connection, TRows.cFieldWidth), FAnchor);
   FView.Project := FRows.NewEdit(ProjectChange);
-  FRows.Attach(FRows.AddLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject),
+  FRows.Attach(FRows.AddLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectProject),
     FView.Project, TRows.cFieldWidth), FAnchor);
   // Grund, warum eine Zeile nicht gespeichert wird (Name doppelt, Abfrage fehlt), bzw. die Vorgabe ohne Zeilen;
   // in der Farbe des Textes, weil „keine Zeilen“ kein Fehler ist.
@@ -170,37 +170,37 @@ begin
   Inc(mLeft, TRows.cButtonWidth + TRows.cButtonGap);
   // Dialog mit Vorlagen und „Testen“ (#1263); auch Doppelklick auf eine Zeile.
   FView.Edit := FRows.AddButton(mPanel, mLeft, cEditWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryEdit), EditClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryEdit), EditClick);
   FView.List.OnDblClick := EditClick;
   FRows.Attach(mPanel, FAnchor);
-  FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueriesHint), FAnchor);
+  FRows.AddHint(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueriesHint), FAnchor);
 end;
 
 procedure TAtlasTrackerQueriesPart.BuildSwitches;
 begin
   FView.Picker := FRows.AddCheck('issues.queryPicker',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryPicker));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryPicker));
   // Tracker-Projekt frei wählen (#1927) und alle zusammen (#1928).
   FView.ProjectPicker := FRows.AddCheck('issues.projectPicker',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectPicker));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesProjectPicker));
   FView.AllProjects := FRows.AddCheck('issues.allProjects',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesAllProjects));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAllProjects));
   FView.AllProjectsPerGroup := FRows.AddNumber('issues.allProjects.perGroup',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesAllProjectsPerGroup));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAllProjectsPerGroup));
   // „Issue anlegen …“ im Editor und bei Befunden (#1268).
   FView.CreateIssue := FRows.AddCheck('issues.create',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesCreate));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCreate));
   FView.CreateIncludeCode := FRows.AddCheck('issues.create.includeCode',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesCreateIncludeCode));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCreateIncludeCode));
 end;
 
 function TAtlasTrackerQueriesPart.NoteText(const AQuery: TAtlasTrackerQuery): string;
 begin
   case Table.NoteOf(AQuery) of
     TAtlasTrackerQueryNote.Empty:
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryEmpty);
+      Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryEmpty);
     TAtlasTrackerQueryNote.ConnectionMissing:
-      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesProjectConnectionMissing,
+      Result := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesProjectConnectionMissing,
         [AQuery.Connection]);
   else
     Result := '';
@@ -217,7 +217,7 @@ begin
   FFilling := True;
   try
     FView.Connection.SetChoices(TArray<string>.Create(
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryAny)) + Table.Choices);
+      TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryAny)) + Table.Choices);
   finally
     FFilling := False;
   end;
@@ -279,7 +279,7 @@ begin
   else if Length(Table.Items) = 0 then
   begin
     // Ohne eigene Zeilen gilt die Vorgabe je Anbieter.
-    FView.Note.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueriesNone);
+    FView.Note.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueriesNone);
   end;
   FRows.Allow(FView.Name, mEditable);
   FRows.Allow(FView.Text, mEditable);
@@ -326,7 +326,7 @@ begin
   // Die Klappliste unterscheidet die Abfragen am Namen.
   if not Table.SetName(Trim(FView.Name.Text)) then
   begin
-    FView.Note.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken);
+    FView.Note.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken);
     Exit;
   end;
   RowChanged;
@@ -364,7 +364,7 @@ end;
 procedure TAtlasTrackerQueriesPart.AddClick(Sender: TObject);
 begin
   // Neue Zeile ohne Abfrage: gespeichert wird sie erst mit Abfrage.
-  Table.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNew));
+  Table.Add(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNew));
   Refresh;
   TRows.Focus(FView.Text);
 end;
