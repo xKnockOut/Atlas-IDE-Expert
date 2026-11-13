@@ -393,6 +393,7 @@ begin
       Result := TryStepInto;
     end;
   Result := [mKey];
+  Result := Result + RunKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;
@@ -534,6 +535,8 @@ begin
   // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
   GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
   ProvideDebugThreadLayers(GScope);
+  // Logpunkte in der Rinne (#583).
+  ProvideRun(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

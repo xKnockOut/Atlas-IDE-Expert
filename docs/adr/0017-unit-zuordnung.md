@@ -973,7 +973,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.EventLogMirror` | `IDE/Debug/Atlas.IDE.Debug.EventLogMirror.pas` | Mitlesen aus dem Ereignisprotokoll der IDE, #580 |
 | `Atlas.IDE.Debug.EventLogWindow` | `IDE/Debug/Atlas.IDE.Debug.EventLogWindow.pas` | Andockbares Fenster Ereignisprotokoll, #580 |
 | `Atlas.IDE.Debug.EventLog` | `IDE/Debug/Atlas.IDE.Debug.EventLog.pas` | Ereignisprotokoll beim Debuggen, #580 |
-| `Atlas.IDE.Debug.Composition.Run` | `IDE/Debug/Atlas.IDE.Debug.Composition.Run.pas` | Teile rund um den Lauf des Moduls `atlas.debugger` (Ereignisprotokoll #580) |
+| `Atlas.IDE.Debug.Composition.Run` | `IDE/Debug/Atlas.IDE.Debug.Composition.Run.pas` | Teile rund um den Lauf des Moduls `atlas.debugger` (Ereignisprotokoll #580, Logpunkte #583) |
+| `Atlas.Core.Debug.Logpoint` | `Core/Debug/Atlas.Core.Debug.Logpoint.pas` | Logpunkte ohne IDE: Platzhaltertext, Eigenschaften des Haltepunkts, Zusammenführen, #583 |
+| `Atlas.UI.Debug.LogpointDialog` | `UI/Debug/Atlas.UI.Debug.LogpointDialog.pas` | Ordner `UI/Debug` |
+| `Atlas.IDE.Debug.Logpoints` | `IDE/Debug/Atlas.IDE.Debug.Logpoints.pas` | Logpunkte als Haltepunkte der IDE, #583 |
+| `Atlas.IDE.Debug.LogpointGutter` | `IDE/Debug/Atlas.IDE.Debug.LogpointGutter.pas` | Logpunkte in der Rinne, #583 |
 
 ## Atlas.IDE.Tracker
 

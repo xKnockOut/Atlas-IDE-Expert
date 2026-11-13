@@ -24,6 +24,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.EventLog,
+  Atlas.Core.Debug.Logpoint,
   Atlas.Core.Debug.DialogCompletion,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.EventLogFrame;
@@ -62,7 +63,11 @@ type
     FTicker: TTicker;
     FStartTick: UInt64;
     FDirty: Boolean;
+    FMerger: TAtlasLogpointMerger;
     class procedure Poll; static;
+    /// <summary>Logpunkt-Zeilen zusammenführen; True, wenn die Zeile auf ihren Wert wartet (nicht anfügen).
+    /// </summary>
+    class function MergeLogpoint(var AKind: TAtlasEventKind; var AText: string): Boolean; static;
     class procedure Refresh; static;
     class procedure WireFrame(AFrame: TAtlasDebugEventLogFrame); static;
     class procedure OpenEntry(const AEntry: TAtlasEventEntry); static;
@@ -281,6 +286,7 @@ begin
   FreeAndNil(GMirror);
   FreeAndNil(FFilters);
   FreeAndNil(FLog);
+  FreeAndNil(FMerger);
   FServices := Default(TAtlasEventLogServices);
 end;
 
@@ -365,8 +371,41 @@ begin
     begin
       Continue;
     end;
-    AddEntry(mKind, mThread, mText);
+    if not MergeLogpoint(mKind, mText) then
+    begin
+      AddEntry(mKind, mThread, mText);
+    end;
   end;
+end;
+
+class function TAtlasIdeDebugEventLog.MergeLogpoint(var AKind: TAtlasEventKind; var AText: string): Boolean;
+var
+  mPrefix, mOutput: string;
+  mIsLogpoint: Boolean;
+begin
+  Result := False;
+  if not TAtlasIdeSettings.Current.DebugLogpoints then
+  begin
+    Exit;
+  end;
+  mPrefix := TAtlasIdeSettings.Current.DebugLogpointPrefix;
+  if (FMerger = nil) or (FMerger.Prefix <> mPrefix) then
+  begin
+    FreeAndNil(FMerger);
+    FMerger := TAtlasLogpointMerger.Create(mPrefix);
+  end;
+  // Logpunkte (#583): Meldung mit „{0}“ wartet auf die Zeile mit dem Wert.
+  if (AKind <> TAtlasEventKind.Breakpoint) and not FMerger.Pending then
+  begin
+    Exit;
+  end;
+  if FMerger.Feed(AText, mOutput, mIsLogpoint) then
+  begin
+    AKind := TAtlasEventKind.Logpoint;
+    AText := mOutput;
+    Exit(False);
+  end;
+  Result := mIsLogpoint;
 end;
 
 class procedure TAtlasIdeDebugEventLog.Refresh;
