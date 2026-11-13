@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Veraltete Testergebnisse (#1770, `tests.stale`, Vorgabe an): Wurde der Rumpf eines Tests seit seinem Lauf geändert, zeigt die Code Lens den alten Stand grau und kursiv mit „(veraltet)“, etwa „Test ausführen · bestanden (veraltet)“. Atlas merkt sich nach jedem Lauf je Test eine Prüfsumme des Methodenrumpfs ohne Leerraum und Kommentare; eine Änderung nur an Einrückung oder Kommentaren macht nichts veraltet, das Zurücknehmen der Änderung macht das Ergebnis wieder gültig. Die Klassenmarke ist veraltet, sobald einer ihrer Tests es ist, und die Zählung „3/4 bestanden“ nimmt veraltete Ergebnisse nicht als bestanden. Mit `tests.stale.units` (Vorgabe aus) machen auch Änderungen in den Units, die die Testunit verwendet und die zum Testprojekt gehören, das Ergebnis veraltet. Neuer Befehl „Veraltete Tests ausführen“ (`Atlas.RunStaleTests`, Atlas-Menü und Befehlspalette).
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu
