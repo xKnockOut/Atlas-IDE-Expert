@@ -40,6 +40,8 @@ type
     [Test]
     procedure InaccessibleOnlyWhenShown;
     [Test]
+    procedure ProjectUsesOrderBelowLearned;
+    [Test]
     procedure VariantFieldsGetBranchTag;
     [Test]
     procedure ConversionStandsBeforeOriginal;
@@ -640,6 +642,45 @@ begin
   for mTag in TAtlasItemPresentation.Tags(mItems[0]) do
   begin
     mFound := mFound or (mTag.Text = 'private · TZaehler');
+  end;
+  Assert.IsTrue(mFound);
+end;
+
+procedure TAtlasRankingTests.ProjectUsesOrderBelowLearned;
+var
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
+  mFound: Boolean;
+  mTag: TAtlasTag;
+begin
+  // #2109: Ohne eigene Gewichtung ordnet die Zahl im Projekt; Gelerntes und bessere Treffer gehen vor.
+  mItems := [Member('Add', '', 0, 0), Member('Clear', '', 0, 1), Member('Delete', '', 0, 2),
+    Member('GetValue', '', 0, 3)];
+  mItems[1].ProjectUses := 3;
+  mItems[3].ProjectUses := 214;
+  mOptions := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('GetValue,Clear,Add,Delete', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  mOptions.Boost :=
+    function(AIndex: Integer): Integer
+    begin
+      // Eine einzige Übernahme von Delete (kleinster Lernzuschlag).
+      Result := 0;
+      if AIndex = 2 then
+      begin
+        Result := 15;
+      end;
+    end;
+  Assert.AreEqual('Delete,GetValue,Clear,Add', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  mItems := [Member('Clear', '', 0, 0), Member('ClearAll', '', 0, 1)];
+  mItems[1].ProjectUses := 50;
+  Assert.AreEqual('Clear,ClearAll', Names(mItems, TAtlasRanking.Order(mItems, 'Clear', TAtlasRankOptions.Defaults)));
+  Assert.AreEqual(0, TAtlasRanking.ProjectBoost(0));
+  Assert.AreEqual(1, TAtlasRanking.ProjectBoost(1));
+  Assert.AreEqual(TAtlasRanking.cMaxProjectBoost, TAtlasRanking.ProjectBoost(1000000));
+  mFound := False;
+  for mTag in TAtlasItemPresentation.Tags(mItems[1]) do
+  begin
+    mFound := mFound or mTag.Text.EndsWith(' 50×');
   end;
   Assert.IsTrue(mFound);
 end;

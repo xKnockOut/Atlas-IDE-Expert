@@ -136,6 +136,7 @@ Atlas.Common.Index.Extractor.InlineRefs.Tests
 Atlas.Common.Index.Extractor.Tokens.Tests
 Atlas.Common.Index.Extractor.TypeText.Tests
 Atlas.Common.Index.Processes.Tests
+Atlas.Common.Index.UsageCounts.Tests
 Atlas.Common.JsonRpc.CurrentRequest.Tests
 Atlas.Common.JsonRpc.Messages.Tests
 Atlas.Common.JsonRpc.PendingRequests.Tests
@@ -158,6 +159,7 @@ Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
+Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.CoveredBy.Tests

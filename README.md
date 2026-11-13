@@ -57,7 +57,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 Short overview; each heading links to the full description. Features marked *(experimental)* are off by default and can be switched on under *Tools › Options › Third Party › Atlas* once the master switch "Experimental" is on. What changed per version: [CHANGELOG](CHANGELOG.md) (German).
 
 ### [Writing](docs/features/en/Writing.md)
-- **Code completion** in its own popup with detail panel, fuzzy matching, favourites and `+ Unit` for missing uses
+- **Code completion** in its own popup with detail panel, fuzzy matching, favourites and `+ Unit` for missing uses; after `X.` the members your project uses most come first (“in project 214×”)
 - **Context-aware suggestions:** enum values, `case` values, exception classes after `raise`, anonymous method skeletons, after `if X is T then` the members of `T` with the cast, and in the footer the matches that are only missing because they are private or protected
 - **Parameter hint** with overload choice and `Format` placeholder checks
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`

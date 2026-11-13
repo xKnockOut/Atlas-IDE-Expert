@@ -37,6 +37,7 @@ type
     procedure SetBudget(ABytes: Int64);
     function Budget: Int64;
     function Generation: Int64;
+    function UsageCount(const AName: string): Integer;
   end;
 
 implementation
@@ -176,6 +177,12 @@ function TIdeIndex.Generation: Int64;
 begin
   // Beide zählen nur hoch: Die Summe ändert sich bei jeder Änderung an einem der beiden.
   Result := FInner.Generation + FIde.Generation;
+end;
+
+function TIdeIndex.UsageCount(const AName: string): Integer;
+begin
+  // Die Ersatz-Units der IDE haben keine Verwendungen.
+  Result := FInner.UsageCount(AName);
 end;
 
 end.

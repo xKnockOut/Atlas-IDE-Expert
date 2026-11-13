@@ -40,7 +40,8 @@ uses
   System.SyncObjs,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Memory;
+  Atlas.Common.Index.Memory,
+  Atlas.Common.Index.UsageCounts;
 
 type
   /// <summary>Nachschlagetabellen des Symbolindex: je Name und je Vorfahr Verweise auf Platz der Unit und Position
@@ -104,6 +105,8 @@ type
     OffloadedCount: Integer;
     /// <summary>Zählt AUnit hinzu (ASign = 1) oder heraus (ASign = -1).</summary>
     procedure Count(const AUnit: TUnitIndex; ASign: Integer);
+    /// <summary>Liegen die Bytes über dem Budget ABudget (0 = unbegrenzt)?</summary>
+    function OverBudget(ABudget: Int64): Boolean;
   end;
 
   TSymbolIndex = class(TInterfacedObject, ISymbolIndex)
@@ -112,8 +115,6 @@ type
     cRebuildDeadRefs = 4096;
   private
     FLock: TCriticalSection;
-    // Schützt nur FPool (InternUnit außerhalb von FLock).
-    FPoolLock: TCriticalSection;
     // Ergebnis von Units bis zur nächsten Änderung an FFiles; nil = neu aufbauen. Jede Änderung leert es,
     // damit ersetzte Units nicht im Schnappschuss weiterleben.
     FUnitsSnapshot: TArray<TUnitIndex>;
@@ -132,11 +133,12 @@ type
     FShrinkable: TDictionary<string, Boolean>;
     FGeneration: Int64;
     FRefs: TSymbolRefTables;
+    // Stellen je Name in den Projekt-Units (#2109); nur AddUnit und RemoveFile schreiben sie fort.
+    FUsageCounts: TIndexUsageCounts;
     // Unit-Aliase (Vorgaben von Delphi und die der Projekte). Unter FLock.
     FAliases: TArray<TPair<string, string>>;
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
-    function OverBudgetLocked: Boolean;
     /// <summary>Verkleinert die Unit AKey im Durchgang APass: 0 Bibliothek kompakt halten, 1 Verwendungen der
     /// Projekt-Units auslagern, 2 Projekt-Units kompakt halten.</summary>
     procedure ShrinkUnitLocked(APass: Integer; const AKey: string);
@@ -166,6 +168,7 @@ type
     procedure SetBudget(ABytes: Int64);
     function Budget: Int64;
     function Generation: Int64;
+    function UsageCount(const AName: string): Integer;
   end;
 
 implementation
@@ -205,13 +208,13 @@ begin
   inherited Create;
   FGeneration := TInterlocked.Increment(IndexSerial) shl 32;
   FLock := TCriticalSection.Create;
-  FPoolLock := TCriticalSection.Create;
   FUnavailable := TDictionary<string, Boolean>.Create;
   FFiles := TDictionary<string, TUnitIndex>.Create;
   FUnitFiles := TDictionary<string, string>.Create;
   FPool := TStringPool.Create;
   FRefs := TSymbolRefTables.Create;
   FShrinkable := TDictionary<string, Boolean>.Create;
+  FUsageCounts := TIndexUsageCounts.Create;
   FAliases := TUnitAliases.Defaults;
 end;
 
@@ -219,13 +222,13 @@ destructor TSymbolIndex.Destroy;
 begin
   // Namensindex der Import-Vorschläge (#617) hält sonst unsere Units fest.
   TImportNames.Forget(Self);
+  FUsageCounts.Free;
   FShrinkable.Free;
   FRefs.Free;
   FPool.Free;
   FUnitFiles.Free;
   FFiles.Free;
   FUnavailable.Free;
-  FPoolLock.Free;
   FLock.Free;
   inherited;
 end;
@@ -512,9 +515,9 @@ begin
   end;
 end;
 
-function TSymbolIndex.OverBudgetLocked: Boolean;
+function TSymbolIndexTotals.OverBudget(ABudget: Int64): Boolean;
 begin
-  Result := (FBudget > 0) and (FTotals.Bytes > FBudget);
+  Result := (ABudget > 0) and (Bytes > ABudget);
 end;
 
 procedure TSymbolIndex.ShrinkUnitLocked(APass: Integer; const AKey: string);
@@ -549,7 +552,7 @@ begin
   // Projekt-Units kompakt halten; jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren:
   // AddUnit ruft
   // das bei jeder Unit auf.
-  if not OverBudgetLocked or (FShrinkable.Count = 0) then
+  if not FTotals.OverBudget(FBudget) or (FShrinkable.Count = 0) then
   begin
     Exit;
   end;
@@ -557,7 +560,7 @@ begin
   begin
     for mKey in FShrinkable.Keys.ToArray do
     begin
-      if not OverBudgetLocked then
+      if not FTotals.OverBudget(FBudget) then
       begin
         Exit;
       end;
@@ -580,16 +583,14 @@ begin
   mPooled.InterfaceUses := Copy(AUnit.InterfaceUses);
   mPooled.ImplementationUses := Copy(AUnit.ImplementationUses);
   mPooled.Symbols := Copy(AUnit.Symbols);
-  FPoolLock.Enter;
-  try
-    FPool.InternUnit(mPooled);
-  finally
-    FPoolLock.Leave;
-  end;
+  // Der Pool sperrt selbst, nicht unter FLock.
+  FPool.InternUnit(mPooled);
   FLock.Enter;
   try
     RemoveFileLocked(mKey);
     AddLocked(mKey, mPooled);
+    // Vor ShrinkLocked: Danach können die Verwendungen schon ausgelagert sein.
+    FUsageCounts.Replace(mKey, mPooled);
     ShrinkLocked;
     CleanRefsLocked;
   finally
@@ -602,6 +603,7 @@ begin
   FLock.Enter;
   try
     RemoveFileLocked(AnsiUpperCase(AFileName));
+    FUsageCounts.Remove(AnsiUpperCase(AFileName));
     CleanRefsLocked;
   finally
     FLock.Leave;
@@ -729,6 +731,16 @@ begin
   FLock.Enter;
   try
     Result := FGeneration;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.UsageCount(const AName: string): Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FUsageCounts.Count(AName);
   finally
     FLock.Leave;
   end;
