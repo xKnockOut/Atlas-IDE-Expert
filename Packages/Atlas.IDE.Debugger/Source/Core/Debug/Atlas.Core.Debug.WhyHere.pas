@@ -123,6 +123,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 const
   cArrow = ' → ';
 
@@ -143,46 +146,14 @@ begin
   end;
 end;
 
-function IntOf(AItem: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := ADefault;
-  mValue := AItem.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
-function TextOf(AItem: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AItem.GetValue(AName);
-  if mValue is TJSONString then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function FlagOf(AItem: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AItem.GetValue(AName);
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 class function TAtlasWhyHere.ReadPart(AItem: TJSONObject): TAtlasWhyHerePart;
 begin
   Result := Default(TAtlasWhyHerePart);
-  Result.Kind := TextOf(AItem, 'kind');
-  Result.Operator_ := TextOf(AItem, 'operator');
-  Result.Text := TextOf(AItem, 'text');
-  Result.Parent := IntOf(AItem, 'parent', -1);
-  Result.Call := FlagOf(AItem, 'call');
+  Result.Kind := TJsonRead.Text(AItem, 'kind');
+  Result.Operator_ := TJsonRead.Text(AItem, 'operator');
+  Result.Text := TJsonRead.Text(AItem, 'text');
+  Result.Parent := TJsonRead.IntOr(AItem, 'parent', -1);
+  Result.Call := TJsonRead.Flag(AItem, 'call');
 end;
 
 class function TAtlasWhyHere.ReadBlock(AItem: TJSONObject): TAtlasWhyHereBlock;
@@ -191,10 +162,10 @@ var
   mIndex: Integer;
 begin
   Result := Default(TAtlasWhyHereBlock);
-  Result.Kind := TextOf(AItem, 'kind');
-  Result.Line := IntOf(AItem, 'line', -1);
-  Result.Branch := TextOf(AItem, 'branch');
-  Result.Descending := FlagOf(AItem, 'descending');
+  Result.Kind := TJsonRead.Text(AItem, 'kind');
+  Result.Line := TJsonRead.IntOr(AItem, 'line', -1);
+  Result.Branch := TJsonRead.Text(AItem, 'branch');
+  Result.Descending := TJsonRead.Flag(AItem, 'descending');
   mParts := AItem.GetValue('parts');
   if not (mParts is TJSONArray) then
   begin
@@ -217,7 +188,7 @@ var
   mBlock: TAtlasWhyHereBlock;
 begin
   ABlocks := nil;
-  Result := (AJson is TJSONObject) and (IntOf(TJSONObject(AJson), 'format', 0) = 1);
+  Result := (AJson is TJSONObject) and (TJsonRead.IntOr(TJSONObject(AJson), 'format', 0) = 1);
   if not Result then
   begin
     Exit;
