@@ -446,6 +446,11 @@ type
       write FDebug.DebugExplainAccessViolationAllowCalls;
     property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
     property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
+    property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
+    property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
+      write FDebug.DebugParallelStacksWaitRoutines;
+    property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
+      write FDebug.DebugParallelStacksMaxThreads;
 
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;
