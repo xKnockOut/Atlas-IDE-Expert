@@ -222,16 +222,34 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 
 Setting: `tests.window`
 
-### Test status in the status bar (#1777)
+### Test lists in the “Atlas Tests” window (#2167)
 
+Open them with the tabs at the top of the “Atlas Tests” window; “+” creates a list.
+
+- Next to “All” there is a tab per list. On a list's tab the tree shows only its tests; filters and search still apply. The header shows the rules, “12 of 340 tests” and the storage, next to it *Run list*.
+- **Fixed lists** name tests, fixtures or whole test units: select them in the tree, context menu *Add to list ▸* (a fixed list or *New list …*); on the tab of a fixed list *Remove from “…”* removes the selection again.
+- **Dynamic lists** consist of rules that must all apply: *category is / is not* (on the fixture or the test), *unit/fixture matches / does not match* a pattern with `*` and `?` (e.g. `*.Slow.*`), *state is / is not* failed, not run or outdated. New tests that match belong to the list without further steps.
+- Right-click a tab: *Rename …*, *Edit rules …* (dynamic lists), *Duplicate*, *Delete*.
+- Storage per list: **in the project** it is kept in `atlas.json` next to the .dproj under `testLists` and applies to the team (tab marked with ◆); **only for me** it is kept in `%LOCALAPPDATA%\Atlas\test-lists.json`. Atlas changes only this key in `atlas.json`; comments and order stay.
+- Running: *Run list* on the tab, “Run test list: <name>” in the command palette, Ctrl+Alt+R (`tests.lists.runKey`) for the last used list. Category rules go to DUnitX as `--include`/`--exclude`, Atlas evaluates all other rules and names the tests with `--run`, combined into fixtures and namespaces where possible. If the list does not fit on one command line, the messages view says so.
+- `tests.lists` off: no tabs, no context menu, no command; `testLists` in `atlas.json` is not read.
+
+```json
+"testLists": [
+  {"name": "Before commit", "rules": [{"category": "Benchmark", "exclude": true}, {"unit": "*.Slow.*", "exclude": true}]},
+  {"name": "Parser", "tests": ["Atlas.Common.Pascal.Tests"]}
+]
+```
+
+Settings: `tests.lists`, `tests.lists.runKey`
+
+### Test status in the status bar (#1777)
 - The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
 - Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
 - Click: run the failed tests again; when all are green, all tests. Right-click: *Run all*, *Run failed again*, *Run affected*, *“Atlas Tests” window*, *Results on the welcome page*.
 - Tooltip: test project, time and duration of the last run, passed, failed, skipped and outdated.
 - Without the *Status* item in the bar the field appears as text in the IDE status line (without dot and right-click).
-
 Setting: `editor.statusBar.tests`
-
 ### Log per test (#2168)
 What a test writes while it runs (DUnitX `Log`/`Status`, `WriteLn` in the test class, `WriteLn` of the classes under test) appears in the “Atlas Tests” window on the *Log (n)* tab next to *Details*, for exactly the selected test.
 - The DUnitX XML report holds no log lines. That is what the helper unit `Atlas.Testing.Log` in `Setup\Vorlagen` is for (MIT license, RTL and DUnitX only): add it to the test project and insert `runner.AddLogger(TAtlasTestLogger.Create);` after `TDUnitX.CreateRunner`. The logger only works in runs started by Atlas: before the start Atlas puts an empty side file next to the report; only then does the logger write to it and put marks around every test into the console output.

@@ -3305,6 +3305,75 @@
       "x-control": "Kontrollkästchen, Zahlenfeld, Textfeld",
       "x-issue": "#1353, #1881"
     },
+    "testLists": {
+      "type": "array",
+      "description": "Testlisten im Fenster „Atlas-Tests“ (#2167), für alle im Projekt: feste Listen („tests“: Namen wie in DUnitX, Unit, Unit.Fixture oder Unit.Fixture.Methode) und dynamische („rules“, mit „und“ verknüpft: Kategorie ist bzw. ist nicht, Unit bzw. Fixture passt auf ein Muster mit * und ?, Stand fehlgeschlagen, nicht gelaufen oder veraltet). Neue Tests, die passen, gehören ohne Zutun dazu. Bearbeitet im Fenster; Listen „nur für mich“ stehen nicht hier, sondern beim Plugin.",
+      "x-description-en": "Test lists in the “Atlas Tests” window (#2167), for everyone in the project: fixed lists (“tests”: names as in DUnitX, unit, unit.fixture or unit.fixture.method) and dynamic ones (“rules”, combined with “and”: category is or is not, unit or fixture matches a pattern with * and ?, state failed, not run or outdated). New tests that match belong to the list without further ado. Edited in the window; lists “only for me” are not stored here but with the plugin.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name des Reiters und in der Befehlspalette („Testliste ausführen: …“).",
+            "x-description-en": "Name of the tab and in the command palette (“Run test list: …”)."
+          },
+          "rules": {
+            "type": "array",
+            "description": "Regeln einer dynamischen Liste, mit „und“ verknüpft; je Regel genau eines von category, unit und state.",
+            "x-description-en": "Rules of a dynamic list, combined with “and”; per rule exactly one of category, unit and state.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "description": "Kategorie aus [Category('…')] an Fixture oder Test.",
+                  "x-description-en": "Category from [Category('…')] on fixture or test."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Muster für den Unitnamen bzw. Unit.Fixture, z. B. \"Atlas.Common.Pascal.*\" oder \"*.Slow.*\".",
+                  "x-description-en": "Pattern for the unit name or unit.fixture, e.g. \"Atlas.Common.Pascal.*\" or \"*.Slow.*\"."
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "failed",
+                    "notRun",
+                    "stale"
+                  ],
+                  "description": "Stand aus den Läufen dieser Sitzung: fehlgeschlagen, nicht gelaufen, veraltet.",
+                  "x-description-en": "State from the runs of this session: failed, not run, outdated."
+                },
+                "exclude": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Umkehren: „ist nicht“ bzw. „passt nicht“.",
+                  "x-description-en": "Invert: “is not” or “does not match”."
+                }
+              }
+            }
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tests einer festen Liste: Unit, Unit.Fixture, Unit.Fixture.Methode oder voller Name eines Falls.",
+            "x-description-en": "Tests of a fixed list: unit, unit.fixture, unit.fixture.method or full name of a case."
+          }
+        }
+      },
+      "x-scope": "project",
+      "x-page": "Compiler",
+      "x-control": "Bearbeiten im Fenster „Atlas-Tests“ (Reiter, „+“, Kontextmenü)",
+      "x-issue": "#2167"
+    },
     "minConfidence": {
       "type": "string",
       "enum": [
