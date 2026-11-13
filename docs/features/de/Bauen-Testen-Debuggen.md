@@ -1,4 +1,4 @@
-# Bauen, Testen, Debuggen
+﻿# Bauen, Testen, Debuggen
 
 Zurück zum [README](../../../README_DE.md)
 
@@ -92,6 +92,16 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Getestet von (#1778)
+
+- Hinter dem Kopf jeder öffentlichen Methode einer normalen Unit steht, welche DUnitX-Tests sie prüfen, z. B. „3 Tests · bestanden“.
+- Farben wie bei der Code Lens der Tests: grün erst, wenn jeder dieser Tests bestand, gelb bei Teilstand („3 Tests · 1/3 bestanden“), rot bei einem Fehlschlag. Wurde ein Test seit seinem Lauf geändert, steht der alte Stand grau und kursiv mit „(veraltet)“. Ohne Test steht grau „kein Test · Test anlegen“.
+- Atlas sucht die Tests im Hintergrund rückwärts wie „Betroffene Tests ausführen“: mit Tiefe 1 nur Tests, die die Methode direkt aufrufen, mit größerer Tiefe auch über Zwischenstufen. Stößt die Suche an eine Grenze, steht „(unvollständig)“ dabei.
+- Klick führt genau diese Tests aus; Strg+Klick listet sie, ein Eintrag springt zum Test. Ohne Test öffnet bzw. legt der Klick die Testunit an.
+- Testunits selbst bekommen keine Marken; private und geschützte Methoden nur auf Wunsch. Ausblenden je Methode oder Datei über das Menü „Ausblenden“.
+
+Einstellungen: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
+
 ### Betroffene Tests beim Speichern (#1775)
 
 - Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
@@ -115,7 +125,13 @@ Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Erwartet und erhalten vergleichen (#1779)
 
-Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*).
+Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*), außerdem der Knopf „Vergleichen“:
+
+- im Hover über dem Fehlschlag (vor „Erklären“),
+- an der Testmarke eines fehlgeschlagenen Tests (hinter „Debuggen“),
+- auf der Kachel „Testergebnisse“ der Willkommensseite für den gewählten Fehlschlag des lokalen Laufs.
+
+Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 - Zeigt den Fehlschlag des Tests am Cursor (bei einem `[TestCase]` den ersten fehlgeschlagenen Fall), sonst den zuletzt gemeldeten, in zwei Spalten: links erwartet, rechts erhalten.
 - Abweichende Zeichen sind rot bzw. grün hinterlegt; Zeilen, die es nur auf einer Seite gibt, ganz, gegenüber eine graue Lücke.
@@ -216,6 +232,19 @@ Einstellungen: `debug.breakOnNextEvent`
 - Das andockbare Fenster „Schrittfilter“ zeigt, auf wie viele Routinen des Projekts jede Art und jedes Muster passt.
 
 Einstellungen: `debug.stepFilters`
+
+#### Haltepunkte, die nicht greifen werden
+
+Vor jedem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte, offene Dateien mit dem Stand im Editor:
+
+- Zeile ohne Code (Kommentar, Leerzeile, Deklaration) mit der nächsten Codezeile derselben Routine
+- inaktiver Zweig der bedingten Kompilierung mit seiner Bedingung (`{$IFDEF RELEASE}`)
+- Code ohne Debug-Informationen (`{$D-}` in der Unit oder in den Projektoptionen)
+- Unit eines anderen Projekts der Gruppe, nicht des gestarteten
+
+Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie vor dem Start; Doppelklick springt zur Stelle. „Auf nächste Codezeile verschieben“ verschiebt die Haltepunkte samt Bedingung, Durchlaufzahl und Gruppe und startet, „Trotzdem starten“ startet unverändert, „Abbrechen“ startet nicht. Der Befehl „Haltepunkte prüfen“ (Menü Atlas, Befehlspalette) prüft jederzeit. Ohne Server oder ohne Antwort in 3 Sekunden startet die IDE ohne Meldung.
+
+Einstellungen: `debug.checkBreakpoints`
 
 ### Werte ansehen
 
@@ -364,3 +393,15 @@ Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
 - Wer eine Sperre (`TMonitor`, Critical Section) hält, liefert der Debugger nicht; Atlas nennt nur die Wartenden.
 
 Schalter: `debug.deadlocks`.
+
+<a id="window-atlasdebugparallelstacks"></a>
+#### Parallele Aufrufstapel
+
+- Atlas > „Parallele Aufrufstapel“ öffnet ein andockbares Fenster, das bei jedem Halt die Aufrufstapel aller Threads als Baum zeigt, vom Thread-Start (Wurzel) bis zum obersten Rahmen.
+- Gleiche Rahmen (gleiche Routine an gleicher Stelle) stehen einmal da mit der Zahl der Threads, etwa „TWorker.Execute (Unit2.pas:30) · 10 Threads“; der Baum verzweigt dort, wo sich die Stapel trennen.
+- Knoten des aktuellen Threads stehen fett. Stehen alle Threads eines Knotens in einer Warte-Routine (`TMonitor.Enter`, `WaitForSingleObject`, `Sleep` …), steht „wartend“ dahinter, in der Warnfarbe; die Liste der Routinen ist einstellbar (`debug.parallelStacks.waitRoutines`).
+- Filter „Nur eigener Code“ blendet Rahmen aus RTL, VCL und Bibliotheken aus, „Wartend“ zeigt nur wartende Threads.
+- Unten stehen die Threads des gewählten Knotens. Enter oder Doppelklick wechselt zum Thread (bei mehreren über eine Auswahlliste) und springt zur Zeile.
+- Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
+
+Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.

@@ -13,6 +13,11 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
+  cMinParallelStacksThreads = 1;
+  cMaxParallelStacksThreads = 1024;
+  /// <summary>Vorgabe von debug.parallelStacks.maxThreads.</summary>
+  cDefaultParallelStacksThreads = 64;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -75,6 +80,11 @@ type
     /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
     /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
     DebugBreakOnNextEventExcluded: string;
+    /// <summary>Haltepunkte, die nicht greifen werden (#577, debug.checkBreakpoints): Vor dem Start einer
+    /// Debug-Sitzung meldet Atlas Haltepunkte auf Zeilen ohne Code, in inaktiven Zweigen, unter {$D-} und in Units
+    /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
+    /// Aus = keine Prüfung, kein Befehl.</summary>
+    DebugCheckBreakpoints: Boolean;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
     /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
@@ -107,6 +117,13 @@ type
     /// <summary>debug.deadlocks (#587): Befehl „Was wartet worauf?“: Wartepunkte aller Threads eines
     /// angehaltenen Programms und bekannte Muster von Verklemmungen im Ergebnisfenster.</summary>
     DebugDeadlocks: Boolean;
+    /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
+    /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
+    DebugParallelStacks: Boolean;
+    /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
+    DebugParallelStacksWaitRoutines: string;
+    /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
+    DebugParallelStacksMaxThreads: Integer;
     /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
     /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
     /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
@@ -190,12 +207,16 @@ begin
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
+  Result.DebugCheckBreakpoints := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugParallelStacks := True;
+  Result.DebugParallelStacksWaitRoutines := '';
+  Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
   Result.DebugDeadlocks := True;
   Result.DebugModuleOfAddress := True;
   Result.DebugExceptionHistory := True;
@@ -214,6 +235,9 @@ procedure TAtlasPluginDebugSettings.Normalize;
 begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
+  DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
+  DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
+    cMaxParallelStacksThreads);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
@@ -251,6 +275,7 @@ begin
   AIo.Number('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
@@ -259,6 +284,9 @@ begin
   AIo.Flag('DebugExplainAccessViolationAllowCalls', DebugExplainAccessViolationAllowCalls);
   AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);
   AIo.Flag('DebugDeadlocks', DebugDeadlocks);
+  AIo.Flag('DebugParallelStacks', DebugParallelStacks);
+  AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
+  AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
 
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
