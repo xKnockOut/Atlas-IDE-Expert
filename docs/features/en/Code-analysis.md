@@ -57,7 +57,7 @@ Marks move along while typing.
 
 ## Check rules
 
-**336 check rules** in four categories: 221 bugs, 104 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
+**340 check rules** in four categories: 223 bugs, 106 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
 
 ### Correctness
 
@@ -437,7 +437,7 @@ Compiler errors while typing, without a build.
 - Message handlers (`message WM_SIZE`) without `inherited`
 - IDE notifiers without `RemoveNotifier` (quick fix keeps the index and removes it on unload)
 - DUnitX tests without any assert
-- `[TestCase]` values that do not fit the parameters of the method; test classes never registered, test units in no test project; `Assert.IsTrue(A = B)` instead of `AreEqual` (no values on failure) and swapped expected and actual values, each with a quick fix; fields created in `[Setup]` and not freed in `[TearDown]`, with a fix that frees them (and creates TearDown if needed)
+- `[TestCase]` values that do not fit the parameters of the method; test classes never registered, test units in no test project; `Assert.IsTrue(A = B)` instead of `AreEqual` (no values on failure) and swapped expected and actual values, each with a quick fix; fields created in `[Setup]` and not freed in `[TearDown]`, with a fix that frees them (and creates TearDown if needed); `[Ignore]` without a reason, `[Category]` without a name, `[TestFixture]` classes without a single test and duplicate attributes on one element (the fix removes the second)
 - `inherited` in the wrong place
   - before freeing own fields in the destructor, after using inherited properties in the constructor
   - quick fix moves it

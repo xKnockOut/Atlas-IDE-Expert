@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDePackages: array[0..63] of string = (
+  cCatalogLinesDePackages: array[0..83] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',
@@ -103,6 +103,36 @@ const
     '          "description": "Auch string- und dynamische Array-Felder melden, die Setup belegt und TearDown nicht leert."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "dunitx-ignore-without-reason",',
+    '      "name": "[Ignore] ohne Begründung",',
+    '      "description": "[Ignore] ohne Argument oder mit leerer Begründung ([Ignore('''')]): Der Testbericht sagt nicht, warum der Test nicht läuft, und später weiß niemand, ob er wieder an darf. Begründun' +
+    'gen, die kein String-Literal sind (eine Konstante), gelten als vorhanden. Die Attribute werden über ihren Namen erkannt (mit oder ohne Unit und Endung Attribute), die Regel geht also auch ohne DUnitX ' +
+    'im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Den Grund kennt nur, wer den Test abgeschaltet hat."',
+    '    },',
+    '{',
+    '      "id": "dunitx-category-empty",',
+    '      "name": "[Category] ohne Namen",',
+    '      "description": "[Category('''')] oder ein Kategorietext nur aus Kommas und Leerzeichen ([Category('' , '')]): Der Test landet in keiner Kategorie, ein Filter wie --include findet ihn nie. Namen, die' +
+    ' kein String-Literal sind, gelten als vorhanden. Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFrame' +
+    'work oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Die gemeinte Kategorie ist unbekannt."',
+    '    },',
+    '{',
+    '      "id": "dunitx-fixture-without-test",',
+    '      "name": "[TestFixture] ohne Test",',
+    '      "description": "Eine Klasse mit [TestFixture], die keine Methode mit [Test], [TestCase], [NamedTestCase] oder [RepeatTest] und keine published-Methode hat (DUnitX nimmt published-Methoden ohne A' +
+    'ttribut als Tests): Die Klasse läuft leer, der Bericht sieht grün aus. Klassen, deren Vorfahr (außer TObject) nicht in derselben Datei steht, bleiben still, ebenso Klassen, deren Vorfahr in der Datei ' +
+    'Tests hat (geerbte Tests). Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.' +
+    '*). Sicherheit mittel. Keine Schnellkorrektur."',
+    '    },',
+    '{',
+    '      "id": "dunitx-duplicate-attribute",',
+    '      "name": "Attribut doppelt",',
+    '      "description": "Dasselbe DUnitX-Attribut zweimal an derselben Klasse oder Methode: [Test] [Test], [Ignore] zweimal, [TestFixture] zweimal usw. TestCase, NamedTestCase und Category dürfen mehrfac' +
+    'h stehen und werden nur bei gleichen Argumenten gemeldet (der Fall liefe doppelt). Unbekannte Attribute bleiben still. Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUni' +
+    'tX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Korrektur (sicher): das zweite entfernen, allein auf seiner Zeile samt Zeile, in einer ' +
+    'Liste samt Komma."',
     '    }');
 
 implementation

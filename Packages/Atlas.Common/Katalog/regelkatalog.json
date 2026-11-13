@@ -2701,6 +2701,50 @@
       "safeFix": true
     },
     {
+      "id": "dunitx-ignore-without-reason",
+      "name": "[Ignore] without a reason",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "[Ignore] without an argument or with an empty reason ([Ignore('')]): the test report does not say why the test does not run, and later nobody knows whether it may run again. Reasons that are not a string literal (a constant) count as given. Attributes are recognized by name (with or without unit and suffix Attribute), so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: only the author knows the reason.",
+      "bad": "[Test, Ignore]\nprocedure Export;",
+      "good": "[Test, Ignore('Waits for the new export format (#812)')]\nprocedure Export;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-category-empty",
+      "name": "[Category] without a name",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "[Category('')] or a category text that holds only commas and blanks ([Category(' , ')]): the test ends up in no category, a filter such as --include never finds it. Names that are not a string literal count as given. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: the intended category is unknown.",
+      "bad": "[Test, Category('')]\nprocedure Import;",
+      "good": "[Test, Category('Slow')]\nprocedure Import;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-fixture-without-test",
+      "name": "[TestFixture] without a test",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A class with [TestFixture] that has no method with [Test], [TestCase], [NamedTestCase] or [RepeatTest] and no published method (DUnitX takes published methods without attributes as tests): the class runs empty and the report looks green. Classes whose ancestor (other than TObject) is not declared in the same file stay silent, as do classes whose ancestor in the file has tests (inherited tests). Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Medium confidence. No quick fix.",
+      "bad": "[TestFixture]\nTKundeTests = class\npublic\n  procedure PruefeName;\nend;",
+      "good": "[TestFixture]\nTKundeTests = class\npublic\n  [Test]\n  procedure PruefeName;\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-duplicate-attribute",
+      "name": "Duplicate attribute",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "The same DUnitX attribute twice on the same class or method: [Test] [Test], [Ignore] twice, [TestFixture] twice and so on. TestCase, NamedTestCase and Category may appear several times and are only reported when the arguments are the same (the case would run twice). Unknown attributes stay silent. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. Quick fix (safe): remove the second one, alone on its line together with the line, in a list together with its comma.",
+      "bad": "[Test]\n[Test]\nprocedure Speichern;",
+      "good": "[Test]\nprocedure Speichern;",
+      "safeFix": true
+    },
+    {
       "id": "event-call-without-assigned",
       "name": "Event called without Assigned check",
       "category": "bug",

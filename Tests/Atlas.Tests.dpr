@@ -296,6 +296,7 @@ uses
   Atlas.Common.Rules.Builtin.Testing.Asserts.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Asserts.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.Registration.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.TearDown.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TearDown.Tests.pas',
+  Atlas.Common.Rules.Builtin.Testing.Attributes.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Attributes.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCases.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas',
