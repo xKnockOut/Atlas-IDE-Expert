@@ -195,6 +195,17 @@ Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an 
 - Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
 - Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
 
+### Test aus dem Debug-Halt anlegen (#1873)
+
+Aufruf: Knopf *Test daraus anlegen …* in der Exception-Leiste, Kontextmenü des Editors › Atlas › Tests beim Debuggen oder Befehlspalette (*Test aus dem Debug-Halt anlegen …*). Einstellungen unter Debuggen: `tests.fromDebugStop` (Vorgabe an), `tests.fromDebugStop.fields` (an), `tests.fromDebugStop.properties` (aus), `tests.fromDebugStop.maxArray` (20).
+
+- Atlas nimmt den Rahmen des Halts: bei einer Exception in RTL oder VCL den ersten Rahmen in eigenem Code, sonst den obersten mit Quelltext.
+- Steht der Rahmen oben, wertet der Debugger die Parameter und die Felder der Klasse aus (`Self.FEinheit`), ohne Nebenwirkungen; Getter nur mit `tests.fromDebugStop.properties`. In einem tieferen Rahmen kommen die Parameter aus der Kopfzeile des Aufrufstacks.
+- Aus den Texten des Debuggers werden Delphi-Literale: Zahlen (Dezimalkomma wird Punkt), Strings mit `''` und `#nn`, Boolean, Aufzählungswerte, Mengen und dynamische Arrays bis `tests.fromDebugStop.maxArray` Elemente. Objekte, Zeiger, Interfaces, Records und alles Unklare rät Atlas nicht: Der Test bekommt dort ein TODO.
+- Der Dialog zeigt die Werte zum Abwählen (abgewählte bleiben Platzhalter; private Felder und Objekte sind abgewählt), die Art (*Soll funktionieren* bzw. *Soll EConvertError werfen*, wenn das Programm an einer Exception steht), bei Funktionen das erwartete Ergebnis und den Namen (`ParseMit12_5Kg`, `ParseMit12_5KgWirftConvertError`).
+- *Test anlegen* trägt den Test wie *Testfall aus der Unit anlegen* in die Testunit ein (legt sie bei Bedarf samt `.dpr`/`.dproj` an), mit einer Kommentarzeile „Aus Debug-Halt 2026-11-13 10:42, EConvertError“; eine Exception prüft `Assert.WillRaise`. Ohne erwartetes Ergebnis bleibt der Test mit `Assert.Fail` rot. Alles ist ein Rückgängig-Schritt, danach springt Atlas zum Test.
+- Ohne das Modul Debugger fehlen Knopf und Befehl.
+
 ### Schnellbefehle für Tests und Fehlersuche (#305)
 
 Aufruf: Befehl in eine leere Zeile schreiben und Enter drücken.

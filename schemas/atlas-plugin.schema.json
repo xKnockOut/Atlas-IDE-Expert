@@ -1608,6 +1608,55 @@
       "x-captionEn": "Debug test",
       "x-issue": "#585"
     },
+    "TestsFromDebugStop": {
+      "description": "„Test daraus anlegen …“ beim Debug-Halt (Haltepunkt oder Exception): Exception-Leiste, Kontextmenü des Editors und Befehlspalette. Der Dialog zeigt die Methode des Halts in eigenem Code mit Argumenten und einfachen Feldern; daraus entsteht ein DUnitX-Test, der den Fall nachstellt (soll funktionieren mit erwartetem Ergebnis oder soll die Exception werfen). Aus = Eintrag und Knopf fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Test aus dem Debug-Halt anlegen",
+      "x-captionEn": "Create a test from the debug stop",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopFields": {
+      "description": "Einfache Felder des Objekts (Zahlen, Strings, Boolean, Aufzählungen, Mengen) im Dialog anbieten; öffentliche werden im Test gesetzt, andere als Kommentar notiert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop.fields",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Felder des Objekts anbieten",
+      "x-captionEn": "Offer the object's fields",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopProperties": {
+      "description": "Eigenschaften mit Getter auswerten. Getter können Nebenwirkungen haben; aus = nur Felder und Argumente, ausgewertet ohne Nebenwirkungen.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.fromDebugStop.properties",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Eigenschaften mit Getter auswerten",
+      "x-captionEn": "Evaluate properties with getters",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopMaxArray": {
+      "description": "Höchstens so viele Elemente je Array werden als Literal übernommen; längere Arrays bekommen im Test ein TODO. 0 = keine Arrays.",
+      "type": "integer",
+      "default": 20,
+      "minimum": 0,
+      "maximum": 1000,
+      "x-key": "tests.fromDebugStop.maxArray",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Elemente je Array höchstens",
+      "x-captionEn": "Elements per array at most",
+      "x-issue": "#1873"
+    },
     "TestBreakAtStart": {
       "type": "boolean",
       "default": true,
