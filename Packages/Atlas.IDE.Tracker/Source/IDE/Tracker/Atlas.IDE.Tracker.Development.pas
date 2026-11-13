@@ -115,6 +115,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Preview,
   ToolsAPI,

@@ -59,6 +59,9 @@ type
     procedure ValuesNameEverySetEntry;
     [Test]
     procedure ReadsDebugDisplayRules;
+    /// <summary>Startverbünde (#867): Array als JSON-Text; mit Zugangsdaten verworfen.</summary>
+    [Test]
+    procedure KeepsLaunchGroups;
   end;
 
 implementation
@@ -482,6 +485,20 @@ begin
   Assert.AreEqual('debugDisplayRules', TAtlasTeamFile.Values(Team)[0].Key);
   Assert.IsTrue(Parsed('{"version": 1, "debugDisplayRules": []}').Issues[0].Kind = TAtlasTeamIssueKind.WrongType);
   Assert.Contains(TAtlasTeamFile.Skeleton, '"debugDisplayRules"');
+end;
+
+procedure TAtlasTeamFileTests.KeepsLaunchGroups;
+var
+  Team: TAtlasTeamSettings;
+begin
+  Team := Parsed('{"version": 1, "launchGroups": [{"name": "A", "items": [{"project": "S.dproj"}]}]}');
+  Assert.AreEqual(0, Integer(Length(Team.Issues)));
+  Assert.AreEqual('[{"name":"A","items":[{"project":"S.dproj"}]}]', Team.LaunchGroups);
+  Assert.AreEqual('launchGroups', TAtlasTeamFile.Values(Team)[0].Key);
+  Team := Parsed('{"version": 1, "launchGroups": [{"name": "A", "password": "geheim"}]}');
+  Assert.AreEqual('', Team.LaunchGroups, 'mit Zugangsdaten verworfen');
+  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Credential, 'launchGroups.password'));
+  Assert.IsTrue(HasIssue(Parsed('{"version": 1, "launchGroups": {}}'), TAtlasTeamIssueKind.WrongType, 'launchGroups'));
 end;
 
 initialization

@@ -30,6 +30,8 @@
 //      "vcs": {"provider": "svn", "mainBranch": "trunk"},              #1286
 //      "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", #628
 //                  "anchor": "TKunde.Speichern"}],
+//      "launchGroups": [{"name": "Server + Client", "items": [          #867
+//        {"project": "Server\\Server.dproj", "wait": "port", "value": 8080}]}],
 //      "debugDisplayRules": {                                            #854
 //        "FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})",
 //        "TKunde": {"template": "{Name}, {Ort}", "children": ["Name", "Ort"]}}}
@@ -185,6 +187,9 @@ type
     Hidden: TArray<TAtlasHiddenPlace>;
     /// <summary>Wertdarstellungen beim Debuggen (#854).</summary>
     DisplayRules: TArray<TAtlasTeamDisplayRule>;
+    /// <summary>Startverbünde (#867) als JSON-Text des Arrays "launchGroups"; das Modul Debugger liest ihn.
+    /// '' = keine (oder mit Zugangsdaten verworfen).</summary>
+    LaunchGroups: string;
     Issues: TArray<TAtlasTeamIssue>;
     /// <summary>Es gibt eine Projektdatei (gültig oder nicht).</summary>
     function Exists: Boolean;
@@ -202,6 +207,7 @@ type
   public const
     cFileName = '.atlas';
     cDisplayRulesKey = 'debugDisplayRules';
+    cLaunchGroupsKey = 'launchGroups';
     cCurrentVersion = 1;
   public
     /// <summary>Projektdatei zum Ordner einer .dproj ohne Projektgruppe (siehe Kopf); '' ohne.</summary>
@@ -476,6 +482,7 @@ type
     procedure ReadVcs(AValue: TJSONValue);
     procedure ReadHidden(AValue: TJSONValue);
     procedure ReadDisplayRules(AValue: TJSONValue);
+    procedure ReadLaunchGroups(AValue: TJSONValue);
     procedure ReadVersion(AValue: TJSONValue);
   public
     constructor Create(const AFileName, ARoot: string);
@@ -1327,6 +1334,24 @@ begin
   end;
 end;
 
+procedure TTeamReader.ReadLaunchGroups(AValue: TJSONValue);
+var
+  mIssues: Integer;
+begin
+  if not (AValue is TJSONArray) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.cLaunchGroupsKey);
+    Exit;
+  end;
+  // Inhalt prüft das Modul Debugger; hier nur: keine Zugangsdaten (dann gilt der ganze Wert nicht).
+  mIssues := Length(FTeam.Issues);
+  ScanCredentials(AValue, TAtlasTeamFile.cLaunchGroupsKey);
+  if Length(FTeam.Issues) = mIssues then
+  begin
+    FTeam.LaunchGroups := AValue.ToJSON([]);
+  end;
+end;
+
 procedure TTeamReader.ReadKey(const AKey: string; AValue: TJSONValue);
 begin
   if ReadListKey(AKey, AValue) then
@@ -1368,6 +1393,10 @@ begin
   else if AKey = TAtlasTeamFile.cDisplayRulesKey then
   begin
     ReadDisplayRules(AValue);
+  end
+  else if AKey = TAtlasTeamFile.cLaunchGroupsKey then
+  begin
+    ReadLaunchGroups(AValue);
   end
   else
   begin
@@ -1801,6 +1830,10 @@ begin
   end;
   AddList(Result, TAtlasHiddenPlaces.cKey, HiddenItems(ATeam.Hidden));
   AddList(Result, cDisplayRulesKey, RuleItems(ATeam.DisplayRules));
+  if ATeam.LaunchGroups <> '' then
+  begin
+    AddValue(Result, cLaunchGroupsKey, ATeam.LaunchGroups);
+  end;
 end;
 
 /// <summary>Teil eines Pfads anhängen: '' und '.' entfallen, '..' nimmt den letzten Teil weg (nie den ersten).

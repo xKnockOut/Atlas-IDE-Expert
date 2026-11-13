@@ -2036,6 +2036,56 @@
       "x-captionEn": "Turn disabled breakpoints on again",
       "x-issue": "#872"
     },
+    "DebugReattach": {
+      "description": "Erneut an einen Prozess anhängen: Atlas merkt Pfad und Name von Prozessen, an die sich die IDE hängt (je Projektgruppe, nur auf diesem Rechner). „Erneut an <Name> anhängen“ (Menü Start, Befehlspalette, Taste) hängt sich bei genau einem laufenden Prozess mit gleichem Pfad ohne Rückfrage an, bei mehreren oder nur gleichem Namen zeigt es eine Auswahl, ohne Treffer bietet es das Warten an. „Anhängen, sobald gestartet …“ wartet auf den Start einer EXE und hängt sich sofort an. Nur lokale Prozesse. Aus = keine Einträge, kein Merken, kein Warten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.reattach",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Erneut an Prozess anhängen",
+      "x-captionEn": "Reattach to process",
+      "x-issue": "#2171"
+    },
+    "DebugReattachKey": {
+      "description": "Tastenkürzel „Erneut anhängen“ (0 = keins).",
+      "type": "integer",
+      "default": 41040,
+      "x-key": "debug.reattach.key",
+      "x-area": "debug",
+      "x-format": "shortcut",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-issue": "#2171"
+    },
+    "DebugReattachWaitIntervalMs": {
+      "description": "Abstand, in dem Atlas beim Warten auf den Start eines Prozesses die Prozessliste abfragt, in Millisekunden (20 bis 2000). Kürzer verpasst weniger vom Anfang des Programms.",
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 2000,
+      "default": 100,
+      "x-key": "debug.reattach.waitIntervalMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-control": "Zahl",
+      "x-issue": "#2171"
+    },
+    "DebugLaunchGroups": {
+      "description": "Startverbünde: mehrere Programme der Projektgruppe gemeinsam starten und debuggen. Die Verbünde stehen in der Projektdatei .atlas unter launchGroups (für alle im Team): je Projekt Startprofil, mit oder ohne Debugger und eine Wartebedingung vor dem nächsten (feste Sekunden, bis ein TCP-Port offen ist, bis das Hauptfenster da ist). Fenster „Atlas: Startverbünde …“ wählt den aktiven Verbund; F9 baut geänderte Projekte und startet alle in Reihenfolge, Strg+F2 beendet alle. Scheitert ein Start oder läuft eine Wartebedingung ab, hält der Verbund an und fragt „Trotzdem weiter“ oder „Alle beenden“. Das Statusfeld zeigt je Programm den Zustand, ein Klick wechselt den aktiven Prozess. Aus = F9 startet nur das aktive Projekt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.launchGroups",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Startverbünde",
+      "x-captionEn": "Launch groups",
+      "x-issue": "#867"
+    },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
       "type": "boolean",

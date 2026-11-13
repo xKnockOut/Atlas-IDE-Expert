@@ -68,7 +68,9 @@ Atlas.Common.Editing.Colors.Tests
 Atlas.Common.Editing.CompilerFixes.Tests
 Atlas.Common.Editing.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests
+Atlas.Common.Editing.BoundaryCases.Tests
 Atlas.Common.Editing.CreateMethod.Tests
+Atlas.Common.Editing.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Editing.DocComments.Tests
@@ -163,6 +165,7 @@ Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.Completion.FormProposals.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeConversions.Tests
 Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
@@ -190,6 +193,7 @@ Atlas.Common.Lsp.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests
+Atlas.Common.Lsp.BoundaryCases.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
@@ -378,6 +382,8 @@ Atlas.Core.Debug.EventLog.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Debug.Restart.Tests
+Atlas.Core.Debug.Reattach.Tests
+Atlas.Core.Debug.LaunchGroups.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
@@ -417,6 +423,8 @@ Atlas.UI.Undo.Strings.Tests
 Atlas.UI.VersionControl.Strings.Tests
 Atlas.UI.Welcome.Strings.Tests
 Atlas.Core.Hover.Layout.Tests
+Atlas.Core.Hover.Layout.Painter.Tests
+Atlas.Core.Hover.Layout.Members.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests

@@ -59,6 +59,13 @@ type
     /// <summary>Neu starten (#872): an, Haltepunkte wieder einschalten aus, gespeichert und geladen.</summary>
     [Test]
     procedure RestartOptions;
+    /// <summary>Erneut anhängen (#2171): an, Umschalt+Alt+P, 100 ms; Abstand begrenzt, gespeichert und geladen.
+    /// </summary>
+    [Test]
+    procedure ReattachOptions;
+    /// <summary>Startverbünde (#867): an, gespeichert und geladen.</summary>
+    [Test]
+    procedure LaunchGroupOptions;
   end;
 
 implementation
@@ -207,6 +214,42 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugRestart);
   Assert.IsTrue(Loaded.DebugRestartReenableBreakpoints);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.ReattachOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugReattach, 'standardmäßig an');
+  Assert.AreEqual(Integer($A050), Settings.DebugReattachKey, 'Umschalt+Alt+P');
+  Assert.AreEqual(Integer(100), Settings.DebugReattachWaitIntervalMs);
+  Settings.DebugReattach := False;
+  Settings.DebugReattachKey := 0;
+  Settings.DebugReattachWaitIntervalMs := 5000;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugReattach);
+  Assert.AreEqual(Integer(0), Loaded.DebugReattachKey);
+  Assert.AreEqual(Integer(2000), Loaded.DebugReattachWaitIntervalMs, 'höchstens 2000 ms');
+end;
+
+procedure TAtlasBuildDebugSettingsTests.LaunchGroupOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugLaunchGroups, 'standardmäßig an');
+  Settings.DebugLaunchGroups := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugLaunchGroups);
 end;
 
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;
