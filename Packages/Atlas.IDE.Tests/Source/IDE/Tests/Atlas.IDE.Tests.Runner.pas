@@ -31,6 +31,9 @@
 //   dem XML-Bericht des Laufs im Debugger (ReportRun).
 // - Nach jedem gemeldeten Lauf ruft der Läufer den Haken OnReported (Stand
 //   der Tests für veraltete Ergebnisse, #1770, Atlas.IDE.Tests.Stale).
+// - RunQuiet (#1775, Tests beim Speichern): Lauf im Hintergrund ohne Frage
+//   nach dem Testprojekt und ohne Zeilen in der Meldungsansicht; die Ausgabe
+//   (Atlas.IDE.Tests.Output) merkt sie und meldet das Ende.
 // Haken statt Imports: Build, Probleme und Willkommensseite sind andere
 // Features; die Composition verbindet sie.
 
@@ -47,7 +50,8 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
   Atlas.Text.TestResults,
-  Atlas.IDE.Tests.Projects;
+  Atlas.IDE.Tests.Projects,
+  Atlas.IDE.Tests.Output;
 
 type
   /// <summary>Ende des Builds vor den Tests: AError &lt;&gt; '' = nicht gebaut (Grund); sonst Erfolg und EXE.</summary>
@@ -90,17 +94,17 @@ type
     FLastFailed: TDictionary<string, TArray<string>>;
     FHooks: THooks;
     FDebugging: Boolean;
+    FOutput: TAtlasIdeTestsOutput;
     procedure SetDebugging(AValue: Boolean);
-    function GetBusy: Boolean;
     procedure Start(const AProject: IOTAProject; const ATests: TArray<string>; ABuildFirst: Boolean);
     procedure Execute(const ATarget: TAtlasTestTarget);
     procedure Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
       const AXml: string; const AOutput: TArray<string>);
-    procedure Merge(const ARun: TTestRunResult);
     /// <summary>Meldet ATarget (gültiger Bericht ARun): Probleme, Meldungsansicht, Zusammenfassung.</summary>
     procedure Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
   public
-    constructor Create(const ANewRunner: TAtlasTestsRunnerFactory);
+    /// <summary>AOutput gehört dem Aufrufer und lebt länger.</summary>
+    constructor Create(const ANewRunner: TAtlasTestsRunnerFactory; AOutput: TAtlasIdeTestsOutput);
     destructor Destroy; override;
     /// <summary>Alle Tests des Testprojekts.</summary>
     procedure RunAll;
@@ -112,6 +116,10 @@ type
     /// False mit AReason, wenn „Tests ausführen“ aus ist, schon ein Lauf läuft oder AProject nicht offen ist.
     /// </summary>
     function RunProject(const AProject: string; out AReason: string): Boolean;
+    /// <summary>Tests ATests im Testprojekt der Datei AFileName im Hintergrund (#1775): ohne Frage nach dem
+    /// Testprojekt (eines bzw. die gemerkte Wahl) und ohne Zeilen in der Meldungsansicht; gebaut wie mit „Vor den
+    /// Tests bauen“. Das Ende meldet die Ausgabe (OnQuietEnded). False mit AReason, wenn nichts startet.</summary>
+    function RunQuiet(const AFileName: string; const ATests: TArray<string>; out AReason: string): Boolean;
     /// <summary>Ein Build ist fertig und bewertet (#530): mit „Tests nach dem Build“ laufen die Tests, wenn er als
     /// erfolgreich gilt (ASucceeded = TAtlasBuildVerdict.Effective).</summary>
     procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
@@ -141,7 +149,7 @@ type
     /// </summary>
     property Debugging: Boolean read FDebugging write SetDebugging;
     /// <summary>Ein Lauf (oder der Build davor) ist im Gange, auch im Debugger.</summary>
-    property Busy: Boolean read GetBusy;
+    function Busy: Boolean;
     /// <summary>Zählt jede Änderung von Busy und Ergebnissen (Neuzeichnen der Code Lens).</summary>
     property Version: Integer read FVersion;
     property OnBuild: TAtlasTestsBuildFunc read FHooks.OnBuild write FHooks.OnBuild;
@@ -168,7 +176,6 @@ uses
   Atlas.IDE.Foundation.Files;
 
 const
-  cMessageGroup = 'Atlas';
   /// <summary>So viele letzte Zeilen der Ausgabe zeigt die Meldung „kein Bericht“.</summary>
   cOutputLines = 5;
 
@@ -220,12 +227,61 @@ begin
     end;
 end;
 
+/// <summary>Ergebnisse ACases, ersetzt bzw. ergänzt um AFresh (voller Name, ohne Groß-/Kleinschreibung).</summary>
+function Merged(const ACases, AFresh: TArray<TTestCaseResult>): TArray<TTestCaseResult>;
+var
+  mItem, mNew: TTestCaseResult;
+  mReplaced: Boolean;
+begin
+  Result := nil;
+  for mItem in ACases do
+  begin
+    mReplaced := False;
+    for mNew in AFresh do
+    begin
+      if SameText(mNew.FullName, mItem.FullName) then
+      begin
+        mReplaced := True;
+      end;
+    end;
+    if not mReplaced then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+  Result := Result + AFresh;
+end;
+
+/// <summary>Ein Lauf startet nicht bzw. endet ohne Bericht: Grund AText melden, Lauf im Hintergrund beenden.
+/// </summary>
+procedure Refuse(AOutput: TAtlasIdeTestsOutput; const AText: string);
+begin
+  AOutput.Tell(AText);
+  AOutput.EndQuiet(False, Default(TTestRunResult));
+end;
+
+/// <summary>Grund, aus dem nach dem Build vor den Tests nichts läuft (AError: Build abgelehnt, sonst
+/// fehlgeschlagen); '' nach einem erfolgreichen Build.</summary>
+function BuildRefusal(const AProject: string; ASucceeded: Boolean; const AError: string): string;
+begin
+  Result := '';
+  if AError <> '' then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(AProject), AError]);
+  end
+  else if not ASucceeded then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(AProject)]);
+  end;
+end;
+
 { TAtlasIdeTests }
 
-constructor TAtlasIdeTests.Create(const ANewRunner: TAtlasTestsRunnerFactory);
+constructor TAtlasIdeTests.Create(const ANewRunner: TAtlasTestsRunnerFactory; AOutput: TAtlasIdeTestsOutput);
 begin
   inherited Create;
   FNewRunner := ANewRunner;
+  FOutput := AOutput;
   FAlive := TAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
@@ -248,20 +304,8 @@ begin
 end;
 
 procedure TAtlasIdeTests.Say(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    Exit;
-  end;
-  mGroup := mMessages.GetGroup(cMessageGroup);
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup(cMessageGroup);
-  end;
-  mMessages.AddTitleMessage(AText, mGroup);
+  FOutput.Say(AText);
 end;
 
 procedure TAtlasIdeTests.ResolveProject(const AFileName: string; const AThen: TAtlasTestsProjectProc);
@@ -397,6 +441,31 @@ begin
   Result := True;
 end;
 
+function TAtlasIdeTests.RunQuiet(const AFileName: string; const ATests: TArray<string>;
+  out AReason: string): Boolean;
+var
+  mProject: IOTAProject;
+begin
+  Result := False;
+  AReason := '';
+  mProject := TAtlasIdeTestProjects.Known(AFileName);
+  if Busy then
+  begin
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy);
+  end
+  else if mProject = nil then
+  begin
+    AReason := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsOnSaveNoProject, [ExtractFileName(AFileName)]);
+  end
+  else
+  begin
+    // Das Ende meldet die Ausgabe, auch wenn Start sofort abbricht (Plattform, Build abgelehnt).
+    FOutput.BeginQuiet;
+    Start(mProject, ATests, TAtlasIdeSettings.Current.TestsBuildFirst);
+    Result := True;
+  end;
+end;
+
 procedure TAtlasIdeTests.BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
 var
   mProject: IOTAProject;
@@ -453,7 +522,7 @@ begin
   Finish(ATarget, TAtlasVcsOutcome.Ok, 0, AXml, nil);
 end;
 
-function TAtlasIdeTests.GetBusy: Boolean;
+function TAtlasIdeTests.Busy: Boolean;
 begin
   Result := FBusy or FDebugging;
 end;
@@ -477,13 +546,14 @@ var
 begin
   if Busy then
   begin
-    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
+    Refuse(FOutput, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
     Exit;
   end;
   mTarget := TargetOf(AProject, ATests);
   if not TAtlasTestRun.CanRun(mTarget.Platform) then
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(mTarget.Project), mTarget.Platform]));
+    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(mTarget.Project),
+      mTarget.Platform]));
     Exit;
   end;
   if not ABuildFirst or not Assigned(FHooks.OnBuild) then
@@ -505,27 +575,21 @@ begin
       end;
       FBusy := False;
       Inc(FVersion);
-      if AError <> '' then
+      if BuildRefusal(mTarget.Project, ASucceeded, AError) <> '' then
       begin
-        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(mTarget.Project), AError]));
-      end
-      else if not ASucceeded then
-      begin
-        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(mTarget.Project)]));
-      end
-      else
-      begin
-        if AOutputFile <> '' then
-        begin
-          mTarget.Executable := AOutputFile;
-        end;
-        Execute(mTarget);
+        Refuse(FOutput, BuildRefusal(mTarget.Project, ASucceeded, AError));
+        Exit;
       end;
+      if AOutputFile <> '' then
+      begin
+        mTarget.Executable := AOutputFile;
+      end;
+      Execute(mTarget);
     end, mReason) then
   begin
     FBusy := False;
     Inc(FVersion);
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(mTarget.Project), mReason]));
+    Refuse(FOutput, BuildRefusal(mTarget.Project, False, mReason));
   end;
 end;
 
@@ -587,7 +651,8 @@ var
 begin
   if (ATarget.Executable = '') or not FileExists(ATarget.Executable) then
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoExe, [ProjectName(ATarget.Project), ATarget.Executable]));
+    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoExe, [ProjectName(ATarget.Project),
+      ATarget.Executable]));
     Exit;
   end;
   mTarget := ATarget;
@@ -596,8 +661,8 @@ begin
   mKeep := FAliveRef;
   FBusy := True;
   Inc(FVersion);
-  Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsStarted, [ProjectName(mTarget.Project), mTarget.Configuration,
-    mTarget.Platform]));
+  FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsStarted, [ProjectName(mTarget.Project),
+    mTarget.Configuration, mTarget.Platform]));
   // Ein Thread je Lauf; der vorige ist fertig (FBusy), sein Objekt wird hier frei.
   FreeAndNil(FThread);
   FThread := TThread.CreateAnonymousThread(
@@ -626,31 +691,6 @@ begin
   FThread.Start;
 end;
 
-procedure TAtlasIdeTests.Merge(const ARun: TTestRunResult);
-var
-  mKept: TArray<TTestCaseResult>;
-  mItem, mFresh: TTestCaseResult;
-  mReplaced: Boolean;
-begin
-  mKept := nil;
-  for mItem in FCases do
-  begin
-    mReplaced := False;
-    for mFresh in ARun.Cases do
-    begin
-      if SameText(mFresh.FullName, mItem.FullName) then
-      begin
-        mReplaced := True;
-      end;
-    end;
-    if not mReplaced then
-    begin
-      mKept := mKept + [mItem];
-    end;
-  end;
-  FCases := mKept + ARun.Cases;
-end;
-
 /// <summary>Datei einer Unit im Testprojekt AProjectFile, als Rückruf für TAtlasTestRun.Failures.</summary>
 function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
 var
@@ -662,43 +702,6 @@ begin
     begin
       Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
     end;
-end;
-
-function ProblemText(const ACase: TTestCaseResult): string;
-begin
-  Result := TAtlasTestRun.ProblemText(ACase, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues));
-end;
-
-/// <summary>Meldungsansicht: je Fehlschlag eine Zeile, die zur Testmethode springt.</summary>
-procedure SayFailures(const AFailures: TArray<TAtlasTestFailure>);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
-  mFailure: TAtlasTestFailure;
-  mLineRef: Pointer;
-begin
-  if (Length(AFailures) = 0) or not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    Exit;
-  end;
-  mGroup := mMessages.GetGroup(cMessageGroup);
-  if mGroup = nil then
-  begin
-    mGroup := mMessages.AddMessageGroup(cMessageGroup);
-  end;
-  for mFailure in AFailures do
-  begin
-    if mFailure.FileName <> '' then
-    begin
-      mMessages.AddToolMessage(mFailure.FileName, ProblemText(mFailure.Test), 'DUnitX', mFailure.Line + 1,
-        mFailure.StartCharacter + 1, nil, mLineRef, mGroup);
-    end
-    else
-    begin
-      mMessages.AddTitleMessage('  ' + ProblemText(mFailure.Test), mGroup);
-    end;
-  end;
 end;
 
 procedure TAtlasIdeTests.Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
@@ -715,18 +718,19 @@ begin
   end;
   if AOutcome = TAtlasVcsOutcome.TimedOut then
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
+    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
       TAtlasTestRun.cTimeoutMs div 1000]));
     Exit;
   end;
   mRun := TTestResults.Parse(AXml);
   if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
+    FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
     for mLine in AOutput do
     begin
-      Say('  ' + mLine);
+      FOutput.Tell('  ' + mLine);
     end;
+    FOutput.EndQuiet(False, mRun);
     Exit;
   end;
   Report(ATarget, mRun);
@@ -746,7 +750,7 @@ begin
   begin
     mInline := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsInlineValues);
   end;
-  Merge(ARun);
+  FCases := Merged(FCases, ARun.Cases);
   if Assigned(FHooks.OnReported) then
   begin
     FHooks.OnReported(ATarget, ARun);
@@ -766,15 +770,15 @@ begin
   // Meldungsansicht: Zusammenfassung, dann je Fehlschlag eine Zeile, die zur Testmethode springt.
   if ARun.Total = 0 then
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoTests, [ProjectName(ATarget.Project)]));
+    FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoTests, [ProjectName(ATarget.Project)]));
   end
   else
   begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFinished, [ProjectName(ATarget.Project),
+    FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFinished, [ProjectName(ATarget.Project),
       ARun.Count(TTestOutcome.Passed), ARun.Count(TTestOutcome.Failed), ARun.Count(TTestOutcome.Error),
       ARun.Count(TTestOutcome.Skipped), SecondsText(ARun.DurationMs)]));
   end;
-  SayFailures(mFailures);
+  FOutput.Failures(mFailures);
   if Assigned(FHooks.OnFinished) then
   begin
     // Die langsamsten Tests des Laufs für die Karte Testergebnisse (#1772).
@@ -782,6 +786,7 @@ begin
       TAtlasTestRun.Locate(TTestResults.Slowest(ARun.Cases, TAtlasProjectTests.cMaxSlowest),
       UnitFileFunc(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
   end;
+  FOutput.EndQuiet(True, ARun);
 end;
 
 function TAtlasIdeTests.TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>;

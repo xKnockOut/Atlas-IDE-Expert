@@ -91,6 +91,15 @@ type
     procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
   end;
 
+  /// <summary>Ansicht, die nur wegen der Sichtbarkeit fehlende Treffer nennt (#2108); das Popup, wahlweise auch
+  /// Tests.</summary>
+  IAtlasCompletionHiddenView = interface
+    ['{6B1F3D84-92C5-4E7A-8D36-1F0A5C9E2B47}']
+    /// <summary>AItems: passende Mitglieder mit Inaccessible, die die Liste noch nicht zeigt; leer ohne. Vor jedem
+    /// Zeigen der Liste bzw. des leeren Zustands.</summary>
+    procedure ShowInaccessible(const AItems: TAtlasCompletionItems);
+  end;
+
   TAtlasCommitEvent = reference to procedure(const AItem: TAtlasCompletionItem);
 
   /// <summary>Einstellungen der Vervollständigung, die der Aufrufer setzt (#418, #419, #422, #458, #497).
@@ -104,6 +113,8 @@ type
     FListScope: TAtlasListScope;
     FUsage: TAtlasUsage;
     FFavorites: TAtlasFavorites;
+    /// <summary>Nicht sichtbare Mitglieder zeigen (#2108); bis zum nächsten Start.</summary>
+    FShowInaccessible: Boolean;
     /// <summary>Marken „zuletzt“/„häufig“ (#418) und Favorit (#458) in AItems ab AFrom setzen.</summary>
     procedure MarkItems(var AItems: TAtlasCompletionItems; AFrom: Integer);
     /// <summary>Optionen für TAtlasRanking: Chip, Listenmodus (AMembers: Mitgliederliste nach ".") und
@@ -276,6 +287,12 @@ type
     function ToggleFavorite(APosition: Integer; out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
     /// <summary>Wie ToggleFavorite für den gewählten Eintrag (Strg+D); NotAllowed, wenn nichts gewählt ist.</summary>
     function ToggleSelectedFavorite(out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+    /// <summary>Gibt es passende Mitglieder, die nur wegen der Sichtbarkeit fehlen und noch nicht gezeigt sind
+    /// (#2108)?</summary>
+    function CanRevealInaccessible: Boolean;
+    /// <summary>Zweites Strg+Leertaste (#2108): die nicht sichtbaren Mitglieder ausgegraut am Ende der Liste
+    /// zeigen. False, wenn es keine gibt.</summary>
+    function RevealInaccessible: Boolean;
   end;
 
 implementation
@@ -454,6 +471,7 @@ begin
   begin
     Result.Boost := BoostOf(FUsage, AItems);
   end;
+  Result.ShowInaccessible := FShowInaccessible;
 end;
 
 { TAtlasCompletionState }
@@ -500,7 +518,7 @@ var
   mItem: TAtlasCompletionItem;
 begin
   // Code-Vorlagen (#51) nur über Enter oder Tab: "while(" soll keine Schleife einsetzen.
-  Result := (FPrefix <> '') and SelectedItem(mItem) and (mItem.Snippet = '') and
+  Result := (FPrefix <> '') and SelectedItem(mItem) and (mItem.Snippet = '') and (mItem.Inaccessible = '') and
     (TAtlasCompletionMatcher.Score(FPrefix, mItem.Name) >= TAtlasCompletionMatcher.cScoreWordStarts);
 end;
 
@@ -641,6 +659,30 @@ begin
     end);
 end;
 
+/// <summary>Passende nicht sichtbare Mitglieder an eine Ansicht mit IAtlasCompletionHiddenView (#2108); leer,
+/// wenn AShown (die Liste zeigt sie schon).</summary>
+procedure ShowInaccessibleIn(const AView: IAtlasCompletionView; const AItems: TAtlasCompletionItems;
+  const APrefix: string; AShown: Boolean);
+var
+  mView: IAtlasCompletionHiddenView;
+  mItems: TAtlasCompletionItems;
+  mIndex: Integer;
+begin
+  if not Supports(AView, IAtlasCompletionHiddenView, mView) then
+  begin
+    Exit;
+  end;
+  mItems := nil;
+  if not AShown then
+  begin
+    for mIndex in TAtlasRanking.Inaccessible(AItems, APrefix) do
+    begin
+      mItems := mItems + [AItems[mIndex]];
+    end;
+  end;
+  mView.ShowInaccessible(mItems);
+end;
+
 { TAtlasCompletionController }
 
 constructor TAtlasCompletionController.Create(const AProvider: IAtlasCompletionProvider;
@@ -739,6 +781,7 @@ begin
   FMembers := AContext.Kind = TAtlasContextKind.MemberAccess;
   FRestStart := -1;
   FToggled := False;
+  FShowInaccessible := False;
   FItems := nil;
   FOrder := nil;
   FSelected := -1;
@@ -803,6 +846,21 @@ begin
   if Supports(FView, IAtlasCompletionSyntaxView, mView) then
   begin
     mView.ShowSyntax(FSyntax);
+  end;
+end;
+
+function TAtlasCompletionController.CanRevealInaccessible: Boolean;
+begin
+  Result := FActive and not FShowInaccessible and (Length(TAtlasRanking.Inaccessible(FItems, FPrefix)) > 0);
+end;
+
+function TAtlasCompletionController.RevealInaccessible: Boolean;
+begin
+  Result := CanRevealInaccessible;
+  if Result then
+  begin
+    FShowInaccessible := True;
+    Refresh(True);
   end;
 end;
 
@@ -956,6 +1014,7 @@ end;
 
 procedure TAtlasCompletionController.ShowResult;
 begin
+  ShowInaccessibleIn(FView, FItems, FPrefix, FShowInaccessible);
   if FPassive then
   begin
     FView.ShowList(FItems, FOrder, -1, FPrefix);
@@ -1144,7 +1203,8 @@ procedure TAtlasCompletionController.CommitSelected;
 var
   mItem: TAtlasCompletionItem;
 begin
-  if not SelectedItem(mItem) then
+  // Nicht sichtbare Mitglieder (#2108) lassen sich nicht einsetzen; die Liste bleibt offen.
+  if not SelectedItem(mItem) or (mItem.Inaccessible <> '') then
   begin
     Exit;
   end;
