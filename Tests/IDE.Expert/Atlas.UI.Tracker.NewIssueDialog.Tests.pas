@@ -35,7 +35,7 @@ uses
   System.UITypes,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.NewIssue,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.UI.Tracker.NewIssueDialog;
 
 function Setup(AIncludeCode: Boolean): TAtlasNewIssueSetup;
@@ -124,7 +124,8 @@ begin
     mDone(mResult);
     Assert.IsFalse(mDialog.Sending);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult), 'offen');
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueRejected, [403]), mDialog.Parts.StatusLabel.Caption);
+    Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRejected, [403]),
+      mDialog.Parts.StatusLabel.Caption);
     Assert.IsTrue(mDialog.Parts.CreateButton.Enabled, 'erneut versuchen');
     // Erfolg: schließt mit OK und merkt das Ergebnis.
     mDialog.Parts.CreateButton.Click;
@@ -179,7 +180,8 @@ begin
     Assert.AreEqual('eigener Typ', mDialog.Parts.TypeBox.Text);
     Assert.AreEqual('Typ', mDialog.Draft.TypeField);
     mDialog.ShowFields(TAtlasNewIssueFields.Empty, False);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueLoadFailed), mDialog.Parts.StatusLabel.Caption);
+    Assert.AreEqual(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueLoadFailed),
+      mDialog.Parts.StatusLabel.Caption);
   finally
     mDialog.Free;
   end;
@@ -193,7 +195,8 @@ begin
     end);
   try
     Assert.IsFalse(mDialog.Parts.CreateButton.Enabled);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueNoTracker), mDialog.Parts.StatusLabel.Caption);
+    Assert.AreEqual(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTracker),
+      mDialog.Parts.StatusLabel.Caption);
   finally
     mDialog.Free;
   end;
@@ -205,18 +208,18 @@ var
   mResult: TAtlasNewIssueResult;
 begin
   mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NoToken);
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueNoToken, ['https://yt.local']),
+  Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueNoToken, ['https://yt.local']),
     TAtlasNewIssueDialog.ResultText(mResult, 'ATL', 'https://yt.local'));
   mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.ProjectUnknown);
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueProjectUnknown, ['ATL']),
+  Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueProjectUnknown, ['ATL']),
     TAtlasNewIssueDialog.ResultText(mResult, 'ATL', ''));
   mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Invalid);
   mResult.TrackerMessage := 'Validation Failed';
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueInvalid, ['Validation Failed']),
+  Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueInvalid, ['Validation Failed']),
     TAtlasNewIssueDialog.ResultText(mResult, '', ''));
   mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Unreachable);
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.NewIssueUnreachable), TAtlasNewIssueDialog.ResultText(mResult, '',
-    ''));
+  Assert.AreEqual(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnreachable),
+    TAtlasNewIssueDialog.ResultText(mResult, '', ''));
 end;
 
 initialization

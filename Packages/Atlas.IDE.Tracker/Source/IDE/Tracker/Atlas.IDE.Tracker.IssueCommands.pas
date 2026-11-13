@@ -70,7 +70,7 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
@@ -135,12 +135,12 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
+        FContext.Report(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
         Exit;
       end;
       mInput := '';
-      if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCaption),
-        TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewPrompt,
+      if not InputQuery(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCaption),
+        TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewPrompt,
           [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
         mInput) then
       begin
@@ -149,7 +149,7 @@ begin
       mKey := TAtlasIssuePreview.KeyOf(mTarget.Provider, mInput);
       if mKey = '' then
       begin
-        FContext.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
+        FContext.Report(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
         Exit;
       end;
       FServices.Preview.Show(mTarget, mKey);
@@ -286,7 +286,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoTracker));
+        FContext.Report(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
         Exit;
       end;
       // Das aktuelle Issue vorwählen, wenn es zum selben Tracker gehört.

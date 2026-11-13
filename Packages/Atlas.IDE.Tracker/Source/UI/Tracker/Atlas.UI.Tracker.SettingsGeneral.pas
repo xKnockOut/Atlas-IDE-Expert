@@ -12,7 +12,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.UI.Settings.ChoiceBox,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.SettingsRows;
 
 type
@@ -66,9 +66,9 @@ type
     procedure BuildBoard;
     procedure BuildNotify;
     procedure BuildAttach;
-    function Check(const AKey: string; AText: TAtlasTrackerTextId): TCheckBox;
-    function Number(const AKey: string; AText: TAtlasTrackerTextId): TEdit;
-    function Line(const AKey: string; AText: TAtlasTrackerTextId): TEdit;
+    function Check(const AKey: string; AText: TAtlasOptionsTextId): TCheckBox;
+    function Number(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
+    function Line(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
   public
     constructor Create(ARows: TAtlasTrackerSettingsRows);
     /// <summary>Anbieter bis Kommentar-Editor (unter den Abfragen).</summary>
@@ -98,19 +98,19 @@ begin
   FRows := ARows;
 end;
 
-function TAtlasTrackerGeneralPart.Check(const AKey: string; AText: TAtlasTrackerTextId): TCheckBox;
+function TAtlasTrackerGeneralPart.Check(const AKey: string; AText: TAtlasOptionsTextId): TCheckBox;
 begin
-  Result := FRows.AddCheck(AKey, TAtlasTrackerStrings.Text(AText));
+  Result := FRows.AddCheck(AKey, TAtlasOptionsStrings.Text(AText));
 end;
 
-function TAtlasTrackerGeneralPart.Number(const AKey: string; AText: TAtlasTrackerTextId): TEdit;
+function TAtlasTrackerGeneralPart.Number(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
 begin
-  Result := FRows.AddNumber(AKey, TAtlasTrackerStrings.Text(AText));
+  Result := FRows.AddNumber(AKey, TAtlasOptionsStrings.Text(AText));
 end;
 
-function TAtlasTrackerGeneralPart.Line(const AKey: string; AText: TAtlasTrackerTextId): TEdit;
+function TAtlasTrackerGeneralPart.Line(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
 begin
-  Result := FRows.AddText(AKey, TAtlasTrackerStrings.Text(AText));
+  Result := FRows.AddText(AKey, TAtlasOptionsStrings.Text(AText));
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildStart;
@@ -125,38 +125,38 @@ begin
   // Anbieter (Vorgabe aus der .atlas). „Beginnen“ und die Muster stehen als Beitrag bei der Versionsverwaltung
   // (#1903, Atlas.IDE.Tracker.SettingsBranches).
   FView.Tracker := FRows.AddChoice('issues.tracker',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTracker),
-    TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTrackerTeam), cGitHubCaption,
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesTracker),
+    TArray<string>.Create(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesTrackerTeam), cGitHubCaption,
     cYouTrackCaption), TArray<string>.Create('', TAtlasTrackerTarget.cGitHub, TAtlasTrackerTarget.cYouTrack));
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildPatterns;
 begin
-  FView.Login := Check('issues.login', TAtlasTrackerTextId.SettingsTrackerLogin);
+  FView.Login := Check('issues.login', TAtlasOptionsTextId.SettingsTrackerLogin);
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildPreview;
 begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
-  FView.Preview := Check('issues.preview', TAtlasTrackerTextId.SettingsIssuesPreview);
-  FView.PreviewComments := Check('issues.preview.comments', TAtlasTrackerTextId.SettingsIssuesPreviewComments);
-  FView.CodeLinks := Check('issues.codeLinks', TAtlasTrackerTextId.SettingsIssuesCodeLinks);
+  FView.Preview := Check('issues.preview', TAtlasOptionsTextId.SettingsIssuesPreview);
+  FView.PreviewComments := Check('issues.preview.comments', TAtlasOptionsTextId.SettingsIssuesPreviewComments);
+  FView.CodeLinks := Check('issues.codeLinks', TAtlasOptionsTextId.SettingsIssuesCodeLinks);
   // Issues in der Zeilenhistorie (#1275): Schalter, darunter die Grenze für „Issues zu dieser Methode“.
-  FView.BlameLinks := Check('issues.blameLinks', TAtlasTrackerTextId.SettingsIssuesBlameLinks);
+  FView.BlameLinks := Check('issues.blameLinks', TAtlasOptionsTextId.SettingsIssuesBlameLinks);
   FView.BlameMaxRevisions := Number('issues.blameLinks.maxRevisions',
-    TAtlasTrackerTextId.SettingsIssuesBlameMaxRevisions);
+    TAtlasOptionsTextId.SettingsIssuesBlameMaxRevisions);
   // Issues in der Befehlspalette (#1270) und Kommentar-Editor (#1278).
-  FView.PaletteSearch := Check('issues.paletteSearch', TAtlasTrackerTextId.SettingsIssuesPaletteSearch);
-  FView.CommentEditor := Check('issues.commentEditor', TAtlasTrackerTextId.SettingsIssuesCommentEditor);
+  FView.PaletteSearch := Check('issues.paletteSearch', TAtlasOptionsTextId.SettingsIssuesPaletteSearch);
+  FView.CommentEditor := Check('issues.commentEditor', TAtlasOptionsTextId.SettingsIssuesCommentEditor);
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildTime;
 begin
   // Hauptschalter, Leerlauf und Rundung (x-parent issues.timeTracking).
-  FRows.AddTitle(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTimeTitle));
-  FView.TimeTracking := Check('issues.timeTracking', TAtlasTrackerTextId.SettingsIssuesTimeTracking);
-  FView.IdleMinutes := Number('issues.idleMinutes', TAtlasTrackerTextId.SettingsIssuesIdleMinutes);
-  FView.TimeRounding := Number('issues.timeRounding', TAtlasTrackerTextId.SettingsIssuesTimeRounding);
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesTimeTitle));
+  FView.TimeTracking := Check('issues.timeTracking', TAtlasOptionsTextId.SettingsIssuesTimeTracking);
+  FView.IdleMinutes := Number('issues.idleMinutes', TAtlasOptionsTextId.SettingsIssuesIdleMinutes);
+  FView.TimeRounding := Number('issues.timeRounding', TAtlasOptionsTextId.SettingsIssuesTimeRounding);
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildMore;
@@ -170,19 +170,19 @@ end;
 procedure TAtlasTrackerGeneralPart.BuildChecklists;
 begin
   // Checklisten (#1273): in der Vorschau unter deren Hauptschalter, das Statusfeld eigenständig.
-  FView.PreviewChecklists := Check('issues.preview.checklists', TAtlasTrackerTextId.SettingsIssuesPreviewChecklists);
-  FView.ChecklistStatus := Check('issues.checklistStatus', TAtlasTrackerTextId.SettingsIssuesChecklistStatus);
+  FView.PreviewChecklists := Check('issues.preview.checklists', TAtlasOptionsTextId.SettingsIssuesPreviewChecklists);
+  FView.ChecklistStatus := Check('issues.checklistStatus', TAtlasOptionsTextId.SettingsIssuesChecklistStatus);
   // Zustand des aktuellen Issues im Statusfeld (#2124).
-  FView.StatusState := Check('issues.statusState', TAtlasTrackerTextId.SettingsIssuesStatusState);
+  FView.StatusState := Check('issues.statusState', TAtlasOptionsTextId.SettingsIssuesStatusState);
   // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
-  FView.PreviewLinks := Check('issues.preview.links', TAtlasTrackerTextId.SettingsIssuesPreviewLinks);
-  FView.WarnBlocked := Check('issues.warnBlocked', TAtlasTrackerTextId.SettingsIssuesWarnBlocked);
+  FView.PreviewLinks := Check('issues.preview.links', TAtlasOptionsTextId.SettingsIssuesPreviewLinks);
+  FView.WarnBlocked := Check('issues.warnBlocked', TAtlasOptionsTextId.SettingsIssuesWarnBlocked);
   // Beim Beginnen in den laufenden Sprint aufnehmen (#2128).
   FView.SprintOnStart := FRows.AddChoice('issues.sprintOnStart',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSprintOnStart),
-    TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSprintAsk),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSprintAlways),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSprintNever)),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSprintOnStart),
+    TArray<string>.Create(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSprintAsk),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSprintAlways),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSprintNever)),
     TArray<string>.Create(TAtlasPluginSettings.cIssuesSprintAsk, TAtlasPluginSettings.cIssuesSprintAlways,
     TAtlasPluginSettings.cIssuesSprintNever));
 end;
@@ -190,34 +190,34 @@ end;
 procedure TAtlasTrackerGeneralPart.BuildBoard;
 begin
   // Board (#1272): Hauptschalter, Rückfrage beim Ziehen, Filter beim Öffnen.
-  FView.Board := Check('issues.board', TAtlasTrackerTextId.SettingsIssuesBoard);
-  FView.BoardConfirmMove := Check('issues.board.confirmMove', TAtlasTrackerTextId.SettingsIssuesBoardConfirmMove);
-  FView.BoardOnlyMine := Check('issues.board.onlyMine', TAtlasTrackerTextId.SettingsIssuesBoardOnlyMine);
+  FView.Board := Check('issues.board', TAtlasOptionsTextId.SettingsIssuesBoard);
+  FView.BoardConfirmMove := Check('issues.board.confirmMove', TAtlasOptionsTextId.SettingsIssuesBoardConfirmMove);
+  FView.BoardOnlyMine := Check('issues.board.onlyMine', TAtlasOptionsTextId.SettingsIssuesBoardOnlyMine);
   // Farben des IDE-Themas für Issue-Fenster und Board (#2131).
-  FView.IdeColors := Check('issues.ideColors', TAtlasTrackerTextId.SettingsIssuesIdeColors);
+  FView.IdeColors := Check('issues.ideColors', TAtlasOptionsTextId.SettingsIssuesIdeColors);
   // Ablauf-Karte (#2125): Hauptschalter, Zeitraum und Grenze „liegt lange“ darunter.
-  FView.FlowMap := Check('issues.flowMap', TAtlasTrackerTextId.SettingsIssuesFlowMap);
-  FView.FlowMapDays := Number('issues.flowMap.days', TAtlasTrackerTextId.SettingsIssuesFlowMapDays);
-  FView.FlowMapStuckDays := Number('issues.flowMap.stuckDays', TAtlasTrackerTextId.SettingsIssuesFlowMapStuckDays);
+  FView.FlowMap := Check('issues.flowMap', TAtlasOptionsTextId.SettingsIssuesFlowMap);
+  FView.FlowMapDays := Number('issues.flowMap.days', TAtlasOptionsTextId.SettingsIssuesFlowMapDays);
+  FView.FlowMapStuckDays := Number('issues.flowMap.stuckDays', TAtlasOptionsTextId.SettingsIssuesFlowMapStuckDays);
   // Sprint-Kachel (#1277): Burndown-Linie, Vergleich mit dem Vorsprint und Velocity.
-  FView.SprintBurndown := Check('issues.sprint.burndown', TAtlasTrackerTextId.SettingsIssuesSprintBurndown);
-  FView.SprintCompare := Check('issues.sprint.compare', TAtlasTrackerTextId.SettingsIssuesSprintCompare);
+  FView.SprintBurndown := Check('issues.sprint.burndown', TAtlasOptionsTextId.SettingsIssuesSprintBurndown);
+  FView.SprintCompare := Check('issues.sprint.compare', TAtlasOptionsTextId.SettingsIssuesSprintCompare);
   // Reiter „Entwicklung“ der Vorschau (#1269).
   FView.PreviewDevelopment := Check('issues.preview.development',
-    TAtlasTrackerTextId.SettingsIssuesPreviewDevelopment);
+    TAtlasOptionsTextId.SettingsIssuesPreviewDevelopment);
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildNotify;
 begin
   // Meldungen zu meinen Issues (#1271): Hauptschalter, Abstand und Umfang darunter.
-  FView.Notify := Check('issues.notify', TAtlasTrackerTextId.SettingsIssuesNotify);
-  FView.NotifyInterval := Number('issues.notify.intervalMinutes', TAtlasTrackerTextId.SettingsIssuesNotifyInterval);
+  FView.Notify := Check('issues.notify', TAtlasOptionsTextId.SettingsIssuesNotify);
+  FView.NotifyInterval := Number('issues.notify.intervalMinutes', TAtlasOptionsTextId.SettingsIssuesNotifyInterval);
   // Reihenfolge wie TAtlasTrackerNotifyScope.
   FView.NotifyScope := FRows.AddChoice('issues.notify.scope',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScope),
-    TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeAssigned),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeCreated),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesNotifyScopeWatched)),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesNotifyScope),
+    TArray<string>.Create(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesNotifyScopeAssigned),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesNotifyScopeCreated),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesNotifyScopeWatched)),
     TArray<string>.Create(TAtlasPluginSettings.cIssuesNotifyAssigned,
     TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated,
     TAtlasPluginSettings.cIssuesNotifyWatched));
@@ -226,12 +226,12 @@ end;
 procedure TAtlasTrackerGeneralPart.BuildAttach;
 begin
   // An Issue anhängen (#1276): Hauptschalter, Logdateien und Bildbreite darunter.
-  FView.Attach := Check('issues.attach', TAtlasTrackerTextId.SettingsIssuesAttach);
-  FView.AttachLogFiles := Line('issues.attach.logFiles', TAtlasTrackerTextId.SettingsIssuesAttachLogFiles);
+  FView.Attach := Check('issues.attach', TAtlasOptionsTextId.SettingsIssuesAttach);
+  FView.AttachLogFiles := Line('issues.attach.logFiles', TAtlasOptionsTextId.SettingsIssuesAttachLogFiles);
   FView.AttachMaxImageWidth := Number('issues.attach.maxImageWidth',
-    TAtlasTrackerTextId.SettingsIssuesAttachMaxImageWidth);
+    TAtlasOptionsTextId.SettingsIssuesAttachMaxImageWidth);
   FView.AttachRaiseProgram := Check('issues.attach.raiseProgram',
-    TAtlasTrackerTextId.SettingsIssuesAttachRaiseProgram);
+    TAtlasOptionsTextId.SettingsIssuesAttachRaiseProgram);
 end;
 
 end.

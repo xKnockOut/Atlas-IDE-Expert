@@ -86,6 +86,8 @@ type
     LearnedSuggestions,
     /// <summary>Marke „getestet von“ an Methoden normaler Units (#1778).</summary>
     CodeLensCoveredBy,
+    /// <summary>Zeichen der anderen Threads in der Rinne beim Halt (#852).</summary>
+    ThreadsInSource,
     /// <summary>Marke „n von m Methoden getestet“ an der unit-Zeile (#1783).</summary>
     CodeLensUntested);
   TAtlasHideScope = (Here, InFile, Everywhere);
@@ -193,6 +195,8 @@ const
     // Wie die Musterfortsetzung nur bis zum nächsten Tastendruck sichtbar.
     (Key: 'SuggestionsLearned'; Scopes: [TAtlasHideScope.Everywhere]; Overlay: False; Gutter: False),
     (Key: 'CodeLensCoveredBy'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    // Die Zeichen stehen nur bis zum Fortsetzen; Ausblenden je Datei oder überall.
+    (Key: 'DebugThreadsInSource'; Scopes: cFileScopes; Overlay: False; Gutter: True),
     // Eine Marke je Datei: hier und in der Datei sind dasselbe.
     (Key: 'CodeLensUntested'; Scopes: cFileScopes; Overlay: True; Gutter: False)
   );

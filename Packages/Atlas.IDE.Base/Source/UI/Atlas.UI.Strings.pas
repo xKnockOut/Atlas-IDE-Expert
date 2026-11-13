@@ -228,7 +228,9 @@ type
     // Marke „getestet von“ (#1778) im Menü „Ausblenden“.
     ElementCodeLensCoveredBy, ElementCodeLensCoveredByPlural,
     // Marke „n von m Methoden getestet“ (#1783) im Menü „Ausblenden“.
-    ElementCodeLensUntested, ElementCodeLensUntestedPlural);
+    ElementCodeLensUntested, ElementCodeLensUntestedPlural,
+    // Zeichen der anderen Threads in der Rinne (#852) im Menü „Ausblenden“.
+    ElementThreadsInSource, ElementThreadsInSourcePlural);
 
   TAtlasStrings = class
   private
@@ -765,7 +767,8 @@ const
      'Zur uses-Klausel (%s)',
      'Vergleichen',
      'Marke „getestet von“', 'Marken „getestet von“',
-     'Marke „Methoden getestet“', 'Marken „Methoden getestet“'),
+     'Marke „Methoden getestet“', 'Marken „Methoden getestet“',
+     'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
@@ -1241,7 +1244,8 @@ const
      'Go to uses clause (%s)',
      'Compare',
      '“tested by” mark', '“tested by” marks',
-     '“methods tested” mark', '“methods tested” marks'));
+     '“methods tested” mark', '“methods tested” marks',
+     'thread sign in the gutter', 'thread signs in the gutter'));
 
 { TAtlasStrings }
 

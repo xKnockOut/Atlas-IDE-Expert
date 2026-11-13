@@ -89,6 +89,8 @@ type
     /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
     /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
     TestsAffected: Boolean;
+    /// <summary>Befehl „Leckprüfung einrichten …“ (#1880, tests.leakSetup).</summary>
+    TestsLeakSetup: Boolean;
     /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
     /// MaxTestsAffectedDepth.</summary>
     TestsAffectedDepth: Integer;
@@ -134,6 +136,9 @@ type
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
+    /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
+    /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
+    TestsLeaks: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -260,6 +265,7 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.TestsAffected := True;
+  Result.TestsLeakSetup := True;
   Result.TestsAffectedDepth := 3;
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
@@ -275,6 +281,7 @@ begin
   Result.TestsCompareFormat := True;
   Result.TestsShowDuration := True;
   Result.TestsSlowMs := cDefaultTestsSlowMs;
+  Result.TestsLeaks := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -350,6 +357,7 @@ begin
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
   AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
   AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);
@@ -365,6 +373,7 @@ begin
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
+  AIo.Flag('TestsLeaks', TestsLeaks);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);
