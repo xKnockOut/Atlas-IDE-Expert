@@ -91,6 +91,16 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Fehlschlag an der Assert-Zeile (#1771)
+
+- Ein fehlgeschlagener Test steht nicht mehr am Methodenkopf, sondern an der Anweisung, die fehlschlug: Wellenlinie über der Anweisung, dahinter grau „erwartet 4, erhalten 3“.
+- Die Zeile kommt aus dem Stacktrace des Berichts (DUnitX mit JclDebug oder madExcept). Bricht der Test mit einer Ausnahme ab, ist es die auslösende Anweisung.
+- Ohne Zeilen im Stacktrace sucht Atlas im Rumpf den einen Assert, dessen erwarteter Wert zum Bericht passt (`Assert.AreEqual(4, …)` bei „Expected 4 but got 3“); hat der Rumpf nur einen Assert, gilt dieser. Passen mehrere, bleibt es beim Methodenkopf.
+- Eingefügte Zeilen nimmt der Eintrag mit wie jeder Befund; die Zeile in der Meldungsansicht springt zur Anweisung.
+- Der kurze Text erscheint wie der Fehlertext am Zeilenende (`editor.inlineDiagnostics`).
+
+Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
