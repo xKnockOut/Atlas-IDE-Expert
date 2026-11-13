@@ -186,6 +186,8 @@ begin
   Assert.AreEqual('', ASettings.DebugParallelStacksWaitRoutines, 'debug.parallelStacks.waitRoutines (#837)');
   Assert.AreEqual(64, ASettings.DebugParallelStacksMaxThreads, 'debug.parallelStacks.maxThreads (#837)');
   Assert.IsFalse(ASettings.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsFalse(ASettings.DebugAsyncOrigin, 'debug.asyncOrigin (#859)');
+  Assert.AreEqual(20, ASettings.DebugAsyncOriginMaxPerSite, 'debug.asyncOrigin.maxPerSite (#859)');
   Assert.IsTrue(ASettings.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
@@ -196,6 +198,8 @@ begin
   Assert.IsTrue(ASettings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsTrue(ASettings.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
@@ -352,6 +356,8 @@ begin
   ASettings.DebugParallelStacks := False;
   ASettings.DebugThreadsInSource := False;
   ASettings.DebugThreadFreeze := True;
+  ASettings.DebugAsyncOrigin := True;
+  ASettings.DebugAsyncOriginMaxPerSite := 5;
   ASettings.DebugParallelStacksWaitRoutines := 'TMonitor.Enter;MyLock.Acquire';
   ASettings.DebugParallelStacksMaxThreads := 16;
   ASettings.DebugExceptionHistory := False;
@@ -360,6 +366,8 @@ begin
   ASettings.DebugExceptionBannerIgnoreAtLocation := False;
   ASettings.DebugInlineValues := False;
   ASettings.DebugInlineValuesPerLine := 7;
+  ASettings.DebugWhyHere := False;
+  ASettings.DebugWhyHereDepth := 6;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
   ASettings.MetricsReport := False;
@@ -491,6 +499,8 @@ begin
   Assert.AreEqual('TMonitor.Enter;MyLock.Acquire', ALoaded.DebugParallelStacksWaitRoutines);
   Assert.AreEqual(16, ALoaded.DebugParallelStacksMaxThreads);
   Assert.IsTrue(ALoaded.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsTrue(ALoaded.DebugAsyncOrigin, 'debug.asyncOrigin (#859)');
+  Assert.AreEqual(5, ALoaded.DebugAsyncOriginMaxPerSite);
   Assert.IsFalse(ALoaded.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
@@ -502,6 +512,8 @@ begin
   Assert.IsFalse(ALoaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsFalse(ALoaded.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);
   Assert.IsFalse(ALoaded.MetricsReport);

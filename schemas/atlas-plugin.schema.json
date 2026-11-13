@@ -1759,6 +1759,28 @@
       "x-captionEn": "Freeze and thaw threads",
       "x-issue": "#852"
     },
+    "DebugAsyncOrigin": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.asyncOrigin",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Herkunft eingereihter Methoden merken",
+      "x-captionEn": "Remember the origin of queued methods",
+      "x-issue": "#859"
+    },
+    "DebugAsyncOriginMaxPerSite": {
+      "type": "integer",
+      "default": 20,
+      "description": "So viele Einreihungen merkt Atlas je Aufrufstelle; ältere fallen heraus (1 bis 1000).",
+      "x-key": "debug.asyncOrigin.maxPerSite",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.asyncOrigin",
+      "x-issue": "#859"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",
@@ -1851,6 +1873,29 @@
       "x-page": "Debuggen",
       "x-parent": "debug.inlineValues",
       "x-issue": "#508"
+    },
+    "DebugWhyHere": {
+      "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.whyHere",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Warum bin ich hier? Werte der umgebenden Bedingungen",
+      "x-captionEn": "Why am I here? Values of the enclosing conditions",
+      "x-issue": "#1878"
+    },
+    "DebugWhyHereDepth": {
+      "type": "integer",
+      "default": 3,
+      "description": "So viele umgebende Blöcke (1 bis 10) zeigt „Warum bin ich hier?“.",
+      "x-key": "debug.whyHere.depth",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.whyHere",
+      "x-issue": "#1878"
     },
     "DebugOwnCodeFolders": {
       "type": "string",

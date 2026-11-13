@@ -501,7 +501,7 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider);
+  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
   Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts + RunParts;
 end;
 

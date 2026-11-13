@@ -109,6 +109,8 @@ begin
   Assert.IsFalse(CheckOf(APage, 'DebugExplainAccessViolationAllowCalls').Checked, 'allowCalls (#865)');
   Assert.AreEqual('64', EditOf(APage, 'DebugParallelStacksMaxThreads').Text, 'debug.parallelStacks.maxThreads (#837)');
   Assert.IsFalse(CheckOf(APage, 'DebugThreadFreeze').Checked, 'debug.threadFreeze (#852)');
+  Assert.IsFalse(CheckOf(APage, 'DebugAsyncOrigin').Checked, 'debug.asyncOrigin (#859)');
+  Assert.AreEqual('20', EditOf(APage, 'DebugAsyncOriginMaxPerSite').Text, 'debug.asyncOrigin.maxPerSite (#859)');
   Assert.IsTrue(CheckOf(APage, 'DebugThreadsInSource').Checked, 'debug.threadsInSource (#852)');
   Assert.IsTrue(CheckOf(APage, 'DebugParallelStacks').Checked, 'debug.parallelStacks (#837)');
   Assert.IsTrue(CheckOf(APage, 'DebugDeadlocks').Checked, 'debug.deadlocks (#587)');
@@ -136,6 +138,8 @@ begin
   CheckOf(APage, 'DebugParallelStacks').Checked := False;
   CheckOf(APage, 'DebugThreadsInSource').Checked := False;
   CheckOf(APage, 'DebugThreadFreeze').Checked := True;
+  CheckOf(APage, 'DebugAsyncOrigin').Checked := True;
+  EditOf(APage, 'DebugAsyncOriginMaxPerSite').Text := '7';
   EditOf(APage, 'DebugParallelStacksMaxThreads').Text := '32';
   CheckOf(APage, 'DebugExceptionHistory').Checked := False;
   CheckOf(APage, 'DebugJustMyCode').Checked := False;
@@ -161,6 +165,8 @@ begin
   Assert.IsFalse(ASaved.DebugParallelStacks);
   Assert.IsFalse(ASaved.DebugThreadsInSource);
   Assert.IsTrue(ASaved.DebugThreadFreeze);
+  Assert.IsTrue(ASaved.DebugAsyncOrigin);
+  Assert.AreEqual(7, ASaved.DebugAsyncOriginMaxPerSite);
   Assert.AreEqual(32, ASaved.DebugParallelStacksMaxThreads);
 
   Assert.IsFalse(ASaved.DebugExceptionHistory);

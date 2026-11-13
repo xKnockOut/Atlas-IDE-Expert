@@ -349,6 +349,8 @@ contains
   Atlas.Common.Lsp.AnonymousMethods in 'Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas',
   Atlas.Common.Editing.MethodWithoutSelf in 'Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas',
   Atlas.Common.Editing.MethodWithoutSelf.Lookup in 'Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.pas',
+  Atlas.Common.Editing.MethodWithoutSelf.Contract in 'Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Contract.pas',
+  Atlas.Common.Editing.MethodWithoutSelf.Analysis in 'Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Analysis.pas',
   Atlas.Common.Editing.MethodWithoutSelf.Texts in 'Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Texts.pas',
   Atlas.Common.Lsp.MethodWithoutSelf in 'Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas',
   Atlas.Common.Editing.TypeAlias in 'Source\Editing\Atlas.Common.Editing.TypeAlias.pas',
@@ -556,7 +558,10 @@ contains
   Atlas.Common.Lsp.TestUnits in 'Source\Lsp\Atlas.Common.Lsp.TestUnits.pas',
   Atlas.Common.Leaks.Internals.MainScan in 'Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas',
   Atlas.Common.Leaks.Setup in 'Source\Leaks\Atlas.Common.Leaks.Setup.pas',
+  Atlas.Common.Leaks.Internals.CreateScan in 'Source\Leaks\Internals\Atlas.Common.Leaks.Internals.CreateScan.pas',
+  Atlas.Common.Leaks.Candidates in 'Source\Leaks\Atlas.Common.Leaks.Candidates.pas',
   Atlas.Common.Lsp.LeakSetup in 'Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas',
+  Atlas.Common.Lsp.LeakCandidates in 'Source\Lsp\Atlas.Common.Lsp.LeakCandidates.pas',
   Atlas.Common.Lsp.TestCases in 'Source\Lsp\Atlas.Common.Lsp.TestCases.pas',
   Atlas.Common.Lsp.UnitSearch in 'Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas',
   Atlas.Common.Semantics.ControlFlow in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas',
@@ -843,6 +848,7 @@ contains
   Atlas.Common.Monitor.Commands in 'Source\Monitor\Atlas.Common.Monitor.Commands.pas',
   Atlas.Common.Monitor.Results in 'Source\Monitor\Atlas.Common.Monitor.Results.pas',
   Atlas.Common.Monitor.Runs in 'Source\Monitor\Atlas.Common.Monitor.Runs.pas',
-  Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas';
+  Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas',
+  Atlas.Common.Lsp.EnclosingConditions in 'Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas';
 
 end.

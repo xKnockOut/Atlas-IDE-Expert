@@ -1,7 +1,8 @@
 ﻿unit Shell.Composition.Stepping;
 
 // Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter
-// (#850) und Haltepunkte, die nicht greifen werden (#577). Sie lesen nur; Code-Aktionen gibt es hier keine.
+// (#850), „Warum bin ich hier?“ (#1878) und Haltepunkte, die nicht greifen werden (#577). Sie lesen nur;
+// Code-Aktionen gibt es hier keine.
 
 interface
 
@@ -20,6 +21,7 @@ type
     function StepFilter(const AArguments: TJSONArray): TJSONValue;
     function StepFilterOfFile(const AUri: string; ALine: Integer): TJSONObject;
     function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
+    function EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheck(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheckFile(const AUri: string; const ALines: TArray<Integer>): TJSONObject;
   public
@@ -40,6 +42,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
+  Atlas.Common.Lsp.EnclosingConditions,
   Atlas.Common.Lsp.BreakpointCheck,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.CompilerSwitches,
@@ -71,6 +74,7 @@ begin
   ACommands.Register(TLspStepTargets.cCommand, StepTargets);
   ACommands.Register(TLspStepFilter.cCommand, StepFilter);
   ACommands.Register(TLspStepFilter.cCountsCommand, StepFilterCounts);
+  ACommands.Register(TLspEnclosingConditions.cCommand, EnclosingConditions);
   ACommands.Register(TLspBreakpointCheck.cCommand, BreakpointCheck);
 end;
 
@@ -188,6 +192,52 @@ begin
   end;
   Log(Format('Schrittfilter: %d Dateien, %d Routinen', [mCounts.Files, mCounts.Routines]));
   Result := TLspStepFilter.CountsToJson(mCounts);
+end;
+
+function TShellStepping.EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mLine, mDepth: Integer;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mTargets: TLspStepTargets;
+  mConditions: TLspEnclosingConditions;
+  mAnswer: TJSONObject;
+begin
+  // Argumente: URI, Zeile (ab 0) des Halts und Tiefe (#1878).
+  mLine := LineOf(AArguments);
+  mUri := AArguments.Items[0].Value;
+  mDepth := 0;
+  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONNumber) then
+  begin
+    mDepth := TJSONNumber(AArguments.Items[2]).AsInt;
+  end;
+  mDocument := Open(mUri);
+  mTree := TSyntaxTreeCache.Get(mDocument, nil).Tree;
+  mResolver := NewResolver;
+  try
+    // Getter und Aufrufe ohne Klammern erkennt die Namensauflösung von „Gezielt hineinspringen“.
+    mTargets := TLspStepTargets.Create(mResolver, Index, mTree, mDocument.Text, TDocumentUris.ToPath(mUri), ReadFile);
+    try
+      mConditions := TLspEnclosingConditions.Create(mTree, mDocument.Text,
+        function(ALine: Integer): TArray<TTextPosition>
+        begin
+          Result := mTargets.CallPositions(ALine);
+        end);
+      try
+        mAnswer := mConditions.Execute(mLine, mDepth);
+      finally
+        mConditions.Free;
+      end;
+    finally
+      mTargets.Free;
+    end;
+  finally
+    mResolver.Free;
+  end;
+  Log(Format(TLspEnclosingConditions.cCommand + ': %d', [Count(mAnswer, 'blocks')]));
+  Result := mAnswer;
 end;
 
 function TShellStepping.BreakpointCheck(const AArguments: TJSONArray): TJSONValue;

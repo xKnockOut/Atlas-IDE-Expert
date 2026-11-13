@@ -13,6 +13,10 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
+  cMinWhyHereDepth = 1;
+  cMaxWhyHereDepth = 10;
+  cDefaultWhyHereDepth = 3;
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
@@ -22,6 +26,10 @@ const
   cDefaultParallelStacksThreads = 64;
   /// <summary>Vorgabe von debug.logpointPrefix (#583).</summary>
   cDefaultLogpointPrefix = '[LOG]';
+  /// <summary>Grenzen und Vorgabe für debug.asyncOrigin.maxPerSite (#859).</summary>
+  cMinAsyncOriginPerSite = 1;
+  cMaxAsyncOriginPerSite = 1000;
+  cDefaultAsyncOriginPerSite = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -133,6 +141,11 @@ type
     /// <summary>debug.threadFreeze (#852, experimentell): Threads einfrieren und auftauen
     /// (SuspendThread/ResumeThread).</summary>
     DebugThreadFreeze: Boolean;
+    /// <summary>debug.asyncOrigin (#859, experimentell): Herkunft von TThread.Queue, Synchronize und TTask merken und
+    /// beim Halt in der eingereihten Methode zeigen.</summary>
+    DebugAsyncOrigin: Boolean;
+    /// <summary>debug.asyncOrigin.maxPerSite (#859): gemerkte Einreihungen je Aufrufstelle.</summary>
+    DebugAsyncOriginMaxPerSite: Integer;
     /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
     DebugParallelStacksWaitRoutines: string;
     /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
@@ -166,6 +179,12 @@ type
     DebugInlineValues: Boolean;
     /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
     DebugInlineValuesPerLine: Integer;
+    /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
+    /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
+    /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
+    DebugWhyHere: Boolean;
+    /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
+    DebugWhyHereDepth: Integer;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -241,6 +260,8 @@ begin
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugAsyncOrigin := False;
+  Result.DebugAsyncOriginMaxPerSite := cDefaultAsyncOriginPerSite;
   Result.DebugThreadFreeze := False;
   Result.DebugThreadsInSource := True;
   Result.DebugParallelStacks := True;
@@ -254,6 +275,8 @@ begin
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
+  Result.DebugWhyHere := True;
+  Result.DebugWhyHereDepth := cDefaultWhyHereDepth;
   Result.DebugOwnCodeFolders := '';
   Result.DebugEventLog := True;
   Result.DebugEventLogColors := cDefaultEventLogColors;
@@ -273,7 +296,10 @@ begin
   DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
     cMaxParallelStacksThreads);
   DebugLogpointPrefix := Trim(DebugLogpointPrefix);
+  DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
+    cMaxAsyncOriginPerSite);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
+  DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
@@ -323,8 +349,10 @@ begin
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
   AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
   AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
+  AIo.Flag('DebugAsyncOrigin', DebugAsyncOrigin);
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
+  AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
 
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
@@ -332,6 +360,8 @@ begin
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AIo.Flag('DebugWhyHere', DebugWhyHere);
+  AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);
