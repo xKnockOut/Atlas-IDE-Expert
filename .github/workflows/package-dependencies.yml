@@ -2,7 +2,8 @@ name: Package-Abhängigkeiten
 
 on:
   push:
-    branches: [main, 'release/**']
+    # main-merging: nach jedem Merge den zusammengeführten Stand prüfen (docs/Zusammenfuehren.md).
+    branches: [main, main-merging, 'release/**']
   pull_request:
 
 jobs:
@@ -10,6 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Release-Tags für Check-ContractVersion.ps1
+          fetch-depth: 0
+      - name: Merge-Helfer, Selbsttest
+        run: python3 Tools/Merge-Integration.py --selbsttest
+      - name: Changelog-Fragmente lesbar, keine neuen Einträge direkt in CHANGELOG.md
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') { ./Tools/Update-Changelog.ps1 -Check -Base 'HEAD^1' }
+          else { ./Tools/Update-Changelog.ps1 -Check }
+      - name: Vertragsversion von Base höchstens einmal je Release
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') { ./Tools/Check-ContractVersion.ps1 -Base 'HEAD^1' }
+          else { ./Tools/Check-ContractVersion.ps1 }
       - name: "Rollenmatrix: Selbsttest"
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1 -SelfTest
