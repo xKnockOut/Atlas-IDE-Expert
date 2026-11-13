@@ -439,6 +439,18 @@ If anything is found, the dialog “Breakpoints that will not be hit” lists it
 
 Settings: `debug.checkBreakpoints`
 
+### Run to here by clicking
+
+Editor margin while paused, context menu Atlas › Debug, command palette. Instead of placing the cursor and pressing F4, click next to the line.
+
+- When the program is paused, a narrow column appears to the right of the line numbers; on executable lines it shows ▶ under the mouse pointer, with a tooltip.
+- Clicking ▶ runs to that line (like F4); Ctrl+click does so without stopping at other breakpoints.
+- Skipped breakpoints are back in their old state after the next stop, even if the program ends first. If the IDE crashes in between, Atlas restores them when the next debug session starts.
+- Right-click in the margin: “Run to here”, “Run to here, skip breakpoints” (also Ctrl+F4, only while paused) and “One-time breakpoint”. The one-time breakpoint is in the group `Atlas.Einmalig` and disappears after its first stop; it can also be set while no program is running.
+- Executable lines are those between `begin` and `end` of a body, without blank and comment lines and without lines that only contain `begin`, `end`, `try`, `finally`, `except` or `else`.
+
+Settings: `debug.runToClick`
+
 ### Breakpoint only for one object
 
 A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:
