@@ -1,4 +1,4 @@
-# Atlas IDE Expert
+﻿# Atlas IDE Expert
 
 [![Spenden mit PayPal](https://img.shields.io/badge/Spenden-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
@@ -46,7 +46,7 @@ Das Plugin besteht aus dem Kern `Atlas.IDE.Base` und 14 Modulen. Man installiert
 | `Atlas.IDE.VersionControl` | Versionsverwaltung: Git und SVN, Änderungsmarken mit Inline-Diff, Zeilenhistorie, Branch beim Beginnen, Arbeitskopien, Projektzustand | 26 | `vcs.enabled` |
 | `Atlas.IDE.Bookmarks` | Notizen, benannte und schnelle Lesezeichen, TODO-Liste | 24 | `bookmarks.enabled` |
 | `Atlas.IDE.Build` | Build-Werkzeuge: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter | 24 | `buildTools.enabled` |
-| `Atlas.IDE.Rules` | Prüfregeln: Regel-Editor, Baseline und Unterdrückungen, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur, Fehler der IDE (Error Insight) neben den Befunden, Marke „Wer gibt das frei?“ an jedem Create; Regel am Befund unterdrücken, einstellen, abschalten (ohne das Modul bleiben nur die Befunde und „Regel erklären“) | 16 | `ruleChecks.enabled` |
+| `Atlas.IDE.Rules` | Prüfregeln: Regel-Editor, Baseline und Unterdrückungen, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur, Fehler der IDE (Error Insight) neben den Befunden; Regel am Befund unterdrücken, einstellen, abschalten (ohne das Modul bleiben nur die Befunde und „Regel erklären“) | 16 | `ruleChecks.enabled` |
 | `Atlas.IDE.Tests` | DUnitX-Läufer, Test am Cursor, Code Lens, Marken „getestet von“, betroffene Tests, Assistent „DUnitX-Testunit zu Unit …“, Leckprüfung einrichten | 30 | `tests.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds auf Auftrag (auch für MCP), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung und Build-Zusammenfassung | 9 | `buildPipeline.enabled` |
 | `Atlas.IDE.Assistants` | KI-Assistenten: Builds über `build_project` und Änderungen an offenen Dateien durch MCP-Clients, eigene Optionsseite | 10 | `assistants.enabled` |

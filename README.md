@@ -1,4 +1,4 @@
-# Atlas IDE Expert
+﻿# Atlas IDE Expert
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
@@ -46,7 +46,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, change marks with inline diff, line history, branch when starting an issue, working copies, project state | 26 | `vcs.enabled` |
 | `Atlas.IDE.Bookmarks` | Notes, named and quick bookmarks, TODO list | 24 | `bookmarks.enabled` |
 | `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | 24 | `buildTools.enabled` |
-| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix, IDE errors (Error Insight) next to the findings, “Who frees this?” mark on every Create; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | 16 | `ruleChecks.enabled` |
+| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix, IDE errors (Error Insight) next to the findings; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | 16 | `ruleChecks.enabled` |
 | `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, “tested by” marks, affected tests, wizard “DUnitX test unit for unit …”, leak check setup | 30 | `tests.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds on request (also for MCP), check before compiling, release guard, verdict and build summary | 9 | `buildPipeline.enabled` |
 | `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients, own options page | 10 | `assistants.enabled` |
