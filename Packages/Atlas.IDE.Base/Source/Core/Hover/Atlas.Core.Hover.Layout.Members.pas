@@ -1,10 +1,8 @@
-﻿unit Atlas.Core.Hover.PublishedPainter;
+﻿unit Atlas.Core.Hover.Layout.Members;
 
-// published-Mitglieder einer Komponentenklasse im Hover-Satz (#110, aus
-// Atlas.Core.Hover.Layout): „published: n Properties · m Ereignisse“ mit den
-// Schaltern „geerbte“ und „nur mit default“, die Tabellen PROPERTIES und
-// EREIGNISSE, gekürzt mit „+ n weitere …“, die Standard-Property und der
-// Rollbereich mit Daumen (#1841).
+// published-Mitglieder einer Komponentenklasse im Hover (#110): Übersicht „published: n Properties · m Ereignisse“
+// mit den Schaltern „geerbte“ und „nur mit default“, die Tabellen PROPERTIES und EREIGNISSE (auf- und zuklappbar,
+// gekürzt mit „+ n weitere …“), die Standard-Property und der Rollbereich mit Daumen (#1841).
 
 interface
 
@@ -12,19 +10,21 @@ uses
   System.Types,
   Atlas.Core.Style.Color,
   Atlas.Core.Hover.Contract,
+  Atlas.Core.Hover.Items,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Painter;
+  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Painter;
 
 type
   /// <summary>Spalten der Tabelle der published-Mitglieder.</summary>
-  TAtlasHoverMemberColumns = record
+  TMemberColumns = record
     NameX: Integer;
     TypeX: Integer;
     DefaultX: Integer;
   end;
 
   /// <summary>Abschnitt Properties bzw. Ereignisse der published-Mitglieder.</summary>
-  TAtlasHoverMemberSection = record
+  TMemberSection = record
     Events: Boolean;
     Caption: string;
     MoreFormat: string;
@@ -36,32 +36,36 @@ type
   end;
 
   /// <summary>published-Mitglieder einer Komponentenklasse (#110).</summary>
-  TAtlasHoverPublishedPainter = class(TAtlasHoverPainter)
+  TAtlasHoverMembersPainter = class(TAtlasHoverPainter)
   private
     procedure ToggleChip(const ACaption: string; AOn: Boolean; AToggle: TAtlasHoverPublishedToggle; AX: Integer);
     /// <summary>Gerahmte Marke in kleiner Schrift ab FX; liefert ihr Rechteck.</summary>
     function Tag(const ACaption: string; ALineColor, ATextColor: TAtlasColor): TRect;
-    function SectionOf(AEvents: Boolean): TAtlasHoverMemberSection;
-    procedure SectionHead(const ASection: TAtlasHoverMemberSection);
-    function MemberColumns(const ARows: TArray<Integer>; AShown: Integer): TAtlasHoverMemberColumns;
+    function SectionOf(AEvents: Boolean): TMemberSection;
+    procedure SectionHead(const ASection: TMemberSection);
+    function MemberColumns(const ARows: TArray<Integer>; AShown: Integer): TMemberColumns;
     /// <summary>Vorgabe ab AX bis höchstens ALimit (dahinter steht „deklariert in“).</summary>
     procedure MemberDefault(const AMember: TAtlasHoverMember; AX, ALimit: Integer);
-    procedure MemberRow(const AMember: TAtlasHoverMember; const AColumns: TAtlasHoverMemberColumns; AEvents: Boolean);
-    procedure MoreLinks(const ASection: TAtlasHoverMemberSection; AHidden: Integer);
+    procedure MemberRow(const AMember: TAtlasHoverMember; const AColumns: TMemberColumns; AEvents: Boolean);
+    procedure MoreLinks(const ASection: TMemberSection; AHidden: Integer);
     procedure MemberSection(AEvents: Boolean);
     procedure PublishedSummary;
     procedure DefaultPropertyRow;
     /// <summary>Rollbereich ab ATop (Bausteine ab AFirstItem, Klickflächen ab AFirstHit) begrenzen.</summary>
     procedure ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
   protected
+    /// <summary>Rollbereich der published-Mitglieder (#1841).</summary>
+    FMembers: TAtlasHoverScroll;
+    /// <summary>published-Mitglieder mit Übersicht, Tabellen und Standard-Property.</summary>
     procedure PublishedMembers;
+  public
+    constructor Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
   end;
 
 implementation
 
 uses
   Atlas.Core.Style.Palette,
-  Atlas.Core.Hover.Items,
   System.SysUtils,
   System.Math,
   System.StrUtils;
@@ -71,27 +75,14 @@ const
   /// </summary>
   cPropertyRows = 7;
   cEventRows = 4;
-  /// <summary>Abstände in Pixeln bei 96 dpi.</summary>
-  cTagBottom = 3;
-  cTagGap = 4;
-  cHeadGap = 5;
-  cTableHeadGap = 4;
-  cRowGap = 3;
-  cChipGap = 6;
-  cDeclaredGap = 8;
-  cSectionGap = 8;
-  cSeparatorGap = 7;
-  cColumnGap = 12;
-  /// <summary>Rollbalken des Mitgliederbereichs: kleinste Höhe, Abstand oben/unten, Abstand zum Rand.</summary>
-  cThumbMinHeight = 16;
-  cThumbInset = 7;
-  cThumbEdge = 3;
-  /// <summary>Delphi-Syntax, wird nicht übersetzt.</summary>
-  cOfObject = '(of object)';
 
-{ TAtlasHoverPublishedPainter }
+constructor TAtlasHoverMembersPainter.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
+begin
+  inherited Create(AInput, AMeasure);
+  FMembers := TAtlasHoverScroll.None;
+end;
 
-procedure TAtlasHoverPublishedPainter.ToggleChip(const ACaption: string; AOn: Boolean;
+procedure TAtlasHoverMembersPainter.ToggleChip(const ACaption: string; AOn: Boolean;
   AToggle: TAtlasHoverPublishedToggle; AX: Integer);
 var
   mTextFace: TAtlasHoverFace;
@@ -100,7 +91,7 @@ var
   mLineColor, mTextColor: TAtlasColor;
 begin
   // Schalter als umrandetes Kästchen: an in Akzentfarbe, aus gedämpft.
-  mTextFace := Face(TAtlasHoverFont.SmallUi, False);
+  mTextFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mCell := Rect(AX, FY, AX + Width(mTextFace, ACaption) + Scale(cAtlasChipPad), FY + Height(mTextFace) + Scale(2));
   if AOn then
   begin
@@ -115,24 +106,24 @@ begin
   mItem := NewItem(TAtlasHoverItemKind.Frame, mCell, mLineColor);
   mItem.Back := FColors.Surface;
   mItem.Radius := cAtlasChipRadius;
-  HoverMakeHot(mItem, TAtlasHoverHitKind.Published, Ord(AToggle), FColors.Accent);
+  MakeHot(mItem, TAtlasHoverHitKind.Published, Ord(AToggle), FColors.Accent);
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, mCell, mTextColor);
   mItem.Text := ACaption;
   mItem.Face := mTextFace;
-  HoverMakeHot(mItem, TAtlasHoverHitKind.Published, Ord(AToggle), FColors.Accent);
+  MakeHot(mItem, TAtlasHoverHitKind.Published, Ord(AToggle), FColors.Accent);
   Add(mItem);
   AddHit(TAtlasHoverHitKind.Published, Ord(AToggle), mCell);
 end;
 
-function TAtlasHoverPublishedPainter.Tag(const ACaption: string; ALineColor, ATextColor: TAtlasColor): TRect;
+function TAtlasHoverMembersPainter.Tag(const ACaption: string; ALineColor, ATextColor: TAtlasColor): TRect;
 var
   mSmallFace: TAtlasHoverFace;
   mItem: TAtlasHoverItem;
 begin
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   Result := Rect(FX, FY + Scale(1), FX + Width(mSmallFace, ACaption) + Scale(cAtlasChipPad),
-    FY + Height(mSmallFace) + Scale(cTagBottom));
+    FY + Height(mSmallFace) + Scale(3));
   mItem := NewItem(TAtlasHoverItemKind.Frame, Result, ALineColor);
   mItem.Back := FColors.Surface;
   mItem.Radius := cAtlasChipRadius;
@@ -143,7 +134,7 @@ begin
   Add(mItem);
 end;
 
-function TAtlasHoverPublishedPainter.SectionOf(AEvents: Boolean): TAtlasHoverMemberSection;
+function TAtlasHoverMembersPainter.SectionOf(AEvents: Boolean): TMemberSection;
 begin
   Result.Events := AEvents;
   if AEvents then
@@ -168,7 +159,7 @@ begin
   end;
 end;
 
-procedure TAtlasHoverPublishedPainter.SectionHead(const ASection: TAtlasHoverMemberSection);
+procedure TAtlasHoverMembersPainter.SectionHead(const ASection: TMemberSection);
 var
   mCaption: string;
   mHeadFace: TAtlasHoverFace;
@@ -176,7 +167,7 @@ var
   mItem: TAtlasHoverItem;
 begin
   // Abschnittstitel mit ▾ (offen) bzw. ▸ (zu); Klick klappt um.
-  mHeadFace := Face(TAtlasHoverFont.SmallMono, True);
+  mHeadFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, True, False);
   if ASection.Collapsed then
   begin
     mCaption := AnsiUpperCase(ASection.Caption) + ' ▸';
@@ -189,22 +180,21 @@ begin
   mItem := NewItem(TAtlasHoverItemKind.Text, mCell, FColors.Muted);
   mItem.Text := mCaption;
   mItem.Face := mHeadFace;
-  HoverMakeHot(mItem, TAtlasHoverHitKind.Published, Ord(ASection.Toggle), FColors.Accent);
+  MakeHot(mItem, TAtlasHoverHitKind.Published, Ord(ASection.Toggle), FColors.Accent);
   Add(mItem);
   AddHit(TAtlasHoverHitKind.Published, Ord(ASection.Toggle), mCell);
-  Inc(FY, Height(mHeadFace) + Scale(cHeadGap));
+  Inc(FY, Height(mHeadFace) + Scale(5));
 end;
 
-function TAtlasHoverPublishedPainter.MemberColumns(const ARows: TArray<Integer>;
-  AShown: Integer): TAtlasHoverMemberColumns;
+function TAtlasHoverMembersPainter.MemberColumns(const ARows: TArray<Integer>; AShown: Integer): TMemberColumns;
 var
   mRow, mGap: Integer;
   mMonoFace, mSmallFace: TAtlasHoverFace;
 begin
   // Spalten nach den breitesten gezeigten Werten; „deklariert in“ rechtsbündig.
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  mGap := Scale(cColumnGap);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
+  mGap := Scale(12);
   Result.NameX := FLeft;
   Result.TypeX := Result.NameX + Width(mSmallFace, FInput.Texts.PublishedName);
   for mRow := 0 to AShown - 1 do
@@ -220,12 +210,12 @@ begin
   Inc(Result.DefaultX, mGap);
 end;
 
-procedure TAtlasHoverPublishedPainter.MemberDefault(const AMember: TAtlasHoverMember; AX, ALimit: Integer);
+procedure TAtlasHoverMembersPainter.MemberDefault(const AMember: TAtlasHoverMember; AX, ALimit: Integer);
 var
   mMonoFace: TAtlasHoverFace;
   mTag: TRect;
 begin
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
   FX := AX;
   if AMember.DefaultKind in [hdExplicit, hdImplicit] then
   begin
@@ -237,7 +227,7 @@ begin
   begin
     // Implizit als gedämpfte Marke.
     mTag := Tag(FInput.Texts.PublishedImplicit, FColors.Line, FColors.Muted);
-    Inc(FX, mTag.Width + Scale(cTagGap));
+    Inc(FX, mTag.Width + Scale(4));
   end
   else if AMember.DefaultKind = hdNoDefault then
   begin
@@ -250,34 +240,33 @@ begin
   end;
 end;
 
-procedure TAtlasHoverPublishedPainter.MemberRow(const AMember: TAtlasHoverMember;
-  const AColumns: TAtlasHoverMemberColumns; AEvents: Boolean);
+procedure TAtlasHoverMembersPainter.MemberRow(const AMember: TAtlasHoverMember; const AColumns: TMemberColumns;
+  AEvents: Boolean);
 var
   mMonoFace, mSmallFace, mSmallMonoFace: TAtlasHoverFace;
 begin
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  mSmallMonoFace := Face(TAtlasHoverFont.SmallMono, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
+  mSmallMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
   AddText(AColumns.NameX, FY, AMember.Name, mMonoFace, FColors.Text);
   AddText(AColumns.TypeX, FY, AMember.TypeName, mMonoFace, FColors.Accent);
   if not AEvents then
   begin
-    MemberDefault(AMember, AColumns.DefaultX,
-      FRight - Width(mSmallMonoFace, AMember.DeclaringClass) - Scale(cDeclaredGap));
+    MemberDefault(AMember, AColumns.DefaultX, FRight - Width(mSmallMonoFace, AMember.DeclaringClass) - Scale(8));
   end
   // Am Methodenzeiger-Typ erkannt, nicht am Namen: fremde Typnamen kenntlich machen.
   else if not EndsText('Event', AMember.TypeName) then
   begin
     AddText(AColumns.TypeX + Width(mMonoFace, AMember.TypeName + ' '),
-      FY + (Height(mMonoFace) - Height(mSmallFace)) div 2, cOfObject, mSmallFace, FColors.Muted);
+      FY + (Height(mMonoFace) - Height(mSmallFace)) div 2, '(of object)', mSmallFace, FColors.Muted);
   end;
   AddText(FRight - Width(mSmallMonoFace, AMember.DeclaringClass),
     FY + (Height(mMonoFace) - Height(mSmallMonoFace)) div 2, AMember.DeclaringClass, mSmallMonoFace,
     FColors.Muted);
-  Inc(FY, Height(mMonoFace) + Scale(cRowGap));
+  Inc(FY, Height(mMonoFace) + Scale(3));
 end;
 
-procedure TAtlasHoverPublishedPainter.MoreLinks(const ASection: TAtlasHoverMemberSection; AHidden: Integer);
+procedure TAtlasHoverMembersPainter.MoreLinks(const ASection: TMemberSection; AHidden: Integer);
 begin
   // „+ n weitere …“ zeigt alle; bei Ereignissen der Hinweis, woran sie erkannt sind.
   FX := FLeft;
@@ -304,12 +293,12 @@ begin
   FFlowFont := TAtlasHoverFont.Ui;
 end;
 
-procedure TAtlasHoverPublishedPainter.MemberSection(AEvents: Boolean);
+procedure TAtlasHoverMembersPainter.MemberSection(AEvents: Boolean);
 var
   mRows: TArray<Integer>;
   mRow, mShown: Integer;
-  mSection: TAtlasHoverMemberSection;
-  mColumns: TAtlasHoverMemberColumns;
+  mSection: TMemberSection;
+  mColumns: TMemberColumns;
   mSmallFace: TAtlasHoverFace;
 begin
   mRows := FData.VisibleMembers(AEvents, not FInput.View.HideInherited, FInput.View.OnlyDefaults);
@@ -331,47 +320,47 @@ begin
   mColumns := MemberColumns(mRows, mShown);
   if not AEvents then
   begin
-    mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+    mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
     AddText(mColumns.NameX, FY, FInput.Texts.PublishedName, mSmallFace, FColors.Muted);
     AddText(mColumns.TypeX, FY, FInput.Texts.PublishedType, mSmallFace, FColors.Muted);
     AddText(mColumns.DefaultX, FY, FInput.Texts.PublishedDefault, mSmallFace, FColors.Muted);
     AddText(FRight - Width(mSmallFace, FInput.Texts.PublishedDeclared), FY, FInput.Texts.PublishedDeclared,
       mSmallFace, FColors.Muted);
-    Inc(FY, Height(mSmallFace) + Scale(cTableHeadGap));
+    Inc(FY, Height(mSmallFace) + Scale(4));
   end;
   for mRow := 0 to mShown - 1 do
   begin
     MemberRow(FData.Members[mRows[mRow]], mColumns, AEvents);
   end;
   MoreLinks(mSection, Length(mRows) - mShown);
-  Inc(FY, Scale(cSectionGap));
+  Inc(FY, Scale(8));
 end;
 
-procedure TAtlasHoverPublishedPainter.PublishedSummary;
+procedure TAtlasHoverMembersPainter.PublishedSummary;
 var
   mSummary: string;
   mSmallFace: TAtlasHoverFace;
   mChipsWidth, mInheritedWidth: Integer;
 begin
   // „published: 38 Properties · 24 Ereignisse“, rechts die Schalter; ohne Platz darunter.
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mSummary := Format(FInput.Texts.PublishedSummary, [FData.MemberCount(False), FData.MemberCount(True)]);
   mInheritedWidth := Width(mSmallFace, FInput.Texts.PublishedInherited) + Scale(cAtlasChipPad);
-  mChipsWidth := mInheritedWidth + Scale(cChipGap) + Width(mSmallFace, FInput.Texts.PublishedOnlyDefaults) +
+  mChipsWidth := mInheritedWidth + Scale(6) + Width(mSmallFace, FInput.Texts.PublishedOnlyDefaults) +
     Scale(cAtlasChipPad);
   AddText(FLeft, FY + Scale(1), mSummary, mSmallFace, FColors.Muted);
-  if FLeft + Width(mSmallFace, mSummary) + Scale(cColumnGap) + mChipsWidth > FRight then
+  if FLeft + Width(mSmallFace, mSummary) + Scale(12) + mChipsWidth > FRight then
   begin
-    Inc(FY, Height(mSmallFace) + Scale(cChipGap));
+    Inc(FY, Height(mSmallFace) + Scale(6));
   end;
   ToggleChip(FInput.Texts.PublishedInherited, not FInput.View.HideInherited,
     TAtlasHoverPublishedToggle.ShowInherited, FRight - mChipsWidth);
   ToggleChip(FInput.Texts.PublishedOnlyDefaults, FInput.View.OnlyDefaults, TAtlasHoverPublishedToggle.OnlyDefaults,
-    FRight - mChipsWidth + mInheritedWidth + Scale(cChipGap));
+    FRight - mChipsWidth + mInheritedWidth + Scale(6));
   Inc(FY, Height(mSmallFace) + Scale(10));
 end;
 
-procedure TAtlasHoverPublishedPainter.DefaultPropertyRow;
+procedure TAtlasHoverMembersPainter.DefaultPropertyRow;
 var
   mName, mNote: string;
   mSmallFace, mMonoFace, mHeadFace: TAtlasHoverFace;
@@ -379,11 +368,11 @@ var
   mCell: TRect;
 begin
   // Standard-Property: „default“ heißt an einer Array-Property nicht Vorgabewert.
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
-  mHeadFace := Face(TAtlasHoverFont.SmallMono, True);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
+  mHeadFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, True, False);
   AddText(FLeft, FY, AnsiUpperCase(FInput.Texts.PublishedArrayProperty), mHeadFace, FColors.Muted);
-  Inc(FY, Height(mHeadFace) + Scale(cHeadGap));
+  Inc(FY, Height(mHeadFace) + Scale(5));
   mName := FData.DefaultProperty;
   mBracket := Pos(']', mName);
   if mBracket > 0 then
@@ -394,37 +383,37 @@ begin
   FX := FLeft + Width(mMonoFace, mName + ' ');
   mCell := Tag(FInput.Texts.PublishedDefaultProperty, FColors.Accent, FColors.Accent);
   mNote := FInput.Texts.PublishedDefaultPropertyNote;
-  if mCell.Right + Scale(cDeclaredGap) + Width(mSmallFace, mNote) <= FRight then
+  if mCell.Right + Scale(8) + Width(mSmallFace, mNote) <= FRight then
   begin
-    AddText(mCell.Right + Scale(cDeclaredGap), FY + Scale(1), mNote, mSmallFace, FColors.Muted);
+    AddText(mCell.Right + Scale(8), FY + Scale(1), mNote, mSmallFace, FColors.Muted);
   end
   else
   begin
-    Inc(FY, Height(mMonoFace) + Scale(cRowGap));
+    Inc(FY, Height(mMonoFace) + Scale(3));
     AddText(FLeft, FY, mNote, mSmallFace, FColors.Muted);
   end;
-  Inc(FY, Height(mMonoFace) + Scale(cSectionGap));
+  Inc(FY, Height(mMonoFace) + Scale(8));
 end;
 
-procedure TAtlasHoverPublishedPainter.ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
+procedure TAtlasHoverMembersPainter.ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
 var
   mItem: TAtlasHoverItem;
 begin
   // Rollbereich (#1841): Grenze aus Zeilen und Platz, Bausteine verschieben, verdeckte Klickflächen streichen.
-  if not FMembers.Fit(FInput.Members, ATop, FY, FInput.Width, Height(Face(TAtlasHoverFont.Mono, False)) +
-    Scale(cRowGap)) then
+  if not FMembers.Fit(FInput.Members, ATop, FY, FInput.Width,
+    Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False)) + Scale(3)) then
   begin
     Exit;
   end;
   FMembers.Shift(FItems, AFirstItem, FItemCount, FHits, AFirstHit, FHitCount);
-  mItem := NewItem(TAtlasHoverItemKind.RoundFill,
-    FMembers.Thumb(Scale(cThumbMinHeight), Scale(cThumbInset), Scale(cThumbEdge)), FColors.Muted);
+  mItem := NewItem(TAtlasHoverItemKind.RoundFill, FMembers.Thumb(Scale(16), Scale(7), Scale(3)),
+    FColors.Muted);
   mItem.Radius := 2;
   Add(mItem);
   FY := FMembers.View.Bottom;
 end;
 
-procedure TAtlasHoverPublishedPainter.PublishedMembers;
+procedure TAtlasHoverMembersPainter.PublishedMembers;
 var
   mTop, mFirstItem, mFirstHit: Integer;
 begin
@@ -434,7 +423,7 @@ begin
     Exit;
   end;
   HorizontalLine(FY);
-  Inc(FY, Scale(cSeparatorGap));
+  Inc(FY, Scale(7));
   if Length(FData.Members) > 0 then
   begin
     PublishedSummary;

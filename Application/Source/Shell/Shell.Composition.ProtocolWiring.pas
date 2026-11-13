@@ -40,6 +40,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Compiler.Contract,
+  Atlas.Common.Compiler.Results,
   Shell.Platform,
   Shell.Workspace,
   Shell.Composition.Core,
@@ -159,10 +160,11 @@ begin
     begin
       Result := AParts.Index;
     end;
+  AParts.RuntimeReports := TCompilerResults.Create;
   mServices.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
-      Result := AParts.Compile.Results.MessagesFor(AFileName);
+      Result := AParts.Compile.Results.MessagesFor(AFileName) + AParts.RuntimeReports.MessagesFor(AFileName);
     end;
   mServices.UsesContext :=
     function(const AUri: string; out AContext: TUsesContext): Boolean

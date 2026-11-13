@@ -383,6 +383,11 @@ var
 begin
   AValues := nil;
   Result := TAtlasTrackerWriteResult.Ok;
+  // Projekte und ihr Statusfeld gibt es nur bei GitHub (#2134).
+  if AKind in [TAtlasTrackerValueKind.Projects, TAtlasTrackerValueKind.ProjectStates] then
+  begin
+    Exit;
+  end;
   if (ATarget.Server = '') or (ATransport = nil) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));

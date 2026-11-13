@@ -211,6 +211,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Texts,

@@ -123,6 +123,9 @@ type
     TestsCompare: Boolean;
     /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
     TestsCompareFormat: Boolean;
+    /// <summary>Meldungen der Hilfs-Unit Atlas.Testing.Approval erkennen: Abweichung an der Testmarke, übernehmen,
+    /// aufräumen (#1881, tests.approvalFiles).</summary>
+    TestsApprovalFiles: Boolean;
     /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
     /// (#1772, tests.showDuration).</summary>
     TestsShowDuration: Boolean;
@@ -274,6 +277,7 @@ begin
   Result.TestsFailureInline := True;
   Result.TestsCompare := True;
   Result.TestsCompareFormat := True;
+  Result.TestsApprovalFiles := True;
   Result.TestsShowDuration := True;
   Result.TestsSlowMs := cDefaultTestsSlowMs;
   Result.TestsCaseTable := True;
@@ -364,6 +368,7 @@ begin
   AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('TestsCompare', TestsCompare);
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);

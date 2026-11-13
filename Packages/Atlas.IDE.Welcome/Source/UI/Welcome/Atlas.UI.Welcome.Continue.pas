@@ -256,6 +256,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Welcome.QuickActions.Texts,
   System.DateUtils,
   System.UITypes,
   Winapi.Windows,

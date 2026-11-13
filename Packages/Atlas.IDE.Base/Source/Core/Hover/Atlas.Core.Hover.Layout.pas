@@ -25,10 +25,14 @@
 // Mit Input.RuleExamples (hover.ruleExamples, #145) steht in der Aktionszeile „Beispiel zeigen“; ist
 // View.Examples für das Problem gesetzt, folgen über der Aktionszeile Beschreibung und Beispiel falsch/richtig
 // aus dem Regelkatalog (je Beispiel höchstens cExampleMaxLines Zeilen) und der Link heißt „Beispiel ausblenden“.
-// Bei Komponentenklassen (#110) folgen unter der Beschreibung die published-Mitglieder
-// (Atlas.Core.Hover.PublishedPainter); Grundformen und Fließtext liegen in Atlas.Core.Hover.Painter.
-// Die Schalter tragen die Klickfläche Published mit Ord(TAtlasHoverPublishedToggle);
-// TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
+// Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n Properties · m Ereignisse“ mit den
+// Schaltern „geerbte“ und „nur mit default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in) und
+// EREIGNISSE, je auf- und zuklappbar und auf die ersten Zeilen gekürzt („+ n weitere …“ zeigt alle), und die
+// Standard-Property einer Array-Property. Die Schalter tragen die Klickfläche Published mit
+// Ord(TAtlasHoverPublishedToggle); TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
+// Die Tabellen und die Standard-Property bilden einen Rollbereich: Ist er höher als Input.Members.MaxLines
+// Tabellenzeilen (hover.membersMaxLines) bzw. als Input.Members.Limit (Platz auf dem Bildschirm), zeigt der
+// Tooltip nur Members.View mit einem Daumen am rechten Rand (TAtlasHoverScroll, Atlas.Core.Hover.Items, #1841).
 
 interface
 
@@ -36,13 +40,9 @@ uses
   System.Types,
   Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Painter;
+  Atlas.Core.Hover.Layout.Contract;
 
 type
-  /// <summary>Eingabe und Messen des Satzes (Atlas.Core.Hover.Painter).</summary>
-  TAtlasHoverInput = Atlas.Core.Hover.Painter.TAtlasHoverInput;
-  IAtlasHoverMeasure = Atlas.Core.Hover.Painter.IAtlasHoverMeasure;
-
   TAtlasHoverLayout = record
     Items: TArray<TAtlasHoverItem>;
     Hits: TArray<TAtlasHoverHit>;
@@ -79,9 +79,8 @@ function HoverBadgeKind(const ACode: string): TAtlasBadgeKind;
 implementation
 
 uses
-  Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.PublishedPainter,
+  Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   Atlas.Core.Hover.DebugValue,
@@ -91,7 +90,9 @@ uses
   System.StrUtils,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Problems.Colors;
+  Atlas.Core.Problems.Colors,
+  Atlas.Core.Hover.Layout.Painter,
+  Atlas.Core.Hover.Layout.Members;
 
 const
   cBandChain = 0;
@@ -109,7 +110,7 @@ const
 
 type
   /// <summary>Abschnitte des Tooltips der Reihe nach.</summary>
-  TBuilder = class(TAtlasHoverPublishedPainter)
+  TBuilder = class(TAtlasHoverMembersPainter)
   private
     FLayout: TAtlasHoverLayout;
     procedure Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
@@ -162,6 +163,7 @@ type
     procedure Description;
     procedure Run;
   public
+    constructor Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
     function Layout: TAtlasHoverLayout;
   end;
 
@@ -182,6 +184,15 @@ end;
 
 { TBuilder }
 
+constructor TBuilder.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
+begin
+  inherited Create(AInput, AMeasure);
+  FLayout := Default(TAtlasHoverLayout);
+  FLayout.AnchorItem := -1;
+  FLayout.AnchorHit := -1;
+  FLayout.FixProblem := -1;
+end;
+
 procedure TBuilder.Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
 var
   mTextFace: TAtlasHoverFace;
@@ -190,7 +201,7 @@ var
   mFrame, mText: TAtlasHoverItem;
 begin
   // Glied der Vererbungskette als umrandetes Kästchen; das angezeigte in Akzentfarbe.
-  mTextFace := Face(TAtlasHoverFont.Mono, ACurrent);
+  mTextFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, ACurrent, False);
   mTextWidth := Width(mTextFace, AText);
   mTextHeight := Height(mTextFace) + Scale(2);
   if (FX + mTextWidth + Scale(cAtlasChipPad) > FRight) and (FX > FLeft) then
@@ -207,9 +218,9 @@ begin
   begin
     mFrame.Color := FColors.Line;
     mFrame.HotColor := FColors.Line;
-    HoverMakeHot(mFrame, TAtlasHoverHitKind.Ancestor, AIndex, FColors.Accent);
+    MakeHot(mFrame, TAtlasHoverHitKind.Ancestor, AIndex, FColors.Accent);
     mText.Color := FColors.Text;
-    HoverMakeHot(mText, TAtlasHoverHitKind.Ancestor, AIndex, FColors.Accent);
+    MakeHot(mText, TAtlasHoverHitKind.Ancestor, AIndex, FColors.Accent);
   end;
   mFrame.Back := FColors.Surface;
   mFrame.Radius := cAtlasChipRadius;
@@ -235,8 +246,8 @@ begin
   begin
     Inc(FX, Scale(14));
   end;
-  mTotal := Width(Face(TAtlasHoverFont.SmallUi, True), AKey + ' ') +
-    Width(Face(TAtlasHoverFont.SmallUi, False), ACaption);
+  mTotal := Width(TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, True, False), AKey + ' ') +
+    Width(TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False), ACaption);
   if (FX + mTotal > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
@@ -338,7 +349,7 @@ begin
   // Kleine UI-Schrift statt Badge: Die Badge-Schrift richtet sich beim Zeichnen nach der Höhe des Kästchens, das
   // Kästchen hier nach der gemessenen Schrift; gemessen wurde sie ohne Kästchen (Windows-Standardschrift), das
   // Kästchen geriet zu groß und der Text darin kleiner.
-  mPillFace := Face(TAtlasHoverFont.SmallUi, True);
+  mPillFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, True, False);
   mBox := Rect(FLeft, FY + Scale(1), FLeft + Width(mPillFace, mCaption) + Scale(12), FY + Scale(1) +
     Max(Height(mPillFace) + Scale(2), Scale(15)));
   mItem := NewItem(TAtlasHoverItemKind.RoundFill, mBox, TAtlasColorMath.Mix(mColor, FColors.Surface, 0.16));
@@ -448,11 +459,11 @@ begin
   begin
     Exit;
   end;
-  mCaptionFace := Face(TAtlasHoverFont.SmallUi, True);
+  mCaptionFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, True, False);
   AddText(FLeft, FY, ACaption, mCaptionFace, AColor);
   Inc(FY, Height(mCaptionFace) + Scale(2));
   mLines := TAtlasRuleExplanation.ExampleLines(ACode, cExampleMaxLines);
-  mCodeFace := Face(TAtlasHoverFont.SmallMono, False);
+  mCodeFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
   mLineHeight := Height(mCodeFace);
   mTop := FY;
   mBottom := mTop + Length(mLines) * mLineHeight + 2 * Scale(cExamplePadding);
@@ -558,7 +569,7 @@ procedure TBuilder.ProblemDetails(const AProblem: TAtlasProblem; AIndex: Integer
 var
   mSmallFace: TAtlasHoverFace;
 begin
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   AddText(FLeft, FY, ProblemSource(AProblem), mSmallFace, FColors.Muted);
   // Konfidenz eines Regeltreffers als eigene Zeile (#144).
   if AIndex <= High(FInput.Texts.Confidences) then
@@ -649,7 +660,7 @@ begin
   begin
     mCaption := FInput.Texts.Inheritance;
   end;
-  mCaptionFace := Face(TAtlasHoverFont.SmallMono, True);
+  mCaptionFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, True, False);
   AddText(FLeft, FY, AnsiUpperCase(mCaption), mCaptionFace, FColors.Muted);
   Inc(FY, Height(mCaptionFace) + Scale(6));
   FFlowFont := TAtlasHoverFont.Mono;
@@ -769,7 +780,7 @@ begin
   mItem.Radius := 4;
   if FInput.View.CanGoBack then
   begin
-    HoverMakeHot(mItem, TAtlasHoverHitKind.Back, 0, FColors.Accent);
+    MakeHot(mItem, TAtlasHoverHitKind.Back, 0, FColors.Accent);
   end;
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, Result, FColors.Muted);
@@ -779,7 +790,7 @@ begin
     mItem.HotColor := FColors.Text;
   end;
   mItem.Text := '‹';
-  mItem.Face := Face(TAtlasHoverFont.Mono, True);
+  mItem.Face := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, True, False);
   Add(mItem);
   if FInput.View.CanGoBack then
   begin
@@ -828,10 +839,10 @@ begin
   mBox := BackButton(mNavHeight);
   FFlowFont := TAtlasHoverFont.Mono;
   FNoWrap := True;
-  FY := (mNavHeight - Height(Face(TAtlasHoverFont.Mono, False))) div 2;
+  FY := (mNavHeight - Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False))) div 2;
   FX := mBox.Right + Scale(6);
   PathItems;
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mCaption := FInput.Texts.Pinned;
   mCaptionWidth := Width(mSmallFace, mCaption);
   if FX + mCaptionWidth + Scale(12) < FRight then
@@ -856,7 +867,7 @@ begin
   mValue := FInput.View.DebugValue;
   mStart := FY;
   FLeft := Scale(20);
-  mMonoFace := Face(TAtlasHoverFont.Mono, True);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, True, False);
   AddText(FLeft, FY, mValue.Expression, mMonoFace, FColors.Accent);
   Inc(FY, Height(mMonoFace) + Scale(3));
   if mValue.State = TAtlasDebugValueState.Pending then
@@ -941,7 +952,7 @@ begin
   begin
     Exit;
   end;
-  FLineHeight := Max(Height(Face(TAtlasHoverFont.Ui, False)), Scale(17));
+  FLineHeight := Max(Height(TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False)), Scale(17));
   FX := FLeft;
   if FData.Kind <> '' then
   begin
@@ -952,15 +963,15 @@ begin
     Add(mItem);
     mItem := NewItem(TAtlasHoverItemKind.CenterText, mBox, FColors.Badges[mBadge].Text);
     mItem.Text := FData.Badge;
-    mItem.Face := Face(TAtlasHoverFont.Badge, True);
+    mItem.Face := TAtlasHoverFace.Create(TAtlasHoverFont.Badge, True, False);
     Add(mItem);
     FX := mBox.Right + Scale(7);
   end;
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   AddText(FX, FY + (FLineHeight - Height(mSmallFace)) div 2, mCaption, mSmallFace, FColors.Muted);
   if mLocation <> '' then
   begin
-    mLocationFace := Face(TAtlasHoverFont.SmallMono, False);
+    mLocationFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
     AddText(Max(FX + Width(mSmallFace, mCaption) + Scale(12), FRight - Width(mLocationFace, mLocation)),
       FY + (FLineHeight - Height(mLocationFace)) div 2, mLocation, mLocationFace, FColors.Muted);
   end;
@@ -992,7 +1003,7 @@ var
   mItem: TAtlasHoverItem;
   mMonoFace: TAtlasHoverFace;
 begin
-  mMonoFace := Face(TAtlasHoverFont.Mono, False);
+  mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False);
   mLinkFrom := Max(AFrom, FData.Links[ALink].Start);
   Result := Min(ATill, FData.Links[ALink].Start + FData.Links[ALink].Length);
   if mLinkFrom > AFrom then
@@ -1019,7 +1030,7 @@ var
   mLine, mPos, mNext: Integer;
 begin
   // Deklaration eingefärbt, an Leerzeichen umbrochen; Typnamen als Verweise in Akzentfarbe, unterstrichen.
-  FLineHeight := Height(Face(TAtlasHoverFont.Mono, False)) + Scale(2);
+  FLineHeight := Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False)) + Scale(2);
   mLines := FMeasure.DeclarationLines(FRight - FLeft, Scale(16));
   for mLine := 0 to High(mLines) do
   begin
@@ -1143,10 +1154,6 @@ end;
 
 function TBuilder.Layout: TAtlasHoverLayout;
 begin
-  FLayout := Default(TAtlasHoverLayout);
-  FLayout.AnchorItem := -1;
-  FLayout.AnchorHit := -1;
-  FLayout.FixProblem := -1;
   Run;
   SetLength(FItems, FItemCount);
   SetLength(FHits, FHitCount);

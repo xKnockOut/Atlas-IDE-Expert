@@ -67,7 +67,12 @@ type
     LeakDefinesFailed, LeakNoDebugConfig, LeakCopyDllAsk, LeakCopyDllDone, LeakCopyDllFailed, LeakDone,
     SettingsLeakSetup,
     // Lecks je Test (#1774).
-    TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks);
+    TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks,
+    // Vergleichsdateien (#1881).
+    TestsLensApproval, TestsLensApprovalNew, TestsApprovalAccept, TestsApprovalGoTo, TestsApprovalAccepted,
+    TestsApprovalMissing, TestsApprovalFailed, TestsApprovalCleanCommand, TestsApprovalCleanNone,
+    TestsApprovalCleanAsk, TestsApprovalCleaned, TestsApprovalIgnoreAsk, TestsApprovalNoProject,
+    SettingsTestsApprovalFiles, TestsShutdownLeaks);
 
   TAtlasTestsStrings = class
   public
@@ -298,7 +303,22 @@ const
      '%s · Leck: %d Bytes',
      'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
      'Tests: %d bestanden mit Leck, zusammen %d Bytes nicht freigegeben (Warnungen in Atlas-Probleme).',
-     'Lecks je Test als Warnung zeigen (bestanden mit Leck, gelbe Marke)'),
+     'Lecks je Test als Warnung zeigen (bestanden mit Leck, gelbe Marke)',
+     'Abweichung · Vergleich',
+     'Neu · Vergleich',
+     'Als neue Erwartung übernehmen',
+     'Zum Test',
+     'Tests: %s als neue Erwartung übernommen (%s).',
+     'Tests: Die Datei %s gibt es nicht mehr; den Test erneut ausführen.',
+     'Tests: %s ließ sich nicht nach %s übernehmen (schreibgeschützt oder gesperrt).',
+     'Liegengebliebene .received-Dateien löschen',
+     'Tests: Keine liegengebliebenen .received-Dateien in %s.',
+     '%d liegengebliebene .received-Dateien in %s löschen?',
+     'Tests: %d von %d .received-Dateien gelöscht.',
+     '„%s“ in %s eintragen, damit .received-Dateien nicht ins Repository geraten?',
+     'Tests: Kein Testprojekt aktiv; Ordner der Vergleichsdateien unbekannt.',
+     'Vergleichsdateien erkennen (Abweichung an der Testmarke, übernehmen, aufräumen)',
+     'Tests: Lecks am Programmende, keinem Test zuzuordnen: %d Blöcke (%s).'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -513,7 +533,22 @@ const
      '%s · leak: %d bytes',
      'Test %s does not free memory: %d bytes (leak)',
      'Tests: %d passed with a leak, %d bytes not freed in total (warnings in Atlas problems).',
-     'Show leaks per test as warnings (passed with leak, yellow mark)'));
+     'Show leaks per test as warnings (passed with leak, yellow mark)',
+     'Difference · Compare',
+     'New · Compare',
+     'Accept as new expectation',
+     'Go to test',
+     'Tests: %s accepted as the new expectation (%s).',
+     'Tests: The file %s no longer exists; run the test again.',
+     'Tests: Could not accept %s as %s (read-only or locked).',
+     'Delete leftover .received files',
+     'Tests: No leftover .received files in %s.',
+     'Delete %d leftover .received files in %s?',
+     'Tests: Deleted %d of %d .received files.',
+     'Add “%s” to %s so that .received files stay out of the repository?',
+     'Tests: No active test project; folder of the approval files unknown.',
+     'Recognize approval files (difference on the test mark, accept, clean up)',
+     'Tests: Leaks at program end, not tied to a test: %d blocks (%s).'));
 
 { TAtlasTestsStrings }
 

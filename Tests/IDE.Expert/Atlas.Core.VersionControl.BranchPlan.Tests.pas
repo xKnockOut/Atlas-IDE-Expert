@@ -110,7 +110,8 @@ uses
   System.IOUtils,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Internals.SvnExternals,
-  Atlas.Core.VersionControl.BranchPlan;
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.VersionControl.ExternalRules;
 
 var
   /// <summary>Protokoll von RecordingProgress.</summary>

@@ -194,7 +194,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Lsp.Uris;
+  Atlas.Core.Lsp.Uris,
+  Atlas.Text.Json;
 
 class function TLspSessionJson.PathToUri(const APath: string): string;
 begin
@@ -754,12 +755,7 @@ class function TLspSessionJson.SettingsParams(const AJson: string): TJSONObject;
 var
   mValue: TJSONValue;
 begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  if not (mValue is TJSONObject) then
-  begin
-    mValue.Free;
-    mValue := TJSONObject.Create;
-  end;
+  mValue := TJsonRead.ParseObjectOrEmpty(AJson);
   Result := TJSONObject.Create(TJSONPair.Create('settings', TJSONObject.Create(TJSONPair.Create('atlas', mValue))));
 end;
 

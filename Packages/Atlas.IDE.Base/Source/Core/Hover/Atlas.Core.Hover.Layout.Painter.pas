@@ -1,9 +1,8 @@
-﻿unit Atlas.Core.Hover.Painter;
+﻿unit Atlas.Core.Hover.Layout.Painter;
 
-// Grundformen des Hover-Satzes ohne VCL (aus Atlas.Core.Hover.Layout): Eingabe
-// des Satzes, Messen in der Oberfläche, Bausteine, Klickflächen und Fließtext
-// mit Umbruch. Die Abschnitte des Tooltips bauen die Nachfahren
-// (Atlas.Core.Hover.PublishedPainter, TBuilder in Atlas.Core.Hover.Layout).
+// Grundlage des Hover-Satzes ohne VCL: Zeichenbausteine und Klickflächen sammeln, Schriften und Maße über den
+// Mess-Rückruf, Linien, Balken, umbrochener Block und Fließtext mit Verweisen und Hervorhebung unter der Maus.
+// Die Abschnitte setzt Atlas.Core.Hover.Layout, die published-Mitglieder Atlas.Core.Hover.Layout.Members.
 
 interface
 
@@ -13,45 +12,9 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Texts,
-  Atlas.Core.Hover.View;
+  Atlas.Core.Hover.Layout.Contract;
 
 type
-  /// <summary>Messen in der Oberfläche; Build ruft nur diese Funktionen.</summary>
-  IAtlasHoverMeasure = interface
-    ['{96C7EBD2-5C83-4DC6-8E88-88DB86BCD6D5}']
-    function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    /// <summary>Zeilenhöhe der Schrift (Höhe von „Wg“).</summary>
-    function TextHeight(const AFace: TAtlasHoverFace): Integer;
-    /// <summary>Höhe von AText in der UI-Schrift, umbrochen an Wortgrenzen auf AWidth.</summary>
-    function BlockHeight(const AText: string; AWidth: Integer): Integer;
-    /// <summary>Breite der eingefärbten Deklaration [AFrom, ATill) in der Editorschrift.</summary>
-    function DeclarationWidth(AFrom, ATill: Integer): Integer;
-    /// <summary>Zeilen der eingefärbten Deklaration bei Umbruch an Leerzeichen.</summary>
-    function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-  end;
-
-  TAtlasHoverInput = record
-    View: TAtlasHoverView;
-    Width: Integer;
-    PPI: Integer;
-    Colors: TAtlasColors;
-    Texts: TAtlasHoverTexts;
-    /// <summary>XMLDoc vorhanden und ihre (begrenzte) Höhe.</summary>
-    HasDoc: Boolean;
-    DocHeight: Integer;
-    /// <summary>Markierung in der Doku: Aktion „Auswahl kopieren“ statt „Deklaration kopieren“.</summary>
-    HasSelection: Boolean;
-    /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
-    ProblemActions: Boolean;
-    /// <summary>problems.showCompilerCode aus (#1024): Meldungen ohne „(wie E2035)“, Bestätigung ohne Code.</summary>
-    HideCompilerCode: Boolean;
-    /// <summary>Link „Beispiel zeigen“ in der Aktionszeile (hover.ruleExamples, #145).</summary>
-    RuleExamples: Boolean;
-    /// <summary>Rollbereich der published-Mitglieder: Zeilen, Grenze und gewünschter Versatz (#1841).</summary>
-    Members: TAtlasHoverScrollRequest;
-  end;
-
   /// <summary>Klickfläche und Hervorhebung eines Stücks Fließtext: Index >= 0 legt eine Klickfläche an,
   /// HotIndex >= 0 färbt das Stück unter der Maus in HotColor und unterstreicht es.</summary>
   TAtlasHoverHotSpot = record
@@ -75,14 +38,9 @@ type
     FLeft, FRight, FY, FX, FRowHeight, FLineHeight: Integer;
     FFlowFont: TAtlasHoverFont;
     FNoWrap: Boolean;
-    /// <summary>Rollbereich der published-Mitglieder (#1841); der Satz übernimmt ihn ins Ergebnis.</summary>
-    FMembers: TAtlasHoverScroll;
     function Scale(AValue: Integer): Integer;
-    class function Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace; static;
     function Height(const AFace: TAtlasHoverFace): Integer;
     function Width(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    /// <summary>AText, auf AMax Pixel gekürzt (mit „…“); '' ohne Platz.</summary>
-    function Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
     class function NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect; AColor: TAtlasColor): TAtlasHoverItem;
       static;
     procedure Add(const AItem: TAtlasHoverItem);
@@ -104,37 +62,31 @@ type
     /// <summary>Zeile mit kleinen Verweisen beginnen; liefert die bisherige Schrift für EndLinkRow.</summary>
     function BeginLinkRow: TAtlasHoverFont;
     procedure EndLinkRow(AOldFont: TAtlasHoverFont);
+    /// <summary>AText, auf AMax Pixel gekürzt (mit „…“); '' ohne Platz.</summary>
+    function Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
+    /// <summary>Keine Klickfläche, keine Hervorhebung.</summary>
+    class function NoHot: TAtlasHoverHotSpot; static;
+    /// <summary>Hervorhebung unter der Maus ohne eigene Klickfläche (die legt der Aufrufer über mehrere Stücke).
+    /// </summary>
+    class function HoverHot(AKind: TAtlasHoverHitKind; AHotIndex: Integer; AColor: TAtlasColor): TAtlasHoverHotSpot;
+      static;
+    /// <summary>Baustein AItem färbt sich unter der Maus über der Klickfläche AKind/AIndex in AColor.</summary>
+    class procedure MakeHot(var AItem: TAtlasHoverItem; AKind: TAtlasHoverHitKind; AIndex: Integer;
+      AColor: TAtlasColor); static;
   public
     constructor Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
   end;
 
-/// <summary>Kein Hervorheben und keine Klickfläche.</summary>
-function HoverNoHot: TAtlasHoverHotSpot;
-/// <summary>Hervorhebung unter der Maus ohne eigene Klickfläche (die legt der Aufrufer über mehrere Stücke).
-/// </summary>
-function HoverHot(AKind: TAtlasHoverHitKind; AHotIndex: Integer; AColor: TAtlasColor): TAtlasHoverHotSpot;
-/// <summary>Baustein AItem unter der Maus in AColor hervorheben, wenn die Klickfläche AKind/AIndex heiß ist.
-/// </summary>
-procedure HoverMakeHot(var AItem: TAtlasHoverItem; AKind: TAtlasHoverHitKind; AIndex: Integer; AColor: TAtlasColor);
-
 implementation
 
 uses
+  Atlas.Core.Hover.View,
+  System.SysUtils,
   System.Math;
 
-const
-  cDesignPpi = 96;
-  /// <summary>Vorrat beim Vergrößern der Listen von Bausteinen und Klickflächen.</summary>
-  cItemReserve = 16;
-  cHitReserve = 8;
-  /// <summary>Abstände in Pixeln bei 96 dpi: Seitenleiste und Abstand nach Blöcken und Zeilen.</summary>
-  cBarLeft = 11;
-  cBarWidth = 3;
-  cBarBottomInset = 7;
-  cBlockGap = 6;
-  cFlowRowGap = 4;
+{ TAtlasHoverPainter }
 
-function HoverNoHot: TAtlasHoverHotSpot;
+class function TAtlasHoverPainter.NoHot: TAtlasHoverHotSpot;
 begin
   Result.Kind := TAtlasHoverHitKind.Action;
   Result.Index := -1;
@@ -142,7 +94,8 @@ begin
   Result.HotColor := 0;
 end;
 
-function HoverHot(AKind: TAtlasHoverHitKind; AHotIndex: Integer; AColor: TAtlasColor): TAtlasHoverHotSpot;
+class function TAtlasHoverPainter.HoverHot(AKind: TAtlasHoverHitKind; AHotIndex: Integer;
+  AColor: TAtlasColor): TAtlasHoverHotSpot;
 begin
   Result.Kind := AKind;
   Result.Index := -1;
@@ -150,14 +103,13 @@ begin
   Result.HotColor := AColor;
 end;
 
-procedure HoverMakeHot(var AItem: TAtlasHoverItem; AKind: TAtlasHoverHitKind; AIndex: Integer; AColor: TAtlasColor);
+class procedure TAtlasHoverPainter.MakeHot(var AItem: TAtlasHoverItem; AKind: TAtlasHoverHitKind; AIndex: Integer;
+  AColor: TAtlasColor);
 begin
   AItem.HotKind := AKind;
   AItem.HotIndex := AIndex;
   AItem.HotColor := AColor;
 end;
-
-{ TAtlasHoverPainter }
 
 constructor TAtlasHoverPainter.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
 begin
@@ -168,18 +120,12 @@ begin
   FColors := AInput.Colors;
   FItems := nil;
   FHits := nil;
-  FMembers := TAtlasHoverScroll.None;
 end;
 
 function TAtlasHoverPainter.Scale(AValue: Integer): Integer;
 begin
   // Wie MulDiv(AValue, PPI, 96): auf ganze Pixel gerundet.
-  Result := (AValue * FInput.PPI + cDesignPpi div 2) div cDesignPpi;
-end;
-
-class function TAtlasHoverPainter.Face(AFont: TAtlasHoverFont; ABold: Boolean): TAtlasHoverFace;
-begin
-  Result := TAtlasHoverFace.Create(AFont, ABold, False);
+  Result := (AValue * FInput.PPI + 48) div 96;
 end;
 
 function TAtlasHoverPainter.Height(const AFace: TAtlasHoverFace): Integer;
@@ -190,28 +136,6 @@ end;
 function TAtlasHoverPainter.Width(const AFace: TAtlasHoverFace; const AText: string): Integer;
 begin
   Result := FMeasure.TextWidth(AFace, AText);
-end;
-
-function TAtlasHoverPainter.Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
-var
-  mLength: Integer;
-begin
-  Result := AText;
-  if Width(AFace, Result) <= AMax then
-  begin
-    Exit;
-  end;
-  mLength := Length(AText);
-  while mLength > 0 do
-  begin
-    Dec(mLength);
-    Result := Copy(AText, 1, mLength) + '…';
-    if Width(AFace, Result) <= AMax then
-    begin
-      Exit;
-    end;
-  end;
-  Result := '';
 end;
 
 class function TAtlasHoverPainter.NewItem(AKind: TAtlasHoverItemKind; const ARect: TRect;
@@ -225,14 +149,14 @@ begin
   Result.PenWidth := 1;
   Result.HotPenWidth := 1;
   Result.HotIndex := -1;
-  Result.Face := Face(TAtlasHoverFont.Ui, False);
+  Result.Face := TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False);
 end;
 
 procedure TAtlasHoverPainter.Add(const AItem: TAtlasHoverItem);
 begin
   if FItemCount = Length(FItems) then
   begin
-    SetLength(FItems, 2 * FItemCount + cItemReserve);
+    SetLength(FItems, 2 * FItemCount + 16);
   end;
   FItems[FItemCount] := AItem;
   Inc(FItemCount);
@@ -254,7 +178,7 @@ procedure TAtlasHoverPainter.AddHit(AKind: TAtlasHoverHitKind; AIndex: Integer; 
 begin
   if FHitCount = Length(FHits) then
   begin
-    SetLength(FHits, 2 * FHitCount + cHitReserve);
+    SetLength(FHits, 2 * FHitCount + 8);
   end;
   FHits[FHitCount].Kind := AKind;
   FHits[FHitCount].Index := AIndex;
@@ -281,7 +205,7 @@ begin
   begin
     Exit;
   end;
-  mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   Inc(FY, Height(mSmallFace) + Scale(2));
   AddText(FLeft, FY, AText, mSmallFace, FColors.Muted);
 end;
@@ -300,9 +224,9 @@ procedure TAtlasHoverPainter.SideBar(ATop: Integer; AColor: TAtlasColor);
 var
   mBar: TAtlasHoverItem;
 begin
-  FLeft := Scale(cBarLeft);
-  mBar := NewItem(TAtlasHoverItemKind.RoundFill,
-    Rect(FLeft, ATop + Scale(1), FLeft + Scale(cBarWidth), FY - Scale(cBarBottomInset)), AColor);
+  FLeft := Scale(11);
+  mBar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, ATop + Scale(1), FLeft + Scale(3), FY - Scale(7)),
+    AColor);
   mBar.Radius := 1;
   Add(mBar);
 end;
@@ -319,12 +243,12 @@ begin
   mBottom := FY + FMeasure.BlockHeight(AText, FRight - FLeft);
   if AMaxLines > 0 then
   begin
-    mBottom := Min(mBottom, FY + AMaxLines * Height(Face(TAtlasHoverFont.Ui, False)));
+    mBottom := Min(mBottom, FY + AMaxLines * Height(TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False)));
   end;
   mItem := NewItem(TAtlasHoverItemKind.Block, Rect(FLeft, FY, FRight, mBottom), AColor);
   mItem.Text := AText;
   Add(mItem);
-  FY := mBottom + Scale(cBlockGap);
+  FY := mBottom + Scale(6);
 end;
 
 procedure TAtlasHoverPainter.Flow(const AText: string; AColor: TAtlasColor; ABold: Boolean;
@@ -336,13 +260,13 @@ var
   mItem: TAtlasHoverItem;
 begin
   // Fließtext mit Umbruch.
-  mTextFace := Face(FFlowFont, ABold);
+  mTextFace := TAtlasHoverFace.Create(FFlowFont, ABold, False);
   mTextWidth := Width(mTextFace, AText);
   mTextHeight := Height(mTextFace);
   if not FNoWrap and (FX + mTextWidth > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
-    Inc(FY, FRowHeight + Scale(cFlowRowGap));
+    Inc(FY, FRowHeight + Scale(4));
     FRowHeight := 0;
   end;
   mCell := Rect(FX, FY, FX + mTextWidth, FY + mTextHeight);
@@ -351,7 +275,7 @@ begin
   mItem.Face := mTextFace;
   if AHot.HotIndex >= 0 then
   begin
-    HoverMakeHot(mItem, AHot.Kind, AHot.HotIndex, AHot.HotColor);
+    MakeHot(mItem, AHot.Kind, AHot.HotIndex, AHot.HotColor);
     mItem.HotUnderline := True;
   end;
   Add(mItem);
@@ -365,7 +289,7 @@ end;
 
 procedure TAtlasHoverPainter.Flow(const AText: string; AColor: TAtlasColor; ABold: Boolean);
 begin
-  Flow(AText, AColor, ABold, HoverNoHot);
+  Flow(AText, AColor, ABold, NoHot);
 end;
 
 procedure TAtlasHoverPainter.FlowLink(const AText: string; AColor: TAtlasColor; AKind: TAtlasHoverHitKind;
@@ -396,8 +320,30 @@ end;
 procedure TAtlasHoverPainter.EndLinkRow(AOldFont: TAtlasHoverFont);
 begin
   EndFlow;
-  Inc(FY, Scale(cBlockGap));
+  Inc(FY, Scale(6));
   FFlowFont := AOldFont;
+end;
+
+function TAtlasHoverPainter.Clipped(const AFace: TAtlasHoverFace; const AText: string; AMax: Integer): string;
+var
+  mLength: Integer;
+begin
+  Result := AText;
+  if Width(AFace, Result) <= AMax then
+  begin
+    Exit;
+  end;
+  mLength := Length(AText);
+  while mLength > 0 do
+  begin
+    Dec(mLength);
+    Result := Copy(AText, 1, mLength) + '…';
+    if Width(AFace, Result) <= AMax then
+    begin
+      Exit;
+    end;
+  end;
+  Result := '';
 end;
 
 end.
