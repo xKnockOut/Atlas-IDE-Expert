@@ -118,6 +118,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Tracker.MyIssues,
+  Atlas.UI.Tracker.MyIssues.Text,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,

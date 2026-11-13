@@ -80,7 +80,8 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Review,
   Vcl.Graphics,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Tracker.Settings.Strings;
 
 const
   cValueLeft = 280;
@@ -102,7 +103,7 @@ end;
 
 procedure TAtlasTrackerWorkflowPart.Build;
 begin
-  FRows.AddTitle(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesWorkflowTitle));
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesWorkflowTitle));
   BuildFields;
   BuildLoad;
 end;
@@ -110,34 +111,34 @@ end;
 procedure TAtlasTrackerWorkflowPart.BuildFields;
 begin
   FView.SyncState := FRows.AddCheck('issues.syncState',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSyncState));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSyncState));
   FView.StateField := FRows.AddValueBox(cStateFieldKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStateField), cValueLeft);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStateField), cValueLeft);
   FView.AssigneeField := FRows.AddValueBox(cAssigneeFieldKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesAssigneeField), cValueLeft);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAssigneeField), cValueLeft);
   FView.StartState := FRows.AddValueBox(cStartStateKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartState), cValueLeft);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartState), cValueLeft);
   FView.AssignOnStart := FRows.AddCheck('issues.assignOnStart',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesAssignOnStart));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesAssignOnStart));
   FView.StartComment := FRows.AddText(cStartCommentKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartComment));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartComment));
   FView.EndStates := FRows.AddText(cEndStatesKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndStates));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesEndStates));
   FView.EndComment := FRows.AddText(cEndCommentKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndComment));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesEndComment));
   // Beenden in der Reihenfolge des Ablaufs (#2123): Felder und Zeit im Dialog.
   FView.EndFields := FRows.AddText(cEndFieldsKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndFields));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesEndFields));
   FView.EndTime := FRows.AddCheck('issues.endTime',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesEndTime));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesEndTime));
   FView.ReviewStates := FRows.AddText(cReviewStatesKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewStates));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesReviewStates));
   FView.ReviewBuild := FRows.AddCheck('issues.reviewBuild',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewBuild));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesReviewBuild));
   FView.ReviewComment := FRows.AddText(cReviewCommentKey,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReviewComment));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesReviewComment));
   FView.Reopened := FRows.AddCheck('issues.reopened',
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesReopened));
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesReopened));
 end;
 
 procedure TAtlasTrackerWorkflowPart.BuildLoad;
@@ -146,7 +147,7 @@ var
 begin
   mPanel := FRows.AddPanel(cLoadRow);
   FView.LoadValues := FRows.AddButton(mPanel, 0, cLoadWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesLoadValues), LoadValuesClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesLoadValues), LoadValuesClick);
   FView.ValuesNote := TLabel.Create(FRows.Owner);
   FView.ValuesNote.Parent := mPanel;
   FView.ValuesNote.Left := FView.ValuesNote.ScaleValue(cNoteLeft);
@@ -162,9 +163,9 @@ begin
   FView.StartState.Value := AValues.ReadString(cStartStateKey);
   // Die unveränderte Vorgabe in der Sprache der Oberfläche (#1458); die Seite hat den gespeicherten Text geladen.
   FView.EndComment.Text := TAtlasTrackerWorkflow.EndCommentFor(AValues.ReadString(cEndCommentKey),
-    TAtlasTrackerStrings.English);
+    TAtlasWorkflowStrings.English);
   FView.ReviewComment.Text := TAtlasTrackerReview.CommentFor(AValues.ReadString(cReviewCommentKey),
-    TAtlasTrackerStrings.English);
+    TAtlasWorkflowStrings.English);
 end;
 
 procedure TAtlasTrackerWorkflowPart.Save(const AValues: IAtlasSettingsValues);
@@ -195,7 +196,7 @@ begin
   end;
   if not FTables.Connections.ValuesConnection(mConnection) then
   begin
-    FView.ValuesNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesValuesNoConnection);
+    FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesNoConnection);
     Exit;
   end;
   // Zustände zum Feld der Verbindung, sonst zum globalen Feld.
@@ -204,7 +205,7 @@ begin
   begin
     mField := FView.StateField.Value;
   end;
-  FView.ValuesNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesValuesLoading);
+  FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesLoading);
   FView.LoadValues.Enabled := False;
   FHooks.OnValues(mConnection, mField);
 end;
@@ -214,14 +215,14 @@ begin
   FView.LoadValues.Enabled := True;
   if AError <> '' then
   begin
-    FView.ValuesNote.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesFailed, [AError]);
+    FView.ValuesNote.Caption := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesValuesFailed, [AError]);
     Exit;
   end;
   // Vorschläge für die globalen Felder; eingegebene Texte bleiben.
   FView.StateField.SetValues(AValues.StateFields);
   FView.AssigneeField.SetValues(AValues.UserFields);
   FView.StartState.SetValues(AValues.States);
-  FView.ValuesNote.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesLoaded,
+  FView.ValuesNote.Caption := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesValuesLoaded,
     [Length(AValues.States), Length(AValues.StateFields) + Length(AValues.UserFields)]);
 end;
 

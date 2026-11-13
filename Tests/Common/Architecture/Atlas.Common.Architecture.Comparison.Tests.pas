@@ -52,6 +52,7 @@ uses
   System.JSON,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.UsesGraph.Tests,
