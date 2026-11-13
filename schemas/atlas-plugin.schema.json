@@ -2036,6 +2036,43 @@
       "x-captionEn": "Turn disabled breakpoints on again",
       "x-issue": "#872"
     },
+    "DebugReattach": {
+      "description": "Erneut an einen Prozess anhängen: Atlas merkt Pfad und Name von Prozessen, an die sich die IDE hängt (je Projektgruppe, nur auf diesem Rechner). „Erneut an <Name> anhängen“ (Menü Start, Befehlspalette, Taste) hängt sich bei genau einem laufenden Prozess mit gleichem Pfad ohne Rückfrage an, bei mehreren oder nur gleichem Namen zeigt es eine Auswahl, ohne Treffer bietet es das Warten an. „Anhängen, sobald gestartet …“ wartet auf den Start einer EXE und hängt sich sofort an. Nur lokale Prozesse. Aus = keine Einträge, kein Merken, kein Warten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.reattach",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Erneut an Prozess anhängen",
+      "x-captionEn": "Reattach to process",
+      "x-issue": "#2171"
+    },
+    "DebugReattachKey": {
+      "description": "Tastenkürzel „Erneut anhängen“ (0 = keins).",
+      "type": "integer",
+      "default": 41040,
+      "x-key": "debug.reattach.key",
+      "x-area": "debug",
+      "x-format": "shortcut",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-issue": "#2171"
+    },
+    "DebugReattachWaitIntervalMs": {
+      "description": "Abstand, in dem Atlas beim Warten auf den Start eines Prozesses die Prozessliste abfragt, in Millisekunden (20 bis 2000). Kürzer verpasst weniger vom Anfang des Programms.",
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 2000,
+      "default": 100,
+      "x-key": "debug.reattach.waitIntervalMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-control": "Zahl",
+      "x-issue": "#2171"
+    },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
       "type": "boolean",

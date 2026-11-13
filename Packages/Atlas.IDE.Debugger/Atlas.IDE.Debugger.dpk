@@ -151,6 +151,11 @@ contains
   Atlas.IDE.Debug.NoSource in 'Source\IDE\Debug\Atlas.IDE.Debug.NoSource.pas',
   Atlas.UI.Debug.StepsBar in 'Source\UI\Debug\Atlas.UI.Debug.StepsBar.pas',
   Atlas.Core.Debug.Restart in 'Source\Core\Debug\Atlas.Core.Debug.Restart.pas',
-  Atlas.IDE.Debug.Restart in 'Source\IDE\Debug\Atlas.IDE.Debug.Restart.pas';
+  Atlas.IDE.Debug.Restart in 'Source\IDE\Debug\Atlas.IDE.Debug.Restart.pas',
+  Atlas.Core.Debug.Reattach in 'Source\Core\Debug\Atlas.Core.Debug.Reattach.pas',
+  Atlas.IDE.Debug.Processes in 'Source\IDE\Debug\Atlas.IDE.Debug.Processes.pas',
+  Atlas.IDE.Debug.ReattachWait in 'Source\IDE\Debug\Atlas.IDE.Debug.ReattachWait.pas',
+  Atlas.UI.Debug.ProcessChoice in 'Source\UI\Debug\Atlas.UI.Debug.ProcessChoice.pas',
+  Atlas.IDE.Debug.Reattach in 'Source\IDE\Debug\Atlas.IDE.Debug.Reattach.pas';
 
 end.

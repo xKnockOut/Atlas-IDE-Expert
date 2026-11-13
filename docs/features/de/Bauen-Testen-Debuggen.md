@@ -424,6 +424,21 @@ Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+### Erneut an Prozess anhängen
+
+- Hängt sich die IDE an einen laufenden Prozess (Start › An Prozess anhängen …), merkt Atlas Pfad und Name der EXE für die Projektgruppe
+- „Erneut an <Name> anhängen“ im Menü Start, in der Befehlspalette und mit Umschalt+Alt+P:
+  - genau ein laufender Prozess mit gleichem Pfad: sofort angehängt, ohne Dialog
+  - mehrere, oder nur gleicher Name an anderem Ort (andere Version): Auswahl mit PID, Startzeit und Befehlszeile
+  - keiner: Angebot, auf den Start zu warten
+- „Anhängen, sobald gestartet …“ im Menü Start und in der Befehlspalette: EXE wählen (Vorgabe: zuletzt gemerkte, sonst Ausgabedatei des aktiven Projekts); Atlas fragt die Prozessliste im Hintergrund ab und hängt sich beim Start sofort an
+- Während des Wartens zeigt das Statusfeld „Warte auf … (Abbrechen)“; ein Klick bricht ab, ebenso das Schließen oder Wechseln der Projektgruppe
+- Endet ein angehängter Prozess, bietet das Statusfeld an, sich beim nächsten Start wieder anzuhängen
+- Die ersten Millisekunden des Programms (Initialisierung) verpasst das Warten; wer sie braucht, startet über die Startparameter des Projekts oder eine Host-Anwendung
+- Nur lokale Prozesse; Prozesse anderer Benutzer und Dienste brauchen eine IDE mit Administratorrechten
+
+Einstellungen: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>
