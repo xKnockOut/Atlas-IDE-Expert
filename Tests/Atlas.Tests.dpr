@@ -1802,6 +1802,8 @@ uses
   Atlas.Core.Designer.CodeLink.Tests in 'IDE.Expert\Atlas.Core.Designer.CodeLink.Tests.pas',
   Atlas.Core.Designer.PropertySearch in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas',
   Atlas.Core.Designer.PropertySearch.Tests in 'IDE.Expert\Atlas.Core.Designer.PropertySearch.Tests.pas',
+  Atlas.Core.Designer.IconAlpha in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.IconAlpha.pas',
+  Atlas.Core.Designer.IconAlpha.Tests in 'IDE.Expert\Atlas.Core.Designer.IconAlpha.Tests.pas',
   Atlas.Core.Designer.Usages in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Usages.pas',
   Atlas.Core.Designer.Usages.Tests in 'IDE.Expert\Atlas.Core.Designer.Usages.Tests.pas',
   Atlas.Core.Designer.Undo in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Undo.pas',

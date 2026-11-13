@@ -1248,6 +1248,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.ExtractFrame` | `Core/Designer/Atlas.Core.Designer.ExtractFrame.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.FormUnit` | `Core/Designer/Atlas.Core.Designer.FormUnit.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.EventMap` | `Core/Designer/Atlas.Core.Designer.EventMap.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.IconAlpha` | `Core/Designer/Atlas.Core.Designer.IconAlpha.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Usages` | `Core/Designer/Atlas.Core.Designer.Usages.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Undo` | `Core/Designer/Atlas.Core.Designer.Undo.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |

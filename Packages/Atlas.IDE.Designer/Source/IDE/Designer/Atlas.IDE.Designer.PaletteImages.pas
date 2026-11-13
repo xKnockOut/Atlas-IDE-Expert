@@ -49,7 +49,8 @@ uses
   Vcl.Graphics,
   Vcl.ImgList,
   ToolsAPI,
-  PaletteAPI;
+  PaletteAPI,
+  Atlas.Core.Designer.IconAlpha;
 
 const
   cImageSize = 16;
@@ -135,15 +136,44 @@ begin
   end;
 end;
 
+/// <summary>Symbol von APaint auf deckendem Grund AColor (32 Bit) als Pixel BGRA.</summary>
+function PaintOn(const APaint: INTAPalettePaintIcon; AColor: TColor): TArray<Cardinal>;
+var
+  mBitmap: TBitmap;
+  mRow: PCardinal;
+  mY, mX: Integer;
+begin
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.PixelFormat := pf32bit;
+    mBitmap.SetSize(cImageSize, cImageSize);
+    mBitmap.Canvas.Brush.Color := AColor;
+    mBitmap.Canvas.FillRect(Rect(0, 0, cImageSize, cImageSize));
+    APaint.Paint(mBitmap.Canvas, 0, 0, pi16x16);
+    SetLength(Result, cImageSize * cImageSize);
+    for mY := 0 to cImageSize - 1 do
+    begin
+      mRow := mBitmap.ScanLine[mY];
+      for mX := 0 to cImageSize - 1 do
+      begin
+        Result[mY * cImageSize + mX] := mRow^ and $00FFFFFF;
+        Inc(mRow);
+      end;
+    end;
+  finally
+    mBitmap.Free;
+  end;
+end;
+
 function TAtlasPaletteImages.PaintedIndex(const AClassName: string): Integer;
-const
-  // Schlüsselfarbe für den durchsichtigen Hintergrund des gemalten Symbols.
-  cKeyColor = TColor($FF00FF);
 var
   mPalette: IOTAPaletteServices;
   mItem: IOTABasePaletteItem;
   mPaint: INTAPalettePaintIcon;
+  mPixels: TArray<Cardinal>;
   mBitmap: TBitmap;
+  mRow: PCardinal;
+  mY, mX: Integer;
 begin
   Result := -1;
   // Ohne IDE (Tests) gibt es keine Palette; dann nur die Ressourcen. Die Palette jedes Mal neu durchsuchen (nur für
@@ -158,14 +188,24 @@ begin
   begin
     Exit;
   end;
+  // Die IDE malt mit Kantenglättung auf den Grund. Auf Schwarz und auf Weiß gemalt ergibt sich die echte
+  // Durchsicht je Pixel; mit einer Schlüsselfarbe (vorher Magenta) behielten die Kanten deren Stich.
+  mPixels := TAtlasIconAlpha.Combine(PaintOn(mPaint, clBlack), PaintOn(mPaint, clWhite));
   mBitmap := TBitmap.Create;
   try
-    mBitmap.PixelFormat := pf24bit;
+    mBitmap.PixelFormat := pf32bit;
     mBitmap.SetSize(cImageSize, cImageSize);
-    mBitmap.Canvas.Brush.Color := cKeyColor;
-    mBitmap.Canvas.FillRect(Rect(0, 0, cImageSize, cImageSize));
-    mPaint.Paint(mBitmap.Canvas, 0, 0, pi16x16);
-    Result := FImages.AddMasked(mBitmap, cKeyColor);
+    for mY := 0 to cImageSize - 1 do
+    begin
+      mRow := mBitmap.ScanLine[mY];
+      for mX := 0 to cImageSize - 1 do
+      begin
+        mRow^ := mPixels[mY * cImageSize + mX];
+        Inc(mRow);
+      end;
+    end;
+    mBitmap.AlphaFormat := afDefined;
+    Result := FImages.Add(mBitmap, nil);
   finally
     mBitmap.Free;
   end;

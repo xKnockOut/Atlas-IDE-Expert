@@ -98,6 +98,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.IconAlpha.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Usages.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Undo.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas"/>

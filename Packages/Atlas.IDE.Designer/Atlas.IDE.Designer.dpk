@@ -86,6 +86,7 @@ contains
   Atlas.Core.Designer.ExtractFrame in 'Source\Core\Designer\Atlas.Core.Designer.ExtractFrame.pas',
   Atlas.Core.Designer.FormUnit in 'Source\Core\Designer\Atlas.Core.Designer.FormUnit.pas',
   Atlas.Core.Designer.EventMap in 'Source\Core\Designer\Atlas.Core.Designer.EventMap.pas',
+  Atlas.Core.Designer.IconAlpha in 'Source\Core\Designer\Atlas.Core.Designer.IconAlpha.pas',
   Atlas.Core.Designer.Usages in 'Source\Core\Designer\Atlas.Core.Designer.Usages.pas',
   Atlas.Core.Designer.Undo in 'Source\Core\Designer\Atlas.Core.Designer.Undo.pas',
   Atlas.UI.Designer.Flash in 'Source\UI\Designer\Atlas.UI.Designer.Flash.pas',
