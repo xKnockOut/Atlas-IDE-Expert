@@ -12,8 +12,10 @@ name: AtlasServer für Linux
 # Auf Branches und in Pull Requests baut der Job nur (Prüfung, dass der Linux-Bau nicht bricht).
 #
 # Außerdem laufen in jedem Pull Request die plattformunabhängigen DUnitX-Tests unter FPC
-# (Tools/Linux/Test-Fpc.sh, Liste Tools/Linux/FpcTests.txt). Ohne Delphi-Runner ist das die einzige
-# Testausführung in der CI; deshalb hat pull_request keinen Pfadfilter.
+# (Tools/Linux/Test-Fpc.sh, Liste Tools/Linux/FpcTests.txt) im eigenen Job fpc-tests, parallel zu bauen. Ohne
+# Delphi-Runner ist das die einzige Testausführung in der CI; deshalb hat pull_request keinen Pfadfilter.
+# bauen und fpc-tests sind wie check Pflichtprüfungen für main-merging (docs/Zusammenfuehren.md): Nur sie
+# übersetzen den Quelltext.
 
 on:
   push:
@@ -51,13 +53,16 @@ jobs:
           key: atlas-fpc-${{ steps.fpc.outputs.commit }}
 
       - name: Startcompiler FPC 3.2.2
-        run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl libpcre2-16-0
+        # Pflichtprüfung: ein Aussetzer der Paketquellen (DNS) darf den Lauf nicht rot färben.
+        run: |
+          for mVersuch in 1 2 3 4; do
+            sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl libpcre2-16-0 && exit 0
+            sleep $((mVersuch * 15))
+          done
+          exit 1
 
       - name: AtlasServer bauen
         run: Tools/Linux/Build-AtlasServer.sh --no-download --package "$RUNNER_TEMP/cloud-linux"
-
-      - name: Tests unter Free Pascal
-        run: Tools/Linux/Test-Fpc.sh
 
       - name: Startprobe (MCP initialize und tools/list)
         run: |
@@ -107,9 +112,40 @@ jobs:
           fi
           gh release upload cloud-linux "$RUNNER_TEMP"/cloud-linux/* --clobber
 
+  fpc-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stand von FPC trunk
+        id: fpc
+        run: echo "commit=$(sed -nE 's/^FPC_COMMIT=([0-9a-f]+)$/\1/p' Tools/Linux/Build-AtlasServer.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: FPC trunk aus dem Zwischenspeicher
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/atlas-fpc/${{ steps.fpc.outputs.commit }}
+          key: atlas-fpc-${{ steps.fpc.outputs.commit }}
+
+      - name: Startcompiler FPC 3.2.2
+        run: |
+          for mVersuch in 1 2 3 4; do
+            sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl libpcre2-16-0 && exit 0
+            sleep $((mVersuch * 15))
+          done
+          exit 1
+
+      - name: FPC trunk bauen (nur ohne Zwischenspeicher)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: Tools/Linux/Build-AtlasServer.sh --no-download
+
+      - name: Tests unter Free Pascal
+        run: Tools/Linux/Test-Fpc.sh
+
   # Rot auf main-merging sofort sichtbar machen (wie in package-dependencies.yml).
   melden:
-    needs: bauen
+    needs: [bauen, fpc-tests]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main-merging'
     runs-on: ubuntu-latest
     permissions:
@@ -123,4 +159,4 @@ jobs:
       - name: Stand von main-merging melden
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 Tools/CI/Melde-Integrationsstand.py --workflow "${{ github.workflow }}" --ergebnis "${{ needs.bauen.result }}"
+        run: python3 Tools/CI/Melde-Integrationsstand.py --workflow "${{ github.workflow }}" --ergebnis "${{ (needs.bauen.result == 'failure' || needs['fpc-tests'].result == 'failure') && 'failure' || needs.bauen.result }}"
