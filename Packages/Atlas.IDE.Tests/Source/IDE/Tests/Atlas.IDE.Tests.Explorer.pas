@@ -20,6 +20,9 @@
 // - Testlisten (#2167): Reiter, Kopfzeile und Ausführen in
 //   Atlas.IDE.Tests.Lists (TAtlasIdeTestLists.Instance); das Fenster liefert
 //   ihnen den Stand (Connect) und zeigt im Reiter einer Liste nur deren Tests.
+// - Protokoll je Test (#2168, tests.log): Atlas.IDE.Tests.ExplorerLog merkt
+//   sich das Protokoll der Läufe; der Reiter „Protokoll (n)“ zeigt es zum
+//   gewählten Test, Fall bzw. zur Fixture.
 // - Ein Zeitgeber folgt dem Läufer (Lauf beginnt bzw. endet), solange das
 //   Fenster zu sehen ist; er lebt nur so lange wie dieses Objekt.
 // Nur im Hauptthread.
@@ -37,6 +40,7 @@ uses
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lists,
+  Atlas.IDE.Tests.ExplorerLog,
   Atlas.UI.Tests.ExplorerFrame;
 
 type
@@ -62,6 +66,8 @@ type
     FTimer: TTimer;
     /// <summary>Ergebnisse je Testprojekt (Schlüssel klein) dieser Sitzung.</summary>
     FResults: TDictionary<string, TArray<TTestCaseResult>>;
+    /// <summary>Protokoll je Test (#2168) je Testprojekt dieser Sitzung.</summary>
+    FLogs: TAtlasIdeTestLogs;
     /// <summary>Gelesene Units je Datei (Schlüssel klein).</summary>
     FScanned: TDictionary<string, TScanned>;
     /// <summary>Gewähltes Testprojekt (.dproj); '' = noch keins.</summary>
@@ -87,7 +93,6 @@ type
     procedure ChooseProject(AIndex: Integer);
     procedure Selected(ANode: Integer);
     procedure OpenNode(ANode: Integer);
-    procedure OpenLine(const AFileName: string; ALine: Integer);
     procedure RunAll;
     procedure RunSelected;
     procedure DebugSelected;
@@ -144,6 +149,16 @@ begin
   Result := TAtlasIdeTestLists.Instance;
 end;
 
+/// <summary>AFileName an ALine (0-basiert) im Editor öffnen.</summary>
+procedure OpenLine(const AFileName: string; ALine: Integer);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeResults.Open(AFileName, ALine, 0);
+    end);
+end;
+
 { TAtlasIdeTestExplorer }
 
 constructor TAtlasIdeTestExplorer.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
@@ -156,6 +171,7 @@ begin
   FNext := ANext;
   FResults := TDictionary<string, TArray<TTestCaseResult>>.Create;
   FScanned := TDictionary<string, TScanned>.Create;
+  FLogs := TAtlasIdeTestLogs.Create;
   FDirty := True;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -209,6 +225,7 @@ begin
   TAtlasIdeTestsExplorerWindow.Release;
   FResults.Free;
   FScanned.Free;
+  FLogs.Free;
   FStaleKeys := nil;
   FNext := nil;
   inherited;
@@ -294,6 +311,7 @@ begin
     mCases := nil;
   end;
   FResults.AddOrSetValue(mKey, TAtlasTestRun.Merged(mCases, ARun.Cases));
+  FLogs.Remember(ATarget.Project, ARun);
   // Der Lauf kann Testunits geändert haben (Vergleichsdateien, Fälle aus der Tabelle): beim nächsten Takt neu.
   FDirty := True;
   if Assigned(FNext) then
@@ -538,13 +556,21 @@ procedure TAtlasIdeTestExplorer.Selected(ANode: Integer);
 var
   mFrame: TAtlasTestsExplorerFrame;
   mTexts: TAtlasTestDetailTexts;
+  mName: string;
+  mCount: Integer;
 begin
   mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
   if mFrame = nil then
   begin
     Exit;
   end;
-  if (ANode < 0) or (ANode > High(FNodes)) or (FNodes[ANode].Kind = TAtlasTestNodeKind.TestUnit) then
+  mName := '';
+  if (ANode >= 0) and (ANode <= High(FNodes)) and (FNodes[ANode].Kind <> TAtlasTestNodeKind.TestUnit) then
+  begin
+    mName := FNodes[ANode].FullName;
+  end;
+  mFrame.SetLog(FLogs.Lines(FProject, mName, FRefs, mCount), mCount, TAtlasIdeSettings.Current.TestsLog);
+  if mName = '' then
   begin
     mFrame.SetDetails(nil);
     Exit;
@@ -567,15 +593,6 @@ begin
   begin
     OpenLine(FNodes[ANode].FileName, Max(FNodes[ANode].Line, 0));
   end;
-end;
-
-procedure TAtlasIdeTestExplorer.OpenLine(const AFileName: string; ALine: Integer);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Build,
-    procedure
-    begin
-      TAtlasIdeResults.Open(AFileName, ALine, 0);
-    end);
 end;
 
 function TAtlasIdeTestExplorer.Chosen: TArray<Integer>;

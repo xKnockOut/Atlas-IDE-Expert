@@ -35,6 +35,10 @@ const
   cDefaultTestsSlowMs = 500;
   /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
   cDefaultTestsListsRunKey = $C052;
+  /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
+  cMinTestsLogMaxLines = 100;
+  cMaxTestsLogMaxLines = 100000;
+  cDefaultTestsLogMaxLines = 2000;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -145,6 +149,12 @@ type
     TestsLists: Boolean;
     /// <summary>Taste für die zuletzt benutzte Testliste (#2167, tests.lists.runKey; TShortCut, 0 = keine).</summary>
     TestsListsRunKey: Integer;
+    /// <summary>Protokoll je Test im Fenster „Atlas-Tests“ (#2168, tests.log): Seitendatei für den Atlas-Logger.
+    /// </summary>
+    TestsLog: Boolean;
+    /// <summary>Höchstens so viele Zeilen je Test im Protokoll (#2168, tests.log.maxLines), cMinTestsLogMaxLines bis
+    /// cMaxTestsLogMaxLines.</summary>
+    TestsLogMaxLines: Integer;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
@@ -334,6 +344,7 @@ begin
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
+  TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -401,6 +412,8 @@ begin
   TestsWindow := True;
   TestsLists := True;
   TestsListsRunKey := cDefaultTestsListsRunKey;
+  TestsLog := True;
+  TestsLogMaxLines := cDefaultTestsLogMaxLines;
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
   TestsLeaks := True;
@@ -431,6 +444,8 @@ begin
   AIo.Flag('TestsWindow', TestsWindow);
   AIo.Flag('TestsLists', TestsLists);
   AIo.Number('TestsListsRunKey', TestsListsRunKey);
+  AIo.Flag('TestsLog', TestsLog);
+  AIo.Number('TestsLogMaxLines', TestsLogMaxLines);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);

@@ -40,6 +40,9 @@ type
     /// <summary>#1841: hover.membersMaxLines mit Vorgabe 15 und Grenzen 0..100.</summary>
     [Test]
     procedure HoverMembersMaxLinesRoundTrip;
+    /// <summary>#2168: tests.log an, tests.log.maxLines mit Vorgabe 2000 und Grenzen 100..100000.</summary>
+    [Test]
+    procedure TestsLogRoundTrip;
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
@@ -140,7 +143,7 @@ begin
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
 end;
 
-/// <summary>Vorgaben für Editor, Code Lens, Tests und Build.</summary>
+/// <summary>Vorgaben für Editor, Code Lens und Tests.</summary>
 procedure AssertEditorDefaults(const ASettings: TAtlasPluginSettings);
 begin
   Assert.IsTrue(ASettings.Enabled);
@@ -183,6 +186,11 @@ begin
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
   AssertTestWindowDefaults(ASettings);
+end;
+
+/// <summary>Vorgaben für Build, Startprofile und „Test debuggen“.</summary>
+procedure AssertBuildDefaults(const ASettings: TAtlasPluginSettings);
+begin
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -317,6 +325,7 @@ begin
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   AssertEditorDefaults(Settings);
+  AssertBuildDefaults(Settings);
   AssertDebugDefaults(Settings);
   AssertToolDefaults(Settings);
 end;
@@ -797,6 +806,32 @@ begin
   Store.WriteInteger('HoverMembersMaxLines', -1);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.HoverMembersMaxLines);
+end;
+
+procedure TAtlasPluginSettingsTests.TestsLogRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.TestsLog);
+  Assert.AreEqual(2000, Settings.TestsLogMaxLines);
+  Store := TMemoryStore.Create;
+  Settings.TestsLog := False;
+  Settings.TestsLogMaxLines := 500;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('TestsLog', 1));
+  Assert.AreEqual(500, Store.ReadInteger('TestsLogMaxLines', 0));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.TestsLog);
+  Assert.AreEqual(500, Loaded.TestsLogMaxLines);
+  Store.WriteInteger('TestsLogMaxLines', 10);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsLogMaxLines, Loaded.TestsLogMaxLines);
+  Store.WriteInteger('TestsLogMaxLines', 1000000);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsLogMaxLines, Loaded.TestsLogMaxLines);
 end;
 
 procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;

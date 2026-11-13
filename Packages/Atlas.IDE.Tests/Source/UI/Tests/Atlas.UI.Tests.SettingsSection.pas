@@ -82,6 +82,8 @@ begin
   // Testlisten im Fenster „Atlas-Tests“ (#2167).
   Switch('tests.lists', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLists));
   Key('tests.lists.runKey', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsListsRunKey));
+  Switch('tests.log', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLog));
+  Number('tests.log.maxLines', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLogMaxLines));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;
