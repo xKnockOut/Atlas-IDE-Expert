@@ -452,6 +452,7 @@ contains
   Atlas.Common.Editing.UnitTemplates in 'Source\Editing\Atlas.Common.Editing.UnitTemplates.pas',
   Atlas.Common.Editing.TestUnits in 'Source\Editing\Atlas.Common.Editing.TestUnits.pas',
   Atlas.Common.Editing.TestDrafts in 'Source\Editing\Atlas.Common.Editing.TestDrafts.pas',
+  Atlas.Common.Editing.TestCommands in 'Source\Editing\Atlas.Common.Editing.TestCommands.pas',
   Atlas.Common.Editing.ErrorCommands in 'Source\Editing\Atlas.Common.Editing.ErrorCommands.pas',
   Atlas.Common.Semantics.UnresolvedNames in 'Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas',
   Atlas.Common.Semantics.InlineCallees in 'Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas',

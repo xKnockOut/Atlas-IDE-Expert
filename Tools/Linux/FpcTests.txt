@@ -114,6 +114,7 @@ Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
 Atlas.Common.Editing.StringLiterals.Tests
 Atlas.Common.Editing.SuggestConst.Tests
+Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
@@ -336,9 +337,12 @@ Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
 Atlas.Core.Debug.Modules.Tests
+Atlas.Core.Debug.Threads.Tests
+Atlas.Core.Debug.Deadlocks.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Settings.BuildDebug.Tests
+Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests
