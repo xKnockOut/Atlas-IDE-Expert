@@ -87,6 +87,12 @@ type
     /// <summary>Auch Änderungen an den Units, die die Testunit verwendet und die im Testprojekt liegen, machen das
     /// Ergebnis veraltet (#1770, tests.stale.units).</summary>
     TestsStaleUnits: Boolean;
+    /// <summary>Fehlschlag an der Anweisung statt am Methodenkopf (#1771, tests.failureAtAssert): Zeile aus dem
+    /// Stacktrace des Berichts, sonst der eine Assert, dessen erwarteter Wert passt.</summary>
+    TestsFailureAtAssert: Boolean;
+    /// <summary>Hinter der Assert-Zeile kurz „erwartet 4, erhalten 3“ statt der ganzen Meldung (#1771,
+    /// tests.failureInline).</summary>
+    TestsFailureInline: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -217,6 +223,8 @@ begin
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
   Result.TestsStaleUnits := False;
+  Result.TestsFailureAtAssert := True;
+  Result.TestsFailureInline := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -291,6 +299,8 @@ begin
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);
   AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
+  AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);
