@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
   "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-keywords (#1884): Synonyme für die Suche über die Einstellungen (Liste von Wörtern, deutsch oder englisch), gelten abgeschwächt auch für die Unteroptionen; x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. x-module (#1454): Kennung des Moduls an dessen Modul-Schalter; alles darunter (x-parent bzw. Präfixregel) gehört zum Modul. Ist der Schalter aus, liefern die wirksamen Werte für jede boolesche Einstellung des Moduls „aus“ und für eine mit x-offValue diesen Wert; gespeichert bleibt der eigene Wert. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
@@ -1639,6 +1639,47 @@
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
     },
+    "TestsWindow": {
+      "description": "Andockbares Fenster „Atlas-Tests“ (Ansicht › Atlas, Atlas-Menü, Befehlspalette) mit allen Tests des Testprojekts: Baum Testunit › Fixture › Test › Fall mit Stand (grün, rot, gelb, grau für nicht gelaufen bzw. veraltet), Zählern und Dauer, Filtern, Suche und Mehrfachauswahl zum Ausführen oder Debuggen; unten Meldung, erwartet, erhalten und Stacktrace mit anklickbaren Zeilen. Aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.window",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Fenster „Atlas-Tests“",
+      "x-captionEn": "“Atlas Tests” window",
+      "x-issue": "#1776"
+    },
+    "TestsLog": {
+      "description": "Protokoll je Test: Atlas legt vor jedem Testlauf eine Seitendatei neben den XML-Bericht; der Atlas-Logger im Testprojekt (Setup/Vorlagen/Atlas.Testing.Log.pas, runner.AddLogger(TAtlasTestLogger.Create)) schreibt Log und Status von DUnitX sowie Beginn und Ende jedes Tests hinein und setzt Marken in die Konsolenausgabe. Das Fenster „Atlas-Tests“ zeigt im Reiter „Protokoll (n)“ genau die Zeilen des gewählten Tests mit Zeit ab Teststart, Stufe und Herkunft (Log, Konsole); Verweise wie Datei.pas:42 öffnen die Stelle, „Kopieren“ legt das Protokoll in die Zwischenablage. Ohne Logger zeigt der Reiter einen Hinweis und die Ausgabe des ganzen Laufs. Aus: kein Reiter, keine Seitendatei.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.log",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Protokoll je Test",
+      "x-captionEn": "Log per test",
+      "x-issue": "#2168"
+    },
+    "TestsLogMaxLines": {
+      "description": "Höchstens so viele Zeilen merkt sich Atlas je Test im Protokoll (100 bis 100000); der Rest wird abgeschnitten, mit Hinweis auf die Zahl der weggelassenen Zeilen.",
+      "type": "integer",
+      "default": 2000,
+      "minimum": 100,
+      "maximum": 100000,
+      "x-key": "tests.log.maxLines",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.log",
+      "x-control": "Zahl",
+      "x-caption": "Höchstens Zeilen je Test",
+      "x-captionEn": "At most lines per test",
+      "x-issue": "#2168"
+    },
     "TestsCaseTable": {
       "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
       "type": "boolean",
@@ -1907,6 +1948,31 @@
       "x-caption": "Fenster „Parallele Aufrufstapel“",
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
+    },
+    "DebugCallStackWindow": {
+      "type": "boolean",
+      "default": true,
+      "description": "Andockbares Fenster „Aufrufstapel“ für den aktuellen Thread: Rahmen mit Routine, benannten Parametern und Unit:Zeile, Bibliotheksrahmen als zugeklappte Gruppe, Suche nach Routine, Unit oder Wert, Kopieren als Text oder Markdown (wahlweise nur eigener Code) und Vergleich mit dem Stapel beim letzten Halt an derselben Stelle. Aus: kein Fenster und kein Menüpunkt, der Aufrufstapel der IDE bleibt unverändert.",
+      "x-key": "debug.callStackWindow",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Fenster „Aufrufstapel“",
+      "x-captionEn": "Window “Call Stack”",
+      "x-issue": "#843"
+    },
+    "DebugCallStackWindowEvaluateParams": {
+      "type": "boolean",
+      "default": true,
+      "description": "Parameter im Fenster „Aufrufstapel“ einzeln auswerten (lesbare Werte, Ersatztexte der Visualisierer, Objekte mit Klasse und Namensfeld), nur für sichtbare Rahmen und mit Zeitlimit. Aus: die Werte aus dem Rahmentext der IDE.",
+      "x-key": "debug.callStackWindow.evaluateParams",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.callStackWindow",
+      "x-caption": "Parameter einzeln auswerten",
+      "x-captionEn": "Evaluate parameters one by one",
+      "x-issue": "#843"
     },
     "DebugThreadsInSource": {
       "type": "boolean",
@@ -7435,6 +7501,19 @@
       "x-parent": "editor.statusBar",
       "x-control": "Textfeld und Menü „Leiste anpassen …“",
       "x-issue": "#1155"
+    },
+    "EditorStatusBarTests": {
+      "description": "Feld „Tests 41/42“ mit Ampelpunkt in der Atlas-Statusleiste für das Testprojekt der aktuellen Datei (Testunit: ihr Testprojekt; sonst das zugeordnete wie bei „Tests ausführen“), während eines Laufs „Tests laufen …“. Klick: fehlgeschlagene erneut ausführen (alle grün: alle ausführen); Rechtsklick: Alle ausführen, Betroffene ausführen, Fenster „Atlas-Tests“, Ergebnisse auf der Willkommensseite. Tooltip: letzter Lauf, Dauer, übersprungen und veraltet. Ohne Testprojekt kein Feld. Steht das Element status nicht in der Leiste, steht das Feld als Text in der Statuszeile der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.statusBar.tests",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.statusBar",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Teststand in der Statusleiste",
+      "x-captionEn": "Test status in the status bar",
+      "x-issue": "#1777"
     },
     "StickyScroll": {
       "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilige Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",

@@ -180,7 +180,7 @@ begin
   mServices.RunCommand := RunCommand;
   mServices.RunServerCommand := RunParallelCommand;
   // Felder der Module im Atlas-Statusfeld, etwa Hinweise der schnellen Lesezeichen (#1104).
-  mServices.StatusExtra := SetStatusExtra;
+  mServices.StatusExtra := SetStatusItem;
   mServices.CompileEvents := CompileEvents;
   InstallShellServices(mServices);
   TAtlasIdeHost.Install(mServices);

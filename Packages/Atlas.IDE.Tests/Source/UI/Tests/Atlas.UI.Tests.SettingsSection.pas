@@ -77,6 +77,9 @@ begin
   Switch('tests.approvalFiles', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsApprovalFiles));
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
+  Switch('tests.window', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsWindow));
+  Switch('tests.log', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLog));
+  Number('tests.log.maxLines', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLogMaxLines));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;

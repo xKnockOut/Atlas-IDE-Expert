@@ -183,6 +183,41 @@ Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugi
 
 Einstellungen: `tests.showDuration`, `tests.slowMs`
 
+<a id="window-atlastestsexplorer"></a>
+### Fenster „Atlas-Tests“ (#1776)
+
+Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Das Fenster lässt sich andocken und kommt mit dem Desktop wieder.
+
+- Oben das Testprojekt (bei mehreren in der Projektgruppe zur Wahl, vorgewählt das aktive), darunter der Baum aller Tests: Testunit › Fixture › Test › Fall. Gelesen werden die Testunits des Testprojekts wie von der Testlinse, ohne Server; neu nach jedem Lauf, nach dem Speichern einer Testunit und mit *Neu einlesen*.
+- Je Zeile ein Punkt mit dem Stand: grün bestanden, rot fehlgeschlagen, gelb nur zum Teil gelaufen, grau nicht gelaufen, grauer Ring bestanden, aber veraltet (#1770). Dahinter der Zähler „bestanden/alle“ (veraltete zählen nicht als bestanden) und die Dauer. Tests mit `[Ignore]` stehen mit „(ignoriert)“ da und zählen nicht.
+- *Alle ausführen* baut das Testprojekt und startet alle Tests. *Ausgewählte ausführen* (Strg+R) startet genau die gewählten Zeilen (Mehrfachauswahl mit Strg und Umschalt, auch ganze Fixtures oder Testunits) mit `--run` und ihren Namen. *Ausgewählte debuggen* (Strg+D) startet sie im Debugger wie „Test debuggen“; der einmalige Haltepunkt am Anfang gilt nur bei einem einzelnen Test.
+- Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet* und *Langsam* (über `tests.slowMs`) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
+- Doppelklick oder Enter springt zum Test, bei einem Fall zu seinem `[TestCase]`. Unten stehen zum gewählten Test Meldung, erwarteter und erhaltener Wert und der Stacktrace; Zeilen, die eine Unit des Testprojekts nennen, öffnen sich per Doppelklick.
+- Die Ergebnisse gelten für diese Sitzung, je Testprojekt; Änderungen an einer Testunit zeigt das Fenster nach dem Speichern.
+- `tests.window` aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.
+
+Einstellung: `tests.window`
+
+### Teststand in der Statusleiste (#1777)
+
+- In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
+- Ampel: rot bei Fehlschlägen, gelb während eines Laufs und bei veralteten Ergebnissen (wenn das Fenster „Atlas-Tests“ dieses Testprojekt zeigt), grün, wenn alles bestand.
+- Klick: fehlgeschlagene Tests erneut ausführen; sind alle grün, alle. Rechtsklick: *Alle ausführen*, *Fehlgeschlagene erneut ausführen*, *Betroffene ausführen*, *Fenster „Atlas-Tests“*, *Ergebnisse auf der Willkommensseite*.
+- Tooltip: Testprojekt, Uhrzeit und Dauer des letzten Laufs, bestanden, fehlgeschlagen, übersprungen und veraltet.
+- Ohne das Element *Status* in der Leiste steht das Feld als Text in der Statuszeile der IDE (ohne Punkt und Rechtsklick).
+
+Einstellung: `editor.statusBar.tests`
+
+### Protokoll je Test (#2168)
+Was ein Test unterwegs ausgibt (`Log`/`Status` von DUnitX, `WriteLn` in der Testklasse, `WriteLn` der getesteten Klassen), zeigt das Fenster „Atlas-Tests“ im Reiter *Protokoll (n)* neben *Einzelheiten*, genau für den gewählten Test.
+- Der XML-Bericht von DUnitX enthält keine Log-Zeilen. Deshalb gibt es die Hilfs-Unit `Atlas.Testing.Log` unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX): ins Testprojekt aufnehmen und nach `TDUnitX.CreateRunner` die Zeile `runner.AddLogger(TAtlasTestLogger.Create);` einfügen. Der Logger arbeitet nur in Läufen aus Atlas: Atlas legt vor dem Start eine leere Seitendatei neben den Bericht, nur dann schreibt er hinein und setzt Marken um jeden Test in die Konsolenausgabe.
+- Je Zeile die Zeit ab Teststart (`01,190`), dann der Text; Warnungen und Fehler mit „Warnung:“ bzw. „Fehler:“, Konsolenzeilen mit „Konsole:“ (ohne Zeit, an der Stelle zwischen den Log-Meldungen, an der sie kamen). Start und Ende des Tests stehen dabei.
+- Setup und TearDown der Fixture gehören zu keinem Test: Ihre Zeilen stehen an der Fixture. Zeilen zwischen zwei Tests (etwa aus einem Thread, der den Test überdauert) stehen beim vorigen Test mit „(nach Testende)“. Ein Test mit `[TestCase]` zeigt die Zeilen aller Fälle mit dem Namen des Falls davor.
+- Verweise wie `Kunden.pas:42`, `Kunden.pas(42)`, Zeilen eines Stacktraces und `Unit.Klasse.Methode` öffnen per Doppelklick bzw. Enter die Stelle, wenn die Unit zum Testprojekt gehört.
+- Auch bei grünen Tests abrufbar; *Kopieren* bzw. Strg+C legt das ganze Protokoll in die Zwischenablage.
+- Ohne eingetragenen Logger zeigt der Reiter, wie man ihn einschaltet, und darunter die Ausgabe des ganzen Laufs.
+- Je Test höchstens `tests.log.maxLines` Zeilen (Vorgabe 2000), der Rest wird mit Hinweis abgeschnitten. `tests.log` aus: kein Reiter, keine Seitendatei.
+Einstellungen: `tests.log`, `tests.log.maxLines`
 ### Lecks je Test (#1774)
 
 - Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
@@ -674,6 +709,20 @@ Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
 - Wer eine Sperre (`TMonitor`, Critical Section) hält, liefert der Debugger nicht; Atlas nennt nur die Wartenden.
 
 Schalter: `debug.deadlocks`.
+
+<a id="window-atlasdebugcallstack"></a>
+#### Atlas-Aufrufstapel
+
+- Atlas > „Atlas-Aufrufstapel“ öffnet ein andockbares Fenster, das bei jedem Halt den Aufrufstapel des aktuellen Threads zeigt: je Rahmen Routine mit Parametern und `Unit.pas:Zeile`.
+- Aufeinanderfolgende Rahmen aus RTL, VCL und Bibliotheken stehen zugeklappt als „▸ 7 Aufrufe in VCL“, daneben erste und letzte Routine; Klick, Enter oder Doppelklick klappt auf.
+- Parameter heißen wie in der Deklaration (der Server liest die Routine an der Zeile des Rahmens). Atlas wertet sie aus und zeigt Ersatztexte der Visualisierer, Strings in Anführungszeichen und Objekte mit Klasse und `Name`-Feld, etwa `AKunde = TKunde 'Meier'`.
+- Die Suche (Strg+F) findet Routine, Unit oder Wert, auch in zugeklappten Gruppen („▸ 7 Aufrufe in VCL · 1 Treffer“); Treffer stehen fett.
+- Klick bzw. Enter auf einem Rahmen springt zur Zeile.
+- „Kopieren“ (Strg+C) gibt den Stapel als Text oder als Markdown-Liste (`` `Unit.pas:Zeile` ``) in die Zwischenablage, wahlweise nur eigener Code.
+- „Mit letztem Halt vergleichen“ stellt den Stapel des letzten Halts an derselben Stelle daneben und markiert geänderte Rahmen und Werte mit „≠“. Atlas merkt sich je Debug-Sitzung höchstens 20 Stellen, solange das Fenster offen ist.
+- Grenzen: Die Werte tieferer Rahmen wertet Atlas über die Adresse aus (Objekte und Zeiger); einfache Werte zeigt der Rahmentext der IDE schon. Rahmen anonymer Methoden und Routinen ohne Parameterliste im Implementierungsteil bekommen keine Namen.
+
+Schalter: `debug.callStackWindow` (aus: der Aufrufstack der IDE bleibt, wie er ist), `debug.callStackWindow.evaluateParams`.
 
 <a id="window-atlasdebugparallelstacks"></a>
 #### Parallele Aufrufstapel
