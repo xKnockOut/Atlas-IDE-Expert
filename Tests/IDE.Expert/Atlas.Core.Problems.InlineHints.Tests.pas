@@ -22,6 +22,8 @@ type
     [Test]
     procedure CaptionTakesFirstLineAndShortens;
     [Test]
+    procedure CaptionOfTestFailureAtAssertIsShort;
+    [Test]
     procedure CountsMatchTheList;
     [Test]
     procedure NextWalksThroughFileAndWraps;
@@ -37,6 +39,7 @@ uses
   System.SysUtils,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
+  Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineTail;
 
 function Problem(ALine, ACharacter: Integer; ASeverity: TAtlasProblemSeverity; const AMessage: string): TAtlasProblem;
@@ -110,6 +113,25 @@ begin
   Text := TAtlasInlineDiagnostics.Caption(Found);
   Assert.AreEqual(TAtlasInlineDiagnostics.cMaxChars, Integer(Length(Text)));
   Assert.AreEqual('…', Copy(Text, Length(Text), 1));
+end;
+
+procedure TAtlasInlineDiagnosticsTests.CaptionOfTestFailureAtAssertIsShort;
+var
+  Found: TAtlasInlineDiagnostic;
+begin
+  // #1771: Fehlschlag an der Assert-Zeile mit kurzem Text in Details.
+  Found := Default(TAtlasInlineDiagnostic);
+  Found.Problem.Message := 'Test TRechnerTests.Addiert fehlgeschlagen: erwartet 4, erhalten 3';
+  Found.Problem.Source := TAtlasProblemStore.cTestSource;
+  Found.Problem.Details := 'erwartet 4, erhalten 3';
+  Assert.IsTrue(TAtlasInlineDiagnostics.IsShortTest(Found.Problem));
+  Assert.AreEqual('erwartet 4, erhalten 3', TAtlasInlineDiagnostics.Caption(Found));
+  Found.Problem.Details := '';
+  Assert.IsFalse(TAtlasInlineDiagnostics.IsShortTest(Found.Problem), 'ohne kurzen Text die Meldung');
+  Assert.AreEqual(Found.Problem.Message, TAtlasInlineDiagnostics.Caption(Found));
+  Found.Problem.Source := 'Atlas';
+  Found.Problem.Details := 'Durchsucht: 3 Dateien';
+  Assert.IsFalse(TAtlasInlineDiagnostics.IsShortTest(Found.Problem), 'Details anderer Befunde bleiben im Hover');
 end;
 
 procedure TAtlasInlineDiagnosticsTests.CountsMatchTheList;

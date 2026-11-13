@@ -498,6 +498,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestDrafts.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UsesUsage.Tests.pas"/>
@@ -1210,6 +1211,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>

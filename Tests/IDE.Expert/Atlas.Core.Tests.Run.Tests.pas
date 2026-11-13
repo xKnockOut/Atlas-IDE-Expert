@@ -42,6 +42,8 @@ type
     procedure TallyStatus;
     [Test]
     procedure StaleResultsAreNotCountedAsPassed;
+    [Test]
+    procedure FailureAtAssertWithShortText;
   end;
 
 implementation
@@ -420,6 +422,61 @@ begin
     begin
       Result := SameText(AName, mMethod);
     end;
+end;
+
+procedure TAtlasTestRunTests.FailureAtAssertWithShortText;
+const
+  cAssertReport =
+    '<test-results total="2">' +
+    '<test-suite type="Namespace" name="Rechner"><results>' +
+    '<test-suite type="TestFixture" name="TRechnerTests"><results>' +
+    '<test-case name="Rechner.Tests.TRechnerTests.Addiert" executed="True" result="Failure" time="0.01">' +
+      '<failure><message>Expected 4 but got 3</message></failure></test-case>' +
+    '<test-case name="Rechner.Tests.TRechnerTests.Teilt" executed="True" result="Error" time="0.01">' +
+      '<failure><message>EZeroDivide</message><stack-trace>' +
+      '[004C1234] Rechner.Tests.TRechnerTests.Teilt (Line 15, "Rechner.Tests.pas" + 1) + $12' +
+      '</stack-trace></failure></test-case>' +
+    '</results></test-suite></results></test-suite></test-results>';
+var
+  mLines: TArray<string>;
+  mFound: TArray<TAtlasTestFailure>;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+  mUnitFile: TAtlasTestUnitFile;
+  mReadLines: TAtlasTestReadLines;
+begin
+  mLines := TArray<string>.Create('unit Rechner.Tests;', 'interface', 'uses DUnitX.TestFramework;', 'type',
+    '  [TestFixture]', '  TRechnerTests = class', '    [Test]', '    procedure Addiert;', '    [Test]',
+    '    procedure Teilt;', '  end;', 'implementation',                    // 9..11
+    'procedure TRechnerTests.Teilt;', 'begin', '  Rechne(1, 0);', 'end;', // 12..15
+    'procedure TRechnerTests.Addiert;', 'begin',                          // 16, 17
+    '  Assert.AreEqual(2, Summe(1, 1));', '  Assert.AreEqual(4, Summe(2, 2)); // zweiter', 'end;', 'end.');
+  mUnitFile :=
+    function(const AUnitName: string): string
+    begin
+      Result := cUnitFile;
+    end;
+  mReadLines :=
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := mLines;
+      Result := True;
+    end;
+  mFound := TAtlasTestRun.Failures(TTestResults.Parse(cAssertReport), mUnitFile, mReadLines, True);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(19, mFound[0].Line, 'Assert mit erwartetem Wert 4');
+  Assert.IsTrue(mFound[0].AtAssert);
+  Assert.AreEqual(2, mFound[0].StartCharacter);
+  Assert.AreEqual(Integer(Length('  Assert.AreEqual(4, Summe(2, 2));')), mFound[0].EndCharacter, 'ohne Kommentar');
+  Assert.AreEqual(14, mFound[1].Line, 'Ausnahme: Zeile aus dem Stacktrace');
+  mItems := TAtlasTestRun.Problems(mFound, '%s: %s', '%s: erwartet %s, erhalten %s', 'erwartet %s, erhalten %s');
+  Assert.AreEqual('erwartet 4, erhalten 3', mItems[0].Value.Details, 'kurzer Text');
+  Assert.AreEqual('', mItems[1].Value.Details, 'ohne Werte kein kurzer Text');
+  Assert.AreEqual('', TAtlasTestRun.Problems(mFound, '%s: %s', '%s: erwartet %s, erhalten %s')[0].Value.Details,
+    'tests.failureInline aus');
+  mFound := TAtlasTestRun.Failures(TTestResults.Parse(cAssertReport), mUnitFile, mReadLines, False);
+  Assert.AreEqual(16, mFound[0].Line, 'tests.failureAtAssert aus: Methodenkopf');
+  Assert.IsFalse(mFound[0].AtAssert);
+  mLines := nil;
 end;
 
 procedure TAtlasTestRunTests.StaleResultsAreNotCountedAsPassed;

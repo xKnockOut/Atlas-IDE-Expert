@@ -76,7 +76,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Text.Lines;
@@ -958,6 +957,10 @@ begin
   Assert.IsTrue(ContainsStr(Text, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
     '    procedure TestBerechne2;'#13#10'  end;'), Text);
   Assert.IsTrue(ContainsStr(Text, 'procedure TKundeTests.TestBerechne2;'), Text);
+  // Entwurf (#1226): Die Testklasse hat kein Feld vom Typ TKunde, also ein lokales Objekt mit Aufruf.
+  Assert.IsTrue(ContainsStr(Text, '  Subject := TKunde.Create;'), Text);
+  Assert.IsTrue(ContainsStr(Text, '    Actual := Subject.Berechne(A);'), Text);
+  Assert.IsTrue(ContainsStr(Text, '    Assert.AreEqual(0, Actual);'), Text);
   Assert.IsTrue(ContainsStr(Text, '  DUnitX.TestFramework,'#13#10'  Kunden;'), Text);
   Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', Text) < Pos('initialization', Text), Text);
 end;
