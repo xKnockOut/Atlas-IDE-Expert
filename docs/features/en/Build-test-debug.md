@@ -1,4 +1,4 @@
-# Build, test, debug
+﻿# Build, test, debug
 
 Back to the [README](../../../README.md)
 
@@ -149,7 +149,13 @@ Settings: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Compare expected and actual (#1779)
 
-Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*).
+Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*), and with the “Compare” button:
+
+- in the hover over the failure (before “Explain”),
+- on the test mark of a failed test (after “Debug”),
+- on the “Test results” tile of the welcome page for the selected failure of the local run.
+
+The button only appears when the failure has an expected and an actual value.
 
 - Shows the failure of the test at the cursor (for a `[TestCase]` the first failed case), otherwise the last one reported, in two columns: expected on the left, actual on the right.
 - Differing characters have a red or green background; lines that exist on one side only are marked as a whole, with a grey gap opposite.
@@ -429,3 +435,15 @@ Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`
 - The debugger does not tell who holds a lock (`TMonitor`, critical section); Atlas names only the waiting threads.
 
 Settings: `debug.deadlocks`
+
+<a id="window-atlasdebugparallelstacks"></a>
+### Parallel stacks
+
+- Atlas > "Parallel stacks" opens a dockable window that shows the call stacks of all threads as a tree at every stop, from the thread start (root) to the top frame.
+- Equal frames (same routine at the same place) appear once with the number of threads, for example "TWorker.Execute (Unit2.pas:30) · 10 threads"; the tree branches where the stacks part.
+- Nodes of the current thread are bold. If all threads of a node stand in a wait routine (`TMonitor.Enter`, `WaitForSingleObject`, `Sleep` …), the node says "waiting" in the warning colour; the list of routines is configurable (`debug.parallelStacks.waitRoutines`).
+- The filter "Just my code" hides frames from the RTL, VCL and libraries, "Waiting" shows only waiting threads.
+- Below the tree are the threads of the selected node. Enter or a double click switches to the thread (from a list if there are several) and jumps to the line.
+- From `debug.parallelStacks.maxThreads` threads (default 64) Atlas reads the stacks in portions and shows the tree in between so the IDE stays responsive.
+
+Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
