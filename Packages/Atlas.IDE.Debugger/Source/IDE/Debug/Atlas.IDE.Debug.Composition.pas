@@ -81,6 +81,7 @@ uses
   Atlas.IDE.Debug.EventBreak,
   Atlas.IDE.Debug.Trace,
   Atlas.IDE.Debug.StepFilter,
+  Atlas.IDE.Debug.BreakpointCheck,
   Atlas.IDE.Debug.Report,
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
@@ -139,6 +140,11 @@ begin
   Result := TAtlasIdeDebugStepFilter.Started;
 end;
 
+function BreakpointCheckVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugCheckBreakpoints;
+end;
+
 /// <summary>Taste von „Gezielt hineinspringen“ (#836); 0, solange debug.stepIntoTarget aus ist.</summary>
 function StepIntoTargetKey: Integer;
 begin
@@ -174,6 +180,15 @@ begin
     begin
       Result := Session;
     end);
+end;
+
+procedure StartBreakpointCheck;
+begin
+  TAtlasIdeBreakpointCheck.Start(
+    function: TLspSession
+    begin
+      Result := Session;
+    end, MessageLine);
 end;
 
 procedure StartDebugExceptions;
@@ -348,7 +363,10 @@ begin
       ToggleDebugJustMyCode, nil),
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
     Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
-      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible)];
+      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
+    // Haltepunkte prüfen (#577); nur sichtbar, solange debug.checkBreakpoints an ist.
+    Command('Atlas.CheckBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckCommand),
+      TAtlasIdeBreakpointCheck.Run, BreakpointCheckVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -379,6 +397,7 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.CheckBreakpoints', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
@@ -528,6 +547,20 @@ begin
     end, TAtlasIdeDebugStepFilter.Start, TAtlasIdeDebugStepFilter.Release);
 end;
 
+/// <summary>Haltepunkte, die nicht greifen werden (#577): Prüfung vor dem Start; aus = Start wie bisher.</summary>
+function BreakpointCheckPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugBreakpointCheck',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugCheckBreakpoints;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBreakpointCheck.Started;
+    end, StartBreakpointCheck, TAtlasIdeBreakpointCheck.Release);
+end;
+
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
@@ -540,7 +573,7 @@ end;
 function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart];
+  Result := Result + [StepFilterPart, BreakpointCheckPart];
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

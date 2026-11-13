@@ -1785,6 +1785,19 @@
       "x-control": "Textfeld",
       "x-issue": "#856"
     },
+    "DebugCheckBreakpoints": {
+      "description": "Haltepunkte, die nicht greifen werden: Vor dem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte und meldet Haltepunkte auf Zeilen ohne Code (Kommentar, Leerzeile, Deklaration), in inaktiven Zweigen der bedingten Kompilierung, in Units mit {$D-} bzw. ohne Debug-Informationen im Projekt und in Units, die zu einem anderen Projekt der Gruppe gehören. Der Dialog bietet „Trotzdem starten“, „Auf nächste Codezeile verschieben“ und „Abbrechen“; dazu der Befehl „Haltepunkte prüfen“. Aus = keine Prüfung, der Start bleibt, wie er ist.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.checkBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte vor dem Start prüfen",
+      "x-captionEn": "Check breakpoints before starting",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#577"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,

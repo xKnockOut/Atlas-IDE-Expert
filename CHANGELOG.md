@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Haltepunkte, die nicht greifen werden (#577, `debug.checkBreakpoints`, Vorgabe an): Vor dem Start einer Debug-Sitzung schickt Atlas die Zeilen aller aktiven Quelltext-Haltepunkte an den Server (`atlas.server.breakpointCheck`, offene Dateien mit dem Stand im Editor). Er meldet Zeilen ohne Code samt nächster Codezeile der Routine, Zeilen in inaktiven Zweigen der bedingten Kompilierung (mit Bedingung) und Code unter `{$D-}` (Unit oder Projektoptionen); das Plugin ergänzt Units anderer Projekte der Gruppe. Der Dialog „Haltepunkte, die nicht greifen werden“ listet die Funde (Doppelklick springt hin) und bietet „Auf nächste Codezeile verschieben“ (mit Bedingung, Durchlaufzahl, Gruppe und Protokollierung), „Trotzdem starten“ und „Abbrechen“ (die IDE startet nicht). Befehl „Haltepunkte prüfen“ (`Atlas.CheckBreakpoints`, Menü Atlas) für jederzeit. Ohne Server oder ohne Antwort in 3 Sekunden startet die IDE wie bisher.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

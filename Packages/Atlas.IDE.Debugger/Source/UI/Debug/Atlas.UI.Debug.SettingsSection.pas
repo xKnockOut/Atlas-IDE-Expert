@@ -147,6 +147,8 @@ begin
   Switch('debug.breakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEvent));
   FBreakOnNextEventExcluded := Line(cBreakExcludedKey,
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEventExcluded));
+  // Haltepunkte, die nicht greifen werden (#577).
+  Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;

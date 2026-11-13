@@ -21,6 +21,8 @@ type
     [Test]
     procedure DebugBreakOnNextEventOptions;
     [Test]
+    procedure DebugBreakpointOptions;
+    [Test]
     procedure DebugStepFilterOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
@@ -288,6 +290,21 @@ begin
   Loaded.DebugBreakOnNextEventExcluded := ' OnPaint ;; OnResize,';
   Loaded.Normalize;
   Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+end;
+procedure TAtlasBuildDebugSettingsTests.DebugBreakpointOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #577: Haltepunkte vor dem Start prüfen ist an; der Wert überlebt Speichern und Laden.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugCheckBreakpoints);
+  Settings.DebugCheckBreakpoints := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugCheckBreakpoints);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var
