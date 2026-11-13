@@ -150,6 +150,7 @@ Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.DisableWarning.Tests

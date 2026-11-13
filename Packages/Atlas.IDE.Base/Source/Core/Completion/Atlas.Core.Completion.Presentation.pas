@@ -630,6 +630,11 @@ begin
   begin
     AddTag(ATags, UiText(TPresentationText.AsText) + AItem.Narrowed, TAtlasTagKind.Accent);
   end;
+  // Nicht sichtbares Mitglied (#2108): Sichtbarkeit und Klasse („private · TAtlasUsage“).
+  if AItem.Inaccessible <> '' then
+  begin
+    AddTag(ATags, AItem.Inaccessible + ' · ' + AItem.DeclaringClass, TAtlasTagKind.Warn);
+  end;
   // Typkonvertierung (#490).
   if AItem.Conversion <> '' then
   begin

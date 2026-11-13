@@ -61,7 +61,8 @@ uses
   Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Lsp.CompletionExceptions,
   Atlas.Common.Lsp.Completion.Context,
-  Atlas.Common.Lsp.Completion.InheritedCalls;
+  Atlas.Common.Lsp.Completion.InheritedCalls,
+  Atlas.Common.Lsp.Completion.HiddenMembers;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -80,6 +81,7 @@ type
     FGenericOwner: TResolvedSymbol;
     FCollector: TCompletionCollector;
     FCandidates: TArray<TResolvedSymbol>;
+    FHidden: TArray<TCompletionHiddenMember>;
     procedure PrepareGeneric;
     procedure PrepareFilters;
     procedure NoteDiagnostics;
@@ -276,11 +278,15 @@ procedure TListBuilder.AddMembers;
 begin
   // Nur passende Namen aufbauen (#616); der Filter gilt nur beim Sammeln, nicht für die Typprüfungen in Add.
   // Die Postfix-Vorlagen brauchen die Mitglieder (GetEnumerator).
+  // Dabei die passenden, nur wegen der Sichtbarkeit fehlenden Mitglieder merken (#2108).
   FCollector.SetNameFilter(True);
+  FRequest.Resolver.Candidates.KeepHidden := TCompletionHiddenMembers.Wanted(FRequest, FContext.Prefix);
   try
     FCandidates := FRequest.Resolver.Candidates.MemberCandidates(FRequest.Tree, FRequest.FileName, FContext.Names,
       FContext.Offset);
+    FHidden := TCompletionHiddenMembers.FromResolver(FRequest.Resolver.Candidates.Hidden);
   finally
+    FRequest.Resolver.Candidates.KeepHidden := False;
     FCollector.SetNameFilter(False);
   end;
   FCollector.AddCandidates(FCandidates);
@@ -387,6 +393,7 @@ begin
   end;
   Result := Default(TCompletionItems);
   Result.Items := FCollector.Finish(Result.Incomplete);
+  Result.Hidden := FHidden;
   if FContext.Generic then
   begin
     Result.Items := TCompletionGenerics.Apply(FRequest, FContext, FGenericOwner, Result.Items);
