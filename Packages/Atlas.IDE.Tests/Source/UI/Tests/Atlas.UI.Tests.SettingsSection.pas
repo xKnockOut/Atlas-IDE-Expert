@@ -7,7 +7,8 @@
 //   Speichern (#1775),
 //   Fenster „Atlas-Tests“ (#1776) mit Testlisten (#2167).
 // - „Debuggen“: einzelnen Test im Debugger starten (#585).
-// - „Editor“: Code Lens an Testmethoden, veraltete Ergebnisse (#1770) und Marke „getestet von“ (#1778).
+// - „Editor“: Code Lens an Testmethoden, veraltete Ergebnisse (#1770), Marke „getestet von“ (#1778) und
+//   Testabdeckung in der Rinne (#275).
 
 interface
 
@@ -85,6 +86,8 @@ begin
   Switch('tests.log', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLog));
   Number('tests.log.maxLines', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLogMaxLines));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
+  Switch('tests.boundaryCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryCases));
+  Number('tests.boundaryCases.maxCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryMax));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;
 
@@ -134,6 +137,7 @@ begin
   Switch('tests.coveredBy.private', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByPrivate));
   Switch('codeLens.untested', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensUntested));
   Number('tests.untested.warnPercent', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsUntestedWarnPercent));
+  Switch('tests.coverage', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestCoverage));
 end;
 
 end.
