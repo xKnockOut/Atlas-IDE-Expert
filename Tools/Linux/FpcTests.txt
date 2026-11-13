@@ -269,6 +269,7 @@ Atlas.Common.Rules.Builtin.Style.Tests
 Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
+Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
 Atlas.Common.Rules.Builtin.Units.Tests
