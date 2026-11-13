@@ -58,7 +58,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Schreiben](docs/features/de/Schreiben.md)
 - **Vervollständigung** im eigenen Popup mit Detailpanel, unscharfer Suche, Favoriten und `+ Unit` für fehlende uses; nach `X.` stehen die im Projekt meistverwendeten Mitglieder oben („im Projekt 214×“)
-- **Vorschläge nach Kontext:** Aufzählungswerte, `case`-Werte, Exception-Klassen nach `raise`, Gerüste für anonyme Methoden, nach `if X is T then` die Mitglieder von `T` mit Umwandlung, in der Fußzeile die Treffer, die nur fehlen, weil sie private oder protected sind
+- **Vorschläge nach Kontext:** Aufzählungswerte, `case`-Werte, Exception-Klassen nach `raise`, Gerüste für anonyme Methoden, nach `if X is T then` die Mitglieder von `T` mit Umwandlung, in der Fußzeile die Treffer, die nur fehlen, weil sie private oder protected sind; Enter darauf bietet an, die Sichtbarkeit anzuheben oder eine Eigenschaft anzulegen
 - **Parameter-Hint** mit Wahl der Überladung und Prüfung der `Format`-Platzhalter
 - **Vorlagen:** Code-, Postfix- und klassenbezogene Vorlagen, eigene Snippets, Schrägstrich-Befehle wie `/uses` und `/extract`
 - **Generieren-Menü** (Alt+Einfg) und Bearbeitungshilfen: umschließen, Zeilen verschieben, Kommentare umschalten, var-Blöcke aufräumen
