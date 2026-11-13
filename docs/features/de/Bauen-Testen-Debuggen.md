@@ -102,6 +102,16 @@ Einstellungen: `tests.stale`, `tests.stale.units`
 
 Einstellungen: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
 
+### Ungetestete Methoden (#1783)
+
+- An der unit-Zeile einer normalen Unit mit Testunit steht „7 von 12 Methoden getestet“: wie viele ihrer Methoden mindestens ein Test aufruft (Tiefe und private Methoden wie bei „getestet von“). Unter `tests.untested.warnPercent` Prozent (Vorgabe 50) ist die Marke gelb, sonst grau. Units ohne Testunit bekommen keine Marke.
+- Klick zeigt ein Menü mit den ungetesteten Methoden; ein Eintrag springt zum Kopf der Methode, „Test anlegen“ öffnet bzw. legt die Testunit an.
+- Gezählt werden Aufrufe aus Tests, das ersetzt keine Abdeckungsmessung; das Menü sagt es dazu.
+- Befehl „Ungetestete Methoden des Projekts“ (Atlas-Menü und Befehlspalette, `Atlas.ListUntestedMethods`): für das Projekt der Unit im Editor je Unit eine Zeile in der Meldungsansicht, die mit den meisten ungetesteten Methoden zuerst, darunter je Methode eine Zeile, die per Doppelklick hinspringt. Units ohne Testunit stehen mit allen Methoden darin. Der Server begrenzt sich auf 60 s; was er nicht mehr erreicht, nennt eine Zeile am Ende.
+- Ausblenden je Datei über das Menü „Ausblenden“.
+
+Einstellungen: `codeLens.untested`, `tests.untested.warnPercent`
+
 ### Betroffene Tests beim Speichern (#1775)
 
 - Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
