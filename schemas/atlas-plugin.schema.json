@@ -1534,6 +1534,18 @@
       "x-captionEn": "Indent JSON and XML",
       "x-issue": "#1779"
     },
+    "TestsApprovalFiles": {
+      "description": "Erkennt im Testergebnis die Meldung der Hilfs-Unit Atlas.Testing.Approval (Setup/Vorlagen): Die Testmarke zeigt „Abweichung · Vergleich“ bzw. „Neu · Vergleich“, der Vergleich zeigt approved- und received-Datei mit „Als neue Erwartung übernehmen“ (received ersetzt approved) und „Zum Test“. Dazu der Befehl „Liegengebliebene .received-Dateien löschen“ im Ordner tests.approvalFolder aus atlas.json; er schlägt vor, *.received.* in die .gitignore einzutragen. Die Hilfs-Unit selbst arbeitet auch ausgeschaltet.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.approvalFiles",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.compare",
+      "x-caption": "Vergleichsdateien erkennen",
+      "x-captionEn": "Recognize approval files",
+      "x-issue": "#1881"
+    },
     "TestsShowDuration": {
       "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
       "type": "boolean",
