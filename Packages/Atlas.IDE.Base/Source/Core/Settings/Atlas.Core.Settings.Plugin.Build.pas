@@ -17,6 +17,10 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  /// <summary>Grenzen für tests.onSave.max (#1775).</summary>
+  cMinTestsOnSaveMax = 1;
+  cMaxTestsOnSaveMax = 1000;
+  cDefaultTestsOnSaveMax = 50;
   /// <summary>Grenzen und Vorgabe für tests.slowMs (#1772).</summary>
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
@@ -93,6 +97,12 @@ type
     /// <summary>Auch Änderungen an den Units, die die Testunit verwendet und die im Testprojekt liegen, machen das
     /// Ergebnis veraltet (#1770, tests.stale.units).</summary>
     TestsStaleUnits: Boolean;
+    /// <summary>Betroffene Tests nach dem Speichern im Hintergrund ausführen (#1775, tests.onSave): kein Fenster,
+    /// Fortschritt und Ergebnis im Atlas-Statusfeld.</summary>
+    TestsOnSave: Boolean;
+    /// <summary>Mehr betroffene Tests als diese: kein Lauf im Hintergrund, nur ein Hinweis (#1775, tests.onSave.max),
+    /// cMinTestsOnSaveMax bis cMaxTestsOnSaveMax.</summary>
+    TestsOnSaveMax: Integer;
     /// <summary>Fehlschlag an der Anweisung statt am Methodenkopf (#1771, tests.failureAtAssert): Zeile aus dem
     /// Stacktrace des Berichts, sonst der eine Assert, dessen erwarteter Wert passt.</summary>
     TestsFailureAtAssert: Boolean;
@@ -241,6 +251,8 @@ begin
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
   Result.TestsStaleUnits := False;
+  Result.TestsOnSave := False;
+  Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
   Result.TestsFailureAtAssert := True;
   Result.TestsFailureInline := True;
   Result.TestsCompare := True;
@@ -294,6 +306,7 @@ begin
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
+  TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
 end;
 
@@ -323,6 +336,8 @@ begin
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);
   AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Flag('TestsOnSave', TestsOnSave);
+  AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
   AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
   AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('TestsCompare', TestsCompare);

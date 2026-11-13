@@ -3,7 +3,8 @@
 // Abschnitte des Moduls Tests im Optionsdialog (#1456; vorher in den Teilen
 // „Compiler“, „Debuggen“ und „Editor“ von Base): je Seite eine Klasse, weil die Einstellungen des Moduls auf drei
 // Seiten stehen.
-// - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69) und betroffene Tests (#1353).
+// - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69), betroffene Tests (#1353) und betroffene Tests beim
+//   Speichern (#1775).
 // - „Debuggen“: einzelnen Test im Debugger starten (#585).
 // - „Editor“: Code Lens an Testmethoden und veraltete Ergebnisse (#1770).
 
@@ -66,6 +67,8 @@ begin
   Switch('tests.affected', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffected));
   Number('tests.affectedDepth', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedDepth));
   Switch('tests.affectedBeforeCommit', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedBeforeCommit));
+  Switch('tests.onSave', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsOnSave));
+  Number('tests.onSave.max', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsOnSaveMax));
   Switch('tests.failureAtAssert', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureAtAssert));
   Switch('tests.failureInline', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureInline));
   Switch('tests.compare', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompare));

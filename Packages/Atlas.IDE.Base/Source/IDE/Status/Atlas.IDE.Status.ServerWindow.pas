@@ -366,8 +366,6 @@ begin
 end;
 
 class procedure TAtlasIdeServerWindow.Show;
-var
-  mCreated: Boolean;
 begin
   if not Enabled then
   begin
@@ -382,17 +380,13 @@ begin
   begin
     State := TServerState.Create;
   end;
-  Host.Show(mCreated);
-  if mCreated then
-  begin
-    TAtlasIdeDockWindow.UpdateIcon(Host);
-  end;
+  Host.Present;
   State.Refresh(True);
 end;
 
 class function TAtlasIdeServerWindow.Visible: Boolean;
 begin
-  Result := (Host <> nil) and Host.Shown;
+  Result := TAtlasIdeDockWindow.IsShown(Host);
 end;
 
 class procedure TAtlasIdeServerWindow.ApplySettings;
