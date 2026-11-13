@@ -37,8 +37,9 @@ const
   /// 13 (#1772): TAtlasProjectTests.Slowest, tests.showDuration, tests.slowMs; dazu die Einstellungen tests.stale
   /// (#1770), tests.failureAtAssert, tests.failureInline (#1771), tests.compare (#1779).
   /// 14 (#1820, #587): debug.moduleOfAddress, debug.deadlocks.
-  /// 15 (#837): debug.parallelStacks(.waitRoutines, .maxThreads).
-  cAtlasCoreContractVersion = 15;
+  /// 15 (#1775): IAtlasFollowsSaves, tests.onSave und tests.onSave.max.
+  /// 16 (#837): debug.parallelStacks(.waitRoutines, .maxThreads).
+  cAtlasCoreContractVersion = 16;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
@@ -223,6 +224,14 @@ type
   IAtlasFollowsTheme = interface
     ['{E6B8302D-4F17-49A5-B3C1-82D0A7F5E946}']
     procedure ThemeChanged;
+  end;
+
+  /// <summary>Wird nach dem Speichern einer Datei in der IDE gerufen (Hauptthread), z. B. für Tests im Hintergrund
+  /// (#1775).</summary>
+  IAtlasFollowsSaves = interface
+    ['{F0748BBB-E71A-40E5-B507-196F749659F7}']
+    /// <summary>AFileName: voller Pfad der gespeicherten Datei.</summary>
+    procedure FileSaved(const AFileName: string);
   end;
 
   /// <summary>Führt DUnitX-Tests aus (Modul Tests, #69). Base fragt ihn für „Betroffene Tests ausführen“ der

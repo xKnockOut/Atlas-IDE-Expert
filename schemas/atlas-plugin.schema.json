@@ -1402,6 +1402,32 @@
       "x-parent": "tests.affected",
       "x-issue": "#1353"
     },
+    "TestsOnSave": {
+      "description": "Nach dem Speichern einer Unit die betroffenen Tests der gespeicherten Datei (seit dem letzten Commit, Tiefe tests.affectedDepth) im Hintergrund ausführen, gebaut wie mit „Vor den Tests bauen“. Kein Fenster springt auf: Fortschritt und Ergebnis im Atlas-Statusfeld, Klick zeigt die Ergebnisse. Speichern während eines Laufs ergibt höchstens einen Folgelauf mit allen bis dahin gespeicherten Dateien. Nicht während einer Debug-Sitzung oder eines Builds.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.onSave",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.affected",
+      "x-quickToggle": true,
+      "x-caption": "Betroffene Tests beim Speichern",
+      "x-captionEn": "Affected tests on save",
+      "x-issue": "#1775"
+    },
+    "TestsOnSaveMax": {
+      "description": "Mehr betroffene Tests als diese (oder alle Tests nötig): kein Lauf im Hintergrund, nur ein Hinweis im Statusfeld.",
+      "type": "integer",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000,
+      "x-key": "tests.onSave.max",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.onSave",
+      "x-issue": "#1775"
+    },
     "TestsFailureAtAssert": {
       "description": "Fehlgeschlagenen Test an der Anweisung melden, die fehlschlug, statt am Methodenkopf: Zeile aus dem Stacktrace des Berichts (JclDebug, madExcept); ohne Zeilen der eine Assert im Rumpf, dessen erwarteter Wert zum Bericht passt. Wellenlinie über der Anweisung; ist die Zeile nicht eindeutig, bleibt es beim Methodenkopf.",
       "type": "boolean",
