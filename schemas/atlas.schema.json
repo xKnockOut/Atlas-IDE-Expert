@@ -366,6 +366,15 @@
                 "description": "Nur ignored-result: weitere Funktionen ohne Seiteneffekte, deren verworfenes Ergebnis gemeldet wird, als Name, Klasse.Name oder Unit.Name (#624).",
                 "x-description-en": "Only ignored-result: further functions without side effects whose discarded result is reported, as Name, Class.Name or Unit.Name (#624)."
               },
+              "factories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur created-result-not-freed: weitere Funktionen, die immer ein neues Objekt liefern, das dem Aufrufer gehört, als Name, Klasse.Name, Objekt.Name oder Unit.Name (#1876).",
+                "x-description-en": "Only created-result-not-freed: further functions that always return a new object owned by the caller, as Name, Class.Name, Object.Name or Unit.Name (#1876)."
+              },
               "allowCommented": {
                 "type": "boolean",
                 "default": true,

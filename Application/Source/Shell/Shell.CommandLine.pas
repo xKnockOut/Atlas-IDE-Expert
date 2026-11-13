@@ -170,6 +170,12 @@ type
     QueryText: string;
     /// <summary>--fail-on-match: Exit-Code 1, wenn --query etwas findet (#1351).</summary>
     FailOnMatch: Boolean;
+    /// <summary>--mutate: Unit, deren Mutanten ausgegeben werden (#1460); '' = keine.</summary>
+    MutateFile: string;
+    /// <summary>--routine: mit --mutate nur diese Routine; '' = alle.</summary>
+    MutateRoutine: string;
+    /// <summary>--operators: mit --mutate nur diese Operatoren (Kennungen mit Komma); '' = alle.</summary>
+    MutateOperators: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -539,7 +545,9 @@ begin
     StringOption('--index-cache', @AOptions.IndexCacheFolder),
     StringOption('--architecture', @AOptions.ArchitectureFile), StringOption('--compare', @AOptions.CompareFile),
     StringOption('--replay', @AOptions.ReplayFile), StringOption('--hotspots', @AOptions.HotspotsFile),
-    StringOption('--query', @AOptions.QueryText), StringOption('--locale', @AOptions.Locale)];
+    StringOption('--query', @AOptions.QueryText), StringOption('--locale', @AOptions.Locale),
+    StringOption('--mutate', @AOptions.MutateFile), StringOption('--routine', @AOptions.MutateRoutine),
+    StringOption('--operators', @AOptions.MutateOperators)];
   Result.Flags := [FlagOption('--log-names', @AOptions.LogNames), FlagOption('--mcp', @AOptions.Mcp),
     FlagOption('--restricted', @AOptions.Restricted), FlagOption('--clear-cache', @AOptions.ClearCache),
     FlagOption('--include-uncommitted', @AOptions.IncludeUncommitted),
@@ -726,6 +734,10 @@ begin
   else if HotspotsFile <> '' then
   begin
     Result := 'hotspots';
+  end
+  else if MutateFile <> '' then
+  begin
+    Result := 'mutate';
   end
   else if CheckTarget <> '' then
   begin

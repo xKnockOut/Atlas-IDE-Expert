@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1117] of string = (
+  cCatalogLinesEnFindBugs: array[0..1147] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -953,6 +953,45 @@ const
     'ix: wrap the following statements of the block in try … finally with the matching release.",',
     '      "bad": "GetMem(Puffer, Groesse);\nStrom.ReadBuffer(Puffer^, Groesse);\nErgebnis := Pruefsumme(Puffer, Groesse);",',
     '      "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "local-object-not-freed",',
+    '      "name": "Local object never released",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A local variable (also an inline variable) receives T.Create(…) of a class without an owner, but the routine never releases it, and the object does not leave the routine: not ret' +
+    'urned (Result, Exit), not assigned to anything else (field, other variable, list element), not passed as an argument (except to routines that only read it: Assign, AddStrings, CopyFrom, LoadFromStream' +
+    ', SaveToStream, IndexOf, Contains, Equals), not raised, not converted with as, not used with @, in a set or array constructor or with with, not given a Parent or Owner, not captured by an anonymous me' +
+    'thod and not used in a local routine. Free, Destroy, DisposeOf, Release, FreeAndNil and routines with Free, Release, Destroy, Dispose or Frei in their name count as the release; Show, Close, Start, Re' +
+    'sume, Run and Execute count as handing the object over (a form with caFree, a thread). Silent for interface variables, records and dynamic arrays (TPoint.Create, TArray<string>.Create), threads, compo' +
+    'nents with an owner and unknown classes with arguments (like create-without-assignment); routines with asm or with stay silent. High confidence when the ancestors of the class are known up to TObject,' +
+    ' otherwise medium. Quick fix: wrap the following statements of the block in try … finally with Free.",',
+    '      "bad": "var\n  Lines: TStringList;\nbegin\n  Lines := TStringList.Create;\n  Lines.Add(''a'');\n  Memo.Text := Lines.Text;\nend;",',
+    '      "good": "var\n  Lines: TStringList;\nbegin\n  Lines := TStringList.Create;\n  try\n    Lines.Add(''a'');\n    Memo.Text := Lines.Text;\n  finally\n    Lines.Free;\n  end;\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "created-result-not-freed",',
+    '      "name": "New object from a function never released",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A local variable receives the result of a function that always returns a new object, and the routine neither releases nor passes on that object (same rules as local-object-not-fr' +
+    'eed). A function of the same file counts when every assignment to Result is T.Create(…) without an owner, Result is otherwise only used through its members or released (cleanup in except) and never pa' +
+    'ssed on, and every Exit(…) creates an object as well; overloads of the same name must all qualify. It is matched when called without qualification, through Self or through a type name; methods of othe' +
+    'r objects are only known from the option factories. Medium confidence. Quick fix: wrap the following statements of the block in try … finally with Free.",',
+    '      "bad": "function NewList: TStringList;\nbegin\n  Result := TStringList.Create;\nend;\n…\n  Lines := NewList;\n  Memo.Lines.Assign(Lines);",',
+    '      "good": "  Lines := NewList;\n  try\n    Memo.Lines.Assign(Lines);\n  finally\n    Lines.Free;\n  end;",',
+    '      "options": [',
+    '        {',
+    '          "name": "factories",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Further functions that always return a new object owned by the caller, as Name, Class.Name, Object.Name or Unit.Name."',
+    '        }',
+    '      ],',
     '      "safeFix": false',
     '    },',
     '{',
