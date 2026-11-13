@@ -576,6 +576,19 @@ Runs on its own; commands in the Atlas menu and the command palette. After `git 
 
 Settings: `debug.breakpointAnchors`
 
+### Breakpoint rules: dependent, hits, thread
+
+Editor context menu (Atlas › Debug › “Breakpoint rules …”, also in the margin), Atlas menu, command palette; on the line of a breakpoint. A breakpoint in a busy routine otherwise stops a hundred times before you get to the place that matters.
+
+- “Active only after”: the breakpoint is off at the start of every debug session and is switched on as soon as the chosen other breakpoint has stopped. “until the session ends” keeps it on, “only once” switches it off again after its stop until the triggering one stops again. After the session it is on again.
+- “Stop”: on every hit, exactly on hit n, from hit n on or on every n-th hit; counted per session.
+- “Thread”: all, name contains (from `TThread.NameThreadForDebugging`), one thread ID or the main thread only. A stop in another thread does not count as a hit.
+- The IDE condition, hit condition and thread filter apply together. For hits and threads the debugger stops briefly, Atlas counts and continues right away; in hot loops this costs time.
+- If the triggering breakpoint is missing at start, the dependent one stays on as usual and a line in the messages says so.
+- Rules are stored in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` and move along when “Breakpoints move with the code” moves a breakpoint.
+
+Settings: `debug.breakpointRules`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

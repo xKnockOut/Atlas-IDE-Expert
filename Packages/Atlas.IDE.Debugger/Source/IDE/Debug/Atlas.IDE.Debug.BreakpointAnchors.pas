@@ -17,6 +17,7 @@
 // - Anker liegen in %LOCALAPPDATA%\Atlas\breakpoint-anchors.json, damit auch
 //   ein git pull bei geschlossener IDE nachgezogen wird. Gespeicherte Anker
 //   ohne Haltepunkt in dieser Sitzung bleiben, solange ihre Datei besteht.
+// - Haltepunkt-Regeln (#864) ziehen mit jeder Verschiebung mit.
 // Ein Teil der Feature-Tabelle; Release hält den Zeitgeber an und speichert.
 // Nur im Hauptthread.
 
@@ -107,6 +108,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointAnchors,
   Atlas.UI.Debug.Strings;
 
@@ -408,6 +410,8 @@ begin
       Continue;
     end;
     Inc(Result);
+    // Regeln (#864) hängen an der Zeile: mitziehen.
+    TAtlasIdeBreakpointRules.Moved(mMove.FileName, mMove.FromLine, mMove.ToLine);
     if ARelocate then
     begin
       Relocate(mMove.FileName, mMove.FromLine, mMove.ToLine);
@@ -486,6 +490,7 @@ begin
   Result := TAtlasIdeBreakpoints.MoveTo(mBreakpoint, AOrphan.Suggestion) <> nil;
   if Result then
   begin
+    TAtlasIdeBreakpointRules.Moved(AOrphan.Item.FileName, AOrphan.Item.Line, AOrphan.Suggestion);
     Relocate(AOrphan.Item.FileName, AOrphan.Item.Line, AOrphan.Suggestion);
   end;
 end;

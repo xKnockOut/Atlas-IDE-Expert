@@ -162,6 +162,8 @@ begin
   Switch('debug.breakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointsWindow));
   // Haltepunkte wandern mit dem Code (#841).
   Switch('debug.breakpointAnchors', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointAnchors));
+  // Abhängige Haltepunkte und Trefferbedingungen (#864).
+  Switch('debug.breakpointRules', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointRules));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;

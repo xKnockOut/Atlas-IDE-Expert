@@ -2408,6 +2408,18 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#841"
     },
+    "DebugBreakpointRules": {
+      "description": "Abhängige Haltepunkte und Trefferbedingungen (#864): „Haltepunkt-Regeln …“ im Kontextmenü des Editors (Atlas › Debuggen), im Menü Atlas und in der Befehlspalette. Ein Haltepunkt kann erst aktiv werden, nachdem ein anderer gehalten hat (bis zum Ende der Sitzung oder nur einmal), nur beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer halten und nur in bestimmten Threads (Name enthält, Thread-ID, nur Hauptthread). Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Aus = keine Regeln, die Haltepunkte verhalten sich wie in der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointRules",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Abhängige Haltepunkte, Trefferbedingungen und Thread-Filter",
+      "x-captionEn": "Dependent breakpoints, hit conditions and thread filters",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#864"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
