@@ -29,7 +29,8 @@
 //   Tests der Fixture im Testprojekt der Unit (--run mit den Namen aus
 //   Atlas.Text.DUnitX, [TestCase] je Fall); „Debuggen“ startet ihn im
 //   Debugger (Atlas.IDE.Tests.Debug); „Vergleichen“ zeigt erwartet und
-//   erhalten (Atlas.IDE.Tests.Compare über TAtlasTestCompareHooks).
+//   erhalten (Atlas.IDE.Tests.Compare über TAtlasTestCompareHooks), bei
+//   Vergleichsdateien als „Abweichung · Vergleich“ (#1881).
 // - Ändert sich der Stand der Läufe (TAtlasIdeTests.Version), zeichnet der
 //   Zeitgeber den Editor neu.
 // Abschaltbar über „Code Lens „Test ausführen““ (codeLens.tests, Schlüssel
@@ -625,6 +626,19 @@ begin
   end;
 end;
 
+/// <summary>Text des Knopfs „Vergleichen“ zu ASelection (Vergleichsdateien #1881 mit eigenem Text).</summary>
+function CompareCaption(const AHooks: TAtlasTestCompareHooks; const ASelection: TAtlasTestSelection): string;
+begin
+  if Assigned(AHooks.Caption) then
+  begin
+    Result := AHooks.Caption(ASelection);
+  end
+  else
+  begin
+    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensCompare);
+  end;
+end;
+
 procedure TAtlasIdeTestsLens.PaintButtons(AIndex: Integer; const ARow: TRect;
   const AContext: INTACodeEditorPaintContext; ALeft: Integer; ABack: TAtlasColor; AFailed: Boolean);
 var
@@ -650,7 +664,7 @@ begin
   if AFailed and Assigned(FCompare.CanCompare) and FCompare.CanCompare(FItems[AIndex].Selection) then
   begin
     FItems[AIndex].CompareRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensCompare), mAccent, ABack, mLeft);
+      CompareCaption(FCompare, FItems[AIndex].Selection), mAccent, ABack, mLeft);
   end;
 end;
 

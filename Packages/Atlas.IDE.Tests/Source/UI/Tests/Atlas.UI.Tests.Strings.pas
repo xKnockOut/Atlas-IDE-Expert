@@ -48,7 +48,12 @@ type
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
     TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
-    TestsLensCompare);
+    TestsLensCompare,
+    // Vergleichsdateien (#1881).
+    TestsLensApproval, TestsLensApprovalNew, TestsApprovalAccept, TestsApprovalGoTo, TestsApprovalAccepted,
+    TestsApprovalMissing, TestsApprovalFailed, TestsApprovalCleanCommand, TestsApprovalCleanNone,
+    TestsApprovalCleanAsk, TestsApprovalCleaned, TestsApprovalIgnoreAsk, TestsApprovalNoProject,
+    SettingsTestsApprovalFiles);
 
   TAtlasTestsStrings = class
   public
@@ -201,7 +206,21 @@ const
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
      'Langsam ab (ms)',
-     'Vergleichen'),
+     'Vergleichen',
+     'Abweichung · Vergleich',
+     'Neu · Vergleich',
+     'Als neue Erwartung übernehmen',
+     'Zum Test',
+     'Tests: %s als neue Erwartung übernommen (%s).',
+     'Tests: Die Datei %s gibt es nicht mehr; den Test erneut ausführen.',
+     'Tests: %s ließ sich nicht nach %s übernehmen (schreibgeschützt oder gesperrt).',
+     'Liegengebliebene .received-Dateien löschen',
+     'Tests: Keine liegengebliebenen .received-Dateien in %s.',
+     '%d liegengebliebene .received-Dateien in %s löschen?',
+     'Tests: %d von %d .received-Dateien gelöscht.',
+     '„%s“ in %s eintragen, damit .received-Dateien nicht ins Repository geraten?',
+     'Tests: Kein Testprojekt aktiv; Ordner der Vergleichsdateien unbekannt.',
+     'Vergleichsdateien erkennen (Abweichung an der Testmarke, übernehmen, aufräumen)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -338,7 +357,21 @@ const
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
      'Slow from (ms)',
-     'Compare'));
+     'Compare',
+     'Difference · Compare',
+     'New · Compare',
+     'Accept as new expectation',
+     'Go to test',
+     'Tests: %s accepted as the new expectation (%s).',
+     'Tests: The file %s no longer exists; run the test again.',
+     'Tests: Could not accept %s as %s (read-only or locked).',
+     'Delete leftover .received files',
+     'Tests: No leftover .received files in %s.',
+     'Delete %d leftover .received files in %s?',
+     'Tests: Deleted %d of %d .received files.',
+     'Add “%s” to %s so that .received files stay out of the repository?',
+     'Tests: No active test project; folder of the approval files unknown.',
+     'Recognize approval files (difference on the test mark, accept, clean up)'));
 
 { TAtlasTestsStrings }
 

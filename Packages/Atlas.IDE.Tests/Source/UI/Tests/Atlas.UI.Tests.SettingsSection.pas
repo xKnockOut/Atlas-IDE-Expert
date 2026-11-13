@@ -73,6 +73,7 @@ begin
   Switch('tests.failureInline', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureInline));
   Switch('tests.compare', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompare));
   Switch('tests.compare.format', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompareFormat));
+  Switch('tests.approvalFiles', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsApprovalFiles));
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
 end;
