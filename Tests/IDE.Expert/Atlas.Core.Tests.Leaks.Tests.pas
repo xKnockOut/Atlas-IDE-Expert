@@ -2,7 +2,8 @@
 
 // Tests der Lecks je Test (#1774): Ein Test, der nur wegen eines Lecks
 // fehlschlug, gilt mit tests.leaks als bestanden mit Leck; ohne bleibt der
-// Fehlschlag; gewöhnliche Fehlschläge bleiben immer.
+// Fehlschlag; gewöhnliche Fehlschläge bleiben immer. Lecks am Programmende
+// aus dem Bericht von FastMM bzw. der RTL als kurze Zusammenfassung.
 
 interface
 
@@ -20,6 +21,10 @@ type
     procedure WithoutSettingTheReportStays;
     [Test]
     procedure LeakedListsPassedTestsWithLeak;
+    [Test]
+    procedure LogFileNextToTheProgram;
+    [Test]
+    procedure ShutdownSummaryNamesAndBlocks;
   end;
 
 implementation
@@ -49,11 +54,11 @@ var
 begin
   mReport := TTestResults.Parse(cReport);
   mRun := TAtlasTestLeaks.Shown(mReport, True);
-  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Passed, 'nur Leck: bestanden');
+  Assert.AreEqual(Ord(TTestOutcome.Passed), Ord(mRun.Cases[0].Outcome), 'nur Leck: bestanden');
   Assert.AreEqual(Int64(40), mRun.Cases[0].LeakBytes);
-  Assert.IsTrue(mRun.Cases[1].Outcome = TTestOutcome.Failed, 'gewöhnlicher Fehlschlag bleibt');
+  Assert.AreEqual(Ord(TTestOutcome.Failed), Ord(mRun.Cases[1].Outcome), 'gewöhnlicher Fehlschlag bleibt');
   Assert.AreEqual(2, mRun.Count(TTestOutcome.Passed));
-  Assert.IsTrue(mReport.Cases[0].Outcome = TTestOutcome.Failed, 'der gelesene Bericht bleibt unverändert');
+  Assert.AreEqual(Ord(TTestOutcome.Failed), Ord(mReport.Cases[0].Outcome), 'der gelesene Bericht bleibt unverändert');
 end;
 
 procedure TAtlasTestLeaksTests.WithoutSettingTheReportStays;
@@ -61,7 +66,7 @@ var
   mRun: TTestRunResult;
 begin
   mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(cReport), False);
-  Assert.IsTrue(mRun.Cases[0].Outcome = TTestOutcome.Failed);
+  Assert.AreEqual(Ord(TTestOutcome.Failed), Ord(mRun.Cases[0].Outcome));
   Assert.AreEqual(0, Integer(Length(TAtlasTestLeaks.Leaked(mRun.Cases))), 'kein Leck ohne tests.leaks');
 end;
 
@@ -73,6 +78,32 @@ begin
   Assert.AreEqual(1, Integer(Length(mLeaked)));
   Assert.AreEqual('Bucht', mLeaked[0].Method);
   Assert.AreEqual(Int64(40), TAtlasTestLeaks.TotalBytes(mLeaked));
+end;
+
+procedure TAtlasTestLeaksTests.LogFileNextToTheProgram;
+begin
+  Assert.AreEqual('C:\Tests\Konto.Tests_MemoryManager_EventLog.txt',
+    TAtlasTestLeaks.LogFileOf('C:\Tests\Konto.Tests.exe'));
+  Assert.AreEqual('', TAtlasTestLeaks.LogFileOf(''));
+end;
+
+procedure TAtlasTestLeaksTests.ShutdownSummaryNamesAndBlocks;
+const
+  cNl = #13#10;
+  cReport =
+    'This application has leaked memory. The small block leaks are:' + cNl + cNl +
+    '1 - 12 bytes: TKunde x 3, UnicodeString x 5' + cNl +
+    '13 - 20 bytes: TStringList x 2' + cNl + cNl +
+    'The sizes of unexpected leaked medium and large blocks are: 40100' + cNl;
+var
+  mBlocks: Integer;
+begin
+  Assert.AreEqual('UnicodeString x 5, TKunde x 3, TStringList x 2',
+    TAtlasTestLeaks.ShutdownSummary(cReport, 3, mBlocks), 'nach Anzahl absteigend');
+  Assert.AreEqual(11, mBlocks, '10 kleine und ein großer Block');
+  Assert.AreEqual('UnicodeString x 5, …', TAtlasTestLeaks.ShutdownSummary(cReport, 1, mBlocks));
+  Assert.AreEqual('', TAtlasTestLeaks.ShutdownSummary('Tests: 3 bestanden', 3, mBlocks), 'kein Bericht');
+  Assert.AreEqual(0, mBlocks);
 end;
 
 initialization
