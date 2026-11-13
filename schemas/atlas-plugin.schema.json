@@ -960,6 +960,38 @@
       "x-captionEn": "Private methods too",
       "x-issue": "#1778"
     },
+    "CodeLensUntested": {
+      "description": "Marke „7 von 12 Methoden getestet“ an der unit-Zeile normaler Units, die eine Testunit haben: wie viele der Methoden mindestens ein Test aufruft (gelb unter tests.untested.warnPercent, sonst grau). Klick listet die ungetesteten Methoden zum Springen und bietet „Test anlegen“. Zählt Aufrufe aus Tests, ersetzt keine Abdeckungsmessung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.untested",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.run",
+      "x-node": "editor.codeLens",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „n von m Methoden getestet“ an der Unit",
+      "x-captionEn": "“n of m methods tested” mark on the unit",
+      "x-issue": "#1783"
+    },
+    "TestsUntestedWarnPercent": {
+      "description": "Unter diesem Anteil getesteter Methoden (0 bis 100 Prozent) ist die Marke „n von m Methoden getestet“ gelb, sonst grau; 0 = nie gelb.",
+      "type": "integer",
+      "default": 50,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "tests.untested.warnPercent",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.untested",
+      "x-control": "Zahl",
+      "x-caption": "Gelb unter Prozent getestet",
+      "x-captionEn": "Yellow below percent tested",
+      "x-issue": "#1783"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
