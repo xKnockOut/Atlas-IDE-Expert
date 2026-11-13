@@ -95,6 +95,7 @@ uses
   Shell.Linter.Architecture in 'Source\Shell\Shell.Linter.Architecture.pas',
   Shell.Linter.Query in 'Source\Shell\Shell.Linter.Query.pas',
   Shell.Linter.Hotspots in 'Source\Shell\Shell.Linter.Hotspots.pas',
+  Shell.Linter.Mutation in 'Source\Shell\Shell.Linter.Mutation.pas',
   Shell.Linter.Formatting in 'Source\Shell\Shell.Linter.Formatting.pas',
   Shell.Linter.AffectedTests in 'Source\Shell\Shell.Linter.AffectedTests.pas',
   Shell.Linter.Fix in 'Source\Shell\Shell.Linter.Fix.pas',

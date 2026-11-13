@@ -136,6 +136,7 @@
         <DCCReference Include="Source\Shell\Shell.Linter.Architecture.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Query.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Hotspots.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Linter.Mutation.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Formatting.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Fix.pas"/>

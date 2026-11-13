@@ -269,6 +269,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
+        <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Generator.Tests.pas"/>
+        <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Report.Tests.pas"/>
         <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.References.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.UsesGraph.Tests.pas"/>
@@ -2056,6 +2058,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Architecture.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Query.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Hotspots.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Mutation.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Formatting.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.AffectedTests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Fix.pas"/>

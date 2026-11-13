@@ -186,6 +186,8 @@ Atlas.Common.Monitor.Commands.Tests
 Atlas.Common.Monitor.Results.Tests
 Atlas.Common.Monitor.Runs.Tests
 Atlas.Common.Monitor.Targets.Tests
+Atlas.Common.Mutation.Generator.Tests
+Atlas.Common.Mutation.Report.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
