@@ -166,6 +166,16 @@ Einstellung: `tests.approvalFolder` (atlas.json)
 
 Einstellungen: `tests.showDuration`, `tests.slowMs`
 
+### Lecks je Test (#1774)
+
+- Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
+- In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
+- Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
+- Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+
+Einstellung: `tests.leaks`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.

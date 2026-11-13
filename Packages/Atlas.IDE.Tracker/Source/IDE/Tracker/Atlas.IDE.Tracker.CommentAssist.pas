@@ -154,7 +154,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Workflow.Strings;
 
 { TAtlasIdeCommentService }
 
@@ -361,7 +361,7 @@ end;
 
 function TAtlasIdeCommentAssist.Snippets: TArray<TAtlasCommentSnippet>;
 begin
-  Result := TAtlasCommentSnippets.Read(TAtlasIdeSettings.Current.IssuesCommentSnippets, TAtlasTrackerStrings.English);
+  Result := TAtlasCommentSnippets.Read(TAtlasIdeSettings.Current.IssuesCommentSnippets, TAtlasWorkflowStrings.English);
 end;
 
 procedure TAtlasIdeCommentAssist.CancelUsers;

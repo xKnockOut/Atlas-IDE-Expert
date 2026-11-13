@@ -115,7 +115,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueLookups;
@@ -705,12 +705,12 @@ begin
       mParent := AddMenuItem(FMenu.Items, mMatches[mIndex].Key, 0);
       mParent.OnClick := nil;
     end;
-    AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow),
+    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow),
       mIndex * cMenuStride + cMenuShow).Default :=
       True;
-    AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse),
+    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse),
       mIndex * cMenuStride + cMenuBrowse);
-    AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey),
+    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey),
       mIndex * cMenuStride + cMenuCopy);
   end;
   if Length(mMatches) > 0 then
