@@ -149,6 +149,7 @@ Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
 Atlas.Common.Logging.Providers.StreamSink.Tests
 Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
+Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
