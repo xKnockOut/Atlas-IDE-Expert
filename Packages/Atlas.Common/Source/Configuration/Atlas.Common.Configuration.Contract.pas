@@ -469,6 +469,9 @@ type
     /// sind (private, strict, protected außerhalb von Nachfahren; #2108). Aus: wie bisher still weggelassen.
     /// </summary>
     HiddenMembers: Boolean;
+    /// <summary>Mitglieder nach "X." zusätzlich danach ordnen, wie oft ihr Name in den Units des Projekts vorkommt
+    /// (#2109); die eigene Gewichtung (#418) geht vor. Aus: wie bisher nur nach Treffer und Gelerntem.</summary>
+    ProjectFrequency: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -1425,6 +1428,7 @@ begin
   Result.ShowFmxUnits := False;
   Result.TypeGuards := True;
   Result.HiddenMembers := True;
+  Result.ProjectFrequency := True;
 end;
 
 { TServerSettings }

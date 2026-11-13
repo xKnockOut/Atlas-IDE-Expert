@@ -201,6 +201,18 @@ type
     DebugLogpoints: Boolean;
     /// <summary>Präfix vor jeder Logpunkt-Ausgabe (#583, debug.logpointPrefix).</summary>
     DebugLogpointPrefix: string;
+    /// <summary>Fenster „Kein Quelltext“ (#869, debug.noSourcePage): Hält der Debugger in Code ohne Quelltext, nennt
+    /// ein kleines Fenster Routine, Modul, Adresse, Grund und Auswege. Aus = nur das CPU-Fenster der IDE.</summary>
+    DebugNoSourcePage: Boolean;
+    /// <summary>Units ohne Fenster „Kein Quelltext“ (#869, debug.noSourcePage.ignoredUnits), durch „;“ getrennt.
+    /// </summary>
+    DebugNoSourceIgnoredUnits: string;
+    /// <summary>Neu starten (#872, debug.restart): Befehl „Neu starten“ (Strg+Umschalt+F2) beendet das Programm, baut
+    /// nur nach Änderungen, startet und kehrt an die Stelle im Editor zurück. Aus = kein Befehl, keine Taste.</summary>
+    DebugRestart: Boolean;
+    /// <summary>Beim Neustart Haltepunkte wieder einschalten, die in der Sitzung abgeschaltet wurden (#872,
+    /// debug.restart.reenableBreakpoints).</summary>
+    DebugRestartReenableBreakpoints: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -282,6 +294,10 @@ begin
   Result.DebugEventLogColors := cDefaultEventLogColors;
   Result.DebugLogpoints := True;
   Result.DebugLogpointPrefix := cDefaultLogpointPrefix;
+  Result.DebugNoSourcePage := True;
+  Result.DebugNoSourceIgnoredUnits := '';
+  Result.DebugRestart := True;
+  Result.DebugRestartReenableBreakpoints := False;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.DebugEnabled := True;
@@ -298,6 +314,7 @@ begin
   DebugLogpointPrefix := Trim(DebugLogpointPrefix);
   DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
     cMaxAsyncOriginPerSite);
+  DebugNoSourceIgnoredUnits := Trim(DebugNoSourceIgnoredUnits);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
@@ -367,6 +384,10 @@ begin
   AIo.Text('DebugEventLogColors', DebugEventLogColors);
   AIo.Flag('DebugLogpoints', DebugLogpoints);
   AIo.Text('DebugLogpointPrefix', DebugLogpointPrefix);
+  AIo.Flag('DebugNoSourcePage', DebugNoSourcePage);
+  AIo.Text('DebugNoSourceIgnoredUnits', DebugNoSourceIgnoredUnits);
+  AIo.Flag('DebugRestart', DebugRestart);
+  AIo.Flag('DebugRestartReenableBreakpoints', DebugRestartReenableBreakpoints);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

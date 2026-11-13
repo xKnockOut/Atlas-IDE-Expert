@@ -285,6 +285,9 @@ type
     /// <summary>Zählt jede Änderung am Index hoch; abgeleitete Strukturen (Namensindex, #617)
     /// erkennen daran, dass sie neu aufgebaut werden müssen.</summary>
     function Generation: Int64;
+    /// <summary>Stellen mit dem Namen AName in den Verwendungen aller Projekt-Units (#2109); Bibliotheken zählen
+    /// nicht. Bleibt, wenn Verwendungen wegen des Budgets ausgelagert werden.</summary>
+    function UsageCount(const AName: string): Integer;
   end;
 
   /// <summary>Antworten, die nur vom Index und einem Namen abhängen, über alle Units eines Arbeitsbereichs
