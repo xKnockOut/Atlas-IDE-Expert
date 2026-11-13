@@ -273,9 +273,6 @@ begin
   Assert.AreEqual('-', Step(mOptions, TAtlasDesktopView.Designer, 1000, cDefault));
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasDesktopSwitchTests);
-
 procedure TAtlasDesktopSwitchTests.UsableSkipsNone;
 var
   mLayouts: TArray<string>;
@@ -301,5 +298,8 @@ begin
   Assert.AreEqual('', TAtlasDesktopLayouts.DisplayName(mEnglish, 'Fehlt'));
   Assert.AreEqual('', TAtlasDesktopLayouts.DisplayName(mGerman, ''));
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasDesktopSwitchTests);
 
 end.

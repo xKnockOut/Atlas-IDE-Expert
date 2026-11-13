@@ -86,7 +86,7 @@ type
   public
     /// <summary>Gibt es AName in ALayouts (ohne Groß-/Kleinschreibung)?</summary>
     class function Contains(const ALayouts: TArray<string>; const AName: string): Boolean; static;
-    /// <summary>Echte Layouts aus den Einträgen des Desktop-Auswahlfelds: ohne leere und ohne „<kein>“.</summary>
+    /// <summary>Echte Layouts aus den Einträgen des Desktop-Auswahlfelds: ohne leere und ohne „&lt;kein&gt;“.</summary>
     class function Usable(const AItems: TArray<string>): TArray<string>; static;
     /// <summary>Anzeigename in ALayouts zum gespeicherten Namen AStored (Registry Session\DefaultDesktopName).
     /// Die mitgelieferten Layouts stehen dort englisch (Default Layout), das Auswahlfeld zeigt sie in der Sprache
@@ -100,6 +100,16 @@ implementation
 uses
   System.SysUtils;
 
+const
+  /// <summary>Vorgabe für das Entprellen in ms.</summary>
+  cDefaultDelay = 300;
+  /// <summary>Mitgelieferte Layouts: Name in der Registry (ohne Leer- und Bindestriche, klein), dann die
+  /// Anzeigenamen in anderen Sprachen der IDE.</summary>
+  cKnownLayouts: array[0..2, 0..2] of string = (
+    ('defaultlayout', 'Standard-Layout', 'Disposition par défaut'),
+    ('startuplayout', 'Start-Layout', 'Disposition de démarrage'),
+    ('debuglayout', 'Debug-Layout', 'Disposition de débogage'));
+
 { TAtlasDesktopSwitchOptions }
 
 class function TAtlasDesktopSwitchOptions.Defaults: TAtlasDesktopSwitchOptions;
@@ -107,7 +117,7 @@ begin
   Result := Default(TAtlasDesktopSwitchOptions);
   Result.ReturnTo := TAtlasDesktopReturn.Previous;
   Result.SkipWhileDebugging := True;
-  Result.Delay := 300;
+  Result.Delay := cDefaultDelay;
 end;
 
 { TAtlasDesktopAction }
@@ -169,19 +179,22 @@ end;
 /// <summary>Bekannte Anzeigenamen des mitgelieferten Layouts AStored (englischer Name) in anderen Sprachen der IDE.
 /// </summary>
 function Translations(const AStored: string): TArray<string>;
+var
+  mRow: Integer;
+  mColumn: Integer;
 begin
   Result := nil;
-  if SameText(Compact(AStored), 'defaultlayout') then
+  for mRow := Low(cKnownLayouts) to High(cKnownLayouts) do
   begin
-    Result := TArray<string>.Create('Standard-Layout', 'Disposition par défaut');
-  end
-  else if SameText(Compact(AStored), 'startuplayout') then
-  begin
-    Result := TArray<string>.Create('Start-Layout', 'Disposition de démarrage');
-  end
-  else if SameText(Compact(AStored), 'debuglayout') then
-  begin
-    Result := TArray<string>.Create('Debug-Layout', 'Disposition de débogage');
+    if Compact(AStored) = cKnownLayouts[mRow, 0] then
+    begin
+      SetLength(Result, High(cKnownLayouts[mRow]));
+      for mColumn := 1 to High(cKnownLayouts[mRow]) do
+      begin
+        Result[mColumn - 1] := cKnownLayouts[mRow, mColumn];
+      end;
+      Exit;
+    end;
   end;
 end;
 

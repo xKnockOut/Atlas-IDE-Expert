@@ -266,6 +266,7 @@ end;
 constructor TRunner.Create(const AOnMessage: TProc<string>);
 var
   mServices: IOTAServices;
+  mNotifier: TProjectNotifier;
 begin
   inherited Create;
   FOnMessage := AOnMessage;
@@ -273,9 +274,11 @@ begin
   FNotifierIndex := -1;
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    FNotifier := TProjectNotifier.Create;
-    FNotifier.FOwner := Self;
-    FNotifierIndex := mServices.AddNotifier(FNotifier);
+    // Den Beobachter besitzt die IDE; RemoveNotifier gibt ihn frei.
+    mNotifier := TProjectNotifier.Create;
+    mNotifier.FOwner := Self;
+    FNotifier := mNotifier;
+    FNotifierIndex := mServices.AddNotifier(mNotifier);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMilliseconds;
