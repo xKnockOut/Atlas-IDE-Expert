@@ -198,7 +198,8 @@ begin
     '  "startProfiles": [{"name": "Demo", "parameters": "-demo /silent", "workingDir": "..\\Bin",'#13#10 +
     '    "host": "$(BDS)\\bin\\bds.exe", "environment": {"MODUS": "demo"}}],'#13#10 +
     '  "ci": {"provider": "jenkins", "url": "https://ci.example.com", "job": "kasse", "multibranch": true},'#13#10 +
-    '  "tracker": {"provider": "YouTrack", "url": "https://firma.youtrack.cloud", "project": "ATL"},'#13#10 +
+    '  "tracker": {"provider": "YouTrack", "url": "https://firma.youtrack.cloud", "project": "ATL",'#13#10 +
+    '    "templateFields": {"version": "{version}", "steps": "{code}"}},'#13#10 +
     '}');
   Assert.IsTrue(Team.Valid);
   Assert.IsTrue(Team.Exists);
@@ -229,6 +230,10 @@ begin
   Assert.IsTrue(Team.Tracker.Configured);
   Assert.AreEqual('youtrack', Team.Tracker.Provider);
   Assert.AreEqual('ATL', Team.Tracker.Project);
+  // Vorbelegung der GitHub-Vorlagen (#2137) wie Umgebungsvariablen: Feld-Id → Text.
+  Assert.AreEqual(2, Integer(Length(Team.Tracker.TemplateFields)));
+  Assert.AreEqual('steps', Team.Tracker.TemplateFields[1].Name);
+  Assert.AreEqual('{code}', Team.Tracker.TemplateFields[1].Value);
 end;
 
 procedure TAtlasTeamFileTests.ReadsVcsSection;
@@ -445,6 +450,10 @@ begin
   Assert.AreEqual('ci', Values[2].Key);
   Assert.Contains(Values[2].Value, 'jenkins');
   Assert.IsFalse(TAtlasTeamFile.Empty.HasValues);
+  // tracker.templateFields (#2137) als Zeile mit Feld-Id=Text.
+  Values := TAtlasTeamFile.Values(Parsed('{"version": 1, "tracker": {"templateFields": {"ide": "{ide}"}}}'));
+  Assert.AreEqual('tracker.templateFields', Values[High(Values)].Key);
+  Assert.AreEqual('ide={ide}', Values[High(Values)].Value);
 end;
 
 procedure TAtlasTeamFileTests.ReadsDebugDisplayRules;

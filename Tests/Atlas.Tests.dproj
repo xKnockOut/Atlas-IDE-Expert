@@ -1189,6 +1189,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.YouTrackJson.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.NewIssue.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.FormYaml.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.FormYaml.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.IssueForms.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.IssueForms.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.NewIssueGitHub.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.NewIssueGitHub.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.EndDialog.Tests.pas"/>
@@ -1508,6 +1514,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.MyIssues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.NewIssueDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.NewIssueDialog.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.NewIssueBox.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.NewIssueForm.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SprintTile.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.SprintTile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>

@@ -335,6 +335,9 @@ begin
   Assert.IsTrue(ASettings.IssuesSuggestPaths, '„Vorschlagen …“ (#1929) an');
   Assert.IsTrue(ASettings.IssuesCreate, '„Issue anlegen …“ an (#1268)');
   Assert.IsTrue(ASettings.IssuesCreateIncludeCode, 'Codeausschnitt vorgeschlagen (#1268)');
+  Assert.IsTrue(ASettings.IssuesCreateTemplates, 'GitHub-Issue-Vorlagen an (#2137)');
+  Assert.AreEqual('version={version}; ide={ide}; log={log}', ASettings.IssuesGitHubTemplateFields,
+    'passt zu den Vorlagen von Atlas (#2137)');
   Assert.AreEqual(0, ASettings.CreateIssueKey, 'frei belegbar, ohne Vorgabe');
   Assert.AreEqual('branch', ASettings.IssuesStart);
   Assert.AreEqual('', ASettings.IssuesBranchPattern, 'je Versionsverwaltung');
@@ -373,9 +376,9 @@ begin
   Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
   // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
-  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.cIssuesStartBranch);
-  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Remember),
-    TAtlasPluginSettings.cIssuesStartRemember);
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartBranch, TAtlasMyIssues.StartName(TAtlasIssueStart.Branch));
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartRemember,
+    TAtlasMyIssues.StartName(TAtlasIssueStart.Remember));
 end;
 /// <summary>Meine Issues (#765, #1271): Normalisieren.</summary>
 procedure NormalizeIssuesOptions(var ASettings: TAtlasPluginSettings);
@@ -453,6 +456,8 @@ begin
   ASettings.IssuesSuggestPaths := False;
   ASettings.IssuesCreate := False;
   ASettings.IssuesCreateIncludeCode := False;
+  ASettings.IssuesCreateTemplates := False;
+  ASettings.IssuesGitHubTemplateFields := 'steps={code}';
   ASettings.CreateIssueKey := $4049;
   ASettings.IssuesStart := 'remember';
   ASettings.IssuesBranchPattern := 'issue/{nummer}';
@@ -504,6 +509,8 @@ begin
   Assert.IsFalse(ALoaded.IssuesSuggestPaths);
   Assert.IsFalse(ALoaded.IssuesCreate);
   Assert.IsFalse(ALoaded.IssuesCreateIncludeCode);
+  Assert.IsFalse(ALoaded.IssuesCreateTemplates);
+  Assert.AreEqual('steps={code}', ALoaded.IssuesGitHubTemplateFields);
   Assert.AreEqual($4049, ALoaded.CreateIssueKey, 'Strg+I');
   Assert.AreEqual('remember', ALoaded.IssuesStart);
   Assert.AreEqual('issue/{nummer}', ALoaded.IssuesBranchPattern);

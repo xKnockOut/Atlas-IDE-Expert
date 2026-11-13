@@ -15,7 +15,9 @@
 //   POST /api/issues (project.id, summary, description, customFields).
 // - GitHub: POST /repos/<owner>/<repo>/issues (title, body, labels,
 //   assignees); Typ und Priorität sind Labels (GET /labels), Zuständige aus
-//   GET /assignees.
+//   GET /assignees. Dazu Issue-Vorlagen, Meilenstein, Issue-Typ und
+//   Issue-Felder (#2137, Atlas.Core.Tracker.NewIssueGitHub): Hat das
+//   Repository Issue-Typen, ist „Typ“ der Issue-Typ statt eines Labels.
 // - Eigener Benutzer für „mir zuweisen“ über IAtlasTrackerProvider.ProbeUrl.
 // Geschrieben wird nur über IAtlasCiSend (nur mit Token, nur https, ohne
 // Weiterleitungen). Die Texte der Beschreibung (Fundstelle, Zeile, …) kommen
@@ -27,7 +29,8 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.NewIssueGitHub;
 
 type
 {$SCOPEDENUMS ON}
@@ -117,6 +120,8 @@ type
     Assignees: TArray<string>;
     /// <summary>Eigener Anmeldename; '' unbekannt.</summary>
     Me: string;
+    /// <summary>GitHub (#2137): Vorlagen, Meilensteine, Issue-Typen und Issue-Felder; leer bei YouTrack.</summary>
+    GitHub: TAtlasGitHubIssueMeta;
     class function Empty: TAtlasNewIssueFields; static;
   end;
 
@@ -134,6 +139,9 @@ type
     TypeField: string;
     PriorityField: string;
     AssigneeField: string;
+    /// <summary>GitHub (#2137): Labels und Zuständige der Vorlage, Meilenstein, Issue-Typ, Projekte, Felder.
+    /// </summary>
+    GitHub: TAtlasGitHubDraft;
     class function Empty: TAtlasNewIssueDraft; static;
   end;
 
@@ -147,6 +155,8 @@ type
     HttpStatus: Integer;
     /// <summary>Meldung des Trackers bei 400/422 (gekürzt); '' ohne.</summary>
     TrackerMessage: string;
+    /// <summary>GitHub (#2137): was das angelegte Issue nicht trägt (Meilenstein, Typ, Projekte).</summary>
+    Dropped: TAtlasGitHubDropped;
     class function Create(AOutcome: TAtlasNewIssueOutcome): TAtlasNewIssueResult; static;
   end;
 
@@ -224,10 +234,12 @@ type
     /// <summary>"login" aus der Antwort von ProbeUrl; '' ohne.</summary>
     class function ParseLogin(const AText: string): string; static;
     { Ablauf (im Hintergrund) }
-    /// <summary>Auswahllisten und eigener Benutzer; False, wenn nichts gelesen werden konnte (dann bleiben die
-    /// Felder frei eintippbar).</summary>
+    /// <summary>Auswahllisten und eigener Benutzer, bei GitHub dazu Vorlagen (nach ARequest), Meilensteine,
+    /// Issue-Typen und Issue-Felder; False, wenn nichts gelesen werden konnte (dann bleiben die Felder frei
+    /// eintippbar).</summary>
     class function LoadFields(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const ATransport: IAtlasCiTransport; out AFields: TAtlasNewIssueFields): Boolean; static;
+      const ATransport: IAtlasCiTransport; const ARequest: TAtlasGitHubMetaRequest;
+      out AFields: TAtlasNewIssueFields): Boolean; static;
     /// <summary>Legt das Issue an; ohne Transport (kein Token) oder ohne IAtlasCiSend kein Netz.</summary>
     class function CreateIssue(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const ATransport: IAtlasCiTransport; const ADraft: TAtlasNewIssueDraft): TAtlasNewIssueResult; static;
@@ -293,6 +305,7 @@ begin
   Result.Types := nil;
   Result.Priorities := nil;
   Result.Assignees := nil;
+  Result.GitHub := TAtlasGitHubIssueMeta.Empty;
 end;
 
 { TAtlasNewIssueDraft }
@@ -300,6 +313,7 @@ end;
 class function TAtlasNewIssueDraft.Empty: TAtlasNewIssueDraft;
 begin
   Result := Default(TAtlasNewIssueDraft);
+  Result.GitHub := TAtlasGitHubDraft.Empty;
 end;
 
 { TAtlasNewIssueResult }
@@ -308,6 +322,7 @@ class function TAtlasNewIssueResult.Create(AOutcome: TAtlasNewIssueOutcome): TAt
 begin
   Result := Default(TAtlasNewIssueResult);
   Result.Outcome := AOutcome;
+  Result.Dropped := TAtlasGitHubDropped.Empty;
 end;
 
 { Hilfen }
@@ -1300,6 +1315,8 @@ begin
       mAssignees.Add(mAssignee);
       mRoot.AddPair('assignees', mAssignees);
     end;
+    // Vorlage, Meilenstein, Issue-Typ und Issue-Felder (#2137).
+    TAtlasGitHubNewIssue.AddTo(mRoot, ADraft.GitHub);
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
@@ -1351,7 +1368,8 @@ begin
 end;
 
 class function TAtlasNewIssues.LoadFields(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; out AFields: TAtlasNewIssueFields): Boolean;
+  const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const ARequest: TAtlasGitHubMetaRequest;
+  out AFields: TAtlasNewIssueFields): Boolean;
 var
   mWatch: TStopwatch;
   mText, mId: string;
@@ -1391,6 +1409,7 @@ begin
     AFields.Assignees := mNames;
     Result := True;
   end;
+  AFields.GitHub := TAtlasGitHubNewIssue.Load(ATarget, ATransport, ARequest, mWatch, cTimeoutMs);
 end;
 
 function OutcomeOfStatus(AStatus: Integer): TAtlasNewIssueOutcome;
@@ -1506,6 +1525,19 @@ begin
   end;
 end;
 
+/// <summary>GitHub nach dem Anlegen (#2137): was die Antwort nicht trägt, und Aufnahme in die Projekte der
+/// Vorlage.</summary>
+procedure CheckGitHub(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const ASend: IAtlasCiSend;
+  const ADraft: TAtlasGitHubDraft; const AText: string; var AResult: TAtlasNewIssueResult);
+begin
+  AResult.Dropped := TAtlasGitHubNewIssue.Dropped(AText, ADraft);
+  if Length(ADraft.Projects) > 0 then
+  begin
+    AResult.Dropped.Projects := TAtlasGitHubNewIssue.AddToProjects(ACall, AWatch, ASend,
+      TAtlasGitHubNewIssue.NodeId(AText), ADraft.Projects);
+  end;
+end;
+
 /// <summary>Adresse der Anfrage zum Anlegen, ABody ihr Inhalt.</summary>
 function CreateRequest(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
   const AProjectId, AMe: string; const ADraft: TAtlasNewIssueDraft; out ABody: string): string;
@@ -1568,6 +1600,11 @@ begin
     Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
     Result.HttpStatus := mResponse.Status;
     ReadCreated(AProvider, ATarget, mResponse.Text, Result);
+    if not IsYouTrack(AProvider) and (Result.Outcome = TAtlasNewIssueOutcome.Created) then
+    begin
+      CheckGitHub(TAtlasTrackerCall.Create(ATarget, ATransport, cTimeoutMs), mWatch, mSend, ADraft.GitHub,
+        mResponse.Text, Result);
+    end;
   end;
 end;
 

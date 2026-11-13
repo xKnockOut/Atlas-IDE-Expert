@@ -8603,6 +8603,27 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1268"
     },
+    "IssuesCreateTemplates": {
+      "type": "boolean",
+      "default": true,
+      "description": "GitHub-Issue-Vorlagen im Dialog „Neues Issue“ (#2137): Klappliste „Vorlage“ mit den Formularen aus .github/ISSUE_TEMPLATE (aus der Arbeitskopie, sonst aus dem Repository), Formularfelder statt Beschreibung, Präfix, Labels, Zuständige, Typ und Projekte der Vorlage; „Leeres Issue“ nur mit blank_issues_enabled in config.yml. Aus = Titel und Beschreibung wie bisher; Meilenstein, Typ und Issue-Felder bleiben.",
+      "x-key": "issues.create.templates",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2137"
+    },
+    "IssuesGitHubTemplateFields": {
+      "type": "string",
+      "default": "version={version}; ide={ide}; log={log}",
+      "description": "Vorbelegung der Felder einer GitHub-Issue-Vorlage (#2137): Feld-ID=Wert, getrennt mit „;“, \\n für einen Zeilenumbruch. Platzhalter {version} (Version des Plugins), {ide} (Delphi-Version und IDE), {code} (Codeausschnitt), {finding} (Fundstelle bzw. Befunde), {log} (Code und Fundstelle). Ohne Eintrag landen Code und Fundstelle im ersten Textfeld mit render. tracker.templateFields der .atlas ergänzt und überschreibt einzelne Felder.",
+      "x-key": "issues.github.templateFields",
+      "x-area": "issues",
+      "x-team": "tracker.templateFields",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2137"
+    },
     "IssuesPreview": {
       "type": "boolean",
       "default": true,

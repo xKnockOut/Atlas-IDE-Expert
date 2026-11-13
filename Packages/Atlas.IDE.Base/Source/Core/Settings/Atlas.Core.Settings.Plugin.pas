@@ -1221,6 +1221,8 @@ type
     property IssuesCreate: Boolean read FIssueWork.IssuesCreate write FIssueWork.IssuesCreate;
     property IssuesCreateIncludeCode: Boolean read FIssueWork.IssuesCreateIncludeCode
       write FIssueWork.IssuesCreateIncludeCode;
+    property IssuesCreateTemplates: Boolean read FIssueWork.IssuesCreateTemplates
+      write FIssueWork.IssuesCreateTemplates;
     property VcsProvider: string read FVcs.VcsProvider write FVcs.VcsProvider;
     property VcsGitPath: string read FVcs.VcsGitPath write FVcs.VcsGitPath;
     property VcsSvnPath: string read FVcs.VcsSvnPath write FVcs.VcsSvnPath;
@@ -1262,6 +1264,8 @@ type
     property IssuesGitHubProject: string read FIssues.IssuesGitHubProject write FIssues.IssuesGitHubProject;
     property IssuesGitHubAddToProject: Boolean read FIssues.IssuesGitHubAddToProject
       write FIssues.IssuesGitHubAddToProject;
+    property IssuesGitHubTemplateFields: string read FIssues.IssuesGitHubTemplateFields
+      write FIssues.IssuesGitHubTemplateFields;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;

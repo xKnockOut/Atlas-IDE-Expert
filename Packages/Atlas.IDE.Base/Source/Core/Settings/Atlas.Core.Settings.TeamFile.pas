@@ -25,7 +25,8 @@
 //      "ci": {"provider": "jenkins", "url": "https://ci.firma.de",      #763
 //             "job": "kasse", "multibranch": true},
 //      "tracker": {"provider": "youtrack",                              #765
-//                  "url": "https://firma.youtrack.cloud", "project": "ATL"},
+//                  "url": "https://firma.youtrack.cloud", "project": "ATL",
+//                  "templateFields": {"version": "{version}"}},           #2137
 //      "vcs": {"provider": "svn", "mainBranch": "trunk"},              #1286
 //      "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", #628
 //                  "anchor": "TKunde.Speichern"}],
@@ -123,6 +124,9 @@ type
     Url: string;
     /// <summary>Projektkürzel (YouTrack "ATL") bzw. "owner/repo" (GitHub).</summary>
     Project: string;
+    /// <summary>Vorbelegung der Felder von GitHub-Issue-Vorlagen (#2137): Feld-Id → Text mit Platzhaltern; geht
+    /// vor issues.github.templateFields.</summary>
+    TemplateFields: TArray<TAtlasTeamVariable>;
     function Configured: Boolean;
   end;
 
@@ -1171,6 +1175,11 @@ begin
   begin
     ReadString(AValue, APath, ATracker.Project);
   end
+  // Feld-Id → Text wie Umgebungsvariablen: Objekt aus Texten, ohne Zugangsdaten und Pfade (#2137).
+  else if AKey = 'templateFields' then
+  begin
+    ReadEnvironment(AValue, APath, ATracker.TemplateFields);
+  end
   else
   begin
     Report(TAtlasTeamIssueKind.UnknownKey, APath);
@@ -1724,6 +1733,18 @@ begin
   end;
 end;
 
+/// <summary>"id=Text" je Eintrag.</summary>
+function VariableItems(const AVariables: TArray<TAtlasTeamVariable>): TArray<string>;
+var
+  mVariable: TAtlasTeamVariable;
+begin
+  Result := nil;
+  for mVariable in AVariables do
+  begin
+    Result := Result + [mVariable.Name + '=' + mVariable.Value];
+  end;
+end;
+
 function TrackerText(const ATracker: TAtlasTeamTracker): string;
 begin
   Result := ATracker.Provider + ', ' + ATracker.Url;
@@ -1776,6 +1797,7 @@ begin
   begin
     AddValue(Result, 'tracker', TrackerText(ATeam.Tracker));
   end;
+  AddList(Result, 'tracker.templateFields', VariableItems(ATeam.Tracker.TemplateFields));
   if ATeam.Vcs.Configured then
   begin
     AddValue(Result, 'vcs', VcsText(ATeam.Vcs));
