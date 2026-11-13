@@ -1262,6 +1262,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Compare.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>
