@@ -1,9 +1,9 @@
 ﻿unit Atlas.UI.Tracker.GitHubStrings;
 
 // Oberflächentexte des GitHub-Anbieters im Tracker auf Deutsch und Englisch:
-// Abschnitt „Abschluss“ im Beenden-Dialog mit Schließgrund (#2135). Eigene
-// Unit neben Atlas.UI.Tracker.Strings, die an der Längengrenze steht; die
-// Sprache bestimmt Base (`TAtlasStrings.Language`) wie dort.
+// Abschnitt „Abschluss“ im Beenden-Dialog mit Schließgrund (#2135). Wie die
+// übrigen Texttabellen des Trackers (Atlas.UI.Tracker.<Feature>.Strings) bestimmt
+// Base die Sprache (`TAtlasStrings.Language`).
 
 interface
 

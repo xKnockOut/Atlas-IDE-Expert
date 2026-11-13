@@ -190,6 +190,16 @@ Setting: `tests.approvalFolder` (atlas.json)
 
 Settings: `tests.showDuration`, `tests.slowMs`
 
+### Leaks per test (#1774)
+
+- With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.
+- *Atlas problems* gets a warning at the method header, “Test TKontoTests.Bucht does not free memory: 40 bytes (leak)”, source DUnitX.
+- After the run the messages view says how many tests passed with a leak and how many bytes were not freed in total.
+- A leak in setup or teardown counts for the test in which it happened.
+- `tests.leaks` off: the result stays as DUnitX reports it (failure, red).
+
+Setting: `tests.leaks`
+
 ### Create a test case from the unit (#1226)
 
 Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
