@@ -257,6 +257,7 @@ contains
   Atlas.Common.Lsp.SymbolPath in 'Source\Lsp\Atlas.Common.Lsp.SymbolPath.pas',
   Atlas.Common.Architecture.Louvain in 'Source\Architecture\Atlas.Common.Architecture.Louvain.pas',
   Atlas.Common.Architecture.Overview in 'Source\Architecture\Atlas.Common.Architecture.Overview.pas',
+  Atlas.Common.Architecture.Grouping in 'Source\Architecture\Atlas.Common.Architecture.Grouping.pas',
   Atlas.Common.Architecture.Overview.Foundations in 'Source\Architecture\Atlas.Common.Architecture.Overview.Foundations.pas',
   Atlas.Common.Architecture.Overview.Naming in 'Source\Architecture\Atlas.Common.Architecture.Overview.Naming.pas',
   Atlas.Common.Architecture.Overview.Splitting in 'Source\Architecture\Atlas.Common.Architecture.Overview.Splitting.pas',
