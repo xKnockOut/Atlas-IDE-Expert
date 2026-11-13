@@ -66,7 +66,7 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Rules.CustomLayer,

@@ -57,7 +57,7 @@ uses
   System.Classes,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Contract,

@@ -47,7 +47,7 @@ uses
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.BuildRequests,

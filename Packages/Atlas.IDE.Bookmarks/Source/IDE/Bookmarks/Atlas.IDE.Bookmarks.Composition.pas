@@ -58,7 +58,7 @@ uses
   Atlas.UI.Bookmarks.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Bookmarks.Quick,

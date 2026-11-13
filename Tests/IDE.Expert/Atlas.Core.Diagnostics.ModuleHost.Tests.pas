@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Host.Tests;
+﻿unit Atlas.Core.Diagnostics.ModuleHost.Tests;
 
 // Tests zu TAtlasModuleHost (#1455): Beschreibung eines Moduls, Zulassung und die
 // gemeinsame Abmeldung mit ihrer Reihenfolge (stoppen und Anmeldungen lösen,
@@ -36,7 +36,7 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
-  Atlas.Core.Modules.Host;
+  Atlas.Core.Diagnostics.ModuleHost;
 
 type
   TLog = class

@@ -57,7 +57,7 @@ implementation
 uses
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Ci.Adapters.Credentials,
   Atlas.Core.Ci.Adapters.Http,

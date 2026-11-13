@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Host;
+﻿unit Atlas.Core.Diagnostics.ModuleHost;
 
 // Gemeinsame Kleinteile der Kompositions-Units der Module (#1455): die
 // Beschreibung des Moduls (Info), die Zulassung vor dem Anmelden (Admit) und

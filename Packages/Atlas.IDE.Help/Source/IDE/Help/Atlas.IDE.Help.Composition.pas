@@ -47,7 +47,7 @@ uses
   Winapi.Windows,
   Vcl.Menus,
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Help.Links,
   Atlas.UI.Help.Strings,
   Atlas.UI.Help.SettingsSection,

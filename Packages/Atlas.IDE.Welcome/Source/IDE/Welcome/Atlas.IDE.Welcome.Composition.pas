@@ -54,7 +54,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Welcome.WhatsNew,

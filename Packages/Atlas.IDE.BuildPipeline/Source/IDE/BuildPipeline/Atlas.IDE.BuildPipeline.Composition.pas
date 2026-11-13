@@ -74,7 +74,7 @@ uses
   System.JSON,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Host,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
