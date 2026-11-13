@@ -22,11 +22,14 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
   Atlas.Core.Debug.BreakpointSets,
   Atlas.UI.Debug.BreakpointSets;
 
 type
   TAtlasIdeBreakpointSets = class
+  private const
+    cPlacesMs = 3000;
   private class var
     FMessage: TProc<string>;
     FStarted: Boolean;
@@ -38,6 +41,10 @@ type
     FBusy: Boolean;
     FActiveName: string;
     FBranch: string;
+    // Stellen der Sätze für SetNamesAt: Schlüssel Datei|Zeile, Wert die Namen mit Zeilenumbruch getrennt.
+    FPlaces: TStringList;
+    FPlacesAt: UInt64;
+    class procedure ReadPlaces; static;
     class procedure Report(const AText: string); static;
     class function ProjectFolder(out AFolder: string): Boolean; static;
     class function LoadSets(const AFolder: string): TAtlasBreakpointSetList; static;
@@ -62,12 +69,14 @@ type
     class procedure SwitchSet; static;
     class procedure AddSet; static;
     class procedure DeleteSet; static;
+    /// <summary>Namen der Sätze des aktiven Projekts, in denen ein Haltepunkt an AFileName/ALine (ab 0) steht
+    /// (für das Haltepunktfenster #863). Die Sätze werden höchstens alle cPlacesMs neu gelesen.</summary>
+    class function SetNamesAt(const AFileName: string; ALine: Integer): TArray<string>; static;
   end;
 
 implementation
 
 uses
-  System.Classes,
   System.IOUtils,
   System.Generics.Collections,
   Vcl.ExtCtrls,
@@ -211,6 +220,7 @@ begin
   FWatchFolder := '';
   FBusy := False;
   FMessage := nil;
+  FreeAndNil(FPlaces);
 end;
 
 class function TAtlasIdeBreakpointSets.Started: Boolean;
@@ -607,6 +617,61 @@ begin
     end) then
   begin
     FBusy := False;
+  end;
+end;
+
+class procedure TAtlasIdeBreakpointSets.ReadPlaces;
+var
+  mFolder, mKey: string;
+  mSet: TAtlasBreakpointSet;
+  mItem: TAtlasResolvedBreakpoint;
+  mIndex: Integer;
+begin
+  if FPlaces = nil then
+  begin
+    FPlaces := TStringList.Create;
+  end;
+  FPlaces.Clear;
+  FPlacesAt := TThread.GetTickCount64;
+  if not ProjectFolder(mFolder) then
+  begin
+    Exit;
+  end;
+  for mSet in LoadSets(mFolder) do
+  begin
+    for mItem in TAtlasBreakpointSets.Resolve(mSet.Entries, SourceTextFunc()) do
+    begin
+      if not mItem.Found then
+      begin
+        Continue;
+      end;
+      mKey := LowerCase(mItem.Entry.FileName) + '|' + IntToStr(mItem.Line);
+      mIndex := FPlaces.IndexOfName(mKey);
+      if mIndex < 0 then
+      begin
+        FPlaces.Add(mKey + '=' + mSet.Name);
+      end
+      else
+      begin
+        FPlaces.ValueFromIndex[mIndex] := FPlaces.ValueFromIndex[mIndex] + #9 + mSet.Name;
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasIdeBreakpointSets.SetNamesAt(const AFileName: string; ALine: Integer): TArray<string>;
+var
+  mNames: string;
+begin
+  if (FPlaces = nil) or (TThread.GetTickCount64 - FPlacesAt >= cPlacesMs) then
+  begin
+    ReadPlaces;
+  end;
+  mNames := FPlaces.Values[LowerCase(AFileName) + '|' + IntToStr(ALine)];
+  Result := nil;
+  if mNames <> '' then
+  begin
+    Result := mNames.Split([#9]);
   end;
 end;
 
