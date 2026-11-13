@@ -8,7 +8,9 @@
 // „Erhalten“, bei gekürzten Werten mit „(gekürzt)“, dazu die Zahl der
 // abweichenden Zeilen und ob JSON bzw. XML eingerückt wurde. Knöpfe
 // „Erhalten kopieren“ (Zwischenablage, roher Wert) und „Schließen“; Esc
-// schließt. Farben aus der Palette (helles und dunkles Thema), Größen in
+// schließt. Bei Vergleichsdateien (#1881, ExecuteApproval) zusätzlich „Als
+// neue Erwartung übernehmen“ und „Zum Test“; die Wahl gibt das Fenster
+// zurück, übernehmen und springen macht der Aufrufer. Farben aus der Palette (helles und dunkles Thema), Größen in
 // logischen Pixeln. Reine VCL.
 
 interface
@@ -26,6 +28,11 @@ uses
   Atlas.UI.Foundation.Dialog;
 
 type
+  {$SCOPEDENUMS ON}
+  /// <summary>Wahl im Fenster: schließen, als neue Erwartung übernehmen (#1881), zum Test springen.</summary>
+  TAtlasTestsCompareChoice = (Close, Accept, GoToTest);
+  {$SCOPEDENUMS OFF}
+
   /// <summary>Zeichnet die Zeilen eines Vergleichs in zwei Spalten; Größe nach Inhalt (in einer TScrollBox).
   /// </summary>
   TAtlasTestsCompareView = class(TGraphicControl)
@@ -68,17 +75,32 @@ type
     FView: TAtlasTestsCompareView;
     FCopy: TButton;
     FClose: TButton;
+    FAccept: TButton;
+    FGoTo: TButton;
     procedure CopyClick(Sender: TObject);
+    /// <summary>Knöpfe „Als neue Erwartung übernehmen“ und „Zum Test“ (#1881).</summary>
+    procedure AddApprovalButtons(AButtons: TAtlasButtonRow);
   protected
     procedure ThemeChanged; override;
   public
     /// <summary>Vergleich von AExpected und AActual des Tests ATest; AFormat rückt JSON bzw. XML ein.</summary>
     constructor CreateDialog(AOwner: TComponent; const ATest, AExpected, AActual: string; AFormat: Boolean);
+      overload;
+    /// <summary>Wie oben; AApproval zeigt die Knöpfe der Vergleichsdateien (#1881).</summary>
+    constructor CreateDialog(AOwner: TComponent; const ATest, AExpected, AActual: string; AFormat,
+      AApproval: Boolean); overload;
     /// <summary>Modal zeigen.</summary>
     class procedure Execute(const ATest, AExpected, AActual: string; AFormat: Boolean); static;
+    /// <summary>Vergleichsdateien (#1881): approved links, received rechts; Wahl des Benutzers.</summary>
+    class function ExecuteApproval(const ATest, AApproved, AReceived: string;
+      AFormat: Boolean): TAtlasTestsCompareChoice; static;
+    /// <summary>Wahl zum ModalResult des Fensters.</summary>
+    class function ChoiceOf(AModalResult: TModalResult): TAtlasTestsCompareChoice; static;
     property View: TAtlasTestsCompareView read FView;
     property SummaryLabel: TLabel read FSummary;
     property CopyButton: TButton read FCopy;
+    property AcceptButton: TButton read FAccept;
+    property GoToButton: TButton read FGoTo;
   end;
 
 implementation
@@ -272,6 +294,12 @@ end;
 
 constructor TAtlasTestsCompareDialog.CreateDialog(AOwner: TComponent; const ATest, AExpected, AActual: string;
   AFormat: Boolean);
+begin
+  CreateDialog(AOwner, ATest, AExpected, AActual, AFormat, False);
+end;
+
+constructor TAtlasTestsCompareDialog.CreateDialog(AOwner: TComponent; const ATest, AExpected, AActual: string;
+  AFormat, AApproval: Boolean);
 var
   mResult: TAtlasCompareResult;
   mRow, mHeader: TPanel;
@@ -299,6 +327,10 @@ begin
   FView.ShowResult(mResult);
 
   mButtons := AddButtonRow;
+  if AApproval then
+  begin
+    AddApprovalButtons(mButtons);
+  end;
   FCopy := mButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCompareCopyActual));
   FCopy.OnClick := CopyClick;
   FClose := mButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCompareClose),
@@ -306,6 +338,26 @@ begin
   ActiveControl := FClose;
   FitHeight;
   AllowResize(mRow);
+end;
+
+procedure TAtlasTestsCompareDialog.AddApprovalButtons(AButtons: TAtlasButtonRow);
+begin
+  FAccept := AButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsApprovalAccept));
+  FAccept.ModalResult := mrYes;
+  FGoTo := AButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsApprovalGoTo));
+  FGoTo.ModalResult := mrRetry;
+end;
+
+class function TAtlasTestsCompareDialog.ChoiceOf(AModalResult: TModalResult): TAtlasTestsCompareChoice;
+begin
+  case AModalResult of
+    mrYes:
+      Result := TAtlasTestsCompareChoice.Accept;
+    mrRetry:
+      Result := TAtlasTestsCompareChoice.GoToTest;
+  else
+    Result := TAtlasTestsCompareChoice.Close;
+  end;
 end;
 
 procedure TAtlasTestsCompareDialog.CopyClick(Sender: TObject);
@@ -327,6 +379,19 @@ begin
   mDialog := TAtlasTestsCompareDialog.CreateDialog(nil, ATest, AExpected, AActual, AFormat);
   try
     mDialog.ShowModal;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+class function TAtlasTestsCompareDialog.ExecuteApproval(const ATest, AApproved, AReceived: string;
+  AFormat: Boolean): TAtlasTestsCompareChoice;
+var
+  mDialog: TAtlasTestsCompareDialog;
+begin
+  mDialog := TAtlasTestsCompareDialog.CreateDialog(nil, ATest, AApproved, AReceived, AFormat, True);
+  try
+    Result := ChoiceOf(mDialog.ShowModal);
   finally
     mDialog.Free;
   end;

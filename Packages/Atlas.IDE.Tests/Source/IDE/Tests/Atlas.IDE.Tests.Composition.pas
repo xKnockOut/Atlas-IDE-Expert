@@ -8,11 +8,13 @@
 // - den Teil Tests der Feature-Tabelle,
 // - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
 //   „Veraltete Tests ausführen“ (#1770), „Erwartet und erhalten
-//   vergleichen“ (#1779) und „Langsamste Tests zeigen“ (#1772) im
-//   Atlas-Menü, „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
-//   Kontextmenü einer Testunit, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
-//   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
-//   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
+//   vergleichen“ (#1779), „Langsamste Tests zeigen“ (#1772) und
+//   „Liegengebliebene .received-Dateien löschen“ (#1881) im Atlas-Menü,
+//   „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
+//   Kontextmenü einer Testunit, „Test ausführen“/„Test debuggen“ im
+//   Kontextmenü und „Tests dieser Unit ausführen“ im Kontextmenü der
+//   Projektverwaltung (#1817: Testunits der gewählten Units nach Namen in der
+//   Projektgruppe, nur solche
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
 //   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
@@ -105,6 +107,7 @@ uses
   Atlas.IDE.Tests.CoveredBy,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
+  Atlas.IDE.Tests.ApprovalFiles,
   Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.CaseTable,
   Atlas.IDE.Tests.Affected,
@@ -229,6 +232,8 @@ begin
   Result := Default(TAtlasTestCompareHooks);
   Result.CanCompare := GCompare.CanCompare;
   Result.Show := GCompare.Show;
+  // Vergleichsdateien (#1881): „Abweichung · Vergleich“ statt „Vergleichen“.
+  Result.Caption := GCompare.CaptionOf;
 end;
 
 procedure StartTests;
@@ -394,6 +399,29 @@ begin
   end;
 end;
 
+{ Vergleichsdateien (#1881) }
+
+function ApprovalFilesVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeSettings.Current.TestsApprovalFiles;
+end;
+
+procedure CleanApprovalFiles;
+var
+  mProject: string;
+begin
+  // Testprojekt des letzten Laufs; ohne Lauf das aktive Projekt.
+  mProject := '';
+  if GCompare <> nil then
+  begin
+    mProject := GCompare.LastProject;
+  end;
+  if GTests <> nil then
+  begin
+    TAtlasIdeApprovalFiles.Clean(GTests, mProject);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -465,6 +493,9 @@ begin
     Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
     // [TestCase]-Fälle als Tabelle (#1879): sichtbar mit tests.testCaseTable.
     Command('Atlas.EditTestCases', TAtlasTestsTextId.TestsCaseTableCommand, EditCaseTable, CaseTableVisible),
+    // Vergleichsdateien (#1881): sichtbar mit tests.approvalFiles.
+    Command('Atlas.CleanApprovalFiles', TAtlasTestsTextId.TestsApprovalCleanCommand,
+      Guarded(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -509,6 +540,7 @@ begin
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),

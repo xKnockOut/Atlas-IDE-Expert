@@ -101,7 +101,7 @@ uses
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
   TPresentationText = (NeverReached, Before, CircularReference, Active, SameParameters, Overload, PropertyText,
-    Field, From, Hides, Local, Parameter, Only, Branch, AsText, Recent, Frequent);
+    Field, From, Hides, Local, Parameter, Only, Branch, AsText, Recent, Frequent, InProject);
 {$SCOPEDENUMS OFF}
 
 const
@@ -122,7 +122,8 @@ const
      'Zweig ',
      'als ',
      'zuletzt',
-     'häufig'),
+     'häufig',
+     'im Projekt %d×'),
     ('never reached: ',
      ' before',
      'circular reference',
@@ -139,7 +140,8 @@ const
      'branch ',
      'as ',
      'recent',
-     'frequent'));
+     'frequent',
+     'in project %d×'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TPresentationText): string;
@@ -642,7 +644,8 @@ begin
   end;
 end;
 
-/// <summary>Lernende Gewichtung (#418): zuletzt bzw. häufig gewählt.</summary>
+/// <summary>Lernende Gewichtung (#418): zuletzt bzw. häufig gewählt; sonst die Verwendung im Projekt (#2109).
+/// </summary>
 procedure AddUsageTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
 begin
   case AItem.Usage of
@@ -650,7 +653,10 @@ begin
     TAtlasUsageMark.Frequent: AddIdTag(ATags, UiText(TPresentationText.Frequent), TAtlasTagKind.Neutral,
       TAtlasTagId.Frequent);
   else
-    // Übrige Werte bewusst ohne Wirkung.
+    if AItem.ProjectUses > 0 then
+    begin
+      AddTag(ATags, Format(UiText(TPresentationText.InProject), [AItem.ProjectUses]), TAtlasTagKind.Neutral);
+    end;
   end;
 end;
 

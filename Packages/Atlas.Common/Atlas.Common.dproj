@@ -144,6 +144,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.TypeText.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.TypeMembers.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.UsageCounts.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameFacts.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.LibraryUnits.pas"/>
@@ -236,6 +237,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Slash.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.HiddenMembers.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.ProjectFrequency.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Lists.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Hooks.pas"/>
