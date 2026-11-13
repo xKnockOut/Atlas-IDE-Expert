@@ -13,7 +13,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver;
 
 type

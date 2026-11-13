@@ -44,6 +44,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Comparison;
 

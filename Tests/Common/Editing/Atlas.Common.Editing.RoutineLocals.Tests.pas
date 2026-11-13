@@ -33,7 +33,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals;

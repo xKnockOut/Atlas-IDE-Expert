@@ -117,7 +117,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.StateDialog,
   Atlas.IDE.Foundation.Settings;
@@ -251,7 +252,7 @@ begin
   mHint := FTime.Hint;
   if mState <> '' then
   begin
-    mHint := Trim(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.StatusStateHint, [mKey, mState]) + sLineBreak +
+    mHint := Trim(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.StatusStateHint, [mKey, mState]) + sLineBreak +
       FTime.Hint);
   end;
   if (mKey = '') or ((mState = '') and (FTime.Key = '')) then
@@ -421,19 +422,19 @@ var
 begin
   if not FRead.Succeeded then
   begin
-    AddItem(FMenu.Items, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.StatusMenuFailed), 0, nil);
+    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuFailed), 0, nil);
   end
   else if Length(FEntries) = 0 then
   begin
-    AddItem(FMenu.Items, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.StatusMenuNone), 0, nil);
+    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuNone), 0, nil);
   end;
   for mIndex := 0 to High(FEntries) do
   begin
     AddItem(FMenu.Items, FEntries[mIndex].Caption, mIndex, EntryClick);
   end;
   AddItem(FMenu.Items, cLineCaption, 0, nil);
-  AddItem(FMenu.Items, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.StatusMenuComment), 0, CommentClick);
-  AddItem(FMenu.Items, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEnd), 0, EndClick);
+  AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuComment), 0, CommentClick);
+  AddItem(FMenu.Items, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEnd), 0, EndClick);
 end;
 
 procedure TAtlasIdeIssueState.ShowMenu(const APoint: TPoint);
@@ -570,11 +571,11 @@ begin
   end;
   if not AResult.Succeeded then
   begin
-    FHooks.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.StatusStateFailed,
+    FHooks.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.StatusStateFailed,
       [AKey, TAtlasTrackerEndDialog.ErrorText(AKey, AResult)]));
     Exit;
   end;
-  FHooks.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
+  FHooks.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
     [AKey, TAtlasTrackerEndDialog.SummaryText(AChange, AAfter)]));
   if not SameText(AKey, FIssue.Key) then
   begin

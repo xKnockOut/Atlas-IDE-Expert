@@ -26,7 +26,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.Dialogs,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.TestResults.Strings;
 
 const
   // Ein Steuerzeichen am Anfang der Beschriftung lässt InputQuery das Feld verdecken.
@@ -41,9 +41,9 @@ begin
   SetLength(mValues, 2);
   mValues[0] := AUser;
   mValues[1] := '';
-  Result := InputQuery(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CiLoginTitle, [AServer]),
-    [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginUser),
-    cHidden + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginToken)], mValues);
+  Result := InputQuery(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.CiLoginTitle, [AServer]),
+    [TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginUser),
+    cHidden + TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginToken)], mValues);
   if Result then
   begin
     AUser := Trim(mValues[0]);
