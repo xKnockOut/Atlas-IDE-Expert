@@ -64,7 +64,7 @@ foreach ($Fragment in $Fragments) {
             $Name = $Matches[1].Trim()
             $HasEntry = $false
             if ($Headings -cnotcontains $Name) {
-                $Problems.Add("${Where}: unbekannte Überschrift „$Name“ (erlaubt: $($Headings -join ', '))")
+                $Problems.Add("${Where}: unbekannte Überschrift '$Name' (erlaubt: $($Headings -join ', '))")
                 $Current = ''
                 continue
             }
@@ -72,11 +72,11 @@ foreach ($Fragment in $Fragments) {
             continue
         }
         if ($Line -match '^#') {
-            $Problems.Add("${Where}: nur Überschriften „### …“ erlaubt")
+            $Problems.Add("${Where}: nur Überschriften '### …' erlaubt")
             continue
         }
         if ($Current -eq '') {
-            $Problems.Add("${Where}: Eintrag ohne Überschrift „### …“ davor")
+            $Problems.Add("${Where}: Eintrag ohne Überschrift '### …' davor")
             continue
         }
         if ($Line -match '^- \S') {
@@ -90,7 +90,7 @@ foreach ($Fragment in $Fragments) {
             $Entries[$Current][$Last] = $Entries[$Current][$Last] + "`n" + $Line
             continue
         }
-        $Problems.Add("${Where}: erwartet „### Überschrift“ oder „- Eintrag“")
+        $Problems.Add("${Where}: erwartet '### Überschrift' oder '- Eintrag'")
     }
     if ($Count -eq 0) {
         $Problems.Add("changelog.d/$($Fragment.Name): keine Einträge")
