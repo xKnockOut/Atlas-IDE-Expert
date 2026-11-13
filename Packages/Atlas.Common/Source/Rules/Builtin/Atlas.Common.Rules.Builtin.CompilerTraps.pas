@@ -70,6 +70,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts;
 

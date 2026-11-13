@@ -8,6 +8,7 @@ Zurück zum [README](../../../README_DE.md)
 
 - Detailpanel mit eingefärbter Deklaration und Doku
 - Filter-Chips, unscharfe Suche, lernende Reihenfolge
+- Rangfolge aus der Verwendung im Projekt (#2109, `completion.projectFrequency`): Solange die eigene Gewichtung leer ist, stehen nach `X.` die Mitglieder oben, deren Name in den Units des Projekts am häufigsten vorkommt, mit der Marke „im Projekt 214×“. Eigene Übernahmen („zuletzt“, „häufig“) und bessere Treffer gehen vor. Gezählt wird aus den Verwendungen des Index nach Namen; Bibliotheken zählen nicht, nach einer Änderung stimmt die Zahl ohne Neuaufbau.
 - Favoriten (Strg+D)
 - Tippfehler-Vorschläge („Meintest du“)
 - Vorschau im Editor

@@ -218,6 +218,9 @@ type
     /// DeclaringUnit. Die Liste zeigt solche Einträge erst nach einem zweiten Strg+Leertaste, ausgegraut; sie
     /// werden nicht eingesetzt.</summary>
     Inaccessible: string;
+    /// <summary>Rangfolge aus der Verwendung im Projekt (#2109): Stellen, an denen der Name in den Units des
+    /// Projekts vorkommt; 0 ohne Zählung. Ordnet nach der eigenen Gewichtung, Marke „im Projekt n×“.</summary>
+    ProjectUses: Integer;
     /// <summary>Typkonvertierung (#490): Umwandlung in diesen Typ („→ string“), Name ist der Ausdruck
     /// (Count.ToString); ConvertFrom ist der Name des Originals, vor dem der Eintrag steht und nach dem er
     /// filtert. '' bei anderen Einträgen.</summary>

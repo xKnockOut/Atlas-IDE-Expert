@@ -37,6 +37,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

@@ -160,7 +160,8 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Text.Json;
 
 function SeverityOf(AValue: TJSONValue; out AHasOptions: Boolean): string;
 begin
@@ -174,23 +175,6 @@ begin
   begin
     Result := TJSONObject(AValue).GetValue<string>('severity', '');
   end;
-end;
-
-function ParseRules(const ARulesJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  mValue := nil;
-  if ARulesJson <> '' then
-  begin
-    mValue := TJSONObject.ParseJSONValue(ARulesJson);
-  end;
-  if mValue is TJSONObject then
-  begin
-    Exit(TJSONObject(mValue));
-  end;
-  mValue.Free;
-  Result := TJSONObject.Create;
 end;
 
 function RulesText(ARules: TJSONObject): string;
@@ -840,7 +824,7 @@ var
   mValue: TJSONValue;
   mPair: TJSONPair;
 begin
-  mRules := ParseRules(ARulesJson);
+  mRules := TJsonRead.ParseObjectOrEmpty(ARulesJson);
   try
     mValue := nil;
     if AValueJson <> '' then
@@ -872,7 +856,7 @@ var
   mPattern: string;
   mPair: TJSONPair;
 begin
-  mRules := ParseRules(ARulesJson);
+  mRules := TJsonRead.ParseObjectOrEmpty(ARulesJson);
   try
     mRule := RuleObject(mRules, AId);
     mPair := mRule.RemovePair('exclude');
@@ -910,7 +894,7 @@ var
   mRules: TJSONObject;
   mValue: TJSONValue;
 begin
-  mRules := ParseRules(ARulesJson);
+  mRules := TJsonRead.ParseObjectOrEmpty(ARulesJson);
   try
     mValue := mRules.GetValue(GroupKey(AGroup));
     if mValue is TJSONObject then
@@ -941,7 +925,7 @@ var
   mValue: TJSONValue;
 begin
   Result := '';
-  mRules := ParseRules(ARulesJson);
+  mRules := TJsonRead.ParseObjectOrEmpty(ARulesJson);
   try
     mValue := mRules.GetValue(GroupKey(AGroup));
     if mValue is TJSONObject then
@@ -968,7 +952,7 @@ var
   mPair: TJSONPair;
   mSeverity: string;
 begin
-  mRules := ParseRules(ARulesJson);
+  mRules := TJsonRead.ParseObjectOrEmpty(ARulesJson);
   try
     // Text ("off") und Objekt einheitlich als Objekt bearbeiten, danach so knapp wie möglich zurückschreiben.
     mPair := mRules.RemovePair(GroupKey(AGroup));
@@ -1237,8 +1221,8 @@ var
   mValue: TJSONValue;
 begin
   Result := nil;
-  mOld := ParseRules(AOldJson);
-  mUpdated := ParseRules(ANewJson);
+  mOld := TJsonRead.ParseObjectOrEmpty(AOldJson);
+  mUpdated := TJsonRead.ParseObjectOrEmpty(ANewJson);
   try
     for mPair in mUpdated do
     begin

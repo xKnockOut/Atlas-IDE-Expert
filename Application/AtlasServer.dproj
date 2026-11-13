@@ -94,6 +94,8 @@
         <DCCReference Include="Source\Shell\Shell.Composition.CoveredBy.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.LeakSetup.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.LeakCandidates.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.RuntimeReport.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Core.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AnalysisArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CodeArea.pas"/>
@@ -174,6 +176,7 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.Tools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.NavigationTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.BuildTestTools.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.ReportTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ArchitectureTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.EditingTools.pas"/>

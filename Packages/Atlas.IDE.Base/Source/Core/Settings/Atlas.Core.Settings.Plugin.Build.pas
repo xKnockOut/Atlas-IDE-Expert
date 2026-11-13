@@ -123,12 +123,18 @@ type
     TestsCompare: Boolean;
     /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
     TestsCompareFormat: Boolean;
+    /// <summary>Meldungen der Hilfs-Unit Atlas.Testing.Approval erkennen: Abweichung an der Testmarke, übernehmen,
+    /// aufräumen (#1881, tests.approvalFiles).</summary>
+    TestsApprovalFiles: Boolean;
     /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
     /// (#1772, tests.showDuration).</summary>
     TestsShowDuration: Boolean;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
+    /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
+    /// </summary>
+    TestsCaseTable: Boolean;
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
@@ -271,8 +277,10 @@ begin
   Result.TestsFailureInline := True;
   Result.TestsCompare := True;
   Result.TestsCompareFormat := True;
+  Result.TestsApprovalFiles := True;
   Result.TestsShowDuration := True;
   Result.TestsSlowMs := cDefaultTestsSlowMs;
+  Result.TestsCaseTable := True;
   Result.TestsLeaks := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
@@ -360,8 +368,10 @@ begin
   AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('TestsCompare', TestsCompare);
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
+  AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
