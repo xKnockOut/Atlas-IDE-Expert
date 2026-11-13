@@ -30,6 +30,9 @@ type
     class procedure ShowActions(const AUsable: TArray<TLspCodeAction>); static;
   public
     class procedure CodeActions; static;
+    /// <summary>AFound zur Wahl wie bei CodeActions (bevorzugte zuerst), etwa die Aktionen für ein nicht
+    /// sichtbares Mitglied aus der Vervollständigung (#2108); ohne Aktion eine Meldung.</summary>
+    class procedure OfferActions(const AFound: TArray<TLspCodeAction>); static;
     /// <summary>Code-Aktion anwenden: erst die Änderung, dann der Befehl; auch für das Erzeugen-Menü (#719).
     /// </summary>
     class procedure ApplyAction(const AAction: TLspCodeAction); static;
@@ -201,13 +204,19 @@ var
   mFileName: string;
   mLines: TArray<string>;
   mSelection: TLspRange;
-  mFound, mUsable: TArray<TLspCodeAction>;
+  mFound: TArray<TLspCodeAction>;
 begin
-  if not Current(mView, mFileName, mLines, mSelection) or not FetchActions(mFileName, mSelection, mFound) then
+  if Current(mView, mFileName, mLines, mSelection) and FetchActions(mFileName, mSelection, mFound) then
   begin
-    Exit;
+    OfferActions(mFound);
   end;
-  mUsable := OrderedActions(mFound);
+end;
+
+class procedure TAtlasEditorActionCommands.OfferActions(const AFound: TArray<TLspCodeAction>);
+var
+  mUsable: TArray<TLspCodeAction>;
+begin
+  mUsable := OrderedActions(AFound);
   if Length(mUsable) = 0 then
   begin
     Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.EditorNoActions));

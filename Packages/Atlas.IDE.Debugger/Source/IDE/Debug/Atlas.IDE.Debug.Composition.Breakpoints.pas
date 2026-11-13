@@ -2,8 +2,8 @@
 
 // Modul Debugger, Teil der Komposition: Anhalten und Haltepunkte. Teile der
 // Feature-Tabelle, Befehle, Menüeinträge und Einstellungen für „Beim nächsten
-// Ereignis anhalten“ (#856), „Haltepunkte prüfen“ (#577) und Haltepunkt-Sätze
-// (#586).
+// Ereignis anhalten“ (#856), „Haltepunkte prüfen“ (#577), Haltepunkt-Sätze
+// (#586), das Haltepunktfenster (#863) und „Haltepunkt nur für ein Objekt“ (#857).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -24,6 +24,8 @@ procedure InstallBreakCommands;
 procedure UninstallBreakCommands;
 /// <summary>Einstellungen übernehmen.</summary>
 procedure ApplyBreakSettings;
+/// <summary>IDE-Thema gewechselt: Fenster der Haltepunkte nachziehen.</summary>
+procedure BreakpointsThemeChanged;
 
 implementation
 
@@ -36,6 +38,8 @@ uses
   Atlas.IDE.Debug.EventBreak,
   Atlas.IDE.Debug.BreakpointCheck,
   Atlas.IDE.Debug.BreakpointSets,
+  Atlas.IDE.Debug.BreakpointList,
+  Atlas.IDE.Debug.InstanceBreakpoint,
   Atlas.UI.Debug.Strings;
 
 procedure MessageLine(AText: string);
@@ -96,6 +100,31 @@ begin
     end, StartBreakpointCheck, TAtlasIdeBreakpointCheck.Release);
 end;
 
+function InstanceBreakpointVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugInstanceBreakpoints;
+end;
+
+procedure StartInstanceBreakpoints;
+begin
+  TAtlasIdeInstanceBreakpoint.Start(MessageLine);
+end;
+
+/// <summary>Haltepunkt nur für ein Objekt (#857): Frage zu Adressbedingungen vor dem Start; aus = kein Zuhörer.
+/// </summary>
+function InstanceBreakpointPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugInstanceBreakpoints',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugInstanceBreakpoints;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeInstanceBreakpoint.Started;
+    end, StartInstanceBreakpoints, TAtlasIdeInstanceBreakpoint.Release);
+end;
+
 /// <summary>Haltepunkt-Sätze (#586): Befehle und Beobachtung des Branchs.</summary>
 function BreakpointSetsPart: IAtlasFeaturePart;
 begin
@@ -110,9 +139,28 @@ begin
     end, StartBreakpointSets, TAtlasIdeBreakpointSets.Release);
 end;
 
+function BreakpointsWindowVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugBreakpointsWindow;
+end;
+
+/// <summary>Haltepunktfenster (#863): Sitzung beobachten, Etiketten laden; aus = kein Fenster.</summary>
+function BreakpointsWindowPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugBreakpointsWindow',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugBreakpointsWindow;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugBreakpointList.Started;
+    end, TAtlasIdeDebugBreakpointList.Start, TAtlasIdeDebugBreakpointList.Release);
+end;
+
 function BreakpointParts: TArray<IAtlasFeaturePart>;
 begin
-  Result := [BreakpointCheckPart, BreakpointSetsPart];
+  Result := [BreakpointCheckPart, BreakpointSetsPart, BreakpointsWindowPart, InstanceBreakpointPart];
 end;
 
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
@@ -142,7 +190,15 @@ begin
     Command('Atlas.BreakpointSetAdd', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetAddCommand),
       TAtlasIdeBreakpointSets.AddSet, BreakpointSetsRunning),
     Command('Atlas.BreakpointSetDelete', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetDeleteCommand),
-      TAtlasIdeBreakpointSets.DeleteSet, BreakpointSetsRunning)];
+      TAtlasIdeBreakpointSets.DeleteSet, BreakpointSetsRunning),
+    // Haltepunktfenster (#863); nur sichtbar, solange debug.breakpointsWindow an ist.
+    Command('Atlas.BreakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsWindowCommand),
+      TAtlasIdeDebugBreakpointList.ShowWindow, BreakpointsWindowVisible),
+    // Haltepunkt nur für ein Objekt (#857); nur sichtbar, solange debug.instanceBreakpoints an ist.
+    Command('Atlas.BreakpointOnlyForObject', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceObjectCommand),
+      TAtlasIdeInstanceBreakpoint.RestrictToObject, InstanceBreakpointVisible),
+    Command('Atlas.BreakpointOnlyIf', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceFieldCommand),
+      TAtlasIdeInstanceBreakpoint.RestrictToField, InstanceBreakpointVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -152,12 +208,30 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Ist das Programm angehalten? Nur dann gibt es ein Self.</summary>
+function WhileDebugging(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.Debugging;
+end;
+
+/// <summary>Eintrag im Untermenü „Debuggen“ von Atlas im Kontextmenü des Editors; nur während einer Debug-Sitzung.
+/// </summary>
+function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
+  Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+  Result.Group := 'debug';
+  Result.When := WhileDebugging;
+end;
+
 function BreakpointMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
     MenuEntry('Atlas.CheckBreakpoints', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.BreakpointSetSave', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointSetSwitch', TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry('Atlas.BreakpointSetSwitch', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.BreakpointsWindow', TAtlasMenuPlace.AtlasMenu),
+    ContextEntry('Atlas.BreakpointOnlyForObject'), ContextEntry('Atlas.BreakpointOnlyIf')];
 end;
 
 procedure InstallBreakCommands;
@@ -167,16 +241,24 @@ begin
     begin
       Result := Session;
     end, MessageLine);
+  TAtlasIdeDebugBreakpointList.Install(MessageLine);
 end;
 
 procedure UninstallBreakCommands;
 begin
+  TAtlasIdeDebugBreakpointList.Uninstall;
   TAtlasIdeEventBreak.Uninstall;
 end;
 
 procedure ApplyBreakSettings;
 begin
   TAtlasIdeEventBreak.ApplySettings;
+  TAtlasIdeDebugBreakpointList.ApplySettings;
+end;
+
+procedure BreakpointsThemeChanged;
+begin
+  TAtlasIdeDebugBreakpointList.ThemeChanged;
 end;
 
 end.

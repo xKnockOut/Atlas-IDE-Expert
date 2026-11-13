@@ -23,6 +23,10 @@ type
     procedure KeepsRaiseItemsWithoutSnippets;
     [Test]
     procedure ReadsSyntaxNotice;
+    /// <summary>#2108: nicht sichtbare Mitglieder mit Befehl für ihre Aktionen, außer aus fremdem Code.
+    /// </summary>
+    [Test]
+    procedure ReadsHiddenMembersWithActions;
     [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
@@ -314,6 +318,34 @@ begin
   end;
   Assert.AreEqual(Ord(TAtlasSyntaxTrust.Sure), Ord(Notice.Trust));
   Assert.AreEqual(-1, Notice.Line);
+end;
+
+procedure TAtlasCompletionProviderTests.ReadsHiddenMembersWithActions;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  Response := TJSONObject.ParseJSONValue('{"isIncomplete":false,"items":[],"hiddenMembers":{"count":2,' +
+    '"items":[{"name":"FEintraege","kind":5,"visibility":"private","container":"TZaehler","unit":"Zaehler",' +
+    '"uri":"file:///C:/P/Zaehler.pas","line":7,"character":4,"external":false},' +
+    '{"name":"FHandle","kind":5,"visibility":"private","container":"TStream","unit":"System.Classes",' +
+    '"uri":"file:///C:/BDS/System.Classes.pas","line":9,"character":4,"external":true}]}}');
+  try
+    Items := TAtlasServerCompletionProvider.HiddenMembersOf(Response, 10);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(Items)));
+  Assert.AreEqual('FEintraege', Items[0].Name);
+  Assert.AreEqual('private', Items[0].Inaccessible);
+  Assert.AreEqual('TZaehler', Items[0].DeclaringClass);
+  Assert.AreEqual(10, Items[0].Rank);
+  Assert.AreEqual(TAtlasServerCompletionProvider.cMemberActionsCommand, Items[0].Command);
+  Assert.AreEqual('["file:///C:/P/Zaehler.pas",{"line":7,"character":4},"FEintraege"]',
+    Items[0].CommandArguments);
+  // Fremder Code: ausgegraut, aber ohne Aktionen.
+  Assert.AreEqual('FHandle', Items[1].Name);
+  Assert.AreEqual('', Items[1].Command);
 end;
 
 procedure TAtlasCompletionProviderTests.KeepsRaiseItemsWithoutSnippets;

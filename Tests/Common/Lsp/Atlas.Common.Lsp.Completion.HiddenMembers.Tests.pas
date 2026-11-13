@@ -231,6 +231,7 @@ begin
     Assert.AreEqual('TZaehler', FirstHidden(mAnswer, 'container'));
     Assert.AreEqual('Zaehler', FirstHidden(mAnswer, 'unit'));
     Assert.AreEqual('false', FirstHidden(mAnswer, 'external'));
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Zaehler.pas'), FirstHidden(mAnswer, 'uri'));
   finally
     mAnswer.Free;
   end;

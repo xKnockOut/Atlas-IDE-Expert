@@ -42,6 +42,8 @@ type
     NewSignatureSource: TFunc<TAtlasSessionFunc, IAtlasSignatureSource>;
     /// <summary>Code-Aktionen an der Schreibmarke öffnen (Klick auf die Marke „braucht kein Self“, #686).</summary>
     OpenCodeActions: TProc;
+    /// <summary>Aktionen für ein nicht sichtbares Mitglied der Vervollständigung zur Wahl (#2108).</summary>
+    OfferActions: TAtlasOfferActionsProc;
   end;
 
   /// <summary>Editor-Anbindungen des Managers.</summary>
@@ -244,6 +246,8 @@ begin
       end,
       FHooks.NewCompletionSources);
     // Nach "Add(|)" den Parameter-Hint öffnen (#430).
+    // Enter auf einem nicht sichtbaren Mitglied (#2108): dieselbe Auswahl wie Strg+.
+    FCompletion.OnOfferActions := FHooks.OfferActions;
     FCompletion.OnOpenSignature :=
       procedure
       begin
