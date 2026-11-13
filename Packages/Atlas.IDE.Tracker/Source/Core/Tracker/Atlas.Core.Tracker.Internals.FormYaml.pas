@@ -26,7 +26,7 @@ type
   public
     /// <summary>Baum zu AText; nil bei nicht unterstützten Konstrukten oder fehlerhaftem Text. Der Aufrufer gibt
     /// das Ergebnis frei.</summary>
-    class function Parse(const AText: string): TJSONValue; static;
+    class function ToJson(const AText: string): TJSONValue; static;
   end;
 
 implementation
@@ -922,7 +922,7 @@ end;
 
 { TAtlasFormYaml }
 
-class function TAtlasFormYaml.Parse(const AText: string): TJSONValue;
+class function TAtlasFormYaml.ToJson(const AText: string): TJSONValue;
 var
   mReader: TYamlReader;
 begin

@@ -444,7 +444,7 @@ var
   mItem: TJSONValue;
   mField: TAtlasIssueFormField;
 begin
-  mRoot := TAtlasFormYaml.Parse(AText);
+  mRoot := TAtlasFormYaml.ToJson(AText);
   try
     if not (mRoot is TJSONObject) then
     begin
@@ -499,7 +499,7 @@ begin
     AForm.Body := Trim(AText);
     Exit;
   end;
-  mHead := TAtlasFormYaml.Parse(string.Join(#10, Copy(mLines, 1, mEnd - 1)));
+  mHead := TAtlasFormYaml.ToJson(string.Join(#10, Copy(mLines, 1, mEnd - 1)));
   try
     if mHead is TJSONObject then
     begin
@@ -556,7 +556,7 @@ var
   mRoot: TJSONValue;
 begin
   Result := True;
-  mRoot := TAtlasFormYaml.Parse(AConfig);
+  mRoot := TAtlasFormYaml.ToJson(AConfig);
   try
     if mRoot is TJSONObject then
     begin
