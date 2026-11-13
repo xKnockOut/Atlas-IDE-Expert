@@ -54,6 +54,7 @@ implementation
 uses
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Core.Settings.FolderList,
+  Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Strings;
 
@@ -64,6 +65,7 @@ const
   cStepFilterPatternsKey = 'debug.stepFilters.patterns';
   cBreakExcludedKey = 'debug.breakOnNextEvent.excluded';
   cOwnCodeFoldersKey = 'debug.ownCodeFolders';
+  cEventLogColorsKey = 'debug.eventLogColors';
 
 { TAtlasDebugSettingsSection }
 
@@ -151,6 +153,9 @@ begin
   Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
   // Haltepunkt nur für ein Objekt (#857).
   Switch('debug.instanceBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInstanceBreakpoints));
+  // Haltepunkt-Sätze (#586).
+  Switch('debug.breakpointSetPerBranch',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;
@@ -172,6 +177,14 @@ begin
   Switch('debug.deadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDeadlocks));
   // Parallele Aufrufstapel (#837).
   Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
+  // Threads im Quelltext (#852).
+  Switch('debug.threadsInSource', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadsInSource));
+  // Threads einfrieren (#852, experimentell).
+  Switch('debug.threadFreeze', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadFreeze));
+  // Herkunft eingereihter Methoden (#859, experimentell).
+  Switch('debug.asyncOrigin', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOrigin));
+  Number('debug.asyncOrigin.maxPerSite',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOriginMaxPerSite));
   Line('debug.parallelStacks.waitRoutines',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksWaitRoutines));
   Number('debug.parallelStacks.maxThreads',
@@ -186,6 +199,24 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
   Switch('debug.inlineValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValues));
   Number('debug.inlineValuesPerLine', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValuesPerLine));
+  // „Warum bin ich hier?“ (#1878).
+  Switch('debug.whyHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHere));
+  Number('debug.whyHere.depth', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHereDepth));
+  // Ereignisprotokoll (#580).
+  Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
+  Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));
+  Switch('debug.logpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLogpoints));
+  Line('debug.logpointPrefix', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLogpointPrefix));
+  Switch('debug.noSourcePage', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourcePage));
+  Line('debug.noSourcePage.ignoredUnits', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourceIgnored));
+  Switch('debug.restart', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestart));
+  Switch('debug.restart.reenableBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestartReenable));
+  // Erneut anhängen (#2171).
+  Switch('debug.reattach', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattach));
+  Key('debug.reattach.key', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachKey));
+  Number('debug.reattach.waitIntervalMs', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachWait));
+  // Startverbünde (#867).
+  Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
@@ -258,6 +289,7 @@ begin
   AValues.WriteString(cBreakExcludedKey,
     TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
   AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));
+  AValues.WriteString(cEventLogColorsKey, TAtlasEventColors.Normalize(AValues.ReadString(cEventLogColorsKey)));
 end;
 
 procedure TAtlasDebugSettingsSection.Close;

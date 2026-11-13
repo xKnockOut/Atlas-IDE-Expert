@@ -334,7 +334,14 @@ begin
   begin
     Result.AddPair('code', AMessage.Code);
   end;
-  Result.AddPair('source', cCompilerSource);
+  if AMessage.Source <> '' then
+  begin
+    Result.AddPair('source', AMessage.Source);
+  end
+  else
+  begin
+    Result.AddPair('source', cCompilerSource);
+  end;
   Result.AddPair('message', AMessage.Text);
 end;
 

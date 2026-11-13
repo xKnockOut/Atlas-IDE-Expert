@@ -1,0 +1,5 @@
+﻿Exception EAccessViolation: Access violation at address 0045A1B2 in module 'Kunden.exe'. Read of address 00000000
+[0045A1B2]{Kunden.exe  } Kunden.Liste.TKundenListe.Lade (Line 42, "Kunden.Liste.pas" + 3) + $12
+[0045B3C4]{Kunden.exe  } Main.TMainForm.FormCreate (Line 17, "Main.pas" + 1) + $2C
+[00512345]{Kunden.exe  } Vcl.Forms.TCustomForm.DoCreate + $64
+[76B0F989]{KERNEL32.DLL} BaseThreadInitThunk + $9

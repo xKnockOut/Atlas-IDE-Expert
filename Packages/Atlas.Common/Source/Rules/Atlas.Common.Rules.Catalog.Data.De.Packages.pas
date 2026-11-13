@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDePackages: array[0..52] of string = (
+  cCatalogLinesDePackages: array[0..88] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',
@@ -87,6 +87,60 @@ const
     'die Meldung beim Fehlschlag nennt deshalb die Konstante als erhaltenen und den berechneten Wert als erwarteten Wert und führt in die Irre. Als Konstante zählen Literale, True, False, nil, deklarierte ' +
     'Konstanten und Aufzählungswerte, auch mit Vorzeichen oder über Operatoren verknüpft. Korrektur (sicher): die beiden Argumente tauschen; weitere Argumente (Meldung, Toleranz) bleiben. Aufrufe mit zwei ' +
     'Konstanten oder zwei berechneten Werten bleiben still. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch."',
+    '    },',
+    '{',
+    '      "id": "dunitx-setup-not-torn-down",',
+    '      "name": "Feld im Setup erzeugt, im TearDown nicht freigegeben",',
+    '      "description": "Ein Feld einer Testklasse, dem die [Setup]-Methode (bzw. [SetupFixture]) ein neues Objekt zuweist (TFake.Create …) und das die passende [TearDown]-Methode (bzw. [TearDownFixture]' +
+    ') weder mit Free, FreeAndNil, DisposeOf oder Destroy freigibt noch auf nil setzt: Jeder einzelne Test leckt das Objekt. Methoden derselben Klasse, die TearDown direkt aufruft, zählen mit (eine Ebene).' +
+    ' Felder vom Interfacetyp (Referenzzählung) und Objekte mit Besitzer (TButton.Create(FForm)) bleiben still. Mit der Option managedFields (Vorgabe an) auch string- und dynamische Array-Felder, die Setup' +
+    ' belegt und TearDown nicht leert: Der Leckmonitor von DUnitX zählt ihren Speicher jedem Test zu. Ohne TearDown-Methode gibt es eine Meldung am Setup für alle Felder. Korrektur (sicher): FreeAndNil(FFe' +
+    'ld); (ohne SysUtils FFeld.Free; FFeld := nil;) bzw. FFeld := ''''; oder FFeld := nil; am Ende von TearDown; ohne TearDown legt sie die Methode samt Attribut und Deklaration an. Nur in Testunits (uses DU' +
+    'nitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit mittel: Freigaben in tiefer liegenden Hilfsmethoden verfolgt die Regel nicht.",',
+    '      "options": [',
+    '        {',
+    '          "name": "managedFields",',
+    '          "description": "Auch string- und dynamische Array-Felder melden, die Setup belegt und TearDown nicht leert."',
+    '        }',
+    '      ]',
+    '    },',
+    '{',
+    '      "id": "dunitx-leak-monitor",',
+    '      "name": "DUnitX-Testprogramm ohne Leckmonitor",',
+    '      "description": "Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je' +
+    ' Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintra' +
+    'gen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben st' +
+    'ill. Sicherheit hoch."',
+    '    },',
+    '{',
+    '      "id": "dunitx-ignore-without-reason",',
+    '      "name": "[Ignore] ohne Begründung",',
+    '      "description": "[Ignore] ohne Argument oder mit leerer Begründung ([Ignore('''')]): Der Testbericht sagt nicht, warum der Test nicht läuft, und später weiß niemand, ob er wieder an darf. Begründun' +
+    'gen, die kein String-Literal sind (eine Konstante), gelten als vorhanden. Die Attribute werden über ihren Namen erkannt (mit oder ohne Unit und Endung Attribute), die Regel geht also auch ohne DUnitX ' +
+    'im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Den Grund kennt nur, wer den Test abgeschaltet hat."',
+    '    },',
+    '{',
+    '      "id": "dunitx-category-empty",',
+    '      "name": "[Category] ohne Namen",',
+    '      "description": "[Category('''')] oder ein Kategorietext nur aus Kommas und Leerzeichen ([Category('' , '')]): Der Test landet in keiner Kategorie, ein Filter wie --include findet ihn nie. Namen, die' +
+    ' kein String-Literal sind, gelten als vorhanden. Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFrame' +
+    'work oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Die gemeinte Kategorie ist unbekannt."',
+    '    },',
+    '{',
+    '      "id": "dunitx-fixture-without-test",',
+    '      "name": "[TestFixture] ohne Test",',
+    '      "description": "Eine Klasse mit [TestFixture], die keine Methode mit [Test], [TestCase], [NamedTestCase] oder [RepeatTest] und keine published-Methode hat (DUnitX nimmt published-Methoden ohne A' +
+    'ttribut als Tests): Die Klasse läuft leer, der Bericht sieht grün aus. Klassen, deren Vorfahr (außer TObject) nicht in derselben Datei steht, bleiben still, ebenso Klassen, deren Vorfahr in der Datei ' +
+    'Tests hat (geerbte Tests). Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUnitX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.' +
+    '*). Sicherheit mittel. Keine Schnellkorrektur."',
+    '    },',
+    '{',
+    '      "id": "dunitx-duplicate-attribute",',
+    '      "name": "Attribut doppelt",',
+    '      "description": "Dasselbe DUnitX-Attribut zweimal an derselben Klasse oder Methode: [Test] [Test], [Ignore] zweimal, [TestFixture] zweimal usw. TestCase, NamedTestCase und Category dürfen mehrfac' +
+    'h stehen und werden nur bei gleichen Argumenten gemeldet (der Fall liefe doppelt). Unbekannte Attribute bleiben still. Die Attribute werden über ihren Namen erkannt, die Regel geht also auch ohne DUni' +
+    'tX im Suchpfad. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Korrektur (sicher): das zweite entfernen, allein auf seiner Zeile samt Zeile, in einer ' +
+    'Liste samt Komma."',
     '    }');
 
 implementation

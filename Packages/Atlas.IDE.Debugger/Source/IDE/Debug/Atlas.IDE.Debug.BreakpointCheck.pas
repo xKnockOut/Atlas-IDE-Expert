@@ -42,6 +42,7 @@ type
     FSession: TAtlasBreakpointCheckSessionFunc;
     FMessage: TProc<string>;
     FListener: IAtlasIdeDebugListener;
+    FLastProblems: TAtlasBreakpointProblems;
     class procedure Report(const AText: string); static;
     class function Spots: TAtlasBreakpointSpots; static;
     class procedure SyncOpenFiles(const ASession: TLspSession; const ASpots: TAtlasBreakpointSpots); static;
@@ -60,6 +61,9 @@ type
     class function Started: Boolean; static;
     /// <summary>Befehl Atlas.CheckBreakpoints: Haltepunkte des aktiven Projekts jetzt prüfen.</summary>
     class procedure Run; static;
+    /// <summary>Funde der letzten Prüfung (vor dem Start oder per Befehl), für das Haltepunktfenster (#863); nil
+    /// ohne Prüfung oder ohne Funde.</summary>
+    class function LastProblems: TAtlasBreakpointProblems; static;
   end;
 
 implementation
@@ -104,6 +108,7 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
+  FLastProblems := nil;
   FSession := nil;
   FMessage := nil;
 end;
@@ -261,7 +266,13 @@ begin
   if Result then
   begin
     AProblems := TAtlasBreakpointCheck.Sorted(mServer + ProjectProblems(AProject, ASpots));
+    FLastProblems := AProblems;
   end;
+end;
+
+class function TAtlasIdeBreakpointCheck.LastProblems: TAtlasBreakpointProblems;
+begin
+  Result := FLastProblems;
 end;
 
 class function TAtlasIdeBreakpointCheck.MoveProblems(const AProblems: TAtlasBreakpointProblems): Integer;

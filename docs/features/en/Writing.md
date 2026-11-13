@@ -12,6 +12,7 @@ Code completion in its own popup:
 - filter chips
 - fuzzy matching
 - learning order
+- ranking from usage in the project (#2109, `completion.projectFrequency`): while your own weighting is empty, `X.` lists the members whose name occurs most often in the project's units first, tagged “in project 214×”. Your own picks (“recent”, “frequent”) and better matches come first. Counted by name from the index usages; libraries do not count, and the number is right after a change without a rebuild.
 - favourites (Ctrl+D)
 - typo suggestions ("did you mean")
 - in-editor preview

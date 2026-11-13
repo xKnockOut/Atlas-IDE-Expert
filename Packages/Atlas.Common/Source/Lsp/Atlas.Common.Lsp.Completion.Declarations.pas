@@ -62,6 +62,7 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Common.Lsp.Internals.CompletionSource,
   Atlas.Common.Localization.Texts;
 

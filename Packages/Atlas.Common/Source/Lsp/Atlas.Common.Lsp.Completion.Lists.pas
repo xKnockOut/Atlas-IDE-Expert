@@ -62,7 +62,8 @@ uses
   Atlas.Common.Lsp.CompletionExceptions,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.InheritedCalls,
-  Atlas.Common.Lsp.Completion.HiddenMembers;
+  Atlas.Common.Lsp.Completion.HiddenMembers,
+  Atlas.Common.Lsp.Completion.ProjectFrequency;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -394,6 +395,10 @@ begin
   Result := Default(TCompletionItems);
   Result.Items := FCollector.Finish(Result.Incomplete);
   Result.Hidden := FHidden;
+  if FContext.Kind = TCompletionContextKind.Member then
+  begin
+    TCompletionProjectFrequency.Apply(FRequest, Result.Items);
+  end;
   if FContext.Generic then
   begin
     Result.Items := TCompletionGenerics.Apply(FRequest, FContext, FGenericOwner, Result.Items);

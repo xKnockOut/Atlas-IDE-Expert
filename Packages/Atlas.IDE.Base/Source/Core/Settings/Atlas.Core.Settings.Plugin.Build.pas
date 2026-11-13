@@ -85,6 +85,8 @@ type
     /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
     /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
     TestsAffected: Boolean;
+    /// <summary>Befehl „Leckprüfung einrichten …“ (#1880, tests.leakSetup).</summary>
+    TestsLeakSetup: Boolean;
     /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
     /// MaxTestsAffectedDepth.</summary>
     TestsAffectedDepth: Integer;
@@ -121,12 +123,21 @@ type
     TestsCompare: Boolean;
     /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
     TestsCompareFormat: Boolean;
+    /// <summary>Meldungen der Hilfs-Unit Atlas.Testing.Approval erkennen: Abweichung an der Testmarke, übernehmen,
+    /// aufräumen (#1881, tests.approvalFiles).</summary>
+    TestsApprovalFiles: Boolean;
     /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
     /// (#1772, tests.showDuration).</summary>
     TestsShowDuration: Boolean;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
+    /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
+    /// </summary>
+    TestsCaseTable: Boolean;
+    /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
+    /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
+    TestsLeaks: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -253,6 +264,7 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.TestsAffected := True;
+  Result.TestsLeakSetup := True;
   Result.TestsAffectedDepth := 3;
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
@@ -265,8 +277,11 @@ begin
   Result.TestsFailureInline := True;
   Result.TestsCompare := True;
   Result.TestsCompareFormat := True;
+  Result.TestsApprovalFiles := True;
   Result.TestsShowDuration := True;
   Result.TestsSlowMs := cDefaultTestsSlowMs;
+  Result.TestsCaseTable := True;
+  Result.TestsLeaks := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -340,6 +355,7 @@ begin
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
   AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
   AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);
@@ -352,8 +368,11 @@ begin
   AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('TestsCompare', TestsCompare);
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
+  AIo.Flag('TestsCaseTable', TestsCaseTable);
+  AIo.Flag('TestsLeaks', TestsLeaks);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);

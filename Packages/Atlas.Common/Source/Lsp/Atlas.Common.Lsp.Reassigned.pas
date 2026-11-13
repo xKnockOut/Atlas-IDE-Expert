@@ -69,7 +69,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,

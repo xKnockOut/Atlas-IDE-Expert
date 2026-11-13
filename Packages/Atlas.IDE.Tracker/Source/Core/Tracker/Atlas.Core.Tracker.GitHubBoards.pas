@@ -48,13 +48,6 @@ type
     /// <summary>Höchstens so viele geschlossene Issues ohne Projekt.</summary>
     cMaxClosed = 30;
   public
-    /// <summary>Adresse der GraphQL-Schnittstelle; '' ohne Server.</summary>
-    class function GraphQlUrl(const ATarget: TAtlasTrackerTarget): string; static;
-    /// <summary>Inhalt eines POST: {"query": AQuery, "variables": {Name: Wert, …}} aus Paaren in AVariables.
-    /// </summary>
-    class function GraphQlBody(const AQuery: string; const AVariables: array of string): string; static;
-    /// <summary>Fehler einer GraphQL-Antwort mit Status 200 ("errors"); None ohne. AMessage: erster Text.</summary>
-    class function GraphQlError(const AJson: string; out AMessage: string): TAtlasCiFetchError; static;
     /// <summary>Antwort auf ProjectsQuery: Projekte (offene zuerst) in ASnapshot.Boards, Anmeldename in
     /// ASnapshot.Me. False bei ungültigem JSON.</summary>
     class function ParseProjects(const AJson: string; var ASnapshot: TAtlasBoardSnapshot): Boolean; static;
@@ -84,6 +77,7 @@ uses
   System.StrUtils,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.Internals.GitHubGraphQl,
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Text.Json;
 
@@ -94,138 +88,6 @@ begin
   if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
   begin
     Result := 0;
-  end;
-end;
-
-/// <summary>Objekt unter einem Pfad aus Namen ("data", "node"); nil, wenn ein Teil fehlt.</summary>
-function ObjectAt(AValue: TJSONValue; const APath: array of string): TJSONObject;
-var
-  mName: string;
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  mValue := AValue;
-  for mName in APath do
-  begin
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mValue := TJSONObject(mValue).Values[mName];
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end;
-end;
-
-/// <summary>Liste "nodes" eines Objekts; nil ohne.</summary>
-function NodesOf(AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.Values[AName];
-  if mValue is TJSONObject then
-  begin
-    mValue := TJSONObject(mValue).Values['nodes'];
-  end;
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end;
-end;
-
-
-class function TAtlasGitHubBoards.GraphQlUrl(const ATarget: TAtlasTrackerTarget): string;
-var
-  mBase: string;
-begin
-  Result := '';
-  mBase := TAtlasGitHubApi.Base(ATarget);
-  if mBase = '' then
-  begin
-    Exit;
-  end;
-  if mBase = TAtlasGitHubApi.cApiHost then
-  begin
-    Result := mBase + '/graphql';
-  end
-  else
-  begin
-    Result := ATarget.Server + '/api/graphql';
-  end;
-end;
-
-class function TAtlasGitHubBoards.GraphQlBody(const AQuery: string; const AVariables: array of string): string;
-var
-  mRoot, mVariables: TJSONObject;
-  mIndex: Integer;
-begin
-  mRoot := TJSONObject.Create;
-  try
-    mRoot.AddPair('query', AQuery);
-    mVariables := TJSONObject.Create;
-    mIndex := 0;
-    while mIndex + 1 <= High(AVariables) do
-    begin
-      mVariables.AddPair(AVariables[mIndex], AVariables[mIndex + 1]);
-      Inc(mIndex, 2);
-    end;
-    mRoot.AddPair('variables', mVariables);
-    Result := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasGitHubBoards.GraphQlError(const AJson: string; out AMessage: string): TAtlasCiFetchError;
-var
-  mValue, mItem: TJSONValue;
-  mType: string;
-begin
-  AMessage := '';
-  Result := TAtlasCiFetchError.None;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit(TAtlasCiFetchError.Invalid);
-    end;
-    if not (TJSONObject(mValue).Values['errors'] is TJSONArray) then
-    begin
-      Exit;
-    end;
-    for mItem in TJSONArray(TJSONObject(mValue).Values['errors']) do
-    begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      if AMessage = '' then
-      begin
-        AMessage := Copy(TJsonRead.Text(TJSONObject(mItem), 'message'), 1, TAtlasTrackerTextLimits.cMessage);
-      end;
-      mType := UpperCase(TJsonRead.Text(TJSONObject(mItem), 'type'));
-      if (mType = 'INSUFFICIENT_SCOPES') or (mType = 'FORBIDDEN') then
-      begin
-        Exit(TAtlasCiFetchError.Unauthorized);
-      end;
-      if mType = 'NOT_FOUND' then
-      begin
-        Result := TAtlasCiFetchError.NotFound;
-      end;
-    end;
-    if Result = TAtlasCiFetchError.None then
-    begin
-      Result := TAtlasCiFetchError.Invalid;
-    end;
-  finally
-    mValue.Free;
   end;
 end;
 
@@ -244,14 +106,15 @@ begin
     begin
       Exit;
     end;
-    mViewer := ObjectAt(mValue, ['data', 'viewer']);
+    mViewer := TAtlasGitHubGraphQl.ObjectAt(mValue, ['data', 'viewer']);
     if mViewer <> nil then
     begin
       ASnapshot.Me := TJsonRead.Text(mViewer, 'login');
     end;
     mOpen := nil;
     mClosed := nil;
-    mNodes := NodesOf(ObjectAt(mValue, ['data', 'repository']), 'projectsV2');
+    mNodes := TAtlasGitHubGraphQl.NodesOf(TAtlasGitHubGraphQl.ObjectAt(mValue, ['data', 'repository']),
+      'projectsV2');
     if mNodes <> nil then
     begin
       for mItem in mNodes do
@@ -436,7 +299,7 @@ begin
   ASnapshot.Columns := nil;
   ASnapshot.Sprints := nil;
   ASnapshot.PointsField := '';
-  mNodes := NodesOf(AProject, 'fields');
+  mNodes := TAtlasGitHubGraphQl.NodesOf(AProject, 'fields');
   if mNodes <> nil then
   begin
     for mItem in mNodes do
@@ -541,7 +404,7 @@ var
   mField: TJSONObject;
 begin
   Result := '';
-  mField := ObjectAt(AValue, ['field']);
+  mField := TAtlasGitHubGraphQl.ObjectAt(AValue, ['field']);
   if mField <> nil then
   begin
     Result := TJsonRead.Text(mField, 'name');
@@ -591,7 +454,7 @@ var
   mIteration: string;
 begin
   ACard := Default(TAtlasBoardCard);
-  mIssue := ObjectAt(AEntry, ['content']);
+  mIssue := TAtlasGitHubGraphQl.ObjectAt(AEntry, ['content']);
   Result := (mIssue <> nil) and (TAtlasGitHubJson.IntOf(mIssue, 'number') > 0);
   if not Result then
   begin
@@ -606,7 +469,7 @@ begin
   ACard.ResolvedAt := TimeOfText(TJsonRead.Text(mIssue, 'closedAt'));
   ReadAssignees(mIssue.Values['assignees'], ACard);
   mIteration := '';
-  mValues := NodesOf(AEntry, 'fieldValues');
+  mValues := TAtlasGitHubGraphQl.NodesOf(AEntry, 'fieldValues');
   if mValues <> nil then
   begin
     for mValue in mValues do
@@ -630,7 +493,7 @@ var
   mCard: TAtlasBoardCard;
 begin
   ASnapshot.Cards := nil;
-  mNodes := NodesOf(AProject, 'items');
+  mNodes := TAtlasGitHubGraphQl.NodesOf(AProject, 'items');
   if mNodes = nil then
   begin
     Exit;
@@ -654,7 +517,7 @@ var
 begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    mProject := ObjectAt(mValue, ['data', 'node']);
+    mProject := TAtlasGitHubGraphQl.ObjectAt(mValue, ['data', 'node']);
     Result := (mProject <> nil) and (TJsonRead.Text(mProject, 'id') <> '');
     if not Result then
     begin
@@ -716,30 +579,6 @@ begin
   finally
     mValue.Free;
   end;
-end;
-
-/// <summary>GraphQL-Anfrage; True nur mit Antwort ohne "errors".</summary>
-function Query(const ASend: IAtlasCiSend; const AUrl, ABody: string; ATimeoutMs: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-var
-  mResponse: TAtlasCiResponse;
-  mMessage: string;
-begin
-  Result := False;
-  if not ASend.Send('POST', AUrl, ABody, ATimeoutMs, mResponse) then
-  begin
-    AText := '';
-    AError := mResponse.Error;
-    Exit;
-  end;
-  AText := mResponse.Text;
-  if mResponse.Status <> 200 then
-  begin
-    AError := TAtlasGitHubApi.ErrorOfStatus(mResponse.Status);
-    Exit;
-  end;
-  AError := TAtlasGitHubBoards.GraphQlError(AText, mMessage);
-  Result := AError = TAtlasCiFetchError.None;
 end;
 
 /// <summary>Ohne Projekt: Spalten Offen und Geschlossen, Karten aus /issues, Anmeldename aus /user.</summary>
@@ -822,19 +661,21 @@ end;
 function LoadProjectId(const ARequest: TAtlasBoardRequest; const ASend: IAtlasCiSend; const AUrl: string;
   var ASnapshot: TAtlasBoardSnapshot; out AError: TAtlasCiFetchError): string;
 var
-  mText, mOwner, mName: string;
+  mOwner, mName: string;
+  mReply: TAtlasGitHubGraphQlReply;
   mAt: Integer;
 begin
   Result := '';
-  AError := TAtlasCiFetchError.None;
   mAt := Pos('/', ARequest.Target.Project);
   mOwner := Copy(ARequest.Target.Project, 1, mAt - 1);
   mName := Copy(ARequest.Target.Project, mAt + 1, MaxInt);
-  if Query(ASend, AUrl, TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.cProjectsQuery, ['owner', mOwner, 'name',
-    mName]), ARequest.TimeoutMs, mText, AError) and TAtlasGitHubBoards.ParseProjects(mText, ASnapshot) then
+  if TAtlasGitHubGraphQl.Query(ASend, AUrl, TAtlasGitHubGraphQl.Body(TAtlasGitHubBoards.cProjectsQuery,
+    ['owner', mOwner, 'name', mName]), ARequest.TimeoutMs, mReply) and
+    TAtlasGitHubBoards.ParseProjects(mReply.Text, ASnapshot) then
   begin
     Result := ChosenProject(ASnapshot, ARequest.BoardId);
   end;
+  AError := mReply.Error;
 end;
 
 function TAtlasGitHubBoards.LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
@@ -842,13 +683,14 @@ function TAtlasGitHubBoards.LoadBoard(const ARequest: TAtlasBoardRequest; out AS
 var
   mWatch: TStopwatch;
   mSend: IAtlasCiSend;
-  mUrl, mText, mProject: string;
+  mUrl, mProject: string;
   mError: TAtlasCiFetchError;
+  mReply: TAtlasGitHubGraphQlReply;
 begin
   ASnapshot := TAtlasBoardSnapshot.Empty;
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := GraphQlUrl(ARequest.Target);
+  mUrl := TAtlasGitHubGraphQl.Url(ARequest.Target);
   if (mUrl = '') or (Pos('/', ARequest.Target.Project) <= 1) or (ARequest.Transport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
@@ -867,38 +709,19 @@ begin
     Result := LoadRepository(ARequest.Target, ARequest.Transport, mWatch, ARequest.TimeoutMs, ASnapshot, AError);
     ASnapshot.ProjectsDenied := mError = TAtlasCiFetchError.Unauthorized;
   end
-  else if Query(mSend, mUrl, GraphQlBody(cProjectQuery, ['id', mProject]), TAtlasGitHubApi.Remaining(mWatch,
-    ARequest.TimeoutMs), mText, AError) then
+  else if TAtlasGitHubGraphQl.Query(mSend, mUrl, TAtlasGitHubGraphQl.Body(cProjectQuery, ['id', mProject]),
+    TAtlasGitHubApi.Remaining(mWatch, ARequest.TimeoutMs), mReply) then
   begin
-    Result := ParseProject(mText, ARequest.Target, ARequest.SprintId, TTimeZone.Local.ToUniversalTime(Now),
+    Result := ParseProject(mReply.Text, ARequest.Target, ARequest.SprintId, TTimeZone.Local.ToUniversalTime(Now),
       ASnapshot);
     if not Result then
     begin
       AError := TAtlasCiFetchError.Invalid;
     end;
-  end;
-end;
-
-/// <summary>Ergebnis einer GraphQL-Antwort auf einen Schreibzugriff: Fehler bei fehlender Antwort, anderem
-/// Status als 200 bzw. "errors", sonst Ok.</summary>
-function GraphQlWriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;
-var
-  mError: TAtlasCiFetchError;
-  mMessage: string;
-begin
-  if ASent and (AResponse.Status <> 200) then
+  end
+  else
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubApi.ErrorOfStatus(AResponse.Status), AResponse.Status,
-      TAtlasGitHubApi.ErrorMessage(AResponse.Text)));
-  end;
-  Result := TAtlasGitHubApi.WriteResult(ASent, AResponse);
-  if Result.Succeeded then
-  begin
-    mError := TAtlasGitHubBoards.GraphQlError(AResponse.Text, mMessage);
-    if mError <> TAtlasCiFetchError.None then
-    begin
-      Result := TAtlasTrackerWriteResult.Failed(mError, AResponse.Status, mMessage);
-    end;
+    AError := mReply.Error;
   end;
 end;
 
@@ -915,9 +738,9 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   end;
-  mBody := TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.cMoveMutation, ['project', ASnapshot.ProjectId, 'item',
+  mBody := TAtlasGitHubGraphQl.Body(TAtlasGitHubBoards.cMoveMutation, ['project', ASnapshot.ProjectId, 'item',
     AMove.Card.ItemId, 'field', ASnapshot.FieldId, 'option', mColumn.OptionId]);
-  Result := GraphQlWriteResult(ASend.Send('POST', TAtlasGitHubBoards.GraphQlUrl(AMove.Target), mBody, ATimeoutMs,
+  Result := TAtlasGitHubGraphQl.WriteResult(ASend.Send('POST', TAtlasGitHubGraphQl.Url(AMove.Target), mBody, ATimeoutMs,
     mResponse), mResponse);
 end;
 

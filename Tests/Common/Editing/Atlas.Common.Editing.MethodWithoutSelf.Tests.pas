@@ -62,6 +62,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.MethodWithoutSelf,
+  Atlas.Common.Editing.MethodWithoutSelf.Contract,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
   Atlas.Common.Editing.MethodWithoutSelf.Texts;
 
