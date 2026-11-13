@@ -134,6 +134,11 @@ type
     /// des Editors; vor dem nächsten Start die Frage zu Adressbedingungen der letzten Sitzung. Aus = keine Befehle,
     /// keine Frage.</summary>
     DebugInstanceBreakpoints: Boolean;
+    /// <summary>Anhalten, wenn sich ein Feld ändert (#584, debug.dataBreakpoints): Befehl „Anhalten, wenn sich …
+    /// ändert“ im Kontextmenü des Editors setzt im angehaltenen Programm einen Datenhaltepunkt auf das Feld unter der
+    /// Schreibmarke; Atlas zeigt beim Halt alten und neuen Wert und entfernt seine Datenhaltepunkte am Ende der
+    /// Sitzung. Aus = kein Befehl.</summary>
+    DebugDataBreakpoints: Boolean;
     /// <summary>Haltepunkt-Sätze (#586, debug.breakpointSetPerBranch): Ein Satz mit Branch wird beim Wechsel der
     /// Arbeitskopie auf diesen Branch aktiv. Aus = Sätze nur über die Befehle.</summary>
     DebugBreakpointSetPerBranch: Boolean;
@@ -370,6 +375,7 @@ begin
   Result.DebugCheckBreakpoints := True;
   Result.DebugMethodBreakpoints := True;
   Result.DebugInstanceBreakpoints := True;
+  Result.DebugDataBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
   Result.DebugRunToClick := True;
   Result.DebugBreakpointsWindow := True;
@@ -465,6 +471,7 @@ begin
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
+  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);

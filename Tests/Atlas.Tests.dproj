@@ -793,6 +793,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreak.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InstanceBreakpoint.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreakpoint.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>

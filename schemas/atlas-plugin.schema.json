@@ -2540,6 +2540,19 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#857"
     },
+    "DebugDataBreakpoints": {
+      "description": "Anhalten, wenn sich ein Feld ändert: Im angehaltenen Programm setzt „Anhalten, wenn sich FKunde.FSumme ändert“ (Kontextmenü des Editors, Schreibmarke auf dem Feld) einen Datenhaltepunkt der IDE auf das Feld. Atlas wertet Adresse und Größe über den Debugger aus. Die Hardware hat vier Plätze; ein Platz überwacht unter Win32 höchstens 4 Byte, unter Win64 8 Byte. Ist das Feld größer, fragt Atlas, ob nur der erste Teil überwacht werden soll; bei Strings überwacht der Platz den Zeiger (neue Zuweisung). Beim Halt zeigt Atlas alten und neuen Wert in der Meldungsansicht und im Statusfeld. Der Datenhaltepunkt gilt nur für dieses eine Objekt; Atlas entfernt ihn am Ende der Sitzung. Aus = kein Befehl.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.dataBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Anhalten, wenn sich ein Feld ändert",
+      "x-captionEn": "Break when a field changes",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#584"
+    },
     "DebugBreakpointSetPerBranch": {
       "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
       "type": "boolean",
