@@ -1565,6 +1565,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Approval` | `Core/Tests/Atlas.Core.Tests.Approval.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.CaseTable` | `Core/Tests/Atlas.Core.Tests.CaseTable.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Untested` | `Core/Tests/Atlas.Core.Tests.Untested.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredBy` | `IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredByList` | `IDE/Tests/Atlas.IDE.Tests.CoveredByList.pas` | Ordner `IDE/Tests` |
@@ -1580,6 +1581,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.LeakSetup` | `IDE/Tests/Atlas.IDE.Tests.LeakSetup.pas` | Ordner `IDE/Tests`; Befehl „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.UntestedMark` | `IDE/Tests/Atlas.IDE.Tests.UntestedMark.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.UntestedProject` | `IDE/Tests/Atlas.IDE.Tests.UntestedProject.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.FromDebugStop` | `IDE/Tests/Atlas.IDE.Tests.FromDebugStop.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.FromDebugStop` | `UI/Tests/Atlas.UI.Tests.FromDebugStop.pas` | Ordner `UI/Tests` |

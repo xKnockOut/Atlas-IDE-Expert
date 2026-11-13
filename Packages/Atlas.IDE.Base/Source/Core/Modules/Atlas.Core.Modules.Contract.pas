@@ -49,7 +49,8 @@ const
   /// 24 (#2137): issues.create.templates, issues.github.templateFields, .atlas tracker.templateFields.
   /// 25 (#1873): IAtlasDebugStopSource (Atlas.IDE.Contracts.DebugStop), tests.fromDebugStop(.fields, .properties,
   /// .maxArray).
-  cAtlasCoreContractVersion = 25;
+  /// 26 (#1783): TAtlasDrawnElement.CodeLensUntested, codeLens.untested, tests.untested.warnPercent.
+  cAtlasCoreContractVersion = 26;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

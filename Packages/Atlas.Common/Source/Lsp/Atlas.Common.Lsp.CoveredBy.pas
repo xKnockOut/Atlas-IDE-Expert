@@ -17,7 +17,13 @@
 // HasTestUnit sagt, ob eine Testunit die Unit verwendet (#1783: ohne keine
 // Marke „n von m Methoden getestet“).
 //
-// LSP: atlas/coveredBy {textDocument, text?, depth?, includePrivate?}.
+// Ungetestete Methoden des Projekts (#1783): Dieselbe Bestimmung über alle
+// Units des Projekts (ohne Testunits). Units ohne Testunit werden nicht
+// analysiert, ihre Methoden gelten als ungetestet; eine Gesamtzeit begrenzt
+// den Lauf, übrige Units zählen als ausgelassen.
+//
+// LSP: atlas/coveredBy {textDocument, text?, depth?, includePrivate?},
+// atlas/untestedMethods {textDocument, depth?, includePrivate?}.
 
 interface
 
@@ -69,6 +75,8 @@ type
     Options: TImpactOptions;
     /// <summary>Auch private und protected Methoden sowie Routinen nur im implementation-Teil.</summary>
     IncludePrivate: Boolean;
+    /// <summary>Ohne Testunit nicht analysieren (#1783): alle Methoden gelten als ungetestet.</summary>
+    OnlyWithTestUnit: Boolean;
   end;
 
   TCoveredResult = record
@@ -84,10 +92,31 @@ type
     function Tested: Integer;
   end;
 
+  /// <summary>Stand einer Unit des Projekts (#1783).</summary>
+  TUntestedUnit = record
+    FileName: string;
+    UnitName: string;
+    HasTestUnit: Boolean;
+    Tested: Integer;
+    Total: Integer;
+    /// <summary>Methoden ohne Test, in Reihenfolge des Quelltexts.</summary>
+    Untested: TArray<TCoveredMethod>;
+  end;
+
+  TUntestedResult = record
+    Units: TArray<TUntestedUnit>;
+    Limits: TImpactLimits;
+    /// <summary>Units, die die Gesamtzeit nicht mehr erreichte.</summary>
+    Skipped: Integer;
+  end;
+
   TCoveredBy = class
   public const
     cMethod = 'atlas/coveredBy';
+    cProjectMethod = 'atlas/untestedMethods';
     cDefaultDepth = 1;
+    /// <summary>Gesamtzeit für atlas/untestedMethods.</summary>
+    cProjectTimeoutMs = 60000;
   public
     /// <summary>Methoden mit Rumpf der Unit AText (Datei AFileName) in Reihenfolge des Quelltexts; ohne
     /// AIncludePrivate nur öffentliche.</summary>
@@ -101,6 +130,15 @@ type
     class function Determine(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AFileName, AText: string;
       const ARequest: TCoveredRequest; const AReadText: TReferenceReadText;
       const ACancellation: IJsonRpcCancellationToken): TCoveredResult; static;
+    /// <summary>Stand der Unit AResult (Datei AFileName) für die Liste des Projekts.</summary>
+    class function UntestedOf(const AResult: TCoveredResult; const AFileName: string): TUntestedUnit; static;
+    /// <summary>Ungetestete Methoden aller Units aus ARequest.Files (nur .pas, ohne Testunits und ohne Units ohne
+    /// Methoden); höchstens ABudgetMs insgesamt.</summary>
+    class function Project(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ARequest: TCoveredRequest;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken;
+      ABudgetMs: Integer): TUntestedResult; static;
+    /// <summary>Antwort von atlas/untestedMethods; der Aufrufer übernimmt das Objekt.</summary>
+    class function ProjectToJson(const AResult: TUntestedResult): TJSONObject; static;
     /// <summary>"public", "published", "protected", "private".</summary>
     class function VisibilityName(AVisibility: TIndexVisibility): string; static;
     /// <summary>Antwort von atlas/coveredBy; der Aufrufer übernimmt das Objekt.</summary>
@@ -111,6 +149,8 @@ implementation
 
 uses
   System.StrUtils,
+  System.Math,
+  System.Diagnostics,
   Atlas.Common.Documents.Contract,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -464,6 +504,10 @@ begin
     Exit;
   end;
   Result.HasTestUnit := HasTestUnit(AIndex, Result.UnitName, mOptions.Tests);
+  if ARequest.OnlyWithTestUnit and not Result.HasTestUnit then
+  begin
+    Exit;
+  end;
   mStarts := nil;
   for mIndex := 0 to High(Result.Methods) do
   begin
@@ -538,11 +582,24 @@ begin
   end;
 end;
 
+function LimitsJson(const ALimits: TImpactLimits): TJSONArray;
+var
+  mLimit: TImpactLimit;
+begin
+  Result := TJSONArray.Create;
+  for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
+  begin
+    if mLimit in ALimits then
+    begin
+      Result.Add(TImpactAnalysis.LimitName(mLimit));
+    end;
+  end;
+end;
+
 class function TCoveredBy.ToJson(const AResult: TCoveredResult): TJSONObject;
 var
-  mMethods, mLimits: TJSONArray;
+  mMethods: TJSONArray;
   mMethod: TCoveredMethod;
-  mLimit: TImpactLimit;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('unit', AResult.UnitName);
@@ -557,15 +614,110 @@ begin
   begin
     mMethods.AddElement(MethodJson(mMethod));
   end;
-  mLimits := TJSONArray.Create;
-  Result.AddPair('limits', mLimits);
-  for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
+  Result.AddPair('limits', LimitsJson(AResult.Limits));
+end;
+
+class function TCoveredBy.UntestedOf(const AResult: TCoveredResult; const AFileName: string): TUntestedUnit;
+var
+  mMethod: TCoveredMethod;
+begin
+  Result := Default(TUntestedUnit);
+  Result.FileName := AFileName;
+  Result.UnitName := AResult.UnitName;
+  Result.HasTestUnit := AResult.HasTestUnit;
+  Result.Tested := AResult.Tested;
+  Result.Total := Length(AResult.Methods);
+  for mMethod in AResult.Methods do
   begin
-    if mLimit in AResult.Limits then
+    if Length(mMethod.Tests) = 0 then
     begin
-      mLimits.Add(TImpactAnalysis.LimitName(mLimit));
+      Result.Untested := Result.Untested + [mMethod];
     end;
   end;
+end;
+
+class function TCoveredBy.Project(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const ARequest: TCoveredRequest; const AReadText: TReferenceReadText;
+  const ACancellation: IJsonRpcCancellationToken; ABudgetMs: Integer): TUntestedResult;
+var
+  mClock: TStopwatch;
+  mFileName, mText: string;
+  mRequest: TCoveredRequest;
+  mFound: TCoveredResult;
+  mLeft: Int64;
+begin
+  Result := Default(TUntestedResult);
+  mClock := TStopwatch.StartNew;
+  mRequest := ARequest;
+  mRequest.OnlyWithTestUnit := True;
+  for mFileName in ARequest.Files do
+  begin
+    if not SameText(ExtractFileExt(mFileName), '.pas') then
+    begin
+      Continue;
+    end;
+    if Assigned(ACancellation) and ACancellation.IsCancellationRequested then
+    begin
+      Break;
+    end;
+    // Gesamtzeit verbraucht: übrige Units nur zählen.
+    mLeft := ABudgetMs - mClock.ElapsedMilliseconds;
+    if mLeft <= 0 then
+    begin
+      Include(Result.Limits, TImpactLimit.Time);
+      Inc(Result.Skipped);
+      Continue;
+    end;
+    if not (Assigned(AReadText) and AReadText(mFileName, mText)) then
+    begin
+      Continue;
+    end;
+    mRequest.Options.TimeoutMs := Integer(mLeft);
+    if ARequest.Options.TimeoutMs > 0 then
+    begin
+      mRequest.Options.TimeoutMs := Integer(Min(Int64(ARequest.Options.TimeoutMs), mLeft));
+    end;
+    mFound := Determine(AResolver, AIndex, mFileName, mText, mRequest, AReadText, ACancellation);
+    Result.Limits := Result.Limits + mFound.Limits;
+    if not mFound.IsTestUnit and (Length(mFound.Methods) > 0) then
+    begin
+      Result.Units := Result.Units + [UntestedOf(mFound, mFileName)];
+    end;
+  end;
+end;
+
+class function TCoveredBy.ProjectToJson(const AResult: TUntestedResult): TJSONObject;
+var
+  mUnits, mMethods: TJSONArray;
+  mUnit: TUntestedUnit;
+  mMethod: TCoveredMethod;
+  mEntry, mItem: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  mUnits := TJSONArray.Create;
+  Result.AddPair('units', mUnits);
+  for mUnit in AResult.Units do
+  begin
+    mEntry := TJSONObject.Create;
+    mUnits.AddElement(mEntry);
+    mEntry.AddPair('uri', TDocumentUris.FromPath(mUnit.FileName));
+    mEntry.AddPair('unit', mUnit.UnitName);
+    mEntry.AddPair('hasTestUnit', TJSONBool.Create(mUnit.HasTestUnit));
+    mEntry.AddPair('tested', TJSONNumber.Create(mUnit.Tested));
+    mEntry.AddPair('total', TJSONNumber.Create(mUnit.Total));
+    mMethods := TJSONArray.Create;
+    mEntry.AddPair('untested', mMethods);
+    for mMethod in mUnit.Untested do
+    begin
+      mItem := TJSONObject.Create;
+      mMethods.AddElement(mItem);
+      mItem.AddPair('name', mMethod.Name);
+      mItem.AddPair('line', TJSONNumber.Create(mMethod.Line));
+      mItem.AddPair('character', TJSONNumber.Create(mMethod.Character));
+    end;
+  end;
+  Result.AddPair('skipped', TJSONNumber.Create(AResult.Skipped));
+  Result.AddPair('limits', LimitsJson(AResult.Limits));
 end;
 
 end.
