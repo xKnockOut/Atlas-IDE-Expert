@@ -46,6 +46,7 @@ contains
   Atlas.UI.Tests.Strings in 'Source\UI\Tests\Atlas.UI.Tests.Strings.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
+  Atlas.Core.Tests.AssertLine in 'Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.AffectedHook in 'Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',
