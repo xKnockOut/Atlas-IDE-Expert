@@ -8,7 +8,8 @@
 //      Unit:Zeile; Klick springt hin, OnAction Open).
 //   3. Knöpfe Anhalten, Fortsetzen, Klasse ignorieren, Nur an dieser Stelle
 //      ignorieren (nur mit TAtlasDebugBannerInfo.CanIgnoreLocation), Meldung
-//      kopieren; rechts die Tastenhinweise als Fußzeile.
+//      kopieren, Test daraus anlegen (#1873, nur mit CanCreateTest); rechts die
+//      Tastenhinweise als Fußzeile.
 // Erklärung einer Zugriffsverletzung (#865, SetExplanation): zwischen Zeile 2
 // und den Knöpfen eine Zeile mit dem Ergebnis („Auftrag.Kunde ist nil“ und
 // Feld bzw. Versatz), darunter die geprüften Glieder mit ✓/✗ (höchstens
@@ -37,7 +38,7 @@ uses
 type
   {$SCOPEDENUMS ON}
   TAtlasDebugBarAction = (None, BreakHere, Continue, IgnoreClass, IgnoreLocation, Copy, Open, WhereAssigned, Evaluate,
-    CopyExplanation);
+    CopyExplanation, CreateTest);
   {$SCOPEDENUMS OFF}
 
   TAtlasDebugBarActionEvent = reference to procedure(AAction: TAtlasDebugBarAction);
@@ -106,9 +107,9 @@ uses
 
 const
   /// <summary>Knöpfe der dritten Zeile in Reihenfolge.</summary>
-  cBarButtons: array[0..4] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
+  cBarButtons: array[0..5] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
     TAtlasDebugBarAction.Continue, TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation,
-    TAtlasDebugBarAction.Copy);
+    TAtlasDebugBarAction.Copy, TAtlasDebugBarAction.CreateTest);
   /// <summary>Knöpfe der Erklärung in Reihenfolge.</summary>
   cExplanationButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.WhereAssigned,
     TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation);
@@ -147,7 +148,20 @@ begin
       Result := AExplanation.CopyText <> '';
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
+  end;
+end;
+
+/// <summary>Steht der Knopf AAction der letzten Zeile bei AInfo da?</summary>
+function BarButtonShown(const AInfo: TAtlasDebugBannerInfo; AAction: TAtlasDebugBarAction): Boolean;
+begin
+  case AAction of
+    TAtlasDebugBarAction.IgnoreLocation:
+      Result := AInfo.CanIgnoreLocation;
+    TAtlasDebugBarAction.CreateTest:
+      Result := AInfo.CanCreateTest;
+  else
+    Result := True;
   end;
 end;
 
@@ -171,6 +185,8 @@ begin
       Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvEvaluate);
     TAtlasDebugBarAction.CopyExplanation:
       Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopy);
+    TAtlasDebugBarAction.CreateTest:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerCreateTest);
   else
     Result := '';
   end;
@@ -368,7 +384,7 @@ begin
   mLeft := Scale(cBarPadding + cGap);
   for mAction in cBarButtons do
   begin
-    if (mAction = TAtlasDebugBarAction.IgnoreLocation) and not FInfo.CanIgnoreLocation then
+    if not BarButtonShown(FInfo, mAction) then
     begin
       Continue;
     end;
@@ -420,7 +436,7 @@ begin
     Exit;
   end;
   // Ohne Ort gibt es weder „Nur an dieser Stelle ignorieren“ noch den Sprung.
-  if (AAction = TAtlasDebugBarAction.IgnoreLocation) and not FInfo.CanIgnoreLocation then
+  if not BarButtonShown(FInfo, AAction) then
   begin
     Exit;
   end;
@@ -530,6 +546,18 @@ begin
   ABar.Canvas.Font.Style := [];
 end;
 
+/// <summary>Rechter Rand des letzten Knopfs der letzten Zeile von ABar.</summary>
+function LastButtonRight(ABar: TAtlasDebugExceptionBar): Integer;
+var
+  mAction: TAtlasDebugBarAction;
+begin
+  Result := 0;
+  for mAction in cBarButtons do
+  begin
+    Result := Max(Result, ABar.FRects[mAction].Right);
+  end;
+end;
+
 /// <summary>Letzte Zeile der Leiste ABar: rechts neben den Knöpfen die Tastenhinweise, wenn Platz ist.</summary>
 procedure PaintKeys(ABar: TAtlasDebugExceptionBar; const AFrame: TRect);
 var
@@ -540,7 +568,7 @@ begin
   ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
   ABar.Canvas.Brush.Style := bsClear;
   mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerKeys);
-  mLine := Rect(ABar.FRects[TAtlasDebugBarAction.Copy].Right + ABar.Scale(cGap), ABar.RowTop(ABar.Rows - 1),
+  mLine := Rect(LastButtonRight(ABar) + ABar.Scale(cGap), ABar.RowTop(ABar.Rows - 1),
     AFrame.Right - ABar.Scale(cGap), AFrame.Bottom);
   if mLine.Width > ABar.Canvas.TextWidth(mText) then
   begin

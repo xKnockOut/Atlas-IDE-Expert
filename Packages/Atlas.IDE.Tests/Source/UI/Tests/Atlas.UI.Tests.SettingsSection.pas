@@ -97,6 +97,12 @@ procedure TAtlasTestsDebugSection.BuildRows;
 begin
   Switch('tests.debug', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestDebug));
   Switch('debug.testBreakAtStart', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestBreakAtStart));
+  Switch('tests.fromDebugStop', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStop));
+  Switch('tests.fromDebugStop.fields', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopFields));
+  Switch('tests.fromDebugStop.properties',
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopProperties));
+  Number('tests.fromDebugStop.maxArray',
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopMaxArray));
 end;
 
 { TAtlasTestsEditorSection }
@@ -119,6 +125,8 @@ begin
   Switch('codeLens.coveredBy', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensCoveredBy));
   Number('tests.coveredBy.depth', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByDepth));
   Switch('tests.coveredBy.private', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByPrivate));
+  Switch('codeLens.untested', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensUntested));
+  Number('tests.untested.warnPercent', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsUntestedWarnPercent));
 end;
 
 end.

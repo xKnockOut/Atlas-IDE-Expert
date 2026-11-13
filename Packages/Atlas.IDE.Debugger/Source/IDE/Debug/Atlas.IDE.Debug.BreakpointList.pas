@@ -48,6 +48,7 @@ uses
   Atlas.Core.Debug.BreakpointList,
   Atlas.Core.Debug.BreakpointTags,
   Atlas.Core.Debug.BreakpointCheck,
+  Atlas.Core.Debug.BreakpointRules,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -55,7 +56,9 @@ uses
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.BreakpointCheck,
   Atlas.IDE.Debug.BreakpointSets,
+  Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointCheck,
+  Atlas.UI.Debug.BreakpointRules,
   Atlas.IDE.Debug.BreakpointsWindow,
   Atlas.UI.Debug.BreakpointsFrame,
   Atlas.UI.Debug.Strings;
@@ -173,6 +176,19 @@ begin
   Result := False;
 end;
 
+/// <summary>Regeln (#864) an der Stelle (Zeile ab 1) als Text; '' ohne.</summary>
+function RulesOf(const AFileName: string; ALine: Integer): string;
+var
+  mRule: TAtlasBreakpointRule;
+begin
+  Result := '';
+  if TAtlasIdeBreakpointRules.RuleAt(AFileName, ALine - 1, mRule) and not mRule.IsEmpty then
+  begin
+    Result := TAtlasBreakpointTexts.RuleText(mRule,
+      TAtlasBreakpointRuleDialog.TriggerText(TAtlasRuleTrigger.Create(mRule.TriggerFile, mRule.TriggerLine)));
+  end;
+end;
+
 function RowOf(const ABreakpoint: IOTASourceBreakpoint;
   APlaces: TDictionary<string, TArray<TAtlasMethodPlace>>;
   const AProblems: TAtlasBreakpointProblems): TAtlasBreakpointRow;
@@ -198,6 +214,7 @@ begin
     Result.NotEffective := True;
     Result.Reason := TAtlasBreakpointCheckDialog.ReasonText(mProblem);
   end;
+  Result.Rules := RulesOf(Result.FileName, Result.Line);
 end;
 
 function ReadRows: TArray<TAtlasBreakpointRow>;

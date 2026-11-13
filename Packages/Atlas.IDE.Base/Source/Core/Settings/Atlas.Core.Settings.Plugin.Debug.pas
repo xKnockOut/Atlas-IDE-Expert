@@ -24,8 +24,16 @@ const
   cMinVariablesSearchLimit = 10;
   cMaxVariablesSearchLimit = 10000;
   cDefaultVariablesSearchLimit = 500;
+  /// <summary>Grenzen und Vorgabe für debug.predictConditions.lines (#2169).</summary>
+  cMinPredictLines = 1;
+  cMaxPredictLines = 200;
+  cDefaultPredictLines = 20;
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
+  /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
+  cMinTestsFromDebugStopMaxArray = 0;
+  cMaxTestsFromDebugStopMaxArray = 1000;
+  cDefaultTestsFromDebugStopMaxArray = 20;
   /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
   cMinParallelStacksThreads = 1;
   cMaxParallelStacksThreads = 1024;
@@ -54,6 +62,16 @@ type
     /// <summary>Beim Test-Debuggen am Anfang der Methode anhalten (#585, debug.testBreakAtStart): einmaliger
     /// Haltepunkt an der ersten Anweisung, nach dem Halt entfernt.</summary>
     TestBreakAtStart: Boolean;
+    /// <summary>„Test daraus anlegen …“ beim Debug-Halt (#1873, tests.fromDebugStop): Werte des Halts in einen
+    /// DUnitX-Test übernehmen; aus = Eintrag und Knopf der Exception-Leiste fehlen.</summary>
+    TestsFromDebugStop: Boolean;
+    /// <summary>Einfache Felder des Objekts anbieten (#1873, tests.fromDebugStop.fields).</summary>
+    TestsFromDebugStopFields: Boolean;
+    /// <summary>Eigenschaften mit Getter auswerten (#1873, tests.fromDebugStop.properties); aus = nur Felder und
+    /// Argumente ohne Nebenwirkungen.</summary>
+    TestsFromDebugStopProperties: Boolean;
+    /// <summary>Elemente je Array höchstens (#1873, tests.fromDebugStop.maxArray); längere werden TODO.</summary>
+    TestsFromDebugStopMaxArray: Integer;
     /// <summary>Variablenwerte im Hover beim Debuggen (#891, debug.hoverValues): Bei angehaltenem Prozess wertet
     /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
     /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
@@ -110,6 +128,10 @@ type
     /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
     /// Aus = keine Prüfung, kein Befehl.</summary>
     DebugCheckBreakpoints: Boolean;
+    /// <summary>Haltepunkte auf Methoden nach Name oder Muster (#855, debug.methodBreakpoints): Befehle
+    /// „Haltepunkt auf Methoden …“ und „Haltepunktgruppen der Methoden …“, Gruppen mit „Mitwachsen“ beim Debug-Start.
+    /// Aus = keine Befehle, kein Mitwachsen.</summary>
+    DebugMethodBreakpoints: Boolean;
     /// <summary>Haltepunkt nur für ein Objekt (#857, debug.instanceBreakpoints): Befehle „Haltepunkt nur für dieses
     /// Objekt“ (Bedingung auf die Adresse von Self) und „Haltepunkt nur wenn …“ (Feldwert von Self) im Kontextmenü
     /// des Editors; vor dem nächsten Start die Frage zu Adressbedingungen der letzten Sitzung. Aus = keine Befehle,
@@ -125,6 +147,14 @@ type
     /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
     /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
     DebugBreakpointsWindow: Boolean;
+    /// <summary>Haltepunkte wandern mit dem Code (#841, debug.breakpointAnchors): Nach Änderungen von außen
+    /// (neu geladen, Branchwechsel, viele Zeilen auf einmal) setzt Atlas die Haltepunkte über ihren Anker auf die
+    /// passende Zeile; nicht zuordenbare kommen in die Liste „Verwaist“. Aus = die IDE lässt sie, wo sie sind.
+    /// </summary>
+    DebugBreakpointAnchors: Boolean;
+    /// <summary>Abhängige Haltepunkte und Trefferbedingungen (#864, debug.breakpointRules): erst aktiv nach einem
+    /// anderen Haltepunkt, Trefferbedingung und Thread-Filter je Haltepunkt. Aus = wie in der IDE.</summary>
+    DebugBreakpointRules: Boolean;
     /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
     /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
     /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
@@ -227,6 +257,14 @@ type
     /// <summary>Höchstzahl der Auswertungen je Suche (#853, debug.variablesWindow.searchLimit, 10 bis 10000).
     /// </summary>
     DebugVariablesSearchLimit: Integer;
+    /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
+    /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
+    /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
+    DebugPredictConditions: Boolean;
+    /// <summary>Übersprungene Zweige blass zeichnen (#2169, debug.predictConditions.dimSkipped).</summary>
+    DebugPredictDimSkipped: Boolean;
+    /// <summary>So viele Zeilen voraus (#2169, debug.predictConditions.lines, 1 bis 200).</summary>
+    DebugPredictLines: Integer;
     /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
     /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
     DebugPinnedValues: Boolean;
@@ -309,6 +347,10 @@ class function TAtlasPluginDebugSettings.Defaults: TAtlasPluginDebugSettings;
 begin
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
+  Result.TestsFromDebugStop := True;
+  Result.TestsFromDebugStopFields := True;
+  Result.TestsFromDebugStopProperties := False;
+  Result.TestsFromDebugStopMaxArray := cDefaultTestsFromDebugStopMaxArray;
   Result.DebugHoverValues := True;
   Result.DebugVisualizers := True;
   Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.cAllKinds);
@@ -327,10 +369,13 @@ begin
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugCheckBreakpoints := True;
+  Result.DebugMethodBreakpoints := True;
   Result.DebugInstanceBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
   Result.DebugRunToClick := True;
   Result.DebugBreakpointsWindow := True;
+  Result.DebugBreakpointAnchors := True;
+  Result.DebugBreakpointRules := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -376,6 +421,7 @@ begin
     cMaxVariablesSearchDepth);
   DebugVariablesSearchLimit := EnsureRange(DebugVariablesSearchLimit, cMinVariablesSearchLimit,
     cMaxVariablesSearchLimit);
+  DebugPredictLines := EnsureRange(DebugPredictLines, cMinPredictLines, cMaxPredictLines);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
   DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
@@ -391,12 +437,18 @@ begin
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
     TAtlasVisualizerSettings.cMinMaxImagePixels, TAtlasVisualizerSettings.cMaxMaxImagePixels);
   DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.cEvaluationNames);
+  TestsFromDebugStopMaxArray := EnsureRange(TestsFromDebugStopMaxArray, cMinTestsFromDebugStopMaxArray,
+    cMaxTestsFromDebugStopMaxArray);
 end;
 
 procedure TAtlasPluginDebugSettings.Exchange(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('TestDebug', TestDebug);
   AIo.Flag('TestBreakAtStart', TestBreakAtStart);
+  AIo.Flag('TestsFromDebugStop', TestsFromDebugStop);
+  AIo.Flag('TestsFromDebugStopFields', TestsFromDebugStopFields);
+  AIo.Flag('TestsFromDebugStopProperties', TestsFromDebugStopProperties);
+  AIo.Number('TestsFromDebugStopMaxArray', TestsFromDebugStopMaxArray);
   AIo.Flag('DebugHoverValues', DebugHoverValues);
   AIo.Flag('DebugVisualizers', DebugVisualizers);
   AIo.Text('DebugVisualizerTypes', DebugVisualizerTypes);
@@ -415,10 +467,13 @@ begin
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
+  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
+  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
+  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
@@ -453,6 +508,9 @@ begin
   DebugVariablesWindow := True;
   DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
+  DebugPredictConditions := True;
+  DebugPredictDimSkipped := True;
+  DebugPredictLines := cDefaultPredictLines;
   DebugPinnedValues := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
@@ -479,6 +537,9 @@ begin
   AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
   AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
+  AIo.Flag('DebugPredictConditions', DebugPredictConditions);
+  AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
+  AIo.Number('DebugPredictLines', DebugPredictLines);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);

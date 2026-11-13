@@ -960,6 +960,38 @@
       "x-captionEn": "Private methods too",
       "x-issue": "#1778"
     },
+    "CodeLensUntested": {
+      "description": "Marke „7 von 12 Methoden getestet“ an der unit-Zeile normaler Units, die eine Testunit haben: wie viele der Methoden mindestens ein Test aufruft (gelb unter tests.untested.warnPercent, sonst grau). Klick listet die ungetesteten Methoden zum Springen und bietet „Test anlegen“. Zählt Aufrufe aus Tests, ersetzt keine Abdeckungsmessung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.untested",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.run",
+      "x-node": "editor.codeLens",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „n von m Methoden getestet“ an der Unit",
+      "x-captionEn": "“n of m methods tested” mark on the unit",
+      "x-issue": "#1783"
+    },
+    "TestsUntestedWarnPercent": {
+      "description": "Unter diesem Anteil getesteter Methoden (0 bis 100 Prozent) ist die Marke „n von m Methoden getestet“ gelb, sonst grau; 0 = nie gelb.",
+      "type": "integer",
+      "default": 50,
+      "minimum": 0,
+      "maximum": 100,
+      "x-key": "tests.untested.warnPercent",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.untested",
+      "x-control": "Zahl",
+      "x-caption": "Gelb unter Prozent getestet",
+      "x-captionEn": "Yellow below percent tested",
+      "x-issue": "#1783"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
@@ -1608,6 +1640,55 @@
       "x-captionEn": "Debug test",
       "x-issue": "#585"
     },
+    "TestsFromDebugStop": {
+      "description": "„Test daraus anlegen …“ beim Debug-Halt (Haltepunkt oder Exception): Exception-Leiste, Kontextmenü des Editors und Befehlspalette. Der Dialog zeigt die Methode des Halts in eigenem Code mit Argumenten und einfachen Feldern; daraus entsteht ein DUnitX-Test, der den Fall nachstellt (soll funktionieren mit erwartetem Ergebnis oder soll die Exception werfen). Aus = Eintrag und Knopf fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Test aus dem Debug-Halt anlegen",
+      "x-captionEn": "Create a test from the debug stop",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopFields": {
+      "description": "Einfache Felder des Objekts (Zahlen, Strings, Boolean, Aufzählungen, Mengen) im Dialog anbieten; öffentliche werden im Test gesetzt, andere als Kommentar notiert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop.fields",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Felder des Objekts anbieten",
+      "x-captionEn": "Offer the object's fields",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopProperties": {
+      "description": "Eigenschaften mit Getter auswerten. Getter können Nebenwirkungen haben; aus = nur Felder und Argumente, ausgewertet ohne Nebenwirkungen.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.fromDebugStop.properties",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Eigenschaften mit Getter auswerten",
+      "x-captionEn": "Evaluate properties with getters",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopMaxArray": {
+      "description": "Höchstens so viele Elemente je Array werden als Literal übernommen; längere Arrays bekommen im Test ein TODO. 0 = keine Arrays.",
+      "type": "integer",
+      "default": 20,
+      "minimum": 0,
+      "maximum": 1000,
+      "x-key": "tests.fromDebugStop.maxArray",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Elemente je Array höchstens",
+      "x-captionEn": "Elements per array at most",
+      "x-issue": "#1873"
+    },
     "TestBreakAtStart": {
       "type": "boolean",
       "default": true,
@@ -1955,6 +2036,44 @@
       "x-page": "Debuggen",
       "x-parent": "debug.whyHere",
       "x-issue": "#1878"
+    },
+    "DebugPredictConditions": {
+      "description": "Bedingungen vorausschauen: Beim Halt stehen an den kommenden if, while und case derselben Routine die vorhergesagten Ergebnisse, wenn dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.predictConditions",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Bedingungen vorausschauen (Vorhersage am Halt)",
+      "x-captionEn": "Predict upcoming conditions (forecast at the stop)",
+      "x-issue": "#2169"
+    },
+    "DebugPredictDimSkipped": {
+      "description": "Zweige, die nach der Vorhersage übersprungen werden, blass zeichnen; aus = nur die Hinweise.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.predictConditions.dimSkipped",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.predictConditions",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Übersprungene Zweige blass zeichnen",
+      "x-captionEn": "Dim skipped branches",
+      "x-issue": "#2169"
+    },
+    "DebugPredictLines": {
+      "type": "integer",
+      "default": 20,
+      "minimum": 1,
+      "maximum": 200,
+      "description": "So viele Zeilen (1 bis 200) ab dem Halt schaut die Vorhersage voraus.",
+      "x-key": "debug.predictConditions.lines",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.predictConditions",
+      "x-issue": "#2169"
     },
     "DebugVariablesWindow": {
       "description": "Fenster „Variablen“ beim Debuggen: Reiter Autos (Variablen, Felder und einfache Ausdrücke der aktuellen und der vorigen Anweisung, ohne Funktionsaufrufe), Lokal und Überwachung (je Projekt gespeichert); geänderte Werte markiert, Suche nach Name oder Wert, auch in Unterelementen.",
@@ -2378,6 +2497,19 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
     },
+    "DebugMethodBreakpoints": {
+      "description": "Haltepunkte auf Methoden nach Name oder Muster: Der Befehl „Haltepunkt auf Methoden …“ sucht über den Symbolindex alle Methoden zu einem Muster (TKunde.Speichere, TKunde.*, *.Validiere*, Unit.*, IAuftrag.Pruefe, auf Wunsch mit Überschreibungen und Überladungen) und setzt nach einer Vorschau Haltepunkte am ersten ausführbaren Befehl, als Gruppe mit dem Muster als Namen, mit Bedingung oder nur protokollierend. Mit „Mitwachsen“ ergänzt Atlas beim Debug-Start Haltepunkte für neue passende Methoden. Der Befehl „Haltepunktgruppen der Methoden …“ schaltet Gruppen ein und aus oder entfernt sie. Aus = keine Befehle, kein Mitwachsen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.methodBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte auf Methoden nach Muster",
+      "x-captionEn": "Breakpoints on methods by pattern",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#855"
+    },
     "DebugInstanceBreakpoints": {
       "description": "Haltepunkt nur für ein Objekt: Im angehaltenen Programm schränkt „Haltepunkt nur für dieses Objekt“ (Kontextmenü des Editors, Schreibmarke auf der Zeile des Haltepunkts) den Haltepunkt mit der Bedingung „Pointer(Self) = Pointer($…)“ auf das aktuelle Self ein; „Haltepunkt nur wenn …“ setzt eine Bedingung aus einem aktuellen Feldwert von Self („Nr = 4711“), die auch in der nächsten Sitzung gilt. Eine vorhandene Bedingung bleibt erhalten und wird mit „and“ verknüpft. Nur in Methoden. Vor dem nächsten Start fragt Atlas, ob Adressbedingungen der letzten Sitzung entfernt oder durch eine Feldbedingung ersetzt werden sollen. Aus = keine Befehle, keine Frage.",
       "type": "boolean",
@@ -2428,6 +2560,31 @@
       "x-captionEn": "Breakpoints window with search and tags",
       "x-control": "Kontrollkästchen",
       "x-issue": "#863"
+    },
+    "DebugBreakpointAnchors": {
+      "description": "Haltepunkte wandern mit dem Code (#841): Atlas merkt sich zu jedem Quelltext-Haltepunkt einen Anker (Routine, Abstand zum Routinenanfang, Zeilentext und Nachbarzeilen). Ändert sich eine Datei von außen (neu geladen, Branchwechsel, Formatierer oder Code-Aktion mit vielen Zeilen), setzt Atlas die Haltepunkte samt Bedingung, Durchlaufzähler, Gruppe und Aktiv-Zustand auf die passende Zeile. Nicht eindeutig zuzuordnende kommen in die Liste „Verwaiste Haltepunkte“ mit Vorschlag; gelöscht wird nichts. „Haltepunkte zurück an alte Zeilen“ nimmt das letzte Nachziehen zurück. Aus = die IDE lässt die Haltepunkte, wo sie sind.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointAnchors",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte nach Änderungen von außen nachziehen",
+      "x-captionEn": "Move breakpoints along after outside changes",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#841"
+    },
+    "DebugBreakpointRules": {
+      "description": "Abhängige Haltepunkte und Trefferbedingungen (#864): „Haltepunkt-Regeln …“ im Kontextmenü des Editors (Atlas › Debuggen), im Menü Atlas und in der Befehlspalette. Ein Haltepunkt kann erst aktiv werden, nachdem ein anderer gehalten hat (bis zum Ende der Sitzung oder nur einmal), nur beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer halten und nur in bestimmten Threads (Name enthält, Thread-ID, nur Hauptthread). Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Aus = keine Regeln, die Haltepunkte verhalten sich wie in der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointRules",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Abhängige Haltepunkte, Trefferbedingungen und Thread-Filter",
+      "x-captionEn": "Dependent breakpoints, hit conditions and thread filters",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#864"
     },
     "TestsBuildFirst": {
       "type": "boolean",

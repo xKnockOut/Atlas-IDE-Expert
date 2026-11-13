@@ -8,6 +8,8 @@
 //   EndQuiet schreibt Tell nichts in die Meldungsansicht, damit kein Fenster
 //   aufspringt; Zeilen und Fehlschläge bleiben stehen, bis ShowLast sie auf
 //   Klick im Statusfeld zeigt. EndQuiet meldet das Ende über OnQuietEnded.
+// - Jump schreibt eine anklickbare Zeile zu einer Stelle (ungetestete
+//   Methoden des Projekts, #1783), ShowView zeigt die Meldungsansicht.
 
 interface
 
@@ -43,6 +45,10 @@ type
     procedure Tell(const AText: string);
     /// <summary>Fehlschläge eines Laufs: im Hintergrund gemerkt, sonst je eine anklickbare Zeile.</summary>
     procedure Failures(const AFailures: TArray<TAtlasTestFailure>);
+    /// <summary>Anklickbare Zeile AText, die zu AFileName an ALine und AColumn (0-basiert) springt.</summary>
+    procedure Jump(const AFileName, AText: string; ALine, AColumn: Integer);
+    /// <summary>Meldungsansicht mit der Gruppe Atlas zeigen.</summary>
+    procedure ShowView;
     /// <summary>Ein Lauf im Hintergrund beginnt; vergisst die Zeilen des vorigen.</summary>
     procedure BeginQuiet;
     /// <summary>Ende eines Laufs; nur im Hintergrund wirksam (OnQuietEnded). ARun zählt nur mit AReported.</summary>
@@ -129,6 +135,28 @@ begin
     begin
       mMessages.AddTitleMessage('  ' + ProblemText(mFailure.Test), Group(mMessages));
     end;
+  end;
+end;
+
+procedure TAtlasIdeTestsOutput.Jump(const AFileName, AText: string; ALine, AColumn: Integer);
+var
+  mMessages: IOTAMessageServices;
+  mLineRef: Pointer;
+begin
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
+    mMessages.AddToolMessage(AFileName, AText, cMessageGroup, ALine + 1, AColumn + 1, nil, mLineRef,
+      Group(mMessages));
+  end;
+end;
+
+procedure TAtlasIdeTestsOutput.ShowView;
+var
+  mMessages: IOTAMessageServices;
+begin
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
+    mMessages.ShowMessageView(Group(mMessages));
   end;
 end;
 

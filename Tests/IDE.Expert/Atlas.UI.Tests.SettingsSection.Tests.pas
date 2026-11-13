@@ -71,6 +71,7 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'TestBreakAtStart').Checked, 'Haltepunkt am Anfang standardmäßig an');
     Assert.IsTrue(CheckOf(mPage, 'CodeLensCoveredBy').Checked, '„getestet von“ standardmäßig an (#1778)');
     Assert.IsFalse(CheckOf(mPage, 'TestsCoveredByPrivate').Checked, 'private Methoden standardmäßig aus (#1778)');
+    Assert.IsTrue(CheckOf(mPage, 'CodeLensUntested').Checked, '„Methoden getestet“ standardmäßig an (#1783)');
     CheckOf(mPage, 'CodeLensTests').Checked := False;
     CheckOf(mPage, 'TestRun').Checked := False;
     CheckOf(mPage, 'TestsBuildFirst').Checked := False;
@@ -81,6 +82,8 @@ begin
     CheckOf(mPage, 'CodeLensCoveredBy').Checked := False;
     CheckOf(mPage, 'TestsCoveredByPrivate').Checked := True;
     EditOf(mPage, 'TestsCoveredByDepth').Text := '2';
+    CheckOf(mPage, 'CodeLensUntested').Checked := False;
+    EditOf(mPage, 'TestsUntestedWarnPercent').Text := '80';
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.CodeLensTests);
@@ -93,6 +96,8 @@ begin
     Assert.IsFalse(mSaved.CodeLensCoveredBy);
     Assert.IsTrue(mSaved.TestsCoveredByPrivate);
     Assert.AreEqual(2, mSaved.TestsCoveredByDepth);
+    Assert.IsFalse(mSaved.CodeLensUntested);
+    Assert.AreEqual(80, mSaved.TestsUntestedWarnPercent);
     mSaved.TestBreakAtStart := True;
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'CodeLensTests').Checked);

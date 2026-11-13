@@ -260,6 +260,9 @@ type
     /// <summary>Marke „getestet von“ an den Methoden normaler Units (#1778, codeLens.coveredBy): Zahl und Stand der
     /// Tests, die die Methode aufrufen; Klick führt genau diese aus.</summary>
     CodeLensCoveredBy: Boolean;
+    /// <summary>Marke „n von m Methoden getestet“ an der unit-Zeile normaler Units mit Testunit (#1783,
+    /// codeLens.untested); Klick listet die ungetesteten Methoden.</summary>
+    CodeLensUntested: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
     /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
@@ -1055,6 +1058,7 @@ begin
   Result.Metrics := True;
   Result.CodeLensTests := True;
   Result.CodeLensCoveredBy := True;
+  Result.CodeLensUntested := True;
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
@@ -1122,6 +1126,7 @@ begin
   AIo.Flag('Metrics', Metrics);
   AIo.Flag('CodeLensTests', CodeLensTests);
   AIo.Flag('CodeLensCoveredBy', CodeLensCoveredBy);
+  AIo.Flag('CodeLensUntested', CodeLensUntested);
   AIo.Flag('TodoList', TodoList);
   AIo.Flag('BaselineUpdate', BaselineUpdate);
   AIo.Flag('MetricsReport', MetricsReport);

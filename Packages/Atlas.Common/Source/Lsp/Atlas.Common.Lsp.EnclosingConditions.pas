@@ -102,6 +102,11 @@ type
     function Answer(ALine, ADepth: Integer): TLspEnclosingBlocks;
     /// <summary>Der Befehl: Antwort als JSON (format 1).</summary>
     function Execute(ALine, ADepth: Integer): TJSONObject;
+    /// <summary>Teile der Bedingung ANode wie in Answer (für die Vorschau kommender Bedingungen, #2169).</summary>
+    function ConditionParts(ANode: TSyntaxNode): TLspConditionParts;
+    /// <summary>ANode als Teil der Art value an AParts anhängen, Aufrufe aus der Zeile von ANode.</summary>
+    procedure AppendValue(var AParts: TLspConditionParts; ANode: TSyntaxNode);
+    class function PartToJson(const APart: TLspConditionPart): TJSONObject; static;
     class function ToJson(const ABlocks: TLspEnclosingBlocks): TJSONObject; static;
     /// <summary>ADepth auf 1–MaxDepth begrenzt; 0 und weniger = DefaultDepth.</summary>
     class function ClampDepth(ADepth: Integer): Integer; static;
@@ -555,7 +560,18 @@ begin
   Result := ToJson(Answer(ALine, ADepth));
 end;
 
-function PartToJson(const APart: TLspConditionPart): TJSONObject;
+function TLspEnclosingConditions.ConditionParts(ANode: TSyntaxNode): TLspConditionParts;
+begin
+  Result := Condition(ANode);
+end;
+
+procedure TLspEnclosingConditions.AppendValue(var AParts: TLspConditionParts; ANode: TSyntaxNode);
+begin
+  LoadCalls(ANode);
+  AddValue(AParts, Unwrap(ANode), -1);
+end;
+
+class function TLspEnclosingConditions.PartToJson(const APart: TLspConditionPart): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('kind', APart.Kind);

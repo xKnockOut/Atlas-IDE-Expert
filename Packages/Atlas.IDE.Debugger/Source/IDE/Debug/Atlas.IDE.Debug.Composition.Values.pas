@@ -296,14 +296,15 @@ begin
       end, StartDebugEvaluate, TAtlasIdeDebugEvaluate.Release)]
 end;
 
-/// <summary>„Warum bin ich hier?“ (#1878): Zuhörer der Debug-Sitzung, Zeichner und Mausklick; aus = nichts
-/// angemeldet.</summary>
+/// <summary>„Warum bin ich hier?“ (#1878) und Bedingungen vorausschauen (#2169): Zuhörer der Debug-Sitzung,
+/// Zeichner und Mausklick; beide aus = nichts angemeldet.</summary>
 function WhyHerePart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
 begin
   Result := TAtlasFeaturePart.When('DebugWhyHere',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
-      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugWhyHere;
+      Result := NotMinimal(ALevel) and (TAtlasIdeSettings.Current.DebugWhyHere or
+        TAtlasIdeSettings.Current.DebugPredictConditions);
     end,
     function: Boolean
     begin
