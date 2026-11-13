@@ -475,3 +475,4 @@ Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests
 Atlas.Core.Tests.Untested.Tests
+Atlas.Core.Tests.Log.Tests
