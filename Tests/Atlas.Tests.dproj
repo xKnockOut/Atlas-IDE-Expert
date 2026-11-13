@@ -75,6 +75,7 @@
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.LeakReport.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.EntryText.Tests.pas"/>
@@ -1250,6 +1251,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.ProjectChoice.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.UnitMatch.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.LeakSetup.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.LeakSetup.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineAnchor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MethodAnchor.pas"/>
