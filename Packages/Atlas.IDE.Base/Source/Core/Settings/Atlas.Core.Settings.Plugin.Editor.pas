@@ -266,6 +266,10 @@ type
     /// <summary>Marke „n von m Methoden getestet“ an der unit-Zeile normaler Units mit Testunit (#1783,
     /// codeLens.untested); Klick listet die ungetesteten Methoden.</summary>
     CodeLensUntested: Boolean;
+    /// <summary>Testabdeckung aus einem Bericht von DelphiCodeCoverage in der Rinne (#275, tests.coverage): je
+    /// Zeile mit Code ein Balken, grün durchlaufen, rot nicht; dazu die Befehle „Testabdeckung laden …“ und
+    /// „Testabdeckung ausblenden“.</summary>
+    TestCoverage: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
     /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
@@ -1075,6 +1079,7 @@ begin
   Result.CodeLensTests := True;
   Result.CodeLensCoveredBy := True;
   Result.CodeLensUntested := True;
+  Result.TestCoverage := True;
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
@@ -1143,6 +1148,7 @@ begin
   AIo.Flag('CodeLensTests', CodeLensTests);
   AIo.Flag('CodeLensCoveredBy', CodeLensCoveredBy);
   AIo.Flag('CodeLensUntested', CodeLensUntested);
+  AIo.Flag('TestCoverage', TestCoverage);
   AIo.Flag('TodoList', TodoList);
   AIo.Flag('BaselineUpdate', BaselineUpdate);
   AIo.Flag('MetricsReport', MetricsReport);

@@ -76,6 +76,8 @@
         <DCCReference Include="Text\Atlas.Testing.Log.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Xml.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Coverage.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.PeImage.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.LeakReport.Tests.pas"/>
@@ -211,6 +213,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RuntimeReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestCases.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryCases.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryTests.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
@@ -1328,6 +1331,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.FromDebugStop.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Compare.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Coverage.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Coverage.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
@@ -1348,6 +1353,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Log.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.CaseTable.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.BoundaryCases.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.BoundaryCases.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
