@@ -2266,6 +2266,7 @@ uses
   Atlas.Common.Lsp.Unwrap.Tests in 'Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas',
   Atlas.Common.Lsp.StepTargets.Tests in 'Common\Lsp\Atlas.Common.Lsp.StepTargets.Tests.pas',
   Atlas.Common.Lsp.EnclosingConditions.Tests in 'Common\Lsp\Atlas.Common.Lsp.EnclosingConditions.Tests.pas',
+  Atlas.Common.Lsp.UpcomingConditions.Tests in 'Common\Lsp\Atlas.Common.Lsp.UpcomingConditions.Tests.pas',
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas',
   Atlas.Common.Lsp.Completion.Names.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas',
