@@ -632,6 +632,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ResourceStrings.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ResourceStringCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnumValueCommands.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ValueEdit.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MoveClass.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitRename.Tests.pas"/>
@@ -2302,6 +2303,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EditValue.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EditValue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Pins.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Pins.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas"/>

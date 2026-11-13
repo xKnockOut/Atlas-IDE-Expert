@@ -2075,6 +2075,19 @@
       "x-parent": "debug.predictConditions",
       "x-issue": "#2169"
     },
+    "DebugEditValues": {
+      "description": "Werte ändern: Im Debug-Hover „Ändern …“ (Booleans per Klick umschalten), F2 auf einem Wert im Editor; Eingabe nach Typ geprüft, Rückgängig bis zum nächsten Schritt. Aus = Werte nur lesbar.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.editValues",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Werte im Hover und im Editor ändern",
+      "x-captionEn": "Change values in the hover and in the editor",
+      "x-issue": "#868"
+    },
     "DebugPinnedValues": {
       "description": "Angeheftete Werte: Im Debug-Hover steht „Anheften“; angeheftete Ausdrücke stehen beim Halt als Feld am Ende ihrer Zeile und bleiben über Debug-Sitzungen erhalten.",
       "type": "boolean",

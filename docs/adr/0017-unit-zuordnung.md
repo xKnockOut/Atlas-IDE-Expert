@@ -918,6 +918,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.InlineValues` | `Core/Debug/Atlas.Core.Debug.InlineValues.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.WhyHere` | `Core/Debug/Atlas.Core.Debug.WhyHere.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Forecast` | `Core/Debug/Atlas.Core.Debug.Forecast.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.EditValue` | `Core/Debug/Atlas.Core.Debug.EditValue.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Pins` | `Core/Debug/Atlas.Core.Debug.Pins.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Note` | `Core/Debug/Atlas.Core.Debug.Note.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.OwnCode` | `Core/Debug/Atlas.Core.Debug.OwnCode.pas` | Ordner `Core/Debug` |
@@ -971,6 +972,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.BreakpointListMenu` | `IDE/Debug/Atlas.IDE.Debug.BreakpointListMenu.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.WhyHere` | `IDE/Debug/Atlas.IDE.Debug.WhyHere.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Forecast` | `IDE/Debug/Atlas.IDE.Debug.Forecast.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.EditValue` | `IDE/Debug/Atlas.IDE.Debug.EditValue.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ValueRequest` | `IDE/Debug/Atlas.IDE.Debug.ValueRequest.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.LineEnd` | `IDE/Debug/Atlas.IDE.Debug.LineEnd.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Pins` | `IDE/Debug/Atlas.IDE.Debug.Pins.pas` | Ordner `IDE/Debug` |
@@ -1042,6 +1044,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.LaunchGroups` | `Core/Debug/Atlas.Core.Debug.LaunchGroups.pas` | Startverbünde lesen und schreiben, Ablauf eines Laufs ohne IDE, #867 |
 | `Atlas.IDE.Debug.LaunchProbe` | `IDE/Debug/Atlas.IDE.Debug.LaunchProbe.pas` | Port und Hauptfenster prüfen, Programme ohne Debugger starten und beenden (Windows), #867 |
 | `Atlas.UI.Debug.LaunchGroupsDialog` | `UI/Debug/Atlas.UI.Debug.LaunchGroupsDialog.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.EditValueDialog` | `UI/Debug/Atlas.UI.Debug.EditValueDialog.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.LaunchGroups` | `IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas` | Mehrere Programme gemeinsam debuggen, #867 |
 
 ## Atlas.IDE.Tracker
