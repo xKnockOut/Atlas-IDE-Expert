@@ -69,6 +69,8 @@ type
     procedure RegisterDfmPropertyRules;
     /// <summary>Leckprüfung einrichten (#1880) und Kandidaten zu einem Leckbericht (#1875).</summary>
     procedure RegisterLeakSetup;
+    /// <summary>Befehl atlas.server.ownership: Wer gibt das frei? (#1877)</summary>
+    procedure RegisterOwnership;
     /// <summary>Befehle atlas.server.testCases (#1879) und atlas.server.boundaryCases (#2173).</summary>
     procedure RegisterTestCases;
     /// <summary>Befehle der Schnellbefehle: Einordnen, Erzeugen-Menü, Testunit, Unit-Suche.</summary>
@@ -101,6 +103,8 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.TestCases,
   Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Lsp.Ownership,
   Shell.Composition.DfmPropertyRules,
   Shell.Composition.LeakSetup,
   Shell.Composition.LeakCandidates;
@@ -132,6 +136,7 @@ begin
   FServerCommands.RegisterConvertCommand(FCommands);
   RegisterDfmPropertyRules;
   RegisterLeakSetup;
+  RegisterOwnership;
   RegisterTestCases;
   FCode.Refactorings.Register(FCommands);
   FAnalysis.Analysis.RegisterReportCommands(FCommands);
@@ -324,6 +329,26 @@ begin
   TShellLeakSetup.Attach(FCommands, mServices);
   TShellLeakCandidates.Attach(FCommands, mServices);
   TShellRuntimeReport.Attach(FCommands, mServices, FServices.RuntimeReport);
+end;
+
+procedure TShellCommandArea.RegisterOwnership;
+var
+  mCore: TShellCore;
+  mInput: TLspOwnershipInput;
+begin
+  mCore := FCore;
+  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
+  mInput :=
+    function(const AUri: string; out AText: string; out ARules: TRuleCheckContext): Boolean
+    begin
+      ARules := Default(TRuleCheckContext);
+      Result := ReadText(TDocumentUris.ToPath(AUri), AText);
+      if Result and not mCore.RuleContext.RuleContextFor(AUri, ARules) then
+      begin
+        ARules := Default(TRuleCheckContext);
+      end;
+    end;
+  TLspOwnership.Attach(FCommands, mInput);
 end;
 
 procedure TShellCommandArea.RegisterTestCases;

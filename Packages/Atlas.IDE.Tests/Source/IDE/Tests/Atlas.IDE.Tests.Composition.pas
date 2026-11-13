@@ -8,7 +8,8 @@
 // - den Teil Tests der Feature-Tabelle,
 // - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
 //   „Veraltete Tests ausführen“ (#1770), „Erwartet und erhalten
-//   vergleichen“ (#1779), „Langsamste Tests zeigen“ (#1772) und
+//   vergleichen“ (#1779), „Langsamste Tests zeigen“ (#1772), „Wackelnde
+//   Tests zeigen“ (#1773, Atlas.IDE.Tests.Flaky) und
 //   „Liegengebliebene .received-Dateien löschen“ (#1881) im Atlas-Menü,
 //   „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
 //   Kontextmenü einer Testunit, das Fenster „Atlas-Tests“ (#1776, Ansicht,
@@ -25,9 +26,12 @@
 //   angelegt wie „Zur Testunit wechseln“ von Base), „Leckprüfung
 //   einrichten …“ im Kontextmenü der Projektverwaltung und in der Palette
 //   (#1880, Atlas.IDE.Tests.LeakSetup über Composition.Hooks) und „Test aus
-//   dem Debug-Halt anlegen …“ (#1873, Atlas.IDE.Tests.FromDebugStop; Palette,
+//   dem Debug-Halt anlegen …“ (#1873, über Atlas.IDE.Tests.Composition.Cases; Palette,
 //   Kontextmenü beim Debuggen, Knopf der Exception-Leiste über die Kennung),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
+// - die Schicht der Testabdeckung in der Rinne (#275, IAtlasGutterLayer) mit den Befehlen „Testabdeckung laden …“
+//   und „Testabdeckung ausblenden“; ihr Zustand ist ein eigener Teil der Feature-Tabelle (läuft auch ohne
+//   tests.run, solange tests.coverage an ist),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
@@ -111,17 +115,17 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.CoveredBy,
-  Atlas.IDE.Tests.UntestedProject,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.ApprovalFiles,
   Atlas.IDE.Tests.Slowest,
-  Atlas.IDE.Tests.CaseTable,
+  Atlas.IDE.Tests.Composition.Cases,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
-  Atlas.IDE.Tests.FromDebugStop,
   Atlas.IDE.Tests.Explorer,
+  Atlas.IDE.Tests.Flaky,
   Atlas.IDE.Tests.StatusField,
+  Atlas.IDE.Tests.Coverage,
   Atlas.UI.Tests.Strings;
 
 var
@@ -132,12 +136,11 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GCoveredBy: TAtlasIdeCoveredByLens;
-  GUntested: TAtlasIdeUntestedProject;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
-  GCaseTable: TAtlasIdeTestCaseTable;
   GExplorer: TAtlasIdeTestExplorer;
+  GFlaky: TAtlasIdeFlakyTests;
   GLists: TAtlasIdeTestLists;
   GStatusField: TAtlasIdeTestStatusField;
 
@@ -193,7 +196,7 @@ procedure AffectedRunTests(const AFileName: string; const ATests: TArray<string>
 begin
   if GTests <> nil then
   begin
-    GTests.RunTests(AFileName, ATests);
+    GTests.RunTests(AFileName, ATests, False);
   end;
 end;
 
@@ -220,16 +223,6 @@ begin
   Result.RunAll := AffectedRunAll;
   Result.ResolveTarget := AffectedResolveTarget;
   Result.ServerPath := ServerPath;
-end;
-
-{ TestCase-Tabelle (#1879) }
-
-procedure OpenCaseTable(const AFileName: string; ALine: Integer);
-begin
-  if GCaseTable <> nil then
-  begin
-    GCaseTable.OpenAt(AFileName, ALine);
-  end;
 end;
 
 { Teil Tests }
@@ -266,20 +259,21 @@ begin
   GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
-  // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die langsamsten Tests weiter.
+  // Wackelnde Tests (#1773): Verlauf je Test; reicht den Lauf an die langsamsten Tests weiter.
+  GFlaky := TAtlasIdeFlakyTests.Create(GTests, GSlowest.Remember);
+  // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die wackelnden Tests weiter.
   // Testlisten (#2167): vor dem Fenster, das sie über TAtlasIdeTestLists.Instance findet, und nach ihm frei.
   GLists := TAtlasIdeTestLists.Create(GTests);
-  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GStale.StaleIn, GSlowest.Remember);
+  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), GFlaky.Remember);
   GTests.OnReported := GExplorer.Remember;
   GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
-  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
+  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
-  // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens.
-  GCaseTable := TAtlasIdeTestCaseTable.Create(GScope, GTests, GDebugger);
+  // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens; Grenzfälle (#2173) vorn in OnReported.
+  // Ungetestete Methoden des Projekts (#1783) ebenda.
+  StartCases(GScope, GTests, GDebugger, GOutput, ModuleScope);
   GLens.OnTable := OpenCaseTable;
-  // Ungetestete Methoden des Projekts (#1783).
-  GUntested := TAtlasIdeUntestedProject.Create(GOutput, ModuleScope);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -308,11 +302,12 @@ begin
   FreeAndNil(GStatusField);
   FreeAndNil(GExplorer);
   FreeAndNil(GLists);
-  FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
-  FreeAndNil(GCaseTable);
+  StopCases(GTests);
   FreeAndNil(GDebugger);
+  // Wackelnde Tests (#1773) nach Fenster und Lens, die sie abfragen.
+  FreeAndNil(GFlaky);
   FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
   FreeAndNil(GStale);
@@ -396,6 +391,18 @@ begin
   end;
 end;
 
+{ Testabdeckung (#275) }
+
+function CoverageVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestCoverage and TAtlasIdeTestCoverage.Started;
+end;
+
+function CoverageClearVisible: Boolean;
+begin
+  Result := CoverageVisible and TAtlasIdeTestCoverage.Loaded;
+end;
+
 { Langsamste Tests (#1772) }
 
 function SlowestVisible: Boolean;
@@ -411,19 +418,16 @@ begin
   end;
 end;
 
-{ TestCase-Tabelle (#1879) }
+{ TestCase-Tabelle (#1879), Grenzfälle (#2173) }
 
 function CaseTableVisible: Boolean;
 begin
-  Result := TestsVisible and TAtlasIdeTestCaseTable.Wanted and (GCaseTable <> nil);
+  Result := TestsVisible and CaseTableWanted;
 end;
 
-procedure EditCaseTable;
+function BoundaryCasesVisible: Boolean;
 begin
-  if GCaseTable <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GCaseTable.OpenAtCursor);
-  end;
+  Result := TestsVisible and BoundaryCasesWanted;
 end;
 
 { Vergleichsdateien (#1881) }
@@ -451,6 +455,18 @@ end;
 
 { Fenster „Atlas-Tests“ (#1776) }
 
+/// <summary>Fenster „Atlas-Tests“ mit allen Tests.</summary>
+procedure ShowAll;
+begin
+  GExplorer.Show(False);
+end;
+
+/// <summary>Fenster „Atlas-Tests“ nur mit wackelnden Tests (#1773).</summary>
+procedure ShowFlakyOnly;
+begin
+  GExplorer.Show(True);
+end;
+
 function ExplorerVisible: Boolean;
 begin
   Result := TestsVisible and TAtlasIdeTestExplorer.Wanted and (GExplorer <> nil);
@@ -460,17 +476,22 @@ procedure ShowExplorer;
 begin
   if GExplorer <> nil then
   begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GExplorer.Show);
+    TAtlasGuard.Run(TAtlasFeature.Build, ShowAll);
   end;
 end;
 
-{ Ungetestete Methoden des Projekts (#1783) }
+{ Wackelnde Tests (#1773) }
 
-procedure ListUntested;
+function FlakyVisible: Boolean;
 begin
-  if GUntested <> nil then
+  Result := ExplorerVisible and TAtlasIdeSettings.Current.TestsFlaky;
+end;
+
+procedure ShowFlaky;
+begin
+  if GExplorer <> nil then
   begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GUntested.Run);
+    TAtlasGuard.Run(TAtlasFeature.Build, ShowFlakyOnly);
   end;
 end;
 
@@ -490,7 +511,7 @@ end;
 
 procedure TestFromDebugStop;
 begin
-  TAtlasIdeTestFromDebug.Run(GScope);
+  RunTestFromDebug(GScope);
 end;
 
 { Leckprüfung einrichten (#1880) }
@@ -596,10 +617,16 @@ begin
     Command('Atlas.RunStaleTests', TAtlasTestsTextId.TestsRunStaleCommand, RunStale, StaleTestsVisible),
     // Erwartet und erhalten eines Fehlschlags (#1779): sichtbar mit tests.compare.
     Command('Atlas.CompareTestValues', TAtlasTestsTextId.TestsCompareCommand, CompareValues, CompareVisible),
+    // Wackelnde Tests (#1773): Fenster „Atlas-Tests“ mit dem Filter „wackelt“; sichtbar mit tests.flaky.
+    Described(Command('Atlas.ShowFlakyTests', TAtlasTestsTextId.TestsFlakyCommand, ShowFlaky, FlakyVisible),
+      TAtlasTestsTextId.TestsFlakyHint),
     // Langsamste Tests (#1772): sichtbar mit tests.showDuration.
     Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
     // [TestCase]-Fälle als Tabelle (#1879): sichtbar mit tests.testCaseTable.
     Command('Atlas.EditTestCases', TAtlasTestsTextId.TestsCaseTableCommand, EditCaseTable, CaseTableVisible),
+    // Grenzfälle als Testfälle (#2173): sichtbar mit tests.boundaryCases.
+    Command('Atlas.SuggestBoundaryCases', TAtlasTestsTextId.TestsBoundaryCommand, SuggestBoundaryCases,
+      BoundaryCasesVisible),
     // Vergleichsdateien (#1881): sichtbar mit tests.approvalFiles.
     Command('Atlas.CleanApprovalFiles', TAtlasTestsTextId.TestsApprovalCleanCommand,
       Guarded(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
@@ -617,11 +644,16 @@ begin
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
       TAtlasTestsTextId.TestsGalleryTestUnitHint),
     // Test aus dem Debug-Halt (#1873): sichtbar mit tests.fromDebugStop und einem Modul, das den Halt liefert.
-    Command(TAtlasIdeTestFromDebug.cCommand, TAtlasTestsTextId.TestsFromDebugCommand,
-      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TAtlasIdeTestFromDebug.Visible),
+    Command(TestFromDebugCommand, TAtlasTestsTextId.TestsFromDebugCommand,
+      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TestFromDebugVisible),
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
-      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
+      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint),
+    // Testabdeckung (#275): sichtbar mit tests.coverage; ausblenden nur mit geladenem Bericht.
+    Command('Atlas.LoadTestCoverage', TAtlasTestsTextId.CoverageLoadCommand,
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Choose), CoverageVisible),
+    Command('Atlas.ClearTestCoverage', TAtlasTestsTextId.CoverageClearCommand,
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Clear), CoverageClearVisible)];
   // Testlisten (#2167): je Liste ein Befehl, mit tests.lists.
   Result := Result + ListCommands;
 end;
@@ -679,6 +711,19 @@ begin
   Result.When := WhileDebugging;
 end;
 
+/// <summary>Ist die Datei eine Unit (.pas), aber keine Testunit?</summary>
+function InCodeUnit(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := not AContext.TestUnit and SameText(ExtractFileExt(AContext.FileName), '.pas');
+end;
+
+/// <summary>Wie ContextEntry, aber nur außerhalb von Testunits.</summary>
+function CodeContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := ContextEntry(ACommandId);
+  Result.When := InCodeUnit;
+end;
+
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
@@ -688,15 +733,20 @@ begin
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.LoadTestCoverage', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ClearTestCoverage', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ShowFlakyTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ListUntestedMethods', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
-    DebugContextEntry(TAtlasIdeTestFromDebug.cCommand),
+    DebugContextEntry(TestFromDebugCommand),
     ContextEntry('Atlas.CompareTestValues'),
     ContextEntry('Atlas.EditTestCases'),
+    // Grenzfälle (#2173) an Routinen normaler Units.
+    CodeContextEntry('Atlas.SuggestBoundaryCases'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.LeakSetup', TAtlasMenuPlace.ProjectContext),
@@ -754,7 +804,7 @@ procedure TAtlasTestsModule.RunTests(const AFileName: string; const ATests: TArr
 begin
   if GTests <> nil then
   begin
-    GTests.RunTests(AFileName, ATests);
+    GTests.RunTests(AFileName, ATests, False);
   end
   else
   begin
@@ -854,7 +904,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
-      end, TestsStarted, StartTests, StopTests)];
+      end, TestsStarted, StartTests, StopTests),
+    // Testabdeckung (#275): liest nur einen Bericht, baut und startet nichts; unabhängig von tests.run.
+    TAtlasFeaturePart.When('TestCoverage',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestCoverage;
+      end, TAtlasIdeTestCoverage.Started, TAtlasIdeTestCoverage.Start, TAtlasIdeTestCoverage.Stop)];
 end;
 
 class function TAtlasTestsModule.RegisterModule: Boolean;
@@ -889,6 +945,8 @@ begin
   GScope.Provide(IAtlasTestsSource, mRef);
   // „Vergleichen“ (#1779) im Befund-Hover und auf der Kachel „Testergebnisse“.
   GScope.Provide(IAtlasTestValues, mRef);
+  // Balken der Testabdeckung in der Rinne (#275).
+  TAtlasIdeTestCoverage.ProvideIn(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

@@ -22,7 +22,10 @@
 //   Atlas.IDE.Rules.IdeErrors) für das Fenster „Atlas-Prüfung“,
 // - den Assistenten „Eigene Prüfregel“ in Datei › Neu › Weitere (#1821):
 //   neue Schicht in forbidden-uses der Projektdatei
-//   (Atlas.Core.Rules.CustomLayer), danach der Regel-Editor bei der Regel.
+//   (Atlas.Core.Rules.CustomLayer), danach der Regel-Editor bei der Regel,
+// - die Marke „Wer gibt das frei?“ an jedem Create (#1877,
+//   Atlas.IDE.Rules.OwnershipHints) als Teil „OwnershipHints“ der
+//   Feature-Tabelle.
 // Prüfen selbst, Fenster „Atlas-Prüfung“ mit Erklären, Inline-Hinweise,
 // Übersichtsleiste, der Hinweis bei abgeschaltetem Modul (#1454) sowie Stand
 // und Format der Baseline-Datei bleiben in Base: Sie zeigen auch
@@ -40,7 +43,7 @@ uses
 
 type
   TAtlasRulesModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasBaselineSource)
+    IAtlasBaselineSource, IAtlasAppliesSettings)
   public const
     cModuleId = 'atlas.rules';
     cSwitch = 'ruleChecks';
@@ -54,6 +57,7 @@ type
     function Commands: TArray<TAtlasModuleCommand>;
     function MenuEntries: TArray<TAtlasMenuEntry>;
     function StartUpdate(const AProject: string; const ADone: TAtlasBaselineUpdateDone): string;
+    procedure ApplySettings;
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -67,6 +71,7 @@ uses
   ToolsAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Rules.CustomLayer,
@@ -81,6 +86,7 @@ uses
   Atlas.IDE.Rules.BulkFix,
   Atlas.IDE.Rules.FindingActions,
   Atlas.IDE.Rules.IdeErrors,
+  Atlas.IDE.Rules.OwnershipHints,
   Atlas.IDE.Rules.Settings,
   Atlas.UI.Rules.SettingsDialog,
   Atlas.UI.Rules.SettingsSection,
@@ -89,6 +95,7 @@ uses
 
 var
   GScope: IAtlasModuleScope;
+  GOwnershipHints: TAtlasIdeOwnershipHints;
 
 { Eigenschaftsregeln (#309) }
 
@@ -204,6 +211,23 @@ begin
   TAtlasProjectSettings.ShowRule(TAtlasCustomLayer.cRuleId);
 end;
 
+{ Wer gibt das frei? (#1877) }
+
+procedure StartOwnershipHints;
+begin
+  GOwnershipHints := TAtlasIdeOwnershipHints.Create(GScope);
+end;
+
+procedure StopOwnershipHints;
+begin
+  FreeAndNil(GOwnershipHints);
+end;
+
+function OwnershipHintsStarted: Boolean;
+begin
+  Result := GOwnershipHints <> nil;
+end;
+
 { Befehle }
 
 function Command(const AId: string; ACaption: TAtlasRulesTextId; const ARun: TProc;
@@ -279,6 +303,15 @@ begin
   Result := TAtlasIdeRulesBaseline.StartUpdate(AProject, ADone);
 end;
 
+procedure TAtlasRulesModule.ApplySettings;
+begin
+  // editor.ownershipHints, editor.ownershipHints.onlyProblems (#1877).
+  if GOwnershipHints <> nil then
+  begin
+    GOwnershipHints.ApplySettings;
+  end;
+end;
+
 class function TAtlasRulesModule.RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
@@ -298,6 +331,10 @@ begin
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasBaselineSource, mRef);
+  GScope.Provide(IAtlasAppliesSettings, mRef);
+  // Teil der Feature-Tabelle: Base startet die Marke mit dem Modul und stoppt sie davor (Regel 1, 5).
+  GScope.Provide(IAtlasFeaturePart, TAtlasFeaturePart.AtLevel('OwnershipHints', TAtlasSafeLevel.Safe,
+    OwnershipHintsStarted, StartOwnershipHints, StopOwnershipHints));
   GScope.Provide(IAtlasBulkFixer, TAtlasIdeRulesBulkFix.Create(GScope) as IAtlasBulkFixer);
   GScope.Provide(IAtlasRuleActions, TAtlasIdeRuleActions.Create as IAtlasRuleActions);
   GScope.Provide(IAtlasIdeErrors, TAtlasIdeRulesIdeErrors.Create as IAtlasIdeErrors);
@@ -309,6 +346,7 @@ end;
 /// <summary>Modulspezifische Schritte nach dem Abmelden aus der Registry.</summary>
 procedure ReleaseModule;
 begin
+  StopOwnershipHints;
   TAtlasIdeRulesBaseline.Uninstall;
 end;
 

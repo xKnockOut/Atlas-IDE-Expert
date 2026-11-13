@@ -134,6 +134,8 @@ begin
   Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
+  Assert.IsTrue(ASettings.TestsBoundaryCases, 'Grenzfälle standardmäßig an (#2173)');
+  Assert.AreEqual(20, ASettings.TestsBoundaryMax, 'höchstens 20 Grenzfälle (#2173)');
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
@@ -142,6 +144,8 @@ begin
   Assert.IsTrue(ASettings.EditorStatusBarTests, 'Teststand in der Statusleiste standardmäßig an (#1777)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
+  Assert.IsTrue(ASettings.TestsFlaky, 'wackelnde Tests standardmäßig an (#1773)');
+  Assert.AreEqual(10, ASettings.TestsFlakyRuns, 'zehn Läufe je Test (#1773)');
 end;
 
 /// <summary>Vorgaben für Editor, Code Lens und Tests.</summary>
@@ -168,6 +172,7 @@ begin
   Assert.IsTrue(ASettings.Impact, 'Auswirkungen anzeigen standardmäßig an (#1120)');
   Assert.AreEqual(2, ASettings.ImpactDepth, 'Tiefe der Auswirkungsanalyse standardmäßig 2 (#1120)');
   Assert.IsTrue(ASettings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
+  Assert.IsTrue(ASettings.TestCoverage, 'Testabdeckung in der Rinne standardmäßig an (#275)');
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
@@ -178,6 +183,8 @@ begin
   Assert.IsTrue(ASettings.TestsStale, 'veraltete Testergebnisse standardmäßig an (#1770)');
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
   Assert.IsTrue(ASettings.CodeLensCoveredBy, 'Marke „getestet von“ standardmäßig an (#1778)');
+  Assert.IsFalse(ASettings.OwnershipHints, 'Marke „Wer gibt das frei?“ standardmäßig aus (#1877)');
+  Assert.IsFalse(ASettings.OwnershipHintsOnlyProblems, 'nur Problemfälle standardmäßig aus (#1877)');
   Assert.AreEqual(1, ASettings.TestsCoveredByDepth, 'Tiefe „getestet von“ standardmäßig 1 (#1778)');
   Assert.IsFalse(ASettings.TestsCoveredByPrivate, '„getestet von“ an privaten Methoden standardmäßig aus (#1778)');
   Assert.IsTrue(ASettings.CodeLensUntested, 'Marke „n von m Methoden getestet“ standardmäßig an (#1783)');
@@ -343,6 +350,8 @@ begin
   ASettings.TestsCompare := False;
   ASettings.TestsCompareFormat := False;
   ASettings.TestsCaseTable := False;
+  ASettings.TestsBoundaryCases := False;
+  ASettings.TestsBoundaryMax := 7;
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsWindow := False;
@@ -350,6 +359,8 @@ begin
   ASettings.TestsListsRunKey := 0;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
+  ASettings.TestsFlaky := False;
+  ASettings.TestsFlakyRuns := 20;
 end;
 
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build von der Vorgabe abweichend setzen.</summary>
@@ -379,12 +390,15 @@ begin
   ASettings.CodeLensTestUnit := False;
   ASettings.CodeLensMetrics := False;
   ASettings.CodeLensTests := False;
+  ASettings.TestCoverage := False;
   ASettings.TestRun := False;
   ASettings.TestsAfterBuild := True;
   ASettings.TestsBuildFirst := False;
   ASettings.TestsStale := False;
   ASettings.TestsStaleUnits := True;
   ASettings.CodeLensCoveredBy := False;
+  ASettings.OwnershipHints := True;
+  ASettings.OwnershipHintsOnlyProblems := True;
   ASettings.TestsCoveredByDepth := 3;
   ASettings.TestsCoveredByPrivate := True;
   ASettings.CodeLensUntested := False;
@@ -520,6 +534,8 @@ begin
   Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
   Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
   Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
+  Assert.IsFalse(ALoaded.TestsBoundaryCases, 'tests.boundaryCases (#2173)');
+  Assert.AreEqual(7, ALoaded.TestsBoundaryMax, 'tests.boundaryCases.maxCases (#2173)');
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
@@ -527,6 +543,8 @@ begin
   Assert.AreEqual(0, ALoaded.TestsListsRunKey, 'tests.lists.runKey (#2167)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
+  Assert.IsFalse(ALoaded.TestsFlaky, 'tests.flaky (#1773)');
+  Assert.AreEqual(20, ALoaded.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
 end;
 
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build gelesen.</summary>
@@ -557,12 +575,15 @@ begin
   Assert.IsFalse(ALoaded.CodeLensTestUnit);
   Assert.IsFalse(ALoaded.CodeLensMetrics);
   Assert.IsFalse(ALoaded.CodeLensTests);
+  Assert.IsFalse(ALoaded.TestCoverage, 'tests.coverage (#275)');
   Assert.IsFalse(ALoaded.TestRun);
   Assert.IsTrue(ALoaded.TestsAfterBuild);
   Assert.IsFalse(ALoaded.TestsBuildFirst);
   Assert.IsFalse(ALoaded.TestsStale, 'tests.stale (#1770)');
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
   Assert.IsFalse(ALoaded.CodeLensCoveredBy, 'codeLens.coveredBy (#1778)');
+  Assert.IsTrue(ALoaded.OwnershipHints, 'editor.ownershipHints (#1877)');
+  Assert.IsTrue(ALoaded.OwnershipHintsOnlyProblems, 'editor.ownershipHints.onlyProblems (#1877)');
   Assert.AreEqual(3, ALoaded.TestsCoveredByDepth, 'tests.coveredBy.depth (#1778)');
   Assert.IsTrue(ALoaded.TestsCoveredByPrivate, 'tests.coveredBy.private (#1778)');
   Assert.IsFalse(ALoaded.CodeLensUntested, 'codeLens.untested (#1783)');
@@ -1151,6 +1172,20 @@ begin
   Settings.TestsSlowMs := 100000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
+  // tests.flaky.runs (#1773): 3 bis 50.
+  Settings.TestsFlakyRuns := 1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, Settings.TestsFlakyRuns);
+  Settings.TestsFlakyRuns := 500;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, Settings.TestsFlakyRuns);
+  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
+  Settings.TestsBoundaryMax := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, Settings.TestsBoundaryMax);
+  Settings.TestsBoundaryMax := 500;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, Settings.TestsBoundaryMax);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

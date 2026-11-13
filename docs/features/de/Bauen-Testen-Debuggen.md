@@ -153,26 +153,34 @@ Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Testabdeckung im Editor (#275)
+
+- „Testabdeckung laden …“ (*Atlas*-Menü, Befehlspalette) liest einen Bericht von [DelphiCodeCoverage](https://github.com/DelphiCodeCoverage/DelphiCodeCoverage) ein, ohne neu zu bauen: `CodeCoverage_Summary.xml` (mit `-xml -xmllines`) oder `jacoco.xml` neuerer Fassungen.
+- In der Rinne steht dann an jeder Zeile mit Code ein schmaler Balken: grün durchlaufen, rot nicht durchlaufen. Der Tooltip nennt die Treffer, die Abdeckung der Datei und den Bericht.
+- Wurde die Datei nach dem Bericht gespeichert, sagt der Tooltip, dass die Zeilen verschoben sein können.
+- Ein neuer Lauf überschreibt den Bericht: Atlas liest ihn beim nächsten Wechsel bzw. nach einer Tipp-Pause neu. „Testabdeckung ausblenden“ vergisst ihn.
+- Beispiel (Testprogramm mit Map-Datei, „Detailliert“; volle Pfade bei `-e` und `-m`, `-ife` vor `-u` bei Unitnamen mit Punkten):
+
+  ```
+  CodeCoverage.exe -ife -e C:\Projekt\Bin\Tests.exe -m C:\Projekt\Bin\Tests.map -u Rechner.Kern Rechner.Hilfen -sp C:\Projekt\Source -od C:\Projekt\Coverage -xml -xmllines -a ^-^-exit:Continue
+  ```
+
+Einstellung: `tests.coverage`
+
 ### Vergleichsdateien für Tests (#1881)
-
 Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis gegen eine gespeicherte Datei statt mit einem Assert je Zeile („Approval“). Die Hilfs-Unit `Atlas.Testing.Approval` liegt unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX); ins Testprojekt kopieren oder ihren Ordner in den Suchpfad aufnehmen. Beispiel: [approval-tests.pas](../../Beispiele/approval-tests.pas).
-
 - `TApproval.Verify(Ergebnis, 'TFixture.Methode')` vergleicht mit `TFixture.Methode.approved.txt`; eine eigene Endung (`'.json'`) und ein Normalisierer für Datum oder GUID sind möglich.
 - Zeilenenden (CRLF, LF, CR) zählen nicht als Abweichung; Dateien sind UTF-8.
 - Weicht das Ergebnis ab, liegt daneben `….received.txt` und der Test schlägt fehl mit „Approval: Abweichung ab Zeile 3, siehe …“; ohne approved-Datei mit „neu, bitte prüfen“.
 - Übernehmen heißt: received in approved umbenennen und die approved-Datei einchecken; `.received.*` gehört in die Ignorierliste.
 - Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
 - Meldungen deutsch, mit `TApproval.English := True` englisch.
-
 In der IDE (Modul Tests, `tests.approvalFiles`):
-
 - Schlägt ein Test mit dieser Meldung fehl, zeigt seine Testmarke „Abweichung · Vergleich“, ohne approved-Datei „Neu · Vergleich“. Derselbe Knopf „Vergleichen“ steht im Hover des Fehlschlags und auf der Kachel *Testergebnisse*.
 - Der Vergleich zeigt links die approved-, rechts die received-Datei (Zeilen einander zugeordnet wie bei erwartet und erhalten, #1779). *Als neue Erwartung übernehmen* ersetzt die approved-Datei durch die received-Datei und löscht diese; der nächste Lauf ist grün. *Zum Test* springt zum Methodenkopf.
 - *Liegengebliebene .received-Dateien löschen* (Atlas-Menü, Befehlspalette) sucht im Ordner der Vergleichsdateien des zuletzt gelaufenen Testprojekts (ohne Lauf des aktiven Projekts), löscht nach Rückfrage alle `*.received.*` darin und bietet an, `*.received.*` in die nächste `.gitignore` einzutragen, wenn dort noch keine Zeile dafür steht.
 - `tests.approvalFiles` aus: keine eigene Marke, kein Befehl; die Hilfs-Unit arbeitet weiter, ihre Fehlschläge erscheinen als gewöhnliche Fehlschläge.
-
 Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugin)
-
 ### Dauer der Tests und langsame Tests (#1772)
 
 - Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
@@ -218,6 +226,21 @@ Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
 ```
 
 Einstellungen: `tests.lists`, `tests.lists.runKey`
+
+### Wackelnde Tests (#1773)
+
+Ein Test wackelt, wenn er ohne Änderung an seinem Rumpf mal grün und mal rot ist (Zeit, Threads, Reihenfolge, Dateien).
+
+- Atlas merkt sich nach jedem Lauf aus der IDE je Test die letzten Ergebnisse (`tests.flaky.runs`, Vorgabe 10) mit der Prüfsumme des Methodenrumpfs wie bei „veraltet“ (#1770). Ein Test mit `[TestCase]` gilt in einem Lauf als rot, wenn einer seiner Fälle rot war; nur übersprungen zählt nicht.
+- „Wackelt“: Unter den Ergebnissen mit dem Rumpf von jetzt gibt es grün, danach rot, danach wieder grün. Rot, dann am Rumpf repariert und grün, wackelt nicht.
+- Die Marke der Testlinse wird gelb: „Test ausführen · bestanden · wackelt (3 von 10 rot)“; die Klassenmarke nennt die Zahl ihrer wackelnden Tests („· 2 wackeln“).
+- Im Fenster *Atlas-Tests* steht hinter dem Test „· wackelt“, der Filter *wackelt* zeigt nur diese Tests. Die Einzelheiten zeigen den Verlauf als Reihe (✓ grün, ✗ rot, ältester zuerst) mit „2 von 10 rot“, seit wann der Rumpf unverändert ist und die letzte Fehlermeldung.
+- *Wackelnde Tests zeigen* (Atlas-Menü, Befehlspalette) öffnet das Fenster mit genau diesem Filter.
+- Ist ein Test, der beim Lauf davor rot war, jetzt grün, wackelt aber (etwa nach *Fehlgeschlagene Tests erneut ausführen*), meldet die Meldungsansicht „Test TRechnerTests.Summe bestanden, wackelt aber (3 von 10 Läufen rot).“
+- Der Verlauf liegt je Testprojekt in `%LOCALAPPDATA%\Atlas\projects\tests-history\<Schlüssel>.json` (Schlüssel wie die Projekt-Zusammenfassung) und übersteht einen Neustart der IDE.
+- `tests.flaky` aus: Atlas schreibt keinen Verlauf, keine Marke, kein Befehl.
+
+Einstellungen: `tests.flaky`, `tests.flaky.runs`
 
 ### Teststand in der Statusleiste (#1777)
 - In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
@@ -788,6 +811,16 @@ Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - „Als bekannt markieren“ merkt eine Klasse, „Bekannte ausblenden“ blendet sie aus. Enter oder Doppelklick springt zur Stelle.
 
 Schalter: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`.
+
+#### Wer gibt das frei?
+
+- Am Ende jeder Zeile mit `T.Create(…)` steht eine Marke mit der Antwort: grün „frei in Destroy, Z. 48“, „frei in finally, Z. 30“, „Owner Self“, „gehört FListe“ (Liste mit OwnsObjects) oder „Referenzzählung“; gelb „frei in Clear, Z. 70“ (andere Methode), „an Aufrufer zurückgegeben“, „weitergegeben an Registry.Add“ oder „unklar“; rot „nie freigegeben“.
+- Rot steht nur, wo eine der Leck-Regeln (`field-not-freed`, `create-without-assignment`, `local-object-not-freed`, `created-result-not-freed`) mit den Einstellungen der Datei meldet: Marke und Problem laufen nie auseinander. Ist die Regel aus, heißt dieselbe Stelle „unklar“.
+- Listen tragen zusätzlich „besitzt Elemente“ (`TObjectList` mit OwnsObjects) bzw. „Elemente gehören FListe“, wenn eine zweite Liste derselben Klasse die Elemente besitzt.
+- Klick auf die Marke springt zur freigebenden Zeile; der Tooltip erklärt, wie Atlas zur Einstufung kam, bei Rot mit der Meldung der Regel.
+- Die Marken kommen vom Server (`atlas.server.ownership`) und werden zusammen mit der normalen Prüfung der Datei neu geholt; gezeichnet werden nur die sichtbaren Zeilen. Ausblenden je Zeile oder Datei über Rechtsklick auf die Marke.
+
+Schalter: `editor.ownershipHints` (Vorgabe aus, Modul Prüfregeln), `editor.ownershipHints.onlyProblems` (nur gelbe und rote Marken).
 
 #### Threads im Quelltext
 

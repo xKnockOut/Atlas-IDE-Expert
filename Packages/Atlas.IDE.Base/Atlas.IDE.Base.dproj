@@ -109,6 +109,8 @@
         <DCCReference Include="..\Atlas.Text\Source\DebugDisplay\Atlas.Text.DebugDisplay.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Xml\Atlas.Text.Xml.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Coverage\Atlas.Text.Coverage.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.PeImage.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\LeakReport\Atlas.Text.LeakReport.pas"/>

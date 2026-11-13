@@ -153,7 +153,7 @@ begin
       Break;
     end;
   end;
-  FTests.RunTests(mRuns[mChosen].FileName, mRuns[mChosen].Names);
+  FTests.RunTests(mRuns[mChosen].FileName, mRuns[mChosen].Names, False);
 end;
 
 end.

@@ -84,7 +84,7 @@ begin
     Exit;
   end;
   // Das Testprojekt bestimmt die erste Testunit; die Namen gelten für alle gefundenen.
-  ATests.RunTests(mTestUnits[0], mNames);
+  ATests.RunTests(mTestUnits[0], mNames, False);
 end;
 
 class function TAtlasIdeTestUnitCommands.HasProjectUnits: Boolean;

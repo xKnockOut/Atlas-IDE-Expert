@@ -177,26 +177,34 @@ The button only appears when the failure has an expected and an actual value.
 
 Settings: `tests.compare`, `tests.compare.format`
 
+### Test coverage in the editor (#275)
+
+- “Load test coverage…” (*Atlas* menu, command palette) reads a report of [DelphiCodeCoverage](https://github.com/DelphiCodeCoverage/DelphiCodeCoverage) without a new build: `CodeCoverage_Summary.xml` (with `-xml -xmllines`) or `jacoco.xml` of newer versions.
+- The gutter then shows a narrow bar at every line with code: green run, red not run. The tooltip names the hits, the coverage of the file and the report.
+- If the file was saved after the report, the tooltip says that lines may have moved.
+- A new run overwrites the report: Atlas reads it again on the next switch or after a typing pause. “Hide test coverage” forgets it.
+- Example (test program with a detailed map file; full paths for `-e` and `-m`, `-ife` before `-u` for unit names with dots):
+
+  ```
+  CodeCoverage.exe -ife -e C:\Project\Bin\Tests.exe -m C:\Project\Bin\Tests.map -u Calc.Core Calc.Helpers -sp C:\Project\Source -od C:\Project\Coverage -xml -xmllines -a ^-^-exit:Continue
+  ```
+
+Setting: `tests.coverage`
+
 ### Approval files for tests (#1881)
-
 For exports, reports, generated code or JSON a test checks the result against a stored file instead of one assert per line (“approval”). The helper unit `Atlas.Testing.Approval` ships in `Setup\Vorlagen` (MIT licence, RTL and DUnitX only); copy it into the test project or add its folder to the search path. Example: [approval-tests.pas](../../Beispiele/approval-tests.pas).
-
 - `TApproval.Verify(Result, 'TFixture.Method')` compares with `TFixture.Method.approved.txt`; a custom extension (`'.json'`) and a normalizer for dates or GUIDs are possible.
 - Line ends (CRLF, LF, CR) are no difference; files are UTF-8.
 - If the result differs, `….received.txt` is written next to it and the test fails with “Approval: difference from line 3, see …” (German by default); without an approved file with “new, please review”.
 - Approving means renaming received to approved and committing the approved file; `.received.*` belongs in the ignore list.
 - Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
 - Messages are German, English with `TApproval.English := True`.
-
 In the IDE (Tests module, `tests.approvalFiles`):
-
 - If a test fails with this message, its test mark shows “Difference · Compare”, without an approved file “New · Compare”. The same “Compare” button appears in the hover of the failure and on the *Test results* card.
 - The comparison shows the approved file on the left and the received file on the right (lines matched as for expected and actual, #1779). *Accept as new expectation* replaces the approved file with the received file and deletes it; the next run is green. *Go to test* jumps to the method header.
 - *Delete leftover .received files* (Atlas menu, command palette) looks in the approval folder of the test project that ran last (without a run, the active project), deletes all `*.received.*` there after asking and offers to add `*.received.*` to the nearest `.gitignore` if it has no line for them yet.
 - `tests.approvalFiles` off: no special mark, no command; the helper unit keeps working, its failures show as ordinary failures.
-
 Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
-
 ### Test duration and slow tests (#1772)
 
 - After a run every mark of the test lens shows the duration: “Run test · passed · 12 ms”, from one second on in seconds with one decimal (“1.2 s”). The class mark shows the sum of its tests, a `[TestCase]` method the sum of its cases.
@@ -242,6 +250,21 @@ Open them with the tabs at the top of the “Atlas Tests” window; “+” crea
 ```
 
 Settings: `tests.lists`, `tests.lists.runKey`
+
+### Flaky tests (#1773)
+
+A test is flaky when it is sometimes green and sometimes red without a change to its body (time, threads, order, files).
+
+- After every run from the IDE, Atlas keeps the last results of each test (`tests.flaky.runs`, default 10) with the checksum of the method body, as for “outdated” (#1770). A test with `[TestCase]` counts as red in a run if one of its cases was red; skipped only does not count.
+- “Flaky”: among the results with the current body there is green, then red, then green again. Red, then fixed in the body and green, is not flaky.
+- The mark of the test lens turns yellow: “Run test · passed · flaky (3 of 10 red)”; the class mark gives the number of its flaky tests (“· 2 flaky”).
+- In the *Atlas Tests* window the test shows “· flaky”, and the filter *flaky* shows only these tests. The details show the history as a row (✓ green, ✗ red, oldest first) with “2 of 10 red”, since when the body is unchanged and the last failure message.
+- *Show flaky tests* (Atlas menu, command palette) opens the window with exactly this filter.
+- If a test that was red in the run before is green now but flaky (for example after *Run failed tests again*), the messages view says “Test TRechnerTests.Summe passed, but it is flaky (3 of 10 runs red).”
+- The history is kept per test project in `%LOCALAPPDATA%\Atlas\projects\tests-history\<key>.json` (same key as the project summary) and survives a restart of the IDE.
+- `tests.flaky` off: Atlas writes no history, no mark, no command.
+
+Settings: `tests.flaky`, `tests.flaky.runs`
 
 ### Test status in the status bar (#1777)
 - The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
@@ -842,6 +865,16 @@ Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - "Mark as known" remembers a class, "Hide known" hides it. Enter or a double click jumps to the place.
 
 Settings: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`
+
+### Who frees this?
+
+- Every line with `T.Create(…)` ends with a mark that answers it: green "freed in Destroy, line 48", "freed in finally, line 30", "owner Self", "owned by FList" (list with OwnsObjects) or "reference counted"; yellow "freed in Clear, line 70" (another method), "returned to the caller", "passed to Registry.Add" or "unclear"; red "never freed".
+- Red appears only where one of the leak rules (`field-not-freed`, `create-without-assignment`, `local-object-not-freed`, `created-result-not-freed`) reports with the settings of the file, so mark and problem never disagree. With the rule off, the same place reads "unclear".
+- Lists also carry "owns its elements" (`TObjectList` with OwnsObjects) or "elements owned by FList" when a second list of the same class owns the elements.
+- A click on the mark jumps to the releasing line; the tooltip explains how Atlas reached the rating, for red with the message of the rule.
+- The marks come from the server (`atlas.server.ownership`) and are fetched again together with the normal check of the file; only visible lines are drawn. Hide per line or per file with a right-click on the mark.
+
+Settings: `editor.ownershipHints` (off by default, module Rule checks), `editor.ownershipHints.onlyProblems` (yellow and red marks only)
 
 ### Threads in source
 

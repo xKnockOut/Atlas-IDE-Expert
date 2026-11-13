@@ -91,6 +91,10 @@ type
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
+    cMinTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMinTestsFlakyRuns;
+    cMaxTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMaxTestsFlakyRuns;
+    cMinTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMinTestsBoundaryMax;
+    cMaxTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsBoundaryMax;
     cMinTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMinTestsLogMaxLines;
     cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
@@ -396,6 +400,7 @@ type
     property CodeLensTests: Boolean read FEditorInsight.CodeLensTests write FEditorInsight.CodeLensTests;
     property CodeLensCoveredBy: Boolean read FEditorInsight.CodeLensCoveredBy write FEditorInsight.CodeLensCoveredBy;
     property CodeLensUntested: Boolean read FEditorInsight.CodeLensUntested write FEditorInsight.CodeLensUntested;
+    property TestCoverage: Boolean read FEditorInsight.TestCoverage write FEditorInsight.TestCoverage;
     property TestRun: Boolean read FBuild.TestRun write FBuild.TestRun;
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
@@ -432,7 +437,11 @@ type
     property TestsLogMaxLines: Integer read FBuild.TestsLogMaxLines write FBuild.TestsLogMaxLines;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
+    property TestsBoundaryCases: Boolean read FBuild.TestsBoundaryCases write FBuild.TestsBoundaryCases;
+    property TestsBoundaryMax: Integer read FBuild.TestsBoundaryMax write FBuild.TestsBoundaryMax;
     property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
+    property TestsFlaky: Boolean read FBuild.TestsFlaky write FBuild.TestsFlaky;
+    property TestsFlakyRuns: Integer read FBuild.TestsFlakyRuns write FBuild.TestsFlakyRuns;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;
@@ -564,6 +573,9 @@ type
     property BaselineUpdate: Boolean read FEditorInsight.BaselineUpdate write FEditorInsight.BaselineUpdate;
     property MetricsReport: Boolean read FEditorInsight.MetricsReport write FEditorInsight.MetricsReport;
     property DfmPropertyRules: Boolean read FEditorInsight.DfmPropertyRules write FEditorInsight.DfmPropertyRules;
+    property OwnershipHints: Boolean read FEditorInsight.OwnershipHints write FEditorInsight.OwnershipHints;
+    property OwnershipHintsOnlyProblems: Boolean read FEditorInsight.OwnershipHintsOnlyProblems
+      write FEditorInsight.OwnershipHintsOnlyProblems;
     property TeamFile: Boolean read FGeneralServer.TeamFile write FGeneralServer.TeamFile;
     property EditorKeysPriority: Boolean read FKeyPriorities.EditorKeysPriority write FKeyPriorities.EditorKeysPriority;
     property SlashCommands: Boolean read FCodeActions.SlashCommands write FCodeActions.SlashCommands;

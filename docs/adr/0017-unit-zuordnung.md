@@ -1556,6 +1556,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.BulkFix` | `Core/Problems/Atlas.Core.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
 | `Atlas.Core.Rules.Table` | `Core/Rules/Atlas.Core.Rules.Table.pas` | Ordner `Core/Rules`: Regeltabelle für Regel-Editor und „Regel abschalten“, #1755 |
 | `Atlas.Core.Rules.CustomLayer` | `Core/Rules/Atlas.Core.Rules.CustomLayer.pas` | Ordner `Core/Rules`: Eigene Prüfregel als Schicht von forbidden-uses, #1821 |
+| `Atlas.Core.Rules.Ownership` | `Core/Rules/Atlas.Core.Rules.Ownership.pas` | Ordner `Core/Rules`: Marke „Wer gibt das frei?“ lesen, Ton und Texte (Antwort von atlas.server.ownership), #1877 |
 | `Atlas.IDE.Editor.DfmPropertyRules` | `IDE/Editor/Atlas.IDE.Editor.DfmPropertyRules.pas` | Eigenschaftsregeln anwenden (#309), Schalter dfmRules.apply unter ruleChecks, #1455 |
 | `Atlas.IDE.Rules.Baseline` | `IDE/Rules/Atlas.IDE.Rules.Baseline.pas` | Ordner `IDE/Rules`: Baseline aktualisieren, Compilermeldungen in die Baseline, #1455 |
 | `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
@@ -1563,6 +1564,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Rules.FindingActions` | `IDE/Rules/Atlas.IDE.Rules.FindingActions.pas` | Ordner `IDE/Rules`: Regel-Aktionen am Befund (`IAtlasRuleActions`), #1755 |
 | `Atlas.IDE.Rules.IdeErrors` | `IDE/Rules/Atlas.IDE.Rules.IdeErrors.pas` | Ordner `IDE/Rules`: Error Insight der IDE lesen (`IAtlasIdeErrors`), #1819 |
 | `Atlas.IDE.Rules.Maintenance` | `IDE/Rules/Atlas.IDE.Rules.Maintenance.pas` | Ordner `IDE/Rules`: Baseline und Unterdrückungen des aktiven Projekts, #1755 |
+| `Atlas.IDE.Rules.OwnershipHints` | `IDE/Rules/Atlas.IDE.Rules.OwnershipHints.pas` | Ordner `IDE/Rules`: Marke „Wer gibt das frei?“ im Editor, Schalter editor.ownershipHints unter ruleChecks, #1877 |
 | `Atlas.IDE.Rules.Settings` | `IDE/Rules/Atlas.IDE.Rules.Settings.pas` | Ordner `IDE/Rules`: Abschnitt „Prüfregeln“ mit seinen Hooks, #1755 |
 | `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
 | `Atlas.UI.Rules.Editor` | `UI/Rules/Atlas.UI.Rules.Editor.pas` | Ordner `UI/Rules`: Regel-Editor, #1755 |
@@ -1575,6 +1577,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Tests.AffectedHook` | `Core/Tests/Atlas.Core.Tests.AffectedHook.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Coverage` | `Core/Tests/Atlas.Core.Tests.Coverage.pas` | Ordner `Core/Tests`; Testabdeckung (#275) |
 | `Atlas.Core.Tests.CoveredBy` | `Core/Tests/Atlas.Core.Tests.CoveredBy.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Debug` | `Core/Tests/Atlas.Core.Tests.Debug.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.ProjectChoice` | `Core/Tests/Atlas.Core.Tests.ProjectChoice.pas` | Ordner `Core/Tests` |
@@ -1589,6 +1592,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Approval` | `Core/Tests/Atlas.Core.Tests.Approval.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Flaky` | `Core/Tests/Atlas.Core.Tests.Flaky.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Explorer` | `Core/Tests/Atlas.Core.Tests.Explorer.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Lists` | `Core/Tests/Atlas.Core.Tests.Lists.pas` | Ordner `Core/Tests`; Testlisten: Regeln, Mitglieder, Argumente eines Laufs, JSON (#2167) |
 | `Atlas.Core.Tests.ListText` | `Core/Tests/Atlas.Core.Tests.ListText.pas` | Ordner `Core/Tests`; Beschreibung und Prüfung einer Testliste (#2167) |
@@ -1597,8 +1601,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.StatusField` | `Core/Tests/Atlas.Core.Tests.StatusField.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Log` | `Core/Tests/Atlas.Core.Tests.Log.pas` | Ordner `Core/Tests`; Protokoll je Test (#2168) |
 | `Atlas.Core.Tests.CaseTable` | `Core/Tests/Atlas.Core.Tests.CaseTable.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.BoundaryCases` | `Core/Tests/Atlas.Core.Tests.BoundaryCases.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Untested` | `Core/Tests/Atlas.Core.Tests.Untested.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Coverage` | `IDE/Tests/Atlas.IDE.Tests.Coverage.pas` | Ordner `IDE/Tests`; Testabdeckung in der Rinne (#275) |
 | `Atlas.IDE.Tests.CoveredBy` | `IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredByList` | `IDE/Tests/Atlas.IDE.Tests.CoveredByList.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
@@ -1609,12 +1615,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Compare` | `IDE/Tests/Atlas.IDE.Tests.Compare.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.ApprovalFiles` | `IDE/Tests/Atlas.IDE.Tests.ApprovalFiles.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Flaky` | `IDE/Tests/Atlas.IDE.Tests.Flaky.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Explorer` | `IDE/Tests/Atlas.IDE.Tests.Explorer.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.StatusField` | `IDE/Tests/Atlas.IDE.Tests.StatusField.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.ExplorerWindow` | `IDE/Tests/Atlas.IDE.Tests.ExplorerWindow.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lists` | `IDE/Tests/Atlas.IDE.Tests.Lists.pas` | Ordner `IDE/Tests`; Testlisten laden, speichern, ausführen (#2167) |
 | `Atlas.IDE.Tests.ExplorerLog` | `IDE/Tests/Atlas.IDE.Tests.ExplorerLog.pas` | Ordner `IDE/Tests`; Protokoll je Test (#2168) |
 | `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.BoundaryCases` | `IDE/Tests/Atlas.IDE.Tests.BoundaryCases.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Composition.Cases` | `IDE/Tests/Atlas.IDE.Tests.Composition.Cases.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.LeakSetup` | `IDE/Tests/Atlas.IDE.Tests.LeakSetup.pas` | Ordner `IDE/Tests`; Befehl „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
@@ -1633,6 +1642,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tests.ListDialog` | `UI/Tests/Atlas.UI.Tests.ListDialog.pas` | Ordner `UI/Tests`; Dialog einer Testliste (#2167) |
 | `Atlas.UI.Tests.ExplorerDetails` | `UI/Tests/Atlas.UI.Tests.ExplorerDetails.pas` | Ordner `UI/Tests`; Einzelheiten und Protokoll (#2168) |
 | `Atlas.UI.Tests.CaseTable` | `UI/Tests/Atlas.UI.Tests.CaseTable.pas` | Ordner `UI/Tests` |
+| `Atlas.UI.Tests.BoundaryCases` | `UI/Tests/Atlas.UI.Tests.BoundaryCases.pas` | Ordner `UI/Tests` |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 | `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 

@@ -89,7 +89,11 @@ type
     /// <summary>Zeichen der anderen Threads in der Rinne beim Halt (#852).</summary>
     ThreadsInSource,
     /// <summary>Marke „n von m Methoden getestet“ an der unit-Zeile (#1783).</summary>
-    CodeLensUntested);
+    CodeLensUntested,
+    /// <summary>Balken der Testabdeckung in der Rinne (#275).</summary>
+    TestCoverage,
+    /// <summary>Marke „Wer gibt das frei?“ hinter jedem T.Create(…) (#1877).</summary>
+    OwnershipHints);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -198,7 +202,10 @@ const
     // Die Zeichen stehen nur bis zum Fortsetzen; Ausblenden je Datei oder überall.
     (Key: 'DebugThreadsInSource'; Scopes: cFileScopes; Overlay: False; Gutter: True),
     // Eine Marke je Datei: hier und in der Datei sind dasselbe.
-    (Key: 'CodeLensUntested'; Scopes: cFileScopes; Overlay: True; Gutter: False)
+    (Key: 'CodeLensUntested'; Scopes: cFileScopes; Overlay: True; Gutter: False),
+    // Der Bericht gilt für die ganze Datei: Ausblenden je Datei oder überall.
+    (Key: 'TestCoverage'; Scopes: cFileScopes; Overlay: False; Gutter: True),
+    (Key: 'OwnershipHints'; Scopes: cAllScopes; Overlay: True; Gutter: False)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;
