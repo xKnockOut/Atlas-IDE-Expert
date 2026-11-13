@@ -126,6 +126,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Threads:** what is waiting for what (wait point of every thread, deadlock patterns such as `WaitFor` against `Synchronize`), parallel stacks of all threads as a tree, other threads in the gutter (flag, experimental: freeze), experimental: where a method queued with `TThread.Queue`, `Synchronize` or `TTask.Run` came from
 - **Event log while debugging:** debug output, modules and threads with filter (also regex), colors by pattern and jump to `File.pas(123)`
 - **Logpoints:** breakpoints that do not stop but write text with placeholders such as `x={x}, total {Total:0.00}` to the event log (Shift+F5, diamond in the gutter)
+- **Leak and crash reports:** paste a FastMM log or a madExcept, EurekaLog or JclDebug report; the stack appears clickable in the message view, the creation or crash site as a diagnostic in the editor, and the map file resolves addresses without debug information
 - **“No source” window:** when the debugger stops in code without source, a small window names routine, module, reason (debug DCUs off, `{$D-}`, DCU only, not in search path, system code) and ways out
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)

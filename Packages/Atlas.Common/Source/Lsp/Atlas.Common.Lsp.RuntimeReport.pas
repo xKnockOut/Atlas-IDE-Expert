@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.RuntimeReport;
 
-// Befehle atlas.server.runtimeReport [uri, {text, map?, exe?, base?}] und atlas.server.runtimeReport.clear [uri]
+// Befehle atlas.server.runtimeReport [uri, {text, map?, exe?, base?}] und atlas.server.runtimeReport.clear [uri?]
 // (#74): Ein Leckbericht (FastMM, ReportMemoryLeaksOnShutdown) oder Absturzbericht (madExcept, EurekaLog,
 // JclDebug, Meldung einer Exception) wird aufgelöst (Atlas.Common.Diagnostics.RuntimeReport) und als Diagnosen an
 // die Stellen im Projekt gehängt: je Leckgruppe eine Warnung an der Erzeugungsstelle, beim Absturz eine Warnung an
@@ -396,7 +396,7 @@ function TLspRuntimeReport.Clear(const AArguments: TJSONArray): TJSONValue;
 var
   mResult: TJSONObject;
 begin
-  UriOf(AArguments, cClearCommand);
+  // Der Bericht gilt für alle Projekte; die URI braucht es nicht.
   mResult := TJSONObject.Create;
   mResult.AddPair('cleared', TJSONNumber.Create(Store(nil)));
   Result := mResult;

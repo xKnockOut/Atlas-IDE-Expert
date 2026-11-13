@@ -992,6 +992,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.StepsBar` | `UI/Debug/Atlas.UI.Debug.StepsBar.pas` | Ordner `UI/Debug` |
 | `Atlas.Core.Debug.Restart` | `Core/Debug/Atlas.Core.Debug.Restart.pas` | Ablauf von „Neu starten“ ohne IDE, #872 |
 | `Atlas.IDE.Debug.Restart` | `IDE/Debug/Atlas.IDE.Debug.Restart.pas` | Neu starten mit einem Griff, #872 |
+| `Atlas.Core.Debug.RuntimeReport` | `Core/Debug/Atlas.Core.Debug.RuntimeReport.pas` | Argumente und Antwort von atlas.server.runtimeReport ohne IDE, #74 |
+| `Atlas.IDE.Debug.RuntimeReport` | `IDE/Debug/Atlas.IDE.Debug.RuntimeReport.pas` | Leck- oder Absturzbericht einfügen, Stapel in der Meldungsansicht, #74 |
 
 ## Atlas.IDE.Tracker
 
