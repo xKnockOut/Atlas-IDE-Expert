@@ -13,6 +13,8 @@ const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
+  cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -133,6 +135,13 @@ type
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
+    /// <summary>Ereignisprotokoll beim Debuggen (#580, debug.eventLog): Fenster „Atlas: Ereignisprotokoll“ (Befehl
+    /// Atlas.DebugEventLog) mit Ausgaben, Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, Ausdruck und
+    /// Art, Farben und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.</summary>
+    DebugEventLog: Boolean;
+    /// <summary>Farben im Ereignisprotokoll (#580, debug.eventLogColors): „Muster=Farbe“, durch „;“ getrennt; Farbe
+    /// als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Erstes passendes Muster gewinnt.</summary>
+    DebugEventLogColors: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -197,6 +206,8 @@ begin
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
   Result.DebugOwnCodeFolders := '';
+  Result.DebugEventLog := True;
+  Result.DebugEventLogColors := cDefaultEventLogColors;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.DebugEnabled := True;
@@ -206,6 +217,7 @@ procedure TAtlasPluginDebugSettings.Normalize;
 begin
   // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
+  DebugEventLogColors := Trim(DebugEventLogColors);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
@@ -256,6 +268,8 @@ begin
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
+  AIo.Flag('DebugEventLog', DebugEventLog);
+  AIo.Text('DebugEventLogColors', DebugEventLogColors);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

@@ -2155,6 +2155,7 @@ uses
   Atlas.UI.Debug.ExceptionStack in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas',
   Atlas.UI.Debug.ExceptionsFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas',
   Atlas.Core.Debug.Exceptions.Tests in 'IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas',
+  Atlas.Core.Debug.EventLog.Tests in 'IDE.Expert\Atlas.Core.Debug.EventLog.Tests.pas',
   Atlas.Core.Debug.CallStack.Tests in 'IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas',
   Atlas.Core.Debug.Note in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Note.pas',
   Atlas.Core.Debug.Note.Tests in 'IDE.Expert\Atlas.Core.Debug.Note.Tests.pas',

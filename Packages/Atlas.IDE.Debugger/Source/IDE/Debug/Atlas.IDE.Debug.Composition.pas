@@ -68,7 +68,6 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Exceptions,
@@ -84,6 +83,7 @@ uses
   Atlas.IDE.Debug.Report,
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
+  Atlas.IDE.Debug.Composition.Run,
   Atlas.UI.Debug.Strings;
 
 var
@@ -184,11 +184,6 @@ end;
 procedure StartDebugOwnCode;
 begin
   TAtlasIdeDebugOwnCode.Start(MessageLine);
-end;
-
-procedure StartDebugExceptionBar;
-begin
-  TAtlasIdeDebugExceptionBar.Start(MessageLine, TAtlasStatusRegistry.Default);
 end;
 
 function ExpressionProvider(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider;
@@ -349,6 +344,8 @@ begin
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
     Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
       TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible)];
+  // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
+  Result := Result + RunCommands;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -383,6 +380,7 @@ begin
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
     ContextEntry('Atlas.StepFilterUnskip')];
+  Result := Result + RunMenuEntries;
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -424,6 +422,8 @@ begin
   TAtlasIdeVisualizers.ApplySettings;
   // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
   TAtlasIdeDisplayRules.ApplySettings;
+  // debug.eventLog* (#580).
+  ApplyRunSettings;
 end;
 
 procedure TAtlasDebugModule.ThemeChanged;
@@ -432,6 +432,7 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
+  RunThemeChanged;
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;
@@ -540,7 +541,7 @@ end;
 function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart];
+  Result := Result + [StepFilterPart] + RunParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

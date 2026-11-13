@@ -2119,6 +2119,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventLog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Note.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas"/>
