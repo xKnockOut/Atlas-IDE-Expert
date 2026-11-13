@@ -25,6 +25,8 @@ type
     /// <summary>#1442: Designer-Leiste Vorgabe an; Speichern und Laden.</summary>
     [Test]
     procedure EditorDesignerBarOptions;
+    [Test]
+    procedure DesignerLayoutOptions;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -856,6 +858,34 @@ begin
   Store.WriteString('DesignerSearchStyle', 'riesig');
   Loaded.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, Loaded.DesignerSearchStyle, 'Unbekanntes: Vorgabe');
+end;
+/// <summary>Eigenes Desktop-Layout im Designer (#2079): Vorgaben, Speichern und Laden, unbekannter Rückweg.
+/// </summary>
+procedure TAtlasViewSettingsTests.DesignerLayoutOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.DesignerLayout, 'Vorgabe aus');
+  Assert.AreEqual('', Settings.DesignerLayoutName);
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutPrevious, Settings.DesignerLayoutReturnTo);
+  Assert.IsTrue(Settings.DesignerLayoutSkipWhileDebugging);
+  Settings.DesignerLayout := True;
+  Settings.DesignerLayoutName := '  Designer ';
+  Settings.DesignerLayoutReturnTo := TAtlasPluginSettings.cDesignerLayoutDefault;
+  Settings.DesignerLayoutSkipWhileDebugging := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.DesignerLayout);
+  Assert.AreEqual('Designer', Loaded.DesignerLayoutName, 'ohne Leerraum');
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutDefault, Loaded.DesignerLayoutReturnTo);
+  Assert.IsFalse(Loaded.DesignerLayoutSkipWhileDebugging);
+  Store.WriteString('DesignerLayoutReturnTo', 'irgendwo');
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerLayoutPrevious, Loaded.DesignerLayoutReturnTo, 'Unbekanntes: Vorgabe');
 end;
 /// <summary>Schnelle Lesezeichen (#1104): Werte von der Vorgabe abweichend setzen.</summary>
 procedure SetQuickBookmarkOptions(var ASettings: TAtlasPluginSettings);

@@ -59,6 +59,9 @@ const
   cDesignerUsagesUnit = 'unit';
   cDesignerUsagesProject = 'project';
   cDesignerUsagesGroup = 'projectGroup';
+  /// <summary>Werte von designer.layout.returnTo (#2079): vorheriges Layout bzw. Standard-Layout der IDE.</summary>
+  cDesignerLayoutPrevious = 'previous';
+  cDesignerLayoutDefault = 'default';
   /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
   cBeginEndAlways = 'always';
   cBeginEndMultiLine = 'multiLine';
@@ -631,6 +634,16 @@ type
     DesignerExtractFrame: Boolean;
     /// <summary>Knopf „Ereignis-Karte“ (#612, designer.eventMap).</summary>
     DesignerEventMap: Boolean;
+    /// <summary>Im Formular-Designer eigenes Desktop-Layout laden (#2079, designer.layout).</summary>
+    DesignerLayout: Boolean;
+    /// <summary>Name des Layouts für den Designer, wie im Desktop-Auswahlfeld der IDE (#2079,
+    /// designer.layout.name).</summary>
+    DesignerLayoutName: string;
+    /// <summary>Zurück im Code: cDesignerLayoutPrevious oder cDesignerLayoutDefault (#2079,
+    /// designer.layout.returnTo).</summary>
+    DesignerLayoutReturnTo: string;
+    /// <summary>Während einer Debug-Sitzung nicht umschalten (#2079, designer.layout.skipWhileDebugging).</summary>
+    DesignerLayoutSkipWhileDebugging: Boolean;
     /// <summary>Befehl „Breite nach Text“ (#730, designer.fitToText).</summary>
     DesignerFitToText: Boolean;
     /// <summary>Mindestbreite bei 96 dpi (#730, designer.fitToText.minWidth).</summary>
@@ -1645,6 +1658,8 @@ begin
   DesignerUsagesScope := Choice(DesignerUsagesScope, [cDesignerUsagesProject, cDesignerUsagesUnit,
     cDesignerUsagesGroup]);
   DesignerUsagesKey := EnsureRange(DesignerUsagesKey, 0, $FFFF);
+  DesignerLayoutReturnTo := Choice(DesignerLayoutReturnTo, [cDesignerLayoutPrevious, cDesignerLayoutDefault]);
+  DesignerLayoutName := Trim(DesignerLayoutName);
   DesignerFitToTextMinWidth := EnsureRange(DesignerFitToTextMinWidth, 0, cMaxFitMinWidth);
   DesignerFitToTextPadding := EnsureRange(DesignerFitToTextPadding, 0, cMaxFitPadding);
   DesignerButtonBarPosition := Choice(DesignerButtonBarPosition, [cButtonBarBottomRight, cButtonBarBottomLeft,
@@ -1762,6 +1777,10 @@ begin
   DesignerDataBindings := False;
   DesignerExtractFrame := True;
   DesignerEventMap := True;
+  DesignerLayout := False;
+  DesignerLayoutName := '';
+  DesignerLayoutReturnTo := cDesignerLayoutPrevious;
+  DesignerLayoutSkipWhileDebugging := True;
 end;
 
 procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
@@ -1785,6 +1804,10 @@ begin
   AIo.Flag('DesignerDataBindings', DesignerDataBindings);
   AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
   AIo.Flag('DesignerEventMap', DesignerEventMap);
+  AIo.Flag('DesignerLayout', DesignerLayout);
+  AIo.Text('DesignerLayoutName', DesignerLayoutName);
+  AIo.Text('DesignerLayoutReturnTo', DesignerLayoutReturnTo);
+  AIo.Flag('DesignerLayoutSkipWhileDebugging', DesignerLayoutSkipWhileDebugging);
 end;
 
 end.
