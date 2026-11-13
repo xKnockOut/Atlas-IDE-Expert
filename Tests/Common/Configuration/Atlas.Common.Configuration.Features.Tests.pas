@@ -721,6 +721,39 @@ begin
   Parse('{"refactoring": {"extractInterface": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
 end;
+/// <summary>Einstellungen der Umbauten an Mitgliedern: verschieben (#675), Zugriffsmethode durch Feld ersetzen (#717),
+/// Sichtbarkeit anheben (#2108).</summary>
+procedure ReadsMemberRefactorings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // #675: Mitglied verschieben.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MoveMember);
+  Assert.IsFalse(Parse('{"refactoring": {"moveMember": false}}', Issues).Refactoring.MoveMember);
+  Parse('{"refactoring": {"moveMember": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #717: Zugriffsmethode durch Feld ersetzen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessor);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorDiagnostic);
+  Settings := Parse('{"refactoring": {"inlineAccessor": false, "inlineAccessorEqualityCheck": false, ' +
+    '"inlineAccessorBulk": false, "inlineAccessorDiagnostic": true}}', Issues);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessor);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
+  Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #2108: Sichtbarkeit anheben.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.RaiseVisibility);
+  Assert.IsFalse(Parse('{"refactoring": {"raiseVisibility": false}}', Issues).Refactoring.RaiseVisibility);
+  Parse('{"refactoring": {"raiseVisibility": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
 /// <summary>Einstellungen ab „#713: Basisklasse herauslösen“.</summary>
 procedure ReadsExtractBaseClassAndDelete;
 var
@@ -746,25 +779,6 @@ begin
   Parse('{"refactoring": {"extractSuperclassTarget": "otherUnit", "extractSuperclassNameSuffix": "1x", ' +
     '"extractSuperclassMethodMode": "copy", "extractSuperclassRaiseVisibility": "public"}}', Issues);
   Assert.AreEqual(4, Integer(Length(Issues)));
-  // #675: Mitglied verschieben.
-  Assert.IsTrue(Parse('{}', Issues).Refactoring.MoveMember);
-  Assert.IsFalse(Parse('{"refactoring": {"moveMember": false}}', Issues).Refactoring.MoveMember);
-  Parse('{"refactoring": {"moveMember": 1}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  // #717: Zugriffsmethode durch Feld ersetzen.
-  Settings := Parse('{}', Issues);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessor);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessorEqualityCheck);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessorBulk);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessorDiagnostic);
-  Settings := Parse('{"refactoring": {"inlineAccessor": false, "inlineAccessorEqualityCheck": false, ' +
-    '"inlineAccessorBulk": false, "inlineAccessorDiagnostic": true}}', Issues);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessor);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessorEqualityCheck);
-  Assert.IsFalse(Settings.Refactoring.InlineAccessorBulk);
-  Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
-  Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
   // #716: Sicher löschen.
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Refactoring.SafeDelete);
@@ -945,6 +959,7 @@ begin
   ReadsFreeFieldsAndConditions;
   ReadsMethodWithoutSelfAndTypes;
   ReadsExtractBaseClassAndDelete;
+  ReadsMemberRefactorings;
   ReadsBudgetAndTimeLimits;
   ReadsIndexScope;
   ReadsProtocolSettings;

@@ -50,6 +50,7 @@ type
     /// <summary>ACombo gehört dem Aufrufer und liegt in AHost; AFixedTexts in der Reihenfolge von
     /// TAtlasFindingScope.</summary>
     constructor Create(AHost: TWinControl; ACombo: TComboBox; const AFixedTexts: TArray<string>);
+    destructor Destroy; override;
     class function Text(AId: TAtlasScopeBoxText): string; static;
     /// <summary>Einträge neu, wenn sich Projekte oder Schalter geändert haben (braucht ein Fenster); True, wenn
     /// dabei die Wahl auf das aktive Projekt zurückfiel (Einzelprojekt nicht mehr in der Gruppe).</summary>
@@ -101,6 +102,16 @@ begin
   FList := TAtlasScopeList.Create(nil, FShowProjects);
   FCombo.Style := csOwnerDrawFixed;
   FCombo.OnDrawItem := DrawItem;
+end;
+
+destructor TAtlasProblemsScopeBox.Destroy;
+begin
+  // Die Liste gehört dem Aufrufer und kann länger leben: danach nichts mehr hierher zeichnen lassen.
+  if Assigned(FCombo) then
+  begin
+    FCombo.OnDrawItem := nil;
+  end;
+  inherited Destroy;
 end;
 
 class function TAtlasProblemsScopeBox.Text(AId: TAtlasScopeBoxText): string;

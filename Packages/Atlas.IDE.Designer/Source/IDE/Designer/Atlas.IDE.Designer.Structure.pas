@@ -361,9 +361,22 @@ begin
 end;
 
 destructor TAtlasIdeStructure.Destroy;
+var
+  mFrame: TAtlasStructureFrame;
 begin
   FTimer.Enabled := False;
   CloseWindow;
+  // Der Frame im angedockten Fenster kann dieses Objekt überleben: nichts darf es danach noch erreichen.
+  mFrame := Frame;
+  if mFrame <> nil then
+  begin
+    mFrame.OnSelect := nil;
+    mFrame.OnOpen := nil;
+    mFrame.OnMenu := nil;
+    mFrame.OnCanDrop := nil;
+    mFrame.OnDrop := nil;
+    mFrame.OnChanged := nil;
+  end;
   FreeAndNil(FHost);
   FTimer.Free;
   FMenu.Free;
