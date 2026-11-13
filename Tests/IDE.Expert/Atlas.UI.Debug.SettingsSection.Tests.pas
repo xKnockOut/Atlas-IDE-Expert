@@ -107,6 +107,8 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugEvaluateReplaceCtrlF7').Checked, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
   Assert.IsTrue(CheckOf(APage, 'DebugExplainAccessViolation').Checked, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(CheckOf(APage, 'DebugExplainAccessViolationAllowCalls').Checked, 'allowCalls (#865)');
+  Assert.AreEqual('64', EditOf(APage, 'DebugParallelStacksMaxThreads').Text, 'debug.parallelStacks.maxThreads (#837)');
+  Assert.IsTrue(CheckOf(APage, 'DebugParallelStacks').Checked, 'debug.parallelStacks (#837)');
   Assert.IsTrue(CheckOf(APage, 'DebugDeadlocks').Checked, 'debug.deadlocks (#587)');
   Assert.IsTrue(CheckOf(APage, 'DebugModuleOfAddress').Checked, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(CheckOf(APage, 'DebugExceptionHistory').Checked, 'debug.exceptionHistory (#517)');
@@ -129,6 +131,8 @@ begin
   CheckOf(APage, 'DebugExplainAccessViolationAllowCalls').Checked := True;
   CheckOf(APage, 'DebugModuleOfAddress').Checked := False;
   CheckOf(APage, 'DebugDeadlocks').Checked := False;
+  CheckOf(APage, 'DebugParallelStacks').Checked := False;
+  EditOf(APage, 'DebugParallelStacksMaxThreads').Text := '32';
   CheckOf(APage, 'DebugExceptionHistory').Checked := False;
   CheckOf(APage, 'DebugJustMyCode').Checked := False;
   CheckOf(APage, 'DebugExceptionBanner').Checked := True;
@@ -150,6 +154,8 @@ begin
   Assert.IsTrue(ASaved.DebugExplainAccessViolationAllowCalls);
   Assert.IsFalse(ASaved.DebugModuleOfAddress);
   Assert.IsFalse(ASaved.DebugDeadlocks);
+  Assert.IsFalse(ASaved.DebugParallelStacks);
+  Assert.AreEqual(32, ASaved.DebugParallelStacksMaxThreads);
 
   Assert.IsFalse(ASaved.DebugExceptionHistory);
   Assert.IsFalse(ASaved.DebugJustMyCode);

@@ -1,4 +1,4 @@
-# Build, test, debug
+﻿# Build, test, debug
 
 Back to the [README](../../../README.md)
 
@@ -116,6 +116,17 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Affected tests on save (#1775)
+
+- After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
+- No window pops up: the Atlas status field shows “Tests: 3 affected · running …”, then “Tests: 3/3 passed” or red “Tests: 1 of 3 failed”. Clicking the line in the status window shows the output of the run in the message view.
+- Code lens and Atlas problems follow the run as after “Run tests”.
+- Saving during a run does not cancel it; afterwards at most one more run follows with all files saved until then.
+- No run during a debug session, a build or another test run. More affected tests than `tests.onSave.max` or all tests needed: no run, only a hint in the status field.
+- If a test unit belongs to several test projects, the background run takes the choice made once with “Run tests”.
+
+Settings: `tests.onSave` (default off, quick toggle), `tests.onSave.max`
+
 ### Failure at the assert line (#1771)
 
 - A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.
@@ -128,7 +139,13 @@ Settings: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Compare expected and actual (#1779)
 
-Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*).
+Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*), and with the “Compare” button:
+
+- in the hover over the failure (before “Explain”),
+- on the test mark of a failed test (after “Debug”),
+- on the “Test results” tile of the welcome page for the selected failure of the local run.
+
+The button only appears when the failure has an expected and an actual value.
 
 - Shows the failure of the test at the cursor (for a `[TestCase]` the first failed case), otherwise the last one reported, in two columns: expected on the left, actual on the right.
 - Differing characters have a red or green background; lines that exist on one side only are marked as a whole, with a grey gap opposite.
@@ -333,6 +350,19 @@ Settings: `debug.breakOnNextEvent`
 
 Settings: `debug.stepFilters`
 
+### Breakpoints that will not be hit
+
+Before every debug session starts, Atlas checks all active source breakpoints, open files as they are in the editor:
+
+- line without code (comment, blank line, declaration), with the next code line of the same routine
+- inactive branch of conditional compilation, with its condition (`{$IFDEF RELEASE}`)
+- code without debug information (`{$D-}` in the unit or in the project options)
+- unit of another project in the group, not of the one being started
+
+If anything is found, the dialog “Breakpoints that will not be hit” lists it before the start; double-click jumps to the spot. “Move to next code line” moves the breakpoints together with condition, pass count and group and starts, “Start anyway” starts unchanged, “Cancel” does not start. The command “Check breakpoints” (Atlas menu, command palette) checks at any time. Without a server, or without an answer within 3 seconds, the IDE starts without a message.
+
+Settings: `debug.checkBreakpoints`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
@@ -408,3 +438,15 @@ Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`
 - The debugger does not tell who holds a lock (`TMonitor`, critical section); Atlas names only the waiting threads.
 
 Settings: `debug.deadlocks`
+
+<a id="window-atlasdebugparallelstacks"></a>
+### Parallel stacks
+
+- Atlas > "Parallel stacks" opens a dockable window that shows the call stacks of all threads as a tree at every stop, from the thread start (root) to the top frame.
+- Equal frames (same routine at the same place) appear once with the number of threads, for example "TWorker.Execute (Unit2.pas:30) · 10 threads"; the tree branches where the stacks part.
+- Nodes of the current thread are bold. If all threads of a node stand in a wait routine (`TMonitor.Enter`, `WaitForSingleObject`, `Sleep` …), the node says "waiting" in the warning colour; the list of routines is configurable (`debug.parallelStacks.waitRoutines`).
+- The filter "Just my code" hides frames from the RTL, VCL and libraries, "Waiting" shows only waiting threads.
+- Below the tree are the threads of the selected node. Enter or a double click switches to the thread (from a list if there are several) and jumps to the line.
+- From `debug.parallelStacks.maxThreads` threads (default 64) Atlas reads the stacks in portions and shows the tree in between so the IDE stays responsive.
+
+Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`

@@ -165,27 +165,6 @@ begin
   end;
 end;
 
-/// <summary>JSON-Objekt aus AText; nil, wenn der Text kein Objekt ist. Gehört dem Aufrufer.</summary>
-function ParseObject(const AText: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AText);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 class function TMonitorResults.ParseSarif(const AText, ATarget: string; out AFindings: TArray<TMonitorFinding>;
   out AError: string): Boolean;
 var
@@ -195,7 +174,7 @@ var
 begin
   AFindings := nil;
   AError := '';
-  mRoot := ParseObject(AText);
+  mRoot := TJsonRead.ParseObject(AText);
   try
     mRuns := TJsonRead.Items(mRoot, 'runs');
     Result := mRuns <> nil;
@@ -284,7 +263,7 @@ begin
     mMerged.AddPair('runs', mRuns);
     for mText in ATexts do
     begin
-      mRoot := ParseObject(mText);
+      mRoot := TJsonRead.ParseObject(mText);
       try
         mSource := TJsonRead.Items(mRoot, 'runs');
         if mSource <> nil then

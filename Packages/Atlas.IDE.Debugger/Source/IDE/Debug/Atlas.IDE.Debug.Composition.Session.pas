@@ -3,8 +3,8 @@
 // Modul Debugger (#1455), Teil der Komposition: die Teile der Feature-Tabelle, die der Debug-Sitzung zuhören, in
 // zwei Gruppen nach ihrer Stelle in der Startreihenfolge:
 //   - DebugExceptionParts: Exception-Verlauf (#517), nur eigener Code (#578) und Exception-Leiste (#783).
-//   - DebugThreadParts: Threads beim Halt, zuerst „Was wartet worauf?“ (#587).
-// Dazu der Befehl „Was wartet worauf?“, den Atlas.IDE.Debug.Composition in seine Befehle aufnimmt.
+//   - DebugThreadParts: Threads beim Halt: „Was wartet worauf?“ (#587) und „Parallele Aufrufstapel“ (#837).
+// Dazu die Befehle beider, die Atlas.IDE.Debug.Composition in seine Befehle aufnimmt, und das Thema des Fensters.
 // Atlas.IDE.Debug.Composition stellt die Teile über den Scope des Moduls bereit.
 
 interface
@@ -20,10 +20,17 @@ function DebugThreadParts: TArray<IAtlasFeaturePart>;
 procedure RunDebugDeadlocks;
 /// <summary>Befehl „Was wartet worauf?“ zeigen? (debug.deadlocks)</summary>
 function DebugDeadlocksVisible: Boolean;
+/// <summary>Befehl Atlas.DebugParallelStacks: Fenster „Parallele Aufrufstapel“ (#837).</summary>
+procedure ShowDebugParallelStacks;
+/// <summary>Befehl „Parallele Aufrufstapel“ zeigen? (debug.parallelStacks)</summary>
+function DebugParallelStacksVisible: Boolean;
+/// <summary>Nach einem Wechsel des IDE-Themas.</summary>
+procedure DebugThreadsThemeChanged;
 
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Status.Registry,
   Atlas.IDE.Foundation.Host,
@@ -31,7 +38,8 @@ uses
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Debug.ExceptionBar,
-  Atlas.IDE.Debug.Deadlocks;
+  Atlas.IDE.Debug.Deadlocks,
+  Atlas.IDE.Debug.ParallelStacks;
 
 { Dienste von Base }
 
@@ -58,6 +66,21 @@ end;
 procedure RunDebugDeadlocks;
 begin
   TAtlasIdeDebugDeadlocks.Run;
+end;
+
+function DebugParallelStacksVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugParallelStacks;
+end;
+
+procedure ShowDebugParallelStacks;
+begin
+  TAtlasIdeDebugParallelStacks.ShowWindow;
+end;
+
+procedure DebugThreadsThemeChanged;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugParallelStacks.ThemeChanged);
 end;
 
 { Start der Teile }
@@ -132,7 +155,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeDebugDeadlocks.Started;
-      end, StartDebugDeadlocks, TAtlasIdeDebugDeadlocks.Release)];
+      end, StartDebugDeadlocks, TAtlasIdeDebugDeadlocks.Release),
+    // Parallele Aufrufstapel (#837): Zuhörer der Debug-Sitzung und Fenster; aus = weder Fenster noch Menüpunkt.
+    TAtlasFeaturePart.When('DebugParallelStacks',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugParallelStacks;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugParallelStacks.Started;
+      end, TAtlasIdeDebugParallelStacks.Start, TAtlasIdeDebugParallelStacks.Release)];
 end;
 
 end.
