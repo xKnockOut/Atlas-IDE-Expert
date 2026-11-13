@@ -168,6 +168,9 @@ type
     IssuesGitHubProject: string;
     /// <summary>Issues ohne Projekt beim Beginnen aufnehmen (#2134, issues.github.addToProject).</summary>
     IssuesGitHubAddToProject: Boolean;
+    /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138,
+    /// issues.github.linkBranch).</summary>
+    IssuesGitHubLinkBranch: Boolean;
     /// <summary>Vorbelegung der Felder einer Issue-Vorlage (#2137, issues.github.templateFields): "id=Text mit
     /// {version}, {ide}, {code}, {finding}, {log}; …"; .atlas tracker.templateFields geht vor.</summary>
     IssuesGitHubTemplateFields: string;
@@ -430,6 +433,7 @@ begin
   Result.IssuesGitHubStateTarget := cIssuesGitHubStateProject;
   Result.IssuesGitHubProject := '';
   Result.IssuesGitHubAddToProject := False;
+  Result.IssuesGitHubLinkBranch := False;
   Result.IssuesGitHubTemplateFields := cDefaultIssuesGitHubTemplateFields;
 end;
 
@@ -514,6 +518,7 @@ begin
   AIo.Text('IssuesGitHubStateTarget', IssuesGitHubStateTarget);
   AIo.Text('IssuesGitHubProject', IssuesGitHubProject);
   AIo.Flag('IssuesGitHubAddToProject', IssuesGitHubAddToProject);
+  AIo.Flag('IssuesGitHubLinkBranch', IssuesGitHubLinkBranch);
   AIo.Text('IssuesGitHubTemplateFields', IssuesGitHubTemplateFields);
 end;
 

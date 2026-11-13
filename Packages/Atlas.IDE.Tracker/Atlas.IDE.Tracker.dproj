@@ -138,6 +138,8 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubGraphQl.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubProjects.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubLinkedBranches.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.LinkedStart.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>
@@ -194,6 +196,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesStatus.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesQuery.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueStart.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.LinkedStart.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWork.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas"/>

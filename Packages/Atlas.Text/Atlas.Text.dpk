@@ -59,6 +59,7 @@ contains
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas',
+  Atlas.Text.PeImage in 'Source\MapFile\Atlas.Text.PeImage.pas',
   Atlas.Text.LeakReport in 'Source\LeakReport\Atlas.Text.LeakReport.pas',
   Atlas.Text.CrashReport in 'Source\CrashReport\Atlas.Text.CrashReport.pas',
   Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas',

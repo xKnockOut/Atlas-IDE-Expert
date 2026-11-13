@@ -19,6 +19,9 @@ type
     /// <summary>Zeilen zum Status im Projekt (#2134).</summary>
     [Test]
     procedure ProjectLines;
+    /// <summary>Zeile zum verknüpften Branch (#2138).</summary>
+    [Test]
+    procedure LinkLine;
   end;
 
 implementation
@@ -116,6 +119,36 @@ begin
     TAtlasStrings.Language := mSaved;
   end;
   mLines := nil;
+end;
+
+procedure TAtlasGitHubStringsTests.LinkLine;
+var
+  mLink: TAtlasTrackerBranchLink;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mLink := TAtlasTrackerBranchLink.Make(TAtlasTrackerBranchLinkOutcome.None, 'f/7-x');
+    Assert.AreEqual('', TAtlasGitHubStrings.LinkLine('#7', 'beispiel/atlas', '', mLink, True));
+    mLink.Outcome := TAtlasTrackerBranchLinkOutcome.Created;
+    Assert.AreEqual('#7: Branch f/7-x auf GitHub angelegt und mit dem Issue verknüpft',
+      TAtlasGitHubStrings.LinkLine('#7', 'beispiel/atlas', '', mLink, True));
+    Assert.AreEqual('#7: Branch f/7-x liegt auf GitHub, Abruf oder Auschecken scheiterte (Failed); ' +
+      'Branch nur lokal angelegt', TAtlasGitHubStrings.LinkLine('#7', 'beispiel/atlas', 'Failed', mLink, False));
+    mLink.Outcome := TAtlasTrackerBranchLinkOutcome.Foreign;
+    Assert.AreEqual('#7: origin ist nicht das Repository beispiel/atlas; Branch nur lokal angelegt',
+      TAtlasGitHubStrings.LinkLine('#7', 'beispiel/atlas', '', mLink, True));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    mLink.Outcome := TAtlasTrackerBranchLinkOutcome.Exists;
+    Assert.AreEqual('#7: branch f/7-x already exists; not linked to the issue',
+      TAtlasGitHubStrings.LinkLine('#7', 'beispiel/atlas', '', mLink, True));
+    mLink.Outcome := TAtlasTrackerBranchLinkOutcome.Failed;
+    Assert.AreEqual('#7: branch not created on GitHub (offline); branch created locally only',
+      TAtlasGitHubStrings.LinkLine('#7', 'beispiel/atlas', 'offline', mLink, True));
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
 end;
 
 initialization

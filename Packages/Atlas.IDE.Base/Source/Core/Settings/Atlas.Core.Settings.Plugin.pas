@@ -1264,6 +1264,8 @@ type
     property IssuesGitHubProject: string read FIssues.IssuesGitHubProject write FIssues.IssuesGitHubProject;
     property IssuesGitHubAddToProject: Boolean read FIssues.IssuesGitHubAddToProject
       write FIssues.IssuesGitHubAddToProject;
+    property IssuesGitHubLinkBranch: Boolean read FIssues.IssuesGitHubLinkBranch
+      write FIssues.IssuesGitHubLinkBranch;
     property IssuesGitHubTemplateFields: string read FIssues.IssuesGitHubTemplateFields
       write FIssues.IssuesGitHubTemplateFields;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;

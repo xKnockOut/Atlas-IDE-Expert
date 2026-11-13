@@ -18,6 +18,7 @@ Atlas.Text.Json.Tests
 Atlas.Text.Jsonc.Tests
 Atlas.Text.LogMarks.Tests
 Atlas.Text.MapFile.Tests
+Atlas.Text.PeImage.Tests
 Atlas.Text.LeakReport.Tests
 Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
@@ -198,6 +199,7 @@ Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
+Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
@@ -417,6 +419,8 @@ Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.Internals.GitHubProjects.Tests
+Atlas.Core.Tracker.Internals.GitHubLinkedBranches.Tests
+Atlas.Core.Tracker.LinkedStart.Tests
 Atlas.Core.Tracker.Internals.FormYaml.Tests
 Atlas.Core.Tracker.IssueForms.Tests
 Atlas.Core.Tracker.NewIssueGitHub.Tests
