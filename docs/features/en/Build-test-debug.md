@@ -481,6 +481,21 @@ Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 - “Remove runtime report markers” removes the diagnostics again; a new report replaces the old one
 - AI assistants get the same analysis as the MCP tools `analyze_report` and `resolve_address`
 
+## Debug: reattach to process
+
+- When the IDE attaches to a running process (Run › Attach to Process …), Atlas remembers path and name of the EXE for the project group
+- “Reattach to <name>” in the Run menu, in the command palette and with Shift+Alt+P:
+  - exactly one running process with the same path: attached at once, without a dialog
+  - several, or only the same name in another place (another version): choice with PID, start time and command line
+  - none: offer to wait for the start
+- “Attach when started …” in the Run menu and in the command palette: choose the EXE (default: the last remembered one, otherwise the output file of the active project); Atlas polls the process list in the background and attaches as soon as it starts
+- While waiting the status field shows “Waiting for … (Cancel)”; a click cancels, so does closing or switching the project group
+- When an attached process ends, the status field offers to reattach on its next start
+- Waiting misses the first milliseconds of the program (initialization); start it via the project's run parameters or a host application if you need them
+- Local processes only; processes of other users and services need an IDE with administrator rights
+
+Settings: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
