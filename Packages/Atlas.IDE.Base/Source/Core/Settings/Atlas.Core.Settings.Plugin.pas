@@ -472,6 +472,8 @@ type
     property DebugInlineValuesPerLine: Integer read FDebug.DebugInlineValuesPerLine
       write FDebug.DebugInlineValuesPerLine;
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
+    property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
+    property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;

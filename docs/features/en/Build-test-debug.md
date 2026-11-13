@@ -410,6 +410,18 @@ Atlas menu and command palette. When you work on several bugs, switch between na
 
 Settings: `debug.breakpointSetPerBranch`
 
+## Debug: event log
+
+<a id="window-atlasdebugeventlog"></a>
+- Dockable window “Atlas: Event log” with debug output (`OutputDebugString`), breakpoint messages, modules, threads, logpoints and start and end of the session
+- Columns time (relative to the start), kind, thread, text
+- Filter by kind and text: words (each must occur) or `/regular expression/`; “Remember filter” keeps it per project in the list
+- Colors by pattern, for example `[FEHLER]` red, `[WARN]` yellow
+- Double-click or Enter jumps to `File.pas(123)`, `File.pas:123` or `Unit.Routine`
+- Context menu: copy line, save as text file, clear
+
+Settings: `debug.eventLog`, `debug.eventLogColors`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

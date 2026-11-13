@@ -364,6 +364,18 @@ Einstellungen: `debug.completionInDialogs`
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
+### Ereignisprotokoll
+
+<a id="window-atlasdebugeventlog"></a>
+- andockbares Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (`OutputDebugString`), Haltepunkt-Meldungen, Modulen, Threads, Logpunkten sowie Start und Ende der Sitzung
+- Spalten Zeit (relativ zum Start), Art, Thread, Text
+- Filter nach Art und Text: Wörter (jedes muss vorkommen) oder `/regulärer Ausdruck/`; „Filter merken“ hält ihn je Projekt in der Auswahl
+- Farben nach Muster, etwa `[FEHLER]` rot, `[WARN]` gelb
+- Doppelklick oder Enter springt zu `Datei.pas(123)`, `Datei.pas:123` oder `Unit.Routine`
+- Kontextmenü: Zeile kopieren, als Textdatei speichern, leeren
+
+Einstellungen: `debug.eventLog`, `debug.eventLogColors`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>
