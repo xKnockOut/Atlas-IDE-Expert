@@ -191,12 +191,33 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 - Oben das Testprojekt (bei mehreren in der Projektgruppe zur Wahl, vorgewählt das aktive), darunter der Baum aller Tests: Testunit › Fixture › Test › Fall. Gelesen werden die Testunits des Testprojekts wie von der Testlinse, ohne Server; neu nach jedem Lauf, nach dem Speichern einer Testunit und mit *Neu einlesen*.
 - Je Zeile ein Punkt mit dem Stand: grün bestanden, rot fehlgeschlagen, gelb nur zum Teil gelaufen, grau nicht gelaufen, grauer Ring bestanden, aber veraltet (#1770). Dahinter der Zähler „bestanden/alle“ (veraltete zählen nicht als bestanden) und die Dauer. Tests mit `[Ignore]` stehen mit „(ignoriert)“ da und zählen nicht.
 - *Alle ausführen* baut das Testprojekt und startet alle Tests. *Ausgewählte ausführen* (Strg+R) startet genau die gewählten Zeilen (Mehrfachauswahl mit Strg und Umschalt, auch ganze Fixtures oder Testunits) mit `--run` und ihren Namen. *Ausgewählte debuggen* (Strg+D) startet sie im Debugger wie „Test debuggen“; der einmalige Haltepunkt am Anfang gilt nur bei einem einzelnen Test.
-- Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet*, *Langsam* (über `tests.slowMs`) und *wackelt* (#1773) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
+- Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet* und *Langsam* (über `tests.slowMs`) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
 - Doppelklick oder Enter springt zum Test, bei einem Fall zu seinem `[TestCase]`. Unten stehen zum gewählten Test Meldung, erwarteter und erhaltener Wert und der Stacktrace; Zeilen, die eine Unit des Testprojekts nennen, öffnen sich per Doppelklick.
 - Die Ergebnisse gelten für diese Sitzung, je Testprojekt; Änderungen an einer Testunit zeigt das Fenster nach dem Speichern.
 - `tests.window` aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.
 
 Einstellung: `tests.window`
+
+### Testlisten im Fenster „Atlas-Tests“ (#2167)
+
+Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
+
+- Neben „Alle“ steht je Liste ein Reiter. Im Reiter einer Liste zeigt der Baum nur ihre Tests; Filter und Suche gelten weiter. Die Kopfzeile nennt die Regeln, „12 von 340 Tests“ und die Ablage, daneben *Liste ausführen*.
+- **Feste Listen** nennen Tests, Fixtures oder ganze Testunits: im Baum auswählen, Kontextmenü *Zu Liste hinzufügen ▸* (eine feste Liste oder *Neue Liste …*); im Reiter einer festen Liste entfernt *Aus „…“ entfernen* die Auswahl wieder.
+- **Dynamische Listen** bestehen aus Regeln, die alle gelten müssen: *Kategorie ist / ist nicht* (an der Fixture oder am Test), *Unit/Fixture passt / passt nicht* auf ein Muster mit `*` und `?` (z. B. `*.Slow.*`), *Stand ist / ist nicht* fehlgeschlagen, nicht gelaufen oder veraltet. Neue Tests, die passen, gehören ohne Zutun dazu.
+- Rechtsklick auf einen Reiter: *Umbenennen …*, *Regeln bearbeiten …* (dynamische Listen), *Duplizieren*, *Löschen*.
+- Ablage je Liste: **im Projekt** steht sie in `atlas.json` neben der .dproj unter `testLists` und gilt für das Team (Reiter mit ◆); **nur für mich** steht sie in `%LOCALAPPDATA%\Atlas\test-lists.json`. Atlas ändert in `atlas.json` nur diesen Schlüssel; Kommentare und Reihenfolge bleiben.
+- Ausführen: *Liste ausführen* im Reiter, in der Befehlspalette „Testliste ausführen: <Name>“, mit Strg+Alt+R (`tests.lists.runKey`) die zuletzt benutzte Liste. Kategorie-Regeln gehen als `--include`/`--exclude` an DUnitX, alle übrigen wertet Atlas aus und nennt die Tests über `--run`, zusammengefasst zu Fixtures und Namensräumen, wo es geht. Passt die Liste nicht in eine Befehlszeile, sagt es die Meldungsansicht.
+- `tests.lists` aus: keine Reiter, kein Kontextmenü, kein Befehl; `testLists` in `atlas.json` wird nicht gelesen.
+
+```json
+"testLists": [
+  {"name": "Vor dem Commit", "rules": [{"category": "Benchmark", "exclude": true}, {"unit": "*.Slow.*", "exclude": true}]},
+  {"name": "Parser", "tests": ["Atlas.Common.Pascal.Tests"]}
+]
+```
+
+Einstellungen: `tests.lists`, `tests.lists.runKey`
 
 ### Wackelnde Tests (#1773)
 

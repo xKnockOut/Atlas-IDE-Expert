@@ -215,12 +215,33 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 - At the top the test project (a choice when the project group has several, the active one preselected), below it the tree of all tests: test unit › fixture › test › case. Atlas reads the test units of the test project like the test lens does, without the server; again after every run, after saving a test unit and with *Reload*.
 - Every row has a dot with its state: green passed, red failed, yellow only partly run, grey not run, grey ring passed but outdated (#1770). After it the counter “passed/all” (outdated results do not count as passed) and the duration. Tests with `[Ignore]` are listed with “(ignored)” and do not count.
 - *Run all* builds the test project and runs all tests. *Run selected* (Ctrl+R) runs exactly the selected rows (multiple selection with Ctrl and Shift, also whole fixtures or test units) with `--run` and their names. *Debug selected* (Ctrl+D) starts them in the debugger like “Debug test”; the one-time breakpoint at the start applies only to a single test.
-- The filters *Failed*, *Not run*, *Outdated*, *Slow* (above `tests.slowMs`) and *flaky* (#1773) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
+- The filters *Failed*, *Not run*, *Outdated* and *Slow* (above `tests.slowMs`) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
 - Double-click or Enter goes to the test, for a case to its `[TestCase]`. Below, the selected test shows message, expected and actual value and the stack trace; lines naming a unit of the test project open on double-click.
 - Results are kept for this session, per test project; changes to a test unit show up after saving.
 - `tests.window` off: no menu entry, the window is not restored.
 
 Setting: `tests.window`
+
+### Test lists in the “Atlas Tests” window (#2167)
+
+Open them with the tabs at the top of the “Atlas Tests” window; “+” creates a list.
+
+- Next to “All” there is a tab per list. On a list's tab the tree shows only its tests; filters and search still apply. The header shows the rules, “12 of 340 tests” and the storage, next to it *Run list*.
+- **Fixed lists** name tests, fixtures or whole test units: select them in the tree, context menu *Add to list ▸* (a fixed list or *New list …*); on the tab of a fixed list *Remove from “…”* removes the selection again.
+- **Dynamic lists** consist of rules that must all apply: *category is / is not* (on the fixture or the test), *unit/fixture matches / does not match* a pattern with `*` and `?` (e.g. `*.Slow.*`), *state is / is not* failed, not run or outdated. New tests that match belong to the list without further steps.
+- Right-click a tab: *Rename …*, *Edit rules …* (dynamic lists), *Duplicate*, *Delete*.
+- Storage per list: **in the project** it is kept in `atlas.json` next to the .dproj under `testLists` and applies to the team (tab marked with ◆); **only for me** it is kept in `%LOCALAPPDATA%\Atlas\test-lists.json`. Atlas changes only this key in `atlas.json`; comments and order stay.
+- Running: *Run list* on the tab, “Run test list: <name>” in the command palette, Ctrl+Alt+R (`tests.lists.runKey`) for the last used list. Category rules go to DUnitX as `--include`/`--exclude`, Atlas evaluates all other rules and names the tests with `--run`, combined into fixtures and namespaces where possible. If the list does not fit on one command line, the messages view says so.
+- `tests.lists` off: no tabs, no context menu, no command; `testLists` in `atlas.json` is not read.
+
+```json
+"testLists": [
+  {"name": "Before commit", "rules": [{"category": "Benchmark", "exclude": true}, {"unit": "*.Slow.*", "exclude": true}]},
+  {"name": "Parser", "tests": ["Atlas.Common.Pascal.Tests"]}
+]
+```
+
+Settings: `tests.lists`, `tests.lists.runKey`
 
 ### Flaky tests (#1773)
 

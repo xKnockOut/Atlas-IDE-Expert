@@ -477,4 +477,7 @@ Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests
 Atlas.Core.Tests.Untested.Tests
+Atlas.Core.Tests.Lists.Tests
+Atlas.Core.Tests.ListText.Tests
+Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests

@@ -805,6 +805,7 @@ contains
   Atlas.Common.Configuration.Internals.WorkflowOptions in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.WorkflowOptions.pas',
   Atlas.Common.Configuration.Internals.AnalysisOptions in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.AnalysisOptions.pas',
   Atlas.Common.Configuration.Internals.ProjectOptions in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ProjectOptions.pas',
+  Atlas.Common.Configuration.Internals.TestListOptions in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.TestListOptions.pas',
   Atlas.Common.Configuration.Scopes in 'Source\Configuration\Atlas.Common.Configuration.Scopes.pas',
   Atlas.Common.Lsp.Configuration in 'Source\Lsp\Atlas.Common.Lsp.Configuration.pas',
   Atlas.Common.Lsp.SettingsCommands in 'Source\Lsp\Atlas.Common.Lsp.SettingsCommands.pas',

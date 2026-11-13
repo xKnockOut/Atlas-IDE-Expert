@@ -13,7 +13,9 @@
 //   „Liegengebliebene .received-Dateien löschen“ (#1881) im Atlas-Menü,
 //   „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
 //   Kontextmenü einer Testunit, das Fenster „Atlas-Tests“ (#1776, Ansicht,
-//   Atlas-Menü, Palette; Atlas.IDE.Tests.Explorer), der Teststand in der
+//   Atlas-Menü, Palette; Atlas.IDE.Tests.Explorer) mit Testlisten (#2167,
+//   Atlas.IDE.Tests.Lists; „Testliste ausführen: <Name>“ in der Palette, Taste
+//   tests.lists.runKey für die zuletzt benutzte), der Teststand in der
 //   Statusleiste (#1777, Atlas.IDE.Tests.StatusField), „Test ausführen“/„Test debuggen“ im
 //   Kontextmenü und „Tests dieser Unit ausführen“ im Kontextmenü der
 //   Projektverwaltung (#1817: Testunits der gewählten Units nach Namen in der
@@ -57,7 +59,7 @@ uses
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource, IAtlasFollowsSaves,
-    IAtlasTestValues, IAtlasFollowsTheme)
+    IAtlasTestValues, IAtlasFollowsTheme, IAtlasKeySource)
   public const
     cModuleId = 'atlas.tests';
     cSwitch = 'tests';
@@ -71,6 +73,7 @@ type
     function IsActive: Boolean;
     function Commands: TArray<TAtlasModuleCommand>;
     function MenuEntries: TArray<TAtlasMenuEntry>;
+    function Keys: TArray<TAtlasModuleKey>;
     procedure ApplySettings;
     procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
       const AVerdict: TAtlasBuildVerdict);
@@ -138,6 +141,7 @@ var
   GCaseTable: TAtlasIdeTestCaseTable;
   GExplorer: TAtlasIdeTestExplorer;
   GFlaky: TAtlasIdeFlakyTests;
+  GLists: TAtlasIdeTestLists;
   GStatusField: TAtlasIdeTestStatusField;
 
 { Sichtbarkeit }
@@ -268,6 +272,8 @@ begin
   // Wackelnde Tests (#1773): Verlauf je Test; reicht den Lauf an die langsamsten Tests weiter.
   GFlaky := TAtlasIdeFlakyTests.Create(GTests, GSlowest.Remember);
   // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die wackelnden Tests weiter.
+  // Testlisten (#2167): vor dem Fenster, das sie über TAtlasIdeTestLists.Instance findet, und nach ihm frei.
+  GLists := TAtlasIdeTestLists.Create(GTests);
   GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), GFlaky.Remember);
   GTests.OnReported := GExplorer.Remember;
   GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
@@ -306,6 +312,7 @@ begin
   // vor allen.
   FreeAndNil(GStatusField);
   FreeAndNil(GExplorer);
+  FreeAndNil(GLists);
   FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
@@ -538,6 +545,51 @@ begin
   Result.Description := TAtlasTestsStrings.Text(ADescription);
 end;
 
+{ Testlisten (#2167) }
+
+/// <summary>Befehl „Testliste ausführen: AName“; eigene Routine, damit jeder Befehl seinen Namen fängt.</summary>
+function ListCommand(const AName: string): TAtlasModuleCommand;
+begin
+  Result := Default(TAtlasModuleCommand);
+  Result.Id := 'Atlas.RunTestList:' + AName;
+  Result.Caption := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ListsRunCommand, [AName]);
+  Result.Description := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsRunCommandHint);
+  Result.Run :=
+    procedure
+    begin
+      if GLists <> nil then
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Build,
+          procedure
+          begin
+            GLists.RunByName(AName);
+          end);
+      end;
+    end;
+end;
+
+/// <summary>Je Testliste des gewählten Testprojekts ein Befehl der Palette.</summary>
+function ListCommands: TArray<TAtlasModuleCommand>;
+var
+  mName: string;
+begin
+  Result := nil;
+  if (GLists = nil) or not TestsVisible then
+  begin
+    Exit;
+  end;
+  for mName in GLists.Names do
+  begin
+    Result := Result + [ListCommand(mName)];
+  end;
+end;
+
+/// <summary>Zuletzt benutzte Testliste ausführen; False ohne eine (die Taste geht dann an die IDE).</summary>
+function RunLastList: Boolean;
+begin
+  Result := (GLists <> nil) and GLists.RunLast;
+end;
+
 { TAtlasTestsModule }
 
 function TAtlasTestsModule.Info: TAtlasModuleInfo;
@@ -607,6 +659,26 @@ begin
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
       Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
+  // Testlisten (#2167): je Liste ein Befehl, mit tests.lists.
+  Result := Result + ListCommands;
+end;
+
+function TAtlasTestsModule.Keys: TArray<TAtlasModuleKey>;
+var
+  mKey: TAtlasModuleKey;
+begin
+  Result := nil;
+  // Zuletzt benutzte Testliste (#2167): ohne Liste geht die Taste an die IDE weiter.
+  if not TAtlasIdeTestLists.Wanted or (TAtlasIdeSettings.Current.TestsListsRunKey = 0) then
+  begin
+    Exit;
+  end;
+  mKey := Default(TAtlasModuleKey);
+  mKey.Id := 'Atlas.RunLastTestList';
+  mKey.Caption := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsRunLast);
+  mKey.Key := TAtlasIdeSettings.Current.TestsListsRunKey;
+  mKey.Attempt := RunLastList;
+  Result := [mKey];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -685,6 +757,11 @@ begin
   if GExplorer <> nil then
   begin
     GExplorer.ApplySettings;
+  end;
+  // tests.lists (#2167): Reiter zeigen bzw. verbergen.
+  if GLists <> nil then
+  begin
+    GLists.ApplySettings;
   end;
   // editor.statusBar.tests (#1777): Feld neu bzw. weg.
   if GStatusField <> nil then
@@ -844,6 +921,7 @@ begin
   GScope.Provide(IAtlasBuildVerdictListener, mRef);
   GScope.Provide(IAtlasFollowsSaves, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
+  GScope.Provide(IAtlasKeySource, mRef);
   GScope.Provide(IAtlasTestRunner, mRef);
   // Vertrag zwischen Modulen: Karte Tests (#763) und Schnellaktionen (#764) der Willkommensseite.
   GScope.Provide(IAtlasTestsSource, mRef);
