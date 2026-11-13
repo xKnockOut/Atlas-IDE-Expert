@@ -55,13 +55,12 @@ implementation
 uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Threads,
   Atlas.UI.Results.Items,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Debug.Sources,
+  Atlas.IDE.Debug.Threads,
   Atlas.UI.Debug.Deadlocks,
   Atlas.UI.Debug.Strings;
 
@@ -143,9 +142,6 @@ end;
 class function TAtlasIdeDebugDeadlocks.TryRead: Boolean;
 var
   mProcess: IOTAProcess;
-  mThread: IOTAThread;
-  mIndex: Integer;
-  mFrames: TAtlasDebugFrames;
   mStacks: TAtlasDebugThreadStacks;
   mPending: Boolean;
 begin
@@ -158,24 +154,7 @@ begin
     Exit;
   end;
   mStacks := nil;
-  mPending := False;
-  for mIndex := 0 to mProcess.ThreadCount - 1 do
-  begin
-    if mIndex >= cMaxThreads then
-    begin
-      Break;
-    end;
-    mThread := mProcess.Threads[mIndex];
-    case TAtlasIdeDebugSession.ReadStack(mThread, TAtlasDebugCallStack.cMaxFrames, mFrames) of
-      TAtlasDebugStackRead.Ready:
-        TAtlasIdeDebugSources.MarkFrames(mFrames);
-      TAtlasDebugStackRead.Wait:
-        mPending := True;
-    end;
-    mStacks := mStacks + [TAtlasDebugThreadStack.Create(mThread.GetOSThreadID,
-      TAtlasIdeDebugSession.ThreadName(mThread), mFrames)];
-    mStacks[High(mStacks)].Readable := mFrames <> nil;
-  end;
+  mPending := TAtlasIdeDebugThreads.ReadRange(mProcess, 0, cMaxThreads, mStacks);
   Inc(FRetries);
   Result := (not mPending) or (FRetries > cRetries);
   FReport := TAtlasDebugWaitReport.Analyze(mStacks);
@@ -227,27 +206,6 @@ begin
   TAtlasIdeResultsWindow.ShowItems(mList);
 end;
 
-/// <summary>Thread mit der Kennung AThreadId zum aktuellen Thread machen, solange das Programm steht.</summary>
-procedure SelectThread(AThreadId: Cardinal);
-var
-  mProcess: IOTAProcess;
-  mIndex: Integer;
-begin
-  mProcess := TAtlasIdeDebugSession.Process;
-  if (mProcess = nil) or (TAtlasIdeDebugSession.StoppedThread = nil) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mProcess.ThreadCount - 1 do
-  begin
-    if mProcess.Threads[mIndex].GetOSThreadID = AThreadId then
-    begin
-      mProcess.CurrentThread := mProcess.Threads[mIndex];
-      Exit;
-    end;
-  end;
-end;
-
 class procedure TAtlasIdeDebugDeadlocks.Open(const AItemId: string);
 var
   mId: string;
@@ -264,7 +222,7 @@ begin
   begin
     Exit;
   end;
-  SelectThread(FReport.Stacks[mIndex].ThreadId);
+  TAtlasIdeDebugThreads.Select(FReport.Stacks[mIndex].ThreadId);
   mJump := FReport.Stacks[mIndex].JumpFrame;
   if mJump >= 0 then
   begin
