@@ -2046,6 +2046,31 @@
       "x-captionEn": "Units without “No source” window",
       "x-issue": "#869"
     },
+    "DebugRestart": {
+      "description": "Befehl „Neu starten“ (Strg+Umschalt+F2, Atlas-Menü, Befehlspalette): beendet das laufende Programm ohne Rückfrage, baut nur nach Änderungen, startet wie F9 und kehrt an die Stelle im Editor zurück; eine kleine Leiste zeigt die Schritte mit Dauer. Läuft kein Programm, startet der Befehl wie F9. Aus = kein Befehl, keine Taste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.restart",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Neu starten (Strg+Umschalt+F2)",
+      "x-captionEn": "Restart (Ctrl+Shift+F2)",
+      "x-issue": "#872"
+    },
+    "DebugRestartReenableBreakpoints": {
+      "description": "Beim Neustart Haltepunkte wieder einschalten, die beim Start der beendeten Sitzung an waren und in ihr abgeschaltet wurden.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.restart.reenableBreakpoints",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.restart",
+      "x-caption": "Abgeschaltete Haltepunkte wieder einschalten",
+      "x-captionEn": "Turn disabled breakpoints on again",
+      "x-issue": "#872"
+    },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
       "type": "boolean",
@@ -9090,6 +9115,40 @@
       "x-page": "Issue-Tracker",
       "x-control": "Textfeld",
       "x-issue": "#2126"
+    },
+    "IssuesGitHubStateTarget": {
+      "type": "string",
+      "enum": [
+        "project",
+        "label"
+      ],
+      "default": "project",
+      "description": "Wo „Beginnen“ und „Beenden“ bei GitHub den Zustand führen: im Projektfeld „Status“ (project), wenn das Issue in einem Projekt (Projects v2) liegt, sonst als Label; oder immer als Label (label, wie bis 2.1). Das Statusfeld ist „Status“, sonst das erste Auswahlfeld außer der Priorität; der Zustand wird der Option gleichen Namens zugeordnet. Das Token braucht dazu die Berechtigung „project“, sonst bleibt es beim Label. Je Verbindung überschreibbar (githubStateTarget).",
+      "x-key": "issues.github.stateTarget",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Auswahl",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubProject": {
+      "type": "string",
+      "default": "",
+      "description": "GitHub-Projekt für den Zustand als „<owner>/<nummer>“ (z. B. „xKnockOut/4“): gilt, wenn ein Issue in mehreren Projekten liegt, und ist das Projekt für die Aufnahme (issues.github.addToProject). Leer = das erste Projekt des Issues (die Meldung nennt es). Je Verbindung überschreibbar (githubProject).",
+      "x-key": "issues.github.project",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubAddToProject": {
+      "type": "boolean",
+      "default": false,
+      "description": "Issues, die in keinem Projekt liegen, beim Beginnen in das Projekt aus issues.github.project aufnehmen und dort den Status setzen. Aus (oder ohne eingestelltes Projekt): Zustand als Label.",
+      "x-key": "issues.github.addToProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2134"
     },
     "IssuesTimeTracking": {
       "type": "boolean",

@@ -92,7 +92,7 @@ uses
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.Builtin.Calls,
-  Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Tests.RuleAssert;
 
 const

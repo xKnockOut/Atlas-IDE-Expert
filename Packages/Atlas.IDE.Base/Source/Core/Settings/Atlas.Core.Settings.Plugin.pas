@@ -146,6 +146,8 @@ type
     cIssuesSprintAsk = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAsk;
     cIssuesSprintAlways = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAlways;
     cIssuesSprintNever = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintNever;
+    cIssuesGitHubStateProject = Atlas.Core.Settings.Plugin.Issues.cIssuesGitHubStateProject;
+    cIssuesGitHubStateLabel = Atlas.Core.Settings.Plugin.Issues.cIssuesGitHubStateLabel;
     cBeginEndAlways = Atlas.Core.Settings.Plugin.Editor.cBeginEndAlways;
     cBeginEndMultiLine = Atlas.Core.Settings.Plugin.Editor.cBeginEndMultiLine;
     cBeginEndNever = Atlas.Core.Settings.Plugin.Editor.cBeginEndNever;
@@ -491,6 +493,9 @@ type
     property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
     property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
       write FDebug.DebugNoSourceIgnoredUnits;
+    property DebugRestart: Boolean read FDebug.DebugRestart write FDebug.DebugRestart;
+    property DebugRestartReenableBreakpoints: Boolean read FDebug.DebugRestartReenableBreakpoints
+      write FDebug.DebugRestartReenableBreakpoints;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;
@@ -1255,6 +1260,11 @@ type
     property IssuesReviewComment: string read FIssues.IssuesReviewComment write FIssues.IssuesReviewComment;
     property IssuesEndFields: string read FIssues.IssuesEndFields write FIssues.IssuesEndFields;
     property IssuesEndTime: Boolean read FIssues.IssuesEndTime write FIssues.IssuesEndTime;
+    property IssuesGitHubStateTarget: string read FIssues.IssuesGitHubStateTarget
+      write FIssues.IssuesGitHubStateTarget;
+    property IssuesGitHubProject: string read FIssues.IssuesGitHubProject write FIssues.IssuesGitHubProject;
+    property IssuesGitHubAddToProject: Boolean read FIssues.IssuesGitHubAddToProject
+      write FIssues.IssuesGitHubAddToProject;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;

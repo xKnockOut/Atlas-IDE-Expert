@@ -56,6 +56,9 @@ type
     /// <summary>Fenster „Kein Quelltext“ (#869): an, Liste getrimmt, gespeichert und geladen.</summary>
     [Test]
     procedure NoSourceOptions;
+    /// <summary>Neu starten (#872): an, Haltepunkte wieder einschalten aus, gespeichert und geladen.</summary>
+    [Test]
+    procedure RestartOptions;
   end;
 
 implementation
@@ -186,6 +189,24 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugNoSourcePage);
   Assert.AreEqual('Vcl.Forms; System.SysUtils', Loaded.DebugNoSourceIgnoredUnits);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.RestartOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugRestart, 'standardmäßig an');
+  Assert.IsFalse(Settings.DebugRestartReenableBreakpoints, 'standardmäßig aus');
+  Settings.DebugRestart := False;
+  Settings.DebugRestartReenableBreakpoints := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugRestart);
+  Assert.IsTrue(Loaded.DebugRestartReenableBreakpoints);
 end;
 
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;

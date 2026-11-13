@@ -179,7 +179,9 @@ Einstellungen: `tests.showDuration`, `tests.slowMs`
 - In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
 - Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
 - Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
-- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+- Lecks am Programmende, die keinem Test gehören (Objekte, die das Testprogramm erst beim Beenden als nicht freigegeben meldet), nennt die Meldungsansicht in einer Zeile: „Tests: Lecks am Programmende, keinem Test zuzuordnen: 3 Blöcke (TStringList x 2, TKonto x 1).“ Gelesen wird der Bericht von FastMM (`<Programm>_MemoryManager_EventLog.txt` neben der EXE, wenn der Lauf ihn geschrieben hat), sonst die Ausgabe des Programms.
+- Fehlt dem Testprogramm der Leckmonitor, meldet die Regel `dunitx-leak-monitor` einen Hinweis am Eintrag `DUnitX.TestFramework` der .dpr. Die Korrektur trägt `DUnitX.MemoryLeakMonitor.FastMM4` ein (er arbeitet auch mit dem Speichermanager der RTL, ohne `FastMM4.pas`), bei FastMM5 `DUnitX.MemoryLeakMonitor.FastMM5`. Den Speichermanager selbst richtet „Leckprüfung einrichten …“ ein.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot), die Zeile zu Lecks am Programmende entfällt.
 
 Einstellung: `tests.leaks`
 
@@ -413,6 +415,16 @@ Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 - Mit „Nur eigener Code“ (`debug.justMyCode`) erscheint das Fenster nur bei Exceptions
 
 Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
+### Neu starten
+
+- „Atlas: Neu starten“ mit Strg+Umschalt+F2, im Atlas-Menü oder in der Befehlspalette
+- Schritte: Beenden (nur bei laufendem Programm), Bauen (nur bei Änderungen seit dem letzten Bau), Starten, zurück an die Stelle im Editor
+- Oben rechts eine kleine Leiste ohne Fokus mit den Schritten und ihrer Dauer, etwa „Beenden 0,3 s ✓ · Bauen 2,1 s ✓ · Starten …“
+- Scheitert ein Schritt, bricht der Ablauf ab und die Leiste nennt den Grund
+- Mit `debug.restart.reenableBreakpoints` schaltet Atlas vor dem Start Haltepunkte wieder ein, die beim Start der letzten Sitzung an waren
+
+Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
 ### Exceptions
 

@@ -203,7 +203,9 @@ Settings: `tests.showDuration`, `tests.slowMs`
 - *Atlas problems* gets a warning at the method header, “Test TKontoTests.Bucht does not free memory: 40 bytes (leak)”, source DUnitX.
 - After the run the messages view says how many tests passed with a leak and how many bytes were not freed in total.
 - A leak in setup or teardown counts for the test in which it happened.
-- `tests.leaks` off: the result stays as DUnitX reports it (failure, red).
+- Leaks at program end that belong to no test (objects the test program only reports as not freed when it exits) get one line in the messages view: “Tests: Leaks at program end, not tied to a test: 3 blocks (TStringList x 2, TKonto x 1).” Atlas reads the FastMM report (`<program>_MemoryManager_EventLog.txt` next to the EXE, if the run wrote it), otherwise the program's output.
+- If the test program has no leak monitor, the rule `dunitx-leak-monitor` reports a hint at the `DUnitX.TestFramework` entry of the .dpr. The quick fix adds `DUnitX.MemoryLeakMonitor.FastMM4` (it also works with the RTL memory manager, without `FastMM4.pas`), or `DUnitX.MemoryLeakMonitor.FastMM5` with FastMM5. “Set up leak check…” sets up the memory manager itself.
+- `tests.leaks` off: the result stays as DUnitX reports it (failure, red), and the line about leaks at program end is left out.
 
 Setting: `tests.leaks`
 
@@ -459,6 +461,16 @@ Settings: `debug.logpoints`, `debug.logpointPrefix`
 - With “Just my code” (`debug.justMyCode`) the window only appears for exceptions
 
 Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
+
+## Debug: restart
+
+- “Atlas: Restart” with Ctrl+Shift+F2, in the Atlas menu or in the command palette
+- Steps: stop (only while the program runs), build (only when something changed since the last build), start, back to the place in the editor
+- A small bar without focus at the top right shows the steps and their duration, for example “Stop 0.3 s ✓ · Build 2.1 s ✓ · Start …”
+- If a step fails, the run stops and the bar names the reason
+- With `debug.restart.reenableBreakpoints` Atlas turns breakpoints back on before the start that were on when the last session started
+
+Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 
 ## Debug: exceptions
 
