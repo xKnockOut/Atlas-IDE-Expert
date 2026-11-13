@@ -60,10 +60,46 @@ type
 
 implementation
 
+type
+  /// <summary>Ein Wert je Zeile von cWindows: Die Grenze der Tabelle ergibt sich daraus, ein neues Fenster braucht
+  /// einen Wert hier und eine Zeile dort (Reihenfolge gleich). Zwei Zweige, die je ein Fenster ergänzen, ergeben so
+  /// nach dem Merge wieder eine passende Grenze statt E2072.</summary>
+{$SCOPEDENUMS ON}
+  THelpWindowKey = (
+    Problems,
+    Results,
+    Outline,
+    SearchReplace,
+    Bookmarks,
+    ServerStatus,
+    Diagnostics,
+    Start,
+    Issue,
+    Board,
+    FlowMap,
+    Architecture,
+    Query,
+    Hotspots,
+    UnitRelations,
+    Evaluate,
+    DebugExceptions,
+    DebugEventLog,
+    DebugParallelStacks,
+    DebugCallStack,
+    DebugLeaks,
+    TestsExplorer,
+    StepFilter,
+    Breakpoints,
+    CompilerSwitches,
+    Structure,
+    EventMap,
+    Options);
+{$SCOPEDENUMS OFF}
+
 const
   cFeaturesGerman = 'docs/features/de/';
   cFeaturesEnglish = 'docs/features/en/';
-  cWindows: array[0..27] of TAtlasHelpWindow = (
+  cWindows: array[THelpWindowKey] of TAtlasHelpWindow = (
     (Id: 'AtlasProblems'; German: 'Code-Analyse'; English: 'Code-analysis'), // german-ok Dateiname
     (Id: 'AtlasResults'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
     (Id: 'AtlasOutline'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
@@ -116,11 +152,14 @@ end;
 class function TAtlasHelpLinks.Windows: TArray<TAtlasHelpWindow>;
 var
   mIndex: Integer;
+  mKey: THelpWindowKey;
 begin
   SetLength(Result, Length(cWindows));
-  for mIndex := 0 to High(cWindows) do
+  mIndex := 0;
+  for mKey := Low(THelpWindowKey) to High(THelpWindowKey) do
   begin
-    Result[mIndex] := cWindows[mIndex];
+    Result[mIndex] := cWindows[mKey];
+    Inc(mIndex);
   end;
 end;
 

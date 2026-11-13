@@ -12,7 +12,8 @@
 //   „Liegengebliebene .received-Dateien löschen“ (#1881) im Atlas-Menü,
 //   „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
 //   Kontextmenü einer Testunit, das Fenster „Atlas-Tests“ (#1776, Ansicht,
-//   Atlas-Menü, Palette; Atlas.IDE.Tests.Explorer), „Test ausführen“/„Test debuggen“ im
+//   Atlas-Menü, Palette; Atlas.IDE.Tests.Explorer), der Teststand in der
+//   Statusleiste (#1777, Atlas.IDE.Tests.StatusField), „Test ausführen“/„Test debuggen“ im
 //   Kontextmenü und „Tests dieser Unit ausführen“ im Kontextmenü der
 //   Projektverwaltung (#1817: Testunits der gewählten Units nach Namen in der
 //   Projektgruppe, nur solche
@@ -115,6 +116,7 @@ uses
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.IDE.Tests.Explorer,
+  Atlas.IDE.Tests.StatusField,
   Atlas.UI.Tests.Strings;
 
 var
@@ -129,6 +131,7 @@ var
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
   GExplorer: TAtlasIdeTestExplorer;
+  GStatusField: TAtlasIdeTestStatusField;
 
 { Sichtbarkeit }
 
@@ -248,6 +251,7 @@ begin
   // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die langsamsten Tests weiter.
   GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GStale.StaleIn, GSlowest.Remember);
   GTests.OnReported := GExplorer.Remember;
+  GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
@@ -278,7 +282,9 @@ begin
   begin
     GTests.OnReported := nil;
   end;
-  // Das Fenster „Atlas-Tests“ (#1776) zeigt auf Läufer und Debugger-Teil: vor beiden.
+  // Der Teststand (#1777) liest aus dem Fenster „Atlas-Tests“ (#1776), das auf Läufer und Debugger-Teil zeigt:
+  // vor allen.
+  FreeAndNil(GStatusField);
   FreeAndNil(GExplorer);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
@@ -630,6 +636,11 @@ begin
   if GExplorer <> nil then
   begin
     GExplorer.ApplySettings;
+  end;
+  // editor.statusBar.tests (#1777): Feld neu bzw. weg.
+  if GStatusField <> nil then
+  begin
+    GStatusField.ApplySettings;
   end;
 end;
 
