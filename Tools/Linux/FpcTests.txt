@@ -362,6 +362,7 @@ Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Debug.EventLog.Tests
 Atlas.Core.Debug.LeakCapture.Tests
+Atlas.Core.Debug.LeakView.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Settings.BuildDebug.Tests
