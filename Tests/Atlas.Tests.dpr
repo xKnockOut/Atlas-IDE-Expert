@@ -1610,6 +1610,7 @@ uses
   Atlas.Core.VersionControl.ToolCheck in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ToolCheck.pas',
   Atlas.Core.VersionControl.ServerCheck in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ServerCheck.pas',
   Atlas.Core.VersionControl.BranchPlan in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.BranchPlan.pas',
+  Atlas.Core.VersionControl.ExternalRules in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ExternalRules.pas',
   Atlas.Core.VersionControl.BranchNames in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.BranchNames.pas',
   Atlas.Core.VersionControl.Pull in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas',
   Atlas.Core.VersionControl.Providers.Git in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Git.pas',

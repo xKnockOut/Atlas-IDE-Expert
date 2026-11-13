@@ -697,6 +697,7 @@ contains
   Atlas.Core.VersionControl.ToolCheck in 'Source\Core\VersionControl\Atlas.Core.VersionControl.ToolCheck.pas',
   Atlas.Core.VersionControl.ServerCheck in 'Source\Core\VersionControl\Atlas.Core.VersionControl.ServerCheck.pas',
   Atlas.Core.VersionControl.BranchPlan in 'Source\Core\VersionControl\Atlas.Core.VersionControl.BranchPlan.pas',
+  Atlas.Core.VersionControl.ExternalRules in 'Source\Core\VersionControl\Atlas.Core.VersionControl.ExternalRules.pas',
   Atlas.Core.VersionControl.BranchNames in 'Source\Core\VersionControl\Atlas.Core.VersionControl.BranchNames.pas',
   Atlas.Core.VersionControl.Pull in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas',
   Atlas.Core.VersionControl.Providers.Null in 'Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas',

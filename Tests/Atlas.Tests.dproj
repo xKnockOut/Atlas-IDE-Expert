@@ -1744,6 +1744,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ToolCheck.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ServerCheck.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.BranchPlan.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ExternalRules.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.BranchNames.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Git.pas"/>

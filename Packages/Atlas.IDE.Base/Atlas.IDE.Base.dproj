@@ -778,6 +778,7 @@
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ToolCheck.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ServerCheck.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.BranchPlan.pas"/>
+        <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ExternalRules.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.BranchNames.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
