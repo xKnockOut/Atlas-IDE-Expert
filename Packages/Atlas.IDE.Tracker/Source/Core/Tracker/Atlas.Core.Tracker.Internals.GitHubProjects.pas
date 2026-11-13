@@ -20,7 +20,6 @@ interface
 uses
   System.Diagnostics,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract;
 
 type
@@ -89,6 +88,10 @@ type
     /// Statusfeldes dieses Projekts ('' = erstes).</summary>
     class function Values(const ACall: TAtlasTrackerCall; const AProject: string; AOptions: Boolean;
       out AValues: TArray<string>): TAtlasTrackerWriteResult; static;
+    /// <summary>Issue mit der node_id ANodeId in das Projekt AProject („owner/nummer“) des Repositorys aufnehmen
+    /// (Projekte einer Issue-Vorlage, #2137); False ohne passendes Projekt oder bei einem Fehler.</summary>
+    class function AddIssue(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const ASend: IAtlasCiSend;
+      const ANodeId, AProject: string): Boolean; static;
   end;
 
 implementation
@@ -97,6 +100,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.JSON,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubGraphQl,
   Atlas.Text.Json;
@@ -522,6 +526,16 @@ begin
   begin
     AValues := AValues + [mProject.Ref];
   end;
+end;
+
+class function TAtlasGitHubProjects.AddIssue(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch;
+  const ASend: IAtlasCiSend; const ANodeId, AProject: string): Boolean;
+var
+  mItem: TAtlasGitHubProjectItem;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  Result := (ANodeId <> '') and (Trim(AProject) <> '') and AddToProject(ProjectCall(ACall, AWatch, ASend, ANodeId),
+    AProject, mItem, mResult);
 end;
 
 end.

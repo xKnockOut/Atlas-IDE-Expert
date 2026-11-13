@@ -496,6 +496,11 @@ type
     property DebugRestart: Boolean read FDebug.DebugRestart write FDebug.DebugRestart;
     property DebugRestartReenableBreakpoints: Boolean read FDebug.DebugRestartReenableBreakpoints
       write FDebug.DebugRestartReenableBreakpoints;
+    property DebugReattach: Boolean read FDebug.DebugReattach write FDebug.DebugReattach;
+    property DebugReattachKey: Integer read FDebug.DebugReattachKey write FDebug.DebugReattachKey;
+    property DebugReattachWaitIntervalMs: Integer read FDebug.DebugReattachWaitIntervalMs
+      write FDebug.DebugReattachWaitIntervalMs;
+    property DebugLaunchGroups: Boolean read FDebug.DebugLaunchGroups write FDebug.DebugLaunchGroups;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;
@@ -1224,6 +1229,8 @@ type
     property IssuesCreate: Boolean read FIssueWork.IssuesCreate write FIssueWork.IssuesCreate;
     property IssuesCreateIncludeCode: Boolean read FIssueWork.IssuesCreateIncludeCode
       write FIssueWork.IssuesCreateIncludeCode;
+    property IssuesCreateTemplates: Boolean read FIssueWork.IssuesCreateTemplates
+      write FIssueWork.IssuesCreateTemplates;
     property VcsProvider: string read FVcs.VcsProvider write FVcs.VcsProvider;
     property VcsGitPath: string read FVcs.VcsGitPath write FVcs.VcsGitPath;
     property VcsSvnPath: string read FVcs.VcsSvnPath write FVcs.VcsSvnPath;
@@ -1267,6 +1274,12 @@ type
       write FIssues.IssuesGitHubAddToProject;
     property IssuesGitHubLinkBranch: Boolean read FIssues.IssuesGitHubLinkBranch
       write FIssues.IssuesGitHubLinkBranch;
+    property IssuesGitHubTemplateFields: string read FIssues.IssuesGitHubTemplateFields
+      write FIssues.IssuesGitHubTemplateFields;
+    property IssuesGitHubCreatePr: Boolean read FIssues.IssuesGitHubCreatePr write FIssues.IssuesGitHubCreatePr;
+    property IssuesGitHubPrBase: string read FIssues.IssuesGitHubPrBase write FIssues.IssuesGitHubPrBase;
+    property IssuesGitHubPrBody: string read FIssues.IssuesGitHubPrBody write FIssues.IssuesGitHubPrBody;
+    property IssuesGitHubPrDraft: Boolean read FIssues.IssuesGitHubPrDraft write FIssues.IssuesGitHubPrDraft;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;

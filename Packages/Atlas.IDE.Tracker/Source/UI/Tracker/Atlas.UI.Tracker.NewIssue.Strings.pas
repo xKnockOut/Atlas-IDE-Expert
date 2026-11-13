@@ -18,7 +18,12 @@ type
     NewIssueLabelBranch, NewIssueLabelCommit, NewIssueLabelFindings, NewIssueFindingsTitle, NewIssueNoEditor,
     SuggestTitle, SuggestIntro, SuggestColumnPath, SuggestColumnKind, SuggestColumnWhy, SuggestWhyProject,
     SuggestWhyExternal, SuggestWhySubmodule, SuggestWhyGroup, SuggestWhyRemote, SuggestWhyWorktree, SuggestNothing,
-    SuggestApply, SuggestSearching);
+    SuggestApply, SuggestSearching,
+    // Issue-Vorlagen, Meilenstein, Issue-Typ und -Felder von GitHub (#2137).
+    NewIssueTemplate, NewIssueBlank, NewIssueMilestone, NewIssueNone, NewIssueBrowser, NewIssueRequired,
+    NewIssueRequiredMany, NewIssueUnsupported, NewIssueFieldInvalid, NewIssueFromTemplate, NewIssueTemplateLabels,
+    NewIssueTemplateAssignees, NewIssueTemplateProjects, NewIssueDropped, NewIssueDroppedMilestone,
+    NewIssueDroppedType, NewIssueDroppedProjects, NewIssueDateHint);
 
   TAtlasNewIssueStrings = class
   public
@@ -86,7 +91,25 @@ const
      'Worktree desselben Repositorys',
      'Nichts gefunden – Ordner selbst wählen …',
      'Übernehmen',
-     'Suche Arbeitskopien …'),
+     'Suche Arbeitskopien …',
+     'Vorlage:',
+     'Leeres Issue',
+     'Meilenstein:',
+     '(keiner)',
+     'Im Browser fortsetzen',
+     '„%s“ ist ein Pflichtfeld.',
+     'Pflichtfelder ohne Wert: %s',
+     'Diese Vorlage kann Atlas nicht darstellen; bitte „Im Browser fortsetzen“.',
+     '„%s“: Der Wert passt nicht (Zahl, Datum als JJJJ-MM-TT bzw. eine der Optionen).',
+     'Aus der Vorlage: %s',
+     'Labels %s',
+     'Zuständig %s',
+     'Projekte %s',
+     '%s angelegt, aber ohne %s; GitHub setzt das nur mit Schreibrechten am Repository.',
+     'Meilenstein',
+     'Typ',
+     'Projekt %s',
+     'JJJJ-MM-TT'),
     ('Create issue',
      'Tracker:',
      'Project:',
@@ -138,7 +161,25 @@ const
      'Worktree of the same repository',
      'Nothing found – choose folder…',
      'Apply',
-     'Searching working copies…'));
+     'Searching working copies…',
+     'Template:',
+     'Blank issue',
+     'Milestone:',
+     '(none)',
+     'Continue in browser',
+     '"%s" is required.',
+     'Required fields without a value: %s',
+     'Atlas cannot show this template; please use “Continue in browser”.',
+     '"%s": the value does not fit (number, date as YYYY-MM-DD or one of the options).',
+     'From the template: %s',
+     'labels %s',
+     'assignees %s',
+     'projects %s',
+     '%s created, but without %s; GitHub sets it only with write access to the repository.',
+     'milestone',
+     'type',
+     'project %s',
+     'YYYY-MM-DD'));
 
 { TAtlasNewIssueStrings }
 

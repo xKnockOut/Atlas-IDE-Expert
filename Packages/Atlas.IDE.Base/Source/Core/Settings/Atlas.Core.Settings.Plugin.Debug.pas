@@ -30,6 +30,12 @@ const
   cMinAsyncOriginPerSite = 1;
   cMaxAsyncOriginPerSite = 1000;
   cDefaultAsyncOriginPerSite = 20;
+  /// <summary>Vorgabe von debug.reattach.key (#2171): Umschalt+Alt+P.</summary>
+  cDefaultReattachKey = $A050;
+  /// <summary>Vorgabe und Grenzen von debug.reattach.waitIntervalMs (#2171).</summary>
+  cDefaultReattachWaitMs = 100;
+  cMinReattachWaitMs = 20;
+  cMaxReattachWaitMs = 2000;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -221,6 +227,19 @@ type
     /// <summary>Beim Neustart Haltepunkte wieder einschalten, die in der Sitzung abgeschaltet wurden (#872,
     /// debug.restart.reenableBreakpoints).</summary>
     DebugRestartReenableBreakpoints: Boolean;
+    /// <summary>Erneut anhängen (#2171, debug.reattach): Atlas merkt den Pfad angehängter Prozesse je
+    /// Projektgruppe; Befehle „Erneut an … anhängen“ und „Anhängen, sobald gestartet …“ im Menü Start. Aus = keine
+    /// Einträge, kein Merken, kein Warten.</summary>
+    DebugReattach: Boolean;
+    /// <summary>Tastenkürzel „Erneut anhängen“ (#2171, debug.reattach.key; 0 = keins).</summary>
+    DebugReattachKey: Integer;
+    /// <summary>Abstand der Abfragen der Prozessliste beim Warten in ms (#2171, debug.reattach.waitIntervalMs).
+    /// </summary>
+    DebugReattachWaitIntervalMs: Integer;
+    /// <summary>Startverbünde (#867, debug.launchGroups): Verbünde aus der Projektdatei .atlas ("launchGroups"),
+    /// Fenster „Startverbünde“; F9 startet den aktiven Verbund, Strg+F2 beendet alle seine Programme. Aus = F9
+    /// startet nur das aktive Projekt.</summary>
+    DebugLaunchGroups: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -238,11 +257,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
-  private
-    /// <summary>Vorgaben für Exceptions, Werte im Editor, Ereignisse, Neustart und Startprofile.</summary>
-    procedure SetSessionDefaults;
-    /// <summary>Exchange für dieselben Werte wie SetSessionDefaults.</summary>
-    procedure ExchangeSession(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben ab debug.whyHere (Halt, Protokoll, Neustart, Anhängen, Start); Teil von Defaults.</summary>
+    procedure SetStopAndLaunchDefaults;
+    /// <summary>Werte ab debug.whyHere über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    procedure ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -297,31 +315,13 @@ begin
   Result.DebugLeakReportCompare := True;
   Result.DebugLeakReportWindow := True;
   Result.DebugModuleOfAddress := True;
-  Result.SetSessionDefaults;
-end;
-
-procedure TAtlasPluginDebugSettings.SetSessionDefaults;
-begin
-  DebugExceptionHistory := True;
-  DebugJustMyCode := True;
-  DebugExceptionBanner := False;
-  DebugExceptionBannerIgnoreAtLocation := True;
-  DebugInlineValues := True;
-  DebugInlineValuesPerLine := 5;
-  DebugWhyHere := True;
-  DebugWhyHereDepth := cDefaultWhyHereDepth;
-  DebugOwnCodeFolders := '';
-  DebugEventLog := True;
-  DebugEventLogColors := cDefaultEventLogColors;
-  DebugLogpoints := True;
-  DebugLogpointPrefix := cDefaultLogpointPrefix;
-  DebugNoSourcePage := True;
-  DebugNoSourceIgnoredUnits := '';
-  DebugRestart := True;
-  DebugRestartReenableBreakpoints := False;
-  StartProfiles := True;
-  StartProfilesStatusField := True;
-  DebugEnabled := True;
+  Result.DebugExceptionHistory := True;
+  Result.DebugJustMyCode := True;
+  Result.DebugExceptionBanner := False;
+  Result.DebugExceptionBannerIgnoreAtLocation := True;
+  Result.DebugInlineValues := True;
+  Result.DebugInlineValuesPerLine := 5;
+  Result.SetStopAndLaunchDefaults;
 end;
 
 procedure TAtlasPluginDebugSettings.Normalize;
@@ -339,6 +339,8 @@ begin
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
+  DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
+  DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
   DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
   DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
@@ -394,17 +396,39 @@ begin
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
   AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
-  ExchangeSession(AIo);
-end;
-
-procedure TAtlasPluginDebugSettings.ExchangeSession(const AIo: TAtlasSettingsExchange);
-begin
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  ExchangeStopAndLaunch(AIo);
+end;
+
+procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
+begin
+  DebugWhyHere := True;
+  DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugOwnCodeFolders := '';
+  DebugEventLog := True;
+  DebugEventLogColors := cDefaultEventLogColors;
+  DebugLogpoints := True;
+  DebugLogpointPrefix := cDefaultLogpointPrefix;
+  DebugNoSourcePage := True;
+  DebugNoSourceIgnoredUnits := '';
+  DebugRestart := True;
+  DebugRestartReenableBreakpoints := False;
+  DebugReattach := True;
+  DebugReattachKey := cDefaultReattachKey;
+  DebugReattachWaitIntervalMs := cDefaultReattachWaitMs;
+  DebugLaunchGroups := True;
+  StartProfiles := True;
+  StartProfilesStatusField := True;
+  DebugEnabled := True;
+end;
+
+procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
+begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
@@ -416,6 +440,10 @@ begin
   AIo.Text('DebugNoSourceIgnoredUnits', DebugNoSourceIgnoredUnits);
   AIo.Flag('DebugRestart', DebugRestart);
   AIo.Flag('DebugRestartReenableBreakpoints', DebugRestartReenableBreakpoints);
+  AIo.Flag('DebugReattach', DebugReattach);
+  AIo.Number('DebugReattachKey', DebugReattachKey);
+  AIo.Number('DebugReattachWaitIntervalMs', DebugReattachWaitIntervalMs);
+  AIo.Flag('DebugLaunchGroups', DebugLaunchGroups);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

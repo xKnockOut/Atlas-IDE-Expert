@@ -10,7 +10,9 @@
 // Schalter für wieder geöffnete Issues (#2127, issues.reopened). Bei GitHub
 // das Ziel des Zustands, das Projekt und die Aufnahme ins Projekt (#2134,
 // issues.github.*); mit Projektfeld bietet „Beginnen setzt“ die Optionen des
-// Statusfeldes statt der Labels an.
+// Statusfeldes statt der Labels an. Dazu der verknüpfte Branch beim Beginnen
+// (#2138) und der Pull Request beim Beenden (#2136): vorab angehakt, Ziel,
+// Textvorlage (ungekürzt gespeichert) und Entwurf.
 
 interface
 
@@ -42,6 +44,10 @@ type
     EndComment: TEdit;
     EndFields: TEdit;
     EndTime: TCheckBox;
+    CreatePr: TCheckBox;
+    PrBase: TEdit;
+    PrBody: TEdit;
+    PrDraft: TCheckBox;
     ReviewStates: TEdit;
     ReviewBuild: TCheckBox;
     ReviewComment: TEdit;
@@ -62,6 +68,8 @@ type
     cReviewStatesKey = 'issues.reviewStates';
     cReviewCommentKey = 'issues.reviewComment';
     cProjectKey = 'issues.github.project';
+    cPrBaseKey = 'issues.github.prBase';
+    cPrBodyKey = 'issues.github.prBody';
   private
     FRows: TAtlasTrackerSettingsRows;
     FHooks: TAtlasTrackerSettingsHooks;
@@ -155,6 +163,12 @@ begin
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesEndFields));
   FView.EndTime := FRows.AddCheck('issues.endTime',
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesEndTime));
+  FView.CreatePr := FRows.AddCheck('issues.github.createPr',
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsCreatePr));
+  FView.PrBase := FRows.AddText(cPrBaseKey, TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsPrBase));
+  FView.PrBody := FRows.AddText(cPrBodyKey, TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsPrBody));
+  FView.PrDraft := FRows.AddCheck('issues.github.prDraft',
+    TAtlasGitHubStrings.Text(TAtlasGitHubTextId.SettingsPrDraft));
   FView.ReviewStates := FRows.AddText(cReviewStatesKey,
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesReviewStates));
   FView.ReviewBuild := FRows.AddCheck('issues.reviewBuild',
@@ -199,6 +213,8 @@ begin
   AValues.WriteString(cStartCommentKey, FView.StartComment.Text);
   AValues.WriteString(cEndCommentKey, FView.EndComment.Text);
   AValues.WriteString(cReviewCommentKey, FView.ReviewComment.Text);
+  AValues.WriteString(cPrBodyKey, FView.PrBody.Text);
+  AValues.WriteString(cPrBaseKey, Trim(FView.PrBase.Text));
   AValues.WriteString(cEndStatesKey,
     TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FView.EndStates.Text)));
   AValues.WriteString(cEndFieldsKey,

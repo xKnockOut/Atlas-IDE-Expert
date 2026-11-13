@@ -69,6 +69,8 @@
 //   Benachrichtigungszentrale (Atlas.Core.Tracker.Notify). TAtlasTrackerPoll
 //   trägt den Stand von Abfrage zu Abfrage (seit wann, angemeldeter Benutzer,
 //   Umfang, bei GitHub Last-Modified und X-Poll-Interval).
+// - IAtlasTrackerPullRequests (#2136, optional über Supports): beim Beenden
+//   einen Pull Request anlegen (TAtlasTrackerPullSpec → TAtlasTrackerPullResult).
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -502,6 +504,80 @@ type
     function LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch, ABase: string): TAtlasTrackerBranchLink;
   end;
 
+{$SCOPEDENUMS ON}
+
+  /// <summary>Ergebnis von „Pull Request anlegen“ beim Beenden (#2136).</summary>
+  TAtlasTrackerPullOutcome = (
+    /// <summary>Nicht versucht.</summary>
+    None,
+    /// <summary>Gepusht und angelegt.</summary>
+    Created,
+    /// <summary>Gepusht; für den Branch gab es schon einen offenen Pull Request, kein zweiter.</summary>
+    Existing,
+    /// <summary>Die Arbeitskopie hat ungesicherte Änderungen; nichts gepusht.</summary>
+    Dirty,
+    /// <summary>Der Remote origin ist nicht das Repository des Trackers (Fork); nichts gepusht.</summary>
+    Foreign,
+    /// <summary>Der Push scheiterte (Message nennt den Grund); nichts angelegt.</summary>
+    PushFailed,
+    /// <summary>Anfrage an den Tracker gescheitert (Error, Status, Message).</summary>
+    Failed);
+
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Was beim Beenden als Pull Request angelegt werden soll (#2136).</summary>
+  TAtlasTrackerPullSpec = record
+    /// <summary>False = kein Pull Request.</summary>
+    Wanted: Boolean;
+    /// <summary>Branch des Issues (Quelle) und Ziel; Base '' = Standard-Branch des Repositorys.</summary>
+    Head: string;
+    Base: string;
+    Title: string;
+    Body: string;
+    /// <summary>Labels und Meilenstein des Issues übernehmen.</summary>
+    CopyIssue: Boolean;
+    /// <summary>Anmeldenamen der Prüfer.</summary>
+    Reviewers: TArray<string>;
+    Draft: Boolean;
+    class function None: TAtlasTrackerPullSpec; static;
+  end;
+
+  /// <summary>Angelegter bzw. vorhandener Pull Request (#2136).</summary>
+  TAtlasTrackerPullResult = record
+    Outcome: TAtlasTrackerPullOutcome;
+    /// <summary>0 ohne Pull Request.</summary>
+    Number: Integer;
+    /// <summary>Seite im Browser; '' ohne.</summary>
+    Url: string;
+    /// <summary>Ziel des Pull Requests; '' unbekannt.</summary>
+    Base: string;
+    Draft: Boolean;
+    Error: TAtlasCiFetchError;
+    Status: Integer;
+    /// <summary>Fehlertext des Servers bzw. Grund des gescheiterten Pushs; '' ohne.</summary>
+    Message: string;
+    /// <summary>Der Pull Request steht, aber Labels und Meilenstein bzw. Prüfer ließen sich nicht setzen.</summary>
+    DecorateFailed: Boolean;
+    ReviewersFailed: Boolean;
+    class function Make(AOutcome: TAtlasTrackerPullOutcome): TAtlasTrackerPullResult; static;
+    class function Failure(AError: TAtlasCiFetchError; AStatus: Integer;
+      const AMessage: string): TAtlasTrackerPullResult; static;
+    /// <summary>Created oder Existing: Es gibt einen offenen Pull Request für den Branch.</summary>
+    function Stands: Boolean;
+  end;
+
+  /// <summary>Pull Requests anlegen (#2136, GitHub); optional, der Beenden-Dialog fragt mit Supports. Der Transport
+  /// muss IAtlasCiSend können, sonst NotConfigured. Läuft im Hintergrund.</summary>
+  IAtlasTrackerPullRequests = interface
+    ['{6A1D3F85-2C47-4E9B-8B05-D3E7F19A2C64}']
+    /// <summary>AOriginUrl (Remote origin der Arbeitskopie) zeigt auf das Repository des Ziels.</summary>
+    function SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
+    /// <summary>Gibt es einen offenen Pull Request mit Kopf ASpec.Head, diesen (Existing); sonst anlegen, dann
+    /// Labels und Meilenstein des Issues AKey (ASpec.CopyIssue) und Prüfer setzen.</summary>
+    function CreatePull(const ACall: TAtlasTrackerCall; const AKey: string;
+      const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
+  end;
+
   /// <summary>Unteraufgaben anlegen und Issues verknüpfen (#1279); optional, die Vorschau fragt mit Supports. Der
   /// Transport muss IAtlasCiSend können, sonst NotConfigured. Läuft im Hintergrund.</summary>
   IAtlasTrackerLinkWriter = interface
@@ -625,6 +701,14 @@ type
     AddToProject: Boolean;
     /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138).</summary>
     LinkBranch: Boolean;
+    /// <summary>Beenden-Dialog: Abschnitt „Pull Request anlegen“ vorab angehakt (#2136).</summary>
+    CreatePr: Boolean;
+    /// <summary>Ziel-Branch des Pull Requests; '' = Standard-Branch.</summary>
+    PrBase: string;
+    /// <summary>Textvorlage mit {closes}, {branch}, {commits}, {time}.</summary>
+    PrBody: string;
+    /// <summary>Als Entwurf vorbelegen.</summary>
+    PrDraft: Boolean;
   end;
 
   /// <summary>Zustand im Projekt (#2134) nach einem Schreibzugriff, für die Meldung: Projekt '' = kein Projekt
@@ -1193,6 +1277,37 @@ end;
 function TAtlasTrackerBranchLink.OnServer: Boolean;
 begin
   Result := Outcome in [TAtlasTrackerBranchLinkOutcome.Created, TAtlasTrackerBranchLinkOutcome.Found];
+end;
+
+{ TAtlasTrackerPullSpec }
+
+class function TAtlasTrackerPullSpec.None: TAtlasTrackerPullSpec;
+begin
+  Result := Default(TAtlasTrackerPullSpec);
+  Result.Wanted := False;
+end;
+
+{ TAtlasTrackerPullResult }
+
+class function TAtlasTrackerPullResult.Make(AOutcome: TAtlasTrackerPullOutcome): TAtlasTrackerPullResult;
+begin
+  Result := Default(TAtlasTrackerPullResult);
+  Result.Outcome := AOutcome;
+  Result.Error := TAtlasCiFetchError.None;
+end;
+
+class function TAtlasTrackerPullResult.Failure(AError: TAtlasCiFetchError; AStatus: Integer;
+  const AMessage: string): TAtlasTrackerPullResult;
+begin
+  Result := Make(TAtlasTrackerPullOutcome.Failed);
+  Result.Error := AError;
+  Result.Status := AStatus;
+  Result.Message := AMessage;
+end;
+
+function TAtlasTrackerPullResult.Stands: Boolean;
+begin
+  Result := Outcome in [TAtlasTrackerPullOutcome.Created, TAtlasTrackerPullOutcome.Existing];
 end;
 
 { TAtlasTrackerTarget }

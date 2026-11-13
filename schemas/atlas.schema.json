@@ -451,6 +451,12 @@
                 "description": "Nur dunitx-fixture-not-registered (#1882): eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name.",
                 "x-description-en": "Only dunitx-fixture-not-registered (#1882): own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."
               },
+              "managedFields": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur dunitx-setup-not-torn-down (#1781): auch string- und dynamische Array-Felder melden, die Setup belegt und TearDown nicht leert (der Leckmonitor zählt sie jedem Test zu).",
+                "x-description-en": "Only dunitx-setup-not-torn-down (#1781): also report string and dynamic array fields that Setup fills and TearDown does not clear (the leak monitor counts them against every test)."
+              },
               "selfRegistering": {
                 "type": "array",
                 "items": {
@@ -3902,6 +3908,11 @@
                 "type": "boolean",
                 "description": "GitHub: Branch beim Beginnen auf GitHub anlegen und mit dem Issue verknüpfen (#2138); fehlt es, gilt issues.github.linkBranch.",
                 "x-description-en": "GitHub: create the branch on GitHub when starting and link it to the issue (#2138); if missing, issues.github.linkBranch applies."
+              },
+              "githubPrBase": {
+                "type": "string",
+                "description": "GitHub: Ziel-Branch des Pull Requests beim Beenden (#2136); fehlt es, gilt issues.github.prBase.",
+                "x-description-en": "GitHub: target branch of the pull request when finishing (#2136); if missing, issues.github.prBase applies."
               }
             }
           }

@@ -2682,6 +2682,25 @@
       "safeFix": true
     },
     {
+      "id": "dunitx-setup-not-torn-down",
+      "name": "Field created in Setup, not freed in TearDown",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A field of a test class that the [Setup] method (or [SetupFixture]) assigns a new object (TFake.Create …) and the matching [TearDown] method (or [TearDownFixture]) neither frees with Free, FreeAndNil, DisposeOf or Destroy nor sets to nil: every single test leaks the object. Methods of the same class that TearDown calls directly count as well (one level). Fields of an interface type (reference counting) and objects with an owner (TButton.Create(FForm)) stay silent. With the option managedFields (default on) also string and dynamic array fields that Setup fills and TearDown does not clear: the DUnitX leak monitor counts their memory against each test. Without a TearDown method there is one finding on Setup for all fields. Quick fix (safe): FreeAndNil(FField); (without SysUtils FField.Free; FField := nil;) or FField := ''; / FField := nil; at the end of TearDown; without TearDown it creates the method with its attribute and declaration. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Medium confidence: frees in deeper helper methods are not followed.",
+      "bad": "[Setup]\nprocedure Setup;\n…\nprocedure TFallTests.Setup;\nbegin\n  FFake := TFakeLookup.Create;\nend;",
+      "good": "[TearDown]\nprocedure TearDown;\n…\nprocedure TFallTests.TearDown;\nbegin\n  FreeAndNil(FFake);\nend;",
+      "options": [
+        {
+          "name": "managedFields",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report string and dynamic array fields that Setup fills and TearDown does not clear."
+        }
+      ],
+      "safeFix": true
+    },
+    {
       "id": "dunitx-leak-monitor",
       "name": "DUnitX test program without leak monitor",
       "category": "code-smell",
@@ -2690,6 +2709,50 @@
       "description": "A program (.dpr) that uses DUnitX.TestFramework but no leak monitor of DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 or .FastMM5): without one DUnitX measures no leaks per test, so the test marks in the editor never show them. DUnitX.MemoryLeakMonitor.Default does not count, it measures nothing. Reported at the DUnitX.TestFramework entry. Quick fix (safe): add the monitor to uses, DUnitX.MemoryLeakMonitor.FastMM5 when the program uses FastMM5, otherwise DUnitX.MemoryLeakMonitor.FastMM4, which also works with the memory manager of the RTL without FastMM4.pas. Units stay silent. High confidence.",
       "bad": "uses DUnitX.TestFramework, Fall.Tests;",
       "good": "uses DUnitX.TestFramework, DUnitX.MemoryLeakMonitor.FastMM4, Fall.Tests;",
+      "safeFix": true
+    },
+    {
+      "id": "dunitx-ignore-without-reason",
+      "name": "[Ignore] without a reason",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "[Ignore] without an argument or with an empty reason ([Ignore('')]): the test report does not say why the test does not run, and later nobody knows whether it may run again. Reasons that are not a string literal (a constant) count as given. Attributes are recognized by name (with or without unit and suffix Attribute), so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: only the author knows the reason.",
+      "bad": "[Test, Ignore]\nprocedure Export;",
+      "good": "[Test, Ignore('Waits for the new export format (#812)')]\nprocedure Export;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-category-empty",
+      "name": "[Category] without a name",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "[Category('')] or a category text that holds only commas and blanks ([Category(' , ')]): the test ends up in no category, a filter such as --include never finds it. Names that are not a string literal count as given. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: the intended category is unknown.",
+      "bad": "[Test, Category('')]\nprocedure Import;",
+      "good": "[Test, Category('Slow')]\nprocedure Import;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-fixture-without-test",
+      "name": "[TestFixture] without a test",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A class with [TestFixture] that has no method with [Test], [TestCase], [NamedTestCase] or [RepeatTest] and no published method (DUnitX takes published methods without attributes as tests): the class runs empty and the report looks green. Classes whose ancestor (other than TObject) is not declared in the same file stay silent, as do classes whose ancestor in the file has tests (inherited tests). Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). Medium confidence. No quick fix.",
+      "bad": "[TestFixture]\nTKundeTests = class\npublic\n  procedure PruefeName;\nend;",
+      "good": "[TestFixture]\nTKundeTests = class\npublic\n  [Test]\n  procedure PruefeName;\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "dunitx-duplicate-attribute",
+      "name": "Duplicate attribute",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "packages",
+      "description": "The same DUnitX attribute twice on the same class or method: [Test] [Test], [Ignore] twice, [TestFixture] twice and so on. TestCase, NamedTestCase and Category may appear several times and are only reported when the arguments are the same (the case would run twice). Unknown attributes stay silent. Attributes are recognized by name, so the rule also works without DUnitX in the search path. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. Quick fix (safe): remove the second one, alone on its line together with the line, in a list together with its comma.",
+      "bad": "[Test]\n[Test]\nprocedure Speichern;",
+      "good": "[Test]\nprocedure Speichern;",
       "safeFix": true
     },
     {
