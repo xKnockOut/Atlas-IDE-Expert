@@ -350,6 +350,7 @@ Atlas.UI.Strings.Tests
 Atlas.UI.SymbolPath.Strings.Tests
 Atlas.UI.Tests.Strings.Tests
 Atlas.UI.Tracker.Strings.Tests
+Atlas.UI.Tracker.GitHubStrings.Tests
 Atlas.UI.Undo.Strings.Tests
 Atlas.UI.VersionControl.Strings.Tests
 Atlas.UI.Welcome.Strings.Tests

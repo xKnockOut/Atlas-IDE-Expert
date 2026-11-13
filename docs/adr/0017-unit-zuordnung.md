@@ -1087,6 +1087,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SprintTile` | `UI/Tracker/Atlas.UI.Tracker.SprintTile.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
+| `Atlas.UI.Tracker.GitHubStrings` | `UI/Tracker/Atlas.UI.Tracker.GitHubStrings.pas` | Texte des GitHub-Anbieters im Tracker (Schließgrund #2135), Sprache von Base |
 | `Atlas.UI.Tracker.TestResults` | `UI/Tracker/Atlas.UI.Tracker.TestResults.pas` | Ordner `UI/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.TileView` | `UI/Tracker/Atlas.UI.Tracker.TileView.pas` | Grundlage der Kachel-Ansichten (`IAtlasWelcomeTileView`), #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
