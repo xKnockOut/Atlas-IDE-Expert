@@ -151,6 +151,8 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEventExcluded));
   // Haltepunkte, die nicht greifen werden (#577).
   Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
+  // Haltepunkte auf Methoden nach Muster (#855).
+  Switch('debug.methodBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMethodBreakpoints));
   // Haltepunkt nur für ein Objekt (#857).
   Switch('debug.instanceBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInstanceBreakpoints));
   // Haltepunkt-Sätze (#586).

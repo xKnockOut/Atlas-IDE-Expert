@@ -37,7 +37,7 @@ type
   /// Sitzung nicht gehalten), NotEffective (greift nicht, #577).</summary>
   TAtlasBreakpointFilter = (Active, WithCondition, NeverHit, NotEffective);
   TAtlasBreakpointGrouping = (None, ByTag, ByFile, ByGroup);
-  TAtlasBreakpointColumn = (Enabled, Location, Condition, PassCount, Hits, Tags, Group, SetName);
+  TAtlasBreakpointColumn = (Enabled, Location, Condition, PassCount, Hits, Tags, Group, SetName, Rules);
   {$SCOPEDENUMS OFF}
   TAtlasBreakpointFilters = set of TAtlasBreakpointFilter;
 
@@ -52,6 +52,8 @@ type
     Group: string;
     /// <summary>Sätze (#586), in denen der Haltepunkt steht, mit Komma getrennt.</summary>
     SetName: string;
+    /// <summary>Regeln (#864) als kurzer Text; '' ohne.</summary>
+    Rules: string;
     Enabled: Boolean;
     /// <summary>Greift nicht (#577); Reason sagt, warum.</summary>
     NotEffective: Boolean;
@@ -152,7 +154,7 @@ const
   cNarrowColumn = 70;
   cCheckColumn = 24;
   cColumnNames: array[TAtlasBreakpointColumn] of string = ('enabled', 'location', 'condition', 'passCount',
-    'hits', 'tags', 'group', 'set');
+    'hits', 'tags', 'group', 'set', 'rules');
 
 /// <summary>Dateiname ohne Ordner; trennt an "\" und "/" (auch unter Linux, wo ExtractFileName nur "/"
 /// kennt).</summary>
@@ -449,7 +451,7 @@ begin
       Result := cCheckColumn;
     TAtlasBreakpointColumn.Location:
       Result := cWideColumn;
-    TAtlasBreakpointColumn.Condition, TAtlasBreakpointColumn.Tags:
+    TAtlasBreakpointColumn.Condition, TAtlasBreakpointColumn.Tags, TAtlasBreakpointColumn.Rules:
       Result := cMiddleColumn;
   else
     Result := cNarrowColumn;
