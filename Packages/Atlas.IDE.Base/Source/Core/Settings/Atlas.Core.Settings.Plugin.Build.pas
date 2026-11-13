@@ -129,6 +129,9 @@ type
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
+    /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
+    /// </summary>
+    TestsCaseTable: Boolean;
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
@@ -273,6 +276,7 @@ begin
   Result.TestsCompareFormat := True;
   Result.TestsShowDuration := True;
   Result.TestsSlowMs := cDefaultTestsSlowMs;
+  Result.TestsCaseTable := True;
   Result.TestsLeaks := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
@@ -362,6 +366,7 @@ begin
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
+  AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);

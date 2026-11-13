@@ -1488,6 +1488,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.AssertLine` | `Core/Tests/Atlas.Core.Tests.AssertLine.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.CaseTable` | `Core/Tests/Atlas.Core.Tests.CaseTable.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredBy` | `IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredByList` | `IDE/Tests/Atlas.IDE.Tests.CoveredByList.pas` | Ordner `IDE/Tests` |
@@ -1498,6 +1499,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.OnSave` | `IDE/Tests/Atlas.IDE.Tests.OnSave.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Compare` | `IDE/Tests/Atlas.IDE.Tests.Compare.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.LeakSetup` | `IDE/Tests/Atlas.IDE.Tests.LeakSetup.pas` | Ordner `IDE/Tests`; Befehl „Leckprüfung einrichten …“ (#1880) |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
@@ -1507,6 +1509,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.UI.Tests.Compare` | `UI/Tests/Atlas.UI.Tests.Compare.pas` | Ordner `UI/Tests` |
 | `Atlas.UI.Tests.Slowest` | `UI/Tests/Atlas.UI.Tests.Slowest.pas` | Ordner `UI/Tests` |
+| `Atlas.UI.Tests.CaseTable` | `UI/Tests/Atlas.UI.Tests.CaseTable.pas` | Ordner `UI/Tests` |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 | `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 
