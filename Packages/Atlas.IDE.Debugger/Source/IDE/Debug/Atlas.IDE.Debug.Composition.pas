@@ -86,7 +86,8 @@ uses
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.VariablesStrings;
 
 var
   GScope: IAtlasModuleScope;
@@ -230,6 +231,20 @@ begin
   Result.Key := AKey;
 end;
 
+/// <summary>Fenster „Auswerten“ (#784) und der Dialog der IDE daneben, Fenster „Variablen“ (#853); nur sichtbar,
+/// solange ihre Einstellung an ist.</summary>
+function WindowCommands: TArray<TAtlasModuleCommand>;
+begin
+  Result := [
+    Command('Atlas.DebugEvaluate', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateCommand),
+      TAtlasIdeDebugEvaluate.ShowWindow,
+      DebugEvaluateVisible),
+    Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
+      TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
+    Command('Atlas.DebugVariables', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCommand),
+      ShowVariablesWindow, VariablesWindowVisible)];
+end;
+
 { TAtlasDebugModule }
 
 function TAtlasDebugModule.Info: TAtlasModuleInfo;
@@ -314,12 +329,6 @@ begin
     Command('Atlas.DebugExceptions', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsCommand),
       TAtlasIdeDebugExceptions.ShowWindow,
       DebugExceptionsVisible),
-    // Fenster „Auswerten“ (#784) und der Dialog der IDE daneben.
-    Command('Atlas.DebugEvaluate', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateCommand),
-      TAtlasIdeDebugEvaluate.ShowWindow,
-      DebugEvaluateVisible),
-    Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
-      TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
     // Nur eigener Code (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
     Command('Atlas.DebugJustMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeCommand),
       ToggleDebugJustMyCode, nil),
@@ -335,6 +344,8 @@ begin
     // Atlas-Lecks (#1875); nur sichtbar, solange debug.leakReport an ist.
     Command('Atlas.DebugLeaks', TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksCommand), ShowDebugLeaks,
       DebugLeaksVisible)];
+  // Fenster „Auswerten“ (#784) mit dem Dialog der IDE daneben und Fenster „Variablen“ (#853).
+  Result := Result + WindowCommands;
   // Threads im Quelltext (#852): markieren, einfrieren, auftauen; Atlas-Aufrufstapel (#843).
   Result := Result + DebugThreadCommands;
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
@@ -379,6 +390,7 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugVariables', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugCallStack', TAtlasMenuPlace.AtlasMenu),
@@ -451,7 +463,8 @@ procedure TAtlasDebugModule.ThemeChanged;
 begin
   TAtlasIdeDebugExceptions.ThemeChanged;
   TAtlasIdeDebugExceptionBar.ThemeChanged;
-  TAtlasIdeDebugEvaluate.ThemeChanged;
+  // Fenster „Auswerten“ (#784) und „Variablen“ (#853).
+  ValueThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
   RunThemeChanged;
   DebugThreadsThemeChanged;
