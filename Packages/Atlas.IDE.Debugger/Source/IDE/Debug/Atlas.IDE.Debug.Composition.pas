@@ -330,7 +330,10 @@ begin
       RunDebugDeadlocks, DebugDeadlocksVisible),
     // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
     Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
-      ShowDebugParallelStacks, DebugParallelStacksVisible)];
+      ShowDebugParallelStacks, DebugParallelStacksVisible),
+    // Atlas-Lecks (#1875); nur sichtbar, solange debug.leakReport an ist.
+    Command('Atlas.DebugLeaks', TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksCommand), ShowDebugLeaks,
+      DebugLeaksVisible)];
   // Threads im Quelltext (#852): markieren, einfrieren, auftauen.
   Result := Result + DebugThreadCommands;
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
@@ -372,6 +375,7 @@ begin
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugLeaks', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
@@ -512,7 +516,7 @@ end;
 function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
-  Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts + RunParts;
+  Result := Result + [StepFilterPart] + DebugThreadParts + DebugLeakParts(GScope) + BreakpointParts + RunParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

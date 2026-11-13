@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Registration.Frameworks;
 
-// Anmeldung der eingebauten Prüfregeln für Bibliotheken und Plattform (RTL, Listen, Besitz und Freigabe,
-// Exceptions, Threads, Komponenten, Formulare, Datenbank, Dateien, Sicherheit, Open Tools API, Packages, Tests).
-// Atlas.Common.Rules.Builtin ruft die drei Registration-Units nacheinander auf; nach Themen aufgeteilt, damit
+// Anmeldung der eingebauten Prüfregeln für Bibliotheken und Plattform (RTL, Listen, Exceptions,
+// Threads, Komponenten, Formulare, Datenbank, Dateien, Sicherheit, Open Tools API, Packages, Tests).
+// Atlas.Common.Rules.Builtin ruft die Registration-Units nacheinander auf; nach Themen aufgeteilt, damit
 // keine Unit zu viele Units einbindet (metric-uses-count).
 
 interface
@@ -32,10 +32,6 @@ uses
   Atlas.Common.Rules.Builtin.OpenTools,
   Atlas.Common.Rules.Builtin.Testing,
   Atlas.Common.Rules.Builtin.Events,
-  Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Rules.Builtin.Ownership.RawMemory,
-  Atlas.Common.Rules.Builtin.Ownership.StringListObjects,
-  Atlas.Common.Rules.Builtin.Ownership.ComponentInterface,
   Atlas.Common.Rules.Builtin.Database,
   Atlas.Common.Rules.Builtin.Credentials,
   Atlas.Common.Rules.Builtin.DllExports,
@@ -66,10 +62,6 @@ begin
   RegisterOpenToolsRules(ARegistry);
   RegisterTestingRules(ARegistry);
   RegisterEventRules(ARegistry);
-  RegisterOwnershipRules(ARegistry);
-  RegisterOwnershipRawMemoryRules(ARegistry);
-  RegisterOwnershipStringListObjectsRules(ARegistry);
-  RegisterOwnershipComponentInterfaceRules(ARegistry);
   RegisterDatabaseRules(ARegistry);
   RegisterDllExportRules(ARegistry);
   RegisterFileRules(ARegistry);

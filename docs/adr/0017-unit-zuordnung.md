@@ -946,6 +946,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.AsyncOrigin` | `IDE/Debug/Atlas.IDE.Debug.AsyncOrigin.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ThreadsGutter` | `IDE/Debug/Atlas.IDE.Debug.ThreadsGutter.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ParallelStacksWindow` | `IDE/Debug/Atlas.IDE.Debug.ParallelStacksWindow.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.LeaksWindow` | `IDE/Debug/Atlas.IDE.Debug.LeaksWindow.pas` | Andockbares Fenster „Atlas-Lecks“, #1875 |
+| `Atlas.IDE.Debug.Leaks` | `IDE/Debug/Atlas.IDE.Debug.Leaks.pas` | Leckbericht am Ende einer Debug-Sitzung einsammeln, Kandidaten vom Server, Sprung, #1875 |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Exceptions` | `IDE/Debug/Atlas.IDE.Debug.Exceptions.pas` | Ordner `IDE/Debug` |
@@ -969,6 +971,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.BreakpointCheck` | `UI/Debug/Atlas.UI.Debug.BreakpointCheck.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Deadlocks` | `UI/Debug/Atlas.UI.Debug.Deadlocks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ParallelStacks` | `UI/Debug/Atlas.UI.Debug.ParallelStacks.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.Leaks` | `UI/Debug/Atlas.UI.Debug.Leaks.pas` | Texte des Fensters „Atlas-Lecks“, #1875 |
 | `Atlas.UI.Debug.BreakpointSets` | `UI/Debug/Atlas.UI.Debug.BreakpointSets.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ThreadMarks` | `UI/Debug/Atlas.UI.Debug.ThreadMarks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.AsyncOrigin` | `UI/Debug/Atlas.UI.Debug.AsyncOrigin.pas` | Ordner `UI/Debug` |
@@ -979,6 +982,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ParallelStacksFrame` | `UI/Debug/Atlas.UI.Debug.ParallelStacksFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.LeaksFrame` | `UI/Debug/Atlas.UI.Debug.LeaksFrame.pas` | Inhalt des Fensters „Atlas-Lecks“, #1875 |
 | `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
@@ -986,6 +990,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
 | `Atlas.Core.Debug.EventLog` | `Core/Debug/Atlas.Core.Debug.EventLog.pas` | Ereignisprotokoll ohne IDE: Arten, Filter, Farben, Sprungziele, #580 |
+| `Atlas.Core.Debug.LeakCapture` | `Core/Debug/Atlas.Core.Debug.LeakCapture.pas` | Leckbericht am Ende einer Debug-Sitzung ohne IDE: Meldungsfenster, FastMM-Logdatei, Wahl, Vergleich mit dem letzten Lauf, #1875 |
+| `Atlas.Core.Debug.LeakView` | `Core/Debug/Atlas.Core.Debug.LeakView.pas` | Inhalt des Fensters „Atlas-Lecks“ ohne VCL: Zeilen je Name, Kandidaten des Servers bzw. Gruppen mit Stapeln, #1875 |
 | `Atlas.UI.Debug.EventLogFrame` | `UI/Debug/Atlas.UI.Debug.EventLogFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.EventLogMirror` | `IDE/Debug/Atlas.IDE.Debug.EventLogMirror.pas` | Mitlesen aus dem Ereignisprotokoll der IDE, #580 |
 | `Atlas.IDE.Debug.EventLogWindow` | `IDE/Debug/Atlas.IDE.Debug.EventLogWindow.pas` | Andockbares Fenster Ereignisprotokoll, #580 |
