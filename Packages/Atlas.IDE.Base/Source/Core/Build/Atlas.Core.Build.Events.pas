@@ -115,6 +115,9 @@ type
     procedure ProjectStarted(const AProject: TAtlasCompileProject);
     procedure ProjectFinished(const AFileName: string; ASucceeded: Boolean);
     class function KindText(AKind: TAtlasCompileKind): string; static;
+    /// <summary>Läuft gerade ein Projekt, das nicht Atlas' eigene Hintergrundprüfung ist (Build des Benutzers oder
+    /// auf Auftrag)? Für Tests im Hintergrund (#1775).</summary>
+    function Compiling: Boolean;
     property CodeInsightCount: Integer read FCodeInsightCount;
     property CodeInsightMs: Int64 read FCodeInsightMs;
     /// <summary>Solange True, sind beginnende Läufe Atlas-eigene Hintergrundprüfungen (#548).</summary>
@@ -316,6 +319,20 @@ begin
       begin
         FOnLog(Format('Compile-Ereignis %s: %s: %s', [AWhat, E.ClassName, E.Message]));
       end;
+  end;
+end;
+
+function TAtlasCompileEvents.Compiling: Boolean;
+var
+  mRunning: TRunning;
+begin
+  Result := False;
+  for mRunning in FRunning do
+  begin
+    if not mRunning.Project.Background then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 

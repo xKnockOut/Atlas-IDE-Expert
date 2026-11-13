@@ -52,7 +52,9 @@
 //               "failed": 1, "errors": 1, "skipped": 2, "durationMs": 1250,
 //               "failures": [{"test": "Demo.Tests.TRechner.Summe.Gross",
 //                             "message": "…", "file": "C:\\…\\Demo.Tests.pas",
-//                             "line": 35}, …]},
+//                             "line": 35}, …],
+//               "slowest": [{"test": "Demo.Tests.TRechner.Laden",
+//                            "file": "…", "line": 50, "durationMs": 820}, …]},
 //     "release": {"checkedAt": "…", "configuration": "Release",
 //                 "platform": "Win64", "findings": 2, "blocked": true,
 //                 "rules": ["release-debug-define", …],
@@ -115,7 +117,10 @@
 // und "errors" zählen alle). "test" ist der volle Name aus dem Bericht von
 // DUnitX; „Fehlgeschlagene erneut ausführen“ übergibt genau diese Namen an
 // --run. "file" ist absolut, "line" ab 1 (Methodenkopf), beide fehlen ohne
-// Fundstelle. Läufe über das MCP-Werkzeug run_tests schreiben hier nicht.
+// Fundstelle. "slowest" nennt die langsamsten Tests des Laufs (#1772,
+// höchstens TAtlasProjectTests.cMaxSlowest, der langsamste zuerst) mit "test",
+// "file", "line" wie oben und "durationMs". Läufe über das MCP-Werkzeug
+// run_tests schreiben hier nicht.
 // "release" ist der Release-Build-Wächter (#533): "checkedAt" bis "rules" die
 // letzte Prüfung vor einem Release-Build (Konfiguration, Plattform, Zahl der
 // Verstöße, ob der Build abgebrochen wurde, Regel-IDs der Verstöße ohne
@@ -317,6 +322,7 @@ type
   TAtlasSetupFinding = Atlas.Core.Projects.Summary.Sections.TAtlasSetupFinding;
   TAtlasProjectSetup = Atlas.Core.Projects.Summary.Sections.TAtlasProjectSetup;
   TAtlasProjectTestFailure = Atlas.Core.Projects.Summary.Sections.TAtlasProjectTestFailure;
+  TAtlasProjectSlowTest = Atlas.Core.Projects.Summary.Sections.TAtlasProjectSlowTest;
   TAtlasProjectTests = Atlas.Core.Projects.Summary.Sections.TAtlasProjectTests;
   TAtlasProjectRelease = Atlas.Core.Projects.Summary.Sections.TAtlasProjectRelease;
   TAtlasProjectCi = Atlas.Core.Projects.Summary.Sections.TAtlasProjectCi;

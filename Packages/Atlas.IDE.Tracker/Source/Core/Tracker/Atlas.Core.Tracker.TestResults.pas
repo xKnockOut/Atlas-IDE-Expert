@@ -24,6 +24,8 @@
 //   Seite nicht bei jedem Anzeigen aufhält).
 // - Rot geworden: neuer Build (andere Nummer) desselben Jobs ist rot, der
 //   vorige war es nicht. Beim ersten Abruf gibt es keine Meldung.
+// - Langsamste Tests (#1772): die des letzten lokalen Laufs der gewählten
+//   Zeile (höchstens TAtlasProjectTests.cMaxSlowest, der langsamste zuerst).
 
 interface
 
@@ -96,6 +98,8 @@ type
     More: Integer;
     /// <summary>Namen für „Fehlgeschlagene erneut ausführen“.</summary>
     Rerun: TArray<string>;
+    /// <summary>Die langsamsten Tests des lokalen Laufs der gewählten Zeile (#1772).</summary>
+    Slowest: TArray<TAtlasProjectSlowTest>;
     function Empty: Boolean;
     function SelectedRow(out ARow: TAtlasTestRow): Boolean;
   end;
@@ -617,6 +621,7 @@ begin
   Result.Rows := Rows(AProjects, ACiEnabled);
   Result.Failures := nil;
   Result.Rerun := nil;
+  Result.Slowest := nil;
   Result.Selected := -1;
   if Length(Result.Rows) = 0 then
   begin
@@ -636,6 +641,10 @@ begin
   Result.Failures := MergeFailures(mChosen.Local, mChosen.Ci.Build, mUseServer, NormalizedMaxFailures(AMaxFailures),
     Result.More);
   Result.Rerun := RerunNames(mChosen.Local, mChosen.Ci.Build, mUseServer);
+  if mChosen.Local.Known then
+  begin
+    Result.Slowest := mChosen.Local.Slowest;
+  end;
 end;
 
 class function TAtlasTestResults.ProviderCaption(const AProvider: string): string;

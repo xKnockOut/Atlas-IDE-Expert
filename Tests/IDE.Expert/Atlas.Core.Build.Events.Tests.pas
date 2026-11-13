@@ -34,6 +34,9 @@ type
     procedure RemovedParticipantHearsNothing;
     [Test]
     procedure RemoveDuringDispatch;
+    /// <summary>#1775: Compiling zählt laufende Projekte außer Atlas' eigener Hintergrundprüfung.</summary>
+    [Test]
+    procedure CompilingIgnoresBackgroundChecks;
   end;
 
 implementation
@@ -184,6 +187,28 @@ begin
   finally
     Events.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
+    Sent := '';
+  end;
+end;
+
+procedure TAtlasCompileEventsTests.CompilingIgnoresBackgroundChecks;
+var
+  Events: TAtlasCompileEvents;
+begin
+  Events := MakeEvents;
+  try
+    Assert.IsFalse(Events.Compiling, 'vor dem Lauf');
+    Events.Background := True;
+    Events.ProjectStarted(Project('C:\P\A.dproj'));
+    Assert.IsFalse(Events.Compiling, 'Hintergrundprüfung zählt nicht');
+    Events.ProjectFinished('C:\P\A.dproj', True);
+    Events.Background := False;
+    Events.ProjectStarted(Project('C:\P\B.dproj'));
+    Assert.IsTrue(Events.Compiling, 'Build des Benutzers');
+    Events.ProjectFinished('C:\P\B.dproj', True);
+    Assert.IsFalse(Events.Compiling, 'nach dem Lauf');
+  finally
+    Events.Free;
     Sent := '';
   end;
 end;
