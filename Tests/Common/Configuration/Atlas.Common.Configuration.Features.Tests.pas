@@ -30,6 +30,9 @@ type
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
+    /// <summary>#2167: Abschnitt "testLists" (Testlisten des Plugins) wird geprüft, nicht gemeldet.</summary>
+    [Test]
+    procedure ChecksTestLists;
     /// <summary>#1260: issues.connections (Tracker-Verbindungen des Plugins) wird geprüft: nur https, ohne
     /// Benutzer, eindeutige Namen.</summary>
     [Test]
@@ -1182,6 +1185,24 @@ begin
     Issues);
   Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
 end;
+procedure TConfigurationFeatureTests.ChecksTestLists;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Parse('{"testLists": [{"name": "Vor dem Commit", "rules": [{"category": "Benchmark", "exclude": true},' +
+    ' {"unit": "*.Slow.*", "exclude": true}, {"state": "failed"}]}, {"name": "Parser",' +
+    ' "tests": ["Atlas.Common.Pascal.Tests"]}]}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Beispiel aus dem Issue ohne Meldung');
+  Parse('{"testLists": [{"name": "A", "rules": [{"state": "gelb"}, {"category": "K", "unit": "U"}, {},' +
+    ' {"category": 3, "exclude": "ja", "foo": 1}, 7], "tests": [1], "bar": true}, {"name": "a"}, {"tests": []},' +
+    ' 3]}', mIssues);
+  // state; zwei Arten; keine Art; category kein Text, exclude kein Wahrheitswert, foo unbekannt; 7; tests mit Zahl;
+  // bar unbekannt; Doppelname a; ohne name; 3.
+  Assert.AreEqual(12, Integer(Length(mIssues)));
+  Parse('{"testLists": {"name": "A"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+end;
+
 procedure TConfigurationFeatureTests.ChecksIssueConnections;
 var
   Settings: TServerSettings;

@@ -20,6 +20,9 @@
 //   (#585; Haltepunkt am Anfang nur bei einem einzelnen Test). Das
 //   Kontextmenü des Baums führt die Auswahl N-mal bzw. einzeln in zufälliger
 //   Reihenfolge aus (#1782, Atlas.IDE.Tests.Series, Atlas.UI.Tests.SeriesMenu).
+// - Testlisten (#2167): Reiter, Kopfzeile und Ausführen in
+//   Atlas.IDE.Tests.Lists (TAtlasIdeTestLists.Instance); das Fenster liefert
+//   ihnen den Stand (Connect) und zeigt im Reiter einer Liste nur deren Tests.
 // - Protokoll je Test (#2168, tests.log): Atlas.IDE.Tests.ExplorerLog merkt
 //   sich das Protokoll der Läufe; der Reiter „Protokoll (n)“ zeigt es zum
 //   gewählten Test, Fall bzw. zur Fixture.
@@ -41,10 +44,14 @@ uses
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Series,
+  Atlas.IDE.Tests.Lists,
   Atlas.IDE.Tests.ExplorerLog,
   Atlas.UI.Tests.ExplorerFrame;
 
 type
+  /// <summary>Testlisten (#2167) für die Composition, ohne eigene Zeile in deren uses.</summary>
+  TAtlasIdeTestLists = Atlas.IDE.Tests.Lists.TAtlasIdeTestLists;
+
   TAtlasIdeTestExplorer = class
   private type
     /// <summary>Gelesene Unit des Testprojekts: Änderungszeit, Text (nur Testunits) und Fixtures.</summary>
@@ -150,6 +157,12 @@ end;
 function ProjectName(const AFileName: string): string;
 begin
   Result := ChangeFileExt(ExtractFileName(AFileName), '');
+end;
+
+/// <summary>Testlisten des Moduls (#2167); nil, solange keine bestehen.</summary>
+function Lists: TAtlasIdeTestLists;
+begin
+  Result := TAtlasIdeTestLists.Instance;
 end;
 
 /// <summary>Datei an Zeile ALine (0-basiert) öffnen.</summary>
@@ -304,6 +317,26 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
+  // Testlisten (#2167): Stand für Palette, Taste und Reiter; ohne gezeigtes Fenster liest es neu, das Fenster
+  // zieht beim nächsten Takt nach.
+  if Lists <> nil then
+  begin
+    Lists.Connect(
+      function(AWithUnits: Boolean): TAtlasTestListSource
+      begin
+        Result := Default(TAtlasTestListSource);
+        ReadProjects;
+        if AWithUnits then
+        begin
+          ReadUnits;
+          FNodes := TAtlasTestExplorer.Build(FUnits, ResultsOfProject);
+          FDirty := True;
+        end;
+        Result.Project := FProject;
+        Result.Units := FUnits;
+        Result.Nodes := FNodes;
+      end, ShowRows);
+  end;
   if Wanted then
   begin
     // Früh anmelden: Der Desktop stellt das Fenster nur wieder her, wenn die IDE die Kennung kennt.
@@ -320,6 +353,10 @@ destructor TAtlasIdeTestExplorer.Destroy;
 begin
   // Erst der Zeitgeber, dann das Fenster: Danach erreicht nichts mehr dieses Objekt.
   FreeAndNil(FTimer);
+  if Lists <> nil then
+  begin
+    Lists.Connect(nil, nil);
+  end;
   TAtlasIdeTestsExplorerWindow.OnFrame := nil;
   if TAtlasIdeTestsExplorerWindow.ExistingFrame <> nil then
   begin
@@ -368,6 +405,10 @@ begin
   // Serien (#1782) im Kontextmenü des Baums.
   TAtlasTestsSeriesMenu.Detach(AFrame.Tree);
   TAtlasTestsSeriesMenu.Attach(AFrame.Tree, SeriesHandlers(Self));
+  if Lists <> nil then
+  begin
+    Lists.Wire(AFrame);
+  end;
   FTimer.Enabled := True;
   Reload;
 end;
@@ -614,6 +655,10 @@ begin
     mNames := mNames + [ProjectName(mProject)];
   end;
   mFrame.SetProjects(mNames, IndexText(FProject, FProjects));
+  if Lists <> nil then
+  begin
+    Lists.Refresh(FProject);
+  end;
   FBusy := FTests.Busy;
   FVersion := FTests.Version;
   mFrame.SetBusy(FBusy);
@@ -635,6 +680,11 @@ begin
   mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
   mVisible := TAtlasTestExplorer.Visible(FNodes, mFrame.Filters, mFrame.SearchText,
     TAtlasIdeSettings.Current.TestsSlowMs);
+  if Lists <> nil then
+  begin
+    // Im Reiter einer Testliste (#2167) nur deren Tests.
+    mVisible := Lists.Filter(mFrame, FUnits, FNodes, mVisible);
+  end;
   mFrame.SetRows(TAtlasTestExplorer.Rows(FNodes, mVisible, mTexts), StatusOf(Self));
   Selected(mFrame.FocusedNode);
 end;

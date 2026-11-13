@@ -4,7 +4,8 @@
 // „Compiler“, „Debuggen“ und „Editor“ von Base): je Seite eine Klasse, weil die Einstellungen des Moduls auf drei
 // Seiten stehen.
 // - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69), betroffene Tests (#1353) und betroffene Tests beim
-//   Speichern (#1775), Vorgabe für „N-mal ausführen“ (#1782).
+//   Speichern (#1775),
+//   Fenster „Atlas-Tests“ (#1776) mit Testlisten (#2167), Vorgabe für „N-mal ausführen“ (#1782).
 // - „Debuggen“: einzelnen Test im Debugger starten (#585).
 // - „Editor“: Code Lens an Testmethoden, veraltete Ergebnisse (#1770) und Marke „getestet von“ (#1778).
 
@@ -78,6 +79,9 @@ begin
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
   Switch('tests.window', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsWindow));
+  // Testlisten im Fenster „Atlas-Tests“ (#2167).
+  Switch('tests.lists', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLists));
+  Key('tests.lists.runKey', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsListsRunKey));
   Switch('tests.log', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLog));
   Number('tests.log.maxLines', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLogMaxLines));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
