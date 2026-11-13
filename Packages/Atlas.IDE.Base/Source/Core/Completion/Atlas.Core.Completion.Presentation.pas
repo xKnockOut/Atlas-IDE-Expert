@@ -621,10 +621,14 @@ begin
   begin
     AddTag(ATags, 'Snippet', TAtlasTagKind.Neutral);
   end;
-  // Sender mit Typumwandlung (#480).
+  // Sender mit Typumwandlung (#480), Mitglied nach einer Typprüfung (#2107).
   if AItem.Sender <> '' then
   begin
     AddTag(ATags, UiText(TPresentationText.AsText) + AItem.Sender, TAtlasTagKind.Accent);
+  end
+  else if AItem.Narrowed <> '' then
+  begin
+    AddTag(ATags, UiText(TPresentationText.AsText) + AItem.Narrowed, TAtlasTagKind.Accent);
   end;
   // Typkonvertierung (#490).
   if AItem.Conversion <> '' then
