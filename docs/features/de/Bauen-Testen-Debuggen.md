@@ -227,6 +227,21 @@ Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
 
 Einstellungen: `tests.lists`, `tests.lists.runKey`
 
+### Wackelnde Tests (#1773)
+
+Ein Test wackelt, wenn er ohne Änderung an seinem Rumpf mal grün und mal rot ist (Zeit, Threads, Reihenfolge, Dateien).
+
+- Atlas merkt sich nach jedem Lauf aus der IDE je Test die letzten Ergebnisse (`tests.flaky.runs`, Vorgabe 10) mit der Prüfsumme des Methodenrumpfs wie bei „veraltet“ (#1770). Ein Test mit `[TestCase]` gilt in einem Lauf als rot, wenn einer seiner Fälle rot war; nur übersprungen zählt nicht.
+- „Wackelt“: Unter den Ergebnissen mit dem Rumpf von jetzt gibt es grün, danach rot, danach wieder grün. Rot, dann am Rumpf repariert und grün, wackelt nicht.
+- Die Marke der Testlinse wird gelb: „Test ausführen · bestanden · wackelt (3 von 10 rot)“; die Klassenmarke nennt die Zahl ihrer wackelnden Tests („· 2 wackeln“).
+- Im Fenster *Atlas-Tests* steht hinter dem Test „· wackelt“, der Filter *wackelt* zeigt nur diese Tests. Die Einzelheiten zeigen den Verlauf als Reihe (✓ grün, ✗ rot, ältester zuerst) mit „2 von 10 rot“, seit wann der Rumpf unverändert ist und die letzte Fehlermeldung.
+- *Wackelnde Tests zeigen* (Atlas-Menü, Befehlspalette) öffnet das Fenster mit genau diesem Filter.
+- Ist ein Test, der beim Lauf davor rot war, jetzt grün, wackelt aber (etwa nach *Fehlgeschlagene Tests erneut ausführen*), meldet die Meldungsansicht „Test TRechnerTests.Summe bestanden, wackelt aber (3 von 10 Läufen rot).“
+- Der Verlauf liegt je Testprojekt in `%LOCALAPPDATA%\Atlas\projects\tests-history\<Schlüssel>.json` (Schlüssel wie die Projekt-Zusammenfassung) und übersteht einen Neustart der IDE.
+- `tests.flaky` aus: Atlas schreibt keinen Verlauf, keine Marke, kein Befehl.
+
+Einstellungen: `tests.flaky`, `tests.flaky.runs`
+
 ### Teststand in der Statusleiste (#1777)
 - In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
 - Ampel: rot bei Fehlschlägen, gelb während eines Laufs und bei veralteten Ergebnissen (wenn das Fenster „Atlas-Tests“ dieses Testprojekt zeigt), grün, wenn alles bestand.
@@ -810,6 +825,16 @@ Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - „Als bekannt markieren“ merkt eine Klasse, „Bekannte ausblenden“ blendet sie aus. Enter oder Doppelklick springt zur Stelle.
 
 Schalter: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`.
+
+#### Wer gibt das frei?
+
+- Am Ende jeder Zeile mit `T.Create(…)` steht eine Marke mit der Antwort: grün „frei in Destroy, Z. 48“, „frei in finally, Z. 30“, „Owner Self“, „gehört FListe“ (Liste mit OwnsObjects) oder „Referenzzählung“; gelb „frei in Clear, Z. 70“ (andere Methode), „an Aufrufer zurückgegeben“, „weitergegeben an Registry.Add“ oder „unklar“; rot „nie freigegeben“.
+- Rot steht nur, wo eine der Leck-Regeln (`field-not-freed`, `create-without-assignment`, `local-object-not-freed`, `created-result-not-freed`) mit den Einstellungen der Datei meldet: Marke und Problem laufen nie auseinander. Ist die Regel aus, heißt dieselbe Stelle „unklar“.
+- Listen tragen zusätzlich „besitzt Elemente“ (`TObjectList` mit OwnsObjects) bzw. „Elemente gehören FListe“, wenn eine zweite Liste derselben Klasse die Elemente besitzt.
+- Klick auf die Marke springt zur freigebenden Zeile; der Tooltip erklärt, wie Atlas zur Einstufung kam, bei Rot mit der Meldung der Regel.
+- Die Marken kommen vom Server (`atlas.server.ownership`) und werden zusammen mit der normalen Prüfung der Datei neu geholt; gezeichnet werden nur die sichtbaren Zeilen. Ausblenden je Zeile oder Datei über Rechtsklick auf die Marke.
+
+Schalter: `editor.ownershipHints` (Vorgabe aus, Modul Prüfregeln), `editor.ownershipHints.onlyProblems` (nur gelbe und rote Marken).
 
 #### Threads im Quelltext
 

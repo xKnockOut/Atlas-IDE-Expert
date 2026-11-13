@@ -278,6 +278,11 @@ type
     /// <summary>Befehle „Eigenschaftsregeln anwenden“ (#309) für Formular, Projekt und Projektgruppe in der
     /// Befehlspalette; aus = die Befehle verschwinden. Regel dfm-property und Schnellkorrektur bleiben.</summary>
     DfmPropertyRules: Boolean;
+    /// <summary>Marke „Wer gibt das frei?“ am Zeilenende jeder Erzeugung T.Create(…) (#1877,
+    /// editor.ownershipHints); Vorgabe aus, aus = keine Anfrage an den Server.</summary>
+    OwnershipHints: Boolean;
+    /// <summary>Nur gelbe und rote Marken „Wer gibt das frei?“ (#1877, editor.ownershipHints.onlyProblems).</summary>
+    OwnershipHintsOnlyProblems: Boolean;
     /// <summary>XMLDoc in Tooltip und Detailpanel beim Öffnen (#770, hints.xmlDocExpand in settings.json):
     /// collapsed, last (wie zuletzt), expanded. Ersetzt XmlDocFull (1 = expanded, 0 = collapsed).</summary>
     XmlDocExpand: string;
@@ -1071,6 +1076,8 @@ begin
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
   Result.DfmPropertyRules := True;
+  Result.OwnershipHints := False;
+  Result.OwnershipHintsOnlyProblems := False;
   Result.XmlDocExpand := 'last';
   Result.XmlDocMaxLines := 0;
   Result.UndoMultiFile := True;
@@ -1140,6 +1147,8 @@ begin
   AIo.Flag('BaselineUpdate', BaselineUpdate);
   AIo.Flag('MetricsReport', MetricsReport);
   AIo.Flag('DfmPropertyRules', DfmPropertyRules);
+  AIo.Flag('OwnershipHints', OwnershipHints);
+  AIo.Flag('OwnershipHintsOnlyProblems', OwnershipHintsOnlyProblems);
   if AIo.Writing then
   begin
     AIo.Text('XmlDocExpand', XmlDocExpand);

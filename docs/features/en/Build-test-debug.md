@@ -251,6 +251,21 @@ Open them with the tabs at the top of the “Atlas Tests” window; “+” crea
 
 Settings: `tests.lists`, `tests.lists.runKey`
 
+### Flaky tests (#1773)
+
+A test is flaky when it is sometimes green and sometimes red without a change to its body (time, threads, order, files).
+
+- After every run from the IDE, Atlas keeps the last results of each test (`tests.flaky.runs`, default 10) with the checksum of the method body, as for “outdated” (#1770). A test with `[TestCase]` counts as red in a run if one of its cases was red; skipped only does not count.
+- “Flaky”: among the results with the current body there is green, then red, then green again. Red, then fixed in the body and green, is not flaky.
+- The mark of the test lens turns yellow: “Run test · passed · flaky (3 of 10 red)”; the class mark gives the number of its flaky tests (“· 2 flaky”).
+- In the *Atlas Tests* window the test shows “· flaky”, and the filter *flaky* shows only these tests. The details show the history as a row (✓ green, ✗ red, oldest first) with “2 of 10 red”, since when the body is unchanged and the last failure message.
+- *Show flaky tests* (Atlas menu, command palette) opens the window with exactly this filter.
+- If a test that was red in the run before is green now but flaky (for example after *Run failed tests again*), the messages view says “Test TRechnerTests.Summe passed, but it is flaky (3 of 10 runs red).”
+- The history is kept per test project in `%LOCALAPPDATA%\Atlas\projects\tests-history\<key>.json` (same key as the project summary) and survives a restart of the IDE.
+- `tests.flaky` off: Atlas writes no history, no mark, no command.
+
+Settings: `tests.flaky`, `tests.flaky.runs`
+
 ### Test status in the status bar (#1777)
 - The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
 - Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
@@ -864,6 +879,16 @@ Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 - "Mark as known" remembers a class, "Hide known" hides it. Enter or a double click jumps to the place.
 
 Settings: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`
+
+### Who frees this?
+
+- Every line with `T.Create(…)` ends with a mark that answers it: green "freed in Destroy, line 48", "freed in finally, line 30", "owner Self", "owned by FList" (list with OwnsObjects) or "reference counted"; yellow "freed in Clear, line 70" (another method), "returned to the caller", "passed to Registry.Add" or "unclear"; red "never freed".
+- Red appears only where one of the leak rules (`field-not-freed`, `create-without-assignment`, `local-object-not-freed`, `created-result-not-freed`) reports with the settings of the file, so mark and problem never disagree. With the rule off, the same place reads "unclear".
+- Lists also carry "owns its elements" (`TObjectList` with OwnsObjects) or "elements owned by FList" when a second list of the same class owns the elements.
+- A click on the mark jumps to the releasing line; the tooltip explains how Atlas reached the rating, for red with the message of the rule.
+- The marks come from the server (`atlas.server.ownership`) and are fetched again together with the normal check of the file; only visible lines are drawn. Hide per line or per file with a right-click on the mark.
+
+Settings: `editor.ownershipHints` (off by default, module Rule checks), `editor.ownershipHints.onlyProblems` (yellow and red marks only)
 
 ### Threads in source
 

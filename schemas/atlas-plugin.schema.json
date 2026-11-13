@@ -190,6 +190,10 @@
       "caption": "Code Lens und Kennzahlen",
       "captionEn": "Code lens and metrics"
     },
+    "editor.ownershipHints": {
+      "caption": "Wer gibt das frei?",
+      "captionEn": "Who frees this?"
+    },
     "compiler.problems": {
       "caption": "Probleme",
       "captionEn": "Problems"
@@ -1082,6 +1086,37 @@
       "x-issue": "#309",
       "x-parent": "ruleChecks.enabled"
     },
+    "OwnershipHints": {
+      "description": "Marke „Wer gibt das frei?“ am Ende jeder Zeile mit T.Create(…): grün, wenn die Freigabe sicher ist (Destroy, finally, Owner, besitzende Liste, Referenzzählung), gelb, wenn sie woanders liegt (andere Methode, an den Aufrufer zurückgegeben, weitergegeben, unklar), rot „nie freigegeben“, wenn eine der Leck-Regeln (field-not-freed, create-without-assignment, local-object-not-freed, created-result-not-freed) dort meldet. Klick springt zur freigebenden Zeile, der Tooltip erklärt den Weg. Atlas fragt die Marken zusammen mit der normalen Prüfung beim Server ab (atlas.server.ownership) und zeichnet nur den sichtbaren Bereich.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.ownershipHints",
+      "x-area": "editor",
+      "x-feature": "Problems",
+      "x-page": "Editor",
+      "x-parent": "ruleChecks.enabled",
+      "x-node": "editor.ownershipHints",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „Wer gibt das frei?“ an jedem Create",
+      "x-captionEn": "“Who frees this?” mark on every Create",
+      "x-issue": "#1877"
+    },
+    "OwnershipHintsOnlyProblems": {
+      "description": "Nur die Marken zeigen, die Aufmerksamkeit brauchen: gelb und rot; grüne (sicher freigegeben) bleiben aus.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.ownershipHints.onlyProblems",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.ownershipHints",
+      "x-control": "Kontrollkästchen",
+      "x-drawing": true,
+      "x-caption": "Nur Problemfälle zeigen",
+      "x-captionEn": "Show problem cases only",
+      "x-issue": "#1877"
+    },
     "TeamFile": {
       "type": "boolean",
       "default": true,
@@ -1625,6 +1660,34 @@
       "x-caption": "Langsam ab (ms)",
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
+    },
+    "TestsFlaky": {
+      "description": "Wackelnde Tests erkennen: Atlas merkt sich je Test die letzten Läufe mit der Prüfsumme des Methodenrumpfs. Ist ein Test bei unverändertem Rumpf grün, dann rot, dann wieder grün, steht an seiner Marke der Testlinse gelb „wackelt (3 von 10 rot)“, das Fenster „Atlas-Tests“ zeigt ihn unter dem Filter „wackelt“ mit dem Verlauf, und „Fehlgeschlagene erneut ausführen“ meldet „bestanden, wackelt aber“. Der Verlauf liegt je Testprojekt unter %LOCALAPPDATA%\\Atlas\\projects\\tests-history und übersteht einen Neustart. Aus: kein Verlauf wird geschrieben, keine Marke.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.flaky",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Wackelnde Tests erkennen",
+      "x-captionEn": "Detect flaky tests",
+      "x-issue": "#1773"
+    },
+    "TestsFlakyRuns": {
+      "description": "So viele Läufe merkt sich der Verlauf je Test (3 bis 50); ältere fallen weg.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 3,
+      "maximum": 50,
+      "x-key": "tests.flaky.runs",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.flaky",
+      "x-control": "Zahl",
+      "x-caption": "Gemerkte Läufe je Test",
+      "x-captionEn": "Runs kept per test",
+      "x-issue": "#1773"
     },
     "TestsWindow": {
       "description": "Andockbares Fenster „Atlas-Tests“ (Ansicht › Atlas, Atlas-Menü, Befehlspalette) mit allen Tests des Testprojekts: Baum Testunit › Fixture › Test › Fall mit Stand (grün, rot, gelb, grau für nicht gelaufen bzw. veraltet), Zählern und Dauer, Filtern, Suche und Mehrfachauswahl zum Ausführen oder Debuggen; unten Meldung, erwartet, erhalten und Stacktrace mit anklickbaren Zeilen. Aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.",
