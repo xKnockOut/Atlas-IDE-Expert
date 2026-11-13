@@ -101,19 +101,6 @@ uses
 
 {$R *.dfm}
 
-/// <summary>ABase mit AAmount/255 von AMix gemischt (beide über ColorToRGB aufgelöst).</summary>
-function Shade(ABase, AMix: TColor; AAmount: Integer): TColor;
-var
-  mBase, mMix: Integer;
-begin
-  mBase := ColorToRGB(ABase);
-  mMix := ColorToRGB(AMix);
-  Result := RGB(
-    (GetRValue(mBase) * (255 - AAmount) + GetRValue(mMix) * AAmount) div 255,
-    (GetGValue(mBase) * (255 - AAmount) + GetGValue(mMix) * AAmount) div 255,
-    (GetBValue(mBase) * (255 - AAmount) + GetBValue(mMix) * AAmount) div 255);
-end;
-
 /// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
 function TextWidthIn(AFont: TFont; const AText: string): Integer;
 var
@@ -138,8 +125,7 @@ const
   cCheckBoxBox = 24;
   /// <summary>Breite des Filterfelds, logische Pixel.</summary>
   cFilterWidth = 240;
-  /// <summary>Anteil der Schriftfarbe in der Fläche der Überschriften (von 255).</summary>
-  cHeaderShade = 24;
+
   cNoGroup = '–';
   cLinesColumn = 4;
 
@@ -494,32 +480,37 @@ procedure TAtlasEventFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TLi
 var
   mRow: Integer;
 begin
-  if Item.Index > High(FItemRows) then
+  // Aufgebaut wie die Liste der Atlas-Prüfung (TAtlasProblemsFrameList.ListCustomDrawItem).
+  DefaultDraw := True;
+  if (Item = nil) or (Item.Index > High(FItemRows)) then
   begin
     Exit;
   end;
   mRow := FItemRows[Item.Index];
-  // Farben aus dem Thema der IDE (StyleServices): FList.Color bleibt clWindow, auch wenn das Thema dunkel malt.
-  // Hintergrund immer setzen: Wer nur die Schrift ändert, bekommt im dunklen Thema eine weiße Zeile.
-  if not (cdsSelected in State) then
-  begin
-    Sender.Canvas.Brush.Color := StyleServices(FList).GetSystemColor(clWindow);
-    Sender.Canvas.Font.Color := StyleServices(FList).GetSystemColor(clWindowText);
-  end;
   if mRow < 0 then
   begin
-    // Überschrift: fett auf leicht abgesetzter Fläche, gemischt aus Grund und Schrift des Themas. StyleServices
-    // liefert für clBtnFace im IDE-Thema Weiß, die Gutter-Farbe der Palette ebenso; nur clWindow stimmt.
     Sender.Canvas.Font.Style := [fsBold];
-    if not (cdsSelected in State) then
-    begin
-      Sender.Canvas.Brush.Color := Shade(StyleServices(FList).GetSystemColor(clWindow),
-        StyleServices(FList).GetSystemColor(clWindowText), cHeaderShade);
-    end;
   end
-  else if (FRows[mRow].Finding <> TAtlasEventFinding.None) and not (cdsSelected in State) then
+  else
   begin
-    Sender.Canvas.Font.Color := FErrorColor;
+    Sender.Canvas.Font.Style := [];
+  end;
+  // Farben immer ausdrücklich aus dem Stil der Liste: Nach geänderter Schrift (fett) zeichnet die Liste sonst mit
+  // Systemfarben, im dunklen Thema also weiße Zellen. Ausgewählt laut Item.Selected: cdsSelected ist in der IDE
+  // bei jeder Zeile gesetzt.
+  if Item.Selected then
+  begin
+    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlight));
+    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clHighlightText));
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clWindow));
+    Sender.Canvas.Font.Color := ColorToRGB(StyleServices(FList).GetSystemColor(clWindowText));
+    if (mRow >= 0) and (FRows[mRow].Finding <> TAtlasEventFinding.None) then
+    begin
+      Sender.Canvas.Font.Color := FErrorColor;
+    end;
   end;
 end;
 
