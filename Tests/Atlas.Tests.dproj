@@ -256,6 +256,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Impact.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Impact.Forms.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CoveredBy.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas"/>
@@ -385,6 +386,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Asserts.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests.pas"/>
@@ -1227,6 +1229,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.CoveredBy.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.OnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.OnSave.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
@@ -2012,6 +2016,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CompileSetup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AffectedTests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoveredBy.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.LeakSetup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Core.pas"/>
@@ -2060,6 +2065,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.CompileSetup.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Stdio.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.AffectedTests.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.CoveredBy.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.DfmPropertyRules.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.LeakSetup.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Core.Tests.pas"/>

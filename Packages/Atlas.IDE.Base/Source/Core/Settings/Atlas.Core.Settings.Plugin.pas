@@ -81,6 +81,8 @@ type
     cMaxImpactDepth = Atlas.Core.Settings.Plugin.Editor.cMaxImpactDepth;
     cMinTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsAffectedDepth;
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
+    cMinTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsCoveredByDepth;
+    cMaxTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsCoveredByDepth;
     cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
@@ -374,6 +376,7 @@ type
     property CodeLensMetrics: Boolean read FEditorInsight.CodeLensMetrics write FEditorInsight.CodeLensMetrics;
     property Metrics: Boolean read FEditorInsight.Metrics write FEditorInsight.Metrics;
     property CodeLensTests: Boolean read FEditorInsight.CodeLensTests write FEditorInsight.CodeLensTests;
+    property CodeLensCoveredBy: Boolean read FEditorInsight.CodeLensCoveredBy write FEditorInsight.CodeLensCoveredBy;
     property TestRun: Boolean read FBuild.TestRun write FBuild.TestRun;
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
@@ -383,6 +386,8 @@ type
       write FBuild.TestsAffectedBeforeCommit;
     property TestsStale: Boolean read FBuild.TestsStale write FBuild.TestsStale;
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
+    property TestsCoveredByDepth: Integer read FBuild.TestsCoveredByDepth write FBuild.TestsCoveredByDepth;
+    property TestsCoveredByPrivate: Boolean read FBuild.TestsCoveredByPrivate write FBuild.TestsCoveredByPrivate;
     property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
     property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;

@@ -224,7 +224,9 @@ type
     // Texte von Smart Paste und Editorleiste, deren Units schon an der Grenze der uses-Liste stehen.
     SmartPasteDone, SmartPasteFailed, SmartPasteImplementation, SmartPasteUsesTitle, CommandPaletteCommand,
     EditorToolbarFindings, EditorToolbarMore, EditorToolbarNoParts, EditorToolbarNoReturn, EditorToolbarNoSection,
-    EditorToolbarReturnLine, EditorToolbarReturnLineIn, GotoUsesToward, TestsCompareValues);
+    EditorToolbarReturnLine, EditorToolbarReturnLineIn, GotoUsesToward, TestsCompareValues,
+    // Marke „getestet von“ (#1778) im Menü „Ausblenden“.
+    ElementCodeLensCoveredBy, ElementCodeLensCoveredByPlural);
 
   TAtlasStrings = class
   private
@@ -759,7 +761,8 @@ const
      'Zurück zu Zeile %d',
      'Zurück zu Zeile %d · %s',
      'Zur uses-Klausel (%s)',
-     'Vergleichen'),
+     'Vergleichen',
+     'Marke „getestet von“', 'Marken „getestet von“'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
@@ -1233,7 +1236,8 @@ const
      'Back to line %d',
      'Back to line %d · %s',
      'Go to uses clause (%s)',
-     'Compare'));
+     'Compare',
+     '“tested by” mark', '“tested by” marks'));
 
 { TAtlasStrings }
 
