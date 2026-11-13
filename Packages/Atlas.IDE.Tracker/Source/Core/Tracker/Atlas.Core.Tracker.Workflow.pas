@@ -17,6 +17,10 @@
 //   FitStart ersetzt issues.startState durch den Übergang dorthin (oder
 //   lässt den Zustand, wenn keiner hinführt); EndTransition baut die
 //   Änderung beim Beenden mit dem gewählten Übergang.
+// - Schließgrund beim Beenden (#2135, nur GitHub): WithClose setzt
+//   Abschluss, Original eines Duplikats und den Kommentar für den Ersatzweg;
+//   DefaultClose belegt nach dem Endzustand vor; Abandons heißt „nicht
+//   geplant“ oder „Duplikat“ (keine Zeitbuchung, Arbeitsstand vergessen).
 // - LoadValues holt Zustände und Felder für die Klapplisten (bricht beim
 //   ersten Fehler ab); CommitsFor sucht die Commits mit der Kennung gegen
 //   issues.branchBase, sonst main bzw. master.
@@ -158,6 +162,20 @@ type
     class function EndTransition(const AOptions: TAtlasTrackerSyncOptions; const ARules: TAtlasTrackerStateRules;
       AIndex: Integer; const AComment: string; AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite;
       static;
+    /// <summary>Der Anbieter kennt Schließgründe (#2135): GitHub.</summary>
+    class function ClosesWithReason(const AProvider: string): Boolean; static;
+    /// <summary>Vorbelegung des Abschlusses (#2135): ein Erledigt-Zustand schließt als erledigt, sonst offen lassen.
+    /// </summary>
+    class function DefaultClose(const AState: string): TAtlasTrackerClose; static;
+    /// <summary>AChange mit Abschluss AClose (#2135); bei Duplicate mit dem Original ADuplicateOf und ANote als
+    /// Kommentar für den Ersatzweg, der entfällt, wenn der Kommentar von AChange das Original schon nennt.</summary>
+    class function WithClose(const AChange: TAtlasTrackerWrite; AClose: TAtlasTrackerClose;
+      const ADuplicateOf, ANote: string): TAtlasTrackerWrite; static;
+    /// <summary>„Nicht geplant“ oder „Duplikat“ (#2135): keine Zeitbuchung, Arbeitsstand vergessen.</summary>
+    class function Abandons(const AChange: TAtlasTrackerWrite): Boolean; static;
+    /// <summary>Eingabe „Duplikat von“ (#2135) als Kennung („123“ → „#123“); False, wenn sie keine Nummer nennt oder
+    /// das Issue AKey selbst meint.</summary>
+    class function DuplicateKey(const AKey, AText: string; out ADuplicate: string): Boolean; static;
     /// <summary>Betreffe aus {commits} ohne Kurz-Hash, eine Zeile je Commit (Vorlage der Beschreibung einer
     /// Zeitbuchung, #1267).</summary>
     class function CommitSubjects(const ACommits: string): string; static;
@@ -174,6 +192,7 @@ implementation
 uses
   Atlas.Core.CiBuild.Contract,
   System.StrUtils,
+  Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Transitions,
   Atlas.Core.VersionControl.BranchNames;
 
@@ -545,6 +564,62 @@ begin
   begin
     Result.Transition := ARules.Transitions[AIndex];
     Result.FieldId := ARules.FieldId;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.ClosesWithReason(const AProvider: string): Boolean;
+begin
+  Result := SameText(Trim(AProvider), TAtlasTrackerTarget.cGitHub);
+end;
+
+class function TAtlasTrackerWorkflow.DefaultClose(const AState: string): TAtlasTrackerClose;
+begin
+  Result := TAtlasTrackerClose.KeepOpen;
+  if (Trim(AState) <> '') and TAtlasGitHubApi.ClosesIssue(AState) then
+  begin
+    Result := TAtlasTrackerClose.Completed;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.WithClose(const AChange: TAtlasTrackerWrite; AClose: TAtlasTrackerClose;
+  const ADuplicateOf, ANote: string): TAtlasTrackerWrite;
+begin
+  Result := AChange;
+  Result.Close := AClose;
+  Result.DuplicateOf := '';
+  Result.DuplicateNote := '';
+  // Offen lassen geht vor einem Erledigt-Zustand: der würde das Issue schließen.
+  if (AClose = TAtlasTrackerClose.KeepOpen) and (Trim(Result.State) <> '') and
+    TAtlasGitHubApi.ClosesIssue(Result.State) then
+  begin
+    Result.State := '';
+  end;
+  if AClose <> TAtlasTrackerClose.Duplicate then
+  begin
+    Exit;
+  end;
+  Result.DuplicateOf := Trim(ADuplicateOf);
+  if not MentionsKey(AChange.Comment, Result.DuplicateOf) then
+  begin
+    Result.DuplicateNote := ANote;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.Abandons(const AChange: TAtlasTrackerWrite): Boolean;
+begin
+  Result := AChange.Close in [TAtlasTrackerClose.NotPlanned, TAtlasTrackerClose.Duplicate];
+end;
+
+class function TAtlasTrackerWorkflow.DuplicateKey(const AKey, AText: string; out ADuplicate: string): Boolean;
+var
+  mNumber: Integer;
+begin
+  ADuplicate := Trim(AText);
+  mNumber := TAtlasGitHubApi.NumberOfKey(ADuplicate);
+  Result := (mNumber > 0) and (mNumber <> TAtlasGitHubApi.NumberOfKey(AKey));
+  if Result and (IntToStr(mNumber) = ADuplicate) then
+  begin
+    ADuplicate := '#' + ADuplicate;
   end;
 end;
 
