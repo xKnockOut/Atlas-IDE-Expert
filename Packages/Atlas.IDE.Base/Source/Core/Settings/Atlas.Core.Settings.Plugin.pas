@@ -454,6 +454,9 @@ type
     property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
     property DebugThreadsInSource: Boolean read FDebug.DebugThreadsInSource write FDebug.DebugThreadsInSource;
     property DebugThreadFreeze: Boolean read FDebug.DebugThreadFreeze write FDebug.DebugThreadFreeze;
+    property DebugAsyncOrigin: Boolean read FDebug.DebugAsyncOrigin write FDebug.DebugAsyncOrigin;
+    property DebugAsyncOriginMaxPerSite: Integer read FDebug.DebugAsyncOriginMaxPerSite
+      write FDebug.DebugAsyncOriginMaxPerSite;
     property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
       write FDebug.DebugParallelStacksWaitRoutines;
     property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
