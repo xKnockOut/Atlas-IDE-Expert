@@ -161,6 +161,7 @@ begin
   Settings.DebugInlineValuesPerLine := 0;
   Settings.DebugWhyHereDepth := 99;
   Settings.DebugPredictLines := 0;
+  Settings.DebugHoverMaxChildren := 5000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
     'debug.inlineValuesPerLine unten begrenzt (#508)');
@@ -168,6 +169,8 @@ begin
     'debug.whyHere.depth oben begrenzt (#1878)');
   Assert.AreEqual(TAtlasPluginSettings.cMinPredictLines, Settings.DebugPredictLines,
     'debug.predictConditions.lines unten begrenzt (#2169)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxHoverMaxChildren, Settings.DebugHoverMaxChildren,
+    'debug.hoverMaxChildren oben begrenzt (#895)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(Settings);
   Store := TMemoryStore.Create;
