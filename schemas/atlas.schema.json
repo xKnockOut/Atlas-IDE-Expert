@@ -3897,6 +3897,11 @@
                 ],
                 "description": "GitHub: Projekt \"<owner>/<nummer>\" für Zustand und Aufnahme bei diesem Tracker (#2134); fehlt es, gilt issues.github.project.",
                 "x-description-en": "GitHub: project \"<owner>/<number>\" for state and adding at this tracker (#2134); if missing, issues.github.project applies."
+              },
+              "githubLinkBranch": {
+                "type": "boolean",
+                "description": "GitHub: Branch beim Beginnen auf GitHub anlegen und mit dem Issue verknüpfen (#2138); fehlt es, gilt issues.github.linkBranch.",
+                "x-description-en": "GitHub: create the branch on GitHub when starting and link it to the issue (#2138); if missing, issues.github.linkBranch applies."
               }
             }
           }

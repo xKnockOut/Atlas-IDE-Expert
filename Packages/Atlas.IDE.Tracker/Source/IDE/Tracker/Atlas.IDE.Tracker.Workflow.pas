@@ -465,7 +465,8 @@ begin
     mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates,
     TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasWorkflowStrings.English)).WithReview(
     mSettings.IssuesReviewStates).WithEndSteps(mSettings.IssuesEndFields, mSettings.IssuesEndTime).WithGitHub(
-    mSettings.IssuesGitHubStateTarget, mSettings.IssuesGitHubProject, mSettings.IssuesGitHubAddToProject);
+    mSettings.IssuesGitHubStateTarget, mSettings.IssuesGitHubProject,
+    mSettings.IssuesGitHubAddToProject).WithLinkBranch(mSettings.IssuesGitHubLinkBranch);
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);
 end;
