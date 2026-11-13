@@ -155,6 +155,7 @@ uses
   Atlas.Common.Lsp.CompletionSameNames.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionSameNames.Tests.pas',
   Atlas.Common.Lsp.CompletionRequest.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas',
   Atlas.Common.Lsp.CompletionCollector.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas',
+  Atlas.Common.Lsp.Completion.TypeConversions.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.Tests.pas',
   Atlas.Common.Lsp.Internals.CompletionSource.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas',
   Atlas.Common.Lsp.SignatureHelp.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas',
   Atlas.Common.Lsp.SignatureFormat.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas',

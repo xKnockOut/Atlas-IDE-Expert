@@ -252,6 +252,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionCollector.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionJson.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
