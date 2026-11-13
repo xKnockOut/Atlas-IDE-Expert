@@ -140,6 +140,10 @@ contains
   Atlas.IDE.Debug.EventLogMirror in 'Source\IDE\Debug\Atlas.IDE.Debug.EventLogMirror.pas',
   Atlas.IDE.Debug.EventLogWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EventLogWindow.pas',
   Atlas.IDE.Debug.EventLog in 'Source\IDE\Debug\Atlas.IDE.Debug.EventLog.pas',
-  Atlas.IDE.Debug.Composition.Run in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Run.pas';
+  Atlas.IDE.Debug.Composition.Run in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Run.pas',
+  Atlas.Core.Debug.Logpoint in 'Source\Core\Debug\Atlas.Core.Debug.Logpoint.pas',
+  Atlas.UI.Debug.LogpointDialog in 'Source\UI\Debug\Atlas.UI.Debug.LogpointDialog.pas',
+  Atlas.IDE.Debug.Logpoints in 'Source\IDE\Debug\Atlas.IDE.Debug.Logpoints.pas',
+  Atlas.IDE.Debug.LogpointGutter in 'Source\IDE\Debug\Atlas.IDE.Debug.LogpointGutter.pas';
 
 end.

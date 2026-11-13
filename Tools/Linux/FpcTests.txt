@@ -361,6 +361,7 @@ Atlas.UI.Debug.AsyncOrigin.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Debug.EventLog.Tests
+Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
@@ -412,3 +413,4 @@ Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Tests.Durations.Tests
+Atlas.Core.Tests.CaseTable.Tests
