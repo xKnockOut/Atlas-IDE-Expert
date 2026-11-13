@@ -232,6 +232,12 @@ uses
   Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.DocBox;
 
+const
+  /// <summary>Breite des Knopfs „Vorschau“ in der Leiste.</summary>
+  cPreviewWidth = 90;
+  /// <summary>Breite des Knopfs „Textbausteine“ in der Leiste.</summary>
+  cSnippetWidth = 120;
+
 type
   /// <summary>Was eine Taste im Feld auslöst.</summary>
   {$SCOPEDENUMS ON}
@@ -880,10 +886,10 @@ begin
   AEditor.FParts.Bar.ShowCaption := False;
   AEditor.FParts.Bar.AutoWrap := True;
   AEditor.FParts.Bar.AutoSize := True;
-  AEditor.FParts.PreviewButton := AddBarButton(AEditor, 90,
+  AEditor.FParts.PreviewButton := AddBarButton(AEditor, cPreviewWidth,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview));
   AEditor.FParts.PreviewButton.OnClick := AEditor.ButtonClick;
-  AEditor.FParts.SnippetButton := AddBarButton(AEditor, 120,
+  AEditor.FParts.SnippetButton := AddBarButton(AEditor, cSnippetWidth,
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorSnippets));
   AEditor.FParts.SnippetButton.OnClick := AEditor.ButtonClick;
   AEditor.FParts.DraftNote := TLabel.Create(AEditor);
