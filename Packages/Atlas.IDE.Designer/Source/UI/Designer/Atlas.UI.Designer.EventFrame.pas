@@ -66,6 +66,7 @@ type
     procedure ShowClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure RemoveClick(Sender: TObject);
+    procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
   protected
@@ -183,6 +184,17 @@ begin
   FList.Columns[cLinesColumn].Alignment := taRightJustify;
   FList.OnDblClick := ListDblClick;
   FList.OnCustomDrawItem := ListCustomDrawItem;
+  FList.OnSelectItem := ListSelectItem;
+end;
+
+procedure TAtlasEventFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  // Überschriften sind nicht wählbar: Windows malt die Auswahl ohne Fokus hell (weiß im dunklen Thema), und
+  // eine gewählte Überschrift hat ohnehin keine Aktion.
+  if Selected and (Item <> nil) and (Item.Index <= High(FItemRows)) and (FItemRows[Item.Index] < 0) then
+  begin
+    Item.Selected := False;
+  end;
 end;
 
 function TAtlasEventFrame.AddCombo(const AItems: array of string): TComboBox;
