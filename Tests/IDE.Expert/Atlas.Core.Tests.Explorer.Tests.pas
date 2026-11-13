@@ -40,6 +40,10 @@ type
     procedure DetailLinesWithoutRun;
     [Test]
     procedure MergedReplacesByName;
+    [Test]
+    procedure FlakyFilterAndMark;
+    [Test]
+    procedure FlakyDetailLines;
   end;
 
 implementation
@@ -50,6 +54,7 @@ uses
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Stale,
+  Atlas.Core.Tests.Flaky,
   Atlas.Core.Tests.Explorer;
 
 const
@@ -406,6 +411,74 @@ begin
   Assert.AreEqual(2, Integer(Length(mMerged)), 'Fall ersetzt, nicht doppelt');
   Assert.AreEqual('Addiert', mMerged[0].Method);
   Assert.AreEqual<TTestOutcome>(TTestOutcome.Passed, mMerged[1].Outcome, 'neues Ergebnis hinten');
+end;
+
+/// <summary>DemoUnit, in der Teilt wackelt: grün, rot, grün, rot.</summary>
+function FlakyUnit: TAtlasTestUnitInput;
+var
+  mFlaky: TAtlasFlakyTest;
+begin
+  Result := DemoUnit(nil);
+  mFlaky := Default(TAtlasFlakyTest);
+  mFlaky.Key := TAtlasTestStamps.KeyOf('Demo.Tests', 'TRechnerTests', 'Teilt');
+  mFlaky.Results := TArray<Boolean>.Create(True, False, True, False);
+  mFlaky.Failed := 2;
+  mFlaky.LastMessage := 'Expected 2 but got 3' + #10 + 'bei Zeile 7';
+  Result.Flaky := TArray<TAtlasFlakyTest>.Create(mFlaky);
+end;
+
+procedure TAtlasTestExplorerTests.FlakyFilterAndMark;
+var
+  mNodes: TArray<TAtlasTestNode>;
+  mVisible: TArray<Boolean>;
+  mTexts: TAtlasTestRowTexts;
+begin
+  mNodes := TAtlasTestExplorer.Build(TArray<TAtlasTestUnitInput>.Create(FlakyUnit), DemoResults);
+  Assert.AreEqual(1, mNodes[cTeilt].Flaky);
+  Assert.AreEqual(1, mNodes[cEins].Flaky, 'jeder Fall wackelt mit seinem Test');
+  Assert.AreEqual(1, mNodes[cFixtureNode].Flaky, 'Fälle zählen nicht extra');
+  Assert.AreEqual(1, mNodes[cUnitNode].Flaky);
+  Assert.AreEqual(0, mNodes[cAddiert].Flaky);
+  mVisible := TAtlasTestExplorer.Visible(mNodes, [TAtlasTestFilter.Flaky], '', 500);
+  Assert.IsTrue(mVisible[cEins] and mVisible[cZwei] and mVisible[cTeilt], 'Teilt mit seinen Fällen');
+  Assert.IsTrue(mVisible[cFixtureNode] and mVisible[cUnitNode], 'Weg dorthin');
+  Assert.IsFalse(mVisible[cAddiert]);
+  Assert.IsFalse(mVisible[cSpaeter]);
+  mVisible := TAtlasTestExplorer.Visible(DemoNodes, [TAtlasTestFilter.Flaky], '', 500);
+  Assert.IsFalse(mVisible[cUnitNode], 'ohne Verlauf wackelt nichts');
+  mTexts := RowTexts;
+  mTexts.Flaky := '%s · wackelt';
+  Assert.AreEqual('Zwei · wackelt', TAtlasTestExplorer.RowText(mNodes[cZwei], mTexts));
+  Assert.AreEqual('Addiert · 12 ms', TAtlasTestExplorer.RowText(mNodes[cAddiert], mTexts));
+  Assert.AreEqual('TRechnerTests · 1/3 · 15 ms', TAtlasTestExplorer.RowText(mNodes[cFixtureNode], mTexts),
+    'Fixture ohne Marke');
+end;
+
+procedure TAtlasTestExplorerTests.FlakyDetailLines;
+var
+  mUnits: TArray<TAtlasTestUnitInput>;
+  mNodes: TArray<TAtlasTestNode>;
+  mFlaky: TAtlasFlakyTest;
+  mTexts: TAtlasTestFlakyTexts;
+  mLines: TArray<TAtlasTestStackLine>;
+begin
+  mUnits := TArray<TAtlasTestUnitInput>.Create(FlakyUnit);
+  mNodes := TAtlasTestExplorer.Build(mUnits, DemoResults);
+  Assert.IsFalse(TAtlasTestExplorer.FlakyOf(mNodes[cAddiert], mUnits, mFlaky));
+  Assert.IsTrue(TAtlasTestExplorer.FlakyOf(mNodes[cZwei], mUnits, mFlaky), 'Fall: Verlauf seines Tests');
+  mTexts := Default(TAtlasTestFlakyTexts);
+  mTexts.Summary := 'Wackelt: %s (%d von %d rot)';
+  mTexts.Since := 'Rumpf unverändert seit %s';
+  mTexts.Message := 'Letzte Fehlermeldung: %s';
+  mTexts.PassedDot := '+';
+  mTexts.FailedDot := '-';
+  mLines := TAtlasTestExplorer.FlakyLines(mFlaky, '13.11.2026 09:00', mTexts);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual('Wackelt: +-+- (2 von 4 rot)', mLines[0].Text);
+  Assert.AreEqual('Rumpf unverändert seit 13.11.2026 09:00', mLines[1].Text);
+  Assert.AreEqual('Letzte Fehlermeldung: Expected 2 but got 3', mLines[2].Text, 'nur die erste Zeile');
+  Assert.AreEqual(-1, mLines[0].Line);
+  Assert.AreEqual(2, Integer(Length(TAtlasTestExplorer.FlakyLines(mFlaky, '', mTexts))), 'ohne Zeitpunkt');
 end;
 
 end.

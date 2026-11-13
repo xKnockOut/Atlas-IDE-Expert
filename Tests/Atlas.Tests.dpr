@@ -1203,6 +1203,8 @@ uses
   Atlas.Core.Tests.Durations.Tests in 'IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas',
   Atlas.Core.Tests.Series in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Series.pas',
   Atlas.Core.Tests.Series.Tests in 'IDE.Expert\Atlas.Core.Tests.Series.Tests.pas',
+  Atlas.Core.Tests.Flaky in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Flaky.pas',
+  Atlas.Core.Tests.Flaky.Tests in 'IDE.Expert\Atlas.Core.Tests.Flaky.Tests.pas',
   Atlas.Core.Tests.Explorer in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas',
   Atlas.Core.Tests.StatusField in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.StatusField.pas',
   Atlas.Core.Tests.Explorer.Tests in 'IDE.Expert\Atlas.Core.Tests.Explorer.Tests.pas',

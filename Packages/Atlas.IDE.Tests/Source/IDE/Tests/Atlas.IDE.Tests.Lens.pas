@@ -25,6 +25,9 @@
 //   (#1782, Atlas.IDE.Tests.Series) steht an der Marke der Serie ihr Ergebnis
 //   („20× ausgeführt · 18 bestanden, 2 rot“, gemischt gelb), während der Serie
 //   „Tests laufen … 7/20“, bis zum nächsten Lauf.
+//   Wackelt ein Test bei unverändertem Rumpf (tests.flaky, #1773),
+//   folgt „· wackelt (3 von 10 rot)“ und die Marke ist gelb; die
+//   Klassenmarke nennt die Zahl ihrer wackelnden Tests.
 //   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -146,18 +149,18 @@ type
     FScannedFile: string;
     FScannedText: string;
     FUnitName: string;
-    /// <summary>Fixtures und Tests des gelesenen Stands, Abfrage und Schlüssel der Tests mit veraltetem Ergebnis
-    /// (#1770).</summary>
+    /// <summary>Fixtures und Tests des gelesenen Stands, Abfragen und Stand der Tests: veraltet (#1770), wackelt
+    /// (#1773).</summary>
     FFound: TDUnitXUnit;
-    FStaleKeys: TAtlasTestStaleKeys;
-    FStale: TArray<string>;
+    FQueries: TAtlasTestStateQueries;
+    FState: TAtlasTestUnitState;
     FItems: TArray<TItem>;
     FVersion: Integer;
     FShowing: Boolean;
     FOnTable: TAtlasTestsLensTableProc;
     procedure Tick(Sender: TObject);
     procedure Scan;
-    /// <summary>Veraltete Tests des gelesenen Stands neu bestimmen (#1770).</summary>
+    /// <summary>Veraltete (#1770) und wackelnde Tests (#1773) des gelesenen Stands neu bestimmen.</summary>
     procedure UpdateStale;
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
@@ -181,10 +184,10 @@ type
       ARowHeight: Integer);
     procedure QueueClick(AIndex: Integer; AMark: TMark);
   public
-    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens; AStaleKeys nennt die Tests
-    /// mit veraltetem Ergebnis (#1770, nil = keine), ACompare den Knopf „Vergleichen“ (#1779, leer = keiner).
-    /// </summary>
-    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AStaleKeys: TAtlasTestStaleKeys;
+    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens; AQueries nennt die Tests
+    /// mit veraltetem Ergebnis (#1770) und die wackelnden (#1773, je nil = keine), ACompare den Knopf
+    /// „Vergleichen“ (#1779, leer = keiner).</summary>
+    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger; const AQueries: TAtlasTestStateQueries;
       const ACompare: TAtlasTestCompareHooks);
     destructor Destroy; override;
     /// <summary>Lens zeichnen? Einstellungen codeLens.tests und TestRun.</summary>
@@ -238,14 +241,14 @@ end;
 { TAtlasIdeTestsLens }
 
 constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger;
-  const AStaleKeys: TAtlasTestStaleKeys; const ACompare: TAtlasTestCompareHooks);
+  const AQueries: TAtlasTestStateQueries; const ACompare: TAtlasTestCompareHooks);
 var
   mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FTests := ATests;
   FDebugger := ADebugger;
-  FStaleKeys := AStaleKeys;
+  FQueries := AQueries;
   FCompare := ACompare;
   FAlive := TAlive.Create;
   FAlive.Alive := True;
@@ -282,6 +285,7 @@ begin
   FEvents.OnEditorMouseDown := nil;
   FEventsRef := nil;
   FCompare := Default(TAtlasTestCompareHooks);
+  FQueries := Default(TAtlasTestStateQueries);
   if FShowing then
   begin
     InvalidateEditor;
@@ -299,7 +303,7 @@ begin
   FItems := nil;
   FUnitName := '';
   FFound := Default(TDUnitXUnit);
-  FStale := nil;
+  FState := Default(TAtlasTestUnitState);
   FScannedFile := '';
   FScannedText := '';
   if FShowing then
@@ -431,10 +435,10 @@ end;
 
 procedure TAtlasIdeTestsLens.UpdateStale;
 begin
-  FStale := nil;
-  if Assigned(FStaleKeys) and (Length(FItems) > 0) and not FTests.Busy then
+  FState := Default(TAtlasTestUnitState);
+  if (Length(FItems) > 0) and not FTests.Busy then
   begin
-    FStale := FStaleKeys(FFound, TTextLines.SplitLines(FScannedText));
+    FState := FQueries.StateOf(FFound, TTextLines.SplitLines(FScannedText));
   end;
 end;
 
@@ -506,6 +510,30 @@ begin
   end;
 end;
 
+/// <summary>„wackelt (3 von 10 rot)“ bzw. an der Klassenmarke „2 wackeln“ an ACaption (#1773); AWarn wird gelb.
+/// Ohne wackelnden Test bleibt ACaption.</summary>
+function FlakyCaption(const ACaption: string; const AState: TAtlasTestUnitState; const AUnitName: string;
+  const ASelection: TAtlasTestSelection; var AWarn: Boolean): string;
+var
+  mCount, mFailed, mRuns: Integer;
+begin
+  Result := ACaption;
+  mCount := AState.FlakyCount(AUnitName, ASelection.Fixture, ASelection.Method, mFailed, mRuns);
+  if mCount = 0 then
+  begin
+    Exit;
+  end;
+  AWarn := True;
+  if ASelection.Method <> '' then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensFlaky, [ACaption, mFailed, mRuns]);
+  end
+  else
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensFlakyFixture, [ACaption, mCount]);
+  end;
+end;
+
 function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus;
   out AStale, AWarn: Boolean): string;
 var
@@ -538,7 +566,7 @@ begin
   // Nur der Stand der Tests dieser Marke: Ein einzelner Test macht die Fixture nicht „bestanden“.
   // Veraltete Ergebnisse (#1770) zählen nicht als bestanden; der alte Stand bleibt mit „(veraltet)“ sichtbar.
   mTally := FTests.TallyOf(FUnitName, AItem.Selection.Fixture, AItem.Expected,
-    TAtlasTestRun.StaleOf(FStale, FUnitName, AItem.Selection.Fixture));
+    TAtlasTestRun.StaleOf(FState.StaleKeys, FUnitName, AItem.Selection.Fixture));
   AStatus := mTally.Shown;
   AStale := mTally.IsStale;
   if AStatus = TAtlasTestStatus.Failed then
@@ -560,6 +588,8 @@ begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensLeak, [Result, mTally.LeakBytes]);
     AWarn := True;
   end;
+  // Wackelt (#1773): gelb, auch wenn der letzte Lauf rot oder grün war.
+  Result := FlakyCaption(Result, FState, FUnitName, AItem.Selection, AWarn);
   if AStale then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);

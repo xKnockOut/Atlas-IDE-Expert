@@ -91,6 +91,45 @@ def ohne_zahlen(zeilen):
     return [re.sub(r'\d+', '#', z.rstrip('\r\n')) for z in zeilen]
 
 
+# Ein Eintrag, den beide Seiten gleich hinzufügen, steht nur einmal da: Listenpunkt oder Tabellenzeile in Markdown,
+# Element in .dproj, Unit in .dpr/.dpk, Zeile in FpcTests.txt. Andere Zeilen (Leerzeilen, Fließtext, Überschriften)
+# bleiben immer stehen, auch wenn beide Seiten sie haben.
+LISTENEINTRAG = re.compile(r"^\s*(\||[-*+] |\d+\. |<[A-Za-z]|[\w.]+ in |\w+(\.\w+)+[,;]?$)")
+
+
+def eintraege(zeilen):
+    """Fasst Zeilen zu Einträgen zusammen: Einrückung tiefer als die erste Zeile des Eintrags und schließende
+    XML-Elemente gehören zum Eintrag davor (<DCCReference …> mit <Form> und </DCCReference>, Folgezeilen eines
+    Listenpunkts). Leerzeilen sind eigene Einträge."""
+    gruppen = []
+    tiefe = None
+    for zeile in zeilen:
+        kern = zeile.rstrip('\r\n')
+        einzug = len(kern) - len(kern.lstrip())
+        folge = (gruppen and kern.strip() and tiefe is not None
+                 and (einzug > tiefe or kern.lstrip().startswith('</')))
+        if folge:
+            gruppen[-1].append(zeile)
+            continue
+        gruppen.append([zeile])
+        tiefe = einzug if kern.strip() else None
+    return gruppen
+
+
+def fremde_eintraege(eigen, fremd):
+    """Zeilen der fremden Seite ohne Listeneinträge, die die eigene Seite schon gleich enthält."""
+    def schluessel(gruppe):
+        return tuple(z.rstrip('\r\n') for z in gruppe)
+
+    bekannt = {schluessel(g) for g in eintraege(eigen)}
+    aus = []
+    for gruppe in eintraege(fremd):
+        if schluessel(gruppe) in bekannt and LISTENEINTRAG.match(gruppe[0]):
+            continue
+        aus.extend(gruppe)
+    return aus
+
+
 def loese_bloecke(text, erg, zahlen):
     """Löst Konfliktblöcke (diff3) im Text. Liefert (neuer Text, offen, Zahlen übernommen)."""
     zeilen = text.splitlines(keepends=True)
@@ -130,9 +169,8 @@ def loese_bloecke(text, erg, zahlen):
         i = ende + 1
         eigen, basis, fremd = teile['eigen'], teile['basis'], teile['fremd']
         if erg and not basis:
-            bekannt = {e.rstrip('\r\n') for e in eigen}
             aus.extend(eigen)
-            aus.extend(f for f in fremd if f.rstrip('\r\n') not in bekannt)
+            aus.extend(fremde_eintraege(eigen, fremd))
             continue
         if zahlen and len(eigen) == len(fremd) and ohne_zahlen(eigen) == ohne_zahlen(fremd):
             aus.extend(fremd)
@@ -185,6 +223,20 @@ def selbsttest():
         # Nur Zahlen verschieden: Stand des Ziels.
         (block('mit 346 Regeln\r\n', 'mit 345 Regeln\r\n', 'mit 347 Regeln\r\n'), True, True,
          'mit 347 Regeln\r\n', 0, True),
+        # Leerzeilen und Fließtext beider Seiten bleiben stehen (Abschnitte in docs/features).
+        (block('## A\r\n\r\nText a\r\n\r\n', '', '## B\r\n\r\nText b\r\n\r\n'), True, False,
+         '## A\r\n\r\nText a\r\n\r\n## B\r\n\r\nText b\r\n\r\n', 0, False),
+        # Mehrzeilige DCCReference-Blöcke bleiben ganz, ein gleicher Block beider Seiten steht einmal da.
+        (block('    <DCCReference Include="A.pas">\r\n        <Form>A</Form>\r\n    </DCCReference>\r\n'
+               '    <DCCReference Include="G.pas"/>\r\n', '',
+               '    <DCCReference Include="B.pas">\r\n        <Form>B</Form>\r\n    </DCCReference>\r\n'
+               '    <DCCReference Include="G.pas"/>\r\n'), True, False,
+         '    <DCCReference Include="A.pas">\r\n        <Form>A</Form>\r\n    </DCCReference>\r\n'
+         '    <DCCReference Include="G.pas"/>\r\n'
+         '    <DCCReference Include="B.pas">\r\n        <Form>B</Form>\r\n    </DCCReference>\r\n', 0, False),
+        # Gleiche Tabellenzeile und gleicher Listenpunkt nur einmal, Folgezeile gehört zum Punkt.
+        (block('| `A` | a |\r\n- x\r\n  weiter\r\n', '', '| `A` | a |\r\n- x\r\n  anders\r\n'), True, False,
+         '| `A` | a |\r\n- x\r\n  weiter\r\n- x\r\n  anders\r\n', 0, False),
         # Text verschieden trotz gleicher Zahl der Zeilen: offen.
         (block('346 Regeln, a\r\n', '345 Regeln\r\n', '347 Regeln, b\r\n'), True, True, None, 1, False),
     ]

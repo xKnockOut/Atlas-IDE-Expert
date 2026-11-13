@@ -8,14 +8,16 @@
 //   (TAtlasTestTally aus Atlas.Core.Tests.Run, mit veralteten Ergebnissen
 //   #1770 und Dauer #1772). Tests mit [Ignore] stehen im Baum, zählen aber
 //   nicht.
-// - Visible: Filter (fehlgeschlagen, nicht gelaufen, veraltet, langsam;
-//   mehrere gelten mit „oder“) und Suche im vollen Namen; ein Knoten ist
+// - Visible: Filter (fehlgeschlagen, nicht gelaufen, veraltet, langsam,
+//   wackelt #1773; mehrere gelten mit „oder“) und Suche im vollen Namen; ein Knoten ist
 //   sichtbar, wenn er selbst passt oder ein Kind darunter, damit der Weg zu
 //   jedem Treffer bleibt.
 // - RunNames: Namen für --run einer Mehrfachauswahl; ein Knoten, dessen
 //   Vorfahr mit ausgewählt ist, kommt nicht doppelt.
 // - StackLines: Zeilen eines Stacktraces mit Datei und Zeile, wenn sie eine
 //   Unit des Testprojekts nennen (Formate wie Atlas.Core.Tests.AssertLine).
+// - FlakyOf, FlakyLines: Verlauf eines wackelnden Tests (#1773,
+//   Atlas.Core.Tests.Flaky) in den Einzelheiten.
 // Zeilen sind 0-basiert.
 
 interface
@@ -23,7 +25,8 @@ interface
 uses
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
-  Atlas.Core.Tests.Run;
+  Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.Flaky;
 
 type
 {$SCOPEDENUMS ON}
@@ -32,16 +35,17 @@ type
   /// <summary>Farbe des Punkts: grün, rot, gelb (Teilstand), grau (nicht gelaufen bzw. veraltet).</summary>
   TAtlasTestNodeState = (NotRun, Passed, Failed, Partial, Stale);
   /// <summary>Filter des Fensters.</summary>
-  TAtlasTestFilter = (Failed, NotRun, Stale, Slow);
+  TAtlasTestFilter = (Failed, NotRun, Stale, Slow, Flaky);
 {$SCOPEDENUMS OFF}
   TAtlasTestFilters = set of TAtlasTestFilter;
 
-  /// <summary>Eine Testunit des Testprojekts: Datei, erkannte Fixtures und die Schlüssel ihrer Tests mit
-  /// veraltetem Ergebnis (TAtlasTestStamps.KeyOf, #1770).</summary>
+  /// <summary>Eine Testunit des Testprojekts: Datei, erkannte Fixtures, die Schlüssel ihrer Tests mit
+  /// veraltetem Ergebnis (TAtlasTestStamps.KeyOf, #1770) und ihre wackelnden Tests (#1773).</summary>
   TAtlasTestUnitInput = record
     FileName: string;
     Found: TDUnitXUnit;
     StaleKeys: TArray<string>;
+    Flaky: TArray<TAtlasFlakyTest>;
   end;
 
   /// <summary>Eine Unit des Testprojekts für anklickbare Zeilen im Stacktrace.</summary>
@@ -76,11 +80,15 @@ type
     /// <summary>Test mit [Ignore] (bzw. eine Fixture, deren Tests alle ignoriert sind).</summary>
     Ignored: Boolean;
     Tally: TAtlasTestTally;
+    /// <summary>Wackelnde Tests darunter (#1773); ein Fall zählt seinen Test.</summary>
+    Flaky: Integer;
   end;
 
-  /// <summary>Texte einer Zeile: Ignored (%s Name) und das Dezimaltrennzeichen der Dauer.</summary>
+  /// <summary>Texte einer Zeile: Ignored und Flaky (je %s Name samt Zählern, '' = ohne Marke „wackelt“) und das
+  /// Dezimaltrennzeichen der Dauer.</summary>
   TAtlasTestRowTexts = record
     Ignored: string;
+    Flaky: string;
     DecimalSeparator: Char;
   end;
 
@@ -106,6 +114,16 @@ type
     Actual: string;
     Stack: string;
     DecimalSeparator: Char;
+  end;
+
+  /// <summary>Texte des Verlaufs eines wackelnden Tests (#1773): Summary (%s Punktreihe, %d rot, %d Läufe),
+  /// Since (%s Zeitpunkt), Message (%s letzte Fehlermeldung) und die Zeichen der Punktreihe.</summary>
+  TAtlasTestFlakyTexts = record
+    Summary: string;
+    Since: string;
+    Message: string;
+    PassedDot: Char;
+    FailedDot: Char;
   end;
 
   TAtlasTestExplorer = class
@@ -147,6 +165,14 @@ type
     /// erwartet und erhalten, Stacktrace mit Fundstellen in AUnits; ohne Ergebnis „noch nicht gelaufen“.</summary>
     class function DetailLines(const AResults: TArray<TTestCaseResult>; const AUnits: TArray<TAtlasTestUnitRef>;
       const ATexts: TAtlasTestDetailTexts): TArray<TAtlasTestStackLine>; static;
+    /// <summary>Verlauf des Tests (bzw. des Tests eines Falls) ANode, wenn er wackelt (#1773); False sonst.
+    /// </summary>
+    class function FlakyOf(const ANode: TAtlasTestNode; const AUnits: TArray<TAtlasTestUnitInput>;
+      out AFlaky: TAtlasFlakyTest): Boolean; static;
+    /// <summary>Zeilen der Einzelheiten zu AFlaky: Punktreihe mit Zählern, seit wann der Rumpf unverändert ist
+    /// (ASince, '' = ohne) und die letzte Fehlermeldung.</summary>
+    class function FlakyLines(const AFlaky: TAtlasFlakyTest; const ASince: string;
+      const ATexts: TAtlasTestFlakyTexts): TArray<TAtlasTestStackLine>; static;
   end;
 
 implementation
@@ -157,7 +183,8 @@ uses
   System.Generics.Defaults,
   System.Generics.Collections,
   Atlas.Core.Tests.Durations,
-  Atlas.Core.Tests.AssertLine;
+  Atlas.Core.Tests.AssertLine,
+  Atlas.Core.Tests.Stale;
 
 /// <summary>Reihenfolge der Testunits: nach Unitname, bei Gleichstand nach Datei (TArray.Sort ist nicht stabil).
 /// </summary>
@@ -201,6 +228,23 @@ begin
   Result.SlowestMs := Max(Result.SlowestMs, ARight.SlowestMs);
   Inc(Result.Leaked, ARight.Leaked);
   Inc(Result.LeakBytes, ARight.LeakBytes);
+end;
+
+/// <summary>Index des Tests AMethod der Fixture AFixture in AInput.Flaky (#1773); -1, wenn er nicht wackelt.</summary>
+function FlakyIndex(const AInput: TAtlasTestUnitInput; const AFixture, AMethod: string): Integer;
+var
+  mKey: string;
+  mIndex: Integer;
+begin
+  mKey := TAtlasTestStamps.KeyOf(AInput.Found.UnitName, AFixture, AMethod);
+  for mIndex := 0 to High(AInput.Flaky) do
+  begin
+    if AInput.Flaky[mIndex].Key = mKey then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 /// <summary>Neuer Knoten mit Index und Elternteil.</summary>
@@ -251,6 +295,10 @@ begin
     mNode.Ignored := mTest.Ignored;
     mNode.Tally := TAtlasTestRun.TallyOf(ACases, mFound.UnitName, mFixture.Name,
       TAtlasTestRun.Expected(mFound, AFixtureIndex, mTestIndex, -1), mStale);
+    if FlakyIndex(AInput, mFixture.Name, mTest.Method) >= 0 then
+    begin
+      mNode.Flaky := 1;
+    end;
     mTestNode := Length(ANodes);
     ANodes := ANodes + [mNode];
     if mTest.Ignored then
@@ -274,7 +322,24 @@ begin
       end;
       mNode.Tally := TAtlasTestRun.TallyOf(ACases, mFound.UnitName, mFixture.Name,
         TAtlasTestRun.Expected(mFound, AFixtureIndex, mTestIndex, mCaseIndex), mStale);
+      // Der Verlauf gilt je Methode: Jeder Fall eines wackelnden Tests wackelt mit.
+      mNode.Flaky := ANodes[mTestNode].Flaky;
       ANodes := ANodes + [mNode];
+    end;
+  end;
+end;
+
+/// <summary>Wackelnde Tests unter der Fixture AFixtureNode (Fälle zählen nicht extra).</summary>
+function FlakyCount(const ANodes: TArray<TAtlasTestNode>; AFixtureNode: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := AFixtureNode + 1 to High(ANodes) do
+  begin
+    if (ANodes[mIndex].Kind = TAtlasTestNodeKind.Test) and (ANodes[mIndex].Parent = AFixtureNode) then
+    begin
+      Inc(Result, ANodes[mIndex].Flaky);
     end;
   end;
 end;
@@ -315,6 +380,8 @@ begin
     mFixtureNode := Length(ANodes);
     ANodes := ANodes + [mNode];
     AddTests(ANodes, AInput, AUnitIndex, mFixtureIndex, mFixtureNode, mCases);
+    ANodes[mFixtureNode].Flaky := FlakyCount(ANodes, mFixtureNode);
+    Inc(ANodes[mUnitNode].Flaky, ANodes[mFixtureNode].Flaky);
   end;
 end;
 
@@ -374,6 +441,12 @@ begin
   if ANode.Tally.DurationMs > 0 then
   begin
     Result := Result + ' · ' + TTestResults.DurationText(ANode.Tally.DurationMs, ATexts.DecimalSeparator);
+  end;
+  // Wackelt (#1773): an Test und Fall; Fixture und Unit zeigen es über den Filter.
+  if (ANode.Flaky > 0) and (ATexts.Flaky <> '') and
+    (ANode.Kind in [TAtlasTestNodeKind.Test, TAtlasTestNodeKind.TestCase]) then
+  begin
+    Result := Format(ATexts.Flaky, [Result]);
   end;
 end;
 
@@ -455,7 +528,8 @@ begin
   Result := ((TAtlasTestFilter.Failed in AFilters) and (mTally.Failed > 0)) or
     ((TAtlasTestFilter.NotRun in AFilters) and (mTally.Ran < mTally.Total)) or
     ((TAtlasTestFilter.Stale in AFilters) and mTally.IsStale) or
-    ((TAtlasTestFilter.Slow in AFilters) and TAtlasTestDurations.IsSlow(mTally.SlowestMs, ASlowMs));
+    ((TAtlasTestFilter.Slow in AFilters) and TAtlasTestDurations.IsSlow(mTally.SlowestMs, ASlowMs)) or
+    ((TAtlasTestFilter.Flaky in AFilters) and (ANode.Flaky > 0));
 end;
 
 /// <summary>Ein Blatt: Test ohne Fälle (bzw. ignoriert) oder ein Fall. Nur Blätter entscheiden über Filter;
@@ -640,6 +714,16 @@ begin
   end;
 end;
 
+/// <summary>Mehrzeilige Meldungen: nur die erste Zeile, der Rest steht im Stacktrace bzw. im Bericht.</summary>
+function FirstLine(const AMessage: string): string;
+begin
+  Result := Trim(AMessage);
+  if Pos(#10, Result) > 0 then
+  begin
+    Result := TrimRight(Copy(Result, 1, Pos(#10, Result) - 1));
+  end;
+end;
+
 /// <summary>Zeile ohne Fundstelle.</summary>
 function TextLine(const AText: string): TAtlasTestStackLine;
 begin
@@ -666,12 +750,7 @@ begin
       ATexts.DecimalSeparator)]))];
     Exit;
   end;
-  // Mehrzeilige Meldungen: nur die erste Zeile, der Rest steht im Stacktrace bzw. im Bericht.
-  mMessage := Trim(mFirst.Message);
-  if Pos(#10, mMessage) > 0 then
-  begin
-    mMessage := TrimRight(Copy(mMessage, 1, Pos(#10, mMessage) - 1));
-  end;
+  mMessage := FirstLine(mFirst.Message);
   if mFirst.Outcome = TTestOutcome.Skipped then
   begin
     Result := [TextLine(Format(ATexts.Skipped, [mMessage]))];
@@ -686,6 +765,42 @@ begin
   if Trim(mFirst.StackTrace) <> '' then
   begin
     Result := Result + [TextLine(ATexts.Stack)] + StackLines(mFirst.StackTrace, AUnits);
+  end;
+end;
+
+class function TAtlasTestExplorer.FlakyOf(const ANode: TAtlasTestNode; const AUnits: TArray<TAtlasTestUnitInput>;
+  out AFlaky: TAtlasFlakyTest): Boolean;
+var
+  mFound: TDUnitXUnit;
+  mIndex: Integer;
+begin
+  AFlaky := Default(TAtlasFlakyTest);
+  if (ANode.Flaky = 0) or (ANode.TestIndex < 0) or (ANode.UnitIndex < 0) or (ANode.UnitIndex > High(AUnits)) then
+  begin
+    Exit(False);
+  end;
+  mFound := AUnits[ANode.UnitIndex].Found;
+  mIndex := FlakyIndex(AUnits[ANode.UnitIndex], mFound.Fixtures[ANode.FixtureIndex].Name,
+    mFound.Fixtures[ANode.FixtureIndex].Tests[ANode.TestIndex].Method);
+  Result := mIndex >= 0;
+  if Result then
+  begin
+    AFlaky := AUnits[ANode.UnitIndex].Flaky[mIndex];
+  end;
+end;
+
+class function TAtlasTestExplorer.FlakyLines(const AFlaky: TAtlasFlakyTest; const ASince: string;
+  const ATexts: TAtlasTestFlakyTexts): TArray<TAtlasTestStackLine>;
+begin
+  Result := [TextLine(Format(ATexts.Summary, [TAtlasTestHistory.Dots(AFlaky.Results, ATexts.PassedDot,
+    ATexts.FailedDot), AFlaky.Failed, AFlaky.Runs]))];
+  if ASince <> '' then
+  begin
+    Result := Result + [TextLine(Format(ATexts.Since, [ASince]))];
+  end;
+  if AFlaky.LastMessage <> '' then
+  begin
+    Result := Result + [TextLine(Format(ATexts.Message, [FirstLine(AFlaky.LastMessage)]))];
   end;
 end;
 

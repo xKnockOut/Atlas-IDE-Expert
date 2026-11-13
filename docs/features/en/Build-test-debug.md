@@ -263,6 +263,17 @@ Open it from the context menu of a test unit (*Atlas › Tests*), the command pa
 
 Setting: `tests.repeat.count`
 
+### Flaky tests (#1773)
+A test is flaky when it is sometimes green and sometimes red without a change to its body (time, threads, order, files).
+- After every run from the IDE, Atlas keeps the last results of each test (`tests.flaky.runs`, default 10) with the checksum of the method body, as for “outdated” (#1770). A test with `[TestCase]` counts as red in a run if one of its cases was red; skipped only does not count.
+- “Flaky”: among the results with the current body there is green, then red, then green again. Red, then fixed in the body and green, is not flaky.
+- The mark of the test lens turns yellow: “Run test · passed · flaky (3 of 10 red)”; the class mark gives the number of its flaky tests (“· 2 flaky”).
+- In the *Atlas Tests* window the test shows “· flaky”, and the filter *flaky* shows only these tests. The details show the history as a row (✓ green, ✗ red, oldest first) with “2 of 10 red”, since when the body is unchanged and the last failure message.
+- *Show flaky tests* (Atlas menu, command palette) opens the window with exactly this filter.
+- If a test that was red in the run before is green now but flaky (for example after *Run failed tests again*), the messages view says “Test TRechnerTests.Summe passed, but it is flaky (3 of 10 runs red).”
+- The history is kept per test project in `%LOCALAPPDATA%\Atlas\projects\tests-history\<key>.json` (same key as the project summary) and survives a restart of the IDE.
+- `tests.flaky` off: Atlas writes no history, no mark, no command.
+Settings: `tests.flaky`, `tests.flaky.runs`
 ### Test status in the status bar (#1777)
 - The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
 - Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
