@@ -363,6 +363,20 @@ If anything is found, the dialog “Breakpoints that will not be hit” lists it
 
 Settings: `debug.checkBreakpoints`
 
+### Breakpoint sets
+
+Atlas menu and command palette. When you work on several bugs, switch between named sets of breakpoints instead of deleting and setting them again.
+
+- “Save breakpoints as set …” takes all source breakpoints with condition, pass count, group, actions and on/off; optionally coupled to the current branch.
+- “Switch breakpoint set …” creates missing breakpoints of the set and disables the breakpoints of other sets (nothing is deleted). Breakpoints that belong to no set stay as they are.
+- “Add breakpoint set …” adds the breakpoints of a set without disabling others; “Delete breakpoint set …” removes only the set.
+- When loading, Atlas finds the line again by method and line text, even after lines were inserted above; breakpoints that can no longer be found are listed in the messages.
+- Sets are stored per project in `.atlas/breakpoints/<Name>.json` and can be shared in the repository.
+- With `debug.breakpointSetPerBranch`, a coupled set becomes active as soon as the working copy switches to its branch (Git and SVN).
+- The IDE's breakpoint groups stay untouched: they switch breakpoints through actions but are tied to line numbers in the `.dsk`; a set remembers each breakpoint's group.
+
+Settings: `debug.breakpointSetPerBranch`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
