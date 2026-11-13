@@ -151,7 +151,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Json;
 
 const
   cStateNames: array[TAtlasTestListState] of string = ('failed', 'notRun', 'stale');
@@ -780,51 +781,33 @@ begin
   Result := cStateNames[AState];
 end;
 
-/// <summary>Text eines Werts von AObject; '' ohne oder bei anderem Typ.</summary>
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  // TJSONNumber erbt unter FPC und Delphi 12 von TJSONString.
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
-function ExcludeOf(AObject: TJSONObject): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue('exclude');
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
 /// <summary>Regel aus AObject; False bei unbekannter oder leerer.</summary>
 function ReadRule(AObject: TJSONObject; out ARule: TAtlasTestListRule): Boolean;
 var
   mState: TAtlasTestListState;
   mText: string;
+  mExclude: Boolean;
 begin
   Result := True;
-  if Trim(TextOf(AObject, 'category')) <> '' then
+  mExclude := TJsonRead.Flag(AObject, 'exclude');
+  mText := Trim(TJsonRead.StrictText(AObject, 'category'));
+  if mText <> '' then
   begin
-    ARule := TAtlasTestListRule.Category(Trim(TextOf(AObject, 'category')), ExcludeOf(AObject));
+    ARule := TAtlasTestListRule.Category(mText, mExclude);
     Exit;
   end;
-  if Trim(TextOf(AObject, 'unit')) <> '' then
+  mText := Trim(TJsonRead.StrictText(AObject, 'unit'));
+  if mText <> '' then
   begin
-    ARule := TAtlasTestListRule.Pattern(Trim(TextOf(AObject, 'unit')), ExcludeOf(AObject));
+    ARule := TAtlasTestListRule.Pattern(mText, mExclude);
     Exit;
   end;
-  mText := TextOf(AObject, 'state');
+  mText := TJsonRead.StrictText(AObject, 'state');
   for mState := Low(TAtlasTestListState) to High(TAtlasTestListState) do
   begin
     if SameText(mText, cStateNames[mState]) then
     begin
-      ARule := TAtlasTestListRule.OfState(mState, ExcludeOf(AObject));
+      ARule := TAtlasTestListRule.OfState(mState, mExclude);
       Exit;
     end;
   end;
@@ -840,7 +823,7 @@ var
   mArray: TJSONArray;
 begin
   AList := Default(TAtlasTestList);
-  AList.Name := Trim(TextOf(AObject, 'name'));
+  AList.Name := Trim(TJsonRead.StrictText(AObject, 'name'));
   AList.Store := AStore;
   Result := AList.Name <> '';
   mValue := AObject.GetValue('rules');
