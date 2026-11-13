@@ -434,6 +434,7 @@ type
     property DebugBreakOnNextEvent: Boolean read FDebug.DebugBreakOnNextEvent write FDebug.DebugBreakOnNextEvent;
     property DebugBreakOnNextEventExcluded: string read FDebug.DebugBreakOnNextEventExcluded
       write FDebug.DebugBreakOnNextEventExcluded;
+    property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;
@@ -446,6 +447,11 @@ type
       write FDebug.DebugExplainAccessViolationAllowCalls;
     property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
     property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
+    property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
+    property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
+      write FDebug.DebugParallelStacksWaitRoutines;
+    property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
+      write FDebug.DebugParallelStacksMaxThreads;
 
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;

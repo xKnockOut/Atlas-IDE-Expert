@@ -149,6 +149,8 @@ Atlas.Common.Logging.Providers.StreamSink.Tests
 Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
+Atlas.Common.Lsp.BreakpointCheck.Tests
+Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
@@ -340,10 +342,12 @@ Atlas.Core.Settings.ContextMenuGroups.Tests
 Atlas.Core.Debug.Modules.Tests
 Atlas.Core.Debug.Threads.Tests
 Atlas.Core.Debug.Deadlocks.Tests
+Atlas.Core.Debug.ParallelStacks.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
+Atlas.UI.Debug.ParallelStacks.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests

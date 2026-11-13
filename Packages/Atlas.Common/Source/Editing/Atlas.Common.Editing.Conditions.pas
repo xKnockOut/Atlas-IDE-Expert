@@ -55,7 +55,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -290,7 +291,7 @@ var
   mLB: string;
 begin
   mTokens := ATree.Tokens;
-  mDoToken := TRoutineBody.PreviousToken(mTokens, TRoutineBody.TokenAt(mTokens, ANode.StartOffset));
+  mDoToken := PreviousCode(mTokens, TRoutineBody.TokenAt(mTokens, ANode.StartOffset));
   Result := (mDoToken >= 0) and SameText(mTokens[mDoToken].Text, 'do');
   if not Result then
   begin

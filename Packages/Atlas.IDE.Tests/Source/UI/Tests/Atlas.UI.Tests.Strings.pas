@@ -45,6 +45,7 @@ type
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
     TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
+    TestsLensCompare,
     // Leckprüfung einrichten (#1880).
     LeakSetupCommand, LeakSetupHint, LeakSetupTitle, LeakSetupNoProject, LeakSetupNoServer, LeakStatusCaption,
     LeakPackage, LeakSource4Found, LeakSource4Missing, LeakSource5Found, LeakSource5Missing, LeakUsesFound,
@@ -196,6 +197,7 @@ const
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
      'Langsam ab (ms)',
+     'Vergleichen',
      'Leckprüfung einrichten …',
      'FastMM erkennen und ReportMemoryLeaksOnShutdown bzw. FastMM4/5 mit FullDebugMode nur für Debug einrichten.',
      'Leckprüfung einrichten – %s',
@@ -368,6 +370,7 @@ const
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
      'Slow from (ms)',
+     'Compare',
      'Set up leak check…',
      'Detect FastMM and set up ReportMemoryLeaksOnShutdown or FastMM4/5 with FullDebugMode for Debug only.',
      'Set up leak check – %s',
