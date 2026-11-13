@@ -535,6 +535,9 @@ type
     /// <summary>Sichtbare Elemente in Reihenfolge: status, findings, liveCheck, method, durch Komma getrennt (#1155,
     /// editor.statusBar.items); leer = keine.</summary>
     EditorStatusBarItems: string;
+    /// <summary>Feld „Tests 41/42“ mit Ampelpunkt für das Testprojekt der aktuellen Datei (#1777,
+    /// editor.statusBar.tests).</summary>
+    EditorStatusBarTests: Boolean;
     /// <summary>Designer-Leiste im Formular-Designer statt Brotkrumen und Editorleiste (#1442,
     /// editor.designerBar): Komponenten suchen, Nichtvisuelle (Strg+H der IDE), Elternelement, Tab-Reihenfolge,
     /// Ausrichten.</summary>
@@ -1362,6 +1365,7 @@ begin
   Result.EditorToolbarLabels := False;
   Result.EditorStatusBar := True;
   Result.EditorStatusBarItems := TAtlasStatusBarItems.DefaultText;
+  Result.EditorStatusBarTests := True;
   Result.EditorDesignerBar := True;
   // Alt+^ (VK_OEM_5 mit Alt).
   Result.DesignerSearchKey := 32988;
@@ -1698,6 +1702,7 @@ begin
   AIo.Flag('EditorToolbarLabels', EditorToolbarLabels);
   AIo.Flag('EditorStatusBar', EditorStatusBar);
   AIo.Text('EditorStatusBarItems', EditorStatusBarItems);
+  AIo.Flag('EditorStatusBarTests', EditorStatusBarTests);
   AIo.Flag('EditorDesignerBar', EditorDesignerBar);
   AIo.Number('DesignerSearchKey', DesignerSearchKey);
   AIo.Text('DesignerSearchStyle', DesignerSearchStyle);

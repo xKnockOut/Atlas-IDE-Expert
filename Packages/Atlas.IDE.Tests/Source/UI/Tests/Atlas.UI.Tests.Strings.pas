@@ -92,7 +92,11 @@ type
     ExplorerRefresh, ExplorerFilterFailed, ExplorerFilterNotRun, ExplorerFilterStale, ExplorerFilterSlow,
     ExplorerSearchHint, ExplorerSummary, ExplorerNoProject, ExplorerNoTests, ExplorerNothingSelected,
     ExplorerIgnored, ExplorerDetailPassed, ExplorerDetailNotRun, ExplorerDetailSkipped, ExplorerDetailMessage,
-    ExplorerDetailExpected, ExplorerDetailActual, ExplorerDetailStack, ExplorerFooter, SettingsTestsWindow);
+    ExplorerDetailExpected, ExplorerDetailActual, ExplorerDetailStack, ExplorerFooter, SettingsTestsWindow,
+    // Teststand in der Statusleiste (#1777).
+    StatusFieldText, StatusFieldRunning, StatusFieldNotRun, StatusFieldProject, StatusFieldLastRun, StatusFieldNoRun,
+    StatusFieldCounts, StatusFieldStale, StatusFieldClickFailed, StatusFieldClickAll, StatusFieldContext,
+    StatusMenuRunAll, StatusMenuRunFailed, StatusMenuAffected, StatusMenuWindow, StatusMenuWelcome);
 
   TAtlasTestsStrings = class
   public
@@ -407,7 +411,23 @@ const
      'Erhalten: %s',
      'Stacktrace (Doppelklick öffnet die Zeile):',
      'Enter: zum Test · Strg+R: ausführen · Strg+D: debuggen',
-     'Fenster „Atlas-Tests“'),
+     'Fenster „Atlas-Tests“',
+     'Tests %d/%d',
+     'Tests laufen …',
+     'Tests –',
+     'Testprojekt: %s',
+     'Letzter Lauf: %s, %s',
+     'Noch kein Lauf in dieser Sitzung',
+     '%d bestanden, %d fehlgeschlagen, %d übersprungen',
+     '%d veraltet',
+     'Klick: fehlgeschlagene erneut ausführen',
+     'Klick: alle ausführen',
+     'Rechtsklick: weitere Aktionen',
+     'Alle ausführen',
+     'Fehlgeschlagene erneut ausführen',
+     'Betroffene ausführen',
+     'Fenster „Atlas-Tests“',
+     'Ergebnisse auf der Willkommensseite'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -706,7 +726,23 @@ const
      'Actual: %s',
      'Stack trace (double-click opens the line):',
      'Enter: go to test · Ctrl+R: run · Ctrl+D: debug',
-     '“Atlas Tests” window'));
+     '“Atlas Tests” window',
+     'Tests %d/%d',
+     'Tests running …',
+     'Tests –',
+     'Test project: %s',
+     'Last run: %s, %s',
+     'No run in this session yet',
+     '%d passed, %d failed, %d skipped',
+     '%d outdated',
+     'Click: run failed tests again',
+     'Click: run all tests',
+     'Right-click: more actions',
+     'Run all',
+     'Run failed again',
+     'Run affected',
+     '“Atlas Tests” window',
+     'Results on the welcome page'));
 
 { TAtlasTestsStrings }
 

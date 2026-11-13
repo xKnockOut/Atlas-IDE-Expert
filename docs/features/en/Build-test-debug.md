@@ -222,6 +222,16 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 
 Setting: `tests.window`
 
+### Test status in the status bar (#1777)
+
+- The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
+- Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
+- Click: run the failed tests again; when all are green, all tests. Right-click: *Run all*, *Run failed again*, *Run affected*, *“Atlas Tests” window*, *Results on the welcome page*.
+- Tooltip: test project, time and duration of the last run, passed, failed, skipped and outdated.
+- Without the *Status* item in the bar the field appears as text in the IDE status line (without dot and right-click).
+
+Setting: `editor.statusBar.tests`
+
 ### Leaks per test (#1774)
 
 - With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.

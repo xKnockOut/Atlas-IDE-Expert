@@ -198,6 +198,16 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 
 Einstellung: `tests.window`
 
+### Teststand in der Statusleiste (#1777)
+
+- In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
+- Ampel: rot bei Fehlschlägen, gelb während eines Laufs und bei veralteten Ergebnissen (wenn das Fenster „Atlas-Tests“ dieses Testprojekt zeigt), grün, wenn alles bestand.
+- Klick: fehlgeschlagene Tests erneut ausführen; sind alle grün, alle. Rechtsklick: *Alle ausführen*, *Fehlgeschlagene erneut ausführen*, *Betroffene ausführen*, *Fenster „Atlas-Tests“*, *Ergebnisse auf der Willkommensseite*.
+- Tooltip: Testprojekt, Uhrzeit und Dauer des letzten Laufs, bestanden, fehlgeschlagen, übersprungen und veraltet.
+- Ohne das Element *Status* in der Leiste steht das Feld als Text in der Statuszeile der IDE (ohne Punkt und Rechtsklick).
+
+Einstellung: `editor.statusBar.tests`
+
 ### Lecks je Test (#1774)
 
 - Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
