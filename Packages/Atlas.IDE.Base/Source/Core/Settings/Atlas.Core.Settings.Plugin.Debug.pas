@@ -123,6 +123,12 @@ type
     /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
     /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
     DebugParallelStacks: Boolean;
+    /// <summary>debug.threadsInSource (#852): beim Halt im Rand jeder Zeile, an der andere Threads stehen, ein
+    /// Zeichen mit Anzahl; Threads markieren.</summary>
+    DebugThreadsInSource: Boolean;
+    /// <summary>debug.threadFreeze (#852, experimentell): Threads einfrieren und auftauen
+    /// (SuspendThread/ResumeThread).</summary>
+    DebugThreadFreeze: Boolean;
     /// <summary>debug.parallelStacks.waitRoutines (#837): Warte-Routinen, durch ; getrennt; '' = Vorgabe.</summary>
     DebugParallelStacksWaitRoutines: string;
     /// <summary>debug.parallelStacks.maxThreads (#837): ab so vielen Threads abschnittsweise lesen.</summary>
@@ -218,6 +224,8 @@ begin
   Result.DebugEvaluateReplaceCtrlF7 := True;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugThreadFreeze := False;
+  Result.DebugThreadsInSource := True;
   Result.DebugParallelStacks := True;
   Result.DebugParallelStacksWaitRoutines := '';
   Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
@@ -290,6 +298,8 @@ begin
   AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);
   AIo.Flag('DebugDeadlocks', DebugDeadlocks);
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
+  AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
+  AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
 
