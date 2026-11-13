@@ -2,6 +2,7 @@
 
 // Fälschung für IAtlasEditorFiles (#1967): Tests legen offene Dateien mit Put an und lesen danach,
 // welche Dateien gespeichert wurden. Nicht genannte Dateien gelten als geschlossen.
+// Dazu die Fälschung für IAtlasActiveEditor: meldet die beim Anlegen genannte Schreibmarke.
 
 interface
 
@@ -23,6 +24,15 @@ type
     function Saved: TArray<string>;
     function Buffer(const AFileName: string): TAtlasEditorFile;
     function Save(const AFileName: string): Boolean;
+  end;
+
+  TAtlasActiveEditorFake = class(TInterfacedObject, IAtlasActiveEditor)
+  private
+    FCaret: TAtlasActiveEditorPos;
+  public
+    /// <summary>Der obere Editor steht auf ACaret; TAtlasActiveEditorPos.None = kein Editor.</summary>
+    constructor Create(const ACaret: TAtlasActiveEditorPos);
+    function Caret: TAtlasActiveEditorPos;
   end;
 
 implementation
@@ -70,6 +80,17 @@ begin
     mFile.Modified := False;
     FFiles.AddOrSetValue(AFileName, mFile);
   end;
+end;
+
+constructor TAtlasActiveEditorFake.Create(const ACaret: TAtlasActiveEditorPos);
+begin
+  inherited Create;
+  FCaret := ACaret;
+end;
+
+function TAtlasActiveEditorFake.Caret: TAtlasActiveEditorPos;
+begin
+  Result := FCaret;
 end;
 
 end.

@@ -1616,6 +1616,8 @@ uses
   Atlas.Core.Problems.IdeErrors.Tests in 'IDE.Expert\Atlas.Core.Problems.IdeErrors.Tests.pas',
   Atlas.Core.Problems.ScopeProjects in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas',
   Atlas.Core.Problems.ScopeProjects.Tests in 'IDE.Expert\Atlas.Core.Problems.ScopeProjects.Tests.pas',
+  Atlas.Core.Problems.AtCaret in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.AtCaret.pas',
+  Atlas.Core.Problems.AtCaret.Tests in 'IDE.Expert\Atlas.Core.Problems.AtCaret.Tests.pas',
   Atlas.Core.Problems.BulkFix.Tests in 'IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas',
   Atlas.Core.Editor.Recursion.Tests in 'IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas',
   Atlas.Core.Editor.GutterColumn.Tests in 'IDE.Expert\Atlas.Core.Editor.GutterColumn.Tests.pas',
