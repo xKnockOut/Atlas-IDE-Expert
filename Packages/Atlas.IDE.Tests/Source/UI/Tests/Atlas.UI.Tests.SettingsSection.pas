@@ -66,6 +66,8 @@ begin
   Switch('tests.affected', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffected));
   Number('tests.affectedDepth', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedDepth));
   Switch('tests.affectedBeforeCommit', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedBeforeCommit));
+  Switch('tests.failureAtAssert', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureAtAssert));
+  Switch('tests.failureInline', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureInline));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;
 

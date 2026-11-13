@@ -1415,6 +1415,30 @@
       "x-parent": "tests.affected",
       "x-issue": "#1353"
     },
+    "TestsFailureAtAssert": {
+      "description": "Fehlgeschlagenen Test an der Anweisung melden, die fehlschlug, statt am Methodenkopf: Zeile aus dem Stacktrace des Berichts (JclDebug, madExcept); ohne Zeilen der eine Assert im Rumpf, dessen erwarteter Wert zum Bericht passt. Wellenlinie über der Anweisung; ist die Zeile nicht eindeutig, bleibt es beim Methodenkopf.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.failureAtAssert",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Fehlschlag an der Assert-Zeile zeigen",
+      "x-captionEn": "Show failures at the assert line",
+      "x-issue": "#1771"
+    },
+    "TestsFailureInline": {
+      "description": "Hinter der Assert-Zeile kurz „erwartet 4, erhalten 3“ statt der ganzen Meldung (wie der Fehlertext am Zeilenende, editor.inlineDiagnostics).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.failureInline",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.failureAtAssert",
+      "x-caption": "Erwartet und erhalten hinter der Zeile",
+      "x-captionEn": "Expected and actual after the line",
+      "x-issue": "#1771"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,

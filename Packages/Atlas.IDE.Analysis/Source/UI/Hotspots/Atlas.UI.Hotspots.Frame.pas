@@ -175,6 +175,8 @@ uses
 
 const
   cLevelValues: array[0..1] of string = ('unit', 'method');
+  /// <summary>Feste Breite des Filterfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
+  cFilterWidth = 200;
 
 type
   THotspotsFrame = TAtlasHotspotsFrame;
@@ -563,7 +565,7 @@ begin
   AFrame.FParts.Filter.Parent := mTop;
   AFrame.FParts.Filter.AlignWithMargins := True;
   // Feste Breite statt alClient, damit das Feld in der fließenden Leiste umbrechen kann.
-  AFrame.FParts.Filter.Width := AFrame.FParts.Filter.ScaleValue(200);
+  AFrame.FParts.Filter.Width := AFrame.FParts.Filter.ScaleValue(cFilterWidth);
   AFrame.FParts.Filter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFilterHint);
   AFrame.FParts.Filter.OnChange := AEvents.FilterChange;
 end;

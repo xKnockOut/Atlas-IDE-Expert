@@ -85,6 +85,10 @@ const
   cColumnMean = 2;
   cColumnMax = 3;
   cColumnBudget = 4;
+  /// <summary>Höhe des Knopfs „Kopieren“ bei 96 dpi.</summary>
+  cButtonHeight = 24;
+  /// <summary>Abstand oben des Hinweises in der Leiste bei 96 dpi, mittig zum Knopf.</summary>
+  cNoteTop = 7;
 
 {$R *.dfm}
 
@@ -134,14 +138,14 @@ begin
   FCopy.Parent := FBottom;
   FCopy.AlignWithMargins := True;
   FCopy.Width := FCopy.ScaleValue(130);
-  FCopy.Height := FCopy.ScaleValue(24);
+  FCopy.Height := FCopy.ScaleValue(cButtonHeight);
   FCopy.Caption := TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy);
   FCopy.OnClick := CopyClick;
   FNote := TLabel.Create(Self);
   FNote.Parent := FBottom;
   FNote.AlignWithMargins := True;
   FNote.AutoSize := True;
-  FNote.Margins.Top := FNote.ScaleValue(7);
+  FNote.Margins.Top := FNote.ScaleValue(cNoteTop);
   FNote.ShowAccelChar := False;
   FNote.Caption := '';
   FNote.Font.Color := clGrayText;

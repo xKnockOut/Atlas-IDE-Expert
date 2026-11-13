@@ -31,6 +31,8 @@ type
     TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits,
     // Veraltete Ergebnisse (#1770).
     TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
+    // Fehlschlag an der Assert-Zeile (#1771).
+    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline,
     // Leckprüfung einrichten (#1880).
     LeakSetupCommand, LeakSetupHint, LeakSetupTitle, LeakSetupNoProject, LeakSetupNoServer, LeakStatusCaption,
     LeakPackage, LeakSource4Found, LeakSource4Missing, LeakSource5Found, LeakSource5Missing, LeakUsesFound,
@@ -135,6 +137,9 @@ const
      'Tests: Keine veralteten Tests (seit dem Lauf nichts geändert).',
      'Geänderte Tests als veraltet zeigen (grau „(veraltet)“, Befehl „Veraltete Tests ausführen“)',
      'Auch Änderungen in verwendeten Units des Testprojekts zählen',
+     'erwartet %s, erhalten %s',
+     'Fehlschlag an der Assert-Zeile zeigen (Stacktrace bzw. eindeutiger Assert), sonst am Methodenkopf',
+     'Dahinter kurz „erwartet …, erhalten …“',
      'Leckprüfung einrichten …',
      'FastMM erkennen und ReportMemoryLeaksOnShutdown bzw. FastMM4/5 mit FullDebugMode nur für Debug einrichten.',
      'Leckprüfung einrichten – %s',
@@ -260,6 +265,9 @@ const
      'Tests: No outdated tests (nothing changed since the run).',
      'Show changed tests as outdated (grey “(outdated)”, command “Run outdated tests”)',
      'Changes in used units of the test project count too',
+     'expected %s, got %s',
+     'Show a failure at the assert line (stack trace or unique assert), otherwise at the method header',
+     'Short “expected …, got …” after it',
      'Set up leak check…',
      'Detect FastMM and set up ReportMemoryLeaksOnShutdown or FastMM4/5 with FullDebugMode for Debug only.',
      'Set up leak check – %s',
