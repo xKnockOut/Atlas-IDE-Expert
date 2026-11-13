@@ -53,11 +53,13 @@ contains
   Atlas.UI.Rules.SettingsSection in 'Source\UI\Rules\Atlas.UI.Rules.SettingsSection.pas',
   Atlas.Core.Rules.Table in 'Source\Core\Rules\Atlas.Core.Rules.Table.pas',
   Atlas.Core.Rules.CustomLayer in 'Source\Core\Rules\Atlas.Core.Rules.CustomLayer.pas',
+  Atlas.Core.Rules.Ownership in 'Source\Core\Rules\Atlas.Core.Rules.Ownership.pas',
   Atlas.UI.Rules.Editor in 'Source\UI\Rules\Atlas.UI.Rules.Editor.pas',
   Atlas.UI.Rules.SettingsDialog in 'Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas',
   Atlas.IDE.Rules.FindingActions in 'Source\IDE\Rules\Atlas.IDE.Rules.FindingActions.pas',
   Atlas.IDE.Rules.IdeErrors in 'Source\IDE\Rules\Atlas.IDE.Rules.IdeErrors.pas',
   Atlas.IDE.Rules.Maintenance in 'Source\IDE\Rules\Atlas.IDE.Rules.Maintenance.pas',
+  Atlas.IDE.Rules.OwnershipHints in 'Source\IDE\Rules\Atlas.IDE.Rules.OwnershipHints.pas',
   Atlas.IDE.Rules.Settings in 'Source\IDE\Rules\Atlas.IDE.Rules.Settings.pas';
 
 end.

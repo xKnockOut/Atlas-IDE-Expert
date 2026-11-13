@@ -190,6 +190,10 @@
       "caption": "Code Lens und Kennzahlen",
       "captionEn": "Code lens and metrics"
     },
+    "editor.ownershipHints": {
+      "caption": "Wer gibt das frei?",
+      "captionEn": "Who frees this?"
+    },
     "compiler.problems": {
       "caption": "Probleme",
       "captionEn": "Problems"
@@ -1081,6 +1085,37 @@
       "x-captionEn": "Apply property rules",
       "x-issue": "#309",
       "x-parent": "ruleChecks.enabled"
+    },
+    "OwnershipHints": {
+      "description": "Marke „Wer gibt das frei?“ am Ende jeder Zeile mit T.Create(…): grün, wenn die Freigabe sicher ist (Destroy, finally, Owner, besitzende Liste, Referenzzählung), gelb, wenn sie woanders liegt (andere Methode, an den Aufrufer zurückgegeben, weitergegeben, unklar), rot „nie freigegeben“, wenn eine der Leck-Regeln (field-not-freed, create-without-assignment, local-object-not-freed, created-result-not-freed) dort meldet. Klick springt zur freigebenden Zeile, der Tooltip erklärt den Weg. Atlas fragt die Marken zusammen mit der normalen Prüfung beim Server ab (atlas.server.ownership) und zeichnet nur den sichtbaren Bereich.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.ownershipHints",
+      "x-area": "editor",
+      "x-feature": "Problems",
+      "x-page": "Editor",
+      "x-parent": "ruleChecks.enabled",
+      "x-node": "editor.ownershipHints",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „Wer gibt das frei?“ an jedem Create",
+      "x-captionEn": "“Who frees this?” mark on every Create",
+      "x-issue": "#1877"
+    },
+    "OwnershipHintsOnlyProblems": {
+      "description": "Nur die Marken zeigen, die Aufmerksamkeit brauchen: gelb und rot; grüne (sicher freigegeben) bleiben aus.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.ownershipHints.onlyProblems",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.ownershipHints",
+      "x-control": "Kontrollkästchen",
+      "x-drawing": true,
+      "x-caption": "Nur Problemfälle zeigen",
+      "x-captionEn": "Show problem cases only",
+      "x-issue": "#1877"
     },
     "TeamFile": {
       "type": "boolean",

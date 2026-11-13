@@ -183,6 +183,8 @@ begin
   Assert.IsTrue(ASettings.TestsStale, 'veraltete Testergebnisse standardmäßig an (#1770)');
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
   Assert.IsTrue(ASettings.CodeLensCoveredBy, 'Marke „getestet von“ standardmäßig an (#1778)');
+  Assert.IsFalse(ASettings.OwnershipHints, 'Marke „Wer gibt das frei?“ standardmäßig aus (#1877)');
+  Assert.IsFalse(ASettings.OwnershipHintsOnlyProblems, 'nur Problemfälle standardmäßig aus (#1877)');
   Assert.AreEqual(1, ASettings.TestsCoveredByDepth, 'Tiefe „getestet von“ standardmäßig 1 (#1778)');
   Assert.IsFalse(ASettings.TestsCoveredByPrivate, '„getestet von“ an privaten Methoden standardmäßig aus (#1778)');
   Assert.IsTrue(ASettings.CodeLensUntested, 'Marke „n von m Methoden getestet“ standardmäßig an (#1783)');
@@ -397,6 +399,8 @@ begin
   ASettings.TestsStale := False;
   ASettings.TestsStaleUnits := True;
   ASettings.CodeLensCoveredBy := False;
+  ASettings.OwnershipHints := True;
+  ASettings.OwnershipHintsOnlyProblems := True;
   ASettings.TestsCoveredByDepth := 3;
   ASettings.TestsCoveredByPrivate := True;
   ASettings.CodeLensUntested := False;
@@ -582,6 +586,8 @@ begin
   Assert.IsFalse(ALoaded.TestsStale, 'tests.stale (#1770)');
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
   Assert.IsFalse(ALoaded.CodeLensCoveredBy, 'codeLens.coveredBy (#1778)');
+  Assert.IsTrue(ALoaded.OwnershipHints, 'editor.ownershipHints (#1877)');
+  Assert.IsTrue(ALoaded.OwnershipHintsOnlyProblems, 'editor.ownershipHints.onlyProblems (#1877)');
   Assert.AreEqual(3, ALoaded.TestsCoveredByDepth, 'tests.coveredBy.depth (#1778)');
   Assert.IsTrue(ALoaded.TestsCoveredByPrivate, 'tests.coveredBy.private (#1778)');
   Assert.IsFalse(ALoaded.CodeLensUntested, 'codeLens.untested (#1783)');
