@@ -460,6 +460,9 @@ type
     property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
     property DebugThreadsInSource: Boolean read FDebug.DebugThreadsInSource write FDebug.DebugThreadsInSource;
     property DebugThreadFreeze: Boolean read FDebug.DebugThreadFreeze write FDebug.DebugThreadFreeze;
+    property DebugAsyncOrigin: Boolean read FDebug.DebugAsyncOrigin write FDebug.DebugAsyncOrigin;
+    property DebugAsyncOriginMaxPerSite: Integer read FDebug.DebugAsyncOriginMaxPerSite
+      write FDebug.DebugAsyncOriginMaxPerSite;
     property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
       write FDebug.DebugParallelStacksWaitRoutines;
     property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
@@ -476,6 +479,8 @@ type
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
+    property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;

@@ -4,7 +4,8 @@
 // zwei Gruppen nach ihrer Stelle in der Startreihenfolge:
 //   - DebugExceptionParts: Exception-Verlauf (#517), nur eigener Code (#578) und Exception-Leiste (#783).
 //   - DebugThreadParts: Threads beim Halt: „Was wartet worauf?“ (#587), „Parallele Aufrufstapel“ (#837) und
-//     „Threads im Quelltext“ (#852) samt Schicht der Rinne (ProvideDebugThreadLayers).
+//     „Threads im Quelltext“ (#852) samt Schicht der Rinne (ProvideDebugThreadLayers) und die Herkunft eingereihter
+//     Methoden (#859, experimentell).
 // Dazu die Befehle beider, die Atlas.IDE.Debug.Composition in seine Befehle aufnimmt, und das Thema des Fensters.
 // Atlas.IDE.Debug.Composition stellt die Teile über den Scope des Moduls bereit.
 
@@ -49,6 +50,7 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.ThreadsInSource,
   Atlas.IDE.Debug.ThreadsGutter,
+  Atlas.IDE.Debug.AsyncOrigin,
   Atlas.UI.Debug.Strings;
 
 { Dienste von Base }
@@ -118,6 +120,11 @@ end;
 procedure StartDebugThreadsInSource;
 begin
   TAtlasIdeDebugThreadsInSource.Start(MessageLine, TAtlasStatusRegistry.Default);
+end;
+
+procedure StartDebugAsyncOrigin;
+begin
+  TAtlasIdeDebugAsyncOrigin.Start(MessageLine, TAtlasStatusRegistry.Default);
 end;
 
 { Threads im Quelltext (#852) }
@@ -241,7 +248,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeDebugThreadsInSource.Started;
-      end, StartDebugThreadsInSource, TAtlasIdeDebugThreadsInSource.Release)];
+      end, StartDebugThreadsInSource, TAtlasIdeDebugThreadsInSource.Release),
+    // Herkunft eingereihter Methoden (#859, experimentell): Haltepunkte an den Aufrufstellen; Release entfernt sie.
+    TAtlasFeaturePart.When('DebugAsyncOrigin',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugAsyncOrigin;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugAsyncOrigin.Started;
+      end, StartDebugAsyncOrigin, TAtlasIdeDebugAsyncOrigin.Release)];
 end;
 
 end.

@@ -83,6 +83,7 @@ uses
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
   Atlas.IDE.Debug.Composition.Breakpoints,
+  Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
   Atlas.UI.Debug.Strings;
 
@@ -326,6 +327,8 @@ begin
       ShowDebugParallelStacks, DebugParallelStacksVisible)];
   // Threads im Quelltext (#852): markieren, einfrieren, auftauen.
   Result := Result + DebugThreadCommands;
+  // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
+  Result := Result + RunCommands;
   // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
   for mCommand in BreakpointCommands do
   begin
@@ -414,6 +417,8 @@ begin
   TAtlasIdeVisualizers.ApplySettings;
   // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
   TAtlasIdeDisplayRules.ApplySettings;
+  // debug.eventLog* (#580).
+  ApplyRunSettings;
 end;
 
 procedure TAtlasDebugModule.ThemeChanged;
@@ -422,6 +427,7 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
+  RunThemeChanged;
   DebugThreadsThemeChanged;
 end;
 
@@ -495,7 +501,7 @@ end;
 function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
-  Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts;
+  Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts + RunParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;
