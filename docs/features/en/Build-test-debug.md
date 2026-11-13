@@ -431,6 +431,18 @@ Settings: `debug.breakpointSetPerBranch`
 
 Settings: `debug.eventLog`, `debug.eventLogColors`
 
+## Debug: logpoints
+
+- Shift+F5 or “Atlas: Set logpoint” (Atlas menu, editor context menu) at the cursor line, or after a right-click in the gutter at that line
+- Text with placeholders: `x={x}`, `total {Total:0.00}`; formats `d` (integer), `x` (hexadecimal), patterns with `0` or `#` (`FormatFloat`), otherwise as in `Format` (`.2f`); `{{` and `}}` are literal braces
+- Condition (`{Total} > 1000`) and “only the first N hits”; the dialog shows errors in the text with their position
+- An ordinary breakpoint on the line becomes a logpoint; “Remove” deletes it
+- One line of kind logpoint in the event log with prefix and place, for example `[LOG] x=42 · Unit1.pas:12`; double-click jumps to the line
+- Diamond in the gutter with text and condition in the tooltip
+- “Disable/Enable/Delete all logpoints” only touch the breakpoint group `Atlas.Logpunkte`
+
+Settings: `debug.logpoints`, `debug.logpointPrefix`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
