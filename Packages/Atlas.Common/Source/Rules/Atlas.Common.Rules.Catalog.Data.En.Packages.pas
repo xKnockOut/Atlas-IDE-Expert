@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..91] of string = (
+  cCatalogLinesEnPackages: array[0..113] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -118,6 +118,35 @@ const
     '        }',
     '      ],',
     '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-istrue-equality",',
+    '      "name": "Assert.IsTrue with a comparison instead of AreEqual",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil), Assert.IsTrue(Assigned(X)) and the same with not: when the test fails, DUnitX only reports that the conditio' +
+    'n does not hold, without the compared values. Assert.AreEqual or AreNotEqual shows expected and actual, IsNull and IsNotNull say what was found. Quick fix (safe): AreEqual or AreNotEqual with the cons' +
+    'tant or literal first as the expected value, IsNull or IsNotNull for nil and Assigned; a message argument is kept. It is offered only when an overload certainly fits: both sides string, Boolean or an ' +
+    'integer up to Integer, for nil and Assigned a class, an interface or a pointer. Floating point (AreEqual needs a tolerance), Cardinal, Int64, NativeInt (Length of a dynamic array), enumerations, sets,' +
+    ' records, method pointers and unknown types get the hint without a fix. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
+    '      "bad": "Assert.IsTrue(FFake.Calls = 1, ''Aufrufe'');",',
+    '      "good": "Assert.AreEqual(1, FFake.Calls, ''Aufrufe'');",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-swapped-expected",',
+    '      "name": "Expected and actual value swapped",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "Assert.AreEqual, AreNotEqual, AreSame or AreNotSame whose first argument is neither a literal nor a constant while the second one is: DUnitX takes the expected value first, so th' +
+    'e failure message reports the constant as the actual value and the computed value as the expected one, which misleads. Constants are literals, True, False, nil, declared constants and enumeration valu' +
+    'es, also with a sign or combined with operators. Quick fix (safe): swap the two arguments; further arguments (message, tolerance) stay. Calls with two constants or two computed values stay silent. Onl' +
+    'y in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
+    '      "bad": "Assert.AreEqual(FList.Count, 4);",',
+    '      "good": "Assert.AreEqual(4, FList.Count);",',
+    '      "safeFix": true',
     '    }');
 
 implementation

@@ -115,7 +115,7 @@ begin
   Assert.AreEqual(2, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(21, Findings[0].Range.StartPos.Character);
   Assert.AreEqual(30, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(Pos('Vcl.Forms', Findings[0].Message) > 0, True);
+  Assert.IsTrue(Pos('Vcl.Forms', Findings[0].Message) > 0);
   Assert.AreEqual(4, Findings[1].Range.StartPos.Line);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
 end;
