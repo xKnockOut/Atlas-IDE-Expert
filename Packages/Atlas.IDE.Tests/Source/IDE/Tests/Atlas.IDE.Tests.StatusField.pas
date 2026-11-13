@@ -350,7 +350,7 @@ begin
     Exit;
   end;
   // Die Testunit des ersten Fehlschlags bestimmt das Testprojekt wie bei der Testlinse.
-  FTests.RunTests(mFile, mNames);
+  FTests.RunTests(mFile, mNames, False);
 end;
 
 end.

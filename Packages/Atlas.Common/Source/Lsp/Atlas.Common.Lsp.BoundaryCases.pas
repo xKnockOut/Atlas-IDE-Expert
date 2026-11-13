@@ -6,7 +6,7 @@
 // Befehl atlas.server.boundaryCases [uri, zeile, max?]: zeile 0-basiert irgendwo in der Routine (bei
 // verschachtelten gewinnt die innerste), max 1 bis 200 (Vorgabe 20).
 // Antwort: null ohne Routine mit Rumpf an der Zeile, sonst
-//   { uri, routine, line, truncated,
+//   { uri, routine, resultType, line, truncated,
 //     parameters: [{name, type, kind, neutral}],     kind: unknown, text, ordinal, float, logical, enum, reference
 //     cases: [{parameter, value, reason, line, testCase, values: [..]}] }
 // line der Fälle 0-basiert, -1 ohne eigene Bedingung; testCase False, wenn der Wert nicht in ein [TestCase]
@@ -187,6 +187,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('uri', AUri);
   Result.AddPair('routine', AResult.Routine);
+  Result.AddPair('resultType', AResult.ResultType);
   Result.AddPair('line', TJSONNumber.Create(ALine));
   Result.AddPair('truncated', TJSONBool.Create(AResult.Truncated));
   mParameters := TJSONArray.Create;

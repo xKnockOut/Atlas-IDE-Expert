@@ -665,7 +665,7 @@ begin
   if Length(mNames) > 0 then
   begin
     // Die Testunit des ersten gewählten Knotens bestimmt das Testprojekt wie bei der Testlinse.
-    FTests.RunTests(FNodes[mChosen[0]].FileName, mNames);
+    FTests.RunTests(FNodes[mChosen[0]].FileName, mNames, False);
   end;
 end;
 

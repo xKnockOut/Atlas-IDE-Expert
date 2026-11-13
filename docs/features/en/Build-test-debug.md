@@ -177,26 +177,34 @@ The button only appears when the failure has an expected and an actual value.
 
 Settings: `tests.compare`, `tests.compare.format`
 
+### Test coverage in the editor (#275)
+
+- “Load test coverage…” (*Atlas* menu, command palette) reads a report of [DelphiCodeCoverage](https://github.com/DelphiCodeCoverage/DelphiCodeCoverage) without a new build: `CodeCoverage_Summary.xml` (with `-xml -xmllines`) or `jacoco.xml` of newer versions.
+- The gutter then shows a narrow bar at every line with code: green run, red not run. The tooltip names the hits, the coverage of the file and the report.
+- If the file was saved after the report, the tooltip says that lines may have moved.
+- A new run overwrites the report: Atlas reads it again on the next switch or after a typing pause. “Hide test coverage” forgets it.
+- Example (test program with a detailed map file; full paths for `-e` and `-m`, `-ife` before `-u` for unit names with dots):
+
+  ```
+  CodeCoverage.exe -ife -e C:\Project\Bin\Tests.exe -m C:\Project\Bin\Tests.map -u Calc.Core Calc.Helpers -sp C:\Project\Source -od C:\Project\Coverage -xml -xmllines -a ^-^-exit:Continue
+  ```
+
+Setting: `tests.coverage`
+
 ### Approval files for tests (#1881)
-
 For exports, reports, generated code or JSON a test checks the result against a stored file instead of one assert per line (“approval”). The helper unit `Atlas.Testing.Approval` ships in `Setup\Vorlagen` (MIT licence, RTL and DUnitX only); copy it into the test project or add its folder to the search path. Example: [approval-tests.pas](../../Beispiele/approval-tests.pas).
-
 - `TApproval.Verify(Result, 'TFixture.Method')` compares with `TFixture.Method.approved.txt`; a custom extension (`'.json'`) and a normalizer for dates or GUIDs are possible.
 - Line ends (CRLF, LF, CR) are no difference; files are UTF-8.
 - If the result differs, `….received.txt` is written next to it and the test fails with “Approval: difference from line 3, see …” (German by default); without an approved file with “new, please review”.
 - Approving means renaming received to approved and committing the approved file; `.received.*` belongs in the ignore list.
 - Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
 - Messages are German, English with `TApproval.English := True`.
-
 In the IDE (Tests module, `tests.approvalFiles`):
-
 - If a test fails with this message, its test mark shows “Difference · Compare”, without an approved file “New · Compare”. The same “Compare” button appears in the hover of the failure and on the *Test results* card.
 - The comparison shows the approved file on the left and the received file on the right (lines matched as for expected and actual, #1779). *Accept as new expectation* replaces the approved file with the received file and deletes it; the next run is green. *Go to test* jumps to the method header.
 - *Delete leftover .received files* (Atlas menu, command palette) looks in the approval folder of the test project that ran last (without a run, the active project), deletes all `*.received.*` there after asking and offers to add `*.received.*` to the nearest `.gitignore` if it has no line for them yet.
 - `tests.approvalFiles` off: no special mark, no command; the helper unit keeps working, its failures show as ordinary failures.
-
 Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
-
 ### Test duration and slow tests (#1772)
 
 - After a run every mark of the test lens shows the duration: “Run test · passed · 12 ms”, from one second on in seconds with one decimal (“1.2 s”). The class mark shows the sum of its tests, a `[TestCase]` method the sum of its cases.

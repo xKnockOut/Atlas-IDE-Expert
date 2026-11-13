@@ -689,7 +689,7 @@ begin
     FLastRun := mList.Name;
     Save(TAtlasTestListStore.Personal);
     // Eine Testunit des Projekts bestimmt das Testprojekt wie bei „Ausgewählte ausführen“.
-    FTests.RunTests(mSource.Units[0].FileName, mArguments);
+    FTests.RunTests(mSource.Units[0].FileName, mArguments, False);
   end;
 end;
 

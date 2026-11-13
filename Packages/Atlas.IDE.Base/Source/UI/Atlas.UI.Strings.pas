@@ -178,6 +178,8 @@ type
     ElementReassigned, ElementReassignedPlural,
     // Gelernte Vorschläge (#1890): Element zum Ausblenden.
     ElementLearnedSuggestions, ElementLearnedSuggestionsPlural,
+    // Testabdeckung (#275): Element zum Ausblenden.
+    ElementTestCoverage, ElementTestCoveragePlural,
     // Typ des markierten Ausdrucks (#689): Befehl, Optionsseite, Tooltip.
     ExpressionTypeCommand,
     // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
@@ -230,7 +232,9 @@ type
     // Marke „n von m Methoden getestet“ (#1783) im Menü „Ausblenden“.
     ElementCodeLensUntested, ElementCodeLensUntestedPlural,
     // Zeichen der anderen Threads in der Rinne (#852) im Menü „Ausblenden“.
-    ElementThreadsInSource, ElementThreadsInSourcePlural);
+    ElementThreadsInSource, ElementThreadsInSourcePlural,
+    // Marke „Wer gibt das frei?“ (#1877) im Menü „Ausblenden“.
+    ElementOwnershipHints, ElementOwnershipHintsPlural);
 
   TAtlasStrings = class
   private
@@ -686,6 +690,7 @@ const
      'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte', 'Unterstreichung einer neu zugewiesenen Variablen',
      'Unterstreichungen neu zugewiesener Variablen',
      'gelernter Vorschlag', 'gelernte Vorschläge',
+     'Balken der Testabdeckung', 'Balken der Testabdeckung',
      'Typ des Ausdrucks',
      'implementation wie Klasse ordnen',
      'Interface herauslösen fehlgeschlagen: %s',
@@ -768,7 +773,8 @@ const
      'Vergleichen',
      'Marke „getestet von“', 'Marken „getestet von“',
      'Marke „Methoden getestet“', 'Marken „Methoden getestet“',
-     'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne'),
+     'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne',
+     'Marke „Wer gibt das frei?“', 'Marken „Wer gibt das frei?“'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
@@ -1163,6 +1169,7 @@ const
      'exit point highlight', 'exit point highlights', 'reassigned variable underline',
      'reassigned variable underlines',
      'learned suggestion', 'learned suggestions',
+     'test coverage bar', 'test coverage bars',
      'Expression type',
      'Order implementation like class',
      'Extract interface failed: %s',
@@ -1245,7 +1252,8 @@ const
      'Compare',
      '“tested by” mark', '“tested by” marks',
      '“methods tested” mark', '“methods tested” marks',
-     'thread sign in the gutter', 'thread signs in the gutter'));
+     'thread sign in the gutter', 'thread signs in the gutter',
+     '“who frees this?” mark', '“who frees this?” marks'));
 
 { TAtlasStrings }
 
