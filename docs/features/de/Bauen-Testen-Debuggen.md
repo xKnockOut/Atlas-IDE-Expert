@@ -275,6 +275,22 @@ Einstellungen: `debug.breakOnNextEvent`
 
 Einstellungen: `debug.stepFilters`
 
+<a id="window-atlasbreakpoints"></a>
+#### Haltepunktfenster
+
+Das andockbare Fenster „Haltepunkte“ (Atlas-Menü, „Haltepunkte (Atlas)“) zeigt dieselben Haltepunkte wie die Liste der IDE, dazu:
+
+- Suche über Dateiname, Methode, Bedingung und Etikett; mehrere Wörter müssen alle passen
+- Filterchips „aktiv“, „mit Bedingung“, „nie getroffen“ (in dieser Sitzung) und „greift nicht“
+- Trefferzahl dieser Debug-Sitzung; „Zähler zurücksetzen“ setzt sie auf 0
+- Etiketten wie `Import` oder `Bug 4711`, mehrere je Haltepunkt, mit Vervollständigung der schon benutzten; sie sind persönlich und bleiben nach einem Neustart erhalten
+- Gruppieren nach Etikett, Datei oder Gruppe, Gruppen auf- und zuklappbar
+- mehrere Haltepunkte gemeinsam ein- und ausschalten, mit Etikett versehen oder löschen (Rückgängig mit Strg+Z)
+- Doppelklick springt zur Stelle, Enter öffnet die Eigenschaften der IDE
+- Spalten über das Kontextmenü ein- und ausblenden, Breite und Reihenfolge merkt sich das Fenster
+
+Einstellungen: `debug.breakpointsWindow`
+
 #### Haltepunkte, die nicht greifen werden
 
 Vor jedem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte, offene Dateien mit dem Stand im Editor:
@@ -288,6 +304,16 @@ Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie 
 
 Einstellungen: `debug.checkBreakpoints`
 
+#### Haltepunkt nur für ein Objekt
+
+Ein Haltepunkt in `TKunde.Speichere` hält bei 500 Kunden 500 Mal. Im angehaltenen Programm, mit der Schreibmarke auf der Zeile des Haltepunkts, bietet das Kontextmenü des Editors unter Debuggen:
+
+- „Haltepunkt nur für dieses Objekt“: Atlas wertet `Pointer(Self)` aus und schreibt `Pointer(Self) = Pointer($0A3F1C20)` in die Bedingung. Die Adresse gilt nur in dieser Sitzung.
+- „Haltepunkt nur wenn …“: Auswahl aus den Feldern von `Self` mit einfachem Wert, etwa `FNr = 4711`; die Bedingung gilt auch in späteren Sitzungen.
+
+Eine vorhandene Bedingung bleibt erhalten und wird mit `and` verknüpft. Beides gibt es nur in Methoden, nicht in freien Routinen und Klassenmethoden. Vor dem nächsten Start fragt Atlas nach Adressbedingungen der letzten Sitzung: entfernen, durch eine Feldbedingung ersetzen oder behalten.
+
+Einstellungen: `debug.instanceBreakpoints`
 #### Haltepunkt-Sätze
 
 Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechselt zwischen benannten Sätzen von Haltepunkten, statt sie zu löschen und neu zu setzen.
@@ -348,6 +374,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 - Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
+#### Werte anheften
+
+- Im Debug-Hover steht unter dem Wert „Anheften“. Der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Summe = 125 ✕` am Ende seiner Zeile, hinter den Werten im Editor.
+- Seit dem vorigen Halt geänderte Werte stehen in der Warnfarbe.
+- Angeheftete Ausdrücke gelten je Projekt und bleiben über Debug-Sitzungen erhalten; ein Klick auf ✕ löst sie dauerhaft.
+- Ausgewertet wird ohne Nebenwirkungen: Ausdrücke mit Aufrufen bleiben `?`. Höchstens 100 je Projekt.
+
+Einstellung: `debug.pinnedValues`
 
 #### „kein Zugriff auf Wert“ erklärt
 

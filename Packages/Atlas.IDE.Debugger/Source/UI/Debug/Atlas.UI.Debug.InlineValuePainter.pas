@@ -5,7 +5,8 @@
 // Editorschrift einmal bestimmt. Gedimmt in der Farbe der Inlay-Hinweise,
 // seit dem letzten Halt geänderte Werte in der Warnfarbe. Zeichnet zwischen
 // SaveDC und RestoreDC; die IDE-Seite (TAtlasIdeDebugInlineValues) sucht Zeile
-// und Platz aus. Nur im Hauptthread verwenden.
+// und Platz aus. Angeheftete Werte (#526) stehen gerahmt mit einem Kreuz zum
+// Lösen. Nur im Hauptthread verwenden.
 
 interface
 
@@ -35,6 +36,10 @@ type
     /// <summary>AText gedimmt ab AX in ARect zeichnen („Warum bin ich hier?“, #1878); Ergebnis: rechte Kante.
     /// </summary>
     function DrawText(ADC: HDC; const ARect: TRect; AX: Integer; const AText: string): Integer;
+    /// <summary>Angeheftetes Feld (#526): „Ausdruck = Wert ✕“ ab AX gerahmt, geänderte Werte in der Warnfarbe;
+    /// AClose ist die Klickfläche des Kreuzes. Ergebnis: rechte Kante.</summary>
+    function DrawPin(ADC: HDC; const ARect: TRect; AX: Integer; const AItem: TAtlasInlineValueItem;
+      out AClose: TRect): Integer;
   end;
 
 implementation
@@ -137,6 +142,55 @@ begin
     mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
     TextOutW(ADC, AX, mTop, PChar(AText), Length(AText));
     Inc(Result, mSize.cx);
+  finally
+    RestoreDC(ADC, mSaved);
+  end;
+end;
+
+function TAtlasInlineValuePainter.DrawPin(ADC: HDC; const ARect: TRect; AX: Integer;
+  const AItem: TAtlasInlineValueItem; out AClose: TRect): Integer;
+const
+  cPad = 4;
+  cCorner = 4;
+  cClose = ' ✕';
+var
+  mSaved, mTop, mRight: Integer;
+  mSize, mCloseSize: TSize;
+  mCaption: string;
+  mPen: HPEN;
+begin
+  mCaption := AItem.Caption;
+  mSaved := SaveDC(ADC);
+  try
+    SelectObject(ADC, FFont.Handle);
+    SetBkMode(ADC, TRANSPARENT);
+    GetTextExtentPoint32W(ADC, PChar(mCaption), Length(mCaption), mSize);
+    GetTextExtentPoint32W(ADC, cClose, Length(cClose), mCloseSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    mRight := AX + cPad + mSize.cx + mCloseSize.cx + cPad;
+    // Rahmen in der Farbe des Texts, innen durchsichtig.
+    mPen := CreatePen(PS_SOLID, 1, FTextColor);
+    try
+      SelectObject(ADC, mPen);
+      SelectObject(ADC, GetStockObject(NULL_BRUSH));
+      RoundRect(ADC, AX, ARect.Top + 1, mRight, ARect.Bottom - 1, cCorner, cCorner);
+    finally
+      SelectObject(ADC, GetStockObject(BLACK_PEN));
+      DeleteObject(mPen);
+    end;
+    if AItem.Changed then
+    begin
+      SetTextColor(ADC, FChangedColor);
+    end
+    else
+    begin
+      SetTextColor(ADC, FTextColor);
+    end;
+    TextOutW(ADC, AX + cPad, mTop, PChar(mCaption), Length(mCaption));
+    SetTextColor(ADC, FTextColor);
+    TextOutW(ADC, AX + cPad + mSize.cx, mTop, cClose, Length(cClose));
+    AClose := TRect.Create(AX + cPad + mSize.cx, ARect.Top, mRight, ARect.Bottom);
+    Result := mRight;
   finally
     RestoreDC(ADC, mSaved);
   end;

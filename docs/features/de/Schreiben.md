@@ -41,7 +41,8 @@ Zurück zum [README](../../../README_DE.md)
   - nach `X is ` und `X as ` stehen die Nachfahren des Typs von `X` oben
 - Treffer, die nur wegen ihrer Sichtbarkeit fehlen (#2108, `completion.hiddenMembers`):
   - nach `X.Pr` nennt die Fußzeile private, protected und strict protected Mitglieder, die zum Getippten passen, etwa „1 Treffer nicht sichtbar: FPrivat (private in TZaehler) · Strg+Leertaste zeigt ihn“
-  - ein zweites Strg+Leertaste zeigt sie ausgegraut am Ende der Liste unter „Nicht sichtbar · lässt sich hier nicht einsetzen“ mit der Marke „private · TZaehler“; Enter setzt sie nicht ein
+  - ein zweites Strg+Leertaste zeigt sie ausgegraut am Ende der Liste unter „Nicht sichtbar · Enter bietet Aktionen an“ mit der Marke „private · TZaehler“
+  - Enter setzt sie nicht ein, sondern bietet „Sichtbarkeit von FPrivat auf protected/public anheben“ und bei Feldern „Eigenschaft Privat in TZaehler anlegen“ an (nur lesen oder lesen und schreiben); die Änderung trifft die Datei der Deklaration, auch wenn sie nicht offen ist. Für Mitglieder aus fremdem Code (Bibliothek, `$(BDS)`) gibt es keine Aktionen
   - ohne sichtbare Treffer nennt der leere Zustand sie
   - nur mit getipptem Präfix; ein gleichnamiges sichtbares Mitglied (Überladung) unterdrückt den Hinweis
 - gleichnamige Symbole aus verschiedenen Units
