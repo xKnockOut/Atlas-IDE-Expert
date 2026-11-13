@@ -875,6 +875,7 @@ contains
   Atlas.Common.Monitor.Results in 'Source\Monitor\Atlas.Common.Monitor.Results.pas',
   Atlas.Common.Monitor.Runs in 'Source\Monitor\Atlas.Common.Monitor.Runs.pas',
   Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas',
-  Atlas.Common.Lsp.EnclosingConditions in 'Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas';
+  Atlas.Common.Lsp.EnclosingConditions in 'Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas',
+  Atlas.Common.Lsp.UpcomingConditions in 'Source\Lsp\Atlas.Common.Lsp.UpcomingConditions.pas';
 
 end.

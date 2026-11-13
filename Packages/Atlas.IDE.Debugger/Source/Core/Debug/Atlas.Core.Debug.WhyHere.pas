@@ -85,7 +85,6 @@ type
   private
     FFileName: string;
     FBlocks: TAtlasWhyHereBlocks;
-    function ChildrenOf(ABlock, APart: Integer): TArray<Integer>;
     function Evaluable(ABlock, APart: Integer): Boolean;
     function Render(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
     function RenderValue(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
@@ -98,9 +97,13 @@ type
     function CaseText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
     function ConditionText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
     function BlockText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
-    class function ReadBlock(AItem: TJSONObject): TAtlasWhyHereBlock; static;
-    class function ReadPart(AItem: TJSONObject): TAtlasWhyHerePart; static;
   public
+    /// <summary>Teil der Antwort lesen (auch für die Vorhersage, #2169).</summary>
+    class function ReadPart(AItem: TJSONObject): TAtlasWhyHerePart; static;
+    /// <summary>Block der Antwort lesen: kind, line, branch und parts.</summary>
+    class function ReadBlock(AItem: TJSONObject): TAtlasWhyHereBlock; static;
+    /// <summary>Kinder des Teils APart im Block ABlock, in Reihenfolge.</summary>
+    function ChildrenOf(ABlock, APart: Integer): TArray<Integer>;
     /// <summary>Argumente des Befehls als JSON: [uri, line, depth].</summary>
     class function Arguments(const AUri: string; ALine, ADepth: Integer): string; static;
     /// <summary>Antwort des Servers lesen; False ohne format 1.</summary>

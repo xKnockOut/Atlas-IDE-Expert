@@ -157,6 +157,8 @@ begin
   Assert.IsTrue(ASettings.CodeLensCoveredBy, 'Marke „getestet von“ standardmäßig an (#1778)');
   Assert.AreEqual(1, ASettings.TestsCoveredByDepth, 'Tiefe „getestet von“ standardmäßig 1 (#1778)');
   Assert.IsFalse(ASettings.TestsCoveredByPrivate, '„getestet von“ an privaten Methoden standardmäßig aus (#1778)');
+  Assert.IsTrue(ASettings.CodeLensUntested, 'Marke „n von m Methoden getestet“ standardmäßig an (#1783)');
+  Assert.AreEqual(50, ASettings.TestsUntestedWarnPercent, 'gelb unter 50 % standardmäßig (#1783)');
   Assert.IsFalse(ASettings.TestsOnSave, 'Tests beim Speichern standardmäßig aus (#1775)');
   Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
@@ -211,6 +213,9 @@ begin
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
+  Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
+  Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
   Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
@@ -335,6 +340,8 @@ begin
   ASettings.CodeLensCoveredBy := False;
   ASettings.TestsCoveredByDepth := 3;
   ASettings.TestsCoveredByPrivate := True;
+  ASettings.CodeLensUntested := False;
+  ASettings.TestsUntestedWarnPercent := 75;
   ASettings.TestsOnSave := True;
   ASettings.TestsOnSaveMax := 12;
   ASettings.TestsFailureAtAssert := False;
@@ -389,6 +396,9 @@ begin
   ASettings.DebugInlineValuesPerLine := 7;
   ASettings.DebugWhyHere := False;
   ASettings.DebugWhyHereDepth := 6;
+  ASettings.DebugPredictConditions := False;
+  ASettings.DebugPredictDimSkipped := False;
+  ASettings.DebugPredictLines := 40;
   ASettings.DebugPinnedValues := False;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
@@ -490,6 +500,8 @@ begin
   Assert.IsFalse(ALoaded.CodeLensCoveredBy, 'codeLens.coveredBy (#1778)');
   Assert.AreEqual(3, ALoaded.TestsCoveredByDepth, 'tests.coveredBy.depth (#1778)');
   Assert.IsTrue(ALoaded.TestsCoveredByPrivate, 'tests.coveredBy.private (#1778)');
+  Assert.IsFalse(ALoaded.CodeLensUntested, 'codeLens.untested (#1783)');
+  Assert.AreEqual(75, ALoaded.TestsUntestedWarnPercent, 'tests.untested.warnPercent (#1783)');
   Assert.IsTrue(ALoaded.TestsOnSave, 'tests.onSave (#1775)');
   Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
@@ -545,6 +557,9 @@ begin
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
+  Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
+  Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
   Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);
@@ -1025,6 +1040,13 @@ begin
   Settings.TestsFromDebugStopMaxArray := 5000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFromDebugStopMaxArray, Settings.TestsFromDebugStopMaxArray);
+  // tests.untested.warnPercent (#1783): 0 bis 100.
+  Settings.TestsUntestedWarnPercent := -5;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsUntestedWarnPercent, Settings.TestsUntestedWarnPercent);
+  Settings.TestsUntestedWarnPercent := 150;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsUntestedWarnPercent, Settings.TestsUntestedWarnPercent);
   // tests.onSave.max (#1775): 1 bis 1000.
   Settings.TestsOnSaveMax := 0;
   Settings.Normalize;

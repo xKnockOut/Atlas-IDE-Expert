@@ -666,6 +666,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepTargets.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnclosingConditions.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UpcomingConditions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas"/>
@@ -1306,6 +1307,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.CoveredBy.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Untested.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Untested.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.OnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.OnSave.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Leaks.pas"/>
@@ -2297,6 +2300,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InlineValues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Pins.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Pins.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas"/>

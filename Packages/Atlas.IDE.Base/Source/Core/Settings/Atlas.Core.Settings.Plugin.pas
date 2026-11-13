@@ -85,6 +85,8 @@ type
     cMaxTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsCoveredByDepth;
     cMinTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMinTestsFromDebugStopMaxArray;
     cMaxTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMaxTestsFromDebugStopMaxArray;
+    cMinTestsUntestedWarnPercent = Atlas.Core.Settings.Plugin.Build.cMinTestsUntestedWarnPercent;
+    cMaxTestsUntestedWarnPercent = Atlas.Core.Settings.Plugin.Build.cMaxTestsUntestedWarnPercent;
     cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
@@ -109,6 +111,8 @@ type
     cMinInlineValuesPerLine = Atlas.Core.Settings.Plugin.Debug.cMinInlineValuesPerLine;
     cMinWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMinWhyHereDepth;
     cMaxWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMaxWhyHereDepth;
+    cMinPredictLines = Atlas.Core.Settings.Plugin.Debug.cMinPredictLines;
+    cMaxPredictLines = Atlas.Core.Settings.Plugin.Debug.cMaxPredictLines;
     cMaxQuickChordWait = Atlas.Core.Settings.Plugin.Bookmarks.cMaxQuickChordWait;
     cMinRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMinRecursionDepth;
     cMaxRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMaxRecursionDepth;
@@ -381,6 +385,7 @@ type
     property Metrics: Boolean read FEditorInsight.Metrics write FEditorInsight.Metrics;
     property CodeLensTests: Boolean read FEditorInsight.CodeLensTests write FEditorInsight.CodeLensTests;
     property CodeLensCoveredBy: Boolean read FEditorInsight.CodeLensCoveredBy write FEditorInsight.CodeLensCoveredBy;
+    property CodeLensUntested: Boolean read FEditorInsight.CodeLensUntested write FEditorInsight.CodeLensUntested;
     property TestRun: Boolean read FBuild.TestRun write FBuild.TestRun;
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
@@ -393,6 +398,8 @@ type
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
     property TestsCoveredByDepth: Integer read FBuild.TestsCoveredByDepth write FBuild.TestsCoveredByDepth;
     property TestsCoveredByPrivate: Boolean read FBuild.TestsCoveredByPrivate write FBuild.TestsCoveredByPrivate;
+    property TestsUntestedWarnPercent: Integer read FBuild.TestsUntestedWarnPercent
+      write FBuild.TestsUntestedWarnPercent;
     property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
     property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
@@ -503,6 +510,9 @@ type
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
+    property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
+    property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
     property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;

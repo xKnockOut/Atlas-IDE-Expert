@@ -102,6 +102,16 @@ Einstellungen: `tests.stale`, `tests.stale.units`
 
 Einstellungen: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
 
+### Ungetestete Methoden (#1783)
+
+- An der unit-Zeile einer normalen Unit mit Testunit steht „7 von 12 Methoden getestet“: wie viele ihrer Methoden mindestens ein Test aufruft (Tiefe und private Methoden wie bei „getestet von“). Unter `tests.untested.warnPercent` Prozent (Vorgabe 50) ist die Marke gelb, sonst grau. Units ohne Testunit bekommen keine Marke.
+- Klick zeigt ein Menü mit den ungetesteten Methoden; ein Eintrag springt zum Kopf der Methode, „Test anlegen“ öffnet bzw. legt die Testunit an.
+- Gezählt werden Aufrufe aus Tests, das ersetzt keine Abdeckungsmessung; das Menü sagt es dazu.
+- Befehl „Ungetestete Methoden des Projekts“ (Atlas-Menü und Befehlspalette, `Atlas.ListUntestedMethods`): für das Projekt der Unit im Editor je Unit eine Zeile in der Meldungsansicht, die mit den meisten ungetesteten Methoden zuerst, darunter je Methode eine Zeile, die per Doppelklick hinspringt. Units ohne Testunit stehen mit allen Methoden darin. Der Server begrenzt sich auf 60 s; was er nicht mehr erreicht, nennt eine Zeile am Ende.
+- Ausblenden je Datei über das Menü „Ausblenden“.
+
+Einstellungen: `codeLens.untested`, `tests.untested.warnPercent`
+
 ### Betroffene Tests beim Speichern (#1775)
 
 - Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
@@ -426,6 +436,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
+#### Bedingungen vorausschauen
+
+- Beim Halt stehen an den kommenden `if`, `while` und `case` derselben Routine (bis `debug.predictConditions.lines` Zeilen voraus, Vorgabe 20) die vorhergesagten Ergebnisse, als Vorhersage gekennzeichnet: `⟨= False · FOnline⟩` (der entscheidende Teil), bei `case` `⟨→ smManual⟩`.
+- Der Zweig, der übersprungen wird, ist blass gezeichnet, bei `case` alle anderen Zweige; der Text bleibt lesbar (`debug.predictConditions.dimSkipped`).
+- Vorhergesagt wird nur, was sich aus dem jetzigen Zustand ergibt: keine Zuweisung an eine beteiligte Variable dazwischen (auch `var`/`out`-Argumente, `Inc`/`Dec`), kein Aufruf dazwischen bei Feldern und globalen Variablen, kein `Exit`, `raise`, `goto`, `Break` oder `Continue`.
+- Aufrufe und Getter in der Bedingung wertet die Vorhersage nie aus; sie zählt nur, wenn der Kurzschluss ohne den Aufruf entscheidet.
+- Ein Klick auf einen Hinweis öffnet das Menü „Vorhersage für diese Sitzung aus“. Hinweise und Blässe verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
 #### Werte anheften
 
 - Im Debug-Hover steht unter dem Wert „Anheften“. Der Ausdruck steht danach bei jedem Halt als gerahmtes Feld `Summe = 125 ✕` am Ende seiner Zeile, hinter den Werten im Editor.

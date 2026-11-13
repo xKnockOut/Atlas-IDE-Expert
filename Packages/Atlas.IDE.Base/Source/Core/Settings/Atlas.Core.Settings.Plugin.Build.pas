@@ -17,9 +17,14 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  cDefaultTestsAffectedDepth = 3;
   /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
   cMinTestsCoveredByDepth = 1;
   cMaxTestsCoveredByDepth = 5;
+  /// <summary>Grenzen für tests.untested.warnPercent (#1783).</summary>
+  cMinTestsUntestedWarnPercent = 0;
+  cMaxTestsUntestedWarnPercent = 100;
+  cDefaultTestsUntestedWarnPercent = 50;
   /// <summary>Grenzen für tests.onSave.max (#1775).</summary>
   cMinTestsOnSaveMax = 1;
   cMaxTestsOnSaveMax = 1000;
@@ -106,6 +111,9 @@ type
     /// <summary>Marke „getestet von“ auch an privaten und geschützten Methoden (#1778, tests.coveredBy.private).
     /// </summary>
     TestsCoveredByPrivate: Boolean;
+    /// <summary>Unter diesem Anteil getesteter Methoden ist die Marke „n von m Methoden getestet“ gelb (#1783,
+    /// tests.untested.warnPercent).</summary>
+    TestsUntestedWarnPercent: Integer;
     /// <summary>Betroffene Tests nach dem Speichern im Hintergrund ausführen (#1775, tests.onSave): kein Fenster,
     /// Fortschritt und Ergebnis im Atlas-Statusfeld.</summary>
     TestsOnSave: Boolean;
@@ -213,6 +221,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben der Tests (tests.*).</summary>
+    procedure DefaultTests;
+    /// <summary>Einstellungen der Tests (tests.*) über AIo lesen bzw. schreiben.</summary>
+    procedure ExchangeTests(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -260,28 +272,7 @@ begin
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
   Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
-  Result.TestRun := True;
-  Result.TestsAfterBuild := False;
-  Result.TestsBuildFirst := True;
-  Result.TestsAffected := True;
-  Result.TestsLeakSetup := True;
-  Result.TestsAffectedDepth := 3;
-  Result.TestsAffectedBeforeCommit := False;
-  Result.TestsStale := True;
-  Result.TestsStaleUnits := False;
-  Result.TestsCoveredByDepth := 1;
-  Result.TestsCoveredByPrivate := False;
-  Result.TestsOnSave := False;
-  Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
-  Result.TestsFailureAtAssert := True;
-  Result.TestsFailureInline := True;
-  Result.TestsCompare := True;
-  Result.TestsCompareFormat := True;
-  Result.TestsApprovalFiles := True;
-  Result.TestsShowDuration := True;
-  Result.TestsSlowMs := cDefaultTestsSlowMs;
-  Result.TestsCaseTable := True;
-  Result.TestsLeaks := True;
+  Result.DefaultTests;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -330,6 +321,8 @@ begin
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
   TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
+  TestsUntestedWarnPercent := EnsureRange(TestsUntestedWarnPercent, cMinTestsUntestedWarnPercent,
+    cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
 end;
@@ -351,28 +344,7 @@ begin
   AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
   AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
   AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
-  AIo.Flag('TestRun', TestRun);
-  AIo.Flag('TestsAfterBuild', TestsAfterBuild);
-  AIo.Flag('TestsBuildFirst', TestsBuildFirst);
-  AIo.Flag('TestsAffected', TestsAffected);
-  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
-  AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
-  AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
-  AIo.Flag('TestsStale', TestsStale);
-  AIo.Flag('TestsStaleUnits', TestsStaleUnits);
-  AIo.Number('TestsCoveredByDepth', TestsCoveredByDepth);
-  AIo.Flag('TestsCoveredByPrivate', TestsCoveredByPrivate);
-  AIo.Flag('TestsOnSave', TestsOnSave);
-  AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
-  AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
-  AIo.Flag('TestsFailureInline', TestsFailureInline);
-  AIo.Flag('TestsCompare', TestsCompare);
-  AIo.Flag('TestsCompareFormat', TestsCompareFormat);
-  AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
-  AIo.Flag('TestsShowDuration', TestsShowDuration);
-  AIo.Number('TestsSlowMs', TestsSlowMs);
-  AIo.Flag('TestsCaseTable', TestsCaseTable);
-  AIo.Flag('TestsLeaks', TestsLeaks);
+  ExchangeTests(AIo);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);
@@ -393,6 +365,60 @@ begin
   AIo.Flag('TestsEnabled', TestsEnabled);
   AIo.Flag('BuildToolsEnabled', BuildToolsEnabled);
   AIo.Flag('BuildPipelineEnabled', BuildPipelineEnabled);
+end;
+
+procedure TAtlasPluginBuildSettings.DefaultTests;
+begin
+  TestRun := True;
+  TestsAfterBuild := False;
+  TestsBuildFirst := True;
+  TestsAffected := True;
+  TestsLeakSetup := True;
+  TestsAffectedDepth := cDefaultTestsAffectedDepth;
+  TestsAffectedBeforeCommit := False;
+  TestsStale := True;
+  TestsStaleUnits := False;
+  TestsCoveredByDepth := 1;
+  TestsCoveredByPrivate := False;
+  TestsUntestedWarnPercent := cDefaultTestsUntestedWarnPercent;
+  TestsOnSave := False;
+  TestsOnSaveMax := cDefaultTestsOnSaveMax;
+  TestsFailureAtAssert := True;
+  TestsFailureInline := True;
+  TestsCompare := True;
+  TestsCompareFormat := True;
+  TestsApprovalFiles := True;
+  TestsShowDuration := True;
+  TestsSlowMs := cDefaultTestsSlowMs;
+  TestsCaseTable := True;
+  TestsLeaks := True;
+end;
+
+procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('TestRun', TestRun);
+  AIo.Flag('TestsAfterBuild', TestsAfterBuild);
+  AIo.Flag('TestsBuildFirst', TestsBuildFirst);
+  AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
+  AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
+  AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
+  AIo.Flag('TestsStale', TestsStale);
+  AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Number('TestsCoveredByDepth', TestsCoveredByDepth);
+  AIo.Flag('TestsCoveredByPrivate', TestsCoveredByPrivate);
+  AIo.Number('TestsUntestedWarnPercent', TestsUntestedWarnPercent);
+  AIo.Flag('TestsOnSave', TestsOnSave);
+  AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
+  AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
+  AIo.Flag('TestsFailureInline', TestsFailureInline);
+  AIo.Flag('TestsCompare', TestsCompare);
+  AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
+  AIo.Flag('TestsShowDuration', TestsShowDuration);
+  AIo.Number('TestsSlowMs', TestsSlowMs);
+  AIo.Flag('TestsCaseTable', TestsCaseTable);
+  AIo.Flag('TestsLeaks', TestsLeaks);
 end;
 
 end.

@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Lsp.CoveredBy.Tests;
 
 // Tests für „getestet von“ (#1778): Methoden einer Unit (öffentlich, privat, Destruktor, Routinen), Zeile der
-// Marke, Tests je Methode nach Tiefe, Testunits, Verwendung durch eine Testunit und die Antwort als JSON.
+// Marke, Tests je Methode nach Tiefe, Testunits, Verwendung durch eine Testunit und die Antwort als JSON;
+// ungetestete Methoden des Projekts (#1783).
 
 interface
 
@@ -18,6 +19,8 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
     function Determine(const AFileName, AText: string; ADepth: Integer; AIncludePrivate: Boolean): TCoveredResult;
+    function RequestOf(ADepth: Integer; AIncludePrivate: Boolean): TCoveredRequest;
+    function Project(ABudgetMs: Integer): TUntestedResult;
   public
     [Setup]
     procedure Setup;
@@ -41,6 +44,14 @@ type
     procedure UsedByTestUnit;
     [Test]
     procedure JsonCarriesCountsAndTests;
+    [Test]
+    procedure ProjectListsUntestedPerUnit;
+    [Test]
+    procedure ProjectWithoutBudgetSkipsUnits;
+    [Test]
+    procedure UntestedOfKeepsOrder;
+    [Test]
+    procedure ProjectJsonCarriesUnitsAndMethods;
   end;
 
 implementation
@@ -253,22 +264,33 @@ begin
   FIndex := nil;
 end;
 
+function TCoveredByTests.RequestOf(ADepth: Integer; AIncludePrivate: Boolean): TCoveredRequest;
+begin
+  Result := Default(TCoveredRequest);
+  Result.Files := TArray<string>.Create(BasisFile, AndereFile, BasisTestFile);
+  Result.Options := TImpactOptions.Default;
+  Result.Options.Depth := ADepth;
+  Result.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', ProgramTests);
+  Result.IncludePrivate := AIncludePrivate;
+end;
+
 function TCoveredByTests.Determine(const AFileName, AText: string; ADepth: Integer;
   AIncludePrivate: Boolean): TCoveredResult;
-var
-  mRequest: TCoveredRequest;
 begin
-  mRequest := Default(TCoveredRequest);
-  mRequest.Files := TArray<string>.Create(BasisFile, AndereFile, BasisTestFile);
-  mRequest.Options := TImpactOptions.Default;
-  mRequest.Options.Depth := ADepth;
-  mRequest.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', ProgramTests);
-  mRequest.IncludePrivate := AIncludePrivate;
-  Result := TCoveredBy.Determine(FResolver, FIndex, AFileName, AText, mRequest,
+  Result := TCoveredBy.Determine(FResolver, FIndex, AFileName, AText, RequestOf(ADepth, AIncludePrivate),
     function(const AName: string; out AContent: string): Boolean
     begin
       Result := ReadFile(AName, AContent);
     end, nil);
+end;
+
+function TCoveredByTests.Project(ABudgetMs: Integer): TUntestedResult;
+begin
+  Result := TCoveredBy.Project(FResolver, FIndex, RequestOf(1, False),
+    function(const AName: string; out AContent: string): Boolean
+    begin
+      Result := ReadFile(AName, AContent);
+    end, nil, ABudgetMs);
 end;
 
 procedure TCoveredByTests.PublicMethodsAndInterfaceRoutines;
@@ -379,6 +401,70 @@ begin
     Assert.AreEqual('Basis.Tests.TBaselineTests.LeerFindetNicht',
       (mTests.Items[0] as TJSONObject).GetValue<string>('name'));
     Assert.AreEqual(1, (mTests.Items[0] as TJSONObject).GetValue<TJSONArray>('run').Count);
+    Assert.AreEqual(0, mJson.GetValue<TJSONArray>('limits').Count);
+  finally
+    mJson.Free;
+  end;
+end;
+
+procedure TCoveredByTests.ProjectListsUntestedPerUnit;
+var
+  mFound: TUntestedResult;
+begin
+  mFound := Project(TCoveredBy.cProjectTimeoutMs);
+  // Basis.Tests ist Testunit und fehlt; Andere hat keine Testunit und wird nicht analysiert.
+  Assert.AreEqual(2, Integer(Length(mFound.Units)));
+  Assert.AreEqual('Basis', mFound.Units[0].UnitName);
+  Assert.IsTrue(mFound.Units[0].HasTestUnit);
+  Assert.AreEqual(2, mFound.Units[0].Tested);
+  Assert.AreEqual(4, mFound.Units[0].Total);
+  Assert.AreEqual('TBaseline.Count Pruefe', Names(mFound.Units[0].Untested));
+  Assert.AreEqual('Andere', mFound.Units[1].UnitName);
+  Assert.IsFalse(mFound.Units[1].HasTestUnit);
+  Assert.AreEqual(0, mFound.Units[1].Tested);
+  Assert.AreEqual('Leer', Names(mFound.Units[1].Untested));
+  Assert.AreEqual(0, mFound.Skipped);
+end;
+
+procedure TCoveredByTests.ProjectWithoutBudgetSkipsUnits;
+var
+  mFound: TUntestedResult;
+begin
+  mFound := Project(0);
+  Assert.AreEqual(0, Integer(Length(mFound.Units)));
+  Assert.AreEqual(3, mFound.Skipped);
+  Assert.IsTrue(TImpactLimit.Time in mFound.Limits);
+end;
+
+procedure TCoveredByTests.UntestedOfKeepsOrder;
+var
+  mUnit: TUntestedUnit;
+begin
+  mUnit := TCoveredBy.UntestedOf(Determine(BasisFile, UnitBasis, 2, True), BasisFile);
+  Assert.AreEqual(BasisFile, mUnit.FileName);
+  Assert.AreEqual(6, mUnit.Total);
+  Assert.AreEqual('Intern TBaseline.Count Pruefe', Names(mUnit.Untested));
+end;
+
+procedure TCoveredByTests.ProjectJsonCarriesUnitsAndMethods;
+var
+  mJson: TJSONObject;
+  mUnit, mMethod: TJSONObject;
+begin
+  mJson := TCoveredBy.ProjectToJson(Project(TCoveredBy.cProjectTimeoutMs));
+  try
+    Assert.AreEqual(2, mJson.GetValue<TJSONArray>('units').Count);
+    mUnit := mJson.GetValue<TJSONArray>('units').Items[0] as TJSONObject;
+    Assert.AreEqual('Basis', mUnit.GetValue<string>('unit'));
+    Assert.IsTrue(mUnit.GetValue<string>('uri').StartsWith('file:'));
+    Assert.IsTrue(mUnit.GetValue<Boolean>('hasTestUnit'));
+    Assert.AreEqual(2, mUnit.GetValue<Integer>('tested'));
+    Assert.AreEqual(4, mUnit.GetValue<Integer>('total'));
+    mMethod := mUnit.GetValue<TJSONArray>('untested').Items[0] as TJSONObject;
+    Assert.AreEqual('TBaseline.Count', mMethod.GetValue<string>('name'));
+    Assert.AreEqual(LineOf(UnitBasis, 'function TBaseline.Count'), mMethod.GetValue<Integer>('line'));
+    Assert.AreEqual(Integer(Length('function TBaseline.')), mMethod.GetValue<Integer>('character'));
+    Assert.AreEqual(0, mJson.GetValue<Integer>('skipped'));
     Assert.AreEqual(0, mJson.GetValue<TJSONArray>('limits').Count);
   finally
     mJson.Free;

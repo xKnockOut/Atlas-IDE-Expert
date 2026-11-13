@@ -3,6 +3,7 @@
 // Anfrage atlas/coveredBy der Komposition (#1778): Tests je Methode einer Unit. Projektdateien, Testprogramme,
 // Testunits und Optionen wie atlas/affectedTests; Tiefe und private Methoden aus der Anfrage, der Text der Unit aus
 // der Anfrage (Puffer des Editors) oder wie jede andere Datei gelesen.
+// Anfrage atlas/untestedMethods (#1783): ungetestete Methoden aller Units des Projekts der Datei textDocument.
 
 interface
 
@@ -21,6 +22,9 @@ type
     /// <summary>Meldet die Anfrage nebenläufig am Verteiler an.</summary>
     class procedure Attach(ADispatcher: TJsonRpcDispatcher; const AServices: TShellAffectedTestsServices); static;
     class function Handle(const AServices: TShellAffectedTestsServices; const AParams: TJSONValue;
+      const ACancellation: IJsonRpcCancellationToken): TJSONValue; static;
+    /// <summary>atlas/untestedMethods: Units des Projekts der Datei textDocument.</summary>
+    class function HandleProject(const AServices: TShellAffectedTestsServices; const AParams: TJSONValue;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue; static;
     /// <summary>Projektdateien, Testunits und Optionen zu AUri; Tiefe und private Methoden aus AParams.</summary>
     class function RequestFor(const AServices: TShellAffectedTestsServices; const AUri: string;
@@ -56,6 +60,21 @@ begin
     begin
       Result := Handle(mServices, AParams, ACancellation);
     end);
+  ADispatcher.RegisterConcurrentRequest(TCoveredBy.cProjectMethod,
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := HandleProject(mServices, AParams, ACancellation);
+    end);
+end;
+
+/// <summary>textDocument.uri aus AParams; sonst Fehler InvalidParams für AMethod.</summary>
+function UriOf(const AParams: TJSONValue; const AMethod: string): string;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Result)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TCoveredByRequestText.UriMissing].Fmt([AMethod]));
+  end;
 end;
 
 class function TShellCoveredByRequest.RequestFor(const AServices: TShellAffectedTestsServices; const AUri: string;
@@ -90,11 +109,7 @@ var
   mResolver: TNameResolver;
   mFound: TCoveredResult;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TCoveredByRequestText.UriMissing].Fmt([TCoveredBy.cMethod]));
-  end;
+  mUri := UriOf(AParams, TCoveredBy.cMethod);
   mFileName := TDocumentUris.ToPath(mUri);
   // Der Puffer des Editors kann ungespeichert sein: Die Zeilen der Marken passen nur zu seinem Text.
   if not TJSONObject(AParams).TryGetValue<string>('text', mText) and not AServices.ReadText(mFileName, mText) then
@@ -112,6 +127,25 @@ begin
     mResolver.Free;
   end;
   Result := TCoveredBy.ToJson(mFound);
+end;
+
+class function TShellCoveredByRequest.HandleProject(const AServices: TShellAffectedTestsServices;
+  const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mRequest: TCoveredRequest;
+  mResolver: TNameResolver;
+  mFound: TUntestedResult;
+begin
+  mRequest := RequestFor(AServices, UriOf(AParams, TCoveredBy.cProjectMethod), TJSONObject(AParams));
+  mResolver := TNameResolver.Create(AServices.Index, AServices.EnsureUnit);
+  try
+    mResolver.Namespaces := AServices.Namespaces();
+    mFound := TCoveredBy.Project(mResolver, AServices.Index, mRequest, AServices.ReadText, ACancellation,
+      TCoveredBy.cProjectTimeoutMs);
+  finally
+    mResolver.Free;
+  end;
+  Result := TCoveredBy.ProjectToJson(mFound);
 end;
 
 initialization
