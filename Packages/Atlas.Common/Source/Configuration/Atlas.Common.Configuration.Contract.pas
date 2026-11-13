@@ -268,16 +268,22 @@ type
   end;
 
   /// <summary>Tests ("tests", #1353): betroffene Tests einer Änderung für --affected-tests, das MCP-Werkzeug
-  /// get_affected_tests und den Plugin-Befehl „Betroffene Tests ausführen“.</summary>
+  /// get_affected_tests und den Plugin-Befehl „Betroffene Tests ausführen“; Ordner der Vergleichsdateien (#1881).
+  /// </summary>
   TTestsSettings = record
   public const
     cMinAffectedDepth = 1;
     cMaxAffectedDepth = 5;
+    /// <summary>Vorgabe für tests.approvalFolder (#1881), relativ zum Ordner der atlas.json.</summary>
+    cDefaultApprovalFolder = 'Tests\Erwartet';
   public
     /// <summary>tests.affected: Befehl, MCP-Werkzeug und --affected-tests.</summary>
     Affected: Boolean;
     /// <summary>tests.affectedDepth: Tiefe der Verfolgung (1–5).</summary>
     AffectedDepth: Integer;
+    /// <summary>tests.approvalFolder (#1881): Ordner der Vergleichsdateien (*.approved.*, *.received.*) der
+    /// Hilfs-Unit Atlas.Testing.Approval, relativ zum Ordner der atlas.json oder absolut.</summary>
+    ApprovalFolder: string;
     class function Default: TTestsSettings; static;
   end;
 
@@ -463,6 +469,9 @@ type
     /// sind (private, strict, protected außerhalb von Nachfahren; #2108). Aus: wie bisher still weggelassen.
     /// </summary>
     HiddenMembers: Boolean;
+    /// <summary>Mitglieder nach "X." zusätzlich danach ordnen, wie oft ihr Name in den Units des Projekts vorkommt
+    /// (#2109); die eigene Gewichtung (#418) geht vor. Aus: wie bisher nur nach Treffer und Gelerntem.</summary>
+    ProjectFrequency: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -1239,6 +1248,7 @@ class function TTestsSettings.Default: TTestsSettings;
 begin
   Result.Affected := True;
   Result.AffectedDepth := 3;
+  Result.ApprovalFolder := cDefaultApprovalFolder;
 end;
 
 { TDirectiveSettings }
@@ -1421,6 +1431,7 @@ begin
   Result.ShowFmxUnits := False;
   Result.TypeGuards := True;
   Result.HiddenMembers := True;
+  Result.ProjectFrequency := True;
 end;
 
 { TServerSettings }

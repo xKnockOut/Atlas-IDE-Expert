@@ -451,6 +451,12 @@
                 "description": "Nur dunitx-fixture-not-registered (#1882): eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name.",
                 "x-description-en": "Only dunitx-fixture-not-registered (#1882): own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."
               },
+              "managedFields": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur dunitx-setup-not-torn-down (#1781): auch string- und dynamische Array-Felder melden, die Setup belegt und TearDown nicht leert (der Leckmonitor zählt sie jedem Test zu).",
+                "x-description-en": "Only dunitx-setup-not-torn-down (#1781): also report string and dynamic array fields that Setup fills and TearDown does not clear (the leak monitor counts them against every test)."
+              },
               "selfRegistering": {
                 "type": "array",
                 "items": {
@@ -1464,6 +1470,13 @@
           "description": "Mitglieder nennen, die nur wegen ihrer Sichtbarkeit fehlen: Passt das Getippte nach X. auf private, strict private, strict protected oder (außerhalb von Nachfahren) protected Mitglieder, nennt die Fußzeile sie mit Sichtbarkeit und Klasse („1 Treffer nicht sichtbar: FEntries (private in TAtlasUsage) · Strg+Leertaste zeigt ihn“). Ein zweites Strg+Leertaste zeigt sie ausgegraut in der Liste; übernommen werden sie nicht. Ohne getipptes Präfix kein Hinweis. Aus: wie bisher still weggelassen.",
           "x-description-en": "Name members that are missing only because of their visibility: if the text typed after X. matches private, strict private, strict protected or (outside descendants) protected members, the footer names them with visibility and class (\"1 match not visible: FEntries (private in TAtlasUsage) · Ctrl+Space shows it\"). Pressing Ctrl+Space again shows them greyed out in the list; they are not inserted. No notice without a typed prefix. Off: left out silently as before.",
           "x-issue": "#2108"
+        },
+        "projectFrequency": {
+          "type": "boolean",
+          "default": true,
+          "description": "Rangfolge aus der Verwendung im Projekt: Nach X. stehen Mitglieder, deren Name in den Units des Projekts oft vorkommt, weiter oben und tragen die Marke „im Projekt 214×“. Die Zählung kommt aus den Verwendungen des Index (index.usages), Bibliotheken zählen nicht. Die eigene Gewichtung (zuletzt, häufig) und ein besserer Treffer gehen immer vor. Aus: wie bisher nur nach Treffer und eigener Gewichtung.",
+          "x-description-en": "Ranking from usage in the project: after X. members whose name occurs often in the project's units move up and carry the tag \"in project 214×\". The count comes from the index usages (index.usages); libraries do not count. Your own weighting (recent, frequent) and a better match always come first. Off: only by match and your own weighting as before.",
+          "x-issue": "#2109"
         }
       },
       "x-scope": "global",
@@ -3277,13 +3290,20 @@
           "maximum": 5,
           "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test: 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
           "x-description-en": "Levels of the impact analysis from the change to the test: 1 = only tests that use the changed symbol directly."
+        },
+        "approvalFolder": {
+          "type": "string",
+          "default": "Tests\\Erwartet",
+          "description": "Ordner der Vergleichsdateien (*.approved.*, *.received.*) der Hilfs-Unit Atlas.Testing.Approval (#1881), relativ zum Ordner der atlas.json oder absolut. Die Hilfs-Unit sucht die nächste atlas.json über dem Testprogramm; das Plugin räumt hier liegengebliebene .received-Dateien auf.",
+          "x-description-en": "Folder of the approval files (*.approved.*, *.received.*) of the helper unit Atlas.Testing.Approval (#1881), relative to the folder of atlas.json or absolute. The helper unit looks for the nearest atlas.json above the test program; the plugin cleans up leftover .received files here.",
+          "x-scope": "project"
         }
       },
       "x-scope": "global",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-control": "Kontrollkästchen, Zahlenfeld",
-      "x-issue": "#1353"
+      "x-control": "Kontrollkästchen, Zahlenfeld, Textfeld",
+      "x-issue": "#1353, #1881"
     },
     "minConfidence": {
       "type": "string",
@@ -3873,6 +3893,33 @@
                 },
                 "description": "Prüfzustände dieses Trackers (#2126, #2127); fehlen sie, gilt issues.reviewStates.",
                 "x-description-en": "Review states of this tracker (#2126, #2127); if missing, issues.reviewStates applies."
+              },
+              "githubStateTarget": {
+                "type": "string",
+                "enum": [
+                  "project",
+                  "label"
+                ],
+                "description": "GitHub: Zustand im Projektfeld „Status“ (project) oder als Label (label) für diesen Tracker (#2134); fehlt er, gilt issues.github.stateTarget.",
+                "x-description-en": "GitHub: state in the project field \"Status\" (project) or as a label (label) for this tracker (#2134); if missing, issues.github.stateTarget applies."
+              },
+              "githubProject": {
+                "type": "string",
+                "examples": [
+                  "xKnockOut/4"
+                ],
+                "description": "GitHub: Projekt \"<owner>/<nummer>\" für Zustand und Aufnahme bei diesem Tracker (#2134); fehlt es, gilt issues.github.project.",
+                "x-description-en": "GitHub: project \"<owner>/<number>\" for state and adding at this tracker (#2134); if missing, issues.github.project applies."
+              },
+              "githubLinkBranch": {
+                "type": "boolean",
+                "description": "GitHub: Branch beim Beginnen auf GitHub anlegen und mit dem Issue verknüpfen (#2138); fehlt es, gilt issues.github.linkBranch.",
+                "x-description-en": "GitHub: create the branch on GitHub when starting and link it to the issue (#2138); if missing, issues.github.linkBranch applies."
+              },
+              "githubPrBase": {
+                "type": "string",
+                "description": "GitHub: Ziel-Branch des Pull Requests beim Beenden (#2136); fehlt es, gilt issues.github.prBase.",
+                "x-description-en": "GitHub: target branch of the pull request when finishing (#2136); if missing, issues.github.prBase applies."
               }
             }
           }

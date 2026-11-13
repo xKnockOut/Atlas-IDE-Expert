@@ -171,31 +171,6 @@ begin
   Result := Result + AName;
 end;
 
-function ParseObject(const AText: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AText);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 /// <summary>Fügt ACount Treffer zu APath hinzu (gleicher Pfad ohne Rücksicht auf Groß-/Kleinschreibung).</summary>
 procedure AddOrphan(var AOrphans: TArray<TAtlasBaselineOrphan>; const APath: string; ACount: Integer);
 var
@@ -311,7 +286,7 @@ begin
   Result := Default(TAtlasBaselineState);
   Result.Orphans := nil;
   Result.Exists := True;
-  mRoot := ParseObject(AText);
+  mRoot := TJsonRead.ParseObject(AText);
   mCheck := TBaselineFileCheck.Create(AFolder, AExists);
   try
     if mRoot = nil then
@@ -435,7 +410,7 @@ var
 begin
   AUpdate := Default(TAtlasBaselineUpdate);
   AUpdate.Orphans := nil;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     Result := (mRoot <> nil) and (mRoot.GetValue('total') is TJSONNumber) and (TJsonRead.Text(mRoot, 'file') <> '');
     if not Result then

@@ -608,7 +608,8 @@ begin
   mHash := 2166136261;
   for mChar in AText do
   begin
-    mHash := (mHash xor Ord(mChar)) * 16777619;
+    // Cardinal(...): FPC rechnet das Produkt in Int64; ohne Umwandlung meldet die Bereichsprüfung (-Cr) den Überlauf.
+    mHash := Cardinal((mHash xor Ord(mChar)) * 16777619);
   end;
   Result := '';
   for mIndex := 1 to 8 do

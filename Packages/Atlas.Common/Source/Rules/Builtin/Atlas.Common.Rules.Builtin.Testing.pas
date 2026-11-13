@@ -15,6 +15,17 @@
 //                               Atlas.Common.Rules.Builtin.Testing.TestCases.
 //   dunitx-fixture-not-registered  Testklasse nie registriert bzw. Unit in keinem Testprojekt (#1882), in
 //                               Atlas.Common.Rules.Builtin.Testing.Registration.
+//   dunitx-istrue-equality      Assert.IsTrue(A = B) statt AreEqual bzw. IsNull (#1780), in
+//                               Atlas.Common.Rules.Builtin.Testing.Asserts.
+//   dunitx-swapped-expected     Erwarteter und erhaltener Wert vertauscht (#1780), ebenda.
+//   dunitx-setup-not-torn-down  Feld im Setup erzeugt, im TearDown nicht freigegeben (#1781), in
+//                               Atlas.Common.Rules.Builtin.Testing.TearDown.
+//   dunitx-ignore-without-reason  [Ignore] ohne Begründung (#154), in Atlas.Common.Rules.Builtin.Testing.Attributes.
+//   dunitx-category-empty       [Category] ohne Namen (#154), ebenda.
+//   dunitx-fixture-without-test  [TestFixture] ohne einen einzigen Test (#154), ebenda.
+//   dunitx-duplicate-attribute  Dasselbe DUnitX-Attribut doppelt an einer Methode (#154), ebenda.
+//   dunitx-leak-monitor         Testprogramm ohne Leckmonitor von DUnitX (#1774), in
+//                               Atlas.Common.Rules.Builtin.Testing.LeakMonitor.
 
 interface
 
@@ -52,8 +63,12 @@ uses
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Testing.AreEqual,
+  Atlas.Common.Rules.Builtin.Testing.Asserts,
   Atlas.Common.Rules.Builtin.Testing.TestCases,
   Atlas.Common.Rules.Builtin.Testing.Registration,
+  Atlas.Common.Rules.Builtin.Testing.TearDown,
+  Atlas.Common.Rules.Builtin.Testing.Attributes,
+  Atlas.Common.Rules.Builtin.Testing.LeakMonitor,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -612,6 +627,14 @@ begin
   ARegistry.Register(TDUnitXAreEqualLengthRule.Create);
   ARegistry.Register(TDUnitXTestCaseMismatchRule.Create);
   ARegistry.Register(TDUnitXFixtureNotRegisteredRule.Create);
+  ARegistry.Register(TDUnitXIsTrueEqualityRule.Create);
+  ARegistry.Register(TDUnitXSwappedExpectedRule.Create);
+  ARegistry.Register(TDUnitXSetupNotTornDownRule.Create);
+  ARegistry.Register(TDUnitXIgnoreWithoutReasonRule.Create);
+  ARegistry.Register(TDUnitXCategoryEmptyRule.Create);
+  ARegistry.Register(TDUnitXFixtureWithoutTestRule.Create);
+  ARegistry.Register(TDUnitXDuplicateAttributeRule.Create);
+  ARegistry.Register(TDUnitXLeakMonitorRule.Create);
 end;
 
 initialization

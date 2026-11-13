@@ -21,6 +21,12 @@ type
     procedure SymbolizesStackTrace;
     [Test]
     procedure OtherTextGivesEmptyMap;
+    [Test]
+    procedure ReadsHeaderAndEntryPoint;
+    [Test]
+    procedure ResolvesAbsoluteAddress;
+    [Test]
+    procedure ReadsPackageBase;
   end;
 
 implementation
@@ -146,6 +152,56 @@ begin
     Assert.AreEqual(0, mMap.SymbolCount);
     Assert.IsFalse(mMap.Resolve($1000).Found);
     Assert.AreEqual('A+$1000' + sLineBreak, mMap.Symbolize('A+$1000', 'A'));
+  finally
+    mMap.Free;
+  end;
+end;
+
+procedure TMapFileTests.ReadsHeaderAndEntryPoint;
+var
+  mMap: TMapFile;
+begin
+  mMap := TMapFile.Create(cSampleMap);
+  try
+    Assert.AreEqual<UInt64>($400000, mMap.ImageBase);
+    Assert.AreEqual<UInt64>($1000, mMap.CodeStart);
+    Assert.AreEqual<UInt64>($A000, mMap.CodeSize);
+    // Program entry point at 0001:00000180 liegt relativ zur Modulbasis bei $1180.
+    Assert.AreEqual<UInt64>($1180, mMap.EntryPoint);
+  finally
+    mMap.Free;
+  end;
+end;
+
+procedure TMapFileTests.ResolvesAbsoluteAddress;
+var
+  mMap: TMapFile;
+begin
+  mMap := TMapFile.Create(cSampleMap);
+  try
+    Assert.AreEqual(503, mMap.ResolveAddress($401124, $400000).Line);
+    // Andere Basis (Modul verschoben geladen).
+    Assert.AreEqual(503, mMap.ResolveAddress($7FF61124, $7FF60000).Line);
+    Assert.IsFalse(mMap.ResolveAddress($1124, $400000).Found);
+    // Hinter dem Codesegment ($A000 ab $1000): Adresse eines anderen Moduls.
+    Assert.IsFalse(mMap.ResolveAddress($40B000, $400000).Found);
+    Assert.IsFalse(mMap.ResolveAddress($76B0F989, $400000).Found);
+  finally
+    mMap.Free;
+  end;
+end;
+
+procedure TMapFileTests.ReadsPackageBase;
+var
+  mMap: TMapFile;
+begin
+  mMap := TMapFile.Create(StringReplace(StringReplace(cSampleMap, '0001:00401000', '0001:50001000', []),
+    'Program entry point at 0001:00000180', '', []));
+  try
+    Assert.AreEqual<UInt64>($50000000, mMap.ImageBase);
+    Assert.AreEqual<UInt64>($1000, mMap.CodeStart);
+    Assert.AreEqual<UInt64>(0, mMap.EntryPoint);
+    Assert.AreEqual(503, mMap.ResolveAddress($50001124, mMap.ImageBase).Line);
   finally
     mMap.Free;
   end;

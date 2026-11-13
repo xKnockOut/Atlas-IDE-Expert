@@ -34,7 +34,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
-  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Shell.AffectedTests;
 
 const

@@ -27,6 +27,10 @@ type
     /// <summary>Läuft ein Auftrag länger als das Warten in Close, meldet Close False; der Thread endet später.</summary>
     [Test]
     procedure CloseReportsWorkStillRunning;
+    /// <summary>Nach einem Close mit False zählt ThreadCount den laufenden Thread, ein zweites Close wartet
+    /// auf ihn.</summary>
+    [Test]
+    procedure SecondCloseAfterTimeoutWaitsForRunningThread;
     /// <summary>Eine Ausnahme im Auftrag beendet den Thread nicht.</summary>
     [Test]
     procedure ExceptionDoesNotStopWorker;
@@ -298,6 +302,30 @@ begin
   Assert.IsTrue(WaitUntil(DoneReached(mGate, 1), 2000));
   mPool := nil;
   // Der Thread hält den Pool bis zu seinem Ende und gibt sich dann selbst frei.
+  TThread.Sleep(100);
+end;
+
+procedure TJsonRpcWorkerPoolTests.SecondCloseAfterTimeoutWaitsForRunningThread;
+var
+  mPool: IJsonRpcWorkerPool;
+  mGate, mQuick: ITestGate;
+begin
+  mPool := TJsonRpcWorkerPool.Create(4, 30000);
+  mGate := TTestGate.Create;
+  mQuick := TTestGate.Create;
+  // Ein Thread ist schon fertig, wenn Close aufgibt; den gibt Close frei, den anderen nicht.
+  mPool.Run(GateWork(mGate));
+  mPool.Run(QuickWork(mQuick));
+  Assert.IsTrue(WaitUntil(StartedReached(mGate, 1), 2000));
+  Assert.IsTrue(WaitUntil(DoneReached(mQuick, 1), 2000));
+  Assert.IsFalse(mPool.Close(30));
+  Assert.AreEqual(1, mPool.ThreadCount);
+  mGate.Open;
+  Assert.IsTrue(mPool.Close(5000));
+  Assert.AreEqual(0, mPool.ThreadCount);
+  Assert.AreEqual(1, mGate.Done);
+  mPool := nil;
+  // Der aufgegebene Thread gibt sich nach Execute selbst frei.
   TThread.Sleep(100);
 end;
 

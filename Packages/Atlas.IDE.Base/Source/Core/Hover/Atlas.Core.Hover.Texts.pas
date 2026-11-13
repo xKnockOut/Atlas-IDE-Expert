@@ -44,6 +44,8 @@ type
     /// </summary>
     Explain: string;
     DocWiki: string;
+    /// <summary>„Vergleichen“ unter einem fehlgeschlagenen Test mit Werten (#1779).</summary>
+    Compare: string;
     Cause: string;
     Stale: string;
     /// <summary>Beispiel aus dem Regelkatalog (#145): Link zum Auf- und Zuklappen, Überschriften falsch/richtig.

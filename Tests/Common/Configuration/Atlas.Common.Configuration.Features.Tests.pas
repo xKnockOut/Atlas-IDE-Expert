@@ -473,6 +473,10 @@ begin
   Assert.IsTrue(Parse('{}', Issues).Completion.HiddenMembers);
   Assert.IsFalse(Parse('{"completion": {"hiddenMembers": false}}', Issues).Completion.HiddenMembers);
   Assert.AreEqual(0, Integer(Length(Issues)));
+  // Rangfolge aus der Verwendung im Projekt (#2109)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ProjectFrequency);
+  Assert.IsFalse(Parse('{"completion": {"projectFrequency": false}}', Issues).Completion.ProjectFrequency);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
@@ -1276,6 +1280,12 @@ begin
     ' "reviewStates": "QA"}]}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.IsTrue(mIssues[0].Message.Contains('reviewStates'), mIssues[0].Message);
+  // #2134: githubStateTarget nur project oder label, githubProject ein Text.
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "github", "url": "https://github.com",' +
+    ' "githubStateTarget": "label", "githubProject": "beispiel/4"}, {"name": "B", "provider": "github",' +
+    ' "url": "https://github.example.com", "githubStateTarget": "beides", "githubProject": 4}]}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].Message.Contains('githubStateTarget'), mIssues[0].Message);
 end;
 procedure TConfigurationFeatureTests.ReadsMcpDisabledTools;
 var

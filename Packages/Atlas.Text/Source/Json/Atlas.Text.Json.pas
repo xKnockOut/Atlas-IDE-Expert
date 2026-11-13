@@ -30,6 +30,14 @@ type
   private
     class function NumberText(AValue: TJSONValue; out AText: string): Boolean; static;
   public
+    /// <summary>AJson als JSON-Wert; nil bei leerem oder ungültigem Text. Der Aufrufer gibt den Wert frei.
+    /// </summary>
+    class function Parse(const AJson: string): TJSONValue; static;
+    /// <summary>AJson als JSON-Objekt; nil bei leerem, ungültigem Text oder anderem Wert. Der Aufrufer gibt das
+    /// Objekt frei.</summary>
+    class function ParseObject(const AJson: string): TJSONObject; static;
+    /// <summary>Wie ParseObject, aber ein leeres Objekt statt nil. Der Aufrufer gibt das Objekt frei.</summary>
+    class function ParseObjectOrEmpty(const AJson: string): TJSONObject; static;
     /// <summary>AValue als Objekt, sonst nil.</summary>
     class function AsObject(AValue: TJSONValue): TJSONObject; static;
     /// <summary>Der Wert AName in AObject; nil, wenn AObject nil ist oder den Namen nicht hat.</summary>
@@ -109,6 +117,52 @@ begin
 end;
 
 { TJsonRead }
+
+class function TJsonRead.Parse(const AJson: string): TJSONValue;
+begin
+  Result := nil;
+  if Trim(AJson) = '' then
+  begin
+    Exit;
+  end;
+  try
+    Result := TJSONObject.ParseJSONValue(AJson);
+  except
+    // Ungültiger Text ist kein Fehler des Aufrufers: Er bekommt nil wie bei leerem Text.
+    on EJSONException do
+      Result := nil;
+  end;
+end;
+
+class function TJsonRead.ParseObject(const AJson: string): TJSONObject;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  // Kein Objekt: gar nicht erst parsen.
+  if Copy(TrimLeft(AJson), 1, 1) <> '{' then
+  begin
+    Exit;
+  end;
+  mValue := Parse(AJson);
+  if mValue is TJSONObject then
+  begin
+    Result := TJSONObject(mValue);
+  end
+  else
+  begin
+    mValue.Free;
+  end;
+end;
+
+class function TJsonRead.ParseObjectOrEmpty(const AJson: string): TJSONObject;
+begin
+  Result := ParseObject(AJson);
+  if Result = nil then
+  begin
+    Result := TJSONObject.Create;
+  end;
+end;
 
 class function TJsonRead.AsObject(AValue: TJSONValue): TJSONObject;
 begin

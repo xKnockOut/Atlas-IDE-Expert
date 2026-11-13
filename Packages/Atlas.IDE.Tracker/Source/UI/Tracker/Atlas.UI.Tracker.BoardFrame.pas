@@ -283,7 +283,8 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Board.Strings,
+  Atlas.UI.Tracker.Workflow.Strings;
 
 {$R *.dfm}
 
@@ -876,7 +877,7 @@ begin
   begin
     mName := AView.FEvents.ColumnName(mColumn);
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardColumnCount,
+  Result := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardColumnCount,
     [AnsiUpperCase(mName), AView.FLayout.Counts[AIndex]]);
   if not AView.FLayout.Narrow then
   begin
@@ -928,9 +929,9 @@ begin
   mName := mLane.Name;
   if mLane.Orphans then
   begin
-    mName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardLaneNone);
+    mName := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardLaneNone);
   end;
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardColumnCount, [mName, AView.FLayout.LaneCounts[AIndex]]);
+  Result := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardColumnCount, [mName, AView.FLayout.LaneCounts[AIndex]]);
   if AView.LaneCollapsed(TAtlasBoardLayout.LaneKey(mLane)) then
   begin
     Result := '▸ ' + Result;
@@ -1223,6 +1224,12 @@ end;
 
 /// <summary>Kopfleiste: Board, Sprint, „Nur meine“/„Alle“, Suche, Aktualisieren.</summary>
 procedure AddHead(AFrame: TAtlasBoardFrame);
+const
+  // Breiten der Auswahlen und Schalter in der Kopfleiste.
+  cBoardsWidth = 150;
+  cSprintsWidth = 130;
+  cMineWidth = 80;
+  cAllWidth = 50;
 begin
   AFrame.FParts.Head := TFlowPanel.Create(AFrame);
   AFrame.FParts.Head.Parent := AFrame;
@@ -1231,20 +1238,20 @@ begin
   AFrame.FParts.Head.BevelOuter := bvNone;
   AFrame.FParts.Head.AlignWithMargins := True;
   AFrame.FParts.Head.Margins.SetBounds(4, 4, 4, 0);
-  AFrame.FParts.Boards := AddCombo(AFrame, 150, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardBoardHint));
-  AFrame.FParts.Sprints := AddCombo(AFrame, 130, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardSprintHint));
-  AFrame.FParts.Mine := AddToggle(AFrame, 80, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardOnlyMine));
+  AFrame.FParts.Boards := AddCombo(AFrame, cBoardsWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardBoardHint));
+  AFrame.FParts.Sprints := AddCombo(AFrame, cSprintsWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardSprintHint));
+  AFrame.FParts.Mine := AddToggle(AFrame, cMineWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardOnlyMine));
   AFrame.FParts.Mine.Down := True;
-  AFrame.FParts.All := AddToggle(AFrame, 50, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardAll));
+  AFrame.FParts.All := AddToggle(AFrame, cAllWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardAll));
   AFrame.FParts.Search := TEdit.Create(AFrame);
   AFrame.FParts.Search.Parent := AFrame.FParts.Head;
   AFrame.FParts.Search.Width := AFrame.ScaleValue(150);
-  AFrame.FParts.Search.TextHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardSearchHint);
+  AFrame.FParts.Search.TextHint := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardSearchHint);
   AFrame.FParts.Search.AlignWithMargins := True;
   AFrame.FParts.Search.OnChange := AFrame.ChoiceChange;
   AFrame.FParts.Refresh := TButton.Create(AFrame);
   AFrame.FParts.Refresh.Parent := AFrame.FParts.Head;
-  AFrame.FParts.Refresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardRefresh);
+  AFrame.FParts.Refresh.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardRefresh);
   AFrame.FParts.Refresh.Width := AFrame.ScaleValue(90);
   AFrame.FParts.Refresh.AlignWithMargins := True;
   AFrame.FParts.Refresh.OnClick := AFrame.ButtonClick;
@@ -1321,10 +1328,10 @@ begin
   AFrame.FParts.Empty.Visible := False;
 end;
 
-function AddMenu(AFrame: TAtlasBoardFrame; AId: TAtlasTrackerTextId; ACommand: TBoardMenu): TMenuItem;
+function AddMenu(AFrame: TAtlasBoardFrame; const ACaption: string; ACommand: TBoardMenu): TMenuItem;
 begin
   Result := TMenuItem.Create(AFrame.FParts.Menu);
-  Result.Caption := TAtlasTrackerStrings.Text(AId);
+  Result.Caption := ACaption;
   Result.Tag := Ord(ACommand);
   Result.OnClick := AFrame.MenuClick;
   AFrame.FParts.Menu.Items.Add(Result);
@@ -1338,12 +1345,12 @@ begin
   AddHead(Self);
   AddBody(Self);
   FParts.Menu := TPopupMenu.Create(Self);
-  AddMenu(Self, TAtlasTrackerTextId.BoardMenuStart, TBoardMenu.Start).Default := True;
-  AddMenu(Self, TAtlasTrackerTextId.TrackerReviewCommand, TBoardMenu.Review);
-  AddMenu(Self, TAtlasTrackerTextId.BoardMenuPreview, TBoardMenu.Preview);
-  AddMenu(Self, TAtlasTrackerTextId.BoardMenuBrowse, TBoardMenu.Browse);
-  AddMenu(Self, TAtlasTrackerTextId.BoardMenuCopy, TBoardMenu.Copy);
-  AddMenu(Self, TAtlasTrackerTextId.BoardMenuAssign, TBoardMenu.Assign);
+  AddMenu(Self, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMenuStart), TBoardMenu.Start).Default := True;
+  AddMenu(Self, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewCommand), TBoardMenu.Review);
+  AddMenu(Self, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMenuPreview), TBoardMenu.Preview);
+  AddMenu(Self, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMenuBrowse), TBoardMenu.Browse);
+  AddMenu(Self, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMenuCopy), TBoardMenu.Copy);
+  AddMenu(Self, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMenuAssign), TBoardMenu.Assign);
 end;
 
 destructor TAtlasBoardFrame.Destroy;
@@ -1381,7 +1388,7 @@ function TAtlasBoardFrame.ColumnCaption(AColumn: Integer): string;
 begin
   if (AColumn < 0) or (AColumn > High(FSnapshot.Columns)) then
   begin
-    Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoColumn));
+    Exit(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoColumn));
   end;
   Result := FSnapshot.Columns[AColumn].Name;
   // GitHub ohne Projekt: Zustände des Issues in der Sprache der Oberfläche.
@@ -1389,11 +1396,11 @@ begin
   begin
     if FSnapshot.Columns[AColumn].Resolved then
     begin
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnClosed);
+      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardColumnClosed);
     end
     else
     begin
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnOpen);
+      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardColumnOpen);
     end;
   end;
 end;
@@ -1437,11 +1444,11 @@ begin
   begin
     if FOnlyMine and (Length(FSnapshot.Cards) > 0) then
     begin
-      FParts.Empty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmptyMine);
+      FParts.Empty.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardEmptyMine);
     end
     else
     begin
-      FParts.Empty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmpty);
+      FParts.Empty.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardEmpty);
     end;
     FParts.Empty.Visible := True;
     FParts.Empty.Top := FParts.View.Height + ScaleValue(8);
@@ -1576,7 +1583,7 @@ begin
   FParts.Refresh.Enabled := not AValue;
   if AValue then
   begin
-    SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardLoading));
+    SetStatus(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardLoading));
   end;
 end;
 

@@ -37,7 +37,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.CodeActions;
 
 type
@@ -88,7 +88,8 @@ uses
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -271,7 +272,7 @@ begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(CleanName(ATokens[mIndex].Text), AName) and
       ((ATokens[mIndex].Offset < ASkipFrom) or (ATokens[mIndex].Offset >= ASkipTo)) then
     begin
-      mPrevious := TRoutineBody.PreviousToken(ATokens, mIndex);
+      mPrevious := PreviousCode(ATokens, mIndex);
       if (mPrevious < 0) or not ATokens[mPrevious].IsSymbol('.') then
       begin
         Exit(ATokens[mIndex].Offset);
