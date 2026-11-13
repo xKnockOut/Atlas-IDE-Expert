@@ -450,6 +450,27 @@ Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
 Einstellungen: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs`
 
+### Mehrere Programme gemeinsam debuggen
+
+- Startverbünde stehen in der Projektdatei `.atlas` unter `launchGroups`, Pfade ab ihrem Ordner:
+
+```json
+"launchGroups": [{"name": "Server + Client", "items": [
+  {"project": "Server\\Server.dproj", "profile": "Lokal", "wait": "port", "value": 8080, "timeout": 20},
+  {"project": "Client\\Client.dproj", "debug": false}]}]
+```
+
+- je Projekt: Startprofil (`profile`, sonst die Startoptionen des Projekts), mit Debugger (`debug`, Vorgabe ja) und die Wartebedingung vor dem nächsten (`wait`: `seconds` mit `value` Sekunden, `port` bis `localhost:value` Verbindungen annimmt, `window` bis das Programm ein sichtbares Hauptfenster hat; höchstens `timeout` Sekunden, Vorgabe 30)
+- „Atlas: Startverbünde …“ im Atlas-Menü und in der Befehlspalette zeigt die Verbünde mit ihren Projekten, setzt den aktiven Verbund (je Projektgruppe, persönlich) und startet ihn; „In .atlas bearbeiten“ öffnet die Projektdatei
+- F9 ohne laufende Sitzung startet den aktiven Verbund, sonst startet die IDE wie gewohnt
+- Atlas baut zuerst die geänderten Projekte und startet dann eins nach dem anderen; eine Leiste oben rechts zeigt den Lauf, etwa „Server ✓ · Client startet …“
+- Scheitert ein Bau oder Start oder läuft eine Wartezeit ab, hält der Lauf an und fragt „Trotzdem weiter“ oder „Alle beenden“
+- Strg+F2 bzw. „Atlas: Startverbund beenden“ beendet alle Programme des Verbunds
+- Das Statusfeld zeigt je Programm „läuft“, „angehalten“ oder „beendet“; ein Klick macht den nächsten Prozess des Verbunds zum aktuellen der IDE; hält der Debugger, nennt die Meldung den Prozess
+- Grenzen: Mit Debugger gestartete Programme nutzen die Parameter des Startprofils, Arbeitsordner und Umgebung aber aus den Startoptionen der IDE; nur Projekte der offenen Projektgruppe
+
+Einstellungen: `debug.launchGroups`
+
 ### Exceptions
 
 <a id="window-atlasdebugexceptions"></a>

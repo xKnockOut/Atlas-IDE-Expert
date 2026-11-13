@@ -228,6 +228,10 @@ type
     /// <summary>Abstand der Abfragen der Prozessliste beim Warten in ms (#2171, debug.reattach.waitIntervalMs).
     /// </summary>
     DebugReattachWaitIntervalMs: Integer;
+    /// <summary>Startverbünde (#867, debug.launchGroups): Verbünde aus der Projektdatei .atlas ("launchGroups"),
+    /// Fenster „Startverbünde“; F9 startet den aktiven Verbund, Strg+F2 beendet alle seine Programme. Aus = F9
+    /// startet nur das aktive Projekt.</summary>
+    DebugLaunchGroups: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -404,6 +408,7 @@ begin
   DebugReattach := True;
   DebugReattachKey := cDefaultReattachKey;
   DebugReattachWaitIntervalMs := cDefaultReattachWaitMs;
+  DebugLaunchGroups := True;
   StartProfiles := True;
   StartProfilesStatusField := True;
   DebugEnabled := True;
@@ -425,6 +430,7 @@ begin
   AIo.Flag('DebugReattach', DebugReattach);
   AIo.Number('DebugReattachKey', DebugReattachKey);
   AIo.Number('DebugReattachWaitIntervalMs', DebugReattachWaitIntervalMs);
+  AIo.Flag('DebugLaunchGroups', DebugLaunchGroups);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);
