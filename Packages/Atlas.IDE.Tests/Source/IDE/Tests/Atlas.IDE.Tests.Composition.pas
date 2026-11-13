@@ -28,6 +28,9 @@
 //   dem Debug-Halt anlegen …“ (#1873, über Atlas.IDE.Tests.Composition.Cases; Palette,
 //   Kontextmenü beim Debuggen, Knopf der Exception-Leiste über die Kennung),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
+// - die Schicht der Testabdeckung in der Rinne (#275, IAtlasGutterLayer) mit den Befehlen „Testabdeckung laden …“
+//   und „Testabdeckung ausblenden“; ihr Zustand ist ein eigener Teil der Feature-Tabelle (läuft auch ohne
+//   tests.run, solange tests.coverage an ist),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
@@ -120,6 +123,7 @@ uses
   Atlas.IDE.Tests.UnitCommands,
   Atlas.IDE.Tests.Explorer,
   Atlas.IDE.Tests.StatusField,
+  Atlas.IDE.Tests.Coverage,
   Atlas.UI.Tests.Strings;
 
 var
@@ -380,6 +384,18 @@ begin
   end;
 end;
 
+{ Testabdeckung (#275) }
+
+function CoverageVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestCoverage and TAtlasIdeTestCoverage.Started;
+end;
+
+function CoverageClearVisible: Boolean;
+begin
+  Result := CoverageVisible and TAtlasIdeTestCoverage.Loaded;
+end;
+
 { Langsamste Tests (#1772) }
 
 function SlowestVisible: Boolean;
@@ -595,7 +611,12 @@ begin
       Guarded(TAtlasFeature.Generate, TestFromDebugStop), TestFromDebugVisible),
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
-      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
+      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint),
+    // Testabdeckung (#275): sichtbar mit tests.coverage; ausblenden nur mit geladenem Bericht.
+    Command('Atlas.LoadTestCoverage', TAtlasTestsTextId.CoverageLoadCommand,
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Choose), CoverageVisible),
+    Command('Atlas.ClearTestCoverage', TAtlasTestsTextId.CoverageClearCommand,
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Clear), CoverageClearVisible)];
   // Testlisten (#2167): je Liste ein Befehl, mit tests.lists.
   Result := Result + ListCommands;
 end;
@@ -675,6 +696,8 @@ begin
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.LoadTestCoverage', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ClearTestCoverage', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ListUntestedMethods', TAtlasMenuPlace.AtlasMenu),
@@ -843,7 +866,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
-      end, TestsStarted, StartTests, StopTests)];
+      end, TestsStarted, StartTests, StopTests),
+    // Testabdeckung (#275): liest nur einen Bericht, baut und startet nichts; unabhängig von tests.run.
+    TAtlasFeaturePart.When('TestCoverage',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestCoverage;
+      end, TAtlasIdeTestCoverage.Started, TAtlasIdeTestCoverage.Start, TAtlasIdeTestCoverage.Stop)];
 end;
 
 class function TAtlasTestsModule.RegisterModule: Boolean;
@@ -878,6 +907,8 @@ begin
   GScope.Provide(IAtlasTestsSource, mRef);
   // „Vergleichen“ (#1779) im Befund-Hover und auf der Kachel „Testergebnisse“.
   GScope.Provide(IAtlasTestValues, mRef);
+  // Balken der Testabdeckung in der Rinne (#275).
+  TAtlasIdeTestCoverage.ProvideIn(GScope);
   ProvideSettingsSections;
   Result := True;
 end;
