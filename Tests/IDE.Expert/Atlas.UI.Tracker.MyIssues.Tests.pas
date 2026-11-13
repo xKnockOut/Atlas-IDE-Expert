@@ -81,7 +81,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.MyIssues;
+  Atlas.UI.Tracker.MyIssues,
+  Atlas.UI.Tracker.MyIssues.Text;
 
 type
   /// <summary>Quelle des Bereichs für die Tests; merkt sich die Aufrufe.</summary>

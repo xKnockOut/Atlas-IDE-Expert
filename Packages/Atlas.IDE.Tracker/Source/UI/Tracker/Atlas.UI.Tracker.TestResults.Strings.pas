@@ -8,19 +8,18 @@ interface
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasTestResultsTextId = (
-    WelcomeProjectsMissing, WelcomeTestsTitle, WelcomeTestsQueryNow, WelcomeTestsOpenProject, WelcomeTestsFailed,
-    WelcomeTestsAllPassed, WelcomeTestsNonePassed, WelcomeTestsNoLocalRun, WelcomeTestsYesterday,
-    WelcomeTestsJustNow, WelcomeTestsMinutesAgo, WelcomeTestsHoursAgo, WelcomeTestsDaysAgo, WelcomeTestsPassed,
-    WelcomeTestsSkipped, WelcomeTestsBuildSuccess, WelcomeTestsBuildFailure, WelcomeTestsBuildUnstable,
-    WelcomeTestsBuildAborted, WelcomeTestsBuildNotBuilt, WelcomeTestsBuildUnknown, WelcomeTestsCiUnauthorized,
-    WelcomeTestsCiNotFound, WelcomeTestsCiQuerying, WelcomeTestsLocalGreenServerRed,
-    WelcomeTestsLocalRedServerGreen, WelcomeTestsEmpty, WelcomeTestsRerun, WelcomeTestsDebug, WelcomeTestsBrowse,
-    WelcomeTestsServerTag, WelcomeTestsHintLocal, WelcomeTestsHintJob, WelcomeTestsHintAttempt,
-    WelcomeTestsHintClick, WelcomeTestsHintFailure, WelcomeTestsMore, WelcomeTestsNotFound, CiLoginTitle,
-    CiLoginUser, CiLoginToken, CiLoginNoServer, NotificationsBuildServerRed, WelcomeTestsCiTimeout,
+  TAtlasTestResultsTextId = (WelcomeProjectsMissing, WelcomeTestsTitle, WelcomeTestsQueryNow,
+    WelcomeTestsOpenProject, WelcomeTestsFailed, WelcomeTestsAllPassed, WelcomeTestsNonePassed,
+    WelcomeTestsNoLocalRun, WelcomeTestsYesterday, WelcomeTestsJustNow, WelcomeTestsMinutesAgo,
+    WelcomeTestsHoursAgo, WelcomeTestsDaysAgo, WelcomeTestsPassed, WelcomeTestsSkipped, WelcomeTestsBuildSuccess,
+    WelcomeTestsBuildFailure, WelcomeTestsBuildUnstable, WelcomeTestsBuildAborted, WelcomeTestsBuildNotBuilt,
+    WelcomeTestsBuildUnknown, WelcomeTestsCiUnauthorized, WelcomeTestsCiNotFound, WelcomeTestsCiQuerying,
+    WelcomeTestsLocalGreenServerRed, WelcomeTestsLocalRedServerGreen, WelcomeTestsEmpty, WelcomeTestsRerun,
+    WelcomeTestsDebug, WelcomeTestsBrowse, WelcomeTestsServerTag, WelcomeTestsHintLocal, WelcomeTestsHintJob,
+    WelcomeTestsHintAttempt, WelcomeTestsHintClick, WelcomeTestsHintFailure, WelcomeTestsMore, WelcomeTestsNotFound,
+    CiLoginTitle, CiLoginUser, CiLoginToken, CiLoginNoServer, NotificationsBuildServerRed, WelcomeTestsCiTimeout,
     WelcomeTestsCiServerError, WelcomeTestsCiUnknownProvider, WelcomeTestsCiNotQueried, WelcomeTestsCiUnreachable,
-    WelcomeTestsStale, CiLoginCommand, CiLoginSaved, CiLoginRemoved, CiLoginFailed, CiLoginIncomplete);
+    WelcomeTestsStale, CiLoginSaved, CiLoginRemoved, CiLoginFailed, CiLoginIncomplete);
 
   TAtlasTestResultsStrings = class
   public
@@ -86,7 +85,6 @@ const
      'noch nicht abgefragt',
      'nicht erreichbar',
      'Stand vom %s',
-     'Zugang zum Build-Server hinterlegen …',
      'Build-Server: Zugang im Anmeldespeicher von Windows gespeichert.',
      'Build-Server: Zugang aus dem Anmeldespeicher von Windows entfernt.',
      'Build-Server: Der Anmeldespeicher von Windows hat den Zugang nicht übernommen.',
@@ -140,7 +138,6 @@ const
      'not queried yet',
      'not reachable',
      'as of %s',
-     'Store build server access …',
      'Build server: access stored in the Windows Credential Manager.',
      'Build server: access removed from the Windows Credential Manager.',
      'Build server: the Windows Credential Manager did not accept the access.',

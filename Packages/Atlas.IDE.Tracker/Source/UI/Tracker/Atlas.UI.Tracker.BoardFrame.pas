@@ -1224,6 +1224,12 @@ end;
 
 /// <summary>Kopfleiste: Board, Sprint, „Nur meine“/„Alle“, Suche, Aktualisieren.</summary>
 procedure AddHead(AFrame: TAtlasBoardFrame);
+const
+  // Breiten der Auswahlen und Schalter in der Kopfleiste.
+  cBoardsWidth = 150;
+  cSprintsWidth = 130;
+  cMineWidth = 80;
+  cAllWidth = 50;
 begin
   AFrame.FParts.Head := TFlowPanel.Create(AFrame);
   AFrame.FParts.Head.Parent := AFrame;
@@ -1232,11 +1238,11 @@ begin
   AFrame.FParts.Head.BevelOuter := bvNone;
   AFrame.FParts.Head.AlignWithMargins := True;
   AFrame.FParts.Head.Margins.SetBounds(4, 4, 4, 0);
-  AFrame.FParts.Boards := AddCombo(AFrame, 150, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardBoardHint));
-  AFrame.FParts.Sprints := AddCombo(AFrame, 130, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardSprintHint));
-  AFrame.FParts.Mine := AddToggle(AFrame, 80, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardOnlyMine));
+  AFrame.FParts.Boards := AddCombo(AFrame, cBoardsWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardBoardHint));
+  AFrame.FParts.Sprints := AddCombo(AFrame, cSprintsWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardSprintHint));
+  AFrame.FParts.Mine := AddToggle(AFrame, cMineWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardOnlyMine));
   AFrame.FParts.Mine.Down := True;
-  AFrame.FParts.All := AddToggle(AFrame, 50, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardAll));
+  AFrame.FParts.All := AddToggle(AFrame, cAllWidth, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardAll));
   AFrame.FParts.Search := TEdit.Create(AFrame);
   AFrame.FParts.Search.Parent := AFrame.FParts.Head;
   AFrame.FParts.Search.Width := AFrame.ScaleValue(150);

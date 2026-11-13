@@ -9,35 +9,38 @@ interface
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasWorkflowTextId = (
-    TrackerEndCaption, TrackerEndState, TrackerEndKeepState, TrackerEndComment, TrackerEndHandOver, TrackerEndSend,
-    TrackerEndCancel, TrackerEndSending, TrackerWriteForbidden, TrackerWriteUnauthorized, TrackerWriteNotFound,
-    TrackerWriteInvalid, TrackerWriteServer, TrackerWriteNetwork, TrackerWriteTimeout, TrackerWriteNotConfigured,
-    TrackerWriteUnsupported, TrackerWriteReason, TrackerPartState, TrackerPartAssigned, TrackerPartHandedOver,
-    TrackerPartComment, TrackerStartSynced, TrackerStartFailed, TrackerEndSent, TrackerCommentSent,
-    CommentEditorPreview, CommentEditorEdit, CommentEditorSnippets, CommentEditorNoSnippets,
-    CommentEditorDraftRestored, CommentEditorDraftOffered, CommentEditorDraftSaved, CommentEditorDraftDiscard,
-    CommentEditorDraftApply, CommentEditorPreviewEmpty, CommentEditorImage, CommentEditorHint, TrackerEndTransition,
-    TrackerEndTransitionFrom, TrackerEndNotAllowed, TrackerPartTransition, TrackerPartTransitionTo,
-    TrackerStartNoTransition, TrackerStartNoTransitionNone, TrackerQuoted, TrackerEndTime, TrackerEndAddField,
-    TrackerEndFixField, TrackerStepTime, TrackerStepFields, TrackerStepComment, TrackerStepState,
-    TrackerStepTransition, TrackerPartTime, TrackerPartFields, TrackerEndPartial, TrackerReviewCommand,
-    TrackerReviewHint, TrackerReviewCaption, TrackerReviewBranch, TrackerReviewSwitch, TrackerReviewChooseBranch,
-    TrackerReviewNoBranch, TrackerReviewSaved, TrackerReviewSavedNone, TrackerReviewSwitchWaiting,
-    TrackerReviewSwitching, TrackerReviewSwitched, TrackerReviewSwitchFailed, TrackerReviewBuildWaiting,
-    TrackerReviewBuildRunning, TrackerReviewBuildDone, TrackerReviewBuildFailed, TrackerReviewBuildNotStarted,
-    TrackerReviewBuildSkipped, TrackerReviewTestsWaiting, TrackerReviewTestsRunning, TrackerReviewTestsDone,
-    TrackerReviewTestsFailed, TrackerReviewTestsSkipped, TrackerReviewResult, TrackerReviewComment,
-    TrackerReviewBack, TrackerReviewLater, TrackerReviewSend, TrackerReviewSendBack, TrackerReviewDone,
-    TrackerReviewBackDone, TrackerReviewBackFailed, TrackerReviewBusy, TrackerReviewNoVcs, StatusStateHint,
-    StatusMenuComment, StatusMenuNone, StatusMenuFailed, StatusStateFailed, StatusDialogTitle, StatusDialogChoice,
-    StatusDialogKeep, PaletteStateGroup, PaletteStateStatus, TrackerPartSprint);
+  TAtlasWorkflowTextId = (TrackerEndCaption, TrackerEndState, TrackerEndKeepState, TrackerEndComment,
+    TrackerEndHandOver, TrackerEndSend, TrackerEndCancel, TrackerEndSending, TrackerWriteForbidden,
+    TrackerWriteUnauthorized, TrackerWriteNotFound, TrackerWriteInvalid, TrackerWriteServer, TrackerWriteNetwork,
+    TrackerWriteTimeout, TrackerWriteNotConfigured, TrackerWriteUnsupported, TrackerWriteReason, TrackerPartState,
+    TrackerPartAssigned, TrackerPartHandedOver, TrackerPartComment, TrackerStartSynced, TrackerStartFailed,
+    TrackerEndSent, TrackerCommentSent, CommentEditorPreview, CommentEditorEdit, CommentEditorSnippets,
+    CommentEditorNoSnippets, CommentEditorDraftRestored, CommentEditorDraftOffered, CommentEditorDraftSaved,
+    CommentEditorDraftDiscard, CommentEditorDraftApply, CommentEditorPreviewEmpty, CommentEditorImage,
+    CommentEditorHint, TrackerEndTransition, TrackerEndTransitionFrom, TrackerEndNotAllowed, TrackerPartTransition,
+    TrackerPartTransitionTo, TrackerStartNoTransition, TrackerStartNoTransitionNone, TrackerQuoted, TrackerEndTime,
+    TrackerEndAddField, TrackerEndFixField, TrackerStepTime, TrackerStepFields, TrackerStepComment,
+    TrackerStepState, TrackerStepTransition, TrackerPartTime, TrackerPartFields, TrackerEndPartial,
+    TrackerReviewCommand, TrackerReviewHint, TrackerReviewCaption, TrackerReviewBranch, TrackerReviewSwitch,
+    TrackerReviewChooseBranch, TrackerReviewNoBranch, TrackerReviewSaved, TrackerReviewSavedNone,
+    TrackerReviewSwitchWaiting, TrackerReviewSwitching, TrackerReviewSwitched, TrackerReviewSwitchFailed,
+    TrackerReviewBuildWaiting, TrackerReviewBuildRunning, TrackerReviewBuildDone, TrackerReviewBuildFailed,
+    TrackerReviewBuildNotStarted, TrackerReviewBuildSkipped, TrackerReviewTestsWaiting, TrackerReviewTestsRunning,
+    TrackerReviewTestsDone, TrackerReviewTestsFailed, TrackerReviewTestsSkipped, TrackerReviewResult,
+    TrackerReviewComment, TrackerReviewBack, TrackerReviewLater, TrackerReviewSend, TrackerReviewSendBack,
+    TrackerReviewDone, TrackerReviewBackDone, TrackerReviewBackFailed, TrackerReviewBusy, TrackerReviewNoVcs,
+    StatusStateHint, StatusMenuComment, StatusMenuNone, StatusMenuFailed, StatusStateFailed, StatusDialogTitle,
+    StatusDialogChoice, StatusDialogKeep, PaletteStateGroup, PaletteStateStatus, TrackerPartSprint,
+    WelcomeIssuesLocalChanges);
 
   TAtlasWorkflowStrings = class
   public
     class function Text(AId: TAtlasWorkflowTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasWorkflowTextId; const AArgs: array of const): string; static;
+    /// <summary>Oberfläche englisch: für Vorgaben, die der Sprache folgen (Textbausteine, Kommentar beim Beenden).
+    /// </summary>
+    class function English: Boolean; static;
   end;
 
 implementation
@@ -151,7 +154,8 @@ const
      'Zustand behalten (nur Kommentar)',
      'Aktuelles Issue',
      'Enter führt den Übergang aus',
-     'in Sprint „%s“'),
+     'in Sprint „%s“',
+     'Das Projekt hat %d lokale Änderung(en). Trotzdem Branch %s anlegen bzw. auschecken?%sGit nimmt die Änderungen mit, solange sie nicht mit dem Branch kollidieren; sonst bricht der Wechsel ohne Änderung ab.'),
     ('End %s',
      'Target state:',
      'Keep state',
@@ -254,7 +258,8 @@ const
      'Keep the state (comment only)',
      'Current issue',
      'Enter runs the transition',
-     'added to sprint "%s"'));
+     'added to sprint "%s"',
+     'The project has %d local change(s). Create or check out branch %s anyway?%sGit carries the changes over as long as they do not collide with the branch; otherwise the switch stops without changes.'));
 
 { TAtlasWorkflowStrings }
 
@@ -266,6 +271,11 @@ end;
 class function TAtlasWorkflowStrings.Fmt(AId: TAtlasWorkflowTextId; const AArgs: array of const): string;
 begin
   Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+class function TAtlasWorkflowStrings.English: Boolean;
+begin
+  Result := TAtlasStrings.Language = TAtlasLanguage.English;
 end;
 
 end.

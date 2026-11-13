@@ -67,8 +67,6 @@ implementation
 
 uses
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.Attach.Strings,
   System.SysUtils,
   Vcl.Forms,
   Vcl.ComCtrls,
@@ -636,7 +634,7 @@ begin
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.IsTrue(mFrame.Parts.Attach.Enabled);
     Assert.IsTrue(mFrame.Parts.AttachItem.Visible);
-    Assert.AreEqual(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCommand), mFrame.Parts.AttachItem.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachMenu), mFrame.Parts.AttachItem.Caption);
     mFrame.Parts.Attach.Click;
     mFrame.Parts.AttachItem.Click;
     Assert.AreEqual(2, mCalls);
@@ -672,7 +670,7 @@ begin
     Assert.IsFalse(mFrame.Parts.Review.Visible, 'ohne Issue');
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.IsTrue(mFrame.Parts.Review.Visible);
-    Assert.AreEqual(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewCommand), mFrame.Parts.Review.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewReview), mFrame.Parts.Review.Caption);
     mFrame.Parts.Review.Click;
     Assert.AreEqual(1, mCalls);
     mFrame.SetFlag(TAtlasIssueFlag.CanReview, False);

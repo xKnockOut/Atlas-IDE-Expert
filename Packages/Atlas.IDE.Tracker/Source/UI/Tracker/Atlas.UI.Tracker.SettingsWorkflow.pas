@@ -80,7 +80,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Review,
   Vcl.Graphics,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.Settings.Strings;
 
 const
@@ -163,9 +163,9 @@ begin
   FView.StartState.Value := AValues.ReadString(cStartStateKey);
   // Die unveränderte Vorgabe in der Sprache der Oberfläche (#1458); die Seite hat den gespeicherten Text geladen.
   FView.EndComment.Text := TAtlasTrackerWorkflow.EndCommentFor(AValues.ReadString(cEndCommentKey),
-    TAtlasTrackerStrings.English);
+    TAtlasWorkflowStrings.English);
   FView.ReviewComment.Text := TAtlasTrackerReview.CommentFor(AValues.ReadString(cReviewCommentKey),
-    TAtlasTrackerStrings.English);
+    TAtlasWorkflowStrings.English);
 end;
 
 procedure TAtlasTrackerWorkflowPart.Save(const AValues: IAtlasSettingsValues);

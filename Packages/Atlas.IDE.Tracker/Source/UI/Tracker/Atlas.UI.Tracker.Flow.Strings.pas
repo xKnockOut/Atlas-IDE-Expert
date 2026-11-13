@@ -8,10 +8,9 @@ interface
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasFlowTextId = (
-    FlowCaption, FlowCommand, FlowViewMenu, FlowRefresh, FlowLoading, FlowSummary, FlowTruncated, FlowOffline,
-    FlowNoTracker, FlowEmpty, FlowAverage, FlowNoAverage, FlowOpen, FlowMine, FlowStuckMark, FlowEnd,
-    FlowStuckTitle, FlowStuckFilter, FlowNoStuck, FlowColumnKey, FlowColumnTitle, FlowColumnState, FlowColumnSince,
+  TAtlasFlowTextId = (FlowCaption, FlowRefresh, FlowLoading, FlowSummary, FlowTruncated, FlowOffline, FlowNoTracker,
+    FlowEmpty, FlowAverage, FlowNoAverage, FlowOpen, FlowMine, FlowStuckMark, FlowEnd, FlowStuckTitle,
+    FlowStuckFilter, FlowNoStuck, FlowColumnKey, FlowColumnTitle, FlowColumnState, FlowColumnSince,
     FlowColumnAssignee, FlowDays, FlowDaysBefore);
 
   TAtlasFlowStrings = class
@@ -30,8 +29,6 @@ uses
 const
   cTexts: array[TAtlasLanguage, TAtlasFlowTextId] of string = (
     ('Atlas-Ablauf',
-     'Ablauf-Karte',
-     'Ablauf',
      'Aktualisieren',
      'Wird geladen …',
      '%s · %d Tage · %d Issues · %d Wechsel',
@@ -56,8 +53,6 @@ const
      '%d Tagen',
      'über %d Tagen'),
     ('Atlas Flow',
-     'Flow map',
-     'Flow',
      'Refresh',
      'Loading…',
      '%s · %d days · %d issues · %d changes',

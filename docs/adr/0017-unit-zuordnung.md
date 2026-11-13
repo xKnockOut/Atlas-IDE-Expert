@@ -1072,6 +1072,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MyIssues` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.MyIssues.Text` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.Text.pas` | Texte und Farben von „Meine Issues“ ohne Steuerelement (Kachel, Zustandskachel), #1455 |
 | `Atlas.UI.Tracker.NewIssueDialog` | `UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.QueryDialog` | `UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas` | Ordner `UI/Tracker` |
@@ -1084,9 +1085,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SprintTile` | `UI/Tracker/Atlas.UI.Tracker.SprintTile.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
-| `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Gemeinsames der Texte des Moduls (Tracker), Sprache von Base, #1455 |
 | `Atlas.UI.Tracker.Attach.Strings` | `UI/Tracker/Atlas.UI.Tracker.Attach.Strings.pas` | Texte des Features Attach (Tracker) |
 | `Atlas.UI.Tracker.Board.Strings` | `UI/Tracker/Atlas.UI.Tracker.Board.Strings.pas` | Texte des Features Board (Tracker) |
+| `Atlas.UI.Tracker.Commands.Strings` | `UI/Tracker/Atlas.UI.Tracker.Commands.Strings.pas` | Texte der Befehle und Menüeinträge (Tracker) |
 | `Atlas.UI.Tracker.Development.Strings` | `UI/Tracker/Atlas.UI.Tracker.Development.Strings.pas` | Texte des Features Development (Tracker) |
 | `Atlas.UI.Tracker.Flow.Strings` | `UI/Tracker/Atlas.UI.Tracker.Flow.Strings.pas` | Texte des Features Flow (Tracker) |
 | `Atlas.UI.Tracker.Issue.Strings` | `UI/Tracker/Atlas.UI.Tracker.Issue.Strings.pas` | Texte des Features Issue (Tracker) |

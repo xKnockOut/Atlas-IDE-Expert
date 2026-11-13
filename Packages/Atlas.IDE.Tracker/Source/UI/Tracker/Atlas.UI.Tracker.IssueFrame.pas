@@ -327,9 +327,7 @@ uses
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Links,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.Attach.Strings;
+  Atlas.UI.Tracker.Issue.Strings;
 
 {$R *.dfm}
 
@@ -408,7 +406,7 @@ procedure AddMenu(AFrame: TAtlasIssueFrame);
 begin
   AFrame.FParts.Menu := TPopupMenu.Create(AFrame);
   AFrame.FParts.AttachItem := TMenuItem.Create(AFrame.FParts.Menu);
-  AFrame.FParts.AttachItem.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCommand);
+  AFrame.FParts.AttachItem.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachMenu);
   AFrame.FParts.AttachItem.Tag := cToolTag + Ord(TIssueTool.Attach);
   AFrame.FParts.AttachItem.OnClick := AFrame.ControlClick;
   AFrame.FParts.AttachItem.Visible := False;
@@ -440,17 +438,17 @@ begin
     TIssueTool.Finish);
   AFrame.FParts.Finish.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEndHint);
   AFrame.FParts.Finish.Visible := False;
-  AFrame.FParts.Review := AddTool(AFrame, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewCommand),
+  AFrame.FParts.Review := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewReview),
     TIssueTool.Review);
-  AFrame.FParts.Review.Hint := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewHint);
+  AFrame.FParts.Review.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewReviewHint);
   AFrame.FParts.Review.Visible := False;
   AFrame.FParts.Browse := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse),
     TIssueTool.Browse);
   AFrame.FParts.CopyKey := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey),
     TIssueTool.CopyKey);
-  AFrame.FParts.Attach := AddTool(AFrame, TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachPreviewButton),
+  AFrame.FParts.Attach := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttach),
     TIssueTool.Attach);
-  AFrame.FParts.Attach.Hint := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachStatusHint);
+  AFrame.FParts.Attach.Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachHint);
   AFrame.FParts.Attach.Visible := False;
   AddMenu(AFrame);
   AFrame.FParts.Refresh := AddTool(AFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRefresh),
@@ -1112,6 +1110,10 @@ end;
 
 /// <summary>[Unteraufgabe anlegen …] [Verknüpfen …] über dem Baum (#1279).</summary>
 procedure AddLinkTools(AFrame: TAtlasIssueFrame);
+const
+  // Mindestbreiten der beiden Schaltflächen.
+  cSubtaskWidth = 120;
+  cLinkWidth = 100;
 var
   mTools: TPanel;
 begin
@@ -1120,9 +1122,9 @@ begin
   mTools.BevelOuter := bvNone;
   mTools.ShowCaption := False;
   mTools.Height := MulDiv(30, AFrame.CurrentPPI, 96);
-  AFrame.FContent.CreateSubtask := AddLinkButton(AFrame, mTools, TAtlasIssueTextId.IssueLinksCreateSubtask, 120,
-    TIssueContent.CreateSubtask);
-  AFrame.FContent.AddLink := AddLinkButton(AFrame, mTools, TAtlasIssueTextId.IssueLinksAddLink, 100,
+  AFrame.FContent.CreateSubtask := AddLinkButton(AFrame, mTools, TAtlasIssueTextId.IssueLinksCreateSubtask,
+    cSubtaskWidth, TIssueContent.CreateSubtask);
+  AFrame.FContent.AddLink := AddLinkButton(AFrame, mTools, TAtlasIssueTextId.IssueLinksAddLink, cLinkWidth,
     TIssueContent.AddLink);
 end;
 

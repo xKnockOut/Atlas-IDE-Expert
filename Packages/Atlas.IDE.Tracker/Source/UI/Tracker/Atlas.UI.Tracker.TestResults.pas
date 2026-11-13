@@ -272,6 +272,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.TestResults.Strings;
 
 const
@@ -1140,7 +1141,7 @@ begin
   FMenu := TPopupMenu.Create(AOwner);
   FMenu.OnPopup := MenuPopup;
   FQueryItem := AddItem(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsQueryNow), QueryClick);
-  FCredentialsItem := AddItem(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginCommand), CredentialsClick);
+  FCredentialsItem := AddItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.CiLoginCommand), CredentialsClick);
   FOpenItem := AddItem(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsOpenProject), OpenClick);
 end;
 

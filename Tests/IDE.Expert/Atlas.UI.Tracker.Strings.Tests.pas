@@ -26,10 +26,10 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests,
-  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Tracker.Board.Strings,
+  Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.Flow.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.Time.Strings,
@@ -60,7 +60,7 @@ end;
 /// <summary>Die Texttabellen aller Features des Moduls.</summary>
 function Tables: TArray<TTable>;
 begin
-  SetLength(Result, 12);
+  SetLength(Result, 13);
   Result[0] := Table('Issue', Ord(High(TAtlasIssueTextId)) + 1,
     function(AIndex: Integer): string
     begin
@@ -120,6 +120,11 @@ begin
     function(AIndex: Integer): string
     begin
       Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId(AIndex));
+    end);
+  Result[12] := Table('Commands', Ord(High(TAtlasCommandsTextId)) + 1,
+    function(AIndex: Integer): string
+    begin
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId(AIndex));
     end);
 end;
 
@@ -186,9 +191,9 @@ begin
   mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Assert.IsFalse(TAtlasTrackerStrings.English);
+    Assert.IsFalse(TAtlasWorkflowStrings.English);
     TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.IsTrue(TAtlasTrackerStrings.English);
+    Assert.IsTrue(TAtlasWorkflowStrings.English);
   finally
     TAtlasStrings.Language := mSaved;
   end;

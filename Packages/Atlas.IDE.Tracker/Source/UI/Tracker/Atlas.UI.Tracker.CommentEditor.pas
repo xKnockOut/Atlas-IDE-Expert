@@ -872,6 +872,10 @@ end;
 /// <summary>Leiste unten: Vorschau, Textbaustein, Hinweis und Knopf zum Entwurf. Fließend: Reihenfolge =
 /// Erzeugungsreihenfolge, bei schmalem Fenster Umbruch in weitere Zeilen.</summary>
 procedure AddBar(AEditor: TAtlasCommentEditor);
+const
+  // Breiten der Knöpfe Vorschau und Textbaustein.
+  cPreviewWidth = 90;
+  cSnippetWidth = 120;
 begin
   AEditor.FParts.Bar := TFlowPanel.Create(AEditor);
   AEditor.FParts.Bar.Parent := AEditor;
@@ -880,10 +884,10 @@ begin
   AEditor.FParts.Bar.ShowCaption := False;
   AEditor.FParts.Bar.AutoWrap := True;
   AEditor.FParts.Bar.AutoSize := True;
-  AEditor.FParts.PreviewButton := AddBarButton(AEditor, 90,
+  AEditor.FParts.PreviewButton := AddBarButton(AEditor, cPreviewWidth,
     TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorPreview));
   AEditor.FParts.PreviewButton.OnClick := AEditor.ButtonClick;
-  AEditor.FParts.SnippetButton := AddBarButton(AEditor, 120,
+  AEditor.FParts.SnippetButton := AddBarButton(AEditor, cSnippetWidth,
     TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorSnippets));
   AEditor.FParts.SnippetButton.OnClick := AEditor.ButtonClick;
   AEditor.FParts.DraftNote := TLabel.Create(AEditor);

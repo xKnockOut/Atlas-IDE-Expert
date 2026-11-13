@@ -116,7 +116,7 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Attach.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Tracker.MyIssues,
+  Atlas.UI.Tracker.MyIssues.Text,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach;
@@ -413,7 +413,7 @@ begin
       FAttachLineRef);
   end;
   FAttachLine.Update(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachStatusLine, [AKey]), TAtlasStatusState.Neutral,
-    AKey, AKey, TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachStatusHint));
+    AKey, AKey, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachHint));
 end;
 
 procedure TAtlasIdeIssuesStatus.RemoveAttach;

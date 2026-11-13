@@ -124,9 +124,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.UI.Tracker.Strings,
-  Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.MyIssues.Strings;
+  Atlas.UI.Tracker.Workflow.Strings;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung.</summary>
@@ -286,7 +284,7 @@ var
   mAssist: IAtlasCommentAssist;
 begin
   FDialog := TAtlasTrackerReviewDialog.CreateDialog(nil, FState, TAtlasIdeTrackerSync.Options(FTarget),
-    TAtlasTrackerReview.CommentFor(TAtlasIdeSettings.Current.IssuesReviewComment, TAtlasTrackerStrings.English));
+    TAtlasTrackerReview.CommentFor(TAtlasIdeSettings.Current.IssuesReviewComment, TAtlasWorkflowStrings.English));
   FDialog.Events := DialogEvents;
   // Kommentar-Editor (#1278) mit eigenem Entwurfsfeld; die Vorlage ist kein Entwurf.
   mAssist := nil;
@@ -442,7 +440,7 @@ var
   mOutcome: TAtlasVcsOutcome;
 begin
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren).
-  if (FInspection.Changes > 0) and (MessageDlg(TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesLocalChanges,
+  if (FInspection.Changes > 0) and (MessageDlg(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.WelcomeIssuesLocalChanges,
     [FInspection.Changes, ABranch, sLineBreak + sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
     AskBranch;

@@ -9,8 +9,7 @@ interface
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasIssueTextId = (
-    IssuePreviewCommand, IssuePreviewEmpty, IssuePreviewBack, IssuePreviewForward, IssuePreviewStart,
+  TAtlasIssueTextId = (IssuePreviewEmpty, IssuePreviewBack, IssuePreviewForward, IssuePreviewStart,
     IssuePreviewBrowse, IssuePreviewCopyKey, IssuePreviewRefresh, IssuePreviewCancel, IssuePreviewLoading,
     IssuePreviewStale, IssuePreviewStaleOffline, IssuePreviewNoDescription, IssuePreviewComments,
     IssuePreviewOlderComments, IssuePreviewOlderComment, IssuePreviewCommentsOff, IssuePreviewAttachments,
@@ -23,25 +22,26 @@ type
     IssuePreviewRelationMentioned, IssuePreviewRelationPull, IssuePreviewImageHint, IssuePreviewImageLink,
     IssuePreviewAttachmentFailed, IssueLinkTipFooter, IssueLinkTipFooterBrowser, IssueLinkMenuShow,
     BlameIssueFooter, BlameIssueFooterBrowser, BlameIssuesMethodLink, BlameIssuesMethodLinkOpen,
-    BlameIssuesUnitLink, BlameIssuesUnitLinkOpen, BlameIssuesCommand, BlameIssuesTitle, BlameIssuesUnlinked,
-    BlameIssuesCommit, BlameIssuesCommits, BlameIssuesSearching, BlameIssuesNone, BlameIssuesFailed,
-    BlameIssuesNoVcs, BlameIssuesNotCommitted, BlameIssuesNoTracker, BlameIssuesDiffTitle, BlameIssuesUnitName,
-    BlameIssuesNoEditor, IssueChecklistAdd, IssueChecklistAddPrompt, IssueChecklistReadOnly,
-    IssueChecklistToggleHint, IssueChecklistSaving, IssueChecklistChanged, IssueChecklistDenied,
-    IssueChecklistFailed, IssueLinksCaption, IssueLinksDependsOn, IssueLinksBlocks, IssueLinksSubtasks,
-    IssueLinksParent, IssueLinksDuplicates, IssueLinksDuplicatedBy, IssueLinksRelates, IssueLinksMentioned,
-    IssueLinksPulls, IssueLinksOther, IssueLinksOpen, IssueLinksDone, IssueLinksBlocking, IssueLinksUnknown,
-    IssueLinksCreateSubtask, IssueLinksAddLink, IssueSubtaskTitle, IssueSubtaskProject, IssueSubtaskSummary,
-    IssueSubtaskDescription, IssueSubtaskOk, IssueLinkTitle, IssueLinkDependsOn, IssueLinkBlocks, IssueLinkKey,
-    IssueLinkOk, IssueDialogCancel, IssueLinkWorking, IssueSubtaskCreated, IssueSubtaskNotLinked,
-    IssueSubtaskFailed, IssueLinkAdded, IssueLinkFailed, IssueBlockedCaption, IssueBlockedOne, IssueBlockedMore,
-    IssueBlockedStart, IssueBlockedShow, PaletteIssuesGroup, PaletteIssuesRecent, PaletteIssuesSearching,
-    PaletteIssuesNone, PaletteIssuesKeys, PaletteIssuesNoRecent, PaletteIssuesNoTracker, PaletteIssuesTimeout,
+    BlameIssuesUnitLink, BlameIssuesUnitLinkOpen, BlameIssuesTitle, BlameIssuesUnlinked, BlameIssuesCommit,
+    BlameIssuesCommits, BlameIssuesSearching, BlameIssuesNone, BlameIssuesFailed, BlameIssuesNoVcs,
+    BlameIssuesNotCommitted, BlameIssuesNoTracker, BlameIssuesDiffTitle, BlameIssuesUnitName, BlameIssuesNoEditor,
+    IssueChecklistAdd, IssueChecklistAddPrompt, IssueChecklistReadOnly, IssueChecklistToggleHint,
+    IssueChecklistSaving, IssueChecklistChanged, IssueChecklistDenied, IssueChecklistFailed, IssueLinksCaption,
+    IssueLinksDependsOn, IssueLinksBlocks, IssueLinksSubtasks, IssueLinksParent, IssueLinksDuplicates,
+    IssueLinksDuplicatedBy, IssueLinksRelates, IssueLinksMentioned, IssueLinksPulls, IssueLinksOther,
+    IssueLinksOpen, IssueLinksDone, IssueLinksBlocking, IssueLinksUnknown, IssueLinksCreateSubtask,
+    IssueLinksAddLink, IssueSubtaskTitle, IssueSubtaskProject, IssueSubtaskSummary, IssueSubtaskDescription,
+    IssueSubtaskOk, IssueLinkTitle, IssueLinkDependsOn, IssueLinkBlocks, IssueLinkKey, IssueLinkOk,
+    IssueDialogCancel, IssueLinkWorking, IssueSubtaskCreated, IssueSubtaskNotLinked, IssueSubtaskFailed,
+    IssueLinkAdded, IssueLinkFailed, IssueBlockedCaption, IssueBlockedOne, IssueBlockedMore, IssueBlockedStart,
+    IssueBlockedShow, PaletteIssuesGroup, PaletteIssuesRecent, PaletteIssuesSearching, PaletteIssuesNone,
+    PaletteIssuesKeys, PaletteIssuesNoRecent, PaletteIssuesNoTracker, PaletteIssuesTimeout,
     PaletteIssuesCannotStart, IssuePreviewTabDetails, IssuePreviewTabDevelopment, IssuePreviewCommentHint,
     IssuePreviewCommentSend, IssuePreviewCommentSending, IssuePreviewEnd, IssuePreviewEndHint, IssuePreviewCaption,
     IssuePreviewPrompt, IssuePreviewNoTracker, IssuePreviewInvalidKey, IssuePreviewErrorToken,
     IssuePreviewErrorNetwork, IssuePreviewErrorTimeout, IssuePreviewErrorInvalid, IssueChecklistProgress,
-    IssueChecklistStatusLine, IssueChecklistStatusHint, IssuePreviewDescription);
+    IssueChecklistStatusLine, IssueChecklistStatusHint, IssuePreviewDescription, IssuePreviewAttach,
+    IssuePreviewAttachHint, IssuePreviewReview, IssuePreviewReviewHint, IssuePreviewAttachMenu);
 
   TAtlasIssueStrings = class
   public
@@ -58,8 +58,7 @@ uses
 
 const
   cTexts: array[TAtlasLanguage, TAtlasIssueTextId] of string = (
-    ('Issue anzeigen …',
-     'Kein Issue gewählt. Klick auf ein Issue in „Meine Issues“ oder Befehl „Issue anzeigen …“.',
+    ('Kein Issue gewählt. Klick auf ein Issue in „Meine Issues“ oder Befehl „Issue anzeigen …“.',
      'Zurück (Alt+Links)',
      'Vor (Alt+Rechts)',
      'Beginnen',
@@ -115,7 +114,6 @@ const
      'Issues zu dieser Methode',
      'Issues zu dieser Unit (%d)',
      'Issues zu dieser Unit',
-     'Issues zu dieser Methode',
      'Issues zu %s · %d Issues aus %d Commits',
      '%d ohne Kennung',
      '1 Commit',
@@ -204,9 +202,13 @@ const
      'Checkliste: %d von %d erledigt',
      '%s · %s',
      'Klick zeigt die Checkliste in „Atlas-Issue“',
-     'Beschreibung'),
-    ('Show issue…',
-     'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
+     'Beschreibung',
+     'Anhängen …',
+     'Bildschirmfoto, Formular, Log oder Debug-Notiz an das aktuelle Issue anhängen',
+     'Prüfen …',
+     'Branch des Issues auschecken, bauen, die betroffenen Tests ausführen und verifizieren oder zurückgeben',
+     'An Issue anhängen …'),
+    ('No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
      'Forward (Alt+Right)',
      'Start',
@@ -262,7 +264,6 @@ const
      'Issues for this method',
      'Issues for this unit (%d)',
      'Issues for this unit',
-     'Issues for this method',
      'Issues for %s · %d issues from %d commits',
      '%d without key',
      '1 commit',
@@ -350,7 +351,12 @@ const
      'Checklist: %d of %d done',
      '%s · %s',
      'Click shows the checklist in “Atlas issue”',
-     'Description'));
+     'Description',
+     'Attach …',
+     'Attach a screenshot, form, log or debug note to the current issue',
+     'Review…',
+     'Check out the issue''s branch, build, run the affected tests, then verify or hand back',
+     'Attach to issue …'));
 
 { TAtlasIssueStrings }
 

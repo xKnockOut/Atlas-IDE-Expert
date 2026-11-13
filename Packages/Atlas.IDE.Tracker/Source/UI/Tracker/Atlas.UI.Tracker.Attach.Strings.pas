@@ -9,17 +9,15 @@ interface
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasAttachTextId = (
-    AttachCommand, AttachPreviewButton, AttachCaption, AttachIssue, AttachUploadHint, AttachFallbackHint,
-    AttachSources, AttachScreenshot, AttachWindowPick, AttachWindowPicking, AttachNoWindows, AttachNoProgram,
-    AttachNoWindowsHint, AttachNoProgramHint, AttachWindowPickHint, AttachMarkup, AttachForm, AttachNoForm,
-    AttachLog, AttachLogBrowse, AttachLogLines, AttachLogFilter, AttachLogCaption, AttachLogMissing,
-    AttachDebugNote, AttachDebugNoteOff, AttachExceptions, AttachExceptionsNone, AttachComment, AttachFiles,
-    AttachCommentOnly, AttachSend, AttachScreenshotName, AttachFormName, AttachExceptionsName,
-    AttachExceptionsCaption, AttachDebugNoteCaption, AttachCaptureFailed, AttachSending, AttachDone,
-    AttachDoneComment, AttachCommented, AttachPasteHint, AttachFailed, AttachCommentFailed, AttachBusy,
-    AttachMarkupCaption, AttachMarkupRectangle, AttachMarkupArrow, AttachMarkupBlacken, AttachMarkupUndo,
-    AttachMarkupApply, AttachCrashCase, AttachStatusLine, AttachStatusHint);
+  TAtlasAttachTextId = (AttachCaption, AttachIssue, AttachUploadHint, AttachFallbackHint, AttachSources,
+    AttachScreenshot, AttachWindowPick, AttachWindowPicking, AttachNoWindows, AttachNoProgram, AttachNoWindowsHint,
+    AttachNoProgramHint, AttachWindowPickHint, AttachMarkup, AttachForm, AttachNoForm, AttachLog, AttachLogBrowse,
+    AttachLogLines, AttachLogFilter, AttachLogCaption, AttachLogMissing, AttachDebugNote, AttachDebugNoteOff,
+    AttachExceptions, AttachExceptionsNone, AttachComment, AttachFiles, AttachCommentOnly, AttachSend,
+    AttachScreenshotName, AttachFormName, AttachExceptionsName, AttachExceptionsCaption, AttachDebugNoteCaption,
+    AttachCaptureFailed, AttachSending, AttachDone, AttachDoneComment, AttachCommented, AttachPasteHint,
+    AttachFailed, AttachCommentFailed, AttachBusy, AttachMarkupCaption, AttachMarkupRectangle, AttachMarkupArrow,
+    AttachMarkupBlacken, AttachMarkupUndo, AttachMarkupApply, AttachCrashCase, AttachStatusLine);
 
   TAtlasAttachStrings = class
   public
@@ -36,9 +34,7 @@ uses
 
 const
   cTexts: array[TAtlasLanguage, TAtlasAttachTextId] of string = (
-    ('An Issue anhängen …',
-     'Anhängen …',
-     'An Issue anhängen',
+    ('An Issue anhängen',
      'Issue:',
      'Die Dateien werden als Anhänge an das Issue in %s geladen.',
      '%s nimmt über die Schnittstelle keine Anhänge an: Bilder kommen in die Zwischenablage, Texte als '
@@ -91,11 +87,8 @@ const
      'Rückgängig',
      'Übernehmen',
      'Absturzfall (%d Dateien)',
-     'An %s anhängen …',
-     'Bildschirmfoto, Formular, Log oder Debug-Notiz an das aktuelle Issue anhängen'),
-    ('Attach to issue …',
-     'Attach …',
-     'Attach to issue',
+     'An %s anhängen …'),
+    ('Attach to issue',
      'Issue:',
      'The files are uploaded as attachments to the issue in %s.',
      '%s does not accept attachments through its API: images go to the clipboard, texts into a comment as code '
@@ -148,8 +141,7 @@ const
      'Undo',
      'Apply',
      'Crash case (%d files)',
-     'Attach to %s …',
-     'Attach a screenshot, form, log or debug note to the current issue'));
+     'Attach to %s …'));
 
 { TAtlasAttachStrings }
 

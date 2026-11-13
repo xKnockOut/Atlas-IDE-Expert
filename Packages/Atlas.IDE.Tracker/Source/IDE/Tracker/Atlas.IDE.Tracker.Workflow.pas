@@ -199,7 +199,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
@@ -460,7 +459,7 @@ begin
   Result := TAtlasTrackerSyncOptions.Create(mSettings.IssuesSyncState, mSettings.IssuesStateField,
     mSettings.IssuesAssigneeField).WithStart(mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
     mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates,
-    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasTrackerStrings.English)).WithReview(
+    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasWorkflowStrings.English)).WithReview(
     mSettings.IssuesReviewStates).WithEndSteps(mSettings.IssuesEndFields, mSettings.IssuesEndTime);
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);

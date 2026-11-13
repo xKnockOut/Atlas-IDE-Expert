@@ -143,6 +143,7 @@ uses
   Atlas.Core.Tracker.SprintStart,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Tracker.LinkDialogs,
   Atlas.UI.Tracker.SprintDialog,
@@ -675,8 +676,8 @@ function TAtlasIdeIssueStart.ConfirmChanges(const AJob: TAtlasIssueStartJob; AAs
 begin
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren). Nicht, wenn sie schon
   // entschieden sind: im Dialog (Git), bei stash oder worktree (#1289).
-  Result := not AJob.ChangesOpen(AAsked) or (MessageDlg(TAtlasMyIssuesStrings.Fmt(
-    TAtlasMyIssuesTextId.WelcomeIssuesLocalChanges, [AJob.Changes, AJob.Plan.Branch, sLineBreak + sLineBreak]),
+  Result := not AJob.ChangesOpen(AAsked) or (MessageDlg(TAtlasWorkflowStrings.Fmt(
+    TAtlasWorkflowTextId.WelcomeIssuesLocalChanges, [AJob.Changes, AJob.Plan.Branch, sLineBreak + sLineBreak]),
     mtConfirmation, [mbYes, mbNo], 0) = mrYes);
 end;
 

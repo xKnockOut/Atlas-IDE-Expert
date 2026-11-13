@@ -156,6 +156,12 @@ end;
 { TAtlasSubtaskDialog }
 
 constructor TAtlasSubtaskDialog.CreateDialog(AOwner: TComponent; const AParentKey, AProject: string);
+const
+  // Reihenfolge der oben ausgerichteten Steuerelemente über ihr Top beim Anlegen.
+  cSummaryTop = 100;
+  cTitleTop = 200;
+  cDescriptionLabelTop = 300;
+  cDescriptionTop = 400;
 var
   mBottom: TPanel;
 begin
@@ -163,25 +169,26 @@ begin
     cDialogWidth);
   BorderIcons := [biSystemMenu];
   FProject := AddLabel(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSubtaskProject, [AProject]), 0);
-  FTitleLabel := AddLabel(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskSummary), 100);
+  FTitleLabel := AddLabel(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskSummary), cSummaryTop);
 
   FTitle := TEdit.Create(Self);
   FTitle.Parent := Self;
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
   FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
-  FTitle.Top := FTitle.ScaleValue(200);
+  FTitle.Top := FTitle.ScaleValue(cTitleTop);
   FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
   FTitleLabel.FocusControl := FTitle;
 
-  FDescriptionLabel := AddLabel(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskDescription), 300);
+  FDescriptionLabel := AddLabel(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskDescription),
+    cDescriptionLabelTop);
   FDescription := TMemo.Create(Self);
   FDescription.Parent := Self;
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
   FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
-  FDescription.Top := FDescription.ScaleValue(400);
+  FDescription.Top := FDescription.ScaleValue(cDescriptionTop);
   FDescription.Height := ScaleValue(140);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;

@@ -8,13 +8,12 @@ interface
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasBoardTextId = (
-    BoardCaption, BoardCommand, BoardViewMenu, BoardBoardHint, BoardSprintHint, BoardOnlyMine, BoardAll,
-    BoardSearchHint, BoardRefresh, BoardLoading, BoardOffline, BoardEmpty, BoardEmptyMine, BoardNoTracker,
-    BoardNoBoard, BoardNoColumn, BoardColumnOpen, BoardColumnClosed, BoardColumnCount, BoardLaneNone,
-    BoardMoveTitle, BoardMoveQuestion, BoardMoveComment, BoardMoveOk, BoardMoveDontAsk, BoardMoving, BoardMoved,
-    BoardMoveFailed, BoardMoveLocked, BoardMenuStart, BoardMenuPreview, BoardMenuBrowse, BoardMenuCopy,
-    BoardMenuAssign, BoardAssigned, BoardAssignFailed, BoardErrorScopes, BoardMoveNoTransition, BoardMoveNotAllowed,
+  TAtlasBoardTextId = (BoardCaption, BoardBoardHint, BoardSprintHint, BoardOnlyMine, BoardAll, BoardSearchHint,
+    BoardRefresh, BoardLoading, BoardOffline, BoardEmpty, BoardEmptyMine, BoardNoTracker, BoardNoBoard,
+    BoardNoColumn, BoardColumnOpen, BoardColumnClosed, BoardColumnCount, BoardLaneNone, BoardMoveTitle,
+    BoardMoveQuestion, BoardMoveComment, BoardMoveOk, BoardMoveDontAsk, BoardMoving, BoardMoved, BoardMoveFailed,
+    BoardMoveLocked, BoardMenuStart, BoardMenuPreview, BoardMenuBrowse, BoardMenuCopy, BoardMenuAssign,
+    BoardAssigned, BoardAssignFailed, BoardErrorScopes, BoardMoveNoTransition, BoardMoveNotAllowed,
     BoardMoveTransitions);
 
   TAtlasBoardStrings = class
@@ -33,8 +32,6 @@ uses
 const
   cTexts: array[TAtlasLanguage, TAtlasBoardTextId] of string = (
     ('Atlas-Board',
-     'Board',
-     'Board',
      'Board bzw. Projekt',
      'Sprint bzw. Iteration',
      'Nur meine',
@@ -73,8 +70,6 @@ const
      '%s nicht nach „%s“ verschoben: Der Workflow von YouTrack erlaubt von „%s“ aus nur: %s.',
      '%s Von „%s“ aus erlaubt der Workflow von YouTrack: %s.'),
     ('Atlas board',
-     'Board',
-     'Board',
      'Board or project',
      'Sprint or iteration',
      'Mine only',
