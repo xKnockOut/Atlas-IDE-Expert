@@ -646,6 +646,7 @@ contains
   Atlas.Common.Mcp.IdeBuilds in 'Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas',
   Atlas.Common.Mcp.TestTools in 'Source\Mcp\Atlas.Common.Mcp.TestTools.pas',
   Atlas.Common.Mcp.ProfileTools in 'Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas',
+  Atlas.Common.Mcp.ReportTools in 'Source\Mcp\Atlas.Common.Mcp.ReportTools.pas',
   Atlas.Common.Profiling.Profile in 'Source\Profiling\Atlas.Common.Profiling.Profile.pas',
   Atlas.Common.Profiling.Report in 'Source\Profiling\Atlas.Common.Profiling.Report.pas',
   Atlas.Common.Mcp.DeadCodeTools in 'Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas',

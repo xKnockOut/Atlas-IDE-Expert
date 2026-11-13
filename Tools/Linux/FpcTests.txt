@@ -194,6 +194,7 @@ Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
+Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
