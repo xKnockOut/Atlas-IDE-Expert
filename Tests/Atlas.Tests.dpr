@@ -1350,6 +1350,7 @@ uses
   Atlas.UI.Welcome.Continue in '..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas',
   Atlas.UI.Welcome.ContinueIssues in '..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.ContinueIssues.pas',
   Atlas.UI.Welcome.QuickActions in '..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas',
+  Atlas.UI.Welcome.QuickActions.Texts in '..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.Texts.pas',
   Atlas.UI.Welcome.SettingsLayouts in '..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SettingsLayouts.pas',
   Atlas.UI.Welcome.SettingsSection in '..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SettingsSection.pas',
   Atlas.UI.Welcome.Tests in 'IDE.Expert\Atlas.UI.Welcome.Tests.pas',
