@@ -161,6 +161,7 @@ Atlas.Common.Lsp.HoverValues.Tests
 Atlas.Common.Lsp.Internals.Cancellation.Tests
 Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
+Atlas.Common.Lsp.MethodBreakpoints.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
 Atlas.Common.Lsp.Processes.Tests
 Atlas.Common.Lsp.Rationale.Tests

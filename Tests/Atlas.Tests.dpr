@@ -2234,6 +2234,7 @@ uses
   Atlas.Core.Settings.EventBreakNames.Tests in 'IDE.Expert\Atlas.Core.Settings.EventBreakNames.Tests.pas',
   Atlas.Text.StepFilter.Tests in 'Text\Atlas.Text.StepFilter.Tests.pas',
   Atlas.Common.Lsp.StepFilter.Tests in 'Common\Lsp\Atlas.Common.Lsp.StepFilter.Tests.pas',
+  Atlas.Common.Lsp.MethodBreakpoints.Tests in 'Common\Lsp\Atlas.Common.Lsp.MethodBreakpoints.Tests.pas',
   Atlas.Core.Debug.StepFilter in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
   Atlas.Core.Debug.StepFilter.Tests in 'IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas',
   Atlas.UI.Debug.StepFilterFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas',

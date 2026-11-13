@@ -2198,6 +2198,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.EventBreakNames.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.StepFilter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepFilter.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodBreakpoints.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas"/>

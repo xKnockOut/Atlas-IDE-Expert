@@ -63,6 +63,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Fixes.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Editing.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Stepping.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.MethodBreakpoints.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Baselines.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Overviews.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Analysis.pas"/>

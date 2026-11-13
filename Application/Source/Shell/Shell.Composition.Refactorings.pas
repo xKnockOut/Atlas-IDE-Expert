@@ -2,7 +2,7 @@
 
 // Internals-Rolle Shell: Fassade der Refactorings des Servers. Legt die Teile an, meldet ihre Befehle an und liefert
 // ihre Code-Aktionen in fester Reihenfolge (so stehen sie im Menü des Editors). Auch die Befehle des Debuggers
-// (Shell.Composition.Stepping) laufen hierüber, sie brauchen dieselben Dienste.
+// (Shell.Composition.Stepping, Shell.Composition.MethodBreakpoints) laufen hierüber, sie brauchen dieselben Dienste.
 
 interface
 
@@ -31,7 +31,8 @@ uses
   Shell.Composition.Refactorings.Types,
   Shell.Composition.Refactorings.Fixes,
   Shell.Composition.Refactorings.Editing,
-  Shell.Composition.Stepping;
+  Shell.Composition.Stepping,
+  Shell.Composition.MethodBreakpoints;
 
 constructor TShellRefactorings.Create(const AServices: TShellRefactoringServices);
 begin
@@ -39,7 +40,7 @@ begin
   FParts := TArray<TShellRefactoringPart>.Create(TShellStructureRefactorings.Create(AServices),
     TShellConversionRefactorings.Create(AServices), TShellTypeRefactorings.Create(AServices),
     TShellFixRefactorings.Create(AServices), TShellEditingRefactorings.Create(AServices),
-    TShellStepping.Create(AServices));
+    TShellStepping.Create(AServices), TShellMethodBreakpoints.Create(AServices));
 end;
 
 destructor TShellRefactorings.Destroy;

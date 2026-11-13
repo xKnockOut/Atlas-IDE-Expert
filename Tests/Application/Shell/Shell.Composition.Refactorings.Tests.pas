@@ -55,6 +55,10 @@ type
     procedure UnitRenameFollowUpOff;
     [Test]
     procedure StepFilterFindsRoutineOfOpenDocument;
+    [Test]
+    procedure MethodBreakpointsFindRoutineOfOpenDocument;
+    [Test]
+    procedure MethodBreakpointsReportInvalidPattern;
   end;
 
 implementation
@@ -75,13 +79,17 @@ uses
   Atlas.Common.Lsp.TypeAlias,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.StepFilter,
+  Atlas.Common.Lsp.MethodBreakpoints,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.UnitRename,
   Shell.Composition.Refactorings.Structure,
   Shell.Composition.Refactorings.Conversions,
   Shell.Composition.Refactorings.Types,
   Shell.Composition.Refactorings.Fixes,
   Shell.Composition.Refactorings.Editing,
-  Shell.Composition.Stepping;
+  Shell.Composition.Stepping,
+  Shell.Composition.MethodBreakpoints;
 
 const
   cUri = 'file:///tmp/Kunden.pas';
@@ -251,6 +259,8 @@ begin
   Assert.IsTrue(Pos(TLspUnitRename.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
     'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, CommandsOf(TShellStepping.Create(FServices))) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, CommandsOf(TShellMethodBreakpoints.Create(FServices))) > 0,
+    'Methodenhaltepunkte');
 end;
 
 procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;
@@ -270,6 +280,7 @@ begin
   Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
   Assert.IsTrue(Pos(TLspUnitRename.cCommand, mText) > 0, 'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, mText) > 0, 'Methodenhaltepunkte');
 end;
 
 procedure TShellRefactoringsTests.DisabledRefactoringsOfferNoActions;
@@ -300,6 +311,8 @@ begin
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   ErrorOf(TLspStepFilter.cCommand, '["' + cUri + '", "eins"]', mCode);
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Zeile keine Zahl');
+  ErrorOf(TLspMethodBreakpoints.cCommand, '[{"muster": "Laden"}]', mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Muster fehlt');
 end;
 
 procedure TShellRefactoringsTests.ClosedDocumentIsRefused;
@@ -326,6 +339,41 @@ begin
   mAnswer := TJSONObject.ParseJSONValue(Run(TLspStepFilter.cCommand, '["' + cUri + '", 4]')) as TJSONObject;
   try
     Assert.IsTrue(mAnswer.GetValue<Boolean>('found'));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TShellRefactoringsTests.MethodBreakpointsFindRoutineOfOpenDocument;
+var
+  mPath: string;
+  mAnswer: TJSONObject;
+  mHits: TJSONArray;
+begin
+  // Index und Editor kennen dieselbe Datei; der Rumpf kommt aus dem offenen Dokument.
+  mPath := TDocumentUris.ToPath(cUri);
+  FServices.Index.AddUnit(TIndexExtractor.ExtractText(cSource, mPath, nil));
+  FDocuments.Open(TDocumentUris.FromPath(mPath), 'pascal', 1, cSource);
+  mAnswer := TJSONObject.ParseJSONValue(Run(TLspMethodBreakpoints.cCommand, '[{"pattern": "Kunden.*"}]')) as TJSONObject;
+  try
+    mHits := mAnswer.GetValue('hits') as TJSONArray;
+    Assert.AreEqual(1, mHits.Count);
+    Assert.AreEqual('Laden', (mHits.Items[0] as TJSONObject).GetValue('name').Value);
+    // Leerer Rumpf: Zeile des end.
+    Assert.AreEqual(5, ((mHits.Items[0] as TJSONObject).GetValue('line') as TJSONNumber).AsInt);
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TShellRefactoringsTests.MethodBreakpointsReportInvalidPattern;
+var
+  mAnswer: TJSONObject;
+begin
+  mAnswer := TJSONObject.ParseJSONValue(Run(TLspMethodBreakpoints.cCommand, '[{"pattern": "a..b"}]')) as TJSONObject;
+  try
+    Assert.IsTrue(Pos('a..b', mAnswer.GetValue('error').Value) > 0, mAnswer.ToJSON);
+    Assert.IsNull(mAnswer.GetValue('hits'));
   finally
     mAnswer.Free;
   end;
