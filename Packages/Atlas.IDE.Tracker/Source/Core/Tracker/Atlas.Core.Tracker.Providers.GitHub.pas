@@ -91,7 +91,8 @@ uses
 
 type
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
-    IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach)
+    IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach,
+    IAtlasTrackerBranchLinker)
   public const
     cProviderName = TAtlasGitHubApi.cProviderName;
     cQuery = TAtlasGitHubApi.cDefaultQuery;
@@ -164,6 +165,9 @@ type
     function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey,
       AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
     function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
+    { IAtlasTrackerBranchLinker (#2138): über TAtlasGitHubLinkedBranches }
+    function SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
+    function LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch, ABase: string): TAtlasTrackerBranchLink;
   end;
 
 implementation
@@ -179,6 +183,7 @@ uses
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Core.Tracker.Internals.GitHubProjects,
+  Atlas.Core.Tracker.Internals.GitHubLinkedBranches,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Text.Json;
 
@@ -1176,6 +1181,21 @@ begin
   Result.Checks := TAtlasTrackerChecks.Unknown;
 end;
 
+/// <summary>Verknüpfte Branches von AKey (#2138); leer ohne Schreibweg oder bei einem Fehler.</summary>
+function LinkedBranchesOf(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AKey: string): TArray<string>;
+var
+  mSend: IAtlasCiSend;
+  mError: TAtlasCiFetchError;
+begin
+  Result := nil;
+  if Supports(ACall.Transport, IAtlasCiSend, mSend) and not TAtlasGitHubLinkedBranches.Linked(
+    TAtlasTrackerCall.Create(ACall.Target, ACall.Transport, TAtlasGitHubApi.Remaining(AWatch, ACall.TimeoutMs)), mSend,
+    AKey, Result, mError) then
+  begin
+    Result := nil;
+  end;
+end;
+
 function TAtlasGitHubTracker.Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const AKey: string; ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment;
   out AError: TAtlasCiFetchError): Boolean;
@@ -1229,6 +1249,9 @@ begin
       ADevelopment.Pulls := ADevelopment.Pulls + [mPull];
     end;
   end;
+  // Verknüpfte Branches (#2138) in der restlichen Zeit; ein Fehler dabei (z. B. Enterprise ohne die Abfrage) lässt
+  // nur die Liste leer.
+  ADevelopment.LinkedBranches := LinkedBranchesOf(mCall, mWatch, AKey);
 end;
 
 /// <summary>Benachrichtigungen seit APoll.Since, bedingt mit If-Modified-Since, wenn der Transport es kann;
@@ -1397,6 +1420,23 @@ end;
 function TAtlasGitHubTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
 begin
   Result := TAtlasAttachComment.WithTexts(AComment, AFiles, TAtlasAttachComment.cMaxTextsLength);
+end;
+
+function TAtlasGitHubTracker.SameRepository(const ATarget: TAtlasTrackerTarget; const AOriginUrl: string): Boolean;
+begin
+  Result := TAtlasGitHubLinkedBranches.SameRepository(ATarget, AOriginUrl);
+end;
+
+function TAtlasGitHubTracker.LinkBranch(const ACall: TAtlasTrackerCall; const AKey, ABranch,
+  ABase: string): TAtlasTrackerBranchLink;
+var
+  mSend: IAtlasCiSend;
+begin
+  if not Supports(ACall.Transport, IAtlasCiSend, mSend) then
+  begin
+    Exit(TAtlasTrackerBranchLink.Failure(TAtlasCiFetchError.NotConfigured, ''));
+  end;
+  Result := TAtlasGitHubLinkedBranches.Link(ACall, mSend, AKey, ABranch, ABase);
 end;
 
 end.

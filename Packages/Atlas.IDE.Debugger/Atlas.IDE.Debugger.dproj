@@ -233,6 +233,8 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.StepsBar.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Restart.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Restart.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.RuntimeReport.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.RuntimeReport.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

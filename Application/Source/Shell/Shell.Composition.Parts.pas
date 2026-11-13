@@ -14,6 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
+  Atlas.Common.Compiler.Results,
   Atlas.Common.Editing.Contract,
   Shell.Composition.Stdio,
   Shell.Composition.Core,
@@ -72,6 +73,9 @@ type
     CompilerProcess: ICompilerProcess;
     /// <summary>Compilerläufe (#40, #261): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.</summary>
     Compile: TShellCompileHost;
+    /// <summary>Diagnosen des zuletzt eingefügten Leck- oder Absturzberichts (#74); die Syntaxprüfung liest sie
+    /// wie die Compilermeldungen.</summary>
+    RuntimeReports: TCompilerResults;
     /// <summary>Der Client hat keinen brauchbaren Ordner gemeldet (RAD Studio, #175):
     /// Ordner werden aus den geöffneten Dateien abgeleitet.</summary>
     DeriveWorkspaces: Boolean;
@@ -196,6 +200,7 @@ begin
   // Nach allen Nutzern des Hosts der Schnellbefehle: Er ruft dessen Methoden.
   FreeAndNil(EditingArea);
   FreeAndNil(Compile);
+  FreeAndNil(RuntimeReports);
   CompilerProcess := nil;
   FreeAndNil(IdeArea);
   FreeAndNil(TextDocumentSync);

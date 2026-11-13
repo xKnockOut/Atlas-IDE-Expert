@@ -166,6 +166,9 @@ type
     IssuesGitHubProject: string;
     /// <summary>Issues ohne Projekt beim Beginnen aufnehmen (#2134, issues.github.addToProject).</summary>
     IssuesGitHubAddToProject: Boolean;
+    /// <summary>„Beginnen“ legt den Branch auf GitHub an und verknüpft ihn mit dem Issue (#2138,
+    /// issues.github.linkBranch).</summary>
+    IssuesGitHubLinkBranch: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginIssuesSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -423,6 +426,7 @@ begin
   Result.IssuesGitHubStateTarget := cIssuesGitHubStateProject;
   Result.IssuesGitHubProject := '';
   Result.IssuesGitHubAddToProject := False;
+  Result.IssuesGitHubLinkBranch := False;
 end;
 
 procedure TAtlasPluginIssuesSettings.Normalize;
@@ -505,6 +509,7 @@ begin
   AIo.Text('IssuesGitHubStateTarget', IssuesGitHubStateTarget);
   AIo.Text('IssuesGitHubProject', IssuesGitHubProject);
   AIo.Flag('IssuesGitHubAddToProject', IssuesGitHubAddToProject);
+  AIo.Flag('IssuesGitHubLinkBranch', IssuesGitHubLinkBranch);
 end;
 
 { TAtlasPluginIssueWorkSettings }

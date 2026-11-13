@@ -3,6 +3,7 @@
 // Reiter „Entwicklung“ im Fenster „Atlas-Issue“ (#1269), reine VCL ohne Open
 // Tools API:
 //   BRANCHES (n)          Branch · Ort · Stand          [Wechseln]
+//                         Ort nennt „mit dem Issue verknüpft (GitHub)“ (#2138)
 //   COMMITS (n)           Commit · Betreff · Autor · Zeit
 //                         Klick: Diff, Doppelklick: erste geänderte Unit öffnen
 //   PULL REQUESTS (n)     Nummer · Titel · Stand · CI      (GitHub)
@@ -125,7 +126,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Style.Color,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Tracker.Development.Strings;
+  Atlas.UI.Tracker.Development.Strings,
+  Atlas.UI.Tracker.GitHubStrings;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -354,6 +356,16 @@ begin
   end;
 end;
 
+/// <summary>Ort mit Kennzeichen, wenn der Branch beim Tracker mit dem Issue verknüpft ist (#2138).</summary>
+function BranchPlace(const ABranch: TAtlasIssueBranch): string;
+begin
+  Result := BranchWhere(ABranch);
+  if ABranch.Linked then
+  begin
+    Result := Result + ' · ' + TAtlasGitHubStrings.Text(TAtlasGitHubTextId.DevelopmentLinked);
+  end;
+end;
+
 /// <summary>Stand eines Branches: „aktuell“ und Vorsprung bzw. Rückstand gegen die Basis.</summary>
 function BranchState(const ABranch: TAtlasIssueBranch): string;
 begin
@@ -413,7 +425,7 @@ begin
     begin
       mItem := FParts.Branches.Items.Add;
       mItem.Caption := mBranch.Name;
-      mItem.SubItems.Add(BranchWhere(mBranch));
+      mItem.SubItems.Add(BranchPlace(mBranch));
       mItem.SubItems.Add(BranchState(mBranch));
     end;
   finally

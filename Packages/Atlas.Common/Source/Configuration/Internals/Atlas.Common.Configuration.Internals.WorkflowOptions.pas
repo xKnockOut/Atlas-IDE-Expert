@@ -480,6 +480,7 @@ end;
 function CheckConnectionOption(AReader: TConfigurationReader; const AKey: string; AValue: TJsonNode): Boolean;
 var
   mText: string;
+  mFlag: Boolean;
 begin
   Result := True;
   if AKey = 'language' then
@@ -496,6 +497,12 @@ begin
   else if AKey = 'githubStateTarget' then
   begin
     CheckAllowed(AReader, AValue, AKey, ['project', 'label'], cTexts[TWorkflowOptionsText.GitHubStateTargetIs].Text);
+  end
+  // Branch beim Beginnen auf GitHub anlegen und verknüpfen (#2138).
+  else if AKey = 'githubLinkBranch' then
+  begin
+    mFlag := False;
+    AReader.ExpectBoolean(AValue, AKey, mFlag);
   end
   // Zielzustände beim Beenden (#1266) und Prüfzustände (#2126, #2127).
   else if MatchStr(AKey, ['endStates', 'reviewStates']) then
