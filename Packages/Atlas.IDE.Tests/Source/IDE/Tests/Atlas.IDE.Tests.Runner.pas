@@ -16,7 +16,8 @@
 //   der Versionsverwaltung (Zeitlimit, Abbruch beim Entladen) mit
 //   --exitbehavior:Continue --xmlfile:<temp> [--run:…]; das Ergebnis kommt
 //   über TAtlasMainThread zurück.
-// - Ergebnis: fehlgeschlagene Tests als Probleme an der Testmethode (Haken
+// - Ergebnis: fehlgeschlagene Tests als Probleme an der Testmethode bzw.
+//   an der fehlgeschlagenen Anweisung (tests.failureAtAssert, #1771; Haken
 //   OnProblems → Problem-Speicher, Quelle DUnitX), Zusammenfassung und je
 //   Fehlschlag eine anklickbare Zeile in der Meldungsansicht (Gruppe Atlas),
 //   Abschnitt "tests" der Projekt-Zusammenfassung (Haken OnFinished, #592,
@@ -27,6 +28,8 @@
 // - Für „Test debuggen“ (#585, Atlas.IDE.Tests.Debug): Projektwahl, Ziel,
 //   Build vorab, Sperre während der Sitzung (Debugging) und das Ergebnis aus
 //   dem XML-Bericht des Laufs im Debugger (ReportRun).
+// - Nach jedem gemeldeten Lauf ruft der Läufer den Haken OnReported (Stand
+//   der Tests für veraltete Ergebnisse, #1770, Atlas.IDE.Tests.Stale).
 // Haken statt Imports: Build, Probleme und Willkommensseite sind andere
 // Features; die Composition verbindet sie.
 
@@ -53,6 +56,8 @@ type
     out AReason: string): Boolean;
   TAtlasTestsProblemsProc = reference to procedure(const AProblems: TArray<TPair<string, TAtlasProblem>>);
   TAtlasTestsFinishedProc = reference to procedure(const AProject: string; const ATests: TAtlasProjectTests);
+  /// <summary>Ein Lauf von ATarget mit gültigem Bericht ARun ist gemeldet (#1770).</summary>
+  TAtlasTestsReportedProc = reference to procedure(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
   /// <summary>Neuer Prozessläufer; ACancelled bricht ab.</summary>
   TAtlasTestsRunnerFactory = reference to function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
 
@@ -69,6 +74,7 @@ type
       OnProblems: TAtlasTestsProblemsProc;
       OnFinished: TAtlasTestsFinishedProc;
       OnLastFailed: TFunc<string, TArray<string>>;
+      OnReported: TAtlasTestsReportedProc;
     end;
   private
     FAlive: TAlive;
@@ -109,8 +115,9 @@ type
     /// erfolgreich gilt (ASucceeded = TAtlasBuildVerdict.Effective).</summary>
     procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
     /// <summary>Stand der Tests AKeys (Marke der Code Lens: Fixture, Test oder Fall, #585) nach den Läufen dieser
-    /// Sitzung.</summary>
-    function TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
+    /// Sitzung; AStale nennt Tests mit veraltetem Ergebnis (#1770), nil = keine.</summary>
+    function TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>;
+      const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
     /// <summary>Testprojekt zur Datei AFileName (Testunit; '' = ohne): ihr Projekt, sonst das aktive Testprojekt,
     /// sonst die der Gruppe; bei mehreren fragt Atlas einmal und merkt sich die Wahl. Ruft AThen im Hauptthread,
     /// ohne Testprojekt eine Meldung statt dessen.</summary>
@@ -140,6 +147,7 @@ type
     property OnProblems: TAtlasTestsProblemsProc read FHooks.OnProblems write FHooks.OnProblems;
     property OnFinished: TAtlasTestsFinishedProc read FHooks.OnFinished write FHooks.OnFinished;
     property OnLastFailed: TFunc<string, TArray<string>> read FHooks.OnLastFailed write FHooks.OnLastFailed;
+    property OnReported: TAtlasTestsReportedProc read FHooks.OnReported write FHooks.OnReported;
   end;
 
 implementation
@@ -727,17 +735,30 @@ procedure TAtlasIdeTests.Report(const ATarget: TAtlasTestTarget; const ARun: TTe
 var
   mAll: TTestRunResult;
   mFailures: TArray<TAtlasTestFailure>;
+  mAtAssert: Boolean;
+  mInline: string;
 begin
+  // Fehlschlag an der Assert-Zeile, dahinter „erwartet …, erhalten …“ (#1771).
+  mAtAssert := TAtlasIdeSettings.Current.TestsFailureAtAssert;
+  mInline := '';
+  if mAtAssert and TAtlasIdeSettings.Current.TestsFailureInline then
+  begin
+    mInline := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsInlineValues);
+  end;
   Merge(ARun);
+  if Assigned(FHooks.OnReported) then
+  begin
+    FHooks.OnReported(ATarget, ARun);
+  end;
   // Probleme aus allen Ergebnissen dieser Sitzung: Ein Lauf einzelner Tests lässt die übrigen Fehlschläge stehen.
   mAll := ARun;
   mAll.Cases := FCases;
-  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines);
+  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines, mAtAssert);
   if Assigned(FHooks.OnProblems) then
   begin
-    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines),
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)));
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines,
+      mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline));
   end;
   FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
     0).FailedTests);
@@ -760,10 +781,10 @@ begin
   end;
 end;
 
-function TAtlasIdeTests.TallyOf(const AUnitName, AFixture: string;
-  const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
+function TAtlasIdeTests.TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>;
+  const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
 begin
-  Result := TAtlasTestRun.TallyOf(FCases, AUnitName, AFixture, AKeys);
+  Result := TAtlasTestRun.TallyOf(FCases, AUnitName, AFixture, AKeys, AStale);
 end;
 
 end.
