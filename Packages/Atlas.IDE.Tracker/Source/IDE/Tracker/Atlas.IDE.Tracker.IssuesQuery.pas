@@ -83,7 +83,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -342,7 +342,7 @@ begin
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (mProvider = nil) or (mTarget.Server = '') then
       begin
-        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginNoTracker));
+        FContext.Report(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginNoTracker));
       end
       else if FContext.Hooks.Credentials(mProvider, mTarget) then
       begin
@@ -367,7 +367,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginNoTracker));
+        FContext.Report(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginNoTracker));
       end
       else if FContext.Hooks.Credentials(mProvider, mTarget) then
       begin

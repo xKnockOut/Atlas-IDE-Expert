@@ -325,6 +325,9 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.DebugCheckBreakpoints);
   Settings.DebugCheckBreakpoints := False;
+  // #586: Haltepunkt-Satz mit dem Branch wechseln ist an.
+  Assert.IsTrue(Settings.DebugBreakpointSetPerBranch);
+  Settings.DebugBreakpointSetPerBranch := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -338,6 +341,7 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugMethodBreakpoints);
+  Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var

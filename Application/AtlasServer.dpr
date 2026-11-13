@@ -51,6 +51,7 @@ uses
   Shell.Composition.CompileSetup in 'Source\Shell\Shell.Composition.CompileSetup.pas',
   Shell.Composition.Stdio in 'Source\Shell\Shell.Composition.Stdio.pas',
   Shell.Composition.AffectedTests in 'Source\Shell\Shell.Composition.AffectedTests.pas',
+  Shell.Composition.CoveredBy in 'Source\Shell\Shell.Composition.CoveredBy.pas',
   Shell.Composition.DfmPropertyRules in 'Source\Shell\Shell.Composition.DfmPropertyRules.pas',
   Shell.Composition.LeakSetup in 'Source\Shell\Shell.Composition.LeakSetup.pas',
   Shell.Composition.Core in 'Source\Shell\Shell.Composition.Core.pas',
