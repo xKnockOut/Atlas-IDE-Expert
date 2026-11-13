@@ -887,6 +887,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.DisplayRules` | `Core/Debug/Atlas.Core.Debug.DisplayRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Evaluate` | `Core/Debug/Atlas.Core.Debug.Evaluate.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EventBreak` | `Core/Debug/Atlas.Core.Debug.EventBreak.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.InstanceBreakpoint` | `Core/Debug/Atlas.Core.Debug.InstanceBreakpoint.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionDialog` | `Core/Debug/Atlas.Core.Debug.ExceptionDialog.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Modules` | `Core/Debug/Atlas.Core.Debug.Modules.pas` | Ordner `Core/Debug` |
