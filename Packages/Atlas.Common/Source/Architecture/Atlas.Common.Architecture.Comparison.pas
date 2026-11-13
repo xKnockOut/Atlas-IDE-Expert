@@ -45,6 +45,7 @@ interface
 
 uses
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Matching;
 

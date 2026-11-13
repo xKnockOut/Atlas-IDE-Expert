@@ -37,7 +37,8 @@ uses
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Settings.Page,
   Atlas.UI.Tracker.QueryDialog;
 
@@ -75,7 +76,7 @@ begin
     // Doppelter Name: OK gesperrt, mit Hinweis.
     mDialog.View.Name.Text := 'standard';
     Assert.IsFalse(mDialog.View.Ok.Enabled);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken),
+    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken),
       mDialog.View.Result.Text);
     mDialog.View.Name.Text := 'Neu';
     mDialog.View.Query.Text := '';
@@ -112,8 +113,8 @@ begin
     begin
       Assert.AreEqual('de', mTemplate.Language);
     end;
-    Assert.AreEqual('YouTrack · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault) + ' (' +
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')',
+    Assert.AreEqual('YouTrack · ' + TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryDefault) + ' (' +
+      TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageGerman) + ')',
       TAtlasTrackerQueryDialog.TemplateCaption(mDialog.Templates[0]));
     mDialog.ApplyTemplate(0);
     Assert.AreEqual('assignee: meine #Ungelöst', mDialog.View.Query.Text);
@@ -121,7 +122,7 @@ begin
     // GitHub: englische Begriffe, ohne Sprint und ohne Sprachangabe.
     mDialog.SelectConnection(2);
     Assert.AreEqual(3, Integer(Length(mDialog.Templates)));
-    Assert.AreEqual('GitHub · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateCreatedByMe),
+    Assert.AreEqual('GitHub · ' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCreatedByMe),
       TAtlasTrackerQueryDialog.TemplateCaption(mDialog.Templates[1]));
     mDialog.ApplyTemplate(1);
     Assert.AreEqual('author:@me state:open', mDialog.View.Query.Text);
@@ -169,10 +170,10 @@ begin
     Assert.AreEqual('assignee: me #Unresolved', mSeen.Query);
     Assert.AreEqual('de', mSeen.Language, 'Sprache der Verbindung');
     Assert.IsTrue(string(mDialog.View.Result.Text)
-      .Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [120])),
+      .Contains(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestEmpty, [120])),
       mDialog.View.Result.Text);
     Assert.IsTrue(string(mDialog.View.Result.Text).Contains('assignee: meine #Ungelöst'), 'Tipp');
-    Assert.IsTrue(string(mDialog.View.Result.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent,
+    Assert.IsTrue(string(mDialog.View.Result.Text).Contains(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestSent,
       ['Firma', 'project: ATL assignee: me #Unresolved'])), 'gesendete Abfrage');
     Assert.IsTrue(mDialog.View.Test.Enabled, 'nach dem Ergebnis wieder frei');
   finally
@@ -196,30 +197,30 @@ begin
   mResult.ElapsedMs := 80;
   mResult.Keys := TArray<string>.Create('ATL-1', 'ATL-2', 'ATL-3');
   mText := TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma');
-  Assert.IsTrue(mText.StartsWith(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestFound, [3, 80, 'ATL-1, ATL-2, ATL-3'])),
-    mText);
-  Assert.IsTrue(mText.EndsWith(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent, ['Firma', 'q'])), mText);
+  Assert.IsTrue(mText.StartsWith(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestFound,
+    [3, 80, 'ATL-1, ATL-2, ATL-3'])), mText);
+  Assert.IsTrue(mText.EndsWith(TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.QueryTestSent, ['Firma', 'q'])), mText);
   mResult.More := True;
-  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasTrackerStrings.Fmt(
-    TAtlasTrackerTextId.QueryTestFoundMore, [3, 80, 'ATL-1, ATL-2, ATL-3'])));
+  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasOptionsStrings.Fmt(
+    TAtlasOptionsTextId.QueryTestFoundMore, [3, 80, 'ATL-1, ATL-2, ATL-3'])));
   mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.QueryRejected, 'q');
   mResult.HttpStatus := 400;
   mResult.TrackerMessage := 'Unbekannter Wert';
-  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasTrackerStrings.Fmt(
-    TAtlasTrackerTextId.QueryTestQueryRejected, [400, 'Unbekannter Wert'])));
+  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasOptionsStrings.Fmt(
+    TAtlasOptionsTextId.QueryTestQueryRejected, [400, 'Unbekannter Wert'])));
   mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.ProjectUnknown, 'q');
-  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasTrackerStrings.Text(
-    TAtlasTrackerTextId.QueryTestProjectUnknown)));
+  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasOptionsStrings.Text(
+    TAtlasOptionsTextId.QueryTestProjectUnknown)));
   mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.NoToken, 'q');
-  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasTrackerStrings.Text(
-    TAtlasTrackerTextId.QueryTestNoToken)));
+  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasOptionsStrings.Text(
+    TAtlasOptionsTextId.QueryTestNoToken)));
   mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreadable, 'q');
   mResult.HttpStatus := 200;
-  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasTrackerStrings.Fmt(
-    TAtlasTrackerTextId.QueryTestUnreadable, [200])));
+  Assert.IsTrue(TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma').StartsWith(TAtlasOptionsStrings.Fmt(
+    TAtlasOptionsTextId.QueryTestUnreadable, [200])));
   // Ohne gesendete Abfrage keine Zeile „Gesendet an“.
   mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, '');
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryTestUnreachable),
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryTestUnreachable),
     TAtlasTrackerQueryDialog.ResultText(mResult, 'Firma'));
   mResult := Default(TAtlasTrackerQueryTestResult);
   mText := '';

@@ -379,6 +379,7 @@ type
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
     property TestsAffected: Boolean read FBuild.TestsAffected write FBuild.TestsAffected;
+    property TestsLeakSetup: Boolean read FBuild.TestsLeakSetup write FBuild.TestsLeakSetup;
     property TestsAffectedDepth: Integer read FBuild.TestsAffectedDepth write FBuild.TestsAffectedDepth;
     property TestsAffectedBeforeCommit: Boolean read FBuild.TestsAffectedBeforeCommit
       write FBuild.TestsAffectedBeforeCommit;
@@ -394,6 +395,7 @@ type
     property TestsCompareFormat: Boolean read FBuild.TestsCompareFormat write FBuild.TestsCompareFormat;
     property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
+    property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;
@@ -439,6 +441,8 @@ type
     property DebugBreakOnNextEventExcluded: string read FDebug.DebugBreakOnNextEventExcluded
       write FDebug.DebugBreakOnNextEventExcluded;
     property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
+    property DebugBreakpointSetPerBranch: Boolean read FDebug.DebugBreakpointSetPerBranch
+      write FDebug.DebugBreakpointSetPerBranch;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;

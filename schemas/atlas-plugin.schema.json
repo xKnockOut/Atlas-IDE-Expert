@@ -1425,6 +1425,19 @@
       "x-captionEn": "Run affected tests",
       "x-issue": "#1353"
     },
+    "TestsLeakSetup": {
+      "description": "Befehl „Leckprüfung einrichten …“ im Kontextmenü der Projektverwaltung und in der Befehlspalette: erkennt FastMM4/FastMM5 und die DLL für FullDebugMode und richtet ReportMemoryLeaksOnShutdown bzw. FastMM nur für Debug ein. Aus = Befehl fehlt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leakSetup",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.enabled",
+      "x-caption": "Leckprüfung einrichten",
+      "x-captionEn": "Set up leak check",
+      "x-issue": "#1880"
+    },
     "TestsAffectedDepth": {
       "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test (1 bis 5); 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
       "type": "integer",
@@ -1546,6 +1559,18 @@
       "x-caption": "Langsam ab (ms)",
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
+    },
+    "TestsLeaks": {
+      "description": "Lecks je Test zeigen: Mit Leckmonitor (DUnitX.MemoryLeakMonitor.FastMM4/FastMM5) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag. Atlas zeigt ihn dann als bestanden mit Leck: Marke gelb „bestanden · Leck: 40 Bytes“, Warnung in Atlas-Probleme am Methodenkopf (Quelle DUnitX), eine Zeile in der Meldungsansicht. Aus = wie im Bericht (Fehlschlag).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leaks",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Lecks je Test als Warnung zeigen",
+      "x-captionEn": "Show leaks per test as warnings",
+      "x-issue": "#1774"
     },
     "TestDebug": {
       "type": "boolean",
@@ -2070,6 +2095,18 @@
       "x-captionEn": "Check breakpoints before starting",
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
+    },
+    "DebugBreakpointSetPerBranch": {
+      "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointSetPerBranch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt-Satz beim Branch-Wechsel mitwechseln",
+      "x-captionEn": "Switch the breakpoint set together with the branch",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#586"
     },
     "TestsBuildFirst": {
       "type": "boolean",
