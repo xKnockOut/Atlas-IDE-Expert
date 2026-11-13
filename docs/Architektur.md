@@ -472,8 +472,8 @@ Dazu gelten: Kein Modul requiret ein anderes, Base verweist auf kein Modul, Modu
 
 Jedes Modul hat genau eine Kompositions-Unit `Atlas.IDE.<Modul>.Composition` (Vorlagen: `Atlas.IDE.Analysis.Composition`, `Atlas.IDE.Rules.Composition`):
 
-- Die Klasse implementiert `IAtlasModule` und die Beitragsverträge, die das Modul anbietet. `Info` liefert die Id (`atlas.<name>`), den Modulschalter (#1454) und die Mindeststufe des abgesicherten Starts.
-- `RegisterModule` läuft in der Initialisierung. Es prüft zuerst den Handschlag (Regel 7), meldet dann an und stellt alles über `GScope.Provide` bereit. `UnregisterModule` läuft in der Finalisierung und nur, solange Base läuft (Regel 5).
+- Die Klasse implementiert `IAtlasModule` und die Beitragsverträge, die das Modul anbietet. `Info` liefert über `TAtlasModuleHost.Info` (`Atlas.Core.Modules.Host`) die Id (`atlas.<name>`), den Modulschalter (#1454), die Mindeststufe des abgesicherten Starts, die Version und das `HInstance` des Moduls.
+- `RegisterModule` läuft in der Initialisierung. Es prüft zuerst mit `TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry)` den Handschlag (Regel 7; die erwartete Version kommt aus dem Modul), meldet dann an und stellt alles über `GScope.Provide` bereit. `UnregisterModule` läuft in der Finalisierung und ruft nur `TAtlasModuleHost.Unregister(GScope, cModuleId, ReleaseModule)`: Scope vergessen, solange Base läuft (Regel 5) bei der Registry abmelden, dann die Schritte des Moduls in `ReleaseModule` (oder `nil`). Die Reihenfolge des Abbaus steht damit nur in Base.
 - Teile der Feature-Tabelle: `TAtlasFeaturePart.AtLevel` bzw. `.When` (`Atlas.Core.Modules.FeatureParts`) mit Start und Stop. Was ein Teil bei Base setzt (Haken, Statusfeld), nimmt sein Stop zurück.
 - Beiträge, die Base einsammelt (`TAtlasModuleContributions`, nur von laufenden Modulen):
 

@@ -295,6 +295,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.Handshake` | `Core/Modules/Atlas.Core.Modules.Handshake.pas` | Vertragsversion von Base (Regel 7), #1455 |
 | `Atlas.Core.Modules.KnownPackages` | `Core/Modules/Atlas.Core.Modules.KnownPackages.pas` | Module unter „Known Packages“ prüfen (Meldung 05.11.2026) |
 | `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
+| `Atlas.Core.Modules.Host` | `Core/Modules/Atlas.Core.Modules.Host.pas` | Ordner `Core/Modules`, #1455 |
 | `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
 | `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
 | `Atlas.Core.Notifications.Build` | `Core/Notifications/Atlas.Core.Notifications.Build.pas` | Ordner `Core/Notifications` |
