@@ -116,6 +116,16 @@ Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › T
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Dauer der Tests und langsame Tests (#1772)
+
+- Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
+- Liegt der langsamste Test einer Marke über `tests.slowMs` (Vorgabe 500 ms), folgt „· langsam“ und die Marke wird gelb, auch wenn er bestanden hat. Fehlgeschlagen bleibt rot, veraltet grau.
+- Die Karte *Testergebnisse* der Willkommensseite listet unter den Fehlschlägen die fünf langsamsten Tests des letzten Laufs; Doppelklick öffnet den Test.
+- *Langsamste Tests zeigen* (Atlas-Menü, Befehlspalette): alle Tests dieser Sitzung mit Dauer, der langsamste zuerst (höchstens 50); Doppelklick oder Eingabetaste springt zum Test.
+- `tests.showDuration` aus: keine Dauer, keine Färbung, keine Liste auf der Willkommensseite, kein Befehl.
+
+Einstellungen: `tests.showDuration`, `tests.slowMs`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
@@ -326,3 +336,20 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
 Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
+
+### Threads
+
+#### Was wartet worauf?
+
+- Hängt ein Programm, hält man es an (Start > Programm Pause) und wählt Atlas > „Was wartet worauf?“.
+- Atlas liest die Aufrufstapel aller Threads und zeigt im Ergebnisfenster je Thread Kennung, Namen (`TThread.NameThreadForDebugging`), Wartepunkt und die erste eigene Codezeile, etwa „Thread 7 „Worker“: wartet in TThread.Synchronize, bei TWorker.Execute (Unit2.pas:30)“.
+- Als Wartepunkt gilt die Warte-Routine über der ersten eigenen Zeile: `TThread.WaitFor`, `TThread.Synchronize`, `TMonitor.Enter`/`Wait`, Critical Section, Ereignis (`TEvent.WaitFor`), `Sleep` oder ein Handle (`WaitForSingleObject`, `WaitForMultipleObjects`); die Nachrichtenschleife zählt als „wartet auf Nachrichten“.
+- Darüber stehen erkannte Muster:
+  - Der Hauptthread wartet in `TThread.WaitFor` (etwa im Destruktor eines Threads), ein Thread wartet in `Synchronize` auf ihn: Verklemmung, siehe Regel `synchronize-in-destructor`.
+  - Ein Thread wartet in `Synchronize`, der Hauptthread hängt an einer Sperre.
+  - Mehrere Threads warten an derselben Stelle auf eine Sperre.
+  - Alle Threads warten, keiner läuft.
+- Doppelklick wechselt zum Thread und springt auf seine erste eigene Codezeile.
+- Wer eine Sperre (`TMonitor`, Critical Section) hält, liefert der Debugger nicht; Atlas nennt nur die Wartenden.
+
+Schalter: `debug.deadlocks`.
