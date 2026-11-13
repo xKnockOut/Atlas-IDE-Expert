@@ -117,14 +117,14 @@ type
     Written: TIndexCacheWrittenEvent;
   end;
 
-  /// <summary>Caches eines Aufbaus (#647): liest beim Start Projekt-, Suchpfad- und Bibliotheks-Cache und schreibt
-  /// sie nach der Projektstufe und am Ende getrennt zurück. Hält die gemeinsam gelesenen Kopien (TSharedCacheHold)
-  /// bis zur Freigabe.</summary>
   /// <summary>Wartet höchstens AMs oder bis der Aufbau abgebrochen wird; True bei Abbruch. Für das Warten auf
   /// eine andere Instanz (Schreibsperre, Cache-Datei): Dafür gibt es kein Signal über Prozessgrenzen, also wird
   /// nachgesehen; der Abbruch aber wirkt sofort und nicht erst nach dem nächsten Takt.</summary>
   TIndexPause = reference to function(AMs: Cardinal): Boolean;
 
+  /// <summary>Caches eines Aufbaus (#647): liest beim Start Projekt-, Suchpfad- und Bibliotheks-Cache und schreibt
+  /// sie nach der Projektstufe und am Ende getrennt zurück. Hält die gemeinsam gelesenen Kopien (TSharedCacheHold)
+  /// bis zur Freigabe.</summary>
   TIndexCacheWriter = class
   private
     FIndex: ISymbolIndex;
