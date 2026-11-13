@@ -116,6 +116,8 @@ Atlas.Common.Editing.StringLiterals.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
+Atlas.Common.Lsp.TestFromDebug.Tests
+Atlas.Common.Editing.TestFromDebug.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
 Atlas.Common.Editing.TypeComments.Tests
