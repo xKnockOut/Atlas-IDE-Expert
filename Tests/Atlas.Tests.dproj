@@ -210,6 +210,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryCases.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas"/>
+        <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Ownership.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
@@ -1488,6 +1490,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.RoleUnit.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Rules\Atlas.Core.Rules.CustomLayer.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Rules.CustomLayer.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Rules\Atlas.Core.Rules.Ownership.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Rules.Ownership.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>

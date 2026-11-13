@@ -608,6 +608,9 @@
         <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Candidates.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakCandidates.pas"/>
+        <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.OwnershipTree.pas"/>
+        <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Ownership.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Ownership.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RuntimeReport.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestCases.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BoundaryCases.pas"/>

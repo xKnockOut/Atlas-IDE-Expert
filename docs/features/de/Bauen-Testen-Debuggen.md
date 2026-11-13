@@ -562,6 +562,16 @@ Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.pa
 
 Schalter: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`.
 
+#### Wer gibt das frei?
+
+- Am Ende jeder Zeile mit `T.Create(…)` steht eine Marke mit der Antwort: grün „frei in Destroy, Z. 48“, „frei in finally, Z. 30“, „Owner Self“, „gehört FListe“ (Liste mit OwnsObjects) oder „Referenzzählung“; gelb „frei in Clear, Z. 70“ (andere Methode), „an Aufrufer zurückgegeben“, „weitergegeben an Registry.Add“ oder „unklar“; rot „nie freigegeben“.
+- Rot steht nur, wo eine der Leck-Regeln (`field-not-freed`, `create-without-assignment`, `local-object-not-freed`, `created-result-not-freed`) mit den Einstellungen der Datei meldet: Marke und Problem laufen nie auseinander. Ist die Regel aus, heißt dieselbe Stelle „unklar“.
+- Listen tragen zusätzlich „besitzt Elemente“ (`TObjectList` mit OwnsObjects) bzw. „Elemente gehören FListe“, wenn eine zweite Liste derselben Klasse die Elemente besitzt.
+- Klick auf die Marke springt zur freigebenden Zeile; der Tooltip erklärt, wie Atlas zur Einstufung kam, bei Rot mit der Meldung der Regel.
+- Die Marken kommen vom Server (`atlas.server.ownership`) und werden zusammen mit der normalen Prüfung der Datei neu geholt; gezeichnet werden nur die sichtbaren Zeilen. Ausblenden je Zeile oder Datei über Rechtsklick auf die Marke.
+
+Schalter: `editor.ownershipHints` (Vorgabe aus, Modul Prüfregeln), `editor.ownershipHints.onlyProblems` (nur gelbe und rote Marken).
+
 #### Threads im Quelltext
 
 - Beim Halt steht im Rand an jeder Zeile, an der ein anderer Thread mit seinem obersten eigenen Rahmen steht, ein Zeichen mit der Anzahl; bei acht wartenden Workern an derselben Zeile also „8“. Den aktuellen Thread zeigt die IDE wie bisher.

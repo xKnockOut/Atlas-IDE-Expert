@@ -46,7 +46,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, change marks with inline diff, line history, branch when starting an issue, working copies, project state | 26 | `vcs.enabled` |
 | `Atlas.IDE.Bookmarks` | Notes, named and quick bookmarks, TODO list | 24 | `bookmarks.enabled` |
 | `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | 24 | `buildTools.enabled` |
-| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix, IDE errors (Error Insight) next to the findings; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | 16 | `ruleChecks.enabled` |
+| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix, IDE errors (Error Insight) next to the findings, “Who frees this?” mark on every Create; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | 16 | `ruleChecks.enabled` |
 | `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, “tested by” marks, affected tests, wizard “DUnitX test unit for unit …”, leak check setup | 30 | `tests.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds on request (also for MCP), check before compiling, release guard, verdict and build summary | 9 | `buildPipeline.enabled` |
 | `Atlas.IDE.Assistants` | AI assistants: builds through `build_project` and changes to open files by MCP clients, own options page | 10 | `assistants.enabled` |
@@ -127,6 +127,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Event log while debugging:** debug output, modules and threads with filter (also regex), colors by pattern and jump to `File.pas(123)`
 - **Logpoints:** breakpoints that do not stop but write text with placeholders such as `x={x}, total {Total:0.00}` to the event log (Shift+F5, diamond in the gutter)
 - **Leak and crash reports:** paste a FastMM log or a madExcept, EurekaLog or JclDebug report; the stack appears clickable in the message view, the creation or crash site as a diagnostic in the editor, and the map file resolves addresses without debug information
+- **Who frees this?** On request every `T.Create(…)` shows who frees the object: green “freed in Destroy, line 48”, “freed in finally”, “owner Self”, “owned by FList” or “reference counted”, yellow “passed to Registry.Add” or “returned to the caller”, red “never freed” where a leak rule reports; a click jumps to the release, the tooltip explains how Atlas got there (`editor.ownershipHints`, off by default)
 - **“No source” window:** when the debugger stops in code without source, a small window names routine, module, reason (debug DCUs off, `{$D-}`, DCU only, not in search path, system code) and ways out
 - **“Atlas leaks” window:** when the program reports leaks at the end (message box of `ReportMemoryLeaksOnShutdown` or FastMM log), Atlas lists them per name compared with the last run (new, grown, known) and the places below: with call stacks the creation site, otherwise the server's rated candidates; Enter jumps there (`debug.leakReport`)
 
