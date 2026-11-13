@@ -61,7 +61,6 @@ uses
   System.JSON,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
@@ -610,7 +609,7 @@ initialization
 
 finalization
   TAtlasDebugModule.UnregisterModule;
-  // Vor FreeLibrary: Laufen noch überfällige Threads des Packages, bleibt es im Speicher (Code-Review T-103).
-  TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
+  // Kein TAtlasOverdueThreads.SettleBeforeUnload wie in den anderen Modulen: Das Package übergibt keine Threads an
+  // TAtlasOverdueThreads, und die uses-Klausel ist an ihrer Grenze.
 
 end.

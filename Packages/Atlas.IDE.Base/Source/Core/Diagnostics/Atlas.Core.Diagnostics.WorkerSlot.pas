@@ -63,7 +63,9 @@ type
     /// <summary>Beim Abmelden des Moduls in AModule, solange sein Package noch regulär geladen ist (Finalisierung
     /// der Kompositions-Unit, vor FreeLibrary): Laufen dort noch überfällige Threads, bis AGraceMs warten, sonst
     /// das Package festhalten (Settle). True, wenn keiner mehr läuft.</summary>
-    class function SettleBeforeUnload(AModule: HMODULE; AGraceMs: Cardinal = cUnloadGraceMs): Boolean; static;
+    class function SettleBeforeUnload(AModule: HMODULE; AGraceMs: Cardinal): Boolean; overload; static;
+    /// <summary>Wie oben mit AGraceMs = cUnloadGraceMs.</summary>
+    class function SettleBeforeUnload(AModule: HMODULE): Boolean; overload; static;
     /// <summary>Rückruf beim Entladen von AModule (AddModuleUnloadProc, aus DLL_PROCESS_DETACH): protokolliert nur,
     /// wenn dort noch überfällige Threads laufen. Wartet nicht, hält nicht fest, ruft keine Oberfläche.</summary>
     class procedure NoteModuleUnload(AModule: HMODULE); static;
@@ -276,6 +278,11 @@ class function TAtlasOverdueThreads.SettleBeforeUnload(AModule: HMODULE; AGraceM
 begin
   // Vor FreeLibrary: Hier wirkt das Festhalten noch, und die Ladersperre ist frei.
   Result := (Pending(AModule) = 0) or Settle(AModule, AGraceMs);
+end;
+
+class function TAtlasOverdueThreads.SettleBeforeUnload(AModule: HMODULE): Boolean;
+begin
+  Result := SettleBeforeUnload(AModule, cUnloadGraceMs);
 end;
 
 class procedure TAtlasOverdueThreads.NoteModuleUnload(AModule: HMODULE);
