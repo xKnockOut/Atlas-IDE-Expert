@@ -161,6 +161,12 @@ type
     /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
     /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
     DebugParallelStacks: Boolean;
+    /// <summary>debug.callStackWindow (#843): Fenster „Aufrufstapel“ des aktuellen Threads mit lesbaren Parametern,
+    /// zugeklappten Bibliotheksrahmen, Suche, Kopieren und Vergleich mit dem letzten Halt.</summary>
+    DebugCallStackWindow: Boolean;
+    /// <summary>debug.callStackWindow.evaluateParams (#843): Parameter einzeln auswerten statt nur den Rahmentext
+    /// der IDE zu zeigen.</summary>
+    DebugCallStackWindowEvaluateParams: Boolean;
     /// <summary>debug.threadsInSource (#852): beim Halt im Rand jeder Zeile, an der andere Threads stehen, ein
     /// Zeichen mit Anzahl; Threads markieren.</summary>
     DebugThreadsInSource: Boolean;
@@ -326,6 +332,8 @@ begin
   Result.DebugThreadFreeze := False;
   Result.DebugThreadsInSource := True;
   Result.DebugParallelStacks := True;
+  Result.DebugCallStackWindow := True;
+  Result.DebugCallStackWindowEvaluateParams := True;
   Result.DebugParallelStacksWaitRoutines := '';
   Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
   Result.DebugDeadlocks := True;
@@ -411,6 +419,8 @@ begin
   AIo.Flag('DebugLeakReportCompare', DebugLeakReportCompare);
   AIo.Flag('DebugLeakReportWindow', DebugLeakReportWindow);
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
+  AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
+  AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
   AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
   AIo.Flag('DebugAsyncOrigin', DebugAsyncOrigin);

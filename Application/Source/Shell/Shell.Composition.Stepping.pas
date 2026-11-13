@@ -1,7 +1,8 @@
 ﻿unit Shell.Composition.Stepping;
 
 // Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter
-// (#850), „Warum bin ich hier?“ (#1878) und Haltepunkte, die nicht greifen werden (#577). Sie lesen nur;
+// (#850), „Warum bin ich hier?“ (#1878), Haltepunkte, die nicht greifen werden (#577), und die Parameter einer
+// Routine für das Fenster „Aufrufstapel“ (#843). Sie lesen nur;
 // Code-Aktionen gibt es hier keine.
 
 interface
@@ -22,6 +23,7 @@ type
     function StepFilterOfFile(const AUri: string; ALine: Integer): TJSONObject;
     function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
     function EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
+    function RoutineParameters(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheck(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheckFile(const AUri: string; const ALines: TArray<Integer>): TJSONObject;
   public
@@ -43,6 +45,7 @@ uses
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.EnclosingConditions,
+  Atlas.Common.Lsp.RoutineParameters,
   Atlas.Common.Lsp.BreakpointCheck,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.CompilerSwitches,
@@ -75,6 +78,7 @@ begin
   ACommands.Register(TLspStepFilter.cCommand, StepFilter);
   ACommands.Register(TLspStepFilter.cCountsCommand, StepFilterCounts);
   ACommands.Register(TLspEnclosingConditions.cCommand, EnclosingConditions);
+  ACommands.Register(TLspRoutineParameters.cCommand, RoutineParameters);
   ACommands.Register(TLspBreakpointCheck.cCommand, BreakpointCheck);
 end;
 
@@ -237,6 +241,26 @@ begin
     mResolver.Free;
   end;
   Log(Format(TLspEnclosingConditions.cCommand + ': %d', [Count(mAnswer, 'blocks')]));
+  Result := mAnswer;
+end;
+
+function TShellStepping.RoutineParameters(const AArguments: TJSONArray): TJSONValue;
+var
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mParameters: TLspRoutineParameters;
+  mAnswer: TJSONObject;
+begin
+  // Argumente: URI und Zeile (ab 0) eines Rahmens im Aufrufstapel (#843).
+  mLine := LineOf(AArguments);
+  mDocument := Open(AArguments.Items[0].Value);
+  mParameters := TLspRoutineParameters.Create(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text);
+  try
+    mAnswer := mParameters.Execute(mLine);
+  finally
+    mParameters.Free;
+  end;
+  Log(Format(TLspRoutineParameters.cCommand + ': %d', [Count(mAnswer, 'parameters')]));
   Result := mAnswer;
 end;
 
