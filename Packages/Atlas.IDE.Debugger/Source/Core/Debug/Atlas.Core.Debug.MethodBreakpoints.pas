@@ -100,7 +100,8 @@ type
     /// Bezeichner.</summary>
     class function StartPattern(const AExpression, ALine: string): string; static;
     /// <summary>Gehört ein Formular der IDE mit Namen AName und Klasse AClassName zur Haltepunktliste? Sucht
-    /// „Breakpoint“ im Namen oder in der Klasse, ohne eigene Fenster von Atlas und ohne Dialoge.</summary>
+    /// „Breakpoint“ im Namen oder in der Klasse, ohne eigene Fenster von Atlas (Klasse „TAtlas…“ oder, bei
+    /// andockbaren Fenstern wie dem Haltepunktfenster von Atlas, Name „Atlas…“) und ohne Dialoge.</summary>
     class function IsBreakpointList(const AName, AClassName: string): Boolean; static;
   end;
 
@@ -395,7 +396,8 @@ begin
   mName := UpperCase(AName);
   mClass := UpperCase(AClassName);
   Result := ((Pos('BREAKPOINT', mName) > 0) or (Pos('BREAKPOINT', mClass) > 0)) and
-    not mClass.StartsWith('TATLAS') and (Pos('DIALOG', mClass) = 0) and (Pos('PROPERT', mClass) = 0);
+    not mClass.StartsWith('TATLAS') and not mName.StartsWith('ATLAS') and (Pos('DIALOG', mClass) = 0) and
+    (Pos('PROPERT', mClass) = 0);
 end;
 
 { TAtlasMethodGroupStore }

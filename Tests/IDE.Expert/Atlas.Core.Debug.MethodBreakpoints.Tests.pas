@@ -267,6 +267,8 @@ begin
   Assert.IsTrue(TAtlasMethodBreakpoints.IsBreakpointList('BreakpointWindow', 'TBreakpointWindow'));
   Assert.IsTrue(TAtlasMethodBreakpoints.IsBreakpointList('', 'TBreakPointListView'));
   Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('', 'TAtlasMethodBreakpointsDialog'));
+  // Das eigene Haltepunktfenster von Atlas (#863) bekommt die Einträge nicht.
+  Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('AtlasBreakpoints', 'TDockableFrameForm'));
   Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('', 'TSourceBreakpointPropertiesDlg'));
   Assert.IsFalse(TAtlasMethodBreakpoints.IsBreakpointList('EventLogView', 'TEventLogView'));
 end;

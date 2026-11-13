@@ -2343,8 +2343,14 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodBreakpoints.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointList.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointList.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointTags.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointTags.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointsFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointsFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointCheck.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas"/>
