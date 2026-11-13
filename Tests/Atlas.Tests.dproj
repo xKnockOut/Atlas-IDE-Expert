@@ -386,6 +386,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BulkFix.Tests.pas"/>
@@ -628,6 +629,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Slash.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
@@ -684,6 +686,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Watch.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Answer.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ModuleHost.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.KnownPackages.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ModuleHosting.Tests.pas"/>
@@ -1211,6 +1214,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AssertLine.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Compare.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
@@ -1583,6 +1590,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHost.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.FeatureParts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Contributions.pas"/>

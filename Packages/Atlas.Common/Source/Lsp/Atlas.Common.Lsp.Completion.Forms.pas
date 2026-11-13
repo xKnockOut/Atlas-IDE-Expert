@@ -86,6 +86,7 @@ uses
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Lsp.Completion.TypeGuards,
   Atlas.Common.Lsp.Internals.CompletionSource;
 
 const
@@ -474,14 +475,7 @@ end;
 /// <summary>Umwandlung von ASender nach AType je nach completion.senderCast.</summary>
 function SenderCast(ACast: TCompletionSenderCast; const AType, ASender: string): string;
 begin
-  if ACast = TCompletionSenderCast.HardCast then
-  begin
-    Result := AType + '(' + ASender + ')';
-  end
-  else
-  begin
-    Result := '(' + ASender + ' as ' + AType + ')';
-  end;
+  Result := TCompletionTypeGuards.CastText(ACast = TCompletionSenderCast.HardCast, AType, ASender);
 end;
 
 /// <summary>"Sender." mit genau diesem einen Namen vor dem Punkt?</summary>

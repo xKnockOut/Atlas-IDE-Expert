@@ -143,6 +143,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.LogRedaction` | `Core/Diagnostics/Atlas.Core.Diagnostics.LogRedaction.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.ModuleHost` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas` | gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455 |
 | `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
 | `Atlas.Core.Diagnostics.Package` | `Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.PluginReport` | `Core/Diagnostics/Atlas.Core.Diagnostics.PluginReport.pas` | Ordner `Core/Diagnostics` |
@@ -1423,15 +1424,19 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.UnitMatch` | `Core/Tests/Atlas.Core.Tests.UnitMatch.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Run` | `Core/Tests/Atlas.Core.Tests.Run.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Stale` | `Core/Tests/Atlas.Core.Tests.Stale.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.AssertLine` | `Core/Tests/Atlas.Core.Tests.AssertLine.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Stale` | `IDE/Tests/Atlas.IDE.Tests.Stale.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Compare` | `IDE/Tests/Atlas.IDE.Tests.Compare.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.SettingsSection` | `UI/Tests/Atlas.UI.Tests.SettingsSection.pas` | Ordner `UI/Tests`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
+| `Atlas.UI.Tests.Compare` | `UI/Tests/Atlas.UI.Tests.Compare.pas` | Ordner `UI/Tests` |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 | `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 

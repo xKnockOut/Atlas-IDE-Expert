@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 329 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 331 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -58,7 +58,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 ### [Schreiben](docs/features/de/Schreiben.md)
 - **Vervollständigung** im eigenen Popup mit Detailpanel, unscharfer Suche, Favoriten und `+ Unit` für fehlende uses
-- **Vorschläge nach Kontext:** Aufzählungswerte, `case`-Werte, Exception-Klassen nach `raise`, Gerüste für anonyme Methoden
+- **Vorschläge nach Kontext:** Aufzählungswerte, `case`-Werte, Exception-Klassen nach `raise`, Gerüste für anonyme Methoden, nach `if X is T then` die Mitglieder von `T` mit Umwandlung
 - **Parameter-Hint** mit Wahl der Überladung und Prüfung der `Format`-Platzhalter
 - **Vorlagen:** Code-, Postfix- und klassenbezogene Vorlagen, eigene Snippets, Schrägstrich-Befehle wie `/uses` und `/extract`
 - **Generieren-Menü** (Alt+Einfg) und Bearbeitungshilfen: umschließen, Zeilen verschieben, Kommentare umschalten, var-Blöcke aufräumen
@@ -84,7 +84,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **329 Prüfregeln** schon beim Tippen: 216 Fehler, 102 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
+- **331 Prüfregeln** schon beim Tippen: 218 Fehler, 102 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
@@ -116,7 +116,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Bauen, Testen, Debuggen](docs/features/de/Bauen-Testen-Debuggen.md)
 - **Schranke für Hinweise und Warnungen**, Schnellkorrekturen für Compilermeldungen, Wächter für den Release-Build
 - **Ohne Kommandozeilen-Compiler** (Starter, Community): Atlas erkennt das beim Start, sagt es einmal, und Projektaufgaben mit dcc oder MSBuild nennen den Grund, statt zu scheitern (`diagnostics.editionCheck`)
-- **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**
+- **DUnitX-Tests** aus dem Editor, auch **nur die von einer Änderung betroffenen**; geänderte Tests zeigen ihr altes Ergebnis als **veraltet**, Fehlschläge stehen am **fehlgeschlagenen Assert** mit „erwartet 4, erhalten 3“ und lassen sich **nebeneinander vergleichen** (JSON/XML eingerückt)
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt
