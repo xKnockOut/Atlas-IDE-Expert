@@ -1,9 +1,9 @@
 ﻿unit Shell.Composition.Stepping;
 
 // Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter
-// (#850), „Warum bin ich hier?“ (#1878), kommende Bedingungen (#2169), Haltepunkte, die nicht greifen werden
-// (#577), und die Parameter einer Routine für das Fenster „Aufrufstapel“ (#843). Sie lesen nur; Code-Aktionen
-// gibt es hier keine.
+// (#850), „Warum bin ich hier?“ (#1878), Variablen beim Halt (#853), kommende Bedingungen (#2169), Haltepunkte,
+// die nicht greifen werden (#577), und die Parameter einer Routine für das Fenster „Aufrufstapel“ (#843). Sie
+// lesen nur; Code-Aktionen gibt es hier keine.
 
 interface
 
@@ -31,6 +31,7 @@ type
     function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
     function ConditionAnswer(const AArguments: TJSONArray; const ABuild: TShellConditionBuild): TJSONObject;
     function EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
+    function DebugVariables(const AArguments: TJSONArray): TJSONValue;
     function RoutineParameters(const AArguments: TJSONArray): TJSONValue;
     function UpcomingConditions(const AArguments: TJSONArray): TJSONValue;
     function BreakpointCheck(const AArguments: TJSONArray): TJSONValue;
@@ -52,6 +53,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
+  Atlas.Common.Lsp.DebugVariables,
   Atlas.Common.Lsp.RoutineParameters,
   Atlas.Common.Lsp.UpcomingConditions,
   Atlas.Common.Lsp.BreakpointCheck,
@@ -86,6 +88,7 @@ begin
   ACommands.Register(TLspStepFilter.cCommand, StepFilter);
   ACommands.Register(TLspStepFilter.cCountsCommand, StepFilterCounts);
   ACommands.Register(TLspEnclosingConditions.cCommand, EnclosingConditions);
+  ACommands.Register(TLspDebugVariables.cCommand, DebugVariables);
   ACommands.Register(TLspRoutineParameters.cCommand, RoutineParameters);
   ACommands.Register(TLspUpcomingConditions.cCommand, UpcomingConditions);
   ACommands.Register(TLspBreakpointCheck.cCommand, BreakpointCheck);
@@ -278,6 +281,72 @@ begin
   // „Warum bin ich hier?“ (#1878): drittes Argument ist die Tiefe.
   mAnswer := ConditionAnswer(AArguments, BuildEnclosing);
   Log(Format(TLspEnclosingConditions.cCommand + ': %d', [Count(mAnswer, 'blocks')]));
+  Result := mAnswer;
+end;
+
+function IsValueSymbol(const ASymbol: TResolvedSymbol): Boolean;
+begin
+  // Unbekannt (Unit nicht im Index): lieber auswerten; der Debugger meldet dann selbst.
+  case ASymbol.Kind of
+    TResolvedKind.None:
+      Result := True;
+    TResolvedKind.Local, TResolvedKind.Symbol:
+      Result := ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+        TIndexSymbolKind.Property_];
+  else
+    Result := False;
+  end;
+end;
+
+function TShellStepping.DebugVariables(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mPath: string;
+  mLine, mPrevious: Integer;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mTargets: TLspStepTargets;
+  mVariables: TLspDebugVariables;
+  mAnswer: TJSONObject;
+begin
+  // Argumente: URI, Zeile (ab 0) des Halts und Zeile des vorigen Halts (-1 ohne) (#853).
+  mLine := LineOf(AArguments);
+  mUri := AArguments.Items[0].Value;
+  mPrevious := -1;
+  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONNumber) then
+  begin
+    mPrevious := TJSONNumber(AArguments.Items[2]).AsInt;
+  end;
+  mDocument := Open(mUri);
+  mTree := TSyntaxTreeCache.Get(mDocument, nil).Tree;
+  mPath := TDocumentUris.ToPath(mUri);
+  mResolver := NewResolver;
+  try
+    // Getter und Aufrufe ohne Klammern erkennt die Namensauflösung von „Gezielt hineinspringen“.
+    mTargets := TLspStepTargets.Create(mResolver, Index, mTree, mDocument.Text, mPath, ReadFile);
+    try
+      mVariables := TLspDebugVariables.Create(mTree, mDocument.Text,
+        function(ALine: Integer): TArray<TTextPosition>
+        begin
+          Result := mTargets.CallPositions(ALine);
+        end,
+        function(const APosition: TTextPosition): Boolean
+        begin
+          Result := IsValueSymbol(mResolver.Resolve(mTree, mPath, APosition));
+        end);
+      try
+        mAnswer := mVariables.Execute(mLine, mPrevious);
+      finally
+        mVariables.Free;
+      end;
+    finally
+      mTargets.Free;
+    end;
+  finally
+    mResolver.Free;
+  end;
+  Log(Format(TLspDebugVariables.cCommand + ': %d autos, %d locals', [Count(mAnswer, 'autos'),
+    Count(mAnswer, 'locals')]));
   Result := mAnswer;
 end;
 

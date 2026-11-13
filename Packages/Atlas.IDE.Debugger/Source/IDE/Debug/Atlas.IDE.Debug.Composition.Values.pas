@@ -3,11 +3,10 @@
 // Modul Debugger (#1455), Teil der Komposition: die Teile der
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, angeheftete Werte, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern und Debug-Hover aufklappen. Sie
-// fragen
-// den Server nur, wenn er ohnehin läuft. Dazu der Speicherverlauf (#858, Werte
-// des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter
-// startet. Atlas.IDE.Debug.Composition stellt sie über den Scope des Moduls bereit.
+// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern, Debug-Hover aufklappen und
+// Fenster „Variablen“. Sie fragen den Server nur, wenn er ohnehin läuft. Dazu der Speicherverlauf (#858, Werte
+// des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter startet. Atlas.IDE.Debug.Composition
+// stellt sie über den Scope des Moduls bereit.
 
 interface
 
@@ -22,11 +21,15 @@ function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 /// <summary>Speicherverlauf (#858): Zuhörer der Debug-Sitzung und Zeitgeber; aus = keine Messung.</summary>
 function DebugMemoryParts: TArray<IAtlasFeaturePart>;
-/// <summary>Einstellungen an „kein Zugriff“, Vervollständigung in Dialogen, Fenster „Auswerten“ und Speicherverlauf.
-/// </summary>
+/// <summary>Einstellungen an „kein Zugriff“, Vervollständigung in Dialogen, die Fenster „Auswerten“ und
+/// „Variablen“ und der Speicherverlauf.</summary>
 procedure ApplyValueSettings;
-/// <summary>Thema der Fenster dieser Teile, die nicht Atlas.IDE.Debug.Composition selbst nachführt.</summary>
+/// <summary>Thema der Fenster „Auswerten“, „Variablen“ und „Atlas: Speicher“.</summary>
 procedure ValueThemeChanged;
+/// <summary>Fenster „Variablen“ zeigen (#853).</summary>
+procedure ShowVariablesWindow;
+/// <summary>Befehl „Variablen“ sichtbar: debug.variablesWindow an.</summary>
+function VariablesWindowVisible: Boolean;
 /// <summary>Befehl Atlas.DebugMemory: Fenster „Atlas: Speicher“.</summary>
 procedure ShowDebugMemory;
 function DebugMemoryVisible: Boolean;
@@ -61,6 +64,7 @@ uses
   Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Debug.AccessViolation,
   Atlas.IDE.Debug.WhyHere,
+  Atlas.IDE.Debug.Variables,
   Atlas.IDE.Debug.MemoryTimeline,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.Memory.Strings;
@@ -205,6 +209,26 @@ begin
     end;
 end;
 
+/// <summary>Start des Fensters „Variablen“ (#853) mit Serverbefehlen im Hintergrund über Base und den Scope
+/// AScope; die Antwort kommt nur, solange das Modul angemeldet ist.</summary>
+function VariablesStarter(const AScope: IAtlasModuleScope): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeDebugVariables.Start(
+        function: TLspSession
+        begin
+          Result := Session;
+        end,
+        function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+        begin
+          Result := TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger, ACommand, AArgumentsJson,
+            ATimeoutMs, ADone);
+        end);
+    end;
+end;
+
 /// <summary>Aktionen im Debug-Hover: „Ändern …“ (#868), „Anheften“ (#526), Kopieren und Beobachten (#895) teilen sich
 /// die Haken des Tooltips, der die Debug-Schicht nicht kennt. Angehängt, solange einer der Teile läuft.</summary>
 procedure HookHoverActions;
@@ -246,12 +270,14 @@ begin
   HookHoverActions;
 end;
 
-/// <summary>Nach dem Ändern eines Werts (#868): Werte im Editor und angeheftete Werte im selben Halt neu auswerten.
-/// </summary>
+/// <summary>Nach dem Ändern eines Werts (#868): Werte im Editor, angeheftete Werte und das Fenster „Variablen“ im
+/// selben Halt neu auswerten.</summary>
 procedure ValuesChanged;
 begin
   ReevaluateInlineValues;
   TAtlasIdeDebugPins.Reevaluate;
+  // Fenster „Variablen“ (#853): F2 dort ändert über denselben Weg.
+  TAtlasIdeDebugVariables.Reevaluate;
 end;
 
 /// <summary>Start von „Werte ändern“ (#868) mit Serverbefehlen über Base und den Scope AScope.</summary>
@@ -407,6 +433,21 @@ begin
     end, WhyHereStarter(AScope), TAtlasIdeDebugWhyHere.Release);
 end;
 
+/// <summary>Fenster „Variablen“ (#853): Zuhörer der Debug-Sitzung und Fenster; aus = nichts angemeldet, kein
+/// Fenster.</summary>
+function VariablesPart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugVariablesWindow',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugVariablesWindow;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugVariables.Started;
+    end, VariablesStarter(AScope), TAtlasIdeDebugVariables.Release);
+end;
+
 /// <summary>Werte ändern (#868): Aktionen im Hover, F2 und Markierung am Zeilenende; aus = nichts angemeldet,
 /// Werte sind nur lesbar.</summary>
 function EditValuePart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
@@ -442,7 +483,8 @@ function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 begin
   GProvider := AProvider;
-  Result := EditorParts + DialogParts + [WhyHerePart(AScope), EditValuePart(AScope), HoverTreePart(AScope)];
+  Result := EditorParts + DialogParts + [WhyHerePart(AScope), EditValuePart(AScope), HoverTreePart(AScope),
+    VariablesPart(AScope)];
 end;
 
 function EditValueVisible: Boolean;
@@ -546,11 +588,6 @@ begin
       end, StartDebugMemoryTimeline, TAtlasIdeDebugMemoryTimeline.Release)];
 end;
 
-procedure ValueThemeChanged;
-begin
-  TAtlasIdeDebugMemoryTimeline.ThemeChanged;
-end;
-
 procedure ShowDebugMemory;
 begin
   TAtlasIdeDebugMemoryTimeline.ShowWindow;
@@ -576,6 +613,25 @@ begin
   TAtlasIdeDebugEvaluate.ApplySettings;
   // debug.memoryTimeline.intervalMs (#858); aus: Fenster zu.
   TAtlasIdeDebugMemoryTimeline.ApplySettings;
+  // debug.variablesWindow (#853): ausgeschaltet verschwindet das Fenster.
+  TAtlasIdeDebugVariables.ApplySettings;
+end;
+
+procedure ValueThemeChanged;
+begin
+  TAtlasIdeDebugEvaluate.ThemeChanged;
+  TAtlasIdeDebugVariables.ThemeChanged;
+  TAtlasIdeDebugMemoryTimeline.ThemeChanged;
+end;
+
+procedure ShowVariablesWindow;
+begin
+  TAtlasIdeDebugVariables.ShowWindow;
+end;
+
+function VariablesWindowVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugVariablesWindow;
 end;
 
 end.

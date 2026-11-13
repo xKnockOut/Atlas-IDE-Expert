@@ -182,6 +182,7 @@ Atlas.Common.Lsp.CoveredBy.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
 Atlas.Common.Lsp.EnclosingConditions.Tests
+Atlas.Common.Lsp.DebugVariables.Tests
 Atlas.Common.Lsp.UpcomingConditions.Tests
 Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
@@ -372,6 +373,7 @@ Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Debug.WhyHere.Tests
+Atlas.Core.Debug.Variables.Tests
 Atlas.Core.Debug.Forecast.Tests
 Atlas.Core.Debug.EditValue.Tests
 Atlas.Core.Debug.HoverTree.Tests
@@ -423,6 +425,7 @@ Atlas.UI.Commands.Strings.Tests
 Atlas.UI.Completion.Strings.Tests
 Atlas.UI.Debug.Strings.Tests
 Atlas.UI.Debug.Memory.Strings.Tests
+Atlas.UI.Debug.VariablesStrings.Tests
 Atlas.UI.Designer.Strings.Tests
 Atlas.UI.Diagnostics.Strings.Tests
 Atlas.UI.Editor.Strings.Tests
