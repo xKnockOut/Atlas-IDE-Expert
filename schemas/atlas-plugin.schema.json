@@ -1426,6 +1426,30 @@
       "x-captionEn": "Expected and actual after the line",
       "x-issue": "#1771"
     },
+    "TestsCompare": {
+      "description": "Befehl „Erwartet und erhalten vergleichen“ (Atlas-Menü, Befehlspalette, Kontextmenü einer Testunit): Fehlschlag des Tests am Cursor bzw. des letzten Laufs in zwei Spalten, abweichende Zeichen markiert; Zeilenende, Tabs und nachgestellte Leerzeichen sichtbar. Nur wenn der Bericht erwarteten und erhaltenen Wert nennt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.compare",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Erwartet und erhalten vergleichen",
+      "x-captionEn": "Compare expected and actual",
+      "x-issue": "#1779"
+    },
+    "TestsCompareFormat": {
+      "description": "Sind beide Werte JSON bzw. XML, rückt der Vergleich sie vorher gleich ein (ein Wert bzw. Element je Zeile).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.compare.format",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.compare",
+      "x-caption": "JSON und XML einrücken",
+      "x-captionEn": "Indent JSON and XML",
+      "x-issue": "#1779"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,

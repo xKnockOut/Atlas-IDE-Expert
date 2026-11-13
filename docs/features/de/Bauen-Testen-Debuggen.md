@@ -102,6 +102,20 @@ Einstellungen: `tests.stale`, `tests.stale.units`
 
 Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
 
+### Erwartet und erhalten vergleichen (#1779)
+
+Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*).
+
+- Zeigt den Fehlschlag des Tests am Cursor (bei einem `[TestCase]` den ersten fehlgeschlagenen Fall), sonst den zuletzt gemeldeten, in zwei Spalten: links erwartet, rechts erhalten.
+- Abweichende Zeichen sind rot bzw. grün hinterlegt; Zeilen, die es nur auf einer Seite gibt, ganz, gegenüber eine graue Lücke.
+- Zeilenenden (`↵`, `␍↵`, `␍`), Tabs (`→`) und Leerzeichen am Zeilenende (`·`) sind sichtbar; ein Unterschied nur darin fällt so auf.
+- Sind beide Werte JSON bzw. XML, rückt Atlas sie vorher gleich ein; der Unterschied steht dann in seiner eigenen Zeile.
+- Werte, die mit „...“ enden, tragen „(gekürzt)“ im Spaltenkopf.
+- „Erhalten kopieren“ legt den erhaltenen Wert in die Zwischenablage, etwa um den erwarteten Wert im Test zu aktualisieren; Esc schließt.
+- Nur für Fehlschläge, deren Bericht erwarteten und erhaltenen Wert nennt.
+
+Einstellungen: `tests.compare`, `tests.compare.format`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
