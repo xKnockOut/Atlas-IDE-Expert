@@ -86,7 +86,6 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
