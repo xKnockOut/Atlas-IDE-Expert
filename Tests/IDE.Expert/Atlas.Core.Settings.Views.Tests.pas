@@ -160,11 +160,17 @@ begin
   Settings.BlockEndLabelsMinLines := 5000;
   Settings.DebugInlineValuesPerLine := 0;
   Settings.DebugWhyHereDepth := 99;
+  Settings.DebugVariablesSearchDepth := 0;
+  Settings.DebugVariablesSearchLimit := 1000000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
     'debug.inlineValuesPerLine unten begrenzt (#508)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxWhyHereDepth, Settings.DebugWhyHereDepth,
     'debug.whyHere.depth oben begrenzt (#1878)');
+  Assert.AreEqual(TAtlasPluginSettings.cMinVariablesSearchDepth, Settings.DebugVariablesSearchDepth,
+    'debug.variablesWindow.searchDepth unten begrenzt (#853)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxVariablesSearchLimit, Settings.DebugVariablesSearchLimit,
+    'debug.variablesWindow.searchLimit oben begrenzt (#853)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(Settings);
   Store := TMemoryStore.Create;

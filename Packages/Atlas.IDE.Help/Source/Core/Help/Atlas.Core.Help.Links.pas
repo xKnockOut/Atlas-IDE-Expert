@@ -63,7 +63,7 @@ implementation
 const
   cFeaturesGerman = 'docs/features/de/';
   cFeaturesEnglish = 'docs/features/en/';
-  cWindows: array[0..25] of TAtlasHelpWindow = (
+  cWindows: array[0..26] of TAtlasHelpWindow = (
     (Id: 'AtlasProblems'; German: 'Code-Analyse'; English: 'Code-analysis'), // german-ok Dateiname
     (Id: 'AtlasResults'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
     (Id: 'AtlasOutline'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
@@ -80,6 +80,7 @@ const
     (Id: 'AtlasHotspots'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname
     (Id: 'AtlasUnitRelations'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname
     (Id: 'AtlasEvaluate'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
+    (Id: 'AtlasVariables'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasDebugExceptions'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasDebugEventLog'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasDebugParallelStacks'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname

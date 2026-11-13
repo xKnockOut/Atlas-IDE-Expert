@@ -207,6 +207,9 @@ begin
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
+  Assert.AreEqual(3, ASettings.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
+  Assert.AreEqual(500, ASettings.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
   Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
@@ -381,6 +384,9 @@ begin
   ASettings.DebugInlineValuesPerLine := 7;
   ASettings.DebugWhyHere := False;
   ASettings.DebugWhyHereDepth := 6;
+  ASettings.DebugVariablesWindow := False;
+  ASettings.DebugVariablesSearchDepth := 5;
+  ASettings.DebugVariablesSearchLimit := 250;
   ASettings.DebugPinnedValues := False;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
@@ -533,6 +539,9 @@ begin
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');
+  Assert.AreEqual(5, ALoaded.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
+  Assert.AreEqual(250, ALoaded.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
   Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);

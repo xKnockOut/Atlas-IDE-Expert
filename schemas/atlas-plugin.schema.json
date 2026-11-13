@@ -1956,6 +1956,40 @@
       "x-parent": "debug.whyHere",
       "x-issue": "#1878"
     },
+    "DebugVariablesWindow": {
+      "description": "Fenster „Variablen“ beim Debuggen: Reiter Autos (Variablen, Felder und einfache Ausdrücke der aktuellen und der vorigen Anweisung, ohne Funktionsaufrufe), Lokal und Überwachung (je Projekt gespeichert); geänderte Werte markiert, Suche nach Name oder Wert, auch in Unterelementen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.variablesWindow",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-caption": "Fenster „Variablen“ mit Autos und Suche",
+      "x-captionEn": "Variables window with Autos and search",
+      "x-issue": "#853"
+    },
+    "DebugVariablesSearchDepth": {
+      "type": "integer",
+      "default": 3,
+      "description": "So tief (1 bis 10) durchsucht das Fenster „Variablen“ Unterelemente, wenn „Unterelemente durchsuchen“ an ist.",
+      "x-key": "debug.variablesWindow.searchDepth",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.variablesWindow",
+      "x-issue": "#853"
+    },
+    "DebugVariablesSearchLimit": {
+      "type": "integer",
+      "default": 500,
+      "description": "Höchstens so viele Auswertungen (10 bis 10000) je Suche in Unterelementen; danach bricht die Suche ab, damit die IDE bedienbar bleibt.",
+      "x-key": "debug.variablesWindow.searchLimit",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.variablesWindow",
+      "x-issue": "#853"
+    },
     "DebugPinnedValues": {
       "description": "Angeheftete Werte: Im Debug-Hover steht „Anheften“; angeheftete Ausdrücke stehen beim Halt als Feld am Ende ihrer Zeile und bleiben über Debug-Sitzungen erhalten.",
       "type": "boolean",

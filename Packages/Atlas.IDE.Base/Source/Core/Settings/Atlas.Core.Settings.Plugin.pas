@@ -107,6 +107,10 @@ type
     cMinInlineValuesPerLine = Atlas.Core.Settings.Plugin.Debug.cMinInlineValuesPerLine;
     cMinWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMinWhyHereDepth;
     cMaxWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMaxWhyHereDepth;
+    cMinVariablesSearchDepth = Atlas.Core.Settings.Plugin.Debug.cMinVariablesSearchDepth;
+    cMaxVariablesSearchDepth = Atlas.Core.Settings.Plugin.Debug.cMaxVariablesSearchDepth;
+    cMinVariablesSearchLimit = Atlas.Core.Settings.Plugin.Debug.cMinVariablesSearchLimit;
+    cMaxVariablesSearchLimit = Atlas.Core.Settings.Plugin.Debug.cMaxVariablesSearchLimit;
     cMaxQuickChordWait = Atlas.Core.Settings.Plugin.Bookmarks.cMaxQuickChordWait;
     cMinRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMinRecursionDepth;
     cMaxRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMaxRecursionDepth;
@@ -490,6 +494,11 @@ type
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugVariablesWindow: Boolean read FDebug.DebugVariablesWindow write FDebug.DebugVariablesWindow;
+    property DebugVariablesSearchDepth: Integer read FDebug.DebugVariablesSearchDepth
+      write FDebug.DebugVariablesSearchDepth;
+    property DebugVariablesSearchLimit: Integer read FDebug.DebugVariablesSearchLimit
+      write FDebug.DebugVariablesSearchLimit;
     property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;

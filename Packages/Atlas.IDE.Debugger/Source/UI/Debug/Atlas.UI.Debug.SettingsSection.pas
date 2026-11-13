@@ -210,6 +210,12 @@ begin
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHereDepth));
+  // Fenster „Variablen“ (#853).
+  Switch('debug.variablesWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVariablesWindow));
+  Number('debug.variablesWindow.searchDepth',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVariablesSearchDepth));
+  Number('debug.variablesWindow.searchLimit',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVariablesSearchLimit));
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));

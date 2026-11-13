@@ -17,6 +17,13 @@ const
   cMinWhyHereDepth = 1;
   cMaxWhyHereDepth = 10;
   cDefaultWhyHereDepth = 3;
+  /// <summary>Grenzen und Vorgaben für debug.variablesWindow.searchDepth und .searchLimit (#853).</summary>
+  cMinVariablesSearchDepth = 1;
+  cMaxVariablesSearchDepth = 10;
+  cDefaultVariablesSearchDepth = 3;
+  cMinVariablesSearchLimit = 10;
+  cMaxVariablesSearchLimit = 10000;
+  cDefaultVariablesSearchLimit = 500;
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für debug.parallelStacks.maxThreads (#837).</summary>
@@ -211,6 +218,15 @@ type
     DebugWhyHere: Boolean;
     /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
     DebugWhyHereDepth: Integer;
+    /// <summary>Fenster „Variablen“ (#853, debug.variablesWindow): andockbares Fenster mit den Reitern Autos
+    /// (Ausdrücke der aktuellen und der vorigen Anweisung, ohne Aufrufe), Lokal und Überwachung, Suche nach Name
+    /// oder Wert. Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
+    DebugVariablesWindow: Boolean;
+    /// <summary>Suchtiefe in Unterelementen (#853, debug.variablesWindow.searchDepth, 1 bis 10).</summary>
+    DebugVariablesSearchDepth: Integer;
+    /// <summary>Höchstzahl der Auswertungen je Suche (#853, debug.variablesWindow.searchLimit, 10 bis 10000).
+    /// </summary>
+    DebugVariablesSearchLimit: Integer;
     /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
     /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
     DebugPinnedValues: Boolean;
@@ -356,6 +372,10 @@ begin
   DebugNoSourceIgnoredUnits := Trim(DebugNoSourceIgnoredUnits);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
+  DebugVariablesSearchDepth := EnsureRange(DebugVariablesSearchDepth, cMinVariablesSearchDepth,
+    cMaxVariablesSearchDepth);
+  DebugVariablesSearchLimit := EnsureRange(DebugVariablesSearchLimit, cMinVariablesSearchLimit,
+    cMaxVariablesSearchLimit);
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   DebugReattachKey := EnsureRange(DebugReattachKey, 0, $FFFF);
   DebugReattachWaitIntervalMs := EnsureRange(DebugReattachWaitIntervalMs, cMinReattachWaitMs, cMaxReattachWaitMs);
@@ -430,6 +450,9 @@ procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
 begin
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugVariablesWindow := True;
+  DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
+  DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
   DebugPinnedValues := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
@@ -453,6 +476,9 @@ procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSetti
 begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
+  AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
+  AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);

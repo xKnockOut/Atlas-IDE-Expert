@@ -260,6 +260,17 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LaunchProbe.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LaunchGroupsDialog.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LaunchGroups.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Variables.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.FieldRequests.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas">
+            <Form>AtlasDebugVariablesFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.VariablesWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.VariablesStore.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.VariablesLists.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Variables.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
