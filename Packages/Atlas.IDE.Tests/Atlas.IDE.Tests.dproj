@@ -110,6 +110,10 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Lists.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ListText.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ListFile.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ListView.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.StatusField.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Log.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>
@@ -132,6 +136,7 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerWindow.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerLog.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lists.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.StatusField.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>
@@ -148,6 +153,8 @@
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.ListBar.pas"/>
+        <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.ListDialog.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Hooks.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>

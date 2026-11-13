@@ -1617,6 +1617,31 @@
       "x-captionEn": "“Atlas Tests” window",
       "x-issue": "#1776"
     },
+    "TestsLists": {
+      "description": "Testlisten im Fenster „Atlas-Tests“: Reiter neben „Alle“ mit festen Listen (Tests, Fixtures oder Units über „Zu Liste hinzufügen“) und dynamischen (Regeln mit „und“: Kategorie, Muster für Unit bzw. Fixture, Stand), „Liste ausführen“ im Reiter, in der Befehlspalette und mit Taste. Ablage je Liste in atlas.json (testLists, für das Team) oder nur für mich. Aus: keine Reiter, kein Eintrag in der Palette, testLists wird nicht gelesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.lists",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Testlisten im Fenster „Atlas-Tests“",
+      "x-captionEn": "Test lists in the “Atlas Tests” window",
+      "x-issue": "#2167"
+    },
+    "TestsListsRunKey": {
+      "description": "Tastenkürzel „Zuletzt benutzte Testliste ausführen“ (0 = keins; Vorgabe Strg+Alt+R).",
+      "type": "integer",
+      "default": 49234,
+      "x-key": "tests.lists.runKey",
+      "x-area": "build",
+      "x-format": "shortcut",
+      "x-page": "Compiler",
+      "x-parent": "tests.lists",
+      "x-control": "Tastenkürzel",
+      "x-issue": "#2167"
+    },
     "TestsLog": {
       "description": "Protokoll je Test: Atlas legt vor jedem Testlauf eine Seitendatei neben den XML-Bericht; der Atlas-Logger im Testprojekt (Setup/Vorlagen/Atlas.Testing.Log.pas, runner.AddLogger(TAtlasTestLogger.Create)) schreibt Log und Status von DUnitX sowie Beginn und Ende jedes Tests hinein und setzt Marken in die Konsolenausgabe. Das Fenster „Atlas-Tests“ zeigt im Reiter „Protokoll (n)“ genau die Zeilen des gewählten Tests mit Zeit ab Teststart, Stufe und Herkunft (Log, Konsole); Verweise wie Datei.pas:42 öffnen die Stelle, „Kopieren“ legt das Protokoll in die Zwischenablage. Ohne Logger zeigt der Reiter einen Hinweis und die Ausgabe des ganzen Laufs. Aus: kein Reiter, keine Seitendatei.",
       "type": "boolean",
