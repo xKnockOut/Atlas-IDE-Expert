@@ -65,7 +65,9 @@ type
     LeakChoiceUnavailable, LeakDownloadHint, LeakFileReportOption, LeakSetupButton, LeakCloseButton,
     LeakPreviewTitle, LeakPreviewHint, LeakPreviewApply, LeakEditAction, LeakNothingToDo, LeakDefinesDone,
     LeakDefinesFailed, LeakNoDebugConfig, LeakCopyDllAsk, LeakCopyDllDone, LeakCopyDllFailed, LeakDone,
-    SettingsLeakSetup);
+    SettingsLeakSetup,
+    // Lecks je Test (#1774).
+    TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks);
 
   TAtlasTestsStrings = class
   public
@@ -292,7 +294,11 @@ const
      'Leckprüfung: %s nach %s kopiert.',
      'Leckprüfung: %s nicht kopiert: %s',
      'Leckprüfung für %s eingerichtet.',
-     'Befehl „Leckprüfung einrichten …“ (Projektverwaltung, Befehlspalette)'),
+     'Befehl „Leckprüfung einrichten …“ (Projektverwaltung, Befehlspalette)',
+     '%s · Leck: %d Bytes',
+     'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
+     'Tests: %d bestanden mit Leck, zusammen %d Bytes nicht freigegeben (Warnungen in Atlas-Probleme).',
+     'Lecks je Test als Warnung zeigen (bestanden mit Leck, gelbe Marke)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -503,7 +509,11 @@ const
      'Leak check: %s copied to %s.',
      'Leak check: %s not copied: %s',
      'Leak check set up for %s.',
-     'Command “Set up leak check…” (project manager, command palette)'));
+     'Command “Set up leak check…” (project manager, command palette)',
+     '%s · leak: %d bytes',
+     'Test %s does not free memory: %d bytes (leak)',
+     'Tests: %d passed with a leak, %d bytes not freed in total (warnings in Atlas problems).',
+     'Show leaks per test as warnings (passed with leak, yellow mark)'));
 
 { TAtlasTestsStrings }
 

@@ -113,8 +113,10 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Naming,
-  Atlas.UI.Tracker.Strings,
-  Atlas.UI.Tracker.MyIssues,
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Attach.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.UI.Tracker.MyIssues.Text,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach;
@@ -308,10 +310,10 @@ begin
   end;
   FServices.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
   EnsureLine;
-  mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesStatusLine,
+  mText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStatusLine,
     [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
   FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesText.TileText(mData),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesStatusHint));
+    TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesStatusHint));
   UpdateChecklist(mProject, mData.Active.Key);
   UpdateAttach(mData.Active.Key);
 end;
@@ -351,11 +353,11 @@ begin
     FChecklistLine := NewLine(TAtlasMyIssues.cChecklistStatusId, TAtlasMyIssues.cChecklistStatusOrder, mAction,
       FChecklistLineRef);
   end;
-  mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistStatusLine, [AKey, mProgress.Text]);
+  mText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueChecklistStatusLine, [AKey, mProgress.Text]);
   FChecklistLine.Update(mText, TAtlasStatusState.Neutral, mText, mText,
-    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress, [mProgress.Done, mProgress.Total]) +
+    TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueChecklistProgress, [mProgress.Done, mProgress.Total]) +
     sLineBreak +
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistStatusHint));
+    TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistStatusHint));
 end;
 
 procedure TAtlasIdeIssuesStatus.RemoveChecklist;
@@ -410,8 +412,8 @@ begin
     FAttachLine := NewLine(TAtlasMyIssues.cAttachStatusId, TAtlasMyIssues.cAttachStatusOrder, mAction,
       FAttachLineRef);
   end;
-  FAttachLine.Update(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachStatusLine, [AKey]), TAtlasStatusState.Neutral,
-    AKey, AKey, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachStatusHint));
+  FAttachLine.Update(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachStatusLine, [AKey]), TAtlasStatusState.Neutral,
+    AKey, AKey, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachHint));
 end;
 
 procedure TAtlasIdeIssuesStatus.RemoveAttach;

@@ -132,6 +132,9 @@ type
     /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
     /// </summary>
     TestsCaseTable: Boolean;
+    /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
+    /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
+    TestsLeaks: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -274,6 +277,7 @@ begin
   Result.TestsShowDuration := True;
   Result.TestsSlowMs := cDefaultTestsSlowMs;
   Result.TestsCaseTable := True;
+  Result.TestsLeaks := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -363,6 +367,7 @@ begin
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
+  AIo.Flag('TestsLeaks', TestsLeaks);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);

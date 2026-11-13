@@ -19,6 +19,8 @@
 //   an der Klassenmarke die Summe); liegt der langsamste Test der Marke über
 //   tests.slowMs, steht „· langsam“ dahinter und die Marke ist gelb, auch wenn
 //   er bestand (fehlgeschlagen bleibt rot, veraltet grau).
+//   Bestanden mit Leck (tests.leaks, #1774): „· Leck: 40 Bytes“ und gelb wie
+//   langsam (Atlas.Core.Tests.Leaks).
 //   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -154,8 +156,8 @@ type
     procedure UpdateStale;
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
-    /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe).</summary>
-    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale, ASlow: Boolean): string;
+    /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe); AWarn: gelb (langsam oder Leck).</summary>
+    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale, AWarn: Boolean): string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Marke der Zeile von AContext, -1 ohne (Lens aus, andere Datei, Leerzeile, ausgeblendet).</summary>
@@ -471,13 +473,13 @@ begin
 end;
 
 function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus;
-  out AStale, ASlow: Boolean): string;
+  out AStale, AWarn: Boolean): string;
 var
   mTally: TAtlasTestTally;
 begin
   AStatus := TAtlasTestStatus.Unknown;
   AStale := False;
-  ASlow := False;
+  AWarn := False;
   if FTests.Busy then
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
@@ -512,7 +514,13 @@ begin
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.FreshPassed, mTally.Total]);
   end;
-  Result := DurationCaption(Result, mTally, AStatus, ASlow);
+  Result := DurationCaption(Result, mTally, AStatus, AWarn);
+  if (mTally.Leaked > 0) and (AStatus <> TAtlasTestStatus.Failed) then
+  begin
+    // Bestanden mit Leck (#1774): gelb wie langsam.
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensLeak, [Result, mTally.LeakBytes]);
+    AWarn := True;
+  end;
   if AStale then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);
@@ -728,11 +736,11 @@ var
   mTone: TAtlasColor;
   mText: string;
   mStatus: TAtlasTestStatus;
-  mStale, mSlow: Boolean;
+  mStale, mWarn: Boolean;
   mPill: TRect;
 begin
   mCanvas := AContext.Canvas;
-  mText := Caption(FItems[AIndex], mStatus, mStale, mSlow);
+  mText := Caption(FItems[AIndex], mStatus, mStale, mWarn);
   mColors := TAtlasColors.ForBackground(ABack);
   mTone := mColors.Accent;
   if mStatus = TAtlasTestStatus.Failed then
@@ -748,9 +756,9 @@ begin
     // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
     mTone := mColors.Warn;
   end;
-  if mSlow then
+  if mWarn then
   begin
-    // Langsam (#1772): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
+    // Langsam (#1772) oder Leck (#1774): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
     mTone := mColors.Warn;
   end;
   // Veraltet (#1770): alter Stand grau und kursiv.

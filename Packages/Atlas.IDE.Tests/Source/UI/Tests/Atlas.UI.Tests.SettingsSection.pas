@@ -71,6 +71,7 @@ begin
   Number('tests.onSave.max', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsOnSaveMax));
   Switch('tests.failureAtAssert', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureAtAssert));
   Switch('tests.failureInline', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureInline));
+  Switch('tests.leaks', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLeaks));
   Switch('tests.compare', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompare));
   Switch('tests.compare.format', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompareFormat));
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
