@@ -463,6 +463,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"sameNameInsert": "move"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Typprüfungen (#2107)
+  Assert.IsTrue(Parse('{}', Issues).Completion.TypeGuards);
+  Assert.IsFalse(Parse('{"completion": {"typeGuards": false}}', Issues).Completion.TypeGuards);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"typeGuards": "aus"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);

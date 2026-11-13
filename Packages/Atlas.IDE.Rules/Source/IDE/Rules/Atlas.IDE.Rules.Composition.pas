@@ -66,10 +66,7 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Handshake,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Rules.CustomLayer,
@@ -223,14 +220,9 @@ end;
 
 function TAtlasRulesModule.Info: TAtlasModuleInfo;
 begin
-  Result := Default(TAtlasModuleInfo);
-  Result.Id := cModuleId;
-  Result.Name := 'Prüfregeln';
-  Result.Version := TAtlasVersion.cVersion;
-  Result.Handle := HInstance;
   // Die Befehle liefen mit den Editorbefehlen schon im abgesicherten Start.
-  Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := cSwitch;
+  Result := TAtlasModuleHost.Info(cModuleId, 'Prüfregeln', TAtlasVersion.cVersion, HInstance,
+    TAtlasSafeLevel.Safe, cSwitch);
 end;
 
 procedure TAtlasRulesModule.Start;
@@ -294,16 +286,9 @@ var
   mRef: IInterface;
 begin
   Result := False;
-  mRegistry := AtlasModuleRegistry;
-  if (mRegistry = nil) or (GScope <> nil) then
+  // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
   begin
-    Exit;
-  end;
-  // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
-  if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
-    ccMatch then
-  begin
-    TAtlasGuard.Log('Modul ' + cModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
     Exit;
   end;
   mModule := TAtlasRulesModule.Create;
@@ -321,26 +306,15 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasRulesModule.UnregisterModule;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mFailure: string;
+/// <summary>Modulspezifische Schritte nach dem Abmelden aus der Registry.</summary>
+procedure ReleaseModule;
 begin
-  if GScope = nil then
-  begin
-    Exit;
-  end;
   TAtlasIdeRulesBaseline.Uninstall;
-  GScope := nil;
-  // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
-  mRegistry := AtlasModuleRegistry;
-  if mRegistry <> nil then
-  begin
-    for mFailure in mRegistry.UnregisterModule(cModuleId) do
-    begin
-      TAtlasGuard.Log('Modul ' + cModuleId + ' nicht sauber abgemeldet: ' + mFailure);
-    end;
-  end;
+end;
+
+class procedure TAtlasRulesModule.UnregisterModule;
+begin
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, ReleaseModule);
 end;
 
 initialization
@@ -348,7 +322,5 @@ initialization
 
 finalization
   TAtlasRulesModule.UnregisterModule;
-  // Vor FreeLibrary: Laufen noch überfällige Threads des Packages, bleibt es im Speicher (Code-Review T-103).
-  TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
 
 end.

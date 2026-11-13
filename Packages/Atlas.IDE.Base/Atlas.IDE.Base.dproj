@@ -575,6 +575,7 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Contract.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHost.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.FeatureParts.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Contributions.pas"/>

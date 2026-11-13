@@ -91,6 +91,40 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Fehlschlag an der Assert-Zeile (#1771)
+
+- Ein fehlgeschlagener Test steht nicht mehr am Methodenkopf, sondern an der Anweisung, die fehlschlug: Wellenlinie über der Anweisung, dahinter grau „erwartet 4, erhalten 3“.
+- Die Zeile kommt aus dem Stacktrace des Berichts (DUnitX mit JclDebug oder madExcept). Bricht der Test mit einer Ausnahme ab, ist es die auslösende Anweisung.
+- Ohne Zeilen im Stacktrace sucht Atlas im Rumpf den einen Assert, dessen erwarteter Wert zum Bericht passt (`Assert.AreEqual(4, …)` bei „Expected 4 but got 3“); hat der Rumpf nur einen Assert, gilt dieser. Passen mehrere, bleibt es beim Methodenkopf.
+- Eingefügte Zeilen nimmt der Eintrag mit wie jeder Befund; die Zeile in der Meldungsansicht springt zur Anweisung.
+- Der kurze Text erscheint wie der Fehlertext am Zeilenende (`editor.inlineDiagnostics`).
+
+Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
+
+### Erwartet und erhalten vergleichen (#1779)
+
+Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*).
+
+- Zeigt den Fehlschlag des Tests am Cursor (bei einem `[TestCase]` den ersten fehlgeschlagenen Fall), sonst den zuletzt gemeldeten, in zwei Spalten: links erwartet, rechts erhalten.
+- Abweichende Zeichen sind rot bzw. grün hinterlegt; Zeilen, die es nur auf einer Seite gibt, ganz, gegenüber eine graue Lücke.
+- Zeilenenden (`↵`, `␍↵`, `␍`), Tabs (`→`) und Leerzeichen am Zeilenende (`·`) sind sichtbar; ein Unterschied nur darin fällt so auf.
+- Sind beide Werte JSON bzw. XML, rückt Atlas sie vorher gleich ein; der Unterschied steht dann in seiner eigenen Zeile.
+- Werte, die mit „...“ enden, tragen „(gekürzt)“ im Spaltenkopf.
+- „Erhalten kopieren“ legt den erhaltenen Wert in die Zwischenablage, etwa um den erwarteten Wert im Test zu aktualisieren; Esc schließt.
+- Nur für Fehlschläge, deren Bericht erwarteten und erhaltenen Wert nennt.
+
+Einstellungen: `tests.compare`, `tests.compare.format`
+
+### Testfall aus der Unit anlegen (#1226)
+
+Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
+
+- Atlas findet die Testunit (Muster `testUnits.pattern`) und trägt einen Entwurf der Testmethode in die Testklasse ein, die getestete Unit kommt ins uses.
+- Der Entwurf bereitet je Parameter eine Variable mit Platzhalter vor (`0`, `''`, `False`, `nil`, `Default(T)`), ruft die Methode über das Objekt der Testklasse (ein Feld vom Typ der Klasse), über die Klasse (Klassenmethoden) oder über ein lokales Objekt mit `try … finally` auf und prüft Ergebnis und `var`/`out`-Parameter mit Platzhaltern passend zum Typ (`Assert.AreEqual`, mit Toleranz bei Gleitkomma, `Assert.IsTrue`, `Assert.IsNotNull`).
+- Ein `Assert.Fail` am Ende hält den Entwurf rot, bis die erwarteten Werte stimmen.
+- Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
+- Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
+
 ### Betroffene Tests ausführen (#1353)
 
 Aufruf: *Atlas*-Menü, Befehlspalette.

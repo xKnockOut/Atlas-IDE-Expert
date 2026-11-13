@@ -47,10 +47,7 @@ uses
   Winapi.Windows,
   Vcl.Menus,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Handshake,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Help.Links,
   Atlas.UI.Help.Strings,
   Atlas.UI.Help.SettingsSection,
@@ -79,14 +76,9 @@ end;
 
 function TAtlasHelpModule.Info: TAtlasModuleInfo;
 begin
-  Result := Default(TAtlasModuleInfo);
-  Result.Id := cModuleId;
-  Result.Name := 'Help';
-  Result.Version := TAtlasVersion.cVersion;
-  Result.Handle := HInstance;
   // Nur Verweise auf die Doku, kein Editoreingriff: auch im abgesicherten Start.
-  Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := cSwitch;
+  Result := TAtlasModuleHost.Info(cModuleId, 'Help', TAtlasVersion.cVersion, HInstance,
+    TAtlasSafeLevel.Safe, cSwitch);
 end;
 
 procedure TAtlasHelpModule.Start;
@@ -137,16 +129,9 @@ var
   mRef: IInterface;
 begin
   Result := False;
-  mRegistry := AtlasModuleRegistry;
-  if (mRegistry = nil) or (GScope <> nil) then
+  // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
   begin
-    Exit;
-  end;
-  // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
-  if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
-    ccMatch then
-  begin
-    TAtlasGuard.Log('Module ' + cModuleId + ': contract version of Base does not match, not registered');
     Exit;
   end;
   mModule := TAtlasHelpModule.Create;
@@ -160,24 +145,8 @@ begin
 end;
 
 class procedure TAtlasHelpModule.UnregisterModule;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mFailure: string;
 begin
-  if GScope = nil then
-  begin
-    Exit;
-  end;
-  GScope := nil;
-  // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
-  mRegistry := AtlasModuleRegistry;
-  if mRegistry <> nil then
-  begin
-    for mFailure in mRegistry.UnregisterModule(cModuleId) do
-    begin
-      TAtlasGuard.Log('Module ' + cModuleId + ' not unregistered cleanly: ' + mFailure);
-    end;
-  end;
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
 end;
 
 initialization
@@ -185,7 +154,5 @@ initialization
 
 finalization
   TAtlasHelpModule.UnregisterModule;
-  // Vor FreeLibrary: Laufen noch überfällige Threads des Packages, bleibt es im Speicher (Code-Review T-103).
-  TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
 
 end.
