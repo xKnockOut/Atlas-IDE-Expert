@@ -476,12 +476,13 @@ begin
   end;
   if mRow < 0 then
   begin
-    // Überschrift: fett, auf dem Grund eines Panels, damit sie sich von den Zeilen abhebt.
+    // Überschrift: fett auf der abgesetzten Fläche der Atlas-Palette (Gutter, folgt dem IDE-Thema).
+    // StyleServices liefert für clBtnFace im IDE-Thema Weiß, nur clWindow stimmt.
     Sender.Canvas.Font.Style := [fsBold];
     if not (cdsSelected in State) then
     begin
-      Sender.Canvas.Brush.Color := StyleServices(FList).GetSystemColor(clBtnFace);
-      Sender.Canvas.Font.Color := StyleServices(FList).GetSystemColor(clBtnText);
+      Sender.Canvas.Brush.Color := TColor(TAtlasUiTheme.Colors.Gutter);
+      Sender.Canvas.Font.Color := TColor(TAtlasUiTheme.Colors.Text);
     end;
   end
   else if (FRows[mRow].Finding <> TAtlasEventFinding.None) and not (cdsSelected in State) then

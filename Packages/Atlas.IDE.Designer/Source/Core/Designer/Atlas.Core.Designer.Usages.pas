@@ -9,10 +9,15 @@
 // - FieldLine findet die Felddeklaration in der Formular-Klasse; von dort
 //   fragt die IDE die Referenzsuche.
 // - HandlerLine findet die Implementierung eines Handlers aus der DFM.
+// - Bindings findet Eigenschaften anderer Komponenten, die in der DFM auf die
+//   Komponente zeigen (PopupMenu, Menu, Images, DataSource …).
 // - InScope filtert nach Suchbereich: Unit des Formulars, Projekt,
 //   Projektgruppe.
 
 interface
+
+uses
+  System.Classes;
 
 type
 {$SCOPEDENUMS ON}
@@ -47,6 +52,9 @@ type
       const AProjectFiles: TArray<string>): Boolean; static;
     /// <summary>Nach Komponente, Datei und Zeile geordnet.</summary>
     class function Sorted(const AUsages: TArray<TAtlasUsage>): TArray<TAtlasUsage>; static;
+    /// <summary>Bindungen aus der DFM: Eigenschaften von ARoot und seinen Komponenten, die auf ATarget zeigen
+    /// („Panel1.PopupMenu“, „Form1.Menu“, auch in Unterobjekten wie „Grid1.Options.X“).</summary>
+    class function Bindings(ARoot, ATarget: TComponent): TArray<string>; static;
   end;
 
 implementation
@@ -56,9 +64,12 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   System.Generics.Collections,
+  System.TypInfo,
   Atlas.Text.Chars;
 
 const
+  /// <summary>So tief werden Unterobjekte ohne Namen nach Bindungen durchsucht.</summary>
+  cBindingDepth = 2;
   /// <summary>Vorsilbe eines Ereignisnamens.</summary>
   cEventPrefix = 'On';
 
@@ -322,6 +333,66 @@ begin
         Result := ALeft.Character - ARight.Character;
       end;
     end));
+end;
+
+/// <summary>Veröffentlichte Objekt-Eigenschaften von AObject, die auf ATarget zeigen, als „APrefix.Name“;
+/// Unterobjekte ohne eigenen Namen (TPersistent, keine Komponente) werden bis ADepth mit durchsucht.</summary>
+procedure CollectBindings(AObject: TObject; ATarget: TComponent; const APrefix: string; ADepth: Integer;
+  var AResult: TArray<string>);
+var
+  mList: PPropList;
+  mCount, i: Integer;
+  mValue: TObject;
+  mName: string;
+begin
+  mCount := GetPropList(AObject, mList);
+  try
+    for i := 0 to mCount - 1 do
+    begin
+      if mList[i].PropType^.Kind <> tkClass then
+      begin
+        Continue;
+      end;
+      mValue := GetObjectProp(AObject, mList[i]);
+      if mValue = nil then
+      begin
+        Continue;
+      end;
+      mName := APrefix + '.' + string(mList[i].Name);
+      if mValue = ATarget then
+      begin
+        AResult := AResult + [mName];
+      end
+      else if (ADepth > 0) and (mValue is TPersistent) and not (mValue is TComponent) then
+      begin
+        CollectBindings(mValue, ATarget, mName, ADepth - 1, AResult);
+      end;
+    end;
+  finally
+    FreeMem(mList);
+  end;
+end;
+
+class function TAtlasDesignerUsages.Bindings(ARoot, ATarget: TComponent): TArray<string>;
+var
+  i: Integer;
+begin
+  Result := nil;
+  if (ARoot = nil) or (ATarget = nil) then
+  begin
+    Exit;
+  end;
+  if ARoot <> ATarget then
+  begin
+    CollectBindings(ARoot, ATarget, ARoot.Name, cBindingDepth, Result);
+  end;
+  for i := 0 to ARoot.ComponentCount - 1 do
+  begin
+    if ARoot.Components[i] <> ATarget then
+    begin
+      CollectBindings(ARoot.Components[i], ATarget, ARoot.Components[i].Name, cBindingDepth, Result);
+    end;
+  end;
 end;
 
 end.

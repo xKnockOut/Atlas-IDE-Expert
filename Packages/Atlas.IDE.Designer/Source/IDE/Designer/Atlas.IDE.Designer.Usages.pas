@@ -45,7 +45,8 @@ type
     FGeneration: Integer;
     FShown: Boolean;
     class procedure Say(const AText: string); static;
-    class procedure ShowCount(const AName: string; const AJson: string; AEvents, AGeneration: Integer); static;
+    class procedure ShowCount(const AName: string; const AJson: string; AEvents, ABindings, AGeneration: Integer);
+      static;
     class procedure ClearStatus; static;
     class procedure UpdateKeys(const ASettings: TAtlasPluginSettings); static;
     /// <summary>Zähler für AComponent im Hintergrund erfragen; bis zur Antwort „…“.</summary>
@@ -315,6 +316,32 @@ begin
   end;
 end;
 
+/// <summary>Gruppe „Bindungen (DFM)“: Eigenschaften anderer Komponenten, die auf ein Ziel zeigen; Sprung zur
+/// Felddeklaration der bindenden Komponente bzw. an den Anfang der Unit.</summary>
+function BindingGroup(const ATargets: TArray<TTarget>; ARoot: TComponent; ACache: TLineCache): TAtlasResultsItemGroup;
+var
+  mTarget: TTarget;
+  mBinding: string;
+  mLine, mCharacter: Integer;
+begin
+  Result := Default(TAtlasResultsItemGroup);
+  Result.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesBindingsGroup);
+  for mTarget in ATargets do
+  begin
+    for mBinding in TAtlasDesignerUsages.Bindings(ARoot, mTarget.Component) do
+    begin
+      mLine := TAtlasDesignerUsages.FieldLine(ACache.Lines(mTarget.UnitFile), ARoot.ClassName,
+        Copy(mBinding, 1, Pos('.', mBinding) - 1), mCharacter);
+      if mLine < 0 then
+      begin
+        mLine := 0;
+      end;
+      Result.Items := Result.Items + [Item('bind:' + mTarget.Component.Name + ':' + mBinding,
+        mBinding + ' = ' + mTarget.Component.Name, mTarget.UnitFile, mLine)];
+    end;
+  end;
+end;
+
 { TAtlasIdeDesignerUsages }
 
 class procedure TAtlasIdeDesignerUsages.Install(const AScopeOf: TFunc<IAtlasModuleScope>;
@@ -419,7 +446,7 @@ end;
 
 /// <summary>Liste fürs Ergebnisfenster: Zugriffe, danach die Handler aus der DFM.</summary>
 function UsageList(const ANames: string; const AUsages: TArray<TAtlasUsage>;
-  const AEvents: TAtlasResultsItemGroup): TAtlasResultsItemList;
+  const AEvents, ABindings: TAtlasResultsItemGroup): TAtlasResultsItemList;
 begin
   Result := Default(TAtlasResultsItemList);
   Result.Owner := TAtlasIdeDesignerUsages.cOwner;
@@ -428,6 +455,10 @@ begin
   if AEvents.Items <> nil then
   begin
     Result.Groups := Result.Groups + [AEvents];
+  end;
+  if ABindings.Items <> nil then
+  begin
+    Result.Groups := Result.Groups + [ABindings];
   end;
 end;
 
@@ -459,17 +490,18 @@ begin
     if (mTargets <> nil) and QueryUsages(mSession, mTargets, mCache, mUsages) then
     begin
       TAtlasIdeResultsWindow.ShowItems(UsageList(mNames, mUsages,
-        EventGroup(mTargets, mRoot, TAtlasDesignerAccess.DesignerOf(mEditor), mCache)));
+        EventGroup(mTargets, mRoot, TAtlasDesignerAccess.DesignerOf(mEditor), mCache),
+        BindingGroup(mTargets, mRoot, mCache)));
     end;
   finally
     mCache.Free;
   end;
 end;
 
-/// <summary>„1 Verwendung, 2 Ereignisse“ bzw. „keine Verwendung, keine Ereignisse“.</summary>
-function CountText(AUsages, AEvents: Integer): string;
+/// <summary>„1 Verwendung, 2 Ereignisse, 3 Bindungen“ bzw. „keine Verwendung, keine Ereignisse“.</summary>
+function CountText(AUsages, AEvents, ABindings: Integer): string;
 begin
-  if (AUsages = 0) and (AEvents = 0) then
+  if (AUsages = 0) and (AEvents = 0) and (ABindings = 0) then
   begin
     Exit(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesNone));
   end;
@@ -488,6 +520,14 @@ begin
   else if AEvents > 1 then
   begin
     Result := Result + ', ' + TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesEventMany, [AEvents]);
+  end;
+  if ABindings = 1 then
+  begin
+    Result := Result + ', ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesBindingOne);
+  end
+  else if ABindings > 1 then
+  begin
+    Result := Result + ', ' + TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesBindingMany, [ABindings]);
   end;
 end;
 
@@ -509,7 +549,7 @@ begin
 end;
 
 class procedure TAtlasIdeDesignerUsages.ShowCount(const AName: string; const AJson: string;
-  AEvents, AGeneration: Integer);
+  AEvents, ABindings, AGeneration: Integer);
 var
   mValue: TJSONValue;
   mLocations: TArray<TLspLocation>;
@@ -547,7 +587,7 @@ begin
       Inc(mCount);
     end;
   end;
-  TAtlasIdeHost.SetStatusField(cStatusField, AName + ' · ' + CountText(mCount, AEvents),
+  TAtlasIdeHost.SetStatusField(cStatusField, AName + ' · ' + CountText(mCount, AEvents, ABindings),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesStatusHint), StatusClicked);
   FShown := True;
 end;
@@ -597,12 +637,13 @@ var
   mTarget: TTarget;
   mFound: Boolean;
   mName: string;
-  mEvents, mGeneration: Integer;
+  mEvents, mBindings, mGeneration: Integer;
 begin
   Inc(FGeneration);
   mGeneration := FGeneration;
   mName := AComponent.Name;
   mEvents := Length(TAtlasDesignerSearchItems.Events(AComponent, TAtlasDesignerAccess.DesignerOf(AEditor)));
+  mBindings := Length(TAtlasDesignerUsages.Bindings(ARoot, AComponent));
   mCache := TLineCache.Create;
   try
     mFound := TargetOf(AEditor, ARoot, AComponent, mCache, mTarget);
@@ -612,7 +653,7 @@ begin
   FShown := True;
   if not mFound then
   begin
-    TAtlasIdeHost.SetStatusField(cStatusField, mName + ' · ' + CountText(0, mEvents), '', nil);
+    TAtlasIdeHost.SetStatusField(cStatusField, mName + ' · ' + CountText(0, mEvents, mBindings), '', nil);
     Exit;
   end;
   TAtlasIdeHost.SetStatusField(cStatusField, mName + ' · …', '', nil);
@@ -624,7 +665,7 @@ begin
     end),
     procedure(AJson: string)
     begin
-      ShowCount(mName, AJson, mEvents, mGeneration);
+      ShowCount(mName, AJson, mEvents, mBindings, mGeneration);
     end) then
   begin
     // Ohne laufenden Server kein Zähler; der Befehl startet ihn. Bis zum nächsten Auswahlwechsel nicht erneut.

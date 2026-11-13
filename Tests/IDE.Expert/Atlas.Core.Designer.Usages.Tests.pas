@@ -14,6 +14,10 @@ type
   [Category('Atlas.IDE.Designer')]
   TAtlasDesignerUsagesTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Die RTL legt beim ersten Benennen von Komponenten bzw.
+    /// beim ersten RTTI-Zugriff Daten an, die bis Programmende bleiben.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure KindOfAccess;
     [Test]
@@ -24,12 +28,49 @@ type
     procedure ScopeFilters;
     [Test]
     procedure SortsByComponentFileLine;
+    [Test]
+    procedure FindsBindings;
   end;
 
 implementation
 
 uses
+  System.Classes,
   Atlas.Core.Designer.Usages;
+
+type
+  /// <summary>Unterobjekt ohne Namen mit einem Verweis (wie TDBGrid.Columns-Optionen).</summary>
+  TBindingOptions = class(TPersistent)
+  private
+    FLink: TComponent;
+  published
+    property Link: TComponent read FLink write FLink;
+  end;
+
+  /// <summary>Komponente mit Verweis (wie PopupMenu) und Unterobjekt.</summary>
+  TBindingHost = class(TComponent)
+  private
+    FMenu: TComponent;
+    FOptions: TBindingOptions;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property Menu: TComponent read FMenu write FMenu;
+    property Options: TBindingOptions read FOptions;
+  end;
+
+constructor TBindingHost.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FOptions := TBindingOptions.Create;
+end;
+
+destructor TBindingHost.Destroy;
+begin
+  FOptions.Free;
+  inherited Destroy;
+end;
 
 function KindOf(const ALine: string): TAtlasUsageKind;
 begin
@@ -140,6 +181,41 @@ begin
   Assert.AreEqual('edtNr', mUsages[0].Component);
   Assert.AreEqual('a.pas', mUsages[1].FileName);
   Assert.AreEqual(1, mUsages[2].Line);
+end;
+
+procedure TAtlasDesignerUsagesTests.WarmUpFirstUse;
+begin
+  FindsBindings;
+end;
+
+procedure TAtlasDesignerUsagesTests.FindsBindings;
+var
+  mRoot: TBindingHost;
+  mPanel, mGrid: TBindingHost;
+  mPopup: TComponent;
+  mBindings: TArray<string>;
+begin
+  mRoot := TBindingHost.Create(nil);
+  try
+    mRoot.Name := 'Form1';
+    mPopup := TComponent.Create(mRoot);
+    mPopup.Name := 'PopupMenu1';
+    mPanel := TBindingHost.Create(mRoot);
+    mPanel.Name := 'Panel1';
+    mPanel.Menu := mPopup;
+    mGrid := TBindingHost.Create(mRoot);
+    mGrid.Name := 'Grid1';
+    mGrid.Options.Link := mPopup;
+    mRoot.Menu := mPopup;
+    mBindings := TAtlasDesignerUsages.Bindings(mRoot, mPopup);
+    Assert.AreEqual(3, Integer(Length(mBindings)));
+    Assert.AreEqual('Form1.Menu', mBindings[0]);
+    Assert.AreEqual('Panel1.Menu', mBindings[1]);
+    Assert.AreEqual('Grid1.Options.Link', mBindings[2]);
+    Assert.AreEqual(0, Integer(Length(TAtlasDesignerUsages.Bindings(mRoot, mPanel))));
+  finally
+    mRoot.Free;
+  end;
 end;
 
 initialization

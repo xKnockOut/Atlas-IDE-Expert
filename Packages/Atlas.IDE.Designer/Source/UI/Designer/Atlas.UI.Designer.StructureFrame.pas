@@ -105,6 +105,10 @@ uses
 const
   cBasePpi = 96;
   cBarHeight = 30;
+  /// <summary>Rand der Leiste über und unter den Knöpfen (zusammen), logische Pixel.</summary>
+  cBarPadding = 6;
+  /// <summary>Breite des Kästchens eines Häkchens samt Abstand zum Text, logische Pixel.</summary>
+  cCheckBox = 24;
   cSmallButton = 26;
   cWideButton = 84;
   cGroupTexts: array[TAtlasStructureKind] of TAtlasDesignerViewTextId = (TAtlasDesignerViewTextId.StGroupData,
@@ -119,14 +123,27 @@ const
 
 { Hilfen }
 
-function NewButton(ABar: TPanel; const ACaption, AHint: string; AWidth: Integer): TSpeedButton;
+/// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
+function TextWidthIn(AFont: TFont; const AText: string): Integer;
+var
+  mBitmap: TBitmap;
+begin
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font := AFont;
+    Result := mBitmap.Canvas.TextWidth(AText);
+  finally
+    mBitmap.Free;
+  end;
+end;
+
+function NewButton(ABar: TFlowPanel; const ACaption, AHint: string; AWidth: Integer): TSpeedButton;
 begin
   Result := TSpeedButton.Create(ABar.Owner);
   Result.Parent := ABar;
-  Result.Align := alLeft;
   Result.AlignWithMargins := True;
-  Result.Left := ABar.Width;
   Result.Width := MulDiv(AWidth, ABar.CurrentPPI, cBasePpi);
+  Result.Height := MulDiv(cBarHeight - cBarPadding, ABar.CurrentPPI, cBasePpi);
   Result.Flat := True;
   Result.Caption := ACaption;
   Result.Hint := AHint;
@@ -195,17 +212,20 @@ end;
 
 constructor TAtlasStructureFrame.Create(AOwner: TComponent);
 var
-  mBar: TPanel;
+  mBar: TFlowPanel;
   mButton: TSpeedButton;
 begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
   FOpen := TDictionary<string, Boolean>.Create;
-  mBar := TPanel.Create(Self);
+  // Fließende Leiste: Ist das Fenster schmal, bricht „Bilder“ in eine zweite Zeile um, statt die Knöpfe zu
+  // überdecken (vorher alLeft-Knöpfe und ein alRight-Häkchen in einem festen Panel).
+  mBar := TFlowPanel.Create(Self);
   mBar.Parent := Self;
   mBar.Align := alTop;
-  mBar.Height := MulDiv(cBarHeight, CurrentPPI, cBasePpi);
+  mBar.AutoSize := True;
+  mBar.AutoWrap := True;
   mBar.BevelOuter := bvNone;
   mBar.ShowCaption := False;
   mButton := NewButton(mBar, '+', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StExpandAll), cSmallButton);
@@ -223,9 +243,10 @@ begin
   FByKind.OnClick := Changed;
   FShowImages := TCheckBox.Create(Self);
   FShowImages.Parent := mBar;
-  FShowImages.Align := alRight;
   FShowImages.AlignWithMargins := True;
   FShowImages.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StShowImages);
+  FShowImages.Height := MulDiv(cBarHeight - cBarPadding, CurrentPPI, cBasePpi);
+  FShowImages.Width := TextWidthIn(Font, FShowImages.Caption) + MulDiv(cCheckBox, CurrentPPI, cBasePpi);
   FShowImages.Checked := True;
   FShowImages.OnClick := ImagesClick;
   FFilter := TEdit.Create(Self);
