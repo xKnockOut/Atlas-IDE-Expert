@@ -102,7 +102,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Builtin.Properties.Shapes,
   Atlas.Common.Semantics.NameResolver,

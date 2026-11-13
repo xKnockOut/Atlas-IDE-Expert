@@ -321,6 +321,15 @@ Einstellungen: `debug.displayRules`
 
 Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
+#### „Warum bin ich hier?“
+
+- Beim Halt stehen am Ende der Kopfzeilen der umgebenden `if`, `while`, `repeat … until`, `for` und `case` die Werte ihrer Bedingungen, gedimmt wie die Werte im Editor: `(1200 > 1000) and True → True`, `I = 3 von 7`, `Art = paRabatt → paRabatt`, im `else`-Zweig `(4 = 0) → False, else-Zweig`.
+- Kurzschluss wie im Programm: Entscheidet bei `A and B` schon `A = False`, steht bei B „nicht nötig“.
+- Aufrufe und Getter wertet Atlas nicht von selbst aus (`‹Aufruf›`); ein Klick auf den Text der Zeile fragt nach und führt sie dann aus.
+- Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
+
+Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
 #### „kein Zugriff auf Wert“ erklärt
 
 - Liefert der Debugger für eine Variable nur „Inaccessible value“ oder „… wegen der Optimierung nicht …“, steht im Hover und in den Werten im Editor `‹kein Zugriff›`.

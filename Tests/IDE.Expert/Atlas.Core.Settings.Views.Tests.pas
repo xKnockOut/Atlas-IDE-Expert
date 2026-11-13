@@ -159,9 +159,12 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.cMinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
   Settings.BlockEndLabelsMinLines := 5000;
   Settings.DebugInlineValuesPerLine := 0;
+  Settings.DebugWhyHereDepth := 99;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
     'debug.inlineValuesPerLine unten begrenzt (#508)');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxWhyHereDepth, Settings.DebugWhyHereDepth,
+    'debug.whyHere.depth oben begrenzt (#1878)');
   Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(Settings);
   Store := TMemoryStore.Create;
