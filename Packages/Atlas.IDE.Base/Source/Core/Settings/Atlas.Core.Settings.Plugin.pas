@@ -490,6 +490,9 @@ type
     property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
     property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
       write FDebug.DebugNoSourceIgnoredUnits;
+    property DebugRestart: Boolean read FDebug.DebugRestart write FDebug.DebugRestart;
+    property DebugRestartReenableBreakpoints: Boolean read FDebug.DebugRestartReenableBreakpoints
+      write FDebug.DebugRestartReenableBreakpoints;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;
