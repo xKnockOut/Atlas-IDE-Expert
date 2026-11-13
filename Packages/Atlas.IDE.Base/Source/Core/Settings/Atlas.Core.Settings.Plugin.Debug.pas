@@ -245,6 +245,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben ab debug.whyHere (Halt, Protokoll, Neustart, Anhängen, Start); Teil von Defaults.</summary>
+    procedure SetStopAndLaunchDefaults;
+    /// <summary>Werte ab debug.whyHere über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    procedure ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -302,23 +306,7 @@ begin
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
-  Result.DebugWhyHere := True;
-  Result.DebugWhyHereDepth := cDefaultWhyHereDepth;
-  Result.DebugOwnCodeFolders := '';
-  Result.DebugEventLog := True;
-  Result.DebugEventLogColors := cDefaultEventLogColors;
-  Result.DebugLogpoints := True;
-  Result.DebugLogpointPrefix := cDefaultLogpointPrefix;
-  Result.DebugNoSourcePage := True;
-  Result.DebugNoSourceIgnoredUnits := '';
-  Result.DebugRestart := True;
-  Result.DebugRestartReenableBreakpoints := False;
-  Result.DebugReattach := True;
-  Result.DebugReattachKey := cDefaultReattachKey;
-  Result.DebugReattachWaitIntervalMs := cDefaultReattachWaitMs;
-  Result.StartProfiles := True;
-  Result.StartProfilesStatusField := True;
-  Result.DebugEnabled := True;
+  Result.SetStopAndLaunchDefaults;
 end;
 
 procedure TAtlasPluginDebugSettings.Normalize;
@@ -397,6 +385,32 @@ begin
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  ExchangeStopAndLaunch(AIo);
+end;
+
+procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
+begin
+  DebugWhyHere := True;
+  DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugOwnCodeFolders := '';
+  DebugEventLog := True;
+  DebugEventLogColors := cDefaultEventLogColors;
+  DebugLogpoints := True;
+  DebugLogpointPrefix := cDefaultLogpointPrefix;
+  DebugNoSourcePage := True;
+  DebugNoSourceIgnoredUnits := '';
+  DebugRestart := True;
+  DebugRestartReenableBreakpoints := False;
+  DebugReattach := True;
+  DebugReattachKey := cDefaultReattachKey;
+  DebugReattachWaitIntervalMs := cDefaultReattachWaitMs;
+  StartProfiles := True;
+  StartProfilesStatusField := True;
+  DebugEnabled := True;
+end;
+
+procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
+begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
