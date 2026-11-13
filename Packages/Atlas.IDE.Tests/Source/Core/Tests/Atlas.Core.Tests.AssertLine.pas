@@ -49,17 +49,13 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math;
+  System.Math,
+  Atlas.Text.Chars;
 
 const
   // Zeilenangabe von JclDebug ("(Line 42, …") und Beginn eines Assert-Aufrufs, klein geschrieben.
   cLinePrefix = 'line ';
   cAssertPrefix = 'assert.';
-
-function IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
 
 function IsDigits(const AText: string): Boolean;
 var
@@ -110,8 +106,8 @@ begin
       Exit;
     end;
     mAfter := Result + Length(mName);
-    if ((Result = 1) or not (IsIdentChar(AText[Result - 1]) or (AText[Result - 1] = '.'))) and
-      ((mAfter > Length(AText)) or not IsIdentChar(AText[mAfter])) then
+    if ((Result = 1) or not (TTextChars.IsIdentChar(AText[Result - 1]) or (AText[Result - 1] = '.'))) and
+      ((mAfter > Length(AText)) or not TTextChars.IsIdentChar(AText[mAfter])) then
     begin
       Exit;
     end;
@@ -288,7 +284,7 @@ begin
       mInString := not mInString;
     end
     else if not mInString and SameText(Copy(ACode, mIndex, Length(cAssertPrefix)), cAssertPrefix) and
-      ((mIndex = 1) or not (IsIdentChar(ACode[mIndex - 1]) or (ACode[mIndex - 1] = '.'))) then
+      ((mIndex = 1) or not (TTextChars.IsIdentChar(ACode[mIndex - 1]) or (ACode[mIndex - 1] = '.'))) then
     begin
       mOpen := Pos('(', ACode, mIndex);
       if mOpen > 0 then
