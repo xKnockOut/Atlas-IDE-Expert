@@ -363,6 +363,18 @@ If anything is found, the dialog “Breakpoints that will not be hit” lists it
 
 Settings: `debug.checkBreakpoints`
 
+### Breakpoints on methods by pattern
+
+The command “Breakpoint on methods …” (Atlas menu, command palette) sets breakpoints on all methods that match a name or pattern, without opening each one:
+
+- `TCustomer.Save`, `TCustomer.*` (all methods of the class), `*.Validate*` (all matching methods and routines), `Customer.Import.*` (whole unit), `IOrder.Check` (all classes implementing the interface member, also through method resolution clauses)
+- with parameter types, only one overload: `TCustomer.Save(Integer)`
+- “Overrides” adds the override methods of descendants, “Overloads” all overloads of a name (both on by default)
+
+The preview lists the matches with file and line to deselect, methods without source greyed out. “Set” places the breakpoints on the first executable statement of each method, in the breakpoint group named after the pattern, optionally with a condition or “Do not break, log only”. With “Grow”, Atlas adds breakpoints for new matching methods at the next debug start and names them in the messages. “Method breakpoint groups …” enables, disables or removes the groups of the project together with their breakpoints. Atlas keeps the groups personally per project.
+
+Settings: `debug.methodBreakpoints`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>

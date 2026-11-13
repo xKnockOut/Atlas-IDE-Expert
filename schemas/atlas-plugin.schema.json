@@ -1978,6 +1978,19 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
     },
+    "DebugMethodBreakpoints": {
+      "description": "Haltepunkte auf Methoden nach Name oder Muster: Der Befehl „Haltepunkt auf Methoden …“ sucht über den Symbolindex alle Methoden zu einem Muster (TKunde.Speichere, TKunde.*, *.Validiere*, Unit.*, IAuftrag.Pruefe, auf Wunsch mit Überschreibungen und Überladungen) und setzt nach einer Vorschau Haltepunkte am ersten ausführbaren Befehl, als Gruppe mit dem Muster als Namen, mit Bedingung oder nur protokollierend. Mit „Mitwachsen“ ergänzt Atlas beim Debug-Start Haltepunkte für neue passende Methoden. Der Befehl „Haltepunktgruppen der Methoden …“ schaltet Gruppen ein und aus oder entfernt sie. Aus = keine Befehle, kein Mitwachsen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.methodBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte auf Methoden nach Muster",
+      "x-captionEn": "Breakpoints on methods by pattern",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#855"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,

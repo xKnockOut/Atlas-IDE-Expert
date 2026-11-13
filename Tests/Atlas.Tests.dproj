@@ -2221,6 +2221,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointCheck.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointCheck.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.MethodBreakpoints.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.MethodBreakpoints.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MethodBreakpoints.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.MethodBreakpoints.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.ButtonBar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas"/>

@@ -2,7 +2,8 @@
 
 // Modul Debugger, Teil der Komposition: Anhalten und Haltepunkte. Teile der
 // Feature-Tabelle, Befehle, Menüeinträge und Einstellungen für „Beim nächsten
-// Ereignis anhalten“ (#856) und „Haltepunkte prüfen“ (#577).
+// Ereignis anhalten“ (#856), „Haltepunkte prüfen“ (#577) und „Haltepunkt auf
+// Methoden“ (#855).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -34,6 +35,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.EventBreak,
   Atlas.IDE.Debug.BreakpointCheck,
+  Atlas.IDE.Debug.MethodBreakpoints,
   Atlas.UI.Debug.Strings;
 
 procedure MessageLine(AText: string);
@@ -84,9 +86,38 @@ begin
     end, StartBreakpointCheck, TAtlasIdeBreakpointCheck.Release);
 end;
 
+function MethodBreakpointsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugMethodBreakpoints;
+end;
+
+procedure StartMethodBreakpoints;
+begin
+  TAtlasIdeMethodBreakpoints.Start(
+    function: TLspSession
+    begin
+      Result := Session;
+    end, MessageLine);
+end;
+
+/// <summary>Haltepunkte auf Methoden nach Muster (#855): Gruppen laden und beim Start mitwachsen; aus = keine
+/// Befehle, kein Zuhörer.</summary>
+function MethodBreakpointsPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugMethodBreakpoints',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugMethodBreakpoints;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeMethodBreakpoints.Started;
+    end, StartMethodBreakpoints, TAtlasIdeMethodBreakpoints.Release);
+end;
+
 function BreakpointParts: TArray<IAtlasFeaturePart>;
 begin
-  Result := [BreakpointCheckPart];
+  Result := [BreakpointCheckPart, MethodBreakpointsPart];
 end;
 
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
@@ -107,7 +138,13 @@ begin
       TAtlasIdeEventBreak.Run, BreakOnNextEventVisible),
     // Haltepunkte prüfen (#577); nur sichtbar, solange debug.checkBreakpoints an ist.
     Command('Atlas.CheckBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckCommand),
-      TAtlasIdeBreakpointCheck.Run, BreakpointCheckVisible)];
+      TAtlasIdeBreakpointCheck.Run, BreakpointCheckVisible),
+    // Haltepunkt auf Methoden (#855); nur sichtbar, solange debug.methodBreakpoints an ist.
+    Command('Atlas.MethodBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsCommand),
+      TAtlasIdeMethodBreakpoints.Run, MethodBreakpointsVisible),
+    Command('Atlas.MethodBreakpointGroups',
+      TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsGroupsCommand), TAtlasIdeMethodBreakpoints.RunGroups,
+      MethodBreakpointsVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -119,7 +156,9 @@ end;
 
 function BreakpointMenuEntries: TArray<TAtlasMenuEntry>;
 begin
-  Result := [MenuEntry('Atlas.CheckBreakpoints', TAtlasMenuPlace.AtlasMenu)];
+  Result := [MenuEntry('Atlas.CheckBreakpoints', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.MethodBreakpoints', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.MethodBreakpointGroups', TAtlasMenuPlace.AtlasMenu)];
 end;
 
 procedure InstallBreakCommands;

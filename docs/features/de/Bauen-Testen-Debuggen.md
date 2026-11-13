@@ -236,6 +236,18 @@ Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie 
 
 Einstellungen: `debug.checkBreakpoints`
 
+#### Haltepunkte auf Methoden nach Muster
+
+Der Befehl „Haltepunkt auf Methoden …“ (Menü Atlas, Befehlspalette) setzt Haltepunkte auf alle Methoden, die zu einem Namen oder Muster passen, ohne jede einzeln zu öffnen:
+
+- `TKunde.Speichere`, `TKunde.*` (alle Methoden der Klasse), `*.Validiere*` (alle passenden Methoden und Routinen), `Kunde.Import.*` (ganze Unit), `IAuftrag.Pruefe` (alle Klassen, die den Interface-Member umsetzen, auch über Methodenzuordnungen)
+- mit Parametertypen nur eine Überladung: `TKunde.Speichere(Integer)`
+- „Überschreibungen“ nimmt die override-Methoden der Nachfahren dazu, „Überladungen“ alle Überladungen eines Namens (beide Vorgabe an)
+
+Die Vorschau zeigt die Treffer mit Datei und Zeile zum Abwählen, Methoden ohne Quelltext grau. „Setzen“ legt die Haltepunkte am ersten ausführbaren Befehl jeder Methode an, in der Haltepunktgruppe mit dem Muster als Namen, auf Wunsch mit Bedingung oder „Nicht anhalten, nur protokollieren“. Mit „Mitwachsen“ ergänzt Atlas beim nächsten Debug-Start Haltepunkte für neue passende Methoden und nennt sie in den Meldungen. „Haltepunktgruppen der Methoden …“ schaltet die Gruppen des Projekts ein und aus oder entfernt sie samt Haltepunkten. Die Gruppen merkt sich Atlas persönlich je Projekt.
+
+Einstellungen: `debug.methodBreakpoints`
+
 ### Werte ansehen
 
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](Verstehen.md))

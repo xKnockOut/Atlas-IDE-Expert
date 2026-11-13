@@ -330,6 +330,14 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugCheckBreakpoints);
+  // #855: Haltepunkte auf Methoden nach Muster ist an und überlebt Speichern und Laden ebenso.
+  Assert.IsTrue(TAtlasPluginSettings.Defaults.DebugMethodBreakpoints);
+  Settings.DebugMethodBreakpoints := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugMethodBreakpoints);
 end;
 procedure TAtlasBuildDebugSettingsTests.DebugStepFilterOptions;
 var
