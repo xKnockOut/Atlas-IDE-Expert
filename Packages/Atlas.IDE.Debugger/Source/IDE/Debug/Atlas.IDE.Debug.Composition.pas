@@ -335,6 +335,8 @@ begin
     // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
     Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
       ShowDebugParallelStacks, DebugParallelStacksVisible)];
+  // Threads im Quelltext (#852): markieren, einfrieren, auftauen.
+  Result := Result + DebugThreadCommands;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -370,7 +372,12 @@ begin
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
-    ContextEntry('Atlas.StepFilterUnskip')];
+    ContextEntry('Atlas.StepFilterUnskip'),
+    // Threads im Quelltext (#852): für die Threads an der Zeile des Rechtsklicks in die Rinne.
+    ContextEntry('Atlas.DebugThreadFlag'),
+    ContextEntry('Atlas.DebugThreadFreeze'),
+    ContextEntry('Atlas.DebugThreadThaw'),
+    ContextEntry('Atlas.DebugThreadsThawAll')];
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -525,6 +532,7 @@ begin
   GScope.Provide(IAtlasHoverValueSource, mRef);
   // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
   GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
+  ProvideDebugThreadLayers(GScope);
   ProvideSettingsSections;
   Result := True;
 end;
